@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../generated/bindings'
 import { ListView } from './list-view'
 import { AuthorAvatar, SocialCardContent, SocialPreview } from './social-card'
 import {
@@ -288,7 +289,7 @@ describe('ListView', () => {
     window.api.notes.getFolders = vi
       .fn()
       .mockResolvedValue([{ path: 'Work' }, { path: 'Personal' }])
-    window.open = vi.fn()
+    vi.spyOn(commands, 'shellOpenLink').mockReset().mockResolvedValue(null)
   })
 
   it('renders grouped inbox items and handles mouse, keyboard, selection, archive, and quick-file flows', async () => {
@@ -332,11 +333,7 @@ describe('ListView', () => {
     expect(onSelectionChange).toHaveBeenCalledWith(new Set(['two']))
 
     fireEvent.keyDown(document, { key: 'o' })
-    expect(window.open).toHaveBeenCalledWith(
-      'https://example.com/two',
-      '_blank',
-      'noopener,noreferrer'
-    )
+    expect(commands.shellOpenLink).toHaveBeenCalledWith('https://example.com/two')
 
     fireEvent.click(screen.getByText('archive one'))
     expect(onArchive).toHaveBeenCalledWith('one')

@@ -17,6 +17,7 @@ import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import type { InboxItemListItem, Folder } from '@/types'
+import { openLink } from '@/lib/external-link-guard'
 
 type InboxItem = InboxItemListItem
 
@@ -281,7 +282,7 @@ const ListView = ({
             const focusedItem = flatItems.find((i) => i.id === focusedItemId)
             if (focusedItem?.type === 'link' && focusedItem.sourceUrl) {
               e.preventDefault()
-              window.open(focusedItem.sourceUrl, '_blank', 'noopener,noreferrer')
+              openLink(focusedItem.sourceUrl)
             }
           }
           break

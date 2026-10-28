@@ -1,5 +1,12 @@
 import { useTheme } from 'next-themes'
-import { Toaster as Sonner } from 'sonner'
+import { useEffect } from 'react'
+import { getI18n } from 'react-i18next'
+import { Toaster as Sonner, toast } from 'sonner'
+
+import { commands } from '../../../../generated/bindings'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Toaster')
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
@@ -14,8 +21,28 @@ const toastStyle: React.CSSProperties & {
   '--normal-border': 'var(--border)'
 }
 
+/**
+ * Tells the user once when the shell reloaded this page because its web process died. Asked from
+ * the toaster, after it subscribed: a toast sent while a loading screen without a toaster shows
+ * is dropped.
+ */
+function useCrashReloadNotice(): void {
+  useEffect(() => {
+    void Promise.resolve()
+      .then(() => commands.shellTakeCrashReload())
+      .then((reloaded) => {
+        if (!reloaded) return
+        const t = getI18n().getFixedT(null, 'system')
+        // Until dismissed: the crash may have happened while the user looked elsewhere.
+        toast.warning(t('startup.reloaded'), { duration: Infinity, closeButton: true })
+      })
+      .catch((error: unknown) => log.warn('shell_take_crash_reload failed', error))
+  }, [])
+}
+
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = 'system' } = useTheme()
+  useCrashReloadNotice()
 
   return (
     <Sonner

@@ -9,16 +9,19 @@
 import { memo, useCallback, useEffect, useRef } from 'react'
 import {
   DragHandleButton,
+  FormattingToolbarController,
   SideMenu,
   SideMenuController,
   useCreateBlockNote
 } from '@blocknote/react'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { BlockNoteView } from '@blocknote/shadcn'
+import { LinkAddressToolbarController } from '@/components/note/content-area/link-address-toolbar'
 import {
-  LinkAddressToolbarController,
-  openLinkAddress
-} from '@/components/note/content-area/link-address-toolbar'
+  EDITOR_LINKS,
+  EditorFormattingToolbar,
+  useEditorLinkClicks
+} from '@/components/note/content-area/editor-links'
 import { useTheme } from 'next-themes'
 
 import '@blocknote/shadcn/style.css'
@@ -75,7 +78,7 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
     // Same header-row toggle the note body gets — the same markdown round-trip
     // applies here, so the two surfaces have to agree about tables.
     tables: { headers: true },
-    links: { onClick: openLinkAddress },
+    links: EDITOR_LINKS,
     placeholders: {
       default: placeholder,
       heading: 'Heading',
@@ -125,24 +128,15 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
     }
   }, [editor, onContentChange])
 
-  // Open link clicks externally, like the note editor (window.open is routed
-  // to the OS browser by the main-process openExternal allowlist).
-  const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mouse/keyboard event target is a DOM element in this handler; only closest()/tagName are read
-    const link = (e.target as HTMLElement).closest('a')
-    const href = link?.getAttribute('href')
-    if (href && !href.startsWith('#')) {
-      e.preventDefault()
-      window.open(href, '_blank', 'noopener,noreferrer')
-    }
-  }, [])
+  // Links open externally, like the note editor.
+  const containerRef = useRef<HTMLElement>(null)
+  useEditorLinkClicks(containerRef)
 
   return (
-    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls; pointer/hover handler is a convenience; keyboard access is provided by inner controls
     <section
+      ref={containerRef}
       className={cn('task-description-editor relative', editable && 'cursor-text', className)}
       aria-label={ariaLabel}
-      onClick={handleContainerClick}
     >
       <BlockNoteView
         editor={editor}
@@ -151,8 +145,10 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
         theme={editorTheme}
         sideMenu={false}
         linkToolbar={false}
+        formattingToolbar={false}
       >
         <LinkAddressToolbarController />
+        <FormattingToolbarController formattingToolbar={EditorFormattingToolbar} />
         <SideMenuController
           sideMenu={DragHandleOnlySideMenu}
           floatingUIOptions={SIDE_MENU_FLOATING_OPTIONS}

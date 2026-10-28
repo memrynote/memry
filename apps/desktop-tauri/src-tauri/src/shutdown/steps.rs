@@ -63,9 +63,13 @@ async fn flush_windows(app: AppHandle<Wry>, deadline: Deadline) -> Result<(), St
 }
 
 async fn close_vault(app: AppHandle<Wry>) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || app.state::<Session>().close())
-        .await
-        .map_err(|error| error.to_string())
+    // A startup that failed before the vault stage has no session.
+    tauri::async_runtime::spawn_blocking(move || match app.try_state::<Session>() {
+        Some(session) => session.close(),
+        None => tracing::debug!(scope = "Shutdown", "no vault session to close"),
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 
 /// Last, and bounded: both queues are mirrored to disk and drain on the next launch, so a flush

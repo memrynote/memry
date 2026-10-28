@@ -32,6 +32,16 @@ test('missing key fixture reports a missing English key', () => {
   assert.equal(result.missingKeys[0].key, 'notes:missing.phaseEKey')
 })
 
+test('Rust sources count their full ns:key literals and report a missing one', () => {
+  const result = scanFixture('native-keys.rs')
+
+  assert.ok(result.usedKeys.includes('system:startup.failed.title'))
+  assert.deepEqual(
+    result.missingKeys.map((finding) => [finding.key, finding.line]),
+    [['system:startup.noSuchKey', 5]]
+  )
+})
+
 test('untranslated fixture reports text and aria-label', () => {
   const result = scanFixture('untranslated-jsx.tsx')
 

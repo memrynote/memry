@@ -13,6 +13,8 @@ const ignoredPathPatterns = [
   /^apps\/ios\/Memry\/Resources\/Whiteboard\.bundle\//
 ]
 
+// The Secret scan job in .github/workflows/security-ci.yml leaves these media extensions out of its
+// sparse checkout; a path dropped from this list must come back there too, or it is never read.
 const binaryPathPattern =
   /\.(?:avif|br|dmg|eot|flac|gif|gz|icns|ico|jpe?g|m4v|mov|mp3|mp4|ogg|otf|pdf|png|tgz|ttf|wav|webm|webp|woff2?|zip)$/i
 const sourceCodePathPattern = /\.[cm]?[jt]sx?$/i
@@ -422,9 +424,13 @@ function getStagedFiles() {
 }
 
 function getChangedFiles(baseRef) {
-  return execFileSync('git', ['diff', '--name-only', '--diff-filter=ACMR', baseRef], {
-    encoding: 'utf8'
-  })
+  return execFileSync(
+    'git',
+    ['diff', '--no-renames', '--name-only', '--diff-filter=ACMR', baseRef],
+    {
+      encoding: 'utf8'
+    }
+  )
     .split('\n')
     .map((file) => file.trim())
     .filter(Boolean)

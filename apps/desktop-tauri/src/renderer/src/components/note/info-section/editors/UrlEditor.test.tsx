@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../../../../generated/bindings'
 
 import { UrlEditor } from './UrlEditor'
 
@@ -14,7 +15,7 @@ vi.mock('@/lib/icons', () => ({
 describe('UrlEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    window.open = vi.fn()
+    vi.spyOn(commands, 'shellOpenLink').mockReset().mockResolvedValue(null)
   })
 
   it('accepts empty and normalized URL values on blur or Enter', () => {
@@ -61,7 +62,7 @@ describe('UrlEditor', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'properties.openUrlAria' }))
-    expect(window.open).toHaveBeenCalledWith('https://valid.test', '_blank', 'noopener,noreferrer')
+    expect(commands.shellOpenLink).toHaveBeenCalledWith('https://valid.test')
 
     const input = screen.getByDisplayValue('https://valid.test')
     fireEvent.change(input, { target: { value: 'https://changed.test' } })

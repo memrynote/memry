@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders as render } from '@tests/utils/render'
 import { useSyncExternalStore } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../../../generated/bindings'
 import * as Y from 'yjs'
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
 import { serializeCriticMarkup } from '@memry/shared'
@@ -840,7 +841,7 @@ describe('ContentArea', () => {
   // BBF-112: BlockNote's own link click opened the raw href next to the
   // address the `onLinkClick` listener opens, so a titled link opened twice.
   it('leaves a link click to onLinkClick when it is given', () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const open = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
     render(<ContentArea noteId="note-1" onLinkClick={vi.fn()} />)
 
     expect(contentAreaMocks.blockNoteOptions.links.onClick(new MouseEvent('click'))).toBe(true)

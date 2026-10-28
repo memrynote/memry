@@ -101,14 +101,16 @@ function staysInDocument(link: Link): boolean {
   return target.href === here.href
 }
 
-/** A download the engine performs: `download` is honored only for these URLs. */
+/**
+ * A download the engine performs: `download` is honored only for these URLs. An opaque origin,
+ * serialized `"null"` (a non-special scheme such as `memry-file:` or the page's own `tauri:`), is
+ * never the same as another.
+ */
 function downloads(link: Link): boolean {
   if (!link.download || !link.url) return false
-  return (
-    link.url.protocol === 'blob:' ||
-    link.url.protocol === 'data:' ||
-    link.url.origin === parseUrl(document.URL)?.origin
-  )
+  if (link.url.protocol === 'blob:' || link.url.protocol === 'data:') return true
+  const { origin } = link.url
+  return origin !== 'null' && origin === parseUrl(document.URL)?.origin
 }
 
 function follow(open: Open, url: URL | null): void {
@@ -127,6 +129,9 @@ export function watchExternalLinks(
   host: CaptureHost<'click' | 'auxclick', MouseEvent>,
   open: Open
 ): () => void {
+  // `isTrusted` is not checked: a script's `link.click()` navigates the frame like a person's
+  // click, so it is cancelled and followed the same way. Only the app's own code runs in this
+  // document (an embed is its own frame with its own window), and the shell decides what opens.
   const onActivate = (event: MouseEvent): void => {
     if (event.defaultPrevented) return
     const link = linkOf(event)
@@ -213,6 +218,15 @@ export function watchFormSubmits(host: CaptureHost<'submit', Event>): () => void
 }
 
 const followInShell = (url: string): Promise<unknown> => commands.shellOpenLink(url)
+
+/**
+ * Opens `url` where the main frame's navigation to it would go (`shell_open_link`): a web or mail
+ * link in the OS browser, a vault file in its app; anything else is refused and logged. App code
+ * calls this, never `window.open`, which on macOS opens nothing (#3675, `memry/no-window-open`).
+ */
+export function openLink(url: string): void {
+  followInShell(url).catch((error: unknown) => log.warn('a link was not opened', error))
+}
 
 /** Installed before the app renders (`main.tsx`), so its listeners run first. */
 export function installExternalLinkGuard(): () => void {

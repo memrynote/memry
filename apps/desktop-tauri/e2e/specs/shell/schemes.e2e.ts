@@ -182,6 +182,34 @@ test('the CSP blocks an injected inline script', async ({ page }) => {
   expect(ran).toBe(false)
 })
 
+// The webview has no certificate pin: every memry-host request goes through the Rust transport,
+// and `connect-src` names no memrynote.com host, so a request from the renderer is refused
+// (`scripts/check-renderer-no-sync-host.mjs` is the source-level backstop).
+test('the CSP refuses a webview request to a memry host', async ({ page }) => {
+  await appReady(page)
+  // The violation report is the evidence: a refused fetch alone proves nothing, since CORS refuses
+  // this one whatever the CSP says.
+  const violations = await page.evaluate(async () => {
+    const blocked: string[] = []
+    document.addEventListener('securitypolicyviolation', (event) => {
+      blocked.push(`${event.effectiveDirective} ${event.blockedURI}`)
+    })
+    await fetch('https://sync.memrynote.com/health').catch(() => undefined)
+    try {
+      new WebSocket('wss://sync.memrynote.com/sync').close()
+    } catch {
+      // An engine may throw for a blocked socket rather than fail it later; the report is the same.
+    }
+    for (let tries = 0; blocked.length < 2 && tries < 40; tries += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+    return blocked
+  })
+  const reports = violations.join('\n')
+  expect(reports).toMatch(/^connect-src https:\/\/sync\.memrynote\.com/m)
+  expect(reports).toMatch(/^connect-src wss:\/\/sync\.memrynote\.com/m)
+})
+
 /** The URL a webview loads for a vault file: the scheme's own, or WebView2's `https` host. */
 function webviewUrl(scheme: 'memry-file' | 'memry-html', file: string): string {
   const slashed = file.replaceAll('\\', '/')

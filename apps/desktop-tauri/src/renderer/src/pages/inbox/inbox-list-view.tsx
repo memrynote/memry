@@ -44,6 +44,7 @@ import { useInboxKeyboard } from '@/hooks/use-inbox-keyboard'
 import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
 import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
+import { openLink } from '@/lib/external-link-guard'
 
 const log = createLogger('Page:InboxListView')
 
@@ -286,7 +287,7 @@ export function InboxListView({
     onRefresh: () => refetch(),
     onArchiveFocusedItem: (itemId, nextItemId) => void archiveWithAnimation(itemId, nextItemId),
     onOpenBulkArchiveDialog: () => setIsArchiveDialogOpen(true),
-    onOpenSourceUrl: (url) => window.open(url, '_blank', 'noopener,noreferrer')
+    onOpenSourceUrl: (url) => openLink(url)
   })
 
   // === HANDLERS ===

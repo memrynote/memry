@@ -72,6 +72,13 @@
     "failed": {
       "title": "O MemryNote não conseguiu concluir a inicialização",
       "body": "Isso pode acontecer quando há pouquíssimo espaço livre em disco ou quando os drivers gráficos são antigos. Tente liberar espaço em disco e abra o MemryNote novamente. Se continuar acontecendo, reinstalar costuma resolver."
-    }
+    },
+    "crashed": {
+      "title": "O MemryNote parou de funcionar",
+      "body": "A página parava repetidamente, então o MemryNote deixou de recarregá-la. Feche esta janela para sair e abra o MemryNote novamente. Se continuar acontecendo, reinstalar costuma resolver.",
+      "details": "O processo da página terminou {count} vezes em um minuto ({reason})."
+    },
+    "logFolder": "Registros: {path}",
+    "reloaded": "O MemryNote foi recarregado após uma falha. Edições recentes podem ter sido perdidas."
   }
 }

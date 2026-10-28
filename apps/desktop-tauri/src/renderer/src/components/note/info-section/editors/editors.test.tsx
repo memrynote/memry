@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../../../../generated/bindings'
 
 import { CheckboxEditor } from './CheckboxEditor'
 import { DateEditor } from './DateEditor'
@@ -144,7 +145,7 @@ describe('note info property editors', () => {
     fireEvent.keyDown(dateInput, { key: 'Enter' })
     expect(onDateChange.mock.calls.at(-1)?.[0]).toEqual(new Date(2026, 4, 10))
 
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const open = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
     rerender(
       <UrlEditor
         value="https://memrynote.com"
@@ -154,7 +155,7 @@ describe('note info property editors', () => {
       />
     )
     fireEvent.click(screen.getByRole('button', { name: 'properties.openUrlAria' }))
-    expect(open).toHaveBeenCalledWith('https://memrynote.com', '_blank', 'noopener,noreferrer')
+    expect(open).toHaveBeenCalledWith('https://memrynote.com')
     fireEvent.change(screen.getByDisplayValue('https://memrynote.com'), {
       target: { value: 'not-a-url' }
     })

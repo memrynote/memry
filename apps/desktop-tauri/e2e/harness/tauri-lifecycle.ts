@@ -55,6 +55,8 @@ export interface FreshOptions {
   deviceId?: string
   /** Leaves the window at the size the app chose, for specs about window geometry. */
   keepWindowRect?: boolean
+  /** The launch is expected to fail startup: no main window is awaited. */
+  startupFails?: boolean
 }
 
 export interface TauriApp {
@@ -66,8 +68,11 @@ export interface TauriApp {
   control: ControlFile
   /** Pid of the app instance running now. */
   pid: number
+  /** The exit code of the app instance running now, once it exits (`null` for a signal). */
+  exited: Promise<number | null>
   label?: 'A' | 'B'
   keepWindowRect?: boolean
+  startupFails?: boolean
 }
 
 const WINDOW_WIDTH = 1440
@@ -177,7 +182,8 @@ export async function fresh(executor: AppBrowser, options: FreshOptions = {}): P
     dirs,
     control,
     label: options.label,
-    keepWindowRect: options.keepWindowRect
+    keepWindowRect: options.keepWindowRect,
+    startupFails: options.startupFails
   })
 }
 
@@ -203,14 +209,16 @@ async function stopRunningApp(executor: AppBrowser, port: number): Promise<void>
 
 async function start(
   executor: AppBrowser,
-  base: Omit<TauriApp, 'executor' | 'pid'>
+  base: Omit<TauriApp, 'executor' | 'pid' | 'exited'>
 ): Promise<TauriApp> {
-  await spawnApp(base.port)
+  const child = await spawnApp(base.port)
+  const exited = new Promise<number | null>((resolve) => child.once('exit', resolve))
   await executor.reloadSession()
   await executor.setTimeout({ script: 60_000 })
   const info = await waitForApp(executor)
   assertControlApplied(info, base.control)
-  const app: TauriApp = { ...base, executor, pid: info.pid }
+  const app: TauriApp = { ...base, executor, pid: info.pid, exited }
+  if (base.startupFails) return app
   // The window is hidden until the renderer mounts; a spec starts from the shown app.
   const shown = await pollUntil(
     async () => {
@@ -250,6 +258,7 @@ export async function restart(app: TauriApp): Promise<void> {
   writeControl(app.port, app.control)
   const next = await start(app.executor, app)
   app.pid = next.pid
+  app.exited = next.exited
 }
 
 /** Closes the app, removes its temp dirs and purges the keychain items its device minted. */

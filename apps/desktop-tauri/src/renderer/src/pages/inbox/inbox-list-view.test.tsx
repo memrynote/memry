@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../../generated/bindings'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
 import { InboxListView } from './inbox-list-view'
@@ -577,7 +578,7 @@ describe('InboxListView', () => {
 
   it('uses keyboard callbacks for refresh, source URLs, archive focus, and bulk archive dialog', async () => {
     vi.useFakeTimers()
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const openSpy = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
 
     renderWithProviders(<InboxListView selectedTypes={new Set()} showSnoozedItems={false} />)
 
@@ -585,11 +586,7 @@ describe('InboxListView', () => {
     expect(mocks.refetch).toHaveBeenCalled()
 
     mocks.keyboardOptions?.onOpenSourceUrl('https://memry.test/source')
-    expect(openSpy).toHaveBeenCalledWith(
-      'https://memry.test/source',
-      '_blank',
-      'noopener,noreferrer'
-    )
+    expect(openSpy).toHaveBeenCalledWith('https://memry.test/source')
 
     act(() => {
       mocks.keyboardOptions?.onOpenBulkArchiveDialog()

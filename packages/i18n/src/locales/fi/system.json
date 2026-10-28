@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNoten käynnistäminen epäonnistui",
       "body": "Näin voi käydä, kun levyllä on hyvin vähän vapaata tilaa tai kun näytönohjaimen ajurit ovat vanhat. Vapauta levytilaa ja avaa MemryNote uudelleen. Jos ongelma toistuu, uudelleenasennus yleensä auttaa."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote lakkasi toimimasta",
+      "body": "Sivu pysähtyi toistuvasti, joten MemryNote lopetti sen uudelleenlataamisen. Sulje tämä ikkuna lopettaaksesi ja avaa MemryNote uudelleen. Jos ongelma jatkuu, uudelleenasennus yleensä korjaa sen.",
+      "details": "Sivun prosessi päättyi {count} kertaa minuutin aikana ({reason})."
+    },
+    "logFolder": "Lokit: {path}",
+    "reloaded": "MemryNote ladattiin uudelleen kaatumisen jälkeen. Viimeisimmät muokkaukset ovat voineet kadota."
   }
 }

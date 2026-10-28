@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote no pudo terminar de iniciarse",
       "body": "Esto puede ocurrir cuando queda muy poco espacio libre en el disco o con controladores gráficos antiguos. Libera algo de espacio en el disco y vuelve a abrir MemryNote. Si sigue pasando, reinstalar la app suele solucionarlo."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote dejó de funcionar",
+      "body": "La página se detenía una y otra vez, así que MemryNote dejó de recargarla. Cierra esta ventana para salir y vuelve a abrir MemryNote. Si sigue ocurriendo, reinstalar suele solucionarlo.",
+      "details": "El proceso de la página terminó {count} veces en un minuto ({reason})."
+    },
+    "logFolder": "Registros: {path}",
+    "reloaded": "MemryNote se recargó después de un fallo. Es posible que se hayan perdido los cambios recientes."
   }
 }

@@ -444,6 +444,11 @@ export default defineConfig({
       rules: enableAll('memry/no-location-navigation')
     },
     {
+      // App code opens links through `openLink`: see tools/oxlint/memry/index.mjs (#3675).
+      files: ['apps/desktop-tauri/src/renderer/src/**/*.{ts,tsx}'],
+      rules: enableAll('memry/no-window-open')
+    },
+    {
       files: ['apps/desktop/src/main/lib/window-broadcast.ts'],
       rules: disable('memry/no-window-fanout')
     },

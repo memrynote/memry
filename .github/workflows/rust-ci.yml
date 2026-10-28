@@ -111,7 +111,7 @@ jobs:
     needs: plan
     if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 65
     strategy:
       fail-fast: false
       matrix:
@@ -127,6 +127,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: &lean-checkout
+          # Bounded checkout: one commit, blobless, and without the ~1.6 GB of marketing media that
+          # no job reads (the full-tree checkout took 2 to 22 minutes in a busy hour and consumed the
+          # job timeout). Text under marketing/ stays, so lint and format still see it. Other media
+          # stay: builds need them. `/*` first, then the exclusions.
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/marketing/**/*.gif
+            !/marketing/**/*.jpeg
+            !/marketing/**/*.jpg
+            !/marketing/**/*.mov
+            !/marketing/**/*.mp3
+            !/marketing/**/*.mp4
+            !/marketing/**/*.png
+            !/marketing/**/*.wav
+            !/marketing/**/*.webm
 
       # Linux linking needs tens of GB; the image ships ~20 GB of toolchains we never use.
       - name: Free disk space
@@ -335,6 +354,18 @@ jobs:
           dbus-run-session --config-file="$RUNNER_TEMP/bare-bus.conf" -- bash -c 'MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_live'
           dbus-run-session --config-file="$RUNNER_TEMP/bare-bus.conf" -- bash -c 'MEMRY_LIVE_LATE_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_live a_secret_service_that_starts_late'
 
+      # DesktopReachability over the real OS watcher, in a network namespace of its own where the
+      # test adds and removes the only usable address. The test binary runs as root under
+      # `unshare -n`: the namespace starts with loopback only.
+      - name: Reachability seam, live network namespace (Linux)
+        if: runner.os == 'Linux'
+        timeout-minutes: 10
+        run: |
+          cargo test -p memry-desktop --test reachability_live --no-run
+          binary=$(cargo test -p memry-desktop --test reachability_live --no-run --message-format=json \
+            | jq -r 'select(.reason == "compiler-artifact" and .target.name == "reachability_live" and .executable != null) | .executable')
+          sudo unshare -n "$binary" --ignored
+
       # Release only: the latency assertions are meaningless in a debug build. Proves reads
       # through the pool do not wait behind a held write transaction.
       - name: Test (memry-core, read pool contention, release)
@@ -365,11 +396,12 @@ jobs:
     needs: plan
     if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: *lean-checkout
 
       - name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
@@ -404,6 +436,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: *lean-checkout
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable

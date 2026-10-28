@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
+import { commands } from '../../../../generated/bindings'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
@@ -437,14 +438,10 @@ describe('ReadwiseImportPanel', () => {
   })
 
   it('opens the token page through the external-link route', async () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const open = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
     renderPanel()
     fireEvent.click(await screen.findByRole('button', { name: 'Get your token' }))
-    expect(open).toHaveBeenCalledWith(
-      'https://readwise.io/access_token',
-      '_blank',
-      'noopener,noreferrer'
-    )
+    expect(open).toHaveBeenCalledWith('https://readwise.io/access_token')
     open.mockRestore()
   })
 

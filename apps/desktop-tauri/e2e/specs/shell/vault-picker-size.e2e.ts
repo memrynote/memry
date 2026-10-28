@@ -58,13 +58,16 @@ test.describe('picker', () => {
   })
 
   // The window is frameless on Windows: without its own buttons the picker can't be closed or
-  // maximized from the title row.
+  // maximized from the title row. macOS and Linux keep their native ones and draw none.
   test('the picker has the Windows caption buttons at the physical right edge', async ({
     app,
     page
   }) => {
-    test.skip(process.platform !== 'win32', 'caption buttons are Windows-only')
     await expect.poll(async () => (await mainWindow(app)).visible, { timeout: 30_000 }).toBe(true)
+    if (process.platform !== 'win32') {
+      await expect(page.locator('[data-caption-button]')).toHaveCount(0)
+      return
+    }
 
     const close = page.locator('[data-caption-button="close"]')
     await expect(close).toBeVisible()

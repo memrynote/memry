@@ -131,6 +131,7 @@ import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-
 import { useT } from '@memry/i18n/renderer'
 import { useDialogState } from '@/hooks/use-dialog-state'
 import { useJournalCommands, type JournalDialog } from './journal/use-journal-commands'
+import { openLink } from '@/lib/external-link-guard'
 
 const log = createLogger('Page:Journal')
 
@@ -817,10 +818,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const showGridRail = hasReviewContent && isFullWidth
   const showCanvasRail = hasReviewContent && !isFullWidth && !railHidden
   const handleContentChange = useCallback((_newBlocks: Block[]) => {}, [])
-  const handleLinkClick = useCallback(
-    (href: string) => window.open(href, '_blank', 'noopener,noreferrer'),
-    []
-  )
+  const handleLinkClick = useCallback((href: string) => openLink(href), [])
 
   /**
    * Scrolls to a heading by TEXT, which is all `[[#Heading]]` carries — a block

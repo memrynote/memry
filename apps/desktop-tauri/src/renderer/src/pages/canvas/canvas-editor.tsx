@@ -85,6 +85,7 @@ import {
 import { InsideCanvasSurfaceContext } from './canvas-surface-context'
 import { CanvasClusterSuggest } from './canvas-cluster-suggest'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
+import { openLink } from '@/lib/external-link-guard'
 
 const log = createLogger('SpatialCanvas')
 
@@ -760,9 +761,8 @@ export const CanvasEditor = ({
           return
         }
         case 'external':
-          // `_blank` is what reaches setWindowOpenHandler, whose allowlist is
-          // the single gate on which schemes may leave the app.
-          window.open(action.url, '_blank', 'noopener,noreferrer')
+          // The shell's allowlist is the single gate on which schemes leave the app.
+          openLink(action.url)
           return
         case 'ignore':
           return

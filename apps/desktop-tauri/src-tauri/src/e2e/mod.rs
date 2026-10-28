@@ -100,6 +100,21 @@ pub fn dispatcher<R: Runtime>(
 pub fn register_stages() {
     startup::register(Stage::Plugins, "e2e driver", log_driver);
     startup::register(Stage::Plugins, "e2e dialog queue", manage_dialog_queue);
+    startup::register(Stage::Handlers, "e2e forced failure", force_startup_failure);
+}
+
+/// `MEMRY_TEST_FORCE_STARTUP_THROW=1` fails startup before the main window exists, the failure
+/// `startup-recovery.e2e.ts` recovers from.
+fn force_startup_failure(app: &AppHandle<Wry>) -> Result<(), CommandError> {
+    let env = app.state::<LaunchEnv>();
+    if E2eGate::from_env(&env).is_open() && env.get("MEMRY_TEST_FORCE_STARTUP_THROW") == Some("1") {
+        return Err(CommandError::new(
+            ErrorKind::Internal,
+            "e2e_forced_startup_failure",
+            "forced startup failure (MEMRY_TEST_FORCE_STARTUP_THROW)",
+        ));
+    }
+    Ok(())
 }
 
 /// The dialog queue and the reveal log exist only with an open gate; `shell/dialogs.rs` and

@@ -7,7 +7,7 @@
  * and merged by `buildBlockDiff`; the merged document exists only here and is
  * never serialized or written anywhere.
  */
-import { memo, useEffect } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { useCreateBlockNote } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
@@ -23,6 +23,7 @@ import { normalizeNoteBlocks } from '@/components/note/content-area/normalize-no
 import { TaskPrefetchProvider } from '@/components/note/content-area/task-block/task-prefetch-context'
 import { normalizeMarkdownHardBreaks } from '@/components/note/content-area/wiki-link-utils'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
+import { useEditorLinkClicks } from '@/components/note/content-area/editor-links'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
 import { buildBlockDiff, type DiffableBlock } from './block-diff'
@@ -58,6 +59,9 @@ export const AgentDiffBody = memo(function AgentDiffBody({
   // change bars in base.css select on.
   const editor = useCreateBlockNote({ schema: editorSchema, setIdAttribute: true })
   useEditorTeardown(editor)
+  // Read-only, so BlockNote never opens a link here: the click is the one opener.
+  const containerRef = useRef<HTMLDivElement>(null)
+  useEditorLinkClicks(containerRef)
 
   useEffect(() => {
     let cancelled = false
@@ -85,7 +89,10 @@ export const AgentDiffBody = memo(function AgentDiffBody({
 
   return (
     <TaskPrefetchProvider noteId={noteId}>
-      <div className={cn('content-area memry-agent-diff relative flex w-full flex-col', className)}>
+      <div
+        ref={containerRef}
+        className={cn('content-area memry-agent-diff relative flex w-full flex-col', className)}
+      >
         <div className="bn-container relative flex-1">
           <BlockNoteView
             editor={editor}

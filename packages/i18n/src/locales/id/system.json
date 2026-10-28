@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote tidak dapat dimulai sepenuhnya",
       "body": "Ini bisa terjadi saat ruang kosong disk sangat menipis, atau pada driver grafis versi lama. Coba kosongkan sebagian ruang disk, lalu buka kembali MemryNote. Jika terus terjadi, menginstal ulang biasanya mengatasinya."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote berhenti bekerja",
+      "body": "Halaman terus berhenti, jadi MemryNote berhenti memuat ulang halaman tersebut. Tutup jendela ini untuk keluar, lalu buka kembali MemryNote. Jika terus terjadi, menginstal ulang biasanya dapat mengatasinya.",
+      "details": "Proses halaman berhenti {count} kali dalam satu menit ({reason})."
+    },
+    "logFolder": "Log: {path}",
+    "reloaded": "MemryNote dimuat ulang setelah mengalami crash. Suntingan terbaru mungkin hilang."
   }
 }

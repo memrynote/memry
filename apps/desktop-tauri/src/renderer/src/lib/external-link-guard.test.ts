@@ -204,6 +204,20 @@ describe('link activation', () => {
     expect(result.opened).toEqual(opened)
   })
 
+  // WKWebView and WebKitGTK serve the app from `tauri://localhost`. By the URL standard a
+  // non-special scheme has an opaque origin, serialized `"null"` like a vault file's, and two
+  // opaque origins are never the same.
+  it('follows a download from a page whose origin is opaque, as from any other origin', async () => {
+    const page = vi.spyOn(document, 'URL', 'get').mockReturnValue('tauri://localhost/')
+    try {
+      document.body.innerHTML = `<a id="l" href="${FILE}" download="a.zip">x</a>`
+      const result = await gesture(() => [mouse('click', byId('l'))])
+      expect(result).toEqual({ cancelled: [true], opened: [FILE] })
+    } finally {
+      page.mockRestore()
+    }
+  })
+
   it('takes a link inside a shadow root', async () => {
     document.body.innerHTML = '<div id="host"></div>'
     const root = byId('host').attachShadow({ mode: 'open' })

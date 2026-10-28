@@ -51,13 +51,9 @@ import {
   ReadwiseStatusBanner
 } from '@/components/settings/readwise-status-banner'
 import { extractErrorMessage, unwrapIpcResult as unwrap } from '@/lib/ipc-error'
+import { openLink } from '@/lib/external-link-guard'
 
 const TOKEN_URL = 'https://readwise.io/access_token'
-
-/** Routed to the OS browser by the main-process openExternal allowlist. */
-function openExternal(url: string): void {
-  window.open(url, '_blank', 'noopener,noreferrer')
-}
 
 interface ReadwiseImportPanelProps {
   disabled: boolean
@@ -257,7 +253,7 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
           )}
         </div>
         <div className="flex items-center justify-between gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={() => openExternal(TOKEN_URL)}>
+          <Button type="button" variant="ghost" size="sm" onClick={() => openLink(TOKEN_URL)}>
             {t('import.dialog.readwise.getToken')}
           </Button>
           <Button type="submit" size="sm" disabled={disabled || isConnecting || !token.trim()}>

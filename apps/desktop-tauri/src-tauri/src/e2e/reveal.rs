@@ -46,7 +46,8 @@ pub fn record_os_open<R: Runtime>(app: &AppHandle<R>, what: &str) -> bool {
     true
 }
 
-/// What the app handed to the OS, as `url <url>` or `path <path>`.
+/// What the app handed to the OS, as `url <url>`, `path <path>` (opened in its app) or
+/// `reveal <path>` (shown in the file manager instead).
 #[tauri::command]
 pub fn e2e_os_opens<R: Runtime>(app: AppHandle<R>) -> Result<Vec<String>, CommandError> {
     let log = app.try_state::<OsOpenLog>().ok_or_else(super::disabled)?;

@@ -72,6 +72,13 @@
     "failed": {
       "title": "A MemryNote nem tudott elindulni",
       "body": "Ez akkor fordulhat elő, ha nagyon kevés a szabad lemezterület, vagy régebbi a grafikus illesztőprogram. Szabadítson fel egy kis lemezterületet, majd nyissa meg újra a MemryNote-ot. Ha továbbra is előfordul, az újratelepítés általában megoldja."
-    }
+    },
+    "crashed": {
+      "title": "A MemryNote leállt",
+      "body": "Az oldal folyamatosan leállt, ezért a MemryNote nem tölti be újra. Zárd be ezt az ablakot a kilépéshez, majd nyisd meg újra a MemryNote-ot. Ha továbbra is előfordul, az újratelepítés általában megoldja.",
+      "details": "Az oldal folyamata egy percen belül {count} alkalommal leállt ({reason})."
+    },
+    "logFolder": "Naplók: {path}",
+    "reloaded": "A MemryNote egy összeomlás után újratöltődött. A legutóbbi módosítások elveszhettek."
   }
 }

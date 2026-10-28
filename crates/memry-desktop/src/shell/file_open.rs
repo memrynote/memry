@@ -31,7 +31,8 @@ const REPLACED_RETRIES: u32 = 3;
 /// Where a vault-relative path really points.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Resolution {
-    /// The real target, re-rooted at the root the caller passed.
+    /// The real target: re-rooted at the root the caller passed ([`resolve_under_root`]), or
+    /// canonical, root included ([`resolve_real_under_root`]).
     Inside(PathBuf),
     /// Leaves the root, or is not a plain relative path.
     Outside,
@@ -72,6 +73,23 @@ fn is_plain_relative(rel: &str) -> bool {
 
 /// `resolveVaultFile`. `root` must exist.
 pub fn resolve_under_root(root: &Path, rel: &str) -> io::Result<Resolution> {
+    resolve(root, rel, Rooted::AtRoot)
+}
+
+/// [`resolve_under_root`], with `Inside` holding the canonical target itself instead of the
+/// target re-rooted at `root`: for a path handed to another program, which follows any link
+/// left in it after this check.
+pub fn resolve_real_under_root(root: &Path, rel: &str) -> io::Result<Resolution> {
+    resolve(root, rel, Rooted::Real)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Rooted {
+    AtRoot,
+    Real,
+}
+
+fn resolve(root: &Path, rel: &str, rooted: Rooted) -> io::Result<Resolution> {
     if !is_plain_relative(rel) {
         return Ok(Resolution::Outside);
     }
@@ -83,6 +101,7 @@ pub fn resolve_under_root(root: &Path, rel: &str) -> io::Result<Resolution> {
             Ok(real) => {
                 return Ok(match real.strip_prefix(&real_root) {
                     Err(_) => Resolution::Outside,
+                    Ok(_) if probe == joined && rooted == Rooted::Real => Resolution::Inside(real),
                     Ok(relative) if probe == joined => Resolution::Inside(root.join(relative)),
                     Ok(_) => Resolution::Missing,
                 });

@@ -62,7 +62,15 @@ fn service(dir: &tempfile::TempDir, url: &str, enabled: bool) -> Service {
     };
     // The shell installs this at boot (`install_crypto_provider`).
     let _ = tokio_rustls::rustls::crypto::ring::default_provider().install_default();
-    Service::start(dir.path(), context, Sender::new(url), enabled)
+    Service::start(
+        dir.path(),
+        context,
+        Sender::new(
+            url,
+            memry_desktop::seams::transport::NativeTransport::loopback(),
+        ),
+        enabled,
+    )
 }
 
 fn track(service: &Service, count: usize) {

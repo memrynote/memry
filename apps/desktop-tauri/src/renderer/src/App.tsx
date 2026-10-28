@@ -843,7 +843,8 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
 /**
  * The window's own chrome sits over whichever screen shows: on Windows the frameless window has
  * no other minimize, maximize or close, so the buttons are on the picker, the first-run wizard,
- * the vault switch and the update screens too, not only in the app shell.
+ * the vault-loading spinner, the vault switch and the update screens too, not only in the app
+ * shell.
  */
 function App(): React.JSX.Element {
   return (

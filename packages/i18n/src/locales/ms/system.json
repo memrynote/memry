@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote tidak dapat dimulakan sepenuhnya",
       "body": "Ini boleh berlaku apabila cakera hampir kehabisan ruang kosong, atau dengan pemacu grafik yang lama. Cuba kosongkan sedikit ruang cakera, kemudian buka semula MemryNote. Jika ia berterusan, pemasangan semula biasanya menyelesaikannya."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote berhenti berfungsi",
+      "body": "Halaman terus berhenti, jadi MemryNote berhenti memuat semula halaman itu. Tutup tetingkap ini untuk keluar, kemudian buka semula MemryNote. Jika ia berterusan, memasang semula biasanya dapat menyelesaikannya.",
+      "details": "Proses halaman tamat {count} kali dalam seminit ({reason})."
+    },
+    "logFolder": "Log: {path}",
+    "reloaded": "MemryNote dimuat semula selepas ranap. Suntingan terkini mungkin hilang."
   }
 }

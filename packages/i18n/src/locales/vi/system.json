@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote không thể khởi động xong",
       "body": "Điều này có thể xảy ra khi ổ đĩa còn rất ít dung lượng trống, hoặc với trình điều khiển đồ họa cũ. Hãy thử giải phóng dung lượng ổ đĩa rồi mở lại MemryNote. Nếu vẫn tiếp diễn, cài đặt lại thường sẽ khắc phục được."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote đã ngừng hoạt động",
+      "body": "Trang liên tục dừng nên MemryNote đã ngừng tải lại trang. Hãy đóng cửa sổ này để thoát, sau đó mở lại MemryNote. Nếu vẫn tiếp tục xảy ra, cài đặt lại thường sẽ khắc phục được.",
+      "details": "Tiến trình của trang đã kết thúc {count} lần trong một phút ({reason})."
+    },
+    "logFolder": "Nhật ký: {path}",
+    "reloaded": "MemryNote đã tải lại sau sự cố. Các chỉnh sửa gần đây có thể đã bị mất."
   }
 }
