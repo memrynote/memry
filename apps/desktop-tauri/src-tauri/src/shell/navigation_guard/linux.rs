@@ -1,5 +1,6 @@
 //! WebKitGTK's navigation policy names no frame, and wry answers it for every frame from the URL
-//! alone. Two signals of the main frame do what that cannot:
+//! alone (Tauri always installs a navigation handler, so wry's `decide-policy` handler is always
+//! connected and claims every navigation action). What is left is after that policy:
 //! - The response policy of the main frame's main resource (`is_main_frame_main_resource`) refuses
 //!   every page but the app's, so no other document commits. wry answers navigation actions only
 //!   and lets this decision through to the handler connected here.
@@ -9,17 +10,27 @@
 //!   not show its error page, with that URL, in place of the app. A load the app replaced with
 //!   another (`Cancelled`) opens nothing.
 //!
-//! `load-changed` STARTED cannot do the second part: for a navigation the page started, the view's
-//! `uri` still names the app page at that point (WebKitGTK 2.52, checked on Ubuntu 24.04). Neither
-//! signal stops the app's own document or its loads (`webkit_web_view_stop_loading` would cancel
-//! those too). After a server redirect the URL that goes to the OS is the final one.
+//! The response comes too late to be harmless: once the navigation policy said yes, WebKit runs the
+//! page's `beforeunload` and stops all of its loads (`FrameLoader::continueLoadAfterNavigationPolicy`)
+//! before the request is made. An in-flight `ipc://` fetch is aborted, and Tauri resends the
+//! command over `postMessage`, so a command the shell already received can run twice. So on Linux
+//! no main-frame navigation may start in the first place: the renderer opens the links it renders
+//! and the links dropped on it itself (`external-link-guard.ts`), app code never assigns `location`,
+//! and the context menu loses WebKitGTK's "Open Link" here ("Open Link in New Window" asks for a
+//! new window, which `on_new_window` sends to the OS). A link click an app handler hides from the
+//! renderer's listener still reaches this guard, with those side effects.
+//!
+//! `load-changed` STARTED cannot replace `load-failed`: for a navigation the page started, the
+//! view's `uri` still names the app page at that point (WebKitGTK 2.52, checked on Ubuntu 24.04).
+//! After a server redirect the URL that goes to the OS is the final one.
 
 use memry_desktop::shell::frame_nav::{decide_main, is_app_page};
 use tauri::{AppHandle, WebviewWindow, Wry};
 use webkit2gtk::glib::prelude::Cast;
 use webkit2gtk::{
-    NetworkError, PolicyDecisionExt, PolicyDecisionType, ResponsePolicyDecision,
-    ResponsePolicyDecisionExt, URIRequestExt, WebViewExt,
+    ContextMenuAction, ContextMenuExt, ContextMenuItemExt, NetworkError, PolicyDecisionExt,
+    PolicyDecisionType, ResponsePolicyDecision, ResponsePolicyDecisionExt, URIRequestExt,
+    WebViewExt,
 };
 
 pub fn install(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) {
@@ -27,6 +38,15 @@ pub fn install(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) {
     let result = window.with_webview(move |webview| {
         let view = webview.inner();
         let origins = super::app_origins(&app);
+
+        view.connect_context_menu(|_, menu, _, _| {
+            for item in menu.items() {
+                if item.stock_action() == ContextMenuAction::OpenLink {
+                    menu.remove(&item);
+                }
+            }
+            false
+        });
 
         let response_origins = origins.clone();
         view.connect_decide_policy(move |_, decision, kind| {

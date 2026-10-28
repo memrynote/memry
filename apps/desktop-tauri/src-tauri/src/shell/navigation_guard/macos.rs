@@ -8,6 +8,10 @@
 //!
 //! The method is replaced on the delegate's class, once per process, and only when the class
 //! defines it itself; otherwise the error is logged and `check_commit` is the only guard left.
+//! Being per class, it decides the main frame of every webview wry builds in this process, not
+//! only the main window's: each is an app page that must stay on the app (the sticky and quick
+//! capture windows of Steps 27 and 31 included). A webview that should show anything else needs a
+//! check of `webview` here before `decide_main`.
 
 use std::sync::OnceLock;
 

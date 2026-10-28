@@ -120,7 +120,6 @@ fn an_embed_the_loopback_page_and_its_player_load_in_a_frame() {
         "https://memry-html.localhost/local/v/attachments/n/a.html",
         "http://127.0.0.1:41234/e/token/youtube/dQw4w9WgXcQ",
         "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0",
-        "about:blank",
         "about:srcdoc",
         "tauri://localhost/index.html",
     ] {
@@ -152,6 +151,11 @@ fn a_frame_never_loads_scripts_local_files_or_other_loopback_routes() {
         "memry://open?x=1",
         // A frame's mail link would reach the OS without a click; the main frame decides its own.
         "mailto:hi@memrynote.com",
+        // WebKit commits `about:blank` with no response to refuse, so in the main frame it would
+        // replace the app. Only `about:srcdoc`, which a top frame cannot navigate to, loads.
+        "about:blank",
+        "about:blank#x",
+        "about:srcdoc?x",
         "not a url",
     ] {
         assert!(!frame(url), "{url}");

@@ -121,8 +121,9 @@ pub fn frame_may_load(raw: &str, guard: &Guard<'_>) -> bool {
         return true;
     }
     match target.scheme() {
-        // Frames start as `about:blank` or `about:srcdoc`.
-        "about" => true,
+        // An `<iframe srcdoc>`. Not `about:blank`: WebKit commits it with no response, so the
+        // main frame's response guard never sees it, and a top frame cannot reach `about:srcdoc`.
+        "about" => target.as_str() == "about:srcdoc",
         // Of the loopback server, only its embed page is a frame's document.
         "http" | "https" if is_loopback(&target) => guard
             .loopback_origin

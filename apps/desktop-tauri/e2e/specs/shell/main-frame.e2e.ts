@@ -29,6 +29,8 @@ const PAGES: Record<string, string> = {
 
 interface Site {
   origin: string
+  /** The same site at a loopback address, which the app's CSP lets its page fetch. */
+  loopback: string
   /** Every path the site was asked for, beacons included. */
   hits: string[]
   close(): Promise<void>
@@ -51,6 +53,13 @@ async function startSite(): Promise<Site> {
       response.writeHead(302, { Location: '/landing' }).end()
       return
     }
+    if (path === '/slow') {
+      // A request of the app's page that is still in flight when a navigation is refused.
+      setTimeout(() => {
+        response.writeHead(200, { 'Access-Control-Allow-Origin': '*' }).end('slow')
+      }, 2500)
+      return
+    }
     const page = PAGES[path]
     response
       .writeHead(page ? 200 : 204, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' })
@@ -60,6 +69,7 @@ async function startSite(): Promise<Site> {
   const { port } = server.address() as AddressInfo
   return {
     origin: `http://${address}:${port}`,
+    loopback: `http://127.0.0.1:${port}`,
     hits,
     close: () => new Promise((resolve) => server.close(() => resolve()))
   }
@@ -70,16 +80,18 @@ const opens = (app: TauriApp): Promise<string[]> => invokeTest<string[]>(app, 'e
 /** Marks the app's document, so a later check can tell it was never replaced or reloaded. */
 async function markDocument(page: Page): Promise<string> {
   await page.evaluate(() => {
-    ;(window as unknown as { __mainFrameMark?: boolean }).__mainFrameMark = true
+    const state = window as unknown as { __mainFrameMark?: number }
+    state.__mainFrameMark = history.length
   })
   return page.evaluate(() => location.href)
 }
 
+/** The same app document, with no history entry added by a refused navigation. */
 async function expectSameDocument(page: Page, href: string): Promise<void> {
   expect(await page.evaluate(() => location.href)).toBe(href)
   expect(
     await page.evaluate(
-      () => (window as unknown as { __mainFrameMark?: boolean }).__mainFrameMark === true
+      () => (window as unknown as { __mainFrameMark?: number }).__mainFrameMark === history.length
     )
   ).toBe(true)
   expect(await page.evaluate(() => typeof window.__MEMRY_SHELL__)).toBe('object')
@@ -184,4 +196,146 @@ test('an embed never replaces the app, and a vault file in the main frame goes t
   await page.waitForTimeout(SETTLE_MS)
   expect(await opens(app)).toHaveLength(1)
   await expectSameDocument(page, href)
+})
+
+test('about:blank, data: and blob: never replace the app', async ({ app, page }) => {
+  await appReady(page)
+  const href = await markDocument(page)
+  const blob = await page.evaluate(() =>
+    URL.createObjectURL(new Blob(['<p>blob</p>'], { type: 'text/html' }))
+  )
+  for (const url of ['about:blank', 'data:text/html,<p>data</p>', blob]) {
+    await page.evaluate((target) => location.assign(target), url)
+    await page.waitForTimeout(SETTLE_MS)
+    await expectSameDocument(page, href)
+  }
+  expect(await opens(app)).toEqual([])
+})
+
+// The engines' popup blockers decide whether a new window is asked for at all: WebDriver clicks
+// are untrusted, so WKWebView and WebKitGTK refuse these before the shell sees them. Whatever
+// reaches the shell opens once in the OS, and nothing ever loads in the window (a real click on a
+// target=_blank link was checked by hand on macOS; see the PR).
+test('window.open and a target=_blank link never load in the window and open at most once', async ({
+  app,
+  page
+}) => {
+  await appReady(page)
+  const site = await startSite()
+  try {
+    const href = await markDocument(page)
+    await page.evaluate((url) => {
+      window.open(url)
+    }, `${site.origin}/landing`)
+    await page.evaluate((url) => {
+      const link = document.createElement('a')
+      link.href = url
+      link.target = '_blank'
+      // The renderer's listener never sees this click, so the shell decides it.
+      link.addEventListener('click', (event) => event.stopPropagation())
+      document.body.append(link)
+      link.click()
+    }, `${site.origin}/stop`)
+    await page.waitForTimeout(SETTLE_MS)
+    const opened = await opens(app)
+    expect(new Set(opened).size).toBe(opened.length)
+    for (const entry of opened) {
+      expect([`url ${site.origin}/landing`, `url ${site.origin}/stop`]).toContain(entry)
+    }
+    expect(site.hits.filter((path) => path.startsWith('/beacon/'))).toEqual([])
+    await expectSameDocument(page, href)
+  } finally {
+    await site.close()
+  }
+})
+
+test('a link the renderer takes and a dropped link never unload the app or cancel its requests', async ({
+  app,
+  page
+}) => {
+  await appReady(page)
+  const site = await startSite()
+  try {
+    const href = await markDocument(page)
+    // An in-flight request of the app and its beforeunload: a navigation that started, even one
+    // refused later, runs the one and cancels the other (WebKitGTK), and Tauri would resend an
+    // aborted command.
+    await page.evaluate((url) => {
+      const state = window as unknown as { __unloaded?: boolean; __slow?: Promise<string> }
+      window.addEventListener('beforeunload', () => {
+        state.__unloaded = true
+      })
+      state.__slow = fetch(url).then(
+        (response) => response.text(),
+        (error: unknown) => `failed ${String(error)}`
+      )
+    }, `${site.loopback}/slow`)
+
+    await page.evaluate((url) => {
+      const link = document.createElement('a')
+      link.href = url
+      link.textContent = 'link'
+      document.body.append(link)
+      link.click()
+    }, `${site.origin}/stop`)
+    await page.evaluate((url) => {
+      const target = document.querySelector('[data-sidebar="trigger"]') ?? document.body
+      const data = new DataTransfer()
+      data.setData('text/uri-list', url)
+      for (const type of ['dragenter', 'dragover', 'drop']) {
+        target.dispatchEvent(
+          new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data })
+        )
+      }
+    }, `${site.origin}/chain`)
+
+    await expect
+      .poll(() => opens(app), { timeout: 15_000 })
+      .toEqual([`url ${site.origin}/stop`, `url ${site.origin}/chain`])
+    const slow = await page.evaluate(
+      () => (window as unknown as { __slow: Promise<string> }).__slow
+    )
+    expect(slow).toBe('slow')
+    expect(
+      await page.evaluate(() => (window as unknown as { __unloaded?: boolean }).__unloaded === true)
+    ).toBe(false)
+    expect(site.hits.filter((path) => path !== '/slow')).toEqual([])
+    await expectSameDocument(page, href)
+  } finally {
+    await site.close()
+  }
+})
+
+test('back, forward and reload keep the app', async ({ app, page }) => {
+  await appReady(page)
+  const site = await startSite()
+  try {
+    await markDocument(page)
+    await page.evaluate((url) => location.assign(url), `${site.origin}/stop`)
+    await expect.poll(() => opens(app), { timeout: 15_000 }).toHaveLength(1)
+    // Back and forward over a hash route stay in the same document.
+    const base = await page.evaluate(() => location.href)
+    const origin = await page.evaluate(() => location.origin)
+    await page.evaluate(() => {
+      location.hash = '#main-frame-check'
+    })
+    await page.evaluate(() => history.back())
+    await expect.poll(() => page.evaluate(() => location.href)).toBe(base)
+    await page.evaluate(() => history.forward())
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe('#main-frame-check')
+    expect(
+      await page.evaluate(
+        () => typeof (window as unknown as { __mainFrameMark?: number }).__mainFrameMark
+      )
+    ).toBe('number')
+    // A reload loads the app again.
+    await page.evaluate(() => location.reload())
+    await appReady(page)
+    expect(await page.evaluate(() => location.origin)).toBe(origin)
+    expect(await page.evaluate(() => typeof window.__MEMRY_SHELL__)).toBe('object')
+    expect(await opens(app)).toHaveLength(1)
+    expect(site.hits.filter((path) => path.startsWith('/beacon/'))).toEqual([])
+  } finally {
+    await site.close()
+  }
 })

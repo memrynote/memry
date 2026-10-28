@@ -11,7 +11,9 @@
 //! - WebKitGTK reports every frame's navigation too, and no navigation API says which frame asks.
 //!   `linux::install` refuses the main frame's main-resource response unless it is the app's
 //!   (`is_main_frame_main_resource`), so nothing else commits, and hands the link to the OS when
-//!   that load ends (`load-failed`, main frame only).
+//!   that load ends (`load-failed`, main frame only). That comes after WebKit ran `beforeunload`
+//!   and stopped the page's loads, so on Linux the renderer keeps main-frame navigations from
+//!   starting at all (see `linux`).
 //!
 //! On WKWebView and WebKitGTK [`on_navigation`] therefore answers for the frames of a note's
 //! embeds, which load in place and never reach the OS. [`check_commit`] stays behind all of this as
@@ -140,7 +142,8 @@ pub fn on_navigation(
 }
 
 /// `on_new_window`: never a new webview window. A link goes to the OS as a main-frame navigation
-/// would (on macOS the navigation action has decided it already, and nothing reaches here).
+/// would. `window.open` reaches here on every engine. On macOS a `target=_blank` link is a
+/// navigation action with no target frame first, which `macos` decides and cancels, so it does not.
 pub fn on_new_window(
     app: AppHandle<Wry>,
     off_app: OffApp,
