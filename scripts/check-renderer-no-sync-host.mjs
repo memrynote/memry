@@ -8,16 +8,23 @@
  * sync, telemetry and feedback request goes through a Tauri command. The enforcement is the CSP:
  * `connect-src` in `apps/desktop-tauri/src-tauri/tauri.conf.json` names no memrynote.com host, so
  * the webview refuses such a request. This gate is the backstop that names the offending line
- * before a reviewer has to find it, and it fails when a renderer source file calls `fetch`,
- * `XMLHttpRequest`, `WebSocket`, `EventSource` or `sendBeacon` with a memrynote.com URL, a
- * constant of the file that holds one, or the sync server URL. Links the user opens
- * (`window.open`, `href`) are not requests and are not flagged.
+ * before a reviewer has to find it.
+ *
+ * It parses each renderer source file with the TypeScript compiler (comments, strings, regex
+ * literals and JSX text are the parser's, never a guess) and fails on a call to `fetch`,
+ * `navigator.sendBeacon`, `new WebSocket`, `new EventSource`, or `.open` in a file that uses
+ * `XMLHttpRequest`, whose arguments hold a memrynote.com string, a same-file constant that holds
+ * one, or the sync server URL. Links the user opens (`window.open`, `href`) are not requests and
+ * are not flagged.
  *
  *   node scripts/check-renderer-no-sync-host.mjs
  */
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+// TypeScript 7 has no JS API; compiler-API code uses the `typescript-6` alias (AGENTS.md).
+import ts from 'typescript-6'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const rendererRoot = join(repoRoot, 'apps/desktop-tauri/src/renderer/src')
@@ -28,94 +35,90 @@ const ALLOWED = new Map()
 const SOURCE = /\.[cm]?[jt]sx?$/
 const TEST = /(?:\.test|\.spec)\.[cm]?[jt]sx?$/
 const MEMRY_HOST = /memrynote\.com/i
-const SYNC_URL_NAMES =
-  /\b(?:SYNC_SERVER_URL|VITE_SYNC_SERVER_URL|syncServerUrl|getSyncServerUrl|sync_server_url)\b/
-/** The start of a call that sends a request; the argument list follows the `(`. */
-const REQUEST_CALL =
-  /\b(?:fetch|new\s+WebSocket|new\s+EventSource|navigator\s*\.\s*sendBeacon|\.open)\s*\(/g
-const XHR = /\bXMLHttpRequest\b/
+const SYNC_URL_NAMES = new Set([
+  'SYNC_SERVER_URL',
+  'VITE_SYNC_SERVER_URL',
+  'syncServerUrl',
+  'getSyncServerUrl',
+  'sync_server_url'
+])
+const CONSTRUCTED = new Set(['WebSocket', 'EventSource'])
+
+function scriptKind(fileName) {
+  return /\.[cm]?[jt]sx$/.test(fileName) ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+}
+
+/** The name a call goes to: `fetch` for `fetch(…)` and `window.fetch(…)`, `open` for `xhr.open(…)`. */
+function calleeName(expression) {
+  if (ts.isIdentifier(expression)) return expression.text
+  if (ts.isPropertyAccessExpression(expression)) return expression.name.text
+  return null
+}
 
 /**
- * Comments replaced by spaces, so offsets and line numbers stay put. A scan that knows strings:
- * `'image/*'` or `'https://x'` is a string, not the start of a comment. Template literals are
- * taken whole; a regex literal holding `//` or a quote is the one shape it can misread, and none
- * appears in a request call.
+ * Each request in `text` aimed at a memry host or the sync server: `{ line, call }`. `fileName`
+ * picks the parser's dialect (`.tsx` parses JSX).
  */
-function stripComments(text) {
-  const out = text.split('')
-  const blank = (from, to) => {
-    for (let index = from; index < to; index += 1) {
-      if (out[index] !== '\n') out[index] = ' '
+export function findSyncHostRequests(text, fileName = 'source.tsx') {
+  const file = ts.createSourceFile(
+    fileName,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKind(fileName)
+  )
+  const constants = new Map()
+  let usesXhr = false
+  const collect = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      constants.set(node.name.text, node.initializer)
     }
+    if (ts.isIdentifier(node) && node.text === 'XMLHttpRequest') usesXhr = true
+    ts.forEachChild(node, collect)
   }
-  let index = 0
-  while (index < text.length) {
-    const char = text[index]
-    const next = text[index + 1]
-    if (char === "'" || char === '"' || char === '`') {
-      index += 1
-      while (index < text.length && text[index] !== char) {
-        if (char !== '`' && text[index] === '\n') break
-        index += text[index] === '\\' ? 2 : 1
+  collect(file)
+
+  // Whether `node` (an argument) names a memry host or the sync server URL, following same-file
+  // constants. `seen` stops a constant that refers to itself.
+  const reaches = (node, seen = new Set()) => {
+    if (ts.isStringLiteralLike(node) || ts.isTemplateLiteralToken(node)) {
+      return MEMRY_HOST.test(node.text)
+    }
+    if (ts.isIdentifier(node)) {
+      if (SYNC_URL_NAMES.has(node.text)) return true
+      const initializer = constants.get(node.text)
+      if (initializer && !seen.has(node.text)) {
+        seen.add(node.text)
+        return reaches(initializer, seen)
       }
-      index += 1
-    } else if (char === '/' && next === '/') {
-      const end = text.indexOf('\n', index)
-      const stop = end === -1 ? text.length : end
-      blank(index, stop)
-      index = stop
-    } else if (char === '/' && next === '*') {
-      const end = text.indexOf('*/', index + 2)
-      const stop = end === -1 ? text.length : end + 2
-      blank(index, stop)
-      index = stop
-    } else {
-      index += 1
+      return false
     }
+    if (ts.isPropertyAccessExpression(node) && SYNC_URL_NAMES.has(node.name.text)) return true
+    let found = false
+    ts.forEachChild(node, (child) => {
+      found ||= reaches(child, seen)
+    })
+    return found
   }
-  return out.join('')
-}
 
-/** The text of the argument list that opens at `open` (the index of its `(`). */
-function argumentsAt(text, open) {
-  let depth = 0
-  for (let index = open; index < text.length; index += 1) {
-    const char = text[index]
-    if (char === '(') depth += 1
-    else if (char === ')') {
-      depth -= 1
-      if (depth === 0) return text.slice(open + 1, index)
-    }
-  }
-  return text.slice(open + 1)
-}
-
-/** Names the file binds to a string that holds a memry host: `const X = 'https://…memrynote.com…'`. */
-function memryHostNames(text) {
-  const names = new Set()
-  const binding = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(['"`])([^'"`]*)\2/g
-  for (const match of text.matchAll(binding)) {
-    if (MEMRY_HOST.test(match[3])) names.add(match[1])
-  }
-  return names
-}
-
-/** Each request in `text` aimed at a memry host or the sync server: `{ line, call }`. */
-export function findSyncHostRequests(text) {
-  const code = stripComments(text)
-  const names = memryHostNames(code)
-  const namesPattern = names.size > 0 ? new RegExp(`\\b(?:${[...names].join('|')})\\b`) : null
-  const usesXhr = XHR.test(code)
   const found = []
-  for (const match of code.matchAll(REQUEST_CALL)) {
-    if (match[0].startsWith('.open') && !usesXhr) continue
-    const open = match.index + match[0].length - 1
-    const args = argumentsAt(code, open)
-    if (MEMRY_HOST.test(args) || SYNC_URL_NAMES.test(args) || namesPattern?.test(args)) {
-      const line = code.slice(0, match.index).split('\n').length
-      found.push({ line, call: `${match[0]}${args.split('\n')[0]}`.trim() })
+  const visit = (node) => {
+    let name = null
+    if (ts.isCallExpression(node)) {
+      const callee = calleeName(node.expression)
+      if (callee === 'fetch' || callee === 'sendBeacon' || (callee === 'open' && usesXhr)) {
+        name = callee
+      }
+    } else if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
+      if (CONSTRUCTED.has(node.expression.text)) name = node.expression.text
     }
+    if (name && (node.arguments ?? []).some((argument) => reaches(argument))) {
+      const { line } = file.getLineAndCharacterOfPosition(node.getStart(file))
+      found.push({ line: line + 1, call: node.getText(file).split('\n')[0].trim() })
+    }
+    ts.forEachChild(node, visit)
   }
+  visit(file)
   return found
 }
 
@@ -137,7 +140,7 @@ async function main() {
   const offenders = []
   for (const file of files) {
     const path = relative(repoRoot, file).split(sep).join('/')
-    for (const { line, call } of findSyncHostRequests(await readFile(file, 'utf8'))) {
+    for (const { line, call } of findSyncHostRequests(await readFile(file, 'utf8'), file)) {
       if (!ALLOWED.has(`${path}:${line}`)) offenders.push(`${path}:${line}: ${call}`)
     }
   }

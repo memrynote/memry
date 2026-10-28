@@ -23,6 +23,20 @@ impl Heard {
     }
 }
 
+/// Lets the watch task run everything that is ready.
+async fn settle() {
+    for _ in 0..10 {
+        tokio::task::yield_now().await;
+    }
+}
+
+/// Paused time moves on by `duration`, with the watch task caught up before and after.
+async fn after(duration: Duration) {
+    settle().await;
+    tokio::time::advance(duration).await;
+    settle().await;
+}
+
 struct Rig {
     reachability: DesktopReachability,
     events: mpsc::UnboundedSender<io::Result<IfEvent>>,
@@ -56,17 +70,12 @@ impl Rig {
         self.events.send(Ok(event)).unwrap();
     }
 
-    /// Lets the watch task run everything that is ready.
     async fn settle(&self) {
-        for _ in 0..10 {
-            tokio::task::yield_now().await;
-        }
+        settle().await;
     }
 
     async fn after(&self, duration: Duration) {
-        self.settle().await;
-        tokio::time::advance(duration).await;
-        self.settle().await;
+        after(duration).await;
     }
 
     fn current(&self) -> Reachable {
@@ -187,13 +196,7 @@ async fn after_a_watcher_that_never_started_a_resume_comes_back_online() {
     reachability.on_power_suspend();
     assert_eq!(reachability.current(), Reachable::Offline);
     reachability.on_power_resume();
-    for _ in 0..10 {
-        tokio::task::yield_now().await;
-    }
-    tokio::time::advance(DEBOUNCE).await;
-    for _ in 0..10 {
-        tokio::task::yield_now().await;
-    }
+    after(DEBOUNCE).await;
     assert_eq!(reachability.current(), Reachable::Wifi);
 }
 

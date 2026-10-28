@@ -103,6 +103,9 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      typescript-6:
+        specifier: npm:typescript@~6.0.3
+        version: typescript@6.0.3
 
   apps/cli:
     dependencies:

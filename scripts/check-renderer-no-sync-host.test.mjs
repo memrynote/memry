@@ -48,6 +48,24 @@ test('check-renderer-no-sync-host', async (t) => {
     }
   })
 
+  await t.test('a regex literal or JSX text does not hide the code after it', () => {
+    const fetchSync = 'await fetch(`https://sync.memrynote.com/x`)'
+    for (const shape of [
+      // fold-anchor.ts
+      "const text = raw.replace(/[*_~`]+/g, '')",
+      // inbox-list-utils.ts
+      "const text = raw.replace(/[#>*_`~]+/g, ' ') // md heading/quote/emphasis markers",
+      // csv-export.ts
+      'const cell = /[",\\r\\n]/.test(value) ? `"${value.replace(/"/g, \'""\')}"` : value',
+      'const slash = /\\//',
+      'const trailing = /\\/*$/',
+      "const note = <p>Don't sync from here</p>"
+    ]) {
+      const source = `${shape}\n${fetchSync}`
+      assert.equal(findSyncHostRequests(source).length, 1, source)
+    }
+  })
+
   await t.test('names the line of the offending call', () => {
     const [found] = findSyncHostRequests(
       "const a = 1\n\nawait fetch('https://sync.memrynote.com/x')"
