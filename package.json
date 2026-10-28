@@ -80,6 +80,7 @@
     "sync:reset:staging": "pnpm --filter @memry/sync-server reset:staging",
     "staging:user": "pnpm --filter @memry/sync-server staging:user",
     "check:lockfile": "node scripts/check-lockfile.js",
+    "check:renderer-sync-host": "node scripts/check-renderer-no-sync-host.mjs",
     "warm": "node scripts/warm-native.mjs --target electron",
     "warm:bg": "node scripts/warm-native.mjs --background --target electron",
     "warm:log": "node scripts/warm-native.mjs --log",
@@ -99,6 +100,7 @@
     "oxlint-tsgolint": "7.0.2005",
     "react-doctor": "^0.9.0",
     "turbo": "^2.9.16",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "typescript-6": "npm:typescript@~6.0.3"
   }
 }

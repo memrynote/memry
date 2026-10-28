@@ -22,7 +22,7 @@ rusqlite = { workspace = true }
 hex = { workspace = true }
 # `rustls-no-provider` takes the process default crypto provider (`main` installs `ring`) and
 # verifies certificates through rustls-platform-verifier. No `rustls` feature, so no second
-# provider and no aws-lc-rs.
+# crypto provider.
 # `Type` for ArticleCapture, pinned with the Tauri crate (tauri-specta rc.26 needs this exact version).
 regex = "1"
 url = "2"
@@ -43,7 +43,11 @@ reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no
 # starts after the app would stay unreachable; here a store is built again after any failure.
 keyring-core = "1.0.1"
 
-# The sync seams (`seams/tls`, `seams/transport`): one rustls stack, `ring` only, no aws-lc-rs.
+# `seams::reachability`: OS network events (macOS SCDynamicStore, Windows NotifyIpInterfaceChange,
+# Linux netlink) on the Tokio runtime. No polling.
+if-watch = { version = "3.2.2", features = ["tokio"] }
+
+# The sync seams (`seams/tls`, `seams/transport`): one rustls stack, `ring` only.
 # `rustls-platform-verifier` checks the chain against the OS trust store; `PinningVerifier` wraps it.
 # The pins match only a path `rustls-webpki` (rustls's own verifier) built and verified against the
 # OS roots `rustls-native-certs` loads: CA constraints, key usage, path length, validity and the

@@ -354,6 +354,18 @@ jobs:
           dbus-run-session --config-file="$RUNNER_TEMP/bare-bus.conf" -- bash -c 'MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_live'
           dbus-run-session --config-file="$RUNNER_TEMP/bare-bus.conf" -- bash -c 'MEMRY_LIVE_LATE_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_live a_secret_service_that_starts_late'
 
+      # DesktopReachability over the real OS watcher, in a network namespace of its own where the
+      # test adds and removes the only usable address. The test binary runs as root under
+      # `unshare -n`: the namespace starts with loopback only.
+      - name: Reachability seam, live network namespace (Linux)
+        if: runner.os == 'Linux'
+        timeout-minutes: 10
+        run: |
+          cargo test -p memry-desktop --test reachability_live --no-run
+          binary=$(cargo test -p memry-desktop --test reachability_live --no-run --message-format=json \
+            | jq -r 'select(.reason == "compiler-artifact" and .target.name == "reachability_live" and .executable != null) | .executable')
+          sudo unshare -n "$binary" --ignored
+
       # Release only: the latency assertions are meaningless in a debug build. Proves reads
       # through the pool do not wait behind a held write transaction.
       - name: Test (memry-core, read pool contention, release)
