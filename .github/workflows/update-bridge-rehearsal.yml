@@ -464,7 +464,9 @@ jobs:
           open "$app"
           wait_log "velopack: downloaded $VERSION" 120
           logs | grep -E 'velopack: (current|available)'
-          osascript -e 'tell application "MemryNote" to quit'
+          # The app answers the quit with NSTerminateCancel and exits after its own sequence
+          # (shutdown/mac_quit.rs), which AppleScript reports as "User canceled" (-128).
+          osascript -e 'tell application "MemryNote" to quit' || true
           for _ in $(seq 1 60); do grep -q "$VERSION" "$app/Contents/Resources/sq.version" 2>/dev/null && break; sleep 3; done
           grep -E '<version>|<channel>' "$app/Contents/Resources/sq.version"
           grep -q "<version>$VERSION</version>" "$app/Contents/Resources/sq.version"
