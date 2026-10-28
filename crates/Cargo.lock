@@ -3824,6 +3824,7 @@ dependencies = [
  "arc-swap",
  "block2",
  "crash-handler",
+ "dunce",
  "font-kit",
  "libloading 0.9.0",
  "memry-desktop",

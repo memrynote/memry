@@ -248,6 +248,45 @@ test('an embed never replaces the app, and a vault file in the main frame goes t
   await expectSameDocument(page, href)
 })
 
+test('a vault file opens in its app only when it is a type the app opens (#3704)', async ({
+  app,
+  page,
+  testVaultPath
+}) => {
+  await appReady(page)
+  const folder = join(testVaultPath, 'attachments', 'n2')
+  mkdirSync(folder, { recursive: true })
+  const files = { svg: 'abc123-image.svg', py: 'abc123-tool.py', bare: 'abc123-tool' }
+  writeFileSync(join(folder, files.svg), '<svg xmlns="http://www.w3.org/2000/svg"/>')
+  writeFileSync(join(folder, files.py), 'print(1)\n')
+  writeFileSync(join(folder, files.bare), '#!/bin/sh\n', { mode: 0o755 })
+  const href = await markDocument(page)
+  const click = (path: string): Promise<void> =>
+    page.evaluate(
+      (url) => {
+        const link = document.createElement('a')
+        link.href = url
+        document.body.append(link)
+        link.click()
+        link.remove()
+      },
+      webviewUrl('memry-file', path)
+    )
+
+  // A browser would run an SVG's script: it is shown in the file manager instead.
+  await click(join(folder, files.svg))
+  await expect.poll(() => opens(app), { timeout: 15_000 }).toHaveLength(1)
+  expect((await opens(app))[0]).toMatch(/^reveal .*abc123-image\.svg$/)
+
+  // A program is never handed to the OS; on macOS and Linux neither is an executable without an
+  // extension, which `open` would run in Terminal.
+  await click(join(folder, files.py))
+  if (process.platform !== 'win32') await click(join(folder, files.bare))
+  await page.waitForTimeout(SETTLE_MS)
+  expect(await opens(app)).toHaveLength(1)
+  await expectSameDocument(page, href)
+})
+
 test('about:blank, data: and blob: never replace the app', async ({ app, page }) => {
   await appReady(page)
   const href = await markDocument(page)

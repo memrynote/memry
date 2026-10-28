@@ -43,6 +43,9 @@ sys-locale = "0.3.2"
 uuid = { workspace = true }
 # Parses navigation targets for the guard and the permission origins.
 url = "2"
+# `shell/external.rs` hands the OS a canonical path without the Windows verbatim prefix. Already
+# in the tree through tauri-plugin-opener and open.
+dunce = "1.0.5"
 # The telemetry flush, marker and heartbeat timers run on Tauri's tokio runtime; `signal` is
 # SIGINT and SIGTERM.
 tokio = { workspace = true, features = ["time", "signal", "sync"] }

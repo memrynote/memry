@@ -101,14 +101,16 @@ function staysInDocument(link: Link): boolean {
   return target.href === here.href
 }
 
-/** A download the engine performs: `download` is honored only for these URLs. */
+/**
+ * A download the engine performs: `download` is honored only for these URLs. An opaque origin,
+ * serialized `"null"` (a non-special scheme such as `memry-file:` or the page's own `tauri:`), is
+ * never the same as another.
+ */
 function downloads(link: Link): boolean {
   if (!link.download || !link.url) return false
-  return (
-    link.url.protocol === 'blob:' ||
-    link.url.protocol === 'data:' ||
-    link.url.origin === parseUrl(document.URL)?.origin
-  )
+  if (link.url.protocol === 'blob:' || link.url.protocol === 'data:') return true
+  const { origin } = link.url
+  return origin !== 'null' && origin === parseUrl(document.URL)?.origin
 }
 
 function follow(open: Open, url: URL | null): void {
@@ -127,6 +129,9 @@ export function watchExternalLinks(
   host: CaptureHost<'click' | 'auxclick', MouseEvent>,
   open: Open
 ): () => void {
+  // `isTrusted` is not checked: a script's `link.click()` navigates the frame like a person's
+  // click, so it is cancelled and followed the same way. Only the app's own code runs in this
+  // document (an embed is its own frame with its own window), and the shell decides what opens.
   const onActivate = (event: MouseEvent): void => {
     if (event.defaultPrevented) return
     const link = linkOf(event)

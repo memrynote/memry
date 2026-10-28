@@ -7,7 +7,7 @@ use std::path::Path;
 
 use url::Url;
 
-use super::file_open::{Resolution, resolve_under_root};
+use super::file_open::{Resolution, resolve_real_under_root};
 
 /// A URL longer than this is not a link a person clicked.
 const MAX_URL_LEN: usize = 16 * 1024;
@@ -17,16 +17,17 @@ pub fn is_allowed_external_url(raw: &str) -> bool {
         && Url::parse(raw).is_ok_and(|url| matches!(url.scheme(), "https" | "http" | "mailto"))
 }
 
-/// File types the OS runs when it "opens" them. A note's link or `shell_open_path` must never
-/// start a program, so these are refused (revealing one in the file manager is fine).
-///
-/// A deny-list ports what Electron does. An allow-list of the types a vault holds is the stricter
-/// design and a follow-up.
+/// File types the OS runs, installs or mounts when it "opens" them. A note's link or
+/// `shell_open_path` must never start a program, so these are refused outright; [`os_action`]
+/// reveals any other type off [`OPENABLE_EXTENSIONS`].
 const EXECUTABLE_EXTENSIONS: &[&str] = &[
     "app",
     "appimage",
+    "appinstaller",
     "application",
     "appref-ms",
+    "appx",
+    "appxbundle",
     "bat",
     "chm",
     "cmd",
@@ -34,35 +35,53 @@ const EXECUTABLE_EXTENSIONS: &[&str] = &[
     "command",
     "cpl",
     "desktop",
+    "diagcab",
     "exe",
     "fileloc",
     "hta",
+    "img",
     "inetloc",
+    "iso",
     "jar",
     "jnlp",
     "js",
     "jse",
+    "library-ms",
     "lnk",
     "msc",
+    "mpkg",
     "msi",
+    "msix",
+    "msixbundle",
     "msp",
     "pif",
+    "pkg",
+    "prefpane",
     "ps1",
+    "py",
+    "pyw",
     "reg",
     "run",
     "scf",
     "scr",
+    "sct",
+    "search-ms",
+    "searchconnector-ms",
     "settingcontent-ms",
     "sh",
     "terminal",
     "url",
     "vbe",
     "vbs",
+    "vhd",
+    "vhdx",
     "webloc",
     "workflow",
     "ws",
+    "wsc",
     "wsf",
     "wsh",
+    "xll",
 ];
 
 /// Whether opening `path` would run a program: an executable extension (Windows ignores trailing
@@ -82,13 +101,79 @@ pub fn is_executable_path(path: &str) -> bool {
     })
 }
 
+/// The documents, media and archives a vault holds, which the OS opens in their app. Stricter
+/// than Electron, which opened any type: HTML, SVG and XML (a browser runs their script),
+/// macro-enabled Office files, fonts (an installer), disk images and source files are revealed.
+const OPENABLE_EXTENSIONS: &[&str] = &[
+    // Documents.
+    "csv", "doc", "docx", "epub", "json", "key", "log", "markdown", "md", "numbers", "odg", "odp",
+    "ods", "odt", "pages", "pdf", "ppt", "pptx", "rtf", "tsv", "txt", "xls", "xlsx",
+    // Images.
+    "avif", "bmp", "gif", "heic", "heif", "ico", "jpeg", "jpg", "png", "psd", "tif", "tiff", "webp",
+    // Audio and video.
+    "3gp", "aac", "aif", "aiff", "avi", "flac", "m4a", "m4v", "mid", "midi", "mkv", "mov", "mp3",
+    "mp4", "mpeg", "mpg", "oga", "ogg", "ogv", "opus", "wav", "webm", "wma", "wmv",
+    // Archives.
+    "7z", "bz2", "gz", "rar", "tar", "tgz", "xz", "zip", "zst",
+];
+
+/// What the shell does with a file it was asked to open.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OsAction {
+    /// Opened in its app.
+    Open,
+    /// Shown in the file manager, where the person can open it deliberately.
+    Reveal,
+    /// A program, never handed to the OS.
+    Refuse,
+}
+
+/// What to do with `real`, the canonical path the OS is handed. Read once more here, so a link
+/// swapped in since the path resolved is refused.
+pub fn os_action(real: &Path) -> io::Result<OsAction> {
+    let meta = std::fs::symlink_metadata(real)?;
+    if meta.file_type().is_symlink() || is_executable_path(&real.to_string_lossy()) {
+        return Ok(OsAction::Refuse);
+    }
+    let name = real
+        .file_name()
+        .map(|name| name.to_string_lossy())
+        .unwrap_or_default();
+    let name = name.trim_end_matches(['.', ' ']).to_ascii_lowercase();
+    let extension = name
+        .rsplit_once('.')
+        .filter(|(stem, _)| !stem.is_empty())
+        .map(|(_, ext)| ext);
+    Ok(match extension {
+        Some(ext) if OPENABLE_EXTENSIONS.contains(&ext) => OsAction::Open,
+        Some(_) => OsAction::Reveal,
+        None if meta.is_dir() => OsAction::Open,
+        // `open` on macOS runs an extensionless file with an exec bit in Terminal.
+        None if is_unix_executable(&meta) => OsAction::Refuse,
+        None => OsAction::Reveal,
+    })
+}
+
+#[cfg(unix)]
+fn is_unix_executable(meta: &std::fs::Metadata) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    meta.is_file() && meta.permissions().mode() & 0o111 != 0
+}
+
+#[cfg(not(unix))]
+fn is_unix_executable(_: &std::fs::Metadata) -> bool {
+    false
+}
+
 /// Where `rel` names under `root` for the OS to open or reveal. The empty path is the root itself,
-/// which [`resolve_under_root`] does not take: a person may open or reveal their vault folder.
+/// which [`resolve_real_under_root`] does not take: a person may open or reveal their vault
+/// folder. The path is the canonical one, with no link left in it, root included, so swapping a
+/// link after this check cannot point the OS somewhere else.
 pub fn resolve_for_os(root: &Path, rel: &str) -> io::Result<Resolution> {
     if rel.is_empty() {
         return Ok(Resolution::Inside(root.canonicalize()?));
     }
-    resolve_under_root(root, rel)
+    resolve_real_under_root(root, rel)
 }
 
 #[cfg(test)]
@@ -181,6 +266,161 @@ mod tests {
         ] {
             assert!(!is_executable_path(path), "{path}");
         }
+    }
+
+    #[test]
+    fn refuses_the_types_the_deny_list_missed() {
+        for path in [
+            "C:\\v\\a.py",
+            "C:\\v\\a.pyw",
+            "C:\\v\\a.iso",
+            "C:\\v\\a.img",
+            "C:\\v\\a.vhd",
+            "C:\\v\\a.vhdx",
+            "C:\\v\\a.msix",
+            "C:\\v\\a.msixbundle",
+            "C:\\v\\a.appx",
+            "C:\\v\\a.appxbundle",
+            "C:\\v\\a.appinstaller",
+            "/v/a.pkg",
+            "/v/a.mpkg",
+            "/v/Pane.prefPane",
+            "C:\\v\\a.wsc",
+            "C:\\v\\a.sct",
+            "C:\\v\\a.diagcab",
+            "C:\\v\\a.library-ms",
+            "C:\\v\\a.search-ms",
+            "C:\\v\\a.searchconnector-ms",
+            "C:\\v\\a.xll",
+        ] {
+            assert!(is_executable_path(path), "{path}");
+        }
+    }
+
+    fn action_of(dir: &Path, name: &str) -> OsAction {
+        os_action(&dir.join(name)).unwrap()
+    }
+
+    #[test]
+    fn opens_documents_media_and_archives_and_reveals_anything_else() {
+        let dir = tempfile::tempdir().unwrap();
+        let names = [
+            "a.pdf",
+            "a.PDF",
+            "a.md",
+            "a.txt",
+            "a.docx",
+            "a.xlsx",
+            "a.png",
+            "a.HEIC",
+            "a.mp3",
+            "a.mov",
+            "a.zip",
+            "a.tar.gz",
+            "a.html",
+            "a.svg",
+            "a.xml",
+            "a.docm",
+            "a.ttf",
+            "a.dmg",
+            "a.rs",
+            "a.unknown",
+            "README",
+            ".hidden",
+        ];
+        for name in names {
+            std::fs::write(dir.path().join(name), b"x").unwrap();
+        }
+        for name in [
+            "a.pdf", "a.PDF", "a.md", "a.txt", "a.docx", "a.xlsx", "a.png", "a.HEIC", "a.mp3",
+            "a.mov", "a.zip", "a.tar.gz",
+        ] {
+            assert_eq!(action_of(dir.path(), name), OsAction::Open, "{name}");
+        }
+        // Script runs in a browser, macros, font installers, disk images, source and the unknown.
+        for name in [
+            "a.html",
+            "a.svg",
+            "a.xml",
+            "a.docm",
+            "a.ttf",
+            "a.dmg",
+            "a.rs",
+            "a.unknown",
+            "README",
+            ".hidden",
+        ] {
+            assert_eq!(action_of(dir.path(), name), OsAction::Reveal, "{name}");
+        }
+    }
+
+    #[test]
+    fn refuses_a_program_whatever_it_is_named() {
+        let dir = tempfile::tempdir().unwrap();
+        for name in ["a.exe", "a.py", "a.sh"] {
+            std::fs::write(dir.path().join(name), b"x").unwrap();
+            assert_eq!(action_of(dir.path(), name), OsAction::Refuse, "{name}");
+        }
+        std::fs::create_dir_all(dir.path().join("Tool.app/Contents")).unwrap();
+        std::fs::write(dir.path().join("Tool.app/Contents/notes.pdf"), b"x").unwrap();
+        assert_eq!(action_of(dir.path(), "Tool.app"), OsAction::Refuse);
+        assert_eq!(
+            action_of(dir.path(), "Tool.app/Contents/notes.pdf"),
+            OsAction::Refuse
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn refuses_an_extensionless_file_with_an_exec_bit() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        for name in ["tool", ".tool"] {
+            let path = dir.path().join(name);
+            std::fs::write(&path, b"#!/bin/sh\n").unwrap();
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o744)).unwrap();
+            assert_eq!(action_of(dir.path(), name), OsAction::Refuse, "{name}");
+        }
+        // A document keeps opening when a copy from a FAT volume or a zip left the bit on.
+        let pdf = dir.path().join("a.pdf");
+        std::fs::write(&pdf, b"%PDF").unwrap();
+        std::fs::set_permissions(&pdf, std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert_eq!(action_of(dir.path(), "a.pdf"), OsAction::Open);
+    }
+
+    #[test]
+    fn opens_a_plain_folder_and_reveals_a_bundle() {
+        let dir = tempfile::tempdir().unwrap();
+        for name in ["Folder", "Report.pages", "Saver.saver"] {
+            std::fs::create_dir(dir.path().join(name)).unwrap();
+        }
+        assert_eq!(action_of(dir.path(), "Folder"), OsAction::Open);
+        assert_eq!(action_of(dir.path(), "Report.pages"), OsAction::Open);
+        assert_eq!(action_of(dir.path(), "Saver.saver"), OsAction::Reveal);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn refuses_a_link_swapped_in_after_the_path_resolved() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("tool.sh"), b"x").unwrap();
+        std::os::unix::fs::symlink(dir.path().join("tool.sh"), dir.path().join("a.pdf")).unwrap();
+        assert_eq!(action_of(dir.path(), "a.pdf"), OsAction::Refuse);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn hands_the_os_the_real_path_not_one_through_a_linked_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let real = std::fs::canonicalize(dir.path()).unwrap().join("vault");
+        std::fs::create_dir_all(real.join("attachments")).unwrap();
+        std::fs::write(real.join("attachments/a.pdf"), b"%PDF").unwrap();
+        let linked = dir.path().join("linked");
+        std::os::unix::fs::symlink(&real, &linked).unwrap();
+        assert_eq!(
+            resolve_for_os(&linked, "attachments/a.pdf").unwrap(),
+            Resolution::Inside(real.join("attachments/a.pdf"))
+        );
     }
 
     #[test]
