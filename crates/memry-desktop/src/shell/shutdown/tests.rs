@@ -103,6 +103,11 @@ fn constants_and_step_order_are_the_contract() {
     assert_eq!(CLOSE_VAULT_RESERVE, Duration::from_millis(2000));
     assert_eq!(TELEMETRY_FLUSH, Duration::from_millis(1000));
     assert_eq!(DATABASE_CLOSE_RESERVE, Duration::from_millis(1000));
+    assert_eq!(WRITEBACK_FLUSH, Duration::from_millis(2000));
+    assert_eq!(
+        LAST_CHANCE_STEPS,
+        ["flush-activity-log", "flush-writebacks"]
+    );
     assert_eq!(
         ShutdownReason::SessionEnd.budget(),
         Duration::from_millis(4000)
@@ -148,6 +153,10 @@ fn deadline_arithmetic_leaves_room_for_the_steps_behind() {
     assert_eq!(close_vault_drain_timeout(ms(8000)), ms(5000));
     assert_eq!(close_vault_drain_timeout(ms(3500)), ms(2500));
     assert_eq!(close_vault_drain_timeout(ms(1000)), ms(0));
+    assert_eq!(writeback_flush_timeout(ms(8000)), ms(2000));
+    assert_eq!(writeback_flush_timeout(ms(3000)), ms(1500));
+    assert_eq!(writeback_flush_timeout(LAST_CHANCE), ms(750));
+    assert_eq!(writeback_flush_timeout(ms(0)), ms(0));
 }
 
 #[tokio::test(start_paused = true)]
@@ -311,6 +320,23 @@ async fn the_last_chance_flush_is_itself_bounded() {
     core.registry.register("flush-windows", hangs()).unwrap();
     core.registry.register("flush-writebacks", hangs()).unwrap();
     core.run(ShutdownReason::Quit, &effects).await;
+    assert_eq!(log.events().last().map(String::as_str), Some("terminate"));
+}
+
+/// The activity log's flush is a few appended lines; the write-back's passes are not, so they
+/// run second and cannot starve it.
+#[tokio::test(start_paused = true)]
+async fn the_last_chance_flushes_the_activity_log_before_the_write_back() {
+    let (core, log, effects) = setup();
+    core.registry
+        .register("flush-windows", fails("renderer gone"))
+        .unwrap();
+    core.registry.register("flush-writebacks", hangs()).unwrap();
+    core.registry
+        .register("flush-activity-log", records(&log, "activity"))
+        .unwrap();
+    core.run(ShutdownReason::Quit, &effects).await;
+    assert!(log.has("ran:activity"));
     assert_eq!(log.events().last().map(String::as_str), Some("terminate"));
 }
 

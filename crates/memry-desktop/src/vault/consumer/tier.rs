@@ -13,7 +13,7 @@ use super::identity::{DeferIdentity, NoteIdentity};
 use super::rows::RowOwner;
 use super::{Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
-use crate::shell::shutdown::StepFn;
+use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::config::read_vault_config;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
 use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed};
@@ -28,12 +28,14 @@ pub struct VaultTier {
     /// Every session's failed write-backs, for the notice.
     failures: broadcast::Sender<WriteBackFailed>,
     running: Mutex<Option<Running>>,
+    /// Apart from `running`: a close stops the watcher and the consumer first, and an edit
+    /// scheduled meanwhile must still reach the write-back, which runs it before the close ends.
+    writeback: Mutex<Option<Arc<WriteBack>>>,
 }
 
 struct Running {
     watcher: VaultWatcher,
     consumer: Consumer,
-    writeback: Arc<WriteBack>,
 }
 
 impl VaultTier {
@@ -45,6 +47,7 @@ impl VaultTier {
             identity: Mutex::new(Arc::new(DeferIdentity)),
             failures: broadcast::channel(64).0,
             running: Mutex::new(None),
+            writeback: Mutex::new(None),
         })
     }
 
@@ -69,15 +72,17 @@ impl VaultTier {
     /// ([`crate::vault::writeback`]). The editor (Step 14) calls it once a body edit is durable,
     /// the sync driver (Step 17) once a page committed. Nothing happens while no vault is open.
     pub fn schedule(&self, note_id: &str) {
-        match self
-            .running
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .as_ref()
-        {
-            Some(running) => running.writeback.schedule(note_id),
+        match self.writeback() {
+            Some(writeback) => writeback.schedule(note_id),
             None => tracing::debug!(scope = "vault_writeback", note_id, "no vault is open"),
         }
+    }
+
+    fn writeback(&self) -> Option<Arc<WriteBack>> {
+        self.writeback
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Every note whose file could not be updated from its body, once per run of failures.
@@ -88,31 +93,24 @@ impl VaultTier {
     /// Runs every scheduled write-back of the open vault now and waits, at most `timeout`, for
     /// them. True when none is left; also when no vault is open.
     pub fn flush(&self, timeout: Duration) -> bool {
-        let writeback = self
-            .running
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .as_ref()
-            .map(|running| running.writeback.clone());
-        writeback.is_none_or(|writeback| writeback.flush(timeout))
+        self.writeback()
+            .is_none_or(|writeback| writeback.flush(timeout))
     }
 
-    /// The `flush-writebacks` shutdown step: every scheduled write-back runs inside the quit's
-    /// budget. An error says some did not finish in it, so the last chance runs the step again.
+    /// The `flush-writebacks` shutdown step: the scheduled write-backs run within
+    /// [`writeback_flush_timeout`] of what is left, so the steps behind keep their share. Passes
+    /// still left then run in the vault close (`close-vault`); the step itself succeeds, since
+    /// a failed step would end the sequence before those.
     pub fn flush_step(self: &Arc<Self>) -> StepFn {
         let tier = self.clone();
         Arc::new(move |_, deadline| {
             let tier = tier.clone();
             Box::pin(async move {
-                let timeout = deadline.remaining();
-                let done = tokio::task::spawn_blocking(move || tier.flush(timeout))
+                let timeout = writeback_flush_timeout(deadline.remaining());
+                tokio::task::spawn_blocking(move || tier.flush(timeout))
                     .await
-                    .map_err(|error| error.to_string())?;
-                if done {
-                    Ok(())
-                } else {
-                    Err("write-backs were still running when the budget ran out".into())
-                }
+                    .map(drop)
+                    .map_err(|error| error.to_string())
             })
         })
     }
@@ -129,23 +127,25 @@ impl VaultTier {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .take();
-        // Joined outside the lock: each waits for its current step. The watcher first, so no
-        // fact reaches a consumer that is stopping; the write-back runs what was scheduled
-        // while the rows are still open.
+        // Joined outside the locks: each waits for its current step. The watcher first, so no
+        // fact reaches a consumer that is stopping. The write-back last and still reachable, so
+        // it runs what was scheduled until it stopped, while the rows are still open.
         if let Some(Running {
             watcher,
             mut consumer,
-            writeback,
         }) = running
         {
             watcher.stop_and_drop();
             consumer.stop();
+        }
+        if let Some(writeback) = self.writeback() {
             writeback.stop();
         }
+        *self.writeback.lock().unwrap_or_else(|e| e.into_inner()) = None;
         self.rows.close();
     }
 
-    fn start(&self, vault: &OpenVault) -> Result<Running, String> {
+    fn start(&self, vault: &OpenVault) -> Result<(Running, Arc<WriteBack>), String> {
         let exclude = read_vault_config(&vault.path).exclude_patterns;
         self.rows
             .open(vault.vault.clone())
@@ -205,11 +205,7 @@ impl VaultTier {
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude)
             .map_err(|error| error.to_string())?;
-        Ok(Running {
-            watcher,
-            consumer,
-            writeback,
-        })
+        Ok((Running { watcher, consumer }, writeback))
     }
 
     /// Registers the open and close hooks. A watcher that cannot start fails its hook, which
@@ -222,8 +218,9 @@ impl VaultTier {
             Arc::new(move |vault| {
                 tier.stop();
                 match tier.start(vault) {
-                    Ok(running) => {
+                    Ok((running, writeback)) => {
                         *tier.running.lock().unwrap_or_else(|e| e.into_inner()) = Some(running);
+                        *tier.writeback.lock().unwrap_or_else(|e| e.into_inner()) = Some(writeback);
                         Ok(())
                     }
                     Err(error) => {

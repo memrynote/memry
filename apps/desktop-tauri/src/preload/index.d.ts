@@ -103,12 +103,7 @@ import type {
   CertificatePinFailedEvent,
   VaultRecoveryNeededEvent
 } from '../shared/contracts/ipc-sync'
-import type {
-  CrdtHealth,
-  CrdtOpenDocResult,
-  CrdtSyncStep1Result,
-  CrdtWriteBackFailedEvent
-} from '@memry/contracts/ipc-crdt'
+import type { CrdtHealth, CrdtOpenDocResult, CrdtSyncStep1Result } from '@memry/contracts/ipc-crdt'
 import type {
   RepairDeviceKeysResult,
   ResolveVaultBindingResult,
@@ -2248,7 +2243,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onCrdtProviderReady: (
     callback: (data: { vaultPath: string | null } | undefined) => void
   ) => () => void
-  onCrdtWriteBackFailed: (callback: (event: CrdtWriteBackFailedEvent) => void) => () => void
 }
 
 interface ElectronShim {

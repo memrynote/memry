@@ -11,11 +11,13 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::shell::shutdown::{Deadline, SESSION_END_BUDGET};
 use memry_desktop::shell::shutdown::{
     ShutdownCore, ShutdownEffects, ShutdownReason, StepFn, UpdateApplyHook,
 };
 use memry_desktop::telemetry::crash::ShutdownFailure;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
+use memry_desktop::vault::writeback::DEBOUNCE;
 use vault_env::{Creates, Env, QUIET, WAIT, creates, edit_in_app, env, indexed};
 
 /// A vault holding one note, `n.md` ("first words"), whose file the document holds.
@@ -34,6 +36,27 @@ fn one_note() -> (Env, Arc<Creates>, String) {
     // The watcher's start settles before the test edits the file.
     std::thread::sleep(Duration::from_millis(300));
     (e, identity, id)
+}
+
+/// Parks the consumer inside the offer of a new file, with the rows' lane held: a pass waits
+/// for the lane until [`Creates::release`].
+fn park_the_consumer(e: &Env, identity: &Creates) {
+    identity.hold();
+    e.write("parked.md", "parked\n");
+    let deadline = std::time::Instant::now() + WAIT;
+    while !identity
+        .offered
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|p| p == "parked.md")
+    {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the new file was never offered"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
 }
 
 fn watcher_changed(id: &str) -> impl Fn(&Applied) -> bool + '_ {
@@ -63,8 +86,13 @@ fn a_scheduled_edit_reaches_the_file_and_the_watcher_takes_it_for_the_apps() {
         )),
         "the app's write came back as an outside edit: {later:?}"
     );
+    let core = e.core();
     e.close();
+    // A schedule after the close writes nothing into the closed vault.
+    edit_in_app(&core, &identity.store, &id, "typed after the close");
     e.tier.schedule(&id);
+    std::thread::sleep(DEBOUNCE + QUIET);
+    assert_eq!(e.read("n.md"), "typed in the app\n");
 }
 
 #[test]
@@ -279,4 +307,77 @@ async fn an_edit_scheduled_after_the_flush_is_written_by_the_vault_close() {
     )
     .await;
     assert_eq!(exits, vec![("exit_clean", "typed late\n".to_owned())]);
+}
+
+/// An edit scheduled while the vault closes (here while the close waits for the consumer) is
+/// written before the close ends.
+#[test]
+fn an_edit_scheduled_while_the_vault_closes_is_written_before_it_closes() {
+    let (e, identity, id) = one_note();
+    park_the_consumer(&e, &identity);
+    e.edit_in_app(&identity.store, &id, "typed while closing");
+    let closing = {
+        let session = e.session.clone();
+        std::thread::spawn(move || session.close())
+    };
+    std::thread::sleep(Duration::from_millis(500));
+    e.tier.schedule(&id);
+    identity.release();
+    closing.join().unwrap();
+    assert_eq!(e.read("n.md"), "typed while closing\n");
+}
+
+/// The pass of an edit is already running, waiting for the lane, when the quit starts: the
+/// flush waits for it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pass_running_when_the_quit_starts_is_waited_for() {
+    let (e, identity, id) = one_note();
+    park_the_consumer(&e, &identity);
+    e.edit_in_app(&identity.store, &id, "typed in the app");
+    e.tier.schedule(&id);
+    std::thread::sleep(DEBOUNCE + Duration::from_millis(300));
+    let releasing = {
+        let identity = identity.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(300));
+            identity.release();
+        })
+    };
+    let exits = quit(&e, ShutdownReason::Quit, false, vec![]).await;
+    releasing.join().unwrap();
+    assert_eq!(exits, vec![("exit_clean", "typed in the app\n".to_owned())]);
+}
+
+/// A flush that cannot finish (its pass waits for the lane) gives up at its share of the
+/// budget, and the steps behind it still run with the rest.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_flush_that_cannot_finish_leaves_the_steps_behind_it_their_share() {
+    let (e, identity, id) = one_note();
+    park_the_consumer(&e, &identity);
+    e.edit_in_app(&identity.store, &id, "typed in the app");
+    e.tier.schedule(&id);
+    let left: Arc<Mutex<Option<Duration>>> = Arc::default();
+    let later: StepFn = {
+        let left = left.clone();
+        Arc::new(move |_, deadline: Deadline| {
+            *left.lock().unwrap() = Some(deadline.remaining());
+            Box::pin(async { Ok(()) })
+        })
+    };
+    quit(
+        &e,
+        ShutdownReason::SessionEnd,
+        false,
+        vec![("close-snapshots", later)],
+    )
+    .await;
+    identity.release();
+    let left = left
+        .lock()
+        .unwrap()
+        .expect("the step behind the flush never ran");
+    assert!(
+        left >= SESSION_END_BUDGET / 2 - Duration::from_millis(300),
+        "{left:?} left of {SESSION_END_BUDGET:?}"
+    );
 }

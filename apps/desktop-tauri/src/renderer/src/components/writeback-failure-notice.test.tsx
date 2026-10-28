@@ -20,7 +20,7 @@ vi.mock('../../../generated/bindings', () => ({
   }
 }))
 
-const toastFn = vi.hoisted(() => ({ warning: vi.fn() }))
+const toastFn = vi.hoisted(() => ({ warning: vi.fn(), dismiss: vi.fn() }))
 
 vi.mock('sonner', () => ({ toast: toastFn }))
 
@@ -72,6 +72,27 @@ describe('WritebackFailureNotice', () => {
 
     const ids = toastFn.warning.mock.calls.map((call) => (call[1] as { id: string }).id)
     expect(new Set(ids)).toEqual(new Set(['write-back-failed:note-1']))
+  })
+
+  it('collapses into one notice once more than three notes fail, as a full disk does', () => {
+    render(<WritebackFailureNotice />)
+
+    for (const id of ['n1', 'n2', 'n3']) listener({ noteId: id, title: id })
+    expect(toastFn.warning).toHaveBeenCalledTimes(3)
+    listener({ noteId: 'n4', title: 'n4' })
+    listener({ noteId: 'n5', title: 'n5' })
+
+    const dismissed = toastFn.dismiss.mock.calls.map((call) => call[0])
+    expect(new Set(dismissed)).toEqual(
+      new Set(['n1', 'n2', 'n3', 'n4', 'n5'].map((id) => `write-back-failed:${id}`))
+    )
+    const last = toastFn.warning.mock.calls.at(-1) as [string, { id: string }]
+    expect(last[0]).toBe('crdt.writebackFailedTitleMany {"count":5}')
+    expect(last[1].id).toBe('write-back-failed:many')
+    const perNote = toastFn.warning.mock.calls.filter(
+      (call) => (call[1] as { id: string }).id !== 'write-back-failed:many'
+    )
+    expect(perNote).toHaveLength(3)
   })
 
   it('stops listening when unmounted', async () => {

@@ -5,7 +5,7 @@
 
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use memry_core::api::vault::Vault;
@@ -31,6 +31,21 @@ pub struct Creates {
     pub store: Arc<dyn SecureStore>,
     pub offered: Mutex<Vec<String>>,
     pub failures: Mutex<usize>,
+    /// While set, an offer waits (`WAIT` at most) with the rows' lane held, as a slow
+    /// identity does: every write through the lane, the write-back's included, waits too.
+    pub held: Mutex<bool>,
+    pub released: Condvar,
+}
+
+impl Creates {
+    pub fn hold(&self) {
+        *self.held.lock().unwrap() = true;
+    }
+
+    pub fn release(&self) {
+        *self.held.lock().unwrap() = false;
+        self.released.notify_all();
+    }
 }
 
 impl NoteIdentity for Creates {
@@ -40,6 +55,13 @@ impl NoteIdentity for Creates {
         file: &Candidate<'_>,
     ) -> Result<Adoption, IdentityError> {
         self.offered.lock().unwrap().push(file.path.to_owned());
+        {
+            let held = self.held.lock().unwrap();
+            let _ = self
+                .released
+                .wait_timeout_while(held, WAIT, |held| *held)
+                .unwrap();
+        }
         {
             let mut failures = self.failures.lock().unwrap();
             if *failures > 0 {
@@ -109,6 +131,8 @@ pub fn creates(store: Arc<dyn SecureStore>) -> Arc<Creates> {
         store,
         offered: Mutex::default(),
         failures: Mutex::new(0),
+        held: Mutex::new(false),
+        released: Condvar::new(),
     })
 }
 

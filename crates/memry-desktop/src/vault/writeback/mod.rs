@@ -49,9 +49,19 @@
 //! - **Nothing scheduled waits out a quit or a close.** [`WriteBack::flush`] makes every
 //!   scheduled pass due now and waits for them and the one running. The `flush-writebacks`
 //!   shutdown step calls it on every way the app quits (the app menu, Cmd-Q, the Dock, a
-//!   session end, an update restart), and again in the last chance when a step before it
-//!   wedged ([`crate::vault::consumer::VaultTier::flush_step`]). A vault close runs every scheduled
-//!   pass before the rows close. A schedule during either is due at once.
+//!   session end, an update restart), within its share of the budget
+//!   ([`crate::shell::shutdown::writeback_flush_timeout`]) so the steps behind it still run,
+//!   and again in the last chance when a step before it wedged
+//!   ([`crate::vault::consumer::VaultTier::flush_step`]). A vault close, the quit's included,
+//!   runs every pass scheduled until the write-back stops, after the watcher and the consumer
+//!   stopped and before the rows close. A schedule during either is due at once.
+//! - **A crash or a forced exit leaves files behind their bodies, never the reverse.** The
+//!   body is durable in the document before its note is scheduled, and the queue is in
+//!   memory, so a process that ends before a pass leaves that note's file with older text and
+//!   a row hash that still matches it. The open reconcile (12e-3c) brings such files to their
+//!   bodies: a pass for every note whose body may be newer than its file writes exactly the
+//!   notes this left behind. Until it runs, an outside edit of such a file replaces the newer
+//!   body, which the feed keeps as a version.
 //! - **A failed write is told, once per run of failures.** The first failed pass of a note
 //!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed pass is
 //!   not retried on its own: the note's next schedule is its retry, and its body stays in the
