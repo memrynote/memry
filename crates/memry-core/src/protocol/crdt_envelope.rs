@@ -68,11 +68,18 @@ pub fn packed_len(update: &[u8]) -> usize {
 
 /// The base64 characters one `POST /sync/crdt/updates` request may carry across
 /// all its updates, chapter 07 §7.4. It is desktop's
-/// `MAX_CRDT_REQUEST_PAYLOAD_CHARS` (`packages/sync-client/src/crdt-payload.ts:14`):
+/// `MAX_CRDT_REQUEST_PAYLOAD_CHARS` (`packages/sync-client/src/crdt-payload.ts:16`):
 /// the server answers 413 before any route runs when the body passes 8 MiB
 /// (`apps/sync-server/src/index.ts:66`), and 6,000,000 characters leave room for
 /// the JSON around them.
 pub const MAX_REQUEST_PAYLOAD_CHARS: usize = 6_000_000;
+
+/// The base64 characters one update may carry, chapter 07 §7.4.2. It is
+/// desktop's `MAX_CRDT_UPDATE_PAYLOAD_CHARS`
+/// (`packages/sync-client/src/crdt-payload.ts:15`): the server keeps each
+/// update inline in a D1 row, which is capped at 1,000,000 bytes, and 1,200,000
+/// characters decode to 900,000 bytes.
+pub const MAX_UPDATE_PAYLOAD_CHARS: usize = 1_200_000;
 
 /// The most [`pack`] can return for an update of `update_len` bytes, computed
 /// without compressing. [`compress::compress`] keeps a deflated frame only when

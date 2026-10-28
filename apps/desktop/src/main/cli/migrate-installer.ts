@@ -18,7 +18,7 @@ export interface MigrateInstallerDeps {
   pid: number
   tmpDir: string
   userDataDir: string
-  fs: InstallerHandoffDeps['fs']
+  fs: Omit<InstallerHandoffDeps['fs'], 'readFileSync'>
   verify: typeof verifyAuthenticode
   spawn: typeof spawnInstallerHandoff
   stdout(line: string): void

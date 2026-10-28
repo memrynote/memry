@@ -42,6 +42,7 @@ use yrs::{ReadTxn as _, Transact as _, Update};
 
 use crate::api::errors::{ApiError, StorageError};
 use crate::domain::note_files;
+use crate::protocol::account::MAX_UPDATE_BYTES;
 use crate::protocol::envelope::EnvelopeError;
 use crate::protocol::http::{
     ApiRequest, Auth, HttpClient, RetryPolicy, SYNC_TYPES_HEADER, VAULT_ID_HEADER,
@@ -87,6 +88,10 @@ pub enum Refusal {
     Purged,
     /// Condition 3: the encoded state is empty.
     EmptyState,
+    /// The sealed snapshot is over the server's 5 MiB cap on one decoded
+    /// envelope (chapter 07 §7.3). Decided from the sealed bytes, before any
+    /// request, so a note this large costs no upload on any retry.
+    TooLarge,
 }
 
 impl Refusal {
@@ -96,6 +101,7 @@ impl Refusal {
             Self::LocalOnly => "the document is local-only",
             Self::Purged => "the document was purged",
             Self::EmptyState => "the encoded state is empty",
+            Self::TooLarge => "the document is too large to sync: its snapshot is over 5 MiB",
         }
     }
 }
@@ -217,6 +223,8 @@ pub struct SnapshotPusher {
     /// server older than #1857 has only the single-note route.
     pub(super) batch_unsupported: AtomicBool,
     pub(super) http: Arc<HttpClient>,
+    /// The retry policy of the snapshot upload: §7.10's by default.
+    retry: RetryPolicy,
     db: Db,
     sealer: Arc<dyn SnapshotSealer>,
     declaration: Declaration,
@@ -233,11 +241,23 @@ impl SnapshotPusher {
         Self {
             batch_unsupported: AtomicBool::new(false),
             http,
+            retry: RetryPolicy::polled(),
             db,
             sealer,
             declaration,
             vault_id: None,
         }
+    }
+
+    /// One attempt per upload, no inner retries: a caller with its own retry
+    /// ladder would otherwise multiply a full upload by the policy's four.
+    pub fn with_single_attempt(mut self) -> Self {
+        self.retry = RetryPolicy {
+            max_retries: 0,
+            retry_on_5xx: false,
+            ..RetryPolicy::polled()
+        };
+        self
     }
 
     pub fn with_vault(mut self, vault_id: &str) -> Self {
@@ -273,8 +293,8 @@ impl SnapshotPusher {
         let request = self
             .request("POST", "/sync/crdt/snapshot")
             // §7.10: every CRDT request is `maxRetries: 3`, `baseDelayMs:
-            // 2000`, `retryOn429: false`.
-            .retry(RetryPolicy::polled())
+            // 2000`, `retryOn429: false`, unless the caller set its own.
+            .retry(self.retry)
             .json(&prepared.payload);
         let body: Json = match self.http.send_json(request).await {
             Ok(body) => body,
@@ -348,6 +368,9 @@ impl SnapshotPusher {
         };
         let doc_id = document.id().to_owned();
         let packed = self.sealer.seal_snapshot(&doc_id, &state)?;
+        if packed.len() > MAX_UPDATE_BYTES {
+            return Ok(Err(Refusal::TooLarge));
+        }
 
         // §7.3's field name, §7.4's request shape: the payload base64 of the
         // same packed envelope an update travels in (§7.11). The batch route

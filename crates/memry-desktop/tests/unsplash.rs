@@ -410,21 +410,49 @@ async fn a_failed_ping_does_not_block_the_cover() {
 }
 
 #[tokio::test]
-async fn an_unknown_content_type_is_a_jpg() {
-    let server = serve(|seen| {
-        if seen.host == "api.unsplash.com" {
-            Reply::status(200)
-        } else {
-            Reply::image("application/octet-stream", &[1])
+async fn a_body_that_is_not_an_image_is_refused() {
+    for content_type in [
+        "text/html; charset=utf-8",
+        "application/octet-stream",
+        "image/svg+xml",
+    ] {
+        let server = serve(move |seen| {
+            if seen.host == "api.unsplash.com" {
+                Reply::status(200)
+            } else {
+                Reply::image(content_type, b"<html>sign in to the wifi</html>")
+            }
+        })
+        .await;
+        assert_eq!(
+            server
+                .service(Some(KEY))
+                .fetch_photo(&photo("abc123"))
+                .await,
+            Err(UnsplashFailure::Failed),
+            "{content_type}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_photo_redirected_off_the_image_hosts_is_refused() {
+    let server = serve(|seen| match seen.host.as_str() {
+        "api.unsplash.com" => Reply::status(200),
+        "images.unsplash.com" => {
+            Reply::status(302).with_header("location", "https://other.example/photo.jpg")
         }
+        _ => Reply::image("image/jpeg", &[1, 2, 3]),
     })
     .await;
-    let fetched = server
-        .service(Some(KEY))
-        .fetch_photo(&photo("abc123"))
-        .await
-        .expect("a photo");
-    assert_eq!(fetched.filename, "unsplash-abc123.jpg");
+
+    assert_eq!(
+        server
+            .service(Some(KEY))
+            .fetch_photo(&photo("abc123"))
+            .await,
+        Err(UnsplashFailure::Failed)
+    );
 }
 
 #[tokio::test]

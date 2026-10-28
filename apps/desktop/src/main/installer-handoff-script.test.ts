@@ -3,7 +3,7 @@ import {
   handoffCmdArgs,
   handoffSpawnOptions,
   installerHandoffEnv,
-  isHandoffInstallDirSupported,
+  unsupportedHandoffInstallDirChar,
   judgeAuthenticode,
   renderInstallerHandoffScript,
   resolveReleaseTag,
@@ -60,6 +60,12 @@ describe('renderInstallerHandoffScript', () => {
         /%(INSTALL_DIR|UNINSTALLER|WORK_DIR|SETUP|SETUP_LOG|HANDOFF_LOG|NSIS_INSTALLER)%/
       )
     }
+  })
+
+  // A DelayedExpansion or EnableExtensions registry value on the machine would otherwise make `!`
+  // in a path syntax and break `if exist ... if exist`.
+  it('pins extensions on and delayed expansion off', () => {
+    expect(render()).toContain('setlocal EnableExtensions DisableDelayedExpansion')
   })
 
   it('records every step and its exit code', () => {
@@ -164,7 +170,7 @@ describe('renderInstallerHandoffScript', () => {
       ':fallback',
       'call :log "falling back to nsis"',
       'if defined NSIS_INSTALLER if exist "%NSIS_INSTALLER%" goto run_nsis',
-      'if exist "%INSTALL_DIR%\\%APP_EXE%" goto relaunch_original',
+      'if exist "%INSTALL_DIR%\\%APP_EXE%" if exist "%INSTALL_DIR%\\resources\\app.asar" goto relaunch_original',
       'call :log "result=failed no-nsis-fallback"',
       'goto cleanup',
       ''
@@ -211,14 +217,14 @@ describe('installerHandoffEnv', () => {
   })
 })
 
-describe('isHandoffInstallDirSupported', () => {
+describe('unsupportedHandoffInstallDirChar', () => {
   // `_?=%INSTALL_DIR%` must stay unquoted for NSIS, so cmd would parse these.
-  it('accepts parentheses, spaces, percent signs and non-ASCII, rejects cmd operators', () => {
-    expect(isHandoffInstallDirSupported(String.raw`D:\Apps (portable)\Kağan 100%\MemryNote`)).toBe(
-      true
-    )
-    expect(isHandoffInstallDirSupported(String.raw`C:\a&b\MemryNote`)).toBe(false)
-    expect(isHandoffInstallDirSupported(String.raw`C:\a^b`)).toBe(false)
+  it('accepts parentheses, spaces, percent signs and non-ASCII, names a cmd operator', () => {
+    expect(
+      unsupportedHandoffInstallDirChar(String.raw`D:\Apps (portable)\Kağan 100%\MemryNote`)
+    ).toBeNull()
+    expect(unsupportedHandoffInstallDirChar(String.raw`C:\a&b\MemryNote`)).toBe('&')
+    expect(unsupportedHandoffInstallDirChar(String.raw`C:\a^b`)).toBe('^')
   })
 })
 
@@ -233,6 +239,8 @@ describe('handoffSpawnOptions', () => {
     })
     expect(handoffCmdArgs(String.raw`C:\Users\a&b\x.cmd`)).toEqual([
       '/d',
+      '/e:on',
+      '/v:off',
       '/s',
       '/c',
       String.raw`""C:\Users\a&b\x.cmd""`
