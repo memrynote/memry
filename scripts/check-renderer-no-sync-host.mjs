@@ -13,9 +13,9 @@
  * It parses each renderer source file with the TypeScript compiler (comments, strings, regex
  * literals and JSX text are the parser's, never a guess) and fails on a call to `fetch`,
  * `navigator.sendBeacon`, `new WebSocket`, `new EventSource`, or `.open` in a file that uses
- * `XMLHttpRequest`, whose arguments hold a memrynote.com string, a same-file constant that holds
- * one, or the sync server URL. Links the user opens (`window.open`, `href`) are not requests and
- * are not flagged.
+ * `XMLHttpRequest`, whose arguments hold a memrynote.com host (or a subdomain), a same-file
+ * constant that holds one, or the sync server URL. Links the user opens (`window.open`, `href`)
+ * are not requests and are not flagged.
  *
  *   node scripts/check-renderer-no-sync-host.mjs
  */
@@ -34,8 +34,7 @@ const ALLOWED = new Map()
 
 const SOURCE = /\.[cm]?[jt]sx?$/
 const TEST = /(?:\.test|\.spec)\.[cm]?[jt]sx?$/
-/** Anywhere in a string: `https://sync.memrynote.com/x`, `wss://…`, a bare host. */
-const MEMRY_HOST = 'memrynote.com'
+const MEMRY_DOMAIN = 'memrynote.com'
 const SYNC_URL_NAMES = new Set([
   'SYNC_SERVER_URL',
   'VITE_SYNC_SERVER_URL',
@@ -44,6 +43,20 @@ const SYNC_URL_NAMES = new Set([
   'sync_server_url'
 ])
 const CONSTRUCTED = new Set(['WebSocket', 'EventSource'])
+
+/**
+ * Whether `text` names memrynote.com or a subdomain as its host: a URL
+ * (`https://sync.memrynote.com/x`, `wss://…`), a bare host (`sync.memrynote.com`), or the part of
+ * a template after an interpolation (`.memrynote.com/x` in `https://${region}.memrynote.com/x`).
+ * The host itself is compared, so `memrynote.com.evil.test` or a query naming the domain is not a
+ * match.
+ */
+function namesMemryHost(text) {
+  const host = URL.canParse(text)
+    ? new URL(text).hostname
+    : text.split(/[/?#:]/, 1)[0].toLowerCase()
+  return host === MEMRY_DOMAIN || host.endsWith(`.${MEMRY_DOMAIN}`)
+}
 
 function scriptKind(fileName) {
   return /\.[cm]?[jt]sx$/.test(fileName) ? ts.ScriptKind.TSX : ts.ScriptKind.TS
@@ -90,7 +103,7 @@ export function findSyncHostRequests(text, fileName = 'source.tsx') {
   // constants. `seen` stops a constant that refers to itself.
   const reaches = (node, seen = new Set()) => {
     if (ts.isStringLiteralLike(node) || ts.isTemplateLiteralToken(node)) {
-      return node.text.toLowerCase().includes(MEMRY_HOST)
+      return namesMemryHost(node.text)
     }
     if (ts.isIdentifier(node)) {
       if (SYNC_URL_NAMES.has(node.text)) return true
