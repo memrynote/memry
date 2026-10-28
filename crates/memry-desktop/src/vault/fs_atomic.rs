@@ -276,6 +276,7 @@ fn run(
     bytes: &[u8],
     delays: &[Duration],
     commit: Commit,
+    create_dirs: bool,
     before_commit: BeforeCommit<'_>,
 ) -> Result<(), WriteError> {
     let fail = |source| WriteError {
@@ -286,7 +287,9 @@ fn run(
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    fs::create_dir_all(dir).map_err(fail)?;
+    if create_dirs {
+        fs::create_dir_all(dir).map_err(fail)?;
+    }
     with_transient_retry(delays, || {
         write_once(dir, target, bytes, commit, &mut *before_commit)
     })
@@ -304,7 +307,18 @@ pub fn atomic_write_checked(
     delays: &[Duration],
     before_commit: BeforeCommit<'_>,
 ) -> Result<(), WriteError> {
-    run(target, bytes, delays, Commit::Replace, before_commit)
+    run(target, bytes, delays, Commit::Replace, true, before_commit)
+}
+
+/// [`atomic_write_checked`] for a file that is there: its folder is never created. A folder
+/// that moved or went fails the write (`NotFound`) instead of coming back at the old path.
+pub fn atomic_replace_checked(
+    target: &Path,
+    bytes: &[u8],
+    delays: &[Duration],
+    before_commit: BeforeCommit<'_>,
+) -> Result<(), WriteError> {
+    run(target, bytes, delays, Commit::Replace, false, before_commit)
 }
 
 pub fn atomic_write_with(
@@ -327,7 +341,7 @@ pub fn atomic_create_checked(
     delays: &[Duration],
     before_commit: BeforeCommit<'_>,
 ) -> Result<(), WriteError> {
-    run(target, bytes, delays, Commit::Create, before_commit)
+    run(target, bytes, delays, Commit::Create, true, before_commit)
 }
 
 pub fn atomic_create(target: &Path, bytes: &[u8]) -> Result<(), WriteError> {
