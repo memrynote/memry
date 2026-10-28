@@ -1,7 +1,8 @@
 use tauri::{AppHandle, Wry};
 use tauri_plugin_autostart::ManagerExt;
 
-/// Registers or removes this build's entry. Enabling first removes what an Electron install left.
+/// Registers or removes this build's `.desktop` entry through the plugin. Enabling first removes
+/// what an Electron install left.
 pub fn apply(app: &AppHandle<Wry>, enabled: bool) -> Result<(), String> {
     let manager = app.autolaunch();
     let present = manager.is_enabled().map_err(|error| error.to_string())?;
@@ -16,43 +17,6 @@ pub fn apply(app: &AppHandle<Wry>, enabled: bool) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(windows)]
-fn remove_foreign_entries() {
-    use memry_desktop::shell::autostart::is_foreign_run_value;
-    use winreg::RegKey;
-    use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_SET_VALUE};
-
-    let run = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(
-        r"Software\Microsoft\Windows\CurrentVersion\Run",
-        KEY_READ | KEY_SET_VALUE,
-    );
-    let run = match run {
-        Ok(run) => run,
-        Err(error) => {
-            tracing::warn!(scope = "Autostart", "cannot open the Run key: {error}");
-            return;
-        }
-    };
-    let foreign: Vec<String> = run
-        .enum_values()
-        .filter_map(Result::ok)
-        .filter(|(name, value)| is_foreign_run_value(name, &value.to_string()))
-        .map(|(name, _)| name)
-        .collect();
-    for name in foreign {
-        match run.delete_value(&name) {
-            Ok(()) => tracing::info!(scope = "Autostart", "removed the older Run value {name}"),
-            Err(error) => {
-                tracing::warn!(
-                    scope = "Autostart",
-                    "could not remove Run value {name}: {error}"
-                );
-            }
-        }
-    }
-}
-
-#[cfg(target_os = "linux")]
 fn remove_foreign_entries() {
     use memry_desktop::shell::autostart::is_foreign_autostart_entry;
 
@@ -82,7 +46,6 @@ fn remove_foreign_entries() {
     }
 }
 
-#[cfg(target_os = "linux")]
 fn dirs_autostart() -> Option<std::path::PathBuf> {
     let config = std::env::var_os("XDG_CONFIG_HOME")
         .map(std::path::PathBuf::from)

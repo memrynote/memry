@@ -147,6 +147,44 @@ pub fn e2e_post_power_event(app: AppHandle<Wry>, kind: String) -> Result<(), Com
     Ok(())
 }
 
+/// Sends `WM_ENDSESSION(TRUE)` to the main window (`main`) or to tao's hidden event-target window
+/// (`event-target`), as Windows does at a sign-out, and returns without waiting. Windows asks
+/// either one first, so a spec runs both: the quit sequence has to finish before the process
+/// ends, whichever it was.
+#[tauri::command]
+pub fn e2e_send_session_end(app: AppHandle<Wry>, target: String) -> Result<(), CommandError> {
+    let event_target = match target.as_str() {
+        "main" => false,
+        "event-target" => true,
+        other => return Err(invalid("e2e_session_end_target", other)),
+    };
+    #[cfg(windows)]
+    {
+        let main = crate::windows::registry::WindowRegistry::main_window(&app)
+            .and_then(|window| window.hwnd().ok())
+            .ok_or_else(|| invalid("e2e_no_main_window", "no main window"))?;
+        if !crate::power::post_end_session(main, event_target) {
+            return Err(invalid("e2e_no_event_target", "no event target window"));
+        }
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (&app, event_target);
+        Err(invalid(
+            "e2e_windows_only",
+            "WM_ENDSESSION exists on Windows only",
+        ))
+    }
+}
+
+/// Registers or removes the real login item, which the e2e gate otherwise keeps specs away from:
+/// for a VM row that reads the Run value or the autostart file. Remove it again afterwards.
+#[tauri::command]
+pub fn e2e_apply_login_item(app: AppHandle<Wry>, enabled: bool) -> Result<(), CommandError> {
+    crate::autostart::apply_to_os(&app, enabled)
+}
+
 /// Takes a word a spec added back out of the personal dictionary (macOS; a no-op elsewhere).
 #[tauri::command]
 pub fn e2e_forget_spelled_word(app: AppHandle<Wry>, word: String) {
