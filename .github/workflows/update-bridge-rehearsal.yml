@@ -46,6 +46,9 @@ env:
   VPK_VERSION: 1.2.161
   MACOSX_DEPLOYMENT_TARGET: '13.0'
   MEMRY_UPDATE_FEED_URL: https://github.com/${{ inputs.feed_repo }}
+  # A rehearsal build is not a production one: without this, a release build requires the
+  # production sync and calendar values (`apps/desktop-tauri/src-tauri/build_env.rs`).
+  MEMRY_ENV: staging
   # Inputs reach scripts through the environment, never by interpolation into the script text.
   # The `validate` job rejects anything that is not a rehearsal value.
   VERSION: ${{ inputs.version }}
