@@ -169,14 +169,15 @@ pub async fn e2e_send_session_end(
     {
         let window = crate::windows::registry::WindowRegistry::main_window(&app)
             .ok_or_else(|| invalid("e2e_no_main_window", "no main window"))?;
-        let main = window
-            .hwnd()
-            .map_err(|error| invalid("e2e_no_main_window", error))?;
         let kill_browser = if kill_webview.unwrap_or(false) {
             Some(browser_process_id(&window).await?)
         } else {
             None
         };
+        // Read after the await: an `HWND` is not `Send`, and a command's future must be.
+        let main = window
+            .hwnd()
+            .map_err(|error| invalid("e2e_no_main_window", error))?;
         if hidden.unwrap_or(false) {
             window
                 .hide()
