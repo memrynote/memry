@@ -75,8 +75,9 @@ pub fn window_set_caption_rects(
 ) -> Result<(), CommandError> {
     #[cfg(windows)]
     {
-        use crate::windows::win32_caption::{set_rects, to_rect};
-        let rect = |r: CaptionRect| Some(to_rect(r.x, r.y, r.width, r.height));
+        use crate::windows::win32_caption::set_rects;
+        use memry_desktop::shell::caption::physical_rect;
+        let rect = |r: CaptionRect| Some(physical_rect(r.x, r.y, r.width, r.height));
         set_rects(
             &app,
             memry_desktop::shell::caption::CaptionRects {

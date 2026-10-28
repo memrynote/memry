@@ -52,7 +52,7 @@ pub fn create_main(
                 if matches!(payload.event(), PageLoadEvent::Finished) {
                     mark_phase(window.app_handle(), LaunchPhase::WindowDidFinishLoad);
                     #[cfg(windows)]
-                    super::win32_caption::install_child(window.app_handle());
+                    super::win32_caption::raise(window.app_handle());
                 }
             })
             .on_navigation(navigation_guard::on_navigation(

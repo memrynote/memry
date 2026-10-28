@@ -41,7 +41,8 @@ e2e_commands! {
         e2e_set_next_context_menu_selection,
         e2e_last_context_menu_items,
         e2e_menu_tree,
-        e2e_menu_activate
+        e2e_menu_activate,
+        e2e_menu_bar_visible
     ],
     window => [e2e_windows, e2e_set_window_rect],
 }
