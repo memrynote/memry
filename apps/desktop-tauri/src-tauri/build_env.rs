@@ -3,7 +3,8 @@
 //! Values come from the process environment, then from `apps/desktop-tauri/.env.<MEMRY_ENV>`,
 //! and reach the app as `MEMRY_BUILD_<NAME>` (read with `option_env!`). A release build of the
 //! production environment refuses to compile without the three values the app cannot work
-//! without; the error names the variable, never a value.
+//! without, and any production build refuses a rehearsal update feed; the error names the
+//! variable, never a value.
 
 use std::collections::BTreeMap;
 
@@ -22,6 +23,9 @@ pub const REQUIRED_IN_PRODUCTION: [&str; 3] = [
     "GOOGLE_CALENDAR_CLIENT_ID",
     "GOOGLE_CALENDAR_CLIENT_SECRET",
 ];
+
+/// Rehearsal builds read their update feed from this (`updater/velopack_backend.rs`).
+pub const UPDATE_FEED: &str = "MEMRY_UPDATE_FEED_URL";
 
 /// `KEY=VALUE` lines: `#` comments, an optional `export `, and one pair of matching quotes.
 pub fn parse_env_file(text: &str) -> BTreeMap<String, String> {
@@ -68,6 +72,13 @@ pub fn environment(inputs: &Inputs) -> String {
 /// `(MEMRY_BUILD_<NAME>, value)` pairs, including `MEMRY_BUILD_ENV`, or the error that fails the build.
 pub fn resolve(inputs: &Inputs) -> Result<Vec<(String, String)>, String> {
     let env = environment(inputs);
+    if env == "production"
+        && (inputs.process_env)(UPDATE_FEED).is_some_and(|feed| !feed.trim().is_empty())
+    {
+        return Err(format!(
+            "a MEMRY_ENV=production build must not set {UPDATE_FEED}: it would point every install at another update feed"
+        ));
+    }
     let file = (inputs.env_file)(&env)
         .map(|text| parse_env_file(&text))
         .unwrap_or_default();

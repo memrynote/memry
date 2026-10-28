@@ -41,7 +41,7 @@ fn main() {
     compile_runtime_config(checkout_dir);
 
     // Rehearsal builds bake their feed in (`updater/velopack_backend.rs`, `option_env!`).
-    println!("cargo:rerun-if-env-changed=MEMRY_UPDATE_FEED_URL");
+    println!("cargo:rerun-if-env-changed={}", build_env::UPDATE_FEED);
 
     tauri_build::build();
 }
