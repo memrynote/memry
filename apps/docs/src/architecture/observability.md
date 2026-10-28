@@ -815,7 +815,7 @@ app updating itself, and counting it as a download swamps the number that matter
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `update_metadata` | Polled on every update check: electron-builder `latest*.yml` and `.blockmap`, Velopack `releases.<channel>.json` and legacy `RELEASES` |
 | `update_package`  | Downloaded when an update applies: Velopack `.nupkg`, and the macOS `.zip` Squirrel.Mac installs from                                  |
-| `installer`       | Everything else: `.dmg`, `-setup.exe`, `MemryNote-win-Setup.exe`, `.AppImage`, `.deb`, the portable `-win.zip`                         |
+| `installer`       | Everything else: `.dmg`, `-setup.exe`, the Velopack `Setup.exe`, `.AppImage`, `.deb`, the portable `-win.zip`                          |
 
 Filter to `asset_kind = 'installer'` for real downloads. Two caveats remain. `-setup.exe` and
 `.AppImage` are also fetched by electron-updater on NSIS and AppImage installs, and the filename
@@ -1215,7 +1215,7 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   invisible.
 - **NSIS to Velopack hand-off**: a Windows install made by the older NSIS installer keeps
   electron-updater for checking and downloading. Once the NSIS `setup.exe` is on disk,
-  `apps/desktop/src/main/installer-handoff.ts` looks for `MemryNote-win-Setup.exe` on the same
+  `apps/desktop/src/main/installer-handoff.ts` looks for `MemryNote-Setup-win-x64.exe` on the same
   release tag (`HEAD`, then a streamed download into `userData/installer-handoff/`, folded into the
   `downloading` state) and verifies it with `Get-AuthenticodeSignature`: status `Valid` and a signer
   subject containing `CN=Open Source Developer Kaan Karaca`, or the file is deleted and never run.
@@ -1226,7 +1226,7 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   app's PID to exit (a `powershell.exe` process wait that fails closed, with `PSModulePath` cleared: the
   script runs in a console-less `cmd.exe`, where `tasklist | find` hangs), runs a copy of `Uninstall MemryNote.exe /S _?=INSTALLDIR` (no `--updated`,
   so the tolerant removal path runs, and the copy blocks until the old install, its shortcuts and
-  its uninstall key are gone), runs `MemryNote-win-Setup.exe --silent --verbose --log userData/logs/velopack-setup.log`,
+  its uninstall key are gone), runs `MemryNote-Setup-win-x64.exe --silent --verbose --log userData/logs/velopack-setup.log`,
   starts the new app itself (`--silent` stops Setup from starting it, and it does not set
   `VELOPACK_FIRSTRUN`), and falls back to the already-downloaded NSIS installer if Setup exited non-zero
   or no Velopack `Memrynote.exe` exists afterwards (with no NSIS installer left, it starts the old
@@ -1243,7 +1243,10 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   version running from the Velopack layout (`..\Update.exe` next to the app) is
   `app_update_installed` with `action: migrated` and `source: velopack-handoff`; a new version
   still running from an NSIS layout is `INSTALLER_HANDOFF_DID_NOT_APPLY`, meaning the update
-  arrived but the migration did not. `Memrynote.exe --cli migrate-installer path\to\MemryNote-win-Setup.exe`
+  arrived but the migration did not. Builds v2026-09-12 to v2026-10-25 look for
+  `MemryNote-win-Setup.exe` and run a script whose `tasklist | find` wait hangs, so no release
+  after v2026-10-25 carries that name: those builds get a `404`, decline, and update through NSIS
+  to a build with the fixed script. `Memrynote.exe --cli migrate-installer path\to\MemryNote-Setup-win-x64.exe`
   drives the same verify-then-hand-off path against a local file (exit 0 when scheduled, 1
   otherwise, Windows only), which is what the `migrate` job in
   `.github/workflows/velopack-smoke.yml` runs on a real NSIS install.

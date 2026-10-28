@@ -283,6 +283,15 @@ export function selectRunArtifacts(names) {
   return { appVersion, assetsArtifact, metadataArtifact }
 }
 
+/**
+ * The name vpk gives the Setup. No release may carry it: Electron builds v2026-09-12 to
+ * v2026-10-25 HEAD it on every update check and, on a 200, download it and arm a hand-off whose
+ * script hangs, so they never update. On a 404 they install the `latest.yml` NSIS installer.
+ * release.mjs renames vpk's output to `setup` below, the name newer builds read
+ * (`VELOPACK_SETUP_ASSET_NAME` in apps/desktop/src/main/installer-handoff-script.ts).
+ */
+export const vpkSetupName = 'MemryNote-win-Setup.exe'
+
 export function buildVelopackAssetNames(appVersion) {
   requireField(appVersion, 'appVersion')
 
@@ -291,7 +300,7 @@ export function buildVelopackAssetNames(appVersion) {
     full: `MemryNote-${appVersion}-full.nupkg`,
     releases: 'RELEASES',
     releasesJson: 'releases.win.json',
-    setup: 'MemryNote-win-Setup.exe'
+    setup: 'MemryNote-Setup-win-x64.exe'
   }
 }
 
@@ -304,6 +313,7 @@ export function collectUploadAssets({ appVersion, ciAssetNames, velopackAssetNam
   const assets = ciAssetNames
     .filter((name) => !name.endsWith('-win.zip'))
     .map((name) => ({ name, source: 'ci' }))
+
   const missing = requiredCiAssets
     .filter((required) => !ciAssetNames.some((name) => required.matches(name)))
     .map((required) => required.description)

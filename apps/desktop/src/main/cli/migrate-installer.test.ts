@@ -12,8 +12,8 @@ import { runMigrateInstallerCommand, type MigrateInstallerDeps } from './migrate
 
 const EXEC_PATH = 'C:\\Users\\kaan\\AppData\\Local\\Programs\\MemryNote\\Memrynote.exe'
 const USER_DATA = 'C:\\Users\\kaan\\AppData\\Roaming\\memrynote'
-const SOURCE = 'C:\\Users\\kaan\\Downloads\\MemryNote-win-Setup.exe'
-const SETUP_COPY = path.win32.join(USER_DATA, 'installer-handoff', 'MemryNote-win-Setup.exe')
+const SOURCE = 'C:\\Users\\kaan\\Downloads\\MemryNote-Setup-win-x64.exe'
+const SETUP_COPY = path.win32.join(USER_DATA, 'installer-handoff', 'MemryNote-Setup-win-x64.exe')
 const HANDOFF_DIR = path.win32.join(USER_DATA, 'installer-handoff')
 
 function makeDeps(overrides: Partial<MigrateInstallerDeps> = {}) {
@@ -66,7 +66,7 @@ describe('migrate-installer command', () => {
 
     await expect(runMigrateInstallerCommand([], deps)).resolves.toBe(1)
 
-    expect(stderr).toEqual(['Usage: --cli migrate-installer <path-to-MemryNote-win-Setup.exe>'])
+    expect(stderr).toEqual(['Usage: --cli migrate-installer <path-to-MemryNote-Setup-win-x64.exe>'])
   })
 
   it('prints usage when the file does not exist', async () => {
@@ -74,7 +74,7 @@ describe('migrate-installer command', () => {
 
     await expect(runMigrateInstallerCommand(['C:\\missing\\Setup.exe'], deps)).resolves.toBe(1)
 
-    expect(stderr).toEqual(['Usage: --cli migrate-installer <path-to-MemryNote-win-Setup.exe>'])
+    expect(stderr).toEqual(['Usage: --cli migrate-installer <path-to-MemryNote-Setup-win-x64.exe>'])
     expect(deps.verify).not.toHaveBeenCalled()
   })
 

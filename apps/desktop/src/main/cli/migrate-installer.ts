@@ -10,7 +10,7 @@ import {
 } from '../installer-handoff'
 import { detectWindowsInstallLayout } from '../windows-install-layout'
 
-const USAGE = 'Usage: --cli migrate-installer <path-to-MemryNote-win-Setup.exe>'
+const USAGE = 'Usage: --cli migrate-installer <path-to-MemryNote-Setup-win-x64.exe>'
 
 export interface MigrateInstallerDeps {
   platform: NodeJS.Platform

@@ -28,7 +28,7 @@ const TMP = String.raw`C:\Users\kaan\AppData\Local\Temp`
 const EXEC_PATH = String.raw`C:\Users\kaan\AppData\Local\Programs\MemryNote\Memrynote.exe`
 const HANDOFF_DIR = path.win32.join(USER_DATA, 'installer-handoff')
 const SETUP_URL =
-  'https://github.com/memrynote/memry/releases/download/v2026-09-11.1/MemryNote-win-Setup.exe'
+  'https://github.com/memrynote/memry/releases/download/v2026-09-11.1/MemryNote-Setup-win-x64.exe'
 const NSIS_INSTALLER = String.raw`C:\Users\kaan\AppData\Local\memrynote-updater\pending\MemryNote-2026.911.1-setup.exe`
 const VALID_SIGNATURE = JSON.stringify({
   Status: 0,

@@ -21,8 +21,10 @@ import {
   resolveUnpackedDir,
   selectRunArtifacts,
   selectPreviousFullNupkgAsset,
-  selectPreviousPublishedRelease
+  selectPreviousPublishedRelease,
+  vpkSetupName
 } from './velopack-release-utils.mjs'
+import { VELOPACK_SETUP_ASSET_NAME } from '../apps/desktop/src/main/installer-handoff-script.ts'
 
 const ciAssetNames = [
   'Memry-2026.508.1-arm64.dmg',
@@ -38,7 +40,7 @@ const ciAssetNames = [
 ]
 
 const velopackAssetNames = [
-  'MemryNote-win-Setup.exe',
+  'MemryNote-Setup-win-x64.exe',
   'MemryNote-2026.508.1-full.nupkg',
   'MemryNote-2026.508.1-delta.nupkg',
   'releases.win.json',
@@ -517,9 +519,34 @@ describe('upload assets', () => {
       full: 'MemryNote-2026.508.1-full.nupkg',
       releases: 'RELEASES',
       releasesJson: 'releases.win.json',
-      setup: 'MemryNote-win-Setup.exe'
+      setup: 'MemryNote-Setup-win-x64.exe'
     })
     assert.throws(() => buildVelopackAssetNames(''), /appVersion is required/)
+  })
+
+  // Shipped Electron builds up to v2026-10-25 HEAD vpk's Setup name and, on a 200, arm a hand-off
+  // that hangs. The published name must differ from it and be the one the desktop app reads.
+  it("publishes the Setup under the name the app hands off to, never vpk's", () => {
+    const { setup } = buildVelopackAssetNames('2026.508.1')
+
+    assert.notEqual(setup, vpkSetupName)
+    assert.equal(setup, VELOPACK_SETUP_ASSET_NAME)
+  })
+
+  it("never uploads a Setup left under vpk's name", () => {
+    const { assets, missing } = collectUploadAssets({
+      appVersion: '2026.508.1',
+      ciAssetNames,
+      velopackAssetNames: velopackAssetNames.map((name) =>
+        name === 'MemryNote-Setup-win-x64.exe' ? vpkSetupName : name
+      )
+    })
+
+    assert.equal(
+      assets.some((asset) => asset.name === vpkSetupName),
+      false
+    )
+    assert.deepEqual(missing, ['MemryNote-Setup-win-x64.exe'])
   })
 
   it('collects a complete set with nothing missing', () => {
@@ -614,7 +641,7 @@ describe('upload assets', () => {
     const { missing } = collectUploadAssets({
       appVersion: '2026.508.1',
       ciAssetNames,
-      velopackAssetNames: ['MemryNote-win-Setup.exe', 'releases.win.json']
+      velopackAssetNames: ['MemryNote-Setup-win-x64.exe', 'releases.win.json']
     })
 
     assert.deepEqual(missing, ['MemryNote-2026.508.1-full.nupkg', 'RELEASES'])

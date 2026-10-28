@@ -7,6 +7,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync
 } from 'node:fs'
@@ -45,7 +46,8 @@ import {
   resolveUnpackedDir,
   selectPreviousFullNupkgAsset,
   selectPreviousPublishedRelease,
-  selectRunArtifacts
+  selectRunArtifacts,
+  vpkSetupName
 } from './velopack-release-utils.mjs'
 
 const workflowFile = 'publish-release.yml'
@@ -340,6 +342,7 @@ async function packVelopack({ assetDir, metadata, releases, state, workDir }) {
 
   if (isStepDone(state, 'pack') && existsSync(path.join(velopackDir, names.full))) {
     console.log(`Velopack: reusing ${path.relative(repoRoot, velopackDir)}`)
+    renameVelopackSetup(velopackDir, names)
     return velopackDir
   }
 
@@ -382,7 +385,18 @@ async function packVelopack({ assetDir, metadata, releases, state, workDir }) {
     throw new Error(`vpk pack failed with exit code ${result.status}`)
   }
 
+  renameVelopackSetup(velopackDir, names)
   return velopackDir
+}
+
+/** vpk names the Setup `vpkSetupName`, which no release may carry (see its comment). */
+function renameVelopackSetup(velopackDir, names) {
+  const vpkSetup = path.join(velopackDir, vpkSetupName)
+
+  if (existsSync(vpkSetup)) {
+    renameSync(vpkSetup, path.join(velopackDir, names.setup))
+    console.log(`Velopack: renamed ${vpkSetupName} to ${names.setup}`)
+  }
 }
 
 function extractWindowsPayload({ assetDir, workDir }) {
@@ -679,7 +693,8 @@ function dispatchSmokeTest({ metadata, releases }) {
 
   // The runner installs the previous release's Setup.exe and applies this
   // release's package on top, which is the upgrade the migration exists to fix.
-  if (!previous || !previousAssets.includes(names.setup)) {
+  // Releases up to v2026-10-25 carry the Setup under vpkSetupName.
+  if (!previous || ![names.setup, vpkSetupName].some((name) => previousAssets.includes(name))) {
     console.log(`Smoke test needs Velopack assets on ${previousTag}; skipped`)
     return
   }
