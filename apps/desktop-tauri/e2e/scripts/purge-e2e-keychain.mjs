@@ -11,11 +11,12 @@ import { pathToFileURL } from 'node:url'
 
 import {
   PROTECTED_ACCOUNTS,
-  SYNC_SERVICE,
+  SYNC_SERVICES,
   isPurgeableE2eEntry,
   parseCmdkeyList,
   parseKeychainDump,
-  parseSecretToolSearch
+  parseSecretToolSearch,
+  parseWindowsTarget
 } from '../harness/keychain-cleanup.mjs'
 
 function capture(command, args) {
@@ -52,27 +53,23 @@ export function listEntries(platform = process.platform) {
     }))
   }
   if (platform === 'win32') {
-    return parseCmdkeyList(capture('cmdkey', ['/list'])).map((target) => {
-      // Targets read `<account>.<service>` for the sync service.
-      const service = target.includes(SYNC_SERVICE) ? SYNC_SERVICE : undefined
-      const account = service ? target.slice(0, target.indexOf(`.${SYNC_SERVICE}`)) : undefined
-      return {
-        service,
-        account,
-        remove: () => (status('cmdkey', [`/delete:${target}`]) === 0 ? 1 : 0)
-      }
-    })
+    return parseCmdkeyList(capture('cmdkey', ['/list'])).map((target) => ({
+      ...parseWindowsTarget(target),
+      remove: () => (status('cmdkey', [`/delete:${target}`]) === 0 ? 1 : 0)
+    }))
   }
   if (platform === 'linux') {
-    return parseSecretToolSearch(
-      capture('secret-tool', ['search', '--all', 'service', SYNC_SERVICE])
-    ).map((entry) => ({
-      ...entry,
-      remove: () =>
-        status('secret-tool', ['clear', 'service', SYNC_SERVICE, 'username', entry.account]) === 0
-          ? 1
-          : 0
-    }))
+    return SYNC_SERVICES.flatMap((service) =>
+      parseSecretToolSearch(capture('secret-tool', ['search', '--all', 'service', service])).map(
+        (entry) => ({
+          ...entry,
+          remove: () =>
+            status('secret-tool', ['clear', 'service', service, 'username', entry.account]) === 0
+              ? 1
+              : 0
+        })
+      )
+    )
   }
   return []
 }
@@ -82,9 +79,9 @@ function main() {
   const all = listEntries()
   const targets = all.filter(isPurgeableE2eEntry)
   console.log(`Scanned ${all.length} keychain items.`)
-  console.log(
-    `  ${SYNC_SERVICE} items:        ${all.filter((e) => e.service === SYNC_SERVICE).length}`
-  )
+  for (const service of SYNC_SERVICES) {
+    console.log(`  ${service} items: ${all.filter((e) => e.service === service).length}`)
+  }
   console.log(`  e2e items to purge:          ${targets.length}`)
   console.log(`  kept (dev/prod/unrelated):   ${all.length - targets.length}`)
   for (const t of targets.slice(0, 5)) console.log(`  ${t.service}  ${t.account}`)

@@ -123,27 +123,23 @@ fn a_failed_or_panicking_answer_after_an_outage_is_not_a_recovery() {
 #[test]
 fn an_entry_the_store_did_not_find_is_absent_only_when_the_platform_agrees() {
     let rig = rig();
-    // The platform holds the item where the store did not look (keytar's Linux attributes).
-    *rig.absent.lock().unwrap() = Some(|| {
-        Ok(Some(
-            b"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=".to_vec(),
-        ))
-    });
-    assert_eq!(
-        rig.store.get(SecureStoreKey::MasterKey).unwrap(),
-        Some((0..32).collect::<Vec<u8>>())
-    );
-    // The item may exist but cannot be seen (a locked collection): never "absent".
-    *rig.absent.lock().unwrap() = Some(|| Err(no_storage()));
+    // The item may exist but cannot be seen (a locked collection): never "absent", and a delete
+    // never reports success over it.
+    *rig.hidden.lock().unwrap() = Some(no_storage);
     assert_eq!(
         rig.store.get(SecureStoreKey::MasterKey),
         Err(SecureStoreError::Locked)
     );
+    assert_eq!(
+        rig.store.delete(SecureStoreKey::MasterKey),
+        Err(SecureStoreError::Locked)
+    );
     assert_eq!(rig.store.health(), SecureStoreHealth::Unavailable);
-    *rig.absent.lock().unwrap() = None;
+    *rig.hidden.lock().unwrap() = None;
     assert_eq!(rig.store.get(SecureStoreKey::MasterKey).unwrap(), None);
+    rig.store.delete(SecureStoreKey::MasterKey).unwrap();
     // An item the store did find is not second-guessed.
-    *rig.absent.lock().unwrap() = Some(|| Err(no_storage()));
+    *rig.hidden.lock().unwrap() = Some(no_storage);
     rig.store
         .set(SecureStoreKey::MasterKey, vec![9; 32])
         .unwrap();
@@ -151,25 +147,7 @@ fn an_entry_the_store_did_not_find_is_absent_only_when_the_platform_agrees() {
         rig.store.get(SecureStoreKey::MasterKey).unwrap(),
         Some(vec![9; 32])
     );
-}
-
-#[test]
-fn windows_credentials_carry_the_account_as_their_user_name_like_keytar() {
-    let windows = rig_with(None, Duration::from_secs(5), true);
-    windows
-        .store
-        .set(SecureStoreKey::MasterKey, vec![1; 32])
-        .unwrap();
-    assert_eq!(
-        windows.fake.usernames.lock().unwrap().clone(),
-        [("master-key".to_owned(), "master-key".to_owned())]
-    );
-    let plain = rig();
-    plain
-        .store
-        .set(SecureStoreKey::MasterKey, vec![1; 32])
-        .unwrap();
-    assert!(plain.fake.usernames.lock().unwrap().is_empty());
+    rig.store.delete(SecureStoreKey::MasterKey).unwrap();
 }
 
 #[cfg(feature = "e2e")]

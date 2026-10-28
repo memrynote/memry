@@ -9,7 +9,6 @@ use keyring_core::{Credential, Entry, Error};
 
 use super::super::{KeyringStore, Store, StoreFactory};
 
-pub type Absent = Arc<Mutex<Option<fn() -> keyring_core::Result<Option<Vec<u8>>>>>>;
 pub type BuildError = Arc<Mutex<Option<fn() -> Error>>>;
 pub type Data = Arc<Mutex<HashMap<(String, String), Vec<u8>>>>;
 
@@ -61,8 +60,6 @@ pub struct Fake {
     pub reads: Arc<AtomicUsize>,
     pub reader_threads: Arc<Mutex<Vec<Option<String>>>>,
     pub targets: Arc<Mutex<Vec<Option<String>>>>,
-    /// The (account, `username` attribute) of each `update_attributes`.
-    pub usernames: Arc<Mutex<Vec<(String, String)>>>,
     /// Fails every write with this error, while reads and deletes answer.
     pub fail_writes: BuildError,
     pub writes: Arc<AtomicUsize>,
@@ -81,7 +78,6 @@ impl Fake {
             reads: Arc::default(),
             reader_threads: Arc::default(),
             targets: Arc::default(),
-            usernames: Arc::default(),
             fail_writes: Arc::default(),
             writes: Arc::default(),
         }
@@ -94,7 +90,6 @@ impl Fake {
             reads: self.reads.clone(),
             reader_threads: self.reader_threads.clone(),
             targets: self.targets.clone(),
-            usernames: self.usernames.clone(),
             fail_writes: self.fail_writes.clone(),
             writes: self.writes.clone(),
         }
@@ -183,17 +178,6 @@ impl CredentialApi for FakeCred {
         }
     }
 
-    fn update_attributes(&self, attributes: &HashMap<&str, &str>) -> keyring_core::Result<()> {
-        if let Some(name) = attributes.get("username") {
-            self.fake
-                .usernames
-                .lock()
-                .unwrap()
-                .push((self.key.1.clone(), (*name).to_owned()));
-        }
-        Ok(())
-    }
-
     fn get_credential(&self) -> keyring_core::Result<Option<Arc<Credential>>> {
         Ok(None)
     }
@@ -250,10 +234,9 @@ pub struct Factory {
     pub builds: Arc<AtomicUsize>,
     pub build_error: BuildError,
     pub names_target: bool,
-    /// Items the store does not see but the platform holds: what keytar wrote on Linux.
-    pub keytar: Data,
-    /// Replaces the keytar lookup of `absent_check` when set.
-    pub absent: Absent,
+    /// The platform's answer when the store found nothing: an item may be hidden (a locked
+    /// collection on Linux).
+    pub hidden: BuildError,
 }
 
 impl StoreFactory for Factory {
@@ -269,28 +252,11 @@ impl StoreFactory for Factory {
         self.names_target
     }
 
-    fn absent_check(&self, service: &str, account: &str) -> keyring_core::Result<Option<Vec<u8>>> {
-        if let Some(check) = *self.absent.lock().unwrap() {
-            return check();
+    fn confirm_absent(&self) -> keyring_core::Result<()> {
+        match *self.hidden.lock().unwrap() {
+            Some(error) => Err(error()),
+            None => Ok(()),
         }
-        Ok(self
-            .keytar
-            .lock()
-            .unwrap()
-            .get(&(service.to_owned(), account.to_owned()))
-            .cloned())
-    }
-
-    fn after_set(&self, _: &Entry, service: &str, account: &str) {
-        let _ = self.after_delete(service, account);
-    }
-
-    fn after_delete(&self, service: &str, account: &str) -> keyring_core::Result<()> {
-        self.keytar
-            .lock()
-            .unwrap()
-            .remove(&(service.to_owned(), account.to_owned()));
-        Ok(())
     }
 }
 
@@ -299,23 +265,20 @@ pub struct Rig {
     pub fake: Fake,
     pub builds: Arc<AtomicUsize>,
     pub build_error: BuildError,
-    pub keytar: Data,
-    pub absent: Absent,
+    pub hidden: BuildError,
 }
 
 pub fn rig_with(suffix: Option<&str>, deadline: Duration, names_target: bool) -> Rig {
     let fake = Fake::new();
     let builds = Arc::new(AtomicUsize::new(0));
     let build_error = Arc::new(Mutex::new(None));
-    let keytar = Data::default();
-    let absent: Absent = Arc::default();
+    let hidden: BuildError = Arc::default();
     let factory = Factory {
         fake: fake.share(),
         builds: builds.clone(),
         build_error: build_error.clone(),
         names_target,
-        keytar: keytar.clone(),
-        absent: absent.clone(),
+        hidden: hidden.clone(),
     };
     Rig {
         store: Arc::new(KeyringStore::with_factory(
@@ -326,8 +289,7 @@ pub fn rig_with(suffix: Option<&str>, deadline: Duration, names_target: bool) ->
         fake,
         builds,
         build_error,
-        keytar,
-        absent,
+        hidden,
     }
 }
 

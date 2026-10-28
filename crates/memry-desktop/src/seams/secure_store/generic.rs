@@ -5,7 +5,7 @@
 use memry_core::api::errors::SecureStoreError;
 
 use super::worker::{Op, Reply};
-use super::{IDENTITY_SERVICE, KeyringStore, SERVICE};
+use super::{KeyringStore, SERVICE};
 
 /// A secret under any (service, account). The value is the raw bytes, with no base64 layer (only
 /// the five `SecureStoreKey` entries use the base64 text format). The Windows credential target
@@ -23,19 +23,17 @@ pub trait GenericSecrets: Send + Sync {
     fn delete_secret(&self, service: &str, account: &str) -> Result<(), SecureStoreError>;
 }
 
-/// Closed services. This app's own service [`IDENTITY_SERVICE`] has owners ([`KeyringStore`]'s
+/// Closed services. This app's own service [`SERVICE`] has owners ([`KeyringStore`]'s
 /// `SecureStore` and [`super::DeviceIdentityStore`]): a generic caller would bypass their format
-/// and the device key's cache. Every Electron service (`com.memry.*`, `memry.*`, [`SERVICE`] among
-/// them) is read-only import material for Step 37 (#3554): Electron's `getSecret` and `setSecret`
-/// move each keychain item into its own file and delete the keychain copy
-/// (`apps/desktop/src/main/secrets/secret-storage.ts:436`, `:518`), so a secret written there
-/// could vanish under a running Electron or be taken over by it. Generic secrets live under
+/// and the device key's cache. Every Electron service (`com.memry.*`, `memry.*`) is read-only import material for Step 37 (#3554): Electron's `getSecret` and `setSecret`
+/// move each keychain item into its own file and delete the keychain copy (see [`SERVICE`]).
+/// Generic secrets live under
 /// `com.memrynote.memry.<feature>`. Case-insensitive: the macOS and Windows stores match names
 /// without regard to case.
 fn closed(service: &str) -> Result<(), SecureStoreError> {
     let service_lower = service.to_ascii_lowercase();
     let electron = service_lower.starts_with("com.memry.") || service_lower.starts_with("memry.");
-    if electron || service_lower == IDENTITY_SERVICE || service_lower == SERVICE {
+    if electron || service_lower == SERVICE {
         return Err(SecureStoreError::Denied {
             what: format!("the keychain service `{service}` is not open to generic secrets"),
         });

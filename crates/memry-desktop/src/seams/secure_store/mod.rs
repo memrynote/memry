@@ -1,8 +1,10 @@
 //! The OS keychain behind the core's `SecureStore` seam.
 //!
-//! The five sync secrets live under service `com.memry.sync`, in the accounts of
-//! `apps/desktop/src/main/crypto/keychain-account.ts`, as the base64 text (standard alphabet,
-//! padded) of the key bytes, so a value Electron stored is the same bytes here.
+//! The sync secrets live under this app's own service `com.memrynote.memry` ([`SERVICE`]), in the
+//! accounts of `apps/desktop/src/main/crypto/keychain-account.ts`, as the base64 text (standard
+//! alphabet, padded) of the key bytes, the format of Electron's items, so the Step 37 (#3554)
+//! import copies a value unchanged. Electron's `com.memry.sync` items are never read, written or
+//! deleted here.
 //!
 //! **Failures.** An entry the keychain says does not exist is `Ok(None)`. Anything that means the
 //! keychain could not be reached (locked, no Secret Service, a denied prompt, a call that did not
@@ -45,18 +47,17 @@ use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use zeroize::Zeroizing;
 
-pub use account::{IDENTITY_SERVICE, KEYS, SERVICE, STORE_KEYS, account};
+pub use account::{KEYS, SERVICE, STORE_KEYS, account};
 pub use device_identity::{
     DeviceIdentityStore, device_identity_missing, is_device_identity_missing,
 };
 pub use generic::GenericSecrets;
 pub use keyring_backend::{Native, Store, StoreFactory};
-/// The Linux absent-check on its own, for the live test of a locked keyring (the store's search
-/// would wait for an unlock prompt first).
+/// The Linux absent-check on its own, for the live test of a locked keyring.
 #[cfg(all(target_os = "linux", feature = "live-os-secrets"))]
 #[doc(hidden)]
-pub fn linux_absent_check(service: &str, account: &str) -> keyring_core::Result<Option<Vec<u8>>> {
-    linux_absent::check(&linux_absent::Session::default(), service, account)
+pub fn linux_confirm_absent() -> keyring_core::Result<()> {
+    linux_absent::confirm_absent(&linux_absent::Session::default())
 }
 pub use worker::DEADLINE;
 
@@ -149,7 +150,7 @@ impl KeyringStore {
         Ok(account(key, self.device_suffix.as_deref()))
     }
 
-    /// The account of this device's signing key under [`IDENTITY_SERVICE`].
+    /// The account of this device's signing key under [`SERVICE`].
     pub(crate) fn identity_account(&self) -> String {
         account(
             SecureStoreKey::DeviceSigningKey,
@@ -201,7 +202,7 @@ impl SecureStore for KeyringStore {
     }
 
     /// Removes the four entries this store serves, one after another. A failure on one does not
-    /// stop the rest; the first failure is returned. Electron's device key item is never touched.
+    /// stop the rest; the first failure is returned. The device key is never touched.
     fn clear(&self) -> Result<(), SecureStoreError> {
         let mut first = Ok(());
         for key in STORE_KEYS {

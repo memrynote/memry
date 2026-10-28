@@ -1,8 +1,10 @@
 //! `KeyringStore` against the live OS keychain (`--features live-os-secrets`). Every test uses a
-//! device suffix and service of its own (`e2e-live-...`, `com.memrynote.memry.test`) and removes what it
-//! wrote, so the real `com.memry.sync` accounts of a developer's machine are never touched. CI runs
-//! them: macOS (a throw-away default keychain on the runner), Windows (Credential Manager) and Linux under a private
-//! session bus (`gnome-keyring-daemon --unlock`, and again with no Secret Service at all).
+//! device suffix of its own (`e2e-live-...`, so accounts like `master-key-e2e-live-...` under
+//! `com.memrynote.memry`) or the service `com.memrynote.memry.test`, and removes what it wrote, so
+//! the real accounts of a developer's machine are never touched. CI runs them: macOS (a
+//! throw-away default keychain on the runner), Windows (Credential Manager) and Linux under a
+//! private session bus (`gnome-keyring-daemon --unlock`, a locked keyring, a restarted daemon, and
+//! again with no Secret Service at all).
 #![cfg(feature = "live-os-secrets")]
 
 use std::sync::Arc;
@@ -274,5 +276,128 @@ fn a_secret_service_that_starts_late_is_found_by_the_next_call() {
             std::thread::sleep(Duration::from_millis(20));
         }
         assert_eq!(fired.load(Ordering::SeqCst), 1);
+    }
+}
+
+/// An item the store wrote, made with libsecret's tool: the zbus store's attributes `service` and
+/// `username`.
+#[cfg(target_os = "linux")]
+fn secret_tool_store(account: &str, text: &str) {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    let mut child = Command::new("secret-tool")
+        .args([
+            "store",
+            "--label",
+            "memry-live",
+            "service",
+            memry_desktop::seams::secure_store::SERVICE,
+            "username",
+            account,
+        ])
+        .stdin(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(text.as_bytes())
+        .unwrap();
+    assert!(child.wait().unwrap().success(), "secret-tool store");
+}
+
+/// A keyring that holds the store's item but is locked in this session hides the item from every
+/// search. The store must say `Locked`, never "no key" (`MEMRY_LIVE_LOCKED_KEYRING=1` with
+/// `MEMRY_LIVE_LOCKED_SUFFIX`: CI writes the item, then restarts gnome-keyring without a password
+/// and with no prompter to unlock it).
+#[cfg(target_os = "linux")]
+#[test]
+fn a_locked_keyring_is_locked_never_absent() {
+    if std::env::var("MEMRY_LIVE_LOCKED_KEYRING").is_ok_and(|v| v == "1") {
+        let suffix = std::env::var("MEMRY_LIVE_LOCKED_SUFFIX").unwrap();
+        // The check alone: a locked keyring could hide anything, so it never confirms "absent".
+        let checked = memry_desktop::seams::secure_store::linux_confirm_absent();
+        assert!(
+            matches!(checked, Err(keyring_core::Error::NoStorageAccess(_))),
+            "{checked:?}"
+        );
+        let store = store(&suffix);
+        assert_eq!(
+            store.get(SecureStoreKey::MasterKey),
+            Err(SecureStoreError::Locked)
+        );
+        assert_eq!(
+            store.delete(SecureStoreKey::MasterKey),
+            Err(SecureStoreError::Locked)
+        );
+    }
+}
+
+/// The store's item, shown by the search as locked (its collection was locked after the item was
+/// written, `MEMRY_LIVE_LOCKED_ITEM=1` with `MEMRY_LIVE_LOCKED_SUFFIX`): the store asks the service
+/// to unlock it, nobody can answer the prompt in this session, and get and delete are `Locked`,
+/// never "absent" and never a reported delete.
+#[cfg(target_os = "linux")]
+#[test]
+fn an_item_that_cannot_be_unlocked_is_locked_for_every_call() {
+    if std::env::var("MEMRY_LIVE_LOCKED_ITEM").is_ok_and(|v| v == "1") {
+        let suffix = std::env::var("MEMRY_LIVE_LOCKED_SUFFIX").unwrap();
+        let store = store(&suffix);
+        assert_eq!(
+            store.get(SecureStoreKey::MasterKey),
+            Err(SecureStoreError::Locked)
+        );
+        assert_eq!(
+            store.delete(SecureStoreKey::MasterKey),
+            Err(SecureStoreError::Locked)
+        );
+    }
+}
+
+/// The keyring daemon restarts while the app runs (`MEMRY_LIVE_RESTART_DAEMON=1`, alone in its
+/// session: it kills the daemon). The kept Secret Service session of the locked-collection check is
+/// gone with it, and the next check runs again on a new connection instead of answering `Locked`.
+/// The store's own session is stale too: a read of an item answers `Locked` once (never "absent"),
+/// and the store built for the next call reads it.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_keyring_daemon_that_restarts_is_found_by_the_next_call() {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    if std::env::var("MEMRY_LIVE_RESTART_DAEMON").is_ok_and(|v| v == "1") {
+        let suffix = unique("restart");
+        let store = Arc::new(store(&suffix));
+        let _cleanup = Cleanup(store.clone());
+        // Nothing stored: the check runs and its connection is kept.
+        assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
+        let _ = Command::new("pkill")
+            .args(["-x", "gnome-keyring-d"])
+            .status();
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let mut daemon = Command::new("gnome-keyring-daemon")
+            .args(["--unlock", "--components=secrets"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .spawn()
+            .unwrap();
+        daemon.stdin.take().unwrap().write_all(b"ci").unwrap();
+        assert!(daemon.wait().unwrap().success(), "gnome-keyring-daemon");
+        assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
+        secret_tool_store(
+            &format!("master-key-{suffix}"),
+            "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+        );
+        let first = store.get(SecureStoreKey::MasterKey);
+        assert!(
+            matches!(first, Ok(Some(_)) | Err(SecureStoreError::Locked)),
+            "{first:?}"
+        );
+        assert_eq!(
+            store.get(SecureStoreKey::MasterKey).unwrap(),
+            Some((0..32).collect::<Vec<u8>>())
+        );
     }
 }
