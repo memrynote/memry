@@ -36,6 +36,14 @@ const ALLOWED: &[(&str, &str)] = &[
         "apps/desktop-tauri/src-tauri/src/commands/unsplash.rs",
         "api.unsplash.com",
     ),
+    (
+        "apps/desktop-tauri/src-tauri/src/updater/velopack_backend.rs",
+        "the update feed on github.com, fetched by Velopack; only its error type is named here",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/updater/velopack_backend/tests.rs",
+        "builds Velopack's error values, no request",
+    ),
 ];
 
 /// A network client crate, or the shared client's module however it is named: by path from

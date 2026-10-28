@@ -28,6 +28,29 @@ export const TARGETS = {
 
 const DELTA_MODES = new Set(['None', 'BestSpeed', 'BestSize'])
 
+/**
+ * vpk's name for the Windows x64 Setup. No release may carry it: Electron builds v2026-09-12 to
+ * v2026-10-25 HEAD it on every update check and, on a 200, download it and arm a hand-off whose
+ * script hangs, so they never update; on a 404 they install the `latest.yml` installer (#3702).
+ * The Setup is published as `X64_SETUP_NAME`, the name newer Electron builds read.
+ */
+export const RETIRED_SETUP_NAME = 'MemryNote-win-Setup.exe'
+export const X64_SETUP_NAME = 'MemryNote-Setup-win-x64.exe'
+
+/** The name a vpk output file is published under. */
+export function publishedName(fileName) {
+  return fileName === RETIRED_SETUP_NAME ? X64_SETUP_NAME : fileName
+}
+
+/** Throws when an upload set holds the retired Setup name. */
+export function assertPublishable(fileNames) {
+  if (fileNames.includes(RETIRED_SETUP_NAME)) {
+    throw new Error(
+      `${RETIRED_SETUP_NAME} must never be uploaded: shipped Electron builds hang on it. Publish it as ${X64_SETUP_NAME}.`
+    )
+  }
+}
+
 function target(name) {
   const entry = TARGETS[name]
   if (!entry) {
@@ -112,14 +135,17 @@ export function buildPackArgs(name, options) {
   return args
 }
 
-/** Asset names vpk writes for `version`, following Velopack's DefaultName rules (vpk 1.2.161). */
+/**
+ * Published asset names for `version`: vpk's DefaultName rules (vpk 1.2.161), with the x64 Setup
+ * renamed by `publishedName`.
+ */
 export function assetNames(name, version) {
   const t = target(name)
   require(version, 'version')
 
   if (name === 'win-x64') {
     return {
-      setup: 'MemryNote-win-Setup.exe',
+      setup: X64_SETUP_NAME,
       full: `MemryNote-${version}-full.nupkg`,
       delta: `MemryNote-${version}-delta.nupkg`,
       releases: 'releases.win.json',

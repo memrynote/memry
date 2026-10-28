@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 // Update-bridge rehearsal driver. Runs on Kaan's Mac (Windows packs are signed with the Certum key).
 //
-//   node scripts/rehearsal/rehearse.mjs build <version> [--previous-tag <tag>]
-//   node scripts/rehearsal/rehearse.mjs assemble <version> [--run <id>] [--previous-tag <tag>] [--no-windows]
+//   node scripts/rehearsal/rehearse.mjs build <version> [--previous-tag <tag>] [--source-ref <ref>]
+//   node scripts/rehearsal/rehearse.mjs assemble <version> [--run <id>] [--previous-tag <tag>] [--no-windows | --unsigned-windows]
 //   node scripts/rehearsal/rehearse.mjs publish <version> --confirm-repo memrynote/memry-update-rehearsal
 //   node scripts/rehearsal/rehearse.mjs electron-baseline <tag> [--run <id>]
 //
 // `build` dispatches .github/workflows/update-bridge-rehearsal.yml and waits. `assemble` downloads
 // the artifacts, packs and signs both Windows packs, writes the bridge feeds and leaves the final
 // asset set in `.rehearsal-state/<version>/assets`. `--no-windows` skips the Certum-signed Windows
-// packs and `latest.yml`, for a macOS and Linux feed that needs no SimplySign session. `publish` creates the release and uploads it.
+// packs and `latest.yml`, for a macOS and Linux feed that needs no SimplySign session.
+// `--unsigned-windows` packs Windows without the Certum key and without `latest.yml`: a Tauri to
+// Tauri update checks no Authenticode signature, while the Electron bridge does. `publish` creates the release and uploads it.
 // Creating the rehearsal repo and every publish need Kaan's explicit approval at that moment.
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
@@ -32,7 +34,8 @@ import {
   describeFile,
   setupExeName
 } from '../release/bridge-feeds.mjs'
-import { assetNames, buildPackArgs } from '../release/vpk-args.mjs'
+import { assertPublishable, assetNames, buildPackArgs } from '../release/vpk-args.mjs'
+import { renameToPublished } from '../release/vpk-pack.mjs'
 
 export const FEED_REPO = 'memrynote/memry-update-rehearsal'
 const WORKFLOW = 'update-bridge-rehearsal.yml'
@@ -115,22 +118,20 @@ function latestRunId(startedAfter) {
   return runs[0].databaseId
 }
 
-function cmdBuild(version, argv) {
-  const previous = flag(argv, '--previous-tag') ?? ''
-  const startedAfter = new Date(Date.now() - 5000).toISOString()
-  run('gh', [
-    'workflow',
-    'run',
-    WORKFLOW,
-    '-R',
-    FEED_REPO,
-    '-f',
+/** The workflow inputs of `build`. Without `--source-ref` the workflow builds its default branch. */
+export function dispatchFields(version, argv) {
+  const sourceRef = flag(argv, '--source-ref')
+  return [
     `version=${version}`,
-    '-f',
     `feed_repo=${FEED_REPO}`,
-    '-f',
-    `previous_tag=${previous}`
-  ])
+    `previous_tag=${flag(argv, '--previous-tag') ?? ''}`,
+    ...(sourceRef ? [`source_ref=${sourceRef}`] : [])
+  ].flatMap((field) => ['-f', field])
+}
+
+function cmdBuild(version, argv) {
+  const startedAfter = new Date(Date.now() - 5000).toISOString()
+  run('gh', ['workflow', 'run', WORKFLOW, '-R', FEED_REPO, ...dispatchFields(version, argv)])
   const deadline = Date.now() + 120_000
   let id
   while (!id && Date.now() < deadline) {
@@ -188,7 +189,7 @@ function vpk(args, env = {}) {
   run(process.env.VPK_BIN ?? 'vpk', args, { env: { ...process.env, ...env } })
 }
 
-function packWindows(target, version, artifactDir, workDir, previousTag) {
+function packWindows(target, version, artifactDir, workDir, previousTag, signed) {
   const outputDir = path.join(workDir, `vpk-${target}`)
   const packDir = path.join(workDir, `pack-${target}`)
   rmSync(outputDir, { force: true, recursive: true })
@@ -205,9 +206,10 @@ function packWindows(target, version, artifactDir, workDir, previousTag) {
     outputDir,
     iconPath,
     delta: previousTag ? 'BestSpeed' : 'None',
-    signTemplate: `${signScript} {{file}}`
+    ...(signed && { signTemplate: `${signScript} {{file}}` })
   })
-  vpk(args, { MEMRY_SIGN_PIN: readSigningPin() })
+  vpk(args, signed ? { MEMRY_SIGN_PIN: readSigningPin() } : {})
+  renameToPublished(outputDir)
   return outputDir
 }
 
@@ -255,9 +257,10 @@ function cmdAssemble(version, argv) {
   const releaseDate = new Date().toISOString()
 
   const withWindows = !argv.includes('--no-windows')
+  const signedWindows = withWindows && !argv.includes('--unsigned-windows')
   for (const target of withWindows ? ['win-x64', 'win-arm64'] : []) {
-    const outputDir = packWindows(target, version, artifactDir, workDir, previousTag)
-    verifySignatures(outputDir, target, version, workDir)
+    const outputDir = packWindows(target, version, artifactDir, workDir, previousTag, signedWindows)
+    if (signedWindows) verifySignatures(outputDir, target, version, workDir)
     copyPackOutputs(outputDir, assets)
   }
 
@@ -276,7 +279,7 @@ function cmdAssemble(version, argv) {
   copyFileSync(path.join(assets, linux.portable), path.join(assets, linux.appImage))
 
   // Feeds hash the exact bytes that get uploaded.
-  if (withWindows) {
+  if (signedWindows) {
     const winSetup = path.join(assets, assetNames('win-x64', version).setup)
     copyFileSync(winSetup, path.join(assets, setupExeName(version)))
   }
@@ -293,7 +296,7 @@ function cmdAssemble(version, argv) {
       releaseDate,
       files: [entry(linux.appImage)]
     }),
-    ...(withWindows && {
+    ...(signedWindows && {
       'latest.yml': buildLatestYml({ version, releaseDate, setup: entry(setupExeName(version)) })
     })
   }
@@ -318,6 +321,7 @@ function cmdPublish(version, argv) {
   assertPublishConfirmed(argv)
   const assets = path.join(stateDir(version), 'assets')
   if (!existsSync(assets)) throw new Error(`Run assemble first: ${assets} does not exist`)
+  assertPublishable(readdirSync(assets))
   const files = readdirSync(assets).map((name) => path.join(assets, name))
   const tag = rehearsalTag(version)
   run('gh', [
@@ -385,6 +389,7 @@ function cmdElectronBaseline(tag, argv) {
     signTemplate: `${signScript} {{file}}`
   })
   vpk(args, { MEMRY_SIGN_PIN: readSigningPin() })
+  renameToPublished(outputDir)
   verifySignatures(outputDir, 'win-x64', version, workDir)
   console.log(`Baseline installer: ${path.join(outputDir, assetNames('win-x64', version).setup)}`)
 }

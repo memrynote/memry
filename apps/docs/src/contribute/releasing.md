@@ -147,24 +147,24 @@ The Tauri app (`apps/desktop-tauri`) reaches existing Electron installs through 
 
 ### Channels and asset names
 
-Velopack names assets from the channel. The default channel of an OS drops the channel from nupkg names, and every other channel adds `-<channel>`. All packs share one GitHub release, so every OS and arch pair has its own channel. `UpdateManager` reads the channel from the installed `sq.version`, so the app has no channel code. `scripts/release/vpk-args.mjs` owns the table, and `vpk-args.test.mjs` pins every argument list.
+Velopack names assets from the channel. The default channel of an OS drops the channel from nupkg names, and every other channel adds `-<channel>`. All packs share one GitHub release, so every OS and arch pair has its own channel. `UpdateManager` reads the channel from the installed `sq.version`. The one exception is an x64 install on an ARM64 PC, which moves to `win-arm64` with its next update (`apps/desktop-tauri/src-tauri/src/updater/channel.rs`). `scripts/release/vpk-args.mjs` owns the table, and `vpk-args.test.mjs` pins every argument list.
 
 | Target        | `--runtime` | `--channel` | `--mainExe`     | Setup or portable asset            |
 | ------------- | ----------- | ----------- | --------------- | ---------------------------------- |
-| Windows x64   | `win-x64`   | `win`       | `Memrynote.exe` | `MemryNote-win-Setup.exe`          |
+| Windows x64   | `win-x64`   | `win`       | `Memrynote.exe` | `MemryNote-Setup-win-x64.exe`      |
 | Windows arm64 | `win-arm64` | `win-arm64` | `Memrynote.exe` | `MemryNote-win-arm64-Setup.exe`    |
 | macOS arm64   | `osx-arm64` | `osx-arm64` | `MemryNote`     | `MemryNote-osx-arm64-Portable.zip` |
 | macOS x64     | `osx-x64`   | `osx-x64`   | `MemryNote`     | `MemryNote-osx-x64-Portable.zip`   |
 | Linux x64     | `linux-x64` | `linux`     | `memrynote`     | `MemryNote.AppImage`               |
 
-Windows x64 keeps today's production names, so Electron installs on channel `win` find the Tauri pack. The first Tauri pack of a channel uses `--delta None`, because a delta against an Electron full package is as large as the full package and the client would prefer it. Windows packs add `--framework webview2,vcredist143-<arch>`. `vpk` is pinned to 1.2.161, the same version as the `velopack` crate. `vpk` 1.2.x has no `--version` flag: check `vpk -h | head -3` for `Velopack CLI 1.2.161`.
+Windows x64 keeps today's production package names, so Electron installs on channel `win` find the Tauri pack. Its Setup is the exception. Electron builds `v2026-09-12` to `v2026-10-25` request vpk's name, `MemryNote-win-Setup.exe`, on every update check, and a release that answers arms a hand-off that hangs, so no release may carry it. `vpk-args.mjs` owns the rule (`RETIRED_SETUP_NAME`, `X64_SETUP_NAME`). `renameToPublished` in `vpk-pack.mjs` renames vpk's output and its `assets.win.json` entry right after `vpk pack`, in `vpk-pack.mjs`, `release.mjs` and the rehearsal. `assertPublishable` refuses an upload set that holds the old name, in `release.mjs` and the rehearsal publish. The first Tauri pack of a channel uses `--delta None`, because a delta against an Electron full package is as large as the full package and the client would prefer it. Windows packs add `--framework webview2,vcredist143-<arch>`. `vpk` is pinned to 1.2.161, the same version as the `velopack` crate. `vpk` 1.2.x has no `--version` flag: check `vpk -h | head -3` for `Velopack CLI 1.2.161`.
 
 ### Bridge feeds
 
 `scripts/release/bridge-feeds.mjs` writes `latest-mac.yml`, `latest-linux.yml` and `latest.yml` in the electron-builder layout: `version`, `files[]` (`url`, base64 `sha512`, `size`), then `path` and `sha512` of the first file, then `releaseDate`. The hash and size come from the exact uploaded bytes, after signing. There is no `blockMapSize` and no blockmap asset: electron-updater logs the missing blockmap and downloads the full file.
 
 - `latest-mac.yml` ends with `minimumSystemVersion: 22.0.0`. Darwin 22 is macOS 13, so electron-updater 6.6.2 and newer on macOS 12 skip the release. `scripts/validate-mac-update-manifest.mjs` checks the key.
-- `latest.yml` lists `MemryNote-<version>-setup.exe`, a byte copy of the signed `MemryNote-win-Setup.exe`. An NSIS install downloads Velopack's Setup through electron-updater. The hand-off script then downloads the same bytes from `MemryNote-win-Setup.exe`.
+- `latest.yml` lists `MemryNote-<version>-setup.exe`, a byte copy of the signed `MemryNote-Setup-win-x64.exe`. An NSIS install downloads Velopack's Setup through electron-updater. An Electron build with the fixed hand-off (#3702) then downloads the same bytes from `MemryNote-Setup-win-x64.exe`; an older one finds no `MemryNote-win-Setup.exe`, declines, and runs the `latest.yml` installer.
 
 ### Squirrel.Mac designated requirement
 

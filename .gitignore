@@ -57,6 +57,9 @@ Thumbs.db
 # Worktrees
 .worktrees/
 
+# Update bridge rehearsal downloads and packs (scripts/rehearsal/rehearse.mjs)
+.rehearsal-state/
+
 # Agent / AI tooling
 .social
 

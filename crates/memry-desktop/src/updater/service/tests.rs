@@ -8,6 +8,8 @@ use crate::updater::marker::{self, Installer, UPDATE_INSTALL_MARKER_FILENAME};
 use crate::updater::scripted::{ApplyCall, ScriptStep, ScriptedBackend, ScriptedFailure};
 use crate::updater::state::UpdaterStatus;
 
+mod install;
+
 const RAW: &str = "2026.1015.1";
 
 struct Rig {
@@ -291,81 +293,6 @@ async fn downloaded(rig: &Rig) {
     rig.service.download().await.unwrap();
 }
 
-#[tokio::test]
-async fn restart_to_install_needs_a_downloaded_update() {
-    let rig = rig();
-    assert_eq!(rig.service.request_install(), Err(install::NotReady));
-    assert!(!rig.service.install_requested());
-}
-
-#[tokio::test]
-async fn restart_to_install_shows_installing_and_hands_off_once_with_a_marker() {
-    let rig = rig();
-    downloaded(&rig).await;
-    rig.service.request_install().unwrap();
-    assert_eq!(rig.service.state().status, UpdaterStatus::Installing);
-    assert!(rig.service.install_requested());
-    assert!(rig.service.apply_and_restart());
-    assert!(!rig.service.apply_and_restart());
-    rig.service.apply_on_quit();
-    assert_eq!(
-        rig.backend.applies(),
-        [ApplyCall {
-            silent: true,
-            restart: true
-        }]
-    );
-    let detected = marker::detect(rig.dir.path(), RAW, || unreachable!()).unwrap();
-    assert_eq!(detected.attempt.to_version.as_deref(), Some("v2026-11-01"));
-    assert_eq!(
-        detected.attempt.installer,
-        Some(marker::Installer::Velopack)
-    );
-}
-
-#[tokio::test]
-async fn a_normal_quit_installs_a_downloaded_update_without_a_relaunch() {
-    let rig = rig();
-    downloaded(&rig).await;
-    rig.service.apply_on_quit();
-    rig.service.apply_on_quit();
-    assert_eq!(
-        rig.backend.applies(),
-        [ApplyCall {
-            silent: true,
-            restart: false
-        }]
-    );
-}
-
-#[tokio::test]
-async fn a_session_end_skips_install_on_quit_until_it_is_cancelled() {
-    let rig = rig();
-    downloaded(&rig).await;
-    rig.service.disable_install_on_quit();
-    rig.service.apply_on_quit();
-    assert!(rig.backend.applies().is_empty());
-    assert!(
-        !rig.dir
-            .path()
-            .join(marker::UPDATE_INSTALL_MARKER_FILENAME)
-            .exists()
-    );
-
-    rig.service.enable_install_on_quit();
-    rig.service.apply_on_quit();
-    assert_eq!(rig.backend.applies().len(), 1);
-}
-
-#[tokio::test]
-async fn nothing_installs_on_quit_without_a_downloaded_update() {
-    let rig = rig();
-    rig.backend.script(vec![available("2026.1101.1")]);
-    rig.service.check(false).await.unwrap();
-    rig.service.apply_on_quit();
-    assert!(rig.backend.applies().is_empty());
-}
-
 /// The scripted backend, with a check that can be held open and an apply that records whether
 /// the install marker was already on disk.
 struct Probe {
@@ -387,6 +314,9 @@ impl UpdateBackend for Probe {
             release.recv().unwrap();
         }
         self.inner.check()
+    }
+    fn downloaded(&self) -> Option<AvailableUpdate> {
+        self.inner.downloaded()
     }
     fn download(&self, progress: &dyn Fn(f64)) -> Result<(), UpdateError> {
         let held = self.hold_download.lock().unwrap().take();

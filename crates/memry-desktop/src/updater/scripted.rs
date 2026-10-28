@@ -50,6 +50,8 @@ pub struct ApplyCall {
 
 pub struct ScriptedBackend {
     steps: Mutex<VecDeque<ScriptStep>>,
+    /// The release an earlier run left on disk.
+    downloaded: Mutex<Option<AvailableUpdate>>,
     applies: PathBuf,
     tick: Duration,
 }
@@ -58,6 +60,7 @@ impl ScriptedBackend {
     pub fn new(data_dir: PathBuf, tick: Duration) -> Self {
         Self {
             steps: Mutex::new(VecDeque::new()),
+            downloaded: Mutex::new(None),
             applies: data_dir.join(APPLIES_FILENAME),
             tick,
         }
@@ -66,6 +69,17 @@ impl ScriptedBackend {
     /// Replaces the steps the next checks take. With none left a check is up to date.
     pub fn script(&self, steps: Vec<ScriptStep>) {
         *self.steps.lock().unwrap_or_else(PoisonError::into_inner) = steps.into();
+    }
+
+    /// Leaves `version` on disk, as a run that downloaded it and never installed it would.
+    pub fn leave_downloaded(&self, version: &str) {
+        *self
+            .downloaded
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(AvailableUpdate {
+            version: version.to_owned(),
+            ..AvailableUpdate::default()
+        });
     }
 
     /// Every `apply` this data directory saw, across launches.
@@ -108,6 +122,13 @@ impl UpdateBackend for ScriptedBackend {
                 }
             }),
         }
+    }
+
+    fn downloaded(&self) -> Option<AvailableUpdate> {
+        self.downloaded
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
     }
 
     fn download(&self, progress: &dyn Fn(f64)) -> Result<(), UpdateError> {

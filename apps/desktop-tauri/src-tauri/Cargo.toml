@@ -23,8 +23,6 @@ path = "src/bin/export_bindings.rs"
 [features]
 # The WDIO driver plugins and the `e2e_*` test commands. Never part of a release build.
 e2e = ["dep:tauri-plugin-wdio-webdriver", "dep:tauri-plugin-wdio", "dep:arboard", "memry-desktop/e2e"]
-# Step 07 (#3524): rehearsal-only Velopack probe. Step 38 (#3555) replaces it with the real updater.
-update-probe = []
 
 [build-dependencies]
 tauri-build = { version = "2.7", features = [] }
@@ -51,6 +49,10 @@ dunce = "1.0.5"
 tokio = { workspace = true, features = ["time", "signal", "sync"] }
 tracing = { workspace = true }
 velopack = { workspace = true }
+# `updater/velopack_backend.rs` names the error type of the `ureq` velopack pulls in, and the
+# version type it reports; both resolve to velopack's own copies.
+ureq = { version = "3", default-features = false }
+semver = "1"
 # Native dialogs and "show in folder", reached only through `shell/dialogs.rs` and `vault_reveal`.
 tauri-plugin-dialog = "2.8.3"
 tauri-plugin-opener = "2.7.2"
@@ -91,6 +93,7 @@ windows = { version = "0.62", features = [
   "Win32_System_Com",
   "Win32_System_LibraryLoader",
   "Win32_System_Shutdown",
+  "Win32_System_SystemInformation",
   "Win32_System_Threading",
   "Win32_UI_HiDpi",
   "Win32_UI_Input_KeyboardAndMouse",

@@ -8,9 +8,14 @@ import { join } from 'node:path'
 import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
+import {
+  startFakeSessionManager,
+  type Desktop,
+  type FakeSessionManager
+} from '../../harness/session-manager'
 import { appInfo, restart } from '../../harness/tauri-lifecycle'
 import { invoke } from '../../harness/vault-commands'
-import { pollUntil } from '../../harness/wait'
+import { pollUntil, waitForMainLog } from '../../harness/wait'
 import type { Page } from '../../harness/pw-compat/page'
 
 test.use({ extraEnv: { MEMRY_TEST_UPDATER: 'scripted' } })
@@ -206,3 +211,66 @@ test('a third failed install of the same release offers the manual installer', a
   await expect(page.getByText(`MemryNote couldn't finish installing ${VERSION}`)).toBeVisible()
   await expect(page.getByRole('button', { name: `Download ${VERSION} manually` })).toBeVisible()
 })
+
+// An installer started while the OS session ends is killed after it removed the old install
+// (#1851), so a session end never installs on quit; the update stays on disk for the next quit.
+// Windows: WM_QUERYENDSESSION, then WM_ENDSESSION. The real sign-out is a VM row.
+test('a sign-out leaves a downloaded update to the next normal quit', async ({ app, page }) => {
+  test.skip(process.platform !== 'win32', 'WM_ENDSESSION is Windows-only')
+  const { appDataDir } = await appInfo(app)
+  await download(app, page)
+
+  await invokeTest(app, 'e2e_send_session_end', { target: 'main' })
+  await waitForExit(app)
+  expect(applies(appDataDir)).toEqual([])
+
+  await restart(app)
+  await download(app, page)
+  await invokeTest(app, 'e2e_request_quit')
+  await waitForExit(app)
+  expect(applies(appDataDir)).toEqual([{ silent: true, restart: false }])
+})
+
+/** A fake session manager on the session bus, up before the app registers with it. */
+function withSessionManager(desktop: Desktop) {
+  const logoutTest = test.extend<{ sessionManager: FakeSessionManager }>({
+    sessionManager: async (_deps, use) => {
+      const manager = await startFakeSessionManager(desktop)
+      try {
+        await use(manager)
+      } finally {
+        manager.close()
+      }
+    }
+  })
+  return process.platform === 'linux' ? logoutTest : logoutTest.skip
+}
+
+withSessionManager('xfce')(
+  'a Linux logout leaves a downloaded update to the next normal quit',
+  async ({ sessionManager, app, page }) => {
+    await sessionManager.waitFor('registered', (e) => e.pid === app.pid)
+    const { appDataDir } = await appInfo(app)
+    await download(app, page)
+
+    sessionManager.logout(app.pid)
+    await sessionManager.waitFor('over')
+    await waitForExit(app)
+    expect(applies(appDataDir)).toEqual([])
+  }
+)
+
+withSessionManager('gnome')(
+  'a logout that is called off keeps install on quit',
+  async ({ sessionManager, app, page }) => {
+    await sessionManager.waitFor('registered', (e) => e.pid === app.pid)
+    const { appDataDir } = await appInfo(app)
+    await download(app, page)
+
+    sessionManager.cancelLogout(app.pid)
+    expect(await waitForMainLog(app, 'the logout was called off', 5_000)).toBe(true)
+    await invokeTest(app, 'e2e_request_quit')
+    await waitForExit(app)
+    expect(applies(appDataDir)).toEqual([{ silent: true, restart: false }])
+  }
+)

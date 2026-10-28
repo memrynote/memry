@@ -3,7 +3,6 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import { getI18n } from 'react-i18next'
 import { createLogger } from '@/lib/logger'
-import { subscribeToEvent } from '@/services/tauri-event'
 import { commands, events } from '../../../generated/bindings'
 import {
   DEMO_RELEASE_NOTES,
@@ -62,6 +61,7 @@ let snapshot: AppUpdaterSnapshot = {
   error: null
 }
 
+const subscriptionLog = createLogger('AppUpdater')
 const listeners = new Set<() => void>()
 let unsubscribeFromMain: (() => void) | null = null
 
@@ -100,10 +100,25 @@ function subscribe(listener: () => void): () => void {
   listeners.add(listener)
 
   if (listeners.size === 1) {
-    unsubscribeFromMain = subscribeToEvent(events.updaterStateChangedEvent, publishState)
-    void commands
-      .updaterGetState()
-      .then(publishState)
+    // The first read waits for the listener, so no change falls between the two, and a read
+    // answered after a broadcast is older than it and dropped.
+    let active = true
+    let heard = false
+    const registered = events.updaterStateChangedEvent.listen(({ payload }) => {
+      if (!active) return
+      heard = true
+      publishState(payload)
+    })
+    unsubscribeFromMain = () => {
+      active = false
+      void registered.then((unlisten) => unlisten()).catch(() => undefined)
+    }
+    void registered
+      .catch((err: unknown) => subscriptionLog.warn('updater state subscription failed', err))
+      .then(() => commands.updaterGetState())
+      .then((state) => {
+        if (active && !heard) publishState(state)
+      })
       .catch((err: unknown) => {
         publishError(
           extractErrorMessage(

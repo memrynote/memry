@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Release tag holding MemryNote-win-Setup.exe and the *-full.nupkg files
+        description: Release tag holding the Velopack Setup.exe and the *-full.nupkg files
         required: true
       from_version:
         description: Version inside Setup.exe
@@ -84,7 +84,10 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force assets | Out-Null
           gh release download $env:RELEASE_TAG --repo "${{ github.repository }}" -D assets `
-            --pattern 'MemryNote-win-Setup.exe'
+            --pattern 'MemryNote-Setup-win-x64.exe' --pattern 'MemryNote-win-Setup.exe'
+          # Releases up to v2026-10-25 carry the Setup under vpk's name (RETIRED_SETUP_NAME in
+          # scripts/release/vpk-args.mjs).
+          if (Test-Path .\assets\MemryNote-win-Setup.exe) { Rename-Item .\assets\MemryNote-win-Setup.exe MemryNote-Setup-win-x64.exe }
           gh release download $env:UPDATE_TAG --repo "${{ github.repository }}" -D assets `
             --pattern "MemryNote-$env:TO_VERSION-full.nupkg"
           Get-ChildItem assets | Format-Table Name, Length
@@ -92,7 +95,7 @@ jobs:
       - name: Setup.exe is Authenticode-signed by the Certum certificate
         shell: pwsh
         run: |
-          $sig = Get-AuthenticodeSignature .\assets\MemryNote-win-Setup.exe
+          $sig = Get-AuthenticodeSignature .\assets\MemryNote-Setup-win-x64.exe
           $sig | Format-List Status, StatusMessage
           $sig.SignerCertificate.Subject
           if ($sig.Status -ne 'Valid') { throw "Setup.exe signature status: $($sig.Status)" }
@@ -101,7 +104,7 @@ jobs:
       - name: Install silently
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath .\assets\MemryNote-win-Setup.exe -ArgumentList '--silent', '--verbose', '--log', "$PWD\setup.log" -PassThru -Wait
+          $p = Start-Process -FilePath .\assets\MemryNote-Setup-win-x64.exe -ArgumentList '--silent', '--verbose', '--log', "$PWD\setup.log" -PassThru -Wait
           Write-Host "setup exit code: $($p.ExitCode)"
           Get-Content setup.log -Tail 40
           Start-Sleep -Seconds 5
@@ -205,7 +208,8 @@ jobs:
           gh release download $env:NSIS_RELEASE_TAG --repo "${{ github.repository }}" -D nsis `
             --pattern '*-setup.exe'
           gh release download $env:RELEASE_TAG --repo "${{ github.repository }}" -D assets `
-            --pattern 'MemryNote-win-Setup.exe'
+            --pattern 'MemryNote-Setup-win-x64.exe' --pattern 'MemryNote-win-Setup.exe'
+          if (Test-Path .\assets\MemryNote-win-Setup.exe) { Rename-Item .\assets\MemryNote-win-Setup.exe MemryNote-Setup-win-x64.exe }
           Get-ChildItem nsis, assets | Format-Table Name, Length
           $nsis = Get-ChildItem nsis -Filter '*-setup.exe' | Select-Object -First 1
           if (-not $nsis) { throw "no *-setup.exe on $env:NSIS_RELEASE_TAG" }
@@ -214,7 +218,7 @@ jobs:
       - name: Setup.exe is Authenticode-signed by the Certum certificate
         shell: pwsh
         run: |
-          $sig = Get-AuthenticodeSignature .\assets\MemryNote-win-Setup.exe
+          $sig = Get-AuthenticodeSignature .\assets\MemryNote-Setup-win-x64.exe
           $sig | Format-List Status, StatusMessage
           if ($sig.Status -ne 'Valid') { throw "Setup.exe signature status: $($sig.Status)" }
           if ($sig.SignerCertificate.Subject -notmatch 'Kaan Karaca') { throw "unexpected signer: $($sig.SignerCertificate.Subject)" }
@@ -251,7 +255,7 @@ jobs:
         if: env.RUN_CLI_MIGRATION == 'true'
         shell: pwsh
         run: |
-          $setup = Resolve-Path .\assets\MemryNote-win-Setup.exe
+          $setup = Resolve-Path .\assets\MemryNote-Setup-win-x64.exe
           $p = Start-Process -FilePath $env:NSIS_EXE -ArgumentList '--cli', 'migrate-installer', "$setup" -PassThru -Wait -NoNewWindow
           Write-Host "migrate-installer exit code: $($p.ExitCode)"
           if ($p.ExitCode -ne 0) { throw "migrate-installer exited $($p.ExitCode)" }
@@ -262,7 +266,7 @@ jobs:
         run: |
           $app = Start-Process -FilePath $env:NSIS_EXE -PassThru
           Start-Sleep -Seconds 5
-          $setup = Resolve-Path .\assets\MemryNote-win-Setup.exe
+          $setup = Resolve-Path .\assets\MemryNote-Setup-win-x64.exe
           # `--spawn` starts the script with the app's own spawn options (detached, no console).
           # A hidden `Start-Process cmd` has a console and hid a `tasklist | find` that hangs
           # without one.

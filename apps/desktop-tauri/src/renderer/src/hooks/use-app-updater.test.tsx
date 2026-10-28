@@ -278,6 +278,47 @@ describe('useAppUpdater shared store', () => {
     expect(log.at(-1)).toMatchObject({ status: 'available', version: '3.0.0' })
   })
 
+  // Main may change state (the startup check, an escalated install failure) while the first
+  // read is in flight; that read answers with the state before the change.
+  it('a first read answered after a broadcast does not overwrite it', async () => {
+    let answer: (state: AppUpdateState) => void = () => undefined
+    updaterApi.getState.mockReturnValue(
+      new Promise<AppUpdateState>((resolve) => {
+        answer = resolve
+      })
+    )
+    const log: FullSample[] = []
+
+    await act(async () => {
+      render(<FullConsumer log={log} />)
+    })
+    await broadcast(makeState({ status: 'up-to-date', availableVersion: '3.0.0' }))
+    await act(async () => {
+      answer(makeState({ status: 'idle' }))
+    })
+
+    expect(log.at(-1)).toMatchObject({ status: 'up-to-date', version: '3.0.0', isLoading: false })
+  })
+
+  it('reads state only once the broadcast listener is registered', async () => {
+    let registered: (unlisten: () => void) => void = () => undefined
+    mocks.listen = (handler) => {
+      listeners.push((next) => handler({ payload: next }))
+      return new Promise((resolve) => {
+        registered = resolve
+      })
+    }
+    await act(async () => {
+      render(<FullConsumer log={[]} />)
+    })
+    expect(updaterApi.getState).not.toHaveBeenCalled()
+
+    await act(async () => {
+      registered(() => undefined)
+    })
+    expect(updaterApi.getState).toHaveBeenCalledTimes(1)
+  })
+
   it('re-reads state from main when the last consumer unmounts and a new one mounts', async () => {
     const first: FullSample[] = []
 

@@ -15,6 +15,9 @@ pub enum CheckOutcome {
 pub trait UpdateBackend: Send + Sync {
     /// Reads the feed. The backend keeps the release it found for `download` and `apply`.
     fn check(&self) -> Result<CheckOutcome, UpdateError>;
+    /// A newer release an earlier run downloaded and never installed: a session end skipped it,
+    /// or the app was killed. The backend keeps it for `apply`. Reads the disk only.
+    fn downloaded(&self) -> Option<AvailableUpdate>;
     /// Downloads the release the last check found; `progress` takes 0 to 100. A release already
     /// on disk returns at once.
     fn download(&self, progress: &dyn Fn(f64)) -> Result<(), UpdateError>;

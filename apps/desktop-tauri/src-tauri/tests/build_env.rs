@@ -107,3 +107,51 @@ fn env_files_parse_comments_quotes_and_blank_values() {
         (Some("1"), None, Some("x y"), Some(""))
     );
 }
+
+#[test]
+fn a_production_build_with_a_rehearsal_feed_fails_and_a_staging_one_keeps_it() {
+    let complete = [
+        ("SYNC_SERVER_URL", "https://sync"),
+        ("GOOGLE_CALENDAR_CLIENT_ID", "id"),
+        ("GOOGLE_CALENDAR_CLIENT_SECRET", "secret"),
+        (
+            "MEMRY_UPDATE_FEED_URL",
+            "https://github.com/memrynote/memry-update-rehearsal",
+        ),
+    ];
+    for profile in ["release", "debug"] {
+        let mut process = complete.to_vec();
+        process.push(("MEMRY_ENV", "production"));
+        let error = run(profile, false, &process, None).expect_err("must fail");
+        assert!(error.contains("MEMRY_UPDATE_FEED_URL"), "{error}");
+        assert!(!error.contains("rehearsal"), "never a value");
+    }
+    assert!(run("release", false, &complete, None).is_err());
+    let mut staging = complete.to_vec();
+    staging.push(("MEMRY_ENV", "staging"));
+    assert!(run("release", false, &staging, None).is_ok());
+}
+
+#[test]
+fn the_update_feed_reaches_the_app_trimmed_and_a_blank_one_does_not() {
+    let feed = |value: &str| {
+        let process = [("MEMRY_ENV", "staging"), ("MEMRY_UPDATE_FEED_URL", value)];
+        run("release", false, &process, None)
+            .unwrap()
+            .into_iter()
+            .find(|(k, _)| k == "MEMRY_BUILD_MEMRY_UPDATE_FEED_URL")
+            .map(|(_, v)| v)
+    };
+    assert_eq!(
+        feed(" https://github.com/memrynote/memry-update-rehearsal\n").as_deref(),
+        Some("https://github.com/memrynote/memry-update-rehearsal")
+    );
+    assert_eq!(feed("  "), None);
+    let blank_in_production = [
+        ("SYNC_SERVER_URL", "https://sync"),
+        ("GOOGLE_CALENDAR_CLIENT_ID", "id"),
+        ("GOOGLE_CALENDAR_CLIENT_SECRET", "secret"),
+        ("MEMRY_UPDATE_FEED_URL", " "),
+    ];
+    assert!(run("release", false, &blank_in_production, None).is_ok());
+}

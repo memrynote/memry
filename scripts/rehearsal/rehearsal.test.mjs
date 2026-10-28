@@ -5,6 +5,7 @@ import { feedValues, patchConstant, publishOverrides } from './build-electron-re
 import { pollUntil } from './drive-electron-update.mjs'
 import {
   assertPublishConfirmed,
+  dispatchFields,
   FEED_REPO,
   flag,
   isPreviousFullOf,
@@ -70,6 +71,20 @@ describe('rehearse', () => {
   it('reads flag values', () => {
     assert.equal(flag(['--run', '7'], '--run'), '7')
     assert.equal(flag([], '--run'), undefined)
+  })
+
+  it('builds the branch it is given, and the workflow default otherwise', () => {
+    assert.deepEqual(dispatchFields('2099.101.4', ['--source-ref', 'feat/x']), [
+      '-f',
+      'version=2099.101.4',
+      '-f',
+      `feed_repo=${FEED_REPO}`,
+      '-f',
+      'previous_tag=',
+      '-f',
+      'source_ref=feat/x'
+    ])
+    assert.ok(!dispatchFields('2099.101.4', []).some((field) => field.startsWith('source_ref')))
   })
 })
 
