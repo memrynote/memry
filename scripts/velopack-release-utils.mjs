@@ -1,3 +1,5 @@
+import { X64_SETUP_NAME } from './release/vpk-args.mjs'
+
 export const releaseStepOrder = [
   'dispatch',
   'build',
@@ -291,7 +293,8 @@ export function buildVelopackAssetNames(appVersion) {
     full: `MemryNote-${appVersion}-full.nupkg`,
     releases: 'RELEASES',
     releasesJson: 'releases.win.json',
-    setup: 'MemryNote-win-Setup.exe'
+    // vpk-args.mjs owns the Setup name rule: vpk's own name is never published.
+    setup: X64_SETUP_NAME
   }
 }
 

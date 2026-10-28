@@ -23,6 +23,7 @@ import {
   selectPreviousFullNupkgAsset,
   selectPreviousPublishedRelease
 } from './velopack-release-utils.mjs'
+import { RETIRED_SETUP_NAME } from './release/vpk-args.mjs'
 
 const ciAssetNames = [
   'Memry-2026.508.1-arm64.dmg',
@@ -38,7 +39,7 @@ const ciAssetNames = [
 ]
 
 const velopackAssetNames = [
-  'MemryNote-win-Setup.exe',
+  'MemryNote-Setup-win-x64.exe',
   'MemryNote-2026.508.1-full.nupkg',
   'MemryNote-2026.508.1-delta.nupkg',
   'releases.win.json',
@@ -517,9 +518,27 @@ describe('upload assets', () => {
       full: 'MemryNote-2026.508.1-full.nupkg',
       releases: 'RELEASES',
       releasesJson: 'releases.win.json',
-      setup: 'MemryNote-win-Setup.exe'
+      setup: 'MemryNote-Setup-win-x64.exe'
     })
     assert.throws(() => buildVelopackAssetNames(''), /appVersion is required/)
+  })
+
+  // Shipped Electron builds up to v2026-10-25 HEAD vpk's Setup name and, on a 200, arm a hand-off
+  // that hangs.
+  it("never uploads a Setup left under vpk's name", () => {
+    const { assets, missing } = collectUploadAssets({
+      appVersion: '2026.508.1',
+      ciAssetNames,
+      velopackAssetNames: velopackAssetNames.map((name) =>
+        name === 'MemryNote-Setup-win-x64.exe' ? RETIRED_SETUP_NAME : name
+      )
+    })
+
+    assert.equal(
+      assets.some((asset) => asset.name === RETIRED_SETUP_NAME),
+      false
+    )
+    assert.deepEqual(missing, ['MemryNote-Setup-win-x64.exe'])
   })
 
   it('collects a complete set with nothing missing', () => {
@@ -614,7 +633,7 @@ describe('upload assets', () => {
     const { missing } = collectUploadAssets({
       appVersion: '2026.508.1',
       ciAssetNames,
-      velopackAssetNames: ['MemryNote-win-Setup.exe', 'releases.win.json']
+      velopackAssetNames: ['MemryNote-Setup-win-x64.exe', 'releases.win.json']
     })
 
     assert.deepEqual(missing, ['MemryNote-2026.508.1-full.nupkg', 'RELEASES'])

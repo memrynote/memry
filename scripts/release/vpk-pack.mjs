@@ -4,18 +4,30 @@
 //        [--delta None|BestSpeed|BestSize] [--icon P] [--sign-template T]
 //        [--identity I --entitlements P --notary-profile N --keychain K]
 import { spawnSync } from 'node:child_process'
-import { readdirSync, renameSync } from 'node:fs'
+import { readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
 import { buildPackArgs, publishedName } from './vpk-args.mjs'
 
-/** Renames vpk's outputs in `outputDir` to their published names. */
+/**
+ * Renames vpk's outputs in `outputDir` to their published names, and the entries of vpk's
+ * `assets.<channel>.json` index with them, so the index names the files on disk.
+ */
 export function renameToPublished(outputDir) {
   for (const name of readdirSync(outputDir)) {
+    const file = path.join(outputDir, name)
     const published = publishedName(name)
-    if (published !== name) renameSync(path.join(outputDir, name), path.join(outputDir, published))
+    if (published !== name) renameSync(file, path.join(outputDir, published))
+    if (/^assets\..+\.json$/.test(name)) {
+      const entries = JSON.parse(readFileSync(file, 'utf8'))
+      const renamed = entries.map((entry) => ({
+        ...entry,
+        RelativeFileName: publishedName(entry.RelativeFileName)
+      }))
+      writeFileSync(file, JSON.stringify(renamed))
+    }
   }
 }
 

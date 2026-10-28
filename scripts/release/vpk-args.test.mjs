@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -135,12 +135,25 @@ describe('assetNames', () => {
       for (const file of [RETIRED_SETUP_NAME, `MemryNote-${v}-full.nupkg`, 'releases.win.json']) {
         writeFileSync(path.join(out, file), '')
       }
+      const index = path.join(out, 'assets.win.json')
+      writeFileSync(
+        index,
+        JSON.stringify([
+          { RelativeFileName: RETIRED_SETUP_NAME, Type: 'Installer' },
+          { RelativeFileName: `MemryNote-${v}-full.nupkg`, Type: 'Full' }
+        ])
+      )
       renameToPublished(out)
       assert.deepEqual(readdirSync(out).toSorted(), [
         'MemryNote-2099.101.1-full.nupkg',
         'MemryNote-Setup-win-x64.exe',
+        'assets.win.json',
         'releases.win.json'
       ])
+      assert.deepEqual(
+        JSON.parse(readFileSync(index, 'utf8')).map((entry) => entry.RelativeFileName),
+        ['MemryNote-Setup-win-x64.exe', `MemryNote-${v}-full.nupkg`]
+      )
     } finally {
       rmSync(out, { recursive: true, force: true })
     }

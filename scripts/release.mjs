@@ -27,6 +27,8 @@ import {
   selectDraftRelease
 } from './release-utils.mjs'
 import { assertHumanizedReleaseNotesForPublish } from './release-notes-utils.mjs'
+import { assertPublishable, RETIRED_SETUP_NAME } from './release/vpk-args.mjs'
+import { renameToPublished } from './release/vpk-pack.mjs'
 import {
   buildKeytoolListArgs,
   buildOsslsigncodeVerifyArgs,
@@ -340,6 +342,7 @@ async function packVelopack({ assetDir, metadata, releases, state, workDir }) {
 
   if (isStepDone(state, 'pack') && existsSync(path.join(velopackDir, names.full))) {
     console.log(`Velopack: reusing ${path.relative(repoRoot, velopackDir)}`)
+    renameToPublished(velopackDir)
     return velopackDir
   }
 
@@ -382,6 +385,7 @@ async function packVelopack({ assetDir, metadata, releases, state, workDir }) {
     throw new Error(`vpk pack failed with exit code ${result.status}`)
   }
 
+  renameToPublished(velopackDir)
   return velopackDir
 }
 
@@ -585,6 +589,7 @@ function uploadReleaseAssets({ assetDir, draftTag, metadata, velopackDir }) {
     path.join(asset.source === 'ci' ? assetDir : velopackDir, asset.name)
   )
 
+  assertPublishable(files.map((file) => path.basename(file)))
   console.log(`Uploading ${files.length} assets to ${draftTag}`)
   runGh(['release', 'upload', draftTag, ...files, '--repo', repoSlug(), '--clobber'], {
     stdio: 'inherit'
@@ -679,7 +684,11 @@ function dispatchSmokeTest({ metadata, releases }) {
 
   // The runner installs the previous release's Setup.exe and applies this
   // release's package on top, which is the upgrade the migration exists to fix.
-  if (!previous || !previousAssets.includes(names.setup)) {
+  // Releases up to v2026-10-25 carry the Setup under RETIRED_SETUP_NAME.
+  if (
+    !previous ||
+    ![names.setup, RETIRED_SETUP_NAME].some((name) => previousAssets.includes(name))
+  ) {
     console.log(`Smoke test needs Velopack assets on ${previousTag}; skipped`)
     return
   }
