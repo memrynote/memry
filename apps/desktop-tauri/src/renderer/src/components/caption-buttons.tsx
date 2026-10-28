@@ -11,6 +11,9 @@ const log = createLogger('Component:CaptionButtons')
 type ButtonName = 'minimize' | 'maximize' | 'close'
 
 /** Segoe Fluent Icons code points: minimize, maximize, restore, close. */
+/** How long after a display scale change the rectangles are reported once more. */
+const SCALE_SETTLE_MS = 300
+
 const GLYPH = { minimize: '\uE921', maximize: '\uE922', restore: '\uE923', close: '\uE8BB' }
 
 interface ButtonProps {
@@ -101,14 +104,19 @@ export function CaptionButtons(): React.JSX.Element | null {
     }
     observer.observe(document.documentElement)
     window.addEventListener('resize', report)
-    // A display scale change moves every physical rectangle without resizing anything in CSS
-    // pixels. The query matches one ratio, so it is armed again for the new one each time.
+    // A display scale change moves every physical rectangle. The window resizes before the
+    // ratio changes, so a report at the old ratio goes out first, and each report is its own IPC
+    // request, which can arrive after the next one. A second report once the change settled is
+    // the one that lands last. The query matches one ratio, so it is armed again each time.
     let scale: MediaQueryList | null = null
+    let settle: ReturnType<typeof setTimeout> | undefined
     const onScale = (): void => {
       scale?.removeEventListener('change', onScale)
       scale = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
       scale.addEventListener('change', onScale)
       report()
+      clearTimeout(settle)
+      settle = setTimeout(report, SCALE_SETTLE_MS)
     }
     scale = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
     scale.addEventListener('change', onScale)
@@ -116,6 +124,7 @@ export function CaptionButtons(): React.JSX.Element | null {
       observer.disconnect()
       window.removeEventListener('resize', report)
       scale?.removeEventListener('change', onScale)
+      clearTimeout(settle)
       // Hidden buttons (full screen) must not leave the native input sink over the page.
       const none = { x: 0, y: 0, width: 0, height: 0 }
       void commands

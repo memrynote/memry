@@ -81,11 +81,18 @@ describe('CaptionButtons', () => {
     expect(queries.at(-1)?.media).toBe('(resolution: 1.5dppx)')
     shell.setRects.mockClear()
 
+    vi.useFakeTimers()
     Object.defineProperty(window, 'devicePixelRatio', { value: 2, configurable: true })
     act(() => queries.at(-1)?.fire())
     const physical = { x: 20, y: 0, width: 92, height: 72 }
     expect(shell.setRects).toHaveBeenCalledWith(physical, physical, physical)
     expect(queries.at(-1)?.media).toBe('(resolution: 2dppx)')
+
+    // A report sent before the change settled can arrive last; a later one corrects it.
+    shell.setRects.mockClear()
+    act(() => vi.advanceTimersByTime(300))
+    expect(shell.setRects).toHaveBeenCalledWith(physical, physical, physical)
+    vi.useRealTimers()
   })
 
   it('styles hover and press from shell events, since the page gets no mouse events', () => {
