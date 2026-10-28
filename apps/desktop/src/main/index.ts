@@ -655,7 +655,9 @@ function configureCertificatePinning(): void {
   session.defaultSession.setCertificateVerifyProc((request, callback) => {
     const pinsForHostname = [...getPinnedCertificateHashesForHostname(request.hostname)]
     if (pinsForHostname.length === 0) {
-      callback(0)
+      // -3 keeps Chromium's own verdict. 0 would force success and skip chain, expiry and
+      // hostname verification for every host that has no pin entry, e.g. a self-signed cert.
+      callback(-3)
       return
     }
 
