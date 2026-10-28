@@ -56,8 +56,14 @@ fn patch_of(value: Value) -> Result<Map<String, Value>, CommandError> {
     }
 }
 
-/// Tells every window and telemetry what was written: names only.
-pub(crate) fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
+/// Tells every window and telemetry what was written: names only. The write is saved either way;
+/// an error says the login item could not follow `general.startOnBoot`.
+pub(crate) fn announce(
+    app: &AppHandle<Wry>,
+    key: &str,
+    fields: Vec<String>,
+) -> Result<(), CommandError> {
+    let mut login_item = Ok(());
     if let Some(service) = telemetry(app) {
         if fields.is_empty() {
             setting_changed(&service, key);
@@ -67,7 +73,7 @@ pub(crate) fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
         }
     }
     if key == "general" {
-        crate::autostart::on_general_written(app, &fields);
+        login_item = crate::autostart::on_general_written(app, &fields);
         // `general.minimizeToTray` lives here; apply converges and ignores an unchanged value.
         if let Err(error) = crate::tray::apply_from_settings(app) {
             tracing::warn!(scope = "Tray", "could not apply the tray setting: {error}");
@@ -84,6 +90,7 @@ pub(crate) fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
         crate::menu::apply(app, false);
         crate::shortcuts::apply_from_settings(app);
     }
+    login_item
 }
 
 /// A group of the open vault, or its defaults while no vault is open.
@@ -117,8 +124,7 @@ pub async fn settings_set_group(
             .map_err(map_error)
     })
     .await?;
-    announce(&app, &change.group, change.fields);
-    Ok(())
+    announce(&app, &change.group, change.fields)
 }
 
 /// One value by `<group>.<field>` or `<group>.<field>.<entry>`.
@@ -164,8 +170,7 @@ pub async fn settings_set_local(
             .map_err(map_error)
     })
     .await?;
-    announce(&app, &change.group, change.fields);
-    Ok(())
+    announce(&app, &change.group, change.fields)
 }
 
 /// Restores the shortcut defaults. The folder shortcuts are entries the user added, not
@@ -193,8 +198,7 @@ pub async fn settings_reset_keyboard(app: AppHandle<Wry>) -> Result<(), CommandE
             .map_err(map_error)
     })
     .await?;
-    announce(&app, &change.group, change.fields);
-    Ok(())
+    announce(&app, &change.group, change.fields)
 }
 
 /// Stores the zoom factor for the next launch's first paint (`startupValues`).

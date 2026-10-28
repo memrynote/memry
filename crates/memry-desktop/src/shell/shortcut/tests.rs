@@ -250,6 +250,33 @@ fn a_refused_binding_is_not_saved_and_the_previous_one_comes_back() {
 }
 
 #[test]
+fn a_binding_the_os_took_but_that_could_not_be_saved_gives_the_previous_one_back() {
+    let keys = FakeKeys::default();
+    let mut capture = GlobalCapture::default();
+    let previous = binding("K", true, false);
+    capture.apply(&keys, false, Some(&previous), noop());
+
+    let error = capture
+        .set(
+            &keys,
+            false,
+            Some(&previous),
+            Some(&binding("J", true, false)),
+            noop(),
+            || Err("disk full".to_owned()),
+        )
+        .unwrap_err();
+    assert_eq!(error, "disk full");
+    // What the user sees saved is what is registered: the unsaved binding is not left behind.
+    assert!(keys.holds("CommandOrControl+K"));
+    assert!(!keys.holds("CommandOrControl+J"));
+    assert_eq!(
+        capture.configured.held.as_deref(),
+        Some("CommandOrControl+K")
+    );
+}
+
+#[test]
 fn an_accepted_binding_is_saved_once() {
     let keys = FakeKeys::default();
     let mut capture = GlobalCapture::default();

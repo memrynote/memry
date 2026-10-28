@@ -55,6 +55,9 @@ impl UpdateApplyHook for FakeHook {
     fn disable_install_on_quit(&self) {
         self.log.push("hook:disable");
     }
+    fn enable_install_on_quit(&self) {
+        self.log.push("hook:enable");
+    }
     fn install_requested(&self) -> bool {
         self.install.load(Ordering::SeqCst)
     }

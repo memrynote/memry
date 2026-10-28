@@ -25,3 +25,4 @@ pub mod shutdown;
 pub mod spell;
 pub mod stall;
 pub mod tray;
+pub mod tray_host;

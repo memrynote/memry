@@ -754,6 +754,8 @@ Open the context menu on an underlined word to correct it. Suggestions sit at th
 
 Memry does not pick a spellchecking language of its own. macOS detects the language you are writing in; Windows and Linux use the dictionary for the system locale.
 
+On **Linux** the dictionaries come from Enchant (`libenchant-2-2`, installed with most desktops) and the Hunspell or Aspell dictionaries for your language. When Enchant is missing, **Check Spelling** underlines nothing and the context menu shows no spelling entries; the rest of the app is unaffected. **Add to Dictionary** writes to your personal Enchant word list.
+
 ## Toolbar
 
 The formatting toolbar can be sticky at the top or float above selections — choose in [Settings → Editor](/user-guide/settings#editor), or with **Pin toolbar to top** in the toolbar's **More** (`⋯`) menu. With the toolbar pinned, the block type and list buttons also apply to blocks you drag-selected from the margin.

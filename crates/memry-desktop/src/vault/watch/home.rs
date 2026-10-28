@@ -116,6 +116,24 @@ impl Reconciler {
         Ok(found)
     }
 
+    /// The notes that lived at `rel`, which is gone: its note, or every note below it when it
+    /// was a folder. A note found under another spelling whose own file is still listed is not
+    /// one of them: on a case-sensitive volume `Note.md` and `note.md` are two files, and the
+    /// unlink of one is never the delete of the other (whose copy would then pair as its move).
+    pub(super) fn homes_gone_at(&mut self, rel: &str) -> Result<Vec<Home>, StorageError> {
+        match self.home_at(rel)? {
+            Some(home) if home.path != rel && spelling_listed(&self.root, &home.path) => Ok(self
+                .files
+                .by_path(rel)?
+                .and_then(|row| home_of_row(&self.reported, &row))
+                .filter(|home| home.path == rel)
+                .into_iter()
+                .collect()),
+            Some(home) => Ok(vec![home]),
+            None => self.homes_under(rel),
+        }
+    }
+
     /// The notes whose home is below the folder `rel`.
     pub(super) fn homes_under(&mut self, rel: &str) -> Result<Vec<Home>, StorageError> {
         // A name with a supported extension is a file: no folder to look under. Editors' temp

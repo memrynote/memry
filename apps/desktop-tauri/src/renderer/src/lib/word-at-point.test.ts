@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { wordSpanAtOffset } from './word-at-point'
+import { wordAtCaret, wordSpanAtOffset } from './word-at-point'
 
 describe('wordSpanAtOffset', () => {
   const text = 'I wrote teh note, naïve don’t 42.'
@@ -28,5 +28,28 @@ describe('wordSpanAtOffset', () => {
 
   it('returns null for empty text', () => {
     expect(wordSpanAtOffset('', 0)).toBeNull()
+  })
+})
+
+describe('wordAtCaret', () => {
+  function field(value: string, start: number, end: number): HTMLInputElement {
+    const input = document.createElement('input')
+    input.value = value
+    input.setSelectionRange(start, end)
+    return input
+  }
+
+  it('is the word the caret is in', () => {
+    expect(wordAtCaret(field('teh quick brwn fox', 12, 12))?.word).toBe('brwn')
+  })
+
+  it('is a word selected as a whole, which a right-click on it keeps selected', () => {
+    expect(wordAtCaret(field('teh quick brwn fox', 0, 3))?.word).toBe('teh')
+  })
+
+  it('is nothing for a selection that is not exactly one word, because its start is not where the pointer is', () => {
+    // Select-all, then a right-click on "brwn": the caret API would answer "teh".
+    expect(wordAtCaret(field('teh quick brwn fox', 0, 18))).toBeNull()
+    expect(wordAtCaret(field('teh quick brwn fox', 0, 2))).toBeNull()
   })
 })

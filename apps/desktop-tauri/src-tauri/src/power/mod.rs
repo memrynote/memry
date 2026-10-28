@@ -56,6 +56,8 @@ fn publish(sender: &broadcast::Sender<PowerEvent>, event: PowerEvent) {
 
 #[cfg(all(target_os = "macos", feature = "e2e"))]
 pub use mac::post_workspace_notification;
+#[cfg(all(windows, feature = "e2e"))]
+pub use win::post_end_session;
 
 fn describe(event: PowerEvent) -> &'static str {
     match event {
@@ -90,7 +92,17 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
                     }
                 }
                 Ok(PowerEvent::SessionEnding) => {}
-                Err(broadcast::error::RecvError::Lagged(_)) => {}
+                Err(broadcast::error::RecvError::Lagged(missed)) => {
+                    // A missed `Resume` would leave the stall monitor off for good, and a
+                    // monitor that was never suspended is unaffected by `resume`.
+                    tracing::warn!(
+                        scope = "Power",
+                        "missed {missed} power events; resuming the stall monitor"
+                    );
+                    if let Some(stall) = handle.try_state::<StallMonitor>() {
+                        stall.resume();
+                    }
+                }
                 Err(broadcast::error::RecvError::Closed) => break,
             }
         }
@@ -103,7 +115,7 @@ fn start_platform(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     #[cfg(target_os = "macos")]
     mac::start(&sender);
     #[cfg(target_os = "linux")]
-    linux::start(&sender);
+    linux::start(app, &sender);
     #[cfg(windows)]
     win::start(app, &sender);
     #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
