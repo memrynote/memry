@@ -11,7 +11,9 @@ use memry_core::crdt::DocumentRegistry;
 use memry_core::crdt::canonical::canonical_fragment;
 use memry_core::crdt::registry::{Document, UpdateSink};
 use memry_core::markdown::pm::Schema;
-use memry_core::markdown::yxml::{ReadFragment, YxmlError, read_fragment, write_fragment};
+use memry_core::markdown::yxml::{
+    RETIRED_MARK_ATTRS, ReadFragment, YxmlError, read_fragment, write_fragment,
+};
 use serde_json::json;
 use support::vector_compare::{Failures, bytes_equal};
 use support::{hex_field, str_field, vector_file};
@@ -122,6 +124,10 @@ fn note_blocks_documents_survive_a_round_trip_unchanged() {
         let outcome = match read(&document, "prosemirror") {
             Err(error) => Err(format!("read failed: {error}")),
             Ok(read) if read.removed != 0 => Err(format!("{} elements were removed", read.removed)),
+            // What BlockNote writes, this build reads whole: nothing lost reads as "lossy".
+            Ok(read) if read.lost != 0 => {
+                Err(format!("{} runs or attributes were lost", read.lost))
+            }
             Ok(read) => bytes_equal(
                 str_field(case, "expectedCanonical"),
                 &written_canonical(&read.doc),
@@ -153,4 +159,87 @@ fn writing_into_a_non_empty_fragment_is_refused() {
         })
         .expect("write transaction");
     assert_eq!(result, Err(YxmlError::NotEmpty));
+}
+
+/// `lost` counts every text run, mark and attribute the read drops inside the elements it
+/// keeps, so "removed 0" can never hide content: the external feed replaces a body only
+/// when the read lost nothing (12e-1). The oracle's lossy reads are exactly these.
+#[test]
+fn a_read_counts_every_run_and_attribute_it_drops() {
+    const LOSSY: &[&str] = &[
+        "yxml/read/extra-attribute-dropped",
+        "yxml/read/unknown-mark-drops-text",
+    ];
+    let file = vector_file("markdown-convert/yxml");
+    let mut failures = Failures::default();
+    for case in file["cases"].as_array().expect("cases") {
+        if case["op"] != "yxml-read" || case["expected"]["status"] == "error" {
+            continue;
+        }
+        let id = str_field(case, "id");
+        let input = &case["input"];
+        let document = open(&hex_field(input, "updateHex"));
+        let outcome = match read(&document, str_field(input, "fragment")) {
+            Err(error) => Err(format!("Rust failed: {error}")),
+            Ok(read) if LOSSY.contains(&id) == (read.lost > 0) => Ok(()),
+            Ok(read) => Err(format!("lost {}", read.lost)),
+        };
+        failures.check(id, outcome);
+    }
+    failures.finish("yxml lost counts");
+}
+
+/// The schema of every shipped release (`blocknote-<version>.json`, its real `pmSchema`)
+/// against this one. Each node attribute it declared is still declared. Each mark attribute
+/// it declared is declared, or listed in `RETIRED_MARK_ATTRS`, and every listed one comes from
+/// a release. A mark this schema does not have at all (the AI suggestion marks) is not
+/// retired: its text stays lost, and a feed refuses to replace it.
+#[test]
+fn every_attribute_a_shipped_release_wrote_is_declared_or_retired() {
+    let schema = Schema::memry();
+    let release = vector_file("markdown-convert/blocknote-0.47.1");
+    let mut seen_retired = Vec::new();
+    for (name, attrs) in release["nodes"].as_object().expect("nodes") {
+        let Some(id) = schema.node_type(name) else {
+            panic!("the release had node {name}, which this schema cannot build");
+        };
+        let declared = schema.node_ty(id).spec.attrs;
+        for attr in attrs.as_object().expect("attrs").keys() {
+            assert!(
+                declared.iter().any(|a| a.name == attr),
+                "{name}.{attr} was written by a release and is not declared"
+            );
+        }
+    }
+    for (name, attrs) in release["marks"].as_object().expect("marks") {
+        let Some(id) = schema.mark_type(name) else {
+            assert!(
+                !RETIRED_MARK_ATTRS.iter().any(|(mark, _)| mark == name),
+                "{name} is not in this schema; its text is content, not a retired attribute"
+            );
+            continue;
+        };
+        let declared = schema.mark_ty(id).spec.attrs;
+        for attr in attrs.as_object().expect("attrs").keys() {
+            if declared.iter().any(|a| a.name == attr) {
+                continue;
+            }
+            let retired = RETIRED_MARK_ATTRS
+                .iter()
+                .any(|(mark, list)| mark == name && list.contains(&attr.as_str()));
+            assert!(
+                retired,
+                "{name}.{attr} was written by a release and is neither declared nor retired"
+            );
+            seen_retired.push(format!("{name}.{attr}"));
+        }
+    }
+    for (mark, list) in RETIRED_MARK_ATTRS {
+        for attr in *list {
+            assert!(
+                seen_retired.contains(&format!("{mark}.{attr}")),
+                "{mark}.{attr} is listed as retired but no release wrote it"
+            );
+        }
+    }
 }
