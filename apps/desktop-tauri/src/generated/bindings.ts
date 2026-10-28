@@ -92,6 +92,17 @@ export const commands = {
 	 *  the menu closed without a choice.
 	 */
 	shellShowContextMenu: (items: ContextMenuItem[]) => __TAURI_INVOKE<string | null>("shell_show_context_menu", { items }),
+	/**  Opens an `https:`, `http:` or `mailto:` link in the OS. */
+	shellOpenExternal: (url: string) => __TAURI_INVOKE<null>("shell_open_external", { url }),
+	/**
+	 *  Follows a link activation the renderer kept from navigating the window: what the main frame's
+	 *  navigation would have done with it (`shell::navigation_guard::open_link`).
+	 */
+	shellOpenLink: (url: string) => __TAURI_INVOKE<null>("shell_open_link", { url }),
+	/**  Opens a file of the open vault or the app data directory in the OS. */
+	shellOpenPath: (path: string) => __TAURI_INVOKE<null>("shell_open_path", { path }),
+	/**  Shows a file of the open vault or the app data directory in the file manager. */
+	shellRevealPath: (path: string) => __TAURI_INVOKE<null>("shell_reveal_path", { path }),
 	/**
 	 *  True once after the shell reloaded the calling page because its web process died, so the page
 	 *  tells the user that recent edits may be lost.

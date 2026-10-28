@@ -44,7 +44,7 @@ import { unsplashService } from '@/services/unsplash-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { useVault } from '@/hooks/use-vault'
-import { toMemryFileUrl } from '@/lib/memry-file-url'
+import { toMemryFileUrl, toWebviewUrl } from '@/lib/memry-file-url'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Kbd } from '@/components/ui/kbd'
 import { Link as LinkIcon, Loader2, Search, Upload } from '@/lib/icons'
@@ -160,7 +160,9 @@ function itemKey(item: CoverPickerItem): string {
  */
 function vaultAttachmentUrl(entry: VaultAttachmentEntry, vaultPath: string | null): string | null {
   if (!vaultPath) return null
-  return toMemryFileUrl(`${vaultPath}/attachments/${entry.ownerNoteId}/${entry.filename}`)
+  return toWebviewUrl(
+    toMemryFileUrl(`${vaultPath}/attachments/${entry.ownerNoteId}/${entry.filename}`)
+  )
 }
 
 /** A link is only offered once it is one Memry can actually fetch. */

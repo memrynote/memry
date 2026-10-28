@@ -89,6 +89,24 @@ describe('CommentAttachments', () => {
     expect(container.querySelector('a')).toBeNull()
   })
 
+  it('loads an image thumbnail through the https form on Windows, where WebView2 cannot load the scheme', () => {
+    document.documentElement.setAttribute('data-platform', 'win32')
+    try {
+      const { container } = render(
+        <CommentAttachments
+          mark={markWith([
+            att({ name: 'pic.png', path: 'memry-file://local/C:/vault/attachments/n1/pic.png' })
+          ])}
+        />
+      )
+      expect(container.querySelector('img')?.getAttribute('src')).toBe(
+        'https://memry-file.localhost/local/C:/vault/attachments/n1/pic.png'
+      )
+    } finally {
+      document.documentElement.removeAttribute('data-platform')
+    }
+  })
+
   it('renders pdf and other files as buttons, never navigable memry-file anchors', () => {
     const { container } = render(
       <CommentAttachments

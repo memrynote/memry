@@ -1,6 +1,6 @@
 import { memo, useState } from 'react'
 import { Globe, Play } from '@/lib/icons'
-import { extractYouTubeVideoId } from '@/lib/youtube-utils'
+import { extractYouTubeVideoId, getYouTubeEmbedUrl } from '@/lib/youtube-utils'
 import { metadataAs } from './item-metadata'
 import type { InboxItem, InboxItemListItem, LinkMetadata } from '@/types'
 
@@ -85,9 +85,9 @@ export const LinkPreview = memo(({ item }: LinkPreviewProps): React.JSX.Element 
       <div className="flex flex-col gap-4">
         <div className="relative aspect-video overflow-hidden rounded-[10px] bg-black">
           <iframe
-            src={`https://www.youtube-nocookie.com/embed/${youtubeVideoId}?autoplay=1&rel=0`}
+            src={getYouTubeEmbedUrl(youtubeVideoId)}
             className="size-full"
-            // oxlint-disable-next-line react/iframe-missing-sandbox -- YouTube embed player requires scripts and same-origin; src is fixed to youtube-nocookie.com/embed
+            // oxlint-disable-next-line react/iframe-missing-sandbox -- YouTube embed player requires scripts and same-origin; src is the loopback embed page, which frames only youtube-nocookie.com
             sandbox="allow-scripts allow-same-origin allow-presentation"
             allow="autoplay; encrypted-media"
             title={item.title || 'YouTube video'}

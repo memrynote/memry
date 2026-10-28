@@ -18,6 +18,7 @@ import {
   parseRotation,
   parseViewerPosition
 } from '@/pages/file-view-state'
+import { toWebviewUrl } from '@/lib/memry-file-url'
 
 // ============================================================================
 // Types
@@ -325,7 +326,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
       >
         <img
           ref={imageRef}
-          src={src}
+          src={toWebviewUrl(src)}
           alt={alt}
           onLoad={handleImageLoad}
           onError={handleImageError}
