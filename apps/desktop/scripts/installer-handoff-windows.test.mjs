@@ -29,6 +29,10 @@ const windows = process.platform === 'win32'
 const system32 = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32')
 const DONE_TIMEOUT_MS = 90_000
 
+// Log times are time-of-day, so a run across midnight wraps: differences are taken modulo a day.
+const DAY = 86_400
+const elapsed = (from, to) => (to - from + DAY) % DAY
+
 const seconds = (log, step) => {
   const match = new RegExp(`(\\d+):(\\d+):(\\d+)\\.\\d+ ${step}`).exec(log)
   assert.ok(match, `log lacks "${step}":\n${log}`)
@@ -37,6 +41,15 @@ const seconds = (log, step) => {
 
 // Compiled once with the .NET Framework C# compiler that ships with Windows, x64 and ARM64.
 const stubExe = (() => {
+  if (!windows) return null
+  const windir = process.env.windir ?? 'C:\\Windows'
+  const csc = ['Framework64', 'Framework']
+    .map((framework) => path.join(windir, 'Microsoft.NET', framework, 'v4.0.30319', 'csc.exe'))
+    .find((candidate) => existsSync(candidate))
+  if (!csc) {
+    console.warn('csc.exe not found: the hand-off script scenarios are skipped')
+    return null
+  }
   const dir = mkdtempSync(path.join(tmpdir(), 'handoff-stub-'))
   const source = path.join(dir, 'stub.cs')
   const exe = path.join(dir, 'stub.exe')
@@ -47,6 +60,10 @@ const stubExe = (() => {
 class Stub { static int Main() {
   string self = System.Reflection.Assembly.GetExecutingAssembly().Location;
   File.WriteAllText(self + ".ran", "x");
+  // The uninstaller copy lives in a work folder the script deletes, so its command line goes
+  // beside the hand-off log, named after the stub copy.
+  string log = Environment.GetEnvironmentVariable("HANDOFF_LOG");
+  if (log != null) File.WriteAllText(log + "." + Path.GetFileName(self) + ".cmdline", Environment.CommandLine);
   if (File.Exists(self + ".creates")) {
     string dir = File.ReadAllText(self + ".creates");
     Directory.CreateDirectory(dir);
@@ -55,11 +72,6 @@ class Stub { static int Main() {
   return File.Exists(self + ".exit") ? int.Parse(File.ReadAllText(self + ".exit")) : 0;
 } }`
   )
-  const windir = process.env.windir ?? 'C:\\Windows'
-  const csc = ['Framework64', 'Framework']
-    .map((framework) => path.join(windir, 'Microsoft.NET', framework, 'v4.0.30319', 'csc.exe'))
-    .find((candidate) => existsSync(candidate))
-  if (!windows || !csc) return null
   const built = spawnSync(csc, ['/nologo', `/out:${exe}`, source], { encoding: 'utf8' })
   assert.equal(built.status, 0, `csc failed: ${built.stdout}${built.stderr}`)
   return exe
@@ -70,18 +82,33 @@ async function exited(child) {
 }
 
 /** Lays out one scenario under a directory with hostile characters and runs the script on it. */
-async function runHandoff({ setupExit, nsis, keepElectron = true, appAliveMs = 0 }) {
+async function runHandoff({
+  setupExit,
+  nsis,
+  keepElectron = true,
+  keepAsar = true,
+  appAliveMs = 0
+}) {
   const root = mkdtempSync(path.join(tmpdir(), 'Kağan (x) & 100%-'))
-  const installDir = path.join(root, 'Apps (portable) Kağan 100%', 'MemryNote')
+  // The app refuses an install directory with `&` (the uninstaller's `_?=` is unquoted), so it
+  // sits under a root without one; the log, work and temp roots keep the `&`.
+  const installRoot = mkdtempSync(path.join(tmpdir(), 'Kağan (x) 100%-'))
+  const installDir = path.join(installRoot, 'Apps (portable) Kağan 100%', 'MemryNote')
   const logDir = path.join(root, 'Roaming (x)', '@memry', 'desktop', 'logs')
   const localAppData = path.join(root, 'Local (x)')
   mkdirSync(installDir, { recursive: true })
   mkdirSync(logDir, { recursive: true })
   mkdirSync(localAppData, { recursive: true })
-  copyFileSync(path.join(system32, 'whoami.exe'), path.join(installDir, 'Uninstall MemryNote.exe'))
-  // The installed Electron app, named like the process the script waits for (APP_EXE).
-  if (keepElectron)
+  copyFileSync(stubExe, path.join(installDir, 'Uninstall MemryNote.exe'))
+  // The installed Electron app, named like the process the script waits for (APP_EXE), and
+  // its app.asar: the script restarts it only when both are there.
+  if (keepElectron) {
     copyFileSync(path.join(system32, 'whoami.exe'), path.join(installDir, 'PING.EXE'))
+    if (keepAsar) {
+      mkdirSync(path.join(installDir, 'resources'))
+      writeFileSync(path.join(installDir, 'resources', 'app.asar'), 'x')
+    }
+  }
 
   // Real executables, like the real Setup.exe and NSIS installer: `%errorlevel%` after
   // `start /wait` of a script file is not the script's exit code. One compiled stub serves both;
@@ -132,14 +159,20 @@ async function runHandoff({ setupExit, nsis, keepElectron = true, appAliveMs = 0
   while (Date.now() < deadline && !readLog().includes('handoff done')) await sleep(1000)
   const log = readLog()
   assert.ok(log.includes('handoff done'), `script did not finish:\n${log}`)
+  const uninstallerCommandLine = readFileSync(
+    `${plan.handoffLogPath}.Uninstall MemryNote.exe.cmdline`,
+    'utf8'
+  )
   return {
     log,
+    installDir,
+    uninstallerCommandLine,
     setupRan: existsSync(`${setupPath}.ran`),
     nsisRan: existsSync(`${nsisPath}.ran`)
   }
 }
 
-describe('installer hand-off script on Windows', { skip: !windows }, () => {
+describe('installer hand-off script on Windows', { skip: !stubExe }, () => {
   it('installs Velopack and relaunches, waiting for the live app first', async () => {
     const result = await runHandoff({ setupExit: 0, nsis: true, appAliveMs: 1 })
 
@@ -149,10 +182,18 @@ describe('installer hand-off script on Windows', { skip: !windows }, () => {
     assert.ok(!result.nsisRan)
     // The app lives about 8 s after the script starts; the uninstaller must not run before that.
     assert.ok(
-      seconds(result.log, 'app exited') - seconds(result.log, 'handoff start') >= 4,
+      elapsed(seconds(result.log, 'handoff start'), seconds(result.log, 'app exited')) >= 4,
       result.log
     )
-    assert.ok(seconds(result.log, 'uninstall exit=\\d+') >= seconds(result.log, 'app exited'))
+    assert.ok(
+      elapsed(seconds(result.log, 'app exited'), seconds(result.log, 'uninstall exit=\\d+')) <
+        DAY / 2
+    )
+    // NSIS needs `_?=<dir>` last and unquoted, whatever the directory holds.
+    assert.ok(
+      result.uninstallerCommandLine.endsWith(` /S _?=${result.installDir}`),
+      result.uninstallerCommandLine
+    )
   })
 
   it('reinstalls Electron through NSIS when Setup fails after creating its exe', async () => {
@@ -169,6 +210,13 @@ describe('installer hand-off script on Windows', { skip: !windows }, () => {
 
     assert.match(result.log, /result=electron-kept relaunch exit=0/)
     assert.doesNotMatch(result.log, /result=velopack/)
+  })
+
+  it('does not restart an Electron whose app.asar is gone', async () => {
+    const result = await runHandoff({ setupExit: 3, nsis: false, keepAsar: false })
+
+    assert.match(result.log, /result=failed no-nsis-fallback/)
+    assert.doesNotMatch(result.log, /electron-kept/)
   })
 
   it('logs the failure when nothing can be restored', async () => {

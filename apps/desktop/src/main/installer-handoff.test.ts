@@ -15,9 +15,11 @@ vi.mock('./lib/logger', () => ({
 import {
   buildInstallerHandoffPlan,
   createInstallerHandoff,
+  noteFailedHandoffAttempt,
   verifyAuthenticode,
   type InstallerHandoffDeps
 } from './installer-handoff'
+import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { renderInstallerHandoffScript } from './installer-handoff-script'
 import type { UpdaterHost } from './updater-backend'
 
@@ -125,6 +127,9 @@ function makeHarness(
       rmSync: vi.fn(),
       writeFileSync: vi.fn(),
       copyFileSync: vi.fn(),
+      readFileSync: vi.fn(() => {
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+      }),
       createWriteStream: vi.fn(
         () =>
           new Writable({
@@ -341,7 +346,7 @@ describe('createInstallerHandoff', () => {
     )
     expect(harness.spawn).toHaveBeenCalledWith(
       'cmd.exe',
-      ['/d', '/s', '/c', `""${scriptPath}""`],
+      ['/d', '/e:on', '/v:off', '/s', '/c', `""${scriptPath}""`],
       expect.objectContaining({
         detached: true,
         stdio: 'ignore',
@@ -446,6 +451,106 @@ describe('createInstallerHandoff', () => {
 
     expect(harness.fetch).not.toHaveBeenCalled()
     expect(handoff.armed()).toBe(false)
+    // Error tracking must see an install that can never migrate, as it does a failed download.
+    // The message carries the character, never the path: a path would reach telemetry, whose
+    // redaction stops at the first space of a profile name (`Tom & Jerry`).
+    expect(harness.host.onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'INSTALLER_HANDOFF_UNSUPPORTED_INSTALL_DIR',
+        message: "install directory contains '&'"
+      })
+    )
+  })
+
+  // The script's relaunch of Electron leaves the same version running; the next launch records it,
+  // and a session that downloads the update again must not repeat a 450 MB download and hand-off.
+  it('declines before any network access for a version whose hand-off already failed', async () => {
+    const harness = makeHarness()
+    vi.mocked(harness.deps.fs.readFileSync).mockReturnValue('v2026-09-11')
+    const handoff = createInstallerHandoff(harness.host, harness.deps)
+
+    await handoff.prepare(makeInfo({ version: '2026.911.1' }), vi.fn())
+
+    expect(harness.fetch).not.toHaveBeenCalled()
+    expect(harness.host.onError).not.toHaveBeenCalled()
+    expect(handoff.armed()).toBe(false)
+  })
+
+  it('hands off a newer version than the one that failed', async () => {
+    const harness = makeHarness()
+    vi.mocked(harness.deps.fs.readFileSync).mockReturnValue('v2026-09-10')
+    const handoff = createInstallerHandoff(harness.host, harness.deps)
+
+    await handoff.prepare(makeInfo({ version: '2026.911.1' }), vi.fn())
+
+    expect(handoff.armed()).toBe(true)
+  })
+
+  // The wiring from the next launch's did-not-apply marker to the next prepare(), through a real
+  // file store: the marker's version is the display form of info.version.
+  describe('after a hand-off that left the old app running', () => {
+    const marker = (overrides: { installer?: 'velopack-handoff' | 'electron-updater' } = {}) => ({
+      fromVersion: '2026.910.1',
+      toVersion: formatAppVersionForDisplay('2026.911.1'),
+      startedAt: '2026-09-11T00:00:00.000Z',
+      installer: 'velopack-handoff' as const,
+      ...overrides
+    })
+
+    function storeBackedHarness() {
+      const files = new Map<string, string>()
+      const harness = makeHarness()
+      vi.mocked(harness.deps.fs.writeFileSync).mockImplementation((file, data) => {
+        files.set(String(file), typeof data === 'string' ? data : '')
+      })
+      vi.mocked(harness.deps.fs.readFileSync).mockImplementation(((file: PathLike) => {
+        const data = files.get(String(file))
+        if (data === undefined) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+        return data
+      }) as unknown as typeof harness.deps.fs.readFileSync)
+      vi.mocked(harness.deps.fs.rmSync).mockImplementation((file) => {
+        files.delete(String(file))
+      })
+      return { files, harness }
+    }
+
+    it('stops the next session from downloading and handing off that version again', async () => {
+      const { files, harness } = storeBackedHarness()
+      noteFailedHandoffAttempt(marker(), USER_DATA, harness.deps.fs)
+
+      expect([...files.keys()]).toEqual([
+        path.win32.join(USER_DATA, 'installer-handoff-failed-version')
+      ])
+      const handoff = createInstallerHandoff(harness.host, harness.deps)
+      await handoff.prepare(makeInfo({ version: '2026.911.1' }), vi.fn())
+
+      expect(harness.fetch).not.toHaveBeenCalled()
+      expect(handoff.armed()).toBe(false)
+    })
+
+    it('records nothing for an install that did not go through the hand-off', () => {
+      const { files, harness } = storeBackedHarness()
+
+      noteFailedHandoffAttempt(
+        marker({ installer: 'electron-updater' }),
+        USER_DATA,
+        harness.deps.fs
+      )
+      noteFailedHandoffAttempt({ installer: 'velopack-handoff' }, USER_DATA, harness.deps.fs)
+
+      expect(files.size).toBe(0)
+    })
+
+    it('hands off a newer version, and the arm clears the stale record', async () => {
+      const { files, harness } = storeBackedHarness()
+      noteFailedHandoffAttempt(marker(), USER_DATA, harness.deps.fs)
+      const handoff = createInstallerHandoff(harness.host, harness.deps)
+
+      await handoff.prepare(makeInfo({ version: '2026.912.1' }), vi.fn())
+
+      expect(handoff.armed()).toBe(true)
+      expect(files.size).toBe(0)
+    })
   })
 
   it('declines before any network access when the release tag is unknown', async () => {
