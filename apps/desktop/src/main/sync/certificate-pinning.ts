@@ -80,21 +80,34 @@ const MAX_CHAIN_DEPTH = 8
  * `pool` holds the certificates the peer or Chromium handed over, leaf first.
  * Their links and order are not trusted: a peer holding any publicly trusted
  * certificate for the host could append a fake parent that carries a pinned
- * SPKI. So the path is built from the leaf upward, and a certificate counts only
- * when it is a CA (`checkIssued` does not look at basicConstraints, so any DV
- * certificate under a pinned intermediate would otherwise pass as an issuer) and
- * the one below it passes `checkIssued` and is signed by its key.
+ * SPKI. So the path is built from the leaf upward, and a certificate joins it
+ * only when it is a CA (`checkIssued` does not look at basicConstraints, so any
+ * DV certificate under a pinned intermediate would otherwise pass as an issuer),
+ * names the one below it as its issuer, and its key signed that one.
+ *
+ * That is all this checks: not validity dates, pathLen, name constraints or
+ * revocation. Validating the chain is Chromium's job on the session path (the
+ * handler answers -3) and Node's on the WebSocket path (`rejectUnauthorized`).
+ * The pin only proves that the pinned key sits on a signed path from this leaf,
+ * so keep those two checks in front of it.
+ *
+ * Every valid issuer in the pool is tried, not the first match: the same CA name
+ * and key can appear twice (self-signed R4 and its cross-certificate), and the
+ * first copy may lead nowhere.
  */
 function isChainPinned(pool: readonly crypto.X509Certificate[], pins: readonly string[]): boolean {
-  const visited = new Set<crypto.X509Certificate>()
+  // Keyed by raw bytes, so a duplicate copy of a certificate is the same node. It is never
+  // un-visited and ignores depth: a certificate that failed to reach a pin fails again from
+  // any other child or depth (depth only shrinks the remaining budget), and the memo keeps
+  // the search linear in the pool size and finite on cyclic chains.
+  const visited = new Set<string>()
   const reachesPin = (child: crypto.X509Certificate, depth: number): boolean => {
     if (pins.includes(spkiHashOf(child))) return true
-    visited.add(child)
+    visited.add(child.raw.toString('base64'))
     if (depth + 1 >= MAX_CHAIN_DEPTH) return false
     return pool.some(
       (parent) =>
-        !visited.has(parent) &&
-        !parent.raw.equals(child.raw) &&
+        !visited.has(parent.raw.toString('base64')) &&
         parent.ca &&
         child.checkIssued(parent) &&
         child.verify(parent.publicKey) &&

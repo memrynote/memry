@@ -122,10 +122,45 @@ xZCXbIICWsYgRj7INGamxPb1hU488Z6Z18/6rQIhAMKAXey6OhPkE4whS7UZyKSe
 u6kt7dwt7cORhtanPV4J
 -----END CERTIFICATE-----`
 
+// The same CA name and key twice, as with self-signed R4 and its cross-certificate. ANCHOR_COPY_A
+// is signed by a key nobody in the chain holds, so it is a dead end. ANCHOR_COPY_B is signed by
+// TOP, so the pin on TOP is reachable only through it.
+const ANCHOR_COPY_A_PEM = `-----BEGIN CERTIFICATE-----
+MIIBRTCB7aADAgECAhQOF2v5mUARG5UwnHd/TRmdUdwUBTAKBggqhkjOPQQDAjAc
+MRowGAYDVQQDDBFUZXN0IE90aGVyIEFuY2hvcjAgFw0yNjEwMjgwOTQxNTlaGA8y
+MTI2MTAwNDA5NDE1OVowFDESMBAGA1UEAwwJVGVzdCBSb290MFkwEwYHKoZIzj0C
+AQYIKoZIzj0DAQcDQgAEifIJ3DsZ9X4HK6hwmITGOAB+APOQgA7TG4WKowYetsWt
+yo8pAIQ337DJcsAm7cNE1Scy2/X13yo5bef+eqqxWaMTMBEwDwYDVR0TAQH/BAUw
+AwEB/zAKBggqhkjOPQQDAgNHADBEAiBihSfEkwGKcHe807udnEQuyDpkoJlMrSG6
+s6LzRIIgfQIgJ6DFU6zASgE/5UDjzdUq6AL8s3ML743GA97Jqff0Vdk=
+-----END CERTIFICATE-----`
+
+const ANCHOR_COPY_B_PEM = `-----BEGIN CERTIFICATE-----
+MIIBPTCB5KADAgECAhRwOOj+atbGrgor9pvmSzTIwcw7NzAKBggqhkjOPQQDAjAT
+MREwDwYDVQQDDAhUZXN0IFRvcDAgFw0yNjEwMjgwOTQxNTlaGA8yMTI2MTAwNDA5
+NDE1OVowFDESMBAGA1UEAwwJVGVzdCBSb290MFkwEwYHKoZIzj0CAQYIKoZIzj0D
+AQcDQgAEifIJ3DsZ9X4HK6hwmITGOAB+APOQgA7TG4WKowYetsWtyo8pAIQ337DJ
+csAm7cNE1Scy2/X13yo5bef+eqqxWaMTMBEwDwYDVR0TAQH/BAUwAwEB/zAKBggq
+hkjOPQQDAgNIADBFAiBoxiPlmTwaxTe8cp3uV50aXOFsx0Yc9+8pH4eSLyOYTQIh
+ALGDT6vkUTZF4mT6so69DYBDZbs/mr7kaJ7/VtLvmEdO
+-----END CERTIFICATE-----`
+
+const TOP_PEM = `-----BEGIN CERTIFICATE-----
+MIIBWzCCAQKgAwIBAgIUVHypY8vmUDJTSFYpwxqPRq5bONUwCgYIKoZIzj0EAwIw
+EzERMA8GA1UEAwwIVGVzdCBUb3AwIBcNMjYxMDI4MDk0MTU5WhgPMjEyNjEwMDQw
+OTQxNTlaMBMxETAPBgNVBAMMCFRlc3QgVG9wMFkwEwYHKoZIzj0CAQYIKoZIzj0D
+AQcDQgAE+t4JbuIz7bjgh5v4d1C/oegifexdN4gaqptq5COx6xI+PsWuB9U/4r8t
+S29l6bgJtPVxST7kKiXAtcL7XW24NKMyMDAwHQYDVR0OBBYEFN0B0UnaJ52ilIV6
+wxxIMSxi9wIfMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAwRAIgBwoP
+oGr68nw1c+8U+g8IosrpW1Zi8KpFPUModlh7/UcCICkX/Yry25Zx1//6hxZzzt9y
+lW1CzFnCsYZ2TRHF5uYV
+-----END CERTIFICATE-----`
+
 const HOST = 'sync-staging.test'
 const LEAF_PIN = computeSpkiHashFromPem(LEAF_PEM)
 const INTERMEDIATE_PIN = computeSpkiHashFromPem(INTERMEDIATE_PEM)
 const ROOT_PIN = computeSpkiHashFromPem(ROOT_PEM)
+const TOP_PIN = computeSpkiHashFromPem(TOP_PEM)
 const UNRELATED_PIN = computeSpkiHashFromPem(FORGED_LEAF_PEM)
 
 function der(pem: string): Buffer {
@@ -182,6 +217,13 @@ describe('chain-aware certificate pinning', () => {
 
     it('rejects a chain none of whose certificates are pinned', () => {
       expect(matches([LEAF_PEM, INTERMEDIATE_PEM, ROOT_PEM], [UNRELATED_PIN])).toBe(false)
+    })
+
+    it('reaches a pin through the second of two CA copies when the first leads nowhere', () => {
+      const chain = [LEAF_PEM, INTERMEDIATE_PEM, ANCHOR_COPY_A_PEM, ANCHOR_COPY_B_PEM, TOP_PEM]
+
+      expect(matches(chain, [TOP_PIN])).toBe(true)
+      expect(matches([LEAF_PEM, INTERMEDIATE_PEM, ANCHOR_COPY_A_PEM], [TOP_PIN])).toBe(false)
     })
 
     it('rejects an empty pin set', () => {
