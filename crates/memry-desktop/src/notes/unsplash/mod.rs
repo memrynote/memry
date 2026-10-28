@@ -177,16 +177,11 @@ impl Unsplash {
                 tracing::error!(scope = "Unsplash", "search body could not be read: {error}");
                 UnsplashFailure::Failed
             })?;
-        let results = serde_json::from_slice::<Value>(&body)
-            .ok()
-            .and_then(|value| match value.get("results") {
-                Some(Value::Array(results)) => Some(results.clone()),
-                _ => None,
-            })
-            .ok_or_else(|| {
-                tracing::error!(scope = "Unsplash", "search returned no results array");
-                UnsplashFailure::Failed
-            })?;
+        let value = serde_json::from_slice::<Value>(&body).unwrap_or(Value::Null);
+        let Some(results) = value.get("results").and_then(Value::as_array) else {
+            tracing::error!(scope = "Unsplash", "search returned no results array");
+            return Err(UnsplashFailure::Failed);
+        };
 
         let page = SearchPage {
             photos: results.iter().filter_map(UnsplashPhoto::from_api).collect(),
@@ -225,7 +220,23 @@ impl Unsplash {
         if !response.status().is_success() {
             return Err(self.refusal("photo fetch", response).await);
         }
-        let extension = extension_for(&response);
+        // `send` follows redirects (reqwest's default), so the URL the bytes came from is checked
+        // again: a redirect to plain http or to another host is not an Unsplash image.
+        if !photo::is_image_url(response.url()) {
+            tracing::error!(
+                scope = "Unsplash",
+                "a photo was redirected away from the image hosts"
+            );
+            return Err(UnsplashFailure::Failed);
+        }
+        // A 200 that is not an image (a captive portal's page) is not a cover.
+        let Some(extension) = extension_for(&response) else {
+            tracing::error!(
+                scope = "Unsplash",
+                "a photo came back with a content type that is not an image"
+            );
+            return Err(UnsplashFailure::Failed);
+        };
         let bytes = read_capped(response, MAX_PHOTO_BYTES)
             .await
             .map_err(|error| {
@@ -351,7 +362,7 @@ async fn is_rate_limited(response: Response) -> bool {
     }
 }
 
-fn extension_for(response: &Response) -> &'static str {
+fn extension_for(response: &Response) -> Option<&'static str> {
     let mime = response
         .headers()
         .get(CONTENT_TYPE)
@@ -361,7 +372,7 @@ fn extension_for(response: &Response) -> &'static str {
     EXTENSION_BY_MIME
         .iter()
         .find(|(known, _)| mime.as_deref() == Some(known))
-        .map_or("jpg", |(_, extension)| extension)
+        .map(|(_, extension)| *extension)
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -51,8 +51,16 @@ export function wordAtPoint(x: number, y: number): (WordSpan & { range: Range })
   return { ...span, range }
 }
 
-/** The word at the caret of a text field, whose text the caret APIs above do not reach. */
+/**
+ * The word at the caret of a text field, whose text the caret APIs above do not reach. WebKitGTK
+ * moves the caret to the pointer on a right-click, so the caret is where the pointer is, except
+ * inside an existing selection, which the click keeps. Then the answer is the selection only when
+ * it is exactly one word; any other selection starts somewhere the pointer may not be.
+ */
 export function wordAtCaret(field: HTMLInputElement | HTMLTextAreaElement): WordSpan | null {
-  const caret = field.selectionStart
-  return caret === null ? null : wordSpanAtOffset(field.value, caret)
+  const { selectionStart: start, selectionEnd: end } = field
+  if (start === null) return null
+  const span = wordSpanAtOffset(field.value, start)
+  if (start === end) return span
+  return span?.start === start && span.end === end ? span : null
 }

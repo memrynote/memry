@@ -2468,13 +2468,21 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
       e.preventDefault()
       const { clientX: x, clientY: y } = e
-      // A newer right-click replaces a lookup still in flight.
+      // The menu opens at once; the spelling lookup is a round trip to the platform checker and
+      // fills in its suggestions when it lands. A newer right-click replaces a lookup in flight.
       const request = ++editorMenuRequestRef.current
-      void writingToolsService.spellingAt(x, y).then((spelling) => {
-        if (request === editorMenuRequestRef.current) {
-          setEditorMenu(describeEditorMenu(x, y, spelling))
-        }
-      })
+      setEditorMenu(describeEditorMenu(x, y, null))
+      // On macOS the right-click selects the word after this handler ran, so the selection the
+      // menu was described with is the old one: describe it again on the next frame and when
+      // the lookup lands, keeping the suggestions already in.
+      const refresh = (spelling: EditorContextMenuSpelling | null) => {
+        if (request !== editorMenuRequestRef.current) return
+        setEditorMenu((open) =>
+          open ? (describeEditorMenu(x, y, spelling ?? open.spelling) ?? open) : open
+        )
+      }
+      requestAnimationFrame(() => refresh(null))
+      void writingToolsService.spellingAt(x, y).then(refresh)
     },
     [describeEditorMenu, editable, editor, writingTools]
   )

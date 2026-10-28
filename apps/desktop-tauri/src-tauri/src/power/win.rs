@@ -1,33 +1,105 @@
 //! A second window subclass on the main window (the caption one is `win32_caption.rs`) for
 //! `WM_POWERBROADCAST` and the session-end messages.
+//!
+//! Windows sends `WM_ENDSESSION` to every top-level window of the process, and tao's hidden
+//! "Tao Thread Event Target" window answers it with `process::exit(0)` (tao 0.37 `event_loop.rs`),
+//! whichever window is asked first. So the subclass goes on that window too: the first one asked
+//! runs the quit sequence and holds the message until it is done, the other answers at once, and
+//! tao's handler is never reached while a flush could still be under way.
 
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, Ordering};
+use std::time::{Duration, Instant};
 
-use memry_desktop::shell::power::{PowerEvent, SleepEdges};
+use memry_desktop::shell::power::{PowerEvent, SleepEdges, wait_for};
+use memry_desktop::shell::shutdown::SESSION_END_BUDGET;
 use tauri::{AppHandle, Wry};
 use tokio::sync::broadcast::Sender;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::System::Shutdown::{ShutdownBlockReasonCreate, ShutdownBlockReasonDestroy};
+use windows::Win32::System::Threading::GetCurrentThreadId;
 use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
-    PBT_APMRESUMEAUTOMATIC, PBT_APMRESUMESUSPEND, PBT_APMSUSPEND, WM_ENDSESSION, WM_POWERBROADCAST,
-    WM_QUERYENDSESSION,
+    DispatchMessageW, EnumThreadWindows, GetClassNameW, MSG, MsgWaitForMultipleObjects,
+    PBT_APMRESUMEAUTOMATIC, PBT_APMRESUMESUSPEND, PBT_APMSUSPEND, PM_REMOVE, PeekMessageW,
+    PostQuitMessage, QS_ALLINPUT, TranslateMessage, WM_ENDSESSION, WM_POWERBROADCAST,
+    WM_QUERYENDSESSION, WM_QUIT,
 };
+use windows::core::{BOOL, w};
 
 use crate::windows::registry::WindowRegistry;
 
 const SUBCLASS_ID: usize = 0x4D45_4D50;
+/// The class tao registers for the hidden window that receives the thread's events.
+const EVENT_TARGET_CLASS: &str = "Tao Thread Event Target";
+
+/// The thread that owns the main window and tao's event target, set by [`start`].
+static LOOP_THREAD: AtomicU32 = AtomicU32::new(0);
 
 /// Leaked on purpose: the main window lives as long as the process.
 struct Shared {
     app: AppHandle<Wry>,
     sender: Sender<PowerEvent>,
     edges: Mutex<SleepEdges>,
+    /// The window `ShutdownBlockReasonCreate` was called with.
+    main_hwnd: AtomicIsize,
+    /// A `WM_ENDSESSION(TRUE)` is being or has been handled by one of the two windows.
+    ending: AtomicBool,
 }
 
 impl Shared {
     fn emit(&self, event: PowerEvent) {
         super::publish(&self.sender, event);
     }
+}
+
+/// Answers `WM_ENDSESSION` for either window: the first one asked runs the quit sequence and
+/// does not return until it is done or `SESSION_END_BUDGET` is spent; the other one returns at
+/// once. Neither forwards the message, so tao's `process::exit(0)` is not reached.
+fn end_session(shared: &Shared, ending: bool) {
+    if ending {
+        if shared.ending.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        crate::shutdown::begin_session_end(&shared.app);
+        // Windows ends the process soon after this returns (about five seconds in all), so the
+        // quit sequence has to finish here. The steps may need this thread (the webview flush),
+        // so its messages keep being dispatched meanwhile.
+        let mut quit = None;
+        let done = wait_for(
+            SESSION_END_BUDGET,
+            || crate::shutdown::is_completed(&shared.app),
+            |slice| {
+                if quit.is_none() {
+                    quit = pump_messages(slice);
+                } else {
+                    // The loop was asked to exit: leave its WM_QUIT for it, and wait without
+                    // spinning on the queue.
+                    std::thread::sleep(slice);
+                }
+            },
+        );
+        if let Some(code) = quit {
+            // The app asked to exit while the sequence ran: hand the request back to the real loop.
+            // SAFETY: plain Win32 call on the thread that owns the message queue.
+            unsafe { PostQuitMessage(code) };
+        }
+        if !done {
+            tracing::warn!(
+                scope = "Power",
+                "the session ended before the quit sequence"
+            );
+        }
+    } else {
+        shared.ending.store(false, Ordering::SeqCst);
+        // The sign-out was cancelled: the install-on-quit decision is back.
+        if let Some(hook) = crate::shutdown::update_hook(&shared.app) {
+            hook.enable_install_on_quit();
+        }
+    }
+    let main = HWND(shared.main_hwnd.load(Ordering::SeqCst) as *mut _);
+    // SAFETY: the window `ShutdownBlockReasonCreate` was called with.
+    let _ = unsafe { ShutdownBlockReasonDestroy(main) };
 }
 
 unsafe extern "system" fn proc(
@@ -62,13 +134,21 @@ unsafe extern "system" fn proc(
             if let Some(hook) = crate::shutdown::update_hook(&shared.app) {
                 hook.disable_install_on_quit();
             }
+            // Shown on the sign-out screen while the sequence runs, and what lets Windows hold
+            // the session open for it.
+            // SAFETY: `hwnd` is the window this procedure belongs to.
+            if let Err(error) =
+                unsafe { ShutdownBlockReasonCreate(hwnd, w!("MemryNote is saving your notes")) }
+            {
+                tracing::warn!(
+                    scope = "Power",
+                    "could not set the shutdown block reason: {error}"
+                );
+            }
             return LRESULT(1);
         }
         WM_ENDSESSION => {
-            if wparam.0 != 0 {
-                // Windows allows about five seconds: the sequence runs on a 4 s budget.
-                crate::shutdown::begin_session_end(&shared.app);
-            }
+            end_session(shared, wparam.0 != 0);
             return LRESULT(0);
         }
         _ => {}
@@ -77,7 +157,97 @@ unsafe extern "system" fn proc(
     unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
 }
 
-/// Subclasses the main window. Runs on the thread that owns it.
+/// The subclass of tao's event target: only the session end, which it must not leave to tao.
+unsafe extern "system" fn event_target_proc(
+    hwnd: HWND,
+    msg: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+    _id: usize,
+    refdata: usize,
+) -> LRESULT {
+    if msg == WM_ENDSESSION {
+        // SAFETY: `refdata` is the leaked `Shared` installed with this subclass.
+        end_session(unsafe { &*(refdata as *const Shared) }, wparam.0 != 0);
+        return LRESULT(0);
+    }
+    // SAFETY: forwards the message this procedure received.
+    unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
+}
+
+/// Waits up to `slice` for input, then dispatches the messages queued on this thread until the
+/// slice is spent. Returns the exit code of a `WM_QUIT` met on the way, which is not dispatched.
+fn pump_messages(slice: Duration) -> Option<i32> {
+    let started = Instant::now();
+    // SAFETY: plain Win32 message-loop calls on the thread that owns the window.
+    unsafe {
+        MsgWaitForMultipleObjects(
+            None,
+            false,
+            u32::try_from(slice.as_millis()).unwrap_or(u32::MAX),
+            QS_ALLINPUT,
+        );
+        let mut msg = MSG::default();
+        // A flood of messages must not hold the wait past its limit.
+        while started.elapsed() < slice && PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool() {
+            if msg.message == WM_QUIT {
+                return Some(i32::try_from(msg.wParam.0).unwrap_or(0));
+            }
+            let _ = TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+    }
+    None
+}
+
+/// tao's event-target window on the loop thread, if it is there.
+pub fn event_target_window() -> Option<HWND> {
+    unsafe extern "system" fn visit(hwnd: HWND, found: LPARAM) -> BOOL {
+        let mut class = [0u16; 64];
+        // SAFETY: `class` is a writable buffer of the length passed.
+        let len = unsafe { GetClassNameW(hwnd, &mut class) };
+        let len = usize::try_from(len).unwrap_or(0);
+        if String::from_utf16_lossy(&class[..len]) == EVENT_TARGET_CLASS {
+            // SAFETY: `found` is the `Option<HWND>` of the caller below.
+            unsafe { *(found.0 as *mut Option<HWND>) = Some(hwnd) };
+            return BOOL(0);
+        }
+        BOOL(1)
+    }
+    let thread = LOOP_THREAD.load(Ordering::SeqCst);
+    let mut found: Option<HWND> = None;
+    // SAFETY: `found` outlives the call, which runs `visit` synchronously.
+    let _ =
+        unsafe { EnumThreadWindows(thread, Some(visit), LPARAM(&mut found as *mut _ as isize)) };
+    found
+}
+
+/// Sends `WM_ENDSESSION(TRUE)` to `target` the way Windows does at a sign-out, without waiting
+/// for the answer: the e2e spec that proves neither window ends the process before the flush.
+#[cfg(feature = "e2e")]
+pub fn post_end_session(main: HWND, event_target: bool) -> bool {
+    let hwnd = if event_target {
+        event_target_window()
+    } else {
+        Some(main)
+    };
+    let Some(hwnd) = hwnd else { return false };
+    let raw = hwnd.0 as isize;
+    std::thread::spawn(move || {
+        // SAFETY: the window belongs to this process and lives as long as it.
+        unsafe {
+            windows::Win32::UI::WindowsAndMessaging::SendMessageW(
+                HWND(raw as *mut _),
+                WM_ENDSESSION,
+                Some(WPARAM(1)),
+                Some(LPARAM(0)),
+            )
+        };
+    });
+    true
+}
+
+/// Subclasses the main window and tao's event target. Runs on the thread that owns them.
 pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
     let Some(window) = WindowRegistry::main_window(app) else {
         tracing::warn!(
@@ -93,15 +263,42 @@ pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
         );
         return;
     };
+    // SAFETY: plain query of the calling thread.
+    LOOP_THREAD.store(unsafe { GetCurrentThreadId() }, Ordering::SeqCst);
     let shared: &'static Shared = Box::leak(Box::new(Shared {
         app: app.clone(),
         sender: sender.clone(),
         edges: Mutex::new(SleepEdges::default()),
+        main_hwnd: AtomicIsize::new(hwnd.0 as isize),
+        ending: AtomicBool::new(false),
     }));
-    // SAFETY: the procedure and its refdata outlive the window.
+    // SAFETY: the procedures and their refdata outlive the windows.
     let ok =
         unsafe { SetWindowSubclass(hwnd, Some(proc), SUBCLASS_ID, shared as *const _ as usize) };
     if !ok.as_bool() {
         tracing::warn!(scope = "Power", "the power subclass was not installed");
+    }
+    match event_target_window() {
+        // SAFETY: as above.
+        Some(target) => {
+            let ok = unsafe {
+                SetWindowSubclass(
+                    target,
+                    Some(event_target_proc),
+                    SUBCLASS_ID,
+                    shared as *const _ as usize,
+                )
+            };
+            if !ok.as_bool() {
+                tracing::warn!(
+                    scope = "Power",
+                    "the event target subclass was not installed"
+                );
+            }
+        }
+        None => tracing::warn!(
+            scope = "Power",
+            "no event target window; a session end may end the process before the flush"
+        ),
     }
 }

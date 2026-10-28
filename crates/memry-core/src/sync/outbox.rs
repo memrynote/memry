@@ -46,6 +46,10 @@ pub const OP_CRDT_UPDATE: &str = "crdt-update";
 /// pathological error body cannot grow the one table whose loss loses work.
 pub const MAX_LAST_ERROR_CHARS: usize = 500;
 
+/// `next_attempt_at` of a batch parked until its document changes: never due,
+/// released by the next [`enqueue`] of a CRDT update for the same document.
+pub const PARKED_UNTIL_EDIT: i64 = i64::MAX;
+
 /// §7.3: at most 100 updates ride one `POST /sync/crdt/updates`.
 pub const MAX_CRDT_UPDATES_PER_BATCH: usize = 100;
 
@@ -270,6 +274,16 @@ pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<Option<i
 
     super::calendar_push::queue(tx, change, now_ms)?;
 
+    // An edit releases a parked batch.
+    if let Change::CrdtUpdate { doc_id, .. } = change {
+        tx.execute(
+            "UPDATE outbox SET next_attempt_at = NULL
+              WHERE item_id = ?1 AND op = ?2 AND next_attempt_at = ?3",
+            params![doc_id, OP_CRDT_UPDATE, PARKED_UNTIL_EDIT],
+        )
+        .map_err(failed)?;
+    }
+
     tx.execute(
         "INSERT INTO outbox (item_type, item_id, op, payload, enqueued_at)
          VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -374,13 +388,33 @@ impl Batch {
 /// The order is what stops a body edit landing after its own note's delete.
 /// It is expressed in SQL rather than sorted afterwards so that `limit`
 /// truncates the tail of the wave and never its head.
-pub fn claim(conn: &Connection, now_ms: i64, limit: usize) -> Result<Vec<OutboxRow>, StorageError> {
+///
+/// **A document's rows go in order or not at all.** While one CRDT row waits
+/// (deferred or parked), the document's later rows are not claimed: a peer given
+/// them without it holds pending structs that may never heal.
+///
+/// `skip_docs` are documents this wave already deferred: their rows stay out of
+/// the rest of the wave, whatever the clock says.
+pub fn claim(
+    conn: &Connection,
+    now_ms: i64,
+    limit: usize,
+    skip_docs: &[String],
+) -> Result<Vec<OutboxRow>, StorageError> {
+    let skipped = serde_json::to_string(skip_docs).map_err(|error| StorageError::Failed {
+        what: format!("could not encode the skipped documents: {error}"),
+    })?;
     let mut statement = conn
         .prepare(
             "SELECT id, item_type, item_id, op, payload, enqueued_at,
                     attempt_count, last_error, next_attempt_at
                FROM outbox
-              WHERE next_attempt_at IS NULL OR next_attempt_at <= ?1
+              WHERE (next_attempt_at IS NULL OR next_attempt_at <= ?1)
+                AND NOT (op = ?2 AND EXISTS (
+                      SELECT 1 FROM outbox held
+                       WHERE held.op = ?2 AND held.item_id = outbox.item_id
+                         AND held.id < outbox.id AND held.next_attempt_at > ?1))
+                AND NOT (op = ?2 AND item_id IN (SELECT value FROM json_each(?4)))
               ORDER BY (op <> ?2),
                        CASE WHEN op = ?2 THEN item_id ELSE '' END,
                        id
@@ -388,19 +422,22 @@ pub fn claim(conn: &Connection, now_ms: i64, limit: usize) -> Result<Vec<OutboxR
         )
         .map_err(failed)?;
     let rows = statement
-        .query_map(params![now_ms, OP_CRDT_UPDATE, limit as i64], |row| {
-            Ok(OutboxRow {
-                id: row.get(0)?,
-                item_type: row.get(1)?,
-                item_id: row.get(2)?,
-                op: row.get(3)?,
-                payload: row.get(4)?,
-                enqueued_at: row.get(5)?,
-                attempt_count: row.get(6)?,
-                last_error: row.get(7)?,
-                next_attempt_at: row.get(8)?,
-            })
-        })
+        .query_map(
+            params![now_ms, OP_CRDT_UPDATE, limit as i64, skipped],
+            |row| {
+                Ok(OutboxRow {
+                    id: row.get(0)?,
+                    item_type: row.get(1)?,
+                    item_id: row.get(2)?,
+                    op: row.get(3)?,
+                    payload: row.get(4)?,
+                    enqueued_at: row.get(5)?,
+                    attempt_count: row.get(6)?,
+                    last_error: row.get(7)?,
+                    next_attempt_at: row.get(8)?,
+                })
+            },
+        )
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
@@ -411,14 +448,15 @@ pub fn claim(conn: &Connection, now_ms: i64, limit: usize) -> Result<Vec<OutboxR
 ///
 /// One batch is either one document's CRDT updates or a run of record rows,
 /// never both: they go to different routes, and §A.2's ordering puts every
-/// CRDT row ahead of every record row within a pass.
+/// CRDT row ahead of every record row within a pass. `skip_docs` is [`claim`]'s.
 pub fn next_batch(
     conn: &Connection,
     now_ms: i64,
     limit: usize,
+    skip_docs: &[String],
 ) -> Result<Option<Batch>, StorageError> {
     let limit = limit.max(1);
-    let rows = claim(conn, now_ms, limit)?;
+    let rows = claim(conn, now_ms, limit, skip_docs)?;
     let Some(head) = rows.first() else {
         return Ok(None);
     };

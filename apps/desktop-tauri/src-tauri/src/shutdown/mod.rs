@@ -126,6 +126,15 @@ pub fn update_hook(app: &AppHandle<Wry>) -> Option<Arc<dyn UpdateApplyHook>> {
     app.state::<ShutdownService>().core.update_hook()
 }
 
+/// The sequence ended cleanly and the exit it asked for may pass. The Windows session-end handler
+/// waits on this before it returns, because the OS ends the process soon after.
+#[cfg(windows)]
+pub fn is_completed(app: &AppHandle<Wry>) -> bool {
+    app.state::<ShutdownService>()
+        .completed
+        .load(Ordering::SeqCst)
+}
+
 /// Starts the sequence for a quit that did not come through `ExitRequested`: the Windows session
 /// end. Without a request to hold, the app is kept alive by the latch alone.
 pub fn begin_session_end(app: &AppHandle<Wry>) {
@@ -136,6 +145,7 @@ pub fn begin_session_end(app: &AppHandle<Wry>) {
     app.state::<Session>().begin_shutdown();
     let service = app.state::<ShutdownService>();
     let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
+    tracing::info!(scope = "Shutdown", "starting graceful shutdown");
     service.core.arm_backstop(HARD_BACKSTOP, effects.clone());
     let core = service.core.clone();
     tauri::async_runtime::spawn(async move {

@@ -1,13 +1,16 @@
 //! Start on boot (`general.startOnBoot`). One owner of the login item: every write of the
 //! setting and every vault open with it on call [`apply`]. macOS registers through
 //! `SMAppService`, which is the registration Electron's `setLoginItemSettings` made, so an
-//! existing login item reads as enabled and no second one appears. Windows and Linux use the
-//! autostart plugin and first remove the entry an Electron install wrote.
+//! existing login item reads as enabled and no second one appears. Windows writes its own `Run`
+//! value (quoted) and Linux uses the autostart plugin; both first remove the entry an Electron
+//! install wrote.
 
 #[cfg(target_os = "macos")]
 mod mac;
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 mod other;
+#[cfg(windows)]
+mod win;
 
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::launch_env::LaunchEnv;
@@ -20,8 +23,10 @@ use crate::commands::error::{CommandError, ErrorKind};
 
 #[cfg(target_os = "macos")]
 use mac as platform;
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 use other as platform;
+#[cfg(windows)]
+use win as platform;
 
 /// Brings the OS login item in line with `enabled`; safe to repeat.
 pub fn apply(app: &AppHandle<Wry>, enabled: bool) -> Result<(), CommandError> {
@@ -34,6 +39,12 @@ pub fn apply(app: &AppHandle<Wry>, enabled: bool) -> Result<(), CommandError> {
         );
         return Ok(());
     }
+    apply_to_os(app, enabled)
+}
+
+/// The registration itself, with no e2e gate in front: the VM rows call it through
+/// `e2e_apply_login_item` to check the real Run value or `.desktop` file.
+pub(crate) fn apply_to_os(app: &AppHandle<Wry>, enabled: bool) -> Result<(), CommandError> {
     platform::apply(app, enabled).map_err(|message| {
         tracing::warn!(
             scope = "Autostart",
@@ -54,10 +65,12 @@ fn start_on_boot(app: &AppHandle<Wry>) -> bool {
 }
 
 /// A write of `general` that touched `startOnBoot` applies the new value.
-pub fn on_general_written(app: &AppHandle<Wry>, fields: &[String]) {
+/// The setting is saved either way; the error says the login item could not follow it.
+pub fn on_general_written(app: &AppHandle<Wry>, fields: &[String]) -> Result<(), CommandError> {
     if fields.iter().any(|field| field == "startOnBoot") {
-        let _ = apply(app, start_on_boot(app));
+        return apply(app, start_on_boot(app));
     }
+    Ok(())
 }
 
 /// A vault opened. With the setting on, the login item is re-asserted, which is what honors an
@@ -65,6 +78,7 @@ pub fn on_general_written(app: &AppHandle<Wry>, fields: &[String]) {
 /// is touched: only a write of the setting turns it off, as in Electron.
 pub fn on_vault_opened(app: &AppHandle<Wry>) {
     if start_on_boot(app) {
+        // Nothing waits for this one; `apply` logs a failure with its context.
         let _ = apply(app, true);
     }
 }

@@ -266,7 +266,12 @@ impl GlobalCapture {
                 fallback_registered: restored.fallback_registered,
             });
         }
-        save()?;
+        if let Err(error) = save() {
+            // The OS took the binding but the setting did not keep it: what is registered must
+            // stay what is saved.
+            self.apply(keys, wayland, previous, on_fire);
+            return Err(error);
+        }
         Ok(attempt)
     }
 

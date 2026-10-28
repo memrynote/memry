@@ -120,6 +120,11 @@ fn on_host(value: &str, hosts: &[&str]) -> bool {
         && url.host_str().is_some_and(|host| hosts.contains(&host))
 }
 
+/// Where the bytes of a photo may come from: an `https` URL on an image host.
+pub(super) fn is_image_url(url: &Url) -> bool {
+    on_host(url.as_str(), &IMAGE_HOSTS)
+}
+
 /// The host the access key may be sent to, for the check on where a response came from.
 pub(super) fn is_api_url(url: &Url) -> bool {
     url.scheme() == "https" && url.host_str() == Some(API_HOST) && url.port().is_none()

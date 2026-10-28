@@ -46,7 +46,6 @@ pub async fn shortcut_set_global_capture(
                 i18n::t(locale, "errors:ipc.noVaultOpen", &Args::new()),
             ));
         };
-        let previous = read_binding(&app, "globalCapture");
         let settings = app.state::<SettingsService>().inner().clone();
         let patch_value = binding
             .as_ref()
@@ -63,20 +62,25 @@ pub async fn shortcut_set_global_capture(
         let mut change = None;
         let result = app
             .state::<ShortcutService>()
-            .set(&app, previous.as_ref(), binding.as_ref(), || {
-                let mut patch = Map::new();
-                patch.insert("globalCapture".to_owned(), patch_value);
-                change = Some(
-                    settings
-                        .write_group(Some(&vault), "keyboard", patch)
-                        .map_err(|error| format!("{error:?}"))?,
-                );
-                Ok(())
-            })
+            .set(
+                &app,
+                || read_binding(&app, "globalCapture"),
+                binding.as_ref(),
+                || {
+                    let mut patch = Map::new();
+                    patch.insert("globalCapture".to_owned(), patch_value);
+                    change = Some(
+                        settings
+                            .write_group(Some(&vault), "keyboard", patch)
+                            .map_err(|error| format!("{error:?}"))?,
+                    );
+                    Ok(())
+                },
+            )
             .map_err(|message| CommandError::new(ErrorKind::Storage, "settings_failed", message))?;
         // After the shortcut lock is released: the announce re-applies, a no-op for what is held.
         if let Some(change) = change {
-            announce(&app, &change.group, change.fields);
+            announce(&app, &change.group, change.fields)?;
         }
         Ok(result)
     })
