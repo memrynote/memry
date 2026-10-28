@@ -8,7 +8,11 @@ import {
   getConfiguredPinnedCertificateHashes
 } from './certificate-pins'
 
-const REAL_PIN = 'sha256/LUkXdP3NZ4aBKbFriRvHtAP2pzTAO9sMqzOnl24KZV4='
+const REAL_PIN = 'sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4='
+const STAGING_PINS = [
+  'sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=',
+  'sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c='
+]
 const PLACEHOLDER_PIN = 'sha256/PLACEHOLDER_PRIMARY_CERT_HASH_BASE64'
 
 describe('certificate-pins', () => {
@@ -23,15 +27,15 @@ describe('certificate-pins', () => {
   })
 
   it('returns the staging pin set for the staging sync host', () => {
-    expect(getConfiguredPinnedCertificateHashes('https://sync-staging.memrynote.com')).toEqual([
-      'sha256/LUkXdP3NZ4aBKbFriRvHtAP2pzTAO9sMqzOnl24KZV4='
-    ])
+    expect(getConfiguredPinnedCertificateHashes('https://sync-staging.memrynote.com')).toEqual(
+      STAGING_PINS
+    )
   })
 
   it('returns the configured host pin set directly', () => {
-    expect(getPinnedCertificateHashesForHostname('sync-staging.memrynote.com')).toEqual([
-      'sha256/LUkXdP3NZ4aBKbFriRvHtAP2pzTAO9sMqzOnl24KZV4='
-    ])
+    expect(getPinnedCertificateHashesForHostname('sync-staging.memrynote.com')).toEqual(
+      STAGING_PINS
+    )
   })
 
   it('returns an empty pin set for unknown hosts', () => {

@@ -135,7 +135,8 @@ import { decideEmbedRequestHeaders } from './lib/embed-referer'
 import { registerTestHooks } from './test-hooks'
 import { registerAgentDebugHandles } from './agent-debug'
 import {
-  computeSpkiHashFromPem,
+  sessionChainHashes,
+  verifySessionCertificatePin,
   isPinningDisabled,
   getPinnedCertificateHashes,
   getPinnedCertificateHashesForHostname,
@@ -669,18 +670,20 @@ function configureCertificatePinning(): void {
     }
 
     try {
-      const spkiHash = computeSpkiHashFromPem(cert.data)
-      if (!pinsForHostname.some((pin) => pin === spkiHash)) {
+      if (!verifySessionCertificatePin(request, pinsForHostname)) {
         certPinLog.error('Session certificate pin mismatch', {
           hostname: request.hostname,
-          hash: spkiHash
+          chainHashes: sessionChainHashes(request)
         })
         callback(-2)
         return
       }
 
+      // -3 keeps Chromium's own verdict (chain, expiry, hostname). A pin on an
+      // intermediate matches every certificate that CA issues, so forcing success
+      // with 0 would accept a certificate issued for another host.
       certPinLog.debug('Session certificate pin verified', { hostname: request.hostname })
-      callback(0)
+      callback(-3)
     } catch (err) {
       certPinLog.error('Certificate verification error', {
         hostname: request.hostname,

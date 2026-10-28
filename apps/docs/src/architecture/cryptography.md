@@ -240,6 +240,17 @@ connects through — resolve pins from the hostname the connection is actually d
 time. Neither consults the configured `SYNC_SERVER_URL` host to decide whether to pin, so the host
 being verified is always the host whose pins were looked up.
 
+A pin is an SPKI hash that may match any certificate in the presented chain, not just the leaf, so
+pins on the issuing intermediate and its root survive leaf renewals. Matching builds the path from the leaf
+and only trusts a certificate when the one below it is signed by it, so a peer cannot append a fake
+parent that carries a pinned key. The session verifier pools Chromium's validated chain with the
+server-sent chain; on macOS the validated chain stops below the root, so the root pin matches only
+while the server still sends the root cross-certificate. The session verifier then defers to Chromium's own
+verdict (chain, expiry, hostname) on a pin match instead of forcing success, because an intermediate
+pin matches every certificate that CA issues. Staging pins the Google Trust Services WE1
+intermediate and the GTS Root R4 key; add new pins before an issuer rotates, and never swap both at
+once. `pnpm cert:extract -- <hostname>` prints the SPKI hash of every certificate in the chain.
+
 ### Pin activation state
 
 A host entry in `certificate-pins.ts` may hold placeholder hashes, which means pinning has not been
@@ -277,7 +288,7 @@ Auditing sync host sync.memrynote.com from apps/desktop/.env.production.
 ```
 
 To activate pinning for a host, run `pnpm cert:extract -- <hostname>`, replace that host's
-placeholders with the emitted hashes (keep a backup pin for rotation), and set
+placeholders with the intermediate and root hashes it emits (two pins, so one can rotate), and set
 `MEMRY_CERT_PINS_STRICT=1` so the host can never silently regress to unpinned. Strict mode is
 opt-in and can be set either in the environment or in the same `.env.<MEMRY_ENV>` file that names the
 host. It is deliberately off by default: the production host still carries placeholder pins, so
