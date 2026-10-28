@@ -16,7 +16,7 @@ use memry_desktop::logging::localtime;
 use memry_desktop::paths::{AppPaths, DEVICE_VAR};
 use memry_desktop::registry::AppConfig;
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
-use memry_desktop::seams::tls::{PinFailure, PinFailureSink};
+use memry_desktop::seams::tls::{PinFailure, PinFailureReason, PinFailureSink};
 use memry_desktop::seams::transport::{SyncTransport, app_transport};
 use memry_desktop::session::Session;
 use memry_desktop::settings::SettingsService;
@@ -119,12 +119,19 @@ struct LogPinFailures;
 
 impl PinFailureSink for LogPinFailures {
     fn pin_failed(&self, failure: PinFailure) {
-        tracing::error!(
-            scope = "Pinning",
-            host = failure.hostname,
-            actual = failure.actual_hash,
-            "the sync host presented a certificate none of its pins match"
-        );
+        match failure.reason {
+            PinFailureReason::Mismatch => tracing::error!(
+                scope = "Pinning",
+                host = failure.hostname,
+                actual = failure.actual_hash,
+                "the sync host presented a certificate none of its pins match"
+            ),
+            PinFailureReason::Unverified { what } => tracing::error!(
+                scope = "Pinning",
+                host = failure.hostname,
+                "the pin check found no path to an OS root for the sync host's chain: {what}"
+            ),
+        }
     }
 }
 

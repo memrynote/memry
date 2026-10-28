@@ -11,13 +11,25 @@ use super::anchors::Anchors;
 use super::pins::{PinPolicy, PinTable};
 use super::spki::{ChainError, leaf_pin, verified_path_pins};
 
-/// A pinned host answered with a chain no verified path of which carries a pinned certificate.
+/// A pinned host's chain was refused by the pin check.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PinFailure {
     pub hostname: String,
     /// The pin of the leaf the server presented.
     pub actual_hash: String,
     pub expected_hashes: Vec<String>,
+    pub reason: PinFailureReason,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PinFailureReason {
+    /// Paths to an OS root verified, and none carries a pin: the host presents certificates the
+    /// table does not name (a rotation, or an interception).
+    Mismatch,
+    /// No path to an OS root verified for the pin check, though the platform verifier accepted
+    /// the chain: the OS roots this check reads lack the one the platform used, or the server left
+    /// out an intermediate the platform fetched. webpki's reason.
+    Unverified { what: String },
 }
 
 /// Told once per mismatch. Step 17 (#3534) turns it into the `certificate_pin_failed` event.
@@ -113,7 +125,7 @@ impl PinningVerifier {
         {
             result = verify(&fresh);
         }
-        match result {
+        let (reason, message) = match result {
             Ok(_) => return Ok(()),
             Err(error @ (ChainError::TooLong | ChainError::TooLarge | ChainError::Malformed)) => {
                 tracing::warn!(scope = "Pinning", "{host}: {error}");
@@ -121,14 +133,22 @@ impl PinningVerifier {
                     "certificate chain could not be checked against the pins".to_owned(),
                 ));
             }
-            Err(error) => tracing::warn!(scope = "Pinning", "{host}: {error}"),
-        }
+            Err(ChainError::Unverified(what)) => (
+                PinFailureReason::Unverified { what },
+                "certificate pin check found no verified path",
+            ),
+            Err(ChainError::NotAccepted) => {
+                (PinFailureReason::Mismatch, "certificate pin mismatch")
+            }
+        };
+        tracing::warn!(scope = "Pinning", "{host}: {reason:?}");
         self.sink.pin_failed(PinFailure {
             hostname: host.to_owned(),
             actual_hash: leaf_pin(end_entity).unwrap_or_default(),
             expected_hashes: pins.to_vec(),
+            reason,
         });
-        Err(Error::General("certificate pin mismatch".to_owned()))
+        Err(Error::General(message.to_owned()))
     }
 }
 

@@ -25,7 +25,7 @@ use rustls::client::danger::ServerCertVerifier;
 
 pub use anchors::Anchors;
 pub use pins::PinTable;
-pub use verifier::{PinFailure, PinFailureSink, PinningVerifier};
+pub use verifier::{PinFailure, PinFailureReason, PinFailureSink, PinningVerifier};
 
 /// What a `ClientConfig` is built from. Production uses [`TlsSetup::platform`]; a test passes its
 /// own inner verifier, pin table and activity.

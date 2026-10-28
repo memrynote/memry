@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use memry_core::api::errors::TransportError;
 use memry_core::seams::transport::{HttpRequest, Transport};
+use memry_desktop::seams::tls::{Anchors, PinFailureReason};
 use memry_desktop::seams::transport::NativeTransport;
 use rcgen::{
     BasicConstraints, CertificateParams, CertifiedIssuer, DnType, IsCa, KeyPair, KeyUsagePurpose,
@@ -83,6 +84,36 @@ async fn a_valid_certificate_with_another_pin_fails_as_tls_and_tells_the_sink_on
     assert_eq!(failures[0].hostname, "localhost");
     assert_eq!(failures[0].actual_hash, chain.leaf_pin());
     assert_eq!(failures[0].expected_hashes, pins);
+    assert_eq!(failures[0].reason, PinFailureReason::Mismatch);
+}
+
+/// The platform accepted the chain, but the roots the pin check reads lack its root: refused,
+/// and the sink hears why, apart from a mismatch.
+#[tokio::test]
+async fn a_chain_the_pin_check_cannot_verify_is_refused_as_unverified() {
+    let chain = Chain::new("localhost");
+    let server = ok_server(&chain).await;
+    let mut tls = setup(
+        &[chain.root.der()],
+        "localhost",
+        &[chain.intermediate_pin()],
+        true,
+    );
+    let elsewhere = ca("Elsewhere", None);
+    tls.anchors = Anchors::fixed(&[elsewhere.der()]);
+    let sink = Arc::new(RecordingSink::default());
+    let transport = NativeTransport::with_setup(tls, sink.clone(), &["localhost"]).unwrap();
+    let error = transport.send(get(&server)).await.unwrap_err();
+    assert!(
+        matches!(&error, TransportError::Tls { what } if what.contains("no verified path")),
+        "{error:?}"
+    );
+    let failures = sink.failures();
+    assert_eq!(failures.len(), 1);
+    assert!(matches!(
+        &failures[0].reason,
+        PinFailureReason::Unverified { what } if !what.is_empty()
+    ));
 }
 
 #[tokio::test]

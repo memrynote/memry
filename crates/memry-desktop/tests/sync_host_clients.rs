@@ -38,41 +38,72 @@ const ALLOWED: &[(&str, &str)] = &[
     ),
 ];
 
-/// A network client crate, or the shared client's module however it is named: by path, by a
-/// `use` of the module or of `client`/`client_trusting`, or under a rename.
-const PATTERN: &str = r"\b(reqwest|tokio_tungstenite|tungstenite|tokio_rustls|hyper|hyper_util|ureq|isahc|surf|attohttpc|tauri_plugin_http|tauri_plugin_websocket)\b|\b(crate|memry_desktop)::http\b|\bclient_trusting\b";
+/// A network client crate, or the shared client's module however it is named: by path from
+/// `crate`, `memry_desktop`, `super` or `self`, in a braced (possibly multi-line) `use`, by
+/// `http::client` after the module was imported, by a rename, or `client_trusting`.
+const PATTERN: &str = r"(?s)\b(reqwest|tokio_tungstenite|tungstenite|tokio_rustls|hyper|hyper_util|ureq|isahc|surf|attohttpc|tauri_plugin_http|tauri_plugin_websocket)\b|\b(crate|memry_desktop|super|self)::http\b|\bhttp::client(_trusting)?\b|\bclient_trusting\b|\buse\s+(crate|memry_desktop|super|self)::\{[^;]*?\bhttp\b[^;]*?\}";
 
-fn offends(line: &str) -> bool {
-    let code = line.trim_start();
+/// Each match in `source` as `line: text`, comments blanked first (line numbers kept).
+fn offenses(source: &str) -> Vec<(usize, String)> {
     static RE: std::sync::LazyLock<regex::Regex> =
         std::sync::LazyLock::new(|| regex::Regex::new(PATTERN).unwrap());
-    !code.starts_with("//") && RE.is_match(code)
+    let code: String = source
+        .lines()
+        .map(|line| match line.find("//") {
+            Some(at) => &line[..at],
+            None => line,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    RE.find_iter(&code)
+        .map(|found| {
+            let line = code[..found.start()].matches('\n').count() + 1;
+            (
+                line,
+                found
+                    .as_str()
+                    .split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            )
+        })
+        .collect()
 }
 
 #[test]
 fn the_guard_sees_every_way_to_name_an_unpinned_client() {
-    for line in [
+    for source in [
         "let client = memry_desktop::http::client();",
         "use memry_desktop::http::client;",
         "use memry_desktop::http::{self as net};",
         "use crate::http::client as unpinned;",
         "use crate::http;",
+        "use super::http;",
+        "use self::http::client;",
+        "let client = http::client();",
+        "let client = http::client_trusting(root);",
         "let c = client_trusting(root);",
+        "use crate::{config::RuntimeConfig, http};",
+        "use crate::{\n    config::RuntimeConfig,\n    http,\n    session::Session,\n};",
+        "use memry_desktop::{\n    http::client,\n};",
         "use reqwest::Client;",
         "tokio_tungstenite::connect_async(url)",
         "use tokio_rustls::TlsConnector;",
         "hyper::Client::new()",
         "ureq::get(url)",
     ] {
-        assert!(offends(line), "{line}");
+        assert!(!offenses(source).is_empty(), "{source}");
     }
-    for line in [
+    for source in [
         "// reqwest is not used here",
+        "let x = 1; // use crate::http;",
         "let http = self.transport.send(request);",
         "mod http;",
         "http::send(&self.http, request)",
+        "use crate::{config::RuntimeConfig, http_cache};",
+        "use crate::{a::b};\nlet http = 1;",
     ] {
-        assert!(!offends(line), "{line}");
+        assert!(offenses(source).is_empty(), "{source}");
     }
 }
 
@@ -108,10 +139,8 @@ fn only_allowlisted_files_name_an_unpinned_http_client() {
             continue;
         }
         let text = std::fs::read_to_string(file).unwrap();
-        for (number, line) in text.lines().enumerate() {
-            if offends(line) {
-                offenders.push(format!("{relative}:{}: {}", number + 1, line.trim()));
-            }
+        for (line, found) in offenses(&text) {
+            offenders.push(format!("{relative}:{line}: {found}"));
         }
     }
     assert!(

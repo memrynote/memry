@@ -1,23 +1,35 @@
 //! The roots the pin check verifies a path against: the ones the platform verifier trusts.
 
 use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, Instant};
 
 use rustls::RootCertStore;
 use rustls::pki_types::{CertificateDer, TrustAnchor};
 
 type Roots = Arc<Vec<TrustAnchor<'static>>>;
 
+/// A path that does not verify reads the OS store again at most this often.
+const RELOAD_EVERY: Duration = Duration::from_secs(60);
+
+#[derive(Default)]
+pub struct NativeRoots {
+    roots: Option<Roots>,
+    reloaded_at: Option<Instant>,
+}
+
 pub enum Anchors {
     /// The OS trust store, read on the first pinned handshake and again when a path does not
-    /// verify against it (Windows installs a root the first time a chain needs it).
-    Native(Mutex<Option<Roots>>),
+    /// verify against it (Windows installs a root the first time a chain needs it), at most once
+    /// per [`RELOAD_EVERY`]. The read runs on the handshake's thread, a Tokio worker: a one-time
+    /// stall of the time the OS takes to list its roots, on the first request to a pinned host.
+    Native(Mutex<NativeRoots>),
     /// A test's own roots.
     Fixed(Roots),
 }
 
 impl Anchors {
     pub fn native() -> Self {
-        Self::Native(Mutex::new(None))
+        Self::Native(Mutex::default())
     }
 
     pub fn fixed(roots: &[&CertificateDer<'_>]) -> Self {
@@ -34,24 +46,32 @@ impl Anchors {
     pub fn roots(&self) -> Roots {
         match self {
             Self::Fixed(roots) => roots.clone(),
-            Self::Native(cache) => cache
+            Self::Native(native) => native
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
+                .roots
                 .get_or_insert_with(load_native)
                 .clone(),
         }
     }
 
-    /// The OS trust store read again; `None` for fixed roots.
+    /// The OS trust store read again; `None` for fixed roots and within [`RELOAD_EVERY`] of the
+    /// last reload.
     pub(super) fn reload(&self) -> Option<Roots> {
-        match self {
-            Self::Fixed(_) => None,
-            Self::Native(cache) => {
-                let fresh = load_native();
-                *cache.lock().unwrap_or_else(PoisonError::into_inner) = Some(fresh.clone());
-                Some(fresh)
-            }
+        let Self::Native(native) = self else {
+            return None;
+        };
+        let mut native = native.lock().unwrap_or_else(PoisonError::into_inner);
+        if native
+            .reloaded_at
+            .is_some_and(|at| at.elapsed() < RELOAD_EVERY)
+        {
+            return None;
         }
+        let fresh = load_native();
+        native.roots = Some(fresh.clone());
+        native.reloaded_at = Some(Instant::now());
+        Some(fresh)
     }
 }
 
@@ -72,4 +92,17 @@ fn load_native() -> Roots {
         );
     }
     Arc::new(store.roots)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_os_store_is_read_again_at_most_once_a_minute() {
+        let anchors = Anchors::native();
+        assert!(anchors.reload().is_some());
+        assert!(anchors.reload().is_none());
+        assert!(Anchors::fixed(&[]).reload().is_none());
+    }
 }
