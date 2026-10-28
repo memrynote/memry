@@ -13,6 +13,8 @@ test('three page crashes in a minute are three reloads, each told to the user', 
   app,
   page
 }) => {
+  // Three full page boots; the first web process relaunch after a build is slow.
+  test.slow()
   for (let crash = 1; crash <= 3; crash += 1) {
     await app.executor.execute('window.__memryBeforeCrash = true')
     await invokeTest(app, 'e2e_kill_page')
