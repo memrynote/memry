@@ -130,6 +130,7 @@ export const commands = {
 /** Events */
 export const events = {
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
+	crdtWriteBackFailedEvent: makeEvent<CrdtWriteBackFailedEvent, CrdtWriteBackFailedEvent>("crdt-write-back-failed-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
@@ -186,6 +187,15 @@ export type ContextMenuItem = {
 	accelerator: string | null,
 	disabled: boolean | null,
 	type: ItemKind | null,
+};
+
+/**
+ *  A note's file could not be updated from its body (`sync:write-back-failed`), once per run
+ *  of failed write-backs of the note. `title` is `None` when it could not be read.
+ */
+export type CrdtWriteBackFailedEvent = {
+	noteId: string,
+	title: string | null,
 };
 
 /**  One shipped line (`DiagnosticLogLineSchema`). */

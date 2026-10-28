@@ -49,4 +49,10 @@ impl WriteBackReader {
             Ok(write_back::keep_replaced(conn, note_id, content, body, now))
         })?
     }
+
+    /// [`write_back::title`].
+    pub fn title(&self, note_id: &str) -> Result<Option<String>, StorageError> {
+        self.db
+            .read_blocking(move |conn| write_back::title(conn, note_id))
+    }
 }

@@ -42,8 +42,6 @@ pub(super) struct Applier {
     /// `None` when this device has no signing key: nothing can be seeded or fed.
     pub(super) feed: Option<ExternalFeed>,
     pub(super) settings: Option<AppSettings>,
-    /// See [`super::ConsumerOptions::feed_changes`].
-    pub(super) feed_changes: bool,
 }
 
 /// Whether the note's document now holds the whole file: only then does the row record the
@@ -248,13 +246,6 @@ impl Applier {
             }
         };
         let content_hash = if file_type == FileType::Markdown {
-            // An outside edit replaces the body, so it waits for the write-back (12e-3) that
-            // brings a body synced meanwhile to the file first. The row keeps its hash, which
-            // names what the document holds. A row without a hash is only ever seeded, which
-            // fills an empty body and leaves any other alone, so it does not wait.
-            if !self.feed_changes && row.content_hash.is_some() {
-                return Step::Done;
-            }
             let file = match self.read(path, file_type) {
                 Ok(Some(file)) => file,
                 Ok(None) => return Step::Done,

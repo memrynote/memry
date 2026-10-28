@@ -46,14 +46,7 @@ fn run(f: &Fixture, capacity: usize) -> Running {
         new_files,
     )
     .unwrap();
-    let applier = applier(
-        &f.root,
-        &f.vault,
-        &f.store,
-        &f.rows,
-        f.identity.clone(),
-        false,
-    );
+    let applier = applier(&f.root, &f.vault, &f.store, &f.rows, f.identity.clone());
     let consumer = Consumer::start(applier, inbox, watcher.handle(), vec![]).unwrap();
     Running {
         _watcher: watcher,
@@ -99,7 +92,7 @@ impl Fixture {
 /// there is no next overflow, and no loop.
 #[test]
 fn a_flood_of_files_nothing_adopts_costs_one_resync_and_no_second_report() {
-    let mut f = fixture(false);
+    let mut f = fixture();
     f.identity.adopts.store(false, Ordering::SeqCst);
     let running = run(&f, 8);
     let mut seen = Vec::new();
@@ -121,7 +114,7 @@ fn a_flood_of_files_nothing_adopts_costs_one_resync_and_no_second_report() {
 /// that found them again are few.
 #[test]
 fn a_flood_of_new_files_ends_with_one_note_each() {
-    let mut f = fixture(false);
+    let mut f = fixture();
     let _running = run(&f, 64);
     let mut seen = Vec::new();
     f.collect_until(&mut seen, |_, s| {
@@ -143,7 +136,7 @@ fn a_flood_of_new_files_ends_with_one_note_each() {
 /// walk does not leave the queue to fill up behind it.
 #[test]
 fn facts_that_arrive_during_the_open_walk_are_applied_before_it_ends() {
-    let mut f = fixture(false);
+    let mut f = fixture();
     for n in 0..3 {
         f.write(&format!("before/n{n}.md"), &format!("there before {n}\n"));
     }

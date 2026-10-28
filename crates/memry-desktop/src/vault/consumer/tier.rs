@@ -3,6 +3,7 @@
 //! (the app holds it), and is open only while a vault is.
 
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use memry_core::seams::secure_store::SecureStore;
 use tokio::sync::broadcast;
@@ -10,11 +11,12 @@ use tokio::sync::broadcast;
 use super::apply::Applier;
 use super::identity::{DeferIdentity, NoteIdentity};
 use super::rows::RowOwner;
-use super::{Applied, Consumer, ConsumerOptions, QUEUE_CAPACITY, inbox};
+use super::{Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
+use crate::shell::shutdown::StepFn;
 use crate::vault::config::read_vault_config;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
-use crate::vault::writeback::{Pass, WriteBack};
+use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed};
 
 pub struct VaultTier {
     /// The own-write record of the open vault session; every open and close starts a new one.
@@ -23,28 +25,25 @@ pub struct VaultTier {
     store: Arc<dyn SecureStore>,
     rows: Arc<RowOwner>,
     identity: Mutex<Arc<dyn NoteIdentity>>,
-    options: ConsumerOptions,
+    /// Every session's failed write-backs, for the notice.
+    failures: broadcast::Sender<WriteBackFailed>,
     running: Mutex<Option<Running>>,
 }
 
 struct Running {
     watcher: VaultWatcher,
     consumer: Consumer,
-    writeback: WriteBack,
+    writeback: Arc<WriteBack>,
 }
 
 impl VaultTier {
     pub fn new(store: Arc<dyn SecureStore>) -> Arc<Self> {
-        Self::with_options(store, ConsumerOptions::default())
-    }
-
-    pub fn with_options(store: Arc<dyn SecureStore>, options: ConsumerOptions) -> Arc<Self> {
         Arc::new(Self {
             echo: Mutex::new(Arc::default()),
             store,
             rows: RowOwner::new(),
             identity: Mutex::new(Arc::new(DeferIdentity)),
-            options,
+            failures: broadcast::channel(64).0,
             running: Mutex::new(None),
         })
     }
@@ -81,6 +80,43 @@ impl VaultTier {
         }
     }
 
+    /// Every note whose file could not be updated from its body, once per run of failures.
+    pub fn subscribe_failures(&self) -> broadcast::Receiver<WriteBackFailed> {
+        self.failures.subscribe()
+    }
+
+    /// Runs every scheduled write-back of the open vault now and waits, at most `timeout`, for
+    /// them. True when none is left; also when no vault is open.
+    pub fn flush(&self, timeout: Duration) -> bool {
+        let writeback = self
+            .running
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .map(|running| running.writeback.clone());
+        writeback.is_none_or(|writeback| writeback.flush(timeout))
+    }
+
+    /// The `flush-writebacks` shutdown step: every scheduled write-back runs inside the quit's
+    /// budget. An error says some did not finish in it, so the last chance runs the step again.
+    pub fn flush_step(self: &Arc<Self>) -> StepFn {
+        let tier = self.clone();
+        Arc::new(move |_, deadline| {
+            let tier = tier.clone();
+            Box::pin(async move {
+                let timeout = deadline.remaining();
+                let done = tokio::task::spawn_blocking(move || tier.flush(timeout))
+                    .await
+                    .map_err(|error| error.to_string())?;
+                if done {
+                    Ok(())
+                } else {
+                    Err("write-backs were still running when the budget ran out".into())
+                }
+            })
+        })
+    }
+
     /// The identity of the next open on ([`DeferIdentity`] until Step 13 sets its own).
     pub fn set_identity(&self, identity: Arc<dyn NoteIdentity>) {
         *self.identity.lock().unwrap_or_else(|e| e.into_inner()) = identity;
@@ -99,7 +135,7 @@ impl VaultTier {
         if let Some(Running {
             watcher,
             mut consumer,
-            mut writeback,
+            writeback,
         }) = running
         {
             watcher.stop_and_drop();
@@ -156,7 +192,9 @@ impl VaultTier {
             self.echo(),
             vault.vault.app_settings(self.store.clone()).ok(),
         );
-        let writeback = WriteBack::start(pass).map_err(|error| error.to_string())?;
+        let writeback = WriteBack::start(pass, self.failures.clone())
+            .map(Arc::new)
+            .map_err(|error| error.to_string())?;
         let applier = Applier {
             root: vault.path.clone(),
             vault: vault.vault.clone(),
@@ -164,7 +202,6 @@ impl VaultTier {
             identity,
             feed,
             settings: vault.vault.app_settings(self.store.clone()).ok(),
-            feed_changes: self.options.feed_changes,
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude)
             .map_err(|error| error.to_string())?;

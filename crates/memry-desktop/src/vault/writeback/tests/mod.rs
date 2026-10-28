@@ -314,4 +314,5 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
 }
 
 mod guards;
+mod schedule;
 mod triggers;

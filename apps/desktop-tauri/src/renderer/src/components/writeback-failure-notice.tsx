@@ -2,6 +2,9 @@ import { useEffect } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 
+import { events } from '../../../generated/bindings'
+import { subscribeToEvent } from '@/services/tauri-event'
+
 /**
  * Tell the user when a note's file on disk could not be updated from the
  * editor (#2615): the edit is held by the app, and the file still has the
@@ -17,7 +20,7 @@ export function WritebackFailureNotice(): null {
 
   useEffect(
     () =>
-      window.api.onCrdtWriteBackFailed((event) => {
+      subscribeToEvent(events.crdtWriteBackFailedEvent, (event) => {
         toast.warning(
           event.title
             ? t('crdt.writebackFailedTitleNamed', { title: event.title })

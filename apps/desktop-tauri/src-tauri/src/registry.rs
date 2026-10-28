@@ -94,6 +94,8 @@ pub fn builder() -> Builder<Wry> {
         .events(collect_events![
             // app
             crate::events::AppNavigationRequestedEvent,
+            // crdt
+            crate::events::CrdtWriteBackFailedEvent,
             // flush
             crate::events::FlushRequestedEvent,
             // inbox

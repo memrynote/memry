@@ -18,14 +18,17 @@ use memry_desktop::session::{OpenSource, Session, SessionEvent, StartupOutcome};
 use memry_desktop::settings::SettingsService;
 use memry_desktop::telemetry::service::Service;
 use memry_desktop::vault::consumer::VaultTier;
+use memry_desktop::vault::writeback::WriteBackFailed;
 use tauri::{AppHandle, Manager, Wry};
+use tokio::sync::broadcast::error::RecvError;
 
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::events::{
-    VaultErrorEvent, VaultIndexRecoveredEvent, VaultListChangedEvent, VaultStatusChangedEvent,
-    broadcast,
+    CrdtWriteBackFailedEvent, VaultErrorEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
+    VaultStatusChangedEvent, broadcast,
 };
 use crate::shell::{dialogs, services};
+use crate::shutdown::ShutdownService;
 use crate::startup::{self, Stage};
 
 /// The registry file, beside the rest of the app data (`memry-config.json` of Electron).
@@ -108,7 +111,45 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     };
     let tier = VaultTier::new(store.inner().clone());
     tier.register(session);
+    register_writeback_flush(app, &tier);
+    forward_writeback_failures(app.clone(), tier.subscribe_failures());
     app.manage(tier);
+}
+
+/// `flush-writebacks`: no edit scheduled for a note's file waits out the quit.
+fn register_writeback_flush(app: &AppHandle<Wry>, tier: &Arc<VaultTier>) {
+    // Managed by the `Handlers` stage, which runs before this one.
+    let Some(shutdown) = app.try_state::<ShutdownService>() else {
+        tracing::error!(
+            scope = "vault_writeback",
+            "no shutdown service: a quit does not wait for the write-back"
+        );
+        return;
+    };
+    if let Err(error) = shutdown.register("flush-writebacks", tier.flush_step()) {
+        tracing::error!(scope = "vault_writeback", "{error}");
+    }
+}
+
+fn forward_writeback_failures(
+    app: AppHandle<Wry>,
+    mut failures: tokio::sync::broadcast::Receiver<WriteBackFailed>,
+) {
+    std::thread::spawn(move || {
+        loop {
+            match failures.blocking_recv() {
+                Ok(WriteBackFailed { note_id, title }) => {
+                    broadcast(&app, CrdtWriteBackFailedEvent { note_id, title });
+                }
+                Err(RecvError::Lagged(missed)) => tracing::warn!(
+                    scope = "vault_writeback",
+                    missed,
+                    "write-back failure notices were dropped"
+                ),
+                Err(RecvError::Closed) => break,
+            }
+        }
+    });
 }
 
 pub fn register_stages() {
