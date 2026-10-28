@@ -18,6 +18,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_core::api::errors::StorageError;
 use memry_core::api::note_files::NoteFiles;
+use memry_core::api::vault::Vault;
 use memry_core::domain::note_files::{NoteFile as Row, NoteFileStat};
 use tokio::sync::broadcast;
 
@@ -56,6 +57,8 @@ pub enum RowError {
 
 struct RowState {
     session: RowSession,
+    /// The open vault; a session is handed out only against this handle.
+    vault: Arc<Vault>,
     files: NoteFiles,
     index: PathIndex,
 }
@@ -81,22 +84,27 @@ impl RowOwner {
         self.applied.subscribe()
     }
 
-    pub(super) fn open(&self, files: NoteFiles) -> Result<(), StorageError> {
+    pub(super) fn open(&self, vault: Arc<Vault>) -> Result<(), StorageError> {
+        let files = vault.note_files();
         let index = PathIndex::load(&files)?;
         let session = RowSession(self.sessions.fetch_add(1, Ordering::Relaxed) + 1);
         *self.lock() = Some(RowState {
             session,
+            vault,
             files,
             index,
         });
         Ok(())
     }
 
-    /// The open session. An app operation takes it when it starts, with the vault it works
-    /// on, and hands it to each row write.
-    pub fn session(&self) -> Result<RowSession, RowError> {
+    /// The session of `vault`, the handle the operation works on (`OpenVault::vault` of the
+    /// open it was handed): `Closed` unless that very vault is open. An app operation takes it
+    /// when it starts and hands it to each row write, so a write for one vault never lands in
+    /// another, nor in a later open of the same one.
+    pub fn session_for(&self, vault: &Arc<Vault>) -> Result<RowSession, RowError> {
         self.lock()
             .as_ref()
+            .filter(|state| Arc::ptr_eq(&state.vault, vault))
             .map(|state| state.session)
             .ok_or(RowError::Closed)
     }

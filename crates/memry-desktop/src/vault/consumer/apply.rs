@@ -254,8 +254,9 @@ impl Applier {
         let content_hash = if file_type == FileType::Markdown {
             // An outside edit replaces the body, so it waits for the write-back (12e-3) that
             // brings a body synced meanwhile to the file first. The row keeps its hash, which
-            // names what the document holds.
-            if !self.feed_changes {
+            // names what the document holds. A row without a hash is only ever seeded, which
+            // fills an empty body and leaves any other alone, so it does not wait.
+            if !self.feed_changes && row.content_hash.is_some() {
                 return Step::Done;
             }
             let file = match self.read(path, file_type) {

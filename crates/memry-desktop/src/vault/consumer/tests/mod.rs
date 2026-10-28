@@ -130,7 +130,7 @@ pub(super) fn fixture(feed_changes: bool) -> Fixture {
         Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap(),
     );
     let rows = RowOwner::new();
-    rows.open(vault.note_files()).unwrap();
+    rows.open(vault.clone()).unwrap();
     let identity = Arc::new(Recorder {
         writer: vault.notes_writer(store.clone()).unwrap(),
         next: Mutex::default(),
@@ -203,7 +203,7 @@ impl Fixture {
     }
 
     pub(super) fn session(&self) -> RowSession {
-        self.rows.session().unwrap()
+        self.rows.session_for(&self.vault).unwrap()
     }
 
     pub(super) fn stat(size: u64) -> RowStat {

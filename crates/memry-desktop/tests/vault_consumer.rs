@@ -237,7 +237,7 @@ fn a_file_written_while_open_gets_a_note_and_the_tier_stops_with_the_vault() {
     std::thread::sleep(Duration::from_millis(300));
     e.write("hello.md", "hi\n");
     e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "hello.md"));
-    let session = e.tier.rows().session().unwrap();
+    let session = e.tier.rows().session_for(e.core.as_ref().unwrap()).unwrap();
     e.close();
 
     e.write("late.md", "x\n");

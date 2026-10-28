@@ -13,7 +13,7 @@ fn an_app_operation_writes_no_row_once_its_session_closed() {
     let id = f.note();
     let started_in = f.session();
     f.rows.close();
-    f.rows.open(f.vault.note_files()).unwrap();
+    f.rows.open(f.vault.clone()).unwrap();
     let error = f
         .rows
         .reserve(started_in, &id, "late.md", Fixture::stat(1))
@@ -77,8 +77,10 @@ fn an_identity_that_adopts_nothing_reads_no_new_file() {
     assert!(f.adopted().is_empty());
 }
 
-/// `note_files` rows are written through the lane only, so its path index and its facts never
-/// miss a write. A new writer elsewhere is a bug: take the lane (`RowOwner`) instead.
+/// A tripwire, not a proof: it scans the source of this crate and of the Tauri app for calls
+/// that write `note_files` rows outside the lane, by name. `note_files` rows are written
+/// through the lane only, so its path index and its facts never miss a write. A new writer
+/// elsewhere is a bug: take the lane (`RowOwner`) instead.
 #[test]
 fn note_files_is_written_only_through_the_lane() {
     let crate_src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
@@ -125,4 +127,35 @@ fn rust_files(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
         }
     }
     files
+}
+
+/// A session is handed out for the vault that is open, and only with its handle: an operation
+/// for vault A cannot take the session of vault B.
+#[test]
+fn a_session_is_had_only_with_the_handle_of_the_open_vault() {
+    let f = fixture(false);
+    let other_dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(other_dir.path().join("core")).unwrap();
+    let other = Arc::new(
+        Vault::open_with(
+            other_dir.path().join("core").to_string_lossy().into_owned(),
+            OpenOptions::default(),
+        )
+        .unwrap(),
+    );
+    assert!(f.rows.session_for(&f.vault).is_ok());
+    assert!(matches!(f.rows.session_for(&other), Err(RowError::Closed)));
+    let in_a = f.rows.session_for(&f.vault).unwrap();
+    f.rows.close();
+    f.rows.open(other.clone()).unwrap();
+    assert!(matches!(
+        f.rows.session_for(&f.vault),
+        Err(RowError::Closed)
+    ));
+    let id = f.note();
+    assert!(matches!(
+        f.rows.reserve(in_a, &id, "a.md", Fixture::stat(1)),
+        Err(RowError::Closed)
+    ));
+    assert!(other.note_files().by_path("a.md").unwrap().is_none());
 }

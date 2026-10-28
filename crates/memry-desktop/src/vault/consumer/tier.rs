@@ -92,7 +92,7 @@ impl VaultTier {
     fn start(&self, vault: &OpenVault) -> Result<Running, String> {
         let exclude = read_vault_config(&vault.path).exclude_patterns;
         self.rows
-            .open(vault.vault.note_files())
+            .open(vault.vault.clone())
             .map_err(|error| error.to_string())?;
         let identity = self
             .identity

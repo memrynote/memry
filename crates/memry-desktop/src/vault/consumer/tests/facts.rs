@@ -83,13 +83,24 @@ fn a_row_the_app_reserved_makes_the_watchers_added_a_change_of_that_note() {
     assert_eq!(f.added("made-in-app.md"), Step::Done);
     assert!(f.adopted().is_empty(), "the app's file got a second note");
     assert_eq!(only_note(&f, "made-in-app.md"), id);
+    // The reserved row had no hash, so the file seeded the note's empty body: a change of
+    // that note, never a second one.
+    let hash = content_hash("written by the app\n");
     assert_eq!(
         f.facts(),
-        vec![Applied::Added {
-            note_id: id,
-            path: "made-in-app.md".into(),
-            created: true
-        }]
+        vec![
+            Applied::Added {
+                note_id: id.clone(),
+                path: "made-in-app.md".into(),
+                created: true
+            },
+            Applied::Changed {
+                note_id: id,
+                path: "made-in-app.md".into(),
+                content_hash: Some(hash),
+                source: ChangeSource::Watcher
+            }
+        ]
     );
 }
 

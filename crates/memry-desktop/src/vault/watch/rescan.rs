@@ -124,8 +124,16 @@ impl Reconciler {
             self.tracker
                 .track((*home).clone().pending(), observed(now), Some(batch));
         }
-        // Sizes a moved note can have: a pass that adopts no new file reads only these.
-        let movable: HashSet<i64> = missing.iter().filter_map(|home| home.size).collect();
+        // Sizes a moved note can have: a pass that adopts no new file reads only these. The row's
+        // size, and the one last reported, which is newer when nothing applied an edit yet.
+        let movable: HashSet<i64> = missing
+            .iter()
+            .flat_map(|home| {
+                let seen = self.reported.of_note(&home.note_id);
+                [home.size, seen.and_then(|s| i64::try_from(s.stat.0).ok())]
+            })
+            .flatten()
+            .collect();
         for path in &added {
             if stop.load(Ordering::Relaxed) {
                 self.tracker.discard(batch);

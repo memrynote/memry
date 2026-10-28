@@ -95,3 +95,27 @@ fn a_file_read_back_unchanged_refreshes_its_row() {
     assert!(after.indexed_at > before, "the row was not refreshed");
     assert_eq!(after.content_hash, Some(content_hash("same text\n")));
 }
+
+/// A row without a hash (here: the device had no key when the file was found) is seeded once
+/// it can be, while outside edits still wait for the write-back: a seed only fills an empty
+/// body, so it is not an edit.
+#[test]
+fn a_row_without_a_hash_is_seeded_while_outside_edits_wait() {
+    let mut f = fixture(false);
+    f.applier.feed = None;
+    f.write("a.md", "found without a key\n");
+    assert_eq!(f.added("a.md"), Step::Done);
+    let id = only_note(&f, "a.md");
+    assert_eq!(f.hash_of("a.md"), None);
+    f.applier.feed = f.vault.external_feed(f.store.clone()).ok();
+    assert_eq!(f.walked("a.md"), Step::Done);
+    assert!(
+        f.body(&id).contains("found without a key"),
+        "{}",
+        f.body(&id)
+    );
+    assert_eq!(
+        f.hash_of("a.md"),
+        Some(content_hash("found without a key\n"))
+    );
+}

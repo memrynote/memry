@@ -56,7 +56,15 @@ pub enum Removal {
     /// The record was deleted. The consumer then removes the row.
     Deleted,
     /// Record and row stay (a locked note, or policy); the row loses its hash, since it names
-    /// a file that is gone. The next open reports the file again.
+    /// a file that is gone, so a file that shows up at that path later is not taken for the
+    /// note's text. The next open reports the removal again.
+    ///
+    /// A kept note's file that shows up at another path is not paired with it: once its
+    /// removal settled, the file is new to the watcher, whether the app was open or closed
+    /// (a hash kept for pairing would cover only the closed app). It reaches
+    /// [`NoteIdentity::adopt_or_create`] as a new file, and an identity that keeps notes must
+    /// recognise its kept note there and answer `Existing`, or the file becomes a second
+    /// note.
     Kept,
 }
 

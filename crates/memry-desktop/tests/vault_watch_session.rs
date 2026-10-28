@@ -354,3 +354,64 @@ fn a_rescan_that_adopts_nothing_looks_only_at_files_a_moved_note_can_be() {
         log.lock().unwrap()
     );
 }
+
+/// A note edited and then moved while nothing applied the edit: its row still has the old size,
+/// the report has the new one. A rescan that adopts nothing still reads the moved file, since
+/// its size is the one last reported, and pairs it.
+#[test]
+fn a_rescan_that_adopts_nothing_finds_a_note_edited_then_moved() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("vault");
+    let core = root.join(".memry/core");
+    fs::create_dir_all(&core).unwrap();
+    let vault =
+        Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap();
+    fs::write(root.join("a.md"), "base").unwrap();
+    vault
+        .note_files()
+        .upsert_stat(NoteFileStat {
+            note_id: "n1".into(),
+            path: "a.md".into(),
+            file_type: "markdown".into(),
+            mime_type: None,
+            file_size: Some(4),
+            content_hash: Some(content_hash("base")),
+            indexed_at: i64::MAX,
+        })
+        .unwrap();
+    let log = Log::default();
+    let mut r = Reconciler::new(
+        root.clone(),
+        vec![],
+        vault.note_files(),
+        Arc::new(EchoGuard::default()),
+        sink(&log),
+    )
+    .with_new_files(NewFiles::PairOnly);
+    fs::write(root.join("a.md"), "edited, and longer than it was").unwrap();
+    r.batch(vec!["a.md".into()], Instant::now());
+    assert_eq!(
+        count(&log, |e| matches!(e, VaultEvent::Changed { .. })),
+        1,
+        "{:?}",
+        log.lock().unwrap()
+    );
+    fs::rename(root.join("a.md"), root.join("moved.md")).unwrap();
+    let stop = AtomicBool::new(false);
+    r.rescan(true, Instant::now(), &stop).unwrap();
+    r.settle_expired(Instant::now() + Duration::from_secs(2));
+    let events = log.lock().unwrap().clone();
+    assert!(
+        events.iter().any(|e| matches!(
+            e,
+            VaultEvent::Renamed { note_id, new_path, .. } if note_id == "n1" && new_path == "moved.md"
+        )),
+        "{events:?}"
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, VaultEvent::Removed { .. })),
+        "{events:?}"
+    );
+}

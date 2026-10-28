@@ -7,8 +7,9 @@
 //! what it reported and rescans against the rows, which hold what was applied, so every
 //! dropped fact is found again. One resync waits for the `Rescanned` of the one before it,
 //! and when that pass overflowed too the next waits longer: a flood the consumer cannot keep
-//! up with costs a resync now and then, never a loop. Files that nothing adopts are not
-//! reported by a resync at all (`NewFiles::PairOnly`), so they cannot flood it.
+//! up with costs a resync now and then, never a loop. When the identity adopts nothing, a
+//! resync reads and reports no file without a row except one that can be a moved note
+//! (`NewFiles::PairOnly`), so such files cannot flood it.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -175,10 +176,11 @@ impl Run {
             }
             match self.inbox.rx.recv_timeout(wait) {
                 Ok(event) => self.take(event),
-                // Nothing queued while a resync is owed: its pass's `Rescanned` was among the
-                // dropped facts, or the pass is still walking. Either way it is over for the
-                // backoff.
-                Err(RecvTimeoutError::Timeout) if self.resync.owed => {
+                // A resync waits for its pass's `Rescanned`, facts were dropped since, and the
+                // queue went quiet: that `Rescanned` may have been dropped too, and a pass
+                // still walking reports nothing for a while. The pass counts as ended, and the
+                // next resync waits out the backoff.
+                Err(RecvTimeoutError::Timeout) if self.resync.owed && self.resync.waiting => {
                     self.resync.pass_ended(Instant::now());
                 }
                 Err(RecvTimeoutError::Timeout) => {}
