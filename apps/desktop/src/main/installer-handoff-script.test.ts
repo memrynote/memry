@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  handoffCmdArgs,
+  handoffSpawnOptions,
+  installerHandoffEnv,
+  unsupportedHandoffInstallDirChar,
   judgeAuthenticode,
   renderInstallerHandoffScript,
   resolveReleaseTag,
@@ -13,124 +17,234 @@ const plan: InstallerHandoffPlan = {
   installDir: String.raw`C:\Users\kaan\AppData\Local\Programs\MemryNote`,
   uninstallerPath: String.raw`C:\Users\kaan\AppData\Local\Programs\MemryNote\Uninstall MemryNote.exe`,
   workDir: String.raw`C:\Users\kaan\AppData\Local\Temp\memry-installer-handoff-1234`,
-  setupExePath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\installer-handoff\MemryNote-win-Setup.exe`,
+  setupExePath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\installer-handoff\MemryNote-Setup-win-x64.exe`,
   setupLogPath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\logs\velopack-setup.log`,
   handoffLogPath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\logs\installer-handoff.log`,
   nsisInstallerPath: String.raw`C:\Users\kaan\AppData\Local\memrynote-updater\pending\MemryNote-2026.911.1-setup.exe`
 }
 
-const scriptLines = (nsisInstaller: string): string[] => [
-  '@echo off',
-  'setlocal',
-  'rem MemryNote installer hand-off: wait for the app to exit, remove the NSIS install, install the Velopack build.',
-  'set "APP_PID=1234"',
-  'set "APP_EXE=Memrynote.exe"',
-  String.raw`set "INSTALL_DIR=C:\Users\kaan\AppData\Local\Programs\MemryNote"`,
-  String.raw`set "UNINSTALLER=C:\Users\kaan\AppData\Local\Programs\MemryNote\Uninstall MemryNote.exe"`,
-  String.raw`set "WORK_DIR=C:\Users\kaan\AppData\Local\Temp\memry-installer-handoff-1234"`,
-  String.raw`set "SETUP=C:\Users\kaan\AppData\Roaming\memrynote\installer-handoff\MemryNote-win-Setup.exe"`,
-  String.raw`set "SETUP_LOG=C:\Users\kaan\AppData\Roaming\memrynote\logs\velopack-setup.log"`,
-  String.raw`set "HANDOFF_LOG=C:\Users\kaan\AppData\Roaming\memrynote\logs\installer-handoff.log"`,
-  `set "NSIS_INSTALLER=${nsisInstaller}"`,
-  String.raw`set "VELOPACK_EXE=%LocalAppData%\MemryNote\current\Memrynote.exe"`,
-  '',
-  'call :log "handoff start pid=%APP_PID% dir=%INSTALL_DIR%"',
-  '',
-  ':wait_for_exit',
-  'tasklist /FI "PID eq %APP_PID%" /FI "IMAGENAME eq %APP_EXE%" /NH 2>nul | find /I "%APP_EXE%" >nul',
-  'if not errorlevel 1 (',
-  '  ping -n 2 127.0.0.1 >nul',
-  '  goto wait_for_exit',
-  ')',
-  'call :log "app exited"',
-  '',
-  'if not exist "%WORK_DIR%" mkdir "%WORK_DIR%"',
-  String.raw`copy /y "%UNINSTALLER%" "%WORK_DIR%\Uninstall MemryNote.exe" >nul`,
-  'if errorlevel 1 (',
-  '  call :log "copy-uninstaller failed"',
-  '  goto fallback',
-  ')',
-  '',
-  String.raw`start "" /wait "%WORK_DIR%\Uninstall MemryNote.exe" /S _?=%INSTALL_DIR%`,
-  'call :log "uninstall exit=%errorlevel%"',
-  '',
-  'start "" /wait "%SETUP%" --silent --verbose --log "%SETUP_LOG%"',
-  'call :log "setup exit=%errorlevel%"',
-  '',
-  'if exist "%VELOPACK_EXE%" (',
-  '  call :log "result=velopack"',
-  '  goto cleanup',
-  ')',
-  '',
-  ':fallback',
-  'call :log "velopack exe missing; falling back to nsis"',
-  'if not exist "%NSIS_INSTALLER%" (',
-  '  call :log "result=failed no-nsis-fallback"',
-  '  goto cleanup',
-  ')',
-  'start "" /wait "%NSIS_INSTALLER%" /S --force-run',
-  'call :log "result=nsis exit=%errorlevel%"',
-  '',
-  ':cleanup',
-  'del /q "%SETUP%" >nul 2>&1',
-  'rmdir /s /q "%WORK_DIR%" >nul 2>&1',
-  'call :log "handoff done"',
-  '(goto) 2>nul & del "%~f0"',
-  '',
-  ':log',
-  'echo %DATE% %TIME% %~1>>"%HANDOFF_LOG%"',
-  'exit /b 0'
-]
+const render = (): string[] => renderInstallerHandoffScript().split('\r\n')
 
 describe('renderInstallerHandoffScript', () => {
-  it('renders the pinned batch script with CRLF line endings', () => {
-    const script = renderInstallerHandoffScript(plan)
+  it('is static ASCII with CRLF line endings: no path, user name or code page can reach cmd', () => {
+    const script = renderInstallerHandoffScript()
 
-    expect(script).toBe(
-      `${scriptLines(String.raw`C:\Users\kaan\AppData\Local\memrynote-updater\pending\MemryNote-2026.911.1-setup.exe`).join('\r\n')}\r\n`
-    )
+    // cmd.exe reads the .cmd in the OEM code page; the app writes UTF-8 (C:\Users\Kağan).
+    expect(script).toMatch(/^[\x20-\x7e\r\n]*$/)
     expect(script.split('\r\n').join('')).not.toContain('\n')
+    const values = [
+      plan.installDir,
+      plan.uninstallerPath,
+      plan.workDir,
+      plan.setupExePath,
+      plan.setupLogPath,
+      plan.handoffLogPath,
+      plan.nsisInstallerPath ?? ''
+    ]
+
+    expect(values.filter((value) => value !== '' && script.includes(value))).toEqual([])
   })
 
-  it('leaves the NSIS fallback empty when no NSIS installer is on disk', () => {
-    const script = renderInstallerHandoffScript({ ...plan, nsisInstallerPath: null })
+  // A `)` in a path closed the `(echo ...)` group and the syntax error ended the batch before
+  // anything ran, after the app had already quit. The redirect now comes first and the message
+  // carries static text only.
+  it('logs with a leading redirect and never interpolates a path into a message', () => {
+    const lines = render()
+    const logLine = lines.find((line) => line.includes('>>"%HANDOFF_LOG%"'))
 
-    expect(script).toBe(`${scriptLines('').join('\r\n')}\r\n`)
-    expect(script).toContain('set "NSIS_INSTALLER="\r\n')
+    expect(logLine).toBe('>>"%HANDOFF_LOG%" echo %DATE% %TIME% %~1')
+    const messages = lines.filter((line) => line.includes('call :log'))
+    expect(messages.length).toBeGreaterThan(5)
+    for (const line of messages) {
+      expect(line).not.toMatch(
+        /%(INSTALL_DIR|UNINSTALLER|WORK_DIR|SETUP|SETUP_LOG|HANDOFF_LOG|NSIS_INSTALLER)%/
+      )
+    }
   })
 
-  // The previous script checked no exit code and wrote no log of its own, so a
-  // migration that died before Setup.exe ran left nothing on disk to explain it.
-  it('records every step and its exit code in its own log', () => {
-    const lines = renderInstallerHandoffScript(plan).split('\r\n')
+  // A DelayedExpansion or EnableExtensions registry value on the machine would otherwise make `!`
+  // in a path syntax and break `if exist ... if exist`.
+  it('pins extensions on and delayed expansion off', () => {
+    expect(render()).toContain('setlocal EnableExtensions DisableDelayedExpansion')
+  })
+
+  it('records every step and its exit code', () => {
+    const lines = render()
 
     expect(lines).toContain('call :log "app exited"')
     expect(lines).toContain('call :log "uninstall exit=%errorlevel%"')
-    expect(lines).toContain('call :log "setup exit=%errorlevel%"')
+    expect(lines).toContain('call :log "setup exit=%SETUP_EXIT%"')
+    expect(lines).toContain('call :log "relaunch exit=%errorlevel%"')
     expect(lines).toContain('call :log "handoff done"')
-    // The transcript survives the script deleting itself.
-    expect(lines).toContain('echo %DATE% %TIME% %~1>>"%HANDOFF_LOG%"')
   })
 
-  it('routes a failed uninstaller copy to the NSIS fallback instead of running on', () => {
-    const lines = renderInstallerHandoffScript(plan).split('\r\n')
+  // The script runs in a console-less cmd.exe (detached). A console program started there
+  // without a console of its own breaks: `tasklist | find` hung forever on Windows 11 ARM64 and
+  // on windows-2022. Only cmd builtins, GUI programs and powershell.exe are safe.
+  it('runs no console program other than powershell, which allocates its own console', () => {
+    const builtinsAndGui = new Set([
+      '@echo',
+      'setlocal',
+      'rem',
+      'set',
+      'call',
+      'if',
+      'goto',
+      'mkdir',
+      'copy',
+      'start',
+      'del',
+      'rmdir',
+      'exit',
+      '(goto)',
+      'powershell',
+      ')',
+      '>>"%handoff_log%"'
+    ])
+    const commands = render()
+      .map((line) => line.trim())
+      .filter((line) => line !== '' && !line.startsWith(':'))
+      .map((line) => line.split(/\s+/)[0].toLowerCase())
+
+    expect(commands.filter((command) => !builtinsAndGui.has(command))).toEqual([])
+  })
+
+  // Inherited from a PowerShell 7 parent, PSModulePath makes Windows PowerShell 5.1 fail to load
+  // its own modules, which turned the wait into "no such process" and let the uninstaller race
+  // the still-running app.
+  it('clears PSModulePath before powershell runs and fails the wait closed', () => {
+    const lines = render()
+    const waitAt = lines.findIndex((line) => line.startsWith('powershell '))
+
+    expect(lines.indexOf('set "PSModulePath="')).toBeGreaterThan(-1)
+    expect(lines.indexOf('set "PSModulePath="')).toBeLessThan(waitAt)
+    expect(lines[waitAt]).toContain('[System.Diagnostics.Process]::GetProcessById(%APP_PID%)')
+    expect(lines[waitAt]).toContain('WaitForExit(300000)')
+    expect(lines[waitAt]).toContain('catch [System.ArgumentException]')
+    expect(lines[waitAt]).not.toContain('Get-Process')
+    expect(lines.slice(waitAt + 1, waitAt + 5)).toEqual([
+      'if errorlevel 1 (',
+      '  call :log "wait-for-exit failed"',
+      '  goto fallback',
+      ')'
+    ])
+  })
+
+  it('routes a failed uninstaller copy to the fallback instead of running on', () => {
+    const lines = render()
     const copyAt = lines.indexOf(
       String.raw`copy /y "%UNINSTALLER%" "%WORK_DIR%\Uninstall MemryNote.exe" >nul`
     )
 
     expect(lines[copyAt + 1]).toBe('if errorlevel 1 (')
     expect(lines[copyAt + 3]).toBe('  goto fallback')
-    expect(lines).toContain(':fallback')
-    // Reaching the fallback with nothing to run must still be recorded, not silent.
-    expect(lines).toContain('  call :log "result=failed no-nsis-fallback"')
   })
 
-  it('skips the fallback once the Velopack install is present', () => {
-    const lines = renderInstallerHandoffScript(plan).split('\r\n')
-    const guardAt = lines.indexOf('if exist "%VELOPACK_EXE%" (')
+  // `Setup.exe --silent` installs without starting the app, so the script starts it. A Setup that
+  // exits non-zero may still have left `current\Memrynote.exe`, a half install: it must not be
+  // relaunched with the NSIS install already gone.
+  it('relaunches Velopack only when Setup exited 0 and the exe exists', () => {
+    const lines = render()
+    const setupAt = lines.indexOf('start "" /wait "%SETUP%" --silent --verbose --log "%SETUP_LOG%"')
 
-    expect(lines[guardAt + 1]).toBe('  call :log "result=velopack"')
-    expect(lines[guardAt + 2]).toBe('  goto cleanup')
+    expect(lines.slice(setupAt + 1, setupAt + 10)).toEqual([
+      'set "SETUP_EXIT=%errorlevel%"',
+      'call :log "setup exit=%SETUP_EXIT%"',
+      '',
+      'if not "%SETUP_EXIT%"=="0" goto fallback',
+      'if not exist "%VELOPACK_EXE%" goto fallback',
+      'call :log "result=velopack"',
+      'start "" /d "%VELOPACK_DIR%" "%VELOPACK_EXE%"',
+      'call :log "relaunch exit=%errorlevel%"',
+      'goto cleanup'
+    ])
+  })
+
+  // The invariant of the hand-off: Velopack installed and started, or Electron installed and
+  // started, with a log line, whichever path failed.
+  it('ends every fallback path in a reinstall or a relaunch of Electron, with a log line', () => {
+    const lines = render()
+    const at = (line: string): number => lines.indexOf(line)
+
+    expect(lines.slice(at(':fallback'), at(':fallback') + 7)).toEqual([
+      ':fallback',
+      'call :log "falling back to nsis"',
+      'if defined NSIS_INSTALLER if exist "%NSIS_INSTALLER%" goto run_nsis',
+      'if exist "%INSTALL_DIR%\\%APP_EXE%" if exist "%INSTALL_DIR%\\resources\\app.asar" goto relaunch_original',
+      'call :log "result=failed no-nsis-fallback"',
+      'goto cleanup',
+      ''
+    ])
+    expect(lines).toContain('start "" /wait "%NSIS_INSTALLER%" /S --force-run')
+    expect(lines).toContain('start "" /d "%INSTALL_DIR%" "%INSTALL_DIR%\\%APP_EXE%"')
+    expect(lines).toContain('call :log "result=electron-kept relaunch exit=%errorlevel%"')
+  })
+})
+
+describe('installerHandoffEnv', () => {
+  it('carries every plan path in the environment, byte for byte', () => {
+    const odd: InstallerHandoffPlan = {
+      ...plan,
+      installDir: String.raw`D:\Apps (portable)\Kağan & 100%\MemryNote`,
+      handoffLogPath: String.raw`C:\Users\Kağan (work)\AppData\Roaming\@memry\desktop\logs\installer-handoff.log`
+    }
+    const env = installerHandoffEnv(odd, { PATH: 'C:\\Windows', PSModulePath: 'x' })
+
+    expect(env).toMatchObject({
+      APP_PID: '1234',
+      APP_EXE: 'Memrynote.exe',
+      INSTALL_DIR: odd.installDir,
+      UNINSTALLER: odd.uninstallerPath,
+      WORK_DIR: odd.workDir,
+      SETUP: odd.setupExePath,
+      SETUP_LOG: odd.setupLogPath,
+      HANDOFF_LOG: odd.handoffLogPath,
+      NSIS_INSTALLER: odd.nsisInstallerPath,
+      PATH: 'C:\\Windows'
+    })
+  })
+
+  it('leaves NSIS_INSTALLER undefined when there is none and drops an inherited one', () => {
+    const env = installerHandoffEnv(
+      { ...plan, nsisInstallerPath: null },
+      { nsis_installer: 'C:\\stale.exe', Setup: 'C:\\other.exe', KEEP: '1' }
+    )
+
+    expect('NSIS_INSTALLER' in env).toBe(false)
+    expect(env).not.toHaveProperty('nsis_installer')
+    expect(env.SETUP).toBe(plan.setupExePath)
+    expect(env.KEEP).toBe('1')
+  })
+})
+
+describe('unsupportedHandoffInstallDirChar', () => {
+  // `_?=%INSTALL_DIR%` must stay unquoted for NSIS, so cmd would parse these.
+  it('accepts parentheses, spaces, percent signs and non-ASCII, names a cmd operator', () => {
+    expect(
+      unsupportedHandoffInstallDirChar(String.raw`D:\Apps (portable)\Kağan 100%\MemryNote`)
+    ).toBeNull()
+    expect(unsupportedHandoffInstallDirChar(String.raw`C:\a&b\MemryNote`)).toBe('&')
+    expect(unsupportedHandoffInstallDirChar(String.raw`C:\a^b`)).toBe('^')
+  })
+})
+
+describe('handoffSpawnOptions', () => {
+  it('spawns detached with no window and the plan in the environment', () => {
+    expect(handoffSpawnOptions(plan, { PATH: 'p' })).toMatchObject({
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+      windowsVerbatimArguments: true,
+      env: { PATH: 'p', HANDOFF_LOG: plan.handoffLogPath }
+    })
+    expect(handoffCmdArgs(String.raw`C:\Users\a&b\x.cmd`)).toEqual([
+      '/d',
+      '/e:on',
+      '/v:off',
+      '/s',
+      '/c',
+      String.raw`""C:\Users\a&b\x.cmd""`
+    ])
   })
 })
 
@@ -167,7 +281,7 @@ describe('resolveReleaseTag', () => {
 describe('velopackSetupUrl', () => {
   it('points at the Velopack Setup.exe of the release tag', () => {
     expect(velopackSetupUrl('v2026-09-11.1')).toBe(
-      'https://github.com/memrynote/memry/releases/download/v2026-09-11.1/MemryNote-win-Setup.exe'
+      'https://github.com/memrynote/memry/releases/download/v2026-09-11.1/MemryNote-Setup-win-x64.exe'
     )
   })
 })

@@ -155,7 +155,7 @@ vi.mock('./updater-install-health', () => ({
 import { markUpdateInstallStarted } from './telemetry/update-install-marker'
 
 const SETUP_URL =
-  'https://github.com/memrynote/memry/releases/download/v2026-09-11.1/MemryNote-win-Setup.exe'
+  'https://github.com/memrynote/memry/releases/download/v2026-09-11.1/MemryNote-Setup-win-x64.exe'
 const VALID_SIGNATURE = JSON.stringify({
   Status: 0,
   SignerCertificate: { Subject: 'CN=Open Source Developer Kaan Karaca, C=TR' }
@@ -312,11 +312,11 @@ describe('NSIS to Velopack hand-off through the updater', () => {
       'C:\\Users\\kaan\\AppData\\Local\\Temp',
       `memry-installer-handoff-${process.pid}.cmd`
     )
-    expect(mocks.childProcess.spawn).toHaveBeenCalledWith('cmd.exe', ['/c', scriptPath], {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true
-    })
+    expect(mocks.childProcess.spawn).toHaveBeenCalledWith(
+      'cmd.exe',
+      ['/d', '/e:on', '/v:off', '/s', '/c', `""${scriptPath}""`],
+      expect.objectContaining({ detached: true, stdio: 'ignore', windowsHide: true })
+    )
     expect(vi.mocked(markUpdateInstallStarted).mock.invocationCallOrder[0]).toBeLessThan(
       mocks.childProcess.spawn.mock.invocationCallOrder[0]
     )

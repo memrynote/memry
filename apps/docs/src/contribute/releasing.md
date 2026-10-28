@@ -67,13 +67,21 @@ The NSIS set keeps existing installs updating through electron-updater:
 
 The Velopack set is what new installs and the Velopack updater use:
 
-- `MemryNote-win-Setup.exe`
+- `MemryNote-Setup-win-x64.exe`
 - `MemryNote-<version>-full.nupkg`
 - a `-delta.nupkg`, written only when the previous release's full package was available
 - `releases.win.json`
 - `RELEASES`
 
 The NSIS assets stop shipping once telemetry shows that no NSIS installs remain.
+
+vpk names the Setup `MemryNote-win-Setup.exe`, and `pnpm release` renames it to
+`MemryNote-Setup-win-x64.exe` before signing is verified and anything is uploaded. Never upload a
+`MemryNote-win-Setup.exe`, not even by hand: NSIS builds v2026-09-12 to v2026-10-25 send a `HEAD`
+for that name on every update check, and on a `200` they download it and arm a hand-off whose
+script hangs, so they never update and download it again the next session. On a `404` they
+install the `latest.yml` NSIS installer, which carries the fixed hand-off. Releases up to
+v2026-10-25 keep the old name; the landing download and the smoke test accept both.
 
 ## Windows signing
 
@@ -98,7 +106,7 @@ uploaded.
 
 ## Diagnosing a failed NSIS to Velopack migration
 
-An existing NSIS install migrates by downloading `MemryNote-win-Setup.exe`,
+An existing NSIS install migrates by downloading `MemryNote-Setup-win-x64.exe`,
 verifying its Authenticode signature, and running a detached `.cmd` on quit that
 uninstalls NSIS and installs the Velopack build.
 
@@ -119,7 +127,7 @@ Read the transcript's last line first:
 - `result=nsis` — Velopack did not install and the NSIS fallback took over, so
   the user has the new version on the old install layout
 - `result=failed no-nsis-fallback` — nothing installed; the user stays on the old
-  version and needs a manual `MemryNote-win-Setup.exe`
+  version and needs a manual `MemryNote-Setup-win-x64.exe`
 
 A successful migration ends `result=velopack` and reports
 `app_update_installed` with `action=migrated, source=velopack-handoff` on the next
@@ -139,4 +147,4 @@ gh workflow run velopack-smoke.yml \
   -f update_tag=<new tag>
 ```
 
-The workflow installs the previous release's signed Setup.exe on a real Windows runner, checks the install layout and the Authenticode status, applies the new release's package with `Update.exe`, and launches the app before and after. `update_tag` defaults to `release_tag`, so a single tag holding both an installer and a newer package also works. The smoke test is skipped when the previous release predates Velopack and carries no `MemryNote-win-Setup.exe`.
+The workflow installs the previous release's signed Setup.exe on a real Windows runner, checks the install layout and the Authenticode status, applies the new release's package with `Update.exe`, and launches the app before and after. `update_tag` defaults to `release_tag`, so a single tag holding both an installer and a newer package also works. The smoke test is skipped when the previous release predates Velopack and carries no Velopack Setup.

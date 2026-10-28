@@ -5,18 +5,23 @@ import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { app } from 'electron'
 import type { UpdateDownloadedEvent } from 'electron-updater'
+import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { createLogger } from './lib/logger'
 import {
   GITHUB_RELEASE_DOWNLOAD_BASE,
   INSTALLER_HANDOFF_SIGNER_SUBJECT,
   VELOPACK_SETUP_ASSET_NAME,
+  handoffCmdArgs,
+  handoffSpawnOptions,
   judgeAuthenticode,
   renderInstallerHandoffScript,
   resolveReleaseTag,
   velopackSetupUrl,
   type AuthenticodeVerdict,
+  unsupportedHandoffInstallDirChar,
   type InstallerHandoffPlan
 } from './installer-handoff-script'
+import type { UpdateInstallAttempt } from './telemetry/update-install-marker'
 import type { UpdaterHost } from './updater-backend'
 import { NSIS_UNINSTALLER_FILENAME, detectWindowsInstallLayout } from './windows-install-layout'
 
@@ -24,7 +29,47 @@ const logger = createLogger('InstallerHandoff')
 
 export const INSTALLER_HANDOFF_DIRNAME = 'installer-handoff'
 
-const AUTHENTICODE_TIMEOUT_MS = 60_000
+/**
+ * Holds the version whose hand-off ended with the old app still running (the script restarted
+ * Electron, or nothing could be restored). Outside INSTALLER_HANDOFF_DIRNAME, which is wiped at
+ * every start. Without it each session would re-download the 450 MB Setup and run the same
+ * hand-off again; with it the next prepare() declines and electron-updater installs through
+ * NSIS, which still delivers the update.
+ */
+const HANDOFF_FAILED_VERSION_FILENAME = 'installer-handoff-failed-version'
+
+/**
+ * Called at startup with the previous session's failed install (see detectFailedUpdateInstall).
+ * Its marker is the proof: it names this build's hand-off and the version it was for, and the app
+ * still runs the old version. The version is stored in the display form the marker carries, which
+ * is the form prepare() compares against.
+ */
+export function noteFailedHandoffAttempt(
+  attempt: Pick<UpdateInstallAttempt, 'installer' | 'toVersion'>,
+  userDataDir: string = app.getPath('userData'),
+  fsDeps: Pick<typeof fs, 'writeFileSync'> = fs
+): void {
+  if (attempt.installer !== 'velopack-handoff' || !attempt.toVersion) return
+  try {
+    fsDeps.writeFileSync(
+      path.win32.join(userDataDir, HANDOFF_FAILED_VERSION_FILENAME),
+      attempt.toVersion
+    )
+  } catch (error) {
+    logger.warn('could not record the failed installer hand-off; it will be retried', {
+      version: attempt.toVersion,
+      error
+    })
+  }
+}
+
+/**
+ * A cold powershell.exe takes 20 to 35 s to start on a hosted windows-11-arm runner and
+ * Get-AuthenticodeSignature of the 45 MB Setup took over 60 s there, which declined the hand-off
+ * as "signature not verified" twice (W2). The check runs while the update is still `downloading`,
+ * so a longer ceiling costs nothing on a machine that answers in seconds.
+ */
+const AUTHENTICODE_TIMEOUT_MS = 180_000
 
 /**
  * The Velopack installer is ~450 MB over a single GET. One dropped connection used
@@ -81,7 +126,10 @@ export interface InstallerHandoffDeps {
    * surface, which no injected stub can satisfy without a widening cast.
    */
   spawn: (command: string, args: readonly string[], options: SpawnOptions) => HandoffChild
-  fs: Pick<typeof fs, 'existsSync' | 'mkdirSync' | 'rmSync' | 'writeFileSync' | 'copyFileSync'> & {
+  fs: Pick<
+    typeof fs,
+    'existsSync' | 'mkdirSync' | 'rmSync' | 'writeFileSync' | 'copyFileSync' | 'readFileSync'
+  > & {
     /** Only ever piped into, so the Writable contract is the whole requirement. */
     createWriteStream: (path: string) => NodeJS.WritableStream
   }
@@ -91,6 +139,7 @@ export interface InstallerHandoffDeps {
 interface HandoffExecFileOptions {
   windowsHide?: boolean
   timeout?: number
+  env?: NodeJS.ProcessEnv
 }
 
 /**
@@ -107,7 +156,10 @@ interface HandoffChild {
   on(event: 'error', listener: (error: Error) => void): void
 }
 
-type SpawnDeps = Pick<InstallerHandoffDeps, 'spawn' | 'tmpDir' | 'pid' | 'fs'>
+/** The CLI spawns without reading the failed-version record, so its fs stub need not provide it. */
+type SpawnDeps = Pick<InstallerHandoffDeps, 'spawn' | 'tmpDir' | 'pid'> & {
+  fs: Omit<InstallerHandoffDeps['fs'], 'readFileSync'>
+}
 
 function defaultDeps(): InstallerHandoffDeps {
   return {
@@ -165,18 +217,32 @@ export function buildInstallerHandoffPlan(input: {
   }
 }
 
+/**
+ * powershell.exe is Windows PowerShell 5.1. When the app was started from a PowerShell 7 session
+ * (or a launcher that copied its environment), the inherited PSModulePath lists PowerShell 7's
+ * module folders, and 5.1 then fails to autoload Microsoft.PowerShell.Security: "the
+ * 'Get-AuthenticodeSignature' command was found in the module, but the module could not be
+ * loaded". That declined the hand-off with `signature not verified` on a clean installer (W2,
+ * windows-2022). Dropping the variable makes 5.1 use its own default module path.
+ */
+function windowsPowerShellEnv(): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => name.toUpperCase() !== 'PSMODULEPATH')
+  )
+}
+
 /** Shared with the CLI. Runs powershell; resolves to a verdict, never rejects. */
 export function verifyAuthenticode(
   filePath: string,
   deps: Pick<InstallerHandoffDeps, 'execFile'> = { execFile: runExecFile }
 ): Promise<AuthenticodeVerdict> {
   const literal = `'${filePath.replace(/'/g, "''")}'`
-  const command = `Get-AuthenticodeSignature -LiteralPath ${literal} | ConvertTo-Json -Compress`
+  const command = `Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath ${literal} | ConvertTo-Json -Compress`
   return new Promise((resolve) => {
     deps.execFile(
       'powershell.exe',
       ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command],
-      { windowsHide: true, timeout: AUTHENTICODE_TIMEOUT_MS },
+      { windowsHide: true, timeout: AUTHENTICODE_TIMEOUT_MS, env: windowsPowerShellEnv() },
       (error, stdout) => {
         if (error) {
           resolve({ ok: false, reason: `Get-AuthenticodeSignature failed: ${error.message}` })
@@ -210,12 +276,25 @@ export function spawnInstallerHandoff(
   }
   const scriptPath = path.win32.join(tmpDir, `memry-installer-handoff-${pid}.cmd`)
   try {
-    fsDeps.writeFileSync(scriptPath, renderInstallerHandoffScript(plan))
-    const child = spawn('cmd.exe', ['/c', scriptPath], {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true
-    })
+    const badChar = unsupportedHandoffInstallDirChar(plan.installDir)
+    if (badChar) {
+      logger.error(
+        'installer hand-off refused: install directory has a character cmd.exe would parse',
+        {
+          character: badChar
+        }
+      )
+      return false
+    }
+    // The script's first line appends to this log, and a missing folder makes that fail silently.
+    // The logger writes to its own folder, so <userData>\logs need not exist.
+    fsDeps.mkdirSync(path.win32.dirname(plan.handoffLogPath), { recursive: true })
+    fsDeps.writeFileSync(scriptPath, renderInstallerHandoffScript())
+    const child = spawn(
+      'cmd.exe',
+      handoffCmdArgs(scriptPath),
+      handoffSpawnOptions(plan, process.env)
+    )
     child.on('error', (error) => {
       logger.error('installer hand-off script failed to start', error)
     })
@@ -301,6 +380,16 @@ export function createInstallerHandoff(
     }
   }
 
+  function failedVersion(): string | null {
+    try {
+      return deps.fs
+        .readFileSync(path.win32.join(deps.userDataDir, HANDOFF_FAILED_VERSION_FILENAME), 'utf8')
+        .trim()
+    } catch {
+      return null // no record: nothing failed before
+    }
+  }
+
   async function run(
     info: UpdateDownloadedEvent,
     onProgress: (percent: number) => void
@@ -315,6 +404,23 @@ export function createInstallerHandoff(
     if (!tag) return decline('release tag unknown')
     const layout = detectWindowsInstallLayout(deps.execPath, deps.fs.existsSync)
     if (layout !== 'nsis') return decline(`install layout is ${layout}, not nsis`)
+    const badChar = unsupportedHandoffInstallDirChar(path.win32.dirname(deps.execPath))
+    if (badChar) {
+      // Reported like a download or signature failure: this install can never migrate, and
+      // the decline alone leaves no trace in error tracking. The message carries the character
+      // only: a path would reach telemetry, whose redaction stops at the first space of a profile name.
+      host.onError(
+        coded(
+          'INSTALLER_HANDOFF_UNSUPPORTED_INSTALL_DIR',
+          `install directory contains '${badChar}'`
+        )
+      )
+      return decline('install directory has a character the hand-off script cannot pass')
+    }
+    // The marker stores the display form of the version (updater state's availableVersion).
+    if (failedVersion() === formatAppVersionForDisplay(version)) {
+      return decline('a previous hand-off to this version left the old app running')
+    }
 
     const url = velopackSetupUrl(tag)
     // `tag` arrives on the update payload. velopackSetupUrl encodes it into a fixed
@@ -365,13 +471,26 @@ export function createInstallerHandoff(
       return decline('download failed')
     }
 
+    const verifyStartedAt = Date.now()
     const verdict = await verifyAuthenticode(plan.setupExePath, deps)
+    logger.info('installer hand-off signature check finished', {
+      ok: verdict.ok,
+      elapsedMs: Date.now() - verifyStartedAt
+    })
     if (!verdict.ok) {
       removeHandoffDir()
       host.onError(coded('INSTALLER_HANDOFF_UNVERIFIED', verdict.reason))
       return decline('signature not verified')
     }
 
+    // This version hands off, so a record left by an older failed one is stale.
+    try {
+      deps.fs.rmSync(path.win32.join(deps.userDataDir, HANDOFF_FAILED_VERSION_FILENAME), {
+        force: true
+      })
+    } catch (error) {
+      logger.warn('could not clear the failed installer hand-off record', { error })
+    }
     logger.info('installer hand-off armed', { version, tag, signer: verdict.subject })
     return { status: 'armed', version, plan }
   }

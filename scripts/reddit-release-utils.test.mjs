@@ -45,9 +45,9 @@ describe('reddit release helpers', () => {
             url: 'https://github.com/memrynote/memry/releases/download/v2026-05-08/MemryNote-2026.508.1-setup.exe'
           },
           {
-            name: 'MemryNote-win-Setup.exe',
+            name: 'MemryNote-Setup-win-x64.exe',
             size: 452781080,
-            url: 'https://github.com/memrynote/memry/releases/download/v2026-05-08/MemryNote-win-Setup.exe'
+            url: 'https://github.com/memrynote/memry/releases/download/v2026-05-08/MemryNote-Setup-win-x64.exe'
           },
           {
             name: 'MemryNote-2026.508.1-x86_64.AppImage',
@@ -80,7 +80,7 @@ describe('reddit release helpers', () => {
       /\[Release Notes\]\(https:\/\/github\.com\/memrynote\/memry\/releases\/tag\/v2026-05-08\)/
     )
     // Signed Velopack installer wins over the unsigned electron-builder setup.exe.
-    assert.match(post.text, /\[Windows\]\(\S+MemryNote-win-Setup\.exe\) \(431\.81 MiB\)/)
+    assert.match(post.text, /\[Windows\]\(\S+MemryNote-Setup-win-x64\.exe\) \(431\.81 MiB\)/)
     assert.match(
       post.text,
       /\[macOS\]\(\S+-arm64\.dmg\) \(210\.48 MiB\).+\[Linux\]\(\S+\.AppImage\)/
