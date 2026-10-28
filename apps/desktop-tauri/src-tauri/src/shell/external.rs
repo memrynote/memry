@@ -4,7 +4,9 @@
 
 use std::path::{Path, PathBuf};
 
-use memry_desktop::shell::external::{is_allowed_external_url, is_executable_path, resolve_for_os};
+use memry_desktop::shell::external::{
+    OsAction, is_allowed_external_url, os_action, resolve_for_os,
+};
 use memry_desktop::shell::file_open::Resolution;
 use memry_desktop::shell::local_scheme::{
     LocalScheme, locate, normalize_absolute, resolve_local_scheme_path,
@@ -39,9 +41,16 @@ pub fn open_url(app: &AppHandle<Wry>, url: &str) -> Result<(), CommandError> {
         .map_err(|error| CommandError::new(ErrorKind::Internal, "open_failed", error.to_string()))
 }
 
+/// A path the OS may be handed: canonical, inside one of the app's directories.
+struct Allowed {
+    real: PathBuf,
+    /// The vault or the app data directory itself, which a person may always open.
+    is_root: bool,
+}
+
 /// The real path of `path` when it lies inside the open vault or the app data directory and
 /// resolves there (a link out of the root is refused).
-fn allowed_path(app: &AppHandle<Wry>, path: &str) -> Result<PathBuf, CommandError> {
+fn allowed_path(app: &AppHandle<Wry>, path: &str) -> Result<Allowed, CommandError> {
     let roots = protocols::roots(app);
     let mut candidates: Vec<&Path> = roots.vault.iter().map(PathBuf::as_path).collect();
     candidates.push(&roots.app_data);
@@ -59,7 +68,10 @@ fn allowed_path(app: &AppHandle<Wry>, path: &str) -> Result<PathBuf, CommandErro
         refused("the path is outside the vault and the app data directory")
     })?;
     match resolve_for_os(candidates[found.root], &found.rel) {
-        Ok(Resolution::Inside(real)) => Ok(real),
+        Ok(Resolution::Inside(real)) => Ok(Allowed {
+            real,
+            is_root: found.rel.is_empty(),
+        }),
         Ok(_) => Err(refused("the path does not resolve inside its directory")),
         Err(error) => Err(CommandError::new(
             ErrorKind::Storage,
@@ -76,28 +88,56 @@ pub fn open_memry_file(app: &AppHandle<Wry>, url: &str) -> Result<(), CommandErr
     open_path(app, &path)
 }
 
+/// Opens the file in its app when [`os_action`] says so, and otherwise shows it in the file
+/// manager. The decision and the open read the same path, byte for byte.
 pub fn open_path(app: &AppHandle<Wry>, path: &str) -> Result<(), CommandError> {
-    let real = allowed_path(app, path)?;
-    // Opening a program would run it. Checked on the real path: a link cannot hide the extension.
-    if is_executable_path(&real.to_string_lossy()) || is_executable_path(path) {
-        tracing::warn!(
-            scope = "External",
-            "refused to open a file the OS would run"
-        );
-        return Err(refused("a program is not opened from here"));
+    let Allowed { real, is_root } = allowed_path(app, path)?;
+    // `canonicalize` gives a verbatim `\\?\` path on Windows, which `ShellExecuteExW` does not
+    // take for a file; `simplified` drops the prefix only when the path means the same without
+    // it. No-op elsewhere.
+    let target = dunce::simplified(&real);
+    let action = os_action(target, is_root)
+        .map_err(|error| CommandError::new(ErrorKind::Storage, "path_failed", error.to_string()))?;
+    match action {
+        OsAction::Refuse => {
+            tracing::warn!(
+                scope = "External",
+                rule = "link_swapped_in",
+                "refused to open a file"
+            );
+            Err(refused("the file changed into a link"))
+        }
+        OsAction::Reveal(rule) => {
+            tracing::info!(
+                scope = "External",
+                rule = rule.as_str(),
+                "showed a file in the file manager instead of opening it"
+            );
+            reveal(app, target)
+        }
+        OsAction::Open => {
+            #[cfg(feature = "e2e")]
+            if crate::e2e::record_os_open(app, &format!("path {}", target.display())) {
+                return Ok(());
+            }
+            // A `Path`, not a string: a name that is not UTF-8 reaches the OS unchanged.
+            tauri_plugin_opener::open_path(target, None::<&str>).map_err(|error| {
+                CommandError::new(ErrorKind::Internal, "open_failed", error.to_string())
+            })
+        }
     }
-    #[cfg(feature = "e2e")]
-    if crate::e2e::record_os_open(app, &format!("path {}", real.to_string_lossy())) {
-        return Ok(());
-    }
-    app.opener()
-        .open_path(real.to_string_lossy(), None::<&str>)
-        .map_err(|error| CommandError::new(ErrorKind::Internal, "open_failed", error.to_string()))
 }
 
 pub fn reveal_path(app: &AppHandle<Wry>, path: &str) -> Result<(), CommandError> {
-    let real = allowed_path(app, path)?;
+    reveal(app, &allowed_path(app, path)?.real)
+}
+
+fn reveal(app: &AppHandle<Wry>, target: &Path) -> Result<(), CommandError> {
+    #[cfg(feature = "e2e")]
+    if crate::e2e::record_os_open(app, &format!("reveal {}", target.display())) {
+        return Ok(());
+    }
     app.opener()
-        .reveal_item_in_dir(real)
+        .reveal_item_in_dir(target)
         .map_err(|error| CommandError::new(ErrorKind::Internal, "reveal_failed", error.to_string()))
 }
