@@ -7,6 +7,11 @@
 //! nothing polls. A change is reported once it has held for [`DEBOUNCE`], so a flapping interface
 //! makes no callback; the first address set the OS reports at start applies at once.
 //!
+//! Addresses, not links: a network that goes away by removing its address (Wi-Fi off, a DHCP lease
+//! or NetworkManager connection dropped, an adapter disabled on Windows) reads as `Offline`. An
+//! interface whose link drops while it keeps a static IPv4 address reads as online, because the OS
+//! reports no address change; its requests fail and sync backs off as on any failed request.
+//!
 //! Step 17 (#3534) calls [`DesktopReachability::on_power_suspend`] and
 //! [`DesktopReachability::on_power_resume`] from the power monitor: a suspend reports `Offline` at
 //! once, and a resume re-reads the addresses, as `network.ts` does.
