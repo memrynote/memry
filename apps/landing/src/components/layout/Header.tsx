@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router'
-import { Menu, X, ChevronDown, type LucideIcon } from 'lucide-react'
-import { motion, AnimatePresence } from 'motion/react'
+import { Menu, X, ChevronDown } from 'lucide-react'
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { Mascot } from '@/components/ui/mascot'
 import { Container } from './Container'
+import { BrandGlyph } from './SocialLinks'
 import {
   DIRECT_NAV_LINKS,
+  DISCORD_URL,
+  FEATURE_NAV_GROUPS,
   FEATURE_NAV_ITEMS,
   GITHUB_URL,
   type LandingDropdownItem
@@ -14,6 +17,16 @@ import { cn } from '@/lib/utils'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent } from '@/lib/analytics'
 import { useAuth } from '@/contexts/use-auth'
+import { platformForOS, startDownload, useDetectedOS } from '@/lib/download'
+
+/** Rest height of the bar; the dark-section probe reads the page at half of it. */
+const BAR_HEIGHT = 64
+/** Past this scroll offset the bar takes its frosted surface and drops to 56px. */
+const SCROLLED_AT = 8
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
+
+/** Desktop drops the Download link: the Download button covers it (see PrimaryAction). */
+const DESKTOP_NAV_LINKS = DIRECT_NAV_LINKS.filter((link) => link.href !== '/download')
 
 function isExternalHref(href: string) {
   return href.startsWith('http')
@@ -27,6 +40,79 @@ function analyticsTarget(scope: string, label: string) {
   return `${scope}:${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 }
 
+type PageContext = {
+  /** Content has scrolled under the bar. */
+  scrolled: boolean
+  /** The hero's own Download row ([data-nav-cta]) is on screen below the bar. */
+  heroCtaInView: boolean
+  /** A .zone-dark section sits under the bar's midline. */
+  overDark: boolean
+}
+
+/**
+ * What the bar needs to know about the page under it, as a store React can read:
+ * measured from the DOM, re-read once per frame while the page scrolls or resizes and
+ * whenever the page content is swapped by a navigation.
+ *
+ * Prerendering has no DOM, so the server snapshot describes a page at its top: the home
+ * page opens with its hero Download in view, every other page without one.
+ */
+function encodeContext(context: PageContext) {
+  return [context.scrolled, context.heroCtaInView, context.overDark].map(Number).join('')
+}
+
+function decodeContext(snapshot: string): PageContext {
+  return {
+    scrolled: snapshot[0] === '1',
+    heroCtaInView: snapshot[1] === '1',
+    overDark: snapshot[2] === '1'
+  }
+}
+
+function readPageContext() {
+  const ctaRect = document.querySelector('[data-nav-cta]')?.getBoundingClientRect()
+  return encodeContext({
+    scrolled: window.scrollY > SCROLLED_AT,
+    heroCtaInView:
+      ctaRect !== undefined && ctaRect.bottom > BAR_HEIGHT && ctaRect.top < window.innerHeight,
+    overDark: document
+      .elementsFromPoint(window.innerWidth / 2, BAR_HEIGHT / 2)
+      .some((element) => element.closest('.zone-dark') !== null)
+  })
+}
+
+function subscribePageContext(onChange: () => void) {
+  let frame = 0
+  const schedule = () => {
+    if (frame !== 0) return
+    frame = requestAnimationFrame(() => {
+      frame = 0
+      onChange()
+    })
+  }
+  // A navigation replaces the page under <main> without necessarily scrolling.
+  const pageSwaps = new MutationObserver(schedule)
+  pageSwaps.observe(document.getElementById('main') ?? document.body, {
+    childList: true,
+    subtree: true
+  })
+  window.addEventListener('scroll', schedule, { passive: true })
+  window.addEventListener('resize', schedule)
+  return () => {
+    cancelAnimationFrame(frame)
+    pageSwaps.disconnect()
+    window.removeEventListener('scroll', schedule)
+    window.removeEventListener('resize', schedule)
+  }
+}
+
+function usePageContext(pathname: string): PageContext {
+  const snapshot = useSyncExternalStore(subscribePageContext, readPageContext, () =>
+    encodeContext({ scrolled: false, heroCtaInView: pathname === '/', overDark: false })
+  )
+  return decodeContext(snapshot)
+}
+
 type MobileDropdownKey = 'features'
 
 const MOBILE_DROPDOWN_SECTIONS: readonly {
@@ -35,9 +121,16 @@ const MOBILE_DROPDOWN_SECTIONS: readonly {
   items: readonly LandingDropdownItem[]
 }[] = [{ key: 'features', label: 'Features', items: FEATURE_NAV_ITEMS }] as const
 
+const FEATURE_COLUMNS = FEATURE_NAV_GROUPS.map((group) => ({
+  group,
+  items: FEATURE_NAV_ITEMS.filter((item) => item.group === group)
+}))
+
+const NAV_TEXT =
+  'rounded-md text-sm font-medium leading-5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60'
+
 function NavLink({ href, label }: { href: string; label: string }) {
-  const className =
-    'rounded-lg px-2.5 py-2 text-xs leading-4 font-medium text-muted transition-colors hover:text-ink'
+  const className = cn(NAV_TEXT, 'text-(--nav-body) hover:text-(--nav-ink)')
   const eventName = isExternalHref(href) ? 'landing_external_click' : 'landing_nav_click'
 
   return isExternalHref(href) ? (
@@ -59,17 +152,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
   )
 }
 
-function GitHubStarWidget({
-  compact = false,
-  iconOnly = false,
-  onClick,
-  className
-}: {
-  compact?: boolean
-  iconOnly?: boolean
-  onClick?: () => void
-  className?: string
-}) {
+function GitHubLink() {
   const [stars, setStars] = useState<number | null>(null)
   const formattedStars = stars === null ? null : formatStarCount(stars)
 
@@ -89,7 +172,7 @@ function GitHubStarWidget({
           setStars(nextStars)
         }
       } catch {
-        // Keep the build-time fallback when the cached GitHub count is unavailable.
+        // No count is shown when the cached GitHub count is unavailable; the icon still links.
       }
     }
 
@@ -102,100 +185,114 @@ function GitHubStarWidget({
 
   return (
     <a
-      className={cn(
-        'github-star-widget inline-flex items-center rounded-[9px] border border-border/70 bg-card/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-[color,background-color,border-color,transform] duration-200 hover:border-ink/15 hover:bg-card active:scale-[0.97] active:duration-75 motion-reduce:active:scale-100',
-        iconOnly
-          ? 'h-[34px] w-[34px] justify-center p-0'
-          : compact
-            ? 'gap-2 px-3 py-2 text-sm'
-            : 'min-h-[34px] gap-2 px-3 text-xs leading-4',
-        className
-      )}
       href={GITHUB_URL}
       target="_blank"
       rel="noreferrer"
-      onClick={() => {
-        trackLandingEvent('landing_external_click', 'external:github')
-        onClick?.()
-      }}
-      aria-label={formattedStars ? `${formattedStars} GitHub stars` : 'GitHub stars'}
-    >
-      <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden>
-        <path
-          fill="currentColor"
-          fillRule="evenodd"
-          clipRule="evenodd"
-          d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.17 1.18A11 11 0 0 1 12 5.53c.98 0 1.97.13 2.89.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14v3.18c0 .31.21.67.79.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"
-        />
-      </svg>
-      {iconOnly ? null : (
-        <>
-          <span>Star</span>
-          {formattedStars ? (
-            <strong className="border-s border-border/80 ps-2 font-mono-accent text-xs font-semibold">
-              {formattedStars}
-            </strong>
-          ) : null}
-        </>
+      title="Star on GitHub"
+      aria-label={
+        formattedStars ? `Star memrynote on GitHub, ${formattedStars} stars` : 'memrynote on GitHub'
+      }
+      onClick={() => trackLandingEvent('landing_external_click', 'external:github')}
+      className={cn(
+        NAV_TEXT,
+        'inline-flex items-center gap-1.5 text-(--nav-body) hover:text-(--nav-ink)'
       )}
+    >
+      <BrandGlyph name="GitHub" className="size-4" />
+      {formattedStars ? <span className="text-[13px] tabular-nums">{formattedStars}</span> : null}
     </a>
   )
 }
 
-function DropdownTrigger({ label, icon: Icon }: { label: string; icon?: LucideIcon }) {
+function DiscordLink() {
   return (
-    <button
-      type="button"
-      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs leading-4 font-medium text-muted transition-colors group-hover:text-ink"
-      aria-haspopup="true"
+    <a
+      href={DISCORD_URL}
+      target="_blank"
+      rel="noreferrer"
+      title="Join the Discord"
+      aria-label="Join the memrynote Discord"
+      onClick={() => trackLandingEvent('landing_external_click', 'external:discord')}
+      className={cn(NAV_TEXT, 'inline-flex items-center text-(--nav-body) hover:text-(--nav-ink)')}
     >
-      {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden /> : null}
-      {label}
-      <ChevronDown
-        className="h-3.5 w-3.5 transition-transform group-hover:rotate-180 group-focus-within:rotate-180"
-        aria-hidden
-      />
-    </button>
+      <BrandGlyph name="Discord" className="size-[17px]" />
+    </a>
   )
 }
 
-function DropdownIcon({ item, className }: { item: LandingDropdownItem; className: string }) {
-  if (item.iconType === 'image') {
-    return <Mascot src={item.icon} className={className} />
-  }
+/**
+ * The bar's Download button. While the hero shows its own Download row the bar leaves
+ * this out, so a screen never carries two primary actions; it slides in once the hero
+ * row scrolls away, and on every page without one.
+ */
+function PrimaryAction({ visible }: { visible: boolean }) {
+  const reduceMotion = useReducedMotion()
+  const platform = platformForOS(useDetectedOS())
 
-  const Icon = item.icon
-  return <Icon className={className} strokeWidth={2.4} aria-hidden />
+  return (
+    <AnimatePresence initial={false}>
+      {visible ? (
+        // Width animates on this wrapper and clips the button; the gap lives inside it as
+        // padding, so the collapsed wrapper takes no room in the row.
+        <motion.div
+          key="nav-download"
+          className="hidden overflow-hidden md:block"
+          initial={{ opacity: 0, width: 0 }}
+          animate={{ opacity: 1, width: 'auto' }}
+          exit={{
+            opacity: 0,
+            width: 0,
+            transition: { duration: reduceMotion ? 0 : 0.16, ease: EASE_OUT_EXPO }
+          }}
+          transition={{ duration: reduceMotion ? 0 : 0.24, ease: EASE_OUT_EXPO }}
+        >
+          <div className="ps-5">
+            <Link
+              to="/download"
+              onClick={() => {
+                trackLandingEvent('landing_nav_click', 'nav:download')
+                // A detected desktop gets its installer right away, alongside the page.
+                // Phones and unknown systems only get the page, which lists every build.
+                if (platform) startDownload(platform)
+              }}
+              className="inline-flex h-8 items-center whitespace-nowrap rounded-lg bg-terracotta px-3 text-sm font-medium leading-5 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_1px_2px_rgb(179_60_0/0.3)] transition-colors duration-200 hover:bg-terracotta-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80"
+            >
+              Download
+            </Link>
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  )
 }
 
-function DropdownItem({ item }: { item: LandingDropdownItem }) {
+function FeatureItem({ item }: { item: LandingDropdownItem }) {
   const className = cn(
-    'flex min-h-[68px] items-start gap-4 rounded-2xl px-4 py-3 text-start transition-colors',
+    'flex items-start gap-3 rounded-[10px] px-2.5 py-2 text-start transition-colors',
     item.disabled
       ? 'cursor-not-allowed opacity-50'
-      : 'hover:bg-paper-alt focus-visible:bg-paper-alt focus-visible:outline-none'
+      : 'hover:bg-paper-deep focus-visible:bg-paper-deep focus-visible:outline-none'
   )
 
   const content = (
     <>
-      <span
-        className={cn(
-          'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl',
-          item.iconType !== 'image' && 'bg-terracotta/10 text-terracotta'
-        )}
-      >
-        <DropdownIcon item={item} className={item.iconType === 'image' ? 'h-8 w-8' : 'h-5 w-5'} />
-      </span>
+      {item.iconType === 'image' ? (
+        <Mascot src={item.icon} className="size-7 shrink-0" />
+      ) : (
+        <item.icon className="size-7 shrink-0 text-terracotta" strokeWidth={2} aria-hidden />
+      )}
       <span className="min-w-0">
-        <span className="flex items-center gap-2 text-base font-medium leading-tight text-ink">
+        <span className="flex items-center gap-2 text-sm font-semibold leading-5 text-ink">
           {item.label}
           {item.badge || item.disabled ? (
-            <span className="rounded-full bg-ink/5 px-1.5 py-0.5 font-mono-accent text-[8px] uppercase tracking-[0.16em] text-muted">
+            <span className="rounded-full bg-ink/5 px-1.5 text-[11px] font-medium leading-4 text-muted">
               {item.badge ?? 'Soon'}
             </span>
           ) : null}
         </span>
-        <span className="mt-2 block text-sm leading-snug text-muted">{item.description}</span>
+        <span className="mt-0.5 block text-[13px] leading-[18px] text-muted">
+          {item.description}
+        </span>
       </span>
     </>
   )
@@ -217,28 +314,41 @@ function DropdownItem({ item }: { item: LandingDropdownItem }) {
   )
 }
 
-function DesktopDropdown({
-  label,
-  items,
-  icon
-}: {
-  label: string
-  items: readonly LandingDropdownItem[]
-  icon?: LucideIcon
-}) {
+/**
+ * Features opens a full-width sheet under the bar, one column per job. The trigger
+ * fills the bar's height so the pointer never leaves the hover group on its way down.
+ * The sheet is positioned against the bar, so nothing between them may be positioned.
+ * focus-within keeps it reachable by keyboard, not just hover.
+ */
+function FeaturesMenu() {
   return (
-    <div className="group relative">
-      <DropdownTrigger label={label} icon={icon} />
-      {/* Materialize from the trigger: scale+lift on this wrapper, opacity on the panel.
-          The wrapper must never carry filter or opacity while animating — either would
-          make it a backdrop root and suppress the panel's backdrop blur until the
-          transition ends (glass "popping in" late). Transform is safe.
-          focus-within keeps the menu reachable by keyboard, not just hover. */}
-      <div className="invisible absolute start-1/2 top-full z-50 mt-3 origin-top -translate-x-1/2 translate-y-1 scale-[0.97] transition-[transform,visibility] duration-200 [transition-timing-function:var(--ease-out-expo)] rtl:translate-x-1/2 group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:transition-[visibility]">
-        <div className="w-[574px] rounded-[22px] border border-white/60 bg-card/55 backdrop-blur-2xl backdrop-saturate-150 p-3 opacity-0 transition-opacity duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:opacity-100 group-focus-within:opacity-100 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]">
-          <div className="grid grid-cols-2 gap-2">
-            {items.map((item) => (
-              <DropdownItem key={item.label} item={item} />
+    <div className="nav-features group flex h-full items-center">
+      <button
+        type="button"
+        aria-haspopup="true"
+        className={cn(
+          NAV_TEXT,
+          'inline-flex items-center gap-1 text-(--nav-body) group-hover:text-(--nav-ink) group-focus-within:text-(--nav-ink)'
+        )}
+      >
+        Features
+        <ChevronDown
+          className="size-3.5 transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180"
+          aria-hidden
+        />
+      </button>
+      <div className="invisible absolute inset-x-0 top-full -translate-y-1 opacity-0 transition-[opacity,transform,visibility] duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100 motion-reduce:translate-y-0 motion-reduce:transition-[visibility]">
+        <div className="border-y border-ink/[0.06] bg-paper shadow-[0_40px_48px_-36px_rgb(20_18_16/0.25)]">
+          <div className="mx-auto grid max-w-[83rem] grid-cols-4 gap-5 px-6 pt-6 pb-7">
+            {FEATURE_COLUMNS.map((column) => (
+              <div key={column.group} className="flex flex-col gap-1.5">
+                <span className="px-2.5 pb-1.5 text-[11px] font-medium uppercase leading-4 tracking-[0.08em] text-muted">
+                  {column.group}
+                </span>
+                {column.items.map((item) => (
+                  <FeatureItem key={item.label} item={item} />
+                ))}
+              </div>
             ))}
           </div>
         </div>
@@ -295,7 +405,7 @@ function MobileDropdownSection({
                     <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium leading-tight text-ink">
                       <span className="truncate">{item.label}</span>
                       {item.badge || item.disabled ? (
-                        <span className="shrink-0 font-mono-accent text-[8px] uppercase tracking-[0.12em] text-muted">
+                        <span className="shrink-0 text-[11px] uppercase tracking-[0.08em] text-muted">
                           {item.badge ?? 'Soon'}
                         </span>
                       ) : null}
@@ -390,9 +500,10 @@ export function Header() {
   const location = useLocation()
   const navigate = useNavigate()
   const { isSignedIn } = useAuth()
-  // ponytail: signed out → /login (sign-in/up); signed in → billing. Label stays "Account" either way.
+  const { scrolled, heroCtaInView, overDark } = usePageContext(location.pathname)
+  // Signed out → /login (sign in or sign up); signed in → billing.
   const accountHref = isSignedIn ? '/account/billing' : '/login'
-  const accountLabel = 'Account'
+  const accountLabel = isSignedIn ? 'Account' : 'Sign in'
   const accountTarget = isSignedIn ? 'nav:account' : 'nav:sign-in'
 
   const closeMobileMenu = () => {
@@ -424,67 +535,83 @@ export function Header() {
   }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6">
-      <Container size="full" className="relative z-10">
-        {/* Three-lane bar: brand left, nav centered in its own track, actions pinned end.
-            The centre track only exists at lg — below that the grid falls back to two
-            cells and the actions stay hard against the trailing edge. */}
-        <nav className="relative mx-auto grid h-[50px] max-w-5xl grid-cols-[1fr_auto] items-center rounded-2xl border border-white/75 ps-4 pe-1.5 shadow-[0_10px_36px_rgba(43,61,78,0.10)] lg:grid-cols-[1fr_auto_1fr]">
-          {/* Glass lives on a decor layer, not on <nav>: an element with backdrop-filter
-              becomes the backdrop root for its subtree, which would stop the dropdown
-              panels below from blurring the page behind them. */}
-          <div
-            aria-hidden
-            className="absolute inset-0 -z-10 rounded-2xl bg-card/[0.88] backdrop-blur-[18px] backdrop-saturate-150"
-          />
-          <Link to="/" className="group flex w-fit items-center gap-2" onClick={handleLogoClick}>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center">
-              <img src="/favicon.svg" alt="" className="h-7 w-7" />
-            </span>
-            <span className="flex items-center gap-2 leading-none">
-              <span className="block font-geist text-[17px] font-medium leading-none tracking-[-0.04em] text-ink transition-colors group-hover:text-terracotta">
+    <header data-ink={overDark ? 'dark' : 'light'} className="site-nav fixed inset-x-0 top-0 z-50">
+      {/* Full-width bar: transparent at the top of the page, frosted with a hairline once
+          content scrolls under it, 64 → 56px. Links and actions never move sideways. */}
+      <nav
+        className={cn(
+          'relative h-16 transition-[height] duration-[240ms] [transition-timing-function:var(--ease-out-expo)] motion-reduce:transition-none',
+          scrolled && 'h-14 motion-reduce:h-16'
+        )}
+      >
+        {/* The surface lives on a decor layer so it can fade as one opacity tween, and so
+            the bar's own subtree is not a backdrop root. Colours come from --nav-* in
+            index.css, which flip over dark sections. */}
+        <div
+          aria-hidden
+          className={cn(
+            'nav-surface absolute inset-0 -z-10 border-b border-(--nav-hairline) bg-(--nav-surface) opacity-0 backdrop-blur-[16px] backdrop-saturate-150 transition-[opacity,background-color,border-color] duration-200 [transition-timing-function:var(--ease-out-expo)] motion-reduce:transition-none',
+            (scrolled || mobileMenuOpen) && 'opacity-100'
+          )}
+        />
+        <div className="mx-auto flex h-full w-full max-w-[83rem] items-center justify-between gap-6 px-6">
+          <div className="flex h-full items-center gap-10">
+            <Link
+              to="/"
+              className="group flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
+              onClick={handleLogoClick}
+            >
+              <img src="/favicon.svg" alt="" className="h-[18px] w-[22px]" />
+              <span className="font-geist text-base font-semibold leading-5 tracking-[-0.03em] text-(--nav-ink) transition-colors duration-200">
                 memrynote
               </span>
-              <span className="rounded-full bg-terracotta/10 px-1.5 py-0.5 font-mono-accent text-[8px] uppercase tracking-[0.16em] text-terracotta">
+              <span className="rounded-full border border-(--nav-rule) px-1.5 text-[11px] font-medium leading-4 text-(--nav-body) transition-colors duration-200">
                 Beta
               </span>
-            </span>
-          </Link>
-
-          <div className="hidden items-center justify-center gap-2 lg:flex">
-            <DesktopDropdown label="Features" items={FEATURE_NAV_ITEMS} />
-            {DIRECT_NAV_LINKS.map((link) => (
-              <NavLink key={link.label} href={link.href} label={link.label} />
-            ))}
-          </div>
-
-          <div className="flex items-center justify-self-end gap-2">
-            <GitHubStarWidget className="hidden md:inline-flex" />
-            <GitHubStarWidget iconOnly className="md:hidden" />
-            <Link
-              to={accountHref}
-              onClick={() => trackLandingEvent('landing_nav_click', accountTarget)}
-              className="hidden min-h-[34px] items-center justify-center rounded-[9px] bg-terracotta px-3.5 text-xs font-medium leading-4 text-white shadow-[0_0_0_4px_rgb(255_103_26/0.16)] transition-colors duration-200 hover:bg-terracotta/90 md:inline-flex"
-            >
-              {accountLabel}
             </Link>
-            <button
-              type="button"
-              className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] border border-border/70 bg-card/60 text-ink transition-[color,transform] duration-200 hover:text-terracotta active:scale-95 active:duration-75 motion-reduce:active:scale-100 md:hidden"
-              onClick={toggleMobileMenu}
-              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
+
+            <div className="hidden h-full items-center gap-7 lg:flex">
+              <FeaturesMenu />
+              {DESKTOP_NAV_LINKS.map((link) => (
+                <NavLink key={link.label} href={link.href} label={link.label} />
+              ))}
+            </div>
           </div>
-        </nav>
-      </Container>
+
+          <div className="flex items-center">
+            <div className="flex items-center gap-5">
+              <GitHubLink />
+              <DiscordLink />
+              <span aria-hidden className="hidden h-4 w-px bg-(--nav-rule) md:block" />
+              <Link
+                to={accountHref}
+                onClick={() => trackLandingEvent('landing_nav_click', accountTarget)}
+                className={cn(
+                  NAV_TEXT,
+                  'hidden text-(--nav-ink) hover:text-terracotta md:inline-flex'
+                )}
+              >
+                {accountLabel}
+              </Link>
+              <button
+                type="button"
+                className="flex size-[34px] items-center justify-center rounded-[9px] border border-(--nav-rule) text-(--nav-ink) transition-[color,transform] duration-200 hover:text-terracotta active:scale-95 active:duration-75 motion-reduce:active:scale-100 md:hidden"
+                onClick={toggleMobileMenu}
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              >
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            </div>
+            <PrimaryAction visible={!heroCtaInView} />
+          </div>
+        </div>
+      </nav>
 
       <AnimatePresence>
         {mobileMenuOpen && (
-          /* Same rule as DesktopDropdown: this wrapper carries transform only. Any filter or
-             opacity here — including a resting filter: blur(0px), which is not `none` — makes it
-             the backdrop root for its subtree and turns the panel's backdrop blur into a no-op. */
+          /* This wrapper carries transform only. Any filter or opacity here — including a
+             resting filter: blur(0px), which is not `none` — makes it the backdrop root for
+             its subtree and turns the panel's backdrop blur into a no-op. */
           <motion.div
             initial={{ y: -8, scale: 0.98 }}
             animate={{ y: 0, scale: 1 }}
@@ -497,7 +624,7 @@ export function Header() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.2, ease: EASE_OUT_EXPO }}
                 className="material-chrome mx-auto flex max-h-[calc(100dvh-88px)] max-w-5xl flex-col gap-1.5 overflow-y-auto rounded-[20px] border border-white/70 p-2.5 shadow-[var(--shadow-float)]"
               >
                 {MOBILE_DROPDOWN_SECTIONS.map((section) => (

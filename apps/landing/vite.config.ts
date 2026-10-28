@@ -39,10 +39,14 @@ async function handleApiRequest(
   }
 
   const mod = await server.ssrLoadModule(`/api/${apiName}.ts`)
-  const vercelReq = { method: req.method, body }
+  // The parts of VercelRequest/VercelResponse the handlers in api/ use: download.ts reads
+  // req.query and answers with res.redirect.
+  const query = Object.fromEntries(new URL(req.url ?? '/', 'http://localhost').searchParams)
+  const vercelReq = { method: req.method, body, query }
   const result = {
     statusCode: 200,
     body: '' as string,
+    redirectTo: null as string | null,
     headers: {} as Record<string, number | string | readonly string[]>
   }
   const vercelRes = {
@@ -57,6 +61,11 @@ async function handleApiRequest(
     json(data: unknown) {
       result.body = JSON.stringify(data)
       return this
+    },
+    redirect(code: number, url: string) {
+      result.statusCode = code
+      result.redirectTo = url
+      return this
     }
   }
 
@@ -65,6 +74,11 @@ async function handleApiRequest(
   res.statusCode = result.statusCode
   for (const [name, value] of Object.entries(result.headers)) {
     res.setHeader(name, value)
+  }
+  if (result.redirectTo !== null) {
+    res.setHeader('Location', result.redirectTo)
+    res.end()
+    return
   }
   res.setHeader('Content-Type', 'application/json')
   res.end(result.body)

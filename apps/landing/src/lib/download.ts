@@ -36,6 +36,27 @@ export function downloadHref(platform: DownloadPlatform): string {
   return `/api/download?platform=${platform}`
 }
 
+// The installer the nav's Download button started, so /download can say so. A module
+// variable rather than router state: history state survives a reload, and the reloaded,
+// prerendered page would then hydrate into a "download started" that never happened.
+let startedDownload: DownloadPlatform | null = null
+
+/**
+ * Starts the installer download without leaving the page: /api/download answers with a
+ * redirect to a GitHub release asset, which the browser saves as an attachment.
+ */
+export function startDownload(platform: DownloadPlatform) {
+  startedDownload = platform
+  window.location.assign(downloadHref(platform))
+}
+
+/** Reads the download the nav started, once: the next visit to /download starts clean. */
+export function takeStartedDownload(): DownloadPlatform | null {
+  const platform = startedDownload
+  startedDownload = null
+  return platform
+}
+
 // ponytail: navigator can't tell Apple Silicon from Intel — default mac to arm64
 // and surface an explicit Intel link on the download page.
 export const DESKTOP_PLATFORM: Record<DesktopOS, DownloadPlatform> = {

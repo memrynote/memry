@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { ArrowRight, Share } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
@@ -9,6 +10,7 @@ import {
   DESKTOP_PLATFORM,
   downloadHref,
   osLabel,
+  takeStartedDownload,
   useDetectedOS,
   type DesktopOS,
   type DetectedOS,
@@ -96,6 +98,9 @@ function trackHeroDownload(platform: DownloadPlatform) {
  */
 export function DownloadPage() {
   const os = useDetectedOS()
+  // Set only when the nav Download button sent the user here and already started the
+  // installer, so the page confirms it instead of asking for a second click.
+  const [started] = useState(takeStartedDownload)
 
   return (
     <>
@@ -112,7 +117,7 @@ export function DownloadPage() {
             <p className="mt-5 text-[16px] leading-6 text-muted md:mt-6 md:text-[18px] md:leading-7">
               Everything memrynote ships, on one page.
             </p>
-            <Lead os={os} />
+            <Lead os={os} started={started !== null} />
           </div>
           <DownloadIndex os={os} />
         </div>
@@ -121,11 +126,11 @@ export function DownloadPage() {
   )
 }
 
-function Lead({ os }: { os: DetectedOS }) {
+function Lead({ os, started }: { os: DetectedOS; started: boolean }) {
   if (os === null) return <PickComputer />
   if (os === 'ios') return <IosLead />
   if (os === 'android') return <AndroidLead />
-  return <DesktopLead os={os} />
+  return <DesktopLead os={os} started={started} />
 }
 
 function Detected({ os }: { os: DesktopOS | MobileOS }) {
@@ -137,13 +142,20 @@ function Detected({ os }: { os: DesktopOS | MobileOS }) {
   )
 }
 
-function DesktopLead({ os }: { os: DesktopOS }) {
+function DesktopLead({ os, started }: { os: DesktopOS; started: boolean }) {
   const platform = DESKTOP_PLATFORM[os]
   const { note, alternate } = DESKTOP_LEAD[os]
 
   return (
     <div className="mt-10 flex flex-col items-start gap-3.5">
-      <Detected os={os} />
+      {started ? (
+        <output className={cn(META, 'flex items-center gap-1.5')}>
+          <span aria-hidden className="size-1.5 rounded-full bg-terracotta" />
+          Your download has started. Nothing yet? Use the button.
+        </output>
+      ) : (
+        <Detected os={os} />
+      )}
       <a
         href={downloadHref(platform)}
         onClick={() => trackHeroDownload(platform)}

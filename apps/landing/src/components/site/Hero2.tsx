@@ -179,7 +179,7 @@ export function Hero2() {
   return (
     <section id="hero">
       {/* The illustrated sky mega-panel — full-bleed: no inset, no radius, no border, so
-          the wallpaper runs edge to edge and the fixed nav pill floats straight on it.
+          the wallpaper runs edge to edge and the transparent nav bar sits straight on it.
           The panel takes its natural content height, and that height is deliberately
           budgeted to land near 1090px on desktop: short enough that the section below
           peeks above the fold on a tall display, instead of the hero eating the screen.
@@ -251,7 +251,10 @@ export function Hero2() {
             Offline-first. End-to-end encrypted. Free forever. Yours.
           </motion.p>
 
+          {/* data-nav-cta: while this row is on screen the header leaves out its own
+              Download button, so the page shows one primary action at a time. */}
           <motion.div
+            data-nav-cta
             className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-[30px]"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
