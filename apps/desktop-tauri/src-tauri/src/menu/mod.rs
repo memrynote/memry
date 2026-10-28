@@ -53,6 +53,9 @@ pub struct MenuService {
     built: Mutex<Built>,
     /// Linux: the attached menu bar is showing.
     bar_shown: AtomicBool,
+    /// Linux: `rehide_after_show` is connected to the main window.
+    #[cfg(target_os = "linux")]
+    show_hooked: AtomicBool,
 }
 
 fn overrides(app: &AppHandle<Wry>) -> BTreeMap<String, Binding> {
@@ -148,6 +151,57 @@ fn attach(app: &AppHandle<Wry>, service: &MenuService, menu: &Menu<Wry>) {
         tracing::warn!(scope = "Menu", "the menu bar was not hidden: {error}");
     }
     service.bar_shown.store(false, Ordering::Relaxed);
+    if !service.show_hooked.swap(true, Ordering::Relaxed) {
+        let app = app.clone();
+        let label = window.label().to_owned();
+        let queued = window.run_on_main_thread(move || rehide_after_show(&app, &label));
+        if let Err(error) = queued {
+            tracing::warn!(
+                scope = "Menu",
+                "the menu bar show hook was not queued: {error}"
+            );
+        }
+    }
+}
+
+/// tao shows a window with `gtk_widget_show_all`, which shows the hidden menu bar with it, so
+/// the bar appeared at the first reveal and the first bare Alt hid it instead of showing it.
+/// After every show of the window the bar is hidden again unless Alt opened it. Runs on the
+/// main thread, which owns the GTK window.
+#[cfg(target_os = "linux")]
+fn rehide_after_show(app: &AppHandle<Wry>, label: &str) {
+    use webkit2gtk::glib::prelude::ObjectExt;
+
+    let Some(window) = app.get_webview_window(label) else {
+        return;
+    };
+    let gtk_window = match window.gtk_window() {
+        Ok(gtk_window) => gtk_window,
+        Err(error) => {
+            tracing::warn!(
+                scope = "Menu",
+                "the menu bar show hook was not connected: {error}"
+            );
+            return;
+        }
+    };
+    let app = app.clone();
+    let label = label.to_owned();
+    gtk_window.connect_local("show", true, move |_| {
+        let shown = app
+            .try_state::<MenuService>()
+            .is_some_and(|service| service.bar_shown.load(Ordering::Relaxed));
+        if !shown
+            && let Some(window) = app.get_webview_window(&label)
+            && let Err(error) = window.hide_menu()
+        {
+            tracing::warn!(
+                scope = "Menu",
+                "the menu bar was not hidden after show: {error}"
+            );
+        }
+        None
+    });
 }
 
 #[cfg(windows)]

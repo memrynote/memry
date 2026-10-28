@@ -71,7 +71,7 @@ tauri-plugin-wdio-webdriver = { version = "=1.5.0", optional = true }
 tauri-plugin-wdio = { version = "=1.5.0", optional = true }
 arboard = { version = "3.7.0", optional = true, default-features = false }
 
-# Caption hit testing (`windows/win32_caption.rs`) and the WebView2 accelerator keys.
+# Caption hit testing (`windows/win32_caption/`) and the WebView2 accelerator keys.
 [target.'cfg(windows)'.dependencies]
 # The login item is a `Run` value (`autostart/win.rs`).
 winreg = "0.56"
@@ -84,8 +84,10 @@ windows = { version = "0.62", features = [
   "Win32_Graphics_Gdi",
   "Win32_Globalization",
   "Win32_System_Com",
+  "Win32_System_LibraryLoader",
   "Win32_System_Shutdown",
   "Win32_System_Threading",
+  "Win32_UI_HiDpi",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
@@ -100,7 +102,7 @@ tauri-plugin-autostart = "2.7.0"
 zbus = { version = "5.19.0", default-features = false, features = ["blocking-api", "async-io"] }
 # `spell/linux.rs` loads Enchant at run time, so the app starts on machines without it.
 libloading = "0.9.0"
-# `guards/gpu.rs` reports `web-process-terminated`. Same version as wry.
+# `guards/gpu.rs` reports `web-process-terminated`, and `menu/mod.rs` hooks the window's GTK `show` through its `glib`. Same version as wry.
 webkit2gtk = "2.0.2"
 # tauri-plugin-deep-link 2.6.2 builds `ini::ParseOption` by field; 0.21.2 added fields, so it fails
 # to compile there. Drop the pin when the plugin moves to `..Default::default()`.
