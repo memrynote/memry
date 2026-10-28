@@ -244,16 +244,19 @@ fn author(
         let Some(body) = converter.serialize_note_body(&document, BODY_FRAGMENT, &options) else {
             return refuse(tx, note_id, now_ms, Refusal::BodyNotRepresentable);
         };
-        if !body.unrepresentable.is_empty() || !converter.reads_losslessly(&document, BODY_FRAGMENT)
-        {
-            return refuse(tx, note_id, now_ms, Refusal::BodyNotRepresentable);
-        }
+        // Text first: a file that reads back what the document says (the app's own
+        // write-back, a startup scan) is not an edit, whatever the body holds. A caller that
+        // did not read the frontmatter (`writing: None`) says nothing about it.
         if same_text(&body.markdown, markdown)
-            && body.writing == writing.clone().unwrap_or_default()
+            && writing.as_ref().is_none_or(|w| *w == body.writing)
         {
             owed_file_body::clear(&tx, note_id)?;
             tx.commit().map_err(storage_failed)?;
             return Ok(FeedOutcome::Unchanged);
+        }
+        if !body.unrepresentable.is_empty() || !converter.reads_losslessly(&document, BODY_FRAGMENT)
+        {
+            return refuse(tx, note_id, now_ms, Refusal::BodyNotRepresentable);
         }
         Some(body.markdown)
     };
@@ -310,12 +313,22 @@ fn refuse(
     Ok(FeedOutcome::Refused(refusal))
 }
 
-/// A kept body as the file it was: the file's frontmatter block, verbatim, above
-/// it, and one trailing newline (`writeMarkdownNote`).
+/// A kept body as the file it was: the file's frontmatter block, verbatim, then the
+/// body and one trailing newline (`writeMarkdownNote`). A block that ends the file
+/// without a newline gets one, or its closing fence would run into the body. Desktop
+/// re-stringifies the frontmatter instead (`serializeNote`), so the bytes differ in
+/// line ends, a BOM and key order; both restore to a file with this frontmatter.
 fn as_file(frontmatter: Option<&str>, body: &str) -> String {
+    let mut file = frontmatter.unwrap_or_default().to_owned();
+    if !file.is_empty() && !file.ends_with('\n') {
+        file.push('\n');
+    }
     let body = body.trim_end_matches('\n');
-    let newline = if body.is_empty() { "" } else { "\n" };
-    format!("{}{body}{newline}", frontmatter.unwrap_or_default())
+    if !body.is_empty() {
+        file.push_str(body);
+        file.push('\n');
+    }
+    file
 }
 
 /// Whether the file's text is the body's: line ends and the trailing newlines a

@@ -22,9 +22,9 @@ pub const SIGNIFICANT: &str = "significant";
 /// One version to keep.
 pub struct Version<'a> {
     pub note_id: &'a str,
-    /// What the version restores to: the whole file, frontmatter block and body, as
-    /// desktop keeps it (`serializeNote(frontmatter, body)`; its restore writes this
-    /// column as the file, `notes-versions.ts`).
+    /// What the version restores to: a whole file, frontmatter block and body. The column
+    /// means what it means on desktop, whose restore writes it as the file
+    /// (`notes-versions.ts`); the bytes of the frontmatter block are the writer's own.
     pub content: &'a str,
     /// The body within `content`, which the word count reads (`parseNote(..).content`).
     pub body: &'a str,

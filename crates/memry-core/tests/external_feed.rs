@@ -661,9 +661,19 @@ fn a_file_whose_writing_frontmatter_changed_is_fed_although_its_body_did_not() {
         ..input(&id, markdown)
     };
     assert_eq!(f.feed_input(same), FeedOutcome::Unchanged);
-    // The editor outside dropped the alternative from the frontmatter.
+    // A caller that did not read the frontmatter says nothing about it.
     assert_eq!(
         f.feed(&id, markdown),
+        FeedOutcome::Unchanged,
+        "an unread frontmatter reset the writing state"
+    );
+    // The editor outside dropped the alternative from the frontmatter.
+    let removed = FeedInput {
+        writing: Some(Default::default()),
+        ..input(&id, markdown)
+    };
+    assert_eq!(
+        f.feed_input(removed),
         FeedOutcome::Fed,
         "the removal was ignored"
     );
@@ -686,4 +696,44 @@ fn a_kept_version_is_the_whole_file_the_replaced_body_was() {
             "significant".to_owned()
         )]
     );
+}
+
+#[test]
+fn a_kept_version_under_a_block_with_no_final_newline_still_parses_as_that_block() {
+    let f = fixture();
+    let id = f.note();
+    let file = |markdown| FeedInput {
+        frontmatter: Some("---\nid: x\n---"),
+        ..input(&id, markdown)
+    };
+    assert_eq!(f.feed_input(file("first text")), FeedOutcome::Fed);
+    assert_eq!(f.feed_input(file("second text")), FeedOutcome::Fed);
+    assert_eq!(
+        versions(&f, &id),
+        [(
+            "---\nid: x\n---\nfirst text\n".to_owned(),
+            "significant".to_owned()
+        )]
+    );
+}
+
+#[test]
+fn an_unchanged_file_over_a_body_this_build_cannot_read_whole_is_unchanged_and_owes_nothing() {
+    // The app's own write-back, or a startup scan, reads back what the document already says.
+    let f = fixture();
+    let id = f.note();
+    server_body(&f, &id, "known", |txn| {
+        raw_paragraph(
+            txn,
+            &[("futureAttr", "kept by a newer build")],
+            "plain",
+            &[],
+        );
+    });
+    assert_eq!(f.feed(&id, "known\n\nplain\n"), FeedOutcome::Unchanged);
+    assert!(
+        !f.owes_file_body(&id),
+        "reading its own text back marked the note"
+    );
+    assert_eq!((local_updates(&f, &id), f.queued_updates(&id)), (0, 0));
 }
