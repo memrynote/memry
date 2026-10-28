@@ -33,6 +33,12 @@ export interface SoakDriver {
   executor(): Executor
   /** After the app quit: fails unless it exited, then starts it on the same profile and vault. */
   relaunch(): Promise<void>
+  /**
+   * After a call failed on the way to the app (the tunnel, the socket, the WebDriver session):
+   * reconnects, and fails unless the app is still the same process. Without it such a failure
+   * ends the soak.
+   */
+  recover?(): Promise<void>
 }
 
 export type Quit = 'request-quit' | 'session-end'
@@ -79,8 +85,24 @@ const HISTORY = 12
 /** Errors Windows gives a write while another process (Defender, the indexer) holds the file. */
 const TRANSIENT = /os error (5|32|33)\b|being used by another process|access is denied/i
 
+/** A call that never reached the app, or whose answer never came back. */
+const TRANSPORT =
+  /unreachable|fetch failed|ECONNREFUSED|ECONNRESET|EPIPE|UND_ERR|socket hang up|invalid session id|no such window|session .* not found/i
+/** Reconnects in a row within one round before the soak gives up on the connection. */
+const MAX_RECOVERIES = 5
+
 /** A failure of the soak's rules, already named with its seed, round and step. */
 class SoakError extends Error {}
+
+/** The round in progress: what a reconnect re-checks. */
+interface Current {
+  note: NoteFile
+  before: Map<string, Seen>
+  /** The note the step writes, or null when it writes none. */
+  touched: string | null
+  /** Every text the step has asked the app or a program to write so far. */
+  candidates: string[]
+}
 
 const sleep = (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
 
@@ -170,9 +192,13 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
   const rows = (): Promise<NoteFile[]> => call('e2e_vault_note_files')
   const read = (path: string): Promise<VaultFile | null> => call('e2e_vault_read_file', { path })
   const body = (noteId: string): Promise<string> => call('e2e_note_body', { noteId })
-  const edit = (noteId: string, text: string): Promise<void> =>
-    call('e2e_note_edit', { noteId, text })
+  let current: Current | null = null
+  const edit = (noteId: string, text: string): Promise<void> => {
+    current?.candidates.push(text)
+    return call('e2e_note_edit', { noteId, text })
+  }
   async function save(path: string, text: string, replace: boolean): Promise<void> {
+    current?.candidates.push(text.endsWith('\n') ? text.slice(0, -1) : text)
     for (let attempt = 1; ; attempt += 1) {
       try {
         await call('e2e_vault_write_outside', { path, text, replace })
@@ -213,7 +239,7 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
   log('start', { ...options })
   const notes: NoteFile[] = []
   const expected = new Map<string, string>()
-  await guarded(async () => {
+  const adopt = async (): Promise<void> => {
     await call('e2e_vault_adopt_files')
     for (let i = 0; i < options.notes; i += 1) {
       const path = `soak/n${i}.md`
@@ -221,7 +247,7 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
       const note = await until(`${path} became a note`, async () =>
         (await rows()).find((row) => row.path === path && row.contentHash !== null)
       )
-      notes.push(note)
+      if (!notes.some((known) => known.noteId === note.noteId)) notes.push(note)
       expected.set(note.noteId, `n${i} start`)
     }
     for (const note of notes) {
@@ -230,7 +256,8 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
         holds((await snapshot([note])).get(note.noteId), want) ? true : undefined
       )
     }
-  })
+  }
+  await guarded(adopt, adopt)
 
   /** Every note as `expected` says, in file and body. */
   async function checkAll(): Promise<void> {
@@ -265,6 +292,7 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
   const quits = Object.fromEntries(options.quits.map((kind) => [kind, 0])) as Record<Quit, number>
   let quitCount = 0
   let conclusive = 0
+  let recoveries = 0
   const others = STEPS.filter((kind) => kind !== 'quit')
 
   /** One round: the step, the wait for its outcome and the checks of every note. */
@@ -279,8 +307,10 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
     const note = notes[Math.floor(draw() * notes.length)]
     step = Date.now() >= nextQuit ? 'quit' : drawn
     const tag = `r${round}`
+    current = null
     const before = await snapshot(notes)
-    let touched: string | null = note.noteId
+    const round_: Current = { note, before, touched: note.noteId, candidates: [] }
+    current = round_
     let want = ''
     const extra: Record<string, unknown> = { note: note.path }
 
@@ -339,7 +369,7 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
         break
       }
       case 'schedule-unchanged': {
-        touched = null
+        round_.touched = null
         const chosen = notes.filter(() => draw() < 0.3).map((each) => each.noteId)
         await call('e2e_note_schedule', { noteIds: chosen.length > 0 ? chosen : [note.noteId] })
         await sleep(PASS_DUE_MS)
@@ -347,8 +377,6 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
       }
       case 'quit': {
         const quit = options.quits[quitCount % options.quits.length]
-        quitCount += 1
-        quits[quit] += 1
         want = `${tag} typed before the ${quit}`
         await edit(note.noteId, want)
         // The app may be gone before the reply.
@@ -358,6 +386,9 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
             : call('e2e_send_session_end', { target: 'main', killWebview: true })
         ).catch(() => undefined)
         await driver.relaunch()
+        // Counted once it happened: a round a reconnect cuts short is taken again.
+        quitCount += 1
+        quits[quit] += 1
         await reopened()
         nextQuit = Date.now() + options.quitEveryMs
         extra.quit = quit
@@ -365,57 +396,100 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
       }
     }
 
-    if (touched !== null) {
-      const id = touched
-      await until(`${note.path} held ${show(want)}`, async () =>
-        holds((await snapshot([note])).get(id), want) ? true : undefined
-      )
-      expected.set(id, want)
+    await verify(round_, want)
+    steps[step] += 1
+    return { ...extra, want }
+  }
+
+  /**
+   * The checks that end a round. With `want` the touched note must settle on it; without (a
+   * round a reconnect cut short) on its text before the round or any text the step wrote, the
+   * same in file, body and row hash.
+   */
+  async function verify(c: Current, want: string | null): Promise<void> {
+    if (c.touched !== null) {
+      const id = c.touched
+      const allowed =
+        want !== null ? [want] : [expected.get(id) as string, ...new Set(c.candidates)]
+      if (want === null) await sleep(PASS_DUE_MS)
+      const held = await until(`${c.note.path} held one of ${show(allowed)}`, async () => {
+        const seen = (await snapshot([c.note])).get(id)
+        return allowed.find((text) => holds(seen, text))
+      })
+      expected.set(id, held)
+    } else if (want === null) {
+      await sleep(PASS_DUE_MS)
     }
     const after = await snapshot(notes)
     await sleep(STABLE_MS)
     const again = await snapshot(notes)
     for (const each of notes) {
       const id = each.noteId
-      if (id === touched) {
+      if (id === c.touched) {
         if (!same(after.get(id), again.get(id))) {
           fail(
             `${each.path} changed after it settled: ${show(after.get(id))} -> ${show(again.get(id))}`
           )
         }
-      } else if (!same(before.get(id), again.get(id))) {
-        fail(`${each.path}, not edited, changed: ${show(before.get(id))} -> ${show(again.get(id))}`)
+      } else if (!same(c.before.get(id), again.get(id))) {
+        fail(
+          `${each.path}, not edited, changed: ${show(c.before.get(id))} -> ${show(again.get(id))}`
+        )
       }
     }
-    steps[step] += 1
-    return { ...extra, want }
+  }
+
+  /** The rest of a round a reconnect cut short: its checks, accepting any text it wrote. */
+  async function resumeRound(): Promise<Record<string, unknown>> {
+    const c = current
+    // Cut short before it wrote anything: the next round checks every note again.
+    if (c === null) return { interrupted: true, wrote: false }
+    await verify(c, null)
+    steps[step as Step] += 1
+    return { note: c.note.path, interrupted: true, held: c.touched && expected.get(c.touched) }
   }
 
   /** Runs `work` as `step`, within the watchdog; any error comes out named. */
-  async function guarded<T>(work: () => Promise<T>): Promise<T> {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const watchdog = new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new SoakError(named(`stuck for ${ROUND_MS / 60_000} min`))),
-        ROUND_MS
-      )
-    })
-    try {
-      return await Promise.race([work(), watchdog])
-    } catch (error) {
-      if (error instanceof SoakError) throw error
-      throw new SoakError(named(error instanceof Error ? error.message : String(error)), {
-        cause: error
+  async function guarded<T>(work: () => Promise<T>, resume?: () => Promise<T>): Promise<T> {
+    let attempt = work
+    for (let recovered = 0; ;) {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const watchdog = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new SoakError(named(`stuck for ${ROUND_MS / 60_000} min`))),
+          ROUND_MS
+        )
       })
-    } finally {
-      clearTimeout(timer)
+      try {
+        return await Promise.race([attempt(), watchdog])
+      } catch (error) {
+        if (error instanceof SoakError) throw error
+        const message = error instanceof Error ? error.message : String(error)
+        if (!driver.recover || !resume || !TRANSPORT.test(message) || recovered >= MAX_RECOVERIES) {
+          throw new SoakError(named(message), { cause: error })
+        }
+        log('connection lost', { round, step, error: message })
+        try {
+          await driver.recover()
+        } catch (gone) {
+          throw new SoakError(named(gone instanceof Error ? gone.message : String(gone)), {
+            cause: gone
+          })
+        }
+        recovered += 1
+        recoveries += 1
+        log('reconnected', { round, step, recoveries })
+        attempt = resume
+      } finally {
+        clearTimeout(timer)
+      }
     }
   }
 
   while (Date.now() < end) {
     round += 1
     const began = Date.now()
-    const outcome = await guarded(runRound)
+    const outcome = await guarded(runRound, resumeRound)
     const entry = { round, step, ms: Date.now() - began, ...outcome }
     history.push(entry)
     if (history.length > HISTORY) history.shift()
@@ -424,18 +498,19 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
     if (Date.now() >= nextCheck) {
       nextCheck = Date.now() + options.checkEveryMs
       step = 'check'
-      await guarded(checkAll)
+      await guarded(checkAll, checkAll)
       log('check', {
         round,
         steps,
         quits,
         conclusive,
+        recoveries,
         leftMin: Math.round((end - Date.now()) / 60_000)
       })
     }
   }
   step = 'check'
-  await guarded(checkAll)
+  await guarded(checkAll, checkAll)
   if (round === 0) fail('no round ran')
   const missing = [
     ...STEPS.filter((kind) => steps[kind] === 0),
@@ -443,6 +518,6 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
   ]
   if (missing.length > 0) fail(`never took ${missing.join(', ')}`)
   if (conclusive === 0) fail('no same-bytes save was conclusive')
-  log('soak passed', { rounds: round, steps, quits, conclusive })
+  log('soak passed', { rounds: round, steps, quits, conclusive, recoveries })
   return { rounds: round, steps }
 }
