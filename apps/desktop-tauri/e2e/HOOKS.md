@@ -100,6 +100,31 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 - With an open gate `vault_reveal` records the path instead of opening a file manager;
   `e2e_revealed_paths` reads it back.
 
+## Vault write-back
+
+Until Step 13 (#3530) names notes and Step 14 (#3531) edits them, these commands drive the
+write-back (`src-tauri/src/e2e/vault_writeback.rs`, over `memry_desktop::e2e::vault`).
+`specs/vault/writeback.e2e.ts` and the soak (`e2e/soak/writeback-soak.ts`, on the VM through
+`writeback-soak-vm.ts`) use them:
+
+- `e2e_vault_adopt_files` makes every new markdown file a note, titled by its file name, and
+  opens the vault again so its files are offered at once. It writes the marker
+  `<appDataDir>/e2e-adopt-files`, which keeps it on for every later launch of the profile, so a
+  relaunch keeps naming notes. A fresh profile (`fresh()`, `launch-tauri`) has no marker;
+  delete the file to turn it off on a kept one.
+- `e2e_vault_note_files` lists the rows: `{ noteId, path, contentHash }`. A row with a hash
+  has its file's text in the note.
+- `e2e_note_edit` retypes a note's first block, then schedules its write-back. It edits
+  through `NotesWriter::edit_block`, the iOS path; Step 14 moves it to the desktop editor's
+  `Editor::apply_update`. `e2e_note_schedule` schedules notes without editing them, as the sync
+  driver does after a pulled page (Step 17). `e2e_note_body` reads a body, one line per block.
+- `e2e_vault_write_outside` writes a file as another program does, unseen by the own-write
+  record; `replace: true` saves through a side file and a rename. `e2e_vault_read_file`
+  returns `{ text, contentHash, mtimeMs, size }` or null. Both take a path inside the vault, so a driver on
+  another machine needs no file access.
+- `e2e_app_terminate` sends `[NSApp terminate:]`, what Cmd-Q and the Dock's Quit send (macOS
+  only). `e2e_request_quit` and `e2e_send_session_end` cover the other ways to quit.
+
 ## Control file
 
 Each app instance reads `<temp dir>/memry-e2e/control-<port>.json`, keyed by its own
