@@ -637,6 +637,73 @@ fn a_file_rewritten_in_bursts_does_not_hold_back_the_signal_of_the_pass_that_fou
     );
 }
 
+/// The step (200 ms each) of the first `Rescanned` while `write` runs every step for 10 s.
+fn first_signal_step(
+    f: &Fixture,
+    r: &mut Reconciler,
+    t0: Instant,
+    write: impl Fn(&mut Reconciler, u64, Instant),
+) -> u64 {
+    let mut signal_at = None;
+    for step in 1..=50u64 {
+        let at = t0 + Duration::from_millis(200 * step);
+        write(r, step, at);
+        r.settle_expired(at);
+        let rescanned = f
+            .take()
+            .iter()
+            .any(|e| matches!(e, VaultEvent::Rescanned { .. }));
+        if rescanned && signal_at.is_none() {
+            signal_at = Some(step);
+        }
+    }
+    signal_at.expect("no Rescanned while the writer ran")
+}
+
+#[test]
+fn a_note_deleted_and_recreated_in_bursts_does_not_hold_back_the_signal_of_the_pass_that_found_it_gone()
+ {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "body");
+    f.index("n1", "a.md", "body");
+    fs::remove_file(f.root.join("a.md")).unwrap();
+    let t0 = Instant::now();
+    rescan_started_at(&mut r, true, t0);
+    // A writer recreates and deletes it every 200 ms; each delete tracks it again.
+    let step = first_signal_step(&f, &mut r, t0, |r, step, at| {
+        if step % 2 == 1 {
+            f.write("a.md", "body");
+        } else {
+            fs::remove_file(f.root.join("a.md")).unwrap();
+        }
+        r.batch(vec!["a.md".to_owned()], at);
+    });
+    assert!(
+        step <= 3,
+        "held back until step {step}: the pass waited past its own rename window"
+    );
+}
+
+#[test]
+fn passes_closer_than_the_rename_window_each_report_their_signal() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "body");
+    f.index("n1", "a.md", "body");
+    fs::remove_file(f.root.join("a.md")).unwrap();
+    let t0 = Instant::now();
+    // An overflow storm: a pass every 200 ms, each finding the same note missing again.
+    let step = first_signal_step(&f, &mut r, t0, |r, _, at| {
+        let stop = AtomicBool::new(false);
+        assert!(r.rescan(true, at, &stop).unwrap());
+    });
+    assert!(
+        step <= 4,
+        "the first pass (step 1) held back until step {step}, and every pass behind it"
+    );
+}
+
 #[test]
 fn two_passes_report_their_signals_in_the_order_they_ran() {
     let f = fixture();
@@ -654,6 +721,28 @@ fn two_passes_report_their_signals_in_the_order_they_ran() {
         ["added", "rescanned", "rescanned"],
         "the second pass's signal overtook the first's: {events:?}"
     );
+}
+
+#[test]
+fn a_pass_due_earlier_still_reports_after_the_pass_before_it() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "body");
+    f.index("n1", "a.md", "body");
+    fs::remove_file(f.root.join("a.md")).unwrap();
+    let t0 = Instant::now();
+    // The first pass waits out the rename window of a delete; the file comes back and the
+    // second pass finds nothing to wait for.
+    rescan_started_at(&mut r, true, t0);
+    f.write("a.md", "body");
+    rescan_started_at(&mut r, false, t0 + Duration::from_millis(100));
+    r.settle_expired(t0 + Duration::from_millis(200));
+    assert!(
+        f.take().is_empty(),
+        "the second pass's signal overtook the first's"
+    );
+    r.settle_expired(t0 + Duration::from_millis(700));
+    assert_eq!(kinds(&f.take()), ["rescanned", "rescanned"]);
 }
 
 #[cfg(not(windows))]

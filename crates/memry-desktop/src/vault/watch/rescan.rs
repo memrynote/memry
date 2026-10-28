@@ -2,7 +2,7 @@
 //! watcher starts (files removed or moved while the app was closed), after an OS event
 //! overflow, and when a vault that was away returns.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
@@ -10,7 +10,7 @@ use super::event::VaultEvent;
 use super::gone::{is_gone_from_disk, is_vault_reachable};
 use super::home::{Home, home_of_row};
 use super::reconcile::{Probe, Reconciler, modified_ms, probe};
-use super::rename::{Pending, observed};
+use super::rename::{Pending, RENAME_WINDOW, observed};
 use crate::vault::walk::walk_vault_with;
 use memry_core::api::errors::StorageError;
 
@@ -88,18 +88,14 @@ impl Reconciler {
         // With nothing missing no add can be a rename, and the open's index walk lists adds.
         // The pass still ends with its signal: the consumer orders its own open walk after it.
         if missing.is_empty() && !with_changes {
-            self.rescans.push(RescanReport {
-                event: VaultEvent::Rescanned {
-                    missing: 0,
-                    removed: 0,
-                    added: added.len(),
-                    changed: 0,
-                    removals_withheld: withheld,
-                },
-                waiting_notes: HashSet::new(),
-                waiting_paths: HashMap::new(),
-            });
-            self.report_settled_rescans();
+            let event = VaultEvent::Rescanned {
+                missing: 0,
+                removed: 0,
+                added: added.len(),
+                changed: 0,
+                removals_withheld: withheld,
+            };
+            self.end_pass(event, HashSet::new(), now);
             return Ok(true);
         }
         // Edited since indexed: a later modification time, or another size. An edit that keeps
@@ -156,23 +152,40 @@ impl Reconciler {
                 self.file_present(&home.path, &meta, now);
             }
         }
-        self.rescans.push(RescanReport {
-            event: VaultEvent::Rescanned {
-                missing: missing.len(),
-                removed: 0,
-                added: added.len(),
-                changed: changed.len(),
-                removals_withheld: withheld,
-            },
-            waiting_notes,
-            waiting_paths: self
-                .held_adds
-                .iter()
-                .map(|a| (a.path.clone(), a.due))
-                .collect(),
-        });
-        self.report_settled_rescans();
+        let event = VaultEvent::Rescanned {
+            missing: missing.len(),
+            removed: 0,
+            added: added.len(),
+            changed: changed.len(),
+            removals_withheld: withheld,
+        };
+        self.end_pass(event, waiting_notes, now);
         Ok(true)
+    }
+
+    /// Queues the pass's `Rescanned`, due when the last window it opened ends: the grace of
+    /// every file held when it ended, and the rename window of every delete it tracks. That
+    /// instant is fixed here, so what writers do afterwards (rewriting a held file, deleting
+    /// a recreated note, another pass tracking the same note again) is news after the pass
+    /// and never moves it. Every pass's signal is out by its end plus the longer window.
+    fn end_pass(&mut self, event: VaultEvent, waiting_notes: HashSet<String>, now: Instant) {
+        let end = observed(now);
+        let deletes = if waiting_notes.is_empty() {
+            end
+        } else {
+            end + RENAME_WINDOW
+        };
+        let due = self
+            .held_adds
+            .iter()
+            .map(|add| add.due)
+            .fold(deletes, Instant::max);
+        self.rescans.push(RescanReport {
+            event,
+            waiting_notes,
+            due,
+        });
+        self.report_settled_rescans(end);
     }
 
     /// Tracks a delete found by a rescan. Every delete, live or found by a pass over the vault,
@@ -194,26 +207,14 @@ impl Reconciler {
         }
     }
 
-    /// Emits, in the order the passes ran, the `Rescanned` of every pass whose deletes have
-    /// settled and whose held new files are out of the grace they had when it ended, so nothing
-    /// the pass found arrives after it. A file held again since (a writer still rewriting it)
-    /// is news after the pass and does not hold its signal back.
-    pub(super) fn report_settled_rescans(&mut self) {
+    /// Emits, in the order the passes ran, the `Rescanned` of every pass that is due. The
+    /// caller has settled the deletes and held files due by `now` first, so what the pass found
+    /// is reported before its signal.
+    pub(super) fn report_settled_rescans(&mut self, now: Instant) {
         let settled = self
             .rescans
             .iter()
-            .take_while(|report| {
-                !report
-                    .waiting_notes
-                    .iter()
-                    .any(|note| self.tracker.has_note(note))
-                    && !self.held_adds.iter().any(|add| {
-                        report
-                            .waiting_paths
-                            .get(&add.path)
-                            .is_some_and(|due| add.due <= *due)
-                    })
-            })
+            .take_while(|report| report.due <= now)
             .count();
         for report in self.rescans.drain(..settled).collect::<Vec<_>>() {
             self.emit(report.event);
@@ -224,9 +225,10 @@ impl Reconciler {
 /// A finished pass whose `Rescanned` waits for what it found to settle.
 pub(super) struct RescanReport {
     event: VaultEvent,
+    /// The deletes it tracks, whose removals its `removed` counts.
     waiting_notes: HashSet<String>,
-    /// Each held new file and the end of the grace it had when the pass ended.
-    waiting_paths: HashMap<String, Instant>,
+    /// When the last window the pass opened ends ([`Reconciler::end_pass`]).
+    due: Instant,
 }
 
 /// Whether `path` is inside one of the folders (vault-relative, `/`-separated).

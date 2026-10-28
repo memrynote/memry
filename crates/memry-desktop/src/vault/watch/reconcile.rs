@@ -20,8 +20,8 @@
 //!   A delete that did not stay gone, or a note that was respelled in place, is never reported.
 //!   Each window starts when its own absence was observed ([`observed`]). A rescan withholds
 //!   removals when too many are missing at once or the walk was cut short, and reports
-//!   `Rescanned` only after what it found has settled (a file held again since the pass is
-//!   news after it), in the order the passes ran.
+//!   `Rescanned` once the windows it opened are over, in the order the passes ran: after what
+//!   it found, and never later than its end plus the longer window, whatever writers do.
 //! - A gone path is the delete of the note at that spelling only: a note found under another
 //!   spelling whose own file is still listed is a different file (`home::homes_gone_at`).
 //! - A removal that pairs with a new file by content hash is a rename, never a delete plus a new
@@ -292,7 +292,7 @@ impl Reconciler {
         for pending in self.tracker.expired(now) {
             self.confirm_removed(pending);
         }
-        self.report_settled_rescans();
+        self.report_settled_rescans(now);
     }
 
     /// The one place a `Removed` leaves the reconciler, reached only from [`Self::settle_expired`]:
