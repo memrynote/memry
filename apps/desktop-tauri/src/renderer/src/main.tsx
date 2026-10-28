@@ -49,7 +49,19 @@ installPortedApi()
 
 // The WDIO frontend plugin exists only in the e2e build; Vite removes this branch from every
 // other build, so a release bundle never contains it.
-if (import.meta.env.VITE_MEMRY_E2E === '1') await import('@wdio/tauri-plugin')
+if (import.meta.env.VITE_MEMRY_E2E === '1') {
+  await import('@wdio/tauri-plugin')
+  // An edit only the page holds, for the session-end specs: registered like a note page's unsaved
+  // markdown, and written by `e2e_save_held_edit` only when the save registry is flushed.
+  const [{ registerPendingSave }, { invoke }] = await Promise.all([
+    import('./lib/save-registry'),
+    import('@tauri-apps/api/core')
+  ])
+  Object.assign(window, {
+    __memryE2eHoldEdit: (text: string) =>
+      registerPendingSave('e2e-held-edit', () => invoke<void>('e2e_save_held_edit', { text }))
+  })
+}
 
 installExternalLinkGuard()
 

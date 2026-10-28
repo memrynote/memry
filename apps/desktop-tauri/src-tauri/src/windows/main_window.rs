@@ -80,8 +80,6 @@ pub fn create_main(
     }
     let window = isolate_webview_profile(builder, &app.state::<AppPaths>()).build()?;
     navigation_guard::install(app, &window);
-    #[cfg(any(windows, target_os = "linux"))]
-    crate::guards::gpu::watch_process_failures(app, &window);
     zoom::apply_to(&window, state.zoom);
     permissions::install(&window, permissions::dev_origin(app));
     #[cfg(windows)]

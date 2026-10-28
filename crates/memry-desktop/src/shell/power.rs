@@ -47,8 +47,9 @@ pub const PUMP_SLICE: Duration = Duration::from_millis(50);
 
 /// Holds the caller until `done` is true or `limit` is spent, calling `pump` with the time it may
 /// wait (never more than [`PUMP_SLICE`] or what is left). Windows ends the process shortly after
-/// `WM_ENDSESSION` returns, so the handler waits for the quit sequence here; `pump` dispatches
-/// the thread's messages meanwhile because a step may need the main thread. True when `done`.
+/// `WM_ENDSESSION` returns, so the handler waits for the quit sequence here, and the
+/// `WM_QUERYENDSESSION` handler waits for the windows' flush; `pump` dispatches the thread's
+/// messages meanwhile because the webview and the steps need the main thread. True when `done`.
 pub fn wait_for(limit: Duration, done: impl Fn() -> bool, mut pump: impl FnMut(Duration)) -> bool {
     let started = Instant::now();
     while !done() {

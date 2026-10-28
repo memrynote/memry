@@ -182,7 +182,8 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
             .open_js_links_on_click(false)
             .build(),
     )
-    .plugin(tauri_plugin_clipboard_manager::init());
+    .plugin(tauri_plugin_clipboard_manager::init())
+    .plugin(guards::process_gone::plugin());
     // macOS and Windows write their own login item (`autostart/`).
     #[cfg(target_os = "linux")]
     let app = app.plugin(
