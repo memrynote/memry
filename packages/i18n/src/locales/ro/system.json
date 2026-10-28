@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote nu a putut porni complet",
       "body": "Acest lucru se poate întâmpla când discul are foarte puțin spațiu liber sau când driverele grafice sunt vechi. Încercați să eliberați spațiu pe disc, apoi redeschideți MemryNote. Dacă se repetă, reinstalarea rezolvă de obicei problema."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote nu mai funcționează",
+      "body": "Pagina se oprea în mod repetat, așa că MemryNote nu o mai reîncarcă. Închide această fereastră pentru a ieși, apoi redeschide MemryNote. Dacă se tot întâmplă, reinstalarea rezolvă de obicei problema.",
+      "details": "Procesul paginii s-a încheiat de {count} ori într-un minut ({reason})."
+    },
+    "logFolder": "Jurnale: {path}",
+    "reloaded": "MemryNote s-a reîncărcat după o eroare gravă. Este posibil ca modificările recente să se fi pierdut."
   }
 }

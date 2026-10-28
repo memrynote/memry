@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote kunde inte slutföra starten",
       "body": "Det här kan hända när disken har mycket lite ledigt utrymme, eller med äldre grafikdrivrutiner. Försök frigöra diskutrymme och öppna sedan MemryNote igen. Om det fortsätter hända brukar en ominstallation lösa det."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote slutade fungera",
+      "body": "Sidan stannade gång på gång, så MemryNote slutade läsa in den igen. Stäng det här fönstret för att avsluta och öppna sedan MemryNote igen. Om det fortsätter hjälper det oftast att installera om.",
+      "details": "Sidans process avslutades {count} gånger på en minut ({reason})."
+    },
+    "logFolder": "Loggar: {path}",
+    "reloaded": "MemryNote lästes in igen efter en krasch. Senaste ändringar kan ha gått förlorade."
   }
 }

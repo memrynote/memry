@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote sa nepodarilo úplne spustiť",
       "body": "Môže sa to stať, keď je na disku veľmi málo voľného miesta alebo pri starších grafických ovládačoch. Skúste uvoľniť miesto na disku a potom MemryNote znova otvorte. Ak to pretrváva, zvyčajne pomôže preinštalovanie."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote prestal fungovať",
+      "body": "Stránka sa opakovane zastavovala, a tak ju MemryNote prestal znova načítavať. Zatvorením tohto okna aplikáciu ukončíte, potom MemryNote znova otvorte. Ak sa to opakuje, zvyčajne pomôže preinštalovanie.",
+      "details": "Proces stránky skončil {count}-krát za minútu ({reason})."
+    },
+    "logFolder": "Denníky: {path}",
+    "reloaded": "MemryNote sa po páde znova načítal. Nedávne úpravy sa mohli stratiť."
   }
 }

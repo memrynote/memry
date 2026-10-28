@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote 未能完成启动",
       "body": "当磁盘可用空间非常少，或显卡驱动较旧时，可能会出现这种情况。请尝试释放一些磁盘空间，然后重新打开 MemryNote。如果问题持续出现，重新安装通常可以解决。"
-    }
+    },
+    "crashed": {
+      "title": "MemryNote 已停止工作",
+      "body": "页面反复停止，因此 MemryNote 不再重新加载它。关闭此窗口以退出，然后重新打开 MemryNote。如果问题持续出现，重新安装通常可以解决。",
+      "details": "页面进程在一分钟内结束了 {count} 次（{reason}）。"
+    },
+    "logFolder": "日志：{path}",
+    "reloaded": "MemryNote 在崩溃后已重新加载。最近的编辑可能已丢失。"
   }
 }

@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 
+use memry_desktop::logging::LogGuard;
 use memry_desktop::session::Session;
 #[cfg(target_os = "macos")]
 use memry_desktop::shell::shutdown::is_implicit_exit;
@@ -96,7 +97,12 @@ impl ShutdownEffects for TauriEffects {
             .state::<ShutdownService>()
             .completed
             .store(true, Ordering::SeqCst);
-        self.app.exit(0);
+        self.app
+            .exit(if crate::windows::startup_error::startup_failed() {
+                crate::windows::startup_error::EXIT_STARTUP_FAILED
+            } else {
+                0
+            });
     }
 
     fn terminate(&self) {
@@ -112,8 +118,11 @@ fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     if startup::mark_shutdown_started() {
         return;
     }
-    // The window is on its way out: a vault close must not flip the UI to the vault picker.
-    app.state::<Session>().begin_shutdown();
+    // The window is on its way out: a vault close must not flip the UI to the vault picker. A
+    // startup that failed early never opened the session.
+    if let Some(session) = app.try_state::<Session>() {
+        session.begin_shutdown();
+    }
     crate::updater::stop(app);
     let service = app.state::<ShutdownService>();
     let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
@@ -148,7 +157,9 @@ pub fn begin_session_end(app: &AppHandle<Wry>) {
     if startup::mark_shutdown_started() {
         return;
     }
-    app.state::<Session>().begin_shutdown();
+    if let Some(session) = app.try_state::<Session>() {
+        session.begin_shutdown();
+    }
     crate::updater::stop(app);
     let service = app.state::<ShutdownService>();
     let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
@@ -206,6 +217,10 @@ pub fn on_window_destroyed(app: &AppHandle<Wry>, label: &str) {
 
 /// The `run` callback of the app.
 pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
+    if crate::windows::startup_error::startup_failed() {
+        on_run_event_after_failed_startup(app, event);
+        return;
+    }
     match event {
         RunEvent::ExitRequested { code, api, .. } => on_exit_requested(app, *code, api),
         RunEvent::Exit => {
@@ -215,6 +230,7 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
             app.state::<crate::shortcuts::ShortcutService>()
                 .release_all(app);
             app.state::<ShutdownService>().core.apply_on_quit();
+            flush_log(app);
         }
         #[cfg(target_os = "macos")]
         RunEvent::Reopen {
@@ -222,5 +238,38 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
             ..
         } => crate::windows::main_window::reopen(app),
         _ => {}
+    }
+}
+
+/// The app runs only for the startup-error window. Any quit (closing that window, Cmd+Q) runs
+/// the quit steps the started stages registered and ends with the failure's exit code; a startup
+/// that failed before the shutdown service existed has no steps to run.
+fn on_run_event_after_failed_startup(app: &AppHandle<Wry>, event: &RunEvent) {
+    use crate::windows::startup_error::EXIT_STARTUP_FAILED;
+    match event {
+        RunEvent::ExitRequested { code, api, .. } if *code != Some(EXIT_STARTUP_FAILED) => {
+            if startup::shutdown_started() {
+                api.prevent_exit();
+            } else if app.try_state::<ShutdownService>().is_some() {
+                begin(app, api, ShutdownReason::Quit);
+            } else {
+                api.prevent_exit();
+                app.exit(EXIT_STARTUP_FAILED);
+            }
+        }
+        RunEvent::Exit => {
+            crate::tray::destroy(app);
+            flush_log(app);
+        }
+        _ => {}
+    }
+}
+
+/// Drops the log guard, which waits for the writer thread to drain. The process ends right after
+/// `Exit` without dropping managed state, so the quit sequence's own lines would otherwise be
+/// lost to the writer's queue.
+fn flush_log(app: &AppHandle<Wry>) {
+    if let Some(slot) = app.try_state::<Mutex<Option<LogGuard>>>() {
+        drop(slot.lock().unwrap_or_else(PoisonError::into_inner).take());
     }
 }

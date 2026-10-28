@@ -125,4 +125,34 @@ test.describe('Sidebar & WindowControls', () => {
     const close = boxes[2]!
     expect(Math.abs(close.x + close.width - viewportWidth)).toBeLessThanOrEqual(1)
   })
+
+  // The buttons stay at the physical right in RTL, as native ones do, so their opaque backing
+  // must follow them there rather than to the inline end.
+  test('the caption buttons keep their backing in a right-to-left layout', async ({ page }) => {
+    await ready(page)
+    await page.evaluate(() => {
+      document.documentElement.dir = 'rtl'
+    })
+    try {
+      // Read directly: the strip is 0px wide off Windows, which the locator reports as no box.
+      const backing = await page.evaluate(() => {
+        const { x, width } = document
+          .querySelector('[data-caption-backing]')!
+          .getBoundingClientRect()
+        return { x, width }
+      })
+      if (process.platform !== 'win32') {
+        expect(backing.width).toBe(0)
+        return
+      }
+      const viewportWidth = await page.evaluate(() => window.innerWidth)
+      const minimize = (await page.locator('[data-caption-button="minimize"]').boundingBox())!
+      expect(Math.abs(backing.x + backing.width - viewportWidth)).toBeLessThanOrEqual(1)
+      expect(backing.x).toBeLessThanOrEqual(minimize.x + 1)
+    } finally {
+      await page.evaluate(() => {
+        document.documentElement.dir = 'ltr'
+      })
+    }
+  })
 })

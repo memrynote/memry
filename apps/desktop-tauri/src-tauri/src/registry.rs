@@ -69,6 +69,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_open_link,
             crate::commands::shell::shell_open_path,
             crate::commands::shell::shell_reveal_path,
+            crate::commands::shell::shell_take_crash_reload,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,

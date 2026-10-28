@@ -80,11 +80,13 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
       </div>
       {/* Opaque backing for the Windows caption buttons that `App` draws over every screen
           (0px wide elsewhere): the right panel slides through this corner when it opens
-          or closes, and would otherwise show behind minimize/maximize/close. */}
+          or closes, and would otherwise show behind minimize/maximize/close. Physical right,
+          not end: the buttons stay at the physical right in RTL too (caption-buttons.tsx). */}
       <div
         aria-hidden="true"
-        className={cn('fixed top-0 end-0 drag-region h-9 bg-sidebar-rail', className)}
-        style={{ width: 'var(--caption-reserve-end)' }}
+        data-caption-backing
+        className={cn('fixed top-0 drag-region h-9 bg-sidebar-rail', className)}
+        style={{ right: 0, width: 'var(--caption-reserve-right)' }}
       />
       <div
         className={cn(
