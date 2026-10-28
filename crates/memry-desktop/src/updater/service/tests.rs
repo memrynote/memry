@@ -32,7 +32,10 @@ fn telemetry(dir: &Path) -> Arc<Telemetry> {
     Arc::new(Telemetry::start(
         dir,
         context,
-        Sender::new("http://127.0.0.1:1/x"),
+        Sender::new(
+            "http://127.0.0.1:1/x",
+            crate::seams::transport::NativeTransport::loopback(),
+        ),
         true,
     ))
 }
