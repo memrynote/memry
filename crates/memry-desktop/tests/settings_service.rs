@@ -10,7 +10,7 @@ use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::seams::secure_store::{
-    DEADLINE, DeviceIdentityStore, IDENTITY_SERVICE, KeyringStore, Store, StoreFactory,
+    DEADLINE, DeviceIdentityStore, KeyringStore, SERVICE, Store, StoreFactory,
 };
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::settings::{SettingsError, SettingsService};
@@ -268,7 +268,7 @@ fn a_missing_device_identity_is_its_own_error_for_reads_and_writes() {
         .read_group(Some(&vault), "general")
         .expect("the first read mints the device key");
     credentials
-        .build(IDENTITY_SERVICE, "device-signing-key", None)
+        .build(SERVICE, "device-signing-key", None)
         .unwrap()
         .delete_credential()
         .expect("the key was in the keychain");

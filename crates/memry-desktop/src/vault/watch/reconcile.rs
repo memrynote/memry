@@ -44,6 +44,7 @@ use super::echo::EchoGuard;
 use super::event::{EventSink, VaultEvent};
 use super::filter::WatchFilter;
 use super::gone::{is_gone_from_disk, is_vault_reachable};
+use super::handle::NewFiles;
 use super::home::{Home, spelling_listed};
 use super::rename::{Pending, RenameTracker, observed};
 use super::reported::{Reported, Seen};
@@ -88,6 +89,7 @@ pub struct Reconciler {
     /// Rescans whose `Rescanned` waits for their deletes and held adds.
     pub(super) rescans: Vec<RescanReport>,
     pub(super) reported: Reported,
+    pub(super) new_files: NewFiles,
     /// Set when the watcher stops: long steps (a folder of a million files) end early and
     /// report nothing more.
     stop: Arc<AtomicBool>,
@@ -111,7 +113,7 @@ pub(super) fn probe(path: &Path) -> Probe {
     }
 }
 
-pub(super) fn modified_ms(meta: &Metadata) -> i64 {
+pub(crate) fn modified_ms(meta: &Metadata) -> i64 {
     meta.modified()
         .ok()
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
@@ -142,6 +144,7 @@ impl Reconciler {
             held_adds: Vec::new(),
             rescans: Vec::new(),
             reported: Reported::default(),
+            new_files: NewFiles::Report,
             stop: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -150,6 +153,12 @@ impl Reconciler {
     #[must_use]
     pub fn with_stop(mut self, stop: Arc<AtomicBool>) -> Self {
         self.stop = stop;
+        self
+    }
+
+    #[must_use]
+    pub fn with_new_files(mut self, new_files: NewFiles) -> Self {
+        self.new_files = new_files;
         self
     }
 

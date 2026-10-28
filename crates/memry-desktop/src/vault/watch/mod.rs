@@ -8,19 +8,19 @@
 //! - [`reported`]: what was already told, which every removal and rescan reads before the row.
 //! - [`gone`]: a removal is real only if the vault is there and the file (and its iCloud
 //!   placeholder) is not.
+//! - `handle`: the worker's queue, and what a consumer may ask of it.
 //! - [`runtime`]: the `notify` watcher and the one thread that owns the reconciler.
 //! - [`safety`]: the rescans that stand in for events the OS watcher lost without saying so.
-//! - [`tier`]: registers the watcher on the session's open and close.
 //!
-//! The tier is inert for notes: it reads `note_files` and the files, changes neither, and
-//! hands events to a sink. The index update, the write-back's ingest of an outside edit (the
-//! CRDT feed) and the renderer events consume them in later stages (12e and after).
+//! The watcher is inert for notes: it reads `note_files` and the files, changes neither, and
+//! hands events to a sink. The consumer (`vault::consumer`) applies them.
 
 pub mod debounce;
 pub mod echo;
 pub mod event;
 pub mod filter;
 pub mod gone;
+mod handle;
 mod home;
 pub mod reconcile;
 pub mod rename;
@@ -28,10 +28,9 @@ pub mod reported;
 mod rescan;
 mod runtime;
 pub mod safety;
-mod tier;
 
 pub use echo::EchoGuard;
 pub use event::{EventSink, VaultEvent};
+pub use handle::{NewFiles, WatchHandle};
 pub use runtime::{VaultWatcher, WatchError};
 pub use safety::Tuning;
-pub use tier::VaultTier;

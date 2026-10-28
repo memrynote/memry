@@ -8,6 +8,7 @@ use std::time::Instant;
 
 use super::event::VaultEvent;
 use super::gone::{is_gone_from_disk, is_vault_reachable};
+use super::handle::NewFiles;
 use super::home::{Home, home_of_row};
 use super::reconcile::{Probe, Reconciler, modified_ms, probe};
 use super::rename::{Pending, RENAME_WINDOW, observed};
@@ -123,12 +124,25 @@ impl Reconciler {
             self.tracker
                 .track((*home).clone().pending(), observed(now), Some(batch));
         }
+        // Sizes a moved note can have: a pass that adopts no new file reads only these. The row's
+        // size, and the one last reported, which is newer when nothing applied an edit yet.
+        let movable: HashSet<i64> = missing
+            .iter()
+            .flat_map(|home| {
+                let seen = self.reported.of_note(&home.note_id);
+                [home.size, seen.and_then(|s| i64::try_from(s.stat.0).ok())]
+            })
+            .flatten()
+            .collect();
         for path in &added {
             if stop.load(Ordering::Relaxed) {
                 self.tracker.discard(batch);
                 return Ok(false);
             }
-            if let Probe::File(meta) = probe(&self.root.join(path.as_str())) {
+            if let Probe::File(meta) = probe(&self.root.join(path.as_str()))
+                && (self.new_files == NewFiles::Report
+                    || i64::try_from(meta.len()).is_ok_and(|size| movable.contains(&size)))
+            {
                 self.file_present(path, &meta, now);
             }
         }

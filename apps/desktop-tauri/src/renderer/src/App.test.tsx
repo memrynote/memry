@@ -121,7 +121,10 @@ vi.mock('@/lib/icons', () => ({
   )
 }))
 
-vi.mock('@/lib/window-chrome', () => ({ useWindowChromeSync: () => undefined }))
+vi.mock('@/lib/window-chrome', () => ({
+  useWindowChromeSync: () => undefined,
+  useCaptionButtonsVisible: () => false
+}))
 vi.mock('@/lib/alt-menu', () => ({ useAltMenuToggle: () => undefined }))
 vi.mock('@/lib/native-edit-menu', () => ({ useNativeEditMenu: () => undefined }))
 

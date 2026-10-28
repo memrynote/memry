@@ -265,9 +265,7 @@ jobs:
       # `e2e-live-*` device suffix and the `com.memrynote.memry.test` service and remove their items.
       # macOS: a throw-away keychain the next step creates, unlocks and makes the default (never the
       # login keychain). Windows: Credential Manager, including the 2560-byte
-      # blob limit. `keyring_keytar_live` writes an item the way Electron's keytar did (`security`,
-      # CredWriteW, secret-tool) and reads it with the store, then the reverse: the names keytar
-      # reads are the names the store writes.
+      # blob limit.
       - name: Unlocked keychain for the keychain seam (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -284,9 +282,9 @@ jobs:
         timeout-minutes: 15
         run: |
           if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
-            cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live --test keyring_keytar_live -- -D warnings
+            cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live -- -D warnings
           fi
-          cargo test -p memry-desktop --features live-os-secrets --test keyring_live --test keyring_keytar_live
+          cargo test -p memry-desktop --features live-os-secrets --test keyring_live
 
       # Linux: an unlocked gnome-keyring under a private session bus; then a bus with no Secret
       # Service at all (every call must answer "locked" and store nothing); then a bus where the
@@ -296,31 +294,31 @@ jobs:
         if: runner.os == 'Linux'
         timeout-minutes: 15
         run: |
-          cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live --test keyring_keytar_live -- -D warnings
-          cargo test -p memry-desktop --features live-os-secrets --test keyring_live --test keyring_keytar_live --no-run
-          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && cargo test -p memry-desktop --features live-os-secrets --test keyring_live --test keyring_keytar_live'
-          # A keytar item in a keyring that is locked in this session (login without PAM unlock):
+          cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live -- -D warnings
+          cargo test -p memry-desktop --features live-os-secrets --test keyring_live --no-run
+          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && cargo test -p memry-desktop --features live-os-secrets --test keyring_live'
+          # The store's item in a keyring that is locked in this session (login without PAM unlock):
           # the item is hidden from every search, so the store must say "locked", never "no key".
           dbus-run-session -- bash -c '
             set -e
             echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null
-            echo -n AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8= | secret-tool store --label keytar xdg:schema org.freedesktop.Secret.Generic service com.memry.sync account master-key-lockedrun
+            echo -n AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8= | secret-tool store --label memry-live service com.memrynote.memry username master-key-lockedrun
             pkill -x gnome-keyring-d
             sleep 1
             gnome-keyring-daemon --start --components=secrets >/dev/null
-            MEMRY_LIVE_LOCKED_KEYRING=1 MEMRY_LIVE_LOCKED_SUFFIX=lockedrun cargo test -p memry-desktop --features live-os-secrets --test keyring_keytar_live a_locked_keyring
+            MEMRY_LIVE_LOCKED_KEYRING=1 MEMRY_LIVE_LOCKED_SUFFIX=lockedrun cargo test -p memry-desktop --features live-os-secrets --test keyring_live a_locked_keyring
           '
-          # A keytar item whose collection was locked after it was written: the search shows it as
+          # The store's item, its collection locked after it was written: the search shows it as
           # locked, the unlock prompt has no prompter and is dismissed, and get and delete say "locked".
           dbus-run-session -- bash -c '
             set -e
             echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null
-            echo -n AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8= | secret-tool store --label keytar xdg:schema org.freedesktop.Secret.Generic service com.memry.sync account master-key-lockeditem
+            echo -n AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8= | secret-tool store --label memry-live service com.memrynote.memry username master-key-lockeditem
             gdbus call --session --dest org.freedesktop.secrets --object-path /org/freedesktop/secrets --method org.freedesktop.Secret.Service.Lock "[objectpath \"/org/freedesktop/secrets/collection/login\"]" >/dev/null
-            MEMRY_LIVE_LOCKED_ITEM=1 MEMRY_LIVE_LOCKED_SUFFIX=lockeditem cargo test -p memry-desktop --features live-os-secrets --test keyring_keytar_live a_keytar_item_that_cannot
+            MEMRY_LIVE_LOCKED_ITEM=1 MEMRY_LIVE_LOCKED_SUFFIX=lockeditem cargo test -p memry-desktop --features live-os-secrets --test keyring_live an_item_that_cannot
           '
-          # The keyring daemon restarts under a running store: the next keytar lookup reconnects.
-          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_RESTART_DAEMON=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_keytar_live a_keyring_daemon'
+          # The keyring daemon restarts under a running store: the next locked-collection check reconnects.
+          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_RESTART_DAEMON=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_live a_keyring_daemon'
           cat > "$RUNNER_TEMP/bare-bus.conf" <<'EOF'
           <!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
           <busconfig>
