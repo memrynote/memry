@@ -3,7 +3,7 @@
 // each file into the shell's staging area, or the shell copies the files of the OS drag it
 // recorded; the import gets the copies' paths, and the copies are deleted when the import settles.
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -110,8 +110,9 @@ test('a dropped file is staged with its bytes for the import, then deleted', asy
   expect(notePath.endsWith('dropped note.md')).toBe(true)
   expect(readFileSync(notePath, 'utf8')).toBe(note)
   expect(pdfPath.endsWith('scan.pdf')).toBe(true)
-  expect(statSync(pdfPath).size).toBe(3 * 1024 * 1024 + 17)
-  expect(readFileSync(pdfPath).every((byte) => byte === 65)).toBe(true)
+  const pdf = readFileSync(pdfPath)
+  expect(pdf.length).toBe(3 * 1024 * 1024 + 17)
+  expect(pdf.every((byte) => byte === 65)).toBe(true)
 
   await page.evaluate(() => window.__dropImport?.finish())
   await expect.poll(() => existsSync(notePath) || existsSync(pdfPath)).toBe(false)
@@ -193,14 +194,15 @@ test('a 120 MB file stages through the binary commands byte for byte, bounded in
   )
 
   expect(result.path.startsWith(staging)).toBe(true)
-  expect(statSync(result.path).size).toBe(total)
+  const bytes = readFileSync(result.path)
+  expect(bytes.length).toBe(total)
   const expected = createHash('sha256')
   const pattern = Buffer.alloc(CHUNK)
   for (let i = 0; i < CHUNK; i++) pattern[i] = (i * 31 + 7) & 255
   for (let offset = 0; offset < total; offset += CHUNK) {
     expected.update(pattern.subarray(0, Math.min(CHUNK, total - offset)))
   }
-  const actual = createHash('sha256').update(readFileSync(result.path)).digest('hex')
+  const actual = createHash('sha256').update(bytes).digest('hex')
   expect(actual).toBe(expected.digest('hex'))
   if (result.growth !== null) expect(result.growth).toBeLessThan(32 * 1024 * 1024)
   // Reported, not asserted: a debug build on a hosted runner is not the bench machine.
