@@ -35,7 +35,7 @@ import type { CoverImageTarget } from '@/components/note/cover-image-target'
 import { useVault } from '@/hooks/use-vault'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
-import { toMemryFileUrl } from '@/lib/memry-file-url'
+import { toMemryFileUrl, toWebviewUrl } from '@/lib/memry-file-url'
 
 const logger = createLogger('HomeCover')
 
@@ -138,7 +138,7 @@ export function HomeCover({ board, pickerAnchor, onPickerAnchorChange }: HomeCov
       : /^https?:\/\//i.test(cover.ref)
         ? cover.ref
         : vaultPath
-          ? toMemryFileUrl(`${vaultPath}/${cover.ref}`)
+          ? toWebviewUrl(toMemryFileUrl(`${vaultPath}/${cover.ref}`))
           : null
 
   const fail = useCallback(

@@ -786,3 +786,50 @@ describe('PDF display mode (#2517)', () => {
     expect(parseFileBlockMarker(marker)).toEqual({ ...pdfProps, display: 'link' })
   })
 })
+
+describe('file block URLs the engine can load', () => {
+  const root = document.documentElement
+  const stored = (name: string): string => `memry-file://local/Users/kaan/vault/notes/${name}`
+
+  afterEach(() => {
+    root.removeAttribute('data-platform')
+    delete window.__MEMRY_SHELL__
+  })
+
+  const show = (name: string, mimeType: string): HTMLElement => {
+    const Render = (createFileBlock as any).render
+    return render(<Render block={{ props: { url: stored(name), name, size: 1, mimeType } }} />)
+      .container
+  }
+
+  it('streams audio, video and PDF from the loopback server, which has no response cap', () => {
+    root.setAttribute('data-platform', 'win32')
+    window.__MEMRY_SHELL__ = {
+      maximizable: true,
+      loopbackOrigin: 'http://127.0.0.1:4000',
+      loopbackToken: 'tok'
+    }
+    const loopback = /^http:\/\/127\.0\.0\.1:4000\/m\/tok\/[A-Za-z0-9_-]+$/
+
+    const audio = show('voice.wav', 'audio/wav').querySelector('audio')
+    expect(audio?.getAttribute('src')).toMatch(loopback)
+
+    const clip = show('demo.mp4', 'video/mp4')
+    expect(clip.querySelector('video')?.getAttribute('src')).toMatch(loopback)
+    expect(clip.querySelector('video source')?.getAttribute('src')).toMatch(loopback)
+
+    // pdf.js asks for a PDF whole before any range, and the scheme answers a file over its
+    // response cap 413, so a large PDF would never open from it.
+    show('manual.pdf', 'application/pdf')
+    expect(screen.getAllByTestId('pdf-document')[0].getAttribute('data-file')).toMatch(loopback)
+  })
+
+  it('falls back to the scheme host for a PDF while no loopback server is known', () => {
+    root.setAttribute('data-platform', 'win32')
+    show('manual.pdf', 'application/pdf')
+    expect(screen.getAllByTestId('pdf-document')[0]).toHaveAttribute(
+      'data-file',
+      'https://memry-file.localhost/local/Users/kaan/vault/notes/manual.pdf'
+    )
+  })
+})

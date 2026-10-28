@@ -47,6 +47,7 @@ import type {
   VoiceMetadata
 } from '@/types'
 import { createLogger } from '@/lib/logger'
+import { toMediaUrl, toWebviewUrl } from '@/lib/memry-file-url'
 import { formatTimeOfDay } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -271,7 +272,11 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
     <div className="flex flex-col gap-3.5">
       {imageUrl ? (
         <div className="overflow-hidden rounded-lg bg-muted">
-          <img src={imageUrl} alt={item.title} className="w-full object-contain max-h-[400px]" />
+          <img
+            src={toWebviewUrl(imageUrl)}
+            alt={item.title}
+            className="w-full object-contain max-h-[400px]"
+          />
         </div>
       ) : (
         <div className="flex items-center justify-center aspect-[34/22] rounded-lg bg-muted">
@@ -391,7 +396,7 @@ const VoicePreview = ({
 
     const decodeWaveform = async (): Promise<void> => {
       try {
-        const response = await fetch(audioUrl)
+        const response = await fetch(toWebviewUrl(audioUrl))
         const arrayBuffer = await response.arrayBuffer()
         if (cancelled) return
 
@@ -502,7 +507,7 @@ const VoicePreview = ({
     <div className="flex flex-col gap-4">
       <audio
         ref={audioRef}
-        src={audioUrl ?? undefined}
+        src={audioUrl ? toMediaUrl(audioUrl) : undefined}
         preload="metadata"
         aria-label={t('content.voiceMemo')}
         onPlay={() => setIsPlaying(true)}
@@ -716,7 +721,12 @@ const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
     <div className="space-y-4">
       {videoUrl ? (
         <div className="relative overflow-hidden rounded-md bg-black">
-          <video src={videoUrl} controls className="w-full max-h-[400px]" preload="metadata">
+          <video
+            src={toMediaUrl(videoUrl)}
+            controls
+            className="w-full max-h-[400px]"
+            preload="metadata"
+          >
             <track kind="captions" />
             {t('content.unsupportedVideo')}
           </video>

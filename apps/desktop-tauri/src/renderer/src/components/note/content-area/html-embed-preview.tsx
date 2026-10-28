@@ -14,6 +14,7 @@ import {
   TextAlignCenter
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { toWebviewUrl } from '@/lib/memry-file-url'
 
 const DEFAULT_HTML_HEIGHT = 480
 const MIN_HTML_HEIGHT = 120
@@ -221,7 +222,7 @@ export function HtmlPreview({
         style={{ width: cardWidth }}
       >
         <iframe
-          src={src}
+          src={toWebviewUrl(src)}
           title={name}
           data-testid="html-embed"
           sandbox="allow-scripts allow-forms allow-popups"

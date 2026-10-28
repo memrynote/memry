@@ -92,6 +92,17 @@ export const commands = {
 	 *  the menu closed without a choice.
 	 */
 	shellShowContextMenu: (items: ContextMenuItem[]) => __TAURI_INVOKE<string | null>("shell_show_context_menu", { items }),
+	/**  Opens an `https:`, `http:` or `mailto:` link in the OS. */
+	shellOpenExternal: (url: string) => __TAURI_INVOKE<null>("shell_open_external", { url }),
+	/**
+	 *  Follows a link activation the renderer kept from navigating the window: what the main frame's
+	 *  navigation would have done with it (`shell::navigation_guard::open_link`).
+	 */
+	shellOpenLink: (url: string) => __TAURI_INVOKE<null>("shell_open_link", { url }),
+	/**  Opens a file of the open vault or the app data directory in the OS. */
+	shellOpenPath: (path: string) => __TAURI_INVOKE<null>("shell_open_path", { path }),
+	/**  Shows a file of the open vault or the app data directory in the file manager. */
+	shellRevealPath: (path: string) => __TAURI_INVOKE<null>("shell_reveal_path", { path }),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),

@@ -35,7 +35,121 @@ const noWindowFanout = {
   }
 }
 
+// The Tauri shell refuses a main-frame navigation off the app only after WebKitGTK ran the page's
+// beforeunload and cancelled its in-flight requests, and Tauri resends an aborted ipc:// command, so
+// a command can run twice (#3647, `shell::navigation_guard::linux`). Links and drops go through
+// `lib/external-link-guard.ts`; app code never moves the window itself. Allowed: `location.reload()`
+// (it reloads the app) and `location.hash` (a fragment stays in the document).
+const WINDOW_NAMES = new Set(['window', 'document', 'globalThis', 'self', 'top', 'parent'])
+// Setting any of these loads another document.
+const NAVIGATING_PARTS = new Set([
+  'href',
+  'protocol',
+  'host',
+  'hostname',
+  'port',
+  'pathname',
+  'search'
+])
+const NAVIGATING_CALLS = new Set(['assign', 'replace'])
+const TOP_FRAME_TARGETS = new Set(['_self', '_top', '_parent'])
+
+/** A string literal, or a template literal without expressions. */
+function staticString(node) {
+  if (node?.type === 'Literal' && typeof node.value === 'string') return node.value
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0)
+    return node.quasis[0].value.cooked
+  return null
+}
+
+/** `a.b` or `a['b']`. */
+function propertyName(member) {
+  if (!member.computed) return member.property.type === 'Identifier' ? member.property.name : null
+  const key = member.property
+  return key.type === 'Literal' && typeof key.value === 'string' ? key.value : null
+}
+
+const noLocationNavigation = {
+  meta: {
+    type: 'problem',
+    messages: {
+      navigates:
+        'Do not navigate the window from app code. Open a web link with commands.shellOpenExternal (or an <a href>, which external-link-guard.ts routes); on Linux a main-frame navigation cancels in-flight requests and can run an IPC command twice (#3647).'
+    },
+    schema: []
+  },
+  create(context) {
+    const { sourceCode } = context
+    const report = (node) => context.report({ node, messageId: 'navigates' })
+    /** Identifiers that read a local bound to the window's Location (`const l = window.location`). */
+    const aliasReads = new Set()
+    /** The name is the window's own: no enclosing scope declares it. */
+    const isUndeclared = (node) => {
+      for (let scope = sourceCode.getScope(node); scope; scope = scope.upper) {
+        if (scope.set.get(node.name)?.defs.length) return false
+      }
+      return true
+    }
+    const isGlobal = (node, names) =>
+      node.type === 'Identifier' && names.has(node.name) && isUndeclared(node)
+    const isWindow = (node) => isGlobal(node, WINDOW_NAMES)
+    const isWindowLocation = (node) =>
+      node.type === 'MemberExpression' && propertyName(node) === 'location' && isWindow(node.object)
+    const isLocation = (node) =>
+      isGlobal(node, new Set(['location'])) || isWindowLocation(node) || aliasReads.has(node)
+    return {
+      VariableDeclarator(node) {
+        if (!node.init || !isLocation(node.init)) return
+        for (const variable of sourceCode.getDeclaredVariables(node)) {
+          for (const reference of variable.references) {
+            if (reference.isRead()) aliasReads.add(reference.identifier)
+          }
+        }
+      },
+      AssignmentExpression(node) {
+        const { left } = node
+        if (isGlobal(left, new Set(['location'])) || isWindowLocation(left)) return report(node)
+        if (
+          left.type === 'MemberExpression' &&
+          NAVIGATING_PARTS.has(propertyName(left)) &&
+          isLocation(left.object)
+        ) {
+          report(node)
+        }
+      },
+      CallExpression(node) {
+        const { callee } = node
+        if (
+          callee.type === 'MemberExpression' &&
+          NAVIGATING_CALLS.has(propertyName(callee)) &&
+          isLocation(callee.object)
+        ) {
+          return report(node)
+        }
+        // `Object.assign(location, { href })` sets the parts one by one.
+        if (
+          callee.type === 'MemberExpression' &&
+          propertyName(callee) === 'assign' &&
+          isGlobal(callee.object, new Set(['Object'])) &&
+          node.arguments[0] &&
+          isLocation(node.arguments[0])
+        ) {
+          return report(node)
+        }
+        const isOpen =
+          isGlobal(callee, new Set(['open'])) ||
+          (callee.type === 'MemberExpression' &&
+            propertyName(callee) === 'open' &&
+            isWindow(callee.object))
+        if (isOpen && TOP_FRAME_TARGETS.has(staticString(node.arguments[1]))) {
+          report(node)
+        }
+      }
+    }
+  }
+}
+
 export default {
   meta: { name: 'memry' },
-  rules: { 'no-window-fanout': noWindowFanout }
+  rules: { 'no-window-fanout': noWindowFanout, 'no-location-navigation': noLocationNavigation }
 }

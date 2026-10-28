@@ -3,6 +3,7 @@ import { File, FileText } from '@/lib/icons'
 import { ImageViewer } from '@/components/viewers/image-viewer'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { formatBytes } from '@/lib/format'
+import { toWebviewUrl } from '@/lib/memry-file-url'
 import { useT } from '@memry/i18n/renderer'
 import type { CriticMarkupCommentAttachmentRef, CriticMarkupMark } from '@memry/shared'
 
@@ -68,7 +69,7 @@ export function CommentAttachments({ mark }: { mark: CriticMarkupMark }): React.
               onClick={() => setActive(attachment)}
             >
               <img
-                src={attachment.path}
+                src={toWebviewUrl(attachment.path)}
                 alt={attachment.name}
                 loading="lazy"
                 className="max-h-32 max-w-full object-cover"
