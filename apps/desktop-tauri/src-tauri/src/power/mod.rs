@@ -7,6 +7,8 @@
 mod linux;
 #[cfg(target_os = "macos")]
 mod mac;
+#[cfg(target_os = "linux")]
+mod session_manager;
 #[cfg(windows)]
 mod win;
 

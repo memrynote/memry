@@ -105,10 +105,13 @@ impl ShutdownEffects for TauriEffects {
     }
 }
 
-/// Starts the sequence: the first exit request wins, later ones are held until it ends.
+/// Starts the sequence: the first exit request wins, later ones are held until it ends. A session
+/// end may have started it meanwhile on another thread.
 fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     api.prevent_exit();
-    startup::mark_shutdown_started();
+    if startup::mark_shutdown_started() {
+        return;
+    }
     // The window is on its way out: a vault close must not flip the UI to the vault picker.
     app.state::<Session>().begin_shutdown();
     let service = app.state::<ShutdownService>();
@@ -127,21 +130,21 @@ pub fn update_hook(app: &AppHandle<Wry>) -> Option<Arc<dyn UpdateApplyHook>> {
 }
 
 /// The sequence ended cleanly and the exit it asked for may pass. The Windows session-end handler
-/// waits on this before it returns, because the OS ends the process soon after.
-#[cfg(windows)]
+/// waits on this before it returns, because the OS ends the process soon after, and the Linux
+/// logout handler before it answers, because the session manager then takes the display down.
+#[cfg(any(windows, target_os = "linux"))]
 pub fn is_completed(app: &AppHandle<Wry>) -> bool {
     app.state::<ShutdownService>()
         .completed
         .load(Ordering::SeqCst)
 }
 
-/// Starts the sequence for a quit that did not come through `ExitRequested`: the Windows session
-/// end. Without a request to hold, the app is kept alive by the latch alone.
+/// Starts the sequence for a quit that did not come through `ExitRequested`: the session end.
+/// Without a request to hold, the app is kept alive by the latch alone.
 pub fn begin_session_end(app: &AppHandle<Wry>) {
-    if startup::shutdown_started() {
+    if startup::mark_shutdown_started() {
         return;
     }
-    startup::mark_shutdown_started();
     app.state::<Session>().begin_shutdown();
     let service = app.state::<ShutdownService>();
     let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
