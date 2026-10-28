@@ -12,6 +12,7 @@ mod dialog;
 mod reveal;
 mod shell;
 mod shell_integrations;
+mod updater;
 mod window;
 
 use memry_desktop::e2e::E2eGate;

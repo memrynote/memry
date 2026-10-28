@@ -3,6 +3,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type * as UseAppUpdaterModule from './use-app-updater'
 
+const mocks = vi.hoisted(() => ({
+  commands: {} as Record<string, unknown>,
+  listen: (() => Promise.resolve(() => undefined)) as (
+    handler: (event: { payload: unknown }) => void
+  ) => Promise<() => void>
+}))
+
+vi.mock('../../../generated/bindings', () => ({
+  commands: mocks.commands,
+  events: {
+    updaterStateChangedEvent: {
+      listen: (handler: (event: { payload: unknown }) => void) => mocks.listen(handler)
+    }
+  }
+}))
+
 vi.mock('react-i18next', () => ({
   getI18n: () => ({
     getFixedT: () => (key: string) => key,
@@ -46,7 +62,7 @@ let updaterApi: {
   setAutoCheck: ReturnType<typeof vi.fn>
 }
 
-/** Push a main-process broadcast through every registered renderer listener. */
+/** Push a Rust state event through every registered renderer listener. */
 async function broadcast(next: AppUpdateState): Promise<void> {
   await act(async () => {
     for (const listener of Array.from(listeners)) listener(next)
@@ -90,11 +106,12 @@ function InstallConsumer({ log }: { log: InstallSample[] }): null {
 beforeEach(async () => {
   vi.resetModules()
   listeners = []
-  onUpdaterStateChanged = vi.fn((callback: (next: AppUpdateState) => void) => {
+  onUpdaterStateChanged = vi.fn((handler: (event: { payload: unknown }) => void) => {
+    const callback = (next: AppUpdateState): void => handler({ payload: next })
     listeners.push(callback)
-    return () => {
+    return Promise.resolve(() => {
       listeners = listeners.filter((entry) => entry !== callback)
-    }
+    })
   })
   updaterApi = {
     getState: vi.fn().mockResolvedValue(makeState()),
@@ -105,7 +122,16 @@ beforeEach(async () => {
     setAutoDownload: vi.fn().mockResolvedValue(makeState({ autoDownloadEnabled: true })),
     setAutoCheck: vi.fn().mockResolvedValue(makeState({ autoCheckEnabled: false }))
   }
-  ;(window as unknown as { api: unknown }).api = { updater: updaterApi, onUpdaterStateChanged }
+  mocks.listen = onUpdaterStateChanged
+  Object.assign(mocks.commands, {
+    updaterGetState: updaterApi.getState,
+    updaterCheckForUpdates: updaterApi.checkForUpdates,
+    updaterDownloadUpdate: updaterApi.downloadUpdate,
+    updaterQuitAndInstall: updaterApi.quitAndInstall,
+    updaterSkipVersion: updaterApi.skipVersion,
+    updaterSetAutoDownload: updaterApi.setAutoDownload,
+    updaterSetAutoCheck: updaterApi.setAutoCheck
+  })
   hooks = await import('./use-app-updater')
 })
 

@@ -1,6 +1,7 @@
 import { toast } from 'sonner'
 import { getI18n } from 'react-i18next'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { commands } from '../../../generated/bindings'
 
 /**
  * Menu-bar "Check for Updates…" (macOS app menu, Help menu on Windows/Linux).
@@ -15,7 +16,7 @@ export async function runMenuUpdateCheck(): Promise<void> {
   const t = getI18n().getFixedT(null, 'settings')
 
   try {
-    const state = await window.api.updater.checkForUpdates()
+    const state = await commands.updaterCheckForUpdates()
 
     if (!state.updateSupported) {
       toast.info(t('general.updates.unsupportedToast'))

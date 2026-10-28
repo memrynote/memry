@@ -153,7 +153,7 @@ fn error_name(kind: UpdateErrorKind) -> &'static str {
     }
 }
 
-fn error_code(kind: UpdateErrorKind) -> Option<String> {
+pub fn error_code(kind: UpdateErrorKind) -> Option<String> {
     let network = |code: &str| Some(code.to_owned());
     match kind {
         UpdateErrorKind::Network(NetworkKind::HostNotFound) => network("HOST_NOT_FOUND"),

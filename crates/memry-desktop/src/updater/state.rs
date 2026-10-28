@@ -122,15 +122,32 @@ impl UpdaterCore {
         self.state.subscribe()
     }
 
-    /// Applies `change`, then restores the two fields no transition may set, and publishes.
+    /// Applies `change`, then restores the two fields no transition may set, and publishes only
+    /// when the state changed: a progress tick that rounds to the shown percent reaches no window.
     fn patch(&self, change: impl FnOnce(&mut AppUpdateState)) {
         let supported = self.supported;
         let current_version = self.display_version();
-        self.state.send_modify(|state| {
+        self.state.send_if_modified(|state| {
+            let before = state.clone();
             change(state);
             state.current_version = current_version;
             state.update_supported = supported;
+            *state != before
         });
+    }
+
+    /// Applies a check or download result unless Restart to install already showed the
+    /// Installing screen. The status is read inside the publish, so a result that lands after
+    /// the install began never replaces it. Returns whether `change` ran.
+    fn advance(&self, change: impl FnOnce(&mut AppUpdateState)) -> bool {
+        let mut applied = false;
+        self.patch(|state| {
+            if state.status != UpdaterStatus::Installing {
+                change(state);
+                applied = true;
+            }
+        });
+        applied
     }
 
     /// The persisted auto-download preference, as the service read or changed it.
@@ -172,6 +189,11 @@ impl UpdaterCore {
         self.check_health().reset(now_ms);
     }
 
+    /// A check reached the feed while the state stays as it is (an update already downloaded).
+    pub fn note_check_success(&self, now_ms: u64) {
+        self.check_health().record_check_success(now_ms);
+    }
+
     /// Counts a failed check: the streak and whether it just became stuck.
     pub fn record_check_failure(&self, now_ms: u64) -> (u32, bool) {
         self.check_health().record_check_failure(now_ms)
@@ -179,7 +201,7 @@ impl UpdaterCore {
 
     pub fn on_checking(&self, now_ms: u64) {
         tracing::info!(scope = "Updater", "checking for updates");
-        self.patch(|state| {
+        self.advance(|state| {
             state.status = UpdaterStatus::Checking;
             state.error = None;
             state.last_checked_at = i64::try_from(now_ms).ok();
@@ -188,7 +210,8 @@ impl UpdaterCore {
     }
 
     /// False when the user skipped this version (its display form equals `skipped`): the state
-    /// is then up to date and the backend must not download it. A manual check clears the skip
+    /// is then up to date and the backend must not download it. False as well once Restart to
+    /// install began, which leaves the state alone. A manual check clears the skip
     /// before it runs.
     pub fn on_update_available(
         &self,
@@ -203,25 +226,24 @@ impl UpdaterCore {
                 "update {} available but skipped by user",
                 update.version
             );
-            self.patch(|state| {
+            self.advance(|state| {
                 state.status = UpdaterStatus::UpToDate;
                 Self::clear_available(state);
             });
             return false;
         }
         tracing::info!(scope = "Updater", "update {} available", update.version);
-        self.patch(|state| {
+        self.advance(|state| {
             state.status = UpdaterStatus::Available;
             Self::show(state, update);
             state.download_progress_percent = None;
-        });
-        true
+        })
     }
 
     pub fn on_up_to_date(&self, now_ms: u64) {
         self.check_health().record_check_success(now_ms);
         tracing::info!(scope = "Updater", "no update available");
-        self.patch(|state| {
+        self.advance(|state| {
             state.status = UpdaterStatus::UpToDate;
             Self::clear_available(state);
         });
@@ -229,7 +251,7 @@ impl UpdaterCore {
 
     /// The user skipped the offered version: up to date, offer cleared.
     pub fn on_version_skipped(&self) {
-        self.patch(|state| {
+        self.advance(|state| {
             state.status = UpdaterStatus::UpToDate;
             Self::clear_available(state);
         });
@@ -238,7 +260,7 @@ impl UpdaterCore {
     /// A download starts: progress keeps what it had, from zero.
     pub fn on_download_started(&self) {
         tracing::info!(scope = "Updater", "starting update download");
-        self.patch(|state| {
+        self.advance(|state| {
             state.status = UpdaterStatus::Downloading;
             state.error = None;
             state.download_progress_percent = Some(state.download_progress_percent.unwrap_or(0));
@@ -253,7 +275,7 @@ impl UpdaterCore {
         } else {
             0
         };
-        self.patch(|state| {
+        self.advance(|state| {
             state.status = UpdaterStatus::Downloading;
             state.download_progress_percent = Some(rounded);
         });
@@ -261,7 +283,7 @@ impl UpdaterCore {
 
     pub fn on_downloaded(&self, update: &AvailableUpdate) {
         tracing::info!(scope = "Updater", "update {} downloaded", update.version);
-        self.patch(|state| {
+        self.advance(|state| {
             state.status = UpdaterStatus::Downloaded;
             Self::show(state, update);
             state.download_progress_percent = Some(100);

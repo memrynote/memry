@@ -1,6 +1,7 @@
-// The Rust updater (`crates/memry-desktop/src/updater/`) reads and writes the install marker and
-// the install-health file byte for byte as this code does. Its fixtures are the output of the
-// real functions below at a fixed clock; this test fails when either side drifts.
+// The Rust updater (`crates/memry-desktop/src/updater/`) reads the install marker, the
+// install-health file and the updater preferences this code writes, and writes the marker and the
+// health file in the same shape. The fixtures are the output of the real functions below at a
+// fixed clock, and the Rust tests read them; this test fails when the Electron output drifts.
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -15,7 +16,11 @@ vi.mock('electron', () => ({
 vi.mock('./lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))
+// The real module pulls the telemetry runtime, whose electron import ('net') the mock above does
+// not provide.
+vi.mock('./telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 
+import { setAutoCheckPref, setAutoDownloadPref, setSkippedVersion } from './store'
 import {
   UPDATE_INSTALL_MARKER_FILENAME,
   markUpdateInstallStarted
@@ -70,5 +75,12 @@ describe('Rust updater fixtures', () => {
     expect(written(UPDATE_INSTALL_HEALTH_FILENAME)).toBe(
       fixture('update-install-health.escalated.json')
     )
+  })
+
+  it('the updater preferences match their fixture', () => {
+    setAutoDownloadPref(true)
+    setAutoCheckPref(false)
+    setSkippedVersion('v2026-10-20')
+    expect(written('memry-config.json')).toBe(fixture('memry-config.json'))
   })
 })
