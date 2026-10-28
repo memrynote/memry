@@ -16,7 +16,7 @@ use memry_core::markdown::schema::callout_types::{
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of_yaml};
 
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
-use super::rows::{Lane, RowOwner, RowStat};
+use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, read_note};
@@ -38,12 +38,13 @@ pub(super) struct Applier {
     pub(super) root: PathBuf,
     pub(super) vault: Arc<Vault>,
     pub(super) rows: Arc<RowOwner>,
+    /// The rows' session of the open this consumer belongs to: a consumer that outlives its
+    /// vault's close writes nothing into a later open's rows.
+    pub(super) session: RowSession,
     pub(super) identity: Arc<dyn NoteIdentity>,
     /// `None` when this device has no signing key: nothing can be seeded or fed.
     pub(super) feed: Option<ExternalFeed>,
     pub(super) settings: Option<AppSettings>,
-    /// See [`super::ConsumerOptions::feed_changes`].
-    pub(super) feed_changes: bool,
 }
 
 /// Whether the note's document now holds the whole file: only then does the row record the
@@ -77,7 +78,7 @@ enum Body {
 
 impl Applier {
     pub(super) fn apply(&self, event: VaultEvent) -> Step {
-        let Ok(mut lane) = self.rows.lane() else {
+        let Ok(mut lane) = self.rows.lane_of(self.session) else {
             return Step::Done;
         };
         match event {
@@ -124,7 +125,7 @@ impl Applier {
         let Some(file_type) = file_type_of_extension(&extension(path)) else {
             return Step::Done;
         };
-        let Ok(mut lane) = self.rows.lane() else {
+        let Ok(mut lane) = self.rows.lane_of(self.session) else {
             return Step::Done;
         };
         let modified = modified_ms(meta);
@@ -248,13 +249,6 @@ impl Applier {
             }
         };
         let content_hash = if file_type == FileType::Markdown {
-            // An outside edit replaces the body, so it waits for the write-back (12e-3) that
-            // brings a body synced meanwhile to the file first. The row keeps its hash, which
-            // names what the document holds. A row without a hash is only ever seeded, which
-            // fills an empty body and leaves any other alone, so it does not wait.
-            if !self.feed_changes && row.content_hash.is_some() {
-                return Step::Done;
-            }
             let file = match self.read(path, file_type) {
                 Ok(Some(file)) => file,
                 Ok(None) => return Step::Done,

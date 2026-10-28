@@ -69,6 +69,7 @@
     "persistenceDegradedBody": "Tus notas están a salvo: se guardan en tu bóveda como archivos de texto plano y se siguen abriendo y guardando con normalidad. Solo el historial de edición local y el estado de fusión de este dispositivo se mantienen en memoria, así que empiezan de cero cada vez que se abre memrynote.",
     "writebackFailedTitle": "No se pudo actualizar el archivo de una nota en el disco",
     "writebackFailedTitleNamed": "No se pudo actualizar «{title}» en el disco",
+    "writebackFailedTitleMany": "No se pudieron actualizar los archivos de {count} notas en el disco",
     "writebackFailedBody": "El archivo en el disco no se modificó. Tu cambio sigue abierto en memrynote mientras la aplicación esté en ejecución; memrynote lo intentará de nuevo con tu próximo cambio."
   },
   "encryption": {

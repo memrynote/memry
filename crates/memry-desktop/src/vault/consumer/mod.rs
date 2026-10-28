@@ -22,10 +22,11 @@
 //!   file never had (synced, owed and since pulled, a note kept when its file went), so the
 //!   file only fills an empty body; a conflict between the two is the write-back's (12e-3,
 //!   Step 17). A note the identity keeps when its file goes loses its row's hash.
-//! - **An outside edit is not fed before the write-back exists** ([`ConsumerOptions`]). A feed
-//!   replaces the body with the file's text; without the write-back bringing a synced body to
-//!   the file first, a stale file would replace edits that came through sync. Until 12e-3 a
-//!   changed markdown file leaves its row as it was.
+//! - **An outside edit replaces the body, and the body it replaces is kept.** A changed file
+//!   whose row has a hash is fed; the feed keeps the body it replaces as a version first.
+//!   Edits in the app and from sync reach the file through the write-back
+//!   ([`crate::vault::writeback`]) once the note is quiet, so an outside edit replaces what
+//!   its file showed, except for edits made in the moments before it, which the version holds.
 //! - **One file, one note.** A file is offered to the identity only when no row names its path
 //!   under any spelling the volume folds together, read under the lane when the fact is
 //!   applied. A row the app reserved before writing its file, or one the open walk recorded,
@@ -53,19 +54,13 @@ mod tier;
 
 pub(crate) use apply::converter_for;
 pub use run::{FIRST_RETRY, MAX_RETRIES, QUEUE_CAPACITY};
+#[cfg(test)]
+pub(crate) use tier::Hold;
 pub use tier::VaultTier;
 
 use run::{Consumer, inbox};
 
 use crate::vault::watch::VaultEvent;
-
-/// What the consumer may do. The default is what ships.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct ConsumerOptions {
-    /// Feed a changed markdown file into its note's body. Off until the write-back (12e-3)
-    /// brings a body synced meanwhile to the file first; see the module invariants.
-    pub feed_changes: bool,
-}
 
 /// Who changed a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

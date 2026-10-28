@@ -1,7 +1,8 @@
 //! Tests against the live OS secret store (`--features live-os-secrets`). They create their own
-//! throw-away items under test app names and remove them afterwards; they never touch an item of
-//! the real Electron app. The keytar tests read the real keytar service names, so they run only
-//! with `MEMRY_LIVE_KEYTAR=1` (CI sets it; a developer machine may hold real items).
+//! throw-away items under test app names, or under accounts no other run uses, and a guard
+//! removes each when the test ends, pass or fail; they never touch an item of the real Electron
+//! app. The keytar tests write under the real keytar service names, so they run only with
+//! `MEMRY_LIVE_KEYTAR=1` (CI sets it; a developer machine may hold real items).
 #![cfg(feature = "live-os-secrets")]
 
 use std::fs;
@@ -21,7 +22,6 @@ use memry_desktop::electron_import::secrets::{
 
 const PLAIN: &str = "live-secret-value-aGVsbG8=";
 
-#[cfg(not(windows))]
 fn test_name(tag: &str) -> &'static str {
     Box::leak(format!("memry-live-{tag}-{}", uuid::Uuid::new_v4().simple()).into_boxed_str())
 }
@@ -168,19 +168,18 @@ mod macos {
         if !keytar_enabled() {
             return;
         }
-        let _a = Item::create("com.memry.capture", "live-acct", "keytar-value");
-        let _b = Item::create("com.memry.calendar.live", "refresh-token-x", "cal-value");
-        let _other = Item::create("com.example.not-ours", "acct", "ignored");
+        let (capture, calendar) = (test_name("acct"), test_name("refresh"));
+        let _a = Item::create("com.memry.capture", capture, "keytar-value");
+        let _b = Item::create("com.memry.calendar.live", calendar, "cal-value");
+        let _other = Item::create("com.example.not-ours", test_name("acct"), "ignored");
         let items = read_all(&OsKeytar);
         let find = |s: &str, a: &str| items.iter().find(|i| i.0 == s && i.1 == a);
         assert_eq!(
-            find("com.memry.capture", "live-acct").unwrap().2,
+            find("com.memry.capture", capture).unwrap().2,
             "keytar-value"
         );
         assert_eq!(
-            find("com.memry.calendar.live", "refresh-token-x")
-                .unwrap()
-                .2,
+            find("com.memry.calendar.live", calendar).unwrap().2,
             "cal-value"
         );
         assert!(items.iter().all(|i| i.0 != "com.example.not-ours"));
@@ -214,16 +213,24 @@ mod linux {
         child.wait().unwrap().success()
     }
 
-    fn store(label: &str, attrs: &[&str], password: &str) {
-        let mut args = vec!["store", "--label", label];
-        args.extend(attrs);
-        assert!(secret_tool(&args, Some(password)));
+    /// A `secret-tool` item, cleared when the test ends, pass or fail.
+    struct Item(Vec<&'static str>);
+
+    impl Item {
+        fn store(label: &str, attrs: &[&'static str], password: &str) -> Self {
+            let mut args = vec!["store", "--label", label];
+            args.extend(attrs);
+            assert!(secret_tool(&args, Some(password)));
+            Self(attrs.to_vec())
+        }
     }
 
-    fn clear(attrs: &[&str]) {
-        let mut args = vec!["clear"];
-        args.extend(attrs);
-        secret_tool(&args, None);
+    impl Drop for Item {
+        fn drop(&mut self) {
+            let mut args = vec!["clear"];
+            args.extend(&self.0);
+            secret_tool(&args, None);
+        }
     }
 
     fn no_secret_service() -> bool {
@@ -242,7 +249,7 @@ mod linux {
             "application",
             name,
         ];
-        store("Chromium Safe Storage", &attrs, "live-password");
+        let _item = Item::store("Chromium Safe Storage", &attrs, "live-password");
         let password = OsKeySource.password(name).unwrap().unwrap();
         assert_eq!(&**password, b"live-password");
         let dir = tempfile::tempdir().unwrap();
@@ -257,7 +264,6 @@ mod linux {
             &memry_desktop::electron_import::secrets::NoKeytar,
         )
         .unwrap();
-        clear(&attrs);
         assert_eq!(report.get("com.memry.sync", "master-key"), Some(PLAIN));
     }
 
@@ -310,20 +316,20 @@ mod linux {
             return;
         }
         // keytar stores its items with this schema attribute; `secret-tool` adds none by itself.
+        let account = test_name("acct");
         let attrs = [
             "xdg:schema",
             "org.freedesktop.Secret.Generic",
             "service",
             "com.memry.capture",
             "account",
-            "live-acct",
+            account,
         ];
-        store("keytar item", &attrs, "keytar-value");
+        let _item = Item::store("keytar item", &attrs, "keytar-value");
         let items = read_all(&OsKeytar);
-        clear(&attrs);
         let item = items
             .iter()
-            .find(|i| i.0 == "com.memry.capture" && i.1 == "live-acct");
+            .find(|i| i.0 == "com.memry.capture" && i.1 == account);
         assert_eq!(item.unwrap().2, "keytar-value");
     }
 }
@@ -401,12 +407,23 @@ mod windows_live {
         assert!(OsKeySource.windows_key(&profile).is_err());
     }
 
+    /// A Credential Manager item, deleted when the test ends, pass or fail.
+    struct Cred(HSTRING);
+
+    impl Drop for Cred {
+        fn drop(&mut self) {
+            // SAFETY: `self.0` is a live wide string for the call.
+            let _ = unsafe { CredDeleteW(&self.0, CRED_TYPE_GENERIC, None) };
+        }
+    }
+
     #[test]
     fn keytar_credentials_are_enumerated_by_service() {
         if !keytar_enabled() {
             return;
         }
-        let target = HSTRING::from("com.memry.capture/live-acct");
+        let account = test_name("acct");
+        let target = HSTRING::from(format!("com.memry.capture/{account}"));
         let blob = b"keytar-value";
         let cred = CREDENTIALW {
             Type: CRED_TYPE_GENERIC,
@@ -418,12 +435,11 @@ mod windows_live {
         };
         // SAFETY: `cred` points at `target` and `blob`, both alive for the call.
         unsafe { CredWriteW(&cred, 0).unwrap() };
+        let _cred = Cred(target.clone());
         let items = read_all(&OsKeytar);
-        // SAFETY: deleting the credential created above.
-        unsafe { CredDeleteW(&target, CRED_TYPE_GENERIC, None).unwrap() };
         let item = items
             .iter()
-            .find(|i| i.0 == "com.memry.capture" && i.1 == "live-acct");
+            .find(|i| i.0 == "com.memry.capture" && i.1 == account);
         assert_eq!(item.unwrap().2, "keytar-value");
     }
 }

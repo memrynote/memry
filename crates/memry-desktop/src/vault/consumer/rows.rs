@@ -84,7 +84,8 @@ impl RowOwner {
         self.applied.subscribe()
     }
 
-    pub(crate) fn open(&self, vault: Arc<Vault>) -> Result<(), StorageError> {
+    /// Opens the rows of `vault` under a new session, which every write of this open names.
+    pub(crate) fn open(&self, vault: Arc<Vault>) -> Result<RowSession, StorageError> {
         let files = vault.note_files();
         let index = PathIndex::load(&files)?;
         let session = RowSession(self.sessions.fetch_add(1, Ordering::Relaxed) + 1);
@@ -94,7 +95,7 @@ impl RowOwner {
             files,
             index,
         });
-        Ok(())
+        Ok(session)
     }
 
     /// The session of `vault`, the handle the operation works on (`OpenVault::vault` of the
@@ -109,8 +110,13 @@ impl RowOwner {
             .ok_or(RowError::Closed)
     }
 
-    pub(crate) fn close(&self) {
-        *self.lock() = None;
+    /// Closes the rows if `session` is still the open one; a close that runs late leaves a
+    /// later open's rows alone.
+    pub(crate) fn close_session(&self, session: RowSession) {
+        let mut state = self.lock();
+        if state.as_ref().is_some_and(|open| open.session == session) {
+            *state = None;
+        }
     }
 
     fn lock(&self) -> MutexGuard<'_, Option<RowState>> {

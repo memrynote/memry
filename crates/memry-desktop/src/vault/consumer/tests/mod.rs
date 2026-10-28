@@ -151,7 +151,7 @@ pub(super) struct Fixture {
     pub(super) applier: Applier,
 }
 
-pub(super) fn fixture(feed_changes: bool) -> Fixture {
+pub(super) fn fixture() -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().join("vault");
     let core = root.join(".memry/core");
@@ -175,7 +175,7 @@ pub(super) fn fixture(feed_changes: bool) -> Fixture {
         row_at_delete: Mutex::default(),
         row_at_rename: Mutex::default(),
     });
-    let applier = applier(&root, &vault, &store, &rows, identity.clone(), feed_changes);
+    let applier = applier(&root, &vault, &store, &rows, identity.clone());
     Fixture {
         facts: rows.subscribe(),
         _dir: dir,
@@ -254,6 +254,24 @@ impl Fixture {
         std::iter::from_fn(|| self.facts.try_recv().ok()).collect()
     }
 
+    /// The versions kept for the note.
+    pub(super) fn versions(&self, id: &str) -> Vec<String> {
+        let id = id.to_owned();
+        self.vault
+            .db_handle()
+            .call_blocking(move |conn| {
+                let mut statement = conn
+                    .prepare("SELECT content FROM note_snapshots WHERE note_id = ?1")
+                    .unwrap();
+                Ok(statement
+                    .query_map([id], |row| row.get(0))
+                    .unwrap()
+                    .collect::<Result<Vec<String>, _>>()
+                    .unwrap())
+            })
+            .unwrap()
+    }
+
     /// The note's body as a replay of its durable log renders it.
     pub(super) fn body(&self, id: &str) -> String {
         let sink: UpdateSink = Arc::new(|_, _| {});
@@ -313,7 +331,6 @@ pub(super) fn applier(
     store: &Arc<dyn SecureStore>,
     rows: &Arc<RowOwner>,
     identity: Arc<dyn NoteIdentity>,
-    feed_changes: bool,
 ) -> Applier {
     Applier {
         root: root.to_owned(),
@@ -322,7 +339,7 @@ pub(super) fn applier(
         identity,
         feed: vault.external_feed(store.clone()).ok(),
         settings: vault.app_settings(store.clone()).ok(),
-        feed_changes,
+        session: rows.session_for(vault).unwrap(),
     }
 }
 
@@ -334,3 +351,4 @@ mod facts;
 mod flood;
 mod hash_rule;
 mod lane;
+mod late_close;

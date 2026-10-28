@@ -4,7 +4,7 @@ use super::*;
 
 #[test]
 fn a_new_file_gets_a_note_seeded_with_its_text_and_a_row_naming_that_text() {
-    let mut f = fixture(false);
+    let mut f = fixture();
     f.write("a.md", "hello from outside\n");
     assert_eq!(f.added("a.md"), Step::Done);
     let id = only_note(&f, "a.md");
@@ -29,7 +29,7 @@ fn a_new_file_gets_a_note_seeded_with_its_text_and_a_row_naming_that_text() {
 
 #[test]
 fn a_file_the_walk_and_a_watcher_report_both_offer_gets_one_note() {
-    let f = fixture(false);
+    let f = fixture();
     f.write("a.md", "one note\n");
     assert_eq!(f.walked("a.md"), Step::Done);
     let id = only_note(&f, "a.md");
@@ -54,7 +54,7 @@ fn a_file_the_walk_and_a_watcher_report_both_offer_gets_one_note() {
 /// (its grace restarted): that is a change of the walked file's note, not a file to drop.
 #[test]
 fn a_late_added_for_a_file_that_has_a_row_is_a_change_of_its_note() {
-    let f = fixture(true);
+    let f = fixture();
     f.write("a.md", "walked\n");
     assert_eq!(f.walked("a.md"), Step::Done);
     let id = only_note(&f, "a.md");
@@ -74,7 +74,7 @@ fn a_late_added_for_a_file_that_has_a_row_is_a_change_of_its_note() {
 
 #[test]
 fn a_row_the_app_reserved_makes_the_watchers_added_a_change_of_that_note() {
-    let mut f = fixture(false);
+    let mut f = fixture();
     let id = f.note();
     f.rows
         .reserve(f.session(), &id, "made-in-app.md", Fixture::stat(0))
@@ -106,7 +106,7 @@ fn a_row_the_app_reserved_makes_the_watchers_added_a_change_of_that_note() {
 
 #[test]
 fn a_note_whose_server_body_is_owed_gets_a_row_without_a_hash() {
-    let f = fixture(false);
+    let f = fixture();
     let id = f.note();
     f.owe_server_body(&id);
     *f.identity.next.lock().unwrap() = Some(Adoption::Existing(id.clone()));
@@ -124,7 +124,7 @@ fn a_note_whose_server_body_is_owed_gets_a_row_without_a_hash() {
 
 #[test]
 fn a_body_that_arrived_before_the_file_is_not_taken_for_the_files_text() {
-    let f = fixture(false);
+    let f = fixture();
     let id = f.note();
     f.give_body(&id, "the synced body");
     *f.identity.next.lock().unwrap() = Some(Adoption::Existing(id.clone()));
@@ -140,7 +140,7 @@ fn a_body_that_arrived_before_the_file_is_not_taken_for_the_files_text() {
 
 #[test]
 fn a_crash_between_create_and_seed_is_seeded_when_the_note_is_adopted_again() {
-    let f = fixture(false);
+    let f = fixture();
     let id = f.note();
     *f.identity.next.lock().unwrap() = Some(Adoption::Existing(id.clone()));
     f.write("a.md", "seeded late\n");
@@ -149,23 +149,10 @@ fn a_crash_between_create_and_seed_is_seeded_when_the_note_is_adopted_again() {
     assert_eq!(f.hash_of("a.md"), Some(content_hash("seeded late\n")));
 }
 
+/// An outside edit replaces the body, which is kept as a version first.
 #[test]
-fn a_changed_file_is_not_fed_while_outside_edits_wait_for_the_write_back() {
-    let mut f = fixture(false);
-    f.write("a.md", "first\n");
-    f.added("a.md");
-    let id = only_note(&f, "a.md");
-    f.facts();
-    f.write("a.md", "edited outside\n");
-    assert_eq!(f.changed(&id, "a.md"), Step::Done);
-    assert!(f.body(&id).contains("first") && !f.body(&id).contains("edited"));
-    assert_eq!(f.hash_of("a.md"), Some(content_hash("first\n")));
-    assert!(f.facts().is_empty());
-}
-
-#[test]
-fn a_changed_file_is_fed_and_its_hash_recorded_once_feeding_is_on() {
-    let mut f = fixture(true);
+fn a_changed_file_is_fed_its_hash_recorded_and_the_replaced_body_kept() {
+    let mut f = fixture();
     f.write("a.md", "first\n");
     f.added("a.md");
     let id = only_note(&f, "a.md");
@@ -173,6 +160,8 @@ fn a_changed_file_is_fed_and_its_hash_recorded_once_feeding_is_on() {
     f.write("a.md", "edited outside\n");
     assert_eq!(f.changed(&id, "a.md"), Step::Done);
     assert!(f.body(&id).contains("edited outside"));
+    let kept = f.versions(&id);
+    assert!(kept.iter().any(|body| body.contains("first")), "{kept:?}");
     let hash = content_hash("edited outside\n");
     assert_eq!(f.hash_of("a.md"), Some(hash.clone()));
     assert_eq!(
@@ -188,7 +177,7 @@ fn a_changed_file_is_fed_and_its_hash_recorded_once_feeding_is_on() {
 
 #[test]
 fn a_changed_file_whose_note_owes_its_body_keeps_the_hash_the_document_holds() {
-    let f = fixture(true);
+    let f = fixture();
     f.write("a.md", "first\n");
     f.added("a.md");
     let id = only_note(&f, "a.md");
@@ -205,7 +194,7 @@ fn a_changed_file_whose_note_owes_its_body_keeps_the_hash_the_document_holds() {
 /// the next open's walk, although its size and time say nothing changed.
 #[test]
 fn the_walk_reads_again_a_file_whose_text_never_reached_its_note() {
-    let f = fixture(true);
+    let f = fixture();
     let id = f.note();
     f.owe_server_body(&id);
     *f.identity.next.lock().unwrap() = Some(Adoption::Existing(id.clone()));
@@ -228,7 +217,7 @@ fn the_walk_reads_again_a_file_whose_text_never_reached_its_note() {
 
 #[test]
 fn a_file_that_is_another_notes_file_on_a_case_insensitive_volume_gets_no_note() {
-    let f = fixture(false);
+    let f = fixture();
     f.write("Note.md", "mine\n");
     f.added("Note.md");
     let id = only_note(&f, "Note.md");
@@ -243,7 +232,7 @@ fn a_file_that_is_another_notes_file_on_a_case_insensitive_volume_gets_no_note()
 
 #[test]
 fn a_removed_files_row_goes_only_after_its_record_was_deleted() {
-    let mut f = fixture(false);
+    let mut f = fixture();
     f.write("a.md", "x\n");
     f.added("a.md");
     let id = only_note(&f, "a.md");
@@ -275,7 +264,7 @@ fn a_removed_files_row_goes_only_after_its_record_was_deleted() {
 
 #[test]
 fn a_moved_files_record_is_told_before_its_row_moves() {
-    let mut f = fixture(false);
+    let mut f = fixture();
     f.write("a.md", "x\n");
     f.added("a.md");
     let id = only_note(&f, "a.md");
@@ -303,7 +292,7 @@ fn a_moved_files_record_is_told_before_its_row_moves() {
 
 #[test]
 fn a_file_whose_note_could_not_be_named_is_retried_and_then_gets_one_note() {
-    let f = fixture(false);
+    let f = fixture();
     f.write("a.md", "x\n");
     f.identity.fail.store(true, Ordering::SeqCst);
     assert_eq!(f.added("a.md"), Step::Retry("a.md".into()));
@@ -315,7 +304,7 @@ fn a_file_whose_note_could_not_be_named_is_retried_and_then_gets_one_note() {
 
 #[test]
 fn a_deferred_file_gets_no_row_and_no_retry() {
-    let mut f = fixture(false);
+    let mut f = fixture();
     *f.identity.next.lock().unwrap() = Some(Adoption::Defer);
     f.write("a.md", "x\n");
     assert_eq!(f.added("a.md"), Step::Done);
@@ -325,8 +314,8 @@ fn a_deferred_file_gets_no_row_and_no_retry() {
 
 #[test]
 fn nothing_is_applied_once_the_vault_closed() {
-    let f = fixture(false);
-    f.rows.close();
+    let f = fixture();
+    f.rows.close_session(f.applier.session);
     f.write("a.md", "x\n");
     assert_eq!(f.added("a.md"), Step::Done);
     assert!(f.adopted().is_empty());

@@ -181,33 +181,3 @@ fn a_file_with_mixed_line_ends_is_not_rewritten_until_its_body_changes() {
     assert_wrote(&mut f, &outcome, "n.md");
     assert_eq!(f.versions(&id), vec![text.to_owned()]);
 }
-
-/// The seam Steps 14 and 17 call: a scheduled note is written on the write-back thread.
-#[test]
-fn a_scheduled_note_is_written_on_the_write_back_thread() {
-    let mut f = fixture();
-    let id = f.adopt("n.md", "first words\n");
-    f.edit_in_app(&id, "typed in the app");
-    let pass = std::mem::replace(
-        &mut f.pass,
-        Pass::new(
-            f.root.clone(),
-            f.vault.clone(),
-            f.rows.clone(),
-            f.rows.session_for(&f.vault).unwrap(),
-            f.echo.clone(),
-            None,
-        ),
-    );
-    let mut writeback = super::super::WriteBack::start(pass).unwrap();
-    writeback.schedule(&id);
-    writeback.schedule(&id);
-    writeback.stop();
-    assert_eq!(f.read("n.md"), "typed in the app\n");
-    let changed = f
-        .facts()
-        .into_iter()
-        .filter(|fact| matches!(fact, Applied::Changed { .. }))
-        .count();
-    assert!(changed >= 1);
-}

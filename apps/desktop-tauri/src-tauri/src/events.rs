@@ -44,6 +44,15 @@ pub struct VaultErrorEvent {
     pub message: String,
 }
 
+/// A note's file could not be updated from its body (`sync:write-back-failed`), once per run
+/// of failed write-backs of the note. `title` is `None` when it could not be read.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtWriteBackFailedEvent {
+    pub note_id: String,
+    pub title: Option<String>,
+}
+
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultListChangedEvent;
