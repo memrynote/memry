@@ -26,7 +26,7 @@ fn service(app: &AppHandle<Wry>) -> SettingsService {
     app.state::<SettingsService>().inner().clone()
 }
 
-fn map_error(error: SettingsError) -> CommandError {
+pub(crate) fn map_error(error: SettingsError) -> CommandError {
     match error {
         SettingsError::NoVault => {
             CommandError::new(ErrorKind::NotFound, "no_vault_open", "No vault is open")
@@ -34,6 +34,11 @@ fn map_error(error: SettingsError) -> CommandError {
         SettingsError::Invalid(message) => {
             CommandError::new(ErrorKind::Invalid, "settings_invalid_value", message)
         }
+        SettingsError::DeviceIdentityMissing => CommandError::new(
+            ErrorKind::SecureStore,
+            "device_identity_missing",
+            error.to_string(),
+        ),
         SettingsError::Failed(message) => {
             CommandError::new(ErrorKind::Storage, "settings_failed", message)
         }

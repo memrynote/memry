@@ -72,6 +72,13 @@
     "failed": {
       "title": "Hindi natapos ng MemryNote ang pagsisimula",
       "body": "Nangyayari ito kapag halos wala nang libreng espasyo sa disk, o sa mas lumang graphics driver. Subukang magbakante ng espasyo sa disk, pagkatapos ay buksang muli ang MemryNote. Kung magpatuloy ito, kadalasang naaayos ito ng muling pag-install."
-    }
+    },
+    "crashed": {
+      "title": "Huminto sa paggana ang MemryNote",
+      "body": "Paulit-ulit na huminto ang page, kaya hindi na ito nire-reload ng MemryNote. Isara ang window na ito para lumabas, pagkatapos ay buksan muli ang MemryNote. Kung patuloy itong nangyayari, kadalasang naaayos ito ng muling pag-install.",
+      "details": "Natapos ang proseso ng page nang {count} beses sa loob ng isang minuto ({reason})."
+    },
+    "logFolder": "Mga log: {path}",
+    "reloaded": "Nag-reload ang MemryNote pagkatapos ng crash. Maaaring nawala ang mga kamakailang pagbabago."
   }
 }

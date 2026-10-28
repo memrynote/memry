@@ -31,8 +31,8 @@ pub(super) fn locale(app: &AppHandle<Wry>) -> &'static str {
         .unwrap_or_else(|| locale::resolve_os_locale(sys_locale::get_locale().as_deref()))
 }
 
-pub(super) fn text(locale: &str, key: &str) -> String {
-    i18n::t(locale, &format!("system:{key}"), &Args::new())
+pub(super) fn text(locale: &str, key: &str, args: &Args) -> String {
+    i18n::t(locale, &format!("system:{key}"), args)
 }
 
 /// The script that fills the page. Every value is a JSON string literal and lands in

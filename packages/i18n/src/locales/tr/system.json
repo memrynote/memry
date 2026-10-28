@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote başlatmayı tamamlayamadı",
       "body": "Bu, diskte çok az boş alan kaldığında veya eski ekran kartı sürücülerinde olabilir. Biraz disk alanı açmayı deneyin, ardından MemryNote'u yeniden açın. Sorun devam ederse yeniden kurmak genellikle çözer."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote çalışmayı durdurdu",
+      "body": "Sayfa sürekli durduğu için MemryNote sayfayı yeniden yüklemeyi bıraktı. Çıkmak için bu pencereyi kapatın, ardından MemryNote'u yeniden açın. Sorun devam ederse yeniden yüklemek genellikle çözer.",
+      "details": "Sayfa işlemi bir dakika içinde {count} kez sonlandı ({reason})."
+    },
+    "logFolder": "Günlükler: {path}",
+    "reloaded": "MemryNote bir çökmenin ardından yeniden yüklendi. Son düzenlemeler kaybolmuş olabilir."
   }
 }

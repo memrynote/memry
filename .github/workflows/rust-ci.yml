@@ -262,7 +262,7 @@ jobs:
           '
 
       # The desktop KeyringStore against the live OS keychain (#3532). The tests use their own
-      # `e2e-live-*` device suffix and the `com.memry.test` service and remove their items.
+      # `e2e-live-*` device suffix and the `com.memrynote.memry.test` service and remove their items.
       # macOS: a throw-away keychain the next step creates, unlocks and makes the default (never the
       # login keychain). Windows: Credential Manager, including the 2560-byte
       # blob limit. `keyring_keytar_live` writes an item the way Electron's keytar did (`security`,

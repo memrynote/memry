@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote kunne ikke starte helt op",
       "body": "Det kan ske, når der er meget lidt ledig plads på disken, eller ved ældre grafikdrivere. Prøv at frigøre noget diskplads, og åbn så MemryNote igen. Hvis det bliver ved, plejer en geninstallation at løse det."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote holdt op med at virke",
+      "body": "Siden blev ved med at stoppe, så MemryNote holdt op med at genindlæse den. Luk dette vindue for at afslutte, og åbn derefter MemryNote igen. Hvis det bliver ved, hjælper en geninstallation som regel.",
+      "details": "Sidens proces stoppede {count} gange på et minut ({reason})."
+    },
+    "logFolder": "Logfiler: {path}",
+    "reloaded": "MemryNote blev genindlæst efter et nedbrud. De seneste ændringer kan være gået tabt."
   }
 }

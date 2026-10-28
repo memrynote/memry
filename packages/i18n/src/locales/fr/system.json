@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote n'a pas pu terminer son démarrage",
       "body": "Cela peut arriver lorsqu'il reste très peu d'espace disque, ou avec d'anciens pilotes graphiques. Essayez de libérer de l'espace disque, puis rouvrez MemryNote. Si le problème persiste, une réinstallation suffit généralement à le résoudre."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote a cessé de fonctionner",
+      "body": "La page s'arrêtait sans cesse, MemryNote a donc cessé de la recharger. Fermez cette fenêtre pour quitter, puis rouvrez MemryNote. Si le problème persiste, une réinstallation le résout généralement.",
+      "details": "Le processus de la page s'est arrêté {count} fois en une minute ({reason})."
+    },
+    "logFolder": "Journaux : {path}",
+    "reloaded": "MemryNote a été rechargé après un plantage. Les modifications récentes ont peut-être été perdues."
   }
 }

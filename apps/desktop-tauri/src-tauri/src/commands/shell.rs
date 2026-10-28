@@ -15,6 +15,14 @@ pub fn shell_first_paint(
     Ok(())
 }
 
+/// True once after the shell reloaded the calling page because its web process died, so the page
+/// tells the user that recent edits may be lost.
+#[tauri::command]
+#[specta::specta]
+pub fn shell_take_crash_reload(window: WebviewWindow<Wry>) -> Result<bool, CommandError> {
+    Ok(crate::guards::process_gone::take_reloaded(window.label()))
+}
+
 /// A liveness beat from the page, every 2 s.
 #[tauri::command]
 #[specta::specta]

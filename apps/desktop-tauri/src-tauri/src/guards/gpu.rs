@@ -121,3 +121,124 @@ pub fn record_reveal_fallback(app: &AppHandle<Wry>) {
         record(app, GpuExit::Unexpected);
     }
 }
+
+/// Subscribes to an app webview's process failures: every one is reported, a browser or
+/// renderer process that ended releases the flush waits on the page, a renderer that ended is
+/// recovered, and a GPU process that crashed, ended unexpectedly or failed to launch is recorded.
+#[cfg(windows)]
+pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED,
+        COREWEBVIEW2_PROCESS_FAILED_KIND_GPU_PROCESS_EXITED,
+        COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_EXITED, COREWEBVIEW2_PROCESS_FAILED_REASON,
+        COREWEBVIEW2_PROCESS_FAILED_REASON_CRASHED,
+        COREWEBVIEW2_PROCESS_FAILED_REASON_LAUNCH_FAILED,
+        COREWEBVIEW2_PROCESS_FAILED_REASON_OUT_OF_MEMORY,
+        COREWEBVIEW2_PROCESS_FAILED_REASON_TERMINATED,
+        COREWEBVIEW2_PROCESS_FAILED_REASON_UNEXPECTED,
+        COREWEBVIEW2_PROCESS_FAILED_REASON_UNRESPONSIVE, ICoreWebView2ProcessFailedEventArgs2,
+    };
+    use webview2_com::ProcessFailedEventHandler;
+    use windows_core::Interface;
+
+    let app = app.clone();
+    let page = window.clone();
+    let result = window.with_webview(move |webview| {
+        // SAFETY: the controller and its core are live COM objects owned by the webview, used on
+        // the main thread that `with_webview` runs on.
+        unsafe {
+            let Ok(core) = webview.controller().CoreWebView2() else {
+                tracing::warn!(
+                    scope = "Shell",
+                    "no WebView2 core; process failures go unreported"
+                );
+                return;
+            };
+            let handler = ProcessFailedEventHandler::create(Box::new(move |_, args| {
+                let Some(args) = args else { return Ok(()) };
+                let mut kind = Default::default();
+                args.ProcessFailedKind(&mut kind)?;
+                let mut reason = COREWEBVIEW2_PROCESS_FAILED_REASON::default();
+                let known = args
+                    .cast::<ICoreWebView2ProcessFailedEventArgs2>()
+                    .and_then(|args| args.Reason(&mut reason))
+                    .is_ok();
+                let (name, exit) = if !known {
+                    ("unknown", None)
+                } else if reason == COREWEBVIEW2_PROCESS_FAILED_REASON_CRASHED {
+                    ("crash", Some(GpuExit::Crashed))
+                } else if reason == COREWEBVIEW2_PROCESS_FAILED_REASON_UNEXPECTED {
+                    ("unexpected", Some(GpuExit::Unexpected))
+                } else if reason == COREWEBVIEW2_PROCESS_FAILED_REASON_LAUNCH_FAILED {
+                    ("launch-failed", Some(GpuExit::LaunchFailed))
+                } else if reason == COREWEBVIEW2_PROCESS_FAILED_REASON_TERMINATED {
+                    ("terminated", Some(GpuExit::Terminated))
+                } else if reason == COREWEBVIEW2_PROCESS_FAILED_REASON_OUT_OF_MEMORY {
+                    ("out-of-memory", Some(GpuExit::OutOfMemory))
+                } else if reason == COREWEBVIEW2_PROCESS_FAILED_REASON_UNRESPONSIVE {
+                    ("unresponsive", None)
+                } else {
+                    ("unknown", None)
+                };
+                super::process_gone::report(&app, name);
+                // The browser process takes every other one with it; a renderer that ended leaves
+                // the page without its script until it is reloaded. A hung renderer
+                // (`RENDER_PROCESS_UNRESPONSIVE`, a big paste or import) is alive: a reload would
+                // discard the edits it flushes once it recovers, and the heartbeat already logs
+                // the stall.
+                if kind == COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED
+                    || kind == COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_EXITED
+                {
+                    super::process_gone::page_gone(&app, page.label());
+                }
+                if kind == COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_EXITED {
+                    super::process_gone::recover(page.clone(), name);
+                }
+                if kind == COREWEBVIEW2_PROCESS_FAILED_KIND_GPU_PROCESS_EXITED
+                    && let Some(exit) = exit
+                {
+                    record(&app, exit);
+                }
+                Ok(())
+            }));
+            let mut token = 0_i64;
+            if let Err(error) = core.add_ProcessFailed(&handler, &mut token) {
+                tracing::warn!(
+                    scope = "Shell",
+                    "could not subscribe to process failures: {error}"
+                );
+            }
+        }
+    });
+    if let Err(error) = result {
+        tracing::warn!(scope = "Shell", "could not reach the webview: {error}");
+    }
+}
+
+/// WebKitGTK reports a web process that crashed, ran out of memory or was killed; the page then
+/// has no script to answer a flush until it is recovered.
+#[cfg(target_os = "linux")]
+pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>) {
+    use webkit2gtk::{WebProcessTerminationReason, WebViewExt};
+
+    let app = app.clone();
+    let page = window.clone();
+    let result = window.with_webview(move |webview| {
+        webview
+            .inner()
+            .connect_web_process_terminated(move |_, reason| {
+                let name = match reason {
+                    WebProcessTerminationReason::Crashed => "crash",
+                    WebProcessTerminationReason::ExceededMemoryLimit => "out-of-memory",
+                    WebProcessTerminationReason::TerminatedByApi => "terminated",
+                    _ => "unknown",
+                };
+                super::process_gone::report(&app, name);
+                super::process_gone::page_gone(&app, page.label());
+                super::process_gone::recover(page.clone(), name);
+            });
+    });
+    if let Err(error) = result {
+        tracing::warn!(scope = "Shell", "could not reach the webview: {error}");
+    }
+}

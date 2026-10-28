@@ -58,6 +58,18 @@ pub fn dropped_elements<T: ReadTxn>(txn: &T, fragment: &str) -> usize {
         .map_or(0, |read| read.removed)
 }
 
+/// Whether this build reads `fragment` whole: every element, text run, mark and
+/// attribute ends up in the document it builds (`ReadFragment::removed` and
+/// `ReadFragment::lost` both zero), so a write that rebuilds the fragment from
+/// that document deletes nothing. A fragment the read refuses (nested too deep,
+/// text at its root) is not.
+pub fn read_is_lossless<T: ReadTxn>(txn: &T, fragment: &str) -> bool {
+    txn.get_xml_fragment(fragment).is_none_or(|f| {
+        read_fragment(Schema::memry(), txn, &f)
+            .is_ok_and(|read| read.removed == 0 && read.lost == 0)
+    })
+}
+
 /// What `find_unrepresentable_nodes` names for a tree nested past `limits::MAX_NESTING_DEPTH`.
 pub const TOO_DEEP: &str = "<nesting too deep>";
 

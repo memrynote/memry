@@ -96,7 +96,12 @@ impl ShutdownEffects for TauriEffects {
             .state::<ShutdownService>()
             .completed
             .store(true, Ordering::SeqCst);
-        self.app.exit(0);
+        self.app
+            .exit(if crate::windows::startup_error::startup_failed() {
+                crate::windows::startup_error::EXIT_STARTUP_FAILED
+            } else {
+                0
+            });
     }
 
     fn terminate(&self) {
@@ -109,8 +114,11 @@ impl ShutdownEffects for TauriEffects {
 fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     api.prevent_exit();
     startup::mark_shutdown_started();
-    // The window is on its way out: a vault close must not flip the UI to the vault picker.
-    app.state::<Session>().begin_shutdown();
+    // The window is on its way out: a vault close must not flip the UI to the vault picker. A
+    // startup that failed early never opened the session.
+    if let Some(session) = app.try_state::<Session>() {
+        session.begin_shutdown();
+    }
     let service = app.state::<ShutdownService>();
     let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
     tracing::info!(scope = "Shutdown", "starting graceful shutdown");
@@ -222,16 +230,21 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
     }
 }
 
-/// The app runs only for the startup-error window: closing it quits with the failure's exit
-/// code, and no quit sequence runs over services that may never have started.
+/// The app runs only for the startup-error window. Any quit (closing that window, Cmd+Q) runs
+/// the quit steps the started stages registered and ends with the failure's exit code; a startup
+/// that failed before the shutdown service existed has no steps to run.
 fn on_run_event_after_failed_startup(app: &AppHandle<Wry>, event: &RunEvent) {
     use crate::windows::startup_error::EXIT_STARTUP_FAILED;
     match event {
-        RunEvent::ExitRequested {
-            code: None, api, ..
-        } => {
-            api.prevent_exit();
-            app.exit(EXIT_STARTUP_FAILED);
+        RunEvent::ExitRequested { code, api, .. } if *code != Some(EXIT_STARTUP_FAILED) => {
+            if startup::shutdown_started() {
+                api.prevent_exit();
+            } else if app.try_state::<ShutdownService>().is_some() {
+                begin(app, api, ShutdownReason::Quit);
+            } else {
+                api.prevent_exit();
+                app.exit(EXIT_STARTUP_FAILED);
+            }
         }
         RunEvent::Exit => crate::tray::destroy(app),
         _ => {}

@@ -98,6 +98,23 @@ pub async fn e2e_tray_probe(
     })
 }
 
+/// Turns the tray on and closes the main window, which then hides to the tray as its close
+/// button does. True when the window ended up hidden. WebDriver still runs scripts in it.
+#[tauri::command]
+pub async fn e2e_hide_to_tray(app: AppHandle<Wry>) -> Result<bool, CommandError> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| invalid("e2e_window", "no main window"))?;
+    let settle = || tokio::time::sleep(std::time::Duration::from_millis(600));
+    set_tray_setting(&app, true).await?;
+    settle().await;
+    window
+        .close()
+        .map_err(|error| CommandError::new(ErrorKind::Internal, "e2e_window", error.to_string()))?;
+    settle().await;
+    Ok(!window.is_visible().unwrap_or(true))
+}
+
 /// What the global capture shortcut holds and how often it fired.
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -147,12 +164,18 @@ pub fn e2e_post_power_event(app: AppHandle<Wry>, kind: String) -> Result<(), Com
     Ok(())
 }
 
-/// Sends `WM_ENDSESSION(TRUE)` to the main window (`main`) or to tao's hidden event-target window
-/// (`event-target`), as Windows does at a sign-out, and returns without waiting. Windows asks
-/// either one first, so a spec runs both: the quit sequence has to finish before the process
-/// ends, whichever it was.
+/// Plays a Windows sign-out: `WM_QUERYENDSESSION` to the main window, then `WM_ENDSESSION(TRUE)`
+/// to the main window (`main`) or to tao's hidden event-target window (`event-target`), and
+/// returns without waiting. Windows asks either one first, so a spec runs both: the quit sequence
+/// has to finish before the process ends, whichever it was. `kill_webview` ends the WebView2
+/// browser process between the two messages, as a real sign-out does (it ends itself on its own
+/// `WM_ENDSESSION`).
 #[tauri::command]
-pub fn e2e_send_session_end(app: AppHandle<Wry>, target: String) -> Result<(), CommandError> {
+pub async fn e2e_send_session_end(
+    app: AppHandle<Wry>,
+    target: String,
+    kill_webview: Option<bool>,
+) -> Result<(), CommandError> {
     let event_target = match target.as_str() {
         "main" => false,
         "event-target" => true,
@@ -160,22 +183,75 @@ pub fn e2e_send_session_end(app: AppHandle<Wry>, target: String) -> Result<(), C
     };
     #[cfg(windows)]
     {
-        let main = crate::windows::registry::WindowRegistry::main_window(&app)
-            .and_then(|window| window.hwnd().ok())
+        let window = crate::windows::registry::WindowRegistry::main_window(&app)
             .ok_or_else(|| invalid("e2e_no_main_window", "no main window"))?;
-        if !crate::power::post_end_session(main, event_target) {
+        let kill_browser = if kill_webview.unwrap_or(false) {
+            Some(browser_process_id(&window).await?)
+        } else {
+            None
+        };
+        // Read after the await: an `HWND` is not `Send`, and a command's future must be.
+        let main = window
+            .hwnd()
+            .map_err(|error| invalid("e2e_no_main_window", error))?;
+        if !crate::power::post_sign_out(main, event_target, kill_browser) {
             return Err(invalid("e2e_no_event_target", "no event target window"));
         }
         Ok(())
     }
     #[cfg(not(windows))]
     {
-        let _ = (&app, event_target);
+        let _ = (&app, event_target, kill_webview);
         Err(invalid(
             "e2e_windows_only",
             "WM_ENDSESSION exists on Windows only",
         ))
     }
+}
+
+/// The id of the WebView2 browser process behind `window`.
+#[cfg(windows)]
+async fn browser_process_id(window: &tauri::WebviewWindow<Wry>) -> Result<u32, CommandError> {
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    window
+        .with_webview(move |webview| {
+            let mut pid = 0_u32;
+            // SAFETY: the controller and its core are live COM objects owned by the webview, used
+            // on the main thread that `with_webview` runs on.
+            let read = unsafe {
+                webview
+                    .controller()
+                    .CoreWebView2()
+                    .and_then(|core| core.BrowserProcessId(&mut pid))
+            };
+            let _ = sender.send(read.map(|()| pid).map_err(|error| error.to_string()));
+        })
+        .map_err(|error| invalid("e2e_webview", error))?;
+    receiver
+        .await
+        .map_err(|error| invalid("e2e_webview", error))?
+        .map_err(|error| invalid("e2e_webview", error))
+}
+
+/// Writes `text` to `e2e-held-edit.txt` in the app data folder, durably. The e2e page's held edit
+/// (`window.__memryE2eHoldEdit`) calls this only when the save registry is flushed, as a note
+/// page's unsaved markdown reaches main only then.
+#[tauri::command]
+pub async fn e2e_save_held_edit(app: AppHandle<Wry>, text: String) -> Result<(), CommandError> {
+    let path = app
+        .state::<memry_desktop::paths::AppPaths>()
+        .data_dir
+        .join("e2e-held-edit.txt");
+    tauri::async_runtime::spawn_blocking(move || -> std::io::Result<()> {
+        let mut file = std::fs::File::create(&path)?;
+        std::io::Write::write_all(&mut file, text.as_bytes())?;
+        file.sync_all()
+    })
+    .await
+    .map_err(|error| CommandError::new(ErrorKind::Internal, "e2e_held_edit", error.to_string()))?
+    .map_err(|error| CommandError::new(ErrorKind::Internal, "e2e_held_edit", error.to_string()))?;
+    tracing::info!(scope = "e2e", "held edit saved");
+    Ok(())
 }
 
 /// Registers or removes the real login item, which the e2e gate otherwise keeps specs away from:

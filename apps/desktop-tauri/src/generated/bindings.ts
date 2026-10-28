@@ -92,6 +92,11 @@ export const commands = {
 	 *  the menu closed without a choice.
 	 */
 	shellShowContextMenu: (items: ContextMenuItem[]) => __TAURI_INVOKE<string | null>("shell_show_context_menu", { items }),
+	/**
+	 *  True once after the shell reloaded the calling page because its web process died, so the page
+	 *  tells the user that recent edits may be lost.
+	 */
+	shellTakeCrashReload: () => __TAURI_INVOKE<boolean>("shell_take_crash_reload"),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),

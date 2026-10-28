@@ -1,14 +1,17 @@
 //! The startup-error window (inv09#28), a port of `ensureStartupWindow`
 //! (`apps/desktop/src/main/index.ts:1148-1177`). A startup stage that fails would otherwise
 //! leave a process with no window that holds the single-instance lock, so every relaunch does
-//! nothing. The window also shows when the main window's web content process keeps dying
-//! (`guards::process_gone`).
+//! nothing. The window also shows, with its own copy, when an app window's web content process
+//! keeps dying (`guards::process_gone`); closing it then quits through the quit sequence.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
+use memry_desktop::i18n::{Arg, Args};
+use memry_desktop::paths::AppPaths;
+use memry_desktop::session::Session;
 use memry_desktop::telemetry::diagnostics::Failure;
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, WindowEvent, Wry};
 
 use super::preboot::{self, PageFill};
 use super::registry::WindowKind;
@@ -31,7 +34,8 @@ pub fn startup_failed() -> bool {
 }
 
 /// A startup stage failed. The startup-error window takes the place of any window the earlier
-/// stages built, since the app behind it is half started.
+/// stages built, since the app behind it is half started, and a vault the earlier stages opened
+/// is closed so nothing behind the window keeps writing to it.
 pub fn on_startup_failure(app: &AppHandle<Wry>, failure: &StageFailure) {
     tracing::error!(
         stage = ?failure.stage,
@@ -48,8 +52,30 @@ pub fn on_startup_failure(app: &AppHandle<Wry>, failure: &StageFailure) {
         );
     }
     STARTUP_FAILED.store(true, Ordering::SeqCst);
+    if let Some(session) = app.try_state::<Session>() {
+        // A vault close must not flip a window to the vault picker. Off the main thread: the
+        // close waits behind an open still running.
+        session.begin_shutdown();
+        let session = session.inner().clone();
+        tauri::async_runtime::spawn_blocking(move || session.close());
+    }
     // Built first: with no window left at all, the runtime would ask to exit.
-    show(app, &failure.error.to_string());
+    let locale = preboot::locale(app);
+    show(
+        app,
+        vec![
+            (
+                "title",
+                preboot::text(locale, "startup.failed.title", &Args::new()),
+            ),
+            (
+                "body",
+                preboot::text(locale, "startup.failed.body", &Args::new()),
+            ),
+            ("details", failure.error.to_string()),
+            ("logs", log_folder(app, locale)),
+        ],
+    );
     let own = WindowKind::StartupError.label(0);
     for (label, window) in app.webview_windows() {
         if label != own
@@ -60,34 +86,103 @@ pub fn on_startup_failure(app: &AppHandle<Wry>, failure: &StageFailure) {
     }
 }
 
-/// Shows the startup-error window with `details` under the localized title and body, or
-/// brings the open one forward.
-pub fn show(app: &AppHandle<Wry>, details: &str) {
-    if let Some(window) = app.get_webview_window(&WindowKind::StartupError.label(0)) {
-        if let Err(error) = window.show().and_then(|()| window.set_focus()) {
-            tracing::warn!(scope = "Window", "startup-error window not raised: {error}");
-        }
-        return;
-    }
+/// An app window lost its web content process more than its reloads allow (`count` times in a
+/// minute, the last for `reason`). The window stays as it is, and closing this one quits.
+pub fn show_crashed(app: &AppHandle<Wry>, count: usize, reason: &str) {
     let locale = preboot::locale(app);
+    let details = Args::from([
+        (
+            "count".to_owned(),
+            Arg::from(i64::try_from(count).unwrap_or(i64::MAX)),
+        ),
+        ("reason".to_owned(), Arg::from(reason)),
+    ]);
+    let shown = show(
+        app,
+        vec![
+            (
+                "title",
+                preboot::text(locale, "startup.crashed.title", &Args::new()),
+            ),
+            (
+                "body",
+                preboot::text(locale, "startup.crashed.body", &Args::new()),
+            ),
+            (
+                "details",
+                preboot::text(locale, "startup.crashed.details", &details),
+            ),
+            ("logs", log_folder(app, locale)),
+        ],
+    );
+    if let Some(window) = shown {
+        let app = app.clone();
+        window.on_window_event(move |event| {
+            if matches!(event, WindowEvent::Destroyed) {
+                app.exit(0);
+            }
+        });
+    }
+}
+
+/// Brings the startup-error window forward. False when there is none.
+pub fn raise(app: &AppHandle<Wry>) -> bool {
+    let Some(window) = app.get_webview_window(&WindowKind::StartupError.label(0)) else {
+        return false;
+    };
+    if let Err(error) = window
+        .unminimize()
+        .and_then(|()| window.show())
+        .and_then(|()| window.set_focus())
+    {
+        tracing::warn!(scope = "Window", "startup-error window not raised: {error}");
+    }
+    true
+}
+
+fn log_folder(app: &AppHandle<Wry>, locale: &str) -> String {
+    let path = app
+        .try_state::<AppPaths>()
+        .map(|paths| paths.log_dir.display().to_string())
+        .or_else(|| {
+            app.path()
+                .app_log_dir()
+                .ok()
+                .map(|dir| dir.display().to_string())
+        })
+        .unwrap_or_default();
+    preboot::text(
+        locale,
+        "startup.logFolder",
+        &Args::from([("path".to_owned(), Arg::from(path.as_str()))]),
+    )
+}
+
+/// Shows the startup-error window filled with `slots`, or brings the open one forward. The new
+/// window, when one was built.
+fn show(
+    app: &AppHandle<Wry>,
+    slots: Vec<(&'static str, String)>,
+) -> Option<tauri::WebviewWindow<Wry>> {
+    if raise(app) {
+        return None;
+    }
     let fill = PageFill {
         view: "error",
-        slots: vec![
-            ("title", preboot::text(locale, "startup.failed.title")),
-            ("body", preboot::text(locale, "startup.failed.body")),
-            ("details", details.to_owned()),
-        ],
+        slots,
     };
     let built = preboot::build(app, WindowKind::StartupError, fill, false, |builder| {
-        builder.inner_size(460.0, 300.0).visible(true)
+        builder.inner_size(460.0, 320.0).visible(true)
     });
     match built {
         Ok(window) => {
+            let shown = window.clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(RESHOW_AFTER).await;
                 // A window the user closed meanwhile answers with an error, which is fine.
-                let _ = window.show();
+                let _ = shown.show();
             });
+            Some(window)
         }
         Err(error) => {
             tracing::error!(scope = "Window", "startup-error window not built: {error}");
@@ -95,6 +190,7 @@ pub fn show(app: &AppHandle<Wry>, details: &str) {
             if startup_failed() {
                 std::process::exit(EXIT_STARTUP_FAILED);
             }
+            None
         }
     }
 }

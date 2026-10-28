@@ -19,7 +19,7 @@ macro_rules! e2e_commands {
 e2e_commands! {
     app => [e2e_app_info, e2e_request_quit, e2e_emit],
     clipboard => [e2e_clipboard_read, e2e_clipboard_write],
-    crash => [e2e_trigger_crash],
+    crash => [e2e_trigger_crash, e2e_kill_page],
     debug => [e2e_debug_query, e2e_debug_index_query],
     dialog => [e2e_dialog_queue_push, e2e_dialog_queue_clear],
     reveal => [e2e_revealed_paths],
@@ -29,7 +29,9 @@ e2e_commands! {
         e2e_fire_global_capture,
         e2e_forget_spelled_word,
         e2e_global_shortcut_state,
+        e2e_hide_to_tray,
         e2e_post_power_event,
+        e2e_save_held_edit,
         e2e_send_session_end,
         e2e_tray_probe,
         e2e_request_flush,

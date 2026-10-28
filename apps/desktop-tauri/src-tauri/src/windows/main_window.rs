@@ -53,8 +53,6 @@ pub fn create_main(
         None => builder.center(),
     };
     let window = webview_profile(builder, app).build()?;
-    #[cfg(any(windows, target_os = "linux"))]
-    crate::guards::process_gone::watch_process_failures(app, &window);
     zoom::apply_to(&window, state.zoom);
     #[cfg(windows)]
     {

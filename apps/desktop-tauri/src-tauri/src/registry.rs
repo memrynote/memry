@@ -65,6 +65,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_first_paint,
             crate::commands::shell::shell_heartbeat,
             crate::commands::shell::shell_show_context_menu,
+            crate::commands::shell::shell_take_crash_reload,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,

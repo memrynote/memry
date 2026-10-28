@@ -14,6 +14,9 @@ pub const WINDOW_MS: u64 = 60_000;
 pub enum CrashAction {
     Reload,
     GiveUp,
+    /// The app is quitting, or never finished starting: a reload would remount a page that writes
+    /// while the quit sequence runs, and an error window would show during a sign-out.
+    LeaveAlone,
 }
 
 #[derive(Debug, Default)]
@@ -22,16 +25,13 @@ pub struct ReloadBudget {
 }
 
 impl ReloadBudget {
-    pub const fn new() -> Self {
-        Self {
-            reloads_ms: VecDeque::new(),
+    /// The process died at `now_ms`. Left alone while `quitting`; otherwise reload while fewer
+    /// than [`MAX_RELOADS`] happened in the last [`WINDOW_MS`], else give up. Giving up spends
+    /// nothing, so a page that stays healthy for a minute afterwards earns its reloads back.
+    pub fn on_crash(&mut self, now_ms: u64, quitting: bool) -> CrashAction {
+        if quitting {
+            return CrashAction::LeaveAlone;
         }
-    }
-
-    /// The process died at `now_ms`: reload while fewer than [`MAX_RELOADS`] happened in the
-    /// last [`WINDOW_MS`], else give up. Giving up spends nothing, so a page that stays healthy
-    /// for a minute afterwards earns its reloads back.
-    pub fn on_crash(&mut self, now_ms: u64) -> CrashAction {
         while self
             .reloads_ms
             .front()
@@ -55,7 +55,7 @@ mod tests {
     fn the_fourth_crash_inside_a_minute_gives_up() {
         let mut budget = ReloadBudget::default();
         let actions: Vec<_> = [0, 10_000, 20_000, 30_000]
-            .map(|at| budget.on_crash(at))
+            .map(|at| budget.on_crash(at, false))
             .into();
         assert_eq!(
             actions,
@@ -72,9 +72,18 @@ mod tests {
     fn a_reload_older_than_a_minute_no_longer_counts() {
         let mut budget = ReloadBudget::default();
         for at in [0, 10_000, 20_000] {
-            budget.on_crash(at);
+            budget.on_crash(at, false);
         }
-        assert_eq!(budget.on_crash(59_999), CrashAction::GiveUp);
-        assert_eq!(budget.on_crash(60_000), CrashAction::Reload);
+        assert_eq!(budget.on_crash(59_999, false), CrashAction::GiveUp);
+        assert_eq!(budget.on_crash(60_000, false), CrashAction::Reload);
+    }
+
+    #[test]
+    fn a_crash_while_quitting_is_left_alone_and_spends_nothing() {
+        let mut budget = ReloadBudget::default();
+        for at in [0, 1_000, 2_000, 3_000] {
+            assert_eq!(budget.on_crash(at, true), CrashAction::LeaveAlone);
+        }
+        assert_eq!(budget.on_crash(4_000, false), CrashAction::Reload);
     }
 }

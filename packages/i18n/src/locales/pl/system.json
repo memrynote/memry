@@ -72,6 +72,13 @@
     "failed": {
       "title": "Nie udało się dokończyć uruchamiania aplikacji MemryNote",
       "body": "Może się to zdarzyć, gdy na dysku jest bardzo mało wolnego miejsca lub przy starszych sterownikach graficznych. Zwolnij trochę miejsca na dysku, a następnie otwórz ponownie aplikację MemryNote. Jeśli problem się powtarza, zwykle pomaga ponowna instalacja."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote przestał działać",
+      "body": "Strona ciągle się zatrzymywała, więc MemryNote przestał ją ponownie wczytywać. Zamknij to okno, aby wyjść, a następnie ponownie otwórz MemryNote. Jeśli problem się powtarza, zwykle pomaga ponowna instalacja.",
+      "details": "Proces strony zakończył się {count} razy w ciągu minuty ({reason})."
+    },
+    "logFolder": "Dzienniki: {path}",
+    "reloaded": "MemryNote został ponownie wczytany po awarii. Ostatnie zmiany mogły zostać utracone."
   }
 }

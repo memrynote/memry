@@ -10,6 +10,7 @@
 use crate::api::errors::StorageError;
 use crate::domain::note_files::{self, NoteFile, NoteFileStat};
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
+use crate::domain::owed_file_body;
 use crate::storage::Db;
 
 pub struct NoteFiles {
@@ -60,6 +61,27 @@ impl NoteFiles {
         let note_id = note_id.to_owned();
         self.db
             .call_blocking(move |conn| note_files::remove(conn, &note_id))
+    }
+
+    /// Whether the note's file holds a body its document has not taken
+    /// ([`crate::domain::owed_file_body`]).
+    pub fn owes_file_body(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .read_blocking(move |conn| owed_file_body::owes(conn, &note_id))
+    }
+
+    /// Every live note that owes its file body, in id order.
+    pub fn owed_file_bodies(&self) -> Result<Vec<String>, StorageError> {
+        self.db.read_blocking(owed_file_body::list)
+    }
+
+    /// The document took the file (or the file no longer matters): the note no
+    /// longer owes it. True when there was a marker.
+    pub fn clear_owed_file_body(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .call_blocking(move |conn| owed_file_body::clear(conn, &note_id))
     }
 
     pub fn list_missing_candidates(&self) -> Result<Vec<NoteFile>, StorageError> {

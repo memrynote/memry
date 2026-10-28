@@ -14,7 +14,6 @@ pub mod locale;
 pub mod logging;
 pub mod notes;
 pub mod paths;
-pub mod profile_store;
 pub mod redact;
 pub mod registry;
 pub mod seams;

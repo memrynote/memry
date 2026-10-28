@@ -164,7 +164,8 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_clipboard_manager::init());
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(guards::process_gone::plugin());
     // macOS and Windows write their own login item (`autostart/`).
     #[cfg(target_os = "linux")]
     let app = app.plugin(
@@ -181,7 +182,7 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
         .on_window_event(windows::events::dispatch)
         .on_menu_event(menu::on_menu_event);
     // WKWebView reports a dead web content process through the builder; Windows and Linux
-    // subscribe per window (`guards::process_gone::watch_process_failures`).
+    // subscribe per webview in the page-watch plugin (`guards::process_gone::plugin`).
     #[cfg(target_os = "macos")]
     let app = app
         .on_web_content_process_terminate(guards::process_gone::on_web_content_process_terminate);
