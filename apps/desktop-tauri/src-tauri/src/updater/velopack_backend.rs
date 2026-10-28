@@ -265,8 +265,22 @@ fn io_kind(error: &io::Error) -> UpdateErrorKind {
 /// `EROFS` on macOS and Linux.
 const EROFS: i32 = 30;
 
+/// `WSAHOST_NOT_FOUND` and `WSATRY_AGAIN`: the Windows resolver's failures.
+const WSA_LOOKUP_FAILED: [i32; 2] = [11001, 11002];
+
 fn network_io_kind(error: &io::Error) -> Option<NetworkKind> {
     use io::ErrorKind as K;
+    // The resolver's failure arrives as a plain `io::Error`, with Windows' code or the message
+    // std gives `getaddrinfo` errors on Unix. Offline, a check fails here first.
+    if error
+        .raw_os_error()
+        .is_some_and(|code| WSA_LOOKUP_FAILED.contains(&code))
+        || error
+            .to_string()
+            .contains("failed to lookup address information")
+    {
+        return Some(NetworkKind::HostNotFound);
+    }
     match error.kind() {
         K::ConnectionReset | K::ConnectionAborted | K::BrokenPipe | K::UnexpectedEof => {
             Some(NetworkKind::Reset)

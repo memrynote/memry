@@ -67,6 +67,26 @@ fn transport_failures_map_to_their_network_kind() {
     }
 }
 
+/// The resolver's failure reaches `ureq` as a plain `io::Error`: Windows gives `WSAHOST_NOT_FOUND`
+/// (seen offline on the Windows VM), Unix `getaddrinfo`'s message.
+#[test]
+fn a_failed_name_lookup_is_host_not_found_on_every_os() {
+    for error in [
+        io::Error::from_raw_os_error(11001),
+        io::Error::from_raw_os_error(11002),
+        io::Error::other(
+            "failed to lookup address information: nodename nor servname provided, or not known",
+        ),
+    ] {
+        let message = error.to_string();
+        assert_eq!(
+            kind(http(ureq::Error::Io(error))),
+            UpdateErrorKind::Network(NetworkKind::HostNotFound),
+            "{message}"
+        );
+    }
+}
+
 #[test]
 fn a_dropped_download_body_is_a_network_failure_not_a_disk_one() {
     // ureq hands the body reader's failure back as an io::Error around its own error.
