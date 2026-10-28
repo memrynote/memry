@@ -46,7 +46,7 @@ pub enum Keep {
     Closed,
     NoRow,
     NotMarkdown,
-    /// A journal note (12e-3c).
+    /// A journal day: journal files are not fed, so the document never holds one.
     Journal,
     /// The row names a file that is not there.
     NoFile,
