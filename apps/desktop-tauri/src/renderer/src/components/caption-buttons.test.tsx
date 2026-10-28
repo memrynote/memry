@@ -90,7 +90,9 @@ describe('CaptionButtons', () => {
 
     // A report sent before the change settled can arrive last; a later one corrects it.
     shell.setRects.mockClear()
-    act(() => vi.advanceTimersByTime(300))
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
     expect(shell.setRects).toHaveBeenCalledWith(physical, physical, physical)
     vi.useRealTimers()
   })
