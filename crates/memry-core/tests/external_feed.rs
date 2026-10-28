@@ -679,6 +679,41 @@ fn a_file_whose_writing_frontmatter_changed_is_fed_although_its_body_did_not() {
     );
 }
 
+/// A feed that drops the writing tools data the body held (a file without the `writing` key,
+/// over alternatives that came through sync) keeps that data in the version, beside the body
+/// it belongs to: the version restores to the file the body was.
+#[test]
+fn a_version_kept_by_a_feed_carries_the_writing_data_the_body_held() {
+    use memry_core::markdown::frontmatter::parse_markdown_note;
+    use memry_core::markdown::shared::writing_tools::{read_writing_frontmatter, writing_of_yaml};
+    let f = fixture();
+    let id = f.note();
+    let markdown = "one <!--alt:k3x9q2-->two<!--/alt:k3x9q2--> three\n";
+    let writing = read_writing_frontmatter(
+        &serde_json::json!({"alternatives": {"k3x9q2": {"versions": [{"text": "two"}, {"text": "zwei"}]}}}),
+    )
+    .unwrap();
+    let block = Some("---\ntitle: Kept\n---\n");
+    let held = FeedInput {
+        writing: Some(writing.clone()),
+        frontmatter: block,
+        ..input(&id, markdown)
+    };
+    assert_eq!(f.feed_input(held), FeedOutcome::Fed);
+    let dropped = FeedInput {
+        writing: Some(Default::default()),
+        frontmatter: block,
+        ..input(&id, "plain text now\n")
+    };
+    assert_eq!(f.feed_input(dropped), FeedOutcome::Fed);
+    let kept = versions(&f, &id);
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    let version = parse_markdown_note(&kept[0].0).unwrap();
+    assert_eq!(writing_of_yaml(&version.frontmatter), writing, "{kept:?}");
+    assert!(kept[0].0.starts_with("---\ntitle: Kept\n"), "{kept:?}");
+    assert!(version.content.contains("<!--alt:k3x9q2-->two"), "{kept:?}");
+}
+
 #[test]
 fn a_kept_version_is_the_whole_file_the_replaced_body_was() {
     let f = fixture();

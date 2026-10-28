@@ -130,8 +130,8 @@ fn a_body_whose_write_would_lose_content_keeps_the_file() {
     }
 }
 
-/// An edit that lands between the pass's read and its rename is kept, as is a file moved away
-/// in that window (the write must not bring it back at the old path).
+/// An edit that lands between the pass's read and its rename is kept, as is a file or a folder
+/// moved away in that window (the write must not bring either back at the old path).
 #[test]
 fn a_file_that_changes_or_moves_while_it_is_written_is_kept() {
     let f = fixture();
@@ -166,6 +166,17 @@ fn a_file_that_changes_or_moves_while_it_is_written_is_kept() {
         .filter(|name| name.ends_with(".tmp"))
         .collect();
     assert!(leftovers.is_empty(), "{leftovers:?}");
+
+    // A folder moved after the read and before the write starts.
+    f.write("dir/k.md", text);
+    std::fs::rename(f.root.join("dir"), f.root.join("away")).unwrap();
+    let result = write_note_over_checked(&f.root, "dir/k.md", "the app's\n", &hash, &mut || {});
+    assert!(
+        matches!(result, Err(NoteFileError::ChangedUnderWrite)),
+        "{result:?}"
+    );
+    assert!(!f.root.join("dir").exists(), "the moved folder came back");
+    assert_eq!(f.read("away/k.md"), text);
 }
 
 /// A pass of a session that closed, or of one before the vault was opened again, writes
@@ -194,4 +205,91 @@ fn a_note_without_a_row_or_a_file_creates_none() {
     assert!(!f.root.join("gone.md").exists());
     assert_eq!(f.run("j2026-01-02"), Outcome::Kept(Keep::Journal));
     assert!(f.facts().is_empty());
+}
+
+/// A version that cannot be saved stops the write: the file it would have replaced is the only
+/// copy of its bytes. The next pass, once versions save again, writes.
+#[test]
+fn a_write_whose_version_cannot_be_saved_does_not_happen() {
+    let mut f = fixture();
+    let text = "written outside the app\n";
+    let id = f.adopt("n.md", text);
+    f.edit_in_app(&id, "typed in the app");
+    f.exec("ALTER TABLE note_snapshots RENAME TO note_snapshots_away");
+    let outcome = f.run(&id);
+    assert!(matches!(outcome, Outcome::Failed(_)), "{outcome:?}");
+    assert_eq!(f.read("n.md"), text);
+    assert!(f.facts().is_empty());
+    f.exec("ALTER TABLE note_snapshots_away RENAME TO note_snapshots");
+    let outcome = f.run(&id);
+    assert_wrote(&mut f, &outcome, "n.md");
+    assert_eq!(f.versions(&id), vec![text.to_owned()]);
+}
+
+/// An edit or a folder move that lands while a pass writes, through the pass itself: the file
+/// stays, and the moved folder is not created again at its old path.
+#[test]
+fn a_pass_keeps_a_file_edited_or_moved_while_it_writes() {
+    let mut f = fixture();
+    let id = f.adopt("n.md", "first words\n");
+    f.edit_in_app(&id, "typed in the app");
+    let root = f.root.clone();
+    let outcome = f.pass.run_checked(&id, &mut || {
+        std::fs::write(root.join("n.md"), "edited meanwhile\n").unwrap();
+    });
+    assert_kept(
+        &mut f,
+        &outcome,
+        Keep::FileChanged,
+        "n.md",
+        "edited meanwhile\n",
+    );
+
+    let id = f.adopt("dir/m.md", "first words\n");
+    f.edit_in_app(&id, "typed in the app");
+    let root = f.root.clone();
+    let outcome = f.pass.run_checked(&id, &mut || {
+        std::fs::rename(root.join("dir"), root.join("moved")).unwrap();
+    });
+    assert_eq!(outcome, Outcome::Kept(Keep::FileChanged));
+    assert!(!f.root.join("dir").exists(), "the moved folder came back");
+    assert_eq!(f.read("moved/m.md"), "first words\n");
+    assert!(f.facts().is_empty());
+}
+
+#[test]
+fn a_row_of_another_kind_or_of_a_deleted_note_is_not_written() {
+    let mut f = fixture();
+    let id = f.writer.create("Picture".into(), None).unwrap();
+    f.write("p.png", "not a note");
+    f.record_as(&id, "p.png", FileType::Image, None);
+    f.facts();
+    assert_eq!(f.run(&id), Outcome::Kept(Keep::NotMarkdown));
+
+    let id = f.adopt("n.md", "first words\n");
+    f.writer.delete(id.clone()).unwrap();
+    assert_eq!(f.run(&id), Outcome::Kept(Keep::NoNote));
+    assert_eq!(f.read("n.md"), "first words\n");
+    assert!(f.facts().is_empty());
+}
+
+/// The replaced file is kept unless the write keeps every byte the document does not hold: the
+/// frontmatter block and the body's spelling.
+#[test]
+fn a_write_that_changes_the_frontmatter_block_alone_keeps_a_version() {
+    use super::super::pass::replaces_unheld_bytes;
+    let raw = "---\nwriting: {a: 1}\n---\nbody\n";
+    assert!(replaces_unheld_bytes(
+        raw,
+        "---\nwriting:\n  a: 1\n---\nbody\n"
+    ));
+    assert!(replaces_unheld_bytes(
+        raw,
+        "---\nwriting: {a: 1}\n---\nother\n"
+    ));
+    assert!(replaces_unheld_bytes(
+        "body\n",
+        "---\nwriting: {a: 1}\n---\nbody\n"
+    ));
+    assert!(!replaces_unheld_bytes(raw, raw));
 }

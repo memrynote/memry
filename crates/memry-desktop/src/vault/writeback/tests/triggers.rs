@@ -130,40 +130,56 @@ fn an_authors_own_writing_key_stays_through_a_write() {
     assert_eq!(file, "---\nwriting: draft two\n---\ntyped in the app\n");
 }
 
-/// The writing tools data the document holds goes back to the file with the body. A version
-/// spelled `- text: two` is written `- two`, as desktop writes it (`toWritingFrontmatterValue`):
-/// a frontmatter-only change, which keeps no version.
+/// The writing tools data the document holds goes back to the file with the body, and the
+/// frontmatter block the author wrote stays byte for byte: the document holds the data, not its
+/// spelling (`- text: two` rather than `- two`, a flow map, quotes, a comment). An untouched
+/// note is no write at all.
 #[test]
 fn the_writing_data_the_document_holds_is_written_with_the_body() {
+    for block in [
+        "---\nwriting:\n  alternatives:\n    k3x9q2:\n      versions:\n        - text: two\n        - text: zwei\n---\n",
+        "---\ntitle: 'quoted'  # the author's note\nwriting: {alternatives: {k3x9q2: {versions: [{text: two}, \"zwei\"]}}}\n---\n",
+    ] {
+        let mut f = fixture();
+        let text = format!("{block}one <!--alt:k3x9q2-->two<!--/alt:k3x9q2--> three\n");
+        let id = f.adopt("n.md", &text);
+        assert_eq!(f.run(&id), Outcome::Unchanged, "{block}");
+        assert_eq!(f.read("n.md"), text);
+        f.paragraph_from_sync(&id, "from the other device");
+        let outcome = f.run(&id);
+        let file = assert_wrote(&mut f, &outcome, "n.md");
+        assert!(file.starts_with(block), "{file}");
+        assert!(
+            file.contains("<!--alt:k3x9q2-->two<!--/alt:k3x9q2-->"),
+            "{file}"
+        );
+        assert!(file.contains("from the other device"), "{file}");
+    }
+}
+
+/// A file whose line ends are mixed reads the same text as the document: no write. Its first
+/// real edit spells every line end the file's way, and keeps the file it replaced.
+#[test]
+fn a_file_with_mixed_line_ends_is_not_rewritten_until_its_body_changes() {
     let mut f = fixture();
-    let text = "---\nwriting:\n  alternatives:\n    k3x9q2:\n      versions:\n        - text: two\n        - text: zwei\n---\none <!--alt:k3x9q2-->two<!--/alt:k3x9q2--> three\n";
+    let text = "a\r\nb\nc\r\n";
     let id = f.adopt("n.md", text);
-    let first = f.run(&id);
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    assert_eq!(f.read("n.md"), text);
+    f.paragraph_from_sync(&id, "from the other device");
+    let outcome = f.run(&id);
     assert!(
         matches!(
-            first,
+            outcome,
             Outcome::Wrote {
-                version_kept: false,
+                version_kept: true,
                 ..
             }
         ),
-        "{first:?}"
+        "{outcome:?}"
     );
-    let short = text.replace("- text: ", "- ");
-    assert_eq!(assert_wrote(&mut f, &first, "n.md"), short);
-    assert_eq!(f.run(&id), Outcome::Unchanged);
-    f.paragraph_from_sync(&id, "from the other device");
-    let outcome = f.run(&id);
-    let file = assert_wrote(&mut f, &outcome, "n.md");
-    assert!(
-        file.starts_with("---\nwriting:\n  alternatives:\n    k3x9q2:"),
-        "{file}"
-    );
-    assert!(
-        file.contains("<!--alt:k3x9q2-->two<!--/alt:k3x9q2-->"),
-        "{file}"
-    );
-    assert!(file.contains("from the other device"), "{file}");
+    assert_wrote(&mut f, &outcome, "n.md");
+    assert_eq!(f.versions(&id), vec![text.to_owned()]);
 }
 
 /// The seam Steps 14 and 17 call: a scheduled note is written on the write-back thread.

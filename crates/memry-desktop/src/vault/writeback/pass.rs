@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
+use memry_core::domain::external_feed::same_text;
 use memry_core::domain::journal::valid_date;
 use memry_core::domain::write_back::BodyRead;
 use memry_core::markdown::frontmatter::{
@@ -13,12 +14,11 @@ use memry_core::markdown::frontmatter::{
 };
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
 
-use super::SCOPE;
 use crate::vault::consumer::rows::{RowOwner, RowSession, RowStat};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
-use crate::vault::note_file::{NoteFileError, read_note, write_note_over};
+use crate::vault::note_file::{NoteFileError, read_note, write_note_over_checked};
 use crate::vault::watch::EchoGuard;
 
 const BOM: char = '\u{feff}';
@@ -98,6 +98,13 @@ impl Pass {
 
     /// Writes the note's body to its file, or says why the file was kept.
     pub fn run(&self, note_id: &str) -> Outcome {
+        self.run_checked(note_id, &mut || {})
+    }
+
+    /// [`Pass::run`] with a hook that runs after the new file is written aside and before the
+    /// checks ahead of its rename, so a test can edit or move the file in that window.
+    #[doc(hidden)]
+    pub fn run_checked(&self, note_id: &str, between: &mut dyn FnMut()) -> Outcome {
         let Ok(mut lane) = self.rows.lane_of(self.session) else {
             return Outcome::Kept(Keep::Closed);
         };
@@ -148,7 +155,15 @@ impl Pass {
             Ok(BodyRead::Failed(reason)) => return Outcome::Failed(reason.to_owned()),
             Err(error) => return Outcome::Failed(format!("the body could not be read: {error}")),
         };
-        let output = match file_for(parsed, &body.markdown, &body.writing, &file.raw) {
+        // The same text in the file's spelling (mixed line ends, extra final newlines) is the
+        // file's: the document does not hold the spelling, so the file keeps it.
+        let bare = old_body.strip_prefix(BOM).unwrap_or(old_body);
+        let markdown = if same_text(&body.markdown, bare) {
+            old_body
+        } else {
+            body.markdown.as_str()
+        };
+        let output = match file_for(parsed, markdown, &body.writing, &file.raw) {
             Ok(output) => output,
             Err(reason) => return Outcome::Failed(reason),
         };
@@ -156,9 +171,16 @@ impl Pass {
             return Outcome::Unchanged;
         }
         let hash = content_hash(&output);
-        let version_kept = self.keep_replaced(note_id, &file.raw, &file.hash, &output);
+        let version_kept = match self.keep_replaced(note_id, &file.raw, &file.hash, &output) {
+            Ok(kept) => kept,
+            Err(error) => {
+                return Outcome::Failed(format!(
+                    "no version of the replaced file was kept: {error}"
+                ));
+            }
+        };
         self.echo.will_write(&row.path, &hash);
-        match write_note_over(&self.root, &row.path, &output, &file.hash) {
+        match write_note_over_checked(&self.root, &row.path, &output, &file.hash, between) {
             Ok(()) => {}
             Err(NoteFileError::ChangedUnderWrite) => return Outcome::Kept(Keep::FileChanged),
             Err(error) => return Outcome::Failed(format!("the file was not written: {error}")),
@@ -173,6 +195,9 @@ impl Pass {
             content_hash: Some(hash.clone()),
         };
         if let Err(error) = lane.put(note_id, &row.path, stat) {
+            // The file holds the document's body and the row the old hash, so the next pass
+            // reads it as an outside edit and keeps it. The feed (12e-3b) reads it back
+            // `Unchanged` and records the hash; until then the file only waits.
             return Outcome::Failed(format!("the file was written, its row was not: {error}"));
         }
         lane.publish(Applied::Changed {
@@ -184,13 +209,19 @@ impl Pass {
         Outcome::Wrote { hash, version_kept }
     }
 
-    /// Keeps the file a write replaces when its body changes and it is not what this session
-    /// last wrote for the note. True when a version was written. A version that cannot be
-    /// saved does not stop the write: the document holds the replaced text (the row's hash).
-    fn keep_replaced(&self, note_id: &str, raw: &str, hash: &str, output: &str) -> bool {
-        let old_body = split_frontmatter_block(raw).body;
-        if old_body == split_frontmatter_block(output).body {
-            return false;
+    /// Keeps the file a write replaces when the write changes bytes the document does not hold
+    /// ([`replaces_unheld_bytes`]) and the file is not what this session last wrote for the
+    /// note. `Ok(true)` when a version was written. An error stops the write: the replaced
+    /// file is the only copy of those bytes.
+    fn keep_replaced(
+        &self,
+        note_id: &str,
+        raw: &str,
+        hash: &str,
+        output: &str,
+    ) -> Result<bool, String> {
+        if !replaces_unheld_bytes(raw, output) {
+            return Ok(false);
         }
         let ours = self
             .last_written
@@ -199,15 +230,12 @@ impl Pass {
             .get(note_id)
             .is_some_and(|last| last == hash);
         if ours {
-            return false;
+            return Ok(false);
         }
         self.vault
             .write_back()
-            .keep_replaced(note_id, raw, old_body)
-            .inspect_err(|error| {
-                tracing::error!(scope = SCOPE, note_id, "no version was kept: {error}");
-            })
-            .unwrap_or(false)
+            .keep_replaced(note_id, raw, split_frontmatter_block(raw).body)
+            .map_err(|error| error.to_string())
     }
 }
 
@@ -237,6 +265,17 @@ fn file_for(
         output.insert(0, BOM);
     }
     Ok(output)
+}
+
+/// Whether writing `output` over `raw` changes bytes the document does not hold: the body as
+/// the file spells it, or the frontmatter block, which the document holds only the `writing`
+/// data of.
+pub(super) fn replaces_unheld_bytes(raw: &str, output: &str) -> bool {
+    let (old, new) = (
+        split_frontmatter_block(raw),
+        split_frontmatter_block(output),
+    );
+    old.block != new.block || old.body != new.body
 }
 
 fn is_journal(note_id: &str) -> bool {

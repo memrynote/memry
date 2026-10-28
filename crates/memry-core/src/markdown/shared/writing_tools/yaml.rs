@@ -22,18 +22,22 @@ pub fn writing_of_yaml(frontmatter: &YamlValue) -> WritingFrontmatter {
 }
 
 /// Puts the document's writing tools data on `frontmatter.writing`, removing the key when
-/// there is none. True when that changed the map. A key that is the author's own is left
-/// alone, at the cost of not writing ours.
+/// there is none. True when that changed the map. The data is compared, not its spelling: a
+/// key whose data is the document's stays as the author wrote it (`- text: two`, a flow map),
+/// so an unchanged key never re-emits the block. A key that is the author's own is left alone,
+/// at the cost of not writing ours.
 pub fn merge_writing_yaml(frontmatter: &mut YamlMap, writing: &WritingFrontmatter) -> bool {
-    let current = frontmatter.get(WRITING_FRONTMATTER_KEY);
-    if current.is_some_and(|value| ours(value).is_none()) {
+    let held = match frontmatter.get(WRITING_FRONTMATTER_KEY) {
+        None => WritingFrontmatter::default(),
+        Some(value) => match ours(value) {
+            Some(held) => held,
+            None => return false,
+        },
+    };
+    if held == *writing {
         return false;
     }
-    let next = to_writing_frontmatter_value(writing);
-    if current.and_then(yaml_to_json) == next {
-        return false;
-    }
-    match next {
+    match to_writing_frontmatter_value(writing) {
         Some(value) => frontmatter.insert(WRITING_FRONTMATTER_KEY.to_owned(), json_to_yaml(&value)),
         None => {
             frontmatter.remove(WRITING_FRONTMATTER_KEY);
@@ -103,6 +107,14 @@ mod tests {
             writing_of_yaml(&frontmatter("---\nwriting: draft\n---\n")),
             WritingFrontmatter::default()
         );
+    }
+
+    #[test]
+    fn the_same_data_in_another_spelling_is_no_change() {
+        let mut fm = map(
+            "---\nwriting:\n  alternatives:\n    a1:\n      versions:\n        - text: other words\n---\n",
+        );
+        assert!(!merge_writing_yaml(&mut fm, &some_writing()));
     }
 
     #[test]

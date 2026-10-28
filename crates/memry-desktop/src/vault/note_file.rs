@@ -193,7 +193,8 @@ pub fn write_note_checked(
 /// Replaces the note at `rel`, read with hash `read_hash`, with `output`. Right before the
 /// rename the file is hashed again: a file that changed, moved or went since that read is not
 /// written over ([`NoteFileError::ChangedUnderWrite`]), so an edit that lands while the write
-/// runs is kept. The window left is the rename itself.
+/// runs is kept. Its folder is never created, so a folder moved away meanwhile does not come
+/// back. The window left is the rename itself.
 pub fn write_note_over(
     vault: &Path,
     rel: &str,
@@ -214,22 +215,22 @@ pub fn write_note_over_checked(
     between: &mut dyn FnMut(),
 ) -> Result<(), NoteFileError> {
     let (path, aimed_at) = target(vault, rel)?;
-    let mut changed = false;
+    let unchanged = || hash_file(vault, rel).is_ok_and(|now| now.as_deref() == Some(read_hash));
     let mut contained = still_contained(vault, rel, &path, aimed_at, between);
     let mut check = || {
         contained()?;
-        let now = hash_file(vault, rel).map_err(std::io::Error::other)?;
-        if now.as_deref() != Some(read_hash) {
-            changed = true;
+        if !unchanged() {
             return Err(std::io::Error::other("the file changed under the write"));
         }
         Ok(())
     };
     let written =
-        fs_atomic::atomic_write_checked(&path, output.as_bytes(), &default_delays(), &mut check);
+        fs_atomic::atomic_replace_checked(&path, output.as_bytes(), &default_delays(), &mut check);
     match written {
         Ok(()) => Ok(()),
-        Err(_) if changed => Err(NoteFileError::ChangedUnderWrite),
+        // Whatever stopped it (the check, a folder that went), a file that is not the one read
+        // is the reason.
+        Err(_) if !unchanged() => Err(NoteFileError::ChangedUnderWrite),
         Err(error) => Err(error.into()),
     }
 }

@@ -11,19 +11,28 @@
 //!   bytes hash to its row's hash, which names a whole file the document holds
 //!   (`vault::consumer`). A row without a hash, a file whose hash differs (an outside edit
 //!   not fed yet), and a file that changes, moves or goes between that read and the write
-//!   ([`crate::vault::note_file::write_note_over`]) are kept as they are. The row check, the
-//!   write and the row record run under the rows' lane, so no feed lands in between.
+//!   ([`crate::vault::note_file::write_note_over`], which never creates a folder) are kept as
+//!   they are. The row check, the write and the row record run under the rows' lane, so no
+//!   feed lands in between; the lane is held for the whole pass (one note's replay, serialize
+//!   and write, about 20 ms at 12 KB), which is what the consumer waits at most.
 //! - **No file is written while it is ahead of the document, or while the document is not the
 //!   note's body**: the owed-file-body marker (an owed or a refused feed) and an unpulled
 //!   server body keep the file ([`memry_core::domain::write_back`]).
 //! - **Fail closed.** A body whose write would lose content (a node the schema cannot build,
 //!   an element the read drops, a mark or attribute a newer build wrote), or that does not
 //!   serialize, is not written.
-//! - **Unedited bytes stay.** A body that serializes to the bytes on disk is no write: no
-//!   mtime change, no watcher event. A write keeps the frontmatter block byte for byte unless
-//!   the `writing` data changed, the line ends of the file, and its byte order mark.
-//! - **A replaced body is kept.** Before a write changes a body that is not the one this
-//!   session's write-back last wrote for the note, the whole file is kept as a version.
+//! - **The document holds the content, not every byte.** A row's hash says the document holds
+//!   the file's body text and its `writing` data, not how the file spells them: the frontmatter
+//!   block, the YAML spelling of the `writing` data, line ends, final newlines, the byte order
+//!   mark. So a pass writes only when the document's content differs from the file's (the
+//!   text after line-end normalization, the parsed `writing` data); an untouched note is no
+//!   write, no mtime change, no watcher event. A write keeps those bytes where it can: the
+//!   block byte for byte unless the `writing` data changed, the byte order mark, the file's
+//!   line ends for the lines it writes.
+//! - **Bytes a write does change and the document does not hold are kept first.** Before a
+//!   write changes the frontmatter block or the body's bytes, the whole file is kept as a
+//!   version, unless it is what this session's write-back last wrote for the note. A version
+//!   that cannot be saved stops the write: the file is the only copy of those bytes.
 //! - **The app's write is not an outside edit.** The pass tells the own-write record
 //!   ([`crate::vault::watch::EchoGuard`]) before it writes, records the row with the new hash,
 //!   then publishes `Applied::Changed` with `ChangeSource::App`, under the lane.

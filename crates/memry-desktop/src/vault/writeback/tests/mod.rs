@@ -118,9 +118,13 @@ impl Fixture {
 
     /// The row the consumer or the app records for the note's file.
     pub(super) fn record(&self, id: &str, rel: &str, hash: Option<String>) {
+        self.record_as(id, rel, FileType::Markdown, hash);
+    }
+
+    pub(super) fn record_as(&self, id: &str, rel: &str, file_type: FileType, hash: Option<String>) {
         let size = std::fs::metadata(self.root.join(rel)).map_or(0, |m| m.len());
         let stat = RowStat {
-            file_type: FileType::Markdown,
+            file_type,
             size,
             content_hash: hash,
         };
@@ -201,6 +205,16 @@ impl Fixture {
             .db_handle()
             .call_blocking(move |conn| {
                 conn.execute(sql, [id]).unwrap();
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    pub(super) fn exec(&self, sql: &'static str) {
+        self.vault
+            .db_handle()
+            .call_blocking(move |conn| {
+                conn.execute_batch(sql).unwrap();
                 Ok(())
             })
             .unwrap();
