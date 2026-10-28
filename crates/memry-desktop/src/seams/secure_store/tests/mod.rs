@@ -14,6 +14,12 @@ mod outage;
 use fake::{Gate, Mode, rig, rig_with};
 
 const SECRET: &[u8] = b"super-secret-bytes-0123456789abc";
+/// This app's own keychain service.
+const OWN: &str = "com.memrynote.memry";
+/// Electron's service: read only by the Step 37 import, never through this store.
+const ELECTRON: &str = "com.memry.sync";
+/// The base64 text of the bytes 0..32, as Electron and this store write a key.
+const KEY_TEXT: &[u8] = b"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
 
 fn no_storage() -> Error {
     Error::NoStorageAccess("denied".into())
@@ -22,17 +28,14 @@ fn no_storage() -> Error {
 #[test]
 fn an_oversized_stored_value_is_failed_not_decoded() {
     let rig = rig();
-    rig.fake.put(
-        "com.memry.sync",
-        "master-key",
-        &vec![b'A'; MAX_STORED_TEXT + 4],
-    );
+    rig.fake
+        .put(OWN, "master-key", &vec![b'A'; MAX_STORED_TEXT + 4]);
     let Err(SecureStoreError::Failed { what }) = rig.store.get(SecureStoreKey::MasterKey) else {
         panic!("an oversized value is Failed");
     };
     assert!(what.contains("too long"));
     rig.fake
-        .put("com.memry.sync", "master-key", &vec![b'A'; MAX_STORED_TEXT]);
+        .put(OWN, "master-key", &vec![b'A'; MAX_STORED_TEXT]);
     assert!(rig.store.get(SecureStoreKey::MasterKey).is_ok());
 }
 
@@ -42,7 +45,7 @@ fn the_deadline_is_five_seconds() {
 }
 
 #[test]
-fn keys_round_trip_as_base64_text_under_the_keytar_accounts() {
+fn keys_round_trip_as_base64_text_under_electron_s_account_names() {
     let rig = rig_with(Some("e2e-x"), Duration::from_secs(5), false);
     for (key, account) in [
         (SecureStoreKey::MasterKey, "master-key-e2e-x"),
@@ -53,7 +56,7 @@ fn keys_round_trip_as_base64_text_under_the_keytar_accounts() {
         for value in [vec![7_u8; 32], (0..64_u8).collect::<Vec<_>>()] {
             rig.store.set(key, value.clone()).unwrap();
             assert_eq!(rig.store.get(key).unwrap(), Some(value.clone()));
-            let stored = rig.fake.stored("com.memry.sync", account).unwrap();
+            let stored = rig.fake.stored(OWN, account).unwrap();
             assert_eq!(stored, STANDARD.encode(&value).into_bytes());
         }
     }
@@ -62,8 +65,7 @@ fn keys_round_trip_as_base64_text_under_the_keytar_accounts() {
 #[test]
 fn the_device_key_is_refused_and_electron_s_item_is_never_touched() {
     let rig = rig();
-    rig.fake
-        .put("com.memry.sync", "device-signing-key", b"electron");
+    rig.fake.put(ELECTRON, "device-signing-key", b"electron");
     let denied =
         |r: Result<(), SecureStoreError>| matches!(r, Err(SecureStoreError::Denied { .. }));
     assert!(matches!(
@@ -76,19 +78,15 @@ fn the_device_key_is_refused_and_electron_s_item_is_never_touched() {
     assert!(denied(rig.store.delete(SecureStoreKey::DeviceSigningKey)));
     rig.store.clear().unwrap();
     assert_eq!(
-        rig.fake.stored("com.memry.sync", "device-signing-key"),
+        rig.fake.stored(ELECTRON, "device-signing-key"),
         Some(b"electron".to_vec())
     );
 }
 
 #[test]
-fn an_item_electron_stored_reads_back_as_its_bytes() {
+fn a_stored_base64_text_reads_back_as_its_bytes() {
     let rig = rig();
-    rig.fake.put(
-        "com.memry.sync",
-        "master-key",
-        b"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
-    );
+    rig.fake.put(OWN, "master-key", KEY_TEXT);
     let expected: Vec<u8> = (0..32).collect();
     assert_eq!(
         rig.store.get(SecureStoreKey::MasterKey).unwrap(),
@@ -97,49 +95,39 @@ fn an_item_electron_stored_reads_back_as_its_bytes() {
 }
 
 #[test]
+fn electron_s_items_are_never_read_written_or_deleted() {
+    // Electron moves every `com.memry.sync` item into its own file and deletes the keychain
+    // copy, so a secret this app kept there could vanish under it or be taken over by it.
+    let rig = rig();
+    for key in STORE_KEYS {
+        rig.fake.put(ELECTRON, &account(key, None), KEY_TEXT);
+    }
+    for key in STORE_KEYS {
+        assert_eq!(rig.store.get(key).unwrap(), None, "{key:?}");
+    }
+    rig.store
+        .set(SecureStoreKey::MasterKey, vec![5; 32])
+        .unwrap();
+    assert_eq!(
+        rig.fake.stored(OWN, "master-key"),
+        Some(STANDARD.encode([5; 32]).into_bytes())
+    );
+    rig.store.delete(SecureStoreKey::MasterKey).unwrap();
+    rig.store.clear().unwrap();
+    for key in STORE_KEYS {
+        assert_eq!(
+            rig.fake.stored(ELECTRON, &account(key, None)),
+            Some(KEY_TEXT.to_vec()),
+            "{key:?}"
+        );
+    }
+}
+
+#[test]
 fn an_absent_entry_is_none_and_deleting_it_is_fine() {
     let rig = rig();
     assert_eq!(rig.store.get(SecureStoreKey::MasterKey).unwrap(), None);
     rig.store.delete(SecureStoreKey::MasterKey).unwrap();
-}
-
-fn put_keytar(rig: &fake::Rig, account: &str, value: &[u8]) {
-    rig.keytar.lock().unwrap().insert(
-        ("com.memry.sync".to_owned(), account.to_owned()),
-        value.to_vec(),
-    );
-}
-
-const KEYTAR_TEXT: &[u8] = b"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
-
-#[test]
-fn a_deleted_secret_does_not_come_back_through_the_keytar_fallback() {
-    // Linux: the store deletes the item it finds by `username`, and keytar's item (`account`)
-    // used to survive, so the next read found it and a signed-out token came back.
-    let rig = rig();
-    put_keytar(&rig, "master-key", KEYTAR_TEXT);
-    assert!(rig.store.get(SecureStoreKey::MasterKey).unwrap().is_some());
-    rig.store.delete(SecureStoreKey::MasterKey).unwrap();
-    assert_eq!(rig.store.get(SecureStoreKey::MasterKey).unwrap(), None);
-
-    put_keytar(&rig, "access-token", KEYTAR_TEXT);
-    rig.store.clear().unwrap();
-    assert_eq!(rig.store.get(SecureStoreKey::AccessToken).unwrap(), None);
-}
-
-#[test]
-fn a_write_replaces_the_item_keytar_wrote() {
-    let rig = rig();
-    put_keytar(&rig, "master-key", KEYTAR_TEXT);
-    rig.store
-        .set(SecureStoreKey::MasterKey, vec![5; 32])
-        .unwrap();
-    assert!(
-        rig.keytar.lock().unwrap().is_empty(),
-        "the stale item stays"
-    );
-    rig.store.delete(SecureStoreKey::MasterKey).unwrap();
-    assert_eq!(rig.store.get(SecureStoreKey::MasterKey).unwrap(), None);
 }
 
 #[test]
@@ -224,14 +212,12 @@ fn a_store_that_fails_to_build_is_locked_and_is_built_again_on_the_next_call() {
 #[test]
 fn a_malformed_value_or_a_refused_write_is_failed_and_names_no_secret() {
     let rig = rig();
-    rig.fake
-        .put("com.memry.sync", "master-key", b"not base64 !!");
+    rig.fake.put(OWN, "master-key", b"not base64 !!");
     let Err(SecureStoreError::Failed { what }) = rig.store.get(SecureStoreKey::MasterKey) else {
         panic!("a malformed value is Failed");
     };
     assert!(!what.contains("not base64"));
-    rig.fake
-        .put("com.memry.sync", "master-key", &[0xff, 0xfe, 0xfd]);
+    rig.fake.put(OWN, "master-key", &[0xff, 0xfe, 0xfd]);
     assert!(matches!(
         rig.store.get(SecureStoreKey::MasterKey),
         Err(SecureStoreError::Failed { .. })
@@ -267,7 +253,7 @@ fn the_windows_target_names_service_and_account_for_every_service() {
     assert_eq!(
         targets,
         [
-            Some("com.memry.sync/master-key".to_owned()),
+            Some("com.memrynote.memry/master-key".to_owned()),
             Some("com.memrynote.memry.test/ai-key".to_owned())
         ]
     );
@@ -434,7 +420,7 @@ fn a_write_queued_behind_a_stuck_call_is_dropped_when_its_caller_gave_up() {
     });
     rig.fake.set_mode(Mode::Normal);
     assert_eq!(rig.store.get(SecureStoreKey::AccessToken).unwrap(), None);
-    assert_eq!(rig.fake.stored("com.memry.sync", "access-token"), None);
+    assert_eq!(rig.fake.stored(OWN, "access-token"), None);
 }
 
 #[test]

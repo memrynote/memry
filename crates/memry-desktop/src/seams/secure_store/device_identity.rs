@@ -9,7 +9,7 @@
 //! written so far naming a device that no longer exists, so this store moves the key and never
 //! mints over one that may exist.
 //!
-//! **Namespace.** The key lives under [`IDENTITY_SERVICE`] (raw bytes), not Electron's
+//! **Namespace.** The key lives under [`SERVICE`] (raw bytes), not Electron's
 //! `com.memry.sync/device-signing-key`. Electron moves that item into its own encrypted file
 //! (`secure-secrets.json`) and deletes it, and reads it back when the file is unreadable, so a key
 //! shared there could be deleted under this app or taken over by an Electron run. A profile that
@@ -64,7 +64,7 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use zeroize::Zeroizing;
 
 use super::worker::Op;
-use super::{IDENTITY_SERVICE, KeyringStore};
+use super::{KeyringStore, SERVICE};
 use crate::vault::fs_atomic::atomic_write;
 
 const DSK: SecureStoreKey = SecureStoreKey::DeviceSigningKey;
@@ -164,7 +164,7 @@ impl DeviceIdentityStore {
 
     fn keychain_get(&self) -> Result<Option<Key>, SecureStoreError> {
         self.keyring
-            .raw(IDENTITY_SERVICE, &self.account, Op::Get)?
+            .raw(SERVICE, &self.account, Op::Get)?
             .map(|key| checked(key.to_vec(), "keychain"))
             .transpose()
     }
@@ -172,7 +172,7 @@ impl DeviceIdentityStore {
     fn keychain_set(&self, key: &[u8]) -> Result<(), SecureStoreError> {
         self.keyring
             .raw(
-                IDENTITY_SERVICE,
+                SERVICE,
                 &self.account,
                 Op::Set(Zeroizing::new(key.to_vec())),
             )
@@ -181,7 +181,7 @@ impl DeviceIdentityStore {
 
     fn keychain_delete(&self) -> Result<(), SecureStoreError> {
         self.keyring
-            .raw(IDENTITY_SERVICE, &self.account, Op::Delete)
+            .raw(SERVICE, &self.account, Op::Delete)
             .map(|_| ())
     }
 
