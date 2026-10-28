@@ -13,7 +13,7 @@
 // again as `winvm.sh` does (same port, its pid in the state dir, so `untunnel` still closes it)
 // and starts a new session, and fails only when the app is no longer the process it was.
 import { execFileSync, spawn } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve, win32 } from 'node:path'
 
@@ -81,7 +81,13 @@ export default async function run(): Promise<void> {
   /** `winvm.sh`'s `tunnel`, which is not a command of its own: reopens it when its ssh died. */
   function tunnel(): void {
     const file = join(STATE, 'tunnel')
-    if (existsSync(file) && alive(Number(readFileSync(file, 'utf8').trim()))) return
+    let running = 0
+    try {
+      running = Number(readFileSync(file, 'utf8').trim())
+    } catch {
+      // No tunnel was recorded.
+    }
+    if (running > 0 && alive(running)) return
     const ip = readFileSync(join(STATE, 'ip'), 'utf8').trim()
     const key = process.env.WINVM_KEY ?? join(homedir(), '.ssh', 'id_ed25519')
     const user = process.env.MEMRY_WINVM_USER ?? 'agent'
