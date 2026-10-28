@@ -88,7 +88,11 @@ project or sending product feedback.
 
 ### Startup
 
-**Launch at Login** auto-starts memrynote when you log in.
+**Launch at Login** auto-starts memrynote when you log in. Turning it on or off registers or removes one login item, and an item an older version of memrynote created is replaced, never duplicated:
+
+- On **macOS** it is a login item you can see under System Settings → General → Login Items.
+- On **Windows** it is one value named `MemryNote` under the current user's `Run` key.
+- On **Linux** it is a `MemryNote.desktop` file in `~/.config/autostart`. Other files in that folder are left alone.
 
 ### Updates
 
@@ -153,6 +157,16 @@ Platform differences:
 - On **Linux** the icon appears in the system tray if your desktop provides one. Use its menu, since click handling varies between desktops. A session with no system tray leaves the setting without effect and the window closes as usual, so the app can never end up hidden with no way to bring it back.
 
 The setting syncs across your devices.
+
+### System Notifications
+
+memrynote shows reminders and a few alerts as system notifications. Clicking one brings the main window forward.
+
+- On **macOS** the system asks for permission the first time. If you said no, turn **MemryNote** on in System Settings → Notifications.
+- On **Windows** the name and icon on the notification come from the app's Start Menu shortcut, which the installer creates. A copy of the program run without that shortcut shows no notification, or one headed by a raw identifier instead of MemryNote.
+- On **Linux** a notification service has to be running (a desktop shell such as GNOME or KDE Plasma provides one, and so do `xfce4-notifyd` and `dunst`). Without one nothing is shown. Some services, such as the XFCE one, show the click as a small button on the notification instead of making the whole notification clickable.
+
+**Send test** in the reminder settings fires one right away to check all of this.
 
 ### Sticky
 
@@ -424,6 +438,8 @@ Zoom is the one Appearance setting that does **not** sync to your other devices,
 Set a system-wide hotkey that opens quick capture from any app. No extra system permission is needed, including Accessibility on macOS.
 
 Until you set one, the built-in hotkey `Cmd`/`Ctrl` + `Shift` + `Space` opens quick capture. memrynote releases it once your own hotkey registers.
+
+On **Linux with a Wayland session** the desktop gives apps no way to register a system-wide hotkey, so Global Capture cannot be set there: every combination is refused with "can't be used as a global shortcut", and nothing else changes. Under X11 the hotkey works as on the other systems. To check which session you have, run `echo $XDG_SESSION_TYPE`.
 
 If another app already holds the combination you press, the Global Capture row says so, nothing is saved, and your previous hotkey keeps working. The row also tells you when another app holds the built-in hotkey at launch, or when a saved hotkey cannot be used as a global shortcut. macOS does not report conflicts with other apps, so on a Mac a conflicting hotkey can register and still fire in the other app.
 
