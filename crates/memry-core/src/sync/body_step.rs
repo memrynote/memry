@@ -67,21 +67,9 @@ async fn pull_one(
     let doc = doc_id.to_owned();
     match body_pull.pull_with(doc_id, probed).await {
         Ok(pulled) => {
-            // Settled only when the pull reached the server's head and
-            // stored everything; a stop is backed off; a pull that only
-            // yielded at the page cap made progress and stays owed as is.
-            let merged = pulled.merged();
-            let stopped = !pulled.stopped.is_empty();
-            db.call(move |conn| {
-                if merged {
-                    body_debt::settle(conn, &doc)
-                } else if stopped {
-                    body_debt::owe_after_failure(conn, &doc)
-                } else {
-                    body_debt::owe(conn, &doc)
-                }
-            })
-            .await?;
+            let outcome = pulled.clone();
+            db.call(move |conn| body_debt::after_pull(conn, &doc, &outcome))
+                .await?;
             total.requests += pulled.requests.max(1);
             total.absorb(BodyPullReport {
                 requests: 0,

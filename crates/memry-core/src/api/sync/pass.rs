@@ -71,11 +71,12 @@ impl From<PullError> for SyncError {
     }
 }
 
-/// One lock per vault, shared by every `VaultSync` the shell mints for it.
+/// One lock per vault, shared by every `VaultSync` the shell mints for it, and
+/// held by a pass and by a first sync alike.
 static PASS_GATES: LazyLock<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-fn pass_gate(vault_id: &str) -> Arc<tokio::sync::Mutex<()>> {
+pub(super) fn pass_gate(vault_id: &str) -> Arc<tokio::sync::Mutex<()>> {
     // A poisoned map only means another thread panicked while inserting; the
     // map itself is still a valid set of locks.
     let mut gates = PASS_GATES
