@@ -12,6 +12,25 @@ interface Staged {
   path: string
 }
 
+/**
+ * What an OS file drop hands the page: `File` objects with no path (WebKit on macOS, WebView2),
+ * or the files' `file://` URIs (WebKitGTK gives a file drag no `File` objects).
+ */
+export type DroppedFiles = { files: File[] } | { uris: string[] }
+
+/** The file name a `file://` URI ends in, decoded. */
+export function uriFileName(uri: string): string {
+  try {
+    return decodeURIComponent(new URL(uri).pathname.split('/').pop() ?? '')
+  } catch {
+    return ''
+  }
+}
+
+export function droppedNames(dropped: DroppedFiles): string[] {
+  return 'files' in dropped ? dropped.files.map((file) => file.name) : dropped.uris.map(uriFileName)
+}
+
 /** Streams `file` into the shell's staging area and returns where it landed. */
 async function stage(file: File): Promise<Staged> {
   const id = await commands.dropStageBegin(file.name, file.size)
@@ -38,18 +57,19 @@ async function release(ids: string[]): Promise<void> {
 }
 
 /**
- * Runs `run` with the absolute paths of copies of the dropped files (the webview hands a drop to
- * the page as `File` objects with no path), and deletes the copies when `run` settles. The
- * drop is all or nothing: if one file cannot be staged, the ones already staged are released and
- * the error is thrown.
+ * Runs `run` with the absolute paths of copies of the dropped files, and deletes the copies when
+ * `run` settles. `File` objects are streamed into the shell; URIs are copied by the shell, which
+ * takes only files of the OS drag it saw. The drop is all or nothing: if one file cannot be
+ * staged, the ones already staged are released and the error is thrown.
  */
 export async function withStagedFiles<T>(
-  files: File[],
+  dropped: DroppedFiles,
   run: (paths: string[]) => Promise<T>
 ): Promise<T> {
   const staged: Staged[] = []
   try {
-    for (const file of files) staged.push(await stage(file))
+    if ('uris' in dropped) staged.push(...(await commands.dropStageOsFiles(dropped.uris)))
+    else for (const file of dropped.files) staged.push(await stage(file))
     return await run(staged.map((entry) => entry.path))
   } finally {
     await release(staged.map((entry) => entry.id))

@@ -1,12 +1,13 @@
 //! Files dropped from the OS arrive as DOM `File` objects with no path. The renderer streams
 //! each one here in chunks, imports the staged path, and releases it (`shell/drop_stage.rs`).
+//! WebKitGTK hands the page `file://` URIs instead; `drop_stage_os_files` stages those.
 
 use std::sync::Arc;
 
 use memry_desktop::shell::drop_stage::DropStaging;
-use serde::Deserialize;
-use tauri::ipc::Request;
+use serde::{Deserialize, Serialize};
 use tauri::State;
+use tauri::ipc::Request;
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
@@ -56,6 +57,34 @@ pub async fn drop_stage_release(
         staging.release(&ids).map_err(|error| {
             CommandError::new(ErrorKind::Storage, "drop_release", error.to_string())
         })
+    })
+    .await
+}
+
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct StagedDrop {
+    pub id: String,
+    pub path: String,
+}
+
+/// Stages copies of files the page received as `file://` URIs. Only files of the OS drag the
+/// shell recorded are staged (`os_drag.rs` in memry-desktop); all or nothing.
+#[tauri::command]
+#[specta::specta]
+pub async fn drop_stage_os_files(
+    staging: Staging<'_>,
+    uris: Vec<String>,
+) -> Result<Vec<StagedDrop>, CommandError> {
+    let staging = Arc::clone(&staging);
+    blocking("drop_stage_os_files", move || {
+        let staged = staging.stage_os_drop(&uris).map_err(stage_error)?;
+        Ok(staged
+            .into_iter()
+            .map(|(id, path)| StagedDrop {
+                id,
+                path: path.to_string_lossy().into_owned(),
+            })
+            .collect())
     })
     .await
 }

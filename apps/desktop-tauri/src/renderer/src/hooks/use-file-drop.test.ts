@@ -26,26 +26,34 @@ const named = (...names: string[]): File[] => names.map((name) => new File(['x']
 describe('extractValidFiles', () => {
   it('keeps supported files, whatever the case of the extension', () => {
     const files = named('note.md', 'doc.pdf', 'SCAN.PDF', 'photo.jpg')
-    const result = extractValidFiles(files)
-    expect(result.validFiles).toEqual(files)
+    const result = extractValidFiles({ files })
+    expect(result.valid).toEqual({ files })
     expect(result.skippedCount).toBe(0)
   })
 
   it('skips an unsupported extension, a file with none, and an empty name', () => {
-    const result = extractValidFiles(named('photo.exe', 'Makefile', ''))
-    expect(result.validFiles).toEqual([])
+    const result = extractValidFiles({ files: named('photo.exe', 'Makefile', '') })
+    expect(result.valid).toEqual({ files: [] })
     expect(result.skippedCount).toBe(3)
   })
 
   it('partitions a mixed batch and keeps the order of the supported files', () => {
     const [readme, photo] = named('readme.md', 'photo.jpg')
-    const result = extractValidFiles([readme, ...named('script.exe'), photo])
-    expect(result.validFiles).toEqual([readme, photo])
+    const result = extractValidFiles({ files: [readme, ...named('script.exe'), photo] })
+    expect(result.valid).toEqual({ files: [readme, photo] })
     expect(result.skippedCount).toBe(1)
+  })
+
+  it('judges a URI by the decoded file name it ends in', () => {
+    const result = extractValidFiles({
+      uris: ['file:///home/u/My%20Scan.PDF', 'file:///home/u/tool.exe', 'file:///home/u/']
+    })
+    expect(result.valid).toEqual({ uris: ['file:///home/u/My%20Scan.PDF'] })
+    expect(result.skippedCount).toBe(2)
   })
 })
 
-function dragEvent(files: File[], types = ['Files'], target?: EventTarget) {
+function dragEvent(files: File[], types = ['Files'], target?: EventTarget, uriList = '') {
   return {
     preventDefault: vi.fn(),
     stopPropagation: vi.fn(),
@@ -53,10 +61,15 @@ function dragEvent(files: File[], types = ['Files'], target?: EventTarget) {
     dataTransfer: {
       types,
       dropEffect: 'none',
-      files: Object.assign(files, { item: (index: number) => files[index] ?? null })
+      files: Object.assign(files, { item: (index: number) => files[index] ?? null }),
+      getData: (type: string) => (type === 'text/uri-list' ? uriList : '')
     }
   } as unknown as React.DragEvent
 }
+
+/** WebKitGTK's form of an OS file drag: a URI list and HTML, no `File` objects. */
+const gtkDrag = (uriList: string, target?: EventTarget) =>
+  dragEvent([], ['text/uri-list', 'text/html'], target, uriList)
 
 /** Sidebar shape: a root zone holding a folder row that holds a label span. */
 function sidebarDom(folder: string) {
@@ -133,7 +146,7 @@ describe('useFileDrop', () => {
     await act(async () => {
       result.current.dropHandlers.onDrop(drop)
     })
-    expect(onDrop).toHaveBeenCalledWith([note], '')
+    expect(onDrop).toHaveBeenCalledWith({ files: [note] }, '')
   })
 
   it('imports into the folder under the pointer, not into the vault root', async () => {
@@ -149,7 +162,7 @@ describe('useFileDrop', () => {
     })
 
     // #then — vault-relative, exactly the shape `importFiles` takes
-    expect(onDrop).toHaveBeenCalledWith([pdf], 'projects')
+    expect(onDrop).toHaveBeenCalledWith({ files: [pdf] }, 'projects')
   })
 
   it('reports the hovered folder while dragging and forgets it when the drag stops', () => {
@@ -185,7 +198,7 @@ describe('useFileDrop', () => {
     })
 
     // #then — selection is irrelevant; empty space means root
-    expect(onDrop).toHaveBeenCalledWith([pdf], '')
+    expect(onDrop).toHaveBeenCalledWith({ files: [pdf] }, '')
   })
 
   it('ignores non-file drops and drops with nothing the app imports', async () => {
@@ -199,5 +212,43 @@ describe('useFileDrop', () => {
       result.current.dropHandlers.onDrop(dragEvent([new File(['bin'], 'app.exe')]))
     })
     expect(onDrop).not.toHaveBeenCalled()
+  })
+
+  it('takes a WebKitGTK file drag by its file URIs, into the folder under the pointer', async () => {
+    // #given
+    vi.useFakeTimers()
+    const onDrop = vi.fn()
+    const { label } = sidebarDom('projects')
+    const { result } = renderHook(() => useFileDrop({ onDrop }))
+    const uris = 'file:///home/u/My%20Note.md\r\n# comment\r\nfile:///home/u/app.exe\r\n'
+
+    // #when — the list is unreadable while dragging, so the zone lights up on its type
+    const over = gtkDrag('', label)
+    act(() => {
+      result.current.dropHandlers.onDragOver(over)
+    })
+    expect(over.preventDefault).toHaveBeenCalled()
+    expect(result.current.dropFolder).toBe('projects')
+    const drop = gtkDrag(uris, label)
+    await act(async () => {
+      result.current.dropHandlers.onDrop(drop)
+    })
+
+    // #then
+    expect(drop.preventDefault).toHaveBeenCalled()
+    expect(onDrop).toHaveBeenCalledWith({ uris: ['file:///home/u/My%20Note.md'] }, 'projects')
+  })
+
+  it('leaves a dropped web link unclaimed, for the guard to open in the browser', async () => {
+    const onDrop = vi.fn()
+    const { result } = renderHook(() => useFileDrop({ onDrop }))
+
+    const drop = gtkDrag('https://example.org/page\r\n')
+    await act(async () => {
+      result.current.dropHandlers.onDrop(drop)
+    })
+
+    expect(onDrop).not.toHaveBeenCalled()
+    expect(drop.preventDefault).not.toHaveBeenCalled()
   })
 })

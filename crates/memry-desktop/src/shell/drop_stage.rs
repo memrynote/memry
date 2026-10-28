@@ -6,8 +6,11 @@
 //! Layout: `<root>/<id>/<sanitized name>`, where `id` is 32 lowercase hex characters. Only ids
 //! this service issued name a directory (a caller cannot reach outside `root` through `release`),
 //! and files are written strictly in order, so a chunk can neither overwrite nor skip bytes.
+//! A drop that reaches the page as `file://` URIs instead is staged from the files themselves
+//! (`os_drag.rs`).
 
 mod name;
+mod os_drag;
 
 use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
@@ -19,6 +22,7 @@ use std::time::{Duration, Instant, SystemTime};
 use uuid::Uuid;
 
 pub use name::sanitize_file_name;
+pub use os_drag::file_uri_path;
 
 /// A staged file larger than this is refused at `begin`.
 pub const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
@@ -44,6 +48,10 @@ pub enum StageError {
     Overrun,
     #[error("the file is not complete")]
     Incomplete,
+    #[error("the file was not dropped on the window")]
+    NotDropped,
+    #[error("the dropped item is not a file")]
+    NotAFile,
     #[error("{0}")]
     Io(#[from] io::Error),
 }
@@ -60,6 +68,8 @@ struct Transfer {
 pub struct DropStaging {
     root: PathBuf,
     open: Mutex<HashMap<String, Arc<Mutex<Transfer>>>>,
+    /// The files of the OS drag last offered to a window (`os_drag.rs`).
+    os_drag: Mutex<Vec<PathBuf>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -68,7 +78,10 @@ fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 
 /// Whether `id` has the shape of one this service issues.
 fn is_stage_id(id: &str) -> bool {
-    id.len() == 32 && id.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    id.len() == 32
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
 impl DropStaging {
@@ -76,6 +89,7 @@ impl DropStaging {
         Self {
             root,
             open: Mutex::new(HashMap::new()),
+            os_drag: Mutex::new(Vec::new()),
         }
     }
 

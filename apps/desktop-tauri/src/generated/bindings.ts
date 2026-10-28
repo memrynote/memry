@@ -12,6 +12,11 @@ export const commands = {
 	dropStageBegin: (name: string, size: number) => __TAURI_INVOKE<string>("drop_stage_begin", { name, size }),
 	/**  Closes a staged copy once every byte arrived and returns its absolute path. */
 	dropStageFinish: (id: string) => __TAURI_INVOKE<string>("drop_stage_finish", { id }),
+	/**
+	 *  Stages copies of files the page received as `file://` URIs. Only files of the OS drag the
+	 *  shell recorded are staged (`os_drag.rs` in memry-desktop); all or nothing.
+	 */
+	dropStageOsFiles: (uris: string[]) => __TAURI_INVOKE<StagedDrop[]>("drop_stage_os_files", { uris }),
 	/**  Deletes staged copies after their import settled. */
 	dropStageRelease: (ids: string[]) => __TAURI_INVOKE<null>("drop_stage_release", { ids }),
 	/**  Beta feedback, anonymous or with the account's token (Step 19, #3536, adds the bearer). */
@@ -463,6 +468,11 @@ export type SpellResult = {
 	available: boolean,
 	misspelled: boolean,
 	suggestions: string[],
+};
+
+export type StagedDrop = {
+	id: string,
+	path: string,
 };
 
 /**

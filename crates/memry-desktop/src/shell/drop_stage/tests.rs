@@ -61,7 +61,9 @@ fn a_chunk_past_the_declared_size_is_refused() {
         Err(StageError::Overrun)
     ));
     assert!(matches!(
-        staging.write_chunk(&id, 0, &[0u8; 2]).and_then(|()| staging.write_chunk(&id, 2, b"xy")),
+        staging
+            .write_chunk(&id, 0, &[0u8; 2])
+            .and_then(|()| staging.write_chunk(&id, 2, b"xy")),
         Err(StageError::Overrun)
     ));
 }
@@ -85,7 +87,9 @@ fn a_file_over_the_cap_is_refused_before_anything_is_created() {
         Err(StageError::TooLarge)
     ));
     assert!(!staging.root().exists());
-    staging.begin("edge.bin", MAX_FILE_BYTES).expect("the cap itself");
+    staging
+        .begin("edge.bin", MAX_FILE_BYTES)
+        .expect("the cap itself");
 }
 
 #[test]
@@ -170,10 +174,18 @@ fn sweep_removes_only_directories_older_than_the_limit() {
 
     let later = SystemTime::now() + Duration::from_secs(2 * 24 * 60 * 60);
     assert_eq!(staging.sweep(later, STALE_AFTER).expect("sweep"), 2);
-    assert!(staging.root().join("loose-file").exists(), "only directories go");
+    assert!(
+        staging.root().join("loose-file").exists(),
+        "only directories go"
+    );
 
     let (kept, _) = stage(&staging, "kept.txt", b"k");
-    assert_eq!(staging.sweep(SystemTime::now(), STALE_AFTER).expect("sweep"), 0);
+    assert_eq!(
+        staging
+            .sweep(SystemTime::now(), STALE_AFTER)
+            .expect("sweep"),
+        0
+    );
     assert!(staging.root().join(&kept).exists());
     assert!(!staging.root().join(&old).exists() && !staging.root().join(&fresh).exists());
 }
@@ -181,7 +193,12 @@ fn sweep_removes_only_directories_older_than_the_limit() {
 #[test]
 fn sweep_of_a_root_that_does_not_exist_is_a_no_op() {
     let (_dir, staging) = staging();
-    assert_eq!(staging.sweep(SystemTime::now(), STALE_AFTER).expect("sweep"), 0);
+    assert_eq!(
+        staging
+            .sweep(SystemTime::now(), STALE_AFTER)
+            .expect("sweep"),
+        0
+    );
 }
 
 #[test]
@@ -221,4 +238,109 @@ fn a_long_name_keeps_its_extension_and_a_char_boundary() {
 
     let huge_extension = sanitize_file_name(&format!("a.{}", "e".repeat(400)));
     assert!(huge_extension.len() <= 200);
+}
+
+fn source(dir: &tempfile::TempDir, name: &str, bytes: &[u8]) -> (PathBuf, String) {
+    let path = dir.path().join(name);
+    fs::write(&path, bytes).expect("write source");
+    let uri = url::Url::from_file_path(&path)
+        .expect("file uri")
+        .to_string();
+    (path, uri)
+}
+
+#[test]
+fn files_of_the_offered_os_drag_stage_as_copies_by_their_uri() {
+    let (dir, staging) = staging();
+    let big: Vec<u8> = (0..3 * 1024 * 1024 + 17).map(|i| (i % 251) as u8).collect();
+    let (note, note_uri) = source(&dir, "my note.md", b"dropped from the file manager");
+    let (_, big_uri) = source(&dir, "scan.pdf", &big);
+    staging.offer_os_drag(&[note_uri.as_str(), "https://example.org/x", big_uri.as_str()]);
+
+    let staged = staging
+        .stage_os_drop(&[note_uri, big_uri])
+        .expect("stage the drop");
+
+    assert_eq!(staged.len(), 2);
+    let (note_id, note_copy) = &staged[0];
+    assert_eq!(note_copy, &staging.root().join(note_id).join("my note.md"));
+    assert_eq!(
+        fs::read(note_copy).expect("read"),
+        b"dropped from the file manager"
+    );
+    assert_eq!(fs::read(&staged[1].1).expect("read"), big);
+    // A copy: the original stays where it was.
+    assert!(note.exists());
+}
+
+#[test]
+fn a_uri_outside_the_offered_drag_stages_nothing() {
+    let (dir, staging) = staging();
+    let (_, dropped) = source(&dir, "dropped.md", b"a");
+    let (_, other) = source(&dir, "secret.md", b"b");
+    staging.offer_os_drag(&[dropped.as_str()]);
+
+    assert!(matches!(
+        staging.stage_os_drop(&[dropped, other]),
+        Err(StageError::NotDropped)
+    ));
+    assert!(fs::read_dir(staging.root()).map_or(true, |mut entries| entries.next().is_none()));
+}
+
+#[test]
+fn an_offered_drag_is_used_up_by_one_drop_and_replaced_by_the_next() {
+    let (dir, staging) = staging();
+    let (_, first) = source(&dir, "first.md", b"1");
+    let (_, second) = source(&dir, "second.md", b"2");
+    staging.offer_os_drag(&[first.as_str()]);
+    staging.offer_os_drag(&[second.as_str()]);
+    assert!(matches!(
+        staging.stage_os_drop(std::slice::from_ref(&first)),
+        Err(StageError::NotDropped)
+    ));
+
+    staging.offer_os_drag(&[second.as_str()]);
+    staging
+        .stage_os_drop(std::slice::from_ref(&second))
+        .expect("first use");
+    assert!(matches!(
+        staging.stage_os_drop(&[second]),
+        Err(StageError::NotDropped)
+    ));
+}
+
+#[test]
+fn a_dropped_folder_is_refused_and_the_copies_before_it_are_released() {
+    let (dir, staging) = staging();
+    let (_, note) = source(&dir, "note.md", b"n");
+    let folder = dir.path().join("photos");
+    fs::create_dir(&folder).expect("folder");
+    let folder_uri = url::Url::from_file_path(&folder).expect("uri").to_string();
+    staging.offer_os_drag(&[note.as_str(), folder_uri.as_str()]);
+
+    let refused = staging.stage_os_drop(&[note, folder_uri]);
+
+    // Unix opens a directory and reads its metadata; Windows refuses to open it.
+    assert!(matches!(
+        refused,
+        Err(StageError::NotAFile | StageError::Io(_))
+    ));
+    assert!(fs::read_dir(staging.root()).map_or(true, |mut entries| entries.next().is_none()));
+}
+
+#[test]
+fn only_local_file_uris_name_a_path() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let path = dir.path().join("a b#c.md");
+    let uri = url::Url::from_file_path(&path).expect("uri").to_string();
+    assert_eq!(file_uri_path(&uri), Some(path));
+    assert_eq!(file_uri_path(&format!("{uri}\r")), file_uri_path(&uri));
+    for other in [
+        "https://example.org/a.md",
+        "memry-file://local/a.md",
+        "not a uri",
+        "",
+    ] {
+        assert_eq!(file_uri_path(other), None, "{other}");
+    }
 }

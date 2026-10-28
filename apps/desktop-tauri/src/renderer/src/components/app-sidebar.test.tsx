@@ -23,7 +23,9 @@ const mocks = vi.hoisted(() => ({
   notesTreeCreateFolder: vi.fn(),
   canvasTreeCreateFolder: vi.fn(),
   fileDrop: {
-    onDrop: null as ((paths: string[], targetFolder: string) => Promise<void> | void) | null
+    onDrop: null as
+      | ((dropped: { files: File[] }, targetFolder: string) => Promise<void> | void)
+      | null
   },
   // Keyless calls collapse to the last key segment; interpolated ones append
   // their values so a test can prove the caller passed them through.
@@ -271,14 +273,15 @@ vi.mock('@/hooks/use-inbox', () => ({
 
 // A drop has no path: the real helper stages each file in the shell and hands the import the copies.
 vi.mock('@/lib/drop-stage', () => ({
-  withStagedFiles: (files: File[], run: (paths: string[]) => Promise<unknown>) =>
-    run(files.map((file) => `/staged/${file.name}`))
+  droppedNames: (dropped: { files: File[] }) => dropped.files.map((file) => file.name),
+  withStagedFiles: (dropped: { files: File[] }, run: (paths: string[]) => Promise<unknown>) =>
+    run(dropped.files.map((file) => `/staged/${file.name}`))
 }))
 
 vi.mock('@/hooks/use-file-drop', () => ({
   FILE_DROP_FOLDER_ATTR: 'data-file-drop-folder',
   useFileDrop: (options: {
-    onDrop: (files: File[], targetFolder: string) => Promise<void> | void
+    onDrop: (dropped: { files: File[] }, targetFolder: string) => Promise<void> | void
   }) => {
     mocks.fileDrop.onDrop = options.onDrop
     return { isDraggingFiles: false, dropFolder: null, dropHandlers: {} }
@@ -365,7 +368,7 @@ function ShellOwner(): null {
   return null
 }
 
-const dropped = (...names: string[]): File[] => names.map((name) => new File(['x'], name))
+const dropped = (...names: string[]) => ({ files: names.map((name) => new File(['x'], name)) })
 
 describe('AppSidebar', () => {
   beforeEach(() => {

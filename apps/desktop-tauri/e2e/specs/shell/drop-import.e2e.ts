@@ -1,13 +1,17 @@
 // Files dropped from the OS (inv09 #1: the webview's own drop handler is off, so a drop reaches the
-// page as DOM `File` objects with no path). The page streams each file into the shell's staging
-// area, the import gets the copies' paths, and the copies are deleted when the import settles.
+// page as DOM `File` objects with no path, or on WebKitGTK as `file://` URIs). The page streams
+// each file into the shell's staging area, or the shell copies a URI the OS drag carried; the
+// import gets the copies' paths, and the copies are deleted when the import settles.
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { appReady } from '../../harness/app-ready'
 import { invokeTest } from '../../harness/invoke-test'
 import { invoke } from '../../harness/vault-commands'
+import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 
 interface AppInfo {
@@ -22,15 +26,11 @@ declare global {
 
 const CHUNK = 4 * 1024 * 1024
 
-test('a dropped file is staged with its bytes for the import, then deleted', async ({
-  app,
-  page
-}) => {
-  await appReady(page)
-  const staging = join((await invokeTest<AppInfo>(app, 'e2e_app_info')).appDataDir, 'drop-staging')
-
-  // The import is not ported yet: stand in for it, and keep it pending until the spec has read the
-  // staged copies, because they are deleted the moment it settles.
+/**
+ * The import is not ported yet: stand in for it, and keep it pending until the spec has read the
+ * staged copies, because they are deleted the moment it settles.
+ */
+async function stubImport(page: Page): Promise<void> {
   await page.evaluate(() => {
     const state: NonNullable<Window['__dropImport']> = { calls: [], finish: () => undefined }
     window.__dropImport = state
@@ -45,6 +45,34 @@ test('a dropped file is staged with its bytes for the import, then deleted', asy
       }
     })
   })
+}
+
+/** Drops a URI list on the sidebar's root zone: the form WebKitGTK gives an OS file drag. */
+async function dropUris(page: Page, uris: string[]): Promise<void> {
+  await page.evaluate(
+    ({ list }) => {
+      const zone = document.querySelector('[data-file-drop-folder=""]')
+      if (!zone) throw new Error('the sidebar drop zone is missing')
+      const transfer = new DataTransfer()
+      transfer.setData('text/uri-list', list)
+      for (const type of ['dragover', 'drop']) {
+        zone.dispatchEvent(
+          new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: transfer })
+        )
+      }
+    },
+    { list: uris.join('\r\n') }
+  )
+}
+
+test('a dropped file is staged with its bytes for the import, then deleted', async ({
+  app,
+  page
+}) => {
+  await appReady(page)
+  const staging = join((await invokeTest<AppInfo>(app, 'e2e_app_info')).appDataDir, 'drop-staging')
+
+  await stubImport(page)
 
   const note = 'Hello from the OS\n'.repeat(10)
   await page.evaluate(
@@ -81,6 +109,49 @@ test('a dropped file is staged with its bytes for the import, then deleted', asy
 
   await page.evaluate(() => window.__dropImport?.finish())
   await expect.poll(() => existsSync(notePath) || existsSync(pdfPath)).toBe(false)
+})
+
+test('a file the OS dropped as a file:// URI is copied by the shell; one it did not drop is refused', async ({
+  app,
+  page
+}) => {
+  await appReady(page)
+  const staging = join((await invokeTest<AppInfo>(app, 'e2e_app_info')).appDataDir, 'drop-staging')
+  const outside = mkdtempSync(join(tmpdir(), 'memry-os-drop-'))
+  const dropped = join(outside, 'from the file manager.md')
+  const secret = join(outside, 'secret.md')
+  writeFileSync(dropped, 'dropped on the window\n')
+  writeFileSync(secret, 'never dropped\n')
+  const droppedUri = pathToFileURL(dropped).href
+  const secretUri = pathToFileURL(secret).href
+  await stubImport(page)
+
+  // The page names a file the OS drag did not carry: the whole drop is refused, nothing staged.
+  await invokeTest(app, 'e2e_offer_os_drag', { uris: [droppedUri] })
+  await dropUris(page, [droppedUri, secretUri])
+  await expect
+    .poll(() => page.evaluate(() => document.body.innerText.includes('not dropped on the window')))
+    .toBe(true)
+  expect(await page.evaluate(() => window.__dropImport?.calls.length)).toBe(0)
+
+  // The drag the shell saw (on Linux, from GTK): the file is copied into staging for the import.
+  await invokeTest(app, 'e2e_offer_os_drag', { uris: [droppedUri] })
+  await dropUris(page, [droppedUri])
+  await expect
+    .poll(() => page.evaluate(() => window.__dropImport?.calls.length ?? 0), { timeout: 15_000 })
+    .toBe(1)
+  const call = await page.evaluate(() => window.__dropImport?.calls[0])
+  const [copy = ''] = call?.paths ?? []
+  expect(call?.paths.length).toBe(1)
+  expect(copy.startsWith(staging)).toBe(true)
+  expect(copy.endsWith('from the file manager.md')).toBe(true)
+  expect(readFileSync(copy, 'utf8')).toBe('dropped on the window\n')
+
+  await page.evaluate(() => window.__dropImport?.finish())
+  await expect.poll(() => existsSync(copy)).toBe(false)
+  // A copy: the dropped file stays where it was.
+  expect(existsSync(dropped)).toBe(true)
+  rmSync(outside, { recursive: true, force: true })
 })
 
 test('a 120 MB file stages through the binary commands byte for byte, bounded in the page', async ({
