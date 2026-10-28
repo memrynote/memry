@@ -81,19 +81,27 @@ const MAX_CHAIN_DEPTH = 8
  * Their links and order are not trusted: a peer holding any publicly trusted
  * certificate for the host could append a fake parent that carries a pinned
  * SPKI. So the path is built from the leaf upward, and a certificate counts only
- * when the one below it passes `checkIssued` and is signed by its key.
+ * when it is a CA (`checkIssued` does not look at basicConstraints, so any DV
+ * certificate under a pinned intermediate would otherwise pass as an issuer) and
+ * the one below it passes `checkIssued` and is signed by its key.
  */
 function isChainPinned(pool: readonly crypto.X509Certificate[], pins: readonly string[]): boolean {
-  let current: crypto.X509Certificate | undefined = pool[0]
-  for (let depth = 0; current && depth < MAX_CHAIN_DEPTH; depth++) {
-    if (pins.includes(spkiHashOf(current))) return true
-    const child: crypto.X509Certificate = current
-    current = pool.find(
+  const visited = new Set<crypto.X509Certificate>()
+  const reachesPin = (child: crypto.X509Certificate, depth: number): boolean => {
+    if (pins.includes(spkiHashOf(child))) return true
+    visited.add(child)
+    if (depth + 1 >= MAX_CHAIN_DEPTH) return false
+    return pool.some(
       (parent) =>
-        !parent.raw.equals(child.raw) && child.checkIssued(parent) && child.verify(parent.publicKey)
+        !visited.has(parent) &&
+        !parent.raw.equals(child.raw) &&
+        parent.ca &&
+        child.checkIssued(parent) &&
+        child.verify(parent.publicKey) &&
+        reachesPin(parent, depth + 1)
     )
   }
-  return false
+  return pool.length > 0 && reachesPin(pool[0], 0)
 }
 
 function nodePeerChain(

@@ -19,72 +19,107 @@ import {
 } from './certificate-pinning'
 
 // Throwaway P-256 chain, test-only. leaf <- intermediate <- root is signed correctly.
-// The FORGED_* certificates carry the real intermediate's public key but are signed by an
-// unrelated key, and omit key identifiers, so Node's name-only issuer match (`checkIssued`)
-// accepts them and only the signature check can reject them. FORGED_LEAF names
+// The FORGED_* certificates are CA certificates that carry the real intermediate's public key but
+// are signed by an unrelated key, and omit key identifiers, so Node's name-only issuer match
+// (`checkIssued`) accepts them and only the signature check can reject them. FORGED_LEAF names
 // FORGED_INTERMEDIATE as its issuer; FORGED_INTERMEDIATE_UNDER_ROOT names ROOT as its issuer.
+// DV_CERT is what a public CA issues to any applicant: basicConstraints CA:FALSE, no keyUsage,
+// signed by the real intermediate. The applicant holds its key, so DV_LEAF is signed with it, and
+// ROGUE_ROOT is a self-signed CA with that same name and key. None of these may act as an issuer.
 const LEAF_PEM = `-----BEGIN CERTIFICATE-----
-MIIBfjCCASSgAwIBAgIUIYWQWkG/TWRWNMDasILdhiIMyV0wCgYIKoZIzj0EAwIw
-HDEaMBgGA1UEAwwRVGVzdCBJbnRlcm1lZGlhdGUwIBcNMjYxMDI4MDkxMjQ4WhgP
-MjEyNjEwMDQwOTEyNDhaMBwxGjAYBgNVBAMMEXN5bmMtc3RhZ2luZy50ZXN0MFkw
-EwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+87k5rpbT3kBjaqUux2w7BlyCDENwyKB
-1O4l7K1D3cHW8z5OcqW2sh51dOK+CiRMwvEeNetv1UDjdqtVUw8bo6NCMEAwHQYD
-VR0OBBYEFJ97h3yV7QjiJ5g+Q5Te8eMqRRC7MB8GA1UdIwQYMBaAFJ30NnPDaEZ9
-Hg5Pc2gFsp1KaXcoMAoGCCqGSM49BAMCA0gAMEUCIGqLuEJhau6Zr/pIFll5OG1O
-YW1mn0sehdyqd+XrTjQNAiEA7De38q8RJnPuPw/3WG4aywBnYYcKQZ8lUwtoWlSX
-J3A=
+MIIBfTCCASSgAwIBAgIUIhEMJMCdOWupFAes5EIl0VOASncwCgYIKoZIzj0EAwIw
+HDEaMBgGA1UEAwwRVGVzdCBJbnRlcm1lZGlhdGUwIBcNMjYxMDI4MDkzNzU3WhgP
+MjEyNjEwMDQwOTM3NTdaMBwxGjAYBgNVBAMMEXN5bmMtc3RhZ2luZy50ZXN0MFkw
+EwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDm0T2N0VU9BsyDEsogiB2ppHyXFo9OUj
+vos2jiB4adzrUxQZu465cJFt2z1Z9V4XzEoB3Eu5UmjVL79I8+afzKNCMEAwHQYD
+VR0OBBYEFIzuxS+hXERSIDVhB+4kMdedK3G2MB8GA1UdIwQYMBaAFI95Vx7EyOQ8
+x5sUb3hukhARPJZvMAoGCCqGSM49BAMCA0cAMEQCIAeeQBaa1+/WHRizEo40hSd1
+UbVta86rxzeIh7NvUPNLAiB81fceFVw1vpxjebyfU+4HmcUwHR9Qv2hg2QZPlTTL
+wQ==
 -----END CERTIFICATE-----`
 
 const INTERMEDIATE_PEM = `-----BEGIN CERTIFICATE-----
-MIIBZTCCAQygAwIBAgIUTjAgosF8bpxImXVH6Tts2MQ5n2IwCgYIKoZIzj0EAwIw
-FDESMBAGA1UEAwwJVGVzdCBSb290MCAXDTI2MTAyODA5MTI0OFoYDzIxMjYxMDA0
-MDkxMjQ4WjAcMRowGAYDVQQDDBFUZXN0IEludGVybWVkaWF0ZTBZMBMGByqGSM49
-AgEGCCqGSM49AwEHA0IABONSrnqOz5BD1zdTBavOI/+1O2gvzpIIIKi8yr4tqdUU
-QABFESk/yd026fpR1CZZskHOojiFdXJwGnVuFuYeLoCjMjAwMA8GA1UdEwEB/wQF
-MAMBAf8wHQYDVR0OBBYEFJ30NnPDaEZ9Hg5Pc2gFsp1KaXcoMAoGCCqGSM49BAMC
-A0cAMEQCIHQlrJioLN4zf/pYMVgJu3dvt/qxeQZbY4kc7MUd/9RjAiBeUcbZ/l44
-5fthnm88ZBZHUjkZt9glUn7MAzRbkAIAJQ==
+MIIBZTCCAQygAwIBAgIURmNjPCVHqy1gNr6A/wb/KXgi6FcwCgYIKoZIzj0EAwIw
+FDESMBAGA1UEAwwJVGVzdCBSb290MCAXDTI2MTAyODA5Mzc1N1oYDzIxMjYxMDA0
+MDkzNzU3WjAcMRowGAYDVQQDDBFUZXN0IEludGVybWVkaWF0ZTBZMBMGByqGSM49
+AgEGCCqGSM49AwEHA0IABMJHFZbvj89AEmowLoiCJAoGpczL1nq7okFGQQ1RNPtq
+OOzN2lt0LERxg04sGDuTL5xa0VmNtXn8zpP4o1LHCWKjMjAwMA8GA1UdEwEB/wQF
+MAMBAf8wHQYDVR0OBBYEFI95Vx7EyOQ8x5sUb3hukhARPJZvMAoGCCqGSM49BAMC
+A0cAMEQCIC3fmfldfYLXdvboyTSl05SuYT05YUq+VlqKfceoXrO1AiBcrY6nuJFY
+Mr1nsehl6SHpnMse/xhvxd2wNBVM3soEQQ==
 -----END CERTIFICATE-----`
 
 const ROOT_PEM = `-----BEGIN CERTIFICATE-----
-MIIBXzCCAQSgAwIBAgIUTWBumuGavdHnhP1zX7Uo+2K2gXIwCgYIKoZIzj0EAwIw
-FDESMBAGA1UEAwwJVGVzdCBSb290MCAXDTI2MTAyODA5MTI0OFoYDzIxMjYxMDA0
-MDkxMjQ4WjAUMRIwEAYDVQQDDAlUZXN0IFJvb3QwWTATBgcqhkjOPQIBBggqhkjO
-PQMBBwNCAAT/RfEpldjce3dDemnkN5RQstKjJm6RaxjPCZq/doa9VFM6wB2vPURF
-WLqWdAZfUji2LY7KCV169UKciKoq57ycozIwMDAdBgNVHQ4EFgQUm+YGkjjtuNRp
-pELqDaC+smWeTgQwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNJADBGAiEA
-hrRprXmIX6MclEXjyLva2OzZnUBSw3tJqtCycoh74KECIQDUPfhoHgcexKlLa5Gh
-aO4fQrYq4JhsDuO1GkKl1XlGvg==
+MIIBXjCCAQSgAwIBAgIUSzCmLTch6v2g3OlTFdx6NnK4tAkwCgYIKoZIzj0EAwIw
+FDESMBAGA1UEAwwJVGVzdCBSb290MCAXDTI2MTAyODA5Mzc1N1oYDzIxMjYxMDA0
+MDkzNzU3WjAUMRIwEAYDVQQDDAlUZXN0IFJvb3QwWTATBgcqhkjOPQIBBggqhkjO
+PQMBBwNCAASJ8gncOxn1fgcrqHCYhMY4AH4A85CADtMbhYqjBh62xa3KjykAhDff
+sMlywCbtw0TVJzLb9fXfKjlt5/56qrFZozIwMDAdBgNVHQ4EFgQUy93zxd7o9r9h
+yUXDikVb6MmzTbgwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNIADBFAiEA
+w2K/oHu9SfbPSSfRrNNFqQDlD2AJ1/5UYKGr/VKk288CIESIHOm5k0JeVOjuf7HK
+xwH+6dASgaJRtUNoFLeo25hk
 -----END CERTIFICATE-----`
 
 const FORGED_LEAF_PEM = `-----BEGIN CERTIFICATE-----
-MIIBOTCB4KADAgECAhQRXZ/GyWA4EhczVURwddbQf7IdRjAKBggqhkjOPQQDAjAc
-MRowGAYDVQQDDBFUZXN0IEludGVybWVkaWF0ZTAgFw0yNjEwMjgwOTEyNThaGA8y
-MTI2MTAwNDA5MTI1OFowHDEaMBgGA1UEAwwRc3luYy1zdGFnaW5nLnRlc3QwWTAT
-BgcqhkjOPQIBBggqhkjOPQMBBwNCAASr/j5z8Qfwnqu5z4xDdMUaRh0kao1vQvyS
-u74NLEoqWHdRwSXF0Hkd5hgWnxD6BqqTfh0foSRM5Rkd+xVrcKUXMAoGCCqGSM49
-BAMCA0gAMEUCIQCOJRxuiTDeQ0V4Icp6RePEFcuqG+IOY25hqL0sBCjiwgIgRoNC
-QCHy6SwBZ8ZUeIn5Er+5EJzq0NoqXzUYmswITGw=
+MIIBOTCB4KADAgECAhQz5HSuDKJBsNR9VjS4VY/dxZdVDDAKBggqhkjOPQQDAjAc
+MRowGAYDVQQDDBFUZXN0IEludGVybWVkaWF0ZTAgFw0yNjEwMjgwOTM3NTdaGA8y
+MTI2MTAwNDA5Mzc1N1owHDEaMBgGA1UEAwwRc3luYy1zdGFnaW5nLnRlc3QwWTAT
+BgcqhkjOPQIBBggqhkjOPQMBBwNCAASzl2fFY62+a/pFpWdSweKnrZnwkhVK9/Rc
+BZ0WIO285DZd75q9fIA9CaddFIbaJ+N/iOkoJkfCNJHaBK942g2CMAoGCCqGSM49
+BAMCA0gAMEUCIQD8vmHwuFE8pWFlXp1uXznttkhlYMdzmI6stVGaaXJ7eQIgVh1g
+69GQUbDIlxB0JeNyGdBLl1kl0VeSABx3qQhQ+Cs=
 -----END CERTIFICATE-----`
 
 const FORGED_INTERMEDIATE_PEM = `-----BEGIN CERTIFICATE-----
-MIIBODCB4KADAgECAhQRXZ/GyWA4EhczVURwddbQf7IdRzAKBggqhkjOPQQDAjAc
-MRowGAYDVQQDDBFUZXN0IEludGVybWVkaWF0ZTAgFw0yNjEwMjgwOTEyNThaGA8y
-MTI2MTAwNDA5MTI1OFowHDEaMBgGA1UEAwwRVGVzdCBJbnRlcm1lZGlhdGUwWTAT
-BgcqhkjOPQIBBggqhkjOPQMBBwNCAATjUq56js+QQ9c3UwWrziP/tTtoL86SCCCo
-vMq+LanVFEAARREpP8ndNun6UdQmWbJBzqI4hXVycBp1bhbmHi6AMAoGCCqGSM49
-BAMCA0cAMEQCIDBtFpVrFSx50PpRI4BQfOHLZwAYUz/2irF/dl8coBgIAiAYx5Cq
-uevB02SJN0XQQ/WCOSE7wHWhsIUk5qm8ztlnqg==
+MIIBTjCB9aADAgECAhQz5HSuDKJBsNR9VjS4VY/dxZdVDTAKBggqhkjOPQQDAjAc
+MRowGAYDVQQDDBFUZXN0IEludGVybWVkaWF0ZTAgFw0yNjEwMjgwOTM3NTdaGA8y
+MTI2MTAwNDA5Mzc1N1owHDEaMBgGA1UEAwwRVGVzdCBJbnRlcm1lZGlhdGUwWTAT
+BgcqhkjOPQIBBggqhkjOPQMBBwNCAATCRxWW74/PQBJqMC6IgiQKBqXMy9Z6u6JB
+RkENUTT7ajjszdpbdCxEcYNOLBg7ky+cWtFZjbV5/M6T+KNSxwlioxMwETAPBgNV
+HRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0gAMEUCIG80wysyi5T18t/7pPgeNB1P
+/5RvEUe1TN0LQLPCOEImAiEAxyNtNidO/E34m11lh6vvz0Z09IJjCsd7uJ9CWihR
+lIs=
 -----END CERTIFICATE-----`
 
 const FORGED_INTERMEDIATE_UNDER_ROOT_PEM = `-----BEGIN CERTIFICATE-----
-MIIBMjCB2KADAgECAhR3PAeFbSBJdH2ivnsCSjU8HPprUDAKBggqhkjOPQQDAjAU
-MRIwEAYDVQQDDAlUZXN0IFJvb3QwIBcNMjYxMDI4MDkyNTE5WhgPMjEyNjEwMDQw
-OTI1MTlaMBwxGjAYBgNVBAMMEVRlc3QgSW50ZXJtZWRpYXRlMFkwEwYHKoZIzj0C
-AQYIKoZIzj0DAQcDQgAE41Kueo7PkEPXN1MFq84j/7U7aC/OkgggqLzKvi2p1RRA
-AEURKT/J3Tbp+lHUJlmyQc6iOIV1cnAadW4W5h4ugDAKBggqhkjOPQQDAgNJADBG
-AiEA/Rv9ds0wLuVp52pbcKWugNalKUgZqXDKCRqM5h5MbskCIQDqUUQchvI2NgDF
-njRBNe9dgkzVYX0oOL421JO8t8PPww==
+MIIBRjCB7aADAgECAhRKZa1hEpBBwKt/fkE60zgYHYk4ADAKBggqhkjOPQQDAjAU
+MRIwEAYDVQQDDAlUZXN0IFJvb3QwIBcNMjYxMDI4MDkzNzU3WhgPMjEyNjEwMDQw
+OTM3NTdaMBwxGjAYBgNVBAMMEVRlc3QgSW50ZXJtZWRpYXRlMFkwEwYHKoZIzj0C
+AQYIKoZIzj0DAQcDQgAEwkcVlu+Pz0ASajAuiIIkCgalzMvWeruiQUZBDVE0+2o4
+7M3aW3QsRHGDTiwYO5MvnFrRWY21efzOk/ijUscJYqMTMBEwDwYDVR0TAQH/BAUw
+AwEB/zAKBggqhkjOPQQDAgNIADBFAiBiMfYYEEQJPKuEU8lNNDHdGQQc0ByRx/B+
+Ip1S8Vm5/wIhAK7gX6W/ZrCmN6gTK+KmoGEDZtAYFLsK21CVzVGRxTjc
+-----END CERTIFICATE-----`
+
+const DV_CERT_PEM = `-----BEGIN CERTIFICATE-----
+MIIBQjCB6KADAgECAhQiEQwkwJ05a6kUB6zkQiXRU4BKeDAKBggqhkjOPQQDAjAc
+MRowGAYDVQQDDBFUZXN0IEludGVybWVkaWF0ZTAgFw0yNjEwMjgwOTM3NTdaGA8y
+MTI2MTAwNDA5Mzc1N1owEjEQMA4GA1UEAwwHVGVzdCBEVjBZMBMGByqGSM49AgEG
+CCqGSM49AwEHA0IABMmMmZuVs7n+Y/j5yhUbvh+AjPHlP4oPLWGEezt40JDRJA80
+6Qm/ArDlSPBmBztmuJ0fOU+8m94k6hWdUmuZebKjEDAOMAwGA1UdEwEB/wQCMAAw
+CgYIKoZIzj0EAwIDSQAwRgIhAJMpR3xuDfT9W9KzjhO2gL4S33Do9hB7C1dw8dem
+orh7AiEAi/Y+YACbX9vkQPPfnlGNNnyPPTNTBm7RilGGkbo5zlU=
+-----END CERTIFICATE-----`
+
+const DV_LEAF_PEM = `-----BEGIN CERTIFICATE-----
+MIIBLjCB1qADAgECAhRB7dpnUp2iQbklBJ/CRoAhkjB1lzAKBggqhkjOPQQDAjAS
+MRAwDgYDVQQDDAdUZXN0IERWMCAXDTI2MTAyODA5Mzc1N1oYDzIxMjYxMDA0MDkz
+NzU3WjAcMRowGAYDVQQDDBFzeW5jLXN0YWdpbmcudGVzdDBZMBMGByqGSM49AgEG
+CCqGSM49AwEHA0IABJkYjJ24BT84tK6/vqc+JjB9ocSfToib8j//2cSMqM6cJ/b5
+ar5OBUo0FADVdZx8FW5PA1IyoOkt+BU854r4EJUwCgYIKoZIzj0EAwIDRwAwRAIg
+ZcN7UlLPm6OiqG8y5VhByQCNlzkW9q88oQgK0nQAy5MCIFXH2s+R4yXOc2d8kg2t
+2h0LFStpCvWEUL++NEgxm9hh
+-----END CERTIFICATE-----`
+
+const ROGUE_ROOT_PEM = `-----BEGIN CERTIFICATE-----
+MIIBWzCCAQCgAwIBAgIURDzO0SNq1dS01lgXBqGSTqEAI3UwCgYIKoZIzj0EAwIw
+EjEQMA4GA1UEAwwHVGVzdCBEVjAgFw0yNjEwMjgwOTM3NTdaGA8yMTI2MTAwNDA5
+Mzc1N1owEjEQMA4GA1UEAwwHVGVzdCBEVjBZMBMGByqGSM49AgEGCCqGSM49AwEH
+A0IABMmMmZuVs7n+Y/j5yhUbvh+AjPHlP4oPLWGEezt40JDRJA806Qm/ArDlSPBm
+BztmuJ0fOU+8m94k6hWdUmuZebKjMjAwMB0GA1UdDgQWBBQieVmQjEv8XBSnxK+s
+AnPPXqiIQjAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0kAMEYCIQCDaiWG
+xZCXbIICWsYgRj7INGamxPb1hU488Z6Z18/6rQIhAMKAXey6OhPkE4whS7UZyKSe
+u6kt7dwt7cORhtanPV4J
 -----END CERTIFICATE-----`
 
 const HOST = 'sync-staging.test'
@@ -173,6 +208,46 @@ describe('chain-aware certificate pinning', () => {
       expect(matches([LEAF_PEM, FORGED_INTERMEDIATE_UNDER_ROOT_PEM, ROOT_PEM], [ROOT_PIN])).toBe(
         false
       )
+    })
+  })
+
+  describe('a certificate that is not a CA', () => {
+    // An attacker holding any DV certificate under the pinned intermediate holds a key that
+    // signs leaves `checkIssued` and `verify` both accept, so only `ca` rejects the link.
+    const dvCert = () => new crypto.X509Certificate(DV_CERT_PEM)
+
+    it('has the shape that passes the signature and name checks but is not a CA', () => {
+      const leaf = new crypto.X509Certificate(DV_LEAF_PEM)
+      expect(dvCert().ca).toBe(false)
+      expect(dvCert().keyUsage).toBeUndefined()
+      expect(leaf.checkIssued(dvCert())).toBe(true)
+      expect(leaf.verify(dvCert().publicKey)).toBe(true)
+    })
+
+    it('does not link a leaf to the pinned intermediate through a CA:FALSE certificate', () => {
+      expect(
+        verifyCertificatePin(peerChain(DV_LEAF_PEM, DV_CERT_PEM, INTERMEDIATE_PEM), [
+          INTERMEDIATE_PIN
+        ])
+      ).toBe(false)
+    })
+
+    it.each([
+      ['leaf only', () => electronChain(DV_LEAF_PEM)],
+      [
+        'leaf and a self-signed root with the DV key',
+        () => electronChain(DV_LEAF_PEM, ROGUE_ROOT_PEM)
+      ]
+    ])('does not match through the session chains when validated is %s', (_label, validated) => {
+      expect(
+        verifySessionCertificatePin(
+          {
+            certificate: electronChain(DV_LEAF_PEM, DV_CERT_PEM, INTERMEDIATE_PEM),
+            validatedCertificate: validated()
+          },
+          [INTERMEDIATE_PIN]
+        )
+      ).toBe(false)
     })
   })
 
