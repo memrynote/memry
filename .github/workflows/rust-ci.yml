@@ -280,6 +280,8 @@ jobs:
 
       - name: Keychain seam, live OS secrets (macOS, Windows)
         if: runner.os != 'Linux'
+        # A keychain access prompt never answers on a runner: fail fast instead of at the job limit.
+        timeout-minutes: 15
         run: |
           if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
             cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live --test keyring_keytar_live -- -D warnings
