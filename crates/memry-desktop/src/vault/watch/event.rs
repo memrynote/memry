@@ -50,14 +50,15 @@ pub enum VaultEvent {
     Unreachable,
     /// The vault is back; a rescan with changes follows.
     Reachable,
-    /// A full pass over the vault finished, and so did everything it will report: the
-    /// removals it found have stayed gone through the rename window (or turned out not to be
-    /// gone) and the new files it found are out of their grace. A consumer orders its own walk
-    /// after this, and no event of this pass follows it.
+    /// A full pass over the vault finished, and the windows it opened are over: the removals
+    /// it found have stayed gone through the rename window (or turned out not to be gone) and
+    /// the new files it held are out of their grace. A consumer orders its own walk after
+    /// this. A file a writer touched again since restarted its window, and its event follows
+    /// this one as a live event.
     Rescanned {
         /// Files the pass found missing, including the ones that turned out to be moves.
         missing: usize,
-        /// `Removed` events the pass caused.
+        /// `Removed` events of the notes the pass found missing, reported before this signal.
         removed: usize,
         added: usize,
         changed: usize,

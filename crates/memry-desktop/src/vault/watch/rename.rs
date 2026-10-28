@@ -69,10 +69,6 @@ impl RenameTracker {
         self.entries.is_empty()
     }
 
-    pub fn has_note(&self, note_id: &str) -> bool {
-        self.by_note.contains_key(note_id)
-    }
-
     pub fn new_batch(&mut self) -> Batch {
         self.next += 1;
         Batch(self.next)
