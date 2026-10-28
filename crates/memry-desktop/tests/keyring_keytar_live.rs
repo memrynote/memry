@@ -140,6 +140,11 @@ fn a_write_over_a_keytar_item_leaves_one_item_that_keytar_reads() {
 
 /// The Electron app writes after this app did (both installed, or a downgrade): keytar replaces
 /// the value, and the store reads the newer one, not an older item of its own.
+///
+/// This guards convergence, not the schema tag. Without the tag it failed on Ubuntu 24.04's
+/// gnome-keyring (keytar's replace missed the untagged item and made a second one), but a
+/// gnome-keyring whose replace matches the untagged item passes it anyway. The tag's own guards
+/// are the two `native::read` asserts above, which go red without it on every keyring.
 #[test]
 fn a_keytar_write_after_a_store_write_is_the_value_the_store_reads() {
     if skip_on_a_developer_mac() {

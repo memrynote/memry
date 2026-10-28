@@ -13,7 +13,10 @@
 //!   app reads the new value and no stale secret stays. When the Electron app writes later, its
 //!   replace lands on that same item. Both steps are best effort once the value is stored: a
 //!   failure is logged and the write still succeeds, because every read of this app finds its own
-//!   item first and the next write retries.
+//!   item first. Until this app's next write repairs it, the Electron app sees the old value: if
+//!   the tag failed (or the app stopped before it), keytar finds only its old item; if the tag
+//!   landed and the purge failed, two tagged items answer keytar's lookup and libsecret returns
+//!   whichever the service lists first. Only the next write of this app tags and purges again.
 //! - **delete** ([`after_delete`]): every item with keytar's attributes is deleted, so the read
 //!   fallback cannot bring a deleted secret back.
 //!
