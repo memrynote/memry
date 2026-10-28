@@ -64,6 +64,30 @@ describe('CaptionButtons', () => {
     expect(shell.setRects).toHaveBeenCalledWith(physical, physical, physical)
   })
 
+  it('reports the rectangles again when the display scale changes', () => {
+    const queries: { media: string; fire: () => void }[] = []
+    vi.stubGlobal('matchMedia', (media: string) => {
+      let listener: (() => void) | null = null
+      queries.push({ media, fire: () => listener?.() })
+      return {
+        media,
+        addEventListener: (_: string, fn: () => void) => (listener = fn),
+        removeEventListener: () => (listener = null)
+      }
+    })
+    const rect = { x: 10, y: 0, width: 46, height: 36 } as DOMRect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(rect)
+    render(<CaptionButtons />)
+    expect(queries.at(-1)?.media).toBe('(resolution: 1.5dppx)')
+    shell.setRects.mockClear()
+
+    Object.defineProperty(window, 'devicePixelRatio', { value: 2, configurable: true })
+    act(() => queries.at(-1)?.fire())
+    const physical = { x: 20, y: 0, width: 92, height: 72 }
+    expect(shell.setRects).toHaveBeenCalledWith(physical, physical, physical)
+    expect(queries.at(-1)?.media).toBe('(resolution: 2dppx)')
+  })
+
   it('styles hover and press from shell events, since the page gets no mouse events', () => {
     const { container } = render(<CaptionButtons />)
     expect(button(container, 'close').hasAttribute('data-caption-hover')).toBe(false)

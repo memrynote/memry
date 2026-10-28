@@ -101,9 +101,21 @@ export function CaptionButtons(): React.JSX.Element | null {
     }
     observer.observe(document.documentElement)
     window.addEventListener('resize', report)
+    // A display scale change moves every physical rectangle without resizing anything in CSS
+    // pixels. The query matches one ratio, so it is armed again for the new one each time.
+    let scale: MediaQueryList | null = null
+    const onScale = (): void => {
+      scale?.removeEventListener('change', onScale)
+      scale = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+      scale.addEventListener('change', onScale)
+      report()
+    }
+    scale = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+    scale.addEventListener('change', onScale)
     return () => {
       observer.disconnect()
       window.removeEventListener('resize', report)
+      scale?.removeEventListener('change', onScale)
       // Hidden buttons (full screen) must not leave the native input sink over the page.
       const none = { x: 0, y: 0, width: 0, height: 0 }
       void commands

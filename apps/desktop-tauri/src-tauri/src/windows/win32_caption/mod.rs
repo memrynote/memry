@@ -17,7 +17,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU8, Ordering};
 
 use arc_swap::ArcSwap;
-use memry_desktop::shell::bounds::Rect;
 use memry_desktop::shell::caption::{CaptionButton, CaptionRects};
 use memry_desktop::shell::nav_input::app_command_direction;
 use tauri::{AppHandle, Manager, WebviewWindow, Wry};
@@ -25,8 +24,8 @@ use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::Graphics::Gdi::ScreenToClient;
 use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
-    IsZoomed, PostMessageW, SC_CLOSE, SC_MAXIMIZE, SC_MINIMIZE, SC_RESTORE, WM_APPCOMMAND, WM_SIZE,
-    WM_SYSCOMMAND,
+    IsZoomed, PostMessageW, SC_CLOSE, SC_MAXIMIZE, SC_MINIMIZE, SC_RESTORE, WM_APPCOMMAND,
+    WM_DPICHANGED, WM_SIZE, WM_SYSCOMMAND,
 };
 
 use super::MAIN_LABEL;
@@ -44,6 +43,8 @@ struct Shared {
     rects: ArcSwap<CaptionRects>,
     hover: AtomicU8,
     pressed: AtomicU8,
+    /// The button a press started on, while the sink holds the mouse capture.
+    armed: AtomicU8,
     tracking: AtomicBool,
     /// The main window and the input sink, as raw handles (`HWND` is not `Sync`).
     parent: AtomicIsize,
@@ -120,6 +121,13 @@ unsafe extern "system" fn top_level_proc(
     match msg {
         // Maximize and restore move the top edge in and out of the resize border.
         WM_SIZE => sink::place(shared),
+        // The rectangles are physical pixels at the old scale. The sink hides until the page,
+        // which sees the new `devicePixelRatio` after this message, reports them again, so no
+        // strip of the title bar acts as a stale button meanwhile.
+        WM_DPICHANGED => {
+            shared.rects.store(Arc::new(CaptionRects::default()));
+            sink::place(shared);
+        }
         WM_APPCOMMAND => {
             // GET_APPCOMMAND_LPARAM: the high word without the device bits.
             let command = ((lparam.0 >> 16) & 0x0FFF) as i32;
@@ -180,6 +188,7 @@ pub fn install(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) {
         rects: ArcSwap::from_pointee(CaptionRects::default()),
         hover: AtomicU8::new(0),
         pressed: AtomicU8::new(0),
+        armed: AtomicU8::new(0),
         tracking: AtomicBool::new(false),
         parent: AtomicIsize::new(hwnd.0 as isize),
         sink: AtomicIsize::new(0),
@@ -224,14 +233,5 @@ pub fn set_rects(app: &AppHandle<Wry>, rects: CaptionRects) {
     shared.rects.store(Arc::new(rects));
     if let Err(error) = app.run_on_main_thread(move || sink::place(shared)) {
         tracing::warn!(scope = "Window", "caption input sink not moved: {error}");
-    }
-}
-
-pub fn to_rect(x: f64, y: f64, width: f64, height: f64) -> Rect {
-    Rect {
-        x: x.round() as i32,
-        y: y.round() as i32,
-        width: width.round() as i32,
-        height: height.round() as i32,
     }
 }

@@ -19,12 +19,12 @@ use windows::Win32::UI::WindowsAndMessaging::{
     HWND_TOP, IDC_ARROW, IsZoomed, LoadCursorW, MA_NOACTIVATE, RegisterClassW, SM_CYFRAME, SW_HIDE,
     SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SetWindowLongPtrW, SetWindowPos,
     ShowWindow, WINDOW_EX_STYLE, WM_CAPTURECHANGED, WM_ERASEBKGND, WM_LBUTTONUP, WM_MOUSEACTIVATE,
-    WM_NCCREATE, WM_NCHITTEST, WM_NCLBUTTONDBLCLK, WM_NCLBUTTONDOWN, WM_NCMOUSEMOVE, WM_PAINT,
-    WNDCLASSW, WS_CHILD, WS_CLIPSIBLINGS,
+    WM_MOUSEMOVE, WM_NCCREATE, WM_NCHITTEST, WM_NCLBUTTONDBLCLK, WM_NCLBUTTONDOWN, WM_NCMOUSEMOVE,
+    WM_PAINT, WNDCLASSW, WS_CHILD, WS_CLIPSIBLINGS,
 };
 use windows::core::w;
 
-use super::{Shared, WM_NCMOUSELEAVE, client_point, system_command};
+use super::{Shared, WM_NCMOUSELEAVE, client_point, decode, encode, system_command};
 
 fn handle(raw: &std::sync::atomic::AtomicIsize) -> HWND {
     HWND(raw.load(Ordering::Relaxed) as *mut _)
@@ -56,7 +56,8 @@ pub(super) fn create(parent: HWND, shared: &'static Shared) -> Option<HWND> {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
             w!("MemryCaptionInputSink"),
-            w!(""),
+            // What accessibility tools announce for the window over the caption buttons.
+            w!("Window controls"),
             WS_CHILD | WS_CLIPSIBLINGS,
             0,
             0,
@@ -191,6 +192,7 @@ unsafe extern "system" fn sink_proc(
         // The second click of a double click is a press too, as on a native caption button.
         WM_NCLBUTTONDOWN | WM_NCLBUTTONDBLCLK => {
             if let Some(button) = CaptionButton::from_hit_code(wparam.0 as isize) {
+                shared.armed.store(encode(Some(button)), Ordering::Relaxed);
                 shared.set_pressed(Some(button));
                 // The release may happen off the button; the capture delivers it either way,
                 // as a client-area message.
@@ -199,21 +201,45 @@ unsafe extern "system" fn sink_proc(
                 return LRESULT(0);
             }
         }
+        // While the button is held, it looks pressed only with the pointer over it.
+        WM_MOUSEMOVE => {
+            let armed = decode(shared.armed.load(Ordering::Relaxed));
+            if armed.is_some() {
+                let (x, y) = lparam_point(lparam);
+                let over = button_at(shared, hwnd, x, y).filter(|b| Some(*b) == armed);
+                shared.set_hover(over);
+                shared.set_pressed(over);
+                return LRESULT(0);
+            }
+        }
         WM_LBUTTONUP => {
             let (x, y) = lparam_point(lparam);
             let released_on = button_at(shared, hwnd, x, y);
-            let pressed = shared.set_pressed(None);
-            // SAFETY: releases the capture taken on the press.
+            let armed = decode(shared.armed.swap(0, Ordering::Relaxed));
+            // SAFETY: releases the capture taken on the press; `WM_CAPTURECHANGED` clears the
+            // pressed look.
             let _ = unsafe { ReleaseCapture() };
-            if let Some(button) = pressed
+            // The capture ended the leave tracking: arm it again over a button, or the hover
+            // would stay when the pointer leaves without another move over the sink.
+            shared.tracking.store(false, Ordering::Relaxed);
+            shared.set_hover(released_on);
+            if released_on.is_some() {
+                track_leave(shared, hwnd);
+            }
+            if let Some(button) = armed
                 && released_on == Some(button)
             {
                 system_command(handle(&shared.parent), button);
             }
             return LRESULT(0);
         }
+        // Sent by the release above before it restores the hover, and when another window
+        // takes the capture (a focus switch) with the button still held.
         WM_CAPTURECHANGED => {
+            shared.armed.store(0, Ordering::Relaxed);
             shared.set_pressed(None);
+            shared.tracking.store(false, Ordering::Relaxed);
+            shared.set_hover(None);
         }
         // A click on a button must not move keyboard focus out of the editor.
         WM_MOUSEACTIVATE => return LRESULT(MA_NOACTIVATE as isize),

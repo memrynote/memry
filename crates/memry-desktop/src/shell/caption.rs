@@ -49,6 +49,19 @@ pub struct CaptionRects {
     pub close: Option<Rect>,
 }
 
+/// A rectangle the page measured in fractional physical pixels, snapped by its edges: two
+/// buttons that touch keep touching at any scale (rounding the width instead leaves 1 px gaps
+/// at 125%).
+pub fn physical_rect(x: f64, y: f64, width: f64, height: f64) -> Rect {
+    let (left, top) = (x.round() as i32, y.round() as i32);
+    Rect {
+        x: left,
+        y: top,
+        width: (x + width).round() as i32 - left,
+        height: (y + height).round() as i32 - top,
+    }
+}
+
 fn contains(rect: Rect, x: i32, y: i32) -> bool {
     x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height
 }
@@ -156,6 +169,15 @@ mod tests {
         };
         assert_eq!(hidden.sink_bounds(0), None);
         assert_eq!(CaptionRects::default().sink_bounds(0), None);
+    }
+
+    #[test]
+    fn touching_buttons_stay_touching_at_fractional_scales() {
+        // 46 CSS px at 125% is 57.5 physical px.
+        let min = physical_rect(1000.0, 0.0, 57.5, 45.0);
+        let max = physical_rect(1057.5, 0.0, 57.5, 45.0);
+        assert_eq!(min.x + min.width, max.x);
+        assert_eq!((min.width, max.width), (58, 57));
     }
 
     #[test]
