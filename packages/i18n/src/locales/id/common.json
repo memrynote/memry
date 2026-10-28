@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, other {# pengingat lain sudah tiba waktunya}}",
     "moreRemindersDueHint": "Lihat panel pengingat untuk detailnya",
     "searchIndexRepaired": "Indeks pencarian diperbaiki",
-    "searchIndexRepairedHint": "Sebagian indeks pencarian rusak, jadi Memry membangunnya ulang. Catatan Anda tidak terpengaruh."
+    "searchIndexRepairedHint": "Sebagian indeks pencarian rusak, jadi Memry membangunnya ulang. Catatan Anda tidak terpengaruh.",
+    "drop": {
+      "tooLarge": "Salah satu file yang dijatuhkan lebih besar dari 2 GB.",
+      "tooMany": "Terlalu banyak file yang menunggu untuk diimpor. Jatuhkan lebih sedikit file dan coba lagi.",
+      "notAFile": "Folder tidak dapat dijatuhkan di sini. Jatuhkan file di dalamnya saja.",
+      "unreadable": "File yang dijatuhkan tidak dapat dibaca. Coba jatuhkan lagi."
+    }
   },
   "dateRelative": {
     "today": "Hari ini",

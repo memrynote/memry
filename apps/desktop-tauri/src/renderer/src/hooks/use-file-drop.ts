@@ -1,6 +1,9 @@
 import { useState, useCallback, useRef } from 'react'
 import { isSupported, getExtension, getAllSupportedExtensions } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
+import { toast } from 'sonner'
+import { dropErrorMessage, droppedNames, uriFileName, type DroppedFiles } from '@/lib/drop-stage'
+import { commands } from '../../../generated/bindings'
 
 const log = createLogger('Hook:useFileDrop')
 
@@ -14,12 +17,13 @@ const DRAG_TIMEOUT_MS = 150
 export const FILE_DROP_FOLDER_ATTR = 'data-file-drop-folder'
 
 interface FileDropResult {
-  validPaths: string[]
+  valid: DroppedFiles
   skippedCount: number
 }
 
 interface UseFileDropOptions {
-  onDrop: (paths: string[], targetFolder: string) => Promise<void> | void
+  /** The dropped files the app can import. They have no path: stage them (`withStagedFiles`). */
+  onDrop: (dropped: DroppedFiles, targetFolder: string) => Promise<void> | void
 }
 
 interface UseFileDropReturn {
@@ -32,8 +36,27 @@ interface UseFileDropReturn {
   }
 }
 
-function hasExternalFiles(e: React.DragEvent): boolean {
-  return e.dataTransfer.types.includes('Files')
+/**
+ * Whether a drag may carry files from the OS. WebKitGTK offers a file drag as `text/uri-list`
+ * alone, and the list is unreadable until the drop, so a dragged web link counts here too; the
+ * drop then reads the list and leaves a link alone.
+ */
+function mayCarryFiles(e: React.DragEvent): boolean {
+  const { types } = e.dataTransfer
+  return types.includes('Files') || types.includes('text/uri-list')
+}
+
+/**
+ * Where a drop's files are: `File` objects (WebKit on macOS, WebView2), or `'os-drag'` when the
+ * drop has a URI list that reads empty. WebKitGTK hands an OS file drag to the page that way,
+ * hiding the file URLs, and the shell read them off the native drag (`drop_os_drag_uris`). `null` when
+ * the drop holds no file: a web link's list reads as the link.
+ */
+export function dropSource(data: DataTransfer): { files: File[] } | 'os-drag' | null {
+  const files = Array.from(data.files)
+  if (files.length > 0) return { files }
+  const hidden = data.types.includes('text/uri-list') && data.getData('text/uri-list').trim() === ''
+  return hidden ? 'os-drag' : null
 }
 
 /**
@@ -48,48 +71,19 @@ export function resolveDropFolder(target: EventTarget | null): string {
   return target.closest(`[${FILE_DROP_FOLDER_ATTR}]`)?.getAttribute(FILE_DROP_FOLDER_ATTR) ?? ''
 }
 
-export function extractValidPaths(files: Array<{ path: string; name: string }>): FileDropResult {
-  const validPaths: string[] = []
-  let skippedCount = 0
-
-  for (const file of files) {
-    const nameForExt = file.path || file.name
-
-    if (!nameForExt) {
-      skippedCount++
-      continue
-    }
-
-    const ext = getExtension(nameForExt)
-    if (!ext || !isSupported(ext)) {
-      skippedCount++
-      continue
-    }
-
-    if (!file.path) {
-      log.warn('Supported file missing filesystem path', { name: file.name, ext })
-      skippedCount++
-      continue
-    }
-
-    validPaths.push(file.path)
-  }
-
-  return { validPaths, skippedCount }
+function isSupportedName(name: string): boolean {
+  const ext = getExtension(name)
+  return Boolean(ext && isSupported(ext))
 }
 
-function resolveDroppedFiles(fileList: FileList): Array<{ path: string; name: string }> {
-  const files = Array.from(fileList)
-
-  try {
-    const paths = window.api.getFileDropPaths(files)
-    return files.map((f, i) => ({ path: paths[i] || '', name: f.name }))
-  } catch (err) {
-    log.warn('webUtils.getPathForFile unavailable, falling back to file.path', err)
-    return files.map((f) => ({
-      path: (f as File & { path?: string }).path || '',
-      name: f.name
-    }))
+export function extractValidFiles(dropped: DroppedFiles): FileDropResult {
+  const valid: DroppedFiles =
+    'files' in dropped
+      ? { files: dropped.files.filter((file) => isSupportedName(file.name)) }
+      : { uris: dropped.uris.filter((uri) => isSupportedName(uriFileName(uri))) }
+  return {
+    valid,
+    skippedCount: droppedNames(dropped).length - droppedNames(valid).length
   }
 }
 
@@ -99,7 +93,7 @@ export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    if (!hasExternalFiles(e)) return
+    if (!mayCarryFiles(e)) return
     e.preventDefault()
     e.stopPropagation()
     e.dataTransfer.dropEffect = 'copy'
@@ -116,9 +110,6 @@ export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
         timeoutRef.current = null
@@ -126,28 +117,62 @@ export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {
       setIsDraggingFiles(false)
       setDropFolder(null)
 
-      if (!hasExternalFiles(e)) return
+      // Unclaimed, a dropped web link goes to the browser (`external-link-guard`).
+      const source = dropSource(e.dataTransfer)
+      if (!source) return
+      e.preventDefault()
+      e.stopPropagation()
 
       // Read the destination off the element under the pointer, not off the
       // sidebar selection — where the file lands is where it was dropped.
       const targetFolder = resolveDropFolder(e.target)
-      const resolved = resolveDroppedFiles(e.dataTransfer.files)
-      const { validPaths, skippedCount } = extractValidPaths(resolved)
+      /** Hands the supported files on; `false` when none is left. */
+      const deliver = (dropped: DroppedFiles): boolean => {
+        const { valid, skippedCount } = extractValidFiles(dropped)
+        const count = droppedNames(valid).length
 
-      if (validPaths.length === 0) {
-        if (skippedCount > 0) {
-          const exts = getAllSupportedExtensions().join(', ')
-          log.warn('No supported files in drop', { skippedCount, supported: exts })
+        if (count === 0) {
+          if (skippedCount > 0) {
+            const exts = getAllSupportedExtensions().join(', ')
+            log.warn('No supported files in drop', { skippedCount, supported: exts })
+          }
+          return false
         }
+
+        log.info('Files dropped', {
+          count,
+          skipped: skippedCount,
+          targetFolder: targetFolder || '<vault root>'
+        })
+        void onDrop(valid, targetFolder)
+        return true
+      }
+      if (source !== 'os-drag') {
+        deliver(source)
         return
       }
-
-      log.info('Files dropped', {
-        count: validPaths.length,
-        skipped: skippedCount,
-        targetFolder: targetFolder || '<vault root>'
-      })
-      void onDrop(validPaths, targetFolder)
+      // A drop the app keeps nothing of is used up now (staging no file), so it cannot be read
+      // during the rest of the shell's few seconds.
+      const spendDrop = (): void => {
+        commands
+          .dropStageOsFiles([])
+          .catch((error: unknown) => log.warn('could not use up the OS drop', error))
+      }
+      commands.dropOsDragUris().then(
+        (uris) => {
+          if (uris.length === 0) {
+            log.warn('the OS drop holds no file')
+            toast.error(dropErrorMessage({ code: 'drop_not_dropped' }))
+            spendDrop()
+            return
+          }
+          if (!deliver({ uris })) spendDrop()
+        },
+        (error: unknown) => {
+          log.error('could not read the files of the OS drop', error)
+          toast.error(dropErrorMessage(error))
+        }
+      )
     },
     [onDrop]
   )

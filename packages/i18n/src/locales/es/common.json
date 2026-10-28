@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Vence # recordatorio más} other {Vencen # recordatorios más}}",
     "moreRemindersDueHint": "Consulta el panel de recordatorios para ver los detalles",
     "searchIndexRepaired": "Índice de búsqueda reparado",
-    "searchIndexRepairedHint": "Parte del índice de búsqueda estaba dañada, así que Memry lo ha reconstruido. Tus notas están intactas."
+    "searchIndexRepairedHint": "Parte del índice de búsqueda estaba dañada, así que Memry lo ha reconstruido. Tus notas están intactas.",
+    "drop": {
+      "tooLarge": "Un archivo soltado ocupa más de 2 GB.",
+      "tooMany": "Hay demasiados archivos esperando para importarse. Suelta menos archivos e inténtalo de nuevo.",
+      "notAFile": "Aquí no se pueden soltar carpetas. Suelta los archivos que contienen.",
+      "unreadable": "No se pudieron leer los archivos soltados. Intenta soltarlos de nuevo."
+    }
   },
   "dateRelative": {
     "today": "Hoy",

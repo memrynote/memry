@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {# more reminder due} other {# more reminders due}}",
     "moreRemindersDueHint": "Check the reminders panel for details",
     "searchIndexRepaired": "Search index repaired",
-    "searchIndexRepairedHint": "Part of the search index was damaged, so Memry rebuilt it. Your notes were not touched."
+    "searchIndexRepairedHint": "Part of the search index was damaged, so Memry rebuilt it. Your notes were not touched.",
+    "drop": {
+      "tooLarge": "A dropped file is larger than 2 GB.",
+      "tooMany": "Too many files are waiting to import. Drop fewer files and try again.",
+      "notAFile": "Folders can't be dropped here. Drop the files inside instead.",
+      "unreadable": "The dropped files could not be read. Try dropping them again."
+    }
   },
   "dateRelative": {
     "today": "Today",

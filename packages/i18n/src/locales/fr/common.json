@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {# autre rappel arrivé à échéance} other {# autres rappels arrivés à échéance}}",
     "moreRemindersDueHint": "Consultez le panneau des rappels pour en savoir plus",
     "searchIndexRepaired": "Index de recherche réparé",
-    "searchIndexRepairedHint": "Une partie de l'index de recherche était endommagée, Memry l'a donc reconstruit. Vos notes n'ont pas été modifiées."
+    "searchIndexRepairedHint": "Une partie de l'index de recherche était endommagée, Memry l'a donc reconstruit. Vos notes n'ont pas été modifiées.",
+    "drop": {
+      "tooLarge": "Un fichier déposé dépasse 2 Go.",
+      "tooMany": "Trop de fichiers attendent d'être importés. Déposez moins de fichiers et réessayez.",
+      "notAFile": "Impossible de déposer des dossiers ici. Déposez plutôt les fichiers qu'ils contiennent.",
+      "unreadable": "Impossible de lire les fichiers déposés. Essayez de les déposer à nouveau."
+    }
   },
   "dateRelative": {
     "today": "Aujourd'hui",

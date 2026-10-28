@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Încă # memento} few {Încă # mementouri} other {Încă # de mementouri}}",
     "moreRemindersDueHint": "Consultați panoul de mementouri pentru detalii",
     "searchIndexRepaired": "Index de căutare reparat",
-    "searchIndexRepairedHint": "O parte din indexul de căutare era deteriorată, așa că Memry l-a reconstruit. Notițele nu au fost afectate."
+    "searchIndexRepairedHint": "O parte din indexul de căutare era deteriorată, așa că Memry l-a reconstruit. Notițele nu au fost afectate.",
+    "drop": {
+      "tooLarge": "Un fișier plasat are peste 2 GB.",
+      "tooMany": "Prea multe fișiere așteaptă importul. Plasează mai puține fișiere și încearcă din nou.",
+      "notAFile": "Aici nu se pot plasa dosare. Plasează în schimb fișierele din ele.",
+      "unreadable": "Fișierele plasate nu au putut fi citite. Încearcă să le plasezi din nou."
+    }
   },
   "dateRelative": {
     "today": "Astăzi",

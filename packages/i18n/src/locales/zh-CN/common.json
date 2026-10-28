@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, other {另有 # 个提醒到期}}",
     "moreRemindersDueHint": "在提醒面板中查看详情",
     "searchIndexRepaired": "搜索索引已修复",
-    "searchIndexRepairedHint": "部分搜索索引已损坏，Memry 已将其重建。笔记未受影响。"
+    "searchIndexRepairedHint": "部分搜索索引已损坏，Memry 已将其重建。笔记未受影响。",
+    "drop": {
+      "tooLarge": "拖放的文件中有一个大于 2 GB。",
+      "tooMany": "等待导入的文件过多。请减少拖放的文件后重试。",
+      "notAFile": "不能在此处拖放文件夹。请改为拖放其中的文件。",
+      "unreadable": "无法读取拖放的文件。请再次拖放。"
+    }
   },
   "dateRelative": {
     "today": "今天",

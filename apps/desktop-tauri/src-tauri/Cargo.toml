@@ -114,6 +114,9 @@ libloading = "0.9.0"
 # through its `glib`. Same version as wry. `v2_40` (already on through tauri's `linux-body`):
 # `shell/navigation_guard/linux.rs` reads `is_main_frame_main_resource`.
 webkit2gtk = { version = "2.0.2", features = ["v2_40"] }
+# `shell/drop_stage.rs` reads the URIs of an OS file drag off the webview's `drag-data-received`.
+# Same version as tao and wry, so nothing new is compiled.
+gtk = "0.18.2"
 # tauri-plugin-deep-link 2.6.2 builds `ini::ParseOption` by field; 0.21.2 added fields, so it fails
 # to compile there. Drop the pin when the plugin moves to `..Default::default()`.
 rust-ini = "=0.21.1"

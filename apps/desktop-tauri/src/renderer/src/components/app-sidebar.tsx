@@ -73,6 +73,12 @@ import { getAllSupportedExtensions, getExtension, getFileType } from '@memry/sha
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useFileDrop, FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
+import {
+  dropErrorMessage,
+  droppedNames,
+  withStagedFiles,
+  type DroppedFiles
+} from '@/lib/drop-stage'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { runCommand } from '@/commands'
 import { useT } from '@memry/i18n/renderer'
@@ -125,10 +131,13 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
 
   const { showFiles } = treeViewOptions
   const handleFileDrop = useCallback(
-    async (paths: string[], targetFolder: string) => {
+    async (dropped: DroppedFiles, targetFolder: string) => {
       try {
-        // Where the file was dropped, not what happened to be selected.
-        const result = await notesService.importFiles(paths, targetFolder)
+        // Where the file was dropped, not what happened to be selected. A drop has no path, so
+        // the files are staged for the import and released when it settles.
+        const result = await withStagedFiles(dropped, (paths) =>
+          notesService.importFiles(paths, targetFolder)
+        )
         const tCommon = getI18n().getFixedT(null, 'common')
 
         if (result.imported > 0) {
@@ -136,7 +145,9 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           // appear, which reads as a failed import unless the toast says why.
           const hidesSomeImports =
             !showFiles &&
-            paths.some((path) => (getFileType(getExtension(path)) ?? 'markdown') !== 'markdown')
+            droppedNames(dropped).some(
+              (name) => (getFileType(getExtension(name)) ?? 'markdown') !== 'markdown'
+            )
           const message = tCommon('toast.filesImported', { count: result.imported })
           if (hidesSomeImports) {
             toast.success(message, { description: tCommon('toast.filesHiddenInSidebar') })
@@ -151,12 +162,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         }
       } catch (err) {
         log.error('Failed to import dropped files', err)
-        toast.error(
-          extractErrorMessage(
-            err,
-            getI18n().getFixedT(null, 'common')('phaseI.errors.failedToImportFiles')
-          )
-        )
+        toast.error(dropErrorMessage(err))
       }
     },
     [showFiles]

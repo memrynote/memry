@@ -3884,6 +3884,7 @@ dependencies = [
  "crash-handler",
  "dunce",
  "font-kit",
+ "gtk",
  "libloading 0.9.0",
  "memry-desktop",
  "minidumper",

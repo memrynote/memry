@@ -9,6 +9,7 @@ pub mod commands;
 mod crash;
 mod debug;
 mod dialog;
+mod os_drag;
 mod reveal;
 mod shell;
 mod shell_integrations;

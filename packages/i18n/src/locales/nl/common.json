@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Nog # herinnering} other {Nog # herinneringen}}",
     "moreRemindersDueHint": "Bekijk het herinneringenpaneel voor details",
     "searchIndexRepaired": "Zoekindex hersteld",
-    "searchIndexRepairedHint": "Een deel van de zoekindex was beschadigd, dus Memry heeft die opnieuw opgebouwd. Je notities zijn niet gewijzigd."
+    "searchIndexRepairedHint": "Een deel van de zoekindex was beschadigd, dus Memry heeft die opnieuw opgebouwd. Je notities zijn niet gewijzigd.",
+    "drop": {
+      "tooLarge": "Een neergezet bestand is groter dan 2 GB.",
+      "tooMany": "Er wachten te veel bestanden op import. Zet minder bestanden neer en probeer het opnieuw.",
+      "notAFile": "Mappen kunnen hier niet worden neergezet. Zet in plaats daarvan de bestanden erin neer.",
+      "unreadable": "De neergezette bestanden konden niet worden gelezen. Probeer ze opnieuw neer te zetten."
+    }
   },
   "dateRelative": {
     "today": "Vandaag",

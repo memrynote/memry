@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {# altro promemoria} other {Altri # promemoria}}",
     "moreRemindersDueHint": "Controlla il pannello dei promemoria per i dettagli",
     "searchIndexRepaired": "Indice di ricerca riparato",
-    "searchIndexRepairedHint": "Una parte dell'indice di ricerca era danneggiata, quindi Memry l'ha ricostruito. Le tue note non sono state modificate."
+    "searchIndexRepairedHint": "Una parte dell'indice di ricerca era danneggiata, quindi Memry l'ha ricostruito. Le tue note non sono state modificate.",
+    "drop": {
+      "tooLarge": "Un file trascinato supera i 2 GB.",
+      "tooMany": "Troppi file sono in attesa di importazione. Trascina meno file e riprova.",
+      "notAFile": "Qui non è possibile rilasciare cartelle. Rilascia invece i file che contengono.",
+      "unreadable": "Impossibile leggere i file trascinati. Prova a rilasciarli di nuovo."
+    }
   },
   "dateRelative": {
     "today": "Oggi",
