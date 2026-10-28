@@ -18,8 +18,8 @@ pub fn is_allowed_external_url(raw: &str) -> bool {
 }
 
 /// File types the OS runs, installs or mounts when it "opens" them. A note's link or
-/// `shell_open_path` must never start a program, so these are refused outright; [`os_action`]
-/// reveals any other type off [`OPENABLE_EXTENSIONS`].
+/// `shell_open_path` must never start a program, so [`os_action`] shows these in the file manager
+/// and never opens them, whatever else is true of them.
 const EXECUTABLE_EXTENSIONS: &[&str] = &[
     "app",
     "appimage",
@@ -70,6 +70,7 @@ const EXECUTABLE_EXTENSIONS: &[&str] = &[
     "settingcontent-ms",
     "sh",
     "terminal",
+    "theme",
     "url",
     "vbe",
     "vbs",
@@ -85,8 +86,9 @@ const EXECUTABLE_EXTENSIONS: &[&str] = &[
 ];
 
 /// Whether opening `path` would run a program: an executable extension (Windows ignores trailing
-/// dots and spaces, so `a.exe.` counts), or any folder inside a macOS `.app` bundle.
-pub fn is_executable_path(path: &str) -> bool {
+/// dots and spaces, so `a.exe.` counts here, and only here), or any folder inside a macOS `.app`
+/// bundle.
+fn is_executable_path(path: &str) -> bool {
     let segments: Vec<&str> = path.split(['/', '\\']).collect();
     let last = segments.len() - 1;
     segments.iter().enumerate().any(|(index, segment)| {
@@ -102,15 +104,16 @@ pub fn is_executable_path(path: &str) -> bool {
 }
 
 /// The documents, media and archives a vault holds, which the OS opens in their app. Stricter
-/// than Electron, which opened any type: HTML, SVG and XML (a browser runs their script),
-/// macro-enabled Office files, fonts (an installer), disk images and source files are revealed.
+/// than Electron, which opened any type. Revealed instead: HTML, SVG and XML (a browser runs their
+/// script); legacy Office (`doc`, `xls`, `ppt`), macro-enabled Office and RTF, which can carry
+/// macros or OLE objects their app runs (a vault file has no mark of the web to hold them back);
+/// fonts (an installer); disk images; source files.
 const OPENABLE_EXTENSIONS: &[&str] = &[
     // Documents.
-    "csv", "doc", "docx", "epub", "json", "key", "log", "markdown", "md", "numbers", "odg", "odp",
-    "ods", "odt", "pages", "pdf", "ppt", "pptx", "rtf", "tsv", "txt", "xls", "xlsx",
-    // Images.
-    "avif", "bmp", "gif", "heic", "heif", "ico", "jpeg", "jpg", "png", "psd", "tif", "tiff", "webp",
-    // Audio and video.
+    "csv", "docx", "epub", "json", "key", "log", "markdown", "md", "numbers", "odg", "odp", "ods",
+    "odt", "pages", "pdf", "pptx", "tsv", "txt", "xlsx", // Images.
+    "avif", "bmp", "gif", "heic", "heif", "ico", "jpeg", "jpg", "png", "psd", "tif", "tiff",
+    "webp", // Audio and video.
     "3gp", "aac", "aif", "aiff", "avi", "flac", "m4a", "m4v", "mid", "midi", "mkv", "mov", "mp3",
     "mp4", "mpeg", "mpg", "oga", "ogg", "ogv", "opus", "wav", "webm", "wma", "wmv",
     // Archives.
@@ -123,34 +126,68 @@ pub enum OsAction {
     /// Opened in its app.
     Open,
     /// Shown in the file manager, where the person can open it deliberately.
-    Reveal,
-    /// A program, never handed to the OS.
+    Reveal(RevealRule),
+    /// A link swapped in for the file since its path resolved: the OS would follow it.
     Refuse,
 }
 
-/// What to do with `real`, the canonical path the OS is handed. Read once more here, so a link
-/// swapped in since the path resolved is refused.
-pub fn os_action(real: &Path) -> io::Result<OsAction> {
-    let meta = std::fs::symlink_metadata(real)?;
-    if meta.file_type().is_symlink() || is_executable_path(&real.to_string_lossy()) {
+/// Why a file is shown instead of opened, for the log (which never carries the path).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RevealRule {
+    /// A type the OS runs, installs or mounts.
+    Program,
+    /// An exec bit on macOS or Linux: `open` runs such a file in Terminal, whatever its name.
+    ExecBit,
+    /// A name that is not UTF-8, so its type cannot be matched.
+    NameNotUtf8,
+    /// Not on [`OPENABLE_EXTENSIONS`].
+    NotListed,
+}
+
+impl RevealRule {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Program => "program",
+            Self::ExecBit => "exec_bit",
+            Self::NameNotUtf8 => "name_not_utf8",
+            Self::NotListed => "not_listed",
+        }
+    }
+}
+
+/// What to do with `target`: the exact path the opener is handed, so the decision reads the bytes
+/// the OS will. `is_root` is the vault or the app data directory itself, which a person may always
+/// open. Only the last component is read again here: a link swapped in for the file itself is
+/// refused; the folders above it come canonical from [`resolve_for_os`].
+pub fn os_action(target: &Path, is_root: bool) -> io::Result<OsAction> {
+    let meta = std::fs::symlink_metadata(target)?;
+    if meta.file_type().is_symlink() {
         return Ok(OsAction::Refuse);
     }
-    let name = real
-        .file_name()
-        .map(|name| name.to_string_lossy())
-        .unwrap_or_default();
-    let name = name.trim_end_matches(['.', ' ']).to_ascii_lowercase();
+    if is_root && meta.is_dir() {
+        return Ok(OsAction::Open);
+    }
+    if is_executable_path(&target.to_string_lossy()) {
+        return Ok(OsAction::Reveal(RevealRule::Program));
+    }
+    if is_unix_executable(&meta) {
+        return Ok(OsAction::Reveal(RevealRule::ExecBit));
+    }
+    let Some(name) = target.file_name() else {
+        return Ok(OsAction::Reveal(RevealRule::NotListed));
+    };
+    let Some(name) = name.to_str() else {
+        return Ok(OsAction::Reveal(RevealRule::NameNotUtf8));
+    };
+    let name = name.to_ascii_lowercase();
     let extension = name
         .rsplit_once('.')
         .filter(|(stem, _)| !stem.is_empty())
         .map(|(_, ext)| ext);
     Ok(match extension {
         Some(ext) if OPENABLE_EXTENSIONS.contains(&ext) => OsAction::Open,
-        Some(_) => OsAction::Reveal,
         None if meta.is_dir() => OsAction::Open,
-        // `open` on macOS runs an extensionless file with an exec bit in Terminal.
-        None if is_unix_executable(&meta) => OsAction::Refuse,
-        None => OsAction::Reveal,
+        _ => OsAction::Reveal(RevealRule::NotListed),
     })
 }
 
@@ -292,35 +329,45 @@ mod tests {
             "C:\\v\\a.search-ms",
             "C:\\v\\a.searchconnector-ms",
             "C:\\v\\a.xll",
+            "C:\\v\\a.theme",
         ] {
             assert!(is_executable_path(path), "{path}");
         }
     }
 
     fn action_of(dir: &Path, name: &str) -> OsAction {
-        os_action(&dir.join(name)).unwrap()
+        os_action(&dir.join(name), false).unwrap()
+    }
+
+    fn touch(dir: &Path, name: &str) {
+        std::fs::write(dir.join(name), b"x").unwrap();
+    }
+
+    #[cfg(unix)]
+    fn touch_executable(dir: &Path, name: &str) {
+        use std::os::unix::fs::PermissionsExt;
+        touch(dir, name);
+        std::fs::set_permissions(dir.join(name), std::fs::Permissions::from_mode(0o755)).unwrap();
     }
 
     #[test]
     fn opens_documents_media_and_archives_and_reveals_anything_else() {
         let dir = tempfile::tempdir().unwrap();
-        let names = [
-            "a.pdf",
-            "a.PDF",
-            "a.md",
-            "a.txt",
-            "a.docx",
-            "a.xlsx",
-            "a.png",
-            "a.HEIC",
-            "a.mp3",
-            "a.mov",
-            "a.zip",
-            "a.tar.gz",
+        let opened = [
+            "a.pdf", "a.PDF", "a.md", "a.txt", "a.docx", "a.xlsx", "a.pptx", "a.png", "a.HEIC",
+            "a.mp3", "a.mov", "a.zip", "a.tar.gz",
+        ];
+        // Script a browser runs, macros or OLE objects their app runs, font installers, disk
+        // images, source, the unknown and a name with no extension.
+        let revealed = [
             "a.html",
             "a.svg",
             "a.xml",
             "a.docm",
+            "a.doc",
+            "a.xls",
+            "a.ppt",
+            "a.rtf",
             "a.ttf",
             "a.dmg",
             "a.rs",
@@ -328,75 +375,123 @@ mod tests {
             "README",
             ".hidden",
         ];
-        for name in names {
-            std::fs::write(dir.path().join(name), b"x").unwrap();
+        for name in opened.iter().chain(&revealed) {
+            touch(dir.path(), name);
         }
-        for name in [
-            "a.pdf", "a.PDF", "a.md", "a.txt", "a.docx", "a.xlsx", "a.png", "a.HEIC", "a.mp3",
-            "a.mov", "a.zip", "a.tar.gz",
-        ] {
+        for name in opened {
             assert_eq!(action_of(dir.path(), name), OsAction::Open, "{name}");
         }
-        // Script runs in a browser, macros, font installers, disk images, source and the unknown.
-        for name in [
-            "a.html",
-            "a.svg",
-            "a.xml",
-            "a.docm",
-            "a.ttf",
-            "a.dmg",
-            "a.rs",
-            "a.unknown",
-            "README",
-            ".hidden",
-        ] {
-            assert_eq!(action_of(dir.path(), name), OsAction::Reveal, "{name}");
+        for name in revealed {
+            assert_eq!(
+                action_of(dir.path(), name),
+                OsAction::Reveal(RevealRule::NotListed),
+                "{name}"
+            );
+        }
+    }
+
+    // The opener gets these exact bytes, and macOS decides by the whole name: `a.pdf.` is not a
+    // PDF to it. Windows drops trailing dots and spaces, which only the deny-list allows for.
+    #[test]
+    fn decides_on_the_exact_name_the_opener_gets() {
+        let dir = tempfile::tempdir().unwrap();
+        for name in ["a.pdf.", "a.pdf ", "a.zip.."] {
+            touch(dir.path(), name);
+            assert_eq!(
+                action_of(dir.path(), name),
+                OsAction::Reveal(RevealRule::NotListed),
+                "{name:?}"
+            );
         }
     }
 
     #[test]
-    fn refuses_a_program_whatever_it_is_named() {
+    fn reveals_a_program_whatever_it_is_named() {
         let dir = tempfile::tempdir().unwrap();
-        for name in ["a.exe", "a.py", "a.sh"] {
-            std::fs::write(dir.path().join(name), b"x").unwrap();
-            assert_eq!(action_of(dir.path(), name), OsAction::Refuse, "{name}");
+        for name in ["a.exe", "a.py", "a.sh", "a.exe."] {
+            touch(dir.path(), name);
+            assert_eq!(
+                action_of(dir.path(), name),
+                OsAction::Reveal(RevealRule::Program),
+                "{name:?}"
+            );
         }
         std::fs::create_dir_all(dir.path().join("Tool.app/Contents")).unwrap();
-        std::fs::write(dir.path().join("Tool.app/Contents/notes.pdf"), b"x").unwrap();
-        assert_eq!(action_of(dir.path(), "Tool.app"), OsAction::Refuse);
-        assert_eq!(
-            action_of(dir.path(), "Tool.app/Contents/notes.pdf"),
-            OsAction::Refuse
-        );
+        touch(dir.path(), "Tool.app/Contents/notes.pdf");
+        for name in ["Tool.app", "Tool.app/Contents/notes.pdf"] {
+            assert_eq!(
+                action_of(dir.path(), name),
+                OsAction::Reveal(RevealRule::Program),
+                "{name}"
+            );
+        }
     }
 
+    // `open` runs an executable file in Terminal on macOS whatever its name says, and a desktop
+    // may run one on Linux: the exec bit is decisive, the extension is not.
     #[cfg(unix)]
     #[test]
-    fn refuses_an_extensionless_file_with_an_exec_bit() {
-        use std::os::unix::fs::PermissionsExt;
+    fn never_opens_a_file_with_an_exec_bit() {
         let dir = tempfile::tempdir().unwrap();
-        for name in ["tool", ".tool"] {
-            let path = dir.path().join(name);
-            std::fs::write(&path, b"#!/bin/sh\n").unwrap();
-            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o744)).unwrap();
-            assert_eq!(action_of(dir.path(), name), OsAction::Refuse, "{name}");
+        for name in ["tool", ".tool", "a.pdf", "a.pdf.", "a.pdf ", "a.zip.."] {
+            touch_executable(dir.path(), name);
+            assert_eq!(
+                action_of(dir.path(), name),
+                OsAction::Reveal(RevealRule::ExecBit),
+                "{name:?}"
+            );
         }
-        // A document keeps opening when a copy from a FAT volume or a zip left the bit on.
-        let pdf = dir.path().join("a.pdf");
-        std::fs::write(&pdf, b"%PDF").unwrap();
-        std::fs::set_permissions(&pdf, std::fs::Permissions::from_mode(0o755)).unwrap();
-        assert_eq!(action_of(dir.path(), "a.pdf"), OsAction::Open);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn reveals_a_name_that_is_not_utf8() {
+        use std::os::unix::ffi::OsStrExt;
+        let dir = tempfile::tempdir().unwrap();
+        let name = std::ffi::OsStr::from_bytes(b"a\xff.pdf");
+        std::fs::write(dir.path().join(name), b"x").unwrap();
+        assert_eq!(
+            os_action(&dir.path().join(name), false).unwrap(),
+            OsAction::Reveal(RevealRule::NameNotUtf8)
+        );
     }
 
     #[test]
     fn opens_a_plain_folder_and_reveals_a_bundle() {
         let dir = tempfile::tempdir().unwrap();
-        for name in ["Folder", "Report.pages", "Saver.saver"] {
+        for name in ["Folder", "Report.pages", "Saver.saver", "notes.2024"] {
             std::fs::create_dir(dir.path().join(name)).unwrap();
         }
         assert_eq!(action_of(dir.path(), "Folder"), OsAction::Open);
         assert_eq!(action_of(dir.path(), "Report.pages"), OsAction::Open);
-        assert_eq!(action_of(dir.path(), "Saver.saver"), OsAction::Reveal);
+        for name in ["Saver.saver", "notes.2024"] {
+            assert_eq!(
+                action_of(dir.path(), name),
+                OsAction::Reveal(RevealRule::NotListed),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn always_opens_a_root_itself_even_with_a_dot_in_its_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = dir.path().join("My.Vault");
+        std::fs::create_dir(&vault).unwrap();
+        assert_eq!(os_action(&vault, true).unwrap(), OsAction::Open);
+    }
+
+    // Every type the vault indexes as a file opens in its app, except SVG, whose script a
+    // browser (its default app) would run.
+    #[test]
+    fn opens_every_vault_file_type_but_svg() {
+        for (extension, _, _) in crate::vault::file_types::TABLE {
+            assert_eq!(
+                OPENABLE_EXTENSIONS.contains(extension),
+                *extension != "svg",
+                "{extension}"
+            );
+        }
     }
 
     #[cfg(unix)]

@@ -26,7 +26,7 @@ impl FileType {
 }
 
 /// (extension, type, MIME type)
-const TABLE: &[(&str, FileType, &str)] = &[
+pub(crate) const TABLE: &[(&str, FileType, &str)] = &[
     ("md", FileType::Markdown, "text/markdown"),
     ("pdf", FileType::Pdf, "application/pdf"),
     ("png", FileType::Image, "image/png"),

@@ -88,59 +88,56 @@ pub fn open_memry_file(app: &AppHandle<Wry>, url: &str) -> Result<(), CommandErr
     open_path(app, &path)
 }
 
-/// Opens the file in its app when it is a type [`os_action`] opens, shows it in the file manager
-/// when it is any other type, and refuses a program.
+/// Opens the file in its app when [`os_action`] says so, and otherwise shows it in the file
+/// manager. The decision and the open read the same path, byte for byte.
 pub fn open_path(app: &AppHandle<Wry>, path: &str) -> Result<(), CommandError> {
     let Allowed { real, is_root } = allowed_path(app, path)?;
-    let action = if is_root {
-        OsAction::Open
-    } else {
-        os_action(&real).map_err(|error| {
-            CommandError::new(ErrorKind::Storage, "path_failed", error.to_string())
-        })?
-    };
+    // `canonicalize` gives a verbatim `\\?\` path on Windows, which `ShellExecuteExW` does not
+    // take for a file; `simplified` drops the prefix only when the path means the same without
+    // it. No-op elsewhere.
+    let target = dunce::simplified(&real);
+    let action = os_action(target, is_root)
+        .map_err(|error| CommandError::new(ErrorKind::Storage, "path_failed", error.to_string()))?;
     match action {
         OsAction::Refuse => {
             tracing::warn!(
                 scope = "External",
-                "refused to open a file the OS would run"
+                rule = "link_swapped_in",
+                "refused to open a file"
             );
-            Err(refused("a program is not opened from here"))
+            Err(refused("the file changed into a link"))
         }
-        OsAction::Reveal => {
+        OsAction::Reveal(rule) => {
             tracing::info!(
                 scope = "External",
-                "showed a file of a type the app does not open in the file manager"
+                rule = rule.as_str(),
+                "showed a file in the file manager instead of opening it"
             );
-            reveal(app, real)
+            reveal(app, target)
         }
         OsAction::Open => {
             #[cfg(feature = "e2e")]
-            if crate::e2e::record_os_open(app, &format!("path {}", real.to_string_lossy())) {
+            if crate::e2e::record_os_open(app, &format!("path {}", target.display())) {
                 return Ok(());
             }
-            // `canonicalize` gives a verbatim `\\?\` path on Windows, which `ShellExecuteExW`
-            // does not take for a file; `simplified` drops the prefix when the path means the same
-            // without it. No-op elsewhere.
-            app.opener()
-                .open_path(dunce::simplified(&real).to_string_lossy(), None::<&str>)
-                .map_err(|error| {
-                    CommandError::new(ErrorKind::Internal, "open_failed", error.to_string())
-                })
+            // A `Path`, not a string: a name that is not UTF-8 reaches the OS unchanged.
+            tauri_plugin_opener::open_path(target, None::<&str>).map_err(|error| {
+                CommandError::new(ErrorKind::Internal, "open_failed", error.to_string())
+            })
         }
     }
 }
 
 pub fn reveal_path(app: &AppHandle<Wry>, path: &str) -> Result<(), CommandError> {
-    reveal(app, allowed_path(app, path)?.real)
+    reveal(app, &allowed_path(app, path)?.real)
 }
 
-fn reveal(app: &AppHandle<Wry>, real: PathBuf) -> Result<(), CommandError> {
+fn reveal(app: &AppHandle<Wry>, target: &Path) -> Result<(), CommandError> {
     #[cfg(feature = "e2e")]
-    if crate::e2e::record_os_open(app, &format!("reveal {}", real.to_string_lossy())) {
+    if crate::e2e::record_os_open(app, &format!("reveal {}", target.display())) {
         return Ok(());
     }
     app.opener()
-        .reveal_item_in_dir(real)
+        .reveal_item_in_dir(target)
         .map_err(|error| CommandError::new(ErrorKind::Internal, "reveal_failed", error.to_string()))
 }

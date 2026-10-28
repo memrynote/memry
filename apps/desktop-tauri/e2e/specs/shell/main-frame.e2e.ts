@@ -256,10 +256,18 @@ test('a vault file opens in its app only when it is a type the app opens (#3704)
   await appReady(page)
   const folder = join(testVaultPath, 'attachments', 'n2')
   mkdirSync(folder, { recursive: true })
-  const files = { svg: 'abc123-image.svg', py: 'abc123-tool.py', bare: 'abc123-tool' }
-  writeFileSync(join(folder, files.svg), '<svg xmlns="http://www.w3.org/2000/svg"/>')
-  writeFileSync(join(folder, files.py), 'print(1)\n')
-  writeFileSync(join(folder, files.bare), '#!/bin/sh\n', { mode: 0o755 })
+  const svg = join(folder, 'abc123-image.svg')
+  writeFileSync(svg, '<svg xmlns="http://www.w3.org/2000/svg"/>')
+  const py = join(folder, 'abc123-tool.py')
+  writeFileSync(py, 'print(1)\n')
+  // On macOS `open` runs a file with an exec bit in Terminal, whatever its name says.
+  const unix = process.platform !== 'win32'
+  const bare = join(folder, 'abc123-tool')
+  const pdf = join(folder, 'abc123-tool.pdf')
+  if (unix) {
+    writeFileSync(bare, '#!/bin/sh\n', { mode: 0o755 })
+    writeFileSync(pdf, '#!/bin/sh\n', { mode: 0o755 })
+  }
   const href = await markDocument(page)
   const click = (path: string): Promise<void> =>
     page.evaluate(
@@ -273,17 +281,20 @@ test('a vault file opens in its app only when it is a type the app opens (#3704)
       webviewUrl('memry-file', path)
     )
 
-  // A browser would run an SVG's script: it is shown in the file manager instead.
-  await click(join(folder, files.svg))
-  await expect.poll(() => opens(app), { timeout: 15_000 }).toHaveLength(1)
-  expect((await opens(app))[0]).toMatch(/^reveal .*abc123-image\.svg$/)
-
-  // A program is never handed to the OS; on macOS and Linux neither is an executable without an
-  // extension, which `open` would run in Terminal.
-  await click(join(folder, files.py))
-  if (process.platform !== 'win32') await click(join(folder, files.bare))
+  // A browser would run an SVG's script, Python runs a .py, and an executable runs whatever it
+  // is named: each is shown in the file manager instead of opened.
+  const shown = unix ? [svg, py, bare, pdf] : [svg, py]
+  for (const [index, path] of shown.entries()) {
+    await click(path)
+    await expect.poll(() => opens(app), { timeout: 15_000 }).toHaveLength(index + 1)
+  }
   await page.waitForTimeout(SETTLE_MS)
-  expect(await opens(app)).toHaveLength(1)
+  const recorded = await opens(app)
+  expect(recorded).toHaveLength(shown.length)
+  for (const [index, path] of shown.entries()) {
+    const name = path.slice(folder.length + 1).replaceAll('.', '\\.')
+    expect(recorded[index]).toMatch(new RegExp(`^reveal .*${name}$`))
+  }
   await expectSameDocument(page, href)
 })
 

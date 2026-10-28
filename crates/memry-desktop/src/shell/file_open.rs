@@ -31,7 +31,8 @@ const REPLACED_RETRIES: u32 = 3;
 /// Where a vault-relative path really points.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Resolution {
-    /// The real target, re-rooted at the root the caller passed.
+    /// The real target: re-rooted at the root the caller passed ([`resolve_under_root`]), or
+    /// canonical, root included ([`resolve_real_under_root`]).
     Inside(PathBuf),
     /// Leaves the root, or is not a plain relative path.
     Outside,
