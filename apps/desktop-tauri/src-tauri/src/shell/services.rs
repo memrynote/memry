@@ -285,10 +285,18 @@ pub fn startup_state(app: &AppHandle<Wry>) -> StartupState {
     let config = app.state::<Arc<AppConfig>>().inner().clone();
     let general = app.try_state::<SettingsService>().and_then(|settings| {
         let vault = app.state::<Session>().current()?;
-        settings
-            .read_group(Some(&vault), "general")
-            .ok()
-            .map(|read| read.value)
+        match settings.read_group(Some(&vault), "general") {
+            Ok(read) => Some(read.value),
+            // The first paint uses the cached startup values; the error reaches the renderer on
+            // its own settings read, with its code (`device_identity_missing` and the others).
+            Err(error) => {
+                tracing::warn!(
+                    scope = "Settings",
+                    "the vault's settings could not be read for the first paint: {error}"
+                );
+                None
+            }
+        }
     });
     let values = startup_values::read(&config, general.as_ref());
     let locale = app.state::<Arc<LocaleService>>().get();

@@ -44,9 +44,11 @@
 //! a keychain that locks later does not stop writes. A key served from the file is not cached,
 //! so the move is retried. Cached reads never wait behind a keychain call.
 //!
-//! **Delete** removes the marker, then the file, then the keychain item: a crash in between leaves
-//! either the key in the keychain (found again, marked again) or nothing, never a file that a
-//! later read would move back. On a system with no keychain, removing the file is the delete.
+//! **Delete** removes the file, then the keychain item, then the marker. A keychain that cannot
+//! be reached fails the delete and keeps the marker, so nothing is minted while the key may still
+//! be there; only a key that never moved (no marker, no keychain on the system) is deleted with
+//! its file alone. A crash after the keychain delete leaves the marker: the next read reports the
+//! key missing instead of minting one.
 //!
 //! The first read of a launch waits for the keychain (at most its 5 s deadline, then `Locked`),
 //! and that read happens before the first paint (`startup_state` reads the general settings).
@@ -54,13 +56,15 @@
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use zeroize::Zeroizing;
 
-use super::{GenericSecrets, IDENTITY_SERVICE, KeyringStore};
+use super::worker::Op;
+use super::{IDENTITY_SERVICE, KeyringStore};
 use crate::vault::fs_atomic::atomic_write;
 
 const DSK: SecureStoreKey = SecureStoreKey::DeviceSigningKey;
@@ -70,8 +74,19 @@ const MARKER_FILE: &str = "device-key.location";
 const MARKER: &[u8] = b"keychain\n";
 /// A libsodium Ed25519 secret key, the shape Electron and the core both store.
 const KEY_LEN: usize = 64;
-const MISSING: &str = "the device key is missing from the keychain after it moved there; \
-     a new one is not minted, so this device keeps its identity once the key is restored";
+const MISSING: &str = "This device's identity key is missing from the system keychain, where \
+     Memry moved it. Memry does not create a new one, so restoring the keychain item brings this \
+     device back as it was.";
+
+/// The answer of a read whose key moved into the keychain and is gone from it. Callers that can
+/// tell the user ([`is_device_identity_missing`]) report it as its own error.
+pub fn device_identity_missing() -> SecureStoreError {
+    failed(MISSING)
+}
+
+pub fn is_device_identity_missing(error: &SecureStoreError) -> bool {
+    matches!(error, SecureStoreError::Failed { what } if what == MISSING)
+}
 
 type Key = Zeroizing<Vec<u8>>;
 type Probe = Box<dyn Fn() -> bool + Send + Sync>;
@@ -92,6 +107,8 @@ pub struct DeviceIdentityStore {
     /// Serializes the device key's keychain and file work, so two first reads never move the
     /// file at once. Never held by a cached read.
     work: Mutex<()>,
+    /// The keychain refused the move for a reason other than a lock: not tried again this run.
+    move_refused: AtomicBool,
 }
 
 fn failed(what: impl Into<String>) -> SecureStoreError {
@@ -141,19 +158,31 @@ impl DeviceIdentityStore {
             dir: data_dir.to_owned(),
             cache: Mutex::new(None),
             work: Mutex::new(()),
+            move_refused: AtomicBool::new(false),
         }
     }
 
     fn keychain_get(&self) -> Result<Option<Key>, SecureStoreError> {
         self.keyring
-            .get_secret(IDENTITY_SERVICE, &self.account)?
-            .map(|key| checked(key, "keychain"))
+            .raw(IDENTITY_SERVICE, &self.account, Op::Get)?
+            .map(|key| checked(key.to_vec(), "keychain"))
             .transpose()
     }
 
     fn keychain_set(&self, key: &[u8]) -> Result<(), SecureStoreError> {
         self.keyring
-            .set_secret(IDENTITY_SERVICE, &self.account, key)
+            .raw(
+                IDENTITY_SERVICE,
+                &self.account,
+                Op::Set(Zeroizing::new(key.to_vec())),
+            )
+            .map(|_| ())
+    }
+
+    fn keychain_delete(&self) -> Result<(), SecureStoreError> {
+        self.keyring
+            .raw(IDENTITY_SERVICE, &self.account, Op::Delete)
+            .map(|_| ())
     }
 
     fn legacy_path(&self) -> PathBuf {
@@ -226,11 +255,18 @@ impl DeviceIdentityStore {
     /// Copies the file's key into the keychain and removes the file once it reads back. Whatever
     /// keeps the keychain from taking it, the file keeps serving the key.
     fn migrate(&self, key: Key) -> Result<(Key, bool), SecureStoreError> {
+        if self.move_refused.load(Ordering::Acquire) {
+            return Ok((key, false));
+        }
         if let Err(error) = self.keychain_set(&key) {
             // A write that timed out may still land; the next read finds it equal and settles.
+            // Any other refusal will not change this run, so it is logged once and not retried.
+            if error != SecureStoreError::Locked {
+                self.move_refused.store(true, Ordering::Release);
+            }
             tracing::warn!(
                 scope = "DeviceIdentity",
-                "the device key could not move into the keychain yet ({error}); `device-key` keeps it"
+                "the device key could not move into the keychain ({error}); `device-key` keeps it"
             );
             return Ok((key, false));
         }
@@ -345,15 +381,19 @@ impl SecureStore for DeviceIdentityStore {
         }
         let _work = lock(&self.work);
         self.remember(None);
+        let was_marked = self.marked();
         let local = |path: PathBuf, what: &str| {
             remove(&path).map_err(|error| failed(format!("{what} could not be removed: {error}")))
         };
-        local(self.marker_path(), "the device key marker")?;
         local(self.legacy_path(), "`device-key`")?;
-        match self.keyring.delete_secret(IDENTITY_SERVICE, &self.account) {
-            Err(SecureStoreError::Locked) if (self.keychain_absent)() => Ok(()),
-            other => other,
+        match self.keychain_delete() {
+            Ok(()) => {}
+            // Only a key that never moved can live without a keychain: the file was it.
+            Err(SecureStoreError::Locked) if !was_marked && (self.keychain_absent)() => {}
+            // The marker stays, so nothing is minted while the key may still be in the keychain.
+            Err(error) => return Err(error),
         }
+        local(self.marker_path(), "the device key marker")
     }
 
     fn clear(&self) -> Result<(), SecureStoreError> {

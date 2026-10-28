@@ -228,3 +228,39 @@ fn flat_local_keys_and_resets() {
         json!({})
     );
 }
+
+/// A device whose key moved into the keychain and is gone from it.
+struct MissingIdentity;
+
+impl SecureStore for MissingIdentity {
+    fn get(&self, _: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
+        Err(memry_desktop::seams::secure_store::device_identity_missing())
+    }
+
+    fn set(&self, _: SecureStoreKey, _: Vec<u8>) -> Result<(), SecureStoreError> {
+        panic!("a missing identity is never replaced by a new one")
+    }
+
+    fn delete(&self, _: SecureStoreKey) -> Result<(), SecureStoreError> {
+        Ok(())
+    }
+
+    fn clear(&self) -> Result<(), SecureStoreError> {
+        Ok(())
+    }
+}
+
+#[test]
+fn a_missing_device_identity_is_its_own_error_for_reads_and_writes() {
+    let w = world();
+    let vault = w.open("v");
+    let service = SettingsService::new(Arc::new(MissingIdentity), w.config.clone());
+    assert!(matches!(
+        service.read_group(Some(&vault), "general"),
+        Err(SettingsError::DeviceIdentityMissing)
+    ));
+    assert!(matches!(
+        service.write_group(Some(&vault), "general", patch(json!({"theme": "dark"}))),
+        Err(SettingsError::DeviceIdentityMissing)
+    ));
+}

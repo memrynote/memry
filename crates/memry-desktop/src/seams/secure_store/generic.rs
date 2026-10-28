@@ -4,8 +4,8 @@
 
 use memry_core::api::errors::SecureStoreError;
 
-use super::KeyringStore;
-use super::worker::Op;
+use super::worker::{Op, Reply};
+use super::{IDENTITY_SERVICE, KeyringStore, SERVICE};
 
 /// A secret under any (service, account). The value is the raw bytes, with no base64 layer (only
 /// the five `SecureStoreKey` entries use the base64 text format). The Windows credential target
@@ -23,13 +23,33 @@ pub trait GenericSecrets: Send + Sync {
     fn delete_secret(&self, service: &str, account: &str) -> Result<(), SecureStoreError>;
 }
 
+/// The sync secrets and the device identity have owners of their own ([`KeyringStore`]'s
+/// `SecureStore` and [`super::DeviceIdentityStore`]); a generic caller reaching them would bypass
+/// their format, the device key's cache and the rule that Electron's items are never written.
+fn closed(service: &str) -> Result<(), SecureStoreError> {
+    if service == SERVICE || service == IDENTITY_SERVICE {
+        return Err(SecureStoreError::Denied {
+            what: format!("the keychain service `{service}` is not open to generic secrets"),
+        });
+    }
+    Ok(())
+}
+
+impl KeyringStore {
+    /// The raw path under any service, for the owners of the closed ones.
+    pub(crate) fn raw(&self, service: &str, account: &str, op: Op) -> Reply {
+        self.worker.call(service, account, op)
+    }
+}
+
 impl GenericSecrets for KeyringStore {
     fn get_secret(
         &self,
         service: &str,
         account: &str,
     ) -> Result<Option<Vec<u8>>, SecureStoreError> {
-        let reply = self.worker.call(service, account, Op::Get)?;
+        closed(service)?;
+        let reply = self.raw(service, account, Op::Get)?;
         Ok(reply.map(|bytes| bytes.to_vec()))
     }
 
@@ -39,16 +59,17 @@ impl GenericSecrets for KeyringStore {
         account: &str,
         value: &[u8],
     ) -> Result<(), SecureStoreError> {
-        self.worker
-            .call(
-                service,
-                account,
-                Op::Set(zeroize::Zeroizing::new(value.to_vec())),
-            )
-            .map(|_| ())
+        closed(service)?;
+        self.raw(
+            service,
+            account,
+            Op::Set(zeroize::Zeroizing::new(value.to_vec())),
+        )
+        .map(|_| ())
     }
 
     fn delete_secret(&self, service: &str, account: &str) -> Result<(), SecureStoreError> {
-        self.worker.call(service, account, Op::Delete).map(|_| ())
+        closed(service)?;
+        self.raw(service, account, Op::Delete).map(|_| ())
     }
 }

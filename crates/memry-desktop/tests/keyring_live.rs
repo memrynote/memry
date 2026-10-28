@@ -12,8 +12,8 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::seams::secure_store::{
-    DeviceIdentityStore, GenericSecrets, IDENTITY_SERVICE, KeyringStore, STORE_KEYS,
-    SecureStoreHealth, keychain_absent,
+    DeviceIdentityStore, GenericSecrets, KeyringStore, STORE_KEYS, SecureStoreHealth,
+    keychain_absent,
 };
 
 fn unique(tag: &str) -> String {
@@ -146,22 +146,27 @@ fn the_device_key_file_of_an_earlier_build_moves_into_the_real_keychain() {
     let profile = tempfile::tempdir().unwrap();
     let suffix = unique("identity");
     let store = Arc::new(store(&suffix));
-    let account = format!("device-signing-key-{suffix}");
     let _cleanup = Cleanup(store.clone());
     let key: Vec<u8> = (0..64).collect();
     std::fs::write(profile.path().join("device-key"), &key).unwrap();
     let identity = DeviceIdentityStore::new(store.clone(), profile.path());
     let moved = identity.get(SecureStoreKey::DeviceSigningKey);
-    let in_keychain = store.get_secret(IDENTITY_SERVICE, &account);
-    let restarted = DeviceIdentityStore::new(store.clone(), profile.path())
+    // A profile with no file reads the key from the keychain alone.
+    let elsewhere = tempfile::tempdir().unwrap();
+    let in_keychain = DeviceIdentityStore::new(store.clone(), elsewhere.path())
         .get(SecureStoreKey::DeviceSigningKey);
     let file_left = profile.path().join("device-key").exists();
-    identity.delete(SecureStoreKey::DeviceSigningKey).unwrap();
+    let deleted = identity.delete(SecureStoreKey::DeviceSigningKey);
+    let after = DeviceIdentityStore::new(store.clone(), elsewhere.path())
+        .get(SecureStoreKey::DeviceSigningKey);
     assert_eq!(moved.unwrap(), Some(key.clone()));
-    assert_eq!(in_keychain.unwrap(), Some(key.clone()));
-    assert_eq!(restarted.unwrap(), Some(key));
+    assert_eq!(in_keychain.unwrap(), Some(key));
     assert!(!file_left);
-    assert_eq!(store.get_secret(IDENTITY_SERVICE, &account).unwrap(), None);
+    deleted.unwrap();
+    assert!(
+        matches!(after, Err(SecureStoreError::Failed { .. })),
+        "{after:?}"
+    );
 }
 
 /// `MEMRY_LIVE_NO_SECRET_SERVICE=1` (Linux): with no Secret Service on the bus the system has no

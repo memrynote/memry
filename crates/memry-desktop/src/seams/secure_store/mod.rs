@@ -32,6 +32,8 @@ mod generic;
 mod keyring_backend;
 #[cfg(target_os = "linux")]
 mod linux_absent;
+#[cfg(any(target_os = "linux", test))]
+mod probe;
 mod worker;
 
 use std::sync::Arc;
@@ -44,7 +46,9 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use zeroize::Zeroizing;
 
 pub use account::{IDENTITY_SERVICE, KEYS, SERVICE, STORE_KEYS, account};
-pub use device_identity::DeviceIdentityStore;
+pub use device_identity::{
+    DeviceIdentityStore, device_identity_missing, is_device_identity_missing,
+};
 pub use generic::GenericSecrets;
 pub use keyring_backend::{Native, Store, StoreFactory};
 /// The Linux absent-check on its own, for the live test of a locked keyring (the store's search

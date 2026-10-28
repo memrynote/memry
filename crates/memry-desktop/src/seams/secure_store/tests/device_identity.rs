@@ -258,6 +258,56 @@ fn a_refused_move_write_serves_the_file_and_keeps_it() {
 }
 
 #[test]
+fn a_move_the_keychain_refused_for_good_is_not_tried_again_this_run() {
+    let w = world();
+    w.write_legacy(&key(1));
+    *w.rig.fake.fail_writes.lock().unwrap() = Some(|| Error::TooLong("blob".to_owned(), 10));
+    let store = w.store();
+    for _ in 0..3 {
+        assert_eq!(store.get(DSK).unwrap(), Some(key(1)));
+    }
+    assert_eq!(w.rig.fake.writes.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn a_delete_with_a_stale_no_keychain_answer_never_drops_a_moved_key() {
+    // The probe said "no keychain" earlier; the key has since moved into a keychain that is now
+    // locked. The delete cannot reach it, so it fails, and nothing a later read could mint over
+    // is removed.
+    let w = world();
+    w.put_keychain(&key(1));
+    w.mark();
+    w.keychain_down();
+    w.no_keychain.store(true, Ordering::SeqCst);
+    let store: Arc<dyn SecureStore> = Arc::new(w.store());
+    assert_eq!(store.delete(DSK), Err(SecureStoreError::Locked));
+    assert!(exists(&w.marker()));
+    assert!(
+        ensure_device_identity(store.clone()).is_err(),
+        "nothing is minted"
+    );
+    w.keychain_up();
+    assert_eq!(store.get(DSK).unwrap(), Some(key(1)));
+}
+
+#[test]
+fn the_identity_namespaces_are_closed_to_generic_secrets() {
+    use crate::seams::secure_store::GenericSecrets;
+    let w = world();
+    for service in [OWN, ELECTRON] {
+        let denied =
+            |r: Result<(), SecureStoreError>| matches!(r, Err(SecureStoreError::Denied { .. }));
+        assert!(matches!(
+            w.rig.store.get_secret(service, ACCOUNT),
+            Err(SecureStoreError::Denied { .. })
+        ));
+        assert!(denied(w.rig.store.set_secret(service, ACCOUNT, &key(1))));
+        assert!(denied(w.rig.store.delete_secret(service, ACCOUNT)));
+    }
+    assert_eq!(w.keychain(), None);
+}
+
+#[test]
 fn with_no_keychain_on_the_system_delete_removes_the_file() {
     let w = world();
     w.keychain_down();

@@ -34,6 +34,11 @@ fn map_error(error: SettingsError) -> CommandError {
         SettingsError::Invalid(message) => {
             CommandError::new(ErrorKind::Invalid, "settings_invalid_value", message)
         }
+        SettingsError::DeviceIdentityMissing => CommandError::new(
+            ErrorKind::SecureStore,
+            "device_identity_missing",
+            error.to_string(),
+        ),
         SettingsError::Failed(message) => {
             CommandError::new(ErrorKind::Storage, "settings_failed", message)
         }

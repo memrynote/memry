@@ -201,74 +201,28 @@ pub fn after_delete(session: &Session, service: &str, account: &str) -> keyring_
 /// The Secret Service's bus name.
 const SECRETS_NAME: &str = "org.freedesktop.secrets";
 
-/// The one "is there a Secret Service" probe of the process: at most one probe thread at a time,
-/// and its answer is kept. A cached "none" is safe: the device key moves into the keychain as soon
-/// as the keychain answers, whatever the probe said.
-enum ProbeState {
-    Idle,
-    Running(std::sync::mpsc::Receiver<bool>),
-    Done(bool),
-}
-
-static PROBE: Mutex<ProbeState> = Mutex::new(ProbeState::Idle);
+static PROBE: Mutex<super::probe::ProbeState> = Mutex::new(super::probe::ProbeState::Idle);
 
 /// Whether this session has no Secret Service at all: no session bus, or the name is neither
-/// owned nor activatable. Any doubt (an error, no answer within `deadline`) is "one may exist".
-/// The probe runs on a thread of its own so a wedged bus cannot hold the caller past `deadline`;
-/// a caller that times out leaves it running, and the next caller waits on the same thread.
+/// owned nor activatable. Any doubt is "one may exist" (see [`super::probe`]).
 pub fn service_absent(deadline: std::time::Duration) -> bool {
-    let mut state = PROBE.lock().unwrap_or_else(PoisonError::into_inner);
-    if let ProbeState::Done(answer) = *state {
-        return answer;
-    }
-    if matches!(*state, ProbeState::Idle) {
-        let (done, answer) = std::sync::mpsc::channel();
-        let spawned = std::thread::Builder::new()
-            .name("memry-keyring-probe".to_owned())
-            .spawn(move || {
-                let _ = done.send(probe());
-            });
-        if spawned.is_err() {
-            return false;
-        }
-        *state = ProbeState::Running(answer);
-    }
-    let ProbeState::Running(answer) = &*state else {
-        return false;
-    };
-    match answer.recv_timeout(deadline) {
-        Ok(absent) => {
-            *state = ProbeState::Done(absent);
-            absent
-        }
-        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => false,
-        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-            *state = ProbeState::Idle;
-            false
-        }
-    }
+    super::probe::absent(&PROBE, deadline, probe)
 }
 
-fn probe() -> bool {
+fn probe() -> Option<bool> {
     let Ok(connection) = zbus::blocking::Connection::session() else {
         // No bus answered. That proves there is none only when no address was given: zbus then
         // tried the default socket of the session. A given address that fails is a doubt. This
         // is the bus address zbus itself reads, not a launch switch of `LaunchEnv`.
-        return std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_none();
+        return std::env::var_os("DBUS_SESSION_BUS_ADDRESS")
+            .is_none()
+            .then_some(true);
     };
-    let Ok(bus) = zbus::blocking::fdo::DBusProxy::new(&connection) else {
-        return false;
-    };
-    let Ok(name) = zbus::names::BusName::try_from(SECRETS_NAME) else {
-        return false;
-    };
-    if bus.name_has_owner(name).unwrap_or(true) {
-        return false;
+    let bus = zbus::blocking::fdo::DBusProxy::new(&connection).ok()?;
+    let name = zbus::names::BusName::try_from(SECRETS_NAME).ok()?;
+    if bus.name_has_owner(name).ok()? {
+        return Some(false);
     }
-    match bus.list_activatable_names() {
-        Ok(names) => !names
-            .iter()
-            .any(|activatable| activatable.as_str() == SECRETS_NAME),
-        Err(_) => false,
-    }
+    let activatable = bus.list_activatable_names().ok()?;
+    Some(!activatable.iter().any(|name| name.as_str() == SECRETS_NAME))
 }
