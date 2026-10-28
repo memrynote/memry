@@ -293,3 +293,25 @@ fn a_write_that_changes_the_frontmatter_block_alone_keeps_a_version() {
     ));
     assert!(!replaces_unheld_bytes(raw, raw));
 }
+
+/// A file the check cannot read (a lock, a permission) is not a change of it: the pass fails,
+/// writes nothing, and the next schedule tries again.
+#[cfg(unix)]
+#[test]
+fn a_file_that_cannot_be_read_while_it_is_written_fails_the_pass() {
+    use std::os::unix::fs::PermissionsExt;
+    let mut f = fixture();
+    let id = f.adopt("n.md", "first words\n");
+    f.edit_in_app(&id, "typed in the app");
+    let path = f.root.join("n.md");
+    let locked = path.clone();
+    let outcome = f.pass.run_checked(&id, &mut || {
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+    });
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+    assert!(matches!(outcome, Outcome::Failed(_)), "{outcome:?}");
+    assert_eq!(f.read("n.md"), "first words\n");
+    assert!(f.facts().is_empty());
+    let outcome = f.run(&id);
+    assert_wrote(&mut f, &outcome, "n.md");
+}

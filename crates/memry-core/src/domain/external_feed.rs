@@ -318,15 +318,13 @@ fn refuse(
 }
 
 /// The file's frontmatter block with the writing tools data the replaced body held, so a version
-/// keeps the alternatives its body's markers name: a feed of a file without them (an outside
-/// editor dropped the key, or they came through sync after the file was written) drops them
-/// from the document. The block is verbatim when it already says that data, or when it does
-/// not parse (the feed is then not told the file's data and keeps the document's).
+/// keeps the alternatives its body's markers name, and no `writing` key the body did not hold:
+/// a feed of a file without them (an outside editor dropped the key, or they came through sync
+/// after the file was written) drops them from the document. The block is verbatim when it
+/// already says that data, or when it does not parse (the feed is then not told the file's
+/// data and keeps the document's); a block that is rewritten keeps its byte order mark.
 fn with_writing(frontmatter: Option<&str>, writing: &WritingFrontmatter) -> Option<String> {
     let verbatim = || frontmatter.map(str::to_owned);
-    if writing.alternatives.is_empty() && writing.overflow.is_empty() {
-        return verbatim();
-    }
     let Ok(parsed) = parse_markdown_note(frontmatter.unwrap_or_default()) else {
         return verbatim();
     };
@@ -337,9 +335,15 @@ fn with_writing(frontmatter: Option<&str>, writing: &WritingFrontmatter) -> Opti
     if !merge_writing_yaml(&mut map, writing) {
         return verbatim();
     }
-    stringify_frontmatter_block(&map, parsed.eol)
-        .ok()
-        .or_else(verbatim)
+    let Ok(block) = stringify_frontmatter_block(&map, parsed.eol) else {
+        return verbatim();
+    };
+    let bom = if frontmatter.is_some_and(|block| block.starts_with('\u{feff}')) {
+        "\u{feff}"
+    } else {
+        ""
+    };
+    Some(format!("{bom}{block}"))
 }
 
 /// A kept body as the file it was: the file's frontmatter block, verbatim, then the
@@ -391,6 +395,19 @@ fn storage_failed(error: rusqlite::Error) -> CrdtError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_version_block_says_the_writing_data_of_its_body_and_keeps_its_byte_order_mark() {
+        let block =
+            "\u{feff}---\ntitle: t\nwriting: {alternatives: {k3x9q2: {versions: [two]}}}\n---\n";
+        let rewritten = with_writing(Some(block), &WritingFrontmatter::default()).unwrap();
+        assert_eq!(rewritten, "\u{feff}---\ntitle: t\n---\n");
+        assert_eq!(
+            with_writing(Some("---\ntitle: t\n---\n"), &WritingFrontmatter::default()).as_deref(),
+            Some("---\ntitle: t\n---\n")
+        );
+        assert_eq!(with_writing(None, &WritingFrontmatter::default()), None);
+    }
 
     #[test]
     fn the_cap_is_on_the_packed_length_not_the_raw_one() {

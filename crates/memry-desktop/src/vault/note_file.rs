@@ -215,23 +215,36 @@ pub fn write_note_over_checked(
     between: &mut dyn FnMut(),
 ) -> Result<(), NoteFileError> {
     let (path, aimed_at) = target(vault, rel)?;
-    let unchanged = || hash_file(vault, rel).is_ok_and(|now| now.as_deref() == Some(read_hash));
+    // `Ok(false)` only for a file that is not the one read (other bytes, or gone); a file that
+    // cannot be read is an error, not a change: the pass fails and the next schedule retries.
+    let unchanged = || hash_file(vault, rel).map(|now| now.as_deref() == Some(read_hash));
+    let mut unreadable: Option<NoteFileError> = None;
     let mut contained = still_contained(vault, rel, &path, aimed_at, between);
     let mut check = || {
         contained()?;
-        if !unchanged() {
-            return Err(std::io::Error::other("the file changed under the write"));
+        match unchanged() {
+            Ok(true) => Ok(()),
+            Ok(false) => Err(std::io::Error::other("the file changed under the write")),
+            Err(error) => {
+                let stop = std::io::Error::other(error.to_string());
+                unreadable = Some(error);
+                Err(stop)
+            }
         }
-        Ok(())
     };
     let written =
         fs_atomic::atomic_replace_checked(&path, output.as_bytes(), &default_delays(), &mut check);
-    match written {
-        Ok(()) => Ok(()),
-        // Whatever stopped it (the check, a folder that went), a file that is not the one read
-        // is the reason.
-        Err(_) if !unchanged() => Err(NoteFileError::ChangedUnderWrite),
-        Err(error) => Err(error.into()),
+    let Err(error) = written else {
+        return Ok(());
+    };
+    if let Some(error) = unreadable {
+        return Err(error);
+    }
+    // Whatever stopped it (the check, a folder that went), a file that is not the one read is
+    // the reason.
+    match unchanged()? {
+        false => Err(NoteFileError::ChangedUnderWrite),
+        true => Err(error.into()),
     }
 }
 
