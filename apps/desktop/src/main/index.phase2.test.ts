@@ -1351,7 +1351,7 @@ describe('main index phase2 exports', () => {
     const callback = vi.fn()
     verify({ certificate: {}, hostname: 'react-tweet.vercel.app' }, callback)
 
-    expect(callback).toHaveBeenCalledWith(0)
+    expect(callback).toHaveBeenCalledWith(-3)
     expect(computeSpkiHashFromPemMock).not.toHaveBeenCalled()
   })
 
