@@ -1,6 +1,10 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
-import { readMainLog, waitForMainLog } from '../../harness/wait'
+import { isAlive } from '../../harness/app-process'
+import { pollUntil, readMainLog, waitForMainLog } from '../../harness/wait'
 
 // On macOS this posts the real NSWorkspace notifications, so the observers are under test; on
 // Windows and Linux it publishes on the monitor, and the VM rows cover the OS side (suspend and
@@ -24,9 +28,10 @@ test('an unknown event kind is refused', async ({ app }) => {
   expect(refused).toBe(true)
 })
 
-// Windows sends WM_ENDSESSION to every top-level window of the process, and tao's hidden event
-// target answers it with process::exit(0). Either window may be asked first, and neither may let
-// the process end before the quit sequence has run.
+// Windows asks the main window with WM_QUERYENDSESSION, then sends WM_ENDSESSION to every
+// top-level window of the process, and tao's hidden event target answers it with
+// process::exit(0). Either window may be asked first, and neither may let the process end before
+// the quit sequence has run.
 for (const target of ['event-target', 'main']) {
   test(`a sign-out announced to the ${target} window runs the quit sequence to its end`, async ({
     app
@@ -38,5 +43,31 @@ for (const target of ['event-target', 'main']) {
     expect(await waitForMainLog(app, 'starting graceful shutdown', 5_000)).toBe(true)
     expect(await waitForMainLog(app, 'cleanup complete', 5_000)).toBe(true)
     expect(readMainLog(app.dirs.logDir)).not.toContain('the session ended before the quit sequence')
+  })
+}
+
+// At a real sign-out the WebView2 processes get their own WM_ENDSESSION and end themselves a few
+// milliseconds after the app's quit sequence starts. An edit only the page holds (a note's
+// unsaved markdown, here the e2e held edit, which reaches main only through the save registry's
+// flush) must still be on disk, and the sign-out must not wait on a page that is gone.
+for (const hidden of [false, true]) {
+  test(`an edit only the page holds survives a sign-out that ends the webview (${
+    hidden ? 'hidden to the tray' : 'window shown'
+  })`, async ({ app }) => {
+    test.skip(process.platform !== 'win32', 'WM_QUERYENDSESSION is Windows-only')
+
+    const edit = `held-${Date.now()}`
+    await app.executor.execute('window.__memryE2eHoldEdit(arguments[0])', edit)
+    const startedAt = Date.now()
+    await invokeTest(app, 'e2e_send_session_end', { target: 'main', killWebview: true, hidden })
+
+    const exited = await pollUntil(() => !isAlive(app.pid), { timeoutMs: 10_000, intervalMs: 50 })
+    expect(exited).toBe(true)
+    // Windows ends a process about five seconds into a sign-out.
+    expect(Date.now() - startedAt).toBeLessThan(5_000)
+    expect(readFileSync(join(app.dirs.appDataDir, 'e2e-held-edit.txt'), 'utf8')).toBe(edit)
+    const log = readMainLog(app.dirs.logDir)
+    expect(log).toContain('cleanup complete')
+    expect(log).not.toContain('flush of window main timed out')
   })
 }

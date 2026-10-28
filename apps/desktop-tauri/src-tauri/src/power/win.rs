@@ -222,27 +222,62 @@ pub fn event_target_window() -> Option<HWND> {
     found
 }
 
-/// Sends `WM_ENDSESSION(TRUE)` to `target` the way Windows does at a sign-out, without waiting
-/// for the answer: the e2e spec that proves neither window ends the process before the flush.
+/// Plays a sign-out the way Windows does: `WM_QUERYENDSESSION` to the main window and, once it
+/// has answered, `WM_ENDSESSION(TRUE)` to `main` or to tao's event target. With `kill_browser`,
+/// the WebView2 browser process with that id is ended between the two, as it ends itself on its
+/// own `WM_ENDSESSION` at a real sign-out. Returns at once: the messages go from a thread.
 #[cfg(feature = "e2e")]
-pub fn post_end_session(main: HWND, event_target: bool) -> bool {
-    let hwnd = if event_target {
+pub fn post_sign_out(main: HWND, event_target: bool, kill_browser: Option<u32>) -> bool {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_TERMINATE, TerminateProcess};
+    use windows::Win32::UI::WindowsAndMessaging::{ENDSESSION_LOGOFF, SendMessageW};
+
+    let target = if event_target {
         event_target_window()
     } else {
         Some(main)
     };
-    let Some(hwnd) = hwnd else { return false };
-    let raw = hwnd.0 as isize;
+    let Some(target) = target else { return false };
+    let (main, target) = (main.0 as isize, target.0 as isize);
     std::thread::spawn(move || {
-        // SAFETY: the window belongs to this process and lives as long as it.
+        let logoff = Some(LPARAM(ENDSESSION_LOGOFF as isize));
+        // SAFETY: the windows belong to this process and live as long as it; the process handle
+        // is closed after use.
         unsafe {
-            windows::Win32::UI::WindowsAndMessaging::SendMessageW(
-                HWND(raw as *mut _),
+            let answer = SendMessageW(
+                HWND(main as *mut _),
+                WM_QUERYENDSESSION,
+                Some(WPARAM(0)),
+                logoff,
+            );
+            tracing::info!(
+                scope = "Power",
+                "e2e: WM_QUERYENDSESSION answered {}",
+                answer.0
+            );
+            if let Some(pid) = kill_browser {
+                match OpenProcess(PROCESS_TERMINATE, false, pid) {
+                    Ok(process) => {
+                        let ended = TerminateProcess(process, 1);
+                        let _ = CloseHandle(process);
+                        tracing::info!(
+                            scope = "Power",
+                            "e2e: ended the WebView2 browser process {pid}: {ended:?}"
+                        );
+                    }
+                    Err(error) => tracing::warn!(
+                        scope = "Power",
+                        "e2e: could not open the WebView2 browser process {pid}: {error}"
+                    ),
+                }
+            }
+            SendMessageW(
+                HWND(target as *mut _),
                 WM_ENDSESSION,
                 Some(WPARAM(1)),
-                Some(LPARAM(0)),
-            )
-        };
+                logoff,
+            );
+        }
     });
     true
 }
