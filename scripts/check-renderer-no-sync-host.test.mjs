@@ -27,7 +27,7 @@ test('check-renderer-no-sync-host', async (t) => {
   await t.test('leaves links, comments and other hosts alone', () => {
     for (const source of [
       "window.open('https://docs.memrynote.com', '_blank')",
-      "const DOWNLOAD_URL = 'https://memrynote.com/download/desktop'\n<a href={DOWNLOAD_URL} />",
+      "const DOWNLOAD_URL = 'https://memrynote.com/download/desktop'\nconst link = <a href={DOWNLOAD_URL} />",
       "// await fetch('https://sync.memrynote.com')",
       "/* new WebSocket('wss://sync.memrynote.com') */",
       'await fetch(audioUrl)',
@@ -64,6 +64,17 @@ test('check-renderer-no-sync-host', async (t) => {
       const source = `${shape}\n${fetchSync}`
       assert.equal(findSyncHostRequests(source).length, 1, source)
     }
+  })
+
+  await t.test('a file the parser cannot read fails the check instead of passing unread', () => {
+    assert.throws(
+      () =>
+        findSyncHostRequests(
+          "const a = (\nawait fetch('https://sync.memrynote.com/x')",
+          'broken.ts'
+        ),
+      /could not be parsed/
+    )
   })
 
   await t.test('names the line of the offending call', () => {

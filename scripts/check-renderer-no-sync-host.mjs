@@ -34,7 +34,8 @@ const ALLOWED = new Map()
 
 const SOURCE = /\.[cm]?[jt]sx?$/
 const TEST = /(?:\.test|\.spec)\.[cm]?[jt]sx?$/
-const MEMRY_HOST = /memrynote\.com/i
+/** Anywhere in a string: `https://sync.memrynote.com/x`, `wss://…`, a bare host. */
+const MEMRY_HOST = 'memrynote.com'
 const SYNC_URL_NAMES = new Set([
   'SYNC_SERVER_URL',
   'VITE_SYNC_SERVER_URL',
@@ -67,6 +68,13 @@ export function findSyncHostRequests(text, fileName = 'source.tsx') {
     true,
     scriptKind(fileName)
   )
+  // A tree the parser had to recover can drop or misplace the call this looks for.
+  const [problem] = file.parseDiagnostics ?? []
+  if (problem) {
+    const { line } = file.getLineAndCharacterOfPosition(problem.start ?? 0)
+    const message = ts.flattenDiagnosticMessageText(problem.messageText, ' ')
+    throw new Error(`${fileName}:${line + 1} could not be parsed: ${message}`)
+  }
   const constants = new Map()
   let usesXhr = false
   const collect = (node) => {
@@ -82,7 +90,7 @@ export function findSyncHostRequests(text, fileName = 'source.tsx') {
   // constants. `seen` stops a constant that refers to itself.
   const reaches = (node, seen = new Set()) => {
     if (ts.isStringLiteralLike(node) || ts.isTemplateLiteralToken(node)) {
-      return MEMRY_HOST.test(node.text)
+      return node.text.toLowerCase().includes(MEMRY_HOST)
     }
     if (ts.isIdentifier(node)) {
       if (SYNC_URL_NAMES.has(node.text)) return true
@@ -140,14 +148,21 @@ async function main() {
   const offenders = []
   for (const file of files) {
     const path = relative(repoRoot, file).split(sep).join('/')
-    for (const { line, call } of findSyncHostRequests(await readFile(file, 'utf8'), file)) {
+    let requests
+    try {
+      requests = findSyncHostRequests(await readFile(file, 'utf8'), path)
+    } catch (error) {
+      offenders.push(error.message)
+      continue
+    }
+    for (const { line, call } of requests) {
       if (!ALLOWED.has(`${path}:${line}`)) offenders.push(`${path}:${line}: ${call}`)
     }
   }
   if (offenders.length > 0) {
     console.error(
-      'The renderer requests a memry host directly, which skips the certificate pins. ' +
-        'Send it through a Tauri command (the Rust transport) instead:\n' +
+      'The renderer requests a memry host directly, which skips the certificate pins, or a file ' +
+        'could not be parsed. Send requests through a Tauri command (the Rust transport):\n' +
         offenders.join('\n')
     )
     process.exit(1)
