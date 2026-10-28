@@ -20,7 +20,10 @@
 //!   A delete that did not stay gone, or a note that was respelled in place, is never reported.
 //!   Each window starts when its own absence was observed ([`observed`]). A rescan withholds
 //!   removals when too many are missing at once or the walk was cut short, and reports
-//!   `Rescanned` only after what it found has settled.
+//!   `Rescanned` only after what it found has settled (a file held again since the pass is
+//!   news after it), in the order the passes ran.
+//! - A gone path is the delete of the note at that spelling only: a note found under another
+//!   spelling whose own file is still listed is a different file (`home::homes_gone_at`).
 //! - A removal that pairs with a new file by content hash is a rename, never a delete plus a new
 //!   file; a note whose row has no hash is never paired. A rename is reported once.
 //! - Every markdown file is read by hash, streamed, on the watcher's thread; a file that cannot
@@ -62,7 +65,7 @@ pub(super) struct HeldAdd {
     size: u64,
     modified_ms: i64,
     hash: Option<String>,
-    due: Instant,
+    pub(super) due: Instant,
 }
 
 pub struct Reconciler {
@@ -267,13 +270,8 @@ impl Reconciler {
             self.reported.forget_tree(rel);
             return;
         }
-        let homes = match self.home_at(rel) {
-            Ok(Some(home)) => vec![home],
-            // A folder that went: every note whose home is below it went with it.
-            Ok(None) => match self.homes_under(rel) {
-                Ok(homes) => homes,
-                Err(error) => return self.storage_failed(&error),
-            },
+        let homes = match self.homes_gone_at(rel) {
+            Ok(homes) => homes,
             Err(error) => return self.storage_failed(&error),
         };
         // What was reported for a note stays until its removal settles: it names where the note

@@ -2,7 +2,7 @@
 //! watcher starts (files removed or moved while the app was closed), after an OS event
 //! overflow, and when a vault that was away returns.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
@@ -88,13 +88,18 @@ impl Reconciler {
         // With nothing missing no add can be a rename, and the open's index walk lists adds.
         // The pass still ends with its signal: the consumer orders its own open walk after it.
         if missing.is_empty() && !with_changes {
-            self.emit(VaultEvent::Rescanned {
-                missing: 0,
-                removed: 0,
-                added: added.len(),
-                changed: 0,
-                removals_withheld: withheld,
+            self.rescans.push(RescanReport {
+                event: VaultEvent::Rescanned {
+                    missing: 0,
+                    removed: 0,
+                    added: added.len(),
+                    changed: 0,
+                    removals_withheld: withheld,
+                },
+                waiting_notes: HashSet::new(),
+                waiting_paths: HashMap::new(),
             });
+            self.report_settled_rescans();
             return Ok(true);
         }
         // Edited since indexed: a later modification time, or another size. An edit that keeps
@@ -160,7 +165,11 @@ impl Reconciler {
                 removals_withheld: withheld,
             },
             waiting_notes,
-            waiting_paths: self.held_adds.iter().map(|a| a.path.clone()).collect(),
+            waiting_paths: self
+                .held_adds
+                .iter()
+                .map(|a| (a.path.clone(), a.due))
+                .collect(),
         });
         self.report_settled_rescans();
         Ok(true)
@@ -185,23 +194,28 @@ impl Reconciler {
         }
     }
 
-    /// Emits the `Rescanned` of every pass whose deletes have settled and whose held new files
-    /// are out of their grace, so nothing the pass found arrives after it.
+    /// Emits, in the order the passes ran, the `Rescanned` of every pass whose deletes have
+    /// settled and whose held new files are out of the grace they had when it ended, so nothing
+    /// the pass found arrives after it. A file held again since (a writer still rewriting it)
+    /// is news after the pass and does not hold its signal back.
     pub(super) fn report_settled_rescans(&mut self) {
-        let (done, waiting): (Vec<_>, Vec<_>) = std::mem::take(&mut self.rescans)
-            .into_iter()
-            .partition(|report| {
+        let settled = self
+            .rescans
+            .iter()
+            .take_while(|report| {
                 !report
                     .waiting_notes
                     .iter()
                     .any(|note| self.tracker.has_note(note))
-                    && !self
-                        .held_adds
-                        .iter()
-                        .any(|add| report.waiting_paths.contains(&add.path))
-            });
-        self.rescans = waiting;
-        for report in done {
+                    && !self.held_adds.iter().any(|add| {
+                        report
+                            .waiting_paths
+                            .get(&add.path)
+                            .is_some_and(|due| add.due <= *due)
+                    })
+            })
+            .count();
+        for report in self.rescans.drain(..settled).collect::<Vec<_>>() {
             self.emit(report.event);
         }
     }
@@ -211,7 +225,8 @@ impl Reconciler {
 pub(super) struct RescanReport {
     event: VaultEvent,
     waiting_notes: HashSet<String>,
-    waiting_paths: HashSet<String>,
+    /// Each held new file and the end of the grace it had when the pass ended.
+    waiting_paths: HashMap<String, Instant>,
 }
 
 /// Whether `path` is inside one of the folders (vault-relative, `/`-separated).
