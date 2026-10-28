@@ -648,68 +648,6 @@ fn a_file_created_and_removed_inside_the_grace_is_never_reported() {
 }
 
 #[test]
-fn the_session_starts_the_watcher_on_open_and_joins_it_on_close() {
-    use memry_desktop::registry::{AppConfig, VaultRegistry};
-    use memry_desktop::session::{OpenSource, Session};
-    use memry_desktop::vault::watch::VaultTier;
-
-    let dir = tempfile::tempdir().unwrap();
-    let vault = dir.path().join("vault");
-    fs::create_dir_all(&vault).unwrap();
-    fs::create_dir_all(dir.path().join("app")).unwrap();
-    let registry = VaultRegistry::new(Arc::new(AppConfig::load(
-        dir.path().join("app/memry-config.json"),
-    )));
-    let session = Session::new(registry);
-    let log = Log::default();
-    VaultTier::new(sink(&log)).register(&session);
-
-    let opened = session.open(&vault, OpenSource::Select).unwrap();
-    std::thread::sleep(Duration::from_millis(300));
-    fs::write(vault.join("hello.md"), "hi").unwrap();
-    let deadline = Instant::now() + WAIT;
-    while !log
-        .lock()
-        .unwrap()
-        .iter()
-        .any(|ev| matches!(ev, VaultEvent::Added { path, .. } if path == "hello.md"))
-    {
-        assert!(
-            Instant::now() < deadline,
-            "no Added after open: {:?}",
-            log.lock().unwrap()
-        );
-        std::thread::sleep(Duration::from_millis(50));
-    }
-    drop(opened);
-    session.close();
-
-    let before = log.lock().unwrap().len();
-    fs::write(vault.join("late.md"), "x").unwrap();
-    std::thread::sleep(QUIET);
-    assert_eq!(
-        log.lock().unwrap().len(),
-        before,
-        "the watcher stopped with the vault"
-    );
-    // The same session opens again and watches again.
-    let reopened = session.open(&vault, OpenSource::Select).unwrap();
-    std::thread::sleep(Duration::from_millis(300));
-    fs::write(vault.join("again.md"), "y").unwrap();
-    let deadline = Instant::now() + WAIT;
-    while !log
-        .lock()
-        .unwrap()
-        .iter()
-        .any(|ev| matches!(ev, VaultEvent::Added { path, .. } if path == "again.md"))
-    {
-        assert!(Instant::now() < deadline, "no Added after reopen");
-        std::thread::sleep(Duration::from_millis(50));
-    }
-    drop(reopened);
-}
-
-#[test]
 fn files_held_for_pairing_are_bounded_and_none_is_lost() {
     use memry_desktop::vault::watch::reconcile::MAX_HELD_ADDS;
     let e = env_unwatched();

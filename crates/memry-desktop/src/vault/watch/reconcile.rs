@@ -111,7 +111,7 @@ pub(super) fn probe(path: &Path) -> Probe {
     }
 }
 
-pub(super) fn modified_ms(meta: &Metadata) -> i64 {
+pub(crate) fn modified_ms(meta: &Metadata) -> i64 {
     meta.modified()
         .ok()
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())

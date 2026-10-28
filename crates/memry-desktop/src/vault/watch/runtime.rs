@@ -51,6 +51,34 @@ enum Msg {
     Paths(Vec<PathBuf>),
     Rescan,
     Error(notify::Error),
+    /// A consumer could not apply what was reported for this vault-relative path.
+    Forget(String),
+}
+
+/// What a consumer of the events asks of the watcher.
+#[derive(Clone)]
+pub struct WatchHandle {
+    tx: SyncSender<Msg>,
+    resync: Arc<AtomicBool>,
+}
+
+impl WatchHandle {
+    /// Reports `rel` again at the next debounce: what was reported for it is forgotten, so the
+    /// path is compared with its row again.
+    pub fn forget(&self, rel: String) {
+        if self.tx.try_send(Msg::Forget(rel)).is_err() {
+            tracing::warn!(
+                scope = "vault_watch",
+                "a retry was dropped; the next open looks at the file again"
+            );
+        }
+    }
+
+    /// The consumer dropped events: everything reported is forgotten and a rescan with
+    /// changes compares the disk with the rows, which hold what was applied.
+    pub fn resync(&self) {
+        self.resync.store(true, Ordering::Relaxed);
+    }
 }
 
 /// Lets events through until the watcher is stopped. `stop` closes it before anything else, so
@@ -82,6 +110,7 @@ impl Gate {
 pub struct VaultWatcher {
     stop: Arc<AtomicBool>,
     gate: Gate,
+    handle: WatchHandle,
     thread: Option<JoinHandle<()>>,
 }
 
@@ -135,6 +164,10 @@ impl VaultWatcher {
             stop.clone(),
         );
         worker.watcher = Some(watcher);
+        let handle = WatchHandle {
+            tx: worker.tx.clone(),
+            resync: worker.resync.clone(),
+        };
         let thread = std::thread::Builder::new()
             .name("vault-watcher".into())
             .spawn(move || worker.run())
@@ -142,8 +175,13 @@ impl VaultWatcher {
         Ok(Self {
             stop,
             gate,
+            handle,
             thread: Some(thread),
         })
+    }
+
+    pub fn handle(&self) -> WatchHandle {
+        self.handle.clone()
     }
 
     /// Stops the worker and waits for it. No event leaves from the moment this is called
@@ -205,6 +243,8 @@ struct Worker {
     tx: SyncSender<Msg>,
     rx: Receiver<Msg>,
     overflow: Arc<AtomicBool>,
+    /// Set by [`WatchHandle::resync`].
+    resync: Arc<AtomicBool>,
     stop: Arc<AtomicBool>,
     /// Held so the OS keeps delivering; replaced when the vault returns.
     watcher: Option<RecommendedWatcher>,
@@ -230,6 +270,7 @@ impl Worker {
             tx,
             rx,
             overflow,
+            resync: Arc::default(),
             stop,
             watcher: None,
             net: SafetyNet::new(tuning, Instant::now()),
@@ -276,6 +317,10 @@ impl Worker {
                         }
                     }
                     Msg::Rescan => force_rescan = true,
+                    Msg::Forget(rel) => {
+                        self.reconciler.reported.remove(&rel);
+                        debounce.touch(rel, now);
+                    }
                     Msg::Error(error) => {
                         self.report(&error, now);
                         self.net.lost_events(now);
@@ -303,6 +348,11 @@ impl Worker {
                     // A watch the OS dropped without saying so is back.
                     self.rearm(now);
                 }
+                force_rescan = true;
+            }
+            if self.resync.swap(false, Ordering::Relaxed) {
+                self.reconciler.reported.clear();
+                self.reconciler.clear();
                 force_rescan = true;
             }
             if self.overflow.swap(false, Ordering::Relaxed)
