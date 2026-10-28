@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
+import { startFakeSessionManager, type FakeSessionManager } from '../../harness/session-manager'
 import { pollUntil, readMainLog, waitForMainLog } from '../../harness/wait'
 
 // On macOS this posts the real NSWorkspace notifications, so the observers are under test; on
@@ -71,4 +72,49 @@ for (const hidden of [false, true]) {
     expect(log).toContain('cleanup complete')
     expect(log).not.toContain('flush of window main timed out')
   })
+}
+
+// A Linux logout quits the session manager and the display server with it, and Xlib's IO error
+// handler then ends the app with _exit(1); logind announces nothing. The session manager asks
+// its registered clients first and keeps the display up until each has answered EndSession, so
+// by that answer the edit the page holds must be on disk. The fake ends the app with SIGKILL as
+// soon as it answers, as the display going away does. GNOME and Xfce speak the same protocol
+// under their own bus names.
+for (const desktop of ['gnome', 'xfce'] as const) {
+  const logoutTest = test.extend<{ sessionManager: FakeSessionManager }>({
+    sessionManager: async (_deps, use) => {
+      const manager = await startFakeSessionManager(desktop)
+      try {
+        await use(manager)
+      } finally {
+        manager.stop()
+      }
+    }
+  })
+  const linuxTest = process.platform === 'linux' ? logoutTest : logoutTest.skip
+  linuxTest(
+    `an edit only the page holds survives a ${desktop} logout`,
+    async ({ sessionManager, app }) => {
+      expect((await sessionManager.waitFor('registered')).pid).toBe(app.pid)
+      const edit = `held-${Date.now()}`
+      await app.executor.execute('window.__memryE2eHoldEdit(arguments[0])', edit)
+
+      sessionManager.logout()
+      const over = await sessionManager.waitFor('over')
+
+      expect(over.reason).toBe('answered')
+      // GNOME counts a client that has not answered QueryEndSession within a second as blocking
+      // the logout.
+      const [query, answer] = ['sent', 'answered'].map((event) =>
+        sessionManager.events.find((e) => e.event === event)
+      )
+      expect(query?.signal).toBe('QueryEndSession')
+      expect(Number(answer?.ms) - Number(query?.ms)).toBeLessThan(1_000)
+      expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 10_000, intervalMs: 50 })).toBe(
+        true
+      )
+      expect(readFileSync(join(app.dirs.appDataDir, 'e2e-held-edit.txt'), 'utf8')).toBe(edit)
+      expect(readMainLog(app.dirs.logDir)).toContain('cleanup complete')
+    }
+  )
 }
