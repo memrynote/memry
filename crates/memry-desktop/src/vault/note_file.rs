@@ -44,6 +44,10 @@ pub enum NoteFileError {
     Yaml(#[from] YamlError),
     #[error("a file already exists at that path")]
     AlreadyExists,
+    /// The file changed, moved or went between the read the write was decided on and the
+    /// write; nothing was written.
+    #[error("the file changed while it was being written")]
+    ChangedUnderWrite,
     #[error(transparent)]
     Write(#[from] WriteError),
     #[error(transparent)]
@@ -184,6 +188,50 @@ pub fn write_note_checked(
 ) -> Result<WriteOutcome, NoteFileError> {
     let output = serialize_parsed_markdown_note(parsed, content, frontmatter_edited)?;
     write_if_changed(vault, rel, output, between)
+}
+
+/// Replaces the note at `rel`, read with hash `read_hash`, with `output`. Right before the
+/// rename the file is hashed again: a file that changed, moved or went since that read is not
+/// written over ([`NoteFileError::ChangedUnderWrite`]), so an edit that lands while the write
+/// runs is kept. The window left is the rename itself.
+pub fn write_note_over(
+    vault: &Path,
+    rel: &str,
+    output: &str,
+    read_hash: &str,
+) -> Result<(), NoteFileError> {
+    write_note_over_checked(vault, rel, output, read_hash, &mut || {})
+}
+
+/// [`write_note_over`] with a hook that runs after the temp file is written and before the
+/// re-checks, so a test can edit the file in that window.
+#[doc(hidden)]
+pub fn write_note_over_checked(
+    vault: &Path,
+    rel: &str,
+    output: &str,
+    read_hash: &str,
+    between: &mut dyn FnMut(),
+) -> Result<(), NoteFileError> {
+    let (path, aimed_at) = target(vault, rel)?;
+    let mut changed = false;
+    let mut contained = still_contained(vault, rel, &path, aimed_at, between);
+    let mut check = || {
+        contained()?;
+        let now = hash_file(vault, rel).map_err(std::io::Error::other)?;
+        if now.as_deref() != Some(read_hash) {
+            changed = true;
+            return Err(std::io::Error::other("the file changed under the write"));
+        }
+        Ok(())
+    };
+    let written =
+        fs_atomic::atomic_write_checked(&path, output.as_bytes(), &default_delays(), &mut check);
+    match written {
+        Ok(()) => Ok(()),
+        Err(_) if changed => Err(NoteFileError::ChangedUnderWrite),
+        Err(error) => Err(error.into()),
+    }
 }
 
 /// Creates a new note file; a file at the path, even one that appears while this runs, is

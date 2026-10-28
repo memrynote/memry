@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use memry_core::api::vault::Vault;
+use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::profile_store::ProfileDeviceKeyStore;
@@ -18,7 +19,7 @@ use memry_desktop::vault::consumer::identity::{
     Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal,
 };
 use memry_desktop::vault::consumer::rows::{RowError, RowStat};
-use memry_desktop::vault::consumer::{Applied, VaultTier};
+use memry_desktop::vault::consumer::{Applied, ChangeSource, VaultTier};
 use memry_desktop::vault::file_types::FileType;
 use memry_desktop::vault::watch::VaultEvent;
 use tokio::sync::broadcast::Receiver;
@@ -305,4 +306,56 @@ fn a_file_whose_note_could_not_be_named_is_offered_again_until_it_has_one() {
     e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "a.md"));
     assert_eq!(identity.offered.lock().unwrap().len(), 3);
     assert_eq!(e.rows().len(), 1);
+}
+
+/// The write-back seam end to end: an edit made in the app, scheduled the way the editor and
+/// the sync driver do, reaches the file, and the watcher takes that write for the app's own.
+#[test]
+fn a_scheduled_edit_reaches_the_file_and_the_watcher_takes_it_for_the_apps() {
+    let identity = Mutex::new(None);
+    let mut e = env(|store| {
+        let made = creates(store);
+        *identity.lock().unwrap() = Some(made.clone());
+        Some(made)
+    });
+    let identity = identity.into_inner().unwrap().unwrap();
+    e.write("n.md", "first words\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = e.rows()[0].0.clone();
+    let core = e.core.clone().unwrap();
+    let blocks = core.notes().blocks(id.clone()).unwrap().unwrap();
+    let block_id = blocks
+        .iter()
+        .find_map(|b| b.id.clone())
+        .expect("a block id");
+    let edit = BlockEdit::SetText {
+        block_id,
+        text: "typed in the app".into(),
+    };
+    let writer = core.notes_writer(identity.store.clone()).unwrap();
+    assert!(writer.edit_block(id.clone(), edit).unwrap());
+
+    e.tier.schedule(&id);
+    e.facts_until(|f| {
+        matches!(f, Applied::Changed { note_id, source: ChangeSource::App, .. } if *note_id == id)
+    });
+    assert_eq!(
+        fs::read_to_string(e.vault.join("n.md")).unwrap(),
+        "typed in the app\n"
+    );
+    std::thread::sleep(QUIET);
+    let later = e.drain();
+    assert!(
+        !later.iter().any(|f| matches!(
+            f,
+            Applied::Changed {
+                source: ChangeSource::Watcher,
+                ..
+            }
+        )),
+        "the app's write came back as an outside edit: {later:?}"
+    );
+    e.close();
+    e.tier.schedule(&id);
 }
