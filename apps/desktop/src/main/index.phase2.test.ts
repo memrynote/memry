@@ -83,6 +83,7 @@ const startGoogleCalendarSyncRunnerMock = vi.fn(async () => undefined)
 const stopGoogleCalendarSyncRunnerMock = vi.fn()
 const triggerGoogleCalendarSyncNowMock = vi.fn()
 const computeSpkiHashFromPemMock = vi.fn(() => 'hash')
+const verifySessionCertificatePinMock = vi.fn(() => true)
 const isPinningDisabledMock = vi.fn(() => true)
 const getPinnedCertificateHashesMock = vi.fn(() => [] as string[])
 const getPinnedCertificateHashesForHostnameMock = vi.fn(() => [] as string[])
@@ -289,6 +290,7 @@ vi.mock('./calendar/google/google-sync-runner', () => ({
 
 vi.mock('./sync/certificate-pinning', () => ({
   computeSpkiHashFromPem: computeSpkiHashFromPemMock,
+  verifySessionCertificatePin: verifySessionCertificatePinMock,
   isPinningDisabled: isPinningDisabledMock,
   getPinnedCertificateHashes: getPinnedCertificateHashesMock,
   getPinnedCertificateHashesForHostname: getPinnedCertificateHashesForHostnameMock
@@ -562,6 +564,7 @@ describe('main index phase2 exports', () => {
     getPinnedCertificateHashesMock.mockReturnValue([])
     getPinnedCertificateHashesForHostnameMock.mockReturnValue([])
     computeSpkiHashFromPemMock.mockReturnValue('hash')
+    verifySessionCertificatePinMock.mockReturnValue(true)
     getOpenNoteIdsMock.mockReturnValue([])
     getProviderDocMock.mockReturnValue(undefined)
     createCloseSnapshotMock.mockResolvedValue(false)
@@ -1318,18 +1321,19 @@ describe('main index phase2 exports', () => {
     verify({ certificate: {}, hostname: 'api.memrynote.com' }, callback)
     expect(callback).toHaveBeenLastCalledWith(-2)
 
-    computeSpkiHashFromPemMock.mockReturnValueOnce('wrong-hash')
+    verifySessionCertificatePinMock.mockReturnValueOnce(false)
     verify({ certificate: { data: 'pem' }, hostname: 'api.memrynote.com' }, callback)
     expect(callback).toHaveBeenLastCalledWith(-2)
 
-    computeSpkiHashFromPemMock.mockImplementationOnce(() => {
+    verifySessionCertificatePinMock.mockImplementationOnce(() => {
       throw new Error('bad pem')
     })
     verify({ certificate: { data: 'bad' }, hostname: 'api.memrynote.com' }, callback)
     expect(callback).toHaveBeenLastCalledWith(-2)
 
+    // A pin match defers to Chromium's own verification (-3) instead of forcing success.
     verify({ certificate: { data: 'pem' }, hostname: 'api.memrynote.com' }, callback)
-    expect(callback).toHaveBeenLastCalledWith(0)
+    expect(callback).toHaveBeenLastCalledWith(-3)
   })
 
   it('lets unpinned external hosts use normal TLS in packaged builds', async () => {

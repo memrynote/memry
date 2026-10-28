@@ -1,7 +1,7 @@
 import https from 'node:https'
 import tls from 'node:tls'
 import crypto from 'node:crypto'
-import { app } from 'electron'
+import { app, type Certificate } from 'electron'
 import { createLogger } from '../lib/logger'
 import {
   getConfiguredPinnedCertificateHashes,
@@ -50,31 +50,83 @@ export function isPinningDisabled(): boolean {
   }
 }
 
+function spkiHashOf(x509: crypto.X509Certificate): string {
+  const spkiDer = x509.publicKey.export({ type: 'spki', format: 'der' })
+  return `sha256/${crypto.createHash('sha256').update(spkiDer).digest('base64')}`
+}
+
 export function computeSpkiHash(cert: tls.PeerCertificate): string {
   if (!cert.raw || cert.raw.length === 0) {
     throw new CertificatePinningError('Certificate missing raw DER data', '', [
       ...getConfiguredPinnedCertificateHashes()
     ])
   }
-  const x509 = new crypto.X509Certificate(cert.raw)
-  const spkiDer = x509.publicKey.export({ type: 'spki', format: 'der' })
-  const hash = crypto.createHash('sha256').update(spkiDer).digest('base64')
-  return `sha256/${hash}`
+  return spkiHashOf(new crypto.X509Certificate(cert.raw))
 }
 
 export function computeSpkiHashFromPem(pemData: string): string {
-  const x509 = new crypto.X509Certificate(pemData)
-  const spkiDer = x509.publicKey.export({ type: 'spki', format: 'der' })
-  const hash = crypto.createHash('sha256').update(spkiDer).digest('base64')
-  return `sha256/${hash}`
+  return spkiHashOf(new crypto.X509Certificate(pemData))
+}
+
+// Real sync chains hold three certificates. A longer one is malformed or hostile.
+const MAX_CHAIN_DEPTH = 8
+
+/**
+ * A pin matches the SPKI of any certificate in the presented chain, so a pin on
+ * the issuing intermediate or root survives leaf renewals (a leaf pin broke
+ * every renewal: the staging leaf renewed on 2026-10-13 and every packaged build
+ * pointed at staging refused it).
+ *
+ * Node and Chromium link `issuerCertificate`/`issuerCert` by issuer name and key
+ * id, not by signature. A peer holding any publicly trusted certificate for the
+ * host could append a fake parent that carries a pinned SPKI. So the walk goes
+ * from the leaf upward and only trusts a certificate at depth n when every link
+ * below it is signed by the next certificate up.
+ */
+function isChainPinned(chain: readonly crypto.X509Certificate[], pins: readonly string[]): boolean {
+  for (const [depth, cert] of chain.entries()) {
+    if (depth > 0) {
+      const child = chain[depth - 1]
+      if (!child.checkIssued(cert) || !child.verify(cert.publicKey)) return false
+    }
+    if (pins.includes(spkiHashOf(cert))) return true
+  }
+  return false
+}
+
+function nodePeerChain(
+  leaf: tls.PeerCertificate | tls.DetailedPeerCertificate
+): crypto.X509Certificate[] {
+  const chain: crypto.X509Certificate[] = []
+  let current: tls.PeerCertificate | tls.DetailedPeerCertificate | undefined = leaf
+  while (current?.raw?.length && chain.length < MAX_CHAIN_DEPTH) {
+    chain.push(new crypto.X509Certificate(current.raw))
+    const next: tls.DetailedPeerCertificate | undefined =
+      'issuerCertificate' in current ? current.issuerCertificate : undefined
+    if (!next || next === current || next.raw?.equals(current.raw)) break
+    current = next
+  }
+  return chain
 }
 
 export function verifyCertificatePin(
   cert: tls.PeerCertificate,
   pins: string[] = [...getConfiguredPinnedCertificateHashes()]
 ): boolean {
-  const spkiHash = computeSpkiHash(cert)
-  return pins.some((pin) => pin === spkiHash)
+  return isChainPinned(nodePeerChain(cert), pins)
+}
+
+/** The session verifier's counterpart to `verifyCertificatePin`, for Chromium's certificate. */
+export function verifySessionCertificatePin(cert: Certificate, pins: readonly string[]): boolean {
+  const chain: crypto.X509Certificate[] = []
+  let current: Certificate | undefined = cert
+  while (current?.data && chain.length < MAX_CHAIN_DEPTH) {
+    chain.push(new crypto.X509Certificate(current.data))
+    const next: Certificate | undefined = current.issuerCert
+    if (!next || next === current) break
+    current = next
+  }
+  return isChainPinned(chain, pins)
 }
 
 /**
@@ -146,7 +198,7 @@ export function createPinnedAgent(pins?: string[]): https.Agent {
       }
 
       const spkiHash = computeSpkiHash(cert)
-      if (!effectivePins.some((pin) => pin === spkiHash)) {
+      if (!verifyCertificatePin(cert, effectivePins)) {
         const err = new CertificatePinningError(
           `Certificate pin mismatch for ${hostname}`,
           spkiHash,
