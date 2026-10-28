@@ -34,7 +34,8 @@ import {
   describeFile,
   setupExeName
 } from '../release/bridge-feeds.mjs'
-import { assetNames, buildPackArgs } from '../release/vpk-args.mjs'
+import { assertPublishable, assetNames, buildPackArgs } from '../release/vpk-args.mjs'
+import { renameToPublished } from '../release/vpk-pack.mjs'
 
 export const FEED_REPO = 'memrynote/memry-update-rehearsal'
 const WORKFLOW = 'update-bridge-rehearsal.yml'
@@ -208,6 +209,7 @@ function packWindows(target, version, artifactDir, workDir, previousTag, signed)
     ...(signed && { signTemplate: `${signScript} {{file}}` })
   })
   vpk(args, signed ? { MEMRY_SIGN_PIN: readSigningPin() } : {})
+  renameToPublished(outputDir)
   return outputDir
 }
 
@@ -319,6 +321,7 @@ function cmdPublish(version, argv) {
   assertPublishConfirmed(argv)
   const assets = path.join(stateDir(version), 'assets')
   if (!existsSync(assets)) throw new Error(`Run assemble first: ${assets} does not exist`)
+  assertPublishable(readdirSync(assets))
   const files = readdirSync(assets).map((name) => path.join(assets, name))
   const tag = rehearsalTag(version)
   run('gh', [
@@ -386,6 +389,7 @@ function cmdElectronBaseline(tag, argv) {
     signTemplate: `${signScript} {{file}}`
   })
   vpk(args, { MEMRY_SIGN_PIN: readSigningPin() })
+  renameToPublished(outputDir)
   verifySignatures(outputDir, 'win-x64', version, workDir)
   console.log(`Baseline installer: ${path.join(outputDir, assetNames('win-x64', version).setup)}`)
 }

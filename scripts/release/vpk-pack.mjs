@@ -4,10 +4,20 @@
 //        [--delta None|BestSpeed|BestSize] [--icon P] [--sign-template T]
 //        [--identity I --entitlements P --notary-profile N --keychain K]
 import { spawnSync } from 'node:child_process'
+import { readdirSync, renameSync } from 'node:fs'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
-import { buildPackArgs } from './vpk-args.mjs'
+import { buildPackArgs, publishedName } from './vpk-args.mjs'
+
+/** Renames vpk's outputs in `outputDir` to their published names. */
+export function renameToPublished(outputDir) {
+  for (const name of readdirSync(outputDir)) {
+    const published = publishedName(name)
+    if (published !== name) renameSync(path.join(outputDir, name), path.join(outputDir, published))
+  }
+}
 
 export function parsePackCli(argv) {
   const { positionals, values } = parseArgs({
@@ -48,5 +58,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = buildPackArgs(target, options)
   console.log(`vpk ${args.join(' ')}`)
   const result = spawnSync(process.env.VPK_BIN ?? 'vpk', args, { stdio: 'inherit' })
+  if (result.status === 0) renameToPublished(options.outputDir)
   process.exit(result.status ?? 1)
 }

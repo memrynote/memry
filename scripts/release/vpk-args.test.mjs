@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { assetNames, buildPackArgs } from './vpk-args.mjs'
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+
+import {
+  RETIRED_SETUP_NAME,
+  TARGETS,
+  assertPublishable,
+  assetNames,
+  buildPackArgs
+} from './vpk-args.mjs'
+import { renameToPublished } from './vpk-pack.mjs'
 
 const base = { version: '2099.101.1', packDir: 'pack', outputDir: 'out' }
 const common = (os, exe, runtime, channel) => [
@@ -113,9 +124,33 @@ describe('buildPackArgs', () => {
 describe('assetNames', () => {
   const v = '2099.101.1'
 
-  it('keeps the production Windows x64 names', () => {
+  // Electron builds v2026-09-12 to v2026-10-25 HEAD vpk's x64 Setup name and, on a 200, arm a
+  // hand-off that hangs, so they never update. No release may carry that name again.
+  it("never publishes the Setup under vpk's x64 name", () => {
+    for (const name of Object.keys(TARGETS)) {
+      assert.ok(!Object.values(assetNames(name, v)).includes(RETIRED_SETUP_NAME), name)
+    }
+    const out = mkdtempSync(path.join(tmpdir(), 'vpk-out-'))
+    try {
+      for (const file of [RETIRED_SETUP_NAME, `MemryNote-${v}-full.nupkg`, 'releases.win.json']) {
+        writeFileSync(path.join(out, file), '')
+      }
+      renameToPublished(out)
+      assert.deepEqual(readdirSync(out).toSorted(), [
+        'MemryNote-2099.101.1-full.nupkg',
+        'MemryNote-Setup-win-x64.exe',
+        'releases.win.json'
+      ])
+    } finally {
+      rmSync(out, { recursive: true, force: true })
+    }
+    assert.throws(() => assertPublishable(['releases.win.json', RETIRED_SETUP_NAME]), /never/)
+    assert.doesNotThrow(() => assertPublishable(['MemryNote-Setup-win-x64.exe']))
+  })
+
+  it('keeps the production Windows x64 names, with the Setup renamed', () => {
     assert.deepEqual(assetNames('win-x64', v), {
-      setup: 'MemryNote-win-Setup.exe',
+      setup: 'MemryNote-Setup-win-x64.exe',
       full: `MemryNote-${v}-full.nupkg`,
       delta: `MemryNote-${v}-delta.nupkg`,
       releases: 'releases.win.json',

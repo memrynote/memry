@@ -67,7 +67,7 @@ export function buildLatestLinuxYml({ version, releaseDate, files }) {
   return renderFeed({ version, files, releaseDate })
 }
 
-/** One entry: `MemryNote-V-setup.exe`, a byte copy of the signed `MemryNote-win-Setup.exe`. */
+/** One entry: `MemryNote-V-setup.exe`, a byte copy of the signed `MemryNote-Setup-win-x64.exe`. */
 export function buildLatestYml({ version, releaseDate, setup }) {
   return renderFeed({ version, files: [setup], releaseDate })
 }
