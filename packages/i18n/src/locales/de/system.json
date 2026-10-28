@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote konnte den Start nicht abschließen",
       "body": "Das kann passieren, wenn der freie Speicherplatz sehr knapp ist oder bei älteren Grafiktreibern. Gib etwas Speicherplatz frei und öffne MemryNote dann erneut. Wenn es weiterhin auftritt, hilft in der Regel eine Neuinstallation."
-    }
+    },
+    "crashed": {
+      "title": "MemryNote funktioniert nicht mehr",
+      "body": "Die Seite wurde wiederholt beendet, daher lädt MemryNote sie nicht mehr neu. Schließe dieses Fenster, um die App zu beenden, und öffne MemryNote dann erneut. Wenn es weiterhin auftritt, hilft in der Regel eine Neuinstallation.",
+      "details": "Der Seitenprozess wurde {count}-mal innerhalb einer Minute beendet ({reason})."
+    },
+    "logFolder": "Protokolle: {path}",
+    "reloaded": "MemryNote wurde nach einem Absturz neu geladen. Letzte Änderungen sind möglicherweise verloren."
   }
 }

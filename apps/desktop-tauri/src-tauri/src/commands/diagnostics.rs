@@ -7,6 +7,7 @@ use std::sync::Arc;
 use memry_desktop::config::RuntimeConfig;
 use memry_desktop::launch_timeline;
 use memry_desktop::redact::{RedactOptions, salted_hash};
+use memry_desktop::seams::transport::SyncTransport;
 use memry_desktop::session::Session;
 use memry_desktop::telemetry::logship::LogShip;
 use memry_desktop::telemetry::report::{
@@ -116,7 +117,7 @@ pub async fn diagnostics_send_report(
     let body = serde_json::to_string(&report)
         .map_err(|e| CommandError::new(ErrorKind::Internal, "diagnostics_encode", e.to_string()))?;
     // Step 19 (#3536) adds the bearer so the server attributes the report to the account.
-    match report::post_json(&url, body, None).await {
+    match report::post_json(app.state::<SyncTransport>().as_ref(), &url, body, None).await {
         Ok(()) => Ok(DiagnosticSendResult {
             success: true,
             incident_id: Some(report.incident_id),

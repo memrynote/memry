@@ -72,6 +72,13 @@
     "failed": {
       "title": "MemryNote 無法完成啟動",
       "body": "當磁碟可用空間過低，或顯示卡驅動程式較舊時，可能會發生這種情況。請試著釋放一些磁碟空間，然後重新開啟 MemryNote。若持續發生，重新安裝通常就能解決。"
-    }
+    },
+    "crashed": {
+      "title": "MemryNote 已停止運作",
+      "body": "頁面反覆停止，因此 MemryNote 不再重新載入它。關閉此視窗以結束，然後重新開啟 MemryNote。如果問題持續發生，重新安裝通常可以解決。",
+      "details": "頁面處理程序在一分鐘內結束了 {count} 次（{reason}）。"
+    },
+    "logFolder": "記錄檔：{path}",
+    "reloaded": "MemryNote 在當機後已重新載入。最近的編輯可能已遺失。"
   }
 }

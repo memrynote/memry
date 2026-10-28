@@ -84,10 +84,14 @@ pub fn report(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     Ok(())
 }
 
-/// The arguments of the Windows webview for this launch.
+/// The arguments of the Windows webview for this launch. Before the guard stage ran (a startup
+/// failure), acceleration counts as on.
 #[cfg(windows)]
 pub fn browser_args(app: &AppHandle<Wry>) -> Option<String> {
-    gpu_guard::windows_browser_args(app.state::<GpuGuard>().disabled)
+    gpu_guard::windows_browser_args(
+        app.try_state::<GpuGuard>()
+            .is_some_and(|guard| guard.disabled),
+    )
 }
 
 /// Records that the GPU process died, so the next launch falls back to software rendering.
@@ -119,8 +123,8 @@ pub fn record_reveal_fallback(app: &AppHandle<Wry>) {
 }
 
 /// Subscribes to an app webview's process failures: every one is reported, a browser or
-/// renderer process that ended releases the flush waits on the page, and a GPU process that
-/// crashed, ended unexpectedly or failed to launch is recorded.
+/// renderer process that ended releases the flush waits on the page, a renderer that ended is
+/// recovered, and a GPU process that crashed, ended unexpectedly or failed to launch is recorded.
 #[cfg(windows)]
 pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>) {
     use webview2_com::Microsoft::Web::WebView2::Win32::{
@@ -138,7 +142,7 @@ pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>
     use windows_core::Interface;
 
     let app = app.clone();
-    let label = window.label().to_owned();
+    let page = window.clone();
     let result = window.with_webview(move |webview| {
         // SAFETY: the controller and its core are live COM objects owned by the webview, used on
         // the main thread that `with_webview` runs on.
@@ -178,11 +182,17 @@ pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>
                 };
                 super::process_gone::report(&app, name);
                 // The browser process takes every other one with it; a renderer that ended leaves
-                // the page without its script until it is reloaded.
+                // the page without its script until it is reloaded. A hung renderer
+                // (`RENDER_PROCESS_UNRESPONSIVE`, a big paste or import) is alive: a reload would
+                // discard the edits it flushes once it recovers, and the heartbeat already logs
+                // the stall.
                 if kind == COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED
                     || kind == COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_EXITED
                 {
-                    super::process_gone::page_gone(&app, &label);
+                    super::process_gone::page_gone(&app, page.label());
+                }
+                if kind == COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_EXITED {
+                    super::process_gone::recover(page.clone(), name);
                 }
                 if kind == COREWEBVIEW2_PROCESS_FAILED_KIND_GPU_PROCESS_EXITED
                     && let Some(exit) = exit
@@ -206,13 +216,13 @@ pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>
 }
 
 /// WebKitGTK reports a web process that crashed, ran out of memory or was killed; the page then
-/// has no script to answer a flush.
+/// has no script to answer a flush until it is recovered.
 #[cfg(target_os = "linux")]
 pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>) {
     use webkit2gtk::{WebProcessTerminationReason, WebViewExt};
 
     let app = app.clone();
-    let label = window.label().to_owned();
+    let page = window.clone();
     let result = window.with_webview(move |webview| {
         webview
             .inner()
@@ -224,7 +234,8 @@ pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>
                     _ => "unknown",
                 };
                 super::process_gone::report(&app, name);
-                super::process_gone::page_gone(&app, &label);
+                super::process_gone::page_gone(&app, page.label());
+                super::process_gone::recover(page.clone(), name);
             });
     });
     if let Err(error) = result {

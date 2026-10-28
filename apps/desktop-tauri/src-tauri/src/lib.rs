@@ -38,9 +38,6 @@ use crate::commands::app::BuildKind;
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::startup::Stage;
 
-/// Process exit code when a startup stage fails.
-const EXIT_STARTUP_FAILED: i32 = 2;
-
 /// Installs the `ring` rustls provider as the process default. The shared HTTP client and every
 /// tungstenite client of later steps take it from there. Idempotent.
 pub fn install_crypto_provider() {
@@ -118,7 +115,9 @@ fn resolve_paths(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
 fn init_logging(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let guard: LogGuard = logging::init(&app.state::<AppPaths>());
-    app.manage(guard);
+    // Taken and dropped at `RunEvent::Exit` (`shutdown::flush_log`): the process ends without
+    // dropping managed state, which would lose the lines still queued for the writer thread.
+    app.manage(std::sync::Mutex::new(Some(guard)));
     logging::log_startup(env!("CARGO_PKG_VERSION"), BuildKind::current().into());
     Ok(())
 }
@@ -195,22 +194,21 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     );
     #[cfg(feature = "e2e")]
     let app = e2e::install(app, gate);
-    let result = app
+    let app = app
         .manage(env)
         .manage(badge::BadgeService::default())
         .invoke_handler(handler)
         .on_window_event(windows::events::dispatch)
-        .on_menu_event(menu::on_menu_event)
+        .on_menu_event(menu::on_menu_event);
+    // WKWebView reports a dead web content process through the builder; Windows and Linux
+    // subscribe per webview in the page-watch plugin (`guards::process_gone::plugin`).
+    #[cfg(target_os = "macos")]
+    let app = app
+        .on_web_content_process_terminate(guards::process_gone::on_web_content_process_terminate);
+    let result = app
         .setup(|app| {
             if let Err(failure) = startup::run_registered(app.handle()) {
-                tracing::error!(
-                    stage = ?failure.stage,
-                    name = failure.name,
-                    "startup stage failed: {}",
-                    failure.error
-                );
-                eprintln!("startup stage {} failed: {}", failure.name, failure.error);
-                std::process::exit(EXIT_STARTUP_FAILED);
+                windows::startup_error::on_startup_failure(app.handle(), &failure);
             }
             Ok(())
         })
