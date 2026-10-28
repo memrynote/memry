@@ -7,17 +7,18 @@
 //! runs the quit sequence and holds the message until it is done, the other answers at once, and
 //! tao's handler is never reached while a flush could still be under way.
 
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use memry_desktop::shell::flush::FLUSH_WINDOW_TIMEOUT;
 use memry_desktop::shell::power::{PowerEvent, SleepEdges, wait_for};
-use memry_desktop::shell::shutdown::SESSION_END_BUDGET;
+use memry_desktop::shell::shutdown::{Deadline, SESSION_END_BUDGET};
 use tauri::{AppHandle, Wry};
 use tokio::sync::broadcast::Sender;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::Shutdown::{ShutdownBlockReasonCreate, ShutdownBlockReasonDestroy};
-use windows::Win32::System::Threading::GetCurrentThreadId;
+use windows::Win32::System::Threading::{GetCurrentThreadId, SetProcessShutdownParameters};
 use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumThreadWindows, GetClassNameW, MSG, MsgWaitForMultipleObjects,
@@ -30,6 +31,13 @@ use windows::core::{BOOL, w};
 use crate::windows::registry::WindowRegistry;
 
 const SUBCLASS_ID: usize = 0x4D45_4D50;
+/// Windows ends a session's processes from the highest shutdown level down, and every process
+/// starts at 0x280. Chromium leaves the WebView2 browser process there and lowers its children to
+/// 0x27F (`content/app/content_main.cc`, `CommonSubprocessInit`), so at the same level the order
+/// of the app and its webview is unspecified. With the flush held in `WM_QUERYENDSESSION`, the
+/// VM's sign-outs still ended the webview while the app was holding it, before the page answered.
+/// One level above the browser, Windows asks the app first, while every page can still answer.
+const SHUTDOWN_LEVEL: u32 = 0x281;
 /// The class tao registers for the hidden window that receives the thread's events.
 const EVENT_TARGET_CLASS: &str = "Tao Thread Event Target";
 
@@ -45,6 +53,9 @@ struct Shared {
     main_hwnd: AtomicIsize,
     /// A `WM_ENDSESSION(TRUE)` is being or has been handled by one of the two windows.
     ending: AtomicBool,
+    /// A `WM_QUERYENDSESSION` is holding for the flush; a second one met while its messages are
+    /// pumped answers at once.
+    querying: AtomicBool,
 }
 
 impl Shared {
@@ -63,27 +74,10 @@ fn end_session(shared: &Shared, ending: bool) {
         }
         crate::shutdown::begin_session_end(&shared.app);
         // Windows ends the process soon after this returns (about five seconds in all), so the
-        // quit sequence has to finish here. The steps may need this thread (the webview flush),
-        // so its messages keep being dispatched meanwhile.
-        let mut quit = None;
-        let done = wait_for(
-            SESSION_END_BUDGET,
-            || crate::shutdown::is_completed(&shared.app),
-            |slice| {
-                if quit.is_none() {
-                    quit = pump_messages(slice);
-                } else {
-                    // The loop was asked to exit: leave its WM_QUIT for it, and wait without
-                    // spinning on the queue.
-                    std::thread::sleep(slice);
-                }
-            },
-        );
-        if let Some(code) = quit {
-            // The app asked to exit while the sequence ran: hand the request back to the real loop.
-            // SAFETY: plain Win32 call on the thread that owns the message queue.
-            unsafe { PostQuitMessage(code) };
-        }
+        // quit sequence has to finish here.
+        let done = hold(SESSION_END_BUDGET, || {
+            crate::shutdown::is_completed(&shared.app)
+        });
         if !done {
             tracing::warn!(
                 scope = "Power",
@@ -100,6 +94,65 @@ fn end_session(shared: &Shared, ending: bool) {
     let main = HWND(shared.main_hwnd.load(Ordering::SeqCst) as *mut _);
     // SAFETY: the window `ShutdownBlockReasonCreate` was called with.
     let _ = unsafe { ShutdownBlockReasonDestroy(main) };
+}
+
+/// Keeps the calling window procedure from returning until `done` is true or `limit` is spent,
+/// while this thread's messages keep being dispatched: the webview's IPC and the steps of the
+/// quit sequence need the main thread. True when `done`.
+fn hold(limit: Duration, done: impl Fn() -> bool) -> bool {
+    let mut quit = None;
+    let finished = wait_for(limit, done, |slice| {
+        if quit.is_none() {
+            quit = pump_messages(slice);
+        } else {
+            // The loop was asked to exit: leave its WM_QUIT for it, and wait without spinning on
+            // the queue.
+            std::thread::sleep(slice);
+        }
+    });
+    if let Some(code) = quit {
+        // The app asked to exit meanwhile: hand the request back to the real loop.
+        // SAFETY: plain Win32 call on the thread that owns the message queue.
+        unsafe { PostQuitMessage(code) };
+    }
+    finished
+}
+
+/// Answers `WM_QUERYENDSESSION` only after every window has written the edits its page still
+/// holds. Answering at once left the flush to the quit sequence on `WM_ENDSESSION`, and at a
+/// sign-out the WebView2 processes ended 12 to 130 ms into that sequence, before its
+/// `flush-windows` step reached the page. [`SHUTDOWN_LEVEL`] has Windows ask the app before it
+/// touches the webview, so the pages are alive here. A sign-out that is then cancelled has only
+/// saved early.
+fn flush_before_session_end(shared: &Shared) {
+    if crate::startup::shutdown_started() {
+        // The quit sequence is already running and flushed first.
+        return;
+    }
+    if shared.querying.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let app = &shared.app;
+    let flushed = Arc::new(AtomicBool::new(false));
+    let (handle, flag) = (app.clone(), flushed.clone());
+    tauri::async_runtime::spawn(async move {
+        crate::flush::flush_app_windows(&handle, Deadline::after(FLUSH_WINDOW_TIMEOUT)).await;
+        flag.store(true, Ordering::SeqCst);
+    });
+    let started = Instant::now();
+    if hold(FLUSH_WINDOW_TIMEOUT, || flushed.load(Ordering::SeqCst)) {
+        tracing::info!(
+            scope = "Power",
+            "windows flushed before the session end in {} ms",
+            started.elapsed().as_millis()
+        );
+    } else {
+        tracing::warn!(
+            scope = "Power",
+            "the windows did not flush before the session end"
+        );
+    }
+    shared.querying.store(false, Ordering::SeqCst);
 }
 
 unsafe extern "system" fn proc(
@@ -145,6 +198,7 @@ unsafe extern "system" fn proc(
                     "could not set the shutdown block reason: {error}"
                 );
             }
+            flush_before_session_end(shared);
             return LRESULT(1);
         }
         WM_ENDSESSION => {
@@ -222,33 +276,76 @@ pub fn event_target_window() -> Option<HWND> {
     found
 }
 
-/// Sends `WM_ENDSESSION(TRUE)` to `target` the way Windows does at a sign-out, without waiting
-/// for the answer: the e2e spec that proves neither window ends the process before the flush.
+/// Plays a sign-out the way Windows does: `WM_QUERYENDSESSION` to the main window and, once it
+/// has answered, `WM_ENDSESSION(TRUE)` to `main` or to tao's event target. With `kill_browser`,
+/// the WebView2 browser process with that id is ended between the two, as it ends itself on its
+/// own `WM_ENDSESSION` at a real sign-out. Returns at once: the messages go from a thread.
 #[cfg(feature = "e2e")]
-pub fn post_end_session(main: HWND, event_target: bool) -> bool {
-    let hwnd = if event_target {
+pub fn post_sign_out(main: HWND, event_target: bool, kill_browser: Option<u32>) -> bool {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{OpenProcess, PROCESS_TERMINATE, TerminateProcess};
+    use windows::Win32::UI::WindowsAndMessaging::{ENDSESSION_LOGOFF, SendMessageW};
+
+    let target = if event_target {
         event_target_window()
     } else {
         Some(main)
     };
-    let Some(hwnd) = hwnd else { return false };
-    let raw = hwnd.0 as isize;
+    let Some(target) = target else { return false };
+    let (main, target) = (main.0 as isize, target.0 as isize);
     std::thread::spawn(move || {
-        // SAFETY: the window belongs to this process and lives as long as it.
+        let logoff = Some(LPARAM(ENDSESSION_LOGOFF as isize));
+        // SAFETY: the windows belong to this process and live as long as it; the process handle
+        // is closed after use.
         unsafe {
-            windows::Win32::UI::WindowsAndMessaging::SendMessageW(
-                HWND(raw as *mut _),
+            let answer = SendMessageW(
+                HWND(main as *mut _),
+                WM_QUERYENDSESSION,
+                Some(WPARAM(0)),
+                logoff,
+            );
+            tracing::info!(
+                scope = "Power",
+                "e2e: WM_QUERYENDSESSION answered {}",
+                answer.0
+            );
+            if let Some(pid) = kill_browser {
+                match OpenProcess(PROCESS_TERMINATE, false, pid) {
+                    Ok(process) => {
+                        let ended = TerminateProcess(process, 1);
+                        let _ = CloseHandle(process);
+                        tracing::info!(
+                            scope = "Power",
+                            "e2e: ended the WebView2 browser process {pid}: {ended:?}"
+                        );
+                    }
+                    Err(error) => tracing::warn!(
+                        scope = "Power",
+                        "e2e: could not open the WebView2 browser process {pid}: {error}"
+                    ),
+                }
+            }
+            SendMessageW(
+                HWND(target as *mut _),
                 WM_ENDSESSION,
                 Some(WPARAM(1)),
-                Some(LPARAM(0)),
-            )
-        };
+                logoff,
+            );
+        }
     });
     true
 }
 
-/// Subclasses the main window and tao's event target. Runs on the thread that owns them.
+/// Puts the app ahead of its webview in the session-end order, then subclasses the main window
+/// and tao's event target. Runs on the thread that owns them.
 pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
+    // SAFETY: plain Win32 call that only changes this process's shutdown order.
+    if let Err(error) = unsafe { SetProcessShutdownParameters(SHUTDOWN_LEVEL, 0) } {
+        tracing::warn!(
+            scope = "Power",
+            "could not put the app ahead of its webview at a session end: {error}"
+        );
+    }
     let Some(window) = WindowRegistry::main_window(app) else {
         tracing::warn!(
             scope = "Power",
@@ -271,6 +368,7 @@ pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
         edges: Mutex::new(SleepEdges::default()),
         main_hwnd: AtomicIsize::new(hwnd.0 as isize),
         ending: AtomicBool::new(false),
+        querying: AtomicBool::new(false),
     }));
     // SAFETY: the procedures and their refdata outlive the windows.
     let ok =

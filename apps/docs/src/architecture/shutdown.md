@@ -32,6 +32,7 @@ A step that nobody registered is skipped. The names are a contract: they become 
 - Closing the last window on Windows and Linux.
 - `SIGINT` and `SIGTERM`.
 - A request from the app itself, which calls the same exit.
+- The end of the session: sign-out, restart or shut down on Windows (`WM_ENDSESSION`), and `PrepareForShutdown` from logind on Linux. These get a budget of 4 seconds instead of 8.
 
 On macOS, closing the last window keeps the app running. Clicking the Dock icon then builds the window again.
 
@@ -56,15 +57,19 @@ These run from the first moment of the launch and leave evidence for the next on
 - **Minidumps.** The app starts a copy of itself with `--crash-monitor`. If the app crashes natively, that second process writes a minidump to `crash-dumps/` in the app data folder. The crashed process cannot be trusted to write its own memory. A dump is raw process memory, so it never uploads: only the diagnostic bundle you choose to send reads it. Startup keeps the newest 20 dumps and deletes those older than 30 days.
 - **GPU fallback.** On Windows and Linux, a GPU process that crashed, ended unexpectedly or failed to start (or a window that never painted within 10 seconds) writes `gpu-crash-guard.json` with the app version. The next launch of the same version renders in software: `--disable-gpu` on Windows, and `WEBKIT_DISABLE_COMPOSITING_MODE` and `WEBKIT_DISABLE_DMABUF_RENDERER` on Linux. An update retries hardware rendering. macOS has no such switch.
 - **Stall monitor.** A watchdog thread asks the main thread to answer every second. If it has not answered for 3 seconds, the log gets one `main thread stalled` line with the launch phase it interrupted. At most 20 lines are written, and none while the system sleeps.
-- **Webview process failures.** A webview process that ends is reported as a telemetry log event with the reason, never the page.
+- **Webview process failures.** A webview process that ends is reported as a telemetry log event with the reason, never the page. If it was the process behind the page, waits for that window's flush end at once (see [Sign-out, restart and power off](#sign-out-restart-and-power-off)).
 
 ## Sign-out, restart and power off
 
 The operating system gives an app a short, system-specific window at the end of a session. The same quit sequence runs in all three, started by the system's own signal:
 
 - **macOS** starts it when `NSWorkspace` announces power off, sign-out or restart.
-- **Windows** has two messages. `WM_QUERYENDSESSION` turns install-on-quit off, so an update does not start installing as the machine goes down, and sets a shutdown block reason ("MemryNote is saving your notes") so Windows waits for the app. `WM_ENDSESSION` then runs the sequence and holds the message for up to 4 seconds while the main thread keeps handling messages, because a step may need it. Windows sends the message to every top-level window of the process, and the framework's hidden event-target window would end the process at once, so the app takes the message on that window too and the first window asked does the waiting.
-- **Linux** takes a logind delay inhibitor when it starts and runs the sequence on `PrepareForShutdown(true)`; the process exit releases the lock and lets the machine go on, within logind's limit (5 seconds by default). A machine with no system bus goes without these events.
+- **Windows** has two messages. `WM_QUERYENDSESSION` turns install-on-quit off, so an update does not start installing as the machine goes down, sets a shutdown block reason ("MemryNote is saving your notes") so Windows waits for the app, and asks every window to flush before it answers (for at most 2 seconds). `WM_ENDSESSION` then runs the sequence and holds the message for up to 4 seconds while the main thread keeps handling messages, because a step may need it. Windows sends the message to every top-level window of the process, and the framework's hidden event-target window would end the process at once, so the app takes the message on that window too and the first window asked does the waiting.
+- **Linux** takes a logind delay inhibitor when it starts and runs the sequence on `PrepareForShutdown(true)`; the process exit releases the lock and lets the machine go on, within logind's limit (5 seconds by default). A machine with no system bus goes without these events. logind sends `PrepareForShutdown` only for restart and power off: a desktop logout ends the app without the sequence, and an edit only the page holds is lost ([#3676](https://github.com/memrynote/memry/issues/3676)).
+
+The webview's own processes end at a session end too, and the page has to give up its edits before they do. The WebView2 browser process ends itself on its own `WM_ENDSESSION`. When the app answered `WM_QUERYENDSESSION` at once and left the flush to the quit sequence, the webview ended 12 to 130 ms into that sequence, before `flush-windows` reached the page, and the page's unsaved edits were lost. So the app flushes the pages while it answers `WM_QUERYENDSESSION`. Windows also goes through a session's processes from the highest shutdown level down, and the browser process sits at the default level; at the same level as the app it was sometimes ended while the app was still holding that answer. The app therefore sets its level one above it, so Windows asks the app first. If the user cancels the sign-out, the edits were only saved early. The sequence's own `flush-windows` asks again, and the page waits for any save the first flush left running before it answers.
+
+A page that lost its process cannot answer. When WebView2 reports that its browser or renderer process ended, or WebKitGTK that its web process ended, the app stops waiting for that window's flush at once instead of after 2 seconds. A reload of the page makes it answer again.
 
 Sleep and wake only log and pause the stall monitor.
 

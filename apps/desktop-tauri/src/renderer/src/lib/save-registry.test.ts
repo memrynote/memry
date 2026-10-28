@@ -57,6 +57,35 @@ describe('save-registry', () => {
     expect(fn2).toHaveBeenCalledOnce()
   })
 
+  it('a second flushAll resolves only after the save the first one started', async () => {
+    let pending: string | null = 'edit'
+    let finishWrite = (): void => {}
+    const written: string[] = []
+    registerPendingSave('a', async () => {
+      const edit = pending
+      pending = null
+      if (edit === null) return
+      await new Promise<void>((resolve) => {
+        finishWrite = resolve
+      })
+      written.push(edit)
+    })
+
+    const first = flushAllPendingSaves()
+    let secondDone = false
+    const second = (async () => {
+      await flushAllPendingSaves()
+      secondDone = true
+    })()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(secondDone).toBe(false)
+
+    finishWrite()
+    await second
+    expect(written).toEqual(['edit'])
+    await first
+  })
+
   it('flushAll is a no-op when nothing is registered', async () => {
     await expect(flushAllPendingSaves()).resolves.toBeUndefined()
   })
