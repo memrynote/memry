@@ -90,11 +90,15 @@ impl VaultWatcher {
     /// (the Linux inotify limit) is the caller's error.
     ///
     /// The start rescan runs on the worker, after this returns, and always ends with a
-    /// [`VaultEvent::Rescanned`], sent once what it found has settled (the removals it found stayed
-    /// gone through the rename window, or did not). Electron ran it before the open's index walk (it replays the
-    /// removals of files deleted while the app was closed). The consumer that applies events
-    /// (12e) must run its open walk after that first `Rescanned`, or the walk indexes a file
-    /// whose removal is still on its way.
+    /// [`VaultEvent::Rescanned`], sent at the pass's deadline: when the windows it opened end
+    /// (the rename window of each removal it found, the grace of each new file it holds), so
+    /// what it found is reported before it. A writer that touches one of those files again
+    /// restarts its window, and that `Removed` or `Added` follows the signal as a live event
+    /// (the deadline is the cap, `rescan::end_pass`). Electron ran the pass before the open's
+    /// index walk (it replays the removals of files deleted while the app was closed). The
+    /// consumer that applies events (12e) must run its open walk after that first
+    /// `Rescanned`, or the walk indexes a file whose removal is still on its way, and must
+    /// handle a later event for a path the walk already covered like any live event.
     pub fn start(
         root: PathBuf,
         exclude: Vec<String>,

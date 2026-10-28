@@ -185,7 +185,8 @@ impl Reconciler {
             waiting_notes,
             due,
         });
-        self.report_settled_rescans(end);
+        // What earlier passes found and is due by now goes out before their signals.
+        self.settle_expired(end);
     }
 
     /// Tracks a delete found by a rescan. Every delete, live or found by a pass over the vault,

@@ -786,3 +786,37 @@ fn an_unlinked_name_beside_its_other_case_is_that_note_and_a_copy_of_the_other_i
         "{events:?}"
     );
 }
+
+#[test]
+fn a_pass_that_found_a_delete_says_nothing_before_the_rename_window_ends() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "body");
+    f.index("n1", "a.md", "body");
+    fs::remove_file(f.root.join("a.md")).unwrap();
+    let t0 = Instant::now();
+    rescan_started_at(&mut r, true, t0);
+    r.settle_expired(Instant::now() + Duration::from_millis(300));
+    assert!(
+        f.take().is_empty(),
+        "the signal came before the removal it waits for"
+    );
+    r.settle_expired(Instant::now() + Duration::from_millis(700));
+    assert_eq!(kinds(&f.take()), ["removed", "rescanned"]);
+}
+
+#[test]
+fn a_pass_that_ends_after_an_earlier_one_was_due_reports_what_that_one_found_first() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("b.md", "new");
+    let t0 = Instant::now();
+    rescan_started_at(&mut r, true, t0);
+    // No tick ran in between: the next pass ends after the first one's deadline.
+    rescan_started_at(&mut r, false, t0 + Duration::from_millis(700));
+    assert_eq!(
+        kinds(&f.take()),
+        ["added", "rescanned", "rescanned"],
+        "a signal came before the file its pass found"
+    );
+}
