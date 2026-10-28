@@ -24,6 +24,7 @@ import {
   parsePlaybackPosition,
   shouldResumePlayback
 } from '@/pages/file-view-state'
+import { toMediaUrl } from '@/lib/memry-file-url'
 
 const log = createLogger('Component:VideoPlayer')
 
@@ -159,7 +160,7 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
     return (
       <video
         ref={setVideoRef}
-        src={src}
+        src={toMediaUrl(src)}
         controls={controls}
         loop={loop}
         muted={muted}

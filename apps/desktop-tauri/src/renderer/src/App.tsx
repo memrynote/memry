@@ -29,6 +29,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { APP_RAIL_WIDTH_PX } from '@/components/sidebar/app-rail'
 import { WorkspaceDragStrip } from '@/components/sidebar/workspace-drag-strip'
 import { WindowControls } from '@/components/window-controls'
+import { CaptionButtons } from '@/components/caption-buttons'
 import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
@@ -839,7 +840,21 @@ function VaultStack({ activePath }: { activePath: string | null }): React.JSX.El
 // MAIN APP COMPONENT
 // =============================================================================
 
+/**
+ * The window's own chrome sits over whichever screen shows: on Windows the frameless window has
+ * no other minimize, maximize or close, so the buttons are on the picker, the first-run wizard,
+ * the vault switch and the update screens too, not only in the app shell.
+ */
 function App(): React.JSX.Element {
+  return (
+    <>
+      <AppScreen />
+      <CaptionButtons />
+    </>
+  )
+}
+
+function AppScreen(): React.JSX.Element {
   // Flush pending saves when main process requests it (Cmd+Q, window close)
   useFlushOnQuit()
   useWindowChromeSync()

@@ -5,21 +5,32 @@ use super::*;
 
 const WRITING: &str = "---\nwriting:\n  alternatives:\n    k3x9q2:\n      versions:\n        - text: two\n        - text: zwei\n---\none <!--alt:k3x9q2-->two<!--/alt:k3x9q2--> three\n";
 
-/// The feed is not told the `writing` frontmatter, so it answers for the body alone. A hash
-/// recorded for the whole file would let the write-back drop the alternatives it never took.
+/// The feed is told the `writing` frontmatter, so its answer covers the whole file and the
+/// row records the hash: the write-back writes the alternatives back with the body. A
+/// frontmatter that does not parse may hold some, so that file is not taken as read.
 #[test]
-fn a_file_whose_writing_frontmatter_the_note_did_not_take_gets_no_hash() {
+fn a_file_is_taken_as_read_with_its_writing_frontmatter_and_not_when_that_does_not_parse() {
     let f = fixture(true);
     f.write("w.md", WRITING);
     assert_eq!(f.added("w.md"), Step::Done);
-    assert_eq!(
-        f.hash_of("w.md"),
-        None,
-        "the writing state was taken as read"
-    );
-    // The next open's walk and a later change of the file read it again, and still record none.
-    assert_eq!(f.walked("w.md"), Step::Done);
-    assert_eq!(f.hash_of("w.md"), None);
+    assert_eq!(f.hash_of("w.md"), Some(content_hash(WRITING)));
+    let id = only_note(&f, "w.md");
+    let body = f
+        .vault
+        .write_back()
+        .body(&super::super::converter_for(None), &id, "w.md", "")
+        .unwrap();
+    let memry_core::domain::write_back::BodyRead::Body(body) = body else {
+        panic!("{body:?}");
+    };
+    assert_eq!(body.writing.alternatives.len(), 1, "{body:?}");
+
+    let broken = "---\nwriting: [unclosed\n---\nplain body\n";
+    f.write("b.md", broken);
+    assert_eq!(f.added("b.md"), Step::Done);
+    assert_eq!(f.hash_of("b.md"), None, "a frontmatter that does not parse");
+    assert_eq!(f.walked("b.md"), Step::Done);
+    assert_eq!(f.hash_of("b.md"), None);
 
     f.write("t.md", "---\ntitle: Kept apart\n---\nplain body\n");
     assert_eq!(f.added("t.md"), Step::Done);

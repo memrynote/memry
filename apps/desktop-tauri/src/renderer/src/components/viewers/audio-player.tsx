@@ -38,6 +38,7 @@ import {
   parsePlaybackPosition,
   shouldResumePlayback
 } from '@/pages/file-view-state'
+import { toMediaUrl } from '@/lib/memry-file-url'
 
 // ============================================================================
 // Types
@@ -285,7 +286,7 @@ export function AudioPlayer({
 
   return (
     <div className={cn('flex h-full flex-col bg-muted/20 min-h-0', className)}>
-      <audio ref={audioRef} src={src} preload="metadata" aria-label={fileName}>
+      <audio ref={audioRef} src={toMediaUrl(src)} preload="metadata" aria-label={fileName}>
         <track kind="captions" />
       </audio>
 

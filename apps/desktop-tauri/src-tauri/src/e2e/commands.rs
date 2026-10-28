@@ -22,7 +22,7 @@ e2e_commands! {
     crash => [e2e_trigger_crash],
     debug => [e2e_debug_query, e2e_debug_index_query],
     dialog => [e2e_dialog_queue_push, e2e_dialog_queue_clear],
-    reveal => [e2e_revealed_paths],
+    reveal => [e2e_revealed_paths, e2e_os_opens],
     shell_integrations => [
         e2e_apply_login_item,
         e2e_close_window,
@@ -44,5 +44,6 @@ e2e_commands! {
         e2e_menu_activate,
         e2e_menu_bar_visible
     ],
+    updater => [e2e_updater_script, e2e_updater_hook_calls],
     window => [e2e_windows, e2e_set_window_rect],
 }

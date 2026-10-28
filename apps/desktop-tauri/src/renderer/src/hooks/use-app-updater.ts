@@ -3,6 +3,8 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import { getI18n } from 'react-i18next'
 import { createLogger } from '@/lib/logger'
+import { subscribeToEvent } from '@/services/tauri-event'
+import { commands, events } from '../../../generated/bindings'
 import {
   DEMO_RELEASE_NOTES,
   DEMO_RELEASE_NOTES_HTML
@@ -44,8 +46,7 @@ interface AppUpdaterSnapshot {
 
 /**
  * One renderer-wide updater store. Every consumer used to keep its own state, fire
- * its own `getState()` on mount and register its own `onUpdaterStateChanged`
- * listener — so a download-progress broadcast (several per second) fanned out into
+ * its own `getState()` on mount and register its own state-changed listener — so a download-progress broadcast (several per second) fanned out into
  * one setState per consumer, one of which sits at the App root and re-rendered the
  * whole tree. Now a single subscription feeds a shared snapshot, and consumers that
  * only need a slice (see `useAppUpdaterSelector`) stay put while the percent moves.
@@ -99,9 +100,9 @@ function subscribe(listener: () => void): () => void {
   listeners.add(listener)
 
   if (listeners.size === 1) {
-    unsubscribeFromMain = window.api.onUpdaterStateChanged(publishState)
-    void window.api.updater
-      .getState()
+    unsubscribeFromMain = subscribeToEvent(events.updaterStateChangedEvent, publishState)
+    void commands
+      .updaterGetState()
       .then(publishState)
       .catch((err: unknown) => {
         publishError(
@@ -236,7 +237,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
 
   const checkForUpdates = useCallback(async (): Promise<AppUpdateState> => {
     try {
-      const nextState = await window.api.updater.checkForUpdates()
+      const nextState = await commands.updaterCheckForUpdates()
       publishState(nextState)
       return nextState
     } catch (err) {
@@ -251,7 +252,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
 
   const downloadUpdate = useCallback(async (): Promise<AppUpdateState> => {
     try {
-      const nextState = await window.api.updater.downloadUpdate()
+      const nextState = await commands.updaterDownloadUpdate()
       publishState(nextState)
       return nextState
     } catch (err) {
@@ -266,7 +267,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
 
   const quitAndInstall = useCallback(async (): Promise<void> => {
     try {
-      await window.api.updater.quitAndInstall()
+      await commands.updaterQuitAndInstall()
       // Install returns no state of its own; just drop any error the UI is showing.
       emit({ ...snapshot, error: null })
     } catch (err) {
@@ -281,7 +282,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
 
   const skipVersion = useCallback(async (version: string): Promise<AppUpdateState> => {
     try {
-      const nextState = await window.api.updater.skipVersion(version)
+      const nextState = await commands.updaterSkipVersion(version)
       publishState(nextState)
       return nextState
     } catch (err) {
@@ -296,7 +297,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
 
   const setAutoDownload = useCallback(async (enabled: boolean): Promise<AppUpdateState> => {
     try {
-      const nextState = await window.api.updater.setAutoDownload(enabled)
+      const nextState = await commands.updaterSetAutoDownload(enabled)
       publishState(nextState)
       return nextState
     } catch (err) {
@@ -311,7 +312,7 @@ export function useAppUpdater(): UseAppUpdaterResult {
 
   const setAutoCheck = useCallback(async (enabled: boolean): Promise<AppUpdateState> => {
     try {
-      const nextState = await window.api.updater.setAutoCheck(enabled)
+      const nextState = await commands.updaterSetAutoCheck(enabled)
       publishState(nextState)
       return nextState
     } catch (err) {
