@@ -28,6 +28,10 @@ on:
         description: Production Electron tag to build rehearsal baselines from (empty to skip)
         required: false
         default: ''
+      tauri_base:
+        description: Published rehearsal version to update from to `version` through the in-app updater (proof only; skips the builds)
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -55,6 +59,7 @@ env:
   FEED_REPO: ${{ inputs.feed_repo }}
   PREVIOUS_TAG: ${{ inputs.previous_tag }}
   ELECTRON_TAG: ${{ inputs.electron_tag }}
+  TAURI_BASE: ${{ inputs.tauri_base }}
 
 jobs:
   validate:
@@ -70,9 +75,11 @@ jobs:
           [ "$FEED_REPO" = memrynote/memry-update-rehearsal ] || { echo "::error::feed_repo must be memrynote/memry-update-rehearsal"; exit 1; }
           [ -z "$PREVIOUS_TAG" ] || [[ "$PREVIOUS_TAG" =~ ^rehearsal-2099\.[0-9]{3,4}\.[0-9]+$ ]] || { echo "::error::previous_tag must be a rehearsal tag"; exit 1; }
           [ -z "$ELECTRON_TAG" ] || [[ "$ELECTRON_TAG" =~ ^v[0-9][0-9A-Za-z._-]*$ ]] || { echo "::error::electron_tag must be a production tag such as v2026-10-15"; exit 1; }
+          [ -z "$TAURI_BASE" ] || [[ "$TAURI_BASE" =~ ^2099\.[0-9]{3,4}\.[0-9]+$ ]] || { echo "::error::tauri_base must look like 2099.101.1"; exit 1; }
 
   windows:
     needs: validate
+    if: inputs.tauri_base == ''
     name: Windows payload (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -115,6 +122,7 @@ jobs:
 
   macos:
     needs: validate
+    if: inputs.tauri_base == ''
     name: macOS pack (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
@@ -223,6 +231,7 @@ jobs:
 
   linux:
     needs: validate
+    if: inputs.tauri_base == ''
     name: Linux pack
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -428,3 +437,76 @@ jobs:
           sleep 45
           find "$HOME" -name main.log -newer "$RUNNER_TEMP/before.sha" -exec sh -c 'echo "== $1"; tail -20 "$1"' _ {} \;
           tail -20 "$RUNNER_TEMP/electron.log"
+
+  # Proof mode (`tauri_base` set): an installed rehearsal build updates itself to `version`
+  # through the in-app updater and installs on a normal quit. The base's full package is put
+  # where a Velopack install or an earlier update leaves it, so the update can take the delta.
+  proof-tauri-macos:
+    name: M3 proof (Tauri to Tauri, macOS arm64)
+    needs: validate
+    if: inputs.tauri_base != ''
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Install the base, update, quit, relaunch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          logs() { cat "$HOME"/Library/Logs/com.memrynote.memry/*.log 2>/dev/null || true; }
+          wait_log() { for _ in $(seq 1 "$2"); do logs | grep -F "$1" >/dev/null && return 0; sleep 5; done; logs | grep -F 'Updater' | tail -20; return 1; }
+          gh release download "rehearsal-$TAURI_BASE" --repo "$FEED_REPO" -p "MemryNote-$TAURI_BASE-arm64.zip" -p "MemryNote-$TAURI_BASE-osx-arm64-full.nupkg" -D base
+          ditto -x -k "base/MemryNote-$TAURI_BASE-arm64.zip" /Applications
+          app=/Applications/MemryNote.app
+          mkdir -p "$HOME/Library/Caches/velopack/MemryNote/packages" "$HOME/Library/Application Support/com.memrynote.memry"
+          cp "base/MemryNote-$TAURI_BASE-osx-arm64-full.nupkg" "$HOME/Library/Caches/velopack/MemryNote/packages/"
+          printf '{"updater":{"autoDownload":true}}' > "$HOME/Library/Application Support/com.memrynote.memry/memry-config.json"
+          open "$app"
+          wait_log "velopack: downloaded $VERSION" 120
+          logs | grep -E 'velopack: (current|available)'
+          osascript -e 'tell application "MemryNote" to quit'
+          for _ in $(seq 1 60); do grep -q "$VERSION" "$app/Contents/Resources/sq.version" 2>/dev/null && break; sleep 3; done
+          grep -E '<version>|<channel>' "$app/Contents/Resources/sq.version"
+          grep -q "<version>$VERSION</version>" "$app/Contents/Resources/sq.version"
+          codesign --verify --deep --strict "$app"
+          sleep 5; open "$app"
+          wait_log "velopack: current=$VERSION" 60
+          wait_log "velopack: up-to-date" 60
+          logs | grep -F 'Updater' | tail -20
+
+  proof-tauri-linux:
+    name: L2 proof (Tauri to Tauri, AppImage)
+    needs: validate
+    if: inputs.tauri_base != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Install the base, update, quit, relaunch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y libfuse2t64 xvfb libwebkit2gtk-4.1-0 libayatana-appindicator3-1
+          data="$HOME/.local/share/com.memrynote.memry"
+          logs() { find "$data" -name '*.log' -exec cat {} + 2>/dev/null || true; }
+          wait_log() { for _ in $(seq 1 "$2"); do logs | grep -F "$1" >/dev/null && return 0; sleep 5; done; logs | grep -F 'Updater' | tail -20; return 1; }
+          gh release download "rehearsal-$TAURI_BASE" --repo "$FEED_REPO" -p "MemryNote-$TAURI_BASE-x86_64.AppImage" -p "MemryNote-$TAURI_BASE-linux-full.nupkg" -D base
+          appimage="$PWD/base/MemryNote.AppImage"
+          mv "base/MemryNote-$TAURI_BASE-x86_64.AppImage" "$appimage"
+          chmod +x "$appimage"
+          mkdir -p /var/tmp/velopack/MemryNote/packages "$data"
+          cp "base/MemryNote-$TAURI_BASE-linux-full.nupkg" /var/tmp/velopack/MemryNote/packages/
+          printf '{"updater":{"autoDownload":true}}' > "$data/memry-config.json"
+          sha256sum "$appimage" | tee before.sha
+          xvfb-run -a "$appimage" > base.out 2>&1 &
+          wait_log "velopack: downloaded $VERSION" 120
+          logs | grep -E 'velopack: (current|available)'
+          pkill -TERM -x memrynote
+          for _ in $(seq 1 60); do sha256sum --status -c before.sha || break; sleep 3; done
+          if sha256sum --status -c before.sha; then echo "::error::the AppImage was not replaced"; exit 1; fi
+          sleep 5
+          (cd "$RUNNER_TEMP" && "$appimage" --appimage-extract '*sq.version' >/dev/null && find squashfs-root -name sq.version -exec grep -E '<version>|<channel>' {} +)
+          xvfb-run -a "$appimage" > target.out 2>&1 &
+          wait_log "velopack: current=$VERSION" 60
+          wait_log "velopack: up-to-date" 60
+          logs | grep -F 'Updater' | tail -20
