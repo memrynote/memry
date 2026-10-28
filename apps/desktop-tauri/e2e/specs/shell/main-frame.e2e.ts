@@ -286,9 +286,10 @@ test('no link gesture or drop unloads the app, cancels its requests or loads in 
     }, `${site.loopback}/slow`)
 
     const result = await page.evaluate((origin) => {
-      const header = document.querySelector('[data-sidebar="header"]')
+      // Outside the sidebar's file-drop zone, and the zone itself.
+      const outside = document.querySelector('[data-sidebar="footer"]')
       const zone = document.querySelector('[data-tour="sidebar-collections"]')
-      if (!header || !zone)
+      if (!outside || !zone || zone.contains(outside))
         return { missing: true, fileTypes: [] as string[], claims: [] as string[] }
       // Who claims a drop after the guard: the sidebar's file-drop zone must keep its files.
       const claims: string[] = []
@@ -312,7 +313,7 @@ test('no link gesture or drop unloads the app, cancels its requests or loads in 
         const anchor = document.createElement('a')
         anchor.href = origin + path
         anchor.textContent = path
-        header.append(anchor)
+        outside.append(anchor)
         return anchor
       }
       const mouse = (target: Element, type: string, init: MouseEventInit): void => {
@@ -337,8 +338,8 @@ test('no link gesture or drop unloads the app, cancels its requests or loads in 
         data.items.add(new File(['# x'], 'dropped.md', { type: 'text/markdown' }))
         fileTypes.push(...data.types)
       }
-      dragAll(header, (data) => data.setData('text/uri-list', `${origin}/dragged`))
-      dragAll(header, addFile)
+      dragAll(outside, (data) => data.setData('text/uri-list', `${origin}/dragged`))
+      dragAll(outside, addFile)
       dragAll(zone, addFile)
       return { missing: false, fileTypes, claims }
     }, site.origin)

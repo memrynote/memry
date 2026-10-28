@@ -175,7 +175,13 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
     .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_opener::init())
+    // Its init script would take ctrl, shift and target=_blank link clicks for an `open_url` the
+    // capabilities deny; `external-link-guard.ts` owns every link click (#3647).
+    .plugin(
+        tauri_plugin_opener::Builder::new()
+            .open_js_links_on_click(false)
+            .build(),
+    )
     .plugin(tauri_plugin_clipboard_manager::init());
     // macOS and Windows write their own login item (`autostart/`).
     #[cfg(target_os = "linux")]
