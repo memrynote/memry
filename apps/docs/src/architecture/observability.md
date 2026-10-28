@@ -1230,13 +1230,16 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   starts the new app itself (`--silent` stops Setup from starting it, and it does not set
   `VELOPACK_FIRSTRUN`), and falls back to the already-downloaded NSIS installer if Setup exited non-zero
   or no Velopack `Memrynote.exe` exists afterwards (with no NSIS installer left, it starts the old
-  Electron app again), so the user is never left without a running app. Each step is logged to
+  Electron app again when its exe and `resources\app.asar` are still there), so the user is never left without a running app. Each step is logged to
   `userData/logs/installer-handoff.log`; `installer-handoff-windows.test.mjs` runs the script on
   hostile paths in the `handoff-scenarios` job of the smoke workflow. Every
   refusal falls back to the plain NSIS install: a release without the Velopack asset (info log
   only), a download failure (`INSTALLER_HANDOFF_DOWNLOAD_FAILED` through the updater error path) and
-  a signature failure (`INSTALLER_HANDOFF_UNVERIFIED`). The next launch reads the marker: still the
-  same version is the usual `UPDATE_INSTALL_DID_NOT_APPLY` with `source: velopack-handoff`; a new
+  a signature failure (`INSTALLER_HANDOFF_UNVERIFIED`) and an install directory the script cannot pass
+  (`INSTALLER_HANDOFF_UNSUPPORTED_INSTALL_DIR`). The next launch reads the marker: still the
+  same version is the usual `UPDATE_INSTALL_DID_NOT_APPLY` with `source: velopack-handoff`, and the
+  version is recorded in `userData/installer-handoff-failed-version` so the next session's update of
+  that version skips the hand-off (no repeat 450 MB download) and installs through NSIS; a new
   version running from the Velopack layout (`..\Update.exe` next to the app) is
   `app_update_installed` with `action: migrated` and `source: velopack-handoff`; a new version
   still running from an NSIS layout is `INSTALLER_HANDOFF_DID_NOT_APPLY`, meaning the update

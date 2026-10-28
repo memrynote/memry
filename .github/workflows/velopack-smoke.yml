@@ -302,7 +302,10 @@ jobs:
             $killedAt = [datetime]::Parse((Get-Content killed-at.txt)).TimeOfDay
             $exitedLine = [regex]::Match($transcript, '(\d+:\d+:\d+)\.\d+ app exited')
             $exitedAt = [timespan]::Parse($exitedLine.Groups[1].Value)
-            if ($exitedAt.TotalSeconds -lt [math]::Floor($killedAt.TotalSeconds)) { throw "'app exited' ($exitedAt) was logged before the app was killed ($killedAt)" }
+            # Times of day: a run across midnight wraps, so a gap of more than half a day is that wrap.
+            $gap = $exitedAt.TotalSeconds - [math]::Floor($killedAt.TotalSeconds)
+            if ($gap -lt -43200) { $gap += 86400 }
+            if ($gap -lt 0) { throw "'app exited' ($exitedAt) was logged before the app was killed ($killedAt)" }
             if ($transcript.IndexOf('app exited') -gt $transcript.IndexOf('uninstall exit=')) { throw 'uninstall ran before the wait finished' }
           }
           if (Test-Path $nsisDir) { Get-ChildItem $nsisDir -Recurse | Format-Table FullName; throw "NSIS install still present at $nsisDir" }
