@@ -12,7 +12,7 @@ use tauri::{AppHandle, Manager, State, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
-use super::settings::announce;
+use super::settings::{announce, map_error};
 use crate::shortcuts::{ShortcutService, read_binding};
 
 /// Registers the saved binding (or the fallback) and says what the OS did.
@@ -60,24 +60,21 @@ pub async fn shortcut_set_global_capture(
             })?
             .unwrap_or(Value::Null);
         let mut change = None;
-        let result = app
-            .state::<ShortcutService>()
-            .set(
-                &app,
-                || read_binding(&app, "globalCapture"),
-                binding.as_ref(),
-                || {
-                    let mut patch = Map::new();
-                    patch.insert("globalCapture".to_owned(), patch_value);
-                    change = Some(
-                        settings
-                            .write_group(Some(&vault), "keyboard", patch)
-                            .map_err(|error| format!("{error:?}"))?,
-                    );
-                    Ok(())
-                },
-            )
-            .map_err(|message| CommandError::new(ErrorKind::Storage, "settings_failed", message))?;
+        let result = app.state::<ShortcutService>().set(
+            &app,
+            || read_binding(&app, "globalCapture"),
+            binding.as_ref(),
+            || {
+                let mut patch = Map::new();
+                patch.insert("globalCapture".to_owned(), patch_value);
+                change = Some(
+                    settings
+                        .write_group(Some(&vault), "keyboard", patch)
+                        .map_err(map_error)?,
+                );
+                Ok(())
+            },
+        )?;
         // After the shortcut lock is released: the announce re-applies, a no-op for what is held.
         if let Some(change) = change {
             announce(&app, &change.group, change.fields)?;

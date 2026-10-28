@@ -197,3 +197,32 @@ pub fn after_delete(session: &Session, service: &str, account: &str) -> keyring_
         Ok(())
     })
 }
+
+/// The Secret Service's bus name.
+const SECRETS_NAME: &str = "org.freedesktop.secrets";
+
+static PROBE: Mutex<super::probe::ProbeState> = Mutex::new(super::probe::ProbeState::Idle);
+
+/// Whether this session has no Secret Service at all: no session bus, or the name is neither
+/// owned nor activatable. Any doubt is "one may exist" (see [`super::probe`]).
+pub fn service_absent(deadline: std::time::Duration) -> bool {
+    super::probe::absent(&PROBE, deadline, probe)
+}
+
+fn probe() -> Option<bool> {
+    let Ok(connection) = zbus::blocking::Connection::session() else {
+        // No bus answered. That proves there is none only when no address was given: zbus then
+        // tried the default socket of the session. A given address that fails is a doubt. This
+        // is the bus address zbus itself reads, not a launch switch of `LaunchEnv`.
+        return std::env::var_os("DBUS_SESSION_BUS_ADDRESS")
+            .is_none()
+            .then_some(true);
+    };
+    let bus = zbus::blocking::fdo::DBusProxy::new(&connection).ok()?;
+    let name = zbus::names::BusName::try_from(SECRETS_NAME).ok()?;
+    if bus.name_has_owner(name).ok()? {
+        return Some(false);
+    }
+    let activatable = bus.list_activatable_names().ok()?;
+    Some(!activatable.iter().any(|name| name.as_str() == SECRETS_NAME))
+}

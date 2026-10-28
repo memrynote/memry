@@ -6,7 +6,7 @@ use memry_core::seams::secure_store::SecureStoreKey;
 /// The one keychain service of every sync secret.
 pub const SERVICE: &str = "com.memry.sync";
 
-/// Every entry of the seam, in the order `clear` removes them.
+/// The five entries Electron kept under [`SERVICE`] (`KEYCHAIN_ENTRIES`).
 pub const KEYS: [SecureStoreKey; 5] = [
     SecureStoreKey::MasterKey,
     SecureStoreKey::DeviceSigningKey,
@@ -14,6 +14,21 @@ pub const KEYS: [SecureStoreKey; 5] = [
     SecureStoreKey::RefreshToken,
     SecureStoreKey::SetupToken,
 ];
+
+/// The entries [`super::KeyringStore`] serves, in the order `clear` removes them. The device
+/// signing key is not one of them: it lives in [`super::DeviceIdentityStore`]'s own namespace.
+pub const STORE_KEYS: [SecureStoreKey; 4] = [
+    SecureStoreKey::MasterKey,
+    SecureStoreKey::AccessToken,
+    SecureStoreKey::RefreshToken,
+    SecureStoreKey::SetupToken,
+];
+
+/// The keychain service of this app's device signing key. Not Electron's [`SERVICE`]: Electron
+/// moves every `com.memry.sync` item into its own encrypted file and deletes the keychain copy,
+/// so a key shared there could be taken or deleted by an Electron run. Step 37 (#3554) adopts
+/// Electron's identity into this namespace explicitly.
+pub const IDENTITY_SERVICE: &str = "com.memrynote.memry";
 
 fn base_account(key: SecureStoreKey) -> &'static str {
     match key {

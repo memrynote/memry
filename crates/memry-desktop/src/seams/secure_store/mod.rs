@@ -25,12 +25,15 @@
 compile_error!("the `e2e` feature keeps secrets in a plain file and is for debug builds only");
 
 mod account;
+mod device_identity;
 #[cfg(feature = "e2e")]
 mod e2e_file;
 mod generic;
 mod keyring_backend;
 #[cfg(target_os = "linux")]
 mod linux_absent;
+#[cfg(any(target_os = "linux", test))]
+mod probe;
 mod worker;
 
 use std::sync::Arc;
@@ -42,7 +45,10 @@ use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use zeroize::Zeroizing;
 
-pub use account::{KEYS, SERVICE, account};
+pub use account::{IDENTITY_SERVICE, KEYS, SERVICE, STORE_KEYS, account};
+pub use device_identity::{
+    DeviceIdentityStore, device_identity_missing, is_device_identity_missing,
+};
 pub use generic::GenericSecrets;
 pub use keyring_backend::{Native, Store, StoreFactory};
 /// The Linux absent-check on its own, for the live test of a locked keyring (the store's search
@@ -53,6 +59,20 @@ pub fn linux_absent_check(service: &str, account: &str) -> keyring_core::Result<
     linux_absent::check(&linux_absent::Session::default(), service, account)
 }
 pub use worker::DEADLINE;
+
+/// Whether this system has no keychain at all, so a device key may live in a file
+/// ([`DeviceIdentityStore`]). Only Linux can answer yes: no session bus, or no Secret Service
+/// running or activatable. A locked keyring, an unanswered prompt or any doubt is "no".
+pub fn keychain_absent() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        linux_absent::service_absent(DEADLINE)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        false
+    }
+}
 use worker::{Op, Worker};
 
 use crate::e2e::E2eGate;
@@ -120,8 +140,21 @@ impl KeyringStore {
         self.worker.on_recovered(Arc::new(listener));
     }
 
-    fn account(&self, key: SecureStoreKey) -> String {
-        account(key, self.device_suffix.as_deref())
+    fn account(&self, key: SecureStoreKey) -> Result<String, SecureStoreError> {
+        if key == SecureStoreKey::DeviceSigningKey {
+            return Err(SecureStoreError::Denied {
+                what: "the device signing key is kept by the device identity store".to_owned(),
+            });
+        }
+        Ok(account(key, self.device_suffix.as_deref()))
+    }
+
+    /// The account of this device's signing key under [`IDENTITY_SERVICE`].
+    pub(crate) fn identity_account(&self) -> String {
+        account(
+            SecureStoreKey::DeviceSigningKey,
+            self.device_suffix.as_deref(),
+        )
     }
 }
 
@@ -147,7 +180,7 @@ fn decode(text: &[u8]) -> Result<Vec<u8>, SecureStoreError> {
 
 impl SecureStore for KeyringStore {
     fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
-        match self.worker.call(SERVICE, &self.account(key), Op::Get)? {
+        match self.worker.call(SERVICE, &self.account(key)?, Op::Get)? {
             Some(text) => decode(&text).map(Some),
             None => Ok(None),
         }
@@ -157,21 +190,21 @@ impl SecureStore for KeyringStore {
         let value = Zeroizing::new(value);
         let text = Zeroizing::new(STANDARD.encode(value.as_slice()).into_bytes());
         self.worker
-            .call(SERVICE, &self.account(key), Op::Set(text))
+            .call(SERVICE, &self.account(key)?, Op::Set(text))
             .map(|_| ())
     }
 
     fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
         self.worker
-            .call(SERVICE, &self.account(key), Op::Delete)
+            .call(SERVICE, &self.account(key)?, Op::Delete)
             .map(|_| ())
     }
 
-    /// Removes all five entries, one after another. A failure on one does not stop the rest;
-    /// the first failure is returned.
+    /// Removes the four entries this store serves, one after another. A failure on one does not
+    /// stop the rest; the first failure is returned. Electron's device key item is never touched.
     fn clear(&self) -> Result<(), SecureStoreError> {
         let mut first = Ok(());
-        for key in KEYS {
+        for key in STORE_KEYS {
             if let Err(error) = self.delete(key) {
                 first = first.and(Err(error));
             }
