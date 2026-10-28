@@ -246,15 +246,15 @@ impl GlobalCapture {
     /// Register first, save second: a binding the OS refuses is not saved, and the previous one
     /// is registered again so quick capture stays on the shortcut that worked. `save` writes the
     /// setting and runs only for an accepted binding. Returns the result to show.
-    pub fn set(
+    pub fn set<E>(
         &mut self,
         keys: &dyn Keys,
         wayland: bool,
         previous: Option<&ShortcutBinding>,
         binding: Option<&ShortcutBinding>,
         on_fire: OnFire,
-        save: impl FnOnce() -> Result<(), String>,
-    ) -> Result<GlobalCaptureResult, String> {
+        save: impl FnOnce() -> Result<(), E>,
+    ) -> Result<GlobalCaptureResult, E> {
         let attempt = self.apply(keys, wayland, binding, Arc::clone(&on_fire));
         if matches!(
             attempt.status,

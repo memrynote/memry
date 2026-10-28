@@ -382,6 +382,10 @@ impl VaultSync {
         &self,
         progress: Option<Arc<dyn SyncProgressListener>>,
     ) -> Result<FirstSyncSummary, SyncError> {
+        // One at a time with `sync_now`: both settle body debts, and a pass's
+        // feed page may owe a document this run is pulling.
+        let gate = pass::pass_gate(&self.vault_id);
+        let _held = gate.lock().await;
         let cipher = self.cipher().await?;
         let http = self.session.http();
 

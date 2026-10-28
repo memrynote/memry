@@ -341,7 +341,7 @@ impl PullLoop {
         }
 
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        let outcomes = self.apply_all(pending, Vec::new(), false).await?;
+        let outcomes = self.apply_all(pending, Vec::new(), true).await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;

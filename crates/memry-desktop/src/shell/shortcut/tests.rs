@@ -239,7 +239,7 @@ fn a_refused_binding_is_not_saved_and_the_previous_one_comes_back() {
             noop(),
             || {
                 saved.fetch_add(1, Ordering::SeqCst);
-                Ok(())
+                Ok::<(), String>(())
             },
         )
         .unwrap();
@@ -290,7 +290,7 @@ fn an_accepted_binding_is_saved_once() {
             noop(),
             || {
                 saved.fetch_add(1, Ordering::SeqCst);
-                Ok(())
+                Ok::<(), String>(())
             },
         )
         .unwrap();

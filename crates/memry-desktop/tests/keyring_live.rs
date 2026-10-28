@@ -1,7 +1,7 @@
 //! `KeyringStore` against the live OS keychain (`--features live-os-secrets`). Every test uses a
-//! device suffix and service of its own (`e2e-live-...`, `com.memry.test`) and removes what it
+//! device suffix and service of its own (`e2e-live-...`, `com.memrynote.memry.test`) and removes what it
 //! wrote, so the real `com.memry.sync` accounts of a developer's machine are never touched. CI runs
-//! them: macOS (login keychain of the runner), Windows (Credential Manager) and Linux under a private
+//! them: macOS (a throw-away default keychain on the runner), Windows (Credential Manager) and Linux under a private
 //! session bus (`gnome-keyring-daemon --unlock`, and again with no Secret Service at all).
 #![cfg(feature = "live-os-secrets")]
 
@@ -11,14 +11,23 @@ use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::launch_env::LaunchEnv;
-use memry_desktop::seams::secure_store::{GenericSecrets, KEYS, KeyringStore, SecureStoreHealth};
+use memry_desktop::seams::secure_store::{
+    DeviceIdentityStore, GenericSecrets, KeyringStore, STORE_KEYS, SecureStoreHealth,
+    keychain_absent,
+};
 
+/// A name no other test of any run uses. The tests run in parallel threads, and the Windows clock
+/// ticks in 100 ns steps, so two calls can read the same time: the counter keeps them apart.
+/// (Two tests once shared the account `e2e-live-account-<pid>-<nanos>` on windows-11-arm and one
+/// read the other's value.)
 fn unique(tag: &str) -> String {
+    static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    format!("e2e-live-{tag}-{}-{nanos}", std::process::id())
+    let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    format!("e2e-live-{tag}-{}-{nanos}-{n}", std::process::id())
 }
 
 /// Warnings of the store (why the keychain answered `Locked`) show in a failing test's output.
@@ -47,7 +56,7 @@ fn no_secret_service() -> bool {
     std::env::var("MEMRY_LIVE_NO_SECRET_SERVICE").is_ok_and(|v| v == "1")
 }
 
-/// The macOS rows write to the login keychain: they run on CI (`CI` is set) and nowhere else.
+/// The macOS rows write to the default keychain: they run on CI (`CI` is set) and nowhere else.
 fn skip_on_a_developer_mac() -> bool {
     cfg!(target_os = "macos") && std::env::var_os("CI").is_none()
 }
@@ -59,7 +68,7 @@ fn the_five_sync_secrets_round_trip_in_the_real_keychain() {
     }
     let store = Arc::new(store(&unique("sync")));
     let _cleanup = Cleanup(store.clone());
-    for (n, key) in KEYS.into_iter().enumerate() {
+    for (n, key) in STORE_KEYS.into_iter().enumerate() {
         let n = u8::try_from(n).unwrap();
         for value in [vec![n; 32], (0..64_u8).map(|b| b ^ n).collect::<Vec<_>>()] {
             store.set(key, value.clone()).unwrap();
@@ -69,7 +78,7 @@ fn the_five_sync_secrets_round_trip_in_the_real_keychain() {
     store.delete(SecureStoreKey::MasterKey).unwrap();
     assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
     store.clear().unwrap();
-    for key in KEYS {
+    for key in STORE_KEYS {
         assert_eq!(store.get(key).unwrap(), None);
     }
     assert_eq!(store.health(), SecureStoreHealth::Ready);
@@ -83,14 +92,28 @@ fn a_generic_secret_of_forty_raw_bytes_round_trips() {
     let store = store(&unique("generic"));
     let account = unique("account");
     let value: Vec<u8> = (0..40).map(|b| b * 5 + 1).collect();
-    assert_eq!(store.get_secret("com.memry.test", &account).unwrap(), None);
+    assert_eq!(
+        store
+            .get_secret("com.memrynote.memry.test", &account)
+            .unwrap(),
+        None
+    );
     store
-        .set_secret("com.memry.test", &account, &value)
+        .set_secret("com.memrynote.memry.test", &account, &value)
         .unwrap();
-    let read = store.get_secret("com.memry.test", &account).unwrap();
-    store.delete_secret("com.memry.test", &account).unwrap();
+    let read = store
+        .get_secret("com.memrynote.memry.test", &account)
+        .unwrap();
+    store
+        .delete_secret("com.memrynote.memry.test", &account)
+        .unwrap();
     assert_eq!(read, Some(value));
-    assert_eq!(store.get_secret("com.memry.test", &account).unwrap(), None);
+    assert_eq!(
+        store
+            .get_secret("com.memrynote.memry.test", &account)
+            .unwrap(),
+        None
+    );
 }
 
 /// Credential Manager holds a blob of at most 2560 bytes. The five real values are at most 90.
@@ -100,14 +123,20 @@ fn a_big_generic_value_is_failed_not_locked_on_windows() {
     let store = store(&unique("blob"));
     let account = unique("account");
     let fits = vec![7_u8; 1500];
-    store.set_secret("com.memry.test", &account, &fits).unwrap();
+    store
+        .set_secret("com.memrynote.memry.test", &account, &fits)
+        .unwrap();
     assert_eq!(
-        store.get_secret("com.memry.test", &account).unwrap(),
+        store
+            .get_secret("com.memrynote.memry.test", &account)
+            .unwrap(),
         Some(fits)
     );
     let too_big = vec![7_u8; 3000];
-    let result = store.set_secret("com.memry.test", &account, &too_big);
-    store.delete_secret("com.memry.test", &account).unwrap();
+    let result = store.set_secret("com.memrynote.memry.test", &account, &too_big);
+    store
+        .delete_secret("com.memrynote.memry.test", &account)
+        .unwrap();
     assert!(
         matches!(result, Err(SecureStoreError::Failed { .. })),
         "a refused write is Failed, got {result:?}"
@@ -121,15 +150,80 @@ fn with_no_secret_service_every_call_is_locked_and_nothing_is_stored() {
         return;
     }
     let store = store(&unique("none"));
-    for key in KEYS {
+    for key in STORE_KEYS {
         assert_eq!(store.get(key), Err(SecureStoreError::Locked));
         assert_eq!(store.set(key, vec![1; 32]), Err(SecureStoreError::Locked));
     }
     assert_eq!(
-        store.get_secret("com.memry.test", "a"),
+        store.get_secret("com.memrynote.memry.test", "a"),
         Err(SecureStoreError::Locked)
     );
     assert_eq!(store.health(), SecureStoreHealth::Unavailable);
+}
+
+/// The device key a build before Step 15 kept in `<profile>/device-key` moves into the real
+/// keychain, the file goes, and a restart reads the same key from the keychain.
+#[test]
+fn the_device_key_file_of_an_earlier_build_moves_into_the_real_keychain() {
+    if no_secret_service() || skip_on_a_developer_mac() {
+        return;
+    }
+    assert!(!keychain_absent(), "this system has a keychain");
+    let profile = tempfile::tempdir().unwrap();
+    let suffix = unique("identity");
+    let store = Arc::new(store(&suffix));
+    let _cleanup = Cleanup(store.clone());
+    let key: Vec<u8> = (0..64).collect();
+    std::fs::write(profile.path().join("device-key"), &key).unwrap();
+    let identity = DeviceIdentityStore::new(store.clone(), profile.path());
+    let moved = identity.get(SecureStoreKey::DeviceSigningKey);
+    // A profile with no file reads the key from the keychain alone.
+    let elsewhere = tempfile::tempdir().unwrap();
+    let in_keychain = DeviceIdentityStore::new(store.clone(), elsewhere.path())
+        .get(SecureStoreKey::DeviceSigningKey);
+    let file_left = profile.path().join("device-key").exists();
+    let deleted = identity.delete(SecureStoreKey::DeviceSigningKey);
+    let after = DeviceIdentityStore::new(store.clone(), elsewhere.path())
+        .get(SecureStoreKey::DeviceSigningKey);
+    assert_eq!(moved.unwrap(), Some(key.clone()));
+    assert_eq!(in_keychain.unwrap(), Some(key));
+    assert!(!file_left);
+    deleted.unwrap();
+    assert!(
+        matches!(after, Err(SecureStoreError::Failed { .. })),
+        "{after:?}"
+    );
+}
+
+/// `MEMRY_LIVE_NO_SECRET_SERVICE=1` (Linux): with no Secret Service on the bus the system has no
+/// keychain, so a fresh profile's device key is minted into a 0600 file and the app can write.
+#[cfg(target_os = "linux")]
+#[test]
+fn with_no_secret_service_the_device_key_lives_in_a_private_file() {
+    use std::os::unix::fs::PermissionsExt;
+
+    if !no_secret_service() {
+        return;
+    }
+    assert!(keychain_absent());
+    let profile = tempfile::tempdir().unwrap();
+    let identity = Arc::new(DeviceIdentityStore::new(
+        Arc::new(store(&unique("nokeychain"))),
+        profile.path(),
+    ));
+    memry_core::api::auth::ensure_device_identity(identity.clone()).unwrap();
+    let file = profile.path().join("device-key");
+    assert_eq!(std::fs::read(&file).unwrap().len(), 64);
+    assert_eq!(
+        std::fs::metadata(&file).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    assert!(
+        identity
+            .get(SecureStoreKey::DeviceSigningKey)
+            .unwrap()
+            .is_some()
+    );
 }
 
 /// `MEMRY_LIVE_LATE_SERVICE=1` (Linux): no Secret Service at first; the test starts
