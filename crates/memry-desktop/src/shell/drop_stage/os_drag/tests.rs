@@ -155,6 +155,67 @@ fn only_the_recorded_drag_is_marked_dropped_and_a_drop_freezes_its_files() {
 }
 
 #[test]
+fn a_drag_after_the_hooks_are_installed_again_never_matches_an_old_drop() {
+    // The main window is rebuilt: its new hooks take ids from the same counter, so the first drag
+    // they see cannot match a record dropped under the old ones.
+    let (dir, staging) = staging();
+    let (_, old) = source(&dir, "old.md", b"o");
+    let (_, new) = source(&dir, "new.md", b"n");
+    let now = Instant::now();
+    let first = staging.next_os_drag_id();
+    drop_os(&staging, first, &[&old], now);
+
+    let second = staging.next_os_drag_id();
+    assert_ne!(first, second);
+    staging.os_drag_offered(second, &[new.as_str()]);
+
+    // New paths, not dropped: nothing of the old drop is readable or stageable.
+    assert!(matches!(
+        staging.os_drop_uris(now),
+        Err(StageError::NotDropped)
+    ));
+    staging.os_drag_dropped(second, now);
+    assert_eq!(staging.os_drop_uris(now).expect("dropped"), [new]);
+    assert!(matches!(
+        staging.stage_os_drop(&[old], now),
+        Err(StageError::NotDropped)
+    ));
+}
+
+#[test]
+fn staging_before_the_drop_is_refused_and_keeps_the_record() {
+    let (dir, staging) = staging();
+    let (_, uri) = source(&dir, "early.md", b"e");
+    let now = Instant::now();
+    staging.os_drag_offered(1, &[uri.as_str()]);
+
+    assert!(matches!(
+        staging.stage_os_drop(std::slice::from_ref(&uri), now),
+        Err(StageError::NotDropped)
+    ));
+
+    staging.os_drag_dropped(1, now);
+    let staged = staging.stage_os_drop(&[uri], now).expect("after the drop");
+    assert_eq!(staged.len(), 1);
+}
+
+#[test]
+fn staging_no_file_uses_the_drop_up() {
+    // The page keeps none of the dropped files (no supported extension).
+    let (dir, staging) = staging();
+    let (_, uri) = source(&dir, "tool.exe", b"MZ");
+    let now = Instant::now();
+    drop_os(&staging, 1, &[&uri], now);
+
+    assert!(staging.stage_os_drop(&[], now).expect("nothing").is_empty());
+    assert!(matches!(
+        staging.os_drop_uris(now),
+        Err(StageError::NotDropped)
+    ));
+    assert!(nothing_staged(&staging));
+}
+
+#[test]
 fn a_drag_the_app_started_clears_the_record() {
     // A page drags its own `file://` link: the shell forgets the earlier OS drop.
     let (dir, staging) = staging();

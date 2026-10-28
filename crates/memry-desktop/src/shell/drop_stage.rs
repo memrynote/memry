@@ -17,6 +17,7 @@ use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -34,6 +35,8 @@ pub const MAX_OPEN: usize = 16;
 pub const IDLE_LIMIT: Duration = Duration::from_secs(10 * 60);
 /// Staged copies (open or finished, not yet released) held at once, and their declared bytes.
 /// A drop is released as soon as its import settles, so only a runaway caller reaches these.
+/// Copies a page lost track of (it reloaded mid-import) keep their share until the app quits;
+/// the files go with the launch sweep a day later.
 pub const MAX_HELD_FILES: usize = 4096;
 pub const MAX_HELD_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 /// A staging directory this old is a leftover of an earlier run.
@@ -79,6 +82,8 @@ pub struct DropStaging {
     held: Mutex<HashMap<String, u64>>,
     /// The OS drag over the window (`os_drag.rs`).
     os_drag: Mutex<Option<os_drag::OsDrag>>,
+    /// The next drag id (`next_os_drag_id`).
+    next_drag: AtomicU64,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -100,6 +105,7 @@ impl DropStaging {
             open: Mutex::new(HashMap::new()),
             held: Mutex::new(HashMap::new()),
             os_drag: Mutex::new(None),
+            next_drag: AtomicU64::new(1),
         }
     }
 
@@ -172,7 +178,8 @@ impl DropStaging {
         Ok(())
     }
 
-    /// Closes the file once every declared byte arrived, and returns its absolute path.
+    /// Closes the file once every declared byte arrived, and returns its absolute path. No fsync:
+    /// the import reads the copy right away, and a copy a crash interrupts is swept anyway.
     pub fn finish(&self, id: &str) -> Result<PathBuf, StageError> {
         let transfer = lock(&self.open)
             .get(id)
@@ -183,7 +190,6 @@ impl DropStaging {
             if transfer.written != transfer.size {
                 return Err(StageError::Incomplete);
             }
-            transfer.file.sync_all()?;
             transfer.path.clone()
         };
         lock(&self.open).remove(id);

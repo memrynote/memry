@@ -64,8 +64,9 @@ pub fn stage_error(error: StageError) -> CommandError {
 ///   handler (connected after) still gets the drop. `drag-leave` is no cancel signal: GTK 3 emits
 ///   it right before `drag-drop`. A cancelled drag stays undropped until the next drag replaces it.
 ///
-/// Each native drag gets an id that never repeats: the `GdkDragContext` is held weakly, so a new
-/// context at a reused address is still a new drag.
+/// Each native drag gets an id from the app-wide counter (`next_os_drag_id`), so it never repeats,
+/// even after the main window is rebuilt and this runs again. The `GdkDragContext` is held weakly,
+/// so a new context at a reused address is still a new drag. Installing starts from no record.
 #[cfg(target_os = "linux")]
 pub fn watch_os_drags(window: &WebviewWindow<Wry>) {
     use std::cell::RefCell;
@@ -79,23 +80,23 @@ pub fn watch_os_drags(window: &WebviewWindow<Wry>) {
     #[derive(Default)]
     struct Drags {
         current: Option<(WeakRef<DragContext>, u64)>,
-        last: u64,
     }
 
     impl Drags {
-        fn id_of(&mut self, context: &DragContext) -> u64 {
+        fn id_of(&mut self, context: &DragContext, staging: &DropStaging) -> u64 {
             if let Some((weak, id)) = &self.current
                 && weak.upgrade().as_ref() == Some(context)
             {
                 return *id;
             }
-            self.last += 1;
-            self.current = Some((context.downgrade(), self.last));
-            self.last
+            let id = staging.next_os_drag_id();
+            self.current = Some((context.downgrade(), id));
+            id
         }
     }
 
     let staging = Arc::clone(&window.state::<Arc<DropStaging>>());
+    staging.os_drag_cleared();
     let result = window.with_webview(move |webview| {
         let view = webview.inner();
         let drags = Rc::new(RefCell::new(Drags::default()));
@@ -109,7 +110,8 @@ pub fn watch_os_drags(window: &WebviewWindow<Wry>) {
                 let uris = data.uris();
                 // The drag's other targets (`text/html`, text) carry no URI list.
                 if !uris.is_empty() {
-                    staging.os_drag_offered(drags.borrow_mut().id_of(context), &uris);
+                    let drag = drags.borrow_mut().id_of(context, &staging);
+                    staging.os_drag_offered(drag, &uris);
                 }
             });
         }
@@ -117,7 +119,8 @@ pub fn watch_os_drags(window: &WebviewWindow<Wry>) {
             if context.drag_get_source_widget().is_some() {
                 staging.os_drag_cleared();
             } else {
-                staging.os_drag_dropped(drags.borrow_mut().id_of(context), Instant::now());
+                let drag = drags.borrow_mut().id_of(context, &staging);
+                staging.os_drag_dropped(drag, Instant::now());
             }
             false
         });

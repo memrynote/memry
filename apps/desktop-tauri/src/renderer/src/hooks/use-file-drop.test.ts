@@ -2,8 +2,14 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type * as DropStage from '@/lib/drop-stage'
 
-const { osDragUris, toastError } = vi.hoisted(() => ({ osDragUris: vi.fn(), toastError: vi.fn() }))
-vi.mock('../../../generated/bindings', () => ({ commands: { dropOsDragUris: osDragUris } }))
+const { osDragUris, osFiles, toastError } = vi.hoisted(() => ({
+  osDragUris: vi.fn(),
+  osFiles: vi.fn(),
+  toastError: vi.fn()
+}))
+vi.mock('../../../generated/bindings', () => ({
+  commands: { dropOsDragUris: osDragUris, dropStageOsFiles: osFiles }
+}))
 vi.mock('sonner', () => ({ toast: { error: toastError } }))
 vi.mock('@/lib/drop-stage', async (importOriginal) => ({
   ...(await importOriginal<typeof DropStage>()),
@@ -27,6 +33,7 @@ vi.mock('@/lib/logger', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  osFiles.mockResolvedValue([])
   vi.useRealTimers()
 })
 
@@ -243,9 +250,23 @@ describe('useFileDrop', () => {
       result.current.dropHandlers.onDrop(drop)
     })
 
-    // #then — claimed at once, and only the file the app imports goes on
+    // #then — claimed at once, and only the file the app imports goes on (staging uses it up)
     expect(drop.preventDefault).toHaveBeenCalled()
     expect(onDrop).toHaveBeenCalledWith({ uris: ['file:///home/u/My%20Note.md'] }, 'projects')
+    expect(osFiles).not.toHaveBeenCalled()
+  })
+
+  it('uses up a WebKitGTK drop the app keeps nothing of', async () => {
+    osDragUris.mockResolvedValue(['file:///home/u/tool.exe'])
+    const onDrop = vi.fn()
+    const { result } = renderHook(() => useFileDrop({ onDrop }))
+
+    await act(async () => {
+      result.current.dropHandlers.onDrop(gtkDrag(''))
+    })
+
+    expect(onDrop).not.toHaveBeenCalled()
+    expect(osFiles).toHaveBeenCalledWith([])
   })
 
   it('tells the user when the shell holds no file for the drop', async () => {
@@ -259,6 +280,7 @@ describe('useFileDrop', () => {
 
     expect(onDrop).not.toHaveBeenCalled()
     expect(toastError).toHaveBeenCalledWith('drop error drop_not_dropped')
+    expect(osFiles).toHaveBeenCalledWith([])
   })
 
   it('tells the user when the shell refuses to name the dropped files', async () => {

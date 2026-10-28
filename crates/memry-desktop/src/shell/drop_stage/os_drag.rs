@@ -6,11 +6,16 @@
 //! window, and only for [`OS_DROP_TTL`] after the drop. The page cannot cause one (a drag it
 //! started is never recorded and clears the record), cannot read one before the drop or after the
 //! TTL, and cannot use one twice: staging uses it up. Every URI the page asks to stage must be a
-//! file of that record.
+//! file of that record. Drag ids come from [`DropStaging::next_os_drag_id`], one counter for the
+//! app, so a hook installed again (the main window rebuilt) can never repeat an old drag's id.
+//!
+//! The commands are app commands: any window of the app can call them during the TTL. Only the
+//! main window records drags.
 
 use std::fs::{self, File, OpenOptions};
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
 use super::{DropStaging, StageError, lock};
@@ -38,6 +43,11 @@ pub fn file_uri_path(uri: &str) -> Option<PathBuf> {
 }
 
 impl DropStaging {
+    /// A new drag id, never handed out before in this process.
+    pub fn next_os_drag_id(&self) -> u64 {
+        self.next_drag.fetch_add(1, Ordering::Relaxed)
+    }
+
     /// A drag from outside the app over a window offers `uris`. A new `drag` replaces the record;
     /// the same drag updates it until it is dropped. URIs that name no local file are left out.
     pub fn os_drag_offered<S: AsRef<str>>(&self, drag: u64, uris: &[S]) {
@@ -71,7 +81,8 @@ impl DropStaging {
         }
     }
 
-    /// A drag the app itself started entered a window: whatever was recorded is not its drop.
+    /// Forgets the record: a drag the app itself started entered a window (whatever was recorded
+    /// is not its drop), or the drag hooks were installed again.
     pub fn os_drag_cleared(&self) {
         *lock(&self.os_drag) = None;
     }
@@ -89,14 +100,19 @@ impl DropStaging {
 
     /// Stages copies of the dropped files the page names by `file://` URI, and returns each
     /// copy's id and path. Every URI must name a file of a drop within [`OS_DROP_TTL`] before
-    /// `now`; the drop is used up either way. All or nothing: on a failure the copies already
-    /// made are released.
+    /// `now`. Without such a drop the call is refused and changes nothing; with one, the drop is
+    /// used up whatever the outcome. Staging no URI only uses the drop up. All or nothing: on a
+    /// failure the copies already made are released.
     pub fn stage_os_drop(
         &self,
         uris: &[String],
         now: Instant,
     ) -> Result<Vec<(String, PathBuf)>, StageError> {
-        let record = lock(&self.os_drag).take();
+        let record = {
+            let mut current = lock(&self.os_drag);
+            dropped_paths(current.as_ref(), now)?;
+            current.take()
+        };
         let dropped = dropped_paths(record.as_ref(), now)?;
         let sources = uris
             .iter()

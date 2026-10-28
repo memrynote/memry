@@ -126,7 +126,8 @@ export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {
       // Read the destination off the element under the pointer, not off the
       // sidebar selection — where the file lands is where it was dropped.
       const targetFolder = resolveDropFolder(e.target)
-      const deliver = (dropped: DroppedFiles): void => {
+      /** Hands the supported files on; `false` when none is left. */
+      const deliver = (dropped: DroppedFiles): boolean => {
         const { valid, skippedCount } = extractValidFiles(dropped)
         const count = droppedNames(valid).length
 
@@ -135,7 +136,7 @@ export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {
             const exts = getAllSupportedExtensions().join(', ')
             log.warn('No supported files in drop', { skippedCount, supported: exts })
           }
-          return
+          return false
         }
 
         log.info('Files dropped', {
@@ -144,19 +145,28 @@ export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {
           targetFolder: targetFolder || '<vault root>'
         })
         void onDrop(valid, targetFolder)
+        return true
       }
       if (source !== 'os-drag') {
         deliver(source)
         return
       }
+      // A drop the app keeps nothing of is used up now (staging no file), so it cannot be read
+      // during the rest of the shell's few seconds.
+      const spendDrop = (): void => {
+        commands
+          .dropStageOsFiles([])
+          .catch((error: unknown) => log.warn('could not use up the OS drop', error))
+      }
       commands.dropOsDragUris().then(
         (uris) => {
-          if (uris.length > 0) {
-            deliver({ uris })
+          if (uris.length === 0) {
+            log.warn('the OS drop holds no file')
+            toast.error(dropErrorMessage({ code: 'drop_not_dropped' }))
+            spendDrop()
             return
           }
-          log.warn('the OS drop holds no file')
-          toast.error(dropErrorMessage({ code: 'drop_not_dropped' }))
+          if (!deliver({ uris })) spendDrop()
         },
         (error: unknown) => {
           log.error('could not read the files of the OS drop', error)

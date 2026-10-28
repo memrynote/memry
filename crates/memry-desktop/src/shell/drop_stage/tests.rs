@@ -272,3 +272,44 @@ fn staging_directories_and_copies_are_private_to_the_user() {
     assert_eq!(mode(&staging.root().join(&id)), 0o700);
     assert_eq!(mode(&path), 0o600);
 }
+
+#[test]
+fn held_copies_are_capped_in_count_until_released() {
+    let (_dir, staging) = staging();
+    let ids: Vec<String> = (0..MAX_HELD_FILES)
+        .map(|_| {
+            let id = staging.begin("empty.md", 0).expect("begin");
+            staging.finish(&id).expect("finish");
+            id
+        })
+        .collect();
+    assert!(matches!(
+        staging.begin("one-more.md", 0),
+        Err(StageError::TooMuchHeld)
+    ));
+    staging.release(&ids[..1]).expect("release");
+    staging
+        .begin("one-more.md", 0)
+        .expect("room after a release");
+}
+
+#[cfg(unix)]
+#[test]
+fn sweep_skips_an_entry_it_cannot_remove_and_removes_the_rest() {
+    use std::os::unix::fs::PermissionsExt;
+    let (_dir, staging) = staging();
+    let (stuck, _) = stage(&staging, "stuck.md", b"s");
+    let (_, _) = stage(&staging, "loose.md", b"l");
+    // A directory inside that cannot be listed: removing the copy's directory fails.
+    let locked = staging.root().join(&stuck).join("locked");
+    fs::create_dir(&locked).expect("locked dir");
+    fs::write(locked.join("inner"), b"i").expect("inner");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).expect("chmod");
+
+    let later = SystemTime::now() + STALE_AFTER * 2;
+    let removed = staging.sweep(later, STALE_AFTER);
+
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o700)).expect("chmod back");
+    assert_eq!(removed.expect("sweep"), 1);
+    assert!(staging.root().join(&stuck).exists());
+}
