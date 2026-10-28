@@ -24,8 +24,16 @@ pub const REQUIRED_IN_PRODUCTION: [&str; 3] = [
     "GOOGLE_CALENDAR_CLIENT_SECRET",
 ];
 
-/// Rehearsal builds read their update feed from this (`updater/velopack_backend.rs`).
+/// Rehearsal builds set their update feed here; the app reads it as `MEMRY_BUILD_UPDATE_FEED_URL`
+/// (`updater/velopack_backend.rs`).
 pub const UPDATE_FEED: &str = "MEMRY_UPDATE_FEED_URL";
+
+/// The update feed this build was given, trimmed; blank is none.
+pub fn update_feed(inputs: &Inputs) -> Option<String> {
+    (inputs.process_env)(UPDATE_FEED)
+        .map(|feed| feed.trim().to_owned())
+        .filter(|feed| !feed.is_empty())
+}
 
 /// `KEY=VALUE` lines: `#` comments, an optional `export `, and one pair of matching quotes.
 pub fn parse_env_file(text: &str) -> BTreeMap<String, String> {
@@ -72,9 +80,8 @@ pub fn environment(inputs: &Inputs) -> String {
 /// `(MEMRY_BUILD_<NAME>, value)` pairs, including `MEMRY_BUILD_ENV`, or the error that fails the build.
 pub fn resolve(inputs: &Inputs) -> Result<Vec<(String, String)>, String> {
     let env = environment(inputs);
-    if env == "production"
-        && (inputs.process_env)(UPDATE_FEED).is_some_and(|feed| !feed.trim().is_empty())
-    {
+    let feed = update_feed(inputs);
+    if env == "production" && feed.is_some() {
         return Err(format!(
             "a MEMRY_ENV=production build must not set {UPDATE_FEED}: it would point every install at another update feed"
         ));
@@ -83,6 +90,9 @@ pub fn resolve(inputs: &Inputs) -> Result<Vec<(String, String)>, String> {
         .map(|text| parse_env_file(&text))
         .unwrap_or_default();
     let mut out = vec![("MEMRY_BUILD_ENV".to_owned(), env.clone())];
+    if let Some(feed) = feed {
+        out.push((format!("MEMRY_BUILD_{UPDATE_FEED}"), feed));
+    }
     for name in NAMES {
         let value = (inputs.process_env)(name)
             .filter(|v| !v.trim().is_empty())

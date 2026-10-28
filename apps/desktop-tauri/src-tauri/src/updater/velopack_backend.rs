@@ -23,15 +23,12 @@ use super::channel;
 /// and the packages from the latest release.
 const PRODUCTION_FEED: &str = "https://github.com/memrynote/memry";
 
-/// Rehearsal builds set `MEMRY_UPDATE_FEED_URL` at build time; release builds never do.
-pub const FEED_URL: &str = feed_url(option_env!("MEMRY_UPDATE_FEED_URL"));
-
-const fn feed_url(configured: Option<&'static str>) -> &'static str {
-    match configured {
-        Some(feed) if !feed.is_empty() => feed,
-        _ => PRODUCTION_FEED,
-    }
-}
+/// Rehearsal builds set `MEMRY_UPDATE_FEED_URL` at build time, and `build_env.rs` hands it over
+/// trimmed and only when it is not blank; a production build never has one.
+pub const FEED_URL: &str = match option_env!("MEMRY_BUILD_MEMRY_UPDATE_FEED_URL") {
+    Some(feed) => feed,
+    None => PRODUCTION_FEED,
+};
 
 pub struct VelopackBackend {
     manager: UpdateManager,

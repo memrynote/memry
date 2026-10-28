@@ -15,13 +15,7 @@ fn kind(error: velopack::Error) -> UpdateErrorKind {
 
 #[test]
 fn the_production_feed_is_compiled_in_unless_a_rehearsal_sets_one() {
-    assert_eq!(feed_url(None), "https://github.com/memrynote/memry");
-    assert_eq!(feed_url(Some("")), "https://github.com/memrynote/memry");
-    assert_eq!(
-        feed_url(Some("https://github.com/memrynote/memry-update-rehearsal")),
-        "https://github.com/memrynote/memry-update-rehearsal"
-    );
-    if option_env!("MEMRY_UPDATE_FEED_URL").is_none() {
+    if option_env!("MEMRY_BUILD_MEMRY_UPDATE_FEED_URL").is_none() {
         assert_eq!(FEED_URL, "https://github.com/memrynote/memry");
     }
 }

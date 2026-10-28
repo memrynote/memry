@@ -131,3 +131,27 @@ fn a_production_build_with_a_rehearsal_feed_fails_and_a_staging_one_keeps_it() {
     staging.push(("MEMRY_ENV", "staging"));
     assert!(run("release", false, &staging, None).is_ok());
 }
+
+#[test]
+fn the_update_feed_reaches_the_app_trimmed_and_a_blank_one_does_not() {
+    let feed = |value: &str| {
+        let process = [("MEMRY_ENV", "staging"), ("MEMRY_UPDATE_FEED_URL", value)];
+        run("release", false, &process, None)
+            .unwrap()
+            .into_iter()
+            .find(|(k, _)| k == "MEMRY_BUILD_MEMRY_UPDATE_FEED_URL")
+            .map(|(_, v)| v)
+    };
+    assert_eq!(
+        feed(" https://github.com/memrynote/memry-update-rehearsal\n").as_deref(),
+        Some("https://github.com/memrynote/memry-update-rehearsal")
+    );
+    assert_eq!(feed("  "), None);
+    let blank_in_production = [
+        ("SYNC_SERVER_URL", "https://sync"),
+        ("GOOGLE_CALENDAR_CLIENT_ID", "id"),
+        ("GOOGLE_CALENDAR_CLIENT_SECRET", "secret"),
+        ("MEMRY_UPDATE_FEED_URL", " "),
+    ];
+    assert!(run("release", false, &blank_in_production, None).is_ok());
+}
