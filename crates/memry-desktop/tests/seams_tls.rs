@@ -9,7 +9,8 @@ use std::sync::Arc;
 use memry_core::api::errors::TransportError;
 use memry_core::seams::transport::{HttpRequest, Transport};
 use memry_desktop::seams::transport::NativeTransport;
-use rcgen::{CertifiedIssuer, KeyPair};
+use rcgen::{BasicConstraints, CertificateParams, CertifiedIssuer, DnType, IsCa, KeyPair};
+use rustls::pki_types::CertificateDer;
 use support::{Chain, RecordingSink, Server, ca, leaf, pin_of, serve, setup};
 use tokio::io::AsyncWriteExt;
 
@@ -171,6 +172,49 @@ async fn a_pinned_intermediate_appended_to_a_foreign_chain_does_not_match() {
     })
     .await;
     // The client trusts both roots (the rogue one stands for any CA the OS trusts).
+    let (transport, sink) = transport(
+        &[real.root.der(), rogue_root.der()],
+        &[real.intermediate_pin()],
+        true,
+    );
+    let error = transport.send(get(&server)).await.unwrap_err();
+    assert!(
+        matches!(&error, TransportError::Tls { what } if what.contains("pin mismatch")),
+        "{error:?}"
+    );
+    assert_eq!(sink.failures().len(), 1);
+}
+
+/// A certificate that carries the pinned SPKI and names the leaf's issuer, but did not sign the
+/// leaf (its key is the pinned one; nobody but the key's holder can sign with it). The peer
+/// appends it as the leaf's parent; the pin must still refuse it, because the link is checked by
+/// the signature, not by the names.
+fn forged_parent(
+    name: &str,
+    pinned: &CertifiedIssuer<'static, KeyPair>,
+) -> CertificateDer<'static> {
+    let mut params = CertificateParams::new(Vec::<String>::new()).unwrap();
+    params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+    params.distinguished_name.push(DnType::CommonName, name);
+    let forger = ca("Forger", None);
+    params
+        .signed_by(pinned.key(), &forger)
+        .unwrap()
+        .der()
+        .clone()
+}
+
+#[tokio::test]
+async fn a_forged_parent_carrying_the_pinned_spki_does_not_match() {
+    let real = Chain::new("localhost");
+    let rogue_root: CertifiedIssuer<'static, KeyPair> = ca("Rogue Root", None);
+    let (rogue_leaf, rogue_key) = leaf("localhost", &rogue_root, false);
+    let forged = forged_parent("Rogue Root", &real.intermediate);
+    assert_eq!(pin_of(&forged), real.intermediate_pin());
+    let server = serve(vec![rogue_leaf, forged], rogue_key, |mut tls| async move {
+        let _ = support::read_head(&mut tls).await;
+    })
+    .await;
     let (transport, sink) = transport(
         &[real.root.der(), rogue_root.der()],
         &[real.intermediate_pin()],
