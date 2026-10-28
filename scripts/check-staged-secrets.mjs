@@ -424,9 +424,13 @@ function getStagedFiles() {
 }
 
 function getChangedFiles(baseRef) {
-  return execFileSync('git', ['diff', '--name-only', '--diff-filter=ACMR', baseRef], {
-    encoding: 'utf8'
-  })
+  return execFileSync(
+    'git',
+    ['diff', '--no-renames', '--name-only', '--diff-filter=ACMR', baseRef],
+    {
+      encoding: 'utf8'
+    }
+  )
     .split('\n')
     .map((file) => file.trim())
     .filter(Boolean)

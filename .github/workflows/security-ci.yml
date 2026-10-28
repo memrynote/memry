@@ -57,7 +57,7 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && (github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'merge_group') }}
     runs-on: ubuntu-latest
-    # The checkout takes 1 to 2 minutes; the headroom is for a slow GitHub fetch.
+    # The checkout takes under a minute; the headroom is for a slow GitHub fetch.
     timeout-minutes: 20
     env:
       BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.before }}
@@ -68,7 +68,9 @@ jobs:
       # of the marketing media, and took 2 to 10+ minutes; it exceeded the 10-minute timeout twice
       # on the merge queue. The sparse patterns leave out the media the scanner never reads
       # (`binaryPathPattern` in scripts/check-staged-secrets.mjs; keep the two lists in step). Git
-      # treats a skipped path as unchanged, so the diff stays correct.
+      # treats a skipped path as unchanged, so the diff stays correct, and skipping them is safe
+      # because the scanner filters those extensions before it reads a file. The scan diffs with
+      # `--no-renames` so git never fetches blobs to detect renames.
       - name: Checkout
         uses: actions/checkout@v6
         with:
