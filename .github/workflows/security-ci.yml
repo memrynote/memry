@@ -117,24 +117,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with: &lean-checkout
-          # Bounded checkout: one commit, blobless, and without the ~1.6 GB of marketing media that
-          # no job reads (the full-tree checkout took 2 to 22 minutes in a busy hour and consumed the
-          # job timeout). Text under marketing/ stays, so lint and format still see it. Other media
-          # stay: builds need them. `/*` first, then the exclusions.
+          # Bounded checkout: a blob filter plus sparse patterns, no history. Of the ~2 GB of blobs,
+          # ~1.6 GB is marketing/ media that no job reads; a full-tree checkout took 2 to 22 minutes
+          # in a busy hour and consumed the job timeout. marketing/ keeps only the file types
+          # lint and format cover (the later patterns win); a new text type there that a job
+          # must read goes in this list. Media elsewhere stays: builds need it. The Secret scan job
+          # in security-ci.yml deliberately keeps its own list (every media extension, repo-wide).
           fetch-depth: 1
           filter: blob:none
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /*
-            !/marketing/**/*.gif
-            !/marketing/**/*.jpeg
-            !/marketing/**/*.jpg
-            !/marketing/**/*.mov
-            !/marketing/**/*.mp3
-            !/marketing/**/*.mp4
-            !/marketing/**/*.png
-            !/marketing/**/*.wav
-            !/marketing/**/*.webm
+            !/marketing/**
+            /marketing/**/*.js
+            /marketing/**/*.jsx
+            /marketing/**/*.mjs
+            /marketing/**/*.cjs
+            /marketing/**/*.ts
+            /marketing/**/*.tsx
+            /marketing/**/*.mts
+            /marketing/**/*.cts
+            /marketing/**/*.json
+            /marketing/**/*.jsonc
+            /marketing/**/*.md
+            /marketing/**/*.mdx
+            /marketing/**/*.yml
+            /marketing/**/*.yaml
+            /marketing/**/*.css
+            /marketing/**/*.html
 
       - name: Review dependency changes
         uses: actions/dependency-review-action@v4
