@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { Activity, createElement, type ReactNode } from 'react'
 import type React from 'react'
+import { commands } from '../../../../../../generated/bindings'
 
 const { AIExtensionMock, DefaultChatTransportMock } = vi.hoisted(() => ({
   AIExtensionMock: vi.fn((config: unknown) => ({ name: 'ai', config })),
@@ -400,6 +401,28 @@ describe('useBlockNoteSetup', () => {
       .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
 
     expect(onLinkClick).toHaveBeenCalledWith(address)
+  })
+
+  // Template editor, project overview, portal window, canvas note: no `onLinkClick`, and
+  // BlockNote's own opener is off (editor-links.tsx), so this listener is the one opener.
+  it('opens the address in the OS when no onLinkClick is given', () => {
+    const opened = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
+    try {
+      const { editor } = createEditor()
+      const editorElement = document.createElement('div')
+      editorElement.className = 'bn-editor'
+      editorElement.innerHTML = '<a href="https://memry.app &quot;Memry&quot;">titled</a>'
+      editorContainerRef.current!.appendChild(editorElement)
+      renderHook(() => useBlockNoteSetup({ editor, editorContainerRef }))
+
+      const click = new MouseEvent('click', { bubbles: true, cancelable: true })
+      editorElement.querySelector('a')!.dispatchEvent(click)
+
+      expect(opened.mock.calls).toEqual([['https://memry.app']])
+      expect(click.defaultPrevented).toBe(true)
+    } finally {
+      opened.mockRestore()
+    }
   })
 
   it('binds each split-view pane to its own editor surface', () => {

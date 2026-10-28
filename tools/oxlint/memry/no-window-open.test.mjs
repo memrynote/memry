@@ -16,7 +16,12 @@ tester.run('no-window-open', plugin.rules['no-window-open'], {
     'dialog.open(url)',
     'menu.open = true',
     'const { open } = useDisclosure(); open()',
-    'setOpen(true)'
+    'setOpen(true)',
+    'const options = { open: true }',
+    'class Menu { open() {} }',
+    'type Dialog = { open: boolean }',
+    'const { open: isOpen } = props',
+    'menu?.open()'
   ],
   invalid: [
     'window.open(url, "_blank", "noopener,noreferrer")',
@@ -27,6 +32,16 @@ tester.run('no-window-open', plugin.rules['no-window-open'], {
     "window['open'](url)",
     // Handed on as a callback, it is still the engine's popup path.
     'items.forEach(window.open)',
-    'const go = window.open; go(url)'
+    'const go = window.open; go(url)',
+    // Casts and non-null assertions do not hide the window.
+    '(window as Window).open(url)',
+    'window!.open(url)',
+    '(<Window>window).open(url)',
+    // Any read of the global, not only a call.
+    'items.forEach(open)',
+    'open.call(window, url)',
+    'const { open } = window',
+    'const { open: go } = globalThis',
+    '({ open } = window)'
   ].map((code) => ({ code, errors: [{ messageId: 'opens' }] }))
 })

@@ -5,13 +5,15 @@
  */
 
 import { memo, useCallback, useEffect, useRef } from 'react'
-import { useCreateBlockNote } from '@blocknote/react'
+import { FormattingToolbarController, useCreateBlockNote } from '@blocknote/react'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { BlockNoteView } from '@blocknote/shadcn'
+import { LinkAddressToolbarController } from '@/components/note/content-area/link-address-toolbar'
 import {
-  LinkAddressToolbarController,
-  openLinkAddress
-} from '@/components/note/content-area/link-address-toolbar'
+  EDITOR_LINKS,
+  EditorFormattingToolbar,
+  useEditorLinkClicks
+} from '@/components/note/content-area/editor-links'
 import { useTheme } from 'next-themes'
 
 // BlockNote styles
@@ -74,7 +76,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
     // Same header-row toggle the note body gets — the same markdown round-trip
     // applies here, so the two surfaces have to agree about tables.
     tables: { headers: true },
-    links: { onClick: openLinkAddress },
+    links: EDITOR_LINKS,
     placeholders: {
       default: placeholder,
       heading: 'Heading',
@@ -86,6 +88,9 @@ export const InboxContentEditor = memo(function InboxContentEditor({
 
   // `useCreateBlockNote` never disposes what it builds.
   useEditorTeardown(editor)
+
+  const containerRef = useRef<HTMLElement>(null)
+  useEditorLinkClicks(containerRef)
 
   // Parse and load initial content
   useEffect(() => {
@@ -166,6 +171,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
   return (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- mousedown on the editor wrapper only forwards clicks in empty space to the editor
     <section
+      ref={containerRef}
       className={cn(
         'inbox-content-editor prose prose-sm dark:prose-invert max-w-none',
         'min-h-[300px] flex flex-col',
@@ -184,8 +190,10 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         theme={editorTheme}
         shadCNComponents={blockNoteShadCNComponents}
         linkToolbar={false}
+        formattingToolbar={false}
       >
         <LinkAddressToolbarController />
+        <FormattingToolbarController formattingToolbar={EditorFormattingToolbar} />
       </BlockNoteView>
     </section>
   )

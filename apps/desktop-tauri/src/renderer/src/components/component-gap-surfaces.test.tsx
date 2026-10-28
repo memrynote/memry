@@ -111,6 +111,7 @@ vi.mock('next-themes', () => ({
 }))
 
 vi.mock('@blocknote/react', () => ({
+  FormattingToolbarController: () => null,
   useCreateBlockNote: () => ({
     document: [{ type: 'paragraph', content: 'First title' }],
     tryParseMarkdownToBlocks: mocks.tryParseMarkdownToBlocks,

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { AIExtension } from '@blocknote/xl-ai'
-import { linkDestination } from '@memry/editor-schema/inline'
 import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
 import { scrollToAnchor } from '../scroll-to-anchor'
 import { isFromWhiteboard } from '../whiteboard-events'
+import { openClickedLink } from '../editor-links'
+import { openLink } from '@/lib/external-link-guard'
 import { useEditorTarget } from '@/commands'
 import { createLogger } from '@/lib/logger'
 
@@ -160,25 +161,13 @@ export function useBlockNoteSetup({
   // `createWikiLinkEditPlugin`, which claims the press at MOUSEDOWN so the
   // caret is never parked beside the chip and that paint never appears. Do not
   // restore a branch here: with both in place a click opens the note twice.
+  // The editor's one link opener (editor-links.tsx); without `onLinkClick` it opens in the OS.
   useEffect(() => {
-    if (!onLinkClick) return undefined
-
-    const handleClick = (e: Event): void => {
+    const handleClick = (e: globalThis.MouseEvent): void => {
       // A link on a whiteboard is opened by the board's own handler; answering
       // it here too opened every such link twice.
       if (isFromWhiteboard(e)) return
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the listener is registered for mouse events only
-      const mouseEvent = e as globalThis.MouseEvent
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
-      const target = mouseEvent.target as HTMLElement
-      const link = target.closest('a')
-      if (link) {
-        const href = link.getAttribute('href')
-        if (href && !href.startsWith('#')) {
-          mouseEvent.preventDefault()
-          onLinkClick?.(linkDestination(href))
-        }
-      }
+      openClickedLink(e, onLinkClick ?? openLink)
     }
 
     // Scope the lookup to this instance's own container. `document.querySelector`
@@ -187,7 +176,7 @@ export function useBlockNoteSetup({
     // description editors) every instance bound to the same element: clicks in
     // the first pane fired every pane's callbacks, and clicks in any later pane
     // fired none.
-    const editorElement = editorContainerRef.current?.querySelector('.bn-editor')
+    const editorElement = editorContainerRef.current?.querySelector<HTMLElement>('.bn-editor')
     editorElement?.addEventListener('click', handleClick)
 
     return () => {

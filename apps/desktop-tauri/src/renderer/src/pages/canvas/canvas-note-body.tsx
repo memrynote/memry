@@ -17,7 +17,7 @@
  * Markdown is re-parsed whenever the body changes, so a card stays live while
  * the same note is edited in a tab (use-canvas-entities pushes the new body).
  */
-import React, { memo, useEffect } from 'react'
+import React, { memo, useEffect, useRef } from 'react'
 import { useCreateBlockNote } from '@blocknote/react'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -33,6 +33,7 @@ import {
 import { normalizeNoteBlocks } from '@/components/note/content-area/normalize-note-blocks'
 import { normalizeMarkdownHardBreaks } from '@/components/note/content-area/wiki-link-utils'
 import { TaskPrefetchProvider } from '@/components/note/content-area/task-block/task-prefetch-context'
+import { useEditorLinkClicks } from '@/components/note/content-area/editor-links'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('CanvasNoteBody')
@@ -53,6 +54,9 @@ export const CanvasNoteBody = memo(function CanvasNoteBody({
 
   // `useCreateBlockNote` never disposes what it builds.
   useEditorTeardown(editor)
+  // Read-only, so BlockNote never opens a link here: the click is the one opener.
+  const containerRef = useRef<HTMLDivElement>(null)
+  useEditorLinkClicks(containerRef)
 
   useEffect(() => {
     let cancelled = false
@@ -85,7 +89,7 @@ export const CanvasNoteBody = memo(function CanvasNoteBody({
     // rules. ContentArea's min-h-[300px] is intentionally dropped: on a card it
     // would make every short note scrollable.
     <TaskPrefetchProvider noteId={noteId}>
-      <div className="content-area relative flex w-full flex-col">
+      <div ref={containerRef} className="content-area relative flex w-full flex-col">
         <div className="bn-container relative flex-1">
           <BlockNoteView
             editor={editor}

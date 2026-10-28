@@ -36,17 +36,6 @@ export function LinkAddressToolbar(props: LinkToolbarProps): React.JSX.Element {
   )
 }
 
-/**
- * BlockNote's `links.onClick`: opens the address half of the clicked link.
- * BlockNote's default opened the whole `href`, title included (BBF-112).
- */
-export function openLinkAddress(event: MouseEvent): boolean {
-  const href =
-    event.target instanceof Element ? event.target.closest('a')?.getAttribute('href') : undefined
-  if (href) openLink(linkDestination(href))
-  return true
-}
-
 /** Mount inside `<BlockNoteView linkToolbar={false}>`. */
 export function LinkAddressToolbarController(): React.JSX.Element {
   return <LinkToolbarController linkToolbar={LinkAddressToolbar} />
