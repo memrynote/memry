@@ -6,8 +6,9 @@
  * The release asset this build hands off to. Never `MemryNote-win-Setup.exe`: builds v2026-09-12 to
  * v2026-10-25 HEAD that name and, on a 200, arm a hand-off whose script hangs, so they re-download
  * it every session and never update. A release without that name makes them decline and install
- * the `latest.yml` NSIS installer instead. `scripts/velopack-release-utils.mjs` publishes the
- * Velopack Setup under this name and refuses to upload the old one.
+ * the `latest.yml` NSIS installer instead. `scripts/release.mjs` renames vpk's Setup to this name
+ * after packing. The upload list in `scripts/velopack-release-utils.mjs` knows only this name, so a
+ * Setup left under the old one is never uploaded, and the release stops with the Setup missing.
  */
 export const VELOPACK_SETUP_ASSET_NAME = 'MemryNote-Setup-win-x64.exe'
 export const INSTALLER_HANDOFF_SIGNER_SUBJECT = 'CN=Open Source Developer Kaan Karaca'

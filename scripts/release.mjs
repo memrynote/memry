@@ -396,6 +396,8 @@ function renameVelopackSetup(velopackDir, names) {
   if (existsSync(vpkSetup)) {
     renameSync(vpkSetup, path.join(velopackDir, names.setup))
     console.log(`Velopack: renamed ${vpkSetupName} to ${names.setup}`)
+  } else if (!existsSync(path.join(velopackDir, names.setup))) {
+    console.log(`Velopack: vpk wrote no ${vpkSetupName}; the upload will report the Setup missing`)
   }
 }
 
