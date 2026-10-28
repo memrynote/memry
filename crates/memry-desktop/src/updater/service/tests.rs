@@ -9,6 +9,7 @@ use crate::updater::scripted::{ApplyCall, ScriptStep, ScriptedBackend, ScriptedF
 use crate::updater::state::UpdaterStatus;
 
 mod install;
+mod outcome;
 
 const RAW: &str = "2026.1015.1";
 
@@ -63,6 +64,7 @@ fn rig_in(
     let telemetry = telemetry(dir.path());
     let service = UpdaterService::new(UpdaterDeps {
         raw_version: RAW.into(),
+        channel: None,
         backend: chosen,
         config: config.clone(),
         data_dir: dir.path().to_owned(),
@@ -102,7 +104,7 @@ fn names(telemetry: &Telemetry) -> Vec<(String, String)> {
 #[tokio::test]
 async fn without_a_backend_the_updater_is_unavailable_and_does_nothing() {
     let rig = rig_with(None, false);
-    rig.service.init();
+    rig.service.init(None);
     let state = rig.service.check(true).await.unwrap();
     assert_eq!(state.status, UpdaterStatus::Unavailable);
     assert!(!state.update_supported);
@@ -246,7 +248,7 @@ async fn an_offline_check_is_a_warning_and_a_missing_feed_an_error() {
 async fn reads_the_preferences_electron_wrote_and_keeps_its_other_keys() {
     let electron = include_bytes!("../../../tests/fixtures/electron/updater/memry-config.json");
     let rig = rig_with(Some(electron), true);
-    rig.service.init();
+    rig.service.init(None);
     let state = rig.service.state();
     assert!(state.auto_download_enabled);
     assert!(!state.auto_check_enabled);
@@ -276,7 +278,7 @@ async fn init_resurfaces_an_escalated_install_streak() {
     for _ in 0..3 {
         health::record_failure(rig.dir.path(), "v2026-10-15", "v2026-11-01");
     }
-    rig.service.init();
+    rig.service.init(None);
     assert_eq!(
         rig.service
             .state()
@@ -458,7 +460,7 @@ async fn a_shutdown_stops_checks_and_downloads() {
 async fn the_timer_checks_every_four_hours_until_install_starts() {
     let rig = rig();
     let mut states = rig.service.subscribe();
-    rig.service.init();
+    rig.service.init(None);
     // The startup check finds nothing.
     states
         .wait_for(|s| s.status == UpdaterStatus::UpToDate)

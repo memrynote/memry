@@ -3,10 +3,11 @@
 //! downloaded update to the installer at quit. Nothing else calls a backend.
 
 mod install;
+mod outcome;
 #[cfg(test)]
 mod tests;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
@@ -16,6 +17,7 @@ use tokio::task::JoinHandle;
 
 use super::backend::{CheckOutcome, UpdateBackend};
 use super::health;
+use super::marker::Build;
 use super::severity::{
     Severity, UpdateError, UpdateErrorKind, UpdaterErrorPhase, classify, describe_error, error_code,
 };
@@ -36,6 +38,8 @@ pub const AUTO_CHECK_INTERVAL: Duration = Duration::from_secs(4 * 60 * 60);
 pub struct UpdaterDeps {
     /// The running build's `YYYY.MDD.N`.
     pub raw_version: String,
+    /// The channel the Velopack install memorized; `None` outside one.
+    pub channel: Option<String>,
     /// `None` when this process is not an installed, updatable app.
     pub backend: Option<Arc<dyn UpdateBackend>>,
     pub config: Arc<AppConfig>,
@@ -90,6 +94,7 @@ impl Coalesced {
 
 pub struct UpdaterService {
     core: UpdaterCore,
+    channel: Option<String>,
     backend: Option<Arc<dyn UpdateBackend>>,
     config: Arc<AppConfig>,
     data_dir: PathBuf,
@@ -120,6 +125,7 @@ impl UpdaterService {
         core.set_auto_check_enabled(prefs.auto_check);
         Arc::new(Self {
             core,
+            channel: deps.channel,
             backend: deps.backend,
             config: deps.config,
             data_dir: deps.data_dir,
@@ -157,17 +163,28 @@ impl UpdaterService {
         self.core.state()
     }
 
+    /// This build as the install marker records it.
+    pub fn build(&self) -> Build<'_> {
+        Build {
+            version: self.core.raw_version(),
+            channel: self.channel.as_deref(),
+            arch: Some(std::env::consts::ARCH),
+        }
+    }
+
     pub fn subscribe(&self) -> tokio::sync::watch::Receiver<AppUpdateState> {
         self.core.subscribe()
     }
 
-    /// Once, after the main window is shown: the failed-install streak, an update an earlier run
-    /// downloaded, the timer and the startup check. Without a backend the state stays
-    /// `unavailable`.
-    pub fn init(self: &Arc<Self>) {
+    /// Once, after the main window is shown: how the previous run's install ended (in this app's
+    /// data directory and, on the first launch after Electron, in `electron_profile`), the
+    /// failed-install streak, an update an earlier run downloaded, the timer and the startup
+    /// check. Without a backend the state stays `unavailable`.
+    pub fn init(self: &Arc<Self>, electron_profile: Option<&Path>) {
         if self.initialized.swap(true, Ordering::SeqCst) {
             return;
         }
+        self.report_previous_installs(electron_profile);
         if self.backend.is_none() {
             return;
         }

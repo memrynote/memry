@@ -28,7 +28,7 @@ async fn restart_to_install_shows_installing_and_hands_off_once_with_a_marker() 
             restart: true
         }]
     );
-    let detected = marker::detect(rig.dir.path(), RAW, || unreachable!()).unwrap();
+    let detected = marker::detect(rig.dir.path(), &rig.service.build(), || unreachable!()).unwrap();
     assert_eq!(detected.attempt.to_version.as_deref(), Some("v2026-11-01"));
     assert_eq!(
         detected.attempt.installer,
@@ -78,7 +78,7 @@ async fn an_update_an_earlier_run_left_on_disk_installs_at_the_next_normal_quit_
         error: ScriptedFailure::Offline,
     }]);
     let mut states = rig.service.subscribe();
-    rig.service.init();
+    rig.service.init(None);
     tokio::time::timeout(
         Duration::from_secs(5),
         states.wait_for(|state| state.status == UpdaterStatus::Downloaded),
@@ -94,7 +94,7 @@ async fn an_update_an_earlier_run_left_on_disk_installs_at_the_next_normal_quit_
             restart: false
         }]
     );
-    let detected = marker::detect(rig.dir.path(), RAW, || unreachable!()).unwrap();
+    let detected = marker::detect(rig.dir.path(), &rig.service.build(), || unreachable!()).unwrap();
     assert_eq!(detected.attempt.to_version.as_deref(), Some("v2026-11-01"));
 }
 
@@ -105,7 +105,7 @@ async fn a_skipped_version_left_on_disk_is_not_installed() {
         true,
     );
     rig.backend.leave_downloaded("2026.1101.1");
-    rig.service.init();
+    rig.service.init(None);
     tokio::time::sleep(Duration::from_millis(100)).await;
     assert_eq!(rig.service.state().status, UpdaterStatus::Idle);
     rig.service.apply_on_quit();

@@ -25,7 +25,7 @@ pub(super) struct PageFill {
 
 /// The locale of the native copy: the live one, or the OS one when startup failed before the
 /// locale service existed.
-pub(super) fn locale(app: &AppHandle<Wry>) -> &'static str {
+pub(crate) fn locale(app: &AppHandle<Wry>) -> &'static str {
     app.try_state::<Arc<LocaleService>>()
         .map(|service| service.get())
         .unwrap_or_else(|| locale::resolve_os_locale(sys_locale::get_locale().as_deref()))

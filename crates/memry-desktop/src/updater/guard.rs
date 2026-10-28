@@ -10,6 +10,7 @@
 //! live updater process is the only signal next to the marker.
 
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Value;
@@ -73,6 +74,52 @@ pub fn clear(dir: &Path) {
             scope = "UpdaterGuard",
             "failed to clear the pending-install marker: {error}"
         ),
+    }
+}
+
+/// How long the process probe may take. Past it the updater counts as not running, so a hung
+/// probe costs the guard, never the launch.
+pub const UPDATER_PROBE_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// Whether Velopack's updater of this bundle runs: `pgrep -f` on
+/// `<bundle>/Contents/MacOS/UpdateMac`, anchored so a process that only names the path (a
+/// `tail -f` of its log) does not count. A timeout, a failed spawn or any exit status but 0
+/// is not running: the guard fails open (`isShipItProcessAlive`).
+#[cfg(unix)]
+pub fn updater_alive(bundle: &Path) -> bool {
+    let updater = bundle.join("Contents").join("MacOS").join("UpdateMac");
+    let pattern = format!("^{}( |$)", regex::escape(&updater.to_string_lossy()));
+    let child = std::process::Command::new("pgrep")
+        .arg("-f")
+        .arg(pattern)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn();
+    let mut child = match child {
+        Ok(child) => child,
+        Err(error) => {
+            tracing::warn!(scope = "UpdaterGuard", "could not run pgrep: {error}");
+            return false;
+        }
+    };
+    let deadline = std::time::Instant::now() + UPDATER_PROBE_TIMEOUT;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.success(),
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            outcome => {
+                tracing::warn!(
+                    scope = "UpdaterGuard",
+                    "pgrep gave no answer, the updater counts as not running: {outcome:?}"
+                );
+                let _ = child.kill();
+                let _ = child.wait();
+                return false;
+            }
+        }
     }
 }
 
@@ -175,6 +222,35 @@ mod tests {
     #[test]
     fn does_not_fire_when_no_updater_is_running() {
         assert!(!should_guard(Some(&marker()), VERSION, 2_000, || false));
+    }
+
+    /// A real process at the updater's path, in a bundle path with the characters a regex would
+    /// read as syntax.
+    #[cfg(unix)]
+    #[test]
+    fn finds_the_running_updater_of_this_bundle_only() {
+        let root = tempfile::tempdir().unwrap();
+        let bundle = root.path().join("Memry (rehearsal) [1]+.app");
+        let macos = bundle.join("Contents/MacOS");
+        std::fs::create_dir_all(&macos).unwrap();
+        std::os::unix::fs::symlink("/bin/sleep", macos.join("UpdateMac")).unwrap();
+        assert!(!updater_alive(&bundle));
+
+        let mut updater = std::process::Command::new(macos.join("UpdateMac"))
+            .arg("30")
+            .spawn()
+            .unwrap();
+        let found = (0..50).any(|_| {
+            std::thread::sleep(Duration::from_millis(20));
+            updater_alive(&bundle)
+        });
+        let other = root.path().join("Memry (rehearsal) [2]+.app");
+        let other_found = updater_alive(&other);
+        updater.kill().unwrap();
+        updater.wait().unwrap();
+        assert!(found, "the running updater is found");
+        assert!(!other_found, "another bundle's path does not match");
+        assert!(!updater_alive(&bundle));
     }
 
     #[test]

@@ -212,6 +212,30 @@ test('a third failed install of the same release offers the manual installer', a
   await expect(page.getByRole('button', { name: `Download ${VERSION} manually` })).toBeVisible()
 })
 
+test('a build still running after its own install offers the manual installer', async ({
+  app,
+  page
+}) => {
+  const { appDataDir, version } = await appInfo(app)
+  const marker = join(appDataDir, 'update-install-attempt.json')
+  // What this build writes before it hands off to the installer (`marker.rs`). Launching as the
+  // same build again means the install never applied.
+  writeFileSync(
+    marker,
+    JSON.stringify({
+      fromVersion: version,
+      toVersion: VERSION,
+      startedAt: new Date().toISOString(),
+      installer: 'velopack'
+    })
+  )
+  await restart(app)
+
+  await expect(page.getByText(`MemryNote couldn't finish installing ${VERSION}`)).toBeVisible()
+  await expect(page.getByRole('button', { name: `Download ${VERSION} manually` })).toBeVisible()
+  expect(existsSync(marker)).toBe(false)
+})
+
 // An installer started while the OS session ends is killed after it removed the old install
 // (#1851), so a session end never installs on quit; the update stays on disk for the next quit.
 // Windows: WM_QUERYENDSESSION, then WM_ENDSESSION. The real sign-out is a VM row.
