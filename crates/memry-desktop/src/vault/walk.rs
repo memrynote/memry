@@ -73,9 +73,21 @@ pub fn walk_vault(root: &Path, exclude: &[String]) -> Walk {
 }
 
 pub fn walk_vault_with(root: &Path, exclude: &[String], limits: Limits) -> Walk {
+    walk_from(root, "", exclude, limits)
+}
+
+/// The walk of one folder `start` (vault-relative, `/`-separated; empty is the root). Paths
+/// come back vault-relative. Only the root's `attachments` folder is the app's, so a folder
+/// of that name inside `start` is walked like any other.
+pub fn walk_from(root: &Path, start: &str, exclude: &[String], limits: Limits) -> Walk {
     let mut walk = Walk::default();
     // (absolute dir, vault-relative prefix with trailing `/` or empty, depth)
-    let mut stack: Vec<(PathBuf, String, usize)> = vec![(root.to_path_buf(), String::new(), 0)];
+    let prefix = if start.is_empty() {
+        String::new()
+    } else {
+        format!("{}/", start.trim_end_matches('/'))
+    };
+    let mut stack: Vec<(PathBuf, String, usize)> = vec![(root.join(start), prefix, 0)];
     'folders: while let Some((dir, prefix, depth)) = stack.pop() {
         if depth > limits.max_depth {
             walk.too_deep += 1;

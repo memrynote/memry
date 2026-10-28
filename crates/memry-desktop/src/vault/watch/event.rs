@@ -1,0 +1,93 @@
+//! What the watcher reports. Facts about the vault folder, measured against `note_files`: the
+//! consumer (the indexer, the write-back's ingest, the renderer events) decides what each
+//! one means for notes. The watcher itself changes no row and no file.
+
+use std::sync::Arc;
+
+use crate::vault::file_types::FileType;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VaultEvent {
+    /// A file no row names and nothing reported yet. Markdown carries its content hash; the
+    /// event is held for a short grace, so a move whose removal is seen a moment later is a
+    /// [`VaultEvent::Renamed`] instead.
+    Added {
+        path: String,
+        file_type: FileType,
+        size: u64,
+        modified_ms: i64,
+        content_hash: Option<String>,
+    },
+    /// A file a row names, with other content than the row holds (markdown by hash, other
+    /// kinds by size or a newer modification time).
+    Changed {
+        note_id: String,
+        path: String,
+        /// `None` for a file that is not markdown.
+        content_hash: Option<String>,
+        size: u64,
+        modified_ms: i64,
+    },
+    /// A note's file is gone for good: the rename window closed, the vault is there and the
+    /// file is not on disk.
+    Removed { note_id: String, path: String },
+    /// A removed note's content appeared at another path, or the path was respelled (case or
+    /// Unicode normalization): the note keeps its id. `content_hash` is `None` for a file that
+    /// is not markdown.
+    Renamed {
+        note_id: String,
+        old_path: String,
+        new_path: String,
+        content_hash: Option<String>,
+    },
+    /// A file of a type the vault does not index appeared.
+    Unsupported { path: String },
+    /// A file exists and could not be read (hard-linked, not UTF-8 is not checked here,
+    /// permission, a lock). It is left alone.
+    Unreadable { path: String, reason: String },
+    /// The vault folder went away (an unplugged drive, a dropped share, a renamed folder).
+    /// Removals are ignored until [`VaultEvent::Reachable`].
+    Unreachable,
+    /// The vault is back; a rescan with changes follows.
+    Reachable,
+    /// A full pass over the vault finished, and so did everything it will report: the
+    /// removals it found have stayed gone through the rename window (or turned out not to be
+    /// gone) and the new files it found are out of their grace. A consumer orders its own walk
+    /// after this, and no event of this pass follows it.
+    Rescanned {
+        /// Files the pass found missing, including the ones that turned out to be moves.
+        missing: usize,
+        /// `Removed` events the pass caused.
+        removed: usize,
+        added: usize,
+        changed: usize,
+        /// Too many files were missing at once (20 and 25 % of the rows), or the walk was cut
+        /// short: no removal was reported, so no delete reaches the other devices. The rows
+        /// are checked again at the next open.
+        removals_withheld: bool,
+    },
+    /// The OS watcher failed or could not start. `limit` is the Linux inotify watch limit
+    /// (the user can raise it).
+    WatchFailed { message: String, limit: bool },
+}
+
+impl VaultEvent {
+    /// The variant's name, for a log line: paths and ids are the user's and stay out of logs.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Self::Added { .. } => "added",
+            Self::Changed { .. } => "changed",
+            Self::Removed { .. } => "removed",
+            Self::Renamed { .. } => "renamed",
+            Self::Unsupported { .. } => "unsupported",
+            Self::Unreadable { .. } => "unreadable",
+            Self::Unreachable => "unreachable",
+            Self::Reachable => "reachable",
+            Self::Rescanned { .. } => "rescanned",
+            Self::WatchFailed { .. } => "watch_failed",
+        }
+    }
+}
+
+/// Where events go. Called on the watcher's thread: it must not block.
+pub type EventSink = Arc<dyn Fn(VaultEvent) + Send + Sync>;

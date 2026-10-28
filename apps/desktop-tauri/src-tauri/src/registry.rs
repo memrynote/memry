@@ -71,6 +71,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::telemetry::telemetry_set_auto_send_diagnostics,
             crate::commands::telemetry::telemetry_set_enabled,
             crate::commands::telemetry::telemetry_track,
+            // unsplash
+            crate::commands::unsplash::unsplash_search,
             // vault
             crate::commands::vault::vault_close,
             crate::commands::vault::vault_create,

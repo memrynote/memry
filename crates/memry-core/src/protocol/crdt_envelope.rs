@@ -66,6 +66,27 @@ pub fn packed_len(update: &[u8]) -> usize {
     HEADER_BYTES + compress::compress(update).len() + AEAD_TAG_BYTES
 }
 
+/// The base64 characters one `POST /sync/crdt/updates` request may carry across
+/// all its updates, chapter 07 §7.4. It is desktop's
+/// `MAX_CRDT_REQUEST_PAYLOAD_CHARS` (`packages/sync-client/src/crdt-payload.ts:14`):
+/// the server answers 413 before any route runs when the body passes 8 MiB
+/// (`apps/sync-server/src/index.ts:66`), and 6,000,000 characters leave room for
+/// the JSON around them.
+pub const MAX_REQUEST_PAYLOAD_CHARS: usize = 6_000_000;
+
+/// The most [`pack`] can return for an update of `update_len` bytes, computed
+/// without compressing. [`compress::compress`] keeps a deflated frame only when
+/// it is strictly shorter than its input (§4.1), so the frame is never longer
+/// than the stored form, `update_len + 1`.
+pub const fn max_packed_len(update_len: usize) -> usize {
+    HEADER_BYTES + 1 + update_len + AEAD_TAG_BYTES
+}
+
+/// The most base64 characters an update of `update_len` bytes adds to a request.
+pub const fn max_payload_chars(update_len: usize) -> usize {
+    max_packed_len(update_len).div_ceil(3) * 4
+}
+
 /// The per-update key material, §4.3.
 ///
 /// A fresh file key per update, never reused and zeroed on drop.
@@ -270,6 +291,37 @@ mod tests {
             )
             .expect("pack");
             assert_eq!(packed_len(&update), packed.len(), "{} bytes", update.len());
+        }
+    }
+
+    #[test]
+    fn max_payload_chars_never_undercounts_the_base64_pack_returns() {
+        let (_, secret_key) = signer();
+        let incompressible: Vec<u8> = (0..4096u32)
+            .map(|i| (i.wrapping_mul(2654435761) >> 13) as u8)
+            .collect();
+        for update in [vec![1u8], vec![0u8; 63], vec![7u8; 4096], incompressible] {
+            let packed = pack(
+                &CrdtRequest {
+                    note_id: "abc123def456",
+                    update: &update,
+                    vault_key: &[3u8; 32],
+                    signing_secret_key: &secret_key,
+                },
+                &CrdtMaterial::random(),
+            )
+            .expect("pack");
+            let chars =
+                base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &packed).len();
+            assert!(
+                chars <= max_payload_chars(update.len()),
+                "{} bytes",
+                update.len()
+            );
+            assert!(packed.len() <= max_packed_len(update.len()));
+            if update.len() < compress::STORED_THRESHOLD_BYTES {
+                assert_eq!(chars, max_payload_chars(update.len()), "stored is exact");
+            }
         }
     }
 

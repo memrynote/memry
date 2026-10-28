@@ -10,6 +10,9 @@ import {
   GITHUB_RELEASE_DOWNLOAD_BASE,
   INSTALLER_HANDOFF_SIGNER_SUBJECT,
   VELOPACK_SETUP_ASSET_NAME,
+  handoffCmdArgs,
+  handoffSpawnOptions,
+  isHandoffInstallDirSupported,
   judgeAuthenticode,
   renderInstallerHandoffScript,
   resolveReleaseTag,
@@ -24,7 +27,13 @@ const logger = createLogger('InstallerHandoff')
 
 export const INSTALLER_HANDOFF_DIRNAME = 'installer-handoff'
 
-const AUTHENTICODE_TIMEOUT_MS = 60_000
+/**
+ * A cold powershell.exe takes 20 to 35 s to start on a hosted windows-11-arm runner and
+ * Get-AuthenticodeSignature of the 45 MB Setup took over 60 s there, which declined the hand-off
+ * as "signature not verified" twice (W2). The check runs while the update is still `downloading`,
+ * so a longer ceiling costs nothing on a machine that answers in seconds.
+ */
+const AUTHENTICODE_TIMEOUT_MS = 180_000
 
 /**
  * The Velopack installer is ~450 MB over a single GET. One dropped connection used
@@ -91,6 +100,7 @@ export interface InstallerHandoffDeps {
 interface HandoffExecFileOptions {
   windowsHide?: boolean
   timeout?: number
+  env?: NodeJS.ProcessEnv
 }
 
 /**
@@ -165,18 +175,32 @@ export function buildInstallerHandoffPlan(input: {
   }
 }
 
+/**
+ * powershell.exe is Windows PowerShell 5.1. When the app was started from a PowerShell 7 session
+ * (or a launcher that copied its environment), the inherited PSModulePath lists PowerShell 7's
+ * module folders, and 5.1 then fails to autoload Microsoft.PowerShell.Security: "the
+ * 'Get-AuthenticodeSignature' command was found in the module, but the module could not be
+ * loaded". That declined the hand-off with `signature not verified` on a clean installer (W2,
+ * windows-2022). Dropping the variable makes 5.1 use its own default module path.
+ */
+function windowsPowerShellEnv(): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => name.toUpperCase() !== 'PSMODULEPATH')
+  )
+}
+
 /** Shared with the CLI. Runs powershell; resolves to a verdict, never rejects. */
 export function verifyAuthenticode(
   filePath: string,
   deps: Pick<InstallerHandoffDeps, 'execFile'> = { execFile: runExecFile }
 ): Promise<AuthenticodeVerdict> {
   const literal = `'${filePath.replace(/'/g, "''")}'`
-  const command = `Get-AuthenticodeSignature -LiteralPath ${literal} | ConvertTo-Json -Compress`
+  const command = `Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath ${literal} | ConvertTo-Json -Compress`
   return new Promise((resolve) => {
     deps.execFile(
       'powershell.exe',
       ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command],
-      { windowsHide: true, timeout: AUTHENTICODE_TIMEOUT_MS },
+      { windowsHide: true, timeout: AUTHENTICODE_TIMEOUT_MS, env: windowsPowerShellEnv() },
       (error, stdout) => {
         if (error) {
           resolve({ ok: false, reason: `Get-AuthenticodeSignature failed: ${error.message}` })
@@ -210,12 +234,24 @@ export function spawnInstallerHandoff(
   }
   const scriptPath = path.win32.join(tmpDir, `memry-installer-handoff-${pid}.cmd`)
   try {
-    fsDeps.writeFileSync(scriptPath, renderInstallerHandoffScript(plan))
-    const child = spawn('cmd.exe', ['/c', scriptPath], {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true
-    })
+    if (!isHandoffInstallDirSupported(plan.installDir)) {
+      logger.error(
+        'installer hand-off refused: install directory has a character cmd.exe would parse',
+        {
+          installDir: plan.installDir
+        }
+      )
+      return false
+    }
+    // The script's first line appends to this log, and a missing folder makes that fail silently.
+    // The logger writes to its own folder, so <userData>\logs need not exist.
+    fsDeps.mkdirSync(path.win32.dirname(plan.handoffLogPath), { recursive: true })
+    fsDeps.writeFileSync(scriptPath, renderInstallerHandoffScript())
+    const child = spawn(
+      'cmd.exe',
+      handoffCmdArgs(scriptPath),
+      handoffSpawnOptions(plan, process.env)
+    )
     child.on('error', (error) => {
       logger.error('installer hand-off script failed to start', error)
     })
@@ -315,6 +351,9 @@ export function createInstallerHandoff(
     if (!tag) return decline('release tag unknown')
     const layout = detectWindowsInstallLayout(deps.execPath, deps.fs.existsSync)
     if (layout !== 'nsis') return decline(`install layout is ${layout}, not nsis`)
+    if (!isHandoffInstallDirSupported(path.win32.dirname(deps.execPath))) {
+      return decline('install directory has a character the hand-off script cannot pass')
+    }
 
     const url = velopackSetupUrl(tag)
     // `tag` arrives on the update payload. velopackSetupUrl encodes it into a fixed
@@ -365,7 +404,12 @@ export function createInstallerHandoff(
       return decline('download failed')
     }
 
+    const verifyStartedAt = Date.now()
     const verdict = await verifyAuthenticode(plan.setupExePath, deps)
+    logger.info('installer hand-off signature check finished', {
+      ok: verdict.ok,
+      elapsedMs: Date.now() - verifyStartedAt
+    })
     if (!verdict.ok) {
       removeHandoffDir()
       host.onError(coded('INSTALLER_HANDOFF_UNVERIFIED', verdict.reason))

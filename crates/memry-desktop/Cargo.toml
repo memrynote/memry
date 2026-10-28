@@ -59,6 +59,7 @@ tokio = { workspace = true, features = ["time", "sync"] }
 icu_plurals = "2.4.0"
 icu_locale = "2.4.0"
 icu_decimal = "2.4.0"
+notify = "8.2.1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
