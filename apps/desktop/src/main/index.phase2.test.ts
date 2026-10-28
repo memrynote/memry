@@ -1363,8 +1363,9 @@ describe('main index phase2 exports', () => {
     const callback = vi.fn()
     verify({ certificate: {}, hostname: 'react-tweet.vercel.app' }, callback)
 
+    // -3 keeps Chromium's own verification; a host without pins never reaches the pin check.
     expect(callback).toHaveBeenCalledWith(-3)
-    expect(computeSpkiHashFromPemMock).not.toHaveBeenCalled()
+    expect(verifySessionCertificatePinMock).not.toHaveBeenCalled()
   })
 
   it('leaves certificate verification unset when pinning has no pins', async () => {
