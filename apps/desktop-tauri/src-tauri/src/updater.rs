@@ -27,16 +27,46 @@ pub fn register_stages() {
     startup::register(Stage::Handlers, "manage updater", manage);
 }
 
-/// The backend of this process and the delay before init. `None` until the Velopack backend
-/// lands (#3555 38c): the updater reads `unavailable`.
-fn backend(app: &AppHandle<Wry>) -> (Option<Arc<dyn UpdateBackend>>, Duration) {
+mod channel;
+mod velopack_backend;
+
+/// The backend of this process, the version it reports and the delay before init.
+struct Chosen {
+    backend: Option<Arc<dyn UpdateBackend>>,
+    /// The installed Velopack version, which replaces the bundle's: the packs carry the release
+    /// version only in `sq.version`.
+    version: Option<String>,
+    delay: Duration,
+}
+
+fn backend(app: &AppHandle<Wry>) -> Chosen {
     #[cfg(feature = "e2e")]
     if let Some(scripted) = scripted(app) {
-        return (Some(scripted), Duration::ZERO);
+        return Chosen {
+            backend: Some(scripted),
+            version: None,
+            delay: Duration::ZERO,
+        };
     }
     let _ = app;
-    tracing::info!(scope = "Updater", "no update backend in this build");
-    (None, INIT_DELAY)
+    match velopack_backend::VelopackBackend::new() {
+        Ok(velopack) => Chosen {
+            version: Some(velopack.current_version()),
+            backend: Some(Arc::new(velopack)),
+            delay: INIT_DELAY,
+        },
+        Err(reason) => {
+            tracing::info!(
+                scope = "Updater",
+                "not a Velopack install, updates are off: {reason}"
+            );
+            Chosen {
+                backend: None,
+                version: None,
+                delay: INIT_DELAY,
+            }
+        }
+    }
 }
 
 /// `MEMRY_TEST_UPDATER=scripted` under an open e2e gate: the scripted backend, managed for the
@@ -77,9 +107,13 @@ fn outside_applications() -> bool {
 }
 
 fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
-    let (backend, delay) = backend(app);
+    let Chosen {
+        backend,
+        version,
+        delay,
+    } = backend(app);
     let service = UpdaterService::new(UpdaterDeps {
-        raw_version: app.package_info().version.to_string(),
+        raw_version: version.unwrap_or_else(|| app.package_info().version.to_string()),
         backend,
         config: app.state::<Arc<AppConfig>>().inner().clone(),
         data_dir: app.state::<AppPaths>().data_dir.clone(),

@@ -98,7 +98,7 @@ jobs:
           workspaces: crates
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }} -- --features update-probe
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }}
       - name: Stage pack dir
         run: node scripts/release/stage-payload.mjs win ${{ matrix.triple }} pack
       - name: Zip pack dir
@@ -148,7 +148,7 @@ jobs:
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           "$HOME/.dotnet/tools/vpk" -h | head -3 | grep -F "Velopack CLI $VPK_VERSION"
       - name: Build bundle (unsigned)
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app -- --features update-probe
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app
       - name: Import signing identity
         env:
           MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
@@ -253,7 +253,7 @@ jobs:
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           "$HOME/.dotnet/tools/vpk" -h | head -3 | grep -F "Velopack CLI $VPK_VERSION"
       - name: Build AppImage
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --bundles appimage -- --features update-probe
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --bundles appimage
       - name: Extract AppDir
         run: |
           appimage="$(ls crates/target/release/bundle/appimage/*.AppImage)"
