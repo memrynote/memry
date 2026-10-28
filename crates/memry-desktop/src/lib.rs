@@ -17,6 +17,7 @@ pub mod paths;
 pub mod profile_store;
 pub mod redact;
 pub mod registry;
+pub mod seams;
 pub mod session;
 pub mod settings;
 pub mod shell;

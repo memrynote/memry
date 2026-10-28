@@ -35,6 +35,11 @@ markup5ever = "0.40.0"
 specta = { version = "=2.0.0-rc.26", features = ["derive"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "json", "http2", "stream", "system-proxy"] }
 
+# The OS credential stores behind `seams::secure_store`: keyring-core 1.x with the platform store
+# crates. `keyring` 4.x builds one process-wide store in a `LazyLock`, so a Secret Service that
+# starts after the app would stay unreachable; here a store is built again after any failure.
+keyring-core = "1.0.1"
+
 # Electron profile readers (read-only import of the previous app's data).
 base64 = { workspace = true }
 zeroize = { workspace = true }
@@ -63,17 +68,25 @@ xattr = "1.6"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = "3.7.0"
+apple-native-keyring-store = { version = "1.0.2", default-features = false, features = ["keychain"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 secret-service = { version = "5.2.0", features = ["rt-async-io-crypto-rust"] }
 zbus = { version = "5.19.0", default-features = false, features = ["blocking-api", "async-io"] }
+# async-io, not tokio: the keyring worker is a plain thread with no Tokio reactor, and this is
+# the runtime the Step 06 `secret-service` readers above already use.
+zbus-secret-service-keyring-store = { version = "1.0.1", features = ["rt-async-io-crypto-rust"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_Security_Cryptography", "Win32_Security_Credentials", "Win32_System_SystemInformation"] }
+windows-native-keyring-store = { version = "1.1.0", default-features = false }
 
 [features]
 # CI-only tests against the live OS secret store: tests/electron_secrets_live.rs.
 live-os-secrets = []
+# `KeyringStore::new` returns an in-memory store while `MEMRY_E2E=1`, so a headless CI box with no
+# keyring never hangs. Never part of a release build (the e2e feature of memry-tauri).
+e2e = []
 
 [dev-dependencies]
 proptest = "1"
