@@ -1,6 +1,7 @@
 //! Telemetry: the same event schema, opt-out and crash-marker behavior as the Electron app
 //! (`apps/desktop/src/main/telemetry`). `telemetry.json` keeps the install id and opt-out flags,
-//! a crash-durable journal keeps queued events, and every request goes through `http::client`.
+//! a crash-durable journal keeps queued events, and every request goes to the sync server through
+//! the pinned transport (`seams::transport`).
 
 pub mod config;
 pub mod crash;

@@ -132,6 +132,28 @@ impl RuntimeConfig {
             .unwrap_or_else(|| self.server_url("/telemetry/batch"))
     }
 
+    /// The loopback hosts the configured server URLs name (a local sync server in development or
+    /// an e2e run), which the sync transport serves beside the memry hosts. Nothing else: a
+    /// configured host off this machine still has to be a memry host.
+    pub fn loopback_hosts(&self) -> Vec<String> {
+        let mut hosts: Vec<String> = [
+            Some(&self.sync_server_url),
+            self.telemetry_endpoint_override.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        .filter_map(|url| {
+            url::Url::parse(url)
+                .ok()?
+                .host_str()
+                .map(str::to_ascii_lowercase)
+        })
+        .filter(|host| matches!(host.as_str(), "localhost" | "127.0.0.1" | "[::1]"))
+        .collect();
+        hosts.dedup();
+        hosts
+    }
+
     /// Enabled when the stored flag says so; else `MEMRY_TELEMETRY_ENABLED=true`; else on only for
     /// the production channel.
     pub fn telemetry_enabled(&self, stored: Option<bool>, env: &LaunchEnv) -> bool {
@@ -209,6 +231,13 @@ mod tests {
             "http://127.0.0.1:9/feedback"
         );
         assert_eq!(staged.telemetry_batch_endpoint(), "http://127.0.0.1:9/t");
+        assert_eq!(plain.loopback_hosts(), ["localhost"]);
+        assert_eq!(staged.loopback_hosts(), ["127.0.0.1"]);
+        let lan = RuntimeConfig::resolve(
+            &compiled,
+            &launch(&[("SYNC_SERVER_URL", "http://192.168.1.4:8787")]),
+        );
+        assert!(lan.loopback_hosts().is_empty());
     }
 
     #[test]

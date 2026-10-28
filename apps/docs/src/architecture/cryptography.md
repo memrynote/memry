@@ -283,6 +283,36 @@ opt-in and can be set either in the environment or in the same `.env.<MEMRY_ENV>
 host. It is deliberately off by default: the production host still carries placeholder pins, so
 enabling it globally would fail every `prebuild` and every fresh checkout.
 
+### The Tauri desktop app
+
+The Tauri app keeps the same table and the same activation rules in
+`crates/memry-desktop/src/seams/tls/pins.rs`; a test compares it with `certificate-pins.ts`, so a pin
+change lands in both files. Every request to the sync server, telemetry and feedback included, goes
+through one pinned transport (`seams::transport`). The verifier runs the platform verifier first
+(OS trust store, hostname) and compares pins only after that succeeds.
+
+A pin matches any certificate on the leaf's issuance path: the leaf, the intermediate that signed it,
+and so on up, each link checked by its signature. Electron compared the leaf only, so every Electron
+pin still works, and a pin on an intermediate survives leaf renewal. A certificate the server appends
+that did not sign the one below it never matches, so a leaf from another trusted CA with the pinned
+intermediate appended is refused.
+
+The root `pnpm cert:check` runs `cargo run -p memry-desktop --example cert_check -- [hostname]
+[port]`. It connects with the platform verifier, prints each presented certificate with its depth,
+subject, validity and SPKI hash and whether it is on the issuance path, then prints the audit in the
+table above. It also fails when a host's real pins match nothing the host presents. Without a
+hostname it audits `SYNC_SERVER_URL` from the environment, else from `apps/desktop-tauri/.env.<MEMRY_ENV>`
+(default `production`), else `sync.memrynote.com`. It replaces `pnpm cert:extract`.
+
+### Pin rotation
+
+A leaf renews every few months and a CDN can switch its issuing CA without notice. A table whose pins
+all name certificates the host stops presenting makes every installed release build refuse to sync
+until users update. So each pinned host keeps two pins at least: the certificate it presents now
+(prefer the intermediate, which outlives the leaf) and a backup from another issuer the host can
+move to. Before every release, run `pnpm cert:check` for each pinned host and confirm one pin is on
+the presented path.
+
 ## Renderer Permission Policy
 
 The desktop app registers deny-by-default permission handlers on the Electron session at startup,

@@ -16,6 +16,8 @@ use memry_desktop::logging::localtime;
 use memry_desktop::paths::{AppPaths, DEVICE_VAR};
 use memry_desktop::registry::AppConfig;
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
+use memry_desktop::seams::tls::{PinFailure, PinFailureSink};
+use memry_desktop::seams::transport::{SyncTransport, app_transport};
 use memry_desktop::session::Session;
 use memry_desktop::settings::SettingsService;
 use memry_desktop::startup_values;
@@ -112,6 +114,20 @@ fn node_arch() -> &'static str {
     }
 }
 
+/// Logs a pin mismatch. Step 17 (#3534) turns it into the `certificate_pin_failed` event.
+struct LogPinFailures;
+
+impl PinFailureSink for LogPinFailures {
+    fn pin_failed(&self, failure: PinFailure) {
+        tracing::error!(
+            scope = "Pinning",
+            host = failure.hostname,
+            actual = failure.actual_hash,
+            "the sync host presented a certificate none of its pins match"
+        );
+    }
+}
+
 fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let paths = app.state::<AppPaths>();
     let env = app.state::<LaunchEnv>();
@@ -137,10 +153,12 @@ fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         timezone_offset_minutes: -localtime::timezone_offset_minutes(),
     };
 
+    let transport: SyncTransport =
+        app_transport(&runtime.loopback_hosts(), Arc::new(LogPinFailures));
     let service = Arc::new(Service::start(
         &paths.data_dir,
         context.clone(),
-        Sender::new(runtime.telemetry_batch_endpoint()),
+        Sender::new(runtime.telemetry_batch_endpoint(), transport.clone()),
         enabled,
     ));
     if enabled {
@@ -156,7 +174,7 @@ fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
     let ship = logship::install(logship::Deps {
         context,
-        sender: Sender::new(runtime.server_url("/telemetry/logs")),
+        sender: Sender::new(runtime.server_url("/telemetry/logs"), transport.clone()),
         salt: service.config().diagnostics_salt(),
         level: env.get("MEMRY_DIAG_LOG_LEVEL").map(str::to_owned),
         ships: runtime.env != MemryEnv::Development,
@@ -171,6 +189,7 @@ fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     }
 
     app.manage(runtime);
+    app.manage(transport);
     app.manage(service.clone());
     app.manage(ship.clone());
     app.manage(Mutex::new(marker));
