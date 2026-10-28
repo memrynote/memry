@@ -12,6 +12,7 @@ use tauri::{AppHandle, Manager, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
+use super::settings::map_error;
 use crate::events::{LocaleChangedEvent, SettingsChangedEvent, broadcast};
 use crate::shell::services::telemetry;
 
@@ -56,9 +57,7 @@ pub async fn locale_set(app: AppHandle<Wry>, locale: String) -> Result<(), Comma
             let patch = Map::from_iter([("language".to_owned(), Value::from(supported))]);
             settings
                 .write_group(vault.as_ref(), "general", patch)
-                .map_err(|e| {
-                    CommandError::new(ErrorKind::Storage, "settings_failed", e.to_string())
-                })?;
+                .map_err(map_error)?;
         }
         Ok(())
     })

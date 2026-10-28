@@ -26,7 +26,7 @@ fn service(app: &AppHandle<Wry>) -> SettingsService {
     app.state::<SettingsService>().inner().clone()
 }
 
-fn map_error(error: SettingsError) -> CommandError {
+pub(crate) fn map_error(error: SettingsError) -> CommandError {
     match error {
         SettingsError::NoVault => {
             CommandError::new(ErrorKind::NotFound, "no_vault_open", "No vault is open")

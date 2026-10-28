@@ -1,5 +1,5 @@
 //! `KeyringStore` against the live OS keychain (`--features live-os-secrets`). Every test uses a
-//! device suffix and service of its own (`e2e-live-...`, `com.memry.test`) and removes what it
+//! device suffix and service of its own (`e2e-live-...`, `com.memrynote.memry.test`) and removes what it
 //! wrote, so the real `com.memry.sync` accounts of a developer's machine are never touched. CI runs
 //! them: macOS (a throw-away default keychain on the runner), Windows (Credential Manager) and Linux under a private
 //! session bus (`gnome-keyring-daemon --unlock`, and again with no Secret Service at all).
@@ -86,14 +86,28 @@ fn a_generic_secret_of_forty_raw_bytes_round_trips() {
     let store = store(&unique("generic"));
     let account = unique("account");
     let value: Vec<u8> = (0..40).map(|b| b * 5 + 1).collect();
-    assert_eq!(store.get_secret("com.memry.test", &account).unwrap(), None);
+    assert_eq!(
+        store
+            .get_secret("com.memrynote.memry.test", &account)
+            .unwrap(),
+        None
+    );
     store
-        .set_secret("com.memry.test", &account, &value)
+        .set_secret("com.memrynote.memry.test", &account, &value)
         .unwrap();
-    let read = store.get_secret("com.memry.test", &account).unwrap();
-    store.delete_secret("com.memry.test", &account).unwrap();
+    let read = store
+        .get_secret("com.memrynote.memry.test", &account)
+        .unwrap();
+    store
+        .delete_secret("com.memrynote.memry.test", &account)
+        .unwrap();
     assert_eq!(read, Some(value));
-    assert_eq!(store.get_secret("com.memry.test", &account).unwrap(), None);
+    assert_eq!(
+        store
+            .get_secret("com.memrynote.memry.test", &account)
+            .unwrap(),
+        None
+    );
 }
 
 /// Credential Manager holds a blob of at most 2560 bytes. The five real values are at most 90.
@@ -103,14 +117,20 @@ fn a_big_generic_value_is_failed_not_locked_on_windows() {
     let store = store(&unique("blob"));
     let account = unique("account");
     let fits = vec![7_u8; 1500];
-    store.set_secret("com.memry.test", &account, &fits).unwrap();
+    store
+        .set_secret("com.memrynote.memry.test", &account, &fits)
+        .unwrap();
     assert_eq!(
-        store.get_secret("com.memry.test", &account).unwrap(),
+        store
+            .get_secret("com.memrynote.memry.test", &account)
+            .unwrap(),
         Some(fits)
     );
     let too_big = vec![7_u8; 3000];
-    let result = store.set_secret("com.memry.test", &account, &too_big);
-    store.delete_secret("com.memry.test", &account).unwrap();
+    let result = store.set_secret("com.memrynote.memry.test", &account, &too_big);
+    store
+        .delete_secret("com.memrynote.memry.test", &account)
+        .unwrap();
     assert!(
         matches!(result, Err(SecureStoreError::Failed { .. })),
         "a refused write is Failed, got {result:?}"
@@ -129,7 +149,7 @@ fn with_no_secret_service_every_call_is_locked_and_nothing_is_stored() {
         assert_eq!(store.set(key, vec![1; 32]), Err(SecureStoreError::Locked));
     }
     assert_eq!(
-        store.get_secret("com.memry.test", "a"),
+        store.get_secret("com.memrynote.memry.test", "a"),
         Err(SecureStoreError::Locked)
     );
     assert_eq!(store.health(), SecureStoreHealth::Unavailable);

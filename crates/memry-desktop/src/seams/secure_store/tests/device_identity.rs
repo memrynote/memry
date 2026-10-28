@@ -294,7 +294,22 @@ fn a_delete_with_a_stale_no_keychain_answer_never_drops_a_moved_key() {
 fn the_identity_namespaces_are_closed_to_generic_secrets() {
     use crate::seams::secure_store::GenericSecrets;
     let w = world();
-    for service in [OWN, ELECTRON] {
+    // Electron's getSecret/setSecret move every one of its keychain items into its own file and
+    // delete the keychain copy (`secret-storage.ts:436`, `:518`): all of them are import
+    // material for Step 37, in any letter case the OS store matches.
+    for service in [
+        OWN,
+        "COM.MemryNote.Memry",
+        ELECTRON,
+        "com.memry.capture",
+        "com.memry.readwise",
+        "com.memry.calendar.google",
+        "com.memry.import.onenote",
+        "memry.voice-transcription",
+        "memry.agent.local-provider",
+        "Com.Memry.Readwise",
+        "MEMRY.voice-transcription",
+    ] {
         let denied =
             |r: Result<(), SecureStoreError>| matches!(r, Err(SecureStoreError::Denied { .. }));
         assert!(matches!(
@@ -305,6 +320,12 @@ fn the_identity_namespaces_are_closed_to_generic_secrets() {
         assert!(denied(w.rig.store.delete_secret(service, ACCOUNT)));
     }
     assert_eq!(w.keychain(), None);
+    let open = "com.memrynote.memry.readwise";
+    w.rig.store.set_secret(open, ACCOUNT, b"token").unwrap();
+    assert_eq!(
+        w.rig.store.get_secret(open, ACCOUNT).unwrap(),
+        Some(b"token".to_vec())
+    );
 }
 
 #[test]

@@ -9,6 +9,9 @@ use std::sync::{Arc, Mutex};
 use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::registry::{AppConfig, VaultRegistry};
+use memry_desktop::seams::secure_store::{
+    DEADLINE, DeviceIdentityStore, IDENTITY_SERVICE, KeyringStore, Store, StoreFactory,
+};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::settings::{SettingsError, SettingsService};
 use memry_desktop::startup_values;
@@ -229,32 +232,48 @@ fn flat_local_keys_and_resets() {
     );
 }
 
-/// A device whose key moved into the keychain and is gone from it.
-struct MissingIdentity;
+/// The OS credential store, as keyring-core's in-memory mock.
+struct Mock(Store);
 
-impl SecureStore for MissingIdentity {
-    fn get(&self, _: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
-        Err(memry_desktop::seams::secure_store::device_identity_missing())
-    }
-
-    fn set(&self, _: SecureStoreKey, _: Vec<u8>) -> Result<(), SecureStoreError> {
-        panic!("a missing identity is never replaced by a new one")
-    }
-
-    fn delete(&self, _: SecureStoreKey) -> Result<(), SecureStoreError> {
-        Ok(())
-    }
-
-    fn clear(&self) -> Result<(), SecureStoreError> {
-        Ok(())
+impl StoreFactory for Mock {
+    fn build(&self) -> keyring_core::Result<Store> {
+        Ok(self.0.clone())
     }
 }
 
 #[test]
 fn a_missing_device_identity_is_its_own_error_for_reads_and_writes() {
+    // The real identity store over the real keychain worker: the key is minted and moved into
+    // the keychain, then the keychain item disappears (the user deleted it, or a keychain reset).
     let w = world();
     let vault = w.open("v");
-    let service = SettingsService::new(Arc::new(MissingIdentity), w.config.clone());
+    let credentials: Store = keyring_core::mock::Store::new().unwrap();
+    let keychain = Arc::new(KeyringStore::with_factory(
+        Mock(credentials.clone()),
+        None,
+        DEADLINE,
+    ));
+    let profile = tempfile::tempdir().unwrap();
+    let identity = |keychain: &Arc<KeyringStore>| {
+        SettingsService::new(
+            Arc::new(DeviceIdentityStore::with_probe(
+                keychain,
+                profile.path(),
+                || false,
+            )),
+            w.config.clone(),
+        )
+    };
+    identity(&keychain)
+        .read_group(Some(&vault), "general")
+        .expect("the first read mints the device key");
+    credentials
+        .build(IDENTITY_SERVICE, "device-signing-key", None)
+        .unwrap()
+        .delete_credential()
+        .expect("the key was in the keychain");
+
+    let service = identity(&keychain);
     assert!(matches!(
         service.read_group(Some(&vault), "general"),
         Err(SettingsError::DeviceIdentityMissing)

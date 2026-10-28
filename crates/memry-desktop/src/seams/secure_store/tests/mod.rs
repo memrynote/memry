@@ -261,14 +261,14 @@ fn the_windows_target_names_service_and_account_for_every_service() {
         .unwrap();
     windows
         .store
-        .set_secret("com.memry.test", "ai-key", b"x")
+        .set_secret("com.memrynote.memry.test", "ai-key", b"x")
         .unwrap();
     let targets = windows.fake.targets.lock().unwrap().clone();
     assert_eq!(
         targets,
         [
             Some("com.memry.sync/master-key".to_owned()),
-            Some("com.memry.test/ai-key".to_owned())
+            Some("com.memrynote.memry.test/ai-key".to_owned())
         ]
     );
     let plain = rig();
@@ -291,18 +291,37 @@ fn every_call_runs_on_the_keyring_thread() {
 fn generic_secrets_round_trip_raw_bytes() {
     let rig = rig();
     let value: Vec<u8> = (0..40).map(|n| n * 3).collect();
-    assert_eq!(rig.store.get_secret("com.memry.test", "k").unwrap(), None);
-    rig.store.set_secret("com.memry.test", "k", &value).unwrap();
-    assert_eq!(rig.fake.stored("com.memry.test", "k"), Some(value.clone()));
     assert_eq!(
-        rig.store.get_secret("com.memry.test", "k").unwrap(),
+        rig.store
+            .get_secret("com.memrynote.memry.test", "k")
+            .unwrap(),
+        None
+    );
+    rig.store
+        .set_secret("com.memrynote.memry.test", "k", &value)
+        .unwrap();
+    assert_eq!(
+        rig.fake.stored("com.memrynote.memry.test", "k"),
+        Some(value.clone())
+    );
+    assert_eq!(
+        rig.store
+            .get_secret("com.memrynote.memry.test", "k")
+            .unwrap(),
         Some(value)
     );
-    rig.store.delete_secret("com.memry.test", "k").unwrap();
-    assert_eq!(rig.store.get_secret("com.memry.test", "k").unwrap(), None);
+    rig.store
+        .delete_secret("com.memrynote.memry.test", "k")
+        .unwrap();
+    assert_eq!(
+        rig.store
+            .get_secret("com.memrynote.memry.test", "k")
+            .unwrap(),
+        None
+    );
     rig.fake.set_mode(Mode::Fail(no_storage));
     assert_eq!(
-        rig.store.get_secret("com.memry.test", "k"),
+        rig.store.get_secret("com.memrynote.memry.test", "k"),
         Err(SecureStoreError::Locked)
     );
 }
