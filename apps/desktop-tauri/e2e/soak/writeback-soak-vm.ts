@@ -15,12 +15,25 @@ import type { Executor } from '../harness/invoke-test'
 import { createClient } from '../../scripts/lib/webdriver-client.mjs'
 import { optionsFromEnv, soak } from './writeback-soak'
 
-/** Waits up to 20 s for the app to exit, then runs the launch task again. */
+/**
+ * Waits up to 20 s for the app to exit and up to 20 s more for the WebView2 processes of its
+ * profile (whose user data dir is under the control file's dirs or the app's identifier), then
+ * runs the launch task again. A WebView still holding the profile would race the new instance.
+ */
 const RELAUNCH = `
+function App { @(Get-Process memry-tauri -ErrorAction SilentlyContinue) }
+function Views { @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Where-Object { $_.CommandLine -like '*memry-tauri-data*' -or $_.CommandLine -like '*com.memrynote.memry*' }) }
 $deadline = (Get-Date).AddSeconds(20)
-while ((Get-Process memry-tauri -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 200 }
-if (Get-Process memry-tauri -ErrorAction SilentlyContinue) { 'still-running' } else { schtasks /run /tn memry-repro | Out-Null; 'relaunched' }
+while ((App).Count -gt 0 -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 200 }
+if ((App).Count -gt 0) { 'still-running'; exit }
+$deadline = (Get-Date).AddSeconds(20)
+while ((Views).Count -gt 0 -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 200 }
+$views = (Views).Count
+schtasks /run /tn memry-repro | Out-Null
+"relaunched webviews-left=$views"
 `
+/** The relaunch script's own waits plus the SSH round trips. */
+const RELAUNCH_MS = 120_000
 const READY_MS = 120_000
 
 export default async function run(): Promise<void> {
@@ -55,8 +68,15 @@ export default async function run(): Promise<void> {
     {
       executor: () => executor,
       async relaunch() {
-        const out = execFileSync('bash', [winvm, 'ps'], { input: RELAUNCH, encoding: 'utf8' })
+        const out = execFileSync('bash', [winvm, 'ps'], {
+          input: RELAUNCH,
+          encoding: 'utf8',
+          timeout: RELAUNCH_MS
+        })
         if (!out.includes('relaunched')) throw new Error(`the app did not quit within 20 s: ${out}`)
+        console.log(
+          JSON.stringify({ at: new Date().toISOString(), event: 'relaunch', out: out.trim() })
+        )
         await ready()
         session = await client.newSession()
       }
