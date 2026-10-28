@@ -2,7 +2,8 @@
 //!
 //! - [`filter`]: which paths count (`ignored` of the chokidar options).
 //! - [`debounce`]: a path is looked at once it has been quiet.
-//! - [`reconcile`]: what is on disk against `note_files`, plus the rescan.
+//! - [`reconcile`]: what is on disk against `note_files`; `present` for a file that is there,
+//!   `rescan` for the rescan.
 //! - [`rename`]: a removed file whose content shows up elsewhere is a rename.
 //! - [`echo`]: the app's own writes do not come back as outside edits.
 //! - [`reported`]: what was already told, which every removal and rescan reads before the row.
@@ -22,6 +23,7 @@ pub mod filter;
 pub mod gone;
 mod handle;
 mod home;
+mod present;
 pub mod reconcile;
 pub mod rename;
 pub mod reported;

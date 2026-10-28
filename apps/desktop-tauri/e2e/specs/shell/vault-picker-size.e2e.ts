@@ -56,4 +56,21 @@ test.describe('picker', () => {
       })
       .toEqual([picker.width, picker.height])
   })
+
+  // The window is frameless on Windows: without its own buttons the picker can't be closed or
+  // maximized from the title row.
+  test('the picker has the Windows caption buttons at the physical right edge', async ({
+    app,
+    page
+  }) => {
+    test.skip(process.platform !== 'win32', 'caption buttons are Windows-only')
+    await expect.poll(async () => (await mainWindow(app)).visible, { timeout: 30_000 }).toBe(true)
+
+    const close = page.locator('[data-caption-button="close"]')
+    await expect(close).toBeVisible()
+    const box = (await close.boundingBox())!
+    const viewportWidth = await page.evaluate(() => window.innerWidth)
+    expect(Math.abs(box.x + box.width - viewportWidth)).toBeLessThanOrEqual(1)
+    await expect(page.locator('[data-caption-button]')).toHaveCount(3)
+  })
 })

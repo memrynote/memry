@@ -36,6 +36,7 @@ import {
   type CoverValue
 } from '@memry/shared/cover-image'
 import { Image, Move, X, ZoomIn, ZoomOut } from '@/lib/icons'
+import { toWebviewUrl } from '@/lib/memry-file-url'
 import { cn } from '@/lib/utils'
 import { Kbd } from '@/components/ui/kbd'
 
@@ -295,7 +296,7 @@ export const NoteCover = memo(function NoteCover({
         />
       ) : (
         <img
-          src={src ?? undefined}
+          src={src === null ? undefined : toWebviewUrl(src)}
           alt={t('cover.alt')}
           draggable={false}
           onError={() => {

@@ -115,6 +115,14 @@ impl Vault {
         crate::api::external_feed::ExternalFeed::over(self.db.clone(), &store)
     }
 
+    /// What the vault write-back puts in note files (desktop Step 12e-3).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[cfg(feature = "markdown")]
+    #[doc(hidden)]
+    pub fn write_back(&self) -> crate::api::write_back::WriteBackReader {
+        crate::api::write_back::WriteBackReader::over(self.db.clone())
+    }
+
     /// Every settings group of this vault, local and synced (desktop Step 09).
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[doc(hidden)]

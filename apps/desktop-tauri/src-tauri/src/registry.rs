@@ -65,6 +65,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_first_paint,
             crate::commands::shell::shell_heartbeat,
             crate::commands::shell::shell_show_context_menu,
+            crate::commands::shell::shell_open_external,
+            crate::commands::shell::shell_open_link,
+            crate::commands::shell::shell_open_path,
+            crate::commands::shell::shell_reveal_path,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,
@@ -73,6 +77,14 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::telemetry::telemetry_track,
             // unsplash
             crate::commands::unsplash::unsplash_search,
+            // updater
+            crate::commands::updater::updater_check_for_updates,
+            crate::commands::updater::updater_download_update,
+            crate::commands::updater::updater_get_state,
+            crate::commands::updater::updater_quit_and_install,
+            crate::commands::updater::updater_set_auto_check,
+            crate::commands::updater::updater_set_auto_download,
+            crate::commands::updater::updater_skip_version,
             // vault
             crate::commands::vault::vault_close,
             crate::commands::vault::vault_create,
@@ -105,6 +117,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
+            // updater
+            crate::events::UpdaterStateChangedEvent,
             // vault
             crate::events::VaultErrorEvent,
             crate::events::VaultIndexRecoveredEvent,

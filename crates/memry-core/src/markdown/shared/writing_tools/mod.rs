@@ -8,6 +8,7 @@ mod frontmatter;
 pub(crate) use frontmatter::js_entry_order;
 mod markers;
 mod types;
+mod yaml;
 
 pub use encode::{encode_writing_body, without_writing_sentinels};
 pub use frontmatter::{
@@ -19,3 +20,4 @@ pub use markers::{
     is_writing_alternative_id, marker_comment, new_writing_alternative_id, strip_writing_sentinels,
 };
 pub use types::*;
+pub use yaml::{merge_writing_yaml, writing_of_yaml};

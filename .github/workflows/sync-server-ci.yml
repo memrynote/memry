@@ -3,6 +3,11 @@ name: Sync Server CI
 on:
   pull_request:
   push:
+    # Branch filter keeps `push` off gh-readonly-queue/* refs, where it would share a concurrency
+    # group with the merge_group run and cancel it, ejecting the PR from the queue.
+    branches:
+      - main
+      - feat/tauri-v2
     paths:
       - 'apps/sync-server/**'
       - 'packages/contracts/**'

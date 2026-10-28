@@ -3,6 +3,7 @@
 //! add their events here and list them in `registry.rs`; none calls `emit` directly.
 
 use memry_desktop::session::response::VaultStatus;
+use memry_desktop::updater::state::AppUpdateState;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
@@ -134,3 +135,8 @@ pub struct InboxOpenItemEvent {
 pub struct MenuCommandInvokedEvent {
     pub command: String,
 }
+
+/// The updater state changed (`updater:state-changed`). The whole state, which the renderer
+/// replaces wholesale; a burst of progress ticks reaches it as the latest value only.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct UpdaterStateChangedEvent(pub AppUpdateState);

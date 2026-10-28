@@ -10,11 +10,10 @@ use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::markdown::convert::api::Converter;
-use memry_core::markdown::frontmatter::YamlValue;
 use memry_core::markdown::schema::callout_types::{
     CalloutTypes, sanitize_callout_type_definitions,
 };
-use memry_core::markdown::shared::writing_tools::WRITING_FRONTMATTER_KEY;
+use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of_yaml};
 
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowStat};
@@ -49,30 +48,27 @@ pub(super) struct Applier {
 
 /// Whether the note's document now holds the whole file: only then does the row record the
 /// file's hash. `BodyPresent` is not: a seed answers it before it compares any text, so the
-/// body it left alone can differ from the file.
-fn holds_file(outcome: FeedOutcome, file: &NoteFile) -> bool {
-    matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) && !has_writing(file)
+/// body it left alone can differ from the file. Nor is a file whose `writing` frontmatter
+/// could not be read: the feed was not told it.
+fn holds_file(outcome: FeedOutcome, writing: Option<&WritingFrontmatter>) -> bool {
+    matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) && writing.is_some()
 }
 
-/// The feed is not told the `writing` frontmatter (12e-3 reads it), so its answer covers the
-/// body alone, and a file with one holds alternatives the document may not. A frontmatter
-/// that does not parse may hold one.
-fn has_writing(file: &NoteFile) -> bool {
+/// The writing tools data the whole file says (none without the key, or with the author's
+/// own), or `None` when its frontmatter does not parse and may hold some.
+fn writing_of(file: &NoteFile) -> Option<WritingFrontmatter> {
     if file.split().block.is_none() {
-        return false;
+        return Some(WritingFrontmatter::default());
     }
-    match file.parse() {
-        Ok(parsed) => matches!(
-            &parsed.frontmatter,
-            YamlValue::Map(map) if map.get(WRITING_FRONTMATTER_KEY).is_some()
-        ),
-        Err(_) => true,
-    }
+    file.parse()
+        .ok()
+        .map(|parsed| writing_of_yaml(&parsed.frontmatter))
 }
 
 /// What a body write came to.
 enum Body {
-    Wrote(FeedOutcome),
+    /// The feed answered; `holds_file` when the document now holds the whole file.
+    Wrote { holds_file: bool },
     /// This device has no signing key: nothing was written (the tier said so once).
     NoKey,
     /// The write failed; the fact is retried.
@@ -205,7 +201,7 @@ impl Applier {
         let content_hash = match &file {
             None => None,
             Some(file) => match self.write_body(&note_id, path, file, Write::Seed) {
-                Body::Wrote(outcome) => holds_file(outcome, file).then(|| file.hash.clone()),
+                Body::Wrote { holds_file } => holds_file.then(|| file.hash.clone()),
                 Body::NoKey => None,
                 Body::Failed => return Step::Retry(path.to_owned()),
             },
@@ -289,8 +285,8 @@ impl Applier {
                 None => Write::Seed,
             };
             match self.write_body(note_id, path, &file, write) {
-                Body::Wrote(outcome) if holds_file(outcome, &file) => Some(file.hash),
-                Body::Wrote(_) | Body::NoKey => return Step::Done,
+                Body::Wrote { holds_file: true } => Some(file.hash),
+                Body::Wrote { holds_file: false } | Body::NoKey => return Step::Done,
                 Body::Failed => return Step::Retry(path.to_owned()),
             }
         } else {
@@ -430,17 +426,17 @@ impl Applier {
             return Body::NoKey;
         };
         let split = file.split();
+        // `None` for a frontmatter that does not parse says nothing about the writing state,
+        // so the document keeps what it holds, and the file is not taken as read.
+        let writing = writing_of(file);
         let input = FeedInput {
             note_id,
             markdown: split.body,
             note_path: Some(path),
-            // The `writing` frontmatter is not read here (12e-3): `None` says nothing about
-            // it, so the writing state the document holds is kept, and a file that has one
-            // is not taken as read (`holds_file`).
-            writing: None,
+            writing: writing.clone(),
             frontmatter: split.block,
         };
-        let converter = self.converter();
+        let converter = converter_for(self.settings.as_ref());
         let outcome = match write {
             Write::Seed => feed.seed_body_if_empty(&converter, input),
             Write::Replace => feed.feed(&converter, input),
@@ -455,7 +451,9 @@ impl Applier {
                         "a file's text did not reach its note"
                     );
                 }
-                Body::Wrote(outcome)
+                Body::Wrote {
+                    holds_file: holds_file(outcome, writing.as_ref()),
+                }
             }
             Err(error) => {
                 tracing::error!(
@@ -467,23 +465,24 @@ impl Applier {
             }
         }
     }
+}
 
-    /// Read for every write, so a callout type added in the app is known to the next feed.
-    fn converter(&self) -> Converter {
-        let raw = self.settings.as_ref().and_then(|settings| {
-            settings
-                .get_path("editor.calloutTypes")
-                .inspect_err(|error| {
-                    tracing::warn!(scope = SCOPE, "callout types could not be read: {error}");
-                })
-                .ok()
-                .flatten()
-        });
-        let definitions = raw
-            .map(|value| sanitize_callout_type_definitions(&value))
-            .unwrap_or_default();
-        Converter::new(CalloutTypes::new(definitions))
-    }
+/// The converter with the vault's callout types. Read for every write, so a callout type added
+/// in the app is known to the next feed and write-back.
+pub(crate) fn converter_for(settings: Option<&AppSettings>) -> Converter {
+    let raw = settings.and_then(|settings| {
+        settings
+            .get_path("editor.calloutTypes")
+            .inspect_err(|error| {
+                tracing::warn!(scope = SCOPE, "callout types could not be read: {error}");
+            })
+            .ok()
+            .flatten()
+    });
+    let definitions = raw
+        .map(|value| sanitize_callout_type_definitions(&value))
+        .unwrap_or_default();
+    Converter::new(CalloutTypes::new(definitions))
 }
 
 #[derive(Clone, Copy)]

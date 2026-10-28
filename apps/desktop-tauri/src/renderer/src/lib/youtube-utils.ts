@@ -1,4 +1,5 @@
 export { extractYouTubeVideoId, getYouTubeThumbnailUrl } from '@memry/shared/youtube'
 
-export const getYouTubeEmbedUrl = (videoId: string): string =>
-  `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`
+// The loopback page, not youtube-nocookie.com directly: the app's own origin is not http(s), and
+// YouTube answers an embedder it cannot identify with Error 153.
+export { toYoutubeEmbedUrl as getYouTubeEmbedUrl } from './memry-file-url'

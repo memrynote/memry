@@ -4,7 +4,6 @@ import * as React from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { runCommand } from '@/commands'
 import { ChevronLeft, ChevronRight, Search } from '@/lib/icons'
-import { CaptionButtons } from '@/components/caption-buttons'
 import { TrafficLights } from '@/components/traffic-lights'
 import { TabIcon } from '@/components/tabs/tab-icon'
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
@@ -79,15 +78,14 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
       >
         <TrafficLights />
       </div>
-      {/* Opaque backing for the Windows caption buttons (transparent overlay, 0px
-          wide elsewhere): the right panel slides through this corner when it opens
+      {/* Opaque backing for the Windows caption buttons that `App` draws over every screen
+          (0px wide elsewhere): the right panel slides through this corner when it opens
           or closes, and would otherwise show behind minimize/maximize/close. */}
       <div
         aria-hidden="true"
         className={cn('fixed top-0 end-0 drag-region h-9 bg-sidebar-rail', className)}
         style={{ width: 'var(--caption-reserve-end)' }}
       />
-      <CaptionButtons />
       <div
         className={cn(
           'fixed drag-region flex items-center gap-2 shrink-0 h-9 ps-1 pe-2',
