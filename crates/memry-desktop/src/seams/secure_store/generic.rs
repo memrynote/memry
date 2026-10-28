@@ -25,11 +25,11 @@ pub trait GenericSecrets: Send + Sync {
 
 /// Closed services. This app's own service [`SERVICE`] has owners ([`KeyringStore`]'s
 /// `SecureStore` and [`super::DeviceIdentityStore`]): a generic caller would bypass their format
-/// and the device key's cache. Every Electron service (`com.memry.*`, `memry.*`) is read-only import material for Step 37 (#3554): Electron's `getSecret` and `setSecret`
-/// move each keychain item into its own file and delete the keychain copy (see [`SERVICE`]).
-/// Generic secrets live under
-/// `com.memrynote.memry.<feature>`. Case-insensitive: the macOS and Windows stores match names
-/// without regard to case.
+/// and the device key's cache. Every Electron service (`com.memry.*`, `memry.*`) is read-only
+/// import material for Step 37 (#3554): Electron's `getSecret` and `setSecret` move each keychain
+/// item into its own file and delete the keychain copy (see [`SERVICE`]). Generic secrets live
+/// under `com.memrynote.memry.<feature>`. Case-insensitive: the macOS and Windows stores match
+/// names without regard to case.
 fn closed(service: &str) -> Result<(), SecureStoreError> {
     let service_lower = service.to_ascii_lowercase();
     let electron = service_lower.starts_with("com.memry.") || service_lower.starts_with("memry.");

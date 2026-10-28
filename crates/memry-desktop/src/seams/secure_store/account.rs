@@ -6,7 +6,7 @@ use memry_core::seams::secure_store::SecureStoreKey;
 
 /// The keychain service of the five sync secrets, this app's own. Not Electron's `com.memry.sync`:
 /// Electron moves every one of its keychain items into its own encrypted file and deletes the
-/// keychain copy (`apps/desktop/src/main/secrets/secret-storage.ts:436`, `:518`), so a secret
+/// keychain copy (`apps/desktop/src/main/secrets/secret-storage.ts:436`, `:518-521`), so a secret
 /// kept there could vanish under a running Electron or be taken over by it. Electron's secrets
 /// reach this app only through the Step 37 (#3554) import, which reads them and never writes them.
 pub const SERVICE: &str = "com.memrynote.memry";
