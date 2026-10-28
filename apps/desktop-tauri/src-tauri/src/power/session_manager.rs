@@ -1,7 +1,7 @@
 //! The desktop's session manager on the session bus, for a logout. logind announces only a
 //! restart or a power off (`linux.rs`); at a logout the session manager quits, the display server
-//! goes with it, and Xlib's IO error handler (GDK's) ends the process with `_exit(1)` about 150 ms
-//! later, before any quit sequence. The session manager asks its registered clients first, and
+//! goes with it, and GDK ends the process with `_exit(1)` 50 to 150 ms in, before any quit
+//! sequence (from Xlib's IO error handler on X11, from its event source on Wayland). The session manager asks its registered clients first, and
 //! keeps the display up until each has answered, so the app registers as a client and runs the
 //! quit sequence then.
 //!
@@ -11,9 +11,8 @@
 //! `QueryEndSession`, `EndSession`, `CancelEndSession` and `Stop`, and is answered with
 //! `EndSessionResponse(is_ok, reason)`. GNOME wants the `QueryEndSession` answer within a second
 //! and gives `EndSession` ten; Xfce waits up to 60 s and 7 s. Both count a client whose bus
-//! connection closed as answered. KDE Plasma and LXQt speak only XSMP and are not covered.
-
-use std::time::Duration;
+//! connection closed as answered. Verified on GNOME 46 (Xorg and Wayland) and Xfce 4.18. KDE
+//! Plasma and LXQt speak only XSMP and are not covered.
 
 use memry_desktop::shell::power::{PowerEvent, wait_for};
 use memry_desktop::shell::shutdown::SESSION_END_BUDGET;
@@ -46,9 +45,6 @@ const PROTOCOLS: [Protocol; 2] = [
         client: "org.xfce.Session.Client",
     },
 ];
-
-/// How often the `EndSession` handler looks at the quit sequence.
-const POLL: Duration = Duration::from_millis(20);
 
 pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
     let (app, sender) = (app.clone(), sender.clone());
@@ -89,15 +85,13 @@ fn listen(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) -> zbus::Result<()>
         };
         match member.as_str() {
             "QueryEndSession" => {
-                // An update must not start installing as the session goes down. The session may
-                // still be called off, so nothing else starts yet.
-                if let Some(hook) = crate::shutdown::update_hook(app) {
-                    hook.disable_install_on_quit();
-                }
+                // The session may still be called off, so nothing else starts yet.
+                disable_install_on_quit(app);
                 answer(&client, "QueryEndSession");
             }
             "EndSession" => {
                 super::publish(sender, PowerEvent::SessionEnding);
+                disable_install_on_quit(app);
                 crate::shutdown::begin_session_end(app);
                 let done = wait_for(
                     SESSION_END_BUDGET,
@@ -127,9 +121,10 @@ fn listen(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) -> zbus::Result<()>
 }
 
 /// The first session manager that accepts the app as a client, and the client's object path.
-/// A session manager starts an autostarted app with its client id in `DESKTOP_AUTOSTART_ID`.
+/// The startup id is empty: a session manager hands an autostarted app its client id in
+/// `DESKTOP_AUTOSTART_ID`, but GDK takes and unsets it when it opens the display, before this
+/// runs, so the app registers as a new client.
 fn register(connection: &Connection, app_id: &str) -> Option<(&'static Protocol, OwnedObjectPath)> {
-    let startup_id = std::env::var("DESKTOP_AUTOSTART_ID").unwrap_or_default();
     PROTOCOLS.iter().find_map(|protocol| {
         let manager = Proxy::new(
             connection,
@@ -138,18 +133,32 @@ fn register(connection: &Connection, app_id: &str) -> Option<(&'static Protocol,
             protocol.manager,
         )
         .ok()?;
-        match manager.call("RegisterClient", &(app_id, startup_id.as_str())) {
+        match manager.call("RegisterClient", &(app_id, "")) {
             Ok(path) => Some((protocol, path)),
+            // The usual answer on any other desktop.
+            Err(zbus::Error::MethodError(name, _, _))
+                if name.as_str() == "org.freedesktop.DBus.Error.ServiceUnknown" =>
+            {
+                tracing::debug!(scope = "Power", "no {} session manager", protocol.desktop);
+                None
+            }
             Err(error) => {
-                tracing::debug!(
+                tracing::info!(
                     scope = "Power",
-                    "no {} session manager: {error}",
+                    "the {} session manager refused the app: {error}",
                     protocol.desktop
                 );
                 None
             }
         }
     })
+}
+
+/// An update must not start installing as the session goes down.
+fn disable_install_on_quit(app: &AppHandle<Wry>) {
+    if let Some(hook) = crate::shutdown::update_hook(app) {
+        hook.disable_install_on_quit();
+    }
 }
 
 fn answer(client: &Proxy<'_>, signal: &str) {

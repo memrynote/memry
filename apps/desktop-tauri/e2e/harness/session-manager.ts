@@ -28,7 +28,12 @@ export interface FakeSessionManager {
   ): Promise<SessionManagerEvent>
   /** Starts a logout for the registered client with process id `pid`. */
   logout(pid: number): void
-  stop(): void
+  /** Asks that client whether the session may end, then calls the logout off. */
+  cancelLogout(pid: number): void
+  /** Asks that client to quit. */
+  stop(pid: number): void
+  /** Ends the fake. */
+  close(): void
 }
 
 const SCRIPT = fileURLToPath(new URL('./fake-session-manager.py', import.meta.url))
@@ -36,16 +41,28 @@ const SCRIPT = fileURLToPath(new URL('./fake-session-manager.py', import.meta.ur
 export async function startFakeSessionManager(desktop: Desktop): Promise<FakeSessionManager> {
   const child = spawn('python3', [SCRIPT, desktop], { stdio: ['pipe', 'pipe', 'inherit'] })
   const events: SessionManagerEvent[] = []
+  let failure: Error | undefined
+  child.on('error', (error) => {
+    failure = error
+  })
   createInterface({ input: child.stdout }).on('line', (line) => {
     events.push(JSON.parse(line) as SessionManagerEvent)
   })
   const manager: FakeSessionManager = {
     events,
     async waitFor(event, matches = () => true, timeoutMs = 10_000) {
-      const found = await pollUntil(() => events.find((e) => e.event === event && matches(e)), {
-        timeoutMs,
-        intervalMs: 50
-      })
+      const found = await pollUntil(
+        () => {
+          if (failure) {
+            throw new HarnessError(`the fake session manager did not start: ${failure.message}`)
+          }
+          return events.find((e) => e.event === event && matches(e))
+        },
+        {
+          timeoutMs,
+          intervalMs: 50
+        }
+      )
       if (!found) {
         throw new HarnessError(
           `the fake session manager saw no "${event}"; it saw ${JSON.stringify(events)}`
@@ -56,7 +73,13 @@ export async function startFakeSessionManager(desktop: Desktop): Promise<FakeSes
     logout(pid) {
       child.stdin.write(`logout ${pid}\n`)
     },
-    stop() {
+    cancelLogout(pid) {
+      child.stdin.write(`cancel ${pid}\n`)
+    },
+    stop(pid) {
+      child.stdin.write(`stop ${pid}\n`)
+    },
+    close() {
       child.kill()
     }
   }

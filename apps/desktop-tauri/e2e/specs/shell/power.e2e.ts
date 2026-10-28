@@ -4,7 +4,11 @@ import { join } from 'node:path'
 import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
-import { startFakeSessionManager, type FakeSessionManager } from '../../harness/session-manager'
+import {
+  startFakeSessionManager,
+  type Desktop,
+  type FakeSessionManager
+} from '../../harness/session-manager'
 import { pollUntil, readMainLog, waitForMainLog } from '../../harness/wait'
 
 // On macOS this posts the real NSWorkspace notifications, so the observers are under test; on
@@ -81,18 +85,22 @@ for (const hidden of [false, true]) {
 // soon as it answers, as the display going away does; an app that has already exited closed its
 // connection, which both session managers count as an answer. GNOME and Xfce speak the same
 // protocol under their own bus names.
-for (const desktop of ['gnome', 'xfce'] as const) {
+function withSessionManager(desktop: Desktop) {
   const logoutTest = test.extend<{ sessionManager: FakeSessionManager }>({
     sessionManager: async (_deps, use) => {
       const manager = await startFakeSessionManager(desktop)
       try {
         await use(manager)
       } finally {
-        manager.stop()
+        manager.close()
       }
     }
   })
-  const linuxTest = process.platform === 'linux' ? logoutTest : logoutTest.skip
+  return process.platform === 'linux' ? logoutTest : logoutTest.skip
+}
+
+for (const desktop of ['gnome', 'xfce'] as const) {
+  const linuxTest = withSessionManager(desktop)
   linuxTest(
     `an edit only the page holds survives a ${desktop} logout`,
     async ({ sessionManager, app }) => {
@@ -120,3 +128,36 @@ for (const desktop of ['gnome', 'xfce'] as const) {
     }
   )
 }
+
+// A logout the user calls off (GNOME's dialog, or an inhibitor) leaves the app running.
+withSessionManager('gnome')(
+  'a logout that is called off leaves the app running',
+  async ({ sessionManager, app }) => {
+    await sessionManager.waitFor('registered', (e) => e.pid === app.pid)
+
+    sessionManager.cancelLogout(app.pid)
+    await sessionManager.waitFor('sent', (e) => e.signal === 'CancelEndSession')
+
+    expect(await waitForMainLog(app, 'the logout was called off', 5_000)).toBe(true)
+    expect(isAlive(app.pid)).toBe(true)
+    expect(readMainLog(app.dirs.logDir)).not.toContain('starting graceful shutdown')
+  }
+)
+
+// Stop asks a client to quit; it quits through the sequence, edits included.
+withSessionManager('gnome')(
+  'Stop from the session manager quits through the sequence',
+  async ({ sessionManager, app }) => {
+    await sessionManager.waitFor('registered', (e) => e.pid === app.pid)
+    const edit = `held-${Date.now()}`
+    await app.executor.execute('window.__memryE2eHoldEdit(arguments[0])', edit)
+
+    sessionManager.stop(app.pid)
+
+    expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 10_000, intervalMs: 50 })).toBe(
+      true
+    )
+    expect(readFileSync(join(app.dirs.appDataDir, 'e2e-held-edit.txt'), 'utf8')).toBe(edit)
+    expect(readMainLog(app.dirs.logDir)).toContain('cleanup complete')
+  }
+)

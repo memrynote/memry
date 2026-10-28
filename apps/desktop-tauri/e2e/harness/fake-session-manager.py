@@ -4,11 +4,16 @@ Usage: fake-session-manager.py gnome|xfce
 
 Owns org.gnome.SessionManager or org.xfce.SessionManager and speaks the client protocol both
 use: RegisterClient, then QueryEndSession, EndSession and Stop to the client, answered with
-EndSessionResponse. Specs in other workers share the session bus, so their apps register too:
-a line "logout <pid>" on stdin starts a logout for the client with that process id only. When
-that client answers EndSession or its connection closes, the session is over: the fake ends it
-with SIGKILL, as the display server going away ends it with Xlib's IO error. Each step is a JSON
-line on stdout.
+EndSessionResponse. Specs in other workers share the session bus, so their apps register too,
+and each command on stdin names the client by process id:
+
+- "logout <pid>": QueryEndSession, then EndSession once it is answered. When the client answers
+  EndSession or its connection closes, the session is over: the fake ends it with SIGKILL, as the
+  display server going away ends it with Xlib's IO error.
+- "cancel <pid>": QueryEndSession, then CancelEndSession once it is answered.
+- "stop <pid>": Stop.
+
+Each step is a JSON line on stdout.
 """
 
 import json
@@ -111,6 +116,9 @@ def on_method(connection, sender, path, iface, method, params, invocation):
         if state["phase"] == "query":
             state["phase"] = "end"
             emit("EndSession")
+        elif state["phase"] == "query-cancel":
+            state["phase"] = "idle"
+            emit("CancelEndSession")
         elif state["phase"] == "end":
             end_session("answered")
 
@@ -129,9 +137,19 @@ def on_stdin(source, condition):
         loop.quit()
         return False
     command, _, pid = line.strip().partition(" ")
-    if command == "logout" and int(pid) in clients:
-        state.update(phase="query", client=clients[int(pid)], pid=int(pid))
+    if not pid.isdigit() or int(pid) not in clients:
+        report("unknown-client", line=line.strip())
+        return True
+    state.update(client=clients[int(pid)], pid=int(pid))
+    if command == "logout":
+        state["phase"] = "query"
         emit("QueryEndSession")
+    elif command == "cancel":
+        state["phase"] = "query-cancel"
+        emit("QueryEndSession")
+    elif command == "stop":
+        state["phase"] = "stopping"
+        emit("Stop")
     return True
 
 
