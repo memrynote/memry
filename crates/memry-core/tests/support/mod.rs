@@ -171,6 +171,9 @@ pub fn vector_file(name: &str) -> Json {
         "markdown-convert/parse" => {
             include_str!("../../../../packages/contracts/test-vectors/markdown-convert/parse.json")
         }
+        "markdown-convert/blocknote-0.47.1" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/blocknote-0.47.1.json"
+        ),
         "markdown-convert/yxml" => {
             include_str!("../../../../packages/contracts/test-vectors/markdown-convert/yxml.json")
         }

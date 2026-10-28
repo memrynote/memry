@@ -57,7 +57,7 @@ use crate::storage::repositories::sync_items;
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
 use super::first_sync_store::{
-    owe_out_of_window, pending_metadata_ids, read_meta, recent_document_ids, write_meta,
+    owe_live_documents, pending_metadata_ids, read_meta, recent_document_ids, write_meta,
 };
 use super::note_body_feed;
 use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
@@ -409,11 +409,10 @@ impl FirstSync {
         // server still answers with the surviving log, and applying it would
         // resurrect a body the record feed says is deleted.
 
-        // Owed before the pull; every later pass's body step sweeps the rest.
-        let pulled = window.clone();
-        (self.db)
-            .call(move |conn| owe_out_of_window(conn, &pulled))
-            .await?;
+        // Every live document is owed before any pull, the window included
+        // (a merged pull settles it), and so is a record an older build's
+        // interrupted run applied without a debt.
+        self.db.call(|conn| owe_live_documents(conn)).await?;
 
         // Renewed once here rather than per request: the document pulls run
         // concurrently and must not race each other into two renewals. The
@@ -424,7 +423,8 @@ impl FirstSync {
             None => false,
         };
         report.bodies.absorb(
-            body_pass::pull_parallel(&self.bodies, window, elevated, &self.progress).await?,
+            body_pass::pull_parallel(&self.bodies, &self.db, window, elevated, &self.progress)
+                .await?,
         );
         Ok(())
     }

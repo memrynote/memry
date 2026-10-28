@@ -8,7 +8,10 @@
 //! take the whole branch with it, e.g. a `tableRow` that ends up childless.
 //! This function reads and never deletes: [`ReadFragment::removed`] counts
 //! what the TypeScript repair would have deleted, and the caller reads from a
-//! detached copy of the document (`blocknote-converter.ts:365-380`).
+//! detached copy of the document (`blocknote-converter.ts:365-380`). What the
+//! read drops inside the elements it keeps (a run under an unknown mark, an
+//! attribute the schema does not declare) is counted in [`ReadFragment::lost`],
+//! so the two together say whether the document holds the whole fragment.
 //!
 //! **Writing** is `prosemirrorToYXmlFragment` into an empty fragment: one
 //! element per node with its attributes (an `Undefined` value is written, a
@@ -29,6 +32,26 @@ use yrs::{
 
 use super::pm::{Fragment, Mark, Node, Schema};
 
+/// Mark attributes a shipped desktop release wrote into Y formatting that this schema no
+/// longer declares, and that nothing ever read back: reading them is not a loss.
+///
+/// Derived from each release's real `pmSchema` (`apps/desktop/scripts/markdown-oracle/
+/// blocknote-history.mts`, committed as `markdown-convert/blocknote-<version>.json`), and
+/// checked against it by `tests/markdown_yxml_vectors.rs`:
+///
+/// - `link.{target, rel, class, title}`: BlockNote 0.47.1 (desktop releases v2026.4.28 to
+///   v2026-09-19) built its link mark from `@tiptap/extension-link` 3.19, which declares
+///   them with the defaults `_blank`, `noopener noreferrer nofollow`, null, null, so every
+///   link those releases wrote carries `target` and `rel`. The release turned a link mark
+///   into the block `{ type: "link", href, content }` (`nodeToBlock`) before any markdown
+///   was written, so no file ever held them, and 0.54.2 reads past them.
+///
+/// The AI suggestion marks of 0.47.1 (`insertion`, `deletion`, `modification`) are not
+/// here: they lived on a forked document (`ForkYDocExtension`) and were resolved before the
+/// merge, so one found in Y is unresolved content, which stays lost.
+pub const RETIRED_MARK_ATTRS: &[(&str, &[&str])] =
+    &[("link", &["target", "rel", "class", "title"])];
+
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum YxmlError {
     /// A text node directly under the fragment, or a nested fragment anywhere:
@@ -47,6 +70,13 @@ pub struct ReadFragment {
     pub doc: Node,
     /// Elements that were in the fragment and are not in `doc`.
     pub removed: usize,
+    /// Content the read dropped inside what it kept, which `removed` does not
+    /// count: a text run with a mark this schema does not know, a run that is not
+    /// plain text, and an attribute of an element, a mark or an `XmlText` the
+    /// schema does not declare (a `Null` or `Undefined` value holds nothing, and a
+    /// [`RETIRED_MARK_ATTRS`] one was never read; neither is counted). Zero together
+    /// with `removed` means the document holds everything the fragment does.
+    pub lost: usize,
 }
 
 /// `yXmlFragmentToProseMirrorRootNode`.
@@ -60,11 +90,12 @@ pub fn read_fragment<T: ReadTxn>(
     }
     let mut children = Vec::new();
     let mut total = 0;
+    let mut lost = 0;
     for child in fragment.children(txn) {
         match child {
             XmlOut::Element(element) => {
                 total += count_elements(&element, txn);
-                if let Some(node) = build_element(schema, txn, &element)? {
+                if let Some(node) = build_element(schema, txn, &element, &mut lost)? {
                     children.push(node);
                 }
             }
@@ -83,6 +114,7 @@ pub fn read_fragment<T: ReadTxn>(
     Ok(ReadFragment {
         doc,
         removed: total - kept,
+        lost,
     })
 }
 
@@ -108,13 +140,19 @@ fn build_element<T: ReadTxn>(
     schema: &Schema,
     txn: &T,
     element: &XmlElementRef,
+    lost: &mut usize,
 ) -> Result<Option<Node>, YxmlError> {
     let mut children = Vec::new();
     for child in element.children(txn) {
         match child {
-            XmlOut::Element(inner) => children.extend(build_element(schema, txn, &inner)?),
+            XmlOut::Element(inner) => children.extend(build_element(schema, txn, &inner, lost)?),
             XmlOut::Text(text) => {
-                children.extend(text_nodes(schema, txn, &text).into_iter().flatten())
+                // y-prosemirror reads no attribute of an `XmlText` itself.
+                *lost += text.attributes(txn).filter(|(_, v)| holds_value(v)).count();
+                match text_nodes(schema, txn, &text, lost) {
+                    Some(nodes) => children.extend(nodes),
+                    None => *lost += 1,
+                }
             }
             XmlOut::Fragment(_) => return Err(YxmlError::Unconvertible),
         }
@@ -123,12 +161,43 @@ fn build_element<T: ReadTxn>(
         .attributes(txn)
         .map(|(name, value)| (name.to_owned(), out_to_any(value, txn)))
         .collect();
-    Ok(schema.node(element.tag(), &attrs, children).ok())
+    let node = schema.node(element.tag(), &attrs, children).ok();
+    if let Some(node) = &node {
+        *lost += undeclared(&attrs, &node.attrs);
+    }
+    Ok(node)
+}
+
+/// The given attributes with a value that the built ones do not hold.
+fn undeclared(given: &[(String, Any)], built: &[(String, Any)]) -> usize {
+    given
+        .iter()
+        .filter(|(name, value)| {
+            !matches!(value, Any::Null | Any::Undefined) && !built.iter().any(|(k, _)| k == name)
+        })
+        .count()
+}
+
+fn retired_attrs(mark: &str) -> &'static [&'static str] {
+    RETIRED_MARK_ATTRS
+        .iter()
+        .find(|(name, _)| *name == mark)
+        .map_or(&[], |(_, attrs)| attrs)
+}
+
+fn holds_value(value: &Out) -> bool {
+    !matches!(value, Out::Any(Any::Null | Any::Undefined))
 }
 
 /// `createTextNodesFromYText`: `None` when a mark is unknown (the text is
-/// deleted), otherwise one text node per formatting run.
-fn text_nodes<T: ReadTxn>(schema: &Schema, txn: &T, text: &XmlTextRef) -> Option<Vec<Node>> {
+/// deleted), otherwise one text node per formatting run. A mark attribute the
+/// mark type does not declare is counted in `lost`.
+fn text_nodes<T: ReadTxn>(
+    schema: &Schema,
+    txn: &T,
+    text: &XmlTextRef,
+    lost: &mut usize,
+) -> Option<Vec<Node>> {
     let mut nodes = Vec::new();
     for chunk in text.diff(txn, YChange::identity) {
         let Out::Any(Any::String(value)) = &chunk.insert else {
@@ -141,7 +210,17 @@ fn text_nodes<T: ReadTxn>(schema: &Schema, txn: &T, text: &XmlTextRef) -> Option
             entries.sort_by(|a, b| a.0.cmp(b.0));
             for (name, value) in entries {
                 let ty = schema.mark_type(mark_name(name))?;
-                marks.push(schema.create_mark(ty, value).ok()?);
+                let mark = schema.create_mark(ty, value).ok()?;
+                if let Any::Map(given) = value {
+                    let retired = retired_attrs(mark_name(name));
+                    let given: Vec<(String, Any)> = given
+                        .iter()
+                        .filter(|(k, _)| !retired.contains(&k.as_str()))
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect();
+                    *lost += undeclared(&given, &mark.attrs);
+                }
+                marks.push(mark);
             }
         }
         marks.sort_by_key(|m: &Mark| (schema.mark_ty(m.ty).rank, format!("{:?}", m.attrs)));

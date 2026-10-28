@@ -14,6 +14,8 @@ pub mod conformance;
 pub mod content_admin;
 pub mod crypto;
 pub mod errors;
+#[cfg(feature = "markdown")]
+pub mod external_feed;
 pub mod inbox;
 pub mod inbox_conformance;
 pub mod inbox_enrich;

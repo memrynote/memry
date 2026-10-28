@@ -104,6 +104,17 @@ impl Vault {
         crate::api::note_files::NoteFiles::over(self.db.clone())
     }
 
+    /// Outside edits of note files, fed into note bodies (desktop Step 12e).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[cfg(feature = "markdown")]
+    #[doc(hidden)]
+    pub fn external_feed(
+        &self,
+        store: Arc<dyn SecureStore>,
+    ) -> Result<crate::api::external_feed::ExternalFeed, AuthError> {
+        crate::api::external_feed::ExternalFeed::over(self.db.clone(), &store)
+    }
+
     /// Every settings group of this vault, local and synced (desktop Step 09).
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[doc(hidden)]
