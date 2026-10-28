@@ -1,0 +1,10 @@
+# nextest runs every test in its own process, so the turn lock in `keyring_live.rs` (a process-wide
+# mutex) does not keep two live keychain tests apart there. Credential Manager loses deletes when
+# writers overlap, across processes too (#3716), so the live keychain binaries run one test at a
+# time under nextest as well.
+[test-groups]
+live-keychain = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'binary(keyring_live) | binary(electron_secrets_live)'
+test-group = 'live-keychain'
