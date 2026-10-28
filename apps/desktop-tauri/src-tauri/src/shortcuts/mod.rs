@@ -139,13 +139,13 @@ impl ShortcutService {
     }
 
     /// Register first, save second (`save` writes the setting). A refused binding is not saved.
-    pub fn set(
+    pub fn set<E>(
         &self,
         app: &AppHandle<Wry>,
         read_previous: impl FnOnce() -> Option<ShortcutBinding>,
         binding: Option<&ShortcutBinding>,
-        save: impl FnOnce() -> Result<(), String>,
-    ) -> Result<GlobalCaptureResult, String> {
+        save: impl FnOnce() -> Result<(), E>,
+    ) -> Result<GlobalCaptureResult, E> {
         let mut capture = self.capture.lock().unwrap_or_else(PoisonError::into_inner);
         // Read under the lock: two saves in flight would otherwise both restore the same old one.
         let previous = read_previous();

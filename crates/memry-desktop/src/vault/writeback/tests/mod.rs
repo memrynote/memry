@@ -12,18 +12,17 @@ use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
-use memry_core::crypto::sodium;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::markdown::frontmatter::{parse_markdown_note, split_frontmatter_block};
 use memry_core::markdown::shared::writing_tools::writing_of_yaml;
-use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::OpenOptions;
 use tokio::sync::broadcast;
 
 use super::{Keep, Outcome, Pass};
-use crate::profile_store::ProfileDeviceKeyStore;
 use crate::vault::consumer::converter_for;
 use crate::vault::consumer::rows::{RowOwner, RowStat};
+use crate::vault::consumer::tests::with_device_key;
 use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
@@ -47,12 +46,7 @@ pub(super) fn fixture() -> Fixture {
     let root = dir.path().join("vault");
     let core = root.join(".memry/core");
     std::fs::create_dir_all(&core).unwrap();
-    std::fs::create_dir_all(dir.path().join("app")).unwrap();
-    let store = ProfileDeviceKeyStore::shared(&dir.path().join("app"));
-    let (_, secret) = sodium::sign_seed_keypair(&[7u8; 32]).unwrap();
-    store
-        .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
-        .unwrap();
+    let store = with_device_key();
     let vault = Arc::new(
         Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap(),
     );

@@ -48,7 +48,7 @@ pub mod identity;
 pub mod rows;
 mod run;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 mod tier;
 
 pub(crate) use apply::converter_for;

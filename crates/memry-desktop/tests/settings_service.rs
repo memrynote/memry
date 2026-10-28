@@ -2,16 +2,46 @@
 //! a vault, a write splits between the local row and the synced item, the vault's `config.json`
 //! mirrors portable fields, and opening a vault seeds from its preferences once.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use memry_desktop::profile_store::ProfileDeviceKeyStore;
+use memry_core::api::errors::SecureStoreError;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::registry::{AppConfig, VaultRegistry};
+use memry_desktop::seams::secure_store::{
+    DEADLINE, DeviceIdentityStore, IDENTITY_SERVICE, KeyringStore, Store, StoreFactory,
+};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::settings::{SettingsError, SettingsService};
 use memry_desktop::startup_values;
 use memry_desktop::vault::config;
 use serde_json::{Map, Value, json};
+
+/// The device key the settings clocks need; the keychain's own rules are tested with the store.
+#[derive(Default)]
+struct MemoryStore(Mutex<HashMap<SecureStoreKey, Vec<u8>>>);
+
+impl SecureStore for MemoryStore {
+    fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
+        Ok(self.0.lock().unwrap().get(&key).cloned())
+    }
+
+    fn set(&self, key: SecureStoreKey, value: Vec<u8>) -> Result<(), SecureStoreError> {
+        self.0.lock().unwrap().insert(key, value);
+        Ok(())
+    }
+
+    fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
+        self.0.lock().unwrap().remove(&key);
+        Ok(())
+    }
+
+    fn clear(&self) -> Result<(), SecureStoreError> {
+        self.0.lock().unwrap().clear();
+        Ok(())
+    }
+}
 
 struct World {
     dir: tempfile::TempDir,
@@ -26,7 +56,7 @@ fn world() -> World {
     std::fs::create_dir_all(&app).expect("app dir");
     let config = Arc::new(AppConfig::load(app.join("memry-config.json")));
     let session = Session::new(VaultRegistry::new(config.clone()));
-    let service = SettingsService::new(ProfileDeviceKeyStore::shared(&app), config.clone());
+    let service = SettingsService::new(Arc::new(MemoryStore::default()), config.clone());
     World {
         dir,
         session,
@@ -200,4 +230,56 @@ fn flat_local_keys_and_resets() {
             .value["overrides"],
         json!({})
     );
+}
+
+/// The OS credential store, as keyring-core's in-memory mock.
+struct Mock(Store);
+
+impl StoreFactory for Mock {
+    fn build(&self) -> keyring_core::Result<Store> {
+        Ok(self.0.clone())
+    }
+}
+
+#[test]
+fn a_missing_device_identity_is_its_own_error_for_reads_and_writes() {
+    // The real identity store over the real keychain worker: the key is minted and moved into
+    // the keychain, then the keychain item disappears (the user deleted it, or a keychain reset).
+    let w = world();
+    let vault = w.open("v");
+    let credentials: Store = keyring_core::mock::Store::new().unwrap();
+    let keychain = Arc::new(KeyringStore::with_factory(
+        Mock(credentials.clone()),
+        None,
+        DEADLINE,
+    ));
+    let profile = tempfile::tempdir().unwrap();
+    let identity = |keychain: &Arc<KeyringStore>| {
+        SettingsService::new(
+            Arc::new(DeviceIdentityStore::with_probe(
+                keychain,
+                profile.path(),
+                || false,
+            )),
+            w.config.clone(),
+        )
+    };
+    identity(&keychain)
+        .read_group(Some(&vault), "general")
+        .expect("the first read mints the device key");
+    credentials
+        .build(IDENTITY_SERVICE, "device-signing-key", None)
+        .unwrap()
+        .delete_credential()
+        .expect("the key was in the keychain");
+
+    let service = identity(&keychain);
+    assert!(matches!(
+        service.read_group(Some(&vault), "general"),
+        Err(SettingsError::DeviceIdentityMissing)
+    ));
+    assert!(matches!(
+        service.write_group(Some(&vault), "general", patch(json!({"theme": "dark"}))),
+        Err(SettingsError::DeviceIdentityMissing)
+    ));
 }

@@ -3,6 +3,8 @@
 //! unit tests in `src/vault/consumer/tests.rs`; these cover what only the running pair does:
 //! the order of the start rescan and the open walk, and the stop with the vault.
 
+mod device_key;
+
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -10,9 +12,7 @@ use std::time::{Duration, Instant};
 
 use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
-use memry_core::crypto::sodium;
-use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
-use memry_desktop::profile_store::ProfileDeviceKeyStore;
+use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::identity::{
@@ -87,11 +87,7 @@ fn env(identity: impl FnOnce(Arc<dyn SecureStore>) -> Option<Arc<dyn NoteIdentit
     let vault = dir.path().join("vault");
     fs::create_dir_all(&vault).unwrap();
     fs::create_dir_all(dir.path().join("app")).unwrap();
-    let store = ProfileDeviceKeyStore::shared(&dir.path().join("app"));
-    let (_, secret) = sodium::sign_seed_keypair(&[7u8; 32]).unwrap();
-    store
-        .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
-        .unwrap();
+    let store = device_key::with_device_key();
     let registry = VaultRegistry::new(Arc::new(AppConfig::load(
         dir.path().join("app/memry-config.json"),
     )));

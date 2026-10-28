@@ -8,8 +8,9 @@ use memry_desktop::shell::menu_spec::MenuNode;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
-use crate::commands::error::CommandError;
+use crate::commands::error::{CommandError, ErrorKind};
 use crate::menu::popup::ContextMenuItem;
+use crate::windows::registry::WindowRegistry;
 
 /// The next answer a context menu gives, and the items of the last one shown.
 #[derive(Default)]
@@ -112,4 +113,20 @@ pub fn e2e_menu_tree(app: AppHandle<Wry>) -> Result<Vec<MenuNodeInfo>, CommandEr
 pub fn e2e_menu_activate(app: AppHandle<Wry>, id: String) -> Result<(), CommandError> {
     crate::menu::activate(&app, &id);
     Ok(())
+}
+
+/// Whether the main window's menu bar shows (Linux, the only OS that attaches one to the
+/// window); `None` elsewhere. Read from the GTK widget.
+#[tauri::command]
+pub fn e2e_menu_bar_visible(app: AppHandle<Wry>) -> Result<Option<bool>, CommandError> {
+    if !cfg!(target_os = "linux") {
+        return Ok(None);
+    }
+    let failure = |message: String| CommandError::new(ErrorKind::Internal, "e2e_menu_bar", message);
+    let window =
+        WindowRegistry::main_window(&app).ok_or_else(|| failure("no main window".into()))?;
+    window
+        .is_menu_visible()
+        .map(Some)
+        .map_err(|error| failure(error.to_string()))
 }

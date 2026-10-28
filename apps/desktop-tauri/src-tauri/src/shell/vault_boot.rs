@@ -9,8 +9,8 @@ use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::launch_timeline::LaunchPhase;
 use memry_desktop::locale::LocaleService;
 use memry_desktop::paths::AppPaths;
-use memry_desktop::profile_store::ProfileDeviceKeyStore;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
+use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::OpenStage;
 use memry_desktop::session::prompt::{self, Asker, RecoveryPrompt};
 use memry_desktop::session::response::{VaultStatus, index_recovery_reason};
@@ -98,8 +98,15 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// no outside edit until the write-back (12e-3). The tier is managed so those stages reach its
 /// own-write record and its row lane.
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
-    let store = ProfileDeviceKeyStore::shared(&app.state::<AppPaths>().data_dir);
-    let tier = VaultTier::new(store);
+    // Managed by the `Handlers` stage, which runs before this one.
+    let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
+        tracing::error!(
+            scope = "vault_consumer",
+            "no device identity store: vaults open without file watching"
+        );
+        return;
+    };
+    let tier = VaultTier::new(store.inner().clone());
     tier.register(session);
     app.manage(tier);
 }

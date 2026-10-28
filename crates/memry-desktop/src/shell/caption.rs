@@ -49,6 +49,19 @@ pub struct CaptionRects {
     pub close: Option<Rect>,
 }
 
+/// A rectangle the page measured in fractional physical pixels, snapped by its edges: two
+/// buttons that touch keep touching at any scale (rounding the width instead leaves 1 px gaps
+/// at 125%).
+pub fn physical_rect(x: f64, y: f64, width: f64, height: f64) -> Rect {
+    let (left, top) = (x.round() as i32, y.round() as i32);
+    Rect {
+        x: left,
+        y: top,
+        width: (x + width).round() as i32 - left,
+        height: (y + height).round() as i32 - top,
+    }
+}
+
 fn contains(rect: Rect, x: i32, y: i32) -> bool {
     x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height
 }
@@ -62,6 +75,31 @@ impl CaptionRects {
         ]
         .into_iter()
         .find_map(|(button, rect)| rect.filter(|r| contains(*r, x, y)).map(|_| button))
+    }
+
+    /// Where the input sink goes: the smallest rectangle around the reported buttons, below the
+    /// top `resize_border` pixels (the resize handle of a restored window; 0 when maximized).
+    /// `None` hides the sink: no button with an area, as when the page hides the buttons.
+    pub fn sink_bounds(&self, resize_border: i32) -> Option<Rect> {
+        let present = [self.minimize, self.maximize, self.close]
+            .into_iter()
+            .flatten()
+            .filter(|r| r.width > 0 && r.height > 0);
+        let (left, top, right, bottom) =
+            present.fold(None, |acc: Option<(i32, i32, i32, i32)>, r| {
+                let (l, t, rt, b) = (r.x, r.y, r.x + r.width, r.y + r.height);
+                Some(match acc {
+                    None => (l, t, rt, b),
+                    Some((al, at, ar, ab)) => (al.min(l), at.min(t), ar.max(rt), ab.max(b)),
+                })
+            })?;
+        let top = top.max(resize_border);
+        (right > left && bottom > top).then_some(Rect {
+            x: left,
+            y: top,
+            width: right - left,
+            height: bottom - top,
+        })
     }
 }
 
@@ -100,6 +138,46 @@ mod tests {
         assert_eq!(r.hit(1138, 10), None);
         assert_eq!(r.hit(1010, 36), None);
         assert_eq!(CaptionRects::default().hit(0, 0), None);
+    }
+
+    #[test]
+    fn sink_covers_the_buttons_below_the_resize_border() {
+        let sink = |border| rects().sink_bounds(border);
+        let at = |y, height| Rect {
+            x: 1000,
+            y,
+            width: 138,
+            height,
+        };
+        assert_eq!(sink(0), Some(at(0, 36)));
+        assert_eq!(sink(8), Some(at(8, 28)));
+        assert_eq!(sink(36), None);
+    }
+
+    #[test]
+    fn sink_hides_without_buttons() {
+        let empty = Some(Rect {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+        });
+        let hidden = CaptionRects {
+            minimize: empty,
+            maximize: empty,
+            close: empty,
+        };
+        assert_eq!(hidden.sink_bounds(0), None);
+        assert_eq!(CaptionRects::default().sink_bounds(0), None);
+    }
+
+    #[test]
+    fn touching_buttons_stay_touching_at_fractional_scales() {
+        // 46 CSS px at 125% is 57.5 physical px.
+        let min = physical_rect(1000.0, 0.0, 57.5, 45.0);
+        let max = physical_rect(1057.5, 0.0, 57.5, 45.0);
+        assert_eq!(min.x + min.width, max.x);
+        assert_eq!((min.width, max.width), (58, 57));
     }
 
     #[test]
