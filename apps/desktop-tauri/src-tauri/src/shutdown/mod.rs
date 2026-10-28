@@ -127,16 +127,17 @@ pub fn update_hook(app: &AppHandle<Wry>) -> Option<Arc<dyn UpdateApplyHook>> {
 }
 
 /// The sequence ended cleanly and the exit it asked for may pass. The Windows session-end handler
-/// waits on this before it returns, because the OS ends the process soon after.
-#[cfg(windows)]
+/// waits on this before it returns, because the OS ends the process soon after, and the Linux
+/// logout handler before it answers, because the session manager then takes the display down.
+#[cfg(any(windows, target_os = "linux"))]
 pub fn is_completed(app: &AppHandle<Wry>) -> bool {
     app.state::<ShutdownService>()
         .completed
         .load(Ordering::SeqCst)
 }
 
-/// Starts the sequence for a quit that did not come through `ExitRequested`: the Windows session
-/// end. Without a request to hold, the app is kept alive by the latch alone.
+/// Starts the sequence for a quit that did not come through `ExitRequested`: the session end.
+/// Without a request to hold, the app is kept alive by the latch alone.
 pub fn begin_session_end(app: &AppHandle<Wry>) {
     if startup::shutdown_started() {
         return;
