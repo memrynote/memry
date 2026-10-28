@@ -3,14 +3,16 @@
 //! One `rustls::ClientConfig` per transport: the platform verifier (OS trust store, hostname,
 //! revocation as the OS does it) wrapped by [`PinningVerifier`]. The pin table keeps Electron's
 //! contract (`apps/desktop/src/main/sync/certificate-pinning.ts`): a host with placeholder pins or
-//! no entry gets standard TLS, and pinning is off in a debug build. Unlike Electron, which compared
-//! the leaf only, a pin on any certificate of the leaf's issuance path matches, so a pin on an
-//! intermediate survives leaf rotation. A root is never presented and cannot be pinned.
+//! no entry gets standard TLS, and pinning is off in a debug build. After the platform verifier
+//! accepted the chain, a pin matches a certificate on a path webpki verifies from the leaf to an
+//! OS root ([`spki`]): the leaf, a CA intermediate, or the root itself, sent or not. A pin on an
+//! intermediate or a root survives leaf rotation.
 //!
 //! **Rotation.** A pin that names a CA's intermediate stops matching the day the host's CA changes
 //! it (a CDN may switch issuers without notice), and every installed build then refuses to sync.
 //! Ship two pins at least: the current path and a backup from another issuer.
 
+mod anchors;
 pub mod pins;
 pub mod spki;
 mod verifier;
@@ -21,6 +23,7 @@ use memry_core::api::errors::TransportError;
 use rustls::ClientConfig;
 use rustls::client::danger::ServerCertVerifier;
 
+pub use anchors::Anchors;
 pub use pins::PinTable;
 pub use verifier::{PinFailure, PinFailureSink, PinningVerifier};
 
@@ -29,6 +32,8 @@ pub use verifier::{PinFailure, PinFailureSink, PinningVerifier};
 pub struct TlsSetup {
     pub inner: Arc<dyn ServerCertVerifier>,
     pub table: PinTable,
+    /// The roots `inner` trusts; the pin check verifies its path against them.
+    pub anchors: Anchors,
     pub active: bool,
 }
 
@@ -44,6 +49,7 @@ impl TlsSetup {
         Ok(Self {
             inner: Arc::new(inner),
             table: PinTable::production(),
+            anchors: Anchors::native(),
             active: !cfg!(debug_assertions),
         })
     }
@@ -53,7 +59,8 @@ impl TlsSetup {
         sink: Arc<dyn PinFailureSink>,
     ) -> Result<ClientConfig, TransportError> {
         let provider = Arc::new(rustls::crypto::ring::default_provider());
-        let verifier = PinningVerifier::new(self.inner, self.table, self.active, sink);
+        let verifier =
+            PinningVerifier::new(self.inner, self.table, self.anchors, self.active, sink);
         let config = ClientConfig::builder_with_provider(provider)
             .with_safe_default_protocol_versions()
             .map_err(|error| TransportError::Failed {

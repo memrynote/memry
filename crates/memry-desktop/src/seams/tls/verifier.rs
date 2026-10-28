@@ -7,10 +7,11 @@ use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, Server
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use rustls::{DigitallySignedStruct, Error, SignatureScheme};
 
+use super::anchors::Anchors;
 use super::pins::{PinPolicy, PinTable};
-use super::spki::issuance_path_pins;
+use super::spki::{ChainError, leaf_pin, verified_path_pins};
 
-/// A pinned host answered with a chain none of whose issuance-path certificates is pinned.
+/// A pinned host answered with a chain no verified path of which carries a pinned certificate.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PinFailure {
     pub hostname: String,
@@ -27,6 +28,7 @@ pub trait PinFailureSink: Send + Sync {
 pub struct PinningVerifier {
     inner: Arc<dyn ServerCertVerifier>,
     table: PinTable,
+    anchors: Anchors,
     /// Pinning is off in a debug build, as it was in an Electron app that was not packaged.
     active: bool,
     sink: Arc<dyn PinFailureSink>,
@@ -42,16 +44,19 @@ impl std::fmt::Debug for PinningVerifier {
 }
 
 impl PinningVerifier {
-    /// `inner` is the platform verifier in the app (a test may pass a verifier over its own CA).
+    /// `inner` is the platform verifier in the app and `anchors` the roots it trusts (a test may
+    /// pass a verifier over its own CA, with that CA).
     pub fn new(
         inner: Arc<dyn ServerCertVerifier>,
         table: PinTable,
+        anchors: Anchors,
         active: bool,
         sink: Arc<dyn PinFailureSink>,
     ) -> Self {
         Self {
             inner,
             table,
+            anchors,
             active,
             sink,
             warned: Mutex::new(HashSet::new()),
@@ -78,6 +83,7 @@ impl PinningVerifier {
         host: &str,
         end_entity: &CertificateDer<'_>,
         intermediates: &[CertificateDer<'_>],
+        now: UnixTime,
     ) -> Result<(), Error> {
         let pins = match self.table.policy(host) {
             PinPolicy::Unlisted => {
@@ -98,19 +104,28 @@ impl PinningVerifier {
             }
             PinPolicy::Pinned(pins) => pins,
         };
-        let chain: Vec<&[u8]> = std::iter::once(end_entity.as_ref())
-            .chain(intermediates.iter().map(AsRef::as_ref))
-            .collect();
-        let path = issuance_path_pins(&chain).map_err(|error| {
-            tracing::warn!(scope = "Pinning", "{host}: {error}");
-            Error::General("certificate chain could not be checked against the pins".to_owned())
-        })?;
-        if path.iter().any(|actual| pins.contains(actual)) {
-            return Ok(());
+        let accept = |path: &[String]| path.iter().any(|pin| pins.contains(pin));
+        let verify =
+            |anchors: &[_]| verified_path_pins(anchors, end_entity, intermediates, now, &accept);
+        let mut result = verify(&self.anchors.roots());
+        if matches!(result, Err(ChainError::Unverified(_)))
+            && let Some(fresh) = self.anchors.reload()
+        {
+            result = verify(&fresh);
+        }
+        match result {
+            Ok(_) => return Ok(()),
+            Err(error @ (ChainError::TooLong | ChainError::TooLarge | ChainError::Malformed)) => {
+                tracing::warn!(scope = "Pinning", "{host}: {error}");
+                return Err(Error::General(
+                    "certificate chain could not be checked against the pins".to_owned(),
+                ));
+            }
+            Err(error) => tracing::warn!(scope = "Pinning", "{host}: {error}"),
         }
         self.sink.pin_failed(PinFailure {
             hostname: host.to_owned(),
-            actual_hash: path.first().cloned().unwrap_or_default(),
+            actual_hash: leaf_pin(end_entity).unwrap_or_default(),
             expected_hashes: pins.to_vec(),
         });
         Err(Error::General("certificate pin mismatch".to_owned()))
@@ -135,7 +150,7 @@ impl ServerCertVerifier for PinningVerifier {
             now,
         )?;
         if self.active {
-            self.check_pins(&server_name.to_str(), end_entity, intermediates)?;
+            self.check_pins(&server_name.to_str(), end_entity, intermediates, now)?;
         }
         Ok(verified)
     }

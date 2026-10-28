@@ -288,30 +288,44 @@ enabling it globally would fail every `prebuild` and every fresh checkout.
 The Tauri app keeps the same table and the same activation rules in
 `crates/memry-desktop/src/seams/tls/pins.rs`; a test compares it with `certificate-pins.ts`, so a pin
 change lands in both files. Every request to the sync server, telemetry and feedback included, goes
-through one pinned transport (`seams::transport`). The verifier runs the platform verifier first
-(OS trust store, hostname) and compares pins only after that succeeds.
+through one pinned transport (`seams::transport`). It serves memrynote.com and its subdomains, plus
+the loopback host of a local development or e2e sync server; a development server elsewhere on the
+LAN is refused.
 
-A pin matches any certificate on the leaf's issuance path: the leaf, the intermediate that signed it,
-and so on up, each link checked by its signature. Electron compared the leaf only, so every Electron
-pin still works, and a pin on an intermediate survives leaf renewal. A certificate the server appends
-that did not sign the one below it never matches, so a leaf from another trusted CA with the pinned
-intermediate appended is refused.
+The verifier runs the platform verifier first (`rustls-platform-verifier`: the OS trust store and
+hostname) and compares pins only after that succeeds. What the platform verifier checks beyond the
+chain differs by OS: macOS checks the leaf's revocation and applies Apple's Certificate
+Transparency policy, Windows checks the leaf's revocation and enforces no Certificate Transparency,
+and Linux (webpki over the system CA bundle) checks neither.
 
-The root `pnpm cert:check` runs `cargo run -p memry-desktop --example cert_check -- [hostname]
-[port]`. It connects with the platform verifier, prints each presented certificate with its depth,
-subject, validity and SPKI hash and whether it is on the issuance path, then prints the audit in the
-table above. It also fails when a host's real pins match nothing the host presents. Without a
-hostname it audits `SYNC_SERVER_URL` from the environment, else from `apps/desktop-tauri/.env.<MEMRY_ENV>`
-(default `production`), else `sync.memrynote.com`. It replaces `pnpm cert:extract`.
+A pin matches only a certificate on a path webpki verifies from the leaf to an OS root: the leaf,
+each intermediate a valid CA for the certificate below it (CA basic constraints, `keyCertSign`, path
+length, validity, a signature algorithm rustls accepts, so no SHA-1 and no RSA key under 2048 bits),
+and the root that ends the path, which the server need not send. webpki tries every valid path before
+it gives up, so a pin on either of two cross-signed paths matches. A certificate the server sends
+that is not on a valid path never matches: neither a pinned intermediate appended to a foreign chain,
+nor one placed above an end-entity certificate that names the leaf's issuer. Electron compared the
+leaf only, so every Electron pin still works, and a pin on an intermediate or a root survives leaf
+renewal.
+
+Two `cert:check` scripts exist while both apps ship. `pnpm --filter @memry/desktop cert:check` and
+`cert:extract` are the Electron gate and extractor described above. The root `pnpm cert:check` runs
+`cargo run -p memry-desktop --example cert_check -- [hostname] [port]` for the Tauri app, which needs
+no separate extractor. It connects with the platform verifier, prints each presented certificate with
+its depth, subject, validity and SPKI hash, marks the ones on the verified path, prints the OS root
+that ends the path, then prints the audit in the table above. It also fails when a host's real pins
+are on no verified path. Without a hostname it audits `SYNC_SERVER_URL` from the environment, else
+from `apps/desktop-tauri/.env.<MEMRY_ENV>` (default `production`), else `sync.memrynote.com`.
 
 ### Pin rotation
 
 A leaf renews every few months and a CDN can switch its issuing CA without notice. A table whose pins
 all name certificates the host stops presenting makes every installed release build refuse to sync
 until users update. So each pinned host keeps two pins at least: the certificate it presents now
-(prefer the intermediate, which outlives the leaf) and a backup from another issuer the host can
-move to. Before every release, run `pnpm cert:check` for each pinned host and confirm one pin is on
-the presented path.
+(prefer the intermediate, which outlives the leaf) and a backup the host can move to, ideally from
+another issuer. A root pin counts as a backup: it matches while the root is in the OS trust store,
+whether the server sends it or not. Before every release, run `pnpm cert:check` for each pinned host
+and confirm one pin is on the verified path.
 
 ## Renderer Permission Policy
 

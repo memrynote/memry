@@ -4,11 +4,12 @@
 //! `cargo run -p memry-desktop --example cert_check -- [hostname] [port]` (root: `pnpm cert:check`)
 //!
 //! It connects with the platform verifier (OS trust store and hostname), then prints each
-//! certificate with its depth, subject CN, validity and SPKI pin. The leaf and the certificates on
-//! its issuance path are what a pin can match (`seams::tls::spki`). Then it prints the audit of
-//! the host's entry in `seams::tls::pins`: an error for no entry or a malformed pin, a warning for
-//! placeholders (an error with `MEMRY_CERT_PINS_STRICT=1`), and an error when real pins match
-//! nothing the host presented. It exits 1 on any error.
+//! certificate with its depth, subject CN, validity and SPKI pin, and the OS root that ends the
+//! path. The certificates on the path webpki verifies against the OS roots are what a pin can match
+//! (`seams::tls::spki`), the same check the app runs. Then it prints the audit of the host's entry
+//! in `seams::tls::pins`: an error for no entry or a malformed pin, a warning for placeholders (an
+//! error with `MEMRY_CERT_PINS_STRICT=1`), and an error when real pins are on no verified path. It
+//! exits 1 on any error.
 //!
 //! Without a hostname it audits the host the build dials: `SYNC_SERVER_URL` from the process, else
 //! from `apps/desktop-tauri/.env.<MEMRY_ENV>` (default `production`), else `sync.memrynote.com`,
@@ -21,10 +22,11 @@ use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use memry_desktop::seams::tls::Anchors;
 use memry_desktop::seams::tls::pins::{
     AuditLevel, DEFAULT_SYNC_HOST, PinTable, audit, normalize_hostname,
 };
-use memry_desktop::seams::tls::spki::{issuance_path_pins, spki_pin};
+use memry_desktop::seams::tls::spki::{pin_of_spki, verified_path_pins};
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use rustls::{ClientConfig, ClientConnection, DigitallySignedStruct, SignatureScheme};
@@ -197,18 +199,34 @@ fn main() -> ExitCode {
 
     match fetch_chain(&host, port) {
         Ok(chain) => {
-            let ders: Vec<&[u8]> = chain.iter().map(Vec::as_slice).collect();
-            let path = issuance_path_pins(&ders).unwrap_or_default();
+            let real: Vec<&String> = pins
+                .iter()
+                .filter(|pin| !pin.to_ascii_uppercase().contains("PLACEHOLDER"))
+                .collect();
+            // The path the app's pin check takes: one through a real pin when the host has any.
+            let ders: Vec<CertificateDer<'_>> =
+                chain.iter().map(|der| der.as_slice().into()).collect();
+            let roots = Anchors::native().roots();
+            let wanted =
+                |path: &[String]| real.is_empty() || real.iter().any(|pin| path.contains(pin));
+            let any_path = |_: &[String]| true;
+            let now = UnixTime::now();
+            let verified = verified_path_pins(&roots, &ders[0], &ders[1..], now, &wanted);
+            let path = match &verified {
+                Ok(path) => path.clone(),
+                Err(_) => verified_path_pins(&roots, &ders[0], &ders[1..], now, &any_path)
+                    .unwrap_or_default(),
+            };
             for (depth, der) in chain.iter().enumerate() {
                 let Ok((_, cert)) = X509Certificate::from_der(der) else {
                     println!("  [{depth}] could not be read");
                     continue;
                 };
-                let pin = spki_pin(&cert);
+                let pin = pin_of_spki(cert.public_key().raw);
                 let role = match (depth, path.contains(&pin)) {
                     (0, _) => "end-entity, matchable",
-                    (_, true) => "intermediate, matchable",
-                    (_, false) => "not on the leaf's issuance path, not matchable",
+                    (_, true) => "intermediate on the verified path, matchable",
+                    (_, false) => "not on the verified path, not matchable",
                 };
                 let validity = cert.validity();
                 println!("  [{depth}] {} ({role})", subject_cn(&cert));
@@ -223,13 +241,24 @@ fn main() -> ExitCode {
                 };
                 println!("      {pin}{configured}");
             }
-            let real: Vec<&String> = pins
-                .iter()
-                .filter(|pin| !pin.to_ascii_uppercase().contains("PLACEHOLDER"))
-                .collect();
-            if !real.is_empty() && !real.iter().any(|pin| path.contains(pin)) {
+            match path.last() {
+                Some(anchor) if path.len() > 1 => {
+                    let configured = if pins.contains(anchor) {
+                        "  <- pinned"
+                    } else {
+                        ""
+                    };
+                    println!("  [anchor] the OS root that ends the verified path, matchable");
+                    println!("      {anchor}{configured}");
+                }
+                _ => {
+                    eprintln!("ERROR: no path from the leaf to an OS root verified.");
+                    failed = true;
+                }
+            }
+            if !real.is_empty() && verified.is_err() {
                 eprintln!(
-                    "ERROR: none of the {} pin(s) of {host} is on the presented issuance path; a release build would refuse this host.",
+                    "ERROR: none of the {} pin(s) of {host} is on a verified path; a release build would refuse this host.",
                     real.len()
                 );
                 failed = true;

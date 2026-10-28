@@ -3,9 +3,19 @@
 //!
 //! It is deliberately dumb, like the core's seam says: one request in, status, headers and bytes
 //! out, no retry and no status logic. A non-2xx status is a response, never an error. It serves
-//! memry hosts only (`memrynote.com` and its subdomains, over `https`/`wss`); a request to any
-//! other host is refused before it leaves, and so is a redirect to one. Every other HTTP client
-//! in the app is `memry_desktop::http::client()`, which this does not replace.
+//! memry hosts only (`memrynote.com` and its subdomains, over `https`/`wss`), plus the loopback
+//! hosts of a development or e2e sync server; a request to any other host is refused before it
+//! leaves, and so is a redirect to one. A development server on another machine of the LAN is
+//! refused too: point the app at it through a loopback tunnel. Every other HTTP client in the app
+//! is `memry_desktop::http::client()`, which this does not replace.
+//!
+//! - **Redirects** are followed only inside those hosts. A redirect to a memry subdomain with no
+//!   pin entry (the docs or the landing site) reaches it over standard TLS, and a 307 or 308 sends
+//!   the body there again; the sync server never answers with one.
+//! - **Proxies.** HTTP requests use the system proxy (as Electron's session did); the WebSocket
+//!   connects directly, because tokio-tungstenite has no proxy support. A network that allows the
+//!   sync host only through a proxy gets requests and no realtime socket, and sync falls back to
+//!   its pull timer.
 
 mod classify;
 mod http;

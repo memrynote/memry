@@ -9,7 +9,9 @@ use std::sync::Arc;
 use memry_core::api::errors::TransportError;
 use memry_core::seams::transport::{HttpRequest, Transport};
 use memry_desktop::seams::transport::NativeTransport;
-use rcgen::{BasicConstraints, CertificateParams, CertifiedIssuer, DnType, IsCa, KeyPair};
+use rcgen::{
+    BasicConstraints, CertificateParams, CertifiedIssuer, DnType, IsCa, KeyPair, KeyUsagePurpose,
+};
 use rustls::pki_types::CertificateDer;
 use support::{Chain, RecordingSink, Server, ca, leaf, pin_of, serve, setup};
 use tokio::io::AsyncWriteExt;
@@ -228,103 +230,209 @@ async fn a_forged_parent_carrying_the_pinned_spki_does_not_match() {
     assert_eq!(sink.failures().len(), 1);
 }
 
+/// M1 of the #3690 review. An attacker holds a root the OS trusts, with key K and the subject
+/// `attacker.test`, and gets an end-entity certificate for `attacker.test` over K from the pinned
+/// intermediate. A leaf signed with K chains to the rogue root, so the platform accepts it; the
+/// end-entity certificate names the leaf's issuer and its key verifies the leaf, but it is not a
+/// CA, so the pinned intermediate above it is not on any valid path.
+#[tokio::test]
+async fn an_end_entity_certificate_is_never_an_issuer_on_the_pinned_path() {
+    let real = Chain::new("localhost");
+    let mut root_params = CertificateParams::new(Vec::<String>::new()).unwrap();
+    root_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+    root_params.key_usages = vec![KeyUsagePurpose::KeyCertSign];
+    root_params
+        .distinguished_name
+        .push(DnType::CommonName, "attacker.test");
+    let rogue_root =
+        CertifiedIssuer::self_signed(root_params, KeyPair::generate().unwrap()).unwrap();
+    let mut dv = CertificateParams::new(vec!["attacker.test".to_owned()]).unwrap();
+    dv.distinguished_name
+        .push(DnType::CommonName, "attacker.test");
+    let dv = dv.signed_by(rogue_root.key(), &real.intermediate).unwrap();
+    let (rogue_leaf, rogue_key) = leaf("localhost", &rogue_root, false);
+    let presented = vec![
+        rogue_leaf,
+        dv.der().clone(),
+        real.intermediate.der().clone(),
+    ];
+    let server = serve(presented, rogue_key, |mut tls| async move {
+        let _ = support::read_head(&mut tls).await;
+    })
+    .await;
+    let (transport, sink) = transport(
+        &[real.root.der(), rogue_root.der()],
+        &[real.intermediate_pin()],
+        true,
+    );
+    let error = transport.send(get(&server)).await.unwrap_err();
+    assert!(
+        matches!(&error, TransportError::Tls { what } if what.contains("pin mismatch")),
+        "{error:?}"
+    );
+    assert_eq!(sink.failures().len(), 1);
+}
+
+/// S2 of the #3690 review: a pin on the root matches when the server does not send the root,
+/// because the trust anchor ends the verified path.
+#[tokio::test]
+async fn a_pin_on_the_trust_anchor_matches_a_chain_that_does_not_carry_it() {
+    let chain = Chain::new("localhost");
+    let server = ok_server(&chain).await;
+    let (transport, sink) = transport(&[chain.root.der()], &[pin_of(chain.root.der())], true);
+    let response = transport.send(get(&server)).await.unwrap();
+    assert_eq!(response.status, 200);
+    assert!(sink.failures().is_empty());
+}
+
 mod chain_guards {
-    use memry_desktop::seams::tls::spki::{ChainError, MAX_CHAIN, MAX_DER, issuance_path_pins};
+    use memry_desktop::seams::tls::spki::{ChainError, MAX_CHAIN, MAX_DER, verified_path_pins};
     use proptest::prelude::*;
+    use rcgen::{BasicConstraints, CertificateParams, CertifiedIssuer, DnType, IsCa, KeyPair};
+    use rustls::RootCertStore;
+    use rustls::pki_types::{CertificateDer, UnixTime};
 
     use super::{Chain, ca, leaf, pin_of};
 
+    fn verify(
+        roots: &[&CertificateDer<'static>],
+        presented: &[CertificateDer<'_>],
+        accept: &dyn Fn(&[String]) -> bool,
+    ) -> Result<Vec<String>, ChainError> {
+        let mut store = RootCertStore::empty();
+        for root in roots {
+            store.add((*root).clone()).unwrap();
+        }
+        verified_path_pins(
+            &store.roots,
+            &presented[0],
+            &presented[1..],
+            UnixTime::now(),
+            accept,
+        )
+    }
+
+    fn every(_: &[String]) -> bool {
+        true
+    }
+
     #[test]
-    fn the_path_is_the_leaf_and_its_issuers_in_order() {
+    fn the_path_is_the_leaf_its_intermediates_and_the_anchor() {
         let chain = Chain::new("localhost");
-        let ders: Vec<&[u8]> = vec![
-            chain.leaf.as_ref(),
-            chain.intermediate.der().as_ref(),
-            chain.root.der().as_ref(),
+        let expected = [
+            chain.leaf_pin(),
+            chain.intermediate_pin(),
+            pin_of(chain.root.der()),
         ];
-        // Presented in any order after the leaf.
-        let shuffled = vec![ders[0], ders[2], ders[1]];
-        for presented in [ders, shuffled] {
+        let sent = chain.presented();
+        let with_root = vec![
+            chain.leaf.clone(),
+            chain.root.der().clone(),
+            chain.intermediate.der().clone(),
+        ];
+        for presented in [sent, with_root] {
             assert_eq!(
-                issuance_path_pins(&presented).unwrap(),
-                [
-                    chain.leaf_pin(),
-                    chain.intermediate_pin(),
-                    pin_of(chain.root.der())
-                ]
+                verify(&[chain.root.der()], &presented, &every).unwrap(),
+                expected
             );
         }
     }
 
     #[test]
-    fn a_certificate_that_did_not_issue_the_one_below_is_not_on_the_path() {
+    fn a_sent_certificate_that_did_not_issue_the_one_below_is_not_on_the_path() {
         let chain = Chain::new("localhost");
         let stranger = ca("Stranger", None);
-        let path = issuance_path_pins(&[chain.leaf.as_ref(), stranger.der().as_ref()]).unwrap();
-        assert_eq!(path, [chain.leaf_pin()]);
+        let presented = vec![
+            chain.leaf.clone(),
+            stranger.der().clone(),
+            chain.intermediate.der().clone(),
+        ];
+        let path = verify(&[chain.root.der()], &presented, &every).unwrap();
+        assert!(!path.contains(&pin_of(stranger.der())));
+    }
+
+    /// An intermediate cross-signed by two roots gives two valid paths; when the first one
+    /// tried is not accepted, the other is.
+    #[test]
+    fn every_valid_path_is_tried_before_the_answer_is_no() {
+        let root_a = ca("Root A", None);
+        let root_b = ca("Root B", None);
+        let key = KeyPair::generate().unwrap();
+        let params = || {
+            let mut params = CertificateParams::new(Vec::<String>::new()).unwrap();
+            params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+            params.distinguished_name.push(DnType::CommonName, "Cross");
+            params
+        };
+        let via_a = params().signed_by(&key, &root_a).unwrap();
+        let via_b = CertifiedIssuer::signed_by(params(), key, &root_b).unwrap();
+        let (leaf, _) = leaf("localhost", &via_b, false);
+        let presented = vec![leaf, via_a.der().clone(), via_b.der().clone()];
+        let roots = [root_a.der(), root_b.der()];
+        for wanted in [pin_of(root_a.der()), pin_of(root_b.der())] {
+            let path = verify(&roots, &presented, &|path| path.contains(&wanted)).unwrap();
+            assert_eq!(path.last(), Some(&wanted));
+        }
+        assert_eq!(
+            verify(&roots, &presented, &|_| false),
+            Err(ChainError::NotAccepted)
+        );
+    }
+
+    #[test]
+    fn a_chain_to_no_trusted_root_is_unverified() {
+        let chain = Chain::new("localhost");
+        let other = ca("Other Root", None);
+        assert!(matches!(
+            verify(&[other.der()], &chain.presented(), &every),
+            Err(ChainError::Unverified(_))
+        ));
     }
 
     #[test]
     fn more_certificates_than_a_chain_can_hold_are_refused_unread() {
         let chain = Chain::new("localhost");
-        let many: Vec<&[u8]> = (0..=MAX_CHAIN).map(|_| chain.leaf.as_ref()).collect();
-        assert_eq!(issuance_path_pins(&many), Err(ChainError::TooLong));
-        assert!(issuance_path_pins(&many[..MAX_CHAIN]).is_ok());
+        let many: Vec<CertificateDer<'_>> = (0..=MAX_CHAIN).map(|_| chain.leaf.clone()).collect();
+        assert_eq!(
+            verify(&[chain.root.der()], &many, &every),
+            Err(ChainError::TooLong)
+        );
     }
 
     #[test]
     fn an_oversized_certificate_is_refused_unread() {
         let chain = Chain::new("localhost");
-        let huge = vec![0x30_u8; MAX_DER + 1];
+        let huge = CertificateDer::from(vec![0x30_u8; MAX_DER + 1]);
         assert_eq!(
-            issuance_path_pins(&[chain.leaf.as_ref(), &huge]),
+            verify(&[chain.root.der()], &[chain.leaf.clone(), huge], &every),
             Err(ChainError::TooLarge)
         );
     }
 
     #[test]
-    fn trailing_bytes_and_garbage_are_malformed() {
+    fn garbage_is_malformed() {
         let chain = Chain::new("localhost");
-        let mut padded = chain.leaf.to_vec();
-        padded.push(0);
-        assert_eq!(issuance_path_pins(&[&padded]), Err(ChainError::Malformed));
         assert_eq!(
-            issuance_path_pins(&[&[1, 2, 3]]),
+            verify(
+                &[chain.root.der()],
+                &[CertificateDer::from(vec![1, 2, 3])],
+                &every
+            ),
             Err(ChainError::Malformed)
         );
-        assert_eq!(issuance_path_pins(&[]), Err(ChainError::Malformed));
     }
 
-    /// Certificates that name each other as issuer cannot loop the walk.
+    /// The path search runs on the 2 MiB stack a webview app's main thread may be left with.
     #[test]
-    fn a_cycle_of_certificates_ends_the_walk() {
-        let a = ca("Same Name", None);
-        let (copy_one, _) = leaf("localhost", &a, false);
-        let presented: Vec<&[u8]> = vec![
-            copy_one.as_ref(),
-            a.der().as_ref(),
-            a.der().as_ref(),
-            a.der().as_ref(),
-        ];
-        let path = issuance_path_pins(&presented).unwrap();
-        assert!(path.len() <= presented.len());
-    }
-
-    /// The walk runs on the 2 MiB stack a webview app's main thread may be left with.
-    #[test]
-    fn the_walk_runs_on_a_two_mib_stack() {
+    fn the_search_runs_on_a_two_mib_stack() {
         let chain = Chain::new("localhost");
-        let (leaf, intermediate, root) = (
-            chain.leaf.to_vec(),
-            chain.intermediate.der().to_vec(),
-            chain.root.der().to_vec(),
-        );
+        let (root, presented) = (chain.root.der().clone(), chain.presented());
         let path = std::thread::Builder::new()
             .stack_size(2 * 1024 * 1024)
-            .spawn(move || issuance_path_pins(&[&leaf, &intermediate, &root]).unwrap())
+            .spawn(move || verify(&[&root], &presented, &every).unwrap())
             .unwrap()
             .join()
-            .expect("the chain walk overflowed a 2 MiB stack or panicked");
+            .expect("the path search overflowed a 2 MiB stack or panicked");
         assert_eq!(path.len(), 3);
     }
 
@@ -332,20 +440,21 @@ mod chain_guards {
         /// Random bytes, and a real certificate with bytes flipped, never panic: the answer is a
         /// path or an error (CI fixes the seed with `PROPTEST_RNG_SEED`).
         #[test]
-        fn arbitrary_bytes_never_panic(blobs in proptest::collection::vec(proptest::collection::vec(any::<u8>(), 0..200), 0..12)) {
-            let chain: Vec<&[u8]> = blobs.iter().map(Vec::as_slice).collect();
-            let _ = issuance_path_pins(&chain);
+        fn arbitrary_bytes_never_panic(blobs in proptest::collection::vec(proptest::collection::vec(any::<u8>(), 0..200), 1..12)) {
+            let chain = Chain::new("localhost");
+            let presented: Vec<CertificateDer<'_>> = blobs.into_iter().map(CertificateDer::from).collect();
+            let _ = verify(&[chain.root.der()], &presented, &every);
         }
 
         #[test]
         fn a_mutated_certificate_never_panics(flips in proptest::collection::vec((0_usize..400, any::<u8>()), 1..8)) {
             let chain = Chain::new("localhost");
-            let mut der = chain.leaf.to_vec();
+            let mut der = chain.intermediate.der().to_vec();
             for (at, byte) in flips {
                 let at = at % der.len();
                 der[at] = byte;
             }
-            let _ = issuance_path_pins(&[&der, chain.intermediate.der().as_ref()]);
+            let _ = verify(&[chain.root.der()], &[chain.leaf.clone(), CertificateDer::from(der)], &every);
         }
     }
 }

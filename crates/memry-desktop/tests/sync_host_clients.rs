@@ -21,6 +21,10 @@ const ALLOWED: &[(&str, &str)] = &[
         "the pinned transport's own clients",
     ),
     (
+        "crates/memry-desktop/src/seams/transport/socket.rs",
+        "the pinned transport's own socket",
+    ),
+    (
         "crates/memry-desktop/src/seams/transport/classify.rs",
         "the pinned transport's own errors",
     ),
@@ -34,8 +38,43 @@ const ALLOWED: &[(&str, &str)] = &[
     ),
 ];
 
-/// `reqwest` itself, or the shared client by its path.
-const PATTERNS: &[&str] = &["reqwest", "http::client("];
+/// A network client crate, or the shared client's module however it is named: by path, by a
+/// `use` of the module or of `client`/`client_trusting`, or under a rename.
+const PATTERN: &str = r"\b(reqwest|tokio_tungstenite|tungstenite|tokio_rustls|hyper|hyper_util|ureq|isahc|surf|attohttpc|tauri_plugin_http|tauri_plugin_websocket)\b|\b(crate|memry_desktop)::http\b|\bclient_trusting\b";
+
+fn offends(line: &str) -> bool {
+    let code = line.trim_start();
+    static RE: std::sync::LazyLock<regex::Regex> =
+        std::sync::LazyLock::new(|| regex::Regex::new(PATTERN).unwrap());
+    !code.starts_with("//") && RE.is_match(code)
+}
+
+#[test]
+fn the_guard_sees_every_way_to_name_an_unpinned_client() {
+    for line in [
+        "let client = memry_desktop::http::client();",
+        "use memry_desktop::http::client;",
+        "use memry_desktop::http::{self as net};",
+        "use crate::http::client as unpinned;",
+        "use crate::http;",
+        "let c = client_trusting(root);",
+        "use reqwest::Client;",
+        "tokio_tungstenite::connect_async(url)",
+        "use tokio_rustls::TlsConnector;",
+        "hyper::Client::new()",
+        "ureq::get(url)",
+    ] {
+        assert!(offends(line), "{line}");
+    }
+    for line in [
+        "// reqwest is not used here",
+        "let http = self.transport.send(request);",
+        "mod http;",
+        "http::send(&self.http, request)",
+    ] {
+        assert!(!offends(line), "{line}");
+    }
+}
 
 fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
     for entry in std::fs::read_dir(dir).unwrap() {
@@ -70,12 +109,8 @@ fn only_allowlisted_files_name_an_unpinned_http_client() {
         }
         let text = std::fs::read_to_string(file).unwrap();
         for (number, line) in text.lines().enumerate() {
-            let code = line.trim_start();
-            if code.starts_with("//") {
-                continue;
-            }
-            if PATTERNS.iter().any(|pattern| code.contains(pattern)) {
-                offenders.push(format!("{relative}:{}: {}", number + 1, code));
+            if offends(line) {
+                offenders.push(format!("{relative}:{}: {}", number + 1, line.trim()));
             }
         }
     }

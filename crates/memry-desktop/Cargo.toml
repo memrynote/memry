@@ -42,10 +42,13 @@ keyring-core = "1.0.1"
 
 # The sync seams (`seams/tls`, `seams/transport`): one rustls stack, `ring` only, no aws-lc-rs.
 # `rustls-platform-verifier` checks the chain against the OS trust store; `PinningVerifier` wraps it.
-# `x509-parser` (`verify`, which is ring) reads the SPKI of the presented chain and checks its links.
+# The pins match only a path `rustls-webpki` (rustls's own verifier) built and verified against the
+# OS roots `rustls-native-certs` loads: CA constraints, key usage, path length, validity and the
+# signature algorithms rustls accepts (no SHA-1, RSA of 2048 bits at least).
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-platform-verifier = "0.7"
-x509-parser = { version = "0.18.1", features = ["verify"] }
+rustls-webpki = { version = "0.103.15", default-features = false, features = ["ring", "std", "alloc"] }
+rustls-native-certs = "0.8.4"
 tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-native-roots"] }
 # `Sink` and `Stream` for the socket halves.
 futures-util = { version = "0.3", default-features = false, features = ["std", "sink"] }
@@ -104,6 +107,8 @@ proptest = "1"
 memry-test-kit = { path = "../memry-test-kit" }
 tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "rt-multi-thread", "test-util"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring"] }
+# `examples/cert_check.rs` prints the subject and validity of each presented certificate.
+x509-parser = "0.18.1"
 rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"] }
 flate2 = { workspace = true }
 
