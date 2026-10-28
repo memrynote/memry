@@ -22,6 +22,8 @@ const NORMAL_CLOSURE: u16 = 1000;
 /// A socket frame is a hint; the server's largest (`DEFAULT_SOCKET_ITEMS_MAX_BYTES`) is 64 KiB.
 pub const MAX_FRAME_BYTES: usize = 1024 * 1024;
 pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+/// How long a close frame may take to leave before the connection is dropped.
+const CLOSE_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub fn wire_request(request: &SocketRequest) -> Result<Request<()>, TransportError> {
     let mut wire = request
@@ -123,7 +125,11 @@ async fn pump(
                 }
                 // `None` is every handle dropped, which the seam defines as a close.
                 Some(Outbound::Close) | None => {
-                    let _ = writer.close().await;
+                    // A peer that stops reading cannot hold the task: the close frame gets
+                    // CLOSE_TIMEOUT, then the connection is dropped.
+                    if tokio::time::timeout(CLOSE_TIMEOUT, writer.close()).await.is_err() {
+                        tracing::debug!(scope = "Transport", "the socket close timed out");
+                    }
                     listener.on_closed(NORMAL_CLOSURE, "closed by the core".to_owned());
                     break;
                 }

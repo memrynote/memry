@@ -8,8 +8,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use memry_desktop::seams::tls::pins::PinTable;
-use memry_desktop::seams::tls::spki::spki_pin;
-use memry_desktop::seams::tls::{PinFailure, PinFailureSink, TlsSetup};
+use memry_desktop::seams::tls::spki::pin_of_spki;
+use memry_desktop::seams::tls::{Anchors, PinFailure, PinFailureSink, TlsSetup};
 use rcgen::{
     BasicConstraints, CertificateParams, CertifiedIssuer, DnType, IsCa, KeyPair, KeyUsagePurpose,
     date_time_ymd,
@@ -63,7 +63,7 @@ pub fn leaf(
 
 pub fn pin_of(der: &CertificateDer<'_>) -> String {
     let (_, cert) = x509_parser::certificate::X509Certificate::from_der(der.as_ref()).unwrap();
-    spki_pin(&cert)
+    pin_of_spki(cert.public_key().raw)
 }
 
 /// `root -> intermediate -> leaf(host)`.
@@ -118,6 +118,7 @@ pub fn setup(
     TlsSetup {
         inner,
         table: PinTable::new([(host.to_owned(), pins.to_vec())]),
+        anchors: Anchors::fixed(roots),
         active,
     }
 }

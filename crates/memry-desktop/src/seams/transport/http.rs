@@ -38,18 +38,22 @@ pub async fn send(
         .await
         .map_err(|error| http_failure(&error, timeout_ms))?;
     let status = response.status().as_u16();
-    // Lowercase keys, as the seam requires. A header that is not UTF-8 is dropped rather than
-    // rewritten: no header the protocol reads is binary.
-    let headers: HashMap<String, String> = response
-        .headers()
-        .iter()
-        .filter_map(|(name, value)| {
-            value
-                .to_str()
-                .ok()
-                .map(|value| (name.as_str().to_ascii_lowercase(), value.to_owned()))
-        })
-        .collect();
+    // Lowercase keys, as the seam requires. A header sent more than once keeps every value, joined
+    // with ", " in the order received (RFC 9110 §5.3; the seam's map has one value per name).
+    // `set-cookie` cannot be joined that way (a cookie's own value may hold a comma), and nothing
+    // in the protocol reads it: it is joined anyway rather than dropped. A value that is not UTF-8
+    // is dropped rather than rewritten: no header the protocol reads is binary.
+    let mut headers: HashMap<String, String> = HashMap::new();
+    for (name, value) in response.headers() {
+        let Ok(value) = value.to_str() else { continue };
+        headers
+            .entry(name.as_str().to_ascii_lowercase())
+            .and_modify(|joined| {
+                joined.push_str(", ");
+                joined.push_str(value);
+            })
+            .or_insert_with(|| value.to_owned());
+    }
     let too_large = || TransportError::Failed {
         what: format!("the response body is larger than {MAX_RESPONSE_BYTES} bytes"),
     };

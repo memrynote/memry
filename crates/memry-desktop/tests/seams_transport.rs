@@ -77,7 +77,7 @@ async fn a_429_with_retry_after_is_a_response_with_lowercase_header_keys() {
         let _ = support::read_head(&mut tls).await;
         reply(
             &mut tls,
-            "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 7\r\nX-Mixed-CASE: v\r\ncontent-length: 4\r\nconnection: close\r\n\r\nslow",
+            "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 7\r\nX-Mixed-CASE: v\r\nSet-Cookie: a=1\r\nset-cookie: b=2\r\ncontent-length: 4\r\nconnection: close\r\n\r\nslow",
         )
         .await;
     })
@@ -92,6 +92,11 @@ async fn a_429_with_retry_after_is_a_response_with_lowercase_header_keys() {
     assert_eq!(
         response.headers.get("x-mixed-case").map(String::as_str),
         Some("v")
+    );
+    // A repeated header keeps every value.
+    assert_eq!(
+        response.headers.get("set-cookie").map(String::as_str),
+        Some("a=1, b=2")
     );
     assert!(
         response
