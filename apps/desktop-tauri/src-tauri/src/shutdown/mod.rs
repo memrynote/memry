@@ -143,6 +143,8 @@ pub fn is_completed(app: &AppHandle<Wry>) -> bool {
 /// Starts the sequence for a quit that did not come through `ExitRequested`: the session end.
 /// Without a request to hold, the app is kept alive by the latch alone.
 pub fn begin_session_end(app: &AppHandle<Wry>) {
+    // Before the latch: a quit that is already running must not install on its way out either.
+    app.state::<ShutdownService>().core.session_ending();
     if startup::mark_shutdown_started() {
         return;
     }

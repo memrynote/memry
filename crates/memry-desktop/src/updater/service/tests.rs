@@ -370,6 +370,7 @@ struct Probe {
     marker: std::path::PathBuf,
     hold: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
     entered: Mutex<Option<std::sync::mpsc::Sender<()>>>,
+    hold_download: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
     marker_at_apply: Mutex<Vec<bool>>,
 }
 
@@ -385,6 +386,14 @@ impl UpdateBackend for Probe {
         self.inner.check()
     }
     fn download(&self, progress: &dyn Fn(f64)) -> Result<(), UpdateError> {
+        let held = self.hold_download.lock().unwrap().take();
+        if let Some(release) = held {
+            progress(10.0);
+            if let Some(entered) = self.entered.lock().unwrap().take() {
+                entered.send(()).unwrap();
+            }
+            release.recv().unwrap();
+        }
         self.inner.download(progress)
     }
     fn apply(&self, silent: bool, restart: bool) -> Result<(), UpdateError> {
@@ -407,6 +416,7 @@ fn probe_rig() -> (Rig, Arc<Probe>) {
         marker: dir.path().join(UPDATE_INSTALL_MARKER_FILENAME),
         hold: Mutex::new(None),
         entered: Mutex::new(None),
+        hold_download: Mutex::new(None),
         marker_at_apply: Mutex::new(Vec::new()),
     });
     let rig = rig_in(dir, None, inner, Some(probe.clone()));
@@ -539,4 +549,31 @@ async fn the_timer_checks_every_four_hours_until_install_starts() {
         rig.backend.check(),
         Ok(CheckOutcome::Available(_))
     ));
+}
+
+#[tokio::test]
+async fn a_download_in_flight_when_the_quit_begins_changes_nothing() {
+    let (rig, probe) = probe_rig();
+    rig.backend.script(vec![available("2026.1101.1")]);
+    rig.service.check(false).await.unwrap();
+    let (release, held) = std::sync::mpsc::channel();
+    let (entered_tx, entered) = std::sync::mpsc::channel();
+    *probe.hold_download.lock().unwrap() = Some(held);
+    *probe.entered.lock().unwrap() = Some(entered_tx);
+    let service = rig.service.clone();
+    let download = tokio::spawn(async move { service.download().await });
+    tokio::task::spawn_blocking(move || entered.recv().unwrap())
+        .await
+        .unwrap();
+    let mut states = rig.service.subscribe();
+    states.borrow_and_update();
+    rig.service.stop();
+    release.send(()).unwrap();
+    download.await.unwrap().unwrap();
+    // Neither the remaining progress ticks nor the finished download reached a window.
+    assert!(!states.has_changed().unwrap());
+    assert_eq!(rig.service.state().status, UpdaterStatus::Downloading);
+    // A quit that is not Restart to install does not install what landed after it began.
+    rig.service.apply_on_quit();
+    assert!(rig.backend.applies().is_empty());
 }

@@ -139,7 +139,9 @@ impl UpdaterService {
         })
     }
 
-    /// The quit began: the timer goes, and no check or download starts or lands after this.
+    /// The quit began: the timer goes, and no check or download starts or lands after this. One
+    /// way: a quit never un-begins (a cancelled session end only turns install on quit back on),
+    /// and a download that was still running when it began is not installed on quit.
     pub fn stop(&self) {
         self.stopped.store(true, Ordering::SeqCst);
         self.stop_timer();

@@ -368,8 +368,8 @@ async fn a_pending_install_survives_a_forced_exit() {
 
 #[tokio::test]
 async fn a_session_end_turns_install_on_quit_off_before_any_step() {
-    // A forced sign-out (EWX_FORCE) skips WM_QUERYENDSESSION, so only the sequence sees it;
-    // an installer started then is killed after it removed the old install (#1851).
+    // A session end that skipped the query path has the sequence as its first signal; an
+    // installer started then is killed after it removed the old install (#1851).
     let (core, log, effects) = setup();
     core.set_update_hook(Arc::new(FakeHook {
         install: AtomicBool::new(false),
@@ -480,4 +480,38 @@ fn an_exit_request_right_after_the_last_window_closed_is_the_window_systems() {
     assert!(!is_implicit_exit(None));
     let long_ago = now.checked_sub(IMPLICIT_EXIT_WINDOW * 2).expect("instant");
     assert!(!is_implicit_exit(Some(long_ago)));
+}
+
+#[tokio::test]
+async fn a_session_end_during_a_running_quit_still_turns_install_on_quit_off() {
+    // The quit already holds the latch, so the session end never starts its own sequence.
+    let (core, log, effects) = setup();
+    core.set_update_hook(Arc::new(FakeHook {
+        install: AtomicBool::new(false),
+        log: log.clone(),
+    }));
+    let (release, held) = tokio::sync::oneshot::channel::<()>();
+    let held = Arc::new(Mutex::new(Some(held)));
+    core.registry
+        .register(
+            "flush-windows",
+            Arc::new(move |_, _| {
+                let held = held.lock().unwrap().take();
+                Box::pin(async move {
+                    if let Some(held) = held {
+                        let _ = held.await;
+                    }
+                    Ok(())
+                })
+            }),
+        )
+        .unwrap();
+    let running = core.clone();
+    let quit_effects = effects.clone();
+    let quit = tokio::spawn(async move { running.run(ShutdownReason::Quit, &quit_effects).await });
+    tokio::task::yield_now().await;
+    core.session_ending();
+    release.send(()).unwrap();
+    quit.await.unwrap();
+    assert!(log.has("hook:disable"));
 }

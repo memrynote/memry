@@ -249,3 +249,23 @@ fn every_transition_is_published() {
     assert!(receiver.has_changed().unwrap());
     assert_eq!(receiver.borrow_and_update().status, UpdaterStatus::UpToDate);
 }
+
+#[test]
+fn nothing_a_check_or_download_reports_replaces_installing() {
+    let core = UpdaterCore::new(RAW, true, NOW);
+    core.on_downloaded(&update("2026.1101.1"));
+    core.on_installing();
+    // A check or download that read its result before the install started lands now.
+    assert!(!core.on_update_available(&update("2026.1102.1"), None, NOW));
+    core.on_up_to_date(NOW);
+    core.on_checking(NOW);
+    core.on_download_started();
+    core.on_download_progress(40.0);
+    core.on_downloaded(&update("2026.1102.1"));
+    let state = core.state();
+    assert_eq!(state.status, UpdaterStatus::Installing);
+    assert_eq!(state.available_version.as_deref(), Some("v2026-11-01"));
+    // A failed hand-off still shows.
+    core.on_error("could not start the installer".into());
+    assert_eq!(core.state().status, UpdaterStatus::Error);
+}

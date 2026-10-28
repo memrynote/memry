@@ -276,7 +276,8 @@ pub trait UpdateApplyHook: Send + Sync {
     /// The user asked to install, so the quit hands off to the installer before the exit.
     fn install_requested(&self) -> bool;
     /// Starts the installer, which waits for this process to exit. Returns without exiting: the
-    /// sequence ends the process after it.
+    /// sequence ends the process after it. It runs after the sequence claimed the exit, so the
+    /// backstop no longer covers it: it must start the installer and return, never wait on it.
     fn apply_and_restart(&self);
     /// Runs when the process is exiting normally.
     fn apply_on_quit(&self);
@@ -355,13 +356,10 @@ impl ShutdownCore {
     /// Runs the whole quit and ends in exactly one of: a clean exit, the installer, a forced
     /// exit. The caller has already armed the backstop.
     pub async fn run(&self, reason: ShutdownReason, effects: &Arc<dyn ShutdownEffects>) {
-        // A session end never installs on quit: Windows kills an installer started then, after
-        // it removed the old install (#1851). A forced sign-out (EWX_FORCE) skips
-        // WM_QUERYENDSESSION, so this is the one place every session end passes.
-        if reason == ShutdownReason::SessionEnd
-            && let Some(hook) = self.update_hook()
-        {
-            hook.disable_install_on_quit();
+        // Also covers a session end that skipped the query path (a forced sign-out, a session
+        // manager's `Stop`), whose first signal is this sequence.
+        if reason == ShutdownReason::SessionEnd {
+            self.session_ending();
         }
         let ctx = ShutdownContext {
             installing_update: self.installing_update(),
@@ -450,6 +448,16 @@ impl ShutdownCore {
                 scope = "Shutdown",
                 "last-chance flush did not finish in time"
             );
+        }
+    }
+
+    /// The OS is ending the session: install on quit is off from here. A session end never
+    /// installs on quit, because Windows kills an installer started then, after it removed the
+    /// old install (#1851). The shell calls this for every session end, also one that arrives
+    /// while a quit already runs and so starts no sequence of its own.
+    pub fn session_ending(&self) {
+        if let Some(hook) = self.update_hook() {
+            hook.disable_install_on_quit();
         }
     }
 

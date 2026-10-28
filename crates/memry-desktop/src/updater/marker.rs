@@ -1,8 +1,9 @@
 //! Failed-install detection (`apps/desktop/src/main/telemetry/update-install-marker.ts`). The
 //! installer runs after this process exits and after telemetry is disposed, so a failed install
 //! reaches nobody. The quit path writes this marker before the hand-off, with a plain write and
-//! no fsync, as Electron does; the next launch reads it and compares versions. The file is a contract with Electron: the last Electron build writes it
-//! before handing over to the first Tauri build.
+//! no fsync, as Electron does; the next launch reads it and compares versions. The file is a
+//! contract with Electron: the last Electron build writes it before handing over to the first
+//! Tauri build.
 
 use std::path::{Path, PathBuf};
 
