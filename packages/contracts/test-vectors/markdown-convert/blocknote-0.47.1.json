@@ -38,7 +38,8 @@
    "name": "",
    "url": "",
    "caption": "",
-   "showPreview": true
+   "showPreview": true,
+   "previewWidth": "<undefined>"
   },
   "video": {
    "textAlignment": "left",
@@ -46,7 +47,8 @@
    "name": "",
    "url": "",
    "caption": "",
-   "showPreview": true
+   "showPreview": true,
+   "previewWidth": "<undefined>"
   },
   "wikiLink": {
    "target": "",
@@ -107,7 +109,8 @@
   "numberedListItem": {
    "backgroundColor": "default",
    "textColor": "default",
-   "textAlignment": "left"
+   "textAlignment": "left",
+   "start": "<undefined>"
   },
   "quote": {
    "backgroundColor": "default",
@@ -186,8 +189,12 @@
   "underline": {},
   "strike": {},
   "code": {},
-  "textColor": {},
-  "backgroundColor": {},
+  "textColor": {
+   "stringValue": "<undefined>"
+  },
+  "backgroundColor": {
+   "stringValue": "<undefined>"
+  },
   "insertion": {
    "id": null
   },

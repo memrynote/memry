@@ -42,6 +42,9 @@ const DIGESTS: Record<string, string> = {
   'markdown-convert/pm-schema.json':
     '5e524687c59e0e435db25c72248be9723b11fe3721602a6d65027f11de801836',
   'markdown-convert/yxml.json': 'c65bd58e84b624c93d9f5b838649c12c99ad1b6565456edbc5a2c994facbe39b',
+  // Not case-shaped: what a release wrote (`blocknote-history.mts`), the input of the bn-* cases.
+  'markdown-convert/blocknote-0.47.1.json':
+    '2e68cd6751160bd03b3edef8851a250bdddff55d25370df086784f1ba3e740b9',
   'markdown-convert/md-to-html.json':
     '816cfb5da51485e40e08780863ff38e7a682cb25965204c529a2f3df833b3605',
   'markdown-convert/html-to-blocks.json':
@@ -128,6 +131,15 @@ describe('markdown-convert class', () => {
         expect(['ok', 'error']).toContain(entry.expected.status)
       }
     })
+
+    it('matches its committed digest', () => {
+      const bytes = readFileSync(new URL(`../../test-vectors/${path}`, import.meta.url))
+      expect(createHash('sha256').update(bytes).digest('hex')).toBe(DIGESTS[path])
+    })
+  })
+
+  describe('markdown-convert/blocknote-0.47.1.json', () => {
+    const path = 'markdown-convert/blocknote-0.47.1.json'
 
     it('matches its committed digest', () => {
       const bytes = readFileSync(new URL(`../../test-vectors/${path}`, import.meta.url))

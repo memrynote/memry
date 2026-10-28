@@ -119,12 +119,17 @@ function slug(name: string): string {
     .toLowerCase()
 }
 
+/**
+ * Each attribute with its default. JSON has no `undefined`, so an attribute whose default is
+ * `undefined` (`numberedListItem.start`, `textColor.stringValue`) is written as
+ * `<undefined>` rather than dropped, and one with no default as `<required>`.
+ */
 function attrsOf(spec: TypeSpec): Attrs {
   return Object.fromEntries(
-    Object.entries(spec.attrs ?? {}).map(([name, attr]) => [
-      name,
-      attr && 'default' in attr ? attr.default : '<required>'
-    ])
+    Object.entries(spec.attrs ?? {}).map(([name, attr]) => {
+      if (!attr || !('default' in attr)) return [name, '<required>']
+      return [name, attr.default === undefined ? '<undefined>' : attr.default]
+    })
   )
 }
 

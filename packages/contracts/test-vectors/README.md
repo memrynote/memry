@@ -98,7 +98,7 @@ one-class change reviewable.
 | `markdown-convert/blocks.json`           |                                  844 | same                                                                                           | same + Rust `markdown_doc_vectors.rs`                                                |
 | `markdown-convert/serialize-doc.json`    |                                  537 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | `markdown-convert/replace-body.json`     |                                   44 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
-| **Total**                                | **32106 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+| **Total**                                | **32271 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
 
 ### `markdown-convert/`
 
