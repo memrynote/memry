@@ -83,6 +83,7 @@ mod attachment_fetch;
 mod attachments_io;
 mod pass;
 mod realtime;
+mod snapshot_fallback;
 
 pub use attachment_fetch::AttachmentRedriveSummary;
 pub use pass::SyncPassSummary;

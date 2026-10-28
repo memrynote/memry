@@ -173,12 +173,20 @@ mod native {
 
     use super::SERVICE;
 
+    /// A new item comes from `security`, another app, as Electron's would. An item that exists
+    /// is changed in place from this process, as keytar changes it from Electron's: `security`
+    /// changing an item this test binary made would wait for an access prompt that a CI runner
+    /// never answers.
     pub fn write_like_keytar(account: &str, text: &str) {
+        if read(account).is_some() {
+            security_framework::passwords::set_generic_password(SERVICE, account, text.as_bytes())
+                .unwrap();
+            return;
+        }
         let status = Command::new("security")
             .args([
                 "add-generic-password",
                 "-A",
-                "-U",
                 "-s",
                 SERVICE,
                 "-a",

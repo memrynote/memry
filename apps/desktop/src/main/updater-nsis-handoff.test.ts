@@ -314,7 +314,7 @@ describe('NSIS to Velopack hand-off through the updater', () => {
     )
     expect(mocks.childProcess.spawn).toHaveBeenCalledWith(
       'cmd.exe',
-      ['/d', '/s', '/c', `""${scriptPath}""`],
+      ['/d', '/e:on', '/v:off', '/s', '/c', `""${scriptPath}""`],
       expect.objectContaining({ detached: true, stdio: 'ignore', windowsHide: true })
     )
     expect(vi.mocked(markUpdateInstallStarted).mock.invocationCallOrder[0]).toBeLessThan(

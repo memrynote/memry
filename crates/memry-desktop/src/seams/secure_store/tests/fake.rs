@@ -18,13 +18,23 @@ pub type Data = Arc<Mutex<HashMap<(String, String), Vec<u8>>>>;
 pub struct Gate {
     pub open: Mutex<bool>,
     pub changed: Condvar,
+    /// Calls that reached the gate: the keychain thread is blocked once this moves.
+    pub entered: AtomicUsize,
 }
 
 impl Gate {
     pub fn wait(&self) {
+        self.entered.fetch_add(1, Ordering::SeqCst);
         let mut open = self.open.lock().unwrap();
         while !*open {
             open = self.changed.wait(open).unwrap();
+        }
+    }
+
+    /// Returns once `n` calls are blocked at the gate.
+    pub fn wait_entered(&self, n: usize) {
+        while self.entered.load(Ordering::SeqCst) < n {
+            std::thread::yield_now();
         }
     }
 

@@ -182,7 +182,7 @@ async fn many_large_pending_updates_drain_under_the_body_ceiling() {
     );
     assert_eq!(bodies.len(), 3, "n1 rides in two requests, n2 in one");
     let left = db
-        .call_blocking(|conn| outbox::next_batch(conn, i64::MAX, 100))
+        .call_blocking(|conn| outbox::next_batch(conn, i64::MAX, 100, &[]))
         .expect("read the outbox");
     assert!(left.is_none(), "nothing is left queued, got {left:?}");
 }
@@ -208,7 +208,7 @@ fn a_batch_is_cut_at_the_request_budget_and_keeps_every_row_in_order() {
         let db = db.clone();
         move || {
             let batch = db
-                .call_blocking(|conn| outbox::next_batch(conn, i64::MAX, 100))
+                .call_blocking(|conn| outbox::next_batch(conn, i64::MAX, 100, &[]))
                 .expect("a batch")?;
             let Batch::Crdt { rows, .. } = batch else {
                 panic!("only CRDT rows are queued");

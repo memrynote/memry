@@ -32,7 +32,11 @@ fn a_call_that_finishes_at_its_deadline_never_leaves_the_latch_set() {
 
 #[test]
 fn a_read_nobody_waits_for_is_not_run_but_one_somebody_waits_for_is() {
-    let deadline = Duration::from_millis(200);
+    // One deadline serves every caller, so the order is set by it: the joiner arrives half a
+    // deadline after the orphan, before the stuck call latches (one deadline after it began)
+    // and with half a deadline left when the gate opens. The halves are a second each, so a
+    // slow runner cannot reorder them (at 200 ms the joiner once arrived after the latch).
+    let deadline = Duration::from_secs(2);
     let rig = rig_with(None, deadline, false);
     let gate = Arc::new(Gate::default());
     rig.fake.set_mode(Mode::Block(gate.clone()));
@@ -40,12 +44,12 @@ fn a_read_nobody_waits_for_is_not_run_but_one_somebody_waits_for_is() {
         let store = rig.store.clone();
         std::thread::spawn(move || store.set(SecureStoreKey::AccessToken, vec![1; 32]))
     };
-    std::thread::sleep(Duration::from_millis(20));
+    gate.wait_entered(1);
     let orphan = {
         let store = rig.store.clone();
         std::thread::spawn(move || store.get(SecureStoreKey::MasterKey))
     };
-    std::thread::sleep(Duration::from_millis(80));
+    std::thread::sleep(deadline / 2);
     let joiner = {
         let store = rig.store.clone();
         std::thread::spawn(move || store.get(SecureStoreKey::MasterKey))
@@ -68,7 +72,7 @@ fn a_read_nobody_waits_for_is_not_run_but_one_somebody_waits_for_is() {
         let store = rig.store.clone();
         std::thread::spawn(move || store.set(SecureStoreKey::AccessToken, vec![1; 32]))
     };
-    std::thread::sleep(Duration::from_millis(20));
+    gate.wait_entered(1);
     let orphan = {
         let store = rig.store.clone();
         std::thread::spawn(move || store.get(SecureStoreKey::RefreshToken))
