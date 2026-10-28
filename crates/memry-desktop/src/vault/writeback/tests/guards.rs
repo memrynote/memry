@@ -186,7 +186,7 @@ fn a_pass_of_a_closed_session_writes_nothing() {
     let mut f = fixture();
     let id = f.adopt("n.md", "first words\n");
     f.edit_in_app(&id, "typed in the app");
-    f.rows.close();
+    f.rows.close_session(f.pass.session);
     let outcome = f.run(&id);
     assert_kept(&mut f, &outcome, Keep::Closed, "n.md", "first words\n");
     f.rows.open(f.vault.clone()).unwrap();

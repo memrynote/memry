@@ -315,7 +315,7 @@ fn a_deferred_file_gets_no_row_and_no_retry() {
 #[test]
 fn nothing_is_applied_once_the_vault_closed() {
     let f = fixture();
-    f.rows.close();
+    f.rows.close_session(f.applier.session);
     f.write("a.md", "x\n");
     assert_eq!(f.added("a.md"), Step::Done);
     assert!(f.adopted().is_empty());

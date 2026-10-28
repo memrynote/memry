@@ -127,7 +127,10 @@ impl WriteBack {
             let shared = shared.clone();
             std::thread::Builder::new()
                 .name("vault-writeback".into())
-                .spawn(move || work(&shared, &runner, &failures))?
+                .spawn(move || {
+                    let _closed = Closed(&shared);
+                    work(&shared, &runner, &failures);
+                })?
         };
         Ok(Self {
             shared,
@@ -171,16 +174,26 @@ impl WriteBack {
             tracing::error!(
                 scope = SCOPE,
                 waiting = queue.due.len(),
+                running = queue.running,
                 "the write-back flush ran out of time"
             );
         }
         done
     }
 
-    /// Runs every scheduled pass now, then joins the thread.
+    /// Runs every scheduled pass now and returns once the thread ended. Any number of callers
+    /// may stop it (a close hook that ran late, the next open); each waits for the end, not only
+    /// the one that joins the thread.
     pub(crate) fn stop(&self) {
-        self.shared.lock().stopping = true;
+        let mut queue = self.shared.lock();
+        queue.stopping = true;
         self.shared.changed.notify_all();
+        drop(
+            self.shared
+                .changed
+                .wait_while(queue, |queue| !queue.closed)
+                .unwrap_or_else(|e| e.into_inner()),
+        );
         let thread = self.thread.lock().unwrap_or_else(|e| e.into_inner()).take();
         if let Some(thread) = thread
             && thread.join().is_err()
@@ -257,8 +270,16 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
             }
         }
     }
-    queue.closed = true;
-    shared.changed.notify_all();
+}
+
+/// Marks the thread ended when it returns or unwinds, so no stop waits for a thread that is gone.
+struct Closed<'a>(&'a Shared);
+
+impl Drop for Closed<'_> {
+    fn drop(&mut self) {
+        self.0.lock().closed = true;
+        self.0.changed.notify_all();
+    }
 }
 
 fn log(note_id: &str, outcome: &Outcome) {

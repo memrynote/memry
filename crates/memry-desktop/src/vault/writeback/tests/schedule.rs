@@ -251,6 +251,36 @@ fn a_stop_runs_every_scheduled_pass_before_the_thread_ends() {
     assert_eq!(fake.count(), 2, "a pass ran after the stop");
 }
 
+/// Two stoppers (a late close hook and the next open): each returns only once the thread ended.
+#[test]
+fn a_second_stop_returns_only_once_the_thread_has_ended() {
+    let fake = Fake::default();
+    fake.with(|s| s.shut = true);
+    let (writeback, _) = start(&fake);
+    let writeback = Arc::new(writeback);
+    writeback.schedule("n1");
+    let first = {
+        let writeback = writeback.clone();
+        std::thread::spawn(move || writeback.stop())
+    };
+    eventually("the pass", || fake.count() == 1);
+    let second = {
+        let (writeback, fake) = (writeback.clone(), fake.clone());
+        std::thread::spawn(move || {
+            writeback.stop();
+            fake.finished()
+        })
+    };
+    std::thread::sleep(SOON);
+    assert!(
+        !second.is_finished(),
+        "the second stop returned with the pass running"
+    );
+    fake.with(|s| s.shut = false);
+    assert_eq!(second.join().unwrap(), 1);
+    first.join().unwrap();
+}
+
 #[test]
 fn a_failed_write_is_told_once_per_run_of_failures() {
     let fake = Fake::default();

@@ -12,7 +12,7 @@ fn an_app_operation_writes_no_row_once_its_session_closed() {
     let f = fixture();
     let id = f.note();
     let started_in = f.session();
-    f.rows.close();
+    f.rows.close_session(started_in);
     f.rows.open(f.vault.clone()).unwrap();
     let error = f
         .rows
@@ -146,7 +146,7 @@ fn a_session_is_had_only_with_the_handle_of_the_open_vault() {
     assert!(f.rows.session_for(&f.vault).is_ok());
     assert!(matches!(f.rows.session_for(&other), Err(RowError::Closed)));
     let in_a = f.rows.session_for(&f.vault).unwrap();
-    f.rows.close();
+    f.rows.close_session(in_a);
     f.rows.open(other.clone()).unwrap();
     assert!(matches!(
         f.rows.session_for(&f.vault),

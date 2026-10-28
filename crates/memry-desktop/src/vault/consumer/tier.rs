@@ -1,8 +1,8 @@
 //! Hangs the watcher, the consumer and the write-back on the session: all start at
-//! `OpenStage::Watcher` of every open and stop, joined, when the vault closes. The rows' lane lives across sessions
-//! (the app holds it), and is open only while a vault is.
+//! `OpenStage::Watcher` of every open and stop, joined, when the vault closes. The rows' lane
+//! lives across sessions (the app holds it), and is open only while a vault is.
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use memry_core::seams::secure_store::SecureStore;
@@ -10,7 +10,7 @@ use tokio::sync::broadcast;
 
 use super::apply::Applier;
 use super::identity::{DeferIdentity, NoteIdentity};
-use super::rows::RowOwner;
+use super::rows::{RowOwner, RowSession};
 use super::{Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
@@ -19,35 +19,45 @@ use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
 use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed};
 
 pub struct VaultTier {
-    /// The own-write record of the open vault session; every open and close starts a new one.
-    echo: Mutex<Arc<EchoGuard>>,
     /// Holds the device key the feed writes under.
     store: Arc<dyn SecureStore>,
     rows: Arc<RowOwner>,
     identity: Mutex<Arc<dyn NoteIdentity>>,
     /// Every session's failed write-backs, for the notice.
     failures: broadcast::Sender<WriteBackFailed>,
-    running: Mutex<Option<Running>>,
-    /// Apart from `running`: a close stops the watcher and the consumer first, and an edit
-    /// scheduled meanwhile must still reach the write-back, which runs it before the close ends.
-    writeback: Mutex<Option<Arc<WriteBack>>>,
+    /// The open vault's handles. A close stops the watcher and the consumer first and leaves
+    /// the handle here, so an edit scheduled meanwhile still reaches the write-back, which runs
+    /// it before the close ends.
+    open: Mutex<Option<Arc<Open>>>,
+    /// Runs once, in the next stop that stops a consumer, right after: a test holds a stop there.
+    #[cfg(test)]
+    pub(crate) after_consumer_stop: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
-struct Running {
-    watcher: VaultWatcher,
-    consumer: Consumer,
+/// What one open of a vault owns. A stop works only on the handle it took when it began, and
+/// clears what is shared (the slot above, the rows) only while that still is its own: a close
+/// hook that ends after its deadline runs while the next vault is open, and must leave that
+/// vault's write-back, rows and own-write record alone.
+struct Open {
+    session: RowSession,
+    /// The own-write record of this open; a record made in one vault never hides a change in
+    /// the next.
+    echo: Arc<EchoGuard>,
+    writeback: Arc<WriteBack>,
+    /// Taken by the first stop; a second stop finds them gone.
+    tasks: Mutex<Option<(VaultWatcher, Consumer)>>,
 }
 
 impl VaultTier {
     pub fn new(store: Arc<dyn SecureStore>) -> Arc<Self> {
         Arc::new(Self {
-            echo: Mutex::new(Arc::default()),
             store,
             rows: RowOwner::new(),
             identity: Mutex::new(Arc::new(DeferIdentity)),
             failures: broadcast::channel(64).0,
-            running: Mutex::new(None),
-            writeback: Mutex::new(None),
+            open: Mutex::new(None),
+            #[cfg(test)]
+            after_consumer_stop: Mutex::new(None),
         })
     }
 
@@ -56,7 +66,17 @@ impl VaultTier {
     /// made in one vault must never hide a change in the next, so a writer asks again for each
     /// write instead of keeping the handle.
     pub fn echo(&self) -> Arc<EchoGuard> {
-        self.echo.lock().unwrap_or_else(|e| e.into_inner()).clone()
+        self.current()
+            .map(|open| open.echo.clone())
+            .unwrap_or_default()
+    }
+
+    fn current(&self) -> Option<Arc<Open>> {
+        self.slot().clone()
+    }
+
+    fn slot(&self) -> MutexGuard<'_, Option<Arc<Open>>> {
+        self.open.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     /// The lane the app's own file operations write their rows through.
@@ -72,17 +92,15 @@ impl VaultTier {
     /// ([`crate::vault::writeback`]). The editor (Step 14) calls it once a body edit is durable,
     /// the sync driver (Step 17) once a page committed. Nothing happens while no vault is open.
     pub fn schedule(&self, note_id: &str) {
-        match self.writeback() {
-            Some(writeback) => writeback.schedule(note_id),
-            None => tracing::debug!(scope = "vault_writeback", note_id, "no vault is open"),
+        match self.current() {
+            Some(open) => open.writeback.schedule(note_id),
+            // Until the reconcile on open (12e-3c) writes such a note, its file lags its body.
+            None => tracing::warn!(
+                scope = "vault_writeback",
+                note_id,
+                "no vault is open: the file is written on the next open"
+            ),
         }
-    }
-
-    fn writeback(&self) -> Option<Arc<WriteBack>> {
-        self.writeback
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .clone()
     }
 
     /// Every note whose file could not be updated from its body, once per run of failures.
@@ -93,14 +111,15 @@ impl VaultTier {
     /// Runs every scheduled write-back of the open vault now and waits, at most `timeout`, for
     /// them. True when none is left; also when no vault is open.
     pub fn flush(&self, timeout: Duration) -> bool {
-        self.writeback()
-            .is_none_or(|writeback| writeback.flush(timeout))
+        self.current()
+            .is_none_or(|open| open.writeback.flush(timeout))
     }
 
     /// The `flush-writebacks` shutdown step: the scheduled write-backs run within
     /// [`writeback_flush_timeout`] of what is left, so the steps behind keep their share. Passes
-    /// still left then run in the vault close (`close-vault`); the step itself succeeds, since
-    /// a failed step would end the sequence before those.
+    /// still left then run in the vault close (`close-vault`), bounded only by the sequence
+    /// budget; the step itself succeeds, since a failed step would end the sequence before
+    /// that close.
     pub fn flush_step(self: &Arc<Self>) -> StepFn {
         let tier = self.clone();
         Arc::new(move |_, deadline| {
@@ -120,36 +139,50 @@ impl VaultTier {
         *self.identity.lock().unwrap_or_else(|e| e.into_inner()) = identity;
     }
 
+    /// Stops the open the tier holds now. Joined outside the locks: each waits for its
+    /// current step. The watcher first, so no fact reaches a consumer that is stopping. The
+    /// write-back last and still reachable, so it runs what was scheduled until it stopped,
+    /// while its rows are still open.
     fn stop(&self) {
-        *self.echo.lock().unwrap_or_else(|e| e.into_inner()) = Arc::default();
-        let running = self
-            .running
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .take();
-        // Joined outside the locks: each waits for its current step. The watcher first, so no
-        // fact reaches a consumer that is stopping. The write-back last and still reachable, so
-        // it runs what was scheduled until it stopped, while the rows are still open.
-        if let Some(Running {
-            watcher,
-            mut consumer,
-        }) = running
-        {
+        let Some(open) = self.current() else {
+            return;
+        };
+        let tasks = open.tasks.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some((watcher, mut consumer)) = tasks {
             watcher.stop_and_drop();
             consumer.stop();
+            #[cfg(test)]
+            if let Some(hold) = self
+                .after_consumer_stop
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .take()
+            {
+                hold();
+            }
         }
-        if let Some(writeback) = self.writeback() {
-            writeback.stop();
+        open.writeback.stop();
+        {
+            let mut slot = self.slot();
+            if slot.as_ref().is_some_and(|held| Arc::ptr_eq(held, &open)) {
+                *slot = None;
+            }
         }
-        *self.writeback.lock().unwrap_or_else(|e| e.into_inner()) = None;
-        self.rows.close();
+        self.rows.close_session(open.session);
     }
 
-    fn start(&self, vault: &OpenVault) -> Result<(Running, Arc<WriteBack>), String> {
-        let exclude = read_vault_config(&vault.path).exclude_patterns;
-        self.rows
+    fn start(&self, vault: &OpenVault) -> Result<Open, String> {
+        let session = self
+            .rows
             .open(vault.vault.clone())
             .map_err(|error| error.to_string())?;
+        self.start_in(vault, session).inspect_err(|_| {
+            self.rows.close_session(session);
+        })
+    }
+
+    fn start_in(&self, vault: &OpenVault, session: RowSession) -> Result<Open, String> {
+        let exclude = read_vault_config(&vault.path).exclude_patterns;
         let identity = self
             .identity
             .lock()
@@ -160,12 +193,13 @@ impl VaultTier {
         } else {
             NewFiles::PairOnly
         };
+        let echo = Arc::<EchoGuard>::default();
         let (sink, inbox) = inbox(QUEUE_CAPACITY);
         let watcher = VaultWatcher::start(
             vault.path.clone(),
             exclude.clone(),
             vault.vault.note_files(),
-            self.echo(),
+            echo.clone(),
             sink,
             new_files,
         )
@@ -180,16 +214,12 @@ impl VaultTier {
                 );
             })
             .ok();
-        let session = self
-            .rows
-            .session_for(&vault.vault)
-            .map_err(|error| error.to_string())?;
         let pass = Pass::new(
             vault.path.clone(),
             vault.vault.clone(),
             self.rows.clone(),
             session,
-            self.echo(),
+            echo.clone(),
             vault.vault.app_settings(self.store.clone()).ok(),
         );
         let writeback = WriteBack::start(pass, self.failures.clone())
@@ -199,13 +229,19 @@ impl VaultTier {
             root: vault.path.clone(),
             vault: vault.vault.clone(),
             rows: self.rows.clone(),
+            session,
             identity,
             feed,
             settings: vault.vault.app_settings(self.store.clone()).ok(),
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude)
             .map_err(|error| error.to_string())?;
-        Ok((Running { watcher, consumer }, writeback))
+        Ok(Open {
+            session,
+            echo,
+            writeback,
+            tasks: Mutex::new(Some((watcher, consumer))),
+        })
     }
 
     /// Registers the open and close hooks. A watcher that cannot start fails its hook, which
@@ -217,17 +253,9 @@ impl VaultTier {
             OpenStage::Watcher,
             Arc::new(move |vault| {
                 tier.stop();
-                match tier.start(vault) {
-                    Ok((running, writeback)) => {
-                        *tier.running.lock().unwrap_or_else(|e| e.into_inner()) = Some(running);
-                        *tier.writeback.lock().unwrap_or_else(|e| e.into_inner()) = Some(writeback);
-                        Ok(())
-                    }
-                    Err(error) => {
-                        tier.rows.close();
-                        Err(error)
-                    }
-                }
+                let open = tier.start(vault)?;
+                *tier.slot() = Some(Arc::new(open));
+                Ok(())
             }),
         );
         let tier = self.clone();

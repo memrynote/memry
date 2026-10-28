@@ -66,9 +66,11 @@ pub fn final_snapshot_push_timeout(remaining: Duration) -> Duration {
     FINAL_SNAPSHOT_PUSH.min(remaining.saturating_sub(CLOSE_VAULT_RESERVE))
 }
 
-/// The write-back flush's timeout within `remaining`: half of it at most, so the steps behind
-/// (the final snapshot push, the vault close; in the last chance, the vault close) keep the
-/// other half. The passes it leaves run in the vault close.
+/// The write-back flush's timeout within `remaining`: half of it, at most [`WRITEBACK_FLUSH`],
+/// so the vault close behind keeps the other half. The final snapshot push does not always
+/// keep its share: in a Windows session end ([`SESSION_END_BUDGET`]) a flush that takes its
+/// whole timeout leaves less than [`CLOSE_VAULT_RESERVE`], and the push is skipped. The passes
+/// the flush leaves run in the vault close.
 pub fn writeback_flush_timeout(remaining: Duration) -> Duration {
     WRITEBACK_FLUSH.min(remaining / 2)
 }

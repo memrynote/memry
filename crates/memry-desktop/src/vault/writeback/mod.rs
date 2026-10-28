@@ -54,7 +54,11 @@
 //!   and again in the last chance when a step before it wedged
 //!   ([`crate::vault::consumer::VaultTier::flush_step`]). A vault close, the quit's included,
 //!   runs every pass scheduled until the write-back stops, after the watcher and the consumer
-//!   stopped and before the rows close. A schedule during either is due at once.
+//!   stopped and before the rows close. A schedule during either is due at once. The close
+//!   has no bound of its own on those passes: the session goes on after its close hook
+//!   deadline and the quit after the sequence budget, and a pass still running when the
+//!   process ends is a forced exit (below). A close that ends after the next vault opened
+//!   stops only its own vault's write-back and rows.
 //! - **A crash or a forced exit leaves files behind their bodies, never the reverse.** The
 //!   body is durable in the document before its note is scheduled, and the queue is in
 //!   memory, so a process that ends before a pass leaves that note's file with older text and

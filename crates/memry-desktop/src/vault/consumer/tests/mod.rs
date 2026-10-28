@@ -339,6 +339,7 @@ pub(super) fn applier(
         identity,
         feed: vault.external_feed(store.clone()).ok(),
         settings: vault.app_settings(store.clone()).ok(),
+        session: rows.session_for(vault).unwrap(),
     }
 }
 
@@ -350,3 +351,4 @@ mod facts;
 mod flood;
 mod hash_rule;
 mod lane;
+mod late_close;

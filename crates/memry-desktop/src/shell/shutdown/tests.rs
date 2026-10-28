@@ -157,6 +157,9 @@ fn deadline_arithmetic_leaves_room_for_the_steps_behind() {
     assert_eq!(writeback_flush_timeout(ms(3000)), ms(1500));
     assert_eq!(writeback_flush_timeout(LAST_CHANCE), ms(750));
     assert_eq!(writeback_flush_timeout(ms(0)), ms(0));
+    // A session-end flush that takes its whole share leaves the final push nothing.
+    let after_flush = SESSION_END_BUDGET - writeback_flush_timeout(SESSION_END_BUDGET);
+    assert_eq!(final_snapshot_push_timeout(after_flush), ms(0));
 }
 
 #[tokio::test(start_paused = true)]
