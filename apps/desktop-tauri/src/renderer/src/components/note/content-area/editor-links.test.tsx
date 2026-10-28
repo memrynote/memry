@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { commands } from '../../../../../generated/bindings'
-import { installExternalLinkGuard } from '@/lib/external-link-guard'
+import { installExternalLinkGuard, openLink } from '@/lib/external-link-guard'
 import { InboxContentEditor } from '@/components/inbox-detail/inbox-content-editor'
 import { TaskDescriptionEditor } from '@/components/tasks/task-description-editor'
 import { EDITOR_LINKS, EditorFormattingToolbar, useEditorLinkClicks } from './editor-links'
@@ -103,6 +103,37 @@ describe('an editor link click', () => {
     render(<Surface />)
     await clickLink(await anchor())
     expect(opened.mock.calls).toEqual([['https://e.com/x']])
+  })
+})
+
+/** A whiteboard in an editor: Excalidraw's link claims its click and `onLinkOpen` opens it. */
+function Whiteboard(): React.JSX.Element {
+  const container = useRef<HTMLDivElement>(null)
+  useEditorLinkClicks(container)
+  return (
+    <div ref={container}>
+      <div data-content-type="whiteboard">
+        <a
+          href="https://e.com/board"
+          onClick={(event) => {
+            event.preventDefault()
+            openLink('https://e.com/board')
+          }}
+        >
+          board link
+        </a>
+      </div>
+    </div>
+  )
+}
+
+describe('a whiteboard link click', () => {
+  // canvas-note-body and agent-diff-body listen on their whole container, which holds any board.
+  it('is left to the board, which opens it once', async () => {
+    render(<Whiteboard />)
+    fireEvent.click(screen.getByText('board link'))
+    await afterDispatch()
+    expect(opened.mock.calls).toEqual([['https://e.com/board']])
   })
 })
 

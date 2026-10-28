@@ -5,7 +5,6 @@ import { AIExtension } from '@blocknote/xl-ai'
 import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
 import { scrollToAnchor } from '../scroll-to-anchor'
-import { isFromWhiteboard } from '../whiteboard-events'
 import { openClickedLink } from '../editor-links'
 import { openLink } from '@/lib/external-link-guard'
 import { useEditorTarget } from '@/commands'
@@ -163,12 +162,8 @@ export function useBlockNoteSetup({
   // restore a branch here: with both in place a click opens the note twice.
   // The editor's one link opener (editor-links.tsx); without `onLinkClick` it opens in the OS.
   useEffect(() => {
-    const handleClick = (e: globalThis.MouseEvent): void => {
-      // A link on a whiteboard is opened by the board's own handler; answering
-      // it here too opened every such link twice.
-      if (isFromWhiteboard(e)) return
+    const handleClick = (e: globalThis.MouseEvent): void =>
       openClickedLink(e, onLinkClick ?? openLink)
-    }
 
     // Scope the lookup to this instance's own container. `document.querySelector`
     // returns whichever `.bn-editor` is first in the document, so with more than

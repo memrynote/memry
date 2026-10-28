@@ -24,14 +24,19 @@ import { useEffect, type RefObject } from 'react'
 import { openLink } from '@/lib/external-link-guard'
 import { Download } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
+import { isFromWhiteboard } from './whiteboard-events'
 
 const log = createLogger('EditorLinks')
 
 /** BlockNote's `links` option for every editor: its mouseup opener never opens. */
 export const EDITOR_LINKS = { onClick: (): boolean => true }
 
-/** Opens the clicked link by its address and claims the click, so the guard does not follow it. */
+/**
+ * Opens the clicked link by its address and claims the click, so the guard does not follow it. A
+ * link on a whiteboard is the board's: Excalidraw's `onLinkOpen` opens it.
+ */
 export function openClickedLink(event: MouseEvent, open: (href: string) => void = openLink): void {
+  if (isFromWhiteboard(event)) return
   const href =
     event.target instanceof Element ? event.target.closest('a')?.getAttribute('href') : undefined
   if (!href || href.startsWith('#')) return
