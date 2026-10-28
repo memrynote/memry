@@ -33,9 +33,15 @@ pub fn report(app: &AppHandle<Wry>, reason: &str) {
 }
 
 /// The web content process of `webview` died for `reason`: reload the page, or show the
-/// startup-error window once the reloads ran out. Runs on the event loop, outside the
-/// platform callback that reported the death, since a new window must not be built inside one.
+/// startup-error window once the reloads ran out. A webview built inside a WebView2 event
+/// callback never finishes navigating (the re-entrancy wry warns about), and `run_on_main_thread`
+/// called on the main thread runs at once, so the task is posted from a runtime thread: it runs
+/// on the event loop after the platform callback that reported the death has returned.
 fn recover(webview: Webview<Wry>, reason: &'static str) {
+    tauri::async_runtime::spawn(async move { schedule_recovery(webview, reason) });
+}
+
+fn schedule_recovery(webview: Webview<Wry>, reason: &'static str) {
     let app = webview.app_handle().clone();
     let scheduled = app.clone().run_on_main_thread(move || {
         let now_ms = u64::try_from(EPOCH.elapsed().as_millis()).unwrap_or(u64::MAX);
