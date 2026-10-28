@@ -18,6 +18,7 @@ on:
       - 'pnpm-lock.yaml'
       - 'oxlint.config.mts'
       - '.github/workflows/desktop-tauri-ci.yml'
+      - 'scripts/check-renderer-no-sync-host.mjs'
   # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
   merge_group:
   workflow_dispatch:
@@ -102,7 +103,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$)'
+          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|scripts/check-renderer-no-sync-host\.mjs$)'
 
   static:
     name: Static checks
@@ -183,6 +184,10 @@ jobs:
 
       - name: IPC bindings are current
         run: pnpm ipc:check
+
+      # The certificate pins live in the Rust transport; a webview request to a memry host skips them.
+      - name: Renderer makes no memry-host request
+        run: node scripts/check-renderer-no-sync-host.mjs
 
   renderer-tests:
     name: Renderer tests
