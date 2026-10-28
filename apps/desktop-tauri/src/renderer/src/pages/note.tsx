@@ -9,6 +9,7 @@ import { getI18n } from 'react-i18next'
 
 import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { cn } from '@/lib/utils'
+import { openLink } from '@/lib/external-link-guard'
 import { useReducedMotion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
@@ -1268,7 +1269,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Link handlers
   const handleLinkClick = useCallback((href: string) => {
-    window.open(href, '_blank', 'noopener,noreferrer')
+    openLink(href)
   }, [])
 
   // "Clicking a page opens a new tab" (#1644) covers in-note navigation too:

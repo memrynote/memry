@@ -73,6 +73,8 @@ vi.mock('../src/generated/bindings', () => {
   return {
     commands: {
       appInfo: () => Promise.resolve({}),
+      // `openLink` (lib/external-link-guard.ts); a test spies on it to see what was opened.
+      shellOpenLink: (_url: string) => Promise.resolve(null),
       vaultSelect: (path: string | null) => vault().select(path ?? undefined),
       vaultCreate: (parent: string, name: string) => vault().create(parent, name),
       vaultGetDefaultParent: () => vault().getDefaultParent(),

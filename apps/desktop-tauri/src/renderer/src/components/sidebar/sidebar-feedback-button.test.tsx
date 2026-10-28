@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../../generated/bindings'
 import type { ReactNode } from 'react'
 
 import { SidebarFeedbackButton } from './sidebar-feedback-button'
@@ -63,7 +64,7 @@ beforeEach(() => {
 
 describe('SidebarFeedbackButton', () => {
   it('opens the GitHub and community links from the help menu', () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const open = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
     render(<SidebarFeedbackButton />)
 
     fireEvent.click(screen.getByRole('menuitem', { name: /reportBug/ }))

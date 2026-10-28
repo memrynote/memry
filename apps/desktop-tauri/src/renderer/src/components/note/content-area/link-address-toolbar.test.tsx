@@ -2,8 +2,9 @@ import { BlockNoteEditor } from '@blocknote/core'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../../../generated/bindings'
 
-import { LinkAddressToolbar, openLinkAddress } from './link-address-toolbar'
+import { LinkAddressToolbar } from './link-address-toolbar'
 
 const TITLED = 'https://e.com/x "T"'
 
@@ -33,33 +34,16 @@ function renderToolbar(href: string): BlockNoteEditor {
   return editor
 }
 
-describe('openLinkAddress (BBF-112)', () => {
-  afterEach(() => vi.restoreAllMocks())
-
-  it('opens the address half of a clicked titled link, once', () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null)
-    const anchor = document.createElement('a')
-    anchor.setAttribute('href', TITLED)
-    const label = anchor.appendChild(document.createElement('span'))
-    const click = new MouseEvent('click')
-    Object.defineProperty(click, 'target', { value: label })
-
-    expect(openLinkAddress(click)).toBe(true)
-    expect(open).toHaveBeenCalledOnce()
-    expect(open).toHaveBeenCalledWith('https://e.com/x', '_blank')
-  })
-})
-
 describe('LinkAddressToolbar (BBF-112)', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it('opens the address half of a titled link', () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const open = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
     renderToolbar(TITLED)
 
     fireEvent.click(screen.getByRole('button', { name: 'Open in new tab' }))
 
-    expect(open).toHaveBeenCalledWith('https://e.com/x', '_blank')
+    expect(open).toHaveBeenCalledWith('https://e.com/x')
   })
 
   it('edits the address and keeps the stored title', async () => {

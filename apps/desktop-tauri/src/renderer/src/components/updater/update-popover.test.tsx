@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../../generated/bindings'
 import type { ReactNode } from 'react'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 
@@ -137,7 +138,7 @@ describe('UpdatePopover', () => {
   })
 
   it('sends "All changes" to the latest release page', () => {
-    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const open = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
     render(
       <UpdatePopover
         kind="ready"
@@ -149,11 +150,7 @@ describe('UpdatePopover', () => {
 
     expect(screen.getByText('One')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /allChanges/ }))
-    expect(open).toHaveBeenCalledWith(
-      'https://github.com/memrynote/memry/releases/latest',
-      '_blank',
-      'noopener,noreferrer'
-    )
+    expect(open).toHaveBeenCalledWith('https://github.com/memrynote/memry/releases/latest')
     open.mockRestore()
   })
 

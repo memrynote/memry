@@ -18,6 +18,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../../generated/bindings'
 
 import { buildMindMap } from '@/components/note/mind-map'
 import { mindMapDestinations } from '@/components/note/mind-map/mind-map-destination'
@@ -90,7 +91,6 @@ const mocks = vi.hoisted(() => ({
   fileGet: vi.fn(),
   taskGet: vi.fn(),
   eventGet: vi.fn(),
-  windowOpen: vi.fn(),
   /** Live `canvas:too-large` subscribers, so a test can fire the event. */
   tooLargeListeners: new Set<(event: { id: string }) => void>()
 }))
@@ -661,10 +661,9 @@ describe('CanvasEditor link opening', () => {
     mocks.updateScene.mockReset()
     mocks.noteGet.mockReset().mockResolvedValue({ id: 'n1', title: 'Roadmap' })
     mocks.fileGet.mockReset().mockResolvedValue(null)
-    mocks.windowOpen.mockReset()
+    vi.spyOn(commands, 'shellOpenLink').mockReset().mockResolvedValue(null)
     mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
     mocks.api.isLoading = false
-    window.open = mocks.windowOpen
     installWindowApi()
     Object.defineProperty(window, 'location', {
       configurable: true,
@@ -683,7 +682,7 @@ describe('CanvasEditor link opening', () => {
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'note', path: '/note/n1', title: 'Roadmap' })
     )
-    expect(mocks.windowOpen).not.toHaveBeenCalled()
+    expect(commands.shellOpenLink).not.toHaveBeenCalled()
   })
 
   /**
@@ -837,7 +836,7 @@ describe('CanvasEditor link opening', () => {
     expect(mocks.updateScene).toHaveBeenCalledWith(
       expect.objectContaining({ appState: { selectedElementIds: { 'shape-1': true } } })
     )
-    expect(mocks.windowOpen).not.toHaveBeenCalled()
+    expect(commands.shellOpenLink).not.toHaveBeenCalled()
   })
 
   it('reports an element link whose target has since been deleted', () => {
@@ -849,17 +848,13 @@ describe('CanvasEditor link opening', () => {
     expect(mocks.toastError).toHaveBeenCalledWith('canvas.link.elementMissing')
   })
 
-  it('hands a web link to the OS browser through the allowlisted _blank path', () => {
+  it('hands a web link to the shell, whose allowlist decides what leaves the app', () => {
     render(<CanvasEditor canvasId="c1" initialScene="" />)
 
     const event = clickLink('https://example.com/docs')
 
     expect(event.defaultPrevented).toBe(true)
-    expect(mocks.windowOpen).toHaveBeenCalledWith(
-      'https://example.com/docs',
-      '_blank',
-      'noopener,noreferrer'
-    )
+    expect(commands.shellOpenLink).toHaveBeenCalledWith('https://example.com/docs')
   })
 
   it('still blocks Excalidraw entirely when there is nothing to act on', () => {
@@ -868,7 +863,7 @@ describe('CanvasEditor link opening', () => {
     const event = clickLink('   ')
 
     expect(event.defaultPrevented).toBe(true)
-    expect(mocks.windowOpen).not.toHaveBeenCalled()
+    expect(commands.shellOpenLink).not.toHaveBeenCalled()
     expect(mocks.openTab).not.toHaveBeenCalled()
     expect(mocks.toastError).not.toHaveBeenCalled()
   })

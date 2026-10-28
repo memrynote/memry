@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { ExternalLink } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { openLink } from '@/lib/external-link-guard'
 
 interface UrlEditorProps {
   value: string
@@ -102,7 +103,7 @@ export function UrlEditor({
 
   const handleOpenUrl = useCallback(() => {
     if (value) {
-      window.open(value, '_blank', 'noopener,noreferrer')
+      openLink(value)
     }
   }, [value])
 

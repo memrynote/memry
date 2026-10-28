@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { ContentArea } from '@/components/note/content-area'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { openLink } from '@/lib/external-link-guard'
 
 interface VirtualNotePageProps {
   /** Tab title, rendered as the note heading (e.g. "MemryNote 2026.708.1"). */
@@ -19,7 +20,7 @@ interface VirtualNotePageProps {
 export function VirtualNotePage({ title, content, contentType }: VirtualNotePageProps) {
   // External links (e.g. PR references) open in the user's browser, matching notes.
   const handleLinkClick = useCallback((href: string) => {
-    window.open(href, '_blank', 'noopener,noreferrer')
+    openLink(href)
   }, [])
 
   // This page used to lean on TabContent's wrapper as its scroller, which is why

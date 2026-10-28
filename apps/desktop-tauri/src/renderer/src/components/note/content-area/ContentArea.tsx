@@ -120,7 +120,7 @@ import { createBlockDirectionPlugin } from './block-direction-plugin'
 import { createAnchorVisibilityPlugin } from './portal/anchor-visibility-plugin'
 import { createPortalTrailingParagraphPlugin } from './portal/portal-trailing-paragraph-plugin'
 import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
-import { LinkAddressToolbarController, openLinkAddress } from './link-address-toolbar'
+import { LinkAddressToolbarController } from './link-address-toolbar'
 import { registerBlockSelection } from './marquee-block-registry'
 import { MoveBlockDialog } from './move-block-dialog'
 import { PortalFlowsLayer } from './portal-flows/portal-flows-layer'
@@ -718,9 +718,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // unreachable (#1639). What the cell holds is written back through the
       // `<!-- table-colors:… -->` marker, so the colour survives the save.
       tables: { headers: true, cellBackgroundColor: true, cellTextColor: true },
-      // With `onLinkClick` the click listener in `useBlockNoteSetup` opens the
-      // link; BlockNote's own opener would open it a second time (BBF-112).
-      links: { onClick: onLinkClick ? () => true : openLinkAddress },
+      // `EDITOR_LINKS` (editor-links.tsx), written out: the click listener in
+      // `useBlockNoteSetup` opens a link, BlockNote's mouseup opener never does. The
+      // constant here makes react/refs flag this whole call, a finding an inline
+      // function in the object has always hidden.
+      links: { onClick: () => true },
       uploadFile,
       resolveFileUrl: resolveEditorFileUrl,
       placeholders: {
