@@ -13,6 +13,8 @@ use tokio::task::JoinSet;
 use tokio::time::Instant;
 
 use crate::api::errors::ApiError;
+use crate::storage::Db;
+use crate::sync::body_debt;
 use crate::sync::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 
 use super::{FirstSyncPhase, FirstSyncProgress, ProgressSink};
@@ -45,6 +47,7 @@ pub const MAX_RATE_LIMIT_PAUSES: u32 = 8;
 /// this run.
 pub(super) async fn pull_parallel(
     bodies: &Arc<BodyPull>,
+    db: &Db,
     window: Vec<String>,
     elevated: bool,
     progress: &Arc<dyn ProgressSink>,
@@ -59,7 +62,11 @@ pub(super) async fn pull_parallel(
     let queue = Arc::new(BodyQueue::new(window, Arc::clone(progress)));
     let mut running = JoinSet::new();
     for _ in 0..workers {
-        running.spawn(body_worker(Arc::clone(bodies), Arc::clone(&queue)));
+        running.spawn(body_worker(
+            Arc::clone(bodies),
+            db.clone(),
+            Arc::clone(&queue),
+        ));
     }
     let mut report = BodyPullReport::default();
     while let Some(joined) = running.join_next().await {
@@ -163,12 +170,18 @@ impl BodyQueue {
 /// every stream waits out the `Retry-After`.
 async fn body_worker(
     bodies: Arc<BodyPull>,
+    db: Db,
     queue: Arc<BodyQueue>,
 ) -> Result<BodyPullReport, BodyPullError> {
     let mut report = BodyPullReport::default();
     while let Some(doc_id) = queue.next().await {
         match bodies.pull_document(&doc_id).await {
             Ok(part) => {
+                // The bodies pass owed this document before the pull; only a
+                // merged pull settles it (`body_debt`'s invariant).
+                let outcome = part.clone();
+                db.call(move |conn| body_debt::after_pull(conn, &doc_id, &outcome))
+                    .await?;
                 report.absorb(part);
                 queue.finished();
             }

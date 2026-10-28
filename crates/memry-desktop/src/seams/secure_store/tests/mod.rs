@@ -8,6 +8,7 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 
 use super::*;
 
+mod device_identity;
 mod fake;
 mod outage;
 use fake::{Gate, Mode, rig, rig_with};
@@ -45,7 +46,6 @@ fn keys_round_trip_as_base64_text_under_the_keytar_accounts() {
     let rig = rig_with(Some("e2e-x"), Duration::from_secs(5), false);
     for (key, account) in [
         (SecureStoreKey::MasterKey, "master-key-e2e-x"),
-        (SecureStoreKey::DeviceSigningKey, "device-signing-key-e2e-x"),
         (SecureStoreKey::AccessToken, "access-token-e2e-x"),
         (SecureStoreKey::RefreshToken, "refresh-token-e2e-x"),
         (SecureStoreKey::SetupToken, "setup-token-e2e-x"),
@@ -57,6 +57,28 @@ fn keys_round_trip_as_base64_text_under_the_keytar_accounts() {
             assert_eq!(stored, STANDARD.encode(&value).into_bytes());
         }
     }
+}
+
+#[test]
+fn the_device_key_is_refused_and_electron_s_item_is_never_touched() {
+    let rig = rig();
+    rig.fake
+        .put("com.memry.sync", "device-signing-key", b"electron");
+    let denied =
+        |r: Result<(), SecureStoreError>| matches!(r, Err(SecureStoreError::Denied { .. }));
+    assert!(matches!(
+        rig.store.get(SecureStoreKey::DeviceSigningKey),
+        Err(SecureStoreError::Denied { .. })
+    ));
+    assert!(denied(
+        rig.store.set(SecureStoreKey::DeviceSigningKey, vec![1; 64])
+    ));
+    assert!(denied(rig.store.delete(SecureStoreKey::DeviceSigningKey)));
+    rig.store.clear().unwrap();
+    assert_eq!(
+        rig.fake.stored("com.memry.sync", "device-signing-key"),
+        Some(b"electron".to_vec())
+    );
 }
 
 #[test]
@@ -123,11 +145,11 @@ fn a_write_replaces_the_item_keytar_wrote() {
 #[test]
 fn clear_removes_all_five_entries() {
     let rig = rig();
-    for key in KEYS {
+    for key in STORE_KEYS {
         rig.store.set(key, vec![1; 32]).unwrap();
     }
     rig.store.clear().unwrap();
-    for key in KEYS {
+    for key in STORE_KEYS {
         assert_eq!(rig.store.get(key).unwrap(), None);
     }
     rig.store.clear().unwrap();
@@ -136,7 +158,7 @@ fn clear_removes_all_five_entries() {
 #[test]
 fn clear_keeps_going_after_a_failure_and_reports_it() {
     let rig = rig();
-    for key in KEYS {
+    for key in STORE_KEYS {
         rig.store.set(key, vec![1; 32]).unwrap();
     }
     rig.fake.set_mode(Mode::Fail(no_storage));
@@ -239,14 +261,14 @@ fn the_windows_target_names_service_and_account_for_every_service() {
         .unwrap();
     windows
         .store
-        .set_secret("com.memry.test", "ai-key", b"x")
+        .set_secret("com.memrynote.memry.test", "ai-key", b"x")
         .unwrap();
     let targets = windows.fake.targets.lock().unwrap().clone();
     assert_eq!(
         targets,
         [
             Some("com.memry.sync/master-key".to_owned()),
-            Some("com.memry.test/ai-key".to_owned())
+            Some("com.memrynote.memry.test/ai-key".to_owned())
         ]
     );
     let plain = rig();
@@ -269,18 +291,37 @@ fn every_call_runs_on_the_keyring_thread() {
 fn generic_secrets_round_trip_raw_bytes() {
     let rig = rig();
     let value: Vec<u8> = (0..40).map(|n| n * 3).collect();
-    assert_eq!(rig.store.get_secret("com.memry.test", "k").unwrap(), None);
-    rig.store.set_secret("com.memry.test", "k", &value).unwrap();
-    assert_eq!(rig.fake.stored("com.memry.test", "k"), Some(value.clone()));
     assert_eq!(
-        rig.store.get_secret("com.memry.test", "k").unwrap(),
+        rig.store
+            .get_secret("com.memrynote.memry.test", "k")
+            .unwrap(),
+        None
+    );
+    rig.store
+        .set_secret("com.memrynote.memry.test", "k", &value)
+        .unwrap();
+    assert_eq!(
+        rig.fake.stored("com.memrynote.memry.test", "k"),
+        Some(value.clone())
+    );
+    assert_eq!(
+        rig.store
+            .get_secret("com.memrynote.memry.test", "k")
+            .unwrap(),
         Some(value)
     );
-    rig.store.delete_secret("com.memry.test", "k").unwrap();
-    assert_eq!(rig.store.get_secret("com.memry.test", "k").unwrap(), None);
+    rig.store
+        .delete_secret("com.memrynote.memry.test", "k")
+        .unwrap();
+    assert_eq!(
+        rig.store
+            .get_secret("com.memrynote.memry.test", "k")
+            .unwrap(),
+        None
+    );
     rig.fake.set_mode(Mode::Fail(no_storage));
     assert_eq!(
-        rig.store.get_secret("com.memry.test", "k"),
+        rig.store.get_secret("com.memrynote.memry.test", "k"),
         Err(SecureStoreError::Locked)
     );
 }
@@ -340,7 +381,7 @@ fn a_call_that_never_answers_is_locked_at_the_deadline_then_at_once_and_recovers
     assert_eq!(rig.store.health(), SecureStoreHealth::Unavailable);
 
     let start = Instant::now();
-    for key in KEYS {
+    for key in STORE_KEYS {
         assert_eq!(rig.store.get(key), Err(SecureStoreError::Locked));
         assert_eq!(
             rig.store.set(key, vec![1; 32]),

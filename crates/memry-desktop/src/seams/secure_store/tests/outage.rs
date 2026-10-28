@@ -192,7 +192,9 @@ fn an_open_e2e_gate_keeps_its_secrets_in_a_file_that_survives_a_restart() {
     let first = open();
     assert_eq!(first.get(SecureStoreKey::MasterKey).unwrap(), None);
     first.set(SecureStoreKey::MasterKey, vec![3; 32]).unwrap();
-    first.set_secret("com.memry.test", "a", b"raw").unwrap();
+    first
+        .set_secret("com.memrynote.memry.test", "a", b"raw")
+        .unwrap();
     drop(first);
 
     let restarted = open();
@@ -201,7 +203,9 @@ fn an_open_e2e_gate_keeps_its_secrets_in_a_file_that_survives_a_restart() {
         Some(vec![3; 32])
     );
     assert_eq!(
-        restarted.get_secret("com.memry.test", "a").unwrap(),
+        restarted
+            .get_secret("com.memrynote.memry.test", "a")
+            .unwrap(),
         Some(b"raw".to_vec())
     );
     restarted.delete(SecureStoreKey::MasterKey).unwrap();
