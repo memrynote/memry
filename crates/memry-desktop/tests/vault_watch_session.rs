@@ -108,6 +108,7 @@ fn an_edit_no_os_event_announced_is_found_by_the_safety_net_rescan() {
             mime_type: None,
             file_size: Some(4),
             content_hash: Some(content_hash("base")),
+            file_hash: Some(content_hash("base")),
             indexed_at: 1,
         })
         .unwrap();
@@ -254,6 +255,7 @@ fn a_resync_reports_again_what_the_rows_do_not_hold_and_a_forget_only_its_path()
             mime_type: None,
             file_size: Some(4),
             content_hash: Some(content_hash("base")),
+            file_hash: Some(content_hash("base")),
             indexed_at: i64::MAX,
         })
         .unwrap();
@@ -325,6 +327,7 @@ fn a_rescan_that_adopts_nothing_looks_only_at_files_a_moved_note_can_be() {
             mime_type: None,
             file_size: Some(body.len() as i64),
             content_hash: Some(content_hash(body)),
+            file_hash: Some(content_hash(body)),
             indexed_at: i64::MAX,
         })
         .unwrap();
@@ -377,6 +380,7 @@ fn a_rescan_that_adopts_nothing_finds_a_note_edited_then_moved() {
             mime_type: None,
             file_size: Some(4),
             content_hash: Some(content_hash("base")),
+            file_hash: Some(content_hash("base")),
             indexed_at: i64::MAX,
         })
         .unwrap();

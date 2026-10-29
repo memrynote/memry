@@ -441,6 +441,7 @@ mod tests {
                 mime_type: None,
                 file_size: Some(4),
                 content_hash: Some(content_hash("base")),
+                file_hash: Some(content_hash("base")),
                 indexed_at: 1,
             })
             .unwrap();

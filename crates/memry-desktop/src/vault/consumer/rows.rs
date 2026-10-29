@@ -38,6 +38,9 @@ pub struct RowStat {
     /// Markdown only, and only for content the note's document holds: a write-back reading
     /// a file that differs would take this hash for "the file is unchanged" and overwrite it.
     pub content_hash: Option<String>,
+    /// Markdown only: the hash of the bytes read, whether or not the document took them. A
+    /// move made while the app was closed pairs on it (`vault::watch::rename`).
+    pub file_hash: Option<String>,
 }
 
 /// One open of one vault, as the rows know it.
@@ -258,6 +261,11 @@ impl Lane<'_> {
         self.files().set_hash(note_id, None)
     }
 
+    /// The file was read and its text not taken: only its pairing hash moves.
+    pub(super) fn record_file_hash(&self, note_id: &str, hash: &str) -> Result<(), StorageError> {
+        self.files().set_file_hash(note_id, Some(hash))
+    }
+
     /// Records the row stamped now: the caller read the file now and, with a hash, the body
     /// holds it now (a feed that just took it). The stamp's one meaning is
     /// `memry_core::domain::note_files::NoteFile::indexed_at`. It is taken after the feed's
@@ -287,6 +295,7 @@ impl Lane<'_> {
             mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
             file_size: i64::try_from(stat.size).ok(),
             content_hash: stat.content_hash,
+            file_hash: stat.file_hash,
             indexed_at: at,
         })?;
         state.index.insert(note_id, path);
@@ -311,6 +320,7 @@ impl Lane<'_> {
             mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
             file_size: i64::try_from(stat.size).ok(),
             content_hash: stat.content_hash,
+            file_hash: stat.file_hash,
             indexed_at: now_ms(),
         })?;
         state.index.insert(note_id, path);

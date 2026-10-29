@@ -211,6 +211,7 @@ impl Applier {
             file_type,
             size,
             content_hash,
+            file_hash: file.map(|file| file.hash),
         };
         if let Err(error) = lane.put(&note_id, path, stat) {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
@@ -262,7 +263,8 @@ impl Applier {
                     let stat = RowStat {
                         file_type,
                         size,
-                        content_hash: Some(file.hash),
+                        content_hash: Some(file.hash.clone()),
+                        file_hash: Some(file.hash),
                     };
                     if let Err(error) = lane.refresh(note_id, path, stat) {
                         tracing::warn!(
@@ -281,7 +283,18 @@ impl Applier {
             };
             match self.write_body(note_id, path, &file, write) {
                 Body::Wrote { holds_file: true } => Some(file.hash),
-                Body::Wrote { holds_file: false } | Body::NoKey => return Step::Done,
+                // The document did not take the text: the row keeps naming what it holds, and
+                // only the bytes it pairs on move, so a move while closed stays a move.
+                Body::Wrote { holds_file: false } | Body::NoKey => {
+                    if let Err(error) = lane.record_file_hash(note_id, &file.hash) {
+                        tracing::warn!(
+                            scope = SCOPE,
+                            note_id,
+                            "the file hash was not recorded: {error}"
+                        );
+                    }
+                    return Step::Done;
+                }
                 Body::Failed => return Step::Retry(path.to_owned()),
             }
         } else {
@@ -294,6 +307,7 @@ impl Applier {
             file_type,
             size,
             content_hash: content_hash.clone(),
+            file_hash: content_hash.clone(),
         };
         if let Err(error) = lane.put(note_id, path, stat) {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");

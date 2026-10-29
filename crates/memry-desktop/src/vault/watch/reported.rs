@@ -219,6 +219,7 @@ mod tests {
             mime_type: None,
             file_size: Some(1),
             content_hash: Some("h".into()),
+            file_hash: Some("h".into()),
             local_only: false,
             indexed_at,
         }
