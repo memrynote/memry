@@ -354,6 +354,27 @@ async fn a_redirect_away_from_the_api_fails_and_never_carries_the_key() {
 }
 
 #[tokio::test]
+async fn an_api_request_never_follows_a_redirect_even_to_an_image_host() {
+    let server = serve(|seen| {
+        if seen.host == "api.unsplash.com" {
+            Reply::status(302).with_header("location", "https://images.unsplash.com/search")
+        } else {
+            results(&["a"])
+        }
+    })
+    .await;
+
+    assert_eq!(
+        server
+            .service(Some(KEY))
+            .search(&request("mountains", 1))
+            .await,
+        Err(UnsplashFailure::Failed)
+    );
+    assert_eq!(hosts(&server.seen()), ["api.unsplash.com"]);
+}
+
+#[tokio::test]
 async fn a_download_pings_once_with_the_key_then_fetches_the_bytes_without_it() {
     let server = serve(|seen| {
         if seen.host == "api.unsplash.com" {
@@ -495,6 +516,78 @@ async fn a_photo_redirected_between_image_hosts_is_followed_without_the_key() {
         ]
     );
     assert!(seen[1..].iter().all(|s| s.authorization.is_none()));
+}
+
+#[tokio::test]
+async fn a_photo_redirected_to_plain_http_a_userinfo_or_a_port_is_refused_unsent() {
+    for location in [
+        "http://images.unsplash.com/abc123.jpg",
+        "https://user@images.unsplash.com/abc123.jpg",
+        "https://images.unsplash.com:8443/abc123.jpg",
+    ] {
+        let server = serve(
+            move |seen| match (seen.host.as_str(), seen.target.as_str()) {
+                ("api.unsplash.com", _) => Reply::status(200),
+                (_, "/abc123?w=1080") => Reply::status(302).with_header("location", location),
+                _ => Reply::image("image/jpeg", &[1, 2, 3]),
+            },
+        )
+        .await;
+
+        assert_eq!(
+            server
+                .service(Some(KEY))
+                .fetch_photo(&photo("abc123"))
+                .await,
+            Err(UnsplashFailure::Failed),
+            "{location}"
+        );
+        assert_eq!(server.seen().len(), 2, "{location}: {:?}", server.seen());
+    }
+}
+
+/// `hops` redirects on the image host (`/abc123?w=1080` -> `/hop/1` -> ... -> `/hop/<hops>`),
+/// then the bytes.
+fn hops_then_image(hops: usize) -> impl Fn(&Seen) -> Reply + Send + Sync + 'static {
+    move |seen| {
+        if seen.host == "api.unsplash.com" {
+            return Reply::status(200);
+        }
+        let at = seen
+            .target
+            .strip_prefix("/hop/")
+            .and_then(|n| n.parse::<usize>().ok())
+            .unwrap_or(0);
+        if at < hops {
+            Reply::status(302).with_header(
+                "location",
+                &format!("https://images.unsplash.com/hop/{}", at + 1),
+            )
+        } else {
+            Reply::image("image/jpeg", &[7])
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_photo_follows_ten_redirects_and_fails_on_the_eleventh() {
+    let server = serve(hops_then_image(10)).await;
+    let fetched = server
+        .service(Some(KEY))
+        .fetch_photo(&photo("abc123"))
+        .await
+        .expect("ten redirects are followed");
+    assert_eq!(fetched.bytes, [7]);
+
+    let server = serve(hops_then_image(11)).await;
+    assert_eq!(
+        server
+            .service(Some(KEY))
+            .fetch_photo(&photo("abc123"))
+            .await,
+        Err(UnsplashFailure::Failed),
+        "too many redirects is a refusal, not offline"
+    );
 }
 
 #[tokio::test]

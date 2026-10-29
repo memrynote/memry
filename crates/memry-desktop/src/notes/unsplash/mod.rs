@@ -11,9 +11,11 @@
 //! [`UnsplashFailure::NotConfigured`] and the renderer hides the Photos tab.
 //!
 //! The network is untrusted input. The key goes only to `api.unsplash.com` (a photo that names
-//! another host for its tracking endpoint is refused before any request). A redirect is followed
-//! only to an `https` image host, so a request to any other host is never sent, and the URL every
-//! response came from is checked again before its status. Every response body has a byte cap, and
+//! another host for its tracking endpoint is refused before any request). Only a request that
+//! started on an image host follows a redirect, and only to another `https` image host, so an API
+//! request never leaves the API (nor sends its query to the CDN as a `Referer`) and a request to
+//! any other host is never sent. The URL every response came from is checked again before its
+//! status. Every response body has a byte cap, and
 //! every request has a timeout, which the shared client does not have.
 //!
 //! A photo served with a content type outside `EXTENSION_BY_MIME` is refused. Electron saved it
@@ -54,7 +56,7 @@ const MAX_ERROR_BYTES: usize = 64 * 1024;
 const SEARCH_TIMEOUT: Duration = Duration::from_secs(20);
 const PING_TIMEOUT: Duration = Duration::from_secs(10);
 const PHOTO_TIMEOUT: Duration = Duration::from_secs(60);
-/// reqwest's default limit.
+/// Redirects followed in one chain, reqwest's default.
 const MAX_REDIRECTS: usize = 10;
 
 const EXTENSION_BY_MIME: [(&str, &str); 4] = [
@@ -139,13 +141,15 @@ impl Unsplash {
     /// Fails only when `http` cannot build a client (no process default crypto provider).
     pub fn new(http: ClientBuilder, access_key: Option<String>) -> Result<Self, reqwest::Error> {
         let redirects = Policy::custom(|attempt| {
-            if attempt.previous().len() >= MAX_REDIRECTS {
-                attempt.error("too many redirects")
-            } else if photo::is_image_url(attempt.url()) {
-                attempt.follow()
-            } else {
-                // The 3xx itself becomes the response, which no caller accepts.
+            // `previous` holds the first URL of the chain and every URL followed since.
+            let started_on_image_host = attempt.previous().first().is_some_and(photo::is_image_url);
+            if !started_on_image_host || !photo::is_image_url(attempt.url()) {
+                // The 3xx itself becomes the response, which every caller refuses.
                 attempt.stop()
+            } else if attempt.previous().len() > MAX_REDIRECTS {
+                attempt.error("too many redirects")
+            } else {
+                attempt.follow()
             }
         });
         Ok(Self {
@@ -234,13 +238,10 @@ impl Unsplash {
             .timeout(PHOTO_TIMEOUT)
             .send()
             .await
-            .map_err(|error| {
-                tracing::warn!(scope = "Unsplash", "photo could not be fetched: {error}");
-                UnsplashFailure::Offline
-            })?;
+            .map_err(|error| send_failure("photo fetch", &error))?;
         // The redirect policy follows only image hosts; the URL the response came from is checked
         // again, before anything of the response is read.
-        if !photo::is_image_url(response.url()) {
+        if !photo::is_image_url(response.url()) || response.status().is_redirection() {
             tracing::error!(
                 scope = "Unsplash",
                 "a photo was redirected away from the image hosts"
@@ -303,8 +304,7 @@ impl Unsplash {
     }
 
     /// A GET that carries the access key. The URL is on `api.unsplash.com`; the redirect policy
-    /// never leaves for a non-image host, reqwest drops the key on a redirect to another host, and
-    /// the URL the response came from is checked again.
+    /// never follows a redirect from it, and the URL the response came from is checked again.
     async fn api_get(
         &self,
         key: &str,
@@ -329,14 +329,8 @@ impl Unsplash {
             .timeout(timeout)
             .send()
             .await
-            .map_err(|error| {
-                tracing::warn!(
-                    scope = "Unsplash",
-                    "the network could not be reached: {error}"
-                );
-                UnsplashFailure::Offline
-            })?;
-        if !photo::is_api_url(response.url()) {
+            .map_err(|error| send_failure("API request", &error))?;
+        if !photo::is_api_url(response.url()) || response.status().is_redirection() {
             tracing::error!(
                 scope = "Unsplash",
                 "a request to the API was redirected away"
@@ -355,6 +349,20 @@ impl Unsplash {
         tracing::error!(scope = "Unsplash", "{what} failed: {status}");
         UnsplashFailure::Failed
     }
+}
+
+/// A request that got no response: a redirect chain over the cap is a refusal, anything else is
+/// the network.
+fn send_failure(what: &str, error: &reqwest::Error) -> UnsplashFailure {
+    if error.is_redirect() {
+        tracing::error!(scope = "Unsplash", "{what} was redirected too many times");
+        return UnsplashFailure::Failed;
+    }
+    tracing::warn!(
+        scope = "Unsplash",
+        "{what} could not reach the network: {error}"
+    );
+    UnsplashFailure::Offline
 }
 
 fn rate_limit_remaining(response: &Response) -> Option<i64> {
