@@ -71,10 +71,12 @@ fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
     Ok(core)
 }
 
-/// What the core this open created was created over, for the note identity: a core created
-/// over Electron's `data.db` is never imported (Step 36 answers `NativeFirst`), so no file of
-/// it gets a new note id. A failure is logged: the identity then treats the core as created
-/// before the origin was recorded.
+/// What the core was created over, for the note identity: a core created over Electron's
+/// `data.db` is never imported (Step 36 answers `NativeFirst`), so no file of it gets a new note
+/// id. Every open records it unless it is there, so a core whose first open stopped before this
+/// (or failed here) gets it at the next one; until then no id is minted beside Electron's
+/// database. A core with Electron's database beside it when this first runs counts as created
+/// over it.
 fn record_origin(path: &Path, vault: &Vault) {
     let origin = if path.join(".memry").join("data.db").is_file() {
         Origin::OverElectron
@@ -82,7 +84,11 @@ fn record_origin(path: &Path, vault: &Vault) {
         Origin::Native
     };
     if let Err(error) = vault.record_origin(origin) {
-        tracing::error!(%error, ?origin, "the vault's origin was not recorded");
+        tracing::error!(
+            %error,
+            ?origin,
+            "the vault's origin was not recorded; the next open tries again"
+        );
     }
 }
 
@@ -103,7 +109,6 @@ impl Session {
         let path_text = path.to_string_lossy().into_owned();
 
         let data_db = core.join("data.db");
-        let created = !data_db.exists();
         let vault = Vault::open_with(
             core.to_string_lossy().into_owned(),
             OpenOptions {
@@ -116,9 +121,7 @@ impl Session {
             },
             other => SessionError::Storage(other),
         })?;
-        if created {
-            record_origin(path, &vault);
-        }
+        record_origin(path, &vault);
         let (search, index_reason) = vault.search_reporting()?;
         if let Some(reason) = &index_reason {
             self.emit(SessionEvent::IndexRecovered {

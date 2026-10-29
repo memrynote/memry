@@ -122,8 +122,8 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
     },
     Migration {
         version: 17,
-        name: "notes_live_title",
-        sql: include_str!("migrations/data/0017_notes_live_title.sql"),
+        name: "note_identity",
+        sql: include_str!("migrations/data/0017_note_identity.sql"),
     },
 ];
 

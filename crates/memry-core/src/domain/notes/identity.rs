@@ -14,7 +14,10 @@
 //!   file was written, or one a crash left between its create and its row
 //!   ([`adopt`]). The match is the note only when its body (or, before it has a
 //!   document, the `content` it was created with) is empty or already the file's
-//!   text; a body owed a pull, or one this build cannot write out, defers. A
+//!   text. A match whose body says something else defers rather than mints:
+//!   Electron keys a note by its path, so the file may be that note at another
+//!   version, and a second id for it would be a second copy on every device. A
+//!   body owed a pull, or one this build cannot write out, defers too. A
 //!   tombstone never matches (a deleted note whose file comes back is a new
 //!   note), nor a note that has a row (that note is another file), nor a file
 //!   note (a PDF titled like the file);
@@ -28,7 +31,8 @@
 //!   marks its vault ([`ELECTRON_IMPORT_META_KEY`]). A core the app created over
 //!   Electron's database is never imported (Step 36 answers `NativeFirst`), so
 //!   it never mints there; a core created for a vault Electron never had, which
-//!   Electron opened later, does ([`record_origin`]).
+//!   Electron opened later, does ([`record_origin`]). A core whose origin is not
+//!   recorded mints nothing beside Electron's database either.
 //!
 //! Step 17 (#3534): a device that has not pulled the vault yet should hold
 //! [`Adopted::Created`] until its first pull settles, since a record about to
@@ -44,7 +48,9 @@
 //! the title and folder follow the file, in one edit, with the note's manual
 //! order updated in the same transaction. Electron's watcher
 //! rewrites no inbound `[[link]]` on a rename made outside the app, and neither
-//! does this: the app's own rename (Step 13g) does.
+//! does this: the app's own rename (Step 13g) does. A move the tier cannot tell
+//! the meaning of yet leaves the record where it was and owes it the move
+//! ([`owe_place`]); [`owed_places`] lists them for when it can.
 //!
 //! Journal days are not decided here before Step 13m: the tier passes no
 //! journal file to [`adopt`] and no move into or out of the journal folder to
@@ -74,8 +80,8 @@ use crate::sync::{body_debt, outbox};
 pub const ELECTRON_IMPORT_META_KEY: &str = "electron_import.v1";
 
 /// The `meta` key that says what the core `data.db` was created over:
-/// `electron` when Electron's `data.db` was beside it, else `native`
-/// ([`record_origin`]). Never rewritten.
+/// `electron` when Electron's `data.db` was beside it when it was first
+/// recorded, else `native` ([`record_origin`]). Never rewritten.
 pub const VAULT_ORIGIN_META_KEY: &str = "vault.origin.v1";
 
 /// What a file says about the note it is.
@@ -115,8 +121,9 @@ pub enum Deferral {
     /// Electron's database is beside the core and its notes are not in it.
     ElectronNotImported,
     /// A note with the file's folder and title may be this file, and its body
-    /// cannot say yet: owed a pull, or not one this build writes out whole. Or
-    /// such a note appeared while the file was being asked about.
+    /// does not say it is: the body is another text, is owed a pull, or is not
+    /// one this build writes out whole. Or such a note appeared while the file
+    /// was being asked about.
     Undecided,
 }
 
@@ -136,8 +143,8 @@ pub enum Removed {
     Kept,
 }
 
-/// Records what the core database was created over, once: the open that created
-/// it calls this, and a value already there is kept.
+/// Records what the core database was created over, once: every open calls this,
+/// so one that failed is retried, and a value already there is kept.
 pub fn record_origin(conn: &Connection, origin: Origin) -> Result<(), StorageError> {
     let value = match origin {
         Origin::Native => "native",
@@ -173,15 +180,23 @@ pub fn adopt(
     now_ms: i64,
 ) -> Result<Adopted, CrdtError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    for id in unfiled_notes(&tx, file.title, file.folder_path)? {
+    let candidates = unfiled_notes(&tx, file.title, file.folder_path)?;
+    if !candidates.is_empty() {
         let Some(converter) = converter else {
             return Ok(Adopted::Deferred(Deferral::Undecided));
         };
-        match body_says(&tx, converter, &id, file, device_id)? {
-            Evidence::Same => return Ok(Adopted::Existing(id)),
-            Evidence::Unknown => return Ok(Adopted::Deferred(Deferral::Undecided)),
-            Evidence::Other => {}
+        // The oldest note whose body is the file's, unless one may be and cannot say.
+        let mut same = None;
+        for id in candidates {
+            match body_says(&tx, converter, &id, file, device_id)? {
+                Evidence::Same => {
+                    same.get_or_insert(id);
+                }
+                Evidence::Unknown => return Ok(Adopted::Deferred(Deferral::Undecided)),
+                Evidence::Other => {}
+            }
         }
+        return Ok(same.map_or(Adopted::Deferred(Deferral::Undecided), Adopted::Existing));
     }
     if file.electron_db_beside && !mints_beside_electron(&tx)? {
         return Ok(Adopted::Deferred(Deferral::ElectronNotImported));
@@ -214,25 +229,26 @@ fn unfiled_notes(
     title: &str,
     folder_path: Option<&str>,
 ) -> Result<Vec<String>, StorageError> {
-    let mut statement = conn
-        .prepare_cached(
-            "SELECT n.id FROM notes n
-              WHERE n.deleted_at IS NULL AND n.title = ?1 AND n.folder_path IS ?2
-                AND n.file_type = 'markdown'
-                AND NOT EXISTS (SELECT 1 FROM note_files f WHERE f.note_id = n.id)
-              ORDER BY n.created_at, n.id",
-        )
-        .map_err(failed)?;
+    let mut statement = conn.prepare_cached(UNFILED_NOTES).map_err(failed)?;
     let ids = statement
         .query_map(params![title, folder_path], |row| row.get(0))
         .map_err(failed)?;
     ids.collect::<Result<_, _>>().map_err(failed)
 }
 
+/// Asked once per file no row names: `idx_notes_live_title` (data migration 17)
+/// answers it.
+pub(crate) const UNFILED_NOTES: &str = "SELECT n.id FROM notes n
+  WHERE n.deleted_at IS NULL AND n.title = ?1 AND n.folder_path IS ?2
+    AND n.file_type = 'markdown'
+    AND NOT EXISTS (SELECT 1 FROM note_files f WHERE f.note_id = n.id)
+  ORDER BY n.created_at, n.id";
+
 enum Evidence {
     /// The note's body is empty, or already serializes to the file's text.
     Same,
-    /// The note's body says something else: another note.
+    /// The note's body says something else: the file may be another note, or
+    /// this one at another version.
     Other,
     /// The body is not here to compare (owed a pull), or this build cannot
     /// write it out whole.
@@ -285,14 +301,12 @@ fn created_content(conn: &Connection, note_id: &str) -> Result<String, StorageEr
 }
 
 /// Whether a new note id may be minted beside Electron's database: the import
-/// brought Electron's notes into the core, or the core was created for a vault
-/// that was not Electron's. A core from before its origin was recorded counts as
-/// native once a file was named in it.
+/// brought Electron's notes into the core, or the core is recorded as created
+/// for a vault that was not Electron's. Nothing recorded is not evidence.
 fn mints_beside_electron(conn: &Connection) -> Result<bool, StorageError> {
     conn.query_row(
         "SELECT EXISTS (SELECT 1 FROM meta WHERE key = ?1)
-             OR COALESCE((SELECT value = 'native' FROM meta WHERE key = ?2),
-                         EXISTS (SELECT 1 FROM note_files))",
+             OR EXISTS (SELECT 1 FROM meta WHERE key = ?2 AND value = 'native')",
         params![ELECTRON_IMPORT_META_KEY, VAULT_ORIGIN_META_KEY],
         |row| row.get(0),
     )
@@ -312,8 +326,10 @@ pub struct Moved<'a> {
 
 /// The note's file moved: the record takes the new title and folder. Renamed in
 /// its folder, the note keeps its manual slot; moved to another folder, its old
-/// slot is dropped and the new folder orders it as any unplaced note. A note
-/// that is not live (a journal day, a deleted note) keeps its record as it is.
+/// slot is dropped and the new folder orders it as any unplaced note. A move the
+/// record was owed ([`owe_place`]) counts from the path it was owed from, and is
+/// settled. A note that is not live (a journal day, a deleted note) keeps its
+/// record as it is.
 pub fn renamed(
     conn: &Connection,
     note_id: &str,
@@ -338,12 +354,85 @@ pub fn renamed(
             outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, note_id), now_ms)?;
         }
     }
-    if folder_of(moved.old_path) == folder_of(moved.new_path) {
-        note_positions::carry(&tx, moved.old_path, moved.new_path)?;
+    // A move the record was owed left its slot where the record last was.
+    let old_path = owed_from(&tx, note_id)?;
+    let old_path = old_path.as_deref().unwrap_or(moved.old_path);
+    if folder_of(old_path) == folder_of(moved.new_path) {
+        note_positions::carry(&tx, old_path, moved.new_path)?;
     } else {
-        note_positions::remove(&tx, moved.old_path)?;
+        note_positions::remove(&tx, old_path)?;
     }
+    settle_place(&tx, note_id)?;
     tx.commit().map_err(failed)
+}
+
+/// A move of the note's file from `from_path` that the record was not given
+/// ([`renamed`] was not called): owed until it is. The first path is kept, since
+/// the record still describes it.
+pub fn owe_place(
+    conn: &Connection,
+    note_id: &str,
+    from_path: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "INSERT INTO note_place_owed (note_id, from_path, marked_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT(note_id) DO NOTHING",
+        params![note_id, from_path, now_ms],
+    )
+    .map(drop)
+    .map_err(failed)
+}
+
+/// A move the record is owed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OwedPlace {
+    pub note_id: String,
+    /// The path the record still describes.
+    pub from_path: String,
+    /// Where the note's row is now.
+    pub path: String,
+}
+
+/// The moves the records are owed, for the notes that still have a row, oldest
+/// first. Read on every ask, so it only reads.
+pub fn owed_places(conn: &Connection) -> Result<Vec<OwedPlace>, StorageError> {
+    let mut statement = conn
+        .prepare_cached(
+            "SELECT o.note_id, o.from_path, f.path FROM note_place_owed o
+               JOIN note_files f ON f.note_id = o.note_id
+              ORDER BY o.marked_at, o.note_id",
+        )
+        .map_err(failed)?;
+    let owed = statement
+        .query_map([], |row| {
+            Ok(OwedPlace {
+                note_id: row.get(0)?,
+                from_path: row.get(1)?,
+                path: row.get(2)?,
+            })
+        })
+        .map_err(failed)?;
+    owed.collect::<Result<_, _>>().map_err(failed)
+}
+
+fn owed_from(conn: &Connection, note_id: &str) -> Result<Option<String>, StorageError> {
+    conn.query_row(
+        "SELECT from_path FROM note_place_owed WHERE note_id = ?1",
+        params![note_id],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(failed)
+}
+
+fn settle_place(conn: &Connection, note_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM note_place_owed WHERE note_id = ?1",
+        params![note_id],
+    )
+    .map(drop)
+    .map_err(failed)
 }
 
 fn folder_of(path: &str) -> &str {
@@ -382,6 +471,7 @@ pub fn removed(
         return Ok(Removed::Kept);
     }
     note_positions::remove(&tx, path)?;
+    settle_place(&tx, note_id)?;
     tx.commit().map_err(failed)?;
     Ok(Removed::Deleted)
 }

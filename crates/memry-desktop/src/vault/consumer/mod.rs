@@ -52,7 +52,7 @@ mod run;
 pub(crate) mod tests;
 mod tier;
 
-pub(crate) use apply::converter_for;
+pub(crate) use apply::{converter_for, converter_of};
 pub use run::{FIRST_RETRY, MAX_RETRIES, QUEUE_CAPACITY};
 #[cfg(test)]
 pub(crate) use tier::Hold;

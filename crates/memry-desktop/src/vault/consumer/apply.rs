@@ -5,6 +5,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use memry_core::api::errors::StorageError;
 use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
@@ -465,19 +466,27 @@ impl Applier {
 /// The converter with the vault's callout types. Read for every write, so a callout type added
 /// in the app is known to the next feed and write-back.
 pub(crate) fn converter_for(settings: Option<&AppSettings>) -> Converter {
-    let raw = settings.and_then(|settings| {
-        settings
-            .get_path("editor.calloutTypes")
-            .inspect_err(|error| {
-                tracing::warn!(scope = SCOPE, "callout types could not be read: {error}");
-            })
-            .ok()
-            .flatten()
-    });
-    let definitions = raw
+    settings
+        .map(converter_of)
+        .and_then(|converter| {
+            converter
+                .inspect_err(|error| {
+                    tracing::warn!(scope = SCOPE, "callout types could not be read: {error}");
+                })
+                .ok()
+        })
+        .unwrap_or_else(|| Converter::new(CalloutTypes::new(Vec::new())))
+}
+
+/// [`converter_for`] that fails when the callout types cannot be read, for a caller that
+/// compares a body's markdown with a file's, where a callout written out without its type
+/// would differ.
+pub(crate) fn converter_of(settings: &AppSettings) -> Result<Converter, StorageError> {
+    let definitions = settings
+        .get_path("editor.calloutTypes")?
         .map(|value| sanitize_callout_type_definitions(&value))
         .unwrap_or_default();
-    Converter::new(CalloutTypes::new(definitions))
+    Ok(Converter::new(CalloutTypes::new(definitions)))
 }
 
 #[derive(Clone, Copy)]

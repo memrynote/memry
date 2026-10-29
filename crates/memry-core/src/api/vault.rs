@@ -116,8 +116,9 @@ impl Vault {
     }
 
     /// Records what this vault's core database was created over, once (desktop
-    /// Step 13d): the open that created it says whether Electron's `data.db` was
-    /// beside it. See [`crate::domain::notes::identity::record_origin`].
+    /// Step 13d): each open says whether Electron's `data.db` is beside it, and
+    /// the first answer recorded stays. See
+    /// [`crate::domain::notes::identity::record_origin`].
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[cfg(feature = "markdown")]
     #[doc(hidden)]

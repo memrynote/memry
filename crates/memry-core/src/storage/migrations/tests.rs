@@ -476,8 +476,11 @@ fn note_positions_applies_to_a_version_15_database_and_keeps_its_rows() {
     assert_eq!((kept, positions), (1, 0));
 }
 
+/// The identity's lookup is the real query (`domain::notes::identity`), so it needs the markdown
+/// feature its module is built with.
+#[cfg(feature = "markdown")]
 #[test]
-fn the_live_title_index_applies_to_a_version_16_database_and_answers_the_identity() {
+fn the_note_identity_migration_applies_to_a_version_16_database_and_answers_the_identity() {
     let db = Db::open_in_memory().expect("open");
     db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..16]))
         .expect("a database as the last build left it");
@@ -504,8 +507,7 @@ fn the_live_title_index_applies_to_a_version_16_database_and_answers_the_identit
     })
     .expect("idempotent");
 
-    // The identity's lookup (`domain::notes::identity`) is an index search, not a scan.
-    let (kept, plan): (i64, String) = db
+    let (kept, owed, plan): (i64, i64, Vec<String>) = db
         .call_blocking(|conn| {
             let failed = |err: rusqlite::Error| StorageError::Failed {
                 what: err.to_string(),
@@ -513,17 +515,34 @@ fn the_live_title_index_applies_to_a_version_16_database_and_answers_the_identit
             let kept = conn
                 .query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))
                 .map_err(failed)?;
-            let plan = conn
-                .query_row(
-                    "EXPLAIN QUERY PLAN SELECT id FROM notes
-                      WHERE deleted_at IS NULL AND title = ?1 AND folder_path IS ?2",
-                    rusqlite::params!["Plan", "Work"],
-                    |row| row.get::<_, String>(3),
-                )
+            let owed = conn
+                .query_row("SELECT COUNT(*) FROM note_place_owed", [], |row| row.get(0))
                 .map_err(failed)?;
-            Ok((kept, plan))
+            let mut statement = conn
+                .prepare(&format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    crate::domain::notes::identity::UNFILED_NOTES
+                ))
+                .map_err(failed)?;
+            let plan = statement
+                .query_map(rusqlite::params!["Plan", "Work"], |row| {
+                    row.get::<_, String>(3)
+                })
+                .map_err(failed)?
+                .collect::<Result<_, _>>()
+                .map_err(failed)?;
+            Ok((kept, owed, plan))
         })
         .expect("read back");
-    assert_eq!(kept, 1);
-    assert!(plan.contains("idx_notes_live_title"), "{plan}");
+    assert_eq!((kept, owed), (1, 0));
+    // The notes are searched by the index, not scanned.
+    assert!(
+        plan.iter()
+            .any(|step| step.starts_with("SEARCH n USING INDEX idx_notes_live_title")),
+        "{plan:?}"
+    );
+    assert!(
+        !plan.iter().any(|step| step.starts_with("SCAN n")),
+        "{plan:?}"
+    );
 }

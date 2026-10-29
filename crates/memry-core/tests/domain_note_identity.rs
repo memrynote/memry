@@ -4,7 +4,7 @@
 //! | ----------------------------------------------------------- | ------------------------------------- |
 //! | a new file creates a note with its dates and queues it once | Electron `indexer.ts` new file        |
 //! | a pulled record whose text is the file's keeps its id       | an id is never minted twice           |
-//! | a note whose text is not the file's is another note         | a file is named only on evidence      |
+//! | a note whose text is not the file's defers                  | a file is named only on evidence      |
 //! | a note whose body is not here yet defers                    | evidence first, never a guess         |
 //! | asked again before the row, the same note answers           | idempotent across create and row      |
 //! | a tombstone, a filed note, a file note never match          | one note per file, markdown only      |
@@ -95,17 +95,28 @@ fn a_pulled_record_whose_text_is_the_files_keeps_its_id() {
     assert!(outbox(&db).is_empty());
 }
 
-/// A Finder or Obsidian `Groceries.md` is not the phone's note of that title: deleting the file
-/// would delete that note everywhere.
+/// A `Groceries.md` whose text is not the phone's note of that title may be another note (named
+/// by it, deleting the file would delete that note everywhere) or the same note at another
+/// version (Electron keys a note by its path; a new id would be a second copy). Neither is
+/// evidence, so the file waits.
 #[test]
-fn a_note_whose_text_is_not_the_files_is_another_note() {
+fn a_note_whose_text_is_not_the_files_defers() {
     let db = note_identity_support::open("other");
     create(&db, "phone", "Groceries", None);
     give_body(&db, "phone", "Groceries.md", "Eggs and bread");
     pulled(&db, "pulled", &record("Groceries", None, "Milk\n"));
+    clear_outbox(&db);
     assert_eq!(
         adopt(&db, file("Groceries.md", "A list from Finder\n"), "fresh"),
-        created("fresh")
+        UNDECIDED
+    );
+    assert_eq!(note_count(&db), 2);
+    assert!(outbox(&db).is_empty());
+
+    // The one note whose text is the file's is the file, whichever is older.
+    assert_eq!(
+        adopt(&db, file("Groceries.md", "Milk\n"), "unused"),
+        existing("pulled")
     );
 
     // The text the phone's note holds is evidence it is the file.
@@ -131,6 +142,14 @@ fn a_note_whose_body_is_not_here_yet_defers() {
     );
     assert_eq!(note_count(&db), 1);
     assert!(outbox(&db).is_empty());
+
+    // Not even beside a note whose text is the file's: the one owed its body may be the file.
+    pulled(&db, "younger", &record("Plan", None, "Anything\n"));
+    assert_eq!(
+        adopt(&db, file("Plan.md", "Anything\n"), "minted"),
+        UNDECIDED
+    );
+    assert_eq!(note_count(&db), 2);
 
     // Without a converter to read the body with, a note that may be the file defers too.
     run(&db, |conn| body_debt::settle(conn, "server-id"));
@@ -242,12 +261,14 @@ fn a_native_core_mints_beside_a_database_electron_added_later() {
     let plan = beside_electron(file("Plan.md", "x"));
     assert_eq!(adopt(&db, plan, "minted"), created("minted"));
 
-    // A core from before the origin was recorded is native once a file was named in it.
+    // A core whose origin is not recorded mints nothing beside Electron's database, even once
+    // a file was named in it: files are named without minting (a pulled record's).
     let db = note_identity_support::open("unrecorded");
     assert_eq!(adopt(&db, plan, "minted"), WITHHELD);
     create(&db, "named", "Named", None);
     give_row(&db, "named", "Named.md");
-    assert_eq!(adopt(&db, plan, "minted"), created("minted"));
+    assert_eq!(adopt(&db, plan, "minted"), WITHHELD);
+    assert_eq!(note_count(&db), 1);
 }
 
 #[test]

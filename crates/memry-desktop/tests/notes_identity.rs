@@ -166,7 +166,8 @@ fn a_file_moved_while_closed_keeps_its_note_and_the_record_follows() {
 
 /// A note moved into the journal folder becomes a journal day to Electron, which deletes the
 /// note and lists the day as a new item. Until Step 13m ports that, the record stays as it was
-/// and nothing is pushed; the row follows the file.
+/// and nothing is pushed; the row follows the file, and the record is owed the move. Moved out
+/// again, the record follows the file to where it is now.
 #[test]
 fn a_move_into_the_journal_folder_leaves_the_record_and_pushes_nothing() {
     let mut e = notes_env();
@@ -198,6 +199,102 @@ fn a_move_into_the_journal_folder_leaves_the_record_and_pushes_nothing() {
         vec![(id.clone(), "2025-01-02".to_owned(), None, false)]
     );
     assert_eq!(outbox(&e), queued);
+    e.close();
+
+    fs::create_dir_all(e.vault.join("Notes")).unwrap();
+    fs::rename(
+        e.vault.join("journal/2025-01-02.md"),
+        e.vault.join("Notes/2025-01-02.md"),
+    )
+    .unwrap();
+    reopen(&mut e);
+    assert_eq!(
+        records(&e),
+        vec![(id, "2025-01-02".to_owned(), Some("Notes".to_owned()), false)]
+    );
+}
+
+/// A move while the vault config cannot be read leaves the record as it was: the move may be
+/// into the journal folder. Once the config reads, the next ask gives the record the move.
+#[test]
+fn a_move_while_the_config_is_unreadable_reaches_the_record_once_it_reads() {
+    let mut e = notes_env();
+    e.write("a.md", "Alpha\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = row_id(&e, "a.md").unwrap();
+    e.write(".memry/config.json", "{ \"journalFolder\": ");
+    fs::rename(e.vault.join("a.md"), e.vault.join("b.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Renamed { new_path, .. } if new_path == "b.md"));
+    assert_eq!(records(&e), vec![(id.clone(), "a".to_owned(), None, false)]);
+
+    e.write(".memry/config.json", "{}");
+    e.write("c.md", "Gamma\n");
+    e.facts_until(added("c.md"));
+    let records = records(&e);
+    assert!(
+        records.contains(&(id, "b".to_owned(), None, false)),
+        "{records:?}"
+    );
+}
+
+/// A core whose origin was not recorded (its first open stopped before, or the write failed)
+/// gets it at the next open, from what is beside it then: Electron's database there means no
+/// new file gets an id.
+#[test]
+fn an_open_records_a_missing_origin_from_what_is_beside_it() {
+    let mut e = notes_env();
+    e.write("a.md", "Alpha\n");
+    e.open();
+    e.facts_until(indexed);
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute("DELETE FROM meta WHERE key = ?1", [VAULT_ORIGIN_META_KEY])
+                .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    e.close();
+
+    fs::write(e.vault.join(".memry/data.db"), b"").unwrap();
+    e.write("b.md", "Beta\n");
+    reopen(&mut e);
+    std::thread::sleep(Duration::from_millis(300));
+    assert_eq!(origin(&e).as_deref(), Some("electron"));
+    assert!(row_id(&e, "a.md").is_some());
+    assert_eq!(row_id(&e, "b.md"), None);
+}
+
+/// Pinned: a note that grows into the large-file class after it was named stays a note. Its
+/// record was synced, so a move still edits it and a removal still deletes it, as Electron's
+/// `processRename` and delete do.
+#[test]
+fn a_named_note_that_grew_large_still_follows_its_file() {
+    let mut e = notes_env();
+    e.write("grow.md", "Small\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = row_id(&e, "grow.md").unwrap();
+    e.write("grow.md", &"x".repeat(200 * 1024));
+    std::thread::sleep(Duration::from_millis(1000));
+    e.drain();
+
+    fs::rename(e.vault.join("grow.md"), e.vault.join("moved.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Renamed { new_path, .. } if new_path == "moved.md"));
+    assert_eq!(
+        records(&e),
+        vec![(id.clone(), "moved".to_owned(), None, false)]
+    );
+    assert!(outbox(&e).contains(&("upsert".to_owned(), id.clone())));
+
+    fs::remove_file(e.vault.join("moved.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Removed { .. }));
+    assert_eq!(
+        records(&e),
+        vec![(id.clone(), "moved".to_owned(), None, true)]
+    );
+    assert!(outbox(&e).contains(&("delete".to_owned(), id)));
 }
 
 /// A vault config that is there but cannot be read leaves the journal folder unknown, so no
@@ -438,4 +535,44 @@ fn an_electron_vault_whose_notes_reached_the_core_keeps_their_ids() {
         .filter(|(op, _)| op == "upsert" || op == "delete")
         .collect();
     assert!(records_pushed.is_empty(), "{records_pushed:?}");
+}
+
+/// Reading a body for a file needs the vault's callout types; when they cannot be read the
+/// file waits (the ask fails and is retried) rather than being compared with a body written
+/// out without them.
+#[test]
+fn a_file_that_may_be_a_note_waits_while_the_callout_types_cannot_be_read() {
+    let mut e = notes_env();
+    e.open();
+    e.facts_until(indexed);
+    let record = InboundRecord {
+        item_type: "note".to_owned(),
+        item_id: "pulled".to_owned(),
+        payload_json: serde_json::json!({
+            "title": "Plan",
+            "content": "Body\n",
+            "fileType": "markdown",
+            "folderPath": null,
+            "clock": {"device-b": 1},
+            "createdAt": "2025-01-01T00:00:00.000Z",
+            "modifiedAt": "2025-01-01T00:00:00.000Z",
+        })
+        .to_string(),
+        server_cursor: Some(1),
+        signer_device_id: Some("device-b".to_owned()),
+        updated_at: 1_760_000_000_000,
+        deleted_at: None,
+    };
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            sync_items::apply_remote(conn, &record, 1_760_000_000_000)?;
+            conn.execute_batch("DROP TABLE local_settings").unwrap();
+            Ok(())
+        })
+        .unwrap();
+    e.write("Plan.md", "Body\n");
+    std::thread::sleep(vault_env::QUIET);
+    assert_eq!(row_id(&e, "Plan.md"), None);
+    assert_eq!(records(&e).len(), 1);
 }

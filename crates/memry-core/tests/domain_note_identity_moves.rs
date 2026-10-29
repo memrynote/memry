@@ -6,12 +6,13 @@
 //! | a removed file deletes its note once                      | §5.8, one tombstone                 |
 //! | a local-only note's removal pushes nothing                | the gate in `outbox::enqueue`       |
 //! | a journal day keeps its record                            | Step 13m owns journal days          |
+//! | a move left owed keeps its first path until it is applied | evidence first, never a guess       |
 
 #![cfg(feature = "markdown")]
 
 mod note_identity_support;
 
-use memry_core::domain::notes::identity::{self, Moved, Removed};
+use memry_core::domain::notes::identity::{self, Moved, OwedPlace, Removed};
 use memry_core::domain::notes::local_only;
 use note_identity_support::{
     DEVICE, NOW, clear_outbox, create, deleted, give_row, open, outbox, payload, place, position,
@@ -133,4 +134,58 @@ fn a_journal_days_removal_keeps_its_record() {
     });
     assert_eq!(removed, Removed::Kept);
     assert!(outbox(&db).is_empty());
+}
+
+fn owed(db: &memry_core::storage::Db) -> Vec<OwedPlace> {
+    run(db, |conn| identity::owed_places(conn))
+}
+
+/// A move the tier could not tell the meaning of: the record is left at the path it last
+/// followed, and that path is kept through later moves, until a move reaches the record (from
+/// that path: its slot is there) or the note is deleted. A note with no row is listed by no one.
+#[test]
+fn a_move_left_owed_keeps_its_first_path_until_it_is_applied() {
+    let db = open("owed");
+    create(&db, "n1", "Old", None);
+    place(&db, "", &["Old.md"]);
+    give_row(&db, "n1", "Daily/Old.md");
+    run(&db, |conn| identity::owe_place(conn, "n1", "Old.md", NOW));
+    run(&db, |conn| {
+        identity::owe_place(conn, "n1", "Daily/Old.md", NOW + 1)
+    });
+    create(&db, "rowless", "Gone", None);
+    run(&db, |conn| {
+        identity::owe_place(conn, "rowless", "Gone.md", NOW)
+    });
+    let n1 = OwedPlace {
+        note_id: "n1".to_owned(),
+        from_path: "Old.md".to_owned(),
+        path: "Daily/Old.md".to_owned(),
+    };
+    assert_eq!(owed(&db), vec![n1.clone()]);
+
+    clear_outbox(&db);
+    let moved = Moved {
+        old_path: "Daily/Old.md",
+        new_path: "Work/New.md",
+        title: "New",
+        folder_path: Some("Work"),
+    };
+    run(&db, move |conn| {
+        identity::renamed(conn, "n1", &moved, DEVICE, NOW + 2)
+    });
+    assert!(owed(&db).is_empty());
+    assert_eq!(position(&db, "Old.md"), None);
+    assert_eq!(payload(&db, "n1")["folderPath"], json!("Work"));
+    assert_eq!(outbox(&db), vec![("upsert".to_owned(), "n1".to_owned())]);
+
+    run(&db, |conn| {
+        identity::owe_place(conn, "n1", "Work/New.md", NOW + 3)
+    });
+    run(&db, |conn| {
+        identity::removed(conn, "n1", "Daily/Old.md", DEVICE, NOW + 4).map(drop)
+    });
+    give_row(&db, "rowless", "Gone.md");
+    let rest: Vec<String> = owed(&db).into_iter().map(|owed| owed.note_id).collect();
+    assert_eq!(rest, vec!["rowless".to_owned()]);
 }
