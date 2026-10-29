@@ -23,6 +23,7 @@ on:
       - 'packages/contracts/test-vectors/**'
       - 'packages/article-extract/**'
       - 'scripts/check-line-ceilings.mjs'
+      - 'scripts/check-test-timing*.mjs'
       - '.github/workflows/rust-ci.yml'
   # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
   merge_group:
@@ -104,7 +105,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|\.github/workflows/rust-ci\.yml$)'
+          include: '^(crates/|apps/desktop-tauri/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|\.github/workflows/rust-ci\.yml$)'
 
   lint-and-test:
     name: fmt, clippy, test (${{ matrix.os }})
@@ -156,6 +157,15 @@ jobs:
             /marketing/**/*.yaml
             /marketing/**/*.css
             /marketing/**/*.html
+
+      # Before the build, so it fails in seconds: a wall-clock upper bound in a test fails on a
+      # loaded runner, not on slow code (two merge-queue ejections on 29 Oct).
+      - name: No wall-clock upper bounds in tests
+        if: runner.os == 'Linux'
+        working-directory: .
+        run: |
+          node --test scripts/check-test-timing.test.mjs
+          node scripts/check-test-timing.mjs
 
       # Linux linking needs tens of GB; the image ships ~20 GB of toolchains we never use.
       - name: Free disk space

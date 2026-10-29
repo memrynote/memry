@@ -9,7 +9,7 @@ use memry_desktop::notes::unsplash::{
     InvalidSearch, SearchPage, SearchRequest, Unsplash, UnsplashFailure, UnsplashPhoto,
 };
 use serde_json::{Value, json};
-use unsplash_server::{Reply, serve};
+use unsplash_server::{Reply, Seen, serve};
 
 const KEY: &str = "test-access-key";
 
@@ -55,6 +55,10 @@ fn results(ids: &[&str]) -> Reply {
     Reply::json(&json!({ "results": ids.iter().map(|id| raw(id)).collect::<Vec<_>>() }))
 }
 
+fn hosts(seen: &[Seen]) -> Vec<&str> {
+    seen.iter().map(|s| s.host.as_str()).collect()
+}
+
 fn ids(page: &SearchPage) -> Vec<&str> {
     page.photos.iter().map(|p| p.id.as_str()).collect()
 }
@@ -95,7 +99,8 @@ async fn a_blank_query_with_a_key_answers_empty_without_a_request() {
     assert_eq!(page.rate_limit_remaining, None);
     assert!(server.seen().is_empty());
     assert!(
-        Unsplash::new(server.client.clone(), Some("  ".to_owned()))
+        Unsplash::new(server.builder(), Some("  ".to_owned()))
+            .expect("client")
             .search(&request("", 1))
             .await
             == Err(UnsplashFailure::NotConfigured)
@@ -309,16 +314,14 @@ async fn an_unreachable_network_is_offline() {
         let probe = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
         probe.local_addr().expect("addr")
     };
-    let client = reqwest::Client::builder()
-        .tls_backend_rustls()
+    let builder = memry_desktop::http::builder()
         .no_proxy()
-        .resolve("api.unsplash.com", dead)
-        .build()
-        .expect("client");
+        .resolve("api.unsplash.com", dead);
     drop(server);
 
     assert_eq!(
-        Unsplash::new(client, Some(KEY.to_owned()))
+        Unsplash::new(builder, Some(KEY.to_owned()))
+            .expect("client")
             .search(&request("mountains", 1))
             .await,
         Err(UnsplashFailure::Offline)
@@ -343,9 +346,32 @@ async fn a_redirect_away_from_the_api_fails_and_never_carries_the_key() {
             .await,
         Err(UnsplashFailure::Failed)
     );
-    for seen in server.seen().iter().filter(|s| s.host == "other.example") {
-        assert_eq!(seen.authorization, None, "the key followed the redirect");
-    }
+    assert_eq!(
+        hosts(&server.seen()),
+        ["api.unsplash.com"],
+        "the redirect off the image hosts was never followed"
+    );
+}
+
+#[tokio::test]
+async fn an_api_request_never_follows_a_redirect_even_to_an_image_host() {
+    let server = serve(|seen| {
+        if seen.host == "api.unsplash.com" {
+            Reply::status(302).with_header("location", "https://images.unsplash.com/search")
+        } else {
+            results(&["a"])
+        }
+    })
+    .await;
+
+    assert_eq!(
+        server
+            .service(Some(KEY))
+            .search(&request("mountains", 1))
+            .await,
+        Err(UnsplashFailure::Failed)
+    );
+    assert_eq!(hosts(&server.seen()), ["api.unsplash.com"]);
 }
 
 #[tokio::test]
@@ -452,6 +478,115 @@ async fn a_photo_redirected_off_the_image_hosts_is_refused() {
             .fetch_photo(&photo("abc123"))
             .await,
         Err(UnsplashFailure::Failed)
+    );
+    let seen = server.seen();
+    assert_eq!(
+        hosts(&seen),
+        ["api.unsplash.com", "images.unsplash.com"],
+        "the redirect off the image hosts was never followed"
+    );
+    assert_eq!(seen[1].authorization, None, "the CDN never sees the key");
+}
+
+#[tokio::test]
+async fn a_photo_redirected_between_image_hosts_is_followed_without_the_key() {
+    let server = serve(|seen| match seen.host.as_str() {
+        "api.unsplash.com" => Reply::status(200),
+        "images.unsplash.com" => {
+            Reply::status(302).with_header("location", "https://plus.unsplash.com/abc123.jpg")
+        }
+        _ => Reply::image("image/jpeg", &[1, 2, 3]),
+    })
+    .await;
+
+    let fetched = server
+        .service(Some(KEY))
+        .fetch_photo(&photo("abc123"))
+        .await
+        .expect("a photo");
+
+    assert_eq!(fetched.bytes, [1, 2, 3]);
+    let seen = server.seen();
+    assert_eq!(
+        hosts(&seen),
+        [
+            "api.unsplash.com",
+            "images.unsplash.com",
+            "plus.unsplash.com"
+        ]
+    );
+    assert!(seen[1..].iter().all(|s| s.authorization.is_none()));
+}
+
+#[tokio::test]
+async fn a_photo_redirected_to_plain_http_a_userinfo_or_a_port_is_refused_unsent() {
+    for location in [
+        "http://images.unsplash.com/abc123.jpg",
+        "https://user@images.unsplash.com/abc123.jpg",
+        "https://images.unsplash.com:8443/abc123.jpg",
+    ] {
+        let server = serve(
+            move |seen| match (seen.host.as_str(), seen.target.as_str()) {
+                ("api.unsplash.com", _) => Reply::status(200),
+                (_, "/abc123?w=1080") => Reply::status(302).with_header("location", location),
+                _ => Reply::image("image/jpeg", &[1, 2, 3]),
+            },
+        )
+        .await;
+
+        assert_eq!(
+            server
+                .service(Some(KEY))
+                .fetch_photo(&photo("abc123"))
+                .await,
+            Err(UnsplashFailure::Failed),
+            "{location}"
+        );
+        assert_eq!(server.seen().len(), 2, "{location}: {:?}", server.seen());
+    }
+}
+
+/// `hops` redirects on the image host (`/abc123?w=1080` -> `/hop/1` -> ... -> `/hop/<hops>`),
+/// then the bytes.
+fn hops_then_image(hops: usize) -> impl Fn(&Seen) -> Reply + Send + Sync + 'static {
+    move |seen| {
+        if seen.host == "api.unsplash.com" {
+            return Reply::status(200);
+        }
+        let at = seen
+            .target
+            .strip_prefix("/hop/")
+            .and_then(|n| n.parse::<usize>().ok())
+            .unwrap_or(0);
+        if at < hops {
+            Reply::status(302).with_header(
+                "location",
+                &format!("https://images.unsplash.com/hop/{}", at + 1),
+            )
+        } else {
+            Reply::image("image/jpeg", &[7])
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_photo_follows_ten_redirects_and_fails_on_the_eleventh() {
+    let server = serve(hops_then_image(10)).await;
+    let fetched = server
+        .service(Some(KEY))
+        .fetch_photo(&photo("abc123"))
+        .await
+        .expect("ten redirects are followed");
+    assert_eq!(fetched.bytes, [7]);
+
+    let server = serve(hops_then_image(11)).await;
+    assert_eq!(
+        server
+            .service(Some(KEY))
+            .fetch_photo(&photo("abc123"))
+            .await,
+        Err(UnsplashFailure::Failed),
+        "too many redirects is a refusal, not offline"
     );
 }
 
