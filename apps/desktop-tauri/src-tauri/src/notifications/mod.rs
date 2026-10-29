@@ -66,6 +66,10 @@ pub enum NotificationPermission {
 pub struct NotificationService {
     live: Mutex<LiveNotifications>,
     handlers: Mutex<HashMap<String, ClickHandler>>,
+    /// Shows on macOS run one at a time: a notification shown again under the same key withdraws
+    /// the earlier one before it is added, also when two are shown at once.
+    #[cfg(target_os = "macos")]
+    posting: tokio::sync::Mutex<()>,
 }
 
 pub fn register_stages() {
@@ -157,23 +161,25 @@ impl NotificationService {
     }
 
     /// Shows the notification. Fails when the platform refuses it, for example when the user
-    /// turned notifications off; on macOS the first notification waits for the permission prompt.
+    /// turned notifications off. On macOS, while the user was never asked, the first call shows
+    /// the permission prompt and resolves only once the user answers, which has no time limit,
+    /// and later calls wait behind it: a caller that must not wait for the user (a reminder
+    /// firing) spawns the call.
     pub async fn show(
         &self,
         app: &AppHandle<Wry>,
         request: NotificationRequest,
     ) -> Result<(), String> {
-        let (id, replaced) = self.live().register(&request.key, request.route.into());
         #[cfg(target_os = "macos")]
         {
             let _ = app;
-            if !replaced.is_empty() {
-                mac::withdraw(&replaced);
-            }
-            mac::post(id, request.title, request.body, request.silent).await
+            let _turn = self.posting.lock().await;
+            let (id, replaced) = self.live().register(&request.key, request.route.into());
+            mac::post(id, &replaced, &request.title, &request.body, request.silent).await
         }
         #[cfg(not(target_os = "macos"))]
         {
+            let (id, replaced) = self.live().register(&request.key, request.route.into());
             if !replaced.is_empty() {
                 plugin::withdraw(app, replaced);
             }

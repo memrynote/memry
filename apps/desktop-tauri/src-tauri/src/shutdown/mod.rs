@@ -99,8 +99,8 @@ impl ShutdownEffects for TauriEffects {
             .state::<ShutdownService>()
             .completed
             .store(true, Ordering::SeqCst);
-        // A quit macOS asked for ends through AppKit, which then tells the sender it went through.
-        // AppKit exits with 0, also after a failed startup.
+        // A quit macOS asked for ends through AppKit, which then tells the sender it went through
+        // and exits with 0, also after a failed startup.
         #[cfg(target_os = "macos")]
         if mac_quit::accept_pending() {
             return;
@@ -249,8 +249,9 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
 }
 
 /// The app runs only for the startup-error window. Any quit (closing that window, Cmd+Q) runs
-/// the quit steps the started stages registered and ends with the failure's exit code; a startup
-/// that failed before the shutdown service existed has no steps to run.
+/// the quit steps the started stages registered and ends with the failure's exit code, except a
+/// quit macOS asked for, which AppKit ends with 0; a startup that failed before the shutdown
+/// service existed has no steps to run.
 fn on_run_event_after_failed_startup(app: &AppHandle<Wry>, event: &RunEvent) {
     use crate::windows::startup_error::EXIT_STARTUP_FAILED;
     match event {

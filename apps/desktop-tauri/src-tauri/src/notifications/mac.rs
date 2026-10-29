@@ -2,8 +2,10 @@
 //! deprecated `NSUserNotificationCenter`, and macOS refuses a legacy client for a bundle id that
 //! already talked to the modern center, which the Electron app (Electron 42+) did for
 //! `com.memrynote.memry`: the post "succeeds" and no banner shows. Like Electron, this asks for
-//! permission at the first notification, shows banners while the app is in front, and withdraws a
-//! delivered notification that a newer one with the same key replaces.
+//! permission at the first notification and shows banners while the app is in front. A
+//! notification shown again under the same key withdraws the earlier one, delivered or still on
+//! its way. Each post gets its own identifier: macOS drops both requests when one replaces a
+//! request with the same identifier that it is still processing.
 //!
 //! The center exists only for an app bundle: in an unbundled binary (`tauri dev`, the e2e build)
 //! `currentNotificationCenter` raises, so nothing here touches it there and every post fails
@@ -50,10 +52,8 @@ fn launch() -> &'static str {
 }
 
 pub fn is_bundled() -> bool {
-    NSBundle::mainBundle()
-        .bundlePath()
-        .to_string()
-        .ends_with(".app")
+    let bundle = NSBundle::mainBundle();
+    bundle.bundleIdentifier().is_some() && bundle.bundlePath().to_string().ends_with(".app")
 }
 
 define_class!(
@@ -128,10 +128,16 @@ pub async fn permission() -> Result<NotificationPermission, String> {
     })
 }
 
-/// Posts notification `id`. Asks for permission first when the user was never asked, and waits
-/// for the answer, so the first notification shows once the user allows it. Fails when the user
-/// turned notifications off or macOS refuses the post.
-pub async fn post(id: i32, title: String, body: String, silent: bool) -> Result<(), String> {
+/// Posts notification `id` in place of the `replaced` ones. When the user was never asked, it
+/// asks first and waits for the answer, with no time limit, so the first notification shows once
+/// the user allows it. Fails when the user turned notifications off or macOS refuses the post.
+pub async fn post(
+    id: i32,
+    replaced: &[i32],
+    title: &str,
+    body: &str,
+    silent: bool,
+) -> Result<(), String> {
     if !is_bundled() {
         return Err(UNBUNDLED.to_owned());
     }
@@ -143,20 +149,22 @@ pub async fn post(id: i32, title: String, body: String, silent: bool) -> Result<
     if !allowed {
         return Err(DENIED.to_owned());
     }
-    add(&platform_identifier(launch(), id), &title, &body, silent).await
+    if !replaced.is_empty() {
+        withdraw(replaced);
+    }
+    add(&platform_identifier(launch(), id), title, body, silent).await
 }
 
-/// Takes delivered notifications out of Notification Center.
-pub fn withdraw(ids: &[i32]) {
-    if !is_bundled() {
-        return;
-    }
+/// Takes notifications out of Notification Center, also those macOS has not shown yet.
+fn withdraw(ids: &[i32]) {
     let identifiers: Vec<Retained<NSString>> = ids
         .iter()
         .map(|id| NSString::from_str(&platform_identifier(launch(), *id)))
         .collect();
-    UNUserNotificationCenter::currentNotificationCenter()
-        .removeDeliveredNotificationsWithIdentifiers(&NSArray::from_retained_slice(&identifiers));
+    let identifiers = NSArray::from_retained_slice(&identifiers);
+    let center = UNUserNotificationCenter::currentNotificationCenter();
+    center.removePendingNotificationRequestsWithIdentifiers(&identifiers);
+    center.removeDeliveredNotificationsWithIdentifiers(&identifiers);
 }
 
 /// The first answer of a completion handler the framework may call on any thread. The blocks are

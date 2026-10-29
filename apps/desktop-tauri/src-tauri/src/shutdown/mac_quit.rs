@@ -24,7 +24,7 @@ use objc2::{msg_send, sel};
 use objc2_app_kit::{NSApplication, NSApplicationTerminateReply};
 use objc2_core_foundation::{CFRunLoop, kCFRunLoopCommonModes};
 use objc2_foundation::{NSAppleEventDescriptor, NSAppleEventManager};
-use tauri::{AppHandle, Wry};
+use tauri::{AppHandle, Manager, Wry};
 
 use crate::commands::error::CommandError;
 
@@ -52,7 +52,8 @@ extern "C-unwind" fn should_terminate(
     _cmd: Sel,
     _sender: *mut AnyObject,
 ) -> NSApplicationTerminateReply {
-    match quit_reason() {
+    let reason = quit_reason();
+    match &reason {
         Some(reason) => tracing::info!(
             scope = "Shutdown",
             "macOS asked the app to terminate (quit reason {reason})"
@@ -62,6 +63,10 @@ extern "C-unwind" fn should_terminate(
     let Some(app) = APP.get() else {
         return NSApplicationTerminateReply::TerminateNow;
     };
+    // The session ends: no install on quit, also when a quit already runs (#1851, Step 38).
+    if reason.as_deref().is_some_and(is_session_end) {
+        app.state::<super::ShutdownService>().core.session_ending();
+    }
     let mut state = state();
     match *state {
         Terminate::Exiting => NSApplicationTerminateReply::TerminateNow,
@@ -78,9 +83,14 @@ extern "C-unwind" fn should_terminate(
     }
 }
 
-/// The `keyAEQuitReason` of the quit Apple event being handled, such as `rlgo` (kAEReallyLogOut)
-/// from loginwindow at Log Out. Cmd+Q, Dock Quit and `quit app` give none. Logged only: every
-/// quit is answered the same way.
+/// Whether loginwindow sent the quit because the session ends: `rlgo` (kAEReallyLogOut), `rest`
+/// (kAERestart) or `shut` (kAEShutDown), the reasons `AERegistry.h` lists for `kAEQuitReason`.
+fn is_session_end(reason: &str) -> bool {
+    matches!(reason, "rlgo" | "rest" | "shut")
+}
+
+/// The `keyAEQuitReason` of the quit Apple event being handled, such as `rlgo` from loginwindow
+/// at Log Out. Cmd+Q, Dock Quit and `quit app` give none. The reply never depends on it.
 fn quit_reason() -> Option<String> {
     let event = NSAppleEventManager::sharedAppleEventManager().currentAppleEvent()?;
     let keyword = u32::from_be_bytes(*b"why?");
@@ -92,18 +102,17 @@ fn quit_reason() -> Option<String> {
     Some(String::from_utf8_lossy(&descriptor.typeCodeValue().to_be_bytes()).into_owned())
 }
 
-/// The sequence ended cleanly. True when a `terminate:` waits for the answer: AppKit then gets
-/// YES on the main thread and ends the process with code 0, so the caller must not exit as well.
-/// From here a new `terminate:` goes through at once.
+/// The sequence ended cleanly. True when a `terminate:` waits for the answer and AppKit gets YES
+/// on the main thread: AppKit then ends the process with code 0, so the caller must not exit as
+/// well. False also when the answer could not be scheduled: the caller then exits itself. From
+/// here a new `terminate:` goes through at once.
 pub fn accept_pending() -> bool {
     let pending = std::mem::replace(&mut *state(), Terminate::Exiting) == Terminate::Pending;
-    if pending {
-        on_main_run_loop(|app| {
+    pending
+        && on_main_run_loop(|app| {
             tracing::info!(scope = "Shutdown", "accepting the quit macOS asked for");
             app.replyToApplicationShouldTerminate(true);
-        });
-    }
-    pending
+        })
 }
 
 /// Sends `terminate:` from the run loop, as AppKit's menu does (for the e2e commands).
@@ -116,10 +125,11 @@ pub fn post_terminate() {
 /// waits in for the reply. Neither GCD's main queue nor tao's `run_on_main_thread` would do: the
 /// main queue runs nothing while one of its own blocks waits, and a reply sent from a tao
 /// callback runs `applicationWillTerminate:` while tao's callback is still on the stack.
-fn on_main_run_loop(f: impl Fn(&NSApplication) + Send + 'static) {
+/// False, logged, when there is no main run loop to run it on.
+fn on_main_run_loop(f: impl Fn(&NSApplication) + Send + 'static) -> bool {
     let Some(main) = CFRunLoop::main() else {
-        tracing::error!(scope = "Shutdown", "no main run loop");
-        return;
+        tracing::error!(scope = "Shutdown", "no main run loop to answer macOS on");
+        return false;
     };
     let block = RcBlock::new(move || {
         if let Some(mtm) = MainThreadMarker::new() {
@@ -135,6 +145,7 @@ fn on_main_run_loop(f: impl Fn(&NSApplication) + Send + 'static) {
         );
     }
     main.wake_up();
+    true
 }
 
 pub fn install(app: &AppHandle<Wry>) -> Result<(), CommandError> {
