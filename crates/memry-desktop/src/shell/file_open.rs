@@ -13,7 +13,15 @@
 //! 2. Symlinks and junctions are followed with `canonicalize`. The target must be inside the
 //!    canonical root. A path that does not exist is placed by its nearest existing ancestor,
 //!    so a missing file under a folder linked outside is `Outside` too: a reader cannot learn
-//!    whether a file exists out there. A dangling link is `Outside`.
+//!    whether a file exists out there. A dangling link is `Outside`. A file another program
+//!    renames a new one over while it is resolved is neither: on Windows the old file answers
+//!    from the volume's deleted-files area (`\$Extend\$Deleted\...`), and the path is
+//!    resolved again after short waits ([`RESOLVE_AGAIN_MS`]); one that never settles is an
+//!    error, never `Outside` nor `Inside` (#3732). The old file can also fail while it is being
+//!    deleted, with an error a file denied for good gives too: that is asked again once only.
+//!    The name can also be missing for an instant of the replacement, which stays `Missing`,
+//!    as asking again would cost every missing file the waits. Nothing on disk is lost, but a
+//!    reader that takes it for gone may miss that save until the next one.
 //! 3. After the file is open, the path is resolved again and must name the same file (device
 //!    and inode on Unix, volume serial and file index on Windows). A save renames a new file
 //!    over the note, so on a mismatch the open is retried, three times, then
@@ -27,6 +35,11 @@ use std::io;
 use std::path::{Component, Path, PathBuf};
 
 const REPLACED_RETRIES: u32 = 3;
+
+/// The waits before each new ask of a path whose file was being replaced (38 ms in all).
+/// Asked again at once, a file another program keeps saving answers from its next
+/// replacement just as often; a wait lets one replacement end.
+const RESOLVE_AGAIN_MS: [u64; 5] = [1, 2, 5, 10, 20];
 
 /// Where a vault-relative path really points.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -97,7 +110,7 @@ fn resolve(root: &Path, rel: &str, rooted: Rooted) -> io::Result<Resolution> {
     let joined = root.join(rel);
     let mut probe = joined.clone();
     loop {
-        match fs::canonicalize(&probe) {
+        match canonicalize_settled(&probe) {
             Ok(real) => {
                 return Ok(match real.strip_prefix(&real_root) {
                     Err(_) => Resolution::Outside,
@@ -119,6 +132,70 @@ fn resolve(root: &Path, rel: &str, rooted: Rooted) -> io::Result<Resolution> {
             Err(err) => return Err(err),
         }
     }
+}
+
+/// `fs::canonicalize`, asked again while `path` is a file being replaced. The answer for a
+/// file renamed over is the old file's: its name in the deleted-files area, or an error
+/// while it is being deleted. Neither says where `path` points, and asking again finds the
+/// new file. The deleted-files name only a replacement gives, so it is asked again through
+/// every wait of [`RESOLVE_AGAIN_MS`] and is an error after the last. The error is also what
+/// a file denied for good gives on every lookup, so it gets one ask after the first wait.
+fn canonicalize_settled(path: &Path) -> io::Result<PathBuf> {
+    let mut waits = RESOLVE_AGAIN_MS.into_iter();
+    loop {
+        let answer = fs::canonicalize(path);
+        let replaced = match &answer {
+            Ok(real) => in_deleted_area(real),
+            Err(err) => is_being_deleted(err) && waits.len() == RESOLVE_AGAIN_MS.len(),
+        };
+        if !replaced {
+            return answer;
+        }
+        let Some(ms) = waits.next() else {
+            return match answer {
+                Ok(_) => Err(io::Error::other(
+                    "the file kept being replaced while it was resolved",
+                )),
+                err => err,
+            };
+        };
+        std::thread::sleep(std::time::Duration::from_millis(ms));
+    }
+}
+
+/// NTFS keeps a file deleted while it is open, as a save that renames over it leaves the old
+/// one, under `\$Extend\$Deleted` at the root of its volume until the last handle closes.
+#[cfg(windows)]
+fn in_deleted_area(real: &Path) -> bool {
+    let mut parts = real
+        .components()
+        .skip_while(|c| matches!(c, Component::Prefix(_) | Component::RootDir));
+    let mut next_is = |name: &str| {
+        parts
+            .next()
+            .is_some_and(|c| c.as_os_str().eq_ignore_ascii_case(name))
+    };
+    real.has_root() && next_is("$Extend") && next_is("$Deleted")
+}
+
+#[cfg(not(windows))]
+fn in_deleted_area(_real: &Path) -> bool {
+    false
+}
+
+/// The errors of opening a file in the middle of its deletion: `ERROR_ACCESS_DENIED` (the
+/// code `STATUS_DELETE_PENDING` maps to) and `ERROR_DELETE_PENDING`.
+#[cfg(windows)]
+fn is_being_deleted(err: &io::Error) -> bool {
+    use windows::Win32::Foundation::{ERROR_ACCESS_DENIED, ERROR_DELETE_PENDING};
+    [ERROR_ACCESS_DENIED, ERROR_DELETE_PENDING]
+        .iter()
+        .any(|code| err.raw_os_error() == i32::try_from(code.0).ok())
+}
+
+#[cfg(not(windows))]
+fn is_being_deleted(_err: &io::Error) -> bool {
+    false
 }
 
 /// What to do with a file that has more than one hard link.
@@ -276,4 +353,26 @@ pub fn file_identity(file: &File) -> io::Result<(FileId, u64)> {
         narrow
     };
     Ok((id, u64::from(info.nNumberOfLinks)))
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_the_volume_roots_deleted_area_is_a_file_being_replaced() {
+        for (path, deleted) in [
+            (r"\\?\C:\$Extend\$Deleted\000500000000B31853FE9168", true),
+            (r"\\?\C:\$extend\$deleted\1", true),
+            (r"\\?\Volume{0a1b}\$Extend\$Deleted\1", true),
+            (r"\\?\UNC\srv\share\$Extend\$Deleted\1", true),
+            (r"C:\$Extend\$Deleted\1", true),
+            (r"\\?\C:\vault\$Extend\$Deleted\1", false),
+            (r"\\?\C:\$Extend\other\1", false),
+            (r"\\?\C:\Users\agent\vault\notes\a.md", false),
+            (r"$Extend\$Deleted\1", false),
+        ] {
+            assert_eq!(in_deleted_area(Path::new(path)), deleted, "{path}");
+        }
+    }
 }
