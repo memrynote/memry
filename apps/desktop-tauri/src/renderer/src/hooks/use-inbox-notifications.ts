@@ -39,11 +39,12 @@ export function useInboxNotifications(): void {
           .map((item) => item.id)
           .toSorted()
           .join(',')}`
-        // Desktop asks for no permission; the command answers for platforms that do.
+        // Windows and Linux answer granted. macOS answers prompt until the user was asked, and
+        // the show itself asks, so only a denial skips the banner.
         void commands
           .notificationPermission()
           .then((permission) =>
-            permission === 'granted'
+            permission !== 'denied'
               ? commands.notificationShow({
                   key,
                   title,

@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
+import { sendQuitEvent } from '../../harness/mac-quit-event'
 import {
   startFakeSessionManager,
   type Desktop,
@@ -245,6 +246,27 @@ test('a sign-out leaves a downloaded update to the next normal quit', async ({ a
   await download(app, page)
 
   await invokeTest(app, 'e2e_send_session_end', { target: 'main' })
+  await waitForExit(app)
+  expect(applies(appDataDir)).toEqual([])
+
+  await restart(app)
+  await download(app, page)
+  await invokeTest(app, 'e2e_request_quit')
+  await waitForExit(app)
+  expect(applies(appDataDir)).toEqual([{ silent: true, restart: false }])
+})
+
+// macOS: loginwindow quits the app with an Apple event that names the reason (`rlgo` at Log Out),
+// and the app accepts it. The real Log Out is a manual row of the release rehearsal.
+test('a macOS Log Out leaves a downloaded update to the next normal quit', async ({
+  app,
+  page
+}) => {
+  test.skip(process.platform !== 'darwin', 'Apple events are macOS-only')
+  const { appDataDir } = await appInfo(app)
+  await download(app, page)
+
+  expect(sendQuitEvent(app.pid, 'rlgo')).toBe('errn 0')
   await waitForExit(app)
   expect(applies(appDataDir)).toEqual([])
 
