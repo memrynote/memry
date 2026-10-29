@@ -13,6 +13,7 @@
 
 use std::ptr::NonNull;
 use std::sync::{Mutex, OnceLock, PoisonError};
+use std::time::Duration;
 
 use block2::RcBlock;
 use memry_desktop::shell::notifications::{id_from_platform_identifier, platform_identifier};
@@ -51,6 +52,8 @@ fn launch() -> &'static str {
     })
 }
 
+/// Whether the process runs from an app bundle, the only place the center exists. A binary next
+/// to an `Info.plist`-less `.app` folder has no bundle id, and the center would raise there too.
 pub fn is_bundled() -> bool {
     let bundle = NSBundle::mainBundle();
     bundle.bundleIdentifier().is_some() && bundle.bundlePath().to_string().ends_with(".app")
@@ -180,10 +183,25 @@ fn once<T: Send + 'static>() -> (impl Fn(T) + 'static, oneshot::Receiver<T>) {
     (send, receiver)
 }
 
+/// How long macOS may take to answer a request that does not wait for the user. Posts run one at
+/// a time, so an answer that never came would hold up every later notification.
+const ANSWER_TIMEOUT: Duration = Duration::from_secs(10);
+
 async fn answer<T>(receiver: oneshot::Receiver<T>) -> Result<T, String> {
     receiver
         .await
         .map_err(|_| "macOS did not answer the notification request".to_owned())
+}
+
+async fn answer_soon<T>(receiver: oneshot::Receiver<T>) -> Result<T, String> {
+    tokio::time::timeout(ANSWER_TIMEOUT, answer(receiver))
+        .await
+        .map_err(|_| {
+            format!(
+                "macOS did not answer the notification request within {} s",
+                ANSWER_TIMEOUT.as_secs()
+            )
+        })?
 }
 
 fn describe(error: *mut NSError) -> Option<String> {
@@ -202,7 +220,7 @@ async fn status() -> Result<UNAuthorizationStatus, String> {
             .getNotificationSettingsWithCompletionHandler(&block);
         receiver
     };
-    answer(receiver).await
+    answer_soon(receiver).await
 }
 
 /// macOS shows its prompt and answers once the user chose.
@@ -243,7 +261,7 @@ async fn add(identifier: &str, title: &str, body: &str, silent: bool) -> Result<
             .addNotificationRequest_withCompletionHandler(&request, Some(&block));
         receiver
     };
-    match answer(receiver).await? {
+    match answer_soon(receiver).await? {
         None => Ok(()),
         Some(error) => Err(error),
     }

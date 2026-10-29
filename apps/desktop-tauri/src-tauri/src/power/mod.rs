@@ -93,6 +93,7 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
                         stall.resume();
                     }
                 }
+                // Each platform source hands the session end to the shutdown sequence itself.
                 Ok(PowerEvent::SessionEnding) => {}
                 Err(broadcast::error::RecvError::Lagged(missed)) => {
                     // A missed `Resume` would leave the stall monitor off for good, and a
@@ -115,7 +116,7 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 fn start_platform(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let sender = app.state::<PowerMonitor>().sender();
     #[cfg(target_os = "macos")]
-    mac::start(&sender);
+    mac::start(app, &sender);
     #[cfg(target_os = "linux")]
     linux::start(app, &sender);
     #[cfg(windows)]
