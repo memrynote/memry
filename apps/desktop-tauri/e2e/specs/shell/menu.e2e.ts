@@ -1,6 +1,7 @@
 // The native application menu is built from the shared command table (inv09 #8).
 import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
+import { appReady } from '../../harness/app-ready'
 import { invoke } from '../../harness/vault-commands'
 import { pollUntil } from '../../harness/wait'
 
@@ -30,13 +31,31 @@ test('the menu lists File, Edit and Help with the command items', async ({ app }
 
 test('a context menu answers with the queued selection', async ({ app, page }) => {
   await invokeTest(app, 'e2e_set_next_context_menu_selection', { selection: 'rename' })
-  const chosen = await page.evaluate(async () => {
-    const api = (
-      window as unknown as { api: { showContextMenu: (i: unknown[]) => Promise<string | null> } }
-    ).api
-    return api.showContextMenu([{ id: 'rename', label: 'Rename' }])
+  const chosen = await invoke<string | null>(page, 'shell_show_context_menu', {
+    items: [{ id: 'rename', label: 'Rename' }]
   })
   expect(chosen).toBe('rename')
+})
+
+// On Linux `e2e_clipboard_write` leaves the app's GTK main loop owning the clipboard, as a copy in
+// the page does, so a read on the main thread (where menu items run) would wait on itself.
+test('the clipboard text reads back, and Paste and Match Style inserts it as plain text', async ({
+  app,
+  page
+}) => {
+  await appReady(page)
+  const text = 'Plain <b>pasted</b> text'
+  await invokeTest(app, 'e2e_clipboard_write', { text })
+  expect(await invoke<string>(page, 'shell_clipboard_read_text')).toBe(text)
+
+  await page.evaluate(() => {
+    const field = document.createElement('textarea')
+    field.id = 'paste-target'
+    document.body.append(field)
+    field.focus()
+  })
+  await invokeTest(app, 'e2e_menu_activate', { id: 'edit.pasteAndMatchStyle' })
+  await expect(page.locator('#paste-target')).toHaveValue(text)
 })
 
 test('Linux: the menu bar is hidden after the window shows, and the first bare Alt shows it', async ({

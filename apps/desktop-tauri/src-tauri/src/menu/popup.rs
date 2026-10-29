@@ -28,15 +28,19 @@ pub enum ItemKind {
     Separator,
 }
 
-/// The item shape of `window.api.showContextMenu`: `{ id, label, accelerator, disabled, type }`.
+/// The item shape of the Electron `showContextMenu`, `{ id, label, accelerator?, disabled?, type? }`,
+/// which the renderer's callers still build.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ContextMenuItem {
     pub id: String,
     pub label: String,
+    #[specta(optional)]
     pub accelerator: Option<String>,
+    #[specta(optional)]
     pub disabled: Option<bool>,
     #[serde(rename = "type")]
+    #[specta(optional)]
     pub kind: Option<ItemKind>,
 }
 

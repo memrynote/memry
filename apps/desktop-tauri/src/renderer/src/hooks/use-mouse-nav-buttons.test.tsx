@@ -110,7 +110,7 @@ describe('useMouseNavButtons', () => {
     editor.remove()
   })
 
-  it('subscribes to native app navigation commands through the preload api', () => {
+  it('subscribes to native app navigation commands through the shell event', async () => {
     const unsubscribe = vi.fn()
     const onAppNavigationCommand = setAppNavigationMock(appNavigationHandler, unsubscribe)
 
@@ -125,7 +125,8 @@ describe('useMouseNavButtons', () => {
     expect(mockTabs.navForward).toHaveBeenCalledWith('group-a')
 
     unmount()
-    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    // The Tauri listener is released once its registration settles.
+    await vi.waitFor(() => expect(unsubscribe).toHaveBeenCalledTimes(1))
   })
 
   it('suppresses duplicate native and mouse fallback commands for the same click', () => {

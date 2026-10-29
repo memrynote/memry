@@ -1,5 +1,6 @@
 import { useAppCommands } from '@/commands'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { windowApi } from '@/services/window-service'
 import { clampZoomFactor, stepZoomFactor, ZOOM_FACTOR_DEFAULT } from '@memry/contracts/app-zoom'
 
 /**
@@ -20,7 +21,7 @@ export function useAppZoom(): void {
     // that window would step from 100% and persist it over whatever the user
     // actually saved. Dropping the command is the only harmless option.
     if (isLoading) return
-    window.api.setZoomFactor(factor)
+    windowApi.setZoomFactor(factor)
     await updateSettings({ zoomFactor: factor })
   }
 

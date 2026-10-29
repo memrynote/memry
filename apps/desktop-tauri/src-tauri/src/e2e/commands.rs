@@ -21,6 +21,7 @@ e2e_commands! {
     clipboard => [e2e_clipboard_read, e2e_clipboard_write],
     crash => [e2e_trigger_crash, e2e_kill_page],
     debug => [e2e_debug_query, e2e_debug_index_query],
+    os_drag => [e2e_os_drag],
     dialog => [e2e_dialog_queue_push, e2e_dialog_queue_clear],
     reveal => [e2e_revealed_paths, e2e_os_opens],
     shell_integrations => [
@@ -45,5 +46,15 @@ e2e_commands! {
         e2e_menu_bar_visible
     ],
     updater => [e2e_updater_script, e2e_updater_hook_calls],
+    vault_writeback => [
+        e2e_app_terminate,
+        e2e_note_body,
+        e2e_note_edit,
+        e2e_note_schedule,
+        e2e_vault_adopt_files,
+        e2e_vault_note_files,
+        e2e_vault_read_file,
+        e2e_vault_write_outside
+    ],
     window => [e2e_windows, e2e_set_window_rect],
 }

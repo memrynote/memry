@@ -61,8 +61,8 @@ fn store(suffix: &str) -> KeyringStore {
 /// tests take turns the same way.
 struct Live {
     store: Arc<KeyringStore>,
-    /// The device suffix of [`Live::store`], for an item a Linux test writes with `secret-tool`.
-    #[cfg_attr(not(target_os = "linux"), expect(dead_code))]
+    /// The device suffix of [`Live::store`]: named in a cleanup failure, and the account of an
+    /// item a Linux test writes with `secret-tool`.
     suffix: String,
     /// Accounts under [`TEST_SERVICE`] to remove at the end.
     generic: Vec<String>,
@@ -116,14 +116,26 @@ impl Drop for Live {
         if !self.clean {
             return;
         }
-        let _ = self.store.clear();
-        let elsewhere = tempfile::tempdir();
-        if let Ok(dir) = &elsewhere {
-            let _ = DeviceIdentityStore::new(self.store.clone(), dir.path())
-                .delete(SecureStoreKey::DeviceSigningKey);
+        let report = |what: &str, error: &dyn std::fmt::Display| {
+            eprintln!("live cleanup of {}: {what}: {error}", self.suffix);
+        };
+        if let Err(error) = self.store.clear() {
+            report("the store's entries", &error);
+        }
+        match tempfile::tempdir() {
+            Ok(dir) => {
+                if let Err(error) = DeviceIdentityStore::new(self.store.clone(), dir.path())
+                    .delete(SecureStoreKey::DeviceSigningKey)
+                {
+                    report("the device key", &error);
+                }
+            }
+            Err(error) => report("a directory for the device key delete", &error),
         }
         for account in &self.generic {
-            let _ = self.store.delete_secret(TEST_SERVICE, account);
+            if let Err(error) = self.store.delete_secret(TEST_SERVICE, account) {
+                report(account, &error);
+            }
         }
     }
 }

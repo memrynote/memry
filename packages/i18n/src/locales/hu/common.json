@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Még # esedékes emlékeztető} other {Még # esedékes emlékeztető}}",
     "moreRemindersDueHint": "A részletekért nézze meg az emlékeztetőpanelt",
     "searchIndexRepaired": "Keresési index javítva",
-    "searchIndexRepairedHint": "A keresési index egy része megsérült, ezért a Memry újraépítette. A jegyzeteit ez nem érintette."
+    "searchIndexRepairedHint": "A keresési index egy része megsérült, ezért a Memry újraépítette. A jegyzeteit ez nem érintette.",
+    "drop": {
+      "tooLarge": "Az egyik behúzott fájl nagyobb 2 GB-nál.",
+      "tooMany": "Túl sok fájl vár importálásra. Húzz be kevesebb fájlt, és próbáld újra.",
+      "notAFile": "Mappákat nem lehet ide húzni. Húzd be helyettük a bennük lévő fájlokat.",
+      "unreadable": "A behúzott fájlok nem olvashatók. Próbáld meg újra behúzni őket."
+    }
   },
   "dateRelative": {
     "today": "Ma",

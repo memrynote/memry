@@ -3,6 +3,7 @@ import { Picker, usePickerContext, usePickerSearch } from '@/components/ui/picke
 import { Minus, Plus, Undo } from '@/lib/icons'
 import { useTheme } from 'next-themes'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { windowApi } from '@/services/window-service'
 import { useSystemFonts, type SystemFontsState } from '@/hooks/use-system-fonts'
 import {
   BUILT_IN_FONT_FAMILIES,
@@ -72,7 +73,7 @@ function setRootFontSize(px: number): void {
 }
 
 function setAppZoomFactor(factor: number): void {
-  window.api.setZoomFactor(factor)
+  windowApi.setZoomFactor(factor)
 }
 
 /**

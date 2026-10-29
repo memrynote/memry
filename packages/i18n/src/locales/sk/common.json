@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Čas na # ďalšiu pripomienku} few {Čas na # ďalšie pripomienky} other {Čas na # ďalších pripomienok}}",
     "moreRemindersDueHint": "Podrobnosti nájdete na paneli pripomienok",
     "searchIndexRepaired": "Index vyhľadávania opravený",
-    "searchIndexRepairedHint": "Časť indexu vyhľadávania bola poškodená, preto ho aplikácia Memry znova vytvorila. Vašich poznámok sa to nedotklo."
+    "searchIndexRepairedHint": "Časť indexu vyhľadávania bola poškodená, preto ho aplikácia Memry znova vytvorila. Vašich poznámok sa to nedotklo.",
+    "drop": {
+      "tooLarge": "Presunutý súbor je väčší ako 2 GB.",
+      "tooMany": "Na import čaká príliš veľa súborov. Presuňte menej súborov a skúste to znova.",
+      "notAFile": "Priečinky sem nemožno presunúť. Presuňte namiesto toho súbory, ktoré obsahujú.",
+      "unreadable": "Presunuté súbory sa nepodarilo prečítať. Skúste ich presunúť znova."
+    }
   },
   "dateRelative": {
     "today": "Dnes",

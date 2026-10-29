@@ -6,6 +6,7 @@
 import type { Tab } from '@/contexts/tabs/types'
 import { useTabs } from '@/contexts/tabs'
 import { duplicateTab, toggleTabPin } from '@/contexts/tabs/tab-ops'
+import { windowApi } from '@/services/window-service'
 import { useCallback } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
@@ -57,7 +58,7 @@ export const TabContextMenu = ({
         { id: 'reveal', label: t('tabs.contextMenu.revealInSidebar') }
       ]
 
-      const selectedId = await window.api.showContextMenu(menuItems)
+      const selectedId = await windowApi.showContextMenu(menuItems)
 
       switch (selectedId) {
         case 'close':

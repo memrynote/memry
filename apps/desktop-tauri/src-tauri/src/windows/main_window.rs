@@ -78,6 +78,7 @@ pub fn create_main(
     navigation_guard::install(app, &window);
     zoom::apply_to(&window, state.zoom);
     permissions::install(&window, permissions::dev_origin(app));
+    crate::shell::drop_stage::watch_os_drags(&window);
     #[cfg(windows)]
     {
         super::win32_caption::install(app, &window);

@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Takda na rin ang # iba pang paalala} other {Takda na rin ang # iba pang paalala}}",
     "moreRemindersDueHint": "Tingnan ang panel ng mga paalala para sa mga detalye",
     "searchIndexRepaired": "Naayos ang index ng paghahanap",
-    "searchIndexRepairedHint": "Nasira ang bahagi ng index ng paghahanap, kaya binuo ito ulit ng Memry. Hindi ginalaw ang mga tala mo."
+    "searchIndexRepairedHint": "Nasira ang bahagi ng index ng paghahanap, kaya binuo ito ulit ng Memry. Hindi ginalaw ang mga tala mo.",
+    "drop": {
+      "tooLarge": "Mas malaki sa 2 GB ang isang file na idinrop.",
+      "tooMany": "Masyadong maraming file ang naghihintay na ma-import. Mag-drop ng mas kaunting file at subukang muli.",
+      "notAFile": "Hindi maaaring mag-drop ng folder dito. I-drop na lang ang mga file sa loob nito.",
+      "unreadable": "Hindi mabasa ang mga idinrop na file. Subukang i-drop muli ang mga ito."
+    }
   },
   "dateRelative": {
     "today": "Ngayong araw",

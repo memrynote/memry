@@ -8,6 +8,22 @@ export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
 	diagnosticsPreviewReport: (trigger: DiagnosticTrigger) => __TAURI_INVOKE<DiagnosticPreview>("diagnostics_preview_report", { trigger }),
 	diagnosticsSendReport: (report: DiagnosticReport) => __TAURI_INVOKE<DiagnosticSendResult>("diagnostics_send_report", { report }),
+	/**
+	 *  The `file://` URIs of the files just dropped on the window from the OS, which WebKitGTK hides
+	 *  from the page. `drop_not_dropped` unless a drop happened within the last few seconds.
+	 */
+	dropOsDragUris: () => __TAURI_INVOKE<string[]>("drop_os_drag_uris"),
+	/**  Starts a staged copy of a dropped file. Returns the id the other calls take. */
+	dropStageBegin: (name: string, size: number) => __TAURI_INVOKE<string>("drop_stage_begin", { name, size }),
+	/**  Closes a staged copy once every byte arrived and returns its absolute path. */
+	dropStageFinish: (id: string) => __TAURI_INVOKE<string>("drop_stage_finish", { id }),
+	/**
+	 *  Stages copies of files just dropped from the OS, named by the URIs `drop_os_drag_uris` gave.
+	 *  Only files of that drop are staged (`os_drag.rs` in memry-desktop); all or nothing.
+	 */
+	dropStageOsFiles: (uris: string[]) => __TAURI_INVOKE<StagedDrop[]>("drop_stage_os_files", { uris }),
+	/**  Deletes staged copies after their import settled. */
+	dropStageRelease: (ids: string[]) => __TAURI_INVOKE<null>("drop_stage_release", { ids }),
 	/**  Beta feedback, anonymous or with the account's token (Step 19, #3536, adds the bearer). */
 	feedbackSubmit: (input: FeedbackSubmit) => __TAURI_INVOKE<FeedbackSubmitResult>("feedback_submit", { input }),
 	/**  The unread count on the app icon; 0 clears it. */
@@ -83,6 +99,8 @@ export const commands = {
 	 */
 	settingsSetGroup: (group: string, patch: Value) => __TAURI_INVOKE<null>("settings_set_group", { group, patch }),
 	settingsSetLocal: (key: string, value: Value) => __TAURI_INVOKE<null>("settings_set_local", { key, value }),
+	/**  The clipboard text, `""` when it holds none. Quick capture (Step 27) prefills from it. */
+	shellClipboardReadText: () => __TAURI_INVOKE<string>("shell_clipboard_read_text"),
 	/**  The renderer painted its first frame: reveals the main window once. */
 	shellFirstPaint: () => __TAURI_INVOKE<null>("shell_first_paint"),
 	/**  A liveness beat from the page, every 2 s. */
@@ -231,13 +249,16 @@ export type CommandError = {
 	message: string,
 };
 
-/**  The item shape of `window.api.showContextMenu`: `{ id, label, accelerator, disabled, type }`. */
+/**
+ *  The item shape of the Electron `showContextMenu`, `{ id, label, accelerator?, disabled?, type? }`,
+ *  which the renderer's callers still build.
+ */
 export type ContextMenuItem = {
 	id: string,
 	label: string,
-	accelerator: string | null,
-	disabled: boolean | null,
-	type: ItemKind | null,
+	accelerator?: string | null,
+	disabled?: boolean | null,
+	type?: ItemKind | null,
 };
 
 /**
@@ -472,6 +493,11 @@ export type SpellResult = {
 	available: boolean,
 	misspelled: boolean,
 	suggestions: string[],
+};
+
+export type StagedDrop = {
+	id: string,
+	path: string,
 };
 
 /**

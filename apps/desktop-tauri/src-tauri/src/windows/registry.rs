@@ -1,11 +1,9 @@
 //! Names every window kind and answers "which windows does the app have". Every "first live
 //! window" decision calls [`WindowRegistry::main_window`]; none reads `webview_windows()`.
 
-use serde::Serialize;
 use tauri::{AppHandle, Runtime, WebviewWindow};
 
 use super::MAIN_LABEL;
-use crate::events::send_to;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowKind {
@@ -48,7 +46,7 @@ impl WindowKind {
         }
     }
 
-    /// Windows that show app content: they receive broadcasts and the zoom.
+    /// Windows that show app content: they take the zoom and the menu commands.
     pub fn is_app_window(self) -> bool {
         matches!(self, Self::Main | Self::Sticky | Self::TestSecondary)
     }
@@ -84,17 +82,6 @@ impl WindowRegistry {
             .collect();
         windows.sort_by(|a, b| a.label().cmp(b.label()));
         windows
-    }
-
-    /// Emits `event` to every app window over the guarded helper.
-    pub fn broadcast<R, E>(app: &AppHandle<R>, event: E)
-    where
-        R: Runtime,
-        E: tauri_specta::Event + Serialize + Clone,
-    {
-        for window in Self::app_windows(app) {
-            send_to(app, window.label(), event.clone());
-        }
     }
 }
 

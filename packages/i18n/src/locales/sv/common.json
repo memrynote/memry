@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Ytterligare # påminnelse väntar} other {Ytterligare # påminnelser väntar}}",
     "moreRemindersDueHint": "Se påminnelsepanelen för mer information",
     "searchIndexRepaired": "Sökindexet har reparerats",
-    "searchIndexRepairedHint": "En del av sökindexet var skadat, så Memry byggde om det. Dina anteckningar har inte påverkats."
+    "searchIndexRepairedHint": "En del av sökindexet var skadat, så Memry byggde om det. Dina anteckningar har inte påverkats.",
+    "drop": {
+      "tooLarge": "En släppt fil är större än 2 GB.",
+      "tooMany": "För många filer väntar på import. Släpp färre filer och försök igen.",
+      "notAFile": "Mappar kan inte släppas här. Släpp filerna i dem i stället.",
+      "unreadable": "De släppta filerna kunde inte läsas. Försök att släppa dem igen."
+    }
   },
   "dateRelative": {
     "today": "Idag",

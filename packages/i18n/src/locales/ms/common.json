@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, other {# lagi peringatan telah tiba masanya}}",
     "moreRemindersDueHint": "Semak panel peringatan untuk butiran",
     "searchIndexRepaired": "Indeks carian dibaiki",
-    "searchIndexRepairedHint": "Sebahagian indeks carian telah rosak, jadi Memry membinanya semula. Nota anda tidak terjejas."
+    "searchIndexRepairedHint": "Sebahagian indeks carian telah rosak, jadi Memry membinanya semula. Nota anda tidak terjejas.",
+    "drop": {
+      "tooLarge": "Satu fail yang dilepaskan lebih besar daripada 2 GB.",
+      "tooMany": "Terlalu banyak fail menunggu untuk diimport. Lepaskan lebih sedikit fail dan cuba lagi.",
+      "notAFile": "Folder tidak boleh dilepaskan di sini. Lepaskan fail di dalamnya sebaliknya.",
+      "unreadable": "Fail yang dilepaskan tidak dapat dibaca. Cuba lepaskannya sekali lagi."
+    }
   },
   "dateRelative": {
     "today": "Hari ini",

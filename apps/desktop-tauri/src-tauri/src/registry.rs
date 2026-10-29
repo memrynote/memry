@@ -25,6 +25,12 @@ pub fn builder() -> Builder<Wry> {
             // diagnostics
             crate::commands::diagnostics::diagnostics_preview_report,
             crate::commands::diagnostics::diagnostics_send_report,
+            // drop staging
+            crate::commands::drop_stage::drop_os_drag_uris,
+            crate::commands::drop_stage::drop_stage_begin,
+            crate::commands::drop_stage::drop_stage_finish,
+            crate::commands::drop_stage::drop_stage_os_files,
+            crate::commands::drop_stage::drop_stage_release,
             // feedback
             crate::commands::telemetry::feedback_submit,
             // badge
@@ -62,6 +68,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::settings::settings_set_group,
             crate::commands::settings::settings_set_local,
             // shell
+            crate::commands::shell::shell_clipboard_read_text,
             crate::commands::shell::shell_first_paint,
             crate::commands::shell::shell_heartbeat,
             crate::commands::shell::shell_show_context_menu,

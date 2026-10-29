@@ -12,8 +12,8 @@ function report(command: string): (error: unknown) => void {
 }
 
 /**
- * The window functions of `window.api` over their Rust commands. Each acts on the calling
- * window, resolved by the shell from the IPC call, never from focus.
+ * The window functions over their Rust commands, under the names the Electron `window.api` gave
+ * them. Each acts on the calling window, resolved by the shell from the IPC call, never from focus.
  */
 export const windowApi = {
   windowMinimize: (): void => {

@@ -4,6 +4,7 @@ import { useGeneralSettings } from './use-general-settings'
 import { setDateFormatPref } from '@/lib/format-date'
 import { FONT_FAMILY_MAP, sanitizeFontFamilyName } from '@/lib/interface-font'
 import { createLogger } from '@/lib/logger'
+import { windowApi } from '@/services/window-service'
 import { resolveFontSizePx } from '@memry/contracts/font-size'
 import { clampZoomFactor } from '@memry/contracts/app-zoom'
 import {
@@ -119,7 +120,7 @@ export function useThemeSync(): ThemeSyncState {
 
   useEffect(() => {
     if (isLoading) return
-    window.api.setZoomFactor(clampZoomFactor(settings.zoomFactor))
+    windowApi.setZoomFactor(clampZoomFactor(settings.zoomFactor))
   }, [isLoading, settings.zoomFactor])
 
   // Keep format-date's module cache in sync so pure (non-React) date helpers

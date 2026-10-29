@@ -23,7 +23,9 @@ const mocks = vi.hoisted(() => ({
   notesTreeCreateFolder: vi.fn(),
   canvasTreeCreateFolder: vi.fn(),
   fileDrop: {
-    onDrop: null as ((paths: string[], targetFolder: string) => Promise<void> | void) | null
+    onDrop: null as
+      | ((dropped: { files: File[] }, targetFolder: string) => Promise<void> | void)
+      | null
   },
   // Keyless calls collapse to the last key segment; interpolated ones append
   // their values so a test can prove the caller passed them through.
@@ -269,10 +271,18 @@ vi.mock('@/hooks/use-inbox', () => ({
   useInboxList: () => ({ items: mocks.inboxItems })
 }))
 
+// A drop has no path: the real helper stages each file in the shell and hands the import the copies.
+vi.mock('@/lib/drop-stage', () => ({
+  dropErrorMessage: (error: Error) => error.message,
+  droppedNames: (dropped: { files: File[] }) => dropped.files.map((file) => file.name),
+  withStagedFiles: (dropped: { files: File[] }, run: (paths: string[]) => Promise<unknown>) =>
+    run(dropped.files.map((file) => `/staged/${file.name}`))
+}))
+
 vi.mock('@/hooks/use-file-drop', () => ({
   FILE_DROP_FOLDER_ATTR: 'data-file-drop-folder',
   useFileDrop: (options: {
-    onDrop: (paths: string[], targetFolder: string) => Promise<void> | void
+    onDrop: (dropped: { files: File[] }, targetFolder: string) => Promise<void> | void
   }) => {
     mocks.fileDrop.onDrop = options.onDrop
     return { isDraggingFiles: false, dropFolder: null, dropHandlers: {} }
@@ -358,6 +368,8 @@ function ShellOwner(): null {
   })
   return null
 }
+
+const dropped = (...names: string[]) => ({ files: names.map((name) => new File(['x'], name)) })
 
 describe('AppSidebar', () => {
   beforeEach(() => {
@@ -493,7 +505,7 @@ describe('AppSidebar', () => {
     })
 
     await act(async () => {
-      await mocks.fileDrop.onDrop?.(['a.md', 'b.md', 'bad.zip'], '')
+      await mocks.fileDrop.onDrop?.(dropped('a.md', 'b.md', 'bad.zip'), '')
     })
 
     expect(toast.success).toHaveBeenCalledWith('filesImported:{"count":2}')
@@ -502,12 +514,12 @@ describe('AppSidebar', () => {
     })
   })
 
-  it('reports an import that throws through the IPC error message', async () => {
+  it('reports an import that throws through the drop error message', async () => {
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
     mocks.importFiles.mockRejectedValueOnce(new Error('vault is read-only'))
 
     await act(async () => {
-      await mocks.fileDrop.onDrop?.(['a.pdf'], '')
+      await mocks.fileDrop.onDrop?.(dropped('a.pdf'), '')
     })
 
     expect(toast.success).not.toHaveBeenCalled()
@@ -528,12 +540,12 @@ describe('AppSidebar', () => {
       mocks.importFiles.mockResolvedValue({ imported: 1, failed: 0, errors: [] })
 
       await act(async () => {
-        await mocks.fileDrop.onDrop?.(['note.md'], '')
+        await mocks.fileDrop.onDrop?.(dropped('note.md'), '')
       })
       expect(toast.success).toHaveBeenLastCalledWith('filesImported:{"count":1}')
 
       await act(async () => {
-        await mocks.fileDrop.onDrop?.(['/tmp/scan.PDF'], '')
+        await mocks.fileDrop.onDrop?.(dropped('scan.PDF'), '')
       })
       expect(toast.success).toHaveBeenLastCalledWith('filesImported:{"count":1}', {
         description: 'filesHiddenInSidebar'
@@ -582,10 +594,10 @@ describe('AppSidebar', () => {
 
     // #when — the file is dropped over a different folder row
     await act(async () => {
-      await mocks.fileDrop.onDrop?.(['/tmp/sample.pdf'], 'movies')
+      await mocks.fileDrop.onDrop?.(dropped('sample.pdf'), 'movies')
     })
 
     // #then — the drop wins over the selection
-    expect(mocks.importFiles).toHaveBeenCalledWith(['/tmp/sample.pdf'], 'movies')
+    expect(mocks.importFiles).toHaveBeenCalledWith(['/staged/sample.pdf'], 'movies')
   })
 })

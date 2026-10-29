@@ -89,6 +89,8 @@ pub struct MenuInput<'a> {
     pub overrides: &'a BTreeMap<String, Binding>,
     /// `menu:<key>` of the catalog.
     pub t: &'a dyn Fn(&str) -> String,
+    /// The build has a web inspector (a debug build), so View lists Toggle Developer Tools.
+    pub devtools: bool,
 }
 
 struct Builder<'a> {
@@ -364,36 +366,36 @@ impl Builder<'_> {
     }
 
     fn view_menu(&self) -> MenuNode {
-        self.submenu(
-            "view.label",
-            vec![
-                self.action("view.reload", "view.reload", Action::Reload),
-                self.action(
-                    "view.toggleDevTools",
-                    "view.toggleDevTools",
-                    Action::ToggleDevTools,
-                ),
-                MenuNode::Separator,
-                self.cmd_bound("view.actualSize", "view.actualSize"),
-                self.cmd_bound("view.zoomIn", "view.zoomIn"),
-                self.cmd_bound("view.zoomOut", "view.zoomOut"),
-                MenuNode::Separator,
-                self.role(Role::Fullscreen, "view.toggleFullscreen"),
-                MenuNode::Separator,
-                self.plain("view.toggleSidebar", "view.toggleSidebar"),
-                self.cmd_bound("view.toggleDayPanel", "view.toggleDayPanel"),
-                MenuNode::Separator,
-                self.submenu(
-                    "view.theme",
-                    vec![
-                        self.plain("view.themeLight", "view.themeLight"),
-                        self.plain("view.themeDark", "view.themeDark"),
-                        self.plain("view.themeWhite", "view.themeWhite"),
-                        self.plain("view.themeSystem", "view.themeSystem"),
-                    ],
-                ),
-            ],
-        )
+        let mut items = vec![self.action("view.reload", "view.reload", Action::Reload)];
+        if self.input.devtools {
+            items.push(self.action(
+                "view.toggleDevTools",
+                "view.toggleDevTools",
+                Action::ToggleDevTools,
+            ));
+        }
+        items.extend([
+            MenuNode::Separator,
+            self.cmd_bound("view.actualSize", "view.actualSize"),
+            self.cmd_bound("view.zoomIn", "view.zoomIn"),
+            self.cmd_bound("view.zoomOut", "view.zoomOut"),
+            MenuNode::Separator,
+            self.role(Role::Fullscreen, "view.toggleFullscreen"),
+            MenuNode::Separator,
+            self.plain("view.toggleSidebar", "view.toggleSidebar"),
+            self.cmd_bound("view.toggleDayPanel", "view.toggleDayPanel"),
+            MenuNode::Separator,
+            self.submenu(
+                "view.theme",
+                vec![
+                    self.plain("view.themeLight", "view.themeLight"),
+                    self.plain("view.themeDark", "view.themeDark"),
+                    self.plain("view.themeWhite", "view.themeWhite"),
+                    self.plain("view.themeSystem", "view.themeSystem"),
+                ],
+            ),
+        ]);
+        self.submenu("view.label", items)
     }
 
     fn window_menu(&self) -> MenuNode {

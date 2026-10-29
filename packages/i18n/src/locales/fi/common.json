@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Vielä # erääntyvä muistutus} other {Vielä # erääntyvää muistutusta}}",
     "moreRemindersDueHint": "Katso lisätiedot muistutuspaneelista",
     "searchIndexRepaired": "Hakuindeksi korjattu",
-    "searchIndexRepairedHint": "Osa hakuindeksistä oli vioittunut, joten Memry rakensi sen uudelleen. Muistiinpanoihisi ei koskettu."
+    "searchIndexRepairedHint": "Osa hakuindeksistä oli vioittunut, joten Memry rakensi sen uudelleen. Muistiinpanoihisi ei koskettu.",
+    "drop": {
+      "tooLarge": "Pudotettu tiedosto on suurempi kuin 2 Gt.",
+      "tooMany": "Liian monta tiedostoa odottaa tuontia. Pudota vähemmän tiedostoja ja yritä uudelleen.",
+      "notAFile": "Kansioita ei voi pudottaa tähän. Pudota niiden sisältämät tiedostot.",
+      "unreadable": "Pudotettuja tiedostoja ei voitu lukea. Yritä pudottaa ne uudelleen."
+    }
   },
   "dateRelative": {
     "today": "Tänään",

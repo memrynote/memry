@@ -9,10 +9,12 @@ pub mod commands;
 mod crash;
 mod debug;
 mod dialog;
+mod os_drag;
 mod reveal;
 mod shell;
 mod shell_integrations;
 mod updater;
+pub mod vault_writeback;
 mod window;
 
 use memry_desktop::e2e::E2eGate;

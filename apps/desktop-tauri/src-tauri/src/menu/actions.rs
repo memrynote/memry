@@ -42,15 +42,7 @@ pub fn run(app: &AppHandle<Wry>, action: &Action) {
                 tracing::warn!(scope = "Menu", "reload failed: {error}");
             }
         }
-        Action::ToggleDevTools => {
-            if let Some(window) = window(app) {
-                if window.is_devtools_open() {
-                    window.close_devtools();
-                } else {
-                    window.open_devtools();
-                }
-            }
-        }
+        Action::ToggleDevTools => toggle_devtools(app),
         Action::PasteAndMatchStyle => paste_plain(app),
         Action::Delete => eval(app, "document.execCommand('delete')"),
         Action::StartSpeaking => speak(app, true),
@@ -65,6 +57,21 @@ pub fn run(app: &AppHandle<Wry>, action: &Action) {
     }
 }
 
+#[cfg(debug_assertions)]
+fn toggle_devtools(app: &AppHandle<Wry>) {
+    if let Some(window) = window(app) {
+        if window.is_devtools_open() {
+            window.close_devtools();
+        } else {
+            window.open_devtools();
+        }
+    }
+}
+
+/// A release build has no inspector, and its menu lists no Toggle Developer Tools item.
+#[cfg(not(debug_assertions))]
+fn toggle_devtools(_app: &AppHandle<Wry>) {}
+
 fn navigate(app: &AppHandle<Wry>, direction: &str) {
     if let Some(window) = target_window(app) {
         send_to(
@@ -78,28 +85,33 @@ fn navigate(app: &AppHandle<Wry>, direction: &str) {
 }
 
 fn eval(app: &AppHandle<Wry>, script: &str) {
-    if let Some(window) = window(app)
-        && let Err(error) = window.eval(script)
-    {
+    if let Some(window) = window(app) {
+        eval_in(&window, script);
+    }
+}
+
+fn eval_in(window: &WebviewWindow<Wry>, script: &str) {
+    if let Err(error) = window.eval(script) {
         tracing::warn!(scope = "Menu", "the editing command failed: {error}");
     }
 }
 
-/// Paste the clipboard text without its formatting.
+/// Paste the clipboard text without its formatting, into the window the item targeted. The menu
+/// runs on the main thread, where the clipboard must not be read (`shell::clipboard`).
 fn paste_plain(app: &AppHandle<Wry>) {
-    use tauri_plugin_clipboard_manager::ClipboardExt;
-    let text = match app.clipboard().read_text() {
-        Ok(text) => text,
-        Err(error) => {
-            tracing::debug!(scope = "Menu", "no clipboard text to paste: {error}");
+    let Some(window) = window(app) else { return };
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let text = crate::shell::clipboard::read_text(&app).await;
+        if text.is_empty() {
             return;
         }
-    };
-    let literal = serde_json::to_string(&text).unwrap_or_else(|_| "\"\"".to_owned());
-    eval(
-        app,
-        &format!("document.execCommand('insertText', false, {literal})"),
-    );
+        let literal = serde_json::to_string(&text).unwrap_or_else(|_| "\"\"".to_owned());
+        eval_in(
+            &window,
+            &format!("document.execCommand('insertText', false, {literal})"),
+        );
+    });
 }
 
 fn zoom_window(app: &AppHandle<Wry>) {
