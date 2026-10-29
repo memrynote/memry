@@ -8,7 +8,9 @@
     },
     "paper": {
       "command": "~/.paper/bin/paper",
-      "args": ["mcp"]
+      "args": [
+        "mcp"
+      ]
     },
     "playwright-memry": {
       "command": "npx",
@@ -21,15 +23,24 @@
         "/tmp/memry-playwright-mcp"
       ]
     },
+    "webdriver-memry": {
+      "command": "node",
+      "args": [
+        "apps/desktop-tauri/scripts/webdriver-mcp.mjs"
+      ],
+      "env": {
+        "MEMRY_WEBDRIVER_URL": "http://127.0.0.1:9222",
+        "MEMRY_AGENT_SCREENSHOT_DIR": "/tmp/memry-webdriver-mcp"
+      }
+    },
     "posthog": {
       "url": "https://mcp.posthog.com/mcp"
     },
-    "vercel": {
-      "url": "https://mcp.vercel.com",
-      "enabled": false
-    },
     "cloudflare-api": {
       "url": "https://mcp.cloudflare.com/mcp"
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com"
     }
   }
 }
