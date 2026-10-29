@@ -405,7 +405,7 @@ function getSoftwareApplicationJsonLdObject() {
     downloadUrl: `${BASE_URL}/download`,
     screenshot: SCREENSHOT_CAPTIONS.map(([id, caption]) => ({
       '@type': 'ImageObject',
-      url: `${BASE_URL}/screenshots/${id}_white.png`,
+      url: `${BASE_URL}/screenshots/${id}_white.webp`,
       caption
     })),
     featureList: [
