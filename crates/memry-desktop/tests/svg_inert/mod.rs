@@ -130,11 +130,24 @@ fn local(name: &str) -> String {
     name.rsplit(':').next().unwrap_or(name).to_ascii_lowercase()
 }
 
+/// A value as HTML hands it to CSS, a NUL read as U+FFFD, without the whitespace CSS skips. A
+/// control character stays: CSS reads it as itself.
 fn squash(value: &str) -> String {
     value
+        .replace('\0', "\u{FFFD}")
         .chars()
-        .filter(|c| u32::from(*c) > 0x20)
+        .filter(|c| !c.is_ascii_whitespace())
         .collect::<String>()
+        .to_ascii_lowercase()
+}
+
+/// A URL value as the URL parser gets it: HTML reads a NUL as U+FFFD, XML a tab or line break
+/// as a space, and the parser strips the C0 controls and spaces at both ends but not inside.
+fn read_url(value: &str) -> String {
+    value
+        .replace('\0', "\u{FFFD}")
+        .replace(['\t', '\n', '\r'], " ")
+        .trim_matches(|c: char| c <= ' ')
         .to_ascii_lowercase()
 }
 
@@ -150,7 +163,7 @@ fn check_tag(tag: &Tag<'_>) -> Result<(), String> {
         if value.contains(['&', '<', '\\', '\'']) {
             return Err(format!("{name} holds a value that decodes or quotes"));
         }
-        if matches!(attribute.as_str(), "href" | "src") && !is_inert_url(&squash(value)) {
+        if matches!(attribute.as_str(), "href" | "src") && !is_inert_url(&read_url(value)) {
             return Err(format!("{name} loads {value}"));
         }
         let target = local(&squash(value));
