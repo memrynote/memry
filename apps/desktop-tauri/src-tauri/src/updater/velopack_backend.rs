@@ -94,7 +94,8 @@ impl VelopackBackend {
 pub struct Installed {
     /// `sq.version`.
     pub version: String,
-    /// The `--root` the updater is started with: the `.app` bundle on macOS.
+    /// The `--root` the updater is started with: the `.app` bundle on macOS, the AppImage on
+    /// Linux (velopack `manager.rs` `unsafe_apply_updates`).
     pub root: PathBuf,
 }
 
@@ -104,6 +105,9 @@ pub fn installed() -> Option<Installed> {
         .ok()
         .map(|locator| Installed {
             version: locator.get_manifest_version().to_string(),
+            #[cfg(target_os = "linux")]
+            root: locator.get_appimage_path(),
+            #[cfg(not(target_os = "linux"))]
             root: locator.get_root_dir(),
         })
 }
