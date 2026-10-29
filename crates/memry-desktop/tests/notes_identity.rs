@@ -83,6 +83,41 @@ fn origin(e: &Env) -> Option<String> {
         .unwrap()
 }
 
+/// How many edits the note's record has had: the sum of its vector clock.
+fn clock_ticks(e: &Env, id: &str) -> i64 {
+    let id = id.to_owned();
+    let payload = e
+        .core()
+        .db_handle()
+        .call_blocking(move |conn| sync_items::push_payload(conn, "note", &id))
+        .unwrap()
+        .unwrap();
+    let payload: Value = serde_json::from_str(&payload).unwrap();
+    payload["clock"]
+        .as_object()
+        .unwrap()
+        .values()
+        .map(|tick| tick.as_i64().unwrap())
+        .sum()
+}
+
+/// The content hash the row of `path` holds.
+fn row_hash(e: &Env, path: &str) -> Option<String> {
+    let path = path.to_owned();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT content_hash FROM note_files WHERE path = ?1",
+                    [path],
+                    |row| row.get::<_, Option<String>>(0),
+                )
+                .unwrap())
+        })
+        .unwrap()
+}
+
 fn row_id(e: &Env, path: &str) -> Option<String> {
     e.rows()
         .into_iter()
@@ -267,8 +302,10 @@ fn an_open_records_a_missing_origin_from_what_is_beside_it() {
 }
 
 /// Pinned: a note that grows into the large-file class after it was named stays a note. Its
-/// record was synced, so a move still edits it and a removal still deletes it, as Electron's
-/// `processRename` and delete do.
+/// record was synced, so a move still edits it, as Electron's `processRename` does. Its file is
+/// ahead of its document, so the row's hash is of an older text and cannot tell a removal from
+/// a move: a removal keeps the note (Electron deletes it), and a move while the app is closed
+/// leaves it too, with no second note for the large file.
 #[test]
 fn a_named_note_that_grew_large_still_follows_its_file() {
     let mut e = notes_env();
@@ -282,19 +319,92 @@ fn a_named_note_that_grew_large_still_follows_its_file() {
 
     fs::rename(e.vault.join("grow.md"), e.vault.join("moved.md")).unwrap();
     e.facts_until(|f| matches!(f, Applied::Renamed { new_path, .. } if new_path == "moved.md"));
-    assert_eq!(
-        records(&e),
-        vec![(id.clone(), "moved".to_owned(), None, false)]
-    );
+    let live = vec![(id.clone(), "moved".to_owned(), None, false)];
+    assert_eq!(records(&e), live);
     assert!(outbox(&e).contains(&("upsert".to_owned(), id.clone())));
 
-    fs::remove_file(e.vault.join("moved.md")).unwrap();
-    e.facts_until(|f| matches!(f, Applied::Removed { .. }));
-    assert_eq!(
-        records(&e),
-        vec![(id.clone(), "moved".to_owned(), None, true)]
+    e.close();
+    fs::rename(e.vault.join("moved.md"), e.vault.join("closed.md")).unwrap();
+    reopen(&mut e);
+    assert_eq!(records(&e), live);
+    assert_eq!(row_id(&e, "closed.md"), None);
+
+    fs::remove_file(e.vault.join("closed.md")).unwrap();
+    std::thread::sleep(vault_env::QUIET);
+    assert_eq!(records(&e), live);
+    assert!(!outbox(&e).contains(&("delete".to_owned(), id)));
+}
+
+/// A row with no hash of its file's text (frontmatter that does not parse, so the tier cannot
+/// tell what the document holds) cannot tell a removal from a move: moved while the app is
+/// closed, its note is kept and nothing is deleted. Pinned: the moved file is a second note,
+/// until the tier pairs moves by the file's bytes (#3744).
+#[test]
+fn a_file_whose_row_holds_no_hash_moved_while_closed_keeps_its_note() {
+    let mut e = notes_env();
+    e.write("a.md", "---\nfoo: [unclosed\n---\nBody\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = row_id(&e, "a.md").unwrap();
+    assert_eq!(row_hash(&e, "a.md"), None);
+    e.close();
+
+    fs::rename(e.vault.join("a.md"), e.vault.join("b.md")).unwrap();
+    reopen(&mut e);
+    let records = records(&e);
+    assert!(
+        records.contains(&(id.clone(), "a".to_owned(), None, false)),
+        "{records:?}"
     );
-    assert!(outbox(&e).contains(&("delete".to_owned(), id)));
+    assert!(!outbox(&e).contains(&("delete".to_owned(), id.clone())));
+    let second = row_id(&e, "b.md").expect("the moved file, a second note");
+    assert_ne!(second, id);
+}
+
+/// A move the record was owed and a move after it reach the record in one edit, counted from
+/// where the record was; and a move owed when the app closed reaches it at the next open, with
+/// no file to ask about.
+#[test]
+fn an_owed_move_reaches_the_record_in_one_edit_or_at_the_next_open() {
+    let mut e = notes_env();
+    e.write("a.md", "Alpha\n");
+    e.write("x.md", "Xray\n");
+    e.open();
+    e.facts_until(indexed);
+    let (a, x) = (row_id(&e, "a.md").unwrap(), row_id(&e, "x.md").unwrap());
+    e.write(".memry/config.json", "{ \"journalFolder\": ");
+    fs::rename(e.vault.join("a.md"), e.vault.join("b.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Renamed { new_path, .. } if new_path == "b.md"));
+    fs::rename(e.vault.join("x.md"), e.vault.join("y.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Renamed { new_path, .. } if new_path == "y.md"));
+    e.write(".memry/config.json", "{}");
+    let edits = clock_ticks(&e, &a);
+    fs::rename(e.vault.join("b.md"), e.vault.join("c.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Renamed { new_path, .. } if new_path == "c.md"));
+    let now = records(&e);
+    assert!(
+        now.contains(&(a.clone(), "c".to_owned(), None, false)),
+        "{now:?}"
+    );
+    assert_eq!(clock_ticks(&e, &a), edits + 1, "one edit, from a to c");
+    // `x` is settled by the same ask, the first since the config read again.
+    assert!(
+        now.contains(&(x.clone(), "y".to_owned(), None, false)),
+        "{now:?}"
+    );
+
+    // Owed again, then reopened with a config that reads: the open settles it.
+    e.write(".memry/config.json", "{ \"journalFolder\": ");
+    fs::rename(e.vault.join("y.md"), e.vault.join("z.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Renamed { new_path, .. } if new_path == "z.md"));
+    e.close();
+    e.write(".memry/config.json", "{}");
+    reopen(&mut e);
+    let records = records(&e);
+    assert!(
+        records.contains(&(x, "z".to_owned(), None, false)),
+        "{records:?}"
+    );
 }
 
 /// A vault config that is there but cannot be read leaves the journal folder unknown, so no
@@ -520,6 +630,10 @@ fn an_electron_vault_whose_notes_reached_the_core_keeps_their_ids() {
         "projects/2025/Plan.md",
     ] {
         assert_eq!(row_id(&e, path), Some(id(path)), "{path}");
+        assert!(
+            row_hash(&e, path).is_some(),
+            "{path}: its move pairs by this hash"
+        );
     }
     for path in [
         "notes/Q3 plan.md",

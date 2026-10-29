@@ -18,8 +18,9 @@
 //!   (`syncLargeFileBodyToCache`, `vault/note-sync.ts`); here it is not listed
 //!   until the large-file viewer is ported (Step 14, #3531). A note that grows
 //!   into the class after it was named stays a note: its record was synced, so a
-//!   move still edits it and a removal still deletes it, as Electron's
-//!   `processRename` (`vault/rename-tracker.ts`) and delete do.
+//!   move still edits it, as Electron's `processRename`
+//!   (`vault/rename-tracker.ts`) does. Its removal keeps it (below), where
+//!   Electron deletes it.
 //! - A file under the journal folder, and a note's move into it, is left to
 //!   Step 13m, which ports the journal day's file and id rules (`j<YYYY-MM-DD>`
 //!   on every device, `renameKeepsJournalDate`). A vault config that is there but
@@ -30,6 +31,13 @@
 //!   folder is a note's move.
 //! - A new note carries the file's creation and modification times, as
 //!   Electron's indexer gives a file it finds.
+//! - A removed file deletes its note only when its row holds the hash of the
+//!   file's text, the one the tier pairs a move by. A row with none (frontmatter
+//!   that does not parse) or an older one (a body the document did not take: a
+//!   large-file class text, a refused feed) cannot tell a removal from a move, so
+//!   the note is kept. Such a file moved while the app is closed then reaches
+//!   the tier as a new file and, unless it is large-file class, a second note,
+//!   until the tier pairs moves by the file's bytes (#3744).
 //!
 //! Every answer is the core's; a failure is the consumer's to log and retry
 //! ([`crate::vault::consumer::MAX_RETRIES`]), and the next open asks again.
@@ -68,6 +76,8 @@ enum Notice {
 pub struct NotesIdentity {
     store: Arc<dyn SecureStore>,
     told: Mutex<HashSet<(Notice, PathBuf)>>,
+    /// The vaults whose owed moves were settled since they opened, and none owed since.
+    settled: Mutex<HashSet<PathBuf>>,
 }
 
 impl NotesIdentity {
@@ -75,6 +85,7 @@ impl NotesIdentity {
         Arc::new(Self {
             store,
             told: Mutex::default(),
+            settled: Mutex::default(),
         })
     }
 
@@ -94,6 +105,8 @@ impl NotesIdentity {
             return;
         }
         match notice {
+            // TODO(#3531 Step 14): tell the user, with the notice this step's unreadable config
+            // and undecided files go out with; until the import runs this vault names no file.
             Notice::ElectronNotImported => tracing::warn!(
                 scope = SCOPE,
                 "this vault holds the database of the previous app version, whose notes this \
@@ -135,9 +148,25 @@ impl NotesIdentity {
         Ok(converter_of(&settings)?)
     }
 
-    /// Applies the moves the records are owed whose file is outside the journal folder now. A
-    /// failure is logged and does not fail the ask it came with: the next ask tries again.
-    fn settle_owed(&self, writer: &NotesWriter, journal_folder: &str) {
+    /// Applies the moves the records are owed whose file is outside the journal folder now,
+    /// but `skip`'s (whose move the caller is about to apply): once per open, at the open or
+    /// at the first ask after it that reads the vault config, and again after a move is owed.
+    /// A failure is logged and does not fail the ask it came with: the next open tries again.
+    fn settle_owed(
+        &self,
+        root: &Path,
+        writer: &NotesWriter,
+        journal_folder: &str,
+        skip: Option<&str>,
+    ) {
+        let first = self
+            .settled
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(root.to_path_buf());
+        if !first {
+            return;
+        }
         let owed = match writer.owed_places() {
             Ok(owed) => owed,
             Err(error) => {
@@ -145,7 +174,9 @@ impl NotesIdentity {
             }
         };
         for owed in owed {
-            if under_journal_folder(journal_folder, &owed.path) {
+            if skip == Some(owed.note_id.as_str())
+                || under_journal_folder(journal_folder, &owed.path)
+            {
                 continue;
             }
             let (folder_path, title) = place(&owed.path);
@@ -167,6 +198,25 @@ impl NotesIdentity {
 }
 
 impl NoteIdentity for NotesIdentity {
+    /// Settles the moves owed from an earlier session, when the vault config reads; else the
+    /// first ask that reads it does.
+    fn opened(&self, ctx: &IdentityCtx<'_>) {
+        self.settled
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(ctx.root);
+        let Some(journal_folder) = self.journal_folder(ctx.root) else {
+            return;
+        };
+        match self.writer(ctx) {
+            Ok(writer) => self.settle_owed(ctx.root, &writer, &journal_folder, None),
+            Err(error) => tracing::warn!(
+                scope = SCOPE,
+                "the owed moves wait for the first ask: {error}"
+            ),
+        }
+    }
+
     fn adopt_or_create(
         &self,
         ctx: &IdentityCtx<'_>,
@@ -189,7 +239,7 @@ impl NoteIdentity for NotesIdentity {
             return Ok(Adoption::Defer);
         };
         let writer = self.writer(ctx)?;
-        self.settle_owed(&writer, &journal_folder);
+        self.settle_owed(ctx.root, &writer, &journal_folder, None);
         if under_journal_folder(&journal_folder, file.path) {
             return Ok(Adoption::Defer);
         }
@@ -234,6 +284,15 @@ impl NoteIdentity for NotesIdentity {
         Ok(match self.writer(ctx)?.file_removed(note_id, path)? {
             Removed::Deleted => Removal::Deleted,
             Removed::Kept => Removal::Kept,
+            Removed::Undecided => {
+                tracing::info!(
+                    scope = SCOPE,
+                    note_id,
+                    "a removed file's note is kept: its row holds no hash of the file's text, so \
+                     the removal may be a move"
+                );
+                Removal::Kept
+            }
         })
     }
 
@@ -261,10 +320,15 @@ impl NoteIdentity for NotesIdentity {
                 note_id,
                 "a move the journal rules decide leaves the note's record as it was, owed"
             );
-            return Ok(writer.owe_place(note_id, old_path)?);
+            writer.owe_place(note_id, old_path)?;
+            self.settled
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .remove(ctx.root);
+            return Ok(());
         }
         if let Some(folder) = &journal_folder {
-            self.settle_owed(&writer, folder);
+            self.settle_owed(ctx.root, &writer, folder, Some(note_id));
         }
         let (folder_path, title) = place(new_path);
         let moved = Moved {

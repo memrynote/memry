@@ -4,6 +4,7 @@
 //! | --------------------------------------------------------- | ----------------------------------- |
 //! | a rename edits title and folder once, keeps or drops slot | Electron `processRename`, #1646     |
 //! | a removed file deletes its note once                      | §5.8, one tombstone                 |
+//! | a removal the row cannot tell from a move keeps the note  | never a delete that may be a move   |
 //! | a local-only note's removal pushes nothing                | the gate in `outbox::enqueue`       |
 //! | a journal day keeps its record                            | Step 13m owns journal days          |
 //! | a move left owed keeps its first path until it is applied | evidence first, never a guess       |
@@ -14,9 +15,10 @@ mod note_identity_support;
 
 use memry_core::domain::notes::identity::{self, Moved, OwedPlace, Removed};
 use memry_core::domain::notes::local_only;
+use memry_core::domain::owed_file_body;
 use note_identity_support::{
-    DEVICE, NOW, clear_outbox, create, deleted, give_row, open, outbox, payload, place, position,
-    run,
+    DEVICE, NOW, clear_outbox, create, deleted, give_hashless_row, give_row, open, outbox, payload,
+    place, position, run,
 };
 use serde_json::{Value, json};
 
@@ -92,6 +94,7 @@ fn a_rename_the_record_already_says_queues_nothing() {
 fn a_removed_file_deletes_its_note_once() {
     let db = open("remove");
     create(&db, "n1", "Plan", None);
+    give_row(&db, "n1", "Plan.md");
     place(&db, "", &["Plan.md"]);
     clear_outbox(&db);
     let removed = run(&db, |conn| {
@@ -109,6 +112,37 @@ fn a_removed_file_deletes_its_note_once() {
     });
     assert_eq!(again, Removed::Deleted);
     assert!(outbox(&db).is_empty());
+}
+
+/// The tier pairs a move by the row's hash only. A row with none, or a note whose file is
+/// ahead of its document (the row's hash is of an older text), cannot tell a removal from a
+/// move whose new path the hash does not find: the note stays, and nothing is pushed.
+#[test]
+fn a_removal_the_row_cannot_tell_from_a_move_keeps_the_note() {
+    let db = open("undecided");
+    create(&db, "hashless", "A", None);
+    give_hashless_row(&db, "hashless", "A.md");
+    create(&db, "ahead", "B", None);
+    give_row(&db, "ahead", "B.md");
+    run(&db, |conn| owed_file_body::record(conn, "ahead", NOW));
+    place(&db, "", &["A.md", "B.md"]);
+    clear_outbox(&db);
+    for (id, path) in [("hashless", "A.md"), ("ahead", "B.md")] {
+        let removed = run(&db, |conn| {
+            identity::removed(conn, id, path, DEVICE, NOW + 1)
+        });
+        assert_eq!(removed, Removed::Undecided, "{id}");
+        assert!(!deleted(&db, id), "{id}");
+        assert!(position(&db, path).is_some(), "{id}");
+    }
+    assert!(outbox(&db).is_empty());
+
+    // The document took the file: the hash names it again, and a removal is a removal.
+    run(&db, |conn| owed_file_body::clear(conn, "ahead"));
+    let removed = run(&db, |conn| {
+        identity::removed(conn, "ahead", "B.md", DEVICE, NOW + 2)
+    });
+    assert_eq!(removed, Removed::Deleted);
 }
 
 #[test]
@@ -141,8 +175,9 @@ fn owed(db: &memry_core::storage::Db) -> Vec<OwedPlace> {
 }
 
 /// A move the tier could not tell the meaning of: the record is left at the path it last
-/// followed, and that path is kept through later moves, until a move reaches the record (from
-/// that path: its slot is there) or the note is deleted. A note with no row is listed by no one.
+/// followed, and that path is kept through later moves, until a move reaches the record or
+/// the note is deleted. Owing drops the note's slot at the path it left. A note whose row is
+/// gone owes nothing.
 #[test]
 fn a_move_left_owed_keeps_its_first_path_until_it_is_applied() {
     let db = open("owed");
@@ -150,6 +185,9 @@ fn a_move_left_owed_keeps_its_first_path_until_it_is_applied() {
     place(&db, "", &["Old.md"]);
     give_row(&db, "n1", "Daily/Old.md");
     run(&db, |conn| identity::owe_place(conn, "n1", "Old.md", NOW));
+    // The path is free: another file there gets a slot of its own, which the owed move keeps.
+    assert_eq!(position(&db, "Old.md"), None);
+    place(&db, "", &["Old.md"]);
     run(&db, |conn| {
         identity::owe_place(conn, "n1", "Daily/Old.md", NOW + 1)
     });
@@ -175,7 +213,7 @@ fn a_move_left_owed_keeps_its_first_path_until_it_is_applied() {
         identity::renamed(conn, "n1", &moved, DEVICE, NOW + 2)
     });
     assert!(owed(&db).is_empty());
-    assert_eq!(position(&db, "Old.md"), None);
+    assert!(position(&db, "Old.md").is_some());
     assert_eq!(payload(&db, "n1")["folderPath"], json!("Work"));
     assert_eq!(outbox(&db), vec![("upsert".to_owned(), "n1".to_owned())]);
 
@@ -185,7 +223,8 @@ fn a_move_left_owed_keeps_its_first_path_until_it_is_applied() {
     run(&db, |conn| {
         identity::removed(conn, "n1", "Daily/Old.md", DEVICE, NOW + 4).map(drop)
     });
+    // The note without a row lost its debt when the debts were listed: a row it gets later
+    // is a file named anew, which owes nothing.
     give_row(&db, "rowless", "Gone.md");
-    let rest: Vec<String> = owed(&db).into_iter().map(|owed| owed.note_id).collect();
-    assert_eq!(rest, vec!["rowless".to_owned()]);
+    assert!(owed(&db).is_empty());
 }

@@ -10,7 +10,7 @@ use memry_core::seams::secure_store::SecureStore;
 use tokio::sync::broadcast;
 
 use super::apply::Applier;
-use super::identity::{DeferIdentity, NoteIdentity};
+use super::identity::{DeferIdentity, IdentityCtx, NoteIdentity};
 use super::rows::{RowOwner, RowSession};
 use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
@@ -216,6 +216,10 @@ impl VaultTier {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone();
+        identity.opened(&IdentityCtx {
+            root: &vault.path,
+            vault: &vault.vault,
+        });
         let new_files = if identity.adopts() {
             NewFiles::Report
         } else {

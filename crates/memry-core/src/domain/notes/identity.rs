@@ -42,7 +42,12 @@
 //! The tier removes the row only after this answered, so a local-only note's
 //! flag is still there for [`crate::sync::outbox::enqueue`] to keep its
 //! tombstone off the server. Asked again for a note already deleted (a crash
-//! before the row went), it deletes nothing more and queues nothing.
+//! before the row went), it deletes nothing more and queues nothing. A removal
+//! is told from a move only by the content hash the row holds (the tier pairs a
+//! move by it), so a note whose row holds none, or whose file is ahead of its
+//! document ([`crate::domain::owed_file_body`]: the row's hash is of an older
+//! text), is kept ([`Removed::Undecided`]): a tombstone would delete on every
+//! device a note whose file may only have moved.
 //!
 //! **A moved file moves its note's record, not the links to it** ([`renamed`]):
 //! the title and folder follow the file, in one edit, with the note's manual
@@ -68,7 +73,7 @@ use crate::crdt::markdown_seed::body_is_empty;
 use crate::crdt::registry::UpdateSink;
 use crate::crdt::{BODY_FRAGMENT, epoch};
 use crate::domain::external_feed::same_text;
-use crate::domain::{journal, note_positions};
+use crate::domain::{journal, note_positions, owed_file_body};
 use crate::markdown::convert::api::Converter;
 use crate::markdown::convert::restore::SerializeOptions;
 use crate::storage::repositories::{Change, sync_items};
@@ -141,6 +146,8 @@ pub enum Removed {
     Deleted,
     /// The record stays: a journal day, which Step 13m decides.
     Kept,
+    /// The record stays: the row cannot tell this removal from a move.
+    Undecided,
 }
 
 /// Records what the core database was created over, once: every open calls this,
@@ -327,9 +334,10 @@ pub struct Moved<'a> {
 /// The note's file moved: the record takes the new title and folder. Renamed in
 /// its folder, the note keeps its manual slot; moved to another folder, its old
 /// slot is dropped and the new folder orders it as any unplaced note. A move the
-/// record was owed ([`owe_place`]) counts from the path it was owed from, and is
-/// settled. A note that is not live (a journal day, a deleted note) keeps its
-/// record as it is.
+/// record was owed ([`owe_place`]) is settled: the title and folder are compared
+/// with the record, which still describes the owed path, and the slot is counted
+/// from `old_path`, the row's, since owing dropped the owed path's slot. A note
+/// that is not live (a journal day, a deleted note) keeps its record as it is.
 pub fn renamed(
     conn: &Connection,
     note_id: &str,
@@ -354,13 +362,10 @@ pub fn renamed(
             outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, note_id), now_ms)?;
         }
     }
-    // A move the record was owed left its slot where the record last was.
-    let old_path = owed_from(&tx, note_id)?;
-    let old_path = old_path.as_deref().unwrap_or(moved.old_path);
-    if folder_of(old_path) == folder_of(moved.new_path) {
-        note_positions::carry(&tx, old_path, moved.new_path)?;
+    if folder_of(moved.old_path) == folder_of(moved.new_path) {
+        note_positions::carry(&tx, moved.old_path, moved.new_path)?;
     } else {
-        note_positions::remove(&tx, old_path)?;
+        note_positions::remove(&tx, moved.old_path)?;
     }
     settle_place(&tx, note_id)?;
     tx.commit().map_err(failed)
@@ -368,20 +373,24 @@ pub fn renamed(
 
 /// A move of the note's file from `from_path` that the record was not given
 /// ([`renamed`] was not called): owed until it is. The first path is kept, since
-/// the record still describes it.
+/// the record still describes it. The note's slot at `from_path` is dropped, as a
+/// move to another folder drops it: the path is free, and a file that comes to
+/// it takes it with no slot of this note's.
 pub fn owe_place(
     conn: &Connection,
     note_id: &str,
     from_path: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    conn.execute(
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    tx.execute(
         "INSERT INTO note_place_owed (note_id, from_path, marked_at) VALUES (?1, ?2, ?3)
          ON CONFLICT(note_id) DO NOTHING",
         params![note_id, from_path, now_ms],
     )
-    .map(drop)
-    .map_err(failed)
+    .map_err(failed)?;
+    note_positions::remove(&tx, from_path)?;
+    tx.commit().map_err(failed)
 }
 
 /// A move the record is owed.
@@ -395,8 +404,14 @@ pub struct OwedPlace {
 }
 
 /// The moves the records are owed, for the notes that still have a row, oldest
-/// first. Read on every ask, so it only reads.
+/// first. A note whose row is gone owes nothing more, and its debt is dropped.
 pub fn owed_places(conn: &Connection) -> Result<Vec<OwedPlace>, StorageError> {
+    conn.execute(
+        "DELETE FROM note_place_owed
+          WHERE NOT EXISTS (SELECT 1 FROM note_files f WHERE f.note_id = note_place_owed.note_id)",
+        [],
+    )
+    .map_err(failed)?;
     let mut statement = conn
         .prepare_cached(
             "SELECT o.note_id, o.from_path, f.path FROM note_place_owed o
@@ -414,16 +429,6 @@ pub fn owed_places(conn: &Connection) -> Result<Vec<OwedPlace>, StorageError> {
         })
         .map_err(failed)?;
     owed.collect::<Result<_, _>>().map_err(failed)
-}
-
-fn owed_from(conn: &Connection, note_id: &str) -> Result<Option<String>, StorageError> {
-    conn.query_row(
-        "SELECT from_path FROM note_place_owed WHERE note_id = ?1",
-        params![note_id],
-        |row| row.get(0),
-    )
-    .optional()
-    .map_err(failed)
 }
 
 fn settle_place(conn: &Connection, note_id: &str) -> Result<(), StorageError> {
@@ -455,7 +460,8 @@ fn live_place(
 
 /// The note's file at `path` is gone: the note is deleted and its manual order
 /// dropped, in one transaction. A note deleted before is answered `Deleted`
-/// again with nothing written; a journal day keeps its record.
+/// again with nothing written; a journal day keeps its record, and so does a
+/// note whose row cannot tell the removal from a move.
 pub fn removed(
     conn: &Connection,
     note_id: &str,
@@ -465,6 +471,9 @@ pub fn removed(
 ) -> Result<Removed, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
     if live_place(&tx, note_id)?.is_some() {
+        if !pairs_by_hash(&tx, note_id)? {
+            return Ok(Removed::Undecided);
+        }
         tombstone_local(&tx, ITEM_TYPE, note_id, device_id, now_ms)?;
         outbox::enqueue(&tx, &outbox::Change::delete(ITEM_TYPE, note_id), now_ms)?;
     } else if is_journal_day(&tx, note_id)? {
@@ -474,6 +483,20 @@ pub fn removed(
     settle_place(&tx, note_id)?;
     tx.commit().map_err(failed)?;
     Ok(Removed::Deleted)
+}
+
+/// Whether the note's row holds the hash of its file's last text, the one a move
+/// of the file is paired by: a hash, and no file body the document did not take.
+fn pairs_by_hash(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    let hashed: bool = conn
+        .query_row(
+            "SELECT EXISTS (SELECT 1 FROM note_files
+                             WHERE note_id = ?1 AND content_hash IS NOT NULL)",
+            params![note_id],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    Ok(hashed && !owed_file_body::owes(conn, note_id)?)
 }
 
 /// A journal day's record, or a journal day's id (`j<YYYY-MM-DD>`).

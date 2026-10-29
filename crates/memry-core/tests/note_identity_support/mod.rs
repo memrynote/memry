@@ -124,14 +124,24 @@ pub fn pulled_item(db: &Db, item_type: &str, id: &str, payload: &Value) {
     });
 }
 
+/// A row whose hash is of the file's text, as the tier records one the note's document took.
 pub fn give_row(db: &Db, id: &str, path: &str) {
+    row(db, id, path, Some("hash"));
+}
+
+/// A row that names no text: the tier read the file and the document did not take it whole.
+pub fn give_hashless_row(db: &Db, id: &str, path: &str) {
+    row(db, id, path, None);
+}
+
+fn row(db: &Db, id: &str, path: &str, hash: Option<&str>) {
     let stat = NoteFileStat {
         note_id: id.to_owned(),
         path: path.to_owned(),
         file_type: "markdown".to_owned(),
         mime_type: None,
         file_size: Some(1),
-        content_hash: None,
+        content_hash: hash.map(str::to_owned),
         indexed_at: NOW,
     };
     run(db, |conn| note_files::upsert_stat(conn, &stat));

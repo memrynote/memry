@@ -198,8 +198,10 @@ impl Applier {
             }
         };
         // Seeded on `Existing` too: a crash between a create and its seed leaves an empty
-        // body, and a body that is there is left alone. Without a device key the row is
-        // still recorded, so the note is not named twice, and the next open seeds it.
+        // body, and a body that is there is left alone; one that is already the file's text
+        // answers `Unchanged`, so the row records the file's hash, which a move of the file is
+        // paired by. Without a device key the row is still recorded, so the note is not named
+        // twice, and the next open seeds it.
         let content_hash = match &file {
             None => None,
             Some(file) => match self.write_body(&note_id, path, file, Write::Seed) {

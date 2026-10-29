@@ -41,7 +41,8 @@ pub struct Candidate<'a> {
 pub enum Adoption {
     /// A record that has no row owns this file (same folder and title, and a body that is empty
     /// or already the file's text). The consumer records the row and seeds the body only if the
-    /// record's body is empty: a crash between a create and its seed ends here.
+    /// record's body is empty: a crash between a create and its seed ends here. A body that
+    /// already is the file's text gives the row the file's hash; another is left alone.
     Existing(String),
     /// A new record, created without a body. The consumer records the row and seeds the body
     /// from the file.
@@ -55,9 +56,10 @@ pub enum Adoption {
 pub enum Removal {
     /// The record was deleted. The consumer then removes the row.
     Deleted,
-    /// Record and row stay (a locked note, or policy); the row loses its hash, since it names
-    /// a file that is gone, so a file that shows up at that path later is not taken for the
-    /// note's text. The next open reports the removal again.
+    /// Record and row stay (a locked note, a journal day, or a removal the row cannot tell
+    /// from a move because it holds no hash of the file's text); the row loses its hash, since
+    /// it names a file that is gone, so a file that shows up at that path later is not taken
+    /// for the note's text. The next open reports the removal again.
     ///
     /// A kept note's file that shows up at another path is not paired with it: once its
     /// removal settled, the file is new to the watcher, whether the app was open or closed
@@ -82,6 +84,10 @@ pub trait NoteIdentity: Send + Sync {
     fn adopts(&self) -> bool {
         true
     }
+
+    /// The tier opened the vault, before its consumer starts: for what the identity owes the
+    /// vault from an earlier session. Its failures are its own to log.
+    fn opened(&self, _ctx: &IdentityCtx<'_>) {}
 
     /// The note of a new file. Never the id of a deleted record. Idempotent: called again for
     /// the same file after a crash, it returns the record it created then.
