@@ -316,3 +316,67 @@ fn resolve_places_a_new_file_by_its_parent_folder() {
     };
     assert!(path.starts_with(Path::new(&d.vault)));
 }
+
+/// A save renames a new file over the note while the note is resolved (#3732). Windows can
+/// answer the old file's name in the volume's deleted-files area (`\$Extend\$Deleted\...`),
+/// or fail on it while it is being deleted. Either is the note being replaced: never a path
+/// outside the vault, never an error to report. The resolution looks again. (The name can be
+/// missing for an instant too; `Missing` is allowed, as the save then lands and is reported.)
+///
+/// Another program saves the note here thousands of times a second, far more often than any
+/// editor. `MEMRY_REPLACE_LOOKUPS` raises the number of lookups (the VM proof runs ~217k).
+#[cfg(windows)]
+#[test]
+fn a_note_renamed_over_while_it_is_resolved_is_never_outside_the_vault_nor_an_error() {
+    use std::collections::BTreeMap;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let d = dirs();
+    let note = d.vault.join("notes/a.md");
+    let stop = Arc::new(AtomicBool::new(false));
+    let saver = {
+        let (stop, note) = (stop.clone(), note.clone());
+        std::thread::spawn(move || {
+            let side = note.with_extension("md.save");
+            let (mut saves, mut refused) = (0u64, 0u64);
+            while !stop.load(Ordering::Relaxed) {
+                // A save the file system refuses for an instant is tried again, as editors do.
+                match fs::write(&side, saves.to_string()).and_then(|()| fs::rename(&side, &note)) {
+                    Ok(()) => saves += 1,
+                    Err(_) => refused += 1,
+                }
+            }
+            (saves, refused)
+        })
+    };
+    let lookups: u64 = std::env::var("MEMRY_REPLACE_LOOKUPS")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(20_000);
+    let mut refused: BTreeMap<String, u64> = BTreeMap::new();
+    let mut missing = 0u64;
+    for _ in 0..lookups {
+        match resolve_under_root(&d.vault, "notes/a.md") {
+            Ok(Resolution::Inside(_)) => {}
+            Ok(Resolution::Missing) => missing += 1,
+            Ok(other) => *refused.entry(format!("{other:?}")).or_default() += 1,
+            Err(error) => {
+                *refused
+                    .entry(format!("{:?} os {:?}", error.kind(), error.raw_os_error()))
+                    .or_default() += 1;
+            }
+        }
+    }
+    stop.store(true, Ordering::Relaxed);
+    let (saves, saves_refused) = saver.join().unwrap();
+    eprintln!(
+        "lookups={lookups} saves={saves} saves_refused={saves_refused} missing={missing} \
+         refused={refused:?}"
+    );
+    assert!(saves > 0, "the saver never ran");
+    assert!(
+        refused.is_empty(),
+        "{lookups} lookups during {saves} saves: {refused:?}"
+    );
+}
