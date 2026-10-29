@@ -16,7 +16,7 @@ import {
 } from '../../harness/session-manager'
 import { appInfo, restart } from '../../harness/tauri-lifecycle'
 import { invoke } from '../../harness/vault-commands'
-import { pollUntil, waitForMainLog } from '../../harness/wait'
+import { pollUntil, readMainLog, waitForMainLog } from '../../harness/wait'
 import type { Page } from '../../harness/pw-compat/page'
 
 test.use({ extraEnv: { MEMRY_TEST_UPDATER: 'scripted' } })
@@ -257,7 +257,8 @@ test('a sign-out leaves a downloaded update to the next normal quit', async ({ a
 })
 
 // macOS: loginwindow quits the app with an Apple event that names the reason (`rlgo` at Log Out),
-// and the app accepts it. The real Log Out is a manual row of the release rehearsal.
+// and the app accepts it. Cmd+Q is the same `terminate:` with no reason. The real Log Out is a
+// manual row of the release rehearsal.
 test('a macOS Log Out leaves a downloaded update to the next normal quit', async ({
   app,
   page
@@ -272,9 +273,32 @@ test('a macOS Log Out leaves a downloaded update to the next normal quit', async
 
   await restart(app)
   await download(app, page)
-  await invokeTest(app, 'e2e_request_quit')
+  await invokeTest(app, 'e2e_app_terminate')
   await waitForExit(app)
   expect(applies(appDataDir)).toEqual([{ silent: true, restart: false }])
+})
+
+// A Log Out while a Cmd+Q still runs: AppKit answers loginwindow's quit event itself, without
+// asking the app again, so only its NSWorkspaceWillPowerOffNotification says the session ends.
+test('a macOS Log Out during a running quit leaves the update on disk', async ({ app, page }) => {
+  test.skip(process.platform !== 'darwin', 'Apple events are macOS-only')
+  const { appDataDir, logDir } = await appInfo(app)
+  await download(app, page)
+  await invokeTest(app, 'e2e_slow_shutdown_step', { step: 'stop-sync-runtime', ms: 3_000 })
+
+  await invokeTest(app, 'e2e_app_terminate')
+  expect(await waitForMainLog(app, 'starting graceful shutdown', 5_000)).toBe(true)
+  expect(sendQuitEvent(app.pid, 'rlgo')).toBe('errn 0')
+  await waitForExit(app)
+  expect(applies(appDataDir)).toEqual([])
+
+  // A forced exit installs nothing either: the quit must have ended cleanly, with the install
+  // turned off by the session end, and AppKit must not have asked the app a second time.
+  const log = readMainLog(logDir)
+  expect(log).toContain('cleanup complete')
+  expect(log).toContain('accepting the quit macOS asked for')
+  expect(log).toContain('OS session ending - skipping install-on-quit')
+  expect(log.split('macOS asked the app to terminate').length - 1).toBe(1)
 })
 
 /** A fake session manager on the session bus, up before the app registers with it. */

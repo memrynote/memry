@@ -21,6 +21,28 @@ pub fn e2e_trigger_shutdown_overrun(app: AppHandle<Wry>, step: String) -> Result
         .map_err(|error| invalid("e2e_shutdown_step", error))
 }
 
+/// Makes step `step` of the next quit take `ms` and then finish, so a spec can act while a quit
+/// runs.
+#[tauri::command]
+pub fn e2e_slow_shutdown_step(
+    app: AppHandle<Wry>,
+    step: String,
+    ms: u64,
+) -> Result<(), CommandError> {
+    let delay = std::time::Duration::from_millis(ms);
+    app.state::<ShutdownService>()
+        .register(
+            &step,
+            Arc::new(move |_, _| {
+                Box::pin(async move {
+                    tokio::time::sleep(delay).await;
+                    Ok(())
+                })
+            }),
+        )
+        .map_err(|error| invalid("e2e_shutdown_step", error))
+}
+
 /// Runs the real flush handshake against `label`: the event reaches the page and the page
 /// answers with `flush_done`. False when it did not answer in time.
 #[tauri::command]
