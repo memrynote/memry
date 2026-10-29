@@ -1,0 +1,12 @@
+# Docs and landing deploy with `vercel deploy` from the repo root (Root Directory
+# is the repo root or apps/landing), so the CLI uploads the whole repo as `src/`.
+# Each deployment counts toward Vercel deployment storage. Neither site builds
+# from these paths. Keep every workspace package.json: `pnpm install
+# --frozen-lockfile` validates the lockfile against all workspace importers.
+marketing
+apps/ios
+crates
+spikes
+.worktrees
+.user-insights
+.feedback
