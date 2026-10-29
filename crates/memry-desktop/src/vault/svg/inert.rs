@@ -17,10 +17,12 @@
 //!   (`<style:rect>`, or an empty `<style/>`) goes too, so a style pass over the output finds
 //!   exactly the style elements below.
 //! - An attribute is kept only when it has a value, a plain name, and none of `"`, `'`, `&`,
-//!   `<` or `\` in the value. The parser decodes an entity after any check here, CSS decodes
-//!   an escape, and a quote opens a CSS string. Names compare by local part, so `x:href` with
-//!   `x` bound to XLink is still `href`. `on*` and `*:base` go. `href` and `src` keep only a
-//!   fragment or an inert image data URL. `attributeName` may name none of those, and every
+//!   `<`, `\` or NUL in the value. The parser decodes an entity after any check here, CSS
+//!   decodes an escape, a quote opens a CSS string, and HTML reads a NUL as U+FFFD, so
+//!   `url(\0#a)` loads a relative URL. Names compare by local part, so `x:href` with `x` bound
+//!   to XLink is still `href`. `on*` and `*:base` go. `href` and `src` keep only a fragment
+//!   or an inert image data URL, as the URL parser reads them ([`is_inert_url`]).
+//!   `attributeName` may name none of those, and every
 //!   value passes [`css_is_inert`], since any attribute can be a presentation attribute
 //!   (`fill="url(…)"`). A `style` value is filtered instead ([`write_inert_css`]).
 //! - A `<style>` element stays only as opener, text, closer, the closer bearing the opener's
@@ -28,6 +30,10 @@
 //!   at no other prefix (`</x:style>` would leave the text after it in the style). Its text is
 //!   filtered by [`write_inert_css`]. A tag inside it, another closer or no closer drops the
 //!   opener and leaves the text as plain text.
+//!
+//! Text and tags after the root's `</svg>` stay, written by the same rules. They are inert
+//! wherever the file is opened; only code that inlines icons into a page would also have to
+//! drop them, and the renderer shows icons through `<img src>`.
 //!
 //! Every rule drops or escapes part of what the TypeScript writes and adds nothing:
 //! `tests/sanitize_svg_vectors.rs` checks that against the TypeScript's own output.
@@ -233,12 +239,23 @@ fn is_plain_name(name: &str) -> bool {
     })
 }
 
-/// `"`, `'`, `&`, `<` or `\`: a value holding one means something other than it reads.
+/// `"`, `'`, `&`, `<`, `\` or NUL: a value holding one means something other than it reads.
 fn has_decoded_or_quoted(value: &str) -> bool {
     value.bytes().any(|byte| {
         tick();
-        matches!(byte, b'"' | b'\'' | b'&' | b'<' | b'\\')
+        matches!(byte, b'"' | b'\'' | b'&' | b'<' | b'\\' | b'\0')
     })
+}
+
+/// Whether an `href` or `src` stays in the document. The URL parser strips the C0 controls and
+/// spaces around a URL and keeps those inside it, and XML reads a tab or line break in a value
+/// as a space. So a control or space inside `data:image/png;base64,` leaves a relative URL
+/// that loads, where [`is_safe_url`], dropping them everywhere, sees a data URL. In the data
+/// after the comma they are harmless, and an editor wraps base64 there.
+fn is_inert_url(value: &str) -> bool {
+    let url = value.trim_matches(|c: char| c <= ' ');
+    let scheme_and_type = &url[..url.find(',').unwrap_or(url.len())];
+    url.starts_with('#') || (is_safe_url(url) && !scheme_and_type.contains(|c: char| c <= ' '))
 }
 
 /// Whether an attribute the TypeScript kept, of plain name with local part `local`, keeps
@@ -247,7 +264,7 @@ fn keeps(local: &str, value: &str) -> bool {
     if has_decoded_or_quoted(value) || local.starts_with("on") || local == "base" {
         return false;
     }
-    if matches!(local, "href" | "src") && !is_safe_url(value) {
+    if matches!(local, "href" | "src") && !is_inert_url(value) {
         return false;
     }
     if local == "attributename" {
@@ -285,9 +302,17 @@ fn write_inert_css(out: &mut Vec<u8>, css: &[u8]) {
 
 /// CSS, or a value CSS may read, that loads nothing: no string, escape, entity or `<`, no
 /// `@import`, `expression(` or `javascript:`, no `url(` but `url(#…)`, and none of
-/// [`RESOURCE_FUNCTIONS`]. Whitespace and control characters go first, as in the TypeScript.
+/// [`RESOURCE_FUNCTIONS`]. The whitespace CSS skips goes first. A control character stays,
+/// since CSS reads it as itself: dropped, `url(\0#a)` would read as a fragment.
 pub(super) fn css_is_inert(css: &str) -> bool {
-    let css = squash(css).to_ascii_lowercase();
+    let css = css
+        .chars()
+        .filter(|c| {
+            tick();
+            !c.is_ascii_whitespace()
+        })
+        .collect::<String>()
+        .to_ascii_lowercase();
     if has_decoded_or_quoted(&css)
         || ["expression(", "javascript:", "@import"]
             .iter()

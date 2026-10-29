@@ -97,6 +97,30 @@ const HOSTILE: &[(&str, &str)] = &[
         "an event handler behind a prefix",
         r#"<svg x:onload="alert(1)"/>"#,
     ),
+    (
+        "a NUL before a fragment in a style, which HTML reads as U+FFFD",
+        "<svg><rect style=\"fill:url(\0#x)\"/></svg>",
+    ),
+    (
+        "NULs before a fragment in style text",
+        "<svg><style>rect{fill:url(\0\0#f)}</style><rect/></svg>",
+    ),
+    (
+        "NULs before a fragment in an href",
+        "<svg><image href=\"\0\0#f\"/></svg>",
+    ),
+    (
+        "a space inside the scheme of a data URL",
+        r#"<svg><image href="da ta:image/png;base64,AAAA"/></svg>"#,
+    ),
+    (
+        "a tab inside the scheme of a data URL, which XML reads as a space",
+        "<svg><image href=\"da\tta:image/png;base64,AAAA\"/></svg>",
+    ),
+    (
+        "a control character inside the scheme of a data URL",
+        "<svg><image href=\"d\u{1}ata:image/png;base64,AAAA\"/></svg>",
+    ),
 ];
 
 #[test]
@@ -189,6 +213,8 @@ const ICONS: &[&str] = &[
     r#"<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"><animate attributeName="r" values="10;5;10" dur="1s" repeatCount="indefinite"/></circle><g><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/></g></svg>"#,
     // Symbols, a fragment reference, an embedded raster, text
     r##"<svg xmlns:xlink="http://www.w3.org/1999/xlink"><symbol id="s"><path d="M0 0h1v1z"/></symbol><use xlink:href="#s" transform="translate(2 2) scale(2)"/><image href="data:image/png;base64,iVBORw0KGgo=" width="1" height="1"/><text x="0" y="10" font-family="Arial, sans-serif">A &amp; B</text><filter id="f"><feGaussianBlur stdDeviation="2"/></filter><g clip-path="url(#c)" filter="url(#f)"/></svg>"##,
+    // Inkscape, with an embedded raster whose base64 it wraps
+    "<svg xmlns:xlink=\"http://www.w3.org/1999/xlink\"><image width=\"1\" height=\"1\" xlink:href=\"data:image/png;base64,\niVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk\n+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\n\"/></svg>",
 ];
 
 #[test]
@@ -279,6 +305,10 @@ const PIECES: &[&str] = &[
     "\\72",
     "xml:base",
     "data:image/png;base64,",
+    "da ta:",
+    "\0",
+    "\t",
+    "\u{1}",
     "x",
 ];
 
