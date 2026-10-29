@@ -63,18 +63,33 @@ fn matter_is_blank(matter: &str) -> bool {
     js_trim(&kept).is_empty()
 }
 
-/// `matter(block, {}).data` for a block the splitter produced.
-fn gray_matter_data(block: &str) -> Result<YamlValue, YamlError> {
-    let text = block.strip_prefix('\u{FEFF}').unwrap_or(block);
+/// gray-matter's split of a text (`parseMatter`), after a leading byte-order mark: the raw
+/// frontmatter (`file.matter`) and the text after its closing delimiter (`file.content`), or
+/// `None` when the text does not open with a frontmatter delimiter. An unclosed block runs to
+/// the end of the text and leaves no content.
+pub fn gray_matter_parts(text: &str) -> Option<(&str, &str)> {
+    let text = text.strip_prefix('\u{FEFF}').unwrap_or(text);
+    let after_open = text.strip_prefix("---")?;
+    if after_open.starts_with('-') {
+        return None;
+    }
+    let Some(close) = after_open.find("\n---") else {
+        return Some((after_open, ""));
+    };
+    // The rest of the closing line is content, less one line break.
+    let content = &after_open[close + "\n---".len()..];
+    let content = content.strip_prefix('\r').unwrap_or(content);
+    let content = content.strip_prefix('\n').unwrap_or(content);
+    Some((&after_open[..close], content))
+}
+
+/// `matter(text, {}).data`, for a block the splitter produced or for a whole file read with
+/// gray-matter directly: an unclosed block runs to the end of the text, as in gray-matter.
+pub fn gray_matter_data(block: &str) -> Result<YamlValue, YamlError> {
     let empty = || YamlValue::map(YamlMap::new());
-    let Some(after_open) = text.strip_prefix("---") else {
+    let Some((matter, _)) = gray_matter_parts(block) else {
         return Ok(empty());
     };
-    if after_open.starts_with('-') {
-        return Ok(empty());
-    }
-    let close = after_open.find("\n---").unwrap_or(after_open.len());
-    let matter = &after_open[..close];
     if matter_is_blank(matter) {
         return Ok(empty());
     }

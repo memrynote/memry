@@ -14,8 +14,8 @@ mod yaml_load;
 
 pub use json::{json_to_yaml, yaml_to_json};
 pub use note::{
-    Eol, ParsedMarkdownNote, parse_markdown_note, serialize_parsed_markdown_note,
-    stringify_frontmatter_block, write_markdown_note,
+    Eol, ParsedMarkdownNote, gray_matter_data, gray_matter_parts, parse_markdown_note,
+    serialize_parsed_markdown_note, stringify_frontmatter_block, write_markdown_note,
 };
 pub use split::{FrontmatterSplit, split_frontmatter_block};
 pub use value::{YamlMap, YamlValue};
