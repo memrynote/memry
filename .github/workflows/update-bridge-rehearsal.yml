@@ -520,6 +520,15 @@ jobs:
           installed() { grep -E '<version>' "$app/Contents/Resources/sq.version"; }
           # The app answers the quit with NSTerminateCancel and exits after its own sequence.
           quit_app() { osascript -e 'tell application "MemryNote" to quit' || true; }
+          updater=""
+          # On any exit: the bundle writable again, a held updater released, the app log on failure.
+          finish() {
+            status=$?
+            chflags -R nouchg "$app" || true
+            [ -z "$updater" ] || kill -CONT "$updater" 2>/dev/null || true
+            [ "$status" -eq 0 ] || logs | grep -E 'Updater|UpdateInstallMarker|startup|Window' | tail -60
+          }
+          trap finish EXIT
           mkdir -p shots "$data"
           gh release download "rehearsal-$TAURI_BASE" --repo "$FEED_REPO" -p "MemryNote-$TAURI_BASE-arm64.zip" -D base
           ditto -x -k "base/MemryNote-$TAURI_BASE-arm64.zip" /Applications
@@ -528,7 +537,6 @@ jobs:
           wait_log "velopack: downloaded $VERSION" 600
 
           echo "::group::Read-only bundle: the install fails and the next launch offers the manual installer"
-          trap 'chflags -R nouchg "$app" || true' EXIT
           chflags -R uchg "$app"
           quit_app
           for _ in $(seq 1 60); do pgrep -x MemryNote >/dev/null || pgrep -x UpdateMac >/dev/null || break; sleep 1; done
@@ -543,9 +551,15 @@ jobs:
 
           echo "::group::Relaunch mid-install: splash, exit, and the swap completes"
           quit_app
-          # The moment the old process is gone, while the updater still runs, as a Dock click would.
+          # The swap takes a second or two once the old process is gone, less than a launch needs
+          # to reach the guard, so the updater is held (SIGSTOP) while it waits for that process:
+          # the relaunch then lands mid-install every time, as a Dock click during a slow swap.
+          for _ in $(seq 1 300); do updater="$(pgrep -n -x UpdateMac || true)"; [ -n "$updater" ] && break; sleep 0.05; done
+          [ -n "$updater" ] || { echo "::error::the quit started no updater"; exit 1; }
+          kill -STOP "$updater"
+          ps -o pid,stat,command -p "$updater"
           for _ in $(seq 1 300); do pgrep -x MemryNote >/dev/null || break; sleep 0.1; done
-          pgrep -fl UpdateMac || echo "::warning::the updater was already gone at the relaunch"
+          cat "$data/pending-update-install.json"; echo
           shown="$(logs | grep -c 'main window shown' || true)"
           halted="$(logs | grep -c 'boot halted' || true)"
           opened="$(date +%s)"
@@ -557,6 +571,9 @@ jobs:
           wait_log 'pending update install in flight on launch' 10
           [ "$(logs | grep -c 'boot halted')" -gt "$halted" ] || { echo "::error::the guarded launch did not halt its boot"; exit 1; }
           [ "$(logs | grep -c 'main window shown')" -eq "$shown" ] || { echo "::error::the guarded launch showed the main window"; exit 1; }
+          installed | grep -F "$TAURI_BASE"
+          kill -CONT "$updater"
+          updater=""
           for _ in $(seq 1 90); do installed | grep -qF "$VERSION" && break; sleep 1; done
           installed | grep -F "$VERSION"
           sleep 5
