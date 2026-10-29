@@ -66,8 +66,7 @@ fn backend(app: &AppHandle<Wry>) -> Chosen {
             ..Chosen::none(Duration::ZERO)
         };
     }
-    let env = app.state::<LaunchEnv>();
-    choose(env.get(DEVICE_VAR), || {
+    choose(&app.state::<LaunchEnv>(), || {
         velopack_backend::VelopackBackend::new().map(|velopack| Chosen {
             version: Some(velopack.current_version()),
             channel: Some(velopack.channel()),
@@ -85,7 +84,8 @@ fn backend(app: &AppHandle<Wry>) -> Chosen {
 /// has its vault open, and the installer stops every process of the install (#3712). Only the
 /// default profile updates, and the Velopack install is not even opened for another one;
 /// `MEMRY_DEVICE` is a developer and test switch.
-fn choose(device: Option<&str>, velopack: impl FnOnce() -> Result<Chosen, String>) -> Chosen {
+fn choose(env: &LaunchEnv, velopack: impl FnOnce() -> Result<Chosen, String>) -> Chosen {
+    let device = env.get(DEVICE_VAR);
     if device.is_some_and(|device| !device.is_empty()) {
         tracing::info!(
             scope = "Updater",
@@ -262,7 +262,15 @@ impl UpdateApplyHook for Hook {
 
 #[cfg(test)]
 mod tests {
-    use super::{Chosen, INIT_DELAY, InitPlan, choose};
+    use super::{Chosen, DEVICE_VAR, INIT_DELAY, InitPlan, LaunchEnv, choose};
+
+    fn launch(device: Option<&str>) -> LaunchEnv {
+        let mut env = LaunchEnv::default();
+        if let Some(device) = device {
+            env.set(DEVICE_VAR, device);
+        }
+        env
+    }
 
     fn velopack_install() -> Result<Chosen, String> {
         Ok(Chosen {
@@ -278,12 +286,12 @@ mod tests {
     #[test]
     fn only_the_default_profile_updates_the_shared_install() {
         for device in [None, Some("")] {
-            let chosen = choose(device, velopack_install);
+            let chosen = choose(&launch(device), velopack_install);
             assert_eq!(chosen.version.as_deref(), Some("2099.101.9"), "{device:?}");
             assert!(chosen.plan.electron_profile, "{device:?}");
         }
         for device in ["b", "dev"] {
-            let chosen = choose(Some(device), || {
+            let chosen = choose(&launch(Some(device)), || {
                 panic!("{device}: the install is not opened")
             });
             assert!(
@@ -296,7 +304,7 @@ mod tests {
 
     #[test]
     fn outside_a_velopack_install_updates_are_off() {
-        let chosen = choose(None, || Err("no sq.version".to_owned()));
+        let chosen = choose(&launch(None), || Err("no sq.version".to_owned()));
         assert!(chosen.backend.is_none() && chosen.version.is_none());
         assert!(!chosen.plan.electron_profile);
     }
