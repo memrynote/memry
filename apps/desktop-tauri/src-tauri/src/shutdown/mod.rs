@@ -5,6 +5,8 @@
 
 #[cfg(target_os = "macos")]
 mod mac_quit;
+#[cfg(all(target_os = "macos", feature = "e2e"))]
+pub use mac_quit::post_terminate;
 mod signals;
 mod steps;
 
@@ -97,6 +99,12 @@ impl ShutdownEffects for TauriEffects {
             .state::<ShutdownService>()
             .completed
             .store(true, Ordering::SeqCst);
+        // A quit macOS asked for ends through AppKit, which then tells the sender it went through.
+        // AppKit exits with 0, also after a failed startup.
+        #[cfg(target_os = "macos")]
+        if mac_quit::accept_pending() {
+            return;
+        }
         self.app
             .exit(if crate::windows::startup_error::startup_failed() {
                 crate::windows::startup_error::EXIT_STARTUP_FAILED
@@ -115,6 +123,12 @@ impl ShutdownEffects for TauriEffects {
 /// end may have started it meanwhile on another thread.
 fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     api.prevent_exit();
+    start(app, reason);
+}
+
+/// Starts the sequence unless one already runs. The latch alone keeps the app alive from here:
+/// every later exit request is held until the sequence ends.
+fn start(app: &AppHandle<Wry>, reason: ShutdownReason) {
     if startup::mark_shutdown_started() {
         return;
     }
@@ -150,25 +164,10 @@ pub fn is_completed(app: &AppHandle<Wry>) -> bool {
 }
 
 /// Starts the sequence for a quit that did not come through `ExitRequested`: the session end.
-/// Without a request to hold, the app is kept alive by the latch alone.
 pub fn begin_session_end(app: &AppHandle<Wry>) {
     // Before the latch: a quit that is already running must not install on its way out either.
     app.state::<ShutdownService>().core.session_ending();
-    if startup::mark_shutdown_started() {
-        return;
-    }
-    if let Some(session) = app.try_state::<Session>() {
-        session.begin_shutdown();
-    }
-    crate::updater::stop(app);
-    let service = app.state::<ShutdownService>();
-    let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
-    tracing::info!(scope = "Shutdown", "starting graceful shutdown");
-    service.core.arm_backstop(HARD_BACKSTOP, effects.clone());
-    let core = service.core.clone();
-    tauri::async_runtime::spawn(async move {
-        core.run(ShutdownReason::SessionEnd, &effects).await;
-    });
+    start(app, ShutdownReason::SessionEnd);
 }
 
 fn on_exit_requested(app: &AppHandle<Wry>, code: Option<i32>, api: &ExitRequestApi) {
