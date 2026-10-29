@@ -12,6 +12,7 @@ fn build(platform: Platform, overrides: &BTreeMap<String, Binding>) -> Vec<MenuN
         platform,
         overrides,
         t: &en,
+        devtools: true,
     })
 }
 
@@ -276,6 +277,33 @@ fn a_rebind_replaces_the_default_and_an_inexpressible_one_drops_it() {
 }
 
 #[test]
+fn developer_tools_are_listed_only_in_a_build_with_the_inspector_and_reload_always() {
+    let none = BTreeMap::new();
+    for platform in [Platform::Mac, Platform::Windows, Platform::Linux] {
+        for devtools in [true, false] {
+            let menu = build_menu(&MenuInput {
+                platform,
+                overrides: &none,
+                t: &en,
+                devtools,
+            });
+            assert_eq!(
+                find(&menu, "view.toggleDevTools").is_some(),
+                devtools,
+                "{platform:?}"
+            );
+            assert!(matches!(
+                find(&menu, "view.reload"),
+                Some(MenuNode::Action {
+                    action: Action::Reload,
+                    ..
+                })
+            ));
+        }
+    }
+}
+
+#[test]
 fn labels_come_from_the_catalog_in_the_requested_locale() {
     let none = BTreeMap::new();
     let tr = |key: &str| crate::i18n::t("tr", &format!("menu:{key}"), &Default::default());
@@ -283,6 +311,7 @@ fn labels_come_from_the_catalog_in_the_requested_locale() {
         platform: Platform::Linux,
         overrides: &none,
         t: &tr,
+        devtools: true,
     });
     assert_ne!(labels(&menu)[0], "File");
     assert!(!labels(&menu)[0].starts_with("menu:"));

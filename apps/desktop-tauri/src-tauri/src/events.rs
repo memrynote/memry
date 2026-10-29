@@ -7,9 +7,12 @@ use memry_desktop::updater::state::AppUpdateState;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
-/// Emit `event` to every webview. A failed delivery is logged and swallowed, because callers
-/// run inside database transactions (`apps/desktop/src/main/lib/window-broadcast.ts`). The wire
-/// name is the one `tauri_specta::Event` derives.
+/// Emit `event` to every webview: the one window-wide emit (inv09#66). Each listener gets it once.
+/// The generated `listen` registers for any target, and Tauri hands every such listener each
+/// `emit_to` as well, so a `send_to` per window would deliver one copy per window. A failed
+/// delivery is logged and swallowed, because callers run inside database transactions
+/// (`apps/desktop/src/main/lib/window-broadcast.ts`). The wire name is the one
+/// `tauri_specta::Event` derives.
 pub fn broadcast<R, E>(app: &AppHandle<R>, event: E)
 where
     R: Runtime,
@@ -21,7 +24,8 @@ where
 }
 
 /// Emit `event` to the webview window labelled `label`, with the same guarantee as
-/// [`broadcast`].
+/// [`broadcast`]. A listener registered without a target (the generated `listen`) receives it in
+/// every webview, so a second window that runs the renderer subscribes for its own window.
 pub fn send_to<R, E>(app: &AppHandle<R>, label: &str, event: E)
 where
     R: Runtime,

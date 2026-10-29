@@ -10,13 +10,13 @@ import {
   onSettingsOpenRequested,
   settingsService
 } from '../services/settings-service'
-import { windowApi } from '../services/window-service'
 
 /**
- * What Steps 09 (#3526) and 10 (#3527) put on `window.api`: settings, language, telemetry,
- * feedback, diagnostics and the window functions, each over its Rust commands. Callers keep the Electron names. Other domains
+ * What Step 09 (#3526) puts on `window.api`: settings, language, telemetry, feedback and
+ * diagnostics, each over its Rust commands. Callers keep the Electron names. Other domains
  * replace the rest as they port; Step 43 (#3560) deletes this file once every caller imports
- * its service.
+ * its service. The window functions of Step 10 (#3527) are imported from
+ * `services/window-service` and are not on `window.api`.
  */
 const ported: Record<string, unknown> = {
   settings: settingsService,
@@ -26,8 +26,7 @@ const ported: Record<string, unknown> = {
   diagnostics: diagnosticsApi,
   onSettingsChanged,
   onSettingsOpenRequested,
-  onLocaleChanged,
-  ...windowApi
+  onLocaleChanged
 }
 
 export interface PortedApiHost {

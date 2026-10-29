@@ -130,6 +130,13 @@ pub fn menu_hide_alt(app: AppHandle<Wry>) -> Result<(), CommandError> {
     Ok(())
 }
 
+/// The clipboard text, `""` when it holds none. Quick capture (Step 27) prefills from it.
+#[tauri::command]
+#[specta::specta]
+pub async fn shell_clipboard_read_text(app: AppHandle<Wry>) -> Result<String, CommandError> {
+    Ok(crate::shell::clipboard::read_text(&app).await)
+}
+
 /// Opens an `https:`, `http:` or `mailto:` link in the OS.
 #[tauri::command]
 #[specta::specta]

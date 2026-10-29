@@ -7,6 +7,7 @@
 import { useEffect } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { publishActiveContext, useAppCommands } from '@/commands'
+import { windowApi } from '@/services/window-service'
 import { useTabs } from './context'
 import { isLastHomeTab } from './helpers'
 import { openNewTabMenu } from './new-tab-menu-opener'
@@ -38,7 +39,7 @@ export function TabsCommandBridge(): null {
       enabled: tab !== null,
       run: () => {
         if (!tab) return
-        if (isLastHomeTab(state, groupId)) window.api.windowClose()
+        if (isLastHomeTab(state, groupId)) windowApi.windowClose()
         else closeTab(tab.id, groupId)
       }
     },

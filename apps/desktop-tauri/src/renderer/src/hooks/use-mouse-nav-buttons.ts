@@ -4,6 +4,7 @@ import type {
   AppNavigationDirection
 } from '@memry/contracts/ipc-channels'
 import { useTabs } from '@/contexts/tabs'
+import { windowApi } from '@/services/window-service'
 
 const BACK_BUTTON = 3
 const FORWARD_BUTTON = 4
@@ -84,7 +85,7 @@ export const useMouseNavButtons = (): void => {
     }
   }, [navigate])
 
-  useEffect(() => window.api.onAppNavigationCommand(navigate), [navigate])
+  useEffect(() => windowApi.onAppNavigationCommand(navigate), [navigate])
 }
 
 export default useMouseNavButtons

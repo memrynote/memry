@@ -1,5 +1,5 @@
 import { DndContext } from '@dnd-kit/core'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { CalendarPage } from '@/pages/calendar'
@@ -9,6 +9,10 @@ import type {
   CalendarSourceRecord
 } from '@/services/calendar-service'
 import type * as UseCalendarRangeModule from '@/hooks/use-calendar-range'
+
+/** The native context menu mock: `tests/setup-dom.ts` forwards `shell_show_context_menu` to it. */
+const nativeMenu = () =>
+  window.api as unknown as { showContextMenu: Mock<(items: unknown[]) => Promise<string | null>> }
 
 // The app root's DragProvider supplies this; the page's useDndMonitor throws without it.
 const CalendarPageInDndContext = () => (
@@ -753,7 +757,7 @@ describe('CalendarPage', () => {
   })
 
   it('deletes a memrynote-native event via the right-click menu without Google wording', async () => {
-    const showContextMenu = vi.mocked(window.api.showContextMenu)
+    const showContextMenu = nativeMenu().showContextMenu
     showContextMenu.mockResolvedValueOnce('delete')
 
     const user = userEvent.setup()
@@ -782,7 +786,7 @@ describe('CalendarPage', () => {
   })
 
   it('warns about Google Calendar when deleting a Google-bound event', async () => {
-    vi.mocked(window.api.showContextMenu).mockResolvedValueOnce('delete')
+    nativeMenu().showContextMenu.mockResolvedValueOnce('delete')
 
     const user = userEvent.setup()
     renderWithProviders(<CalendarPageInDndContext />)
@@ -802,7 +806,7 @@ describe('CalendarPage', () => {
   })
 
   it('cancels delete without calling the mutation', async () => {
-    vi.mocked(window.api.showContextMenu).mockResolvedValueOnce('delete')
+    nativeMenu().showContextMenu.mockResolvedValueOnce('delete')
 
     const user = userEvent.setup()
     renderWithProviders(<CalendarPageInDndContext />)
@@ -818,7 +822,7 @@ describe('CalendarPage', () => {
   })
 
   it('does not show a delete menu for non-event projection items', async () => {
-    const showContextMenu = vi.mocked(window.api.showContextMenu)
+    const showContextMenu = nativeMenu().showContextMenu
 
     const user = userEvent.setup()
     renderWithProviders(<CalendarPageInDndContext />)

@@ -2,6 +2,7 @@ import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { runMenuUpdateCheck } from '@/lib/menu-update-check'
+import { windowApi } from '@/services/window-service'
 import type { GeneralSettingsDTO } from '../../../preload/index.d'
 import { useAppCommands } from './use-command-impls'
 import { useEditorCommands } from './use-editor-commands'
@@ -25,7 +26,7 @@ export function AppCommandOwners(): null {
   useAppCommands('window', {
     'app.checkForUpdates': { run: () => runMenuUpdateCheck() },
     'app.closeWindow': {
-      run: () => window.api.windowClose()
+      run: () => windowApi.windowClose()
     }
   })
   useAppCommands('appearance', {

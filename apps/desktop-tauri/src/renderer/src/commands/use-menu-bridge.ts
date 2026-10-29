@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { isCommandId } from '@memry/contracts/commands'
 import { createLogger } from '@/lib/logger'
+import { windowApi } from '@/services/window-service'
 import { runCommand } from './run-command'
 
 const log = createLogger('MenuBridge')
@@ -13,7 +14,7 @@ const log = createLogger('MenuBridge')
 export function useMenuBridge(): void {
   useEffect(
     () =>
-      window.api.onMenuCommand(({ command }) => {
+      windowApi.onMenuCommand(({ command }) => {
         if (!isCommandId(command)) {
           log.warn('Ignored unknown menu command', { command })
           return

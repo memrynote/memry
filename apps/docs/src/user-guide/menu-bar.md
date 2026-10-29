@@ -1,7 +1,8 @@
 # Menu Bar
 
-memrynote has a native application menu bar — on macOS it sits in the system
-menu bar, and on Windows and Linux it appears at the top of the window. Most
+memrynote has a native application menu bar. On macOS it sits in the system
+menu bar. On Windows and Linux it stays out of sight until you press
+<kbd>Alt</kbd> (see [below](#showing-the-menu-on-windows-and-linux)). Most
 items mirror actions you can already reach from the sidebar, tabs, the
 [command palette](/user-guide/command-palette), or the editor's slash menu. A menu
 item runs the same command as its keyboard shortcut and its palette row.
@@ -20,11 +21,22 @@ item runs the same command as its keyboard shortcut and its palette row.
   attachment to the note you're editing.
 - **Format** — Heading 1–6 or Body for the current block, plus Bold, Italics,
   Code, Highlight, and Strikethrough for the selected text.
-- **View** — Reload, Developer Tools, zoom, full screen, Toggle Sidebar, Toggle
-  Day Panel, and a Theme submenu (Light, Dark, Paper, System).
+- **View** — Reload, zoom, full screen, Toggle Sidebar, Toggle Day Panel, and a
+  Theme submenu (Light, Dark, Paper, System). Development builds also list
+  Developer Tools; the released app has none.
 - **Window** — standard window controls (minimize, zoom, front).
 - **Help** — on Windows and Linux, About and Check for Updates; on every
   platform, Documentation (<kbd>F1</kbd>) and Keyboard Shortcuts.
+
+## Showing the menu on Windows and Linux
+
+Press and release <kbd>Alt</kbd> on its own. A shortcut that includes
+<kbd>Alt</kbd>, such as <kbd>Alt</kbd>+<kbd>←</kbd>, leaves the menu alone.
+
+- On **Linux** the menu bar appears at the top of the window. Press
+  <kbd>Alt</kbd> again or <kbd>Esc</kbd>, or click into another window, to hide it.
+- On **Windows** the window has no menu bar. <kbd>Alt</kbd> opens the menus as a
+  list just below the title row. Pick an item, or press <kbd>Esc</kbd> to close it.
 
 ## About
 

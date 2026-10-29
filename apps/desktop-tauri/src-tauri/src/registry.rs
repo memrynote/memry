@@ -68,6 +68,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::settings::settings_set_group,
             crate::commands::settings::settings_set_local,
             // shell
+            crate::commands::shell::shell_clipboard_read_text,
             crate::commands::shell::shell_first_paint,
             crate::commands::shell::shell_heartbeat,
             crate::commands::shell::shell_show_context_menu,
