@@ -321,7 +321,11 @@ fn resolve_places_a_new_file_by_its_parent_folder() {
 /// answer the old file's name in the volume's deleted-files area (`\$Extend\$Deleted\...`),
 /// or fail on it while it is being deleted. Either is the note being replaced: never a path
 /// outside the vault, never an error to report. The resolution looks again. (The name can be
-/// missing for an instant too; `Missing` is allowed, as the save then lands and is reported.)
+/// missing for an instant too; `Missing` is allowed here, see `shell::file_open` rule 2. So is
+/// a denial seen on the first ask and on its one re-ask: a file denied for good gives it too,
+/// so it is not asked again longer, and it is counted, not refused.)
+/// Every tenth lookup also asks `fs::canonicalize` itself, so the test proves the replacement
+/// answered from the old file at least once and cannot pass for want of a race.
 ///
 /// Another program saves the note here thousands of times a second, far more often than any
 /// editor. `MEMRY_REPLACE_LOOKUPS` raises the number of lookups (the VM proof runs ~217k).
@@ -356,11 +360,21 @@ fn a_note_renamed_over_while_it_is_resolved_is_never_outside_the_vault_nor_an_er
         .unwrap_or(20_000);
     let mut refused: BTreeMap<String, u64> = BTreeMap::new();
     let mut missing = 0u64;
-    for _ in 0..lookups {
+    let mut denied = 0u64;
+    let mut raw_transients = 0u64;
+    let root = fs::canonicalize(&d.vault).unwrap();
+    for lookup in 0..lookups {
+        if lookup % 10 == 0 {
+            match fs::canonicalize(&note) {
+                Ok(real) if real.starts_with(&root) => {}
+                _ => raw_transients += 1,
+            }
+        }
         match resolve_under_root(&d.vault, "notes/a.md") {
             Ok(Resolution::Inside(_)) => {}
             Ok(Resolution::Missing) => missing += 1,
             Ok(other) => *refused.entry(format!("{other:?}")).or_default() += 1,
+            Err(error) if matches!(error.raw_os_error(), Some(5 | 303)) => denied += 1,
             Err(error) => {
                 *refused
                     .entry(format!("{:?} os {:?}", error.kind(), error.raw_os_error()))
@@ -372,9 +386,12 @@ fn a_note_renamed_over_while_it_is_resolved_is_never_outside_the_vault_nor_an_er
     let (saves, saves_refused) = saver.join().unwrap();
     eprintln!(
         "lookups={lookups} saves={saves} saves_refused={saves_refused} missing={missing} \
-         refused={refused:?}"
+         denied={denied} raw_transients={raw_transients} refused={refused:?}"
     );
-    assert!(saves > 0, "the saver never ran");
+    assert!(
+        raw_transients > 0,
+        "no raw lookup saw a replacement: the race never happened"
+    );
     assert!(
         refused.is_empty(),
         "{lookups} lookups during {saves} saves: {refused:?}"

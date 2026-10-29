@@ -15,12 +15,13 @@
 //!    so a missing file under a folder linked outside is `Outside` too: a reader cannot learn
 //!    whether a file exists out there. A dangling link is `Outside`. A file another program
 //!    renames a new one over while it is resolved is neither: on Windows the old file answers
-//!    from the volume's deleted-files area (`\$Extend\$Deleted\...`), or fails while it is
-//!    being deleted, and the path is resolved again after a short wait ([`RESOLVE_AGAIN_MS`]).
-//!    One that never settles is an error, never `Outside` nor `Inside` (#3732). The name can
-//!    also be missing for an instant of the replacement; that answer stays `Missing`, as asking
-//!    again would cost every missing file the waits, and the replacement, once in place, is
-//!    reported by the watcher like any save.
+//!    from the volume's deleted-files area (`\$Extend\$Deleted\...`), and the path is
+//!    resolved again after short waits ([`RESOLVE_AGAIN_MS`]); one that never settles is an
+//!    error, never `Outside` nor `Inside` (#3732). The old file can also fail while it is being
+//!    deleted, with an error a file denied for good gives too: that is asked again once only.
+//!    The name can also be missing for an instant of the replacement, which stays `Missing`,
+//!    as asking again would cost every missing file the waits. Nothing on disk is lost, but a
+//!    reader that takes it for gone may miss that save until the next one.
 //! 3. After the file is open, the path is resolved again and must name the same file (device
 //!    and inode on Unix, volume serial and file index on Windows). A save renames a new file
 //!    over the note, so on a mismatch the open is retried, three times, then
@@ -136,15 +137,16 @@ fn resolve(root: &Path, rel: &str, rooted: Rooted) -> io::Result<Resolution> {
 /// `fs::canonicalize`, asked again while `path` is a file being replaced. The answer for a
 /// file renamed over is the old file's: its name in the deleted-files area, or an error
 /// while it is being deleted. Neither says where `path` points, and asking again finds the
-/// new file. An answer that is still the old file's after the last wait of
-/// [`RESOLVE_AGAIN_MS`] is an error.
+/// new file. The deleted-files name only a replacement gives, so it is asked again through
+/// every wait of [`RESOLVE_AGAIN_MS`] and is an error after the last. The error is also what
+/// a file denied for good gives on every lookup, so it gets one ask after the first wait.
 fn canonicalize_settled(path: &Path) -> io::Result<PathBuf> {
     let mut waits = RESOLVE_AGAIN_MS.into_iter();
     loop {
         let answer = fs::canonicalize(path);
         let replaced = match &answer {
             Ok(real) => in_deleted_area(real),
-            Err(err) => is_being_deleted(err),
+            Err(err) => is_being_deleted(err) && waits.len() == RESOLVE_AGAIN_MS.len(),
         };
         if !replaced {
             return answer;
@@ -182,11 +184,13 @@ fn in_deleted_area(_real: &Path) -> bool {
 }
 
 /// The errors of opening a file in the middle of its deletion: `ERROR_ACCESS_DENIED` (the
-/// code `STATUS_DELETE_PENDING` maps to) and `ERROR_DELETE_PENDING`. A file denied for good
-/// keeps its answer after the waits: it is the answer of every ask.
+/// code `STATUS_DELETE_PENDING` maps to) and `ERROR_DELETE_PENDING`.
 #[cfg(windows)]
 fn is_being_deleted(err: &io::Error) -> bool {
-    matches!(err.raw_os_error(), Some(5 | 303))
+    use windows::Win32::Foundation::{ERROR_ACCESS_DENIED, ERROR_DELETE_PENDING};
+    [ERROR_ACCESS_DENIED, ERROR_DELETE_PENDING]
+        .iter()
+        .any(|code| err.raw_os_error() == i32::try_from(code.0).ok())
 }
 
 #[cfg(not(windows))]
@@ -361,6 +365,8 @@ mod tests {
             (r"\\?\C:\$Extend\$Deleted\000500000000B31853FE9168", true),
             (r"\\?\C:\$extend\$deleted\1", true),
             (r"\\?\Volume{0a1b}\$Extend\$Deleted\1", true),
+            (r"\\?\UNC\srv\share\$Extend\$Deleted\1", true),
+            (r"C:\$Extend\$Deleted\1", true),
             (r"\\?\C:\vault\$Extend\$Deleted\1", false),
             (r"\\?\C:\$Extend\other\1", false),
             (r"\\?\C:\Users\agent\vault\notes\a.md", false),
