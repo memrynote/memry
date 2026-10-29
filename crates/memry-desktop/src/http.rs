@@ -30,7 +30,9 @@ pub fn client_trusting(root: reqwest::Certificate) -> reqwest::Client {
         .expect("the test HTTP client needs a process default rustls crypto provider")
 }
 
-fn builder() -> reqwest::ClientBuilder {
+/// The shared client's settings, for a caller that needs its own policy on the same TLS stack
+/// (the Unsplash service adds a redirect policy). Everyone else uses [`client`].
+pub fn builder() -> reqwest::ClientBuilder {
     reqwest::Client::builder()
         .tls_backend_rustls()
         .connect_timeout(CONNECT_TIMEOUT)

@@ -255,12 +255,14 @@ async fn a_clean_quit_clears_the_marker_and_exits_without_failure() {
     );
 }
 
-#[tokio::test]
-async fn a_quit_with_no_work_finishes_well_under_300_ms() {
-    let (core, _log, effects) = setup();
-    let started = std::time::Instant::now();
+/// The sequence keeps time on Tokio's clock, paused here: any timer a quit waits on advances it.
+#[tokio::test(start_paused = true)]
+async fn a_quit_with_no_work_waits_on_no_timer() {
+    let (core, log, effects) = setup();
+    let started = tokio::time::Instant::now();
     core.run(ShutdownReason::Quit, &effects).await;
-    assert!(started.elapsed() < Duration::from_millis(300));
+    assert_eq!(started.elapsed(), Duration::ZERO);
+    assert_eq!(log.events().last().map(String::as_str), Some("exit_clean"));
 }
 
 #[tokio::test(start_paused = true)]

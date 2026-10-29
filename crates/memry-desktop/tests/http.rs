@@ -105,7 +105,7 @@ async fn requests_carry_the_memrynote_user_agent() {
 }
 
 #[tokio::test]
-async fn an_unroutable_address_fails_with_a_connect_error_inside_twelve_seconds() {
+async fn an_unroutable_address_fails_at_the_connect_timeout() {
     install_provider();
     let started = Instant::now();
     let error = memry_desktop::http::client()
@@ -117,8 +117,10 @@ async fn an_unroutable_address_fails_with_a_connect_error_inside_twelve_seconds(
         error.is_connect() || error.is_timeout(),
         "error was: {error}"
     );
+    // timing-bound: the 10 s connect timeout fires; without it the OS gives up after 21 s
+    // (Windows) to 75 s or more (macOS, Linux), and 20 s sits between them.
     assert!(
-        started.elapsed() < Duration::from_secs(12),
+        started.elapsed() < Duration::from_secs(20),
         "took {:?}",
         started.elapsed()
     );

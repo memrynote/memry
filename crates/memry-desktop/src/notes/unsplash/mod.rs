@@ -5,13 +5,22 @@
 //! here leaves a hotlinked URL in a note, and saving the bytes is the caller's job (a note's
 //! attachments, a Home board's cover folder).
 //!
-//! Every request goes through the HTTP client the caller gives it (`crate::http::client()` in the
-//! app). The access key belongs to the build (`RuntimeConfig::unsplash_access_key`); without one
-//! every call answers [`UnsplashFailure::NotConfigured`] and the renderer hides the Photos tab.
+//! The service builds its own client from the builder the caller gives it (`crate::http::builder()`
+//! in the app, so the shared rustls stack), adding a redirect policy. The access key belongs to the
+//! build (`RuntimeConfig::unsplash_access_key`); without one every call answers
+//! [`UnsplashFailure::NotConfigured`] and the renderer hides the Photos tab.
 //!
 //! The network is untrusted input. The key goes only to `api.unsplash.com` (a photo that names
-//! another host for its tracking endpoint is refused before any request), every response body has a
-//! byte cap, and every request has a timeout, which the shared client does not have.
+//! another host for its tracking endpoint is refused before any request). Only a request that
+//! started on an image host follows a redirect, and only to another `https` image host, so an API
+//! request never leaves the API (nor sends its query to the CDN as a `Referer`) and a request to
+//! any other host is never sent. The URL every response came from is checked again before its
+//! status. Every response body has a byte cap, and
+//! every request has a timeout, which the shared client does not have.
+//!
+//! A photo served with a content type outside `EXTENSION_BY_MIME` is refused. Electron saved it
+//! as `.jpg`; refusing is stricter on purpose, since such a body is a captive portal's page, not a
+//! cover.
 
 mod photo;
 
@@ -20,7 +29,8 @@ use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderValue};
-use reqwest::{Client, Response};
+use reqwest::redirect::Policy;
+use reqwest::{Client, ClientBuilder, Response};
 use serde::Serialize;
 use serde_json::Value;
 use url::Url;
@@ -46,6 +56,8 @@ const MAX_ERROR_BYTES: usize = 64 * 1024;
 const SEARCH_TIMEOUT: Duration = Duration::from_secs(20);
 const PING_TIMEOUT: Duration = Duration::from_secs(10);
 const PHOTO_TIMEOUT: Duration = Duration::from_secs(60);
+/// Redirects followed in one chain, reqwest's default.
+const MAX_REDIRECTS: usize = 10;
 
 const EXTENSION_BY_MIME: [(&str, &str); 4] = [
     ("image/jpeg", "jpg"),
@@ -126,14 +138,27 @@ pub struct Unsplash {
 }
 
 impl Unsplash {
-    pub fn new(http: Client, access_key: Option<String>) -> Self {
-        Self {
-            http,
+    /// Fails only when `http` cannot build a client (no process default crypto provider).
+    pub fn new(http: ClientBuilder, access_key: Option<String>) -> Result<Self, reqwest::Error> {
+        let redirects = Policy::custom(|attempt| {
+            // `previous` holds the first URL of the chain and every URL followed since.
+            let started_on_image_host = attempt.previous().first().is_some_and(photo::is_image_url);
+            if !started_on_image_host || !photo::is_image_url(attempt.url()) {
+                // The 3xx itself becomes the response, which every caller refuses.
+                attempt.stop()
+            } else if attempt.previous().len() > MAX_REDIRECTS {
+                attempt.error("too many redirects")
+            } else {
+                attempt.follow()
+            }
+        });
+        Ok(Self {
+            http: http.redirect(redirects).build()?,
             access_key: access_key
                 .map(|key| key.trim().to_owned())
                 .filter(|key| !key.is_empty()),
             cache: Mutex::default(),
-        }
+        })
     }
 
     pub fn is_available(&self) -> bool {
@@ -213,21 +238,18 @@ impl Unsplash {
             .timeout(PHOTO_TIMEOUT)
             .send()
             .await
-            .map_err(|error| {
-                tracing::warn!(scope = "Unsplash", "photo could not be fetched: {error}");
-                UnsplashFailure::Offline
-            })?;
-        if !response.status().is_success() {
-            return Err(self.refusal("photo fetch", response).await);
-        }
-        // `send` follows redirects (reqwest's default), so the URL the bytes came from is checked
-        // again: a redirect to plain http or to another host is not an Unsplash image.
-        if !photo::is_image_url(response.url()) {
+            .map_err(|error| send_failure("photo fetch", &error))?;
+        // The redirect policy follows only image hosts; the URL the response came from is checked
+        // again, before anything of the response is read.
+        if !photo::is_image_url(response.url()) || response.status().is_redirection() {
             tracing::error!(
                 scope = "Unsplash",
                 "a photo was redirected away from the image hosts"
             );
             return Err(UnsplashFailure::Failed);
+        }
+        if !response.status().is_success() {
+            return Err(self.refusal("photo fetch", response).await);
         }
         // A 200 that is not an image (a captive portal's page) is not a cover.
         let Some(extension) = extension_for(&response) else {
@@ -281,8 +303,8 @@ impl Unsplash {
         }
     }
 
-    /// A GET that carries the access key. The URL is on `api.unsplash.com`, checked again on the
-    /// URL the response came from, so a redirect cannot take the exchange anywhere else.
+    /// A GET that carries the access key. The URL is on `api.unsplash.com`; the redirect policy
+    /// never follows a redirect from it, and the URL the response came from is checked again.
     async fn api_get(
         &self,
         key: &str,
@@ -307,14 +329,8 @@ impl Unsplash {
             .timeout(timeout)
             .send()
             .await
-            .map_err(|error| {
-                tracing::warn!(
-                    scope = "Unsplash",
-                    "the network could not be reached: {error}"
-                );
-                UnsplashFailure::Offline
-            })?;
-        if !photo::is_api_url(response.url()) {
+            .map_err(|error| send_failure("API request", &error))?;
+        if !photo::is_api_url(response.url()) || response.status().is_redirection() {
             tracing::error!(
                 scope = "Unsplash",
                 "a request to the API was redirected away"
@@ -333,6 +349,20 @@ impl Unsplash {
         tracing::error!(scope = "Unsplash", "{what} failed: {status}");
         UnsplashFailure::Failed
     }
+}
+
+/// A request that got no response: a redirect chain over the cap is a refusal, anything else is
+/// the network.
+fn send_failure(what: &str, error: &reqwest::Error) -> UnsplashFailure {
+    if error.is_redirect() {
+        tracing::error!(scope = "Unsplash", "{what} was redirected too many times");
+        return UnsplashFailure::Failed;
+    }
+    tracing::warn!(
+        scope = "Unsplash",
+        "{what} could not reach the network: {error}"
+    );
+    UnsplashFailure::Offline
 }
 
 fn rate_limit_remaining(response: &Response) -> Option<i64> {

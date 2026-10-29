@@ -103,13 +103,14 @@ pnpm format:check   # oxfmt
 git diff --check
 ```
 
-From `crates/` when Rust changed (the line-ceiling check runs from the repo root):
+From `crates/` when Rust changed (the line-ceiling and test-timing checks run from the repo root):
 
 ```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test -p <touched crates>
 node scripts/check-line-ceilings.mjs
+node scripts/check-test-timing.mjs
 ```
 
 - `pnpm typecheck` covers the Tauri app (`apps/desktop-tauri`) and skips landing, extension, marketing-emails, iOS, and Rust, and `pnpm lint` covers the Tauri renderer and skips iOS and Rust. Their scoped guides name their gates.

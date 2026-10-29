@@ -8,3 +8,13 @@ live-keychain = { max-threads = 1 }
 [[profile.default.overrides]]
 filter = 'binary(keyring_live) | binary(electron_secrets_live)'
 test-group = 'live-keychain'
+
+# A hung test is killed after 5 minutes instead of running into the job's 65-minute limit. Tests
+# that fail by hanging (a gate that never opens) then fail in minutes. The slowest test of a full
+# run takes 157 s (markdown_depth on windows-2022, 29 Oct), so those two binaries get 15 minutes.
+[profile.default]
+slow-timeout = { period = "60s", terminate-after = 5 }
+
+[[profile.default.overrides]]
+filter = 'binary(markdown_depth) | binary(markdown_proptest)'
+slow-timeout = { period = "60s", terminate-after = 15 }
