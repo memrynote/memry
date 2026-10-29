@@ -174,9 +174,15 @@ pub fn upsert_stat(conn: &mut Connection, stat: &NoteFileStat) -> Result<(), Sto
 /// [`upsert_stat`] for a file read again and found to be the bytes its row names: the row's
 /// stamp moves to `stat.indexed_at` only while no body entry is stamped after it, since the
 /// read says nothing of the body ([`NoteFile::indexed_at`]). The row must exist.
+///
+/// The file is back to the text its row's hash names, which the document took, so it is no
+/// longer ahead of the document: a file body the note owed ([`crate::domain::owed_file_body`],
+/// a text the document refused, since replaced by this one) is owed no more, and the
+/// write-back may write the document again.
 pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), StorageError> {
     check_path(&stat.path)?;
-    let changed = conn
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let changed = tx
         .execute(
             &format!(
                 "UPDATE note_files SET
@@ -206,7 +212,8 @@ pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), Storag
     if changed == 0 {
         return Err(not_found(&stat.note_id));
     }
-    Ok(())
+    crate::domain::owed_file_body::clear(&tx, &stat.note_id)?;
+    tx.commit().map_err(failed)
 }
 
 /// The SQL test, over a `note_files` row, that an entry of the note's body log or snapshot,

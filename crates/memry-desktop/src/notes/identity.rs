@@ -32,12 +32,13 @@
 //! - A new note carries the file's creation and modification times, as
 //!   Electron's indexer gives a file it finds.
 //! - A removed file deletes its note only when its row holds the hash of the
-//!   file's text, the one the tier pairs a move by. A row with none (frontmatter
-//!   that does not parse) or an older one (a body the document did not take: a
-//!   large-file class text, a refused feed) cannot tell a removal from a move, so
-//!   the note is kept. Such a file moved while the app is closed then reaches
-//!   the tier as a new file and, unless it is large-file class, a second note,
-//!   until the tier pairs moves by the file's bytes (#3744).
+//!   file's text, the one the tier pairs a move by. A row with none (a file named
+//!   with a frontmatter that does not parse) or an older one (the file is ahead
+//!   of its document, `owed_file_body`: a large-file class text, a refused feed,
+//!   a frontmatter that stopped parsing) cannot tell a removal from a move, so
+//!   the note is kept, with a warning. Such a file moved while the app is closed
+//!   then reaches the tier as a new file and, unless it is large-file class, a
+//!   second note, until the tier pairs moves by the file's bytes (#3744).
 //!
 //! Every answer is the core's; a failure is the consumer's to log and retry
 //! ([`crate::vault::consumer::MAX_RETRIES`]), and the next open asks again.
@@ -105,8 +106,9 @@ impl NotesIdentity {
             return;
         }
         match notice {
-            // TODO(#3531 Step 14): tell the user, with the notice this step's unreadable config
-            // and undecided files go out with; until the import runs this vault names no file.
+            // TODO(#3531 Step 14): tell the user, in one notice with this step's unreadable
+            // config, undecided files and kept removals (`on_removed`): until the import runs,
+            // this vault names no file.
             Notice::ElectronNotImported => tracing::warn!(
                 scope = SCOPE,
                 "this vault holds the database of the previous app version, whose notes this \
@@ -179,9 +181,11 @@ impl NotesIdentity {
             {
                 continue;
             }
+            // From the row's path: the record still says the owed one, and owing dropped the
+            // note's slot there, so a slot at it now is another file's.
             let (folder_path, title) = place(&owed.path);
             let moved = Moved {
-                old_path: &owed.from_path,
+                old_path: &owed.path,
                 new_path: &owed.path,
                 title,
                 folder_path,
@@ -284,8 +288,10 @@ impl NoteIdentity for NotesIdentity {
         Ok(match self.writer(ctx)?.file_removed(note_id, path)? {
             Removed::Deleted => Removal::Deleted,
             Removed::Kept => Removal::Kept,
+            // A file that is truly gone leaves a note the user deleted outside the app: told in
+            // the Step 14 notice (TODO at `Notice::ElectronNotImported`).
             Removed::Undecided => {
-                tracing::info!(
+                tracing::warn!(
                     scope = SCOPE,
                     note_id,
                     "a removed file's note is kept: its row holds no hash of the file's text, so \

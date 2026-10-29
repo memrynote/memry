@@ -11,13 +11,16 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io::Read as _;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 use flate2::read::GzDecoder;
+use memry_core::domain::note_positions;
 use memry_core::domain::notes::identity::VAULT_ORIGIN_META_KEY;
+use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::vault::consumer::Applied;
+use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use rusqlite::OptionalExtension as _;
 use serde_json::Value;
 use vault_env::{Env, env, indexed};
@@ -26,6 +29,38 @@ const FIXTURE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/elect
 
 fn notes_env() -> Env {
     env(|store| Some(NotesIdentity::new(store)))
+}
+
+/// [`notes_env`], with the device's key store for edits made in the app.
+fn notes_env_with_store() -> (Env, Arc<dyn SecureStore>) {
+    let mut kept = None;
+    let e = env(|store| {
+        kept = Some(store.clone());
+        Some(NotesIdentity::new(store))
+    });
+    (e, kept.expect("the store"))
+}
+
+fn owes_file_body(e: &Env, id: &str) -> bool {
+    e.core().note_files().owes_file_body(id).unwrap()
+}
+
+/// The manual slot of `path`, if it has one.
+fn slot(e: &Env, path: &str) -> Option<i64> {
+    let path = path.to_owned();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT position FROM note_positions WHERE path = ?1",
+                    [path],
+                    |row| row.get(0),
+                )
+                .optional()
+                .unwrap())
+        })
+        .unwrap()
 }
 
 /// `(id, title, folder_path, deleted)` of every note record, by id.
@@ -689,4 +724,87 @@ fn a_file_that_may_be_a_note_waits_while_the_callout_types_cannot_be_read() {
     std::thread::sleep(vault_env::QUIET);
     assert_eq!(row_id(&e, "Plan.md"), None);
     assert_eq!(records(&e).len(), 1);
+}
+
+/// A large paste outside the app owes the file body (the document did not take it). Undone
+/// outside, the file is back to the text its row names: it owes nothing more, so an edit made
+/// in the app reaches the file again.
+#[test]
+fn a_large_paste_undone_outside_lets_the_app_write_the_file_again() {
+    let (mut e, store) = notes_env_with_store();
+    e.write("a.md", "Small\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = row_id(&e, "a.md").unwrap();
+    e.write("a.md", &"x".repeat(200 * 1024));
+    std::thread::sleep(Duration::from_millis(1000));
+    assert!(owes_file_body(&e, &id));
+
+    e.write("a.md", "Small\n");
+    std::thread::sleep(Duration::from_millis(1000));
+    assert!(!owes_file_body(&e, &id));
+    e.drain();
+    e.edit_in_app(&store, &id, "typed in the app");
+    e.tier.schedule(&id);
+    e.facts_until(|f| {
+        matches!(f, Applied::Changed { note_id, source: ChangeSource::App, .. } if *note_id == id)
+    });
+    assert_eq!(e.read("a.md"), "typed in the app\n");
+}
+
+/// A frontmatter that stops parsing after the row recorded its hash leaves that hash naming an
+/// older file, and the note owes its file body: moved while the app is closed, the note is
+/// kept, and no delete is pushed.
+#[test]
+fn a_file_whose_frontmatter_broke_moved_while_closed_keeps_its_note() {
+    let mut e = notes_env();
+    e.write("a.md", "Body\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = row_id(&e, "a.md").unwrap();
+    assert!(row_hash(&e, "a.md").is_some());
+    e.write("a.md", "---\nfoo: [unclosed\n---\nBody, edited\n");
+    std::thread::sleep(Duration::from_millis(1000));
+    assert!(owes_file_body(&e, &id));
+    e.close();
+
+    fs::rename(e.vault.join("a.md"), e.vault.join("b.md")).unwrap();
+    reopen(&mut e);
+    let records = records(&e);
+    assert!(
+        records.contains(&(id.clone(), "a".to_owned(), None, false)),
+        "{records:?}"
+    );
+    assert!(!outbox(&e).contains(&("delete".to_owned(), id)));
+}
+
+/// An owed move settles from the note's row path: the path it was owed from may hold another
+/// file's slot by then, which stays that file's.
+#[test]
+fn a_settled_move_leaves_the_slot_of_a_file_at_the_path_it_left() {
+    let mut e = notes_env();
+    e.write("a.md", "Alpha\n");
+    e.open();
+    e.facts_until(indexed);
+    let a = row_id(&e, "a.md").unwrap();
+    e.write(".memry/config.json", "{ \"journalFolder\": ");
+    fs::rename(e.vault.join("a.md"), e.vault.join("b.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Renamed { new_path, .. } if new_path == "b.md"));
+    e.write("a.md", "Another file\n");
+    std::thread::sleep(Duration::from_millis(1000));
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| note_positions::reorder(conn, "", &["a.md".to_owned()]))
+        .unwrap();
+    let kept = slot(&e, "a.md").expect("the other file's slot");
+
+    e.write(".memry/config.json", "{}");
+    e.write("c.md", "Gamma\n");
+    e.facts_until(added("c.md"));
+    let records = records(&e);
+    assert!(
+        records.contains(&(a, "b".to_owned(), None, false)),
+        "{records:?}"
+    );
+    assert_eq!(slot(&e, "a.md"), Some(kept));
 }
