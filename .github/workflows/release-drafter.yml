@@ -26,5 +26,9 @@ jobs:
     steps:
       - name: Update draft release
         uses: release-drafter/release-drafter@v6
+        with:
+          # PR events only autolabel. Their ref is refs/pull/<n>/merge, which
+          # GitHub rejects as a release target_commitish (422).
+          disable-releaser: ${{ github.event_name == 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
