@@ -65,6 +65,8 @@
     "crates/memry-desktop/tests/fixtures/article-extract/",
     // Byte-exact vault fixtures: copies of the Electron golden files and vectors its code produced.
     "crates/memry-desktop/tests/fixtures/golden-vault/",
+    // A vault Electron wrote (scripts/electron-fixtures/capture-vault.mjs), kept as it wrote it.
+    "crates/memry-desktop/tests/fixtures/electron-vault/",
     "crates/memry-desktop/tests/fixtures/*.json",
 
     // Generated minified bundle (scripts/generate-ios-article-extract.mjs); a formatter

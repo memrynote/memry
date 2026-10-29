@@ -44,6 +44,7 @@ use crate::storage::Db;
 use serde_json::Value;
 
 // Reminders and folders: the same writer, split out at the line ceiling.
+mod files;
 mod folders;
 
 /// The write surface over one opened vault.

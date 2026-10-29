@@ -111,10 +111,9 @@ fn a_file_written_while_open_gets_a_note_and_the_tier_stops_with_the_vault() {
     e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "again.md"));
 }
 
-/// What ships until Step 13 sets its identity: the tier runs and indexes nothing, as the app
-/// behaved before it.
+/// A tier nothing set an identity on runs and indexes nothing.
 #[test]
-fn the_shipped_tier_records_no_row_until_step_13_names_notes() {
+fn a_tier_with_no_identity_records_no_row() {
     let mut e = env(|_| None);
     e.write("a.md", "x\n");
     e.open();

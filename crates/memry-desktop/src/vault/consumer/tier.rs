@@ -154,7 +154,8 @@ impl VaultTier {
         })
     }
 
-    /// The identity of the next open on ([`DeferIdentity`] until Step 13 sets its own).
+    /// The identity of the next open on ([`DeferIdentity`] until one is set; the app sets the
+    /// notes identity, `crate::notes::identity`).
     pub fn set_identity(&self, identity: Arc<dyn NoteIdentity>) {
         *self.identity.lock().unwrap_or_else(|e| e.into_inner()) = identity;
     }

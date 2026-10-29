@@ -1,26 +1,22 @@
-//! The vault write-back under test (Step 12e-3h, #3529): notes with rows before Step 13 names
-//! them, an edit made in the app the way Step 14's editor will make it, and files changed the
-//! way another program changes them. `e2e/specs/vault/writeback.e2e.ts` and the Windows soak
-//! (`e2e/soak/writeback-soak.ts`) drive them.
+//! The vault write-back under test (Step 12e-3h, #3529): an edit made in the app the way Step
+//! 14's editor will make it, and files changed the way another program changes them, on the
+//! notes the app's identity (Step 13d) names from their files.
+//! `e2e/specs/vault/writeback.e2e.ts` and the Windows soak (`e2e/soak/writeback-soak.ts`) drive
+//! them.
 
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use memry_desktop::e2e::E2eGate;
-use memry_desktop::e2e::vault::{self as e2e_vault, AdoptFiles};
-use memry_desktop::launch_env::LaunchEnv;
-use memry_desktop::paths::AppPaths;
+use memry_desktop::e2e::vault as e2e_vault;
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
-use memry_desktop::session::{OpenSource, OpenVault, Session};
+use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::vault::consumer::VaultTier;
 use memry_desktop::vault::hash::content_hash;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Wry};
 
 use crate::commands::error::{CommandError, ErrorKind};
-
-/// In the data dir: the next launches adopt files too, so a relaunch keeps naming notes.
-const ADOPT_MARKER: &str = "e2e-adopt-files";
 
 fn failed(code: &'static str, error: impl ToString) -> CommandError {
     CommandError::new(ErrorKind::Internal, code, error.to_string())
@@ -71,32 +67,6 @@ fn in_vault(app: &AppHandle<Wry>, rel: &str) -> Result<PathBuf, CommandError> {
         return Err(outside());
     }
     Ok(target)
-}
-
-/// Called before the first open: a launch after `e2e_vault_adopt_files` adopts files too.
-pub fn adopt_at_launch(app: &AppHandle<Wry>, tier: &VaultTier, store: Arc<DeviceIdentityStore>) {
-    let gate = E2eGate::from_env(&app.state::<LaunchEnv>());
-    let marker = app.state::<AppPaths>().data_dir.join(ADOPT_MARKER);
-    if gate.is_open() && marker.exists() {
-        tier.set_identity(AdoptFiles::new(store));
-    }
-}
-
-/// Every new markdown file becomes a note, from now and at every later launch of this
-/// profile. The open vault is opened again, so its files are offered at once.
-#[tauri::command]
-pub async fn e2e_vault_adopt_files(app: AppHandle<Wry>) -> Result<(), CommandError> {
-    let marker = app.state::<AppPaths>().data_dir.join(ADOPT_MARKER);
-    std::fs::write(&marker, b"").map_err(|error| failed("e2e_adopt_marker", error))?;
-    tier(&app)?.set_identity(AdoptFiles::new(store(&app)?));
-    let path = open(&app)?.path;
-    tauri::async_runtime::spawn_blocking(move || {
-        app.state::<Session>().replace(&path, OpenSource::Select)
-    })
-    .await
-    .map_err(|error| failed("e2e_adopt_reopen", error))?
-    .map_err(|error| failed("e2e_adopt_reopen", error))?;
-    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize)]

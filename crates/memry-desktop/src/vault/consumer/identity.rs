@@ -1,6 +1,6 @@
 //! Which note a vault file belongs to: the decisions that need the note records. The consumer
 //! owns `note_files` and calls this trait; Step 13 implements it over the core's note records
-//! (`notes/identity.rs`). Agreed on #3529 (issuecomment-6451032104, with Step 13's changes in
+//! (`crate::notes::identity`). Agreed on #3529 (issuecomment-6451032104, with Step 13's changes in
 //! issuecomment-6452209253).
 //!
 //! An implementation is called on the consumer's one thread, may block for one core write,
@@ -116,8 +116,9 @@ pub trait NoteIdentity: Send + Sync {
     ) -> Result<(), IdentityError>;
 }
 
-/// The identity until Step 13 registers its own: adopts nothing, deletes nothing, so a file
-/// outside the index stays outside it, as the app behaves before 13c.
+/// The identity of a tier nothing set one on ([`super::VaultTier::set_identity`]): adopts
+/// nothing and deletes nothing, so a file outside the index stays outside it. The app sets the
+/// notes identity (`crate::notes::identity`).
 pub struct DeferIdentity;
 
 impl NoteIdentity for DeferIdentity {
