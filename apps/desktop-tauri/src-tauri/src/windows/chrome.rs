@@ -1,6 +1,7 @@
 //! The frame of the main window per OS.
 //!
-//! - macOS: hidden title bar with the traffic lights at (12, 12), drawn over the title row.
+//! - macOS: hidden title bar with the close button's frame at (12, 12), as in Electron, drawn
+//!   over the title row.
 //! - Windows: no native frame. The caption buttons are a React component answered by
 //!   `win32_caption`, and the window keeps its shadow and resize borders.
 //! - Linux: the native frame.
@@ -14,7 +15,43 @@ pub fn apply<'a, R: Runtime, M: tauri::Manager<R>>(
     builder
         .title_bar_style(tauri::TitleBarStyle::Overlay)
         .hidden_title(true)
-        .traffic_light_position(tauri::LogicalPosition::new(12.0, 12.0))
+        // Electron put the close button's frame at (12, 12). Tauri's `y` is not that offset: the
+        // title bar container becomes `button height + y` tall and AppKit keeps the buttons
+        // `button_bottom_margin()` above its bottom, so the frame's top lands at `y - margin`
+        // (`e2e/specs/shell/traffic-lights.e2e.ts`).
+        .traffic_light_position(tauri::LogicalPosition::new(
+            12.0,
+            12.0 + button_bottom_margin(),
+        ))
+}
+
+/// The gap AppKit leaves under the traffic lights: they sit centered in a default title bar, and
+/// the bar and button sizes change with the macOS version (macOS 27: a 32-point bar and 14-point
+/// buttons, so 9 points; the macOS 15 CI runner leaves 6).
+#[cfg(target_os = "macos")]
+fn button_bottom_margin() -> f64 {
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::{NSWindow, NSWindowButton, NSWindowStyleMask};
+
+    let Some(mtm) = MainThreadMarker::new() else {
+        tracing::warn!(
+            scope = "Window",
+            "traffic lights placed off the main thread: AppKit sizes unread, they sit higher"
+        );
+        return 0.0;
+    };
+    let style = NSWindowStyleMask::Titled
+        | NSWindowStyleMask::Closable
+        | NSWindowStyleMask::Miniaturizable
+        | NSWindowStyleMask::Resizable;
+    // An empty content rect: the frame is the title bar alone.
+    let title_bar = NSWindow::frameRectForContentRect_styleMask(Default::default(), style, mtm)
+        .size
+        .height;
+    let button =
+        NSWindow::standardWindowButton_forStyleMask(NSWindowButton::CloseButton, style, mtm)
+            .map_or(0.0, |button| button.frame().size.height);
+    (title_bar - button) / 2.0
 }
 
 #[cfg(windows)]
