@@ -1,0 +1,316 @@
+{
+  "reads": [
+    {
+      "name": "electron",
+      "input": "---\nproperties:\n  Status:\n    type: status\n    categories:\n      todo:\n        label: To-do\n        options:\n          - value: Not started\n            color: stone\n            default: true\n      in_progress:\n        label: In progress\n        options:\n          - value: In Progress\n            color: amber\n      done:\n        label: Complete\n        options:\n          - value: Done\n            color: emerald\n          - value: Abandoned\n            color: rose\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n      - value: Draft\n        color: violet\n        default: false\n    defaultValue: Idea\n    color: sky\n  Tags:\n    type: multiselect\n    options: []\n  Notes:\n    type: text\n    options: []\n  Score:\n    type: number\n    options: []\n  Done:\n    type: checkbox\n    options: []\n  Link:\n    type: url\n    options: []\n  Due:\n    type: date\n    showOnCalendar: true\n  Started:\n    type: date\n    showOnCalendar: false\n    color: amber\n  project:\n    type: project\n---\n\n",
+      "readable": true,
+      "definitions": [
+        "Status",
+        "Stage",
+        "Tags",
+        "Notes",
+        "Score",
+        "Done",
+        "Link",
+        "Due",
+        "Started",
+        "project"
+      ],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  Status:\n    type: status\n    categories:\n      todo:\n        label: To-do\n        options:\n          - value: Not started\n            color: stone\n            default: true\n      in_progress:\n        label: In progress\n        options:\n          - value: In Progress\n            color: amber\n      done:\n        label: Complete\n        options:\n          - value: Done\n            color: emerald\n          - value: Abandoned\n            color: rose\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n      - value: Draft\n        color: violet\n        default: false\n    defaultValue: Idea\n    color: sky\n  Tags:\n    type: multiselect\n    options: []\n  Notes:\n    type: text\n    options: []\n  Score:\n    type: number\n    options: []\n  Done:\n    type: checkbox\n    options: []\n  Link:\n    type: url\n    options: []\n  Due:\n    type: date\n    showOnCalendar: true\n  Started:\n    type: date\n    showOnCalendar: false\n    color: amber\n  project:\n    type: project\n---\n\n"
+    },
+    {
+      "name": "one-bad-entry-and-a-newer-type",
+      "input": "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n  Broken:\n    type: select\n    options: not-a-list\n  Rating:\n    type: stars\n    max: 5\n    when: 2024-01-02\n  Due:\n    type: date\n    showOnCalendar: true\n---\n",
+      "readable": true,
+      "definitions": ["Stage", "Due"],
+      "unparsed": ["Broken", "Rating"],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  Broken:\n    type: select\n    options: not-a-list\n  Rating:\n    type: stars\n    max: 5\n    when: 2024-01-02T00:00:00.000Z\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n  Due:\n    type: date\n    showOnCalendar: true\n---\n\n"
+    },
+    {
+      "name": "relation-is-dropped",
+      "input": "---\nproperties:\n  Rel:\n    type: relation\n  A:\n    type: text\n---\n\n",
+      "readable": true,
+      "definitions": ["A"],
+      "unparsed": [],
+      "healed": true,
+      "rewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
+    },
+    {
+      "name": "unknown-keys-inside-valid-entries",
+      "input": "---\nproperties:\n  Stage:\n    type: select\n    newerKey: [1, 2]\n    categories: {}\n    options:\n      - value: Idea\n        color: sky\n        icon: star\n  Due:\n    type: date\n    options: [{value: a, color: b}]\n  S:\n    type: status\n    options: []\n    categories:\n      done: {label: D, options: []}\n      todo: {label: T, options: [], extra: 1}\n      in_progress: {label: P, options: []}\n      later: {label: L, options: []}\n---\n",
+      "readable": true,
+      "definitions": ["Stage", "Due", "S"],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n  Due:\n    type: date\n    showOnCalendar: false\n  S:\n    type: status\n    categories:\n      todo:\n        label: T\n        options: []\n      in_progress:\n        label: P\n        options: []\n      done:\n        label: D\n        options: []\n---\n\n"
+    },
+    {
+      "name": "names-that-need-care",
+      "input": "---\nproperties:\n  \"2024\": {type: text}\n  \"10\": {type: text}\n  b: {type: text}\n  \"a: b\": {type: text}\n  \"#hash\": {type: text}\n  \"- dash\": {type: text}\n  \"\": {type: text}\n  \"Ünïcødé 日本\": {type: text}\n  \"true\": {type: text}\n  \"007\": {type: text}\n  \"multi\\nline\": {type: text}\n  long: {type: text, defaultValue: \"a very long default value a very long default value a very long default value a very long default value a very long default value \"}\n  quoted: {type: text, defaultValue: \"it's \\\"quoted\\\" and: colon\"}\n  empties: {type: text, defaultValue: \"\", color: \"\"}\n---\n",
+      "readable": true,
+      "definitions": [
+        "10",
+        "2024",
+        "b",
+        "a: b",
+        "#hash",
+        "- dash",
+        "",
+        "Ünïcødé 日本",
+        "true",
+        "007",
+        "multi\nline",
+        "long",
+        "quoted",
+        "empties"
+      ],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  '10':\n    type: text\n    options: []\n  '2024':\n    type: text\n    options: []\n  b:\n    type: text\n    options: []\n  'a: b':\n    type: text\n    options: []\n  '#hash':\n    type: text\n    options: []\n  '- dash':\n    type: text\n    options: []\n  '':\n    type: text\n    options: []\n  Ünïcødé 日本:\n    type: text\n    options: []\n  'true':\n    type: text\n    options: []\n  '007':\n    type: text\n    options: []\n  \"multi\\nline\":\n    type: text\n    options: []\n  long:\n    type: text\n    options: []\n    defaultValue: >-\n      a very long default value a very long default value a very long default\n      value a very long default value a very long default value \n  quoted:\n    type: text\n    options: []\n    defaultValue: 'it''s \"quoted\" and: colon'\n  empties:\n    type: text\n    options: []\n---\n\n"
+    },
+    {
+      "name": "shapes-that-fail-the-schema",
+      "input": "---\nproperties:\n  nullDefault: {type: select, options: [{value: a, color: b, default: null}]}\n  emptyValue: {type: select, options: [{value: \"\", color: b}]}\n  numberValue: {type: select, options: [{value: 1, color: b}]}\n  stringFlag: {type: date, showOnCalendar: \"yes\"}\n  noOptions: {type: select}\n  capital: {type: Select, options: []}\n  noType: {options: []}\n  aString: hello\n  aNull: null\n  aList: [1, 2]\n  numberColor: {type: text, color: 3}\n  nullColor: {type: text, color: null}\n  badCategory: {type: status, categories: {todo: {label: \"\", options: []}, in_progress: {label: P, options: []}, done: {label: D, options: []}}}\n  missingCategory: {type: status, categories: {todo: {label: T, options: []}, done: {label: D, options: []}}}\n  typeNumber: {type: 1}\n  fine: {type: text}\n---\n",
+      "readable": true,
+      "definitions": ["fine"],
+      "unparsed": [
+        "nullDefault",
+        "emptyValue",
+        "numberValue",
+        "stringFlag",
+        "noOptions",
+        "capital",
+        "noType",
+        "aString",
+        "aNull",
+        "aList",
+        "numberColor",
+        "nullColor",
+        "badCategory",
+        "missingCategory",
+        "typeNumber"
+      ],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  nullDefault:\n    type: select\n    options:\n      - value: a\n        color: b\n        default: null\n  emptyValue:\n    type: select\n    options:\n      - value: ''\n        color: b\n  numberValue:\n    type: select\n    options:\n      - value: 1\n        color: b\n  stringFlag:\n    type: date\n    showOnCalendar: 'yes'\n  noOptions:\n    type: select\n  capital:\n    type: Select\n    options: []\n  noType:\n    options: []\n  aString: hello\n  aNull: null\n  aList:\n    - 1\n    - 2\n  numberColor:\n    type: text\n    color: 3\n  nullColor:\n    type: text\n    color: null\n  badCategory:\n    type: status\n    categories:\n      todo:\n        label: ''\n        options: []\n      in_progress:\n        label: P\n        options: []\n      done:\n        label: D\n        options: []\n  missingCategory:\n    type: status\n    categories:\n      todo:\n        label: T\n        options: []\n      done:\n        label: D\n        options: []\n  typeNumber:\n    type: 1\n  fine:\n    type: text\n    options: []\n---\n\n"
+    },
+    {
+      "name": "aliases",
+      "input": "---\nproperties:\n  A:\n    type: select\n    options: &opts\n      - value: x\n        color: red\n  B:\n    type: multiselect\n    options: *opts\n  U1:\n    type: stars\n    shared: &shared {k: [1, 2]}\n  U2:\n    type: stars\n    shared: *shared\n---\n",
+      "readable": true,
+      "definitions": ["A", "B"],
+      "unparsed": ["U1", "U2"],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  U1:\n    type: stars\n    shared: &ref_0\n      k:\n        - 1\n        - 2\n  U2:\n    type: stars\n    shared: *ref_0\n  A:\n    type: select\n    options:\n      - value: x\n        color: red\n  B:\n    type: multiselect\n    options:\n      - value: x\n        color: red\n---\n\n"
+    },
+    {
+      "name": "empty-map",
+      "input": "---\nproperties: {}\n---\n\n",
+      "readable": true,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties: {}\n---\n\n"
+    },
+    {
+      "name": "empty-file",
+      "input": "",
+      "readable": true,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties: {}\n---\n\n"
+    },
+    {
+      "name": "whitespace-only",
+      "input": "  \n",
+      "readable": true,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties: {}\n---\n\n"
+    },
+    {
+      "name": "no-frontmatter",
+      "input": "just a body\n",
+      "readable": true,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties: {}\n---\n\n"
+    },
+    {
+      "name": "no-properties-key",
+      "input": "---\nother: 1\n---\n",
+      "readable": true,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties: {}\n---\n\n"
+    },
+    {
+      "name": "properties-null",
+      "input": "---\nproperties:\n---\n",
+      "readable": true,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties: {}\n---\n\n"
+    },
+    {
+      "name": "properties-a-list",
+      "input": "---\nproperties: [1]\n---\n",
+      "readable": false,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": null
+    },
+    {
+      "name": "properties-a-string",
+      "input": "---\nproperties: text\n---\n",
+      "readable": false,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": null
+    },
+    {
+      "name": "yaml-error",
+      "input": "---\nproperties:\n  A: {type: text\n---\n",
+      "readable": false,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": null
+    },
+    {
+      "name": "duplicate-key",
+      "input": "---\nproperties:\n  A: {type: text}\n  A: {type: url}\n---\n",
+      "readable": false,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": null
+    },
+    {
+      "name": "unclosed",
+      "input": "---\nproperties:\n  A: {type: text}\n",
+      "readable": true,
+      "definitions": ["A"],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
+    },
+    {
+      "name": "crlf",
+      "input": "---\r\nproperties:\r\n  A:\r\n    type: text\r\n---\r\n\r\n",
+      "readable": true,
+      "definitions": ["A"],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
+    },
+    {
+      "name": "bom",
+      "input": "﻿---\nproperties:\n  A:\n    type: text\n---\n\n",
+      "readable": true,
+      "definitions": ["A"],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
+    },
+    {
+      "name": "body-and-other-keys",
+      "input": "---\nother: top\nproperties:\n  A: {type: text}\n---\nbody text\n",
+      "readable": true,
+      "definitions": ["A"],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
+    },
+    {
+      "name": "top-level-list",
+      "input": "---\n- a\n---\n",
+      "readable": true,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties: {}\n---\n\n"
+    },
+    {
+      "name": "comment-only",
+      "input": "---\n# nothing\n---\n",
+      "readable": true,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties: {}\n---\n\n"
+    }
+  ],
+  "ops": [
+    {
+      "name": "replace-keeps-position",
+      "input": "---\nproperties:\n  Status:\n    type: status\n    categories:\n      todo:\n        label: To-do\n        options:\n          - value: Not started\n            color: stone\n            default: true\n      in_progress:\n        label: In progress\n        options:\n          - value: In Progress\n            color: amber\n      done:\n        label: Complete\n        options:\n          - value: Done\n            color: emerald\n          - value: Abandoned\n            color: rose\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n      - value: Draft\n        color: violet\n        default: false\n    defaultValue: Idea\n    color: sky\n  Tags:\n    type: multiselect\n    options: []\n  Notes:\n    type: text\n    options: []\n  Score:\n    type: number\n    options: []\n  Done:\n    type: checkbox\n    options: []\n  Link:\n    type: url\n    options: []\n  Due:\n    type: date\n    showOnCalendar: true\n  Started:\n    type: date\n    showOnCalendar: false\n    color: amber\n  project:\n    type: project\n---\n\n",
+      "ops": [
+        {
+          "set": "Stage",
+          "entry": "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Done\n        color: green\n---\n\n"
+        }
+      ],
+      "written": "---\nproperties:\n  Status:\n    type: status\n    categories:\n      todo:\n        label: To-do\n        options:\n          - value: Not started\n            color: stone\n            default: true\n      in_progress:\n        label: In progress\n        options:\n          - value: In Progress\n            color: amber\n      done:\n        label: Complete\n        options:\n          - value: Done\n            color: emerald\n          - value: Abandoned\n            color: rose\n  Stage:\n    type: select\n    options:\n      - value: Done\n        color: green\n  Tags:\n    type: multiselect\n    options: []\n  Notes:\n    type: text\n    options: []\n  Score:\n    type: number\n    options: []\n  Done:\n    type: checkbox\n    options: []\n  Link:\n    type: url\n    options: []\n  Due:\n    type: date\n    showOnCalendar: true\n  Started:\n    type: date\n    showOnCalendar: false\n    color: amber\n  project:\n    type: project\n---\n\n"
+    },
+    {
+      "name": "new-goes-last",
+      "input": "---\nproperties:\n  Status:\n    type: status\n    categories:\n      todo:\n        label: To-do\n        options:\n          - value: Not started\n            color: stone\n            default: true\n      in_progress:\n        label: In progress\n        options:\n          - value: In Progress\n            color: amber\n      done:\n        label: Complete\n        options:\n          - value: Done\n            color: emerald\n          - value: Abandoned\n            color: rose\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n      - value: Draft\n        color: violet\n        default: false\n    defaultValue: Idea\n    color: sky\n  Tags:\n    type: multiselect\n    options: []\n  Notes:\n    type: text\n    options: []\n  Score:\n    type: number\n    options: []\n  Done:\n    type: checkbox\n    options: []\n  Link:\n    type: url\n    options: []\n  Due:\n    type: date\n    showOnCalendar: true\n  Started:\n    type: date\n    showOnCalendar: false\n    color: amber\n  project:\n    type: project\n---\n\n",
+      "ops": [
+        {
+          "set": "New",
+          "entry": "---\nproperties:\n  New:\n    type: date\n    showOnCalendar: true\n    defaultValue: today\n---\n\n"
+        }
+      ],
+      "written": "---\nproperties:\n  Status:\n    type: status\n    categories:\n      todo:\n        label: To-do\n        options:\n          - value: Not started\n            color: stone\n            default: true\n      in_progress:\n        label: In progress\n        options:\n          - value: In Progress\n            color: amber\n      done:\n        label: Complete\n        options:\n          - value: Done\n            color: emerald\n          - value: Abandoned\n            color: rose\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n      - value: Draft\n        color: violet\n        default: false\n    defaultValue: Idea\n    color: sky\n  Tags:\n    type: multiselect\n    options: []\n  Notes:\n    type: text\n    options: []\n  Score:\n    type: number\n    options: []\n  Done:\n    type: checkbox\n    options: []\n  Link:\n    type: url\n    options: []\n  Due:\n    type: date\n    showOnCalendar: true\n  Started:\n    type: date\n    showOnCalendar: false\n    color: amber\n  project:\n    type: project\n  New:\n    type: date\n    showOnCalendar: true\n    defaultValue: today\n---\n\n"
+    },
+    {
+      "name": "delete",
+      "input": "---\nproperties:\n  Status:\n    type: status\n    categories:\n      todo:\n        label: To-do\n        options:\n          - value: Not started\n            color: stone\n            default: true\n      in_progress:\n        label: In progress\n        options:\n          - value: In Progress\n            color: amber\n      done:\n        label: Complete\n        options:\n          - value: Done\n            color: emerald\n          - value: Abandoned\n            color: rose\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n      - value: Draft\n        color: violet\n        default: false\n    defaultValue: Idea\n    color: sky\n  Tags:\n    type: multiselect\n    options: []\n  Notes:\n    type: text\n    options: []\n  Score:\n    type: number\n    options: []\n  Done:\n    type: checkbox\n    options: []\n  Link:\n    type: url\n    options: []\n  Due:\n    type: date\n    showOnCalendar: true\n  Started:\n    type: date\n    showOnCalendar: false\n    color: amber\n  project:\n    type: project\n---\n\n",
+      "ops": [
+        {
+          "delete": "Due"
+        },
+        {
+          "delete": "Status"
+        }
+      ],
+      "written": "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n      - value: Draft\n        color: violet\n        default: false\n    defaultValue: Idea\n    color: sky\n  Tags:\n    type: multiselect\n    options: []\n  Notes:\n    type: text\n    options: []\n  Score:\n    type: number\n    options: []\n  Done:\n    type: checkbox\n    options: []\n  Link:\n    type: url\n    options: []\n  Started:\n    type: date\n    showOnCalendar: false\n    color: amber\n  project:\n    type: project\n---\n\n"
+    },
+    {
+      "name": "set-over-unparsed",
+      "input": "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n  Broken:\n    type: select\n    options: not-a-list\n  Rating:\n    type: stars\n    max: 5\n    when: 2024-01-02\n  Due:\n    type: date\n    showOnCalendar: true\n---\n",
+      "ops": [
+        {
+          "set": "Broken",
+          "entry": "---\nproperties:\n  Broken:\n    type: text\n---\n\n"
+        }
+      ],
+      "written": "---\nproperties:\n  Rating:\n    type: stars\n    max: 5\n    when: 2024-01-02T00:00:00.000Z\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n  Due:\n    type: date\n    showOnCalendar: true\n  Broken:\n    type: text\n    options: []\n---\n\n"
+    },
+    {
+      "name": "first-write-of-a-missing-file",
+      "input": null,
+      "ops": [
+        {
+          "set": "Status",
+          "entry": "---\nproperties:\n  Status:\n    type: status\n    categories:\n      todo:\n        label: T\n        options: []\n      in_progress:\n        label: P\n        options: []\n      done:\n        label: D\n        options:\n          - value: ok\n            color: green\n---\n\n"
+        },
+        {
+          "set": "New",
+          "entry": "---\nproperties:\n  New:\n    type: date\n    showOnCalendar: true\n    defaultValue: today\n---\n\n"
+        }
+      ],
+      "written": "---\nproperties:\n  Status:\n    type: status\n    categories:\n      todo:\n        label: T\n        options: []\n      in_progress:\n        label: P\n        options: []\n      done:\n        label: D\n        options:\n          - value: ok\n            color: green\n  New:\n    type: date\n    showOnCalendar: true\n    defaultValue: today\n---\n\n"
+    }
+  ]
+}

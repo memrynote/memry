@@ -63,8 +63,9 @@ fn matter_is_blank(matter: &str) -> bool {
     js_trim(&kept).is_empty()
 }
 
-/// `matter(block, {}).data` for a block the splitter produced.
-fn gray_matter_data(block: &str) -> Result<YamlValue, YamlError> {
+/// `matter(text, {}).data`, for a block the splitter produced or for a whole file read with
+/// gray-matter directly: an unclosed block runs to the end of the text, as in gray-matter.
+pub fn gray_matter_data(block: &str) -> Result<YamlValue, YamlError> {
     let text = block.strip_prefix('\u{FEFF}').unwrap_or(block);
     let empty = || YamlValue::map(YamlMap::new());
     let Some(after_open) = text.strip_prefix("---") else {
