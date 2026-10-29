@@ -56,5 +56,10 @@ e2e_commands! {
         e2e_vault_read_file,
         e2e_vault_write_outside
     ],
-    window => [e2e_windows, e2e_set_window_rect, e2e_traffic_lights],
+    window => [
+        e2e_windows,
+        e2e_set_window_rect,
+        e2e_traffic_lights,
+        e2e_bare_alt_menu_mode
+    ],
 }

@@ -74,3 +74,15 @@ test('Linux: the menu bar is hidden after the window shows, and the first bare A
   expect(await invoke<boolean>(page, 'menu_toggle_alt')).toBe(false)
   expect(await invokeTest<boolean | null>(app, 'e2e_menu_bar_visible')).toBe(false)
 })
+
+// A bare Alt reaches the frameless window as `WM_SYSCOMMAND` `SC_KEYMENU`. Left to
+// `DefWindowProc`, it starts the keyboard mode of the hidden system menu, which shows nothing
+// and holds the main thread, so the app's menu that the same Alt asks for waited for another key.
+test('Windows: the SC_KEYMENU of a bare Alt leaves the main thread out of menu mode', async ({
+  app,
+  page
+}) => {
+  test.skip(process.platform !== 'win32', 'only Windows has the system menu keyboard mode')
+  await appReady(page)
+  expect(await invokeTest<boolean>(app, 'e2e_bare_alt_menu_mode')).toBe(false)
+})

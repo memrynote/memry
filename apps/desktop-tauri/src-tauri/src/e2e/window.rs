@@ -158,3 +158,70 @@ fn traffic_light_rects(window: &tauri::WebviewWindow<tauri::Wry>) -> Result<Vec<
     })
     .collect()
 }
+
+/// Posts the `WM_SYSCOMMAND` `SC_KEYMENU` a bare Alt sends the main window, and reports whether
+/// its thread went into menu mode within 2 s (then ends that mode). Always false off Windows.
+#[tauri::command]
+pub async fn e2e_bare_alt_menu_mode(app: AppHandle<tauri::Wry>) -> Result<bool, CommandError> {
+    #[cfg(windows)]
+    {
+        let window = app
+            .get_webview_window(crate::windows::MAIN_LABEL)
+            .ok_or_else(|| {
+                CommandError::new(ErrorKind::NotFound, "e2e_window", "no main window")
+            })?;
+        // `HWND` is not `Send`: the raw handle crosses into the blocking task.
+        let raw = window.hwnd().map_err(failure)?.0 as isize;
+        tauri::async_runtime::spawn_blocking(move || key_menu_mode(raw))
+            .await
+            .map_err(failure)?
+            .map_err(failure)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+        Ok(false)
+    }
+}
+
+#[cfg(windows)]
+fn key_menu_mode(raw: isize) -> windows::core::Result<bool> {
+    use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GUI_INMENUMODE, GUITHREADINFO, GetGUIThreadInfo, GetWindowThreadProcessId, PostMessageW,
+        SC_KEYMENU, WM_CANCELMODE, WM_SYSCOMMAND,
+    };
+
+    let hwnd = HWND(raw as *mut _);
+    // SAFETY: the main window lives as long as the app; posting and reading its thread's GUI
+    // state are safe from any thread.
+    unsafe {
+        let thread = GetWindowThreadProcessId(hwnd, None);
+        if thread == 0 {
+            return Err(windows::core::Error::from_thread());
+        }
+        PostMessageW(
+            Some(hwnd),
+            WM_SYSCOMMAND,
+            WPARAM(SC_KEYMENU as usize),
+            LPARAM(0),
+        )?;
+        // A busy main thread takes the message late, so the mode is polled, not read once.
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        loop {
+            let mut info = GUITHREADINFO {
+                cbSize: size_of::<GUITHREADINFO>() as u32,
+                ..Default::default()
+            };
+            GetGUIThreadInfo(thread, &mut info)?;
+            if info.flags.0 & GUI_INMENUMODE.0 != 0 {
+                PostMessageW(Some(hwnd), WM_CANCELMODE, WPARAM(0), LPARAM(0))?;
+                return Ok(true);
+            }
+            if std::time::Instant::now() >= deadline {
+                return Ok(false);
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+}

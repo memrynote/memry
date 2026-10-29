@@ -8,8 +8,8 @@
 //! buttons act through `WM_SYSCOMMAND`. The page gets no mouse events for them, so hover and
 //! press travel as events.
 //!
-//! The top-level window's subclass places the sink after a resize and carries the browser back
-//! and forward keys (`WM_APPCOMMAND`).
+//! The top-level window's subclass places the sink after a resize, carries the browser back
+//! and forward keys (`WM_APPCOMMAND`) and keeps a bare Alt for the app's menu (`SC_KEYMENU`).
 
 mod sink;
 
@@ -24,8 +24,8 @@ use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::Graphics::Gdi::ScreenToClient;
 use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
-    IsZoomed, PostMessageW, SC_CLOSE, SC_MAXIMIZE, SC_MINIMIZE, SC_RESTORE, WM_APPCOMMAND,
-    WM_DPICHANGED, WM_SIZE, WM_SYSCOMMAND,
+    IsZoomed, PostMessageW, SC_CLOSE, SC_KEYMENU, SC_MAXIMIZE, SC_MINIMIZE, SC_RESTORE,
+    WM_APPCOMMAND, WM_DPICHANGED, WM_SIZE, WM_SYSCOMMAND,
 };
 
 use super::MAIN_LABEL;
@@ -141,6 +141,15 @@ unsafe extern "system" fn top_level_proc(
                 );
                 return LRESULT(1);
             }
+        }
+        // A bare Alt (no mnemonic character) reaches the frameless window as `SC_KEYMENU`, and
+        // `DefWindowProc` would enter the keyboard mode of its hidden system menu: a modal loop
+        // that shows nothing and holds the main thread, so the app's menu, which the renderer
+        // asks for on the same Alt (`menu::toggle_alt`), only opened after the next key.
+        // Alt+Space (`' '`) still opens the system menu. F10 sends the same message and so does
+        // nothing (#3734).
+        WM_SYSCOMMAND if wparam.0 & 0xFFF0 == SC_KEYMENU as usize && lparam.0 == 0 => {
+            return LRESULT(0);
         }
         _ => {}
     }
