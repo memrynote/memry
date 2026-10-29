@@ -45,7 +45,7 @@
 //! - **Once the note is quiet.** A note's pass runs [`DEBOUNCE`] after its last schedule, and
 //!   not before the cooldown of its last pass ends: [`COOLDOWN_FACTOR`] times what that pass
 //!   took, at most [`MAX_COOLDOWN`]. One pass runs at a time; a schedule while the note's pass
-//!   runs gives it one more pass after it.
+//!   runs gives it one more pass after it, once that pass's cooldown ended.
 //! - **Nothing scheduled waits out a quit or a close.** [`WriteBack::flush`] makes every
 //!   scheduled pass due now and waits for them and the one running. The `flush-writebacks`
 //!   shutdown step calls it on every way the app quits (the app menu, Cmd-Q, the Dock, a
