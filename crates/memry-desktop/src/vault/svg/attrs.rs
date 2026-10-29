@@ -1,7 +1,7 @@
 //! `sanitizeAttributes` and its value checks: event handlers, URLs that leave the document,
 //! unsafe style values and animation values that would write one.
 
-use super::scan::{Finder, ci_at, is_word, is_ws, tick, word_ends};
+use super::scan::{Finder, as_str, ci_at, is_word, skip_ws, squash, tick, word_ends, ws_len};
 
 /// SMIL elements that can rewrite another element's attribute after load.
 const ANIMATION_ELEMENTS: [&str; 4] = ["animate", "set", "animatetransform", "animatemotion"];
@@ -21,36 +21,24 @@ pub(super) fn local_name(name: &str) -> String {
     name.rsplit(':').next().unwrap_or(name).to_lowercase()
 }
 
-/// `squash`: drops every character at or below U+0020, the classic scheme-smuggling trick
-/// (`java\tscript:`).
-fn squash(value: &[char]) -> Vec<char> {
-    value
-        .iter()
-        .copied()
-        .filter(|c| {
-            tick();
-            u32::from(*c) > 0x20
-        })
-        .collect()
-}
-
 /// `isSafeUrlValue`: empty, a `#fragment`, or an inert image data URL.
-fn is_safe_url(value: &[char]) -> bool {
+pub(super) fn is_safe_url(value: &str) -> bool {
     let trimmed = squash(value);
-    if trimmed.is_empty() || trimmed[0] == '#' {
+    let trimmed = trimmed.as_bytes();
+    if trimmed.first().is_none_or(|first| *first == b'#') {
         return true;
     }
     // `/^data:image\/(png|jpe?g|gif|webp);base64,/i`
-    ci_at(&trimmed, 0, "data:image/")
+    ci_at(trimmed, 0, "data:image/")
         && DATA_IMAGE_TYPES
             .iter()
-            .any(|kind| ci_at(&trimmed, 11, kind) && ci_at(&trimmed, 11 + kind.len(), ";base64,"))
+            .any(|kind| ci_at(trimmed, 11, kind) && ci_at(trimmed, 11 + kind.len(), ";base64,"))
 }
 
 /// `isSafeStyleValue`: nothing that reaches outside the document. Inside `url()` only
 /// same-document references survive.
-pub(super) fn is_safe_style(value: &[char]) -> bool {
-    let lowered: String = squash(value).into_iter().collect::<String>().to_lowercase();
+pub(super) fn is_safe_style(value: &str) -> bool {
+    let lowered = squash(value).to_lowercase();
     if ["expression(", "javascript:", "@import"]
         .iter()
         .any(|bad| lowered.contains(bad))
@@ -60,56 +48,55 @@ pub(super) fn is_safe_style(value: &[char]) -> bool {
     if !lowered.contains("url(") {
         return true;
     }
-    let lowered: Vec<char> = lowered.chars().collect();
+    let lowered = lowered.as_bytes();
     let mut fragment = false;
     let mut elsewhere = false;
-    for (at, _) in lowered.iter().enumerate() {
+    for at in 0..lowered.len() {
         tick();
-        if !lowered[at..].starts_with(&['u', 'r', 'l', '(']) {
+        if !lowered[at..].starts_with(b"url(") {
             continue;
         }
         let after = at + 4;
-        let quoted = matches!(lowered.get(after), Some('\'' | '"'));
+        let quoted = matches!(lowered.get(after), Some(b'\'' | b'"'));
         let target = lowered.get(after + usize::from(quoted)).copied();
         // `/url\(['"]?#/`
-        fragment |= target == Some('#');
+        fragment |= target == Some(b'#');
         // `/url\(['"]?[^#'")]/`: an unquoted target can be no quote either.
-        elsewhere |= target.is_some_and(|c| !matches!(c, '#' | '\'' | '"' | ')'));
+        elsewhere |= target.is_some_and(|c| !matches!(c, b'#' | b'\'' | b'"' | b')'));
     }
     fragment && !elsewhere
 }
 
 /// `/^\s*(?:[a-z][a-z0-9+.-]*:|\/\/)/i`: a scheme or a protocol-relative URL.
-fn starts_with_scheme(value: &[char]) -> bool {
-    let start = value.iter().take_while(|c| is_ws(**c)).count();
-    let rest = &value[start..];
-    if rest.starts_with(&['/', '/']) {
+fn starts_with_scheme(value: &[u8]) -> bool {
+    let rest = &value[skip_ws(value, 0)..];
+    if rest.starts_with(b"//") {
         return true;
     }
-    if !rest.first().is_some_and(char::is_ascii_alphabetic) {
+    if !rest.first().is_some_and(u8::is_ascii_alphabetic) {
         return false;
     }
     let scheme = rest[1..]
         .iter()
-        .take_while(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '.' | '-'))
+        .take_while(|c| c.is_ascii_alphanumeric() || matches!(c, b'+' | b'.' | b'-'))
         .count();
-    rest.get(1 + scheme) == Some(&':')
+    rest.get(1 + scheme) == Some(&b':')
 }
 
 /// `/\battributeName\s*=\s*["']?(?:xlink:)?(?:href|src)\b/i`: an animation that swaps a
 /// reference after load. The whole element goes rather than half of it.
-pub(super) fn retargets_reference(attrs: &[char]) -> bool {
+pub(super) fn retargets_reference(attrs: &[u8]) -> bool {
     (0..attrs.len()).any(|at| {
         tick();
         if !ci_at(attrs, at, "attributeName") || (at > 0 && is_word(attrs[at - 1])) {
             return false;
         }
         let mut at = skip_ws(attrs, at + 13);
-        if attrs.get(at) != Some(&'=') {
+        if attrs.get(at) != Some(&b'=') {
             return false;
         }
         at = skip_ws(attrs, at + 1);
-        if matches!(attrs.get(at), Some('"' | '\'')) {
+        if matches!(attrs.get(at), Some(b'"' | b'\'')) {
             at += 1;
         }
         if ci_at(attrs, at, "xlink:") {
@@ -121,116 +108,128 @@ pub(super) fn retargets_reference(attrs: &[char]) -> bool {
     })
 }
 
-fn skip_ws(text: &[char], mut at: usize) -> usize {
-    while text.get(at).copied().is_some_and(is_ws) {
-        tick();
-        at += 1;
-    }
-    at
+/// `[^\s"'=/<>]` at `at`, a character of an attribute name. A byte inside a longer character
+/// counts as one: it is never a `\s` lead byte.
+fn is_name_char(text: &[u8], at: usize) -> bool {
+    ws_len(text, at) == 0 && !matches!(text[at], b'"' | b'\'' | b'=' | b'/' | b'<' | b'>')
 }
 
-/// `[^\s"'=/<>]`, a character of an attribute name.
-fn is_name_char(c: char) -> bool {
-    !is_ws(c) && !matches!(c, '"' | '\'' | '=' | '/' | '<' | '>')
-}
-
-/// `[^\s"'=<>\x60]`, a character of an unquoted value.
-fn is_bare_value_char(c: char) -> bool {
-    !is_ws(c) && !matches!(c, '"' | '\'' | '=' | '<' | '>' | '`')
+/// `[^\s"'=<>\x60]` at `at`, a character of an unquoted value.
+fn is_bare_value_char(text: &[u8], at: usize) -> bool {
+    ws_len(text, at) == 0 && !matches!(text[at], b'"' | b'\'' | b'=' | b'<' | b'>' | b'`')
 }
 
 /// One match of `ATTR_RE`: the name, and the value when the `=value` group matched.
-struct Attribute<'a> {
-    name: &'a [char],
-    value: Option<&'a [char]>,
+pub(super) struct Attribute<'a> {
+    pub(super) name: &'a str,
+    pub(super) value: Option<&'a str>,
 }
 
 /// The matches of
-/// `/([^\s"'=/<>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>\x60]+)))?/g` over `raw`. A value
-/// group that fails (an unclosed quote) leaves the match at the name, and the next match starts
-/// right after it.
-fn attributes(raw: &[char]) -> Vec<Attribute<'_>> {
-    let mut double = Finder::new('"', raw);
-    let mut single = Finder::new('\'', raw);
-    let mut found = Vec::new();
-    let mut at = 0;
-    loop {
-        while at < raw.len() && !is_name_char(raw[at]) {
+/// `/([^\s"'=/<>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>\x60]+)))?/g` over `raw`, one
+/// at a time. A value group that fails (an unclosed quote) leaves the match at the name, and
+/// the next match starts right after it.
+struct Attributes<'a> {
+    raw: &'a [u8],
+    at: usize,
+    double: Finder,
+    single: Finder,
+}
+
+impl<'a> Iterator for Attributes<'a> {
+    type Item = Attribute<'a>;
+
+    fn next(&mut self) -> Option<Attribute<'a>> {
+        let raw = self.raw;
+        let mut at = self.at;
+        while at < raw.len() && !is_name_char(raw, at) {
             tick();
-            at += 1;
+            at += ws_len(raw, at).max(1);
         }
         if at == raw.len() {
-            return found;
+            self.at = at;
+            return None;
         }
         let start = at;
-        while at < raw.len() && is_name_char(raw[at]) {
+        while at < raw.len() && is_name_char(raw, at) {
             tick();
             at += 1;
         }
-        let name = &raw[start..at];
-        let eq = skip_ws(raw, at);
+        let name = as_str(&raw[start..at]);
         let mut value = None;
-        if raw.get(eq) == Some(&'=') {
+        let eq = skip_ws(raw, at);
+        if raw.get(eq) == Some(&b'=') {
             let open = skip_ws(raw, eq + 1);
             let quote = match raw.get(open) {
-                Some('"') => Some(&mut double),
-                Some('\'') => Some(&mut single),
+                Some(b'"') => Some(&mut self.double),
+                Some(b'\'') => Some(&mut self.single),
                 _ => None,
             };
             if let Some(finder) = quote {
                 if let Some(close) = finder.next(raw, open + 1) {
-                    value = Some(&raw[open + 1..close]);
+                    value = Some(as_str(&raw[open + 1..close]));
                     at = close + 1;
                 }
-            } else if raw.get(open).copied().is_some_and(is_bare_value_char) {
+            } else if open < raw.len() && is_bare_value_char(raw, open) {
                 let mut end = open;
-                while end < raw.len() && is_bare_value_char(raw[end]) {
+                while end < raw.len() && is_bare_value_char(raw, end) {
                     tick();
                     end += 1;
                 }
-                value = Some(&raw[open..end]);
+                value = Some(as_str(&raw[open..end]));
                 at = end;
             }
         }
-        found.push(Attribute { name, value });
+        self.at = at;
+        Some(Attribute { name, value })
     }
 }
 
-/// `sanitizeAttributes(raw, element)`: the kept attributes, each value double-quoted, joined
-/// with single spaces after a leading one; empty when none is kept.
-pub(super) fn sanitize_attributes(raw: &[char], element: &str) -> String {
-    let mut kept = Vec::new();
-    for Attribute { name, value } in attributes(raw) {
-        let shown = value.unwrap_or(&[]);
-        let name: String = name.iter().collect();
+/// `sanitizeAttributes(raw, element)`: the attributes the TypeScript keeps, in order.
+pub(super) fn sanitize_attributes<'a>(
+    raw: &'a [u8],
+    element: &str,
+) -> impl Iterator<Item = Attribute<'a>> + use<'a> {
+    let animation = ANIMATION_ELEMENTS.contains(&element);
+    let attributes = Attributes {
+        raw,
+        at: 0,
+        double: Finder::new(b'"', raw),
+        single: Finder::new(b'\'', raw),
+    };
+    attributes.filter(move |Attribute { name, value }| {
+        let shown = value.unwrap_or("");
         let lower = name.to_lowercase();
-        if lower.starts_with("on")
+        let refused = lower.starts_with("on")
             || (URL_ATTRIBUTES.contains(&lower.as_str()) && !is_safe_url(shown))
             || (lower == "style" && !is_safe_style(shown))
             || lower == "xlink:base"
             || lower == "xml:base"
-        {
-            continue;
-        }
-        // An animation writes its value into another attribute, so its value is held to the
-        // style rules whatever the target attribute is.
-        if ANIMATION_ELEMENTS.contains(&element)
-            && ANIMATION_VALUE_ATTRIBUTES.contains(&local_name(&lower).as_str())
-            && (!is_safe_style(shown) || starts_with_scheme(&squash(shown)))
-        {
-            continue;
-        }
-        kept.push(match value {
-            Some(value) => {
-                let value: String = value.iter().collect();
-                format!("{name}=\"{}\"", value.replace('"', "&quot;"))
+            // An animation writes its value into another attribute, so its value is held to
+            // the style rules whatever the target attribute is.
+            || (animation
+                && ANIMATION_VALUE_ATTRIBUTES.contains(&local_name(&lower).as_str())
+                && (!is_safe_style(shown) || starts_with_scheme(squash(shown).as_bytes())));
+        !refused
+    })
+}
+
+/// The attributes as the TypeScript writes them: each after one space, a value double-quoted
+/// with its `"` written `&quot;`.
+pub(super) fn write_attributes<'a>(out: &mut Vec<u8>, kept: impl Iterator<Item = Attribute<'a>>) {
+    for Attribute { name, value } in kept {
+        out.push(b' ');
+        out.extend_from_slice(name.as_bytes());
+        if let Some(value) = value {
+            out.extend_from_slice(b"=\"");
+            for byte in value.bytes() {
+                tick();
+                match byte {
+                    b'"' => out.extend_from_slice(b"&quot;"),
+                    _ => out.push(byte),
+                }
             }
-            None => name,
-        });
-    }
-    if kept.is_empty() {
-        String::new()
-    } else {
-        format!(" {}", kept.join(" "))
+            out.push(b'"');
+        }
     }
 }

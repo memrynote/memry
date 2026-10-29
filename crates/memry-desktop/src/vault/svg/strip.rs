@@ -8,7 +8,7 @@
 
 use super::attrs::is_safe_style;
 use super::scan::{
-    Finder, ci_at, exact_at, find_lit, prefixed_tag, spaces_then_gt, tick, word_ends,
+    Finder, as_str, ci_at, exact_at, find_lit, prefixed_tag, spaces_then_gt, tick, word_ends,
 };
 
 /// Elements dropped together with everything inside them, in the TypeScript's order.
@@ -24,11 +24,11 @@ pub(super) const FORBIDDEN_ELEMENTS: [&str; 6] = [
 /// Removes every match of `<open>[\s\S]*?<close>`, where `opens` recognizes the opener and
 /// `open_len` is its length.
 pub(super) fn strip_between(
-    text: &[char],
-    opens: impl Fn(&[char], usize) -> bool,
+    text: &[u8],
+    opens: impl Fn(&[u8], usize) -> bool,
     open_len: usize,
     close: &str,
-) -> Vec<char> {
+) -> Vec<u8> {
     let mut out = Vec::with_capacity(text.len());
     let (mut copied, mut at) = (0, 0);
     while at < text.len() {
@@ -49,26 +49,26 @@ pub(super) fn strip_between(
 }
 
 /// `/<!--[\s\S]*?-->/g`
-pub(super) fn strip_comments(text: &[char]) -> Vec<char> {
+pub(super) fn strip_comments(text: &[u8]) -> Vec<u8> {
     strip_between(text, |t, at| exact_at(t, at, "<!--"), 4, "-->")
 }
 
 /// `/<!ENTITY[\s\S]*?>/gi`
-pub(super) fn strip_entities(text: &[char]) -> Vec<char> {
+pub(super) fn strip_entities(text: &[u8]) -> Vec<u8> {
     strip_between(text, |t, at| declaration_at(t, at, "ENTITY"), 8, ">")
 }
 
 /// `/<\?[\s\S]*?\?>/g`
-pub(super) fn strip_processing_instructions(text: &[char]) -> Vec<char> {
+pub(super) fn strip_processing_instructions(text: &[u8]) -> Vec<u8> {
     strip_between(text, |t, at| exact_at(t, at, "<?"), 2, "?>")
 }
 
 /// `/<!\[CDATA\[[\s\S]*?\]\]>/g`
-pub(super) fn strip_cdata(text: &[char]) -> Vec<char> {
+pub(super) fn strip_cdata(text: &[u8]) -> Vec<u8> {
     strip_between(text, |t, at| exact_at(t, at, "<![CDATA["), 9, "]]>")
 }
 
-fn declaration_at(text: &[char], at: usize, keyword: &str) -> bool {
+fn declaration_at(text: &[u8], at: usize, keyword: &str) -> bool {
     exact_at(text, at, "<!") && ci_at(text, at + 2, keyword)
 }
 
@@ -77,9 +77,9 @@ fn declaration_at(text: &[char], at: usize, keyword: &str) -> bool {
 /// After `[^>[]*` stops at `q`: a `>` there ends the match. A `[` there opens the subset,
 /// which the lazy group closes at the first `]` that a later `>` follows; with none, the group
 /// is skipped and `[^>]*>` ends at the first `>` after `q`.
-pub(super) fn strip_doctypes(text: &[char]) -> Vec<char> {
-    let mut gt = Finder::new('>', text);
-    let mut close_bracket = Finder::new(']', text);
+pub(super) fn strip_doctypes(text: &[u8]) -> Vec<u8> {
+    let mut gt = Finder::new(b'>', text);
+    let mut close_bracket = Finder::new(b']', text);
     let mut out = Vec::with_capacity(text.len());
     let (mut copied, mut at) = (0, 0);
     while at < text.len() {
@@ -89,14 +89,14 @@ pub(super) fn strip_doctypes(text: &[char]) -> Vec<char> {
             continue;
         }
         let mut q = at + 9;
-        while q < text.len() && text[q] != '>' && text[q] != '[' {
+        while q < text.len() && text[q] != b'>' && text[q] != b'[' {
             tick();
             q += 1;
         }
         if q == text.len() {
             break;
         }
-        let end = if text[q] == '>' {
+        let end = if text[q] == b'>' {
             q + 1
         } else {
             let Some(first_gt) = gt.next(text, q + 1) else {
@@ -119,34 +119,35 @@ pub(super) fn strip_doctypes(text: &[char]) -> Vec<char> {
 
 /// `stripForbiddenElements`: per element, the self-closing form, the paired form (content goes
 /// with it), an unclosed opener (it takes the rest of the document) and stray closers.
-pub(super) fn strip_forbidden_elements(text: Vec<char>) -> Vec<char> {
-    FORBIDDEN_ELEMENTS.iter().fold(text, |text, tag| {
-        let text = strip_self_closing(&text, tag);
-        let text = strip_paired(&text, tag, false, |_| true);
-        let text = strip_unclosed(text, tag);
-        strip_stray_closers(&text, tag)
-    })
+pub(super) fn strip_forbidden_elements(mut text: Vec<u8>) -> Vec<u8> {
+    for tag in FORBIDDEN_ELEMENTS {
+        text = strip_self_closing(&text, tag);
+        text = strip_paired(&text, tag, false, |_| true);
+        text = strip_unclosed(text, tag);
+        text = strip_stray_closers(&text, tag);
+    }
+    text
 }
 
 /// `<${TAG_PREFIX}${tag}\b` at `at`: the end of the tag name.
-fn opener(text: &[char], at: usize, tag: &str) -> Option<usize> {
-    if text[at] != '<' {
+fn opener(text: &[u8], at: usize, tag: &str) -> Option<usize> {
+    if text[at] != b'<' {
         return None;
     }
     prefixed_tag(text, at + 1, tag, word_ends)
 }
 
 /// `<\/${TAG_PREFIX}${tag}\s*>` at `at`: the index after its `>`.
-fn closer(text: &[char], at: usize, tag: &str) -> Option<usize> {
-    if text[at] != '<' || text.get(at + 1) != Some(&'/') {
+fn closer(text: &[u8], at: usize, tag: &str) -> Option<usize> {
+    if text[at] != b'<' || text.get(at + 1) != Some(&b'/') {
         return None;
     }
     prefixed_tag(text, at + 2, tag, spaces_then_gt)
 }
 
 /// `<${TAG_PREFIX}${tag}\b[^>]*\/>`, globally.
-fn strip_self_closing(text: &[char], tag: &str) -> Vec<char> {
-    let mut gt = Finder::new('>', text);
+fn strip_self_closing(text: &[u8], tag: &str) -> Vec<u8> {
+    let mut gt = Finder::new(b'>', text);
     let mut out = Vec::with_capacity(text.len());
     let (mut copied, mut at) = (0, 0);
     while at < text.len() {
@@ -158,7 +159,7 @@ fn strip_self_closing(text: &[char], tag: &str) -> Vec<char> {
         let Some(close) = gt.next(text, name_end) else {
             break;
         };
-        if text[close - 1] != '/' {
+        if text[close - 1] != b'/' {
             at += 1;
             continue;
         }
@@ -175,13 +176,8 @@ fn strip_self_closing(text: &[char], tag: &str) -> Vec<char> {
 /// `<style>` pass). A match goes when `drop` of its inner text says so.
 ///
 /// An opener with no closer after it ends the pass: a later opener searches a shorter tail.
-fn strip_paired(
-    text: &[char],
-    tag: &str,
-    head_to_gt: bool,
-    drop: impl Fn(&[char]) -> bool,
-) -> Vec<char> {
-    let mut gt = Finder::new('>', text);
+fn strip_paired(text: &[u8], tag: &str, head_to_gt: bool, drop: impl Fn(&[u8]) -> bool) -> Vec<u8> {
+    let mut gt = Finder::new(b'>', text);
     let mut out = Vec::with_capacity(text.len());
     let (mut copied, mut at) = (0, 0);
     while at < text.len() {
@@ -215,7 +211,7 @@ fn strip_paired(
 }
 
 /// `<${TAG_PREFIX}${tag}\b[\s\S]*$`, first match only: the rest of the document goes.
-fn strip_unclosed(mut text: Vec<char>, tag: &str) -> Vec<char> {
+fn strip_unclosed(mut text: Vec<u8>, tag: &str) -> Vec<u8> {
     if let Some(at) = (0..text.len()).find(|&at| {
         tick();
         opener(&text, at, tag).is_some()
@@ -226,13 +222,13 @@ fn strip_unclosed(mut text: Vec<char>, tag: &str) -> Vec<char> {
 }
 
 /// `<\/${TAG_PREFIX}${tag}\b[^>]*>`, globally.
-fn strip_stray_closers(text: &[char], tag: &str) -> Vec<char> {
-    let mut gt = Finder::new('>', text);
+fn strip_stray_closers(text: &[u8], tag: &str) -> Vec<u8> {
+    let mut gt = Finder::new(b'>', text);
     let mut out = Vec::with_capacity(text.len());
     let (mut copied, mut at) = (0, 0);
     while at < text.len() {
         tick();
-        let name_end = (text[at] == '<' && text.get(at + 1) == Some(&'/'))
+        let name_end = (text[at] == b'<' && text.get(at + 1) == Some(&b'/'))
             .then(|| prefixed_tag(text, at + 2, tag, word_ends))
             .flatten();
         let Some(name_end) = name_end else {
@@ -252,6 +248,6 @@ fn strip_stray_closers(text: &[char], tag: &str) -> Vec<char> {
 
 /// `stripUnsafeStyleElements`: a `<style>` block whose CSS reaches outside the document
 /// (`@import`, `url()` other than a fragment, `expression(`, `javascript:`) goes.
-pub(super) fn strip_unsafe_styles(text: &[char]) -> Vec<char> {
-    strip_paired(text, "style", true, |css| !is_safe_style(css))
+pub(super) fn strip_unsafe_styles(text: &[u8]) -> Vec<u8> {
+    strip_paired(text, "style", true, |css| !is_safe_style(as_str(css)))
 }

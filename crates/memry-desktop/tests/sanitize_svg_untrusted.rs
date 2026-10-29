@@ -12,12 +12,12 @@ use memry_test_kit::{
 };
 use proptest::prelude::*;
 
-/// Steps per input character the whole pipeline may take: about 30 passes, each visiting a
-/// character a few times, and the longest literal compared at one position (13 characters).
-const STEPS_PER_CHAR: usize = 200;
+/// Steps per input byte the whole pipeline may take: about 30 passes, each visiting a byte a
+/// few times, the longest literal compared at one position (13 bytes), and the inert writer.
+const STEPS_PER_BYTE: usize = 200;
 
 fn step_bound(input: &str) -> usize {
-    STEPS_PER_CHAR * input.chars().count() + 1000
+    STEPS_PER_BYTE * input.len() + 1000
 }
 
 fn assert_linear(what: &'static str, input: String) {
@@ -93,11 +93,11 @@ fn a_deep_document_does_not_overflow_a_small_stack() {
 }
 
 #[test]
-fn quotes_turned_into_entities_stay_within_the_output_bound() {
-    let input = format!("<svg><g a='{}'/></svg>", "\"".repeat(10_000));
+fn text_lt_written_as_entities_stays_within_the_output_bound() {
+    let input = format!("<svg>{}</svg>", "<".repeat(10_000));
     let out = sanitize_svg(&input).expect("svg root");
-    assert!(out.contains("&quot;&quot;"));
-    assert_output_bounded("quotes", input.len(), out.len());
+    assert!(out.contains("&lt;&lt;"));
+    assert_output_bounded("lt", input.len(), out.len());
 }
 
 #[test]

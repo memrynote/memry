@@ -6,6 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use memry_desktop::vault::icons::{IconError, icon_exists, icon_path, remove_icon, write_icon};
+use memry_desktop::vault::svg::MAX_SVG_BYTES;
 
 fn vault() -> tempfile::TempDir {
     let dir = tempfile::Builder::new()
@@ -71,6 +72,41 @@ fn an_svg_with_nothing_usable_writes_nothing_and_keeps_the_last_icon() {
     let err = write_icon(dir.path(), "j", "svg", b"<foreignObject/>").expect_err("not an svg");
     assert!(matches!(err, IconError::UnusableSvg(_)), "{err:?}");
     assert!(!icon_exists(dir.path(), "j", "svg"));
+}
+
+#[test]
+fn an_svg_over_the_limit_is_refused_by_size_and_keeps_the_last_icon() {
+    let dir = vault();
+    write_icon(dir.path(), "big", "svg", b"<svg><rect/></svg>").expect("write");
+    let over = format!("<svg>{}</svg>", " ".repeat(MAX_SVG_BYTES));
+    let err = write_icon(dir.path(), "big", "svg", over.as_bytes()).expect_err("over the limit");
+    assert!(
+        matches!(err, IconError::TooLarge { ref id, bytes } if id == "big" && bytes == over.len()),
+        "{err:?}"
+    );
+    assert_eq!(icon(dir.path(), "big.svg"), b"<svg><rect/></svg>");
+}
+
+/// A link planted at an icon's path is replaced, never written through: the file it points
+/// at, outside the vault, keeps its bytes.
+#[cfg(unix)]
+#[test]
+fn a_link_at_the_icon_path_is_replaced_and_its_target_is_untouched() {
+    let dir = vault();
+    let outside = tempfile::NamedTempFile::new().expect("outside file");
+    fs::write(outside.path(), b"not the vault's").expect("outside bytes");
+    fs::create_dir(dir.path().join(".memry/icons")).expect("icons");
+    let planted = dir.path().join(".memry/icons/p.png");
+    std::os::unix::fs::symlink(outside.path(), &planted).expect("plant the link");
+
+    write_icon(dir.path(), "p", "png", b"\x89PNG new").expect("write");
+    assert_eq!(
+        fs::read(outside.path()).expect("outside"),
+        b"not the vault's"
+    );
+    let meta = fs::symlink_metadata(&planted).expect("icon");
+    assert!(meta.file_type().is_file(), "{meta:?}");
+    assert_eq!(icon(dir.path(), "p.png"), b"\x89PNG new");
 }
 
 #[test]

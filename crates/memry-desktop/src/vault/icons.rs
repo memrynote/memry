@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use super::fs_atomic::{RETRY_DELAYS_MS, WriteError, atomic_replace_checked};
 use super::layout::{ICONS_DIR, MEMRY_DIR};
-use super::svg::sanitize_svg_bytes;
+use super::svg::{MAX_SVG_BYTES, sanitize_svg_bytes};
 
 #[derive(Debug, thiserror::Error)]
 pub enum IconError {
@@ -27,6 +27,10 @@ pub enum IconError {
     /// An SVG with nothing usable left after sanitizing (`VaultErrorCode.CORRUPTED`).
     #[error("custom icon {0} is not a usable SVG")]
     UnusableSvg(String),
+    /// An SVG over [`MAX_SVG_BYTES`]. Electron's sanitized output can grow to about six times
+    /// its 2 MiB upload cap, so an icon an Electron build synced can land here.
+    #[error("custom icon {id} is {bytes} bytes, over the {MAX_SVG_BYTES}-byte SVG limit")]
+    TooLarge { id: String, bytes: usize },
     #[error(transparent)]
     Io(#[from] io::Error),
     #[error(transparent)]
@@ -59,6 +63,9 @@ pub fn icon_path(vault: &Path, id: &str, ext: &str) -> Result<PathBuf, IconError
 /// Writes (or replaces) one icon's bytes and returns its path. An `svg` is sanitized first;
 /// bytes with no usable SVG left write nothing.
 ///
+/// Sanitizing is CPU and memory work linear in the bytes, up to about seven times them at the
+/// cap. A caller on an async runtime runs this on a blocking thread, one icon at a time.
+///
 /// The icons folder is created inside `.memry`, never `.memry` itself: a vault whose folder is
 /// away (a drive unplugged) fails the write instead of growing a stray copy of its root. The
 /// write is atomic, where Electron wrote the file in place.
@@ -66,6 +73,12 @@ pub fn write_icon(vault: &Path, id: &str, ext: &str, bytes: &[u8]) -> Result<Pat
     let path = icon_path(vault, id, ext)?;
     let sanitized;
     let bytes = if ext.eq_ignore_ascii_case("svg") {
+        if bytes.len() > MAX_SVG_BYTES {
+            return Err(IconError::TooLarge {
+                id: id.to_owned(),
+                bytes: bytes.len(),
+            });
+        }
         sanitized =
             sanitize_svg_bytes(bytes).ok_or_else(|| IconError::UnusableSvg(id.to_owned()))?;
         &sanitized[..]
