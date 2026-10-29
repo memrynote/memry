@@ -84,7 +84,10 @@
 //!   writer, which the pass also reads the body under, so an entry the pass did not see is
 //!   stamped after the pass's stamp. The stamps are this device's clock: an entry stamped in
 //!   the same millisecond as its row, or before it by a clock set back, is not seen, and that
-//!   file waits for the note's next edit.
+//!   file waits for the note's next edit. A note whose pass keeps its file for good (a file
+//!   ahead of its body, a body that would not write whole) stamps nothing, so it stays behind: every open
+//!   reads its file again (a refresh, which keeps the stamp) and runs its pass again, which
+//!   keeps the file again.
 //! - **A deleted note's file goes to the OS trash, never away for good, and only while it is
 //!   the file the note held** ([`Pass::trash_deleted`]). Before its passes, the open
 //!   reconcile moves to the trash the file of every tombstoned note and journal day

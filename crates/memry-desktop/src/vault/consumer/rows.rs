@@ -260,7 +260,11 @@ impl Lane<'_> {
 
     /// Records the row stamped now: the caller read the file now and, with a hash, the body
     /// holds it now (a feed that just took it). The stamp's one meaning is
-    /// `memry_core::domain::note_files::NoteFile::indexed_at`.
+    /// `memry_core::domain::note_files::NoteFile::indexed_at`. It is taken after the feed's
+    /// commit and before this write's hop to the database writer: an app edit committed in
+    /// between is stamped before the row and is not seen behind, so only a crash in those
+    /// milliseconds, before that edit's own pass, leaves its file lagging. A stamp taken before
+    /// the feed would instead put the feed's own commit after it, and every fed note behind.
     pub(crate) fn put(&mut self, note_id: &str, path: &str, stat: RowStat) -> Result<(), RowError> {
         self.put_as_of(note_id, path, stat, now_ms())
     }
