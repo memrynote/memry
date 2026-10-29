@@ -38,6 +38,25 @@ test('check-renderer-no-sync-host', async (t) => {
     }
   })
 
+  await t.test('matches the host, not a substring of the URL', () => {
+    for (const source of [
+      "await fetch('https://memrynote.com.evil.test/x')",
+      "await fetch('https://notmemrynote.com/x')",
+      "await fetch('https://example.com/?next=memrynote.com')",
+      "const host = 'memrynote.com.evil.test'\nawait fetch(host)"
+    ]) {
+      assert.deepEqual(findSyncHostRequests(source), [], source)
+    }
+    for (const source of [
+      "await fetch('https://SYNC.MemryNote.com/x')",
+      "await fetch('https://memrynote.com/api')",
+      "await fetch('https://sync.memrynote.com:8443/x')",
+      "const host = 'sync.memrynote.com'\nawait fetch(host)"
+    ]) {
+      assert.equal(findSyncHostRequests(source).length, 1, source)
+    }
+  })
+
   await t.test('a comment marker inside a string does not hide the code after it', () => {
     for (const source of [
       "const accept = 'image/*'\nawait fetch('https://sync.memrynote.com/x')\nconst done = '*/'",

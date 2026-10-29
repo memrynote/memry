@@ -103,7 +103,11 @@ mod macos {
 
     impl Drop for Item {
         fn drop(&mut self) {
-            let _ = security_framework::passwords::delete_generic_password(&self.0, &self.1);
+            if let Err(error) =
+                security_framework::passwords::delete_generic_password(&self.0, &self.1)
+            {
+                eprintln!("live cleanup: Keychain item {}/{}: {error}", self.0, self.1);
+            }
         }
     }
 
@@ -193,24 +197,24 @@ mod linux {
 
     use super::*;
 
-    fn secret_tool(args: &[&str], stdin: Option<&str>) -> bool {
+    /// Runs `secret-tool` and answers whether it succeeded. Never panics, so a guard's drop can
+    /// call it while a failed test unwinds.
+    fn run_secret_tool(args: &[&str], stdin: Option<&str>) -> std::io::Result<bool> {
         let mut child = Command::new("secret-tool")
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .spawn()
-            .expect("secret-tool is installed");
-        if let Some(input) = stdin {
-            child
-                .stdin
-                .as_mut()
-                .unwrap()
-                .write_all(input.as_bytes())
-                .unwrap();
+            .spawn()?;
+        if let (Some(input), Some(pipe)) = (stdin, child.stdin.as_mut()) {
+            pipe.write_all(input.as_bytes())?;
         }
         drop(child.stdin.take());
-        child.wait().unwrap().success()
+        Ok(child.wait()?.success())
+    }
+
+    fn secret_tool(args: &[&str], stdin: Option<&str>) -> bool {
+        run_secret_tool(args, stdin).expect("secret-tool is installed")
     }
 
     /// A `secret-tool` item, cleared when the test ends, pass or fail.
@@ -229,7 +233,11 @@ mod linux {
         fn drop(&mut self) {
             let mut args = vec!["clear"];
             args.extend(&self.0);
-            secret_tool(&args, None);
+            match run_secret_tool(&args, None) {
+                Ok(true) => {}
+                Ok(false) => eprintln!("live cleanup: `secret-tool clear {:?}` failed", self.0),
+                Err(error) => eprintln!("live cleanup: `secret-tool` did not run: {error}"),
+            }
         }
     }
 
@@ -413,7 +421,9 @@ mod windows_live {
     impl Drop for Cred {
         fn drop(&mut self) {
             // SAFETY: `self.0` is a live wide string for the call.
-            let _ = unsafe { CredDeleteW(&self.0, CRED_TYPE_GENERIC, None) };
+            if let Err(error) = unsafe { CredDeleteW(&self.0, CRED_TYPE_GENERIC, None) } {
+                eprintln!("live cleanup: credential {}: {error}", self.0);
+            }
         }
     }
 
