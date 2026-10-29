@@ -81,14 +81,18 @@ pub fn clear(dir: &Path) {
 /// probe costs the guard, never the launch.
 pub const UPDATER_PROBE_TIMEOUT: Duration = Duration::from_secs(2);
 
-/// Whether Velopack's updater of this bundle runs: `pgrep -f` on
-/// `<bundle>/Contents/MacOS/UpdateMac`, anchored so a process that only names the path (a
-/// `tail -f` of its log) does not count. A timeout, a failed spawn or any exit status but 0
-/// is not running: the guard fails open (`isShipItProcessAlive`).
+/// Whether Velopack's updater of this bundle runs: `pgrep -f` for an `UpdateMac` whose
+/// `--root` is this bundle. Velopack starts `<bundle>/Contents/MacOS/UpdateMac apply ... --root
+/// <bundle> --packageDir ...` (velopack `manager.rs` `unsafe_apply_updates`); matching the root
+/// rather than the executable path also finds an updater run from a copy, and never a process
+/// that only names the path (a `tail -f` of its log). A timeout, a failed spawn or any exit
+/// status but 0 is not running: the guard fails open (`isShipItProcessAlive`).
 #[cfg(unix)]
 pub fn updater_alive(bundle: &Path) -> bool {
-    let updater = bundle.join("Contents").join("MacOS").join("UpdateMac");
-    let pattern = format!("^{}( |$)", regex::escape(&updater.to_string_lossy()));
+    let pattern = format!(
+        "UpdateMac .*--root {}( |$)",
+        regex::escape(&bundle.to_string_lossy())
+    );
     let child = std::process::Command::new("pgrep")
         .arg("-f")
         .arg(pattern)
@@ -224,32 +228,50 @@ mod tests {
         assert!(!should_guard(Some(&marker()), VERSION, 2_000, || false));
     }
 
-    /// A real process at the updater's path, in a bundle path with the characters a regex would
-    /// read as syntax.
+    /// A process that looks like the updater, started as `UpdateMac` with this bundle as its
+    /// root, from the bundle or from a copy elsewhere.
+    #[cfg(unix)]
+    fn fake_updater(exe: &Path, root: &Path) -> std::process::Child {
+        use std::os::unix::process::CommandExt;
+        // `; :` keeps the shell from replacing itself with `sleep`, which would drop the arguments.
+        std::process::Command::new("/bin/sh")
+            .arg0(exe)
+            .args(["-c", "sleep 30; :", "apply", "--root"])
+            .arg(root)
+            .args(["--packageDir", "/tmp/packages"])
+            .spawn()
+            .unwrap()
+    }
+
+    #[cfg(unix)]
+    fn seen_within_a_second(bundle: &Path) -> bool {
+        (0..50).any(|_| {
+            std::thread::sleep(Duration::from_millis(20));
+            updater_alive(bundle)
+        })
+    }
+
+    /// In a bundle path with the characters a regex would read as syntax.
     #[cfg(unix)]
     #[test]
     fn finds_the_running_updater_of_this_bundle_only() {
         let root = tempfile::tempdir().unwrap();
         let bundle = root.path().join("Memry (rehearsal) [1]+.app");
-        let macos = bundle.join("Contents/MacOS");
-        std::fs::create_dir_all(&macos).unwrap();
-        std::os::unix::fs::symlink("/bin/sleep", macos.join("UpdateMac")).unwrap();
+        let other = root.path().join("Memry (rehearsal) [2]+.app");
         assert!(!updater_alive(&bundle));
 
-        let mut updater = std::process::Command::new(macos.join("UpdateMac"))
-            .arg("30")
-            .spawn()
-            .unwrap();
-        let found = (0..50).any(|_| {
-            std::thread::sleep(Duration::from_millis(20));
-            updater_alive(&bundle)
-        });
-        let other = root.path().join("Memry (rehearsal) [2]+.app");
-        let other_found = updater_alive(&other);
-        updater.kill().unwrap();
-        updater.wait().unwrap();
-        assert!(found, "the running updater is found");
-        assert!(!other_found, "another bundle's path does not match");
+        for exe in [
+            bundle.join("Contents/MacOS/UpdateMac"),
+            root.path().join("copy/UpdateMac"),
+        ] {
+            let mut updater = fake_updater(&exe, &bundle);
+            let found = seen_within_a_second(&bundle);
+            let other_found = updater_alive(&other);
+            updater.kill().unwrap();
+            updater.wait().unwrap();
+            assert!(found, "the running updater is found: {exe:?}");
+            assert!(!other_found, "another bundle does not match: {exe:?}");
+        }
         assert!(!updater_alive(&bundle));
     }
 
