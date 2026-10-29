@@ -47,7 +47,15 @@ fn an_oversized_marker_file_is_refused_and_consumed() {
     )
     .unwrap();
     assert_eq!(
-        marker::detect(dir.path(), "2026.1015.1", || WindowsInstallLayout::Velopack),
+        marker::detect(
+            dir.path(),
+            &marker::Build {
+                version: "2026.1015.1",
+                channel: None,
+                arch: None
+            },
+            || WindowsInstallLayout::Velopack
+        ),
         None
     );
     assert!(!attempt.exists());
@@ -147,8 +155,9 @@ proptest! {
     #[test]
     fn a_written_marker_reads_back(from in "[0-9]{4}\\.[0-9]{3,4}\\.[0-9]{1,3}", to in proptest::option::of("v[0-9a-z.-]{1,20}"), now in 0u64..4_102_444_800_000) {
         let dir = tempfile::tempdir().unwrap();
-        marker::write_started(dir.path(), &from, to.as_deref(), Some(marker::Installer::Velopack), now);
-        let detected = marker::detect(dir.path(), &from, || unreachable!()).unwrap();
+        let build = marker::Build { version: &from, channel: Some("win"), arch: Some("aarch64") };
+        marker::write_started(dir.path(), &build, to.as_deref(), Some(marker::Installer::Velopack), now);
+        let detected = marker::detect(dir.path(), &build, || unreachable!()).unwrap();
         prop_assert_eq!(&detected.attempt.from_version, &from);
         prop_assert_eq!(&detected.attempt.to_version, &to);
         prop_assert_eq!(detected.attempt.duration_ms(now), Some(0));

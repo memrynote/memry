@@ -6,6 +6,7 @@
 
 use std::error::Error as _;
 use std::io;
+use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::{Mutex, PoisonError};
 
@@ -34,6 +35,8 @@ pub struct VelopackBackend {
     manager: UpdateManager,
     switch: channel::Switch,
     current: semver::Version,
+    /// The channel `sq.version` memorized, which the install marker records.
+    channel: String,
     /// The release the last check found, or the one an earlier run left on disk; `download` and
     /// `apply` act on it. An up-to-date check keeps it: the service keeps a downloaded update
     /// through such a check (a release pulled from the feed), and the next quit installs this.
@@ -48,15 +51,17 @@ impl VelopackBackend {
         let manager = UpdateManager::new(AutoSource::new(FEED_URL), Some(switch.options()), None)
             .map_err(|error| error.to_string())?;
         let current = manager.get_current_version();
+        let channel = installed_channel();
         tracing::info!(
             scope = "Updater",
             "velopack: current={current} channel={} feed={FEED_URL}",
-            switch.describe(&installed_channel()),
+            switch.describe(&channel),
         );
         Ok(Self {
             manager,
             switch,
             current,
+            channel,
             pending: Mutex::new(None),
         })
     }
@@ -64,6 +69,10 @@ impl VelopackBackend {
     /// The installed version (`sq.version`), which the app reports as its own.
     pub fn current_version(&self) -> String {
         self.current.to_string()
+    }
+
+    pub fn channel(&self) -> String {
+        self.channel.clone()
     }
 
     fn set_pending(&self, info: Option<UpdateInfo>) {
@@ -79,6 +88,28 @@ impl VelopackBackend {
                 UpdateError::new(UpdateErrorKind::Other, "No update available to download")
             })
     }
+}
+
+/// The running install as Velopack's updater sees it, for the boot guard.
+pub struct Installed {
+    /// `sq.version`.
+    pub version: String,
+    /// The `--root` the updater is started with: the `.app` bundle on macOS, the AppImage on
+    /// Linux (velopack `manager.rs` `unsafe_apply_updates`).
+    pub root: PathBuf,
+}
+
+/// Read without an update manager. `None` outside a Velopack install.
+pub fn installed() -> Option<Installed> {
+    velopack::locator::auto_locate_app_manifest(velopack::locator::LocationContext::FromCurrentExe)
+        .ok()
+        .map(|locator| Installed {
+            version: locator.get_manifest_version().to_string(),
+            #[cfg(target_os = "linux")]
+            root: locator.get_appimage_path(),
+            #[cfg(not(target_os = "linux"))]
+            root: locator.get_root_dir(),
+        })
 }
 
 /// The channel is memorized in the installed `sq.version`; `UpdateManager` does not expose it.

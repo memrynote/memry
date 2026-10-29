@@ -10,8 +10,10 @@ fn main() {
     // downloaded update at launch: this may be a second instance (a deep link, a file open, the
     // Start menu) or the crash monitor, and the install would kill the running instance before it
     // saved. Only the running instance's quit installs (`UpdaterService::adopt_downloaded`).
+    // A launch the updater itself started is never the old build relaunched mid-install.
     velopack::VelopackApp::build()
         .set_auto_apply_on_startup(false)
+        .on_restarted(|_| memry_tauri::updater::relaunch_guard::note_launched_by_updater())
         .run();
 
     // Step 35 (#3552): --cli dispatch

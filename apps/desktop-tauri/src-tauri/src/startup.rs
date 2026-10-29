@@ -118,11 +118,13 @@ impl<R: Runtime> Stages<R> {
     }
 
     /// Runs the registrations stage by stage in enum order and in registration order inside a
-    /// stage. `Schedulers` registrations are skipped once `shutting_down` reports true.
+    /// stage. `Schedulers` registrations are skipped once `shutting_down` reports true, and
+    /// nothing runs after a registration that leaves `halted` true.
     pub fn run(
         &self,
         app: &AppHandle<R>,
         shutting_down: impl Fn() -> bool,
+        halted: impl Fn() -> bool,
     ) -> Result<(), StageFailure> {
         let mut ordered: Vec<_> = self.entries.iter().collect();
         // Stable: equal stages keep their registration order.
@@ -137,6 +139,10 @@ impl<R: Runtime> Stages<R> {
                 name,
                 error,
             })?;
+            if halted() {
+                tracing::info!(stage = ?stage, name, "boot halted");
+                break;
+            }
         }
         Ok(())
     }
@@ -144,6 +150,7 @@ impl<R: Runtime> Stages<R> {
 
 static STAGES: OnceLock<Mutex<Stages<Wry>>> = OnceLock::new();
 static SHUTDOWN_STARTED: AtomicBool = AtomicBool::new(false);
+static BOOT_HALTED: AtomicBool = AtomicBool::new(false);
 
 fn stages() -> &'static Mutex<Stages<Wry>> {
     STAGES.get_or_init(|| Mutex::new(Stages::default()))
@@ -162,7 +169,19 @@ pub fn run_registered(app: &AppHandle<Wry>) -> Result<(), StageFailure> {
     stages()
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
-        .run(app, shutdown_started)
+        .run(app, shutdown_started, boot_halted)
+}
+
+/// Ends the boot after the calling registration, with no startup-error window: the app runs
+/// only for what that registration started, and quits on its own (the macOS relaunch guard's
+/// splash, `updater::relaunch_guard`). The managed state of later stages never exists, so the
+/// run loop handles a halted boot apart (`shutdown::on_run_event`).
+pub fn halt_boot() {
+    BOOT_HALTED.store(true, Ordering::SeqCst);
+}
+
+pub fn boot_halted() -> bool {
+    BOOT_HALTED.load(Ordering::SeqCst)
 }
 
 /// True once the shutdown sequence of Step 11 (#3528) has started.

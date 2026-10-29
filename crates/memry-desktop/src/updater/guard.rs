@@ -10,6 +10,7 @@
 //! live updater process is the only signal next to the marker.
 
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Value;
@@ -76,19 +77,89 @@ pub fn clear(dir: &Path) {
     }
 }
 
+/// How long the process probe may take. Past it the updater counts as not running, so a hung
+/// probe costs the guard, never the launch.
+pub const UPDATER_PROBE_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// Whether Velopack's updater of this bundle runs: `pgrep -f` for an `UpdateMac` whose
+/// `--root` is this bundle. Velopack starts `<bundle>/Contents/MacOS/UpdateMac apply ... --root
+/// <bundle> --packageDir ...` (velopack `manager.rs` `unsafe_apply_updates`); matching the root
+/// rather than the executable path also finds an updater run from a copy, and never a process
+/// that only names the path (a `tail -f` of its log). A timeout, a failed spawn or any answer but
+/// "found" is not running: the guard fails open (`isShipItProcessAlive`).
+#[cfg(unix)]
+pub fn updater_alive(bundle: &Path) -> bool {
+    let pattern = format!(
+        "UpdateMac .*--root {}( |$)",
+        regex::escape(&bundle.to_string_lossy())
+    );
+    // The absolute path: a launch from Finder or the Dock gets a minimal `PATH`.
+    let child = std::process::Command::new("/usr/bin/pgrep")
+        .arg("-f")
+        .arg(pattern)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn();
+    let mut child = match child {
+        Ok(child) => child,
+        Err(error) => {
+            tracing::warn!(scope = "UpdaterGuard", "could not run pgrep: {error}");
+            return false;
+        }
+    };
+    let deadline = std::time::Instant::now() + UPDATER_PROBE_TIMEOUT;
+    loop {
+        match child.try_wait() {
+            // 0: a process matched; 1: none did. Anything else is pgrep failing.
+            Ok(Some(status)) => match status.code() {
+                Some(0) => return true,
+                Some(1) => return false,
+                _ => {
+                    tracing::warn!(
+                        scope = "UpdaterGuard",
+                        "pgrep failed, the updater counts as not running: {status}"
+                    );
+                    return false;
+                }
+            },
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            outcome => {
+                tracing::warn!(
+                    scope = "UpdaterGuard",
+                    "pgrep gave no answer, the updater counts as not running: {outcome:?}"
+                );
+                let _ = child.kill();
+                let _ = child.wait();
+                return false;
+            }
+        }
+    }
+}
+
 /// Whether this launch is the old build relaunched mid-install. Every signal must agree: the
-/// marker names this version, it is fresh, and the updater process is running. A failed
-/// install would otherwise strand the user on the splash. `updater_alive` runs last, so a
-/// normal boot never shells out.
+/// marker names this version, it is fresh, the updater did not start this launch, and the
+/// updater process is running. A failed install would otherwise strand the user on the splash.
+/// `updater_alive` runs last, so a normal boot never shells out.
+///
+/// `launched_by_updater`: Velopack's updater starts the app itself after Restart to install,
+/// and after a failed swap it starts the old build while it is still exiting
+/// (velopack `commands/apply.rs`), so that launch would otherwise find a live updater.
 pub fn should_guard(
     marker: Option<&PendingInstall>,
     current: &str,
     now_ms: i64,
+    launched_by_updater: bool,
     updater_alive: impl FnOnce() -> bool,
 ) -> bool {
     let Some(marker) = marker else {
         return false;
     };
+    if launched_by_updater {
+        return false;
+    }
     // A marker from the future (clock moved back, hand-edited file) is not fresh, and an absurd
     // timestamp must not overflow into "fresh". So a clock stepped back after the write turns the
     // guard off for that launch: the old build boots during the swap, which the guard exists to
@@ -114,11 +185,14 @@ mod tests {
 
     #[test]
     fn fires_when_every_signal_agrees_the_install_is_in_flight() {
-        assert!(should_guard(Some(&marker()), VERSION, 2_000, || true));
+        assert!(should_guard(Some(&marker()), VERSION, 2_000, false, || {
+            true
+        }));
         assert!(should_guard(
             Some(&marker()),
             VERSION,
             1_000 + PENDING_INSTALL_FRESH_MS,
+            false,
             || true
         ));
     }
@@ -126,16 +200,26 @@ mod tests {
     #[test]
     fn does_not_fire_without_a_marker_or_once_the_version_moved_on() {
         let never = || panic!("cheap checks fail first");
-        assert!(!should_guard(None, VERSION, 2_000, never));
-        assert!(!should_guard(Some(&marker()), "2026.702.4", 2_000, never));
+        assert!(!should_guard(None, VERSION, 2_000, false, never));
+        assert!(!should_guard(
+            Some(&marker()),
+            "2026.702.4",
+            2_000,
+            false,
+            never
+        ));
     }
 
     #[test]
     fn does_not_fire_for_a_stale_marker() {
         let stale = 1_000 + PENDING_INSTALL_FRESH_MS + 1;
-        assert!(!should_guard(Some(&marker()), VERSION, stale, || panic!(
-            "no pgrep for a stale marker"
-        )));
+        assert!(!should_guard(
+            Some(&marker()),
+            VERSION,
+            stale,
+            false,
+            || panic!("no pgrep for a stale marker")
+        ));
     }
 
     #[test]
@@ -144,9 +228,13 @@ mod tests {
             from_version: VERSION.into(),
             created_at: 2_000 + 60 * 60 * 1000,
         };
-        assert!(!should_guard(Some(&ahead), VERSION, 2_000, || panic!(
-            "no pgrep for a future marker"
-        )));
+        assert!(!should_guard(
+            Some(&ahead),
+            VERSION,
+            2_000,
+            false,
+            || panic!("no pgrep for a future marker")
+        ));
     }
 
     #[test]
@@ -162,19 +250,81 @@ mod tests {
             };
             for now in nows {
                 assert!(
-                    !should_guard(Some(&marker), VERSION, now, || true),
+                    !should_guard(Some(&marker), VERSION, now, false, || true),
                     "{created_at} {now}"
                 );
             }
         }
         // `-1e300` in the file saturates to `i64::MIN`.
         let parsed = parse(br#"{"fromVersion":"2026.702.2","createdAt":-1e300}"#).unwrap();
-        assert!(!should_guard(Some(&parsed), VERSION, 2_000, || true));
+        assert!(!should_guard(Some(&parsed), VERSION, 2_000, false, || true));
     }
 
     #[test]
     fn does_not_fire_when_no_updater_is_running() {
-        assert!(!should_guard(Some(&marker()), VERSION, 2_000, || false));
+        assert!(!should_guard(
+            Some(&marker()),
+            VERSION,
+            2_000,
+            false,
+            || false
+        ));
+    }
+
+    /// After a failed swap the updater starts the old build and exits: every other signal says
+    /// the install is in flight.
+    #[test]
+    fn does_not_fire_for_the_launch_the_updater_started() {
+        assert!(!should_guard(Some(&marker()), VERSION, 2_000, true, || {
+            true
+        }));
+    }
+
+    /// A process that looks like the updater, started as `UpdateMac` with this bundle as its
+    /// root, from the bundle or from a copy elsewhere.
+    #[cfg(unix)]
+    fn fake_updater(exe: &Path, root: &Path) -> std::process::Child {
+        use std::os::unix::process::CommandExt;
+        // `; :` keeps the shell from replacing itself with `sleep`, which would drop the arguments.
+        std::process::Command::new("/bin/sh")
+            .arg0(exe)
+            .args(["-c", "sleep 30; :", "apply", "--root"])
+            .arg(root)
+            .args(["--packageDir", "/tmp/packages"])
+            .spawn()
+            .unwrap()
+    }
+
+    #[cfg(unix)]
+    fn seen_within_a_second(bundle: &Path) -> bool {
+        (0..50).any(|_| {
+            std::thread::sleep(Duration::from_millis(20));
+            updater_alive(bundle)
+        })
+    }
+
+    /// In a bundle path with the characters a regex would read as syntax.
+    #[cfg(unix)]
+    #[test]
+    fn finds_the_running_updater_of_this_bundle_only() {
+        let root = tempfile::tempdir().unwrap();
+        let bundle = root.path().join("Memry (rehearsal) [1]+.app");
+        let other = root.path().join("Memry (rehearsal) [2]+.app");
+        assert!(!updater_alive(&bundle));
+
+        for exe in [
+            bundle.join("Contents/MacOS/UpdateMac"),
+            root.path().join("copy/UpdateMac"),
+        ] {
+            let mut updater = fake_updater(&exe, &bundle);
+            let found = seen_within_a_second(&bundle);
+            let other_found = updater_alive(&other);
+            updater.kill().unwrap();
+            updater.wait().unwrap();
+            assert!(found, "the running updater is found: {exe:?}");
+            assert!(!other_found, "another bundle does not match: {exe:?}");
+        }
+        assert!(!updater_alive(&bundle));
     }
 
     #[test]

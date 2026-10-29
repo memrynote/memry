@@ -10,6 +10,12 @@ pub mod stall;
 use crate::startup::{self, Stage};
 
 pub fn register_stages() {
+    // First: on macOS it may end the boot before anything of the old bundle starts.
+    startup::register(
+        Stage::Guards,
+        "updater relaunch guard",
+        crate::updater::relaunch_guard::apply,
+    );
     startup::register(Stage::Guards, "start crash dumps", crash_dump::start);
     startup::register(Stage::Guards, "apply gpu guard", gpu::apply);
     startup::register(Stage::Guards, "start stall monitor", stall::start);

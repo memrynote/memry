@@ -1,4 +1,5 @@
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use memry_tauri::commands::error::{CommandError, ErrorKind};
 use memry_tauri::startup::{Stage, Stages, StartupState, script};
@@ -50,7 +51,9 @@ fn startup_stages_run_in_enum_order_then_registration_order() {
     stages.register(Stage::Schedulers, "d", d);
     ORDER.lock().expect("lock").clear();
 
-    stages.run(app.handle(), || false).expect("all stages pass");
+    stages
+        .run(app.handle(), || false, || false)
+        .expect("all stages pass");
 
     assert_eq!(
         ORDER.lock().expect("lock").as_slice(),
@@ -69,7 +72,9 @@ fn startup_skips_schedulers_once_shutdown_started() {
     stages.register(Stage::Schedulers, "d", d);
     ORDER.lock().expect("lock").clear();
 
-    stages.run(app.handle(), || true).expect("stages pass");
+    stages
+        .run(app.handle(), || true, || false)
+        .expect("stages pass");
 
     assert_eq!(ORDER.lock().expect("lock").as_slice(), ["paths"]);
 }
@@ -86,13 +91,42 @@ fn startup_failure_names_the_stage_and_stops_later_stages() {
     ORDER.lock().expect("lock").clear();
 
     let failure = stages
-        .run(app.handle(), || false)
+        .run(app.handle(), || false, || false)
         .expect_err("a stage fails");
 
     assert_eq!(failure.stage, Stage::Logging);
     assert_eq!(failure.name, "failing stage");
     assert_eq!(failure.error.code, "boom");
     assert!(ORDER.lock().expect("lock").is_empty());
+}
+
+fn halting(_: &AppHandle<MockRuntime>) -> Result<(), CommandError> {
+    record("relaunch guard");
+    HALTED.store(true, Ordering::SeqCst);
+    Ok(())
+}
+
+static HALTED: AtomicBool = AtomicBool::new(false);
+
+/// The macOS relaunch guard ends the boot in its stage: the crash monitor registered after it in
+/// the same stage would start a child of the old bundle, and the window would boot the old build.
+#[test]
+fn nothing_runs_after_a_registration_halts_the_boot() {
+    let _turn = TURN
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let app = mock_app();
+    let mut stages = Stages::<MockRuntime>::default();
+    stages.register(Stage::Window, "a", a);
+    stages.register(Stage::Guards, "relaunch guard", halting);
+    stages.register(Stage::Guards, "b", b);
+    ORDER.lock().expect("lock").clear();
+
+    stages
+        .run(app.handle(), || false, || HALTED.load(Ordering::SeqCst))
+        .expect("a halt is not a failure");
+
+    assert_eq!(ORDER.lock().expect("lock").as_slice(), ["relaunch guard"]);
 }
 
 #[test]

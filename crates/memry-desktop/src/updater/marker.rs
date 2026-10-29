@@ -57,6 +57,40 @@ pub struct UpdateInstallAttempt {
     /// Markers written by Electron builds before the hand-off lack it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub installer: Option<Installer>,
+    /// The Velopack channel of the build that handed off. Electron and 38c builds wrote no
+    /// channel and no arch; a missing one matches any build.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from_channel: Option<String>,
+    /// `std::env::consts::ARCH` of the build that handed off.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from_arch: Option<String>,
+}
+
+/// A build as the marker identifies it. An install that changed the version, the channel or the
+/// architecture applied: the Windows ARM64 move installs the same version from the `win-arm64`
+/// channel as an `aarch64` build (`channel.rs` in the Tauri crate).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Build<'a> {
+    /// Raw `YYYY.MDD.N`.
+    pub version: &'a str,
+    /// The channel a Velopack install memorized; `None` outside one.
+    pub channel: Option<&'a str>,
+    pub arch: Option<&'a str>,
+}
+
+impl UpdateInstallAttempt {
+    /// Whether `current` is the build that wrote this marker, as far as the marker recorded it.
+    fn written_by(&self, current: &Build) -> bool {
+        self.from_version == current.version
+            && self
+                .from_channel
+                .as_deref()
+                .is_none_or(|channel| current.channel == Some(channel))
+            && self
+                .from_arch
+                .as_deref()
+                .is_none_or(|arch| current.arch == Some(arch))
+    }
 }
 
 impl UpdateInstallAttempt {
@@ -101,18 +135,20 @@ pub fn parse(raw: &[u8]) -> Option<UpdateInstallAttempt> {
         to_version: text("toVersion"),
         started_at: text("startedAt").unwrap_or_default(),
         installer: value.get("installer").and_then(Installer::parse),
+        from_channel: text("fromChannel"),
+        from_arch: text("fromArch"),
     })
 }
 
-/// Same version: the installer never applied. A hand-off marker on a new version proves the
-/// migration only when the app now runs from the Velopack layout. The layout is a thunk
-/// because only a hand-off marker needs the file system probe.
+/// Still the build that handed off: the installer never applied. A hand-off marker on a new
+/// build proves the migration only when the app now runs from the Velopack layout. The layout
+/// is a thunk because only a hand-off marker needs the file system probe.
 pub fn resolve_outcome(
     attempt: &UpdateInstallAttempt,
-    current: &str,
+    current: &Build,
     layout: impl FnOnce() -> WindowsInstallLayout,
 ) -> UpdateInstallOutcome {
-    if attempt.from_version == current {
+    if attempt.written_by(current) {
         UpdateInstallOutcome::DidNotApply
     } else if attempt.installer != Some(Installer::VelopackHandoff) {
         UpdateInstallOutcome::Applied
@@ -129,16 +165,18 @@ pub fn resolve_outcome(
 /// which only loses the diagnostic.
 pub fn write_started(
     dir: &Path,
-    from: &str,
+    from: &Build,
     to: Option<&str>,
     installer: Option<Installer>,
     now_ms: u64,
 ) {
     let attempt = UpdateInstallAttempt {
-        from_version: from.to_owned(),
+        from_version: from.version.to_owned(),
         to_version: to.filter(|v| !v.is_empty()).map(str::to_owned),
         started_at: iso(now_ms),
         installer,
+        from_channel: from.channel.map(str::to_owned),
+        from_arch: from.arch.map(str::to_owned),
     };
     let result = serde_json::to_vec(&attempt)
         .map_err(std::io::Error::other)
@@ -156,7 +194,7 @@ pub fn write_started(
 /// oversized.
 pub fn detect(
     dir: &Path,
-    current: &str,
+    current: &Build,
     layout: impl FnOnce() -> WindowsInstallLayout,
 ) -> Option<DetectedInstall> {
     let path = path(dir);
@@ -186,6 +224,15 @@ mod tests {
     /// The instant the fixtures were written, 2026-11-01T09:30:15.123Z.
     const WRITTEN_AT: u64 = 1_793_525_415_123;
 
+    /// A build the marker knows by version only, as Electron and 38c wrote it.
+    fn at(version: &str) -> Build<'_> {
+        Build {
+            version,
+            channel: None,
+            arch: None,
+        }
+    }
+
     fn fixture(name: &str) -> Vec<u8> {
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/electron/updater");
         std::fs::read(dir.join(name)).unwrap()
@@ -205,7 +252,7 @@ mod tests {
             "update-install-attempt.no-installer.json",
         ] {
             let dir = seeded(name);
-            let detected = detect(dir.path(), TAURI, || unreachable!("{name}")).unwrap();
+            let detected = detect(dir.path(), &at(TAURI), || unreachable!("{name}")).unwrap();
             assert_eq!(detected.outcome, Applied, "{name}");
             assert!(!path(dir.path()).exists(), "{name} consumed");
         }
@@ -214,7 +261,7 @@ mod tests {
     #[test]
     fn an_nsis_hand_off_to_tauri_is_migrated_only_in_the_velopack_layout() {
         let dir = seeded("update-install-attempt.velopack-handoff.json");
-        let detected = detect(dir.path(), TAURI, || Velopack).unwrap();
+        let detected = detect(dir.path(), &at(TAURI), || Velopack).unwrap();
         assert_eq!(detected.outcome, HandoffApplied);
         assert_eq!(
             detected.attempt,
@@ -223,12 +270,14 @@ mod tests {
                 to_version: Some("v2026-11-01".into()),
                 started_at: "2026-11-01T09:30:15.123Z".into(),
                 installer: Some(Installer::VelopackHandoff),
+                from_channel: None,
+                from_arch: None,
             }
         );
         for layout in [Nsis, Unknown] {
             let dir = seeded("update-install-attempt.velopack-handoff.json");
             assert_eq!(
-                detect(dir.path(), TAURI, || layout).unwrap().outcome,
+                detect(dir.path(), &at(TAURI), || layout).unwrap().outcome,
                 HandoffFellBack
             );
         }
@@ -237,7 +286,7 @@ mod tests {
     #[test]
     fn still_running_the_version_that_handed_off_did_not_apply() {
         let dir = seeded("update-install-attempt.velopack-handoff.json");
-        let detected = detect(dir.path(), ELECTRON, || Nsis).unwrap();
+        let detected = detect(dir.path(), &at(ELECTRON), || Nsis).unwrap();
         assert_eq!(detected.outcome, DidNotApply);
         assert_eq!(
             detected.attempt.duration_ms(WRITTEN_AT + 4_000),
@@ -264,7 +313,7 @@ mod tests {
         ] {
             write_started(
                 dir.path(),
-                ELECTRON,
+                &at(ELECTRON),
                 Some("v2026-11-01"),
                 installer,
                 WRITTEN_AT,
@@ -275,7 +324,7 @@ mod tests {
                 "{name}"
             );
         }
-        write_started(dir.path(), ELECTRON, Some(""), None, WRITTEN_AT);
+        write_started(dir.path(), &at(ELECTRON), Some(""), None, WRITTEN_AT);
         assert_eq!(
             std::fs::read(path(dir.path())).unwrap(),
             fixture("update-install-attempt.no-installer.json")
@@ -285,19 +334,19 @@ mod tests {
     #[test]
     fn no_marker_is_a_normal_launch_and_the_marker_is_read_once() {
         let dir = tempfile::tempdir().unwrap();
-        assert_eq!(detect(dir.path(), TAURI, || Velopack), None);
+        assert_eq!(detect(dir.path(), &at(TAURI), || Velopack), None);
         write_started(
             dir.path(),
-            TAURI,
+            &at(TAURI),
             Some("v2026-11-02"),
             Some(Installer::Velopack),
             WRITTEN_AT,
         );
         assert_eq!(
-            detect(dir.path(), TAURI, || Velopack).unwrap().outcome,
+            detect(dir.path(), &at(TAURI), || Velopack).unwrap().outcome,
             DidNotApply
         );
-        assert_eq!(detect(dir.path(), TAURI, || Velopack), None);
+        assert_eq!(detect(dir.path(), &at(TAURI), || Velopack), None);
     }
 
     #[test]
@@ -310,7 +359,7 @@ mod tests {
             "[]",
         ] {
             std::fs::write(path(dir.path()), raw).unwrap();
-            assert_eq!(detect(dir.path(), TAURI, || Velopack), None, "{raw}");
+            assert_eq!(detect(dir.path(), &at(TAURI), || Velopack), None, "{raw}");
             assert!(!path(dir.path()).exists(), "{raw}");
         }
     }
@@ -334,11 +383,116 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         write_started(
             &dir.path().join("missing/dir"),
-            TAURI,
+            &at(TAURI),
             None,
             None,
             WRITTEN_AT,
         );
+    }
+
+    /// The Windows ARM64 move: an x64 pack under emulation installs the same release from the
+    /// `win-arm64` channel, and the next launch is that release as an arm64 build.
+    #[test]
+    fn the_same_version_from_another_channel_or_arch_applied() {
+        let dir = tempfile::tempdir().unwrap();
+        let x64 = Build {
+            version: "2099.101.4",
+            channel: Some("win"),
+            arch: Some("x86_64"),
+        };
+        let cases = [
+            (x64, DidNotApply),
+            (
+                Build {
+                    channel: Some("win-arm64"),
+                    arch: Some("aarch64"),
+                    ..x64
+                },
+                Applied,
+            ),
+            (
+                Build {
+                    channel: Some("win-arm64"),
+                    ..x64
+                },
+                Applied,
+            ),
+            (
+                Build {
+                    arch: Some("aarch64"),
+                    ..x64
+                },
+                Applied,
+            ),
+            (
+                Build {
+                    channel: None,
+                    ..x64
+                },
+                Applied,
+            ),
+        ];
+        for (current, outcome) in cases {
+            write_started(
+                dir.path(),
+                &x64,
+                Some("v2099-01-01.4"),
+                Some(Installer::Velopack),
+                WRITTEN_AT,
+            );
+            assert_eq!(
+                detect(dir.path(), &current, || Velopack).unwrap().outcome,
+                outcome,
+                "{current:?}"
+            );
+        }
+    }
+
+    /// A 38c build wrote no channel or arch; the 38d build of the same version that reads it after
+    /// a failed swap is still the build that started the install.
+    #[test]
+    fn a_marker_without_channel_and_arch_still_catches_a_failed_install() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            path(dir.path()),
+            r#"{"fromVersion":"2099.101.7","toVersion":"v2099-01-01.8","startedAt":"2026-11-01T09:30:15.123Z","installer":"velopack"}"#,
+        )
+        .unwrap();
+        let current = Build {
+            version: "2099.101.7",
+            channel: Some("osx-arm64"),
+            arch: Some("aarch64"),
+        };
+        let detected = detect(dir.path(), &current, || Velopack).unwrap();
+        assert_eq!(detected.outcome, DidNotApply);
+        assert_eq!(
+            detected.attempt.to_version.as_deref(),
+            Some("v2099-01-01.8")
+        );
+    }
+
+    #[test]
+    fn records_the_channel_and_arch_after_the_electron_keys() {
+        let dir = tempfile::tempdir().unwrap();
+        let build = Build {
+            version: TAURI,
+            channel: Some("osx-arm64"),
+            arch: Some("aarch64"),
+        };
+        write_started(
+            dir.path(),
+            &build,
+            Some("v2026-11-02"),
+            Some(Installer::Velopack),
+            WRITTEN_AT,
+        );
+        assert_eq!(
+            std::fs::read_to_string(path(dir.path())).unwrap(),
+            r#"{"fromVersion":"2026.1101.1","toVersion":"v2026-11-02","startedAt":"2026-11-01T09:30:15.123Z","installer":"velopack","fromChannel":"osx-arm64","fromArch":"aarch64"}"#
+        );
+        let attempt = parse(&std::fs::read(path(dir.path())).unwrap()).unwrap();
+        assert_eq!(attempt.from_channel.as_deref(), Some("osx-arm64"));
+        assert_eq!(attempt.from_arch.as_deref(), Some("aarch64"));
     }
 
     #[test]
@@ -348,6 +502,8 @@ mod tests {
             to_version: None,
             started_at: String::new(),
             installer,
+            from_channel: None,
+            from_arch: None,
         };
         let handoff = Some(Installer::VelopackHandoff);
         let cases = [
@@ -372,7 +528,7 @@ mod tests {
         ];
         for (marker, current, layout, outcome) in cases {
             assert_eq!(
-                resolve_outcome(&marker, current, || layout),
+                resolve_outcome(&marker, &at(current), || layout),
                 outcome,
                 "{marker:?} {current}"
             );

@@ -2,11 +2,14 @@
 //! manages the one `UpdaterService`, forwards its state to every window, starts it after the main
 //! window shows, and plugs it into the quit through the shutdown update hook.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use memry_desktop::electron_import::profile::{ProfileEnv, locate_profile};
+use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::locale::LocaleService;
-use memry_desktop::paths::AppPaths;
+use memry_desktop::paths::{AppPaths, DEVICE_VAR};
 use memry_desktop::registry::AppConfig;
 use memry_desktop::shell::shutdown::UpdateApplyHook;
 use memry_desktop::updater::backend::UpdateBackend;
@@ -28,15 +31,31 @@ pub fn register_stages() {
 }
 
 mod channel;
+pub mod relaunch_guard;
 mod velopack_backend;
 
-/// The backend of this process, the version it reports and the delay before init.
+/// The backend of this process, the build it reports and how init runs.
 struct Chosen {
     backend: Option<Arc<dyn UpdateBackend>>,
     /// The installed Velopack version, which replaces the bundle's: the packs carry the release
     /// version only in `sq.version`.
     version: Option<String>,
-    delay: Duration,
+    channel: Option<String>,
+    plan: InitPlan,
+}
+
+impl Chosen {
+    fn none(delay: Duration) -> Self {
+        Self {
+            backend: None,
+            version: None,
+            channel: None,
+            plan: InitPlan {
+                delay,
+                electron_profile: false,
+            },
+        }
+    }
 }
 
 fn backend(app: &AppHandle<Wry>) -> Chosen {
@@ -44,29 +63,43 @@ fn backend(app: &AppHandle<Wry>) -> Chosen {
     if let Some(scripted) = scripted(app) {
         return Chosen {
             backend: Some(scripted),
-            version: None,
-            delay: Duration::ZERO,
+            ..Chosen::none(Duration::ZERO)
         };
     }
-    let _ = app;
-    match velopack_backend::VelopackBackend::new() {
-        Ok(velopack) => Chosen {
+    choose(&app.state::<LaunchEnv>(), || {
+        velopack_backend::VelopackBackend::new().map(|velopack| Chosen {
             version: Some(velopack.current_version()),
+            channel: Some(velopack.channel()),
             backend: Some(Arc::new(velopack)),
-            delay: INIT_DELAY,
-        },
-        Err(reason) => {
-            tracing::info!(
-                scope = "Updater",
-                "not a Velopack install, updates are off: {reason}"
-            );
-            Chosen {
-                backend: None,
-                version: None,
+            plan: InitPlan {
                 delay: INIT_DELAY,
-            }
-        }
+                electron_profile: true,
+            },
+        })
+    })
+}
+
+/// Every `MEMRY_DEVICE` profile has its own single-instance lock but shares the one install and
+/// its `packages` directory, so a second profile's quit could install while the default profile
+/// has its vault open, and the installer stops every process of the install (#3712). Only the
+/// default profile updates, and the Velopack install is not even opened for another one;
+/// `MEMRY_DEVICE` is a developer and test switch.
+fn choose(env: &LaunchEnv, velopack: impl FnOnce() -> Result<Chosen, String>) -> Chosen {
+    let device = env.get(DEVICE_VAR);
+    if device.is_some_and(|device| !device.is_empty()) {
+        tracing::info!(
+            scope = "Updater",
+            "updates are off for the {DEVICE_VAR} profile {device:?}; the default profile installs them"
+        );
+        return Chosen::none(INIT_DELAY);
     }
+    velopack().unwrap_or_else(|reason| {
+        tracing::info!(
+            scope = "Updater",
+            "not a Velopack install, updates are off: {reason}"
+        );
+        Chosen::none(INIT_DELAY)
+    })
 }
 
 /// `MEMRY_TEST_UPDATER=scripted` under an open e2e gate: the scripted backend, managed for the
@@ -110,10 +143,12 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let Chosen {
         backend,
         version,
-        delay,
+        channel,
+        plan,
     } = backend(app);
     let service = UpdaterService::new(UpdaterDeps {
         raw_version: version.unwrap_or_else(|| app.package_info().version.to_string()),
+        channel,
         backend,
         config: app.state::<Arc<AppConfig>>().inner().clone(),
         data_dir: app.state::<AppPaths>().data_dir.clone(),
@@ -123,14 +158,34 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         runtime: tauri::async_runtime::handle().inner().clone(),
     });
     app.manage(service.clone());
-    app.manage(InitDelay(delay));
+    app.manage(plan);
     app.state::<ShutdownService>()
         .set_update_hook(Arc::new(Hook(service.clone())));
     forward_state(app, &service);
     Ok(())
 }
 
-struct InitDelay(Duration);
+/// When the service starts, and whether it reads the Electron profile's install marker: only an
+/// installed app does, so a dev or e2e run never consumes the real profile's file.
+struct InitPlan {
+    delay: Duration,
+    electron_profile: bool,
+}
+
+/// The profile the last Electron build used, which holds the marker it wrote before it handed
+/// over to this app.
+fn electron_profile(env: &LaunchEnv) -> Option<PathBuf> {
+    match locate_profile(&ProfileEnv::from_host(env)?) {
+        Ok(profile) => profile.map(|profile| profile.dir),
+        Err(error) => {
+            tracing::warn!(
+                scope = "Updater",
+                "could not locate the Electron profile for its install marker: {error}"
+            );
+            None
+        }
+    }
+}
 
 /// Every state change reaches every window. The `watch` receiver keeps only the latest value, so
 /// a burst of progress ticks costs one event per wake.
@@ -151,10 +206,23 @@ pub fn on_window_shown(app: &AppHandle<Wry>) {
         return;
     };
     let service = service.inner().clone();
-    let delay = app.try_state::<InitDelay>().map_or(INIT_DELAY, |d| d.0);
+    let (delay, reads_profile) = app
+        .try_state::<InitPlan>()
+        .map_or((INIT_DELAY, false), |plan| {
+            (plan.delay, plan.electron_profile)
+        });
+    let env = app.state::<LaunchEnv>().inner().clone();
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(delay).await;
-        service.init();
+        // File reads: the markers, the health file and the Electron profile lookup.
+        let started = tauri::async_runtime::spawn_blocking(move || {
+            let profile = reads_profile.then(|| electron_profile(&env)).flatten();
+            service.init(profile.as_deref());
+        })
+        .await;
+        if let Err(error) = started {
+            tracing::error!(scope = "Updater", "updater init stopped: {error}");
+        }
     });
 }
 
@@ -189,5 +257,55 @@ impl UpdateApplyHook for Hook {
 
     fn apply_on_quit(&self) {
         self.0.apply_on_quit();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Chosen, DEVICE_VAR, INIT_DELAY, InitPlan, LaunchEnv, choose};
+
+    fn launch(device: Option<&str>) -> LaunchEnv {
+        let mut env = LaunchEnv::default();
+        if let Some(device) = device {
+            env.set(DEVICE_VAR, device);
+        }
+        env
+    }
+
+    fn velopack_install() -> Result<Chosen, String> {
+        Ok(Chosen {
+            version: Some("2099.101.9".to_owned()),
+            plan: InitPlan {
+                delay: INIT_DELAY,
+                electron_profile: true,
+            },
+            ..Chosen::none(INIT_DELAY)
+        })
+    }
+
+    #[test]
+    fn only_the_default_profile_updates_the_shared_install() {
+        for device in [None, Some("")] {
+            let chosen = choose(&launch(device), velopack_install);
+            assert_eq!(chosen.version.as_deref(), Some("2099.101.9"), "{device:?}");
+            assert!(chosen.plan.electron_profile, "{device:?}");
+        }
+        for device in ["b", "dev"] {
+            let chosen = choose(&launch(Some(device)), || {
+                panic!("{device}: the install is not opened")
+            });
+            assert!(
+                chosen.backend.is_none() && chosen.version.is_none(),
+                "{device}"
+            );
+            assert!(!chosen.plan.electron_profile, "{device}");
+        }
+    }
+
+    #[test]
+    fn outside_a_velopack_install_updates_are_off() {
+        let chosen = choose(&launch(None), || Err("no sq.version".to_owned()));
+        assert!(chosen.backend.is_none() && chosen.version.is_none());
+        assert!(!chosen.plan.electron_profile);
     }
 }

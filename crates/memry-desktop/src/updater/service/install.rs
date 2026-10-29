@@ -69,7 +69,7 @@ impl UpdaterService {
         let state = self.state();
         marker::write_started(
             &self.data_dir,
-            self.core.raw_version(),
+            &self.build(),
             state.available_version.as_deref(),
             Some(backend.installer()),
             now_ms(),

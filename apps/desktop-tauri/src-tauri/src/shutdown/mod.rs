@@ -217,6 +217,14 @@ pub fn on_window_destroyed(app: &AppHandle<Wry>, label: &str) {
 
 /// The `run` callback of the app.
 pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
+    // The boot ended early on purpose (the relaunch guard's splash): nothing but the log exists
+    // to shut down, and the exit it scheduled must pass.
+    if startup::boot_halted() {
+        if let RunEvent::Exit = event {
+            flush_log(app);
+        }
+        return;
+    }
     if crate::windows::startup_error::startup_failed() {
         on_run_event_after_failed_startup(app, event);
         return;

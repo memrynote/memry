@@ -394,6 +394,17 @@ jobs:
           codesign -dv /Applications/MemryNote.app 2>&1 | grep -E 'Identifier|TeamIdentifier'
           find "$HOME/Library/Logs" -name main.log -exec sh -c 'echo "== $1"; tail -20 "$1"' _ {} \;
           pgrep -fl MemryNote || true
+      # The marker the Electron build wrote before Squirrel.Mac swapped the bundle (#3555 38d).
+      - name: The first Tauri launch reads the Electron install marker
+        run: |
+          set -uo pipefail
+          logs() { cat "$HOME"/Library/Logs/com.memrynote.memry/*.log 2>/dev/null || true; }
+          pgrep -x MemryNote >/dev/null || open /Applications/MemryNote.app
+          for _ in $(seq 1 60); do logs | grep -F 'applied (installer' >/dev/null && break; sleep 2; done
+          logs | grep -F 'UpdateInstallMarker' || true
+          logs | grep -F 'applied (installer electron-updater)' || { echo "::error::the Tauri launch reported no Electron install"; exit 1; }
+          left="$(find "$HOME/Library/Application Support" -name update-install-attempt.json -not -path '*com.memrynote.memry*')"
+          [ -z "$left" ] || { echo "::error::the Electron marker was not consumed: $left"; exit 1; }
 
   proof-linux:
     name: L1 proof (Linux AppImage)
@@ -437,6 +448,16 @@ jobs:
           sleep 45
           find "$HOME" -name main.log -newer "$RUNNER_TEMP/before.sha" -exec sh -c 'echo "== $1"; tail -20 "$1"' _ {} \;
           tail -20 "$RUNNER_TEMP/electron.log"
+      # The marker the Electron build wrote before AppImageUpdater replaced the file (#3555 38d).
+      - name: The first Tauri launch reads the Electron install marker
+        run: |
+          set -uo pipefail
+          logs() { find "$HOME/.local/share/com.memrynote.memry" -name '*.log' -exec cat {} + 2>/dev/null || true; }
+          for _ in $(seq 1 60); do logs | grep -F 'applied (installer' >/dev/null && break; sleep 2; done
+          logs | grep -F 'UpdateInstallMarker' || true
+          logs | grep -F 'applied (installer electron-updater)' || { echo "::error::the Tauri launch reported no Electron install"; exit 1; }
+          left="$(find "$HOME/.config" -name update-install-attempt.json)"
+          [ -z "$left" ] || { echo "::error::the Electron marker was not consumed: $left"; exit 1; }
 
   # Proof mode (`tauri_base` set): an installed rehearsal build updates itself to `version`
   # through the in-app updater and installs on a normal quit. The base's full package is put
@@ -475,6 +496,101 @@ jobs:
           wait_log "velopack: current=$VERSION" 60
           wait_log "velopack: up-to-date" 60
           logs | grep -F 'Updater' | tail -20
+
+  # Proof mode: the boot side of an install (#3555 38d). On a read-only bundle the base's update to
+  # `version` fails, and the next launch offers the manual installer. Then a launch of the old
+  # bundle while the updater swaps it shows the "Installing update" splash and exits, and the swap
+  # completes.
+  proof-tauri-macos-boot:
+    name: M4 proof (failed install and relaunch guard, macOS arm64)
+    needs: validate
+    if: inputs.tauri_base != ''
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Fail an install, then relaunch mid-install
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          app=/Applications/MemryNote.app
+          data="$HOME/Library/Application Support/com.memrynote.memry"
+          logs() { cat "$HOME"/Library/Logs/com.memrynote.memry/*.log 2>/dev/null || true; }
+          wait_log() { for _ in $(seq 1 "$2"); do logs | grep -F "$1" >/dev/null && return 0; sleep 1; done; logs | grep -E 'Updater|UpdateInstallMarker' | tail -20; return 1; }
+          installed() { grep -E '<version>' "$app/Contents/Resources/sq.version"; }
+          # The app answers the quit with NSTerminateCancel and exits after its own sequence.
+          quit_app() { osascript -e 'tell application "MemryNote" to quit' || true; }
+          updater=""
+          # On any exit: the bundle writable again, a held updater released, the app log on failure.
+          finish() {
+            status=$?
+            chflags -R nouchg "$app" || true
+            [ -z "$updater" ] || kill -CONT "$updater" 2>/dev/null || true
+            [ "$status" -eq 0 ] || logs | grep -E 'Updater|UpdateInstallMarker|startup|Window' | tail -60
+          }
+          trap finish EXIT
+          mkdir -p shots "$data"
+          gh release download "rehearsal-$TAURI_BASE" --repo "$FEED_REPO" -p "MemryNote-$TAURI_BASE-arm64.zip" -D base
+          ditto -x -k "base/MemryNote-$TAURI_BASE-arm64.zip" /Applications
+          printf '{"updater":{"autoDownload":true}}' > "$data/memry-config.json"
+          open "$app"
+          wait_log "velopack: downloaded $VERSION" 600
+
+          echo "::group::Read-only bundle: the install fails and the next launch offers the manual installer"
+          chflags -R uchg "$app"
+          quit_app
+          for _ in $(seq 1 60); do pgrep -x MemryNote >/dev/null || pgrep -x UpdateMac >/dev/null || break; sleep 1; done
+          installed | grep -F "$TAURI_BASE"
+          chflags -R nouchg "$app"
+          open "$app"
+          wait_log 'update install did not apply' 120
+          sleep 5
+          screencapture -x shots/1-install-failed.png || true
+          [ ! -e "$data/update-install-attempt.json" ]
+          echo "::endgroup::"
+
+          echo "::group::Relaunch mid-install: splash, exit, and the swap completes"
+          quit_app
+          # The swap takes a second or two once the old process is gone, less than a launch needs
+          # to reach the guard, so the updater is held (SIGSTOP) while it waits for that process:
+          # the relaunch then lands mid-install every time, as a Dock click during a slow swap.
+          for _ in $(seq 1 300); do updater="$(pgrep -n -x UpdateMac || true)"; [ -n "$updater" ] && break; sleep 0.05; done
+          [ -n "$updater" ] || { echo "::error::the quit started no updater"; exit 1; }
+          kill -STOP "$updater"
+          ps -o pid,stat,command -p "$updater"
+          for _ in $(seq 1 300); do pgrep -x MemryNote >/dev/null || break; sleep 0.1; done
+          cat "$data/pending-update-install.json"; echo
+          shown="$(logs | grep -c 'main window shown' || true)"
+          halted="$(logs | grep -c 'boot halted' || true)"
+          opened="$(date +%s)"
+          open "$app"
+          for n in 1 2 3; do sleep 0.6; screencapture -x "shots/2-splash-$n.png" || true; done
+          # The guarded launch exits by itself 2 s after its decision, so no process may be left
+          # 5 to 6 s after the open (`date +%s` counts whole seconds); it must not boot on. `-x`
+          # matches the process name: the held updater's arguments name the bundle too.
+          while pgrep -x MemryNote >/dev/null && [ $(($(date +%s) - opened)) -lt 6 ]; do sleep 0.1; done
+          if pgrep -x MemryNote >/dev/null; then ps -o pid,command -p "$(pgrep -d, -x MemryNote)"; echo "::error::the guarded launch is still running"; exit 1; fi
+          wait_log 'pending update install in flight on launch' 10
+          [ "$(logs | grep -c 'boot halted')" -gt "$halted" ] || { echo "::error::the guarded launch did not halt its boot"; exit 1; }
+          [ "$(logs | grep -c 'main window shown')" -eq "$shown" ] || { echo "::error::the guarded launch showed the main window"; exit 1; }
+          installed | grep -F "$TAURI_BASE"
+          kill -CONT "$updater"
+          updater=""
+          for _ in $(seq 1 90); do installed | grep -qF "$VERSION" && break; sleep 1; done
+          installed | grep -F "$VERSION"
+          sleep 5
+          open "$app"
+          wait_log "velopack: current=$VERSION" 120
+          wait_log "the update from $TAURI_BASE applied (installer velopack)" 60
+          [ ! -e "$data/pending-update-install.json" ]
+          echo "::endgroup::"
+          logs | grep -E 'Updater|UpdateInstallMarker' | tail -30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m4-screenshots
+          path: shots/
+          if-no-files-found: warn
 
   proof-tauri-linux:
     name: L2 proof (Tauri to Tauri, AppImage)
