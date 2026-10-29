@@ -94,13 +94,14 @@ fn decode_media_target(encoded: &str) -> Option<String> {
 }
 
 /// The page of a `/e/` response. The iframe's referrer policy and the page's own make YouTube
-/// see `http://127.0.0.1:<port>` as the embedder.
+/// see `http://127.0.0.1:<port>` as the embedder. The iframe is a block box: inline, it sits on
+/// the text baseline and the page grows a few pixels taller than its frame, which scrolls.
 pub fn youtube_embed_html(video_id: &str) -> String {
     debug_assert!(is_video_id(video_id));
     format!(
         "<!doctype html><html><head><meta charset=\"utf-8\">\
 <meta name=\"referrer\" content=\"strict-origin-when-cross-origin\">\
-<style>html,body,iframe{{margin:0;width:100%;height:100%;border:0;background:#000}}</style>\
+<style>html,body,iframe{{margin:0;width:100%;height:100%;border:0;background:#000}}iframe{{display:block}}</style>\
 </head><body><iframe src=\"https://www.youtube-nocookie.com/embed/{video_id}?autoplay=1&amp;rel=0\" \
 referrerpolicy=\"strict-origin-when-cross-origin\" \
 allow=\"autoplay; encrypted-media; picture-in-picture\" allowfullscreen></iframe></body></html>"
