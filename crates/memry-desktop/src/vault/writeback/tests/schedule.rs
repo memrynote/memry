@@ -9,9 +9,13 @@ use super::super::schedule::{Cost, Runner, due_at};
 use super::super::{COOLDOWN_FACTOR, DEBOUNCE, MAX_COOLDOWN, WriteBack, WriteBackFailed};
 use super::*;
 
-/// Well under the debounce: a pass seen this soon did not wait for it.
+/// Well under the debounce: no pass may start within it.
 const SOON: Duration = Duration::from_millis(300);
 const WAIT: Duration = Duration::from_secs(10);
+/// Well short of [`MAX_COOLDOWN`]: after [`cool`], a pass that waited for its note's cooldown
+/// is not seen within this, however slow the machine. Bounds tied to the debounce flaked on a
+/// loaded runner.
+const SHORT_OF_COOLDOWN: Duration = Duration::from_secs(3);
 
 #[derive(Default)]
 struct Script {
@@ -80,6 +84,15 @@ impl Runner for Fake {
 fn start(fake: &Fake) -> (WriteBack, broadcast::Receiver<WriteBackFailed>) {
     let (tx, rx) = broadcast::channel(16);
     (WriteBack::start(fake.clone(), tx).unwrap(), rx)
+}
+
+/// Runs one pass of `id` that costs enough for the longest cooldown, so a pass of it that is
+/// not due now is due [`MAX_COOLDOWN`] after it.
+fn cool(fake: &Fake, writeback: &WriteBack, id: &str) {
+    fake.with(|s| s.took = MAX_COOLDOWN / COOLDOWN_FACTOR + Duration::from_millis(50));
+    writeback.schedule(id);
+    assert!(writeback.flush(WAIT));
+    fake.with(|s| s.took = Duration::ZERO);
 }
 
 fn eventually(what: &str, done: impl Fn() -> bool) {
@@ -171,6 +184,29 @@ fn the_next_pass_waits_for_the_cooldown_of_the_last() {
     assert!(gap >= Duration::from_millis(1750), "{gap:?}");
 }
 
+/// A schedule taken while the pass runs (or after it returned, before its cost was kept)
+/// waits for that pass's cooldown too, not only the debounce (#3718's merge-queue run).
+#[test]
+fn a_schedule_during_a_pass_waits_for_that_passs_cooldown() {
+    let fake = Fake::default();
+    fake.with(|s| {
+        s.shut = true;
+        s.took = Duration::from_millis(200);
+    });
+    let (writeback, _) = start(&fake);
+    writeback.schedule("n1");
+    eventually("the first pass", || fake.count() == 1);
+    writeback.schedule("n1");
+    fake.with(|s| s.shut = false);
+    eventually("the second pass", || fake.count() == 2);
+    let runs = fake.runs();
+    let gap = runs[1].1 - runs[0].2.unwrap();
+    assert!(
+        gap >= Duration::from_millis(200) * COOLDOWN_FACTOR,
+        "{gap:?}"
+    );
+}
+
 #[test]
 fn a_schedule_during_a_pass_gives_one_more_pass_after_it() {
     let fake = Fake::default();
@@ -189,16 +225,15 @@ fn a_schedule_during_a_pass_gives_one_more_pass_after_it() {
 #[test]
 fn a_flush_runs_every_scheduled_pass_now_and_waits_for_them() {
     let fake = Fake::default();
-    fake.with(|s| s.took = Duration::from_millis(20));
     let (writeback, _) = start(&fake);
+    cool(&fake, &writeback, "n1");
+    fake.with(|s| s.took = Duration::from_millis(20));
     for id in ["n1", "n2", "n3"] {
         writeback.schedule(id);
     }
-    let started = Instant::now();
-    assert!(writeback.flush(WAIT));
-    // Now: a flush that waited for the debounce would take at least that.
-    assert!(started.elapsed() < DEBOUNCE, "{:?}", started.elapsed());
-    assert_eq!(fake.finished(), 3);
+    // Now: a flush that waited for n1's cooldown would run out of this time.
+    assert!(writeback.flush(SHORT_OF_COOLDOWN));
+    assert_eq!(fake.finished(), 4);
     assert!(writeback.flush(WAIT), "a flush with nothing scheduled");
 }
 
@@ -208,9 +243,8 @@ fn a_flush_waits_for_the_running_pass_and_gives_up_at_its_timeout() {
     fake.with(|s| s.shut = true);
     let (writeback, _) = start(&fake);
     writeback.schedule("n1");
-    let started = Instant::now();
+    // The pass stays shut for `WAIT`: a flush that did not give up would see it finish.
     assert!(!writeback.flush(Duration::from_millis(200)));
-    assert!(started.elapsed() < Duration::from_secs(2));
     assert_eq!(fake.count(), 1, "the flush did not start the pass");
     fake.with(|s| s.shut = false);
     assert!(writeback.flush(WAIT));
@@ -220,36 +254,42 @@ fn a_flush_waits_for_the_running_pass_and_gives_up_at_its_timeout() {
 #[test]
 fn a_schedule_during_a_flush_is_due_at_once() {
     let fake = Fake::default();
-    fake.with(|s| s.shut = true);
     let (writeback, _) = start(&fake);
+    cool(&fake, &writeback, "n2");
+    fake.with(|s| s.shut = true);
     let writeback = Arc::new(writeback);
     writeback.schedule("n1");
     let flushing = {
         let writeback = writeback.clone();
-        std::thread::spawn(move || writeback.flush(WAIT))
+        // A flush that waited for n2's cooldown would run out of this time.
+        std::thread::spawn(move || writeback.flush(SHORT_OF_COOLDOWN))
     };
-    eventually("the flushed pass", || fake.count() == 1);
+    eventually("the flushed pass", || fake.count() == 2);
     writeback.schedule("n2");
-    let released = Instant::now();
     fake.with(|s| s.shut = false);
     assert!(flushing.join().unwrap());
-    assert!(released.elapsed() < SOON, "{:?}", released.elapsed());
-    assert_eq!(fake.runs()[1].0, "n2");
+    assert_eq!(fake.runs()[2].0, "n2");
 }
 
 #[test]
 fn a_stop_runs_every_scheduled_pass_before_the_thread_ends() {
     let fake = Fake::default();
     let (writeback, _) = start(&fake);
+    cool(&fake, &writeback, "n1");
     writeback.schedule("n1");
     writeback.schedule("n2");
     let started = Instant::now();
     writeback.stop();
-    assert!(started.elapsed() < SOON, "{:?}", started.elapsed());
-    assert_eq!(fake.finished(), 2);
+    // A stop that waited for n1's cooldown would take longer.
+    assert!(
+        started.elapsed() < SHORT_OF_COOLDOWN,
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(fake.finished(), 3);
     writeback.schedule("n3");
     assert!(writeback.flush(Duration::from_millis(100)));
-    assert_eq!(fake.count(), 2, "a pass ran after the stop");
+    assert_eq!(fake.count(), 3, "a pass ran after the stop");
 }
 
 /// Two stoppers (a late close hook and the next open): each returns only once the thread ended.

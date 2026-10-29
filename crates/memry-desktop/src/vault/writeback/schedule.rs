@@ -66,9 +66,12 @@ pub(crate) struct Cost {
 /// note's last pass when that is later.
 pub(crate) fn due_at(now: Instant, last: Option<Cost>) -> Instant {
     let debounced = now + DEBOUNCE;
-    let Some(last) = last else { return debounced };
-    let cooldown = last.took.saturating_mul(COOLDOWN_FACTOR).min(MAX_COOLDOWN);
-    debounced.max(last.finished + cooldown)
+    last.map_or(debounced, |last| debounced.max(cooled(last)))
+}
+
+/// When the cooldown of a pass that cost `last` ends.
+fn cooled(last: Cost) -> Instant {
+    last.finished + last.took.saturating_mul(COOLDOWN_FACTOR).min(MAX_COOLDOWN)
 }
 
 #[derive(Default)]
@@ -250,6 +253,10 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
                 let tell = {
                     let mut queue = shared.lock();
                     queue.cost.insert(note_id.clone(), cost);
+                    // A schedule taken during the pass knew only the cost before it.
+                    if let Some(at) = queue.due.get_mut(&note_id) {
+                        *at = (*at).max(cooled(cost));
+                    }
                     match outcome {
                         Outcome::Failed(_) => queue.failing.insert(note_id.clone()),
                         _ => {
