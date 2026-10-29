@@ -44,6 +44,7 @@ use crate::storage::Db;
 use serde_json::Value;
 
 // Reminders and folders: the same writer, split out at the line ceiling.
+#[cfg(feature = "markdown")]
 mod files;
 mod folders;
 

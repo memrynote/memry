@@ -50,6 +50,7 @@ use crate::sync::store;
 
 mod attachments;
 mod duplicate;
+#[cfg(feature = "markdown")]
 pub mod identity;
 pub(crate) mod link_rewrite;
 pub mod local_only;

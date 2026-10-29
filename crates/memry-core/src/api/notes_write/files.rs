@@ -5,51 +5,51 @@
 
 use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
+use crate::crdt::errors::CrdtError;
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, Removed};
+use crate::markdown::convert::api::Converter;
 
 impl NotesWriter {
     /// The note of a file no row names: a note that is that file already, or a
-    /// new one ([`identity::adopt`]).
-    pub fn adopt_file(&self, file: FileNote<'_>) -> Result<Adopted, StorageError> {
+    /// new one ([`identity::adopt`]). `converter` is built only when a note may be
+    /// the file, to read its body.
+    pub fn adopt_file(
+        &self,
+        file: FileNote<'_>,
+        converter: impl FnOnce() -> Converter,
+    ) -> Result<Adopted, CrdtError> {
         let device_id = self.device_id.clone();
-        let (title, folder) = (file.title.to_owned(), file.folder_path.map(str::to_owned));
-        let (created_ms, modified_ms, electron_db_beside) =
-            (file.created_ms, file.modified_ms, file.electron_db_beside);
-        self.db.call_blocking(move |conn| {
-            let file = FileNote {
-                title: &title,
-                folder_path: folder.as_deref(),
-                created_ms,
-                modified_ms,
-                electron_db_beside,
-            };
-            identity::adopt(conn, &file, &Self::new_id(), &device_id, now_ms())
-        })
+        let (title, folder) = (file.title, file.folder_path);
+        let may_be_a_note = self
+            .db
+            .call_blocking(move |conn| identity::has_unfiled_note(conn, title, folder))?;
+        let converter = may_be_a_note.then(converter);
+        self.db
+            .call_blocking(move |conn| {
+                Ok(identity::adopt(
+                    conn,
+                    converter.as_ref(),
+                    &file,
+                    &Self::new_id(),
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(CrdtError::from)?
     }
 
     /// The note's file moved ([`identity::renamed`]).
     pub fn file_moved(&self, note_id: &str, moved: Moved<'_>) -> Result<(), StorageError> {
         let device_id = self.device_id.clone();
-        let note_id = note_id.to_owned();
-        let (old_path, new_path) = (moved.old_path.to_owned(), moved.new_path.to_owned());
-        let (title, folder) = (moved.title.to_owned(), moved.folder_path.map(str::to_owned));
         self.db.call_blocking(move |conn| {
-            let moved = Moved {
-                old_path: &old_path,
-                new_path: &new_path,
-                title: &title,
-                folder_path: folder.as_deref(),
-            };
-            identity::renamed(conn, &note_id, &moved, &device_id, now_ms())
+            identity::renamed(conn, note_id, &moved, &device_id, now_ms())
         })
     }
 
     /// The note's file at `path` is gone ([`identity::removed`]).
     pub fn file_removed(&self, note_id: &str, path: &str) -> Result<Removed, StorageError> {
         let device_id = self.device_id.clone();
-        let (note_id, path) = (note_id.to_owned(), path.to_owned());
-        self.db.call_blocking(move |conn| {
-            identity::removed(conn, &note_id, &path, &device_id, now_ms())
-        })
+        self.db
+            .call_blocking(move |conn| identity::removed(conn, note_id, path, &device_id, now_ms()))
     }
 }

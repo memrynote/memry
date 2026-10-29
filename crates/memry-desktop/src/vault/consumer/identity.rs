@@ -39,9 +39,9 @@ pub struct Candidate<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Adoption {
-    /// A record that has no row owns this file (same folder and title, or a record whose file
-    /// moved while the app was closed). The consumer records the row and seeds the body only if
-    /// the record's body is empty: a crash between a create and its seed ends here.
+    /// A record that has no row owns this file (same folder and title, and a body that is empty
+    /// or already the file's text). The consumer records the row and seeds the body only if the
+    /// record's body is empty: a crash between a create and its seed ends here.
     Existing(String),
     /// A new record, created without a body. The consumer records the row and seeds the body
     /// from the file.

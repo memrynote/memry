@@ -120,6 +120,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "notes_device_tables",
         sql: include_str!("migrations/data/0016_notes_device_tables.sql"),
     },
+    Migration {
+        version: 17,
+        name: "notes_live_title",
+        sql: include_str!("migrations/data/0017_notes_live_title.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

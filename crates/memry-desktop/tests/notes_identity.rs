@@ -14,9 +14,11 @@ use std::path::Path;
 use std::time::Duration;
 
 use flate2::read::GzDecoder;
+use memry_core::domain::notes::identity::VAULT_ORIGIN_META_KEY;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::vault::consumer::Applied;
+use rusqlite::OptionalExtension as _;
 use serde_json::Value;
 use vault_env::{Env, env, indexed};
 
@@ -64,6 +66,23 @@ fn outbox(e: &Env) -> Vec<(String, String)> {
         .unwrap()
 }
 
+/// What the open that created the core recorded it was created over.
+fn origin(e: &Env) -> Option<String> {
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT value FROM meta WHERE key = ?1",
+                    [VAULT_ORIGIN_META_KEY],
+                    |row| row.get(0),
+                )
+                .optional()
+                .unwrap())
+        })
+        .unwrap()
+}
+
 fn row_id(e: &Env, path: &str) -> Option<String> {
     e.rows()
         .into_iter()
@@ -89,8 +108,11 @@ fn the_vaults_files_become_notes_and_a_reopen_names_none_again() {
     e.write("dir/b.md", "Beta\n");
     e.write("journal/2025-01-01.md", "A day\n");
     fs::write(e.vault.join("pic.png"), [0x89, b'P', b'N', b'G']).unwrap();
+    // Large-file class: one block over 128 KiB. Electron never syncs it.
+    e.write("big.md", &"x".repeat(200 * 1024));
     e.open();
     let facts = e.facts_until(indexed);
+    assert_eq!(origin(&e).as_deref(), Some("native"));
     for path in ["a.md", "dir/b.md"] {
         assert!(
             facts
@@ -140,6 +162,56 @@ fn a_file_moved_while_closed_keeps_its_note_and_the_record_follows() {
     assert_eq!(e.rows(), vec![(id.clone(), "c.md".to_owned())]);
     assert_eq!(records(&e), vec![(id.clone(), "c".to_owned(), None, false)]);
     assert_eq!(e.body(&id), "Beta");
+}
+
+/// A note moved into the journal folder becomes a journal day to Electron, which deletes the
+/// note and lists the day as a new item. Until Step 13m ports that, the record stays as it was
+/// and nothing is pushed; the row follows the file.
+#[test]
+fn a_move_into_the_journal_folder_leaves_the_record_and_pushes_nothing() {
+    let mut e = notes_env();
+    e.write("2025-01-02.md", "A day to be\n");
+    e.open();
+    e.facts_until(added("2025-01-02.md"));
+    e.facts_until(indexed);
+    let id = row_id(&e, "2025-01-02.md").unwrap();
+    let queued = outbox(&e);
+    e.close();
+
+    fs::create_dir_all(e.vault.join("journal")).unwrap();
+    fs::rename(
+        e.vault.join("2025-01-02.md"),
+        e.vault.join("journal/2025-01-02.md"),
+    )
+    .unwrap();
+    let facts = reopen(&mut e);
+    assert!(
+        facts.iter().any(|f| matches!(
+            f,
+            Applied::Renamed { note_id, new_path, .. }
+                if *note_id == id && new_path == "journal/2025-01-02.md"
+        )),
+        "{facts:?}"
+    );
+    assert_eq!(
+        records(&e),
+        vec![(id.clone(), "2025-01-02".to_owned(), None, false)]
+    );
+    assert_eq!(outbox(&e), queued);
+}
+
+/// A vault config that is there but cannot be read leaves the journal folder unknown, so no
+/// file is named: one under the real journal folder would get a note id instead of its day's.
+#[test]
+fn an_unreadable_vault_config_names_no_file() {
+    let mut e = notes_env();
+    e.write(".memry/config.json", "{ \"journalFolder\": ");
+    e.write("Daily/2025-01-01.md", "A day\n");
+    e.open();
+    e.facts_until(indexed);
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(e.rows().is_empty(), "{:?}", e.rows());
+    assert!(records(&e).is_empty());
 }
 
 /// The note was created and the app stopped before its row was written: the file is offered
@@ -285,6 +357,7 @@ fn an_electron_vault_not_imported_gets_no_note_and_is_left_as_it_was() {
     assert!(e.rows().is_empty(), "{:?}", e.rows());
     assert!(records(&e).is_empty(), "{:?}", records(&e));
     assert!(outbox(&e).is_empty(), "{:?}", outbox(&e));
+    assert_eq!(origin(&e).as_deref(), Some("electron"));
     e.close();
     let after = files(&e.vault);
     let changed: Vec<_> = after
@@ -298,10 +371,13 @@ fn an_electron_vault_not_imported_gets_no_note_and_is_left_as_it_was() {
     );
 }
 
-/// Electron's notes reached the core as records (pulled from the server) before their files
-/// were named: each file whose Electron title is its file name keeps its Electron id. A title
-/// Electron sanitized into the file name (`Q3: plan?` in `Q3 plan.md`), or a second note of one
-/// title (`Plan 1.md`), is not matched by its title: Step 36's import names those by path.
+/// Electron's notes were pulled into a core the app created over Electron's database, before
+/// their files were named (Electron's push payloads, bodies never opened in its editor, so
+/// their text is the `content` they were created with). A file whose name is its note's title
+/// and whose text is the note's keeps the Electron id. A title Electron sanitized into the file
+/// name (`Q3: plan?` in `Q3 plan.md`), or a second note of one title (`Plan 1.md`), matches no
+/// record, and the core, which Step 36 will never import, mints no id for it: no file gets a
+/// second id, and no record is pushed.
 #[test]
 fn an_electron_vault_whose_notes_reached_the_core_keeps_their_ids() {
     let mut e = notes_env();
@@ -348,10 +424,18 @@ fn an_electron_vault_whose_notes_reached_the_core_keeps_their_ids() {
     ] {
         assert_eq!(row_id(&e, path), Some(id(path)), "{path}");
     }
-    for path in ["notes/Q3 plan.md", "projects/2025/Plan 1.md"] {
-        let named = row_id(&e, path).expect("a note");
-        assert_ne!(named, id(path), "{path}");
+    for path in [
+        "notes/Q3 plan.md",
+        "projects/2025/Plan 1.md",
+        "journal/2025-01-01.md",
+    ] {
+        assert_eq!(row_id(&e, path), None, "{path}");
     }
-    assert_eq!(row_id(&e, "journal/2025-01-01.md"), None);
     assert_eq!(e.body(&id("notes/Tagged.md")), "With frontmatter.");
+    assert_eq!(origin(&e).as_deref(), Some("electron"));
+    let records_pushed: Vec<_> = outbox(&e)
+        .into_iter()
+        .filter(|(op, _)| op == "upsert" || op == "delete")
+        .collect();
+    assert!(records_pushed.is_empty(), "{records_pushed:?}");
 }

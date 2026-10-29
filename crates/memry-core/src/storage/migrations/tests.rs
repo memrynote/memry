@@ -52,7 +52,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 16);
+    assert_eq!(version, 17);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -164,7 +164,7 @@ fn an_older_database_steps_forward_without_losing_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 16);
+    assert_eq!(version, 17);
 
     let (count, payload): (i64, String) = db
         .call_blocking(|conn| {
@@ -264,7 +264,7 @@ fn note_snapshots_applies_to_a_version_12_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 16);
+    assert_eq!(version, 17);
 
     let (device, indexes): (String, i64) = db
         .call_blocking(|conn| {
@@ -324,7 +324,7 @@ fn local_settings_applies_to_a_version_13_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 16);
+    assert_eq!(version, 17);
 
     let (device, rows): (String, i64) = db
         .call_blocking(|conn| {
@@ -410,7 +410,7 @@ fn note_files_applies_to_a_version_14_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 16);
+    assert_eq!(version, 17);
 
     let (kept, files): (i64, i64) = db
         .call_blocking(|conn| {
@@ -449,7 +449,7 @@ fn note_positions_applies_to_a_version_15_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 16);
+    assert_eq!(version, 17);
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
         conn.execute_batch(DATA_MIGRATIONS[15].sql)
@@ -474,4 +474,56 @@ fn note_positions_applies_to_a_version_15_database_and_keeps_its_rows() {
         })
         .expect("read back");
     assert_eq!((kept, positions), (1, 0));
+}
+
+#[test]
+fn the_live_title_index_applies_to_a_version_16_database_and_answers_the_identity() {
+    let db = Db::open_in_memory().expect("open");
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..16]))
+        .expect("a database as the last build left it");
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO notes (id, title, folder_path) VALUES ('n1', 'Plan', 'Work')",
+            [],
+        )
+        .map_err(|err| StorageError::Failed {
+            what: err.to_string(),
+        })
+    })
+    .expect("a row to keep");
+
+    let version = db
+        .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+        .expect("step forward");
+    assert_eq!(version, 17);
+    db.call_blocking(|conn| {
+        conn.execute_batch(DATA_MIGRATIONS[16].sql)
+            .map_err(|err| StorageError::Failed {
+                what: err.to_string(),
+            })
+    })
+    .expect("idempotent");
+
+    // The identity's lookup (`domain::notes::identity`) is an index search, not a scan.
+    let (kept, plan): (i64, String) = db
+        .call_blocking(|conn| {
+            let failed = |err: rusqlite::Error| StorageError::Failed {
+                what: err.to_string(),
+            };
+            let kept = conn
+                .query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))
+                .map_err(failed)?;
+            let plan = conn
+                .query_row(
+                    "EXPLAIN QUERY PLAN SELECT id FROM notes
+                      WHERE deleted_at IS NULL AND title = ?1 AND folder_path IS ?2",
+                    rusqlite::params!["Plan", "Work"],
+                    |row| row.get::<_, String>(3),
+                )
+                .map_err(failed)?;
+            Ok((kept, plan))
+        })
+        .expect("read back");
+    assert_eq!(kept, 1);
+    assert!(plan.contains("idx_notes_live_title"), "{plan}");
 }

@@ -115,6 +115,20 @@ impl Vault {
         crate::api::external_feed::ExternalFeed::over(self.db.clone(), &store)
     }
 
+    /// Records what this vault's core database was created over, once (desktop
+    /// Step 13d): the open that created it says whether Electron's `data.db` was
+    /// beside it. See [`crate::domain::notes::identity::record_origin`].
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[cfg(feature = "markdown")]
+    #[doc(hidden)]
+    pub fn record_origin(
+        &self,
+        origin: crate::domain::notes::identity::Origin,
+    ) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| crate::domain::notes::identity::record_origin(conn, origin))
+    }
+
     /// What the vault write-back puts in note files (desktop Step 12e-3).
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[cfg(feature = "markdown")]
