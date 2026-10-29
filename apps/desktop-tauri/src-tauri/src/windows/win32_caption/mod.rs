@@ -146,7 +146,8 @@ unsafe extern "system" fn top_level_proc(
         // `DefWindowProc` would enter the keyboard mode of its hidden system menu: a modal loop
         // that shows nothing and holds the main thread, so the app's menu, which the renderer
         // asks for on the same Alt (`menu::toggle_alt`), only opened after the next key.
-        // Alt+Space (`' '`) still opens the system menu.
+        // Alt+Space (`' '`) still opens the system menu. F10 sends the same message and so does
+        // nothing (#3734).
         WM_SYSCOMMAND if wparam.0 & 0xFFF0 == SC_KEYMENU as usize && lparam.0 == 0 => {
             return LRESULT(0);
         }

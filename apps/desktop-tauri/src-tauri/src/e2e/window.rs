@@ -160,7 +160,7 @@ fn traffic_light_rects(window: &tauri::WebviewWindow<tauri::Wry>) -> Result<Vec<
 }
 
 /// Posts the `WM_SYSCOMMAND` `SC_KEYMENU` a bare Alt sends the main window, and reports whether
-/// its thread went into menu mode (then ends that mode). Always false off Windows.
+/// its thread went into menu mode within 2 s (then ends that mode). Always false off Windows.
 #[tauri::command]
 pub async fn e2e_bare_alt_menu_mode(app: AppHandle<tauri::Wry>) -> Result<bool, CommandError> {
     #[cfg(windows)]
@@ -197,22 +197,31 @@ fn key_menu_mode(raw: isize) -> windows::core::Result<bool> {
     // state are safe from any thread.
     unsafe {
         let thread = GetWindowThreadProcessId(hwnd, None);
+        if thread == 0 {
+            return Err(windows::core::Error::from_thread());
+        }
         PostMessageW(
             Some(hwnd),
             WM_SYSCOMMAND,
             WPARAM(SC_KEYMENU as usize),
             LPARAM(0),
         )?;
-        std::thread::sleep(Duration::from_millis(500));
-        let mut info = GUITHREADINFO {
-            cbSize: size_of::<GUITHREADINFO>() as u32,
-            ..Default::default()
-        };
-        GetGUIThreadInfo(thread, &mut info)?;
-        let in_menu = info.flags.0 & GUI_INMENUMODE.0 != 0;
-        if in_menu {
-            PostMessageW(Some(hwnd), WM_CANCELMODE, WPARAM(0), LPARAM(0))?;
+        // A busy main thread takes the message late, so the mode is polled, not read once.
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        loop {
+            let mut info = GUITHREADINFO {
+                cbSize: size_of::<GUITHREADINFO>() as u32,
+                ..Default::default()
+            };
+            GetGUIThreadInfo(thread, &mut info)?;
+            if info.flags.0 & GUI_INMENUMODE.0 != 0 {
+                PostMessageW(Some(hwnd), WM_CANCELMODE, WPARAM(0), LPARAM(0))?;
+                return Ok(true);
+            }
+            if std::time::Instant::now() >= deadline {
+                return Ok(false);
+            }
+            std::thread::sleep(Duration::from_millis(50));
         }
-        Ok(in_menu)
     }
 }
