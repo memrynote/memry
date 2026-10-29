@@ -100,8 +100,9 @@
 //!   holds the rows' lane from its check to its row's removal, and a stop or a close ends the
 //!   run between files. The check and the move are two steps: an outside edit that lands
 //!   between them goes to the trash with the file, from which it can be put back. The trash
-//!   is the OS's: on a Windows volume without a Recycle Bin (a network share), the shell may
-//!   delete the file instead, as desktop's unlink always did.
+//!   is the OS's: on a Windows volume without a Recycle Bin (a network share), the shell
+//!   deletes the file for good and reports success, as desktop's unlink always did (measured
+//!   on Windows 11 with `trash` 5.2.9: the file was neither in the Recycle Bin nor on the share).
 //! - **A failed write is told, once per run of failures.** The first failed pass of a note
 //!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed pass is
 //!   not retried on its own: the note's next schedule is its retry, and its body stays in the
