@@ -7,9 +7,10 @@
 use std::fs;
 use std::path::Path;
 
+use memry_desktop::vault::hash::content_hash;
 use memry_desktop::vault::properties_file::{
-    MAX_PROPERTIES_BYTES, PropertiesFileError, PropertyDefinition, parse, properties_path, read,
-    steps, update,
+    MAX_PROPERTIES_BYTES, PropertiesFileError, PropertyDefinition, PropertyKind, SelectOption,
+    parse, properties_path, read, steps, update,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, proptest_config};
 use proptest::prelude::*;
@@ -109,7 +110,8 @@ fn too_deep() -> Vec<u8> {
     .into_bytes()
 }
 
-/// One option list read under every name that refers to it: 40000 options from 12 KB.
+/// One option list read under every name that refers to it: 40000 options from 12 KB, ten
+/// steps per byte where Electron's own aliases take two.
 fn alias_bomb() -> String {
     let options = "{value: v, color: c},".repeat(200);
     let mut file = format!("---\nproperties:\n  A: {{type: select, options: &o [{options}]}}\n");
@@ -126,6 +128,11 @@ fn no_writer_replaces_a_file_it_cannot_read() {
         (
             "frontmatter that does not parse",
             b"---\nproperties: [\n---\n".to_vec(),
+        ),
+        // Electron reads this as no definitions, and its next write would hold only the new one.
+        (
+            "a blank line before the frontmatter",
+            b"\n---\nproperties:\n  A: {type: text}\n---\n".to_vec(),
         ),
         ("properties a list", b"---\nproperties: [1]\n---\n".to_vec()),
         // JavaScript reads a date there as an object with no keys; the file is refused instead.
@@ -226,6 +233,91 @@ fn a_file_another_writer_changed_meanwhile_is_not_overwritten() {
     }
 }
 
+#[test]
+fn an_edit_of_the_same_size_time_and_hash_is_not_overwritten() {
+    // Only the bytes tell these apart: same size, the 32-bit hash Electron stores, and the
+    // other writer puts the modification time back.
+    let ours = "---\nproperties: {A: {type: url}}\n# b1\n---\n";
+    let theirs = "---\nproperties: {A: {type: url}}\n# cP\n---\n";
+    assert_eq!(content_hash(ours), content_hash(theirs));
+    let dir = vault_with(Some(ours.as_bytes()));
+    let path = properties_path(dir.path());
+    let result = update(dir.path(), |definitions| {
+        let modified = fs::metadata(&path).unwrap().modified().unwrap();
+        fs::write(&path, theirs).unwrap();
+        let file = fs::File::options().write(true).open(&path).unwrap();
+        file.set_modified(modified).unwrap();
+        definitions.insert("Ours".into(), text_definition());
+    });
+    assert!(
+        matches!(result, Err(PropertiesFileError::Write { .. })),
+        "{result:?}"
+    );
+    assert_eq!(on_disk(dir.path()).unwrap(), theirs.as_bytes());
+}
+
+#[test]
+fn a_definition_no_build_reads_back_is_never_written() {
+    // An empty `defaultValue` or `color` reads as none, and is left out of a write.
+    let empties = parse("---\nproperties:\n  X: {type: text, defaultValue: '', color: ''}\n---\n");
+    assert_eq!(
+        empties.unwrap().definitions.get("X"),
+        Some(&text_definition())
+    );
+    let dir = vault_with(None);
+    let mut definition = text_definition();
+    definition.default_value = Some(String::new());
+    definition.color = Some(String::new());
+    update(dir.path(), |definitions| {
+        definitions.insert("X".into(), definition)
+    })
+    .unwrap();
+    assert_eq!(
+        on_disk(dir.path()).unwrap(),
+        b"---\nproperties:\n  X:\n    type: text\n    options: []\n---\n\n"
+    );
+    // An option without a value or a color fails every build's schema, which would read the
+    // entry as unparsed: the write is refused, and the file stays as it was.
+    let before = on_disk(dir.path());
+    for (value, color) in [("", "red"), ("v", "")] {
+        let option = SelectOption {
+            value: value.into(),
+            color: color.into(),
+            default: None,
+        };
+        let select = PropertyDefinition {
+            kind: PropertyKind::Select(vec![option]),
+            default_value: None,
+            color: None,
+        };
+        let result = update(dir.path(), |definitions| {
+            definitions.insert("S".into(), select)
+        });
+        assert!(
+            matches!(result, Err(PropertiesFileError::Write { .. })),
+            "{result:?}"
+        );
+        assert_eq!(on_disk(dir.path()), before);
+    }
+    let status = parse(
+        "---\nproperties:\n  T:\n    type: status\n    categories:\n      todo: {label: T, options: []}\n      in_progress: {label: P, options: []}\n      done: {label: D, options: []}\n---\n",
+    )
+    .unwrap();
+    let mut unlabeled = status.definitions.get("T").unwrap().clone();
+    let PropertyKind::Status(categories) = &mut unlabeled.kind else {
+        unreachable!()
+    };
+    categories.done.label = String::new();
+    let result = update(dir.path(), |definitions| {
+        definitions.insert("T".into(), unlabeled)
+    });
+    assert!(
+        matches!(result, Err(PropertiesFileError::Write { .. })),
+        "{result:?}"
+    );
+    assert_eq!(on_disk(dir.path()), before);
+}
+
 #[cfg(unix)]
 #[test]
 fn a_file_linked_out_of_the_vault_is_refused_not_followed() {
@@ -267,8 +359,9 @@ fn deep_and_aliased_files_are_safe_on_a_small_stack() {
     });
     assert!(kept);
     let bomb = alias_bomb();
-    // The step that runs out is counted before it fails: at most one more string.
-    assert_steps_at_most("the entry reader", steps, 2 * bomb.len(), || {
+    // Four steps per byte of the file, and the step that runs out is counted before it
+    // fails: at most one more string, shorter than the file.
+    assert_steps_at_most("the entry reader", steps, 5 * bomb.len(), || {
         assert!(parse(&bomb).is_err());
     });
 }

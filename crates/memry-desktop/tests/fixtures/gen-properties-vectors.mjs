@@ -3,6 +3,8 @@
 // Each case is a `.memry/properties.md` as Electron builds, people and other tools leave it. The
 // vector holds what Electron reads from it and the bytes its rewrite writes; the ops cases also
 // change definitions the way the service does (`cache.set`, `cache.delete`) before the write.
+// The `electron-writes-*` cases are files Electron's own writers left, built by calling them:
+// every one of them must read here, or the cutover would call a working vault's file unreadable.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -12,7 +14,7 @@ const load = async (path) => {
   const ns = await import(path)
   return ns.default ?? ns
 }
-const { PropertyDefinitionsService } = await load(
+const { PropertyDefinitionsService, DEFAULT_STATUS_DEFINITION } = await load(
   '../../../../apps/desktop/src/main/vault/property-definitions.ts'
 )
 const { parsePropertyDefinitionEntries } = await load(
@@ -216,10 +218,28 @@ properties:
   ['unclosed', '---\nproperties:\n  A: {type: text}\n'],
   ['crlf', '---\r\nproperties:\r\n  A:\r\n    type: text\r\n---\r\n\r\n'],
   ['bom', '\uFEFF---\nproperties:\n  A:\n    type: text\n---\n\n'],
+  ['bom-only', '\uFEFF\n'],
   ['body-and-other-keys', '---\nother: top\nproperties:\n  A: {type: text}\n---\nbody text\n'],
   ['top-level-list', '---\n- a\n---\n'],
-  ['comment-only', '---\n# nothing\n---\n']
+  ['comment-only', '---\n# nothing\n---\n'],
+  ['leading-blank-line', '\n---\nproperties:\n  A: {type: text}\n---\n'],
+  ['four-dashes', '----\nproperties:\n  A: {type: text}\n---\n'],
+  ['empty-block', '---\n---\n']
 ]
+
+// Files Electron reads as holding no definitions although they are not empty: its next write
+// would replace them with the definitions it adds alone (a leading blank line hides every
+// definition the file has). This build refuses them instead, as it refuses a file it cannot
+// parse, so nothing in them is lost.
+const REFUSED_HERE = new Set([
+  'no-frontmatter',
+  'no-properties-key',
+  'top-level-list',
+  'comment-only',
+  'leading-blank-line',
+  'four-dashes',
+  'empty-block'
+])
 
 // Definitions the ops set, in file form; each is read the way the service reads a file.
 const SET = {
@@ -266,6 +286,76 @@ const service = (input) => {
   if (input !== null) writeFileSync(file, input)
   return { s: new PropertyDefinitionsService(vault), file }
 }
+
+// The ENSURE_PROPERTY_DEFINITION handler's status branch (`notes-handlers.ts`): every status
+// it adds shares `DEFAULT_STATUS_CATEGORIES`, which js-yaml writes once and aliases after.
+const ensureStatus = (name) => (s) =>
+  s.upsert({ ...DEFAULT_STATUS_DEFINITION, name, color: undefined })
+const statuses = (names) => names.map(ensureStatus)
+const letters = Array.from({ length: 24 }, (_, i) => String.fromCharCode(97 + i))
+// Every writer of the service, in an order where each one leaves something shared.
+const everyWriter = [
+  ['ensure status S', ensureStatus('S')],
+  ['ensure status T', ensureStatus('T')],
+  ['status with no categories', (s) => s.upsert({ name: 'U', type: 'status' })],
+  ['add a status option', (s) => s.addStatusOption('S', 'todo', { value: 'Later', color: 'sky' })],
+  [
+    'add a status option to a default',
+    (s) => s.addStatusOption('V', 'done', { value: 'Shipped', color: 'green' })
+  ],
+  ['recolor a status option', (s) => s.updateOptionColor('T', 'Done', 'green')],
+  ['remove a status option', (s) => s.removeOption('S', 'Abandoned')],
+  [
+    'select',
+    (s) =>
+      s.upsert({
+        name: 'Stage',
+        type: 'select',
+        options: [{ value: 'Idea', color: 'sky' }],
+        defaultValue: 'Idea',
+        color: 'sky'
+      })
+  ],
+  ['add an option', (s) => s.addOption('Stage', { value: 'Draft', color: 'violet' })],
+  ['rename an option', (s) => s.renameOption('Stage', 'Idea', 'Thought')],
+  ['recolor an option', (s) => s.updateOptionColor('Stage', 'Draft', 'rose')],
+  ['remove an option', (s) => s.removeOption('Stage', 'Thought')],
+  ['multiselect', (s) => s.upsert({ name: 'Tags', type: 'multiselect' })],
+  ['show a date', (s) => s.setShowOnCalendar('Due', true)],
+  ['hide a bare date', (s) => s.setShowOnCalendar('Due', false)],
+  [
+    'show a colored date',
+    (s) =>
+      s
+        .upsert({ name: 'Started', type: 'date', color: 'amber' })
+        .then(() => s.setShowOnCalendar('Started', true))
+  ],
+  ['hide a colored date', (s) => s.setShowOnCalendar('Started', false)],
+  ['project', (s) => s.upsert({ name: 'project', type: 'project' })],
+  ['remove', (s) => s.remove('U')],
+  ['ensure status again', ensureStatus('W')]
+]
+const writerRuns = [
+  [
+    'electron-writes-12-statuses',
+    statuses(Array.from({ length: 12 }, (_, i) => `Status ${i + 1}`))
+  ],
+  [
+    'electron-writes-24-statuses',
+    statuses(Array.from({ length: 24 }, (_, i) => `Status ${i + 1}`))
+  ],
+  ['electron-writes-24-one-letter-statuses', statuses(letters)],
+  ...everyWriter.map((_, upTo) => [
+    `electron-writes-every-writer-${String(upTo + 1).padStart(2, '0')}`,
+    everyWriter.slice(0, upTo + 1).map(([, step]) => step)
+  ])
+]
+for (const [name, steps] of writerRuns) {
+  const { s, file } = service(null)
+  await s.reload()
+  for (const step of steps) await step(s)
+  cases.push([name, readFileSync(file, 'utf8')])
+}
 const definitionOf = async (name, entry) => {
   const { s } = service(matter.stringify('', { properties: { [name]: entry } }))
   await s.reload()
@@ -288,7 +378,8 @@ for (const [name, input] of cases) {
   vectors.push({
     name,
     input,
-    readable: ok && !unreadable,
+    readable: ok && !unreadable && !REFUSED_HERE.has(name),
+    electronReads: ok && !unreadable,
     definitions: unreadable ? [] : s.getAll().map((def) => def.name),
     unparsed: parsed ? [...parsed.unparsed.keys()] : [],
     healed: parsed ? parsed.healed : false,

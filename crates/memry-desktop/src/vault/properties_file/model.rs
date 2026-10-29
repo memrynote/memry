@@ -146,7 +146,9 @@ impl PropertiesFile {
     }
 
     /// The file's bytes: `matter.stringify('', { properties })`, the unparsed entries first,
-    /// then the definitions.
+    /// then the definitions. A definition no build would read back (an option without a value
+    /// or a color, a status category without a label) is an error, not an entry every build
+    /// then reads as unparsed.
     pub fn serialize(&self) -> Result<String, String> {
         let defined: HashSet<&str> = self.definitions.iter().map(|(name, _)| name).collect();
         let mut properties = YamlMap::new();
@@ -156,7 +158,7 @@ impl PropertiesFile {
             }
         }
         for (name, definition) in self.definitions.iter() {
-            properties.insert(name.to_owned(), definition_yaml(definition));
+            properties.insert(name.to_owned(), definition_yaml(definition)?);
         }
         let mut data = YamlMap::new();
         data.insert(PROPERTIES_KEY.to_owned(), YamlValue::map(properties));
@@ -177,9 +179,17 @@ pub fn steps() -> usize {
     STEPS.with(Cell::get)
 }
 
-/// The reader's work, capped at the length of the file. Without aliases every step stands
+/// How many steps the reader may take per byte of the file. Without aliases every step stands
 /// for bytes of its own in the file; with them, one list may be read once per reference, so
-/// `options: *a` under a thousand names would copy `a` a thousand times.
+/// `options: *a` under a thousand names would copy `a` a thousand times. Electron's own writer
+/// aliases too: the status definitions it adds share `DEFAULT_STATUS_CATEGORIES`, which
+/// js-yaml writes once and aliases after, and a reference of about 40 bytes reads 87 steps of
+/// it. Its files stay under 2 steps per byte (`electron-writes-*` in
+/// `tests/fixtures/electron-vault/properties-md.json`); a file that copies a list ten times
+/// per byte of its own is refused.
+const STEPS_PER_BYTE: usize = 4;
+
+/// The reader's work, capped at [`STEPS_PER_BYTE`] times the length of the file.
 struct Budget(usize);
 
 #[derive(Debug)]
@@ -201,6 +211,10 @@ impl Budget {
 /// `raw` as `properties.md`, or why it cannot be read. Nothing in the file is ever dropped
 /// because of another entry: an entry this build does not read is kept as it is.
 pub fn parse(raw: &str) -> Result<PropertiesFile, String> {
+    let text = raw.strip_prefix('\u{FEFF}').unwrap_or(raw);
+    if text.trim().is_empty() {
+        return Ok(PropertiesFile::default());
+    }
     let data = gray_matter_data(raw).map_err(|e| format!("its frontmatter does not parse: {e}"))?;
     let properties = match &data {
         YamlValue::Map(top) => top.get(PROPERTIES_KEY),
@@ -208,13 +222,16 @@ pub fn parse(raw: &str) -> Result<PropertiesFile, String> {
         _ => None,
     };
     let entries = match properties {
-        None | Some(YamlValue::Null) => return Ok(PropertiesFile::default()),
+        // Electron reads such a file as holding no definitions, and its next write replaces it
+        // with the ones it adds: a leading blank line, or a `----` opener, would lose them all.
+        None => return Err("it has no `properties` frontmatter".to_owned()),
+        Some(YamlValue::Null) => return Ok(PropertiesFile::default()),
         Some(YamlValue::Map(entries)) => entries,
         // A list or a scalar is not the map the contracts parser reads, and a date or binary
         // here (an object to JavaScript, read as an empty or a numbered map) is refused too.
         Some(_) => return Err("its `properties` is not a map".to_owned()),
     };
-    let mut budget = Budget(raw.len());
+    let mut budget = Budget(raw.len().saturating_mul(STEPS_PER_BYTE));
     let mut file = PropertiesFile::default();
     for (name, entry) in entries.iter() {
         let read = budget
@@ -395,34 +412,40 @@ fn object(entries: Vec<(&str, YamlValue)>) -> YamlValue {
     YamlValue::Map(Arc::new(map))
 }
 
-fn options_yaml(options: &[SelectOption]) -> YamlValue {
-    YamlValue::seq(
-        options
-            .iter()
-            .map(|option| {
-                let mut entries = vec![
-                    ("value", text(&option.value)),
-                    ("color", text(&option.color)),
-                ];
-                if let Some(flag) = option.default {
-                    entries.push(("default", YamlValue::Bool(flag)));
-                }
-                object(entries)
-            })
-            .collect(),
-    )
+/// Every build's schema needs these non-empty (`z.string().min(1)`).
+const EMPTY_NAME: &str = "an option needs a value and a color, and a status category a label";
+
+fn options_yaml(options: &[SelectOption]) -> Result<YamlValue, String> {
+    let mut items = Vec::with_capacity(options.len());
+    for option in options {
+        if option.value.is_empty() || option.color.is_empty() {
+            return Err(EMPTY_NAME.to_owned());
+        }
+        let mut entries = vec![
+            ("value", text(&option.value)),
+            ("color", text(&option.color)),
+        ];
+        if let Some(flag) = option.default {
+            entries.push(("default", YamlValue::Bool(flag)));
+        }
+        items.push(object(entries));
+    }
+    Ok(YamlValue::seq(items))
 }
 
-fn category_yaml(category: &StatusCategory) -> YamlValue {
-    object(vec![
+fn category_yaml(category: &StatusCategory) -> Result<YamlValue, String> {
+    if category.label.is_empty() {
+        return Err(EMPTY_NAME.to_owned());
+    }
+    Ok(object(vec![
         ("label", text(&category.label)),
-        ("options", options_yaml(&category.options)),
-    ])
+        ("options", options_yaml(&category.options)?),
+    ]))
 }
 
 /// `serializeFile`'s shape for one definition: `type`, what the type carries, then the
-/// shared fields.
-fn definition_yaml(definition: &PropertyDefinition) -> YamlValue {
+/// shared fields. An empty `defaultValue` or `color` is left out, as the reader drops one.
+fn definition_yaml(definition: &PropertyDefinition) -> Result<YamlValue, String> {
     let mut entries = vec![("type", text(definition.kind.type_name()))];
     match &definition.kind {
         PropertyKind::Text(options)
@@ -430,13 +453,13 @@ fn definition_yaml(definition: &PropertyDefinition) -> YamlValue {
         | PropertyKind::Checkbox(options)
         | PropertyKind::Url(options)
         | PropertyKind::Select(options)
-        | PropertyKind::Multiselect(options) => entries.push(("options", options_yaml(options))),
+        | PropertyKind::Multiselect(options) => entries.push(("options", options_yaml(options)?)),
         PropertyKind::Status(categories) => entries.push((
             "categories",
             object(vec![
-                ("todo", category_yaml(&categories.todo)),
-                ("in_progress", category_yaml(&categories.in_progress)),
-                ("done", category_yaml(&categories.done)),
+                ("todo", category_yaml(&categories.todo)?),
+                ("in_progress", category_yaml(&categories.in_progress)?),
+                ("done", category_yaml(&categories.done)?),
             ]),
         )),
         PropertyKind::Date { show_on_calendar } => {
@@ -444,11 +467,12 @@ fn definition_yaml(definition: &PropertyDefinition) -> YamlValue {
         }
         PropertyKind::Project => {}
     }
-    if let Some(value) = &definition.default_value {
-        entries.push(("defaultValue", text(value)));
+    let filled = |field: &Option<String>| field.as_deref().filter(|s| !s.is_empty()).map(text);
+    if let Some(value) = filled(&definition.default_value) {
+        entries.push(("defaultValue", value));
     }
-    if let Some(color) = &definition.color {
-        entries.push(("color", text(color)));
+    if let Some(color) = filled(&definition.color) {
+        entries.push(("color", color));
     }
-    object(entries)
+    Ok(object(entries))
 }

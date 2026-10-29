@@ -10,23 +10,33 @@
 //!   is. A `relation` entry is dropped, as Electron drops it: older builds refuse the file on
 //!   one;
 //! - a file that exists but cannot be read is never replaced: not UTF-8, larger than
-//!   [`MAX_PROPERTIES_BYTES`], frontmatter that does not parse, a `properties` that is not a
-//!   map, or aliases that expand past the file's own size. The caller gets
+//!   [`MAX_PROPERTIES_BYTES`], frontmatter that does not parse or has no `properties` key (no
+//!   frontmatter at all, a blank line before it), a `properties` that is not a map, or aliases
+//!   that expand far past the file's own size. The caller gets
 //!   [`PropertiesFileError::Unreadable`], which Electron shows as [`UNREADABLE_KEY`]. Only a
-//!   missing or empty file holds no definitions;
+//!   missing or blank file, or `properties:` with nothing under it, holds no definitions.
+//!   Electron reads the files without `properties` as empty and its next write replaces them,
+//!   so this is stricter: a file refused here is one Electron would have emptied;
 //! - the bytes are `matter.stringify('', { properties })`, Electron's: definitions in the
 //!   file's order with a new one last, each in the shape of its type. A key inside a definition
 //!   that no build's schema names, a top-level key beside `properties` and a body are not
 //!   kept, as no Electron build keeps them;
 //! - writes are serialized by one process-wide lock, and each reads the file again, so a
 //!   definition another writer added meanwhile survives. Another process's write between our
-//!   read and our rename stops ours ([`PropertiesFileError::Write`]) instead of being lost.
-//!   The file is written only when the definitions changed or a `relation` entry went, and
-//!   then only when its bytes change.
+//!   read and our rename (any change of its bytes, whatever its size and modification time)
+//!   stops ours ([`PropertiesFileError::Write`]) instead of being lost. The file is written
+//!   only when the definitions changed or a `relation` entry went, and then only when its
+//!   bytes change.
 //!
 //! Which definitions the app shows is the union of this file and the synced
 //! `property_definition` items, the file winning for every name it lists (Step 13): its
-//! caller reads with [`read`] and folds the rows in through [`update`].
+//! caller reads with [`read`] and folds the rows in through [`update`]. Electron's reload also
+//! writes the file back at once when it dropped a `relation` entry; the Step 13 open does the
+//! same by calling [`update`] with a change that does nothing, which writes only then.
+//!
+//! A hard-linked file is read and replaced as Electron's `readFile` and `atomicWrite` do. The
+//! read only takes definitions from it, and the replace renames a new file over the vault's
+//! name, so the other name keeps its bytes and nothing outside the vault is written.
 
 mod model;
 
@@ -41,9 +51,8 @@ pub use model::{
 };
 
 use super::fs_atomic::{self, RETRY_DELAYS_MS};
-use super::hash::content_hash;
 use super::layout::MEMRY_DIR;
-use super::note_file::{NoteFileError, still_contained, target, write_note_over};
+use super::note_file::{NoteFileError, still_contained, target};
 use crate::shell::file_open::{LinkPolicy, open_under_root_with};
 
 pub const PROPERTIES_FILE: &str = "properties.md";
@@ -125,6 +134,11 @@ static WRITE_LOCK: Mutex<()> = Mutex::new(());
 /// Reads the file, lets `change` edit its definitions and writes it back. `change` runs under
 /// the write lock on the file as it is now. A file that cannot be read is an error and stays
 /// as it is; a missing one starts empty.
+///
+/// The lock is one process-wide mutex held across file IO: call this on a blocking thread,
+/// never on the async runtime. `change` must not call [`update`] (the lock is not reentrant,
+/// so that deadlocks) nor wait on another lock (the database, the config file), so no two
+/// locks are ever taken in two orders: read what it needs before, and act on its result after.
 pub fn update<R>(
     vault: &Path,
     change: impl FnOnce(&mut Definitions) -> R,
@@ -144,21 +158,36 @@ pub fn update<R>(
         .serialize()
         .map_err(|message| write_failed(vault, message))?;
     match raw {
-        Some(raw) if raw == bytes => {}
-        Some(raw) => write_note_over(vault, PROPERTIES_REL, &bytes, &content_hash(&raw))
-            .map_err(|error| write_failed(vault, error.to_string()))?,
-        None => create(vault, &bytes)?,
+        Some(raw) if raw == bytes => Ok(result),
+        raw => write(vault, raw.as_deref(), &bytes).map(|()| result),
     }
-    Ok(result)
 }
 
-/// Writes a new file; a file that appears meanwhile is never replaced.
-fn create(vault: &Path, bytes: &str) -> Result<(), PropertiesFileError> {
+/// Puts `bytes` in place of the file read as `read` (`None`: there was none). Right before the
+/// rename the file is read again and compared byte for byte: a file another writer changed,
+/// created or removed since is not written over.
+fn write(vault: &Path, read: Option<&str>, bytes: &str) -> Result<(), PropertiesFileError> {
     let (path, aimed_at) = target(vault, PROPERTIES_REL)
         .map_err(|error: NoteFileError| write_failed(vault, error.to_string()))?;
     let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
     let mut between = || {};
-    let mut check = still_contained(vault, PROPERTIES_REL, &path, aimed_at, &mut between);
-    fs_atomic::atomic_create_checked(&path, bytes.as_bytes(), &delays, &mut check)
-        .map_err(|error| write_failed(vault, error.source.to_string()))
+    let mut contained = still_contained(vault, PROPERTIES_REL, &path, aimed_at, &mut between);
+    let mut unchanged = || {
+        contained()?;
+        match load(vault) {
+            Ok(now) if now.as_deref() == read => Ok(()),
+            Ok(_) => Err(std::io::Error::other(
+                "another writer changed the file since it was read",
+            )),
+            Err(error) => Err(std::io::Error::other(error.to_string())),
+        }
+    };
+    let written = match read {
+        Some(_) => {
+            fs_atomic::atomic_replace_checked(&path, bytes.as_bytes(), &delays, &mut unchanged)
+        }
+        // Create-only as well: a file that appears after the check is still never replaced.
+        None => fs_atomic::atomic_create_checked(&path, bytes.as_bytes(), &delays, &mut unchanged),
+    };
+    written.map_err(|error| write_failed(vault, error.source.to_string()))
 }
