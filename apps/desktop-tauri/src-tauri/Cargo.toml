@@ -64,7 +64,6 @@ tauri-plugin-opener = "2.7.2"
 # `semver` feature, so two versions never run side by side.
 tauri-plugin-single-instance = { version = "2.5.4", features = ["deep-link"] }
 tauri-plugin-deep-link = "2.6.2"
-tauri-plugin-notification = "2.7.0"
 # Rust-only use: the page registers no shortcut itself, so no capability grants the plugin.
 tauri-plugin-global-shortcut = "2.4.1"
 # `fonts.rs`: the installed families. Linux builds need libfontconfig1-dev.
@@ -126,6 +125,11 @@ gtk = "0.18.2"
 # to compile there. Drop the pin when the plugin moves to `..Default::default()`.
 rust-ini = "=0.21.1"
 
+# Windows and Linux only: on macOS it posts through the deprecated `NSUserNotificationCenter`,
+# which macOS refuses for a bundle id that used the modern center (`notifications/mac.rs`).
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+tauri-plugin-notification = "2.7.0"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 # `shutdown/mac_quit.rs` answers `applicationShouldTerminate:`, which tao does not implement.
 # `windows/nav_input.rs` reads the trackpad swipe events. `windows/chrome.rs` reads the default
@@ -134,7 +138,11 @@ block2 = "0.6"
 objc2 = "0.6.5"
 objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "NSWorkspace", "NSSpellChecker", "NSWindow", "NSView", "NSButton", "NSControl", "block2", "objc2-core-foundation"] }
 objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString", "NSRange", "NSArray", "NSURL", "NSURLRequest"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString", "NSRange", "NSArray", "NSURL", "NSURLRequest", "NSBundle", "NSError", "NSOperation", "block2", "NSAppleEventManager", "NSAppleEventDescriptor"] }
+# `shutdown/mac_quit.rs` answers a pending terminate on the main run loop.
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = ["std", "CFRunLoop", "block2"] }
+# `notifications/mac.rs`: the modern notification center, as the Electron app used it.
+objc2-user-notifications = { version = "0.3.2", default-features = false, features = ["std", "block2", "UNUserNotificationCenter", "UNNotification", "UNNotificationContent", "UNNotificationRequest", "UNNotificationResponse", "UNNotificationSettings", "UNNotificationSound", "UNNotificationTrigger"] }
 # `shell/navigation_guard/macos.rs` decides the main frame from the navigation action's target
 # frame. Same version and features as wry's.
 objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std", "block2", "objc2-app-kit", "objc2-core-foundation", "WKWebView", "WKNavigationAction", "WKFrameInfo", "WKNavigationDelegate"] }

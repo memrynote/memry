@@ -166,6 +166,14 @@ describe('useInboxNotifications', () => {
     expect(toastInfo).toHaveBeenCalledTimes(1)
   })
 
+  it('shows the banner while macOS has not asked yet, since the show asks', async () => {
+    notificationPermission.mockResolvedValue('prompt')
+    mountWith(i18nEn)
+    snoozeDue?.({ items: [item('a', 'Quarterly review')] })
+
+    expect((await shown()).title).toBe('Quarterly review')
+  })
+
   it('resubscribes on a language change', async () => {
     const i18n = await createRendererI18n({ locale: 'en' })
     mountWith(i18n)

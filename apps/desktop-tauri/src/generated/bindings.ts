@@ -40,15 +40,20 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**
+	 *  Whether notifications may show. macOS answers `prompt` until the user was asked; the first
+	 *  notification asks.
+	 */
 	notificationPermission: () => __TAURI_INVOKE<NotificationPermission>("notification_permission"),
 	/**
 	 *  Shows a notification from the renderer. A click may only focus the window or run one of the
-	 *  handlers the inbox and reminders register.
+	 *  handlers the inbox and reminders register. Rejects when the platform refuses the notification,
+	 *  for example when the user turned notifications off.
 	 */
 	notificationShow: (request: NotificationRequest) => __TAURI_INVOKE<null>("notification_show", { request }),
 	/**
-	 *  Whether a notification can be shown: always on macOS and Windows, on Linux when a daemon owns
-	 *  `org.freedesktop.Notifications`.
+	 *  Whether a notification can be shown: on macOS from the app bundle, on Windows always, on
+	 *  Linux when a daemon owns `org.freedesktop.Notifications`.
 	 */
 	notificationSupported: () => __TAURI_INVOKE<boolean>("notification_supported"),
 	/**  Registers the saved binding (or the fallback) and says what the OS did. */
@@ -431,8 +436,11 @@ export type Modifiers = {
 	alt?: boolean,
 };
 
-/**  Desktop needs no permission prompt: the plugin answers granted. */
-export type NotificationPermission = "granted" | "denied";
+/**
+ *  Whether the app may show notifications. `prompt`: macOS has not asked the user yet, and the
+ *  first notification asks. Windows and Linux answer granted.
+ */
+export type NotificationPermission = "granted" | "denied" | "prompt";
 
 export type NotificationRequest = {
 	/**  A re-fire with the same key replaces the earlier notification where the platform allows. */

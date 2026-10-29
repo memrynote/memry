@@ -170,7 +170,6 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
         single_instance_off,
     ))
     .plugin(tauri_plugin_deep_link::init())
-    .plugin(tauri_plugin_notification::init())
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
     .plugin(tauri_plugin_dialog::init())
     // Its init script would take ctrl, shift and target=_blank link clicks for an `open_url` the
@@ -182,6 +181,9 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     )
     .plugin(tauri_plugin_clipboard_manager::init())
     .plugin(guards::process_gone::plugin());
+    // macOS posts through `UNUserNotificationCenter` itself (`notifications/mac.rs`).
+    #[cfg(not(target_os = "macos"))]
+    let app = app.plugin(tauri_plugin_notification::init());
     // macOS and Windows write their own login item (`autostart/`).
     #[cfg(target_os = "linux")]
     let app = app.plugin(
