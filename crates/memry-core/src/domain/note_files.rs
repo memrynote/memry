@@ -25,10 +25,12 @@
 //! pairs a new stat with the hash of older bytes.
 //!
 //! `file_hash` (table `note_file_hashes`, migration 17) is the same kind of
-//! string for the bytes the tier last read from the file, whether or not the
-//! note's document took them: rename pairing reads it, nothing else does. A stat
-//! write replaces it too, and [`set_file_hash`] records a read that changed
-//! nothing else.
+//! string for the bytes on disk now, whether or not the note's document took
+//! them, or `None` when the tier does not know them: it is never the hash of
+//! bytes that went or were replaced. Rename pairing reads it, and a removal of
+//! a row that has one is of a file whose bytes the tier knew. Every stat write
+//! and [`set_hash`] replace it too, and [`set_file_hash`] records a read that
+//! changed nothing else.
 
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
@@ -285,14 +287,15 @@ fn body_moved_after_stamp() -> String {
     )
 }
 
-/// Records the hash of the bytes now on disk (or clears it with `None`). The file hash
-/// stays: it names the bytes last read, whatever the document holds.
+/// Records the hash of the bytes now on disk, which the document holds, as both hashes; `None`
+/// clears both (the file went, so the row names no bytes at all).
 pub fn set_hash(
     conn: &Connection,
     note_id: &str,
     content_hash: Option<&str>,
 ) -> Result<(), StorageError> {
-    let changed = conn
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let changed = tx
         .execute(
             "UPDATE note_files SET content_hash = ?2 WHERE note_id = ?1",
             params![note_id, content_hash],
@@ -301,7 +304,8 @@ pub fn set_hash(
     if changed == 0 {
         return Err(not_found(note_id));
     }
-    Ok(())
+    write_file_hash(&tx, note_id, content_hash)?;
+    tx.commit().map_err(failed)
 }
 
 /// Moves one note to `new_path`. The path of another note is refused and the

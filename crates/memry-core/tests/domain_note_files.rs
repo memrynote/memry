@@ -415,19 +415,25 @@ fn a_refresh_moves_the_stamp_only_while_the_body_has_not_moved_since() {
     );
 }
 
-/// The file hash names the bytes the tier last read, apart from the text the document holds:
-/// every stat write and [`NoteFiles::set_file_hash`] replace it, forgetting the content hash
-/// keeps it, and it goes with the row.
+/// The file hash names the bytes on disk now, apart from the text the document holds, or
+/// nothing: every stat write, [`NoteFiles::set_hash`] and [`NoteFiles::set_file_hash`]
+/// replace it, a row whose file went (`set_hash(None)`) has none, and it goes with the row.
 #[test]
 fn the_file_hash_follows_reads_and_goes_with_its_row() {
     let Fixture { dir, vault } = fixture();
     let files = vault.note_files();
     files.upsert_stat(stat("n1", "a.md")).expect("insert");
-    files.set_hash("n1", None).expect("forget the text");
+    let inserted = files.by_id("n1").expect("read").expect("row");
+    assert_eq!(inserted.file_hash.as_deref(), Some("00000001"));
+    files.set_hash("n1", Some("0000000a")).expect("a write");
+    let written = files.by_id("n1").expect("read").expect("row");
+    assert_eq!(written.file_hash.as_deref(), Some("0000000a"));
+    files.set_hash("n1", None).expect("the file went");
     let row = files.by_id("n1").expect("read").expect("row");
     assert_eq!(
         (row.content_hash.as_deref(), row.file_hash.as_deref()),
-        (None, Some("00000001"))
+        (None, None),
+        "a hash of bytes that went"
     );
 
     files.set_file_hash("n1", Some("00000002")).expect("a read");

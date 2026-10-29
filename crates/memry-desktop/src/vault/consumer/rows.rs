@@ -256,14 +256,22 @@ impl Lane<'_> {
         self.state().index.check(note_id, path)
     }
 
-    /// The row no longer names content the document holds.
+    /// The note's file went and its row stays: the row names no content the document holds,
+    /// and no bytes on disk, so no file pairs with it as its move.
     pub(super) fn forget_hash(&self, note_id: &str) -> Result<(), StorageError> {
         self.files().set_hash(note_id, None)
     }
 
-    /// The file was read and its text not taken: only its pairing hash moves.
-    pub(super) fn record_file_hash(&self, note_id: &str, hash: &str) -> Result<(), StorageError> {
-        self.files().set_file_hash(note_id, Some(hash))
+    /// The file was read, or found unreadable, and its text not taken: only its pairing hash
+    /// moves, to the bytes on disk now or to none. The row's size, stamp and content hash stay
+    /// those of what the document holds, which the write-back compares with; the walk then
+    /// reads the file again at every open, as it did before file hashes.
+    pub(super) fn record_file_hash(
+        &self,
+        note_id: &str,
+        hash: Option<&str>,
+    ) -> Result<(), StorageError> {
+        self.files().set_file_hash(note_id, hash)
     }
 
     /// Records the row stamped now: the caller read the file now and, with a hash, the body

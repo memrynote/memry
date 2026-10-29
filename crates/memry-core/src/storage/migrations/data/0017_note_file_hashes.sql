@@ -12,7 +12,11 @@
 -- the `user_version` write (§A.0) would make the re-run fail forever. The
 -- backfill copies every hash a row has, which names the same bytes, and is a
 -- no-op on that re-run. Additive: no existing table or row touched, and an
--- older build never reads it.
+-- older build never reads it. An older build does write `note_files` without
+-- it, so a hash here can then name bytes that build replaced, or outlive a row
+-- it removed and attach to the note's next row. This build reads a markdown
+-- row's file again at every open while its file hash is not its content hash,
+-- and the read replaces it; until then a move pairs on what it names.
 CREATE TABLE IF NOT EXISTS note_file_hashes (
   note_id   TEXT PRIMARY KEY,
   file_hash TEXT NOT NULL
