@@ -474,6 +474,10 @@ fn a_keychain_that_comes_back_after_an_error_fires_the_listener_once() {
     assert_eq!(fired.load(Ordering::SeqCst), 1);
 }
 
+/// The stuck call itself ends in an error (`release_failing`). Switching the fake's mode would not
+/// do it: the call read the mode before it blocked, so it ended in success, a real recovery, and
+/// the check raced the listener thread (windows-2022, run 40795127085). With no success there is
+/// no recovery to deliver, so the count is 0 however the threads are scheduled.
 #[test]
 fn a_stuck_call_that_ends_in_an_error_is_not_a_recovery() {
     let rig = rig_with(None, Duration::from_millis(100), false);
@@ -485,12 +489,24 @@ fn a_stuck_call_that_ends_in_an_error_is_not_a_recovery() {
         Err(SecureStoreError::Locked)
     );
     rig.fake.set_mode(Mode::Fail(no_storage));
-    gate.release();
-    wait_for("the worker to take calls again", || {
-        rig.store.get(SecureStoreKey::MasterKey) == Err(SecureStoreError::Locked)
-            && rig.store.health() == SecureStoreHealth::Unavailable
+    let stuck = rig.fake.reads.load(Ordering::SeqCst);
+    gate.release_failing(no_storage);
+    // A call reaches the keychain again only once the one keychain thread finished the stuck
+    // call and decided on its recovery. (`Locked` alone is no sign: the latch answers it too.)
+    wait_for("a call to reach the keychain after the stuck one", || {
+        assert_eq!(
+            rig.store.get(SecureStoreKey::MasterKey),
+            Err(SecureStoreError::Locked)
+        );
+        rig.fake.reads.load(Ordering::SeqCst) > stuck
     });
+    assert_eq!(rig.store.health(), SecureStoreHealth::Unavailable);
     assert_eq!(fired.load(Ordering::SeqCst), 0);
+    // The outage is still open: the first call that succeeds is its one recovery.
+    rig.fake.set_mode(Mode::Normal);
+    assert_eq!(rig.store.get(SecureStoreKey::MasterKey), Ok(None));
+    wait_for("the recovery", || fired.load(Ordering::SeqCst) == 1);
+    assert_eq!(rig.store.health(), SecureStoreHealth::Ready);
 }
 
 #[test]
