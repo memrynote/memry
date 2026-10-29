@@ -79,7 +79,8 @@ impl Reply {
 }
 
 pub struct Harness {
-    pub client: reqwest::Client,
+    root: reqwest::Certificate,
+    addr: SocketAddr,
     seen: Arc<Mutex<Vec<Seen>>>,
 }
 
@@ -89,19 +90,19 @@ impl Harness {
     }
 
     pub fn service(&self, key: Option<&str>) -> Unsplash {
-        Unsplash::new(self.client.clone(), key.map(str::to_owned))
+        Unsplash::new(self.builder(), key.map(str::to_owned)).expect("client")
     }
-}
 
-fn client_for(root: reqwest::Certificate, addr: SocketAddr) -> reqwest::Client {
-    let mut builder = reqwest::Client::builder()
-        .tls_backend_rustls()
-        .add_root_certificate(root)
-        .no_proxy();
-    for host in HOSTS {
-        builder = builder.resolve(host, addr);
+    /// The app's builder, trusting this server and resolving every host to it.
+    pub fn builder(&self) -> reqwest::ClientBuilder {
+        let mut builder = memry_desktop::http::builder()
+            .add_root_certificate(self.root.clone())
+            .no_proxy();
+        for host in HOSTS {
+            builder = builder.resolve(host, self.addr);
+        }
+        builder
     }
-    builder.build().expect("client")
 }
 
 pub async fn serve(respond: impl Fn(&Seen) -> Reply + Send + Sync + 'static) -> Harness {
@@ -185,10 +186,7 @@ pub async fn serve(respond: impl Fn(&Seen) -> Reply + Send + Sync + 'static) -> 
             });
         }
     });
-    Harness {
-        client: client_for(root, addr),
-        seen,
-    }
+    Harness { root, addr, seen }
 }
 
 fn parse(head: &str) -> Seen {

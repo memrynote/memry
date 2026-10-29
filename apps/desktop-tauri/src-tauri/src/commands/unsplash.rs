@@ -36,7 +36,14 @@ pub fn register_stages() {
 /// After telemetry has resolved the `RuntimeConfig` that holds the access key.
 fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let key = app.state::<RuntimeConfig>().unsplash_access_key.clone();
-    app.manage(Arc::new(Unsplash::new(memry_desktop::http::client(), key)));
+    let unsplash = Unsplash::new(memry_desktop::http::builder(), key).map_err(|error| {
+        CommandError::new(
+            ErrorKind::Internal,
+            "unsplash_client",
+            format!("the Unsplash HTTP client could not be built: {error}"),
+        )
+    })?;
+    app.manage(Arc::new(unsplash));
     Ok(())
 }
 
