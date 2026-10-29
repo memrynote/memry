@@ -158,3 +158,61 @@ fn traffic_light_rects(window: &tauri::WebviewWindow<tauri::Wry>) -> Result<Vec<
     })
     .collect()
 }
+
+/// Posts the `WM_SYSCOMMAND` `SC_KEYMENU` a bare Alt sends the main window, and reports whether
+/// its thread went into menu mode (then ends that mode). Always false off Windows.
+#[tauri::command]
+pub async fn e2e_bare_alt_menu_mode(app: AppHandle<tauri::Wry>) -> Result<bool, CommandError> {
+    #[cfg(windows)]
+    {
+        let window = app
+            .get_webview_window(crate::windows::MAIN_LABEL)
+            .ok_or_else(|| {
+                CommandError::new(ErrorKind::NotFound, "e2e_window", "no main window")
+            })?;
+        // `HWND` is not `Send`: the raw handle crosses into the blocking task.
+        let raw = window.hwnd().map_err(failure)?.0 as isize;
+        tauri::async_runtime::spawn_blocking(move || key_menu_mode(raw))
+            .await
+            .map_err(failure)?
+            .map_err(failure)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+        Ok(false)
+    }
+}
+
+#[cfg(windows)]
+fn key_menu_mode(raw: isize) -> windows::core::Result<bool> {
+    use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GUI_INMENUMODE, GUITHREADINFO, GetGUIThreadInfo, GetWindowThreadProcessId, PostMessageW,
+        SC_KEYMENU, WM_CANCELMODE, WM_SYSCOMMAND,
+    };
+
+    let hwnd = HWND(raw as *mut _);
+    // SAFETY: the main window lives as long as the app; posting and reading its thread's GUI
+    // state are safe from any thread.
+    unsafe {
+        let thread = GetWindowThreadProcessId(hwnd, None);
+        PostMessageW(
+            Some(hwnd),
+            WM_SYSCOMMAND,
+            WPARAM(SC_KEYMENU as usize),
+            LPARAM(0),
+        )?;
+        std::thread::sleep(Duration::from_millis(500));
+        let mut info = GUITHREADINFO {
+            cbSize: size_of::<GUITHREADINFO>() as u32,
+            ..Default::default()
+        };
+        GetGUIThreadInfo(thread, &mut info)?;
+        let in_menu = info.flags.0 & GUI_INMENUMODE.0 != 0;
+        if in_menu {
+            PostMessageW(Some(hwnd), WM_CANCELMODE, WPARAM(0), LPARAM(0))?;
+        }
+        Ok(in_menu)
+    }
+}
