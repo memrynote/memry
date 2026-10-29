@@ -21,6 +21,15 @@ pub struct E2eWindow {
     pub title: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct E2eRect {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
 fn failure(error: impl std::fmt::Display) -> CommandError {
     CommandError::new(ErrorKind::Internal, "e2e_window", error.to_string())
 }
@@ -89,4 +98,63 @@ pub async fn e2e_set_window_rect<R: Runtime>(
         .map_err(failure)?
         .map_err(failure)?
         .map_err(failure)
+}
+
+/// The main window's close, minimize and zoom buttons, in points from the window's top-left
+/// corner. Empty off macOS.
+#[tauri::command]
+pub async fn e2e_traffic_lights(app: AppHandle<tauri::Wry>) -> Result<Vec<E2eRect>, CommandError> {
+    #[cfg(target_os = "macos")]
+    {
+        let window = app
+            .get_webview_window(crate::windows::MAIN_LABEL)
+            .ok_or_else(|| {
+                CommandError::new(ErrorKind::NotFound, "e2e_window", "no main window")
+            })?;
+        let (done, result) = mpsc::channel();
+        app.run_on_main_thread(move || {
+            let _ = done.send(traffic_light_rects(&window));
+        })
+        .map_err(failure)?;
+        tauri::async_runtime::spawn_blocking(move || result.recv_timeout(MAIN_THREAD_WAIT))
+            .await
+            .map_err(failure)?
+            .map_err(failure)?
+            .map_err(failure)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        Ok(Vec::new())
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn traffic_light_rects(window: &tauri::WebviewWindow<tauri::Wry>) -> Result<Vec<E2eRect>, String> {
+    use objc2_app_kit::{NSWindow, NSWindowButton};
+
+    let pointer = window.ns_window().map_err(|error| error.to_string())?;
+    // SAFETY: Tauri hands out the live NSWindow of the window, and this runs on the main thread.
+    let ns_window = unsafe { &*pointer.cast::<NSWindow>() };
+    let window_height = ns_window.frame().size.height;
+    [
+        NSWindowButton::CloseButton,
+        NSWindowButton::MiniaturizeButton,
+        NSWindowButton::ZoomButton,
+    ]
+    .into_iter()
+    .map(|kind| {
+        let button = ns_window
+            .standardWindowButton(kind)
+            .ok_or("the window has no traffic lights")?;
+        // Window coordinates start at the bottom-left corner of the frame.
+        let rect = button.convertRect_toView(button.bounds(), None);
+        Ok(E2eRect {
+            x: rect.origin.x,
+            y: window_height - rect.origin.y - rect.size.height,
+            width: rect.size.width,
+            height: rect.size.height,
+        })
+    })
+    .collect()
 }

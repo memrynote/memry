@@ -128,10 +128,11 @@ rust-ini = "=0.21.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # `shutdown/mac_quit.rs` answers `applicationShouldTerminate:`, which tao does not implement.
-# `windows/nav_input.rs` reads the trackpad swipe events.
+# `windows/nav_input.rs` reads the trackpad swipe events. The e2e build reads the traffic lights'
+# frames (`e2e/window.rs`).
 block2 = "0.6"
 objc2 = "0.6.5"
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "NSWorkspace", "NSSpellChecker", "block2", "objc2-core-foundation"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "NSWorkspace", "NSSpellChecker", "NSWindow", "NSView", "NSButton", "NSControl", "block2", "objc2-core-foundation"] }
 objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString", "NSRange", "NSArray", "NSURL", "NSURLRequest"] }
 # `shell/navigation_guard/macos.rs` decides the main frame from the navigation action's target

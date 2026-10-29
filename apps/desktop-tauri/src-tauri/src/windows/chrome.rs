@@ -1,6 +1,7 @@
 //! The frame of the main window per OS.
 //!
-//! - macOS: hidden title bar with the traffic lights at (12, 12), drawn over the title row.
+//! - macOS: hidden title bar with the close button's frame at (12, 12), as in Electron, drawn
+//!   over the title row.
 //! - Windows: no native frame. The caption buttons are a React component answered by
 //!   `win32_caption`, and the window keeps its shadow and resize borders.
 //! - Linux: the native frame.
@@ -14,7 +15,11 @@ pub fn apply<'a, R: Runtime, M: tauri::Manager<R>>(
     builder
         .title_bar_style(tauri::TitleBarStyle::Overlay)
         .hidden_title(true)
-        .traffic_light_position(tauri::LogicalPosition::new(12.0, 12.0))
+        // Electron put the close button's frame at (12, 12). Tauri's `y` is not that offset: the
+        // title bar container becomes `button height + y` tall and AppKit keeps the buttons 9
+        // points above its bottom, so the frame's top lands at `y - 9`
+        // (`e2e/specs/shell/traffic-lights.e2e.ts`).
+        .traffic_light_position(tauri::LogicalPosition::new(12.0, 21.0))
 }
 
 #[cfg(windows)]
