@@ -50,6 +50,18 @@ const HOSTILE: &[(&str, &str)] = &[
         "<svg><style>a{}</style x><style>@import url(http://127.0.0.1:9/x.css);</style x></svg>",
     ),
     (
+        "a style closer with a prefix, where HTML does not end the style",
+        "<svg><style>.a{}</x:style>@import url(http://127.0.0.1:9/x.css);</style></svg>",
+    ),
+    (
+        "a base behind a prefix",
+        r##"<svg><g x:base="http://127.0.0.1:9/"><use href="#a"/></g></svg>"##,
+    ),
+    (
+        "an animation of a base",
+        r#"<svg><set attributeName="xml:base" to="http://127.0.0.1:9/"/></svg>"#,
+    ),
+    (
         "a style with no closer",
         "<svg><rect/><style>@import url(http://127.0.0.1:9/x.css);",
     ),
@@ -119,14 +131,31 @@ fn a_stray_lt_is_written_as_text() {
 fn a_style_keeps_its_css_only_when_it_loads_nothing() {
     let kept = "<svg><style>.a{fill:url(#g)}</style></svg>";
     assert_eq!(sanitize_svg(kept).as_deref(), Some(kept));
-    for css in [".a{font-family:'x'}", ".a{background:image-set(x 1x)}"] {
+    // Each piece between `;`, `{` and `}` stands alone: an unsafe one goes, the rest stays.
+    for (css, kept) in [
+        (
+            ".st0{fill:#FF0000;}.st1{font-family:'MyriadPro-Regular';font-size:12px;}",
+            ".st0{fill:#FF0000;}.st1{;font-size:12px;}",
+        ),
+        (".a{background:image-set(x 1x);fill:red}", ".a{;fill:red}"),
+        (".a{fill:red}.b{fill:u\\72l(#g)}", ".a{fill:red}.b{}"),
+    ] {
         assert_eq!(
             sanitize_svg(&format!("<svg><style>{css}</style><g/></svg>")).as_deref(),
-            Some("<svg><g/></svg>"),
+            Some(format!("<svg><style>{kept}</style><g/></svg>").as_str()),
             "{css}"
         );
     }
-    // A tag inside or no closer: the opener goes and the CSS is plain text.
+    assert_eq!(
+        sanitize_svg(r#"<svg style="fill:red;font-family:'Arial';stroke:blue"/>"#).as_deref(),
+        Some(r#"<svg style="fill:red;;stroke:blue"/>"#)
+    );
+    // A closer by another name, a tag inside, or no closer: the opener goes and the CSS is
+    // plain text.
+    assert_eq!(
+        sanitize_svg("<svg><style>.a{}</STYLE><g/></svg>").as_deref(),
+        Some("<svg>.a{}</STYLE><g/></svg>")
+    );
     assert_eq!(
         sanitize_svg("<svg><style>.a{}<g/></style></svg>").as_deref(),
         Some("<svg>.a{}<g/></style></svg>")

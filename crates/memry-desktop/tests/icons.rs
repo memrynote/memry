@@ -85,6 +85,12 @@ fn an_svg_over_the_limit_is_refused_by_size_and_keeps_the_last_icon() {
         "{err:?}"
     );
     assert_eq!(icon(dir.path(), "big.svg"), b"<svg><rect/></svg>");
+
+    // Under the limit as bytes, over it as text: each malformed byte decodes to U+FFFD.
+    let mut malformed = b"<svg>".to_vec();
+    malformed.resize(MAX_SVG_BYTES / 2, 0xff);
+    let err = write_icon(dir.path(), "big", "svg", &malformed).expect_err("over the limit");
+    assert!(matches!(err, IconError::TooLarge { .. }), "{err:?}");
 }
 
 /// A link planted at an icon's path is replaced, never written through: the file it points

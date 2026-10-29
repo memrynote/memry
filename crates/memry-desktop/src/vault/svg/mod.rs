@@ -29,8 +29,8 @@
 //! (`tests/sanitize_svg_memory.rs`). Callers on an async runtime run it on a blocking thread,
 //! one icon at a time.
 //!
-//! Text over [`MAX_SVG_BYTES`] is refused (`None`). Electron reads 2 MiB of upload
-//! (`CUSTOM_ICON_MAX_INPUT_BYTES`), but its output can grow six times when `"` becomes
+//! Text over [`MAX_SVG_BYTES`] is refused ([`SvgRefused::TooLarge`]). Electron reads 2 MiB of
+//! upload (`CUSTOM_ICON_MAX_INPUT_BYTES`), but its output can grow six times when `"` becomes
 //! `&quot;`, so an icon an Electron build wrote can be over the cap. Such an icon is refused,
 //! not cut.
 
@@ -46,10 +46,26 @@ pub use scan::steps;
 /// The largest SVG this sanitizes: twice the upload cap of an icon.
 pub const MAX_SVG_BYTES: usize = 4 * 1024 * 1024;
 
+/// Why [`sanitize_svg_bytes`] returned no SVG.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SvgRefused {
+    /// The text is over [`MAX_SVG_BYTES`]; `bytes` is its length once decoded.
+    TooLarge { bytes: usize },
+    /// No `<svg` tag survives.
+    NoSvgRoot,
+}
+
 /// [`sanitize_svg`] of the bytes decoded as UTF-8. A malformed sequence becomes U+FFFD, as in
-/// Node's `toString('utf8')`. Decoding never shortens the bytes, so the cap holds on them.
-pub fn sanitize_svg_bytes(bytes: &[u8]) -> Option<Vec<u8>> {
-    sanitize_svg(&String::from_utf8_lossy(bytes)).map(String::into_bytes)
+/// Node's `toString('utf8')`, so the cap applies to the decoded text: three bytes for each
+/// malformed one.
+pub fn sanitize_svg_bytes(bytes: &[u8]) -> Result<Vec<u8>, SvgRefused> {
+    let text = String::from_utf8_lossy(bytes);
+    if text.len() > MAX_SVG_BYTES {
+        return Err(SvgRefused::TooLarge { bytes: text.len() });
+    }
+    sanitize_svg(&text)
+        .map(String::into_bytes)
+        .ok_or(SvgRefused::NoSvgRoot)
 }
 
 /// The SVG with every scripting, external-reference and entity construct stripped, and with

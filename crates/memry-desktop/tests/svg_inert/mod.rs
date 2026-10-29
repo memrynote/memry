@@ -36,24 +36,26 @@ const DANGEROUS_ELEMENTS: &[&str] = &[
 /// `Err` naming the first construct that is not inert.
 pub fn check_inert(svg: &str) -> Result<(), String> {
     let mut at = 0;
-    let mut style_text: Option<usize> = None;
+    // The open style's name and where its text starts.
+    let mut style: Option<(&str, usize)> = None;
     while let Some(offset) = svg[at..].find('<') {
         let lt = at + offset;
         let (tag, end) = parse_tag(svg, lt)
             .ok_or_else(|| format!("markup that is no plain tag: {}", near(svg, lt)))?;
-        if let Some(text) = style_text.take() {
+        if let Some((opener, text)) = style.take() {
             check_css(&svg[text..lt]).map_err(|err| format!("style text: {err}"))?;
-            if !(tag.closing && local(tag.name) == "style") {
-                return Err(format!("a tag inside a style: {}", near(svg, lt)));
+            // XML ends a style only at its own name, and HTML at no other one.
+            if !(tag.closing && tag.name == opener) {
+                return Err(format!("a style that does not end here: {}", near(svg, lt)));
             }
         }
         check_tag(&tag).map_err(|err| format!("{err}: {}", near(svg, lt)))?;
         if !tag.closing && !tag.self_closing && local(tag.name) == "style" {
-            style_text = Some(end);
+            style = Some((tag.name, end));
         }
         at = end;
     }
-    match style_text {
+    match style {
         Some(_) => Err("a style with no closer".into()),
         None => Ok(()),
     }
@@ -142,7 +144,7 @@ fn check_tag(tag: &Tag<'_>) -> Result<(), String> {
     }
     for (name, value) in &tag.attributes {
         let attribute = local(name);
-        if attribute.starts_with("on") {
+        if attribute.starts_with("on") || attribute == "base" {
             return Err(format!("attribute {name}"));
         }
         if value.contains(['&', '<', '\\', '\'']) {
@@ -153,7 +155,7 @@ fn check_tag(tag: &Tag<'_>) -> Result<(), String> {
         }
         let target = local(&squash(value));
         if attribute == "attributename"
-            && (matches!(target.as_str(), "href" | "src") || target.starts_with("on"))
+            && (matches!(target.as_str(), "href" | "src" | "base") || target.starts_with("on"))
         {
             return Err(format!("an animation of {value}"));
         }
@@ -183,6 +185,10 @@ fn check_css(css: &str) -> Result<(), String> {
         "expression(",
         "javascript:",
         "image-set(",
+        "image(",
+        "cross-fade(",
+        "element(",
+        "src(",
     ] {
         if css.contains(bad) {
             return Err(format!("CSS with {bad}: {css}"));

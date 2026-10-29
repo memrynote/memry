@@ -19,12 +19,15 @@
 //! - An attribute is kept only when it has a value, a plain name, and none of `"`, `'`, `&`,
 //!   `<` or `\` in the value. The parser decodes an entity after any check here, CSS decodes
 //!   an escape, and a quote opens a CSS string. Names compare by local part, so `x:href` with
-//!   `x` bound to XLink is still `href`. `on*` goes. `href` and `src` keep only a fragment or
-//!   an inert image data URL. `attributeName` may name none of those, and every value passes
-//!   [`css_is_inert`], since any attribute can be a presentation attribute (`fill="url(…)"`).
-//! - A `<style>` element stays only as opener, text, closer, with text that passes
-//!   [`css_is_inert`]. Unsafe CSS drops the element with its text. A tag inside it, or no
-//!   closer, drops the opener and leaves the text as plain text.
+//!   `x` bound to XLink is still `href`. `on*` and `*:base` go. `href` and `src` keep only a
+//!   fragment or an inert image data URL. `attributeName` may name none of those, and every
+//!   value passes [`css_is_inert`], since any attribute can be a presentation attribute
+//!   (`fill="url(…)"`). A `style` value is filtered instead ([`write_inert_css`]).
+//! - A `<style>` element stays only as opener, text, closer, the closer bearing the opener's
+//!   exact name: XML ends the element at no other, and HTML, which inlines the SVG, ends it
+//!   at no other prefix (`</x:style>` would leave the text after it in the style). Its text is
+//!   filtered by [`write_inert_css`]. A tag inside it, another closer or no closer drops the
+//!   opener and leaves the text as plain text.
 //!
 //! Every rule drops or escapes part of what the TypeScript writes and adds nothing:
 //! `tests/sanitize_svg_vectors.rs` checks that against the TypeScript's own output.
@@ -123,10 +126,11 @@ struct Writer {
     has_root: bool,
 }
 
-/// Where an open `<style>` element's opener and text start in the output.
+/// Where an open `<style>` element's opener and text start in the output, and its name.
 struct OpenStyle {
     opener: usize,
     text: usize,
+    name: String,
 }
 
 impl Writer {
@@ -157,12 +161,10 @@ impl Writer {
             && ELEMENTS.contains(&tag.local.as_str())
             && !reads_as_style;
         if let Some(style) = self.style.take() {
-            if kept && is_style && tag.closing {
-                if css_is_inert(as_str(&self.out[style.text..])) {
-                    self.write_closer(tag.name);
-                } else {
-                    self.out.truncate(style.opener);
-                }
+            if tag.closing && tag.name == style.name {
+                let css = self.out.split_off(style.text);
+                write_inert_css(&mut self.out, &css);
+                self.write_closer(tag.name);
                 return;
             }
             // Another tag inside the style: its text stays, as plain text.
@@ -179,13 +181,22 @@ impl Writer {
         self.out.push(b'<');
         self.out.extend_from_slice(tag.name.as_bytes());
         for Attribute { name, value } in tag.attributes() {
-            let Some(value) = value.filter(|value| keeps(name, value)) else {
+            let Some(value) = value.filter(|_| is_plain_name(name)) else {
                 continue;
             };
+            let local = local_name(name);
+            let filtered = local == "style";
+            if !filtered && !keeps(&local, value) {
+                continue;
+            }
             self.out.push(b' ');
             self.out.extend_from_slice(name.as_bytes());
             self.out.extend_from_slice(b"=\"");
-            self.out.extend_from_slice(value.as_bytes());
+            if filtered {
+                write_inert_css(&mut self.out, value.as_bytes());
+            } else {
+                self.out.extend_from_slice(value.as_bytes());
+            }
             self.out.push(b'"');
         }
         self.out
@@ -195,6 +206,7 @@ impl Writer {
             self.style = Some(OpenStyle {
                 opener,
                 text: self.out.len(),
+                name: tag.name.to_owned(),
             });
         }
     }
@@ -229,26 +241,46 @@ fn has_decoded_or_quoted(value: &str) -> bool {
     })
 }
 
-/// Whether the attribute `name="value"`, which the TypeScript kept, stays.
-fn keeps(name: &str, value: &str) -> bool {
-    if !is_plain_name(name) || has_decoded_or_quoted(value) {
+/// Whether an attribute the TypeScript kept, of plain name with local part `local`, keeps
+/// `value`.
+fn keeps(local: &str, value: &str) -> bool {
+    if has_decoded_or_quoted(value) || local.starts_with("on") || local == "base" {
         return false;
     }
-    let local = local_name(name);
-    if local.starts_with("on") {
-        return false;
-    }
-    if matches!(local.as_str(), "href" | "src") && !is_safe_url(value) {
+    if matches!(local, "href" | "src") && !is_safe_url(value) {
         return false;
     }
     if local == "attributename" {
-        // What an animation writes, after any prefix: never a URL or a handler.
+        // What an animation writes, after any prefix: never a URL, a base or a handler.
         let target = local_name(&squash(value));
-        if matches!(target.as_str(), "href" | "src") || target.starts_with("on") {
+        if matches!(target.as_str(), "href" | "src" | "base") || target.starts_with("on") {
             return false;
         }
     }
     css_is_inert(value)
+}
+
+/// Writes `css` with each piece between `;`, `{` and `}` that fails [`css_is_inert`] left out
+/// and every delimiter kept, so a quoted `font-family` costs its own declaration and not the
+/// fills of its block. No check of [`css_is_inert`] reads across a delimiter, so pieces that
+/// pass, joined by delimiters, pass as a whole.
+fn write_inert_css(out: &mut Vec<u8>, css: &[u8]) {
+    let mut from = 0;
+    while from < css.len() {
+        let end = css[from..]
+            .iter()
+            .position(|byte| {
+                tick();
+                matches!(byte, b';' | b'{' | b'}')
+            })
+            .map_or(css.len(), |at| from + at);
+        let piece = &css[from..end];
+        if css_is_inert(as_str(piece)) {
+            out.extend_from_slice(piece);
+        }
+        out.extend_from_slice(&css[end..css.len().min(end + 1)]);
+        from = end + 1;
+    }
 }
 
 /// CSS, or a value CSS may read, that loads nothing: no string, escape, entity or `<`, no

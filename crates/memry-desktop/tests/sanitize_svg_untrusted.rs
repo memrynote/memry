@@ -6,7 +6,9 @@
 //! of the document once per opener: quadratic. The step bound is linear, so a pass that loses
 //! its stop rule or its memo fails here by an order of magnitude.
 
-use memry_desktop::vault::svg::{MAX_SVG_BYTES, sanitize_svg, sanitize_svg_bytes, steps};
+use memry_desktop::vault::svg::{
+    MAX_SVG_BYTES, SvgRefused, sanitize_svg, sanitize_svg_bytes, steps,
+};
 use memry_test_kit::{
     assert_output_bounded, assert_steps_at_most, on_small_stack, output_bound, proptest_config,
 };
@@ -104,9 +106,12 @@ fn text_lt_written_as_entities_stays_within_the_output_bound() {
 fn input_over_the_cap_is_refused_and_at_the_cap_is_read() {
     let at_cap = format!("<svg>{}", " ".repeat(MAX_SVG_BYTES - 5));
     assert_eq!(at_cap.len(), MAX_SVG_BYTES);
-    assert!(sanitize_svg_bytes(at_cap.as_bytes()).is_some());
+    assert!(sanitize_svg_bytes(at_cap.as_bytes()).is_ok());
     let over = format!("{at_cap} ");
-    assert_eq!(sanitize_svg_bytes(over.as_bytes()), None);
+    assert_eq!(
+        sanitize_svg_bytes(over.as_bytes()),
+        Err(SvgRefused::TooLarge { bytes: over.len() })
+    );
     assert_eq!(sanitize_svg(&over), None);
 }
 
@@ -177,7 +182,7 @@ proptest! {
 
     #[test]
     fn any_bytes_are_read_without_a_panic(bytes in prop::collection::vec(any::<u8>(), 0..512)) {
-        if let Some(out) = sanitize_svg_bytes(&bytes) {
+        if let Ok(out) = sanitize_svg_bytes(&bytes) {
             // Malformed UTF-8 grows to U+FFFD (3 bytes) before the bound applies.
             prop_assert!(out.len() <= output_bound(3 * bytes.len()));
             prop_assert!(std::str::from_utf8(&out).is_ok());
