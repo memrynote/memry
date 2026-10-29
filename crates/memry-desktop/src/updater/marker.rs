@@ -448,6 +448,29 @@ mod tests {
         }
     }
 
+    /// A 38c build wrote no channel or arch; the 38d build of the same version that reads it after
+    /// a failed swap is still the build that started the install.
+    #[test]
+    fn a_marker_without_channel_and_arch_still_catches_a_failed_install() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            path(dir.path()),
+            r#"{"fromVersion":"2099.101.7","toVersion":"v2099-01-01.8","startedAt":"2026-11-01T09:30:15.123Z","installer":"velopack"}"#,
+        )
+        .unwrap();
+        let current = Build {
+            version: "2099.101.7",
+            channel: Some("osx-arm64"),
+            arch: Some("aarch64"),
+        };
+        let detected = detect(dir.path(), &current, || Velopack).unwrap();
+        assert_eq!(detected.outcome, DidNotApply);
+        assert_eq!(
+            detected.attempt.to_version.as_deref(),
+            Some("v2099-01-01.8")
+        );
+    }
+
     #[test]
     fn records_the_channel_and_arch_after_the_electron_keys() {
         let dir = tempfile::tempdir().unwrap();

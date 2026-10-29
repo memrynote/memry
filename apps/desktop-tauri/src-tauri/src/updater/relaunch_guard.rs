@@ -5,6 +5,8 @@
 //! launch that finds its own install in flight shows the "Installing update" splash for two
 //! seconds and exits. The decision is `memry_desktop::updater::guard`.
 
+use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use memry_desktop::i18n::{self, Args};
@@ -21,6 +23,14 @@ use crate::windows::preboot::{self, PrebootCopy, show_preboot};
 /// process stays out of the way well before that.
 const SPLASH_EXIT: Duration = Duration::from_millis(2000);
 
+/// Set by `main` when Velopack's updater started this process (`VelopackApp::on_restarted`): the
+/// launch after Restart to install, or the old build again after a failed swap.
+static LAUNCHED_BY_UPDATER: AtomicBool = AtomicBool::new(false);
+
+pub fn note_launched_by_updater() {
+    LAUNCHED_BY_UPDATER.store(true, Ordering::SeqCst);
+}
+
 /// The first registration of the `Guards` stage, before the crash monitor starts a child process
 /// of this bundle. A normal boot drops the marker; the hand-off of this run writes a new one.
 pub fn apply(app: &AppHandle<Wry>) -> Result<(), CommandError> {
@@ -33,10 +43,21 @@ pub fn apply(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let Some(marker) = guard::read(&data_dir) else {
         return Ok(());
     };
-    let current = super::velopack_backend::installed_version()
-        .unwrap_or_else(|| app.package_info().version.to_string());
+    let installed = super::velopack_backend::installed();
+    let current = installed.as_ref().map_or_else(
+        || app.package_info().version.to_string(),
+        |installed| installed.version.clone(),
+    );
     let now = i64::try_from(now_ms()).unwrap_or(i64::MAX);
-    if !guard::should_guard(Some(&marker), &current, now, updater_alive) {
+    let guarded = guard::should_guard(
+        Some(&marker),
+        &current,
+        now,
+        LAUNCHED_BY_UPDATER.load(Ordering::SeqCst),
+        // Outside a Velopack install no updater of this bundle can run.
+        || installed.is_some_and(|installed| updater_alive(&installed.root)),
+    );
+    if !guarded {
         guard::clear(&data_dir);
         return Ok(());
     }
@@ -75,16 +96,12 @@ pub fn apply(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     Ok(())
 }
 
-/// The updater of this bundle: `<bundle>/Contents/MacOS/<exe>` is three levels down.
 #[cfg(unix)]
-fn updater_alive() -> bool {
-    std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.ancestors().nth(3).map(guard::updater_alive))
-        .unwrap_or(false)
+fn updater_alive(root: &Path) -> bool {
+    guard::updater_alive(root)
 }
 
 #[cfg(not(unix))]
-fn updater_alive() -> bool {
+fn updater_alive(_root: &Path) -> bool {
     false
 }

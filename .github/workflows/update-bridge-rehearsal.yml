@@ -528,6 +528,7 @@ jobs:
           wait_log "velopack: downloaded $VERSION" 600
 
           echo "::group::Read-only bundle: the install fails and the next launch offers the manual installer"
+          trap 'chflags -R nouchg "$app" || true' EXIT
           chflags -R uchg "$app"
           quit_app
           for _ in $(seq 1 60); do pgrep -x MemryNote >/dev/null || pgrep -x UpdateMac >/dev/null || break; sleep 1; done
@@ -545,9 +546,17 @@ jobs:
           # The moment the old process is gone, while the updater still runs, as a Dock click would.
           for _ in $(seq 1 300); do pgrep -x MemryNote >/dev/null || break; sleep 0.1; done
           pgrep -fl UpdateMac || echo "::warning::the updater was already gone at the relaunch"
+          shown="$(logs | grep -c 'main window shown' || true)"
+          halted="$(logs | grep -c 'boot halted' || true)"
+          opened="$(date +%s)"
           open "$app"
           for n in 1 2 3; do sleep 0.6; screencapture -x "shots/2-splash-$n.png" || true; done
+          # The guarded launch exits by itself 2 s after its decision; it must not boot on.
+          while pgrep -x MemryNote >/dev/null && [ $(($(date +%s) - opened)) -lt 5 ]; do sleep 0.1; done
+          if pgrep -fl MemryNote; then echo "::error::the guarded launch is still running"; exit 1; fi
           wait_log 'pending update install in flight on launch' 10
+          [ "$(logs | grep -c 'boot halted')" -gt "$halted" ] || { echo "::error::the guarded launch did not halt its boot"; exit 1; }
+          [ "$(logs | grep -c 'main window shown')" -eq "$shown" ] || { echo "::error::the guarded launch showed the main window"; exit 1; }
           for _ in $(seq 1 90); do installed | grep -qF "$VERSION" && break; sleep 1; done
           installed | grep -F "$VERSION"
           sleep 5

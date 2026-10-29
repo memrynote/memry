@@ -6,6 +6,7 @@
 
 use std::error::Error as _;
 use std::io;
+use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::{Mutex, PoisonError};
 
@@ -89,12 +90,22 @@ impl VelopackBackend {
     }
 }
 
-/// The installed version (`sq.version`) without an update manager, for the boot guard. `None`
-/// outside a Velopack install.
-pub fn installed_version() -> Option<String> {
+/// The running install as Velopack's updater sees it, for the boot guard.
+pub struct Installed {
+    /// `sq.version`.
+    pub version: String,
+    /// The `--root` the updater is started with: the `.app` bundle on macOS.
+    pub root: PathBuf,
+}
+
+/// Read without an update manager. `None` outside a Velopack install.
+pub fn installed() -> Option<Installed> {
     velopack::locator::auto_locate_app_manifest(velopack::locator::LocationContext::FromCurrentExe)
         .ok()
-        .map(|locator| locator.get_manifest_version().to_string())
+        .map(|locator| Installed {
+            version: locator.get_manifest_version().to_string(),
+            root: locator.get_root_dir(),
+        })
 }
 
 /// The channel is memorized in the installed `sq.version`; `UpdateManager` does not expose it.
