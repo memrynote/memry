@@ -31,7 +31,8 @@ tauri-build = { version = "2.7", features = [] }
 memry-desktop = { path = "../../../crates/memry-desktop" }
 # No `devtools`: a release build compiles no web inspector (wry and Tauri enable it in debug builds
 # only). With the feature on, a release build would inject Tauri's inspector hotkey, let page
-# script open it, and make the macOS webview inspectable from Safari.
+# script open it, and make the macOS webview inspectable from Safari. Rust CI fails when any crate
+# turns the feature on.
 tauri = { version = "2.12", features = ["specta", "tray-icon", "image-png"] }
 # tauri-specta rc.26 requires exactly these versions.
 tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
@@ -68,7 +69,8 @@ tauri-plugin-notification = "2.7.0"
 tauri-plugin-global-shortcut = "2.4.1"
 # `fonts.rs`: the installed families. Linux builds need libfontconfig1-dev.
 font-kit = "0.14.3"
-# The Paste and Match Style menu item reads the clipboard text.
+# `shell::clipboard` reads the clipboard text for Paste and Match Style and
+# `shell_clipboard_read_text`.
 tauri-plugin-clipboard-manager = "2.5.0"
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }

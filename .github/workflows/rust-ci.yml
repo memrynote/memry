@@ -398,6 +398,14 @@ jobs:
         working-directory: .
         run: node scripts/check-line-ceilings.mjs
 
+      # A release build has no web inspector (apps/desktop-tauri/AGENTS.md, Dev tools). Tauri
+      # compiles one in when any crate turns on the `devtools` feature of tauri or wry.
+      - name: No devtools feature in the desktop build
+        if: runner.os == 'Linux'
+        run: |
+          cargo tree -p memry-tauri -e normal,build,features --target all > "$RUNNER_TEMP/features.txt"
+          if grep -E '(tauri|tauri-runtime-wry|wry) feature "devtools"' "$RUNNER_TEMP/features.txt"; then exit 1; fi
+
   # The article-extraction vectors and the entity table are generated from the TypeScript
   # oracle (linkedom, Defuddle, htmlparser2). A change to the oracle or its pins that ships
   # without regenerating them leaves the Rust port tested against a stale oracle.

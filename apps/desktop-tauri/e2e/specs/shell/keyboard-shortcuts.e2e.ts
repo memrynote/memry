@@ -1,7 +1,8 @@
 // Keyboard shortcuts and the native menu bridge (inv09 #11 #12). WebDriver can press neither a
 // native menu item nor its key equivalent, so a spec runs an item with `e2e_menu_activate` and a
-// chord as a key event in the page. The chords of the notes, tabs and editor are covered by the
-// steps that port those views.
+// chord as a key event in the page. Step 30 (#3547) ports the rest of Electron's
+// keyboard-shortcuts spec with the views those chords need: new note, the tab and pane chords,
+// and the adjacent-vault chords (`nav.nextVault`, `nav.prevVault`, `switch-vault-shortcut`).
 import { appReady } from '../../harness/app-ready'
 import { invokeTest } from '../../harness/invoke-test'
 import type { Page } from '../../harness/pw-compat/page'
@@ -9,6 +10,7 @@ import { test, expect } from '../../harness/test'
 import { invoke } from '../../harness/vault-commands'
 
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
+const MOD_KEY = process.platform === 'darwin' ? { metaKey: true } : { ctrlKey: true }
 
 interface MenuNode {
   id: string | null
@@ -37,6 +39,18 @@ function findItem(nodes: MenuNode[], id: string): MenuNode | undefined {
     if (inner) return inner
   }
   return undefined
+}
+
+/**
+ * Whether the app's command dispatcher takes a keydown. It cancels exactly the keys it runs, so a
+ * key it passes on stays uncancelled.
+ */
+function dispatcherTakes(page: Page, keys: KeyboardEventInit): Promise<boolean> {
+  return page.evaluate((init) => {
+    const event = new KeyboardEvent('keydown', { ...init, bubbles: true, cancelable: true })
+    document.body.dispatchEvent(event)
+    return event.defaultPrevented
+  }, keys)
 }
 
 /** Moves the focus off any field: app chords stand down while one has it. */
@@ -125,9 +139,32 @@ test('a rebind moves the menu shortcut and the page chord', async ({ app, page }
   }
 
   await blur(page)
-  await page.keyboard.press(`${MOD}+=`)
-  await page.waitForTimeout(300)
-  expect(await zoomFactor(page)).toBe(1)
-  await page.keyboard.press(`${MOD}+Alt+e`)
+  // The page takes the new chord once the override reaches it, and runs Zoom In. The same override
+  // unbinds the old chord, so the page passes it on.
+  await expect.poll(() => dispatcherTakes(page, { ...MOD_KEY, altKey: true, key: 'e' })).toBe(true)
   await expect.poll(() => zoomFactor(page)).toBeGreaterThan(1)
+  expect(await dispatcherTakes(page, { ...MOD_KEY, key: '=' })).toBe(false)
+})
+
+// `build:e2e` is a debug build, so it has the developer keys (`windows/scripts/dev-keys.js`). The
+// evidence pass on a release build shows they do nothing there.
+test('a debug build reloads the page on Cmd/Ctrl+R and on F5', async ({ page }) => {
+  await appReady(page)
+  for (const chord of [`${MOD}+r`, 'F5']) {
+    await page.evaluate(() => {
+      ;(window as unknown as { __beforeReload?: boolean }).__beforeReload = true
+    })
+    await page.keyboard.press(chord)
+    // The page is gone while it reloads, so a failed read counts as the old page.
+    await expect
+      .poll(() =>
+        page
+          .evaluate(
+            () => (window as unknown as { __beforeReload?: boolean }).__beforeReload === true
+          )
+          .catch(() => true)
+      )
+      .toBe(false)
+    await appReady(page)
+  }
 })
