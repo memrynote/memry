@@ -224,22 +224,56 @@ properties:
   ['comment-only', '---\n# nothing\n---\n'],
   ['leading-blank-line', '\n---\nproperties:\n  A: {type: text}\n---\n'],
   ['four-dashes', '----\nproperties:\n  A: {type: text}\n---\n'],
-  ['empty-block', '---\n---\n']
+  ['empty-block', '---\n---\n'],
+  ['empty-block-and-a-body', '---\n  \n---\nbody\n'],
+  // `properties:` with nothing under it, its definition indented one level too little.
+  ['mis-indented-definition', '---\nproperties:\nA: {type: text}\n---\nbody\n'],
+  ['body-without-a-line-break', '---\nproperties:\n  A: {type: text}\n---\nlast line'],
+  ['body-after-the-closing-dashes', '---\nproperties:\n  A: {type: text}\n--- trailing\nbody\n']
 ]
 
 // Files Electron reads as holding no definitions although they are not empty: its next write
 // would replace them with the definitions it adds alone (a leading blank line hides every
 // definition the file has). This build refuses them instead, as it refuses a file it cannot
-// parse, so nothing in them is lost.
+// parse, so nothing in them is lost. A frontmatter with nothing in it reads as empty.
 const REFUSED_HERE = new Set([
   'no-frontmatter',
   'no-properties-key',
   'top-level-list',
   'comment-only',
   'leading-blank-line',
-  'four-dashes',
-  'empty-block'
+  'four-dashes'
 ])
+
+// What this build writes: gray-matter's own `stringify(content, { ...data, properties })` of the
+// file, with the definitions Electron wrote. Electron writes `stringify('', { properties })`
+// and drops a body and every other top-level key; for each file it writes the two are equal.
+const ours = (input, electronBytes) => {
+  if (input === null || input.replace(/^\uFEFF/, '').trim() === '') return electronBytes
+  const file = matter(input, {})
+  const { properties } = matter(electronBytes, {}).data
+  return matter.stringify(file.content, { ...file.data, properties })
+}
+// The files whose bytes this build writes differently because it keeps what Electron drops: a
+// body (a CRLF line break counts), a top-level key beside `properties`, a definition indented
+// out of it. Every other case asserts Electron's bytes.
+const KEPT_HERE = new Set([
+  'crlf',
+  'body-and-other-keys',
+  'empty-block-and-a-body',
+  'mis-indented-definition',
+  'body-without-a-line-break',
+  'body-after-the-closing-dashes',
+  'edit-keeps-body-and-other-keys',
+  'edit-keeps-a-mis-indented-definition'
+])
+const rewrite = (name, input, electronBytes) => {
+  const bytes = ours(input, electronBytes)
+  if ((bytes !== electronBytes) !== KEPT_HERE.has(name)) {
+    throw new Error(`${name}: KEPT_HERE is wrong for this case`)
+  }
+  return bytes === electronBytes ? { bytes } : { bytes, electron: electronBytes }
+}
 
 // Definitions the ops set, in file form; each is read the way the service reads a file.
 const SET = {
@@ -267,6 +301,8 @@ const opsCases = [
     ]
   ],
   ['set-over-unparsed', 'one-bad-entry-and-a-newer-type', [['set', 'Broken']]],
+  ['edit-keeps-body-and-other-keys', 'body-and-other-keys', [['set', 'New']]],
+  ['edit-keeps-a-mis-indented-definition', 'mis-indented-definition', [['set', 'Stage']]],
   [
     'first-write-of-a-missing-file',
     null,
@@ -375,15 +411,18 @@ for (const [name, input] of cases) {
   }
   const unreadable = s['fileUnreadable']
   if (!unreadable) await s['persistToFile']()
+  const readable = ok && !unreadable && !REFUSED_HERE.has(name)
+  const written = readable ? rewrite(name, input, readFileSync(file, 'utf8')) : null
   vectors.push({
     name,
     input,
-    readable: ok && !unreadable && !REFUSED_HERE.has(name),
+    readable,
     electronReads: ok && !unreadable,
     definitions: unreadable ? [] : s.getAll().map((def) => def.name),
     unparsed: parsed ? [...parsed.unparsed.keys()] : [],
     healed: parsed ? parsed.healed : false,
-    rewritten: unreadable ? null : readFileSync(file, 'utf8')
+    rewritten: written?.bytes ?? null,
+    ...(written?.electron ? { electronRewritten: written.electron } : {})
   })
 }
 
@@ -397,6 +436,7 @@ for (const [name, base, ops] of opsCases) {
     else s['cache'].delete(target)
   }
   await s['persistToFile']()
+  const written = existsSync(file) ? rewrite(name, input, readFileSync(file, 'utf8')) : null
   opsVectors.push({
     name,
     input,
@@ -405,7 +445,8 @@ for (const [name, base, ops] of opsCases) {
         ? { set: target, entry: matter.stringify('', { properties: { [target]: SET[target] } }) }
         : { delete: target }
     ),
-    written: existsSync(file) ? readFileSync(file, 'utf8') : null
+    written: written?.bytes ?? null,
+    ...(written?.electron ? { electronWritten: written.electron } : {})
   })
 }
 rmSync(temp, { recursive: true, force: true })

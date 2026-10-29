@@ -14,19 +14,24 @@
 //!   frontmatter at all, a blank line before it), a `properties` that is not a map, or aliases
 //!   that expand far past the file's own size. The caller gets
 //!   [`PropertiesFileError::Unreadable`], which Electron shows as [`UNREADABLE_KEY`]. Only a
-//!   missing or blank file, or `properties:` with nothing under it, holds no definitions.
-//!   Electron reads the files without `properties` as empty and its next write replaces them,
-//!   so this is stricter: a file refused here is one Electron would have emptied;
-//! - the bytes are `matter.stringify('', { properties })`, Electron's: definitions in the
-//!   file's order with a new one last, each in the shape of its type. A key inside a definition
-//!   that no build's schema names, a top-level key beside `properties` and a body are not
-//!   kept, as no Electron build keeps them;
+//!   missing or blank file, a frontmatter with nothing in it, or `properties:` with nothing
+//!   under it, holds no definitions. Electron reads the files without `properties` as empty
+//!   and its next write replaces them, so this is stricter: a file refused here is one
+//!   Electron would have emptied;
+//! - the bytes are `matter.stringify(body, { ...data, properties })`: definitions in the
+//!   file's order with a new one last, each in the shape of its type, and the frontmatter's
+//!   other keys and the body after it as the file holds them. For every file Electron writes
+//!   (no other key, no body) these are Electron's bytes; Electron drops the rest, a hand edit
+//!   such as a definition indented out of `properties`. A key inside a definition that no
+//!   build's schema names is not kept, as no build keeps it;
 //! - writes are serialized by one process-wide lock, and each reads the file again, so a
-//!   definition another writer added meanwhile survives. Another process's write between our
-//!   read and our rename (any change of its bytes, whatever its size and modification time)
-//!   stops ours ([`PropertiesFileError::Write`]) instead of being lost. The file is written
-//!   only when the definitions changed or a `relation` entry went, and then only when its
-//!   bytes change.
+//!   definition another writer added meanwhile survives. Right before the rename the file is
+//!   read again: another process's write since our read (any change of its bytes, whatever
+//!   its size and modification time) stops ours ([`PropertiesFileError::Write`]) instead of
+//!   being lost. That narrows the window to the rename itself; it does not close it. A read
+//!   that fails for a moment (a Windows sharing violation) is retried as a write's rename is.
+//!   The file is written only when the definitions changed or a `relation` entry went, and
+//!   then only when its bytes change.
 //!
 //! Which definitions the app shows is the union of this file and the synced
 //! `property_definition` items, the file winning for every name it lists (Step 13): its
@@ -40,7 +45,7 @@
 
 mod model;
 
-use std::io::Read as _;
+use std::io::{self, Read as _};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -53,13 +58,15 @@ pub use model::{
 use super::fs_atomic::{self, RETRY_DELAYS_MS};
 use super::layout::MEMRY_DIR;
 use super::note_file::{NoteFileError, still_contained, target};
-use crate::shell::file_open::{LinkPolicy, open_under_root_with};
+use crate::shell::file_open::{LinkPolicy, OpenError, open_under_root_with};
 
 pub const PROPERTIES_FILE: &str = "properties.md";
 /// The i18n key of the message for a write refused because the file cannot be read.
 pub const UNREADABLE_KEY: &str = "errors:property.definitionsFileUnreadable";
-/// A real file is a few kilobytes. Past this it is not read at all.
-pub const MAX_PROPERTIES_BYTES: u64 = 4 * 1024 * 1024;
+/// A real file is a few kilobytes (24 status properties written by Electron take 1.7 KB). Past
+/// this it is not read at all. Read whole, a file at the cap holds up to about 100 times its
+/// size while it is read (`tests/properties_file_memory.rs`): about 100 MB here.
+pub const MAX_PROPERTIES_BYTES: u64 = 1024 * 1024;
 
 /// `<vault>/.memry/properties.md`, vault-relative with `/` separators.
 const PROPERTIES_REL: &str = ".memry/properties.md";
@@ -92,26 +99,38 @@ fn write_failed(vault: &Path, message: impl Into<String>) -> PropertiesFileError
     }
 }
 
-/// The file's text, or `None` when there is no file.
-fn load(vault: &Path) -> Result<Option<String>, PropertiesFileError> {
+fn retry_delays() -> [Duration; 3] {
+    RETRY_DELAYS_MS.map(Duration::from_millis)
+}
+
+/// The file's bytes, or `None` when there is none. An I/O error comes back as the system gave
+/// it, so [`fs_atomic::with_transient_retry`] can tell one that passes.
+fn load_bytes(vault: &Path) -> io::Result<Option<Vec<u8>>> {
     let file = match open_under_root_with(vault, PROPERTIES_REL, LinkPolicy::Allow) {
         Ok(Some(file)) => file,
         Ok(None) => return Ok(None),
-        Err(error) => return Err(unreadable(vault, error.to_string())),
+        Err(OpenError::Io(error)) => return Err(error),
+        Err(error) => return Err(io::Error::other(error.to_string())),
     };
     let mut bytes = Vec::new();
     file.take(MAX_PROPERTIES_BYTES + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|e| unreadable(vault, e.to_string()))?;
+        .read_to_end(&mut bytes)?;
     if bytes.len() as u64 > MAX_PROPERTIES_BYTES {
-        return Err(unreadable(
-            vault,
-            format!("larger than {MAX_PROPERTIES_BYTES} bytes"),
-        ));
+        return Err(io::Error::other(format!(
+            "larger than {MAX_PROPERTIES_BYTES} bytes"
+        )));
     }
+    Ok(Some(bytes))
+}
+
+/// The file's text, or `None` when there is no file.
+fn load(vault: &Path) -> Result<Option<String>, PropertiesFileError> {
+    let bytes = fs_atomic::with_transient_retry(&retry_delays(), || load_bytes(vault))
+        .map_err(|error| unreadable(vault, error.to_string()))?;
     // Electron decodes bad bytes as U+FFFD, and its next write would keep only those.
-    String::from_utf8(bytes)
-        .map(Some)
+    bytes
+        .map(String::from_utf8)
+        .transpose()
         .map_err(|_| unreadable(vault, "not valid UTF-8"))
 }
 
@@ -169,17 +188,18 @@ pub fn update<R>(
 fn write(vault: &Path, read: Option<&str>, bytes: &str) -> Result<(), PropertiesFileError> {
     let (path, aimed_at) = target(vault, PROPERTIES_REL)
         .map_err(|error: NoteFileError| write_failed(vault, error.to_string()))?;
-    let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
+    let delays = retry_delays();
     let mut between = || {};
     let mut contained = still_contained(vault, PROPERTIES_REL, &path, aimed_at, &mut between);
+    // An error passes through as it came: a transient one retries the whole write.
     let mut unchanged = || {
         contained()?;
-        match load(vault) {
-            Ok(now) if now.as_deref() == read => Ok(()),
-            Ok(_) => Err(std::io::Error::other(
+        if load_bytes(vault)?.as_deref() == read.map(str::as_bytes) {
+            Ok(())
+        } else {
+            Err(io::Error::other(
                 "another writer changed the file since it was read",
-            )),
-            Err(error) => Err(std::io::Error::other(error.to_string())),
+            ))
         }
     };
     let written = match read {

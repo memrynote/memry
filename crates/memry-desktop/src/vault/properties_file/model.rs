@@ -1,13 +1,14 @@
 //! The definitions `properties.md` holds, read entry by entry as
 //! `parsePropertyDefinitionEntries` (`packages/contracts/src/property-types.ts`) reads them,
-//! and written back as `matter.stringify('', { properties })`.
+//! and written back as `matter.stringify(body, { ...data, properties })`: Electron's bytes for
+//! every file Electron writes, and what else a hand edit put in the file kept.
 
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use memry_core::markdown::frontmatter::{
-    Eol, YamlMap, YamlValue, gray_matter_data, stringify_frontmatter_block,
+    Eol, YamlMap, YamlValue, gray_matter_data, gray_matter_parts, stringify_frontmatter_block,
 };
 
 /// The frontmatter key holding the definitions.
@@ -129,6 +130,13 @@ pub struct PropertiesFile {
     /// A `relation` entry was dropped: older builds wrote synced relations here, and older
     /// builds refuse the whole file on one, so the next write leaves it out.
     healed: bool,
+    /// The frontmatter's top level as the file holds it, `properties` at its position. A key
+    /// beside `properties` (a note, a definition indented one level too little) is written
+    /// back as it is; Electron drops it.
+    top: YamlMap,
+    /// The text after the frontmatter (gray-matter's `content`), written back as it is;
+    /// Electron drops it.
+    body: String,
 }
 
 impl PropertiesFile {
@@ -140,15 +148,11 @@ impl PropertiesFile {
         self.healed
     }
 
-    /// Nothing to write: no definition, no unparsed entry.
-    pub fn is_empty(&self) -> bool {
-        self.definitions.is_empty() && self.unparsed.is_empty()
-    }
-
-    /// The file's bytes: `matter.stringify('', { properties })`, the unparsed entries first,
-    /// then the definitions. A definition no build would read back (an option without a value
-    /// or a color, a status category without a label) is an error, not an entry every build
-    /// then reads as unparsed.
+    /// The file's bytes: `matter.stringify(body, { ...data, properties })`, with the unparsed
+    /// entries first in `properties`, then the definitions. A file Electron wrote has no other
+    /// key and an empty body, so this is its `matter.stringify('', { properties })`. A
+    /// definition no build would read back (an option without a value or a color, a status
+    /// category without a label) is an error, not an entry every build then reads as unparsed.
     pub fn serialize(&self) -> Result<String, String> {
         let defined: HashSet<&str> = self.definitions.iter().map(|(name, _)| name).collect();
         let mut properties = YamlMap::new();
@@ -160,11 +164,12 @@ impl PropertiesFile {
         for (name, definition) in self.definitions.iter() {
             properties.insert(name.to_owned(), definition_yaml(definition)?);
         }
-        let mut data = YamlMap::new();
+        let mut data = self.top.clone();
         data.insert(PROPERTIES_KEY.to_owned(), YamlValue::map(properties));
         let block = stringify_frontmatter_block(&data, Eol::Lf).map_err(|e| e.to_string())?;
-        // gray-matter writes `newline('')` for the empty body.
-        Ok(block + "\n")
+        // gray-matter's `newline(body)`: an empty body is one line break.
+        let end = if self.body.ends_with('\n') { "" } else { "\n" };
+        Ok(block + &self.body + end)
     }
 }
 
@@ -215,24 +220,34 @@ pub fn parse(raw: &str) -> Result<PropertiesFile, String> {
     if text.trim().is_empty() {
         return Ok(PropertiesFile::default());
     }
-    let data = gray_matter_data(raw).map_err(|e| format!("its frontmatter does not parse: {e}"))?;
-    let properties = match &data {
-        YamlValue::Map(top) => top.get(PROPERTIES_KEY),
-        // gray-matter's data is then a list or a scalar, which has no `properties`.
-        _ => None,
+    // Electron reads a file without frontmatter, or with one that names no `properties`, as
+    // holding no definitions, and its next write replaces it with the ones it adds: a leading
+    // blank line, or a `----` opener, would lose them all. Such a file is refused here.
+    let Some((matter, body)) = gray_matter_parts(text) else {
+        return Err("it has no frontmatter".to_owned());
     };
-    let entries = match properties {
-        // Electron reads such a file as holding no definitions, and its next write replaces it
-        // with the ones it adds: a leading blank line, or a `----` opener, would lose them all.
-        None => return Err("it has no `properties` frontmatter".to_owned()),
-        Some(YamlValue::Null) => return Ok(PropertiesFile::default()),
+    let data =
+        gray_matter_data(text).map_err(|e| format!("its frontmatter does not parse: {e}"))?;
+    let YamlValue::Map(top) = data else {
+        return Err("its frontmatter is not a map".to_owned());
+    };
+    let mut file = PropertiesFile {
+        top: (*top).clone(),
+        body: body.to_owned(),
+        ..PropertiesFile::default()
+    };
+    let entries = match top.get(PROPERTIES_KEY) {
         Some(YamlValue::Map(entries)) => entries,
+        // `properties:` with nothing under it, or a frontmatter with nothing in it: no
+        // definitions, and what else the file holds is kept.
+        Some(YamlValue::Null) => return Ok(file),
+        None if matter.trim().is_empty() => return Ok(file),
+        None => return Err("it has no `properties` frontmatter".to_owned()),
         // A list or a scalar is not the map the contracts parser reads, and a date or binary
         // here (an object to JavaScript, read as an empty or a numbered map) is refused too.
         Some(_) => return Err("its `properties` is not a map".to_owned()),
     };
     let mut budget = Budget(raw.len().saturating_mul(STEPS_PER_BYTE));
-    let mut file = PropertiesFile::default();
     for (name, entry) in entries.iter() {
         let read = budget
             .spend(1)

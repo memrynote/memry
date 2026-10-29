@@ -150,7 +150,7 @@
       "definitions": [],
       "unparsed": [],
       "healed": false,
-      "rewritten": "---\nproperties: {}\n---\n\n"
+      "rewritten": null
     },
     {
       "name": "no-properties-key",
@@ -160,7 +160,7 @@
       "definitions": [],
       "unparsed": [],
       "healed": false,
-      "rewritten": "---\nproperties: {}\n---\n\n"
+      "rewritten": null
     },
     {
       "name": "properties-null",
@@ -230,7 +230,8 @@
       "definitions": ["A"],
       "unparsed": [],
       "healed": false,
-      "rewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
+      "rewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\r\n",
+      "electronRewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
     },
     {
       "name": "bom",
@@ -260,7 +261,8 @@
       "definitions": ["A"],
       "unparsed": [],
       "healed": false,
-      "rewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
+      "rewritten": "---\nother: top\nproperties:\n  A:\n    type: text\n    options: []\n---\nbody text\n",
+      "electronRewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
     },
     {
       "name": "top-level-list",
@@ -270,7 +272,7 @@
       "definitions": [],
       "unparsed": [],
       "healed": false,
-      "rewritten": "---\nproperties: {}\n---\n\n"
+      "rewritten": null
     },
     {
       "name": "comment-only",
@@ -280,7 +282,7 @@
       "definitions": [],
       "unparsed": [],
       "healed": false,
-      "rewritten": "---\nproperties: {}\n---\n\n"
+      "rewritten": null
     },
     {
       "name": "leading-blank-line",
@@ -290,7 +292,7 @@
       "definitions": [],
       "unparsed": [],
       "healed": false,
-      "rewritten": "---\nproperties: {}\n---\n\n"
+      "rewritten": null
     },
     {
       "name": "four-dashes",
@@ -300,17 +302,61 @@
       "definitions": [],
       "unparsed": [],
       "healed": false,
-      "rewritten": "---\nproperties: {}\n---\n\n"
+      "rewritten": null
     },
     {
       "name": "empty-block",
       "input": "---\n---\n",
-      "readable": false,
+      "readable": true,
       "electronReads": true,
       "definitions": [],
       "unparsed": [],
       "healed": false,
       "rewritten": "---\nproperties: {}\n---\n\n"
+    },
+    {
+      "name": "empty-block-and-a-body",
+      "input": "---\n  \n---\nbody\n",
+      "readable": true,
+      "electronReads": true,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties: {}\n---\nbody\n",
+      "electronRewritten": "---\nproperties: {}\n---\n\n"
+    },
+    {
+      "name": "mis-indented-definition",
+      "input": "---\nproperties:\nA: {type: text}\n---\nbody\n",
+      "readable": true,
+      "electronReads": true,
+      "definitions": [],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties: {}\nA:\n  type: text\n---\nbody\n",
+      "electronRewritten": "---\nproperties: {}\n---\n\n"
+    },
+    {
+      "name": "body-without-a-line-break",
+      "input": "---\nproperties:\n  A: {type: text}\n---\nlast line",
+      "readable": true,
+      "electronReads": true,
+      "definitions": ["A"],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\nlast line\n",
+      "electronRewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
+    },
+    {
+      "name": "body-after-the-closing-dashes",
+      "input": "---\nproperties:\n  A: {type: text}\n--- trailing\nbody\n",
+      "readable": true,
+      "electronReads": true,
+      "definitions": ["A"],
+      "unparsed": [],
+      "healed": false,
+      "rewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n trailing\nbody\n",
+      "electronRewritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n---\n\n"
     },
     {
       "name": "electron-writes-12-statuses",
@@ -652,6 +698,30 @@
         }
       ],
       "written": "---\nproperties:\n  Rating:\n    type: stars\n    max: 5\n    when: 2024-01-02T00:00:00.000Z\n  Stage:\n    type: select\n    options:\n      - value: Idea\n        color: sky\n  Due:\n    type: date\n    showOnCalendar: true\n  Broken:\n    type: text\n    options: []\n---\n\n"
+    },
+    {
+      "name": "edit-keeps-body-and-other-keys",
+      "input": "---\nother: top\nproperties:\n  A: {type: text}\n---\nbody text\n",
+      "ops": [
+        {
+          "set": "New",
+          "entry": "---\nproperties:\n  New:\n    type: date\n    showOnCalendar: true\n    defaultValue: today\n---\n\n"
+        }
+      ],
+      "written": "---\nother: top\nproperties:\n  A:\n    type: text\n    options: []\n  New:\n    type: date\n    showOnCalendar: true\n    defaultValue: today\n---\nbody text\n",
+      "electronWritten": "---\nproperties:\n  A:\n    type: text\n    options: []\n  New:\n    type: date\n    showOnCalendar: true\n    defaultValue: today\n---\n\n"
+    },
+    {
+      "name": "edit-keeps-a-mis-indented-definition",
+      "input": "---\nproperties:\nA: {type: text}\n---\nbody\n",
+      "ops": [
+        {
+          "set": "Stage",
+          "entry": "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Done\n        color: green\n---\n\n"
+        }
+      ],
+      "written": "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Done\n        color: green\nA:\n  type: text\n---\nbody\n",
+      "electronWritten": "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Done\n        color: green\n---\n\n"
     },
     {
       "name": "first-write-of-a-missing-file",

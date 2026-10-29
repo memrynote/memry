@@ -1,8 +1,8 @@
 //! `<vault>/.memry/properties.md` is shared with Electron builds. Through the real owner, on
 //! files Electron's own service read and rewrote (`fixtures/gen-properties-vectors.mjs`): the
-//! same definitions come out and the same bytes go back, an entry this build cannot read
-//! survives every write, a file it cannot read is never replaced, and a hostile file cannot
-//! stall or crash a read.
+//! same definitions come out and the same bytes go back, a body or a key a hand edit added
+//! survives every write, an entry this build cannot read survives every write, a file it
+//! cannot read is never replaced, and a hostile file cannot stall or crash a read.
 
 use std::fs;
 use std::path::Path;
@@ -78,8 +78,10 @@ fn files_read_and_rewrite_as_electron_reads_and_rewrites_them() {
     }
 }
 
+/// Electron's bytes, but for the `KEPT_HERE` cases, which keep the body and the other keys
+/// Electron drops (`electronWritten` holds its bytes).
 #[test]
-fn edits_write_what_electron_writes() {
+fn edits_write_what_electron_writes_and_keep_what_else_the_file_holds() {
     for vector in vectors("ops") {
         let name = vector["name"].as_str().unwrap();
         let dir = vault_with(vector["input"].as_str().map(str::as_bytes));
@@ -318,6 +320,37 @@ fn a_definition_no_build_reads_back_is_never_written() {
     assert_eq!(on_disk(dir.path()), before);
 }
 
+/// A read that fails for a moment (a Windows sharing violation, here a permission taken away
+/// and given back) is retried as a write's rename is: the read, and the check right before the
+/// rename that reads the file again, so the write lands.
+#[cfg(unix)]
+#[test]
+fn a_file_unreadable_for_a_moment_is_read_again() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = vault_with(Some(b"---\nproperties: {A: {type: url}}\n---\n"));
+    let path = properties_path(dir.path());
+    let mode = |bits| fs::set_permissions(&path, fs::Permissions::from_mode(bits)).unwrap();
+    let for_a_moment = || {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        mode(0o644);
+    };
+    std::thread::scope(|scope| {
+        mode(0o000);
+        scope.spawn(for_a_moment);
+        assert!(read(dir.path()).is_ok());
+    });
+    std::thread::scope(|scope| {
+        update(dir.path(), |definitions| {
+            mode(0o000);
+            scope.spawn(for_a_moment);
+            definitions.insert("X".into(), text_definition());
+        })
+        .unwrap();
+    });
+    let file = read(dir.path()).unwrap();
+    assert!(file.definitions.get("A").is_some() && file.definitions.get("X").is_some());
+}
+
 #[cfg(unix)]
 #[test]
 fn a_file_linked_out_of_the_vault_is_refused_not_followed() {
@@ -393,6 +426,9 @@ const PIECES: &[&str] = &[
     "    defaultValue: ''\n",
     "    color: null\n",
     "    when: 2024-01-02\n",
+    // Keys beside `properties`, a definition indented out of it.
+    "top: 1\n",
+    "B: {type: text}\n",
     "{",
     "}",
     "[",
@@ -402,9 +438,23 @@ const PIECES: &[&str] = &[
     "\n",
 ];
 
+/// What follows the closing dashes: the rest of their line, then a body.
+const BODIES: &[&str] = &[
+    "",
+    "\n",
+    "body\n",
+    "\r\n",
+    "last line",
+    " trailing\nbody\n",
+    "---\n",
+];
+
 fn soup() -> impl Strategy<Value = String> {
-    prop::collection::vec(prop::sample::select(PIECES), 0..30)
-        .prop_map(|pieces| format!("---\nproperties:\n{}---\n", pieces.concat()))
+    (
+        prop::collection::vec(prop::sample::select(PIECES), 0..30),
+        prop::sample::select(BODIES),
+    )
+        .prop_map(|(pieces, body)| format!("---\nproperties:\n{}---{body}", pieces.concat()))
 }
 
 proptest! {
