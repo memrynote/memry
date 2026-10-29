@@ -6,6 +6,7 @@ import { formatTimeOfDay } from '@/lib/time-format'
 import type { ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
+import { windowApi } from '@/services/window-service'
 import { CalendarTaskStatus } from './calendar-task-status'
 import { formatDurationShort, itemDurationMinutes } from './chip-duration'
 import type { AnchorRect } from './types'
@@ -107,7 +108,7 @@ export function CalendarItemChip({
         ...(deletable ? [{ id: 'delete', label: deleteLabel, accelerator: 'Backspace' }] : [])
       ]
 
-      void window.api.showContextMenu(menuItems).then((selectedId) => {
+      void windowApi.showContextMenu(menuItems).then((selectedId) => {
         if (selectedId === 'delete' && onDeleteItem) {
           onDeleteItem(item)
         } else if (selectedId === 'add-to-project' && onAddToProject) {

@@ -35,10 +35,11 @@ describe('useMenuBridge', () => {
     expect(bridge.run).not.toHaveBeenCalled()
   })
 
-  it('unsubscribes on unmount', () => {
+  it('unsubscribes on unmount', async () => {
     const { unmount } = renderHook(() => useMenuBridge())
     expect(bridge.handler).not.toBeNull()
     unmount()
-    expect(bridge.handler).toBeNull()
+    // The Tauri listener is released once its registration settles.
+    await vi.waitFor(() => expect(bridge.handler).toBeNull())
   })
 })

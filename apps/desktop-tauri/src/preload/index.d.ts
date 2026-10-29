@@ -2,11 +2,7 @@ import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
-import type {
-  AppNavigationCommandEvent,
-  AppMenuCommandEvent,
-  StartCheckoutInput
-} from '@memry/contracts/ipc-channels'
+import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type { HomePageCoverSource, HomePageSetCoverResult } from '@memry/contracts/home-page-api'
 import type { HomePageCoverSync } from '@memry/contracts/sync-payloads'
@@ -1196,15 +1192,6 @@ export interface QuickCaptureClientAPI {
   openSettings(section?: string): void
 }
 
-// Native context menu types
-export interface ContextMenuItem {
-  id: string
-  label: string
-  accelerator?: string
-  disabled?: boolean
-  type?: 'normal' | 'separator'
-}
-
 // Settings types
 export interface JournalSettings {
   defaultTemplate: string | null
@@ -1988,14 +1975,6 @@ interface SyncAttachmentsClientAPI {
   }>
 }
 
-// Window controls API
-interface WindowAPI {
-  windowMinimize: () => void
-  windowMaximize: () => void
-  windowClose: () => void
-  setZoomFactor: (factor: number) => void
-}
-
 interface AgentMcpClientAPI {
   getStatus: () => Promise<AgentMcpStatus>
   rotateToken: () => Promise<AgentMcpStatus>
@@ -2052,7 +2031,7 @@ interface MainInvokePayload {
 }
 
 // Full API interface
-interface API extends WindowAPI, GeneratedRpcApi {
+interface API extends GeneratedRpcApi {
   vault: VaultClientAPI
   properties: PropertiesClientAPI
   savedFilters: SavedFiltersClientAPI
@@ -2129,8 +2108,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
     /** Whether CRDT state is durable on this install, and for how long it has not been. */
     getHealth: () => Promise<CrdtHealth>
   }
-  /** Show a native OS context menu and return the selected item id, or null if dismissed */
-  showContextMenu: (items: ContextMenuItem[]) => Promise<string | null>
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
@@ -2218,8 +2195,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onVaultBindingChanged: (callback: (state: VaultBindingState) => void) => () => void
   onImportProgress: (callback: (event: ImportProgressEvent) => void) => () => void
   onReadwiseStatusChanged: (callback: () => void) => () => void
-  onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void
-  onMenuCommand: (callback: (event: AppMenuCommandEvent) => void) => () => void
   onLocaleChanged: (callback: (locale: Locale) => void) => () => void
   onMainInvoke: (callback: (payload: MainInvokePayload) => void | Promise<void>) => () => void
   respondToMainInvoke: (requestId: string, response: unknown) => void

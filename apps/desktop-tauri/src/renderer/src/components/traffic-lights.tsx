@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { windowApi } from '@/services/window-service'
 
 // macOS now shows its native traffic lights (main/index.ts trafficLightPosition).
 // The custom controls are kept but hidden; flip this to bring them back.
@@ -14,15 +15,15 @@ interface TrafficLightsProps {
 }
 
 const handleClose = () => {
-  window.api.windowClose()
+  windowApi.windowClose()
 }
 
 const handleMinimize = () => {
-  window.api.windowMinimize()
+  windowApi.windowMinimize()
 }
 
 const handleMaximize = () => {
-  window.api.windowMaximize()
+  windowApi.windowMaximize()
 }
 
 export function TrafficLights({ className, compact = false }: TrafficLightsProps) {

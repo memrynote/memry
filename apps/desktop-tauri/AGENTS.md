@@ -28,6 +28,11 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 - An event is a struct deriving `tauri_specta::Event`, named `<Domain><Noun><Verb>Event` (`CalendarChangedEvent`, `SyncStatusChangedEvent`). The wire name is the one tauri-specta derives. Legacy channel strings are not used.
 - List it in `registry.rs` and emit it after commit with `events::broadcast` or `events::send_to`. Both log a failed delivery and return, so they are safe inside a transaction. Do not call `emit` directly.
 
+## Dev tools
+
+- The web inspector exists in debug builds only: View > Toggle Developer Tools, F12, and Tauri's Cmd+Opt+I or Ctrl+Shift+I. Release builds compile none of it, so the `tauri` dependency carries no `devtools` feature and inspector code sits behind `cfg(debug_assertions)`.
+- React DevTools, which the Electron app loaded as an extension, has no counterpart here. Read component state through the inspector.
+
 ## Startup
 
 - `startup::register(stage, name, f)` adds work to a boot stage (`Paths`, `Logging`, `Guards`, ... `Schedulers`). `run()` executes stages in enum order. A failing stage exits with code 2. Do not edit `run()` to add boot work.

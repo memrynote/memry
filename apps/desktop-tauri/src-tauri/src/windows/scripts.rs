@@ -1,6 +1,12 @@
 //! The init scripts this crate adds to every window it builds.
 
 const DRAG_REGION: &str = include_str!("scripts/drag-region.js");
+/// F12 opens the inspector, which only a debug build has.
+const DEVTOOLS_F12: &str = if cfg!(debug_assertions) {
+    include_str!("scripts/devtools-f12.js")
+} else {
+    ""
+};
 
 /// What the page may know about its window: whether it maximizes, and where the loopback media
 /// server listens (`http://127.0.0.1:<port>` and the token its routes carry).
@@ -11,11 +17,11 @@ pub struct ShellGlobals {
     pub loopback_token: String,
 }
 
-/// `window.__MEMRY_SHELL__`, then the drag-region listeners.
+/// `window.__MEMRY_SHELL__`, then the drag-region listeners, then F12 in a debug build.
 pub fn init_script(globals: ShellGlobals) -> String {
     let json = |text: &str| serde_json::to_string(text).unwrap_or_else(|_| "\"\"".to_owned());
     format!(
-        "window.__MEMRY_SHELL__ = Object.freeze({{ maximizable: {}, loopbackOrigin: {}, loopbackToken: {} }});\n{DRAG_REGION}",
+        "window.__MEMRY_SHELL__ = Object.freeze({{ maximizable: {}, loopbackOrigin: {}, loopbackToken: {} }});\n{DRAG_REGION}{DEVTOOLS_F12}",
         globals.maximizable,
         json(&globals.loopback_origin),
         json(&globals.loopback_token)
@@ -57,6 +63,10 @@ mod tests {
         ));
         assert!(script.contains("plugin:window|start_dragging"));
         assert!(script.contains("plugin:window|toggle_maximize"));
+        assert_eq!(
+            script.contains("internal_toggle_devtools"),
+            cfg!(debug_assertions)
+        );
     }
 
     #[test]

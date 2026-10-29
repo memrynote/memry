@@ -47,10 +47,11 @@ vi.mock('@/lib/logger', () => {
 })
 
 // ============================================================================
-// The generated Tauri bindings, as the vault service and the updater store reach them.
-// Component tests drive both through the `window.api.vault` and `window.api.updater` mocks
-// below, so the bindings forward to them: the owners' own tests (services/vault-service.test.ts,
-// hooks/use-app-updater.test.tsx) mock the bindings directly.
+// The generated Tauri bindings, as the vault service, the updater store and the window service
+// reach them. Component tests drive them through the `window.api.vault`, `window.api.updater`
+// and window-function mocks below (the Electron names), so the bindings forward to them: the
+// owners' own tests (services/vault-service.test.ts, hooks/use-app-updater.test.tsx) mock the
+// bindings directly.
 // ============================================================================
 
 vi.mock('../src/generated/bindings', () => {
@@ -63,6 +64,8 @@ vi.mock('../src/generated/bindings', () => {
       string,
       () => (handler: (payload: unknown) => void) => () => void
     >
+  // The window functions are off `window.api`'s type; the mock below still provides them.
+  const win = () => window.api as unknown as Record<string, (...args: unknown[]) => unknown>
   const event = (
     subscribe: () => (handler: (payload: unknown) => void) => () => void,
     wrap = (p: unknown) => p
@@ -91,7 +94,12 @@ vi.mock('../src/generated/bindings', () => {
       updaterQuitAndInstall: () => updater().quitAndInstall(),
       updaterSkipVersion: (version: string) => updater().skipVersion(version),
       updaterSetAutoDownload: (enabled: boolean) => updater().setAutoDownload(enabled),
-      updaterSetAutoCheck: (enabled: boolean) => updater().setAutoCheck(enabled)
+      updaterSetAutoCheck: (enabled: boolean) => updater().setAutoCheck(enabled),
+      windowMinimize: () => Promise.resolve(win().windowMinimize()),
+      windowToggleMaximize: () => Promise.resolve(win().windowMaximize()),
+      windowClose: () => Promise.resolve(win().windowClose()),
+      appSetZoomFactor: (factor: number) => Promise.resolve(win().setZoomFactor(factor)),
+      shellShowContextMenu: (items: unknown[]) => Promise.resolve(win().showContextMenu(items))
     },
     events: {
       vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged),
@@ -101,6 +109,8 @@ vi.mock('../src/generated/bindings', () => {
         (message) => ({ message })
       ),
       updaterStateChangedEvent: event(() => api().onUpdaterStateChanged),
+      menuCommandInvokedEvent: event(() => api().onMenuCommand),
+      appNavigationRequestedEvent: event(() => api().onAppNavigationCommand),
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })

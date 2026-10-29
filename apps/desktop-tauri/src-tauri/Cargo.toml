@@ -29,7 +29,10 @@ tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 memry-desktop = { path = "../../../crates/memry-desktop" }
-tauri = { version = "2.12", features = ["specta", "devtools", "tray-icon", "image-png"] }
+# No `devtools`: a release build compiles no web inspector (wry and Tauri enable it in debug builds
+# only). With the feature on, a release build would inject Tauri's inspector hotkey, let page
+# script open it, and make the macOS webview inspectable from Safari.
+tauri = { version = "2.12", features = ["specta", "tray-icon", "image-png"] }
 # tauri-specta rc.26 requires exactly these versions.
 tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }

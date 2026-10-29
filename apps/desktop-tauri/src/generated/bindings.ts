@@ -99,6 +99,8 @@ export const commands = {
 	 */
 	settingsSetGroup: (group: string, patch: Value) => __TAURI_INVOKE<null>("settings_set_group", { group, patch }),
 	settingsSetLocal: (key: string, value: Value) => __TAURI_INVOKE<null>("settings_set_local", { key, value }),
+	/**  The clipboard text, `""` when it holds none. Quick capture (Step 27) prefills from it. */
+	shellClipboardReadText: () => __TAURI_INVOKE<string>("shell_clipboard_read_text"),
 	/**  The renderer painted its first frame: reveals the main window once. */
 	shellFirstPaint: () => __TAURI_INVOKE<null>("shell_first_paint"),
 	/**  A liveness beat from the page, every 2 s. */
@@ -247,13 +249,16 @@ export type CommandError = {
 	message: string,
 };
 
-/**  The item shape of `window.api.showContextMenu`: `{ id, label, accelerator, disabled, type }`. */
+/**
+ *  The item shape of the Electron `showContextMenu`, `{ id, label, accelerator?, disabled?, type? }`,
+ *  which the renderer's callers still build.
+ */
 export type ContextMenuItem = {
 	id: string,
 	label: string,
-	accelerator: string | null,
-	disabled: boolean | null,
-	type: ItemKind | null,
+	accelerator?: string | null,
+	disabled?: boolean | null,
+	type?: ItemKind | null,
 };
 
 /**

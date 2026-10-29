@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createRef, type ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { InlineQuickFile } from './inline-quick-file'
 import { LinkPreview } from './inbox-detail/link-preview'
 import {
@@ -170,6 +170,10 @@ function tab(overrides: Partial<Tab> = {}): Tab {
   }
 }
 
+/** The native context menu mock: `tests/setup-dom.ts` forwards `shell_show_context_menu` to it. */
+const nativeMenu = () =>
+  window.api as unknown as { showContextMenu: Mock<(items: unknown[]) => Promise<string | null>> }
+
 const folders = [
   { id: 'folder-1', name: 'Work', path: 'Work/Plans' },
   { id: 'folder-2', name: 'Home', path: 'Home' },
@@ -185,7 +189,7 @@ beforeEach(() => {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) }
   })
-  window.api.showContextMenu = vi.fn().mockResolvedValue(null)
+  nativeMenu().showContextMenu = vi.fn().mockResolvedValue(null)
 })
 
 describe('cold renderer component smoke coverage', () => {
@@ -380,16 +384,16 @@ describe('cold renderer component smoke coverage', () => {
       'copy-path',
       'reveal'
     ]
-    window.api.showContextMenu = vi.fn()
+    nativeMenu().showContextMenu = vi.fn()
     for (const id of selectedIds) {
-      vi.mocked(window.api.showContextMenu).mockResolvedValueOnce(id)
+      nativeMenu().showContextMenu.mockResolvedValueOnce(id)
       render(
         <TabContextMenu tab={menuTab} groupId="group-1">
           <button type="button">tab menu {id}</button>
         </TabContextMenu>
       )
       fireEvent.contextMenu(screen.getByRole('button', { name: `tab menu ${id}` }))
-      await waitFor(() => expect(window.api.showContextMenu).toHaveBeenCalled())
+      await waitFor(() => expect(nativeMenu().showContextMenu).toHaveBeenCalled())
     }
     expect(mocks.closeTab).toHaveBeenCalledWith('tab-2', 'group-1')
     expect(mocks.closeOtherTabs).toHaveBeenCalledWith('tab-2', 'group-1')

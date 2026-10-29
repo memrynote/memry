@@ -1,8 +1,9 @@
 // The memry-file scheme, the loopback media server and the CSP (inv09 #44 #45 #47 #49 #50).
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { appReady } from '../../harness/app-ready'
 import { invokeTest } from '../../harness/invoke-test'
@@ -171,15 +172,71 @@ test('the page reads a PDF from the loopback server the way pdf.js does, whole a
   expect(reads[2].length).toBeGreaterThan(0)
 })
 
-test('the CSP blocks an injected inline script', async ({ page }) => {
+const TAURI_CONF = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../src-tauri/tauri.conf.json'
+)
+
+/** A policy as directive name to sources. Tauri rebuilds the header from a map, so order differs. */
+function directives(policy: string): Map<string, string[]> {
+  return new Map(
+    policy
+      .split(';')
+      .map((directive) => directive.trim().split(/\s+/))
+      .filter(([name]) => name !== '')
+      .map(([name, ...sources]) => [name, sources])
+  )
+}
+
+/** What `served` lacks of `configured`, and what it adds beyond Tauri's own nonces and hashes. */
+function policyDrift(served: string, configured: string): string[] {
+  const want = directives(configured)
+  const got = directives(served)
+  const drift: string[] = []
+  for (const name of new Set([...want.keys(), ...got.keys()])) {
+    const wanted = want.get(name) ?? []
+    const sources = got.get(name) ?? []
+    for (const source of wanted)
+      if (!sources.includes(source)) drift.push(`${name} lacks ${source}`)
+    for (const source of sources) {
+      // Tauri adds a nonce or a hash to script-src and style-src for each inline script or style.
+      const tauriOwn =
+        (name === 'script-src' || name === 'style-src') &&
+        /^'(nonce|sha256|sha384|sha512)-/.test(source)
+      if (!wanted.includes(source) && !tauriOwn) drift.push(`${name} adds ${source}`)
+    }
+  }
+  return drift
+}
+
+test('the CSP blocks an injected inline script, and is the configured policy', async ({ page }) => {
   await appReady(page)
-  const ran = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
+    const violated: string[] = []
+    document.addEventListener('securitypolicyviolation', (event) => {
+      violated.push(event.originalPolicy)
+    })
     const script = document.createElement('script')
     script.textContent = 'window.__injected = true'
     document.body.append(script)
-    return (window as unknown as { __injected?: boolean }).__injected === true
+    for (let tries = 0; violated.length === 0 && tries < 40; tries += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+    const appPage = await fetch(`${location.protocol}//${location.host}/`)
+    return {
+      ran: (window as unknown as { __injected?: boolean }).__injected === true,
+      enforced: violated[0] ?? null,
+      header: appPage.headers.get('content-security-policy')
+    }
   })
-  expect(ran).toBe(false)
+  expect(result.ran).toBe(false)
+  const configured = (
+    JSON.parse(readFileSync(TAURI_CONF, 'utf8')) as { app: { security: { csp: string } } }
+  ).app.security.csp
+  // The policy the page enforces, as the engine reports it, and the header the app page is
+  // served with.
+  expect(policyDrift(result.enforced ?? '', configured)).toEqual([])
+  expect(policyDrift(result.header ?? '', configured)).toEqual([])
 })
 
 // The webview has no certificate pin: every memry-host request goes through the Rust transport,

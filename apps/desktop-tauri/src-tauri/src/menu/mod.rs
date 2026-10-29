@@ -107,6 +107,8 @@ pub fn apply(app: &AppHandle<Wry>, force: bool) {
         platform: platform(),
         overrides: &overrides,
         t: &translate,
+        // wry compiles the inspector into debug builds only (no `devtools` cargo feature).
+        devtools: cfg!(debug_assertions),
     });
     let menu = match native::build(app, &tree) {
         Ok(menu) => menu,
