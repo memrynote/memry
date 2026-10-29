@@ -174,10 +174,18 @@ fn lifecycle_a_close_hook_past_its_deadline_blocks_a_reopen_and_repair_until_it_
     );
     let vault = f.vault("v");
     f.session.open(&vault, OpenSource::Select).expect("open");
+    let started = Instant::now();
     f.session.close();
     assert!(
         !hook_ended.load(Ordering::SeqCst),
         "close did not wait for the hook"
+    );
+    // timing-bound: a close that waited out the 5 s production HOOK_DEADLINE instead of the
+    // 100 ms it was given would take at least that; this one takes the 100 ms.
+    assert!(
+        started.elapsed() < super::HOOK_DEADLINE,
+        "{:?}",
+        started.elapsed()
     );
     assert!(matches!(
         f.session.open(&vault, OpenSource::Select),

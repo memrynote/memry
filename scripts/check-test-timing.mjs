@@ -13,6 +13,11 @@
  * files). A genuine watchdog bound (the call returns before a 30 s timeout it would otherwise hit)
  * takes `// timing-bound: <reason>` in the comment block right above the assert.
  *
+ * Known gaps, each still a wall-clock bound the check does not see: `if elapsed > X { panic!() }`,
+ * a comparison through a method (`.lt()`, `.le()`, `.cmp()`), a macro outside the assert family
+ * (`ensure!`, `prop_assume!`), a short `timeout` or `recv_timeout` whose expiry fails the test, and
+ * a measured time that only a helper function returns.
+ *
  *   node scripts/check-test-timing.mjs [repo root]
  */
 import { readdir, readFile } from 'node:fs/promises'
@@ -277,20 +282,34 @@ function measured(toks, vars) {
 /** Let bindings before `at` in the innermost fn around it: instants and measured durations. */
 function bindings(code, fns, at) {
   const fn = fns.filter(([s, e]) => s <= at && at < e).toSorted((a, b) => b[0] - a[0])[0]
-  const vars = { instants: new Set(), durations: new Set(), exprs: new Map() }
+  const vars = { instants: new Set(), durations: new Set(), assigns: new Map() }
   if (!fn) return vars
-  const body = code.slice(fn[0], at)
-  for (const m of body.matchAll(/\blet\s+(?:mut\s+)?(\w+|\([^)]*\))\s*(?::[^=;]*)?=([^;]*);/g)) {
+  const assign = (name, toks) =>
+    (vars.assigns.get(name) ?? vars.assigns.set(name, []).get(name)).push(toks)
+  const before = code.slice(fn[0], at)
+  for (const m of before.matchAll(/\blet\s+(?:mut\s+)?(\w+|\([^)]*\))\s*(?::[^=;]*)?=([^;]*);/g)) {
     const names = m[1].match(/\w+/g).filter((n) => n !== 'mut')
-    const expr = m[2].trim()
-    if (names.length === 1) vars.exprs.set(names[0], tokens(expr))
-    const set = /^(?:\w+::)*Instant::now\(\s*\)$/.test(expr)
-      ? vars.instants
-      : measured(tokens(expr), vars)
-        ? vars.durations
-        : null
+    const expr = tokens(m[2])
+    if (names.length === 1) assign(names[0], expr)
+    // `Instant::now()` or an instant plus a duration (a deadline) is an instant.
+    const base =
+      NOW.test(expr[0]) && expr[1] === '(' && expr[2] === ')'
+        ? 3
+        : vars.instants.has(expr[0])
+          ? 1
+          : 0
+    const set =
+      base > 0 && (expr.length === base || expr[base] === '+')
+        ? vars.instants
+        : measured(expr, vars)
+          ? vars.durations
+          : null
     for (const n of names) set?.add(n)
   }
+  // Every later assignment too, wherever it sits in the function: a loop that moves its deadline
+  // at the bottom of its body runs that before the next check. `+=` and `-=` cannot be resolved.
+  for (const m of code.slice(fn[0], fn[1]).matchAll(/(?<![\w.])(\w+)\s*([+-]?=)(?![=>])([^;]*);/g))
+    assign(m[1], m[2] === '=' ? tokens(m[3]) : ['?'])
   return vars
 }
 
@@ -336,6 +355,7 @@ UNIT_MS.from_secs_f64 = UNIT_MS.from_secs_f32 = 1000
  * products and quotients by a number. NaN when it cannot tell, which leaves the assert flagged.
  */
 function durationMs(toks, consts, seen = new Set()) {
+  if (toks.length === 0) return NaN
   let total = 0
   let term = NaN
   let op = '+'
@@ -364,9 +384,11 @@ function durationMs(toks, consts, seen = new Set()) {
       op = t
       continue
     } else {
+      // A name defined more than once takes its shortest value, and an unresolved one is NaN, so
+      // an ambiguity can only flag an assert, never pass it.
       const name = t.split('::').at(-1)
       if (!consts.has(name) || seen.has(name)) return NaN
-      value = durationMs(consts.get(name), consts, new Set([...seen, name]))
+      value = shortest(consts.get(name).map((d) => durationMs(d, consts, new Set([...seen, name]))))
     }
     if (op !== '+' && Number.isNaN(term)) return NaN
     apply(value)
@@ -375,6 +397,8 @@ function durationMs(toks, consts, seen = new Set()) {
   return total
 }
 
+const shortest = (values) => (values.some(Number.isNaN) ? NaN : Math.min(...values))
+
 /**
  * The give-up time of a deadline poll, in ms: `Instant::now() < deadline` where
  * `deadline = Instant::now() + X`, or `started.elapsed() < X`. undefined for any other shape.
@@ -382,9 +406,15 @@ function durationMs(toks, consts, seen = new Set()) {
 function pollDeadlineMs(small, big, vars, consts) {
   const isNow = small.length === 3 && NOW.test(small[0])
   if (isNow && big.length === 1) {
-    const expr = vars.exprs.get(big[0])
-    if (expr && NOW.test(expr[0]) && expr[1] === '(' && expr[2] === ')' && expr[3] === '+')
-      return durationMs(expr.slice(4), consts)
+    const all = vars.assigns.get(big[0])
+    if (!all) return undefined
+    return shortest(
+      all.map((expr) =>
+        NOW.test(expr[0]) && expr[1] === '(' && expr[2] === ')' && expr[3] === '+'
+          ? durationMs(expr.slice(4), consts)
+          : NaN
+      )
+    )
   }
   const isElapsed =
     small.length === 5 && vars.instants.has(small[0]) && small.slice(1).join('') === '.elapsed()'
@@ -392,11 +422,11 @@ function pollDeadlineMs(small, big, vars, consts) {
   return undefined
 }
 
-/** `const NAME: Duration = <expr>;` definitions of one file. */
+/** `const NAME: Duration = <expr>;` definitions of one file, every one of a name kept. */
 function durationConsts(code) {
   const out = new Map()
   for (const m of code.matchAll(/\bconst\s+(\w+)\s*:\s*(?:\w+::)*Duration\s*=([^;]*);/g))
-    out.set(m[1], tokens(m[2]))
+    (out.get(m[1]) ?? out.set(m[1], []).get(m[1])).push(tokens(m[2]))
   return out
 }
 
@@ -418,16 +448,15 @@ if (files.length === 0) {
 }
 
 const sources = new Map()
-// Constants a file does not define resolve across the tree (test helpers share `WAIT`); a name
-// defined twice takes its shortest value, so an ambiguity can only flag an assert, never pass it.
+// Constants a file does not define resolve across the tree (test helpers share `WAIT`).
 const sharedConsts = new Map()
 for (const file of files) {
   const src = await readFile(file, 'utf8')
   const code = blank(src)
   const consts = durationConsts(code)
   sources.set(file, { src, code, consts })
-  for (const [name, toks] of consts)
-    (sharedConsts.get(name) ?? sharedConsts.set(name, []).get(name)).push(toks)
+  for (const [name, all] of consts)
+    (sharedConsts.get(name) ?? sharedConsts.set(name, []).get(name)).push(...all)
 }
 
 // Test files by path, then every file a test-only `mod x;` names, transitively.
@@ -455,12 +484,7 @@ for (const [file, regions] of regionsOf) {
   const { src, code, consts: own } = sources.get(file)
   const lines = src.split('\n')
   const fns = functions(code)
-  const consts = new Map()
-  for (const [name, all] of sharedConsts) {
-    const ms = all.map((t) => durationMs(t, new Map()))
-    consts.set(name, all[ms.indexOf(Math.min(...ms.filter((v) => !Number.isNaN(v))))] ?? all[0])
-  }
-  for (const [name, toks] of own) consts.set(name, toks)
+  const consts = new Map([...sharedConsts, ...own])
   const seen = new Set()
   for (const [from, to] of regions) {
     ASSERT.lastIndex = from

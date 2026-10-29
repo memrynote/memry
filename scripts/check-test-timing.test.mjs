@@ -68,6 +68,30 @@ fn a_flush_runs_every_scheduled_pass_now_and_waits_for_them() {
     assert.match(output, /case\.rs:7: assert!\(Instant::now\(\) < deadline/)
   })
 
+  await t.test('takes the shorter of two constants that share a name', () => {
+    // Two modules of one file may each define `WAIT`; the later one is the long one.
+    const { status, output } = check(
+      `${poll('Duration::from_millis(500)')}\nmod slow {\n    const WAIT: Duration = Duration::from_secs(10);\n}\n`
+    )
+    assert.equal(status, 1, output)
+    assert.match(output, /deadline/)
+  })
+
+  await t.test('flags a poll whose deadline the loop moves closer', () => {
+    const { status, output } = check(`
+fn eventually(done: impl Fn() -> bool) {
+    let mut deadline = Instant::now() + Duration::from_secs(10);
+    while !done() {
+        assert!(Instant::now() < deadline, "never");
+        std::thread::sleep(Duration::from_millis(5));
+        deadline = Instant::now() + Duration::from_millis(200);
+    }
+}
+`)
+    assert.equal(status, 1, output)
+    assert.match(output, /case\.rs:5: assert!\(Instant::now\(\) < deadline/)
+  })
+
   await t.test('ignores epoch timestamps and lower bounds', () => {
     const { status, output } = check(`
 #[test]
@@ -81,6 +105,10 @@ fn stamped_at_apply_time() {
     let started = Instant::now();
     pass();
     assert!(started.elapsed() >= DEBOUNCE);
+    let deadline = Instant::now() + DEBOUNCE;
+    wait();
+    assert!(Instant::now() >= deadline, "it waited for the debounce");
+    assert!(deadline <= Instant::now());
 }
 `)
     assert.equal(status, 0, output)

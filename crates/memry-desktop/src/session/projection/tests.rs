@@ -182,6 +182,13 @@ fn projection_stop_returns_within_the_deadline_with_a_stuck_lane() {
         started.elapsed() >= Duration::from_millis(300),
         "the drain waited for its deadline"
     );
+    // timing-bound: a stop that waited out the 5 s production deadline instead of the 300 ms it
+    // was given would take at least STOP_DRAIN_TIMEOUT; this one takes the 300 ms.
+    assert!(
+        started.elapsed() < STOP_DRAIN_TIMEOUT,
+        "{:?}",
+        started.elapsed()
+    );
     assert_eq!(report.stuck, ["stuck"]);
     assert_eq!(runtime.live_threads(), 1);
     // Publishing after stop is refused.
