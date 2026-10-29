@@ -152,9 +152,8 @@ fn projection_a_sleeping_background_lane_does_not_delay_flush() {
     slow.entered
         .recv_timeout(SETTLE)
         .expect("the background lane is inside project");
-    let started = Instant::now();
+    // The background lane is held until after this: a flush that waited for it would time out.
     assert!(runtime.flush(Duration::from_secs(2)));
-    assert!(started.elapsed() < Duration::from_millis(500));
     assert_eq!(quick.fake.projected.load(Ordering::SeqCst), 1);
     let _ = slow.release.send(());
     runtime.stop(true);
@@ -177,11 +176,11 @@ fn projection_stop_returns_within_the_deadline_with_a_stuck_lane() {
     // The 5 s production deadline is a constant; the test uses a short one so scheduler
     // jitter on a loaded runner cannot decide it.
     assert_eq!(STOP_DRAIN_TIMEOUT, Duration::from_millis(5000));
+    // The lane is held until after this: a stop that waited for it would never return.
     let report = runtime.stop_within(true, Duration::from_millis(300));
     assert!(
-        started.elapsed() < Duration::from_millis(1500),
-        "{:?}",
-        started.elapsed()
+        started.elapsed() >= Duration::from_millis(300),
+        "the drain waited for its deadline"
     );
     assert_eq!(report.stuck, ["stuck"]);
     assert_eq!(runtime.live_threads(), 1);
@@ -217,9 +216,8 @@ fn projection_close_during_a_slow_reconcile_cancels_it_and_no_thread_survives() 
         1,
         "the pass is running"
     );
-    let started = Instant::now();
+    // The pass runs until it is cancelled: a stop that did not cancel it would report it stuck.
     let report = runtime.stop(false);
-    assert!(started.elapsed() < Duration::from_secs(2));
     assert!(report.stuck.is_empty());
     assert_eq!(runtime.live_threads(), 0);
 }

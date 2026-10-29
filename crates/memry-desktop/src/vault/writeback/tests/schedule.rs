@@ -278,15 +278,20 @@ fn a_stop_runs_every_scheduled_pass_before_the_thread_ends() {
     cool(&fake, &writeback, "n1");
     writeback.schedule("n1");
     writeback.schedule("n2");
-    let started = Instant::now();
     writeback.stop();
-    // A stop that waited for n1's cooldown would take longer.
-    assert!(
-        started.elapsed() < SHORT_OF_COOLDOWN,
-        "{:?}",
-        started.elapsed()
-    );
     assert_eq!(fake.finished(), 3);
+    let runs = fake.runs();
+    let (cooled, stopped) = (
+        runs[0].2.unwrap(),
+        runs.iter().rfind(|r| r.0 == "n1").unwrap().1,
+    );
+    // timing-bound: a stop that waited for n1's cooldown starts its pass no sooner than
+    // MAX_COOLDOWN (5 s) after the cool pass; one that does not starts it at once.
+    assert!(
+        stopped.duration_since(cooled) < MAX_COOLDOWN,
+        "{:?}",
+        stopped.duration_since(cooled)
+    );
     writeback.schedule("n3");
     assert!(writeback.flush(Duration::from_millis(100)));
     assert_eq!(fake.count(), 3, "a pass ran after the stop");

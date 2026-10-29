@@ -346,7 +346,8 @@ fn wait_for(what: &str, condition: impl Fn() -> bool) {
 
 #[test]
 fn a_call_that_never_answers_is_locked_at_the_deadline_then_at_once_and_recovers() {
-    let deadline = Duration::from_millis(150);
+    // Long enough that a latched call, which never waits, cannot reach it on a loaded runner.
+    let deadline = Duration::from_secs(2);
     let rig = rig_with(None, deadline, false);
     rig.store
         .set(SecureStoreKey::MasterKey, vec![5; 32])
@@ -366,15 +367,17 @@ fn a_call_that_never_answers_is_locked_at_the_deadline_then_at_once_and_recovers
     );
     assert_eq!(rig.store.health(), SecureStoreHealth::Unavailable);
 
-    let start = Instant::now();
     for key in STORE_KEYS {
+        let start = Instant::now();
         assert_eq!(rig.store.get(key), Err(SecureStoreError::Locked));
         assert_eq!(
             rig.store.set(key, vec![1; 32]),
             Err(SecureStoreError::Locked)
         );
+        // timing-bound: a call that queued behind the stuck one waits out the whole 2 s deadline
+        // (`recv_timeout`) before it answers; a latched call never reaches it.
+        assert!(start.elapsed() < deadline, "a latched call answers at once");
     }
-    assert!(start.elapsed() < deadline, "a latched call answers at once");
     assert_eq!(fired.load(Ordering::SeqCst), 0);
 
     gate.release();
