@@ -27,6 +27,7 @@
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 use crate::api::errors::StorageError;
+use crate::crdt::update_log;
 
 const COLUMNS: &str =
     "note_id, path, file_type, mime_type, file_size, content_hash, local_only, indexed_at";
@@ -42,7 +43,13 @@ pub struct NoteFile {
     pub file_size: Option<i64>,
     pub content_hash: Option<String>,
     pub local_only: bool,
-    /// Milliseconds since the epoch of the last stat or read.
+    /// The row's stamp, in this device's milliseconds since the epoch. One meaning for every
+    /// writer and reader: the row accounts for every change to the file and to the note's
+    /// body made at or before it. The file was then the bytes the row names (`content_hash`,
+    /// size), so a file modified later has a later mtime and is read again; and the body held
+    /// those bytes, so a body entry stamped later puts the note behind its body
+    /// ([`behind_bodies`]). A writer that saw only one side keeps the stamp the other side
+    /// allows ([`refresh_stat`]).
     pub indexed_at: i64,
 }
 
@@ -162,6 +169,58 @@ pub fn upsert_stat(conn: &mut Connection, stat: &NoteFileStat) -> Result<(), Sto
             failed(err)
         }
     })
+}
+
+/// [`upsert_stat`] for a file read again and found to be the bytes its row names: the row's
+/// stamp moves to `stat.indexed_at` only while no body entry is stamped after it, since the
+/// read says nothing of the body ([`NoteFile::indexed_at`]). The row must exist.
+pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), StorageError> {
+    check_path(&stat.path)?;
+    let changed = conn
+        .execute(
+            &format!(
+                "UPDATE note_files SET
+                   path = ?2, file_type = ?3, mime_type = ?4, file_size = ?5,
+                   content_hash = ?6,
+                   indexed_at = CASE WHEN {} THEN indexed_at ELSE ?7 END
+                 WHERE note_id = ?1",
+                body_moved_after_stamp()
+            ),
+            params![
+                stat.note_id,
+                stat.path,
+                stat.file_type,
+                stat.mime_type,
+                stat.file_size,
+                stat.content_hash,
+                stat.indexed_at
+            ],
+        )
+        .map_err(|err| {
+            if is_constraint(&err) {
+                invalid(format!("path {:?} belongs to another note", stat.path))
+            } else {
+                failed(err)
+            }
+        })?;
+    if changed == 0 {
+        return Err(not_found(&stat.note_id));
+    }
+    Ok(())
+}
+
+/// The SQL test, over a `note_files` row, that an entry of the note's body log or snapshot,
+/// in either namespace ([`update_log`]), is stamped after the row.
+fn body_moved_after_stamp() -> String {
+    let local = update_log::LOCAL_NAMESPACE_PREFIX;
+    format!(
+        "(EXISTS (SELECT 1 FROM yjs_updates u
+                   WHERE u.doc_id IN (note_files.note_id, '{local}' || note_files.note_id)
+                     AND u.created_at > note_files.indexed_at)
+          OR EXISTS (SELECT 1 FROM yjs_snapshots s
+                      WHERE s.doc_id IN (note_files.note_id, '{local}' || note_files.note_id)
+                        AND s.compacted_at > note_files.indexed_at))"
+    )
 }
 
 /// Records the hash of the bytes now on disk (or clears it with `None`).
@@ -288,6 +347,56 @@ pub fn list_missing_candidates(conn: &Connection) -> Result<Vec<NoteFile>, Stora
             "SELECT {COLUMNS} FROM note_files
               WHERE NOT (file_type <> 'markdown' AND COALESCE(file_size, 0) = 0)
               ORDER BY path"
+        ))
+        .map_err(failed)?;
+    statement
+        .query_map([], row_to_file)
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
+}
+
+/// Every note whose file may be behind its body, in id order: the row says the document
+/// holds the file (a markdown row with a hash), and an entry of the note's body log or
+/// snapshot, in either namespace ([`update_log`]), is stamped after the row
+/// (`indexed_at`). The stamps are this device's clock at apply time, the same reading the
+/// search index's watermark relies on (`domain::search::maintenance`).
+///
+/// A row's stamp is the time up to which it accounts for the body ([`NoteFile::indexed_at`]),
+/// so this names every note whose body moved after that: an edit or a merged page whose
+/// write-back never ran. An entry stamped in the same millisecond as the row is not counted,
+/// so the feed that recorded the row does not name its own note.
+pub fn behind_bodies(conn: &Connection) -> Result<Vec<String>, StorageError> {
+    let mut statement = conn
+        .prepare(&format!(
+            "SELECT note_id FROM note_files
+              WHERE file_type = 'markdown' AND content_hash IS NOT NULL
+                AND {}
+              ORDER BY note_id",
+            body_moved_after_stamp()
+        ))
+        .map_err(failed)?;
+    statement
+        .query_map([], |row| row.get(0))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
+}
+
+/// The markdown rows of tombstoned notes and journal days, by path: files a deletion on
+/// another device, or one whose file operation a crash cut short, left in the vault. A note
+/// this vault has no record of is not among them: its record may not have arrived yet, and
+/// a file is not given up on an absence.
+pub fn rows_of_deleted_notes(conn: &Connection) -> Result<Vec<NoteFile>, StorageError> {
+    let mut statement = conn
+        .prepare(&format!(
+            "SELECT {COLUMNS} FROM note_files f
+              WHERE f.file_type = 'markdown'
+                AND (EXISTS (SELECT 1 FROM notes n
+                              WHERE n.id = f.note_id AND n.deleted_at IS NOT NULL)
+                  OR EXISTS (SELECT 1 FROM journal_entries j
+                              WHERE j.id = f.note_id AND j.deleted_at IS NOT NULL))
+              ORDER BY f.path"
         ))
         .map_err(failed)?;
     statement

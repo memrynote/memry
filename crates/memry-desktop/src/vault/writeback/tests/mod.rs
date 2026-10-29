@@ -21,7 +21,7 @@ use tokio::sync::broadcast;
 
 use super::{Keep, Outcome, Pass};
 use crate::vault::consumer::converter_for;
-use crate::vault::consumer::rows::{RowOwner, RowStat};
+use crate::vault::consumer::rows::{RowOwner, RowStat, now_ms};
 use crate::vault::consumer::tests::with_device_key;
 use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::file_types::FileType;
@@ -160,7 +160,7 @@ impl Fixture {
     }
 
     /// Another device's edit of the note, on top of the body this device holds, stored as the
-    /// server sent it.
+    /// server sent it and stamped with this device's clock, as a pulled page is.
     pub(super) fn edit_from_sync(&self, id: &str, extend: impl FnOnce(&mut yrs::TransactionMut)) {
         let authored: Arc<std::sync::Mutex<Vec<Vec<u8>>>> = Arc::default();
         let sink: UpdateSink = {
@@ -184,9 +184,10 @@ impl Fixture {
         let first = self
             .server_seq
             .fetch_add(updates.len() as i64, Ordering::SeqCst);
+        let now = now_ms();
         db.call_blocking(move |conn| {
             for (at, update) in updates.iter().enumerate() {
-                update_log::append_server_update(conn, &doc_id, first + at as i64, update, 1)
+                update_log::append_server_update(conn, &doc_id, first + at as i64, update, now)
                     .unwrap();
             }
             Ok(())
@@ -208,6 +209,11 @@ impl Fixture {
                 Ok(())
             })
             .unwrap();
+    }
+
+    /// The notes whose file may be behind their body, as the open reconcile reads them.
+    pub(super) fn behind(&self) -> Vec<String> {
+        self.vault.note_files().behind_bodies().unwrap()
     }
 
     pub(super) fn exec(&self, sql: &'static str) {
@@ -313,6 +319,8 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
     assert!(f.facts().is_empty());
 }
 
+mod deleted;
 mod guards;
+mod reconcile;
 mod schedule;
 mod triggers;

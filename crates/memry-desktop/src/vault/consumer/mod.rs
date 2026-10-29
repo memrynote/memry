@@ -58,7 +58,7 @@ pub use run::{FIRST_RETRY, MAX_RETRIES, QUEUE_CAPACITY};
 pub(crate) use tier::Hold;
 pub use tier::VaultTier;
 
-use run::{Consumer, inbox};
+use run::{AfterWalk, Consumer, inbox};
 
 use crate::vault::watch::VaultEvent;
 

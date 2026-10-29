@@ -39,6 +39,12 @@ impl NoteFiles {
             .call_blocking(move |conn| note_files::upsert_stat(conn, &stat))
     }
 
+    /// [`note_files::refresh_stat`].
+    pub fn refresh_stat(&self, stat: NoteFileStat) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(move |conn| note_files::refresh_stat(conn, &stat))
+    }
+
     pub fn set_hash(&self, note_id: &str, content_hash: Option<&str>) -> Result<(), StorageError> {
         let (note_id, hash) = (note_id.to_owned(), content_hash.map(str::to_owned));
         self.db
@@ -86,6 +92,16 @@ impl NoteFiles {
 
     pub fn list_missing_candidates(&self) -> Result<Vec<NoteFile>, StorageError> {
         self.db.read_blocking(note_files::list_missing_candidates)
+    }
+
+    /// Every note whose file may be behind its body ([`note_files::behind_bodies`]).
+    pub fn behind_bodies(&self) -> Result<Vec<String>, StorageError> {
+        self.db.read_blocking(note_files::behind_bodies)
+    }
+
+    /// The markdown rows of tombstoned notes ([`note_files::rows_of_deleted_notes`]).
+    pub fn rows_of_deleted_notes(&self) -> Result<Vec<NoteFile>, StorageError> {
+        self.db.read_blocking(note_files::rows_of_deleted_notes)
     }
 
     pub fn list_paths(&self) -> Result<Vec<(String, String)>, StorageError> {

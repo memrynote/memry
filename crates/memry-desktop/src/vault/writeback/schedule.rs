@@ -55,6 +55,17 @@ impl Runner for Pass {
     }
 }
 
+/// The session's one [`Pass`], shared with the open reconcile.
+impl Runner for Arc<Pass> {
+    fn run(&self, note_id: &str) -> Outcome {
+        Pass::run(self, note_id)
+    }
+
+    fn title(&self, note_id: &str) -> Option<String> {
+        Runner::title(&**self, note_id)
+    }
+}
+
 /// What a note's last pass cost.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Cost {

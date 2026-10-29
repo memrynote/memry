@@ -386,3 +386,84 @@ async fn a_flush_that_cannot_finish_leaves_the_steps_behind_it_their_share() {
         "{left:?} left of {SESSION_END_BUDGET:?}"
     );
 }
+
+fn app_changed(id: &str) -> impl Fn(&Applied) -> bool + '_ {
+    move |f| matches!(f, Applied::Changed { note_id, source: ChangeSource::App, .. } if note_id == id)
+}
+
+/// The app ended before an edit's pass ran (here the edit was never scheduled, as when the
+/// process dies inside the debounce): the next open writes the file.
+#[test]
+fn an_edit_whose_pass_never_ran_reaches_the_file_when_the_vault_opens_again() {
+    let (mut e, identity, id) = one_note();
+    e.write("ghost.md", "`<!--ghost-->`\n");
+    e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "ghost.md"));
+    std::thread::sleep(Duration::from_millis(5));
+    e.edit_in_app(&identity.store, &id, "typed before the crash");
+    e.close();
+    assert_eq!(e.read("n.md"), "first words\n");
+
+    e.open();
+    e.facts_until(app_changed(&id));
+    assert_eq!(e.read("n.md"), "typed before the crash\n");
+    std::thread::sleep(DEBOUNCE + QUIET);
+    let later = e.drain();
+    assert!(
+        !later.iter().any(|f| matches!(
+            f,
+            Applied::Changed {
+                source: ChangeSource::App,
+                ..
+            }
+        )),
+        "the open wrote a file the app did not change: {later:?}"
+    );
+    assert_eq!(e.read("ghost.md"), "`<!--ghost-->`\n");
+
+    // Nothing is behind any more: the next open writes nothing.
+    e.close();
+    let mtime = std::fs::metadata(e.vault.join("n.md"))
+        .unwrap()
+        .modified()
+        .unwrap();
+    e.open();
+    e.facts_until(indexed);
+    std::thread::sleep(DEBOUNCE + QUIET);
+    let again = e.drain();
+    assert!(
+        !again.iter().any(|f| matches!(
+            f,
+            Applied::Changed {
+                source: ChangeSource::App,
+                ..
+            }
+        )),
+        "{again:?}"
+    );
+    assert_eq!(
+        std::fs::metadata(e.vault.join("n.md"))
+            .unwrap()
+            .modified()
+            .unwrap(),
+        mtime
+    );
+}
+
+/// One stamp, one meaning (review M1): the first edit's pass stamps the row before its own
+/// write, so the next open's walk reads the file again (its mtime is later) and finds the
+/// hash the row has. That read must not move the stamp past the second edit, whose pass the
+/// crash cut short, or the reconcile never sees it.
+#[test]
+fn a_file_read_again_on_open_keeps_an_edit_its_pass_never_wrote_behind() {
+    let (mut e, identity, id) = one_note();
+    e.edit_in_app(&identity.store, &id, "first pass wrote this");
+    e.tier.schedule(&id);
+    e.facts_until(app_changed(&id));
+    std::thread::sleep(Duration::from_millis(50));
+    e.edit_in_app(&identity.store, &id, "typed before the crash");
+    e.close();
+    e.open();
+    e.facts_until(indexed);
+    std::thread::sleep(DEBOUNCE + QUIET);
+    assert_eq!(e.read("n.md"), "typed before the crash\n");
+}

@@ -12,12 +12,12 @@ use tokio::sync::broadcast;
 use super::apply::Applier;
 use super::identity::{DeferIdentity, NoteIdentity};
 use super::rows::{RowOwner, RowSession};
-use super::{Applied, Consumer, QUEUE_CAPACITY, inbox};
+use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::config::read_vault_config;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
-use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed};
+use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed, reconcile};
 
 pub struct VaultTier {
     /// Holds the device key the feed writes under.
@@ -114,7 +114,7 @@ impl VaultTier {
     pub fn schedule(&self, note_id: &str) {
         match self.current() {
             Some(open) => open.writeback.schedule(note_id),
-            // Until the reconcile on open (12e-3c) writes such a note, its file lags its body.
+            // The next open's reconcile writes it: its body moved after its row was stamped.
             None => tracing::warn!(
                 scope = "vault_writeback",
                 note_id,
@@ -242,15 +242,15 @@ impl VaultTier {
                 );
             })
             .ok();
-        let pass = Pass::new(
+        let pass = Arc::new(Pass::new(
             vault.path.clone(),
             vault.vault.clone(),
             self.rows.clone(),
             session,
             echo.clone(),
             vault.vault.app_settings(self.store.clone()).ok(),
-        );
-        let writeback = WriteBack::start(pass, self.failures.clone())
+        ));
+        let writeback = WriteBack::start(pass.clone(), self.failures.clone())
             .map(Arc::new)
             .map_err(|error| error.to_string())?;
         let applier = Applier {
@@ -262,7 +262,11 @@ impl VaultTier {
             feed,
             settings: vault.vault.app_settings(self.store.clone()).ok(),
         };
-        let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude)
+        let after_walk: AfterWalk = {
+            let writeback = writeback.clone();
+            Box::new(move |stopped| reconcile(&pass, &writeback, stopped))
+        };
+        let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude, after_walk)
             .map_err(|error| error.to_string())?;
         Ok(Open {
             vault: vault.vault.clone(),

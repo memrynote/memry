@@ -47,7 +47,8 @@ fn run(f: &Fixture, capacity: usize) -> Running {
     )
     .unwrap();
     let applier = applier(&f.root, &f.vault, &f.store, &f.rows, f.identity.clone());
-    let consumer = Consumer::start(applier, inbox, watcher.handle(), vec![]).unwrap();
+    let consumer =
+        Consumer::start(applier, inbox, watcher.handle(), vec![], Box::new(|_| {})).unwrap();
     Running {
         _watcher: watcher,
         _consumer: consumer,

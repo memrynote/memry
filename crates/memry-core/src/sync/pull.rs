@@ -292,13 +292,13 @@ impl PullLoop {
         report.purged_documents.extend(outcomes.purged_documents);
 
         // §5.11: only now, and in the transaction that lands the bodies.
-        let now = now_ms();
         let advanced = page.next_cursor.clone().or(cursor);
         let stored = advanced.clone();
         report.advanced_documents = self
             .db
             .call(move |conn| {
-                note_body_feed::land_and_advance(conn, bodies, stored.as_deref(), now)
+                // Stamped under the writer, as `body_pull::store_update` says why.
+                note_body_feed::land_and_advance(conn, bodies, stored.as_deref(), now_ms())
             })
             .await?;
         report.cursor = advanced;

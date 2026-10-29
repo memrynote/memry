@@ -255,15 +255,16 @@ impl Applier {
                 Err(step) => return step,
             };
             let write = match row.content_hash.as_deref() {
-                // Read back as recorded: only the row's time moves on, so the walk does not
-                // read it again.
+                // Read back as recorded: the row's time moves on, so the walk does not read it
+                // again, unless the body moved since (a pass a crash cut short): then the note
+                // stays behind its body for the reconcile.
                 Some(hash) if hash == file.hash => {
                     let stat = RowStat {
                         file_type,
                         size,
                         content_hash: Some(file.hash),
                     };
-                    if let Err(error) = lane.put(note_id, path, stat) {
+                    if let Err(error) = lane.refresh(note_id, path, stat) {
                         tracing::warn!(
                             scope = SCOPE,
                             note_id,

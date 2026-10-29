@@ -258,10 +258,53 @@ impl Lane<'_> {
         self.files().set_hash(note_id, None)
     }
 
+    /// Records the row stamped now: the caller read the file now and, with a hash, the body
+    /// holds it now (a feed that just took it). The stamp's one meaning is
+    /// `memry_core::domain::note_files::NoteFile::indexed_at`. It is taken after the feed's
+    /// commit and before this write's hop to the database writer: an app edit committed in
+    /// between is stamped before the row and is not seen behind, so only a crash in those
+    /// milliseconds, before that edit's own pass, leaves its file lagging. A stamp taken before
+    /// the feed would instead put the feed's own commit after it, and every fed note behind.
     pub(crate) fn put(&mut self, note_id: &str, path: &str, stat: RowStat) -> Result<(), RowError> {
+        self.put_as_of(note_id, path, stat, now_ms())
+    }
+
+    /// [`Lane::put`] stamped `at`: a time before the caller read the body and the file it
+    /// records (the write-back's stamp, `vault::writeback`).
+    pub(crate) fn put_as_of(
+        &mut self,
+        note_id: &str,
+        path: &str,
+        stat: RowStat,
+        at: i64,
+    ) -> Result<(), RowError> {
         let state = self.state_mut();
         state.index.check(note_id, path)?;
         state.files.upsert_stat(NoteFileStat {
+            note_id: note_id.to_owned(),
+            path: path.to_owned(),
+            file_type: stat.file_type.as_str().to_owned(),
+            mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
+            file_size: i64::try_from(stat.size).ok(),
+            content_hash: stat.content_hash,
+            indexed_at: at,
+        })?;
+        state.index.insert(note_id, path);
+        Ok(())
+    }
+
+    /// The file was read again and is the bytes its row names, which says nothing of the body:
+    /// the stamp moves to now only while the body has not moved since it
+    /// (`memry_core::domain::note_files::refresh_stat`), so a note behind its body stays so.
+    pub(super) fn refresh(
+        &mut self,
+        note_id: &str,
+        path: &str,
+        stat: RowStat,
+    ) -> Result<(), RowError> {
+        let state = self.state_mut();
+        state.index.check(note_id, path)?;
+        state.files.refresh_stat(NoteFileStat {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
             file_type: stat.file_type.as_str().to_owned(),
@@ -282,7 +325,7 @@ impl Lane<'_> {
         Ok(())
     }
 
-    pub(super) fn remove(&mut self, note_id: &str) -> Result<(), RowError> {
+    pub(crate) fn remove(&mut self, note_id: &str) -> Result<(), RowError> {
         let state = self.state_mut();
         state.files.remove(note_id)?;
         state.index.remove_note(note_id);
@@ -295,7 +338,7 @@ impl Lane<'_> {
     }
 }
 
-pub(super) fn now_ms() -> i64 {
+pub(crate) fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))

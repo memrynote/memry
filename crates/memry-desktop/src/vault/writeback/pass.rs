@@ -14,7 +14,7 @@ use memry_core::markdown::frontmatter::{
 };
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
 
-use crate::vault::consumer::rows::{RowOwner, RowSession, RowStat};
+use crate::vault::consumer::rows::{RowOwner, RowSession, RowStat, now_ms};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
@@ -46,7 +46,7 @@ pub enum Keep {
     Closed,
     NoRow,
     NotMarkdown,
-    /// A journal note (12e-3c).
+    /// A journal day: journal files are not fed, so the document never holds one.
     Journal,
     /// The row names a file that is not there.
     NoFile,
@@ -108,6 +108,9 @@ impl Pass {
         let Ok(mut lane) = self.rows.lane_of(self.session) else {
             return Outcome::Kept(Keep::Closed);
         };
+        // The row's stamp: taken before the body is read, so an edit made after the read is
+        // after the stamp and the note stays behind its body (`reconcile`).
+        let read_at = now_ms();
         if is_journal(note_id) {
             return Outcome::Kept(Keep::Journal);
         }
@@ -168,6 +171,20 @@ impl Pass {
             Err(reason) => return Outcome::Failed(reason),
         };
         if output == file.raw {
+            let stat = RowStat {
+                file_type: FileType::Markdown,
+                size: file.raw.len() as u64,
+                content_hash: Some(row_hash),
+            };
+            if let Err(error) = lane.put_as_of(note_id, &row.path, stat, read_at) {
+                // The file is right; the note is behind once more on the next open, whose
+                // pass finds it unchanged again.
+                tracing::warn!(
+                    scope = "vault_writeback",
+                    note_id,
+                    "the row was not stamped: {error}"
+                );
+            }
             return Outcome::Unchanged;
         }
         let hash = content_hash(&output);
@@ -194,7 +211,7 @@ impl Pass {
             size: output.len() as u64,
             content_hash: Some(hash.clone()),
         };
-        if let Err(error) = lane.put(note_id, &row.path, stat) {
+        if let Err(error) = lane.put_as_of(note_id, &row.path, stat, read_at) {
             // The file holds the document's body and the row the old hash, so the next pass
             // reads it as an outside edit and keeps it. The feed (12e-3b) reads it back
             // `Unchanged` and records the hash; until then the file only waits.

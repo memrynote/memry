@@ -62,23 +62,66 @@
 //! - **A crash or a forced exit leaves files behind their bodies, never the reverse.** The
 //!   body is durable in the document before its note is scheduled, and the queue is in
 //!   memory, so a process that ends before a pass leaves that note's file with older text and
-//!   a row hash that still matches it. The open reconcile (12e-3c) brings such files to their
-//!   bodies: a pass for every note whose body may be newer than its file writes exactly the
-//!   notes this left behind. Until it runs, an outside edit of such a file replaces the newer
-//!   body, which the feed keeps as a version.
+//!   a row hash that still matches it. Until the next open's reconcile, an outside edit of
+//!   such a file replaces the newer body, which the feed keeps as a version.
+//! - **Every open brings the files left behind to their bodies, and touches no other file**
+//!   ([`reconcile`]). Once the open walk ends, so the outside edits made while the vault was
+//!   closed are fed, every note whose row says the document holds its file and whose body
+//!   moved after that row was stamped gets a pass ([`memry_core::domain::note_files::behind_bodies`]).
+//!   A note whose body did not move gets none, even when its document would write other
+//!   bytes (a file the read does not keep whole, seeded as the reference app seeds it): a
+//!   file the app did not change is never rewritten.
+//!
+//!   A row's stamp has one meaning for every writer: the row accounts for every change to the
+//!   file and to the body made at or before it
+//!   ([`memry_core::domain::note_files::NoteFile::indexed_at`]). A pass stamps the time before
+//!   it read the body, whether it wrote or found the file unchanged, so an edit made while it
+//!   ran is after the stamp and a reconciled note is not behind again. The consumer stamps a
+//!   feed when it records it, after the feed. A file read again and found to be the row's
+//!   bytes says nothing of the body, so that refresh moves the stamp only while the body has
+//!   not moved since; otherwise a pass a crash cut short would vanish from the reconcile the
+//!   moment the open walk re-read its file. Body entries are stamped under the database's
+//!   writer, which the pass also reads the body under, so an entry the pass did not see is
+//!   stamped after the pass's stamp. The stamps are this device's clock: an entry stamped in
+//!   the same millisecond as its row, or before it by a clock set back, is not seen, and that
+//!   file waits for the note's next edit. A note whose pass keeps its file for good (a file
+//!   ahead of its body, a body that would not write whole) stamps nothing, so it stays behind: every open
+//!   reads its file again (a refresh, which keeps the stamp) and runs its pass again, which
+//!   keeps the file again.
+//! - **A deleted note's file goes to the OS trash, never away for good, and only while it is
+//!   the file the note held** ([`Pass::trash_deleted`]). Before its passes, the open
+//!   reconcile moves to the trash the file of every tombstoned note and journal day
+//!   ([`memry_core::domain::note_files::rows_of_deleted_notes`]): a deletion made on another
+//!   device, or one whose file removal a crash cut short. The file goes only when its bytes
+//!   are still the ones its row read; a file edited since, or one the document never took,
+//!   holds bytes the note did not, and stays with its row. A row whose file is gone is
+//!   removed. A note with no record here is not a deleted one: its record may not have
+//!   arrived yet. A file the trash refuses stays, with its row, for the next open. Each file
+//!   holds the rows' lane from its check to its row's removal, and a stop or a close ends the
+//!   run between files. The check and the move are two steps: an outside edit that lands
+//!   between them goes to the trash with the file, from which it can be put back. The trash
+//!   is the OS's: on a Windows volume without a Recycle Bin (a network share), the shell
+//!   deletes the file for good and reports success, as desktop's unlink always did (measured
+//!   on Windows 11 with `trash` 5.2.9: the file was neither in the Recycle Bin nor on the share).
 //! - **A failed write is told, once per run of failures.** The first failed pass of a note
 //!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed pass is
 //!   not retried on its own: the note's next schedule is its retry, and its body stays in the
 //!   document until then.
 //!
-//! A journal note's file is not written yet: its frontmatter rule (the date, the tags) comes
-//! with the open reconcile (12e-3c). A file the note has no row or no file for is not
-//! created: the note records create files (Step 13).
+//! A journal day's file is not written: journal files are not fed (`external_feed` answers
+//! `NoNote`), so no journal row says the document holds its file. Its frontmatter rule
+//! (desktop `writebackJournal`: the day's `date`) comes with the stage that feeds them. A
+//! file the note has no row or no file for is not created: the note records create files
+//! (Step 13).
 
+mod deleted;
 mod pass;
+mod reconcile;
 mod schedule;
 #[cfg(test)]
 mod tests;
 
+pub use deleted::Leftover;
 pub use pass::{Keep, Outcome, Pass};
+pub(crate) use reconcile::reconcile;
 pub use schedule::{COOLDOWN_FACTOR, DEBOUNCE, MAX_COOLDOWN, WriteBack, WriteBackFailed};
