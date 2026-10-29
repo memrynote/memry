@@ -52,7 +52,8 @@ extern "C-unwind" fn should_terminate(
     _cmd: Sel,
     _sender: *mut AnyObject,
 ) -> NSApplicationTerminateReply {
-    match quit_reason() {
+    let reason = quit_reason();
+    match &reason {
         Some(reason) => tracing::info!(
             scope = "Shutdown",
             "macOS asked the app to terminate (quit reason {reason})"
@@ -62,6 +63,9 @@ extern "C-unwind" fn should_terminate(
     let Some(app) = APP.get() else {
         return NSApplicationTerminateReply::TerminateNow;
     };
+    if reason.as_deref().is_some_and(is_session_end) {
+        super::session_ending(app);
+    }
     let mut state = state();
     match *state {
         Terminate::Exiting => NSApplicationTerminateReply::TerminateNow,
@@ -78,10 +82,17 @@ extern "C-unwind" fn should_terminate(
     }
 }
 
-/// The `keyAEQuitReason` of the quit Apple event being handled, such as `rlgo` (kAEReallyLogOut)
-/// from loginwindow at Log Out. Cmd+Q, Dock Quit and `quit app` give none. Logged only: AppKit
-/// itself posts `NSWorkspaceWillPowerOffNotification` for a Log Out, Restart or Shut Down quit,
-/// which `power/mac.rs` hands to the shutdown sequence.
+/// Whether loginwindow sent the quit because the session ends: `rlgo` (kAEReallyLogOut), `rest`
+/// (kAERestart) or `shut` (kAEShutDown), the reasons `AERegistry.h` lists for `kAEQuitReason`.
+/// The quit then installs no update. `power/mac.rs` turns install-on-quit off as well, from
+/// `NSWorkspaceWillPowerOffNotification`, which also covers a Log Out during a running quit;
+/// that AppKit posts it there was seen on macOS 27 only, so both signals stay.
+fn is_session_end(reason: &str) -> bool {
+    matches!(reason, "rlgo" | "rest" | "shut")
+}
+
+/// The `keyAEQuitReason` of the quit Apple event being handled, such as `rlgo` from loginwindow
+/// at Log Out. Cmd+Q, Dock Quit and `quit app` give none. The reply never depends on it.
 fn quit_reason() -> Option<String> {
     let event = NSAppleEventManager::sharedAppleEventManager().currentAppleEvent()?;
     let keyword = u32::from_be_bytes(*b"why?");

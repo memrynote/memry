@@ -16,7 +16,7 @@ import {
 } from '../../harness/session-manager'
 import { appInfo, restart } from '../../harness/tauri-lifecycle'
 import { invoke } from '../../harness/vault-commands'
-import { pollUntil, waitForMainLog } from '../../harness/wait'
+import { pollUntil, readMainLog, waitForMainLog } from '../../harness/wait'
 import type { Page } from '../../harness/pw-compat/page'
 
 test.use({ extraEnv: { MEMRY_TEST_UPDATER: 'scripted' } })
@@ -282,7 +282,7 @@ test('a macOS Log Out leaves a downloaded update to the next normal quit', async
 // asking the app again, so only its NSWorkspaceWillPowerOffNotification says the session ends.
 test('a macOS Log Out during a running quit leaves the update on disk', async ({ app, page }) => {
   test.skip(process.platform !== 'darwin', 'Apple events are macOS-only')
-  const { appDataDir } = await appInfo(app)
+  const { appDataDir, logDir } = await appInfo(app)
   await download(app, page)
   await invokeTest(app, 'e2e_slow_shutdown_step', { step: 'stop-sync-runtime', ms: 3_000 })
 
@@ -291,6 +291,14 @@ test('a macOS Log Out during a running quit leaves the update on disk', async ({
   expect(sendQuitEvent(app.pid, 'rlgo')).toBe('errn 0')
   await waitForExit(app)
   expect(applies(appDataDir)).toEqual([])
+
+  // A forced exit installs nothing either: the quit must have ended cleanly, with the install
+  // turned off by the session end, and AppKit must not have asked the app a second time.
+  const log = readMainLog(logDir)
+  expect(log).toContain('cleanup complete')
+  expect(log).toContain('accepting the quit macOS asked for')
+  expect(log).toContain('OS session ending - skipping install-on-quit')
+  expect(log.split('macOS asked the app to terminate').length - 1).toBe(1)
 })
 
 /** A fake session manager on the session bus, up before the app registers with it. */

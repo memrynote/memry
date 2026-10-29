@@ -93,7 +93,9 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
                         stall.resume();
                     }
                 }
-                // Each platform source hands the session end to the shutdown sequence itself.
+                // Handled at the source: the Windows and Linux handlers start the shutdown
+                // sequence, and the macOS observer only turns install-on-quit off, because
+                // loginwindow's quit event then runs the sequence.
                 Ok(PowerEvent::SessionEnding) => {}
                 Err(broadcast::error::RecvError::Lagged(missed)) => {
                     // A missed `Resume` would leave the stall monitor off for good, and a

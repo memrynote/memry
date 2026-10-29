@@ -12,10 +12,11 @@ use objc2_foundation::NSNotification;
 use tauri::{AppHandle, Wry};
 use tokio::sync::broadcast::Sender;
 
-/// AppKit posts `NSWorkspaceWillPowerOffNotification` on the main thread when loginwindow's quit
-/// event names Log Out, Restart or Shut Down, right before `applicationShouldTerminate:`, and
-/// also when a quit (Cmd+Q) already runs, which AppKit then does not ask again. So the session end
-/// reaches the shutdown sequence here, before the quit can finish.
+/// On macOS 27, AppKit posts `NSWorkspaceWillPowerOffNotification` on the main thread when
+/// loginwindow's quit event names Log Out, Restart or Shut Down, right before
+/// `applicationShouldTerminate:`, and also when a quit (Cmd+Q) already runs, which AppKit then
+/// does not ask again. So install-on-quit goes off here, before the quit can finish; the quit
+/// itself arrives as `terminate:` (`shutdown/mac_quit.rs`).
 pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
     let center = NSWorkspace::sharedWorkspace().notificationCenter();
     // SAFETY: the notification names are AppKit's constants.
@@ -31,10 +32,10 @@ pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
     };
     for (name, event) in names {
         let sender = sender.clone();
-        let app = app.clone();
+        let session_end = (event == PowerEvent::SessionEnding).then(|| app.clone());
         let block = RcBlock::new(move |_: NonNull<NSNotification>| {
-            if event == PowerEvent::SessionEnding {
-                crate::shutdown::session_ending(&app);
+            if let Some(app) = &session_end {
+                crate::shutdown::session_ending(app);
             }
             super::publish(&sender, event);
         });

@@ -242,6 +242,8 @@ async fn request_authorization() -> Result<bool, String> {
     answer(receiver).await?
 }
 
+/// Hands the request to macOS. An error after [`ANSWER_TIMEOUT`] means macOS did not answer in
+/// time, not that it dropped the request: the notification may still show later.
 async fn add(identifier: &str, title: &str, body: &str, silent: bool) -> Result<(), String> {
     let receiver = {
         let content = UNMutableNotificationContent::new();
