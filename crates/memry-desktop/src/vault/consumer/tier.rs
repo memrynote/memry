@@ -12,7 +12,7 @@ use tokio::sync::broadcast;
 use super::apply::Applier;
 use super::identity::{DeferIdentity, NoteIdentity};
 use super::rows::{RowOwner, RowSession};
-use super::{Applied, Consumer, QUEUE_CAPACITY, inbox};
+use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::config::read_vault_config;
@@ -262,9 +262,9 @@ impl VaultTier {
             feed,
             settings: vault.vault.app_settings(self.store.clone()).ok(),
         };
-        let after_walk: Box<dyn FnOnce() + Send> = {
+        let after_walk: AfterWalk = {
             let writeback = writeback.clone();
-            Box::new(move || reconcile(&pass, &writeback))
+            Box::new(move |stopped| reconcile(&pass, &writeback, stopped))
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude, after_walk)
             .map_err(|error| error.to_string())?;

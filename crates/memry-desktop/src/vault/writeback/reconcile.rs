@@ -10,9 +10,10 @@ use crate::vault::trash::move_to_trash;
 const SCOPE: &str = "vault_writeback";
 
 /// Moves the files of deleted notes to the trash, then schedules a pass for every note behind
-/// its body. The consumer calls it once the open walk ended.
-pub(crate) fn reconcile(pass: &Pass, writeback: &WriteBack) {
-    pass.trash_deleted(&move_to_trash);
+/// its body. The consumer calls it once the open walk ended; a stop of the consumer ends the
+/// trashing between files (`stopped`).
+pub(crate) fn reconcile(pass: &Pass, writeback: &WriteBack, stopped: &dyn Fn() -> bool) {
+    pass.trash_deleted(&move_to_trash, stopped);
     match pass.vault.note_files().behind_bodies() {
         Ok(notes) => {
             if !notes.is_empty() {

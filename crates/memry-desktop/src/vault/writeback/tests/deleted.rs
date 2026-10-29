@@ -3,7 +3,8 @@
 //! test's (`tests/writeback_crash.rs`).
 
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, mpsc};
+use std::time::Duration;
 
 use super::*;
 use crate::vault::writeback::Leftover;
@@ -39,7 +40,79 @@ impl Bin {
 }
 
 fn trash(f: &Fixture, bin: &Bin) -> Vec<(String, Leftover)> {
-    f.pass.trash_deleted(&|path| bin.take(path))
+    f.pass.trash_deleted(&|path| bin.take(path), &|| false)
+}
+
+/// Whether another thread gets the rows' lane within a while.
+fn lane_free(f: &Fixture) -> bool {
+    let (rows, vault) = (f.rows.clone(), f.vault.clone());
+    let (tx, rx) = mpsc::channel();
+    // All of it on the other thread: the session lookup takes the lock the lane holds too.
+    std::thread::spawn(move || {
+        let free = rows
+            .session_for(&vault)
+            .is_ok_and(|session| rows.lane_of(session).is_ok());
+        let _ = tx.send(free);
+    });
+    rx.recv_timeout(Duration::from_secs(2)) == Ok(true)
+}
+
+fn two_deleted(f: &mut Fixture) -> (String, String) {
+    let a = f.adopt("a.md", "first\n");
+    let b = f.adopt("b.md", "second\n");
+    f.writer.delete(a.clone()).unwrap();
+    f.writer.delete(b.clone()).unwrap();
+    (a, b)
+}
+
+/// Review S2: the lane is held per file, not for the whole run, so an app operation (or a
+/// close) does not wait for every file of the run.
+#[test]
+fn the_lane_is_free_for_the_app_between_two_files() {
+    let mut f = fixture();
+    let (a, b) = two_deleted(&mut f);
+    let bin = Bin::new();
+    let free = Mutex::new(Vec::new());
+    let done = f.pass.trash_deleted(&|path| bin.take(path), &|| {
+        free.lock().unwrap().push(lane_free(&f));
+        false
+    });
+    assert_eq!(done, [(a, Leftover::Trashed), (b, Leftover::Trashed)]);
+    assert_eq!(*free.lock().unwrap(), [true, true]);
+}
+
+/// A stopped consumer ends the run between files; the rest wait, with their rows, for the
+/// next open.
+#[test]
+fn a_stop_ends_the_run_between_files_and_leaves_the_rest_for_the_next_open() {
+    let mut f = fixture();
+    let (a, b) = two_deleted(&mut f);
+    let bin = Bin::new();
+    let done = f.pass.trash_deleted(&|path| bin.take(path), &|| {
+        !bin.got.lock().unwrap().is_empty()
+    });
+    assert_eq!(done, [(a, Leftover::Trashed)]);
+    assert_eq!(f.read("b.md"), "second\n");
+    assert!(f.vault.note_files().by_id(&b).unwrap().is_some());
+    assert_eq!(trash(&f, &bin), [(b, Leftover::Trashed)]);
+}
+
+/// A session closed between files (the next vault opened) ends the run too.
+#[test]
+fn a_closed_session_ends_the_run_between_files() {
+    let mut f = fixture();
+    let (a, b) = two_deleted(&mut f);
+    let session = f.rows.session_for(&f.vault).unwrap();
+    let bin = Bin::new();
+    let done = f.pass.trash_deleted(&|path| bin.take(path), &|| {
+        if !bin.got.lock().unwrap().is_empty() {
+            f.rows.close_session(session);
+        }
+        false
+    });
+    assert_eq!(done, [(a, Leftover::Trashed)]);
+    assert_eq!(f.read("b.md"), "second\n");
+    assert!(f.vault.note_files().by_id(&b).unwrap().is_some());
 }
 
 #[test]
@@ -119,6 +192,10 @@ fn a_file_the_trash_refuses_stays_with_its_row_for_the_next_open() {
     );
     assert_eq!(f.read("n.md"), "first words\n");
     assert!(f.vault.note_files().by_id(&id).unwrap().is_some());
+    assert!(
+        !f.echo.absorbs_removal("n.md"),
+        "a later outside removal of the file the trash refused would be taken for the app's"
+    );
     bin.refuse = false;
     assert_eq!(trash(&f, &bin), [(id, Leftover::Trashed)]);
 }

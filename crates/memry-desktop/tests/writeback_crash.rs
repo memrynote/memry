@@ -77,6 +77,8 @@ fn a_page_committed_before_a_crash_reaches_the_file_on_the_next_open() {
         "the child removed the deleted note's file"
     );
 
+    // Empties this run's file from the real trash however the test ends.
+    let _purge = Purge(gone.clone());
     e.open();
     e.facts_until(app_changed(&id));
     let converter = Converter::new(CalloutTypes::new(Vec::new()));
@@ -94,7 +96,7 @@ fn a_page_committed_before_a_crash_reaches_the_file_on_the_next_open() {
         !e.vault.join(&gone).exists(),
         "the deleted note's file is still in the vault"
     );
-    take_from_trash(&e.vault, &gone, "deleted on another device\n");
+    assert_in_trash(&e.vault, &gone, "deleted on another device\n");
     assert!(e.core().note_files().by_id(&deleted).unwrap().is_none());
 
     e.close();
@@ -195,39 +197,63 @@ fn commit_page(core: &memry_core::api::vault::Vault, id: &str, text: &str) {
     .unwrap();
 }
 
-/// Finds `name`, taken from `vault`, in the OS trash with `text` in it, and empties it from
-/// there.
+/// Asserts `name`, taken from `vault`, is in the OS trash with `text` in it.
 #[cfg(any(windows, all(unix, not(target_os = "macos"))))]
-fn take_from_trash(vault: &Path, name: &str, text: &str) {
+fn assert_in_trash(vault: &Path, name: &str, text: &str) {
     let _ = text;
     let parent = vault.canonicalize().unwrap();
-    let items: Vec<_> = trash::os_limited::list()
-        .unwrap()
-        .into_iter()
-        .filter(|item| item.name == name)
-        .collect();
+    let items = trash_items(name);
     assert!(
         items
             .iter()
             .any(|item| item.original_parent.canonicalize().ok().as_ref() == Some(&parent)),
         "{name} is not in the trash: {items:?}"
     );
-    trash::os_limited::purge_all(items).unwrap();
+}
+
+#[cfg(any(windows, all(unix, not(target_os = "macos"))))]
+fn trash_items(name: &str) -> Vec<trash::TrashItem> {
+    trash::os_limited::list()
+        .unwrap()
+        .into_iter()
+        .filter(|item| item.name == name)
+        .collect()
 }
 
 /// The Finder's Trash has no list call: the file is at `~/.Trash/<name>` (the name is this
-/// run's own, so the Finder has no reason to rename it).
+/// run's own, so the Finder has no reason to rename it). Reading there needs Full Disk Access
+/// for the process running the test.
 #[cfg(target_os = "macos")]
-fn take_from_trash(_vault: &Path, name: &str, text: &str) {
-    let path = PathBuf::from(std::env::var("HOME").unwrap())
+fn assert_in_trash(_vault: &Path, name: &str, text: &str) {
+    match std::fs::read_to_string(mac_trash(name)) {
+        Ok(found) => assert_eq!(found, text, "{name} in the trash holds other bytes"),
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => panic!(
+            "~/.Trash cannot be read: give the process running the test Full Disk Access \
+             ({error})"
+        ),
+        Err(error) => panic!("{name} is not in the trash: {error}"),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn mac_trash(name: &str) -> PathBuf {
+    PathBuf::from(std::env::var("HOME").unwrap())
         .join(".Trash")
-        .join(name);
-    assert_eq!(
-        std::fs::read_to_string(&path).unwrap(),
-        text,
-        "{name} is not in the trash"
-    );
-    std::fs::remove_file(path).unwrap();
+        .join(name)
+}
+
+/// This run's file, emptied from the real trash when the test ends, a failed one included.
+struct Purge(String);
+
+impl Drop for Purge {
+    fn drop(&mut self) {
+        #[cfg(target_os = "macos")]
+        let _ = std::fs::remove_file(mac_trash(&self.0));
+        #[cfg(any(windows, all(unix, not(target_os = "macos"))))]
+        if let Ok(items) = std::panic::catch_unwind(|| trash_items(&self.0)) {
+            let _ = trash::os_limited::purge_all(items);
+        }
+    }
 }
 
 fn modified(path: &Path) -> SystemTime {

@@ -72,12 +72,19 @@
 //!   bytes (a file the read does not keep whole, seeded as the reference app seeds it): a
 //!   file the app did not change is never rewritten.
 //!
-//!   A row's stamp is when the document was last known to hold the file. A pass stamps the
-//!   time before it read the body, whether it wrote or found the file unchanged, so an edit
-//!   made while it ran is after the stamp and a reconciled note is not behind again; the
-//!   consumer stamps a feed when it records it, after the feed. The stamps are this device's
-//!   clock: an edit stamped in the same millisecond as its row's record, or before it by a
-//!   clock set back, is not seen, and that file waits for the note's next edit.
+//!   A row's stamp has one meaning for every writer: the row accounts for every change to the
+//!   file and to the body made at or before it
+//!   ([`memry_core::domain::note_files::NoteFile::indexed_at`]). A pass stamps the time before
+//!   it read the body, whether it wrote or found the file unchanged, so an edit made while it
+//!   ran is after the stamp and a reconciled note is not behind again. The consumer stamps a
+//!   feed when it records it, after the feed. A file read again and found to be the row's
+//!   bytes says nothing of the body, so that refresh moves the stamp only while the body has
+//!   not moved since; otherwise a pass a crash cut short would vanish from the reconcile the
+//!   moment the open walk re-read its file. Body entries are stamped under the database's
+//!   writer, which the pass also reads the body under, so an entry the pass did not see is
+//!   stamped after the pass's stamp. The stamps are this device's clock: an entry stamped in
+//!   the same millisecond as its row, or before it by a clock set back, is not seen, and that
+//!   file waits for the note's next edit.
 //! - **A deleted note's file goes to the OS trash, never away for good, and only while it is
 //!   the file the note held** ([`Pass::trash_deleted`]). Before its passes, the open
 //!   reconcile moves to the trash the file of every tombstoned note and journal day
@@ -86,7 +93,12 @@
 //!   are still the ones its row read; a file edited since, or one the document never took,
 //!   holds bytes the note did not, and stays with its row. A row whose file is gone is
 //!   removed. A note with no record here is not a deleted one: its record may not have
-//!   arrived yet. A file the trash refuses stays, with its row, for the next open.
+//!   arrived yet. A file the trash refuses stays, with its row, for the next open. Each file
+//!   holds the rows' lane from its check to its row's removal, and a stop or a close ends the
+//!   run between files. The check and the move are two steps: an outside edit that lands
+//!   between them goes to the trash with the file, from which it can be put back. The trash
+//!   is the OS's: on a Windows volume without a Recycle Bin (a network share), the shell may
+//!   delete the file instead, as desktop's unlink always did.
 //! - **A failed write is told, once per run of failures.** The first failed pass of a note
 //!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed pass is
 //!   not retried on its own: the note's next schedule is its retry, and its body stays in the

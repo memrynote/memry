@@ -27,16 +27,16 @@ pub enum Leftover {
 
 impl Pass {
     /// Moves the file of every tombstoned note whose bytes are still those its row read to
-    /// the trash through `trash`, and removes the row. Holds the rows' lane throughout, so no
-    /// feed reads a file it moves.
+    /// the trash through `trash`, and removes the row. Each row holds the rows' lane from its
+    /// check to its removal, so no feed reads a file it moves; between rows the lane is free
+    /// for the app, and a `stopped` consumer or a closed session ends the run, leaving the
+    /// rest for the next open.
     pub fn trash_deleted(
         &self,
         trash: &dyn Fn(&Path) -> Result<(), String>,
+        stopped: &dyn Fn() -> bool,
     ) -> Vec<(String, Leftover)> {
-        let Ok(mut lane) = self.rows.lane_of(self.session) else {
-            return Vec::new();
-        };
-        let rows = match lane.files().rows_of_deleted_notes() {
+        let rows = match self.vault.note_files().rows_of_deleted_notes() {
             Ok(rows) => rows,
             Err(error) => {
                 tracing::error!(
@@ -48,13 +48,28 @@ impl Pass {
         };
         let mut done = Vec::with_capacity(rows.len());
         for row in rows {
+            if stopped() {
+                break;
+            }
+            let Ok(mut lane) = self.rows.lane_of(self.session) else {
+                break;
+            };
+            // Read under the lane: a row moved or removed since the list is not this one.
+            match lane.files().by_id(&row.note_id) {
+                Ok(Some(now)) if now == row => {}
+                _ => continue,
+            }
             let leftover = match read_note(&self.root, &row.path) {
                 Ok(None) => Leftover::Gone,
                 Ok(Some(file)) if row.content_hash.as_deref() == Some(file.hash.as_str()) => {
                     self.echo.will_remove(&row.path);
                     match trash(&self.root.join(&row.path)) {
                         Ok(()) => Leftover::Trashed,
-                        Err(error) => Leftover::Failed(format!("the trash refused it: {error}")),
+                        Err(error) => {
+                            // Still there: a later removal of it is an outside one.
+                            self.echo.seen_present(&row.path);
+                            Leftover::Failed(format!("the trash refused it: {error}"))
+                        }
                     }
                 }
                 Ok(Some(_)) => Leftover::Kept,
@@ -82,6 +97,13 @@ impl Pass {
                         "a deleted note's file"
                     );
                 }
+                // A file the document never took (a journal day's, which is not fed) is kept on
+                // every open: that is no news.
+                Leftover::Kept if row.content_hash.is_none() => tracing::debug!(
+                    scope = SCOPE,
+                    note_id = row.note_id,
+                    "a deleted note's file was never read into it, so it stays"
+                ),
                 Leftover::Kept => tracing::warn!(
                     scope = SCOPE,
                     note_id = row.note_id,

@@ -375,3 +375,41 @@ fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days(
         .collect();
     assert_eq!(ids, ["deleted", "j2024-01-02"]);
 }
+
+/// One stamp, one meaning (`NoteFile::indexed_at`): a refresh re-read the file and found the
+/// bytes its row names, which says nothing of the body. It moves the stamp to now only when
+/// no body entry is stamped after the row; otherwise the row keeps its stamp, and the note
+/// stays behind its body.
+#[test]
+fn a_refresh_moves_the_stamp_only_while_the_body_has_not_moved_since() {
+    let Fixture { vault, .. } = fixture();
+    let files = vault.note_files();
+    for id in ["quiet", "moved", "moved-local", "moved-snap"] {
+        let mut row = stat(id, &format!("{id}.md"));
+        row.indexed_at = 100;
+        files.upsert_stat(row).unwrap();
+    }
+    exec(
+        &vault,
+        "INSERT INTO yjs_updates (doc_id, seq, update_blob, created_at) VALUES
+           ('quiet', 1, x'00', 90), ('moved', 1, x'00', 150), ('local.moved-local', 1, x'00', 150);
+         INSERT INTO yjs_snapshots (doc_id, snapshot, last_seq, compacted_at) VALUES
+           ('moved-snap', x'00', 1, 150);",
+    );
+    for id in ["quiet", "moved", "moved-local", "moved-snap"] {
+        let mut row = stat(id, &format!("{id}.md"));
+        row.file_size = Some(42);
+        row.indexed_at = 1_000;
+        files.refresh_stat(row).unwrap();
+    }
+    let stamp = |id: &str| files.by_id(id).unwrap().unwrap();
+    assert_eq!(stamp("quiet").indexed_at, 1_000);
+    for id in ["moved", "moved-local", "moved-snap"] {
+        assert_eq!(stamp(id).indexed_at, 100, "{id}");
+        assert_eq!(stamp(id).file_size, Some(42), "{id}");
+    }
+    assert_eq!(
+        files.behind_bodies().unwrap(),
+        ["moved", "moved-local", "moved-snap"]
+    );
+}

@@ -483,9 +483,12 @@ impl BodyPull {
     ) -> Result<(), BodyPullError> {
         let doc = doc_id.to_owned();
         let scope = crdt_cursor_scope(doc_id);
-        let created_at = now_ms();
         self.db
             .call(move |conn| {
+                // Stamped under the writer, not before waiting for it: a body entry's stamp is
+                // then later than every read of the body that did not see it, which the
+                // desktop write-back's stamp relies on (`domain::note_files::NoteFile::indexed_at`).
+                let created_at = now_ms();
                 let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
                 update_log::append_server_update(&txn, &doc, sequence_num, &update, created_at)
                     .map_err(crdt_failed)?;
@@ -509,9 +512,10 @@ impl BodyPull {
     ) -> Result<(), BodyPullError> {
         let doc = doc_id.to_owned();
         let scope = crdt_cursor_scope(doc_id);
-        let now = now_ms();
         self.db
             .call(move |conn| {
+                // Under the writer, as `store_update` stamps.
+                let now = now_ms();
                 let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
                 update_log::put_server_snapshot(
                     &txn,

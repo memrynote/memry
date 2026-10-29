@@ -61,13 +61,17 @@ pub struct Consumer {
     thread: Option<JoinHandle<()>>,
 }
 
+/// The work an open runs once its walk ended (the write-back's reconcile), given whether the
+/// consumer was stopped since, so a close does not wait for all of it.
+pub(crate) type AfterWalk = Box<dyn FnOnce(&dyn Fn() -> bool) + Send>;
+
 impl Consumer {
     pub(super) fn start(
         applier: Applier,
         inbox: Inbox,
         watch: WatchHandle,
         exclude: Vec<String>,
-        after_walk: Box<dyn FnOnce() + Send>,
+        after_walk: AfterWalk,
     ) -> std::io::Result<Self> {
         let stop = Arc::new(AtomicBool::new(false));
         let mut run = Run {
@@ -120,7 +124,7 @@ struct Run {
     walk_owed: bool,
     /// Runs once the open walk ended, so the files edited while the vault was closed are fed
     /// before it.
-    after_walk: Option<Box<dyn FnOnce() + Send>>,
+    after_walk: Option<AfterWalk>,
     retries: Retries,
     resync: Resync,
 }
@@ -282,7 +286,7 @@ impl Run {
             });
         }
         if let Some(after_walk) = self.after_walk.take() {
-            after_walk();
+            after_walk(&|| self.stopped());
         }
     }
 }
