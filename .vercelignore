@@ -1,12 +1,36 @@
 # Docs and landing deploy with `vercel deploy` from the repo root (Root Directory
 # is the repo root or apps/landing), so the CLI uploads the whole repo as `src/`.
 # Each deployment counts toward Vercel deployment storage. Neither site builds
-# from these paths. Keep every workspace package.json: `pnpm install
-# --frozen-lockfile` validates the lockfile against all workspace importers.
-marketing
-apps/ios
-crates
-spikes
-.worktrees
-.user-insights
-.feedback
+# from these paths.
+#
+# Every workspace keeps its package.json, plus patches/, pnpm-lock.yaml and
+# pnpm-workspace.yaml: `pnpm install --frozen-lockfile` validates the lockfile
+# against all workspace importers. apps/extension stays whole because its
+# postinstall (`wxt prepare`) needs the entrypoints.
+/marketing
+/spikes
+/.worktrees
+/.user-insights
+/.feedback
+/.agents
+/.claude
+/.specify
+/.social
+/.audit
+/.oss-scanner
+/assets
+/docs
+/release-notes
+/tools
+/apps/ios
+/apps/cli/*
+/apps/desktop/*
+/apps/desktop-tauri/*
+/apps/marketing-emails/*
+/apps/sync-server/*
+/packages/*/*
+/tests/*/*
+!/apps/*/package.json
+!/packages/*/package.json
+!/tests/*/package.json
+/crates
