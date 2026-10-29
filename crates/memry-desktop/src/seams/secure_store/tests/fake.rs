@@ -19,14 +19,22 @@ pub struct Gate {
     pub changed: Condvar,
     /// Calls that reached the gate: the keychain thread is blocked once this moves.
     pub entered: AtomicUsize,
+    /// What a call blocked here answers once released: an error, or (unset) success. A blocked
+    /// call read the mode before it waited, so switching the mode does not change its answer.
+    failure: Mutex<Option<fn() -> Error>>,
 }
 
 impl Gate {
-    pub fn wait(&self) {
+    /// Blocks until released, then answers as [`Gate::release_failing`] chose.
+    pub fn wait(&self) -> keyring_core::Result<()> {
         self.entered.fetch_add(1, Ordering::SeqCst);
         let mut open = self.open.lock().unwrap();
         while !*open {
             open = self.changed.wait(open).unwrap();
+        }
+        match *self.failure.lock().unwrap() {
+            Some(error) => Err(error()),
+            None => Ok(()),
         }
     }
 
@@ -40,6 +48,12 @@ impl Gate {
     pub fn release(&self) {
         *self.open.lock().unwrap() = true;
         self.changed.notify_all();
+    }
+
+    /// Releases the blocked calls, which then fail with `error`: a stuck call that ends in an error.
+    pub fn release_failing(&self, error: fn() -> Error) {
+        *self.failure.lock().unwrap() = Some(error);
+        self.release();
     }
 }
 
@@ -119,10 +133,7 @@ impl Fake {
         match mode {
             Mode::Normal => Ok(()),
             Mode::Fail(error) => Err(error()),
-            Mode::Block(gate) => {
-                gate.wait();
-                Ok(())
-            }
+            Mode::Block(gate) => gate.wait(),
             Mode::Sleep(pause) => {
                 std::thread::sleep(pause);
                 Ok(())
