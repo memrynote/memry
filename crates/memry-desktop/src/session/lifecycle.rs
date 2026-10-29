@@ -158,14 +158,18 @@ fn lifecycle_after_begin_shutdown_no_status_event_is_emitted() {
 fn lifecycle_a_close_hook_past_its_deadline_blocks_a_reopen_and_repair_until_it_lets_go() {
     let f = fixture_with(Duration::from_millis(100));
     let release = Arc::new(AtomicBool::new(false));
-    let flag = release.clone();
+    let hook_ended = Arc::new(AtomicBool::new(false));
+    let (flag, ended) = (release.clone(), hook_ended.clone());
     f.session.on_close(
         "stuck",
         Arc::new(move |view| {
             let _held = view.vault.clone();
-            while !flag.load(Ordering::SeqCst) {
+            // Lets go by itself after 30 s, so a close that waits for it fails instead of hanging.
+            let give_up = Instant::now() + Duration::from_secs(30);
+            while !flag.load(Ordering::SeqCst) && Instant::now() < give_up {
                 std::thread::sleep(Duration::from_millis(5));
             }
+            ended.store(true, Ordering::SeqCst);
         }),
     );
     let vault = f.vault("v");
@@ -173,8 +177,15 @@ fn lifecycle_a_close_hook_past_its_deadline_blocks_a_reopen_and_repair_until_it_
     let started = Instant::now();
     f.session.close();
     assert!(
-        started.elapsed() < Duration::from_secs(2),
+        !hook_ended.load(Ordering::SeqCst),
         "close did not wait for the hook"
+    );
+    // timing-bound: a close that waited out the 5 s production HOOK_DEADLINE instead of the
+    // 100 ms it was given would take at least that; this one takes the 100 ms.
+    assert!(
+        started.elapsed() < super::HOOK_DEADLINE,
+        "{:?}",
+        started.elapsed()
     );
     assert!(matches!(
         f.session.open(&vault, OpenSource::Select),
