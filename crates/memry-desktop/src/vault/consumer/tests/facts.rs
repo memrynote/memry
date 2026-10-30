@@ -302,6 +302,48 @@ fn a_file_whose_note_could_not_be_named_is_retried_and_then_gets_one_note() {
     assert!(f.row("a.md").is_some());
 }
 
+/// A note's file missing when it is read (a save that left its name missing, #3736) is read
+/// again, not taken as done: the miss leaves the row as it was, and once the file is back the
+/// retry takes the save.
+#[test]
+fn a_notes_file_missing_when_it_is_read_is_retried_and_the_retry_takes_the_save() {
+    let f = fixture();
+    f.write("n.md", "first words\n");
+    assert_eq!(f.added("n.md"), Step::Done);
+    let id = only_note(&f, "n.md");
+    let changed = || VaultEvent::Changed {
+        note_id: id.clone(),
+        path: "n.md".into(),
+        content_hash: None,
+        size: 0,
+        modified_ms: i64::MAX,
+    };
+    std::fs::remove_file(f.root.join("n.md")).unwrap();
+    assert_eq!(f.applier.apply(changed()), Step::Retry("n.md".into()));
+    assert_eq!(f.hash_of("n.md"), Some(content_hash("first words\n")));
+    f.write("n.md", "saved outside\n");
+    assert_eq!(f.applier.apply(changed()), Step::Done);
+    assert_eq!(f.hash_of("n.md"), Some(content_hash("saved outside\n")));
+    assert!(f.body(&id).contains("saved outside"), "{}", f.body(&id));
+}
+
+/// A new file missing when it is read (a save that left its name missing, #3736) is read again,
+/// not dropped: the watcher looks once more and reports it if it is back.
+#[test]
+fn a_new_file_missing_when_it_is_read_is_retried() {
+    let f = fixture();
+    let step = f.applier.apply(VaultEvent::Added {
+        path: "a.md".into(),
+        file_type: FileType::Markdown,
+        size: 2,
+        modified_ms: 0,
+        content_hash: None,
+    });
+    assert_eq!(step, Step::Retry("a.md".into()));
+    assert!(f.adopted().is_empty());
+    assert!(f.row("a.md").is_none());
+}
+
 #[test]
 fn a_deferred_file_gets_no_row_and_no_retry() {
     let mut f = fixture();

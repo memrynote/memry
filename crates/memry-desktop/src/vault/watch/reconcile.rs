@@ -221,6 +221,24 @@ impl Reconciler {
         });
     }
 
+    /// A consumer could not apply what was reported for `rel` (its read found nothing, or
+    /// failed) and asks for it again; the next batch looks at the path. A report that named a
+    /// note is owed, not erased: while the file is absent, its removal and the pairing of its
+    /// move read the bytes last reported, not the row's older ones, and the file, when it is
+    /// there, is reported again even with those bytes. Any other report is forgotten, so the
+    /// file is looked at as new.
+    pub fn forget(&mut self, rel: &str) {
+        if self
+            .reported
+            .get(rel)
+            .is_some_and(|seen| seen.note_id.is_some())
+        {
+            self.reported.owe(rel);
+        } else {
+            self.reported.remove(rel);
+        }
+    }
+
     /// The root itself was touched: if it is gone the vault is away.
     pub fn check_reachable(&mut self) {
         if !is_vault_reachable(&self.root) {

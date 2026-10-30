@@ -29,8 +29,8 @@ const SCOPE: &str = "vault_consumer";
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Step {
     Done,
-    /// The fact could not be applied for a reason that may pass (a locked file, a failed
-    /// write): the watcher reports the path again later.
+    /// The fact could not be applied for a reason that may pass (a locked file, a file
+    /// missing mid-save, a failed write): the watcher reports the path again later.
     Retry(String),
 }
 
@@ -47,12 +47,14 @@ pub(super) struct Applier {
     pub(super) settings: Option<AppSettings>,
 }
 
-/// Whether the note's document now holds the whole file: only then does the row record the
+/// Whether the note's document now holds the file's text: only then does the row record the
 /// file's hash. `BodyPresent` is not: a seed answers it before it compares any text, so the
-/// body it left alone can differ from the file. Nor is a file whose `writing` frontmatter
-/// could not be read: the feed was not told it.
-fn holds_file(outcome: FeedOutcome, writing: Option<&WritingFrontmatter>) -> bool {
-    matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) && writing.is_some()
+/// body it left alone can differ from the file. A file whose frontmatter does not parse is
+/// (#3750): its body is the document's now, and the next read of the same bytes must not
+/// replace the edits made in the app since. Its block is never written over: the write-back
+/// cannot read the file back, fails, and tells the user.
+fn holds_file(outcome: FeedOutcome) -> bool {
+    matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged)
 }
 
 /// The writing tools data the whole file says (none without the key, or with the author's
@@ -68,7 +70,7 @@ fn writing_of(file: &NoteFile) -> Option<WritingFrontmatter> {
 
 /// What a body write came to.
 enum Body {
-    /// The feed answered; `holds_file` when the document now holds the whole file.
+    /// The feed answered; `holds_file` when the document now holds the file's text.
     Wrote { holds_file: bool },
     /// This device has no signing key: nothing was written (the tier said so once).
     NoKey,
@@ -181,8 +183,7 @@ impl Applier {
         }
         let file = match self.read(path, file_type) {
             Ok(file) => file,
-            Err(Unread::Gone) => return Step::Done,
-            Err(Unread::Failed { .. }) => return Step::Retry(path.to_owned()),
+            Err(Unread::Missing | Unread::Failed { .. }) => return Step::Retry(path.to_owned()),
         };
         let candidate = Candidate {
             path,
@@ -256,7 +257,8 @@ impl Applier {
         let content_hash = if file_type == FileType::Markdown {
             let file = match self.read(path, file_type) {
                 Ok(Some(file)) => file,
-                Ok(None) | Err(Unread::Gone) => return Step::Done,
+                Ok(None) => return Step::Done,
+                Err(Unread::Missing) => return Step::Retry(path.to_owned()),
                 Err(Unread::Failed { file_hash }) => {
                     record_file_hash(
                         lane,
@@ -423,14 +425,21 @@ impl Applier {
         });
     }
 
-    /// The markdown file at `path`, read once; `Ok(None)` for every other kind.
+    /// The markdown file at `path`, read once; `Ok(None)` for every other kind. A markdown file
+    /// found missing is retried like one that could not be read (#3736): a save can leave the
+    /// name missing for a moment (Windows renaming a new file over it, an editor that deletes
+    /// and writes again), and the watcher, which already reported the bytes it puts back, does
+    /// not report them again. The retry has the watcher look again, keeping what it reported
+    /// for the note: a file that is back is reported again, a move pairs on the bytes last
+    /// reported, and a file that is gone gets its removal, which waits out the rename window
+    /// and finds it absent once more.
     fn read(&self, path: &str, file_type: FileType) -> Result<Option<NoteFile>, Unread> {
         if file_type != FileType::Markdown {
             return Ok(None);
         }
         match read_note(&self.root, path) {
             Ok(Some(file)) => Ok(Some(file)),
-            Ok(None) => Err(Unread::Gone),
+            Ok(None) => Err(Unread::Missing),
             Err(error) => {
                 tracing::warn!(scope = SCOPE, "a vault file could not be read: {error}");
                 // The hash the watcher pairs a move of such a file on: Electron's, streamed.
@@ -452,14 +461,13 @@ impl Applier {
             return Body::NoKey;
         };
         let split = file.split();
-        // `None` for a frontmatter that does not parse says nothing about the writing state,
-        // so the document keeps what it holds, and the file is not taken as read.
-        let writing = writing_of(file);
         let input = FeedInput {
             note_id,
             markdown: split.body,
             note_path: Some(path),
-            writing: writing.clone(),
+            // `None` for a frontmatter that does not parse says nothing about the writing
+            // state, so the document keeps what it holds.
+            writing: writing_of(file),
             frontmatter: split.block,
         };
         let converter = converter_for(self.settings.as_ref());
@@ -478,7 +486,7 @@ impl Applier {
                     );
                 }
                 Body::Wrote {
-                    holds_file: holds_file(outcome, writing.as_ref()),
+                    holds_file: holds_file(outcome),
                 }
             }
             Err(error) => {
@@ -513,8 +521,9 @@ pub(crate) fn converter_for(settings: Option<&AppSettings>) -> Converter {
 
 /// Why [`Applier::read`] has no note file.
 enum Unread {
-    /// The markdown file is gone; its removal follows.
-    Gone,
+    /// No file was there when it was read: gone, or missing for a moment mid-save. Retried
+    /// either way, and its row's pairing hash stays.
+    Missing,
     /// It is there and was not read, and is retried. `file_hash` is its bytes' hash when this
     /// build reads them only as bytes (not UTF-8, past the note size cap), else `None`.
     Failed { file_hash: Option<String> },

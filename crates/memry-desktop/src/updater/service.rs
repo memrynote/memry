@@ -3,6 +3,7 @@
 //! downloaded update to the installer at quit. Nothing else calls a backend.
 
 mod install;
+mod leftover;
 mod outcome;
 #[cfg(test)]
 mod tests;

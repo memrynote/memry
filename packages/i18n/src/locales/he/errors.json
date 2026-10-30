@@ -70,7 +70,9 @@
     "writebackFailedTitle": "לא ניתן היה לעדכן את הקובץ של פתק בדיסק",
     "writebackFailedTitleNamed": "לא ניתן היה לעדכן את \"{title}\" בדיסק",
     "writebackFailedTitleMany": "לא ניתן היה לעדכן את הקבצים של {count} פתקים בדיסק",
-    "writebackFailedBody": "הקובץ בדיסק נשאר ללא שינוי. העריכה שלך נשארת פתוחה ב-memrynote כל עוד האפליקציה פועלת; memrynote ינסה שוב בעריכה הבאה שלך."
+    "writebackFailedBody": "הקובץ בדיסק נשאר ללא שינוי. העריכה שלך נשארת פתוחה ב-memrynote כל עוד האפליקציה פועלת; memrynote ינסה שוב בעריכה הבאה שלך.",
+    "writebackFailedFrontmatterBody": "לא ניתן לקרוא את ה-frontmatter של הקובץ (הבלוק שבין השורות --- בראש הקובץ), ולכן memrynote משאיר את הקובץ ללא שינוי. העריכות שלך נשארות ב-memrynote. תיקון הקובץ מחוץ ל-memrynote יחליף אותן בטקסט של הקובץ, לכן כדאי להעתיק קודם את מה שצריך.",
+    "writebackFailedFrontmatterBodyMany": "לא ניתן לקרוא את ה-frontmatter של הקבצים האלה (הבלוק שבין השורות --- בראש כל קובץ), ולכן memrynote משאיר את הקבצים ללא שינוי. העריכות שלך נשארות ב-memrynote. תיקון הקבצים מחוץ ל-memrynote יחליף אותן בטקסט של הקבצים, לכן כדאי להעתיק קודם את מה שצריך."
   },
   "encryption": {
     "failed": "הצפנת הנתונים נכשלה. ייתכן שיהיה צורך ליצור מחדש את המפתחות שלך.",
