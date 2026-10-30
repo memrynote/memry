@@ -70,7 +70,8 @@
     "writebackFailedTitle": "Muistiinpanon tiedostoa levyllä ei voitu päivittää",
     "writebackFailedTitleNamed": "Kohdetta ”{title}” ei voitu päivittää levylle",
     "writebackFailedTitleMany": "Muistiinpanojen tiedostoja levyllä ei voitu päivittää: {count}",
-    "writebackFailedBody": "Levyllä olevaa tiedostoa ei muutettu. Muokkauksesi pysyy avoinna memrynotessa niin kauan kuin sovellus on käynnissä; memrynote yrittää uudelleen seuraavan muokkauksesi yhteydessä."
+    "writebackFailedBody": "Levyllä olevaa tiedostoa ei muutettu. Muokkauksesi pysyy avoinna memrynotessa niin kauan kuin sovellus on käynnissä; memrynote yrittää uudelleen seuraavan muokkauksesi yhteydessä.",
+    "writebackFailedFrontmatterBody": "Tiedoston frontmatteria (alussa olevien --- -rivien välistä lohkoa) ei voi lukea, joten memrynote jättää tiedoston ennalleen. Muokkauksesi pysyvät memrynotessa. Jos korjaat tiedoston memrynoten ulkopuolella, sen teksti korvaa ne, joten kopioi ensin, mitä tarvitset."
   },
   "encryption": {
     "failed": "Tietojen salaaminen epäonnistui. Avaimesi on ehkä luotava uudelleen.",

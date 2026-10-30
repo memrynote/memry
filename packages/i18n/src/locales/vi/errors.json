@@ -70,7 +70,8 @@
     "writebackFailedTitle": "Không thể cập nhật tệp của một ghi chú trên ổ đĩa",
     "writebackFailedTitleNamed": "Không thể cập nhật “{title}” trên ổ đĩa",
     "writebackFailedTitleMany": "Không thể cập nhật tệp của {count} ghi chú trên ổ đĩa",
-    "writebackFailedBody": "Tệp trên ổ đĩa không bị thay đổi. Chỉnh sửa của bạn vẫn mở trong memrynote khi ứng dụng đang chạy; memrynote sẽ thử lại khi bạn chỉnh sửa lần tiếp theo."
+    "writebackFailedBody": "Tệp trên ổ đĩa không bị thay đổi. Chỉnh sửa của bạn vẫn mở trong memrynote khi ứng dụng đang chạy; memrynote sẽ thử lại khi bạn chỉnh sửa lần tiếp theo.",
+    "writebackFailedFrontmatterBody": "Không thể đọc frontmatter của tệp (khối nằm giữa các dòng --- ở đầu tệp), nên memrynote giữ nguyên tệp. Chỉnh sửa của bạn vẫn ở trong memrynote. Nếu bạn sửa tệp bên ngoài memrynote, nội dung tệp sẽ thay thế chúng, vì vậy hãy sao chép những gì bạn cần trước."
   },
   "encryption": {
     "failed": "Không thể mã hóa dữ liệu. Có thể cần tạo lại khóa.",

@@ -29,6 +29,17 @@ pub const MAX_COOLDOWN: Duration = Duration::from_secs(5);
 pub struct WriteBackFailed {
     pub note_id: String,
     pub title: Option<String>,
+    /// Why the run of failures began.
+    pub reason: Failure,
+}
+
+/// Why a note's file could not be updated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Failure {
+    /// A read or a write failed; a later pass may succeed.
+    Write,
+    /// The file's frontmatter does not parse: no pass writes the file until it is fixed.
+    Frontmatter,
 }
 
 /// What the write-back thread runs: a [`Pass`] in the app.
@@ -268,18 +279,28 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
                     if let Some(at) = queue.due.get_mut(&note_id) {
                         *at = (*at).max(cooled(cost));
                     }
-                    match outcome {
-                        Outcome::Failed(_) => queue.failing.insert(note_id.clone()),
-                        _ => {
+                    let failure = match outcome {
+                        Outcome::Failed(_) => Some(Failure::Write),
+                        Outcome::FrontmatterUnreadable(_) => Some(Failure::Frontmatter),
+                        _ => None,
+                    };
+                    match failure {
+                        Some(reason) if queue.failing.insert(note_id.clone()) => Some(reason),
+                        Some(_) => None,
+                        None => {
                             queue.failing.remove(&note_id);
-                            false
+                            None
                         }
                     }
                 };
-                if tell {
+                if let Some(reason) = tell {
                     let title = runner.title(&note_id);
                     // No receiver is no listener yet, which is not an error.
-                    let _ = failures.send(WriteBackFailed { note_id, title });
+                    let _ = failures.send(WriteBackFailed {
+                        note_id,
+                        title,
+                        reason,
+                    });
                 }
                 // Running until the notice is out, so a flush returns after it.
                 queue = shared.lock();
@@ -310,6 +331,13 @@ fn log(note_id: &str, outcome: &Outcome) {
         }
         Outcome::Failed(reason) => {
             tracing::error!(scope = SCOPE, note_id, "the write-back failed: {reason}");
+        }
+        Outcome::FrontmatterUnreadable(reason) => {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "the file's frontmatter does not parse, so it is kept: {reason}"
+            );
         }
     }
 }

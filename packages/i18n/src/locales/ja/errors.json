@@ -70,7 +70,8 @@
     "writebackFailedTitle": "ディスク上のノートファイルを更新できませんでした",
     "writebackFailedTitleNamed": "ディスク上の「{title}」を更新できませんでした",
     "writebackFailedTitleMany": "ディスク上の{count}件のノートファイルを更新できませんでした",
-    "writebackFailedBody": "ディスク上のファイルは変更されていません。編集内容はアプリの実行中は memrynote で開いたままです。次に編集したときに memrynote が再試行します。"
+    "writebackFailedBody": "ディスク上のファイルは変更されていません。編集内容はアプリの実行中は memrynote で開いたままです。次に編集したときに memrynote が再試行します。",
+    "writebackFailedFrontmatterBody": "ファイルのフロントマター（先頭の --- 行に挟まれたブロック）を読み取れないため、memrynote はファイルを変更しません。編集内容は memrynote に残ります。memrynote の外でファイルを修正すると、ファイルのテキストで編集内容が置き換えられるため、必要な内容を先にコピーしてください。"
   },
   "encryption": {
     "failed": "データを暗号化できませんでした。キーの再生成が必要な場合があります。",

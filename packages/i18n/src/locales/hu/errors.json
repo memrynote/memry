@@ -70,7 +70,8 @@
     "writebackFailedTitle": "Egy jegyzet fájlját nem sikerült frissíteni a lemezen",
     "writebackFailedTitleNamed": "„{title}” nem frissíthető a lemezen",
     "writebackFailedTitleMany": "{count} jegyzet fájlját nem sikerült frissíteni a lemezen",
-    "writebackFailedBody": "A lemezen lévő fájl változatlan maradt. A módosításod nyitva marad a memrynote-ban, amíg az alkalmazás fut; a memrynote a következő módosításodnál újra próbálkozik."
+    "writebackFailedBody": "A lemezen lévő fájl változatlan maradt. A módosításod nyitva marad a memrynote-ban, amíg az alkalmazás fut; a memrynote a következő módosításodnál újra próbálkozik.",
+    "writebackFailedFrontmatterBody": "A fájl frontmattere (a tetején lévő --- sorok közötti blokk) nem olvasható, ezért a memrynote változatlanul hagyja a fájlt. A módosításaid a memrynote-ban maradnak. Ha a fájlt a memrynote-on kívül javítod, a fájl szövege felülírja őket, ezért előbb másold ki, amire szükséged van."
   },
   "encryption": {
     "failed": "Nem sikerült titkosítani az adatokat. Lehet, hogy a kulcsokat újra kell generálni.",

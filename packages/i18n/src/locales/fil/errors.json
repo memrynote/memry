@@ -70,7 +70,8 @@
     "writebackFailedTitle": "Hindi ma-update ang file ng isang tala sa disk",
     "writebackFailedTitleNamed": "Hindi ma-update ang “{title}” sa disk",
     "writebackFailedTitleMany": "Hindi ma-update ang mga file ng {count} tala sa disk",
-    "writebackFailedBody": "Hindi binago ang file sa disk. Nananatiling bukas sa memrynote ang iyong pagbabago habang tumatakbo ang app; susubukang muli ng memrynote sa susunod mong pagbabago."
+    "writebackFailedBody": "Hindi binago ang file sa disk. Nananatiling bukas sa memrynote ang iyong pagbabago habang tumatakbo ang app; susubukang muli ng memrynote sa susunod mong pagbabago.",
+    "writebackFailedFrontmatterBody": "Hindi mabasa ang frontmatter ng file (ang bloke sa pagitan ng mga linyang --- sa itaas), kaya hindi binabago ng memrynote ang file. Nananatili sa memrynote ang iyong mga pagbabago. Kapag inayos mo ang file sa labas ng memrynote, papalitan ito ng teksto ng file, kaya kopyahin muna ang anumang kailangan mo."
   },
   "encryption": {
     "failed": "Hindi ma-encrypt ang data. Baka kailangang buuin ulit ang mga key mo.",

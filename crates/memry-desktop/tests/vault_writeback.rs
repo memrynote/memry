@@ -17,7 +17,7 @@ use memry_desktop::shell::shutdown::{
 };
 use memry_desktop::telemetry::crash::ShutdownFailure;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
-use memry_desktop::vault::writeback::DEBOUNCE;
+use memry_desktop::vault::writeback::{DEBOUNCE, Failure, WriteBackFailed};
 use vault_env::{Creates, Env, QUIET, WAIT, creates, edit_in_app, env, indexed};
 
 /// A vault holding one note, `n.md` ("first words"), whose file the document holds.
@@ -125,30 +125,39 @@ fn an_outside_edit_made_before_the_apps_write_wins_and_the_apps_edit_is_kept() {
     );
 }
 
+/// One note whose frontmatter stopped parsing outside the app (#3750) with `body` under it,
+/// then edited in the app and written back: the file that does not parse, and what the user
+/// was told.
+fn edited_in_app_after_its_frontmatter_broke(
+    body: &str,
+) -> (Env, String, String, Option<WriteBackFailed>) {
+    let (e, identity, id) = one_note();
+    let mut failures = e.tier.subscribe_failures();
+    let broken = format!("---\ntags: [unclosed\n---\n{body}\n");
+    e.write("n.md", &broken);
+    let deadline = std::time::Instant::now() + WAIT;
+    while e.body(&id) != body {
+        assert!(std::time::Instant::now() < deadline, "{body}: never fed");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    // The consumer is done with the outside edit before the app edits.
+    std::thread::sleep(QUIET);
+    e.edit_in_app(&identity.store, &id, "typed in the app");
+    e.tier.schedule(&id);
+    assert!(e.tier.flush(WAIT));
+    let told = failures.try_recv().ok();
+    (e, id, broken, told)
+}
+
 /// A note's frontmatter stops parsing outside the app (#3750), with or without an edit to the
 /// body. The body that file says reaches the note. A file that does not parse cannot be read
 /// back, so an edit made in the app afterwards is not written over it: the file stays as it
-/// was left and the user is told. The next open reads the file the note already took, and
-/// keeps the edit.
+/// was left, and the user is told why. The next open reads the file the note already took,
+/// and keeps the edit.
 #[test]
 fn an_edit_made_after_the_frontmatter_broke_outside_is_kept_and_told() {
     for body in ["edited outside", "first words"] {
-        let (mut e, identity, id) = one_note();
-        let mut failures = e.tier.subscribe_failures();
-        let broken = format!("---\ntags: [unclosed\n---\n{body}\n");
-        e.write("n.md", &broken);
-        let deadline = std::time::Instant::now() + WAIT;
-        while e.body(&id) != body {
-            assert!(std::time::Instant::now() < deadline, "{body}: never fed");
-            std::thread::sleep(Duration::from_millis(20));
-        }
-        // The consumer is done with the outside edit before the app edits.
-        std::thread::sleep(QUIET);
-        e.edit_in_app(&identity.store, &id, "typed in the app");
-        e.tier.schedule(&id);
-        assert!(e.tier.flush(WAIT));
-        let told = failures.try_recv().map(|failed| failed.note_id);
-
+        let (mut e, id, broken, told) = edited_in_app_after_its_frontmatter_broke(body);
         e.close();
         e.open();
         e.facts_until(indexed);
@@ -159,8 +168,34 @@ fn an_edit_made_after_the_frontmatter_broke_outside_is_kept_and_told() {
             "{body}: the open replaced the app's edit with the file's text"
         );
         assert_eq!(e.read("n.md"), broken, "{body}: written over");
-        assert_eq!(told, Ok(id), "{body}: the user was not told");
+        assert_eq!(
+            told.map(|failed| (failed.note_id, failed.reason)),
+            Some((id, Failure::Frontmatter)),
+            "{body}: the user was not told why"
+        );
     }
+}
+
+/// The user fixes the frontmatter outside the app after the edit above: the file's text is the
+/// note's again, as for any outside edit, and the edit made in the app is kept as a version of
+/// the note, not lost.
+#[test]
+fn a_frontmatter_fixed_outside_replaces_the_app_edit_and_keeps_it_as_a_version() {
+    let (e, id, _, _) = edited_in_app_after_its_frontmatter_broke("edited outside");
+    e.write("n.md", "---\ntags: [closed]\n---\nedited outside\n");
+    let deadline = std::time::Instant::now() + WAIT;
+    while e.body(&id) != "edited outside" {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the fixed file never reached the note"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let versions = e.versions(&id);
+    assert!(
+        versions.iter().any(|v| v.contains("typed in the app")),
+        "the app's edit was not kept: {versions:?}"
+    );
 }
 
 #[cfg(unix)]
@@ -175,7 +210,8 @@ fn a_write_back_that_fails_reaches_the_tiers_failure_subscribers() {
     e.tier.schedule(&id);
     assert!(e.tier.flush(WAIT));
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
-    assert_eq!(failures.try_recv().unwrap().note_id, id);
+    let told = failures.try_recv().unwrap();
+    assert_eq!((told.note_id, told.reason), (id, Failure::Write));
 }
 
 /// How the process ended, and what the note's file held at that moment.

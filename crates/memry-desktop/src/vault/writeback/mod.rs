@@ -16,8 +16,8 @@
 //!   ([`crate::vault::note_file::write_note_over`], which never creates a folder) are kept as
 //!   they are. A file whose frontmatter does not parse holds a block the document does not:
 //!   it cannot be read back, so its pass fails and the user is told, and the document keeps
-//!   the edits made in the app until the file is fixed (#3750). The row check, the write and the row record run under the rows' lane, so no
-//!   feed lands in between; the lane is held for the whole pass (one note's replay, serialize
+//!   the edits made in the app until the file is fixed (#3750). The row check, the write and
+//!   the row record run under the rows' lane, so no feed lands in between; the lane is held for the whole pass (one note's replay, serialize
 //!   and write, about 20 ms at 12 KB), which is what the consumer waits at most.
 //! - **No file is written while it is ahead of the document, or while the document is not the
 //!   note's body**: the owed-file-body marker (an owed or a refused feed) and an unpulled
@@ -96,7 +96,9 @@
 //!   ([`memry_core::domain::note_files::rows_of_deleted_notes`]): a deletion made on another
 //!   device, or one whose file removal a crash cut short. The file goes only when its bytes
 //!   are still the ones its row read; a file edited since, or one the document never took,
-//!   holds bytes the note did not, and stays with its row. A row whose file is gone is
+//!   holds bytes the note did not, and stays with its row. A file whose frontmatter does not
+//!   parse is one the document took once its text was fed (#3750), so it goes to the trash
+//!   too, its block with it, and can be put back from there. A row whose file is gone is
 //!   removed. A note with no record here is not a deleted one: its record may not have
 //!   arrived yet. A file the trash refuses stays, with its row, for the next open. Each file
 //!   holds the rows' lane from its check to its row's removal, and a stop or a close ends the
@@ -126,4 +128,4 @@ mod tests;
 pub use deleted::Leftover;
 pub use pass::{Keep, Outcome, Pass};
 pub(crate) use reconcile::reconcile;
-pub use schedule::{COOLDOWN_FACTOR, DEBOUNCE, MAX_COOLDOWN, WriteBack, WriteBackFailed};
+pub use schedule::{COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, WriteBack, WriteBackFailed};

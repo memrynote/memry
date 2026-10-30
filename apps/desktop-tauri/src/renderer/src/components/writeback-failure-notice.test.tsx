@@ -44,7 +44,7 @@ describe('WritebackFailureNotice', () => {
   it('names the note whose file could not be updated', () => {
     render(<WritebackFailureNotice />)
 
-    listener({ noteId: 'note-1', title: 'Groceries' })
+    listener({ noteId: 'note-1', title: 'Groceries', reason: 'write' })
 
     expect(toastFn.warning).toHaveBeenCalledTimes(1)
     const [title, options] = toastFn.warning.mock.calls[0] as [
@@ -56,10 +56,19 @@ describe('WritebackFailureNotice', () => {
     expect(options.id).toBe('write-back-failed:note-1')
   })
 
+  it('says why a file whose frontmatter does not parse is left alone', () => {
+    render(<WritebackFailureNotice />)
+
+    listener({ noteId: 'note-3', title: 'Groceries', reason: 'frontmatter' })
+
+    const options = toastFn.warning.mock.calls[0]?.[1] as { description: string }
+    expect(options.description).toBe('crdt.writebackFailedFrontmatterBody')
+  })
+
   it('falls back to an unnamed title when main sends none', () => {
     render(<WritebackFailureNotice />)
 
-    listener({ noteId: 'note-2', title: null })
+    listener({ noteId: 'note-2', title: null, reason: 'write' })
 
     expect(toastFn.warning.mock.calls[0]?.[0]).toBe('crdt.writebackFailedTitle')
   })
@@ -67,8 +76,8 @@ describe('WritebackFailureNotice', () => {
   it('reuses one toast per note, so a repeat replaces it instead of stacking', () => {
     render(<WritebackFailureNotice />)
 
-    listener({ noteId: 'note-1', title: 'Groceries' })
-    listener({ noteId: 'note-1', title: 'Groceries' })
+    listener({ noteId: 'note-1', title: 'Groceries', reason: 'write' })
+    listener({ noteId: 'note-1', title: 'Groceries', reason: 'write' })
 
     const ids = toastFn.warning.mock.calls.map((call) => (call[1] as { id: string }).id)
     expect(new Set(ids)).toEqual(new Set(['write-back-failed:note-1']))
@@ -77,10 +86,10 @@ describe('WritebackFailureNotice', () => {
   it('collapses into one notice once more than three notes fail, as a full disk does', () => {
     render(<WritebackFailureNotice />)
 
-    for (const id of ['n1', 'n2', 'n3']) listener({ noteId: id, title: id })
+    for (const id of ['n1', 'n2', 'n3']) listener({ noteId: id, title: id, reason: 'write' })
     expect(toastFn.warning).toHaveBeenCalledTimes(3)
-    listener({ noteId: 'n4', title: 'n4' })
-    listener({ noteId: 'n5', title: 'n5' })
+    listener({ noteId: 'n4', title: 'n4', reason: 'write' })
+    listener({ noteId: 'n5', title: 'n5', reason: 'frontmatter' })
 
     const dismissed = toastFn.dismiss.mock.calls.map((call) => call[0])
     expect(new Set(dismissed)).toEqual(
@@ -89,6 +98,7 @@ describe('WritebackFailureNotice', () => {
     const last = toastFn.warning.mock.calls.at(-1) as [string, { id: string }]
     expect(last[0]).toBe('crdt.writebackFailedTitleMany {"count":5}')
     expect(last[1].id).toBe('write-back-failed:many')
+    expect(last[1]).toMatchObject({ description: 'crdt.writebackFailedBody' })
     const perNote = toastFn.warning.mock.calls.filter(
       (call) => (call[1] as { id: string }).id !== 'write-back-failed:many'
     )
