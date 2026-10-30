@@ -18,6 +18,7 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
+use crate::vault::activity::{ActivityLog, ActivitySource};
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
 use crate::vault::watch::VaultEvent;
@@ -45,6 +46,7 @@ pub(super) struct Applier {
     /// `None` when this device has no signing key: nothing can be seeded or fed.
     pub(super) feed: Option<ExternalFeed>,
     pub(super) settings: Option<AppSettings>,
+    pub(super) activity: Arc<ActivityLog>,
 }
 
 /// Whether the note's document now holds the file's text: only then does the row record the
@@ -90,7 +92,14 @@ impl Applier {
                 size,
                 modified_ms,
                 ..
-            } => self.found(&mut lane, &path, file_type, size, modified_ms),
+            } => self.found(
+                &mut lane,
+                &path,
+                file_type,
+                size,
+                modified_ms,
+                ActivitySource::Watcher,
+            ),
             VaultEvent::Changed {
                 note_id,
                 path,
@@ -113,6 +122,7 @@ impl Applier {
             }
             other => {
                 log_watch(&other);
+                self.report(&other);
                 lane.publish(Applied::Vault(other));
                 Step::Done
             }
@@ -141,7 +151,14 @@ impl Applier {
         {
             return Step::Done;
         }
-        self.found(&mut lane, path, file_type, meta.len(), modified)
+        self.found(
+            &mut lane,
+            path,
+            file_type,
+            meta.len(),
+            modified,
+            ActivitySource::Scan,
+        )
     }
 
     fn ctx(&self) -> IdentityCtx<'_> {
@@ -160,6 +177,7 @@ impl Applier {
         file_type: FileType,
         size: u64,
         modified_ms: i64,
+        origin: ActivitySource,
     ) -> Step {
         match lane.row_at(path) {
             Ok(Some(row)) => return self.changed(lane, &row.note_id, path, size, modified_ms),
@@ -227,6 +245,7 @@ impl Applier {
             path: path.to_owned(),
             created,
         });
+        self.report_found(path, origin, created);
         Step::Done
     }
 
@@ -377,6 +396,7 @@ impl Applier {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
         });
+        self.report_removed(path);
     }
 
     fn renamed(&self, lane: &mut Lane<'_>, note_id: &str, old_path: &str, new_path: &str) {
@@ -423,6 +443,7 @@ impl Applier {
             old_path: old_path.to_owned(),
             new_path: new_path.to_owned(),
         });
+        self.report_renamed(old_path, new_path);
     }
 
     /// The markdown file at `path`, read once; `Ok(None)` for every other kind. A markdown file

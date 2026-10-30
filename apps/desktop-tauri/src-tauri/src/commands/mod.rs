@@ -16,6 +16,7 @@ pub mod telemetry;
 pub mod unsplash;
 pub mod updater;
 pub mod vault;
+pub mod vault_activity;
 
 use error::{CommandError, ErrorKind, log_failure};
 

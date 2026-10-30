@@ -1,0 +1,711 @@
+{
+  "now": 1793361600000,
+  "reads": [
+    {
+      "name": "electron-writes",
+      "input": "{\"v\":1,\"id\":\"i1S6ySxk_1BnRE7Afxiky\",\"at\":\"2026-10-29T12:00:01.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"notes/a.md\"}\n{\"v\":1,\"id\":\"BC9y2n2Ft82CLX3DWbKmw\",\"at\":\"2026-10-29T12:00:02.000Z\",\"kind\":\"removed\",\"source\":\"watcher\",\"path\":\"notes/gone.md\"}\n{\"v\":1,\"id\":\"IQeN6DuuzYJA8KQWjWKNr\",\"at\":\"2026-10-29T12:00:03.000Z\",\"kind\":\"renamed\",\"source\":\"watcher\",\"path\":\"b/new name.md\",\"oldPath\":\"a/old name.md\"}\n{\"v\":1,\"id\":\"B6P2fSV0FwKUgHLl26Uyf\",\"at\":\"2026-10-29T12:00:04.000Z\",\"kind\":\"skipped\",\"source\":\"watcher\",\"path\":\"inbox/Photo.HEIC\",\"reason\":\"unsupported-type\",\"message\":\".heic\"}\n{\"v\":1,\"id\":\"W85YzDdTskCSPpCV0OmoL\",\"at\":\"2026-10-29T12:00:05.000Z\",\"kind\":\"skipped\",\"source\":\"scan\",\"path\":\"inbox/Makefile\",\"reason\":\"unsupported-type\"}\n{\"v\":1,\"id\":\"YE-PLfrIIQjL5pvyqaBsa\",\"at\":\"2026-10-29T12:00:06.000Z\",\"kind\":\"failed\",\"source\":\"watcher\",\"path\":\"x.md\",\"reason\":\"index-failed\",\"message\":\"EACCES: permission denied, open \\\"x.md\\\"\\n\\tat C:\\\\vault\\\\x.md \\u0001\"}\n{\"v\":1,\"id\":\"sKbJ07inCx8aBDCW9Bzeg\",\"at\":\"2026-10-29T12:00:07.000Z\",\"kind\":\"failed\",\"source\":\"drop\",\"path\":\"photo (1).png\",\"reason\":\"copy-failed\",\"message\":\"ENOSPC: no space left on device\"}\n{\"v\":1,\"id\":\"GIXKpmtmt0J9vNIW8EE6C\",\"at\":\"2026-10-29T12:00:08.000Z\",\"kind\":\"failed\",\"source\":\"sync\",\"reason\":\"note-too-large\",\"message\":\"Journal 2026 📓\"}\n{\"v\":1,\"id\":\"ry5zgCSbk7xmLa8vaGJRI\",\"at\":\"2026-10-29T12:00:09.000Z\",\"kind\":\"failed\",\"source\":\"sync\",\"path\":\"日本/été.pdf\",\"reason\":\"attachment-upload-failed\",\"message\":\"quota\"}\n{\"v\":1,\"id\":\"jGveZi6dfHpeMeCU2ssS-\",\"at\":\"2026-10-29T12:00:10.000Z\",\"kind\":\"import\",\"source\":\"import\",\"importer\":\"notion\",\"reason\":\"import-canceled\",\"counts\":{\"imported\":3,\"attachments\":1,\"skipped\":0,\"failed\":2},\"items\":[\"a — bad\",\"b\"]}\n{\"v\":1,\"id\":\"96kgslJf6h2UtX2OklCu3\",\"at\":\"2026-10-29T12:00:11.000Z\",\"kind\":\"import\",\"source\":\"import\",\"importer\":\"readwise\",\"message\":\"Readwise: 2 books\",\"counts\":{\"imported\":2,\"failed\":0}}\n{\"v\":1,\"id\":\"Q7f4SNH6svugzdGF0KTXr\",\"at\":\"2026-10-29T12:00:12.000Z\",\"kind\":\"failed\",\"source\":\"import\",\"importer\":\"obsidian\",\"reason\":\"import-failed\",\"message\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…\"}\n{\"v\":1,\"id\":\"Yr9SdIG-Rb_pxZyl46vBq\",\"at\":\"2026-10-29T12:00:13.000Z\",\"kind\":\"failed\",\"source\":\"watcher\",\"path\":\"e.md\",\"reason\":\"read-failed\",\"message\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\ud83d…\"}\n{\"v\":1,\"id\":\"mMyFe7JFhONXgNU3cacd5\",\"at\":\"2026-10-29T12:00:14.000Z\",\"kind\":\"scan\",\"source\":\"scan\",\"counts\":{\"added\":61,\"unsupported\":2},\"items\":[\"f0.md\",\"f1.md\",\"f2.md\",\"f3.md\",\"f4.md\",\"f5.md\",\"f6.md\",\"f7.md\",\"f8.md\",\"f9.md\",\"f10.md\",\"f11.md\",\"f12.md\",\"f13.md\",\"f14.md\",\"f15.md\",\"f16.md\",\"f17.md\",\"f18.md\",\"f19.md\",\"f20.md\",\"f21.md\",\"f22.md\",\"f23.md\",\"f24.md\",\"f25.md\",\"f26.md\",\"f27.md\",\"f28.md\",\"f29.md\",\"f30.md\",\"f31.md\",\"f32.md\",\"f33.md\",\"f34.md\",\"f35.md\",\"f36.md\",\"f37.md\",\"f38.md\",\"f39.md\",\"f40.md\",\"f41.md\",\"f42.md\",\"f43.md\",\"f44.md\",\"f45.md\",\"f46.md\",\"f47.md\",\"f48.md\",\"f49.md\"]}\n{\"v\":1,\"id\":\"fpBU2wGphHAEMtHqKhSeu\",\"at\":\"2026-10-29T12:00:15.000Z\",\"kind\":\"scan\",\"source\":\"scan\",\"reason\":\"index-rebuilt\",\"counts\":{}}\n",
+      "settings": null,
+      "retentionDays": 30,
+      "listed": [
+        {
+          "v": 1,
+          "id": "fpBU2wGphHAEMtHqKhSeu",
+          "at": "2026-10-29T12:00:15.000Z",
+          "kind": "scan",
+          "source": "scan",
+          "reason": "index-rebuilt",
+          "counts": {}
+        },
+        {
+          "v": 1,
+          "id": "mMyFe7JFhONXgNU3cacd5",
+          "at": "2026-10-29T12:00:14.000Z",
+          "kind": "scan",
+          "source": "scan",
+          "counts": {
+            "added": 61,
+            "unsupported": 2
+          },
+          "items": [
+            "f0.md",
+            "f1.md",
+            "f2.md",
+            "f3.md",
+            "f4.md",
+            "f5.md",
+            "f6.md",
+            "f7.md",
+            "f8.md",
+            "f9.md",
+            "f10.md",
+            "f11.md",
+            "f12.md",
+            "f13.md",
+            "f14.md",
+            "f15.md",
+            "f16.md",
+            "f17.md",
+            "f18.md",
+            "f19.md",
+            "f20.md",
+            "f21.md",
+            "f22.md",
+            "f23.md",
+            "f24.md",
+            "f25.md",
+            "f26.md",
+            "f27.md",
+            "f28.md",
+            "f29.md",
+            "f30.md",
+            "f31.md",
+            "f32.md",
+            "f33.md",
+            "f34.md",
+            "f35.md",
+            "f36.md",
+            "f37.md",
+            "f38.md",
+            "f39.md",
+            "f40.md",
+            "f41.md",
+            "f42.md",
+            "f43.md",
+            "f44.md",
+            "f45.md",
+            "f46.md",
+            "f47.md",
+            "f48.md",
+            "f49.md"
+          ]
+        },
+        {
+          "v": 1,
+          "id": "Yr9SdIG-Rb_pxZyl46vBq",
+          "at": "2026-10-29T12:00:13.000Z",
+          "kind": "failed",
+          "source": "watcher",
+          "path": "e.md",
+          "reason": "read-failed",
+          "message": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa�…"
+        },
+        {
+          "v": 1,
+          "id": "Q7f4SNH6svugzdGF0KTXr",
+          "at": "2026-10-29T12:00:12.000Z",
+          "kind": "failed",
+          "source": "import",
+          "reason": "import-failed",
+          "message": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…",
+          "importer": "obsidian"
+        },
+        {
+          "v": 1,
+          "id": "96kgslJf6h2UtX2OklCu3",
+          "at": "2026-10-29T12:00:11.000Z",
+          "kind": "import",
+          "source": "import",
+          "message": "Readwise: 2 books",
+          "importer": "readwise",
+          "counts": {
+            "imported": 2,
+            "failed": 0
+          }
+        },
+        {
+          "v": 1,
+          "id": "jGveZi6dfHpeMeCU2ssS-",
+          "at": "2026-10-29T12:00:10.000Z",
+          "kind": "import",
+          "source": "import",
+          "reason": "import-canceled",
+          "importer": "notion",
+          "counts": {
+            "imported": 3,
+            "attachments": 1,
+            "skipped": 0,
+            "failed": 2
+          },
+          "items": ["a — bad", "b"]
+        },
+        {
+          "v": 1,
+          "id": "ry5zgCSbk7xmLa8vaGJRI",
+          "at": "2026-10-29T12:00:09.000Z",
+          "kind": "failed",
+          "source": "sync",
+          "path": "日本/été.pdf",
+          "reason": "attachment-upload-failed",
+          "message": "quota"
+        },
+        {
+          "v": 1,
+          "id": "GIXKpmtmt0J9vNIW8EE6C",
+          "at": "2026-10-29T12:00:08.000Z",
+          "kind": "failed",
+          "source": "sync",
+          "reason": "note-too-large",
+          "message": "Journal 2026 📓"
+        },
+        {
+          "v": 1,
+          "id": "sKbJ07inCx8aBDCW9Bzeg",
+          "at": "2026-10-29T12:00:07.000Z",
+          "kind": "failed",
+          "source": "drop",
+          "path": "photo (1).png",
+          "reason": "copy-failed",
+          "message": "ENOSPC: no space left on device"
+        },
+        {
+          "v": 1,
+          "id": "YE-PLfrIIQjL5pvyqaBsa",
+          "at": "2026-10-29T12:00:06.000Z",
+          "kind": "failed",
+          "source": "watcher",
+          "path": "x.md",
+          "reason": "index-failed",
+          "message": "EACCES: permission denied, open \"x.md\"\n\tat C:\\vault\\x.md \u0001"
+        },
+        {
+          "v": 1,
+          "id": "W85YzDdTskCSPpCV0OmoL",
+          "at": "2026-10-29T12:00:05.000Z",
+          "kind": "skipped",
+          "source": "scan",
+          "path": "inbox/Makefile",
+          "reason": "unsupported-type"
+        },
+        {
+          "v": 1,
+          "id": "B6P2fSV0FwKUgHLl26Uyf",
+          "at": "2026-10-29T12:00:04.000Z",
+          "kind": "skipped",
+          "source": "watcher",
+          "path": "inbox/Photo.HEIC",
+          "reason": "unsupported-type",
+          "message": ".heic"
+        },
+        {
+          "v": 1,
+          "id": "IQeN6DuuzYJA8KQWjWKNr",
+          "at": "2026-10-29T12:00:03.000Z",
+          "kind": "renamed",
+          "source": "watcher",
+          "path": "b/new name.md",
+          "oldPath": "a/old name.md"
+        },
+        {
+          "v": 1,
+          "id": "BC9y2n2Ft82CLX3DWbKmw",
+          "at": "2026-10-29T12:00:02.000Z",
+          "kind": "removed",
+          "source": "watcher",
+          "path": "notes/gone.md"
+        },
+        {
+          "v": 1,
+          "id": "i1S6ySxk_1BnRE7Afxiky",
+          "at": "2026-10-29T12:00:01.000Z",
+          "kind": "added",
+          "source": "watcher",
+          "path": "notes/a.md"
+        }
+      ],
+      "problems": [
+        "mMyFe7JFhONXgNU3cacd5",
+        "Yr9SdIG-Rb_pxZyl46vBq",
+        "Q7f4SNH6svugzdGF0KTXr",
+        "jGveZi6dfHpeMeCU2ssS-",
+        "ry5zgCSbk7xmLa8vaGJRI",
+        "GIXKpmtmt0J9vNIW8EE6C",
+        "sKbJ07inCx8aBDCW9Bzeg",
+        "YE-PLfrIIQjL5pvyqaBsa",
+        "W85YzDdTskCSPpCV0OmoL",
+        "B6P2fSV0FwKUgHLl26Uyf"
+      ],
+      "electronRewritten": null,
+      "kept": null
+    },
+    {
+      "name": "canonical-compaction",
+      "input": "{\"v\":1,\"id\":\"e40-added\",\"at\":\"2026-09-20T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"old.md\"}\n{\"v\":1,\"id\":\"e3-added\",\"at\":\"2026-10-27T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}\n{\"v\":1,\"id\":\"torn\",\"at\":\"2026-10-\n{\"v\":1,\"id\":\"e2-skipped\",\"at\":\"2026-10-28T12:00:00.000Z\",\"kind\":\"skipped\",\"source\":\"watcher\",\"path\":\"p.heic\",\"reason\":\"unsupported-type\",\"message\":\".heic\"}\n{\"v\":1,\"id\":\"e1-scan\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"scan\",\"source\":\"scan\",\"reason\":\"index-rebuilt\",\"counts\":{\"added\":4}}\n{\"v\":1,\"id\":\"e0-failed\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"drop\",\"path\":\"x.png\",\"reason\":\"copy-failed\",\"message\":\"nope\"}\n",
+      "settings": null,
+      "retentionDays": 30,
+      "listed": [
+        {
+          "v": 1,
+          "id": "e0-failed",
+          "at": "2026-10-30T12:00:00.000Z",
+          "kind": "failed",
+          "source": "drop",
+          "path": "x.png",
+          "reason": "copy-failed",
+          "message": "nope"
+        },
+        {
+          "v": 1,
+          "id": "e1-scan",
+          "at": "2026-10-29T12:00:00.000Z",
+          "kind": "scan",
+          "source": "scan",
+          "reason": "index-rebuilt",
+          "counts": {
+            "added": 4
+          }
+        },
+        {
+          "v": 1,
+          "id": "e2-skipped",
+          "at": "2026-10-28T12:00:00.000Z",
+          "kind": "skipped",
+          "source": "watcher",
+          "path": "p.heic",
+          "reason": "unsupported-type",
+          "message": ".heic"
+        },
+        {
+          "v": 1,
+          "id": "e3-added",
+          "at": "2026-10-27T12:00:00.000Z",
+          "kind": "added",
+          "source": "watcher",
+          "path": "a.md"
+        }
+      ],
+      "problems": ["e0-failed", "e2-skipped"],
+      "electronRewritten": "{\"v\":1,\"id\":\"e3-added\",\"at\":\"2026-10-27T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}\n{\"v\":1,\"id\":\"e2-skipped\",\"at\":\"2026-10-28T12:00:00.000Z\",\"kind\":\"skipped\",\"source\":\"watcher\",\"path\":\"p.heic\",\"reason\":\"unsupported-type\",\"message\":\".heic\"}\n{\"v\":1,\"id\":\"e1-scan\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"scan\",\"source\":\"scan\",\"reason\":\"index-rebuilt\",\"counts\":{\"added\":4}}\n{\"v\":1,\"id\":\"e0-failed\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"drop\",\"path\":\"x.png\",\"reason\":\"copy-failed\",\"message\":\"nope\"}\n",
+      "kept": [
+        "{\"v\":1,\"id\":\"e3-added\",\"at\":\"2026-10-27T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}",
+        "{\"v\":1,\"id\":\"e2-skipped\",\"at\":\"2026-10-28T12:00:00.000Z\",\"kind\":\"skipped\",\"source\":\"watcher\",\"path\":\"p.heic\",\"reason\":\"unsupported-type\",\"message\":\".heic\"}",
+        "{\"v\":1,\"id\":\"e1-scan\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"scan\",\"source\":\"scan\",\"reason\":\"index-rebuilt\",\"counts\":{\"added\":4}}",
+        "{\"v\":1,\"id\":\"e0-failed\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"drop\",\"path\":\"x.png\",\"reason\":\"copy-failed\",\"message\":\"nope\"}"
+      ]
+    },
+    {
+      "name": "mixed",
+      "input": "{\"v\":1,\"id\":\"e1-added\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}\nnot json at all\n[1,2,3]\n42\n\"a string\"\nnull\n{\"v\":1,\"id\":\"np\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":null}\n{\"v\":1,\"id\":\"nk\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"moved\",\"source\":\"watcher\",\"path\":\"m.md\"}\n{\"v\":2,\"id\":\"v2\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\"}\n{\"v\":1,\"id\":\"big\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"scan\",\"source\":\"scan\",\"items\":[\"0\",\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\",\"10\",\"11\",\"12\",\"13\",\"14\",\"15\",\"16\",\"17\",\"18\",\"19\",\"20\",\"21\",\"22\",\"23\",\"24\",\"25\",\"26\",\"27\",\"28\",\"29\",\"30\",\"31\",\"32\",\"33\",\"34\",\"35\",\"36\",\"37\",\"38\",\"39\",\"40\",\"41\",\"42\",\"43\",\"44\",\"45\",\"46\",\"47\",\"48\",\"49\",\"50\"]}\n{\"v\":1,\"id\":\"\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\"}\n{\"note\":\"hand edit\"}\n{\"v\":1,\"id\":\"xf\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"removed\",\"source\":\"watcher\",\"path\":\"r.md\",\"device\":\"laptop\",\"extra\":{\"n\":1}}\n{\"v\":1.0,\"id\":\"f1\",\"at\":\"2026-10-28T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"sync\",\"counts\":{\"failed\":1.5,\"a\":1e2}}\n{\"v\":1,\"id\":\"dup\",\"id\":\"dup2\",\"at\":\"2026-10-28T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\"}\n{\"v\":1,\"id\":\"e31-removed\",\"at\":\"2026-09-29T12:00:00.000Z\",\"kind\":\"removed\",\"source\":\"watcher\",\"path\":\"old.md\"}\n{\"v\":1,\"id\":\"nk-old\",\"at\":\"2026-09-29T12:00:00.000Z\",\"kind\":\"moved\",\"source\":\"watcher\"}\n{\"v\":1,\"id\":\"e0-skipped\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"skipped\",\"source\":\"scan\",\"path\":\"z.xyz\",\"reason\":\"unsupported-type\"}\n",
+      "settings": null,
+      "retentionDays": 30,
+      "listed": [
+        {
+          "v": 1,
+          "id": "e0-skipped",
+          "at": "2026-10-30T12:00:00.000Z",
+          "kind": "skipped",
+          "source": "scan",
+          "path": "z.xyz",
+          "reason": "unsupported-type"
+        },
+        {
+          "v": 1,
+          "id": "dup2",
+          "at": "2026-10-28T12:00:00.000Z",
+          "kind": "added",
+          "source": "watcher"
+        },
+        {
+          "v": 1,
+          "id": "f1",
+          "at": "2026-10-28T12:00:00.000Z",
+          "kind": "failed",
+          "source": "sync",
+          "counts": {
+            "failed": 1.5,
+            "a": 100
+          }
+        },
+        {
+          "v": 1,
+          "id": "xf",
+          "at": "2026-10-29T12:00:00.000Z",
+          "kind": "removed",
+          "source": "watcher",
+          "path": "r.md"
+        },
+        {
+          "v": 1,
+          "id": "e1-added",
+          "at": "2026-10-29T12:00:00.000Z",
+          "kind": "added",
+          "source": "watcher",
+          "path": "a.md"
+        }
+      ],
+      "problems": ["e0-skipped", "f1"],
+      "electronRewritten": "{\"v\":1,\"id\":\"e1-added\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}\n{\"v\":1,\"id\":\"xf\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"removed\",\"source\":\"watcher\",\"path\":\"r.md\"}\n{\"v\":1,\"id\":\"f1\",\"at\":\"2026-10-28T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"sync\",\"counts\":{\"failed\":1.5,\"a\":100}}\n{\"v\":1,\"id\":\"dup2\",\"at\":\"2026-10-28T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\"}\n{\"v\":1,\"id\":\"e0-skipped\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"skipped\",\"source\":\"scan\",\"path\":\"z.xyz\",\"reason\":\"unsupported-type\"}\n",
+      "kept": [
+        "{\"v\":1,\"id\":\"e1-added\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}",
+        "{\"v\":1,\"id\":\"np\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":null}",
+        "{\"v\":1,\"id\":\"nk\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"moved\",\"source\":\"watcher\",\"path\":\"m.md\"}",
+        "{\"v\":2,\"id\":\"v2\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\"}",
+        "{\"v\":1,\"id\":\"big\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"scan\",\"source\":\"scan\",\"items\":[\"0\",\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\",\"10\",\"11\",\"12\",\"13\",\"14\",\"15\",\"16\",\"17\",\"18\",\"19\",\"20\",\"21\",\"22\",\"23\",\"24\",\"25\",\"26\",\"27\",\"28\",\"29\",\"30\",\"31\",\"32\",\"33\",\"34\",\"35\",\"36\",\"37\",\"38\",\"39\",\"40\",\"41\",\"42\",\"43\",\"44\",\"45\",\"46\",\"47\",\"48\",\"49\",\"50\"]}",
+        "{\"v\":1,\"id\":\"\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\"}",
+        "{\"note\":\"hand edit\"}",
+        "{\"v\":1,\"id\":\"xf\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"removed\",\"source\":\"watcher\",\"path\":\"r.md\",\"device\":\"laptop\",\"extra\":{\"n\":1}}",
+        "{\"v\":1.0,\"id\":\"f1\",\"at\":\"2026-10-28T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"sync\",\"counts\":{\"failed\":1.5,\"a\":1e2}}",
+        "{\"v\":1,\"id\":\"dup\",\"id\":\"dup2\",\"at\":\"2026-10-28T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\"}",
+        "{\"v\":1,\"id\":\"e0-skipped\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"skipped\",\"source\":\"scan\",\"path\":\"z.xyz\",\"reason\":\"unsupported-type\"}"
+      ]
+    },
+    {
+      "name": "retention-7",
+      "input": "{\"v\":1,\"id\":\"e8-added\",\"at\":\"2026-10-22T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"eight.md\"}\n{\"v\":1,\"id\":\"e6-added\",\"at\":\"2026-10-24T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"six.md\"}\n",
+      "settings": "{\n  \"retentionDays\": 7\n}\n",
+      "retentionDays": 7,
+      "listed": [
+        {
+          "v": 1,
+          "id": "e6-added",
+          "at": "2026-10-24T12:00:00.000Z",
+          "kind": "added",
+          "source": "watcher",
+          "path": "six.md"
+        }
+      ],
+      "problems": [],
+      "electronRewritten": "{\"v\":1,\"id\":\"e6-added\",\"at\":\"2026-10-24T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"six.md\"}\n",
+      "kept": [
+        "{\"v\":1,\"id\":\"e6-added\",\"at\":\"2026-10-24T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"six.md\"}"
+      ]
+    },
+    {
+      "name": "retention-unknown",
+      "input": "{\"v\":1,\"id\":\"e29-added\",\"at\":\"2026-10-01T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"kept.md\"}\n",
+      "settings": "{\"retentionDays\":14}",
+      "retentionDays": 30,
+      "listed": [
+        {
+          "v": 1,
+          "id": "e29-added",
+          "at": "2026-10-01T12:00:00.000Z",
+          "kind": "added",
+          "source": "watcher",
+          "path": "kept.md"
+        }
+      ],
+      "problems": [],
+      "electronRewritten": null,
+      "kept": [
+        "{\"v\":1,\"id\":\"e29-added\",\"at\":\"2026-10-01T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"kept.md\"}"
+      ]
+    },
+    {
+      "name": "retention-float",
+      "input": "{\"v\":1,\"id\":\"e91-added\",\"at\":\"2026-07-31T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"old.md\"}\n{\"v\":1,\"id\":\"e89-added\",\"at\":\"2026-08-02T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"kept.md\"}\n",
+      "settings": "{\"retentionDays\":90.0,\"other\":true}",
+      "retentionDays": 90,
+      "listed": [
+        {
+          "v": 1,
+          "id": "e89-added",
+          "at": "2026-08-02T12:00:00.000Z",
+          "kind": "added",
+          "source": "watcher",
+          "path": "kept.md"
+        }
+      ],
+      "problems": [],
+      "electronRewritten": "{\"v\":1,\"id\":\"e89-added\",\"at\":\"2026-08-02T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"kept.md\"}\n",
+      "kept": [
+        "{\"v\":1,\"id\":\"e89-added\",\"at\":\"2026-08-02T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"kept.md\"}"
+      ]
+    },
+    {
+      "name": "retention-garbage",
+      "input": "{\"v\":1,\"id\":\"e20-added\",\"at\":\"2026-10-10T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"kept.md\"}\n",
+      "settings": "not json",
+      "retentionDays": 30,
+      "listed": [
+        {
+          "v": 1,
+          "id": "e20-added",
+          "at": "2026-10-10T12:00:00.000Z",
+          "kind": "added",
+          "source": "watcher",
+          "path": "kept.md"
+        }
+      ],
+      "problems": [],
+      "electronRewritten": null,
+      "kept": [
+        "{\"v\":1,\"id\":\"e20-added\",\"at\":\"2026-10-10T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"kept.md\"}"
+      ]
+    },
+    {
+      "name": "crlf",
+      "input": "{\"v\":1,\"id\":\"e1-added\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}\r\n{\"v\":1,\"id\":\"e0-removed\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"removed\",\"source\":\"watcher\",\"path\":\"b.md\"}\r\n",
+      "settings": null,
+      "retentionDays": 30,
+      "listed": [
+        {
+          "v": 1,
+          "id": "e0-removed",
+          "at": "2026-10-30T12:00:00.000Z",
+          "kind": "removed",
+          "source": "watcher",
+          "path": "b.md"
+        },
+        {
+          "v": 1,
+          "id": "e1-added",
+          "at": "2026-10-29T12:00:00.000Z",
+          "kind": "added",
+          "source": "watcher",
+          "path": "a.md"
+        }
+      ],
+      "problems": [],
+      "electronRewritten": null,
+      "kept": null
+    },
+    {
+      "name": "bom",
+      "input": "﻿{\"v\":1,\"id\":\"e1-added\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}\n{\"v\":1,\"id\":\"e0-removed\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"removed\",\"source\":\"watcher\",\"path\":\"b.md\"}\n",
+      "settings": null,
+      "retentionDays": 30,
+      "listed": [
+        {
+          "v": 1,
+          "id": "e0-removed",
+          "at": "2026-10-30T12:00:00.000Z",
+          "kind": "removed",
+          "source": "watcher",
+          "path": "b.md"
+        }
+      ],
+      "problems": [],
+      "electronRewritten": "{\"v\":1,\"id\":\"e0-removed\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"removed\",\"source\":\"watcher\",\"path\":\"b.md\"}\n",
+      "kept": null
+    },
+    {
+      "name": "blank-lines",
+      "input": "\n   \n{\"v\":1,\"id\":\"e1-added\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"a.md\"}\n \t\n",
+      "settings": null,
+      "retentionDays": 30,
+      "listed": [
+        {
+          "v": 1,
+          "id": "e1-added",
+          "at": "2026-10-29T12:00:00.000Z",
+          "kind": "added",
+          "source": "watcher",
+          "path": "a.md"
+        }
+      ],
+      "problems": [],
+      "electronRewritten": null,
+      "kept": null
+    },
+    {
+      "name": "lone-surrogates",
+      "input": "{\"v\":1,\"id\":\"s1\",\"at\":\"2026-10-29T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"watcher\",\"path\":\"a\\udc00.md\",\"message\":\"cut \\ud83d\"}\n{\"v\":1,\"id\":\"s2\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"ok \\ud83d\\ude00.md\"}\n",
+      "settings": null,
+      "retentionDays": 30,
+      "listed": [
+        {
+          "v": 1,
+          "id": "s2",
+          "at": "2026-10-30T12:00:00.000Z",
+          "kind": "added",
+          "source": "watcher",
+          "path": "ok 😀.md"
+        },
+        {
+          "v": 1,
+          "id": "s1",
+          "at": "2026-10-29T12:00:00.000Z",
+          "kind": "failed",
+          "source": "watcher",
+          "path": "a�.md",
+          "message": "cut �"
+        }
+      ],
+      "problems": ["s1"],
+      "electronRewritten": null,
+      "kept": null
+    }
+  ],
+  "records": [
+    {
+      "name": "watcher-added",
+      "recorded": true,
+      "input": {
+        "kind": "added",
+        "source": "watcher",
+        "path": "notes/a b.md"
+      },
+      "id": "PdGs8kHoFdLJMFOLvFg8l",
+      "at": "2026-10-30T12:00:00.000Z",
+      "line": "{\"v\":1,\"id\":\"PdGs8kHoFdLJMFOLvFg8l\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\",\"path\":\"notes/a b.md\"}"
+    },
+    {
+      "name": "renamed",
+      "recorded": true,
+      "input": {
+        "kind": "renamed",
+        "source": "watcher",
+        "path": "n.md",
+        "oldPath": "o.md"
+      },
+      "id": "fuFS4zhpexcrOjjwuarsS",
+      "at": "2026-10-30T12:00:00.000Z",
+      "line": "{\"v\":1,\"id\":\"fuFS4zhpexcrOjjwuarsS\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"renamed\",\"source\":\"watcher\",\"path\":\"n.md\",\"oldPath\":\"o.md\"}"
+    },
+    {
+      "name": "escapes",
+      "recorded": true,
+      "input": {
+        "kind": "failed",
+        "source": "watcher",
+        "path": "q\"uote\\back/sl.md",
+        "reason": "read-failed",
+        "message": "line\nbreak\ttab\r\u0000\u001f   /"
+      },
+      "id": "Ubbho9_Cm1DdIDA79S6Zz",
+      "at": "2026-10-30T12:00:00.000Z",
+      "line": "{\"v\":1,\"id\":\"Ubbho9_Cm1DdIDA79S6Zz\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"watcher\",\"path\":\"q\\\"uote\\\\back/sl.md\",\"reason\":\"read-failed\",\"message\":\"line\\nbreak\\ttab\\r\\u0000\\u001f   /\"}"
+    },
+    {
+      "name": "long-message",
+      "recorded": true,
+      "input": {
+        "kind": "failed",
+        "source": "drop",
+        "path": "p",
+        "reason": "copy-failed",
+        "message": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      "id": "be8j07V6FEoRFG53v8sVD",
+      "at": "2026-10-30T12:00:00.000Z",
+      "line": "{\"v\":1,\"id\":\"be8j07V6FEoRFG53v8sVD\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"drop\",\"path\":\"p\",\"reason\":\"copy-failed\",\"message\":\"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé…\"}"
+    },
+    {
+      "name": "cut-before-pair",
+      "recorded": true,
+      "input": {
+        "kind": "failed",
+        "source": "watcher",
+        "path": "e.md",
+        "reason": "read-failed",
+        "message": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀tail"
+      },
+      "id": "dqh8kaGoVcUSVAluqzljj",
+      "at": "2026-10-30T12:00:00.000Z",
+      "line": "{\"v\":1,\"id\":\"dqh8kaGoVcUSVAluqzljj\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"watcher\",\"path\":\"e.md\",\"reason\":\"read-failed\",\"message\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀…\"}"
+    },
+    {
+      "name": "summary",
+      "recorded": true,
+      "input": {
+        "kind": "scan",
+        "source": "scan",
+        "reason": "index-rebuilt",
+        "counts": {
+          "added": 3,
+          "unsupported": 0
+        },
+        "items": [
+          "i0",
+          "i1",
+          "i2",
+          "i3",
+          "i4",
+          "i5",
+          "i6",
+          "i7",
+          "i8",
+          "i9",
+          "i10",
+          "i11",
+          "i12",
+          "i13",
+          "i14",
+          "i15",
+          "i16",
+          "i17",
+          "i18",
+          "i19",
+          "i20",
+          "i21",
+          "i22",
+          "i23",
+          "i24",
+          "i25",
+          "i26",
+          "i27",
+          "i28",
+          "i29",
+          "i30",
+          "i31",
+          "i32",
+          "i33",
+          "i34",
+          "i35",
+          "i36",
+          "i37",
+          "i38",
+          "i39",
+          "i40",
+          "i41",
+          "i42",
+          "i43",
+          "i44",
+          "i45",
+          "i46",
+          "i47",
+          "i48",
+          "i49",
+          "i50",
+          "i51",
+          "i52",
+          "i53",
+          "i54"
+        ]
+      },
+      "id": "ASm2SVfPuQsfV7HSQfTY8",
+      "at": "2026-10-30T12:00:00.000Z",
+      "line": "{\"v\":1,\"id\":\"ASm2SVfPuQsfV7HSQfTY8\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"scan\",\"source\":\"scan\",\"reason\":\"index-rebuilt\",\"counts\":{\"added\":3,\"unsupported\":0},\"items\":[\"i0\",\"i1\",\"i2\",\"i3\",\"i4\",\"i5\",\"i6\",\"i7\",\"i8\",\"i9\",\"i10\",\"i11\",\"i12\",\"i13\",\"i14\",\"i15\",\"i16\",\"i17\",\"i18\",\"i19\",\"i20\",\"i21\",\"i22\",\"i23\",\"i24\",\"i25\",\"i26\",\"i27\",\"i28\",\"i29\",\"i30\",\"i31\",\"i32\",\"i33\",\"i34\",\"i35\",\"i36\",\"i37\",\"i38\",\"i39\",\"i40\",\"i41\",\"i42\",\"i43\",\"i44\",\"i45\",\"i46\",\"i47\",\"i48\",\"i49\"]}"
+    },
+    {
+      "name": "empty-counts",
+      "recorded": true,
+      "input": {
+        "kind": "scan",
+        "source": "scan",
+        "counts": {}
+      },
+      "id": "uLl9bhKfzXXgaB6iXiTBd",
+      "at": "2026-10-30T12:00:00.000Z",
+      "line": "{\"v\":1,\"id\":\"uLl9bhKfzXXgaB6iXiTBd\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"scan\",\"source\":\"scan\",\"counts\":{}}"
+    }
+  ],
+  "surrogateCut": {
+    "name": "cut-inside-pair",
+    "recorded": true,
+    "input": {
+      "kind": "failed",
+      "source": "watcher",
+      "path": "e.md",
+      "reason": "read-failed",
+      "message": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀tail"
+    },
+    "id": "j4BgRJMQj8Er1ufKbWdKF",
+    "at": "2026-10-30T12:00:00.000Z",
+    "line": "{\"v\":1,\"id\":\"j4BgRJMQj8Er1ufKbWdKF\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"watcher\",\"path\":\"e.md\",\"reason\":\"read-failed\",\"message\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\ud83d…\"}"
+  },
+  "settings": [
+    {
+      "days": 7,
+      "written": "{\n  \"retentionDays\": 7\n}\n"
+    },
+    {
+      "days": 30,
+      "written": "{\n  \"retentionDays\": 30\n}\n"
+    },
+    {
+      "days": 90,
+      "written": "{\n  \"retentionDays\": 90\n}\n"
+    }
+  ]
+}
