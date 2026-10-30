@@ -14,7 +14,8 @@
 //! - [`atomic_create`] makes a file that must not exist yet. It links (Unix) or moves without
 //!   replacing (Windows) the finished temp file into place, so a file another process created
 //!   after the caller looked is never overwritten: the call fails with `AlreadyExists`.
-//!   [`create_unique`] picks the first free `<name> N<ext>` that way.
+//!   [`create_unique`] picks the first free `<name> N<ext>` that way, and [`copy_create`]
+//!   creates a copy of another file the same way, streamed rather than read into memory.
 //!
 //! [`rename_no_replace`] moves a file or folder that is already whole into a name that must
 //! still be free, the same way as a create: `AlreadyExists` rather than a replace.
@@ -97,6 +98,14 @@ enum Commit {
     Create,
 }
 
+/// What a write puts in the temp file.
+#[derive(Clone, Copy)]
+enum Content<'a> {
+    Bytes(&'a [u8]),
+    /// This file's bytes, streamed, and on Unix its mode, as `fs.copyFile` kept it.
+    CopyOf(&'a Path),
+}
+
 /// Called once per attempt after the temp file is complete and right before it takes the
 /// target's place. An error stops the write and removes the temp file.
 pub type BeforeCommit<'a> = &'a mut dyn FnMut() -> io::Result<()>;
@@ -104,7 +113,7 @@ pub type BeforeCommit<'a> = &'a mut dyn FnMut() -> io::Result<()>;
 fn write_once(
     dir: &Path,
     target: &Path,
-    bytes: &[u8],
+    content: Content<'_>,
     commit: Commit,
     before_commit: BeforeCommit<'_>,
 ) -> io::Result<()> {
@@ -119,7 +128,15 @@ fn write_once(
             options.mode(0o600);
         }
         let mut file = options.open(&temp)?;
-        file.write_all(bytes)?;
+        match content {
+            Content::Bytes(bytes) => file.write_all(bytes)?,
+            Content::CopyOf(source) => {
+                let mut from = fs::File::open(source)?;
+                io::copy(&mut from, &mut file)?;
+                #[cfg(unix)]
+                file.set_permissions(from.metadata()?.permissions())?;
+            }
+        }
         file.sync_all()?;
         drop(file);
         if commit == Commit::Replace {
@@ -378,7 +395,7 @@ fn sync_dir(_dir: &Path) {
 
 fn run(
     target: &Path,
-    bytes: &[u8],
+    content: Content<'_>,
     delays: &[Duration],
     commit: Commit,
     create_dirs: bool,
@@ -396,7 +413,7 @@ fn run(
         fs::create_dir_all(dir).map_err(fail)?;
     }
     with_transient_retry(delays, || {
-        write_once(dir, target, bytes, commit, &mut *before_commit)
+        write_once(dir, target, content, commit, &mut *before_commit)
     })
     .map_err(fail)
 }
@@ -412,7 +429,14 @@ pub fn atomic_write_checked(
     delays: &[Duration],
     before_commit: BeforeCommit<'_>,
 ) -> Result<(), WriteError> {
-    run(target, bytes, delays, Commit::Replace, true, before_commit)
+    run(
+        target,
+        Content::Bytes(bytes),
+        delays,
+        Commit::Replace,
+        true,
+        before_commit,
+    )
 }
 
 /// [`atomic_write_checked`] for a file that is there: its folder is never created. A folder
@@ -423,7 +447,14 @@ pub fn atomic_replace_checked(
     delays: &[Duration],
     before_commit: BeforeCommit<'_>,
 ) -> Result<(), WriteError> {
-    run(target, bytes, delays, Commit::Replace, false, before_commit)
+    run(
+        target,
+        Content::Bytes(bytes),
+        delays,
+        Commit::Replace,
+        false,
+        before_commit,
+    )
 }
 
 pub fn atomic_write_with(
@@ -446,11 +477,31 @@ pub fn atomic_create_checked(
     delays: &[Duration],
     before_commit: BeforeCommit<'_>,
 ) -> Result<(), WriteError> {
-    run(target, bytes, delays, Commit::Create, true, before_commit)
+    run(
+        target,
+        Content::Bytes(bytes),
+        delays,
+        Commit::Create,
+        true,
+        before_commit,
+    )
 }
 
 pub fn atomic_create(target: &Path, bytes: &[u8]) -> Result<(), WriteError> {
     atomic_create_checked(target, bytes, &default_delays(), &mut || Ok(()))
+}
+
+/// [`atomic_create`] with the bytes of the file `source`: a copy that never replaces a file at
+/// `target`. A source that cannot be read fails with the target's path and that error.
+pub fn copy_create(source: &Path, target: &Path) -> Result<(), WriteError> {
+    run(
+        target,
+        Content::CopyOf(source),
+        &default_delays(),
+        Commit::Create,
+        true,
+        &mut || Ok(()),
+    )
 }
 
 /// `base`, or the first of `<name> 1<ext>`, `<name> 2<ext>`, ... that did not exist, created
