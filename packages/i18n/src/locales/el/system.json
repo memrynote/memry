@@ -67,7 +67,8 @@
   "startup": {
     "installingUpdate": {
       "title": "Εγκατάσταση ενημέρωσης…",
-      "subtitle": "Το MemryNote θα ανοίξει ξανά αυτόματα."
+      "subtitle": "Το MemryNote θα ανοίξει ξανά αυτόματα.",
+      "subtitleAfterQuit": "Ανοίξτε ξανά το MemryNote σε λίγο."
     },
     "failed": {
       "title": "Το MemryNote δεν μπόρεσε να ολοκληρώσει την εκκίνηση",

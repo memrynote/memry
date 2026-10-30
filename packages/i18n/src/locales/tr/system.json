@@ -67,7 +67,8 @@
   "startup": {
     "installingUpdate": {
       "title": "Güncelleme yükleniyor…",
-      "subtitle": "MemryNote otomatik olarak yeniden açılacak."
+      "subtitle": "MemryNote otomatik olarak yeniden açılacak.",
+      "subtitleAfterQuit": "Birazdan MemryNote'u yeniden açın."
     },
     "failed": {
       "title": "MemryNote başlatmayı tamamlayamadı",
