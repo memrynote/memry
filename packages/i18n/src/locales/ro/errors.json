@@ -70,7 +70,9 @@
     "writebackFailedTitle": "Fișierul unei notițe de pe disc nu a putut fi actualizat",
     "writebackFailedTitleNamed": "„{title}” nu a putut fi actualizată pe disc",
     "writebackFailedTitleMany": "Fișierele notițelor de pe disc nu au putut fi actualizate: {count}",
-    "writebackFailedBody": "Fișierul de pe disc a rămas neschimbat. Modificarea ta rămâne deschisă în memrynote cât timp aplicația rulează; memrynote va încerca din nou la următoarea ta modificare."
+    "writebackFailedBody": "Fișierul de pe disc a rămas neschimbat. Modificarea ta rămâne deschisă în memrynote cât timp aplicația rulează; memrynote va încerca din nou la următoarea ta modificare.",
+    "writebackFailedFrontmatterBody": "Frontmatter-ul fișierului (blocul dintre liniile --- de sus) nu poate fi citit, așa că memrynote lasă fișierul neschimbat. Modificările tale rămân în memrynote. Dacă repari fișierul în afara memrynote, textul fișierului le va înlocui, așa că mai întâi copiază ce îți trebuie.",
+    "writebackFailedFrontmatterBodyMany": "Frontmatter-ul acestor fișiere (blocul dintre liniile --- de sus) nu poate fi citit, așa că memrynote lasă fișierele neschimbate. Modificările tale rămân în memrynote. Dacă repari fișierele în afara memrynote, textul lor le va înlocui, așa că mai întâi copiază ce îți trebuie."
   },
   "encryption": {
     "failed": "Nu s-au putut cripta datele. Este posibil să fie necesară regenerarea cheilor.",

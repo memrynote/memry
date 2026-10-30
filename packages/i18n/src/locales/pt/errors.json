@@ -70,7 +70,9 @@
     "writebackFailedTitle": "Não foi possível atualizar o arquivo de uma nota no disco",
     "writebackFailedTitleNamed": "Não foi possível atualizar “{title}” no disco",
     "writebackFailedTitleMany": "Não foi possível atualizar os arquivos de {count} notas no disco",
-    "writebackFailedBody": "O arquivo no disco não foi alterado. Sua alteração continua aberta no memrynote enquanto o app estiver em execução; o memrynote tentará novamente na sua próxima alteração."
+    "writebackFailedBody": "O arquivo no disco não foi alterado. Sua alteração continua aberta no memrynote enquanto o app estiver em execução; o memrynote tentará novamente na sua próxima alteração.",
+    "writebackFailedFrontmatterBody": "O frontmatter do arquivo (o bloco entre as linhas --- no topo) não pode ser lido, então o memrynote deixa o arquivo inalterado. Suas alterações continuam no memrynote. Se você corrigir o arquivo fora do memrynote, o texto do arquivo vai substituí-las, então copie antes o que precisar.",
+    "writebackFailedFrontmatterBodyMany": "O frontmatter desses arquivos (o bloco entre as linhas --- no topo) não pode ser lido, então o memrynote deixa os arquivos inalterados. Suas alterações continuam no memrynote. Se você corrigir os arquivos fora do memrynote, o texto deles vai substituí-las, então copie antes o que precisar."
   },
   "encryption": {
     "failed": "Não foi possível criptografar os dados. Talvez suas chaves precisem ser geradas novamente.",

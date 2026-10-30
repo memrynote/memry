@@ -70,7 +70,9 @@
     "writebackFailedTitle": "En notes fil på disken kunne ikke opdateres",
     "writebackFailedTitleNamed": "»{title}« kunne ikke opdateres på disken",
     "writebackFailedTitleMany": "{count} noters filer på disken kunne ikke opdateres",
-    "writebackFailedBody": "Filen på disken blev ikke ændret. Din ændring forbliver åben i memrynote, så længe appen kører; memrynote prøver igen ved din næste ændring."
+    "writebackFailedBody": "Filen på disken blev ikke ændret. Din ændring forbliver åben i memrynote, så længe appen kører; memrynote prøver igen ved din næste ændring.",
+    "writebackFailedFrontmatterBody": "Filens frontmatter (blokken mellem linjerne med --- øverst) kan ikke læses, så memrynote lader filen være uændret. Dine ændringer bliver i memrynote. Retter du filen uden for memrynote, erstatter filens tekst dem, så kopiér først det, du har brug for.",
+    "writebackFailedFrontmatterBodyMany": "Filernes frontmatter (blokken mellem linjerne med --- øverst) kan ikke læses, så memrynote lader filerne være uændrede. Dine ændringer bliver i memrynote. Retter du filerne uden for memrynote, erstatter filernes tekst dem, så kopiér først det, du har brug for."
   },
   "encryption": {
     "failed": "Kunne ikke kryptere data. Dine nøgler skal muligvis regenereres.",

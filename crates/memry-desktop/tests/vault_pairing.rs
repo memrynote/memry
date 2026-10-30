@@ -132,20 +132,15 @@ fn larger_than_the_editor_takes() -> String {
     "a line of a note past the large-file class\n".repeat(30_000)
 }
 
-/// A file whose text the note's document did not take (#3744): too large for the editor,
-/// frontmatter that does not parse, or a note that already had a body. Its row names no text
-/// the document holds, and a move made while the app was closed still pairs on the bytes the
-/// tier read: the note keeps its id and its file, and no second note is made.
+/// A file whose text the note's document did not take (#3744): too large for the editor, or a
+/// note that already had a body. Its row names no text the document holds, and a move made
+/// while the app was closed still pairs on the bytes the tier read: the note keeps its id and
+/// its file, and no second note is made.
 #[test]
 fn a_file_whose_text_its_note_did_not_take_still_pairs_a_move_made_while_closed() {
     let large = larger_than_the_editor_takes();
     for (case, text, body_first) in [
         ("larger than the editor takes", large.as_str(), false),
-        (
-            "frontmatter that does not parse",
-            "---\ntitle: [\n---\nbody\n",
-            false,
-        ),
         ("a body the note already had", "the file's own text\n", true),
     ] {
         let (mut e, identity) = env_naming_notes(body_first);
@@ -161,35 +156,57 @@ fn a_file_whose_text_its_note_did_not_take_still_pairs_a_move_made_while_closed(
     }
 }
 
-/// A note indexed whole whose file then changed into what its document does not take, while
-/// the app was closed (#3744): the row keeps the hash of the text the document holds, and the
-/// bytes the tier read at the next open are what a later move pairs on.
+/// A note indexed whole whose file then grew larger than its document takes, while the app
+/// was closed (#3744): the row keeps the hash of the text the document holds, and the bytes
+/// the tier read at the next open are what a later move pairs on.
 #[test]
 fn a_note_whose_file_changed_past_what_its_document_takes_still_pairs_a_later_move() {
-    let large = larger_than_the_editor_takes();
-    for (case, edited) in [
-        ("grew larger than the editor takes", large.as_str()),
-        (
-            "frontmatter that stopped parsing",
-            "---\ntitle: [\n---\na small note\n",
-        ),
+    let (mut e, identity) = env_naming_notes(false);
+    e.write("old.md", "a small note\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = e.rows()[0].0.clone();
+    e.close();
+
+    e.write("old.md", &larger_than_the_editor_takes());
+    e.drain();
+    e.open();
+    e.facts_until(indexed);
+    let row = e.core().note_files().by_id(&id).unwrap().unwrap();
+    assert_eq!(
+        row.content_hash,
+        Some(content_hash("a small note\n")),
+        "the document took the edit"
+    );
+    a_closed_move_pairs(&mut e, &identity, id, "grew larger than the editor takes");
+}
+
+/// A file whose frontmatter does not parse is taken (#3750): its document holds the text, so
+/// its row names those bytes, whether the file was first read that way or changed into it
+/// while the app was closed, and a move made while it was closed pairs on them.
+#[test]
+fn a_file_whose_frontmatter_does_not_parse_is_taken_and_pairs_a_move_made_while_closed() {
+    let broken = "---\ntitle: [\n---\na small note\n";
+    for (case, first) in [
+        ("frontmatter that does not parse", broken),
+        ("frontmatter that stopped parsing", "a small note\n"),
     ] {
         let (mut e, identity) = env_naming_notes(false);
-        e.write("old.md", "a small note\n");
+        e.write("old.md", first);
         e.open();
         e.facts_until(indexed);
         let id = e.rows()[0].0.clone();
         e.close();
 
-        e.write("old.md", edited);
+        e.write("old.md", broken);
         e.drain();
         e.open();
         e.facts_until(indexed);
         let row = e.core().note_files().by_id(&id).unwrap().unwrap();
         assert_eq!(
             row.content_hash,
-            Some(content_hash("a small note\n")),
-            "{case}: the document took the edit"
+            Some(content_hash(broken)),
+            "{case}: the document took the text"
         );
         a_closed_move_pairs(&mut e, &identity, id, case);
     }
