@@ -9,6 +9,7 @@ use crate::updater::scripted::{ApplyCall, ScriptStep, ScriptedBackend, ScriptedF
 use crate::updater::state::UpdaterStatus;
 
 mod install;
+mod leftover;
 mod outcome;
 
 const RAW: &str = "2026.1015.1";
