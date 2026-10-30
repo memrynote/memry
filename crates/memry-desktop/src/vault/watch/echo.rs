@@ -89,6 +89,12 @@ impl EchoGuard {
     /// `path` was seen present with no hash to compare (a file that is not markdown). The app's
     /// removal of it is over: a later outside delete must pass.
     pub fn seen_present(&self, path: &str) {
+        self.cancel_removal(path);
+    }
+
+    /// The removal of `path` told with [`Self::will_remove`] did not happen, or is to be
+    /// reported after all: an absence seen from now on is not the app's.
+    pub fn cancel_removal(&self, path: &str) {
         let mut state = self.lock();
         if state.by_path.get(path) == Some(&Expected::Gone) {
             state.forget(path);

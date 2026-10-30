@@ -194,7 +194,8 @@ enum Piece {
 #[derive(Debug, Clone)]
 pub struct JournalFormat {
     pieces: Vec<Piece>,
-    regex: Regex,
+    /// `None` for a format too large to compile, which no name matches.
+    regex: Option<Regex>,
 }
 
 impl JournalFormat {
@@ -226,13 +227,20 @@ impl JournalFormat {
                 Piece::Literal(ch) => regex::escape(ch.encode_utf8(&mut [0; 4])),
             })
             .collect();
-        let regex = Regex::new(&format!("^{body}$")).expect("a journal format compiles");
+        let regex = Regex::new(&format!("^{body}$"))
+            .inspect_err(|error| {
+                tracing::warn!(
+                    scope = "journal_format",
+                    "a journal date format matches no name: {error}"
+                );
+            })
+            .ok();
         Self { pieces, regex }
     }
 
     /// The date a name (without `.md`) stands for, or `None` when it is not a journal's.
     pub fn parse(&self, stem: &str) -> Option<JournalDate> {
-        let captures = self.regex.captures(stem)?;
+        let captures = self.regex.as_ref()?.captures(stem)?;
         let tokens = self.pieces.iter().filter_map(|piece| match piece {
             Piece::Token(token) => Some(*token),
             Piece::Literal(_) => None,

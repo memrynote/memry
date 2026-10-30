@@ -4,7 +4,13 @@
 //! A format may carry folders (`YYYY/MMMM/YYYY-MM-DD`), so a rename can move a file between
 //! folders of the journal folder: `2025-01-14.md` becomes `2025/January/2025-01-14.md` and back.
 //! Target folders are created on demand; folders a move leaves empty are removed, never the
-//! journal folder and never one that still holds anything.
+//! journal folder and never one that still holds anything, and so are the folders a move that
+//! failed had created.
+//!
+//! Both formats are taken in the canonical form the config holds and every reader parses with
+//! ([`normalize_journal_date_format`]): no `.` or `..` folder, a backslash read as `/`. A new
+//! name that would still land outside the vault, through a linked folder or a drive (`C:`), is
+//! not moved.
 //!
 //! A file is a journal only while its name matches the configured format: switching
 //! `YYYY-MM-DD` to `YYYY-MM-DD dddd` without renaming would leave `2026-09-25.md` behind as a
@@ -16,17 +22,28 @@
 //!
 //! Never overwrites. A target already on disk (under any case), held by a row, or claimed by
 //! another file of the same pass leaves the source as it is, and the move itself refuses a file
-//! that appeared there since ([`rename_no_replace`]). A format that cannot name every date
-//! renames nothing.
+//! that appeared there since ([`rename_no_replace`]). A new name that differs from the file's
+//! only in case is a respelling in place only when it names that very file, and no link to it
+//! (a symbolic link, or a second hard link a rename would leave behind). A format that cannot
+//! name every date renames nothing.
 //!
 //! Each file and its row move as one step under the rows' lane, the file first: when the row
 //! cannot move, the file goes back. The consumer and the write-back take the same lane, so they
-//! see the file and its row at the old path or both at the new one. A crash between the two
-//! leaves the file at the new path and the row at the old, which the next open's rescan pairs
-//! as a move of that note. Electron stops its watcher for the pass because its watcher reads a
-//! path with the config of the moment; the caller here may pause it too, and the rows already
-//! name each new path before the watcher reports it. The refusal when a lock covers a file is
-//! Step 14's (#3531).
+//! see the file and its row at the old path or both at the new one. The lane is held for one
+//! rename and its retries on a transient error ([`RETRY_DELAYS_MS`], under a second), and for a
+//! second one when the file goes back. A crash between the file and its row leaves the file at
+//! the new path and the row at the old, which the next open's rescan pairs as a move of that
+//! note.
+//!
+//! The watcher keeps running, and a move the app makes is never a delete to it. Before each move
+//! the pass tells the own-write record that the old name goes ([`EchoGuard::will_remove`]): the
+//! watcher drops that name without tracking a delete, and finds the file at its new name as its
+//! row names it. Left to pair the two itself, the watcher could not tell apart journals with the
+//! same bytes whose new names are not their old ones; each would settle as a delete, and the
+//! note with it. A move that does not happen withdraws its record. Electron stops its watcher for
+//! the pass instead. The refusal when a lock covers a file is Step 14's (#3531).
+//!
+//! [`EchoGuard::will_remove`]: super::watch::EchoGuard::will_remove
 
 use std::collections::HashSet;
 use std::fs;
@@ -37,12 +54,14 @@ use std::time::Duration;
 
 use memry_core::api::vault::Vault;
 
-use super::consumer::Applied;
 use super::consumer::rows::{RowError, RowOwner, RowSession};
+use super::consumer::{Applied, VaultTier};
 use super::fs_atomic::{RETRY_DELAYS_MS, rename_no_replace, with_transient_retry};
-use super::journal_format::{JournalDate, JournalFormat, normalize_journal_folder};
-use super::paths::safe_join;
-use crate::shell::file_open::file_identity;
+use super::journal_format::{
+    JournalDate, JournalFormat, normalize_journal_date_format, normalize_journal_folder,
+};
+use super::paths::{resolve_vault_file, safe_join};
+use crate::shell::file_open::{Resolution, file_identity};
 use crate::web::extract::utils::js;
 
 const SCOPE: &str = "journal_rename";
@@ -81,12 +100,13 @@ pub struct JournalRenameResult {
     pub failed: usize,
 }
 
-/// The open vault a pass works in: its folder, its core and the rows' lane.
+/// The open vault a pass works in: its folder, its core, and the tier whose rows' lane and
+/// own-write record the moves go through.
 #[derive(Clone, Copy)]
 pub struct JournalVault<'a> {
     pub root: &'a Path,
     pub vault: &'a Arc<Vault>,
-    pub rows: &'a RowOwner,
+    pub tier: &'a VaultTier,
 }
 
 /// Two-digit month and day, distinct from each other and across both dates, so a format
@@ -157,9 +177,9 @@ pub fn plan_journal_renames(
     plan
 }
 
-/// Renames the journal files of `journal_folder` from `old_format` to `new_format`. An error
-/// only when the journal folder could not be listed; a file that could not move is counted in
-/// `failed` and the pass goes on.
+/// Renames the journal files of `journal_folder` from `old_format` to `new_format`, both taken
+/// in their canonical form. An error only when the journal folder could not be listed; a file
+/// that could not move is counted in `failed` and the pass goes on.
 pub fn rename_journals_for_format_change(
     at: JournalVault<'_>,
     journal_folder: &str,
@@ -171,7 +191,11 @@ pub fn rename_journals_for_format_change(
     if folder.is_empty() {
         return Ok(result);
     }
-    if !is_complete_journal_format(new_format) {
+    let (old_format, new_format) = (
+        normalize_journal_date_format(old_format),
+        normalize_journal_date_format(new_format),
+    );
+    if !is_complete_journal_format(&new_format) {
         tracing::warn!(
             scope = SCOPE,
             "the new journal date format cannot name every date; files left as they are"
@@ -184,13 +208,14 @@ pub fn rename_journals_for_format_change(
     let Some(files) = list_files(&dir)? else {
         return Ok(result);
     };
-    let plan = plan_journal_renames(&files, old_format, new_format);
+    let plan = plan_journal_renames(&files, &old_format, &new_format);
     result.skipped = plan.skipped.len();
     if plan.renames.is_empty() {
         log_skipped(&plan.skipped);
         return Ok(result);
     }
-    let session = match at.rows.session_for(at.vault) {
+    let rows = at.tier.rows();
+    let session = match rows.session_for(at.vault) {
         Ok(session) => session,
         Err(error) => {
             tracing::error!(scope = SCOPE, "no journal file renamed: {error}");
@@ -206,7 +231,7 @@ pub fn rename_journals_for_format_change(
         );
         match move_one(
             at,
-            session,
+            (&rows, session),
             &dir,
             (&rename.from, &rename.to),
             (&from_rel, &to_rel),
@@ -241,21 +266,29 @@ pub fn rename_journals_for_format_change(
 
 /// Takes back the renames of a format change whose new format was not saved, newest first,
 /// file then row as the forward pass moved them, so every journal file matches the format it
-/// is read with again. A file that cannot go back is logged and left where it is.
-pub fn revert_journal_renames(at: JournalVault<'_>, journal_folder: &str, moved: &[JournalRename]) {
+/// is read with again. Returns the renames that did not go back, in the order given: each file
+/// is logged and left at its new name, with its row.
+pub fn revert_journal_renames(
+    at: JournalVault<'_>,
+    journal_folder: &str,
+    moved: &[JournalRename],
+) -> Vec<JournalRename> {
     let folder = normalize_journal_folder(journal_folder);
     if folder.is_empty() || moved.is_empty() {
-        return;
+        return moved.to_vec();
     }
     let Some(dir) = journal_dir(at.root, &folder) else {
-        return;
+        return moved.to_vec();
     };
-    let session = match at.rows.session_for(at.vault) {
+    let rows = at.tier.rows();
+    let session = match rows.session_for(at.vault) {
         Ok(session) => session,
         Err(error) => {
-            return tracing::error!(scope = SCOPE, "no journal file moved back: {error}");
+            tracing::error!(scope = SCOPE, "no journal file moved back: {error}");
+            return moved.to_vec();
         }
     };
+    let mut left = Vec::new();
     for rename in moved.iter().rev() {
         let (from_rel, to_rel) = (
             format!("{folder}/{}", rename.from),
@@ -263,12 +296,15 @@ pub fn revert_journal_renames(at: JournalVault<'_>, journal_folder: &str, moved:
         );
         match move_one(
             at,
-            session,
+            (&rows, session),
             &dir,
             (&rename.to, &rename.from),
             (&to_rel, &from_rel),
         ) {
-            Ok(Moved::Done) => prune_empty_parents(&dir, &rename.to),
+            Ok(Moved::Done) => {
+                prune_empty_parents(&dir, &rename.to);
+                continue;
+            }
             Ok(Moved::TargetTaken) => tracing::error!(
                 scope = SCOPE,
                 "a journal file could not move back: its old name is taken"
@@ -277,7 +313,10 @@ pub fn revert_journal_renames(at: JournalVault<'_>, journal_folder: &str, moved:
                 tracing::error!(scope = SCOPE, "a journal file could not move back: {error}");
             }
         }
+        left.push(rename.clone());
     }
+    left.reverse();
+    left
 }
 
 enum Moved {
@@ -290,6 +329,8 @@ enum Moved {
 enum MoveError {
     #[error("{0}")]
     Rows(#[from] RowError),
+    #[error("the new name leads out of the vault")]
+    Outside,
     #[error("the file did not move: {0}")]
     File(io::Error),
     /// The file moved and its row did not; the file went back.
@@ -301,12 +342,22 @@ enum MoveError {
 /// `dir`, `paths` to the vault.
 fn move_one(
     at: JournalVault<'_>,
-    session: RowSession,
+    (rows, session): (&RowOwner, RowSession),
     dir: &Path,
     (from, to): (&str, &str),
     (from_path, to_path): (&str, &str),
 ) -> Result<Moved, MoveError> {
-    let mut lane = at.rows.lane_of(session)?;
+    let (Some(source), Some(target)) = (safe_join(dir, &[from]), safe_join(dir, &[to])) else {
+        return Err(MoveError::Outside);
+    };
+    // A name that is there is the move's to refuse; a free one must not lead out of the vault.
+    if fs::symlink_metadata(&target).is_err()
+        && resolve_vault_file(at.root, to_path).map_err(MoveError::File)? == Resolution::Outside
+    {
+        return Err(MoveError::Outside);
+    }
+    let case_only = js::to_lower(from) == js::to_lower(to);
+    let mut lane = rows.lane_of(session)?;
     let row = lane.row_at(from_path).map_err(RowError::from)?;
     let target_free = match &row {
         Some(row) => lane.check(&row.note_id, to_path),
@@ -315,21 +366,32 @@ fn move_one(
     if target_free.is_err() {
         return Ok(Moved::TargetTaken);
     }
-    let (source, target) = (join(dir, from), join(dir, to));
-    match move_file(&source, &target) {
-        Ok(()) => {}
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-            return Ok(Moved::TargetTaken);
-        }
-        Err(error) => return Err(MoveError::File(error)),
+    let echo = at.tier.echo();
+    let created = missing_folders(dir, &target);
+    echo.will_remove(from_path);
+    if let Err(error) = move_file(&source, &target, case_only) {
+        echo.cancel_removal(from_path);
+        remove_folders(&created);
+        return match error.kind() {
+            io::ErrorKind::AlreadyExists => Ok(Moved::TargetTaken),
+            _ => Err(MoveError::File(error)),
+        };
     }
     if let Some(row) = row {
         if let Err(error) = lane.rename(&row.note_id, to_path) {
-            // File and row must agree, or the next open takes the moved file for a new note
-            // and strands the row. A file that cannot go back is paired by that open's rescan.
-            if let Err(back) = move_file(&target, &source) {
-                tracing::error!(scope = SCOPE, "a journal file could not go back: {back}");
+            // File and row must agree, or the moved file is taken for a new note and the row
+            // stranded.
+            echo.will_remove(to_path);
+            match move_file(&target, &source, case_only) {
+                Ok(()) => remove_folders(&created),
+                Err(back) => {
+                    // The watcher pairs the file at its new name with the row by its bytes, as
+                    // the next open's rescan does.
+                    echo.cancel_removal(to_path);
+                    tracing::error!(scope = SCOPE, "a journal file could not go back: {back}");
+                }
             }
+            echo.cancel_removal(from_path);
             return Err(MoveError::Row(error));
         }
         lane.publish(Applied::Renamed {
@@ -349,24 +411,56 @@ fn move_one(
 }
 
 /// Moves `source` to `target` without replacing anything, creating the target's folders. A
-/// name that differs only in case from the source's, on a volume that folds case, names the
-/// source itself, and that respelling is a plain rename.
-fn move_file(source: &Path, target: &Path) -> io::Result<()> {
+/// `case_only` new name, on a volume that folds case, names the source itself, and that
+/// respelling is a plain rename.
+fn move_file(source: &Path, target: &Path, case_only: bool) -> io::Result<()> {
     if let Some(parent) = target.parent() {
         fs::create_dir_all(parent)?;
     }
     let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
     match with_transient_retry(&delays, || rename_no_replace(source, target)) {
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists && same_file(source, target) => {
+        Err(error)
+            if error.kind() == io::ErrorKind::AlreadyExists
+                && case_only
+                && is_respelling(source, target) =>
+        {
             with_transient_retry(&delays, || fs::rename(source, target))
         }
         other => other,
     }
 }
 
-fn same_file(a: &Path, b: &Path) -> bool {
-    let id = |path: &Path| fs::File::open(path).and_then(|file| file_identity(&file));
-    matches!((id(a), id(b)), (Ok((a, _)), Ok((b, _))) if a == b)
+/// Whether `target` is `source` itself under another spelling: one regular file with a single
+/// link. A symbolic link there would be replaced, and a rename between two hard links of one
+/// file does nothing and leaves both.
+fn is_respelling(source: &Path, target: &Path) -> bool {
+    let id = |path: &Path| {
+        if !fs::symlink_metadata(path)?.is_file() {
+            return Err(io::Error::from(io::ErrorKind::InvalidInput));
+        }
+        fs::File::open(path).and_then(|file| file_identity(&file))
+    };
+    matches!((id(source), id(target)), (Ok((a, 1)), Ok((b, 1))) if a == b)
+}
+
+/// The folders between `dir` and `target` that do not exist yet, deepest first: what a move
+/// that fails removes again.
+fn missing_folders(dir: &Path, target: &Path) -> Vec<PathBuf> {
+    target
+        .ancestors()
+        .skip(1)
+        .take_while(|folder| *folder != dir && fs::symlink_metadata(folder).is_err())
+        .map(Path::to_path_buf)
+        .collect()
+}
+
+fn remove_folders(created: &[PathBuf]) {
+    for folder in created {
+        // `remove_dir` refuses a folder something was put in meanwhile, which ends it.
+        if fs::remove_dir(folder).is_err() {
+            return;
+        }
+    }
 }
 
 /// Every file under `dir` as a `/`-separated path relative to it; dot entries (`.obsidian`,
