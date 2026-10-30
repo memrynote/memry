@@ -4,10 +4,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 import {
   VAULT_ACTIVITY_RETENTION_DAYS,
-  type VaultActivityEntry,
-  type VaultActivityFilter,
-  type VaultActivityRetentionDays
+  type VaultActivityFilter
 } from '@memry/contracts/vault-activity-api'
+import { commands, type VaultActivityEntry } from '../../../../generated/bindings'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Select,
@@ -111,10 +110,8 @@ export function VaultActivitySettings({ focusTarget, focusRequestId }: VaultActi
 
   const handleRetentionChange = useCallback(
     async (value: string) => {
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control only offers members of this union, so its string value is always one of them
-      const days = Number(value) as VaultActivityRetentionDays
       try {
-        await window.api.vaultActivity.setRetention(days)
+        await commands.vaultActivitySetRetention(Number(value))
         await refetch()
       } catch (err) {
         toast.error(extractErrorMessage(err, t('vault.activity.actionFailed')))
@@ -125,7 +122,7 @@ export function VaultActivitySettings({ focusTarget, focusRequestId }: VaultActi
 
   const handleReveal = useCallback(async () => {
     try {
-      await window.api.vaultActivity.reveal()
+      await commands.vaultActivityReveal()
     } catch (err) {
       toast.error(extractErrorMessage(err, t('vault.activity.actionFailed')))
     }
@@ -133,7 +130,7 @@ export function VaultActivitySettings({ focusTarget, focusRequestId }: VaultActi
 
   const handleClear = useCallback(async () => {
     try {
-      await window.api.vaultActivity.clear()
+      await commands.vaultActivityClear()
       setConfirmClear(false)
       await refetch()
     } catch (err) {

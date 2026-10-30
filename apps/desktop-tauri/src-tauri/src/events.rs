@@ -57,6 +57,11 @@ pub struct CrdtWriteBackFailedEvent {
     pub title: Option<String>,
 }
 
+/// Entries of the vault activity log were added or removed, or the vault closed
+/// (`vault-activity:changed`). No payload; the renderer refetches. Throttled by the log.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct VaultActivityChangedEvent;
+
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultListChangedEvent;

@@ -166,6 +166,14 @@ export const commands = {
 	vaultSetDefault: (path: string) => __TAURI_INVOKE<null>("vault_set_default", { path }),
 	vaultSetIcon: (path: string, icon: string | null) => __TAURI_INVOKE<null>("vault_set_icon", { path, icon }),
 	vaultSwitch: (path: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_switch", { path }),
+	/**  Drops every retained entry, on disk too. */
+	vaultActivityClear: () => __TAURI_INVOKE<null>("vault_activity_clear"),
+	/**  The retained entries, newest first. */
+	vaultActivityList: (limit: number | null, filter: VaultActivityFilter | null) => __TAURI_INVOKE<VaultActivityList>("vault_activity_list", { limit, filter }),
+	/**  Shows the log file in Finder or Explorer, creating it first. `false` when no vault is open. */
+	vaultActivityReveal: () => __TAURI_INVOKE<boolean>("vault_activity_reveal"),
+	/**  Keeps entries for `days` (7, 30 or 90). */
+	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
@@ -190,6 +198,7 @@ export const events = {
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	updaterStateChangedEvent: makeEvent<UpdaterStateChangedEvent, UpdaterStateChangedEvent>("updater-state-changed-event"),
+	vaultActivityChangedEvent: makeEvent<VaultActivityChangedEvent, VaultActivityChangedEvent>("vault-activity-changed-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
 	vaultIndexRecoveredEvent: makeEvent<VaultIndexRecoveredEvent, VaultIndexRecoveredEvent>("vault-index-recovered-event"),
 	vaultListChangedEvent: makeEvent<VaultListChangedEvent, VaultListChangedEvent>("vault-list-changed-event"),
@@ -593,6 +602,50 @@ export type UpdaterStateChangedEvent = AppUpdateState;
 export type UpdaterStatus = "unavailable" | "idle" | "checking" | "available" | "downloading" | "downloaded" | "installing" | "up-to-date" | "error";
 
 export type Value = null | boolean | number | string | Value[] | { [key in string]: Value };
+
+/**
+ *  Entries of the vault activity log were added or removed, or the vault closed
+ *  (`vault-activity:changed`). No payload; the renderer refetches. Throttled by the log.
+ */
+export type VaultActivityChangedEvent = null;
+
+/**  An entry as the renderer lists it: the fields of the v1 schema, nothing else. */
+export type VaultActivityEntry = {
+	/**  Always 1. */
+	v: number,
+	id: string,
+	/**  ISO timestamp. */
+	at: string,
+	kind: VaultActivityKind,
+	source: VaultActivitySource,
+	/**  Vault-relative path, when the entry is about one file. */
+	path?: string,
+	oldPath?: string,
+	/**  A coded reason; a code from a newer build still parses. */
+	reason?: string,
+	message?: string,
+	importer?: string,
+	/**  Numbers as JSON reads them; integers in every writer. */
+	counts?: { [key in string]: number },
+	items?: string[],
+};
+
+/**  `problems` lists skipped and failed entries, and summaries that count either. */
+export type VaultActivityFilter = "all" | "problems";
+
+/**  `VAULT_ACTIVITY_KINDS`. */
+export type VaultActivityKind = "added" | "removed" | "renamed" | "skipped" | "failed" | "scan" | "import";
+
+export type VaultActivityList = {
+	/**  Newest first. */
+	entries: VaultActivityEntry[],
+	retentionDays: number,
+	/**  `false` when no vault is open. */
+	available: boolean,
+};
+
+/**  `VAULT_ACTIVITY_SOURCES`. */
+export type VaultActivitySource = "watcher" | "scan" | "import" | "drop" | "sync";
 
 /**  A vault operation failed (`vault:error`). */
 export type VaultErrorEvent = {

@@ -1,7 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { ListVaultActivityResult } from '@memry/contracts/vault-activity-api'
+import type { VaultActivityList } from '../../../../generated/bindings'
+
+const api = vi.hoisted(() => ({
+  list: vi.fn(),
+  clear: vi.fn(),
+  reveal: vi.fn(),
+  setRetention: vi.fn(),
+  onChanged: null as (() => void) | null
+}))
+
+vi.mock('../../../../generated/bindings', () => ({
+  commands: {
+    vaultActivityList: api.list,
+    vaultActivityClear: api.clear,
+    vaultActivityReveal: api.reveal,
+    vaultActivitySetRetention: api.setRetention
+  },
+  events: {
+    vaultActivityChangedEvent: {
+      listen: (handler: (event: { payload: null }) => void) => {
+        api.onChanged = () => handler({ payload: null })
+        return Promise.resolve(() => {})
+      }
+    }
+  }
+}))
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
@@ -32,7 +57,7 @@ function renderActivity(props: Parameters<typeof VaultActivitySettings>[0] = {})
   )
 }
 
-const result = (fields: Partial<ListVaultActivityResult>): ListVaultActivityResult => ({
+const result = (fields: Partial<VaultActivityList>): VaultActivityList => ({
   entries: [],
   retentionDays: 30,
   available: true,
@@ -42,10 +67,14 @@ const result = (fields: Partial<ListVaultActivityResult>): ListVaultActivityResu
 describe('VaultActivitySettings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    api.clear.mockResolvedValue(null)
+    api.reveal.mockResolvedValue(true)
+    api.setRetention.mockResolvedValue(null)
+    api.onChanged = null
   })
 
   it('lists entries with their sentence', async () => {
-    window.api.vaultActivity.list = vi.fn().mockResolvedValue(
+    api.list.mockResolvedValue(
       result({
         entries: [
           {
@@ -70,32 +99,27 @@ describe('VaultActivitySettings', () => {
   })
 
   it('shows the empty state and refetches with the problems filter', async () => {
-    window.api.vaultActivity.list = vi.fn().mockResolvedValue(result({}))
+    api.list.mockResolvedValue(result({}))
 
     renderActivity()
 
     expect(await screen.findByText('vault.activity.empty')).toBeInTheDocument()
     fireEvent.click(screen.getByText('vault.activity.filter.problems'))
-    await waitFor(() =>
-      expect(window.api.vaultActivity.list).toHaveBeenLastCalledWith({
-        limit: 200,
-        filter: 'problems'
-      })
-    )
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(200, 'problems'))
     expect(await screen.findByText('vault.activity.emptyProblems')).toBeInTheDocument()
   })
 
   it('reveals the log file', async () => {
-    window.api.vaultActivity.list = vi.fn().mockResolvedValue(result({}))
+    api.list.mockResolvedValue(result({}))
 
     renderActivity()
 
     fireEvent.click(await screen.findByText('vault.activity.reveal'))
-    await waitFor(() => expect(window.api.vaultActivity.reveal).toHaveBeenCalled())
+    await waitFor(() => expect(api.reveal).toHaveBeenCalled())
   })
 
   it('clears only after confirmation', async () => {
-    window.api.vaultActivity.list = vi.fn().mockResolvedValue(
+    api.list.mockResolvedValue(
       result({
         entries: [
           {
@@ -114,13 +138,13 @@ describe('VaultActivitySettings', () => {
 
     await screen.findByText('vault.activity.entry.added:a.md')
     fireEvent.click(screen.getByText('vault.activity.clear'))
-    expect(window.api.vaultActivity.clear).not.toHaveBeenCalled()
+    expect(api.clear).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('vault.activity.clearConfirm'))
-    await waitFor(() => expect(window.api.vaultActivity.clear).toHaveBeenCalled())
+    await waitFor(() => expect(api.clear).toHaveBeenCalled())
   })
 
   it('names the importer and expands a summary into its items', async () => {
-    window.api.vaultActivity.list = vi.fn().mockResolvedValue(
+    api.list.mockResolvedValue(
       result({
         entries: [
           {
@@ -146,7 +170,7 @@ describe('VaultActivitySettings', () => {
   it('scrolls itself into view when Settings asks for it', async () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView
-    window.api.vaultActivity.list = vi.fn().mockResolvedValue(result({}))
+    api.list.mockResolvedValue(result({}))
 
     renderActivity({ focusTarget: 'vault-activity', focusRequestId: 1 })
 
@@ -157,7 +181,7 @@ describe('VaultActivitySettings', () => {
   it('does not scroll for another section focus target', async () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView
-    window.api.vaultActivity.list = vi.fn().mockResolvedValue(result({}))
+    api.list.mockResolvedValue(result({}))
 
     renderActivity({ focusTarget: 'voice-local-model', focusRequestId: 1 })
 
@@ -166,7 +190,7 @@ describe('VaultActivitySettings', () => {
   })
 
   it('shows a load failure in place of the list', async () => {
-    window.api.vaultActivity.list = vi.fn().mockRejectedValue(new Error('disk gone'))
+    api.list.mockRejectedValue(new Error('disk gone'))
 
     renderActivity()
 
@@ -174,7 +198,7 @@ describe('VaultActivitySettings', () => {
   })
 
   it('reports a failed reveal or clear with a toast', async () => {
-    window.api.vaultActivity.list = vi.fn().mockResolvedValue(
+    api.list.mockResolvedValue(
       result({
         entries: [
           {
@@ -188,8 +212,8 @@ describe('VaultActivitySettings', () => {
         ]
       })
     )
-    window.api.vaultActivity.reveal = vi.fn().mockRejectedValue(new Error('no finder'))
-    window.api.vaultActivity.clear = vi.fn().mockRejectedValue(new Error('read-only'))
+    api.reveal.mockRejectedValue(new Error('no finder'))
+    api.clear.mockRejectedValue(new Error('read-only'))
 
     renderActivity()
 
@@ -203,25 +227,18 @@ describe('VaultActivitySettings', () => {
   })
 
   it('refetches when the main process says the log changed', async () => {
-    let onChanged: (() => void) | undefined
-    window.api.onVaultActivityChanged = vi.fn((callback: () => void) => {
-      onChanged = callback
-      return () => {}
-    })
-    window.api.vaultActivity.list = vi.fn().mockResolvedValue(result({}))
+    api.list.mockResolvedValue(result({}))
 
     renderActivity()
 
     await screen.findByText('vault.activity.empty')
-    const calls = vi.mocked(window.api.vaultActivity.list).mock.calls.length
-    onChanged?.()
-    await waitFor(() =>
-      expect(vi.mocked(window.api.vaultActivity.list).mock.calls.length).toBeGreaterThan(calls)
-    )
+    const calls = api.list.mock.calls.length
+    api.onChanged?.()
+    await waitFor(() => expect(api.list.mock.calls.length).toBeGreaterThan(calls))
   })
 
   it('says to open a vault when none is open', async () => {
-    window.api.vaultActivity.list = vi.fn().mockResolvedValue(result({ available: false }))
+    api.list.mockResolvedValue(result({ available: false }))
 
     renderActivity()
 

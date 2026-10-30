@@ -340,6 +340,7 @@ pub(super) fn applier(
         feed: vault.external_feed(store.clone()).ok(),
         settings: vault.app_settings(store.clone()).ok(),
         session: rows.session_for(vault).unwrap(),
+        activity: crate::vault::activity::ActivityLog::new(),
     }
 }
 
@@ -347,6 +348,7 @@ pub(super) fn only_note(f: &Fixture, rel: &str) -> String {
     f.row(rel).expect("a row").note_id
 }
 
+mod activity;
 mod facts;
 mod flood;
 mod hash_rule;

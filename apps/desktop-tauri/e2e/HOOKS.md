@@ -97,8 +97,8 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 - `MEMRY_TEST_DIALOG_RESULT` (through the control file `extraEnv`) gives the queue at start:
   the plain word `confirm` or `cancel` answers every `Confirm` of the run, and a JSON list of
   `{ "kind": "OpenFolder", "paths": ["/tmp/x"] }` objects is queued in order.
-- With an open gate `vault_reveal` records the path instead of opening a file manager;
-  `e2e_revealed_paths` reads it back.
+- With an open gate `vault_reveal` and `vault_activity_reveal` record the path instead of
+  opening a file manager; `e2e_revealed_paths` reads it back.
 
 ## Vault write-back
 

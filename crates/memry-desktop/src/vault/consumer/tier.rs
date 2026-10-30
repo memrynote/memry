@@ -15,6 +15,7 @@ use super::rows::{RowOwner, RowSession};
 use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
+use crate::vault::activity::ActivityLog;
 use crate::vault::config::read_vault_config;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
 use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed, reconcile};
@@ -23,6 +24,9 @@ pub struct VaultTier {
     /// Holds the device key the feed writes under.
     store: Arc<dyn SecureStore>,
     rows: Arc<RowOwner>,
+    /// Open with the vault, whether or not its watcher starts; the consumer records what the
+    /// watcher reports into it.
+    activity: Arc<ActivityLog>,
     identity: Mutex<Arc<dyn NoteIdentity>>,
     /// Every session's failed write-backs, for the notice.
     failures: broadcast::Sender<WriteBackFailed>,
@@ -74,6 +78,7 @@ impl VaultTier {
         Arc::new(Self {
             store,
             rows: RowOwner::new(),
+            activity: ActivityLog::new(),
             identity: Mutex::new(Arc::new(DeferIdentity)),
             failures: broadcast::channel(64).0,
             open: Mutex::new(None),
@@ -97,6 +102,11 @@ impl VaultTier {
 
     fn slot(&self) -> MutexGuard<'_, Option<Arc<Open>>> {
         lock(&self.open)
+    }
+
+    /// The activity log of the open vault.
+    pub fn activity(&self) -> Arc<ActivityLog> {
+        self.activity.clone()
     }
 
     /// The lane the app's own file operations write their rows through.
@@ -261,6 +271,7 @@ impl VaultTier {
             identity,
             feed,
             settings: vault.vault.app_settings(self.store.clone()).ok(),
+            activity: self.activity.clone(),
         };
         let after_walk: AfterWalk = {
             let writeback = writeback.clone();
@@ -301,7 +312,8 @@ impl VaultTier {
     }
 
     /// Registers the open and close hooks. A watcher that cannot start fails its hook, which
-    /// the session reports and survives: the vault opens without file watching.
+    /// the session reports and survives: the vault opens without file watching, with its
+    /// activity log open.
     pub fn register(self: &Arc<Self>, session: &Session) {
         let tier = self.clone();
         session.on_open(
@@ -309,15 +321,22 @@ impl VaultTier {
             OpenStage::Watcher,
             Arc::new(move |vault| {
                 tier.stop(None);
+                tier.activity.open(&vault.path);
                 let open = tier.start(vault)?;
                 *tier.slot() = Some(Arc::new(open));
                 Ok(())
             }),
         );
         let tier = self.clone();
+        // After the watcher and the consumer stop, so nothing records into a closed log. A late
+        // close of an earlier vault leaves the open one's log alone: its path differs, and the
+        // session reopens no vault a close hook still holds.
         session.on_close(
             "vault-watcher",
-            Arc::new(move |view| tier.stop(Some(&view.vault))),
+            Arc::new(move |view| {
+                tier.stop(Some(&view.vault));
+                tier.activity.close(&view.path);
+            }),
         );
     }
 }
