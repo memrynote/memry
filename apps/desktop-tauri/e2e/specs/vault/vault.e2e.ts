@@ -17,10 +17,11 @@ import { readMainLog } from '../../harness/wait'
 const real = (path: string): string => realpathSync(path)
 
 /**
- * An error the app's Rust side logged: its scopes are snake_case (`logging/format.rs`). The
- * renderer's are not, and until their steps port them its not-ported calls log errors.
+ * An error the vault file tier logged (`logging/format.rs` writes `ts [error] [scope]`). Other
+ * scopes log errors of their own here: the renderer's not-ported calls, and on a Linux runner
+ * without `update-desktop-database` the deep-link plugin (#3772).
  */
-const RUST_ERROR = /\[error\] \[[a-z][a-z0-9_]*\]/
+const VAULT_ERROR = /\[error\] \[vault_(consumer|writeback)\]/
 
 /** A parent folder under the temp dir, removed by the caller. */
 function tempParent(): string {
@@ -41,7 +42,7 @@ test('opens the registered vault at launch and lays out the core databases', asy
   await expect(page.getByText(basename(testVaultPath)).first()).toBeVisible({ timeout: 30_000 })
   const log = readMainLog(app.dirs.logDir)
   expect(log).toContain('vault open')
-  expect(log).not.toMatch(RUST_ERROR)
+  expect(log).not.toMatch(VAULT_ERROR)
 })
 
 /**
@@ -74,7 +75,7 @@ test('creates a vault under a path with spaces and non-ASCII, and restores it af
     const status = await vaultStatus(page)
     expect(status.isOpen).toBe(true)
     expect(real(status.path as string)).toBe(real(vaultPath))
-    expect(readMainLog(app.dirs.logDir)).not.toMatch(RUST_ERROR)
+    expect(readMainLog(app.dirs.logDir)).not.toMatch(VAULT_ERROR)
   } finally {
     await closeVault(page)
     removeDir(join(parent, '..'))
