@@ -302,6 +302,23 @@ fn a_file_whose_note_could_not_be_named_is_retried_and_then_gets_one_note() {
     assert!(f.row("a.md").is_some());
 }
 
+/// A new file missing when it is read (a save that left its name missing, #3736) is read again,
+/// not dropped: the watcher looks once more and reports it if it is back.
+#[test]
+fn a_new_file_missing_when_it_is_read_is_retried() {
+    let f = fixture();
+    let step = f.applier.apply(VaultEvent::Added {
+        path: "a.md".into(),
+        file_type: FileType::Markdown,
+        size: 2,
+        modified_ms: 0,
+        content_hash: None,
+    });
+    assert_eq!(step, Step::Retry("a.md".into()));
+    assert!(f.adopted().is_empty());
+    assert!(f.row("a.md").is_none());
+}
+
 #[test]
 fn a_deferred_file_gets_no_row_and_no_retry() {
     let mut f = fixture();

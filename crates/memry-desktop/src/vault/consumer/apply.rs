@@ -29,8 +29,8 @@ const SCOPE: &str = "vault_consumer";
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Step {
     Done,
-    /// The fact could not be applied for a reason that may pass (a locked file, a failed
-    /// write): the watcher reports the path again later.
+    /// The fact could not be applied for a reason that may pass (a locked file, a file
+    /// missing mid-save, a failed write): the watcher reports the path again later.
     Retry(String),
 }
 
@@ -183,8 +183,7 @@ impl Applier {
         }
         let file = match self.read(path, file_type) {
             Ok(file) => file,
-            Err(Unread::Gone) => return Step::Done,
-            Err(Unread::Failed { .. }) => return Step::Retry(path.to_owned()),
+            Err(Unread::Missing | Unread::Failed { .. }) => return Step::Retry(path.to_owned()),
         };
         let candidate = Candidate {
             path,
@@ -258,7 +257,8 @@ impl Applier {
         let content_hash = if file_type == FileType::Markdown {
             let file = match self.read(path, file_type) {
                 Ok(Some(file)) => file,
-                Ok(None) | Err(Unread::Gone) => return Step::Done,
+                Ok(None) => return Step::Done,
+                Err(Unread::Missing) => return Step::Retry(path.to_owned()),
                 Err(Unread::Failed { file_hash }) => {
                     record_file_hash(
                         lane,
@@ -425,14 +425,20 @@ impl Applier {
         });
     }
 
-    /// The markdown file at `path`, read once; `Ok(None)` for every other kind.
+    /// The markdown file at `path`, read once; `Ok(None)` for every other kind. A markdown file
+    /// found missing is retried like one that could not be read (#3736): a save can leave the
+    /// name missing for a moment (Windows renaming a new file over it, an editor that deletes
+    /// and writes again), and the watcher, which already reported the bytes it puts back, does
+    /// not report them again. The retry has the watcher look again: a file that is back is
+    /// reported against its row, and one that is gone gets its removal, which waits out the
+    /// rename window and finds it absent once more.
     fn read(&self, path: &str, file_type: FileType) -> Result<Option<NoteFile>, Unread> {
         if file_type != FileType::Markdown {
             return Ok(None);
         }
         match read_note(&self.root, path) {
             Ok(Some(file)) => Ok(Some(file)),
-            Ok(None) => Err(Unread::Gone),
+            Ok(None) => Err(Unread::Missing),
             Err(error) => {
                 tracing::warn!(scope = SCOPE, "a vault file could not be read: {error}");
                 // The hash the watcher pairs a move of such a file on: Electron's, streamed.
@@ -514,8 +520,9 @@ pub(crate) fn converter_for(settings: Option<&AppSettings>) -> Converter {
 
 /// Why [`Applier::read`] has no note file.
 enum Unread {
-    /// The markdown file is gone; its removal follows.
-    Gone,
+    /// No file was there when it was read: gone, or missing for a moment mid-save. Retried
+    /// either way, and its row's pairing hash stays.
+    Missing,
     /// It is there and was not read, and is retried. `file_hash` is its bytes' hash when this
     /// build reads them only as bytes (not UTF-8, past the note size cap), else `None`.
     Failed { file_hash: Option<String> },

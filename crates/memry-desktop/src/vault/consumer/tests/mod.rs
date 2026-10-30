@@ -353,3 +353,5 @@ mod flood;
 mod hash_rule;
 mod lane;
 mod late_close;
+#[cfg(windows)]
+mod replace_race;
