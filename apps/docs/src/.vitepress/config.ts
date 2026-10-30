@@ -216,6 +216,7 @@ function unifiedSidebar() {
         { text: 'Local Storage (Dual SQLite)', link: '/architecture/local-storage' },
         { text: 'IPC Boundary', link: '/architecture/ipc' },
         { text: 'CRDT & Notes Sync', link: '/architecture/crdt' },
+        { text: 'Vault Files (Tauri)', link: '/architecture/vault-files' },
         { text: 'Sync Protocol', link: '/architecture/sync-protocol' },
         { text: 'Vault Packs', link: '/architecture/vault-packs' },
         { text: 'Cryptography', link: '/architecture/cryptography' },

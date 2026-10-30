@@ -28,6 +28,8 @@ no user keys has no YAML block at all.
 - **Rebuilds don't re-identify notes.** Indexing an unknown path adopts the canonical id from
   `note_metadata` by path before minting a fresh one, so dropping and rebuilding the index DB
   preserves note identity.
+- **The Tauri app's watcher** is `crates/memry-desktop/src/vault/watch/`, described in
+  [Vault Files (Tauri)](/architecture/vault-files). The bullets here describe the Electron watcher.
 - **External renames match by content hash.** The file watcher pairs a delete with a following add
   inside a short window using the cached content hash (identical-content collisions match FIFO),
   since files carry no embedded id to match on.
