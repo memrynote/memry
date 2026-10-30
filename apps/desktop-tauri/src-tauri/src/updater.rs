@@ -70,8 +70,9 @@ fn backend(app: &AppHandle<Wry>) -> Chosen {
             ..Chosen::none(Duration::ZERO)
         };
     }
-    choose(&app.state::<LaunchEnv>(), || {
-        velopack_backend::VelopackBackend::new().map(|velopack| Chosen {
+    let env = app.state::<LaunchEnv>();
+    choose(&env, || {
+        velopack_backend::VelopackBackend::new(&env).map(|velopack| Chosen {
             version: Some(velopack.current_version()),
             channel: Some(velopack.channel()),
             backend: Some(Arc::new(velopack)),

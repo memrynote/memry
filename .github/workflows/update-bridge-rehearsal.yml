@@ -478,13 +478,18 @@ jobs:
           set -euo pipefail
           logs() { cat "$HOME"/Library/Logs/com.memrynote.memry/*.log 2>/dev/null || true; }
           wait_log() { for _ in $(seq 1 "$2"); do logs | grep -F "$1" >/dev/null && return 0; sleep 5; done; logs | grep -F 'Updater' | tail -20; return 1; }
+          # The app reads the feed through the GitHub API, 60 unauthenticated requests an hour per IP,
+          # which a shared macOS runner IP often has used up (HTTP 403 on the check). A rehearsal
+          # build reads it with this token instead (velopack_backend.rs `feed_token`).
+          launch() { open --env "MEMRY_REHEARSAL_FEED_TOKEN=$GH_TOKEN" "$app"; }
           gh release download "rehearsal-$TAURI_BASE" --repo "$FEED_REPO" -p "MemryNote-$TAURI_BASE-arm64.zip" -p "MemryNote-$TAURI_BASE-osx-arm64-full.nupkg" -D base
           ditto -x -k "base/MemryNote-$TAURI_BASE-arm64.zip" /Applications
           app=/Applications/MemryNote.app
           mkdir -p "$HOME/Library/Caches/velopack/MemryNote/packages" "$HOME/Library/Application Support/com.memrynote.memry"
           cp "base/MemryNote-$TAURI_BASE-osx-arm64-full.nupkg" "$HOME/Library/Caches/velopack/MemryNote/packages/"
           printf '{"updater":{"autoDownload":true}}' > "$HOME/Library/Application Support/com.memrynote.memry/memry-config.json"
-          open "$app"
+          launch
+          wait_log "feed=https://github.com/$FEED_REPO (token)" 30
           wait_log "velopack: downloaded $VERSION" 120
           logs | grep -E 'velopack: (current|available)'
           # The app answers the quit with NSTerminateCancel and exits after its own sequence
@@ -494,7 +499,7 @@ jobs:
           grep -E '<version>|<channel>' "$app/Contents/Resources/sq.version"
           grep -q "<version>$VERSION</version>" "$app/Contents/Resources/sq.version"
           codesign --verify --deep --strict "$app"
-          sleep 5; open "$app"
+          sleep 5; launch
           wait_log "velopack: current=$VERSION" 60
           wait_log "velopack: up-to-date" 60
           logs | grep -F 'Updater' | tail -20
@@ -519,6 +524,10 @@ jobs:
           data="$HOME/Library/Application Support/com.memrynote.memry"
           logs() { cat "$HOME"/Library/Logs/com.memrynote.memry/*.log 2>/dev/null || true; }
           wait_log() { for _ in $(seq 1 "$2"); do logs | grep -F "$1" >/dev/null && return 0; sleep 1; done; logs | grep -E 'Updater|UpdateInstallMarker' | tail -20; return 1; }
+          # The app reads the feed through the GitHub API, 60 unauthenticated requests an hour per IP,
+          # which a shared macOS runner IP often has used up (HTTP 403 on the check). A rehearsal
+          # build reads it with this token instead (velopack_backend.rs `feed_token`).
+          launch() { open --env "MEMRY_REHEARSAL_FEED_TOKEN=$GH_TOKEN" "$app"; }
           installed() { grep -E '<version>' "$app/Contents/Resources/sq.version"; }
           # The app answers the quit with NSTerminateCancel and exits after its own sequence.
           quit_app() { osascript -e 'tell application "MemryNote" to quit' || true; }
@@ -535,7 +544,7 @@ jobs:
           gh release download "rehearsal-$TAURI_BASE" --repo "$FEED_REPO" -p "MemryNote-$TAURI_BASE-arm64.zip" -D base
           ditto -x -k "base/MemryNote-$TAURI_BASE-arm64.zip" /Applications
           printf '{"updater":{"autoDownload":true}}' > "$data/memry-config.json"
-          open "$app"
+          launch
           wait_log "velopack: downloaded $VERSION" 600
 
           echo "::group::Read-only bundle: the install fails and the next launch offers the manual installer"
@@ -544,7 +553,7 @@ jobs:
           for _ in $(seq 1 60); do pgrep -x MemryNote >/dev/null || pgrep -x UpdateMac >/dev/null || break; sleep 1; done
           installed | grep -F "$TAURI_BASE"
           chflags -R nouchg "$app"
-          open "$app"
+          launch
           wait_log 'update install did not apply' 120
           sleep 5
           screencapture -x shots/1-install-failed.png || true
@@ -581,7 +590,7 @@ jobs:
           }
           counts
           opened="$(date +%s)"
-          open "$app"
+          launch
           for n in 1 2 3 4 5 6; do sleep 0.6; screencapture -x "shots/2-splash-$n.png" || true; done
           guarded_exit "$opened"
           # #3728: the splash says to open the app again, never "MemryNote will reopen
@@ -603,7 +612,7 @@ jobs:
           mkfifo "$data/pending-update-install.json"
           counts
           # In the background: the relaunch blocks in its setup, and `open` must not wait on it.
-          open "$app" &
+          launch &
           for _ in $(seq 1 100); do pgrep -x MemryNote >/dev/null && break; sleep 0.1; done
           pgrep -x MemryNote >/dev/null || { echo "::error::the relaunch did not start"; exit 1; }
           sleep 3
@@ -625,7 +634,7 @@ jobs:
           guarded_exit "$decided"
           wait_log "pending update install in flight on launch (bundle replaced since launch, started as $TAURI_BASE); showing the open-again splash" 10
           sleep 5
-          open "$app"
+          launch
           wait_log "velopack: current=$VERSION" 120
           wait_log "the update from $TAURI_BASE applied (installer velopack)" 60
           [ ! -e "$data/pending-update-install.json" ]
