@@ -101,6 +101,7 @@ impl Env {
                 mime_type: None,
                 file_size: Some(text.len() as i64),
                 content_hash: Some(content_hash(text)),
+                file_hash: Some(content_hash(text)),
                 indexed_at: i64::MAX / 2,
             })
             .unwrap();
@@ -349,6 +350,7 @@ fn a_note_without_a_stored_hash_is_never_paired_with_a_new_file() {
             mime_type: None,
             file_size: Some(4),
             content_hash: None,
+            file_hash: None,
             indexed_at: 1,
         })
         .unwrap();

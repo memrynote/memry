@@ -94,6 +94,7 @@ fn a_file_written_while_open_gets_a_note_and_the_tier_stops_with_the_vault() {
         file_type: FileType::Markdown,
         size: 1,
         content_hash: None,
+        file_hash: None,
     };
     assert!(
         matches!(
