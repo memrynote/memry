@@ -557,6 +557,7 @@ describe('tasks-handlers', () => {
       it('should complete multiple tasks', async () => {
         ;(taskQueries.bulkCompleteTasks as Mock).mockReturnValue(3)
         ;(taskQueries.getTaskById as Mock).mockReturnValue({ id: 'task1' })
+        ;(projectQueries.getStatusesByProject as Mock).mockReturnValue([])
 
         const result = await invokeHandler(TasksChannels.invoke.BULK_COMPLETE, {
           ids: ['task1', 'task2', 'task3']
