@@ -15,8 +15,9 @@ import {
   writeFileSync
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
+import { EXPECT_TIMEOUT_MS } from '../../harness/budgets'
 import { invokeTest } from '../../harness/invoke-test'
 import { gracefulClose, restart } from '../../harness/tauri-lifecycle'
 import { removeDir } from '../../harness/remove-dir'
@@ -38,9 +39,8 @@ interface VaultFile {
 type App = Parameters<typeof invokeTest>[0]
 
 /**
- * The bytes Electron's `initVault` writes: `JSON.stringify(DEFAULT_CONFIG, null, 2)`
- * (`apps/desktop/src/main/vault/init.ts`), as `crates/memry-desktop/tests/config_compat.rs`
- * records them from a run of that code.
+ * The bytes Electron's `initVault` writes: `JSON.stringify(DEFAULT_CONFIG, null, 2)`, with
+ * `DEFAULT_CONFIG` copied by hand from `apps/desktop/src/main/vault/init.ts`.
  */
 const ELECTRON_INIT_CONFIG = JSON.stringify(
   {
@@ -61,7 +61,7 @@ const rows = (app: App) => invokeTest<NoteFile[]>(app, 'e2e_vault_note_files')
 async function rowOf(app: App, rel: string): Promise<NoteFile> {
   const row = await pollUntil(
     async () => (await rows(app)).find((file) => file.path === rel && file.contentHash !== null),
-    { timeoutMs: 20_000 }
+    { timeoutMs: EXPECT_TIMEOUT_MS }
   )
   if (!row) throw new Error(`no row for ${rel}`)
   return row
@@ -79,15 +79,27 @@ async function rowWhen(
       last = (await rows(app)).find((file) => file.noteId === noteId)
       return probe(last)
     },
-    { timeoutMs: 20_000 }
+    { timeoutMs: EXPECT_TIMEOUT_MS }
   )
   if (!held) throw new Error(`the row of ${noteId} is still ${JSON.stringify(last)}`)
   return last
 }
 
-const hashOf = async (app: App, rel: string): Promise<string> =>
-  ((await invokeTest<VaultFile | null>(app, 'e2e_vault_read_file', { path: rel })) as VaultFile)
-    .contentHash
+async function hashOf(app: App, rel: string): Promise<string> {
+  const file = await invokeTest<VaultFile | null>(app, 'e2e_vault_read_file', { path: rel })
+  if (!file) throw new Error(`${rel} is not in the vault`)
+  return file.contentHash
+}
+
+/** What another program does: written, or saved atomically through a side file. */
+function saveAtomically(path: string, text: string): void {
+  const side = join(dirname(path), `.${basename(path)}.tmp`)
+  writeFileSync(side, text)
+  renameSync(side, path)
+}
+
+/** An error the vault file tier logged. */
+const TIER_ERROR = /\[error\] \[vault_(watch|consumer|writeback)\]/
 
 test('a vault opened in an empty folder gets the folders and the config Electron writes, and keeps an existing config', async ({
   page
@@ -103,14 +115,19 @@ test('a vault opened in an empty folder gets the folders and the config Electron
     expect(readFileSync(config, 'utf8')).toBe(ELECTRON_INIT_CONFIG)
     if (process.platform !== 'win32') expect(statSync(config).mode & 0o777).toBe(0o600)
 
-    // A config the user or a newer build wrote is left as it is by the next open.
-    const edited = '{\n  "journalFolder": "diary",\n  "newerBuild": true\n}'
-    writeFileSync(config, edited)
+    // The next open does not write its defaults over a config the user or a newer build
+    // wrote. `preferences` is left out: the settings of the opened vault mirror into it
+    // (Step 09, #3526), at a moment of their own.
+    writeFileSync(config, '{\n  "journalFolder": "diary",\n  "newerBuild": true\n}')
     await invoke(page, 'vault_close')
     expect((await invoke<SelectResponse>(page, 'vault_select', { path: parent })).success).toBe(
       true
     )
-    expect(readFileSync(config, 'utf8')).toBe(edited)
+    const { preferences: _mirrored, ...kept } = JSON.parse(readFileSync(config, 'utf8')) as Record<
+      string,
+      unknown
+    >
+    expect(kept).toEqual({ journalFolder: 'diary', newerBuild: true })
   } finally {
     await invoke(page, 'vault_close').catch((error: unknown) => {
       console.warn('vault_close before cleanup failed', error)
@@ -132,11 +149,7 @@ test('files another program writes while the app runs reach their rows, and nois
   expect(added.contentHash).toBe(await hashOf(app, 'notes/outside.md'))
 
   // An editor's atomic save (a side file renamed over the note) is a change of the same note.
-  await invokeTest(app, 'e2e_vault_write_outside', {
-    path: 'notes/outside.md',
-    text: '# Outside\n\nsaved again, atomically\n',
-    replace: true
-  })
+  saveAtomically(file('notes/outside.md'), '# Outside\n\nsaved again, atomically\n')
   const saved = await hashOf(app, 'notes/outside.md')
   await rowWhen(app, added.noteId, (row) => row?.contentHash === saved)
   expect(
@@ -145,7 +158,7 @@ test('files another program writes while the app runs reach their rows, and nois
         (await invokeTest<string>(app, 'e2e_note_body', { noteId: added.noteId })).includes(
           'saved again, atomically'
         ),
-      { timeoutMs: 20_000 }
+      { timeoutMs: EXPECT_TIMEOUT_MS }
     )
   ).toBe(true)
 
@@ -162,16 +175,18 @@ test('files another program writes while the app runs reach their rows, and nois
   mkdirSync(file('notes/attachments'), { recursive: true })
   writeFileSync(file('notes/attachments/a-note.md'), 'a note\n')
   await rowOf(app, 'notes/attachments/a-note.md')
-  const paths = (await rows(app)).map((row) => row.path)
-  expect(paths).not.toContain('notes/.hidden.md')
-  expect(paths).not.toContain('attachments/not-a-note.md')
+  const noise = new Set(['notes/.hidden.md', 'attachments/not-a-note.md'])
+  const noiseRows = async () =>
+    (await rows(app)).map((row) => row.path).filter((path) => noise.has(path))
+  expect(await noiseRows()).toEqual([])
 
-  // A delete reaches the row. Whether the note goes too is Step 13's (#3530) call; until then
-  // the note is kept, and its row names no text, so a later file at that path is not taken
-  // for it.
+  // A delete leaves no row naming the deleted file's text. Whether the note goes too is
+  // Step 13's (#3530) call.
   rmSync(file('notes/moved/outside.md'))
-  await rowWhen(app, added.noteId, (row) => row?.contentHash === null)
-  expect(readMainLog(app.dirs.logDir)).not.toMatch(/\sERROR\s/)
+  await rowWhen(app, added.noteId, (row) => (row?.contentHash ?? null) === null)
+  // Still no row for the noise, after everything since was taken in.
+  expect(await noiseRows()).toEqual([])
+  expect(readMainLog(app.dirs.logDir)).not.toMatch(TIER_ERROR)
 })
 
 test('files changed while the app was closed are found at the next open', async ({
@@ -199,4 +214,5 @@ test('files changed while the app was closed are found at the next open', async 
   expect(await invokeTest<string>(app, 'e2e_note_body', { noteId: editing.noteId })).toBe(
     'edited while the app was closed'
   )
+  expect(readMainLog(app.dirs.logDir)).not.toMatch(TIER_ERROR)
 })
