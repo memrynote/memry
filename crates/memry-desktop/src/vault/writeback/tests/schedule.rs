@@ -6,7 +6,7 @@ use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use super::super::schedule::{Cost, Runner, due_at};
-use super::super::{COOLDOWN_FACTOR, DEBOUNCE, MAX_COOLDOWN, WriteBack, WriteBackFailed};
+use super::super::{COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, WriteBack, WriteBackFailed};
 use super::*;
 
 /// Well under the debounce: no pass may start within it.
@@ -350,6 +350,7 @@ fn a_failed_write_is_told_once_per_run_of_failures() {
     let event = WriteBackFailed {
         note_id: "n1".into(),
         title: Some("title of n1".into()),
+        reason: Failure::Write,
     };
     assert_eq!(events, vec![event.clone(), event]);
 }
@@ -426,6 +427,7 @@ fn a_note_whose_file_cannot_be_read_is_told_with_its_title() {
         WriteBackFailed {
             note_id: id,
             title: Some("Groceries".into()),
+            reason: Failure::Write,
         }
     );
 }

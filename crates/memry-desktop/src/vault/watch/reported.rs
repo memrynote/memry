@@ -9,7 +9,9 @@
 //!   the note it named, when it named one;
 //! - a note that was reported at another path (`Renamed`) has moved: its row, still at the old
 //!   path, is stale, and the note's removal is a removal at its new path;
-//! - a note reported `Removed` is gone: its row is skipped until the row itself changes.
+//! - a note reported `Removed` is gone: its row is skipped until the row itself changes;
+//! - a path whose report a consumer could not apply is owed: its entry stays, and the next look
+//!   at the file reports it again even when its bytes did not change.
 //!
 //! Paths are keyed by [`folded_key`], so a case-only or Unicode-normalization respelling of a
 //! path is the same entry. The record is scoped to one watcher, so one vault session.
@@ -19,7 +21,7 @@
 //! file again (a repeated, idempotent `Renamed`) instead of treating the stale row as a
 //! removal. Evicted removal marks cost one repeated `Removed`.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use memry_core::domain::note_files::NoteFile;
 
@@ -68,6 +70,8 @@ pub struct Reported {
     by_note: HashMap<String, String>,
     removed: HashMap<String, RowSignature>,
     removed_order: VecDeque<String>,
+    /// Keys of entries owed a report again; each one is a key of `by_key`.
+    owed: HashSet<String>,
 }
 
 impl Reported {
@@ -82,6 +86,7 @@ impl Reported {
 
     pub fn put(&mut self, seen: Seen) {
         let key = folded_key(&seen.path);
+        self.owed.remove(&key);
         if let Some(replaced) = self.by_key.get(&key)
             && let Some(id) = &replaced.note_id
             && self.by_note.get(id) == Some(&key)
@@ -94,6 +99,7 @@ impl Reported {
         {
             // The note moved: its earlier entry is stale.
             self.by_key.remove(&old_key);
+            self.owed.remove(&old_key);
         }
         if self.by_key.insert(key.clone(), seen).is_none() {
             self.order.push_back(key);
@@ -114,6 +120,7 @@ impl Reported {
     }
 
     fn drop_key(&mut self, key: &str) {
+        self.owed.remove(key);
         if let Some(seen) = self.by_key.remove(key)
             && let Some(id) = seen.note_id
             && self.by_note.get(&id).is_some_and(|k| k == key)
@@ -124,6 +131,20 @@ impl Reported {
 
     pub fn remove(&mut self, path: &str) {
         self.drop_key(&folded_key(path));
+    }
+
+    /// A consumer could not apply what was reported at `path`. The entry stays, since it names
+    /// where its note lives and the bytes last reported, and the next look at the file reports
+    /// it again: the report pays the debt, and so does the entry's removal.
+    pub fn owe(&mut self, path: &str) {
+        let key = folded_key(path);
+        if self.by_key.contains_key(&key) {
+            self.owed.insert(key);
+        }
+    }
+
+    pub fn is_owed(&self, path: &str) -> bool {
+        self.owed.contains(&folded_key(path))
     }
 
     fn keys_in_tree(&self, path: &str, only_unowned: bool) -> Vec<String> {
@@ -283,6 +304,28 @@ mod tests {
         r.put(seen("d/b.md", None));
         r.forget_unowned_tree("d");
         assert!(r.get("d/a.md").is_some() && r.get("d/b.md").is_none());
+    }
+
+    #[test]
+    fn a_debt_is_owed_only_by_an_entry_and_goes_with_its_report_or_its_removal() {
+        let mut r = Reported::default();
+        r.owe("none.md");
+        assert!(!r.is_owed("none.md"), "a path with no entry owes nothing");
+        r.put(seen("a.md", Some("n1")));
+        r.owe("A.md");
+        assert!(
+            r.is_owed("a.md") && r.get("a.md").is_some(),
+            "the entry stays"
+        );
+        r.put(seen("a.md", Some("n1")));
+        assert!(!r.is_owed("a.md"), "a report pays it");
+        r.owe("a.md");
+        r.put(seen("b.md", Some("n1")));
+        assert!(!r.is_owed("a.md"), "the note moved");
+        r.owe("b.md");
+        r.forget_note("n1");
+        assert!(!r.is_owed("b.md"), "the entry went");
+        assert!(r.owed.is_empty());
     }
 
     #[test]
