@@ -17,6 +17,7 @@ use super::{
 use crate::registry::vaults::basename;
 use crate::vault::config::{invalidate_vault_config_cache, read_vault_config};
 use crate::vault::init::{CountLimits, count_markdown_files, init_vault, is_vault_initialized};
+use crate::vault::move_journal::sweep as sweep_moves;
 
 /// Settled `data.db.corrupt-*` quarantines kept. Core decides which are settled
 /// ([`prune_settled`]); this only says how many of those to keep.
@@ -113,12 +114,27 @@ impl Session {
             Err(error) => tracing::warn!(%error, "could not prune data.db quarantines"),
         }
 
-        let note_count = count_markdown_files(
-            path,
-            &read_vault_config(path).exclude_patterns,
-            CountLimits::DEFAULT,
-        )
-        .count;
+        let exclude = read_vault_config(path).exclude_patterns;
+        // Before any open hook, so before the watcher: a folder move a crash interrupted is put
+        // back or shown, and its notes are never reported removed.
+        let swept = sweep_moves(path, &exclude);
+        if swept.undone > 0 || swept.left_beside() {
+            tracing::warn!(
+                undone = swept.undone,
+                conflict_copies = swept.conflict_copies.len(),
+                kept = swept.kept.len(),
+                "swept interrupted folder moves"
+            );
+        }
+        if swept.left_beside() {
+            self.emit(SessionEvent::Error {
+                message: "A folder move was interrupted and undone, but not every note went back \
+                          under its own name: look for notes ending in \"(conflict copy)\" and \
+                          folders ending in \"(incomplete move)\". Nothing was deleted."
+                    .to_owned(),
+            });
+        }
+        let note_count = count_markdown_files(path, &exclude, CountLimits::DEFAULT).count;
         let stored = match self
             .inner
             .registry

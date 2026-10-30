@@ -3,7 +3,7 @@
 //! Pure foundations (hashes, paths, atomic writes, note reads and writes, file kinds, the walk),
 //! the config owner and init, the watcher (`watch`), which reads `note_files` and writes nothing,
 //! the consumer and write-back, the side files under `.memry/` (custom icons, property
-//! definitions), and the folder move (`move_dir`).
+//! definitions), and the folder move (`move_dir`) with its journal (`move_journal`).
 
 pub mod config;
 pub mod consumer;
@@ -14,6 +14,7 @@ pub mod icons;
 pub mod init;
 pub mod layout;
 pub mod move_dir;
+pub mod move_journal;
 pub mod note_file;
 pub mod path_key;
 pub mod paths;
