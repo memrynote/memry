@@ -29,8 +29,9 @@
 //! guard is per process, so another process moving in the same vault is not seen.
 //!
 //! A record is untrusted input: it is listed only as a regular file (a link or a FIFO named as
-//! one is dropped, never followed), opened under the vault ([`open_under_root`]: no FIFO
-//! blocks, nothing outside is read) and read at most [`RECORD_MAX`] bytes. A journal folder that
+//! one is dropped, never followed), opened under the vault (`file_open::open_under_root`'s
+//! checks: no FIFO blocks, nothing outside is read) and read at most [`RECORD_MAX`] bytes; one
+//! that keeps changing while it is opened is kept for a later sweep. A journal folder that
 //! is a link is neither read nor written.
 //!
 //! The format, `{"version": 1, "from": "<rel>", "staging": "<rel>", "shown": "<rel>"}` with
@@ -52,7 +53,9 @@ use serde::{Deserialize, Serialize};
 use super::fs_atomic::{RETRY_DELAYS_MS, atomic_create, atomic_write, with_transient_retry};
 use super::layout::{MEMRY_DIR, MOVES_DIR};
 use super::move_dir::{self, Step};
-use crate::shell::file_open::{OpenError, Resolution, open_under_root, resolve_under_root};
+use crate::shell::file_open::{
+    LinkPolicy, OpenError, Resolution, open_checked, resolve_under_root,
+};
 
 const SCOPE: &str = "move_journal";
 
@@ -322,14 +325,31 @@ fn records(vault: &Path, hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>) -> Ve
     ids
 }
 
-/// The record's bytes, read bounded and retried while it is held for a moment.
-fn read_record(vault: &Path, id: &str) -> io::Result<Option<Vec<u8>>> {
+/// The record's bytes, read bounded and retried while it is held or replaced for a moment. A
+/// record that keeps changing is `ResourceBusy`, which keeps it for a later sweep.
+fn read_record(
+    vault: &Path,
+    id: &str,
+    hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
+) -> io::Result<Option<Vec<u8>>> {
     let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
+    let rel = record_rel(id);
+    let path = join(vault, &rel);
     with_transient_retry(&delays, || {
-        let file = match open_under_root(vault, &record_rel(id)) {
+        let mut stepped = Ok(());
+        let opened = open_checked(vault, &rel, LinkPolicy::RejectHardLinks, &mut || {
+            if stepped.is_ok() {
+                stepped = hook(Step::ReadRecord(&path));
+            }
+        });
+        stepped?;
+        let file = match opened {
             Ok(Some(file)) => file,
             Ok(None) => return Ok(None),
             Err(OpenError::Io(error)) => return Err(error),
+            Err(changing @ OpenError::KeptChanging) => {
+                return Err(io::Error::new(io::ErrorKind::ResourceBusy, changing));
+            }
             Err(refused) => return Err(io::Error::new(io::ErrorKind::InvalidData, refused)),
         };
         let mut bytes = Vec::new();
@@ -351,7 +371,7 @@ fn sweep_record(
     swept: &mut Sweep,
 ) -> bool {
     let path = join(vault, &record_rel(id));
-    let bytes = match read_record(vault, id) {
+    let bytes = match read_record(vault, id, hook) {
         Ok(Some(bytes)) => bytes,
         Ok(None) => return false,
         Err(error) if error.kind() == io::ErrorKind::InvalidData => {

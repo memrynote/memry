@@ -674,7 +674,9 @@ fn an_open_that_only_showed_leftovers_says_nothing_was_undone() {
 }
 
 /// The note count finds an exact staging folder even though the exclude list skips every name
-/// starting with `.memry`, and never one inside a dot or excluded folder.
+/// starting with `.memry`, and never one inside a dot or excluded folder. A folder a pattern
+/// only prefixes (`node_modules_old`) is the watcher's, so it is searched, but its notes are
+/// not counted.
 #[test]
 fn the_note_count_finds_staging_folders_its_excludes_would_skip() {
     let dir = tempfile::tempdir().unwrap();
@@ -685,9 +687,12 @@ fn the_note_count_finds_staging_folders_its_excludes_would_skip() {
         ".foo/.memry-move-fedcba987654",
         "node_modules/.memry-move-fedcba987650",
         ".memry-move-0123456789ab/.memry-move-0123456789ac",
+        "node_modules_old/x/.memry-move-0a1b2c3d4e5f",
+        "node_modules_old/node_modules/.memry-move-0a1b2c3d4e50",
     ] {
         fs::create_dir_all(root.join(folder)).unwrap();
     }
+    fs::write(root.join("node_modules_old/x/n.md"), "n").unwrap();
     let mut found = staged(root);
     found.sort();
     assert_eq!(
@@ -695,8 +700,12 @@ fn the_note_count_finds_staging_folders_its_excludes_would_skip() {
         [
             root.join(".memry-move-0123456789ab"),
             root.join("a/b/.memry-move-abcdef012345"),
+            root.join("node_modules_old/x/.memry-move-0a1b2c3d4e5f"),
         ]
     );
+    let exclude: Vec<String> = DEFAULT_EXCLUDE_PATTERNS.map(str::to_owned).to_vec();
+    let counted = count_markdown_files(root, &exclude, CountLimits::DEFAULT);
+    assert_eq!(counted.count, 0, "counted a note in node_modules_old");
 }
 
 #[cfg(unix)]
@@ -765,6 +774,62 @@ fn a_record_that_is_no_regular_file_is_never_read_through() {
         .collect();
     left.sort();
     assert_eq!(left, ["fedcba987654.json"], "the FIFO or a link stayed");
+}
+
+/// A record that keeps changing while the sweep opens it (a save renames a new file over it
+/// each time) cannot be read now: it is kept for a later open, like one that cannot be
+/// checked, and its folder is shown meanwhile.
+#[cfg(unix)]
+#[test]
+fn a_record_that_keeps_changing_while_read_is_kept() {
+    let dir = vault();
+    let root = dir.path();
+    staging_with(root, "0123456789ab", "x.md");
+    let record = r#"{"version":1,"from":"notes","staging":".memry-move-0123456789ab"}"#;
+    write_record(root, "0123456789ab", record);
+    let path = root.join(".memry/moves/0123456789ab.json");
+    let fresh = root.join(".memry/moves/fresh.tmp");
+    let mut swaps = 0;
+    let swept = sweep_checked(root, &staged(root), &mut |step| {
+        if let Step::ReadRecord(read) = step {
+            assert_eq!(read, path);
+            swaps += 1;
+            fs::write(&fresh, record).unwrap();
+            fs::rename(&fresh, &path).unwrap();
+        }
+        Ok(())
+    });
+    assert!(swaps > 1, "{swaps} swaps");
+    assert!(
+        !root.join("notes/x.md").exists(),
+        "read a record that kept changing"
+    );
+    assert_eq!(swept.shown, [root.join("Moved folder (incomplete move)")]);
+    assert_eq!(
+        fs::read_to_string(&path).ok().as_deref(),
+        Some(record),
+        "the record went"
+    );
+
+    // One replaced through a whole open and then left alone is read a moment later.
+    let dir = vault();
+    let root = dir.path();
+    staging_with(root, "0123456789ab", "x.md");
+    write_record(root, "0123456789ab", record);
+    let path = root.join(".memry/moves/0123456789ab.json");
+    let fresh = root.join(".memry/moves/fresh.tmp");
+    let mut swaps = 0;
+    let swept = sweep_checked(root, &staged(root), &mut |step| {
+        if matches!(step, Step::ReadRecord(_)) && swaps < 3 {
+            swaps += 1;
+            fs::write(&fresh, record).unwrap();
+            fs::rename(&fresh, &path).unwrap();
+        }
+        Ok(())
+    });
+    assert_eq!(swept.undone, 1, "{swept:?}");
+    assert!(root.join("notes/x.md").exists());
+    assert_eq!(records(root), Vec::<PathBuf>::new());
 }
 
 /// A record over 4 KiB is not a record: it is not read whole, and its folder is only shown.

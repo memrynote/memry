@@ -80,6 +80,8 @@ pub enum Step<'a> {
     RemoveStaged(&'a Path),
     /// The move's journal record is dropped: the move is done or fully undone.
     Forget(&'a Path),
+    /// The sweep has a journal record open and checks next that it is still the same file.
+    ReadRecord(&'a Path),
 }
 
 /// A failed move whose rollback could not put everything back under its own name. The move

@@ -92,7 +92,8 @@ pub struct MarkdownCount {
     pub truncated: bool,
     /// The staging folders of interrupted folder moves the walk passed, for the open's sweep
     /// ([`is_staging_name`]): listed whatever the exclude list says, but never from inside a
-    /// hidden or excluded folder, and never through a link.
+    /// hidden folder or one named exactly like a pattern, and never through a link. A folder a
+    /// pattern only prefixes is searched for them uncounted: the watcher matches whole names.
     pub staging: Vec<PathBuf>,
 }
 
@@ -111,9 +112,9 @@ pub fn count_markdown_files(
         truncated: false,
         staging: Vec::new(),
     };
-    // Each folder with whether it is in a hidden one.
-    let mut stack = vec![(vault.to_path_buf(), 0usize, false)];
-    'folders: while let Some((dir, depth, hidden)) = stack.pop() {
+    // Each folder with whether it is in a hidden one, and whether its notes are counted.
+    let mut stack = vec![(vault.to_path_buf(), 0usize, false, true)];
+    'folders: while let Some((dir, depth, hidden, counted)) = stack.pop() {
         if depth > limits.max_depth {
             result.truncated = true;
             continue;
@@ -134,15 +135,18 @@ pub fn count_markdown_files(
             {
                 result.staging.push(entry.path());
             }
-            if exclude.iter().any(|p| name.starts_with(p.as_str())) {
+            let prefixed = exclude.iter().any(|p| name.starts_with(p.as_str()));
+            let hides = hidden || name.starts_with('.');
+            if prefixed && (hides || exclude.contains(&name)) {
                 continue;
             }
             let Ok(kind) = entry.file_type() else {
                 continue;
             };
+            let counted = counted && !prefixed;
             if kind.is_dir() {
-                stack.push((entry.path(), depth + 1, hidden || name.starts_with('.')));
-            } else if kind.is_file() && name.ends_with(".md") {
+                stack.push((entry.path(), depth + 1, hides, counted));
+            } else if counted && kind.is_file() && name.ends_with(".md") {
                 result.count = result.count.saturating_add(1);
             }
         }
