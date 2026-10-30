@@ -105,6 +105,7 @@ fn watch_perf_seed1k() {
                 mime_type: None,
                 file_size: Some(text.len() as i64),
                 content_hash: Some(content_hash(&text)),
+                file_hash: Some(content_hash(&text)),
                 indexed_at: read_at,
             })
             .unwrap();
