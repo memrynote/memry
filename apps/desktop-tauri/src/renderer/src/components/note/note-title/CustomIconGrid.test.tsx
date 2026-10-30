@@ -6,7 +6,7 @@ import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { CustomIconGrid } from './CustomIconGrid'
 
-const addFromUrl = vi.hoisted(() => vi.fn())
+const { add, addFromUrl } = vi.hoisted(() => ({ add: vi.fn(), addFromUrl: vi.fn() }))
 
 vi.mock('@/lib/custom-icons-store', () => ({
   useCustomIcons: () => [],
@@ -14,7 +14,7 @@ vi.mock('@/lib/custom-icons-store', () => ({
 }))
 
 vi.mock('@/services/custom-icons-service', () => ({
-  customIconsService: { addFromUrl }
+  customIconsService: { add, addFromUrl }
 }))
 
 let i18n: I18nInstance
@@ -67,5 +67,20 @@ describe('CustomIconGrid link input', () => {
     await user.type(screen.getByLabelText('Image link'), '   {Enter}')
 
     expect(addFromUrl).not.toHaveBeenCalled()
+  })
+})
+
+describe('CustomIconGrid upload', () => {
+  it('refuses a file over 2 MB before reading it', async () => {
+    const user = userEvent.setup()
+    const { container } = renderGrid()
+    const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'huge.png', { type: 'image/png' })
+
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, big)
+
+    expect(
+      await screen.findByText('That image is too large. Pick a file under 2 MB.')
+    ).toBeInTheDocument()
+    expect(add).not.toHaveBeenCalled()
   })
 })

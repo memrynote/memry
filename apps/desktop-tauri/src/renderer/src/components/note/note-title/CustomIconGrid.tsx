@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   CUSTOM_ICON_INPUT_EXTENSIONS,
+  CUSTOM_ICON_MAX_INPUT_BYTES,
   CUSTOM_ICON_NAME_MAX_LENGTH,
   type CustomIconInputExtension
 } from '@memry/contracts/custom-icons-api'
@@ -69,6 +70,11 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
           const ext = extensionOf(file.name)
           if (!ext) {
             setError(t('menus.emoji.custom.unsupportedFile', { name: file.name }))
+            continue
+          }
+          // Refused here before the whole file is read into memory; Rust checks again.
+          if (file.size === 0 || file.size > CUSTOM_ICON_MAX_INPUT_BYTES) {
+            setError(t('errors:customIcon.tooLarge'))
             continue
           }
           await customIconsService.add(

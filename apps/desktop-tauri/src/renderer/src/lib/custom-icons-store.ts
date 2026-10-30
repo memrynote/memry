@@ -8,7 +8,9 @@
  * one IPC list per session, and an empty library (tests, no vault) simply
  * renders the fallback glyph.
  *
- * The first subscriber triggers the load and wires `CustomIconsUpdatedEvent`, which is how a peer's icon appears without a reload.
+ * The first subscriber triggers the load and wires `CustomIconsUpdatedEvent`,
+ * which every local add, rename and delete sends. A peer's icon is listed at
+ * the next load until the sync step sends the event when it applies one.
  */
 
 import { useCallback, useSyncExternalStore } from 'react'

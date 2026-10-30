@@ -31,7 +31,8 @@ use memry_core::api::vault::Vault;
 use memry_core::domain::custom_icons::CustomIconStore;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::notes::icons::{
-    self, CustomIconError, Library, MAX_DECODED_BYTES, MAX_INPUT_BYTES, download_within, normalize,
+    self, CustomIconError, Library, MAX_DECODED_BYTES, MAX_INPUT_BYTES, MAX_PIXELS,
+    download_within, normalize,
 };
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpListener;
@@ -242,10 +243,12 @@ fn bomb(side: u32) -> Vec<u8> {
 
 #[test]
 fn a_decompression_bomb_is_refused() {
-    // 12000 x 12000 grey is 144 MB of pixels: over the bound, under `image`'s own 512 MiB default
-    // and under the 16384 px edge, so only the decode bound stands between it and the allocation.
+    // 12000 x 12000 grey is 144 M pixels: over the header's pixel cap and the 128 MiB decode
+    // bound, under `image`'s own 512 MiB default and under the 16384 px edge.
+    // `custom_icons_memory.rs` holds the formats whose decoders the decode bound does not reach.
     let side = 12_000;
     assert!(u64::from(side) * u64::from(side) > MAX_DECODED_BYTES);
+    assert!(u64::from(side) * u64::from(side) > MAX_PIXELS);
     let png = bomb(side);
     assert!(png.len() < MAX_INPUT_BYTES, "{} bytes", png.len());
 

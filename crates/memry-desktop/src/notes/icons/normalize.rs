@@ -3,10 +3,13 @@
 //! The re-encode keeps every icon a few KB, which is what lets its bytes ride in the sync record,
 //! and drops whatever metadata the source file carried.
 //!
-//! The bytes are untrusted (a dropped file, a downloaded link), so decoding is bounded: a 2 MiB
-//! PNG can declare an image of gigabytes. [`decode_limits`] refuses any image whose decoded pixels
-//! need more than [`MAX_DECODED_BYTES`] before anything that large is allocated. Electron's
-//! `nativeImage` had no such bound.
+//! The bytes are untrusted (a dropped file, a downloaded link), so decoding is bounded by
+//! construction: a few hundred bytes can declare an image of gigabytes, and a decoder sizes its
+//! buffers from that header. The dimensions are read from the header first, and an image of more
+//! than [`MAX_PIXELS`] is refused before any decoder runs, whatever its format. That is the bound:
+//! `image`'s own `max_alloc` ([`decode_limits`], kept as a second line) covers only the output
+//! buffer, not zune-jpeg's progressive coefficients or image-webp's frame. Electron's
+//! `nativeImage` had no bound.
 
 use std::io::Cursor;
 
@@ -27,6 +30,10 @@ pub const MAX_EDGE_PX: u32 = 128;
 pub const MAX_DECODED_BYTES: u64 = 128 * 1024 * 1024;
 
 const MAX_DIMENSION_PX: u32 = 16_384;
+
+/// The most pixels an icon's header may declare: a 6000 x 4000 photo. Every decoder's buffers are
+/// a small multiple of this (RGBA output, progressive JPEG coefficients, a WebP frame).
+pub const MAX_PIXELS: u64 = 24_000_000;
 
 /// The raster formats of `CUSTOM_ICON_INPUT_EXTENSIONS`, told apart by their bytes.
 const RASTER_FORMATS: [ImageFormat; 4] = [
@@ -70,12 +77,29 @@ pub fn normalize(bytes: &[u8], ext: &str) -> Result<Normalized, CustomIconError>
         return Ok(Normalized { bytes, ext: "svg" });
     }
 
-    let mut reader = ImageReader::new(Cursor::new(bytes))
-        .with_guessed_format()
-        .map_err(|_| CustomIconError::Unreadable)?;
-    if !reader.format().is_some_and(|f| RASTER_FORMATS.contains(&f)) {
+    let reader = || {
+        ImageReader::new(Cursor::new(bytes))
+            .with_guessed_format()
+            .map_err(|_| CustomIconError::Unreadable)
+    };
+    let header = reader()?;
+    if !header.format().is_some_and(|f| RASTER_FORMATS.contains(&f)) {
         return Err(CustomIconError::Unreadable);
     }
+    // The header only: no decoder buffer is sized before the pixel count is known to be small.
+    let (width, height) = header
+        .into_dimensions()
+        .map_err(|_| CustomIconError::Unreadable)?;
+    if u64::from(width) * u64::from(height) > MAX_PIXELS {
+        tracing::warn!(
+            scope = "CustomIcons",
+            width,
+            height,
+            "an icon image declares too many pixels to decode"
+        );
+        return Err(CustomIconError::Unreadable);
+    }
+    let mut reader = reader()?;
     reader.limits(decode_limits());
     let image = reader.decode().map_err(|error| {
         tracing::warn!(

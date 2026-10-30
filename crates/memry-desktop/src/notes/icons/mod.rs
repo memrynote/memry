@@ -33,7 +33,9 @@ use crate::session::OpenVault;
 
 use crate::vault::icons::{icon_exists, icon_path, remove_icon, write_icon};
 
-pub use normalize::{MAX_DECODED_BYTES, MAX_EDGE_PX, MAX_INPUT_BYTES, Normalized, normalize};
+pub use normalize::{
+    MAX_DECODED_BYTES, MAX_EDGE_PX, MAX_INPUT_BYTES, MAX_PIXELS, Normalized, normalize,
+};
 pub use remote::{DOWNLOAD_TIMEOUT, RemoteIcon, download, download_within, name_from_url};
 
 /// Why an icon could not be added. Each variant but `Storage` has a user-facing text under
