@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "請到提醒面板查看詳情",
     "searchIndexRepaired": "搜尋索引已修復",
     "searchIndexRepairedHint": "部分搜尋索引已損壞，Memry 已將其重建。筆記內容未受任何影響。",
+    "folderMoveUndone": "已還原一次中斷的資料夾移動",
+    "folderMoveUndoneHint": "筆記已回到原本的資料夾。",
+    "folderMoveShown": "一次中斷的資料夾移動中的筆記已重新顯示",
+    "folderMoveConflictCopies": "期間名稱已被使用的筆記，名稱結尾會加上「{suffix}」。",
+    "folderMoveIncomplete": "部分筆記位於名稱以「{suffix}」結尾的資料夾中。",
+    "folderMoveNothingDeleted": "沒有刪除任何內容。",
     "drop": {
       "tooLarge": "拖放的檔案中有一個大於 2 GB。",
       "tooMany": "等待匯入的檔案過多。請減少拖放的檔案後再試一次。",

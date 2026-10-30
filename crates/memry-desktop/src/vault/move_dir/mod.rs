@@ -33,7 +33,8 @@
 //! - Both paths are the caller's, resolved inside the vault. A source that is a symbolic link
 //!   moves as a link, never through it, and so does a link inside the tree, on the way back
 //!   too: a link that took a folder's name is never merged into.
-//! - A crash mid-move leaves the staging folder hidden; sweeping it back at open is #3754.
+//! - A crash mid-move is undone at the next open: before its staging folder exists, a move
+//!   journals itself in the vault, and the open sweeps the journal ([`super::move_journal`]).
 
 use std::ffi::OsString;
 use std::fmt;
@@ -43,15 +44,13 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use super::fs_atomic::{RETRY_DELAYS_MS, is_transient, rename_no_replace, with_transient_retry};
+use super::move_journal::{ID_LEN, Journaled, STAGING_PREFIX, vault_relative};
+
+mod put_back;
+
+pub(super) use put_back::{put_back_staged, show_staged};
 
 const SCOPE: &str = "move_dir";
-
-/// How many steps of a rollback may wait out a refusal before the rest get one try each, so
-/// a tree whose every file is refused costs seconds, not one retry schedule per file.
-const ROLLBACK_RETRIES: u32 = 4;
-
-/// The most conflict names tried for one entry.
-const CONFLICT_NAMES: u32 = 1000;
 
 /// One step of a move, as [`move_dir_checked`]'s hook sees it right before it runs.
 #[doc(hidden)]
@@ -79,6 +78,10 @@ pub enum Step<'a> {
     RemakeDir(&'a Path),
     /// A rollback removes a staged folder it emptied.
     RemoveStaged(&'a Path),
+    /// The move's journal record is dropped: the move is done or fully undone.
+    Forget(&'a Path),
+    /// The sweep has a journal record open and checks next that it is still the same file.
+    ReadRecord(&'a Path),
 }
 
 /// A failed move whose rollback could not put everything back under its own name. The move
@@ -92,7 +95,7 @@ pub struct IncompleteRollback {
     pub conflict_copies: Vec<PathBuf>,
     /// Folders holding what could not go back, at its path in the source: the visible
     /// `<source name> (incomplete move)` beside the target, and the hidden staging folder only
-    /// when not even that rename went through.
+    /// when not even that rename went through (the next open's sweep puts it back).
     pub kept: Vec<PathBuf>,
 }
 
@@ -149,20 +152,25 @@ fn is_hold(error: &io::Error) -> bool {
             .is_some_and(|inner| inner.is::<SimulatedHold>())
 }
 
-/// Moves the folder `from` to `to`, where nothing is yet (module doc).
-pub fn move_dir(from: &Path, to: &Path) -> io::Result<()> {
-    move_dir_checked(from, to, &mut |_| Ok(()))
+/// Moves the folder `from` to `to`, where nothing is yet (module doc). Both are folders of
+/// `vault` and start with `vault` spelled as given (the check is lexical: `InvalidInput`
+/// otherwise); `vault`'s `.memry/moves/` journals an entry-wise move.
+pub fn move_dir(vault: &Path, from: &Path, to: &Path) -> io::Result<()> {
+    move_dir_checked(vault, from, to, &mut |_| Ok(()))
 }
 
 /// [`move_dir`] with a hook that runs before every step and can fail it, so a test can make
 /// a step fail as Windows does.
 #[doc(hidden)]
 pub fn move_dir_checked(
+    vault: &Path,
     from: &Path,
     to: &Path,
     hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
 ) -> io::Result<()> {
     let source = fs::symlink_metadata(from)?;
+    let from_rel = vault_relative(vault, from)?;
+    vault_relative(vault, to)?;
     let itself = same_folder(from, to);
     if !itself && (to.starts_with(from) || to.ancestors().skip(1).any(|a| same_folder(from, a))) {
         return Err(io::Error::new(
@@ -191,22 +199,32 @@ pub fn move_dir_checked(
     if !is_hold(&refused) || source.file_type().is_symlink() {
         return Err(refused);
     }
-    let id = uuid::Uuid::new_v4().simple().to_string();
-    let staging = to.with_file_name(format!(".memry-move-{}", &id[..12]));
+    let id = uuid::Uuid::new_v4().simple().to_string()[..ID_LEN].to_owned();
+    let staging = to.with_file_name(format!("{STAGING_PREFIX}{id}"));
+    let mut record = Journaled::write(vault, &id, &from_rel, &vault_relative(vault, &staging)?)?;
     // Only a staging folder this move made is ever rolled back: one that was there fails the
     // move before anything moved.
-    hook(Step::MakeDir(&staging))?;
-    fs::create_dir(&staging)?;
+    if let Err(error) = hook(Step::MakeDir(&staging)).and_then(|()| fs::create_dir(&staging)) {
+        record.forget(hook);
+        return Err(error);
+    }
     let moved = move_entries(from, &staging, hook).and_then(|()| {
         retried(|| {
             hook(Step::Entry { from: &staging, to })?;
             rename_no_replace(&staging, to)
         })
     });
-    match moved {
+    let result = match moved {
         Ok(()) => Ok(()),
-        Err(cause) => roll_back(cause, from, &staging, hook),
+        Err(cause) => roll_back(cause, from, &staging, hook, &mut |visible| {
+            record.will_show(vault, visible);
+        }),
+    };
+    // Files still staged wait, with the record, for the next open's sweep.
+    if fs::symlink_metadata(&staging).is_err() {
+        record.forget(hook);
     }
+    result
 }
 
 /// `to` is `from` under another spelling: a folder, not a link, and the same one.
@@ -316,213 +334,15 @@ fn roll_back(
     from: &Path,
     staging: &Path,
     hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
+    before_show: &mut dyn FnMut(&Path),
 ) -> io::Result<()> {
-    let mut back = PutBack {
-        hook,
-        budget: Budget(ROLLBACK_RETRIES),
-        conflict_copies: Vec::new(),
-    };
-    back.put(staging, from);
-    let mut kept = Vec::new();
-    if fs::symlink_metadata(staging).is_ok() {
-        let name = from.file_name().unwrap_or_default().to_string_lossy();
-        let visible = (1..=CONFLICT_NAMES)
-            .map(|n| match n {
-                1 => format!("{name} (incomplete move)"),
-                n => format!("{name} (incomplete move {n})"),
-            })
-            .map(|candidate| staging.with_file_name(candidate))
-            .find(|candidate| fs::symlink_metadata(candidate).is_err());
-        if let Some(visible) = visible {
-            back.put(staging, &visible);
-            if fs::symlink_metadata(&visible).is_ok() {
-                kept.push(visible);
-            }
-        }
-        if fs::symlink_metadata(staging).is_ok() {
-            tracing::error!(
-                scope = SCOPE,
-                "a failed folder move left files in its hidden staging folder"
-            );
-            kept.push(staging.to_owned());
-        }
-    }
-    if kept.is_empty() && back.conflict_copies.is_empty() {
+    let left = put_back_staged(from, staging, hook, before_show);
+    if left.kept.is_empty() && left.conflict_copies.is_empty() {
         return Err(cause);
     }
     Err(io::Error::other(IncompleteRollback {
         cause,
-        conflict_copies: back.conflict_copies,
-        kept,
+        conflict_copies: left.conflict_copies,
+        kept: left.kept,
     }))
-}
-
-/// One staged entry on its way back: where it goes, and whether that is a conflict name.
-enum Job {
-    Put {
-        from: PathBuf,
-        to: PathBuf,
-        conflict: bool,
-    },
-    /// A staged folder whose entries were all put back before this runs.
-    Remove(PathBuf),
-}
-
-/// A rollback's put-back: never replaces, never stops at the first failure (what fails stays
-/// in the staging folder, and the rest still goes back).
-struct PutBack<'h> {
-    hook: &'h mut dyn FnMut(Step<'_>) -> io::Result<()>,
-    budget: Budget,
-    conflict_copies: Vec<PathBuf>,
-}
-
-/// How many more rollback steps may wait out a refusal ([`ROLLBACK_RETRIES`]).
-struct Budget(u32);
-
-impl Budget {
-    /// [`retried`] while the budget lasts, then one try. A step still refused after every
-    /// retry uses up one.
-    fn retried(&mut self, mut operation: impl FnMut() -> io::Result<()>) -> io::Result<()> {
-        if self.0 == 0 {
-            return operation();
-        }
-        let result = retried(operation);
-        if result.as_ref().is_err_and(is_transient) {
-            self.0 -= 1;
-        }
-        result
-    }
-}
-
-impl PutBack<'_> {
-    /// Puts the tree at `staged` back at `original`, merging into a folder that is there.
-    fn put(&mut self, staged: &Path, original: &Path) {
-        let mut jobs = vec![Job::Put {
-            from: staged.to_owned(),
-            to: original.to_owned(),
-            conflict: false,
-        }];
-        while let Some(job) = jobs.pop() {
-            match job {
-                Job::Remove(folder) => {
-                    let hook = &mut *self.hook;
-                    let removed = self.budget.retried(|| {
-                        hook(Step::RemoveStaged(&folder))?;
-                        fs::remove_dir(&folder)
-                    });
-                    failed(removed);
-                }
-                Job::Put { from, to, conflict } => {
-                    self.put_one(&mut jobs, from, to, conflict);
-                }
-            }
-        }
-    }
-
-    fn put_one(&mut self, jobs: &mut Vec<Job>, from: PathBuf, to: PathBuf, conflict: bool) {
-        let Ok(meta) = fs::symlink_metadata(&from) else {
-            return; // gone from the staging folder: nothing left to put back
-        };
-        let is_dir = meta.is_dir();
-        let hook = &mut *self.hook;
-        let mut once = || {
-            hook(Step::PutBack {
-                from: &from,
-                to: &to,
-            })?;
-            rename_no_replace(&from, &to)
-        };
-        // A folder is tried once: when Windows holds it, its entries go back one by one.
-        let put = if is_dir {
-            once()
-        } else {
-            self.budget.retried(once)
-        };
-        let error = match put {
-            Ok(()) => {
-                if conflict {
-                    self.conflict_copies.push(to);
-                }
-                return;
-            }
-            Err(error) => error,
-        };
-        let taken = error.kind() == io::ErrorKind::AlreadyExists;
-        if !taken && !(is_dir && is_hold(&error)) {
-            return failed(Err(error));
-        }
-        let there = fs::symlink_metadata(&to);
-        if is_dir && there.as_ref().is_ok_and(fs::Metadata::is_dir) {
-            return queue_into(jobs, from, to);
-        }
-        if there.is_ok() {
-            // A file, a link or a folder took the name: keep both.
-            match conflict_name(&to, is_dir) {
-                Some(free) => jobs.push(Job::Put {
-                    from,
-                    to: free,
-                    conflict: true,
-                }),
-                None => failed(Err(error)),
-            }
-            return;
-        }
-        let hook = &mut *self.hook;
-        let made = self.budget.retried(|| {
-            hook(Step::RemakeDir(&to))?;
-            fs::create_dir(&to)
-        });
-        match made {
-            Ok(()) => queue_into(jobs, from, to),
-            // Taken since the look: put it back again, which decides once more.
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-                jobs.push(Job::Put { from, to, conflict })
-            }
-            Err(error) => failed(Err(error)),
-        }
-    }
-}
-
-/// Queues the entries of the staged folder `from` for the folder `to`, then its removal.
-fn queue_into(jobs: &mut Vec<Job>, from: PathBuf, to: PathBuf) {
-    match names(&from) {
-        Ok(names) => {
-            jobs.push(Job::Remove(from.clone()));
-            jobs.extend(names.into_iter().map(|(name, _)| Job::Put {
-                from: from.join(&name),
-                to: to.join(&name),
-                conflict: false,
-            }));
-        }
-        Err(error) => failed(Err(error)),
-    }
-}
-
-/// The first free `<name> (conflict copy)<ext>`, then `<name> (conflict copy 2)<ext>` ...,
-/// beside `taken`. A folder's name keeps its dots.
-fn conflict_name(taken: &Path, is_dir: bool) -> Option<PathBuf> {
-    let file_name = taken.file_name()?.to_string_lossy().into_owned();
-    let (name, ext) = match file_name.rfind('.') {
-        Some(dot) if dot > 0 && !is_dir => file_name.split_at(dot),
-        _ => (file_name.as_str(), ""),
-    };
-    (1..=CONFLICT_NAMES)
-        .map(|n| match n {
-            1 => format!("{name} (conflict copy){ext}"),
-            n => format!("{name} (conflict copy {n}){ext}"),
-        })
-        .map(|candidate| taken.with_file_name(candidate))
-        .find(|candidate| fs::symlink_metadata(candidate).is_err())
-}
-
-/// Logs a rollback step that failed; what it would have moved stays in the staging folder.
-fn failed(result: io::Result<()>) {
-    if let Err(error) = result {
-        // The error kind only: the path is note-derived.
-        tracing::error!(
-            scope = SCOPE,
-            kind = ?error.kind(),
-            "a step of a failed folder move was not undone"
-        );
-    }
 }

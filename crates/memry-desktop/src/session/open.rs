@@ -9,8 +9,10 @@ use memry_core::api::vault::Vault;
 use memry_core::domain::notes::identity::Origin;
 use memry_core::storage::OpenOptions;
 use memry_core::storage::recovery_prune::prune_settled;
+use uuid::Uuid;
 
 use super::projection::{DEFAULT_QUEUE_LIMIT, ProjectionRuntime};
+use super::response::MovesRecovered;
 use super::{
     Open, OpenSource, OpenStage, OpenVault, Session, SessionError, SessionEvent, SessionStatus,
     VaultOpened, lock,
@@ -18,6 +20,7 @@ use super::{
 use crate::registry::vaults::basename;
 use crate::vault::config::{invalidate_vault_config_cache, read_vault_config};
 use crate::vault::init::{CountLimits, count_markdown_files, init_vault, is_vault_initialized};
+use crate::vault::move_journal::sweep as sweep_moves;
 
 /// Settled `data.db.corrupt-*` quarantines kept. Core decides which are settled
 /// ([`prune_settled`]); this only says how many of those to keep.
@@ -136,12 +139,33 @@ impl Session {
             Err(error) => tracing::warn!(%error, "could not prune data.db quarantines"),
         }
 
-        let note_count = count_markdown_files(
-            path,
-            &read_vault_config(path).exclude_patterns,
-            CountLimits::DEFAULT,
-        )
-        .count;
+        let exclude = read_vault_config(path).exclude_patterns;
+        let counted = count_markdown_files(path, &exclude, CountLimits::DEFAULT);
+        // Before any open hook, so before the watcher: a folder move a crash interrupted is put
+        // back or shown, and its notes are never reported removed.
+        let swept = sweep_moves(path, &counted.staging);
+        let moves_recovered = swept.changed().then(|| {
+            tracing::warn!(
+                undone = swept.undone,
+                conflict_copies = swept.conflict_copies.len(),
+                kept = swept.kept.len(),
+                shown = swept.shown.len(),
+                "swept interrupted folder moves"
+            );
+            let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+            MovesRecovered {
+                id: Uuid::new_v4().simple().to_string(),
+                undone: count(swept.undone),
+                conflict_copies: count(swept.conflict_copies.len()),
+                kept_folders: count(swept.kept.len()),
+                shown_folders: count(swept.shown.len()),
+            }
+        });
+        let note_count = if moves_recovered.is_some() {
+            count_markdown_files(path, &exclude, CountLimits::DEFAULT).count
+        } else {
+            counted.count
+        };
         let stored = match self
             .inner
             .registry
@@ -183,12 +207,14 @@ impl Session {
                 view: view.clone(),
                 runtime: runtime.clone(),
                 background: Vec::new(),
+                moves_recovered: moves_recovered.clone(),
             });
         }
         self.emit(SessionEvent::StatusChanged(SessionStatus {
             is_open: true,
             path: Some(path_text.clone()),
             error: None,
+            moves_recovered,
         }));
         self.emit(SessionEvent::Opened {
             path: path_text,

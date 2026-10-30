@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "A részletekért nézze meg az emlékeztetőpanelt",
     "searchIndexRepaired": "Keresési index javítva",
     "searchIndexRepairedHint": "A keresési index egy része megsérült, ezért a Memry újraépítette. A jegyzeteit ez nem érintette.",
+    "folderMoveUndone": "Egy megszakadt mappaáthelyezést visszavontunk",
+    "folderMoveUndoneHint": "A jegyzetek visszakerültek abba a mappába, ahonnan áthelyezték őket.",
+    "folderMoveShown": "Egy megszakadt mappaáthelyezés jegyzetei újra láthatók",
+    "folderMoveConflictCopies": "Azoknak a jegyzeteknek, amelyek neve közben foglalt lett, a neve „{suffix}” végű.",
+    "folderMoveIncomplete": "Néhány jegyzet olyan mappákban van, amelyek neve „{suffix}” végű.",
+    "folderMoveNothingDeleted": "Semmi sem törlődött.",
     "drop": {
       "tooLarge": "Az egyik behúzott fájl nagyobb 2 GB-nál.",
       "tooMany": "Túl sok fájl vár importálásra. Húzz be kevesebb fájlt, és próbáld újra.",

@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "הפרטים מופיעים בחלונית התזכורות",
     "searchIndexRepaired": "אינדקס החיפוש תוקן",
     "searchIndexRepairedHint": "חלק מאינדקס החיפוש נפגם, ולכן Memry בנה אותו מחדש. הפתקים שלך לא שונו.",
+    "folderMoveUndone": "העברת תיקייה שנקטעה בוטלה",
+    "folderMoveUndoneHint": "הפתקים חזרו לתיקייה שממנה הועברו.",
+    "folderMoveShown": "פתקים מהעברת תיקייה שנקטעה גלויים שוב",
+    "folderMoveConflictCopies": "פתקים ששמם נתפס בינתיים מסתיימים ב־“{suffix}”.",
+    "folderMoveIncomplete": "חלק מהפתקים נמצאים בתיקיות ששמן מסתיים ב־“{suffix}”.",
+    "folderMoveNothingDeleted": "דבר לא נמחק.",
     "drop": {
       "tooLarge": "קובץ שנגרר גדול מ־2 GB.",
       "tooMany": "יותר מדי קבצים ממתינים לייבוא. גררו פחות קבצים ונסו שוב.",

@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Controlla il pannello dei promemoria per i dettagli",
     "searchIndexRepaired": "Indice di ricerca riparato",
     "searchIndexRepairedHint": "Una parte dell'indice di ricerca era danneggiata, quindi Memry l'ha ricostruito. Le tue note non sono state modificate.",
+    "folderMoveUndone": "Uno spostamento di cartella interrotto è stato annullato",
+    "folderMoveUndoneHint": "Le note sono tornate nella cartella da cui erano state spostate.",
+    "folderMoveShown": "Le note di uno spostamento di cartella interrotto sono di nuovo visibili",
+    "folderMoveConflictCopies": "Le note il cui nome è stato preso nel frattempo terminano con “{suffix}”.",
+    "folderMoveIncomplete": "Alcune note si trovano in cartelle che terminano con “{suffix}”.",
+    "folderMoveNothingDeleted": "Non è stato eliminato nulla.",
     "drop": {
       "tooLarge": "Un file trascinato supera i 2 GB.",
       "tooMany": "Troppi file sono in attesa di importazione. Trascina meno file e riprova.",

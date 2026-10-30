@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Pojedinosti potražite u panelu podsjetnika",
     "searchIndexRepaired": "Indeks pretraživanja popravljen",
     "searchIndexRepairedHint": "Dio indeksa pretraživanja bio je oštećen pa ga je Memry ponovno izgradio. Vaše bilješke nisu mijenjane.",
+    "folderMoveUndone": "Prekinuto premještanje mape je poništeno",
+    "folderMoveUndoneHint": "Bilješke su ponovno u mapi iz koje su premještene.",
+    "folderMoveShown": "Bilješke iz prekinutog premještanja mape ponovno su vidljive",
+    "folderMoveConflictCopies": "Bilješke čiji je naziv u međuvremenu zauzet završavaju s „{suffix}”.",
+    "folderMoveIncomplete": "Neke su bilješke u mapama čiji naziv završava s „{suffix}”.",
+    "folderMoveNothingDeleted": "Ništa nije izbrisano.",
     "drop": {
       "tooLarge": "Ispuštena datoteka veća je od 2 GB.",
       "tooMany": "Previše datoteka čeka na uvoz. Ispustite manje datoteka i pokušajte ponovno.",

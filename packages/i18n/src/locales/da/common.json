@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Se detaljer i påmindelsespanelet",
     "searchIndexRepaired": "Søgeindeks repareret",
     "searchIndexRepairedHint": "En del af søgeindekset var beskadiget, så Memry genopbyggede det. Dine noter blev ikke berørt.",
+    "folderMoveUndone": "En afbrudt flytning af en mappe blev fortrudt",
+    "folderMoveUndoneHint": "Noterne er tilbage i den mappe, de blev flyttet fra.",
+    "folderMoveShown": "Noter fra en afbrudt flytning af en mappe er synlige igen",
+    "folderMoveConflictCopies": "Noter, hvis navn blev optaget i mellemtiden, ender på »{suffix}«.",
+    "folderMoveIncomplete": "Nogle noter ligger i mapper, der ender på »{suffix}«.",
+    "folderMoveNothingDeleted": "Intet blev slettet.",
     "drop": {
       "tooLarge": "En trukket fil er større end 2 GB.",
       "tooMany": "For mange filer venter på at blive importeret. Træk færre filer, og prøv igen.",

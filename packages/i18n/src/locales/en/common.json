@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Check the reminders panel for details",
     "searchIndexRepaired": "Search index repaired",
     "searchIndexRepairedHint": "Part of the search index was damaged, so Memry rebuilt it. Your notes were not touched.",
+    "folderMoveUndone": "An interrupted folder move was undone",
+    "folderMoveUndoneHint": "Its notes are back in the folder they were moved from.",
+    "folderMoveShown": "Notes from an interrupted folder move are visible again",
+    "folderMoveConflictCopies": "Notes whose name was taken in the meantime end in “{suffix}”.",
+    "folderMoveIncomplete": "Some notes are in folders ending in “{suffix}”.",
+    "folderMoveNothingDeleted": "Nothing was deleted.",
     "drop": {
       "tooLarge": "A dropped file is larger than 2 GB.",
       "tooMany": "Too many files are waiting to import. Drop fewer files and try again.",
