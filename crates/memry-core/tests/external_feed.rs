@@ -22,17 +22,15 @@ use memry_core::domain::external_feed::{FeedInput, FeedOutcome, Refusal};
 use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
-use memry_core::markdown::shared::writing_tools::WritingFrontmatter;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use rusqlite::params;
 
-/// A file with no frontmatter, read whole, as the vault tier reads one.
 fn input<'a>(note_id: &'a str, markdown: &'a str) -> FeedInput<'a> {
     FeedInput {
         note_id,
         markdown,
         note_path: Some("a.md"),
-        writing: Some(WritingFrontmatter::default()),
+        writing: None,
         frontmatter: None,
     }
 }
@@ -233,29 +231,6 @@ fn a_large_file_is_never_fed_and_owes_its_file() {
     f.owe_body_pull(&id);
     assert_eq!(f.feed(&id, &big), FeedOutcome::LargeFile, "owed or not");
     assert!(f.owes_file_body(&id));
-}
-
-/// A frontmatter that does not parse may hold writing tools data, so a body taken from that file
-/// is not the whole file: the note still owes its file body, and a feed that reads the
-/// frontmatter later settles it.
-#[test]
-fn a_file_whose_frontmatter_was_not_read_still_owes_its_body() {
-    let f = fixture();
-    let id = f.note();
-    let unread = |markdown| FeedInput {
-        writing: None,
-        ..input(&id, markdown)
-    };
-    assert_eq!(f.feed_input(unread("the file's text")), FeedOutcome::Fed);
-    assert!(f.body(&id).contains("the file's text"));
-    assert!(f.owes_file_body(&id));
-    assert_eq!(
-        f.feed_input(unread("the file's text")),
-        FeedOutcome::Unchanged
-    );
-    assert!(f.owes_file_body(&id));
-    assert_eq!(f.feed(&id, "the file's text"), FeedOutcome::Unchanged);
-    assert!(!f.owes_file_body(&id));
 }
 
 #[test]
@@ -698,12 +673,8 @@ fn a_file_whose_writing_frontmatter_changed_is_fed_although_its_body_did_not() {
     };
     assert_eq!(f.feed_input(same), FeedOutcome::Unchanged);
     // A caller that did not read the frontmatter says nothing about it.
-    let unread = FeedInput {
-        writing: None,
-        ..input(&id, markdown)
-    };
     assert_eq!(
-        f.feed_input(unread),
+        f.feed(&id, markdown),
         FeedOutcome::Unchanged,
         "an unread frontmatter reset the writing state"
     );

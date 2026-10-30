@@ -337,10 +337,9 @@ fn an_open_records_a_missing_origin_from_what_is_beside_it() {
 }
 
 /// Pinned: a note that grows into the large-file class after it was named stays a note. Its
-/// record was synced, so a move still edits it, as Electron's `processRename` does. Its file is
-/// ahead of its document, so the row's hash is of an older text and cannot tell a removal from
-/// a move: a removal keeps the note (Electron deletes it), and a move while the app is closed
-/// leaves it too, with no second note for the large file.
+/// record was synced, so a move still edits it, as Electron's `processRename` does, live or
+/// while the app is closed (paired on the bytes, #3744). Its file is ahead of its document, so
+/// a removal keeps the note (Electron deletes it): the file had text the note does not.
 #[test]
 fn a_named_note_that_grew_large_still_follows_its_file() {
     let mut e = notes_env();
@@ -361,8 +360,9 @@ fn a_named_note_that_grew_large_still_follows_its_file() {
     e.close();
     fs::rename(e.vault.join("moved.md"), e.vault.join("closed.md")).unwrap();
     reopen(&mut e);
+    let live = vec![(id.clone(), "closed".to_owned(), None, false)];
     assert_eq!(records(&e), live);
-    assert_eq!(row_id(&e, "closed.md"), None);
+    assert_eq!(row_id(&e, "closed.md"), Some(id.clone()));
 
     fs::remove_file(e.vault.join("closed.md")).unwrap();
     std::thread::sleep(vault_env::QUIET);
@@ -370,30 +370,23 @@ fn a_named_note_that_grew_large_still_follows_its_file() {
     assert!(!outbox(&e).contains(&("delete".to_owned(), id)));
 }
 
-/// A row with no hash of its file's text (frontmatter that does not parse, so the tier cannot
-/// tell what the document holds) cannot tell a removal from a move: moved while the app is
-/// closed, its note is kept and nothing is deleted. Pinned: the moved file is a second note,
-/// until the tier pairs moves by the file's bytes (#3744).
+/// A file whose frontmatter does not parse is a note too (its body is the note's, #3750): moved
+/// while the app is closed, it pairs on its bytes (#3744), the record follows it, and no second
+/// note is made.
 #[test]
-fn a_file_whose_row_holds_no_hash_moved_while_closed_keeps_its_note() {
+fn a_file_whose_frontmatter_does_not_parse_moved_while_closed_keeps_its_note() {
     let mut e = notes_env();
     e.write("a.md", "---\nfoo: [unclosed\n---\nBody\n");
     e.open();
     e.facts_until(indexed);
     let id = row_id(&e, "a.md").unwrap();
-    assert_eq!(row_hash(&e, "a.md"), None);
     e.close();
 
     fs::rename(e.vault.join("a.md"), e.vault.join("b.md")).unwrap();
     reopen(&mut e);
-    let records = records(&e);
-    assert!(
-        records.contains(&(id.clone(), "a".to_owned(), None, false)),
-        "{records:?}"
-    );
-    assert!(!outbox(&e).contains(&("delete".to_owned(), id.clone())));
-    let second = row_id(&e, "b.md").expect("the moved file, a second note");
-    assert_ne!(second, id);
+    assert_eq!(records(&e), vec![(id.clone(), "b".to_owned(), None, false)]);
+    assert_eq!(row_id(&e, "b.md"), Some(id.clone()));
+    assert!(!outbox(&e).contains(&("delete".to_owned(), id)));
 }
 
 /// A move the record was owed and a move after it reach the record in one edit, counted from
@@ -752,30 +745,58 @@ fn a_large_paste_undone_outside_lets_the_app_write_the_file_again() {
     assert_eq!(e.read("a.md"), "typed in the app\n");
 }
 
-/// A frontmatter that stops parsing after the row recorded its hash leaves that hash naming an
-/// older file, and the note owes its file body: moved while the app is closed, the note is
-/// kept, and no delete is pushed.
+/// A note's frontmatter stops parsing outside the app (#3750), and the note is then edited in
+/// the app: the write-back cannot write that file, so the edit is only in the note. Its file
+/// removed, the note is kept with the edit, and no delete is pushed. The same removal of a note
+/// whose file had all of it deletes the note.
 #[test]
-fn a_file_whose_frontmatter_broke_moved_while_closed_keeps_its_note() {
-    let mut e = notes_env();
-    e.write("a.md", "Body\n");
+fn a_removed_file_whose_note_has_an_edit_the_file_never_got_keeps_the_note() {
+    let (mut e, store) = notes_env_with_store();
+    e.write("a.md", "Alpha\n");
+    e.write("b.md", "Beta\n");
     e.open();
     e.facts_until(indexed);
-    let id = row_id(&e, "a.md").unwrap();
-    assert!(row_hash(&e, "a.md").is_some());
-    e.write("a.md", "---\nfoo: [unclosed\n---\nBody, edited\n");
-    std::thread::sleep(Duration::from_millis(1000));
-    assert!(owes_file_body(&e, &id));
-    e.close();
+    let (a, b) = (row_id(&e, "a.md").unwrap(), row_id(&e, "b.md").unwrap());
+    std::thread::sleep(Duration::from_millis(300));
+    let broken = "---\nfoo: [unclosed\n---\nBroken\n";
+    e.write("a.md", broken);
+    e.write("b.md", broken);
+    let deadline = std::time::Instant::now() + vault_env::WAIT;
+    while e.body(&a) != "Broken" || e.body(&b) != "Broken" {
+        assert!(std::time::Instant::now() < deadline, "never fed");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    std::thread::sleep(vault_env::QUIET);
+    e.edit_in_app(&store, &a, "typed in the app");
+    e.tier.schedule(&a);
+    assert!(e.tier.flush(vault_env::WAIT));
+    assert_eq!(
+        e.read("a.md"),
+        broken,
+        "the write-back wrote over the block"
+    );
+    e.drain();
 
-    fs::rename(e.vault.join("a.md"), e.vault.join("b.md")).unwrap();
-    reopen(&mut e);
+    fs::remove_file(e.vault.join("a.md")).unwrap();
+    fs::remove_file(e.vault.join("b.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == b));
+    std::thread::sleep(vault_env::QUIET);
     let records = records(&e);
     assert!(
-        records.contains(&(id.clone(), "a".to_owned(), None, false)),
+        records.contains(&(a.clone(), "a".to_owned(), None, false)),
         "{records:?}"
     );
-    assert!(!outbox(&e).contains(&("delete".to_owned(), id)));
+    assert!(
+        records.contains(&(b.clone(), "b".to_owned(), None, true)),
+        "{records:?}"
+    );
+    let outbox = outbox(&e);
+    assert!(
+        !outbox.contains(&("delete".to_owned(), a.clone())),
+        "{outbox:?}"
+    );
+    assert!(outbox.contains(&("delete".to_owned(), b)), "{outbox:?}");
+    assert_eq!(e.body(&a), "typed in the app");
 }
 
 /// An owed move settles from the note's row path: the path it was owed from may hold another

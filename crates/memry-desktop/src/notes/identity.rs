@@ -31,14 +31,13 @@
 //!   folder is a note's move.
 //! - A new note carries the file's creation and modification times, as
 //!   Electron's indexer gives a file it finds.
-//! - A removed file deletes its note only when its row holds the hash of the
-//!   file's text, the one the tier pairs a move by. A row with none (a file named
-//!   with a frontmatter that does not parse) or an older one (the file is ahead
-//!   of its document, `owed_file_body`: a large-file class text, a refused feed,
-//!   a frontmatter that stopped parsing) cannot tell a removal from a move, so
-//!   the note is kept, with a warning. Such a file moved while the app is closed
-//!   then reaches the tier as a new file and, unless it is large-file class, a
-//!   second note, until the tier pairs moves by the file's bytes (#3744).
+//! - A removed file deletes its note only when its row says the file held the
+//!   whole note: the row knows the bytes on disk (a move pairs on them, #3744),
+//!   the document holds them, and no edit came after the row's stamp. Otherwise
+//!   (a large-file class text or a refused feed the document did not take, an
+//!   app edit the write-back could not write, a pulled change not written yet)
+//!   the note is kept, with a warning: a tombstone would delete on every device
+//!   what the file never had.
 //!
 //! Every answer is the core's; a failure is the consumer's to log and retry
 //! ([`crate::vault::consumer::MAX_RETRIES`]), and the next open asks again.
@@ -63,6 +62,7 @@ use crate::vault::consumer::identity::{
     Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal,
 };
 use crate::vault::file_types::FileType;
+use crate::vault::journal_format::normalize_journal_folder;
 
 const SCOPE: &str = "note_identity";
 
@@ -294,8 +294,8 @@ impl NoteIdentity for NotesIdentity {
                 tracing::warn!(
                     scope = SCOPE,
                     note_id,
-                    "a removed file's note is kept: its row holds no hash of the file's text, so \
-                     the removal may be a move"
+                    "a removed file's note is kept: its row does not say the file held the whole \
+                     note (the removal may be a move, or the note has text the file never had)"
                 );
                 Removal::Kept
             }
@@ -384,18 +384,6 @@ fn under_journal_folder(journal_folder: &str, path: &str) -> bool {
             .is_some_and(|rest| rest.starts_with('/'))
 }
 
-/// `normalizeJournalFolder` (`packages/storage-vault/src/journal-format.ts`): trimmed, `/` or
-/// `\` separated, with empty, `.` and `..` segments dropped.
-fn normalize_journal_folder(folder: &str) -> String {
-    folder
-        .trim()
-        .split(['/', '\\'])
-        .map(str::trim)
-        .filter(|segment| !segment.is_empty() && *segment != "." && *segment != "..")
-        .collect::<Vec<_>>()
-        .join("/")
-}
-
 /// When the file was created, where the file system records it.
 fn created_ms(path: &Path) -> Option<i64> {
     let created = std::fs::metadata(path).ok()?.created().ok()?;
@@ -416,10 +404,7 @@ mod tests {
     }
 
     #[test]
-    fn the_journal_folder_is_normalized_as_electron_does() {
-        assert_eq!(normalize_journal_folder(" journal/ "), "journal");
-        assert_eq!(normalize_journal_folder("a\\\\b/./../c"), "a/b/c");
-        assert_eq!(normalize_journal_folder("  "), "");
+    fn a_path_is_under_the_journal_folder_by_whole_folders() {
         assert!(under_journal_folder("journal", "journal/2025-01-01.md"));
         assert!(under_journal_folder("a/b", "a/b/2025-01-01.md"));
         assert!(!under_journal_folder("journal", "journals/2025-01-01.md"));

@@ -85,6 +85,11 @@ pub fn create(db: &Db, id: &str, title: &str, folder: Option<&str>) {
 
 /// Gives the note a body, as a file's text fed into it.
 pub fn give_body(db: &Db, id: &str, path: &str, markdown: &str) {
+    give_body_at(db, id, path, markdown, NOW);
+}
+
+/// [`give_body`], stamped `at`.
+pub fn give_body_at(db: &Db, id: &str, path: &str, markdown: &str, at: i64) {
     let converter = Converter::new(CalloutTypes::new(Vec::new()));
     let input = FeedInput {
         note_id: id,
@@ -96,7 +101,7 @@ pub fn give_body(db: &Db, id: &str, path: &str, markdown: &str) {
     let outcome = db
         .call_blocking(|conn| {
             Ok(external_feed::feed_external_edit(
-                conn, &converter, input, DEVICE, NOW,
+                conn, &converter, input, DEVICE, at,
             ))
         })
         .expect("a database call")
@@ -126,23 +131,19 @@ pub fn pulled_item(db: &Db, item_type: &str, id: &str, payload: &Value) {
 
 /// A row whose hash is of the file's text, as the tier records one the note's document took.
 pub fn give_row(db: &Db, id: &str, path: &str) {
-    row(db, id, path, Some("hash"));
+    give_row_hashes(db, id, path, Some("hash"), Some("hash"));
 }
 
-/// A row that names no text: the tier read the file and the document did not take it whole.
-pub fn give_hashless_row(db: &Db, id: &str, path: &str) {
-    row(db, id, path, None);
-}
-
-fn row(db: &Db, id: &str, path: &str, hash: Option<&str>) {
+/// A row naming the text the document holds (`content`) and the bytes on disk (`file`).
+pub fn give_row_hashes(db: &Db, id: &str, path: &str, content: Option<&str>, file: Option<&str>) {
     let stat = NoteFileStat {
         note_id: id.to_owned(),
         path: path.to_owned(),
         file_type: "markdown".to_owned(),
         mime_type: None,
         file_size: Some(1),
-        content_hash: hash.map(str::to_owned),
-        file_hash: hash.map(str::to_owned),
+        content_hash: content.map(str::to_owned),
+        file_hash: file.map(str::to_owned),
         indexed_at: NOW,
     };
     run(db, |conn| note_files::upsert_stat(conn, &stat));

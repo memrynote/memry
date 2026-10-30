@@ -78,7 +78,6 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use rusqlite::Connection;
 
-use crate::api::errors::StorageError;
 use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::epoch;
 use crate::crdt::errors::CrdtError;
@@ -148,10 +147,6 @@ pub struct FeedInput<'a> {
     /// The vault-relative path, which relative links in the body resolve against.
     pub note_path: Option<&'a str>,
     /// The file's `writing` frontmatter, when the caller read the whole file.
-    /// `None` (a frontmatter that does not parse, which may hold some) leaves the
-    /// note owing its file body even when the body was taken: the document may not
-    /// hold the whole file, so the file stays ahead of it until a feed that reads
-    /// the frontmatter.
     pub writing: Option<WritingFrontmatter>,
     /// The file's frontmatter block, verbatim (`split_frontmatter_block`), which a
     /// kept version carries above the body it replaced, as the file did.
@@ -211,7 +206,6 @@ fn author(
         frontmatter,
     } = input;
     let markdown = markdown.strip_prefix('\u{feff}').unwrap_or(markdown);
-    let whole_file = writing.is_some();
     if !reads::note_exists(conn, note_id) {
         return Ok(FeedOutcome::NoNote);
     }
@@ -266,7 +260,7 @@ fn author(
         if same_text(&body.markdown, markdown)
             && writing.as_ref().is_none_or(|w| *w == body.writing)
         {
-            took_file(&tx, note_id, whole_file, now_ms)?;
+            owed_file_body::clear(&tx, note_id)?;
             tx.commit().map_err(storage_failed)?;
             return Ok(FeedOutcome::Unchanged);
         }
@@ -317,25 +311,9 @@ fn author(
     for update in &updates {
         append_in(&tx, ITEM_TYPE, note_id, update, now_ms)?;
     }
-    took_file(&tx, note_id, whole_file, now_ms)?;
+    owed_file_body::clear(&tx, note_id)?;
     tx.commit().map_err(storage_failed)?;
     Ok(FeedOutcome::Fed)
-}
-
-/// The document holds the file's body. The file owes nothing more when the whole
-/// file was read; when its frontmatter was not ([`FeedInput::writing`]), it still
-/// owes it, so the write-back keeps it and a removal is not taken for a delete.
-fn took_file(
-    tx: &Connection,
-    note_id: &str,
-    whole_file: bool,
-    now_ms: i64,
-) -> Result<(), StorageError> {
-    if whole_file {
-        owed_file_body::clear(tx, note_id).map(drop)
-    } else {
-        owed_file_body::record(tx, note_id, now_ms)
-    }
 }
 
 /// No update can carry the file's text: the file owes its body, as a refused
@@ -433,7 +411,7 @@ fn title(conn: &Connection, note_id: &str) -> Result<String, CrdtError> {
 }
 
 fn storage_failed(error: rusqlite::Error) -> CrdtError {
-    CrdtError::from(StorageError::Failed {
+    CrdtError::from(crate::api::errors::StorageError::Failed {
         what: error.to_string(),
     })
 }

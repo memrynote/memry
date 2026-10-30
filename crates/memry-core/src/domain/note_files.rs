@@ -457,6 +457,21 @@ pub fn behind_bodies(conn: &Connection) -> Result<Vec<String>, StorageError> {
         .map_err(failed)
 }
 
+/// Whether the note's body moved after its row's stamp ([`behind_bodies`], for one note whatever
+/// its row's hashes): an edit, or a merged page, its file has not been written with. `false`
+/// for a note without a row.
+pub fn behind_body(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    conn.query_row(
+        &format!(
+            "SELECT EXISTS (SELECT 1 FROM note_files WHERE note_id = ?1 AND {})",
+            body_moved_after_stamp()
+        ),
+        params![note_id],
+        |row| row.get(0),
+    )
+    .map_err(failed)
+}
+
 /// The markdown rows of tombstoned notes and journal days, by path: files a deletion on
 /// another device, or one whose file operation a crash cut short, left in the vault. A note
 /// this vault has no record of is not among them: its record may not have arrived yet, and

@@ -4,7 +4,7 @@
 //! | --------------------------------------------------------- | ----------------------------------- |
 //! | a rename edits title and folder once, keeps or drops slot | Electron `processRename`, #1646     |
 //! | a removed file deletes its note once                      | §5.8, one tombstone                 |
-//! | a removal the row cannot tell from a move keeps the note  | never a delete that may be a move   |
+//! | a removal the row does not say is the whole note keeps it | never a delete that may lose more   |
 //! | a local-only note's removal pushes nothing                | the gate in `outbox::enqueue`       |
 //! | a journal day keeps its record                            | Step 13m owns journal days          |
 //! | a move left owed keeps its first path until it is applied | evidence first, never a guess       |
@@ -13,12 +13,13 @@
 
 mod note_identity_support;
 
+use memry_core::api::errors::StorageError;
 use memry_core::domain::notes::identity::{self, Moved, OwedPlace, Removed};
 use memry_core::domain::notes::local_only;
 use memry_core::domain::owed_file_body;
 use note_identity_support::{
-    DEVICE, NOW, clear_outbox, create, deleted, give_hashless_row, give_row, open, outbox, payload,
-    place, position, run,
+    DEVICE, NOW, clear_outbox, create, deleted, give_body, give_body_at, give_row, give_row_hashes,
+    open, outbox, payload, place, position, run,
 };
 use serde_json::{Value, json};
 
@@ -114,22 +115,41 @@ fn a_removed_file_deletes_its_note_once() {
     assert!(outbox(&db).is_empty());
 }
 
-/// The tier pairs a move by the row's hash only. A row with none, or a note whose file is
-/// ahead of its document (the row's hash is of an older text), cannot tell a removal from a
-/// move whose new path the hash does not find: the note stays, and nothing is pushed.
+/// A tombstone deletes the note on every device, so a removal deletes it only when the row says
+/// the file held the whole note. Otherwise the note stays and nothing is pushed: a row that
+/// knows no bytes on disk (a move of the file would not pair, so the removal may be one), a
+/// document that does not hold the bytes on disk (another text, or a file body owed), and a
+/// body edited after the row's stamp (an edit the file never got).
 #[test]
-fn a_removal_the_row_cannot_tell_from_a_move_keeps_the_note() {
+fn a_removal_whose_row_does_not_say_the_file_held_the_note_keeps_it() {
     let db = open("undecided");
-    create(&db, "hashless", "A", None);
-    give_hashless_row(&db, "hashless", "A.md");
-    create(&db, "ahead", "B", None);
-    give_row(&db, "ahead", "B.md");
+    let rows: [(&str, Option<&str>, Option<&str>); 5] = [
+        ("hashless", None, None),
+        ("unpaired", Some("hash"), None),
+        ("untaken", None, Some("bytes")),
+        ("other", Some("hash"), Some("bytes")),
+        ("ahead", Some("hash"), Some("hash")),
+    ];
+    let mut paths = Vec::new();
+    for (id, content, file) in rows {
+        let path = format!("{id}.md");
+        create(&db, id, id, None);
+        give_row_hashes(&db, id, &path, content, file);
+        paths.push(path);
+    }
     run(&db, |conn| owed_file_body::record(conn, "ahead", NOW));
-    place(&db, "", &["A.md", "B.md"]);
+    create(&db, "edited", "edited", None);
+    give_body(&db, "edited", "edited.md", "The file's text\n");
+    give_row(&db, "edited", "edited.md");
+    give_body_at(&db, "edited", "edited.md", "Typed after\n", NOW + 1);
+    paths.push("edited.md".to_owned());
+    let path_refs: Vec<&str> = paths.iter().map(String::as_str).collect();
+    place(&db, "", &path_refs);
     clear_outbox(&db);
-    for (id, path) in [("hashless", "A.md"), ("ahead", "B.md")] {
+    for path in &paths {
+        let id = path.strip_suffix(".md").unwrap();
         let removed = run(&db, |conn| {
-            identity::removed(conn, id, path, DEVICE, NOW + 1)
+            identity::removed(conn, id, path, DEVICE, NOW + 2)
         });
         assert_eq!(removed, Removed::Undecided, "{id}");
         assert!(!deleted(&db, id), "{id}");
@@ -137,10 +157,25 @@ fn a_removal_the_row_cannot_tell_from_a_move_keeps_the_note() {
     }
     assert!(outbox(&db).is_empty());
 
-    // The document took the file: the hash names it again, and a removal is a removal.
+    // The document took the file: the row names it again, and a removal is a removal.
     run(&db, |conn| owed_file_body::clear(conn, "ahead"));
     let removed = run(&db, |conn| {
-        identity::removed(conn, "ahead", "B.md", DEVICE, NOW + 2)
+        identity::removed(conn, "ahead", "ahead.md", DEVICE, NOW + 3)
+    });
+    assert_eq!(removed, Removed::Deleted);
+    // The write-back wrote the edit: the row's stamp is after it.
+    run(&db, |conn| {
+        conn.execute(
+            "UPDATE note_files SET indexed_at = ?2 WHERE note_id = ?1",
+            rusqlite::params!["edited", NOW + 1],
+        )
+        .map(drop)
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    });
+    let removed = run(&db, |conn| {
+        identity::removed(conn, "edited", "edited.md", DEVICE, NOW + 3)
     });
     assert_eq!(removed, Removed::Deleted);
 }

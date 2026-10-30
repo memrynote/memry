@@ -1,7 +1,7 @@
 // The vault activity log in the running app (Step 12f-3a, #3529): what the watcher finds in the
 // vault folder is listed under Settings > Vault & Data and is in `.memry/activity.jsonl`, which
 // "Show log file" reveals.
-import { readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { invokeTest } from '../../harness/invoke-test'
@@ -55,21 +55,22 @@ test('a file Memry does not open is listed as skipped and reaches the log file',
   ).toBe(true)
 })
 
-// A removal is not driven here: until Step 13 (#3530) names notes, the e2e identity keeps a
-// note whose file went, and a kept note is not `removed` (`consumer/tests/activity.rs` has it).
-test('a note file added and then renamed in the vault folder is listed', async ({
+// A note's file deleted outside deletes the note (Step 13d, #3530), which is listed as removed.
+test('a note file added, renamed and deleted in the vault folder is listed', async ({
   app,
   page,
   testVaultPath
 }) => {
-  await invokeTest(app, 'e2e_vault_adopt_files')
   const [first, moved] = ['notes/activity-a.md', 'notes/activity-b.md']
   writeFileSync(join(testVaultPath, first), 'activity body\n')
   await settled(app, (files) => files.some((f) => f.path === first && f.contentHash !== null))
   renameSync(join(testVaultPath, first), join(testVaultPath, moved))
   await settled(app, (files) => files.some((f) => f.path === moved))
+  rmSync(join(testVaultPath, moved))
+  await settled(app, (files) => !files.some((f) => f.path === moved))
 
   await openVaultSettings(page)
   await expect(page.getByText(`Added ${first}`)).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText(`Renamed ${first} to ${moved}`)).toBeVisible()
+  await expect(page.getByText(`Removed ${moved}`)).toBeVisible()
 })
