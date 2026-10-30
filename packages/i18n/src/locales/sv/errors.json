@@ -71,7 +71,8 @@
     "writebackFailedTitleNamed": "”{title}” kunde inte uppdateras på disken",
     "writebackFailedTitleMany": "Filerna för {count} anteckningar på disken kunde inte uppdateras",
     "writebackFailedBody": "Filen på disken lämnades oförändrad. Din ändring förblir öppen i memrynote så länge appen körs; memrynote försöker igen vid din nästa ändring.",
-    "writebackFailedFrontmatterBody": "Filens frontmatter (blocket mellan raderna med --- överst) kan inte läsas, så memrynote lämnar filen oförändrad. Dina ändringar finns kvar i memrynote. Om du rättar filen utanför memrynote ersätter filens text dem, så kopiera först det du behöver."
+    "writebackFailedFrontmatterBody": "Filens frontmatter (blocket mellan raderna med --- överst) kan inte läsas, så memrynote lämnar filen oförändrad. Dina ändringar finns kvar i memrynote. Om du rättar filen utanför memrynote ersätter filens text dem, så kopiera först det du behöver.",
+    "writebackFailedFrontmatterBodyMany": "Filernas frontmatter (blocket mellan raderna med --- överst) kan inte läsas, så memrynote lämnar filerna oförändrade. Dina ändringar finns kvar i memrynote. Om du rättar filerna utanför memrynote ersätter filernas text dem, så kopiera först det du behöver."
   },
   "encryption": {
     "failed": "Det gick inte att kryptera data. Dina nycklar kan behöva genereras om.",

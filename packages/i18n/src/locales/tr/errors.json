@@ -71,7 +71,8 @@
     "writebackFailedTitleNamed": "“{title}” diskte güncellenemedi",
     "writebackFailedTitleMany": "{count} notun diskteki dosyaları güncellenemedi",
     "writebackFailedBody": "Diskteki dosya değiştirilmedi. Düzenlemeniz uygulama çalıştığı sürece memrynote içinde açık kalır; memrynote bir sonraki düzenlemenizde yeniden deneyecek.",
-    "writebackFailedFrontmatterBody": "Dosyanın frontmatter bölümü (en üstteki --- satırları arasındaki blok) okunamıyor, bu yüzden memrynote dosyayı değiştirmeden bırakıyor. Düzenlemeleriniz memrynote içinde kalır. Dosyayı memrynote dışında düzeltirseniz dosyanın metni bunların yerini alır; bu yüzden önce ihtiyacınız olanı kopyalayın."
+    "writebackFailedFrontmatterBody": "Dosyanın frontmatter bölümü (en üstteki --- satırları arasındaki blok) okunamıyor, bu yüzden memrynote dosyayı değiştirmeden bırakıyor. Düzenlemeleriniz memrynote içinde kalır. Dosyayı memrynote dışında düzeltirseniz dosyanın metni bunların yerini alır; bu yüzden önce ihtiyacınız olanı kopyalayın.",
+    "writebackFailedFrontmatterBodyMany": "Bu dosyaların frontmatter bölümü (en üstteki --- satırları arasındaki blok) okunamıyor, bu yüzden memrynote dosyaları değiştirmeden bırakıyor. Düzenlemeleriniz memrynote içinde kalır. Dosyaları memrynote dışında düzeltirseniz dosyaların metni bunların yerini alır; bu yüzden önce ihtiyacınız olanı kopyalayın."
   },
   "encryption": {
     "failed": "Veriler şifrelenemedi. Anahtarlarınızın yeniden oluşturulması gerekebilir.",

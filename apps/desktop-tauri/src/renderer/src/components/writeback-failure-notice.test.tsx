@@ -105,6 +105,18 @@ describe('WritebackFailureNotice', () => {
     expect(perNote).toHaveLength(3)
   })
 
+  it('says the frontmatter reason in the counting notice when every note failed on it', () => {
+    render(<WritebackFailureNotice />)
+
+    for (const id of ['n1', 'n2', 'n3', 'n4']) {
+      listener({ noteId: id, title: id, reason: 'frontmatter' })
+    }
+
+    const last = toastFn.warning.mock.calls.at(-1) as [string, { description: string }]
+    expect(last[0]).toBe('crdt.writebackFailedTitleMany {"count":4}')
+    expect(last[1].description).toBe('crdt.writebackFailedFrontmatterBodyMany')
+  })
+
   it('stops listening when unmounted', async () => {
     const { unmount } = render(<WritebackFailureNotice />)
 

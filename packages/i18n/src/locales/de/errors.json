@@ -71,7 +71,8 @@
     "writebackFailedTitleNamed": "„{title}“ konnte auf dem Datenträger nicht aktualisiert werden",
     "writebackFailedTitleMany": "Die Dateien von {count} Notizen auf dem Datenträger konnten nicht aktualisiert werden",
     "writebackFailedBody": "Die Datei auf dem Datenträger wurde nicht geändert. Deine Änderung bleibt in memrynote geöffnet, solange die App läuft; memrynote versucht es bei deiner nächsten Änderung erneut.",
-    "writebackFailedFrontmatterBody": "Das Frontmatter der Datei (der Block zwischen den Zeilen mit --- ganz oben) ist nicht lesbar, daher lässt memrynote die Datei unverändert. Deine Änderungen bleiben in memrynote. Wenn du die Datei außerhalb von memrynote korrigierst, ersetzt ihr Text deine Änderungen. Kopiere also vorher, was du brauchst."
+    "writebackFailedFrontmatterBody": "Das Frontmatter der Datei (der Block zwischen den Zeilen mit --- ganz oben) ist nicht lesbar, daher lässt memrynote die Datei unverändert. Deine Änderungen bleiben in memrynote. Wenn du die Datei außerhalb von memrynote korrigierst, ersetzt ihr Text deine Änderungen. Kopiere also vorher, was du brauchst.",
+    "writebackFailedFrontmatterBodyMany": "Das Frontmatter dieser Dateien (der Block zwischen den Zeilen mit --- ganz oben) ist nicht lesbar, daher lässt memrynote die Dateien unverändert. Deine Änderungen bleiben in memrynote. Wenn du die Dateien außerhalb von memrynote korrigierst, ersetzt ihr Text deine Änderungen. Kopiere also vorher, was du brauchst."
   },
   "encryption": {
     "failed": "Daten konnten nicht verschlüsselt werden. Möglicherweise müssen deine Schlüssel neu generiert werden.",

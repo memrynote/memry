@@ -71,7 +71,8 @@
     "writebackFailedTitleNamed": "“{title}” kon niet worden bijgewerkt op de schijf",
     "writebackFailedTitleMany": "De bestanden van {count} notities op de schijf konden niet worden bijgewerkt",
     "writebackFailedBody": "Het bestand op de schijf is niet gewijzigd. Je wijziging blijft open in memrynote zolang de app draait; memrynote probeert het opnieuw bij je volgende wijziging.",
-    "writebackFailedFrontmatterBody": "De frontmatter van het bestand (het blok tussen de regels met --- bovenaan) kan niet worden gelezen, dus memrynote laat het bestand ongewijzigd. Je wijzigingen blijven in memrynote. Als je het bestand buiten memrynote herstelt, vervangt de tekst van het bestand ze, dus kopieer eerst wat je nodig hebt."
+    "writebackFailedFrontmatterBody": "De frontmatter van het bestand (het blok tussen de regels met --- bovenaan) kan niet worden gelezen, dus memrynote laat het bestand ongewijzigd. Je wijzigingen blijven in memrynote. Als je het bestand buiten memrynote herstelt, vervangt de tekst van het bestand ze, dus kopieer eerst wat je nodig hebt.",
+    "writebackFailedFrontmatterBodyMany": "De frontmatter van deze bestanden (het blok tussen de regels met --- bovenaan) kan niet worden gelezen, dus memrynote laat de bestanden ongewijzigd. Je wijzigingen blijven in memrynote. Als je de bestanden buiten memrynote herstelt, vervangt hun tekst je wijzigingen, dus kopieer eerst wat je nodig hebt."
   },
   "encryption": {
     "failed": "Kan gegevens niet versleutelen. Mogelijk moeten je sleutels opnieuw worden gegenereerd.",

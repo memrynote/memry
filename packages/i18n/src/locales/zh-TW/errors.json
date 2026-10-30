@@ -71,7 +71,8 @@
     "writebackFailedTitleNamed": "無法更新磁碟上的「{title}」",
     "writebackFailedTitleMany": "無法更新磁碟上 {count} 則筆記的檔案",
     "writebackFailedBody": "磁碟上的檔案未變更。應用程式執行期間，你的編輯會在 memrynote 中保持開啟；memrynote 會在你下次編輯時重試。",
-    "writebackFailedFrontmatterBody": "無法讀取檔案的 frontmatter（頂端 --- 行之間的區塊），因此 memrynote 不會變更該檔案。你的編輯仍保留在 memrynote 中。如果在 memrynote 之外修正該檔案，檔案中的文字會取代這些編輯，所以請先複製你需要的內容。"
+    "writebackFailedFrontmatterBody": "無法讀取檔案的 frontmatter（頂端 --- 行之間的區塊），因此 memrynote 不會變更該檔案。你的編輯仍保留在 memrynote 中。如果在 memrynote 之外修正該檔案，檔案中的文字會取代這些編輯，所以請先複製你需要的內容。",
+    "writebackFailedFrontmatterBodyMany": "無法讀取這些檔案的 frontmatter（頂端 --- 行之間的區塊），因此 memrynote 不會變更這些檔案。你的編輯仍保留在 memrynote 中。如果在 memrynote 之外修正這些檔案，檔案中的文字會取代這些編輯，所以請先複製你需要的內容。"
   },
   "encryption": {
     "failed": "無法加密資料。你的金鑰可能需要重新產生。",

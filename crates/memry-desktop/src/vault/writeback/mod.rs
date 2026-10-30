@@ -17,8 +17,9 @@
 //!   they are. A file whose frontmatter does not parse holds a block the document does not:
 //!   it cannot be read back, so its pass fails and the user is told, and the document keeps
 //!   the edits made in the app until the file is fixed (#3750). The row check, the write and
-//!   the row record run under the rows' lane, so no feed lands in between; the lane is held for the whole pass (one note's replay, serialize
-//!   and write, about 20 ms at 12 KB), which is what the consumer waits at most.
+//!   the row record run under the rows' lane, so no feed lands in between; the lane is held
+//!   for the whole pass (one note's replay, serialize and write, about 20 ms at 12 KB), which
+//!   is what the consumer waits at most.
 //! - **No file is written while it is ahead of the document, or while the document is not the
 //!   note's body**: the owed-file-body marker (an owed or a refused feed) and an unpulled
 //!   server body keep the file ([`memry_core::domain::write_back`]).

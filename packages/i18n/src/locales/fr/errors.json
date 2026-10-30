@@ -71,7 +71,8 @@
     "writebackFailedTitleNamed": "La note « {title} » n’a pas pu être mise à jour sur le disque",
     "writebackFailedTitleMany": "Les fichiers de {count} notes sur le disque n’ont pas pu être mis à jour",
     "writebackFailedBody": "Le fichier sur le disque n'a pas été modifié. Votre modification reste ouverte dans memrynote tant que l'application est en cours d'exécution ; memrynote réessaiera lors de votre prochaine modification.",
-    "writebackFailedFrontmatterBody": "Le frontmatter du fichier (le bloc entre les lignes --- en haut) est illisible, donc memrynote laisse le fichier inchangé. Vos modifications restent dans memrynote. Si vous corrigez le fichier en dehors de memrynote, son texte les remplacera : copiez d'abord ce dont vous avez besoin."
+    "writebackFailedFrontmatterBody": "Le frontmatter du fichier (le bloc entre les lignes --- en haut) est illisible, donc memrynote laisse le fichier inchangé. Vos modifications restent dans memrynote. Si vous corrigez le fichier en dehors de memrynote, son texte les remplacera : copiez d'abord ce dont vous avez besoin.",
+    "writebackFailedFrontmatterBodyMany": "Le frontmatter de ces fichiers (le bloc entre les lignes --- en haut) est illisible, donc memrynote laisse les fichiers inchangés. Vos modifications restent dans memrynote. Si vous corrigez les fichiers en dehors de memrynote, leur texte les remplacera : copiez d'abord ce dont vous avez besoin."
   },
   "encryption": {
     "failed": "Impossible de chiffrer les données. Vos clés devront peut-être être régénérées.",
