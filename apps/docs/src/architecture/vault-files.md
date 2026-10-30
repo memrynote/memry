@@ -28,7 +28,7 @@ The watcher uses the OS file watcher through the `notify` crate: FSEvents on mac
 - **Renames.** A removed note whose bytes show up at another path within 500 ms is a rename, so the note keeps its id. This also works for files moved while the app was closed: the start rescan pairs them.
 - **The app's own writes.** The write-back tells the watcher what it is about to write (`EchoGuard`), so the app's own write never comes back as an outside edit.
 - **A vault that goes away.** The vault counts as there while `.memry/core/data.db` is a file. When it is not, for example because a drive was unplugged, the watcher reports no removals and checks every 2 seconds. When the vault is back, the watcher starts again and rescans.
-- **Many files gone at once.** When a rescan finds more than 20 files missing and more than 25 % of the vault, it reports no removal. This keeps a half-mounted vault from deleting notes on every device.
+- **Many files gone at once.** When a rescan finds more than 20 files missing and they are more than 25 % of the `note_files` rows it checked, it reports no removal. It also reports none when its walk of the vault was cut short. This keeps a half-mounted or half-copied vault from deleting notes on every device.
 - **Lost events.** Some OS watchers drop events without saying so. The watcher then rescans: after an overflow, after a burst of events on Windows, every 10 minutes on Windows, and every minute after any watcher error.
 
 Known limitation: on Linux, when the inotify watch limit (`fs.inotify.max_user_watches`) runs out, the folders past the limit get no live events. A rescan 2 seconds after the error, and then one every minute, finds their changes. The app logs `the vault watcher failed` with `limit=true`, but it shows you no notice yet; the notice comes with Step 14 (#3531). To get live events back, raise the limit, for example `sudo sysctl fs.inotify.max_user_watches=524288`, and reopen the vault.
@@ -41,10 +41,13 @@ When a file changes outside the app, the consumer feeds the new text to the note
 
 ## The write-back
 
-**When.** A note's file is written 500 ms after its last edit. Every edit starts the wait again, so typing writes the file once, when you pause. After a write, the next one waits 9 times what that write cost, at most 5 seconds, so a large note does not keep a core busy while you type. Every quit and every vault close writes all waiting notes first (the `flush-writebacks` step of [Quit and Shutdown](/architecture/shutdown)).
+**When.** A note's file is written 500 ms after its last edit. Every edit starts the wait again, so typing writes the file once, when you pause. After every pass, whether it wrote the file or not, the note's next pass waits 9 times what that pass cost, at most 5 seconds, so a large note does not keep a core busy while you type. Every quit and every vault close writes all waiting notes first (the `flush-writebacks` step of [Quit and Shutdown](/architecture/shutdown)).
 
 **What.** A pass writes the file only when the file still has the bytes the document is known to hold. It keeps the file as it is when:
 
+- the note is a journal day: journal files are not read into a document yet, so there is nothing to write;
+- the file is missing: the pass does not create it again;
+- the file was never read into the document (its row has no hash), so the document is not known to hold it;
 - the file changed outside the app and the change has not reached the document yet; the consumer feeds it instead;
 - the file is ahead of the document, or the note's server body has not been downloaded;
 - writing the document would lose content, such as a block a newer build wrote.
