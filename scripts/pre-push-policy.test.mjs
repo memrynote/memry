@@ -29,7 +29,8 @@ function makeFixture() {
   const origin = join(root, 'origin.git')
   const git = (...args) => execFileSync('git', args, { cwd: repo, stdio: 'pipe' })
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, MEMRY_DOCS_IMPACT_SKIP: '' }
-  execFileSync('git', ['init', '-q', '--bare', origin])
+  // Name the branch: CI runners default to master, which leaves clones of origin unborn.
+  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', origin])
   execFileSync('git', ['clone', '-q', join(root, 'origin.git'), repo], { stdio: 'pipe' })
   git('config', 'user.email', 't@t')
   git('config', 'user.name', 't')
@@ -176,10 +177,64 @@ describe('pre-push hook force-push refusal', () => {
       }
     }))
 
+  it('refuses the whole push when one of several refs is forced', () =>
+    withFixture((fx) => {
+      fx.commit('README.md', 'pushed\n')
+      fx.git('push', '-q', 'origin', 'HEAD:main')
+      const pushed = fx.remoteRef('main')
+      fx.git('reset', '-q', '--soft', 'HEAD~1')
+      fx.git('commit', '-q', '-m', 'rewritten')
+
+      const result = fx.push('HEAD:refs/heads/feature', '+HEAD:main')
+      assert.equal(result.status, 1)
+      assert.match(result.stderr, /refusing to push refs\/heads\/main/)
+      assert.equal(fx.remoteRef('main'), pushed)
+      assert.equal(fx.remoteRef('feature'), '')
+    }))
+
+  it('refuses moving a tag that exists on the remote, even forward', () =>
+    withFixture((fx) => {
+      fx.git('tag', 'v1')
+      fx.git('push', '-q', 'origin', 'refs/tags/v1')
+      const pushed = fx.remoteRef('refs/tags/v1')
+      fx.commit('README.md', 'next\n')
+      fx.git('tag', '-f', 'v1')
+
+      const moved = fx.push('--force', 'refs/tags/v1')
+      assert.equal(moved.status, 1)
+      assert.match(moved.stderr, /refusing to push refs\/tags\/v1: the tag already exists/)
+      assert.equal(fx.remoteRef('refs/tags/v1'), pushed)
+
+      fx.git('tag', 'v2')
+      const fresh = fx.push('refs/tags/v2')
+      assert.equal(fresh.status, 0, fresh.stderr)
+    }))
+
+  it('still runs the branch-name check after reading the pushed refs', () =>
+    withFixture((fx) => {
+      fx.git('checkout', '-q', '-b', 'claude/fixture')
+      const result = fx.push('HEAD:refs/heads/claude/fixture')
+      assert.equal(result.status, 1)
+      assert.match(result.stderr, /rename tool-branded\/random branch before pushing/)
+      assert.equal(fx.remoteRef('claude/fixture'), '')
+    }))
+
+  it('still runs the docs gate after reading the pushed refs', () =>
+    withFixture((fx) => {
+      fx.commit('apps/desktop/src/feature.ts', 'export const a = 1\n')
+      const withoutDocs = fx.push('HEAD:refs/heads/feature')
+      assert.equal(withoutDocs.status, 1)
+      assert.match(withoutDocs.stderr, /docs update required/)
+
+      fx.commit('apps/docs/src/feature.md', '# Feature\n')
+      const withDocs = fx.push('HEAD:refs/heads/feature')
+      assert.equal(withDocs.status, 0, withDocs.stderr)
+    }))
+
   it('refuses a push over a remote commit this clone has not fetched', () =>
     withFixture((fx) => {
       const other = join(fx.root, 'other')
-      execFileSync('git', ['clone', '-q', fx.origin, other], { stdio: 'pipe' })
+      execFileSync('git', ['clone', '-q', '-b', 'main', fx.origin, other], { stdio: 'pipe' })
       writeFileSync(join(other, 'README.md'), 'theirs\n')
       execFileSync(
         'git',
@@ -195,7 +250,11 @@ describe('pre-push hook force-push refusal', () => {
       fx.commit('README.md', 'ours\n')
       const result = fx.push('--force', 'HEAD:main')
       assert.equal(result.status, 1)
-      assert.match(result.stderr, /refusing to push refs\/heads\/main: .*fetch first/)
+      assert.match(
+        result.stderr,
+        /refusing to push refs\/heads\/main: the remote has commits you don't have: fetch and merge them/
+      )
+      assert.doesNotMatch(result.stderr, /rebasing/)
       assert.equal(fx.remoteRef('main'), theirs)
     }))
 })
