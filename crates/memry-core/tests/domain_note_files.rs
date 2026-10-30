@@ -33,6 +33,7 @@ fn stat(id: &str, path: &str) -> NoteFileStat {
         mime_type: None,
         file_size: Some(10),
         content_hash: Some("00000001".to_owned()),
+        file_hash: Some("00000001".to_owned()),
         indexed_at: 1,
     }
 }
@@ -412,4 +413,75 @@ fn a_refresh_moves_the_stamp_only_while_the_body_has_not_moved_since() {
         files.behind_bodies().unwrap(),
         ["moved", "moved-local", "moved-snap"]
     );
+}
+
+/// The file hash names the bytes on disk now, apart from the text the document holds, or
+/// nothing: every stat write, [`NoteFiles::set_hash`] and [`NoteFiles::set_file_hash`]
+/// replace it, a row whose file went (`set_hash(None)`) has none, and it goes with the row.
+#[test]
+fn the_file_hash_follows_reads_and_goes_with_its_row() {
+    let Fixture { dir, vault } = fixture();
+    let files = vault.note_files();
+    files.upsert_stat(stat("n1", "a.md")).expect("insert");
+    let inserted = files.by_id("n1").expect("read").expect("row");
+    assert_eq!(inserted.file_hash.as_deref(), Some("00000001"));
+    files.set_hash("n1", Some("0000000a")).expect("a write");
+    let written = files.by_id("n1").expect("read").expect("row");
+    assert_eq!(written.file_hash.as_deref(), Some("0000000a"));
+    files.set_hash("n1", None).expect("the file went");
+    let row = files.by_id("n1").expect("read").expect("row");
+    assert_eq!(
+        (row.content_hash.as_deref(), row.file_hash.as_deref()),
+        (None, None),
+        "a hash of bytes that went"
+    );
+
+    files.set_file_hash("n1", Some("00000002")).expect("a read");
+    let read = files.by_path("a.md").expect("read").expect("row");
+    assert_eq!(read.file_hash.as_deref(), Some("00000002"));
+    assert_eq!(
+        (read.content_hash, read.indexed_at, read.file_size),
+        (row.content_hash, row.indexed_at, row.file_size),
+        "a read the document did not take moves nothing else"
+    );
+
+    let mut refreshed = stat("n1", "a.md");
+    refreshed.file_hash = Some("00000003".to_owned());
+    files.refresh_stat(refreshed).expect("refresh");
+    let mut plain = stat("n2", "b.md");
+    plain.file_hash = None;
+    files.upsert_stat(plain).expect("a file never read");
+    drop(files);
+    drop(vault);
+
+    let vault = open_at(dir.path());
+    let files = vault.note_files();
+    let hash_of = |id: &str| files.by_id(id).expect("read").expect("row").file_hash;
+    assert_eq!(hash_of("n1").as_deref(), Some("00000003"));
+    assert_eq!(hash_of("n2"), None);
+    assert!(
+        files
+            .list_missing_candidates()
+            .expect("list")
+            .iter()
+            .any(|row| row.file_hash.as_deref() == Some("00000003"))
+    );
+
+    assert!(files.remove("n1").expect("remove"));
+    let left = vault
+        .db_handle()
+        .read_blocking(|conn| {
+            conn.query_row("SELECT count(*) FROM note_file_hashes", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .map_err(|err| StorageError::Failed {
+                what: err.to_string(),
+            })
+        })
+        .expect("count");
+    assert_eq!(left, 0, "the hash outlived its row");
+    assert!(matches!(
+        files.set_file_hash("gone", Some("1")),
+        Err(StorageError::NotFound { .. })
+    ));
 }

@@ -70,7 +70,9 @@
     "writebackFailedTitle": "Nie udało się zaktualizować pliku notatki na dysku",
     "writebackFailedTitleNamed": "Nie udało się zaktualizować „{title}” na dysku",
     "writebackFailedTitleMany": "Nie udało się zaktualizować plików notatek na dysku: {count}",
-    "writebackFailedBody": "Plik na dysku pozostał bez zmian. Twoja zmiana pozostaje otwarta w memrynote, dopóki aplikacja działa; memrynote spróbuje ponownie przy Twojej następnej zmianie."
+    "writebackFailedBody": "Plik na dysku pozostał bez zmian. Twoja zmiana pozostaje otwarta w memrynote, dopóki aplikacja działa; memrynote spróbuje ponownie przy Twojej następnej zmianie.",
+    "writebackFailedFrontmatterBody": "Nie można odczytać frontmattera pliku (bloku między liniami --- na górze), więc memrynote pozostawia plik bez zmian. Twoje zmiany pozostają w memrynote. Jeśli poprawisz plik poza memrynote, jego tekst je zastąpi, więc najpierw skopiuj to, czego potrzebujesz.",
+    "writebackFailedFrontmatterBodyMany": "Nie można odczytać frontmattera tych plików (bloku między liniami --- na górze), więc memrynote pozostawia pliki bez zmian. Twoje zmiany pozostają w memrynote. Jeśli poprawisz pliki poza memrynote, ich tekst je zastąpi, więc najpierw skopiuj to, czego potrzebujesz."
   },
   "encryption": {
     "failed": "Nie udało się zaszyfrować danych. Twoje klucze mogą wymagać regeneracji.",

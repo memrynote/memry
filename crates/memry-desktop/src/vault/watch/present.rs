@@ -17,6 +17,10 @@ impl Reconciler {
         if self.stopped() {
             return;
         }
+        let root = &self.root;
+        self.echo.seen_file(rel, |path| {
+            std::fs::symlink_metadata(root.join(path)).is_ok()
+        });
         if !self.filter.takes_file(rel) {
             if !self.filter.ignores(rel) && file_type_of_extension(&extension(rel)).is_none() {
                 self.emit(VaultEvent::Unsupported {
@@ -46,7 +50,6 @@ impl Reconciler {
                 }
             }
         } else {
-            self.echo.seen_present(rel);
             None
         };
         if let Some(hash) = &hash
@@ -92,7 +95,7 @@ impl Reconciler {
                 (None, None) => false,
             }
         };
-        if unchanged {
+        if unchanged && !self.reported.is_owed(rel) {
             return;
         }
         if let Some(home) = home {
@@ -175,7 +178,7 @@ impl Reconciler {
     ) {
         // Only markdown pairs: Electron's non-markdown add path never looks for a rename.
         if let Some(hash) = &hash
-            && let Some(from) = self.tracker.claim(hash)
+            && let Some(from) = self.tracker.claim(hash, rel)
         {
             self.report_rename(from, rel.to_owned(), hash.clone(), stat);
             return;
@@ -238,7 +241,10 @@ impl Reconciler {
     pub(super) fn resolve_adds(&mut self, now: Instant) {
         for add in std::mem::take(&mut self.held_adds) {
             let stat = (add.size, add.modified_ms);
-            let claimed = add.hash.as_ref().and_then(|h| self.tracker.claim(h));
+            let claimed = add
+                .hash
+                .as_ref()
+                .and_then(|h| self.tracker.claim(h, &add.path));
             if let (Some(from), Some(hash)) = (claimed, &add.hash) {
                 self.report_rename(from, add.path, hash.clone(), stat);
             } else if add.due <= now {

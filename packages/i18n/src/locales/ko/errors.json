@@ -70,7 +70,9 @@
     "writebackFailedTitle": "디스크의 노트 파일을 업데이트하지 못했습니다",
     "writebackFailedTitleNamed": "디스크의 “{title}” 파일을 업데이트하지 못했습니다",
     "writebackFailedTitleMany": "디스크의 노트 파일 {count}개를 업데이트하지 못했습니다",
-    "writebackFailedBody": "디스크의 파일은 변경되지 않았습니다. 편집한 내용은 앱이 실행 중인 동안 memrynote에 열린 채로 남아 있으며, 다음에 편집할 때 memrynote가 다시 시도합니다."
+    "writebackFailedBody": "디스크의 파일은 변경되지 않았습니다. 편집한 내용은 앱이 실행 중인 동안 memrynote에 열린 채로 남아 있으며, 다음에 편집할 때 memrynote가 다시 시도합니다.",
+    "writebackFailedFrontmatterBody": "파일의 프런트매터(맨 위 --- 줄 사이의 블록)를 읽을 수 없어 memrynote가 파일을 변경하지 않습니다. 편집한 내용은 memrynote에 남아 있습니다. memrynote 밖에서 파일을 고치면 파일의 텍스트가 편집한 내용을 대체하므로, 필요한 내용을 먼저 복사하세요.",
+    "writebackFailedFrontmatterBodyMany": "이 파일들의 프런트매터(맨 위 --- 줄 사이의 블록)를 읽을 수 없어 memrynote가 파일을 변경하지 않습니다. 편집한 내용은 memrynote에 남아 있습니다. memrynote 밖에서 파일을 고치면 파일의 텍스트가 편집한 내용을 대체하므로, 필요한 내용을 먼저 복사하세요."
   },
   "encryption": {
     "failed": "데이터를 암호화하지 못했습니다. 키를 다시 생성해야 할 수도 있습니다.",

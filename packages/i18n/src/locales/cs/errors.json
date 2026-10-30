@@ -70,7 +70,9 @@
     "writebackFailedTitle": "Soubor poznámky na disku se nepodařilo aktualizovat",
     "writebackFailedTitleNamed": "„{title}“ se na disku nepodařilo aktualizovat",
     "writebackFailedTitleMany": "Soubory poznámek na disku se nepodařilo aktualizovat: {count}",
-    "writebackFailedBody": "Soubor na disku zůstal beze změny. Vaše úprava zůstává otevřená v memrynote, dokud aplikace běží; memrynote to zkusí znovu při vaší další úpravě."
+    "writebackFailedBody": "Soubor na disku zůstal beze změny. Vaše úprava zůstává otevřená v memrynote, dokud aplikace běží; memrynote to zkusí znovu při vaší další úpravě.",
+    "writebackFailedFrontmatterBody": "Frontmatter souboru (blok mezi řádky --- nahoře) nelze přečíst, a proto memrynote soubor nechává beze změny. Vaše úpravy zůstávají v memrynote. Opravíte-li soubor mimo memrynote, nahradí je text souboru, proto si nejdřív zkopírujte, co potřebujete.",
+    "writebackFailedFrontmatterBodyMany": "Frontmatter těchto souborů (blok mezi řádky --- nahoře) nelze přečíst, a proto memrynote soubory nechává beze změny. Vaše úpravy zůstávají v memrynote. Opravíte-li soubory mimo memrynote, nahradí je text souborů, proto si nejdřív zkopírujte, co potřebujete."
   },
   "encryption": {
     "failed": "Data se nepodařilo zašifrovat. Vaše klíče může být nutné regenerovat.",

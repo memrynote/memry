@@ -1,8 +1,14 @@
-//! Desktop notifications, one path for everything the app shows. The official plugin reports a
-//! click by id and only for notifications shown after a handler exists, so [`init`] registers the
-//! handler at boot, before anything can be shown. Reminders are scheduled in process by Step 21
-//! (#3538), which calls [`NotificationService::show`] at fire time; the core seam
+//! Desktop notifications, one path for everything the app shows. macOS posts through
+//! `UNUserNotificationCenter` (`mac.rs`), Windows and Linux through the official plugin
+//! (`plugin.rs`). Both report a click by id, and [`init`] runs at boot, before anything can be
+//! shown, so every click is reported. Reminders are scheduled in process by Step 21 (#3538), which
+//! calls [`NotificationService::show`] at fire time; the core seam
 //! `memry_core::seams::notifications::Notifications` has no desktop implementation on purpose.
+
+#[cfg(target_os = "macos")]
+mod mac;
+#[cfg(not(target_os = "macos"))]
+mod plugin;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -10,9 +16,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 use memry_desktop::shell::notifications::{LiveNotifications, Route};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Wry};
-use tauri_plugin_notification::{ActionPerformed, NotificationExt};
 
-use crate::commands::error::{CommandError, ErrorKind};
+use crate::commands::error::CommandError;
 use crate::startup::{self, Stage};
 
 /// Runs when a notification routed to its name is clicked.
@@ -47,10 +52,24 @@ pub struct NotificationRequest {
     pub route: NotificationRoute,
 }
 
+/// Whether the app may show notifications. `prompt`: macOS has not asked the user yet, and the
+/// first notification asks. Windows and Linux answer granted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum NotificationPermission {
+    Granted,
+    Denied,
+    Prompt,
+}
+
 #[derive(Default)]
 pub struct NotificationService {
     live: Mutex<LiveNotifications>,
     handlers: Mutex<HashMap<String, ClickHandler>>,
+    /// Shows on macOS run one at a time: a notification shown again under the same key withdraws
+    /// the earlier one before it is added, also when two are shown at once.
+    #[cfg(target_os = "macos")]
+    posting: tokio::sync::Mutex<()>,
 }
 
 pub fn register_stages() {
@@ -60,24 +79,23 @@ pub fn register_stages() {
 /// Registers the click handler. It runs in the `Plugins` stage, before any notification exists.
 fn init(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     app.manage(NotificationService::default());
-    let handle = app.clone();
-    app.notification()
-        .on_action(move |performed| on_action(&handle, performed))
-        .map_err(|error| {
-            CommandError::new(ErrorKind::Internal, "notification_init", error.to_string())
-        })
+    #[cfg(target_os = "macos")]
+    {
+        mac::init(app);
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        plugin::init(app)
+    }
 }
 
-fn on_action(app: &AppHandle<Wry>, performed: &ActionPerformed) {
-    // A click on the body is `tap`; Linux servers report `default`.
-    if !matches!(performed.action_id(), "tap" | "default") {
-        return;
-    }
+/// A click on notification `id`, `None` when the platform could not say which one.
+fn route_click(app: &AppHandle<Wry>, id: Option<i32>) {
     let service = app.state::<NotificationService>();
-    let route = performed
-        .notification()
-        .and_then(|notification| service.live().route_of(notification.id()))
-        // The platform could not say which notification: bringing the app forward is still right.
+    let route = id
+        .and_then(|id| service.live().route_of(id))
+        // Bringing the app forward is still right for a notification it no longer remembers.
         .unwrap_or(Route::Focus);
     crate::tray::show_main_window(app);
     match route {
@@ -103,6 +121,19 @@ fn on_action(app: &AppHandle<Wry>, performed: &ActionPerformed) {
     }
 }
 
+/// Whether a notification can be shown: on macOS from the app bundle, on Windows always, on
+/// Linux when a daemon owns `org.freedesktop.Notifications`. Blocking on Linux.
+pub fn supported() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        mac::is_bundled()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        memry_desktop::shell::notifications::daemon_available()
+    }
+}
+
 impl NotificationService {
     fn live(&self) -> std::sync::MutexGuard<'_, LiveNotifications> {
         self.live.lock().unwrap_or_else(PoisonError::into_inner)
@@ -117,26 +148,42 @@ impl NotificationService {
             .insert(name.to_owned(), handler);
     }
 
-    pub fn show(&self, app: &AppHandle<Wry>, request: NotificationRequest) -> Result<(), String> {
-        let (id, replaced) = self.live().register(&request.key, request.route.into());
-        if !replaced.is_empty() {
-            // Closes on Linux only: macOS and Windows cannot withdraw a delivered banner.
-            if let Err(error) = app.notification().remove_active(replaced) {
-                tracing::debug!(
-                    scope = "Notifications",
-                    "could not close the earlier one: {error}"
-                );
+    pub async fn permission(&self, app: &AppHandle<Wry>) -> Result<NotificationPermission, String> {
+        #[cfg(target_os = "macos")]
+        {
+            let _ = app;
+            mac::permission().await
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            plugin::permission(app)
+        }
+    }
+
+    /// Shows the notification. Fails when the platform refuses it, for example when the user
+    /// turned notifications off. On macOS, while the user was never asked, the first call shows
+    /// the permission prompt and resolves only once the user answers, which has no time limit,
+    /// and later calls wait behind it: a caller that must not wait for the user (a reminder
+    /// firing) spawns the call.
+    pub async fn show(
+        &self,
+        app: &AppHandle<Wry>,
+        request: NotificationRequest,
+    ) -> Result<(), String> {
+        #[cfg(target_os = "macos")]
+        {
+            let _ = app;
+            let _turn = self.posting.lock().await;
+            let (id, replaced) = self.live().register(&request.key, request.route.into());
+            mac::post(id, &replaced, &request.title, &request.body, request.silent).await
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let (id, replaced) = self.live().register(&request.key, request.route.into());
+            if !replaced.is_empty() {
+                plugin::withdraw(app, replaced);
             }
+            plugin::post(app, id, request.title, request.body, request.silent)
         }
-        let mut builder = app
-            .notification()
-            .builder()
-            .id(id)
-            .title(request.title)
-            .body(request.body);
-        if request.silent {
-            builder = builder.silent();
-        }
-        builder.show().map_err(|error| error.to_string())
     }
 }

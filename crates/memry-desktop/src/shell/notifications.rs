@@ -1,4 +1,4 @@
-//! The bookkeeping of desktop notifications. The plugin reports a click by numeric id, so every
+//! The bookkeeping of desktop notifications. Clicks are reported by numeric id, so every
 //! shown notification gets one, remembered with its key and where a click goes. Only the newest
 //! 50 are kept (`MAX_LIVE_NOTIFICATIONS`, `apps/desktop/src/main/lib/reminders.ts`), and a
 //! notification shown again under the same key replaces the earlier ones.
@@ -76,6 +76,22 @@ impl LiveNotifications {
     }
 }
 
+/// The name of notification `id` on a platform that names notifications with a string (macOS).
+/// `launch` is unique per launch: Notification Center keeps an earlier launch's notifications, and
+/// one of them must not be taken for, or replaced by, this launch's notification with the same id.
+pub fn platform_identifier(launch: &str, id: i32) -> String {
+    format!("{launch}.{id}")
+}
+
+/// The id of this launch's notification named `identifier`, `None` for any other name.
+pub fn id_from_platform_identifier(launch: &str, identifier: &str) -> Option<i32> {
+    let (prefix, id) = identifier.rsplit_once('.')?;
+    if prefix != launch {
+        return None;
+    }
+    id.parse().ok()
+}
+
 /// Whether a notification daemon owns `org.freedesktop.Notifications` on the session bus. macOS
 /// and Windows always have one.
 #[cfg(target_os = "linux")]
@@ -151,6 +167,28 @@ mod tests {
         };
         assert_eq!(live.register("a", Route::Focus).0, i32::MAX);
         assert_eq!(live.register("b", Route::Focus).0, 1);
+    }
+
+    #[test]
+    fn a_platform_identifier_names_only_this_launchs_notification() {
+        let name = platform_identifier("memry-1700000000000", 7);
+        assert_eq!(
+            id_from_platform_identifier("memry-1700000000000", &name),
+            Some(7)
+        );
+        // Left in Notification Center by an earlier launch: not this launch's id 7.
+        assert_eq!(
+            id_from_platform_identifier("memry-1800000000000", &name),
+            None
+        );
+        assert_eq!(
+            id_from_platform_identifier("memry-1700000000000", "7"),
+            None
+        );
+        assert_eq!(
+            id_from_platform_identifier("memry-1700000000000", "memry-1700000000000.x"),
+            None
+        );
     }
 
     #[test]

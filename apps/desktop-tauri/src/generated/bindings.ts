@@ -40,15 +40,20 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**
+	 *  Whether notifications may show. macOS answers `prompt` until the user was asked; the first
+	 *  notification asks.
+	 */
 	notificationPermission: () => __TAURI_INVOKE<NotificationPermission>("notification_permission"),
 	/**
 	 *  Shows a notification from the renderer. A click may only focus the window or run one of the
-	 *  handlers the inbox and reminders register.
+	 *  handlers the inbox and reminders register. Rejects when the platform refuses the notification,
+	 *  for example when the user turned notifications off.
 	 */
 	notificationShow: (request: NotificationRequest) => __TAURI_INVOKE<null>("notification_show", { request }),
 	/**
-	 *  Whether a notification can be shown: always on macOS and Windows, on Linux when a daemon owns
-	 *  `org.freedesktop.Notifications`.
+	 *  Whether a notification can be shown: on macOS from the app bundle, on Windows always, on
+	 *  Linux when a daemon owns `org.freedesktop.Notifications`.
 	 */
 	notificationSupported: () => __TAURI_INVOKE<boolean>("notification_supported"),
 	/**  Registers the saved binding (or the fallback) and says what the OS did. */
@@ -161,6 +166,14 @@ export const commands = {
 	vaultSetDefault: (path: string) => __TAURI_INVOKE<null>("vault_set_default", { path }),
 	vaultSetIcon: (path: string, icon: string | null) => __TAURI_INVOKE<null>("vault_set_icon", { path, icon }),
 	vaultSwitch: (path: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_switch", { path }),
+	/**  Drops every retained entry, on disk too. */
+	vaultActivityClear: () => __TAURI_INVOKE<null>("vault_activity_clear"),
+	/**  The retained entries, newest first. */
+	vaultActivityList: (limit: number | null, filter: VaultActivityFilter | null) => __TAURI_INVOKE<VaultActivityList>("vault_activity_list", { limit, filter }),
+	/**  Shows the log file in Finder or Explorer, creating it first. `false` when no vault is open. */
+	vaultActivityReveal: () => __TAURI_INVOKE<boolean>("vault_activity_reveal"),
+	/**  Keeps entries for `days` (7, 30 or 90). */
+	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
@@ -185,6 +198,7 @@ export const events = {
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	updaterStateChangedEvent: makeEvent<UpdaterStateChangedEvent, UpdaterStateChangedEvent>("updater-state-changed-event"),
+	vaultActivityChangedEvent: makeEvent<VaultActivityChangedEvent, VaultActivityChangedEvent>("vault-activity-changed-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
 	vaultIndexRecoveredEvent: makeEvent<VaultIndexRecoveredEvent, VaultIndexRecoveredEvent>("vault-index-recovered-event"),
 	vaultListChangedEvent: makeEvent<VaultListChangedEvent, VaultListChangedEvent>("vault-list-changed-event"),
@@ -268,6 +282,7 @@ export type ContextMenuItem = {
 export type CrdtWriteBackFailedEvent = {
 	noteId: string,
 	title: string | null,
+	reason: WriteBackFailureReason,
 };
 
 /**  One shipped line (`DiagnosticLogLineSchema`). */
@@ -431,8 +446,11 @@ export type Modifiers = {
 	alt?: boolean,
 };
 
-/**  Desktop needs no permission prompt: the plugin answers granted. */
-export type NotificationPermission = "granted" | "denied";
+/**
+ *  Whether the app may show notifications. `prompt`: macOS has not asked the user yet, and the
+ *  first notification asks. Windows and Linux answer granted.
+ */
+export type NotificationPermission = "granted" | "denied" | "prompt";
 
 export type NotificationRequest = {
 	/**  A re-fire with the same key replaces the earlier notification where the platform allows. */
@@ -586,6 +604,50 @@ export type UpdaterStatus = "unavailable" | "idle" | "checking" | "available" | 
 
 export type Value = null | boolean | number | string | Value[] | { [key in string]: Value };
 
+/**
+ *  Entries of the vault activity log were added or removed, or the vault closed
+ *  (`vault-activity:changed`). No payload; the renderer refetches. Throttled by the log.
+ */
+export type VaultActivityChangedEvent = null;
+
+/**  An entry as the renderer lists it: the fields of the v1 schema, nothing else. */
+export type VaultActivityEntry = {
+	/**  Always 1. */
+	v: number,
+	id: string,
+	/**  ISO timestamp. */
+	at: string,
+	kind: VaultActivityKind,
+	source: VaultActivitySource,
+	/**  Vault-relative path, when the entry is about one file. */
+	path?: string,
+	oldPath?: string,
+	/**  A coded reason; a code from a newer build still parses. */
+	reason?: string,
+	message?: string,
+	importer?: string,
+	/**  Numbers as JSON reads them; integers in every writer. */
+	counts?: { [key in string]: number },
+	items?: string[],
+};
+
+/**  `problems` lists skipped and failed entries, and summaries that count either. */
+export type VaultActivityFilter = "all" | "problems";
+
+/**  `VAULT_ACTIVITY_KINDS`. */
+export type VaultActivityKind = "added" | "removed" | "renamed" | "skipped" | "failed" | "scan" | "import";
+
+export type VaultActivityList = {
+	/**  Newest first. */
+	entries: VaultActivityEntry[],
+	retentionDays: number,
+	/**  `false` when no vault is open. */
+	available: boolean,
+};
+
+/**  `VAULT_ACTIVITY_SOURCES`. */
+export type VaultActivitySource = "watcher" | "scan" | "import" | "drop" | "sync";
+
 /**  A vault operation failed (`vault:error`). */
 export type VaultErrorEvent = {
 	message: string,
@@ -655,6 +717,13 @@ export type WindowChromeStateChangedEvent = {
 	fullscreen: boolean,
 	maximized: boolean,
 };
+
+/**
+ *  Why a run of failed write-backs began: `write` when a read or a write failed (the next edit
+ *  tries again), `frontmatter` when the file's frontmatter does not parse (the file is left
+ *  alone until it is fixed).
+ */
+export type WriteBackFailureReason = "write" | "frontmatter";
 
 /* Tauri Specta runtime */
 type EventEmit<T> = [T] extends [null] ? () => Promise<void> : (payload: T) => Promise<void>;

@@ -101,6 +101,7 @@ impl Env {
                 mime_type: None,
                 file_size: Some(text.len() as i64),
                 content_hash: Some(content_hash(text)),
+                file_hash: Some(content_hash(text)),
                 indexed_at: i64::MAX / 2,
             })
             .unwrap();
@@ -194,6 +195,58 @@ fn an_outside_edit_is_reported_and_a_save_of_the_same_bytes_is_not() {
         VaultEvent::Changed { note_id, content_hash: Some(h), .. }
             if note_id == "n1" && h == content_hash("two")
     ));
+}
+
+/// A way an editor saves a note, by name.
+type Save = (&'static str, fn(&Path, &str));
+
+/// An editor's atomic save, either way editors do it: the new text written to a temp file and
+/// renamed over the note, or the note moved aside and written again. One `Changed` with the new
+/// text, never a removal, an addition or a rename of the note.
+#[test]
+fn an_atomic_save_is_one_change_of_the_note() {
+    let e = env();
+    e.write("a.md", "one");
+    e.index("n1", "a.md", "one");
+    let note = e.root.join("a.md");
+    let saves: [Save; 2] = [
+        ("temp renamed over", |note, text| {
+            let temp = note.with_file_name(".a.md.tmp");
+            fs::write(&temp, text).unwrap();
+            fs::rename(&temp, note).unwrap();
+        }),
+        ("moved aside and written again", |note, text| {
+            let aside = note.with_file_name("a.md~");
+            fs::rename(note, &aside).unwrap();
+            fs::write(note, text).unwrap();
+            fs::remove_file(&aside).unwrap();
+        }),
+    ];
+    for (way, text) in [(saves[0], "two"), (saves[1], "three")] {
+        e.index("n1", "a.md", &fs::read_to_string(&note).unwrap());
+        let mark = e.mark();
+        (way.1)(&note, text);
+        let changed = e.wait_for(mark, way.0, is_changed("a.md"));
+        assert!(
+            matches!(&changed, VaultEvent::Changed { note_id, content_hash: Some(h), .. }
+                if note_id == "n1" && *h == content_hash(text)),
+            "{}: {changed:?}",
+            way.0
+        );
+        std::thread::sleep(QUIET);
+        let about_the_note: Vec<_> = e
+            .since(mark)
+            .into_iter()
+            .filter(|ev| match ev {
+                VaultEvent::Added { path, .. }
+                | VaultEvent::Changed { path, .. }
+                | VaultEvent::Removed { path, .. } => path == "a.md",
+                VaultEvent::Renamed { .. } => true,
+                _ => false,
+            })
+            .collect();
+        assert_eq!(about_the_note, [changed], "{}", way.0);
+    }
 }
 
 #[test]
@@ -297,6 +350,7 @@ fn a_note_without_a_stored_hash_is_never_paired_with_a_new_file() {
             mime_type: None,
             file_size: Some(4),
             content_hash: None,
+            file_hash: None,
             indexed_at: 1,
         })
         .unwrap();
@@ -712,6 +766,50 @@ fn an_outside_edit_back_to_an_earlier_reported_state_is_not_hidden_by_an_own_wri
         changed,
         [content_hash("outside one"), content_hash("outside one")]
     );
+}
+
+/// A folder the app removed and that came back while the OS lost its events (an overflow, a
+/// full queue, a Windows burst) is the user's again once the rescan standing in for those
+/// events has run: moved later, it is a rename of the note it holds, not a delete of that note
+/// plus a new one. The reconciler gets only the batches below; the folder's return reaches it
+/// through the rescan alone.
+#[test]
+fn a_folder_back_while_its_events_were_lost_is_the_users_after_the_rescan() {
+    let e = env_unwatched();
+    let echo = Arc::new(EchoGuard::default());
+    let log = Log::default();
+    let mut r = Reconciler::new(e.root.clone(), vec![], e.files(), echo.clone(), sink(&log));
+    fs::create_dir(e.root.join("2025")).unwrap();
+    echo.removing("2025", || fs::remove_dir(e.root.join("2025")))
+        .unwrap();
+    r.batch(vec!["2025".into()], Instant::now());
+    e.write("2025/a.md", "body");
+
+    // A rescan for lost events, as the runtime runs it: with changes.
+    let t0 = Instant::now();
+    assert!(r.rescan(true, t0, &AtomicBool::new(false)).unwrap());
+    r.settle_expired(t0 + Duration::from_secs(2));
+    assert!(
+        log.lock().unwrap().iter().any(is_added("2025/a.md")),
+        "{:?}",
+        log.lock().unwrap()
+    );
+    e.index("n1", "2025/a.md", "body");
+    fs::rename(e.root.join("2025"), e.root.join("2026")).unwrap();
+    let t1 = Instant::now();
+    r.batch(vec!["2025".into(), "2026".into()], t1);
+    r.settle_expired(t1 + Duration::from_secs(2));
+
+    let events = log.lock().unwrap().clone();
+    assert!(
+        events.iter().any(|ev| matches!(
+            ev,
+            VaultEvent::Renamed { note_id, old_path, new_path, .. }
+                if note_id == "n1" && old_path == "2025/a.md" && new_path == "2026/a.md"
+        )),
+        "{events:?}"
+    );
+    assert!(!events.iter().any(is_added("2026/a.md")), "{events:?}");
 }
 
 #[test]

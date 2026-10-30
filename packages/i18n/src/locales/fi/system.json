@@ -67,7 +67,16 @@
   "startup": {
     "installingUpdate": {
       "title": "Asennetaan päivitystä…",
-      "subtitle": "MemryNote avautuu automaattisesti uudelleen."
+      "subtitle": "MemryNote avautuu automaattisesti uudelleen.",
+      "subtitleOpenAgain": "Avaa MemryNote uudelleen hetken kuluttua."
+    },
+    "webview2Missing": {
+      "title": "MemryNotea ei voi käynnistää",
+      "body": "MemryNote tarvitsee Microsoft Edge WebView2 Runtimen ikkunansa näyttämiseen, eikä sitä ole tässä tietokoneessa. Lataa asennusohjelma Microsoftilta ({url}), suorita se ja avaa MemryNote uudelleen.\n\nAvataanko lataussivu nyt?",
+      "bodyInstallFailed": "MemryNote tarvitsee Microsoft Edge WebView2 Runtimen ikkunansa näyttämiseen, eikä sen asentaminen onnistunut. Lataa asennusohjelma Microsoftilta ({url}), suorita se ja avaa MemryNote uudelleen.\n\nAvataanko lataussivu nyt?"
+    },
+    "webview2Installing": {
+      "body": "MemryNote asentaa Microsoft Edge WebView2 Runtimen, jota se tarvitsee ikkunansa näyttämiseen. Tämä voi kestää enintään kaksi minuuttia."
     },
     "failed": {
       "title": "MemryNoten käynnistäminen epäonnistui",

@@ -1,7 +1,9 @@
 //! The files of deleted notes, moved to the OS trash by the open reconcile (the module
 //! invariants, "A deleted note's file goes to the OS trash"). Electron removes a note's file
 //! when the deletion is pulled (`handleSyncDeletion` of desktop `crdt-writeback.ts`); this
-//! catches the files such a removal never reached, and trashes instead of unlinking.
+//! catches the files such a removal never reached, and trashes instead of unlinking. A file
+//! whose frontmatter does not parse counts as read once its text was taken (#3750): it goes to
+//! the trash with its block, which the note never held.
 
 use std::path::Path;
 
@@ -19,7 +21,8 @@ pub enum Leftover {
     /// The file was already gone; the row removed.
     Gone,
     /// The file holds bytes the note did not (edited since its row read it, or never taken),
-    /// so it stays, with its row.
+    /// so it stays, with its row. A file whose frontmatter does not parse is not one of them
+    /// once its text was taken: it is trashed.
     Kept,
     /// The trash or the row refused; the file and the row stay for the next open.
     Failed(String),
@@ -67,7 +70,7 @@ impl Pass {
                         Ok(()) => Leftover::Trashed,
                         Err(error) => {
                             // Still there: a later removal of it is an outside one.
-                            self.echo.seen_present(&row.path);
+                            self.echo.cancel_removal(&row.path);
                             Leftover::Failed(format!("the trash refused it: {error}"))
                         }
                     }

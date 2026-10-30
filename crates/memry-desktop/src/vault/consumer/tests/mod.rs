@@ -243,6 +243,7 @@ impl Fixture {
             file_type: FileType::Markdown,
             size,
             content_hash: None,
+            file_hash: None,
         }
     }
 
@@ -340,6 +341,7 @@ pub(super) fn applier(
         feed: vault.external_feed(store.clone()).ok(),
         settings: vault.app_settings(store.clone()).ok(),
         session: rows.session_for(vault).unwrap(),
+        activity: crate::vault::activity::ActivityLog::new(),
     }
 }
 
@@ -347,8 +349,11 @@ pub(super) fn only_note(f: &Fixture, rel: &str) -> String {
     f.row(rel).expect("a row").note_id
 }
 
+mod activity;
 mod facts;
 mod flood;
 mod hash_rule;
 mod lane;
 mod late_close;
+#[cfg(windows)]
+mod replace_race;

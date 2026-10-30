@@ -243,7 +243,7 @@ fn unfiled_notes(
     ids.collect::<Result<_, _>>().map_err(failed)
 }
 
-/// Asked once per file no row names: `idx_notes_live_title` (data migration 17)
+/// Asked once per file no row names: `idx_notes_live_title` (data migration 18)
 /// answers it.
 pub(crate) const UNFILED_NOTES: &str = "SELECT n.id FROM notes n
   WHERE n.deleted_at IS NULL AND n.title = ?1 AND n.folder_path IS ?2

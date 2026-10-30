@@ -21,6 +21,7 @@ fn stat(id: &str, path: &str) -> NoteFileStat {
         mime_type: None,
         file_size: Some(1),
         content_hash: None,
+        file_hash: None,
         indexed_at: 1,
     }
 }

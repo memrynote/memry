@@ -1,7 +1,10 @@
 //! The flush path against a real local HTTP server: what a 2xx, a 4xx, a 429 and a dead
 //! endpoint each do to the queue, and that off means nothing is sent or kept.
 
+use std::path::Path;
+
 use memry_desktop::telemetry::service::{Context, FlushReason, Sender, Service};
+use memry_desktop::updater::webview2::Outcome;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
@@ -49,7 +52,7 @@ async fn server(status: &'static str) -> (String, tokio::sync::mpsc::UnboundedRe
     (url, rx)
 }
 
-fn service(dir: &tempfile::TempDir, url: &str, enabled: bool) -> Service {
+fn service(dir: impl AsRef<Path>, url: &str, enabled: bool) -> Service {
     let context = Context {
         install_id: "11111111-1111-4111-8111-111111111111".into(),
         session_id: "s".into(),
@@ -63,7 +66,7 @@ fn service(dir: &tempfile::TempDir, url: &str, enabled: bool) -> Service {
     // The shell installs this at boot (`install_crypto_provider`).
     let _ = tokio_rustls::rustls::crypto::ring::default_provider().install_default();
     Service::start(
-        dir.path(),
+        dir.as_ref(),
         context,
         Sender::new(
             url,
@@ -111,11 +114,8 @@ async fn a_client_error_drops_the_batch_but_429_and_a_dead_endpoint_keep_it() {
     assert!(!s.flush(FlushReason::Manual).await.success);
     assert_eq!(s.queue_depth(), 3);
 
-    let dead = service(
-        &tempfile::tempdir().expect("tmp"),
-        "http://127.0.0.1:1/x",
-        true,
-    );
+    let dead_dir = tempfile::tempdir().expect("tmp");
+    let dead = service(&dead_dir, "http://127.0.0.1:1/x", true);
     track(&dead, 2);
     assert!(dead.flush(FlushReason::Manual).await.error.is_some());
     assert_eq!(dead.queue_depth(), 2);
@@ -134,4 +134,29 @@ async fn off_sends_nothing_keeps_nothing_and_removes_the_mirror() {
     assert!(!dir.path().join("telemetry-event-queue.json").exists());
     assert_eq!(s.flush(FlushReason::Manual).await.attempted, 0);
     assert_eq!(s.config().enabled(), Some(false));
+}
+
+#[tokio::test]
+async fn events_written_before_the_service_started_ship_with_the_next_launch() {
+    let dir = tempfile::tempdir().expect("tmp");
+    let (url, mut seen) = server("204 No Content").await;
+    // A new install whose first launch stopped at the WebView2 check: no data directory yet.
+    let fresh = dir.path().join("first-launch");
+    Service::queue_for_next_launch(&fresh, Outcome::Missing.event().expect("event"));
+    let next = service(&fresh, &url, true);
+    assert!(next.flush(FlushReason::Manual).await.success);
+    let body: serde_json::Value =
+        serde_json::from_str(&seen.recv().await.expect("body")).expect("json");
+    assert_eq!(body["events"][0]["errorCode"], "WEBVIEW2_MISSING");
+
+    // A journal the last run left keeps its events, and the new one goes last.
+    track(&next, 2);
+    drop(next);
+    Service::queue_for_next_launch(&fresh, Outcome::InstallFailed.event().expect("event"));
+    let queued = service(&fresh, &url, true).queued();
+    assert_eq!(queued.len(), 3);
+    assert_eq!(
+        queued[2].error_code.as_deref(),
+        Some("WEBVIEW2_INSTALL_FAILED")
+    );
 }

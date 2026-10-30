@@ -10,7 +10,8 @@ import {
   flag,
   isPreviousFullOf,
   parseRehearsalVersion,
-  rehearsalTag
+  rehearsalTag,
+  windowsPlan
 } from './rehearse.mjs'
 
 const velopack = {
@@ -66,6 +67,25 @@ describe('rehearse', () => {
       /--confirm-repo/
     )
     assert.doesNotThrow(() => assertPublishConfirmed(['--confirm-repo', FEED_REPO]))
+  })
+
+  it('writes latest.yml for a signed pack, and for an unsigned one only when asked', () => {
+    assert.deepEqual(windowsPlan([]), { packs: true, signed: true, latestYml: true })
+    assert.deepEqual(windowsPlan(['--unsigned-windows']), {
+      packs: true,
+      signed: false,
+      latestYml: false
+    })
+    assert.deepEqual(windowsPlan(['--unsigned-windows', '--with-latest']), {
+      packs: true,
+      signed: false,
+      latestYml: true
+    })
+    assert.deepEqual(windowsPlan(['--no-windows', '--with-latest']), {
+      packs: false,
+      signed: false,
+      latestYml: false
+    })
   })
 
   it('reads flag values', () => {

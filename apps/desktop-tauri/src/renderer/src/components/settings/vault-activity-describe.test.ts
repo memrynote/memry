@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { VaultActivityEntry } from '@memry/contracts/vault-activity-api'
+import type { VaultActivityEntry } from '../../../../generated/bindings'
 import { describeVaultActivity, formatActivityCounts } from './vault-activity-describe'
 
 const t = (key: string, params?: Record<string, unknown>): string =>

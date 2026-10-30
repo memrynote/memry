@@ -142,6 +142,7 @@ fn row(db: &Db, id: &str, path: &str, hash: Option<&str>) {
         mime_type: None,
         file_size: Some(1),
         content_hash: hash.map(str::to_owned),
+        file_hash: hash.map(str::to_owned),
         indexed_at: NOW,
     };
     run(db, |conn| note_files::upsert_stat(conn, &stat));

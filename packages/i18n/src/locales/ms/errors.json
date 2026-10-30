@@ -70,7 +70,9 @@
     "writebackFailedTitle": "Fail nota pada cakera tidak dapat dikemas kini",
     "writebackFailedTitleNamed": "“{title}” tidak dapat dikemas kini pada cakera",
     "writebackFailedTitleMany": "Fail {count} nota pada cakera tidak dapat dikemas kini",
-    "writebackFailedBody": "Fail pada cakera tidak diubah. Suntingan anda kekal terbuka dalam memrynote selagi aplikasi berjalan; memrynote akan mencuba lagi pada suntingan anda yang seterusnya."
+    "writebackFailedBody": "Fail pada cakera tidak diubah. Suntingan anda kekal terbuka dalam memrynote selagi aplikasi berjalan; memrynote akan mencuba lagi pada suntingan anda yang seterusnya.",
+    "writebackFailedFrontmatterBody": "Frontmatter fail (blok di antara baris --- di bahagian atas) tidak dapat dibaca, jadi memrynote membiarkan fail tidak berubah. Suntingan anda kekal dalam memrynote. Jika anda membetulkan fail di luar memrynote, teks fail akan menggantikannya, jadi salin dahulu apa-apa yang anda perlukan.",
+    "writebackFailedFrontmatterBodyMany": "Frontmatter fail-fail ini (blok di antara baris --- di bahagian atas) tidak dapat dibaca, jadi memrynote membiarkan fail-fail itu tidak berubah. Suntingan anda kekal dalam memrynote. Jika anda membetulkan fail-fail itu di luar memrynote, teksnya akan menggantikan suntingan anda, jadi salin dahulu apa-apa yang anda perlukan."
   },
   "encryption": {
     "failed": "Gagal menyulitkan data. Kunci anda mungkin perlu dijana semula.",

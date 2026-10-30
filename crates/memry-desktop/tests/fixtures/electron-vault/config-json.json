@@ -1,0 +1,708 @@
+{
+  "generator": "crates/memry-desktop/tests/fixtures/gen-config-vectors.mjs",
+  "preferenceDefaults": {
+    "theme": "white",
+    "fontSize": "medium",
+    "fontSizePx": 16,
+    "fontFamily": "system",
+    "customFontFamily": "",
+    "accentColor": "#f97316",
+    "colorTheme": "memrynote",
+    "useThemeAccent": true,
+    "backgroundLight": "",
+    "foregroundLight": "",
+    "backgroundDark": "",
+    "foregroundDark": "",
+    "language": "en",
+    "createInSelectedFolder": true,
+    "openPagesInNewTab": false,
+    "minimizeToTray": false,
+    "editor": {
+      "width": "normal",
+      "toolbarMode": "floating",
+      "spellCheck": false,
+      "pdfAdaptToTheme": false,
+      "pdfDisplayMode": "embed",
+      "convertChecklistsToTasks": true,
+      "convertAgentChecklistsToTasks": false
+    }
+  },
+  "cases": [
+    {
+      "name": "init-then-every-writer",
+      "start": null,
+      "steps": [
+        {
+          "kind": "init",
+          "arg": null,
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \"journal\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": false\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "node_modules",
+                ".trash",
+                ".obsidian",
+                ".memry"
+              ],
+              "defaultNoteFolder": "",
+              "journalFolder": "journal",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": false
+            },
+            "hasStoredPreferences": false,
+            "preferences": null
+          }
+        },
+        {
+          "kind": "config",
+          "arg": {
+            "journalFolder": "daily",
+            "journalShowInSidebar": true
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \"daily\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": true\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "node_modules",
+                ".trash",
+                ".obsidian",
+                ".memry"
+              ],
+              "defaultNoteFolder": "",
+              "journalFolder": "daily",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": true
+            },
+            "hasStoredPreferences": false,
+            "preferences": null
+          }
+        },
+        {
+          "kind": "preferences",
+          "arg": {
+            "theme": "dark",
+            "fontSizePx": 18,
+            "editor": {
+              "width": "full"
+            }
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \"daily\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": true,\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"fontSize\": \"medium\",\n    \"fontSizePx\": 18,\n    \"fontFamily\": \"system\",\n    \"customFontFamily\": \"\",\n    \"accentColor\": \"#f97316\",\n    \"colorTheme\": \"memrynote\",\n    \"useThemeAccent\": true,\n    \"backgroundLight\": \"\",\n    \"foregroundLight\": \"\",\n    \"backgroundDark\": \"\",\n    \"foregroundDark\": \"\",\n    \"language\": \"en\",\n    \"createInSelectedFolder\": true,\n    \"openPagesInNewTab\": false,\n    \"minimizeToTray\": false,\n    \"editor\": {\n      \"width\": \"full\",\n      \"toolbarMode\": \"floating\",\n      \"spellCheck\": false,\n      \"pdfAdaptToTheme\": false,\n      \"pdfDisplayMode\": \"embed\",\n      \"convertChecklistsToTasks\": true,\n      \"convertAgentChecklistsToTasks\": false\n    }\n  }\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "node_modules",
+                ".trash",
+                ".obsidian",
+                ".memry"
+              ],
+              "defaultNoteFolder": "",
+              "journalFolder": "daily",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": true
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "dark",
+              "fontSize": "medium",
+              "fontSizePx": 18,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "memrynote",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "en",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "full",
+                "toolbarMode": "floating",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false
+              }
+            }
+          }
+        },
+        {
+          "kind": "icon",
+          "arg": {
+            "value": "icon:Book01Icon",
+            "updatedAt": 40,
+            "pendingSync": true
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \"daily\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": true,\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"fontSize\": \"medium\",\n    \"fontSizePx\": 18,\n    \"fontFamily\": \"system\",\n    \"customFontFamily\": \"\",\n    \"accentColor\": \"#f97316\",\n    \"colorTheme\": \"memrynote\",\n    \"useThemeAccent\": true,\n    \"backgroundLight\": \"\",\n    \"foregroundLight\": \"\",\n    \"backgroundDark\": \"\",\n    \"foregroundDark\": \"\",\n    \"language\": \"en\",\n    \"createInSelectedFolder\": true,\n    \"openPagesInNewTab\": false,\n    \"minimizeToTray\": false,\n    \"editor\": {\n      \"width\": \"full\",\n      \"toolbarMode\": \"floating\",\n      \"spellCheck\": false,\n      \"pdfAdaptToTheme\": false,\n      \"pdfDisplayMode\": \"embed\",\n      \"convertChecklistsToTasks\": true,\n      \"convertAgentChecklistsToTasks\": false\n    }\n  },\n  \"vaultIcon\": {\n    \"value\": \"icon:Book01Icon\",\n    \"updatedAt\": 40,\n    \"pendingSync\": true\n  }\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "node_modules",
+                ".trash",
+                ".obsidian",
+                ".memry"
+              ],
+              "defaultNoteFolder": "",
+              "journalFolder": "daily",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": true
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "dark",
+              "fontSize": "medium",
+              "fontSizePx": 18,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "memrynote",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "en",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "full",
+                "toolbarMode": "floating",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false
+              }
+            }
+          }
+        },
+        {
+          "kind": "config",
+          "arg": {
+            "defaultNoteFolder": "inbox",
+            "excludePatterns": [
+              ".git",
+              "build"
+            ]
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"build\"\n  ],\n  \"defaultNoteFolder\": \"inbox\",\n  \"journalFolder\": \"daily\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": true,\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"fontSize\": \"medium\",\n    \"fontSizePx\": 18,\n    \"fontFamily\": \"system\",\n    \"customFontFamily\": \"\",\n    \"accentColor\": \"#f97316\",\n    \"colorTheme\": \"memrynote\",\n    \"useThemeAccent\": true,\n    \"backgroundLight\": \"\",\n    \"foregroundLight\": \"\",\n    \"backgroundDark\": \"\",\n    \"foregroundDark\": \"\",\n    \"language\": \"en\",\n    \"createInSelectedFolder\": true,\n    \"openPagesInNewTab\": false,\n    \"minimizeToTray\": false,\n    \"editor\": {\n      \"width\": \"full\",\n      \"toolbarMode\": \"floating\",\n      \"spellCheck\": false,\n      \"pdfAdaptToTheme\": false,\n      \"pdfDisplayMode\": \"embed\",\n      \"convertChecklistsToTasks\": true,\n      \"convertAgentChecklistsToTasks\": false\n    }\n  },\n  \"vaultIcon\": {\n    \"value\": \"icon:Book01Icon\",\n    \"updatedAt\": 40,\n    \"pendingSync\": true\n  }\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "build"
+              ],
+              "defaultNoteFolder": "inbox",
+              "journalFolder": "daily",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": true
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "dark",
+              "fontSize": "medium",
+              "fontSizePx": 18,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "memrynote",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "en",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "full",
+                "toolbarMode": "floating",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false
+              }
+            }
+          }
+        },
+        {
+          "kind": "preferences",
+          "arg": {
+            "language": "tr",
+            "editor": {
+              "toolbarMode": "sticky"
+            }
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"build\"\n  ],\n  \"defaultNoteFolder\": \"inbox\",\n  \"journalFolder\": \"daily\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": true,\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"fontSize\": \"medium\",\n    \"fontSizePx\": 18,\n    \"fontFamily\": \"system\",\n    \"customFontFamily\": \"\",\n    \"accentColor\": \"#f97316\",\n    \"colorTheme\": \"memrynote\",\n    \"useThemeAccent\": true,\n    \"backgroundLight\": \"\",\n    \"foregroundLight\": \"\",\n    \"backgroundDark\": \"\",\n    \"foregroundDark\": \"\",\n    \"language\": \"tr\",\n    \"createInSelectedFolder\": true,\n    \"openPagesInNewTab\": false,\n    \"minimizeToTray\": false,\n    \"editor\": {\n      \"width\": \"full\",\n      \"toolbarMode\": \"sticky\",\n      \"spellCheck\": false,\n      \"pdfAdaptToTheme\": false,\n      \"pdfDisplayMode\": \"embed\",\n      \"convertChecklistsToTasks\": true,\n      \"convertAgentChecklistsToTasks\": false\n    }\n  },\n  \"vaultIcon\": {\n    \"value\": \"icon:Book01Icon\",\n    \"updatedAt\": 40,\n    \"pendingSync\": true\n  }\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "build"
+              ],
+              "defaultNoteFolder": "inbox",
+              "journalFolder": "daily",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": true
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "dark",
+              "fontSize": "medium",
+              "fontSizePx": 18,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "memrynote",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "tr",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "full",
+                "toolbarMode": "sticky",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false
+              }
+            }
+          }
+        },
+        {
+          "kind": "preferences",
+          "arg": {
+            "fontSizePx": 15,
+            "fontSize": "small"
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"build\"\n  ],\n  \"defaultNoteFolder\": \"inbox\",\n  \"journalFolder\": \"daily\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": true,\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"fontSize\": \"small\",\n    \"fontSizePx\": 15,\n    \"fontFamily\": \"system\",\n    \"customFontFamily\": \"\",\n    \"accentColor\": \"#f97316\",\n    \"colorTheme\": \"memrynote\",\n    \"useThemeAccent\": true,\n    \"backgroundLight\": \"\",\n    \"foregroundLight\": \"\",\n    \"backgroundDark\": \"\",\n    \"foregroundDark\": \"\",\n    \"language\": \"tr\",\n    \"createInSelectedFolder\": true,\n    \"openPagesInNewTab\": false,\n    \"minimizeToTray\": false,\n    \"editor\": {\n      \"width\": \"full\",\n      \"toolbarMode\": \"sticky\",\n      \"spellCheck\": false,\n      \"pdfAdaptToTheme\": false,\n      \"pdfDisplayMode\": \"embed\",\n      \"convertChecklistsToTasks\": true,\n      \"convertAgentChecklistsToTasks\": false\n    }\n  },\n  \"vaultIcon\": {\n    \"value\": \"icon:Book01Icon\",\n    \"updatedAt\": 40,\n    \"pendingSync\": true\n  }\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "build"
+              ],
+              "defaultNoteFolder": "inbox",
+              "journalFolder": "daily",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": true
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "dark",
+              "fontSize": "small",
+              "fontSizePx": 15,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "memrynote",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "tr",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "full",
+                "toolbarMode": "sticky",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false
+              }
+            }
+          }
+        },
+        {
+          "kind": "icon",
+          "arg": {
+            "value": null,
+            "updatedAt": 41,
+            "pendingSync": false
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"build\"\n  ],\n  \"defaultNoteFolder\": \"inbox\",\n  \"journalFolder\": \"daily\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": true,\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"fontSize\": \"small\",\n    \"fontSizePx\": 15,\n    \"fontFamily\": \"system\",\n    \"customFontFamily\": \"\",\n    \"accentColor\": \"#f97316\",\n    \"colorTheme\": \"memrynote\",\n    \"useThemeAccent\": true,\n    \"backgroundLight\": \"\",\n    \"foregroundLight\": \"\",\n    \"backgroundDark\": \"\",\n    \"foregroundDark\": \"\",\n    \"language\": \"tr\",\n    \"createInSelectedFolder\": true,\n    \"openPagesInNewTab\": false,\n    \"minimizeToTray\": false,\n    \"editor\": {\n      \"width\": \"full\",\n      \"toolbarMode\": \"sticky\",\n      \"spellCheck\": false,\n      \"pdfAdaptToTheme\": false,\n      \"pdfDisplayMode\": \"embed\",\n      \"convertChecklistsToTasks\": true,\n      \"convertAgentChecklistsToTasks\": false\n    }\n  },\n  \"vaultIcon\": {\n    \"value\": null,\n    \"updatedAt\": 41,\n    \"pendingSync\": false\n  }\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "build"
+              ],
+              "defaultNoteFolder": "inbox",
+              "journalFolder": "daily",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": true
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "dark",
+              "fontSize": "small",
+              "fontSizePx": 15,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "memrynote",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "tr",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "full",
+                "toolbarMode": "sticky",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "older-build",
+      "start": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\"\n  ],\n  \"journalFolder\": \"diary\",\n  \"preferences\": {\n    \"theme\": \"light\",\n    \"fontSize\": \"large\",\n    \"language\": \"de\",\n    \"editor\": {\n      \"width\": \"wide\",\n      \"spellCheck\": false,\n      \"newerEditorKey\": 3\n    },\n    \"newerPreference\": {\n      \"z\": 1,\n      \"a\": 2\n    }\n  },\n  \"newerBuild\": [\n    1,\n    2\n  ]\n}",
+      "steps": [
+        {
+          "kind": "config",
+          "arg": {
+            "defaultNoteFolder": "notes"
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\"\n  ],\n  \"defaultNoteFolder\": \"notes\",\n  \"journalFolder\": \"diary\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": false,\n  \"preferences\": {\n    \"theme\": \"light\",\n    \"fontSize\": \"large\",\n    \"language\": \"de\",\n    \"editor\": {\n      \"width\": \"wide\",\n      \"spellCheck\": false,\n      \"newerEditorKey\": 3\n    },\n    \"newerPreference\": {\n      \"z\": 1,\n      \"a\": 2\n    }\n  },\n  \"newerBuild\": [\n    1,\n    2\n  ]\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "node_modules"
+              ],
+              "defaultNoteFolder": "notes",
+              "journalFolder": "diary",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": false
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "light",
+              "fontSize": "large",
+              "fontSizePx": 20,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "warm",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "de",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "wide",
+                "toolbarMode": "floating",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false,
+                "newerEditorKey": 3
+              }
+            }
+          }
+        },
+        {
+          "kind": "icon",
+          "arg": {
+            "value": "📚",
+            "updatedAt": 7,
+            "pendingSync": false
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\"\n  ],\n  \"defaultNoteFolder\": \"notes\",\n  \"journalFolder\": \"diary\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": false,\n  \"preferences\": {\n    \"theme\": \"light\",\n    \"fontSize\": \"large\",\n    \"language\": \"de\",\n    \"editor\": {\n      \"width\": \"wide\",\n      \"spellCheck\": false,\n      \"newerEditorKey\": 3\n    },\n    \"newerPreference\": {\n      \"z\": 1,\n      \"a\": 2\n    }\n  },\n  \"newerBuild\": [\n    1,\n    2\n  ],\n  \"vaultIcon\": {\n    \"value\": \"📚\",\n    \"updatedAt\": 7,\n    \"pendingSync\": false\n  }\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "node_modules"
+              ],
+              "defaultNoteFolder": "notes",
+              "journalFolder": "diary",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": false
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "light",
+              "fontSize": "large",
+              "fontSizePx": 20,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "warm",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "de",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "wide",
+                "toolbarMode": "floating",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false,
+                "newerEditorKey": 3
+              }
+            }
+          }
+        },
+        {
+          "kind": "preferences",
+          "arg": {
+            "accentColor": "#112233"
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\"\n  ],\n  \"defaultNoteFolder\": \"notes\",\n  \"journalFolder\": \"diary\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": false,\n  \"preferences\": {\n    \"theme\": \"light\",\n    \"fontSize\": \"large\",\n    \"fontSizePx\": 20,\n    \"fontFamily\": \"system\",\n    \"customFontFamily\": \"\",\n    \"accentColor\": \"#112233\",\n    \"colorTheme\": \"warm\",\n    \"useThemeAccent\": true,\n    \"backgroundLight\": \"\",\n    \"foregroundLight\": \"\",\n    \"backgroundDark\": \"\",\n    \"foregroundDark\": \"\",\n    \"language\": \"de\",\n    \"createInSelectedFolder\": true,\n    \"openPagesInNewTab\": false,\n    \"minimizeToTray\": false,\n    \"editor\": {\n      \"width\": \"wide\",\n      \"toolbarMode\": \"floating\",\n      \"spellCheck\": false,\n      \"pdfAdaptToTheme\": false,\n      \"pdfDisplayMode\": \"embed\",\n      \"convertChecklistsToTasks\": true,\n      \"convertAgentChecklistsToTasks\": false,\n      \"newerEditorKey\": 3\n    }\n  },\n  \"newerBuild\": [\n    1,\n    2\n  ],\n  \"vaultIcon\": {\n    \"value\": \"📚\",\n    \"updatedAt\": 7,\n    \"pendingSync\": false\n  }\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "node_modules"
+              ],
+              "defaultNoteFolder": "notes",
+              "journalFolder": "diary",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": false
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "light",
+              "fontSize": "large",
+              "fontSizePx": 20,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#112233",
+              "colorTheme": "warm",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "de",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "wide",
+                "toolbarMode": "floating",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false,
+                "newerEditorKey": 3
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "older-build-preferences-first",
+      "start": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\"\n  ],\n  \"journalFolder\": \"diary\",\n  \"preferences\": {\n    \"theme\": \"light\",\n    \"fontSize\": \"large\",\n    \"language\": \"de\",\n    \"editor\": {\n      \"width\": \"wide\",\n      \"spellCheck\": false,\n      \"newerEditorKey\": 3\n    },\n    \"newerPreference\": {\n      \"z\": 1,\n      \"a\": 2\n    }\n  },\n  \"newerBuild\": [\n    1,\n    2\n  ]\n}",
+      "steps": [
+        {
+          "kind": "preferences",
+          "arg": {
+            "theme": "dark"
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\"\n  ],\n  \"journalFolder\": \"diary\",\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"fontSize\": \"large\",\n    \"fontSizePx\": 20,\n    \"fontFamily\": \"system\",\n    \"customFontFamily\": \"\",\n    \"accentColor\": \"#f97316\",\n    \"colorTheme\": \"warm\",\n    \"useThemeAccent\": true,\n    \"backgroundLight\": \"\",\n    \"foregroundLight\": \"\",\n    \"backgroundDark\": \"\",\n    \"foregroundDark\": \"\",\n    \"language\": \"de\",\n    \"createInSelectedFolder\": true,\n    \"openPagesInNewTab\": false,\n    \"minimizeToTray\": false,\n    \"editor\": {\n      \"width\": \"wide\",\n      \"toolbarMode\": \"floating\",\n      \"spellCheck\": false,\n      \"pdfAdaptToTheme\": false,\n      \"pdfDisplayMode\": \"embed\",\n      \"convertChecklistsToTasks\": true,\n      \"convertAgentChecklistsToTasks\": false,\n      \"newerEditorKey\": 3\n    }\n  },\n  \"newerBuild\": [\n    1,\n    2\n  ]\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "node_modules"
+              ],
+              "defaultNoteFolder": "",
+              "journalFolder": "diary",
+              "journalDateFormat": "YYYY-MM-DD",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": false
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "dark",
+              "fontSize": "large",
+              "fontSizePx": 20,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "warm",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "de",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "wide",
+                "toolbarMode": "floating",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false,
+                "newerEditorKey": 3
+              }
+            }
+          }
+        },
+        {
+          "kind": "config",
+          "arg": {
+            "journalDateFormat": "DD-MM-YYYY"
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\"\n  ],\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \"diary\",\n  \"journalDateFormat\": \"DD-MM-YYYY\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": false,\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"fontSize\": \"large\",\n    \"fontSizePx\": 20,\n    \"fontFamily\": \"system\",\n    \"customFontFamily\": \"\",\n    \"accentColor\": \"#f97316\",\n    \"colorTheme\": \"warm\",\n    \"useThemeAccent\": true,\n    \"backgroundLight\": \"\",\n    \"foregroundLight\": \"\",\n    \"backgroundDark\": \"\",\n    \"foregroundDark\": \"\",\n    \"language\": \"de\",\n    \"createInSelectedFolder\": true,\n    \"openPagesInNewTab\": false,\n    \"minimizeToTray\": false,\n    \"editor\": {\n      \"width\": \"wide\",\n      \"toolbarMode\": \"floating\",\n      \"spellCheck\": false,\n      \"pdfAdaptToTheme\": false,\n      \"pdfDisplayMode\": \"embed\",\n      \"convertChecklistsToTasks\": true,\n      \"convertAgentChecklistsToTasks\": false,\n      \"newerEditorKey\": 3\n    }\n  },\n  \"newerBuild\": [\n    1,\n    2\n  ]\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "node_modules"
+              ],
+              "defaultNoteFolder": "",
+              "journalFolder": "diary",
+              "journalDateFormat": "DD-MM-YYYY",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": false
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "dark",
+              "fontSize": "large",
+              "fontSizePx": 20,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "warm",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "de",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": false,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "wide",
+                "toolbarMode": "floating",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false,
+                "newerEditorKey": 3
+              }
+            }
+          }
+        },
+        {
+          "kind": "preferences",
+          "arg": {
+            "openPagesInNewTab": true,
+            "editor": {
+              "width": "normal"
+            }
+          },
+          "file": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\"\n  ],\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \"diary\",\n  \"journalDateFormat\": \"DD-MM-YYYY\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": false,\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"fontSize\": \"large\",\n    \"fontSizePx\": 20,\n    \"fontFamily\": \"system\",\n    \"customFontFamily\": \"\",\n    \"accentColor\": \"#f97316\",\n    \"colorTheme\": \"warm\",\n    \"useThemeAccent\": true,\n    \"backgroundLight\": \"\",\n    \"foregroundLight\": \"\",\n    \"backgroundDark\": \"\",\n    \"foregroundDark\": \"\",\n    \"language\": \"de\",\n    \"createInSelectedFolder\": true,\n    \"openPagesInNewTab\": true,\n    \"minimizeToTray\": false,\n    \"editor\": {\n      \"width\": \"normal\",\n      \"toolbarMode\": \"floating\",\n      \"spellCheck\": false,\n      \"pdfAdaptToTheme\": false,\n      \"pdfDisplayMode\": \"embed\",\n      \"convertChecklistsToTasks\": true,\n      \"convertAgentChecklistsToTasks\": false,\n      \"newerEditorKey\": 3\n    }\n  },\n  \"newerBuild\": [\n    1,\n    2\n  ]\n}",
+          "read": {
+            "config": {
+              "excludePatterns": [
+                ".git",
+                "node_modules"
+              ],
+              "defaultNoteFolder": "",
+              "journalFolder": "diary",
+              "journalDateFormat": "DD-MM-YYYY",
+              "attachmentsFolder": "attachments",
+              "journalShowInSidebar": false
+            },
+            "hasStoredPreferences": true,
+            "preferences": {
+              "theme": "dark",
+              "fontSize": "large",
+              "fontSizePx": 20,
+              "fontFamily": "system",
+              "customFontFamily": "",
+              "accentColor": "#f97316",
+              "colorTheme": "warm",
+              "useThemeAccent": true,
+              "backgroundLight": "",
+              "foregroundLight": "",
+              "backgroundDark": "",
+              "foregroundDark": "",
+              "language": "de",
+              "createInSelectedFolder": true,
+              "openPagesInNewTab": true,
+              "minimizeToTray": false,
+              "editor": {
+                "width": "normal",
+                "toolbarMode": "floating",
+                "spellCheck": false,
+                "pdfAdaptToTheme": false,
+                "pdfDisplayMode": "embed",
+                "convertChecklistsToTasks": true,
+                "convertAgentChecklistsToTasks": false,
+                "newerEditorKey": 3
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

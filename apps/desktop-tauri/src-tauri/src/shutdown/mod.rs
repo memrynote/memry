@@ -5,6 +5,8 @@
 
 #[cfg(target_os = "macos")]
 mod mac_quit;
+#[cfg(all(target_os = "macos", feature = "e2e"))]
+pub use mac_quit::post_terminate;
 mod signals;
 mod steps;
 
@@ -97,6 +99,12 @@ impl ShutdownEffects for TauriEffects {
             .state::<ShutdownService>()
             .completed
             .store(true, Ordering::SeqCst);
+        // A quit macOS asked for ends through AppKit, which then tells the sender it went through
+        // and exits with 0, also after a failed startup.
+        #[cfg(target_os = "macos")]
+        if mac_quit::accept_pending() {
+            return;
+        }
         self.app
             .exit(if crate::windows::startup_error::startup_failed() {
                 crate::windows::startup_error::EXIT_STARTUP_FAILED
@@ -115,6 +123,12 @@ impl ShutdownEffects for TauriEffects {
 /// end may have started it meanwhile on another thread.
 fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     api.prevent_exit();
+    start(app, reason);
+}
+
+/// Starts the sequence unless one already runs. The latch alone keeps the app alive from here:
+/// every later exit request is held until the sequence ends.
+fn start(app: &AppHandle<Wry>, reason: ShutdownReason) {
     if startup::mark_shutdown_started() {
         return;
     }
@@ -149,26 +163,17 @@ pub fn is_completed(app: &AppHandle<Wry>) -> bool {
         .load(Ordering::SeqCst)
 }
 
+/// The OS session ends: the quit installs no update, also a quit that already runs. An installer
+/// started then is killed after it removed the old install (#1851).
+pub fn session_ending(app: &AppHandle<Wry>) {
+    app.state::<ShutdownService>().core.session_ending();
+}
+
 /// Starts the sequence for a quit that did not come through `ExitRequested`: the session end.
-/// Without a request to hold, the app is kept alive by the latch alone.
 pub fn begin_session_end(app: &AppHandle<Wry>) {
     // Before the latch: a quit that is already running must not install on its way out either.
-    app.state::<ShutdownService>().core.session_ending();
-    if startup::mark_shutdown_started() {
-        return;
-    }
-    if let Some(session) = app.try_state::<Session>() {
-        session.begin_shutdown();
-    }
-    crate::updater::stop(app);
-    let service = app.state::<ShutdownService>();
-    let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
-    tracing::info!(scope = "Shutdown", "starting graceful shutdown");
-    service.core.arm_backstop(HARD_BACKSTOP, effects.clone());
-    let core = service.core.clone();
-    tauri::async_runtime::spawn(async move {
-        core.run(ShutdownReason::SessionEnd, &effects).await;
-    });
+    session_ending(app);
+    start(app, ShutdownReason::SessionEnd);
 }
 
 fn on_exit_requested(app: &AppHandle<Wry>, code: Option<i32>, api: &ExitRequestApi) {
@@ -250,8 +255,9 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
 }
 
 /// The app runs only for the startup-error window. Any quit (closing that window, Cmd+Q) runs
-/// the quit steps the started stages registered and ends with the failure's exit code; a startup
-/// that failed before the shutdown service existed has no steps to run.
+/// the quit steps the started stages registered and ends with the failure's exit code, except a
+/// quit macOS asked for, which AppKit ends with 0; a startup that failed before the shutdown
+/// service existed has no steps to run.
 fn on_run_event_after_failed_startup(app: &AppHandle<Wry>, event: &RunEvent) {
     use crate::windows::startup_error::EXIT_STARTUP_FAILED;
     match event {

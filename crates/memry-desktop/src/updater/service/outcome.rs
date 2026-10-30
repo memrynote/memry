@@ -87,7 +87,7 @@ impl UpdaterService {
         }
     }
 
-    fn track(&self, event: TelemetryEvent) {
+    pub(super) fn track(&self, event: TelemetryEvent) {
         if let Some(telemetry) = &self.telemetry {
             telemetry.track_main_event(event);
         }
@@ -95,7 +95,7 @@ impl UpdaterService {
 }
 
 /// `app_error_seen` for an install, as Electron reports it.
-fn install_error(source: &str, code: &str) -> TelemetryEvent {
+pub(super) fn install_error(source: &str, code: &str) -> TelemetryEvent {
     let mut event = Telemetry::event("app_error_seen", "app", "install");
     event.object_type = Some("exception".to_owned());
     event.source = Some(source.to_owned());

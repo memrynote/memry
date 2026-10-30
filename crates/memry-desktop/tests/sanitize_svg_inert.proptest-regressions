@@ -1,0 +1,15 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a1326c9fb75160f4b3f6b2853bd3b097f02e05a1a91846666f59869a846f9aa6 # shrinks to input = "<svg><"
+cc 537f625e666042107ba8a9810a7bb8e6db4ca9d71ae7e6838dc494bd40d67af8 # shrinks to input = "<svg><title>"
+cc 0b7eb2b5e7e397045852d7985958cba6f2ed43fb58d99864e3fd05d077c11319 # shrinks to input = "<svg  x:href= attributeName==<svg>"
+cc f02b24148a0d47b7fe6a22675b8e2942b94ad8d473d693210ebc758a2240221d # shrinks to input = "<style svg<!DOCTYPE<style><?<svg>\\</style><svg>"
+cc 085eb493f4d3f9f1d3836067d5d9d071b92728c7a45e3be33270621a31dc72b8 # shrinks to input = "<svg style=image-set(<><<"
+cc e51dbc94c081cf4c25ef8a05bbf60a8e6a05540f061f96eaee70a6db7b751dd4 # shrinks to input = "<style x:href=<style><style><svg>"
+cc d0a5eaf07283140196885ec6bd9e4ff9c9747e6b2f44fa1d7413377d0e3172a5 # shrinks to input = "<svg/><<style>svg"
+cc bf4f13009d8448cc91f4dec49a2661f251b02a574fcddf203848c9c503b83fbf # shrinks to input = "<svg><h:img\"data:image/png;base64,<svg>"
+cc d0e03864337fe51545da150a8b18b92643fd5a10080a1f00a3f92631c31c0f93 # shrinks to input = "<svg><adata:image/png;base64,= attributeName=<?>"

@@ -8,14 +8,16 @@ mod vault_env;
 
 use std::fs;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use memry_desktop::vault::consumer::Applied;
-use memry_desktop::vault::consumer::identity::NoteIdentity;
+use memry_desktop::vault::consumer::identity::{
+    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal,
+};
 use memry_desktop::vault::consumer::rows::{RowError, RowStat};
 use memry_desktop::vault::file_types::FileType;
 use memry_desktop::vault::watch::VaultEvent;
-use vault_env::{QUIET, creates, env, indexed};
+use vault_env::{Creates, QUIET, WAIT, creates, env, indexed};
 
 fn position(facts: &[Applied], what: impl Fn(&Applied) -> bool) -> usize {
     facts
@@ -94,6 +96,7 @@ fn a_file_written_while_open_gets_a_note_and_the_tier_stops_with_the_vault() {
         file_type: FileType::Markdown,
         size: 1,
         content_hash: None,
+        file_hash: None,
     };
     assert!(
         matches!(
@@ -127,6 +130,100 @@ fn a_tier_with_no_identity_records_no_row() {
         "{facts:?}"
     );
     assert!(e.rows().is_empty());
+}
+
+/// [`Creates`], except for `parked.md`: its offer waits until [`Creates::release`], then deletes
+/// `n.md` and names no note, so the fact the consumer applies next finds `n.md` missing.
+struct DeletesWhileParked(Arc<Creates>);
+
+impl NoteIdentity for DeletesWhileParked {
+    fn adopt_or_create(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        file: &Candidate<'_>,
+    ) -> Result<Adoption, IdentityError> {
+        if file.path != "parked.md" {
+            return self.0.adopt_or_create(ctx, file);
+        }
+        self.0.offered.lock().unwrap().push(file.path.to_owned());
+        let held = self.0.held.lock().unwrap();
+        drop(
+            self.0
+                .released
+                .wait_timeout_while(held, WAIT, |held| *held)
+                .unwrap(),
+        );
+        fs::remove_file(ctx.root.join("n.md")).unwrap();
+        Ok(Adoption::Defer)
+    }
+
+    fn on_removed(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        id: &str,
+        path: &str,
+    ) -> Result<Removal, IdentityError> {
+        self.0.on_removed(ctx, id, path)
+    }
+
+    fn on_renamed(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        id: &str,
+        old_path: &str,
+        new_path: &str,
+    ) -> Result<(), IdentityError> {
+        self.0.on_renamed(ctx, id, old_path, new_path)
+    }
+}
+
+/// A save makes the note's name missing for a moment (#3736): Windows renaming a new file over
+/// it, or an editor that deletes the file and writes it again. The consumer reads the note in
+/// that moment and finds nothing, and the watcher, which already reported the bytes the save
+/// puts back, does not report them again. The read is retried, and the save reaches the note.
+#[test]
+fn a_save_read_while_its_file_was_missing_reaches_the_note() {
+    let identity = Mutex::new(None);
+    let mut e = env(|store| {
+        let made = creates(store);
+        *identity.lock().unwrap() = Some(made.clone());
+        Some(Arc::new(DeletesWhileParked(made)))
+    });
+    let identity = identity.into_inner().unwrap().unwrap();
+    e.write("n.md", "first words\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = e.rows()[0].0.clone();
+    std::thread::sleep(Duration::from_millis(300));
+
+    // The consumer waits inside the offer of `parked.md`, so the report of the save queues
+    // behind it.
+    identity.hold();
+    e.write("parked.md", "parked\n");
+    let deadline = Instant::now() + WAIT;
+    while !identity
+        .offered
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|p| p == "parked.md")
+    {
+        assert!(Instant::now() < deadline, "parked.md was never offered");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    e.write("n.md", "saved outside\n");
+    std::thread::sleep(QUIET);
+    // The offer ends by deleting `n.md`; the consumer reads it at once. The save puts the same
+    // bytes back well inside the watcher's rename window, so the watcher sees no removal.
+    identity.release();
+    std::thread::sleep(Duration::from_millis(200));
+    e.write("n.md", "saved outside\n");
+
+    let deadline = Instant::now() + WAIT;
+    while e.body(&id) != "saved outside" {
+        assert!(Instant::now() < deadline, "the save never reached the note");
+        std::thread::sleep(Duration::from_millis(50));
+    }
 }
 
 /// A file whose note could not be named is reported again by the watcher, after a delay that

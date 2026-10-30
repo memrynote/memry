@@ -9,9 +9,15 @@ use objc2_app_kit::{
     NSWorkspaceWillSleepNotification,
 };
 use objc2_foundation::NSNotification;
+use tauri::{AppHandle, Wry};
 use tokio::sync::broadcast::Sender;
 
-pub fn start(sender: &Sender<PowerEvent>) {
+/// On macOS 27, AppKit posts `NSWorkspaceWillPowerOffNotification` on the main thread when
+/// loginwindow's quit event names Log Out, Restart or Shut Down, right before
+/// `applicationShouldTerminate:`, and also when a quit (Cmd+Q) already runs, which AppKit then
+/// does not ask again. So install-on-quit goes off here, before the quit can finish; the quit
+/// itself arrives as `terminate:` (`shutdown/mac_quit.rs`).
+pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
     let center = NSWorkspace::sharedWorkspace().notificationCenter();
     // SAFETY: the notification names are AppKit's constants.
     let names = unsafe {
@@ -26,11 +32,16 @@ pub fn start(sender: &Sender<PowerEvent>) {
     };
     for (name, event) in names {
         let sender = sender.clone();
+        let session_end = (event == PowerEvent::SessionEnding).then(|| app.clone());
         let block = RcBlock::new(move |_: NonNull<NSNotification>| {
+            if let Some(app) = &session_end {
+                crate::shutdown::session_ending(app);
+            }
             super::publish(&sender, event);
         });
         // SAFETY: no object filter and no queue (the block runs on the posting thread); the
-        // block only sends on a broadcast channel, which is `Send`.
+        // block only sends on a broadcast channel and sets the shutdown service's flag, both
+        // `Send`.
         let observer = unsafe {
             center.addObserverForName_object_queue_usingBlock(Some(name), None, None, &block)
         };

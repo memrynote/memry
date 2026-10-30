@@ -87,26 +87,29 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 `tauri-plugin-dialog`) asks a result queue first when the gate is open
 (`memry_desktop::e2e::dialog_queue`):
 
-- The queue holds one answer per dialog kind (`OpenFile`, `OpenFolder`, `SaveFile`, `Confirm`),
-  consumed in push order.
+- The queue holds one answer per dialog kind (`OpenFile`, `OpenFolder`, `SaveFile`, `Confirm`,
+  `Choose`), consumed in push order.
 - An empty answer means the user cancelled. A `Confirm` answer is the string `confirm` or
-  `cancel`. A dialog asked with nothing queued answers as a cancel and logs a warning, so a
-  forgotten push fails the spec and never waits on a real dialog.
+  `cancel`. A `Choose` answer (a message with three buttons, such as the Obsidian vault prompt
+  of `vault_select`) is the index of the button, `0`, `1` or `2`; the last is the cancel. A
+  dialog asked with nothing queued answers as a cancel and logs a warning, so a forgotten push
+  fails the spec and never waits on a real dialog.
 - `invokeTest(app, 'e2e_dialog_queue_push', { kind, paths })` queues an answer and
   `e2e_dialog_queue_clear` drops them all.
 - `MEMRY_TEST_DIALOG_RESULT` (through the control file `extraEnv`) gives the queue at start:
   the plain word `confirm` or `cancel` answers every `Confirm` of the run, and a JSON list of
   `{ "kind": "OpenFolder", "paths": ["/tmp/x"] }` objects is queued in order.
-- With an open gate `vault_reveal` records the path instead of opening a file manager;
-  `e2e_revealed_paths` reads it back.
+- With an open gate `vault_reveal` and `vault_activity_reveal` record the path instead of
+  opening a file manager; `e2e_revealed_paths` reads it back.
 
 ## Vault write-back
 
 The app makes every markdown file outside the journal folder a note (Step 13d, #3530). Until
 Step 14 (#3531) edits notes, these commands drive the write-back
 (`src-tauri/src/e2e/vault_writeback.rs`, over `memry_desktop::e2e::vault`).
-`specs/vault/writeback.e2e.ts`, `specs/vault/identity.e2e.ts` and the soak
-(`e2e/soak/writeback-soak.ts`, on the VM through `writeback-soak-vm.ts`) use them:
+`specs/vault/writeback.e2e.ts`, `identity.e2e.ts`, `vault-files.e2e.ts`,
+`vault-markdown-fidelity.e2e.ts` and the soak (`e2e/soak/writeback-soak.ts`, on the VM through
+`writeback-soak-vm.ts`) use them:
 
 - `e2e_vault_note_files` lists the rows: `{ noteId, path, contentHash }`. A row with a hash
   has its file's text in the note.
