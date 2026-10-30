@@ -52,6 +52,7 @@ async fn a_removed_leftover_is_reported_as_the_migration() {
         ),
         ("migrated", Some("electron-updater"), Some("success"))
     );
+    assert_eq!(event.object_type.as_deref(), Some("nsis_install"));
 }
 
 #[tokio::test]

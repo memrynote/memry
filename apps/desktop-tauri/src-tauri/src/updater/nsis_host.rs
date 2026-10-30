@@ -4,8 +4,9 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use memry_desktop::paths::AppPaths;
 use memry_desktop::updater::nsis_leftover::{
-    INSTALL_KEY, LeftoverHost, Registration, UNINSTALL_KEY, lies_within,
+    INSTALL_KEY, LeftoverHost, RESTORE_KEY, RESTORE_VALUE, Registration, UNINSTALL_KEY, lies_within,
 };
 use memry_desktop::updater::service::UpdaterService;
 use tauri::{AppHandle, Manager, Wry};
@@ -44,11 +45,16 @@ impl Inputs {
         let paths = app.path();
         let local = paths.local_data_dir().ok();
         let roaming = paths.data_dir().ok();
+        // This app's data and the Electron profile's usual places (`electron_import::profile`);
+        // `retire` adds the profile the updater located.
         let user_roots = [
             paths.home_dir().ok(),
             local.clone(),
             local.map(|local| local.join("Programs")),
             roaming.clone(),
+            roaming.as_ref().map(|roaming| roaming.join("memrynote")),
+            roaming.as_ref().map(|roaming| roaming.join("@memry")),
+            Some(app.state::<AppPaths>().data_dir.clone()),
         ]
         .into_iter()
         .flatten()
@@ -64,12 +70,15 @@ impl Inputs {
     }
 }
 
-/// One pass, on a blocking thread after the updater's init.
-pub fn retire(service: &UpdaterService, inputs: &Inputs) {
+/// One pass, on a blocking thread after the updater's init. `profile` is the Electron profile
+/// the updater located, which the removal must not take either.
+pub fn retire(service: &UpdaterService, inputs: Inputs, profile: Option<&Path>) {
+    let mut user_roots = inputs.user_roots;
+    user_roots.extend(profile.map(Path::to_owned));
     service.retire_nsis_leftover(
-        &WinHost::new(INSTALL_KEY, UNINSTALL_KEY),
+        &WinHost::new(INSTALL_KEY, UNINSTALL_KEY, RESTORE_KEY),
         &inputs.own_install,
-        &inputs.user_roots,
+        &user_roots,
         inputs.pins_dir.as_deref(),
     );
 }
@@ -77,13 +86,15 @@ pub fn retire(service: &UpdaterService, inputs: &Inputs) {
 struct WinHost {
     install_key: String,
     uninstall_key: String,
+    restore_key: String,
 }
 
 impl WinHost {
-    fn new(install_key: &str, uninstall_key: &str) -> Self {
+    fn new(install_key: &str, uninstall_key: &str, restore_key: &str) -> Self {
         Self {
             install_key: install_key.to_owned(),
             uninstall_key: uninstall_key.to_owned(),
+            restore_key: restore_key.to_owned(),
         }
     }
 }
@@ -125,6 +136,12 @@ impl LeftoverHost for WinHost {
             }
         }
         Ok(())
+    }
+
+    fn restore_pending(&self) -> bool {
+        RegKey::predef(HKEY_CURRENT_USER)
+            .open_subkey(&self.restore_key)
+            .is_ok_and(|key| key.get_raw_value(RESTORE_VALUE).is_ok())
     }
 }
 
@@ -230,6 +247,7 @@ mod tests {
             WinHost::new(
                 &format!(r"{}\install", self.root),
                 &format!(r"{}\uninstall", self.root),
+                &format!(r"{}\runonce", self.root),
             )
         }
     }
@@ -265,6 +283,22 @@ mod tests {
         host.delete_registration().unwrap();
         assert_eq!(host.per_user(), None);
         assert!(!host.per_machine());
+    }
+
+    #[test]
+    fn an_armed_nsis_restore_is_seen() {
+        let keys = TestKeys::new();
+        let host = keys.host();
+        assert!(!host.restore_pending());
+        let (runonce, _) = RegKey::predef(HKEY_CURRENT_USER)
+            .create_subkey(&host.restore_key)
+            .unwrap();
+        runonce.set_value("other.app", &"cmd.exe /c exit").unwrap();
+        assert!(!host.restore_pending());
+        runonce
+            .set_value(RESTORE_VALUE, &"cmd.exe /c exit")
+            .unwrap();
+        assert!(host.restore_pending());
     }
 
     #[test]

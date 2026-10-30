@@ -39,12 +39,21 @@ impl UpdaterService {
         );
         match outcome {
             Outcome::None | Outcome::Waiting => {}
-            Outcome::Retired { stale_pins } => {
+            Outcome::Retired { stale_pins, files } => {
                 tracing::info!(
                     scope = "NsisLeftover",
-                    "removed the NSIS install an Electron build left; {stale_pins} taskbar pins pointed into it"
+                    "removed the NSIS install an Electron build left (its files: {files}); {stale_pins} taskbar pins pointed into it"
                 );
                 let mut event = Telemetry::event("app_update_installed", "updater", "migrated");
+                // Only the Settings > Apps entry was left when the folder was already gone.
+                event.object_type = Some(
+                    if files {
+                        "nsis_install"
+                    } else {
+                        "nsis_registration"
+                    }
+                    .to_owned(),
+                );
                 event.source = Some("electron-updater".to_owned());
                 event.result = Some("success".to_owned());
                 event.metrics = Some(Metrics {
@@ -58,9 +67,9 @@ impl UpdaterService {
                 first_report,
             } => {
                 let token = reason.as_str();
-                // Expected: a process still running from it, or an install for all users that
-                // this app cannot remove without elevation.
-                if matches!(reason, Keep::InUse | Keep::PerMachine) {
+                // Expected: a process still running from it, an NSIS update not yet restored,
+                // or an install for all users that this app cannot remove without elevation.
+                if matches!(reason, Keep::InUse | Keep::BackupPending | Keep::PerMachine) {
                     tracing::info!(scope = "NsisLeftover", "the NSIS install stays: {token}");
                 } else {
                     tracing::warn!(scope = "NsisLeftover", "the NSIS install stays: {token}");

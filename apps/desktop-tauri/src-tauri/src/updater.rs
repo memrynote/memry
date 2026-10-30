@@ -224,7 +224,7 @@ pub fn on_window_shown(app: &AppHandle<Wry>) {
             service.init(profile.as_deref());
             #[cfg(windows)]
             if let Some(inputs) = leftover {
-                nsis_host::retire(&service, &inputs);
+                nsis_host::retire(&service, inputs, profile.as_deref());
             }
         })
         .await;

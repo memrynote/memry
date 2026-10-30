@@ -16,10 +16,15 @@ pub struct LeftoverState {
     /// When a launch first found the leftover at [`Self::install_location`] (epoch ms).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_seen_at: Option<u64>,
+    /// The registry's `InstallLocation` (or the uninstaller's directory) as found.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub install_location: Option<String>,
-    /// The name the directory was renamed to before its removal. Recorded before the rename, so
-    /// a removal cut short resumes there, and only there.
+    /// The canonical directory a removal took, recorded with [`Self::tombstone`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<String>,
+    /// The name the directory was renamed to before its removal: [`Self::origin`] with the
+    /// tombstone suffix. Recorded before the rename, so a removal cut short resumes there, and
+    /// only there.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tombstone: Option<String>,
     /// The last reason reported for keeping the leftover, so one reason is reported once.

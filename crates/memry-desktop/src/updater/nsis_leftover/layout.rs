@@ -3,10 +3,13 @@
 
 use std::path::{Component, Path, Prefix};
 
-/// Every top-level entry of the shipped Electron Windows builds (Electron 39 at `v2026.4.28` and
-/// Electron 43 from `v2026-07-17`, read from their `-win.zip` and NSIS `app-64.7z`), plus the
-/// NSIS uninstaller and the `debug.log` Chromium may write next to the exe. Lowercase.
-const FILES: &[&str] = &[
+/// The top-level files of the Electron builds that name their exe `Memrynote.exe`: `v2026-06-10`
+/// on (Electron 39 to `v2026-07-10.x`, Electron 43 from `v2026-07-17`; read from the NSIS
+/// `app-64.7z` of `v2026-07-10.3` and `v2026-10-25`), plus the NSIS uninstaller, the
+/// `debug.log` Chromium may write beside the exe and the `.old-update` copy of the exe. Earlier
+/// builds named the exe `memry.exe` (`v2026.4.28`) or `Memry.exe` (`v2026-05-06` to
+/// `v2026-05-16`); their installs fail the anchor check and stay (`not_electron`). Lowercase.
+const TOP_FILES: &[&str] = &[
     "chrome_100_percent.pak",
     "chrome_200_percent.pak",
     "d3dcompiler_47.dll",
@@ -20,6 +23,7 @@ const FILES: &[&str] = &[
     "license.electron.txt",
     "licenses.chromium.html",
     "memrynote.exe",
+    "memrynote.exe.old-update",
     "resources.pak",
     "snapshot_blob.bin",
     UNINSTALLER,
@@ -28,19 +32,43 @@ const FILES: &[&str] = &[
     "vk_swiftshader_icd.json",
     "vulkan-1.dll",
 ];
-const DIRS: &[&str] = &["locales", "resources"];
+/// `resources\` of the same builds. `app.asar.unpacked` and `node_modules` are taken whole: a
+/// link deeper down is removed as a link, never followed (`std::fs::remove_dir_all`).
+const RESOURCES_FILES: &[&str] = &["app-config", "app-update.yml", "app.asar", "elevate.exe"];
+const RESOURCES_DIRS: &[&str] = &["app.asar.unpacked", "node_modules"];
 
 /// The NSIS uninstaller, lowercase. Builds write it as `Uninstall Memrynote.exe`; Windows file
 /// names compare without case.
 pub const UNINSTALLER: &str = "uninstall memrynote.exe";
 
-/// One top-level entry of the directory may be removed with it.
-pub fn allowed_entry(name: &str, is_dir: bool) -> bool {
+/// Which directory of the install an entry sits in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Level {
+    Top,
+    Resources,
+    /// `locales\`: Chromium's `.pak` files only.
+    Locales,
+}
+
+/// The level a top-level directory opens, or `None` when an install has no such directory.
+pub fn subdir(name: &str) -> Option<Level> {
+    match name.to_lowercase().as_str() {
+        "resources" => Some(Level::Resources),
+        "locales" => Some(Level::Locales),
+        _ => None,
+    }
+}
+
+/// An entry an Electron install has at `level`, so it may be removed with it.
+pub fn allowed(level: Level, name: &str, is_dir: bool) -> bool {
     let name = name.to_lowercase();
-    if is_dir {
-        DIRS.contains(&name.as_str())
-    } else {
-        FILES.contains(&name.as_str())
+    match (level, is_dir) {
+        (Level::Top, false) => TOP_FILES.contains(&name.as_str()),
+        (Level::Top, true) => subdir(&name).is_some(),
+        (Level::Resources, false) => RESOURCES_FILES.contains(&name.as_str()),
+        (Level::Resources, true) => RESOURCES_DIRS.contains(&name.as_str()),
+        (Level::Locales, false) => name.ends_with(".pak"),
+        (Level::Locales, true) => false,
     }
 }
 
