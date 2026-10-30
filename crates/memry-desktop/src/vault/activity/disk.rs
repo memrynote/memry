@@ -124,7 +124,8 @@ fn read_lines(root: &Path, cutoff: Option<i64>) -> io::Result<Loaded> {
             raw.pop();
         }
         // `readFileSync(path, 'utf-8')` decodes bad bytes as U+FFFD the same way.
-        let parsed = match read_line(&String::from_utf8_lossy(&raw)) {
+        let text = String::from_utf8_lossy(&raw);
+        let parsed = match read_line(&text) {
             Read::Line(parsed) => parsed,
             Read::Blank => continue,
             Read::Garbage => {
@@ -136,10 +137,8 @@ fn read_lines(root: &Path, cutoff: Option<i64>) -> io::Result<Loaded> {
             loaded.pruned += 1;
             continue;
         }
-        // The kept line takes the buffer instead of a copy of it.
-        let text = String::from_utf8(std::mem::take(&mut raw))
-            .unwrap_or_else(|bad| String::from_utf8_lossy(bad.as_bytes()).into_owned());
-        loaded.lines.push_back(parsed.into_line(text));
+        // A copy of its length: the buffer, with its spare room, is read into again.
+        loaded.lines.push_back(parsed.into_line(text.into_owned()));
         if loaded.lines.len() > MAX_ENTRIES {
             loaded.lines.pop_front();
             loaded.pruned += 1;
@@ -234,7 +233,9 @@ fn replace(root: &Path, file: &'static str, bytes: &[u8]) -> Result<(), DiskErro
 }
 
 /// Appends to the log, creating it owner-only when it is not there (`appendFile`, mode 0600).
-/// Only to a regular file: a link is not followed out of the vault, and a FIFO does not block.
+/// Only to a regular file, and a FIFO does not block. Stricter than the read, which follows a
+/// link that stays inside the vault: a log that is such a link is read and not appended to,
+/// and its entries wait for the next rewrite, which replaces the link with a file.
 fn append(root: &Path, bytes: &[u8]) -> io::Result<()> {
     ensure_memry_dir(root)?;
     let mut options = OpenOptions::new();
@@ -262,36 +263,64 @@ pub fn touch(root: &Path) -> io::Result<()> {
 pub enum Work {
     /// `separate` starts the lines on a line of their own, after a last line with no newline.
     Append { lines: Vec<String>, separate: bool },
-    /// `unwritten` are the new lines among `lines`, appended instead if the rewrite fails.
+    /// `unwritten` are the new lines among `lines`, appended as for [`Work::Append`] if the
+    /// rewrite fails.
     Rewrite {
         lines: Vec<String>,
         unwritten: Vec<String>,
+        separate: bool,
     },
 }
 
+/// A write that did not do all it was for.
+#[derive(Debug)]
+pub struct Failed {
+    pub error: DiskError,
+    /// The rewrite failed and its new lines were appended instead: the rewrite is still owed,
+    /// they are not.
+    pub appended: bool,
+}
+
 impl Work {
-    pub fn run(&self, root: &Path) -> Result<(), DiskError> {
+    pub fn run(&self, root: &Path) -> Result<(), Failed> {
         match self {
             Self::Append { lines, separate } => {
-                let mut text = if *separate {
-                    "\n".to_owned()
-                } else {
-                    String::new()
-                };
-                text.push_str(&lines.join("\n"));
-                text.push('\n');
-                append(root, text.as_bytes()).map_err(|source| DiskError::Write {
-                    file: LOG_FILE,
-                    source,
+                append_lines(root, lines, *separate).map_err(|error| Failed {
+                    error,
+                    appended: false,
                 })
             }
-            Self::Rewrite { lines, .. } => {
+            Self::Rewrite {
+                lines,
+                unwritten,
+                separate,
+            } => {
                 let mut text = lines.join("\n");
                 if !text.is_empty() {
                     text.push('\n');
                 }
-                replace(root, LOG_FILE, text.as_bytes())
+                let Err(error) = replace(root, LOG_FILE, text.as_bytes()) else {
+                    return Ok(());
+                };
+                // A `.memry` that takes no new file can still take appends to the log in it.
+                let appended =
+                    !unwritten.is_empty() && append_lines(root, unwritten, *separate).is_ok();
+                Err(Failed { error, appended })
             }
         }
     }
+}
+
+fn append_lines(root: &Path, lines: &[String], separate: bool) -> Result<(), DiskError> {
+    let mut text = if separate {
+        "\n".to_owned()
+    } else {
+        String::new()
+    };
+    text.push_str(&lines.join("\n"));
+    text.push('\n');
+    append(root, text.as_bytes()).map_err(|source| DiskError::Write {
+        file: LOG_FILE,
+        source,
+    })
 }

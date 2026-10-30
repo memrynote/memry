@@ -47,7 +47,7 @@ pub use disk::{
 pub use entry::{
     ActivityEntry, ActivityInput, ActivityKind, ActivitySource, MAX_ITEMS, MAX_MESSAGE_UNITS,
 };
-pub use parse::{MAX_COUNTS, steps};
+pub use parse::{MAX_COUNTS, MAX_TEXT_BYTES, steps};
 use parse::{Read, read_line};
 use store::{Log, extension, is_user_content};
 
@@ -182,15 +182,16 @@ impl Shared {
             .as_mut()
             .filter(|log| log.generation == generation)
         {
-            if result.is_ok() {
-                log.wrote();
-            } else {
-                log.restore(work);
-                state.write_due.get_or_insert(Instant::now() + RETRY_DELAY);
-                self.wake.notify_all();
+            match &result {
+                Ok(()) => log.wrote(),
+                Err(failed) => {
+                    log.restore(work, failed);
+                    state.write_due.get_or_insert(Instant::now() + RETRY_DELAY);
+                    self.wake.notify_all();
+                }
             }
         }
-        result
+        result.map_err(|failed| failed.error)
     }
 
     /// The log's thread: runs the buffered write and the change notice when each is due.
@@ -332,11 +333,12 @@ impl ActivityLog {
         let _ = self.shared.changed.send(());
         if let Some(mut log) = log
             && let Some(work) = log.take_work()
-            && let Err(error) = work.run(&log.root)
+            && let Err(failed) = work.run(&log.root)
         {
             tracing::warn!(
                 scope = "vault_activity",
-                "the activity log was not written at close: {error}"
+                "the activity log was not written at close: {}",
+                failed.error
             );
         }
     }

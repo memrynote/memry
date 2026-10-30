@@ -4,7 +4,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 
-use super::disk::{DEFAULT_RETENTION_DAYS, Work, cutoff, read_log, read_retention};
+use super::disk::{DEFAULT_RETENTION_DAYS, Failed, Work, cutoff, read_log, read_retention};
 use super::entry::Line;
 use super::{COMPACT_SLACK, MAX_ENTRIES};
 use crate::vault::layout::CANVAS_FILE_EXT;
@@ -118,7 +118,11 @@ impl Log {
         if self.needs_rewrite {
             self.needs_rewrite = false;
             let lines = self.lines.iter().map(|line| line.raw.clone()).collect();
-            return Some(Work::Rewrite { lines, unwritten });
+            return Some(Work::Rewrite {
+                lines,
+                unwritten,
+                separate: self.torn_tail,
+            });
         }
         (!unwritten.is_empty()).then_some(Work::Append {
             lines: unwritten,
@@ -131,14 +135,22 @@ impl Log {
         self.torn_tail = false;
     }
 
-    /// Puts back a write that failed. A rewrite falls back to appending the lines it would
-    /// have written, so a file that cannot be replaced still gets every new entry.
-    pub(super) fn restore(&mut self, work: Work) {
-        let (Work::Append { mut lines, .. }
-        | Work::Rewrite {
-            unwritten: mut lines,
-            ..
-        }) = work;
+    /// Puts back what a failed write owes, ahead of the lines recorded since. A failed rewrite
+    /// stays owed (a clear or a compaction), and its new lines with it unless they were
+    /// appended instead; the rewrite writes them again, as part of `lines`, not twice.
+    pub(super) fn restore(&mut self, work: Work, failed: &Failed) {
+        let mut lines = match work {
+            Work::Append { lines, .. } => lines,
+            Work::Rewrite { unwritten, .. } => {
+                self.needs_rewrite = true;
+                if failed.appended {
+                    self.wrote();
+                    Vec::new()
+                } else {
+                    unwritten
+                }
+            }
+        };
         lines.append(&mut self.pending);
         self.pending = lines;
         self.cap_pending();
@@ -239,24 +251,49 @@ mod tests {
         parsed.into_line(raw)
     }
 
-    /// A line recorded while a write was out reaches the disk after the lines that write held,
-    /// whether the failed write was an append or a rewrite.
+    fn failed(appended: bool) -> Failed {
+        Failed {
+            error: super::super::DiskError::Write {
+                file: super::super::LOG_FILE,
+                source: std::io::Error::other("refused"),
+            },
+            appended,
+        }
+    }
+
+    /// The new lines the next write carries, and whether it rewrites the file.
+    fn next(log: &mut Log) -> (Vec<String>, bool) {
+        match log.take_work() {
+            Some(Work::Append { lines, .. }) => (lines, false),
+            Some(Work::Rewrite { unwritten, .. }) => (unwritten, true),
+            None => (Vec::new(), false),
+        }
+    }
+
+    /// A line recorded while a write was out reaches the disk after the lines that write held;
+    /// a failed rewrite stays owed, without the lines it appended instead.
     #[test]
     fn a_failed_write_s_lines_go_back_ahead_of_the_ones_recorded_meanwhile() {
         let dir = tempfile::tempdir().unwrap();
-        for rewrite in [false, true] {
+        for (rewrite, appended) in [(false, false), (true, false), (true, true)] {
             let mut log = Log::load(dir.path(), 0);
             log.needs_rewrite = rewrite;
             let (a, b) = (line("a"), line("b"));
-            let expected = [a.raw.clone(), b.raw.clone()];
+            let (a_raw, b_raw) = (a.raw.clone(), b.raw.clone());
             log.push(a);
             let out = log.take_work().unwrap();
             log.push(b);
-            log.restore(out);
-            let Some(Work::Append { lines, .. }) = log.take_work() else {
-                panic!("the retry is not an append");
+            log.restore(out, &failed(appended));
+            let expected = if appended {
+                vec![b_raw]
+            } else {
+                vec![a_raw, b_raw]
             };
-            assert_eq!(lines, expected, "rewrite: {rewrite}");
+            assert_eq!(
+                next(&mut log),
+                (expected, rewrite),
+                "rewrite: {rewrite}, appended: {appended}"
+            );
         }
     }
 }

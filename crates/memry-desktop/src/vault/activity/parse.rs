@@ -5,7 +5,8 @@
 //! from the line where it can, and skips every other value without allocating. A value of a
 //! known key that is not what the schema takes is skipped the same way and fails the schema.
 //! `counts` and `items` stop collecting at [`MAX_COUNTS`] and [`MAX_ITEMS`] names: what is held
-//! for a line is a small multiple of the line, whatever it holds.
+//! for a line is a small multiple of the line, whatever it holds. An entry with a string past
+//! [`MAX_TEXT_BYTES`] is not listed either, so the renderer never gets a megabyte path.
 //!
 //! JavaScript's `JSON.parse` and serde_json read the same lines, but for:
 //! - a lone UTF-16 surrogate escape (`"\ud83d"`), which `JSON.parse` takes and serde_json
@@ -28,6 +29,11 @@ use super::entry::{ActivityEntry, ActivityKind, ActivitySource, Line, MAX_ITEMS}
 /// at most seven; the schema has no bound, and a line holding a million would take a large
 /// multiple of its size to list. The line itself is kept.
 pub const MAX_COUNTS: usize = 64;
+
+/// Bytes of the longest string an entry is listed with. Past every path a vault can hold
+/// (`PATH_MAX` is 1 KiB on macOS and 4 KiB on Linux; a long Windows path is 32,767 UTF-16
+/// units) and every message a writer puts (500 units). The line itself is kept.
+pub const MAX_TEXT_BYTES: usize = 32 * 1024;
 
 /// What a JSON object line says; the caller keeps its text, which this does not copy.
 pub struct Parsed {
@@ -358,6 +364,19 @@ impl Probe<'_> {
             None => None,
             Some(Items(items)) => Some(items.clone()?),
         };
+        let texts = [&self.id, &self.at, &self.path, &self.old_path, &self.reason]
+            .into_iter()
+            .chain([&self.message, &self.importer])
+            .filter_map(|value| value.as_ref()?.text());
+        let names = counts.iter().flat_map(BTreeMap::keys).map(String::as_str);
+        let samples = items.iter().flatten().map(String::as_str);
+        if texts
+            .chain(names)
+            .chain(samples)
+            .any(|text| text.len() > MAX_TEXT_BYTES)
+        {
+            return None;
+        }
         Some(ActivityEntry {
             v: 1,
             id: required(&self.id)?,
@@ -519,5 +538,18 @@ mod tests {
         assert!(entry(&format!("{{{HEAD},\"counts\":[1]}}")).is_none());
         assert!(entry(&format!("{{{HEAD},\"items\":{{\"a\":[1]}},\"counts\":7}}")).is_none());
         assert!(entry(&format!("{{\"counts\":[1,[2]],{HEAD}}}")).is_none());
+        for (key, open, close) in [
+            ("path", "\"", "\""),
+            ("message", "\"", "\""),
+            ("items", "[\"", "\"]"),
+            ("counts", "{\"", "\":1}"),
+        ] {
+            let with = |len: usize| {
+                let text = "x".repeat(len);
+                entry(&format!("{{{HEAD},\"{key}\":{open}{text}{close}}}"))
+            };
+            assert!(with(MAX_TEXT_BYTES).is_some(), "{key}");
+            assert!(with(MAX_TEXT_BYTES + 1).is_none(), "{key}");
+        }
     }
 }

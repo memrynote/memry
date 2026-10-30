@@ -1,6 +1,6 @@
 //! Opening the activity log holds a bounded multiple of its 64 MiB size cap, whatever its lines
 //! hold: many small objects, one line of a huge array, a summary with too many items or
-//! counts, one huge string.
+//! counts, one huge string, lines of the longest strings an entry is listed with.
 //!
 //! The counting allocator sees the whole process, so this binary holds this one test. While a
 //! file is read it refuses any allocation past twice the bound, so a reader that regresses
@@ -11,7 +11,10 @@ use std::fmt::Write as _;
 use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use memry_desktop::vault::activity::{ActivityFilter, ActivityLog, MAX_LOG_BYTES, log_path};
+use memry_core::storage::repositories::instants::to_epoch_ms;
+use memry_desktop::vault::activity::{
+    ActivityFilter, ActivityLog, MAX_LOG_BYTES, MAX_TEXT_BYTES, log_path,
+};
 
 struct Counting;
 
@@ -78,6 +81,8 @@ fn peak_of(work: impl FnOnce()) -> usize {
 }
 
 const CAP: usize = MAX_LOG_BYTES as usize;
+/// The lines' time, and the clock's: the retention keeps every line.
+const AT: &str = "2026-10-30T12:00:00.000Z";
 const HEAD: &str =
     r#"{"v":1,"id":"i","at":"2026-10-30T12:00:00.000Z","kind":"added","source":"scan""#;
 
@@ -93,12 +98,23 @@ fn one_line(open: &str, part: &str, close: &str) -> String {
     line
 }
 
+/// Lines whose strings are as long as an entry is listed with, up to the cap.
+fn longest_listed() -> String {
+    let line = format!(
+        "{HEAD},\"path\":\"{}\",\"message\":\"{}\"}}\n",
+        "p".repeat(MAX_TEXT_BYTES),
+        "m".repeat(MAX_TEXT_BYTES)
+    );
+    line.repeat(CAP / line.len())
+}
+
 /// At most this much is held opening a log at the cap and listing it: the line being read, the
-/// kept lines (which take the read buffer, never a copy) and the entries listed from them.
-/// Measured for a 64 MiB file: 192 MiB for one string as long as the file (the buffer with its
-/// spare capacity, the entry's copy and the listed copy), 96 MiB for the other long lines (the
-/// buffer), 3 MiB for the small objects. The reader that built every line into a JSON value
-/// held 5.9 GB for the small objects and 2.5 GB for the long array.
+/// kept lines, their entries and the entries listed. Measured for a 64 MiB file: 190 MiB for
+/// lines of the longest strings an entry is listed with (each line, its entry, and the listed
+/// copy of the newest 1000), 128 MiB for one long line of any kind (the read buffer and the
+/// kept copy; its entry is not listed), 3 MiB for the small objects. The reader that built
+/// every line into a JSON value held 5.9 GB for the small objects and 2.5 GB for the long
+/// array.
 const MAX_HELD: usize = 4 * CAP;
 
 #[test]
@@ -128,6 +144,7 @@ fn opening_a_log_at_the_cap_holds_a_bounded_multiple_of_it() {
             "one long string",
             one_line(&format!("{HEAD},\"path\":\""), "abcdefgh", "\"}"),
         ),
+        ("the longest listed strings", longest_listed()),
     ];
     for (name, text) in files {
         assert!(text.len() <= CAP, "{name} is over the cap");
@@ -135,7 +152,8 @@ fn opening_a_log_at_the_cap_holds_a_bounded_multiple_of_it() {
         fs::create_dir(dir.path().join(".memry")).unwrap();
         fs::write(log_path(dir.path()), &text).unwrap();
         drop(text);
-        let log = ActivityLog::new();
+        let now = to_epoch_ms(AT).unwrap();
+        let log = ActivityLog::with_clock(move || now);
         let held = peak_of(|| {
             log.open(dir.path());
             let _ = log.list(1000, ActivityFilter::All);

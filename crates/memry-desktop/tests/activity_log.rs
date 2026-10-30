@@ -12,7 +12,7 @@ use std::time::Duration;
 use memry_desktop::vault::activity::{
     ActivityEntry, ActivityError, ActivityFilter, ActivityInput, ActivityKind, ActivityLog,
     ActivitySource, CHANGED_THROTTLE, COMPACT_SLACK, DiskError, MAX_ENTRIES, MAX_LOG_BYTES,
-    log_path, settings_path, steps,
+    MAX_SETTINGS_BYTES, log_path, settings_path, steps,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, proptest_config};
 use proptest::prelude::*;
@@ -336,6 +336,42 @@ fn a_settings_file_that_is_not_a_json_object_is_left_as_it_is() {
     }
 }
 
+/// A settings file past [`MAX_SETTINGS_BYTES`] is not read, whatever it holds: its retention
+/// is unknown, so no entry goes for its age, and it is never replaced.
+#[test]
+fn a_settings_file_past_its_cap_is_neither_read_nor_replaced() {
+    let dir = vault();
+    let settings = format!(
+        r#"{{"retentionDays":7,"pad":"{}"}}"#,
+        "x".repeat(MAX_SETTINGS_BYTES as usize)
+    );
+    let at_ms = memry_core::storage::repositories::instants::to_iso8601(now() - 10 * DAY).unwrap();
+    let line = format!(r#"{{"v":1,"id":"old","at":"{at_ms}","kind":"added","source":"watcher"}}"#);
+    fs::write(log_path(dir.path()), format!("{line}\n")).unwrap();
+    fs::write(settings_path(dir.path()), &settings).unwrap();
+    let log = at(now());
+    log.open(dir.path());
+    let listed = log.list(10, ActivityFilter::All);
+    assert_eq!(
+        ids(&listed.entries),
+        ["old"],
+        "the 7 days past the cap were read"
+    );
+    assert_eq!(listed.retention_days, 30);
+    let refused = log.set_retention(30);
+    assert!(
+        matches!(
+            refused,
+            Err(ActivityError::Disk(DiskError::Unreadable { .. }))
+        ),
+        "{refused:?}"
+    );
+    assert_eq!(
+        fs::read_to_string(settings_path(dir.path())).unwrap(),
+        settings
+    );
+}
+
 /// Electron prunes by 30 days under a retention it does not know; a newer build may have set
 /// one longer than any this build knows, so nothing goes for its age, only past the cap.
 #[test]
@@ -507,6 +543,41 @@ fn a_last_line_without_its_newline_is_rewritten_before_anything_is_appended() {
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines[0], kept);
     assert!(lines[1].contains("\"path\":\"b.md\""));
+}
+
+/// A clear whose rewrite fails is still owed: the next write rewrites the file, so the
+/// cleared entries do not come back at the next open.
+#[cfg(unix)]
+#[test]
+fn a_clear_whose_rewrite_fails_is_rewritten_by_the_next_write() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = vault();
+    let cleared = r#"{"v":1,"id":"cleared","at":"2026-10-30T11:00:00.000Z","kind":"added","source":"watcher"}"#;
+    fs::write(log_path(dir.path()), format!("{cleared}\n")).unwrap();
+    let memry = dir.path().join(".memry");
+    fs::set_permissions(&memry, fs::Permissions::from_mode(0o555)).unwrap();
+    let log = at(now());
+    log.open(dir.path());
+    let refused = log.clear();
+    fs::set_permissions(&memry, fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(
+        refused.is_err(),
+        "the clear was written into a read-only .memry"
+    );
+    log.record(
+        dir.path(),
+        ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("new.md"),
+    );
+    log.flush().unwrap();
+    let text = on_disk(dir.path()).unwrap();
+    assert_eq!(text.lines().count(), 1, "{text:?}");
+    assert!(text.contains("\"path\":\"new.md\""), "{text:?}");
+    log.close(dir.path());
+    let reopened = at(now());
+    reopened.open(dir.path());
+    let listed = reopened.list(10, ActivityFilter::All).entries;
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].path.as_deref(), Some("new.md"));
 }
 
 /// A `.memry` that takes no new file fails every rewrite, while the log in it still takes
