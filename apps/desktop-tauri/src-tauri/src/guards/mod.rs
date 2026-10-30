@@ -12,8 +12,10 @@ use tauri::Wry;
 use crate::startup::{self, Stage, StageFn};
 
 /// The `Guards` stage in its order. The stage runs before any window, and a guard that halts the
-/// boot stops every later registration.
-fn guards() -> Vec<(&'static str, StageFn<Wry>)> {
+/// boot stops every later registration. `tests/startup.rs` pins the order: a unit test here would
+/// link the guards' dialog code into the lib test executable, which has no Common Controls v6
+/// manifest on Windows (`build.rs`).
+pub fn guards() -> Vec<(&'static str, StageFn<Wry>)> {
     vec![
         // First: on macOS it may end the boot before anything of the old bundle starts.
         (
@@ -35,25 +37,4 @@ pub fn register_stages() {
         startup::register(Stage::Guards, name, guard);
     }
     startup::register(Stage::Handlers, "report gpu guard", gpu::report);
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn the_launch_checks_webview2_after_the_relaunch_guard_and_before_any_other_guard() {
-        let names: Vec<_> = super::guards().into_iter().map(|(name, _)| name).collect();
-        let expected: &[&str] = if cfg!(windows) {
-            &["updater relaunch guard", "check webview2 runtime"]
-        } else {
-            &["updater relaunch guard"]
-        };
-        assert_eq!(&names[..expected.len()], expected);
-        assert_eq!(
-            names
-                .iter()
-                .filter(|name| **name == "check webview2 runtime")
-                .count(),
-            usize::from(cfg!(windows))
-        );
-    }
 }

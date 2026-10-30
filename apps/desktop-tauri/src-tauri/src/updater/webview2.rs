@@ -20,8 +20,9 @@ use tauri::{AppHandle, Manager, Wry};
 use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
 use windows::Win32::System::Threading::{CREATE_NO_WINDOW, GetCurrentThreadId};
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumThreadWindows, IDYES, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, MB_RIGHT, MB_RTLREADING,
-    MB_SETFOREGROUND, MB_YESNO, MESSAGEBOX_STYLE, MessageBoxW, PostMessageW, WM_CLOSE,
+    EnumThreadWindows, GetClassNameW, IDYES, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, MB_RIGHT,
+    MB_RTLREADING, MB_SETFOREGROUND, MB_YESNO, MESSAGEBOX_STYLE, MessageBoxW, PostMessageW,
+    WM_CLOSE,
 };
 use windows::core::{BOOL, HSTRING};
 use winreg::RegKey;
@@ -113,19 +114,32 @@ impl Notice {
 
 impl OpenNotice {
     /// Closes the box, which may not be on screen yet: asked again until its thread ends.
-    /// Returns whether it closed.
+    /// Returns whether it closed a box that was still on screen.
     fn close(self) -> bool {
-        unsafe extern "system" fn post_close(window: HWND, _: LPARAM) -> BOOL {
-            // SAFETY: a window of the notice's thread; a stale handle only fails the post.
-            let _ = unsafe { PostMessageW(Some(window), WM_CLOSE, WPARAM(0), LPARAM(0)) };
+        /// `#32770` is the dialog class of a message box; the thread's IME windows are left alone.
+        unsafe extern "system" fn post_close(window: HWND, found: LPARAM) -> BOOL {
+            let mut class = [0u16; 16];
+            // SAFETY: the buffer outlives the call.
+            let len = unsafe { GetClassNameW(window, &mut class) };
+            if class[..usize::try_from(len).unwrap_or(0)]
+                == *"#32770".encode_utf16().collect::<Vec<_>>()
+            {
+                // SAFETY: `found` points at the counter of `close`, alive for the whole enumeration.
+                unsafe { *(found.0 as *mut usize) += 1 };
+                // SAFETY: a window of the notice's thread; a stale handle only fails the post.
+                let _ = unsafe { PostMessageW(Some(window), WM_CLOSE, WPARAM(0), LPARAM(0)) };
+            }
             BOOL::from(true)
         }
+        let mut found = 0_usize;
         if let Some(thread_id) = self.thread_id {
             for _ in 0..100 {
-                // SAFETY: the callback only posts a message to each window of that thread.
-                let _ = unsafe { EnumThreadWindows(thread_id, Some(post_close), LPARAM(0)) };
+                // SAFETY: the callback only reads each window's class and posts it a message.
+                let _ = unsafe {
+                    EnumThreadWindows(thread_id, Some(post_close), LPARAM(&raw mut found as isize))
+                };
                 if self.thread.is_finished() {
-                    return true;
+                    return found > 0;
                 }
                 std::thread::sleep(Duration::from_millis(20));
             }
@@ -321,10 +335,12 @@ mod tests {
         );
     }
 
+    /// `close` counts only the message box it found on screen and closed, so a box that never
+    /// appeared fails this.
     #[test]
     fn the_installing_notice_closes_when_the_bootstrapper_ends() {
         let open = machine().notice.show();
-        std::thread::sleep(Duration::from_millis(200));
+        std::thread::sleep(Duration::from_millis(500));
         assert!(open.close());
     }
 

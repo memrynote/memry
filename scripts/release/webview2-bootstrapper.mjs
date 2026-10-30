@@ -12,15 +12,7 @@
 //   node scripts/release/webview2-bootstrapper.mjs --update
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  statSync,
-  writeFileSync
-} from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -41,11 +33,12 @@ export function readPin(file = PIN_FILE) {
 
 /** Throws unless `file` holds exactly the pinned bytes. */
 export function checkPinned(file, pin = readPin()) {
-  const size = statSync(file).size
-  if (size !== pin.size) {
-    throw new Error(`${file} is ${size} bytes, the pin says ${pin.size}`)
+  // One read: the size and the hash are of the same bytes.
+  const bytes = readFileSync(file)
+  if (bytes.length !== pin.size) {
+    throw new Error(`${file} is ${bytes.length} bytes, the pin says ${pin.size}`)
   }
-  const sha256 = createHash('sha256').update(readFileSync(file)).digest('hex')
+  const sha256 = createHash('sha256').update(bytes).digest('hex')
   if (sha256 !== pin.sha256) {
     throw new Error(`${file} has SHA-256 ${sha256}, the pin says ${pin.sha256}`)
   }
