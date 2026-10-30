@@ -14,7 +14,9 @@
 //! - [`atomic_create`] makes a file that must not exist yet. It links (Unix) or moves without
 //!   replacing (Windows) the finished temp file into place, so a file another process created
 //!   after the caller looked is never overwritten: the call fails with `AlreadyExists`.
-//!   [`create_unique`] picks the first free `<name> N<ext>` that way.
+//!   [`create_unique`] picks the first free `<name> N<ext>` that way, and
+//!   [`atomic_create_streamed`] creates a copy of another file that way, streamed instead of
+//!   held in memory.
 //!
 //! [`rename_no_replace`] moves a file or folder that is already whole into a name that must
 //! still be free, the same way as a create: `AlreadyExists` rather than a replace.
@@ -28,7 +30,7 @@
 //! in here, before and after the write.
 
 use std::fs::{self, OpenOptions};
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -111,14 +113,7 @@ fn write_once(
     // A fresh name per attempt, so a failed attempt cannot collide with its own leftovers.
     let temp = dir.join(temp_name());
     let result = (|| {
-        let mut options = OpenOptions::new();
-        options.write(true).create_new(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            options.mode(0o600);
-        }
-        let mut file = options.open(&temp)?;
+        let mut file = open_temp(&temp)?;
         file.write_all(bytes)?;
         file.sync_all()?;
         drop(file);
@@ -134,22 +129,37 @@ fn write_once(
         Ok(())
     })();
     if result.is_err() || commit == Commit::Create {
-        // Best effort: the write error is the one to report. After a create the temp file is
-        // the second name of the new file and has done its job.
-        let removed = fs::remove_file(&temp);
-        // A Windows create moves the temp file, so there is nothing left to remove.
-        if result.is_ok()
-            && let Err(err) = removed
-            && err.kind() != io::ErrorKind::NotFound
-        {
-            tracing::warn!(
-                scope = "fs_atomic",
-                "left a temp file behind: {:?}",
-                err.kind()
-            );
-        }
+        remove_temp(&temp, result.is_ok());
     }
     result
+}
+
+fn open_temp(temp: &Path) -> io::Result<fs::File> {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    options.open(temp)
+}
+
+/// Best effort: a write error is the one to report. After a create the temp file is the second
+/// name of the new file and has done its job.
+fn remove_temp(temp: &Path, written: bool) {
+    let removed = fs::remove_file(temp);
+    // A Windows create moves the temp file, so there is nothing left to remove.
+    if written
+        && let Err(err) = removed
+        && err.kind() != io::ErrorKind::NotFound
+    {
+        tracing::warn!(
+            scope = "fs_atomic",
+            "left a temp file behind: {:?}",
+            err.kind()
+        );
+    }
 }
 
 /// The replaced file's permissions, owner, group and extended attributes, put on the temp
@@ -388,10 +398,7 @@ fn run(
         path: target.to_path_buf(),
         source,
     };
-    let dir = target
-        .parent()
-        .filter(|p| !p.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."));
+    let dir = folder_of(target);
     if create_dirs {
         fs::create_dir_all(dir).map_err(fail)?;
     }
@@ -399,6 +406,13 @@ fn run(
         write_once(dir, target, bytes, commit, &mut *before_commit)
     })
     .map_err(fail)
+}
+
+fn folder_of(target: &Path) -> &Path {
+    target
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
 }
 
 fn default_delays() -> [Duration; 3] {
@@ -451,6 +465,53 @@ pub fn atomic_create_checked(
 
 pub fn atomic_create(target: &Path, bytes: &[u8]) -> Result<(), WriteError> {
     atomic_create_checked(target, bytes, &default_delays(), &mut || Ok(()))
+}
+
+/// [`atomic_create_checked`] for bytes read from `content` as they are written, never all in
+/// memory: a copy of another file. `content` is read to its end, so the caller bounds a reader
+/// that may not end. The temp file is filled once; only `before_commit` and the
+/// move into place are retried. On Unix the new file takes `mode`, as `fs.copyFile` kept its
+/// source's; a volume that refuses a mode (CIFS, some FUSE mounts, FAT) leaves it 0600 and the
+/// copy goes on, as a save does without its carried attributes.
+pub fn atomic_create_streamed(
+    target: &Path,
+    content: &mut dyn Read,
+    mode: fs::Permissions,
+    before_commit: BeforeCommit<'_>,
+) -> Result<(), WriteError> {
+    let fail = |source| WriteError {
+        path: target.to_path_buf(),
+        source,
+    };
+    let dir = folder_of(target);
+    fs::create_dir_all(dir).map_err(fail)?;
+    let temp = dir.join(temp_name());
+    let result = (|| {
+        let mut file = open_temp(&temp)?;
+        io::copy(content, &mut file)?;
+        #[cfg(unix)]
+        if let Err(err) = file.set_permissions(mode) {
+            tracing::warn!(
+                scope = "fs_atomic",
+                "could not keep the copied file's mode: {:?}",
+                err.kind()
+            );
+        }
+        // Windows: a read-only attribute on the temp file would keep a failed create from
+        // removing it.
+        #[cfg(not(unix))]
+        let _ = mode;
+        file.sync_all()?;
+        drop(file);
+        with_transient_retry(&default_delays(), || {
+            before_commit()?;
+            create_file(&temp, target)
+        })?;
+        sync_dir(dir);
+        Ok(())
+    })();
+    remove_temp(&temp, result.is_ok());
+    result.map_err(fail)
 }
 
 /// `base`, or the first of `<name> 1<ext>`, `<name> 2<ext>`, ... that did not exist, created

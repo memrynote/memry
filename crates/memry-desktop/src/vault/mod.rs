@@ -13,6 +13,7 @@ pub mod file_types;
 pub mod fs_atomic;
 pub mod hash;
 pub mod icons;
+pub mod import_copy;
 pub mod init;
 pub mod layout;
 pub mod move_dir;
