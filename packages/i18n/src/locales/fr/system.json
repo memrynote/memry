@@ -71,7 +71,11 @@
     },
     "webview2Missing": {
       "title": "MemryNote ne peut pas démarrer",
-      "body": "MemryNote a besoin de Microsoft Edge WebView2 Runtime pour afficher sa fenêtre, et son installation a échoué. Téléchargez le programme d'installation depuis Microsoft ({url}), exécutez-le, puis rouvrez MemryNote.\n\nOuvrir la page de téléchargement maintenant ?"
+      "body": "MemryNote a besoin de Microsoft Edge WebView2 Runtime pour afficher sa fenêtre, et cet ordinateur ne l'a pas. Téléchargez le programme d'installation depuis Microsoft ({url}), exécutez-le, puis rouvrez MemryNote.\n\nOuvrir la page de téléchargement maintenant ?",
+      "bodyInstallFailed": "MemryNote a besoin de Microsoft Edge WebView2 Runtime pour afficher sa fenêtre, et son installation a échoué. Téléchargez le programme d'installation depuis Microsoft ({url}), exécutez-le, puis rouvrez MemryNote.\n\nOuvrir la page de téléchargement maintenant ?"
+    },
+    "webview2Installing": {
+      "body": "MemryNote installe Microsoft Edge WebView2 Runtime, dont il a besoin pour afficher sa fenêtre. Cela peut prendre jusqu'à deux minutes."
     },
     "failed": {
       "title": "MemryNote n'a pas pu terminer son démarrage",

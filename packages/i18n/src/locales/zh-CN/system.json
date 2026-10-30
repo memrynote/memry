@@ -71,7 +71,11 @@
     },
     "webview2Missing": {
       "title": "MemryNote 无法启动",
-      "body": "MemryNote 需要 Microsoft Edge WebView2 Runtime 才能显示窗口，但未能安装。请从 Microsoft 下载安装程序（{url}），运行后重新打开 MemryNote。\n\n现在打开下载页面吗？"
+      "body": "MemryNote 需要 Microsoft Edge WebView2 Runtime 才能显示窗口，但这台电脑上没有。请从 Microsoft 下载安装程序（{url}），运行后重新打开 MemryNote。\n\n现在打开下载页面吗？",
+      "bodyInstallFailed": "MemryNote 需要 Microsoft Edge WebView2 Runtime 才能显示窗口，但未能安装。请从 Microsoft 下载安装程序（{url}），运行后重新打开 MemryNote。\n\n现在打开下载页面吗？"
+    },
+    "webview2Installing": {
+      "body": "MemryNote 正在安装显示窗口所需的 Microsoft Edge WebView2 Runtime，最多可能需要两分钟。"
     },
     "failed": {
       "title": "MemryNote 未能完成启动",

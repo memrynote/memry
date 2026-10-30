@@ -63,6 +63,10 @@ impl Outcome {
 pub trait Runtime {
     /// The `pv` value of each EdgeUpdate client key of the runtime that has one.
     fn versions(&self) -> Vec<String>;
+    /// The version the WebView2 loader finds, which the window will use. Besides the Evergreen
+    /// runtime the registry names, it finds a Fixed Version runtime the environment points at, and
+    /// a Beta, Dev or Canary Edge a policy allows.
+    fn loader_version(&self) -> Option<String>;
     /// Runs the bootstrapper until it exits or its deadline passes.
     fn run_bootstrapper(&self, path: &Path) -> Result<(), String>;
 }
@@ -74,11 +78,20 @@ pub fn is_installed_version(pv: &str) -> bool {
     parts.is_some_and(|parts| parts.iter().any(|&part| part > 0))
 }
 
+/// The registry first, as Microsoft documents it; the loader for every runtime it does not list.
 fn installed(runtime: &impl Runtime) -> Option<String> {
     runtime
         .versions()
         .into_iter()
         .find(|pv| is_installed_version(pv))
+        .or_else(|| {
+            let version = runtime.loader_version()?;
+            tracing::info!(
+                scope = "WebView2",
+                "no Evergreen runtime in the registry; the WebView2 loader finds {version}"
+            );
+            Some(version)
+        })
 }
 
 /// Finds the runtime, and installs it with `bootstrapper` when it is missing.
@@ -138,6 +151,7 @@ mod tests {
         versions: RefCell<Vec<String>>,
         installs: Vec<String>,
         fails: bool,
+        loader: Option<String>,
         runs: Cell<usize>,
     }
 
@@ -148,6 +162,7 @@ mod tests {
                 versions: RefCell::new(owned(versions)),
                 installs: owned(installs),
                 fails,
+                loader: None,
                 runs: Cell::new(0),
             }
         }
@@ -156,6 +171,10 @@ mod tests {
     impl Runtime for Machine {
         fn versions(&self) -> Vec<String> {
             self.versions.borrow().clone()
+        }
+
+        fn loader_version(&self) -> Option<String> {
+            self.loader.clone()
         }
 
         fn run_bootstrapper(&self, _path: &Path) -> Result<(), String> {
@@ -191,6 +210,22 @@ mod tests {
         // The HKLM key of an uninstalled runtime, then the HKCU one of the live install.
         let machine = Machine::new(&["0.0.0.0", "131.0.2903.70"], &[], false);
         assert_eq!(ensure(&machine, &bootstrapper(&dir)), Outcome::Present);
+        assert_eq!(machine.runs.get(), 0);
+    }
+
+    /// A Fixed Version runtime, or an Edge channel a policy allows: the window opens with it.
+    #[test]
+    fn a_runtime_only_the_loader_finds_starts_the_app_without_the_bootstrapper() {
+        let dir = tempfile::tempdir().expect("tmp");
+        let machine = Machine {
+            loader: Some("132.0.2957.11".to_owned()),
+            ..Machine::new(&["0.0.0.0"], &[], true)
+        };
+        assert_eq!(ensure(&machine, &bootstrapper(&dir)), Outcome::Present);
+        assert_eq!(
+            ensure(&machine, &dir.path().join("none.exe")),
+            Outcome::Present
+        );
         assert_eq!(machine.runs.get(), 0);
     }
 

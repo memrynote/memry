@@ -7,9 +7,9 @@
 //   node scripts/rehearsal/rehearse.mjs electron-baseline <tag> [--run <id>]
 //
 // `build` dispatches .github/workflows/update-bridge-rehearsal.yml and waits. `assemble` downloads
-// the artifacts, packs and signs both Windows packs (each with Microsoft's WebView2 bootstrapper,
-// `../release/webview2-bootstrapper.mjs`), writes the bridge feeds and leaves the final
-// asset set in `.rehearsal-state/<version>/assets`. `--no-windows` skips the Certum-signed Windows
+// the artifacts, packs and signs both Windows packs (each with the pinned WebView2 bootstrapper of
+// `../release/webview2-bootstrapper.mjs`, checked again inside the package), writes the bridge
+// feeds and leaves the final asset set in `.rehearsal-state/<version>/assets`. `--no-windows` skips the Certum-signed Windows
 // packs and `latest.yml`, for a macOS and Linux feed that needs no SimplySign session.
 // `--unsigned-windows` packs Windows without the Certum key and without `latest.yml`: a Tauri to
 // Tauri update checks no Authenticode signature, while the Electron bridge does. `publish` creates the release and uploads it.
@@ -36,8 +36,13 @@ import {
   setupExeName
 } from '../release/bridge-feeds.mjs'
 import { assertPublishable, assetNames, buildPackArgs } from '../release/vpk-args.mjs'
-import { renameToPublished } from '../release/vpk-pack.mjs'
-import { fetchBootstrapper } from '../release/webview2-bootstrapper.mjs'
+import { assertPackable, renameToPublished } from '../release/vpk-pack.mjs'
+import {
+  checkPinned,
+  fetchBootstrapper,
+  PACKAGE_ENTRY,
+  verifyBootstrapper
+} from '../release/webview2-bootstrapper.mjs'
 
 export const FEED_REPO = 'memrynote/memry-update-rehearsal'
 const WORKFLOW = 'update-bridge-rehearsal.yml'
@@ -202,6 +207,7 @@ function packWindows(target, version, artifactDir, workDir, previousTag, signed)
   const zip = readdirSync(payload).find((name) => name.endsWith('.zip'))
   run('unzip', ['-q', path.join(payload, zip), '-d', packDir])
   fetchBootstrapper(packDir)
+  assertPackable(target, packDir)
   previousFulls(previousTag, outputDir, target)
   const args = buildPackArgs(target, {
     version,
@@ -214,6 +220,22 @@ function packWindows(target, version, artifactDir, workDir, previousTag, signed)
   vpk(args, signed ? { MEMRY_SIGN_PIN: readSigningPin() } : {})
   renameToPublished(outputDir)
   return outputDir
+}
+
+/**
+ * The bootstrapper as the full package ships it, signed pack or not: the pinned bytes, still with
+ * Microsoft's own signature (sign-windows-binary.sh must have left it alone).
+ */
+export function verifyPackedBootstrapper(outputDir, target, version, workDir) {
+  const inspect = path.join(workDir, `verify-webview2-${target}`)
+  rmSync(inspect, { force: true, recursive: true })
+  mkdirSync(inspect, { recursive: true })
+  const full = path.join(outputDir, assetNames(target, version).full)
+  run('unzip', ['-q', '-o', full, PACKAGE_ENTRY, '-d', inspect])
+  const file = path.join(inspect, PACKAGE_ENTRY)
+  checkPinned(file)
+  verifyBootstrapper(file)
+  console.log(`WebView2 bootstrapper: pinned and signed by Microsoft  ${path.basename(full)}`)
 }
 
 function verifySignatures(outputDir, target, version, workDir) {
@@ -263,6 +285,7 @@ function cmdAssemble(version, argv) {
   const signedWindows = withWindows && !argv.includes('--unsigned-windows')
   for (const target of withWindows ? ['win-x64', 'win-arm64'] : []) {
     const outputDir = packWindows(target, version, artifactDir, workDir, previousTag, signedWindows)
+    verifyPackedBootstrapper(outputDir, target, version, workDir)
     if (signedWindows) verifySignatures(outputDir, target, version, workDir)
     copyPackOutputs(outputDir, assets)
   }

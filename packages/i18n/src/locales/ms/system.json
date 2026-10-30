@@ -71,7 +71,11 @@
     },
     "webview2Missing": {
       "title": "MemryNote tidak dapat dimulakan",
-      "body": "MemryNote memerlukan Microsoft Edge WebView2 Runtime untuk memaparkan tetingkapnya, dan pemasangannya gagal. Muat turun pemasang daripada Microsoft ({url}), jalankannya, kemudian buka semula MemryNote.\n\nBuka halaman muat turun sekarang?"
+      "body": "MemryNote memerlukan Microsoft Edge WebView2 Runtime untuk memaparkan tetingkapnya, dan komputer ini tidak memilikinya. Muat turun pemasang daripada Microsoft ({url}), jalankannya, kemudian buka semula MemryNote.\n\nBuka halaman muat turun sekarang?",
+      "bodyInstallFailed": "MemryNote memerlukan Microsoft Edge WebView2 Runtime untuk memaparkan tetingkapnya, dan pemasangannya gagal. Muat turun pemasang daripada Microsoft ({url}), jalankannya, kemudian buka semula MemryNote.\n\nBuka halaman muat turun sekarang?"
+    },
+    "webview2Installing": {
+      "body": "MemryNote sedang memasang Microsoft Edge WebView2 Runtime yang diperlukannya untuk memaparkan tetingkapnya. Ini mungkin mengambil masa sehingga dua minit."
     },
     "failed": {
       "title": "MemryNote tidak dapat dimulakan sepenuhnya",
