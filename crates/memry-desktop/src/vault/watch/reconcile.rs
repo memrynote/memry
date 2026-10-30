@@ -329,8 +329,10 @@ impl Reconciler {
         });
     }
 
-    /// A folder showed up (created or moved in): every file under it counts as touched.
+    /// A folder showed up (created or moved in): every file under it counts as touched. The
+    /// app's removal of a folder at that name is over, so its going again is not the app's.
     fn dir_appeared(&mut self, rel: &str, now: Instant) {
+        self.echo.seen_present(rel);
         let walk = walk_from(&self.root, rel, &self.exclude, self.limits);
         if walk.truncated.is_some() || walk.too_deep > 0 {
             self.rescan_owed = true;

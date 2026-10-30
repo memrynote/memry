@@ -35,15 +35,17 @@
 //! the new path and the row at the old, which the next open's rescan pairs as a move of that
 //! note.
 //!
-//! The watcher keeps running, and a move the app makes is never a delete to it. Before each move
-//! the pass tells the own-write record that the old name goes ([`EchoGuard::will_remove`]): the
-//! watcher drops that name without tracking a delete, and finds the file at its new name as its
-//! row names it. Left to pair the two itself, the watcher could not tell apart journals with the
-//! same bytes whose new names are not their old ones; each would settle as a delete, and the
-//! note with it. A move that does not happen withdraws its record. Electron stops its watcher for
-//! the pass instead. The refusal when a lock covers a file is Step 14's (#3531).
-//!
-//! [`EchoGuard::will_remove`]: super::watch::EchoGuard::will_remove
+//! The watcher keeps running, and a move the app makes is never a delete to it. Before each try
+//! of a move the pass tells the own-write record that the old name goes
+//! ([`EchoGuard::will_remove`]): the watcher drops that name without tracking a delete, and
+//! finds the file at its new name as its row names it. Left to pair the two itself, the watcher
+//! could not tell apart journals with the same bytes whose new names are not their old ones;
+//! each would settle as a delete, and the note with it. The same holds for each folder the pass
+//! removes, whose going would otherwise stand for the notes the watcher last saw in it. A try
+//! that fails withdraws its record before the next, so a delete by another program while the
+//! move waits is still reported; the record of a folder ends when the watcher sees the folder
+//! again. Electron stops its watcher for the pass instead. The refusal when a lock covers a file
+//! is Step 14's (#3531).
 
 use std::collections::HashSet;
 use std::fs;
@@ -61,6 +63,7 @@ use super::journal_format::{
     JournalDate, JournalFormat, normalize_journal_date_format, normalize_journal_folder,
 };
 use super::paths::{resolve_vault_file, safe_join};
+use super::watch::EchoGuard;
 use crate::shell::file_open::{Resolution, file_identity};
 use crate::web::extract::utils::js;
 
@@ -202,10 +205,10 @@ pub fn rename_journals_for_format_change(
         );
         return Ok(result);
     }
-    let Some(dir) = journal_dir(at.root, &folder) else {
+    let Some(journal) = Journal::of(at.root, folder) else {
         return Ok(result);
     };
-    let Some(files) = list_files(&dir)? else {
+    let Some(files) = list_files(&journal.dir)? else {
         return Ok(result);
     };
     let plan = plan_journal_renames(&files, &old_format, &new_format);
@@ -225,19 +228,9 @@ pub fn rename_journals_for_format_change(
     };
     let mut skipped = plan.skipped;
     for rename in plan.renames {
-        let (from_rel, to_rel) = (
-            format!("{folder}/{}", rename.from),
-            format!("{folder}/{}", rename.to),
-        );
-        match move_one(
-            at,
-            (&rows, session),
-            &dir,
-            (&rename.from, &rename.to),
-            (&from_rel, &to_rel),
-        ) {
+        match move_one(at, (&rows, session), &journal, (&rename.from, &rename.to)) {
             Ok(Moved::Done) => {
-                prune_empty_parents(&dir, &rename.from);
+                journal.remove_empty(&at.tier.echo(), folders_of(&rename.from));
                 result.moved.push(rename);
             }
             Ok(Moved::TargetTaken) => {
@@ -277,7 +270,7 @@ pub fn revert_journal_renames(
     if folder.is_empty() || moved.is_empty() {
         return moved.to_vec();
     }
-    let Some(dir) = journal_dir(at.root, &folder) else {
+    let Some(journal) = Journal::of(at.root, folder) else {
         return moved.to_vec();
     };
     let rows = at.tier.rows();
@@ -290,19 +283,9 @@ pub fn revert_journal_renames(
     };
     let mut left = Vec::new();
     for rename in moved.iter().rev() {
-        let (from_rel, to_rel) = (
-            format!("{folder}/{}", rename.from),
-            format!("{folder}/{}", rename.to),
-        );
-        match move_one(
-            at,
-            (&rows, session),
-            &dir,
-            (&rename.to, &rename.from),
-            (&to_rel, &from_rel),
-        ) {
+        match move_one(at, (&rows, session), &journal, (&rename.to, &rename.from)) {
             Ok(Moved::Done) => {
-                prune_empty_parents(&dir, &rename.to);
+                journal.remove_empty(&at.tier.echo(), folders_of(&rename.to));
                 continue;
             }
             Ok(Moved::TargetTaken) => tracing::error!(
@@ -338,70 +321,82 @@ enum MoveError {
     Row(RowError),
 }
 
-/// Moves one file and its row under the lane. `names` are relative to the journal folder
-/// `dir`, `paths` to the vault.
+/// Moves one file and its row under the lane; `from` and `to` are relative to the journal
+/// folder.
 fn move_one(
     at: JournalVault<'_>,
     (rows, session): (&RowOwner, RowSession),
-    dir: &Path,
+    journal: &Journal,
     (from, to): (&str, &str),
-    (from_path, to_path): (&str, &str),
 ) -> Result<Moved, MoveError> {
-    let (Some(source), Some(target)) = (safe_join(dir, &[from]), safe_join(dir, &[to])) else {
+    let (Some(source), Some(target)) = (journal.path(from), journal.path(to)) else {
         return Err(MoveError::Outside);
     };
+    let (from_path, to_path) = (journal.rel(from), journal.rel(to));
     // A name that is there is the move's to refuse; a free one must not lead out of the vault.
     if fs::symlink_metadata(&target).is_err()
-        && resolve_vault_file(at.root, to_path).map_err(MoveError::File)? == Resolution::Outside
+        && resolve_vault_file(at.root, &to_path).map_err(MoveError::File)? == Resolution::Outside
     {
         return Err(MoveError::Outside);
     }
     let case_only = js::to_lower(from) == js::to_lower(to);
     let mut lane = rows.lane_of(session)?;
-    let row = lane.row_at(from_path).map_err(RowError::from)?;
+    let row = lane.row_at(&from_path).map_err(RowError::from)?;
     let target_free = match &row {
-        Some(row) => lane.check(&row.note_id, to_path),
-        None => lane.check_free(to_path),
+        Some(row) => lane.check(&row.note_id, &to_path),
+        None => lane.check_free(&to_path),
     };
     if target_free.is_err() {
         return Ok(Moved::TargetTaken);
     }
     let echo = at.tier.echo();
-    let created = missing_folders(dir, &target);
-    echo.will_remove(from_path);
-    if let Err(error) = move_file(&source, &target, case_only) {
-        echo.cancel_removal(from_path);
-        remove_folders(&created);
+    let created = folders_of(to)
+        .take_while(|folder| journal.path(folder).is_some_and(|path| !exists(&path)))
+        .count();
+    let forward = Move {
+        source: &source,
+        target: &target,
+        source_rel: &from_path,
+        case_only,
+    };
+    if let Err(error) = forward.run(&echo) {
+        journal.remove_empty(&echo, folders_of(to).take(created));
         return match error.kind() {
             io::ErrorKind::AlreadyExists => Ok(Moved::TargetTaken),
             _ => Err(MoveError::File(error)),
         };
     }
     if let Some(row) = row {
-        if let Err(error) = lane.rename(&row.note_id, to_path) {
+        if let Err(error) = lane.rename(&row.note_id, &to_path) {
             // File and row must agree, or the moved file is taken for a new note and the row
             // stranded.
-            echo.will_remove(to_path);
-            match move_file(&target, &source, case_only) {
-                Ok(()) => remove_folders(&created),
+            let back = Move {
+                source: &target,
+                target: &source,
+                source_rel: &to_path,
+                case_only,
+            };
+            match back.run(&echo) {
+                Ok(()) => journal.remove_empty(&echo, folders_of(to).take(created)),
+                // The file stays at its new name and the row at its old. With the record of the
+                // old name withdrawn below, the watcher sees an outside move and pairs the two
+                // by the file's bytes, as the next open's rescan does; a file it cannot pair,
+                // it reports as a delete and a new file.
                 Err(back) => {
-                    // The watcher pairs the file at its new name with the row by its bytes, as
-                    // the next open's rescan does.
-                    echo.cancel_removal(to_path);
                     tracing::error!(scope = SCOPE, "a journal file could not go back: {back}");
                 }
             }
-            echo.cancel_removal(from_path);
+            echo.cancel_removal(&from_path);
             return Err(MoveError::Row(error));
         }
         lane.publish(Applied::Renamed {
             note_id: row.note_id,
-            old_path: from_path.to_owned(),
-            new_path: to_path.to_owned(),
+            old_path: from_path.clone(),
+            new_path: to_path.clone(),
         });
     }
     // The manual order is a convenience: a slot that did not follow is not worth the move.
-    if let Err(error) = at.vault.note_positions().carry(from_path, to_path) {
+    if let Err(error) = at.vault.note_positions().carry(&from_path, &to_path) {
         tracing::warn!(
             scope = SCOPE,
             "a journal's order slot did not follow it: {error}"
@@ -410,23 +405,43 @@ fn move_one(
     Ok(Moved::Done)
 }
 
-/// Moves `source` to `target` without replacing anything, creating the target's folders. A
-/// `case_only` new name, on a volume that folds case, names the source itself, and that
-/// respelling is a plain rename.
-fn move_file(source: &Path, target: &Path, case_only: bool) -> io::Result<()> {
-    if let Some(parent) = target.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
-    match with_transient_retry(&delays, || rename_no_replace(source, target)) {
-        Err(error)
-            if error.kind() == io::ErrorKind::AlreadyExists
-                && case_only
-                && is_respelling(source, target) =>
-        {
-            with_transient_retry(&delays, || fs::rename(source, target))
+/// One file move, without replacing anything.
+struct Move<'a> {
+    source: &'a Path,
+    target: &'a Path,
+    /// The source, relative to the vault: the name the watcher is told goes.
+    source_rel: &'a str,
+    /// The new name differs from the old only in case. On a volume that folds case it names
+    /// the source itself, and that respelling is a plain rename.
+    case_only: bool,
+}
+
+impl Move<'_> {
+    /// Creates the target's folders and moves the file. The record that the source's name
+    /// goes is up only while a try runs, and stays after the one that moved the file: between
+    /// tries a delete or move by another program is that program's, and the watcher reports it.
+    fn run(&self, echo: &EchoGuard) -> io::Result<()> {
+        if let Some(parent) = self.target.parent() {
+            fs::create_dir_all(parent)?;
         }
-        other => other,
+        let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
+        let attempt = |rename: fn(&Path, &Path) -> io::Result<()>| {
+            with_transient_retry(&delays, || {
+                echo.will_remove(self.source_rel);
+                rename(self.source, self.target)
+                    .inspect_err(|_| echo.cancel_removal(self.source_rel))
+            })
+        };
+        match attempt(rename_no_replace) {
+            Err(error)
+                if error.kind() == io::ErrorKind::AlreadyExists
+                    && self.case_only
+                    && is_respelling(self.source, self.target) =>
+            {
+                attempt(|source, target| fs::rename(source, target))
+            }
+            other => other,
+        }
     }
 }
 
@@ -441,26 +456,6 @@ fn is_respelling(source: &Path, target: &Path) -> bool {
         fs::File::open(path).and_then(|file| file_identity(&file))
     };
     matches!((id(source), id(target)), (Ok((a, 1)), Ok((b, 1))) if a == b)
-}
-
-/// The folders between `dir` and `target` that do not exist yet, deepest first: what a move
-/// that fails removes again.
-fn missing_folders(dir: &Path, target: &Path) -> Vec<PathBuf> {
-    target
-        .ancestors()
-        .skip(1)
-        .take_while(|folder| *folder != dir && fs::symlink_metadata(folder).is_err())
-        .map(Path::to_path_buf)
-        .collect()
-}
-
-fn remove_folders(created: &[PathBuf]) {
-    for folder in created {
-        // `remove_dir` refuses a folder something was put in meanwhile, which ends it.
-        if fs::remove_dir(folder).is_err() {
-            return;
-        }
-    }
 }
 
 /// Every file under `dir` as a `/`-separated path relative to it; dot entries (`.obsidian`,
@@ -501,29 +496,65 @@ fn list_files(dir: &Path) -> io::Result<Option<Vec<String>>> {
     Ok(Some(files))
 }
 
-/// Removes the folders between `relative` and the journal folder that are empty now, from the
-/// deepest up; the first that holds anything ends it.
-fn prune_empty_parents(dir: &Path, relative: &str) {
-    let mut parent = relative;
-    while let Some((up, _)) = parent.rsplit_once('/') {
-        // `remove_dir` refuses a folder that is not empty, which is the guard wanted here.
-        if fs::remove_dir(join(dir, up)).is_err() {
-            return;
+/// The journal folder of a pass: where it is on disk and relative to the vault.
+struct Journal {
+    dir: PathBuf,
+    folder: String,
+}
+
+impl Journal {
+    /// `None`, and a warning, for a folder that leads out of the vault.
+    fn of(root: &Path, folder: String) -> Option<Self> {
+        let Some(dir) = safe_join(root, &[&folder]) else {
+            tracing::warn!(
+                scope = SCOPE,
+                "the journal folder is outside the vault; nothing renamed"
+            );
+            return None;
+        };
+        Some(Self { dir, folder })
+    }
+
+    /// A `/`-separated path relative to the journal folder, on disk; `None` when it leads out.
+    fn path(&self, relative: &str) -> Option<PathBuf> {
+        safe_join(&self.dir, &[relative])
+    }
+
+    /// The same path relative to the vault, as the rows and the watcher name it.
+    fn rel(&self, relative: &str) -> String {
+        format!("{}/{relative}", self.folder)
+    }
+
+    /// Removes `folders`, deepest first, while each is empty; the first that is not, or that
+    /// cannot go, ends it. The watcher is told of each removal first, as of a file's move: it
+    /// would otherwise take the folder's going for the delete of the notes it last saw in it.
+    fn remove_empty<'a>(&self, echo: &EchoGuard, folders: impl Iterator<Item = &'a str>) {
+        for folder in folders {
+            let (Some(path), rel) = (self.path(folder), self.rel(folder)) else {
+                return;
+            };
+            echo.will_remove(&rel);
+            // `remove_dir` refuses a folder that is not empty, which is the guard wanted here.
+            if fs::remove_dir(path).is_err() {
+                echo.cancel_removal(&rel);
+                return;
+            }
         }
-        parent = up;
     }
 }
 
-/// The journal folder in the vault; `None`, and a warning, for one that leads out of it.
-fn journal_dir(root: &Path, folder: &str) -> Option<PathBuf> {
-    let dir = safe_join(root, &[folder]);
-    if dir.is_none() {
-        tracing::warn!(
-            scope = SCOPE,
-            "the journal folder is outside the vault; nothing renamed"
-        );
-    }
-    dir
+/// The folders that hold `relative` below the journal folder, deepest first: `2025/January`,
+/// then `2025`, for `2025/January/2025-01-14.md`.
+fn folders_of(relative: &str) -> impl Iterator<Item = &str> {
+    std::iter::successors(parent_of(relative), |folder| parent_of(folder))
+}
+
+fn parent_of(relative: &str) -> Option<&str> {
+    relative.rsplit_once('/').map(|(up, _)| up)
+}
+
+fn exists(path: &Path) -> bool {
+    fs::symlink_metadata(path).is_ok()
 }
 
 /// `dir` joined with a `/`-separated relative path of names a listing returned.

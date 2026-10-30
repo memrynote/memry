@@ -86,8 +86,8 @@ impl EchoGuard {
         }
     }
 
-    /// `path` was seen present with no hash to compare (a file that is not markdown). The app's
-    /// removal of it is over: a later outside delete must pass.
+    /// `path` was seen present with no hash to compare (a file that is not markdown, or a
+    /// folder). The app's removal of it is over: a later outside delete must pass.
     pub fn seen_present(&self, path: &str) {
         self.cancel_removal(path);
     }

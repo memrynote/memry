@@ -6,6 +6,7 @@
 mod device_key;
 mod vault_env;
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -64,6 +65,20 @@ fn watched(answer: Removal, files: &[(&str, &str)]) -> (Env, Arc<OnRemoved>) {
     e.facts_until(indexed);
     let identity = identity.lock().unwrap().take().unwrap();
     (e, identity)
+}
+
+/// Waits until the consumer applied an outside edit of each of `names` (under `journal/`), in
+/// whatever order the watcher reports them.
+fn until_changed(e: &mut Env, names: &[&str]) {
+    let left: Mutex<HashSet<String>> =
+        Mutex::new(names.iter().map(|name| format!("journal/{name}")).collect());
+    e.facts_until(|fact| {
+        let mut left = left.lock().unwrap();
+        if let Applied::Changed { path, .. } = fact {
+            left.remove(path);
+        }
+        left.is_empty()
+    });
 }
 
 fn at<T>(e: &Env, run: impl FnOnce(JournalVault<'_>) -> T) -> T {
@@ -268,10 +283,7 @@ fn journals_the_watcher_reported_with_the_same_bytes_move_and_keep_their_notes()
         for name in names {
             e.write(&format!("journal/{name}"), "same\n");
         }
-        for name in names {
-            let path = format!("journal/{name}");
-            e.facts_until(|f| matches!(f, Applied::Changed { path: at, .. } if *at == path));
-        }
+        until_changed(&mut e, &names);
 
         let result = rename(&e, "journal", DAILY, WEEKDAY);
 
@@ -285,6 +297,86 @@ fn journals_the_watcher_reported_with_the_same_bytes_move_and_keep_their_notes()
         }
         assert_eq!(e.rows().len(), 2, "{answer:?}");
     }
+}
+
+/// Journals the watcher reported in year and month folders, flattened: the folders the pass
+/// empties go too, and their removal is the app's own as well. Taken for an outside delete, it
+/// would stand for the notes the watcher last saw in them.
+#[test]
+fn journals_reported_in_folders_the_pass_empties_keep_their_notes() {
+    let names = [
+        "2025/January/2025-01-14.md",
+        "2025/January/2025-01-15.md",
+        "2025/February/2025-02-01.md",
+    ];
+    let flat = ["2025-01-14.md", "2025-01-15.md", "2025-02-01.md"];
+    for answer in [Removal::Deleted, Removal::Kept] {
+        let (mut e, identity) = watched(answer, &names.map(|name| (name, "first\n")));
+        let ids = names.map(|name| id_at(&e, &format!("journal/{name}")));
+        for (name, text) in names.iter().zip(["same\n", "same\n", "other\n"]) {
+            e.write(&format!("journal/{name}"), text);
+        }
+        until_changed(&mut e, &names);
+
+        let result = rename(&e, "journal", NESTED, DAILY);
+
+        assert_eq!(result.moved.len(), 3, "{answer:?}: {result:?}");
+        assert_eq!(tree(&e), flat);
+        settled(&mut e);
+        assert!(identity.asked.lock().unwrap().is_empty(), "{answer:?}");
+        for (id, name) in ids.iter().zip(flat) {
+            assert_eq!(&id_at(&e, &format!("journal/{name}")), id, "{answer:?}");
+        }
+    }
+}
+
+/// The record that a pruned folder goes ends once the folder is back: the folder made again,
+/// and later moved out of the vault (to the Trash), is a delete of the note it holds.
+#[test]
+fn a_pruned_folder_made_again_and_moved_out_is_a_delete() {
+    let (mut e, identity) = watched(Removal::Deleted, &[("2025/January/2025-01-14.md", "x\n")]);
+    rename(&e, "journal", NESTED, DAILY);
+    settled(&mut e);
+    e.write("journal/2025/notes.md", "a note\n");
+    let added = e.facts_until(
+        |f| matches!(f, Applied::Added { path, .. } if path == "journal/2025/notes.md"),
+    );
+    let Some(Applied::Added { note_id: id, .. }) = added.last().cloned() else {
+        unreachable!()
+    };
+
+    fs::rename(e.vault.join("journal/2025"), e._dir.path().join("Trash")).unwrap();
+
+    e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == id));
+    assert_eq!(identity.asked.lock().unwrap().as_slice(), [id]);
+}
+
+/// A delete by another program while a move waits to try again is that program's. The move
+/// fails on a month folder it cannot write in, so it retries after 50, 150 and 450 ms; the
+/// file is deleted during the longest wait. The record that the old name goes is up only while
+/// the move is tried, never while it waits.
+#[cfg(unix)]
+#[test]
+fn a_delete_while_a_move_waits_to_retry_is_still_a_delete() {
+    use std::os::unix::fs::PermissionsExt;
+    let (mut e, identity) = watched(Removal::Deleted, &[("2025-01-14.md", "entry\n")]);
+    let id = id_at(&e, "journal/2025-01-14.md");
+    let month = e.vault.join("journal/2025/January");
+    fs::create_dir_all(&month).unwrap();
+    fs::set_permissions(&month, fs::Permissions::from_mode(0o555)).unwrap();
+    let source = e.vault.join("journal/2025-01-14.md");
+    let deleter = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        fs::remove_file(source).unwrap();
+    });
+
+    let result = rename(&e, "journal", DAILY, NESTED);
+    deleter.join().unwrap();
+    fs::set_permissions(&month, fs::Permissions::from_mode(0o755)).unwrap();
+
+    assert_eq!(result.failed, 1, "{result:?}");
+    e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == id));
+    assert_eq!(identity.asked.lock().unwrap().as_slice(), [id]);
 }
 
 #[test]
@@ -611,14 +703,15 @@ fn a_new_name_through_a_linked_folder_out_of_the_vault_is_not_taken() {
     settled(&mut e);
 }
 
-/// A move that fails removes the folders it created for the new name; the file stays, with
-/// its note. The file is made immovable (macOS: the immutable flag; Windows: held open
-/// without delete sharing).
+/// A move that fails removes the folders it created for the new name, and only those: an
+/// empty year folder that was there stays. The file stays too, with its note. The file is made
+/// immovable (macOS: the immutable flag; Windows: held open without delete sharing).
 #[cfg(any(target_os = "macos", windows))]
 #[test]
 fn a_move_that_fails_leaves_no_folder_behind() {
     let mut e = opened(&[("2025-01-14.md", "entry\n"), ("ideas.md", "kept\n")]);
     let id = id_at(&e, "journal/2025-01-14.md");
+    fs::create_dir(e.vault.join("journal/2025")).unwrap();
     let source = e.vault.join("journal/2025-01-14.md");
     let pinned = Pinned::new(&source);
 
@@ -633,9 +726,31 @@ fn a_move_that_fails_leaves_no_folder_behind() {
             failed: 1,
         }
     );
-    assert_eq!(tree(&e), ["2025-01-14.md", "ideas.md"]);
+    assert_eq!(tree(&e), ["2025-01-14.md", "2025/", "ideas.md"]);
     assert_eq!(id_at(&e, "journal/2025-01-14.md"), id);
     settled(&mut e);
+}
+
+/// A folder the pass could not remove, because it holds a note, keeps no record of its own:
+/// moved out of the vault later (to the Trash), it is a delete of that note.
+#[test]
+fn a_folder_the_pass_leaves_and_that_is_moved_out_is_a_delete() {
+    let (mut e, identity) = watched(
+        Removal::Deleted,
+        &[
+            ("2025/January/2025-01-14.md", "x\n"),
+            ("2025/notes.md", "a note\n"),
+        ],
+    );
+    let id = id_at(&e, "journal/2025/notes.md");
+    rename(&e, "journal", NESTED, DAILY);
+    assert_eq!(tree(&e), ["2025-01-14.md", "2025/", "2025/notes.md"]);
+    settled(&mut e);
+
+    fs::rename(e.vault.join("journal/2025"), e._dir.path().join("Trash")).unwrap();
+
+    e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == id));
+    assert_eq!(identity.asked.lock().unwrap().as_slice(), [id]);
 }
 
 /// A move that fails withdraws its record that the file's old name would go: the file deleted
