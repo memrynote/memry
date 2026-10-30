@@ -6,7 +6,7 @@
 // (`e2e_note_edit`), and the write-back serializes it: an edited list item is written in a tight
 // `-` list, and an edit to one paragraph keeps the file's block separation. A second pass of the
 // unchanged note writes nothing, so a re-save never grows the file.
-import { statSync, readFileSync, writeFileSync } from 'node:fs'
+import { closeSync, fstatSync, openSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { EXPECT_TIMEOUT_MS } from '../../harness/budgets'
@@ -52,16 +52,26 @@ async function editFirst(app: App, noteId: string, path: string, text: string): 
   return written
 }
 
+/** The file's text and modified time, read through one handle. */
+function snapshot(path: string): { text: string; mtimeMs: number } {
+  const fd = openSync(path, 'r')
+  try {
+    return { text: readFileSync(fd, 'utf8'), mtimeMs: fstatSync(fd).mtimeMs }
+  } finally {
+    closeSync(fd)
+  }
+}
+
 /**
  * Schedules a pass of the unchanged note, then quits: the quit runs every scheduled pass before
  * the app exits (`flush-writebacks`), so the pass has run once the process is gone. It must
  * find the file already saying the body: same bytes, same modified time.
  */
 async function resaveAndQuit(app: App, noteId: string, path: string): Promise<void> {
-  const before = { text: readFileSync(path, 'utf8'), mtimeMs: statSync(path).mtimeMs }
+  const before = snapshot(path)
   await invokeTest(app, 'e2e_note_schedule', { noteIds: [noteId] })
   await gracefulClose(app)
-  expect({ text: readFileSync(path, 'utf8'), mtimeMs: statSync(path).mtimeMs }).toEqual(before)
+  expect(snapshot(path)).toEqual(before)
   expect(readMainLog(app.dirs.logDir)).not.toMatch(/the write-back failed/)
 }
 
