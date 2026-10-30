@@ -5,7 +5,11 @@
 // `writePreferences`, `writeVaultIcon`). After every step the vector holds the bytes on disk and
 // what Electron's readers make of them (`readVaultConfig`, `hasStoredPreferences`,
 // `readPreferences`), so the Rust readers and writers are checked against files Electron wrote.
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+//
+// It also fills in electron-vault/config-json-ours.json: the files the Rust build wrote for the
+// same steps (written by `MEMRY_UPDATE_CONFIG_VECTORS=1 cargo test -p memry-desktop --test
+// config_compat`, run first), each with what Electron's readers make of it.
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -111,6 +115,9 @@ function readBack(vault) {
   }
 }
 
+const here = dirname(fileURLToPath(import.meta.url))
+const oursPath = join(here, 'electron-vault', 'config-json-ours.json')
+const ours = existsSync(oursPath) ? JSON.parse(readFileSync(oursPath, 'utf8')) : null
 const root = mkdtempSync(join(tmpdir(), 'memry-config-vectors-'))
 const cases = []
 try {
@@ -130,11 +137,17 @@ try {
     }
     cases.push({ name: c.name, start: c.start, steps: recorded })
   }
+  for (const [n, step] of (ours?.steps ?? []).entries()) {
+    const vault = join(root, `ours-${n}`)
+    mkdirSync(join(vault, '.memry'), { recursive: true })
+    writeFileSync(join(vault, '.memry', 'config.json'), step.file)
+    step.read = readBack(vault)
+  }
 } finally {
   rmSync(root, { recursive: true, force: true })
 }
 
-const here = dirname(fileURLToPath(import.meta.url))
+if (ours) writeFileSync(oursPath, JSON.stringify(ours, null, 2) + '\n')
 writeFileSync(
   join(here, 'electron-vault', 'config-json.json'),
   JSON.stringify(

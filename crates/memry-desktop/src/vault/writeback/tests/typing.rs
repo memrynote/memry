@@ -5,7 +5,8 @@
 //! Times are the machine's: a loaded one may stretch a pause past the debounce, which makes
 //! the note quiet there. So each rule is checked as a lower bound (no pass sooner than the
 //! debounce after the schedule before it, nor sooner than the last pass's cooldown after it)
-//! and the pass count against the pauses that really were quiet.
+//! and the pass count against the pauses that really were quiet, as a range: a quiet pause
+//! may give a pass, and the cooldown can push it past the next schedule, which gives none.
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -21,14 +22,18 @@ const TYPING: Duration = Duration::from_millis(450);
 type Run = (Instant, Instant, Outcome);
 
 /// The real pass, timed from inside, so its start and end bound the thread's own measure.
+/// `pad` makes every pass cost at least that much, so its cooldown (9 times the cost) outlasts
+/// a debounce on a machine of any speed.
 struct Timed {
     pass: Pass,
+    pad: Duration,
     runs: Arc<Mutex<Vec<Run>>>,
 }
 
 impl Runner for Timed {
     fn run(&self, note_id: &str) -> Outcome {
         let started = Instant::now();
+        std::thread::sleep(self.pad);
         let outcome = self.pass.run(note_id);
         let run = (started, Instant::now(), outcome.clone());
         self.runs.lock().unwrap().push(run);
@@ -40,7 +45,7 @@ impl Runner for Timed {
     }
 }
 
-fn timed(f: &mut Fixture) -> (WriteBack, Arc<Mutex<Vec<Run>>>) {
+fn timed(f: &mut Fixture, pad: Duration) -> (WriteBack, Arc<Mutex<Vec<Run>>>) {
     let pass = std::mem::replace(
         &mut f.pass,
         Pass::new(
@@ -56,6 +61,7 @@ fn timed(f: &mut Fixture) -> (WriteBack, Arc<Mutex<Vec<Run>>>) {
     let (tx, _) = broadcast::channel(16);
     let runner = Timed {
         pass,
+        pad,
         runs: runs.clone(),
     };
     (WriteBack::start(runner, tx).unwrap(), runs)
@@ -131,7 +137,7 @@ fn wrote(runs: &[Run]) -> usize {
 fn two_edits_300_ms_apart_are_one_write() {
     let mut f = fixture();
     let id = f.adopt("n.md", "first words\n");
-    let (writeback, runs) = timed(&mut f);
+    let (writeback, runs) = timed(&mut f, Duration::ZERO);
     let first = type_and_schedule(&f, &writeback, &id, "typed first");
     std::thread::sleep(Duration::from_millis(300));
     let second = type_and_schedule(&f, &writeback, &id, "typed second");
@@ -140,10 +146,17 @@ fn two_edits_300_ms_apart_are_one_write() {
     assert_paced(&runs, &scheduled);
     assert_eq!(f.read("n.md"), "typed second\n");
     assert_eq!(wrote(&runs), runs.len(), "{runs:?}");
-    // Two passes only when this machine stretched the 300 ms past the debounce.
-    assert_eq!(runs.len(), 1 + quiet_pauses(&scheduled), "{runs:?}");
+    // A second pass only when this machine stretched the 300 ms past the debounce.
+    assert!(
+        (1..=1 + quiet_pauses(&scheduled)).contains(&runs.len()),
+        "{runs:?}"
+    );
 }
 
+/// 5.4 s of typing at 450 ms writes nothing; a pause the debounce ends writes once; typing on
+/// writes again only once the cooldown of that write is over, which here outlasts the debounce
+/// (the pass costs at least 300 ms, so it cools 2.7 s), so the cooldown is what the last pass
+/// waits for.
 #[test]
 fn a_49_kb_note_typed_every_450_ms_is_written_once_the_typing_stops() {
     let mut f = fixture();
@@ -158,30 +171,41 @@ fn a_49_kb_note_typed_every_450_ms_is_written_once_the_typing_stops() {
         ));
     }
     let id = f.adopt("n.md", &text);
-    let (writeback, runs) = timed(&mut f);
-    let start = Instant::now();
+    let (writeback, runs) = timed(&mut f, Duration::from_millis(300));
     let mut scheduled = Vec::new();
-    // 5.4 s of typing: longer than the longest cooldown.
-    for n in 0..12u32 {
-        scheduled.push(type_and_schedule(
-            &f,
-            &writeback,
-            &id,
-            &format!("typed {n}"),
-        ));
-        let next = start + TYPING * (n + 1);
-        std::thread::sleep(next.saturating_duration_since(Instant::now()));
+    let mut type_for = |from: u32, to: u32| {
+        let start = Instant::now();
+        for n in from..to {
+            scheduled.push(type_and_schedule(
+                &f,
+                &writeback,
+                &id,
+                &format!("typed {n}"),
+            ));
+            let next = start + TYPING * (n - from + 1);
+            std::thread::sleep(next.saturating_duration_since(Instant::now()));
+        }
+    };
+    // Longer than the longest cooldown.
+    type_for(0, 12);
+    // The pause: the pass after it, then typing again right away.
+    let paused = Instant::now();
+    let deadline = Instant::now() + WAIT;
+    while !runs.lock().unwrap().iter().any(|run| run.0 >= paused) {
+        assert!(Instant::now() < deadline, "no pass in the pause");
+        std::thread::sleep(Duration::from_millis(10));
     }
+    type_for(12, 15);
     let runs = settled(&runs, scheduled.last().unwrap().0);
     assert_paced(&runs, &scheduled);
     let file = f.read("n.md");
-    assert!(file.starts_with("typed 11\n"), "{}", &file[..40]);
+    assert!(file.starts_with("typed 14\n"), "{}", &file[..40]);
     assert!(file.len() >= 49 * 1024);
     assert_eq!(wrote(&runs), runs.len(), "{runs:?}");
-    // A pause of 450 ms never ends the debounce: one write, after the typing. Each pause this
-    // machine stretched past it may add one, still a cooldown after the pass before.
+    // One write in the pause and one after the cooldown; each pause of the typing this machine
+    // stretched past the debounce may add one, still a cooldown after the pass before.
     assert!(
-        (1..=1 + quiet_pauses(&scheduled)).contains(&runs.len()),
+        (2..=1 + quiet_pauses(&scheduled)).contains(&runs.len()),
         "{runs:?}"
     );
 }

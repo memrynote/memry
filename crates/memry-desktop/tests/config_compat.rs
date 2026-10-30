@@ -229,19 +229,28 @@ fn a_config_or_icon_write_makes_electrons_bytes() {
     assert!(compared >= 4, "only {compared} writes compared");
 }
 
-/// A writer of this build, with the key it names.
-type Writer = (&'static str, fn(&Path));
+/// A writer of this build: the top-level key it names, and the `preferences` keys it names.
+type Writer = (&'static str, &'static [&'static str], fn(&Path));
+
+/// `legacyColorTheme` of the file before a theme write, which both builds persist with it.
+fn derived_color_theme(old: &Map<String, Value>) -> Value {
+    match old.get("theme").and_then(Value::as_str) {
+        Some("light" | "system") => json!("warm"),
+        _ => json!("memrynote"),
+    }
+}
 
 /// Every key Electron wrote that a writer does not name stays, in value and in order: top-level
-/// keys, `preferences` keys and `editor` keys a newer build added included.
+/// keys, `preferences` keys and `editor` keys a newer build added included. A theme write adds
+/// one key it does not name, `colorTheme`, and only where the file had none (or `null`).
 #[test]
 fn this_builds_writers_keep_every_other_key_electron_wrote() {
     let vectors = vectors();
     for (label, _, step) in steps(&vectors) {
         let file = step["file"].as_str().unwrap();
         let before = object(&serde_json::from_str(file).unwrap());
-        let writes: [Writer; 3] = [
-            ("journalFolder", |v| {
+        let writes: [Writer; 4] = [
+            ("journalFolder", &[], |v| {
                 write_vault_config(
                     v,
                     &VaultConfigPatch {
@@ -251,10 +260,10 @@ fn this_builds_writers_keep_every_other_key_electron_wrote() {
                 )
                 .unwrap();
             }),
-            ("vaultIcon", |v| {
+            ("vaultIcon", &[], |v| {
                 write_vault_icon(v, |_| json!({"updatedAt": 99})).unwrap()
             }),
-            ("preferences", |v| {
+            ("preferences", &["minimizeToTray"], |v| {
                 merge_preferences(
                     v,
                     &object(&json!({"minimizeToTray": true})),
@@ -262,8 +271,11 @@ fn this_builds_writers_keep_every_other_key_electron_wrote() {
                 )
                 .unwrap();
             }),
+            ("preferences", &["theme"], |v| {
+                merge_preferences(v, &object(&json!({"theme": "dark"})), &Map::new()).unwrap();
+            }),
         ];
-        for (named, write) in writes {
+        for (named, prefs_named, write) in writes {
             let dir = vault_with(Some(file));
             write(dir.path());
             let after = object(&serde_json::from_str(&on_disk(dir.path())).unwrap());
@@ -274,23 +286,80 @@ fn this_builds_writers_keep_every_other_key_electron_wrote() {
                     .collect()
             };
             assert_eq!(kept(&after), kept(&before), "{label}: {named}");
-            if named == "preferences"
-                && let Some(prefs) = before.get("preferences")
-            {
-                let (old, new) = (object(prefs), object(&after["preferences"]));
-                for (key, value) in &old {
-                    if key != "minimizeToTray" && key != "editor" {
-                        assert_eq!(&new[key], value, "{label}: preferences.{key}");
-                    }
+            if named != "preferences" {
+                continue;
+            }
+            let old = before.get("preferences").map(object).unwrap_or_default();
+            let new = object(&after["preferences"]);
+            let derives =
+                prefs_named.contains(&"theme") && old.get("colorTheme").is_none_or(Value::is_null);
+            for (key, value) in &old {
+                let named = prefs_named.contains(&key.as_str());
+                if !named && key != "editor" && !(derives && key == "colorTheme") {
+                    assert_eq!(&new[key], value, "{label}: preferences.{key}");
                 }
-                if let Some(editor) = old.get("editor") {
-                    for (key, value) in object(editor) {
-                        if key != "pdfDisplayMode" {
-                            assert_eq!(new["editor"][&key], value, "{label}: editor.{key}");
-                        }
+            }
+            for key in new.keys() {
+                let named = prefs_named.contains(&key.as_str());
+                assert!(
+                    old.contains_key(key)
+                        || named
+                        || key == "editor"
+                        || derives && key == "colorTheme",
+                    "{label}: {prefs_named:?} added preferences.{key}"
+                );
+            }
+            if derives {
+                assert_eq!(new["colorTheme"], derived_color_theme(&old), "{label}");
+            }
+            if let Some(editor) = old.get("editor") {
+                for (key, value) in object(editor) {
+                    if key != "pdfDisplayMode" {
+                        assert_eq!(new["editor"][&key], value, "{label}: editor.{key}");
                     }
                 }
             }
         }
+    }
+}
+
+/// `fixtures/electron-vault/config-json-ours.json`: the file this build writes for each step,
+/// and what Electron's readers make of it. Regenerate it in two steps, from `crates/`:
+/// `MEMRY_UPDATE_CONFIG_VECTORS=1 cargo test -p memry-desktop --test config_compat`, then the
+/// generator (`gen-config-vectors.mjs`), which adds Electron's reads.
+const OURS: &str = "tests/fixtures/electron-vault/config-json-ours.json";
+
+/// A vault written by this build and then opened by Electron (a rollback, or a second device on
+/// an older build) means to Electron what Electron's own write of the change meant.
+#[test]
+fn electron_reads_this_builds_write_of_each_change_as_its_own() {
+    let vectors = vectors();
+    let mut written = Vec::new();
+    for (label, before, step) in steps(&vectors) {
+        let dir = vault_with(before.as_deref());
+        let kind = step["kind"].as_str().unwrap();
+        if kind == "init" {
+            fs::remove_dir(dir.path().join(".memry")).unwrap();
+        }
+        write_as_this_build(dir.path(), kind, &step["arg"]);
+        written.push((label, on_disk(dir.path()), step["read"].clone()));
+    }
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(OURS);
+    if std::env::var_os("MEMRY_UPDATE_CONFIG_VECTORS").is_some() {
+        let steps: Vec<Value> = written
+            .iter()
+            .map(|(label, file, _)| json!({"label": label, "file": file, "read": null}))
+            .collect();
+        let text = serde_json::to_string_pretty(&json!({ "steps": steps })).unwrap();
+        fs::write(&path, text + "\n").unwrap();
+        return;
+    }
+    let ours: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    let recorded = ours["steps"].as_array().unwrap();
+    assert_eq!(recorded.len(), written.len(), "{OURS} is stale");
+    for ((label, file, electron_read), recorded) in written.iter().zip(recorded) {
+        assert_eq!(recorded["label"], json!(label), "{OURS} is stale");
+        assert_eq!(recorded["file"], json!(file), "{label}: {OURS} is stale");
+        assert_eq!(&recorded["read"], electron_read, "{label}");
     }
 }
