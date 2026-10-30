@@ -17,6 +17,7 @@ pub mod unsplash;
 pub mod updater;
 pub mod vault;
 pub mod vault_activity;
+pub mod vault_index;
 
 use error::{CommandError, ErrorKind, log_failure};
 

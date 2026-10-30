@@ -174,6 +174,8 @@ export const commands = {
 	vaultActivityReveal: () => __TAURI_INVOKE<boolean>("vault_activity_reveal"),
 	/**  Keeps entries for `days` (7, 30 or 90). */
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
+	/**  Measures every note of the open vault again; resolves once the last progress went out. */
+	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
@@ -200,6 +202,7 @@ export const events = {
 	updaterStateChangedEvent: makeEvent<UpdaterStateChangedEvent, UpdaterStateChangedEvent>("updater-state-changed-event"),
 	vaultActivityChangedEvent: makeEvent<VaultActivityChangedEvent, VaultActivityChangedEvent>("vault-activity-changed-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
+	vaultIndexProgressEvent: makeEvent<VaultIndexProgressEvent, VaultIndexProgressEvent>("vault-index-progress-event"),
 	vaultIndexRecoveredEvent: makeEvent<VaultIndexRecoveredEvent, VaultIndexRecoveredEvent>("vault-index-recovered-event"),
 	vaultListChangedEvent: makeEvent<VaultListChangedEvent, VaultListChangedEvent>("vault-list-changed-event"),
 	vaultStatusChangedEvent: makeEvent<VaultStatusChangedEvent, VaultStatusChangedEvent>("vault-status-changed-event"),
@@ -651,6 +654,15 @@ export type VaultActivitySource = "watcher" | "scan" | "import" | "drop" | "sync
 /**  A vault operation failed (`vault:error`). */
 export type VaultErrorEvent = {
 	message: string,
+};
+
+/**
+ *  A reindex measured `index_built` of `index_total` notes (`vault:index-progress`). At most
+ *  one per 250 ms, never backwards, and the last one is `index_built == index_total`.
+ */
+export type VaultIndexProgressEvent = {
+	indexBuilt: number,
+	indexTotal: number,
 };
 
 /**

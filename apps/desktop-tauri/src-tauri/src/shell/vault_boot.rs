@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::launch_timeline::LaunchPhase;
 use memry_desktop::locale::LocaleService;
+use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::paths::AppPaths;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
@@ -99,7 +100,8 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// Starts the vault watcher and its consumer with every open and stops them with every close.
 /// The consumer adopts no file and deletes no note until Step 13 sets its identity, and feeds
 /// no outside edit until the write-back (12e-3). The tier is managed so those stages reach its
-/// own-write record and its row lane.
+/// own-write record and its row lane. The note index follows the tier's facts in the background
+/// of every open, and is managed for `vault_reindex`.
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -113,6 +115,9 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     #[cfg(feature = "e2e")]
     crate::e2e::vault_writeback::adopt_at_launch(app, &tier, store.inner().clone());
     tier.register(session);
+    let index = NoteIndex::new(tier.clone());
+    index.register(session);
+    app.manage(index);
     register_flushes(app, &tier);
     forward_writeback_failures(app.clone(), tier.subscribe_failures());
     forward_activity_changes(app.clone(), tier.activity().subscribe());
