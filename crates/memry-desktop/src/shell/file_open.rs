@@ -141,9 +141,14 @@ fn resolve(root: &Path, rel: &str, rooted: Rooted) -> io::Result<Resolution> {
 /// every wait of [`RESOLVE_AGAIN_MS`] and is an error after the last. The error is also what
 /// a file denied for good gives on every lookup, so it gets one ask after the first wait.
 fn canonicalize_settled(path: &Path) -> io::Result<PathBuf> {
+    settle(|| fs::canonicalize(path))
+}
+
+/// [`canonicalize_settled`]'s asking, over the answers `ask` gives.
+fn settle(mut ask: impl FnMut() -> io::Result<PathBuf>) -> io::Result<PathBuf> {
     let mut waits = RESOLVE_AGAIN_MS.into_iter();
     loop {
-        let answer = fs::canonicalize(path);
+        let answer = ask();
         let replaced = match &answer {
             Ok(real) => in_deleted_area(real),
             Err(err) => is_being_deleted(err) && waits.len() == RESOLVE_AGAIN_MS.len(),
@@ -373,6 +378,82 @@ mod tests {
             (r"$Extend\$Deleted\1", false),
         ] {
             assert_eq!(in_deleted_area(Path::new(path)), deleted, "{path}");
+        }
+    }
+
+    /// A denial (os 5) or a pending delete (os 303) is asked again once, after the first
+    /// wait, and is the answer if it comes again. The old file's deleted-files name is asked
+    /// again through every wait. Any other answer is kept at once.
+    #[test]
+    fn a_denial_is_asked_again_once_and_a_deleted_name_through_every_wait() {
+        let inside = || Ok(PathBuf::from(r"\\?\C:\vault\notes\a.md"));
+        let deleted = || Ok(PathBuf::from(r"\\?\C:\$Extend\$Deleted\1"));
+        let os = |code| move || Err(io::Error::from_raw_os_error(code));
+        type Answer = Box<dyn Fn() -> io::Result<PathBuf>>;
+        /// The path holds this part, or the error has this OS code.
+        type Want = Result<&'static str, Option<i32>>;
+        let cases: Vec<(&str, Vec<Answer>, Want, usize)> = vec![
+            (
+                "denied, then the file",
+                vec![Box::new(os(5)), Box::new(inside)],
+                Ok("notes"),
+                2,
+            ),
+            (
+                "denied twice",
+                vec![Box::new(os(5)), Box::new(os(5))],
+                Err(Some(5)),
+                2,
+            ),
+            (
+                "delete pending, then denied",
+                vec![Box::new(os(303)), Box::new(os(5))],
+                Err(Some(5)),
+                2,
+            ),
+            (
+                "deleted, then denied",
+                vec![Box::new(deleted), Box::new(os(5))],
+                Err(Some(5)),
+                2,
+            ),
+            (
+                "deleted, then the file",
+                vec![Box::new(deleted), Box::new(inside)],
+                Ok("notes"),
+                2,
+            ),
+            (
+                "deleted on every ask",
+                vec![Box::new(deleted)],
+                Err(None),
+                RESOLVE_AGAIN_MS.len() + 1,
+            ),
+            (
+                "outside",
+                vec![Box::new(|| Ok(PathBuf::from(r"C:\other\a.md")))],
+                Ok("other"),
+                1,
+            ),
+            (
+                "missing",
+                vec![Box::new(os(2)), Box::new(inside)],
+                Err(Some(2)),
+                1,
+            ),
+        ];
+        for (case, answers, want, asks) in cases {
+            let mut asked = 0;
+            let got = settle(|| {
+                asked += 1;
+                answers[(asked - 1).min(answers.len() - 1)]()
+            });
+            match (got, want) {
+                (Ok(path), Ok(part)) => assert!(path.to_string_lossy().contains(part), "{case}"),
+                (Err(error), Err(code)) => assert_eq!(error.raw_os_error(), code, "{case}"),
+                (got, want) => panic!("{case}: {got:?}, want {want:?}"),
+            }
+            assert_eq!(asked, asks, "{case}");
         }
     }
 }

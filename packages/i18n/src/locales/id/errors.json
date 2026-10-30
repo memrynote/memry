@@ -70,7 +70,9 @@
     "writebackFailedTitle": "File catatan di disk tidak dapat diperbarui",
     "writebackFailedTitleNamed": "“{title}” tidak dapat diperbarui di disk",
     "writebackFailedTitleMany": "File {count} catatan di disk tidak dapat diperbarui",
-    "writebackFailedBody": "File di disk tidak diubah. Suntingan Anda tetap terbuka di memrynote selama aplikasi berjalan; memrynote akan mencoba lagi pada suntingan Anda berikutnya."
+    "writebackFailedBody": "File di disk tidak diubah. Suntingan Anda tetap terbuka di memrynote selama aplikasi berjalan; memrynote akan mencoba lagi pada suntingan Anda berikutnya.",
+    "writebackFailedFrontmatterBody": "Frontmatter file (blok di antara baris --- di bagian atas) tidak dapat dibaca, jadi memrynote membiarkan file tidak berubah. Suntingan Anda tetap ada di memrynote. Jika Anda memperbaiki file di luar memrynote, teks file akan menggantikannya, jadi salin dulu apa pun yang Anda perlukan.",
+    "writebackFailedFrontmatterBodyMany": "Frontmatter file-file ini (blok di antara baris --- di bagian atas) tidak dapat dibaca, jadi memrynote membiarkan file-file itu tidak berubah. Suntingan Anda tetap ada di memrynote. Jika Anda memperbaiki file-file itu di luar memrynote, teksnya akan menggantikan suntingan Anda, jadi salin dulu apa pun yang Anda perlukan."
   },
   "encryption": {
     "failed": "Gagal mengenkripsi data. Kunci Anda mungkin perlu dibuat ulang.",

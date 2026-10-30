@@ -2,17 +2,21 @@
 // Update-bridge rehearsal driver. Runs on Kaan's Mac (Windows packs are signed with the Certum key).
 //
 //   node scripts/rehearsal/rehearse.mjs build <version> [--previous-tag <tag>] [--source-ref <ref>]
-//   node scripts/rehearsal/rehearse.mjs assemble <version> [--run <id>] [--previous-tag <tag>] [--no-windows | --unsigned-windows]
+//   node scripts/rehearsal/rehearse.mjs assemble <version> [--run <id>] [--previous-tag <tag>] [--no-windows | --unsigned-windows [--with-latest]]
 //   node scripts/rehearsal/rehearse.mjs publish <version> --confirm-repo memrynote/memry-update-rehearsal
 //   node scripts/rehearsal/rehearse.mjs electron-baseline <tag> [--run <id>]
 //
 // `build` dispatches .github/workflows/update-bridge-rehearsal.yml and waits. `assemble` downloads
 // the artifacts, packs and signs both Windows packs (each with the pinned WebView2 bootstrapper of
 // `../release/webview2-bootstrapper.mjs`, checked again inside the package), writes the bridge
-// feeds and leaves the final asset set in `.rehearsal-state/<version>/assets`. `--no-windows` skips the Certum-signed Windows
-// packs and `latest.yml`, for a macOS and Linux feed that needs no SimplySign session.
+// feeds and leaves the final asset set in `.rehearsal-state/<version>/assets`. `--no-windows`
+// skips the Certum-signed Windows packs and `latest.yml`, for a macOS and Linux feed that needs no
+// SimplySign session.
 // `--unsigned-windows` packs Windows without the Certum key and without `latest.yml`: a Tauri to
-// Tauri update checks no Authenticode signature, while the Electron bridge does. `publish` creates the release and uploads it.
+// Tauri update checks no Authenticode signature, while the fixed hand-off of Electron `v2026-10-28`
+// does. `--with-latest` adds `latest.yml` with the unsigned Setup copy, for the NSIS decline path
+// of the builds before it: their `app-update.yml` names no publisher, so electron-updater checks
+// none (#3555 comment 6496117143). `publish` creates the release and uploads it.
 // Creating the rehearsal repo and every publish need Kaan's explicit approval at that moment.
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
@@ -272,6 +276,13 @@ function verifySignatures(outputDir, target, version, workDir) {
   }
 }
 
+/** Which Windows packs `assemble` builds, whether it signs them and whether it writes `latest.yml`. */
+export function windowsPlan(argv) {
+  const packs = !argv.includes('--no-windows')
+  const signed = packs && !argv.includes('--unsigned-windows')
+  return { packs, signed, latestYml: signed || (packs && argv.includes('--with-latest')) }
+}
+
 function cmdAssemble(version, argv) {
   const previousTag = flag(argv, '--previous-tag') ?? ''
   const workDir = stateDir(version)
@@ -281,12 +292,18 @@ function cmdAssemble(version, argv) {
   mkdirSync(assets, { recursive: true })
   const releaseDate = new Date().toISOString()
 
-  const withWindows = !argv.includes('--no-windows')
-  const signedWindows = withWindows && !argv.includes('--unsigned-windows')
-  for (const target of withWindows ? ['win-x64', 'win-arm64'] : []) {
-    const outputDir = packWindows(target, version, artifactDir, workDir, previousTag, signedWindows)
+  const windows = windowsPlan(argv)
+  for (const target of windows.packs ? ['win-x64', 'win-arm64'] : []) {
+    const outputDir = packWindows(
+      target,
+      version,
+      artifactDir,
+      workDir,
+      previousTag,
+      windows.signed
+    )
     verifyPackedBootstrapper(outputDir, target, version, workDir)
-    if (signedWindows) verifySignatures(outputDir, target, version, workDir)
+    if (windows.signed) verifySignatures(outputDir, target, version, workDir)
     copyPackOutputs(outputDir, assets)
   }
 
@@ -305,7 +322,7 @@ function cmdAssemble(version, argv) {
   copyFileSync(path.join(assets, linux.portable), path.join(assets, linux.appImage))
 
   // Feeds hash the exact bytes that get uploaded.
-  if (signedWindows) {
+  if (windows.latestYml) {
     const winSetup = path.join(assets, assetNames('win-x64', version).setup)
     copyFileSync(winSetup, path.join(assets, setupExeName(version)))
   }
@@ -322,7 +339,7 @@ function cmdAssemble(version, argv) {
       releaseDate,
       files: [entry(linux.appImage)]
     }),
-    ...(signedWindows && {
+    ...(windows.latestYml && {
       'latest.yml': buildLatestYml({ version, releaseDate, setup: entry(setupExeName(version)) })
     })
   }

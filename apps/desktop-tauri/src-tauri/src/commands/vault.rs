@@ -2,11 +2,12 @@
 //! its arguments, calls `Session` and maps the result; the decisions live in `memry-desktop`.
 //! The session is synchronous, so every command runs it on `spawn_blocking`.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use memry_desktop::i18n;
 use memry_desktop::locale::LocaleService;
+use memry_desktop::vault::obsidian_copy::{Choice, CopyTarget, resolve_obsidian_open};
 
 use memry_desktop::registry::vault_icon::IconError;
 use memry_desktop::registry::{GetVaultsResponse, SandboxInfo};
@@ -31,6 +32,40 @@ const SANDBOX_MARKER: &str = "sandbox-vault.json";
 fn picker_title(app: &AppHandle<Wry>) -> String {
     let locale = app.state::<Arc<LocaleService>>().get();
     i18n::t(locale, "system:dialog.vault.title", &i18n::Args::new())
+}
+
+/// The Obsidian vault prompt (`askHowToOpen`, `obsidian-vault-copy.ts`) in the live language.
+fn ask_obsidian(app: &AppHandle<Wry>, source: &Path, target: &CopyTarget) -> Choice {
+    let locale = app.state::<Arc<LocaleService>>().get();
+    let t = |key: &str, args: &i18n::Args| {
+        i18n::t(locale, &format!("system:dialog.obsidianVault.{key}"), args)
+    };
+    let none = i18n::Args::new();
+    let name = |path: &Path| {
+        i18n::Arg::Str(
+            path.file_name()
+                .map_or_else(String::new, |name| name.to_string_lossy().into_owned()),
+        )
+    };
+    let names = i18n::Args::from([
+        ("name".to_owned(), name(source)),
+        ("copyName".to_owned(), name(target.path())),
+    ]);
+    let (detail, copy) = match target {
+        CopyTarget::Reuse(_) => ("detailExistingCopy", "buttonOpenCopy"),
+        CopyTarget::Create(_) => ("detail", "buttonCopy"),
+    };
+    let (detail, copy) = (t(detail, &names), t(copy, &none));
+    let original = t("buttonOpenOriginal", &none);
+    let cancel = t("buttonCancel", &none);
+    let chosen = dialogs::choose(
+        app,
+        &t("title", &none),
+        &t("message", &none),
+        &detail,
+        [&copy, &original, &cancel],
+    );
+    [Choice::Copy, Choice::Original, Choice::Cancel][chosen]
 }
 
 fn session(app: &AppHandle<Wry>) -> Session {
@@ -106,8 +141,27 @@ pub async fn vault_select(
                 None => return Ok(SelectVaultResponse::no_folder()),
             },
         };
-        Ok(open_offering_repair(&app, &picked, |session| {
-            session.replace(&picked, OpenSource::Select)
+        // The picker, the Obsidian prompt and its copy run before the session's lifecycle
+        // queue, as in Electron: a dialog left open must not hold up a close or a quit.
+        let folder = match resolve_obsidian_open(&picked, |source, target| {
+            ask_obsidian(&app, source, target)
+        }) {
+            Ok(decision) => match decision.into_folder() {
+                Some(folder) => folder,
+                None => return Ok(SelectVaultResponse::no_folder()),
+            },
+            Err(error) => {
+                tracing::error!(
+                    kind = ?error.kind(),
+                    "vault_select: the Obsidian vault copy failed"
+                );
+                return Ok(SelectVaultResponse::failure(format!(
+                    "Could not copy the Obsidian vault: {error}"
+                )));
+            }
+        };
+        Ok(open_offering_repair(&app, &folder, |session| {
+            session.replace(&folder, OpenSource::Select)
         }))
     })
     .await

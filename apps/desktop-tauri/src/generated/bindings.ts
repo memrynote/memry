@@ -273,6 +273,7 @@ export type ContextMenuItem = {
 export type CrdtWriteBackFailedEvent = {
 	noteId: string,
 	title: string | null,
+	reason: WriteBackFailureReason,
 };
 
 /**  One shipped line (`DiagnosticLogLineSchema`). */
@@ -663,6 +664,13 @@ export type WindowChromeStateChangedEvent = {
 	fullscreen: boolean,
 	maximized: boolean,
 };
+
+/**
+ *  Why a run of failed write-backs began: `write` when a read or a write failed (the next edit
+ *  tries again), `frontmatter` when the file's frontmatter does not parse (the file is left
+ *  alone until it is fixed).
+ */
+export type WriteBackFailureReason = "write" | "frontmatter";
 
 /* Tauri Specta runtime */
 type EventEmit<T> = [T] extends [null] ? () => Promise<void> : (payload: T) => Promise<void>;

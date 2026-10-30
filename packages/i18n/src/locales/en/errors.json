@@ -70,7 +70,9 @@
     "writebackFailedTitle": "A note's file on disk couldn't be updated",
     "writebackFailedTitleNamed": "\"{title}\" couldn't be updated on disk",
     "writebackFailedTitleMany": "{count} notes couldn't be updated on disk",
-    "writebackFailedBody": "The file on disk was left unchanged. Your edit stays open in memrynote while the app is running, and memrynote tries again with your next edit."
+    "writebackFailedBody": "The file on disk was left unchanged. Your edit stays open in memrynote while the app is running, and memrynote tries again with your next edit.",
+    "writebackFailedFrontmatterBody": "Its frontmatter (the block between the --- lines at the top) can't be read, so memrynote leaves the file unchanged. Your edits stay in memrynote. Fixing the file outside memrynote replaces them with the file's text, so copy anything you need first.",
+    "writebackFailedFrontmatterBodyMany": "Their frontmatter (the block between the --- lines at the top) can't be read, so memrynote leaves those files unchanged. Your edits stay in memrynote. Fixing the files outside memrynote replaces them with the files' text, so copy anything you need first."
   },
   "encryption": {
     "failed": "Failed to encrypt data. Your keys may need to be regenerated.",

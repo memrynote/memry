@@ -1,15 +1,17 @@
-//! A row's hash names text the note's document holds, the whole file included, and a row
-//! without one is never replaced from its file.
+//! A row's hash names a file whose text the note's document holds, and a row without one is
+//! never replaced from its file.
 
 use super::*;
 
 const WRITING: &str = "---\nwriting:\n  alternatives:\n    k3x9q2:\n      versions:\n        - text: two\n        - text: zwei\n---\none <!--alt:k3x9q2-->two<!--/alt:k3x9q2--> three\n";
 
 /// The feed is told the `writing` frontmatter, so its answer covers the whole file and the
-/// row records the hash: the write-back writes the alternatives back with the body. A
-/// frontmatter that does not parse may hold some, so that file is not taken as read.
+/// row records the hash: the write-back writes the alternatives back with the body. A file
+/// whose frontmatter does not parse is taken as read once its body is (#3750): the walk does
+/// not feed those bytes again, and the write-back, which cannot read the file back, never
+/// writes over its block.
 #[test]
-fn a_file_is_taken_as_read_with_its_writing_frontmatter_and_not_when_that_does_not_parse() {
+fn a_file_is_taken_as_read_with_its_writing_frontmatter_and_when_that_does_not_parse() {
     let f = fixture();
     f.write("w.md", WRITING);
     assert_eq!(f.added("w.md"), Step::Done);
@@ -28,9 +30,9 @@ fn a_file_is_taken_as_read_with_its_writing_frontmatter_and_not_when_that_does_n
     let broken = "---\nwriting: [unclosed\n---\nplain body\n";
     f.write("b.md", broken);
     assert_eq!(f.added("b.md"), Step::Done);
-    assert_eq!(f.hash_of("b.md"), None, "a frontmatter that does not parse");
-    assert_eq!(f.walked("b.md"), Step::Done);
-    assert_eq!(f.hash_of("b.md"), None);
+    assert_eq!(f.hash_of("b.md"), Some(content_hash(broken)));
+    let id = only_note(&f, "b.md");
+    assert!(f.body(&id).contains("plain body"), "{}", f.body(&id));
 
     f.write("t.md", "---\ntitle: Kept apart\n---\nplain body\n");
     assert_eq!(f.added("t.md"), Step::Done);

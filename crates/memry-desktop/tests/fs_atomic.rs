@@ -7,7 +7,7 @@ use std::time::Duration;
 #[cfg(windows)]
 use memry_desktop::vault::fs_atomic::atomic_write_checked;
 use memry_desktop::vault::fs_atomic::{
-    atomic_write, atomic_write_with, is_transient, with_transient_retry,
+    atomic_write, atomic_write_with, is_transient, rename_no_replace, with_transient_retry,
 };
 
 fn dir_entries(dir: &std::path::Path) -> Vec<String> {
@@ -28,6 +28,42 @@ fn a_write_creates_parents_replaces_an_existing_file_and_leaves_no_temp() {
     atomic_write(&target, b"second, longer").unwrap();
     assert_eq!(std::fs::read(&target).unwrap(), b"second, longer");
     assert_eq!(dir_entries(&dir.path().join("a/b")), ["note.md"]);
+}
+
+/// A rename onto anything there (a file, a folder, empty or not) fails with `AlreadyExists` and
+/// leaves both as they were, and a folder never moves into itself; a case-only rename and a
+/// rename to a free name go through, for a file and a folder.
+#[test]
+fn a_rename_never_replaces_what_is_there() {
+    let dir = tempfile::tempdir().unwrap();
+    let p = |rel: &str| dir.path().join(rel);
+    std::fs::write(p("a.md"), "a").unwrap();
+    std::fs::write(p("b.md"), "b").unwrap();
+    std::fs::create_dir_all(p("folder/sub")).unwrap();
+    std::fs::create_dir(p("empty")).unwrap();
+    for (from, to) in [
+        ("a.md", "b.md"),
+        ("a.md", "empty"),
+        ("folder", "empty"),
+        ("folder", "b.md"),
+        ("empty", "folder"),
+    ] {
+        let error = rename_no_replace(&p(from), &p(to)).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::AlreadyExists, "{from} -> {to}");
+    }
+    assert!(rename_no_replace(&p("folder"), &p("folder/sub/inner")).is_err());
+    assert_eq!(dir_entries(dir.path()), ["a.md", "b.md", "empty", "folder"]);
+    assert_eq!(std::fs::read(p("a.md")).unwrap(), b"a");
+    assert_eq!(std::fs::read(p("b.md")).unwrap(), b"b");
+    assert_eq!(dir_entries(&p("folder")), ["sub"]);
+    assert!(dir_entries(&p("empty")).is_empty());
+
+    rename_no_replace(&p("a.md"), &p("A.md")).unwrap();
+    rename_no_replace(&p("folder"), &p("Folder")).unwrap();
+    rename_no_replace(&p("Folder"), &p("moved")).unwrap();
+    assert_eq!(dir_entries(dir.path()), ["A.md", "b.md", "empty", "moved"]);
+    assert_eq!(std::fs::read(p("A.md")).unwrap(), b"a");
+    assert_eq!(dir_entries(&p("moved")), ["sub"]);
 }
 
 #[cfg(unix)]

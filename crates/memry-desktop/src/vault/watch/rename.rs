@@ -11,8 +11,8 @@
 //! would expire while a large folder move is still being added and delete the old ids.
 //!
 //! The hash a removed note is tracked under is the row's file hash: the bytes the tier last read
-//! from the file, whether or not the note's document took them (too large, frontmatter that does
-//! not parse, a body that was already there). So a note moved while the app was closed pairs as
+//! from the file, whether or not the note's document took them (too large, a body that was
+//! already there). So a note moved while the app was closed pairs as
 //! long as its bytes did not change. A row with no file hash (its file was never read) can never
 //! be claimed: Electron paired those on size and modification time, but `note_files` keeps no
 //! modification time, and pairing on size alone would hand one note's id to another file. It
