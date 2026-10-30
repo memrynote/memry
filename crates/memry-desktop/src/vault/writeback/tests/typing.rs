@@ -2,11 +2,13 @@
 //! thread: the #3529 acceptance rows "two edits 300 ms apart cause one write" and "a 49 KB note
 //! is never written more often than once per 5000 ms while typing at 450 ms intervals".
 //!
-//! Times are the machine's: a loaded one may stretch a pause past the debounce, which makes
-//! the note quiet there. So each rule is checked as a lower bound (no pass sooner than the
-//! debounce after the schedule before it, nor sooner than the last pass's cooldown after it)
-//! and the pass count against the pauses that really were quiet, as a range: a quiet pause
-//! may give a pass, and the cooldown can push it past the next schedule, which gives none.
+//! Times are the machine's, and a loaded one stretches them: a 450 ms pause may last past the
+//! debounce, which makes the note quiet there, and a pass may start a while after the thread
+//! took the note, after the next schedule even. So every rule is checked in a form that holds
+//! for any stretch: each pass belongs to its own schedule whose debounce had ended when the
+//! pass started and after which the note was quiet for the debounce (the last schedule, or a
+//! pause that really lasted that long), and no pass starts inside the cooldown of the one
+//! before it. On a machine that keeps time, that leaves exactly the passes the rows name.
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -93,20 +95,25 @@ fn settled(runs: &Mutex<Vec<Run>>, last: Instant) -> Vec<Run> {
     runs.lock().unwrap().clone()
 }
 
-/// The rules every pass of a typed note keeps: none starts sooner than the debounce after the
-/// schedule before it, or sooner than the cooldown of the pass before it after that one.
+/// The rules every pass of a typed note keeps. Each runs for a schedule of its own, in order:
+/// one whose debounce had ended when the pass started, and after which the next schedule came
+/// no sooner than the debounce (a pass is taken once the note was quiet that long, and a
+/// schedule after the take does not undo it). None starts inside the cooldown of the pass
+/// before it.
 fn assert_paced(runs: &[Run], scheduled: &[(Instant, Instant)]) {
+    let quiet_after = |i: usize| {
+        scheduled
+            .get(i + 1)
+            .is_none_or(|next| next.1 - scheduled[i].0 >= DEBOUNCE)
+    };
+    let mut next = 0;
     for run in runs {
-        let before = scheduled
-            .iter()
-            .map(|at| at.0)
-            .filter(|at| *at <= run.0)
-            .max()
-            .unwrap();
-        assert!(
-            run.0 >= before + DEBOUNCE,
-            "a pass ran while the note was being typed"
-        );
+        let schedule =
+            (next..scheduled.len()).find(|&i| scheduled[i].0 + DEBOUNCE <= run.0 && quiet_after(i));
+        let Some(schedule) = schedule else {
+            panic!("a pass ran while the note was being typed: {runs:?} {scheduled:?}");
+        };
+        next = schedule + 1;
     }
     for pair in runs.windows(2) {
         let cooldown = (pair[0].1 - pair[0].0)
@@ -119,18 +126,15 @@ fn assert_paced(runs: &[Run], scheduled: &[(Instant, Instant)]) {
     }
 }
 
-/// The pauses that may have been quiet: from just before one schedule to just after the next.
-fn quiet_pauses(scheduled: &[(Instant, Instant)]) -> usize {
-    scheduled
-        .windows(2)
-        .filter(|w| w[1].1 - w[0].0 >= DEBOUNCE)
-        .count()
-}
-
-fn wrote(runs: &[Run]) -> usize {
-    runs.iter()
-        .filter(|run| matches!(run.2, Outcome::Wrote { .. }))
-        .count()
+/// Every pass wrote the body or found the file saying it already: a pass that a stall let run
+/// after an edit but before its schedule writes that edit, and the schedule's own pass then
+/// finds nothing to write.
+fn assert_wrote_or_unchanged(runs: &[Run]) {
+    assert!(
+        runs.iter()
+            .all(|run| matches!(run.2, Outcome::Wrote { .. } | Outcome::Unchanged)),
+        "{runs:?}"
+    );
 }
 
 #[test]
@@ -145,12 +149,10 @@ fn two_edits_300_ms_apart_are_one_write() {
     let runs = settled(&runs, second.0);
     assert_paced(&runs, &scheduled);
     assert_eq!(f.read("n.md"), "typed second\n");
-    assert_eq!(wrote(&runs), runs.len(), "{runs:?}");
-    // A second pass only when this machine stretched the 300 ms past the debounce.
-    assert!(
-        (1..=1 + quiet_pauses(&scheduled)).contains(&runs.len()),
-        "{runs:?}"
-    );
+    assert_wrote_or_unchanged(&runs);
+    // One pass, after the second edit; a second one only for a 300 ms this machine stretched
+    // past the debounce (`assert_paced`).
+    assert!(!runs.is_empty());
 }
 
 /// 5.4 s of typing at 450 ms writes nothing; a pause the debounce ends writes once; typing on
@@ -201,11 +203,8 @@ fn a_49_kb_note_typed_every_450_ms_is_written_once_the_typing_stops() {
     let file = f.read("n.md");
     assert!(file.starts_with("typed 14\n"), "{}", &file[..40]);
     assert!(file.len() >= 49 * 1024);
-    assert_eq!(wrote(&runs), runs.len(), "{runs:?}");
+    assert_wrote_or_unchanged(&runs);
     // One write in the pause and one after the cooldown; each pause of the typing this machine
-    // stretched past the debounce may add one, still a cooldown after the pass before.
-    assert!(
-        (2..=1 + quiet_pauses(&scheduled)).contains(&runs.len()),
-        "{runs:?}"
-    );
+    // stretched past the debounce may add one (`assert_paced`).
+    assert!(runs.len() >= 2, "{runs:?}");
 }
