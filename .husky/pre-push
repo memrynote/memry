@@ -1,6 +1,40 @@
 #!/usr/bin/env sh
 set -eu
 
+# git passes one "<local ref> <local sha> <remote ref> <remote sha>" line per ref on stdin.
+# Read it once, before the checks below, and refuse any update that would drop remote
+# commits: a force push, with or without --force-with-lease.
+push_refs=$(cat)
+
+is_zero_sha() {
+  case "$1" in
+    *[!0]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+refuse_push() {
+  printf '\npre-push: refusing to push %s: %s\n' "$1" "$2" >&2
+  printf 'pre-push: never force push. Merge the base into your branch instead of rebasing a pushed branch.\n\n' >&2
+  exit 1
+}
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -n "$local_ref" ] || continue
+  # A deletion or a new remote ref overwrites no commits.
+  if is_zero_sha "$local_sha" || is_zero_sha "$remote_sha"; then
+    continue
+  fi
+  if ! git cat-file -e "$remote_sha" 2>/dev/null; then
+    refuse_push "$remote_ref" "the remote is at $remote_sha, which this clone does not have; fetch first"
+  fi
+  if ! git merge-base --is-ancestor "$remote_sha" "$local_sha"; then
+    refuse_push "$remote_ref" "$local_sha does not contain the remote's $remote_sha, so the push would overwrite it"
+  fi
+done <<EOF
+$push_refs
+EOF
+
 current_branch=$(git branch --show-current)
 
 case "$current_branch" in

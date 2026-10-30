@@ -22,8 +22,14 @@ function makeFixture() {
   mkdirSync(bin)
   writeFileSync(join(bin, 'pnpm'), fakePnpm)
   chmodSync(join(bin, 'pnpm'), 0o755)
+  const hooks = join(root, 'hooks')
+  mkdirSync(hooks)
+  writeFileSync(join(hooks, 'pre-push'), prePush)
+  chmodSync(join(hooks, 'pre-push'), 0o755)
+  const origin = join(root, 'origin.git')
   const git = (...args) => execFileSync('git', args, { cwd: repo, stdio: 'pipe' })
-  execFileSync('git', ['init', '-q', '--bare', join(root, 'origin.git')])
+  const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`, MEMRY_DOCS_IMPACT_SKIP: '' }
+  execFileSync('git', ['init', '-q', '--bare', origin])
   execFileSync('git', ['clone', '-q', join(root, 'origin.git'), repo], { stdio: 'pipe' })
   git('config', 'user.email', 't@t')
   git('config', 'user.name', 't')
@@ -37,13 +43,28 @@ function makeFixture() {
   git('push', '-q', 'origin', 'HEAD:main')
   git('fetch', '-q', 'origin')
   git('checkout', '-q', '-b', 'docs-gate-fixture', 'origin/main')
-  const runHook = () =>
-    spawnSync('sh', [prePushPath], {
+  const runHook = () => spawnSync('sh', [prePushPath], { cwd: repo, encoding: 'utf8', env })
+  // A real `git push` with the hook installed, so it reads the ref lines git writes to stdin.
+  const push = (...args) =>
+    spawnSync('git', ['-c', `core.hooksPath=${hooks}`, 'push', '-q', 'origin', ...args], {
       cwd: repo,
       encoding: 'utf8',
-      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, MEMRY_DOCS_IMPACT_SKIP: '' }
+      env
     })
-  return { root, git, commit, runHook }
+  const remoteRef = (ref) =>
+    spawnSync('git', ['--git-dir', origin, 'rev-parse', '--verify', '--quiet', ref], {
+      encoding: 'utf8'
+    }).stdout.trim()
+  return { root, origin, git, commit, runHook, push, remoteRef }
+}
+
+function withFixture(test) {
+  const fx = makeFixture()
+  try {
+    test(fx)
+  } finally {
+    rmSync(fx.root, { recursive: true, force: true })
+  }
 }
 
 describe('pre-push hook policy', () => {
@@ -108,4 +129,73 @@ describe('pre-push hook policy', () => {
       rmSync(fx.root, { recursive: true, force: true })
     }
   })
+})
+
+describe('pre-push hook force-push refusal', () => {
+  it('allows a fast-forward push', () =>
+    withFixture((fx) => {
+      fx.commit('README.md', 'next\n')
+      const result = fx.push('HEAD:main')
+      assert.equal(result.status, 0, result.stderr)
+      assert.equal(fx.remoteRef('main'), fx.git('rev-parse', 'HEAD').toString().trim())
+    }))
+
+  it('allows pushing a new branch', () =>
+    withFixture((fx) => {
+      fx.commit('README.md', 'next\n')
+      const result = fx.push('HEAD:refs/heads/feature')
+      assert.equal(result.status, 0, result.stderr)
+      assert.equal(fx.remoteRef('feature'), fx.git('rev-parse', 'HEAD').toString().trim())
+    }))
+
+  it('allows deleting a remote branch', () =>
+    withFixture((fx) => {
+      fx.git('push', '-q', 'origin', 'HEAD:refs/heads/feature')
+      const result = fx.push('--delete', 'feature')
+      assert.equal(result.status, 0, result.stderr)
+      assert.equal(fx.remoteRef('feature'), '')
+    }))
+
+  it('refuses a non-fast-forward push, with or without a lease', () =>
+    withFixture((fx) => {
+      fx.commit('README.md', 'pushed\n')
+      fx.git('push', '-q', 'origin', 'HEAD:main')
+      const pushed = fx.remoteRef('main')
+      fx.git('reset', '-q', '--soft', 'HEAD~1')
+      fx.git('commit', '-q', '-m', 'rewritten')
+
+      for (const flag of ['--force', '--force-with-lease']) {
+        const result = fx.push(flag, 'HEAD:main')
+        assert.equal(result.status, 1, `${flag} was not refused`)
+        assert.match(result.stderr, /refusing to push refs\/heads\/main/)
+        assert.match(
+          result.stderr,
+          /Merge the base into your branch instead of rebasing a pushed branch/
+        )
+        assert.equal(fx.remoteRef('main'), pushed)
+      }
+    }))
+
+  it('refuses a push over a remote commit this clone has not fetched', () =>
+    withFixture((fx) => {
+      const other = join(fx.root, 'other')
+      execFileSync('git', ['clone', '-q', fx.origin, other], { stdio: 'pipe' })
+      writeFileSync(join(other, 'README.md'), 'theirs\n')
+      execFileSync(
+        'git',
+        ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qam', 'theirs'],
+        {
+          cwd: other,
+          stdio: 'pipe'
+        }
+      )
+      execFileSync('git', ['push', '-q', 'origin', 'HEAD:main'], { cwd: other, stdio: 'pipe' })
+      const theirs = fx.remoteRef('main')
+
+      fx.commit('README.md', 'ours\n')
+      const result = fx.push('--force', 'HEAD:main')
+      assert.equal(result.status, 1)
+      assert.match(result.stderr, /refusing to push refs\/heads\/main: .*fetch first/)
+      assert.equal(fx.remoteRef('main'), theirs)
+    }))
 })
