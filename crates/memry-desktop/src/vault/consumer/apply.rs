@@ -18,7 +18,7 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
-use crate::vault::activity::{ActivityInput, ActivityKind, ActivityLog, ActivitySource};
+use crate::vault::activity::{ActivityLog, ActivitySource};
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
 use crate::vault::watch::VaultEvent;
@@ -48,9 +48,6 @@ pub(super) struct Applier {
     pub(super) settings: Option<AppSettings>,
     pub(super) activity: Arc<ActivityLog>,
 }
-
-/// A file that stays unreadable is reported once in this window, not on every event.
-const UNREADABLE_REPORT_MS: i64 = 60 * 60 * 1000;
 
 /// Whether the note's document now holds the whole file: only then does the row record the
 /// file's hash. `BodyPresent` is not: a seed answers it before it compares any text, so the
@@ -130,27 +127,6 @@ impl Applier {
         }
     }
 
-    /// The activity log's share of a fact that changes no row (`watcher.ts` reports these).
-    fn report(&self, event: &VaultEvent) {
-        match event {
-            VaultEvent::Unsupported { path } => {
-                self.activity
-                    .record_skipped(&self.root, path, ActivitySource::Watcher);
-            }
-            VaultEvent::Unreadable { path, reason } => {
-                self.activity.record(
-                    &self.root,
-                    ActivityInput::new(ActivityKind::Failed, ActivitySource::Watcher)
-                        .path(path.as_str())
-                        .reason("read-failed")
-                        .message(reason.as_str())
-                        .dedupe(format!("read-failed:{path}"), UNREADABLE_REPORT_MS),
-                );
-            }
-            _ => {}
-        }
-    }
-
     /// A file the open walk found. Goes through the same handler as a watcher's `Added`. A
     /// row whose size is the file's and that was written after the file's last modification
     /// is not read again, as the rescan does: reading every file costs a vault-sized read. A
@@ -191,8 +167,7 @@ impl Applier {
     }
 
     /// A file at `path`. A row there makes it a change of that row's note; otherwise the
-    /// identity names its note. A file the watcher found that got a new note is `added` in the
-    /// activity log, as Electron records an add no note claimed.
+    /// identity names its note.
     fn found(
         &self,
         lane: &mut Lane<'_>,
@@ -269,12 +244,7 @@ impl Applier {
             path: path.to_owned(),
             created,
         });
-        if created && origin == ActivitySource::Watcher {
-            self.activity.record(
-                &self.root,
-                ActivityInput::new(ActivityKind::Added, origin).path(path),
-            );
-        }
+        self.report_found(path, origin, created);
         Step::Done
     }
 
@@ -424,10 +394,7 @@ impl Applier {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
         });
-        self.activity.record(
-            &self.root,
-            ActivityInput::new(ActivityKind::Removed, ActivitySource::Watcher).path(path),
-        );
+        self.report_removed(path);
     }
 
     fn renamed(&self, lane: &mut Lane<'_>, note_id: &str, old_path: &str, new_path: &str) {
@@ -474,12 +441,7 @@ impl Applier {
             old_path: old_path.to_owned(),
             new_path: new_path.to_owned(),
         });
-        self.activity.record(
-            &self.root,
-            ActivityInput::new(ActivityKind::Renamed, ActivitySource::Watcher)
-                .path(new_path)
-                .old_path(old_path),
-        );
+        self.report_renamed(old_path, new_path);
     }
 
     /// The markdown file at `path`, read once; `Ok(None)` for every other kind.

@@ -44,6 +44,7 @@
 //!   walk, for a path it covered or not, is applied like any other. An [`Applied`] fact goes
 //!   out after its row is written, under the lane.
 
+mod activity;
 mod apply;
 pub mod identity;
 pub mod rows;
