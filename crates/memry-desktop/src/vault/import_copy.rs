@@ -8,11 +8,15 @@
 //!
 //! The source is outside the vault and may be anything, so it is read once, bounded:
 //! - Only a regular file is copied. A pipe would block the read for ever, and a link to
-//!   `/dev/zero` would fill the disk; both are refused. On Unix the source opens without
-//!   blocking, so a pipe is refused instead of waited on.
+//!   `/dev/zero` would fill the disk; both are refused, and so is a Windows device or pipe. On
+//!   Unix the source opens without blocking, so a pipe is refused instead of waited on.
+//! - Every read stops at the size the file had when it was opened. A file that grows meanwhile,
+//!   or one that holds more than its size says (a procfs file, an endless FUSE file), is cut
+//!   there.
 //! - Only a markdown file up to [`MAX_NOTE_BYTES`] is read into memory to be marked. A larger
-//!   one is copied as it is, unmarked, and logged; Electron read it whole and failed. Every
-//!   other copy streams.
+//!   one is copied as it is, unmarked, and logged; Electron read it whole and failed. So is one
+//!   whose marking would take it past that size, which the app could then not read as a note.
+//!   Every other copy streams.
 //!
 //! The copy never replaces anything at `dest_rel`. A file there, whether found when the copy is
 //! placed or created by someone else meanwhile, fails it with [`NoteFileError::AlreadyExists`],
@@ -22,7 +26,7 @@
 //! The copy keeps the source's mode on Unix, the marked one included.
 
 use std::fs;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::Read;
 use std::path::Path;
 
 use memry_core::markdown::shared::checklist_plain::mark_added_checklist_lines_plain;
@@ -42,8 +46,9 @@ pub fn copy_imported_file(
     plain_checklists: bool,
 ) -> Result<(), NoteFileError> {
     let (dest, aimed_at) = target(vault, dest_rel)?;
-    let (mut file, meta) = open_regular(source)?;
+    let (file, meta) = open_regular(source)?;
     let (size, mode) = (meta.len(), meta.permissions());
+    let mut file = file.take(size);
     let place = move |content: &mut dyn Read| {
         let mut between = || {};
         let mut contained = still_contained(vault, dest_rel, &dest, aimed_at, &mut between);
@@ -57,40 +62,56 @@ pub fn copy_imported_file(
     };
     let markdown =
         file_type_of_extension(&extension(&source.to_string_lossy())) == Some(FileType::Markdown);
-    if plain_checklists && markdown {
-        let mut bytes = Vec::with_capacity(size.min(MAX_NOTE_BYTES + 1) as usize);
-        (&mut file)
-            .take(MAX_NOTE_BYTES + 1)
-            .read_to_end(&mut bytes)?;
-        if bytes.len() as u64 > MAX_NOTE_BYTES {
-            tracing::warn!(
-                scope = SCOPE,
-                "an imported markdown file is too large to mark its checklists; copied as it is"
-            );
-        } else if let Ok(text) = std::str::from_utf8(&bytes) {
-            let marked = mark_added_checklist_lines_plain(text, "");
-            if marked != text {
-                return place(&mut marked.as_bytes());
-            }
-        }
-        drop(bytes);
-        file.seek(SeekFrom::Start(0))?;
+    if !plain_checklists || !markdown {
+        return place(&mut file);
     }
-    place(&mut file)
+    if size > MAX_NOTE_BYTES {
+        tracing::warn!(
+            scope = SCOPE,
+            "an imported markdown file is too large to mark its checklists; copied as it is"
+        );
+        return place(&mut file);
+    }
+    let mut bytes = Vec::with_capacity(size as usize);
+    file.read_to_end(&mut bytes)?;
+    let Ok(text) = std::str::from_utf8(&bytes) else {
+        return place(&mut bytes.as_slice());
+    };
+    let marked = mark_added_checklist_lines_plain(text, "");
+    if marked.len() as u64 > MAX_NOTE_BYTES {
+        tracing::warn!(
+            scope = SCOPE,
+            "marking an imported file's checklists would make it too large to read; copied as it is"
+        );
+        return place(&mut bytes.as_slice());
+    }
+    place(&mut marked.as_bytes())
 }
 
 /// The source, opened once for every read of it, and only when it is a regular file. On Unix
 /// it opens without blocking, so a pipe with no writer is seen and refused rather than waited
-/// on; a link is judged by what it points at.
+/// on, and a terminal never becomes the app's; a link is judged by what it points at. On
+/// Windows the handle must be a disk file's: a pipe or a device (`NUL`, `CON`) may pass for
+/// one in its metadata.
 fn open_regular(source: &Path) -> Result<(fs::File, fs::Metadata), NoteFileError> {
     let mut options = fs::OpenOptions::new();
     options.read(true);
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(libc::O_NONBLOCK);
+        options.custom_flags(libc::O_NONBLOCK | libc::O_NOCTTY);
     }
     let file = options.open(source)?;
+    #[cfg(windows)]
+    {
+        use std::os::windows::io::AsRawHandle;
+        use windows::Win32::Foundation::HANDLE;
+        use windows::Win32::Storage::FileSystem::{FILE_TYPE_DISK, GetFileType};
+        // SAFETY: the handle is open for the duration of the call.
+        if unsafe { GetFileType(HANDLE(file.as_raw_handle())) } != FILE_TYPE_DISK {
+            return Err(OpenError::NotRegular.into());
+        }
+    }
     let meta = file.metadata()?;
     if !meta.is_file() {
         return Err(OpenError::NotRegular.into());

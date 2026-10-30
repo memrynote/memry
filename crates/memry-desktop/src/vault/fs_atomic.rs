@@ -468,7 +468,8 @@ pub fn atomic_create(target: &Path, bytes: &[u8]) -> Result<(), WriteError> {
 }
 
 /// [`atomic_create_checked`] for bytes read from `content` as they are written, never all in
-/// memory: a copy of another file. The temp file is filled once; only `before_commit` and the
+/// memory: a copy of another file. `content` is read to its end, so the caller bounds a reader
+/// that may not end. The temp file is filled once; only `before_commit` and the
 /// move into place are retried. On Unix the new file takes `mode`, as `fs.copyFile` kept its
 /// source's; a volume that refuses a mode (CIFS, some FUSE mounts, FAT) leaves it 0600 and the
 /// copy goes on, as a save does without its carried attributes.

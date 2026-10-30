@@ -104,6 +104,71 @@ fn a_markdown_file_too_large_to_mark_is_copied_unmarked() {
     assert_eq!(&head, b"- [ ] Passport\n");
 }
 
+/// A file within the cap whose marking would take it past: the app could not read the marked
+/// copy as a note, so the file is copied as it is. Sparse but for a code fence around its bulk,
+/// which keeps the marking from looking into it, and a checklist at the end.
+#[test]
+fn a_markdown_file_its_marking_would_take_past_the_cap_is_copied_unmarked() {
+    let (from, vault) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let source = from.path().join("Big.md");
+    let tail = format!("\n```\n{}", "- [ ] a\n".repeat(4));
+    let file = fs::File::create(&source).unwrap();
+    io::Write::write_all(&mut &file, b"```\n").unwrap();
+    file.set_len(MAX_NOTE_BYTES - tail.len() as u64).unwrap();
+    io::Seek::seek(&mut &file, io::SeekFrom::End(0)).unwrap();
+    io::Write::write_all(&mut &file, tail.as_bytes()).unwrap();
+    drop(file);
+
+    copy_imported_file(vault.path(), &source, "Big.md", true).unwrap();
+
+    let dest = vault.path().join("Big.md");
+    assert_eq!(fs::metadata(&dest).unwrap().len(), MAX_NOTE_BYTES);
+    let mut end = vec![0; tail.len()];
+    let mut copy = fs::File::open(&dest).unwrap();
+    io::Seek::seek(&mut copy, io::SeekFrom::End(-(tail.len() as i64))).unwrap();
+    io::Read::read_exact(&mut copy, &mut end).unwrap();
+    assert_eq!(end, tail.as_bytes());
+}
+
+/// A file can hold more than its size says: a procfs file reports 0 bytes, and a FUSE file may
+/// never end. A copy, marked or not, stops at the size seen when the source was opened.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_copy_stops_at_the_size_the_source_had_when_opened() {
+    let (from, vault) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let status = Path::new("/proc/self/status");
+    assert_eq!(fs::metadata(status).unwrap().len(), 0);
+    assert!(!fs::read(status).unwrap().is_empty());
+    let marked = from.path().join("status.md");
+    std::os::unix::fs::symlink(status, &marked).unwrap();
+
+    for (source, name, plain) in [
+        (status, "status", false),
+        (marked.as_path(), "status.md", true),
+    ] {
+        copy_imported_file(vault.path(), source, name, plain).unwrap();
+
+        assert_eq!(fs::read(vault.path().join(name)).unwrap(), b"", "{name}");
+    }
+}
+
+/// On Windows a device's handle can pass for a file's in its metadata; only a disk file is read.
+#[cfg(windows)]
+#[test]
+fn a_windows_device_is_refused() {
+    let vault = tempfile::tempdir().unwrap();
+
+    for (name, plain) in [("copy.md", true), ("copy.png", false)] {
+        let result = copy_imported_file(vault.path(), Path::new(r"\\.\NUL"), name, plain);
+
+        assert!(
+            matches!(result, Err(NoteFileError::Open(OpenError::NotRegular))),
+            "{name}: {result:?}"
+        );
+    }
+    assert_eq!(names(vault.path()), Vec::<String>::new());
+}
+
 /// Electron's copy replaced a file at the name; this one fails, so the caller tries the next.
 #[test]
 fn a_file_at_the_name_is_never_replaced() {
