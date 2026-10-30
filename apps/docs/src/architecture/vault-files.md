@@ -31,7 +31,7 @@ The watcher uses the OS file watcher through the `notify` crate: FSEvents on mac
 - **Many files gone at once.** When a rescan finds more than 20 files missing and more than 25 % of the vault, it reports no removal. This keeps a half-mounted vault from deleting notes on every device.
 - **Lost events.** Some OS watchers drop events without saying so. The watcher then rescans: after an overflow, after a burst of events on Windows, every 10 minutes on Windows, and every minute after any watcher error.
 
-Known limitation: on Linux, when the inotify watch limit (`fs.inotify.max_user_watches`) runs out, the folders past the limit get no live events. A rescan 2 seconds after the error, and then one every minute, finds their changes. The app logs `the vault watcher failed` with `limit=true`, but it shows you no notice yet. To get live events back, raise the limit, for example `sudo sysctl fs.inotify.max_user_watches=524288`, and reopen the vault.
+Known limitation: on Linux, when the inotify watch limit (`fs.inotify.max_user_watches`) runs out, the folders past the limit get no live events. A rescan 2 seconds after the error, and then one every minute, finds their changes. The app logs `the vault watcher failed` with `limit=true`, but it shows you no notice yet; the notice comes with Step 14 (#3531). To get live events back, raise the limit, for example `sudo sysctl fs.inotify.max_user_watches=524288`, and reopen the vault.
 
 ## The consumer
 
@@ -68,7 +68,7 @@ Measured on 30 October 2026 on an Apple M5 Pro running other builds (load averag
 | Watcher CPU while the vault is idle, over 60 s                                           | 0.023 to 0.034 % of one core (7 runs)                     |
 | One write-back pass on a 12 KB note                                                      | median 40 to 42 ms, p90 59 to 62 ms (2 runs of 50 passes) |
 
-The write-back pass misses its 20 ms budget. About 30 ms of it is the Markdown converter's serialization, which also misses its own budget (#3600). Writing the file safely (a temp file, `fsync`, then a rename) takes most of the rest.
+The write-back pass misses its 20 ms budget. About 30 ms of it is the Markdown converter's serialization, which also misses its own budget. The miss is accepted for Step 12 and tracked in #3600. Writing the file safely (a temp file, `fsync`, then a rename) takes most of the rest.
 
 To measure again:
 
