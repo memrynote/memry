@@ -67,7 +67,8 @@
   "startup": {
     "installingUpdate": {
       "title": "جارٍ تثبيت التحديث…",
-      "subtitle": "سيُعاد فتح MemryNote تلقائيًا."
+      "subtitle": "سيُعاد فتح MemryNote تلقائيًا.",
+      "subtitleOpenAgain": "أعد فتح MemryNote بعد لحظات."
     },
     "failed": {
       "title": "تعذّر على MemryNote إكمال بدء التشغيل",

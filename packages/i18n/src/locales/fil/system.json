@@ -67,7 +67,8 @@
   "startup": {
     "installingUpdate": {
       "title": "Ini-install ang update…",
-      "subtitle": "Awtomatikong magbubukas muli ang MemryNote."
+      "subtitle": "Awtomatikong magbubukas muli ang MemryNote.",
+      "subtitleOpenAgain": "Buksan muli ang MemryNote pagkalipas ng ilang sandali."
     },
     "failed": {
       "title": "Hindi natapos ng MemryNote ang pagsisimula",

@@ -67,7 +67,8 @@
   "startup": {
     "installingUpdate": {
       "title": "Đang cài đặt bản cập nhật…",
-      "subtitle": "MemryNote sẽ tự mở lại."
+      "subtitle": "MemryNote sẽ tự mở lại.",
+      "subtitleOpenAgain": "Hãy mở lại MemryNote sau giây lát."
     },
     "failed": {
       "title": "MemryNote không thể khởi động xong",

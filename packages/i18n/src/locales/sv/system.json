@@ -67,7 +67,8 @@
   "startup": {
     "installingUpdate": {
       "title": "Installerar uppdatering…",
-      "subtitle": "MemryNote startar om automatiskt."
+      "subtitle": "MemryNote startar om automatiskt.",
+      "subtitleOpenAgain": "Öppna MemryNote igen om en liten stund."
     },
     "failed": {
       "title": "MemryNote kunde inte slutföra starten",
