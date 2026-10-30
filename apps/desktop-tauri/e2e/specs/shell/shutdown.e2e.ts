@@ -78,12 +78,14 @@ test('a Log Out quit event with a hung step is forced out within 10.5 s, never r
   app
 }) => {
   test.skip(process.platform !== 'darwin', 'Apple events are macOS-only')
-  const { appDataDir } = await appInfo(app)
+  const { appDataDir, logDir } = await appInfo(app)
   await invokeTest(app, 'e2e_trigger_shutdown_overrun', { step: 'stop-sync-runtime' })
   const startedAt = Date.now()
   expect(sendQuitEvent(app.pid, 'rlgo')).toBe('errn 0')
   expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })).toBe(true)
   expect(Date.now() - startedAt).toBeLessThan(10_500)
+  // The event reached `applicationShouldTerminate:`, which started the sequence that overran.
+  expect(readMainLog(logDir)).toContain('macOS asked the app to terminate (quit reason rlgo)')
 
   const marker = JSON.parse(readFileSync(markerPath(appDataDir), 'utf8')) as SessionMarker
   expect(marker.shutdownFailure).toBe('timeout')

@@ -38,6 +38,9 @@ pub struct RowStat {
     /// Markdown only, and only for content the note's document holds: a write-back reading
     /// a file that differs would take this hash for "the file is unchanged" and overwrite it.
     pub content_hash: Option<String>,
+    /// Markdown only: the hash of the bytes read, whether or not the document took them. A
+    /// move made while the app was closed pairs on it (`vault::watch::rename`).
+    pub file_hash: Option<String>,
 }
 
 /// One open of one vault, as the rows know it.
@@ -253,9 +256,22 @@ impl Lane<'_> {
         self.state().index.check(note_id, path)
     }
 
-    /// The row no longer names content the document holds.
+    /// The note's file went and its row stays: the row names no content the document holds,
+    /// and no bytes on disk, so no file pairs with it as its move.
     pub(super) fn forget_hash(&self, note_id: &str) -> Result<(), StorageError> {
         self.files().set_hash(note_id, None)
+    }
+
+    /// The file was read, or found unreadable, and its text not taken: only its pairing hash
+    /// moves, to the bytes on disk now or to none. The row's size, stamp and content hash stay
+    /// those of what the document holds, which the write-back compares with; the walk then
+    /// reads the file again at every open, as it did before file hashes.
+    pub(super) fn record_file_hash(
+        &self,
+        note_id: &str,
+        hash: Option<&str>,
+    ) -> Result<(), StorageError> {
+        self.files().set_file_hash(note_id, hash)
     }
 
     /// Records the row stamped now: the caller read the file now and, with a hash, the body
@@ -287,6 +303,7 @@ impl Lane<'_> {
             mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
             file_size: i64::try_from(stat.size).ok(),
             content_hash: stat.content_hash,
+            file_hash: stat.file_hash,
             indexed_at: at,
         })?;
         state.index.insert(note_id, path);
@@ -311,6 +328,7 @@ impl Lane<'_> {
             mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
             file_size: i64::try_from(stat.size).ok(),
             content_hash: stat.content_hash,
+            file_hash: stat.file_hash,
             indexed_at: now_ms(),
         })?;
         state.index.insert(note_id, path);

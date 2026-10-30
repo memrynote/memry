@@ -163,10 +163,16 @@ pub fn is_completed(app: &AppHandle<Wry>) -> bool {
         .load(Ordering::SeqCst)
 }
 
+/// The OS session ends: the quit installs no update, also a quit that already runs. An installer
+/// started then is killed after it removed the old install (#1851).
+pub fn session_ending(app: &AppHandle<Wry>) {
+    app.state::<ShutdownService>().core.session_ending();
+}
+
 /// Starts the sequence for a quit that did not come through `ExitRequested`: the session end.
 pub fn begin_session_end(app: &AppHandle<Wry>) {
     // Before the latch: a quit that is already running must not install on its way out either.
-    app.state::<ShutdownService>().core.session_ending();
+    session_ending(app);
     start(app, ShutdownReason::SessionEnd);
 }
 

@@ -23,14 +23,25 @@
 //! `content_hash` is the desktop vault tier's string, opaque here. A stat write
 //! replaces it with the value the caller read (`None` clears it), so a row never
 //! pairs a new stat with the hash of older bytes.
+//!
+//! `file_hash` (table `note_file_hashes`, migration 17) is the same kind of
+//! string for the bytes on disk now, whether or not the note's document took
+//! them, or `None` when the tier does not know them: it is never the hash of
+//! bytes that went or were replaced. Rename pairing reads it, and a removal of
+//! a row that has one is of a file whose bytes the tier knew. Every stat write
+//! and [`set_hash`] replace it too, and [`set_file_hash`] records a read that
+//! changed nothing else.
 
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 use crate::api::errors::StorageError;
 use crate::crdt::update_log;
 
-const COLUMNS: &str =
-    "note_id, path, file_type, mime_type, file_size, content_hash, local_only, indexed_at";
+const COLUMNS: &str = "f.note_id, f.path, f.file_type, f.mime_type, f.file_size, f.content_hash,
+     f.local_only, f.indexed_at, h.file_hash";
+
+/// The rows with their file hashes, `f` and `h`.
+const ROWS: &str = "note_files f LEFT JOIN note_file_hashes h ON h.note_id = f.note_id";
 
 /// One `note_files` row.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +53,8 @@ pub struct NoteFile {
     pub mime_type: Option<String>,
     pub file_size: Option<i64>,
     pub content_hash: Option<String>,
+    /// The hash of the bytes the tier last read from the file (module doc).
+    pub file_hash: Option<String>,
     pub local_only: bool,
     /// The row's stamp, in this device's milliseconds since the epoch. One meaning for every
     /// writer and reader: the row accounts for every change to the file and to the note's
@@ -63,6 +76,7 @@ pub struct NoteFileStat {
     pub mime_type: Option<String>,
     pub file_size: Option<i64>,
     pub content_hash: Option<String>,
+    pub file_hash: Option<String>,
     pub indexed_at: i64,
 }
 
@@ -115,12 +129,13 @@ fn row_to_file(row: &Row<'_>) -> rusqlite::Result<NoteFile> {
         content_hash: row.get(5)?,
         local_only: row.get::<_, i64>(6)? != 0,
         indexed_at: row.get(7)?,
+        file_hash: row.get(8)?,
     })
 }
 
 pub fn by_path(conn: &Connection, path: &str) -> Result<Option<NoteFile>, StorageError> {
     conn.query_row(
-        &format!("SELECT {COLUMNS} FROM note_files WHERE path = ?1"),
+        &format!("SELECT {COLUMNS} FROM {ROWS} WHERE f.path = ?1"),
         params![path],
         row_to_file,
     )
@@ -130,7 +145,7 @@ pub fn by_path(conn: &Connection, path: &str) -> Result<Option<NoteFile>, Storag
 
 pub fn by_id(conn: &Connection, note_id: &str) -> Result<Option<NoteFile>, StorageError> {
     conn.query_row(
-        &format!("SELECT {COLUMNS} FROM note_files WHERE note_id = ?1"),
+        &format!("SELECT {COLUMNS} FROM {ROWS} WHERE f.note_id = ?1"),
         params![note_id],
         row_to_file,
     )
@@ -138,12 +153,13 @@ pub fn by_id(conn: &Connection, note_id: &str) -> Result<Option<NoteFile>, Stora
     .map_err(failed)
 }
 
-/// Inserts the row of `stat.note_id` or replaces its path, kind, size, hash and
+/// Inserts the row of `stat.note_id` or replaces its path, kind, size, hashes and
 /// time, keeping `local_only`. A path another note holds is refused: it is never
 /// taken over silently.
 pub fn upsert_stat(conn: &mut Connection, stat: &NoteFileStat) -> Result<(), StorageError> {
     check_path(&stat.path)?;
-    conn.execute(
+    let tx = conn.transaction().map_err(failed)?;
+    tx.execute(
         "INSERT INTO note_files
            (note_id, path, file_type, mime_type, file_size, content_hash, indexed_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
@@ -161,14 +177,60 @@ pub fn upsert_stat(conn: &mut Connection, stat: &NoteFileStat) -> Result<(), Sto
             stat.indexed_at
         ],
     )
-    .map(|_| ())
     .map_err(|err| {
         if is_constraint(&err) {
             invalid(format!("path {:?} belongs to another note", stat.path))
         } else {
             failed(err)
         }
-    })
+    })?;
+    write_file_hash(&tx, &stat.note_id, stat.file_hash.as_deref())?;
+    tx.commit().map_err(failed)
+}
+
+fn write_file_hash(
+    conn: &Connection,
+    note_id: &str,
+    file_hash: Option<&str>,
+) -> Result<(), StorageError> {
+    match file_hash {
+        Some(hash) => conn.execute(
+            "INSERT INTO note_file_hashes (note_id, file_hash) VALUES (?1, ?2)
+             ON CONFLICT(note_id) DO UPDATE SET file_hash = excluded.file_hash",
+            params![note_id, hash],
+        ),
+        None => conn.execute(
+            "DELETE FROM note_file_hashes WHERE note_id = ?1",
+            params![note_id],
+        ),
+    }
+    .map(|_| ())
+    .map_err(failed)
+}
+
+/// Records the hash of the bytes the tier just read from the note's file, and nothing else:
+/// a read whose text the document did not take says nothing of the body, so neither
+/// `content_hash` nor the stamp moves. The row must exist.
+pub fn set_file_hash(
+    conn: &Connection,
+    note_id: &str,
+    file_hash: Option<&str>,
+) -> Result<(), StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let exists = tx
+        .query_row(
+            "SELECT 1 FROM note_files WHERE note_id = ?1",
+            params![note_id],
+            |_| Ok(()),
+        )
+        .optional()
+        .map_err(failed)?
+        .is_some();
+    if !exists {
+        return Err(not_found(note_id));
+    }
+    write_file_hash(&tx, note_id, file_hash)?;
+    tx.commit().map_err(failed)
 }
 
 /// [`upsert_stat`] for a file read again and found to be the bytes its row names: the row's
@@ -176,7 +238,8 @@ pub fn upsert_stat(conn: &mut Connection, stat: &NoteFileStat) -> Result<(), Sto
 /// read says nothing of the body ([`NoteFile::indexed_at`]). The row must exist.
 pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), StorageError> {
     check_path(&stat.path)?;
-    let changed = conn
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let changed = tx
         .execute(
             &format!(
                 "UPDATE note_files SET
@@ -206,7 +269,8 @@ pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), Storag
     if changed == 0 {
         return Err(not_found(&stat.note_id));
     }
-    Ok(())
+    write_file_hash(&tx, &stat.note_id, stat.file_hash.as_deref())?;
+    tx.commit().map_err(failed)
 }
 
 /// The SQL test, over a `note_files` row, that an entry of the note's body log or snapshot,
@@ -223,13 +287,15 @@ fn body_moved_after_stamp() -> String {
     )
 }
 
-/// Records the hash of the bytes now on disk (or clears it with `None`).
+/// Records the hash of the bytes now on disk, which the document holds, as both hashes; `None`
+/// clears both (the file went, so the row names no bytes at all).
 pub fn set_hash(
     conn: &Connection,
     note_id: &str,
     content_hash: Option<&str>,
 ) -> Result<(), StorageError> {
-    let changed = conn
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let changed = tx
         .execute(
             "UPDATE note_files SET content_hash = ?2 WHERE note_id = ?1",
             params![note_id, content_hash],
@@ -238,7 +304,8 @@ pub fn set_hash(
     if changed == 0 {
         return Err(not_found(note_id));
     }
-    Ok(())
+    write_file_hash(&tx, note_id, content_hash)?;
+    tx.commit().map_err(failed)
 }
 
 /// Moves one note to `new_path`. The path of another note is refused and the
@@ -329,8 +396,9 @@ pub fn remove(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
         )
         .map(|n| n > 0)
         .map_err(failed)?;
-    // The marker is file state of the same note: it goes with the row.
+    // The marker and the file hash are file state of the same note: they go with the row.
     crate::domain::owed_file_body::clear(&tx, note_id)?;
+    write_file_hash(&tx, note_id, None)?;
     tx.commit().map_err(failed)?;
     Ok(removed)
 }
@@ -344,9 +412,9 @@ pub fn remove(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
 pub fn list_missing_candidates(conn: &Connection) -> Result<Vec<NoteFile>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
-            "SELECT {COLUMNS} FROM note_files
-              WHERE NOT (file_type <> 'markdown' AND COALESCE(file_size, 0) = 0)
-              ORDER BY path"
+            "SELECT {COLUMNS} FROM {ROWS}
+              WHERE NOT (f.file_type <> 'markdown' AND COALESCE(f.file_size, 0) = 0)
+              ORDER BY f.path"
         ))
         .map_err(failed)?;
     statement
@@ -390,7 +458,7 @@ pub fn behind_bodies(conn: &Connection) -> Result<Vec<String>, StorageError> {
 pub fn rows_of_deleted_notes(conn: &Connection) -> Result<Vec<NoteFile>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
-            "SELECT {COLUMNS} FROM note_files f
+            "SELECT {COLUMNS} FROM {ROWS}
               WHERE f.file_type = 'markdown'
                 AND (EXISTS (SELECT 1 FROM notes n
                               WHERE n.id = f.note_id AND n.deleted_at IS NOT NULL)

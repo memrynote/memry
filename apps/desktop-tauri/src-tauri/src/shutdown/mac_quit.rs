@@ -24,7 +24,7 @@ use objc2::{msg_send, sel};
 use objc2_app_kit::{NSApplication, NSApplicationTerminateReply};
 use objc2_core_foundation::{CFRunLoop, kCFRunLoopCommonModes};
 use objc2_foundation::{NSAppleEventDescriptor, NSAppleEventManager};
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Wry};
 
 use crate::commands::error::CommandError;
 
@@ -63,9 +63,8 @@ extern "C-unwind" fn should_terminate(
     let Some(app) = APP.get() else {
         return NSApplicationTerminateReply::TerminateNow;
     };
-    // The session ends: no install on quit, also when a quit already runs (#1851, Step 38).
     if reason.as_deref().is_some_and(is_session_end) {
-        app.state::<super::ShutdownService>().core.session_ending();
+        super::session_ending(app);
     }
     let mut state = state();
     match *state {
@@ -85,6 +84,9 @@ extern "C-unwind" fn should_terminate(
 
 /// Whether loginwindow sent the quit because the session ends: `rlgo` (kAEReallyLogOut), `rest`
 /// (kAERestart) or `shut` (kAEShutDown), the reasons `AERegistry.h` lists for `kAEQuitReason`.
+/// The quit then installs no update. `power/mac.rs` turns install-on-quit off as well, from
+/// `NSWorkspaceWillPowerOffNotification`, which also covers a Log Out during a running quit;
+/// that AppKit posts it there was seen on macOS 27 only, so both signals stay.
 fn is_session_end(reason: &str) -> bool {
     matches!(reason, "rlgo" | "rest" | "shut")
 }

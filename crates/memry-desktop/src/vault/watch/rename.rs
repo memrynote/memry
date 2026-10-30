@@ -10,10 +10,16 @@
 //! [`Batch`], lets every add claim one, and settles what is left after the last add. A window
 //! would expire while a large folder move is still being added and delete the old ids.
 //!
-//! A row with no hash (the file was never read) can never be claimed: Electron paired those on
-//! size and modification time, but `note_files` keeps no modification time, and pairing on size
-//! alone would hand one note's id to another file. It settles as a delete plus a new file.
-//! Identical files claim oldest first.
+//! The hash a removed note is tracked under is the row's file hash: the bytes the tier last read
+//! from the file, whether or not the note's document took them (too large, frontmatter that does
+//! not parse, a body that was already there). So a note moved while the app was closed pairs as
+//! long as its bytes did not change. A row with no file hash (its file was never read) can never
+//! be claimed: Electron paired those on size and modification time, but `note_files` keeps no
+//! modification time, and pairing on size alone would hand one note's id to another file. It
+//! settles as a delete plus a new file. Among several identical removed files, a new file
+//! claims the one with its own name; when its name does not single one out, it claims none and
+//! each settles as a delete plus a new file. Handing it the oldest instead swaps two identical
+//! notes moved together into folders that list in the other order.
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -94,10 +100,24 @@ impl RenameTracker {
         );
     }
 
-    /// The oldest pending delete with this hash: the note a file with this content was
-    /// renamed from.
-    pub fn claim(&mut self, hash: &str) -> Option<Pending> {
-        let seq = *self.by_hash.get(hash)?.front()?;
+    /// The pending delete the file at `path`, with this hash, was renamed from: the only one
+    /// with the hash, or among several, the only one with the file's name. Several the name
+    /// does not tell apart claim nothing.
+    pub fn claim(&mut self, hash: &str, path: &str) -> Option<Pending> {
+        let bucket = self.by_hash.get(hash)?;
+        let seq = if bucket.len() == 1 {
+            bucket[0]
+        } else {
+            let name = file_name(path);
+            let mut named = bucket
+                .iter()
+                .filter(|seq| file_name(&self.entries[seq].pending.path) == name);
+            let first = *named.next()?;
+            if named.next().is_some() {
+                return None;
+            }
+            first
+        };
         self.take(seq)
     }
 
@@ -165,6 +185,11 @@ impl RenameTracker {
     }
 }
 
+/// The last component of a vault-relative path.
+fn file_name(path: &str) -> &str {
+    path.rsplit('/').next().unwrap_or(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,14 +203,21 @@ mod tests {
     }
 
     #[test]
-    fn a_file_with_the_same_hash_claims_the_delete_oldest_first() {
+    fn identical_files_claim_by_name_and_never_by_age() {
         let now = Instant::now();
         let mut t = RenameTracker::default();
         t.track(pending("1", "a.md", Some("h")), now, None);
         t.track(pending("2", "b.md", Some("h")), now, None);
-        assert_eq!(t.claim("h").unwrap().note_id, "1");
-        assert_eq!(t.claim("h").unwrap().note_id, "2");
-        assert!(t.claim("h").is_none());
+        t.track(pending("3", "x/b.md", Some("h")), now, None);
+        // Neither name, and two named b.md: no claim.
+        assert!(t.claim("h", "dir/c.md").is_none());
+        assert!(t.claim("h", "dir/b.md").is_none());
+        assert_eq!(t.claim("h", "dir/a.md").unwrap().note_id, "1");
+        assert_eq!(t.len(), 2);
+        assert!(t.drop_note("3"));
+        // The only one left with this hash goes to any name.
+        assert_eq!(t.claim("h", "dir/c.md").unwrap().note_id, "2");
+        assert!(t.claim("h", "dir/b.md").is_none());
         assert!(t.is_empty());
     }
 
@@ -194,7 +226,7 @@ mod tests {
         let now = Instant::now();
         let mut t = RenameTracker::default();
         t.track(pending("1", "a.md", None), now, None);
-        assert!(t.claim("").is_none());
+        assert!(t.claim("", "a.md").is_none());
         assert!(
             t.expired(now + RENAME_WINDOW - Duration::from_millis(1))
                 .is_empty()
@@ -216,7 +248,7 @@ mod tests {
             t.expired(now + Duration::from_secs(60)).len() == 1,
             "only the live one"
         );
-        assert_eq!(t.claim("h1").unwrap().note_id, "1");
+        assert_eq!(t.claim("h1", "a.md").unwrap().note_id, "1");
         let left = t.settle(batch);
         assert_eq!(left.len(), 1);
         assert_eq!(left[0].note_id, "2");
@@ -231,7 +263,7 @@ mod tests {
         t.track(pending("1", "a.md", Some("h")), now, Some(batch));
         assert_eq!(t.discard(batch), 1);
         assert!(t.settle(batch).is_empty());
-        assert!(t.claim("h").is_none());
+        assert!(t.claim("h", "a.md").is_none());
     }
 
     #[test]
@@ -241,7 +273,7 @@ mod tests {
         t.track(pending("1", "a.md", Some("old")), now, None);
         t.track(pending("1", "b.md", Some("new")), now, None);
         assert_eq!(t.len(), 1);
-        assert!(t.claim("old").is_none());
-        assert_eq!(t.claim("new").unwrap().path, "b.md");
+        assert!(t.claim("old", "b.md").is_none());
+        assert_eq!(t.claim("new", "b.md").unwrap().path, "b.md");
     }
 }

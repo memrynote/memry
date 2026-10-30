@@ -162,6 +162,7 @@ impl Fixture {
                 file_type: kind.into(),
                 mime_type: None,
                 file_size: Some(size as i64),
+                file_hash: hash.clone(),
                 content_hash: hash,
                 indexed_at: i64::MAX / 2,
             })
