@@ -768,6 +768,50 @@ fn an_outside_edit_back_to_an_earlier_reported_state_is_not_hidden_by_an_own_wri
     );
 }
 
+/// A folder the app removed and that came back while the OS lost its events (an overflow, a
+/// full queue, a Windows burst) is the user's again once the rescan standing in for those
+/// events has run: moved later, it is a rename of the note it holds, not a delete of that note
+/// plus a new one. The reconciler gets only the batches below; the folder's return reaches it
+/// through the rescan alone.
+#[test]
+fn a_folder_back_while_its_events_were_lost_is_the_users_after_the_rescan() {
+    let e = env_unwatched();
+    let echo = Arc::new(EchoGuard::default());
+    let log = Log::default();
+    let mut r = Reconciler::new(e.root.clone(), vec![], e.files(), echo.clone(), sink(&log));
+    fs::create_dir(e.root.join("2025")).unwrap();
+    echo.removing("2025", || fs::remove_dir(e.root.join("2025")))
+        .unwrap();
+    r.batch(vec!["2025".into()], Instant::now());
+    e.write("2025/a.md", "body");
+
+    // A rescan for lost events, as the runtime runs it: with changes.
+    let t0 = Instant::now();
+    assert!(r.rescan(true, t0, &AtomicBool::new(false)).unwrap());
+    r.settle_expired(t0 + Duration::from_secs(2));
+    assert!(
+        log.lock().unwrap().iter().any(is_added("2025/a.md")),
+        "{:?}",
+        log.lock().unwrap()
+    );
+    e.index("n1", "2025/a.md", "body");
+    fs::rename(e.root.join("2025"), e.root.join("2026")).unwrap();
+    let t1 = Instant::now();
+    r.batch(vec!["2025".into(), "2026".into()], t1);
+    r.settle_expired(t1 + Duration::from_secs(2));
+
+    let events = log.lock().unwrap().clone();
+    assert!(
+        events.iter().any(|ev| matches!(
+            ev,
+            VaultEvent::Renamed { note_id, old_path, new_path, .. }
+                if note_id == "n1" && old_path == "2025/a.md" && new_path == "2026/a.md"
+        )),
+        "{events:?}"
+    );
+    assert!(!events.iter().any(is_added("2026/a.md")), "{events:?}");
+}
+
 #[test]
 fn files_in_a_folder_that_appeared_are_reported_from_the_walk_unsupported_ones_too() {
     let e = env_unwatched();

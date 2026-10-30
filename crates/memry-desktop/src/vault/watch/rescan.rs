@@ -37,6 +37,12 @@ impl Reconciler {
             self.go_away();
             return Ok(true);
         }
+        // The events this pass stands in for may have been a removed path coming back, which
+        // ends the app's record of its removal (`echo`). First, so a pass that stops partway
+        // has still done it.
+        let root = &self.root;
+        self.echo
+            .seen_all(|path| std::fs::symlink_metadata(root.join(path)).is_ok());
         let rows = self.files.list_missing_candidates()?;
         // Each note where it was last reported, else where its row says: a move already
         // reported leaves the row stale, and a removal already reported leaves nothing to
