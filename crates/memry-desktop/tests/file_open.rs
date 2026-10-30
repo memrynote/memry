@@ -324,7 +324,8 @@ fn resolve_places_a_new_file_by_its_parent_folder() {
 /// again. (The name can be missing for an instant too; `Missing` is allowed here, see
 /// `shell::file_open` rule 2. So is a denial seen on the first ask and on its one re-ask 1 ms
 /// later: a file denied for good gives it too, so it is not asked again longer. Such denials
-/// are counted, and must be rarer than the raw ones, which the one re-ask mostly absorbs.)
+/// are counted and printed with the raw ones; how often each is asked is pinned without a
+/// race by `shell::file_open`'s own test.)
 /// Every tenth lookup also asks `fs::canonicalize` itself, and the test needs at least one of
 /// those raw asks to fail or answer outside the vault, so it cannot pass for want of a race.
 ///
@@ -403,11 +404,5 @@ fn a_note_renamed_over_while_it_is_resolved_is_never_outside_the_vault_nor_an_un
     assert!(
         refused.is_empty(),
         "{lookups} lookups during {saves} saves: {refused:?}"
-    );
-    // The raw asks are a tenth of the lookups, so this holds only while the re-ask absorbs
-    // most denials. A run whose raw asks met no denial says nothing about the re-ask.
-    assert!(
-        raw_denied == 0 || denied < raw_denied,
-        "{denied} denials resolved, {raw_denied} raw: the re-ask after a denial is not working"
     );
 }
