@@ -111,6 +111,8 @@ jobs:
         run: pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }}
       - name: Stage pack dir
         run: node scripts/release/stage-payload.mjs win ${{ matrix.triple }} pack
+      - name: Check the exe needs no VC++ redistributable
+        run: node scripts/release/pe-imports.mjs pack/Memrynote.exe
       - name: Zip pack dir
         shell: pwsh
         run: Compress-Archive -Path pack/* -DestinationPath "MemryNote-$env:VERSION-${{ matrix.target }}-payload.zip"
@@ -584,7 +586,7 @@ jobs:
           guarded_exit "$opened"
           # #3728: the splash says to open the app again, never "MemryNote will reopen
           # automatically": nothing reopens it after an install at a quit, and after Restart to
-          # install a guarded launch that is still alive when the updater starts the new build
+          # install, a guarded launch that is still alive when the updater starts the new build
           # absorbs that start (#3773). M4 drives only the install at a quit; the splash timing
           # has unit tests (`relaunch_guard::exit_after_splash`).
           wait_log "pending update install in flight on launch (updater running, started as $TAURI_BASE); showing the open-again splash" 10
