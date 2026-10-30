@@ -5,7 +5,7 @@ use std::path::{Component, Path, Prefix};
 
 /// The top-level files of the Electron builds that name their exe `Memrynote.exe`: `v2026-06-10`
 /// on (Electron 39 to `v2026-07-10.x`, Electron 43 from `v2026-07-17`; read from the NSIS
-/// `app-64.7z` of `v2026-07-10.3` and `v2026-10-25`), plus the NSIS uninstaller, the
+/// `app-64.7z` of `v2026-06-10`, `v2026-07-10.3` and `v2026-10-25`), plus the NSIS uninstaller, the
 /// `debug.log` Chromium may write beside the exe and the `.old-update` copy of the exe. Earlier
 /// builds named the exe `memry.exe` (`v2026.4.28`) or `Memry.exe` (`v2026-05-06` to
 /// `v2026-05-16`); their installs fail the anchor check and stay (`not_electron`). Lowercase.
@@ -32,9 +32,16 @@ const TOP_FILES: &[&str] = &[
     "vk_swiftshader_icd.json",
     "vulkan-1.dll",
 ];
-/// `resources\` of the same builds. `app.asar.unpacked` and `node_modules` are taken whole: a
+/// `resources\` of the same builds: `v2026-06-10` to `v2026-06-20` ship the build's settings as
+/// `.env`, later ones as `app-config`. `app.asar.unpacked` and `node_modules` are taken whole: a
 /// link deeper down is removed as a link, never followed (`std::fs::remove_dir_all`).
-const RESOURCES_FILES: &[&str] = &["app-config", "app-update.yml", "app.asar", "elevate.exe"];
+const RESOURCES_FILES: &[&str] = &[
+    ".env",
+    "app-config",
+    "app-update.yml",
+    "app.asar",
+    "elevate.exe",
+];
 const RESOURCES_DIRS: &[&str] = &["app.asar.unpacked", "node_modules"];
 
 /// The NSIS uninstaller, lowercase. Builds write it as `Uninstall Memrynote.exe`; Windows file

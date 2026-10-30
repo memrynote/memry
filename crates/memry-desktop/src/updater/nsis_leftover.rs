@@ -139,6 +139,7 @@ pub enum Keep {
     BackupPending,
     StaleTombstone,
     InUse,
+    /// Outside Windows: no right to rename the directory (`rename_failure`).
     AccessDenied,
     RenameFailed,
     PartialDelete,
@@ -280,21 +281,24 @@ pub fn retire(host: &dyn LeftoverHost, ctx: &Context<'_>) -> Outcome {
     finish(host, ctx, &mut state, &tombstone, &dir)
 }
 
-/// The rename's error as a reason: a file open in the directory, no right to rename it, or else.
+/// The rename's error as a reason. On Windows a directory rename fails with
+/// `ERROR_ACCESS_DENIED`, not a sharing violation, while any file below it is open, and the
+/// per-user install is the user's own folder, so all three codes mean a file in use; the log keeps
+/// the raw error. Elsewhere a denial is a missing right.
 fn rename_failure(error: &std::io::Error) -> Keep {
-    // ERROR_SHARING_VIOLATION and ERROR_LOCK_VIOLATION.
-    const IN_USE: [i32; 2] = [32, 33];
-    if cfg!(windows)
-        && error
+    // ERROR_ACCESS_DENIED, ERROR_SHARING_VIOLATION and ERROR_LOCK_VIOLATION.
+    const IN_USE: [i32; 3] = [5, 32, 33];
+    if cfg!(windows) {
+        if error
             .raw_os_error()
             .is_some_and(|code| IN_USE.contains(&code))
-    {
-        Keep::InUse
+        {
+            return Keep::InUse;
+        }
     } else if error.kind() == std::io::ErrorKind::PermissionDenied {
-        Keep::AccessDenied
-    } else {
-        Keep::RenameFailed
+        return Keep::AccessDenied;
     }
+    Keep::RenameFailed
 }
 
 /// A removal an earlier launch recorded. `None` when it never renamed the directory, so this
@@ -321,9 +325,9 @@ fn resume(
             return Some(keep(ctx, state, reason));
         }
     } else if exists(&origin) {
-        // Recorded, never renamed.
-        state.origin = None;
-        state.tombstone = None;
+        // Recorded and never renamed, or deleted and installed again at the same path before the
+        // keys went. Either way the folder there is found afresh and waits its own day.
+        *state = LeftoverState::default();
         save(ctx, state);
         return None;
     }

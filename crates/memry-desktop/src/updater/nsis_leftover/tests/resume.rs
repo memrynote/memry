@@ -25,8 +25,28 @@ fn a_recorded_tombstone_that_was_never_renamed_to_starts_over() {
     assert_eq!(machine.run(&host, T0), Outcome::Waiting);
     machine.record(&machine.nsis, &machine.tombstone());
 
-    assert_eq!(machine.run(&host, T0 + GRACE_MS), retired(true));
+    // Found afresh: it waits its own day.
+    assert_eq!(machine.run(&host, T0 + GRACE_MS), Outcome::Waiting);
+    assert!(machine.nsis.join("Memrynote.exe").exists());
+    assert_eq!(machine.run(&host, T0 + 2 * GRACE_MS), retired(true));
     assert!(!machine.nsis.exists());
+}
+
+#[test]
+fn an_install_made_again_after_the_delete_but_before_the_keys_waits_its_own_day() {
+    let machine = Machine::new();
+    let host = machine.host();
+    host.delete_fails.store(1, Ordering::SeqCst);
+    assert_eq!(machine.run_past_grace(&host), kept(Keep::Registry, true));
+    assert!(!machine.tombstone().exists());
+    // Electron installed again at the same path before the next launch.
+    electron_install(&machine.nsis);
+
+    assert_eq!(machine.run(&host, T0 + GRACE_MS + 1), Outcome::Waiting);
+    assert!(machine.nsis.join("Memrynote.exe").exists());
+    assert_eq!(host.deletes(), 0);
+    assert_eq!(machine.run(&host, T0 + 2 * GRACE_MS + 1), retired(true));
+    assert_eq!(host.deletes(), 1);
 }
 
 #[test]

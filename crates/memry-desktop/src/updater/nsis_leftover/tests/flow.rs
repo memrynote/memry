@@ -136,6 +136,35 @@ fn nothing_is_renamed_before_the_removal_is_recorded() {
     assert!(!machine.tombstone().exists());
 }
 
+#[cfg(windows)]
+#[test]
+fn a_file_open_in_it_makes_the_rename_fail_as_in_use() {
+    use std::os::windows::fs::OpenOptionsExt;
+    // FILE_SHARE_READ only, as most programs open a file: no delete or rename below it.
+    const FILE_SHARE_READ: u32 = 1;
+    let machine = Machine::new();
+    let held = std::sync::Arc::new(Mutex::new(None));
+    let slot = held.clone();
+    let mut host = machine.host();
+    host.on_wait = Some(Box::new(move |dir: &Path| {
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(FILE_SHARE_READ)
+            .open(dir.join("resources").join("app.asar"))
+            .unwrap();
+        *slot.lock().unwrap() = Some(file);
+    }));
+
+    let outcome = machine.run_past_grace(&host);
+    drop(held.lock().unwrap().take());
+    assert_eq!(outcome, kept(Keep::InUse, true));
+    assert!(machine.nsis.join("Memrynote.exe").exists());
+    assert_eq!(
+        (machine.state().origin, machine.state().tombstone),
+        (None, None)
+    );
+}
+
 #[test]
 fn a_pending_nsis_restore_keeps_it_and_its_keys() {
     // The backup beside it.

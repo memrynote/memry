@@ -194,6 +194,7 @@ pub(crate) fn electron_install(dir: &Path) {
         "LICENSE.electron.txt",
         "resources/app.asar",
         "resources/app-config",
+        "resources/.env",
         "resources/app-update.yml",
         "resources/elevate.exe",
         "resources/node_modules/sharp/index.js",

@@ -139,6 +139,11 @@ fn a_user_root_is_never_taken_even_when_it_holds_electron_files() {
 fn a_root_that_cannot_be_compared_refuses_the_removal() {
     let machine = Machine::new();
     let host = machine.host();
+    // Windows: a device path (a redirected profile on a share is the same case). A climb with
+    // `..` cannot stand in there: a path pushed onto a verbatim `\\?\` base drops it.
+    #[cfg(windows)]
+    let roots = [PathBuf::from(r"\\.\pipe\memry-nsis-test\Notes")];
+    #[cfg(not(windows))]
     let roots = [machine.home.join("gone").join("..").join("Notes")];
     assert_eq!(machine.run_in(&host, T0, &[], &roots), Outcome::Waiting);
     assert_eq!(

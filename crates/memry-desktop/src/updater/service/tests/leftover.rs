@@ -6,7 +6,8 @@ use super::*;
 use crate::updater::nsis_leftover::tests::{FakeHost, electron_install, registration_for};
 use crate::updater::nsis_leftover::{GRACE_MS, LeftoverState, STATE_FILENAME};
 
-/// A leftover an earlier launch found more than a day ago.
+/// A leftover an earlier launch found more than a day ago: one pass finds it, then its record is
+/// dated back past the wait.
 fn found_a_day_ago(rig: &Rig) -> (PathBuf, FakeHost) {
     let nsis = rig
         .dir
@@ -16,18 +17,15 @@ fn found_a_day_ago(rig: &Rig) -> (PathBuf, FakeHost) {
         .join("Programs")
         .join("Memrynote");
     electron_install(&nsis);
-    let state = LeftoverState {
-        first_seen_at: Some(now_ms() - GRACE_MS - 1),
-        install_location: Some(nsis.to_string_lossy().into_owned()),
-        ..LeftoverState::default()
-    };
-    std::fs::write(
-        rig.dir.path().join(STATE_FILENAME),
-        serde_json::to_vec(&state).unwrap(),
-    )
-    .unwrap();
     let host = FakeHost::default();
     *host.registration.lock().unwrap() = Some(registration_for(&nsis));
+    rig.service.retire_nsis_leftover(&host, &[], &[], None);
+    let record = rig.dir.path().join(STATE_FILENAME);
+    let mut state: LeftoverState =
+        serde_json::from_slice(&std::fs::read(&record).unwrap()).unwrap();
+    assert!(state.first_seen_at.is_some(), "{state:?}");
+    state.first_seen_at = Some(now_ms() - GRACE_MS - 1);
+    std::fs::write(&record, serde_json::to_vec(&state).unwrap()).unwrap();
     (nsis, host)
 }
 
