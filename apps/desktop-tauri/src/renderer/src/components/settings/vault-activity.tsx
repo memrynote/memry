@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
+import { VAULT_ACTIVITY_RETENTION_DAYS } from '@memry/contracts/vault-activity-api'
 import {
-  VAULT_ACTIVITY_RETENTION_DAYS,
+  commands,
+  type VaultActivityEntry,
   type VaultActivityFilter
-} from '@memry/contracts/vault-activity-api'
-import { commands, type VaultActivityEntry } from '../../../../generated/bindings'
+} from '../../../../generated/bindings'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Select,

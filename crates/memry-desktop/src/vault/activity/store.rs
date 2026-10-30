@@ -4,13 +4,12 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 
-use super::disk::{Work, read_log, read_retention};
+use super::disk::{DEFAULT_RETENTION_DAYS, Work, cutoff, read_log, read_retention};
 use super::entry::Line;
 use super::{COMPACT_SLACK, MAX_ENTRIES};
 use crate::vault::layout::CANVAS_FILE_EXT;
 
-const DAY_MS: i64 = 86_400_000;
-/// Dedupe keys kept before the expired ones are dropped.
+/// Dedupe keys kept before the expired ones are first dropped.
 const DEDUPE_KEYS: usize = 4096;
 
 /// The log of the open vault.
@@ -20,33 +19,30 @@ pub(super) struct Log {
     pub(super) generation: u64,
     /// Oldest first.
     pub(super) lines: VecDeque<Line>,
-    pub(super) retention_days: u32,
-    /// New lines not on disk yet.
+    /// `None` for a retention the settings file names and this build does not know: no entry
+    /// goes for its age, only past the cap.
+    pub(super) retention_days: Option<u32>,
+    /// New lines not on disk yet, oldest first; also in `lines` while those keep them.
     pub(super) pending: Vec<String>,
     /// The file no longer matches `lines` minus `pending`: write it whole.
     pub(super) needs_rewrite: bool,
+    /// The file's last line has no newline, so an append starts on a line of its own.
+    pub(super) torn_tail: bool,
     /// `false` when the file could not be read at open: never rewritten.
     pub(super) readable: bool,
     /// Paths reported as unsupported, each reported once while its entry is kept.
     pub(super) reported_skips: HashSet<String>,
     /// Dedupe key -> (when it was recorded, its window), epoch ms.
     pub(super) recent_keys: HashMap<String, (i64, i64)>,
+    /// Size of `recent_keys` at which the expired keys are dropped: twice what the last drop
+    /// left, so each drop is paid for by as many inserts.
+    purge_at: usize,
 }
 
 impl Log {
     pub(super) fn load(root: &Path, now_ms: i64) -> Self {
-        let loaded = read_log(root);
-        let mut log = Self {
-            root: root.to_owned(),
-            generation: 0,
-            lines: loaded.lines.into(),
-            retention_days: read_retention(root),
-            pending: Vec::new(),
-            needs_rewrite: false,
-            readable: loaded.readable,
-            reported_skips: HashSet::new(),
-            recent_keys: HashMap::new(),
-        };
+        let retention_days = read_retention(root);
+        let loaded = read_log(root, cutoff(retention_days, now_ms));
         if loaded.dropped > 0 {
             tracing::warn!(
                 scope = "vault_activity",
@@ -54,19 +50,37 @@ impl Log {
                 "lines of the activity log are not JSON; the next rewrite drops them"
             );
         }
-        let pruned = log.prune(now_ms);
-        log.needs_rewrite = log.readable && (pruned || loaded.dropped > 0 || loaded.torn_tail);
+        let mut log = Self {
+            root: root.to_owned(),
+            generation: 0,
+            lines: loaded.lines,
+            retention_days,
+            pending: Vec::new(),
+            needs_rewrite: loaded.readable
+                && (loaded.pruned > 0 || loaded.dropped > 0 || loaded.torn_tail),
+            torn_tail: loaded.torn_tail,
+            readable: loaded.readable,
+            reported_skips: HashSet::new(),
+            recent_keys: HashMap::new(),
+            purge_at: DEDUPE_KEYS,
+        };
         log.collect_skips();
         log
+    }
+
+    /// The retention the renderer shows: an unknown one as the default.
+    pub(super) fn shown_retention(&self) -> u32 {
+        self.retention_days.unwrap_or(DEFAULT_RETENTION_DAYS)
     }
 
     /// Drops lines past the retention window, then the oldest past the cap. A line whose time
     /// this build cannot read is kept by the window.
     pub(super) fn prune(&mut self, now_ms: i64) -> bool {
         let before = self.lines.len();
-        let cutoff = now_ms - i64::from(self.retention_days) * DAY_MS;
-        self.lines
-            .retain(|line| line.at_ms.is_none_or(|at| at >= cutoff));
+        if let Some(cutoff) = cutoff(self.retention_days, now_ms) {
+            self.lines
+                .retain(|line| line.at_ms.is_none_or(|at| at >= cutoff));
+        }
         if self.lines.len() > MAX_ENTRIES {
             self.lines.drain(..self.lines.len() - MAX_ENTRIES);
         }
@@ -82,15 +96,12 @@ impl Log {
     }
 
     pub(super) fn push(&mut self, line: Line) {
-        let raw = line.raw.clone();
+        self.pending.push(line.raw.clone());
+        self.cap_pending();
         self.lines.push_back(line);
         if self.lines.len() > MAX_ENTRIES + COMPACT_SLACK {
             self.lines.drain(..self.lines.len() - MAX_ENTRIES);
             self.needs_rewrite = self.readable;
-        }
-        if !self.needs_rewrite {
-            self.pending.push(raw);
-            self.cap_pending();
         }
     }
 
@@ -103,27 +114,34 @@ impl Log {
     }
 
     pub(super) fn take_work(&mut self) -> Option<Work> {
+        let unwritten = std::mem::take(&mut self.pending);
         if self.needs_rewrite {
             self.needs_rewrite = false;
-            self.pending.clear();
-            return Some(Work::Rewrite(
-                self.lines.iter().map(|line| line.raw.clone()).collect(),
-            ));
+            let lines = self.lines.iter().map(|line| line.raw.clone()).collect();
+            return Some(Work::Rewrite { lines, unwritten });
         }
-        (!self.pending.is_empty()).then(|| Work::Append(std::mem::take(&mut self.pending)))
+        (!unwritten.is_empty()).then_some(Work::Append {
+            lines: unwritten,
+            separate: self.torn_tail,
+        })
     }
 
-    /// Puts back a write that failed, for the next one.
+    /// The write reached the disk: the file ends with a newline.
+    pub(super) fn wrote(&mut self) {
+        self.torn_tail = false;
+    }
+
+    /// Puts back a write that failed. A rewrite falls back to appending the lines it would
+    /// have written, so a file that cannot be replaced still gets every new entry.
     pub(super) fn restore(&mut self, work: Work) {
-        match work {
-            Work::Rewrite(_) => self.needs_rewrite = true,
-            Work::Append(mut lines) if !self.needs_rewrite => {
-                lines.append(&mut self.pending);
-                self.pending = lines;
-                self.cap_pending();
-            }
-            Work::Append(_) => {}
-        }
+        let (Work::Append { mut lines, .. }
+        | Work::Rewrite {
+            unwritten: mut lines,
+            ..
+        }) = work;
+        lines.append(&mut self.pending);
+        self.pending = lines;
+        self.cap_pending();
     }
 
     /// `false` for a repeat of `key` inside its window.
@@ -135,9 +153,10 @@ impl Log {
         {
             return false;
         }
-        if self.recent_keys.len() >= DEDUPE_KEYS {
+        if self.recent_keys.len() >= self.purge_at {
             self.recent_keys
                 .retain(|_, (last, window)| now_ms - *last < *window);
+            self.purge_at = DEDUPE_KEYS.max(2 * self.recent_keys.len());
         }
         self.recent_keys.insert(key.to_owned(), (now_ms, window));
         true
@@ -178,6 +197,7 @@ pub(super) fn is_user_content(path: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vault::activity::parse::{Read, read_line};
 
     #[test]
     fn extension_is_node_s_extname_of_the_name() {
@@ -206,6 +226,37 @@ mod tests {
         }
         for path in ["a/b.docx", "a/lock", "a/b.locker"] {
             assert!(is_user_content(path), "{path}");
+        }
+    }
+
+    fn line(id: &str) -> Line {
+        let raw = format!(
+            r#"{{"v":1,"id":"{id}","at":"2026-10-30T11:00:00.000Z","kind":"added","source":"watcher"}}"#
+        );
+        let Read::Line(parsed) = read_line(&raw) else {
+            panic!("not a line: {raw}");
+        };
+        parsed.into_line(raw)
+    }
+
+    /// A line recorded while a write was out reaches the disk after the lines that write held,
+    /// whether the failed write was an append or a rewrite.
+    #[test]
+    fn a_failed_write_s_lines_go_back_ahead_of_the_ones_recorded_meanwhile() {
+        let dir = tempfile::tempdir().unwrap();
+        for rewrite in [false, true] {
+            let mut log = Log::load(dir.path(), 0);
+            log.needs_rewrite = rewrite;
+            let (a, b) = (line("a"), line("b"));
+            let expected = [a.raw.clone(), b.raw.clone()];
+            log.push(a);
+            let out = log.take_work().unwrap();
+            log.push(b);
+            log.restore(out);
+            let Some(Work::Append { lines, .. }) = log.take_work() else {
+                panic!("the retry is not an append");
+            };
+            assert_eq!(lines, expected, "rewrite: {rewrite}");
         }
     }
 }

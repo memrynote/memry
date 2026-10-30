@@ -150,11 +150,13 @@ fn recorded_entries_reach_the_file_and_read_back_in_order() {
     let dir = vault();
     let log = at(now());
     log.open(dir.path());
-    assert!(
-        log.record(ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("a.md"))
-    );
+    assert!(log.record(
+        dir.path(),
+        ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("a.md")
+    ));
     assert!(
         log.record(
+            dir.path(),
             ActivityInput::new(ActivityKind::Renamed, ActivitySource::Watcher)
                 .path("b.md")
                 .old_path("a.md")
@@ -180,10 +182,10 @@ fn recorded_entries_reach_the_file_and_read_back_in_order() {
 #[test]
 fn nothing_is_recorded_while_no_vault_is_open() {
     let log = at(now());
-    assert!(!log.record(ActivityInput::new(
-        ActivityKind::Added,
-        ActivitySource::Watcher
-    )));
+    assert!(!log.record(
+        Path::new("nowhere"),
+        ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher)
+    ));
     assert!(!log.list(10, ActivityFilter::All).available);
     assert!(log.prepare_file().is_none());
     log.clear().unwrap();
@@ -195,10 +197,14 @@ fn an_unsupported_file_is_reported_once_and_canvases_and_lock_files_never() {
     let dir = vault();
     let log = at(now());
     log.open(dir.path());
-    assert!(log.record_skipped("inbox\\Photo.HEIC", ActivitySource::Watcher));
-    assert!(!log.record_skipped("inbox/Photo.HEIC", ActivitySource::Scan));
-    assert!(!log.record_skipped("canvases/board.excalidraw", ActivitySource::Watcher));
-    assert!(!log.record_skipped("~$report.docx", ActivitySource::Watcher));
+    assert!(log.record_skipped(dir.path(), "inbox\\Photo.HEIC", ActivitySource::Watcher));
+    assert!(!log.record_skipped(dir.path(), "inbox/Photo.HEIC", ActivitySource::Scan));
+    assert!(!log.record_skipped(
+        dir.path(),
+        "canvases/board.excalidraw",
+        ActivitySource::Watcher
+    ));
+    assert!(!log.record_skipped(dir.path(), "~$report.docx", ActivitySource::Watcher));
     let entry = &log.list(10, ActivityFilter::All).entries[0];
     assert_eq!(entry.path.as_deref(), Some("inbox/Photo.HEIC"));
     assert_eq!(entry.message.as_deref(), Some(".heic"));
@@ -207,9 +213,9 @@ fn an_unsupported_file_is_reported_once_and_canvases_and_lock_files_never() {
     // Still reported after a reopen, while its entry is kept; again once it is cleared.
     let reopened = at(now());
     reopened.open(dir.path());
-    assert!(!reopened.record_skipped("inbox/Photo.HEIC", ActivitySource::Scan));
+    assert!(!reopened.record_skipped(dir.path(), "inbox/Photo.HEIC", ActivitySource::Scan));
     reopened.clear().unwrap();
-    assert!(reopened.record_skipped("inbox/Photo.HEIC", ActivitySource::Scan));
+    assert!(reopened.record_skipped(dir.path(), "inbox/Photo.HEIC", ActivitySource::Scan));
 }
 
 #[test]
@@ -224,11 +230,11 @@ fn a_repeat_inside_its_dedupe_window_is_dropped() {
             .reason("note-too-large")
             .dedupe("k", 1000)
     };
-    assert!(log.record(failed()));
+    assert!(log.record(dir.path(), failed()));
     clock.fetch_add(999, std::sync::atomic::Ordering::SeqCst);
-    assert!(!log.record(failed()));
+    assert!(!log.record(dir.path(), failed()));
     clock.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-    assert!(log.record(failed()));
+    assert!(log.record(dir.path(), failed()));
 }
 
 #[test]
@@ -236,7 +242,10 @@ fn clearing_empties_the_file_and_the_list() {
     let dir = vault();
     let log = at(now());
     log.open(dir.path());
-    log.record(ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("a.md"));
+    log.record(
+        dir.path(),
+        ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("a.md"),
+    );
     log.flush().unwrap();
     log.clear().unwrap();
     assert!(log.list(10, ActivityFilter::All).entries.is_empty());
@@ -327,6 +336,32 @@ fn a_settings_file_that_is_not_a_json_object_is_left_as_it_is() {
     }
 }
 
+/// Electron prunes by 30 days under a retention it does not know; a newer build may have set
+/// one longer than any this build knows, so nothing goes for its age, only past the cap.
+#[test]
+fn a_retention_this_build_does_not_know_drops_no_entry_for_its_age() {
+    for settings in [r#"{"retentionDays":365}"#, "not json", "[30]"] {
+        let dir = vault();
+        let old =
+            memry_core::storage::repositories::instants::to_iso8601(now() - 200 * DAY).unwrap();
+        let line =
+            format!(r#"{{"v":1,"id":"old","at":"{old}","kind":"added","source":"watcher"}}"#);
+        fs::write(log_path(dir.path()), format!("{line}\n")).unwrap();
+        fs::write(settings_path(dir.path()), settings).unwrap();
+        let log = at(now());
+        log.open(dir.path());
+        let listed = log.list(10, ActivityFilter::All);
+        assert_eq!(ids(&listed.entries), ["old"], "{settings}");
+        assert_eq!(listed.retention_days, 30, "{settings}");
+        log.flush().unwrap();
+        assert_eq!(
+            on_disk(dir.path()).unwrap(),
+            format!("{line}\n"),
+            "{settings}"
+        );
+    }
+}
+
 #[test]
 fn a_log_file_too_large_to_read_is_appended_to_and_never_rewritten() {
     let dir = vault();
@@ -338,6 +373,7 @@ fn a_log_file_too_large_to_read_is_appended_to_and_never_rewritten() {
     assert!(log.list(10, ActivityFilter::All).entries.is_empty());
     for n in 0..=MAX_ENTRIES + 600 {
         log.record(
+            dir.path(),
             ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher)
                 .path(format!("{n}.md")),
         );
@@ -354,6 +390,48 @@ fn a_log_file_too_large_to_read_is_appended_to_and_never_rewritten() {
     assert!(appended.ends_with(&format!("\"path\":\"{}.md\"}}\n", MAX_ENTRIES + 600)));
 }
 
+/// A FIFO would block the open hook, and a link out of the vault (to `/dev/zero`) would be
+/// read without end: neither is read, waited on, or written.
+#[cfg(unix)]
+#[test]
+fn a_fifo_log_or_a_settings_link_out_of_the_vault_is_neither_read_nor_waited_on() {
+    use std::os::unix::ffi::OsStrExt;
+    let dir = vault();
+    let fifo = std::ffi::CString::new(log_path(dir.path()).as_os_str().as_bytes()).unwrap();
+    // SAFETY: a NUL-terminated path that lives across the call.
+    assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
+    std::os::unix::fs::symlink("/dev/zero", settings_path(dir.path())).unwrap();
+    let log = at(now());
+    let (done, opened) = std::sync::mpsc::channel();
+    let (root, opener) = (dir.path().to_owned(), log.clone());
+    std::thread::spawn(move || {
+        opener.open(&root);
+        let _ = done.send(opener.list(10, ActivityFilter::All));
+    });
+    // timing-bound: an open that blocks on the FIFO or reads `/dev/zero` never returns.
+    let listed = opened
+        .recv_timeout(Duration::from_secs(30))
+        .expect("the open blocked");
+    assert!(listed.available && listed.entries.is_empty());
+    assert_eq!(listed.retention_days, 30);
+    log.record(
+        dir.path(),
+        ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("a.md"),
+    );
+    assert!(log.flush().is_err(), "wrote into the FIFO");
+    assert!(matches!(
+        log.set_retention(7),
+        Err(ActivityError::Disk(DiskError::Unreadable { .. }))
+    ));
+    assert!(
+        fs::symlink_metadata(settings_path(dir.path()))
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+    assert_eq!(log.list(10, ActivityFilter::All).entries.len(), 1);
+}
+
 #[test]
 fn a_vault_that_is_away_is_not_recreated_and_gets_its_entries_once_back() {
     let parent = tempfile::tempdir().unwrap();
@@ -362,7 +440,10 @@ fn a_vault_that_is_away_is_not_recreated_and_gets_its_entries_once_back() {
     let log = at(now());
     log.open(&root);
     fs::remove_dir_all(&root).unwrap();
-    log.record(ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("a.md"));
+    log.record(
+        &root,
+        ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("a.md"),
+    );
     assert!(log.flush().is_err());
     assert!(
         !root.exists(),
@@ -388,11 +469,11 @@ fn the_file_is_compacted_to_the_newest_entries_past_the_cap_and_its_slack() {
         let log = at(now());
         log.open(dir.path());
         for n in 0..MAX_ENTRIES {
-            log.record(added(n));
+            log.record(dir.path(), added(n));
         }
         log.flush().unwrap();
         for n in MAX_ENTRIES..MAX_ENTRIES + extra {
-            log.record(added(n));
+            log.record(dir.path(), added(n));
         }
         log.flush().unwrap();
         let text = on_disk(dir.path()).unwrap();
@@ -417,12 +498,55 @@ fn a_last_line_without_its_newline_is_rewritten_before_anything_is_appended() {
     fs::write(log_path(dir.path()), kept).unwrap();
     let log = at(now());
     log.open(dir.path());
-    log.record(ActivityInput::new(ActivityKind::Removed, ActivitySource::Watcher).path("b.md"));
+    log.record(
+        dir.path(),
+        ActivityInput::new(ActivityKind::Removed, ActivitySource::Watcher).path("b.md"),
+    );
     log.flush().unwrap();
     let text = on_disk(dir.path()).unwrap();
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines[0], kept);
     assert!(lines[1].contains("\"path\":\"b.md\""));
+}
+
+/// A `.memry` that takes no new file fails every rewrite, while the log in it still takes
+/// appends: the entries a failed rewrite held are appended on the retry, ahead of the ones
+/// recorded since, instead of waiting for a rewrite that never succeeds.
+#[cfg(unix)]
+#[test]
+fn a_rewrite_that_fails_is_retried_as_an_append_of_its_new_lines() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = vault();
+    let kept =
+        r#"{"v":1,"id":"t","at":"2026-10-30T11:00:00.000Z","kind":"added","source":"watcher"}"#;
+    fs::write(log_path(dir.path()), kept).unwrap();
+    let memry = dir.path().join(".memry");
+    fs::set_permissions(&memry, fs::Permissions::from_mode(0o555)).unwrap();
+    let log = at(now());
+    log.open(dir.path());
+    let removed =
+        |path: &str| ActivityInput::new(ActivityKind::Removed, ActivitySource::Watcher).path(path);
+    log.record(dir.path(), removed("b.md"));
+    // Fails as a rewrite unless the log's own thread got there first; either way `c.md` is
+    // recorded while `b.md` waits for its retry.
+    let _ = log.flush();
+    log.record(dir.path(), removed("c.md"));
+    let deadline = std::time::Instant::now() + Duration::from_secs(30);
+    let mut text = on_disk(dir.path()).unwrap();
+    while text.lines().count() < 3 && std::time::Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(50));
+        text = on_disk(dir.path()).unwrap();
+    }
+    fs::set_permissions(&memry, fs::Permissions::from_mode(0o755)).unwrap();
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(
+        lines.len(),
+        3,
+        "the new entries were not appended: {text:?}"
+    );
+    assert_eq!(lines[0], kept);
+    assert!(lines[1].contains("\"path\":\"b.md\""), "{text:?}");
+    assert!(lines[2].contains("\"path\":\"c.md\""), "{text:?}");
 }
 
 #[test]
@@ -440,9 +564,19 @@ fn switching_vaults_keeps_their_entries_apart_and_a_late_close_leaves_the_open_o
     let (a, b) = (vault(), vault());
     let log = at(now());
     log.open(a.path());
-    log.record(ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("in-a.md"));
+    log.record(
+        a.path(),
+        ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("in-a.md"),
+    );
     log.open(b.path());
     assert!(log.list(10, ActivityFilter::All).entries.is_empty());
+    assert!(
+        !log.record(
+            a.path(),
+            ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher)
+        ),
+        "a late report about A landed in B's log"
+    );
     assert!(
         on_disk(a.path()).unwrap().contains("in-a.md"),
         "the switch wrote A's entries"
@@ -452,7 +586,10 @@ fn switching_vaults_keeps_their_entries_apart_and_a_late_close_leaves_the_open_o
         log.list(10, ActivityFilter::All).available,
         "A's late close closed B"
     );
-    log.record(ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("in-b.md"));
+    log.record(
+        b.path(),
+        ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path("in-b.md"),
+    );
     log.close(b.path());
     assert!(!log.list(10, ActivityFilter::All).available);
     assert!(
@@ -462,20 +599,26 @@ fn switching_vaults_keeps_their_entries_apart_and_a_late_close_leaves_the_open_o
 }
 
 #[test]
-fn a_change_is_told_once_per_throttle_window_and_at_once_on_close() {
+fn a_change_is_told_once_per_throttle_window_and_at_once_on_open_and_close() {
     let dir = vault();
     let log = at(now());
     let mut changed = log.subscribe();
     log.open(dir.path());
+    assert!(changed.try_recv().is_ok(), "the open was not told at once");
     let recorded = std::time::Instant::now();
     for path in ["a.md", "b.md", "c.md"] {
-        log.record(ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path(path));
+        log.record(
+            dir.path(),
+            ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path(path),
+        );
     }
     let deadline = recorded + Duration::from_secs(10);
-    while changed.try_recv().is_err() {
-        assert!(std::time::Instant::now() < deadline, "no change notice");
+    let mut told = changed.try_recv().is_ok();
+    while !told && std::time::Instant::now() < deadline {
         std::thread::sleep(Duration::from_millis(20));
+        told = changed.try_recv().is_ok();
     }
+    assert!(told, "no change notice");
     assert!(
         recorded.elapsed() >= CHANGED_THROTTLE,
         "told before the throttle window ended"

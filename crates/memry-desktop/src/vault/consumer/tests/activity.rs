@@ -73,3 +73,16 @@ fn the_watcher_s_facts_reach_the_activity_log_as_electron_records_them() {
     assert_eq!(failed.reason.as_deref(), Some("read-failed"));
     assert_eq!(failed.message.as_deref(), Some("EACCES"));
 }
+
+/// Electron records an add only when no note claimed the path; a file a note already owns
+/// (moved while the app was closed, or one whose seed a crash cut short) is not news.
+#[test]
+fn a_file_an_existing_note_adopts_is_not_listed_as_added() {
+    let f = fixture();
+    f.applier.activity.open(&f.root);
+    let id = f.note();
+    *f.identity.next.lock().unwrap() = Some(Adoption::Existing(id));
+    f.write("moved.md", "moved while closed\n");
+    f.added("moved.md");
+    assert_eq!(listed(&f), vec![]);
+}

@@ -9,20 +9,25 @@
 //!   a kind this build does not know included ([`entry`]). A line that is not JSON is dropped
 //!   by the next rewrite, as Electron drops it;
 //! - an entry this build writes has the bytes Electron's writer gives the same fields;
-//! - a log file that exists and cannot be read (permission, over [`MAX_LOG_BYTES`]) is never
-//!   rewritten: entries are appended to it, and clearing it is refused. A settings file that
-//!   is not a JSON object is never replaced ([`DiskError::Unreadable`]);
+//! - a log file that exists and cannot be read (permission, over [`MAX_LOG_BYTES`], not a
+//!   regular file) is never rewritten: entries are appended to it, and clearing it is refused.
+//!   A settings file that is not a JSON object is never replaced ([`DiskError::Unreadable`]),
+//!   and a retention it names that this build does not know drops no entry for its age;
+//! - reading either file holds a bounded multiple of its size cap, whatever it holds
+//!   (`disk.rs`, `parse.rs`);
 //! - rewrites are atomic and owner-only; the vault root and `.memry`'s parent are never
 //!   created, so a vault that is away does not come back as an empty folder.
 //!
 //! Recording never blocks on the disk and never fails the caller: entries are buffered and
-//! appended [`WRITE_DELAY`] after the first one, by the log's own thread. A change is told
-//! to subscribers at most once per [`CHANGED_THROTTLE`], and at once when the log closes.
+//! appended [`WRITE_DELAY`] after the first one, by the log's own thread; a failed write is
+//! tried again [`RETRY_DELAY`] later. A change is told to subscribers at most once per
+//! [`CHANGED_THROTTLE`], and at once when a log opens or closes.
 //! [`ActivityLog::flush`] writes what is buffered now; the `flush-activity-log` shutdown step
 //! and the vault close call it.
 
 mod disk;
 mod entry;
+mod parse;
 mod store;
 
 use std::path::{Path, PathBuf};
@@ -36,13 +41,14 @@ use tokio::sync::broadcast;
 
 use disk::write_retention;
 pub use disk::{
-    DEFAULT_RETENTION_DAYS, DiskError, LOG_FILE, MAX_LOG_BYTES, RETENTION_DAYS, SETTINGS_FILE,
-    log_path, settings_path,
+    DEFAULT_RETENTION_DAYS, DiskError, LOG_FILE, MAX_LOG_BYTES, MAX_SETTINGS_BYTES, RETENTION_DAYS,
+    SETTINGS_FILE, log_path, settings_path,
 };
 pub use entry::{
-    ActivityEntry, ActivityInput, ActivityKind, ActivitySource, MAX_ITEMS, MAX_MESSAGE_UNITS, steps,
+    ActivityEntry, ActivityInput, ActivityKind, ActivitySource, MAX_ITEMS, MAX_MESSAGE_UNITS,
 };
-use entry::{Read, read_line};
+pub use parse::{MAX_COUNTS, steps};
+use parse::{Read, read_line};
 use store::{Log, extension, is_user_content};
 
 use crate::error::{CoreError, FailureKind};
@@ -54,6 +60,8 @@ pub const MAX_ENTRIES: usize = 5000;
 pub const COMPACT_SLACK: usize = 500;
 pub const WRITE_DELAY: Duration = Duration::from_millis(250);
 pub const CHANGED_THROTTLE: Duration = Duration::from_millis(500);
+/// Wait before a failed write is tried again.
+pub const RETRY_DELAY: Duration = Duration::from_secs(5);
 
 /// `problems` lists skipped and failed entries, and summaries that count either.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -71,6 +79,17 @@ pub struct ActivityList {
     pub retention_days: u32,
     /// `false` when no vault is open.
     pub available: bool,
+}
+
+impl ActivityList {
+    /// What is listed while no vault is open.
+    pub fn unavailable() -> Self {
+        Self {
+            entries: Vec::new(),
+            retention_days: DEFAULT_RETENTION_DAYS,
+            available: false,
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -156,20 +175,28 @@ impl Shared {
             return Ok(());
         };
         let result = work.run(&root);
-        if result.is_err()
-            && let Some(log) = self
-                .state()
-                .log
-                .as_mut()
-                .filter(|log| log.generation == generation)
+        let mut guard = self.state();
+        let state = &mut *guard;
+        if let Some(log) = state
+            .log
+            .as_mut()
+            .filter(|log| log.generation == generation)
         {
-            log.restore(work);
+            if result.is_ok() {
+                log.wrote();
+            } else {
+                log.restore(work);
+                state.write_due.get_or_insert(Instant::now() + RETRY_DELAY);
+                self.wake.notify_all();
+            }
         }
         result
     }
 
     /// The log's thread: runs the buffered write and the change notice when each is due.
     fn run_timers(&self) {
+        // Told once per run of failures: a vault that is away fails every retry.
+        let mut failing = false;
         let mut state = self.state();
         while !state.stop {
             let now = Instant::now();
@@ -180,11 +207,18 @@ impl Shared {
                     state.changed_due = None;
                 }
                 drop(state);
-                if write && let Err(error) = self.write() {
-                    tracing::warn!(
-                        scope = "vault_activity",
-                        "the activity log was not written: {error}"
-                    );
+                if write {
+                    match self.write() {
+                        Ok(()) => failing = false,
+                        Err(error) if !failing => {
+                            failing = true;
+                            tracing::warn!(
+                                scope = "vault_activity",
+                                "the activity log was not written; it is tried again: {error}"
+                            );
+                        }
+                        Err(_) => {}
+                    }
                 }
                 if changed {
                     let _ = self.changed.send(());
@@ -276,6 +310,9 @@ impl ActivityLog {
         if rewrite {
             self.shared.schedule_write(&mut state);
         }
+        drop(state);
+        // At once, as a close is: the renderer lists this vault's entries.
+        let _ = self.shared.changed.send(());
     }
 
     /// Writes what is buffered and lets the log of `root` go. A close of a vault that is not
@@ -309,16 +346,17 @@ impl ActivityLog {
         self.shared.write()
     }
 
-    /// Records one entry. Nothing happens while no vault is open, or for a repeat of a dedupe
-    /// key inside its window; `false` then.
-    pub fn record(&self, input: ActivityInput) -> bool {
+    /// Records one entry about the vault at `root`. Nothing happens while that vault is not the
+    /// open one (a late report of a vault that closed), or for a repeat of a dedupe key inside
+    /// its window; `false` then.
+    pub fn record(&self, root: &Path, input: ActivityInput) -> bool {
         let mut state = self.shared.state();
-        self.record_in(&mut state, input)
+        self.record_in(&mut state, root, input)
     }
 
-    fn record_in(&self, state: &mut State, input: ActivityInput) -> bool {
+    fn record_in(&self, state: &mut State, root: &Path, input: ActivityInput) -> bool {
         let now_ms = (self.shared.clock)();
-        let Some(log) = state.log.as_mut() else {
+        let Some(log) = state.log.as_mut().filter(|log| log.root == root) else {
             return false;
         };
         if let Some((key, window)) = &input.dedupe
@@ -328,14 +366,14 @@ impl ActivityLog {
         }
         let at = to_iso8601(now_ms).unwrap_or_else(|| "1970-01-01T00:00:00.000Z".to_owned());
         let raw = input.to_line(&uuid::Uuid::new_v4().to_string(), &at);
-        let Read::Line(line) = read_line(&raw) else {
+        let Read::Line(parsed) = read_line(&raw) else {
             tracing::error!(
                 scope = "vault_activity",
                 "an entry was not recorded: its line does not read back"
             );
             return false;
         };
-        log.push(*line);
+        log.push(parsed.into_line(raw));
         self.shared.schedule_write(state);
         self.shared.schedule_changed(state);
         true
@@ -344,10 +382,10 @@ impl ActivityLog {
     /// Reports a file the vault does not index because of its type (`recordSkippedFile`): once
     /// per path while its entry is kept, and never a canvas or a lock or partial file an editor
     /// or a browser leaves beside a document.
-    pub fn record_skipped(&self, path: &str, source: ActivitySource) -> bool {
+    pub fn record_skipped(&self, root: &Path, path: &str, source: ActivitySource) -> bool {
         let path = path.replace('\\', "/");
         let mut state = self.shared.state();
-        let Some(log) = state.log.as_mut() else {
+        let Some(log) = state.log.as_mut().filter(|log| log.root == root) else {
             return false;
         };
         if log.reported_skips.contains(&path) || !is_user_content(&path) {
@@ -361,17 +399,13 @@ impl ActivityLog {
         if !ext.is_empty() {
             input = input.message(format!(".{ext}"));
         }
-        self.record_in(&mut state, input)
+        self.record_in(&mut state, root, input)
     }
 
     pub fn list(&self, limit: usize, filter: ActivityFilter) -> ActivityList {
         let state = self.shared.state();
         let Some(log) = &state.log else {
-            return ActivityList {
-                entries: Vec::new(),
-                retention_days: DEFAULT_RETENTION_DAYS,
-                available: false,
-            };
+            return ActivityList::unavailable();
         };
         let entries = log
             .lines
@@ -384,7 +418,7 @@ impl ActivityLog {
             .collect();
         ActivityList {
             entries,
-            retention_days: log.retention_days,
+            retention_days: log.shown_retention(),
             available: true,
         }
     }
@@ -414,7 +448,7 @@ impl ActivityLog {
         let Some(log) = state.log.as_mut().filter(|log| log.root == root) else {
             return Ok(());
         };
-        log.retention_days = days;
+        log.retention_days = Some(days);
         if log.prune(now_ms) {
             log.collect_skips();
             log.needs_rewrite = log.readable;

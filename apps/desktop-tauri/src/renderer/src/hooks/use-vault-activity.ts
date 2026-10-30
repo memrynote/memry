@@ -10,8 +10,12 @@
 
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { VaultActivityFilter } from '@memry/contracts/vault-activity-api'
-import { commands, events, type VaultActivityList } from '../../../generated/bindings'
+import {
+  commands,
+  events,
+  type VaultActivityFilter,
+  type VaultActivityList
+} from '../../../generated/bindings'
 import { subscribeToEvent } from '@/services/tauri-event'
 
 export const vaultActivityKeys = {

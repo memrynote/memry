@@ -1,6 +1,7 @@
 //! The vault activity log (`vault-activity:*` of `ipc/vault-activity-handlers.ts`): list, clear,
 //! retention and reveal. The log itself is `memry_desktop::vault::activity`, opened and closed
-//! with the vault by the vault tier.
+//! with the vault by the vault tier. A launch that started no vault tier has no log: each
+//! command then answers as it does while no vault is open.
 
 use std::sync::Arc;
 
@@ -15,8 +16,8 @@ use super::error::{CommandError, ErrorKind, log_failure};
 const DEFAULT_LIMIT: u32 = 200;
 const MAX_LIMIT: u32 = 1000;
 
-fn activity(app: &AppHandle<Wry>) -> Arc<ActivityLog> {
-    app.state::<Arc<ActivityLog>>().inner().clone()
+fn activity(app: &AppHandle<Wry>) -> Option<Arc<ActivityLog>> {
+    Some(app.try_state::<Arc<ActivityLog>>()?.inner().clone())
 }
 
 /// The retained entries, newest first.
@@ -37,7 +38,9 @@ pub async fn vault_activity_list(
         log_failure("vault_activity_list", &error);
         return Err(error);
     }
-    let log = activity(&app);
+    let Some(log) = activity(&app) else {
+        return Ok(ActivityList::unavailable());
+    };
     blocking("vault_activity_list", move || {
         Ok(log.list(limit as usize, filter.unwrap_or(ActivityFilter::All)))
     })
@@ -48,7 +51,9 @@ pub async fn vault_activity_list(
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_activity_clear(app: AppHandle<Wry>) -> Result<(), CommandError> {
-    let log = activity(&app);
+    let Some(log) = activity(&app) else {
+        return Ok(());
+    };
     blocking("vault_activity_clear", move || {
         log.clear().map_err(|error| CommandError::from_core(&error))
     })
@@ -62,7 +67,9 @@ pub async fn vault_activity_set_retention(
     app: AppHandle<Wry>,
     days: u32,
 ) -> Result<(), CommandError> {
-    let log = activity(&app);
+    let Some(log) = activity(&app) else {
+        return Ok(());
+    };
     blocking("vault_activity_set_retention", move || {
         log.set_retention(days)
             .map_err(|error| CommandError::from_core(&error))
@@ -74,7 +81,9 @@ pub async fn vault_activity_set_retention(
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_activity_reveal(app: AppHandle<Wry>) -> Result<bool, CommandError> {
-    let log = activity(&app);
+    let Some(log) = activity(&app) else {
+        return Ok(false);
+    };
     let Some(path) = blocking("vault_activity_reveal", move || Ok(log.prepare_file())).await?
     else {
         return Ok(false);

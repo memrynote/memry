@@ -134,10 +134,12 @@ impl Applier {
     fn report(&self, event: &VaultEvent) {
         match event {
             VaultEvent::Unsupported { path } => {
-                self.activity.record_skipped(path, ActivitySource::Watcher);
+                self.activity
+                    .record_skipped(&self.root, path, ActivitySource::Watcher);
             }
             VaultEvent::Unreadable { path, reason } => {
                 self.activity.record(
+                    &self.root,
                     ActivityInput::new(ActivityKind::Failed, ActivitySource::Watcher)
                         .path(path.as_str())
                         .reason("read-failed")
@@ -186,8 +188,8 @@ impl Applier {
     }
 
     /// A file at `path`. A row there makes it a change of that row's note; otherwise the
-    /// identity names its note. A file the watcher found that got a note is `added` in the
-    /// activity log, as Electron records every add no row claimed.
+    /// identity names its note. A file the watcher found that got a new note is `added` in the
+    /// activity log, as Electron records an add no note claimed.
     fn found(
         &self,
         lane: &mut Lane<'_>,
@@ -262,9 +264,11 @@ impl Applier {
             path: path.to_owned(),
             created,
         });
-        if origin == ActivitySource::Watcher {
-            self.activity
-                .record(ActivityInput::new(ActivityKind::Added, origin).path(path));
+        if created && origin == ActivitySource::Watcher {
+            self.activity.record(
+                &self.root,
+                ActivityInput::new(ActivityKind::Added, origin).path(path),
+            );
         }
         Step::Done
     }
@@ -396,8 +400,10 @@ impl Applier {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
         });
-        self.activity
-            .record(ActivityInput::new(ActivityKind::Removed, ActivitySource::Watcher).path(path));
+        self.activity.record(
+            &self.root,
+            ActivityInput::new(ActivityKind::Removed, ActivitySource::Watcher).path(path),
+        );
     }
 
     fn renamed(&self, lane: &mut Lane<'_>, note_id: &str, old_path: &str, new_path: &str) {
@@ -445,6 +451,7 @@ impl Applier {
             new_path: new_path.to_owned(),
         });
         self.activity.record(
+            &self.root,
             ActivityInput::new(ActivityKind::Renamed, ActivitySource::Watcher)
                 .path(new_path)
                 .old_path(old_path),
