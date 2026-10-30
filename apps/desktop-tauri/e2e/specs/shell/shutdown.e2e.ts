@@ -4,8 +4,9 @@ import { join } from 'node:path'
 import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
+import { sendQuitEvent } from '../../harness/mac-quit-event'
 import { appInfo, restart } from '../../harness/tauri-lifecycle'
-import { pollUntil } from '../../harness/wait'
+import { pollUntil, readMainLog } from '../../harness/wait'
 
 const markerPath = (dataDir: string): string => join(dataDir, 'session-marker.json')
 
@@ -56,4 +57,37 @@ test('a hung step is forced out within 10.5 s and named for the next launch', as
   await restart(app)
   const next = JSON.parse(readFileSync(markerPath(appDataDir), 'utf8')) as SessionMarker
   expect(next.shutdownStep).toBeUndefined()
+})
+
+test('a Log Out quit event is accepted, and the app quits through the sequence', async ({
+  app
+}) => {
+  test.skip(process.platform !== 'darwin', 'Apple events are macOS-only')
+  const { appDataDir, logDir } = await appInfo(app)
+  expect(sendQuitEvent(app.pid, 'rlgo')).toBe('errn 0')
+  expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })).toBe(true)
+  expect(existsSync(markerPath(appDataDir))).toBe(false)
+  const log = readMainLog(logDir)
+  expect(log).toContain('macOS asked the app to terminate (quit reason rlgo)')
+  expect(log).toContain('accepting the quit macOS asked for')
+})
+
+// A Log Out that a hung step holds up still goes through: the quit is never refused, and the
+// forced exit ends the process within the budget.
+test('a Log Out quit event with a hung step is forced out within 10.5 s, never refused', async ({
+  app
+}) => {
+  test.skip(process.platform !== 'darwin', 'Apple events are macOS-only')
+  const { appDataDir, logDir } = await appInfo(app)
+  await invokeTest(app, 'e2e_trigger_shutdown_overrun', { step: 'stop-sync-runtime' })
+  const startedAt = Date.now()
+  expect(sendQuitEvent(app.pid, 'rlgo')).toBe('errn 0')
+  expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })).toBe(true)
+  expect(Date.now() - startedAt).toBeLessThan(10_500)
+  // The event reached `applicationShouldTerminate:`, which started the sequence that overran.
+  expect(readMainLog(logDir)).toContain('macOS asked the app to terminate (quit reason rlgo)')
+
+  const marker = JSON.parse(readFileSync(markerPath(appDataDir), 'utf8')) as SessionMarker
+  expect(marker.shutdownFailure).toBe('timeout')
+  expect(marker.shutdownStep).toBe('stop-sync-runtime')
 })

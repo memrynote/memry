@@ -223,21 +223,17 @@ pub fn e2e_vault_read_file(
     }
 }
 
-/// `[NSApp terminate:]`, which is what Cmd+Q and the Dock's Quit send (macOS only).
+/// `[NSApp terminate:]`, which is what Cmd+Q and the Dock's Quit send (macOS only), sent from
+/// the run loop as AppKit sends it.
 #[tauri::command]
-pub fn e2e_app_terminate(app: AppHandle<Wry>) -> Result<(), CommandError> {
+pub fn e2e_app_terminate() -> Result<(), CommandError> {
     #[cfg(target_os = "macos")]
     {
-        app.run_on_main_thread(|| {
-            if let Some(mtm) = objc2::MainThreadMarker::new() {
-                objc2_app_kit::NSApplication::sharedApplication(mtm).terminate(None);
-            }
-        })
-        .map_err(|error| failed("e2e_app_terminate", error))
+        crate::shutdown::post_terminate();
+        Ok(())
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = app;
         Err(CommandError::new(
             ErrorKind::Invalid,
             "e2e_app_terminate",
