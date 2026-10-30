@@ -87,11 +87,13 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 `tauri-plugin-dialog`) asks a result queue first when the gate is open
 (`memry_desktop::e2e::dialog_queue`):
 
-- The queue holds one answer per dialog kind (`OpenFile`, `OpenFolder`, `SaveFile`, `Confirm`),
-  consumed in push order.
+- The queue holds one answer per dialog kind (`OpenFile`, `OpenFolder`, `SaveFile`, `Confirm`,
+  `Choose`), consumed in push order.
 - An empty answer means the user cancelled. A `Confirm` answer is the string `confirm` or
-  `cancel`. A dialog asked with nothing queued answers as a cancel and logs a warning, so a
-  forgotten push fails the spec and never waits on a real dialog.
+  `cancel`. A `Choose` answer (a message with three buttons, such as the Obsidian vault prompt
+  of `vault_select`) is the index of the button, `0`, `1` or `2`; the last is the cancel. A
+  dialog asked with nothing queued answers as a cancel and logs a warning, so a forgotten push
+  fails the spec and never waits on a real dialog.
 - `invokeTest(app, 'e2e_dialog_queue_push', { kind, paths })` queues an answer and
   `e2e_dialog_queue_clear` drops them all.
 - `MEMRY_TEST_DIALOG_RESULT` (through the control file `extraEnv`) gives the queue at start:
