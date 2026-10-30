@@ -51,7 +51,16 @@ const lines = [
   '-[ ] no space',
   '- [ ] Ends in tab\t',
   '- [ ]\tTab after box',
-  '- [x]Glued done'
+  '- [x]Glued done',
+  '\ufeff- [ ] BOM first',
+  '- [ ] Trailing BOM\ufeff',
+  '- [ ] Ideographic space\u3000',
+  '\u3000- [ ] Ideographic indent',
+  '- [ ] NEL\u0085',
+  '- [ ] NEL trailing \u0085',
+  '- [ ]\u3000Ideographic after box',
+  '- [ ] Double return\r\r',
+  '- [ ] Final return\r'
 ]
 
 const docs = []
@@ -67,6 +76,10 @@ docs.push('```js `x`\n- [ ] not a fence opener\n```')
 docs.push('   ```\n- [ ] inside indented fence\n   ```\n- [ ] out')
 docs.push('    ```\n- [ ] four spaces is not a fence\n')
 docs.push('```\r\n- [ ] crlf fence\r\n```\r\n- [ ] after\r\n')
+// `\r\r\n` and a final `\r` with no line feed after it.
+docs.push('- [ ] a\r\r\n- [ ] b\r\r\n')
+docs.push('- [ ] a\n- [ ] last\r')
+docs.push('\ufeff- [ ] a\n\ufeff- [ ] b')
 
 // Seeded mixes of the lines above, so line interplay (fences, duplicates) is covered.
 let seed = 20261030

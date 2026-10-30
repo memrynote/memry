@@ -50,29 +50,42 @@ fn checkbox_text(line: &str) -> Option<&str> {
     Some(js_trim(tail))
 }
 
+/// Whether the editor would convert `line` (its `\r` ending removed) to a task.
+fn converts(line: &str) -> bool {
+    let Some(text) = checkbox_text(line) else {
+        return false;
+    };
+    if parse_task_block_suffix(text).is_some() || has_plain_checkbox_marker(text) {
+        return false;
+    }
+    text.is_empty() || obsidian_task_import_blocker(text).is_none()
+}
+
 /// `markChecklistLinesPlain`: every line `keep_line` does not name and the editor would convert
-/// gets ` {check}` after its trimmed end, before a `\r` line ending.
+/// gets ` {check}` after its trimmed end, before a `\r` line ending. Written into one string as
+/// it goes, so the output costs the input's size and a few bytes a line.
 fn mark_checklist_lines_plain(markdown: &str, keep_line: impl Fn(usize) -> bool) -> String {
     let mut fence = FenceTracker::new();
-    let mut lines: Vec<String> = markdown.split('\n').map(str::to_owned).collect();
-    for (index, raw) in lines.iter_mut().enumerate() {
-        let line = raw.strip_suffix('\r').unwrap_or(raw.as_str());
-        if fence.consume(line) || keep_line(index) {
-            continue;
+    let mut out = String::with_capacity(markdown.len());
+    for (index, raw) in markdown.split('\n').enumerate() {
+        if index > 0 {
+            out.push('\n');
         }
-        let Some(text) = checkbox_text(line) else {
-            continue;
+        let (line, eol) = match raw.strip_suffix('\r') {
+            Some(line) => (line, "\r"),
+            None => (raw, ""),
         };
-        if parse_task_block_suffix(text).is_some() || has_plain_checkbox_marker(text) {
+        // The fence sees every line, kept or not, as `fence.consume(line) || keepLine(i)` does.
+        if fence.consume(line) || keep_line(index) || !converts(line) {
+            out.push_str(raw);
             continue;
         }
-        if !text.is_empty() && obsidian_task_import_blocker(text).is_some() {
-            continue;
-        }
-        let eol = if raw.ends_with('\r') { "\r" } else { "" };
-        *raw = format!("{} {PLAIN_CHECKBOX_MARKER}{eol}", js_trim_end(line));
+        out.push_str(js_trim_end(line));
+        out.push(' ');
+        out.push_str(PLAIN_CHECKBOX_MARKER);
+        out.push_str(eol);
     }
-    lines.join("\n")
+    out
 }
 
 /// `linesAlreadyIn`: the indexes of `markdown`'s lines whose text `previous` holds, each line of
