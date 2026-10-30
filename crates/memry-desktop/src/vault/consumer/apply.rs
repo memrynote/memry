@@ -430,6 +430,7 @@ impl Applier {
             note_path: Some(path),
             writing: writing.clone(),
             frontmatter: split.block,
+            embeds: None,
         };
         let converter = converter_for(self.settings.as_ref());
         let outcome = match write {

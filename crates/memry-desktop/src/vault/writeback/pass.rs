@@ -146,6 +146,7 @@ impl Pass {
             note_id,
             &row.path,
             old_body.strip_prefix(BOM).unwrap_or(old_body),
+            &memry_core::markdown::convert::NoEmbeds,
         );
         let body = match read {
             Ok(BodyRead::Body(body)) => body,

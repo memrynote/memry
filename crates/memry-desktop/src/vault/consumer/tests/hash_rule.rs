@@ -18,7 +18,13 @@ fn a_file_is_taken_as_read_with_its_writing_frontmatter_and_not_when_that_does_n
     let body = f
         .vault
         .write_back()
-        .body(&super::super::converter_for(None), &id, "w.md", "")
+        .body(
+            &super::super::converter_for(None),
+            &id,
+            "w.md",
+            "",
+            &memry_core::markdown::convert::NoEmbeds,
+        )
         .unwrap();
     let memry_core::domain::write_back::BodyRead::Body(body) = body else {
         panic!("{body:?}");

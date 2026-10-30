@@ -103,6 +103,7 @@ impl Fixture {
             note_path: Some(rel),
             writing: Some(writing_of_yaml(&parsed.frontmatter)),
             frontmatter: split.block,
+            embeds: None,
         };
         let outcome = self
             .vault

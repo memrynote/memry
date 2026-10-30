@@ -303,6 +303,7 @@ impl Fixture {
             note_path: None,
             writing: None,
             frontmatter: None,
+            embeds: None,
         };
         self.vault
             .external_feed(self.store.clone())
