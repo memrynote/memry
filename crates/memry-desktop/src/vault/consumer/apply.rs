@@ -301,7 +301,11 @@ impl Applier {
                     record_file_hash(lane, note_id, row.file_hash.as_deref(), Some(&file.hash));
                     return Step::Done;
                 }
-                Body::Failed => return Step::Retry(path.to_owned()),
+                // The bytes were read: a move before the retry stores them pairs on them.
+                Body::Failed => {
+                    record_file_hash(lane, note_id, row.file_hash.as_deref(), Some(&file.hash));
+                    return Step::Retry(path.to_owned());
+                }
             }
         } else {
             if row.file_size == i64::try_from(size).ok() && modified_ms <= row.indexed_at {

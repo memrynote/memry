@@ -88,8 +88,22 @@ fn env_naming_notes(body_first: bool) -> (Env, Arc<Creates>) {
 }
 
 /// Moves `old.md` into a folder while the vault is closed and opens it: the note `id` keeps
-/// its id and its file, and the moved file is not offered as a new note.
+/// its id and its file, the moved file is not offered as a new note, and nothing else changes.
 fn a_closed_move_pairs(e: &mut Env, identity: &Creates, id: String, case: &str) {
+    let offered = identity.offered.lock().unwrap().clone();
+    let mut rows: Vec<_> = e
+        .rows()
+        .into_iter()
+        .map(|(note, path)| {
+            let path = if note == id {
+                "dir/moved.md".to_owned()
+            } else {
+                path
+            };
+            (note, path)
+        })
+        .collect();
+    rows.sort();
     e.close();
     fs::create_dir_all(e.vault.join("dir")).unwrap();
     fs::rename(e.vault.join("old.md"), e.vault.join("dir/moved.md")).unwrap();
@@ -104,18 +118,14 @@ fn a_closed_move_pairs(e: &mut Env, identity: &Creates, id: String, case: &str) 
         )),
         "{case}: {facts:?}"
     );
-    assert!(
-        !identity
-            .offered
-            .lock()
-            .unwrap()
-            .contains(&"dir/moved.md".to_owned()),
+    assert_eq!(
+        *identity.offered.lock().unwrap(),
+        offered,
         "{case}: the moved file was offered as a new note"
     );
-    assert!(
-        e.rows().contains(&(id, "dir/moved.md".to_owned())),
-        "{case}"
-    );
+    let mut now = e.rows();
+    now.sort();
+    assert_eq!(now, rows, "{case}");
 }
 
 fn larger_than_the_editor_takes() -> String {
@@ -183,6 +193,36 @@ fn a_note_whose_file_changed_past_what_its_document_takes_still_pairs_a_later_mo
         );
         a_closed_move_pairs(&mut e, &identity, id, case);
     }
+}
+
+/// A file changed while the app was closed whose text the note's document could not store
+/// (the database refused the write): the open read its bytes, so a move made before the
+/// retry stores the text still pairs on them.
+#[test]
+fn a_file_read_whose_text_could_not_be_stored_still_pairs_a_move_made_while_closed() {
+    let (mut e, identity) = env_naming_notes(false);
+    e.write("old.md", "a small note\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = e.rows()[0].0.clone();
+    exec(
+        &e,
+        "CREATE TRIGGER no_body BEFORE INSERT ON yjs_updates \
+         BEGIN SELECT RAISE(ABORT, 'the disk is full'); END",
+    );
+    e.close();
+
+    e.write("old.md", "a small note, edited\n");
+    e.drain();
+    e.open();
+    e.facts_until(indexed);
+    let row = e.core().note_files().by_id(&id).unwrap().unwrap();
+    assert_eq!(
+        row.content_hash,
+        Some(content_hash("a small note\n")),
+        "the document took the edit"
+    );
+    a_closed_move_pairs(&mut e, &identity, id, "a body the database refused");
 }
 
 /// A row from before file hashes (#3744) whose document never took its file has none: the
