@@ -126,6 +126,7 @@ impl Fixture {
         let stat = RowStat {
             file_type,
             size,
+            file_hash: hash.clone(),
             content_hash: hash,
         };
         let session = self.rows.session_for(&self.vault).unwrap();

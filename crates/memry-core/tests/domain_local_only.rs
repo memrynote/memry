@@ -74,6 +74,7 @@ fn create_note(db: &Db, id: &'static str) {
                 mime_type: None,
                 file_size: Some(1),
                 content_hash: None,
+                file_hash: None,
                 indexed_at: NOW,
             },
         )
