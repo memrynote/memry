@@ -16,6 +16,9 @@
 //!   after the caller looked is never overwritten: the call fails with `AlreadyExists`.
 //!   [`create_unique`] picks the first free `<name> N<ext>` that way.
 //!
+//! [`rename_no_replace`] moves a file or folder that is already whole into a name that must
+//! still be free, the same way as a create: `AlreadyExists` rather than a replace.
+//!
 //! After a replace or create the directory is synced (Unix), so the rename itself survives a
 //! power cut, not only the file's bytes. Windows has no directory sync; a create there is a
 //! `MOVEFILE_WRITE_THROUGH` move, a replace relies on the file's own `sync_all`.
@@ -200,11 +203,9 @@ fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
 
 #[cfg(windows)]
 fn move_file_no_replace(from: &Path, to: &Path) -> io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
     use windows::Win32::Storage::FileSystem::{MOVEFILE_WRITE_THROUGH, MoveFileExW};
     use windows::core::PCWSTR;
-    let wide = |p: &Path| -> Vec<u16> { p.as_os_str().encode_wide().chain(Some(0)).collect() };
-    let (from, to) = (wide(from), wide(to));
+    let (from, to) = (wide_verbatim(from)?, wide_verbatim(to)?);
     // SAFETY: both buffers are NUL-terminated and outlive the call.
     unsafe {
         MoveFileExW(
@@ -214,6 +215,30 @@ fn move_file_no_replace(from: &Path, to: &Path) -> io::Result<()> {
         )
     }
     .map_err(crate::shell::file_open::win_io_error)
+}
+
+/// `path` absolute, in the `\\?\` form and NUL-terminated: the form a wide Win32 call takes past
+/// `MAX_PATH` (260 characters). `std::fs` adds the prefix to its own calls; a direct `MoveFileExW`
+/// with a plain path fails on a vault that deep.
+#[cfg(windows)]
+fn wide_verbatim(path: &Path) -> io::Result<Vec<u16>> {
+    use std::os::windows::ffi::OsStrExt;
+    use std::path::{Component, Prefix};
+    // `GetFullPathNameW`: resolves `.` and `..` and turns `/` into `\`, which the verbatim form
+    // takes literally. A path already verbatim comes back as it is.
+    let path = std::path::absolute(path)?;
+    let full = path.as_os_str().encode_wide();
+    let mut wide: Vec<u16> = match path.components().next() {
+        Some(Component::Prefix(prefix)) => match prefix.kind() {
+            Prefix::Disk(_) => r"\\?\".encode_utf16().chain(full).collect(),
+            // `\\server\share\x` is `\\?\UNC\server\share\x`.
+            Prefix::UNC(..) => r"\\?\UNC".encode_utf16().chain(full.skip(1)).collect(),
+            _ => full.collect(),
+        },
+        _ => full.collect(),
+    };
+    wide.push(0);
+    Ok(wide)
 }
 
 /// Renames the file or folder `from` to `to` only while nothing is at `to`: `AlreadyExists`

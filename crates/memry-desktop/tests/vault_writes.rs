@@ -5,7 +5,9 @@ use std::fs;
 use std::path::Path;
 
 use memry_core::markdown::frontmatter::{YamlMap, parse_markdown_note};
-use memry_desktop::vault::fs_atomic::{atomic_create, atomic_create_checked, create_unique};
+use memry_desktop::vault::fs_atomic::{
+    atomic_create, atomic_create_checked, create_unique, rename_no_replace,
+};
 use memry_desktop::vault::note_file::{
     NoteFileError, hash_file, read_note, write_new_note, write_new_note_checked, write_note,
 };
@@ -92,6 +94,25 @@ fn a_create_in_a_new_folder_makes_the_folder() {
     let dir = tempfile::tempdir().unwrap();
     atomic_create(&dir.path().join("a/b/c.md"), b"x").unwrap();
     assert_eq!(fs::read(dir.path().join("a/b/c.md")).unwrap(), b"x");
+}
+
+/// Past `MAX_PATH` (260 characters) a wide Windows call needs the `\\?\` form, which `std::fs`
+/// adds to its calls and the direct `MoveFileExW` under both of these has to add itself.
+#[test]
+fn a_create_and_a_no_replace_rename_work_past_260_characters() {
+    let dir = tempfile::tempdir().unwrap();
+    let deep = ["f", "g", "h"]
+        .iter()
+        .fold(dir.path().to_owned(), |path, letter| {
+            path.join(letter.repeat(100))
+        });
+    let note = deep.join("note.md");
+
+    atomic_create(&note, b"x").unwrap();
+    rename_no_replace(&note, &deep.join("moved.md")).unwrap();
+
+    assert_eq!(entries(&deep), ["moved.md"]);
+    assert_eq!(fs::read(deep.join("moved.md")).unwrap(), b"x");
 }
 
 #[cfg(unix)]

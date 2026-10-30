@@ -1,6 +1,7 @@
-// The Obsidian open-as-copy (`apps/desktop/src/main/vault/obsidian-vault-copy.ts`) through
-// `vault_select`, the picker's command. The prompt's three buttons are answered through the
-// dialog queue (`Choose`, the button index); no native dialog opens.
+// The Obsidian open-as-copy (`apps/desktop/src/main/vault/obsidian-vault-copy.ts`) as a user
+// reaches it: the picker's "Open folder as vault" button, its folder dialog, then the prompt.
+// The dialog queue answers both (`OpenFolder` the folder, `Choose` the button index); no
+// native dialog opens.
 import {
   existsSync,
   mkdirSync,
@@ -13,11 +14,14 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
+import type { TauriApp } from '../../harness/tauri-lifecycle'
 import { invokeTest } from '../../harness/invoke-test'
 import type { Page } from '../../harness/pw-compat/page'
 import { removeDir } from '../../harness/remove-dir'
 import { test, expect } from '../../harness/test'
-import { invoke, type SelectResponse, vaultStatus } from '../../harness/vault-commands'
+import { invoke, vaultStatus } from '../../harness/vault-commands'
+
+test.use({ extraEnv: { MEMRY_FORCE_VAULT_PICKER: '1' } })
 
 const CREATE_COPY = '0'
 const OPEN_ORIGINAL = '1'
@@ -51,6 +55,24 @@ async function closeVault(page: Page): Promise<void> {
   })
 }
 
+/** Picks `vault` in the folder dialog of "Open folder as vault" and answers the prompt with `button`. */
+async function openFolderAsVault(
+  app: TauriApp,
+  page: Page,
+  vault: string,
+  button: string
+): Promise<void> {
+  await invokeTest(app, 'e2e_dialog_queue_push', { kind: 'OpenFolder', paths: [vault] })
+  await invokeTest(app, 'e2e_dialog_queue_push', { kind: 'Choose', paths: [button] })
+  await page.getByText('Open folder as vault').click()
+}
+
+/** The open vault's real path, once one is open. */
+async function openedVault(page: Page): Promise<string> {
+  await expect.poll(async () => (await vaultStatus(page)).isOpen, { timeout: 30_000 }).toBe(true)
+  return real((await vaultStatus(page)).path as string)
+}
+
 test('Create copy opens a copy beside the vault, and the next open of the vault opens that copy', async ({
   app,
   page
@@ -58,11 +80,9 @@ test('Create copy opens a copy beside the vault, and the next open of the vault 
   const { parent, vault } = obsidianVault()
   const copy = join(parent, 'My Vault-memrynote')
   try {
-    await invokeTest(app, 'e2e_dialog_queue_push', { kind: 'Choose', paths: [CREATE_COPY] })
-    const opened = await invoke<SelectResponse>(page, 'vault_select', { path: vault })
-    expect(opened.success).toBe(true)
-    expect(real(opened.vault?.path as string)).toBe(real(copy))
-    expect(real((await vaultStatus(page)).path as string)).toBe(real(copy))
+    await expect(page.getByText('Open folder as vault')).toBeVisible({ timeout: 30_000 })
+    await openFolderAsVault(app, page, vault, CREATE_COPY)
+    expect(await openedVault(page)).toBe(real(copy))
     expect(readFileSync(join(copy, 'Tasks.md'), 'utf8')).toBe(TASKS)
     for (const leftOut of ['.obsidian', '.trash', '.git']) {
       expect(existsSync(join(copy, leftOut))).toBe(false)
@@ -71,10 +91,10 @@ test('Create copy opens a copy beside the vault, and the next open of the vault 
     expect(existsSync(join(vault, '.memry'))).toBe(false)
     expect(readdirSync(parent).toSorted()).toEqual(['My Vault', 'My Vault-memrynote'])
 
-    await invokeTest(app, 'e2e_dialog_queue_push', { kind: 'Choose', paths: [CREATE_COPY] })
-    const again = await invoke<SelectResponse>(page, 'vault_select', { path: vault })
-    expect(again.success).toBe(true)
-    expect(real(again.vault?.path as string)).toBe(real(copy))
+    await invoke(page, 'vault_close')
+    await expect(page.getByText('Open folder as vault')).toBeVisible({ timeout: 30_000 })
+    await openFolderAsVault(app, page, vault, CREATE_COPY)
+    expect(await openedVault(page)).toBe(real(copy))
     expect(readdirSync(parent).toSorted()).toEqual(['My Vault', 'My Vault-memrynote'])
   } finally {
     await closeVault(page)
@@ -82,23 +102,17 @@ test('Create copy opens a copy beside the vault, and the next open of the vault 
   }
 })
 
-test('Open original opens the vault in place, and Cancel opens nothing', async ({
-  app,
-  page,
-  testVaultPath
-}) => {
+test('Cancel opens nothing, and Open original opens the vault in place', async ({ app, page }) => {
   const { parent, vault } = obsidianVault()
   try {
-    await invokeTest(app, 'e2e_dialog_queue_push', { kind: 'Choose', paths: [CANCEL] })
-    const cancelled = await invoke<SelectResponse>(page, 'vault_select', { path: vault })
-    expect(cancelled).toMatchObject({ success: false, error: 'No folder selected' })
-    expect(real((await vaultStatus(page)).path as string)).toBe(real(testVaultPath))
+    await expect(page.getByText('Open folder as vault')).toBeVisible({ timeout: 30_000 })
+    await openFolderAsVault(app, page, vault, CANCEL)
+    await expect(page.getByRole('alert')).toHaveText('No folder selected', { timeout: 30_000 })
+    expect((await vaultStatus(page)).isOpen).toBe(false)
     expect(existsSync(join(vault, '.memry'))).toBe(false)
 
-    await invokeTest(app, 'e2e_dialog_queue_push', { kind: 'Choose', paths: [OPEN_ORIGINAL] })
-    const original = await invoke<SelectResponse>(page, 'vault_select', { path: vault })
-    expect(original.success).toBe(true)
-    expect(real(original.vault?.path as string)).toBe(real(vault))
+    await openFolderAsVault(app, page, vault, OPEN_ORIGINAL)
+    expect(await openedVault(page)).toBe(real(vault))
     expect(existsSync(join(vault, '.memry'))).toBe(true)
     expect(readdirSync(parent)).toEqual(['My Vault'])
   } finally {
