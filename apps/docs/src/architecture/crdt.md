@@ -675,6 +675,9 @@ Three pieces of metadata prevent feedback loops:
 Every local or remote Y.Doc update schedules a write-back that re-serializes the whole
 document to its vault `.md` file and re-indexes it for search.
 
+This section describes the Electron app. The Tauri app's write-back, `crates/memry-desktop/src/vault/writeback/`,
+is described in [Vault Files (Tauri)](/architecture/vault-files).
+
 - **Debounce** — 500 ms after the last update, re-armed per update, so a fast typing run
   produces one write-back at the end rather than one per keystroke.
 - **Cost-proportional cooldown** — a pass re-serializes the entire document, so it costs

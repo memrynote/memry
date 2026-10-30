@@ -67,7 +67,16 @@
   "startup": {
     "installingUpdate": {
       "title": "Update wordt geïnstalleerd…",
-      "subtitle": "MemryNote wordt automatisch opnieuw geopend."
+      "subtitle": "MemryNote wordt automatisch opnieuw geopend.",
+      "subtitleOpenAgain": "Open MemryNote zo meteen opnieuw."
+    },
+    "webview2Missing": {
+      "title": "MemryNote kan niet starten",
+      "body": "MemryNote heeft de Microsoft Edge WebView2 Runtime nodig om zijn venster te tonen, en deze computer heeft die niet. Download het installatieprogramma van Microsoft ({url}), voer het uit en open MemryNote daarna opnieuw.\n\nDe downloadpagina nu openen?",
+      "bodyInstallFailed": "MemryNote heeft de Microsoft Edge WebView2 Runtime nodig om zijn venster te tonen, en de installatie is mislukt. Download het installatieprogramma van Microsoft ({url}), voer het uit en open MemryNote daarna opnieuw.\n\nDe downloadpagina nu openen?"
+    },
+    "webview2Installing": {
+      "body": "MemryNote installeert de Microsoft Edge WebView2 Runtime die het nodig heeft om zijn venster te tonen. Dit kan tot twee minuten duren."
     },
     "failed": {
       "title": "MemryNote kon niet volledig opstarten",

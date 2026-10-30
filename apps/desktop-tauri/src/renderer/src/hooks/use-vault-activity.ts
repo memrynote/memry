@@ -10,10 +10,13 @@
 
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type {
-  ListVaultActivityResult,
-  VaultActivityFilter
-} from '@memry/contracts/vault-activity-api'
+import {
+  commands,
+  events,
+  type VaultActivityFilter,
+  type VaultActivityList
+} from '../../../generated/bindings'
+import { subscribeToEvent } from '@/services/tauri-event'
 
 export const vaultActivityKeys = {
   all: ['vault-activity'] as const,
@@ -24,19 +27,19 @@ export const vaultActivityKeys = {
 export const VAULT_ACTIVITY_LIST_LIMIT = 200
 
 export function useVaultActivity(filter: VaultActivityFilter): {
-  data: ListVaultActivityResult | undefined
+  data: VaultActivityList | undefined
   isLoading: boolean
   error: unknown
 } {
   const queryClient = useQueryClient()
   const query = useQuery({
     queryKey: vaultActivityKeys.list(filter),
-    queryFn: () => window.api.vaultActivity.list({ limit: VAULT_ACTIVITY_LIST_LIMIT, filter })
+    queryFn: () => commands.vaultActivityList(VAULT_ACTIVITY_LIST_LIMIT, filter)
   })
 
   useEffect(
     () =>
-      window.api.onVaultActivityChanged(() => {
+      subscribeToEvent(events.vaultActivityChangedEvent, () => {
         void queryClient.invalidateQueries({ queryKey: vaultActivityKeys.all })
       }),
     [queryClient]

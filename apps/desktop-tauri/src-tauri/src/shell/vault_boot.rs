@@ -24,8 +24,8 @@ use tokio::sync::broadcast::error::RecvError;
 
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::events::{
-    CrdtWriteBackFailedEvent, VaultErrorEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
-    VaultStatusChangedEvent, WriteBackFailureReason, broadcast,
+    CrdtWriteBackFailedEvent, VaultActivityChangedEvent, VaultErrorEvent, VaultIndexRecoveredEvent,
+    VaultListChangedEvent, VaultStatusChangedEvent, WriteBackFailureReason, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -113,13 +113,16 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     #[cfg(feature = "e2e")]
     crate::e2e::vault_writeback::adopt_at_launch(app, &tier, store.inner().clone());
     tier.register(session);
-    register_writeback_flush(app, &tier);
+    register_flushes(app, &tier);
     forward_writeback_failures(app.clone(), tier.subscribe_failures());
+    forward_activity_changes(app.clone(), tier.activity().subscribe());
+    app.manage(tier.activity());
     app.manage(tier);
 }
 
 /// `flush-writebacks`: no edit scheduled for a note's file waits out the quit.
-fn register_writeback_flush(app: &AppHandle<Wry>, tier: &Arc<VaultTier>) {
+/// `flush-activity-log`: the buffered activity entries reach the file.
+fn register_flushes(app: &AppHandle<Wry>, tier: &Arc<VaultTier>) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(shutdown) = app.try_state::<ShutdownService>() else {
         tracing::error!(
@@ -128,9 +131,26 @@ fn register_writeback_flush(app: &AppHandle<Wry>, tier: &Arc<VaultTier>) {
         );
         return;
     };
-    if let Err(error) = shutdown.register("flush-writebacks", tier.flush_step()) {
-        tracing::error!(scope = "vault_writeback", "{error}");
+    for (step, run) in [
+        ("flush-writebacks", tier.flush_step()),
+        ("flush-activity-log", tier.activity().flush_step()),
+    ] {
+        if let Err(error) = shutdown.register(step, run) {
+            tracing::error!(scope = "vault_writeback", "{error}");
+        }
     }
+}
+
+/// A missed notice is one refetch fewer: the next one refetches everything.
+fn forward_activity_changes(
+    app: AppHandle<Wry>,
+    mut changes: tokio::sync::broadcast::Receiver<()>,
+) {
+    std::thread::spawn(move || {
+        while let Ok(()) | Err(RecvError::Lagged(_)) = changes.blocking_recv() {
+            broadcast(&app, VaultActivityChangedEvent);
+        }
+    });
 }
 
 fn forward_writeback_failures(

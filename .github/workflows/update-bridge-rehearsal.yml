@@ -549,7 +549,7 @@ jobs:
           [ ! -e "$data/update-install-attempt.json" ]
           echo "::endgroup::"
 
-          echo "::group::Relaunch mid-install: splash, exit, and the swap completes"
+          echo "::group::Relaunch mid-install: the open-again splash, then exit"
           quit_app
           # The swap takes a second or two once the old process is gone, less than a launch needs
           # to reach the guard, so the updater is held (SIGSTOP) while it waits for that process:
@@ -560,24 +560,68 @@ jobs:
           ps -o pid,stat,command -p "$updater"
           for _ in $(seq 1 300); do pgrep -x MemryNote >/dev/null || break; sleep 0.1; done
           cat "$data/pending-update-install.json"; echo
-          shown="$(logs | grep -c 'main window shown' || true)"
-          halted="$(logs | grep -c 'boot halted' || true)"
+          # Counts before a guarded launch; it must add a halt and a splash, never a main window.
+          counts() {
+            shown="$(logs | grep -c 'main window shown' || true)"
+            halted="$(logs | grep -c 'boot halted' || true)"
+            splashes="$(logs | grep -c 'installing splash shown' || true)"
+          }
+          # The guarded launch exits 2 s after its splash is on screen, and at most 8 s after its
+          # decision when the splash never appears, so no process may be left 12 to 13 s after
+          # `$1` (`date +%s` counts whole seconds). `-x` matches the process name: the held
+          # updater's arguments name the bundle too.
+          guarded_exit() {
+            while pgrep -x MemryNote >/dev/null && [ $(($(date +%s) - $1)) -lt 12 ]; do sleep 0.1; done
+            if pgrep -x MemryNote >/dev/null; then ps -o pid,command -p "$(pgrep -d, -x MemryNote)"; echo "::error::the guarded launch is still running"; exit 1; fi
+            [ "$(logs | grep -c 'boot halted')" -gt "$halted" ] || { echo "::error::the guarded launch did not halt its boot"; exit 1; }
+            [ "$(logs | grep -c 'main window shown')" -eq "$shown" ] || { echo "::error::the guarded launch showed the main window"; exit 1; }
+            [ "$(logs | grep -c 'installing splash shown')" -gt "$splashes" ] || { echo "::error::the guarded launch showed no splash"; exit 1; }
+          }
+          counts
           opened="$(date +%s)"
           open "$app"
-          for n in 1 2 3; do sleep 0.6; screencapture -x "shots/2-splash-$n.png" || true; done
-          # The guarded launch exits by itself 2 s after its decision, so no process may be left
-          # 5 to 6 s after the open (`date +%s` counts whole seconds); it must not boot on. `-x`
-          # matches the process name: the held updater's arguments name the bundle too.
-          while pgrep -x MemryNote >/dev/null && [ $(($(date +%s) - opened)) -lt 6 ]; do sleep 0.1; done
-          if pgrep -x MemryNote >/dev/null; then ps -o pid,command -p "$(pgrep -d, -x MemryNote)"; echo "::error::the guarded launch is still running"; exit 1; fi
-          wait_log 'pending update install in flight on launch' 10
-          [ "$(logs | grep -c 'boot halted')" -gt "$halted" ] || { echo "::error::the guarded launch did not halt its boot"; exit 1; }
-          [ "$(logs | grep -c 'main window shown')" -eq "$shown" ] || { echo "::error::the guarded launch showed the main window"; exit 1; }
+          for n in 1 2 3 4 5 6; do sleep 0.6; screencapture -x "shots/2-splash-$n.png" || true; done
+          guarded_exit "$opened"
+          # #3728: the splash says to open the app again, never "MemryNote will reopen
+          # automatically": nothing reopens it after an install at a quit, and after Restart to
+          # install the guarded launch absorbs the updater's start of the new build (#3773). M4
+          # drives only the install at a quit; the splash timing has unit tests
+          # (`relaunch_guard::exit_after_splash`).
+          wait_log "pending update install in flight on launch (updater running, started as $TAURI_BASE); showing the open-again splash" 10
           installed | grep -F "$TAURI_BASE"
+          echo "::endgroup::"
+
+          echo "::group::Relaunch that starts before the swap and reaches its guard after it"
+          # #3729: the launch reads sq.version at the top of main and its guard decides much later.
+          # The marker becomes a FIFO, so the guard's read blocks until this script writes it: after
+          # the launch started, the swap finished and the updater exited. Only the version read at
+          # the launch can guard it then; one read at the guard boots the old build on new files.
+          cp "$data/pending-update-install.json" marker.json
+          rm "$data/pending-update-install.json"
+          mkfifo "$data/pending-update-install.json"
+          counts
+          # In the background: the relaunch blocks in its setup, and `open` must not wait on it.
+          open "$app" &
+          for _ in $(seq 1 100); do pgrep -x MemryNote >/dev/null && break; sleep 0.1; done
+          pgrep -x MemryNote >/dev/null || { echo "::error::the relaunch did not start"; exit 1; }
+          sleep 3
           kill -CONT "$updater"
           updater=""
           for _ in $(seq 1 90); do installed | grep -qF "$VERSION" && break; sleep 1; done
           installed | grep -F "$VERSION"
+          for _ in $(seq 1 60); do pgrep -x UpdateMac >/dev/null || break; sleep 1; done
+          if pgrep -x UpdateMac >/dev/null; then echo "::error::the updater did not exit after the swap"; exit 1; fi
+          pgrep -x MemryNote >/dev/null || { echo "::error::the relaunch exited before its guard decided"; exit 1; }
+          # Opening a FIFO for writing waits for its reader, so a reader that died would hang here.
+          cat marker.json > "$data/pending-update-install.json" &
+          writer=$!
+          for _ in $(seq 1 50); do kill -0 "$writer" 2>/dev/null || break; sleep 0.1; done
+          if kill -0 "$writer" 2>/dev/null; then kill "$writer"; echo "::error::the relaunch never read the marker"; exit 1; fi
+          rm -f "$data/pending-update-install.json"
+          decided="$(date +%s)"
+          for n in 1 2 3 4 5 6; do sleep 0.6; screencapture -x "shots/3-replaced-$n.png" || true; done
+          guarded_exit "$decided"
+          wait_log "pending update install in flight on launch (bundle replaced since launch, started as $TAURI_BASE); showing the open-again splash" 10
           sleep 5
           open "$app"
           wait_log "velopack: current=$VERSION" 120

@@ -197,6 +197,58 @@ fn an_outside_edit_is_reported_and_a_save_of_the_same_bytes_is_not() {
     ));
 }
 
+/// A way an editor saves a note, by name.
+type Save = (&'static str, fn(&Path, &str));
+
+/// An editor's atomic save, either way editors do it: the new text written to a temp file and
+/// renamed over the note, or the note moved aside and written again. One `Changed` with the new
+/// text, never a removal, an addition or a rename of the note.
+#[test]
+fn an_atomic_save_is_one_change_of_the_note() {
+    let e = env();
+    e.write("a.md", "one");
+    e.index("n1", "a.md", "one");
+    let note = e.root.join("a.md");
+    let saves: [Save; 2] = [
+        ("temp renamed over", |note, text| {
+            let temp = note.with_file_name(".a.md.tmp");
+            fs::write(&temp, text).unwrap();
+            fs::rename(&temp, note).unwrap();
+        }),
+        ("moved aside and written again", |note, text| {
+            let aside = note.with_file_name("a.md~");
+            fs::rename(note, &aside).unwrap();
+            fs::write(note, text).unwrap();
+            fs::remove_file(&aside).unwrap();
+        }),
+    ];
+    for (way, text) in [(saves[0], "two"), (saves[1], "three")] {
+        e.index("n1", "a.md", &fs::read_to_string(&note).unwrap());
+        let mark = e.mark();
+        (way.1)(&note, text);
+        let changed = e.wait_for(mark, way.0, is_changed("a.md"));
+        assert!(
+            matches!(&changed, VaultEvent::Changed { note_id, content_hash: Some(h), .. }
+                if note_id == "n1" && *h == content_hash(text)),
+            "{}: {changed:?}",
+            way.0
+        );
+        std::thread::sleep(QUIET);
+        let about_the_note: Vec<_> = e
+            .since(mark)
+            .into_iter()
+            .filter(|ev| match ev {
+                VaultEvent::Added { path, .. }
+                | VaultEvent::Changed { path, .. }
+                | VaultEvent::Removed { path, .. } => path == "a.md",
+                VaultEvent::Renamed { .. } => true,
+                _ => false,
+            })
+            .collect();
+        assert_eq!(about_the_note, [changed], "{}", way.0);
+    }
+}
+
 #[test]
 fn the_own_write_record_absorbs_only_the_content_the_app_wrote() {
     let e = env();

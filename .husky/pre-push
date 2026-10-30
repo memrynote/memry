@@ -1,6 +1,50 @@
 #!/usr/bin/env sh
 set -eu
 
+# git passes one "<local ref> <local sha> <remote ref> <remote sha>" line per ref on stdin.
+# Read it once, before the checks below (not when the hook runs by hand from a terminal),
+# and refuse any update that would overwrite what the remote has: a force push, with or
+# without --force-with-lease, or a moved tag.
+push_refs=
+if [ ! -t 0 ]; then
+  push_refs=$(cat)
+fi
+
+is_zero_sha() {
+  case "$1" in
+    *[!0]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+refuse_push() {
+  printf '\npre-push: refusing to push %s: %s\n\n' "$1" "$2" >&2
+  exit 1
+}
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -n "$local_ref" ] || continue
+  # A deletion, a new remote ref, or an unchanged one overwrites nothing.
+  if is_zero_sha "$local_sha" || is_zero_sha "$remote_sha" || [ "$local_sha" = "$remote_sha" ]; then
+    continue
+  fi
+  # Tags have no ancestry to check, and published tags (extension-v*) trigger releases.
+  case "$remote_ref" in
+    refs/tags/*)
+      refuse_push "$remote_ref" "the tag already exists on the remote, and a pushed tag never moves. Push a new tag instead."
+      ;;
+  esac
+  if ! git cat-file -e "$remote_sha" 2>/dev/null ||
+    git merge-base --is-ancestor "$local_sha" "$remote_sha"; then
+    refuse_push "$remote_ref" "the remote has commits you don't have: fetch and merge them, then push."
+  fi
+  if ! git merge-base --is-ancestor "$remote_sha" "$local_sha"; then
+    refuse_push "$remote_ref" "the remote's $remote_sha is not in your branch, so this push would overwrite it. Merge the base into your branch instead of rebasing a pushed branch."
+  fi
+done <<EOF
+$push_refs
+EOF
+
 current_branch=$(git branch --show-current)
 
 case "$current_branch" in

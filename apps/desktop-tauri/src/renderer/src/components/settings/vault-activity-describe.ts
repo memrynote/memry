@@ -8,7 +8,7 @@
  * @module components/settings/vault-activity-describe
  */
 
-import type { VaultActivityEntry } from '@memry/contracts/vault-activity-api'
+import type { VaultActivityEntry } from '../../../../generated/bindings'
 
 export type Translate = (key: string, params?: Record<string, unknown>) => string
 

@@ -105,6 +105,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault::vault_set_default,
             crate::commands::vault::vault_set_icon,
             crate::commands::vault::vault_switch,
+            // vault activity
+            crate::commands::vault_activity::vault_activity_clear,
+            crate::commands::vault_activity::vault_activity_list,
+            crate::commands::vault_activity::vault_activity_reveal,
+            crate::commands::vault_activity::vault_activity_set_retention,
             // window
             crate::commands::shell::window_close,
             crate::commands::shell::window_minimize,
@@ -130,6 +135,7 @@ pub fn builder() -> Builder<Wry> {
             // updater
             crate::events::UpdaterStateChangedEvent,
             // vault
+            crate::events::VaultActivityChangedEvent,
             crate::events::VaultErrorEvent,
             crate::events::VaultIndexRecoveredEvent,
             crate::events::VaultListChangedEvent,
