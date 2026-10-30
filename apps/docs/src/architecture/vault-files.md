@@ -31,7 +31,7 @@ The watcher uses the OS file watcher through the `notify` crate: FSEvents on mac
 - **Many files gone at once.** When a rescan finds more than 20 files missing and more than 25 % of the vault, it reports no removal. This keeps a half-mounted vault from deleting notes on every device.
 - **Lost events.** Some OS watchers drop events without saying so. The watcher then rescans: after an overflow, after a burst of events on Windows, every 10 minutes on Windows, and every minute after any watcher error.
 
-Known limitation: on Linux, when the inotify watch limit (`fs.inotify.max_user_watches`) runs out, the folders past the limit are covered only by the once-a-minute rescan. The app logs `the vault watcher failed` with `limit=true`, but it shows no notice yet.
+Known limitation: on Linux, when the inotify watch limit (`fs.inotify.max_user_watches`) runs out, the folders past the limit get no live events. A rescan 2 seconds after the error, and then one every minute, finds their changes. The app logs `the vault watcher failed` with `limit=true`, but it shows you no notice yet. To get live events back, raise the limit, for example `sudo sysctl fs.inotify.max_user_watches=524288`, and reopen the vault.
 
 ## The consumer
 
