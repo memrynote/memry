@@ -174,7 +174,8 @@ impl Pass {
             let stat = RowStat {
                 file_type: FileType::Markdown,
                 size: file.raw.len() as u64,
-                content_hash: Some(row_hash),
+                content_hash: Some(row_hash.clone()),
+                file_hash: Some(row_hash),
             };
             if let Err(error) = lane.put_as_of(note_id, &row.path, stat, read_at) {
                 // The file is right; the note is behind once more on the next open, whose
@@ -210,6 +211,7 @@ impl Pass {
             file_type: FileType::Markdown,
             size: output.len() as u64,
             content_hash: Some(hash.clone()),
+            file_hash: Some(hash.clone()),
         };
         if let Err(error) = lane.put_as_of(note_id, &row.path, stat, read_at) {
             // The file holds the document's body and the row the old hash, so the next pass

@@ -20,7 +20,7 @@ use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
 use crate::vault::activity::{ActivityInput, ActivityKind, ActivityLog, ActivitySource};
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
-use crate::vault::note_file::{NoteFile, read_note};
+use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
 use crate::vault::watch::VaultEvent;
 use crate::vault::watch::reconcile::modified_ms;
 
@@ -154,7 +154,9 @@ impl Applier {
     /// A file the open walk found. Goes through the same handler as a watcher's `Added`. A
     /// row whose size is the file's and that was written after the file's last modification
     /// is not read again, as the rescan does: reading every file costs a vault-sized read. A
-    /// markdown row without a hash is: its text never reached the note.
+    /// markdown row is, unless both its hashes name the same bytes: one without a content hash
+    /// (its text never reached the note), and one whose file hash is missing or names other
+    /// bytes (a row an older build wrote, or one salvaged), which the read mends.
     pub(super) fn walked(&self, path: &str, meta: &std::fs::Metadata) -> Step {
         let Some(file_type) = file_type_of_extension(&extension(path)) else {
             return Step::Done;
@@ -166,7 +168,8 @@ impl Applier {
         if let Ok(Some(row)) = lane.row_at(path)
             && row.file_size == i64::try_from(meta.len()).ok()
             && modified <= row.indexed_at
-            && (file_type != FileType::Markdown || row.content_hash.is_some())
+            && (file_type != FileType::Markdown
+                || (row.content_hash.is_some() && row.file_hash == row.content_hash))
         {
             return Step::Done;
         }
@@ -221,7 +224,8 @@ impl Applier {
         }
         let file = match self.read(path, file_type) {
             Ok(file) => file,
-            Err(step) => return step,
+            Err(Unread::Gone) => return Step::Done,
+            Err(Unread::Failed { .. }) => return Step::Retry(path.to_owned()),
         };
         let candidate = Candidate {
             path,
@@ -254,6 +258,7 @@ impl Applier {
             file_type,
             size,
             content_hash,
+            file_hash: file.map(|file| file.hash),
         };
         if let Err(error) = lane.put(&note_id, path, stat) {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
@@ -300,8 +305,16 @@ impl Applier {
         let content_hash = if file_type == FileType::Markdown {
             let file = match self.read(path, file_type) {
                 Ok(Some(file)) => file,
-                Ok(None) => return Step::Done,
-                Err(step) => return step,
+                Ok(None) | Err(Unread::Gone) => return Step::Done,
+                Err(Unread::Failed { file_hash }) => {
+                    record_file_hash(
+                        lane,
+                        note_id,
+                        row.file_hash.as_deref(),
+                        file_hash.as_deref(),
+                    );
+                    return Step::Retry(path.to_owned());
+                }
             };
             let write = match row.content_hash.as_deref() {
                 // Read back as recorded: the row's time moves on, so the walk does not read it
@@ -311,7 +324,8 @@ impl Applier {
                     let stat = RowStat {
                         file_type,
                         size,
-                        content_hash: Some(file.hash),
+                        content_hash: Some(file.hash.clone()),
+                        file_hash: Some(file.hash),
                     };
                     if let Err(error) = lane.refresh(note_id, path, stat) {
                         tracing::warn!(
@@ -330,8 +344,17 @@ impl Applier {
             };
             match self.write_body(note_id, path, &file, write) {
                 Body::Wrote { holds_file: true } => Some(file.hash),
-                Body::Wrote { holds_file: false } | Body::NoKey => return Step::Done,
-                Body::Failed => return Step::Retry(path.to_owned()),
+                // The document did not take the text: the row keeps naming what it holds, and
+                // only the bytes it pairs on move, so a move while closed stays a move.
+                Body::Wrote { holds_file: false } | Body::NoKey => {
+                    record_file_hash(lane, note_id, row.file_hash.as_deref(), Some(&file.hash));
+                    return Step::Done;
+                }
+                // The bytes were read: a move before the retry stores them pairs on them.
+                Body::Failed => {
+                    record_file_hash(lane, note_id, row.file_hash.as_deref(), Some(&file.hash));
+                    return Step::Retry(path.to_owned());
+                }
             }
         } else {
             if row.file_size == i64::try_from(size).ok() && modified_ms <= row.indexed_at {
@@ -343,6 +366,7 @@ impl Applier {
             file_type,
             size,
             content_hash: content_hash.clone(),
+            file_hash: content_hash.clone(),
         };
         if let Err(error) = lane.put(note_id, path, stat) {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
@@ -458,18 +482,25 @@ impl Applier {
         );
     }
 
-    /// The markdown file at `path`, read once; `Ok(None)` for every other kind, and for a
-    /// markdown file that is gone (its removal follows).
-    fn read(&self, path: &str, file_type: FileType) -> Result<Option<NoteFile>, Step> {
+    /// The markdown file at `path`, read once; `Ok(None)` for every other kind.
+    fn read(&self, path: &str, file_type: FileType) -> Result<Option<NoteFile>, Unread> {
         if file_type != FileType::Markdown {
             return Ok(None);
         }
         match read_note(&self.root, path) {
             Ok(Some(file)) => Ok(Some(file)),
-            Ok(None) => Err(Step::Done),
+            Ok(None) => Err(Unread::Gone),
             Err(error) => {
                 tracing::warn!(scope = SCOPE, "a vault file could not be read: {error}");
-                Err(Step::Retry(path.to_owned()))
+                // The hash the watcher pairs a move of such a file on: Electron's, streamed.
+                // A read that failed knows no bytes.
+                let file_hash = match error {
+                    NoteFileError::NotUtf8 | NoteFileError::TooLarge => {
+                        hash_file(&self.root, path).ok().flatten()
+                    }
+                    _ => None,
+                };
+                Err(Unread::Failed { file_hash })
             }
         }
     }
@@ -537,6 +568,30 @@ pub(crate) fn converter_for(settings: Option<&AppSettings>) -> Converter {
         .map(|value| sanitize_callout_type_definitions(&value))
         .unwrap_or_default();
     Converter::new(CalloutTypes::new(definitions))
+}
+
+/// Why [`Applier::read`] has no note file.
+enum Unread {
+    /// The markdown file is gone; its removal follows.
+    Gone,
+    /// It is there and was not read, and is retried. `file_hash` is its bytes' hash when this
+    /// build reads them only as bytes (not UTF-8, past the note size cap), else `None`.
+    Failed { file_hash: Option<String> },
+}
+
+/// Moves the row's pairing hash from `had` to the bytes on disk now, or to none when they are
+/// unknown; a hash already there is not written again.
+fn record_file_hash(lane: &Lane<'_>, note_id: &str, had: Option<&str>, now: Option<&str>) {
+    if had == now {
+        return;
+    }
+    if let Err(error) = lane.record_file_hash(note_id, now) {
+        tracing::warn!(
+            scope = SCOPE,
+            note_id,
+            "the file hash was not recorded: {error}"
+        );
+    }
 }
 
 #[derive(Clone, Copy)]

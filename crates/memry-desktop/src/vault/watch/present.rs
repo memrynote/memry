@@ -175,7 +175,7 @@ impl Reconciler {
     ) {
         // Only markdown pairs: Electron's non-markdown add path never looks for a rename.
         if let Some(hash) = &hash
-            && let Some(from) = self.tracker.claim(hash)
+            && let Some(from) = self.tracker.claim(hash, rel)
         {
             self.report_rename(from, rel.to_owned(), hash.clone(), stat);
             return;
@@ -238,7 +238,10 @@ impl Reconciler {
     pub(super) fn resolve_adds(&mut self, now: Instant) {
         for add in std::mem::take(&mut self.held_adds) {
             let stat = (add.size, add.modified_ms);
-            let claimed = add.hash.as_ref().and_then(|h| self.tracker.claim(h));
+            let claimed = add
+                .hash
+                .as_ref()
+                .and_then(|h| self.tracker.claim(h, &add.path));
             if let (Some(from), Some(hash)) = (claimed, &add.hash) {
                 self.report_rename(from, add.path, hash.clone(), stat);
             } else if add.due <= now {

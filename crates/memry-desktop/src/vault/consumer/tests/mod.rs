@@ -243,6 +243,7 @@ impl Fixture {
             file_type: FileType::Markdown,
             size,
             content_hash: None,
+            file_hash: None,
         }
     }
 
