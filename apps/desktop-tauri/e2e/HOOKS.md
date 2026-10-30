@@ -106,8 +106,8 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 
 Until Step 13 (#3530) names notes and Step 14 (#3531) edits them, these commands drive the
 write-back (`src-tauri/src/e2e/vault_writeback.rs`, over `memry_desktop::e2e::vault`).
-`specs/vault/writeback.e2e.ts` and the soak (`e2e/soak/writeback-soak.ts`, on the VM through
-`writeback-soak-vm.ts`) use them:
+`specs/vault/writeback.e2e.ts`, `vault-files.e2e.ts`, `vault-markdown-fidelity.e2e.ts` and
+the soak (`e2e/soak/writeback-soak.ts`, on the VM through `writeback-soak-vm.ts`) use them:
 
 - `e2e_vault_adopt_files` makes every new markdown file a note, titled by its file name, and
   opens the vault again so its files are offered at once. It writes the marker
