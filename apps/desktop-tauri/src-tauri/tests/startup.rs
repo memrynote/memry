@@ -155,3 +155,24 @@ fn startup_defaults_are_the_electron_fallbacks() {
     assert!(["darwin", "win32", "linux"].contains(&state.platform.as_str()));
     assert!(state.color_theme.is_none() && state.startup_vault.is_none());
 }
+
+#[test]
+fn the_launch_checks_webview2_after_the_relaunch_guard_and_before_any_other_guard() {
+    let names: Vec<_> = memry_tauri::guards::guards()
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect();
+    let expected: &[&str] = if cfg!(windows) {
+        &["updater relaunch guard", "check webview2 runtime"]
+    } else {
+        &["updater relaunch guard"]
+    };
+    assert_eq!(&names[..expected.len()], expected);
+    assert_eq!(
+        names
+            .iter()
+            .filter(|name| **name == "check webview2 runtime")
+            .count(),
+        usize::from(cfg!(windows))
+    );
+}

@@ -67,7 +67,16 @@
   "startup": {
     "installingUpdate": {
       "title": "Inštaluje sa aktualizácia…",
-      "subtitle": "MemryNote sa automaticky znova otvorí."
+      "subtitle": "MemryNote sa automaticky znova otvorí.",
+      "subtitleOpenAgain": "O chvíľu MemryNote znova otvorte."
+    },
+    "webview2Missing": {
+      "title": "MemryNote sa nedá spustiť",
+      "body": "MemryNote potrebuje na zobrazenie svojho okna Microsoft Edge WebView2 Runtime a tento počítač ho nemá. Stiahnite si inštalačný program od spoločnosti Microsoft ({url}), spustite ho a potom MemryNote znova otvorte.\n\nOtvoriť stránku na stiahnutie?",
+      "bodyInstallFailed": "MemryNote potrebuje na zobrazenie svojho okna Microsoft Edge WebView2 Runtime a jeho inštalácia zlyhala. Stiahnite si inštalačný program od spoločnosti Microsoft ({url}), spustite ho a potom MemryNote znova otvorte.\n\nOtvoriť stránku na stiahnutie?"
+    },
+    "webview2Installing": {
+      "body": "MemryNote inštaluje Microsoft Edge WebView2 Runtime, ktorý potrebuje na zobrazenie svojho okna. Môže to trvať až dve minúty."
     },
     "failed": {
       "title": "MemryNote sa nepodarilo úplne spustiť",

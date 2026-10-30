@@ -160,11 +160,6 @@ import type {
   PortalStampAnchorResult,
   PortalUsageChangedEvent
 } from '@memry/contracts/portals-api'
-import type {
-  ListVaultActivityInput,
-  ListVaultActivityResult,
-  VaultActivityRetentionDays
-} from '@memry/contracts/vault-activity-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -1124,16 +1119,6 @@ export interface PortalsClientAPI {
   onUsageChanged(callback: (event: PortalUsageChangedEvent) => void): () => void
 }
 
-// Vault activity API (device-local log of files added, removed, skipped, failed)
-export interface VaultActivityClientAPI {
-  list(input?: ListVaultActivityInput): Promise<ListVaultActivityResult>
-  clear(): Promise<{ cleared: true }>
-  setRetention(
-    days: VaultActivityRetentionDays
-  ): Promise<{ retentionDays: VaultActivityRetentionDays }>
-  reveal(): Promise<{ revealed: boolean }>
-}
-
 // Graph API
 export interface GraphClientAPI {
   getData(): Promise<{
@@ -2045,7 +2030,6 @@ interface API extends GeneratedRpcApi {
   reminders: RemindersClientAPI
   recents: RecentsClientAPI
   portals: PortalsClientAPI
-  vaultActivity: VaultActivityClientAPI
   search: SearchClientAPI
   graph: GraphClientAPI
   quickCapture: QuickCaptureClientAPI
@@ -2118,7 +2102,6 @@ interface API extends GeneratedRpcApi {
   onVaultListChanged: (callback: () => void) => () => void
   onVaultConfigChanged: (callback: (config: VaultConfig) => void) => () => void
   onVaultIndexRecovered: (callback: (event: IndexRecoveredEvent) => void) => () => void
-  onVaultActivityChanged: (callback: () => void) => () => void
   // Saved Filters event subscriptions
   onSavedFilterCreated: (callback: (event: SavedFilterCreatedEvent) => void) => () => void
   onSavedFilterUpdated: (callback: (event: SavedFilterUpdatedEvent) => void) => () => void

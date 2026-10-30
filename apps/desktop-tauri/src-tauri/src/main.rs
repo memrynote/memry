@@ -15,6 +15,8 @@ fn main() {
         .set_auto_apply_on_startup(false)
         .on_restarted(|_| memry_tauri::updater::relaunch_guard::note_launched_by_updater())
         .run();
+    // Next: the installed version before an update's swap can change it under this launch.
+    memry_tauri::updater::relaunch_guard::note_installed_at_start();
 
     // Step 35 (#3552): --cli dispatch
     if let Some(code) = memry_tauri::guards::crash_dump::monitor_entry() {

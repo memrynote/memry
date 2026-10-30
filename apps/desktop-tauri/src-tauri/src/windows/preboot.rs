@@ -57,13 +57,14 @@ fn fill_script(fill: &PageFill, locale: &str) -> String {
     script
 }
 
-/// Builds a window on `preboot.html` that fills itself once the page has loaded and is shown
-/// then when `show_on_fill` is set. `configure` sets the window's size and frame.
+/// Builds a window on `preboot.html` that fills itself once the page has loaded. With `shown`
+/// set, the window is shown then and `shown` runs once it is. `configure` sets the window's size
+/// and frame.
 pub(super) fn build(
     app: &AppHandle<Wry>,
     kind: WindowKind,
     fill: PageFill,
-    show_on_fill: bool,
+    shown: Option<Box<dyn Fn() + Send + Sync>>,
     configure: impl FnOnce(
         WebviewWindowBuilder<'_, Wry, AppHandle<Wry>>,
     ) -> WebviewWindowBuilder<'_, Wry, AppHandle<Wry>>,
@@ -87,8 +88,14 @@ pub(super) fn build(
                         window.label()
                     );
                 }
-                if show_on_fill && let Err(error) = window.show() {
-                    tracing::warn!(scope = "Window", "{} not shown: {error}", window.label());
+                let Some(shown) = &shown else {
+                    return;
+                };
+                match window.show() {
+                    Ok(()) => shown(),
+                    Err(error) => {
+                        tracing::warn!(scope = "Window", "{} not shown: {error}", window.label());
+                    }
                 }
             });
     super::main_window::webview_profile(configure(builder), app).build()
@@ -100,20 +107,30 @@ pub struct PrebootCopy {
     pub subtitle: String,
 }
 
-/// Shows the small frameless spinner window, once its page is filled. Step 38 (#3555) shows it
-/// while an update installs.
-pub fn show_preboot(app: &AppHandle<Wry>, copy: PrebootCopy) -> tauri::Result<WebviewWindow<Wry>> {
+/// Shows the small frameless spinner window once its page is filled, then runs `shown`. Step 38
+/// (#3555) shows it while an update installs.
+pub fn show_preboot(
+    app: &AppHandle<Wry>,
+    copy: PrebootCopy,
+    shown: impl Fn() + Send + Sync + 'static,
+) -> tauri::Result<WebviewWindow<Wry>> {
     let fill = PageFill {
         view: "preboot",
         slots: vec![("title", copy.title), ("subtitle", copy.subtitle)],
     };
-    build(app, WindowKind::Preboot, fill, true, |builder| {
-        builder
-            .inner_size(380.0, 180.0)
-            .decorations(false)
-            .minimizable(false)
-            .visible(false)
-    })
+    build(
+        app,
+        WindowKind::Preboot,
+        fill,
+        Some(Box::new(shown)),
+        |builder| {
+            builder
+                .inner_size(380.0, 180.0)
+                .decorations(false)
+                .minimizable(false)
+                .visible(false)
+        },
+    )
 }
 
 #[cfg(test)]

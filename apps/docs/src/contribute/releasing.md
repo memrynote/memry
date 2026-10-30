@@ -159,6 +159,19 @@ Velopack names assets from the channel. The default channel of an OS drops the c
 
 Windows x64 keeps today's production package names, so Electron installs on channel `win` find the Tauri pack. Its Setup is the exception. Electron builds `v2026-09-12` to `v2026-10-25` request vpk's name, `MemryNote-win-Setup.exe`, on every update check, and a release that answers arms a hand-off that hangs, so no release may carry it. `vpk-args.mjs` owns the rule (`RETIRED_SETUP_NAME`, `X64_SETUP_NAME`). `renameToPublished` in `vpk-pack.mjs` renames vpk's output and its `assets.win.json` entry right after `vpk pack`, in `vpk-pack.mjs`, `release.mjs` and the rehearsal. `assertPublishable` refuses an upload set that holds the old name, in `release.mjs` and the rehearsal publish. The first Tauri pack of a channel uses `--delta None`, because a delta against an Electron full package is as large as the full package and the client would prefer it. Windows packs add `--framework webview2,vcredist143-<arch>`. `vpk` is pinned to 1.2.161, the same version as the `velopack` crate. `vpk` 1.2.x has no `--version` flag: check `vpk -h | head -3` for `Velopack CLI 1.2.161`.
 
+### WebView2 bootstrapper
+
+Velopack's Setup installs the WebView2 runtime (`--framework webview2`), but a user can remove it later. Without it no window opens. So every Windows pack also ships Microsoft's bootstrapper at `webview2\MicrosoftEdgeWebview2Setup.exe`. A launch that finds no runtime runs the bootstrapper before any window exists (`updater/webview2.rs`).
+
+The packed file is pinned. `scripts/release/webview2-bootstrapper.json` holds the file's own download address, its SHA-256 and its size.
+
+- Before `vpk pack`, `node scripts/release/webview2-bootstrapper.mjs <pack-dir>` downloads that address. It keeps the file only when the size and hash match the pin.
+- `vpk-pack.mjs` refuses a `win-*` pack without the pinned file.
+- The rehearsal checks the file again inside each full package, for signed and unsigned packs alike. The check covers the pin and Microsoft's Authenticode signature.
+- `sign-windows-binary.sh` skips the file, so Microsoft's signature stays on it.
+
+When Microsoft retires the pinned address, the pack fails on the download. Run `node scripts/release/webview2-bootstrapper.mjs --update` on the Mac to move the pin. The script follows Microsoft's link to the current bootstrapper and writes the new pin only when the file's signature verifies against `scripts/release/microsoft-roots.pem` with `Microsoft Corporation` as the signer. Commit the changed pin with the release.
+
 ### Bridge feeds
 
 `scripts/release/bridge-feeds.mjs` writes `latest-mac.yml`, `latest-linux.yml` and `latest.yml` in the electron-builder layout: `version`, `files[]` (`url`, base64 `sha512`, `size`), then `path` and `sha512` of the first file, then `releaseDate`. The hash and size come from the exact uploaded bytes, after signing. There is no `blockMapSize` and no blockmap asset: electron-updater logs the missing blockmap and downloads the full file.

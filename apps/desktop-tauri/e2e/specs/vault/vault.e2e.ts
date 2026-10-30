@@ -16,6 +16,13 @@ import { readMainLog } from '../../harness/wait'
 
 const real = (path: string): string => realpathSync(path)
 
+/**
+ * An error the vault file tier logged (`logging/format.rs` writes `ts [error] [scope]`). Other
+ * scopes log errors of their own here: the renderer's not-ported calls, and on a Linux runner
+ * without `update-desktop-database` the deep-link plugin (#3772).
+ */
+const VAULT_ERROR = /\[error\] \[vault_(consumer|writeback)\]/
+
 /** A parent folder under the temp dir, removed by the caller. */
 function tempParent(): string {
   return mkdtempSync(join(tmpdir(), 'memry-e2e-parent-'))
@@ -35,7 +42,7 @@ test('opens the registered vault at launch and lays out the core databases', asy
   await expect(page.getByText(basename(testVaultPath)).first()).toBeVisible({ timeout: 30_000 })
   const log = readMainLog(app.dirs.logDir)
   expect(log).toContain('vault open')
-  expect(log).not.toMatch(/\sERROR\s/)
+  expect(log).not.toMatch(VAULT_ERROR)
 })
 
 /**
@@ -68,7 +75,7 @@ test('creates a vault under a path with spaces and non-ASCII, and restores it af
     const status = await vaultStatus(page)
     expect(status.isOpen).toBe(true)
     expect(real(status.path as string)).toBe(real(vaultPath))
-    expect(readMainLog(app.dirs.logDir)).not.toMatch(/\sERROR\s/)
+    expect(readMainLog(app.dirs.logDir)).not.toMatch(VAULT_ERROR)
   } finally {
     await closeVault(page)
     removeDir(join(parent, '..'))
