@@ -3,7 +3,8 @@
 //! Pure foundations (hashes, paths, atomic writes, note reads and writes, file kinds, the walk),
 //! the config owner and init, the watcher (`watch`), which reads `note_files` and writes nothing,
 //! the consumer and write-back, the side files under `.memry/` (the activity log, custom
-//! icons, property definitions), and the tree operations (the Obsidian open-as-copy).
+//! icons, property definitions), and the tree operations (the folder move `move_dir`, the
+//! Obsidian open-as-copy).
 
 pub mod activity;
 pub mod config;
@@ -14,6 +15,7 @@ pub mod hash;
 pub mod icons;
 pub mod init;
 pub mod layout;
+pub mod move_dir;
 pub mod note_file;
 pub mod obsidian_copy;
 pub mod path_key;

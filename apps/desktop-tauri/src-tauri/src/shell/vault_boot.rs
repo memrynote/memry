@@ -18,14 +18,14 @@ use memry_desktop::session::{OpenSource, Session, SessionEvent, StartupOutcome};
 use memry_desktop::settings::SettingsService;
 use memry_desktop::telemetry::service::Service;
 use memry_desktop::vault::consumer::VaultTier;
-use memry_desktop::vault::writeback::WriteBackFailed;
+use memry_desktop::vault::writeback::{Failure, WriteBackFailed};
 use tauri::{AppHandle, Manager, Wry};
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::events::{
     CrdtWriteBackFailedEvent, VaultActivityChangedEvent, VaultErrorEvent, VaultIndexRecoveredEvent,
-    VaultListChangedEvent, VaultStatusChangedEvent, broadcast,
+    VaultListChangedEvent, VaultStatusChangedEvent, WriteBackFailureReason, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -160,8 +160,23 @@ fn forward_writeback_failures(
     std::thread::spawn(move || {
         loop {
             match failures.blocking_recv() {
-                Ok(WriteBackFailed { note_id, title }) => {
-                    broadcast(&app, CrdtWriteBackFailedEvent { note_id, title });
+                Ok(WriteBackFailed {
+                    note_id,
+                    title,
+                    reason,
+                }) => {
+                    let reason = match reason {
+                        Failure::Write => WriteBackFailureReason::Write,
+                        Failure::Frontmatter => WriteBackFailureReason::Frontmatter,
+                    };
+                    broadcast(
+                        &app,
+                        CrdtWriteBackFailedEvent {
+                            note_id,
+                            title,
+                            reason,
+                        },
+                    );
                 }
                 Err(RecvError::Lagged(missed)) => tracing::warn!(
                     scope = "vault_writeback",

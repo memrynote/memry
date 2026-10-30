@@ -38,8 +38,11 @@ impl WatchHandle {
         Self { tx, resync }
     }
 
-    /// Reports `rel` again at the next debounce: what was reported for it is forgotten, so the
-    /// path is compared with its row again. Dropped once the watcher stopped.
+    /// Reports `rel` again at the next debounce ([`Reconciler::forget`]): a report that named a
+    /// note is owed, so the file is reported again and a removal or a move still reads the bytes
+    /// last reported; any other is forgotten. Dropped once the watcher stopped.
+    ///
+    /// [`Reconciler::forget`]: super::reconcile::Reconciler::forget
     pub fn forget(&self, rel: String) {
         if let Err(TrySendError::Full(_)) = self.tx.try_send(Msg::Forget(rel)) {
             tracing::warn!(
