@@ -267,7 +267,7 @@ impl Worker {
                     }
                     Msg::Rescan => force_rescan = true,
                     Msg::Forget(rel) => {
-                        self.reconciler.reported.remove(&rel);
+                        self.reconciler.forget(&rel);
                         debounce.touch(rel, now);
                     }
                     Msg::Error(error) => {

@@ -70,7 +70,9 @@
     "writebackFailedTitle": "无法更新磁盘上的笔记文件",
     "writebackFailedTitleNamed": "无法更新磁盘上的“{title}”",
     "writebackFailedTitleMany": "无法更新磁盘上 {count} 个笔记的文件",
-    "writebackFailedBody": "磁盘上的文件未作更改。应用运行期间，你的编辑会在 memrynote 中保持打开；memrynote 会在你下次编辑时重试。"
+    "writebackFailedBody": "磁盘上的文件未作更改。应用运行期间，你的编辑会在 memrynote 中保持打开；memrynote 会在你下次编辑时重试。",
+    "writebackFailedFrontmatterBody": "无法读取文件的 frontmatter（顶部 --- 行之间的块），因此 memrynote 不会更改该文件。你的编辑仍保留在 memrynote 中。如果在 memrynote 之外修复该文件，文件中的文本会替换这些编辑，所以请先复制你需要的内容。",
+    "writebackFailedFrontmatterBodyMany": "无法读取这些文件的 frontmatter（顶部 --- 行之间的块），因此 memrynote 不会更改这些文件。你的编辑仍保留在 memrynote 中。如果在 memrynote 之外修复这些文件，文件中的文本会替换这些编辑，所以请先复制你需要的内容。"
   },
   "encryption": {
     "failed": "无法加密数据。你的密钥可能需要重新生成。",

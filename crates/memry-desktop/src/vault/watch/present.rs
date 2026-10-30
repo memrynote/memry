@@ -92,7 +92,7 @@ impl Reconciler {
                 (None, None) => false,
             }
         };
-        if unchanged {
+        if unchanged && !self.reported.is_owed(rel) {
             return;
         }
         if let Some(home) = home {
