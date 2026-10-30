@@ -320,18 +320,19 @@ fn resolve_places_a_new_file_by_its_parent_folder() {
 /// A save renames a new file over the note while the note is resolved (#3732). Windows can
 /// answer the old file's name in the volume's deleted-files area (`\$Extend\$Deleted\...`),
 /// or fail on it while it is being deleted. Either is the note being replaced: never a path
-/// outside the vault, never an error to report. The resolution looks again. (The name can be
-/// missing for an instant too; `Missing` is allowed here, see `shell::file_open` rule 2. So is
-/// a denial seen on the first ask and on its one re-ask: a file denied for good gives it too,
-/// so it is not asked again longer, and it is counted, not refused.)
-/// Every tenth lookup also asks `fs::canonicalize` itself, so the test proves the replacement
-/// answered from the old file at least once and cannot pass for want of a race.
+/// outside the vault, and never an error other than the denial below. The resolution looks
+/// again. (The name can be missing for an instant too; `Missing` is allowed here, see
+/// `shell::file_open` rule 2. So is a denial seen on the first ask and on its one re-ask 1 ms
+/// later: a file denied for good gives it too, so it is not asked again longer. Such denials
+/// are counted, and must be rarer than the raw ones, which the one re-ask mostly absorbs.)
+/// Every tenth lookup also asks `fs::canonicalize` itself, and the test needs at least one of
+/// those raw asks to fail or answer outside the vault, so it cannot pass for want of a race.
 ///
 /// Another program saves the note here thousands of times a second, far more often than any
 /// editor. `MEMRY_REPLACE_LOOKUPS` raises the number of lookups (the VM proof runs ~217k).
 #[cfg(windows)]
 #[test]
-fn a_note_renamed_over_while_it_is_resolved_is_never_outside_the_vault_nor_an_error() {
+fn a_note_renamed_over_while_it_is_resolved_is_never_outside_the_vault_nor_an_unexpected_error() {
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -361,12 +362,18 @@ fn a_note_renamed_over_while_it_is_resolved_is_never_outside_the_vault_nor_an_er
     let mut refused: BTreeMap<String, u64> = BTreeMap::new();
     let mut missing = 0u64;
     let mut denied = 0u64;
+    // Raw asks that failed or answered outside the vault, and of those the denials (os 5, 303).
     let mut raw_transients = 0u64;
+    let mut raw_denied = 0u64;
     let root = fs::canonicalize(&d.vault).unwrap();
     for lookup in 0..lookups {
         if lookup % 10 == 0 {
             match fs::canonicalize(&note) {
                 Ok(real) if real.starts_with(&root) => {}
+                Err(error) if matches!(error.raw_os_error(), Some(5 | 303)) => {
+                    raw_transients += 1;
+                    raw_denied += 1;
+                }
                 _ => raw_transients += 1,
             }
         }
@@ -386,7 +393,8 @@ fn a_note_renamed_over_while_it_is_resolved_is_never_outside_the_vault_nor_an_er
     let (saves, saves_refused) = saver.join().unwrap();
     eprintln!(
         "lookups={lookups} saves={saves} saves_refused={saves_refused} missing={missing} \
-         denied={denied} raw_transients={raw_transients} refused={refused:?}"
+         denied={denied} raw_transients={raw_transients} raw_denied={raw_denied} \
+         refused={refused:?}"
     );
     assert!(
         raw_transients > 0,
@@ -395,5 +403,11 @@ fn a_note_renamed_over_while_it_is_resolved_is_never_outside_the_vault_nor_an_er
     assert!(
         refused.is_empty(),
         "{lookups} lookups during {saves} saves: {refused:?}"
+    );
+    // The raw asks are a tenth of the lookups, so this holds only while the re-ask absorbs
+    // most denials. A run whose raw asks met no denial says nothing about the re-ask.
+    assert!(
+        raw_denied == 0 || denied < raw_denied,
+        "{denied} denials resolved, {raw_denied} raw: the re-ask after a denial is not working"
     );
 }
