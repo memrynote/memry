@@ -288,24 +288,52 @@ fn the_copy_never_takes_the_place_of_a_folder_or_file_that_appeared_meanwhile() 
     assert_eq!(names(root.path()), ["My Vault", "My Vault-memrynote"]);
 }
 
-/// A name the volume cannot hold fails every candidate number alike, so the search ends with the
-/// error instead of trying the next number for ever.
+/// A copy name the volume cannot hold fails every candidate number alike, so the search ends at
+/// the first one. The prompt still shows, the original still opens, and only Copy fails. The
+/// call runs on a thread with a deadline, so a search that never ends fails the test.
 #[test]
-fn a_copy_name_too_long_for_the_volume_fails_and_leaves_nothing() {
-    let root = tempfile::tempdir().unwrap();
+fn a_copy_name_too_long_for_the_volume_fails_only_the_copy() {
     // 250 bytes is a name the volume holds; with `-memrynote` it is past the 255 every volume
     // allows.
     let name = "v".repeat(250);
-    let vault = root.path().join(&name);
-    write_tree(
-        &vault,
-        &[(".obsidian/app.json", "{}"), ("Note.md", "hello\n")],
-    );
+    for (choice, opens_original) in [
+        (Choice::Copy, None),
+        (Choice::Original, Some(true)),
+        (Choice::Cancel, Some(false)),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let vault = root.path().join(&name);
+        write_tree(
+            &vault,
+            &[(".obsidian/app.json", "{}"), ("Note.md", "hello\n")],
+        );
+        let (done, result) = std::sync::mpsc::channel();
+        let picked = vault.clone();
+        std::thread::spawn(move || {
+            let mut asked = Vec::new();
+            let decision = resolve_obsidian_open(&picked, |_, target| {
+                asked.push(target.clone());
+                choice
+            });
+            done.send((decision, asked)).unwrap();
+        });
 
-    let result = resolve_obsidian_open(&vault, |_, _| Choice::Copy);
+        let (decision, asked) = result
+            .recv_timeout(Duration::from_secs(60))
+            .expect("the copy name search ended");
 
-    assert!(result.is_err(), "{result:?}");
-    assert_eq!(names(root.path()), [name]);
+        let first = root.path().join(format!("{name}-memrynote"));
+        assert_eq!(asked, [CopyTarget::Create(first)], "{choice:?}");
+        match opens_original {
+            None => assert!(decision.is_err(), "{decision:?}"),
+            Some(true) => assert_eq!(
+                decision.unwrap(),
+                ObsidianOpenDecision::OpenOriginal(vault.clone())
+            ),
+            Some(false) => assert_eq!(decision.unwrap(), ObsidianOpenDecision::Cancel),
+        }
+        assert_eq!(names(root.path()), [name.as_str()], "{choice:?}");
+    }
 }
 
 #[test]
@@ -552,6 +580,15 @@ fn two_names_the_copys_volume_takes_for_one_fail_the_copy() {
         assert!(status.success(), "hdiutil {args:?}: {status}");
     };
 
+    // The test needs a temp folder that folds case, as macOS's does unless the startup volume
+    // was formatted case-sensitive.
+    let root = tempfile::tempdir().unwrap();
+    fs::write(root.path().join("probe"), "").unwrap();
+    if !root.path().join("PROBE").exists() {
+        eprintln!("skipped: the temp folder tells case apart, so no names fold into one");
+        return;
+    }
+    fs::remove_file(root.path().join("probe")).unwrap();
     let images = tempfile::tempdir().unwrap();
     let image = images.path().join("case-sensitive.sparseimage");
     hdiutil(&[
@@ -582,7 +619,6 @@ fn two_names_the_copys_volume_takes_for_one_fail_the_copy() {
     let vault = obsidian_vault(&volume.mount);
     write_tree(&vault, &[("note.md", "lower\n"), ("Note.md", "upper\n")]);
     let before = snapshot(&vault);
-    let root = tempfile::tempdir().unwrap();
     let link = root.path().join("Linked");
     symlink(&vault, &link).unwrap();
 

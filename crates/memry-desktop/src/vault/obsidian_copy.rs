@@ -98,12 +98,12 @@ impl ObsidianOpenDecision {
 }
 
 /// Where the copy of `picked` would go, or `None` when `picked` opens without asking: it is not
-/// an Obsidian vault, or this app opened it before. An error when a candidate's name cannot be
-/// looked up at all.
-pub fn copy_target(picked: &Path) -> io::Result<Option<CopyTarget>> {
+/// an Obsidian vault, or this app opened it before. With the target, the error of a name that
+/// could not be looked up at all (see [`copy_target_beside`]).
+fn copy_target(picked: &Path) -> Option<(CopyTarget, Option<io::Error>)> {
     let obsidian = fs::metadata(picked.join(".obsidian")).is_ok_and(|meta| meta.is_dir());
     if !obsidian || is_vault_initialized(picked) {
-        return Ok(None);
+        return None;
     }
     let Some(name) = picked.file_name() else {
         // A volume root holds no folder beside it to copy into.
@@ -111,17 +111,18 @@ pub fn copy_target(picked: &Path) -> io::Result<Option<CopyTarget>> {
             scope = SCOPE,
             "an Obsidian vault at a volume root opens in place"
         );
-        return Ok(None);
+        return None;
     };
-    copy_target_beside(picked, name).map(Some)
+    Some(copy_target_beside(picked, name))
 }
 
 /// `<name>-memrynote` beside the vault. A folder holding `.memry` at a candidate is the copy
 /// made last time; anything else there (a file, a link, a folder that is not a vault or cannot
 /// be looked into) is left alone and the next number is tried. A lookup that fails other than
-/// with "not found" (a name too long for the volume) fails every number alike, so it ends the
-/// search.
-fn copy_target_beside(source: &Path, name: &OsStr) -> io::Result<CopyTarget> {
+/// with "not found" (a name too long for the volume) would fail every number alike, so the
+/// search ends at that candidate with the error, which only a copy raises: the original still
+/// opens.
+fn copy_target_beside(source: &Path, name: &OsStr) -> (CopyTarget, Option<io::Error>) {
     for n in 1u32.. {
         let mut candidate = name.to_owned();
         candidate.push(COPY_SUFFIX);
@@ -131,13 +132,13 @@ fn copy_target_beside(source: &Path, name: &OsStr) -> io::Result<CopyTarget> {
         let candidate = source.with_file_name(candidate);
         match fs::symlink_metadata(&candidate) {
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
-                return Ok(CopyTarget::Create(candidate));
+                return (CopyTarget::Create(candidate), None);
             }
-            Err(error) => return Err(error),
+            Err(error) => return (CopyTarget::Create(candidate), Some(error)),
             Ok(meta)
                 if meta.is_dir() && candidate.join(MEMRY_DIR).try_exists().unwrap_or(false) =>
             {
-                return Ok(CopyTarget::Reuse(candidate));
+                return (CopyTarget::Reuse(candidate), None);
             }
             Ok(_) => {}
         }
@@ -153,10 +154,16 @@ pub fn resolve_obsidian_open(
     picked: &Path,
     ask: impl FnOnce(&Path, &CopyTarget) -> Choice,
 ) -> io::Result<ObsidianOpenDecision> {
-    let Some(target) = copy_target(picked)? else {
+    let Some((target, lookup_error)) = copy_target(picked) else {
         return Ok(ObsidianOpenDecision::OpenOriginal(picked.to_owned()));
     };
-    match (ask(picked, &target), target) {
+    let choice = ask(picked, &target);
+    if choice == Choice::Copy
+        && let Some(error) = lookup_error
+    {
+        return Err(error);
+    }
+    match (choice, target) {
         (Choice::Cancel, _) => Ok(ObsidianOpenDecision::Cancel),
         (Choice::Original, _) => {
             tracing::info!(scope = SCOPE, "opening an Obsidian vault in place");
@@ -210,7 +217,8 @@ pub const MAX_OPEN_DIRS: usize = 32;
 
 /// A folder's entries: listed as they are copied, or, once it is closed, the rest of them.
 enum Entries {
-    Open(fs::ReadDir),
+    /// Boxed: on Windows a listing holds a whole `WIN32_FIND_DATAW`.
+    Open(Box<fs::ReadDir>),
     Read(std::vec::IntoIter<io::Result<(OsString, FileType)>>),
 }
 
@@ -224,7 +232,7 @@ struct Level {
 
 impl Level {
     fn open(from: PathBuf, to: PathBuf, top: bool) -> io::Result<Self> {
-        let entries = Entries::Open(fs::read_dir(&from)?);
+        let entries = Entries::Open(Box::new(fs::read_dir(&from)?));
         Ok(Self {
             from,
             to,
@@ -330,8 +338,16 @@ fn set_times(path: &Path, from: &fs::Metadata) -> io::Result<()> {
         at(from.mtime(), from.mtime_nsec()),
     ];
     // SAFETY: `path` is NUL-terminated and `times` holds the two entries `utimensat` reads; both
-    // outlive the call.
-    if unsafe { libc::utimensat(libc::AT_FDCWD, path.as_ptr(), times.as_ptr(), 0) } == 0 {
+    // outlive the call. `AT_SYMLINK_NOFOLLOW`: a link put in the file's place is never followed.
+    let status = unsafe {
+        libc::utimensat(
+            libc::AT_FDCWD,
+            path.as_ptr(),
+            times.as_ptr(),
+            libc::AT_SYMLINK_NOFOLLOW,
+        )
+    };
+    if status == 0 {
         Ok(())
     } else {
         Err(io::Error::last_os_error())
