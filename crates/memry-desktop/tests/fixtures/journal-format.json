@@ -1,0 +1,2285 @@
+{
+  "render": [
+    {
+      "format": "",
+      "date": "2026-09-25",
+      "stem": "2026-09-25",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "",
+      "date": "2025-01-14",
+      "stem": "2025-01-14",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "",
+      "date": "2026-11-28",
+      "stem": "2026-11-28",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "",
+      "date": "2031-12-31",
+      "stem": "2031-12-31",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "",
+      "date": "2000-02-29",
+      "stem": "2000-02-29",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "",
+      "date": "2024-02-29",
+      "stem": "2024-02-29",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "",
+      "date": "1999-12-31",
+      "stem": "1999-12-31",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "",
+      "date": "2025-05-05",
+      "stem": "2025-05-05",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "",
+      "date": "2025-02-31",
+      "stem": "2025-02-31",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "",
+      "date": "2099-07-04",
+      "stem": "2099-07-04",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "",
+      "date": "0100-03-01",
+      "stem": "0100-03-01",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "",
+      "date": "9999-12-31",
+      "stem": "9999-12-31",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "2026-09-25",
+      "stem": "2026-09-25",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "2025-01-14",
+      "stem": "2025-01-14",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "2026-11-28",
+      "stem": "2026-11-28",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "2031-12-31",
+      "stem": "2031-12-31",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "2000-02-29",
+      "stem": "2000-02-29",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "2024-02-29",
+      "stem": "2024-02-29",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "1999-12-31",
+      "stem": "1999-12-31",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "2025-05-05",
+      "stem": "2025-05-05",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "2025-02-31",
+      "stem": "2025-02-31",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "2099-07-04",
+      "stem": "2099-07-04",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "0100-03-01",
+      "stem": "0100-03-01",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "date": "9999-12-31",
+      "stem": "9999-12-31",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "2026-09-25",
+      "stem": "2026-09-25 Friday",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "2025-01-14",
+      "stem": "2025-01-14 Tuesday",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "2026-11-28",
+      "stem": "2026-11-28 Saturday",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "2031-12-31",
+      "stem": "2031-12-31 Wednesday",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "2000-02-29",
+      "stem": "2000-02-29 Tuesday",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "2024-02-29",
+      "stem": "2024-02-29 Thursday",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "1999-12-31",
+      "stem": "1999-12-31 Friday",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "2025-05-05",
+      "stem": "2025-05-05 Monday",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "2025-02-31",
+      "stem": "2025-02-31 Monday",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "2099-07-04",
+      "stem": "2099-07-04 Saturday",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "0100-03-01",
+      "stem": "0100-03-01 Monday",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "date": "9999-12-31",
+      "stem": "9999-12-31 Friday",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "2026-09-25",
+      "stem": "25.09.26",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "2025-01-14",
+      "stem": "14.01.25",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "2026-11-28",
+      "stem": "28.11.26",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "2031-12-31",
+      "stem": "31.12.31",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "2000-02-29",
+      "stem": "29.02.00",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "2024-02-29",
+      "stem": "29.02.24",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "1999-12-31",
+      "stem": "31.12.99",
+      "parsed": "2099-12-31"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "2025-05-05",
+      "stem": "05.05.25",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "2025-02-31",
+      "stem": "31.02.25",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "2099-07-04",
+      "stem": "04.07.99",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "0100-03-01",
+      "stem": "01.03.00",
+      "parsed": "2000-03-01"
+    },
+    {
+      "format": "DD.MM.YY",
+      "date": "9999-12-31",
+      "stem": "31.12.99",
+      "parsed": "2099-12-31"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "2026-09-25",
+      "stem": "Friday, 25-9-2026",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "2025-01-14",
+      "stem": "Tuesday, 14-1-2025",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "2026-11-28",
+      "stem": "Saturday, 28-11-2026",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "2031-12-31",
+      "stem": "Wednesday, 31-12-2031",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "2000-02-29",
+      "stem": "Tuesday, 29-2-2000",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "2024-02-29",
+      "stem": "Thursday, 29-2-2024",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "1999-12-31",
+      "stem": "Friday, 31-12-1999",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "2025-05-05",
+      "stem": "Monday, 5-5-2025",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "2025-02-31",
+      "stem": "Monday, 31-2-2025",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "2099-07-04",
+      "stem": "Saturday, 4-7-2099",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "0100-03-01",
+      "stem": "Monday, 1-3-0100",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "date": "9999-12-31",
+      "stem": "Friday, 31-12-9999",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "2026-09-25",
+      "stem": "2026/September/2026-09-25",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "2025-01-14",
+      "stem": "2025/January/2025-01-14",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "2026-11-28",
+      "stem": "2026/November/2026-11-28",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "2031-12-31",
+      "stem": "2031/December/2031-12-31",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "2000-02-29",
+      "stem": "2000/February/2000-02-29",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "2024-02-29",
+      "stem": "2024/February/2024-02-29",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "1999-12-31",
+      "stem": "1999/December/1999-12-31",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "2025-05-05",
+      "stem": "2025/May/2025-05-05",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "2025-02-31",
+      "stem": "2025/February/2025-02-31",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "2099-07-04",
+      "stem": "2099/July/2099-07-04",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "0100-03-01",
+      "stem": "0100/March/0100-03-01",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "date": "9999-12-31",
+      "stem": "9999/December/9999-12-31",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "2026-09-25",
+      "stem": "2026/09/25",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "2025-01-14",
+      "stem": "2025/01/14",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "2026-11-28",
+      "stem": "2026/11/28",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "2031-12-31",
+      "stem": "2031/12/31",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "2000-02-29",
+      "stem": "2000/02/29",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "2024-02-29",
+      "stem": "2024/02/29",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "1999-12-31",
+      "stem": "1999/12/31",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "2025-05-05",
+      "stem": "2025/05/05",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "2025-02-31",
+      "stem": "2025/02/31",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "2099-07-04",
+      "stem": "2099/07/04",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "0100-03-01",
+      "stem": "0100/03/01",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "date": "9999-12-31",
+      "stem": "9999/12/31",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "2026-09-25",
+      "stem": "Sep 25, 2026",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "2025-01-14",
+      "stem": "Jan 14, 2025",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "2026-11-28",
+      "stem": "Nov 28, 2026",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "2031-12-31",
+      "stem": "Dec 31, 2031",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "2000-02-29",
+      "stem": "Feb 29, 2000",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "2024-02-29",
+      "stem": "Feb 29, 2024",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "1999-12-31",
+      "stem": "Dec 31, 1999",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "2025-05-05",
+      "stem": "May 5, 2025",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "2025-02-31",
+      "stem": "Feb 31, 2025",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "2099-07-04",
+      "stem": "Jul 4, 2099",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "0100-03-01",
+      "stem": "Mar 1, 0100",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "MMM D, YYYY",
+      "date": "9999-12-31",
+      "stem": "Dec 31, 9999",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "2026-09-25",
+      "stem": "Fri 2026-09-25",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "2025-01-14",
+      "stem": "Tue 2025-01-14",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "2026-11-28",
+      "stem": "Sat 2026-11-28",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "2031-12-31",
+      "stem": "Wed 2031-12-31",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "2000-02-29",
+      "stem": "Tue 2000-02-29",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "2024-02-29",
+      "stem": "Thu 2024-02-29",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "1999-12-31",
+      "stem": "Fri 1999-12-31",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "2025-05-05",
+      "stem": "Mon 2025-05-05",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "2025-02-31",
+      "stem": "Mon 2025-02-31",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "2099-07-04",
+      "stem": "Sat 2099-07-04",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "0100-03-01",
+      "stem": "Mon 0100-03-01",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "date": "9999-12-31",
+      "stem": "Fri 9999-12-31",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "2026-09-25",
+      "stem": "26-9-25",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "2025-01-14",
+      "stem": "25-1-14",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "2026-11-28",
+      "stem": "26-11-28",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "2031-12-31",
+      "stem": "31-12-31",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "2000-02-29",
+      "stem": "00-2-29",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "2024-02-29",
+      "stem": "24-2-29",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "1999-12-31",
+      "stem": "99-12-31",
+      "parsed": "2099-12-31"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "2025-05-05",
+      "stem": "25-5-5",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "2025-02-31",
+      "stem": "25-2-31",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "2099-07-04",
+      "stem": "99-7-4",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "0100-03-01",
+      "stem": "00-3-1",
+      "parsed": "2000-03-01"
+    },
+    {
+      "format": "YY-M-D",
+      "date": "9999-12-31",
+      "stem": "99-12-31",
+      "parsed": "2099-12-31"
+    },
+    {
+      "format": "YYYYMD",
+      "date": "2026-09-25",
+      "stem": "2026925",
+      "parsed": null
+    },
+    {
+      "format": "YYYYMD",
+      "date": "2025-01-14",
+      "stem": "2025114",
+      "parsed": "2025-11-04"
+    },
+    {
+      "format": "YYYYMD",
+      "date": "2026-11-28",
+      "stem": "20261128",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "YYYYMD",
+      "date": "2031-12-31",
+      "stem": "20311231",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "YYYYMD",
+      "date": "2000-02-29",
+      "stem": "2000229",
+      "parsed": null
+    },
+    {
+      "format": "YYYYMD",
+      "date": "2024-02-29",
+      "stem": "2024229",
+      "parsed": null
+    },
+    {
+      "format": "YYYYMD",
+      "date": "1999-12-31",
+      "stem": "19991231",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "YYYYMD",
+      "date": "2025-05-05",
+      "stem": "202555",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "YYYYMD",
+      "date": "2025-02-31",
+      "stem": "2025231",
+      "parsed": null
+    },
+    {
+      "format": "YYYYMD",
+      "date": "2099-07-04",
+      "stem": "209974",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "YYYYMD",
+      "date": "0100-03-01",
+      "stem": "010031",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "YYYYMD",
+      "date": "9999-12-31",
+      "stem": "99991231",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "2026-09-25",
+      "stem": "25 September 2026",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "2025-01-14",
+      "stem": "14 January 2025",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "2026-11-28",
+      "stem": "28 November 2026",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "2031-12-31",
+      "stem": "31 December 2031",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "2000-02-29",
+      "stem": "29 February 2000",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "2024-02-29",
+      "stem": "29 February 2024",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "1999-12-31",
+      "stem": "31 December 1999",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "2025-05-05",
+      "stem": "5 May 2025",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "2025-02-31",
+      "stem": "31 February 2025",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "2099-07-04",
+      "stem": "4 July 2099",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "0100-03-01",
+      "stem": "1 March 0100",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "D MMMM YYYY",
+      "date": "9999-12-31",
+      "stem": "31 December 9999",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "2026-09-25",
+      "stem": "2026.09.25 (Fri)",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "2025-01-14",
+      "stem": "2025.01.14 (Tue)",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "2026-11-28",
+      "stem": "2026.11.28 (Sat)",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "2031-12-31",
+      "stem": "2031.12.31 (Wed)",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "2000-02-29",
+      "stem": "2000.02.29 (Tue)",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "2024-02-29",
+      "stem": "2024.02.29 (Thu)",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "1999-12-31",
+      "stem": "1999.12.31 (Fri)",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "2025-05-05",
+      "stem": "2025.05.05 (Mon)",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "2025-02-31",
+      "stem": "2025.02.31 (Mon)",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "2099-07-04",
+      "stem": "2099.07.04 (Sat)",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "0100-03-01",
+      "stem": "0100.03.01 (Mon)",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "date": "9999-12-31",
+      "stem": "9999.12.31 (Fri)",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "2026-09-25",
+      "stem": "[2026] September9 2525",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "2025-01-14",
+      "stem": "[2025] January1 1414",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "2026-11-28",
+      "stem": "[2026] November11 2828",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "2031-12-31",
+      "stem": "[2031] December12 3131",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "2000-02-29",
+      "stem": "[2000] February2 2929",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "2024-02-29",
+      "stem": "[2024] February2 2929",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "1999-12-31",
+      "stem": "[1999] December12 3131",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "2025-05-05",
+      "stem": "[2025] May5 055",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "2025-02-31",
+      "stem": "[2025] February2 3131",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "2099-07-04",
+      "stem": "[2099] July7 044",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "0100-03-01",
+      "stem": "[0100] March3 011",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "date": "9999-12-31",
+      "stem": "[9999] December12 3131",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "Y-M-D",
+      "date": "2026-09-25",
+      "stem": "Y-9-25",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "2025-01-14",
+      "stem": "Y-1-14",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "2026-11-28",
+      "stem": "Y-11-28",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "2031-12-31",
+      "stem": "Y-12-31",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "2000-02-29",
+      "stem": "Y-2-29",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "2024-02-29",
+      "stem": "Y-2-29",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "1999-12-31",
+      "stem": "Y-12-31",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "2025-05-05",
+      "stem": "Y-5-5",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "2025-02-31",
+      "stem": "Y-2-31",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "2099-07-04",
+      "stem": "Y-7-4",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "0100-03-01",
+      "stem": "Y-3-1",
+      "parsed": null
+    },
+    {
+      "format": "Y-M-D",
+      "date": "9999-12-31",
+      "stem": "Y-12-31",
+      "parsed": null
+    },
+    {
+      "format": "YYYYY",
+      "date": "2026-09-25",
+      "stem": "2026Y",
+      "parsed": "2026-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "2025-01-14",
+      "stem": "2025Y",
+      "parsed": "2025-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "2026-11-28",
+      "stem": "2026Y",
+      "parsed": "2026-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "2031-12-31",
+      "stem": "2031Y",
+      "parsed": "2031-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "2000-02-29",
+      "stem": "2000Y",
+      "parsed": "2000-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "2024-02-29",
+      "stem": "2024Y",
+      "parsed": "2024-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "1999-12-31",
+      "stem": "1999Y",
+      "parsed": "1999-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "2025-05-05",
+      "stem": "2025Y",
+      "parsed": "2025-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "2025-02-31",
+      "stem": "2025Y",
+      "parsed": "2025-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "2099-07-04",
+      "stem": "2099Y",
+      "parsed": "2099-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "0100-03-01",
+      "stem": "0100Y",
+      "parsed": "0100-01-01"
+    },
+    {
+      "format": "YYYYY",
+      "date": "9999-12-31",
+      "stem": "9999Y",
+      "parsed": "9999-01-01"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "2026-09-25",
+      "stem": "Week of 2026-09-25",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "2025-01-14",
+      "stem": "Week of 2025-01-14",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "2026-11-28",
+      "stem": "Week of 2026-11-28",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "2031-12-31",
+      "stem": "Week of 2031-12-31",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "2000-02-29",
+      "stem": "Week of 2000-02-29",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "2024-02-29",
+      "stem": "Week of 2024-02-29",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "1999-12-31",
+      "stem": "Week of 1999-12-31",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "2025-05-05",
+      "stem": "Week of 2025-05-05",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "2025-02-31",
+      "stem": "Week of 2025-02-31",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "2099-07-04",
+      "stem": "Week of 2099-07-04",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "0100-03-01",
+      "stem": "Week of 0100-03-01",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "date": "9999-12-31",
+      "stem": "Week of 9999-12-31",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "2026-09-25",
+      "stem": "2026-09-25 日記",
+      "parsed": "2026-09-25"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "2025-01-14",
+      "stem": "2025-01-14 日記",
+      "parsed": "2025-01-14"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "2026-11-28",
+      "stem": "2026-11-28 日記",
+      "parsed": "2026-11-28"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "2031-12-31",
+      "stem": "2031-12-31 日記",
+      "parsed": "2031-12-31"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "2000-02-29",
+      "stem": "2000-02-29 日記",
+      "parsed": "2000-02-29"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "2024-02-29",
+      "stem": "2024-02-29 日記",
+      "parsed": "2024-02-29"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "1999-12-31",
+      "stem": "1999-12-31 日記",
+      "parsed": "1999-12-31"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "2025-05-05",
+      "stem": "2025-05-05 日記",
+      "parsed": "2025-05-05"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "2025-02-31",
+      "stem": "2025-02-31 日記",
+      "parsed": "2025-02-31"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "2099-07-04",
+      "stem": "2099-07-04 日記",
+      "parsed": "2099-07-04"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "0100-03-01",
+      "stem": "0100-03-01 日記",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "date": "9999-12-31",
+      "stem": "9999-12-31 日記",
+      "parsed": "9999-12-31"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "2026-09-25",
+      "stem": "2026-09",
+      "parsed": "2026-09-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "2025-01-14",
+      "stem": "2025-01",
+      "parsed": "2025-01-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "2026-11-28",
+      "stem": "2026-11",
+      "parsed": "2026-11-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "2031-12-31",
+      "stem": "2031-12",
+      "parsed": "2031-12-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "2000-02-29",
+      "stem": "2000-02",
+      "parsed": "2000-02-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "2024-02-29",
+      "stem": "2024-02",
+      "parsed": "2024-02-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "1999-12-31",
+      "stem": "1999-12",
+      "parsed": "1999-12-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "2025-05-05",
+      "stem": "2025-05",
+      "parsed": "2025-05-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "2025-02-31",
+      "stem": "2025-02",
+      "parsed": "2025-02-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "2099-07-04",
+      "stem": "2099-07",
+      "parsed": "2099-07-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "0100-03-01",
+      "stem": "0100-03",
+      "parsed": "0100-03-01"
+    },
+    {
+      "format": "YYYY-MM",
+      "date": "9999-12-31",
+      "stem": "9999-12",
+      "parsed": "9999-12-01"
+    },
+    {
+      "format": "MM-DD",
+      "date": "2026-09-25",
+      "stem": "09-25",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "2025-01-14",
+      "stem": "01-14",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "2026-11-28",
+      "stem": "11-28",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "2031-12-31",
+      "stem": "12-31",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "2000-02-29",
+      "stem": "02-29",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "2024-02-29",
+      "stem": "02-29",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "1999-12-31",
+      "stem": "12-31",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "2025-05-05",
+      "stem": "05-05",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "2025-02-31",
+      "stem": "02-31",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "2099-07-04",
+      "stem": "07-04",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "0100-03-01",
+      "stem": "03-01",
+      "parsed": null
+    },
+    {
+      "format": "MM-DD",
+      "date": "9999-12-31",
+      "stem": "12-31",
+      "parsed": null
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "2026-09-25",
+      "stem": "2026 Friday",
+      "parsed": null
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "2025-01-14",
+      "stem": "2025 Tuesday",
+      "parsed": null
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "2026-11-28",
+      "stem": "2026 Saturday",
+      "parsed": null
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "2031-12-31",
+      "stem": "2031 Wednesday",
+      "parsed": "2031-01-01"
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "2000-02-29",
+      "stem": "2000 Tuesday",
+      "parsed": null
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "2024-02-29",
+      "stem": "2024 Thursday",
+      "parsed": null
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "1999-12-31",
+      "stem": "1999 Friday",
+      "parsed": "1999-01-01"
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "2025-05-05",
+      "stem": "2025 Monday",
+      "parsed": null
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "2025-02-31",
+      "stem": "2025 Monday",
+      "parsed": null
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "2099-07-04",
+      "stem": "2099 Saturday",
+      "parsed": null
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "0100-03-01",
+      "stem": "0100 Monday",
+      "parsed": null
+    },
+    {
+      "format": "YYYY dddd",
+      "date": "9999-12-31",
+      "stem": "9999 Friday",
+      "parsed": "9999-01-01"
+    },
+    {
+      "format": "notes",
+      "date": "2026-09-25",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "2025-01-14",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "2026-11-28",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "2031-12-31",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "2000-02-29",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "2024-02-29",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "1999-12-31",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "2025-05-05",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "2025-02-31",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "2099-07-04",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "0100-03-01",
+      "stem": "notes",
+      "parsed": null
+    },
+    {
+      "format": "notes",
+      "date": "9999-12-31",
+      "stem": "notes",
+      "parsed": null
+    }
+  ],
+  "parse": [
+    {
+      "stem": "2025-02-31",
+      "format": "YYYY-MM-DD",
+      "parsed": "2025-02-31"
+    },
+    {
+      "stem": "2025-13-01",
+      "format": "YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "2025-00-10",
+      "format": "YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "2025-01-00",
+      "format": "YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "2025-01-32",
+      "format": "YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "2025-1-14",
+      "format": "YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "2025-01-14 ",
+      "format": "YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "２０２５-01-14",
+      "format": "YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "2026-09-25 Friday",
+      "format": "YYYY-MM-DD dddd",
+      "parsed": "2026-09-25"
+    },
+    {
+      "stem": "2026-09-25 Monday",
+      "format": "YYYY-MM-DD dddd",
+      "parsed": null
+    },
+    {
+      "stem": "2026-09-25 friday",
+      "format": "YYYY-MM-DD dddd",
+      "parsed": null
+    },
+    {
+      "stem": "2025/January/2025-01-14",
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "parsed": "2025-01-14"
+    },
+    {
+      "stem": "2025/February/2025-01-14",
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "2024/January/2025-01-14",
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "2025/02/2025-01-14",
+      "format": "YYYY/MM/YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "25-6-5",
+      "format": "YY-M-D",
+      "parsed": "2025-06-05"
+    },
+    {
+      "stem": "99-01-01",
+      "format": "YY-MM-DD",
+      "parsed": "2099-01-01"
+    },
+    {
+      "stem": "0050-01-01",
+      "format": "YYYY-MM-DD",
+      "parsed": "2050-01-01"
+    },
+    {
+      "stem": "2025111",
+      "format": "YYYYMD",
+      "parsed": "2025-11-01"
+    },
+    {
+      "stem": "202511",
+      "format": "YYYYMD",
+      "parsed": "2025-01-01"
+    },
+    {
+      "stem": "20251231",
+      "format": "YYYYMD",
+      "parsed": "2025-12-31"
+    },
+    {
+      "stem": "May 5, 2025",
+      "format": "MMM D, YYYY",
+      "parsed": "2025-05-05"
+    },
+    {
+      "stem": "Sept 5, 2025",
+      "format": "MMM D, YYYY",
+      "parsed": null
+    },
+    {
+      "stem": "5 May 2025",
+      "format": "D MMMM YYYY",
+      "parsed": "2025-05-05"
+    },
+    {
+      "stem": "Mon 2025-01-13",
+      "format": "ddd YYYY-MM-DD",
+      "parsed": "2025-01-13"
+    },
+    {
+      "stem": "Tue 2025-01-13",
+      "format": "ddd YYYY-MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "2025-01",
+      "format": "YYYY-MM",
+      "parsed": "2025-01-01"
+    },
+    {
+      "stem": "01-14",
+      "format": "MM-DD",
+      "parsed": null
+    },
+    {
+      "stem": "2025 Tuesday",
+      "format": "YYYY dddd",
+      "parsed": null
+    },
+    {
+      "stem": "2025 Wednesday",
+      "format": "YYYY dddd",
+      "parsed": "2025-01-01"
+    },
+    {
+      "stem": "notes",
+      "format": "notes",
+      "parsed": null
+    },
+    {
+      "stem": "2025-01-14",
+      "format": "",
+      "parsed": "2025-01-14"
+    },
+    {
+      "stem": "a.b",
+      "format": "a.b",
+      "parsed": null
+    },
+    {
+      "stem": "2025-01-14",
+      "format": "YYYY-MM-DD+",
+      "parsed": null
+    },
+    {
+      "stem": "2025-01-14+",
+      "format": "YYYY-MM-DD+",
+      "parsed": "2025-01-14"
+    },
+    {
+      "stem": "2025x01x14",
+      "format": "YYYY.MM.DD",
+      "parsed": null
+    },
+    {
+      "stem": "2025.01.14",
+      "format": "YYYY.MM.DD",
+      "parsed": "2025-01-14"
+    }
+  ],
+  "normalize": [
+    {
+      "input": "journal",
+      "format": "journal",
+      "folder": "journal"
+    },
+    {
+      "input": "/journal/",
+      "format": "journal",
+      "folder": "journal"
+    },
+    {
+      "input": " Daily Notes ",
+      "format": "Daily Notes",
+      "folder": "Daily Notes"
+    },
+    {
+      "input": "a\\b//c",
+      "format": "a/b/c",
+      "folder": "a/b/c"
+    },
+    {
+      "input": "./journal/../x",
+      "format": "journal/x",
+      "folder": "journal/x"
+    },
+    {
+      "input": "﻿journal ",
+      "format": "journal",
+      "folder": "journal"
+    },
+    {
+      "input": "  /  ",
+      "format": "",
+      "folder": ""
+    },
+    {
+      "input": "",
+      "format": "",
+      "folder": ""
+    },
+    {
+      "input": "YYYY / MMMM / YYYY-MM-DD dddd",
+      "format": "YYYY/MMMM/YYYY-MM-DD dddd",
+      "folder": "YYYY/MMMM/YYYY-MM-DD dddd"
+    },
+    {
+      "input": "\tYYYY-MM-DD dddd\n",
+      "format": "YYYY-MM-DD dddd",
+      "folder": "YYYY-MM-DD dddd"
+    },
+    {
+      "input": "a/./b/../c",
+      "format": "a/b/c",
+      "folder": "a/b/c"
+    },
+    {
+      "input": "x",
+      "format": "x",
+      "folder": "x"
+    }
+  ],
+  "complete": [
+    {
+      "format": "",
+      "complete": true
+    },
+    {
+      "format": "YYYY-MM-DD",
+      "complete": true
+    },
+    {
+      "format": "YYYY-MM-DD dddd",
+      "complete": true
+    },
+    {
+      "format": "DD.MM.YY",
+      "complete": true
+    },
+    {
+      "format": "dddd, D-M-YYYY",
+      "complete": true
+    },
+    {
+      "format": "YYYY/MMMM/YYYY-MM-DD",
+      "complete": true
+    },
+    {
+      "format": "YYYY/MM/DD",
+      "complete": true
+    },
+    {
+      "format": "MMM D, YYYY",
+      "complete": true
+    },
+    {
+      "format": "ddd YYYY-MM-DD",
+      "complete": true
+    },
+    {
+      "format": "YY-M-D",
+      "complete": true
+    },
+    {
+      "format": "YYYYMD",
+      "complete": true
+    },
+    {
+      "format": "D MMMM YYYY",
+      "complete": true
+    },
+    {
+      "format": "YYYY.MM.DD (ddd)",
+      "complete": true
+    },
+    {
+      "format": "[YYYY] MMMMM DDD",
+      "complete": true
+    },
+    {
+      "format": "Y-M-D",
+      "complete": false
+    },
+    {
+      "format": "YYYYY",
+      "complete": false
+    },
+    {
+      "format": "Week of YYYY-MM-DD",
+      "complete": true
+    },
+    {
+      "format": "YYYY-MM-DD 日記",
+      "complete": true
+    },
+    {
+      "format": "YYYY-MM",
+      "complete": false
+    },
+    {
+      "format": "MM-DD",
+      "complete": false
+    },
+    {
+      "format": "YYYY dddd",
+      "complete": false
+    },
+    {
+      "format": "notes",
+      "complete": false
+    }
+  ],
+  "plan": [
+    {
+      "files": [
+        "2026-09-25.md",
+        "2026-09-26.md",
+        "ideas.md",
+        "2026-09-27.txt"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM-DD dddd",
+      "plan": {
+        "renames": [
+          {
+            "from": "2026-09-25.md",
+            "to": "2026-09-25 Friday.md",
+            "date": "2026-09-25"
+          },
+          {
+            "from": "2026-09-26.md",
+            "to": "2026-09-26 Saturday.md",
+            "date": "2026-09-26"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "files": [
+        "2026-09-26.md",
+        "2026-09-26 Saturday.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM-DD dddd",
+      "plan": {
+        "renames": [],
+        "skipped": [
+          {
+            "file": "2026-09-26.md",
+            "reason": "target-exists"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "2026-09-26.md",
+        "2026-09-26 saturday.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM-DD dddd",
+      "plan": {
+        "renames": [],
+        "skipped": [
+          {
+            "file": "2026-09-26.md",
+            "reason": "target-exists"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "26-6-5.md",
+        "26-06-05.md"
+      ],
+      "from": "YY-M-D",
+      "to": "YYYY-MM-DD",
+      "plan": {
+        "renames": [
+          {
+            "from": "26-06-05.md",
+            "to": "2026-06-05.md",
+            "date": "2026-06-05"
+          }
+        ],
+        "skipped": [
+          {
+            "file": "26-6-5.md",
+            "reason": "target-exists"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "05-06-2026.md",
+        "06-05-2026.md"
+      ],
+      "from": "DD-MM-YYYY",
+      "to": "MM-DD-YYYY",
+      "plan": {
+        "renames": [],
+        "skipped": [
+          {
+            "file": "05-06-2026.md",
+            "reason": "target-exists"
+          },
+          {
+            "file": "06-05-2026.md",
+            "reason": "target-exists"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "2025-01-14.md",
+        "ideas.md",
+        "2025/notes.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY/MMMM/YYYY-MM-DD",
+      "plan": {
+        "renames": [
+          {
+            "from": "2025-01-14.md",
+            "to": "2025/January/2025-01-14.md",
+            "date": "2025-01-14"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "files": [
+        "2025/January/2025-01-14.md",
+        "2025/notes.md"
+      ],
+      "from": "YYYY/MMMM/YYYY-MM-DD",
+      "to": "YYYY-MM-DD",
+      "plan": {
+        "renames": [
+          {
+            "from": "2025/January/2025-01-14.md",
+            "to": "2025-01-14.md",
+            "date": "2025-01-14"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "files": [
+        "2025-01-14.md",
+        "2025-01-15.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM",
+      "plan": {
+        "renames": [],
+        "skipped": [
+          {
+            "file": "2025-01-14.md",
+            "reason": "unrepresentable"
+          },
+          {
+            "file": "2025-01-15.md",
+            "reason": "unrepresentable"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "2025-01-14.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM-DD",
+      "plan": {
+        "renames": [],
+        "skipped": []
+      }
+    },
+    {
+      "files": [
+        "2025-01-14.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "",
+      "plan": {
+        "renames": [],
+        "skipped": []
+      }
+    },
+    {
+      "files": [
+        "Jan 14, 2025.md"
+      ],
+      "from": "MMM D, YYYY",
+      "to": "mmm d, yyyy",
+      "plan": {
+        "renames": [],
+        "skipped": [
+          {
+            "file": "Jan 14, 2025.md",
+            "reason": "unrepresentable"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "2025-01-14.MD",
+        "2025-01-15.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM-DD dddd",
+      "plan": {
+        "renames": [
+          {
+            "from": "2025-01-15.md",
+            "to": "2025-01-15 Wednesday.md",
+            "date": "2025-01-15"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "files": [
+        "2025-01-14.md",
+        "2025-01-14 Tuesday.MD"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM-DD dddd",
+      "plan": {
+        "renames": [],
+        "skipped": [
+          {
+            "file": "2025-01-14.md",
+            "reason": "target-exists"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "14-01-25.md",
+        "2025-01-14.md"
+      ],
+      "from": "DD-MM-YY",
+      "to": "YYYY-MM-DD",
+      "plan": {
+        "renames": [],
+        "skipped": [
+          {
+            "file": "14-01-25.md",
+            "reason": "target-exists"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "2025-01-14.md",
+        "2025-01-14.md.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM-DD dddd",
+      "plan": {
+        "renames": [
+          {
+            "from": "2025-01-14.md",
+            "to": "2025-01-14 Tuesday.md",
+            "date": "2025-01-14"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "files": [
+        "2025-01-14.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM-DD/YYYY",
+      "plan": {
+        "renames": [
+          {
+            "from": "2025-01-14.md",
+            "to": "2025-01-14/2025.md",
+            "date": "2025-01-14"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "files": [
+        "2025-01-14.md",
+        "2025-01-14/2025.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM-DD/YYYY",
+      "plan": {
+        "renames": [],
+        "skipped": [
+          {
+            "file": "2025-01-14.md",
+            "reason": "target-exists"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "b/2025-01-14.md",
+        "a/2025-01-15.md",
+        "2025-01-16.md"
+      ],
+      "from": "YYYY-MM-DD",
+      "to": "YYYY-MM-DD dddd",
+      "plan": {
+        "renames": [
+          {
+            "from": "2025-01-16.md",
+            "to": "2025-01-16 Thursday.md",
+            "date": "2025-01-16"
+          }
+        ],
+        "skipped": []
+      }
+    },
+    {
+      "files": [
+        "2025-01-14 Tuesday.md",
+        "2025-01-14.md"
+      ],
+      "from": "YYYY-MM-DD dddd",
+      "to": "YYYY-MM-DD",
+      "plan": {
+        "renames": [],
+        "skipped": [
+          {
+            "file": "2025-01-14 Tuesday.md",
+            "reason": "target-exists"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "ΣΑΣ 2025-01-14.md",
+        "σας 2025-01-14 Tuesday.md"
+      ],
+      "from": "ΣΑΣ YYYY-MM-DD",
+      "to": "σας YYYY-MM-DD dddd",
+      "plan": {
+        "renames": [],
+        "skipped": [
+          {
+            "file": "ΣΑΣ 2025-01-14.md",
+            "reason": "target-exists"
+          }
+        ]
+      }
+    }
+  ]
+}

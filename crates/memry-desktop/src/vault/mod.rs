@@ -4,7 +4,8 @@
 //! the config owner and init, the watcher (`watch`), which reads `note_files` and writes nothing,
 //! the consumer and write-back, the side files under `.memry/` (the activity log, custom
 //! icons, property definitions), and the tree operations (the folder move `move_dir` with its
-//! journal `move_journal`, the Obsidian open-as-copy).
+//! journal `move_journal`, the journal renames of a date format change, the Obsidian
+//! open-as-copy).
 
 pub mod activity;
 pub mod config;
@@ -13,7 +14,10 @@ pub mod file_types;
 pub mod fs_atomic;
 pub mod hash;
 pub mod icons;
+pub mod import_copy;
 pub mod init;
+pub mod journal_format;
+pub mod journal_rename;
 pub mod layout;
 pub mod move_dir;
 pub mod move_journal;

@@ -1,9 +1,11 @@
-//! Ports of the `packages/shared/src` modules the converter uses.
+//! Ports of the `packages/shared/src` modules the converter uses, and of the checklist marking
+//! the desktop's imports and writes share (`checklist_plain`).
 
 pub mod block_colors;
 pub mod block_copy;
 pub mod block_markers;
 pub mod block_nesting;
+pub mod checklist_plain;
 pub mod critic_markup;
 pub mod empty_lines;
 pub mod hard_breaks;

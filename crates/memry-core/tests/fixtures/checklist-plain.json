@@ -1,0 +1,1899 @@
+{
+  "cases": [
+    {
+      "markdown": "- [ ] Buy milk",
+      "previous": "",
+      "output": "- [ ] Buy milk {check}"
+    },
+    {
+      "markdown": "- [ ] Buy milk\r\n- [ ] Buy milk\r\n",
+      "previous": "",
+      "output": "- [ ] Buy milk {check}\r\n- [ ] Buy milk {check}\r\n"
+    },
+    {
+      "markdown": "* [x] Done thing",
+      "previous": "",
+      "output": "* [x] Done thing {check}"
+    },
+    {
+      "markdown": "* [x] Done thing\r\n* [x] Done thing\r\n",
+      "previous": "",
+      "output": "* [x] Done thing {check}\r\n* [x] Done thing {check}\r\n"
+    },
+    {
+      "markdown": "+ [X] Shouted done",
+      "previous": "",
+      "output": "+ [X] Shouted done {check}"
+    },
+    {
+      "markdown": "+ [X] Shouted done\r\n+ [X] Shouted done\r\n",
+      "previous": "",
+      "output": "+ [X] Shouted done {check}\r\n+ [X] Shouted done {check}\r\n"
+    },
+    {
+      "markdown": "- [y] Not a checkbox",
+      "previous": "",
+      "output": "- [y] Not a checkbox"
+    },
+    {
+      "markdown": "- [y] Not a checkbox\r\n- [y] Not a checkbox\r\n",
+      "previous": "",
+      "output": "- [y] Not a checkbox\r\n- [y] Not a checkbox\r\n"
+    },
+    {
+      "markdown": "1. [ ] Ordered item",
+      "previous": "",
+      "output": "1. [ ] Ordered item"
+    },
+    {
+      "markdown": "1. [ ] Ordered item\r\n1. [ ] Ordered item\r\n",
+      "previous": "",
+      "output": "1. [ ] Ordered item\r\n1. [ ] Ordered item\r\n"
+    },
+    {
+      "markdown": "2) [ ] Ordered paren",
+      "previous": "",
+      "output": "2) [ ] Ordered paren"
+    },
+    {
+      "markdown": "2) [ ] Ordered paren\r\n2) [ ] Ordered paren\r\n",
+      "previous": "",
+      "output": "2) [ ] Ordered paren\r\n2) [ ] Ordered paren\r\n"
+    },
+    {
+      "markdown": "-  [ ]   Extra spaces  ",
+      "previous": "",
+      "output": "-  [ ]   Extra spaces {check}"
+    },
+    {
+      "markdown": "-  [ ]   Extra spaces  \r\n-  [ ]   Extra spaces  \r\n",
+      "previous": "",
+      "output": "-  [ ]   Extra spaces {check}\r\n-  [ ]   Extra spaces {check}\r\n"
+    },
+    {
+      "markdown": "- [ ]",
+      "previous": "",
+      "output": "- [ ] {check}"
+    },
+    {
+      "markdown": "- [ ]\r\n- [ ]\r\n",
+      "previous": "",
+      "output": "- [ ] {check}\r\n- [ ] {check}\r\n"
+    },
+    {
+      "markdown": "- [ ]   ",
+      "previous": "",
+      "output": "- [ ] {check}"
+    },
+    {
+      "markdown": "- [ ]   \r\n- [ ]   \r\n",
+      "previous": "",
+      "output": "- [ ] {check}\r\n- [ ] {check}\r\n"
+    },
+    {
+      "markdown": "- [ ]x glued",
+      "previous": "",
+      "output": "- [ ]x glued"
+    },
+    {
+      "markdown": "- [ ]x glued\r\n- [ ]x glued\r\n",
+      "previous": "",
+      "output": "- [ ]x glued\r\n- [ ]x glued\r\n"
+    },
+    {
+      "markdown": "-\t[ ] tab after marker",
+      "previous": "",
+      "output": "-\t[ ] tab after marker"
+    },
+    {
+      "markdown": "-\t[ ] tab after marker\r\n-\t[ ] tab after marker\r\n",
+      "previous": "",
+      "output": "-\t[ ] tab after marker\r\n-\t[ ] tab after marker\r\n"
+    },
+    {
+      "markdown": "\t- [ ] tab indent",
+      "previous": "",
+      "output": "\t- [ ] tab indent {check}"
+    },
+    {
+      "markdown": "\t- [ ] tab indent\r\n\t- [ ] tab indent\r\n",
+      "previous": "",
+      "output": "\t- [ ] tab indent {check}\r\n\t- [ ] tab indent {check}\r\n"
+    },
+    {
+      "markdown": "    - [ ] nested four",
+      "previous": "",
+      "output": "    - [ ] nested four {check}"
+    },
+    {
+      "markdown": "    - [ ] nested four\r\n    - [ ] nested four\r\n",
+      "previous": "",
+      "output": "    - [ ] nested four {check}\r\n    - [ ] nested four {check}\r\n"
+    },
+    {
+      "markdown": "  * [ ] nested two",
+      "previous": "",
+      "output": "  * [ ] nested two {check}"
+    },
+    {
+      "markdown": "  * [ ] nested two\r\n  * [ ] nested two\r\n",
+      "previous": "",
+      "output": "  * [ ] nested two {check}\r\n  * [ ] nested two {check}\r\n"
+    },
+    {
+      "markdown": "- [ ] Task {task:abc123}",
+      "previous": "",
+      "output": "- [ ] Task {task:abc123}"
+    },
+    {
+      "markdown": "- [ ] Task {task:abc123}\r\n- [ ] Task {task:abc123}\r\n",
+      "previous": "",
+      "output": "- [ ] Task {task:abc123}\r\n- [ ] Task {task:abc123}\r\n"
+    },
+    {
+      "markdown": "- [ ] Empty id {task:}",
+      "previous": "",
+      "output": "- [ ] Empty id {task:} {check}"
+    },
+    {
+      "markdown": "- [ ] Empty id {task:}\r\n- [ ] Empty id {task:}\r\n",
+      "previous": "",
+      "output": "- [ ] Empty id {task:} {check}\r\n- [ ] Empty id {task:} {check}\r\n"
+    },
+    {
+      "markdown": "- [ ] Already plain {check}",
+      "previous": "",
+      "output": "- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "- [ ] Already plain {check}\r\n- [ ] Already plain {check}\r\n",
+      "previous": "",
+      "output": "- [ ] Already plain {check}\r\n- [ ] Already plain {check}\r\n"
+    },
+    {
+      "markdown": "- [ ] Plain with space {check}   ",
+      "previous": "",
+      "output": "- [ ] Plain with space {check}   "
+    },
+    {
+      "markdown": "- [ ] Plain with space {check}   \r\n- [ ] Plain with space {check}   \r\n",
+      "previous": "",
+      "output": "- [ ] Plain with space {check}   \r\n- [ ] Plain with space {check}   \r\n"
+    },
+    {
+      "markdown": "- [ ] Linked line ^block-1",
+      "previous": "",
+      "output": "- [ ] Linked line ^block-1"
+    },
+    {
+      "markdown": "- [ ] Linked line ^block-1\r\n- [ ] Linked line ^block-1\r\n",
+      "previous": "",
+      "output": "- [ ] Linked line ^block-1\r\n- [ ] Linked line ^block-1\r\n"
+    },
+    {
+      "markdown": "- [ ] Has id 🆔 abc123",
+      "previous": "",
+      "output": "- [ ] Has id 🆔 abc123"
+    },
+    {
+      "markdown": "- [ ] Has id 🆔 abc123\r\n- [ ] Has id 🆔 abc123\r\n",
+      "previous": "",
+      "output": "- [ ] Has id 🆔 abc123\r\n- [ ] Has id 🆔 abc123\r\n"
+    },
+    {
+      "markdown": "- [ ] Depends ⛔ abc123",
+      "previous": "",
+      "output": "- [ ] Depends ⛔ abc123"
+    },
+    {
+      "markdown": "- [ ] Depends ⛔ abc123\r\n- [ ] Depends ⛔ abc123\r\n",
+      "previous": "",
+      "output": "- [ ] Depends ⛔ abc123\r\n- [ ] Depends ⛔ abc123\r\n"
+    },
+    {
+      "markdown": "- [ ] Inline id [id:: abc123]",
+      "previous": "",
+      "output": "- [ ] Inline id [id:: abc123]"
+    },
+    {
+      "markdown": "- [ ] Inline id [id:: abc123]\r\n- [ ] Inline id [id:: abc123]\r\n",
+      "previous": "",
+      "output": "- [ ] Inline id [id:: abc123]\r\n- [ ] Inline id [id:: abc123]\r\n"
+    },
+    {
+      "markdown": "- [ ] Due 📅 2026-11-01",
+      "previous": "",
+      "output": "- [ ] Due 📅 2026-11-01 {check}"
+    },
+    {
+      "markdown": "- [ ] Due 📅 2026-11-01\r\n- [ ] Due 📅 2026-11-01\r\n",
+      "previous": "",
+      "output": "- [ ] Due 📅 2026-11-01 {check}\r\n- [ ] Due 📅 2026-11-01 {check}\r\n"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week",
+      "previous": "",
+      "output": "- [ ] Recurs 🔁 every week {check}"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week\r\n- [ ] Recurs 🔁 every week\r\n",
+      "previous": "",
+      "output": "- [ ] Recurs 🔁 every week {check}\r\n- [ ] Recurs 🔁 every week {check}\r\n"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp ",
+      "previous": "",
+      "output": "- [ ] Trailing nbsp {check}"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \r\n- [ ] Trailing nbsp \r\n",
+      "previous": "",
+      "output": "- [ ] Trailing nbsp {check}\r\n- [ ] Trailing nbsp {check}\r\n"
+    },
+    {
+      "markdown": "- [ ] Mid\rreturn",
+      "previous": "",
+      "output": "- [ ] Mid\rreturn"
+    },
+    {
+      "markdown": "- [ ] Mid\rreturn\r\n- [ ] Mid\rreturn\r\n",
+      "previous": "",
+      "output": "- [ ] Mid\rreturn\r\n- [ ] Mid\rreturn\r\n"
+    },
+    {
+      "markdown": "- [ ] Line sep inside",
+      "previous": "",
+      "output": "- [ ] Line sep inside"
+    },
+    {
+      "markdown": "- [ ] Line sep inside\r\n- [ ] Line sep inside\r\n",
+      "previous": "",
+      "output": "- [ ] Line sep inside\r\n- [ ] Line sep inside\r\n"
+    },
+    {
+      "markdown": "- [ ] Para sep inside",
+      "previous": "",
+      "output": "- [ ] Para sep inside"
+    },
+    {
+      "markdown": "- [ ] Para sep inside\r\n- [ ] Para sep inside\r\n",
+      "previous": "",
+      "output": "- [ ] Para sep inside\r\n- [ ] Para sep inside\r\n"
+    },
+    {
+      "markdown": "> - [ ] Quoted",
+      "previous": "",
+      "output": "> - [ ] Quoted"
+    },
+    {
+      "markdown": "> - [ ] Quoted\r\n> - [ ] Quoted\r\n",
+      "previous": "",
+      "output": "> - [ ] Quoted\r\n> - [ ] Quoted\r\n"
+    },
+    {
+      "markdown": "- plain bullet",
+      "previous": "",
+      "output": "- plain bullet"
+    },
+    {
+      "markdown": "- plain bullet\r\n- plain bullet\r\n",
+      "previous": "",
+      "output": "- plain bullet\r\n- plain bullet\r\n"
+    },
+    {
+      "markdown": "Some paragraph",
+      "previous": "",
+      "output": "Some paragraph"
+    },
+    {
+      "markdown": "Some paragraph\r\nSome paragraph\r\n",
+      "previous": "",
+      "output": "Some paragraph\r\nSome paragraph\r\n"
+    },
+    {
+      "markdown": "",
+      "previous": "",
+      "output": ""
+    },
+    {
+      "markdown": "\r\n\r\n",
+      "previous": "",
+      "output": "\r\n\r\n"
+    },
+    {
+      "markdown": "   ",
+      "previous": "",
+      "output": "   "
+    },
+    {
+      "markdown": "   \r\n   \r\n",
+      "previous": "",
+      "output": "   \r\n   \r\n"
+    },
+    {
+      "markdown": "```",
+      "previous": "",
+      "output": "```"
+    },
+    {
+      "markdown": "```\r\n```\r\n",
+      "previous": "",
+      "output": "```\r\n```\r\n"
+    },
+    {
+      "markdown": "~~~",
+      "previous": "",
+      "output": "~~~"
+    },
+    {
+      "markdown": "~~~\r\n~~~\r\n",
+      "previous": "",
+      "output": "~~~\r\n~~~\r\n"
+    },
+    {
+      "markdown": "````md",
+      "previous": "",
+      "output": "````md"
+    },
+    {
+      "markdown": "````md\r\n````md\r\n",
+      "previous": "",
+      "output": "````md\r\n````md\r\n"
+    },
+    {
+      "markdown": "```js `tick`",
+      "previous": "",
+      "output": "```js `tick`"
+    },
+    {
+      "markdown": "```js `tick`\r\n```js `tick`\r\n",
+      "previous": "",
+      "output": "```js `tick`\r\n```js `tick`\r\n"
+    },
+    {
+      "markdown": "- [ ] Ünïcödé 日本語 ✅",
+      "previous": "",
+      "output": "- [ ] Ünïcödé 日本語 ✅ {check}"
+    },
+    {
+      "markdown": "- [ ] Ünïcödé 日本語 ✅\r\n- [ ] Ünïcödé 日本語 ✅\r\n",
+      "previous": "",
+      "output": "- [ ] Ünïcödé 日本語 ✅ {check}\r\n- [ ] Ünïcödé 日本語 ✅ {check}\r\n"
+    },
+    {
+      "markdown": "-[ ] no space",
+      "previous": "",
+      "output": "-[ ] no space"
+    },
+    {
+      "markdown": "-[ ] no space\r\n-[ ] no space\r\n",
+      "previous": "",
+      "output": "-[ ] no space\r\n-[ ] no space\r\n"
+    },
+    {
+      "markdown": "- [ ] Ends in tab\t",
+      "previous": "",
+      "output": "- [ ] Ends in tab {check}"
+    },
+    {
+      "markdown": "- [ ] Ends in tab\t\r\n- [ ] Ends in tab\t\r\n",
+      "previous": "",
+      "output": "- [ ] Ends in tab {check}\r\n- [ ] Ends in tab {check}\r\n"
+    },
+    {
+      "markdown": "- [ ]\tTab after box",
+      "previous": "",
+      "output": "- [ ]\tTab after box"
+    },
+    {
+      "markdown": "- [ ]\tTab after box\r\n- [ ]\tTab after box\r\n",
+      "previous": "",
+      "output": "- [ ]\tTab after box\r\n- [ ]\tTab after box\r\n"
+    },
+    {
+      "markdown": "- [x]Glued done",
+      "previous": "",
+      "output": "- [x]Glued done"
+    },
+    {
+      "markdown": "- [x]Glued done\r\n- [x]Glued done\r\n",
+      "previous": "",
+      "output": "- [x]Glued done\r\n- [x]Glued done\r\n"
+    },
+    {
+      "markdown": "﻿- [ ] BOM first",
+      "previous": "",
+      "output": "﻿- [ ] BOM first"
+    },
+    {
+      "markdown": "﻿- [ ] BOM first\r\n﻿- [ ] BOM first\r\n",
+      "previous": "",
+      "output": "﻿- [ ] BOM first\r\n﻿- [ ] BOM first\r\n"
+    },
+    {
+      "markdown": "- [ ] Trailing BOM﻿",
+      "previous": "",
+      "output": "- [ ] Trailing BOM {check}"
+    },
+    {
+      "markdown": "- [ ] Trailing BOM﻿\r\n- [ ] Trailing BOM﻿\r\n",
+      "previous": "",
+      "output": "- [ ] Trailing BOM {check}\r\n- [ ] Trailing BOM {check}\r\n"
+    },
+    {
+      "markdown": "- [ ] Ideographic space　",
+      "previous": "",
+      "output": "- [ ] Ideographic space {check}"
+    },
+    {
+      "markdown": "- [ ] Ideographic space　\r\n- [ ] Ideographic space　\r\n",
+      "previous": "",
+      "output": "- [ ] Ideographic space {check}\r\n- [ ] Ideographic space {check}\r\n"
+    },
+    {
+      "markdown": "　- [ ] Ideographic indent",
+      "previous": "",
+      "output": "　- [ ] Ideographic indent"
+    },
+    {
+      "markdown": "　- [ ] Ideographic indent\r\n　- [ ] Ideographic indent\r\n",
+      "previous": "",
+      "output": "　- [ ] Ideographic indent\r\n　- [ ] Ideographic indent\r\n"
+    },
+    {
+      "markdown": "- [ ] NEL",
+      "previous": "",
+      "output": "- [ ] NEL {check}"
+    },
+    {
+      "markdown": "- [ ] NEL\r\n- [ ] NEL\r\n",
+      "previous": "",
+      "output": "- [ ] NEL {check}\r\n- [ ] NEL {check}\r\n"
+    },
+    {
+      "markdown": "- [ ] NEL trailing ",
+      "previous": "",
+      "output": "- [ ] NEL trailing  {check}"
+    },
+    {
+      "markdown": "- [ ] NEL trailing \r\n- [ ] NEL trailing \r\n",
+      "previous": "",
+      "output": "- [ ] NEL trailing  {check}\r\n- [ ] NEL trailing  {check}\r\n"
+    },
+    {
+      "markdown": "- [ ]　Ideographic after box",
+      "previous": "",
+      "output": "- [ ]　Ideographic after box"
+    },
+    {
+      "markdown": "- [ ]　Ideographic after box\r\n- [ ]　Ideographic after box\r\n",
+      "previous": "",
+      "output": "- [ ]　Ideographic after box\r\n- [ ]　Ideographic after box\r\n"
+    },
+    {
+      "markdown": "- [ ] Double return\r\r",
+      "previous": "",
+      "output": "- [ ] Double return\r\r"
+    },
+    {
+      "markdown": "- [ ] Double return\r\r\r\n- [ ] Double return\r\r\r\n",
+      "previous": "",
+      "output": "- [ ] Double return\r\r\r\n- [ ] Double return\r\r\r\n"
+    },
+    {
+      "markdown": "- [ ] Final return\r",
+      "previous": "",
+      "output": "- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "- [ ] Final return\r\r\n- [ ] Final return\r\r\n",
+      "previous": "",
+      "output": "- [ ] Final return\r\r\n- [ ] Final return\r\r\n"
+    },
+    {
+      "markdown": "```\n- [ ] inside fence\n```\n- [ ] after fence",
+      "previous": "",
+      "output": "```\n- [ ] inside fence\n```\n- [ ] after fence {check}"
+    },
+    {
+      "markdown": "~~~~\n- [ ] inside\n~~~\n- [ ] still inside\n~~~~\n- [ ] out",
+      "previous": "",
+      "output": "~~~~\n- [ ] inside\n~~~\n- [ ] still inside\n~~~~\n- [ ] out {check}"
+    },
+    {
+      "markdown": "```js `x`\n- [ ] not a fence opener\n```",
+      "previous": "",
+      "output": "```js `x`\n- [ ] not a fence opener {check}\n```"
+    },
+    {
+      "markdown": "   ```\n- [ ] inside indented fence\n   ```\n- [ ] out",
+      "previous": "",
+      "output": "   ```\n- [ ] inside indented fence\n   ```\n- [ ] out {check}"
+    },
+    {
+      "markdown": "    ```\n- [ ] four spaces is not a fence\n",
+      "previous": "",
+      "output": "    ```\n- [ ] four spaces is not a fence {check}\n"
+    },
+    {
+      "markdown": "```\r\n- [ ] crlf fence\r\n```\r\n- [ ] after\r\n",
+      "previous": "",
+      "output": "```\r\n- [ ] crlf fence\r\n```\r\n- [ ] after {check}\r\n"
+    },
+    {
+      "markdown": "- [ ] a\r\r\n- [ ] b\r\r\n",
+      "previous": "",
+      "output": "- [ ] a\r\r\n- [ ] b\r\r\n"
+    },
+    {
+      "markdown": "- [ ] a\n- [ ] last\r",
+      "previous": "",
+      "output": "- [ ] a {check}\n- [ ] last {check}\r"
+    },
+    {
+      "markdown": "﻿- [ ] a\n﻿- [ ] b",
+      "previous": "",
+      "output": "﻿- [ ] a\n﻿- [ ] b"
+    },
+    {
+      "markdown": "- [ ]\n- [ ]\tTab after box\n\t- [ ] tab indent\n- [ ]\tTab after box\n2) [ ] Ordered paren\n````md\n\t- [ ] tab indent\n﻿- [ ] BOM first",
+      "previous": "",
+      "output": "- [ ] {check}\n- [ ]\tTab after box\n\t- [ ] tab indent {check}\n- [ ]\tTab after box\n2) [ ] Ordered paren\n````md\n\t- [ ] tab indent\n﻿- [ ] BOM first"
+    },
+    {
+      "markdown": "- [ ] Trailing BOM﻿\r\n- [ ] Trailing BOM﻿\r\n- [y] Not a checkbox\r\n- [ ] Has id 🆔 abc123\r\n- [ ] Trailing nbsp \r\n- [x]Glued done\r\n- [ ] Depends ⛔ abc123\r\n\r\n- [ ] Double return\r\r\r\n\t- [ ] tab indent\r\n- [ ] Double return\r\r",
+      "previous": "",
+      "output": "- [ ] Trailing BOM {check}\r\n- [ ] Trailing BOM {check}\r\n- [y] Not a checkbox\r\n- [ ] Has id 🆔 abc123\r\n- [ ] Trailing nbsp {check}\r\n- [x]Glued done\r\n- [ ] Depends ⛔ abc123\r\n\r\n- [ ] Double return\r\r\r\n\t- [ ] tab indent {check}\r\n- [ ] Double return\r\r"
+    },
+    {
+      "markdown": "- [x]Glued done\n- [ ] NEL trailing \n- [ ] Ünïcödé 日本語 ✅\n-  [ ]   Extra spaces  \n````md\n+ [X] Shouted done\n- [y] Not a checkbox\n- [ ] Task {task:abc123}\n~~~\n- [ ]x glued\n- [ ] Already plain {check}",
+      "previous": "",
+      "output": "- [x]Glued done\n- [ ] NEL trailing  {check}\n- [ ] Ünïcödé 日本語 ✅ {check}\n-  [ ]   Extra spaces {check}\n````md\n+ [X] Shouted done\n- [y] Not a checkbox\n- [ ] Task {task:abc123}\n~~~\n- [ ]x glued\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "- [ ]\tTab after box\n~~~\n﻿- [ ] BOM first\n- [ ] Has id 🆔 abc123\n- [ ] Final return\r\n> - [ ] Quoted",
+      "previous": "",
+      "output": "- [ ]\tTab after box\n~~~\n﻿- [ ] BOM first\n- [ ] Has id 🆔 abc123\n- [ ] Final return\r\n> - [ ] Quoted"
+    },
+    {
+      "markdown": "- [ ] NEL\r\n- [ ] Already plain {check}\r\n-  [ ]   Extra spaces  \r\n- [ ] Inline id [id:: abc123]\r\n> - [ ] Quoted\r\n- [ ]　Ideographic after box\r\n- [ ] Mid\rreturn\r\n- [ ]　Ideographic after box\r\n- [ ] Line sep inside\r\n- [ ] Task {task:abc123}",
+      "previous": "",
+      "output": "- [ ] NEL {check}\r\n- [ ] Already plain {check}\r\n-  [ ]   Extra spaces {check}\r\n- [ ] Inline id [id:: abc123]\r\n> - [ ] Quoted\r\n- [ ]　Ideographic after box\r\n- [ ] Mid\rreturn\r\n- [ ]　Ideographic after box\r\n- [ ] Line sep inside\r\n- [ ] Task {task:abc123}"
+    },
+    {
+      "markdown": "- [ ] Task {task:abc123}\n- [ ] Empty id {task:}\n- [ ] Already plain {check}\n- [ ] Line sep inside\n\n- [ ] Task {task:abc123}",
+      "previous": "",
+      "output": "- [ ] Task {task:abc123}\n- [ ] Empty id {task:} {check}\n- [ ] Already plain {check}\n- [ ] Line sep inside\n\n- [ ] Task {task:abc123}"
+    },
+    {
+      "markdown": "- [ ]　Ideographic after box\n```js `tick`\n\n- [ ] Has id 🆔 abc123",
+      "previous": "",
+      "output": "- [ ]　Ideographic after box\n```js `tick`\n\n- [ ] Has id 🆔 abc123"
+    },
+    {
+      "markdown": "- [ ] NEL\n- [ ] Task {task:abc123}\n~~~\n- [x]Glued done\n- [ ] Double return\r\r",
+      "previous": "",
+      "output": "- [ ] NEL {check}\n- [ ] Task {task:abc123}\n~~~\n- [x]Glued done\n- [ ] Double return\r\r"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \n+ [X] Shouted done\n- [ ] NEL\n\t- [ ] tab indent\n- [ ] Recurs 🔁 every week\n- [ ] Linked line ^block-1",
+      "previous": "",
+      "output": "- [ ] Trailing nbsp {check}\n+ [X] Shouted done {check}\n- [ ] NEL {check}\n\t- [ ] tab indent {check}\n- [ ] Recurs 🔁 every week {check}\n- [ ] Linked line ^block-1"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \n```\n- [ ]",
+      "previous": "",
+      "output": "- [ ] Trailing nbsp {check}\n```\n- [ ]"
+    },
+    {
+      "markdown": "- [ ] Ideographic space　\n- [ ]\tTab after box\n* [x] Done thing\n~~~\n1. [ ] Ordered item\n- [ ]   \n-\t[ ] tab after marker",
+      "previous": "",
+      "output": "- [ ] Ideographic space {check}\n- [ ]\tTab after box\n* [x] Done thing {check}\n~~~\n1. [ ] Ordered item\n- [ ]   \n-\t[ ] tab after marker"
+    },
+    {
+      "markdown": "-  [ ]   Extra spaces  \n- [ ] Empty id {task:}\n- [ ] Task {task:abc123}\n\n```\n- [ ] Trailing nbsp \n- [ ] Plain with space {check}   \n- [ ]\n- [ ] Trailing nbsp \n-  [ ]   Extra spaces  \n- [ ] Already plain {check}",
+      "previous": "",
+      "output": "-  [ ]   Extra spaces {check}\n- [ ] Empty id {task:} {check}\n- [ ] Task {task:abc123}\n\n```\n- [ ] Trailing nbsp \n- [ ] Plain with space {check}   \n- [ ]\n- [ ] Trailing nbsp \n-  [ ]   Extra spaces  \n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "~~~\r\n- [x]Glued done\r\n- [ ] Already plain {check}\r\n- [ ] Para sep inside\r\n\t- [ ] tab indent\r\n-[ ] no space\r\n```js `tick`\r\n- [ ]　Ideographic after box\r\n- [ ] Plain with space {check}   ",
+      "previous": "",
+      "output": "~~~\r\n- [x]Glued done\r\n- [ ] Already plain {check}\r\n- [ ] Para sep inside\r\n\t- [ ] tab indent\r\n-[ ] no space\r\n```js `tick`\r\n- [ ]　Ideographic after box\r\n- [ ] Plain with space {check}   "
+    },
+    {
+      "markdown": "-  [ ]   Extra spaces  \n- [x]Glued done\nSome paragraph\n- [ ] Final return\r\n- [ ]　Ideographic after box\n- [ ] NEL\n- [ ] NEL\n```js `tick`\n- [ ] Ünïcödé 日本語 ✅\n- [ ]x glued\n- [ ] Already plain {check}",
+      "previous": "",
+      "output": "-  [ ]   Extra spaces {check}\n- [x]Glued done\nSome paragraph\n- [ ] Final return {check}\r\n- [ ]　Ideographic after box\n- [ ] NEL {check}\n- [ ] NEL {check}\n```js `tick`\n- [ ] Ünïcödé 日本語 ✅ {check}\n- [ ]x glued\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "2) [ ] Ordered paren\n-  [ ]   Extra spaces  ",
+      "previous": "",
+      "output": "2) [ ] Ordered paren\n-  [ ]   Extra spaces {check}"
+    },
+    {
+      "markdown": "- [ ] Ends in tab\t",
+      "previous": "",
+      "output": "- [ ] Ends in tab {check}"
+    },
+    {
+      "markdown": "~~~\n- plain bullet\n-[ ] no space",
+      "previous": "",
+      "output": "~~~\n- plain bullet\n-[ ] no space"
+    },
+    {
+      "markdown": "\n> - [ ] Quoted\n- [ ] NEL trailing \nSome paragraph\n+ [X] Shouted done\n2) [ ] Ordered paren\n  * [ ] nested two\n```",
+      "previous": "",
+      "output": "\n> - [ ] Quoted\n- [ ] NEL trailing  {check}\nSome paragraph\n+ [X] Shouted done {check}\n2) [ ] Ordered paren\n  * [ ] nested two {check}\n```"
+    },
+    {
+      "markdown": "- [ ] Final return\r",
+      "previous": "",
+      "output": "- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "- [ ] Trailing BOM﻿\n- [ ] Empty id {task:}\n- [ ] Due 📅 2026-11-01\n````md\n- [ ] Trailing BOM﻿\n- [ ] Depends ⛔ abc123\n- [ ] Linked line ^block-1\n- [ ]\n- [ ]   \n```js `tick`\n- [ ] Recurs 🔁 every week",
+      "previous": "",
+      "output": "- [ ] Trailing BOM {check}\n- [ ] Empty id {task:} {check}\n- [ ] Due 📅 2026-11-01 {check}\n````md\n- [ ] Trailing BOM﻿\n- [ ] Depends ⛔ abc123\n- [ ] Linked line ^block-1\n- [ ]\n- [ ]   \n```js `tick`\n- [ ] Recurs 🔁 every week"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \r\n　- [ ] Ideographic indent\r\n* [x] Done thing\r\n* [x] Done thing\r\n  * [ ] nested two",
+      "previous": "",
+      "output": "- [ ] Trailing nbsp {check}\r\n　- [ ] Ideographic indent\r\n* [x] Done thing {check}\r\n* [x] Done thing {check}\r\n  * [ ] nested two {check}"
+    },
+    {
+      "markdown": "- [ ] Final return\r",
+      "previous": "",
+      "output": "- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "```\n````md",
+      "previous": "",
+      "output": "```\n````md"
+    },
+    {
+      "markdown": "- [ ] Final return\r\n- [x]Glued done\n\n+ [X] Shouted done\n- [ ] Line sep inside",
+      "previous": "",
+      "output": "- [ ] Final return {check}\r\n- [x]Glued done\n\n+ [X] Shouted done {check}\n- [ ] Line sep inside"
+    },
+    {
+      "markdown": "-[ ] no space\n- [x]Glued done",
+      "previous": "",
+      "output": "-[ ] no space\n- [x]Glued done"
+    },
+    {
+      "markdown": "- [ ] NEL\n1. [ ] Ordered item\n    - [ ] nested four\n- [ ] Empty id {task:}\n- [ ] Trailing BOM﻿\n- [ ] Already plain {check}",
+      "previous": "",
+      "output": "- [ ] NEL {check}\n1. [ ] Ordered item\n    - [ ] nested four {check}\n- [ ] Empty id {task:} {check}\n- [ ] Trailing BOM {check}\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "- [ ] NEL trailing \n+ [X] Shouted done\n- [ ]x glued\n- [ ] NEL trailing \n- [ ] Buy milk\n- [y] Not a checkbox\n+ [X] Shouted done\n    - [ ] nested four\n- [ ] Linked line ^block-1\n- [ ] Linked line ^block-1\n````md\n- [ ] Ends in tab\t",
+      "previous": "",
+      "output": "- [ ] NEL trailing  {check}\n+ [X] Shouted done {check}\n- [ ]x glued\n- [ ] NEL trailing  {check}\n- [ ] Buy milk {check}\n- [y] Not a checkbox\n+ [X] Shouted done {check}\n    - [ ] nested four {check}\n- [ ] Linked line ^block-1\n- [ ] Linked line ^block-1\n````md\n- [ ] Ends in tab\t"
+    },
+    {
+      "markdown": "+ [X] Shouted done\n+ [X] Shouted done\n+ [X] Shouted done\n-  [ ]   Extra spaces  \n- [ ]\n- [ ] Double return\r\r\n- [ ]\tTab after box\n- [ ] Inline id [id:: abc123]\n- [ ] Line sep inside\n- [ ] Mid\rreturn",
+      "previous": "",
+      "output": "+ [X] Shouted done {check}\n+ [X] Shouted done {check}\n+ [X] Shouted done {check}\n-  [ ]   Extra spaces {check}\n- [ ] {check}\n- [ ] Double return\r\r\n- [ ]\tTab after box\n- [ ] Inline id [id:: abc123]\n- [ ] Line sep inside\n- [ ] Mid\rreturn"
+    },
+    {
+      "markdown": "- [y] Not a checkbox\n- [ ] Ideographic space　\n- [ ] Ideographic space　\n- [ ] Linked line ^block-1\n- [ ] Trailing nbsp \n- [ ] NEL\n- [ ] Para sep inside\n- [ ] Task {task:abc123}\n- [ ] Recurs 🔁 every week\n- [ ] Trailing nbsp ",
+      "previous": "",
+      "output": "- [y] Not a checkbox\n- [ ] Ideographic space {check}\n- [ ] Ideographic space {check}\n- [ ] Linked line ^block-1\n- [ ] Trailing nbsp {check}\n- [ ] NEL {check}\n- [ ] Para sep inside\n- [ ] Task {task:abc123}\n- [ ] Recurs 🔁 every week {check}\n- [ ] Trailing nbsp {check}"
+    },
+    {
+      "markdown": "~~~\n- [ ] Ünïcödé 日本語 ✅\n- [ ] Task {task:abc123}",
+      "previous": "",
+      "output": "~~~\n- [ ] Ünïcödé 日本語 ✅\n- [ ] Task {task:abc123}"
+    },
+    {
+      "markdown": "````md\r\n- [ ] Linked line ^block-1\r\n﻿- [ ] BOM first\r\n```js `tick`\r\n   \r\n- plain bullet\r\n- [ ] Mid\rreturn\r\n- [ ] Linked line ^block-1\r\n- [ ] Line sep inside\r\n- [ ] Inline id [id:: abc123]",
+      "previous": "",
+      "output": "````md\r\n- [ ] Linked line ^block-1\r\n﻿- [ ] BOM first\r\n```js `tick`\r\n   \r\n- plain bullet\r\n- [ ] Mid\rreturn\r\n- [ ] Linked line ^block-1\r\n- [ ] Line sep inside\r\n- [ ] Inline id [id:: abc123]"
+    },
+    {
+      "markdown": "Some paragraph\n- [ ]   \n- [ ] Double return\r\r\n```\n- [ ]\tTab after box\n```js `tick`",
+      "previous": "",
+      "output": "Some paragraph\n- [ ] {check}\n- [ ] Double return\r\r\n```\n- [ ]\tTab after box\n```js `tick`"
+    },
+    {
+      "markdown": "-\t[ ] tab after marker\n* [x] Done thing\n```\n- [ ] Due 📅 2026-11-01\n- [ ] Linked line ^block-1\n2) [ ] Ordered paren\n  * [ ] nested two\n\n- [ ] Recurs 🔁 every week\n- [ ] Empty id {task:}\n```",
+      "previous": "",
+      "output": "-\t[ ] tab after marker\n* [x] Done thing {check}\n```\n- [ ] Due 📅 2026-11-01\n- [ ] Linked line ^block-1\n2) [ ] Ordered paren\n  * [ ] nested two\n\n- [ ] Recurs 🔁 every week\n- [ ] Empty id {task:}\n```"
+    },
+    {
+      "markdown": "- [ ]\tTab after box\r\n\t- [ ] tab indent\r\n- [ ] Ünïcödé 日本語 ✅\r\n2) [ ] Ordered paren\r\n- [ ] Plain with space {check}   \r\n~~~\r\n- [ ] Line sep inside\r\n- [ ] Inline id [id:: abc123]\r\n- [ ] Has id 🆔 abc123",
+      "previous": "",
+      "output": "- [ ]\tTab after box\r\n\t- [ ] tab indent {check}\r\n- [ ] Ünïcödé 日本語 ✅ {check}\r\n2) [ ] Ordered paren\r\n- [ ] Plain with space {check}   \r\n~~~\r\n- [ ] Line sep inside\r\n- [ ] Inline id [id:: abc123]\r\n- [ ] Has id 🆔 abc123"
+    },
+    {
+      "markdown": "  * [ ] nested two\n- [ ] Ideographic space　\n- [ ] Already plain {check}",
+      "previous": "",
+      "output": "  * [ ] nested two {check}\n- [ ] Ideographic space {check}\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "- [ ] Ideographic space　\n- [ ] Ünïcödé 日本語 ✅\n- [ ] Mid\rreturn",
+      "previous": "",
+      "output": "- [ ] Ideographic space {check}\n- [ ] Ünïcödé 日本語 ✅ {check}\n- [ ] Mid\rreturn"
+    },
+    {
+      "markdown": "> - [ ] Quoted",
+      "previous": "",
+      "output": "> - [ ] Quoted"
+    },
+    {
+      "markdown": "- [ ] Mid\rreturn",
+      "previous": "",
+      "output": "- [ ] Mid\rreturn"
+    },
+    {
+      "markdown": "- [ ] Due 📅 2026-11-01\r\n    - [ ] nested four\r\n- [ ]   \r\n- [ ] Trailing BOM﻿\r\n~~~\r\n\t- [ ] tab indent\r\n- plain bullet\r\n\t- [ ] tab indent\r\n﻿- [ ] BOM first\r\n- [ ] Recurs 🔁 every week",
+      "previous": "",
+      "output": "- [ ] Due 📅 2026-11-01 {check}\r\n    - [ ] nested four {check}\r\n- [ ] {check}\r\n- [ ] Trailing BOM {check}\r\n~~~\r\n\t- [ ] tab indent\r\n- plain bullet\r\n\t- [ ] tab indent\r\n﻿- [ ] BOM first\r\n- [ ] Recurs 🔁 every week"
+    },
+    {
+      "markdown": "-  [ ]   Extra spaces  \n- [ ] Trailing BOM﻿\n- [ ] Ünïcödé 日本語 ✅\n+ [X] Shouted done\n2) [ ] Ordered paren",
+      "previous": "",
+      "output": "-  [ ]   Extra spaces {check}\n- [ ] Trailing BOM {check}\n- [ ] Ünïcödé 日本語 ✅ {check}\n+ [X] Shouted done {check}\n2) [ ] Ordered paren"
+    },
+    {
+      "markdown": "- [ ] NEL trailing \r\n- [ ] Buy milk\r\n- [ ] Double return\r\r\r\n- [ ]   \r\n- [y] Not a checkbox\r\n- [ ] Task {task:abc123}\r\n- [ ] Ünïcödé 日本語 ✅\r\n- [ ] Due 📅 2026-11-01\r\n- [ ] Inline id [id:: abc123]\r\n````md",
+      "previous": "",
+      "output": "- [ ] NEL trailing  {check}\r\n- [ ] Buy milk {check}\r\n- [ ] Double return\r\r\r\n- [ ] {check}\r\n- [y] Not a checkbox\r\n- [ ] Task {task:abc123}\r\n- [ ] Ünïcödé 日本語 ✅ {check}\r\n- [ ] Due 📅 2026-11-01 {check}\r\n- [ ] Inline id [id:: abc123]\r\n````md"
+    },
+    {
+      "markdown": "1. [ ] Ordered item\n- plain bullet\n- [ ] Final return\r\n- plain bullet\n  * [ ] nested two",
+      "previous": "",
+      "output": "1. [ ] Ordered item\n- plain bullet\n- [ ] Final return {check}\r\n- plain bullet\n  * [ ] nested two {check}"
+    },
+    {
+      "markdown": "\t- [ ] tab indent",
+      "previous": "",
+      "output": "\t- [ ] tab indent {check}"
+    },
+    {
+      "markdown": "- [ ] Buy milk",
+      "previous": "",
+      "output": "- [ ] Buy milk {check}"
+    },
+    {
+      "markdown": "- [ ]\tTab after box\n﻿- [ ] BOM first\n- [ ] Empty id {task:}\n- [ ] Trailing BOM﻿\n- [ ] Has id 🆔 abc123\n- [ ] Plain with space {check}   ",
+      "previous": "",
+      "output": "- [ ]\tTab after box\n﻿- [ ] BOM first\n- [ ] Empty id {task:} {check}\n- [ ] Trailing BOM {check}\n- [ ] Has id 🆔 abc123\n- [ ] Plain with space {check}   "
+    },
+    {
+      "markdown": "- [ ] Linked line ^block-1\n- [ ] Buy milk\n\t- [ ] tab indent\n- [ ] Plain with space {check}   \n- [ ] Due 📅 2026-11-01\n+ [X] Shouted done\n1. [ ] Ordered item\n> - [ ] Quoted",
+      "previous": "",
+      "output": "- [ ] Linked line ^block-1\n- [ ] Buy milk {check}\n\t- [ ] tab indent {check}\n- [ ] Plain with space {check}   \n- [ ] Due 📅 2026-11-01 {check}\n+ [X] Shouted done {check}\n1. [ ] Ordered item\n> - [ ] Quoted"
+    },
+    {
+      "markdown": "   \n  * [ ] nested two\n+ [X] Shouted done\n1. [ ] Ordered item\n- [ ] Line sep inside\n2) [ ] Ordered paren\n- [ ] Plain with space {check}   ",
+      "previous": "",
+      "output": "   \n  * [ ] nested two {check}\n+ [X] Shouted done {check}\n1. [ ] Ordered item\n- [ ] Line sep inside\n2) [ ] Ordered paren\n- [ ] Plain with space {check}   "
+    },
+    {
+      "markdown": "- [ ] Already plain {check}\n- [ ]\tTab after box",
+      "previous": "",
+      "output": "- [ ] Already plain {check}\n- [ ]\tTab after box"
+    },
+    {
+      "markdown": "- [ ] Trailing BOM﻿\n~~~\n-\t[ ] tab after marker",
+      "previous": "",
+      "output": "- [ ] Trailing BOM {check}\n~~~\n-\t[ ] tab after marker"
+    },
+    {
+      "markdown": "- [ ]　Ideographic after box\r\n-  [ ]   Extra spaces  \r\n- [ ] Linked line ^block-1\r\n2) [ ] Ordered paren\r\n- [ ] Already plain {check}",
+      "previous": "",
+      "output": "- [ ]　Ideographic after box\r\n-  [ ]   Extra spaces {check}\r\n- [ ] Linked line ^block-1\r\n2) [ ] Ordered paren\r\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "- [ ] Buy milk\r\n- [ ] Already plain {check}\r\n- [ ] Plain with space {check}   \r\n- [ ] Ideographic space　\r\n- [ ]\tTab after box\r\n* [x] Done thing\r\n- [ ] Inline id [id:: abc123]",
+      "previous": "",
+      "output": "- [ ] Buy milk {check}\r\n- [ ] Already plain {check}\r\n- [ ] Plain with space {check}   \r\n- [ ] Ideographic space {check}\r\n- [ ]\tTab after box\r\n* [x] Done thing {check}\r\n- [ ] Inline id [id:: abc123]"
+    },
+    {
+      "markdown": "- [ ]x glued\n~~~\n- [ ] Task {task:abc123}\n- [ ]x glued\n- [ ] Linked line ^block-1\n- [x]Glued done\nSome paragraph\n- [ ] Due 📅 2026-11-01\n  * [ ] nested two\n- [ ] Recurs 🔁 every week\n- [ ] Trailing BOM﻿",
+      "previous": "",
+      "output": "- [ ]x glued\n~~~\n- [ ] Task {task:abc123}\n- [ ]x glued\n- [ ] Linked line ^block-1\n- [x]Glued done\nSome paragraph\n- [ ] Due 📅 2026-11-01\n  * [ ] nested two\n- [ ] Recurs 🔁 every week\n- [ ] Trailing BOM﻿"
+    },
+    {
+      "markdown": "  * [ ] nested two\n2) [ ] Ordered paren\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:}\n```js `tick`",
+      "previous": "",
+      "output": "  * [ ] nested two {check}\n2) [ ] Ordered paren\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:} {check}\n```js `tick`"
+    },
+    {
+      "markdown": "~~~\n- [ ]　Ideographic after box\n- [ ] Recurs 🔁 every week\n- [ ] Inline id [id:: abc123]\n- [ ] Depends ⛔ abc123\n- [ ] Has id 🆔 abc123\n* [x] Done thing",
+      "previous": "",
+      "output": "~~~\n- [ ]　Ideographic after box\n- [ ] Recurs 🔁 every week\n- [ ] Inline id [id:: abc123]\n- [ ] Depends ⛔ abc123\n- [ ] Has id 🆔 abc123\n* [x] Done thing"
+    },
+    {
+      "markdown": "- [ ] Plain with space {check}   \n﻿- [ ] BOM first\n- [ ] Linked line ^block-1\n- [ ] Ideographic space　\n- [ ] Task {task:abc123}\n﻿- [ ] BOM first\n-[ ] no space\n- [ ] Buy milk\n- [ ]　Ideographic after box\n- [ ]\tTab after box\n- [ ] NEL trailing \n- [ ] Already plain {check}",
+      "previous": "",
+      "output": "- [ ] Plain with space {check}   \n﻿- [ ] BOM first\n- [ ] Linked line ^block-1\n- [ ] Ideographic space {check}\n- [ ] Task {task:abc123}\n﻿- [ ] BOM first\n-[ ] no space\n- [ ] Buy milk {check}\n- [ ]　Ideographic after box\n- [ ]\tTab after box\n- [ ] NEL trailing  {check}\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "> - [ ] Quoted\n　- [ ] Ideographic indent\n- [ ] Line sep inside\n- [ ] Trailing nbsp \n- [ ] NEL",
+      "previous": "",
+      "output": "> - [ ] Quoted\n　- [ ] Ideographic indent\n- [ ] Line sep inside\n- [ ] Trailing nbsp {check}\n- [ ] NEL {check}"
+    },
+    {
+      "markdown": "- [ ] Inline id [id:: abc123]\n- [y] Not a checkbox\n- [ ] Trailing BOM﻿\n* [x] Done thing\n```\n- [ ]\n- [ ] Buy milk\n  * [ ] nested two\n- plain bullet\n",
+      "previous": "",
+      "output": "- [ ] Inline id [id:: abc123]\n- [y] Not a checkbox\n- [ ] Trailing BOM {check}\n* [x] Done thing {check}\n```\n- [ ]\n- [ ] Buy milk\n  * [ ] nested two\n- plain bullet\n"
+    },
+    {
+      "markdown": "2) [ ] Ordered paren",
+      "previous": "",
+      "output": "2) [ ] Ordered paren"
+    },
+    {
+      "markdown": "Some paragraph\r\n-[ ] no space\r\n- [ ] Plain with space {check}   \r\n- [ ] Ends in tab\t\r\n- [ ] Empty id {task:}\r\n   \r\n- [ ] Trailing nbsp \r\n```\r\n   \r\n- [ ] Inline id [id:: abc123]\r\n* [x] Done thing",
+      "previous": "",
+      "output": "Some paragraph\r\n-[ ] no space\r\n- [ ] Plain with space {check}   \r\n- [ ] Ends in tab {check}\r\n- [ ] Empty id {task:} {check}\r\n   \r\n- [ ] Trailing nbsp {check}\r\n```\r\n   \r\n- [ ] Inline id [id:: abc123]\r\n* [x] Done thing"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week\n\t- [ ] tab indent\n2) [ ] Ordered paren\n- [ ]　Ideographic after box",
+      "previous": "",
+      "output": "- [ ] Recurs 🔁 every week {check}\n\t- [ ] tab indent {check}\n2) [ ] Ordered paren\n- [ ]　Ideographic after box"
+    },
+    {
+      "markdown": "- plain bullet\n````md\n- [ ]x glued\n```\n﻿- [ ] BOM first\n﻿- [ ] BOM first",
+      "previous": "",
+      "output": "- plain bullet\n````md\n- [ ]x glued\n```\n﻿- [ ] BOM first\n﻿- [ ] BOM first"
+    },
+    {
+      "markdown": "+ [X] Shouted done\n+ [X] Shouted done\n> - [ ] Quoted\n- [ ]x glued\n- [ ] Trailing BOM﻿\n- [ ] Has id 🆔 abc123\n- [ ] Due 📅 2026-11-01\n2) [ ] Ordered paren\n- [ ] Ünïcödé 日本語 ✅",
+      "previous": "",
+      "output": "+ [X] Shouted done {check}\n+ [X] Shouted done {check}\n> - [ ] Quoted\n- [ ]x glued\n- [ ] Trailing BOM {check}\n- [ ] Has id 🆔 abc123\n- [ ] Due 📅 2026-11-01 {check}\n2) [ ] Ordered paren\n- [ ] Ünïcödé 日本語 ✅ {check}"
+    },
+    {
+      "markdown": "```\n- [ ]",
+      "previous": "",
+      "output": "```\n- [ ]"
+    },
+    {
+      "markdown": "- [ ] NEL trailing \n- [ ] Trailing BOM﻿\n- [ ] Trailing nbsp \n  * [ ] nested two\n- [ ]   \n\t- [ ] tab indent",
+      "previous": "",
+      "output": "- [ ] NEL trailing  {check}\n- [ ] Trailing BOM {check}\n- [ ] Trailing nbsp {check}\n  * [ ] nested two {check}\n- [ ] {check}\n\t- [ ] tab indent {check}"
+    },
+    {
+      "markdown": "2) [ ] Ordered paren\r\n- [ ] Recurs 🔁 every week\r\n- [ ]x glued\r\n```js `tick`",
+      "previous": "",
+      "output": "2) [ ] Ordered paren\r\n- [ ] Recurs 🔁 every week {check}\r\n- [ ]x glued\r\n```js `tick`"
+    },
+    {
+      "markdown": "- [ ] Ünïcödé 日本語 ✅\r\n```\r\n- [ ] Para sep inside\r\n- [ ] Final return\r",
+      "previous": "",
+      "output": "- [ ] Ünïcödé 日本語 ✅ {check}\r\n```\r\n- [ ] Para sep inside\r\n- [ ] Final return\r"
+    },
+    {
+      "markdown": "- [ ] Inline id [id:: abc123]\n- [ ] Due 📅 2026-11-01\n- [ ] Double return\r\r\n````md\n-[ ] no space\n- [ ]\tTab after box\n- [ ] Buy milk\n- [ ] Trailing nbsp \n- plain bullet\n* [x] Done thing\n﻿- [ ] BOM first",
+      "previous": "",
+      "output": "- [ ] Inline id [id:: abc123]\n- [ ] Due 📅 2026-11-01 {check}\n- [ ] Double return\r\r\n````md\n-[ ] no space\n- [ ]\tTab after box\n- [ ] Buy milk\n- [ ] Trailing nbsp \n- plain bullet\n* [x] Done thing\n﻿- [ ] BOM first"
+    },
+    {
+      "markdown": "- [y] Not a checkbox\n- [ ] NEL trailing \n- [ ] NEL trailing \n- [ ] Double return\r\r\n- [ ] Final return\r\n2) [ ] Ordered paren\n- [ ] Plain with space {check}   \n- [ ] Line sep inside\n- [ ] Trailing BOM﻿\n- [ ] Line sep inside",
+      "previous": "",
+      "output": "- [y] Not a checkbox\n- [ ] NEL trailing  {check}\n- [ ] NEL trailing  {check}\n- [ ] Double return\r\r\n- [ ] Final return {check}\r\n2) [ ] Ordered paren\n- [ ] Plain with space {check}   \n- [ ] Line sep inside\n- [ ] Trailing BOM {check}\n- [ ] Line sep inside"
+    },
+    {
+      "markdown": "- [ ] Empty id {task:}\n\n- [ ] NEL trailing \n　- [ ] Ideographic indent\n````md\n   \n- [ ] Line sep inside",
+      "previous": "",
+      "output": "- [ ] Empty id {task:} {check}\n\n- [ ] NEL trailing  {check}\n　- [ ] Ideographic indent\n````md\n   \n- [ ] Line sep inside"
+    },
+    {
+      "markdown": "- [ ] Linked line ^block-1\n- [ ] Already plain {check}\n> - [ ] Quoted\n- [ ] Trailing nbsp \n````md\n> - [ ] Quoted\n- [ ] Ünïcödé 日本語 ✅\n- [ ] Linked line ^block-1\n````md\n* [x] Done thing\n* [x] Done thing",
+      "previous": "",
+      "output": "- [ ] Linked line ^block-1\n- [ ] Already plain {check}\n> - [ ] Quoted\n- [ ] Trailing nbsp {check}\n````md\n> - [ ] Quoted\n- [ ] Ünïcödé 日本語 ✅\n- [ ] Linked line ^block-1\n````md\n* [x] Done thing\n* [x] Done thing"
+    },
+    {
+      "markdown": "````md\n\n- [ ] Depends ⛔ abc123\n- [ ] Inline id [id:: abc123]\n﻿- [ ] BOM first",
+      "previous": "",
+      "output": "````md\n\n- [ ] Depends ⛔ abc123\n- [ ] Inline id [id:: abc123]\n﻿- [ ] BOM first"
+    },
+    {
+      "markdown": "- [ ] Buy milk\r\n- [ ] Buy milk",
+      "previous": "",
+      "output": "- [ ] Buy milk {check}\r\n- [ ] Buy milk {check}"
+    },
+    {
+      "markdown": "- [ ] NEL trailing \n-[ ] no space\n- [ ] Already plain {check}\n- [ ] Double return\r\r\n- [ ] Buy milk\n- [ ]\n　- [ ] Ideographic indent\n```js `tick`\n~~~\n- [ ] NEL\n- [ ] Para sep inside",
+      "previous": "",
+      "output": "- [ ] NEL trailing  {check}\n-[ ] no space\n- [ ] Already plain {check}\n- [ ] Double return\r\r\n- [ ] Buy milk {check}\n- [ ] {check}\n　- [ ] Ideographic indent\n```js `tick`\n~~~\n- [ ] NEL\n- [ ] Para sep inside"
+    },
+    {
+      "markdown": "- [ ] Final return\r\n- [ ] Ends in tab\t\n-[ ] no space\n- [ ] NEL\n-  [ ]   Extra spaces  \nSome paragraph\n1. [ ] Ordered item\n   \n- [ ]x glued\n- [ ] Ends in tab\t",
+      "previous": "",
+      "output": "- [ ] Final return {check}\r\n- [ ] Ends in tab {check}\n-[ ] no space\n- [ ] NEL {check}\n-  [ ]   Extra spaces {check}\nSome paragraph\n1. [ ] Ordered item\n   \n- [ ]x glued\n- [ ] Ends in tab {check}"
+    },
+    {
+      "markdown": "- [ ] Already plain {check}",
+      "previous": "",
+      "output": "- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "Some paragraph\r\n2) [ ] Ordered paren\r\n+ [X] Shouted done\r\n- [ ] Ideographic space　\r\n```\r\n- [ ] Already plain {check}",
+      "previous": "",
+      "output": "Some paragraph\r\n2) [ ] Ordered paren\r\n+ [X] Shouted done {check}\r\n- [ ] Ideographic space {check}\r\n```\r\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "- [ ] Linked line ^block-1\n- [ ]\n\n﻿- [ ] BOM first\n- [ ] Trailing nbsp ",
+      "previous": "",
+      "output": "- [ ] Linked line ^block-1\n- [ ] {check}\n\n﻿- [ ] BOM first\n- [ ] Trailing nbsp {check}"
+    },
+    {
+      "markdown": "-  [ ]   Extra spaces  \r\n- [ ]x glued\r\n```js `tick`\r\n- [ ] Empty id {task:}\r\n- [ ]\tTab after box\r\n- [ ] Ideographic space　\r\n- [ ] Final return\r\r\n- [ ] Ideographic space　",
+      "previous": "",
+      "output": "-  [ ]   Extra spaces {check}\r\n- [ ]x glued\r\n```js `tick`\r\n- [ ] Empty id {task:} {check}\r\n- [ ]\tTab after box\r\n- [ ] Ideographic space {check}\r\n- [ ] Final return\r\r\n- [ ] Ideographic space {check}"
+    },
+    {
+      "markdown": "- [ ] Linked line ^block-1\n- [ ] Depends ⛔ abc123\n- [ ] Task {task:abc123}\n- [ ] Recurs 🔁 every week",
+      "previous": "",
+      "output": "- [ ] Linked line ^block-1\n- [ ] Depends ⛔ abc123\n- [ ] Task {task:abc123}\n- [ ] Recurs 🔁 every week {check}"
+    },
+    {
+      "markdown": "- [ ]\n- plain bullet\n- [ ] Final return\r\n- [ ] Double return\r\r\n  * [ ] nested two\n-\t[ ] tab after marker\n　- [ ] Ideographic indent\n- plain bullet\n-\t[ ] tab after marker\n- [ ] Linked line ^block-1",
+      "previous": "",
+      "output": "- [ ] {check}\n- plain bullet\n- [ ] Final return {check}\r\n- [ ] Double return\r\r\n  * [ ] nested two {check}\n-\t[ ] tab after marker\n　- [ ] Ideographic indent\n- plain bullet\n-\t[ ] tab after marker\n- [ ] Linked line ^block-1"
+    },
+    {
+      "markdown": "- [ ] Buy milk\n- [ ] Para sep inside\n- [ ] Task {task:abc123}",
+      "previous": "",
+      "output": "- [ ] Buy milk {check}\n- [ ] Para sep inside\n- [ ] Task {task:abc123}"
+    },
+    {
+      "markdown": "- [ ] Plain with space {check}   \n- [ ] Trailing nbsp \n   ",
+      "previous": "",
+      "output": "- [ ] Plain with space {check}   \n- [ ] Trailing nbsp {check}\n   "
+    },
+    {
+      "markdown": "- [ ] Mid\rreturn\n  * [ ] nested two\nSome paragraph\n- [ ] Double return\r\r\n- [x]Glued done\n- [ ]x glued\n- plain bullet\n- [ ] Buy milk\n- [ ]   \n```",
+      "previous": "",
+      "output": "- [ ] Mid\rreturn\n  * [ ] nested two {check}\nSome paragraph\n- [ ] Double return\r\r\n- [x]Glued done\n- [ ]x glued\n- plain bullet\n- [ ] Buy milk {check}\n- [ ] {check}\n```"
+    },
+    {
+      "markdown": "- [ ] Has id 🆔 abc123\n> - [ ] Quoted\n- [y] Not a checkbox\n-\t[ ] tab after marker\n+ [X] Shouted done\n- [ ] Ends in tab\t\n> - [ ] Quoted\n- [ ] Buy milk\n    - [ ] nested four",
+      "previous": "",
+      "output": "- [ ] Has id 🆔 abc123\n> - [ ] Quoted\n- [y] Not a checkbox\n-\t[ ] tab after marker\n+ [X] Shouted done {check}\n- [ ] Ends in tab {check}\n> - [ ] Quoted\n- [ ] Buy milk {check}\n    - [ ] nested four {check}"
+    },
+    {
+      "markdown": "-  [ ]   Extra spaces  \n- [ ] Empty id {task:}\n- [ ]　Ideographic after box",
+      "previous": "",
+      "output": "-  [ ]   Extra spaces {check}\n- [ ] Empty id {task:} {check}\n- [ ]　Ideographic after box"
+    },
+    {
+      "markdown": "- [ ] NEL\n- [ ] Inline id [id:: abc123]\n2) [ ] Ordered paren\n-  [ ]   Extra spaces  \n   \n- [ ] Para sep inside\n- [ ] Depends ⛔ abc123\n~~~\n- [ ] Final return\r\n-  [ ]   Extra spaces  \n+ [X] Shouted done\n- plain bullet",
+      "previous": "",
+      "output": "- [ ] NEL {check}\n- [ ] Inline id [id:: abc123]\n2) [ ] Ordered paren\n-  [ ]   Extra spaces {check}\n   \n- [ ] Para sep inside\n- [ ] Depends ⛔ abc123\n~~~\n- [ ] Final return\r\n-  [ ]   Extra spaces  \n+ [X] Shouted done\n- plain bullet"
+    },
+    {
+      "markdown": "-\t[ ] tab after marker\n- [x]Glued done\n* [x] Done thing\n\t- [ ] tab indent\n﻿- [ ] BOM first\n- [ ] Ideographic space　\n- [ ] Final return\r\n- [ ] Ünïcödé 日本語 ✅",
+      "previous": "",
+      "output": "-\t[ ] tab after marker\n- [x]Glued done\n* [x] Done thing {check}\n\t- [ ] tab indent {check}\n﻿- [ ] BOM first\n- [ ] Ideographic space {check}\n- [ ] Final return {check}\r\n- [ ] Ünïcödé 日本語 ✅ {check}"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week\n- [ ] Double return\r\r\n- [y] Not a checkbox\n1. [ ] Ordered item\n- [ ] Trailing BOM﻿\n- [ ] Recurs 🔁 every week\n﻿- [ ] BOM first\n- [ ] Buy milk\n- [ ] NEL trailing \n- [ ] Para sep inside",
+      "previous": "",
+      "output": "- [ ] Recurs 🔁 every week {check}\n- [ ] Double return\r\r\n- [y] Not a checkbox\n1. [ ] Ordered item\n- [ ] Trailing BOM {check}\n- [ ] Recurs 🔁 every week {check}\n﻿- [ ] BOM first\n- [ ] Buy milk {check}\n- [ ] NEL trailing  {check}\n- [ ] Para sep inside"
+    },
+    {
+      "markdown": "+ [X] Shouted done\n- [ ] NEL trailing \n   \n- [ ] Ends in tab\t\n- [ ] Inline id [id:: abc123]\n- [ ] Mid\rreturn\n- [ ] Recurs 🔁 every week\n2) [ ] Ordered paren\n~~~\n- [ ] Line sep inside\n- [ ] Trailing nbsp \n- [ ] Ünïcödé 日本語 ✅",
+      "previous": "",
+      "output": "+ [X] Shouted done {check}\n- [ ] NEL trailing  {check}\n   \n- [ ] Ends in tab {check}\n- [ ] Inline id [id:: abc123]\n- [ ] Mid\rreturn\n- [ ] Recurs 🔁 every week {check}\n2) [ ] Ordered paren\n~~~\n- [ ] Line sep inside\n- [ ] Trailing nbsp \n- [ ] Ünïcödé 日本語 ✅"
+    },
+    {
+      "markdown": "- [ ] Due 📅 2026-11-01\n* [x] Done thing\n* [x] Done thing\n-[ ] no space\n　- [ ] Ideographic indent\n* [x] Done thing\n- [ ] Empty id {task:}\n- [ ]x glued\n~~~\n~~~\n﻿- [ ] BOM first\n- [ ] Line sep inside",
+      "previous": "",
+      "output": "- [ ] Due 📅 2026-11-01 {check}\n* [x] Done thing {check}\n* [x] Done thing {check}\n-[ ] no space\n　- [ ] Ideographic indent\n* [x] Done thing {check}\n- [ ] Empty id {task:} {check}\n- [ ]x glued\n~~~\n~~~\n﻿- [ ] BOM first\n- [ ] Line sep inside"
+    },
+    {
+      "markdown": "- [x]Glued done\r\n1. [ ] Ordered item\r\n```\r\n\t- [ ] tab indent\r\n- [ ] Ends in tab\t\r\n- [ ]\r\n- [ ] Ideographic space　\r\n- [ ] Buy milk",
+      "previous": "",
+      "output": "- [x]Glued done\r\n1. [ ] Ordered item\r\n```\r\n\t- [ ] tab indent\r\n- [ ] Ends in tab\t\r\n- [ ]\r\n- [ ] Ideographic space　\r\n- [ ] Buy milk"
+    },
+    {
+      "markdown": "- [ ] Linked line ^block-1\n- [ ] Trailing BOM﻿\n- plain bullet\n- [ ]　Ideographic after box\n- [ ] Linked line ^block-1",
+      "previous": "",
+      "output": "- [ ] Linked line ^block-1\n- [ ] Trailing BOM {check}\n- plain bullet\n- [ ]　Ideographic after box\n- [ ] Linked line ^block-1"
+    },
+    {
+      "markdown": "- [ ] Mid\rreturn\r\n  * [ ] nested two\r\n> - [ ] Quoted",
+      "previous": "",
+      "output": "- [ ] Mid\rreturn\r\n  * [ ] nested two {check}\r\n> - [ ] Quoted"
+    },
+    {
+      "markdown": "- [ ] NEL\r\n- [ ] Plain with space {check}   ",
+      "previous": "",
+      "output": "- [ ] NEL {check}\r\n- [ ] Plain with space {check}   "
+    },
+    {
+      "markdown": "- [ ] Plain with space {check}   \r\n- [ ] NEL trailing \r\n﻿- [ ] BOM first\r\n- [y] Not a checkbox\r\n- [ ] Double return\r\r\r\n　- [ ] Ideographic indent\r\n- [ ] Plain with space {check}   \r\n- [ ] Task {task:abc123}\r\n- [ ] Plain with space {check}   ",
+      "previous": "",
+      "output": "- [ ] Plain with space {check}   \r\n- [ ] NEL trailing  {check}\r\n﻿- [ ] BOM first\r\n- [y] Not a checkbox\r\n- [ ] Double return\r\r\r\n　- [ ] Ideographic indent\r\n- [ ] Plain with space {check}   \r\n- [ ] Task {task:abc123}\r\n- [ ] Plain with space {check}   "
+    },
+    {
+      "markdown": "- [ ] Already plain {check}\r\n\r\n- plain bullet",
+      "previous": "",
+      "output": "- [ ] Already plain {check}\r\n\r\n- plain bullet"
+    },
+    {
+      "markdown": "- [ ] Para sep inside\n- [ ]\tTab after box\n- [ ] Inline id [id:: abc123]",
+      "previous": "",
+      "output": "- [ ] Para sep inside\n- [ ]\tTab after box\n- [ ] Inline id [id:: abc123]"
+    },
+    {
+      "markdown": "+ [X] Shouted done",
+      "previous": "",
+      "output": "+ [X] Shouted done {check}"
+    },
+    {
+      "markdown": "- [ ]\n1. [ ] Ordered item\n- [ ] Double return\r\r",
+      "previous": "",
+      "output": "- [ ] {check}\n1. [ ] Ordered item\n- [ ] Double return\r\r"
+    },
+    {
+      "markdown": "* [x] Done thing",
+      "previous": "",
+      "output": "* [x] Done thing {check}"
+    },
+    {
+      "markdown": "- plain bullet\nSome paragraph\n- [ ] Empty id {task:}\n- [ ] Buy milk\n```js `tick`\n- [ ] Ends in tab\t\n- [ ] Has id 🆔 abc123\n- plain bullet\n-[ ] no space\n- [x]Glued done\n- [ ] Buy milk",
+      "previous": "",
+      "output": "- plain bullet\nSome paragraph\n- [ ] Empty id {task:} {check}\n- [ ] Buy milk {check}\n```js `tick`\n- [ ] Ends in tab {check}\n- [ ] Has id 🆔 abc123\n- plain bullet\n-[ ] no space\n- [x]Glued done\n- [ ] Buy milk {check}"
+    },
+    {
+      "markdown": "- [ ] Trailing BOM﻿\nSome paragraph\n　- [ ] Ideographic indent\n```\n1. [ ] Ordered item\n- [ ] Already plain {check}\n- [ ] Linked line ^block-1",
+      "previous": "",
+      "output": "- [ ] Trailing BOM {check}\nSome paragraph\n　- [ ] Ideographic indent\n```\n1. [ ] Ordered item\n- [ ] Already plain {check}\n- [ ] Linked line ^block-1"
+    },
+    {
+      "markdown": "- [ ]x glued\n  * [ ] nested two\n- [y] Not a checkbox",
+      "previous": "",
+      "output": "- [ ]x glued\n  * [ ] nested two {check}\n- [y] Not a checkbox"
+    },
+    {
+      "markdown": "```js `tick`\n- [ ] Ünïcödé 日本語 ✅\n\t- [ ] tab indent\n- [ ] NEL\n-[ ] no space\n- [ ]x glued\n- [ ]x glued\n　- [ ] Ideographic indent",
+      "previous": "",
+      "output": "```js `tick`\n- [ ] Ünïcödé 日本語 ✅ {check}\n\t- [ ] tab indent {check}\n- [ ] NEL {check}\n-[ ] no space\n- [ ]x glued\n- [ ]x glued\n　- [ ] Ideographic indent"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \n- [ ] Para sep inside\n```\nSome paragraph\n- [ ] Ends in tab\t\n````md\nSome paragraph\n- [ ] Linked line ^block-1",
+      "previous": "",
+      "output": "- [ ] Trailing nbsp {check}\n- [ ] Para sep inside\n```\nSome paragraph\n- [ ] Ends in tab\t\n````md\nSome paragraph\n- [ ] Linked line ^block-1"
+    },
+    {
+      "markdown": "- [ ] Has id 🆔 abc123\r\n  * [ ] nested two",
+      "previous": "",
+      "output": "- [ ] Has id 🆔 abc123\r\n  * [ ] nested two {check}"
+    },
+    {
+      "markdown": "- [ ] Depends ⛔ abc123\n~~~\n- [ ] Linked line ^block-1\n> - [ ] Quoted\n- [ ]　Ideographic after box\n1. [ ] Ordered item\n- [ ] Line sep inside\n- [ ] Trailing BOM﻿\n- [ ] Mid\rreturn\n-  [ ]   Extra spaces  \n- [ ]   \n- [ ]　Ideographic after box",
+      "previous": "",
+      "output": "- [ ] Depends ⛔ abc123\n~~~\n- [ ] Linked line ^block-1\n> - [ ] Quoted\n- [ ]　Ideographic after box\n1. [ ] Ordered item\n- [ ] Line sep inside\n- [ ] Trailing BOM﻿\n- [ ] Mid\rreturn\n-  [ ]   Extra spaces  \n- [ ]   \n- [ ]　Ideographic after box"
+    },
+    {
+      "markdown": "- [ ] NEL trailing \n- [ ]　Ideographic after box\n- [ ] Ideographic space　\n- [ ]　Ideographic after box\n- [ ] Plain with space {check}   ",
+      "previous": "",
+      "output": "- [ ] NEL trailing  {check}\n- [ ]　Ideographic after box\n- [ ] Ideographic space {check}\n- [ ]　Ideographic after box\n- [ ] Plain with space {check}   "
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp ",
+      "previous": "",
+      "output": "- [ ] Trailing nbsp {check}"
+    },
+    {
+      "markdown": "\n2) [ ] Ordered paren\n- [ ] Recurs 🔁 every week\n- [ ] Final return\r",
+      "previous": "",
+      "output": "\n2) [ ] Ordered paren\n- [ ] Recurs 🔁 every week {check}\n- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "- [x]Glued done\n\n- [ ] Trailing BOM﻿\n- [ ] Empty id {task:}",
+      "previous": "",
+      "output": "- [x]Glued done\n\n- [ ] Trailing BOM {check}\n- [ ] Empty id {task:} {check}"
+    },
+    {
+      "markdown": "- [ ] Linked line ^block-1\n- plain bullet\n- [ ] Plain with space {check}   \n- [ ]x glued\n　- [ ] Ideographic indent",
+      "previous": "",
+      "output": "- [ ] Linked line ^block-1\n- plain bullet\n- [ ] Plain with space {check}   \n- [ ]x glued\n　- [ ] Ideographic indent"
+    },
+    {
+      "markdown": "- [ ] Due 📅 2026-11-01\n- [ ] Depends ⛔ abc123\n- [ ]\tTab after box\n- [ ] Buy milk\n   \n- [ ] NEL\n~~~\n- [ ] Has id 🆔 abc123\n+ [X] Shouted done\n- [x]Glued done",
+      "previous": "",
+      "output": "- [ ] Due 📅 2026-11-01 {check}\n- [ ] Depends ⛔ abc123\n- [ ]\tTab after box\n- [ ] Buy milk {check}\n   \n- [ ] NEL {check}\n~~~\n- [ ] Has id 🆔 abc123\n+ [X] Shouted done\n- [x]Glued done"
+    },
+    {
+      "markdown": "- [ ] Final return\r\n- [ ] NEL\n- [ ] Due 📅 2026-11-01\n- [ ] Final return\r\n- [ ] Ünïcödé 日本語 ✅\n- [ ] Line sep inside",
+      "previous": "",
+      "output": "- [ ] Final return {check}\r\n- [ ] NEL {check}\n- [ ] Due 📅 2026-11-01 {check}\n- [ ] Final return {check}\r\n- [ ] Ünïcödé 日本語 ✅ {check}\n- [ ] Line sep inside"
+    },
+    {
+      "markdown": "\r\n- [ ] Linked line ^block-1\r\n```\r\n- [ ]　Ideographic after box",
+      "previous": "",
+      "output": "\r\n- [ ] Linked line ^block-1\r\n```\r\n- [ ]　Ideographic after box"
+    },
+    {
+      "markdown": "-  [ ]   Extra spaces  \n-  [ ]   Extra spaces  ",
+      "previous": "",
+      "output": "-  [ ]   Extra spaces {check}\n-  [ ]   Extra spaces {check}"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \nSome paragraph\n- [ ] Mid\rreturn\n- [ ] Plain with space {check}   \n- [y] Not a checkbox\n- [ ] Has id 🆔 abc123\n- [ ] Ünïcödé 日本語 ✅\nSome paragraph\n- [ ] Line sep inside\n- [ ] Trailing BOM﻿",
+      "previous": "",
+      "output": "- [ ] Trailing nbsp {check}\nSome paragraph\n- [ ] Mid\rreturn\n- [ ] Plain with space {check}   \n- [y] Not a checkbox\n- [ ] Has id 🆔 abc123\n- [ ] Ünïcödé 日本語 ✅ {check}\nSome paragraph\n- [ ] Line sep inside\n- [ ] Trailing BOM {check}"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week\n- [ ]\n- [ ] Already plain {check}",
+      "previous": "",
+      "output": "- [ ] Recurs 🔁 every week {check}\n- [ ] {check}\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "﻿- [ ] BOM first\n```js `tick`\n-\t[ ] tab after marker\n* [x] Done thing\n~~~",
+      "previous": "",
+      "output": "﻿- [ ] BOM first\n```js `tick`\n-\t[ ] tab after marker\n* [x] Done thing {check}\n~~~"
+    },
+    {
+      "markdown": "* [x] Done thing\n1. [ ] Ordered item\n- [ ] Final return\r",
+      "previous": "",
+      "output": "* [x] Done thing {check}\n1. [ ] Ordered item\n- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "- [ ] Due 📅 2026-11-01\n- [ ] Ünïcödé 日本語 ✅",
+      "previous": "",
+      "output": "- [ ] Due 📅 2026-11-01 {check}\n- [ ] Ünïcödé 日本語 ✅ {check}"
+    },
+    {
+      "markdown": "- [ ] NEL trailing \n- plain bullet\n-  [ ]   Extra spaces  \n- [ ] Task {task:abc123}",
+      "previous": "",
+      "output": "- [ ] NEL trailing  {check}\n- plain bullet\n-  [ ]   Extra spaces {check}\n- [ ] Task {task:abc123}"
+    },
+    {
+      "markdown": "   \r\n````md\r\n```",
+      "previous": "",
+      "output": "   \r\n````md\r\n```"
+    },
+    {
+      "markdown": "- [ ] Mid\rreturn\n    - [ ] nested four\n- [ ] Line sep inside\n- [y] Not a checkbox",
+      "previous": "",
+      "output": "- [ ] Mid\rreturn\n    - [ ] nested four {check}\n- [ ] Line sep inside\n- [y] Not a checkbox"
+    },
+    {
+      "markdown": "+ [X] Shouted done\n- [ ]\n-\t[ ] tab after marker\n- [ ] Linked line ^block-1\n- plain bullet\n﻿- [ ] BOM first\nSome paragraph\n﻿- [ ] BOM first\n- [ ] Plain with space {check}   ",
+      "previous": "",
+      "output": "+ [X] Shouted done {check}\n- [ ] {check}\n-\t[ ] tab after marker\n- [ ] Linked line ^block-1\n- plain bullet\n﻿- [ ] BOM first\nSome paragraph\n﻿- [ ] BOM first\n- [ ] Plain with space {check}   "
+    },
+    {
+      "markdown": "- [ ] Mid\rreturn\n- plain bullet",
+      "previous": "",
+      "output": "- [ ] Mid\rreturn\n- plain bullet"
+    },
+    {
+      "markdown": "- [ ] Buy milk\n- [ ] Double return\r\r",
+      "previous": "",
+      "output": "- [ ] Buy milk {check}\n- [ ] Double return\r\r"
+    },
+    {
+      "markdown": "- [ ] Ideographic space　\n\t- [ ] tab indent\n-  [ ]   Extra spaces  \n    - [ ] nested four\n- [ ] NEL\n- [ ] Para sep inside\n- [ ]\tTab after box",
+      "previous": "",
+      "output": "- [ ] Ideographic space {check}\n\t- [ ] tab indent {check}\n-  [ ]   Extra spaces {check}\n    - [ ] nested four {check}\n- [ ] NEL {check}\n- [ ] Para sep inside\n- [ ]\tTab after box"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week",
+      "previous": "",
+      "output": "- [ ] Recurs 🔁 every week {check}"
+    },
+    {
+      "markdown": "````md\n1. [ ] Ordered item\n  * [ ] nested two\n~~~\n- [ ] Ideographic space　\n~~~\n- [ ] NEL trailing \n",
+      "previous": "",
+      "output": "````md\n1. [ ] Ordered item\n  * [ ] nested two\n~~~\n- [ ] Ideographic space　\n~~~\n- [ ] NEL trailing \n"
+    },
+    {
+      "markdown": "- [ ] NEL\n~~~\n- [y] Not a checkbox\n~~~\n- [ ] Double return\r\r\n﻿- [ ] BOM first\n- [ ]\tTab after box",
+      "previous": "",
+      "output": "- [ ] NEL {check}\n~~~\n- [y] Not a checkbox\n~~~\n- [ ] Double return\r\r\n﻿- [ ] BOM first\n- [ ]\tTab after box"
+    },
+    {
+      "markdown": "- [ ] Para sep inside\nSome paragraph\n````md\n- [ ] Has id 🆔 abc123\n- [ ] Buy milk\n- [ ] Trailing nbsp \n- [ ] Buy milk\n````md\n- [x]Glued done",
+      "previous": "",
+      "output": "- [ ] Para sep inside\nSome paragraph\n````md\n- [ ] Has id 🆔 abc123\n- [ ] Buy milk\n- [ ] Trailing nbsp \n- [ ] Buy milk\n````md\n- [x]Glued done"
+    },
+    {
+      "markdown": "  * [ ] nested two\n- [ ] Due 📅 2026-11-01\n- [ ] Has id 🆔 abc123\n- [ ] Mid\rreturn\n- [ ] NEL trailing \n-[ ] no space\n+ [X] Shouted done\n    - [ ] nested four\n- [ ]　Ideographic after box\n- [ ] Final return\r",
+      "previous": "",
+      "output": "  * [ ] nested two {check}\n- [ ] Due 📅 2026-11-01 {check}\n- [ ] Has id 🆔 abc123\n- [ ] Mid\rreturn\n- [ ] NEL trailing  {check}\n-[ ] no space\n+ [X] Shouted done {check}\n    - [ ] nested four {check}\n- [ ]　Ideographic after box\n- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "- [ ] Para sep inside\r\n- [ ] Para sep inside\r\n- [ ] Depends ⛔ abc123\r\n\t- [ ] tab indent\r\n```js `tick`\r\n- [ ] NEL trailing \r\n",
+      "previous": "",
+      "output": "- [ ] Para sep inside\r\n- [ ] Para sep inside\r\n- [ ] Depends ⛔ abc123\r\n\t- [ ] tab indent {check}\r\n```js `tick`\r\n- [ ] NEL trailing  {check}\r\n"
+    },
+    {
+      "markdown": "```\n\n- [ ] Inline id [id:: abc123]\n- [ ] Trailing nbsp \n- [ ] Trailing nbsp ",
+      "previous": "",
+      "output": "```\n\n- [ ] Inline id [id:: abc123]\n- [ ] Trailing nbsp \n- [ ] Trailing nbsp "
+    },
+    {
+      "markdown": "- [ ] Ünïcödé 日本語 ✅\n  * [ ] nested two\n- [ ] Double return\r\r\n- [ ] Final return\r",
+      "previous": "",
+      "output": "- [ ] Ünïcödé 日本語 ✅ {check}\n  * [ ] nested two {check}\n- [ ] Double return\r\r\n- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "- [ ] Task {task:abc123}\n1. [ ] Ordered item",
+      "previous": "",
+      "output": "- [ ] Task {task:abc123}\n1. [ ] Ordered item"
+    },
+    {
+      "markdown": "- [ ]x glued\r\n- [ ] NEL trailing ",
+      "previous": "",
+      "output": "- [ ]x glued\r\n- [ ] NEL trailing  {check}"
+    },
+    {
+      "markdown": "- [ ]x glued\r\n- [ ]　Ideographic after box\r\n  * [ ] nested two",
+      "previous": "",
+      "output": "- [ ]x glued\r\n- [ ]　Ideographic after box\r\n  * [ ] nested two {check}"
+    },
+    {
+      "markdown": "- [ ] Para sep inside\n- [ ] Double return\r\r\n-\t[ ] tab after marker\n  * [ ] nested two\n- [ ] Empty id {task:}\n\n- [ ] Final return\r\n- [ ]　Ideographic after box\n- [ ] Ends in tab\t\n~~~\nSome paragraph\n~~~",
+      "previous": "",
+      "output": "- [ ] Para sep inside\n- [ ] Double return\r\r\n-\t[ ] tab after marker\n  * [ ] nested two {check}\n- [ ] Empty id {task:} {check}\n\n- [ ] Final return {check}\r\n- [ ]　Ideographic after box\n- [ ] Ends in tab {check}\n~~~\nSome paragraph\n~~~"
+    },
+    {
+      "markdown": "> - [ ] Quoted\n* [x] Done thing\n- [ ] Ünïcödé 日本語 ✅\n- [ ] Double return\r\r\n- [ ] Depends ⛔ abc123\nSome paragraph",
+      "previous": "",
+      "output": "> - [ ] Quoted\n* [x] Done thing {check}\n- [ ] Ünïcödé 日本語 ✅ {check}\n- [ ] Double return\r\r\n- [ ] Depends ⛔ abc123\nSome paragraph"
+    },
+    {
+      "markdown": "- [ ] Final return\r\n-  [ ]   Extra spaces  ",
+      "previous": "",
+      "output": "- [ ] Final return {check}\r\n-  [ ]   Extra spaces {check}"
+    },
+    {
+      "markdown": "　- [ ] Ideographic indent\n- [ ] Due 📅 2026-11-01\n```js `tick`\n- [ ] Ideographic space　\n- [ ] Trailing nbsp \n```\n- [ ] Inline id [id:: abc123]\n   \n- [ ] Ideographic space　\n````md",
+      "previous": "",
+      "output": "　- [ ] Ideographic indent\n- [ ] Due 📅 2026-11-01 {check}\n```js `tick`\n- [ ] Ideographic space {check}\n- [ ] Trailing nbsp {check}\n```\n- [ ] Inline id [id:: abc123]\n   \n- [ ] Ideographic space　\n````md"
+    },
+    {
+      "markdown": "+ [X] Shouted done\r\n- [ ]\r\n- [y] Not a checkbox\r\n2) [ ] Ordered paren\r\n-[ ] no space\r\n　- [ ] Ideographic indent\r\n> - [ ] Quoted\r\n  * [ ] nested two\r\n- [ ] Ideographic space　\r\n    - [ ] nested four\r\n- [ ]　Ideographic after box",
+      "previous": "",
+      "output": "+ [X] Shouted done {check}\r\n- [ ] {check}\r\n- [y] Not a checkbox\r\n2) [ ] Ordered paren\r\n-[ ] no space\r\n　- [ ] Ideographic indent\r\n> - [ ] Quoted\r\n  * [ ] nested two {check}\r\n- [ ] Ideographic space {check}\r\n    - [ ] nested four {check}\r\n- [ ]　Ideographic after box"
+    },
+    {
+      "markdown": "    - [ ] nested four\n- [ ] Final return\r\n- [ ] Has id 🆔 abc123\n- [ ]\n- [ ] Empty id {task:}\n﻿- [ ] BOM first\n- [ ] Plain with space {check}   \n~~~\nSome paragraph",
+      "previous": "",
+      "output": "    - [ ] nested four {check}\n- [ ] Final return {check}\r\n- [ ] Has id 🆔 abc123\n- [ ] {check}\n- [ ] Empty id {task:} {check}\n﻿- [ ] BOM first\n- [ ] Plain with space {check}   \n~~~\nSome paragraph"
+    },
+    {
+      "markdown": "Some paragraph\n+ [X] Shouted done\n~~~\n- [ ] Depends ⛔ abc123\n- [ ]x glued\n- [ ] Double return\r\r\n- [ ] Buy milk\n- [ ] Linked line ^block-1\n- [ ]",
+      "previous": "",
+      "output": "Some paragraph\n+ [X] Shouted done {check}\n~~~\n- [ ] Depends ⛔ abc123\n- [ ]x glued\n- [ ] Double return\r\r\n- [ ] Buy milk\n- [ ] Linked line ^block-1\n- [ ]"
+    },
+    {
+      "markdown": "- [ ] Ends in tab\t\n    - [ ] nested four\n- [ ]x glued\n-[ ] no space\n~~~",
+      "previous": "",
+      "output": "- [ ] Ends in tab {check}\n    - [ ] nested four {check}\n- [ ]x glued\n-[ ] no space\n~~~"
+    },
+    {
+      "markdown": "- [ ]\r\n-  [ ]   Extra spaces  \r\n- [ ] Depends ⛔ abc123\r\n- [ ]",
+      "previous": "",
+      "output": "- [ ] {check}\r\n-  [ ]   Extra spaces {check}\r\n- [ ] Depends ⛔ abc123\r\n- [ ] {check}"
+    },
+    {
+      "markdown": "    - [ ] nested four\n~~~\n   \n- [ ] Ends in tab\t\n- [ ]   ",
+      "previous": "",
+      "output": "    - [ ] nested four {check}\n~~~\n   \n- [ ] Ends in tab\t\n- [ ]   "
+    },
+    {
+      "markdown": "　- [ ] Ideographic indent\n- [ ] Trailing BOM﻿\n- [ ] Already plain {check}\n- [ ]\n- [ ] Buy milk\n+ [X] Shouted done\n- [y] Not a checkbox",
+      "previous": "",
+      "output": "　- [ ] Ideographic indent\n- [ ] Trailing BOM {check}\n- [ ] Already plain {check}\n- [ ] {check}\n- [ ] Buy milk {check}\n+ [X] Shouted done {check}\n- [y] Not a checkbox"
+    },
+    {
+      "markdown": "- [ ] Ünïcödé 日本語 ✅\n-\t[ ] tab after marker\n\n- [ ] Ends in tab\t\n﻿- [ ] BOM first\n- [ ] Para sep inside",
+      "previous": "",
+      "output": "- [ ] Ünïcödé 日本語 ✅ {check}\n-\t[ ] tab after marker\n\n- [ ] Ends in tab {check}\n﻿- [ ] BOM first\n- [ ] Para sep inside"
+    },
+    {
+      "markdown": "   \n1. [ ] Ordered item\n```\n- [ ]\tTab after box\n   \n````md\n- [ ] Double return\r\r\n- [ ] Buy milk\n- [ ] Due 📅 2026-11-01\n- [ ]　Ideographic after box\n- [ ] Depends ⛔ abc123\n- [ ] Empty id {task:}",
+      "previous": "",
+      "output": "   \n1. [ ] Ordered item\n```\n- [ ]\tTab after box\n   \n````md\n- [ ] Double return\r\r\n- [ ] Buy milk\n- [ ] Due 📅 2026-11-01\n- [ ]　Ideographic after box\n- [ ] Depends ⛔ abc123\n- [ ] Empty id {task:}"
+    },
+    {
+      "markdown": "- [ ]\tTab after box\r\n> - [ ] Quoted\r\n- [ ] Has id 🆔 abc123\r\n- [ ]   \r\n- [ ] Depends ⛔ abc123",
+      "previous": "",
+      "output": "- [ ]\tTab after box\r\n> - [ ] Quoted\r\n- [ ] Has id 🆔 abc123\r\n- [ ] {check}\r\n- [ ] Depends ⛔ abc123"
+    },
+    {
+      "markdown": "- [y] Not a checkbox\n* [x] Done thing",
+      "previous": "",
+      "output": "- [y] Not a checkbox\n* [x] Done thing {check}"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week\n- [ ] Buy milk\n- [ ] Trailing nbsp \n- [ ]x glued\n- [ ] Line sep inside\n- [ ]   \n- [ ] Double return\r\r\n2) [ ] Ordered paren\n- [ ] Depends ⛔ abc123\n```js `tick`\n- [ ] NEL trailing \n\t- [ ] tab indent",
+      "previous": "",
+      "output": "- [ ] Recurs 🔁 every week {check}\n- [ ] Buy milk {check}\n- [ ] Trailing nbsp {check}\n- [ ]x glued\n- [ ] Line sep inside\n- [ ] {check}\n- [ ] Double return\r\r\n2) [ ] Ordered paren\n- [ ] Depends ⛔ abc123\n```js `tick`\n- [ ] NEL trailing  {check}\n\t- [ ] tab indent {check}"
+    },
+    {
+      "markdown": "- [ ] Line sep inside\n- [ ]x glued",
+      "previous": "",
+      "output": "- [ ] Line sep inside\n- [ ]x glued"
+    },
+    {
+      "markdown": "\t- [ ] tab indent\n",
+      "previous": "",
+      "output": "\t- [ ] tab indent {check}\n"
+    },
+    {
+      "markdown": "- [ ]   \n- [ ] Ünïcödé 日本語 ✅\n- [ ] Mid\rreturn\n- [ ] Linked line ^block-1\n- [y] Not a checkbox\n- [ ] Plain with space {check}   \n1. [ ] Ordered item",
+      "previous": "",
+      "output": "- [ ] {check}\n- [ ] Ünïcödé 日本語 ✅ {check}\n- [ ] Mid\rreturn\n- [ ] Linked line ^block-1\n- [y] Not a checkbox\n- [ ] Plain with space {check}   \n1. [ ] Ordered item"
+    },
+    {
+      "markdown": "* [x] Done thing\r\n- [x]Glued done\r\n* [x] Done thing\r\n1. [ ] Ordered item\r\n- [ ] Ideographic space　",
+      "previous": "",
+      "output": "* [x] Done thing {check}\r\n- [x]Glued done\r\n* [x] Done thing {check}\r\n1. [ ] Ordered item\r\n- [ ] Ideographic space {check}"
+    },
+    {
+      "markdown": "````md",
+      "previous": "",
+      "output": "````md"
+    },
+    {
+      "markdown": "- [ ] Depends ⛔ abc123\r\n- [ ]\tTab after box\r\n- [ ] Empty id {task:}\r\n- [ ] Linked line ^block-1\r\n- [ ] Inline id [id:: abc123]\r\n1. [ ] Ordered item\r\n　- [ ] Ideographic indent",
+      "previous": "",
+      "output": "- [ ] Depends ⛔ abc123\r\n- [ ]\tTab after box\r\n- [ ] Empty id {task:} {check}\r\n- [ ] Linked line ^block-1\r\n- [ ] Inline id [id:: abc123]\r\n1. [ ] Ordered item\r\n　- [ ] Ideographic indent"
+    },
+    {
+      "markdown": "- [ ] Line sep inside\n- [ ] NEL\n    - [ ] nested four\n2) [ ] Ordered paren\n- [ ] Plain with space {check}   \n- [ ] Linked line ^block-1",
+      "previous": "",
+      "output": "- [ ] Line sep inside\n- [ ] NEL {check}\n    - [ ] nested four {check}\n2) [ ] Ordered paren\n- [ ] Plain with space {check}   \n- [ ] Linked line ^block-1"
+    },
+    {
+      "markdown": "* [x] Done thing",
+      "previous": "",
+      "output": "* [x] Done thing {check}"
+    },
+    {
+      "markdown": "- [ ] Para sep inside\n-[ ] no space\n```\n- [ ]　Ideographic after box\n- [ ] Depends ⛔ abc123\n- [ ] Due 📅 2026-11-01\n- [ ] Para sep inside\n- [ ] NEL trailing \n- [ ] Depends ⛔ abc123\n- plain bullet\n   ",
+      "previous": "",
+      "output": "- [ ] Para sep inside\n-[ ] no space\n```\n- [ ]　Ideographic after box\n- [ ] Depends ⛔ abc123\n- [ ] Due 📅 2026-11-01\n- [ ] Para sep inside\n- [ ] NEL trailing \n- [ ] Depends ⛔ abc123\n- plain bullet\n   "
+    },
+    {
+      "markdown": "2) [ ] Ordered paren\n\n- [ ] Para sep inside",
+      "previous": "",
+      "output": "2) [ ] Ordered paren\n\n- [ ] Para sep inside"
+    },
+    {
+      "markdown": "- [ ] Depends ⛔ abc123\n   \n- [ ] Inline id [id:: abc123]\n- [ ] Trailing BOM﻿\n~~~\n- [ ] Empty id {task:}\n> - [ ] Quoted\n- plain bullet\n- [ ]\tTab after box\n- [ ] Line sep inside\n~~~\n-\t[ ] tab after marker",
+      "previous": "",
+      "output": "- [ ] Depends ⛔ abc123\n   \n- [ ] Inline id [id:: abc123]\n- [ ] Trailing BOM {check}\n~~~\n- [ ] Empty id {task:}\n> - [ ] Quoted\n- plain bullet\n- [ ]\tTab after box\n- [ ] Line sep inside\n~~~\n-\t[ ] tab after marker"
+    },
+    {
+      "markdown": "- [ ] Due 📅 2026-11-01\n   \n- [ ] Task {task:abc123}\n\t- [ ] tab indent\n- [x]Glued done",
+      "previous": "",
+      "output": "- [ ] Due 📅 2026-11-01 {check}\n   \n- [ ] Task {task:abc123}\n\t- [ ] tab indent {check}\n- [x]Glued done"
+    },
+    {
+      "markdown": "- [ ] Line sep inside\n- [ ] Mid\rreturn",
+      "previous": "",
+      "output": "- [ ] Line sep inside\n- [ ] Mid\rreturn"
+    },
+    {
+      "markdown": "- [ ] Ends in tab\t\n　- [ ] Ideographic indent\n1. [ ] Ordered item\n- [ ] Trailing nbsp \n　- [ ] Ideographic indent\n- [ ] Para sep inside\n- [ ] Ünïcödé 日本語 ✅\n﻿- [ ] BOM first\n```\n* [x] Done thing",
+      "previous": "",
+      "output": "- [ ] Ends in tab {check}\n　- [ ] Ideographic indent\n1. [ ] Ordered item\n- [ ] Trailing nbsp {check}\n　- [ ] Ideographic indent\n- [ ] Para sep inside\n- [ ] Ünïcödé 日本語 ✅ {check}\n﻿- [ ] BOM first\n```\n* [x] Done thing"
+    },
+    {
+      "markdown": "- [ ] Line sep inside\n- [ ] Final return\r\n- [ ] NEL",
+      "previous": "",
+      "output": "- [ ] Line sep inside\n- [ ] Final return {check}\r\n- [ ] NEL {check}"
+    },
+    {
+      "markdown": "- [ ] Ends in tab\t\n- [ ] Ends in tab\t\n- [ ] Buy milk\n- [ ] NEL trailing \n　- [ ] Ideographic indent\n- [ ] Depends ⛔ abc123\n-\t[ ] tab after marker\n> - [ ] Quoted",
+      "previous": "",
+      "output": "- [ ] Ends in tab {check}\n- [ ] Ends in tab {check}\n- [ ] Buy milk {check}\n- [ ] NEL trailing  {check}\n　- [ ] Ideographic indent\n- [ ] Depends ⛔ abc123\n-\t[ ] tab after marker\n> - [ ] Quoted"
+    },
+    {
+      "markdown": "1. [ ] Ordered item\n- [ ] Para sep inside\n1. [ ] Ordered item\n- [ ] Ünïcödé 日本語 ✅",
+      "previous": "",
+      "output": "1. [ ] Ordered item\n- [ ] Para sep inside\n1. [ ] Ordered item\n- [ ] Ünïcödé 日本語 ✅ {check}"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \n- [ ]\n- [ ] Task {task:abc123}\n- [ ] NEL trailing \n- [ ]　Ideographic after box\n- [ ] Has id 🆔 abc123\n    - [ ] nested four\n* [x] Done thing\n- [ ] Buy milk\n- [ ] NEL",
+      "previous": "",
+      "output": "- [ ] Trailing nbsp {check}\n- [ ] {check}\n- [ ] Task {task:abc123}\n- [ ] NEL trailing  {check}\n- [ ]　Ideographic after box\n- [ ] Has id 🆔 abc123\n    - [ ] nested four {check}\n* [x] Done thing {check}\n- [ ] Buy milk {check}\n- [ ] NEL {check}"
+    },
+    {
+      "markdown": "- [y] Not a checkbox",
+      "previous": "",
+      "output": "- [y] Not a checkbox"
+    },
+    {
+      "markdown": "- [ ] Due 📅 2026-11-01\r\n> - [ ] Quoted\r\n> - [ ] Quoted\r\n- [ ]x glued\r\n- [ ] Task {task:abc123}\r\n- [ ] Line sep inside",
+      "previous": "",
+      "output": "- [ ] Due 📅 2026-11-01 {check}\r\n> - [ ] Quoted\r\n> - [ ] Quoted\r\n- [ ]x glued\r\n- [ ] Task {task:abc123}\r\n- [ ] Line sep inside"
+    },
+    {
+      "markdown": "\n- [ ] Depends ⛔ abc123\n- [ ] NEL",
+      "previous": "",
+      "output": "\n- [ ] Depends ⛔ abc123\n- [ ] NEL {check}"
+    },
+    {
+      "markdown": "- [ ] Mid\rreturn\r\n+ [X] Shouted done\r\n- [ ] NEL trailing \r\n-\t[ ] tab after marker\r\n```\r\n- [ ] Ünïcödé 日本語 ✅\r\n  * [ ] nested two\r\n```js `tick`\r\n   \r\nSome paragraph\r\n    - [ ] nested four\r\n-  [ ]   Extra spaces  ",
+      "previous": "",
+      "output": "- [ ] Mid\rreturn\r\n+ [X] Shouted done {check}\r\n- [ ] NEL trailing  {check}\r\n-\t[ ] tab after marker\r\n```\r\n- [ ] Ünïcödé 日本語 ✅\r\n  * [ ] nested two\r\n```js `tick`\r\n   \r\nSome paragraph\r\n    - [ ] nested four\r\n-  [ ]   Extra spaces  "
+    },
+    {
+      "markdown": "- [ ] Already plain {check}\n- [ ] Mid\rreturn\n1. [ ] Ordered item\n\t- [ ] tab indent\n- [ ]　Ideographic after box\n+ [X] Shouted done",
+      "previous": "",
+      "output": "- [ ] Already plain {check}\n- [ ] Mid\rreturn\n1. [ ] Ordered item\n\t- [ ] tab indent {check}\n- [ ]　Ideographic after box\n+ [X] Shouted done {check}"
+    },
+    {
+      "markdown": "- [ ] Double return\r\r\n- [ ] Due 📅 2026-11-01\n```\n- plain bullet\n```\n- [ ] Final return\r\n- [ ] Mid\rreturn\n- [ ] Empty id {task:}\n   \n-  [ ]   Extra spaces  \n1. [ ] Ordered item",
+      "previous": "",
+      "output": "- [ ] Double return\r\r\n- [ ] Due 📅 2026-11-01 {check}\n```\n- plain bullet\n```\n- [ ] Final return {check}\r\n- [ ] Mid\rreturn\n- [ ] Empty id {task:} {check}\n   \n-  [ ]   Extra spaces {check}\n1. [ ] Ordered item"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week\n- [ ]\tTab after box\n- [ ]\n- [ ] Has id 🆔 abc123",
+      "previous": "",
+      "output": "- [ ] Recurs 🔁 every week {check}\n- [ ]\tTab after box\n- [ ] {check}\n- [ ] Has id 🆔 abc123"
+    },
+    {
+      "markdown": "　- [ ] Ideographic indent\n- [ ] Ünïcödé 日本語 ✅\n- [ ] Ideographic space　\n1. [ ] Ordered item\n* [x] Done thing",
+      "previous": "",
+      "output": "　- [ ] Ideographic indent\n- [ ] Ünïcödé 日本語 ✅ {check}\n- [ ] Ideographic space {check}\n1. [ ] Ordered item\n* [x] Done thing {check}"
+    },
+    {
+      "markdown": "```\r\n    - [ ] nested four\r\n```js `tick`\r\n- [ ] Linked line ^block-1\r\n1. [ ] Ordered item",
+      "previous": "",
+      "output": "```\r\n    - [ ] nested four\r\n```js `tick`\r\n- [ ] Linked line ^block-1\r\n1. [ ] Ordered item"
+    },
+    {
+      "markdown": "- [ ] Final return\r",
+      "previous": "",
+      "output": "- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "- [ ] Already plain {check}\n- [ ] Trailing nbsp \n~~~",
+      "previous": "",
+      "output": "- [ ] Already plain {check}\n- [ ] Trailing nbsp {check}\n~~~"
+    },
+    {
+      "markdown": "- [ ]\tTab after box\n-  [ ]   Extra spaces  \n2) [ ] Ordered paren\n1. [ ] Ordered item\n﻿- [ ] BOM first\n- [ ]x glued\n1. [ ] Ordered item\n- [ ] Already plain {check}\n- [ ] Recurs 🔁 every week\n   ",
+      "previous": "",
+      "output": "- [ ]\tTab after box\n-  [ ]   Extra spaces {check}\n2) [ ] Ordered paren\n1. [ ] Ordered item\n﻿- [ ] BOM first\n- [ ]x glued\n1. [ ] Ordered item\n- [ ] Already plain {check}\n- [ ] Recurs 🔁 every week {check}\n   "
+    },
+    {
+      "markdown": "- [ ] Task {task:abc123}\n- [ ]x glued\n- [ ] NEL\n- [ ] Plain with space {check}   \n- [ ] Ünïcödé 日本語 ✅\n> - [ ] Quoted\n+ [X] Shouted done\n   \n- [ ] Trailing BOM﻿",
+      "previous": "",
+      "output": "- [ ] Task {task:abc123}\n- [ ]x glued\n- [ ] NEL {check}\n- [ ] Plain with space {check}   \n- [ ] Ünïcödé 日本語 ✅ {check}\n> - [ ] Quoted\n+ [X] Shouted done {check}\n   \n- [ ] Trailing BOM {check}"
+    },
+    {
+      "markdown": "- [ ] Buy milk\n```js `tick`\n- [ ] Empty id {task:}\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:}\n- [ ]　Ideographic after box\n- [ ] Final return\r\n~~~\n- plain bullet\n- [ ] Para sep inside\n```js `tick`\n- [ ]x glued",
+      "previous": "",
+      "output": "- [ ] Buy milk {check}\n```js `tick`\n- [ ] Empty id {task:} {check}\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:} {check}\n- [ ]　Ideographic after box\n- [ ] Final return {check}\r\n~~~\n- plain bullet\n- [ ] Para sep inside\n```js `tick`\n- [ ]x glued"
+    },
+    {
+      "markdown": "- [y] Not a checkbox\n- [ ] Linked line ^block-1\n- [y] Not a checkbox\n- [ ]　Ideographic after box\n- [ ] Plain with space {check}   \n- [ ] Has id 🆔 abc123\n- [ ] Ideographic space　\n- [ ] Depends ⛔ abc123\n> - [ ] Quoted\n- [ ]\n",
+      "previous": "",
+      "output": "- [y] Not a checkbox\n- [ ] Linked line ^block-1\n- [y] Not a checkbox\n- [ ]　Ideographic after box\n- [ ] Plain with space {check}   \n- [ ] Has id 🆔 abc123\n- [ ] Ideographic space {check}\n- [ ] Depends ⛔ abc123\n> - [ ] Quoted\n- [ ] {check}\n"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \r\n```\r\n   \r\n- [ ] Buy milk\r\n-[ ] no space\r\n- plain bullet\r\n- [ ] Double return\r\r\r\n- [ ]x glued\r\n-\t[ ] tab after marker\r\n- [ ] NEL trailing ",
+      "previous": "",
+      "output": "- [ ] Trailing nbsp {check}\r\n```\r\n   \r\n- [ ] Buy milk\r\n-[ ] no space\r\n- plain bullet\r\n- [ ] Double return\r\r\r\n- [ ]x glued\r\n-\t[ ] tab after marker\r\n- [ ] NEL trailing "
+    },
+    {
+      "markdown": "Some paragraph\n* [x] Done thing\n　- [ ] Ideographic indent\n```\n-[ ] no space\n   ",
+      "previous": "",
+      "output": "Some paragraph\n* [x] Done thing {check}\n　- [ ] Ideographic indent\n```\n-[ ] no space\n   "
+    },
+    {
+      "markdown": "-\t[ ] tab after marker\r\n> - [ ] Quoted\r\n   \r\nSome paragraph\r\n> - [ ] Quoted\r\n-  [ ]   Extra spaces  ",
+      "previous": "",
+      "output": "-\t[ ] tab after marker\r\n> - [ ] Quoted\r\n   \r\nSome paragraph\r\n> - [ ] Quoted\r\n-  [ ]   Extra spaces {check}"
+    },
+    {
+      "markdown": "- [ ] Ideographic space　\n-\t[ ] tab after marker\n- [y] Not a checkbox\n- [ ] Final return\r",
+      "previous": "",
+      "output": "- [ ] Ideographic space {check}\n-\t[ ] tab after marker\n- [y] Not a checkbox\n- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "- [ ] NEL\r\n- [ ] Has id 🆔 abc123\r\n- [ ]　Ideographic after box\r\n- [ ] Trailing nbsp ",
+      "previous": "",
+      "output": "- [ ] NEL {check}\r\n- [ ] Has id 🆔 abc123\r\n- [ ]　Ideographic after box\r\n- [ ] Trailing nbsp {check}"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:}",
+      "previous": "",
+      "output": "- [ ] Recurs 🔁 every week {check}\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:} {check}"
+    },
+    {
+      "markdown": "- [ ] Due 📅 2026-11-01\n> - [ ] Quoted\n~~~\n```js `tick`\n- [ ] Due 📅 2026-11-01\n- [ ] Due 📅 2026-11-01\n- [ ] Line sep inside\n\n````md\n- [ ] Due 📅 2026-11-01\n- [ ] NEL trailing \n-  [ ]   Extra spaces  ",
+      "previous": "",
+      "output": "- [ ] Due 📅 2026-11-01 {check}\n> - [ ] Quoted\n~~~\n```js `tick`\n- [ ] Due 📅 2026-11-01\n- [ ] Due 📅 2026-11-01\n- [ ] Line sep inside\n\n````md\n- [ ] Due 📅 2026-11-01\n- [ ] NEL trailing \n-  [ ]   Extra spaces  "
+    },
+    {
+      "markdown": "- [ ]　Ideographic after box\n   \n- [ ] Final return\r",
+      "previous": "",
+      "output": "- [ ]　Ideographic after box\n   \n- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "- [ ] Trailing BOM﻿\r\n- [ ] Buy milk\r\n1. [ ] Ordered item\r\n- [ ] Due 📅 2026-11-01\r\n````md",
+      "previous": "",
+      "output": "- [ ] Trailing BOM {check}\r\n- [ ] Buy milk {check}\r\n1. [ ] Ordered item\r\n- [ ] Due 📅 2026-11-01 {check}\r\n````md"
+    },
+    {
+      "markdown": "- [ ] Line sep inside\n  * [ ] nested two\n~~~\n\n- [ ] Linked line ^block-1\n> - [ ] Quoted\n- [ ] Already plain {check}\n- [ ] Ideographic space　",
+      "previous": "",
+      "output": "- [ ] Line sep inside\n  * [ ] nested two {check}\n~~~\n\n- [ ] Linked line ^block-1\n> - [ ] Quoted\n- [ ] Already plain {check}\n- [ ] Ideographic space　"
+    },
+    {
+      "markdown": "~~~\n- [ ]　Ideographic after box\n- [ ] Mid\rreturn\n- [ ] Ends in tab\t\n2) [ ] Ordered paren\n- [ ] Empty id {task:}\n+ [X] Shouted done\n- [ ] NEL trailing \n- [ ] Depends ⛔ abc123\n-[ ] no space\n  * [ ] nested two",
+      "previous": "",
+      "output": "~~~\n- [ ]　Ideographic after box\n- [ ] Mid\rreturn\n- [ ] Ends in tab\t\n2) [ ] Ordered paren\n- [ ] Empty id {task:}\n+ [X] Shouted done\n- [ ] NEL trailing \n- [ ] Depends ⛔ abc123\n-[ ] no space\n  * [ ] nested two"
+    },
+    {
+      "markdown": "- [ ] Ideographic space　",
+      "previous": "",
+      "output": "- [ ] Ideographic space {check}"
+    },
+    {
+      "markdown": "- [ ] old\n- [ ] new",
+      "previous": "- [ ] old",
+      "output": "- [ ] old\n- [ ] new {check}"
+    },
+    {
+      "markdown": "- [ ] same\n- [ ] same",
+      "previous": "- [ ] same",
+      "output": "- [ ] same\n- [ ] same {check}"
+    },
+    {
+      "markdown": "- [ ] same\n- [ ] same\n- [ ] same",
+      "previous": "- [ ] same\nother\n- [ ] same",
+      "output": "- [ ] same\n- [ ] same\n- [ ] same {check}"
+    },
+    {
+      "markdown": "- [ ] a\r\n- [ ] b\r\n",
+      "previous": "- [ ] a\n- [ ] b\n",
+      "output": "- [ ] a {check}\r\n- [ ] b {check}\r\n"
+    },
+    {
+      "markdown": "- [ ] a\r\n- [ ] b\r\n",
+      "previous": "- [ ] a\r\n",
+      "output": "- [ ] a\r\n- [ ] b {check}\r\n"
+    },
+    {
+      "markdown": "\n- [ ] after blank",
+      "previous": "",
+      "output": "\n- [ ] after blank {check}"
+    },
+    {
+      "markdown": "- [ ] a",
+      "previous": "- [ ] a",
+      "output": "- [ ] a"
+    },
+    {
+      "markdown": "```\n- [ ] x\n```\n- [ ] y",
+      "previous": "- [ ] y",
+      "output": "```\n- [ ] x\n```\n- [ ] y"
+    },
+    {
+      "markdown": "+ [X] Shouted done\r\n+ [X] Shouted done\r\n",
+      "previous": "+ [X] Shouted done\r\n+ [X] Shouted done\r",
+      "output": "+ [X] Shouted done\r\n+ [X] Shouted done\r\n"
+    },
+    {
+      "markdown": "Some paragraph\r\nSome paragraph\r\n",
+      "previous": "Some paragraph\r\n",
+      "output": "Some paragraph\r\nSome paragraph\r\n"
+    },
+    {
+      "markdown": "- [ ] Ideographic space　\n\t- [ ] tab indent\n-  [ ]   Extra spaces  \n    - [ ] nested four\n- [ ] NEL\n- [ ] Para sep inside\n- [ ]\tTab after box",
+      "previous": "\t- [ ] tab indent\n-  [ ]   Extra spaces  \n- [ ] Para sep inside",
+      "output": "- [ ] Ideographic space {check}\n\t- [ ] tab indent\n-  [ ]   Extra spaces  \n    - [ ] nested four {check}\n- [ ] NEL {check}\n- [ ] Para sep inside\n- [ ]\tTab after box"
+    },
+    {
+      "markdown": "````md\n1. [ ] Ordered item\n  * [ ] nested two\n~~~\n- [ ] Ideographic space　\n~~~\n- [ ] NEL trailing \n",
+      "previous": "````md\n  * [ ] nested two\n~~~",
+      "output": "````md\n1. [ ] Ordered item\n  * [ ] nested two\n~~~\n- [ ] Ideographic space　\n~~~\n- [ ] NEL trailing \n"
+    },
+    {
+      "markdown": "-\t[ ] tab after marker",
+      "previous": "-\t[ ] tab after marker",
+      "output": "-\t[ ] tab after marker"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week\n- [ ] Double return\r\r\n- [y] Not a checkbox\n1. [ ] Ordered item\n- [ ] Trailing BOM﻿\n- [ ] Recurs 🔁 every week\n﻿- [ ] BOM first\n- [ ] Buy milk\n- [ ] NEL trailing \n- [ ] Para sep inside",
+      "previous": "- [ ] Recurs 🔁 every week\n- [ ] Double return\r\r\n- [ ] Recurs 🔁 every week\n﻿- [ ] BOM first\n- [ ] Buy milk\n- [ ] NEL trailing \n- [ ] Para sep inside",
+      "output": "- [ ] Recurs 🔁 every week\n- [ ] Double return\r\r\n- [y] Not a checkbox\n1. [ ] Ordered item\n- [ ] Trailing BOM {check}\n- [ ] Recurs 🔁 every week\n﻿- [ ] BOM first\n- [ ] Buy milk\n- [ ] NEL trailing \n- [ ] Para sep inside"
+    },
+    {
+      "markdown": "- [ ] NEL\r\n- [ ] NEL\r\n",
+      "previous": "- [ ] NEL\r\n",
+      "output": "- [ ] NEL\r\n- [ ] NEL {check}\r\n"
+    },
+    {
+      "markdown": "- [ ]   \n- [ ] Ünïcödé 日本語 ✅\n- [ ] Mid\rreturn\n- [ ] Linked line ^block-1\n- [y] Not a checkbox\n- [ ] Plain with space {check}   \n1. [ ] Ordered item",
+      "previous": "- [ ]   \n- [ ] Ünïcödé 日本語 ✅\n- [ ] Mid\rreturn\n- [ ] Linked line ^block-1\n- [ ] Plain with space {check}   \n1. [ ] Ordered item",
+      "output": "- [ ]   \n- [ ] Ünïcödé 日本語 ✅\n- [ ] Mid\rreturn\n- [ ] Linked line ^block-1\n- [y] Not a checkbox\n- [ ] Plain with space {check}   \n1. [ ] Ordered item"
+    },
+    {
+      "markdown": "- plain bullet",
+      "previous": "",
+      "output": "- plain bullet"
+    },
+    {
+      "markdown": "1. [ ] Ordered item\r\n1. [ ] Ordered item\r\n",
+      "previous": "1. [ ] Ordered item\r\n",
+      "output": "1. [ ] Ordered item\r\n1. [ ] Ordered item\r\n"
+    },
+    {
+      "markdown": "- [ ] Line sep inside\n- [ ] Final return\r\n- [ ] NEL",
+      "previous": "- [ ] NEL",
+      "output": "- [ ] Line sep inside\n- [ ] Final return {check}\r\n- [ ] NEL"
+    },
+    {
+      "markdown": "- [ ] Mid\rreturn\r\n- [ ] Mid\rreturn\r\n",
+      "previous": "- [ ] Mid\rreturn\r\n- [ ] Mid\rreturn\r",
+      "output": "- [ ] Mid\rreturn\r\n- [ ] Mid\rreturn\r\n"
+    },
+    {
+      "markdown": "- [ ] Ends in tab\t\r\n- [ ] Ends in tab\t\r\n",
+      "previous": "",
+      "output": "- [ ] Ends in tab {check}\r\n- [ ] Ends in tab {check}\r\n"
+    },
+    {
+      "markdown": "- [ ]\tTab after box\r\n\t- [ ] tab indent\r\n- [ ] Ünïcödé 日本語 ✅\r\n2) [ ] Ordered paren\r\n- [ ] Plain with space {check}   \r\n~~~\r\n- [ ] Line sep inside\r\n- [ ] Inline id [id:: abc123]\r\n- [ ] Has id 🆔 abc123",
+      "previous": "- [ ]\tTab after box\r",
+      "output": "- [ ]\tTab after box\r\n\t- [ ] tab indent {check}\r\n- [ ] Ünïcödé 日本語 ✅ {check}\r\n2) [ ] Ordered paren\r\n- [ ] Plain with space {check}   \r\n~~~\r\n- [ ] Line sep inside\r\n- [ ] Inline id [id:: abc123]\r\n- [ ] Has id 🆔 abc123"
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week\n- [ ]\n- [ ] Already plain {check}",
+      "previous": "- [ ]\n- [ ] Already plain {check}",
+      "output": "- [ ] Recurs 🔁 every week {check}\n- [ ]\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "  * [ ] nested two\n2) [ ] Ordered paren\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:}\n```js `tick`",
+      "previous": "- [ ] Linked line ^block-1",
+      "output": "  * [ ] nested two {check}\n2) [ ] Ordered paren\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:} {check}\n```js `tick`"
+    },
+    {
+      "markdown": "- [ ] Depends ⛔ abc123\n~~~\n- [ ] Linked line ^block-1\n> - [ ] Quoted\n- [ ]　Ideographic after box\n1. [ ] Ordered item\n- [ ] Line sep inside\n- [ ] Trailing BOM﻿\n- [ ] Mid\rreturn\n-  [ ]   Extra spaces  \n- [ ]   \n- [ ]　Ideographic after box",
+      "previous": "- [ ] Linked line ^block-1\n- [ ]　Ideographic after box\n-  [ ]   Extra spaces  \n- [ ]   \n- [ ]　Ideographic after box",
+      "output": "- [ ] Depends ⛔ abc123\n~~~\n- [ ] Linked line ^block-1\n> - [ ] Quoted\n- [ ]　Ideographic after box\n1. [ ] Ordered item\n- [ ] Line sep inside\n- [ ] Trailing BOM﻿\n- [ ] Mid\rreturn\n-  [ ]   Extra spaces  \n- [ ]   \n- [ ]　Ideographic after box"
+    },
+    {
+      "markdown": "  * [ ] nested two\n- [ ] Ideographic space　\n- [ ] Already plain {check}",
+      "previous": "  * [ ] nested two\n- [ ] Ideographic space　\n- [ ] Already plain {check}",
+      "output": "  * [ ] nested two\n- [ ] Ideographic space　\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "````md\n1. [ ] Ordered item\n  * [ ] nested two\n~~~\n- [ ] Ideographic space　\n~~~\n- [ ] NEL trailing \n",
+      "previous": "  * [ ] nested two\n~~~\n~~~",
+      "output": "````md\n1. [ ] Ordered item\n  * [ ] nested two\n~~~\n- [ ] Ideographic space　\n~~~\n- [ ] NEL trailing \n"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \nSome paragraph\n- [ ] Mid\rreturn\n- [ ] Plain with space {check}   \n- [y] Not a checkbox\n- [ ] Has id 🆔 abc123\n- [ ] Ünïcödé 日本語 ✅\nSome paragraph\n- [ ] Line sep inside\n- [ ] Trailing BOM﻿",
+      "previous": "Some paragraph\n- [ ] Mid\rreturn\n- [ ] Plain with space {check}   \n- [ ] Ünïcödé 日本語 ✅\n- [ ] Trailing BOM﻿",
+      "output": "- [ ] Trailing nbsp {check}\nSome paragraph\n- [ ] Mid\rreturn\n- [ ] Plain with space {check}   \n- [y] Not a checkbox\n- [ ] Has id 🆔 abc123\n- [ ] Ünïcödé 日本語 ✅\nSome paragraph\n- [ ] Line sep inside\n- [ ] Trailing BOM﻿"
+    },
+    {
+      "markdown": "- [ ] Due 📅 2026-11-01\n- [ ] Depends ⛔ abc123\n- [ ]\tTab after box\n- [ ] Buy milk\n   \n- [ ] NEL\n~~~\n- [ ] Has id 🆔 abc123\n+ [X] Shouted done\n- [x]Glued done",
+      "previous": "- [ ] Buy milk\n   \n- [ ] NEL\n~~~\n+ [X] Shouted done\n- [x]Glued done",
+      "output": "- [ ] Due 📅 2026-11-01 {check}\n- [ ] Depends ⛔ abc123\n- [ ]\tTab after box\n- [ ] Buy milk\n   \n- [ ] NEL\n~~~\n- [ ] Has id 🆔 abc123\n+ [X] Shouted done\n- [x]Glued done"
+    },
+    {
+      "markdown": "- [y] Not a checkbox\n- [ ] Linked line ^block-1\n- [y] Not a checkbox\n- [ ]　Ideographic after box\n- [ ] Plain with space {check}   \n- [ ] Has id 🆔 abc123\n- [ ] Ideographic space　\n- [ ] Depends ⛔ abc123\n> - [ ] Quoted\n- [ ]\n",
+      "previous": "- [y] Not a checkbox\n- [ ] Linked line ^block-1\n- [ ]　Ideographic after box\n- [ ] Has id 🆔 abc123\n- [ ] Ideographic space　\n- [ ]",
+      "output": "- [y] Not a checkbox\n- [ ] Linked line ^block-1\n- [y] Not a checkbox\n- [ ]　Ideographic after box\n- [ ] Plain with space {check}   \n- [ ] Has id 🆔 abc123\n- [ ] Ideographic space　\n- [ ] Depends ⛔ abc123\n> - [ ] Quoted\n- [ ]\n"
+    },
+    {
+      "markdown": "- [ ] Empty id {task:}\r\n- [ ] Empty id {task:}\r\n",
+      "previous": "- [ ] Empty id {task:}\r\n- [ ] Empty id {task:}\r",
+      "output": "- [ ] Empty id {task:}\r\n- [ ] Empty id {task:}\r\n"
+    },
+    {
+      "markdown": "Some paragraph\r\n2) [ ] Ordered paren\r\n+ [X] Shouted done\r\n- [ ] Ideographic space　\r\n```\r\n- [ ] Already plain {check}",
+      "previous": "2) [ ] Ordered paren\r",
+      "output": "Some paragraph\r\n2) [ ] Ordered paren\r\n+ [X] Shouted done {check}\r\n- [ ] Ideographic space {check}\r\n```\r\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "- [ ] Buy milk\n- [ ] Para sep inside\n- [ ] Task {task:abc123}",
+      "previous": "- [ ] Para sep inside",
+      "output": "- [ ] Buy milk {check}\n- [ ] Para sep inside\n- [ ] Task {task:abc123}"
+    },
+    {
+      "markdown": "- [x]Glued done\r\n1. [ ] Ordered item\r\n```\r\n\t- [ ] tab indent\r\n- [ ] Ends in tab\t\r\n- [ ]\r\n- [ ] Ideographic space　\r\n- [ ] Buy milk",
+      "previous": "```\r\n\t- [ ] tab indent\r\n- [ ] Ends in tab\t\r\n- [ ]\r",
+      "output": "- [x]Glued done\r\n1. [ ] Ordered item\r\n```\r\n\t- [ ] tab indent\r\n- [ ] Ends in tab\t\r\n- [ ]\r\n- [ ] Ideographic space　\r\n- [ ] Buy milk"
+    },
+    {
+      "markdown": "- [ ] NEL trailing \n- [ ] Trailing BOM﻿\n- [ ] Trailing nbsp \n  * [ ] nested two\n- [ ]   \n\t- [ ] tab indent",
+      "previous": "- [ ] NEL trailing \n- [ ]   ",
+      "output": "- [ ] NEL trailing \n- [ ] Trailing BOM {check}\n- [ ] Trailing nbsp {check}\n  * [ ] nested two {check}\n- [ ]   \n\t- [ ] tab indent {check}"
+    },
+    {
+      "markdown": "\r\n- [ ] Linked line ^block-1\r\n```\r\n- [ ]　Ideographic after box",
+      "previous": "",
+      "output": "\r\n- [ ] Linked line ^block-1\r\n```\r\n- [ ]　Ideographic after box"
+    },
+    {
+      "markdown": "- [ ] Para sep inside\n-[ ] no space\n```\n- [ ]　Ideographic after box\n- [ ] Depends ⛔ abc123\n- [ ] Due 📅 2026-11-01\n- [ ] Para sep inside\n- [ ] NEL trailing \n- [ ] Depends ⛔ abc123\n- plain bullet\n   ",
+      "previous": "-[ ] no space\n- [ ]　Ideographic after box\n- [ ] NEL trailing ",
+      "output": "- [ ] Para sep inside\n-[ ] no space\n```\n- [ ]　Ideographic after box\n- [ ] Depends ⛔ abc123\n- [ ] Due 📅 2026-11-01\n- [ ] Para sep inside\n- [ ] NEL trailing \n- [ ] Depends ⛔ abc123\n- plain bullet\n   "
+    },
+    {
+      "markdown": "- [ ] Recurs 🔁 every week\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:}",
+      "previous": "- [ ] Linked line ^block-1\n- [ ] Empty id {task:}",
+      "output": "- [ ] Recurs 🔁 every week {check}\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:}"
+    },
+    {
+      "markdown": "- [ ] Trailing BOM﻿\r\n- [ ] Trailing BOM﻿\r\n- [y] Not a checkbox\r\n- [ ] Has id 🆔 abc123\r\n- [ ] Trailing nbsp \r\n- [x]Glued done\r\n- [ ] Depends ⛔ abc123\r\n\r\n- [ ] Double return\r\r\r\n\t- [ ] tab indent\r\n- [ ] Double return\r\r",
+      "previous": "- [ ] Trailing BOM﻿\r\n- [x]Glued done\r\n- [ ] Double return\r\r",
+      "output": "- [ ] Trailing BOM﻿\r\n- [ ] Trailing BOM {check}\r\n- [y] Not a checkbox\r\n- [ ] Has id 🆔 abc123\r\n- [ ] Trailing nbsp {check}\r\n- [x]Glued done\r\n- [ ] Depends ⛔ abc123\r\n\r\n- [ ] Double return\r\r\r\n\t- [ ] tab indent {check}\r\n- [ ] Double return\r\r"
+    },
+    {
+      "markdown": "1. [ ] Ordered item",
+      "previous": "1. [ ] Ordered item",
+      "output": "1. [ ] Ordered item"
+    },
+    {
+      "markdown": "- [ ] Depends ⛔ abc123\r\n- [ ] Depends ⛔ abc123\r\n",
+      "previous": "- [ ] Depends ⛔ abc123\r\n",
+      "output": "- [ ] Depends ⛔ abc123\r\n- [ ] Depends ⛔ abc123\r\n"
+    },
+    {
+      "markdown": "- [ ] Buy milk\r\n- [ ] Already plain {check}\r\n- [ ] Plain with space {check}   \r\n- [ ] Ideographic space　\r\n- [ ]\tTab after box\r\n* [x] Done thing\r\n- [ ] Inline id [id:: abc123]",
+      "previous": "- [ ] Buy milk\r\n- [ ]\tTab after box\r\n* [x] Done thing\r",
+      "output": "- [ ] Buy milk\r\n- [ ] Already plain {check}\r\n- [ ] Plain with space {check}   \r\n- [ ] Ideographic space {check}\r\n- [ ]\tTab after box\r\n* [x] Done thing\r\n- [ ] Inline id [id:: abc123]"
+    },
+    {
+      "markdown": "- [ ] Trailing BOM﻿\n- [ ] Empty id {task:}\n- [ ] Due 📅 2026-11-01\n````md\n- [ ] Trailing BOM﻿\n- [ ] Depends ⛔ abc123\n- [ ] Linked line ^block-1\n- [ ]\n- [ ]   \n```js `tick`\n- [ ] Recurs 🔁 every week",
+      "previous": "````md\n- [ ] Trailing BOM﻿\n```js `tick`",
+      "output": "- [ ] Trailing BOM﻿\n- [ ] Empty id {task:} {check}\n- [ ] Due 📅 2026-11-01 {check}\n````md\n- [ ] Trailing BOM﻿\n- [ ] Depends ⛔ abc123\n- [ ] Linked line ^block-1\n- [ ]\n- [ ]   \n```js `tick`\n- [ ] Recurs 🔁 every week"
+    },
+    {
+      "markdown": "- [ ] Plain with space {check}   ",
+      "previous": "- [ ] Plain with space {check}   ",
+      "output": "- [ ] Plain with space {check}   "
+    },
+    {
+      "markdown": "- [ ] Plain with space {check}   \n- [ ] Trailing nbsp \n   ",
+      "previous": "- [ ] Trailing nbsp \n   ",
+      "output": "- [ ] Plain with space {check}   \n- [ ] Trailing nbsp \n   "
+    },
+    {
+      "markdown": "- [ ] Ideographic space　",
+      "previous": "- [ ] Ideographic space　",
+      "output": "- [ ] Ideographic space　"
+    },
+    {
+      "markdown": "~~~\n- plain bullet\n-[ ] no space",
+      "previous": "-[ ] no space",
+      "output": "~~~\n- plain bullet\n-[ ] no space"
+    },
+    {
+      "markdown": "    - [ ] nested four\n~~~\n   \n- [ ] Ends in tab\t\n- [ ]   ",
+      "previous": "    - [ ] nested four\n   ",
+      "output": "    - [ ] nested four\n~~~\n   \n- [ ] Ends in tab\t\n- [ ]   "
+    },
+    {
+      "markdown": "- [ ] Trailing BOM﻿\n~~~\n-\t[ ] tab after marker",
+      "previous": "~~~",
+      "output": "- [ ] Trailing BOM {check}\n~~~\n-\t[ ] tab after marker"
+    },
+    {
+      "markdown": "- [ ] Buy milk\n```js `tick`\n- [ ] Empty id {task:}\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:}\n- [ ]　Ideographic after box\n- [ ] Final return\r\n~~~\n- plain bullet\n- [ ] Para sep inside\n```js `tick`\n- [ ]x glued",
+      "previous": "- [ ] Buy milk\n- [ ] Empty id {task:}\n- [ ]　Ideographic after box\n- [ ] Para sep inside\n- [ ]x glued",
+      "output": "- [ ] Buy milk\n```js `tick`\n- [ ] Empty id {task:}\n- [ ] Linked line ^block-1\n- [ ] Empty id {task:} {check}\n- [ ]　Ideographic after box\n- [ ] Final return {check}\r\n~~~\n- plain bullet\n- [ ] Para sep inside\n```js `tick`\n- [ ]x glued"
+    },
+    {
+      "markdown": "- [ ]x glued\n~~~\n- [ ] Task {task:abc123}\n- [ ]x glued\n- [ ] Linked line ^block-1\n- [x]Glued done\nSome paragraph\n- [ ] Due 📅 2026-11-01\n  * [ ] nested two\n- [ ] Recurs 🔁 every week\n- [ ] Trailing BOM﻿",
+      "previous": "~~~\n- [ ]x glued\n- [x]Glued done\nSome paragraph\n- [ ] Trailing BOM﻿",
+      "output": "- [ ]x glued\n~~~\n- [ ] Task {task:abc123}\n- [ ]x glued\n- [ ] Linked line ^block-1\n- [x]Glued done\nSome paragraph\n- [ ] Due 📅 2026-11-01\n  * [ ] nested two\n- [ ] Recurs 🔁 every week\n- [ ] Trailing BOM﻿"
+    },
+    {
+      "markdown": "- [ ] Inline id [id:: abc123]\r\n- [ ] Inline id [id:: abc123]\r\n",
+      "previous": "- [ ] Inline id [id:: abc123]\r\n- [ ] Inline id [id:: abc123]\r",
+      "output": "- [ ] Inline id [id:: abc123]\r\n- [ ] Inline id [id:: abc123]\r\n"
+    },
+    {
+      "markdown": "- [ ]\n1. [ ] Ordered item\n- [ ] Double return\r\r",
+      "previous": "1. [ ] Ordered item",
+      "output": "- [ ] {check}\n1. [ ] Ordered item\n- [ ] Double return\r\r"
+    },
+    {
+      "markdown": "- [ ] Already plain {check}\n- [ ] Mid\rreturn\n1. [ ] Ordered item\n\t- [ ] tab indent\n- [ ]　Ideographic after box\n+ [X] Shouted done",
+      "previous": "- [ ] Already plain {check}\n\t- [ ] tab indent",
+      "output": "- [ ] Already plain {check}\n- [ ] Mid\rreturn\n1. [ ] Ordered item\n\t- [ ] tab indent\n- [ ]　Ideographic after box\n+ [X] Shouted done {check}"
+    },
+    {
+      "markdown": "- [ ] Ends in tab\t\n　- [ ] Ideographic indent\n1. [ ] Ordered item\n- [ ] Trailing nbsp \n　- [ ] Ideographic indent\n- [ ] Para sep inside\n- [ ] Ünïcödé 日本語 ✅\n﻿- [ ] BOM first\n```\n* [x] Done thing",
+      "previous": "- [ ] Ends in tab\t\n1. [ ] Ordered item\n- [ ] Trailing nbsp \n- [ ] Para sep inside\n﻿- [ ] BOM first\n```",
+      "output": "- [ ] Ends in tab\t\n　- [ ] Ideographic indent\n1. [ ] Ordered item\n- [ ] Trailing nbsp \n　- [ ] Ideographic indent\n- [ ] Para sep inside\n- [ ] Ünïcödé 日本語 ✅ {check}\n﻿- [ ] BOM first\n```\n* [x] Done thing"
+    },
+    {
+      "markdown": "- [ ] NEL trailing \n- [ ]　Ideographic after box\n- [ ] Ideographic space　\n- [ ]　Ideographic after box\n- [ ] Plain with space {check}   ",
+      "previous": "- [ ]　Ideographic after box",
+      "output": "- [ ] NEL trailing  {check}\n- [ ]　Ideographic after box\n- [ ] Ideographic space {check}\n- [ ]　Ideographic after box\n- [ ] Plain with space {check}   "
+    },
+    {
+      "markdown": "- [ ]　Ideographic after box\r\n-  [ ]   Extra spaces  \r\n- [ ] Linked line ^block-1\r\n2) [ ] Ordered paren\r\n- [ ] Already plain {check}",
+      "previous": "- [ ]　Ideographic after box\r\n-  [ ]   Extra spaces  \r\n2) [ ] Ordered paren\r\n- [ ] Already plain {check}",
+      "output": "- [ ]　Ideographic after box\r\n-  [ ]   Extra spaces  \r\n- [ ] Linked line ^block-1\r\n2) [ ] Ordered paren\r\n- [ ] Already plain {check}"
+    },
+    {
+      "markdown": "* [x] Done thing\r\n- [x]Glued done\r\n* [x] Done thing\r\n1. [ ] Ordered item\r\n- [ ] Ideographic space　",
+      "previous": "* [x] Done thing\r\n- [x]Glued done\r\n1. [ ] Ordered item\r",
+      "output": "* [x] Done thing\r\n- [x]Glued done\r\n* [x] Done thing {check}\r\n1. [ ] Ordered item\r\n- [ ] Ideographic space {check}"
+    },
+    {
+      "markdown": "  * [ ] nested two\r\n  * [ ] nested two\r\n",
+      "previous": "  * [ ] nested two\r\n  * [ ] nested two\r",
+      "output": "  * [ ] nested two\r\n  * [ ] nested two\r\n"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \n- [ ]\n- [ ] Task {task:abc123}\n- [ ] NEL trailing \n- [ ]　Ideographic after box\n- [ ] Has id 🆔 abc123\n    - [ ] nested four\n* [x] Done thing\n- [ ] Buy milk\n- [ ] NEL",
+      "previous": "- [ ] Trailing nbsp \n- [ ]\n- [ ] NEL trailing \n* [x] Done thing\n- [ ] Buy milk",
+      "output": "- [ ] Trailing nbsp \n- [ ]\n- [ ] Task {task:abc123}\n- [ ] NEL trailing \n- [ ]　Ideographic after box\n- [ ] Has id 🆔 abc123\n    - [ ] nested four {check}\n* [x] Done thing\n- [ ] Buy milk\n- [ ] NEL {check}"
+    },
+    {
+      "markdown": "   \n1. [ ] Ordered item\n```\n- [ ]\tTab after box\n   \n````md\n- [ ] Double return\r\r\n- [ ] Buy milk\n- [ ] Due 📅 2026-11-01\n- [ ]　Ideographic after box\n- [ ] Depends ⛔ abc123\n- [ ] Empty id {task:}",
+      "previous": "   \n1. [ ] Ordered item\n```\n- [ ] Double return\r\r\n- [ ] Due 📅 2026-11-01\n- [ ]　Ideographic after box\n- [ ] Empty id {task:}",
+      "output": "   \n1. [ ] Ordered item\n```\n- [ ]\tTab after box\n   \n````md\n- [ ] Double return\r\r\n- [ ] Buy milk\n- [ ] Due 📅 2026-11-01\n- [ ]　Ideographic after box\n- [ ] Depends ⛔ abc123\n- [ ] Empty id {task:}"
+    },
+    {
+      "markdown": "- [ ] Final return\r",
+      "previous": "",
+      "output": "- [ ] Final return {check}\r"
+    },
+    {
+      "markdown": "- [ ] Line sep inside\n- [ ] Final return\r\n- [ ] NEL",
+      "previous": "- [ ] Line sep inside\n- [ ] NEL",
+      "output": "- [ ] Line sep inside\n- [ ] Final return {check}\r\n- [ ] NEL"
+    },
+    {
+      "markdown": "\t- [ ] tab indent",
+      "previous": "",
+      "output": "\t- [ ] tab indent {check}"
+    },
+    {
+      "markdown": "　- [ ] Ideographic indent\n- [ ] Ünïcödé 日本語 ✅\n- [ ] Ideographic space　\n1. [ ] Ordered item\n* [x] Done thing",
+      "previous": "- [ ] Ideographic space　\n1. [ ] Ordered item\n* [x] Done thing",
+      "output": "　- [ ] Ideographic indent\n- [ ] Ünïcödé 日本語 ✅ {check}\n- [ ] Ideographic space　\n1. [ ] Ordered item\n* [x] Done thing"
+    },
+    {
+      "markdown": "- [ ] Trailing nbsp \n```\n- [ ]",
+      "previous": "- [ ] Trailing nbsp \n```\n- [ ]",
+      "output": "- [ ] Trailing nbsp \n```\n- [ ]"
+    },
+    {
+      "markdown": "  * [ ] nested two",
+      "previous": "  * [ ] nested two",
+      "output": "  * [ ] nested two"
+    },
+    {
+      "markdown": "- [ ]x glued\r\n- [ ]　Ideographic after box\r\n  * [ ] nested two",
+      "previous": "- [ ]x glued\r",
+      "output": "- [ ]x glued\r\n- [ ]　Ideographic after box\r\n  * [ ] nested two {check}"
+    }
+  ]
+}

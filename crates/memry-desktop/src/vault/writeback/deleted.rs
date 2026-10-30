@@ -70,7 +70,7 @@ impl Pass {
                         Ok(()) => Leftover::Trashed,
                         Err(error) => {
                             // Still there: a later removal of it is an outside one.
-                            self.echo.seen_present(&row.path);
+                            self.echo.cancel_removal(&row.path);
                             Leftover::Failed(format!("the trash refused it: {error}"))
                         }
                     }

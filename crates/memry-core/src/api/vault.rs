@@ -104,6 +104,13 @@ impl Vault {
         crate::api::note_files::NoteFiles::over(self.db.clone())
     }
 
+    /// The sidebar's manual order, for the desktop vault tier's own file moves (Step 12).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn note_positions(&self) -> crate::api::note_positions::NotePositions {
+        crate::api::note_positions::NotePositions::over(self.db.clone())
+    }
+
     /// Outside edits of note files, fed into note bodies (desktop Step 12e).
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[cfg(feature = "markdown")]

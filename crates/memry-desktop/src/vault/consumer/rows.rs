@@ -1,8 +1,9 @@
 //! The one lane that writes `note_files`. The consumer takes it for each watcher event; the
-//! app's own file operations (Step 13's create) take it through [`RowOwner`]'s methods, and the
-//! write-back (`vault::writeback`) holds it for a whole pass. Either way a write checks [`PathIndex`] first and keeps it in step,
-//! and the [`Applied`] fact goes out after the row is written, under the lane, so subscribers
-//! see the facts in the order the rows changed.
+//! app's own file operations (Step 13's create) take it through [`RowOwner`]'s methods, the
+//! write-back (`vault::writeback`) holds it for a whole pass, and a journal rename
+//! (`vault::journal_rename`) for each file it moves. Either way a write checks [`PathIndex`]
+//! first and keeps it in step, and the [`Applied`] fact goes out after the row is written, under
+//! the lane, so subscribers see the facts in the order the rows changed.
 //!
 //! An app operation names the vault session it started in ([`RowSession`]): one that
 //! finishes after its vault closed, or after another vault opened, writes nothing.
@@ -242,17 +243,17 @@ impl Lane<'_> {
         &self.state().files
     }
 
-    pub(super) fn row_at(&self, path: &str) -> Result<Option<Row>, StorageError> {
+    pub(crate) fn row_at(&self, path: &str) -> Result<Option<Row>, StorageError> {
         self.files().by_path(path)
     }
 
     /// `Ok` when no note holds `path` under any spelling the volume may fold.
-    pub(super) fn check_free(&self, path: &str) -> Result<(), PathCollision> {
+    pub(crate) fn check_free(&self, path: &str) -> Result<(), PathCollision> {
         self.state().index.check("", path)
     }
 
     /// `Ok` when no other note holds `path`.
-    pub(super) fn check(&self, note_id: &str, path: &str) -> Result<(), PathCollision> {
+    pub(crate) fn check(&self, note_id: &str, path: &str) -> Result<(), PathCollision> {
         self.state().index.check(note_id, path)
     }
 
@@ -335,7 +336,7 @@ impl Lane<'_> {
         Ok(())
     }
 
-    pub(super) fn rename(&mut self, note_id: &str, new_path: &str) -> Result<(), RowError> {
+    pub(crate) fn rename(&mut self, note_id: &str, new_path: &str) -> Result<(), RowError> {
         let state = self.state_mut();
         state.index.check(note_id, new_path)?;
         state.files.rename_path(note_id, new_path)?;

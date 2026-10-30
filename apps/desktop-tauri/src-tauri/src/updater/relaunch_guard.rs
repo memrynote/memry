@@ -104,24 +104,8 @@ pub fn apply(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             exiting.exit(0);
         });
     });
-    // The config is not loaded yet, so the copy follows the OS language. It never says the app
-    // reopens by itself (#3728): nothing does after an install at a quit, and after Restart to
-    // install this process holds the single-instance lock while it lives, so it absorbs the
-    // updater's own start of the new build (#3773).
-    let locale = preboot::locale(app);
-    let subtitle = i18n::t(
-        locale,
-        "system:startup.installingUpdate.subtitleOpenAgain",
-        &Args::new(),
-    );
-    let copy = PrebootCopy {
-        title: i18n::t(
-            locale,
-            "system:startup.installingUpdate.title",
-            &Args::new(),
-        ),
-        subtitle,
-    };
+    // The config is not loaded yet, so the copy follows the OS language.
+    let copy = splash_copy(preboot::locale(app));
     let on_shown = move || {
         tracing::info!(scope = "UpdaterGuard", "installing splash shown");
         let _ = shown.send(());
@@ -134,6 +118,24 @@ pub fn apply(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     }
     startup::halt_boot();
     Ok(())
+}
+
+/// The splash never says the app reopens by itself (#3728): nothing does after an install at a
+/// quit, and after Restart to install this process holds the single-instance lock while it lives,
+/// so it absorbs the updater's own start of the new build when that start comes first (#3773).
+fn splash_copy(locale: &str) -> PrebootCopy {
+    PrebootCopy {
+        title: i18n::t(
+            locale,
+            "system:startup.installingUpdate.title",
+            &Args::new(),
+        ),
+        subtitle: i18n::t(
+            locale,
+            "system:startup.installingUpdate.subtitleOpenAgain",
+            &Args::new(),
+        ),
+    }
 }
 
 /// Ends the old build `stay` after its splash is on screen, not after the decision: on a slow
@@ -213,21 +215,40 @@ mod tests {
     }
 
     #[test]
+    fn the_splash_asks_to_open_the_app_again_and_never_promises_a_reopen() {
+        let copy = splash_copy("en");
+        assert_eq!(copy.subtitle, "Open MemryNote again in a moment.");
+        assert_eq!(
+            copy.title,
+            i18n::t("en", "system:startup.installingUpdate.title", &Args::new())
+        );
+    }
+
+    /// Runs `exit_after_splash` on its own thread and returns when it exited, measured from the
+    /// start. The bound only turns a wait without a limit into a failure instead of a hung run.
+    fn exit_time(on_screen: mpsc::Receiver<()>, show_limit: Duration, stay: Duration) -> Duration {
+        let started = Instant::now();
+        let (done, exited) = mpsc::channel();
+        std::thread::spawn(move || {
+            exit_after_splash(&on_screen, show_limit, stay, || {
+                let _ = done.send(started.elapsed());
+            });
+        });
+        exited
+            .recv_timeout(Duration::from_secs(60))
+            .expect("the old build never exited")
+    }
+
+    #[test]
     fn a_splash_that_never_appears_still_ends_the_old_build() {
         let (show_limit, stay) = (Duration::from_millis(150), Duration::from_millis(100));
-        let (_kept, on_screen) = mpsc::channel::<()>();
-        let started = Instant::now();
-        let mut exited = None;
-        exit_after_splash(&on_screen, show_limit, stay, || {
-            exited = Some(started.elapsed())
-        });
-        assert!(exited.is_some_and(|at| at >= show_limit + stay));
+        let (kept, on_screen) = mpsc::channel::<()>();
+        assert!(exit_time(on_screen, show_limit, stay) >= show_limit + stay);
+        drop(kept);
 
         // A splash that failed to build dropped its sender: only the stay is left.
         let (dropped, on_screen) = mpsc::channel::<()>();
         drop(dropped);
-        let mut exited = false;
-        exit_after_splash(&on_screen, Duration::from_secs(30), stay, || exited = true);
-        assert!(exited);
+        exit_time(on_screen, Duration::from_secs(30), stay);
     }
 }

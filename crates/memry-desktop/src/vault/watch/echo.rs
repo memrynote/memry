@@ -6,8 +6,16 @@
 //! until the file is seen with other content (an outside edit, which then passes and clears the
 //! entry) or until it is evicted, oldest first, past [`CAPACITY`]. An evicted entry costs one
 //! redundant event, which the consumer's own hash check settles.
+//!
+//! A removal's record (a file or a folder the app removes or moves away) lives while the app's
+//! removal is all the watcher could see of that path: it ends once the path is seen present
+//! again, or a folder that holds it is seen back with it, or a rescan, which stands in for
+//! events the OS lost, finds it on disk. The watcher looks at the disk once more when it ends one,
+//! under the record's lock, and [`EchoGuard::removing`] records and removes under that lock,
+//! so a removal the app makes after the watcher's own look keeps its record.
 
 use std::collections::{HashMap, VecDeque};
+use std::io;
 use std::sync::Mutex;
 
 pub const CAPACITY: usize = 4096;
@@ -63,6 +71,16 @@ impl EchoGuard {
         self.lock().put(path, Expected::Gone);
     }
 
+    /// The app removes or moves away `path` with `remove`, recorded as one step with it: the
+    /// watcher, ending records in [`Self::seen_file`] and [`Self::seen_folder`], sees the path
+    /// before both or after both. A failed `remove` withdraws the record. The lock is held for
+    /// the one call, so `remove` is a single file system call, never a wait.
+    pub fn removing<T>(&self, path: &str, remove: impl FnOnce() -> io::Result<T>) -> io::Result<T> {
+        let mut state = self.lock();
+        state.put(path, Expected::Gone);
+        remove().inspect_err(|_| state.forget(path))
+    }
+
     /// The hash the app last wrote at `path`, when one is recorded. The watcher hashes the
     /// file only then.
     pub fn expected_hash(&self, path: &str) -> Option<String> {
@@ -73,22 +91,61 @@ impl EchoGuard {
     }
 
     /// `path` was seen with `observed`. True when that is the app's own write, which stays
-    /// recorded; any other content is an outside edit and clears the record.
+    /// recorded; any other content is an outside edit and clears the record. A removal's
+    /// record is [`Self::seen_file`]'s to end.
     pub fn absorbs_write(&self, path: &str, observed: &str) -> bool {
         let mut state = self.lock();
         match state.by_path.get(path) {
             Some(Expected::Hash(expected)) if expected == observed => true,
-            Some(_) => {
+            Some(Expected::Hash(_)) => {
                 state.forget(path);
                 false
             }
-            None => false,
+            Some(Expected::Gone) | None => false,
         }
     }
 
-    /// `path` was seen present with no hash to compare (a file that is not markdown). The app's
-    /// removal of it is over: a later outside delete must pass.
-    pub fn seen_present(&self, path: &str) {
+    /// The file at `path` was seen present. The app's removal of it is over if `there` (a look
+    /// at the disk, under the lock) still finds it: a later delete of it is not the app's.
+    pub fn seen_file(&self, path: &str, there: impl Fn(&str) -> bool) {
+        let mut state = self.lock();
+        if state.by_path.get(path) == Some(&Expected::Gone) && there(path) {
+            state.forget(path);
+        }
+    }
+
+    /// [`Self::seen_file`] for a folder, and for every path below it with a removal recorded:
+    /// a folder moved in brings what it holds, and the OS may report only the folder. A folder
+    /// above it that came back is ended by its own report, or, when the OS lost that, by the
+    /// rescan that stands in for it ([`Self::seen_all`]).
+    pub fn seen_folder(&self, path: &str, there: impl Fn(&str) -> bool) {
+        let below = format!("{path}/");
+        self.end_removals(|at| at == path || at.starts_with(&below), there);
+    }
+
+    /// Every path with a removal recorded, looked at as [`Self::seen_file`] does: for a rescan,
+    /// whose walk sees only files and only those it reports.
+    pub fn seen_all(&self, there: impl Fn(&str) -> bool) {
+        self.end_removals(|_| true, there);
+    }
+
+    fn end_removals(&self, of: impl Fn(&str) -> bool, there: impl Fn(&str) -> bool) {
+        let mut state = self.lock();
+        let ended: Vec<String> = state
+            .by_path
+            .iter()
+            .filter(|(at, what)| **what == Expected::Gone && of(at))
+            .map(|(at, _)| at.clone())
+            .filter(|at| there(at))
+            .collect();
+        for path in ended {
+            state.forget(&path);
+        }
+    }
+
+    /// The removal of `path` told with [`Self::will_remove`] did not happen, or is to be
+    /// reported after all: an absence seen from now on is not the app's.
+    pub fn cancel_removal(&self, path: &str) {
         let mut state = self.lock();
         if state.by_path.get(path) == Some(&Expected::Gone) {
             state.forget(path);
@@ -127,11 +184,16 @@ mod tests {
         );
     }
 
+    fn on_disk(path: &str) -> bool {
+        !path.ends_with("gone")
+    }
+
     #[test]
     fn an_own_removal_is_absorbed_and_a_recreated_file_is_not() {
         let echo = EchoGuard::default();
         echo.will_remove("a.md");
         assert!(echo.absorbs_removal("a.md"));
+        echo.seen_file("a.md", on_disk);
         assert!(
             !echo.absorbs_write("a.md", "h"),
             "back with content: an outside create"
@@ -143,14 +205,73 @@ mod tests {
     fn a_removal_record_is_spent_once_the_file_is_seen_back() {
         let echo = EchoGuard::default();
         echo.will_remove("a.pdf");
-        echo.seen_present("a.pdf");
+        echo.seen_file("a.pdf", on_disk);
         assert!(!echo.absorbs_removal("a.pdf"));
         echo.will_write("a.md", "h");
-        echo.seen_present("a.md");
+        echo.seen_file("a.md", on_disk);
         assert!(
             echo.absorbs_write("a.md", "h"),
             "a write record is not touched"
         );
+    }
+
+    /// The watcher looked, then the app removed the path: the look is stale, and the disk,
+    /// looked at again, says so.
+    #[test]
+    fn a_removal_outlives_a_look_that_the_disk_no_longer_bears_out() {
+        let echo = EchoGuard::default();
+        echo.will_remove("a.gone");
+        echo.seen_file("a.gone", on_disk);
+        echo.seen_folder("a.gone", on_disk);
+        assert!(!echo.absorbs_write("a.gone", "h"));
+        assert!(echo.absorbs_removal("a.gone"));
+    }
+
+    #[test]
+    fn a_folder_seen_ends_the_removals_below_it_that_are_back() {
+        let echo = EchoGuard::default();
+        for path in ["j/2025", "j/2025/Jan", "j/2025/Feb.gone", "j/20255", "j"] {
+            echo.will_remove(path);
+        }
+        echo.seen_folder("j/2025", on_disk);
+        let kept = [
+            ("j/2025", false),
+            ("j/2025/Jan", false),
+            ("j/2025/Feb.gone", true),
+            ("j/20255", true),
+            ("j", true),
+        ];
+        for (path, kept) in kept {
+            assert_eq!(echo.absorbs_removal(path), kept, "{path}");
+        }
+    }
+
+    #[test]
+    fn a_rescan_ends_every_removal_that_is_back() {
+        let echo = EchoGuard::default();
+        for path in ["j/2025", "j/2025/Jan", "a.md", "b.gone"] {
+            echo.will_remove(path);
+        }
+        echo.seen_all(on_disk);
+        let kept = [
+            ("j/2025", false),
+            ("j/2025/Jan", false),
+            ("a.md", false),
+            ("b.gone", true),
+        ];
+        for (path, kept) in kept {
+            assert_eq!(echo.absorbs_removal(path), kept, "{path}");
+        }
+    }
+
+    #[test]
+    fn a_removal_that_fails_leaves_no_record() {
+        let echo = EchoGuard::default();
+        let removed = echo.removing("a.md", || Err::<(), _>(io::ErrorKind::Other.into()));
+        assert!(removed.is_err());
+        assert!(!echo.absorbs_removal("a.md"));
+        echo.removing("b.md", || Ok(())).unwrap();
+        assert!(echo.absorbs_removal("b.md"));
     }
 
     #[test]
