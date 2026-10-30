@@ -2,7 +2,8 @@
 //! WebDriver cannot click one; the shell asks this queue first when the e2e gate is open.
 //!
 //! The queue holds, per dialog kind, answers in push order. An empty answer is the user
-//! cancelling. A `Confirm` answer is the string `confirm` or `cancel`. A start-up queue comes
+//! cancelling. A `Confirm` answer is the string `confirm` or `cancel`; a `Choose` answer is
+//! the index of the button chosen (`0`, `1` or `2`). A start-up queue comes
 //! from `MEMRY_TEST_DIALOG_RESULT`: the plain string `confirm` or `cancel` answers every
 //! `Confirm` for the whole run (a repeated prompt gets the same answer), and a JSON list of
 //! `{ "kind": "OpenFolder", "paths": ["/tmp/x"] }` objects is queued in order.
@@ -23,6 +24,8 @@ pub enum DialogKind {
     OpenFolder,
     SaveFile,
     Confirm,
+    /// A message with three buttons (`shell::dialogs::choose`).
+    Choose,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]

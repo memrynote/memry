@@ -16,8 +16,8 @@
 //!   after the caller looked is never overwritten: the call fails with `AlreadyExists`.
 //!   [`create_unique`] picks the first free `<name> N<ext>` that way.
 //!
-//! [`rename_no_replace`] moves a file or a folder the way a create takes its place: never over
-//! anything there.
+//! [`rename_no_replace`] moves a file or folder that is already whole into a name that must
+//! still be free, the same way as a create: `AlreadyExists` rather than a replace.
 //!
 //! After a replace or create the directory is synced (Unix), so the rename itself survives a
 //! power cut, not only the file's bytes. Windows has no directory sync; a create there is a
@@ -201,111 +201,11 @@ fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
     fs::rename(temp, target)
 }
 
-/// Renames `from` (a file, a link or a folder) to `to` only when nothing is at `to`: fails with
-/// `AlreadyExists` when something is, even something that appeared after the caller looked.
-/// A case-only rename of a file or a folder goes through on APFS and NTFS, which fold case
-/// (tested); other case-folding volumes are untested.
-///
-/// macOS `renamex_np(RENAME_EXCL)`, Linux `renameat2(RENAME_NOREPLACE)`, Windows `MoveFileExW`
-/// without `MOVEFILE_REPLACE_EXISTING`. A Unix volume without an exclusive rename (some network
-/// and FUSE mounts) gets a look, then a rename: something created at `to` between the two is
-/// replaced, the one window left.
-pub fn rename_no_replace(from: &Path, to: &Path) -> io::Result<()> {
-    #[cfg(unix)]
-    {
-        match rename_exclusive(from, to) {
-            Err(err) if exclusive_unsupported(&err) => {
-                tracing::warn!(
-                    scope = "fs_atomic",
-                    "no exclusive rename here ({:?}); looking first",
-                    err.kind()
-                );
-                match (fs::symlink_metadata(from), fs::symlink_metadata(to)) {
-                    (Ok(source), Ok(target)) if !same_entry(&source, &target) => Err(
-                        io::Error::new(io::ErrorKind::AlreadyExists, "the target exists"),
-                    ),
-                    _ => fs::rename(from, to),
-                }
-            }
-            other => other,
-        }
-    }
-    #[cfg(windows)]
-    {
-        move_no_replace(from, to)
-    }
-}
-
-#[cfg(unix)]
-fn same_entry(a: &fs::Metadata, b: &fs::Metadata) -> bool {
-    use std::os::unix::fs::MetadataExt;
-    a.dev() == b.dev() && a.ino() == b.ino()
-}
-
-#[cfg(unix)]
-fn c_path(path: &Path) -> io::Result<std::ffi::CString> {
-    use std::os::unix::ffi::OsStrExt;
-    std::ffi::CString::new(path.as_os_str().as_bytes())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "a path holds a NUL byte"))
-}
-
-#[cfg(target_os = "macos")]
-fn rename_exclusive(from: &Path, to: &Path) -> io::Result<()> {
-    let (from, to) = (c_path(from)?, c_path(to)?);
-    // SAFETY: both are NUL-terminated and outlive the call.
-    match unsafe { libc::renamex_np(from.as_ptr(), to.as_ptr(), libc::RENAME_EXCL) } {
-        0 => Ok(()),
-        _ => Err(io::Error::last_os_error()),
-    }
-}
-
-#[cfg(target_os = "linux")]
-fn rename_exclusive(from: &Path, to: &Path) -> io::Result<()> {
-    let (from, to) = (c_path(from)?, c_path(to)?);
-    // SAFETY: both are NUL-terminated and outlive the call; AT_FDCWD resolves them as given.
-    let renamed = unsafe {
-        libc::renameat2(
-            libc::AT_FDCWD,
-            from.as_ptr(),
-            libc::AT_FDCWD,
-            to.as_ptr(),
-            libc::RENAME_NOREPLACE,
-        )
-    };
-    match renamed {
-        0 => Ok(()),
-        _ => Err(io::Error::last_os_error()),
-    }
-}
-
-#[cfg(all(unix, not(any(target_os = "macos", target_os = "linux"))))]
-fn rename_exclusive(_from: &Path, _to: &Path) -> io::Result<()> {
-    Err(io::Error::from(io::ErrorKind::Unsupported))
-}
-
-/// The volume or the kernel has no exclusive rename. On Linux `EINVAL` also means a folder
-/// moved into itself, which the plain rename then refuses the same way.
-#[cfg(unix)]
-fn exclusive_unsupported(err: &io::Error) -> bool {
-    #[cfg(target_os = "macos")]
-    let unsupported = [libc::ENOTSUP];
-    #[cfg(target_os = "linux")]
-    let unsupported = [libc::EINVAL, libc::ENOSYS];
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    let unsupported: [i32; 0] = [];
-    err.kind() == io::ErrorKind::Unsupported
-        || err
-            .raw_os_error()
-            .is_some_and(|code| unsupported.contains(&code))
-}
-
 #[cfg(windows)]
-fn move_no_replace(from: &Path, to: &Path) -> io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
+fn move_file_no_replace(from: &Path, to: &Path) -> io::Result<()> {
     use windows::Win32::Storage::FileSystem::{MOVEFILE_WRITE_THROUGH, MoveFileExW};
     use windows::core::PCWSTR;
-    let wide = |p: &Path| -> Vec<u16> { p.as_os_str().encode_wide().chain(Some(0)).collect() };
-    let (from, to) = (wide(from), wide(to));
+    let (from, to) = (wide_verbatim(from)?, wide_verbatim(to)?);
     // SAFETY: both buffers are NUL-terminated and outlive the call.
     unsafe {
         MoveFileExW(
@@ -315,6 +215,110 @@ fn move_no_replace(from: &Path, to: &Path) -> io::Result<()> {
         )
     }
     .map_err(crate::shell::file_open::win_io_error)
+}
+
+/// `path` absolute, in the `\\?\` form and NUL-terminated: the form a wide Win32 call takes past
+/// `MAX_PATH` (260 characters). `std::fs` adds the prefix to its own calls; a direct `MoveFileExW`
+/// with a plain path fails on a vault that deep.
+#[cfg(windows)]
+fn wide_verbatim(path: &Path) -> io::Result<Vec<u16>> {
+    use std::os::windows::ffi::OsStrExt;
+    use std::path::{Component, Prefix};
+    // `GetFullPathNameW`: resolves `.` and `..` and turns `/` into `\`, which the verbatim form
+    // takes literally. A path already verbatim comes back as it is.
+    let path = std::path::absolute(path)?;
+    let full = path.as_os_str().encode_wide();
+    let mut wide: Vec<u16> = match path.components().next() {
+        Some(Component::Prefix(prefix)) => match prefix.kind() {
+            Prefix::Disk(_) => r"\\?\".encode_utf16().chain(full).collect(),
+            // `\\server\share\x` is `\\?\UNC\server\share\x`.
+            Prefix::UNC(..) => r"\\?\UNC".encode_utf16().chain(full.skip(1)).collect(),
+            _ => full.collect(),
+        },
+        _ => full.collect(),
+    };
+    wide.push(0);
+    Ok(wide)
+}
+
+/// Renames the file or folder `from` to `to` only while nothing is at `to`: `AlreadyExists`
+/// otherwise, never a replace. A plain `rename` replaces a file, and on Unix an empty folder,
+/// that appeared at `to` after the caller looked. macOS `renamex_np(RENAME_EXCL)`, Linux
+/// `renameat2(RENAME_NOREPLACE)`, Windows `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING`.
+/// A volume that has no exclusive rename (some network and FUSE mounts) gets a look first and a
+/// plain rename, which leaves only the moment between the two open.
+pub fn rename_no_replace(from: &Path, to: &Path) -> io::Result<()> {
+    match exclusive_rename(from, to) {
+        Err(err) if exclusive_rename_unsupported(&err) => {
+            if fs::symlink_metadata(to).is_ok() {
+                return Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "the target exists",
+                ));
+            }
+            fs::rename(from, to)
+        }
+        other => other,
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn exclusive_rename(from: &Path, to: &Path) -> io::Result<()> {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+    let c = |p: &Path| {
+        CString::new(p.as_os_str().as_bytes())
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "a path holds a NUL byte"))
+    };
+    let (from, to) = (c(from)?, c(to)?);
+    // SAFETY: both strings are NUL-terminated and outlive the call.
+    #[cfg(target_os = "macos")]
+    let status = unsafe { libc::renamex_np(from.as_ptr(), to.as_ptr(), libc::RENAME_EXCL) };
+    // SAFETY: as above; `AT_FDCWD` makes both paths relative to the working folder, as `rename`.
+    #[cfg(target_os = "linux")]
+    let status = unsafe {
+        libc::renameat2(
+            libc::AT_FDCWD,
+            from.as_ptr(),
+            libc::AT_FDCWD,
+            to.as_ptr(),
+            libc::RENAME_NOREPLACE,
+        )
+    };
+    if status == 0 {
+        Ok(())
+    } else {
+        Err(io::Error::last_os_error())
+    }
+}
+
+#[cfg(windows)]
+fn exclusive_rename(from: &Path, to: &Path) -> io::Result<()> {
+    move_file_no_replace(from, to)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+fn exclusive_rename(_from: &Path, _to: &Path) -> io::Result<()> {
+    Err(io::Error::from(io::ErrorKind::Unsupported))
+}
+
+/// The volume or the kernel has no exclusive rename: `EINVAL` (Linux, a file system without
+/// `RENAME_NOREPLACE`), `ENOTSUP` (macOS, a volume without `RENAME_EXCL`), `ENOSYS`.
+fn exclusive_rename_unsupported(err: &io::Error) -> bool {
+    if err.kind() == io::ErrorKind::Unsupported {
+        return true;
+    }
+    #[cfg(unix)]
+    {
+        matches!(
+            err.raw_os_error(),
+            Some(libc::EINVAL | libc::ENOTSUP | libc::ENOSYS)
+        )
+    }
+    #[cfg(not(unix))]
+    {
+        false
+    }
 }
 
 #[cfg(unix)]
@@ -350,7 +354,7 @@ fn create_file(temp: &Path, target: &Path) -> io::Result<()> {
 #[cfg(windows)]
 fn create_file(temp: &Path, target: &Path) -> io::Result<()> {
     // Without MOVEFILE_REPLACE_EXISTING the move fails when the target exists.
-    move_no_replace(temp, target)
+    move_file_no_replace(temp, target)
 }
 
 #[cfg(unix)]
