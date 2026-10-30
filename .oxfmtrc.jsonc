@@ -66,6 +66,7 @@
     // Byte-exact vault fixtures: copies of the Electron golden files and vectors its code produced.
     "crates/memry-desktop/tests/fixtures/golden-vault/",
     "crates/memry-desktop/tests/fixtures/*.json",
+    "crates/memry-desktop/tests/fixtures/electron-vault/*.json",
 
     // Generated minified bundle (scripts/generate-ios-article-extract.mjs); a formatter
     // reflows 1.2 MB of minified JS into 27k lines with trailing whitespace.

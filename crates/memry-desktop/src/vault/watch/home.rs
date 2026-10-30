@@ -17,7 +17,7 @@ use crate::vault::path_key::folded_key;
 pub(super) struct Home {
     pub note_id: String,
     pub path: String,
-    /// The content last reported for it, else the row's.
+    /// The content last reported for it, else the bytes its row last read.
     pub hash: Option<String>,
     /// The row's size and indexed time (a note that moved keeps its old row's).
     pub size: Option<i64>,
@@ -41,7 +41,7 @@ pub(super) fn home_of_row(reported: &Reported, row: &NoteFile) -> Option<Home> {
     }
     let (path, hash) = match reported.of_note(&row.note_id) {
         Some(seen) => (seen.path.clone(), seen.hash.clone()),
-        None => (row.path.clone(), row.content_hash.clone()),
+        None => (row.path.clone(), row.file_hash.clone()),
     };
     Some(Home {
         note_id: row.note_id.clone(),

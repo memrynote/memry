@@ -70,7 +70,9 @@
     "writebackFailedTitle": "تعذّر تحديث ملف ملاحظة على القرص",
     "writebackFailedTitleNamed": "تعذّر تحديث «{title}» على القرص",
     "writebackFailedTitleMany": "تعذّر تحديث ملفات ملاحظات على القرص: {count}",
-    "writebackFailedBody": "لم يتغيّر الملف على القرص. يبقى تعديلك مفتوحًا في memrynote ما دام التطبيق يعمل، وسيحاول memrynote مجددًا مع تعديلك التالي."
+    "writebackFailedBody": "لم يتغيّر الملف على القرص. يبقى تعديلك مفتوحًا في memrynote ما دام التطبيق يعمل، وسيحاول memrynote مجددًا مع تعديلك التالي.",
+    "writebackFailedFrontmatterBody": "لا يمكن قراءة بيانات frontmatter في الملف (الكتلة بين السطرين --- في أعلاه)، لذا يترك memrynote الملف دون تغيير. تبقى تعديلاتك في memrynote. إصلاح الملف خارج memrynote يستبدلها بنص الملف، لذا انسخ ما تحتاج إليه أولًا.",
+    "writebackFailedFrontmatterBodyMany": "لا يمكن قراءة بيانات frontmatter في هذه الملفات (الكتلة بين السطرين --- في أعلى كل ملف)، لذا يترك memrynote الملفات دون تغيير. تبقى تعديلاتك في memrynote. إصلاح الملفات خارج memrynote يستبدلها بنص الملفات، لذا انسخ ما تحتاج إليه أولًا."
   },
   "encryption": {
     "failed": "تعذّر تشفير البيانات. قد يلزم إعادة إنشاء مفاتيحك.",

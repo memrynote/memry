@@ -18,8 +18,9 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
+use crate::vault::activity::{ActivityLog, ActivitySource};
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
-use crate::vault::note_file::{NoteFile, read_note};
+use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
 use crate::vault::watch::VaultEvent;
 use crate::vault::watch::reconcile::modified_ms;
 
@@ -29,8 +30,8 @@ const SCOPE: &str = "vault_consumer";
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Step {
     Done,
-    /// The fact could not be applied for a reason that may pass (a locked file, a failed
-    /// write): the watcher reports the path again later.
+    /// The fact could not be applied for a reason that may pass (a locked file, a file
+    /// missing mid-save, a failed write): the watcher reports the path again later.
     Retry(String),
 }
 
@@ -45,14 +46,17 @@ pub(super) struct Applier {
     /// `None` when this device has no signing key: nothing can be seeded or fed.
     pub(super) feed: Option<ExternalFeed>,
     pub(super) settings: Option<AppSettings>,
+    pub(super) activity: Arc<ActivityLog>,
 }
 
-/// Whether the note's document now holds the whole file: only then does the row record the
+/// Whether the note's document now holds the file's text: only then does the row record the
 /// file's hash. `BodyPresent` is not: a seed answers it before it compares any text, so the
-/// body it left alone can differ from the file. Nor is a file whose `writing` frontmatter
-/// could not be read: the feed was not told it.
-fn holds_file(outcome: FeedOutcome, writing: Option<&WritingFrontmatter>) -> bool {
-    matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) && writing.is_some()
+/// body it left alone can differ from the file. A file whose frontmatter does not parse is
+/// (#3750): its body is the document's now, and the next read of the same bytes must not
+/// replace the edits made in the app since. Its block is never written over: the write-back
+/// cannot read the file back, fails, and tells the user.
+fn holds_file(outcome: FeedOutcome) -> bool {
+    matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged)
 }
 
 /// The writing tools data the whole file says (none without the key, or with the author's
@@ -68,7 +72,7 @@ fn writing_of(file: &NoteFile) -> Option<WritingFrontmatter> {
 
 /// What a body write came to.
 enum Body {
-    /// The feed answered; `holds_file` when the document now holds the whole file.
+    /// The feed answered; `holds_file` when the document now holds the file's text.
     Wrote { holds_file: bool },
     /// This device has no signing key: nothing was written (the tier said so once).
     NoKey,
@@ -88,7 +92,14 @@ impl Applier {
                 size,
                 modified_ms,
                 ..
-            } => self.found(&mut lane, &path, file_type, size, modified_ms),
+            } => self.found(
+                &mut lane,
+                &path,
+                file_type,
+                size,
+                modified_ms,
+                ActivitySource::Watcher,
+            ),
             VaultEvent::Changed {
                 note_id,
                 path,
@@ -111,6 +122,7 @@ impl Applier {
             }
             other => {
                 log_watch(&other);
+                self.report(&other);
                 lane.publish(Applied::Vault(other));
                 Step::Done
             }
@@ -120,7 +132,9 @@ impl Applier {
     /// A file the open walk found. Goes through the same handler as a watcher's `Added`. A
     /// row whose size is the file's and that was written after the file's last modification
     /// is not read again, as the rescan does: reading every file costs a vault-sized read. A
-    /// markdown row without a hash is: its text never reached the note.
+    /// markdown row is, unless both its hashes name the same bytes: one without a content hash
+    /// (its text never reached the note), and one whose file hash is missing or names other
+    /// bytes (a row an older build wrote, or one salvaged), which the read mends.
     pub(super) fn walked(&self, path: &str, meta: &std::fs::Metadata) -> Step {
         let Some(file_type) = file_type_of_extension(&extension(path)) else {
             return Step::Done;
@@ -132,11 +146,19 @@ impl Applier {
         if let Ok(Some(row)) = lane.row_at(path)
             && row.file_size == i64::try_from(meta.len()).ok()
             && modified <= row.indexed_at
-            && (file_type != FileType::Markdown || row.content_hash.is_some())
+            && (file_type != FileType::Markdown
+                || (row.content_hash.is_some() && row.file_hash == row.content_hash))
         {
             return Step::Done;
         }
-        self.found(&mut lane, path, file_type, meta.len(), modified)
+        self.found(
+            &mut lane,
+            path,
+            file_type,
+            meta.len(),
+            modified,
+            ActivitySource::Scan,
+        )
     }
 
     fn ctx(&self) -> IdentityCtx<'_> {
@@ -155,6 +177,7 @@ impl Applier {
         file_type: FileType,
         size: u64,
         modified_ms: i64,
+        origin: ActivitySource,
     ) -> Step {
         match lane.row_at(path) {
             Ok(Some(row)) => return self.changed(lane, &row.note_id, path, size, modified_ms),
@@ -178,7 +201,7 @@ impl Applier {
         }
         let file = match self.read(path, file_type) {
             Ok(file) => file,
-            Err(step) => return step,
+            Err(Unread::Missing | Unread::Failed { .. }) => return Step::Retry(path.to_owned()),
         };
         let candidate = Candidate {
             path,
@@ -211,6 +234,7 @@ impl Applier {
             file_type,
             size,
             content_hash,
+            file_hash: file.map(|file| file.hash),
         };
         if let Err(error) = lane.put(&note_id, path, stat) {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
@@ -221,6 +245,7 @@ impl Applier {
             path: path.to_owned(),
             created,
         });
+        self.report_found(path, origin, created);
         Step::Done
     }
 
@@ -252,7 +277,16 @@ impl Applier {
             let file = match self.read(path, file_type) {
                 Ok(Some(file)) => file,
                 Ok(None) => return Step::Done,
-                Err(step) => return step,
+                Err(Unread::Missing) => return Step::Retry(path.to_owned()),
+                Err(Unread::Failed { file_hash }) => {
+                    record_file_hash(
+                        lane,
+                        note_id,
+                        row.file_hash.as_deref(),
+                        file_hash.as_deref(),
+                    );
+                    return Step::Retry(path.to_owned());
+                }
             };
             let write = match row.content_hash.as_deref() {
                 // Read back as recorded: the row's time moves on, so the walk does not read it
@@ -262,7 +296,8 @@ impl Applier {
                     let stat = RowStat {
                         file_type,
                         size,
-                        content_hash: Some(file.hash),
+                        content_hash: Some(file.hash.clone()),
+                        file_hash: Some(file.hash),
                     };
                     if let Err(error) = lane.refresh(note_id, path, stat) {
                         tracing::warn!(
@@ -281,8 +316,17 @@ impl Applier {
             };
             match self.write_body(note_id, path, &file, write) {
                 Body::Wrote { holds_file: true } => Some(file.hash),
-                Body::Wrote { holds_file: false } | Body::NoKey => return Step::Done,
-                Body::Failed => return Step::Retry(path.to_owned()),
+                // The document did not take the text: the row keeps naming what it holds, and
+                // only the bytes it pairs on move, so a move while closed stays a move.
+                Body::Wrote { holds_file: false } | Body::NoKey => {
+                    record_file_hash(lane, note_id, row.file_hash.as_deref(), Some(&file.hash));
+                    return Step::Done;
+                }
+                // The bytes were read: a move before the retry stores them pairs on them.
+                Body::Failed => {
+                    record_file_hash(lane, note_id, row.file_hash.as_deref(), Some(&file.hash));
+                    return Step::Retry(path.to_owned());
+                }
             }
         } else {
             if row.file_size == i64::try_from(size).ok() && modified_ms <= row.indexed_at {
@@ -294,6 +338,7 @@ impl Applier {
             file_type,
             size,
             content_hash: content_hash.clone(),
+            file_hash: content_hash.clone(),
         };
         if let Err(error) = lane.put(note_id, path, stat) {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
@@ -351,6 +396,7 @@ impl Applier {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
         });
+        self.report_removed(path);
     }
 
     fn renamed(&self, lane: &mut Lane<'_>, note_id: &str, old_path: &str, new_path: &str) {
@@ -397,20 +443,35 @@ impl Applier {
             old_path: old_path.to_owned(),
             new_path: new_path.to_owned(),
         });
+        self.report_renamed(old_path, new_path);
     }
 
-    /// The markdown file at `path`, read once; `Ok(None)` for every other kind, and for a
-    /// markdown file that is gone (its removal follows).
-    fn read(&self, path: &str, file_type: FileType) -> Result<Option<NoteFile>, Step> {
+    /// The markdown file at `path`, read once; `Ok(None)` for every other kind. A markdown file
+    /// found missing is retried like one that could not be read (#3736): a save can leave the
+    /// name missing for a moment (Windows renaming a new file over it, an editor that deletes
+    /// and writes again), and the watcher, which already reported the bytes it puts back, does
+    /// not report them again. The retry has the watcher look again, keeping what it reported
+    /// for the note: a file that is back is reported again, a move pairs on the bytes last
+    /// reported, and a file that is gone gets its removal, which waits out the rename window
+    /// and finds it absent once more.
+    fn read(&self, path: &str, file_type: FileType) -> Result<Option<NoteFile>, Unread> {
         if file_type != FileType::Markdown {
             return Ok(None);
         }
         match read_note(&self.root, path) {
             Ok(Some(file)) => Ok(Some(file)),
-            Ok(None) => Err(Step::Done),
+            Ok(None) => Err(Unread::Missing),
             Err(error) => {
                 tracing::warn!(scope = SCOPE, "a vault file could not be read: {error}");
-                Err(Step::Retry(path.to_owned()))
+                // The hash the watcher pairs a move of such a file on: Electron's, streamed.
+                // A read that failed knows no bytes.
+                let file_hash = match error {
+                    NoteFileError::NotUtf8 | NoteFileError::TooLarge => {
+                        hash_file(&self.root, path).ok().flatten()
+                    }
+                    _ => None,
+                };
+                Err(Unread::Failed { file_hash })
             }
         }
     }
@@ -421,14 +482,13 @@ impl Applier {
             return Body::NoKey;
         };
         let split = file.split();
-        // `None` for a frontmatter that does not parse says nothing about the writing state,
-        // so the document keeps what it holds, and the file is not taken as read.
-        let writing = writing_of(file);
         let input = FeedInput {
             note_id,
             markdown: split.body,
             note_path: Some(path),
-            writing: writing.clone(),
+            // `None` for a frontmatter that does not parse says nothing about the writing
+            // state, so the document keeps what it holds.
+            writing: writing_of(file),
             frontmatter: split.block,
             embeds: None,
         };
@@ -448,7 +508,7 @@ impl Applier {
                     );
                 }
                 Body::Wrote {
-                    holds_file: holds_file(outcome, writing.as_ref()),
+                    holds_file: holds_file(outcome),
                 }
             }
             Err(error) => {
@@ -479,6 +539,31 @@ pub(crate) fn converter_for(settings: Option<&AppSettings>) -> Converter {
         .map(|value| sanitize_callout_type_definitions(&value))
         .unwrap_or_default();
     Converter::new(CalloutTypes::new(definitions))
+}
+
+/// Why [`Applier::read`] has no note file.
+enum Unread {
+    /// No file was there when it was read: gone, or missing for a moment mid-save. Retried
+    /// either way, and its row's pairing hash stays.
+    Missing,
+    /// It is there and was not read, and is retried. `file_hash` is its bytes' hash when this
+    /// build reads them only as bytes (not UTF-8, past the note size cap), else `None`.
+    Failed { file_hash: Option<String> },
+}
+
+/// Moves the row's pairing hash from `had` to the bytes on disk now, or to none when they are
+/// unknown; a hash already there is not written again.
+fn record_file_hash(lane: &Lane<'_>, note_id: &str, had: Option<&str>, now: Option<&str>) {
+    if had == now {
+        return;
+    }
+    if let Err(error) = lane.record_file_hash(note_id, now) {
+        tracing::warn!(
+            scope = SCOPE,
+            note_id,
+            "the file hash was not recorded: {error}"
+        );
+    }
 }
 
 #[derive(Clone, Copy)]

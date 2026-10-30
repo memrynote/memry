@@ -139,26 +139,40 @@ pub fn updater_alive(bundle: &Path) -> bool {
     }
 }
 
-/// Whether this launch is the old build relaunched mid-install. Every signal must agree: the
-/// marker names this version, it is fresh, the updater did not start this launch, and the
-/// updater process is running. A failed install would otherwise strand the user on the splash.
-/// `updater_alive` runs last, so a normal boot never shells out.
+/// Why the guard holds a launch back.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InFlight {
+    /// The updater of this bundle is running.
+    Updating,
+    /// The bundle on disk is no longer the one this process started from: the swap finished
+    /// between the launch and the guard, and this process would boot old code on new files.
+    Replaced,
+}
+
+/// Whether this launch is the old build relaunched mid-install, and why. Every signal must
+/// agree: the marker names the version this process started as, it is fresh, the updater did
+/// not start this launch, and the install is visibly under way. A failed install would otherwise
+/// strand the user on the splash. The checks on disk run last and in order of cost, so a normal
+/// boot never reads the bundle or shells out.
+///
+/// `started_as`: the installed version when this process started (`sq.version`, read at the top
+/// of `main`), not when the guard runs. The swap takes a second or two, and a launch can start
+/// before it and reach the guard after it.
 ///
 /// `launched_by_updater`: Velopack's updater starts the app itself after Restart to install,
 /// and after a failed swap it starts the old build while it is still exiting
 /// (velopack `commands/apply.rs`), so that launch would otherwise find a live updater.
-pub fn should_guard(
+pub fn in_flight(
     marker: Option<&PendingInstall>,
-    current: &str,
+    started_as: &str,
     now_ms: i64,
     launched_by_updater: bool,
+    installed_now: impl FnOnce() -> Option<String>,
     updater_alive: impl FnOnce() -> bool,
-) -> bool {
-    let Some(marker) = marker else {
-        return false;
-    };
+) -> Option<InFlight> {
+    let marker = marker?;
     if launched_by_updater {
-        return false;
+        return None;
     }
     // A marker from the future (clock moved back, hand-edited file) is not fresh, and an absurd
     // timestamp must not overflow into "fresh". So a clock stepped back after the write turns the
@@ -167,7 +181,14 @@ pub fn should_guard(
     let fresh = now_ms
         .checked_sub(marker.created_at)
         .is_some_and(|age| (0..=PENDING_INSTALL_FRESH_MS).contains(&age));
-    marker.from_version == current && fresh && updater_alive()
+    if marker.from_version != started_as || !fresh {
+        return None;
+    }
+    // An unreadable bundle proves nothing: the updater decides.
+    if installed_now().is_some_and(|now| now != started_as) {
+        return Some(InFlight::Replaced);
+    }
+    updater_alive().then_some(InFlight::Updating)
 }
 
 #[cfg(test)]
@@ -183,58 +204,113 @@ mod tests {
         }
     }
 
-    #[test]
-    fn fires_when_every_signal_agrees_the_install_is_in_flight() {
-        assert!(should_guard(Some(&marker()), VERSION, 2_000, false, || {
-            true
-        }));
-        assert!(should_guard(
-            Some(&marker()),
-            VERSION,
-            1_000 + PENDING_INSTALL_FRESH_MS,
+    /// The bundle on disk still holds the version the launch started as.
+    fn unchanged() -> Option<String> {
+        Some(VERSION.into())
+    }
+
+    fn decide(
+        marker: Option<&PendingInstall>,
+        started_as: &str,
+        now_ms: i64,
+        installed_now: Option<&str>,
+        updater_alive: bool,
+    ) -> Option<InFlight> {
+        in_flight(
+            marker,
+            started_as,
+            now_ms,
             false,
-            || true
-        ));
+            || installed_now.map(str::to_owned),
+            || updater_alive,
+        )
     }
 
     #[test]
-    fn does_not_fire_without_a_marker_or_once_the_version_moved_on() {
+    fn fires_while_the_updater_of_an_unchanged_bundle_runs() {
+        assert_eq!(
+            decide(Some(&marker()), VERSION, 2_000, Some(VERSION), true),
+            Some(InFlight::Updating)
+        );
+        assert_eq!(
+            decide(
+                Some(&marker()),
+                VERSION,
+                1_000 + PENDING_INSTALL_FRESH_MS,
+                Some(VERSION),
+                true
+            ),
+            Some(InFlight::Updating)
+        );
+        // An unreadable bundle leaves the decision to the updater.
+        assert_eq!(
+            decide(Some(&marker()), VERSION, 2_000, None, true),
+            Some(InFlight::Updating)
+        );
+        assert_eq!(decide(Some(&marker()), VERSION, 2_000, None, false), None);
+    }
+
+    /// #3729: the launch started before the swap and reaches the guard after it, when the
+    /// updater may already be gone.
+    #[test]
+    fn fires_for_a_launch_whose_bundle_was_replaced_after_it_started() {
+        assert_eq!(
+            in_flight(
+                Some(&marker()),
+                VERSION,
+                2_000,
+                false,
+                || Some("2026.702.4".into()),
+                || panic!("the replaced bundle needs no pgrep")
+            ),
+            Some(InFlight::Replaced)
+        );
+    }
+
+    #[test]
+    fn does_not_fire_without_a_marker_or_for_a_launch_of_the_new_build() {
         let never = || panic!("cheap checks fail first");
-        assert!(!should_guard(None, VERSION, 2_000, false, never));
-        assert!(!should_guard(
-            Some(&marker()),
-            "2026.702.4",
-            2_000,
-            false,
-            never
-        ));
+        assert_eq!(in_flight(None, VERSION, 2_000, false, never, || true), None);
+        // Started after the swap: the new build boots and clears the marker.
+        assert_eq!(
+            in_flight(Some(&marker()), "2026.702.4", 2_000, false, never, || true),
+            None
+        );
     }
 
     #[test]
     fn does_not_fire_for_a_stale_marker() {
         let stale = 1_000 + PENDING_INSTALL_FRESH_MS + 1;
-        assert!(!should_guard(
-            Some(&marker()),
-            VERSION,
-            stale,
-            false,
-            || panic!("no pgrep for a stale marker")
-        ));
+        assert_eq!(
+            in_flight(
+                Some(&marker()),
+                VERSION,
+                stale,
+                false,
+                || panic!("no bundle read for a stale marker"),
+                || panic!("no pgrep for a stale marker")
+            ),
+            None
+        );
     }
 
     #[test]
     fn does_not_fire_for_a_marker_from_the_future() {
         let ahead = PendingInstall {
-            from_version: VERSION.into(),
             created_at: 2_000 + 60 * 60 * 1000,
+            ..marker()
         };
-        assert!(!should_guard(
-            Some(&ahead),
-            VERSION,
-            2_000,
-            false,
-            || panic!("no pgrep for a future marker")
-        ));
+        assert_eq!(
+            in_flight(
+                Some(&ahead),
+                VERSION,
+                2_000,
+                false,
+                || panic!("no bundle read for a future marker"),
+                || panic!("no pgrep for a future marker")
+            ),
+            None
+        );
     }
 
     #[test]
@@ -245,39 +321,43 @@ mod tests {
         ];
         for (created_at, nows) in cases {
             let marker = PendingInstall {
-                from_version: VERSION.into(),
                 created_at,
+                ..marker()
             };
             for now in nows {
-                assert!(
-                    !should_guard(Some(&marker), VERSION, now, false, || true),
+                assert_eq!(
+                    decide(Some(&marker), VERSION, now, Some("2026.702.4"), true),
+                    None,
                     "{created_at} {now}"
                 );
             }
         }
         // `-1e300` in the file saturates to `i64::MIN`.
         let parsed = parse(br#"{"fromVersion":"2026.702.2","createdAt":-1e300}"#).unwrap();
-        assert!(!should_guard(Some(&parsed), VERSION, 2_000, false, || true));
+        assert_eq!(
+            decide(Some(&parsed), VERSION, 2_000, Some("2026.702.4"), true),
+            None
+        );
     }
 
+    /// A failed or aborted install: the bundle is unchanged and no updater runs.
     #[test]
-    fn does_not_fire_when_no_updater_is_running() {
-        assert!(!should_guard(
-            Some(&marker()),
-            VERSION,
-            2_000,
-            false,
-            || false
-        ));
+    fn does_not_fire_when_no_updater_is_running_and_the_bundle_is_unchanged() {
+        assert_eq!(
+            in_flight(Some(&marker()), VERSION, 2_000, false, unchanged, || false),
+            None
+        );
     }
 
     /// After a failed swap the updater starts the old build and exits: every other signal says
-    /// the install is in flight.
+    /// the install is in flight. After Restart to install it starts the new build.
     #[test]
     fn does_not_fire_for_the_launch_the_updater_started() {
-        assert!(!should_guard(Some(&marker()), VERSION, 2_000, true, || {
-            true
-        }));
+        let never = || panic!("the updater's own launch boots");
+        assert_eq!(
+            in_flight(Some(&marker()), VERSION, 2_000, true, never, || true),
+            None
+        );
     }
 
     /// A process that looks like the updater, started as `UpdateMac` with this bundle as its

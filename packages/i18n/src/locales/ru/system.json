@@ -67,7 +67,16 @@
   "startup": {
     "installingUpdate": {
       "title": "Установка обновления…",
-      "subtitle": "MemryNote перезапустится автоматически."
+      "subtitle": "MemryNote перезапустится автоматически.",
+      "subtitleOpenAgain": "Через несколько секунд снова откройте MemryNote."
+    },
+    "webview2Missing": {
+      "title": "Не удаётся запустить MemryNote",
+      "body": "Для показа окна MemryNote нужна среда Microsoft Edge WebView2 Runtime, но на этом компьютере её нет. Скачайте установщик с сайта Microsoft ({url}), запустите его, а затем снова откройте MemryNote.\n\nОткрыть страницу загрузки сейчас?",
+      "bodyInstallFailed": "Для показа окна MemryNote нужна среда Microsoft Edge WebView2 Runtime, но установить её не удалось. Скачайте установщик с сайта Microsoft ({url}), запустите его, а затем снова откройте MemryNote.\n\nОткрыть страницу загрузки сейчас?"
+    },
+    "webview2Installing": {
+      "body": "MemryNote устанавливает среду Microsoft Edge WebView2 Runtime, которая нужна для показа окна. Это может занять до двух минут."
     },
     "failed": {
       "title": "MemryNote не удалось завершить запуск",

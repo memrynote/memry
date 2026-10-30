@@ -2,16 +2,21 @@
 // Update-bridge rehearsal driver. Runs on Kaan's Mac (Windows packs are signed with the Certum key).
 //
 //   node scripts/rehearsal/rehearse.mjs build <version> [--previous-tag <tag>] [--source-ref <ref>]
-//   node scripts/rehearsal/rehearse.mjs assemble <version> [--run <id>] [--previous-tag <tag>] [--no-windows | --unsigned-windows]
+//   node scripts/rehearsal/rehearse.mjs assemble <version> [--run <id>] [--previous-tag <tag>] [--no-windows | --unsigned-windows [--with-latest]]
 //   node scripts/rehearsal/rehearse.mjs publish <version> --confirm-repo memrynote/memry-update-rehearsal
 //   node scripts/rehearsal/rehearse.mjs electron-baseline <tag> [--run <id>]
 //
 // `build` dispatches .github/workflows/update-bridge-rehearsal.yml and waits. `assemble` downloads
-// the artifacts, packs and signs both Windows packs, writes the bridge feeds and leaves the final
-// asset set in `.rehearsal-state/<version>/assets`. `--no-windows` skips the Certum-signed Windows
-// packs and `latest.yml`, for a macOS and Linux feed that needs no SimplySign session.
+// the artifacts, packs and signs both Windows packs (each with the pinned WebView2 bootstrapper of
+// `../release/webview2-bootstrapper.mjs`, checked again inside the package), writes the bridge
+// feeds and leaves the final asset set in `.rehearsal-state/<version>/assets`. `--no-windows`
+// skips the Certum-signed Windows packs and `latest.yml`, for a macOS and Linux feed that needs no
+// SimplySign session.
 // `--unsigned-windows` packs Windows without the Certum key and without `latest.yml`: a Tauri to
-// Tauri update checks no Authenticode signature, while the Electron bridge does. `publish` creates the release and uploads it.
+// Tauri update checks no Authenticode signature, while the fixed hand-off of Electron `v2026-10-28`
+// does. `--with-latest` adds `latest.yml` with the unsigned Setup copy, for the NSIS decline path
+// of the builds before it: their `app-update.yml` names no publisher, so electron-updater checks
+// none (#3555 comment 6496117143). `publish` creates the release and uploads it.
 // Creating the rehearsal repo and every publish need Kaan's explicit approval at that moment.
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
@@ -35,7 +40,13 @@ import {
   setupExeName
 } from '../release/bridge-feeds.mjs'
 import { assertPublishable, assetNames, buildPackArgs } from '../release/vpk-args.mjs'
-import { renameToPublished } from '../release/vpk-pack.mjs'
+import { assertPackable, renameToPublished } from '../release/vpk-pack.mjs'
+import {
+  checkPinned,
+  fetchBootstrapper,
+  PACKAGE_ENTRY,
+  verifyBootstrapper
+} from '../release/webview2-bootstrapper.mjs'
 
 export const FEED_REPO = 'memrynote/memry-update-rehearsal'
 const WORKFLOW = 'update-bridge-rehearsal.yml'
@@ -199,6 +210,8 @@ function packWindows(target, version, artifactDir, workDir, previousTag, signed)
   const payload = path.join(artifactDir, `rehearsal-${target}-payload`)
   const zip = readdirSync(payload).find((name) => name.endsWith('.zip'))
   run('unzip', ['-q', path.join(payload, zip), '-d', packDir])
+  fetchBootstrapper(packDir)
+  assertPackable(target, packDir)
   previousFulls(previousTag, outputDir, target)
   const args = buildPackArgs(target, {
     version,
@@ -211,6 +224,22 @@ function packWindows(target, version, artifactDir, workDir, previousTag, signed)
   vpk(args, signed ? { MEMRY_SIGN_PIN: readSigningPin() } : {})
   renameToPublished(outputDir)
   return outputDir
+}
+
+/**
+ * The bootstrapper as the full package ships it, signed pack or not: the pinned bytes, still with
+ * Microsoft's own signature (sign-windows-binary.sh must have left it alone).
+ */
+export function verifyPackedBootstrapper(outputDir, target, version, workDir) {
+  const inspect = path.join(workDir, `verify-webview2-${target}`)
+  rmSync(inspect, { force: true, recursive: true })
+  mkdirSync(inspect, { recursive: true })
+  const full = path.join(outputDir, assetNames(target, version).full)
+  run('unzip', ['-q', '-o', full, PACKAGE_ENTRY, '-d', inspect])
+  const file = path.join(inspect, PACKAGE_ENTRY)
+  checkPinned(file)
+  verifyBootstrapper(file)
+  console.log(`WebView2 bootstrapper: pinned and signed by Microsoft  ${path.basename(full)}`)
 }
 
 function verifySignatures(outputDir, target, version, workDir) {
@@ -247,6 +276,13 @@ function verifySignatures(outputDir, target, version, workDir) {
   }
 }
 
+/** Which Windows packs `assemble` builds, whether it signs them and whether it writes `latest.yml`. */
+export function windowsPlan(argv) {
+  const packs = !argv.includes('--no-windows')
+  const signed = packs && !argv.includes('--unsigned-windows')
+  return { packs, signed, latestYml: signed || (packs && argv.includes('--with-latest')) }
+}
+
 function cmdAssemble(version, argv) {
   const previousTag = flag(argv, '--previous-tag') ?? ''
   const workDir = stateDir(version)
@@ -256,11 +292,18 @@ function cmdAssemble(version, argv) {
   mkdirSync(assets, { recursive: true })
   const releaseDate = new Date().toISOString()
 
-  const withWindows = !argv.includes('--no-windows')
-  const signedWindows = withWindows && !argv.includes('--unsigned-windows')
-  for (const target of withWindows ? ['win-x64', 'win-arm64'] : []) {
-    const outputDir = packWindows(target, version, artifactDir, workDir, previousTag, signedWindows)
-    if (signedWindows) verifySignatures(outputDir, target, version, workDir)
+  const windows = windowsPlan(argv)
+  for (const target of windows.packs ? ['win-x64', 'win-arm64'] : []) {
+    const outputDir = packWindows(
+      target,
+      version,
+      artifactDir,
+      workDir,
+      previousTag,
+      windows.signed
+    )
+    verifyPackedBootstrapper(outputDir, target, version, workDir)
+    if (windows.signed) verifySignatures(outputDir, target, version, workDir)
     copyPackOutputs(outputDir, assets)
   }
 
@@ -279,7 +322,7 @@ function cmdAssemble(version, argv) {
   copyFileSync(path.join(assets, linux.portable), path.join(assets, linux.appImage))
 
   // Feeds hash the exact bytes that get uploaded.
-  if (signedWindows) {
+  if (windows.latestYml) {
     const winSetup = path.join(assets, assetNames('win-x64', version).setup)
     copyFileSync(winSetup, path.join(assets, setupExeName(version)))
   }
@@ -296,7 +339,7 @@ function cmdAssemble(version, argv) {
       releaseDate,
       files: [entry(linux.appImage)]
     }),
-    ...(signedWindows && {
+    ...(windows.latestYml && {
       'latest.yml': buildLatestYml({ version, releaseDate, setup: entry(setupExeName(version)) })
     })
   }

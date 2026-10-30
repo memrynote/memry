@@ -37,6 +37,10 @@ pub enum Outcome {
     /// The pass could not finish (a read or a write failed); the file is as it was, unless
     /// the reason says the row was not recorded after the write.
     Failed(String),
+    /// The file's frontmatter does not parse: its block is bytes the document does not hold,
+    /// so the file is never written over, and no later pass writes it until the file is fixed
+    /// (#3750). The user is told, as for a failure.
+    FrontmatterUnreadable(String),
 }
 
 /// Why the file was kept as it is.
@@ -133,11 +137,11 @@ impl Pass {
         if file.hash != row_hash {
             return Outcome::Kept(Keep::FileChanged);
         }
+        // A block that does not parse is bytes the document does not hold, and the row may name
+        // such a file (`vault::consumer`): it is never written over.
         let parsed = match file.parse() {
             Ok(parsed) => parsed,
-            Err(error) => {
-                return Outcome::Failed(format!("the frontmatter does not parse: {error}"));
-            }
+            Err(error) => return Outcome::FrontmatterUnreadable(error.to_string()),
         };
         let old_body = file.split().body;
         let converter = converter_for(self.settings.as_ref());
@@ -175,7 +179,8 @@ impl Pass {
             let stat = RowStat {
                 file_type: FileType::Markdown,
                 size: file.raw.len() as u64,
-                content_hash: Some(row_hash),
+                content_hash: Some(row_hash.clone()),
+                file_hash: Some(row_hash),
             };
             if let Err(error) = lane.put_as_of(note_id, &row.path, stat, read_at) {
                 // The file is right; the note is behind once more on the next open, whose
@@ -211,6 +216,7 @@ impl Pass {
             file_type: FileType::Markdown,
             size: output.len() as u64,
             content_hash: Some(hash.clone()),
+            file_hash: Some(hash.clone()),
         };
         if let Err(error) = lane.put_as_of(note_id, &row.path, stat, read_at) {
             // The file holds the document's body and the row the old hash, so the next pass

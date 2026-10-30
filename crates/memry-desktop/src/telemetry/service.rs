@@ -15,7 +15,8 @@ use serde::Serialize;
 
 use super::config::TelemetryConfig;
 use super::events::{TelemetryEvent, sanitize_dimensions, sanitize_failure};
-use super::ship_queue::ShipQueue;
+use super::journal::Journal;
+use super::ship_queue::{QUEUE_LIMIT, ShipQueue};
 use super::time::{iso, now_ms};
 
 pub const FLUSH_INTERVAL: Duration = Duration::from_secs(30);
@@ -221,19 +222,11 @@ impl Service {
         self.live().sync_state = state;
     }
 
-    /// Queues `event` when telemetry is on and the event is a known one. Dimensions and failure
-    /// detail are sanitized here, because the server rejects a whole batch for one bad event.
-    pub fn track(&self, mut event: TelemetryEvent) {
-        if !event.is_known() {
-            tracing::warn!(
-                scope = "Telemetry",
-                "dropping a telemetry event with an unknown name, surface or result"
-            );
-            return;
+    /// Queues `event` when telemetry is on and the event is a known one.
+    pub fn track(&self, event: TelemetryEvent) {
+        if let Some(event) = admit(event) {
+            self.queue.push(event);
         }
-        event.dimensions = sanitize_dimensions(event.dimensions.as_ref());
-        event.failure = sanitize_failure(event.failure.as_ref());
-        self.queue.push(event);
     }
 
     /// Switches telemetry on or off and stores the choice. Off empties the queue and the mirror.
@@ -259,6 +252,28 @@ impl Service {
             error: None,
             failure: None,
         }
+    }
+
+    /// Adds `event` to the journal the next [`Service::start`] restores, for a launch that ends
+    /// before the service starts (the WebView2 check). The caller asks only when telemetry is
+    /// enabled. The journal's own load and save keep the file in the shape `start` reads.
+    pub fn queue_for_next_launch(data_dir: &Path, event: TelemetryEvent) {
+        let Some(event) = admit(event) else {
+            return;
+        };
+        // The first launch of a new install may end here, before anything made the directory.
+        if let Err(error) = std::fs::create_dir_all(data_dir) {
+            tracing::warn!(
+                scope = "TelemetryQueueStore",
+                "no data directory for the telemetry queue: {error}"
+            );
+            return;
+        }
+        let mut journal = Journal::new(data_dir.join(EVENT_QUEUE_FILE));
+        let mut items: Vec<TelemetryEvent> = journal.load();
+        items.push(event);
+        items.drain(..items.len().saturating_sub(QUEUE_LIMIT));
+        journal.save(&items);
     }
 
     /// Ships one batch.
@@ -287,4 +302,19 @@ impl Service {
             })
             .await
     }
+}
+
+/// `event` as it may queue, or `None` when the server would reject it. Dimensions and failure
+/// detail are sanitized here, because the server rejects a whole batch for one bad event.
+fn admit(mut event: TelemetryEvent) -> Option<TelemetryEvent> {
+    if !event.is_known() {
+        tracing::warn!(
+            scope = "Telemetry",
+            "dropping a telemetry event with an unknown name, surface or result"
+        );
+        return None;
+    }
+    event.dimensions = sanitize_dimensions(event.dimensions.as_ref());
+    event.failure = sanitize_failure(event.failure.as_ref());
+    Some(event)
 }

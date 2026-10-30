@@ -162,6 +162,7 @@ impl Fixture {
                 file_type: kind.into(),
                 mime_type: None,
                 file_size: Some(size as i64),
+                file_hash: hash.clone(),
                 content_hash: hash,
                 indexed_at: i64::MAX / 2,
             })
@@ -324,6 +325,56 @@ fn a_note_edited_outside_and_then_moved_keeps_its_id() {
     assert!(
         matches!(events.as_slice(), [e] if renamed("n1", "a.md", "b.md")(e)),
         "the move of an edited note lost its id: {events:?}"
+    );
+}
+
+/// The consumer asks for a note's report again (its read found the file missing, #3736) after
+/// the file was moved and before the watcher saw the move. The path is absent, so what was
+/// reported for it stays: the move pairs on the bytes last reported, not the row's older ones,
+/// and is never a removal plus a new file.
+#[test]
+fn a_report_asked_again_after_its_file_moved_away_still_pairs_the_move() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "base");
+    f.index("n1", "a.md", "base");
+    f.write("a.md", "edited");
+    f.touch(&mut r, &["a.md"], 1);
+    assert_eq!(kinds(&f.take()), ["changed"]);
+    f.rename("a.md", "b.md");
+    r.forget("a.md");
+    f.touch(&mut r, &["a.md", "b.md"], 2);
+    let events = f.take();
+    assert!(
+        matches!(events.as_slice(), [e] if renamed("n1", "a.md", "b.md")(e)),
+        "the move of a note asked for again lost its id: {events:?}"
+    );
+}
+
+/// The consumer asks for a note's report again while its file is missing, and the file comes
+/// back with the bytes already reported (a save that held the name longer than the retry
+/// waited): it is reported again, so the consumer still gets the save.
+#[test]
+fn a_report_asked_again_while_its_file_is_missing_is_made_again_once_the_file_is_back() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "base");
+    f.index("n1", "a.md", "base");
+    f.write("a.md", "edited");
+    f.touch(&mut r, &["a.md"], 1);
+    assert_eq!(kinds(&f.take()), ["changed"]);
+    fs::remove_file(f.root.join("a.md")).unwrap();
+    r.forget("a.md");
+    let at = f.t0 + Duration::from_secs(20);
+    r.batch(vec!["a.md".into()], at);
+    f.write("a.md", "edited");
+    r.batch(vec!["a.md".into()], at + Duration::from_millis(100));
+    r.settle_expired(at + Duration::from_secs(2));
+    let events = f.take();
+    assert!(
+        matches!(events.as_slice(), [VaultEvent::Changed { note_id, content_hash: hash, .. }]
+            if note_id == "n1" && *hash == Some(content_hash("edited"))),
+        "the save asked for again was never reported: {events:?}"
     );
 }
 

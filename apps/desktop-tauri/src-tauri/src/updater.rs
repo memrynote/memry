@@ -31,8 +31,12 @@ pub fn register_stages() {
 }
 
 mod channel;
+#[cfg(windows)]
+mod nsis_host;
 pub mod relaunch_guard;
 mod velopack_backend;
+#[cfg(windows)]
+pub mod webview2;
 
 /// The backend of this process, the build it reports and how init runs.
 struct Chosen {
@@ -85,11 +89,10 @@ fn backend(app: &AppHandle<Wry>) -> Chosen {
 /// default profile updates, and the Velopack install is not even opened for another one;
 /// `MEMRY_DEVICE` is a developer and test switch.
 fn choose(env: &LaunchEnv, velopack: impl FnOnce() -> Result<Chosen, String>) -> Chosen {
-    let device = env.get(DEVICE_VAR);
-    if device.is_some_and(|device| !device.is_empty()) {
+    if let Some(device) = env.get(DEVICE_VAR).filter(|device| !device.is_empty()) {
         tracing::info!(
             scope = "Updater",
-            "updates are off for the {DEVICE_VAR} profile {device:?}; the default profile installs them"
+            "updates are off for the {DEVICE_VAR} profile {device}; the default profile installs them"
         );
         return Chosen::none(INIT_DELAY);
     }
@@ -165,8 +168,9 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     Ok(())
 }
 
-/// When the service starts, and whether it reads the Electron profile's install marker: only an
-/// installed app does, so a dev or e2e run never consumes the real profile's file.
+/// When the service starts, and whether it reads the Electron profile's install marker and
+/// removes the NSIS install an Electron build left (Windows): only an installed app does, so a
+/// dev or e2e run never consumes the real profile's file or touches a real install.
 struct InitPlan {
     delay: Duration,
     electron_profile: bool,
@@ -212,12 +216,18 @@ pub fn on_window_shown(app: &AppHandle<Wry>) {
             (plan.delay, plan.electron_profile)
         });
     let env = app.state::<LaunchEnv>().inner().clone();
+    #[cfg(windows)]
+    let leftover = reads_profile.then(|| nsis_host::Inputs::read(app));
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(delay).await;
         // File reads: the markers, the health file and the Electron profile lookup.
         let started = tauri::async_runtime::spawn_blocking(move || {
             let profile = reads_profile.then(|| electron_profile(&env)).flatten();
             service.init(profile.as_deref());
+            #[cfg(windows)]
+            if let Some(inputs) = leftover {
+                nsis_host::retire(&service, inputs, profile.as_deref());
+            }
         })
         .await;
         if let Err(error) = started {

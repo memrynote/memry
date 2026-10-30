@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc fd659b5377c33fb701d912b4a68bcf1dce8584fe517f98ef85717ce6068d39e1 # shrinks to lines = ["{\"v\":1,\"id\":\"i30\",\"at\":\"2026-09-30T12:00:00.000Z\",\"kind\":\"added\",\"source\":\"watcher\"}"]

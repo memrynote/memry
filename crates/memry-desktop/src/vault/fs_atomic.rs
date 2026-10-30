@@ -14,7 +14,12 @@
 //! - [`atomic_create`] makes a file that must not exist yet. It links (Unix) or moves without
 //!   replacing (Windows) the finished temp file into place, so a file another process created
 //!   after the caller looked is never overwritten: the call fails with `AlreadyExists`.
-//!   [`create_unique`] picks the first free `<name> N<ext>` that way.
+//!   [`create_unique`] picks the first free `<name> N<ext>` that way, and
+//!   [`atomic_create_streamed`] creates a copy of another file that way, streamed instead of
+//!   held in memory.
+//!
+//! [`rename_no_replace`] moves a file or folder that is already whole into a name that must
+//! still be free, the same way as a create: `AlreadyExists` rather than a replace.
 //!
 //! After a replace or create the directory is synced (Unix), so the rename itself survives a
 //! power cut, not only the file's bytes. Windows has no directory sync; a create there is a
@@ -25,7 +30,7 @@
 //! in here, before and after the write.
 
 use std::fs::{self, OpenOptions};
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -108,14 +113,7 @@ fn write_once(
     // A fresh name per attempt, so a failed attempt cannot collide with its own leftovers.
     let temp = dir.join(temp_name());
     let result = (|| {
-        let mut options = OpenOptions::new();
-        options.write(true).create_new(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            options.mode(0o600);
-        }
-        let mut file = options.open(&temp)?;
+        let mut file = open_temp(&temp)?;
         file.write_all(bytes)?;
         file.sync_all()?;
         drop(file);
@@ -131,22 +129,37 @@ fn write_once(
         Ok(())
     })();
     if result.is_err() || commit == Commit::Create {
-        // Best effort: the write error is the one to report. After a create the temp file is
-        // the second name of the new file and has done its job.
-        let removed = fs::remove_file(&temp);
-        // A Windows create moves the temp file, so there is nothing left to remove.
-        if result.is_ok()
-            && let Err(err) = removed
-            && err.kind() != io::ErrorKind::NotFound
-        {
-            tracing::warn!(
-                scope = "fs_atomic",
-                "left a temp file behind: {:?}",
-                err.kind()
-            );
-        }
+        remove_temp(&temp, result.is_ok());
     }
     result
+}
+
+fn open_temp(temp: &Path) -> io::Result<fs::File> {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    options.open(temp)
+}
+
+/// Best effort: a write error is the one to report. After a create the temp file is the second
+/// name of the new file and has done its job.
+fn remove_temp(temp: &Path, written: bool) {
+    let removed = fs::remove_file(temp);
+    // A Windows create moves the temp file, so there is nothing left to remove.
+    if written
+        && let Err(err) = removed
+        && err.kind() != io::ErrorKind::NotFound
+    {
+        tracing::warn!(
+            scope = "fs_atomic",
+            "left a temp file behind: {:?}",
+            err.kind()
+        );
+    }
 }
 
 /// The replaced file's permissions, owner, group and extended attributes, put on the temp
@@ -200,11 +213,9 @@ fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
 
 #[cfg(windows)]
 fn move_file_no_replace(from: &Path, to: &Path) -> io::Result<()> {
-    use std::os::windows::ffi::OsStrExt;
     use windows::Win32::Storage::FileSystem::{MOVEFILE_WRITE_THROUGH, MoveFileExW};
     use windows::core::PCWSTR;
-    let wide = |p: &Path| -> Vec<u16> { p.as_os_str().encode_wide().chain(Some(0)).collect() };
-    let (from, to) = (wide(from), wide(to));
+    let (from, to) = (wide_verbatim(from)?, wide_verbatim(to)?);
     // SAFETY: both buffers are NUL-terminated and outlive the call.
     unsafe {
         MoveFileExW(
@@ -214,6 +225,110 @@ fn move_file_no_replace(from: &Path, to: &Path) -> io::Result<()> {
         )
     }
     .map_err(crate::shell::file_open::win_io_error)
+}
+
+/// `path` absolute, in the `\\?\` form and NUL-terminated: the form a wide Win32 call takes past
+/// `MAX_PATH` (260 characters). `std::fs` adds the prefix to its own calls; a direct `MoveFileExW`
+/// with a plain path fails on a vault that deep.
+#[cfg(windows)]
+fn wide_verbatim(path: &Path) -> io::Result<Vec<u16>> {
+    use std::os::windows::ffi::OsStrExt;
+    use std::path::{Component, Prefix};
+    // `GetFullPathNameW`: resolves `.` and `..` and turns `/` into `\`, which the verbatim form
+    // takes literally. A path already verbatim comes back as it is.
+    let path = std::path::absolute(path)?;
+    let full = path.as_os_str().encode_wide();
+    let mut wide: Vec<u16> = match path.components().next() {
+        Some(Component::Prefix(prefix)) => match prefix.kind() {
+            Prefix::Disk(_) => r"\\?\".encode_utf16().chain(full).collect(),
+            // `\\server\share\x` is `\\?\UNC\server\share\x`.
+            Prefix::UNC(..) => r"\\?\UNC".encode_utf16().chain(full.skip(1)).collect(),
+            _ => full.collect(),
+        },
+        _ => full.collect(),
+    };
+    wide.push(0);
+    Ok(wide)
+}
+
+/// Renames the file or folder `from` to `to` only while nothing is at `to`: `AlreadyExists`
+/// otherwise, never a replace. A plain `rename` replaces a file, and on Unix an empty folder,
+/// that appeared at `to` after the caller looked. macOS `renamex_np(RENAME_EXCL)`, Linux
+/// `renameat2(RENAME_NOREPLACE)`, Windows `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING`.
+/// A volume that has no exclusive rename (some network and FUSE mounts) gets a look first and a
+/// plain rename, which leaves only the moment between the two open.
+pub fn rename_no_replace(from: &Path, to: &Path) -> io::Result<()> {
+    match exclusive_rename(from, to) {
+        Err(err) if exclusive_rename_unsupported(&err) => {
+            if fs::symlink_metadata(to).is_ok() {
+                return Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "the target exists",
+                ));
+            }
+            fs::rename(from, to)
+        }
+        other => other,
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn exclusive_rename(from: &Path, to: &Path) -> io::Result<()> {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+    let c = |p: &Path| {
+        CString::new(p.as_os_str().as_bytes())
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "a path holds a NUL byte"))
+    };
+    let (from, to) = (c(from)?, c(to)?);
+    // SAFETY: both strings are NUL-terminated and outlive the call.
+    #[cfg(target_os = "macos")]
+    let status = unsafe { libc::renamex_np(from.as_ptr(), to.as_ptr(), libc::RENAME_EXCL) };
+    // SAFETY: as above; `AT_FDCWD` makes both paths relative to the working folder, as `rename`.
+    #[cfg(target_os = "linux")]
+    let status = unsafe {
+        libc::renameat2(
+            libc::AT_FDCWD,
+            from.as_ptr(),
+            libc::AT_FDCWD,
+            to.as_ptr(),
+            libc::RENAME_NOREPLACE,
+        )
+    };
+    if status == 0 {
+        Ok(())
+    } else {
+        Err(io::Error::last_os_error())
+    }
+}
+
+#[cfg(windows)]
+fn exclusive_rename(from: &Path, to: &Path) -> io::Result<()> {
+    move_file_no_replace(from, to)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+fn exclusive_rename(_from: &Path, _to: &Path) -> io::Result<()> {
+    Err(io::Error::from(io::ErrorKind::Unsupported))
+}
+
+/// The volume or the kernel has no exclusive rename: `EINVAL` (Linux, a file system without
+/// `RENAME_NOREPLACE`), `ENOTSUP` (macOS, a volume without `RENAME_EXCL`), `ENOSYS`.
+fn exclusive_rename_unsupported(err: &io::Error) -> bool {
+    if err.kind() == io::ErrorKind::Unsupported {
+        return true;
+    }
+    #[cfg(unix)]
+    {
+        matches!(
+            err.raw_os_error(),
+            Some(libc::EINVAL | libc::ENOTSUP | libc::ENOSYS)
+        )
+    }
+    #[cfg(not(unix))]
+    {
+        false
+    }
 }
 
 #[cfg(unix)]
@@ -283,10 +398,7 @@ fn run(
         path: target.to_path_buf(),
         source,
     };
-    let dir = target
-        .parent()
-        .filter(|p| !p.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."));
+    let dir = folder_of(target);
     if create_dirs {
         fs::create_dir_all(dir).map_err(fail)?;
     }
@@ -294,6 +406,13 @@ fn run(
         write_once(dir, target, bytes, commit, &mut *before_commit)
     })
     .map_err(fail)
+}
+
+fn folder_of(target: &Path) -> &Path {
+    target
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
 }
 
 fn default_delays() -> [Duration; 3] {
@@ -346,6 +465,53 @@ pub fn atomic_create_checked(
 
 pub fn atomic_create(target: &Path, bytes: &[u8]) -> Result<(), WriteError> {
     atomic_create_checked(target, bytes, &default_delays(), &mut || Ok(()))
+}
+
+/// [`atomic_create_checked`] for bytes read from `content` as they are written, never all in
+/// memory: a copy of another file. `content` is read to its end, so the caller bounds a reader
+/// that may not end. The temp file is filled once; only `before_commit` and the
+/// move into place are retried. On Unix the new file takes `mode`, as `fs.copyFile` kept its
+/// source's; a volume that refuses a mode (CIFS, some FUSE mounts, FAT) leaves it 0600 and the
+/// copy goes on, as a save does without its carried attributes.
+pub fn atomic_create_streamed(
+    target: &Path,
+    content: &mut dyn Read,
+    mode: fs::Permissions,
+    before_commit: BeforeCommit<'_>,
+) -> Result<(), WriteError> {
+    let fail = |source| WriteError {
+        path: target.to_path_buf(),
+        source,
+    };
+    let dir = folder_of(target);
+    fs::create_dir_all(dir).map_err(fail)?;
+    let temp = dir.join(temp_name());
+    let result = (|| {
+        let mut file = open_temp(&temp)?;
+        io::copy(content, &mut file)?;
+        #[cfg(unix)]
+        if let Err(err) = file.set_permissions(mode) {
+            tracing::warn!(
+                scope = "fs_atomic",
+                "could not keep the copied file's mode: {:?}",
+                err.kind()
+            );
+        }
+        // Windows: a read-only attribute on the temp file would keep a failed create from
+        // removing it.
+        #[cfg(not(unix))]
+        let _ = mode;
+        file.sync_all()?;
+        drop(file);
+        with_transient_retry(&default_delays(), || {
+            before_commit()?;
+            create_file(&temp, target)
+        })?;
+        sync_dir(dir);
+        Ok(())
+    })();
+    remove_temp(&temp, result.is_ok());
+    result.map_err(fail)
 }
 
 /// `base`, or the first of `<name> 1<ext>`, `<name> 2<ext>`, ... that did not exist, created

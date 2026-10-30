@@ -68,9 +68,11 @@ fn font_size_px(px: Option<&Value>, bucket: Option<&Value>) -> i64 {
     };
     if let Some(px) = px.and_then(Value::as_f64).filter(|n| n.is_finite()) {
         let px = px.clamp(12.0, 24.0).round() as i64;
+        // `toLegacyFontSize`: the nearest bucket, and the smaller of two as near (15 is small,
+        // 18 medium), as the slider writes the pair.
         let bucket_of = match px {
-            ..=14 => 14,
-            15..=17 => 16,
+            ..=15 => 14,
+            16..=18 => 16,
             _ => 20,
         };
         if legacy.is_none_or(|l| l == bucket_of) {
@@ -146,6 +148,16 @@ pub fn merge_preferences(
         // In place: `Map::remove` under `preserve_order` swaps the last key into the hole, so
         // taking `preferences` out and putting it back would move keys around the file.
         let prefs = object_at(config, "preferences");
+        // A config from before color themes has its theme read from its mode. Electron's
+        // writePreferences persists that read with any write, so a new mode keeps the theme
+        // the user saw; a write of the mode alone here does the same.
+        if general.contains_key("theme")
+            && !general.contains_key("colorTheme")
+            && prefs.get("colorTheme").is_none_or(Value::is_null)
+        {
+            let legacy = legacy_color_theme(prefs.get("theme"));
+            prefs.insert("colorTheme".to_owned(), json!(legacy));
+        }
         for (field, value) in general {
             if PORTABLE_GENERAL.contains(&field.as_str()) {
                 prefs.insert(field.clone(), value.clone());

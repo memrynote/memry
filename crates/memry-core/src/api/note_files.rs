@@ -47,10 +47,22 @@ impl NoteFiles {
             .call_blocking(move |conn| note_files::refresh_stat(conn, &stat))
     }
 
+    /// [`note_files::set_hash`].
     pub fn set_hash(&self, note_id: &str, content_hash: Option<&str>) -> Result<(), StorageError> {
         let (note_id, hash) = (note_id.to_owned(), content_hash.map(str::to_owned));
         self.db
             .call_blocking(move |conn| note_files::set_hash(conn, &note_id, hash.as_deref()))
+    }
+
+    /// [`note_files::set_file_hash`].
+    pub fn set_file_hash(
+        &self,
+        note_id: &str,
+        file_hash: Option<&str>,
+    ) -> Result<(), StorageError> {
+        let (note_id, hash) = (note_id.to_owned(), file_hash.map(str::to_owned));
+        self.db
+            .call_blocking(move |conn| note_files::set_file_hash(conn, &note_id, hash.as_deref()))
     }
 
     pub fn rename_path(&self, note_id: &str, new_path: &str) -> Result<(), StorageError> {

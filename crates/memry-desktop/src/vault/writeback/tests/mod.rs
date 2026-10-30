@@ -127,6 +127,7 @@ impl Fixture {
         let stat = RowStat {
             file_type,
             size,
+            file_hash: hash.clone(),
             content_hash: hash,
         };
         let session = self.rows.session_for(&self.vault).unwrap();
@@ -322,6 +323,8 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
 
 mod deleted;
 mod guards;
+mod perf;
 mod reconcile;
 mod schedule;
 mod triggers;
+mod typing;

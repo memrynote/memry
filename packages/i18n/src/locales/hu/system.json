@@ -67,7 +67,16 @@
   "startup": {
     "installingUpdate": {
       "title": "Frissítés telepítése…",
-      "subtitle": "A MemryNote automatikusan újraindul."
+      "subtitle": "A MemryNote automatikusan újraindul.",
+      "subtitleOpenAgain": "Egy pillanat múlva nyissa meg újra a MemryNote-ot."
+    },
+    "webview2Missing": {
+      "title": "A MemryNote nem tud elindulni",
+      "body": "A MemryNote ablakának megjelenítéséhez a Microsoft Edge WebView2 Runtime szükséges, és ezen a számítógépen nincs meg. Töltse le a telepítőt a Microsofttól ({url}), futtassa, majd nyissa meg újra a MemryNote-ot.\n\nMegnyitja most a letöltési oldalt?",
+      "bodyInstallFailed": "A MemryNote ablakának megjelenítéséhez a Microsoft Edge WebView2 Runtime szükséges, és a telepítése nem sikerült. Töltse le a telepítőt a Microsofttól ({url}), futtassa, majd nyissa meg újra a MemryNote-ot.\n\nMegnyitja most a letöltési oldalt?"
+    },
+    "webview2Installing": {
+      "body": "A MemryNote telepíti a Microsoft Edge WebView2 Runtime-ot, amely az ablaka megjelenítéséhez szükséges. Ez legfeljebb két percig tarthat."
     },
     "failed": {
       "title": "A MemryNote nem tudott elindulni",

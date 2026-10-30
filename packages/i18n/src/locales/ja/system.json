@@ -67,7 +67,16 @@
   "startup": {
     "installingUpdate": {
       "title": "アップデートをインストール中…",
-      "subtitle": "MemryNote は自動的に再起動します。"
+      "subtitle": "MemryNote は自動的に再起動します。",
+      "subtitleOpenAgain": "しばらくしてから MemryNote をもう一度開いてください。"
+    },
+    "webview2Missing": {
+      "title": "MemryNote を起動できません",
+      "body": "MemryNote のウィンドウを表示するには Microsoft Edge WebView2 Runtime が必要ですが、このコンピューターにはインストールされていません。Microsoft からインストーラーをダウンロードして ({url}) 実行し、MemryNote を開き直してください。\n\n今すぐダウンロードページを開きますか？",
+      "bodyInstallFailed": "MemryNote のウィンドウを表示するには Microsoft Edge WebView2 Runtime が必要ですが、インストールできませんでした。Microsoft からインストーラーをダウンロードして ({url}) 実行し、MemryNote を開き直してください。\n\n今すぐダウンロードページを開きますか？"
+    },
+    "webview2Installing": {
+      "body": "MemryNote のウィンドウを表示するために必要な Microsoft Edge WebView2 Runtime をインストールしています。最大 2 分ほどかかる場合があります。"
     },
     "failed": {
       "title": "MemryNote を起動できませんでした",

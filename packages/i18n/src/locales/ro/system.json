@@ -67,7 +67,16 @@
   "startup": {
     "installingUpdate": {
       "title": "Se instalează actualizarea…",
-      "subtitle": "MemryNote se va redeschide automat."
+      "subtitle": "MemryNote se va redeschide automat.",
+      "subtitleOpenAgain": "Redeschideți MemryNote peste câteva momente."
+    },
+    "webview2Missing": {
+      "title": "MemryNote nu poate porni",
+      "body": "MemryNote are nevoie de Microsoft Edge WebView2 Runtime pentru a-și afișa fereastra, iar acest computer nu îl are. Descărcați programul de instalare de la Microsoft ({url}), rulați-l, apoi redeschideți MemryNote.\n\nDeschideți acum pagina de descărcare?",
+      "bodyInstallFailed": "MemryNote are nevoie de Microsoft Edge WebView2 Runtime pentru a-și afișa fereastra, iar instalarea acestuia nu a reușit. Descărcați programul de instalare de la Microsoft ({url}), rulați-l, apoi redeschideți MemryNote.\n\nDeschideți acum pagina de descărcare?"
+    },
+    "webview2Installing": {
+      "body": "MemryNote instalează Microsoft Edge WebView2 Runtime, de care are nevoie pentru a-și afișa fereastra. Poate dura până la două minute."
     },
     "failed": {
       "title": "MemryNote nu a putut porni complet",

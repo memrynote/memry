@@ -10,6 +10,12 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
 import { buildPackArgs, publishedName } from './vpk-args.mjs'
+import { assertBootstrapperPacked } from './webview2-bootstrapper.mjs'
+
+/** Throws when `packDir` cannot become a `target` pack: a Windows one ships the pinned WebView2 bootstrapper. */
+export function assertPackable(target, packDir) {
+  if (target.startsWith('win-')) assertBootstrapperPacked(packDir)
+}
 
 /**
  * Renames vpk's outputs in `outputDir` to their published names, and the entries of vpk's
@@ -67,6 +73,7 @@ export function parsePackCli(argv) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { target, options } = parsePackCli(process.argv.slice(2))
+  assertPackable(target, options.packDir)
   const args = buildPackArgs(target, options)
   console.log(`vpk ${args.join(' ')}`)
   const result = spawnSync(process.env.VPK_BIN ?? 'vpk', args, { stdio: 'inherit' })

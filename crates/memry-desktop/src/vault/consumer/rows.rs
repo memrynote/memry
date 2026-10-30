@@ -1,8 +1,9 @@
 //! The one lane that writes `note_files`. The consumer takes it for each watcher event; the
-//! app's own file operations (Step 13's create) take it through [`RowOwner`]'s methods, and the
-//! write-back (`vault::writeback`) holds it for a whole pass. Either way a write checks [`PathIndex`] first and keeps it in step,
-//! and the [`Applied`] fact goes out after the row is written, under the lane, so subscribers
-//! see the facts in the order the rows changed.
+//! app's own file operations (Step 13's create) take it through [`RowOwner`]'s methods, the
+//! write-back (`vault::writeback`) holds it for a whole pass, and a journal rename
+//! (`vault::journal_rename`) for each file it moves. Either way a write checks [`PathIndex`]
+//! first and keeps it in step, and the [`Applied`] fact goes out after the row is written, under
+//! the lane, so subscribers see the facts in the order the rows changed.
 //!
 //! An app operation names the vault session it started in ([`RowSession`]): one that
 //! finishes after its vault closed, or after another vault opened, writes nothing.
@@ -38,6 +39,9 @@ pub struct RowStat {
     /// Markdown only, and only for content the note's document holds: a write-back reading
     /// a file that differs would take this hash for "the file is unchanged" and overwrite it.
     pub content_hash: Option<String>,
+    /// Markdown only: the hash of the bytes read, whether or not the document took them. A
+    /// move made while the app was closed pairs on it (`vault::watch::rename`).
+    pub file_hash: Option<String>,
 }
 
 /// One open of one vault, as the rows know it.
@@ -239,23 +243,36 @@ impl Lane<'_> {
         &self.state().files
     }
 
-    pub(super) fn row_at(&self, path: &str) -> Result<Option<Row>, StorageError> {
+    pub(crate) fn row_at(&self, path: &str) -> Result<Option<Row>, StorageError> {
         self.files().by_path(path)
     }
 
     /// `Ok` when no note holds `path` under any spelling the volume may fold.
-    pub(super) fn check_free(&self, path: &str) -> Result<(), PathCollision> {
+    pub(crate) fn check_free(&self, path: &str) -> Result<(), PathCollision> {
         self.state().index.check("", path)
     }
 
     /// `Ok` when no other note holds `path`.
-    pub(super) fn check(&self, note_id: &str, path: &str) -> Result<(), PathCollision> {
+    pub(crate) fn check(&self, note_id: &str, path: &str) -> Result<(), PathCollision> {
         self.state().index.check(note_id, path)
     }
 
-    /// The row no longer names content the document holds.
+    /// The note's file went and its row stays: the row names no content the document holds,
+    /// and no bytes on disk, so no file pairs with it as its move.
     pub(super) fn forget_hash(&self, note_id: &str) -> Result<(), StorageError> {
         self.files().set_hash(note_id, None)
+    }
+
+    /// The file was read, or found unreadable, and its text not taken: only its pairing hash
+    /// moves, to the bytes on disk now or to none. The row's size, stamp and content hash stay
+    /// those of what the document holds, which the write-back compares with; the walk then
+    /// reads the file again at every open, as it did before file hashes.
+    pub(super) fn record_file_hash(
+        &self,
+        note_id: &str,
+        hash: Option<&str>,
+    ) -> Result<(), StorageError> {
+        self.files().set_file_hash(note_id, hash)
     }
 
     /// Records the row stamped now: the caller read the file now and, with a hash, the body
@@ -287,6 +304,7 @@ impl Lane<'_> {
             mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
             file_size: i64::try_from(stat.size).ok(),
             content_hash: stat.content_hash,
+            file_hash: stat.file_hash,
             indexed_at: at,
         })?;
         state.index.insert(note_id, path);
@@ -311,13 +329,14 @@ impl Lane<'_> {
             mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
             file_size: i64::try_from(stat.size).ok(),
             content_hash: stat.content_hash,
+            file_hash: stat.file_hash,
             indexed_at: now_ms(),
         })?;
         state.index.insert(note_id, path);
         Ok(())
     }
 
-    pub(super) fn rename(&mut self, note_id: &str, new_path: &str) -> Result<(), RowError> {
+    pub(crate) fn rename(&mut self, note_id: &str, new_path: &str) -> Result<(), RowError> {
         let state = self.state_mut();
         state.index.check(note_id, new_path)?;
         state.files.rename_path(note_id, new_path)?;
