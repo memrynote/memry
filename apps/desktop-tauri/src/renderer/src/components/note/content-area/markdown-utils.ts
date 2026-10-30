@@ -64,6 +64,7 @@ import { serializeTaskBlockTree } from './task-block/task-block-utils'
 import { parseFileBlockMarker, serializeFileBlock, type FileBlockProps } from './file-block-markers'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { commands } from '../../../../../generated/bindings'
 
 const log = createLogger('MarkdownUtils')
 
@@ -289,9 +290,9 @@ async function resolveWikiImageEmbeds(markdown: string, notePath?: string): Prom
   const refs = extractWikiImageEmbedRefs(markdown)
   if (refs.length === 0) return markdown
 
-  let resolved: Record<string, string> = {}
+  let resolved: Partial<Record<string, string>> = {}
   try {
-    resolved = (await window.api?.vault?.resolveEmbeds?.({ refs, notePath })) ?? {}
+    resolved = await commands.vaultResolveEmbeds(refs, notePath ?? null)
   } catch (error) {
     // Every wiki image embed in the note renders broken past this point.
     log.error('Failed to resolve wiki image embeds', error)
