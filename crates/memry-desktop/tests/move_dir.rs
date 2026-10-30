@@ -408,35 +408,93 @@ fn a_rollback_step_refused_for_a_moment_is_retried() {
     }
 }
 
-/// A rollback whose every file is refused waits the refusal out on a few files only and gives
-/// the rest one try each: a large refused tree costs seconds, not a retry schedule per file.
+/// A rollback whose every step of a kind is refused (putting a file back, making a folder
+/// again, removing a staged folder) waits the refusal out on a few steps only and gives the
+/// rest one try each: a large refused tree costs seconds, not a retry schedule per entry.
 #[test]
-fn a_rollback_of_refused_files_retries_only_a_few() {
-    const FILES: usize = 12;
-    let dir = tempfile::tempdir().unwrap();
-    let notes = dir.path().join("notes");
-    fs::create_dir(&notes).unwrap();
-    for n in 0..FILES {
-        fs::write(notes.join(format!("{n}.md")), n.to_string()).unwrap();
+fn a_rollback_of_refused_steps_retries_only_a_few() {
+    for refused in ["PutBack", "RemakeDir", "RemoveStaged"] {
+        // Twelve folders of one file each, which move and go back entry by entry.
+        let dir = tempfile::tempdir().unwrap();
+        let notes = dir.path().join("notes");
+        for n in 0..12 {
+            let folder = notes.join(format!("d{n}"));
+            fs::create_dir_all(&folder).unwrap();
+            fs::write(folder.join("f.md"), n.to_string()).unwrap();
+        }
+        let before = tree(dir.path());
+        let kept = dir.path().join(KEPT);
+        let mut tries = 0;
+        let mut refused_at = std::collections::BTreeSet::new();
+        let error = move_dir_checked(&notes, &dir.path().join("moved"), &mut |step| {
+            match step {
+                Step::Whole { .. } => return Err(simulated_hold()),
+                Step::Entry { from, .. } if from.parent() == Some(notes.as_path()) => {
+                    return Err(simulated_hold());
+                }
+                Step::Entry { from, .. } if is_staging(from) => {
+                    return Err(io::Error::other("the disk went away"));
+                }
+                Step::PutBack { from, to } if from.is_dir() && to != kept => {
+                    return Err(simulated_hold());
+                }
+                _ => {}
+            }
+            let (kind, path) = match step {
+                Step::PutBack { to, .. } => ("PutBack", to),
+                Step::RemakeDir(path) => ("RemakeDir", path),
+                Step::RemoveStaged(path) => ("RemoveStaged", path),
+                _ => return Ok(()),
+            };
+            if kind == refused && path != notes && path != kept {
+                tries += 1;
+                refused_at.insert(path.to_owned());
+                return Err(io::Error::from(io::ErrorKind::ResourceBusy));
+            }
+            Ok(())
+        })
+        .unwrap_err();
+        let steps = refused_at.len();
+        assert!(steps >= 12, "{refused}: {steps} steps refused");
+        assert!(
+            tries > steps && tries < steps * 4,
+            "{refused}: {tries} tries for {steps} steps"
+        );
+        assert_eq!(incomplete(&error).kept, [kept], "{refused}");
+        back_or_kept(&before, &tree(dir.path()));
     }
-    let before = tree(dir.path());
-    let mut tries = 0;
-    let error = move_dir_checked(&notes, &dir.path().join("moved"), &mut |step| match step {
-        Step::Whole { .. } => Err(simulated_hold()),
-        Step::Entry { from, .. } if is_staging(from) => Err(io::Error::other("the disk went away")),
-        Step::PutBack { from, to } if is_staging(from) && to == notes.as_path() => {
-            Err(simulated_hold())
-        }
-        Step::PutBack { to, .. } if to.parent() == Some(notes.as_path()) => {
-            tries += 1;
-            Err(io::Error::from(io::ErrorKind::ResourceBusy))
-        }
-        _ => Ok(()),
-    })
+}
+
+/// A staging folder name another folder took first is never this move's: the move fails
+/// before anything moves, and that folder is left as it was.
+#[test]
+fn a_staging_name_taken_by_another_folder_is_left_alone() {
+    let dir = vault();
+    let mut want = tree(dir.path());
+    let mut seen = Vec::new();
+    let mut windows = as_windows_holds(&mut seen);
+    let mut theirs = None;
+    let error = move_dir_checked(
+        &dir.path().join("notes"),
+        &dir.path().join("moved"),
+        &mut |step| {
+            if let Step::MakeDir(path) = step
+                && is_staging(path)
+                && theirs.is_none()
+            {
+                fs::create_dir(path).unwrap();
+                fs::write(path.join("theirs.md"), "theirs").unwrap();
+                theirs = Some(path.file_name().unwrap().to_string_lossy().into_owned());
+            }
+            windows(step)
+        },
+    )
     .unwrap_err();
-    assert!(tries > FILES && tries < FILES * 4, "{tries} tries");
-    assert_eq!(incomplete(&error).kept, [dir.path().join(KEPT)]);
-    back_or_kept(&before, &tree(dir.path()));
+    assert_eq!(error.kind(), io::ErrorKind::AlreadyExists, "{error}");
+    let theirs = theirs.unwrap();
+    want.insert(theirs.clone(), None);
+    want.insert(format!("{theirs}/theirs.md"), Some(b"theirs".to_vec()));
+    assert_eq!(tree(dir.path()), want);
 }
 
 /// When even the visible folder cannot take what the rollback left, the hidden staging folder

@@ -203,8 +203,8 @@ fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
 
 /// Renames `from` (a file, a link or a folder) to `to` only when nothing is at `to`: fails with
 /// `AlreadyExists` when something is, even something that appeared after the caller looked.
-/// On a volume that folds case, a name that differs from `from`'s only in case names `from`
-/// itself and is a rename, not a collision.
+/// A case-only rename of a file or a folder goes through on APFS and NTFS, which fold case
+/// (tested); other case-folding volumes are untested.
 ///
 /// macOS `renamex_np(RENAME_EXCL)`, Linux `renameat2(RENAME_NOREPLACE)`, Windows `MoveFileExW`
 /// without `MOVEFILE_REPLACE_EXISTING`. A Unix volume without an exclusive rename (some network

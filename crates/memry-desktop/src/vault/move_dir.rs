@@ -193,6 +193,10 @@ pub fn move_dir_checked(
     }
     let id = uuid::Uuid::new_v4().simple().to_string();
     let staging = to.with_file_name(format!(".memry-move-{}", &id[..12]));
+    // Only a staging folder this move made is ever rolled back: one that was there fails the
+    // move before anything moved.
+    hook(Step::MakeDir(&staging))?;
+    fs::create_dir(&staging)?;
     let moved = move_entries(from, &staging, hook).and_then(|()| {
         retried(|| {
             hook(Step::Entry { from: &staging, to })?;
@@ -259,14 +263,18 @@ fn open_level(
     Ok(Level { from, to, entries })
 }
 
-/// Moves the tree under `from` into the new folder `to`, depth first with a stack of its own,
-/// so a deep tree costs heap, not thread stack.
+/// Moves the tree under `from` into the folder `to` the move just made, depth first with a
+/// stack of its own, so a deep tree costs heap, not thread stack.
 fn move_entries(
     from: &Path,
     to: &Path,
     hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
 ) -> io::Result<()> {
-    let mut stack = vec![open_level(from.to_owned(), to.to_owned(), hook)?];
+    let mut stack = vec![Level {
+        from: from.to_owned(),
+        to: to.to_owned(),
+        entries: names(from)?.into_iter(),
+    }];
     while let Some(level) = stack.last_mut() {
         let Some((name, is_dir)) = level.entries.next() else {
             let source = stack.pop().map(|level| level.from).unwrap_or_default();
@@ -301,20 +309,17 @@ fn move_entries(
     Ok(())
 }
 
-/// Puts everything in `staging` back into `from` after the move failed with `cause`, and
-/// moves what does not go back into a visible folder.
+/// Puts everything in the staging folder this move made back into `from` after the move failed
+/// with `cause`, and moves what does not go back into a visible folder.
 fn roll_back(
     cause: io::Error,
     from: &Path,
     staging: &Path,
     hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
 ) -> io::Result<()> {
-    if fs::symlink_metadata(staging).is_err() {
-        return Err(cause); // the staging folder was never made: nothing moved
-    }
     let mut back = PutBack {
         hook,
-        retries: ROLLBACK_RETRIES,
+        budget: Budget(ROLLBACK_RETRIES),
         conflict_copies: Vec::new(),
     };
     back.put(staging, from);
@@ -367,8 +372,26 @@ enum Job {
 /// in the staging folder, and the rest still goes back).
 struct PutBack<'h> {
     hook: &'h mut dyn FnMut(Step<'_>) -> io::Result<()>,
-    retries: u32,
+    budget: Budget,
     conflict_copies: Vec<PathBuf>,
+}
+
+/// How many more rollback steps may wait out a refusal ([`ROLLBACK_RETRIES`]).
+struct Budget(u32);
+
+impl Budget {
+    /// [`retried`] while the budget lasts, then one try. A step still refused after every
+    /// retry uses up one.
+    fn retried(&mut self, mut operation: impl FnMut() -> io::Result<()>) -> io::Result<()> {
+        if self.0 == 0 {
+            return operation();
+        }
+        let result = retried(operation);
+        if result.as_ref().is_err_and(is_transient) {
+            self.0 -= 1;
+        }
+        result
+    }
 }
 
 impl PutBack<'_> {
@@ -383,7 +406,7 @@ impl PutBack<'_> {
             match job {
                 Job::Remove(folder) => {
                     let hook = &mut *self.hook;
-                    let removed = retried(|| {
+                    let removed = self.budget.retried(|| {
                         hook(Step::RemoveStaged(&folder))?;
                         fs::remove_dir(&folder)
                     });
@@ -410,14 +433,10 @@ impl PutBack<'_> {
             rename_no_replace(&from, &to)
         };
         // A folder is tried once: when Windows holds it, its entries go back one by one.
-        let put = if is_dir || self.retries == 0 {
+        let put = if is_dir {
             once()
         } else {
-            let put = retried(once);
-            if put.as_ref().is_err_and(is_transient) {
-                self.retries -= 1;
-            }
-            put
+            self.budget.retried(once)
         };
         let error = match put {
             Ok(()) => {
@@ -449,7 +468,7 @@ impl PutBack<'_> {
             return;
         }
         let hook = &mut *self.hook;
-        let made = retried(|| {
+        let made = self.budget.retried(|| {
             hook(Step::RemakeDir(&to))?;
             fs::create_dir(&to)
         });
