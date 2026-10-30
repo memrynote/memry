@@ -15,9 +15,14 @@
     "Images/tie.png",
     "x/y/z/short.png",
     "q/short.png",
-    "root.md"
+    "root.md",
+    "..dots.png",
+    "a/b/c/deep.png",
+    "z/deep.png"
   ],
-  "dirs": ["folder.png"],
+  "dirs": [
+    "folder.png"
+  ],
   "index": [
     {
       "path": "idx/deep/only-index.png",
@@ -52,7 +57,15 @@
       "fileType": "pdf"
     },
     {
-      "path": "attachments/att.png",
+      "path": "..dots.png",
+      "fileType": "image"
+    },
+    {
+      "path": "a/b/c/deep.png",
+      "fileType": "image"
+    },
+    {
+      "path": "z/deep.png",
       "fileType": "image"
     }
   ],
@@ -71,16 +84,20 @@
     "sub/folder/only-index.png",
     "tie.png",
     "short.png",
+    "deep.png",
     "ghost.png",
     "not-an-image.pdf",
     "folder.png",
     "missing.png",
     "../escape.png",
-    "../memry-embeds-8ubZWq-outside/escape.png",
+    "../<vault-name>-outside/escape.png",
+    "..dots.png",
+    "/Images/photo.png",
     "notes/../Images/photo.png",
     "./Images/photo.png",
     "/etc/hosts",
     "https://example.com/a.png",
+    "https://example.com/tie.png",
     "memry-file://local/x.png",
     "c:relative.png",
     "",
@@ -106,7 +123,8 @@
         "only-index.png": "../../idx/deep/only-index.png",
         "sub/folder/only-index.png": "../../idx/deep/only-index.png",
         "tie.png": "../../assets/tie.png",
-        "short.png": "../../q/short.png"
+        "short.png": "../../q/short.png",
+        "deep.png": "../../z/deep.png"
       }
     },
     {
@@ -125,7 +143,8 @@
         "only-index.png": "idx/deep/only-index.png",
         "sub/folder/only-index.png": "idx/deep/only-index.png",
         "tie.png": "assets/tie.png",
-        "short.png": "q/short.png"
+        "short.png": "q/short.png",
+        "deep.png": "z/deep.png"
       }
     },
     {
@@ -146,7 +165,8 @@
         "only-index.png": "../../idx/deep/only-index.png",
         "sub/folder/only-index.png": "../../idx/deep/only-index.png",
         "tie.png": "../../assets/tie.png",
-        "short.png": "../../q/short.png"
+        "short.png": "../../q/short.png",
+        "deep.png": "../../z/deep.png"
       }
     },
     {
@@ -165,7 +185,8 @@
         "only-index.png": "memry-file://local/<vault>/idx/deep/only-index.png",
         "sub/folder/only-index.png": "memry-file://local/<vault>/idx/deep/only-index.png",
         "tie.png": "memry-file://local/<vault>/assets/tie.png",
-        "short.png": "memry-file://local/<vault>/q/short.png"
+        "short.png": "memry-file://local/<vault>/q/short.png",
+        "deep.png": "memry-file://local/<vault>/z/deep.png"
       }
     },
     {
@@ -186,7 +207,8 @@
         "only-index.png": "../../idx/deep/only-index.png",
         "sub/folder/only-index.png": "../../idx/deep/only-index.png",
         "tie.png": "../../assets/tie.png",
-        "short.png": "../../q/short.png"
+        "short.png": "../../q/short.png",
+        "deep.png": "../../z/deep.png"
       }
     }
   ]

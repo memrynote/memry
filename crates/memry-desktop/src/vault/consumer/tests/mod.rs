@@ -351,6 +351,7 @@ pub(super) fn only_note(f: &Fixture, rel: &str) -> String {
 }
 
 mod activity;
+mod embeds;
 mod facts;
 mod flood;
 mod hash_rule;

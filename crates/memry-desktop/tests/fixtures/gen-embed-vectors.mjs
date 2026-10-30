@@ -1,11 +1,11 @@
 // Regenerates electron-vault/resolve-embeds.json from the Electron code:
 //   cd apps/desktop && npx tsx ../../crates/memry-desktop/tests/fixtures/gen-embed-vectors.mjs
-//   pnpm exec oxfmt crates/memry-desktop/tests/fixtures/electron-vault/resolve-embeds.json
 // Runs `resolveVaultEmbeds` of `vault/resolve-embed.ts` over a real temp vault. Only its
 // collaborators are stubbed: the open vault and its config (`vault/index`), the index rows its
 // bare-filename lookup reads (`database`, answering with the image rows of `index`), and the
 // attachments module for its folder name. The vector holds the vault's files, the index rows,
-// and what each batch resolved to; a `memry-file://` URL names the vault root as `<vault>`.
+// and what each batch resolved to. A `memry-file://` URL names the vault root as `<vault>`, and
+// a ref names the vault's folder as `<vault-name>`.
 import { createRequire } from 'node:module'
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -65,7 +65,10 @@ const files = [
   'Images/tie.png',
   'x/y/z/short.png',
   'q/short.png',
-  'root.md'
+  'root.md',
+  '..dots.png',
+  'a/b/c/deep.png',
+  'z/deep.png'
 ]
 const dirs = ['folder.png']
 for (const file of files) {
@@ -76,6 +79,7 @@ for (const dir of dirs) mkdirSync(join(vault, dir), { recursive: true })
 mkdirSync(join(vault, '..', `${vault.split('/').pop()}-outside`), { recursive: true })
 writeFileSync(join(vault, '..', `${vault.split('/').pop()}-outside`, 'escape.png'), 'x')
 
+const outside = `../${vault.split('/').pop()}-outside/escape.png`
 const index = [
   { path: 'idx/deep/only-index.png', fileType: 'image' },
   { path: 'misc/Ärger.PNG', fileType: 'image' },
@@ -85,7 +89,9 @@ const index = [
   { path: 'q/short.png', fileType: 'image' },
   { path: 'gone/ghost.png', fileType: 'image' },
   { path: 'docs/not-an-image.pdf', fileType: 'pdf' },
-  { path: 'attachments/att.png', fileType: 'image' }
+  { path: '..dots.png', fileType: 'image' },
+  { path: 'a/b/c/deep.png', fileType: 'image' },
+  { path: 'z/deep.png', fileType: 'image' }
 ]
 state.rows = index
 
@@ -104,16 +110,20 @@ const refs = [
   'sub/folder/only-index.png',
   'tie.png',
   'short.png',
+  'deep.png',
   'ghost.png',
   'not-an-image.pdf',
   'folder.png',
   'missing.png',
   '../escape.png',
-  `../${vault.split('/').pop()}-outside/escape.png`,
+  outside,
+  '..dots.png',
+  '/Images/photo.png',
   'notes/../Images/photo.png',
   './Images/photo.png',
   '/etc/hosts',
   'https://example.com/a.png',
+  'https://example.com/tie.png',
   'memry-file://local/x.png',
   'c:relative.png',
   '',
@@ -122,13 +132,16 @@ const refs = [
 ]
 
 const placeholder = (value) => value.split(vault.slice(1)).join('<vault>')
+const named = (value) => value.split(vault.split('/').pop()).join('<vault-name>')
 const run = (notePath, notesFolder) => {
   state.notesFolder = notesFolder
   const resolved = resolveVaultEmbeds(refs, notePath)
   return {
     notePath: notePath ?? null,
     notesFolder,
-    resolved: Object.fromEntries(Object.entries(resolved).map(([k, v]) => [k, placeholder(v)]))
+    resolved: Object.fromEntries(
+      Object.entries(resolved).map(([k, v]) => [named(k), placeholder(v)])
+    )
   }
 }
 const cases = [
@@ -146,6 +159,6 @@ const here = dirname(fileURLToPath(import.meta.url))
 mkdirSync(join(here, 'electron-vault'), { recursive: true })
 writeFileSync(
   join(here, 'electron-vault', 'resolve-embeds.json'),
-  `${JSON.stringify({ files, dirs, index, refs, cases }, null, 2)}\n`
+  `${JSON.stringify({ files, dirs, index, refs: refs.map(named), cases }, null, 2)}\n`
 )
 process.exit(0)
