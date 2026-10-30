@@ -70,6 +70,14 @@
       "subtitle": "MemryNote će se automatski ponovno otvoriti.",
       "subtitleOpenAgain": "Ponovno otvorite MemryNote za trenutak."
     },
+    "webview2Missing": {
+      "title": "MemryNote se ne može pokrenuti",
+      "body": "MemryNote treba Microsoft Edge WebView2 Runtime za prikaz svog prozora, a ovo ga računalo nema. Preuzmite instalacijski program s Microsofta ({url}), pokrenite ga, a zatim ponovno otvorite MemryNote.\n\nŽelite li sada otvoriti stranicu za preuzimanje?",
+      "bodyInstallFailed": "MemryNote treba Microsoft Edge WebView2 Runtime za prikaz svog prozora, a njegova instalacija nije uspjela. Preuzmite instalacijski program s Microsofta ({url}), pokrenite ga, a zatim ponovno otvorite MemryNote.\n\nŽelite li sada otvoriti stranicu za preuzimanje?"
+    },
+    "webview2Installing": {
+      "body": "MemryNote instalira Microsoft Edge WebView2 Runtime koji mu treba za prikaz prozora. To može potrajati do dvije minute."
+    },
     "failed": {
       "title": "MemryNote nije uspio dovršiti pokretanje",
       "body": "To se može dogoditi kada na disku ima vrlo malo slobodnog prostora ili sa starijim grafičkim upravljačkim programima. Pokušajte osloboditi nešto prostora na disku, a zatim ponovno otvorite MemryNote. Ako se nastavi ponavljati, ponovna instalacija to obično riješi."

@@ -16,6 +16,7 @@ pub mod service;
 pub mod severity;
 pub mod state;
 pub mod version;
+pub mod webview2;
 
 #[cfg(test)]
 mod tests;

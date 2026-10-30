@@ -53,6 +53,14 @@ fn compiled() -> Compiled {
     }
 }
 
+/// Whether this launch reports telemetry, before the telemetry service exists: the stored
+/// choice, else the build's default.
+pub fn telemetry_enabled(app: &AppHandle<Wry>) -> bool {
+    let env = app.state::<LaunchEnv>();
+    let stored = memry_desktop::telemetry::TelemetryConfig::new(&app.state::<AppPaths>().data_dir);
+    RuntimeConfig::resolve(&compiled(), &env).telemetry_enabled(stored.enabled(), &env)
+}
+
 /// Whether the main window has focus, for the heartbeat.
 #[derive(Default)]
 pub struct WindowFocus(pub AtomicBool);

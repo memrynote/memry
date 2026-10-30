@@ -70,6 +70,14 @@
       "subtitle": "MemryNote ייפתח מחדש אוטומטית.",
       "subtitleOpenAgain": "פתחו שוב את MemryNote בעוד רגע."
     },
+    "webview2Missing": {
+      "title": "לא ניתן להפעיל את MemryNote",
+      "body": "MemryNote צריך את Microsoft Edge WebView2 Runtime כדי להציג את החלון שלו, והוא לא מותקן במחשב הזה. הורידו את תוכנית ההתקנה מ-Microsoft ({url}), הפעילו אותה ואז פתחו מחדש את MemryNote.\n\nלפתוח עכשיו את דף ההורדה?",
+      "bodyInstallFailed": "MemryNote צריך את Microsoft Edge WebView2 Runtime כדי להציג את החלון שלו, וההתקנה שלו לא הצליחה. הורידו את תוכנית ההתקנה מ-Microsoft ({url}), הפעילו אותה ואז פתחו מחדש את MemryNote.\n\nלפתוח עכשיו את דף ההורדה?"
+    },
+    "webview2Installing": {
+      "body": "MemryNote מתקין את Microsoft Edge WebView2 Runtime שהוא צריך כדי להציג את החלון שלו. הפעולה עשויה להימשך עד שתי דקות."
+    },
     "failed": {
       "title": "MemryNote לא הצליח לסיים את ההפעלה",
       "body": "זה יכול לקרות כשנשאר מעט מאוד מקום פנוי בדיסק, או עם מנהלי התקן גרפיים ישנים. כדאי לפנות מקום בדיסק ואז לפתוח מחדש את MemryNote. אם זה ממשיך לקרות, התקנה מחדש בדרך כלל פותרת את הבעיה."

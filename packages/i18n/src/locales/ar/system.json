@@ -70,6 +70,14 @@
       "subtitle": "سيُعاد فتح MemryNote تلقائيًا.",
       "subtitleOpenAgain": "أعد فتح MemryNote بعد لحظات."
     },
+    "webview2Missing": {
+      "title": "تعذّر تشغيل MemryNote",
+      "body": "يحتاج MemryNote إلى Microsoft Edge WebView2 Runtime لعرض نافذته، وهو غير مثبّت على هذا الكمبيوتر. نزّل المثبّت من Microsoft ({url})، وشغّله، ثم أعد فتح MemryNote.\n\nهل تريد فتح صفحة التنزيل الآن؟",
+      "bodyInstallFailed": "يحتاج MemryNote إلى Microsoft Edge WebView2 Runtime لعرض نافذته، ولم ينجح تثبيته. نزّل المثبّت من Microsoft ({url})، وشغّله، ثم أعد فتح MemryNote.\n\nهل تريد فتح صفحة التنزيل الآن؟"
+    },
+    "webview2Installing": {
+      "body": "يثبّت MemryNote الآن Microsoft Edge WebView2 Runtime الذي يحتاجه لعرض نافذته. قد يستغرق ذلك دقيقتين."
+    },
     "failed": {
       "title": "تعذّر على MemryNote إكمال بدء التشغيل",
       "body": "قد يحدث هذا عندما تكون المساحة الحرة على القرص منخفضة جدًا، أو مع برامج تشغيل رسومات قديمة. حاول تحرير بعض المساحة على القرص، ثم أعد فتح MemryNote. وإذا استمر الأمر، فإن إعادة التثبيت تحل المشكلة عادةً."

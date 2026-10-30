@@ -70,6 +70,14 @@
       "subtitle": "MemryNote sẽ tự mở lại.",
       "subtitleOpenAgain": "Hãy mở lại MemryNote sau giây lát."
     },
+    "webview2Missing": {
+      "title": "Không thể khởi động MemryNote",
+      "body": "MemryNote cần Microsoft Edge WebView2 Runtime để hiển thị cửa sổ, nhưng máy tính này chưa có. Hãy tải trình cài đặt từ Microsoft ({url}), chạy nó, rồi mở lại MemryNote.\n\nMở trang tải xuống ngay bây giờ?",
+      "bodyInstallFailed": "MemryNote cần Microsoft Edge WebView2 Runtime để hiển thị cửa sổ, nhưng cài đặt không thành công. Hãy tải trình cài đặt từ Microsoft ({url}), chạy nó, rồi mở lại MemryNote.\n\nMở trang tải xuống ngay bây giờ?"
+    },
+    "webview2Installing": {
+      "body": "MemryNote đang cài đặt Microsoft Edge WebView2 Runtime cần thiết để hiển thị cửa sổ. Việc này có thể mất đến hai phút."
+    },
     "failed": {
       "title": "MemryNote không thể khởi động xong",
       "body": "Điều này có thể xảy ra khi ổ đĩa còn rất ít dung lượng trống, hoặc với trình điều khiển đồ họa cũ. Hãy thử giải phóng dung lượng ổ đĩa rồi mở lại MemryNote. Nếu vẫn tiếp diễn, cài đặt lại thường sẽ khắc phục được."
