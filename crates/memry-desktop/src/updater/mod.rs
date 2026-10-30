@@ -9,6 +9,7 @@ pub mod guard;
 pub mod health;
 pub mod marker;
 pub mod notes;
+pub mod nsis_leftover;
 #[cfg(any(test, feature = "e2e"))]
 pub mod scripted;
 pub mod service;
@@ -29,11 +30,16 @@ pub const MAX_MARKER_BYTES: u64 = 64 * 1024;
 /// The file's bytes, or `None` when it is missing, unreadable or larger than
 /// [`MAX_MARKER_BYTES`].
 fn read_marker(path: &Path) -> Option<Vec<u8>> {
+    read_capped(path, MAX_MARKER_BYTES)
+}
+
+/// The file's bytes, or `None` when it is missing, unreadable or larger than `max`.
+fn read_capped(path: &Path, max: u64) -> Option<Vec<u8>> {
     let mut bytes = Vec::new();
     std::fs::File::open(path)
         .ok()?
-        .take(MAX_MARKER_BYTES + 1)
+        .take(max + 1)
         .read_to_end(&mut bytes)
         .ok()?;
-    (bytes.len() as u64 <= MAX_MARKER_BYTES).then_some(bytes)
+    (bytes.len() as u64 <= max).then_some(bytes)
 }
