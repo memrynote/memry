@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Consultați panoul de mementouri pentru detalii",
     "searchIndexRepaired": "Index de căutare reparat",
     "searchIndexRepairedHint": "O parte din indexul de căutare era deteriorată, așa că Memry l-a reconstruit. Notițele nu au fost afectate.",
+    "folderMoveUndone": "O mutare întreruptă a unui dosar a fost anulată",
+    "folderMoveUndoneHint": "Notițele sunt din nou în dosarul din care au fost mutate.",
+    "folderMoveShown": "Notițele unei mutări întrerupte a unui dosar sunt din nou vizibile",
+    "folderMoveConflictCopies": "Notițele al căror nume a fost ocupat între timp se termină cu „{suffix}”.",
+    "folderMoveIncomplete": "Unele notițe se află în dosare al căror nume se termină cu „{suffix}”.",
+    "folderMoveNothingDeleted": "Nu s-a șters nimic.",
     "drop": {
       "tooLarge": "Un fișier plasat are peste 2 GB.",
       "tooMany": "Prea multe fișiere așteaptă importul. Plasează mai puține fișiere și încearcă din nou.",

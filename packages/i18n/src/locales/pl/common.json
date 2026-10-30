@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Szczegóły znajdziesz w panelu przypomnień",
     "searchIndexRepaired": "Naprawiono indeks wyszukiwania",
     "searchIndexRepairedHint": "Część indeksu wyszukiwania była uszkodzona, więc aplikacja Memry go odbudowała. Twoje notatki pozostały nietknięte.",
+    "folderMoveUndone": "Przerwane przenoszenie folderu zostało cofnięte",
+    "folderMoveUndoneHint": "Notatki wróciły do folderu, z którego zostały przeniesione.",
+    "folderMoveShown": "Notatki z przerwanego przenoszenia folderu są znów widoczne",
+    "folderMoveConflictCopies": "Notatki, których nazwa została w międzyczasie zajęta, kończą się na „{suffix}”.",
+    "folderMoveIncomplete": "Część notatek jest w folderach, których nazwa kończy się na „{suffix}”.",
+    "folderMoveNothingDeleted": "Nic nie zostało usunięte.",
     "drop": {
       "tooLarge": "Upuszczony plik jest większy niż 2 GB.",
       "tooMany": "Zbyt wiele plików czeka na import. Upuść mniej plików i spróbuj ponownie.",

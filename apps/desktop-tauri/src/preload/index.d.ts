@@ -1,4 +1,5 @@
 import type { GeneratedRpcApi } from '@memry/rpc'
+import type { MovesRecovered } from '../generated/bindings'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
@@ -554,6 +555,8 @@ export interface VaultStatus {
   /** Total files the in-flight background index build will visit. Absent outside a build. */
   indexTotal?: number
   error: string | null
+  /** What the open's sweep of interrupted folder moves did, while that vault is open (#3754). */
+  movesRecovered?: MovesRecovered
 }
 
 export interface VaultConfig {

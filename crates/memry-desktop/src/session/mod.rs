@@ -40,6 +40,7 @@ use memry_core::storage::recovery::RecoveryReport;
 pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage};
 use hooks::{Hooks, run_with_deadline};
 use projection::{ProjectionRuntime, Projector};
+use response::MovesRecovered;
 pub use startup::{FORCE_VAULT_PICKER_VAR, StartupVault, resolve_startup_vault};
 
 use crate::error::{CoreError, FailureKind};
@@ -92,6 +93,8 @@ pub struct SessionStatus {
     pub is_open: bool,
     pub path: Option<String>,
     pub error: Option<String>,
+    /// What the open's sweep of interrupted folder moves did, while that vault is open.
+    pub moves_recovered: Option<MovesRecovered>,
 }
 
 /// Why a vault was opened. Step 09 turns `Select`/`Create` into `vault_opened` and
@@ -166,12 +169,25 @@ struct Open {
     view: OpenVault,
     runtime: Arc<ProjectionRuntime>,
     background: Vec<(String, JoinHandle<()>)>,
+    /// What this open's sweep of interrupted folder moves did, for the status.
+    moves_recovered: Option<MovesRecovered>,
 }
 
 #[derive(Default)]
 struct State {
     open: Option<Open>,
     error: Option<String>,
+}
+
+impl State {
+    fn status(&self) -> SessionStatus {
+        SessionStatus {
+            is_open: self.open.is_some(),
+            path: (self.open.as_ref()).map(|o| o.view.path.to_string_lossy().into_owned()),
+            error: self.error.clone(),
+            moves_recovered: self.open.as_ref().and_then(|o| o.moves_recovered.clone()),
+        }
+    }
 }
 
 /// A vault that was open: weak handles to what a stuck thread could still be holding.
@@ -245,15 +261,7 @@ impl Session {
     }
 
     pub fn status(&self) -> SessionStatus {
-        let state = lock(&self.inner.state);
-        SessionStatus {
-            is_open: state.open.is_some(),
-            path: state
-                .open
-                .as_ref()
-                .map(|o| o.view.path.to_string_lossy().into_owned()),
-            error: state.error.clone(),
-        }
+        lock(&self.inner.state).status()
     }
 
     pub fn current(&self) -> Option<OpenVault> {
@@ -434,14 +442,7 @@ impl Session {
             let status = {
                 let mut state = lock(&self.inner.state);
                 state.error = Some(error.to_string());
-                SessionStatus {
-                    is_open: state.open.is_some(),
-                    path: state
-                        .open
-                        .as_ref()
-                        .map(|o| o.view.path.to_string_lossy().into_owned()),
-                    error: state.error.clone(),
-                }
+                state.status()
             };
             self.emit(SessionEvent::StatusChanged(status));
         }
@@ -562,6 +563,7 @@ impl Session {
                 is_open: false,
                 path: None,
                 error: None,
+                moves_recovered: None,
             }));
         }
     }
