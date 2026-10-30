@@ -9,7 +9,9 @@ use std::path::{Path, PathBuf};
 
 use memry_desktop::e2e::dialog_queue::DialogKind;
 use tauri::{AppHandle, Runtime};
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+use tauri_plugin_dialog::{
+    DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult,
+};
 
 /// The e2e answer for `kind`, when the queue exists (an open gate in an e2e build).
 #[cfg(feature = "e2e")]
@@ -110,4 +112,42 @@ pub fn confirm<R: Runtime>(
             cancel_label.to_owned(),
         ))
         .blocking_show()
+}
+
+/// A warning with three buttons, the first the default and the last the cancel (Electron's
+/// `showMessageBox` with `cancelId` 2): the index of the button chosen. Closing the dialog
+/// chooses the last.
+pub fn choose<R: Runtime>(
+    app: &AppHandle<R>,
+    title: &str,
+    message: &str,
+    detail: &str,
+    buttons: [&str; 3],
+) -> usize {
+    const CANCEL: usize = 2;
+    if let Some(answer) = queued(app, DialogKind::Choose) {
+        return answer
+            .first()
+            .and_then(|word| word.to_str()?.parse::<usize>().ok())
+            .filter(|index| *index < buttons.len())
+            .unwrap_or(CANCEL);
+    }
+    let [first, second, third] = buttons.map(str::to_owned);
+    let chosen = app
+        .dialog()
+        .message(format!("{message}\n\n{detail}"))
+        .title(title)
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::YesNoCancelCustom(
+            first, second, third,
+        ))
+        .blocking_show_with_result();
+    // The plugin answers a custom button with its label.
+    match chosen {
+        MessageDialogResult::Custom(label) => buttons
+            .iter()
+            .position(|button| *button == label)
+            .unwrap_or(CANCEL),
+        _ => CANCEL,
+    }
 }
