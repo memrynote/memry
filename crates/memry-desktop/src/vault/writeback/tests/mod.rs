@@ -322,6 +322,8 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
 
 mod deleted;
 mod guards;
+mod perf;
 mod reconcile;
 mod schedule;
 mod triggers;
+mod typing;

@@ -95,10 +95,16 @@ fn note_files_is_written_only_through_the_lane() {
     ];
     let mut found = Vec::new();
     for root in [crate_src, app_src] {
-        for file in rust_files(&root) {
+        let files = rust_files(&root);
+        let test_modules: Vec<_> = files.iter().flat_map(|file| test_modules(file)).collect();
+        for file in files {
             let text = std::fs::read_to_string(&file).unwrap();
             // The lane itself, and this list.
             if file.ends_with("consumer/rows.rs") || file.ends_with("consumer/tests/lane.rs") {
+                continue;
+            }
+            // A test module in a file or folder of its own (`#[cfg(test)] mod tests;`).
+            if test_modules.iter().any(|module| file.starts_with(module)) {
                 continue;
             }
             // Test fixtures plant rows directly.
@@ -114,6 +120,50 @@ fn note_files_is_written_only_through_the_lane() {
         found.is_empty(),
         "write rows through vault::consumer::rows::RowOwner: {found:?}"
     );
+}
+
+/// The files and folders of the modules `file` declares under `#[cfg(test)]` without a body:
+/// `#[path = "x.rs"] mod tests;` names its file, `mod tests;` is `tests.rs` or `tests/` in the
+/// declaring module's folder.
+fn test_modules(file: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let text = std::fs::read_to_string(file).unwrap();
+    let dir = file.parent().unwrap();
+    let stem = file.file_stem().unwrap();
+    let module_dir = if ["mod", "lib", "main"]
+        .map(std::ffi::OsStr::new)
+        .contains(&stem)
+    {
+        dir.to_path_buf()
+    } else {
+        dir.join(stem)
+    };
+    let mut modules = Vec::new();
+    for declared in text.split("#[cfg(test)]").skip(1) {
+        let mut lines = declared
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty());
+        let mut line = lines.next().unwrap_or_default();
+        let mut path = None;
+        if let Some(rest) = line.strip_prefix("#[path = \"") {
+            path = rest.strip_suffix("\"]");
+            line = lines.next().unwrap_or_default();
+        }
+        let name = line
+            .strip_prefix("pub(crate) ")
+            .unwrap_or(line)
+            .strip_prefix("mod ")
+            .and_then(|rest| rest.strip_suffix(';'));
+        match (name, path) {
+            (Some(_), Some(path)) => modules.push(dir.join(path)),
+            (Some(name), None) => {
+                modules.push(module_dir.join(format!("{name}.rs")));
+                modules.push(module_dir.join(name));
+            }
+            (None, _) => {}
+        }
+    }
+    modules
 }
 
 fn rust_files(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
