@@ -15,8 +15,8 @@ fn queue<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<DialogQueue>, CommandErro
         .ok_or_else(super::disabled)
 }
 
-/// Queues the answer for the next dialog of `kind`: the chosen paths, none for a cancel, or
-/// `["confirm"]` / `["cancel"]` for a `Confirm`.
+/// Queues the answer for the next dialog of `kind`: the chosen paths, none for a cancel,
+/// `["confirm"]` / `["cancel"]` for a `Confirm`, or the button's index for a `Choose`.
 #[tauri::command]
 pub fn e2e_dialog_queue_push<R: Runtime>(
     app: AppHandle<R>,
@@ -31,6 +31,15 @@ pub fn e2e_dialog_queue_push<R: Runtime>(
             ErrorKind::Invalid,
             "e2e_dialog_answer",
             "a Confirm answer is `confirm` or `cancel`",
+        ));
+    }
+    if kind == DialogKind::Choose
+        && !matches!(paths.as_slice(), [word] if ["0", "1", "2"].contains(&word.as_str()))
+    {
+        return Err(CommandError::new(
+            ErrorKind::Invalid,
+            "e2e_dialog_answer",
+            "a Choose answer is the button index `0`, `1` or `2`",
         ));
     }
     queue(&app)?.push(kind, paths.into_iter().map(PathBuf::from).collect());
