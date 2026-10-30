@@ -7,7 +7,8 @@
 //   node scripts/rehearsal/rehearse.mjs electron-baseline <tag> [--run <id>]
 //
 // `build` dispatches .github/workflows/update-bridge-rehearsal.yml and waits. `assemble` downloads
-// the artifacts, packs and signs both Windows packs, writes the bridge feeds and leaves the final
+// the artifacts, packs and signs both Windows packs (each with Microsoft's WebView2 bootstrapper,
+// `../release/webview2-bootstrapper.mjs`), writes the bridge feeds and leaves the final
 // asset set in `.rehearsal-state/<version>/assets`. `--no-windows` skips the Certum-signed Windows
 // packs and `latest.yml`, for a macOS and Linux feed that needs no SimplySign session.
 // `--unsigned-windows` packs Windows without the Certum key and without `latest.yml`: a Tauri to
@@ -36,6 +37,7 @@ import {
 } from '../release/bridge-feeds.mjs'
 import { assertPublishable, assetNames, buildPackArgs } from '../release/vpk-args.mjs'
 import { renameToPublished } from '../release/vpk-pack.mjs'
+import { fetchBootstrapper } from '../release/webview2-bootstrapper.mjs'
 
 export const FEED_REPO = 'memrynote/memry-update-rehearsal'
 const WORKFLOW = 'update-bridge-rehearsal.yml'
@@ -199,6 +201,7 @@ function packWindows(target, version, artifactDir, workDir, previousTag, signed)
   const payload = path.join(artifactDir, `rehearsal-${target}-payload`)
   const zip = readdirSync(payload).find((name) => name.endsWith('.zip'))
   run('unzip', ['-q', path.join(payload, zip), '-d', packDir])
+  fetchBootstrapper(packDir)
   previousFulls(previousTag, outputDir, target)
   const args = buildPackArgs(target, {
     version,

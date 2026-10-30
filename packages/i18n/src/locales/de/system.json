@@ -69,6 +69,10 @@
       "title": "Update wird installiert…",
       "subtitle": "MemryNote wird automatisch neu geöffnet."
     },
+    "webview2Missing": {
+      "title": "MemryNote kann nicht starten",
+      "body": "MemryNote braucht die Microsoft Edge WebView2 Runtime, um sein Fenster anzuzeigen, und die Installation hat nicht funktioniert. Lade das Installationsprogramm von Microsoft herunter ({url}), führe es aus und öffne MemryNote dann erneut.\n\nDownloadseite jetzt öffnen?"
+    },
     "failed": {
       "title": "MemryNote konnte den Start nicht abschließen",
       "body": "Das kann passieren, wenn der freie Speicherplatz sehr knapp ist oder bei älteren Grafiktreibern. Gib etwas Speicherplatz frei und öffne MemryNote dann erneut. Wenn es weiterhin auftritt, hilft in der Regel eine Neuinstallation."

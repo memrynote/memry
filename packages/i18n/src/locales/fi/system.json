@@ -69,6 +69,10 @@
       "title": "Asennetaan päivitystä…",
       "subtitle": "MemryNote avautuu automaattisesti uudelleen."
     },
+    "webview2Missing": {
+      "title": "MemryNotea ei voi käynnistää",
+      "body": "MemryNote tarvitsee Microsoft Edge WebView2 Runtimen ikkunansa näyttämiseen, eikä sen asentaminen onnistunut. Lataa asennusohjelma Microsoftilta ({url}), suorita se ja avaa MemryNote uudelleen.\n\nAvataanko lataussivu nyt?"
+    },
     "failed": {
       "title": "MemryNoten käynnistäminen epäonnistui",
       "body": "Näin voi käydä, kun levyllä on hyvin vähän vapaata tilaa tai kun näytönohjaimen ajurit ovat vanhat. Vapauta levytilaa ja avaa MemryNote uudelleen. Jos ongelma toistuu, uudelleenasennus yleensä auttaa."

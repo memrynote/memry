@@ -16,6 +16,13 @@ pub fn register_stages() {
         "updater relaunch guard",
         crate::updater::relaunch_guard::apply,
     );
+    // Windows: a launch without WebView2 installs it here, or ends before anything else starts.
+    #[cfg(windows)]
+    startup::register(
+        Stage::Guards,
+        "check webview2 runtime",
+        crate::updater::webview2::apply,
+    );
     startup::register(Stage::Guards, "start crash dumps", crash_dump::start);
     startup::register(Stage::Guards, "apply gpu guard", gpu::apply);
     startup::register(Stage::Guards, "start stall monitor", stall::start);

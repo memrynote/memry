@@ -33,6 +33,8 @@ pub fn register_stages() {
 mod channel;
 pub mod relaunch_guard;
 mod velopack_backend;
+#[cfg(windows)]
+pub mod webview2;
 
 /// The backend of this process, the build it reports and how init runs.
 struct Chosen {

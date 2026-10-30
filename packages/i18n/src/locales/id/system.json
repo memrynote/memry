@@ -69,6 +69,10 @@
       "title": "Menginstal pembaruan…",
       "subtitle": "MemryNote akan terbuka kembali secara otomatis."
     },
+    "webview2Missing": {
+      "title": "MemryNote tidak dapat dimulai",
+      "body": "MemryNote memerlukan Microsoft Edge WebView2 Runtime untuk menampilkan jendelanya, dan pemasangannya gagal. Unduh penginstal dari Microsoft ({url}), jalankan, lalu buka kembali MemryNote.\n\nBuka halaman unduhan sekarang?"
+    },
     "failed": {
       "title": "MemryNote tidak dapat dimulai sepenuhnya",
       "body": "Ini bisa terjadi saat ruang kosong disk sangat menipis, atau pada driver grafis versi lama. Coba kosongkan sebagian ruang disk, lalu buka kembali MemryNote. Jika terus terjadi, menginstal ulang biasanya mengatasinya."

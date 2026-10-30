@@ -69,6 +69,10 @@
       "title": "正在安裝更新…",
       "subtitle": "MemryNote 將會自動重新開啟。"
     },
+    "webview2Missing": {
+      "title": "MemryNote 無法啟動",
+      "body": "MemryNote 需要 Microsoft Edge WebView2 Runtime 才能顯示視窗，但未能安裝。請從 Microsoft 下載安裝程式（{url}），執行後重新開啟 MemryNote。\n\n要現在開啟下載頁面嗎？"
+    },
     "failed": {
       "title": "MemryNote 無法完成啟動",
       "body": "當磁碟可用空間過低，或顯示卡驅動程式較舊時，可能會發生這種情況。請試著釋放一些磁碟空間，然後重新開啟 MemryNote。若持續發生，重新安裝通常就能解決。"

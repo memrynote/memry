@@ -12,6 +12,15 @@ if [ -z "${MEMRY_SIGN_PIN:-}" ]; then
   exit 1
 fi
 
+# Microsoft's WebView2 bootstrapper keeps Microsoft's signature, which the pack step checked
+# (scripts/release/webview2-bootstrapper.mjs); --replace would put ours in its place.
+case "$(basename "$file")" in
+MicrosoftEdgeWebview2Setup.exe)
+  echo "skip Microsoft-signed: $file"
+  exit 0
+  ;;
+esac
+
 case "$(file -b "$file")" in
 PE32*) ;;
 *)

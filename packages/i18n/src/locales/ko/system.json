@@ -69,6 +69,10 @@
       "title": "업데이트 설치 중…",
       "subtitle": "MemryNote가 자동으로 다시 열립니다."
     },
+    "webview2Missing": {
+      "title": "MemryNote를 시작할 수 없습니다",
+      "body": "MemryNote 창을 표시하려면 Microsoft Edge WebView2 Runtime이 필요한데, 설치하지 못했습니다. Microsoft에서 설치 프로그램을 다운로드({url})하여 실행한 다음 MemryNote를 다시 여세요.\n\n지금 다운로드 페이지를 여시겠습니까?"
+    },
     "failed": {
       "title": "MemryNote를 시작하지 못했습니다",
       "body": "디스크 여유 공간이 매우 부족하거나 그래픽 드라이버가 오래된 경우에 발생할 수 있습니다. 디스크 공간을 확보한 다음 MemryNote를 다시 열어 보세요. 계속 발생한다면 대개 재설치로 해결됩니다."

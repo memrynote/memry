@@ -69,6 +69,10 @@
       "title": "Se instalează actualizarea…",
       "subtitle": "MemryNote se va redeschide automat."
     },
+    "webview2Missing": {
+      "title": "MemryNote nu poate porni",
+      "body": "MemryNote are nevoie de Microsoft Edge WebView2 Runtime pentru a-și afișa fereastra, iar instalarea acestuia nu a reușit. Descărcați programul de instalare de la Microsoft ({url}), rulați-l, apoi redeschideți MemryNote.\n\nDeschideți acum pagina de descărcare?"
+    },
     "failed": {
       "title": "MemryNote nu a putut porni complet",
       "body": "Acest lucru se poate întâmpla când discul are foarte puțin spațiu liber sau când driverele grafice sunt vechi. Încercați să eliberați spațiu pe disc, apoi redeschideți MemryNote. Dacă se repetă, reinstalarea rezolvă de obicei problema."
