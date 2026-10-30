@@ -43,8 +43,8 @@
 //! each would settle as a delete, and the note with it. The same holds for each folder the pass
 //! removes, whose going would otherwise stand for the notes the watcher last saw in it. A try
 //! that fails withdraws its record before the next, so a delete by another program while the
-//! move waits is still reported; the record of a folder ends when the watcher sees the folder
-//! again. Electron stops its watcher for the pass instead. The refusal when a lock covers a file
+//! move waits is still reported. A record ends when the watcher sees its path, or a path below
+//! it, again. Electron stops its watcher for the pass instead. The refusal when a lock covers a file
 //! is Step 14's (#3531).
 
 use std::collections::HashSet;
@@ -378,10 +378,11 @@ fn move_one(
             };
             match back.run(&echo) {
                 Ok(()) => journal.remove_empty(&echo, folders_of(to).take(created)),
-                // The file stays at its new name and the row at its old. With the record of the
-                // old name withdrawn below, the watcher sees an outside move and pairs the two
-                // by the file's bytes, as the next open's rescan does; a file it cannot pair,
-                // it reports as a delete and a new file.
+                // The file stays at its new name and the row at its old. The watcher took the
+                // old name's going for the app's long before the tries to move back ended, so
+                // it pairs the file with nothing: the file reaches the identity as a new one,
+                // and the next open's rescan finds the row's file gone. The text survives; the
+                // note's id may not.
                 Err(back) => {
                     tracing::error!(scope = SCOPE, "a journal file could not go back: {back}");
                 }
@@ -418,8 +419,9 @@ struct Move<'a> {
 
 impl Move<'_> {
     /// Creates the target's folders and moves the file. The record that the source's name
-    /// goes is up only while a try runs, and stays after the one that moved the file: between
-    /// tries a delete or move by another program is that program's, and the watcher reports it.
+    /// goes is made with each try and stays only after the one that moved the file
+    /// ([`EchoGuard::removing`]): between tries a delete or move by another program is that
+    /// program's, and the watcher reports it.
     fn run(&self, echo: &EchoGuard) -> io::Result<()> {
         if let Some(parent) = self.target.parent() {
             fs::create_dir_all(parent)?;
@@ -427,9 +429,7 @@ impl Move<'_> {
         let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
         let attempt = |rename: fn(&Path, &Path) -> io::Result<()>| {
             with_transient_retry(&delays, || {
-                echo.will_remove(self.source_rel);
-                rename(self.source, self.target)
-                    .inspect_err(|_| echo.cancel_removal(self.source_rel))
+                echo.removing(self.source_rel, || rename(self.source, self.target))
             })
         };
         match attempt(rename_no_replace) {
@@ -533,10 +533,8 @@ impl Journal {
             let (Some(path), rel) = (self.path(folder), self.rel(folder)) else {
                 return;
             };
-            echo.will_remove(&rel);
             // `remove_dir` refuses a folder that is not empty, which is the guard wanted here.
-            if fs::remove_dir(path).is_err() {
-                echo.cancel_removal(&rel);
+            if echo.removing(&rel, || fs::remove_dir(path)).is_err() {
                 return;
             }
         }

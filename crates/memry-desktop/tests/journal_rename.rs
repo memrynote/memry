@@ -731,6 +731,35 @@ fn a_move_that_fails_leaves_no_folder_behind() {
     settled(&mut e);
 }
 
+/// Every folder a pass removed is the app's no longer once it is back, inside another as well:
+/// the year folder moved in again with its month folder in it, and the month folder later
+/// moved out of the vault (to the Trash), is a delete of the note it holds.
+#[test]
+fn a_pruned_folder_back_inside_another_and_moved_out_is_a_delete() {
+    let (mut e, identity) = watched(Removal::Deleted, &[("2025/January/2025-01-14.md", "x\n")]);
+    rename(&e, "journal", NESTED, DAILY);
+    assert_eq!(tree(&e), ["2025-01-14.md"]);
+    settled(&mut e);
+    let year = e._dir.path().join("2025");
+    fs::create_dir_all(year.join("January")).unwrap();
+    fs::write(year.join("January/notes.md"), "a note\n").unwrap();
+
+    fs::rename(&year, e.vault.join("journal/2025")).unwrap();
+    let path = "journal/2025/January/notes.md";
+    let added = e.facts_until(|f| matches!(f, Applied::Added { path: at, .. } if at == path));
+    let Some(Applied::Added { note_id: id, .. }) = added.last().cloned() else {
+        unreachable!()
+    };
+    fs::rename(
+        e.vault.join("journal/2025/January"),
+        e._dir.path().join("Trash"),
+    )
+    .unwrap();
+
+    e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == id));
+    assert_eq!(identity.asked.lock().unwrap().as_slice(), [id]);
+}
+
 /// A folder the pass could not remove, because it holds a note, keeps no record of its own:
 /// moved out of the vault later (to the Trash), it is a delete of that note.
 #[test]

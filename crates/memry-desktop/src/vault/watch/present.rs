@@ -17,6 +17,10 @@ impl Reconciler {
         if self.stopped() {
             return;
         }
+        let root = &self.root;
+        self.echo.seen_file(rel, |path| {
+            std::fs::symlink_metadata(root.join(path)).is_ok()
+        });
         if !self.filter.takes_file(rel) {
             if !self.filter.ignores(rel) && file_type_of_extension(&extension(rel)).is_none() {
                 self.emit(VaultEvent::Unsupported {
@@ -46,7 +50,6 @@ impl Reconciler {
                 }
             }
         } else {
-            self.echo.seen_present(rel);
             None
         };
         if let Some(hash) = &hash
