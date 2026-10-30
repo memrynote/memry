@@ -12,6 +12,7 @@ import type {
   CreateTasksCommandsDeps
 } from './commands-types.ts'
 import { createProjectCommands } from './commands-projects.ts'
+import { completedAtOnStatus, doneStatusIdOnComplete, openStatusIdOnReopen } from './completion.ts'
 import { checkParent, type ParentLookup } from './tree.ts'
 
 const AUTOCOMMIT_UNIT_OF_WORK: TasksUnitOfWork = {
@@ -329,6 +330,9 @@ export function createTasksCommands({
         // report a cleared status on every edit that never touched it.
         if (updates.statusId !== undefined) {
           updates.statusId = resolveStatusId(repository, updates.statusId)
+          const status = updates.statusId ? repository.getStatus(updates.statusId) : undefined
+          const completedAt = completedAtOnStatus(existingTask, status, new Date().toISOString())
+          if (completedAt !== undefined) updates.completedAt = completedAt
         }
 
         const oldTags = tags !== undefined ? repository.getTaskTags(id) : undefined
@@ -447,10 +451,15 @@ export function createTasksCommands({
         // Pre-read: completeTask writes before it returns, so by the time we have
         // `task` the old completedAt is already gone.
         const before = repository.getTask(input.id)
-        const task = repository.completeTask(input.id, input.completedAt)
-        if (!task) {
+        const completed = repository.completeTask(input.id, input.completedAt)
+        if (!completed) {
           return { result: { success: false, task: null, error: 'Task not found' }, events: [] }
         }
+        // Completion also puts the task in its project's done status.
+        const doneStatusId = doneStatusIdOnComplete(repository, before)
+        const task = doneStatusId
+          ? (repository.updateTask(input.id, { statusId: doneStatusId }) ?? completed)
+          : completed
 
         const events: TasksDomainEvent[] = [
           {
@@ -458,7 +467,10 @@ export function createTasksCommands({
             payload: {
               id: input.id,
               task,
-              previous: { completedAt: before?.completedAt ?? null }
+              previous: {
+                completedAt: before?.completedAt ?? null,
+                ...(doneStatusId ? { statusId: before?.statusId ?? null } : {})
+              }
             }
           }
         ]
@@ -469,10 +481,16 @@ export function createTasksCommands({
     async uncompleteTask(id: string) {
       return commit(() => {
         const before = repository.getTask(id)
-        const task = repository.uncompleteTask(id)
-        if (!task) {
+        const reopened = repository.uncompleteTask(id)
+        if (!reopened) {
           return { result: { success: false, task: null, error: 'Task not found' }, events: [] }
         }
+        // Reopening also takes the task out of its project's done status.
+        const openStatusId = openStatusIdOnReopen(repository, before)
+        const task = openStatusId
+          ? (repository.updateTask(id, { statusId: openStatusId }) ?? reopened)
+          : reopened
+        const changedFields = openStatusId ? ['completedAt', 'statusId'] : ['completedAt']
 
         const events: TasksDomainEvent[] = [
           {
@@ -480,9 +498,9 @@ export function createTasksCommands({
             payload: {
               id,
               task,
-              changes: { completedAt: null },
-              changedFields: ['completedAt'],
-              previous: { completedAt: before?.completedAt ?? null }
+              changes: { completedAt: null, ...(openStatusId ? { statusId: openStatusId } : {}) },
+              changedFields,
+              previous: pickPrevious(before, changedFields)
             }
           }
         ]
@@ -577,7 +595,7 @@ export function createTasksCommands({
           }
         }
 
-        const task = repository.moveTask(input.taskId, {
+        let task = repository.moveTask(input.taskId, {
           projectId: input.targetProjectId,
           statusId: resolveStatusId(repository, targetStatusId),
           parentId: input.targetParentId,
@@ -591,6 +609,13 @@ export function createTasksCommands({
         const changedFields = ['position']
         if (input.targetProjectId) changedFields.push('projectId')
         if (targetStatusId !== undefined) changedFields.push('statusId')
+        // A card dropped into a done column is complete, and out of it reopened.
+        const status = targetStatusId ? repository.getStatus(targetStatusId) : undefined
+        const completedAt = completedAtOnStatus(before, status, new Date().toISOString())
+        if (completedAt !== undefined) {
+          task = repository.updateTask(input.taskId, { completedAt }) ?? task
+          changedFields.push('completedAt')
+        }
         if (input.targetParentId !== undefined) changedFields.push('parentId')
 
         const events: TasksDomainEvent[] = [
@@ -775,11 +800,21 @@ export function createTasksCommands({
         const count = repository.bulkCompleteTasks(ids)
         const events: TasksDomainEvent[] = []
         for (const id of ids) {
+          const prior = before.get(id)
+          const doneStatusId = doneStatusIdOnComplete(repository, prior)
+          if (doneStatusId) repository.updateTask(id, { statusId: doneStatusId })
           const task = repository.getTask(id)
           if (task) {
             events.push({
               kind: 'taskCompleted',
-              payload: { id, task, previous: { completedAt: before.get(id)?.completedAt ?? null } }
+              payload: {
+                id,
+                task,
+                previous: {
+                  completedAt: prior?.completedAt ?? null,
+                  ...(doneStatusId ? { statusId: prior?.statusId ?? null } : {})
+                }
+              }
             })
           }
         }

@@ -66,6 +66,18 @@ describe('tasksEventSyncIntents (#2301)', () => {
       [{ type: 'task', itemId: 'task-1', op: 'update', args: [['completedAt']] }]
     ],
     [
+      'taskCompleted that moved the status to done',
+      {
+        kind: 'taskCompleted',
+        payload: {
+          id: 'task-1',
+          task: { ...task, statusId: 'status-done' },
+          previous: { completedAt: null, statusId: 'status-doing' }
+        }
+      },
+      [{ type: 'task', itemId: 'task-1', op: 'update', args: [['completedAt', 'statusId']] }]
+    ],
+    [
       'taskMoved',
       { kind: 'taskMoved', payload: { id: 'task-1', task, changedFields: ['position'] } },
       [{ type: 'task', itemId: 'task-1', op: 'update', args: [['position']] }]
