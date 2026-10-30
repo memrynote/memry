@@ -3,6 +3,9 @@
 
 /// The app's own folder: config, databases, icons, activity log.
 pub const MEMRY_DIR: &str = ".memry";
+/// The journal of folder moves in flight, `<id>.json` inside [`MEMRY_DIR`]
+/// (`vault::move_journal`).
+pub const MOVES_DIR: &str = "moves";
 /// Custom icons, `<id>.<ext>` inside [`MEMRY_DIR`].
 pub const ICONS_DIR: &str = "icons";
 /// The app's attachment storage. Only the vault root's folder of this name is the app's: a

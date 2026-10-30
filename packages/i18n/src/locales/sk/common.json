@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Podrobnosti nájdete na paneli pripomienok",
     "searchIndexRepaired": "Index vyhľadávania opravený",
     "searchIndexRepairedHint": "Časť indexu vyhľadávania bola poškodená, preto ho aplikácia Memry znova vytvorila. Vašich poznámok sa to nedotklo.",
+    "folderMoveUndone": "Prerušený presun priečinka sa vrátil späť",
+    "folderMoveUndoneHint": "Poznámky sú späť v priečinku, z ktorého boli presunuté.",
+    "folderMoveShown": "Poznámky z prerušeného presunu priečinka sú opäť viditeľné",
+    "folderMoveConflictCopies": "Poznámky, ktorých názov bol medzitým obsadený, končia na „{suffix}“.",
+    "folderMoveIncomplete": "Niektoré poznámky sú v priečinkoch, ktorých názov končí na „{suffix}“.",
+    "folderMoveNothingDeleted": "Nič sa nevymazalo.",
     "drop": {
       "tooLarge": "Presunutý súbor je väčší ako 2 GB.",
       "tooMany": "Na import čaká príliš veľa súborov. Presuňte menej súborov a skúste to znova.",
