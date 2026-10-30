@@ -429,9 +429,10 @@ impl Applier {
     /// found missing is retried like one that could not be read (#3736): a save can leave the
     /// name missing for a moment (Windows renaming a new file over it, an editor that deletes
     /// and writes again), and the watcher, which already reported the bytes it puts back, does
-    /// not report them again. The retry has the watcher look again: a file that is back is
-    /// reported against its row, and one that is gone gets its removal, which waits out the
-    /// rename window and finds it absent once more.
+    /// not report them again. The retry has the watcher look again, keeping what it reported
+    /// for the note: a file that is back is reported again, a move pairs on the bytes last
+    /// reported, and a file that is gone gets its removal, which waits out the rename window
+    /// and finds it absent once more.
     fn read(&self, path: &str, file_type: FileType) -> Result<Option<NoteFile>, Unread> {
         if file_type != FileType::Markdown {
             return Ok(None);

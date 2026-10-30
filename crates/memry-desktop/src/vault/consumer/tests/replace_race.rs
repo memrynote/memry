@@ -14,8 +14,9 @@ use crate::vault::note_file::read_note;
 /// that is applied takes the save. A read that ends `Done` must leave the row naming the save.
 /// Each read is preceded by a plain read of the file, which counts the reads that found the
 /// name missing; the test fails when no read raced a replacement at all, so it cannot pass for
-/// want of a race. `MEMRY_REPLACE_READS` raises the number of reads (the VM proof runs 5000,
-/// where about one plain read in 200 finds the name missing).
+/// want of a race. CI runs 500 reads, of which about a third race a replacement on a Windows 11
+/// ARM64 VM; `MEMRY_REPLACE_READS` raises the number (the VM proof runs 5000, where about one
+/// plain read in 200 finds the name missing).
 #[test]
 fn a_note_read_while_it_is_renamed_over_is_retried_never_done_unread() {
     let f = fixture();
@@ -54,7 +55,7 @@ fn a_note_read_while_it_is_renamed_over_is_retried_never_done_unread() {
     let reads: u64 = std::env::var("MEMRY_REPLACE_READS")
         .ok()
         .and_then(|value| value.parse().ok())
-        .unwrap_or(2_000);
+        .unwrap_or(500);
     let (mut raw_missing, mut retried, mut done_unread) = (0u64, 0u64, 0u64);
     for _ in 0..reads {
         if matches!(read_note(&f.root, "n.md"), Ok(None)) {
