@@ -584,9 +584,9 @@ jobs:
           guarded_exit "$opened"
           # #3728: the splash says to open the app again, never "MemryNote will reopen
           # automatically": nothing reopens it after an install at a quit, and after Restart to
-          # install the guarded launch absorbs the updater's start of the new build (#3773). M4
-          # drives only the install at a quit; the splash timing has unit tests
-          # (`relaunch_guard::exit_after_splash`).
+          # install a guarded launch that is still alive when the updater starts the new build
+          # absorbs that start (#3773). M4 drives only the install at a quit; the splash timing
+          # has unit tests (`relaunch_guard::exit_after_splash`).
           wait_log "pending update install in flight on launch (updater running, started as $TAURI_BASE); showing the open-again splash" 10
           installed | grep -F "$TAURI_BASE"
           echo "::endgroup::"
