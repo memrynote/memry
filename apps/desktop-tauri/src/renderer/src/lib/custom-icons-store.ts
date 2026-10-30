@@ -8,12 +8,13 @@
  * one IPC list per session, and an empty library (tests, no vault) simply
  * renders the fallback glyph.
  *
- * The first subscriber triggers the load and wires the `custom-icons:updated`
- * broadcast, which is how a peer's icon appears without a reload.
+ * The first subscriber triggers the load and wires `CustomIconsUpdatedEvent`, which is how a peer's icon appears without a reload.
  */
 
 import { useCallback, useSyncExternalStore } from 'react'
-import type { CustomIcon } from '@memry/contracts/custom-icons-api'
+import { events, type CustomIconView } from '../../../generated/bindings'
+import { customIconsService } from '@/services/custom-icons-service'
+import { subscribeToEvent } from '@/services/tauri-event'
 import { toMemryFileUrl, toWebviewUrl } from './memry-file-url'
 import { createLogger } from './logger'
 
@@ -35,7 +36,7 @@ const listeners = new Set<() => void>()
 let started = false
 let firstLoad: Promise<void> = Promise.resolve()
 
-function publish(next: CustomIcon[]): void {
+function publish(next: CustomIconView[]): void {
   entries = next.map((icon) => ({
     id: icon.id,
     name: icon.name,
@@ -47,10 +48,8 @@ function publish(next: CustomIcon[]): void {
 }
 
 async function load(): Promise<void> {
-  const api = window.api?.customIcons
-  if (!api) return
   try {
-    publish(await api.list())
+    publish(await customIconsService.list())
   } catch (error) {
     log.warn('Failed to load custom icons', error)
   }
@@ -62,7 +61,7 @@ function start(): void {
   firstLoad = load()
   // App-lifetime subscription: the library is global, so there is no unmount
   // edge at which dropping it would be correct.
-  window.api?.onCustomIconsUpdated?.(() => {
+  subscribeToEvent(events.customIconsUpdatedEvent, () => {
     void load()
   })
 }
