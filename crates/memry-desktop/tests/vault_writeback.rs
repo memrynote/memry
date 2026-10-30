@@ -125,6 +125,44 @@ fn an_outside_edit_made_before_the_apps_write_wins_and_the_apps_edit_is_kept() {
     );
 }
 
+/// A note's frontmatter stops parsing outside the app (#3750), with or without an edit to the
+/// body. The body that file says reaches the note. A file that does not parse cannot be read
+/// back, so an edit made in the app afterwards is not written over it: the file stays as it
+/// was left and the user is told. The next open reads the file the note already took, and
+/// keeps the edit.
+#[test]
+fn an_edit_made_after_the_frontmatter_broke_outside_is_kept_and_told() {
+    for body in ["edited outside", "first words"] {
+        let (mut e, identity, id) = one_note();
+        let mut failures = e.tier.subscribe_failures();
+        let broken = format!("---\ntags: [unclosed\n---\n{body}\n");
+        e.write("n.md", &broken);
+        let deadline = std::time::Instant::now() + WAIT;
+        while e.body(&id) != body {
+            assert!(std::time::Instant::now() < deadline, "{body}: never fed");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        // The consumer is done with the outside edit before the app edits.
+        std::thread::sleep(QUIET);
+        e.edit_in_app(&identity.store, &id, "typed in the app");
+        e.tier.schedule(&id);
+        assert!(e.tier.flush(WAIT));
+        let told = failures.try_recv().map(|failed| failed.note_id);
+
+        e.close();
+        e.open();
+        e.facts_until(indexed);
+        std::thread::sleep(DEBOUNCE + QUIET);
+        assert_eq!(
+            e.body(&id),
+            "typed in the app",
+            "{body}: the open replaced the app's edit with the file's text"
+        );
+        assert_eq!(e.read("n.md"), broken, "{body}: written over");
+        assert_eq!(told, Ok(id), "{body}: the user was not told");
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn a_write_back_that_fails_reaches_the_tiers_failure_subscribers() {

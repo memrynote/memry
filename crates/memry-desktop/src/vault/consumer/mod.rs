@@ -8,16 +8,22 @@
 //! - `run`: the thread that applies facts in the watcher's order, the open walk and retries.
 //!
 //! Invariants, each with a test in `tests/` here or in `tests/vault_consumer.rs`:
-//! - **A row's hash names a whole file the note's document holds.** The consumer records a
-//!   file's hash only after the feed answered `Fed` or `Unchanged` for exactly the text and
-//!   the `writing` frontmatter that hash was computed from; a file whose frontmatter does not
-//!   parse is not taken as read. Every other answer (`Owed`, `Refused`, `LargeFile`, `NoNote`,
-//!   `BodyPresent`, no device key, an error) records no hash: the row keeps the one it had,
-//!   and a new row gets none. This holds for every way a file reaches the consumer: a watcher
-//!   `Added` or `Changed`, the open walk, and a retry. The write-back takes "the file's hash
-//!   equals the row's" for "the file holds nothing the document lacks" and writes over it, so
-//!   a hash recorded early loses the file's text. The write-back records the hash of what it
-//!   wrote from the document, which holds it by construction.
+//! - **A row's hash names a file whose text the note's document holds.** The consumer records
+//!   a file's hash only after the feed answered `Fed` or `Unchanged` for exactly the text,
+//!   and the `writing` frontmatter when it parses, that hash was computed from. Every other
+//!   answer (`Owed`, `Refused`, `LargeFile`, `NoNote`, `BodyPresent`, no device key, an error)
+//!   records no hash: the row keeps the one it had, and a new row gets none. This holds for
+//!   every way a file reaches the consumer: a watcher `Added` or `Changed`, the open walk, and
+//!   a retry. The write-back takes "the file's hash equals the row's" for "the file holds
+//!   nothing the document lacks" and writes over it, so a hash recorded early loses the file's
+//!   text. The write-back records the hash of what it wrote from the document, which holds it
+//!   by construction.
+//!
+//!   A file whose frontmatter does not parse is taken as read once its text is fed (#3750).
+//!   Its block holds bytes the document never has, and no pass writes over them: a pass cannot
+//!   read the file back, so it fails and the user is told. Left without the hash, the row
+//!   would name an older file, and the next read of these same bytes (the open walk) would
+//!   take them for a new outside edit and replace every edit made in the app since.
 //! - **A row without a hash is never replaced from its file.** Its note's body may be one the
 //!   file never had (synced, owed and since pulled, a note kept when its file went), so the
 //!   file only fills an empty body; a conflict between the two is the write-back's (12e-3,

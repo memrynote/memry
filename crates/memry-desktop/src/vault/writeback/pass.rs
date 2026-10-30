@@ -133,6 +133,8 @@ impl Pass {
         if file.hash != row_hash {
             return Outcome::Kept(Keep::FileChanged);
         }
+        // A block that does not parse is bytes the document does not hold, and the row may name
+        // such a file (`vault::consumer`): it is never written over.
         let parsed = match file.parse() {
             Ok(parsed) => parsed,
             Err(error) => {

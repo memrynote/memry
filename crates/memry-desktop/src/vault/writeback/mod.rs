@@ -10,11 +10,13 @@
 //!
 //! **What** a pass writes:
 //! - **No byte the document does not hold is written over.** A pass writes only a file whose
-//!   bytes hash to its row's hash, which names a whole file the document holds
+//!   bytes hash to its row's hash, which names a file whose text the document holds
 //!   (`vault::consumer`). A row without a hash, a file whose hash differs (an outside edit
 //!   not fed yet), and a file that changes, moves or goes between that read and the write
 //!   ([`crate::vault::note_file::write_note_over`], which never creates a folder) are kept as
-//!   they are. The row check, the write and the row record run under the rows' lane, so no
+//!   they are. A file whose frontmatter does not parse holds a block the document does not:
+//!   it cannot be read back, so its pass fails and the user is told, and the document keeps
+//!   the edits made in the app until the file is fixed (#3750). The row check, the write and the row record run under the rows' lane, so no
 //!   feed lands in between; the lane is held for the whole pass (one note's replay, serialize
 //!   and write, about 20 ms at 12 KB), which is what the consumer waits at most.
 //! - **No file is written while it is ahead of the document, or while the document is not the
