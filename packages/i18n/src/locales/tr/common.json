@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Ayrıntılar için hatırlatıcılar paneline bakın",
     "searchIndexRepaired": "Arama dizini onarıldı",
     "searchIndexRepairedHint": "Arama dizininin bir kısmı bozulmuştu, bu yüzden Memry dizini yeniden oluşturdu. Notlarınıza dokunulmadı.",
+    "folderMoveUndone": "Yarıda kalan bir klasör taşıma işlemi geri alındı",
+    "folderMoveUndoneHint": "Notlar ilk bulundukları klasöre geri döndü.",
+    "folderMoveShown": "Yarıda kalan bir klasör taşımasındaki notlar yeniden görünür",
+    "folderMoveConflictCopies": "Adı bu sırada alınmış notların adı “{suffix}” ile bitiyor.",
+    "folderMoveIncomplete": "Bazı notlar adı “{suffix}” ile biten klasörlerde.",
+    "folderMoveNothingDeleted": "Hiçbir şey silinmedi.",
     "drop": {
       "tooLarge": "Bırakılan dosyalardan biri 2 GB'tan büyük.",
       "tooMany": "İçe aktarılmayı bekleyen çok fazla dosya var. Daha az dosya bırakıp tekrar deneyin.",

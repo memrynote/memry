@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Consulta el panel de recordatorios para ver los detalles",
     "searchIndexRepaired": "Índice de búsqueda reparado",
     "searchIndexRepairedHint": "Parte del índice de búsqueda estaba dañada, así que Memry lo ha reconstruido. Tus notas están intactas.",
+    "folderMoveUndone": "Se deshizo un movimiento de carpeta interrumpido",
+    "folderMoveUndoneHint": "Sus notas volvieron a la carpeta de la que se movieron.",
+    "folderMoveShown": "Las notas de un movimiento de carpeta interrumpido vuelven a estar visibles",
+    "folderMoveConflictCopies": "Las notas cuyo nombre se ocupó mientras tanto terminan en «{suffix}».",
+    "folderMoveIncomplete": "Algunas notas están en carpetas que terminan en «{suffix}».",
+    "folderMoveNothingDeleted": "No se eliminó nada.",
     "drop": {
       "tooLarge": "Un archivo soltado ocupa más de 2 GB.",
       "tooMany": "Hay demasiados archivos esperando para importarse. Suelta menos archivos e inténtalo de nuevo.",

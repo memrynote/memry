@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Details findest du im Erinnerungsbereich",
     "searchIndexRepaired": "Suchindex repariert",
     "searchIndexRepairedHint": "Ein Teil des Suchindex war beschädigt, deshalb hat Memry ihn neu aufgebaut. Deine Notizen wurden nicht verändert.",
+    "folderMoveUndone": "Ein unterbrochenes Verschieben eines Ordners wurde rückgängig gemacht",
+    "folderMoveUndoneHint": "Die Notizen sind wieder in dem Ordner, aus dem sie verschoben wurden.",
+    "folderMoveShown": "Notizen aus einem unterbrochenen Verschieben eines Ordners sind wieder sichtbar",
+    "folderMoveConflictCopies": "Notizen, deren Name inzwischen vergeben war, enden auf „{suffix}“.",
+    "folderMoveIncomplete": "Einige Notizen liegen in Ordnern, die auf „{suffix}“ enden.",
+    "folderMoveNothingDeleted": "Es wurde nichts gelöscht.",
     "drop": {
       "tooLarge": "Eine abgelegte Datei ist größer als 2 GB.",
       "tooMany": "Zu viele Dateien warten auf den Import. Lege weniger Dateien ab und versuche es erneut.",

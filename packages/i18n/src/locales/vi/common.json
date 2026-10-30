@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Xem bảng lời nhắc để biết chi tiết",
     "searchIndexRepaired": "Đã sửa chỉ mục tìm kiếm",
     "searchIndexRepairedHint": "Một phần chỉ mục tìm kiếm bị hỏng nên Memry đã tạo lại. Ghi chú của bạn không bị ảnh hưởng.",
+    "folderMoveUndone": "Một lần di chuyển thư mục bị gián đoạn đã được hoàn tác",
+    "folderMoveUndoneHint": "Các ghi chú đã trở về thư mục ban đầu.",
+    "folderMoveShown": "Các ghi chú từ một lần di chuyển thư mục bị gián đoạn đã hiển thị trở lại",
+    "folderMoveConflictCopies": "Các ghi chú có tên đã bị chiếm trong lúc đó có đuôi “{suffix}”.",
+    "folderMoveIncomplete": "Một số ghi chú nằm trong các thư mục có tên kết thúc bằng “{suffix}”.",
+    "folderMoveNothingDeleted": "Không có gì bị xóa.",
     "drop": {
       "tooLarge": "Một tệp được thả có dung lượng lớn hơn 2 GB.",
       "tooMany": "Có quá nhiều tệp đang chờ nhập. Hãy thả ít tệp hơn rồi thử lại.",
