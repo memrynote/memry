@@ -4,111 +4,19 @@
 //! anything: every file goes back, beside a save that took its name, or into a visible folder,
 //! and no hidden staging folder stays.
 
-use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::path::Path;
 
+mod move_tree;
+
 use memry_desktop::vault::move_dir::{
     IncompleteRollback, Step, move_dir, move_dir_checked, simulated_hold,
 };
-
-type Tree = BTreeMap<String, Option<Vec<u8>>>;
-
-/// Every file and folder under `root`, by path relative to it: a file with its bytes, a folder
-/// with `None`.
-fn tree(root: &Path) -> Tree {
-    let mut found = BTreeMap::new();
-    let mut folders = vec![root.to_owned()];
-    while let Some(folder) = folders.pop() {
-        for entry in fs::read_dir(&folder).unwrap() {
-            let path = entry.unwrap().path();
-            let rel = path
-                .strip_prefix(root)
-                .unwrap()
-                .to_string_lossy()
-                .replace('\\', "/");
-            let meta = fs::symlink_metadata(&path).unwrap();
-            if meta.is_dir() {
-                found.insert(rel, None);
-                folders.push(path);
-            } else if meta.is_file() {
-                found.insert(rel, Some(fs::read(&path).unwrap()));
-            } else {
-                found.insert(rel, Some(b"<link>".to_vec()));
-            }
-        }
-    }
-    found
-}
-
-/// A vault with `notes/` holding files at three depths and an empty folder.
-fn vault() -> tempfile::TempDir {
-    let dir = tempfile::tempdir().unwrap();
-    for (rel, text) in [
-        ("notes/a.md", "a"),
-        ("notes/b.md", "b"),
-        ("notes/sub/c.md", "c"),
-        ("notes/sub/deep/d.md", "d"),
-        ("notes/held/e.md", "e"),
-    ] {
-        let path = dir.path().join(rel);
-        fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(path, text).unwrap();
-    }
-    fs::create_dir_all(dir.path().join("notes/empty")).unwrap();
-    dir
-}
-
-/// The tree of `notes/` as it would be under `to/`.
-fn moved(before: &Tree, to: &str) -> Tree {
-    before
-        .iter()
-        .map(|(rel, bytes)| (rel.replacen("notes", to, 1), bytes.clone()))
-        .collect()
-}
-
-const KEPT: &str = "notes (incomplete move)";
-
-/// Nothing hidden is left, every file of `before` is back at its path or at the same path
-/// under the visible folder [`KEPT`], and nothing else is there.
-fn back_or_kept(before: &Tree, after: &Tree) {
-    let hidden: Vec<_> = after.keys().filter(|rel| rel.starts_with('.')).collect();
-    assert!(hidden.is_empty(), "{hidden:?}");
-    for (rel, bytes) in before.iter().filter(|(_, bytes)| bytes.is_some()) {
-        let kept = rel.replacen("notes", KEPT, 1);
-        assert!(
-            after.get(rel) == Some(bytes) || after.get(&kept) == Some(bytes),
-            "{rel} lost: {after:?}"
-        );
-    }
-    for rel in after.keys() {
-        let source = rel.replacen(KEPT, "notes", 1);
-        assert!(before.contains_key(&source), "{rel} is new: {after:?}");
-    }
-}
+use move_tree::{KEPT, as_windows_holds, back_or_kept, is_staging, moved, tree, vault};
 
 fn incomplete(error: &io::Error) -> &IncompleteRollback {
     IncompleteRollback::of(error).unwrap_or_else(|| panic!("not an incomplete rollback: {error}"))
-}
-
-fn is_staging(path: &Path) -> bool {
-    path.file_name()
-        .is_some_and(|name| name.to_string_lossy().starts_with(".memry-move-"))
-}
-
-/// Refuses the whole folder's rename and the rename of the folder `held` whole, as Windows
-/// refuses a folder something beneath holds: the move goes entry by entry, and `held` is made
-/// again. Every step is recorded.
-fn as_windows_holds<'a>(steps: &'a mut Vec<String>) -> impl FnMut(Step<'_>) -> io::Result<()> + 'a {
-    move |step| {
-        steps.push(format!("{step:?}"));
-        match step {
-            Step::Whole { .. } => Err(simulated_hold()),
-            Step::Entry { from, .. } if from.ends_with("held") => Err(simulated_hold()),
-            _ => Ok(()),
-        }
-    }
 }
 
 #[test]
@@ -116,7 +24,12 @@ fn a_folder_moves_whole_and_into_a_new_parent() {
     let dir = vault();
     let before = tree(dir.path());
     fs::create_dir(dir.path().join("archive")).unwrap();
-    move_dir(&dir.path().join("notes"), &dir.path().join("archive/notes")).unwrap();
+    move_dir(
+        dir.path(),
+        &dir.path().join("notes"),
+        &dir.path().join("archive/notes"),
+    )
+    .unwrap();
     let mut want = moved(&before, "archive/notes");
     want.insert("archive".into(), None);
     assert_eq!(tree(dir.path()), want);
@@ -129,7 +42,12 @@ fn a_case_only_rename_is_not_refused_as_an_existing_folder() {
     for name in ["Notes", "notes"] {
         let dir = vault();
         let before = tree(dir.path());
-        move_dir(&dir.path().join("notes"), &dir.path().join(name)).unwrap();
+        move_dir(
+            dir.path(),
+            &dir.path().join("notes"),
+            &dir.path().join(name),
+        )
+        .unwrap();
         assert_eq!(tree(dir.path()), moved(&before, name), "{name}");
     }
 }
@@ -147,6 +65,7 @@ fn a_folder_that_is_there_is_never_merged_into() {
         let before = tree(dir.path());
         let mut steps = Vec::new();
         let error = move_dir_checked(
+            dir.path(),
             &dir.path().join("notes"),
             &target,
             &mut as_windows_holds(&mut steps),
@@ -168,20 +87,25 @@ fn a_target_made_mid_move_is_never_replaced() {
         let target = dir.path().join("moved");
         let mut seen = Vec::new();
         let mut windows = as_windows_holds(&mut seen);
-        let error = move_dir_checked(&dir.path().join("notes"), &target, &mut |step| {
-            let last = match step {
-                Step::Whole { .. } => !entry_wise,
-                Step::Entry { from, .. } => is_staging(from),
-                _ => false,
-            };
-            if last && !target.exists() {
-                fs::create_dir(&target).unwrap();
-            }
-            match entry_wise {
-                true => windows(step),
-                false => Ok(()),
-            }
-        })
+        let error = move_dir_checked(
+            dir.path(),
+            &dir.path().join("notes"),
+            &target,
+            &mut |step| {
+                let last = match step {
+                    Step::Whole { .. } => !entry_wise,
+                    Step::Entry { from, .. } => is_staging(from),
+                    _ => false,
+                };
+                if last && !target.exists() {
+                    fs::create_dir(&target).unwrap();
+                }
+                match entry_wise {
+                    true => windows(step),
+                    false => Ok(()),
+                }
+            },
+        )
         .unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::AlreadyExists, "{entry_wise}");
         let mut want = before.clone();
@@ -201,6 +125,7 @@ fn what_is_made_in_the_staging_folder_is_never_replaced() {
         let mut seen = Vec::new();
         let mut windows = as_windows_holds(&mut seen);
         let error = move_dir_checked(
+            dir.path(),
             &dir.path().join("notes"),
             &dir.path().join("moved"),
             &mut |step| {
@@ -236,6 +161,7 @@ fn a_folder_windows_holds_moves_entry_by_entry_and_leaves_no_staging() {
     let before = tree(dir.path());
     let mut steps = Vec::new();
     move_dir_checked(
+        dir.path(),
         &dir.path().join("notes"),
         &dir.path().join("moved"),
         &mut as_windows_holds(&mut steps),
@@ -268,6 +194,7 @@ fn a_refusal_elsewhere_is_returned_and_nothing_moves_entry_by_entry() {
     let before = tree(dir.path());
     let mut steps = Vec::new();
     let error = move_dir_checked(
+        dir.path(),
         &dir.path().join("notes"),
         &dir.path().join("moved"),
         &mut |step| {
@@ -291,6 +218,7 @@ fn a_file_refused_for_a_moment_is_moved_on_a_retry() {
     let mut windows = as_windows_holds(&mut seen);
     let mut refused_once = false;
     move_dir_checked(
+        dir.path(),
         &dir.path().join("notes"),
         &dir.path().join("moved"),
         &mut |step| {
@@ -321,18 +249,25 @@ fn a_move_that_fails_at_any_step_puts_every_file_back_or_in_sight() {
     let before = tree(dir.path());
     let mut count = Vec::new();
     move_dir_checked(
+        dir.path(),
         &dir.path().join("notes"),
         &dir.path().join("moved"),
         &mut as_windows_holds(&mut count),
     )
     .unwrap();
-    let steps = count.len();
+    // The drop of the move's journal record is neither a move nor a rollback step
+    // (`tests/move_journal.rs` kills there).
+    let journal = |step: &Step<'_>| matches!(step, Step::Forget(_));
+    let steps = count.iter().filter(|s| !s.starts_with("Forget")).count();
     // The error, and how many steps ran (the failed ones included).
     let run = |dir: &Path, fail_at: &[usize]| {
         let mut seen = Vec::new();
         let mut windows = as_windows_holds(&mut seen);
         let mut at = 0;
-        let error = move_dir_checked(&dir.join("notes"), &dir.join("moved"), &mut |step| {
+        let error = move_dir_checked(dir, &dir.join("notes"), &dir.join("moved"), &mut |step| {
+            if journal(&step) {
+                return Ok(());
+            }
             at += 1;
             if fail_at.contains(&at) {
                 return Err(disk());
@@ -378,6 +313,7 @@ fn a_rollback_step_refused_for_a_moment_is_retried() {
         let mut windows = as_windows_holds(&mut seen);
         let mut refused_once = false;
         let error = move_dir_checked(
+            dir.path(),
             &dir.path().join("notes"),
             &dir.path().join("moved"),
             &mut |step| {
@@ -426,7 +362,7 @@ fn a_rollback_of_refused_steps_retries_only_a_few() {
         let kept = dir.path().join(KEPT);
         let mut tries = 0;
         let mut refused_at = std::collections::BTreeSet::new();
-        let error = move_dir_checked(&notes, &dir.path().join("moved"), &mut |step| {
+        let error = move_dir_checked(dir.path(), &notes, &dir.path().join("moved"), &mut |step| {
             match step {
                 Step::Whole { .. } => return Err(simulated_hold()),
                 Step::Entry { from, .. } if from.parent() == Some(notes.as_path()) => {
@@ -475,6 +411,7 @@ fn a_staging_name_taken_by_another_folder_is_left_alone() {
     let mut windows = as_windows_holds(&mut seen);
     let mut theirs = None;
     let error = move_dir_checked(
+        dir.path(),
         &dir.path().join("notes"),
         &dir.path().join("moved"),
         &mut |step| {
@@ -507,6 +444,7 @@ fn the_hidden_staging_folder_is_named_when_the_visible_one_cannot_take_it() {
     let mut windows = as_windows_holds(&mut seen);
     let mut staging = None;
     let error = move_dir_checked(
+        dir.path(),
         &dir.path().join("notes"),
         &dir.path().join("moved"),
         &mut |step| {
@@ -548,6 +486,7 @@ fn a_subfolder_held_on_the_way_back_goes_back_entry_by_entry() {
     let mut steps = Vec::new();
     let mut windows = as_windows_holds(&mut steps);
     let error = move_dir_checked(
+        dir.path(),
         &dir.path().join("notes"),
         &dir.path().join("moved"),
         &mut |step| {
@@ -595,6 +534,7 @@ fn a_file_that_lands_mid_move_fails_the_move_and_is_never_overwritten() {
         let mut windows = as_windows_holds(&mut seen);
         let landed = dir.path().join("notes/held").join(name);
         let error = move_dir_checked(
+            dir.path(),
             &dir.path().join("notes"),
             &dir.path().join("moved"),
             &mut |step| {
@@ -646,7 +586,7 @@ fn files_a_rollback_cannot_put_back_stay_visible() {
     // Whatever the folder lists first is out (`held`: emptied and removed) before the second
     // entry's step turns `notes` read-only: that entry cannot leave, the first cannot return.
     let mut top_level = 0;
-    let result = move_dir_checked(&notes, &dir.path().join("moved"), &mut |step| {
+    let result = move_dir_checked(dir.path(), &notes, &dir.path().join("moved"), &mut |step| {
         windows(step)?;
         if let Step::Entry { from, .. } = step
             && from.parent() == Some(notes.as_path())
@@ -678,7 +618,7 @@ fn a_link_that_took_a_folders_name_is_never_merged_into() {
     let notes = dir.path().join("notes");
     let mut seen = Vec::new();
     let mut windows = as_windows_holds(&mut seen);
-    let error = move_dir_checked(&notes, &dir.path().join("moved"), &mut |step| {
+    let error = move_dir_checked(dir.path(), &notes, &dir.path().join("moved"), &mut |step| {
         windows(step)?;
         if step == Step::RemoveDir(&notes) && !notes.join("sub").exists() {
             std::os::unix::fs::symlink(outside.path(), notes.join("sub")).unwrap();
@@ -717,6 +657,7 @@ fn a_target_inside_the_source_is_refused_before_anything_moves() {
         let before = tree(dir.path());
         let mut steps = Vec::new();
         let result = move_dir_checked(
+            dir.path(),
             &dir.path().join("notes"),
             &dir.path().join(target),
             &mut as_windows_holds(&mut steps),
@@ -739,11 +680,40 @@ fn a_target_inside_the_source_is_refused_before_anything_moves() {
     }
 }
 
+/// Both folders are the vault's: one outside it, or named through `..`, is refused before
+/// anything moves (the move's journal names them relative to the vault).
+#[test]
+fn a_folder_outside_the_vault_is_refused_before_anything_moves() {
+    let dir = vault();
+    let outside = tempfile::tempdir().unwrap();
+    fs::create_dir(outside.path().join("x")).unwrap();
+    let before = tree(dir.path());
+    for (from, to) in [
+        (outside.path().join("x"), dir.path().join("x")),
+        (dir.path().join("notes"), outside.path().join("notes")),
+        (dir.path().join("notes/../notes"), dir.path().join("moved")),
+    ] {
+        let error = move_dir(dir.path(), &from, &to).unwrap_err();
+        assert_eq!(
+            error.kind(),
+            io::ErrorKind::InvalidInput,
+            "{from:?} to {to:?}"
+        );
+    }
+    assert_eq!(tree(dir.path()), before);
+    assert!(outside.path().join("x").is_dir());
+}
+
 #[test]
 fn a_missing_source_is_not_found_even_when_the_target_exists() {
     let dir = vault();
     let before = tree(dir.path());
-    let error = move_dir(&dir.path().join("gone"), &dir.path().join("notes")).unwrap_err();
+    let error = move_dir(
+        dir.path(),
+        &dir.path().join("gone"),
+        &dir.path().join("notes"),
+    )
+    .unwrap_err();
     assert_eq!(error.kind(), io::ErrorKind::NotFound);
     assert_eq!(tree(dir.path()), before);
 }
@@ -758,6 +728,7 @@ fn links_move_as_links_and_a_linked_folder_is_never_moved_through() {
     let before = tree(dir.path());
     let mut steps = Vec::new();
     move_dir_checked(
+        dir.path(),
         &dir.path().join("notes"),
         &dir.path().join("moved"),
         &mut as_windows_holds(&mut steps),
@@ -773,6 +744,7 @@ fn links_move_as_links_and_a_linked_folder_is_never_moved_through() {
     let linked = dir.path().join("linked");
     std::os::unix::fs::symlink(outside.path(), &linked).unwrap();
     let error = move_dir_checked(
+        dir.path(),
         &linked,
         &dir.path().join("through"),
         &mut |step| match step {
@@ -831,6 +803,7 @@ mod windows_holds {
             .unwrap();
         let mut steps = Vec::new();
         let error = move_dir_checked(
+            dir.path(),
             &dir.path().join("notes"),
             &dir.path().join("moved"),
             &mut |step| {
@@ -863,6 +836,7 @@ mod windows_holds {
         let held = hold_folder(&dir.path().join("notes/sub"));
         let mut steps = Vec::new();
         let error = move_dir_checked(
+            dir.path(),
             &dir.path().join("notes"),
             &dir.path().join("moved"),
             &mut |step| {
@@ -889,6 +863,7 @@ mod windows_holds {
         let mut held = Some(hold_folder(&dir.path().join("notes/sub")));
         let mut steps = Vec::new();
         move_dir_checked(
+            dir.path(),
             &dir.path().join("notes"),
             &dir.path().join("moved"),
             &mut |step| {

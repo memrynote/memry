@@ -80,11 +80,12 @@ async function readStatus(callback: (status: VaultStatus) => void): Promise<void
 }
 
 function toStatus(wire: Awaited<ReturnType<typeof commands.vaultGetStatus>>): VaultStatus {
-  const { indexBuilt, indexTotal, ...rest } = wire
+  const { indexBuilt, indexTotal, movesRecovered, ...rest } = wire
   return {
     ...rest,
     ...(indexBuilt != null && { indexBuilt }),
-    ...(indexTotal != null && { indexTotal })
+    ...(indexTotal != null && { indexTotal }),
+    ...(movesRecovered != null && { movesRecovered })
   }
 }
 

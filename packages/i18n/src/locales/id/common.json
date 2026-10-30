@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Lihat panel pengingat untuk detailnya",
     "searchIndexRepaired": "Indeks pencarian diperbaiki",
     "searchIndexRepairedHint": "Sebagian indeks pencarian rusak, jadi Memry membangunnya ulang. Catatan Anda tidak terpengaruh.",
+    "folderMoveUndone": "Pemindahan folder yang terputus telah dibatalkan",
+    "folderMoveUndoneHint": "Catatannya kembali ke folder asalnya.",
+    "folderMoveShown": "Catatan dari pemindahan folder yang terputus terlihat lagi",
+    "folderMoveConflictCopies": "Catatan yang namanya sudah dipakai sementara itu berakhiran “{suffix}”.",
+    "folderMoveIncomplete": "Beberapa catatan ada di folder yang namanya berakhiran “{suffix}”.",
+    "folderMoveNothingDeleted": "Tidak ada yang dihapus.",
     "drop": {
       "tooLarge": "Salah satu file yang dijatuhkan lebih besar dari 2 GB.",
       "tooMany": "Terlalu banyak file yang menunggu untuk diimpor. Jatuhkan lebih sedikit file dan coba lagi.",

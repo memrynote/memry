@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "在提醒面板中查看详情",
     "searchIndexRepaired": "搜索索引已修复",
     "searchIndexRepairedHint": "部分搜索索引已损坏，Memry 已将其重建。笔记未受影响。",
+    "folderMoveUndone": "已撤销一次中断的文件夹移动",
+    "folderMoveUndoneHint": "笔记已回到原来的文件夹。",
+    "folderMoveShown": "一次中断的文件夹移动中的笔记已重新显示",
+    "folderMoveConflictCopies": "期间名称已被占用的笔记，名称末尾带有“{suffix}”。",
+    "folderMoveIncomplete": "部分笔记位于名称以“{suffix}”结尾的文件夹中。",
+    "folderMoveNothingDeleted": "没有删除任何内容。",
     "drop": {
       "tooLarge": "拖放的文件中有一个大于 2 GB。",
       "tooMany": "等待导入的文件过多。请减少拖放的文件后重试。",

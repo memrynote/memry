@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "راجع لوحة التذكيرات للاطلاع على التفاصيل",
     "searchIndexRepaired": "تم إصلاح فهرس البحث",
     "searchIndexRepairedHint": "تلف جزء من فهرس البحث، لذا أعاد Memry إنشاءه. لم تتأثر ملاحظاتك.",
+    "folderMoveUndone": "تم التراجع عن نقل مجلد تمت مقاطعته",
+    "folderMoveUndoneHint": "عادت الملاحظات إلى المجلد الذي نُقلت منه.",
+    "folderMoveShown": "أصبحت ملاحظات نقل مجلد تمت مقاطعته مرئية مجددًا",
+    "folderMoveConflictCopies": "الملاحظات التي أُخذ اسمها في الأثناء تنتهي بـ “{suffix}”.",
+    "folderMoveIncomplete": "بعض الملاحظات موجودة في مجلدات ينتهي اسمها بـ “{suffix}”.",
+    "folderMoveNothingDeleted": "لم يُحذف أي شيء.",
     "drop": {
       "tooLarge": "حجم أحد الملفات المسحوبة أكبر من 2 غيغابايت.",
       "tooMany": "هناك ملفات كثيرة جدًا بانتظار الاستيراد. اسحب عددًا أقل من الملفات وحاول مرة أخرى.",

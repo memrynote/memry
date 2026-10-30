@@ -453,6 +453,26 @@ export type Modifiers = {
 };
 
 /**
+ *  What the open's sweep of interrupted folder moves did ([`crate::vault::move_journal`]), for
+ *  the notice the renderer shows once per `id`. Counts only: the folders' names are the user's.
+ */
+export type MovesRecovered = {
+	/**  New for each open that swept something, so each notice shows once. */
+	id: string,
+	/**  Moves this app journaled that were put back where they were. */
+	undone: number,
+	/**  Notes that came back beside the note that took their name, as `<name> (conflict copy)`. */
+	conflictCopies: number,
+	/**  `(incomplete move)` folders holding what an undone move could not put back. */
+	keptFolders: number,
+	/**
+	 *  Hidden folders of a move no usable record names (Electron's, a newer build's), shown as
+	 *  `(incomplete move)` folders: nothing was undone, the notes are only in sight again.
+	 */
+	shownFolders: number,
+};
+
+/**
  *  Whether the app may show notifications. `prompt`: macOS has not asked the user yet, and the
  *  first notification asks. Windows and Linux answer granted.
  */
@@ -694,6 +714,8 @@ export type VaultStatus = {
 	indexBuilt?: number | null,
 	indexTotal?: number | null,
 	error: string | null,
+	/**  What the open's sweep of interrupted folder moves did, while that vault is open. */
+	movesRecovered?: MovesRecovered | null,
 };
 
 /**
