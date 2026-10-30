@@ -9,7 +9,8 @@
 //!
 //! A removal's record (a file or a folder the app removes or moves away) lives while the app's
 //! removal is all the watcher could see of that path: it ends once the path is seen present
-//! again, or a folder that holds it is seen back with it. The watcher looks at the disk once more when it ends one,
+//! again, or a folder that holds it is seen back with it, or a rescan, which stands in for
+//! events the OS lost, finds it on disk. The watcher looks at the disk once more when it ends one,
 //! under the record's lock, and [`EchoGuard::removing`] records and removes under that lock,
 //! so a removal the app makes after the watcher's own look keeps its record.
 
@@ -114,17 +115,26 @@ impl EchoGuard {
     }
 
     /// [`Self::seen_file`] for a folder, and for every path below it with a removal recorded:
-    /// a folder moved in brings what it holds, and the OS may report only the folder. The
-    /// folders above it need no look: one that came back was reported itself.
+    /// a folder moved in brings what it holds, and the OS may report only the folder. A folder
+    /// above it that came back is ended by its own report, or, when the OS lost that, by the
+    /// rescan that stands in for it ([`Self::seen_all`]).
     pub fn seen_folder(&self, path: &str, there: impl Fn(&str) -> bool) {
         let below = format!("{path}/");
+        self.end_removals(|at| at == path || at.starts_with(&below), there);
+    }
+
+    /// Every path with a removal recorded, looked at as [`Self::seen_file`] does: for a rescan,
+    /// whose walk sees only files and only those it reports.
+    pub fn seen_all(&self, there: impl Fn(&str) -> bool) {
+        self.end_removals(|_| true, there);
+    }
+
+    fn end_removals(&self, of: impl Fn(&str) -> bool, there: impl Fn(&str) -> bool) {
         let mut state = self.lock();
         let ended: Vec<String> = state
             .by_path
             .iter()
-            .filter(|(at, what)| {
-                **what == Expected::Gone && (*at == path || at.starts_with(&below))
-            })
+            .filter(|(at, what)| **what == Expected::Gone && of(at))
             .map(|(at, _)| at.clone())
             .filter(|at| there(at))
             .collect();
@@ -230,6 +240,24 @@ mod tests {
             ("j/2025/Feb.gone", true),
             ("j/20255", true),
             ("j", true),
+        ];
+        for (path, kept) in kept {
+            assert_eq!(echo.absorbs_removal(path), kept, "{path}");
+        }
+    }
+
+    #[test]
+    fn a_rescan_ends_every_removal_that_is_back() {
+        let echo = EchoGuard::default();
+        for path in ["j/2025", "j/2025/Jan", "a.md", "b.gone"] {
+            echo.will_remove(path);
+        }
+        echo.seen_all(on_disk);
+        let kept = [
+            ("j/2025", false),
+            ("j/2025/Jan", false),
+            ("a.md", false),
+            ("b.gone", true),
         ];
         for (path, kept) in kept {
             assert_eq!(echo.absorbs_removal(path), kept, "{path}");

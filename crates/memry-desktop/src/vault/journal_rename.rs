@@ -378,11 +378,13 @@ fn move_one(
             };
             match back.run(&echo) {
                 Ok(()) => journal.remove_empty(&echo, folders_of(to).take(created)),
-                // The file stays at its new name and the row at its old. The watcher took the
-                // old name's going for the app's long before the tries to move back ended, so
-                // it pairs the file with nothing: the file reaches the identity as a new one,
-                // and the next open's rescan finds the row's file gone. The text survives; the
-                // note's id may not.
+                // The file stays at its new name and the row at its old. The old name's record
+                // is withdrawn below: a watcher that has not looked at the old name yet sees an
+                // outside move and pairs the two by the file's bytes, a rename. After tries to
+                // move back that took over half a second it has usually taken the old name's
+                // going for the app's and pairs nothing: the file reaches the identity as a new
+                // one, and the next open's rescan finds the row's file gone. The text survives;
+                // the note's id may not.
                 Err(back) => {
                     tracing::error!(scope = SCOPE, "a journal file could not go back: {back}");
                 }
