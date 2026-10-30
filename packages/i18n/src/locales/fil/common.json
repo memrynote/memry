@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Tingnan ang panel ng mga paalala para sa mga detalye",
     "searchIndexRepaired": "Naayos ang index ng paghahanap",
     "searchIndexRepairedHint": "Nasira ang bahagi ng index ng paghahanap, kaya binuo ito ulit ng Memry. Hindi ginalaw ang mga tala mo.",
+    "folderMoveUndone": "Binawi ang naantalang paglipat ng folder",
+    "folderMoveUndoneHint": "Bumalik ang mga tala sa folder na pinanggalingan nila.",
+    "folderMoveShown": "Nakikita na muli ang mga tala mula sa naantalang paglipat ng folder",
+    "folderMoveConflictCopies": "Nagtatapos sa “{suffix}” ang mga talang nagamit na ang pangalan habang naantala ito.",
+    "folderMoveIncomplete": "Nasa mga folder na nagtatapos sa “{suffix}” ang ilang tala.",
+    "folderMoveNothingDeleted": "Walang nabura.",
     "drop": {
       "tooLarge": "Mas malaki sa 2 GB ang isang file na idinrop.",
       "tooMany": "Masyadong maraming file ang naghihintay na ma-import. Mag-drop ng mas kaunting file at subukang muli.",

@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Katso lisätiedot muistutuspaneelista",
     "searchIndexRepaired": "Hakuindeksi korjattu",
     "searchIndexRepairedHint": "Osa hakuindeksistä oli vioittunut, joten Memry rakensi sen uudelleen. Muistiinpanoihisi ei koskettu.",
+    "folderMoveUndone": "Keskeytynyt kansion siirto peruttiin",
+    "folderMoveUndoneHint": "Muistiinpanot ovat taas kansiossa, josta ne siirrettiin.",
+    "folderMoveShown": "Keskeytyneen kansion siirron muistiinpanot näkyvät taas",
+    "folderMoveConflictCopies": "Muistiinpanojen, joiden nimi ehdittiin ottaa käyttöön, nimi päättyy ”{suffix}”.",
+    "folderMoveIncomplete": "Osa muistiinpanoista on kansioissa, joiden nimi päättyy ”{suffix}”.",
+    "folderMoveNothingDeleted": "Mitään ei poistettu.",
     "drop": {
       "tooLarge": "Pudotettu tiedosto on suurempi kuin 2 Gt.",
       "tooMany": "Liian monta tiedostoa odottaa tuontia. Pudota vähemmän tiedostoja ja yritä uudelleen.",
