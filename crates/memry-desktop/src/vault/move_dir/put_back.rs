@@ -23,16 +23,18 @@ pub(in crate::vault) struct Left {
 }
 
 /// Puts everything in `staging` back into `from`, and moves what does not go back into a
-/// visible `<from name> (incomplete move)` beside `staging`.
+/// visible `<from name> (incomplete move)` beside `staging`. `before_show` learns that folder
+/// before anything moves into it.
 pub(in crate::vault) fn put_back_staged(
     from: &Path,
     staging: &Path,
     hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
+    before_show: &mut dyn FnMut(&Path),
 ) -> Left {
     let mut back = PutBack::new(hook);
     back.put(staging, from);
     let name = from.file_name().unwrap_or_default().to_string_lossy();
-    let kept = back.keep_in_sight(staging, &name);
+    let kept = back.keep_in_sight(staging, &name, before_show);
     Left {
         conflict_copies: back.conflict_copies,
         kept,
@@ -40,13 +42,14 @@ pub(in crate::vault) fn put_back_staged(
 }
 
 /// Renames a staging folder whose source is unknown into a visible `<name> (incomplete move)`
-/// beside it. Returns the folders holding its files.
+/// beside it, which `before_show` learns first. Returns the folders holding its files.
 pub(in crate::vault) fn show_staged(
     staging: &Path,
     name: &str,
     hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
+    before_show: &mut dyn FnMut(&Path),
 ) -> Vec<PathBuf> {
-    PutBack::new(hook).keep_in_sight(staging, name)
+    PutBack::new(hook).keep_in_sight(staging, name, before_show)
 }
 
 impl<'h> PutBack<'h> {
@@ -61,7 +64,12 @@ impl<'h> PutBack<'h> {
     /// Moves what is left in `staging` into the first free visible `<name> (incomplete move)`
     /// beside it. Returns the folders that hold it: that one, and `staging` itself when not
     /// even that rename went through.
-    fn keep_in_sight(&mut self, staging: &Path, name: &str) -> Vec<PathBuf> {
+    fn keep_in_sight(
+        &mut self,
+        staging: &Path,
+        name: &str,
+        before_show: &mut dyn FnMut(&Path),
+    ) -> Vec<PathBuf> {
         let mut kept = Vec::new();
         if fs::symlink_metadata(staging).is_err() {
             return kept;
@@ -74,6 +82,7 @@ impl<'h> PutBack<'h> {
             .map(|candidate| staging.with_file_name(candidate))
             .find(|candidate| fs::symlink_metadata(candidate).is_err());
         if let Some(visible) = visible {
+            before_show(&visible);
             self.put(staging, &visible);
             if fs::symlink_metadata(&visible).is_ok() {
                 kept.push(visible);

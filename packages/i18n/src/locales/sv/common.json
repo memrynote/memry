@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Se påminnelsepanelen för mer information",
     "searchIndexRepaired": "Sökindexet har reparerats",
     "searchIndexRepairedHint": "En del av sökindexet var skadat, så Memry byggde om det. Dina anteckningar har inte påverkats.",
+    "folderMoveUndone": "En avbruten mappflytt ångrades",
+    "folderMoveUndoneHint": "Anteckningarna är tillbaka i mappen de flyttades från.",
+    "folderMoveShown": "Anteckningar från en avbruten mappflytt syns igen",
+    "folderMoveConflictCopies": "Anteckningar vars namn togs under tiden slutar på ”{suffix}”.",
+    "folderMoveIncomplete": "Vissa anteckningar ligger i mappar som slutar på ”{suffix}”.",
+    "folderMoveNothingDeleted": "Inget raderades.",
     "drop": {
       "tooLarge": "En släppt fil är större än 2 GB.",
       "tooMany": "För många filer väntar på import. Släpp färre filer och försök igen.",

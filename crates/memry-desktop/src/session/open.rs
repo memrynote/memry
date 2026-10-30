@@ -8,8 +8,10 @@ use memry_core::api::errors::StorageError;
 use memry_core::api::vault::Vault;
 use memry_core::storage::OpenOptions;
 use memry_core::storage::recovery_prune::prune_settled;
+use uuid::Uuid;
 
 use super::projection::{DEFAULT_QUEUE_LIMIT, ProjectionRuntime};
+use super::response::MovesRecovered;
 use super::{
     Open, OpenSource, OpenStage, OpenVault, Session, SessionError, SessionEvent, SessionStatus,
     VaultOpened, lock,
@@ -115,26 +117,32 @@ impl Session {
         }
 
         let exclude = read_vault_config(path).exclude_patterns;
+        let counted = count_markdown_files(path, &exclude, CountLimits::DEFAULT);
         // Before any open hook, so before the watcher: a folder move a crash interrupted is put
         // back or shown, and its notes are never reported removed.
-        let swept = sweep_moves(path, &exclude);
-        if swept.undone > 0 || swept.left_beside() {
+        let swept = sweep_moves(path, &counted.staging);
+        let moves_recovered = swept.changed().then(|| {
             tracing::warn!(
                 undone = swept.undone,
                 conflict_copies = swept.conflict_copies.len(),
                 kept = swept.kept.len(),
+                shown = swept.shown.len(),
                 "swept interrupted folder moves"
             );
-        }
-        if swept.left_beside() {
-            self.emit(SessionEvent::Error {
-                message: "A folder move was interrupted and undone, but not every note went back \
-                          under its own name: look for notes ending in \"(conflict copy)\" and \
-                          folders ending in \"(incomplete move)\". Nothing was deleted."
-                    .to_owned(),
-            });
-        }
-        let note_count = count_markdown_files(path, &exclude, CountLimits::DEFAULT).count;
+            let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+            MovesRecovered {
+                id: Uuid::new_v4().simple().to_string(),
+                undone: count(swept.undone),
+                conflict_copies: count(swept.conflict_copies.len()),
+                kept_folders: count(swept.kept.len()),
+                shown_folders: count(swept.shown.len()),
+            }
+        });
+        let note_count = if moves_recovered.is_some() {
+            count_markdown_files(path, &exclude, CountLimits::DEFAULT).count
+        } else {
+            counted.count
+        };
         let stored = match self
             .inner
             .registry
@@ -176,12 +184,14 @@ impl Session {
                 view: view.clone(),
                 runtime: runtime.clone(),
                 background: Vec::new(),
+                moves_recovered: moves_recovered.clone(),
             });
         }
         self.emit(SessionEvent::StatusChanged(SessionStatus {
             is_open: true,
             path: Some(path_text.clone()),
             error: None,
+            moves_recovered,
         }));
         self.emit(SessionEvent::Opened {
             path: path_text,

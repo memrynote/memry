@@ -151,7 +151,8 @@ fn is_hold(error: &io::Error) -> bool {
 }
 
 /// Moves the folder `from` to `to`, where nothing is yet (module doc). Both are folders of
-/// `vault` (`InvalidInput` otherwise), whose `.memry/moves/` journals an entry-wise move.
+/// `vault` and start with `vault` spelled as given (the check is lexical: `InvalidInput`
+/// otherwise); `vault`'s `.memry/moves/` journals an entry-wise move.
 pub fn move_dir(vault: &Path, from: &Path, to: &Path) -> io::Result<()> {
     move_dir_checked(vault, from, to, &mut |_| Ok(()))
 }
@@ -198,7 +199,7 @@ pub fn move_dir_checked(
     }
     let id = uuid::Uuid::new_v4().simple().to_string()[..ID_LEN].to_owned();
     let staging = to.with_file_name(format!("{STAGING_PREFIX}{id}"));
-    let record = Journaled::write(vault, &id, &from_rel, &vault_relative(vault, &staging)?)?;
+    let mut record = Journaled::write(vault, &id, &from_rel, &vault_relative(vault, &staging)?)?;
     // Only a staging folder this move made is ever rolled back: one that was there fails the
     // move before anything moved.
     if let Err(error) = hook(Step::MakeDir(&staging)).and_then(|()| fs::create_dir(&staging)) {
@@ -213,7 +214,9 @@ pub fn move_dir_checked(
     });
     let result = match moved {
         Ok(()) => Ok(()),
-        Err(cause) => roll_back(cause, from, &staging, hook),
+        Err(cause) => roll_back(cause, from, &staging, hook, &mut |visible| {
+            record.will_show(vault, visible);
+        }),
     };
     // Files still staged wait, with the record, for the next open's sweep.
     if fs::symlink_metadata(&staging).is_err() {
@@ -329,8 +332,9 @@ fn roll_back(
     from: &Path,
     staging: &Path,
     hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
+    before_show: &mut dyn FnMut(&Path),
 ) -> io::Result<()> {
-    let left = put_back_staged(from, staging, hook);
+    let left = put_back_staged(from, staging, hook, before_show);
     if left.kept.is_empty() && left.conflict_copies.is_empty() {
         return Err(cause);
     }

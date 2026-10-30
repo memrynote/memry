@@ -19,6 +19,27 @@ pub struct VaultStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index_total: Option<u32>,
     pub error: Option<String>,
+    /// What the open's sweep of interrupted folder moves did, while that vault is open.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub moves_recovered: Option<MovesRecovered>,
+}
+
+/// What the open's sweep of interrupted folder moves did ([`crate::vault::move_journal`]), for
+/// the notice the renderer shows once per `id`. Counts only: the folders' names are the user's.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MovesRecovered {
+    /// New for each open that swept something, so each notice shows once.
+    pub id: String,
+    /// Moves this app journaled that were put back where they were.
+    pub undone: u32,
+    /// Notes that came back beside the note that took their name, as `<name> (conflict copy)`.
+    pub conflict_copies: u32,
+    /// `(incomplete move)` folders holding what an undone move could not put back.
+    pub kept_folders: u32,
+    /// Hidden folders of a move no usable record names (Electron's, a newer build's), shown as
+    /// `(incomplete move)` folders: nothing was undone, the notes are only in sight again.
+    pub shown_folders: u32,
 }
 
 impl From<SessionStatus> for VaultStatus {
@@ -32,6 +53,7 @@ impl From<SessionStatus> for VaultStatus {
             index_built: None,
             index_total: None,
             error: status.error,
+            moves_recovered: status.moves_recovered,
         }
     }
 }

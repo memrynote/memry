@@ -9,10 +9,11 @@
 
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::config::{VaultConfig, config_path};
 use super::layout::MEMRY_DIR;
+use super::move_journal::is_staging_name;
 
 /// `VAULT_FOLDERS` of `init.ts`.
 pub const VAULT_FOLDERS: [&str; 4] = [
@@ -83,12 +84,16 @@ impl CountLimits {
     };
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MarkdownCount {
     pub count: u32,
     pub visited: usize,
     /// A cap stopped the walk: `count` is a lower bound.
     pub truncated: bool,
+    /// The staging folders of interrupted folder moves the walk passed, for the open's sweep
+    /// ([`is_staging_name`]): listed whatever the exclude list says, but never from inside a
+    /// hidden or excluded folder, and never through a link.
+    pub staging: Vec<PathBuf>,
 }
 
 /// `countMarkdownFiles`: every regular `.md` file under `vault`, links not followed. An entry
@@ -104,9 +109,11 @@ pub fn count_markdown_files(
         count: 0,
         visited: 0,
         truncated: false,
+        staging: Vec::new(),
     };
-    let mut stack = vec![(vault.to_path_buf(), 0usize)];
-    'folders: while let Some((dir, depth)) = stack.pop() {
+    // Each folder with whether it is in a hidden one.
+    let mut stack = vec![(vault.to_path_buf(), 0usize, false)];
+    'folders: while let Some((dir, depth, hidden)) = stack.pop() {
         if depth > limits.max_depth {
             result.truncated = true;
             continue;
@@ -121,6 +128,12 @@ pub fn count_markdown_files(
             }
             result.visited += 1;
             let name = entry.file_name().to_string_lossy().into_owned();
+            if !hidden
+                && is_staging_name(&name)
+                && entry.file_type().is_ok_and(|kind| kind.is_dir())
+            {
+                result.staging.push(entry.path());
+            }
             if exclude.iter().any(|p| name.starts_with(p.as_str())) {
                 continue;
             }
@@ -128,7 +141,7 @@ pub fn count_markdown_files(
                 continue;
             };
             if kind.is_dir() {
-                stack.push((entry.path(), depth + 1));
+                stack.push((entry.path(), depth + 1, hidden || name.starts_with('.')));
             } else if kind.is_file() && name.ends_with(".md") {
                 result.count = result.count.saturating_add(1);
             }

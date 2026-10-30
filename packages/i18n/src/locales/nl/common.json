@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Bekijk het herinneringenpaneel voor details",
     "searchIndexRepaired": "Zoekindex hersteld",
     "searchIndexRepairedHint": "Een deel van de zoekindex was beschadigd, dus Memry heeft die opnieuw opgebouwd. Je notities zijn niet gewijzigd.",
+    "folderMoveUndone": "Een onderbroken mapverplaatsing is ongedaan gemaakt",
+    "folderMoveUndoneHint": "De notities staan weer in de map waaruit ze werden verplaatst.",
+    "folderMoveShown": "Notities van een onderbroken mapverplaatsing zijn weer zichtbaar",
+    "folderMoveConflictCopies": "Notities waarvan de naam intussen bezet was, eindigen op “{suffix}”.",
+    "folderMoveIncomplete": "Sommige notities staan in mappen die eindigen op “{suffix}”.",
+    "folderMoveNothingDeleted": "Er is niets verwijderd.",
     "drop": {
       "tooLarge": "Een neergezet bestand is groter dan 2 GB.",
       "tooMany": "Er wachten te veel bestanden op import. Zet minder bestanden neer en probeer het opnieuw.",
