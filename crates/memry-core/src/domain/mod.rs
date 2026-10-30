@@ -31,6 +31,8 @@ pub mod note_files;
 pub mod note_meta;
 pub mod note_positions;
 pub mod note_snapshots;
+#[cfg(feature = "markdown")]
+pub mod note_stats;
 pub mod note_status;
 pub mod note_tasks;
 pub mod notes;

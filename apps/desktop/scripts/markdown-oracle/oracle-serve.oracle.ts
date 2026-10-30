@@ -48,6 +48,7 @@ import {
   type DocInput
 } from './doc-oracle'
 import { decodeYaml, encodeYaml, type YamlJson } from './yaml-json'
+import { noteStats } from './note-stats-oracle'
 
 // The converter imports two Electron-coupled modules. The oracle runs it
 // without a vault, a database or a log file: a silent logger, and an embed
@@ -134,6 +135,8 @@ async function run(job: Job): Promise<unknown> {
     case 'load':
       // gray-matter's engine: js-yaml 3.15.1 `safeLoad`.
       return encodeYaml(matter.engines.yaml.parse(text(input, 'text')))
+    case 'note-stats':
+      return noteStats(text(input, 'text'))
     case 'classify':
       return classifyMarkdownContent(text(input, 'markdown'), {
         maxFileBytes: typeof input.maxFileBytes === 'number' ? input.maxFileBytes : undefined,
