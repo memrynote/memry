@@ -68,7 +68,7 @@
     "installingUpdate": {
       "title": "Menginstal pembaruan…",
       "subtitle": "MemryNote akan terbuka kembali secara otomatis.",
-      "subtitleAfterQuit": "Buka kembali MemryNote sebentar lagi."
+      "subtitleOpenAgain": "Buka kembali MemryNote sebentar lagi."
     },
     "failed": {
       "title": "MemryNote tidak dapat dimulai sepenuhnya",

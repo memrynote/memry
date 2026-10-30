@@ -68,7 +68,7 @@
     "installingUpdate": {
       "title": "アップデートをインストール中…",
       "subtitle": "MemryNote は自動的に再起動します。",
-      "subtitleAfterQuit": "しばらくしてから MemryNote をもう一度開いてください。"
+      "subtitleOpenAgain": "しばらくしてから MemryNote をもう一度開いてください。"
     },
     "failed": {
       "title": "MemryNote を起動できませんでした",

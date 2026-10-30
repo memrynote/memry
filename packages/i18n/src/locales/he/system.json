@@ -68,7 +68,7 @@
     "installingUpdate": {
       "title": "מתקין עדכון…",
       "subtitle": "MemryNote ייפתח מחדש אוטומטית.",
-      "subtitleAfterQuit": "פתחו שוב את MemryNote בעוד רגע."
+      "subtitleOpenAgain": "פתחו שוב את MemryNote בעוד רגע."
     },
     "failed": {
       "title": "MemryNote לא הצליח לסיים את ההפעלה",

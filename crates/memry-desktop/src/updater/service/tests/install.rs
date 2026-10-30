@@ -2,7 +2,6 @@
 //! quit, including an update an earlier run left on disk.
 
 use super::*;
-use crate::updater::guard;
 use crate::updater::service::install::NotReady;
 
 #[tokio::test]
@@ -35,11 +34,6 @@ async fn restart_to_install_shows_installing_and_hands_off_once_with_a_marker() 
         detected.attempt.installer,
         Some(marker::Installer::Velopack)
     );
-    // The relaunch guard tells the user the app reopens by itself.
-    if cfg!(target_os = "macos") {
-        let pending = guard::read(rig.dir.path()).expect("pending-install marker");
-        assert!(pending.restart);
-    }
 }
 
 #[tokio::test]
@@ -55,11 +49,6 @@ async fn a_normal_quit_installs_a_downloaded_update_without_a_relaunch() {
             restart: false
         }]
     );
-    // Nothing reopens after this install, so the relaunch guard must not promise it.
-    if cfg!(target_os = "macos") {
-        let pending = guard::read(rig.dir.path()).expect("pending-install marker");
-        assert!(!pending.restart);
-    }
 }
 
 #[tokio::test]

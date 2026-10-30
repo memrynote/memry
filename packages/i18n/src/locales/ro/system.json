@@ -68,7 +68,7 @@
     "installingUpdate": {
       "title": "Se instalează actualizarea…",
       "subtitle": "MemryNote se va redeschide automat.",
-      "subtitleAfterQuit": "Redeschideți MemryNote peste câteva momente."
+      "subtitleOpenAgain": "Redeschideți MemryNote peste câteva momente."
     },
     "failed": {
       "title": "MemryNote nu a putut porni complet",

@@ -68,7 +68,7 @@
     "installingUpdate": {
       "title": "Установка обновления…",
       "subtitle": "MemryNote перезапустится автоматически.",
-      "subtitleAfterQuit": "Через несколько секунд снова откройте MemryNote."
+      "subtitleOpenAgain": "Через несколько секунд снова откройте MemryNote."
     },
     "failed": {
       "title": "MemryNote не удалось завершить запуск",

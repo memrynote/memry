@@ -549,7 +549,7 @@ jobs:
           [ ! -e "$data/update-install-attempt.json" ]
           echo "::endgroup::"
 
-          echo "::group::Relaunch mid-install: the quit-install splash, then exit"
+          echo "::group::Relaunch mid-install: the open-again splash, then exit"
           quit_app
           # The swap takes a second or two once the old process is gone, less than a launch needs
           # to reach the guard, so the updater is held (SIGSTOP) while it waits for that process:
@@ -582,9 +582,12 @@ jobs:
           open "$app"
           for n in 1 2 3 4 5 6; do sleep 0.6; screencapture -x "shots/2-splash-$n.png" || true; done
           guarded_exit "$opened"
-          # #3728: after an install at a normal quit nothing reopens the app, so the splash says
-          # to open it again instead of "MemryNote will reopen automatically".
-          wait_log "pending update install in flight on launch (updater running, started as $TAURI_BASE); showing the quit-install splash" 10
+          # #3728: the splash says to open the app again, never "MemryNote will reopen
+          # automatically": nothing reopens it after an install at a quit, and after Restart to
+          # install the guarded launch absorbs the updater's start of the new build (#3773). M4
+          # drives only the install at a quit; the splash timing has unit tests
+          # (`relaunch_guard::exit_after_splash`).
+          wait_log "pending update install in flight on launch (updater running, started as $TAURI_BASE); showing the open-again splash" 10
           installed | grep -F "$TAURI_BASE"
           echo "::endgroup::"
 
@@ -618,7 +621,7 @@ jobs:
           decided="$(date +%s)"
           for n in 1 2 3 4 5 6; do sleep 0.6; screencapture -x "shots/3-replaced-$n.png" || true; done
           guarded_exit "$decided"
-          wait_log "pending update install in flight on launch (bundle replaced since launch, started as $TAURI_BASE); showing the quit-install splash" 10
+          wait_log "pending update install in flight on launch (bundle replaced since launch, started as $TAURI_BASE); showing the open-again splash" 10
           sleep 5
           open "$app"
           wait_log "velopack: current=$VERSION" 120

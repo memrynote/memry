@@ -68,7 +68,7 @@
     "installingUpdate": {
       "title": "正在安装更新…",
       "subtitle": "MemryNote 将自动重新打开。",
-      "subtitleAfterQuit": "请稍后重新打开 MemryNote。"
+      "subtitleOpenAgain": "请稍后重新打开 MemryNote。"
     },
     "failed": {
       "title": "MemryNote 未能完成启动",

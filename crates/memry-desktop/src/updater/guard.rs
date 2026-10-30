@@ -28,9 +28,6 @@ pub struct PendingInstall {
     pub from_version: String,
     /// Epoch milliseconds.
     pub created_at: i64,
-    /// Whether the updater starts the app once it is done: Restart to install. Absent in the
-    /// file (Electron's keys) reads as an install at a normal quit, after which nothing reopens.
-    pub restart: bool,
 }
 
 fn path(dir: &Path) -> PathBuf {
@@ -42,10 +39,6 @@ pub fn parse(raw: &[u8]) -> Option<PendingInstall> {
     Some(PendingInstall {
         from_version: value.get("fromVersion")?.as_str()?.to_owned(),
         created_at: value.get("createdAt")?.as_f64()? as i64,
-        restart: value
-            .get("restart")
-            .and_then(Value::as_bool)
-            .unwrap_or(false),
     })
 }
 
@@ -56,11 +49,10 @@ pub fn read(dir: &Path) -> Option<PendingInstall> {
 
 /// Records that this build handed the install to the updater. Best effort and not atomic: a
 /// failed or torn write only disables the guard.
-pub fn write(dir: &Path, from: &str, now_ms: i64, restart: bool) {
+pub fn write(dir: &Path, from: &str, now_ms: i64) {
     let marker = PendingInstall {
         from_version: from.to_owned(),
         created_at: now_ms,
-        restart,
     };
     let result = serde_json::to_vec(&marker)
         .map_err(std::io::Error::other)
@@ -209,7 +201,6 @@ mod tests {
         PendingInstall {
             from_version: VERSION.into(),
             created_at: 1_000,
-            restart: false,
         }
     }
 
@@ -419,30 +410,18 @@ mod tests {
     #[test]
     fn round_trips_the_marker() {
         let dir = tempfile::tempdir().unwrap();
-        for restart in [true, false] {
-            write(dir.path(), "2026.1015.1", 1_793_525_415_123, restart);
-            assert_eq!(
-                String::from_utf8(std::fs::read(path(dir.path())).unwrap()).unwrap(),
-                format!(
-                    r#"{{"fromVersion":"2026.1015.1","createdAt":1793525415123,"restart":{restart}}}"#
-                )
-            );
-            assert_eq!(
-                read(dir.path()),
-                Some(PendingInstall {
-                    from_version: "2026.1015.1".into(),
-                    created_at: 1_793_525_415_123,
-                    restart,
-                })
-            );
-        }
-        // Electron's keys only: an install at a normal quit.
-        std::fs::write(
-            path(dir.path()),
-            br#"{"fromVersion":"2026.1015.1","createdAt":1793525415123}"#,
-        )
-        .unwrap();
-        assert_eq!(read(dir.path()).map(|marker| marker.restart), Some(false));
+        write(dir.path(), "2026.1015.1", 1_793_525_415_123);
+        assert_eq!(
+            std::fs::read(path(dir.path())).unwrap(),
+            br#"{"fromVersion":"2026.1015.1","createdAt":1793525415123}"#
+        );
+        assert_eq!(
+            read(dir.path()),
+            Some(PendingInstall {
+                from_version: "2026.1015.1".into(),
+                created_at: 1_793_525_415_123
+            })
+        );
         clear(dir.path());
         assert_eq!(read(dir.path()), None);
         clear(dir.path());

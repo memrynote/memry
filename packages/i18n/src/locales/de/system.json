@@ -68,7 +68,7 @@
     "installingUpdate": {
       "title": "Update wird installiert…",
       "subtitle": "MemryNote wird automatisch neu geöffnet.",
-      "subtitleAfterQuit": "Öffne MemryNote gleich noch einmal."
+      "subtitleOpenAgain": "Öffne MemryNote gleich noch einmal."
     },
     "failed": {
       "title": "MemryNote konnte den Start nicht abschließen",

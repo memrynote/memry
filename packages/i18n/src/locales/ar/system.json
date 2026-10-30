@@ -68,7 +68,7 @@
     "installingUpdate": {
       "title": "جارٍ تثبيت التحديث…",
       "subtitle": "سيُعاد فتح MemryNote تلقائيًا.",
-      "subtitleAfterQuit": "أعد فتح MemryNote بعد لحظات."
+      "subtitleOpenAgain": "أعد فتح MemryNote بعد لحظات."
     },
     "failed": {
       "title": "تعذّر على MemryNote إكمال بدء التشغيل",

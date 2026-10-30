@@ -68,7 +68,7 @@
     "installingUpdate": {
       "title": "Frissítés telepítése…",
       "subtitle": "A MemryNote automatikusan újraindul.",
-      "subtitleAfterQuit": "Egy pillanat múlva nyissa meg újra a MemryNote-ot."
+      "subtitleOpenAgain": "Egy pillanat múlva nyissa meg újra a MemryNote-ot."
     },
     "failed": {
       "title": "A MemryNote nem tudott elindulni",

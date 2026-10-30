@@ -68,7 +68,7 @@
     "installingUpdate": {
       "title": "Inštaluje sa aktualizácia…",
       "subtitle": "MemryNote sa automaticky znova otvorí.",
-      "subtitleAfterQuit": "O chvíľu MemryNote znova otvorte."
+      "subtitleOpenAgain": "O chvíľu MemryNote znova otvorte."
     },
     "failed": {
       "title": "MemryNote sa nepodarilo úplne spustiť",

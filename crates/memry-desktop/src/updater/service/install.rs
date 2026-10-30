@@ -62,7 +62,7 @@ impl UpdaterService {
 
     /// The last evidence before the installer runs: telemetry is already disposed, so the next
     /// launch reads this marker to learn whether the install applied.
-    fn write_markers(&self, restart: bool) {
+    fn write_markers(&self) {
         let Some(backend) = &self.backend else {
             return;
         };
@@ -79,7 +79,6 @@ impl UpdaterService {
                 &self.data_dir,
                 self.core.raw_version(),
                 i64::try_from(now_ms()).unwrap_or(i64::MAX),
-                restart,
             );
         }
     }
@@ -93,7 +92,7 @@ impl UpdaterService {
         if self.handed_off.swap(true, Ordering::SeqCst) {
             return false;
         }
-        self.write_markers(true);
+        self.write_markers();
         match backend.apply(true, true) {
             Ok(()) => true,
             Err(error) => {
@@ -118,7 +117,7 @@ impl UpdaterService {
         {
             return;
         }
-        self.write_markers(false);
+        self.write_markers();
         if let Err(error) = backend.apply(true, false) {
             // Telemetry is gone at this point; the marker reports the miss next launch.
             tracing::warn!(
