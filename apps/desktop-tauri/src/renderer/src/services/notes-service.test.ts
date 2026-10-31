@@ -8,7 +8,11 @@ const commands = vi.hoisted(() => ({
   notesList: vi.fn(),
   notesExists: vi.fn(),
   notesOpenExternal: vi.fn(),
-  notesRevealInFinder: vi.fn()
+  notesRevealInFinder: vi.fn(),
+  notesGetLinks: vi.fn(),
+  notesResolveByTitle: vi.fn(),
+  notesResolveTitles: vi.fn(),
+  notesResolveWikiTarget: vi.fn()
 }))
 
 vi.mock('../../../generated/bindings', () => ({ commands }))
@@ -106,6 +110,44 @@ describe('notes-service', () => {
     expect(commands.notesRevealInFinder).toHaveBeenCalledWith('note-1')
     expect(api.notes.getByPath).not.toHaveBeenCalled()
     expect(api.notes.exists).not.toHaveBeenCalled()
+  })
+
+  it('reads links and resolves wiki targets through the link commands', async () => {
+    const links = {
+      outgoing: [{ sourceId: 'note-1', targetId: null, targetTitle: 'Nowhere' }],
+      incoming: [
+        {
+          sourceId: 'note-2',
+          sourcePath: 'Dense.md',
+          sourceTitle: 'Dense',
+          contexts: [{ snippet: '[[Plan]]', linkStart: 0, linkEnd: 8 }],
+          mentionCount: 60,
+          truncated: true
+        }
+      ]
+    }
+    const plan = { id: 'note-1', path: 'work/Plan.md', title: 'Plan', fileType: 'markdown' }
+    commands.notesGetLinks.mockResolvedValue(links)
+    commands.notesResolveByTitle.mockResolvedValue(plan)
+    commands.notesResolveTitles.mockResolvedValue({
+      plan: { id: 'note-1', path: 'work/Plan.md' },
+      gone: null
+    })
+    commands.notesResolveWikiTarget.mockResolvedValue({ ...plan, heading: 'Goals' })
+
+    expect(await notesService.getLinks('note-1')).toEqual(links)
+    expect(commands.notesGetLinks).toHaveBeenCalledWith('note-1')
+    expect(await notesService.resolveByTitle('plan')).toEqual(plan)
+    expect(commands.notesResolveByTitle).toHaveBeenCalledWith('plan')
+    expect(await notesService.resolveTitles(['plan', 'gone'])).toEqual({
+      plan: { id: 'note-1', path: 'work/Plan.md' },
+      gone: null
+    })
+    expect(commands.notesResolveTitles).toHaveBeenCalledWith(['plan', 'gone'])
+    expect((await notesService.resolveWikiTarget('Plan#Goals'))?.heading).toBe('Goals')
+    expect(commands.notesResolveWikiTarget).toHaveBeenCalledWith('Plan#Goals')
+    expect(api.notes.getLinks).not.toHaveBeenCalled()
+    expect(api.notes.resolveTitles).not.toHaveBeenCalled()
   })
 
   it('forwards the methods later steps port to window.api.notes', async () => {

@@ -1103,6 +1103,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           linkStart: ctx.linkStart,
           linkEnd: ctx.linkEnd
         })),
+        mentionCount: bl.mentionCount ?? (bl.contexts ?? []).length,
+        truncated: bl.truncated ?? false,
         via: bl.via
       }
     })

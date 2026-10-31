@@ -17,7 +17,7 @@ use super::error::{CommandError, ErrorKind};
 use crate::shell::{external, services};
 
 /// The open vault, or the localized "no vault is open".
-fn open_vault<R: Runtime>(app: &AppHandle<R>) -> Result<OpenVault, CommandError> {
+pub(super) fn open_vault<R: Runtime>(app: &AppHandle<R>) -> Result<OpenVault, CommandError> {
     app.state::<Session>().current().ok_or_else(|| {
         let locale = app.state::<Arc<LocaleService>>().get();
         CommandError::new(

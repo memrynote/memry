@@ -788,6 +788,8 @@ export function NotePage({ noteId }: NotePageProps) {
           linkStart: ctx.linkStart,
           linkEnd: ctx.linkEnd
         })),
+        mentionCount: bl.mentionCount ?? (bl.contexts ?? []).length,
+        truncated: bl.truncated ?? false,
         via: bl.via
       }
     })

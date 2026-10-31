@@ -26,8 +26,8 @@ pub struct IncomingLink {
     pub source_kind: String,
     /// The journal's date, `None` for a note source.
     pub source_date: Option<String>,
-    /// The vault path of the source note's file, `None` when it has no file row (a journal
-    /// day, or a note whose file the vault tier has not recorded).
+    /// The vault path of the source's file, `None` when no file row names it (a note or day
+    /// whose file the vault tier has not recorded).
     pub source_path: Option<String>,
 }
 
@@ -93,7 +93,7 @@ pub struct LinkTarget {
     pub folder_path: Option<String>,
     /// The file row's type when the note has one, else the record's (`markdown` for a day).
     pub file_type: String,
-    /// The vault path of the note's file, `None` when it has no file row.
+    /// The vault path of the note's or day's file, `None` when no file row names it.
     pub path: Option<String>,
     pub matched_by: MatchedBy,
 }
@@ -141,18 +141,26 @@ fn targets(
             .filter(|found| found.journal_date.is_none())
             .map(|found| found.id.as_str()),
     )?;
+    let days = file_paths(
+        data,
+        found
+            .iter()
+            .flatten()
+            .filter(|found| found.journal_date.is_some())
+            .map(|found| found.id.as_str()),
+    )?;
     Ok(found
         .into_iter()
         .map(|found| {
             let found = found?;
             if let Some(date) = found.journal_date {
                 return Some(LinkTarget {
+                    path: days.get(&found.id).cloned(),
                     id: found.id,
                     title: date.clone(),
                     journal_date: Some(date),
                     folder_path: None,
                     file_type: "markdown".to_owned(),
-                    path: None,
                     matched_by: found.matched_by,
                 });
             }
@@ -176,6 +184,24 @@ struct NoteRow {
     folder_path: Option<String>,
     file_type: String,
     path: Option<String>,
+}
+
+/// The `note_files` path of each id among `ids` a row names, in one statement.
+fn file_paths<'a>(
+    data: &Connection,
+    ids: impl Iterator<Item = &'a str>,
+) -> Result<HashMap<String, String>, StorageError> {
+    let ids = id_list(ids)?;
+    let mut statement = data
+        .prepare(
+            "SELECT note_id, path FROM note_files \
+             WHERE note_id IN (SELECT value FROM json_each(?1))",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![ids], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(failed)?;
+    rows.collect::<Result<_, _>>().map_err(failed)
 }
 
 fn note_rows<'a>(

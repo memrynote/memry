@@ -13,7 +13,9 @@ export interface Backlink {
   noteTitle: string
   folder?: string // Parent folder name
   date: Date // When link was created or note updated
-  mentions: Mention[] // All mentions of current note
+  mentions: Mention[] // The text around each link, up to the source's snippet bound
+  mentionCount: number // Every link in the source, past the bound too
+  truncated: boolean // Some links have no `mentions` entry
   via?: LinkVia // Set for relation-property, canvas-arrow and portal entries
 }
 

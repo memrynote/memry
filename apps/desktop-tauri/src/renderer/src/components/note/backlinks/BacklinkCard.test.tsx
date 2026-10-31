@@ -9,6 +9,7 @@ vi.mock('@memry/i18n/renderer', () => ({
       if (key === 'backlinks.viaProperty') return `${values?.property} → ${values?.title}`
       if (key === 'backlinks.fromAria') return `Backlinks from ${values?.title}`
       if (key === 'canvasLinks.connectedOn') return `Connected on ${values?.canvas}`
+      if (key === 'backlinks.more') return `${values?.count} more`
       return key.split('.').at(-1) ?? key
     }
   })
@@ -19,7 +20,9 @@ const baseBacklink: Backlink = {
   noteId: 'note-a',
   noteTitle: 'John',
   date: new Date('2026-05-08'),
-  mentions: []
+  mentions: [],
+  mentionCount: 0,
+  truncated: false
 }
 
 describe('BacklinkCard', () => {
@@ -68,5 +71,38 @@ describe('BacklinkCard', () => {
     render(<BacklinkCard backlink={withMentions} onClick={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: /expand/i })).toBeInTheDocument()
+  })
+
+  it('counts every link and says how many have no snippet when the source was cut', () => {
+    const dense: Backlink = {
+      ...baseBacklink,
+      mentions: [
+        { id: 'm1', snippet: '[[John]] one', linkStart: 0, linkEnd: 8 },
+        { id: 'm2', snippet: '[[John]] two', linkStart: 0, linkEnd: 8 }
+      ],
+      mentionCount: 30,
+      truncated: true
+    }
+
+    render(<BacklinkCard backlink={dense} defaultExpanded onClick={vi.fn()} />)
+
+    expect(screen.getByText('30')).toBeInTheDocument()
+    expect(screen.getByText('28 more')).toBeInTheDocument()
+  })
+
+  it('names no missing snippets when every link has one', () => {
+    const whole: Backlink = {
+      ...baseBacklink,
+      mentions: [
+        { id: 'm1', snippet: '[[John]] one', linkStart: 0, linkEnd: 8 },
+        { id: 'm2', snippet: '[[John]] two', linkStart: 0, linkEnd: 8 }
+      ],
+      mentionCount: 2
+    }
+
+    render(<BacklinkCard backlink={whole} defaultExpanded onClick={vi.fn()} />)
+
+    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.queryByText(/more$/)).not.toBeInTheDocument()
   })
 })
