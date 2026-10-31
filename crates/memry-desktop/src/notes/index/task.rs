@@ -86,6 +86,9 @@ struct Owed {
     /// The core search reindex (links, body tags, full text).
     links: bool,
     walk: Walk,
+    /// The open's pass progress (`indexVault` on open) goes out with the next pass: the
+    /// renderer refreshes the notes list on it.
+    report: bool,
     due: Option<Instant>,
     failures: u32,
 }
@@ -154,32 +157,43 @@ impl Owed {
 
 impl Indexer {
     /// The task: facts and requests in, passes out, until the handle stops it or `cancel` is
-    /// seen. Errs only when it could not start.
+    /// seen. Errs only when it could not start. `report` gets the open's pass progress.
     pub fn run(
         &self,
         facts: Receiver<Applied>,
         inbox: TaskInbox,
         cancel: &CancelToken,
+        report: &dyn Fn(IndexProgress),
     ) -> Result<(), String> {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_time()
             .build()
             .map_err(|error| format!("the note index task has no runtime: {error}"))?;
-        runtime.block_on(self.serve(facts, inbox, cancel));
+        runtime.block_on(self.serve(facts, inbox, cancel, report));
         Ok(())
     }
 
-    async fn serve(&self, mut facts: Receiver<Applied>, inbox: TaskInbox, cancel: &CancelToken) {
+    async fn serve(
+        &self,
+        mut facts: Receiver<Applied>,
+        inbox: TaskInbox,
+        cancel: &CancelToken,
+        report: &dyn Fn(IndexProgress),
+    ) {
         let TaskInbox(mut commands) = inbox;
         // Owed at every open: a pass that wrote rows may have ended before its search reindex.
+        // The open's report too: a watcher that failed before any walk still refreshes the list.
         let mut owed = Owed {
             links: true,
+            report: true,
             ..Owed::default()
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
         while !cancel.is_cancelled() {
             if owed.walked() {
                 for (progress, answer) in waiting.drain(..) {
+                    // It reports through its own callback, which refreshes the list.
+                    owed.report = false;
                     // The asker may have gone; the work is done either way.
                     let _ = answer.send(self.reindex(&mut owed, progress, cancel));
                 }
@@ -200,7 +214,10 @@ impl Indexer {
                     }
                     Err(RecvError::Closed) => return,
                 },
-                () = tokio::time::sleep_until(wake), if next.is_some() => self.work(&mut owed, cancel),
+                () = tokio::time::sleep_until(wake), if next.is_some() => {
+                    let report = std::mem::take(&mut owed.report).then_some(report);
+                    self.work(&mut owed, cancel, report);
+                }
             }
         }
     }
@@ -220,7 +237,12 @@ impl Indexer {
                     owed.owe_scan();
                 }
             }
-            Applied::Indexed { .. } => owed.end_walk(),
+            // The walk's end owes the open's report, even when a pass before it (a failed
+            // watcher's, or a lag's) took it: the walk's pass is what fills the list.
+            Applied::Indexed { .. } => {
+                owed.report = true;
+                owed.end_walk();
+            }
             Applied::Vault(VaultEvent::Rescanned { .. }) => {
                 if matches!(owed.walk, Walk::Before | Walk::Failed) {
                     owed.walk = Walk::During;
@@ -236,14 +258,24 @@ impl Indexer {
         }
     }
 
-    fn work(&self, owed: &mut Owed, cancel: &CancelToken) {
+    /// One pass over what is owed. With `report`, its progress goes out as a reindex's does:
+    /// throttled, never backwards, ending at the total once every file was read.
+    fn work(&self, owed: &mut Owed, cancel: &CancelToken, report: Option<&dyn Fn(IndexProgress)>) {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
         owed.due = None;
         let stop = || cancel.is_cancelled();
+        let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
+        let mut progress = |step| {
+            if let Some(report) = report
+                && throttle.offer(step, Instant::now())
+            {
+                report(step);
+            }
+        };
         let outcome = self
             .listed(scan, &ids)
-            .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut |_| {}));
+            .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut progress));
         owed.settle(ids, scan, &outcome);
     }
 

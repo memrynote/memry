@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import type { LinkedNote } from '@/types'
 import { createLogger } from '@/lib/logger'
 import { useT } from '@memry/i18n/renderer'
+import { notesService } from '@/services/notes-service'
 
 const log = createLogger('Component:LinkSearch')
 
@@ -104,7 +105,7 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
 
       setIsSearching(true)
       try {
-        const response = await window.api.notes.list({
+        const response = await notesService.list({
           limit: 50,
           sortBy: 'modified',
           sortOrder: 'desc'

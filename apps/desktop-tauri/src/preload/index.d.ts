@@ -2,6 +2,7 @@ import type { GeneratedRpcApi } from '@memry/rpc'
 import type { MovesRecovered } from '../generated/bindings'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
+import type { PortedNoteMethod } from '../renderer/src/services/notes-service'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
@@ -2004,7 +2005,21 @@ interface MainInvokePayload {
 }
 
 // Full API interface
-interface API extends GeneratedRpcApi {
+/**
+ * A note method `notesService` serves from a Rust command. Through `window.api.notes` it would
+ * reach the not-ported shim and reject, so it is typed as nothing callable: every call to it
+ * fails to compile, however it is reached (chained, optional, aliased, destructured,
+ * bracketed). Kept as a key rather than omitted, because with `noImplicitAny` off a bracketed
+ * key the type lacks reads as `any` and compiles.
+ */
+interface CallNotesServiceInstead {
+  readonly 'use notesService from @/services/notes-service': never
+}
+
+interface API extends Omit<GeneratedRpcApi, 'notes'> {
+  notes: Omit<NotesClientAPI, PortedNoteMethod> & {
+    readonly [K in PortedNoteMethod]: CallNotesServiceInstead
+  }
   vault: VaultClientAPI
   properties: PropertiesClientAPI
   savedFilters: SavedFiltersClientAPI

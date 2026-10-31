@@ -5,6 +5,7 @@ import { ApplyTemplateConfirmDialog } from './apply-template-confirm-dialog'
 import { useTemplates } from '@/hooks/use-templates'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
+import { notesService } from '@/services/notes-service'
 
 interface ApplyTemplateToNoteDialogProps {
   noteId: string | null
@@ -54,7 +55,7 @@ function ApplyTemplateToNoteDialogActive({
         onClose()
         return
       }
-      const note = await window.api.notes.get(noteId)
+      const note = await notesService.get(noteId)
       const hasContent = !!note?.content?.trim()
       if (hasContent) {
         setPendingTemplateId(templateId)

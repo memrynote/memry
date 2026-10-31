@@ -8,6 +8,7 @@ pub mod drop_stage;
 pub mod error;
 pub mod locale;
 pub mod logging;
+pub mod notes;
 pub mod settings;
 pub mod shell;
 pub mod shell_integrations;

@@ -27,7 +27,10 @@
 //! - **Not measured:** a file in the large-file class (Electron streams it; a follow-up).
 //! - [`NoteIndex::reindex`] (`vault_reindex`) measures every note again, through the task once
 //!   the open walk ended, and reports its progress at most once per [`PROGRESS_INTERVAL`],
-//!   never backwards, ending at the total when the pass finishes.
+//!   never backwards, ending at the total once every file was read. The open's pass, the first
+//!   after the walk, reports the same way (Electron's `indexVault` on open, `0` of `0`
+//!   included): the renderer refreshes the notes list on it. A close or a failed write ends a
+//!   pass without the total, and the pass that pays the rest does not report.
 //!
 //! [`Search::reindex_until`]: memry_core::api::search::Search::reindex_until
 
@@ -102,13 +105,19 @@ enum Slot {
 pub struct NoteIndex {
     tier: Arc<VaultTier>,
     slot: Mutex<Slot>,
+    report: Box<dyn Fn(IndexProgress) + Send + Sync>,
 }
 
 impl NoteIndex {
-    pub fn new(tier: Arc<VaultTier>) -> Arc<Self> {
+    /// `report` gets the progress of each open's pass, on the task's thread.
+    pub fn new(
+        tier: Arc<VaultTier>,
+        report: impl Fn(IndexProgress) + Send + Sync + 'static,
+    ) -> Arc<Self> {
         Arc::new(Self {
             tier,
             slot: Mutex::new(Slot::Closed),
+            report: Box::new(report),
         })
     }
 
@@ -139,7 +148,7 @@ impl NoteIndex {
                 let Some((handle, (facts, inbox))) = started else {
                     return Err("the open subscribed no facts".into());
                 };
-                let ended = Indexer::new(vault).run(facts, inbox, cancel);
+                let ended = Indexer::new(vault).run(facts, inbox, cancel, &index.report);
                 if ended.is_err() {
                     let mut slot = lock(&index.slot);
                     if matches!(&*slot, Slot::Open { handle: open, .. } if open.same(&handle)) {

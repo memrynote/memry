@@ -37,6 +37,12 @@ import type {
   WikiLinkResolution
 } from '@memry/rpc/notes'
 import type { NoteLinksChangedEvent } from '@memry/contracts/notes-api'
+import {
+  commands,
+  type FileView,
+  type NoteListItemView,
+  type NoteView
+} from '../../../generated/bindings'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
 export type {
@@ -78,7 +84,55 @@ export type {
   WikiLinkResolution
 }
 
-export const notesService: NotesClientAPI = createWindowApiForwarder(() => window.api.notes)
+function toNote(view: NoteView): Note {
+  return { ...view, created: new Date(view.created), modified: new Date(view.modified) }
+}
+
+function toListItem(view: NoteListItemView): NoteListItem {
+  return { ...view, created: new Date(view.created), modified: new Date(view.modified) }
+}
+
+function toFile(view: FileView): FileMetadata {
+  return { ...view, created: new Date(view.created), modified: new Date(view.modified) }
+}
+
+/**
+ * The note reads of Step 13f (`commands/notes.rs`). Every other method, the create and the
+ * delete included, still goes to `window.api.notes`.
+ */
+const ported = {
+  get: async (id: string): Promise<Note | null> => {
+    const note = await commands.notesGet(id)
+    return note ? toNote(note) : null
+  },
+  getByPath: async (path: string): Promise<Note | null> => {
+    const note = await commands.notesGetByPath(path)
+    return note ? toNote(note) : null
+  },
+  getFile: async (id: string): Promise<FileMetadata | null> => {
+    const file = await commands.notesGetFile(id)
+    return file ? toFile(file) : null
+  },
+  list: async (options?: NoteListOptions): Promise<NoteListResponse> => {
+    const page = await commands.notesList(options ?? {})
+    return { ...page, notes: page.notes.map(toListItem) }
+  },
+  exists: (titleOrPath: string): Promise<boolean> => commands.notesExists(titleOrPath),
+  openExternal: async (id: string): Promise<void> => {
+    await commands.notesOpenExternal(id)
+  },
+  revealInFinder: async (id: string): Promise<void> => {
+    await commands.notesRevealInFinder(id)
+  }
+} satisfies Partial<NotesClientAPI>
+
+/** The note methods served from Rust; `window.api.notes` is typed without them. */
+export type PortedNoteMethod = keyof typeof ported
+
+export const notesService: NotesClientAPI = createWindowApiForwarder<
+  NotesClientAPI,
+  PortedNoteMethod
+>(() => window.api.notes, ported)
 
 export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
   return window.api.onNoteCreated(callback)

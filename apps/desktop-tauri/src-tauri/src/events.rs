@@ -2,6 +2,7 @@
 //! `<Domain><Noun><Verb>Event` (`CalendarChangedEvent`, `SyncStatusChangedEvent`). Domain steps
 //! add their events here and list them in `registry.rs`; none calls `emit` directly.
 
+use memry_desktop::notes::index::IndexProgress;
 use memry_desktop::session::response::VaultStatus;
 use memry_desktop::updater::state::AppUpdateState;
 use serde::Serialize;
@@ -85,14 +86,25 @@ pub struct VaultActivityChangedEvent;
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultListChangedEvent;
 
-/// A reindex measured `index_built` of `index_total` notes (`vault:index-progress`). At most
-/// one per 250 ms and never backwards. A reindex that finishes ends with `index_built ==
-/// index_total`; one the vault's close stops ends without it.
+/// A reindex, or an open's first index pass, measured `index_built` of `index_total` notes
+/// (`vault:index-progress`). At most one per 250 ms and never backwards within a pass. A pass
+/// that read every file ends with `index_built == index_total` (`0` of `0` for an open with
+/// nothing to measure); one a close or a failed write stops ends without it.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultIndexProgressEvent {
     pub index_built: u32,
     pub index_total: u32,
+}
+
+impl From<IndexProgress> for VaultIndexProgressEvent {
+    fn from(step: IndexProgress) -> Self {
+        let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+        Self {
+            index_built: count(step.built),
+            index_total: count(step.total),
+        }
+    }
 }
 
 /// `index.db` was rebuilt empty (`vault:index-recovered`). `reason` is `missing` for a first

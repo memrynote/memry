@@ -20,6 +20,7 @@ import { cardDefaultSize, entityKey, extractEntityRefs, getCardRefs } from './ca
 import type { DrawPlanOptions } from './canvas-draw-plan'
 import { getLiveCanvas } from './canvas-live-registry'
 import { planCardPlacements, type SceneEditElement } from './canvas-scene-edit'
+import { notesService } from '@/services/notes-service'
 
 export interface CanvasMutation {
   elements: SceneEditElement[]
@@ -44,7 +45,7 @@ export interface CanvasWriteResult<M extends CanvasMutation> {
 async function sizeFor(ref: CanvasEntityRef): Promise<{ width: number; height: number }> {
   if (ref.entityType !== 'note') return cardDefaultSize(ref.entityType)
   try {
-    const note = await window.api.notes.get(ref.entityId)
+    const note = await notesService.get(ref.entityId)
     return cardDefaultSize('note', note?.content ?? '')
   } catch {
     return cardDefaultSize('note')
