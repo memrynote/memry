@@ -323,32 +323,63 @@ fn a_definition_no_build_reads_back_is_never_written() {
 /// A read that fails for a moment (a Windows sharing violation, here a permission taken away
 /// and given back) is retried as a write's rename is: the read, and the check right before the
 /// rename that reads the file again, so the write lands.
+///
+/// The permission comes back at the first failed attempt, never by the clock: on the warning
+/// `fs_atomic::with_transient_retry` logs on the failing thread before it waits. So the retry
+/// reads the file however loaded the machine is, and without the retry the test fails.
 #[cfg(unix)]
-#[test]
-fn a_file_unreadable_for_a_moment_is_read_again() {
+mod unreadable_for_a_moment {
     use std::os::unix::fs::PermissionsExt;
-    let dir = vault_with(Some(b"---\nproperties: {A: {type: url}}\n---\n"));
-    let path = properties_path(dir.path());
-    let mode = |bits| fs::set_permissions(&path, fs::Permissions::from_mode(bits)).unwrap();
-    let for_a_moment = || {
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        mode(0o644);
-    };
-    std::thread::scope(|scope| {
-        mode(0o000);
-        scope.spawn(for_a_moment);
-        assert!(read(dir.path()).is_ok());
-    });
-    std::thread::scope(|scope| {
-        update(dir.path(), |definitions| {
-            mode(0o000);
-            scope.spawn(for_a_moment);
-            definitions.insert("X".into(), text_definition());
-        })
-        .unwrap();
-    });
-    let file = read(dir.path()).unwrap();
-    assert!(file.definitions.get("A").is_some() && file.definitions.get("X").is_some());
+    use std::path::PathBuf;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
+
+    use super::*;
+
+    /// Gives `path` its read permission back on each failed attempt, and counts them.
+    struct GiveBack {
+        path: PathBuf,
+        attempts: Arc<AtomicUsize>,
+    }
+
+    impl<S: tracing::Subscriber> Layer<S> for GiveBack {
+        fn on_event(&self, event: &tracing::Event<'_>, _: Context<'_, S>) {
+            let meta = event.metadata();
+            if *meta.level() == tracing::Level::WARN
+                && meta.target() == "memry_desktop::vault::fs_atomic"
+            {
+                fs::set_permissions(&self.path, fs::Permissions::from_mode(0o644)).unwrap();
+                self.attempts.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+    }
+
+    #[test]
+    fn a_file_unreadable_for_a_moment_is_read_again() {
+        let dir = vault_with(Some(b"---\nproperties: {A: {type: url}}\n---\n"));
+        let path = properties_path(dir.path());
+        let take_away = || fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let give_back = GiveBack {
+            path: path.clone(),
+            attempts: attempts.clone(),
+        };
+        tracing::subscriber::with_default(tracing_subscriber::registry().with(give_back), || {
+            take_away();
+            assert!(read(dir.path()).is_ok());
+            assert_eq!(attempts.load(Ordering::SeqCst), 1, "the read never failed");
+            update(dir.path(), |definitions| {
+                take_away();
+                definitions.insert("X".into(), text_definition());
+            })
+            .unwrap();
+            assert_eq!(attempts.load(Ordering::SeqCst), 2, "the check never failed");
+        });
+        let file = read(dir.path()).unwrap();
+        assert!(file.definitions.get("A").is_some() && file.definitions.get("X").is_some());
+    }
 }
 
 #[cfg(unix)]
