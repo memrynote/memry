@@ -9,6 +9,8 @@
 mod normalize;
 mod tree;
 
+use std::collections::HashMap;
+
 use serde_json::Value as Json;
 
 pub use normalize::normalize_task_blocks;
@@ -170,6 +172,8 @@ pub fn scan_task_checkbox_states(markdown: &str) -> Vec<(String, bool)> {
     if !markdown.contains(TASK_BLOCK_SUFFIX_OPEN) {
         return states;
     }
+    // Each id's place in `states`: a note with tens of thousands of tasks stays linear.
+    let mut slots: HashMap<String, usize> = HashMap::new();
     for line in markdown.split('\n') {
         let Some((checked, start)) = checkbox_text_start(line) else {
             continue;
@@ -177,9 +181,12 @@ pub fn scan_task_checkbox_states(markdown: &str) -> Vec<(String, bool)> {
         let Some(parsed) = parse_task_block_suffix(&line[start..]) else {
             continue;
         };
-        match states.iter_mut().find(|(id, _)| *id == parsed.task_id) {
-            Some(entry) => entry.1 = checked,
-            None => states.push((parsed.task_id, checked)),
+        match slots.get(&parsed.task_id) {
+            Some(&slot) => states[slot].1 = checked,
+            None => {
+                slots.insert(parsed.task_id.clone(), states.len());
+                states.push((parsed.task_id, checked));
+            }
         }
     }
     states

@@ -4,7 +4,8 @@
 -- Derived like the rest of this file: `domain::note_stats` writes a row from
 -- the file's text, and an empty table is filled again by the next scan. A row
 -- names the bytes it was measured from (`file_hash`, the vault tier's hash of
--- the file), so a scan re-measures a note whose file moved past it.
+-- the file, data.db `note_file_hashes.file_hash`), so a scan re-measures a
+-- note whose file moved past it.
 --
 -- `task_ids` and `header_tags` are JSON arrays of strings. `date` is the
 -- journal day the file's path names, NULL for every other note.

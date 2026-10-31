@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "What syncNoteToCache measures in a vault file (extractNoteMetadata of note-sync.ts and the task id scan of note-derived-state-projector.ts): calculateWordCount, the body length in UTF-16 code units, createSnippet at its default 200, the cover when isCoverValue, scanTaskCheckboxStates ids and extractTags, over the parseNote body and frontmatter.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 36
+    "caseCount": 42
   },
   "cases": [
     {
@@ -665,6 +665,118 @@
           "wordCount": 5,
           "characterCount": 22,
           "snippet": "--- tags: [a] no close",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/tags-true",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: true\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": [
+            "true"
+          ]
+        }
+      }
+    },
+    {
+      "id": "note-stats/tags-date",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: 2024-01-01\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": [
+            "2024-01-01T00:00:00.000Z"
+          ]
+        }
+      }
+    },
+    {
+      "id": "note-stats/tags-nan",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: .nan\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/wiki-embed",
+      "op": "note-stats",
+      "input": {
+        "text": "before ![[embed.png]] after ![[Note#Part|shown]] end"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 5,
+          "characterCount": 52,
+          "snippet": "before !embed.png after !shown end",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/cjk",
+      "op": "note-stats",
+      "input": {
+        "text": "漢字かなまじり文です。 한국어 문장 中文句子\n\n字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 5,
+          "characterCount": 275,
+          "snippet": "漢字かなまじり文です。 한국어 문장 中文句子 字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字...",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/rtl",
+      "op": "note-stats",
+      "input": {
+        "text": "مرحبا بالعالم هذا نص عربي\nשלום עולם זה טקסט בעברית\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 10,
+          "characterCount": 51,
+          "snippet": "مرحبا بالعالم هذا نص عربي שלום עולם זה טקסט בעברית",
           "cover": null,
           "taskIds": [],
           "headerTags": []

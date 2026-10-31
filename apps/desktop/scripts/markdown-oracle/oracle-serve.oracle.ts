@@ -26,6 +26,10 @@ import {
   type Eol
 } from '@memry/app-core/markdown'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
+import { scanTaskCheckboxStates } from '@memry/shared/task-block'
+
+import { parseNote } from '../../src/main/vault/frontmatter'
+import { extractNoteMetadata } from '../../src/main/vault/note-sync'
 
 import { FNS } from './fns'
 import { memryParse, type MemryParseInput } from './memry-oracle'
@@ -48,7 +52,6 @@ import {
   type DocInput
 } from './doc-oracle'
 import { decodeYaml, encodeYaml, type YamlJson } from './yaml-json'
-import { noteStats } from './note-stats-oracle'
 
 // The converter imports two Electron-coupled modules. The oracle runs it
 // without a vault, a database or a log file: a silent logger, and an embed
@@ -76,6 +79,30 @@ let uuidCounter = 0
 vi.spyOn(crypto, 'randomUUID').mockImplementation(
   () => `00000000-0000-4000-8000-${(++uuidCounter).toString(16).padStart(12, '0')}`
 )
+
+/** What `syncNoteToCache` stores for a file: `extractNoteMetadata` over `parseNote`, as the
+ * vault watcher calls it, and the projector's task id scan of the same body. */
+function noteStats(raw: string): unknown {
+  const parsed = parseNote(raw)
+  const metadata = extractNoteMetadata({
+    id: 'oracle',
+    path: 'notes/oracle.md',
+    fileContent: raw,
+    frontmatter: parsed.frontmatter,
+    parsedContent: parsed.content,
+    title: 'oracle',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    modifiedAt: '2026-01-01T00:00:00.000Z'
+  })
+  return {
+    wordCount: metadata.wordCount,
+    characterCount: metadata.characterCount,
+    snippet: metadata.snippet,
+    cover: metadata.cover,
+    taskIds: [...scanTaskCheckboxStates(parsed.content).keys()],
+    headerTags: metadata.headerTags
+  }
+}
 
 function memryParseInput(input: Record<string, unknown>): MemryParseInput {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job inputs are written by cases-parse.ts
