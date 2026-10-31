@@ -715,7 +715,8 @@ export type VaultErrorEvent = {
 
 /**
  *  A reindex measured `index_built` of `index_total` notes (`vault:index-progress`). At most
- *  one per 250 ms, never backwards, and the last one is `index_built == index_total`.
+ *  one per 250 ms and never backwards. A reindex that finishes ends with `index_built ==
+ *  index_total`; one the vault's close stops ends without it.
  */
 export type VaultIndexProgressEvent = {
 	indexBuilt: number,

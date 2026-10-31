@@ -139,6 +139,21 @@ impl Search {
 }
 
 impl Search {
+    /// [`Search::reindex`] that `stop` can end between two rows; a stopped pass commits
+    /// nothing (`None`). For desktop's note index, which must let go of both databases when
+    /// the vault closes. Not on the FFI surface.
+    pub fn reindex_until(
+        &self,
+        stop: &dyn Fn() -> bool,
+    ) -> Result<Option<ReindexSummary>, StorageError> {
+        let index = self.index.clone();
+        self.data.call_blocking(move |data| {
+            index.call_blocking(|index| {
+                Ok(search::reindex_until(data, index, now_ms(), stop)?.map(summary))
+            })
+        })
+    }
+
     /// The `index.db` handle, for the desktop e2e debug query. Not on the FFI surface.
     #[doc(hidden)]
     pub fn index_handle(&self) -> Db {
@@ -400,16 +415,17 @@ impl Search {
     pub fn reindex(&self) -> Result<ReindexSummary, StorageError> {
         let index = self.index.clone();
         self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
-                let done = search::reindex(data, index, now_ms())?;
-                Ok(ReindexSummary {
-                    full: done.full,
-                    notes_indexed: done.notes_indexed as u32,
-                    tasks_indexed: done.tasks_indexed as u32,
-                    corrupt_skipped: done.corrupt_skipped as u32,
-                })
-            })
+            index.call_blocking(|index| Ok(summary(search::reindex(data, index, now_ms())?)))
         })
+    }
+}
+
+fn summary(done: search::Reindexed) -> ReindexSummary {
+    ReindexSummary {
+        full: done.full,
+        notes_indexed: done.notes_indexed as u32,
+        tasks_indexed: done.tasks_indexed as u32,
+        corrupt_skipped: done.corrupt_skipped as u32,
     }
 }
 

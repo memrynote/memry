@@ -1,6 +1,7 @@
-//! The note index (Step 13e) over a real session, tier and watcher: a generated vault of 1000
-//! notes is measured into `note_stats` once per note, a reindex reports monotonic progress that
-//! ends at the total, and live facts (an app write, a removal, lost facts) keep the rows current.
+//! The note index (Step 13e) at scale, over a real session, tier and watcher: a generated vault
+//! of 1000 notes is measured into `note_stats` once per note, and a reindex reports throttled,
+//! monotonic progress ending at the total, in one `index.db` statement per note. A close ends a
+//! reindex and the vault opens again.
 //!
 //! The times print with `--nocapture`; no normal test asserts one. The budgets of #3530 (tier 0
 //! under 400 ms, `notes_list` under 15 ms) are asserted by the ignored release run:
@@ -10,100 +11,25 @@
 //! ```
 
 mod device_key;
+mod index_support;
 mod vault_env;
 
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
-use memry_core::domain::note_stats::{MeasuredFile, measure};
-use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::index::{Backfilled, IndexProgress, Indexer, NoteIndex};
-use memry_desktop::session::projection::CancelToken;
-use memry_desktop::vault::consumer::Applied;
-use memry_desktop::vault::consumer::rows::RowStat;
-use memry_desktop::vault::file_types::FileType;
+use index_support::{all_indexed, note_text, seeded, until};
+use memry_core::domain::note_stats::measure;
+use memry_desktop::notes::index::{
+    Backfilled, IndexError, IndexProgress, NoteIndex, PROGRESS_INTERVAL,
+};
 use memry_desktop::vault::hash::content_hash;
-use vault_env::{Env, WAIT, env, indexed};
+use rusqlite::trace::TraceEventCodes;
+use vault_env::{Env, indexed};
 
 const NOTES: usize = 1000;
 
-fn note_text(i: usize) -> String {
-    let mut text = String::new();
-    if i.is_multiple_of(3) {
-        text.push_str(&format!("---\ntags:\n  - topic{}\n  - Shared\n", i % 7));
-        if i.is_multiple_of(5) {
-            text.push_str("cover: wash:sage\n");
-        }
-        text.push_str("---\n");
-    }
-    text.push_str(&format!(
-        "# Note {i}\n\nSome words about note {i} and [[Note {}]].\n",
-        i + 1
-    ));
-    if i.is_multiple_of(4) {
-        text.push_str("```\nlet skipped = true\n```\n");
-    }
-    if i.is_multiple_of(6) {
-        text.push_str(&format!("- [ ] a task {{task:t{i}}}\n"));
-    }
-    text
-}
-
-fn path_of(i: usize) -> String {
-    format!("f{}/Note {i}.md", i % 10)
-}
-
-/// A vault of `count` notes with their records and rows, as a closed app leaves it.
-fn seeded(count: usize) -> (Env, Arc<dyn SecureStore>, Vec<(String, String)>) {
-    let store = Mutex::new(None);
-    let mut e = env(|s| {
-        *store.lock().unwrap() = Some(s);
-        None
-    });
-    let store = store.into_inner().unwrap().unwrap();
-    for i in 0..count {
-        e.write(&path_of(i), &note_text(i));
-    }
-    e.open();
-    let core = e.core();
-    let writer = core.notes_writer(store.clone()).unwrap();
-    let rows = e.tier.rows();
-    let session = rows.session_for(&core).unwrap();
-    let mut notes = Vec::new();
-    for i in 0..count {
-        let (path, text) = (path_of(i), note_text(i));
-        let id = writer
-            .create(format!("Note {i}"), Some(format!("f{}", i % 10)))
-            .unwrap();
-        let hash = content_hash(&text);
-        // Both hashes name the file, as an indexed vault's rows do, so the open walk reads
-        // nothing: what is measured below is the index alone.
-        let stat = RowStat {
-            file_type: FileType::Markdown,
-            size: text.len() as u64,
-            content_hash: Some(hash.clone()),
-            file_hash: Some(hash),
-        };
-        rows.reserve(session, &id, &path, stat).unwrap();
-        notes.push((id, path));
-    }
-    e.close();
-    (e, store, notes)
-}
-
-fn until(what: &str, mut done: impl FnMut() -> bool) {
-    let deadline = Instant::now() + WAIT;
-    while !done() {
-        assert!(Instant::now() < deadline, "still waiting for {what}");
-        std::thread::sleep(Duration::from_millis(20));
-    }
-}
-
-fn all_indexed(e: &Env) -> bool {
-    let search = e.session.current().expect("open").search;
-    search.unindexed_notes(false).unwrap().is_empty()
-}
+static STATEMENTS: AtomicUsize = AtomicUsize::new(0);
 
 struct Measured {
     tier0: Duration,
@@ -135,14 +61,33 @@ fn open_and_measure(e: &mut Env) -> (Arc<NoteIndex>, Measured) {
             "release"
         }
     );
-    (
-        index,
-        Measured {
-            tier0,
-            tier1,
-            notes_list,
-        },
-    )
+    let measured = Measured {
+        tier0,
+        tier1,
+        notes_list,
+    };
+    (index, measured)
+}
+
+/// Counts the statements the index writer runs until the next call.
+fn count_index_statements(e: &Env, on: bool) -> usize {
+    let index = e.session.current().unwrap().search.index_handle();
+    index
+        .call_blocking(|conn| {
+            if on {
+                STATEMENTS.store(0, Ordering::SeqCst);
+                conn.trace_v2(
+                    TraceEventCodes::SQLITE_TRACE_STMT,
+                    Some(|_| {
+                        STATEMENTS.fetch_add(1, Ordering::SeqCst);
+                    }),
+                );
+            } else {
+                conn.trace_v2(TraceEventCodes::empty(), None);
+            }
+            Ok(STATEMENTS.load(Ordering::SeqCst))
+        })
+        .unwrap()
 }
 
 #[test]
@@ -158,156 +103,89 @@ fn a_generated_vault_is_measured_once_per_note_and_a_reindex_reports_to_the_tota
         assert_eq!(stored.date, None);
     }
 
-    let mut steps: Vec<IndexProgress> = Vec::new();
-    let done = index.reindex(|step| steps.push(step)).unwrap();
-    // Every file read once, written in one core call per batch of 200.
+    let steps: Arc<Mutex<Vec<(Instant, IndexProgress)>>> = Arc::default();
+    let seen = steps.clone();
+    count_index_statements(&e, true);
+    let done = index
+        .reindex(move |step| seen.lock().unwrap().push((Instant::now(), step)))
+        .unwrap();
+    let statements = count_index_statements(&e, false);
     assert_eq!(
         done,
         Backfilled {
             listed: NOTES,
             indexed: NOTES,
             skipped: 0,
-            writes: NOTES.div_ceil(200),
+            unread: 0,
         }
     );
-    assert_eq!(
-        steps.first(),
-        Some(&IndexProgress {
-            built: 0,
-            total: NOTES
-        })
-    );
-    assert_eq!(
-        steps.last(),
-        Some(&IndexProgress {
-            built: NOTES,
-            total: NOTES
-        })
-    );
+    // One insert per note, then the batches' transactions, the prune and a search reindex
+    // that finds nothing moved: never a statement per note beyond its row.
+    println!("reindex of {NOTES} notes: {statements} index.db statements");
     assert!(
-        steps.windows(2).all(|w| w[0].built < w[1].built),
-        "{steps:?}"
+        (NOTES..NOTES + 60).contains(&statements),
+        "{statements} statements"
     );
-    e.close();
-}
 
-#[test]
-fn facts_keep_the_rows_current_and_lost_facts_run_a_scan() {
-    let (mut e, _store, notes) = seeded(3);
-    let index = NoteIndex::new(e.tier.clone());
-    index.register(&e.session);
-    e.drain();
-    e.open();
-    e.facts_until(indexed);
-    until("the seeded notes measured", || all_indexed(&e));
-    let open = e.session.current().unwrap();
-    let rows = e.tier.rows();
-    let session = rows.session_for(&open.vault).unwrap();
-
-    // An app write: the new text is measured once the queue is due. The end of the walk
-    // asked for a scan, which may measure the first write; it is done once the first write
-    // is measured, so only the write's own fact can measure the second.
-    let (id, path) = &notes[0];
-    for text in [
-        "---\ntags: [fresh]\n---\nfour words right here\n",
-        "then five other words here\n- [ ] and a task {task:t9}\n",
-    ] {
-        // Told to the own-write record first, as the app does: the watcher reports nothing.
-        e.tier.echo().will_write(path, &content_hash(text));
-        e.write(path, text);
-        let stat = RowStat {
-            file_type: FileType::Markdown,
-            size: text.len() as u64,
-            content_hash: Some(content_hash(text)),
-            file_hash: Some(content_hash(text)),
-        };
-        rows.record_write(session, id, path, stat).unwrap();
-        until("the write measured", || {
-            open.search.note_stats(id).unwrap().unwrap().stats == measure(text)
-        });
-    }
-
-    // A removal drops the row.
-    let (gone, _) = &notes[1];
-    assert!(rows.remove(session, gone).unwrap());
-    until("the removed note's row dropped", || {
-        open.search.note_stats(gone).unwrap().is_none()
-    });
-
-    // Facts lost to a lagged subscription: the indexer scans, measures what has no row and
-    // drops the row of a note no fact said was gone.
-    let (lost, _) = &notes[2];
-    assert!(open.search.forget_note_stats(lost).unwrap());
-    let ghost = MeasuredFile {
-        note_id: "ghost".into(),
-        file_hash: "h".into(),
-        date: None,
-        text: "gone".into(),
+    let steps = steps.lock().unwrap().clone();
+    let progress: Vec<IndexProgress> = steps.iter().map(|(_, step)| *step).collect();
+    let step = |built| IndexProgress {
+        built,
+        total: NOTES,
     };
-    open.search.index_note_files(vec![ghost]).unwrap();
-    let (sender, receiver) = tokio::sync::broadcast::channel(1);
-    // Facts that ask for no scan themselves: only the lag can.
-    for _ in 0..3 {
-        let none = Applied::Removed {
-            note_id: "no-such-note".into(),
-            path: "none.md".into(),
-        };
-        sender.send(none).unwrap();
-    }
-    let indexer = Indexer::new(&open);
-    let cancel = CancelToken::default();
-    std::thread::scope(|scope| {
-        scope.spawn(|| indexer.run(receiver, &cancel));
-        // Cancelled on the way out, a failed wait included, so the scope can join the task.
-        let _stop = CancelOnDrop(&cancel);
-        until("the lost note measured and the ghost dropped", || {
-            open.search.note_stats(lost).unwrap().is_some()
-                && open.search.note_stats("ghost").unwrap().is_none()
-        });
-    });
+    assert_eq!(progress.first(), Some(&step(0)));
+    assert_eq!(progress.last(), Some(&step(NOTES)));
+    assert!(
+        progress.windows(2).all(|w| w[0].built < w[1].built),
+        "{progress:?}"
+    );
+    // Throttled: every step but the last came at least an interval after the one before
+    // (less a margin for the callback running after the throttle's clock read).
+    let throttled = PROGRESS_INTERVAL - Duration::from_millis(10);
+    let gaps: Vec<Duration> = steps[..steps.len() - 1]
+        .windows(2)
+        .map(|w| w[1].0 - w[0].0)
+        .collect();
+    assert!(gaps.iter().all(|gap| *gap >= throttled), "{gaps:?}");
     e.close();
 }
 
-/// A vault the app has never seen: the open walk gives every file its note through the notes
-/// identity (tier 0), and the index measures each once (tier 1). Ids come from the identity.
+/// A close stops a reindex between two files, the asker hears the vault is gone, and the
+/// vault opens again: nothing of the index outlives the close.
 #[test]
-fn a_fresh_vault_gets_its_notes_and_then_their_stats() {
-    let mut e = env(|store| Some(NotesIdentity::new(store)));
-    for i in 0..NOTES {
-        e.write(&path_of(i), &note_text(i));
-    }
+fn a_close_ends_a_reindex_and_the_vault_opens_again() {
+    let (mut e, _store, _) = seeded(NOTES);
     let index = NoteIndex::new(e.tier.clone());
+    assert!(matches!(index.reindex(|_| {}), Err(IndexError::NotOpen)));
     index.register(&e.session);
-    let started = Instant::now();
     e.open();
-    e.facts_until(indexed);
-    let tier0 = started.elapsed();
     until("every note measured", || all_indexed(&e));
-    let tier1 = started.elapsed();
-    println!("fresh {NOTES} notes: tier 0 {tier0:?}, tier 1 {tier1:?}");
-    let rows = e.rows();
-    assert_eq!(rows.len(), NOTES);
-    let search = e.session.current().unwrap().search;
-    for (id, path) in rows {
-        let i: usize = path
-            .trim_end_matches(".md")
-            .rsplit(' ')
-            .next()
-            .unwrap()
-            .parse()
-            .unwrap();
-        let stored = search.note_stats(&id).unwrap().expect("a row");
-        assert_eq!(stored.stats, measure(&note_text(i)), "{path}");
-    }
+
+    let (started, first) = mpsc::channel();
+    let session = e.session.clone();
+    let asked = index.clone();
+    let reindex = std::thread::spawn(move || {
+        asked.reindex(move |step| {
+            if step.built == 0 {
+                let _ = started.send(());
+                // Held at the first step until the close began, so the close lands inside.
+                until("the close to begin", || session.current().is_none());
+            }
+        })
+    });
+    first.recv().unwrap();
     e.close();
-}
+    let result = reindex.join().unwrap();
+    assert!(matches!(result, Err(IndexError::NotOpen)), "{result:?}");
+    assert!(matches!(index.reindex(|_| {}), Err(IndexError::NotOpen)));
 
-struct CancelOnDrop<'a>(&'a CancelToken);
-
-impl Drop for CancelOnDrop<'_> {
-    fn drop(&mut self) {
-        self.0.cancel();
-    }
+    e.open();
+    let done = index.reindex(|_| {}).unwrap();
+    assert_eq!(done.indexed, NOTES);
+    // Closed again with its task idle: the close wakes it, and the vault opens again.
+    e.close();
+    e.open();
+    e.close();
 }
 
 /// The #3530 budgets, in a release build: `cargo test --release ... -- --ignored`.

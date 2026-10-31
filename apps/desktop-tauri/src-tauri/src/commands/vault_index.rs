@@ -20,18 +20,24 @@ pub async fn vault_reindex(app: AppHandle<Wry>) -> Result<(), CommandError> {
     blocking("vault_reindex", move || {
         let index = index.ok_or_else(not_open)?;
         index
-            .reindex(|step| {
+            .reindex(move |step| {
+                let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
                 broadcast(
                     &app,
                     VaultIndexProgressEvent {
-                        index_built: step.built as u32,
-                        index_total: step.total as u32,
+                        index_built: count(step.built),
+                        index_total: count(step.total),
                     },
                 );
             })
             .map(drop)
             .map_err(|error| match error {
                 IndexError::NotOpen => not_open(),
+                IndexError::NotRunning => CommandError::new(
+                    ErrorKind::Internal,
+                    "note_index_not_running",
+                    "The note index is not running for this vault. Reopen the vault to start it",
+                ),
                 IndexError::Storage(error) => CommandError::from_core(&error),
             })
     })
