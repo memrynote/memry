@@ -7,6 +7,7 @@
 //! | a pulled record whose text is the file's keeps its id       | an id is never minted twice           |
 //! | a note whose text is not the file's defers                  | a file is named only on evidence      |
 //! | a note holding a resolved image embed is the file's         | the feed's embeds, 12f-3b             |
+//! | an image embed missing or resolved elsewhere at adopt defers | the file's text, not the note's       |
 //! | a note whose body is not here yet defers                    | evidence first, never a guess         |
 //! | asked again before the row, the same note answers           | idempotent across create and row      |
 //! | a tombstone, a filed note, a file note never match          | one note per file, markdown only      |
@@ -135,6 +136,37 @@ fn a_note_whose_body_holds_a_resolved_image_embed_is_the_files() {
     );
     assert_eq!(note_count(&db), 1);
     assert!(outbox(&db).is_empty());
+}
+
+/// The note holds `![[img.png]]` resolved to the vault's image. At adopt the image is gone (the
+/// lookup has no `img.png`) or the name now resolves to another file: the note writes out as
+/// another text than the file's, so the file waits rather than taking the note.
+#[test]
+fn a_note_whose_image_embed_is_missing_or_another_image_at_adopt_defers() {
+    let text = "Before\n\n![[img.png]]\n\nAfter\n";
+    let resolved = |url: &str| Embeds(HashMap::from([("img.png".to_owned(), url.to_owned())]));
+    for (case, at_adopt) in [
+        ("embed-missing", Embeds(HashMap::new())),
+        ("embed-elsewhere", resolved("file:///vault/other/img.png")),
+    ] {
+        let db = note_identity_support::open(case);
+        create(&db, "n1", "Plan", None);
+        give_body_with(
+            &db,
+            "n1",
+            "Plan.md",
+            text,
+            &resolved("file:///vault/img.png"),
+        );
+        clear_outbox(&db);
+        assert_eq!(
+            adopt_with(&db, file("Plan.md", text), "minted", Some(&at_adopt)),
+            UNDECIDED,
+            "{case}"
+        );
+        assert_eq!(note_count(&db), 1, "{case}");
+        assert!(outbox(&db).is_empty(), "{case}");
+    }
 }
 
 /// A `Groceries.md` whose text is not the phone's note of that title may be another note (named
