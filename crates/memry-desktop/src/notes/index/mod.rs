@@ -7,10 +7,11 @@
 //!   [`Applied`] facts. `Added`, `Changed` and `Renamed` queue the note, `Removed` drops its
 //!   row. The queue is worked [`IDLE_DELAY`] after the first fact that filled it, smallest file
 //!   first, as `scheduleDrain` arms its timer once per burst: a stream of edits cannot hold
-//!   the rest of the queue back. The
-//!   start of the task, the end of the open walk and a lagged subscription (facts were lost)
-//!   run a scan instead: every markdown note whose row is missing or names other bytes than
-//!   its file ([`Search::unindexed_notes`]).
+//!   the rest of the queue back. Nothing is worked before the open walk ends (`Indexed`):
+//!   tier 0 goes first, and a pass beside a first walk would hold its database locks. The
+//!   end of the walk and a lagged subscription (facts were lost, the walk's end among them,
+//!   maybe) run a scan instead: every markdown note whose row is missing or names other
+//!   bytes than its file ([`Search::unindexed_notes`]).
 //! - **Links and body tags** have one owner, the core search reindex, which reads them from the
 //!   note's document. A pass that measured anything ends with [`Search::reindex`].
 //! - **Not measured:** a file past the large-file byte ceiling (Electron streams it; a
@@ -38,7 +39,7 @@ use tokio::sync::broadcast::error::TryRecvError;
 pub use progress::{IndexProgress, ProgressThrottle};
 
 use crate::session::projection::CancelToken;
-use crate::session::{OpenVault, Session};
+use crate::session::{OpenStage, OpenVault, Session};
 use crate::vault::config::read_vault_config;
 use crate::vault::consumer::{Applied, VaultTier};
 use crate::vault::journal_format::{normalize_journal_folder, parse_journal_date};
@@ -78,6 +79,8 @@ pub struct Backfilled {
 /// The note index of whichever vault is open. The app holds one.
 pub struct NoteIndex {
     tier: Arc<VaultTier>,
+    /// The open's facts, subscribed before its walk starts and taken by its task.
+    facts: Mutex<Option<Receiver<Applied>>>,
     current: Mutex<Option<Arc<Indexer>>>,
 }
 
@@ -85,6 +88,7 @@ impl NoteIndex {
     pub fn new(tier: Arc<VaultTier>) -> Arc<Self> {
         Arc::new(Self {
             tier,
+            facts: Mutex::new(None),
             current: Mutex::new(None),
         })
     }
@@ -92,14 +96,26 @@ impl NoteIndex {
     /// Runs the index task as a background task of every open.
     pub fn register(self: &Arc<Self>, session: &Session) {
         let index = self.clone();
+        // A stage before `Watcher`, whose walk publishes `Indexed`: the background task starts
+        // after the open, by when a small vault's walk may have ended, and the task works
+        // nothing before that fact.
+        session.on_open(
+            "note-index",
+            OpenStage::LockGuard,
+            Arc::new(move |_| {
+                *lock(&index.facts) = Some(index.tier.subscribe());
+                Ok(())
+            }),
+        );
+        let index = self.clone();
         session.on_background(
             "note-index",
             Arc::new(move |vault, cancel| {
-                // Subscribed before the first scan reads the rows, so no fact falls between.
-                let facts = index.tier.subscribe();
+                let facts = lock(&index.facts)
+                    .take()
+                    .ok_or("the open subscribed no facts")?;
                 let indexer = Arc::new(Indexer::new(vault));
                 *lock(&index.current) = Some(indexer.clone());
-                indexer.pass(indexer.search.unindexed_notes(false), cancel);
                 indexer.run(facts, cancel);
                 let mut current = lock(&index.current);
                 if current.as_ref().is_some_and(|c| Arc::ptr_eq(c, &indexer)) {
@@ -163,6 +179,7 @@ impl Indexer {
         let mut queue: BTreeSet<String> = BTreeSet::new();
         let mut scan = false;
         let mut armed: Option<Instant> = None;
+        let mut walked = false;
         while !cancel.is_cancelled() {
             match facts.try_recv() {
                 Ok(
@@ -180,19 +197,21 @@ impl Indexer {
                     }
                 }
                 Ok(Applied::Indexed { .. }) => {
+                    walked = true;
                     scan = true;
                     armed = armed.or(Some(Instant::now()));
                 }
                 Ok(Applied::Vault(_)) => {}
                 Err(TryRecvError::Lagged(missed)) => {
                     tracing::warn!(scope = "note_index", missed, "facts were lost: scanning");
+                    walked = true;
                     scan = true;
                     armed = armed.or(Some(Instant::now()));
                 }
                 Err(TryRecvError::Closed) => return,
                 Err(TryRecvError::Empty) => {
                     let due = armed.is_none_or(|at| at.elapsed() >= IDLE_DELAY);
-                    if due && (scan || !queue.is_empty()) {
+                    if walked && due && (scan || !queue.is_empty()) {
                         armed = None;
                         let notes = if std::mem::take(&mut scan) {
                             queue.clear();
