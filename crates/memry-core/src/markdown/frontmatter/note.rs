@@ -187,7 +187,7 @@ fn entries_of(value: &YamlValue) -> YamlMap {
 
 /// Serialize an existing note back to file content. Unedited parts stay
 /// byte-identical; see the TypeScript for the edited-body rules. A block that
-/// ends the file takes the file's line end before a body ([`join`]).
+/// ends the file takes the file's line end before a body (`join`).
 pub fn serialize_parsed_markdown_note(
     parsed: &ParsedMarkdownNote,
     content: &str,
