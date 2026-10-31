@@ -415,6 +415,46 @@ fn a_refresh_moves_the_stamp_only_while_the_body_has_not_moved_since() {
     );
 }
 
+/// The embed lookup: rows of one kind, grouped by their lowercased file name, only for the names
+/// asked for. Case and Unicode are folded the way JavaScript's `toLowerCase` folds them.
+#[test]
+fn by_filename_lower_groups_the_rows_of_one_kind_under_their_lowercased_names() {
+    let Fixture { dir: _dir, vault } = fixture();
+    let files = vault.note_files();
+    for (id, path, kind) in [
+        ("i1", "deep/er/Photo.PNG", "image"),
+        ("i2", "img/photo.png", "image"),
+        ("i3", "Ärger.PNG", "image"),
+        ("p1", "photo.png.pdf", "pdf"),
+        ("m1", "notes/photo.png", "markdown"),
+        ("i4", "other.png", "image"),
+    ] {
+        let mut row = stat(id, path);
+        row.file_type = kind.to_owned();
+        files.upsert_stat(row).expect("insert");
+    }
+    let names = ["photo.png", "ärger.png", "missing.png"]
+        .map(str::to_owned)
+        .into();
+    let found = files.by_filename_lower("image", &names).expect("lookup");
+    assert_eq!(
+        found.into_iter().collect::<Vec<_>>(),
+        vec![
+            (
+                "photo.png".to_owned(),
+                vec!["deep/er/Photo.PNG".to_owned(), "img/photo.png".to_owned()]
+            ),
+            ("ärger.png".to_owned(), vec!["Ärger.PNG".to_owned()]),
+        ]
+    );
+    assert!(
+        files
+            .by_filename_lower("image", &Default::default())
+            .expect("lookup")
+            .is_empty()
+    );
+}
+
 /// The file hash names the bytes on disk now, apart from the text the document holds, or
 /// nothing: every stat write, [`NoteFiles::set_hash`] and [`NoteFiles::set_file_hash`]
 /// replace it, a row whose file went (`set_hash(None)`) has none, and it goes with the row.

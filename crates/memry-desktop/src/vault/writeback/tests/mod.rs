@@ -24,6 +24,7 @@ use crate::vault::consumer::converter_for;
 use crate::vault::consumer::rows::{RowOwner, RowStat, now_ms};
 use crate::vault::consumer::tests::with_device_key;
 use crate::vault::consumer::{Applied, ChangeSource};
+use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
 use crate::vault::watch::EchoGuard;
@@ -91,18 +92,21 @@ impl Fixture {
     }
 
     /// A note whose file is `text` and whose document took it whole: what the consumer leaves
-    /// for a file it fed (`Fed` or `Unchanged`, the row with the file's hash).
+    /// for a file it fed (`Fed` or `Unchanged`, the row with the file's hash), its image embeds
+    /// resolved as the consumer resolves them.
     pub(super) fn adopt(&mut self, rel: &str, text: &str) -> String {
         self.write(rel, text);
         let id = self.writer.create("Note".into(), None).unwrap();
         let parsed = parse_markdown_note(text).unwrap();
         let split = split_frontmatter_block(text);
+        let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), split.body, rel);
         let input = FeedInput {
             note_id: &id,
             markdown: split.body,
             note_path: Some(rel),
             writing: Some(writing_of_yaml(&parsed.frontmatter)),
             frontmatter: split.block,
+            embeds: Some(&embeds),
         };
         let outcome = self
             .vault
@@ -321,6 +325,7 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
 }
 
 mod deleted;
+mod embeds;
 mod guards;
 mod perf;
 mod reconcile;

@@ -115,6 +115,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_activity::vault_activity_list,
             crate::commands::vault_activity::vault_activity_reveal,
             crate::commands::vault_activity::vault_activity_set_retention,
+            // vault files
+            crate::commands::vault_files::vault_resolve_embeds,
             // window
             crate::commands::shell::window_close,
             crate::commands::shell::window_minimize,

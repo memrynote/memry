@@ -86,6 +86,7 @@ use crate::crdt::registry::UpdateSink;
 use crate::domain::body_write::append_in;
 use crate::domain::notes::ITEM_TYPE;
 use crate::domain::{note_snapshots, owed_file_body, reads};
+use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::{Converter, ReplaceOptions};
 use crate::markdown::convert::apply::ReplaceOutcome;
 use crate::markdown::convert::restore::SerializeOptions;
@@ -151,6 +152,10 @@ pub struct FeedInput<'a> {
     /// The file's frontmatter block, verbatim (`split_frontmatter_block`), which a
     /// kept version carries above the body it replaced, as the file did.
     pub frontmatter: Option<&'a str>,
+    /// The vault's image embed lookup, for the file's markdown and for the proof parse of the
+    /// body it replaces; none leaves every `![[target]]` as written. It runs while this
+    /// database's writer is held, so it must not read this database.
+    pub embeds: Option<&'a dyn EmbedResolver>,
 }
 
 /// Replaces the body of the note with the file's text.
@@ -204,6 +209,7 @@ fn author(
         note_path,
         writing,
         frontmatter,
+        embeds,
     } = input;
     let markdown = markdown.strip_prefix('\u{feff}').unwrap_or(markdown);
     if !reads::note_exists(conn, note_id) {
@@ -246,6 +252,7 @@ fn author(
     } else {
         let options = SerializeOptions {
             note_path,
+            embeds,
             ..SerializeOptions::default()
         };
         let Some(body) = converter.serialize_note_body(&document, BODY_FRAGMENT, &options) else {
@@ -280,7 +287,7 @@ fn author(
             note_path,
             writing,
             unless_changed_from: None,
-            embeds: None,
+            embeds,
         },
     );
     match outcome {

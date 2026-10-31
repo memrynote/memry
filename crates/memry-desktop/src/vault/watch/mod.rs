@@ -34,5 +34,7 @@ pub mod safety;
 pub use echo::EchoGuard;
 pub use event::{EventSink, VaultEvent};
 pub use handle::{NewFiles, WatchHandle};
+#[cfg(test)]
+pub(crate) use runtime::HoldFn;
 pub use runtime::{VaultWatcher, WatchError};
 pub use safety::Tuning;

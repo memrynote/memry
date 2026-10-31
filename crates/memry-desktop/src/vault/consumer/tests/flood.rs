@@ -12,14 +12,14 @@ use crate::vault::watch::{EventSink, NewFiles, VaultWatcher};
 const FILES: usize = 200;
 const WAIT: Duration = Duration::from_secs(60);
 
-struct Running {
+pub(super) struct Running {
     _watcher: VaultWatcher,
     _consumer: Consumer,
     /// `Added` events the watcher reported.
     added: Arc<AtomicUsize>,
 }
 
-fn run(f: &Fixture, capacity: usize) -> Running {
+pub(super) fn run(f: &Fixture, capacity: usize) -> Running {
     let adopts = f.identity.adopts();
     let (sink, inbox) = inbox(capacity);
     let added = Arc::new(AtomicUsize::new(0));
@@ -64,7 +64,7 @@ fn rescans(facts: &[Applied]) -> usize {
 }
 
 impl Fixture {
-    fn collect_until(
+    pub(super) fn collect_until(
         &mut self,
         seen: &mut Vec<Applied>,
         done: impl Fn(&Fixture, &[Applied]) -> bool,

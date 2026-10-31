@@ -614,7 +614,6 @@ export interface VaultClientAPI {
   listAccount(): Promise<AccountVaultInfo[]>
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
   deleteFromAccount(vaultUuid: string): Promise<void>
-  resolveEmbeds(input: { refs: string[]; notePath?: string }): Promise<Record<string, string>>
   setIcon(path: string, icon: string | null): Promise<void>
   prepareSandbox(reset?: boolean): Promise<{ path: string }>
 }
