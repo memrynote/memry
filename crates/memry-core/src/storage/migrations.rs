@@ -149,6 +149,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         name: "link_target_keys",
         sql: include_str!("migrations/index/0002_link_target_keys.sql"),
     },
+    Migration {
+        version: 3,
+        name: "note_stats",
+        sql: include_str!("migrations/index/0003_note_stats.sql"),
+    },
 ];
 
 /// The version a fully migrated database sits at. Zero for an empty list.

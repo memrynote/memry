@@ -35,6 +35,7 @@ import {
 } from './cases-doc'
 import { pmSchemaCases, yxmlCases } from './cases-pm'
 import { frontmatterCases, markdownClassCases, type OracleCase } from './cases-frontmatter'
+import { noteStatsCases } from './note-stats-oracle'
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const COMMITTED_DIR = resolve(appRoot, '../../packages/contracts/test-vectors/markdown-convert')
@@ -63,6 +64,11 @@ function vectorFiles(external: MarkdownSource[]): VectorFile[] {
       path: 'markdown-class.json',
       note: 'classifyMarkdownContent of @memry/shared/markdown-class: the note and large-file classes. Thresholds are per case so the bounds are testable on small inputs.',
       cases: markdownClassCases()
+    },
+    {
+      path: 'note-stats.json',
+      note: 'What syncNoteToCache measures in a vault file (extractNoteMetadata of note-sync.ts and the task id scan of note-derived-state-projector.ts): calculateWordCount, the body length in UTF-16 code units, createSnippet at its default 200, the cover when isCoverValue, scanTaskCheckboxStates ids and extractTags, over the parseNote body and frontmatter.',
+      cases: noteStatsCases()
     },
     {
       path: 'pm-schema.json',

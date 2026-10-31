@@ -120,6 +120,9 @@ pub fn vector_file(name: &str) -> Json {
         "markdown-convert/markdown-class" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/markdown-class.json"
         ),
+        "markdown-convert/note-stats" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/note-stats.json"
+        ),
         "markdown-convert/pm-schema" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/pm-schema.json"
         ),

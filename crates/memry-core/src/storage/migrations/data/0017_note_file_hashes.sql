@@ -4,7 +4,8 @@
 -- the document refused (too large, frontmatter that does not parse, a body
 -- that was already there) has none or an older one there, and a move made
 -- while the app was closed could not be told from a delete. Rename pairing
--- reads this hash; nothing else does.
+-- reads this hash, and so does the desktop note index (index.db `note_stats`,
+-- 13e) to tell a measured file from a changed one.
 --
 -- Device-local, never synced, opaque to the core like `content_hash`. A new
 -- table rather than a column on `note_files`, because `ALTER TABLE ... ADD
