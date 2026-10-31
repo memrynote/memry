@@ -26,6 +26,11 @@ pushed_ranges=
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ -n "$local_ref" ] || continue
   if ! is_zero_sha "$local_sha" && [ "$local_sha" != "$remote_sha" ]; then
+    # The checks below read commits; a tag may point at a tree or a blob instead.
+    object_type=$(git cat-file -t "$local_sha^{}")
+    if [ "$object_type" != commit ]; then
+      refuse_push "$remote_ref" "it points at a $object_type, which the secret and format checks cannot read. Point it at a commit."
+    fi
     pushed_ranges="$pushed_ranges$local_sha $remote_sha
 "
   fi
@@ -60,11 +65,10 @@ case "$current_branch" in
 esac
 
 # `git commit --no-verify` skips pre-commit, so re-run its secret scan and format check over the
-# files each pushed ref adds, read at the pushed commit (scripts/pushed-files.mjs).
+# files each pushed ref adds or changes, read at the pushed commit. $1 names the remote.
 while read -r local_sha remote_sha; do
   [ -n "$local_sha" ] || continue
-  node scripts/check-staged-secrets.mjs --pushed "$local_sha" "$remote_sha"
-  node scripts/check-pushed-format.mjs "$local_sha" "$remote_sha"
+  node scripts/check-pushed.mjs "${1-}" "$local_sha" "$remote_sha"
 done <<EOF
 $pushed_ranges
 EOF

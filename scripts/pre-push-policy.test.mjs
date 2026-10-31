@@ -70,7 +70,7 @@ function makeFixture() {
     spawnSync('git', ['--git-dir', origin, 'rev-parse', '--verify', '--quiet', ref], {
       encoding: 'utf8'
     }).stdout.trim()
-  return { root, repo, origin, git, commit, runHook, push, remoteRef }
+  return { root, repo, origin, env, git, commit, runHook, push, remoteRef }
 }
 
 function withFixture(test) {
@@ -275,14 +275,22 @@ describe('pre-push hook force-push refusal', () => {
 
 describe('pre-push hook re-runs pre-commit checks over the pushed commits', () => {
   // Fixture commits run no hooks, as `git commit --no-verify` does. Paths sit under tools/,
-  // which the docs gate ignores, so a refusal here comes from the range checks.
+  // which the docs gate ignores, so a refusal here comes from the pushed-commit checks.
   // Assembled at runtime so this file does not trip the scanner (check-staged-secrets.test.mjs).
   const leakedToken = `export const token = '${['ghp', 'abc123def456ghi789jkl012'].join('_')}'\n`
+  const clean = "export const a = 'x'\n"
   const unformatted = 'export const a = "x";\n'
+  const secretRefused = /secret scan: potential secrets detected in the pushed commits/
+
+  function assertRefused(fx, result, pattern, ref = 'feature') {
+    assert.equal(result.status, 1, result.stderr)
+    assert.match(result.stderr, pattern)
+    assert.equal(fx.remoteRef(ref), '')
+  }
 
   it('passes a clean range on a new branch and on an update', () =>
     withFixture((fx) => {
-      fx.commit('tools/a.ts', "export const a = 'x'\n")
+      fx.commit('tools/a.ts', clean)
       const created = fx.push('HEAD:refs/heads/feature')
       assert.equal(created.status, 0, created.stderr)
       fx.commit('tools/b.ts', "export const b = 'y'\n")
@@ -294,30 +302,142 @@ describe('pre-push hook re-runs pre-commit checks over the pushed commits', () =
     withFixture((fx) => {
       fx.commit('tools/config.ts', leakedToken)
       const result = fx.push('HEAD:refs/heads/feature')
-      assert.equal(result.status, 1)
-      assert.match(result.stderr, /secret scan: potential secrets detected in the pushed commits/)
+      assertRefused(fx, result, secretRefused)
       assert.match(result.stderr, /tools\/config\.ts:1 github-token/)
-      assert.equal(fx.remoteRef('feature'), '')
     }))
 
   it('refuses an update whose new commit holds an unformatted file', () =>
     withFixture((fx) => {
-      fx.commit('tools/a.ts', "export const a = 'x'\n")
+      fx.commit('tools/a.ts', clean)
       assert.equal(fx.push('HEAD:refs/heads/feature').status, 0)
       const pushed = fx.remoteRef('feature')
       fx.commit('tools/b.ts', unformatted)
       const result = fx.push('HEAD:refs/heads/feature')
       assert.equal(result.status, 1)
-      assert.match(result.stdout + result.stderr, /tools\/b\.ts/)
-      assert.match(result.stderr, /format check: files in the pushed commits/)
+      assert.match(
+        result.stderr,
+        /format check: files in the pushed commits .* are not formatted:\n\n {2}tools\/b\.ts/
+      )
       assert.equal(fx.remoteRef('feature'), pushed)
     }))
 
   it('checks the pushed commit, not the working tree', () =>
     withFixture((fx) => {
       fx.commit('tools/b.ts', unformatted)
-      writeFileSync(join(fx.repo, 'tools/b.ts'), "export const a = 'x'\n")
-      assert.equal(fx.push('HEAD:refs/heads/feature').status, 1)
+      fx.commit('tools/config.ts', leakedToken)
+      writeFileSync(join(fx.repo, 'tools/b.ts'), clean)
+      writeFileSync(join(fx.repo, 'tools/config.ts'), clean)
+      const result = fx.push('HEAD:refs/heads/feature')
+      assertRefused(fx, result, secretRefused)
+      assert.match(result.stderr, /format check/)
+    }))
+
+  it('refuses a secret written while resolving a merge conflict', () =>
+    withFixture((fx) => {
+      fx.commit('tools/a.ts', clean)
+      fx.git('checkout', '-q', '-b', 'side')
+      fx.commit('tools/a.ts', "export const a = 'side'\n")
+      fx.git('checkout', '-q', 'docs-gate-fixture')
+      fx.commit('tools/a.ts', "export const a = 'main'\n")
+      assert.equal(spawnSync('git', ['merge', '-q', 'side'], { cwd: fx.repo }).status, 1)
+      fx.commit('tools/a.ts', leakedToken)
+      assert.equal(fx.git('rev-list', '--parents', '-1', 'HEAD').toString().split(' ').length, 3)
+      assertRefused(fx, fx.push('HEAD:refs/heads/feature'), /tools\/a\.ts:1 github-token/)
+    }))
+
+  it('refuses a secret in a file added while committing a merge', () =>
+    withFixture((fx) => {
+      fx.git('checkout', '-q', '-b', 'side')
+      fx.commit('tools/side.ts', clean)
+      fx.git('checkout', '-q', 'docs-gate-fixture')
+      fx.commit('tools/a.ts', clean)
+      fx.git('merge', '-q', '--no-commit', 'side')
+      fx.commit('tools/config.ts', leakedToken)
+      assert.equal(fx.git('rev-list', '--parents', '-1', 'HEAD').toString().split(' ').length, 3)
+      assertRefused(fx, fx.push('HEAD:refs/heads/feature'), /tools\/config\.ts:1 github-token/)
+    }))
+
+  it('refuses a secret that a merged local branch brings in', () =>
+    withFixture((fx) => {
+      fx.git('checkout', '-q', '-b', 'side')
+      fx.commit('tools/config.ts', leakedToken)
+      fx.git('checkout', '-q', 'docs-gate-fixture')
+      fx.commit('tools/a.ts', clean)
+      fx.git('merge', '-q', '--no-edit', 'side')
+      assertRefused(fx, fx.push('HEAD:refs/heads/feature'), /tools\/config\.ts:1 github-token/)
+    }))
+
+  it('checks commits that only another remote has seen', () =>
+    withFixture((fx) => {
+      const other = join(fx.root, 'other.git')
+      execFileSync('git', ['init', '-q', '--bare', '-b', 'main', other])
+      fx.git('remote', 'add', 'other', other)
+      fx.commit('tools/config.ts', leakedToken)
+      fx.git('push', '-q', 'other', 'HEAD:refs/heads/feature')
+      assertRefused(fx, fx.push('HEAD:refs/heads/feature'), secretRefused)
+    }))
+
+  it('checks a push to a URL, which has no tracking refs', () =>
+    withFixture((fx) => {
+      const pushUrl = (...args) =>
+        spawnSync(
+          'git',
+          ['-c', `core.hooksPath=${join(fx.root, 'hooks')}`, 'push', '-q', fx.origin, ...args],
+          {
+            cwd: fx.repo,
+            encoding: 'utf8',
+            env: fx.env
+          }
+        )
+      fx.commit('tools/a.ts', clean)
+      const cleanPush = pushUrl('HEAD:refs/heads/clean')
+      assert.equal(cleanPush.status, 0, cleanPush.stderr)
+      fx.commit('tools/config.ts', leakedToken)
+      assertRefused(fx, pushUrl('HEAD:refs/heads/feature'), secretRefused)
+    }))
+
+  it('refuses a symlink turned into a file that holds a secret', () =>
+    withFixture((fx) => {
+      symlinkSync('README.md', join(fx.repo, 'tools.ts'))
+      fx.git('add', 'tools.ts')
+      fx.git('commit', '-q', '-m', 'link')
+      assert.equal(fx.push('HEAD:refs/heads/feature').status, 0)
+      const pushed = fx.remoteRef('feature')
+      rmSync(join(fx.repo, 'tools.ts'))
+      fx.commit('tools.ts', leakedToken)
+      const result = fx.push('HEAD:refs/heads/feature')
+      assert.equal(result.status, 1, result.stderr)
+      assert.match(result.stderr, /tools\.ts:1 github-token/)
+      assert.equal(fx.remoteRef('feature'), pushed)
+    }))
+
+  it('reads a path that starts with a space', () =>
+    withFixture((fx) => {
+      fx.commit(' lead.ts', leakedToken)
+      assertRefused(fx, fx.push('HEAD:refs/heads/feature'), / lead\.ts:1 github-token/)
+    }))
+
+  it('refuses a tag that points at a tree', () =>
+    withFixture((fx) => {
+      fx.git('tag', 'tree-tag', 'HEAD^{tree}')
+      const result = fx.push('refs/tags/tree-tag')
+      assertRefused(
+        fx,
+        result,
+        /refusing to push refs\/tags\/tree-tag: it points at a tree/,
+        'refs/tags/tree-tag'
+      )
+    }))
+
+  it('reports a broken oxfmt config instead of passing', () =>
+    withFixture((fx) => {
+      fx.commit('.oxfmtrc.jsonc', '{ broken\n')
+      fx.commit('tools/a.ts', clean)
+      assertRefused(
+        fx,
+        fx.push('HEAD:refs/heads/feature'),
+        /the secret and format checks could not run on [0-9a-f]+: oxfmt failed [^]*Check \.oxfmtrc\.jsonc/
+      )
     }))
 
   it('skips files the push deletes and files only the merged base changed', () =>

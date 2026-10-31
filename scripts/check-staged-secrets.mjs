@@ -3,8 +3,6 @@
 import { execFileSync } from 'node:child_process'
 import { lstatSync, readFileSync } from 'node:fs'
 
-import { listPushedFiles, readFileAt } from './pushed-files.mjs'
-
 const ignoredPathPatterns = [
   /^node_modules\//,
   /\/node_modules\//,
@@ -17,7 +15,7 @@ const ignoredPathPatterns = [
 
 // The Secret scan job in .github/workflows/security-ci.yml leaves these media extensions out of its
 // sparse checkout; a path dropped from this list must come back there too, or it is never read.
-const binaryPathPattern =
+export const binaryPathPattern =
   /\.(?:avif|br|dmg|eot|flac|gif|gz|icns|ico|jpe?g|m4v|mov|mp3|mp4|ogg|otf|pdf|png|tgz|ttf|wav|webm|webp|woff2?|zip)$/i
 const sourceCodePathPattern = /\.[cm]?[jt]sx?$/i
 
@@ -438,14 +436,16 @@ function getChangedFiles(baseRef) {
     .filter(Boolean)
 }
 
-function textOrNull(buffer) {
-  return buffer.includes(0) ? null : buffer.toString('utf8')
-}
-
 function readStagedFile(filePath) {
   // Generated sources (the UniFFI Swift bindings) pass 1 MB, the default
   // `maxBuffer`, and would fail the read rather than be scanned.
-  return textOrNull(execFileSync('git', ['show', `:${filePath}`], { maxBuffer: 64 * 1024 * 1024 }))
+  const buffer = execFileSync('git', ['show', `:${filePath}`], { maxBuffer: 64 * 1024 * 1024 })
+
+  if (buffer.includes(0)) {
+    return null
+  }
+
+  return buffer.toString('utf8')
 }
 
 function readWorkingTreeFile(filePath) {
@@ -459,7 +459,13 @@ function readWorkingTreeFile(filePath) {
     return null
   }
 
-  return textOrNull(readFileSync(filePath))
+  const buffer = readFileSync(filePath)
+
+  if (buffer.includes(0)) {
+    return null
+  }
+
+  return buffer.toString('utf8')
 }
 
 function scanFiles(files, readFile) {
@@ -485,35 +491,21 @@ function scanFiles(files, readFile) {
 function runCli() {
   const changedIndex = process.argv.indexOf('--changed')
   const changedBaseRef = changedIndex === -1 ? null : process.argv[changedIndex + 1]
-  // `--pushed <local-sha> <remote-sha>`: the pre-push hook re-runs the scan over what a push
-  // adds, read at the pushed commit, because `git commit --no-verify` skips the staged scan.
-  const pushedIndex = process.argv.indexOf('--pushed')
-  const [localSha, remoteSha] = pushedIndex === -1 ? [] : process.argv.slice(pushedIndex + 1)
 
-  if ((changedIndex !== -1 && !changedBaseRef) || (pushedIndex !== -1 && !remoteSha)) {
-    console.error(
-      'Usage: node scripts/check-staged-secrets.mjs [--changed <base-ref> | --pushed <local-sha> <remote-sha>]'
-    )
+  if (changedIndex !== -1 && !changedBaseRef) {
+    console.error('Usage: node scripts/check-staged-secrets.mjs --changed <base-ref>')
     process.exit(2)
   }
 
-  const findings = remoteSha
-    ? scanFiles(listPushedFiles(localSha, remoteSha), (filePath) =>
-        textOrNull(readFileAt(localSha, filePath))
-      )
-    : changedBaseRef
-      ? scanFiles(getChangedFiles(changedBaseRef), readWorkingTreeFile)
-      : scanFiles(getStagedFiles(), readStagedFile)
+  const findings = changedBaseRef
+    ? scanFiles(getChangedFiles(changedBaseRef), readWorkingTreeFile)
+    : scanFiles(getStagedFiles(), readStagedFile)
 
   if (findings.length === 0) {
     return
   }
 
-  const scope = remoteSha
-    ? `the pushed commits (${localSha})`
-    : changedBaseRef
-      ? 'changed files'
-      : 'staged files'
+  const scope = changedBaseRef ? 'changed files' : 'staged files'
   console.error(`\nsecret scan: potential secrets detected in ${scope}:\n`)
   for (const finding of findings) {
     console.error(`  ${finding.filePath}:${finding.line} ${finding.rule} - ${finding.message}`)
