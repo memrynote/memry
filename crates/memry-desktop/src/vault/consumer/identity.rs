@@ -56,11 +56,11 @@ pub enum Adoption {
 pub enum Removal {
     /// The record was deleted. The consumer then removes the row.
     Deleted,
-    /// Record and row stay (a locked note, a journal day, or a note whose row does not say the
+    /// Record and row stay (a locked note, or a note or journal day whose row does not say the
     /// file held all of it: no bytes to pair a move on, a document that does not hold them, an
     /// edit the file never got); the row loses its hashes, since it names a file that is gone,
-    /// so a file that shows up at that path later is not taken for the note's text, and a
-    /// journal day's row never pairs. The next open reports the removal again.
+    /// so a file that shows up at that path later is not taken for the note's text. The next
+    /// open reports the removal again.
     ///
     /// A kept note's file that shows up at another path is not paired with it: once its
     /// removal settled, the file is new to the watcher, whether the app was open or closed

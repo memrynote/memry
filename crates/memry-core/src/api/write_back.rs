@@ -5,6 +5,7 @@
 
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
+use crate::domain::notes::journal_day;
 use crate::domain::write_back::{self, BodyRead};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
@@ -56,5 +57,11 @@ impl WriteBackReader {
     pub fn title(&self, note_id: &str) -> Result<Option<String>, StorageError> {
         self.db
             .read_blocking(move |conn| write_back::title(conn, note_id))
+    }
+
+    /// [`journal_day::file_date`].
+    pub fn file_date(&self, id: &str) -> Result<Option<String>, StorageError> {
+        self.db
+            .read_blocking(move |conn| journal_day::file_date(conn, id))
     }
 }

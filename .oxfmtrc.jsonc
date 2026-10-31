@@ -67,6 +67,8 @@
     "crates/memry-desktop/tests/fixtures/golden-vault/",
     // A vault Electron wrote (scripts/electron-fixtures/capture-vault.mjs), kept as it wrote it.
     "crates/memry-desktop/tests/fixtures/electron-vault/",
+    // Journal day files Electron wrote (scripts/electron-fixtures/capture-journal.mjs).
+    "crates/memry-desktop/tests/fixtures/electron-journal/",
     "crates/memry-desktop/tests/fixtures/*.json",
     "crates/memry-desktop/tests/fixtures/electron-vault/*.json",
 
