@@ -17,6 +17,7 @@ use memry_core::api::errors::StorageError;
 use memry_core::domain::notes::identity::{self, Moved, OwedPlace, Removed};
 use memry_core::domain::notes::local_only;
 use memry_core::domain::owed_file_body;
+use memry_core::sync::body_debt;
 use note_identity_support::{
     DEVICE, NOW, clear_outbox, create, deleted, give_body, give_body_at, give_row, give_row_hashes,
     open, outbox, payload, place, position, run,
@@ -119,7 +120,8 @@ fn a_removed_file_deletes_its_note_once() {
 /// the file held the whole note. Otherwise the note stays and nothing is pushed: a row that
 /// knows no bytes on disk (a move of the file would not pair, so the removal may be one), a
 /// document that does not hold the bytes on disk (another text, or a file body owed), and a
-/// body edited after the row's stamp (an edit the file never got).
+/// body edited after the row's stamp (an edit the file never got), and a body owed a pull (the
+/// server holds text no file had).
 #[test]
 fn a_removal_whose_row_does_not_say_the_file_held_the_note_keeps_it() {
     let db = open("undecided");
@@ -143,6 +145,10 @@ fn a_removal_whose_row_does_not_say_the_file_held_the_note_keeps_it() {
     give_row(&db, "edited", "edited.md");
     give_body_at(&db, "edited", "edited.md", "Typed after\n", NOW + 1);
     paths.push("edited.md".to_owned());
+    create(&db, "pulling", "pulling", None);
+    give_row(&db, "pulling", "pulling.md");
+    run(&db, |conn| body_debt::owe(conn, "pulling"));
+    paths.push("pulling.md".to_owned());
     let path_refs: Vec<&str> = paths.iter().map(String::as_str).collect();
     place(&db, "", &path_refs);
     clear_outbox(&db);

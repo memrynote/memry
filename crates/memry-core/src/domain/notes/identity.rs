@@ -46,9 +46,9 @@
 //! deletes the note on every device, so the removal deletes it only on the
 //! row's evidence that nothing but the file goes ([`removal_deletes`]): the row
 //! knows the bytes on disk, which a move of the file pairs on, so the removal is
-//! not a move; the document holds those bytes; and no edit came after the row's
-//! stamp, so the file had every edit. Otherwise the note is kept
-//! ([`Removed::Undecided`]).
+//! not a move; the document holds those bytes; no edit came after the row's
+//! stamp, so the file had every edit; and no body is owed a pull. Otherwise the
+//! note is kept ([`Removed::Undecided`]).
 //!
 //! **A moved file moves its note's record, not the links to it** ([`renamed`]):
 //! the title and folder follow the file, in one edit, with the note's manual
@@ -67,7 +67,7 @@ use std::sync::Arc;
 use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::Value;
 
-use super::{ITEM_TYPE, NewNote, create_dated_in, edit_in, failed, tombstone_local};
+use super::{ITEM_TYPE, NewNote, create_dated_in, edit_in, failed, iso, tombstone_local};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
@@ -219,12 +219,15 @@ pub fn adopt(
         properties: None,
         emoji: None,
     };
+    // A date no record can carry (a corrupt far-future time) is the creation's: refused, the
+    // file would be asked about at every open, and never named.
+    let carried = |ms: i64| if iso(ms).is_ok() { ms } else { now_ms };
     create_dated_in(
         &tx,
         &note,
         device_id,
         now_ms,
-        (file.created_ms, file.modified_ms),
+        (carried(file.created_ms), carried(file.modified_ms)),
     )?;
     outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, new_id), now_ms)?;
     tx.commit().map_err(failed)?;
@@ -497,6 +500,7 @@ pub fn removed(
 ///   (synced, kept, refused) would go with the note.
 /// - No edit came after the row's stamp ([`note_files::behind_body`]): an edit
 ///   in the app, or a pulled one, whose write-back failed or has not run.
+/// - No body is owed a pull ([`body_debt`]): the server holds text no file had.
 fn removal_deletes(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
     let Some(row) = note_files::by_id(conn, note_id)? else {
         return Ok(false);
@@ -504,7 +508,8 @@ fn removal_deletes(conn: &Connection, note_id: &str) -> Result<bool, StorageErro
     let holds_the_file = row.file_hash.is_some() && row.content_hash == row.file_hash;
     Ok(holds_the_file
         && !owed_file_body::owes(conn, note_id)?
-        && !note_files::behind_body(conn, note_id)?)
+        && !note_files::behind_body(conn, note_id)?
+        && !body_debt::is_owed(conn, note_id)?)
 }
 
 /// A journal day's record, or a journal day's id (`j<YYYY-MM-DD>`).

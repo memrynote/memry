@@ -3,6 +3,7 @@
 //! | Test                                                        | Rule                                  |
 //! | ----------------------------------------------------------- | ------------------------------------- |
 //! | a new file creates a note with its dates and queues it once | Electron `indexer.ts` new file        |
+//! | a file date no record can carry is the creation's           | never asked about forever             |
 //! | a pulled record whose text is the file's keeps its id       | an id is never minted twice           |
 //! | a note whose text is not the file's defers                  | a file is named only on evidence      |
 //! | a note whose body is not here yet defers                    | evidence first, never a guess         |
@@ -79,6 +80,22 @@ fn a_new_file_creates_a_note_with_the_files_dates_and_queues_it_once() {
 
 /// A record pulled before its file was written keeps the id every device knows, when the file
 /// says what the note says.
+/// A file date the record cannot carry (a corrupt far-future modification time) is the
+/// creation's: refused, the file would be asked about at every open, and never named.
+#[test]
+fn a_file_date_no_record_can_carry_is_the_creations() {
+    let db = note_identity_support::open("far-future");
+    let corrupt = FileNote {
+        created_ms: i64::MAX,
+        modified_ms: i64::MAX,
+        ..file("Plan.md", "Body\n")
+    };
+    assert_eq!(adopt(&db, corrupt, "n1"), created("n1"));
+    let note = payload(&db, "n1");
+    assert_eq!(note["createdAt"], "2025-10-09T08:53:20.000Z", "{note}");
+    assert_eq!(note["modifiedAt"], "2025-10-09T08:53:20.000Z", "{note}");
+}
+
 #[test]
 fn a_pulled_record_whose_text_is_the_files_keeps_its_id() {
     let db = note_identity_support::open("pulled");

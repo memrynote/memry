@@ -365,7 +365,20 @@ fn a_named_note_that_grew_large_still_follows_its_file() {
     assert_eq!(row_id(&e, "closed.md"), Some(id.clone()));
 
     fs::remove_file(e.vault.join("closed.md")).unwrap();
-    std::thread::sleep(vault_env::QUIET);
+    // The kept note's row stays and names no bytes; a deleted note's row goes.
+    let deadline = std::time::Instant::now() + vault_env::WAIT;
+    loop {
+        let row = e.core().note_files().by_id(&id).unwrap();
+        let row = row.expect("the removal deleted the note");
+        if row.content_hash.is_none() && row.file_hash.is_none() {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the removal never reached the row: {row:?}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
     assert_eq!(records(&e), live);
     assert!(!outbox(&e).contains(&("delete".to_owned(), id)));
 }

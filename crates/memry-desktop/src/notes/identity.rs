@@ -33,11 +33,11 @@
 //!   Electron's indexer gives a file it finds.
 //! - A removed file deletes its note only when its row says the file held the
 //!   whole note: the row knows the bytes on disk (a move pairs on them, #3744),
-//!   the document holds them, and no edit came after the row's stamp. Otherwise
-//!   (a large-file class text or a refused feed the document did not take, an
-//!   app edit the write-back could not write, a pulled change not written yet)
-//!   the note is kept, with a warning: a tombstone would delete on every device
-//!   what the file never had.
+//!   the document holds them, no edit came after the row's stamp, and no body is
+//!   owed a pull. Otherwise (a large-file class text or a refused feed the
+//!   document did not take, an app edit the write-back could not write, a pulled
+//!   change not written yet, a server body not here yet) the note is kept, with a
+//!   warning: a tombstone would delete on every device what the file never had.
 //!
 //! Every answer is the core's; a failure is the consumer's to log and retry
 //! ([`crate::vault::consumer::MAX_RETRIES`]), and the next open asks again.
