@@ -7,6 +7,10 @@
 //! Electron's `removePendingNoteSyncItems`), and turning it off queues the record and the whole
 //! body. This module only refuses a note that is not live and answers with the note as the
 //! renderer reads it.
+//!
+//! One difference from Electron stays with the sync driver (Step 17): the core still merges a
+//! remote body update of a local-only note, where Electron's feed skips it and owes the note a
+//! pull when the flag is cleared (chapter 07, `oweCrdtPull`).
 
 use memry_core::domain::notes::local_only::LocalOnlyChange;
 
@@ -37,24 +41,31 @@ impl CoreError for LocalOnlyError {
     fn kind_and_code(&self) -> (FailureKind, &'static str) {
         match self {
             Self::Notes(error) => error.kind_and_code(),
+            // The renderer shows its own text for the code (`lib/ipc-error.ts`).
             Self::TooLargeToSync => (FailureKind::Sync, "note_too_large_to_sync"),
         }
     }
 }
 
 /// Sets or clears the local-only flag of the live note `note_id` and returns the note.
+///
+/// The note is read before the flag is written, so a read that fails changes nothing, and a
+/// written flag is always answered with its note.
 pub fn set(
     open: &OpenVault,
     note_id: &str,
     local_only: bool,
     telemetry: Option<&Service>,
 ) -> Result<NoteView, LocalOnlyError> {
-    let files = open.vault.note_files();
     // A tombstoned note can keep its row until its file goes; it is not changed.
-    if files.listed_by_id(note_id)?.is_none() {
+    let Some(mut note) = read::get(open, note_id, telemetry)? else {
         return Err(NotesError::NotFound(note_id.to_owned()).into());
-    }
-    match files.set_local_only(note_id, local_only)? {
+    };
+    match open
+        .vault
+        .note_files()
+        .set_local_only(note_id, local_only)?
+    {
         LocalOnlyChange::TooLargeToSync { packed_bytes } => {
             tracing::warn!(
                 scope = SCOPE,
@@ -64,10 +75,11 @@ pub fn set(
             );
             return Err(LocalOnlyError::TooLargeToSync);
         }
+        LocalOnlyChange::Unchanged => {}
         change => tracing::info!(scope = SCOPE, note_id, ?change, "local-only changed"),
     }
-    read::get(open, note_id, telemetry)?
-        .ok_or_else(|| NotesError::NotFound(note_id.to_owned()).into())
+    note.local_only = local_only;
+    Ok(note)
 }
 
 /// How many notes are local-only (`countLocalOnlyNoteMetadata`).

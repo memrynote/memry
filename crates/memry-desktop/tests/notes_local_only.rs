@@ -7,6 +7,7 @@ mod vault_env;
 
 use std::sync::Arc;
 
+use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::error::CoreError;
 use memry_desktop::notes::error::NotesError;
@@ -132,4 +133,73 @@ fn a_note_that_is_not_live_is_not_found_and_keeps_its_flag() {
             .local_only
     );
     assert_eq!(local_only::count(&open).unwrap(), 0);
+}
+
+#[test]
+fn a_deleted_local_only_note_is_no_longer_counted() {
+    let (e, open, _) = opened();
+    let plan = id_of(&open, "Plan.md");
+    local_only::set(&open, &plan, true, None).unwrap();
+    assert_eq!(local_only::count(&open).unwrap(), 1);
+
+    // Tombstoned, with its file row still there, as a delete from another device leaves it.
+    let conn = rusqlite::Connection::open(e.vault.join(".memry/core/data.db")).unwrap();
+    conn.execute(
+        "UPDATE notes SET deleted_at = 1 WHERE id = ?1",
+        [plan.as_str()],
+    )
+    .unwrap();
+    assert!(
+        e.core()
+            .note_files()
+            .by_id(&plan)
+            .unwrap()
+            .unwrap()
+            .local_only
+    );
+    assert_eq!(local_only::count(&open).unwrap(), 0);
+}
+
+/// `len` characters of xorshift noise, which no compressor shrinks much.
+fn incompressible(len: usize) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut state: u64 = 0x2545_f491_4f6c_dd1d;
+    (0..len)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            char::from(ALPHABET[(state % 64) as usize])
+        })
+        .collect()
+}
+
+#[test]
+fn a_note_too_large_to_sync_stays_local_only_and_says_so() {
+    let (e, open, store) = opened();
+    let plan = id_of(&open, "Plan.md");
+    local_only::set(&open, &plan, true, None).unwrap();
+    // About 8 MiB of noise seals to more than the 5 MiB the server takes as one update
+    // (chapter 07 §7.3).
+    let writer = e.core().notes_writer(store).unwrap();
+    let edit = BlockEdit::InsertParagraph {
+        after_block_id: None,
+        text: incompressible(8 * 1024 * 1024),
+        new_block_id: "noise".to_owned(),
+    };
+    assert!(writer.edit_block(plan.clone(), edit).unwrap());
+
+    let refused = local_only::set(&open, &plan, false, None).unwrap_err();
+    assert!(matches!(refused, LocalOnlyError::TooLargeToSync));
+    assert_eq!(refused.kind_and_code().1, "note_too_large_to_sync");
+    assert!(
+        e.core()
+            .note_files()
+            .by_id(&plan)
+            .unwrap()
+            .unwrap()
+            .local_only
+    );
+    assert_eq!(queued(&e, &plan), Vec::<String>::new());
+    assert_eq!(local_only::count(&open).unwrap(), 1);
 }
