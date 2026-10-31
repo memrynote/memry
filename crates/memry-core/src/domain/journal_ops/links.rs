@@ -9,6 +9,8 @@
 //! `note_links` lives in `index.db` and titles live in `data.db`; the two are
 //! joined here in Rust because they are separate databases on purpose.
 
+use std::collections::{HashMap, HashSet};
+
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
@@ -92,24 +94,33 @@ pub fn backlinks(
         rows.push(row.map_err(failed)?);
     }
 
+    // Two batched reads whatever the number of rows (no read per row): the
+    // sources, and which other link targets are live notes.
+    let sources = live_items(data, rows.iter().map(|(source, _, _)| source.as_str()))?;
+    let other_notes = match target {
+        Item::Journal { .. } => live_note_ids(
+            data,
+            rows.iter()
+                .filter_map(|(_, linked, _)| linked.as_deref())
+                .filter(|id| *id != target_id),
+        )?,
+        Item::Note { .. } => HashSet::new(),
+    };
     let mut out = Vec::new();
     for (source_id, linked_id, target_title) in rows {
         if source_id == target_id {
             continue;
         }
-        if matches!(target, Item::Journal { .. })
-            && let Some(other) = linked_id.as_deref().filter(|id| *id != target_id)
-            && crate::domain::reads::note_exists(data, other)
+        if linked_id
+            .as_deref()
+            .is_some_and(|other| other_notes.contains(other))
         {
             continue;
         }
-        let Some(source) = live_item(data, &source_id)? else {
+        let Some(source) = sources.get(&source_id) else {
             continue;
         };
-        let (source_title, source_kind, source_date, stamp) = match source {
-            Item::Note { title, stamp } => (title, "note", None, stamp),
-            Item::Journal { date, stamp } => (date.clone(), "journal", Some(date), stamp),
-        };
+        let (source_title, source_kind, source_date) = source.named();
         out.push(BacklinkRow {
             source_id,
             source_title,
@@ -117,7 +128,7 @@ pub fn backlinks(
             source_date,
             target_title,
             via_property: false,
-            stamp,
+            stamp: source.item.stamp(),
         });
     }
     sort(&mut out, order);
@@ -194,6 +205,100 @@ pub(crate) fn live_item(data: &Connection, id: &str) -> Result<Option<Item>, Sto
         .optional()
         .map_err(failed)?;
     Ok(journal.map(|(date, stamp)| Item::Journal { date, stamp }))
+}
+
+/// A live note or journal day, with the vault path of a note's file when it
+/// has one (`note_files`).
+pub(crate) struct Source {
+    pub(crate) item: Item,
+    pub(crate) path: Option<String>,
+}
+
+impl Source {
+    /// The title a list shows (a day's date), the kind, and the day's date.
+    pub(crate) fn named(&self) -> (String, &'static str, Option<String>) {
+        match &self.item {
+            Item::Note { title, .. } => (title.clone(), "note", None),
+            Item::Journal { date, .. } => (date.clone(), "journal", Some(date.clone())),
+        }
+    }
+}
+
+impl Item {
+    pub(crate) fn stamp(&self) -> i64 {
+        match self {
+            Item::Note { stamp, .. } | Item::Journal { stamp, .. } => *stamp,
+        }
+    }
+}
+
+/// The live notes and journal days among `ids`, by id, in one statement
+/// whatever their number.
+pub(crate) fn live_items<'a>(
+    data: &Connection,
+    ids: impl Iterator<Item = &'a str>,
+) -> Result<HashMap<String, Source>, StorageError> {
+    let ids = id_list(ids)?;
+    let mut statement = data
+        .prepare(
+            "SELECT n.id, n.title, COALESCE(n.modified_at, n.created_at, 0), 0, f.path \
+             FROM notes n LEFT JOIN note_files f ON f.note_id = n.id \
+             WHERE n.deleted_at IS NULL AND n.id IN (SELECT value FROM json_each(?1)) \
+             UNION ALL \
+             SELECT j.id, j.date, COALESCE(j.modified_at, j.created_at, 0), 1, NULL \
+             FROM journal_entries j \
+             WHERE j.deleted_at IS NULL AND j.id IN (SELECT value FROM json_each(?1))",
+        )
+        .map_err(failed)?;
+    let found = statement
+        .query_map(params![ids], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, bool>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
+        })
+        .map_err(failed)?;
+    let mut out = HashMap::new();
+    for row in found {
+        let (id, name, stamp, journal, path) = row.map_err(failed)?;
+        let item = if journal {
+            Item::Journal { date: name, stamp }
+        } else {
+            Item::Note { title: name, stamp }
+        };
+        // A note wins an id it shares with a day, as `live_item` answers it.
+        out.entry(id).or_insert(Source { item, path });
+    }
+    Ok(out)
+}
+
+/// The live note ids among `ids`, in one statement.
+fn live_note_ids<'a>(
+    data: &Connection,
+    ids: impl Iterator<Item = &'a str>,
+) -> Result<HashSet<String>, StorageError> {
+    let ids = id_list(ids)?;
+    let mut statement = data
+        .prepare(
+            "SELECT id FROM notes \
+             WHERE deleted_at IS NULL AND id IN (SELECT value FROM json_each(?1))",
+        )
+        .map_err(failed)?;
+    let found = statement
+        .query_map(params![ids], |row| row.get::<_, String>(0))
+        .map_err(failed)?;
+    found.collect::<Result<_, _>>().map_err(failed)
+}
+
+/// `ids` as the JSON array `json_each` reads.
+pub(crate) fn id_list<'a>(ids: impl Iterator<Item = &'a str>) -> Result<String, StorageError> {
+    let ids: HashSet<&str> = ids.collect();
+    serde_json::to_string(&ids).map_err(|error| StorageError::Failed {
+        what: format!("ids will not serialise: {error}"),
+    })
 }
 
 /// Desktop's three orders, ties broken by source id.
