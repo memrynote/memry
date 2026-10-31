@@ -120,10 +120,12 @@ fn a_generated_vault_is_measured_once_per_note_and_a_reindex_reports_to_the_tota
         }
     );
     // One insert per note, then the batches' transactions, the prune and a search reindex
-    // that finds nothing moved: never a statement per note beyond its row.
+    // that finds almost nothing moved: never a statement per note beyond its row. The search
+    // watermark is inclusive, so the notes stamped in its millisecond are taken again; how
+    // many there are depends on the open's timing.
     println!("reindex of {NOTES} notes: {statements} index.db statements");
     assert!(
-        (NOTES..NOTES + 60).contains(&statements),
+        (NOTES..NOTES + NOTES / 10).contains(&statements),
         "{statements} statements"
     );
 
