@@ -4,31 +4,38 @@
 //! [`ScanActivity`], which the walk records as `recordScanActivity` does once it ended.
 
 use super::apply::Applier;
-use crate::vault::activity::{ActivityInput, ActivityKind, ActivitySource, ScanActivity};
+use crate::vault::activity::{
+    ActivityInput, ActivityKind, ActivitySource, ScanActivity, UNREADABLE_REPORT_MS, failure_key,
+};
 use crate::vault::watch::VaultEvent;
 
-/// A file that stays unreadable is reported once in this window, not on every event.
-const UNREADABLE_REPORT_MS: i64 = 60 * 60 * 1000;
-
 impl Applier {
-    /// A fact that changes no row.
+    /// A fact that changes no row. A vault the identity leaves as it is gets no entry: only
+    /// these and the walk's can come of one, since none of its files has or gets a row.
     pub(super) fn report(&self, event: &VaultEvent) {
-        match event {
-            VaultEvent::Unsupported { path } => {
+        let (path, unreadable) = match event {
+            VaultEvent::Unsupported { path } => (path, None),
+            VaultEvent::Unreadable { path, reason } => (path, Some(reason)),
+            _ => return,
+        };
+        if self.leaves_vault() {
+            return;
+        }
+        match unreadable {
+            None => {
                 self.activity
                     .record_skipped(&self.root, path, ActivitySource::Watcher);
             }
-            VaultEvent::Unreadable { path, reason } => {
+            Some(reason) => {
                 self.activity.record(
                     &self.root,
                     ActivityInput::new(ActivityKind::Failed, ActivitySource::Watcher)
                         .path(path.as_str())
                         .reason("read-failed")
                         .message(reason.as_str())
-                        .dedupe(format!("read-failed:{path}"), UNREADABLE_REPORT_MS),
+                        .dedupe(failure_key("read-failed", path), UNREADABLE_REPORT_MS),
                 );
             }
-            _ => {}
         }
     }
 
@@ -47,6 +54,18 @@ impl Applier {
                 );
             }
         }
+    }
+
+    /// What the open walk found (`recordScanActivity`), but in a vault the identity leaves as
+    /// it is: its activity log is not written.
+    pub(super) fn report_scan(&self, scan: &ScanActivity) {
+        if !self.leaves_vault() {
+            self.activity.record_scan(&self.root, scan, scan.mode());
+        }
+    }
+
+    fn leaves_vault(&self) -> bool {
+        self.identity.leaves_vault(&self.ctx())
     }
 
     /// A removed file whose note was deleted.

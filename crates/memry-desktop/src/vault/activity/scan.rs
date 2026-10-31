@@ -2,6 +2,7 @@
 //! `vault/activity-log.ts`): the files that got a new note, the ones that could not be read and
 //! the ones the vault does not index. A few are one entry each; many are one summary.
 
+use std::collections::HashSet;
 use std::path::Path;
 
 use super::entry::{ActivityInput, ActivityKind, ActivitySource, MAX_ITEMS};
@@ -17,6 +18,14 @@ const PER_FILE_FAILED: usize = 50;
 /// New unsupported files reported per walk: a vault holding thousands of them converges over a
 /// few opens instead of flooding one.
 const PER_FILE_SKIPPED: usize = 500;
+/// A file that stays unreadable is reported once in this window, by the walk or the watcher,
+/// not at every read of it.
+pub const UNREADABLE_REPORT_MS: i64 = 60 * 60 * 1000;
+
+/// The dedupe key of a failure's entry: the walk's and the watcher's for one file are one.
+pub fn failure_key(reason: &str, path: &str) -> String {
+    format!("{reason}:{path}")
+}
 
 /// `ScanActivity`: each list keeps at most [`SCAN_COLLECT_LIMIT`] paths, its count every one.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -30,15 +39,13 @@ pub struct ScanActivity {
     /// Files the vault already knew (Electron's `skipped`): none of them, with files added, is
     /// a first build.
     pub known: usize,
-    /// New files the identity left for later.
-    pub deferred: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ScanFailure {
     pub path: String,
     /// `read-failed` or `index-failed`.
-    pub reason: String,
+    pub reason: &'static str,
     pub message: Option<String>,
 }
 
@@ -60,21 +67,15 @@ impl ScanActivity {
         }
     }
 
-    pub fn fail(&mut self, path: &str, reason: &str, message: Option<String>) {
+    pub fn fail(&mut self, path: &str, reason: &'static str, message: Option<String>) {
         self.failed_count += 1;
         if self.failed.len() < SCAN_COLLECT_LIMIT {
             self.failed.push(ScanFailure {
                 path: path.to_owned(),
-                reason: reason.to_owned(),
+                reason,
                 message,
             });
         }
-    }
-
-    /// The identity deferred files and took none: a vault it does not index yet (an Electron
-    /// vault not imported), whose files, the activity log's included, are left as they are.
-    pub fn deferred_all(&self) -> bool {
-        self.deferred > 0 && self.known == 0 && self.added_count == 0
     }
 
     /// The mode Electron's `indexVault` records an open's walk in.
@@ -99,10 +100,16 @@ impl ActivityLog {
                 record(entry(ActivityKind::Added).path(path.as_str()));
             }
         }
+        // Not in Electron's: the watcher's report of the same file, before or after the walk,
+        // shares the window, so an unreadable file is one entry per open, not two.
         for failure in scan.failed.iter().take(PER_FILE_FAILED) {
             let mut input = entry(ActivityKind::Failed)
                 .path(failure.path.as_str())
-                .reason(failure.reason.as_str());
+                .reason(failure.reason)
+                .dedupe(
+                    failure_key(failure.reason, &failure.path),
+                    UNREADABLE_REPORT_MS,
+                );
             if let Some(message) = failure.message.as_deref().filter(|m| !m.is_empty()) {
                 input = input.message(message);
             }
@@ -170,10 +177,7 @@ impl ActivityLog {
     }
 }
 
-fn reported_skips<'a>(
-    state: &'a State,
-    root: &Path,
-) -> Option<&'a std::collections::HashSet<String>> {
+fn reported_skips<'a>(state: &'a State, root: &Path) -> Option<&'a HashSet<String>> {
     let log = state.log.as_ref().filter(|log| log.root == root)?;
     Some(&log.reported_skips)
 }

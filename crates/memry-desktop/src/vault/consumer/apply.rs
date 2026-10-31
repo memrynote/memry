@@ -154,7 +154,7 @@ impl Applier {
         self.found(&mut lane, path, file_type, meta.len(), modified, Some(scan))
     }
 
-    fn ctx(&self) -> IdentityCtx<'_> {
+    pub(super) fn ctx(&self) -> IdentityCtx<'_> {
         IdentityCtx {
             root: &self.root,
             vault: &self.vault,
@@ -210,12 +210,7 @@ impl Applier {
             file: file.as_ref(),
         };
         let (note_id, created) = match self.identity.adopt_or_create(&self.ctx(), &candidate) {
-            Ok(Adoption::Defer) => {
-                if let Some(scan) = scan {
-                    scan.deferred += 1;
-                }
-                return Step::Done;
-            }
+            Ok(Adoption::Defer) => return Step::Done,
             Ok(Adoption::Existing(id)) => (id, false),
             Ok(Adoption::Created(id)) => (id, true),
             Err(error) => {
@@ -473,12 +468,14 @@ impl Applier {
                 tracing::warn!(scope = SCOPE, "a vault file could not be read: {error}");
                 // The hash the watcher pairs a move of such a file on: Electron's, streamed.
                 // A read that failed knows no bytes, and is the only one Electron, which reads
-                // any file as text, reports as `read-failed`.
+                // any file as text, reports as `read-failed`: the open or the read itself.
                 let (file_hash, failure) = match error {
                     NoteFileError::NotUtf8 | NoteFileError::TooLarge => {
                         (hash_file(&self.root, path).ok().flatten(), None)
                     }
-                    NoteFileError::Open(_) => (None, Some(error.to_string())),
+                    NoteFileError::Open(_) | NoteFileError::Io(_) => {
+                        (None, Some(error.to_string()))
+                    }
                     _ => (None, None),
                 };
                 Err(Unread::Failed { file_hash, failure })

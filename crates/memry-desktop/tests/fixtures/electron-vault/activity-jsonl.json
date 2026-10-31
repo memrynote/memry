@@ -2330,6 +2330,360 @@
       "lines": [
         "{\"v\":1,\"id\":\"LVNImIM9H3nM5_RhG4w2J\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"skipped\",\"source\":\"scan\",\"path\":\"new.heic\",\"reason\":\"unsupported-type\",\"message\":\".heic\"}"
       ]
+    },
+    {
+      "name": "twenty-one-added-summarized",
+      "scan": {
+        "added": [
+          "n0.md",
+          "n1.md",
+          "n2.md",
+          "n3.md",
+          "n4.md",
+          "n5.md",
+          "n6.md",
+          "n7.md",
+          "n8.md",
+          "n9.md",
+          "n10.md",
+          "n11.md",
+          "n12.md",
+          "n13.md",
+          "n14.md",
+          "n15.md",
+          "n16.md",
+          "n17.md",
+          "n18.md",
+          "n19.md",
+          "n20.md"
+        ],
+        "addedCount": 21,
+        "failed": [],
+        "failedCount": 0,
+        "unsupported": [],
+        "unsupportedCount": 0
+      },
+      "mode": "scan",
+      "before": [],
+      "lines": [
+        "{\"v\":1,\"id\":\"NGSck3eFIHRfYaRTtA1Zh\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"scan\",\"source\":\"scan\",\"counts\":{\"added\":21},\"items\":[\"n0.md\",\"n1.md\",\"n2.md\",\"n3.md\",\"n4.md\",\"n5.md\",\"n6.md\",\"n7.md\",\"n8.md\",\"n9.md\",\"n10.md\",\"n11.md\",\"n12.md\",\"n13.md\",\"n14.md\",\"n15.md\",\"n16.md\",\"n17.md\",\"n18.md\",\"n19.md\",\"n20.md\"]}"
+      ]
+    },
+    {
+      "name": "fifty-failures-each-listed",
+      "scan": {
+        "added": [],
+        "addedCount": 0,
+        "failed": [
+          {
+            "path": "f0.md",
+            "reason": "read-failed",
+            "message": "E0"
+          },
+          {
+            "path": "f1.md",
+            "reason": "read-failed",
+            "message": "E1"
+          },
+          {
+            "path": "f2.md",
+            "reason": "read-failed",
+            "message": "E2"
+          },
+          {
+            "path": "f3.md",
+            "reason": "read-failed",
+            "message": "E3"
+          },
+          {
+            "path": "f4.md",
+            "reason": "read-failed",
+            "message": "E4"
+          },
+          {
+            "path": "f5.md",
+            "reason": "read-failed",
+            "message": "E5"
+          },
+          {
+            "path": "f6.md",
+            "reason": "read-failed",
+            "message": "E6"
+          },
+          {
+            "path": "f7.md",
+            "reason": "read-failed",
+            "message": "E7"
+          },
+          {
+            "path": "f8.md",
+            "reason": "read-failed",
+            "message": "E8"
+          },
+          {
+            "path": "f9.md",
+            "reason": "read-failed",
+            "message": "E9"
+          },
+          {
+            "path": "f10.md",
+            "reason": "read-failed",
+            "message": "E10"
+          },
+          {
+            "path": "f11.md",
+            "reason": "read-failed",
+            "message": "E11"
+          },
+          {
+            "path": "f12.md",
+            "reason": "read-failed",
+            "message": "E12"
+          },
+          {
+            "path": "f13.md",
+            "reason": "read-failed",
+            "message": "E13"
+          },
+          {
+            "path": "f14.md",
+            "reason": "read-failed",
+            "message": "E14"
+          },
+          {
+            "path": "f15.md",
+            "reason": "read-failed",
+            "message": "E15"
+          },
+          {
+            "path": "f16.md",
+            "reason": "read-failed",
+            "message": "E16"
+          },
+          {
+            "path": "f17.md",
+            "reason": "read-failed",
+            "message": "E17"
+          },
+          {
+            "path": "f18.md",
+            "reason": "read-failed",
+            "message": "E18"
+          },
+          {
+            "path": "f19.md",
+            "reason": "read-failed",
+            "message": "E19"
+          },
+          {
+            "path": "f20.md",
+            "reason": "read-failed",
+            "message": "E20"
+          },
+          {
+            "path": "f21.md",
+            "reason": "read-failed",
+            "message": "E21"
+          },
+          {
+            "path": "f22.md",
+            "reason": "read-failed",
+            "message": "E22"
+          },
+          {
+            "path": "f23.md",
+            "reason": "read-failed",
+            "message": "E23"
+          },
+          {
+            "path": "f24.md",
+            "reason": "read-failed",
+            "message": "E24"
+          },
+          {
+            "path": "f25.md",
+            "reason": "read-failed",
+            "message": "E25"
+          },
+          {
+            "path": "f26.md",
+            "reason": "read-failed",
+            "message": "E26"
+          },
+          {
+            "path": "f27.md",
+            "reason": "read-failed",
+            "message": "E27"
+          },
+          {
+            "path": "f28.md",
+            "reason": "read-failed",
+            "message": "E28"
+          },
+          {
+            "path": "f29.md",
+            "reason": "read-failed",
+            "message": "E29"
+          },
+          {
+            "path": "f30.md",
+            "reason": "read-failed",
+            "message": "E30"
+          },
+          {
+            "path": "f31.md",
+            "reason": "read-failed",
+            "message": "E31"
+          },
+          {
+            "path": "f32.md",
+            "reason": "read-failed",
+            "message": "E32"
+          },
+          {
+            "path": "f33.md",
+            "reason": "read-failed",
+            "message": "E33"
+          },
+          {
+            "path": "f34.md",
+            "reason": "read-failed",
+            "message": "E34"
+          },
+          {
+            "path": "f35.md",
+            "reason": "read-failed",
+            "message": "E35"
+          },
+          {
+            "path": "f36.md",
+            "reason": "read-failed",
+            "message": "E36"
+          },
+          {
+            "path": "f37.md",
+            "reason": "read-failed",
+            "message": "E37"
+          },
+          {
+            "path": "f38.md",
+            "reason": "read-failed",
+            "message": "E38"
+          },
+          {
+            "path": "f39.md",
+            "reason": "read-failed",
+            "message": "E39"
+          },
+          {
+            "path": "f40.md",
+            "reason": "read-failed",
+            "message": "E40"
+          },
+          {
+            "path": "f41.md",
+            "reason": "read-failed",
+            "message": "E41"
+          },
+          {
+            "path": "f42.md",
+            "reason": "read-failed",
+            "message": "E42"
+          },
+          {
+            "path": "f43.md",
+            "reason": "read-failed",
+            "message": "E43"
+          },
+          {
+            "path": "f44.md",
+            "reason": "read-failed",
+            "message": "E44"
+          },
+          {
+            "path": "f45.md",
+            "reason": "read-failed",
+            "message": "E45"
+          },
+          {
+            "path": "f46.md",
+            "reason": "read-failed",
+            "message": "E46"
+          },
+          {
+            "path": "f47.md",
+            "reason": "read-failed",
+            "message": "E47"
+          },
+          {
+            "path": "f48.md",
+            "reason": "read-failed",
+            "message": "E48"
+          },
+          {
+            "path": "f49.md",
+            "reason": "read-failed",
+            "message": "E49"
+          }
+        ],
+        "failedCount": 50,
+        "unsupported": [],
+        "unsupportedCount": 0
+      },
+      "mode": "scan",
+      "before": [],
+      "lines": [
+        "{\"v\":1,\"id\":\"lkhnoxKOsLa1jkKrf6_en\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f0.md\",\"reason\":\"read-failed\",\"message\":\"E0\"}",
+        "{\"v\":1,\"id\":\"d_Y4UJ1_G2Js7zZL2f4ap\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f1.md\",\"reason\":\"read-failed\",\"message\":\"E1\"}",
+        "{\"v\":1,\"id\":\"rMsBQ5wihl4wbYJZ1pSkv\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f2.md\",\"reason\":\"read-failed\",\"message\":\"E2\"}",
+        "{\"v\":1,\"id\":\"WHtlliKuWjZPtjP4OW0qJ\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f3.md\",\"reason\":\"read-failed\",\"message\":\"E3\"}",
+        "{\"v\":1,\"id\":\"5RH8-0Bd8lL5Oy1T3Sqdd\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f4.md\",\"reason\":\"read-failed\",\"message\":\"E4\"}",
+        "{\"v\":1,\"id\":\"g-2Ti0IO2ZxplLWNiMGOf\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f5.md\",\"reason\":\"read-failed\",\"message\":\"E5\"}",
+        "{\"v\":1,\"id\":\"uDA0cpaOT0e85iDFL3WFb\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f6.md\",\"reason\":\"read-failed\",\"message\":\"E6\"}",
+        "{\"v\":1,\"id\":\"R5ueCV5cUopfHUrbZ262v\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f7.md\",\"reason\":\"read-failed\",\"message\":\"E7\"}",
+        "{\"v\":1,\"id\":\"PHGfX0Cz2p1JM-gbdmty2\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f8.md\",\"reason\":\"read-failed\",\"message\":\"E8\"}",
+        "{\"v\":1,\"id\":\"qcc3PtuFeVJrOlPncRhbI\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f9.md\",\"reason\":\"read-failed\",\"message\":\"E9\"}",
+        "{\"v\":1,\"id\":\"wv_7MM2nYfIIUGVlXzCjU\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f10.md\",\"reason\":\"read-failed\",\"message\":\"E10\"}",
+        "{\"v\":1,\"id\":\"6NrVOAmsmaHjeuAkMiPpV\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f11.md\",\"reason\":\"read-failed\",\"message\":\"E11\"}",
+        "{\"v\":1,\"id\":\"RDExyehoaTJz-Hjkt2shf\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f12.md\",\"reason\":\"read-failed\",\"message\":\"E12\"}",
+        "{\"v\":1,\"id\":\"nrVenEHF8hkMcl9rzdP0h\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f13.md\",\"reason\":\"read-failed\",\"message\":\"E13\"}",
+        "{\"v\":1,\"id\":\"T1cOCgk9bB9vO_zL7nX2m\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f14.md\",\"reason\":\"read-failed\",\"message\":\"E14\"}",
+        "{\"v\":1,\"id\":\"zaesQMI6JZxxOwSnIP6Pc\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f15.md\",\"reason\":\"read-failed\",\"message\":\"E15\"}",
+        "{\"v\":1,\"id\":\"z8k3tzI3694Ql63pSDaeK\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f16.md\",\"reason\":\"read-failed\",\"message\":\"E16\"}",
+        "{\"v\":1,\"id\":\"wQ7Fr9LSWapbltxPXrzvj\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f17.md\",\"reason\":\"read-failed\",\"message\":\"E17\"}",
+        "{\"v\":1,\"id\":\"wEyjyWbsOetsAAWFCDsnm\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f18.md\",\"reason\":\"read-failed\",\"message\":\"E18\"}",
+        "{\"v\":1,\"id\":\"YO3E9132YmCDdGSb2bmR_\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f19.md\",\"reason\":\"read-failed\",\"message\":\"E19\"}",
+        "{\"v\":1,\"id\":\"Dts207jTQceRZGqfeAJb3\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f20.md\",\"reason\":\"read-failed\",\"message\":\"E20\"}",
+        "{\"v\":1,\"id\":\"CaP_d5xVYbK3RIHo2tL3K\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f21.md\",\"reason\":\"read-failed\",\"message\":\"E21\"}",
+        "{\"v\":1,\"id\":\"5-UEnVyaR_auUt0yI0nXL\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f22.md\",\"reason\":\"read-failed\",\"message\":\"E22\"}",
+        "{\"v\":1,\"id\":\"bTKuSthkFTqYBszCx3CGK\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f23.md\",\"reason\":\"read-failed\",\"message\":\"E23\"}",
+        "{\"v\":1,\"id\":\"65TaFcRFI-Fs5coDrU4mL\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f24.md\",\"reason\":\"read-failed\",\"message\":\"E24\"}",
+        "{\"v\":1,\"id\":\"4zaell4YV1BQw70sEwyU9\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f25.md\",\"reason\":\"read-failed\",\"message\":\"E25\"}",
+        "{\"v\":1,\"id\":\"su-e_WAswei8CDcMY6dMr\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f26.md\",\"reason\":\"read-failed\",\"message\":\"E26\"}",
+        "{\"v\":1,\"id\":\"SmKxvaeMp-LxA58aArrPo\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f27.md\",\"reason\":\"read-failed\",\"message\":\"E27\"}",
+        "{\"v\":1,\"id\":\"0hLDpc1jXcD_qWMXYWsN0\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f28.md\",\"reason\":\"read-failed\",\"message\":\"E28\"}",
+        "{\"v\":1,\"id\":\"GnN5DJT5BMz-VUopQL6bf\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f29.md\",\"reason\":\"read-failed\",\"message\":\"E29\"}",
+        "{\"v\":1,\"id\":\"8rGLVMnWEzQVs2J8nYSEE\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f30.md\",\"reason\":\"read-failed\",\"message\":\"E30\"}",
+        "{\"v\":1,\"id\":\"mdwpI7ZbL88IMdMb5xi9h\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f31.md\",\"reason\":\"read-failed\",\"message\":\"E31\"}",
+        "{\"v\":1,\"id\":\"YkoK9kS4P4cktlYcuMsLI\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f32.md\",\"reason\":\"read-failed\",\"message\":\"E32\"}",
+        "{\"v\":1,\"id\":\"mTnXvrTQORHJyD9YYpoev\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f33.md\",\"reason\":\"read-failed\",\"message\":\"E33\"}",
+        "{\"v\":1,\"id\":\"k1mPx5s0ItweQc2uADX63\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f34.md\",\"reason\":\"read-failed\",\"message\":\"E34\"}",
+        "{\"v\":1,\"id\":\"jQ94qGkseTAlDDOvgTJlQ\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f35.md\",\"reason\":\"read-failed\",\"message\":\"E35\"}",
+        "{\"v\":1,\"id\":\"djCivHAC9wEgo_pROMM2x\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f36.md\",\"reason\":\"read-failed\",\"message\":\"E36\"}",
+        "{\"v\":1,\"id\":\"QMTfXo8wYPJws-suDDDqt\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f37.md\",\"reason\":\"read-failed\",\"message\":\"E37\"}",
+        "{\"v\":1,\"id\":\"1NyxfiWo6wCwL2qTlB0YS\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f38.md\",\"reason\":\"read-failed\",\"message\":\"E38\"}",
+        "{\"v\":1,\"id\":\"cn-hNwdLQSnq7TJVLz1g8\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f39.md\",\"reason\":\"read-failed\",\"message\":\"E39\"}",
+        "{\"v\":1,\"id\":\"qSy5DbsiVO6-CbS2lEUiD\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f40.md\",\"reason\":\"read-failed\",\"message\":\"E40\"}",
+        "{\"v\":1,\"id\":\"fgcQ2VegvVrMw6iJ_jcfg\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f41.md\",\"reason\":\"read-failed\",\"message\":\"E41\"}",
+        "{\"v\":1,\"id\":\"I93aMa4JaAnEpsFzR6wL1\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f42.md\",\"reason\":\"read-failed\",\"message\":\"E42\"}",
+        "{\"v\":1,\"id\":\"nD-R6PtF_b5eU-wbxzP3B\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f43.md\",\"reason\":\"read-failed\",\"message\":\"E43\"}",
+        "{\"v\":1,\"id\":\"1Lgs5M-azdRopGSa4sKQ9\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f44.md\",\"reason\":\"read-failed\",\"message\":\"E44\"}",
+        "{\"v\":1,\"id\":\"BSdBK11IcgW9J6as-fef_\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f45.md\",\"reason\":\"read-failed\",\"message\":\"E45\"}",
+        "{\"v\":1,\"id\":\"DfuBel-jJBNOv4T7kS93m\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f46.md\",\"reason\":\"read-failed\",\"message\":\"E46\"}",
+        "{\"v\":1,\"id\":\"wyZI_tiBYKI_86inBgMyd\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f47.md\",\"reason\":\"read-failed\",\"message\":\"E47\"}",
+        "{\"v\":1,\"id\":\"BlPheXFaQUH2Tzl3Vbb99\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f48.md\",\"reason\":\"read-failed\",\"message\":\"E48\"}",
+        "{\"v\":1,\"id\":\"8zWwy2kIrMaDkRlzYfYbu\",\"at\":\"2026-10-30T12:00:00.000Z\",\"kind\":\"failed\",\"source\":\"scan\",\"path\":\"f49.md\",\"reason\":\"read-failed\",\"message\":\"E49\"}"
+      ]
     }
   ]
 }

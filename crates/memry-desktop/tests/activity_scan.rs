@@ -1,19 +1,22 @@
 //! What the open walk found reaches the activity log as Electron's `indexVault` records it
 //! (`recordScanActivity`): through the real log, the lines Electron appends for given walk
 //! results (`fixtures/gen-activity-vectors.mjs`); and through a real session, tier and walk, a
-//! first open's one "index built" summary and a later open's entries for the files that came
-//! while the app was closed.
+//! first open's one "index built" summary, a later open's entries for the files that came while
+//! the app was closed, and nothing at all in an Electron vault this app did not import.
 
 mod device_key;
 mod vault_env;
 
 use std::fs;
+use std::path::PathBuf;
 
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::vault::activity::{
-    ActivityEntry, ActivityFilter, ActivityKind, ActivityLog, ActivitySource, ScanActivity,
-    ScanFailure, ScanMode, log_path,
+    ActivityEntry, ActivityFilter, ActivityKind, ActivityLog, ActivitySource, SCAN_COLLECT_LIMIT,
+    ScanActivity, ScanFailure, ScanMode, log_path,
 };
+use memry_desktop::vault::consumer::Applied;
+use memry_desktop::vault::watch::VaultEvent;
 use serde_json::Value;
 use vault_env::{Env, env, indexed};
 
@@ -42,7 +45,11 @@ fn scan_of(fields: &Value) -> ScanActivity {
             .iter()
             .map(|failure| ScanFailure {
                 path: failure["path"].as_str().unwrap().to_owned(),
-                reason: failure["reason"].as_str().unwrap().to_owned(),
+                reason: match failure["reason"].as_str().unwrap() {
+                    "read-failed" => "read-failed",
+                    "index-failed" => "index-failed",
+                    other => panic!("a reason Electron does not write: {other}"),
+                },
                 message: failure["message"].as_str().map(str::to_owned),
             })
             .collect(),
@@ -50,7 +57,6 @@ fn scan_of(fields: &Value) -> ScanActivity {
         unsupported: strings(&fields["unsupported"]),
         unsupported_count: count(&fields["unsupportedCount"]),
         known: 0,
-        deferred: 0,
     }
 }
 
@@ -96,10 +102,31 @@ fn a_walk_s_activity_has_the_lines_electron_appends_for_it() {
     }
 }
 
-/// The scan's entries, oldest first.
-fn scanned(e: &Env) -> Vec<ActivityEntry> {
+/// Each list keeps Electron's `SCAN_COLLECT_LIMIT` paths; past it a file is only counted, so a
+/// walk over a vault of millions holds ten thousand paths, not millions.
+#[test]
+fn a_walk_keeps_ten_thousand_paths_of_each_list_and_counts_the_rest() {
+    assert_eq!(SCAN_COLLECT_LIMIT, 10_000);
+    let mut scan = ScanActivity::default();
+    for n in 0..=SCAN_COLLECT_LIMIT {
+        scan.add(&format!("{n}.md"));
+        scan.fail(&format!("{n}.md"), "read-failed", None);
+    }
+    assert_eq!((scan.added.len(), scan.added_count), (10_000, 10_001));
+    assert_eq!((scan.failed.len(), scan.failed_count), (10_000, 10_001));
+    assert_eq!(scan.added.last().map(String::as_str), Some("9999.md"));
+}
+
+/// Every entry, oldest first.
+fn listed(e: &Env) -> Vec<ActivityEntry> {
     let mut entries = e.tier.activity().list(5000, ActivityFilter::All).entries;
     entries.reverse();
+    entries
+}
+
+/// The scan's entries, oldest first.
+fn scanned(e: &Env) -> Vec<ActivityEntry> {
+    let mut entries = listed(e);
     entries.retain(|entry| entry.source == ActivitySource::Scan);
     entries
 }
@@ -112,6 +139,27 @@ fn open_walked(e: &mut Env) {
     e.drain();
     e.open();
     e.facts_until(indexed);
+}
+
+/// A note no one may read: `None` where nothing keeps it from being read (another OS, or run
+/// as root).
+fn locked(e: &Env, rel: &str) -> Option<PathBuf> {
+    let path = e.vault.join(rel);
+    fs::write(&path, "# locked\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
+    }
+    fs::read(&path).is_err().then_some(path)
+}
+
+/// The walk's failed read is retried: the watcher looks at the file again and reports it
+/// unreadable once more.
+fn retried(e: &mut Env, rel: &str) {
+    e.facts_until(
+        |fact| matches!(fact, Applied::Vault(VaultEvent::Unreadable { path, .. }) if path == rel),
+    );
 }
 
 /// A first open finds every file new: one summary says the index was built, and no file is
@@ -148,61 +196,138 @@ fn a_first_open_records_one_index_built_summary() {
     e.close();
 }
 
-/// Files that came while the app was closed: each new note's file is `added`, one whose read
-/// failed is `failed`, an unsupported one is `skipped`, all from the scan. A file the vault knew
-/// already, and one reported before, are not news; nor is a markdown file that is not UTF-8,
-/// which Electron reads as text.
+/// Files that came while the app was closed: each new note's file is `added` and an
+/// unsupported one `skipped`, from the scan. A file the vault knew already, and one reported
+/// before, are not news; nor is a markdown file that is not UTF-8, which Electron reads as
+/// text. A note that cannot be read is one `failed` entry for the open, though the watcher and
+/// the walk both find it, and the retry finds it again.
 #[test]
 fn a_later_open_records_the_files_that_came_while_closed() {
     let mut e = env(|store| Some(NotesIdentity::new(store)));
     e.write("known.md", "# known\n");
     e.write("photo.heic", "not an image");
     open_walked(&mut e);
-    let first = scanned(&e).len();
+    let first = listed(&e).len();
     e.close();
 
     e.write("new/one.md", "# one\n");
     e.write("two.md", "# two\n");
     e.write("tool.bin", "bytes");
     fs::write(e.vault.join("latin1.md"), b"caf\xe9\n").unwrap();
-    #[cfg(not(unix))]
-    let locked: Option<std::path::PathBuf> = None;
-    #[cfg(unix)]
-    let locked = {
-        use std::os::unix::fs::PermissionsExt as _;
-        let path = e.vault.join("locked.md");
-        fs::write(&path, "# locked\n").unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
-        // Run as root, no permission keeps it from being read.
-        fs::read(&path).is_err().then_some(path)
-    };
+    let locked = locked(&e, "locked.md");
     open_walked(&mut e);
+    if locked.is_some() {
+        retried(&mut e, "locked.md");
+    }
 
-    let entries = scanned(&e);
-    let found: Vec<_> = entries[first..].iter().map(summary).collect();
+    let entries = listed(&e).split_off(first);
+    let failed: Vec<_> = entries
+        .iter()
+        .filter(|entry| entry.kind == ActivityKind::Failed)
+        .collect();
+    assert_eq!(
+        failed
+            .iter()
+            .map(|entry| summary(entry))
+            .collect::<Vec<_>>(),
+        locked
+            .iter()
+            .map(|_| (ActivityKind::Failed, Some("locked.md"), Some("read-failed")))
+            .collect::<Vec<_>>()
+    );
+    assert!(failed.iter().all(|entry| entry.message.is_some()));
+    let others: Vec<_> = entries
+        .iter()
+        .filter(|entry| entry.kind != ActivityKind::Failed)
+        .map(|entry| (entry.source, summary(entry)))
+        .collect();
+    let scan = ActivitySource::Scan;
+    // Electron's order: the added files in the walk's (sorted) order, then the skips.
+    assert_eq!(
+        others,
+        [
+            (scan, (ActivityKind::Added, Some("new/one.md"), None)),
+            (scan, (ActivityKind::Added, Some("two.md"), None)),
+            (
+                scan,
+                (
+                    ActivityKind::Skipped,
+                    Some("tool.bin"),
+                    Some("unsupported-type")
+                )
+            ),
+        ]
+    );
+    e.close();
+}
+
+/// An open that finds only a new unsupported file, beside a note and an image it knew, is no
+/// build of the index: the skip is the one entry.
+#[test]
+fn a_later_open_that_finds_only_an_unsupported_file_records_its_skip_alone() {
+    let mut e = env(|store| Some(NotesIdentity::new(store)));
+    e.write("known.md", "# known\n");
+    e.write("photo.png", "not an image");
+    open_walked(&mut e);
+    let first = listed(&e).len();
+    e.close();
+
+    e.write("tool.bin", "bytes");
+    open_walked(&mut e);
+    let later: Vec<_> = listed(&e).split_off(first);
+    assert_eq!(
+        later.iter().map(summary).collect::<Vec<_>>(),
+        [(
+            ActivityKind::Skipped,
+            Some("tool.bin"),
+            Some("unsupported-type")
+        )]
+    );
+    e.close();
+}
+
+/// A vault of this app whose every file waits (an image is no note) still has its problems
+/// told: the unsupported file, and the note that cannot be read.
+#[test]
+fn a_vault_whose_files_all_wait_still_records_its_problems() {
+    let mut e = env(|store| Some(NotesIdentity::new(store)));
+    e.write("photo.png", "not an image");
+    e.write("tool.bin", "bytes");
+    let locked = locked(&e, "locked.md");
+    open_walked(&mut e);
+    if locked.is_some() {
+        retried(&mut e, "locked.md");
+    }
+    let entries = listed(&e);
     let failed = (ActivityKind::Failed, Some("locked.md"), Some("read-failed"));
-    let expected: Vec<_> = [
-        (ActivityKind::Added, Some("new/one.md"), None),
-        (ActivityKind::Added, Some("two.md"), None),
-    ]
-    .into_iter()
-    .chain(locked.is_some().then_some(failed))
-    .chain([(
+    let skipped = (
         ActivityKind::Skipped,
         Some("tool.bin"),
         Some("unsupported-type"),
-    )])
-    .collect();
-    // Electron's order: the added files in the walk's (sorted) order, the failures, the skips.
-    assert_eq!(found, expected);
-    #[cfg(unix)]
-    if let Some(path) = locked {
-        use std::os::unix::fs::PermissionsExt as _;
-        let failed = entries
-            .iter()
-            .find(|entry| entry.kind == ActivityKind::Failed);
-        assert!(failed.and_then(|entry| entry.message.as_deref()).is_some());
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).unwrap();
-    }
+    );
+    // The watcher's start rescan finds the note unreadable before the walk begins.
+    let expected: Vec<_> = locked.iter().map(|_| failed).chain([skipped]).collect();
+    assert_eq!(entries.iter().map(summary).collect::<Vec<_>>(), expected);
     e.close();
+}
+
+/// An Electron vault this app did not import is left as it was, its activity log included:
+/// neither the walk nor the watcher records its unsupported or unreadable files.
+#[test]
+fn an_electron_vault_not_imported_gets_no_activity_entry() {
+    let mut e = env(|store| Some(NotesIdentity::new(store)));
+    e.write(".memry/data.db", "");
+    e.write("tool.bin", "bytes");
+    let locked = locked(&e, "locked.md");
+    open_walked(&mut e);
+    if locked.is_some() {
+        retried(&mut e, "locked.md");
+    }
+    e.write("later.heic", "not an image");
+    e.facts_until(|fact| {
+        matches!(fact, Applied::Vault(VaultEvent::Unsupported { path }) if path == "later.heic")
+    });
+    assert_eq!(listed(&e).len(), 0);
+    e.close();
+    assert!(!e.vault.join(".memry/activity.jsonl").exists());
 }

@@ -354,7 +354,7 @@ fn created_content(
 /// Whether a new note id may be minted beside Electron's database: the import
 /// brought Electron's notes into the core, or the core is recorded as created
 /// for a vault that was not Electron's. Nothing recorded is not evidence.
-pub(super) fn mints_beside_electron(conn: &Connection) -> Result<bool, StorageError> {
+pub fn mints_beside_electron(conn: &Connection) -> Result<bool, StorageError> {
     conn.query_row(
         "SELECT EXISTS (SELECT 1 FROM meta WHERE key = ?1)
              OR EXISTS (SELECT 1 FROM meta WHERE key = ?2 AND value = 'native')",

@@ -53,7 +53,9 @@ pub use entry::{
 };
 pub use parse::{MAX_COUNTS, MAX_TEXT_BYTES, steps};
 use parse::{Read, read_line};
-pub use scan::{SCAN_COLLECT_LIMIT, ScanActivity, ScanFailure, ScanMode};
+pub use scan::{
+    SCAN_COLLECT_LIMIT, ScanActivity, ScanFailure, ScanMode, UNREADABLE_REPORT_MS, failure_key,
+};
 use store::{Log, extension, is_user_content};
 
 use crate::error::{CoreError, FailureKind};

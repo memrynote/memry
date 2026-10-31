@@ -482,6 +482,19 @@ const scans = [
         message: '.heic'
       }
     ]
+  ),
+  await scanCase(
+    'twenty-one-added-summarized',
+    walk({ added: paths(21, (i) => `n${i}.md`), addedCount: 21 }),
+    'scan'
+  ),
+  await scanCase(
+    'fifty-failures-each-listed',
+    walk({
+      failed: paths(50, (i) => ({ path: `f${i}.md`, reason: 'read-failed', message: `E${i}` })),
+      failedCount: 50
+    }),
+    'scan'
   )
 ]
 

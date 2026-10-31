@@ -267,8 +267,8 @@ impl Run {
     ///
     /// A walk that ends tells the activity log what it found (`indexVault`'s scan activity):
     /// the files that got a new note, the ones whose read failed and the unsupported ones. One
-    /// a close stops tells nothing, and so does one whose identity deferred every file it found
-    /// (an Electron vault not imported yet, whose files are left as they are).
+    /// a close stops tells nothing, and so does one in a vault the identity leaves as it is (an
+    /// Electron vault not imported yet).
     fn walk(&mut self) {
         let root = self.applier.root.clone();
         let walk = walk_vault_with(&root, &self.exclude, Limits::DEFAULT);
@@ -282,6 +282,8 @@ impl Run {
                 .collect(),
             ..ScanActivity::default()
         };
+        // The walk counts every unsupported file, kept or past its cap; the ignored ones it kept
+        // are dropped, and so leave the count. (Past the cap, an ignored one still counts.)
         scan.unsupported_count = walk.unsupported_count - (collected - scan.unsupported.len());
         let (notes, others): (Vec<_>, Vec<_>) = walk
             .files
@@ -306,9 +308,7 @@ impl Run {
                 self.after(step, Some(&path));
             }
         }
-        if !scan.deferred_all() {
-            self.applier.activity.record_scan(&root, &scan, scan.mode());
-        }
+        self.applier.report_scan(&scan);
         if let Ok(lane) = self.applier.rows.lane_of(self.applier.session) {
             lane.publish(Applied::Indexed {
                 complete: complete && self.applier.identity.adopts(),
