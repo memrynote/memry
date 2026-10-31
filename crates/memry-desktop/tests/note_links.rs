@@ -149,7 +149,7 @@ fn backlinks_carry_the_text_around_each_link_from_the_linking_file() {
     e.write("Target.md", "# Target\n");
     e.write(
         "notes/Source.md",
-        "Intro [[Target]] middle\n<!-- [[Target]] in a comment -->\n\n[[target|the target]] end\n",
+        "---\nrelated: \"[[Target]]\"\n---\nIntro [[Target]] middle\n<!-- [[Target]] in a comment -->\n\n[[target|the target]] end\n",
     );
     e.write("Broken.md", "Points at [[Nothing Here]].\n");
     // A day's file is its day (13m): its links have text like a note's.
@@ -198,7 +198,7 @@ fn backlinks_carry_the_text_around_each_link_from_the_linking_file() {
         [
             ("2025-01-01", "journal/2025-01-01.md", 1, false, 1),
             ("Dense", "Dense.md", 60, true, 34),
-            ("Source", "notes/Source.md", 2, false, 2),
+            ("Source", "notes/Source.md", 3, false, 3),
         ]
     );
     assert_eq!(got.incoming[0].source_id, "j2025-01-01");
@@ -223,11 +223,12 @@ fn backlinks_carry_the_text_around_each_link_from_the_linking_file() {
             String::from_utf16(&units[c.link_start as usize..c.link_end as usize]).unwrap()
         })
         .collect();
-    // The commented link is not text the note shows.
-    assert_eq!(shown, ["[[Target]]", "[[target|the target]]"]);
+    // The whole file is read, frontmatter included, as `getNoteLinks` reads it; the commented
+    // link is not text the note shows.
+    assert_eq!(shown, ["[[Target]]", "[[Target]]", "[[target|the target]]"]);
     assert_eq!(
-        backlink.contexts[0].snippet,
-        "Intro [[Target]] middle [[target|the target]] end"
+        backlink.contexts[1].snippet,
+        "--- related: \"[[Target]]\" --- Intro [[Target]] middle [[target|the target]] end"
     );
 
     let from_source = links.get(&source).unwrap();
