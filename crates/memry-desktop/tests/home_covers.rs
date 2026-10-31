@@ -118,41 +118,124 @@ fn pruning_keeps_only_the_current_cover_and_deleting_the_board_takes_its_folder(
     delete_cover_dir(dir.path(), "b1");
 }
 
-/// A board folder, or the covers folder, that is a link out of `.memry` is neither written,
-/// emptied nor deleted through: the files it leads to (here the vault's own notes) are not
-/// covers.
-#[cfg(unix)]
+/// A board id or a file name arrives as data, so it is checked as every platform reads it: on
+/// Windows `C:x` is a whole new path (a write out of the vault), `a:b` an alternate data
+/// stream, and a trailing `.` or space is stripped (`b1.` is the folder `b1`). Each is refused
+/// on every platform, before any folder is made.
 #[test]
-fn a_cover_folder_linked_out_of_memry_is_never_written_or_emptied() {
-    for linked in ["home-covers/b1", "home-covers"] {
-        let dir = vault();
-        let notes = dir.path().join("notes");
-        let board = if linked == "home-covers" {
-            notes.join("b1")
-        } else {
-            notes.clone()
-        };
-        fs::create_dir_all(&board).unwrap();
-        fs::write(board.join("keep.md"), "a note").unwrap();
-        fs::create_dir_all(dir.path().join(".memry/home-covers")).unwrap();
-        let link = dir.path().join(".memry").join(linked);
-        fs::remove_dir(&link).ok();
-        std::os::unix::fs::symlink(&notes, &link).unwrap();
-
+fn a_name_windows_reads_differently_is_refused_on_every_platform() {
+    let dir = vault();
+    for name in ["C:x", "a:b.png", "b1.", "b1 ", "a\0b"] {
+        let reference = format!(".memry/home-covers/{name}/photo.png");
+        assert_eq!(
+            cover_file_path(dir.path(), name, &reference),
+            None,
+            "{name:?}"
+        );
         assert!(
             matches!(
-                write_cover(dir.path(), "b2", "photo.png", b"x"),
-                Err(CoverError::Outside)
-            ) == (linked == "home-covers"),
-            "{linked}"
+                write_cover(dir.path(), name, "photo.png", b"x"),
+                Err(CoverError::InvalidName)
+            ),
+            "{name:?}"
         );
-        assert!(matches!(
-            write_cover(dir.path(), "b1", "photo.png", b"x"),
-            Err(CoverError::Outside)
-        ));
-        prune_cover_files(dir.path(), "b1", None);
-        delete_cover_dir(dir.path(), "b1");
-        assert_eq!(names(&board), ["keep.md"], "{linked}");
-        assert!(!notes.join("b2").exists(), "{linked}");
+        let reference = format!(".memry/home-covers/b1/{name}");
+        assert_eq!(
+            cover_file_path(dir.path(), "b1", &reference),
+            None,
+            "{name:?}"
+        );
+        assert!(
+            matches!(
+                write_cover(dir.path(), "b1", name, b"x"),
+                Err(CoverError::InvalidName)
+            ),
+            "{name:?}"
+        );
+    }
+    assert!(!dir.path().join(".memry/home-covers").exists());
+}
+
+/// `link` points at the folder `target`: a symlink on Unix, a junction on Windows, which needs
+/// no elevation.
+fn link_dir(link: &Path, target: &Path) {
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(target, link).unwrap();
+    #[cfg(windows)]
+    {
+        let status = std::process::Command::new("cmd")
+            .args(["/c", "mklink", "/J"])
+            .arg(link)
+            .arg(target)
+            .stdout(std::process::Stdio::null())
+            .status()
+            .unwrap();
+        assert!(status.success(), "mklink /J failed");
+    }
+}
+
+/// No file op goes through a link or a junction between `.memry` and a cover. One at the
+/// covers folder or at a board folder is refused, wherever it points: into the notes, at
+/// `.memry` itself (where a prune would delete `config.json` and `data.db`) or at another
+/// board (whose cover a prune would delete). Everything it points at keeps its files, and
+/// nothing new appears there.
+#[test]
+fn a_cover_folder_that_is_a_link_is_never_written_emptied_or_deleted_through() {
+    for (linked, target) in [
+        ("home-covers", "notes"),
+        ("home-covers/b1", "notes"),
+        ("home-covers/b1", ".memry"),
+        ("home-covers/b1", ".memry/home-covers/b2"),
+    ] {
+        let dir = vault();
+        let root = dir.path();
+        let mut kept = vec![".memry/config.json", ".memry/data.db", "notes/keep.md"];
+        kept.push(match linked {
+            // A note folder named like the board the link would lead a prune into.
+            "home-covers" => "notes/b1/keep.md",
+            _ => ".memry/home-covers/b2/other.png",
+        });
+        for file in &kept {
+            fs::create_dir_all(root.join(file).parent().unwrap()).unwrap();
+            fs::write(root.join(file), file).unwrap();
+        }
+        // Joined a segment at a time: `mklink` takes a `/` inside a path for a switch.
+        let at = |rel: &str| {
+            rel.split('/')
+                .fold(root.to_path_buf(), |path, part| path.join(part))
+        };
+        link_dir(&at(&format!(".memry/{linked}")), &at(target));
+
+        for board in ["b1", "b3"] {
+            let written = write_cover(root, board, "photo.png", b"x");
+            let refused = board == "b1" || linked == "home-covers";
+            assert_eq!(
+                matches!(written, Err(CoverError::NotAFolder)),
+                refused,
+                "{linked} {board}"
+            );
+        }
+        prune_cover_files(root, "b1", None);
+        delete_cover_dir(root, "b1");
+
+        for file in &kept {
+            assert_eq!(
+                fs::read_to_string(root.join(file)).unwrap(),
+                *file,
+                "{linked} -> {target}"
+            );
+        }
+        for stray in [
+            ".memry/photo.png",
+            "notes/photo.png",
+            "notes/b1/photo.png",
+            "notes/b3",
+        ] {
+            assert!(!root.join(stray).exists(), "{linked} -> {target}: {stray}");
+        }
+        assert!(
+            !root.join(".memry/home-covers/b2/photo.png").exists(),
+            "{linked} -> {target}"
+        );
     }
 }
