@@ -9,12 +9,18 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
-import { buildPackArgs, publishedName } from './vpk-args.mjs'
+import { assertNoRedist } from './pe-imports.mjs'
+import { buildPackArgs, publishedName, TARGETS } from './vpk-args.mjs'
 import { assertBootstrapperPacked } from './webview2-bootstrapper.mjs'
 
-/** Throws when `packDir` cannot become a `target` pack: a Windows one ships the pinned WebView2 bootstrapper. */
+/**
+ * Throws when `packDir` cannot become a `target` pack: a Windows one ships the pinned WebView2
+ * bootstrapper and an exe that needs no Visual C++ redistributable.
+ */
 export function assertPackable(target, packDir) {
-  if (target.startsWith('win-')) assertBootstrapperPacked(packDir)
+  if (!target.startsWith('win-')) return
+  assertBootstrapperPacked(packDir)
+  assertNoRedist(path.join(packDir, TARGETS[target].mainExe))
 }
 
 /**

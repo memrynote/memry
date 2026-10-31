@@ -1,5 +1,6 @@
 use std::io;
 
+use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::updater::severity::{NetworkKind, UpdateErrorKind};
 use velopack::{NetworkError, VelopackAsset};
 
@@ -18,6 +19,22 @@ fn the_production_feed_is_compiled_in_unless_a_rehearsal_sets_one() {
     if option_env!("MEMRY_BUILD_MEMRY_UPDATE_FEED_URL").is_none() {
         assert_eq!(FEED_URL, "https://github.com/memrynote/memry");
     }
+}
+
+/// The proof jobs pass the workflow token so a shared CI runner's exhausted unauthenticated API
+/// quota cannot fail the check; a production build has no rehearsal feed and never sends one.
+#[test]
+fn only_a_rehearsal_build_on_a_github_feed_reads_the_feed_token() {
+    let mut env = LaunchEnv::default();
+    env.set(FEED_TOKEN_VAR, "ghs_test");
+    let rehearsal = Some("https://github.com/memrynote/memry-update-rehearsal");
+    assert_eq!(feed_token(rehearsal, &env).as_deref(), Some("ghs_test"));
+    assert_eq!(feed_token(None, &env), None);
+    assert_eq!(feed_token(Some("https://feed.example/memry"), &env), None);
+    assert_eq!(feed_token(Some("/tmp/feed"), &env), None);
+    env.set(FEED_TOKEN_VAR, "");
+    assert_eq!(feed_token(rehearsal, &env), None);
+    assert_eq!(feed_token(rehearsal, &LaunchEnv::default()), None);
 }
 
 #[test]
