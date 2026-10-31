@@ -24,7 +24,7 @@ use rusqlite::OptionalExtension as _;
 
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
-use crate::domain::link_reads::{self, Incoming, LinkTarget};
+use crate::domain::link_reads::{self, Incoming, LinkTarget, MentionSources};
 #[cfg(feature = "markdown")]
 use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
 use crate::domain::search::{self, HitKind, SearchHit};
@@ -171,6 +171,15 @@ impl Search {
         let index = self.index.clone();
         self.data.read_blocking(move |data| {
             index.read_blocking(|index| link_reads::incoming(data, index, &target_id))
+        })
+    }
+
+    /// The notes and days that may mention `target_id` unlinked ([`link_reads::mention_sources`]).
+    pub fn mention_sources(&self, target_id: &str) -> Result<Option<MentionSources>, StorageError> {
+        let target_id = target_id.to_owned();
+        let index = self.index.clone();
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| link_reads::mention_sources(data, index, &target_id))
         })
     }
 
