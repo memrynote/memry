@@ -31,7 +31,8 @@ fn count(event: rusqlite::trace::TraceEvent<'_>) {
 }
 
 /// `n{i}` titled `Note {i}` with a file at `F{i % 50}/Note {i}.md`. `few` (`n1`) is linked
-/// to and mentioned by `n2` only, `many` (`n0`) by `MANY` notes.
+/// to by `n2` and mentioned by `n3` only, `many` (`n0`) linked to and mentioned by `MANY`
+/// notes each.
 fn vault() -> (Connection, Connection) {
     let mut data = Connection::open_in_memory().expect("data.db");
     migrations::run(&mut data, DATA_MIGRATIONS).expect("data migrations");
@@ -78,6 +79,9 @@ fn vault() -> (Connection, Connection) {
         .expect("fts row");
     };
     text(3, "about note 1 here");
+    // A backlink and the note itself are not unlinked mentions.
+    text(2, "about note 1 here");
+    text(1, "note 1 itself");
     for id in 1000..1000 + MANY {
         text(id, "about note 0 here");
     }
@@ -153,4 +157,16 @@ fn link_reads_cost_the_same_statements_for_one_link_or_hundreds() {
         few_cost, many_cost,
         "unlinked mentions: one read per source"
     );
+
+    let sources = |id: &str| {
+        link_reads::mention_sources(&data, &index, id)
+            .expect("mention sources")
+            .expect("live")
+            .sources
+    };
+    let (few, few_cost) = statements(&data, &index, || sources("n1"));
+    let (many, many_cost) = statements(&data, &index, || sources("n0"));
+    assert_eq!((few.len(), many.len()), (1, MANY));
+    assert_eq!(few[0].source_path.as_deref(), Some("F3/Note 3.md"));
+    assert_eq!(few_cost, many_cost, "mention sources: one read per source");
 }
