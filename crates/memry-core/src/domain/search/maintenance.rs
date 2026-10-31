@@ -38,7 +38,7 @@ use crate::crdt::registry::{DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
 use crate::domain::body_tags;
-use crate::domain::wiki_target::WikiNames;
+use crate::domain::wiki_target::{WikiNames, settle_name_keys};
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, strings, text};
 
@@ -105,6 +105,9 @@ pub fn reindex_until(
     let version: i64 = data
         .query_row("PRAGMA user_version", [], |row| row.get(0))
         .map_err(failed)?;
+    // The wiki names changed since the last pass get their lookup keys back, so a link lookup
+    // reads only its matches again (`wiki_target`).
+    settle_name_keys(data)?;
 
     let transaction = index.unchecked_transaction().map_err(failed)?;
     let indexed = meta_number(&transaction, DATA_VERSION_KEY)?;
