@@ -91,8 +91,8 @@ function toStatus(wire: Awaited<ReturnType<typeof commands.vaultGetStatus>>): Va
 
 /**
  * Vault service for the renderer. The picker, the registry and the lifecycle go to the Rust
- * `vault_*` commands; config, reindex, embeds, the sandbox and the account calls stay on
- * `window.api.vault` until Steps 09, 12, 13, 19 and 32 port them.
+ * `vault_*` commands; config, embeds, the sandbox and the account calls stay on
+ * `window.api.vault` until Steps 09, 12, 19 and 32 port them.
  */
 export const vaultService: VaultClientAPI = {
   /**
@@ -172,8 +172,8 @@ export const vaultService: VaultClientAPI = {
   /**
    * Trigger manual reindex of current vault.
    */
-  reindex: (): Promise<void> => {
-    return window.api.vault.reindex()
+  reindex: async (): Promise<void> => {
+    await commands.vaultReindex()
   },
 
   reveal: async (): Promise<void> => {
@@ -242,12 +242,13 @@ export function onVaultStatusChanged(callback: (status: VaultStatus) => void): (
 }
 
 /**
- * Subscribe to vault index progress updates. Step 13 (#3530) ports the index build that emits
- * them.
+ * Subscribe to reindex progress, as the percentage Electron's `vault:index-progress` carried.
  * Returns unsubscribe function.
  */
 export function onVaultIndexProgress(callback: (progress: number) => void): () => void {
-  return window.api.onVaultIndexProgress(callback)
+  return subscribe(events.vaultIndexProgressEvent, ({ indexBuilt, indexTotal }) =>
+    callback(indexTotal === 0 ? 100 : Math.round((indexBuilt * 100) / indexTotal))
+  )
 }
 
 /**

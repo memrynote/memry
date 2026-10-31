@@ -4,6 +4,7 @@ pub mod error;
 pub mod frontmatter;
 pub mod icons;
 pub mod identity;
+pub mod index;
 pub mod read;
 pub mod unsplash;
 pub mod view;

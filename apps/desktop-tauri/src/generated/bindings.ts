@@ -194,6 +194,8 @@ export const commands = {
 	vaultActivityReveal: () => __TAURI_INVOKE<boolean>("vault_activity_reveal"),
 	/**  Keeps entries for `days` (7, 30 or 90). */
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
+	/**  Measures every note of the open vault again; resolves once the last progress went out. */
+	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
 	/**
 	 *  What each `![[target]]` image embed of `refs` resolves to in the open vault: relative to the
 	 *  note at `note_path` when given, a `memry-file://` URL otherwise. An embed that names no file
@@ -227,6 +229,7 @@ export const events = {
 	updaterStateChangedEvent: makeEvent<UpdaterStateChangedEvent, UpdaterStateChangedEvent>("updater-state-changed-event"),
 	vaultActivityChangedEvent: makeEvent<VaultActivityChangedEvent, VaultActivityChangedEvent>("vault-activity-changed-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
+	vaultIndexProgressEvent: makeEvent<VaultIndexProgressEvent, VaultIndexProgressEvent>("vault-index-progress-event"),
 	vaultIndexRecoveredEvent: makeEvent<VaultIndexRecoveredEvent, VaultIndexRecoveredEvent>("vault-index-recovered-event"),
 	vaultListChangedEvent: makeEvent<VaultListChangedEvent, VaultListChangedEvent>("vault-list-changed-event"),
 	vaultStatusChangedEvent: makeEvent<VaultStatusChangedEvent, VaultStatusChangedEvent>("vault-status-changed-event"),
@@ -829,6 +832,16 @@ export type VaultActivitySource = "watcher" | "scan" | "import" | "drop" | "sync
 /**  A vault operation failed (`vault:error`). */
 export type VaultErrorEvent = {
 	message: string,
+};
+
+/**
+ *  A reindex measured `index_built` of `index_total` notes (`vault:index-progress`). At most
+ *  one per 250 ms and never backwards. A reindex that finishes ends with `index_built ==
+ *  index_total`; one the vault's close stops ends without it.
+ */
+export type VaultIndexProgressEvent = {
+	indexBuilt: number,
+	indexTotal: number,
 };
 
 /**

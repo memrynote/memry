@@ -56,7 +56,10 @@ vi.mock('@/lib/logger', () => {
 
 vi.mock('../src/generated/bindings', () => {
   const vault = () => window.api.vault
-  const notes = () => window.api.notes
+  // `window.api.notes` is typed without the ported reads (preload/index.d.ts); the mock below
+  // still provides them, for component tests to drive.
+  const notes = () =>
+    window.api.notes as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
   // The preload type no longer declares the ported updater; the mock below still provides it.
   const updater = () =>
     (window.api as unknown as { updater: Record<string, (...args: unknown[]) => unknown> }).updater
@@ -89,10 +92,11 @@ vi.mock('../src/generated/bindings', () => {
       vaultRemove: (path: string) => vault().remove(path),
       vaultReveal: () => vault().reveal(),
       vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon),
+      vaultReindex: () => vault().reindex(),
       notesGet: (id: string) => notes().get(id),
       notesGetByPath: (path: string) => notes().getByPath(path),
       notesGetFile: (id: string) => notes().getFile(id),
-      notesList: (options: Parameters<typeof window.api.notes.list>[0]) => notes().list(options),
+      notesList: (options: unknown) => notes().list(options),
       notesExists: (titleOrPath: string) => notes().exists(titleOrPath),
       notesOpenExternal: (id: string) => notes().openExternal(id),
       notesRevealInFinder: (id: string) => notes().revealInFinder(id),
@@ -119,6 +123,11 @@ vi.mock('../src/generated/bindings', () => {
       updaterStateChangedEvent: event(() => api().onUpdaterStateChanged),
       menuCommandInvokedEvent: event(() => api().onMenuCommand),
       appNavigationRequestedEvent: event(() => api().onAppNavigationCommand),
+      // The Electron payload is the percentage; as built of 100 it maps back to itself.
+      vaultIndexProgressEvent: event(
+        () => window.api.onVaultIndexProgress,
+        (progress) => ({ indexBuilt: progress, indexTotal: 100 })
+      ),
       // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
       customIconsUpdatedEvent: { listen: async () => () => undefined },
       vaultIndexRecoveredEvent: event(
