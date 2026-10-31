@@ -7,6 +7,7 @@ use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
+use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 
 impl NotesWriter {
@@ -27,6 +28,7 @@ impl NotesWriter {
         &self,
         file: FileNote<'_>,
         converter: Option<&Converter>,
+        embeds: Option<&dyn EmbedResolver>,
     ) -> Result<Adopted, CrdtError> {
         let device_id = self.device_id.clone();
         self.db
@@ -34,6 +36,7 @@ impl NotesWriter {
                 Ok(identity::adopt(
                     conn,
                     converter,
+                    embeds,
                     &file,
                     &Self::new_id(),
                     &device_id,

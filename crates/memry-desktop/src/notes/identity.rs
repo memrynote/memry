@@ -49,6 +49,7 @@ use std::time::UNIX_EPOCH;
 
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::notes::identity::{Adopted, Deferral, FileNote, Moved, Removed};
+use memry_core::markdown::convert::EmbedResolver;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 use memry_core::markdown::shared::markdown_class::{
@@ -61,6 +62,7 @@ use crate::vault::consumer::converter_of;
 use crate::vault::consumer::identity::{
     Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal,
 };
+use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::normalize_journal_folder;
 
@@ -257,13 +259,22 @@ impl NoteIdentity for NotesIdentity {
             modified_ms: file.modified_ms,
             electron_db_beside: ctx.root.join(".memry").join("data.db").is_file(),
         };
-        let converter = if writer.may_be_a_note(title, folder_path)? {
-            Some(self.converter(ctx)?)
+        // Read before the core's writer is held: the embed lookup reads the rows.
+        let reader = if writer.may_be_a_note(title, folder_path)? {
+            let embeds =
+                Resolved::of_markdown(ctx.root, &ctx.vault.note_files(), note.body, file.path);
+            Some((self.converter(ctx)?, embeds))
         } else {
             None
         };
         let adopted = writer
-            .adopt_file(note, converter.as_ref())
+            .adopt_file(
+                note,
+                reader.as_ref().map(|(converter, _)| converter),
+                reader
+                    .as_ref()
+                    .map(|(_, embeds)| embeds as &dyn EmbedResolver),
+            )
             .map_err(|error| IdentityError::Other(error.to_string()))?;
         Ok(match adopted {
             Adopted::Existing(id) => Adoption::Existing(id),

@@ -75,6 +75,7 @@ use crate::crdt::registry::UpdateSink;
 use crate::crdt::{BODY_FRAGMENT, epoch};
 use crate::domain::external_feed::same_text;
 use crate::domain::{journal, note_files, note_positions, owed_file_body};
+use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::markdown::convert::restore::SerializeOptions;
 use crate::storage::repositories::{Change, sync_items};
@@ -180,9 +181,13 @@ pub fn has_unfiled_note(
 /// `new_id`. One transaction, so a second file with the same folder and title,
 /// asked right after, sees the note this one created. `converter` reads the
 /// bodies of the notes the file may be; without one such a note defers.
+/// `embeds` resolves the file's image embeds (`![[target]]`) as the feed did, so
+/// a body that holds them writes out as the file's text; it must not read this
+/// database.
 pub fn adopt(
     conn: &Connection,
     converter: Option<&Converter>,
+    embeds: Option<&dyn EmbedResolver>,
     file: &FileNote<'_>,
     new_id: &str,
     device_id: &str,
@@ -197,7 +202,7 @@ pub fn adopt(
         // The oldest note whose body is the file's, unless one may be and cannot say.
         let mut same = None;
         for id in candidates {
-            match body_says(&tx, converter, &id, file, device_id)? {
+            match body_says(&tx, converter, embeds, &id, file, device_id)? {
                 Evidence::Same => {
                     same.get_or_insert(id);
                 }
@@ -271,6 +276,7 @@ enum Evidence {
 fn body_says(
     conn: &Connection,
     converter: &Converter,
+    embeds: Option<&dyn EmbedResolver>,
     note_id: &str,
     file: &FileNote<'_>,
     device_id: &str,
@@ -288,6 +294,7 @@ fn body_says(
     } else {
         let options = SerializeOptions {
             note_path: Some(file.path),
+            embeds,
             ..SerializeOptions::default()
         };
         match converter.serialize_note_body(&document, BODY_FRAGMENT, &options) {

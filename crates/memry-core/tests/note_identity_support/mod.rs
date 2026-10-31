@@ -2,12 +2,15 @@
 
 #![allow(dead_code, reason = "each test binary uses a part of it")]
 
+use std::collections::HashMap;
+
 use memry_core::api::errors::StorageError;
 use memry_core::domain::external_feed::{self, FeedInput, FeedOutcome};
 use memry_core::domain::note_files::{self, NoteFileStat};
 use memry_core::domain::note_positions;
 use memry_core::domain::notes::identity::{self, Adopted, FileNote};
 use memry_core::domain::notes::{self, NewNote};
+use memry_core::markdown::convert::EmbedResolver;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
@@ -55,11 +58,22 @@ pub fn file(path: &'static str, body: &'static str) -> FileNote<'static> {
 }
 
 pub fn adopt(db: &Db, file: FileNote<'_>, new_id: &str) -> Adopted {
+    adopt_with(db, file, new_id, None)
+}
+
+/// [`adopt`], with the vault's image embeds.
+pub fn adopt_with(
+    db: &Db,
+    file: FileNote<'_>,
+    new_id: &str,
+    embeds: Option<&dyn EmbedResolver>,
+) -> Adopted {
     let converter = Converter::new(CalloutTypes::new(Vec::new()));
     db.call_blocking(|conn| {
         Ok(identity::adopt(
             conn,
             Some(&converter),
+            embeds,
             &file,
             new_id,
             DEVICE,
@@ -90,6 +104,31 @@ pub fn give_body(db: &Db, id: &str, path: &str, markdown: &str) {
 
 /// [`give_body`], stamped `at`.
 pub fn give_body_at(db: &Db, id: &str, path: &str, markdown: &str, at: i64) {
+    feed(db, id, path, markdown, at, None);
+}
+
+/// [`give_body`], the file's image embeds resolved by `embeds`.
+pub fn give_body_with(db: &Db, id: &str, path: &str, markdown: &str, embeds: &dyn EmbedResolver) {
+    feed(db, id, path, markdown, NOW, Some(embeds));
+}
+
+/// Image embeds (`![[target]]`) found at the URLs given, by target.
+pub struct Embeds(pub HashMap<String, String>);
+
+impl EmbedResolver for Embeds {
+    fn resolve(&self, target: &str, _note_path: Option<&str>) -> Option<String> {
+        self.0.get(target).cloned()
+    }
+}
+
+fn feed(
+    db: &Db,
+    id: &str,
+    path: &str,
+    markdown: &str,
+    at: i64,
+    embeds: Option<&dyn EmbedResolver>,
+) {
     let converter = Converter::new(CalloutTypes::new(Vec::new()));
     let input = FeedInput {
         note_id: id,
@@ -97,6 +136,7 @@ pub fn give_body_at(db: &Db, id: &str, path: &str, markdown: &str, at: i64) {
         note_path: Some(path),
         writing: None,
         frontmatter: None,
+        embeds,
     };
     let outcome = db
         .call_blocking(|conn| {

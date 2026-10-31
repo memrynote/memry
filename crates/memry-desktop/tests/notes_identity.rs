@@ -509,6 +509,34 @@ fn a_crash_between_the_create_and_the_row_seeds_the_same_note_once() {
     assert_eq!(e.body(&id), "Recovered");
 }
 
+/// A note whose body holds an Obsidian image embed (12f-3b resolves `![[img.png]]` to an image
+/// block) is still its file's note when its row is lost: the identity reads the body with the
+/// vault's embeds, so the file is named by the same note, not deferred.
+#[test]
+fn a_note_holding_an_image_embed_is_its_files_again_when_its_row_is_lost() {
+    let mut e = notes_env();
+    fs::write(e.vault.join("img.png"), [0x89, b'P', b'N', b'G']).unwrap();
+    e.write("x.md", "Before\n\n![[img.png]]\n\nAfter\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = row_id(&e, "x.md").unwrap();
+    let lost = id.clone();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute("DELETE FROM note_file_hashes WHERE note_id = ?1", [&lost])
+                .unwrap();
+            conn.execute("DELETE FROM note_files WHERE note_id = ?1", [&lost])
+                .unwrap();
+            Ok(())
+        })
+        .unwrap();
+
+    reopen(&mut e);
+    assert_eq!(row_id(&e, "x.md"), Some(id));
+    assert_eq!(records(&e).len(), 1, "{:?}", records(&e));
+}
+
 #[test]
 fn a_removed_file_deletes_its_note_once() {
     let mut e = notes_env();

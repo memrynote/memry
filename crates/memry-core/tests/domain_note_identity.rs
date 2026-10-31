@@ -6,6 +6,7 @@
 //! | a file date no record can carry is the creation's           | never asked about forever             |
 //! | a pulled record whose text is the file's keeps its id       | an id is never minted twice           |
 //! | a note whose text is not the file's defers                  | a file is named only on evidence      |
+//! | a note holding a resolved image embed is the file's         | the feed's embeds, 12f-3b             |
 //! | a note whose body is not here yet defers                    | evidence first, never a guess         |
 //! | asked again before the row, the same note answers           | idempotent across create and row      |
 //! | a tombstone, a filed note, a file note never match          | one note per file, markdown only      |
@@ -17,13 +18,15 @@
 
 mod note_identity_support;
 
+use std::collections::HashMap;
+
 use memry_core::domain::notes::identity::{
     self, Adopted, Deferral, ELECTRON_IMPORT_META_KEY, FileNote, Origin, VAULT_ORIGIN_META_KEY,
 };
 use memry_core::sync::body_debt;
 use note_identity_support::{
-    adopt, clear_outbox, create, file, give_body, give_row, note_count, outbox, payload, pulled,
-    pulled_item, run, set_meta,
+    Embeds, adopt, adopt_with, clear_outbox, create, file, give_body, give_body_with, give_row,
+    note_count, outbox, payload, pulled, pulled_item, run, set_meta,
 };
 use rusqlite::OptionalExtension as _;
 use serde_json::{Value, json};
@@ -112,6 +115,28 @@ fn a_pulled_record_whose_text_is_the_files_keeps_its_id() {
     assert!(outbox(&db).is_empty());
 }
 
+/// A note whose body holds an Obsidian image embed (`![[img.png]]`, an image block once the
+/// vault's lookup resolves it, 12f-3b) writes out as the file's text when the file's embeds are
+/// resolved the same way: it is the file's note.
+#[test]
+fn a_note_whose_body_holds_a_resolved_image_embed_is_the_files() {
+    let db = note_identity_support::open("embed");
+    let text = "Before\n\n![[img.png]]\n\nAfter\n";
+    let embeds = Embeds(HashMap::from([(
+        "img.png".to_owned(),
+        "file:///vault/img.png".to_owned(),
+    )]));
+    create(&db, "n1", "Plan", None);
+    give_body_with(&db, "n1", "Plan.md", text, &embeds);
+    clear_outbox(&db);
+    assert_eq!(
+        adopt_with(&db, file("Plan.md", text), "minted", Some(&embeds)),
+        existing("n1")
+    );
+    assert_eq!(note_count(&db), 1);
+    assert!(outbox(&db).is_empty());
+}
+
 /// A `Groceries.md` whose text is not the phone's note of that title may be another note (named
 /// by it, deleting the file would delete that note everywhere) or the same note at another
 /// version (Electron keys a note by its path; a new id would be a second copy). Neither is
@@ -174,6 +199,7 @@ fn a_note_whose_body_is_not_here_yet_defers() {
         .call_blocking(|conn| {
             Ok(identity::adopt(
                 conn,
+                None,
                 None,
                 &file("Plan.md", ""),
                 "minted",
