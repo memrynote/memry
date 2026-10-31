@@ -8,8 +8,10 @@ use std::sync::Arc;
 
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
+use memry_core::domain::journal;
 use memry_core::domain::note_files::NoteFileStat;
 use memry_core::domain::note_stats::{MeasuredFile, measure};
+use memry_core::domain::notes::identity;
 
 const TEXT: &str = "---\ntags: [a]\n---\nsome words here\n- [ ] a task {task:t1}\n";
 
@@ -52,21 +54,13 @@ fn measured(id: &str, hash: &str) -> MeasuredFile {
     MeasuredFile {
         note_id: id.to_owned(),
         file_hash: hash.to_owned(),
-        date: None,
         text: TEXT.to_owned(),
     }
 }
 
-/// The day a path under `journal/` names, as desktop's journal rule reads one.
-fn journal_day(path: &str) -> Option<String> {
-    path.strip_prefix("journal/")?
-        .strip_suffix(".md")
-        .map(str::to_owned)
-}
-
 fn listed(search: &Search, all: bool) -> Vec<String> {
     search
-        .unindexed_notes(all, &journal_day)
+        .unindexed_notes(all)
         .expect("list")
         .into_iter()
         .map(|note| note.note_id)
@@ -134,19 +128,23 @@ fn the_stored_hash_against_the_file_hash_decides_what_is_listed() {
     assert_eq!(listed(&search, true), ["same", "moved-on", "unread"]);
 }
 
-/// A rename that kept the bytes names another journal day: the row's day against the one the
-/// path names now lists it, though the hashes agree.
+/// A row's journal day is its record's, never one read from its path: a day's row takes the
+/// day, a note at a day's path none. A day owed a move of its file has none, so its row is
+/// listed again though the hashes agree, and measured again it keeps no day.
 #[test]
-fn the_day_the_path_names_now_decides_too() {
+fn the_day_the_record_says_decides_too() {
     let dir = scratch();
     let (vault, search) = open(dir.path());
-    let day = |id: &str, date: Option<&str>| MeasuredFile {
-        date: date.map(str::to_owned),
-        ..measured(id, "h1")
-    };
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            journal::open_day(conn, "2026-01-05", "device-a", 1)?;
+            journal::open_day(conn, "2026-01-08", "device-a", 1).map(drop)
+        })
+        .expect("days");
     row(
         &vault,
-        "kept",
+        "j2026-01-05",
         "journal/2026-01-05.md",
         "markdown",
         10,
@@ -154,30 +152,40 @@ fn the_day_the_path_names_now_decides_too() {
     );
     row(
         &vault,
-        "into",
+        "note",
         "journal/2026-01-06.md",
         "markdown",
         20,
         Some("h1"),
     );
-    row(&vault, "out", "notes/out.md", "markdown", 30, Some("h1"));
     row(
         &vault,
-        "moved",
+        "j2026-01-08",
         "journal/2026-01-08.md",
         "markdown",
-        40,
+        30,
         Some("h1"),
     );
-    let files = vec![
-        day("kept", Some("2026-01-05")),
-        day("into", None),
-        day("out", Some("2026-01-07")),
-        day("moved", Some("2026-01-07")),
-    ];
-    search.index_note_files(files).expect("write");
+    let ids = ["j2026-01-05", "note", "j2026-01-08"];
+    search
+        .index_note_files(ids.iter().map(|id| measured(id, "h1")).collect())
+        .expect("write");
+    let day = |id: &str| search.note_stats(id).expect("read").expect("a row").date;
+    assert_eq!(day("j2026-01-05").as_deref(), Some("2026-01-05"));
+    assert_eq!(day("note"), None);
+    assert_eq!(day("j2026-01-08").as_deref(), Some("2026-01-08"));
+    assert!(listed(&search, false).is_empty());
 
-    assert_eq!(listed(&search, false), ["into", "out", "moved"]);
+    vault
+        .db_handle()
+        .call_blocking(|conn| identity::owe_place(conn, "j2026-01-08", "journal/2026-01-08.md", 2))
+        .expect("owed");
+    assert_eq!(listed(&search, false), ["j2026-01-08"]);
+    search
+        .index_note_files(vec![measured("j2026-01-08", "h1")])
+        .expect("write");
+    assert_eq!(day("j2026-01-08"), None);
+    assert!(listed(&search, false).is_empty());
 }
 
 #[test]

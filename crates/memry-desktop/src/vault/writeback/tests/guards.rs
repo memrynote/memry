@@ -204,7 +204,7 @@ fn a_note_without_a_row_or_a_file_creates_none() {
     std::fs::remove_file(f.root.join("gone.md")).unwrap();
     assert_eq!(f.run(&id), Outcome::Kept(Keep::NoFile));
     assert!(!f.root.join("gone.md").exists());
-    assert_eq!(f.run("j2026-01-02"), Outcome::Kept(Keep::Journal));
+    assert_eq!(f.run("j2026-01-02"), Outcome::Kept(Keep::NoRow));
     assert!(f.facts().is_empty());
 }
 

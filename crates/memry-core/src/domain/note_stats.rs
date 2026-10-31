@@ -11,8 +11,10 @@
 //! counts (`parseNote`, #844). Lengths are JavaScript string lengths, UTF-16 code units.
 //!
 //! The rows are derived: [`unindexed`] lists every markdown note whose row is missing, names
-//! other bytes than its file's or another journal day than its path, and the desktop indexer
-//! measures those files again.
+//! other bytes than its file's or another journal day than its record's, and the desktop
+//! indexer measures those files again. A row's journal day is the one its record says
+//! ([`journal_day::file_date`]), never one read from the path here: the vault tier decided
+//! which day the file is when it named it, and a day owed a move of its file has none.
 
 use std::collections::{HashMap, HashSet};
 
@@ -22,6 +24,7 @@ use crate::api::errors::StorageError;
 use crate::domain::journal_rules::preview::extract_journal_preview;
 use crate::domain::journal_rules::{count_words, utf16_len};
 use crate::domain::notes::failed;
+use crate::domain::notes::journal_day;
 use crate::domain::tags;
 use crate::markdown::frontmatter::js::{iso_string, js_trim, number_to_string};
 use crate::markdown::frontmatter::{YamlMap, YamlValue, gray_matter_data, split_frontmatter_block};
@@ -48,8 +51,6 @@ pub struct MeasuredFile {
     pub note_id: String,
     /// The vault tier's hash of `text` (`note_file_hashes.file_hash` names the same bytes).
     pub file_hash: String,
-    /// The journal day the path names.
-    pub date: Option<String>,
     pub text: String,
 }
 
@@ -63,12 +64,13 @@ pub struct NoteStatsRow {
 }
 
 impl NoteStatsRow {
-    pub fn measured(file: MeasuredFile) -> Self {
+    /// `date` is the journal day of the file's record ([`journal_day::file_date`]).
+    pub fn measured(file: MeasuredFile, date: Option<String>) -> Self {
         Self {
             stats: measure(&file.text),
             note_id: file.note_id,
             file_hash: file.file_hash,
-            date: file.date,
+            date,
         }
     }
 }
@@ -319,15 +321,14 @@ pub fn read(index: &Connection, note_id: &str) -> Result<Option<StoredStats>, St
 }
 
 /// Every live markdown note with a file whose row is missing, names other bytes than the
-/// file's last read (`note_files.file_hash`), or another journal day than `day_of` reads from
-/// the file's path now: a rename that kept the bytes, whose fact was lost, still moves the
-/// note's day. A file the tier never read has no hash to compare, so its bytes do not list
-/// it. `all` lists every such note (a reindex).
+/// file's last read (`note_files.file_hash`), or another journal day than its record says now
+/// ([`journal_day::file_date`]): a day whose move became owed, or was applied, since its row
+/// was stored, a fact for it lost or not. A file the tier never read has no hash to compare,
+/// so its bytes do not list it. `all` lists every such note (a reindex).
 pub fn unindexed(
     data: &Connection,
     index: &Connection,
     all: bool,
-    day_of: &dyn Fn(&str) -> Option<String>,
 ) -> Result<Vec<Unindexed>, StorageError> {
     let mut indexed: HashMap<String, (Option<String>, Option<String>)> = HashMap::new();
     let mut statement = index
@@ -366,7 +367,7 @@ pub fn unindexed(
         let (note, file_hash) = row.map_err(failed)?;
         let stale = match (indexed.get(&note.note_id), file_hash) {
             (None, _) => true,
-            (Some((_, date)), _) if *date != day_of(&note.path) => true,
+            (Some((_, date)), _) if *date != journal_day::file_date(data, &note.note_id)? => true,
             (Some((stored, _)), Some(current)) => stored.as_deref() != Some(current.as_str()),
             (Some(_), None) => false,
         };

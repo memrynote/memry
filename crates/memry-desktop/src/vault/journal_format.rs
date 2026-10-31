@@ -300,6 +300,45 @@ fn field_value(token: Token, raw: &str) -> Option<u16> {
     }
 }
 
+/// Where a vault's journal days are: its journal folder and date format, normalized, the
+/// format compiled once. The one owner of which day a vault path names (`isJournalEntry` and
+/// `extractDateFromPath`, `database/queries/notes/journal-queries.ts`).
+#[derive(Debug, Clone)]
+pub struct JournalDays {
+    /// The config's two values as given, to tell whether a config read later is the same.
+    source: (String, String),
+    folder: String,
+    format: JournalFormat,
+}
+
+impl JournalDays {
+    /// The days of a vault config's `journalFolder` and `journalDateFormat`.
+    pub fn new(folder: &str, format: &str) -> Self {
+        Self {
+            source: (folder.to_owned(), format.to_owned()),
+            folder: normalize_journal_folder(folder),
+            format: JournalFormat::new(&normalize_journal_date_format(format)),
+        }
+    }
+
+    /// Whether these are the days of that folder and format, as [`Self::new`] took them.
+    pub fn is_of(&self, folder: &str, format: &str) -> bool {
+        self.source.0 == folder && self.source.1 == format
+    }
+
+    /// The day `path` names (`YYYY-MM-DD`): a `.md` file under the journal folder whose path
+    /// below it, without `.md`, parses in the format. No journal folder configured, the vault
+    /// root, means no day.
+    pub fn day_of(&self, path: &str) -> Option<String> {
+        if self.folder.is_empty() {
+            return None;
+        }
+        let below = path.strip_prefix(&self.folder)?.strip_prefix('/')?;
+        let date = self.format.parse(below.strip_suffix(".md")?)?;
+        Some(date.to_string())
+    }
+}
+
 /// `parseJournalDate`.
 pub fn parse_journal_date(stem: &str, format: &str) -> Option<JournalDate> {
     JournalFormat::new(format).parse(stem)

@@ -107,6 +107,19 @@ pub fn open_day_in(
     device_id: &str,
     now_ms: i64,
 ) -> Result<OpenedDay, StorageError> {
+    open_day_dated_in(tx, date, device_id, now_ms, (now_ms, now_ms))
+}
+
+/// [`open_day_in`], an entry it creates carrying `(created_ms, modified_ms)`: a day file found
+/// in the vault keeps its file's dates, as a note made for a file does. A revived entry is
+/// revived now.
+pub(crate) fn open_day_dated_in(
+    tx: &Connection,
+    date: &str,
+    device_id: &str,
+    now_ms: i64,
+    dates: (i64, i64),
+) -> Result<OpenedDay, StorageError> {
     let date = valid_date(date)?.to_owned();
     if tx.is_autocommit() {
         return Err(StorageError::Failed {
@@ -134,7 +147,7 @@ pub fn open_day_in(
     }
 
     let id = document_id_for(&date)?;
-    create_in(tx, &id, &date, device_id, now_ms)?;
+    create_in(tx, &id, &date, device_id, now_ms, dates)?;
     outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &id), now_ms)?;
     Ok(OpenedDay {
         id,
@@ -149,6 +162,18 @@ pub fn open_day_in(
 /// goes through, so browsing and writing agree.
 pub fn live_entry(conn: &Connection, date: &str) -> Result<Option<String>, StorageError> {
     Ok(entry_for(conn, date)?.and_then(|(id, deleted)| (!deleted).then_some(id)))
+}
+
+/// The date of the journal record with this id, live or deleted; `None` when the id is not a
+/// journal day's.
+pub fn date_of(conn: &Connection, id: &str) -> Result<Option<String>, StorageError> {
+    conn.query_row(
+        "SELECT date FROM journal_entries WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(failed)
 }
 
 /// Whether this vault holds a live journal entry with this record id.
@@ -176,13 +201,13 @@ fn create_in(
     date: &str,
     device_id: &str,
     now_ms: i64,
+    (created_ms, modified_ms): (i64, i64),
 ) -> Result<(), StorageError> {
-    let at = iso(now_ms)?;
     let payload = object(json!({
         "date": date,
         "content": "",
-        "createdAt": at,
-        "modifiedAt": at,
+        "createdAt": iso(created_ms)?,
+        "modifiedAt": iso(modified_ms)?,
     }));
     // A day seen only as a metadata-only tombstone is created over it (#2409).
     write_over_tombstone(tx, ITEM_TYPE, id, payload, device_id, now_ms)?;

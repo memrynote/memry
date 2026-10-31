@@ -1,6 +1,7 @@
-//! The notes identity (Step 13d, #3530) under the vault tier: a session opens a vault, the
-//! watcher reports, the consumer asks `NotesIdentity` which note each file is. The record rules
-//! are `memry-core`'s `tests/domain_note_identity.rs`; these cover what only the running tier
+//! The notes identity (Steps 13d and 13m, #3530) under the vault tier: a session opens a vault,
+//! the watcher reports, the consumer asks `NotesIdentity` which note or journal day each file
+//! is. The record rules are `memry-core`'s `tests/domain_note_identity.rs` and
+//! `tests/domain_journal_day_identity.rs`; these cover what only the running tier
 //! shows: rows, bodies and ids across opens, and a vault Electron wrote
 //! (`tests/fixtures/electron-vault`, captured by `scripts/electron-fixtures/capture-vault.mjs`).
 
@@ -83,6 +84,40 @@ fn slot(e: &Env, path: &str) -> Option<i64> {
                     |row| row.get(0),
                 )
                 .optional()
+                .unwrap())
+        })
+        .unwrap()
+}
+
+/// The records owed a move of their file, by id.
+fn owed(e: &Env) -> Vec<String> {
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            let mut statement = conn
+                .prepare("SELECT note_id FROM note_place_owed ORDER BY note_id")
+                .unwrap();
+            Ok(statement
+                .query_map([], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap())
+        })
+        .unwrap()
+}
+
+/// `(id, date, deleted)` of every journal entry, by id.
+fn days(e: &Env) -> Vec<(String, String, bool)> {
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            let mut statement = conn
+                .prepare("SELECT id, date, deleted_at IS NOT NULL FROM journal_entries ORDER BY id")
+                .unwrap();
+            Ok(statement
+                .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
                 .unwrap())
         })
         .unwrap()
@@ -196,11 +231,13 @@ fn reopen(e: &mut Env) -> Vec<Applied> {
     e.facts_until(indexed)
 }
 
+/// A file whose path names a day is that day's entry; any other file is a note, one under the
+/// journal folder included (`newMarkdownFileId`).
 #[test]
-fn the_vaults_files_become_notes_and_a_reopen_names_none_again() {
+fn the_vaults_files_become_notes_and_days_and_a_reopen_names_none_again() {
     let mut e = notes_env();
     e.write("a.md", "Alpha\n");
-    e.write("dir/b.md", "Beta\n");
+    e.write("journal/b.md", "Beta\n");
     e.write("journal/2025-01-01.md", "A day\n");
     fs::write(e.vault.join("pic.png"), [0x89, b'P', b'N', b'G']).unwrap();
     // Large-file class: one block over 128 KiB. Electron never syncs it.
@@ -208,7 +245,7 @@ fn the_vaults_files_become_notes_and_a_reopen_names_none_again() {
     e.open();
     let facts = e.facts_until(indexed);
     assert_eq!(origin(&e).as_deref(), Some("native"));
-    for path in ["a.md", "dir/b.md"] {
+    for path in ["a.md", "journal/b.md", "journal/2025-01-01.md"] {
         assert!(
             facts
                 .iter()
@@ -216,16 +253,26 @@ fn the_vaults_files_become_notes_and_a_reopen_names_none_again() {
             "{path}: {facts:?}"
         );
     }
-    let (a, b) = (row_id(&e, "a.md").unwrap(), row_id(&e, "dir/b.md").unwrap());
-    assert_eq!(e.rows().len(), 2, "{:?}", e.rows());
+    let (a, b) = (
+        row_id(&e, "a.md").unwrap(),
+        row_id(&e, "journal/b.md").unwrap(),
+    );
+    assert_eq!(
+        row_id(&e, "journal/2025-01-01.md").as_deref(),
+        Some("j2025-01-01")
+    );
+    assert_eq!(e.rows().len(), 3, "{:?}", e.rows());
     let mut want = vec![
         (a.clone(), "a".to_owned(), None, false),
-        (b.clone(), "b".to_owned(), Some("dir".to_owned()), false),
+        (b.clone(), "b".to_owned(), Some("journal".to_owned()), false),
     ];
     want.sort();
     assert_eq!(records(&e), want);
+    let day = vec![("j2025-01-01".to_owned(), "2025-01-01".to_owned(), false)];
+    assert_eq!(days(&e), day);
     assert_eq!(e.body(&a), "Alpha");
     assert_eq!(e.body(&b), "Beta");
+    assert_eq!(e.body("j2025-01-01"), "A day");
 
     let facts = reopen(&mut e);
     assert!(
@@ -233,7 +280,74 @@ fn the_vaults_files_become_notes_and_a_reopen_names_none_again() {
         "{facts:?}"
     );
     assert_eq!(records(&e), want);
+    assert_eq!(days(&e), day);
     assert_eq!(e.body(&a), "Alpha");
+}
+
+/// A day's file the journal format change moves keeps its day (`renameKeepsJournalDate`); one
+/// moved to another day's path leaves the day as it was, owed, with nothing pushed. A day file
+/// removed deletes its day once (`enqueueJournalDelete`).
+#[test]
+fn a_day_keeps_its_record_through_a_move_and_its_removal_deletes_it() {
+    let mut e = notes_env();
+    e.write("journal/2025-01-01.md", "A day\n");
+    e.write("journal/2025-01-03.md", "Another day\n");
+    e.open();
+    e.facts_until(indexed);
+    let queued = outbox(&e);
+    e.close();
+
+    e.write(
+        ".memry/config.json",
+        r#"{"journalFolder": "journal", "journalDateFormat": "YYYY/YYYY-MM-DD"}"#,
+    );
+    fs::create_dir_all(e.vault.join("journal/2025")).unwrap();
+    for day in ["01", "03"] {
+        fs::rename(
+            e.vault.join(format!("journal/2025-01-{day}.md")),
+            e.vault.join(format!("journal/2025/2025-01-{day}.md")),
+        )
+        .unwrap();
+    }
+    reopen(&mut e);
+    assert_eq!(
+        row_id(&e, "journal/2025/2025-01-01.md").as_deref(),
+        Some("j2025-01-01")
+    );
+    let live = |date: &str| (format!("j{date}"), date.to_owned(), false);
+    assert_eq!(days(&e), vec![live("2025-01-01"), live("2025-01-03")]);
+    assert_eq!(outbox(&e), queued);
+    assert!(owed(&e).is_empty(), "{:?}", owed(&e));
+    e.close();
+
+    fs::rename(
+        e.vault.join("journal/2025/2025-01-01.md"),
+        e.vault.join("journal/2025/2025-01-02.md"),
+    )
+    .unwrap();
+    reopen(&mut e);
+    assert_eq!(
+        row_id(&e, "journal/2025/2025-01-02.md").as_deref(),
+        Some("j2025-01-01")
+    );
+    assert_eq!(days(&e), vec![live("2025-01-01"), live("2025-01-03")]);
+    assert_eq!(outbox(&e), queued);
+    assert_eq!(owed(&e), vec!["j2025-01-01".to_owned()]);
+
+    fs::remove_file(e.vault.join("journal/2025/2025-01-03.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if note_id == "j2025-01-03"));
+    let gone = ("j2025-01-03".to_owned(), "2025-01-03".to_owned(), true);
+    assert_eq!(days(&e), vec![live("2025-01-01"), gone.clone()]);
+    let deletes = |e: &Env| {
+        outbox(e)
+            .into_iter()
+            .filter(|(op, _)| op == "delete")
+            .count()
+    };
+    assert_eq!(deletes(&e), 1, "{:?}", outbox(&e));
+    reopen(&mut e);
+    assert_eq!(days(&e), vec![live("2025-01-01"), gone]);
+    assert_eq!(deletes(&e), 1, "{:?}", outbox(&e));
 }
 
 #[test]
@@ -260,9 +374,9 @@ fn a_file_moved_while_closed_keeps_its_note_and_the_record_follows() {
 }
 
 /// A note moved into the journal folder becomes a journal day to Electron, which deletes the
-/// note and lists the day as a new item. Until Step 13m ports that, the record stays as it was
-/// and nothing is pushed; the row follows the file, and the record is owed the move. Moved out
-/// again, the record follows the file to where it is now.
+/// note and lists the day as a new item. Until the journal service (Step 13m part 2) ports
+/// that, the record stays as it was and nothing is pushed; the row follows the file, and the
+/// record is owed the move. Moved out again, the record follows the file to where it is now.
 #[test]
 fn a_move_into_the_journal_folder_leaves_the_record_and_pushes_nothing() {
     let mut e = notes_env();
@@ -507,6 +621,36 @@ fn a_crash_between_the_create_and_the_row_seeds_the_same_note_once() {
     assert_eq!(e.rows(), vec![(id.clone(), "x.md".to_owned())]);
     assert_eq!(records(&e).len(), 1);
     assert_eq!(e.body(&id), "Recovered");
+}
+
+/// A live note no row names, in the journal folder and titled with a day, claims that day's
+/// file (`claimed`, `vault/watcher.ts`): the file is the note, and no day is minted for it. The
+/// core decides it in the day's transaction, reading the note's body with the converter the
+/// tier built because a note may claim the file.
+#[test]
+fn a_note_that_claims_a_day_files_place_keeps_it() {
+    let mut e = notes_env();
+    e.open();
+    e.facts_until(indexed);
+    let store = device_key::with_device_key();
+    let id = e
+        .core()
+        .notes_writer(store)
+        .unwrap()
+        .create("2025-01-01".to_owned(), Some("journal".to_owned()))
+        .unwrap();
+    e.close();
+
+    e.write("journal/2025-01-01.md", "Mine\n");
+    e.drain();
+    e.open();
+    e.facts_until(added("journal/2025-01-01.md"));
+    assert_eq!(
+        e.rows(),
+        vec![(id.clone(), "journal/2025-01-01.md".to_owned())]
+    );
+    assert!(days(&e).is_empty(), "{:?}", days(&e));
+    assert_eq!(e.body(&id), "Mine");
 }
 
 /// A note whose body holds an Obsidian image embed (12f-3b resolves `![[img.png]]` to an image
