@@ -86,6 +86,9 @@ struct Owed {
     /// The core search reindex (links, body tags, full text).
     links: bool,
     walk: Walk,
+    /// The open's pass progress (`indexVault` on open) goes out with the next pass: the
+    /// renderer refreshes the notes list on it.
+    report: bool,
     due: Option<Instant>,
     failures: u32,
 }
@@ -154,7 +157,6 @@ impl Owed {
 
 impl Indexer {
     /// The task: facts and requests in, passes out, until the handle stops it or `cancel` is
-    /// seen. Errs only when it could not start.
     /// seen. Errs only when it could not start. `report` gets the open's pass progress.
     pub fn run(
         &self,
@@ -180,17 +182,18 @@ impl Indexer {
     ) {
         let TaskInbox(mut commands) = inbox;
         // Owed at every open: a pass that wrote rows may have ended before its search reindex.
+        // The open's report too: a watcher that failed before any walk still refreshes the list.
         let mut owed = Owed {
             links: true,
+            report: true,
             ..Owed::default()
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
-        // The open's pass, the first after the walk, reports its progress (`indexVault` on
-        // open): the renderer refreshes the notes list on it. No later pass reports.
-        let mut report = Some(report);
         while !cancel.is_cancelled() {
             if owed.walked() {
                 for (progress, answer) in waiting.drain(..) {
+                    // It reports through its own callback, which refreshes the list.
+                    owed.report = false;
                     // The asker may have gone; the work is done either way.
                     let _ = answer.send(self.reindex(&mut owed, progress, cancel));
                 }
@@ -212,7 +215,8 @@ impl Indexer {
                     Err(RecvError::Closed) => return,
                 },
                 () = tokio::time::sleep_until(wake), if next.is_some() => {
-                    self.work(&mut owed, cancel, report.take());
+                    let report = std::mem::take(&mut owed.report).then_some(report);
+                    self.work(&mut owed, cancel, report);
                 }
             }
         }
@@ -233,7 +237,12 @@ impl Indexer {
                     owed.owe_scan();
                 }
             }
-            Applied::Indexed { .. } => owed.end_walk(),
+            // The walk's end owes the open's report, even when a pass before it (a failed
+            // watcher's, or a lag's) took it: the walk's pass is what fills the list.
+            Applied::Indexed { .. } => {
+                owed.report = true;
+                owed.end_walk();
+            }
             Applied::Vault(VaultEvent::Rescanned { .. }) => {
                 if matches!(owed.walk, Walk::Before | Walk::Failed) {
                     owed.walk = Walk::During;

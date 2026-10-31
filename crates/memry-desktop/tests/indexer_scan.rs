@@ -37,13 +37,24 @@ struct Measured {
     notes_list: Duration,
 }
 
-/// Opens the seeded vault with the index and times the open walk (tier 0), the backfill
-/// (tier 1) and the sidebar list.
 type Steps = Arc<Mutex<Vec<(Instant, IndexProgress)>>>;
 
 fn recorder(steps: &Steps) -> impl Fn(IndexProgress) + Send + Sync + 'static {
     let steps = steps.clone();
     move |step| steps.lock().unwrap().push((Instant::now(), step))
+}
+
+/// A recorder that holds the pass at its first step for longer than an interval, so the next
+/// batch's step passes the throttle however fast the host reads: a pass reports between its
+/// first step and its total.
+fn pausing_recorder(steps: &Steps) -> impl Fn(IndexProgress) + Send + Sync + 'static {
+    let record = recorder(steps);
+    move |step| {
+        record(step);
+        if step.built == 0 && step.total > 0 {
+            std::thread::sleep(PROGRESS_INTERVAL + Duration::from_millis(50));
+        }
+    }
 }
 
 /// Progress as a pass reports it: from 0, strictly rising, ending at `total`, and every step but
@@ -67,8 +78,13 @@ fn assert_reported(steps: &Steps, total: usize) {
     assert!(gaps.iter().all(|gap| *gap >= throttled), "{gaps:?}");
 }
 
-fn open_and_measure(e: &mut Env, report: &Steps) -> (Arc<NoteIndex>, Measured) {
-    let index = NoteIndex::new(e.tier.clone(), recorder(report));
+/// Opens the seeded vault with the index and times the open walk (tier 0), the backfill
+/// (tier 1) and the sidebar list.
+fn open_and_measure(
+    e: &mut Env,
+    report: impl Fn(IndexProgress) + Send + Sync + 'static,
+) -> (Arc<NoteIndex>, Measured) {
+    let index = NoteIndex::new(e.tier.clone(), report);
     index.register(&e.session);
     e.drain();
     let started = Instant::now();
@@ -122,12 +138,22 @@ fn count_index_statements(e: &Env, on: bool) -> usize {
 fn a_generated_vault_is_measured_once_per_note_and_its_passes_report_to_the_total() {
     let (mut e, _store, notes) = seeded(NOTES);
     let reported = Steps::default();
-    let (index, _) = open_and_measure(&mut e, &reported);
+    let (index, _) = open_and_measure(&mut e, pausing_recorder(&reported));
     // The open's pass reports as `indexVault` does on open; its last step follows the last
     // write.
     until("the open's pass reported its total", || {
         reported.lock().unwrap().last().map(|(_, step)| step.built) == Some(NOTES)
     });
+    let between = |steps: &Steps| {
+        let steps = steps.lock().unwrap();
+        steps
+            .iter()
+            .any(|(_, step)| 0 < step.built && step.built < NOTES)
+    };
+    assert!(
+        between(&reported),
+        "no step between the first and the total"
+    );
     assert_reported(&reported, NOTES);
 
     let search = e.session.current().unwrap().search;
@@ -270,7 +296,7 @@ fn a_close_ends_a_reindex_and_the_vault_opens_again() {
 #[ignore = "a release-build measurement"]
 fn the_open_walk_and_the_sidebar_list_meet_their_budgets() {
     let (mut e, _store, _) = seeded(NOTES);
-    let (_, measured) = open_and_measure(&mut e, &Steps::default());
+    let (_, measured) = open_and_measure(&mut e, |_| {});
     // timing-bound: the #3530 budget, asserted only by this ignored release-build run.
     assert!(
         measured.tier0 < Duration::from_millis(400),
