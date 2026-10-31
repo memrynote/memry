@@ -1,0 +1,235 @@
+{
+  "files": [
+    "Images/photo.png",
+    "notes/sub/note.md",
+    "notes/sub/sibling.png",
+    "notes/sub/pics/inner.png",
+    "notes/in-notes.png",
+    "Library/in-library.png",
+    "attachments/att.png",
+    "a b (1).png",
+    "weird#name?[x]%20.png",
+    "misc/Ärger.PNG",
+    "idx/deep/only-index.png",
+    "assets/tie.png",
+    "Images/tie.png",
+    "x/y/z/short.png",
+    "q/short.png",
+    "root.md",
+    "..dots.png",
+    "a/b/c/deep.png",
+    "z/deep.png"
+  ],
+  "dirs": [
+    "folder.png"
+  ],
+  "index": [
+    {
+      "path": "idx/deep/only-index.png",
+      "fileType": "image"
+    },
+    {
+      "path": "misc/Ärger.PNG",
+      "fileType": "image"
+    },
+    {
+      "path": "assets/tie.png",
+      "fileType": "image"
+    },
+    {
+      "path": "Images/tie.png",
+      "fileType": "image"
+    },
+    {
+      "path": "x/y/z/short.png",
+      "fileType": "image"
+    },
+    {
+      "path": "q/short.png",
+      "fileType": "image"
+    },
+    {
+      "path": "gone/ghost.png",
+      "fileType": "image"
+    },
+    {
+      "path": "docs/not-an-image.pdf",
+      "fileType": "pdf"
+    },
+    {
+      "path": "..dots.png",
+      "fileType": "image"
+    },
+    {
+      "path": "a/b/c/deep.png",
+      "fileType": "image"
+    },
+    {
+      "path": "z/deep.png",
+      "fileType": "image"
+    }
+  ],
+  "refs": [
+    "Images/photo.png",
+    "sibling.png",
+    "pics/inner.png",
+    "in-notes.png",
+    "in-library.png",
+    "att.png",
+    "a b (1).png",
+    "weird#name?[x]%20.png",
+    "ärger.png",
+    "ÄRGER.png",
+    "only-index.png",
+    "sub/folder/only-index.png",
+    "tie.png",
+    "short.png",
+    "deep.png",
+    "ghost.png",
+    "not-an-image.pdf",
+    "folder.png",
+    "missing.png",
+    "../escape.png",
+    "../<vault-name>-outside/escape.png",
+    "..dots.png",
+    "/Images/photo.png",
+    "notes/../Images/photo.png",
+    "./Images/photo.png",
+    "/etc/hosts",
+    "https://example.com/a.png",
+    "https://example.com/tie.png",
+    "memry-file://local/x.png",
+    "c:relative.png",
+    "",
+    ".",
+    "__proto__"
+  ],
+  "cases": [
+    {
+      "notePath": "notes/sub/note.md",
+      "notesFolder": "",
+      "resolved": {
+        "Images/photo.png": "../../Images/photo.png",
+        "sibling.png": "sibling.png",
+        "pics/inner.png": "pics/inner.png",
+        "in-notes.png": "../in-notes.png",
+        "att.png": "../../attachments/att.png",
+        "a b (1).png": "../../a%20b%20%281%29.png",
+        "weird#name?[x]%20.png": "../../weird#name?[x]%20.png",
+        "notes/../Images/photo.png": "../../Images/photo.png",
+        "./Images/photo.png": "../../Images/photo.png",
+        "ärger.png": "../../misc/Ärger.PNG",
+        "ÄRGER.png": "../../misc/Ärger.PNG",
+        "only-index.png": "../../idx/deep/only-index.png",
+        "sub/folder/only-index.png": "../../idx/deep/only-index.png",
+        "tie.png": "../../assets/tie.png",
+        "short.png": "../../q/short.png",
+        "deep.png": "../../z/deep.png"
+      }
+    },
+    {
+      "notePath": "root.md",
+      "notesFolder": "",
+      "resolved": {
+        "Images/photo.png": "Images/photo.png",
+        "in-notes.png": "notes/in-notes.png",
+        "att.png": "attachments/att.png",
+        "a b (1).png": "a%20b%20%281%29.png",
+        "weird#name?[x]%20.png": "weird#name?[x]%20.png",
+        "notes/../Images/photo.png": "Images/photo.png",
+        "./Images/photo.png": "Images/photo.png",
+        "ärger.png": "misc/Ärger.PNG",
+        "ÄRGER.png": "misc/Ärger.PNG",
+        "only-index.png": "idx/deep/only-index.png",
+        "sub/folder/only-index.png": "idx/deep/only-index.png",
+        "tie.png": "assets/tie.png",
+        "short.png": "q/short.png",
+        "deep.png": "z/deep.png"
+      }
+    },
+    {
+      "notePath": "notes/sub/note.md",
+      "notesFolder": "Library",
+      "resolved": {
+        "Images/photo.png": "../../Images/photo.png",
+        "sibling.png": "sibling.png",
+        "pics/inner.png": "pics/inner.png",
+        "in-library.png": "../../Library/in-library.png",
+        "att.png": "../../attachments/att.png",
+        "a b (1).png": "../../a%20b%20%281%29.png",
+        "weird#name?[x]%20.png": "../../weird#name?[x]%20.png",
+        "notes/../Images/photo.png": "../../Images/photo.png",
+        "./Images/photo.png": "../../Images/photo.png",
+        "ärger.png": "../../misc/Ärger.PNG",
+        "ÄRGER.png": "../../misc/Ärger.PNG",
+        "only-index.png": "../../idx/deep/only-index.png",
+        "sub/folder/only-index.png": "../../idx/deep/only-index.png",
+        "tie.png": "../../assets/tie.png",
+        "short.png": "../../q/short.png",
+        "deep.png": "../../z/deep.png"
+      }
+    },
+    {
+      "notePath": null,
+      "notesFolder": "",
+      "resolved": {
+        "Images/photo.png": "memry-file://local/<vault>/Images/photo.png",
+        "in-notes.png": "memry-file://local/<vault>/notes/in-notes.png",
+        "att.png": "memry-file://local/<vault>/attachments/att.png",
+        "a b (1).png": "memry-file://local/<vault>/a%20b%20%281%29.png",
+        "weird#name?[x]%20.png": "memry-file://local/<vault>/weird#name?[x]%20.png",
+        "notes/../Images/photo.png": "memry-file://local/<vault>/Images/photo.png",
+        "./Images/photo.png": "memry-file://local/<vault>/Images/photo.png",
+        "ärger.png": "memry-file://local/<vault>/misc/Ärger.PNG",
+        "ÄRGER.png": "memry-file://local/<vault>/misc/Ärger.PNG",
+        "only-index.png": "memry-file://local/<vault>/idx/deep/only-index.png",
+        "sub/folder/only-index.png": "memry-file://local/<vault>/idx/deep/only-index.png",
+        "tie.png": "memry-file://local/<vault>/assets/tie.png",
+        "short.png": "memry-file://local/<vault>/q/short.png",
+        "deep.png": "memry-file://local/<vault>/z/deep.png"
+      }
+    },
+    {
+      "notePath": "",
+      "notesFolder": "",
+      "resolved": {
+        "Images/photo.png": "memry-file://local/<vault>/Images/photo.png",
+        "in-notes.png": "memry-file://local/<vault>/notes/in-notes.png",
+        "att.png": "memry-file://local/<vault>/attachments/att.png",
+        "a b (1).png": "memry-file://local/<vault>/a%20b%20%281%29.png",
+        "weird#name?[x]%20.png": "memry-file://local/<vault>/weird#name?[x]%20.png",
+        "notes/../Images/photo.png": "memry-file://local/<vault>/Images/photo.png",
+        "./Images/photo.png": "memry-file://local/<vault>/Images/photo.png",
+        "ärger.png": "memry-file://local/<vault>/misc/Ärger.PNG",
+        "ÄRGER.png": "memry-file://local/<vault>/misc/Ärger.PNG",
+        "only-index.png": "memry-file://local/<vault>/idx/deep/only-index.png",
+        "sub/folder/only-index.png": "memry-file://local/<vault>/idx/deep/only-index.png",
+        "tie.png": "memry-file://local/<vault>/assets/tie.png",
+        "short.png": "memry-file://local/<vault>/q/short.png",
+        "deep.png": "memry-file://local/<vault>/z/deep.png"
+      }
+    },
+    {
+      "notePath": "notes/sub/pics/../note.md",
+      "notesFolder": "",
+      "resolved": {
+        "Images/photo.png": "../../Images/photo.png",
+        "sibling.png": "sibling.png",
+        "pics/inner.png": "pics/inner.png",
+        "in-notes.png": "../in-notes.png",
+        "att.png": "../../attachments/att.png",
+        "a b (1).png": "../../a%20b%20%281%29.png",
+        "weird#name?[x]%20.png": "../../weird#name?[x]%20.png",
+        "notes/../Images/photo.png": "../../Images/photo.png",
+        "./Images/photo.png": "../../Images/photo.png",
+        "ärger.png": "../../misc/Ärger.PNG",
+        "ÄRGER.png": "../../misc/Ärger.PNG",
+        "only-index.png": "../../idx/deep/only-index.png",
+        "sub/folder/only-index.png": "../../idx/deep/only-index.png",
+        "tie.png": "../../assets/tie.png",
+        "short.png": "../../q/short.png",
+        "deep.png": "../../z/deep.png"
+      }
+    }
+  ]
+}

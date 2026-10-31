@@ -177,6 +177,12 @@ static IMAGE_EMBED_EXT: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i-u:\.(?:png|jpe?g|gif|webp|svg|avif|bmp))$").expect("static pattern")
 });
 
+/// Whether an Obsidian embed's target (`photo.png` of `![[photo.png]]`) is an image: the only
+/// targets the converter resolves and rewrites.
+pub fn is_wiki_image_embed_target(reference: &str) -> bool {
+    !reference.is_empty() && IMAGE_EMBED_EXT.is_match(reference)
+}
+
 /// Every distinct image target embedded with Obsidian syntax, in first-seen order.
 pub fn extract_wiki_image_embed_refs(markdown: &str) -> Vec<String> {
     if !markdown.contains("![[") {
@@ -189,7 +195,7 @@ pub fn extract_wiki_image_embed_refs(markdown: &str) -> Vec<String> {
         }
         for caps in WIKI_IMAGE_EMBED.captures_iter(&region.text) {
             let reference = js_trim(&caps[1]);
-            if reference.is_empty() || !IMAGE_EMBED_EXT.is_match(reference) {
+            if !is_wiki_image_embed_target(reference) {
                 continue;
             }
             if !seen.iter().any(|s| s == reference) {
@@ -220,7 +226,7 @@ pub fn rewrite_wiki_image_embeds(
             &WIKI_IMAGE_EMBED.replace_all(&region.text, |caps: &Captures| {
                 let whole = caps[0].to_owned();
                 let reference = js_trim(&caps[1]);
-                if reference.is_empty() || !IMAGE_EMBED_EXT.is_match(reference) {
+                if !is_wiki_image_embed_target(reference) {
                     return whole;
                 }
                 let Some(url) = resolve(reference).filter(|url| !url.is_empty()) else {

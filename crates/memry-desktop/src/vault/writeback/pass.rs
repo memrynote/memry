@@ -16,6 +16,7 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writ
 
 use crate::vault::consumer::rows::{RowOwner, RowSession, RowStat, now_ms};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
+use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
 use crate::vault::note_file::{NoteFileError, read_note, write_note_over_checked};
@@ -145,11 +146,15 @@ impl Pass {
         };
         let old_body = file.split().body;
         let converter = converter_for(self.settings.as_ref());
+        // Outside the read: the lookup reads the database the read holds.
+        let embeds =
+            Resolved::of_markdown(&self.root, &self.vault.note_files(), old_body, &row.path);
         let read = self.vault.write_back().body(
             &converter,
             note_id,
             &row.path,
             old_body.strip_prefix(BOM).unwrap_or(old_body),
+            &embeds,
         );
         let body = match read {
             Ok(BodyRead::Body(body)) => body,

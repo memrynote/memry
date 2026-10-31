@@ -184,6 +184,12 @@ export const commands = {
 	vaultActivityReveal: () => __TAURI_INVOKE<boolean>("vault_activity_reveal"),
 	/**  Keeps entries for `days` (7, 30 or 90). */
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
+	/**
+	 *  What each `![[target]]` image embed of `refs` resolves to in the open vault: relative to the
+	 *  note at `note_path` when given, a `memry-file://` URL otherwise. An embed that names no file
+	 *  is left out, and so is every embed while no vault is open.
+	 */
+	vaultResolveEmbeds: (refs: string[], notePath: string | null) => __TAURI_INVOKE<{ [key in string]: string }>("vault_resolve_embeds", { refs, notePath }),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
