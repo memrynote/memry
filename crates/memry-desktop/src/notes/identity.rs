@@ -1,8 +1,8 @@
-//! The note a vault file is, for the vault tier (Step 13d, #3530): the tier's
-//! [`NoteIdentity`] over the core's note records. The rules live in
-//! `memry_core::domain::notes::identity`; this reads what only the file system
-//! knows (the file's name, folder, text and dates, whether Electron's database is
-//! beside the core's, where the journal folder is) and hands it over.
+//! The note or journal day a vault file is, for the vault tier (Steps 13d and 13m,
+//! #3530): the tier's [`NoteIdentity`] over the core's records. The rules live in
+//! `memry_core::domain::notes::{identity, journal_day}`; this reads what only the
+//! file system knows (the file's name, folder, text and dates, whether Electron's
+//! database is beside the core's, where the journal days are) and hands it over.
 //!
 //! A file gets a note, and a push leaves, only on evidence that the file and the
 //! note are one thing and that Electron would sync it. When unsure the answer is
@@ -21,14 +21,22 @@
 //!   move still edits it, as Electron's `processRename`
 //!   (`vault/rename-tracker.ts`) does. Its removal keeps it (below), where
 //!   Electron deletes it.
-//! - A file under the journal folder, and a note's move into it, is left to
-//!   Step 13m, which ports the journal day's file and id rules (`j<YYYY-MM-DD>`
-//!   on every device, `renameKeepsJournalDate`). A vault config that is there but
-//!   unreadable leaves the journal folder unknown, so no file is named then, and
-//!   a move leaves its record as it was. Such a move is owed to the record, and
-//!   applied on a later ask once the journal folder is known and the file is not
-//!   under it. Every file named here is a note, so a move out of the journal
-//!   folder is a note's move.
+//! - A file whose path names a day is that day's journal entry, `j<YYYY-MM-DD>`
+//!   on every device: it is under the journal folder and its path below it,
+//!   without `.md`, parses in the journal date format (`extractDateFromPath`,
+//!   `database/queries/notes/journal-queries.ts`). Any other file is a note, one
+//!   under the journal folder included (`newMarkdownFileId`).
+//! - A move keeps what the file is when the record's day (none for a note) is the
+//!   day the new path names (`renameKeepsJournalDate`, `vault/watcher.ts`): a
+//!   note's record takes the new title and folder, and a day's record is left as
+//!   it is, since a day's path is never synced. A move that changes what the file
+//!   is (a note into a day, a day out of the journal or to another day) Electron
+//!   applies as a delete of the record and a new one for the file; here the
+//!   record is left as it was, and owed the move, until the journal service
+//!   (Step 13m part 2) ports that together with the journal folder follow. A
+//!   vault config that is there but unreadable leaves the journal days unknown,
+//!   so no file is named then, and every move is owed. An owed move is applied on
+//!   a later ask once the config reads and the move keeps what the file is.
 //! - A new note carries the file's creation and modification times, as
 //!   Electron's indexer gives a file it finds.
 //! - A removed file deletes its note only when its row says the file held the
@@ -49,6 +57,7 @@ use std::time::UNIX_EPOCH;
 
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::notes::identity::{Adopted, Deferral, FileNote, Moved, Removed};
+use memry_core::domain::notes::journal_day::FileDay;
 use memry_core::markdown::convert::EmbedResolver;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
@@ -64,7 +73,9 @@ use crate::vault::consumer::identity::{
 };
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
-use crate::vault::journal_format::normalize_journal_folder;
+use crate::vault::journal_format::{
+    JournalFormat, normalize_journal_date_format, normalize_journal_folder,
+};
 
 const SCOPE: &str = "note_identity";
 
@@ -118,27 +129,60 @@ impl NotesIdentity {
             ),
             Notice::ConfigUnreadable => tracing::warn!(
                 scope = SCOPE,
-                "the vault config cannot be read, so the journal folder is unknown; no file is \
-                 made a note, and no move reaches its note, until it can be"
+                "the vault config cannot be read, so the journal days are unknown; no file is \
+                 made a note or a day, and no move reaches its record, until it can be"
             ),
             Notice::Undecided => tracing::info!(
                 scope = SCOPE,
-                "a file has the name of a note whose text is not the file's, or not here yet; \
-                 it is not made a note, and the next open asks again"
+                "a file has the name of a note or a day whose text is not the file's, or not \
+                 here yet; it is not named, and the next open asks again"
             ),
         }
     }
 
-    /// The vault's journal folder, normalized (empty for none); `None` when the vault config
-    /// is there but unreadable.
-    fn journal_folder(&self, root: &Path) -> Option<String> {
+    /// Where the vault's journal days are; `None` when the vault config is there but unreadable.
+    fn journal(&self, root: &Path) -> Option<JournalDays> {
         match read_vault_config_strict(root) {
-            Ok(config) => Some(normalize_journal_folder(&config.journal_folder)),
+            Ok(config) => Some(JournalDays {
+                folder: normalize_journal_folder(&config.journal_folder),
+                format: JournalFormat::new(&normalize_journal_date_format(
+                    &config.journal_date_format,
+                )),
+            }),
             Err(_) => {
                 self.tell_once(Notice::ConfigUnreadable, root);
                 None
             }
         }
+    }
+
+    /// What a file no row names is, from the core's answer.
+    fn adoption(&self, adopted: Adopted, root: &Path) -> Adoption {
+        match adopted {
+            Adopted::Existing(id) => Adoption::Existing(id),
+            Adopted::Created(id) => Adoption::Created(id),
+            Adopted::Deferred(Deferral::ElectronNotImported) => {
+                self.tell_once(Notice::ElectronNotImported, root);
+                Adoption::Defer
+            }
+            Adopted::Deferred(Deferral::Undecided) => {
+                self.tell_once(Notice::Undecided, root);
+                Adoption::Defer
+            }
+        }
+    }
+
+    /// What reads a record's body for comparing with the file at `path` whose markdown below
+    /// its frontmatter is `body`. Built before the core's writer is held: the embed lookup
+    /// reads the rows.
+    fn reader(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        path: &str,
+        body: &str,
+    ) -> Result<(Converter, Resolved), IdentityError> {
+        let embeds = Resolved::of_markdown(ctx.root, &ctx.vault.note_files(), body, path);
+        Ok((self.converter(ctx)?, embeds))
     }
 
     /// The converter that reads a note's body for comparing with a file. Fails, so the file is
@@ -160,7 +204,7 @@ impl NotesIdentity {
         &self,
         root: &Path,
         writer: &NotesWriter,
-        journal_folder: &str,
+        journal: &JournalDays,
         skip: Option<&str>,
     ) {
         let first = self
@@ -178,10 +222,20 @@ impl NotesIdentity {
             }
         };
         for owed in owed {
-            if skip == Some(owed.note_id.as_str())
-                || under_journal_folder(journal_folder, &owed.path)
-            {
+            if skip == Some(owed.note_id.as_str()) {
                 continue;
+            }
+            match journal.keeps_kind(writer, &owed.note_id, &owed.path) {
+                Ok(true) => {}
+                Ok(false) => continue,
+                Err(error) => {
+                    tracing::error!(
+                        scope = SCOPE,
+                        note_id = owed.note_id,
+                        "an owed move's record could not be read: {error}"
+                    );
+                    continue;
+                }
             }
             // From the row's path: the record still says the owed one, and owing dropped the
             // note's slot there, so a slot at it now is another file's.
@@ -211,11 +265,11 @@ impl NoteIdentity for NotesIdentity {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .remove(ctx.root);
-        let Some(journal_folder) = self.journal_folder(ctx.root) else {
+        let Some(journal) = self.journal(ctx.root) else {
             return;
         };
         match self.writer(ctx) {
-            Ok(writer) => self.settle_owed(ctx.root, &writer, &journal_folder, None),
+            Ok(writer) => self.settle_owed(ctx.root, &writer, &journal, None),
             Err(error) => tracing::warn!(
                 scope = SCOPE,
                 "the owed moves wait for the first ask: {error}"
@@ -241,53 +295,51 @@ impl NoteIdentity for NotesIdentity {
             );
             return Ok(Adoption::Defer);
         }
-        let Some(journal_folder) = self.journal_folder(ctx.root) else {
+        let Some(journal) = self.journal(ctx.root) else {
             return Ok(Adoption::Defer);
         };
         let writer = self.writer(ctx)?;
-        self.settle_owed(ctx.root, &writer, &journal_folder, None);
-        if under_journal_folder(&journal_folder, file.path) {
-            return Ok(Adoption::Defer);
-        }
-        let (folder_path, title) = place(file.path);
-        let note = FileNote {
-            path: file.path,
-            title,
-            folder_path,
-            body: split_frontmatter_block(&text.raw).body,
-            created_ms: created_ms(&ctx.root.join(file.path)).unwrap_or(file.modified_ms),
-            modified_ms: file.modified_ms,
-            electron_db_beside: ctx.root.join(".memry").join("data.db").is_file(),
-        };
-        // Read before the core's writer is held: the embed lookup reads the rows.
-        let reader = if writer.may_be_a_note(title, folder_path)? {
-            let embeds =
-                Resolved::of_markdown(ctx.root, &ctx.vault.note_files(), note.body, file.path);
-            Some((self.converter(ctx)?, embeds))
+        self.settle_owed(ctx.root, &writer, &journal, None);
+        let body = split_frontmatter_block(&text.raw).body;
+        let created_ms = created_ms(&ctx.root.join(file.path)).unwrap_or(file.modified_ms);
+        let electron_db_beside = ctx.root.join(".memry").join("data.db").is_file();
+        let adopted = if let Some(date) = journal.day_of(file.path) {
+            let day = FileDay {
+                path: file.path,
+                date: &date,
+                body,
+                created_ms,
+                modified_ms: file.modified_ms,
+                electron_db_beside,
+            };
+            let reader = if writer.may_be_a_day(&date)? {
+                Some(self.reader(ctx, file.path, body)?)
+            } else {
+                None
+            };
+            let (converter, embeds) = parts(reader.as_ref());
+            writer.adopt_day(day, converter, embeds)
         } else {
-            None
+            let (folder_path, title) = place(file.path);
+            let note = FileNote {
+                path: file.path,
+                title,
+                folder_path,
+                body,
+                created_ms,
+                modified_ms: file.modified_ms,
+                electron_db_beside,
+            };
+            let reader = if writer.may_be_a_note(title, folder_path)? {
+                Some(self.reader(ctx, file.path, body)?)
+            } else {
+                None
+            };
+            let (converter, embeds) = parts(reader.as_ref());
+            writer.adopt_file(note, converter, embeds)
         };
-        let adopted = writer
-            .adopt_file(
-                note,
-                reader.as_ref().map(|(converter, _)| converter),
-                reader
-                    .as_ref()
-                    .map(|(_, embeds)| embeds as &dyn EmbedResolver),
-            )
-            .map_err(|error| IdentityError::Other(error.to_string()))?;
-        Ok(match adopted {
-            Adopted::Existing(id) => Adoption::Existing(id),
-            Adopted::Created(id) => Adoption::Created(id),
-            Adopted::Deferred(Deferral::ElectronNotImported) => {
-                self.tell_once(Notice::ElectronNotImported, ctx.root);
-                Adoption::Defer
-            }
-            Adopted::Deferred(Deferral::Undecided) => {
-                self.tell_once(Notice::Undecided, ctx.root);
-                Adoption::Defer
-            }
-        })
+        let adopted = adopted.map_err(|error| IdentityError::Other(error.to_string()))?;
+        Ok(self.adoption(adopted, ctx.root))
     }
 
     fn on_removed(
@@ -298,7 +350,6 @@ impl NoteIdentity for NotesIdentity {
     ) -> Result<Removal, IdentityError> {
         Ok(match self.writer(ctx)?.file_removed(note_id, path)? {
             Removed::Deleted => Removal::Deleted,
-            Removed::Kept => Removal::Kept,
             // A file that is truly gone leaves a note the user deleted outside the app: told in
             // the Step 14 notice (TODO at `Notice::ElectronNotImported`).
             Removed::Undecided => {
@@ -313,12 +364,14 @@ impl NoteIdentity for NotesIdentity {
         })
     }
 
-    /// A note's move into the journal folder makes its file a journal day; Electron then deletes
-    /// the note and lists the day as a new item. Until Step 13m ports that, the record is left
-    /// as it is and nothing is pushed: the row follows the file, and the record is owed the
-    /// move. So is a move while the journal folder is unknown.
-    // TODO(#3530 13m): port `renameKeepsJournalDate` (`vault/watcher.ts`) here, for journal
-    // days' rows too, and settle the owed moves into the journal folder (`owed_places`).
+    /// A move that keeps what the file is reaches the record (`renameKeepsJournalDate`). One
+    /// that changes it, a note into a day, a day out of the journal or to another day, Electron
+    /// applies as a delete and a new item; until the journal service (Step 13m part 2) ports
+    /// that, with the journal folder follow (`journal-folder-follow.ts`), the record is left as
+    /// it is and nothing is pushed: the row follows the file, and the record is owed the move.
+    /// So is a move while the journal days are unknown.
+    // TODO(#3530 13m part 2): port the delete and re-create of a move that changes what the
+    // file is, and the journal folder follow, then settle such owed moves (`owed_places`).
     fn on_renamed(
         &self,
         ctx: &IdentityCtx<'_>,
@@ -327,15 +380,17 @@ impl NoteIdentity for NotesIdentity {
         new_path: &str,
     ) -> Result<(), IdentityError> {
         let writer = self.writer(ctx)?;
-        let journal_folder = self.journal_folder(ctx.root);
-        let crosses = journal_folder
-            .as_deref()
-            .is_none_or(|folder| under_journal_folder(folder, new_path));
-        if crosses {
+        let journal = self.journal(ctx.root);
+        let keeps = match &journal {
+            Some(journal) => journal.keeps_kind(&writer, note_id, new_path)?,
+            None => false,
+        };
+        if !keeps {
             tracing::info!(
                 scope = SCOPE,
                 note_id,
-                "a move the journal rules decide leaves the note's record as it was, owed"
+                "a move that may change a file between note and journal day leaves the record \
+                 as it was, owed"
             );
             writer.owe_place(note_id, old_path)?;
             self.settled
@@ -344,8 +399,8 @@ impl NoteIdentity for NotesIdentity {
                 .remove(ctx.root);
             return Ok(());
         }
-        if let Some(folder) = &journal_folder {
-            self.settle_owed(ctx.root, &writer, folder, Some(note_id));
+        if let Some(journal) = &journal {
+            self.settle_owed(ctx.root, &writer, journal, Some(note_id));
         }
         let (folder_path, title) = place(new_path);
         let moved = Moved {
@@ -386,13 +441,46 @@ fn place(path: &str) -> (Option<&str>, &str) {
     (folder, title)
 }
 
-/// Whether `path` is under the normalized `journal_folder` (`journalStem`,
-/// `database/queries/notes/journal-queries.ts`). No journal folder configured means none.
-fn under_journal_folder(journal_folder: &str, path: &str) -> bool {
-    !journal_folder.is_empty()
-        && path
-            .strip_prefix(journal_folder)
-            .is_some_and(|rest| rest.starts_with('/'))
+/// Where a vault's journal days are: its journal folder, normalized (empty for none), and the
+/// date format their paths below it parse in.
+struct JournalDays {
+    folder: String,
+    format: JournalFormat,
+}
+
+impl JournalDays {
+    /// The day `path` names (`extractDateFromPath`, `journalStem`): a `.md` file under the
+    /// journal folder whose path below it, without `.md`, parses in the format. No journal
+    /// folder configured means no day.
+    fn day_of(&self, path: &str) -> Option<String> {
+        if self.folder.is_empty() {
+            return None;
+        }
+        let below = path.strip_prefix(&self.folder)?.strip_prefix('/')?;
+        let date = self.format.parse(below.strip_suffix(".md")?)?;
+        Some(date.to_string())
+    }
+
+    /// Whether the record `id` at `path` is what it was: its day (none for a note) is the day
+    /// `path` names.
+    fn keeps_kind(
+        &self,
+        writer: &NotesWriter,
+        id: &str,
+        path: &str,
+    ) -> Result<bool, IdentityError> {
+        Ok(writer.journal_date(id)? == self.day_of(path))
+    }
+}
+
+/// The converter and the embed lookup of a reader, borrowed.
+fn parts(
+    reader: Option<&(Converter, Resolved)>,
+) -> (Option<&Converter>, Option<&dyn EmbedResolver>) {
+    match reader {
+        Some((converter, embeds)) => (Some(converter), Some(embeds as &dyn EmbedResolver)),
+        None => (None, None),
+    }
 }
 
 /// When the file was created, where the file system records it.
@@ -415,11 +503,28 @@ mod tests {
     }
 
     #[test]
-    fn a_path_is_under_the_journal_folder_by_whole_folders() {
-        assert!(under_journal_folder("journal", "journal/2025-01-01.md"));
-        assert!(under_journal_folder("a/b", "a/b/2025-01-01.md"));
-        assert!(!under_journal_folder("journal", "journals/2025-01-01.md"));
-        assert!(!under_journal_folder("", "journal/2025-01-01.md"));
+    fn a_path_names_a_day_under_the_journal_folder_in_its_format() {
+        let days = |folder: &str, format: &str| JournalDays {
+            folder: folder.to_owned(),
+            format: JournalFormat::new(format),
+        };
+        let flat = days("journal", "YYYY-MM-DD");
+        assert_eq!(
+            flat.day_of("journal/2025-01-01.md").as_deref(),
+            Some("2025-01-01")
+        );
+        assert_eq!(flat.day_of("journals/2025-01-01.md"), None);
+        assert_eq!(flat.day_of("journal/2025-01-01.txt"), None);
+        assert_eq!(flat.day_of("journal/x/2025-01-01.md"), None);
+        assert_eq!(flat.day_of("journal/Ideas.md"), None);
+        assert_eq!(flat.day_of("2025-01-01.md"), None);
+        assert_eq!(days("", "YYYY-MM-DD").day_of("2025-01-01.md"), None);
+        let nested = days("a/b", "YYYY/MMMM/YYYY-MM-DD");
+        assert_eq!(
+            nested.day_of("a/b/2025/January/2025-01-14.md").as_deref(),
+            Some("2025-01-14")
+        );
+        assert_eq!(nested.day_of("a/b/2025-01-14.md"), None);
     }
 
     #[test]

@@ -113,13 +113,13 @@
 //!   not retried on its own: the note's next schedule is its retry, and its body stays in the
 //!   document until then.
 //!
-//! A journal day's file is not written: journal files are not fed (`external_feed` answers
-//! `NoNote`), so no journal row says the document holds its file. Its frontmatter rule
-//! (desktop `writebackJournal`: the day's `date`) comes with the stage that feeds them. A
-//! file the note has no row or no file for is not created: the note records create files
-//! (Step 13).
+//! A journal day's file is written as a note's is, by the same rules (Step 13m): its row says
+//! the document holds it once the consumer fed it. Its frontmatter takes the day's `date` in
+//! place and nothing else, never the day's tags (`journal`). A file the note has no row or no
+//! file for is not created: the note records create files (Step 13).
 
 mod deleted;
+mod journal;
 mod pass;
 mod reconcile;
 mod schedule;

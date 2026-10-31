@@ -57,4 +57,10 @@ impl WriteBackReader {
         self.db
             .read_blocking(move |conn| write_back::title(conn, note_id))
     }
+
+    /// [`write_back::journal_date`].
+    pub fn journal_date(&self, id: &str) -> Result<Option<String>, StorageError> {
+        self.db
+            .read_blocking(move |conn| write_back::journal_date(conn, id))
+    }
 }

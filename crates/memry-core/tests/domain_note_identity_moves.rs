@@ -6,7 +6,6 @@
 //! | a removed file deletes its note once                      | §5.8, one tombstone                 |
 //! | a removal the row does not say is the whole note keeps it | never a delete that may lose more   |
 //! | a local-only note's removal pushes nothing                | the gate in `outbox::enqueue`       |
-//! | a journal day keeps its record                            | Step 13m owns journal days          |
 //! | a move left owed keeps its first path until it is applied | evidence first, never a guess       |
 
 #![cfg(feature = "markdown")]
@@ -198,16 +197,6 @@ fn a_local_only_notes_removal_pushes_nothing() {
     });
     assert_eq!(removed, Removed::Deleted);
     assert!(deleted(&db, "n1"));
-    assert!(outbox(&db).is_empty());
-}
-
-#[test]
-fn a_journal_days_removal_keeps_its_record() {
-    let db = open("journal");
-    let removed = run(&db, |conn| {
-        identity::removed(conn, "j2025-01-01", "journal/2025-01-01.md", DEVICE, NOW)
-    });
-    assert_eq!(removed, Removed::Kept);
     assert!(outbox(&db).is_empty());
 }
 

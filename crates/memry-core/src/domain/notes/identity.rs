@@ -58,9 +58,12 @@
 //! the meaning of yet leaves the record where it was and owes it the move
 //! ([`owe_place`]); [`owed_places`] lists them for when it can.
 //!
-//! Journal days are not decided here before Step 13m: the tier passes no
-//! journal file to [`adopt`] and no move into or out of the journal folder to
-//! [`renamed`], and a journal day's removal keeps its record ([`Removed::Kept`]).
+//! Journal days (Step 13m): a file that names a day is the day's
+//! ([`super::journal_day`]), and the tier passes no such file to [`adopt`]. A
+//! removed day file deletes its day on the same evidence as a note's
+//! ([`removed`]). A day's move within its day changes no record ([`renamed`]):
+//! a day's path is never synced; a move that changes what the file is (a note
+//! into a day, a day out of it, or to another day) is owed by the tier.
 
 use std::sync::Arc;
 
@@ -141,13 +144,11 @@ pub enum Origin {
     OverElectron,
 }
 
-/// What a removed file did to its note.
+/// What a removed file did to its note or journal day.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Removed {
-    /// The note is deleted (now, or before).
+    /// The note or day is deleted (now, or before).
     Deleted,
-    /// The record stays: a journal day, which Step 13m decides.
-    Kept,
     /// The record stays: the row cannot tell this removal from a move, or the
     /// note holds what its file did not ([`removal_deletes`]).
     Undecided,
@@ -202,7 +203,8 @@ pub fn adopt(
         // The oldest note whose body is the file's, unless one may be and cannot say.
         let mut same = None;
         for id in candidates {
-            match body_says(&tx, converter, embeds, &id, file, device_id)? {
+            let text = (file.path, file.body);
+            match body_says(&tx, converter, embeds, ITEM_TYPE, &id, text, device_id)? {
                 Evidence::Same => {
                     same.get_or_insert(id);
                 }
@@ -261,7 +263,7 @@ pub(crate) const UNFILED_NOTES: &str = "SELECT n.id FROM notes n
     AND NOT EXISTS (SELECT 1 FROM note_files f WHERE f.note_id = n.id)
   ORDER BY n.created_at, n.id";
 
-enum Evidence {
+pub(super) enum Evidence {
     /// The note's body is empty, or already serializes to the file's text.
     Same,
     /// The note's body says something else: the file may be another note, or
@@ -272,13 +274,15 @@ enum Evidence {
     Unknown,
 }
 
-/// What the note's body says about the file being that note.
-fn body_says(
+/// What the body of `note_id`, a record of `item_type`, says about the file at `path` whose
+/// markdown below its frontmatter is `body` being that record.
+pub(super) fn body_says(
     conn: &Connection,
     converter: &Converter,
     embeds: Option<&dyn EmbedResolver>,
+    item_type: &str,
     note_id: &str,
-    file: &FileNote<'_>,
+    (path, file_body): (&str, &str),
     device_id: &str,
 ) -> Result<Evidence, CrdtError> {
     if body_debt::is_owed(conn, note_id)? {
@@ -290,10 +294,10 @@ fn body_says(
     let body = if body_is_empty(&document)? {
         // No document yet: the note's text is the `content` it was created with
         // (chapter 12 §12.2 carve-out A), until something seeds a document from it.
-        created_content(conn, note_id)?
+        created_content(conn, item_type, note_id)?
     } else {
         let options = SerializeOptions {
-            note_path: Some(file.path),
+            note_path: Some(path),
             embeds,
             ..SerializeOptions::default()
         };
@@ -302,7 +306,7 @@ fn body_says(
             None => return Ok(Evidence::Unknown),
         }
     };
-    let markdown = file.body.strip_prefix('\u{feff}').unwrap_or(file.body);
+    let markdown = file_body.strip_prefix('\u{feff}').unwrap_or(file_body);
     Ok(if body.is_empty() || same_text(&body, markdown) {
         Evidence::Same
     } else {
@@ -310,9 +314,13 @@ fn body_says(
     })
 }
 
-/// The `content` of the note's stored payload: the text it was created with.
-fn created_content(conn: &Connection, note_id: &str) -> Result<String, StorageError> {
-    let payload = sync_items::push_payload(conn, ITEM_TYPE, note_id)?;
+/// The `content` of the record's stored payload: the text it was created with.
+fn created_content(
+    conn: &Connection,
+    item_type: &str,
+    note_id: &str,
+) -> Result<String, StorageError> {
+    let payload = sync_items::push_payload(conn, item_type, note_id)?;
     let content = payload
         .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
         .and_then(|payload| payload.get("content")?.as_str().map(str::to_owned));
@@ -322,7 +330,7 @@ fn created_content(conn: &Connection, note_id: &str) -> Result<String, StorageEr
 /// Whether a new note id may be minted beside Electron's database: the import
 /// brought Electron's notes into the core, or the core is recorded as created
 /// for a vault that was not Electron's. Nothing recorded is not evidence.
-fn mints_beside_electron(conn: &Connection) -> Result<bool, StorageError> {
+pub(super) fn mints_beside_electron(conn: &Connection) -> Result<bool, StorageError> {
     conn.query_row(
         "SELECT EXISTS (SELECT 1 FROM meta WHERE key = ?1)
              OR EXISTS (SELECT 1 FROM meta WHERE key = ?2 AND value = 'native')",
@@ -470,10 +478,11 @@ fn live_place(
     .map_err(failed)
 }
 
-/// The note's file at `path` is gone: the note is deleted and its manual order
-/// dropped, in one transaction. A note deleted before is answered `Deleted`
-/// again with nothing written; a journal day keeps its record, and so does a
-/// note the removal may not delete ([`removal_deletes`]).
+/// The file at `path` of a note or a journal day is gone: the record is deleted
+/// and its manual order dropped, in one transaction (a day as Electron's
+/// `enqueueJournalDelete`). One deleted before is answered `Deleted` again with
+/// nothing written; one the removal may not delete ([`removal_deletes`]) keeps
+/// its record.
 pub fn removed(
     conn: &Connection,
     note_id: &str,
@@ -482,14 +491,19 @@ pub fn removed(
     now_ms: i64,
 ) -> Result<Removed, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    if live_place(&tx, note_id)?.is_some() {
+    let live = if live_place(&tx, note_id)?.is_some() {
+        Some(ITEM_TYPE)
+    } else if live_day(&tx, note_id)? {
+        Some(journal::ITEM_TYPE)
+    } else {
+        None
+    };
+    if let Some(item_type) = live {
         if !removal_deletes(&tx, note_id)? {
             return Ok(Removed::Undecided);
         }
-        tombstone_local(&tx, ITEM_TYPE, note_id, device_id, now_ms)?;
-        outbox::enqueue(&tx, &outbox::Change::delete(ITEM_TYPE, note_id), now_ms)?;
-    } else if is_journal_day(&tx, note_id)? {
-        return Ok(Removed::Kept);
+        tombstone_local(&tx, item_type, note_id, device_id, now_ms)?;
+        outbox::enqueue(&tx, &outbox::Change::delete(item_type, note_id), now_ms)?;
     }
     note_positions::remove(&tx, path)?;
     settle_place(&tx, note_id)?;
@@ -519,16 +533,10 @@ fn removal_deletes(conn: &Connection, note_id: &str) -> Result<bool, StorageErro
         && !body_debt::is_owed(conn, note_id)?)
 }
 
-/// A journal day's record, or a journal day's id (`j<YYYY-MM-DD>`).
-fn is_journal_day(conn: &Connection, id: &str) -> Result<bool, StorageError> {
-    if id
-        .strip_prefix('j')
-        .is_some_and(|date| journal::valid_date(date).is_ok())
-    {
-        return Ok(true);
-    }
+/// Whether `id` is a live journal day's record.
+fn live_day(conn: &Connection, id: &str) -> Result<bool, StorageError> {
     conn.query_row(
-        "SELECT EXISTS (SELECT 1 FROM journal_entries WHERE id = ?1)",
+        "SELECT EXISTS (SELECT 1 FROM journal_entries WHERE id = ?1 AND deleted_at IS NULL)",
         params![id],
         |row| row.get(0),
     )
