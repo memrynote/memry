@@ -85,6 +85,18 @@ fn is_plain_relative(rel: &str) -> bool {
     !(cfg!(windows) && rel.contains(':'))
 }
 
+/// Whether `name` is one path segment that every platform reads as written. This is the owner of
+/// the check for a file or folder name that arrives as data (a synced id, a file name in a
+/// ref), where [`is_plain_relative`] takes a path a person's own file system holds. No
+/// separator of either platform. No `:` on any platform: on Windows `C:x` is a drive-relative
+/// path, which `PathBuf::push` takes for a whole new path, and `a:b` an alternate data stream.
+/// No NUL. No trailing `.` or space, which Windows strips, so `b1.` would be the folder `b1`;
+/// that also refuses `.` and `..`. What is left of a non-empty name is exactly one normal
+/// component on every platform.
+pub fn is_plain_segment(name: &str) -> bool {
+    !name.is_empty() && !name.contains(['/', '\\', ':', '\0']) && !name.ends_with(['.', ' '])
+}
+
 /// `resolveVaultFile`. `root` must exist.
 pub fn resolve_under_root(root: &Path, rel: &str) -> io::Result<Resolution> {
     resolve(root, None, rel, Rooted::AtRoot)

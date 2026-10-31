@@ -1,0 +1,81 @@
+{
+  "board": "b1",
+  "cases": [
+    {
+      "ref": ".memry/home-covers/b1/abc123-photo.png",
+      "path": ".memry/home-covers/b1/abc123-photo.png"
+    },
+    {
+      "ref": ".memry/home-covers/b1/a b (1).png",
+      "path": ".memry/home-covers/b1/a b (1).png"
+    },
+    {
+      "ref": ".memry/home-covers/b1/.hidden.png",
+      "path": ".memry/home-covers/b1/.hidden.png"
+    },
+    {
+      "ref": ".memry/home-covers/b1/..png",
+      "path": ".memry/home-covers/b1/..png"
+    },
+    {
+      "ref": ".memry/home-covers/b1/",
+      "path": null
+    },
+    {
+      "ref": ".memry/home-covers/b1/.",
+      "path": null
+    },
+    {
+      "ref": ".memry/home-covers/b1/..",
+      "path": null
+    },
+    {
+      "ref": ".memry/home-covers/b1/sub/photo.png",
+      "path": null
+    },
+    {
+      "ref": ".memry/home-covers/b1/sub\\photo.png",
+      "path": null
+    },
+    {
+      "ref": ".memry/home-covers/b1/../b2/photo.png",
+      "path": null
+    },
+    {
+      "ref": ".memry/home-covers/b2/photo.png",
+      "path": null
+    },
+    {
+      "ref": ".memry/home-covers/b10/photo.png",
+      "path": null
+    },
+    {
+      "ref": ".memry/home-covers/b1",
+      "path": null
+    },
+    {
+      "ref": ".memry/home-covers/B1/photo.png",
+      "path": null
+    },
+    {
+      "ref": "./.memry/home-covers/b1/photo.png",
+      "path": null
+    },
+    {
+      "ref": "/.memry/home-covers/b1/photo.png",
+      "path": null
+    },
+    {
+      "ref": "wash:ocean",
+      "path": null
+    },
+    {
+      "ref": "https://example.com/photo.png",
+      "path": null
+    },
+    {
+      "ref": "",
+      "path": null
+    }
+  ]
+}
