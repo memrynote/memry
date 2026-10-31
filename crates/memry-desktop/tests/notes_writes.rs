@@ -543,7 +543,8 @@ fn a_file_that_cannot_be_removed_fails_the_delete_and_leaves_the_note_whole() {
     let open = e.session.current().unwrap();
     let note = notes.create(&open, plan()).unwrap();
     let file = e.vault.join("work/Plan.md");
-    // An unlink refused: a read-only folder on Unix, a read-only file on Windows.
+    // An unlink refused: a read-only folder on Unix; on Windows, the file held open without
+    // delete sharing (`remove_file` there ignores the read-only attribute).
     #[cfg(unix)]
     let held = {
         use std::os::unix::fs::PermissionsExt as _;
@@ -553,17 +554,22 @@ fn a_file_that_cannot_be_removed_fails_the_delete_and_leaves_the_note_whole() {
     };
     #[cfg(windows)]
     let held = {
-        let mut permissions = fs::metadata(&file).unwrap().permissions();
-        permissions.set_readonly(true);
-        fs::set_permissions(&file, permissions).unwrap();
-        let file = file.clone();
-        move || {
-            let mut permissions = fs::metadata(&file).unwrap().permissions();
-            #[allow(clippy::permissions_set_readonly_false)]
-            permissions.set_readonly(false);
-            fs::set_permissions(&file, permissions).unwrap();
-        }
+        use std::os::windows::fs::OpenOptionsExt as _;
+        const FILE_SHARE_READ: u32 = 0x1;
+        let handle = fs::OpenOptions::new()
+            .read(true)
+            .share_mode(FILE_SHARE_READ)
+            .open(&file)
+            .unwrap();
+        move || drop(handle)
     };
+    // The precondition, on every platform: the file cannot be removed now. The share mode
+    // still lets the delete read the file, so it takes the unlink path, not the trash.
+    assert!(
+        fs::remove_file(&file).is_err(),
+        "the file could be removed, so the test proves nothing"
+    );
+    assert!(file.exists());
     let failed = notes.delete(&open, &note.id);
     held();
     assert!(matches!(failed, Err(NotesError::Io(_))), "{failed:?}");
