@@ -624,6 +624,23 @@ Today I worked on tests.`
     })
   })
 
+  describe('an entry whose frontmatter block ends the file (#3800)', () => {
+    const journalFile = () => path.join(tempVault.path, 'journal', '2025-02-02.md')
+
+    it('keeps the closing fence through an editor save, in the file line ends', async () => {
+      for (const eol of ['\n', '\r\n']) {
+        const block = ['---', 'date: 2025-02-02', 'mood: ok', '---'].join(eol)
+        fs.writeFileSync(journalFile(), block)
+        const existing = await readJournalEntry('2025-02-02')
+
+        await writeJournalEntryWithContent('2025-02-02', 'Added.', existing!.tags, existing)
+
+        expect(fs.readFileSync(journalFile(), 'utf8')).toBe(`${block}${eol}Added.${eol}`)
+        expect((await readJournalEntry('2025-02-02'))!.properties).toEqual({ mood: 'ok' })
+      }
+    })
+  })
+
   describe('buildJournalEntryWrite keeps the body a record does not carry (spec 005-journal G0)', () => {
     const onDisk = `---
 id: j2099-06-01

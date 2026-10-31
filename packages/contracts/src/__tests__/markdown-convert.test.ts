@@ -36,7 +36,7 @@ interface VectorFile {
 /** File -> expected SHA-256 of its bytes. Stages of the port append their files here. */
 const DIGESTS: Record<string, string> = {
   'markdown-convert/frontmatter.json':
-    'a1a38199e9ef01def9374d4312d52048d6c97885ecb40d6fc2b04d9f195fd276',
+    'e56d19000b5f2cee901ffee932f2ed64257e8f89390276d58eb0b9032eaa7fa0',
   'markdown-convert/markdown-class.json':
     '1641fc52c860c385dde2d0a54145880e6f6edef84f92e494621563a47ea0744f',
   'markdown-convert/pm-schema.json':
@@ -82,7 +82,7 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   'markdown-convert/frontmatter.json': {
     split: 30,
     parse: 45,
-    serialize: 41,
+    serialize: 48,
     dump: 158,
     load: 173,
     write: 10
@@ -164,6 +164,7 @@ describe('markdown-convert class', () => {
       'frontmatter/serialize/edited-same-content',
       'frontmatter/serialize/crlf-new-body',
       'frontmatter/serialize/separator-kept',
+      'frontmatter/serialize/block-at-eof-new-body',
       // 12.4.3: js-yaml 3.15.1 dump and load.
       'frontmatter/dump/string-long-foldable',
       'frontmatter/dump/date-midnight',
