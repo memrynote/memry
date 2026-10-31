@@ -1,65 +1,11 @@
-//! The vault under test in the e2e build (Step 12e-3h, #3529): an identity that makes every
-//! new markdown file a note (`e2e_vault_adopt_files`), so a spec or a soak run has notes whose
-//! files the vault tier watches and writes back before Step 13's identity names notes from
-//! their records; and the edit and the reads the `e2e_note_*` commands make.
+//! The vault under test in the e2e build (Step 12e-3h, #3529): the edit and the reads the
+//! `e2e_note_*` commands make on notes the app's identity (Step 13d) named from their files.
 
-use std::path::Path;
 use std::sync::Arc;
 
 use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::SecureStore;
-
-use crate::vault::consumer::identity::{
-    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal,
-};
-use crate::vault::file_types::FileType;
-
-pub struct AdoptFiles {
-    store: Arc<dyn SecureStore>,
-}
-
-impl AdoptFiles {
-    pub fn new(store: Arc<dyn SecureStore>) -> Arc<Self> {
-        Arc::new(Self { store })
-    }
-}
-
-impl NoteIdentity for AdoptFiles {
-    fn adopt_or_create(
-        &self,
-        ctx: &IdentityCtx<'_>,
-        file: &Candidate<'_>,
-    ) -> Result<Adoption, IdentityError> {
-        if file.file_type != FileType::Markdown {
-            return Ok(Adoption::Defer);
-        }
-        let title = Path::new(file.path).file_stem().map_or_else(
-            || file.path.to_owned(),
-            |s| s.to_string_lossy().into_owned(),
-        );
-        let writer = ctx
-            .vault
-            .notes_writer(self.store.clone())
-            .map_err(|error| IdentityError::Other(error.to_string()))?;
-        Ok(Adoption::Created(writer.create(title, None)?))
-    }
-
-    /// The record stays; the row loses its hash.
-    fn on_removed(&self, _: &IdentityCtx<'_>, _: &str, _: &str) -> Result<Removal, IdentityError> {
-        Ok(Removal::Kept)
-    }
-
-    fn on_renamed(
-        &self,
-        _: &IdentityCtx<'_>,
-        _: &str,
-        _: &str,
-        _: &str,
-    ) -> Result<(), IdentityError> {
-        Ok(())
-    }
-}
 
 /// Retypes the note's first block, as the editor does.
 pub fn edit_first_block(

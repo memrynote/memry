@@ -125,6 +125,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_file_hashes",
         sql: include_str!("migrations/data/0017_note_file_hashes.sql"),
     },
+    Migration {
+        version: 18,
+        name: "note_identity",
+        sql: include_str!("migrations/data/0018_note_identity.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

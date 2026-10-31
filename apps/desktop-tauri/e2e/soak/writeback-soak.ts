@@ -240,7 +240,6 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
   const notes: NoteFile[] = []
   const expected = new Map<string, string>()
   const adopt = async (): Promise<void> => {
-    await call('e2e_vault_adopt_files')
     for (let i = 0; i < options.notes; i += 1) {
       const path = `soak/n${i}.md`
       await save(path, `n${i} start\n`, false)

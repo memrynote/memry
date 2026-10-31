@@ -5,6 +5,7 @@
 //! - [`identity`]: which note a file belongs to, decided by Step 13's records.
 //! - [`rows`]: the one lane that writes `note_files`, for the consumer and the app alike.
 //! - `apply`: one fact applied to the rows.
+//! - `converter`: the converter note bodies are read and written with, the vault's callouts.
 //! - `run`: the thread that applies facts in the watcher's order, the open walk and retries.
 //!
 //! Invariants, each with a test in `tests/` here or in `tests/vault_consumer.rs`:
@@ -57,6 +58,7 @@
 
 mod activity;
 mod apply;
+mod converter;
 pub mod identity;
 pub mod rows;
 mod run;
@@ -64,7 +66,7 @@ mod run;
 pub(crate) mod tests;
 mod tier;
 
-pub(crate) use apply::converter_for;
+pub(crate) use converter::{converter_for, converter_of};
 pub use run::{FIRST_RETRY, MAX_RETRIES, QUEUE_CAPACITY};
 #[cfg(test)]
 pub(crate) use tier::Hold;

@@ -1,0 +1,153 @@
+[
+  {
+    "id": "3gtruu94qy0w",
+    "path": "Inbox.md",
+    "title": "Inbox",
+    "fileType": "markdown",
+    "payload": {
+      "title": "Inbox",
+      "content": "At the root.\n",
+      "tags": [],
+      "aliases": [],
+      "properties": {},
+      "pinnedTags": [],
+      "emoji": null,
+      "fileType": "markdown",
+      "folderPath": null,
+      "clock": {},
+      "createdAt": "2026-10-29T15:56:53.662Z",
+      "modifiedAt": "2026-10-29T15:56:53.663Z"
+    }
+  },
+  {
+    "id": "j2025-01-01",
+    "path": "journal/2025-01-01.md",
+    "title": "2025-01-01",
+    "fileType": "markdown",
+    "payload": null
+  },
+  {
+    "id": "9zkmtwt7qkmc",
+    "path": "notes/Getting Started.md",
+    "title": "Getting Started",
+    "fileType": "markdown",
+    "payload": {
+      "title": "Getting Started",
+      "content": "Welcome.\n",
+      "tags": [],
+      "aliases": [],
+      "properties": {},
+      "pinnedTags": [],
+      "emoji": null,
+      "fileType": "markdown",
+      "folderPath": "notes",
+      "clock": {},
+      "createdAt": "2025-01-01T10:00:00.000Z",
+      "modifiedAt": "2025-01-01T10:00:00.000Z"
+    }
+  },
+  {
+    "id": "m11dayu85eh5",
+    "path": "notes/Q3 plan.md",
+    "title": "Q3: plan?",
+    "fileType": "markdown",
+    "payload": {
+      "title": "Q3: plan?",
+      "content": "Goals.\n",
+      "tags": [],
+      "aliases": [],
+      "properties": {},
+      "pinnedTags": [],
+      "emoji": null,
+      "fileType": "markdown",
+      "folderPath": "notes",
+      "clock": {},
+      "createdAt": "2025-01-02T10:00:00.000Z",
+      "modifiedAt": "2025-01-02T10:00:00.000Z"
+    }
+  },
+  {
+    "id": "y262s4h1ecrl",
+    "path": "notes/Tagged.md",
+    "title": "Tagged",
+    "fileType": "markdown",
+    "payload": {
+      "title": "Tagged",
+      "content": "With frontmatter.\n",
+      "tags": [
+        "work"
+      ],
+      "aliases": [],
+      "properties": {
+        "status": "draft"
+      },
+      "pinnedTags": [],
+      "emoji": null,
+      "fileType": "markdown",
+      "folderPath": "notes",
+      "clock": {},
+      "createdAt": "2025-01-05T10:00:00.000Z",
+      "modifiedAt": "2025-01-05T10:00:00.000Z"
+    }
+  },
+  {
+    "id": "svesdzlzu4q5",
+    "path": "notes/outside.md",
+    "title": "outside",
+    "fileType": "markdown",
+    "payload": {
+      "title": "outside",
+      "content": "Written by another program.\n",
+      "tags": [],
+      "aliases": [],
+      "properties": {},
+      "pinnedTags": [],
+      "emoji": null,
+      "fileType": "markdown",
+      "folderPath": "notes",
+      "clock": {},
+      "createdAt": "2026-10-29T15:56:53.663Z",
+      "modifiedAt": "2026-10-29T15:56:53.665Z"
+    }
+  },
+  {
+    "id": "3unygl9a4vw9",
+    "path": "projects/2025/Plan 1.md",
+    "title": "Plan",
+    "fileType": "markdown",
+    "payload": {
+      "title": "Plan",
+      "content": "Second.\n",
+      "tags": [],
+      "aliases": [],
+      "properties": {},
+      "pinnedTags": [],
+      "emoji": null,
+      "fileType": "markdown",
+      "folderPath": "projects/2025",
+      "clock": {},
+      "createdAt": "2025-01-04T10:00:00.000Z",
+      "modifiedAt": "2025-01-04T10:00:00.000Z"
+    }
+  },
+  {
+    "id": "owwioh1t6svc",
+    "path": "projects/2025/Plan.md",
+    "title": "Plan",
+    "fileType": "markdown",
+    "payload": {
+      "title": "Plan",
+      "content": "First.\n",
+      "tags": [],
+      "aliases": [],
+      "properties": {},
+      "pinnedTags": [],
+      "emoji": null,
+      "fileType": "markdown",
+      "folderPath": "projects/2025",
+      "clock": {},
+      "createdAt": "2025-01-03T10:00:00.000Z",
+      "modifiedAt": "2025-01-03T10:00:00.000Z"
+    }
+  }
+]

@@ -25,7 +25,6 @@ type App = Parameters<typeof gracefulClose>[0] & { dirs: { logDir: string } }
 
 /** A note whose document holds `text`, from a file another program wrote. */
 async function noteFrom(app: App, path: string, rel: string, text: string): Promise<string> {
-  await invokeTest(app, 'e2e_vault_adopt_files')
   writeFileSync(path, text)
   const row = await pollUntil(
     async () =>

@@ -1,9 +1,9 @@
 // The files of a vault in the running app (Step 12, #3529). Port of the cases of
 // `apps/desktop/tests/e2e/vault.e2e.ts` that assert files on disk: the folders and the config a
 // new vault gets (T529) and an outside note found by the app (T531, whose reindex half is Step 13
-// (#3530)). `vault.e2e.ts` here has the create, switch and error cases (Step 08). Until Step 13
-// names notes, `e2e_vault_adopt_files` makes every new markdown file a note, and the
-// `note_files` rows show what the watcher and the consumer made of each file.
+// (#3530)). `vault.e2e.ts` here has the create, switch and error cases (Step 08). Every new
+// markdown file is a note (Step 13d), and the `note_files` rows show what the watcher and the
+// consumer made of each file.
 import {
   existsSync,
   mkdirSync,
@@ -140,7 +140,6 @@ test('files another program writes while the app runs reach their rows, and nois
   app,
   testVaultPath
 }) => {
-  await invokeTest(app, 'e2e_vault_adopt_files')
   const file = (rel: string) => join(testVaultPath, rel)
 
   // A new note: a row whose hash names the file's text.
@@ -180,10 +179,9 @@ test('files another program writes while the app runs reach their rows, and nois
     (await rows(app)).map((row) => row.path).filter((path) => noise.has(path))
   expect(await noiseRows()).toEqual([])
 
-  // A delete leaves no row naming the deleted file's text. Whether the note goes too is
-  // Step 13's (#3530) call.
+  // A delete of a file that held its whole note deletes the note (Step 13d), and its row goes.
   rmSync(file('notes/moved/outside.md'))
-  await rowWhen(app, added.noteId, (row) => (row?.contentHash ?? null) === null)
+  await rowWhen(app, added.noteId, (row) => row === undefined)
   // Still no row for the noise, after everything since was taken in.
   expect(await noiseRows()).toEqual([])
   expect(readMainLog(app.dirs.logDir)).not.toMatch(TIER_ERROR)
@@ -193,7 +191,6 @@ test('files changed while the app was closed are found at the next open', async 
   app,
   testVaultPath
 }) => {
-  await invokeTest(app, 'e2e_vault_adopt_files')
   const file = (rel: string) => join(testVaultPath, rel)
   writeFileSync(file('notes/to-move.md'), 'moved while closed\n')
   writeFileSync(file('notes/to-edit.md'), 'before the quit\n')
