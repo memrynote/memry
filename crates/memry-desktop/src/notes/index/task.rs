@@ -10,7 +10,7 @@ use tokio::sync::broadcast::Receiver;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::mpsc;
 
-use super::pass::Indexer;
+use super::pass::{Indexer, Pass};
 use super::{
     Backfilled, IDLE_DELAY, IndexError, IndexProgress, PROGRESS_INTERVAL, ProgressThrottle,
     RETRY_FIRST, RETRY_MAX,
@@ -19,14 +19,12 @@ use crate::session::projection::CancelToken;
 use crate::vault::consumer::Applied;
 use crate::vault::watch::VaultEvent;
 
-pub(super) type Progress = Box<dyn FnMut(IndexProgress) + Send>;
-type Answer = reply::Receiver<Result<Backfilled, IndexError>>;
+pub type Progress = Box<dyn FnMut(IndexProgress) + Send>;
+pub type Answer = reply::Receiver<Result<Backfilled, IndexError>>;
+type Reply = reply::Sender<Result<Backfilled, IndexError>>;
 
 enum Command {
-    Reindex {
-        progress: Progress,
-        answer: reply::Sender<Result<Backfilled, IndexError>>,
-    },
+    Reindex { progress: Progress, answer: Reply },
     Stop,
 }
 
@@ -49,8 +47,8 @@ impl TaskHandle {
         let _ = self.0.send(Command::Stop);
     }
 
-    /// `None` when the task already ended.
-    pub(super) fn reindex(&self, progress: Progress) -> Option<Answer> {
+    /// Asks for a reindex, run once the open walk ended; `None` when the task already ended.
+    pub fn reindex(&self, progress: Progress) -> Option<Answer> {
         let (answer, receiver) = reply::channel();
         self.0
             .send(Command::Reindex { progress, answer })
@@ -63,6 +61,23 @@ impl TaskHandle {
     }
 }
 
+/// Where the open walk is, as the facts tell it. Nothing is worked, a reindex included, until
+/// it ended or cannot come: a pass beside the walk holds the database locks tier 0 needs.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum Walk {
+    /// The walk waits for the watcher's first `Rescanned`.
+    #[default]
+    Before,
+    /// The watcher failed before its first pass ended, so no walk may come: the work starts.
+    /// A `Rescanned` after it still starts the walk.
+    Failed,
+    /// From the first `Rescanned` to `Indexed`. A watcher failure inside the walk does not end
+    /// it: `Indexed` follows.
+    During,
+    /// `Indexed`, or facts were lost and it may have been one of them.
+    Ended,
+}
+
 /// The work the facts owe and its time.
 #[derive(Default)]
 struct Owed {
@@ -70,27 +85,61 @@ struct Owed {
     scan: bool,
     /// The core search reindex (links, body tags, full text).
     links: bool,
-    /// The open walk ended: nothing is worked before.
-    walked: bool,
+    walk: Walk,
     due: Option<Instant>,
     failures: u32,
 }
 
 impl Owed {
+    /// Due [`IDLE_DELAY`] from the first fact of a burst, and no later: a retry's backoff does
+    /// not hold back a live edit.
     fn arm(&mut self) {
-        self.due = self.due.or(Some(Instant::now() + IDLE_DELAY));
+        let soon = Instant::now() + IDLE_DELAY;
+        self.due = Some(self.due.map_or(soon, |due| due.min(soon)));
     }
 
-    fn scan(&mut self) {
-        self.walked = true;
+    fn owe_scan(&mut self) {
         self.scan = true;
         self.arm();
+    }
+
+    fn end_walk(&mut self) {
+        self.walk = Walk::Ended;
+        self.owe_scan();
+    }
+
+    fn walked(&self) -> bool {
+        matches!(self.walk, Walk::Failed | Walk::Ended)
     }
 
     /// When the owed work is due; `None` while nothing is owed or the walk has not ended.
     fn next(&self) -> Option<Instant> {
         let owed = self.scan || self.links || !self.queue.is_empty();
-        (self.walked && owed).then(|| self.due.unwrap_or_else(Instant::now))
+        (self.walked() && owed).then(|| self.due.unwrap_or_else(Instant::now))
+    }
+
+    /// What a pass over the queued `ids` (and a scan, `scan`) leaves owed.
+    fn settle(&mut self, ids: BTreeSet<String>, scan: bool, outcome: &Result<Pass, IndexError>) {
+        match outcome {
+            Ok(pass) if pass.stopped => {
+                self.queue.extend(ids);
+                self.scan |= scan;
+            }
+            Ok(pass) if pass.unread.is_empty() && !self.links => self.failures = 0,
+            Ok(pass) => {
+                tracing::warn!(
+                    scope = "note_index",
+                    unread = pass.unread.len(),
+                    links_owed = self.links,
+                    "the pass did not finish: retrying"
+                );
+                self.retry(pass.unread.iter().cloned().collect());
+            }
+            Err(error) => {
+                tracing::warn!(scope = "note_index", "index pass failed, retrying: {error}");
+                self.retry(ids);
+            }
+        }
     }
 
     /// A pass did not finish: its notes and a scan are owed again, after a backoff.
@@ -127,23 +176,27 @@ impl Indexer {
             links: true,
             ..Owed::default()
         };
+        let mut waiting: Vec<(Progress, Reply)> = Vec::new();
         while !cancel.is_cancelled() {
+            if owed.walked() {
+                for (progress, answer) in waiting.drain(..) {
+                    // The asker may have gone; the work is done either way.
+                    let _ = answer.send(self.reindex(&mut owed, progress, cancel));
+                }
+            }
             let next = owed.next();
             let wake = tokio::time::Instant::from_std(next.unwrap_or_else(Instant::now));
             tokio::select! {
                 biased;
                 command = commands.recv() => match command {
-                    Some(Command::Reindex { progress, answer }) => {
-                        // The asker may have gone; the work is done either way.
-                        let _ = answer.send(self.reindex(&mut owed, progress, cancel));
-                    }
+                    Some(Command::Reindex { progress, answer }) => waiting.push((progress, answer)),
                     Some(Command::Stop) | None => return,
                 },
                 fact = facts.recv() => match fact {
                     Ok(fact) => self.take(&mut owed, fact),
                     Err(RecvError::Lagged(missed)) => {
                         tracing::warn!(scope = "note_index", missed, "facts were lost: scanning");
-                        owed.scan();
+                        owed.end_walk();
                     }
                     Err(RecvError::Closed) => return,
                 },
@@ -164,12 +217,21 @@ impl Indexer {
                 owed.queue.remove(&note_id);
                 if let Err(error) = self.search.forget_note_stats(&note_id) {
                     tracing::warn!(scope = "note_index", note_id, "row not dropped: {error}");
-                    owed.scan();
+                    owed.owe_scan();
                 }
             }
-            Applied::Indexed { .. } => owed.scan(),
-            // No `Indexed` follows a watcher that did not start: the scan is owed now.
-            Applied::Vault(VaultEvent::WatchFailed { .. }) => owed.scan(),
+            Applied::Indexed { .. } => owed.end_walk(),
+            Applied::Vault(VaultEvent::Rescanned { .. }) => {
+                if matches!(owed.walk, Walk::Before | Walk::Failed) {
+                    owed.walk = Walk::During;
+                }
+            }
+            Applied::Vault(VaultEvent::WatchFailed { .. }) => {
+                if owed.walk == Walk::Before {
+                    owed.walk = Walk::Failed;
+                }
+                owed.owe_scan();
+            }
             Applied::Vault(_) => {}
         }
     }
@@ -182,25 +244,7 @@ impl Indexer {
         let outcome = self
             .listed(scan, &ids)
             .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut |_| {}));
-        match outcome {
-            Ok(pass) if pass.stopped => {
-                owed.queue.extend(ids);
-                owed.scan |= scan;
-            }
-            Ok(pass) if pass.unread.is_empty() && !owed.links => owed.failures = 0,
-            Ok(pass) => {
-                tracing::warn!(
-                    scope = "note_index",
-                    unread = pass.unread.len(),
-                    "the pass did not finish: retrying"
-                );
-                owed.retry(pass.unread.into_iter().collect());
-            }
-            Err(error) => {
-                tracing::warn!(scope = "note_index", "index pass failed, retrying: {error}");
-                owed.retry(ids);
-            }
-        }
+        owed.settle(ids, scan, &outcome);
     }
 
     /// Every note measured again, the queue and an owed scan with it.
@@ -221,22 +265,37 @@ impl Indexer {
                 }
             })
         });
+        owed.settle(ids, scan, &outcome);
         match outcome {
-            Ok(pass) if pass.stopped => {
-                owed.queue.extend(ids);
-                owed.scan |= scan;
-                Err(IndexError::NotOpen)
-            }
-            Ok(pass) => {
-                if !pass.unread.is_empty() || owed.links {
-                    owed.retry(pass.unread.into_iter().collect());
-                }
-                Ok(pass.done)
-            }
-            Err(error) => {
-                owed.retry(ids);
-                Err(error)
-            }
+            Ok(pass) if pass.stopped => Err(IndexError::NotOpen),
+            Ok(pass) => Ok(pass.done),
+            Err(error) => Err(error),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn finished(unread: &[&str]) -> Result<Pass, IndexError> {
+        Ok(Pass {
+            done: Backfilled::default(),
+            unread: unread.iter().map(|id| (*id).to_owned()).collect(),
+            stopped: false,
+        })
+    }
+
+    /// A pass that finished, a reindex's included, starts the next backoff from the first step.
+    #[test]
+    fn a_finished_pass_ends_the_backoff() {
+        let mut owed = Owed::default();
+        for _ in 0..3 {
+            owed.settle(BTreeSet::new(), true, &finished(&["unread"]));
+        }
+        assert_eq!(owed.failures, 3);
+        assert!(owed.queue.contains("unread") && owed.scan);
+        owed.settle(BTreeSet::new(), false, &finished(&[]));
+        assert_eq!(owed.failures, 0);
     }
 }

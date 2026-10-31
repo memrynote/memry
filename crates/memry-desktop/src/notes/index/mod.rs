@@ -10,21 +10,24 @@
 //!   [`IDLE_DELAY`] after the first fact that filled the queue, as `scheduleDrain` arms its
 //!   timer once per burst. `Removed` drops its row. The end of the open walk (`Indexed`), a
 //!   lagged subscription and a failed watcher owe a scan: the rows of notes with no markdown
-//!   file are dropped, and every markdown note whose row is missing or names other bytes than
-//!   its file is measured, with the queue ([`Indexer::scan`]). Nothing is worked before the
-//!   walk ends: tier 0 goes first, and a pass beside a first walk holds its database locks.
+//!   file are dropped, and every markdown note whose row is missing, names other bytes than its
+//!   file or another journal day than its path is measured, with the queue
+//!   ([`Indexer::scan`]). Nothing is worked, a reindex included, before the walk ends or a
+//!   failed watcher means none will come: tier 0 goes first, and a pass beside a first walk
+//!   holds its database locks.
 //! - **The index converges.** A pass that does not finish (stopped, a failed write, a file that
 //!   could not be read, a failed search reindex) leaves its work owed, and the next pass, after
 //!   a backoff from [`RETRY_FIRST`] to [`RETRY_MAX`], pays it. Nothing waits for a file to
-//!   change again.
+//!   change again, and a backoff never holds back a live fact's note. A finished pass ends the
+//!   backoff.
 //! - **Links, body tags and full text** have one owner, the core search reindex, which reads
 //!   them from the note's document. It is owed at every open and after every pass that wrote a
 //!   row, and stops when the vault closes ([`Search::reindex_until`]); a stopped one commits
-//!   nothing and stays owed.
+//!   nothing to `index.db` and stays owed.
 //! - **Not measured:** a file in the large-file class (Electron streams it; a follow-up).
-//! - [`NoteIndex::reindex`] (`vault_reindex`) measures every note again, through the task, and
-//!   reports its progress at most once per [`PROGRESS_INTERVAL`], never backwards, ending at
-//!   the total when the pass finishes.
+//! - [`NoteIndex::reindex`] (`vault_reindex`) measures every note again, through the task once
+//!   the open walk ended, and reports its progress at most once per [`PROGRESS_INTERVAL`],
+//!   never backwards, ending at the total when the pass finishes.
 //!
 //! [`Search::reindex_until`]: memry_core::api::search::Search::reindex_until
 
@@ -132,8 +135,8 @@ impl NoteIndex {
                     Slot::Open { handle, start } => start.take().map(|s| (handle.clone(), s)),
                     _ => None,
                 };
+                // The slot is not this open's (a close came first): it is left as it is.
                 let Some((handle, (facts, inbox))) = started else {
-                    *lock(&index.slot) = Slot::Failed;
                     return Err("the open subscribed no facts".into());
                 };
                 let ended = Indexer::new(vault).run(facts, inbox, cancel);
@@ -160,8 +163,8 @@ impl NoteIndex {
         );
     }
 
-    /// Measures every note of the open vault again, through its task, after the pass the task
-    /// is in. Blocks; `progress` is called on the task's thread.
+    /// Measures every note of the open vault again, through its task, once the open walk ended
+    /// and after the pass the task is in. Blocks; `progress` is called on the task's thread.
     pub fn reindex(
         &self,
         progress: impl FnMut(IndexProgress) + Send + 'static,

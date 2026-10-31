@@ -1,13 +1,17 @@
 //! The note index (Step 13e) follows the vault tier's facts, over a real session, tier and
 //! watcher, and converges: an app write, a removal and lost facts keep the rows current; nothing
-//! is worked before the open walk ends; a scan keeps the queued notes; a failed watcher still
-//! owes the scan; a file that cannot be read is measured once it reads; and the search index
-//! (links) is brought up to date at every open, not only after a pass that wrote rows.
+//! is worked before the open walk ends, a watcher failure inside it and a reindex included; a
+//! scan keeps the queued notes; a failed watcher still owes the scan; a file that cannot be read
+//! is measured once it reads, and its backoff does not hold back an edit; a rename whose fact
+//! was lost still moves the journal day; and the search index (links) is brought up to date at
+//! every open, not only after a pass that wrote rows.
 
 mod device_key;
 mod index_support;
 mod vault_env;
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 use index_support::{all_indexed, note_text, path_of, seeded, until, with_task};
@@ -256,5 +260,142 @@ fn a_fresh_vault_gets_its_notes_then_their_stats_and_links_at_every_open() {
     let search = e.session.current().unwrap().search;
     links_to_second(&search);
     drop(search);
+    e.close();
+}
+
+/// The walk runs from the watcher's first `Rescanned` to `Indexed`. A watcher failure inside it
+/// does not end it, and a reindex asked meanwhile waits for its end too.
+#[test]
+fn a_walk_holds_the_work_and_a_reindex_through_a_watcher_failure() {
+    let (mut e, _store, notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |handle| {
+        let rescanned = VaultEvent::Rescanned {
+            missing: 0,
+            removed: 0,
+            added: 0,
+            changed: 0,
+            removals_withheld: false,
+        };
+        sender.send(Applied::Vault(rescanned)).unwrap();
+        let failed = VaultEvent::WatchFailed {
+            message: "an OS watcher error".into(),
+            limit: false,
+        };
+        sender.send(Applied::Vault(failed)).unwrap();
+        let steps = Arc::new(AtomicUsize::new(0));
+        let seen = steps.clone();
+        let answer = handle
+            .reindex(Box::new(move |_| {
+                seen.fetch_add(1, Ordering::SeqCst);
+            }))
+            .unwrap();
+        // Twice the queue's delay, then nothing measured and no progress: the walk runs.
+        std::thread::sleep(IDLE_DELAY * 2);
+        for (id, _) in &notes {
+            assert!(open.search.note_stats(id).unwrap().is_none(), "{id}");
+        }
+        assert_eq!(steps.load(Ordering::SeqCst), 0);
+
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        let done = answer.recv().unwrap().unwrap();
+        assert_eq!(done.indexed, notes.len());
+    });
+    e.close();
+}
+
+/// A file that never reads backs its retries off: after these reindexes, past any wait here.
+/// An edit of another note is measured all the same, at its fact's own delay.
+#[cfg(unix)]
+#[test]
+fn an_edit_beside_a_file_that_never_reads_is_not_held_by_its_backoff() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let (mut e, _store, notes) = seeded(2);
+    let ((stuck, stuck_path), (id, path)) = (&notes[0], &notes[1]);
+    let file = e.vault.join(stuck_path);
+    let mode = |bits| std::fs::set_permissions(&file, std::fs::Permissions::from_mode(bits));
+    mode(0o000).unwrap();
+    if std::fs::read(&file).is_ok() {
+        // Run as root: no permission keeps the file from being read.
+        mode(0o644).unwrap();
+        return;
+    }
+    let index = NoteIndex::new(e.tier.clone());
+    index.register(&e.session);
+    e.drain();
+    e.open();
+    e.facts_until(indexed);
+    let open = e.session.current().unwrap();
+    until("the readable note measured", || {
+        open.search.note_stats(id).unwrap().is_some()
+    });
+    // Each pass that cannot read the file doubles the backoff: 2^7 s and more after these.
+    for _ in 0..7 {
+        assert_eq!(index.reindex(|_| {}).unwrap().unread, 1);
+    }
+
+    let text = "an edit of the other note\n";
+    e.tier.echo().will_write(path, &content_hash(text));
+    e.write(path, text);
+    let rows = e.tier.rows();
+    let session = rows.session_for(&open.vault).unwrap();
+    let stat = RowStat {
+        file_type: FileType::Markdown,
+        size: text.len() as u64,
+        content_hash: Some(content_hash(text)),
+        file_hash: Some(content_hash(text)),
+    };
+    rows.record_write(session, id, path, stat).unwrap();
+    until("the edit measured", || {
+        open.search.note_stats(id).unwrap().unwrap().stats == measure(text)
+    });
+    assert!(open.search.note_stats(stuck).unwrap().is_none());
+    mode(0o644).unwrap();
+    e.close();
+}
+
+/// A rename that kept the bytes, made while the app was closed and found by the next open, is a
+/// fact this task never hears (as one dropped by a lag or queued at a close). The scan still
+/// lists the note, by the journal day its path names now, and the row takes the day.
+#[test]
+fn a_rename_whose_fact_was_lost_still_moves_the_journal_day() {
+    let (mut e, _store, notes) = seeded(1);
+    let (id, path) = &notes[0];
+    let text = note_text(0);
+    e.open();
+    let row = MeasuredFile {
+        note_id: id.clone(),
+        file_hash: content_hash(&text),
+        date: None,
+        text: text.clone(),
+    };
+    e.session
+        .current()
+        .unwrap()
+        .search
+        .index_note_files(vec![row])
+        .unwrap();
+    e.close();
+    let day = "journal/2026-01-05.md";
+    std::fs::create_dir_all(e.vault.join("journal")).unwrap();
+    std::fs::rename(e.vault.join(path), e.vault.join(day)).unwrap();
+
+    e.open();
+    until("the open renamed the row", || {
+        e.rows().iter().any(|(row, at)| row == id && at == day)
+    });
+    let open = e.session.current().unwrap();
+    assert_eq!(open.search.note_stats(id).unwrap().unwrap().date, None);
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |_| {
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("the note's journal day", || {
+            open.search.note_stats(id).unwrap().unwrap().date.as_deref() == Some("2026-01-05")
+        });
+    });
+    drop(open);
     e.close();
 }

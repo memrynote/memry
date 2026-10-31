@@ -10,8 +10,9 @@
 //! A frontmatter block that does not parse costs the note its header tags and cover, never its
 //! counts (`parseNote`, #844). Lengths are JavaScript string lengths, UTF-16 code units.
 //!
-//! The rows are derived: [`unindexed`] lists every markdown note whose row is missing or names
-//! other bytes than its file's, and the desktop indexer measures those files again.
+//! The rows are derived: [`unindexed`] lists every markdown note whose row is missing, names
+//! other bytes than its file's or another journal day than its path, and the desktop indexer
+//! measures those files again.
 
 use std::collections::{HashMap, HashSet};
 
@@ -340,24 +341,27 @@ pub fn read(index: &Connection, note_id: &str) -> Result<Option<StoredStats>, St
     .transpose()
 }
 
-/// Every live markdown note with a file whose row is missing, or whose row names other bytes
-/// than the file's last read (`note_files.file_hash`). A file the tier never read has no hash
-/// to compare, so only a missing row lists it. `all` lists every such note (a reindex).
+/// Every live markdown note with a file whose row is missing, names other bytes than the
+/// file's last read (`note_files.file_hash`), or another journal day than `day_of` reads from
+/// the file's path now: a rename that kept the bytes, whose fact was lost, still moves the
+/// note's day. A file the tier never read has no hash to compare, so its bytes do not list
+/// it. `all` lists every such note (a reindex).
 pub fn unindexed(
     data: &Connection,
     index: &Connection,
     all: bool,
+    day_of: &dyn Fn(&str) -> Option<String>,
 ) -> Result<Vec<Unindexed>, StorageError> {
-    let mut indexed: HashMap<String, Option<String>> = HashMap::new();
+    let mut indexed: HashMap<String, (Option<String>, Option<String>)> = HashMap::new();
     let mut statement = index
-        .prepare("SELECT note_id, file_hash FROM note_stats")
+        .prepare("SELECT note_id, file_hash, date FROM note_stats")
         .map_err(failed)?;
     let rows = statement
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .query_map([], |row| Ok((row.get(0)?, (row.get(1)?, row.get(2)?))))
         .map_err(failed)?;
     for row in rows {
-        let (note_id, file_hash) = row.map_err(failed)?;
-        indexed.insert(note_id, file_hash);
+        let (note_id, stored) = row.map_err(failed)?;
+        indexed.insert(note_id, stored);
     }
     let mut statement = data
         .prepare(
@@ -385,7 +389,8 @@ pub fn unindexed(
         let (note, file_hash) = row.map_err(failed)?;
         let stale = match (indexed.get(&note.note_id), file_hash) {
             (None, _) => true,
-            (Some(stored), Some(current)) => stored.as_deref() != Some(current.as_str()),
+            (Some((_, date)), _) if *date != day_of(&note.path) => true,
+            (Some((stored, _)), Some(current)) => stored.as_deref() != Some(current.as_str()),
             (Some(_), None) => false,
         };
         if all || stale {

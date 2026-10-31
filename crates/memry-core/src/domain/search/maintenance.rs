@@ -91,8 +91,11 @@ pub fn reindex(
 }
 
 /// [`reindex`] that `stop` can end between two rows, for a caller that must let go of both
-/// databases promptly (desktop's vault close). A stopped pass commits nothing: the index is as
-/// it was, the watermarks too, and the next pass does the whole work. `None` when stopped.
+/// databases promptly (desktop's vault close). A stopped pass commits nothing to `index.db`:
+/// the index is as it was, the watermarks too, and the next pass does the whole work. The
+/// `data.db` body tags of the notes it reached are written outside that transaction; each is
+/// derived from the note's document, so the next pass writes the same rows again. `None` when
+/// stopped.
 pub fn reindex_until(
     data: &Connection,
     index: &Connection,

@@ -91,7 +91,8 @@ pub fn until(what: &str, mut done: impl FnMut() -> bool) {
 
 pub fn all_indexed(e: &Env) -> bool {
     let search = e.session.current().expect("open").search;
-    search.unindexed_notes(false).unwrap().is_empty()
+    // The seeded paths are outside the journal folder: no day to compare.
+    search.unindexed_notes(false, &|_| None).unwrap().is_empty()
 }
 
 /// Runs an index task of `open` beside the test, over `facts`, until the guard drops.

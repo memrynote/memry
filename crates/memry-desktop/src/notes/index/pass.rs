@@ -64,12 +64,13 @@ impl Indexer {
         if pruned > 0 {
             tracing::info!(scope = "note_index", pruned, "rows of gone notes dropped");
         }
-        self.search.unindexed_notes(all)
+        self.search
+            .unindexed_notes(all, &|path| self.journal_day(path))
     }
 
     /// The notes a pass works: a scan's when one is owed, and the queued ones, which a scan
-    /// does not list when the file's bytes did not change (a rename names another journal
-    /// day). Smallest file first.
+    /// does not list when the file's bytes and its journal day did not change. Smallest file
+    /// first.
     pub(super) fn listed(
         &self,
         scan: bool,

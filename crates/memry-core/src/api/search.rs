@@ -194,10 +194,15 @@ impl Search {
     }
 
     /// The markdown notes to measure, smallest file first ([`note_stats::unindexed`]).
-    pub fn unindexed_notes(&self, all: bool) -> Result<Vec<Unindexed>, StorageError> {
+    /// `day_of` is the journal day a vault path names.
+    pub fn unindexed_notes(
+        &self,
+        all: bool,
+        day_of: &dyn Fn(&str) -> Option<String>,
+    ) -> Result<Vec<Unindexed>, StorageError> {
         let index = self.index.clone();
         self.data.read_blocking(move |data| {
-            index.read_blocking(|index| note_stats::unindexed(data, index, all))
+            index.read_blocking(|index| note_stats::unindexed(data, index, all, day_of))
         })
     }
 }
