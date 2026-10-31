@@ -8,6 +8,7 @@ use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::journal;
+use crate::domain::notes::app_move::{self, AppMoved};
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::markdown::convert::EmbedResolver;
@@ -100,6 +101,16 @@ impl NotesWriter {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
             identity::renamed(conn, note_id, &moved, &device_id, now_ms())
+        })
+    }
+
+    /// The app moved the note's file: record, row and slot follow in one transaction
+    /// ([`app_move::moved_by_app`]). Writes `note_files`, so only the vault tier's rows' lane
+    /// calls it.
+    pub fn moved_by_app(&self, note_id: &str, moved: AppMoved<'_>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            app_move::moved_by_app(conn, note_id, &moved, &device_id, now_ms())
         })
     }
 

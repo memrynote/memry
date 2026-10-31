@@ -224,15 +224,14 @@ mod new_names {
     proptest! {
         #![proptest_config(ProptestConfig { cases: 4000, ..ProptestConfig::default() })]
 
+        /// Also at the length cut, and in bytes: `<name> 9999.md` fits the 255 bytes of one
+        /// name on APFS and ext4.
         #[test]
-        fn a_new_name_is_always_safe_on_windows(title in "\\PC{0,300}|[ .a-zA-Z0-9\\u{1}\\u{7f}]{0,40}|(con|nul|com1|lpt3|aux|prn)[ .a-z]{0,6}") {
+        fn a_new_name_is_always_safe_on_windows(title in "\\PC{0,300}|[ .a-zA-Z0-9\\u{1}\\u{7f}]{0,40}|(con|nul|com1|lpt3|aux|prn)[ .a-z]{0,6}|[\u{4e00}-\u{4e0f}]{190,200}[ .]{1,20}") {
             let name = sanitize_new_filename(&title);
-            // A cut at 200 units can end on a space exactly as Electron's does; the
-            // property holds for every name below the cut.
-            if name.encode_utf16().count() < 199 {
-                prop_assert!(is_windows_safe(&name), "{name:?}");
-            }
+            prop_assert!(is_windows_safe(&name), "{name:?}");
             prop_assert!(name.encode_utf16().count() <= 200);
+            prop_assert!(format!("{name} 9999.md").len() <= 255, "{} bytes", name.len());
         }
     }
 }
