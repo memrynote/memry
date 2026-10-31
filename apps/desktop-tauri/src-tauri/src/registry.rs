@@ -46,6 +46,14 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
             crate::commands::locale::locale_set,
+            // notes
+            crate::commands::notes::notes_exists,
+            crate::commands::notes::notes_get,
+            crate::commands::notes::notes_get_by_path,
+            crate::commands::notes::notes_get_file,
+            crate::commands::notes::notes_list,
+            crate::commands::notes::notes_open_external,
+            crate::commands::notes::notes_reveal_in_finder,
             // notification
             crate::commands::shell_integrations::notification_permission,
             crate::commands::shell_integrations::notification_show,

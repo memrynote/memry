@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
 import { useNoteEditor } from './use-note-editor'
 
+const notesGet = vi.hoisted(() => vi.fn())
+vi.mock('../../../generated/bindings', () => ({ commands: { notesGet } }))
+
 describe('useNoteEditor', () => {
   let api: ReturnType<typeof createMockApi>
   const note = {
@@ -19,7 +22,7 @@ describe('useNoteEditor', () => {
 
   beforeEach(() => {
     api = createMockApi()
-    api.notes.get = vi.fn().mockResolvedValue(note)
+    notesGet.mockReset().mockResolvedValue(note)
     api.notes.update = vi.fn().mockImplementation((input) =>
       Promise.resolve({
         ...note,
@@ -64,7 +67,7 @@ describe('useNoteEditor', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.note?.title).toBe('Original')
-    expect(api.notes.get).toHaveBeenCalledWith('note-1')
+    expect(notesGet).toHaveBeenCalledWith('note-1')
 
     act(() => {
       deletedCallbacks[0]({ id: 'other' })
@@ -131,7 +134,7 @@ describe('useNoteEditor', () => {
   })
 
   it('handles load and save errors, clearError, null note ids, and disabled autosave', async () => {
-    api.notes.get = vi.fn().mockRejectedValueOnce(new Error('load failed'))
+    notesGet.mockRejectedValueOnce(new Error('load failed'))
 
     const failedLoad = renderHook(() => useNoteEditor('note-1', { showToasts: false }))
     await waitFor(() => expect(failedLoad.result.current.isLoading).toBe(false))
@@ -154,7 +157,6 @@ describe('useNoteEditor', () => {
       await nullHook.result.current.saveNow()
     })
 
-    api.notes.get = vi.fn().mockResolvedValue(note)
     api.notes.update = vi.fn().mockRejectedValueOnce(new Error('save failed'))
     const noAutoSave = renderHook(() =>
       useNoteEditor('note-1', { autoSave: false, showToasts: false })

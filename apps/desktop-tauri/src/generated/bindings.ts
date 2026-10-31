@@ -50,6 +50,16 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**  `notes:exists`: a `.md` path, or a title a link would resolve. */
+	notesExists: (titleOrPath: string) => __TAURI_INVOKE<boolean>("notes_exists", { titleOrPath }),
+	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
+	notesGetByPath: (path: string) => __TAURI_INVOKE<NoteView | null>("notes_get_by_path", { path }),
+	notesGetFile: (id: string) => __TAURI_INVOKE<FileView | null>("notes_get_file", { id }),
+	notesList: (options: NoteListOptions) => __TAURI_INVOKE<NoteListPageView>("notes_list", { options }),
+	/**  `notes:open-external`: the note's file in the OS's default app. */
+	notesOpenExternal: (id: string) => __TAURI_INVOKE<null>("notes_open_external", { id }),
+	/**  `notes:reveal-in-finder`: the note's file in the OS file manager. */
+	notesRevealInFinder: (id: string) => __TAURI_INVOKE<null>("notes_reveal_in_finder", { id }),
 	/**
 	 *  Whether notifications may show. macOS answers `prompt` until the user was asked; the first
 	 *  notification asks.
@@ -260,6 +270,9 @@ export type AppUpdateState = {
 	installFailed: InstallFailed | null,
 };
 
+/**  The kinds of a note whose file is not markdown. */
+export type AttachedFileType = "pdf" | "image" | "audio" | "video";
+
 export type BuildKind = "dev" | "packaged";
 
 /**  A caption button's rectangle in client coordinates, physical pixels. */
@@ -413,6 +426,21 @@ export type FeedbackSubmitResult = {
 /**  A redacted field: the schema allows a string, a number or a boolean. */
 export type FieldValue = boolean | number | null | string;
 
+export type FileType = "markdown" | "pdf" | "image" | "audio" | "video";
+
+/**  `FileMetadata`: a note whose file is not markdown. */
+export type FileView = {
+	id: string,
+	path: string,
+	absolutePath: string,
+	title: string,
+	fileType: AttachedFileType,
+	mimeType: string | null,
+	fileSize: number | null,
+	created: number,
+	modified: number,
+};
+
 /**
  *  Main asks a window to write its unsaved edits (`flush-requested-event`); the window answers with
  *  the `flush_done` command and the same id.
@@ -449,6 +477,17 @@ export type InstallFailed = {
 };
 
 export type ItemKind = "normal" | "separator";
+
+/**  `NoteLargeFileInfo`. */
+export type LargeFileInfo = {
+	reason: LargeFileReasonView,
+	fileBytes: number,
+	/**  `None` when the file was classified on its size alone and never read. */
+	largestBlockBytes: number | null,
+};
+
+/**  `NoteLargeFileReason`. */
+export type LargeFileReasonView = "file-bytes" | "block-bytes";
 
 /**  The UI language changed (`locale:changed`). */
 export type LocaleChangedEvent = {
@@ -501,6 +540,73 @@ export type MovesRecovered = {
 	 *  `(incomplete move)` folders: nothing was undone, the notes are only in sight again.
 	 */
 	shownFolders: number,
+};
+
+/**  `NoteListItem`. `word_count` is `None` until the note index (Step 13e) measured the file. */
+export type NoteListItemView = {
+	id: string,
+	path: string,
+	title: string,
+	created: number,
+	modified: number,
+	tags: string[],
+	wordCount: number | null,
+	emoji: string | null,
+	localOnly: boolean,
+	/**  `None` for a type a newer build stored. */
+	fileType?: FileType,
+	/**  Left out of the sidebar's `tree` shape, as `listNotes` leaves them. */
+	aliases?: string[],
+	mimeType?: string,
+	fileSize?: number,
+};
+
+/**
+ *  `NoteListSchema`'s options this slice reads. `sortBy: 'position'` sorts as `modified`, as in
+ *  `listNotesFromCache`; journal entries are not listed until Step 13m.
+ */
+export type NoteListOptions = {
+	folder?: string | null,
+	tags?: string[] | null,
+	/**  `modified` (the default), `created`, `title` or `position`. */
+	sortBy?: string | null,
+	/**  `asc` or `desc` (the default). */
+	sortOrder?: string | null,
+	/**  1 to 10000, 100 when absent. */
+	limit?: number | null,
+	offset?: number | null,
+	/**  `tree` drops the fields the sidebar never reads. */
+	fields?: string | null,
+};
+
+/**  `NoteListResponse`. */
+export type NoteListPageView = {
+	notes: NoteListItemView[],
+	total: number,
+	hasMore: boolean,
+};
+
+/**  `Note`. */
+export type NoteView = {
+	id: string,
+	path: string,
+	title: string,
+	/**  The body without the frontmatter block; empty when `content_omitted`. */
+	content: string,
+	frontmatter: { [key in string]: Value },
+	created: number,
+	modified: number,
+	/**  The frontmatter's tags and the body's together. */
+	tags: string[],
+	/**  The frontmatter `tags:` list alone. */
+	headerTags: string[],
+	aliases: string[],
+	wordCount: number,
+	properties: { [key in string]: Value },
+	emoji: string | null,
+	sizeClass: SizeClass,
+	largeFile: LargeFileInfo | null,
+	contentOmitted: boolean,
 };
 
 /**
@@ -558,6 +664,9 @@ export type ShortcutBinding = {
 
 /**  What the OS did with a configured binding. Serialized as the renderer's `GlobalCaptureStatus`. */
 export type ShortcutStatus = "unbound" | "registered" | "in_use" | "unsupported";
+
+/**  `NoteSizeClass`. */
+export type SizeClass = "note" | "large-file";
 
 /**  What the page needs to build its menu. */
 export type SpellResult = {

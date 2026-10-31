@@ -6,6 +6,7 @@ pub mod block_copy;
 pub mod block_markers;
 pub mod block_nesting;
 pub mod checklist_plain;
+pub mod cover_image;
 pub mod critic_markup;
 pub mod empty_lines;
 pub mod hard_breaks;

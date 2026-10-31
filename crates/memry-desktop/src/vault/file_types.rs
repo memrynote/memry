@@ -3,7 +3,8 @@
 
 use super::layout::{CANVAS_DIR, CANVAS_FILE_EXT};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, specta::Type)]
+#[serde(rename_all = "lowercase")]
 pub enum FileType {
     Markdown,
     Pdf,
@@ -14,6 +15,19 @@ pub enum FileType {
 
 impl FileType {
     /// The value stored in `note_files.file_type`.
+    /// The type a stored `note_files.file_type` names; `None` for a value a newer build wrote.
+    pub fn of_stored(stored: &str) -> Option<Self> {
+        [
+            Self::Markdown,
+            Self::Pdf,
+            Self::Image,
+            Self::Audio,
+            Self::Video,
+        ]
+        .into_iter()
+        .find(|kind| kind.as_str() == stored)
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             FileType::Markdown => "markdown",

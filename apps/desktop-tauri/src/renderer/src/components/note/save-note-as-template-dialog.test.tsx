@@ -14,10 +14,11 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
 }))
 vi.mock('@/lib/save-registry', () => ({ flushAllPendingSaves }))
+const getNote = vi.hoisted(() => vi.fn())
+vi.mock('../../../../generated/bindings', () => ({ commands: { notesGet: getNote } }))
 
 import { SaveNoteAsTemplateDialog } from './save-note-as-template-dialog'
 
-const getNote = vi.fn()
 const getProperties = vi.fn()
 const createTemplate = vi.fn()
 
@@ -40,7 +41,6 @@ beforeEach(() => {
     template: { id: 'tpl1', name: 'Weekly review' }
   })
   ;(window as unknown as { api: unknown }).api = {
-    notes: { get: getNote },
     properties: { get: getProperties },
     templates: { create: createTemplate }
   }

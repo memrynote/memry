@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
+
+const commands = vi.hoisted(() => ({
+  notesGet: vi.fn(),
+  notesGetFile: vi.fn(),
+  notesList: vi.fn()
+}))
+
+vi.mock('../../../generated/bindings', () => ({ commands }))
+
 import {
   notesService,
   onNoteCreated,
@@ -12,38 +21,68 @@ import {
   onFolderConfigUpdated
 } from './notes-service'
 
+const CREATED = Date.UTC(2026, 0, 2)
+const MODIFIED = Date.UTC(2026, 0, 3)
+
 describe('notes-service', () => {
   let api: any
 
   beforeEach(() => {
     api = createMockApi()
     ;(window as Window & { api: unknown }).api = api
+    for (const command of Object.values(commands)) command.mockReset()
   })
 
-  it('exposes note RPC methods directly from window.api.notes', () => {
-    expect(notesService.create).toBe(api.notes.create)
-    expect(notesService.get).toBe(api.notes.get)
-    expect(notesService.list).toBe(api.notes.list)
-    expect(notesService.uploadAttachment).toBe(api.notes.uploadAttachment)
-    expect(notesService.reorder).toBe(api.notes.reorder)
+  it('reads notes through the notes commands, with dates as Electron sends them', async () => {
+    commands.notesList.mockResolvedValue({
+      notes: [
+        {
+          id: 'note-1',
+          path: 'work/Plan.md',
+          title: 'Plan',
+          created: CREATED,
+          modified: MODIFIED,
+          tags: ['alpha'],
+          wordCount: null,
+          emoji: null,
+          localOnly: false,
+          fileType: 'markdown'
+        }
+      ],
+      total: 1,
+      hasMore: false
+    })
+    commands.notesGet.mockResolvedValue(null)
+    commands.notesGetFile.mockResolvedValue({
+      id: 'file-1',
+      path: 'scan.pdf',
+      absolutePath: '/vault/scan.pdf',
+      title: 'scan',
+      fileType: 'pdf',
+      mimeType: 'application/pdf',
+      fileSize: 3,
+      created: CREATED,
+      modified: MODIFIED
+    })
+
+    const page = await notesService.list({ folder: 'work', fields: 'tree' })
+    expect(commands.notesList).toHaveBeenCalledWith({ folder: 'work', fields: 'tree' })
+    expect(page.notes[0].created).toEqual(new Date(CREATED))
+    expect(page.notes[0].modified).toEqual(new Date(MODIFIED))
+    expect(await notesService.get('gone')).toBeNull()
+    expect((await notesService.getFile('file-1'))?.modified).toEqual(new Date(MODIFIED))
+    expect(api.notes.list).not.toHaveBeenCalled()
   })
 
-  it('forwards core note operations to window.api.notes', async () => {
+  it('forwards the methods later steps port to window.api.notes', async () => {
     const createResponse = { success: true, note: { id: 'note-1' } }
     api.notes.create = vi.fn().mockResolvedValue(createResponse)
-    api.notes.get = vi.fn().mockResolvedValue({ id: 'note-1' })
     api.notes.update = vi.fn().mockResolvedValue({ success: true })
     api.notes.rename = vi.fn().mockResolvedValue({ success: true })
-    api.notes.list = vi.fn().mockResolvedValue({ notes: [], total: 0, hasMore: false })
 
     const createInput = { title: 'New note', content: 'Hello' }
-    const createResult = await notesService.create(createInput)
+    expect(await notesService.create(createInput)).toEqual(createResponse)
     expect(api.notes.create).toHaveBeenCalledWith(createInput)
-    expect(createResult).toEqual(createResponse)
-
-    const getResult = await notesService.get('note-1')
-    expect(api.notes.get).toHaveBeenCalledWith('note-1')
-    expect(getResult).toEqual({ id: 'note-1' })
 
     const updateInput = { id: 'note-1', title: 'Updated' }
     await notesService.update(updateInput)
@@ -51,9 +90,6 @@ describe('notes-service', () => {
 
     await notesService.rename('note-1', 'Renamed')
     expect(api.notes.rename).toHaveBeenCalledWith('note-1', 'Renamed')
-
-    await notesService.list({ folder: 'projects', limit: 5 })
-    expect(api.notes.list).toHaveBeenCalledWith({ folder: 'projects', limit: 5 })
   })
 
   it('forwards attachments, export, and version helpers', async () => {
