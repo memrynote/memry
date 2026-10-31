@@ -4,6 +4,7 @@
 //! | -------------------------------------------------------- | --------------------------- |
 //! | a day file creates its day with the file's dates, once   | `newMarkdownFileId`, §1.9.1 |
 //! | a note claiming the file's place keeps it from the day   | a claimed id is kept        |
+//! | a claim the adopt's transaction sees decides, not before | claim or day, one decision  |
 //! | a day already here is the file's only when its text is   | named only on evidence      |
 //! | a day another file holds, a foreign holder, no such date | one file per day, §1.9.1    |
 //! | a deleted day comes back with its file only on evidence  | a revive shows its body     |
@@ -30,8 +31,8 @@ use memry_core::storage::Db;
 use memry_core::storage::repositories::sync_items;
 use memry_core::sync::body_debt;
 use note_identity_support::{
-    BORN, DEVICE, Embeds, NOW, TOUCHED, clear_outbox, create, give_body, give_row, give_row_hashes,
-    open, outbox, pulled_item, run, set_meta,
+    BORN, DEVICE, Embeds, NOW, TOUCHED, clear_outbox, create, deleted, give_body, give_row,
+    give_row_hashes, open, outbox, pulled, pulled_deleted, pulled_item, run, set_meta,
 };
 use rusqlite::params;
 use serde_json::{Value, json};
@@ -58,19 +59,27 @@ fn converter() -> Converter {
 }
 
 fn adopt(db: &Db, file: FileDay<'_>) -> Adopted {
-    let converter = converter();
+    adopt_reading(db, file, Some(&converter()))
+}
+
+/// [`adopt`], with the converter the tier built, or none when it built none.
+fn adopt_reading(db: &Db, file: FileDay<'_>, converter: Option<&Converter>) -> Adopted {
     db.call_blocking(|conn| {
         Ok(journal_day::adopt_day(
-            conn,
-            Some(&converter),
-            None,
-            &file,
-            DEVICE,
-            NOW,
+            conn, converter, None, &file, DEVICE, NOW,
         ))
     })
     .expect("a database call")
     .expect("an answer")
+}
+
+fn day_file_of(date: &'static str, path: &'static str) -> FileDay<'static> {
+    FileDay {
+        path,
+        date,
+        title: date,
+        ..day_file("A day.\n")
+    }
 }
 
 fn day_payload(db: &Db, id: &str) -> Value {
@@ -109,25 +118,73 @@ fn a_day_file_creates_its_day_with_the_files_dates_once() {
 }
 
 /// A live note in the journal folder titled with the day, which no row names (pulled before
-/// its file was written, or its row lost), claims the day's file: no day is minted for it.
+/// its file was written, or its row lost), claims the day's file as it claims a note's: the
+/// file is that note when the note's body is empty or the file's, and waits without a
+/// converter to tell. No day is minted for it.
 #[test]
 fn a_note_that_claims_the_files_place_keeps_it_from_the_day() {
     let db = open("day-claimed");
     create(&db, "n1", "2025-01-14", Some("journal"));
     clear_outbox(&db);
-    assert_eq!(adopt(&db, day_file("A day.\n")), UNDECIDED);
+    assert_eq!(adopt_reading(&db, day_file("A day.\n"), None), UNDECIDED);
+    assert_eq!(
+        adopt(&db, day_file("A day.\n")),
+        Adopted::Existing("n1".to_owned())
+    );
     assert_eq!(entry(&db, "2025-01-14"), None);
     assert!(outbox(&db).is_empty());
 
     // Another folder's note of that title claims nothing here.
     create(&db, "n2", "2025-01-15", Some("notes"));
-    let elsewhere = FileDay {
-        path: "journal/2025-01-15.md",
-        date: "2025-01-15",
-        title: "2025-01-15",
-        ..day_file("x")
-    };
+    let elsewhere = day_file_of("2025-01-15", "journal/2025-01-15.md");
     assert_eq!(adopt(&db, elsewhere), created("j2025-01-15"));
+}
+
+/// A note another device pushed, titled `title` in `folder`, with an empty body.
+fn note_record(title: &str, folder: &str, clock: u64) -> Value {
+    json!({
+        "title": title,
+        "content": "",
+        "fileType": "markdown",
+        "folderPath": folder,
+        "clock": {"device-b": clock},
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "modifiedAt": "2025-01-02T00:00:00.000Z",
+    })
+}
+
+/// The tier reads whether a note may claim the file (`has_unfiled_note`) before it adopts, and
+/// a pull can land between the two: the adopt's own transaction decides claim or day. A
+/// claimant a pull renamed or deleted after the read leaves the file its day, never a note
+/// id; one pulled in after a read that found none, so the tier built no converter, makes the
+/// file wait, never a day beside the note.
+#[test]
+fn a_claim_the_adopts_transaction_sees_decides_not_one_read_before() {
+    let db = open("day-claim-between");
+    let may_be_a_note = |date: &str| {
+        run(&db, |conn| {
+            identity::has_unfiled_note(conn, date, Some("journal"))
+        })
+    };
+
+    pulled(&db, "renamed", &note_record("2025-01-16", "journal", 1));
+    assert!(may_be_a_note("2025-01-16"));
+    pulled(&db, "renamed", &note_record("Plans", "journal", 2));
+    let file = day_file_of("2025-01-16", "journal/2025-01-16.md");
+    assert_eq!(adopt(&db, file), created("j2025-01-16"));
+
+    pulled(&db, "gone", &note_record("2025-01-18", "journal", 1));
+    assert!(may_be_a_note("2025-01-18"));
+    pulled_deleted(&db, "note", "gone");
+    assert!(deleted(&db, "gone"));
+    let file = day_file_of("2025-01-18", "journal/2025-01-18.md");
+    assert_eq!(adopt(&db, file), created("j2025-01-18"));
+
+    assert!(!may_be_a_note("2025-01-17"));
+    pulled(&db, "arrived", &note_record("2025-01-17", "journal", 1));
+    let file = day_file_of("2025-01-17", "journal/2025-01-17.md");
+    assert_eq!(adopt_reading(&db, file, None), UNDECIDED);
+    assert_eq!(entry(&db, "2025-01-17"), None);
 }
 
 #[test]

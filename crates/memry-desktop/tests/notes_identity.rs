@@ -624,7 +624,9 @@ fn a_crash_between_the_create_and_the_row_seeds_the_same_note_once() {
 }
 
 /// A live note no row names, in the journal folder and titled with a day, claims that day's
-/// file (`claimed`, `vault/watcher.ts`): the file is the note, and no day is minted for it.
+/// file (`claimed`, `vault/watcher.ts`): the file is the note, and no day is minted for it. The
+/// core decides it in the day's transaction, reading the note's body with the converter the
+/// tier built because a note may claim the file.
 #[test]
 fn a_note_that_claims_a_day_files_place_keeps_it() {
     let mut e = notes_env();

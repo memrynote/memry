@@ -26,7 +26,9 @@
 //!   without `.md`, parses in the journal date format (`extractDateFromPath`,
 //!   `database/queries/notes/journal-queries.ts`), unless a live note no row names already
 //!   has its folder and title: that note claims it, as Electron keeps a claimed id
-//!   (`vault/watcher.ts`). Any other file is a note, one under the journal folder included
+//!   (`vault/watcher.ts`). The core decides claim or day in one transaction, so a pull that
+//!   removes or adds the note meanwhile never gives a day's path a note id or a second id.
+//!   Any other file is a note, one under the journal folder included
 //!   (`newMarkdownFileId`). Which day a path names is `JournalDays`'s
 //!   (`vault::journal_format`), from the vault config read at every ask: a config changed
 //!   while the vault is open applies to the next file event.
@@ -313,11 +315,11 @@ impl NoteIdentity for NotesIdentity {
         let created_ms = created_ms(&ctx.root.join(file.path)).unwrap_or(file.modified_ms);
         let electron_db_beside = ctx.root.join(".memry").join("data.db").is_file();
         let (folder_path, title) = place(file.path);
-        // A note that claims the file's place keeps it, a day's path too (`claimed`,
-        // `vault/watcher.ts`): the file is that note or waits, never a second id for it.
-        let claimed = writer.may_be_a_note(title, folder_path)?;
+        // Whether a reader is built only: the core decides in its transaction whether a note
+        // claims a day's path. A note pulled in after this read makes the day file wait.
+        let may_be_a_note = writer.may_be_a_note(title, folder_path)?;
         let adopted = match journal.day_of(file.path) {
-            Some(date) if !claimed => {
+            Some(date) => {
                 let day = FileDay {
                     path: file.path,
                     date: &date,
@@ -328,7 +330,7 @@ impl NoteIdentity for NotesIdentity {
                     modified_ms: file.modified_ms,
                     electron_db_beside,
                 };
-                let reader = if writer.may_be_a_day(&date)? {
+                let reader = if may_be_a_note || writer.may_be_a_day(&date)? {
                     Some(self.reader(ctx, file.path, body)?)
                 } else {
                     None
@@ -336,7 +338,7 @@ impl NoteIdentity for NotesIdentity {
                 let (converter, embeds) = parts(reader.as_ref());
                 writer.adopt_day(day, converter, embeds)
             }
-            _ => {
+            None => {
                 let note = FileNote {
                     path: file.path,
                     title,
@@ -346,7 +348,7 @@ impl NoteIdentity for NotesIdentity {
                     modified_ms: file.modified_ms,
                     electron_db_beside,
                 };
-                let reader = if claimed {
+                let reader = if may_be_a_note {
                     Some(self.reader(ctx, file.path, body)?)
                 } else {
                     None

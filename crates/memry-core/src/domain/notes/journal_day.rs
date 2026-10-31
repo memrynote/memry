@@ -9,8 +9,10 @@
 //! evidence; otherwise the answer is [`Adopted::Deferred`], and the next open asks again:
 //!
 //! - a live note no row names with the file's folder and title claims the file, as Electron
-//!   keeps a claimed id (`vault/watcher.ts`): the file is that note's to [`super::identity`],
-//!   and here it defers, so one file never gets a second id;
+//!   keeps a claimed id (`vault/watcher.ts`): the file is that note when its body is empty or
+//!   already the file's text, and defers otherwise, as [`super::identity::adopt`] decides. The
+//!   claim is decided in the same transaction as the day, so a pull that removes or adds the
+//!   note meanwhile never gives the file a second id, nor a note id for a day;
 //! - an entry for the day that no row names is the file's when its body is empty or already
 //!   the file's text: a day pulled before its file was written, or one a crash left between
 //!   its create and its row. One whose body says something else, is owed a pull, or is not one
@@ -38,7 +40,7 @@
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use super::identity::{
-    Adopted, Deferral, Evidence, body_says, has_unfiled_note, mints_beside_electron,
+    Adopted, Deferral, Evidence, body_says, claimed, mints_beside_electron, unfiled_notes,
 };
 use super::{failed, iso};
 use crate::api::errors::StorageError;
@@ -76,9 +78,10 @@ pub fn has_day_entry(conn: &Connection, date: &str) -> Result<bool, StorageError
     Ok(journal::valid_date(date).is_ok() && journal::entry_for(conn, date)?.is_some())
 }
 
-/// The day of a file no row names. One transaction, so a second file naming the same day,
-/// asked right after, sees the entry this one created. `converter` reads the body of an entry
-/// already there; without one such an entry defers. `embeds` must not read this database.
+/// The record of a file no row names whose path names a day: the note that claims it, or the
+/// day. One transaction, so a second file naming the same day, asked right after, sees the
+/// entry this one created. `converter` reads the body of a claiming note or of an entry
+/// already there; without one either defers. `embeds` must not read this database.
 pub fn adopt_day(
     conn: &Connection,
     converter: Option<&Converter>,
@@ -87,14 +90,16 @@ pub fn adopt_day(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Adopted, CrdtError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let claimants = unfiled_notes(&tx, file.title, file.folder_path)?;
+    if !claimants.is_empty() {
+        let text = (file.path, file.body);
+        return claimed(&tx, converter, embeds, text, claimants, device_id);
+    }
     let Ok(date) = journal::valid_date(file.date) else {
         return Ok(UNDECIDED);
     };
     let id = journal::document_id_for(date)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
-    if has_unfiled_note(&tx, file.title, file.folder_path)? {
-        return Ok(UNDECIDED);
-    }
     match journal::entry_for(&tx, date)? {
         None => {}
         Some((held, _)) if held != id => return Ok(UNDECIDED),

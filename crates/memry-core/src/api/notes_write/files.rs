@@ -78,7 +78,11 @@ impl NotesWriter {
             .map_err(CrdtError::from)?
     }
 
-    /// The day of the journal record `id`, live or deleted; `None` for a note.
+    /// The day of the journal record `id`, live or deleted; `None` for a note: what the record
+    /// is, wherever its file is, which a move compares with the day of the new path. The
+    /// write-back reads [`journal_day::file_date`] instead
+    /// (`WriteBackReader::file_date`), the day the record's file is: `None` also for a deleted
+    /// day and for a day owed a move of its file.
     pub fn journal_date(&self, id: &str) -> Result<Option<String>, StorageError> {
         self.db
             .read_blocking(move |conn| journal::date_of(conn, id))

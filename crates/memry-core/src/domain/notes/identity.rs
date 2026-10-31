@@ -170,7 +170,8 @@ pub fn record_origin(conn: &Connection, origin: Origin) -> Result<(), StorageErr
     .map_err(failed)
 }
 
-/// Whether a note may be this file ([`adopt`] then needs a converter).
+/// Whether a note may be this file: [`adopt`], or [`super::journal_day::adopt_day`] for a
+/// day's path, then needs a converter.
 pub fn has_unfiled_note(
     conn: &Connection,
     title: &str,
@@ -198,22 +199,8 @@ pub fn adopt(
     let tx = conn.unchecked_transaction().map_err(failed)?;
     let candidates = unfiled_notes(&tx, file.title, file.folder_path)?;
     if !candidates.is_empty() {
-        let Some(converter) = converter else {
-            return Ok(Adopted::Deferred(Deferral::Undecided));
-        };
-        // The oldest note whose body is the file's, unless one may be and cannot say.
-        let mut same = None;
-        for id in candidates {
-            let text = (file.path, file.body);
-            match body_says(&tx, converter, embeds, ITEM_TYPE, &id, text, device_id)? {
-                Evidence::Same => {
-                    same.get_or_insert(id);
-                }
-                Evidence::Unknown => return Ok(Adopted::Deferred(Deferral::Undecided)),
-                Evidence::Other => {}
-            }
-        }
-        return Ok(same.map_or(Adopted::Deferred(Deferral::Undecided), Adopted::Existing));
+        let text = (file.path, file.body);
+        return claimed(&tx, converter, embeds, text, candidates, device_id);
     }
     if file.electron_db_beside && !mints_beside_electron(&tx)? {
         return Ok(Adopted::Deferred(Deferral::ElectronNotImported));
@@ -242,9 +229,45 @@ pub fn adopt(
     Ok(Adopted::Created(new_id.to_owned()))
 }
 
+/// The note among `candidates`, live notes no row names with the file's folder
+/// and title ([`unfiled_notes`]), that the file at `path` whose markdown below
+/// its frontmatter is `body` is: the oldest whose body is the file's, unless one
+/// may be and cannot say. Never a new id: when none is, the file defers.
+pub(super) fn claimed(
+    tx: &Connection,
+    converter: Option<&Converter>,
+    embeds: Option<&dyn EmbedResolver>,
+    (path, body): (&str, &str),
+    candidates: Vec<String>,
+    device_id: &str,
+) -> Result<Adopted, CrdtError> {
+    let Some(converter) = converter else {
+        return Ok(Adopted::Deferred(Deferral::Undecided));
+    };
+    let mut same = None;
+    for id in candidates {
+        match body_says(
+            tx,
+            converter,
+            embeds,
+            ITEM_TYPE,
+            &id,
+            (path, body),
+            device_id,
+        )? {
+            Evidence::Same => {
+                same.get_or_insert(id);
+            }
+            Evidence::Unknown => return Ok(Adopted::Deferred(Deferral::Undecided)),
+            Evidence::Other => {}
+        }
+    }
+    Ok(same.map_or(Adopted::Deferred(Deferral::Undecided), Adopted::Existing))
+}
+
 /// The live markdown notes with this folder and title, exactly, that no
 /// `note_files` row names, oldest first.
-fn unfiled_notes(
+pub(super) fn unfiled_notes(
     conn: &Connection,
     title: &str,
     folder_path: Option<&str>,
