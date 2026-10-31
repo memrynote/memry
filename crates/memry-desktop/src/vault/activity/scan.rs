@@ -115,6 +115,15 @@ impl ActivityLog {
             }
             record(input);
         }
+        // The summarized ones hold their keys too, so the walk's retry of one is no news.
+        self.claim(
+            root,
+            scan.failed
+                .iter()
+                .skip(PER_FILE_FAILED)
+                .map(|failure| failure_key(failure.reason, &failure.path)),
+            UNREADABLE_REPORT_MS,
+        );
 
         let candidates: Vec<String> = scan
             .unsupported

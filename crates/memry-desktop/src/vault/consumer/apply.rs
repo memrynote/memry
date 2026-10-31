@@ -16,7 +16,7 @@ use super::converter_for;
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
-use crate::vault::activity::{ActivityLog, ScanActivity};
+use crate::vault::activity::{ActivityLog, ScanActivity, failure_key};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
@@ -462,7 +462,13 @@ impl Applier {
             return Ok(None);
         }
         match read_note(&self.root, path) {
-            Ok(Some(file)) => Ok(Some(file)),
+            Ok(Some(file)) => {
+                // A file that read again is reported the next time it does not, inside the
+                // hour too.
+                self.activity
+                    .release(&self.root, &failure_key("read-failed", path));
+                Ok(Some(file))
+            }
             Ok(None) => Err(Unread::Missing),
             Err(error) => {
                 tracing::warn!(scope = SCOPE, "a vault file could not be read: {error}");

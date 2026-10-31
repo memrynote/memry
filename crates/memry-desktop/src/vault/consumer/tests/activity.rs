@@ -176,3 +176,55 @@ fn a_file_the_walk_and_the_watcher_both_find_unreadable_is_one_entry() {
         assert_eq!(failed.len(), 1, "walk first: {walk_first}");
     }
 }
+
+fn failed(f: &Fixture) -> usize {
+    listed(f)
+        .into_iter()
+        .filter(|(kind, ..)| *kind == ActivityKind::Failed)
+        .count()
+}
+
+fn unreadable(f: &Fixture, path: &str) {
+    f.applier.apply(VaultEvent::Unreadable {
+        path: path.into(),
+        reason: "EACCES".into(),
+    });
+}
+
+/// Past the fifty it lists, the walk's summarized failures hold their keys too: the watcher's
+/// report of one, the retry's, is no second entry.
+#[test]
+fn a_summarized_failure_the_watcher_reports_again_is_no_news() {
+    let f = fixture();
+    f.applier.activity.open(&f.root);
+    let paths: Vec<_> = (0..55).map(|n| format!("f{n}.md")).collect();
+    let mut scan = ScanActivity::default();
+    for path in &paths {
+        scan.fail(path, "read-failed", Some("EACCES".into()));
+    }
+    f.applier.report_scan(&scan);
+    for path in &paths {
+        unreadable(&f, path);
+    }
+    assert_eq!(failed(&f), 50);
+    let summaries = listed(&f)
+        .into_iter()
+        .filter(|(kind, ..)| *kind == ActivityKind::Scan)
+        .count();
+    assert_eq!(summaries, 1);
+}
+
+/// A file that read again is reported the next time it cannot be read, inside the window too.
+#[test]
+fn a_file_that_read_again_is_reported_when_it_fails_again() {
+    let f = fixture();
+    f.applier.activity.open(&f.root);
+    unreadable(&f, "a.md");
+    unreadable(&f, "a.md");
+    assert_eq!(failed(&f), 1);
+    f.write("a.md", "x\n");
+    f.added("a.md");
+    unreadable(&f, "a.md");
+    unreadable(&f, "a.md");
+    assert_eq!(failed(&f), 2);
+}

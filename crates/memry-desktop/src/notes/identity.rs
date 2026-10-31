@@ -274,9 +274,10 @@ fn electron_db_beside(root: &Path) -> bool {
 }
 
 impl NoteIdentity for NotesIdentity {
-    /// An Electron vault whose notes were not imported: every file of it defers
-    /// ([`Deferral::ElectronNotImported`]), by the core's rule. One whose answer cannot be read is
-    /// left too, as the file asks then fail.
+    /// An Electron vault whose notes were not imported: by the core's rule, a file of it that
+    /// matches no note the core has defers ([`Deferral::ElectronNotImported`]) instead of
+    /// getting a new id. One whose answer cannot be read is left too, as the file asks then
+    /// fail.
     fn leaves_vault(&self, ctx: &IdentityCtx<'_>) -> bool {
         if !electron_db_beside(ctx.root) {
             return false;

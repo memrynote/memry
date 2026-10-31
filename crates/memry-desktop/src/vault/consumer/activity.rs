@@ -10,8 +10,8 @@ use crate::vault::activity::{
 use crate::vault::watch::VaultEvent;
 
 impl Applier {
-    /// A fact that changes no row. A vault the identity leaves as it is gets no entry: only
-    /// these and the walk's can come of one, since none of its files has or gets a row.
+    /// A fact that changes no row. A vault the identity leaves as it is gets none of these
+    /// entries, nor the walk's: they name files that have no note.
     pub(super) fn report(&self, event: &VaultEvent) {
         let (path, unreadable) = match event {
             VaultEvent::Unsupported { path } => (path, None),

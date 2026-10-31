@@ -86,9 +86,10 @@ pub trait NoteIdentity: Send + Sync {
         true
     }
 
-    /// Whether the vault's files, its activity log included, are left as they are: none of its
-    /// files is ever named a note while this holds (an Electron vault this app did not import).
-    /// The open walk records nothing in its activity log then.
+    /// Whether the vault is one this app does not index yet (an Electron vault it did not
+    /// import): no file of it gets a new note id while this holds, though one may still be
+    /// matched to a note the core already has. Its activity log is left as it is: neither the
+    /// walk nor the watcher's unsupported or unreadable files are recorded in it.
     fn leaves_vault(&self, _ctx: &IdentityCtx<'_>) -> bool {
         false
     }
