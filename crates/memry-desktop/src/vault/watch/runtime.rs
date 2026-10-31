@@ -13,6 +13,8 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+#[cfg(test)]
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, SyncSender, TrySendError, sync_channel};
 use std::thread::JoinHandle;
@@ -53,7 +55,13 @@ pub struct VaultWatcher {
     gate: Gate,
     handle: WatchHandle,
     thread: Option<JoinHandle<()>>,
+    /// The first OS watch's [`OsWatch::stop_hold`].
+    #[cfg(test)]
+    os_stop_hold: Arc<Mutex<Option<HoldFn>>>,
 }
+
+#[cfg(test)]
+type HoldFn = Box<dyn FnOnce() + Send>;
 
 impl VaultWatcher {
     /// Starts watching `root`. The OS watcher is set up before this returns, so a failure
@@ -100,6 +108,8 @@ impl VaultWatcher {
         let (tx, rx) = sync_channel(CHANNEL_CAPACITY);
         let overflow = Arc::new(AtomicBool::new(false));
         let watcher = watch(&root, &tx, &overflow)?;
+        #[cfg(test)]
+        let os_stop_hold = watcher.stop_hold.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let gate = Gate::open();
         let sink = gate.wrap(sink);
@@ -126,6 +136,8 @@ impl VaultWatcher {
             gate,
             handle,
             thread: Some(thread),
+            #[cfg(test)]
+            os_stop_hold,
         })
     }
 
@@ -133,10 +145,17 @@ impl VaultWatcher {
         self.handle.clone()
     }
 
+    /// Runs `then` where the OS watch stops, before it stops: a backend whose stop is slow.
+    #[cfg(test)]
+    pub(crate) fn hold_os_stop(&self, then: HoldFn) {
+        *self.os_stop_hold.lock().unwrap_or_else(|e| e.into_inner()) = Some(then);
+    }
+
     /// Stops the worker and waits for it. No event leaves from the moment this is called
     /// (`Gate`). The worker looks at the flag every tick, between the files of a batch and
     /// between the steps of a rescan; the walk of the vault or of a new folder cannot be
     /// interrupted (it is bounded by the walk caps), so the join can take as long as one walk.
+    /// The OS watch stops after this returns, on its own thread ([`OsWatch`]).
     pub fn stop(&mut self) {
         self.gate.close();
         self.stop.store(true, Ordering::Relaxed);
@@ -161,11 +180,53 @@ impl Drop for VaultWatcher {
     }
 }
 
-fn watch(
-    root: &Path,
-    tx: &SyncSender<Msg>,
-    overflow: &Arc<AtomicBool>,
-) -> notify::Result<RecommendedWatcher> {
+/// The OS watch, held so the OS keeps delivering. Dropping it stops it on a thread of its own:
+/// a backend's stop can wait on the OS for seconds (notify's FSEvents stop joins a run loop
+/// blocked in fseventsd calls, #3784), and a vault close waits for the worker that holds the
+/// watch, so it would keep every handle on the vault until then and the reopen would find the
+/// vault held. The watch holds nothing of the vault: its callback only queues into the worker's
+/// channel, which drops whatever arrives once the worker is gone.
+struct OsWatch {
+    /// Taken by the drop.
+    watcher: Option<RecommendedWatcher>,
+    /// Where a test holds the stop, as a slow backend does: notify's own stop cannot be made
+    /// slow on purpose, so a test runs its closure right before it.
+    #[cfg(test)]
+    stop_hold: Arc<Mutex<Option<HoldFn>>>,
+}
+
+impl Drop for OsWatch {
+    fn drop(&mut self) {
+        let Some(watcher) = self.watcher.take() else {
+            return;
+        };
+        #[cfg(test)]
+        let hold = self
+            .stop_hold
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        let stop = move || {
+            #[cfg(test)]
+            if let Some(hold) = hold {
+                hold();
+            }
+            drop(watcher);
+        };
+        if let Err(error) = std::thread::Builder::new()
+            .name("vault-watch-stop".into())
+            .spawn(stop)
+        {
+            // The watch went down with the closure, on this thread.
+            tracing::warn!(
+                scope = "vault_watch",
+                "the OS watch stopped on the closing thread: {error}"
+            );
+        }
+    }
+}
+
+fn watch(root: &Path, tx: &SyncSender<Msg>, overflow: &Arc<AtomicBool>) -> notify::Result<OsWatch> {
     let (tx, overflow) = (tx.clone(), overflow.clone());
     let mut watcher = notify::recommended_watcher(move |result: notify::Result<notify::Event>| {
         let msg = match result {
@@ -181,7 +242,11 @@ fn watch(
         }
     })?;
     watcher.watch(root, RecursiveMode::Recursive)?;
-    Ok(watcher)
+    Ok(OsWatch {
+        watcher: Some(watcher),
+        #[cfg(test)]
+        stop_hold: Arc::default(),
+    })
 }
 
 fn error_kind(kind: &notify::ErrorKind) -> &'static str {
@@ -206,8 +271,8 @@ struct Worker {
     /// Set by [`WatchHandle::resync`].
     resync: Arc<AtomicBool>,
     stop: Arc<AtomicBool>,
-    /// Held so the OS keeps delivering; replaced when the vault returns.
-    watcher: Option<RecommendedWatcher>,
+    /// Replaced when the vault returns.
+    watcher: Option<OsWatch>,
     net: SafetyNet,
     last_error: Option<Instant>,
 }
