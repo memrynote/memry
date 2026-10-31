@@ -51,7 +51,8 @@ export interface SerializeParsedOptions {
  * file's dominant EOL and the file's final-newline presence re-applied
  * (per-line EOL preservation is out of scope by design). The blank lines the
  * file had between its frontmatter block and its body are kept as they were:
- * an edited body comes back from the editor without them.
+ * an edited body comes back from the editor without them. A block that ends
+ * the file gets the file's line end before a body (`joinBlockAndBody`).
  */
 export function serializeParsedMarkdownNote(
   parsed: Pick<
@@ -66,14 +67,25 @@ export function serializeParsedMarkdownNote(
     : (parsed.rawFrontmatterBlock ?? '')
 
   if (content === parsed.content) {
-    return block + content
+    return joinBlockAndBody(block, content, parsed.eol)
   }
 
   let body = stripTrailingNewlines(content.replace(/\r?\n/g, parsed.eol))
   if (parsed.hadTrailingNewline) body += parsed.eol
   if (block === '') return body
   const separator = /^(?:\r?\n)*/.exec(parsed.content)![0]
-  return block + separator + body.replace(/^(?:\r?\n)+/, '')
+  return joinBlockAndBody(block, separator + body.replace(/^(?:\r?\n)+/, ''), parsed.eol)
+}
+
+/**
+ * The block, then the body. A block that ended its file has no line end after
+ * its closing fence; the file's line end goes there before a body, or the fence
+ * runs into the body and the whole block reads back as body text (#3800).
+ */
+function joinBlockAndBody(block: string, body: string, eol: Eol): string {
+  if (block === '' || body === '' || block.endsWith('\n')) return block + body
+  // A fence line that ends in a lone `\r` takes the `\n` that makes it a line end.
+  return block + (block.endsWith('\r') ? '\n' : eol) + body
 }
 
 /** Linear-time trailing-newline strip (no backtracking-prone regex). */

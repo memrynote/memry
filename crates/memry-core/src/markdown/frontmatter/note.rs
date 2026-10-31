@@ -186,7 +186,8 @@ fn entries_of(value: &YamlValue) -> YamlMap {
 }
 
 /// Serialize an existing note back to file content. Unedited parts stay
-/// byte-identical; see the TypeScript for the edited-body rules.
+/// byte-identical; see the TypeScript for the edited-body rules. A block that
+/// ends the file takes the file's line end before a body (`join`).
 pub fn serialize_parsed_markdown_note(
     parsed: &ParsedMarkdownNote,
     content: &str,
@@ -198,7 +199,7 @@ pub fn serialize_parsed_markdown_note(
         parsed.raw_frontmatter_block.clone().unwrap_or_default()
     };
     if content == parsed.content {
-        return Ok(block + content);
+        return Ok(join(block, content, parsed.eol));
     }
     let mut body = strip_trailing_newlines(&convert_newlines(content, parsed.eol)).to_owned();
     if parsed.had_trailing_newline {
@@ -209,7 +210,23 @@ pub fn serialize_parsed_markdown_note(
     }
     let separator = &parsed.content[..leading_newlines(&parsed.content)];
     let trimmed = &body[leading_newlines(&body)..];
-    Ok(format!("{block}{separator}{trimmed}"))
+    Ok(join(block, &format!("{separator}{trimmed}"), parsed.eol))
+}
+
+/// The block, then the body. A block that ended its file has no line end after its closing
+/// fence; the file's line end goes there before a body, or the fence runs into the body and
+/// the whole block reads back as body text (#3800).
+fn join(mut block: String, body: &str, eol: Eol) -> String {
+    if !block.is_empty() && !body.is_empty() && !block.ends_with('\n') {
+        // A fence line that ends in a lone `\r` takes the `\n` that makes it a line end.
+        block.push_str(if block.ends_with('\r') {
+            "\n"
+        } else {
+            eol.as_str()
+        });
+    }
+    block.push_str(body);
+    block
 }
 
 /// Obsidian-style emitter for the EDITED-frontmatter path. No keys, no block.
@@ -260,5 +277,28 @@ pub fn write_markdown_note(frontmatter: &YamlMap, content: &str) -> Result<Strin
         Ok(block)
     } else {
         Ok(format!("{block}{body}\n"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The verbatim path joins as the edited-body path does (the `block-at-eof-*` cases of
+    /// `markdown-convert/frontmatter.json`), for a block that ends without a line end ahead of
+    /// a body no parse of a file gives it (#3800).
+    #[test]
+    fn the_verbatim_path_puts_a_line_end_after_the_fence() {
+        let parsed = ParsedMarkdownNote {
+            frontmatter: YamlValue::map(YamlMap::new()),
+            content: "kept\n".to_owned(),
+            raw_frontmatter_block: Some("---\r\nmood: ok\r\n---".to_owned()),
+            eol: Eol::CrLf,
+            had_trailing_newline: true,
+        };
+        assert_eq!(
+            serialize_parsed_markdown_note(&parsed, "kept\n", false).unwrap(),
+            "---\r\nmood: ok\r\n---\r\nkept\n"
+        );
     }
 }

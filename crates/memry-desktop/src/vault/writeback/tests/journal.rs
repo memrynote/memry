@@ -152,6 +152,23 @@ fn a_day_without_a_date_gets_one_with_its_next_body_write_only() {
     );
 }
 
+/// A day whose block ends its file, with no line end after the closing fence, keeps the fence
+/// through the body write that sets its date: the line end goes after the fence (#3800).
+#[test]
+fn a_day_whose_block_ends_the_file_keeps_its_fence_with_its_date() {
+    let rel = "journal/2025-01-01.md";
+    let mut f = fixture();
+    let id = f.adopt_day(rel, "2025-01-01", "---\nmood: ok\n---");
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    f.paragraph_from_sync(&id, "from the other device");
+    let outcome = f.run(&id);
+    let file = assert_wrote(&mut f, &outcome, rel);
+    assert_eq!(
+        file,
+        "---\nmood: ok\ndate: '2025-01-01'\n---\nfrom the other device"
+    );
+}
+
 fn dated(raw: &str) -> Dated {
     dated_block(&parse_markdown_note(raw).unwrap(), raw, "2025-01-20")
 }
