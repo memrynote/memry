@@ -11,11 +11,12 @@ use memry_core::domain::app_settings::AppSettings;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of_yaml};
 
+use super::activity::report_unread;
 use super::converter_for;
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
-use crate::vault::activity::{ActivityLog, ActivitySource};
+use crate::vault::activity::{ActivityLog, ScanActivity};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
@@ -90,21 +91,14 @@ impl Applier {
                 size,
                 modified_ms,
                 ..
-            } => self.found(
-                &mut lane,
-                &path,
-                file_type,
-                size,
-                modified_ms,
-                ActivitySource::Watcher,
-            ),
+            } => self.found(&mut lane, &path, file_type, size, modified_ms, None),
             VaultEvent::Changed {
                 note_id,
                 path,
                 size,
                 modified_ms,
                 ..
-            } => self.changed(&mut lane, &note_id, &path, size, modified_ms),
+            } => self.changed(&mut lane, &note_id, &path, size, modified_ms, None),
             VaultEvent::Removed { note_id, path } => {
                 self.removed(&mut lane, &note_id, &path);
                 Step::Done
@@ -132,8 +126,14 @@ impl Applier {
     /// is not read again, as the rescan does: reading every file costs a vault-sized read. A
     /// markdown row is, unless both its hashes name the same bytes: one without a content hash
     /// (its text never reached the note), and one whose file hash is missing or names other
-    /// bytes (a row an older build wrote, or one salvaged), which the read mends.
-    pub(super) fn walked(&self, path: &str, meta: &std::fs::Metadata) -> Step {
+    /// bytes (a row an older build wrote, or one salvaged), which the read mends. What the
+    /// activity log is told goes into `scan`.
+    pub(super) fn walked(
+        &self,
+        path: &str,
+        meta: &std::fs::Metadata,
+        scan: &mut ScanActivity,
+    ) -> Step {
         let Some(file_type) = file_type_of_extension(&extension(path)) else {
             return Step::Done;
         };
@@ -141,25 +141,20 @@ impl Applier {
             return Step::Done;
         };
         let modified = modified_ms(meta);
-        if let Ok(Some(row)) = lane.row_at(path)
-            && row.file_size == i64::try_from(meta.len()).ok()
-            && modified <= row.indexed_at
-            && (file_type != FileType::Markdown
-                || (row.content_hash.is_some() && row.file_hash == row.content_hash))
-        {
-            return Step::Done;
+        if let Ok(Some(row)) = lane.row_at(path) {
+            scan.known += 1;
+            if row.file_size == i64::try_from(meta.len()).ok()
+                && modified <= row.indexed_at
+                && (file_type != FileType::Markdown
+                    || (row.content_hash.is_some() && row.file_hash == row.content_hash))
+            {
+                return Step::Done;
+            }
         }
-        self.found(
-            &mut lane,
-            path,
-            file_type,
-            meta.len(),
-            modified,
-            ActivitySource::Scan,
-        )
+        self.found(&mut lane, path, file_type, meta.len(), modified, Some(scan))
     }
 
-    fn ctx(&self) -> IdentityCtx<'_> {
+    pub(super) fn ctx(&self) -> IdentityCtx<'_> {
         IdentityCtx {
             root: &self.root,
             vault: &self.vault,
@@ -167,7 +162,7 @@ impl Applier {
     }
 
     /// A file at `path`. A row there makes it a change of that row's note; otherwise the
-    /// identity names its note.
+    /// identity names its note. `scan` is the open walk's, `None` for a watcher's fact.
     fn found(
         &self,
         lane: &mut Lane<'_>,
@@ -175,10 +170,12 @@ impl Applier {
         file_type: FileType,
         size: u64,
         modified_ms: i64,
-        origin: ActivitySource,
+        scan: Option<&mut ScanActivity>,
     ) -> Step {
         match lane.row_at(path) {
-            Ok(Some(row)) => return self.changed(lane, &row.note_id, path, size, modified_ms),
+            Ok(Some(row)) => {
+                return self.changed(lane, &row.note_id, path, size, modified_ms, scan);
+            }
             Ok(None) => {}
             Err(error) => {
                 tracing::error!(scope = SCOPE, "note_files could not be read: {error}");
@@ -199,7 +196,11 @@ impl Applier {
         }
         let file = match self.read(path, file_type) {
             Ok(file) => file,
-            Err(Unread::Missing | Unread::Failed { .. }) => return Step::Retry(path.to_owned()),
+            Err(Unread::Missing) => return Step::Retry(path.to_owned()),
+            Err(Unread::Failed { failure, .. }) => {
+                report_unread(scan, path, failure);
+                return Step::Retry(path.to_owned());
+            }
         };
         let candidate = Candidate {
             path,
@@ -245,7 +246,7 @@ impl Applier {
             path: path.to_owned(),
             created,
         });
-        self.report_found(path, origin, created);
+        self.report_found(path, created, scan);
         Step::Done
     }
 
@@ -257,6 +258,7 @@ impl Applier {
         path: &str,
         size: u64,
         modified_ms: i64,
+        scan: Option<&mut ScanActivity>,
     ) -> Step {
         let Some(file_type) = file_type_of_extension(&extension(path)) else {
             return Step::Done;
@@ -278,7 +280,8 @@ impl Applier {
                 Ok(Some(file)) => file,
                 Ok(None) => return Step::Done,
                 Err(Unread::Missing) => return Step::Retry(path.to_owned()),
-                Err(Unread::Failed { file_hash }) => {
+                Err(Unread::Failed { file_hash, failure }) => {
+                    report_unread(scan, path, failure);
                     record_file_hash(
                         lane,
                         note_id,
@@ -464,14 +467,18 @@ impl Applier {
             Err(error) => {
                 tracing::warn!(scope = SCOPE, "a vault file could not be read: {error}");
                 // The hash the watcher pairs a move of such a file on: Electron's, streamed.
-                // A read that failed knows no bytes.
-                let file_hash = match error {
+                // A read that failed knows no bytes, and is the only one Electron, which reads
+                // any file as text, reports as `read-failed`: the open or the read itself.
+                let (file_hash, failure) = match error {
                     NoteFileError::NotUtf8 | NoteFileError::TooLarge => {
-                        hash_file(&self.root, path).ok().flatten()
+                        (hash_file(&self.root, path).ok().flatten(), None)
                     }
-                    _ => None,
+                    NoteFileError::Open(_) | NoteFileError::Io(_) => {
+                        (None, Some(error.to_string()))
+                    }
+                    _ => (None, None),
                 };
-                Err(Unread::Failed { file_hash })
+                Err(Unread::Failed { file_hash, failure })
             }
         }
     }
@@ -532,7 +539,11 @@ enum Unread {
     Missing,
     /// It is there and was not read, and is retried. `file_hash` is its bytes' hash when this
     /// build reads them only as bytes (not UTF-8, past the note size cap), else `None`.
-    Failed { file_hash: Option<String> },
+    /// `failure` is the read's error when the read itself failed.
+    Failed {
+        file_hash: Option<String>,
+        failure: Option<String>,
+    },
 }
 
 /// Moves the row's pairing hash from `had` to the bytes on disk now, or to none when they are

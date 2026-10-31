@@ -86,6 +86,13 @@ pub trait NoteIdentity: Send + Sync {
         true
     }
 
+    /// Whether the vault's files, its activity log included, are left as they are: none of its
+    /// files is ever named a note while this holds (an Electron vault this app did not import).
+    /// The open walk records nothing in its activity log then.
+    fn leaves_vault(&self, _ctx: &IdentityCtx<'_>) -> bool {
+        false
+    }
+
     /// The tier opened the vault, before its consumer starts: for what the identity owes the
     /// vault from an earlier session. Its failures are its own to log.
     fn opened(&self, _ctx: &IdentityCtx<'_>) {}
