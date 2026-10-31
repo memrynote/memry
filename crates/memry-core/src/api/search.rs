@@ -24,6 +24,7 @@ use rusqlite::OptionalExtension as _;
 
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
+use crate::domain::link_reads::{self, Incoming, LinkTarget};
 #[cfg(feature = "markdown")]
 use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
 use crate::domain::search::{self, HitKind, SearchHit};
@@ -161,6 +162,38 @@ impl Search {
     }
 }
 
+/// Desktop's link reads ([`link_reads`]). Not on the FFI surface: they answer in desktop's
+/// shapes (file paths, `getIncomingLinks`'s resolved-id match).
+impl Search {
+    /// The notes and journal days whose links resolved to `target_id` ([`link_reads::incoming`]).
+    pub fn incoming_links(&self, target_id: &str) -> Result<Incoming, StorageError> {
+        let target_id = target_id.to_owned();
+        let index = self.index.clone();
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| link_reads::incoming(data, index, &target_id))
+        })
+    }
+
+    /// What each of `queries` names as a whole ([`link_reads::resolve_titles`]).
+    pub fn resolve_link_titles(
+        &self,
+        queries: Vec<String>,
+    ) -> Result<Vec<Option<LinkTarget>>, StorageError> {
+        self.data
+            .read_blocking(move |data| link_reads::resolve_titles(data, &queries))
+    }
+
+    /// What a wiki-link target names, with its heading ([`link_reads::resolve_target`]).
+    pub fn resolve_link_target(
+        &self,
+        target: &str,
+    ) -> Result<Option<(LinkTarget, Option<String>)>, StorageError> {
+        let target = target.to_owned();
+        self.data
+            .read_blocking(move |data| link_reads::resolve_target(data, &target))
+    }
+}
+
 /// The desktop note index (`note_stats`, [`note_stats`]): measured from vault files, which
 /// iOS does not keep, so none of it is on the FFI surface.
 #[cfg(feature = "markdown")]
@@ -275,38 +308,32 @@ impl Search {
             // The source's own title and timestamps live in `data.db`, so the
             // two halves are joined here rather than in SQL: the index and the
             // data are separate databases on purpose.
+            // One read of every source, not one per source.
+            let live = links::live_items(data, sources.iter().map(|(id, _)| id.as_str()))?;
             let mut out = Vec::new();
             for (source_id, target_title) in sources {
                 if source_id == note_id {
                     // A note linking to itself is not a backlink.
                     continue;
                 }
-                let row = data
-                    .query_row(
-                        "SELECT title, COALESCE(modified_at, created_at, 0) FROM notes \
-                         WHERE id = ?1 AND deleted_at IS NULL",
-                        rusqlite::params![&source_id],
-                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
-                    )
-                    .optional()
-                    .map_err(|error| StorageError::Failed {
-                        what: error.to_string(),
-                    })?;
-                // A tombstoned source is skipped: its link is gone with it.
-                let Some((source_title, stamp)) = row else {
+                // A tombstoned source is skipped: its link is gone with it. So is a journal
+                // day: this list is notes only ([`Self::links_to`] has both).
+                let Some(links::Item::Note { title, stamp }) =
+                    live.get(&source_id).map(|source| &source.item)
+                else {
                     continue;
                 };
                 out.push((
                     Backlink {
                         source_id,
-                        source_title,
+                        source_title: title.clone(),
                         target_title,
                         // Nothing writes property-sourced links yet, so this
                         // is honestly false rather than guessed: see
                         // `research.md`.
                         via_property: false,
                     },
-                    stamp,
+                    *stamp,
                 ));
             }
 

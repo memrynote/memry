@@ -13,6 +13,7 @@ pub mod hard_breaks;
 pub mod html_comments;
 pub mod inline_colors;
 pub mod link_card_marker;
+pub mod link_contexts;
 pub mod link_references;
 pub mod markdown_class;
 pub mod markdown_code;
