@@ -327,6 +327,9 @@ describe('LinkedHereSection', () => {
 
     view.unmount()
 
-    for (const off of offs) expect(off).toHaveBeenCalled()
+    // A Rust event's listener is removed once its registration settles.
+    await waitFor(() => {
+      for (const off of offs) expect(off).toHaveBeenCalled()
+    })
   })
 })

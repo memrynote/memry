@@ -22,7 +22,8 @@ fn a_new_file_gets_a_note_seeded_with_its_text_and_a_row_naming_that_text() {
         vec![Applied::Added {
             note_id: id,
             path: "a.md".into(),
-            created: true
+            created: true,
+            source: ChangeSource::Watcher,
         }]
     );
 }
@@ -92,7 +93,8 @@ fn a_row_the_app_reserved_makes_the_watchers_added_a_change_of_that_note() {
             Applied::Added {
                 note_id: id.clone(),
                 path: "made-in-app.md".into(),
-                created: true
+                created: true,
+                source: ChangeSource::App,
             },
             Applied::Changed {
                 note_id: id,
@@ -270,7 +272,8 @@ fn a_removed_files_row_goes_only_after_its_record_was_deleted() {
         f.facts(),
         vec![Applied::Removed {
             note_id: id,
-            path: "a.md".into()
+            path: "a.md".into(),
+            source: ChangeSource::Watcher,
         }]
     );
     // Applied again (a repeated report), it asks nothing.

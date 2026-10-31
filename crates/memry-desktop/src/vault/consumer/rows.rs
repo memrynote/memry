@@ -161,6 +161,7 @@ impl RowOwner {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
             created: true,
+            source: ChangeSource::App,
         });
         Ok(())
     }
@@ -215,6 +216,7 @@ impl RowOwner {
         lane.publish(Applied::Removed {
             note_id: note_id.to_owned(),
             path: row.path,
+            source: ChangeSource::App,
         });
         Ok(true)
     }
