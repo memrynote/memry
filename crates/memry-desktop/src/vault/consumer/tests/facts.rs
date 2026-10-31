@@ -122,6 +122,22 @@ fn a_note_whose_server_body_is_owed_gets_a_row_without_a_hash() {
     assert!(!f.body(&id).contains("older copy"), "{}", f.body(&id));
 }
 
+/// An adopted note whose body already is the file's text holds the file: its row records the
+/// hash, which a move of the file is paired by, and nothing is written.
+#[test]
+fn an_adopted_body_that_is_the_files_text_gives_the_row_its_hash() {
+    let f = fixture();
+    let id = f.note();
+    f.give_body(&id, "what the file says");
+    *f.identity.next.lock().unwrap() = Some(Adoption::Existing(id.clone()));
+    f.write("synced.md", "what the file says\n");
+    assert_eq!(f.added("synced.md"), Step::Done);
+    assert_eq!(
+        f.hash_of("synced.md"),
+        Some(content_hash("what the file says\n"))
+    );
+}
+
 #[test]
 fn a_body_that_arrived_before_the_file_is_not_taken_for_the_files_text() {
     let f = fixture();

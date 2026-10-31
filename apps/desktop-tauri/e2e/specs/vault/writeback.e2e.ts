@@ -1,6 +1,6 @@
-// The vault write-back in the running app (Step 12e-3h, #3529). Until Steps 13 and 14 name notes
-// and edit them, `e2e_vault_adopt_files` makes every new markdown file a note and
-// `e2e_note_edit` edits a body the way the editor will. Each way the app quits must leave the
+// The vault write-back in the running app (Step 12e-3h, #3529). A new markdown file becomes a
+// note (Step 13d); until Step 14's editor edits notes, `e2e_note_edit` edits a body the way the
+// editor will. Each way the app quits must leave the
 // edit scheduled just before it in the file: the app's own exit (the app menu, a relaunch),
 // `[NSApp terminate:]` on macOS (Cmd-Q, the Dock) and a Windows sign-out.
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -35,7 +35,6 @@ async function noteFor(app: App, vault: string, rel: string, text: string): Prom
 }
 
 async function adopted(app: App, vault: string, rel: string): Promise<string> {
-  await invokeTest(app, 'e2e_vault_adopt_files')
   return noteFor(app, vault, rel, 'first words\n')
 }
 

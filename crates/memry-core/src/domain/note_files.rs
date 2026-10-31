@@ -238,6 +238,11 @@ pub fn set_file_hash(
 /// [`upsert_stat`] for a file read again and found to be the bytes its row names: the row's
 /// stamp moves to `stat.indexed_at` only while no body entry is stamped after it, since the
 /// read says nothing of the body ([`NoteFile::indexed_at`]). The row must exist.
+///
+/// The file is back to the text its row's hash names, which the document took, so it is no
+/// longer ahead of the document: a file body the note owed ([`crate::domain::owed_file_body`],
+/// a text the document refused, since replaced by this one) is owed no more, and the
+/// write-back may write the document again.
 pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), StorageError> {
     check_path(&stat.path)?;
     let tx = conn.unchecked_transaction().map_err(failed)?;
@@ -272,6 +277,7 @@ pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), Storag
         return Err(not_found(&stat.note_id));
     }
     write_file_hash(&tx, &stat.note_id, stat.file_hash.as_deref())?;
+    crate::domain::owed_file_body::clear(&tx, &stat.note_id)?;
     tx.commit().map_err(failed)
 }
 
@@ -451,6 +457,21 @@ pub fn behind_bodies(conn: &Connection) -> Result<Vec<String>, StorageError> {
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)
+}
+
+/// Whether the note's body moved after its row's stamp ([`behind_bodies`], for one note whatever
+/// its row's hashes): an edit, or a merged page, its file has not been written with. `false`
+/// for a note without a row.
+pub fn behind_body(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    conn.query_row(
+        &format!(
+            "SELECT EXISTS (SELECT 1 FROM note_files WHERE note_id = ?1 AND {})",
+            body_moved_after_stamp()
+        ),
+        params![note_id],
+        |row| row.get(0),
+    )
+    .map_err(failed)
 }
 
 /// The markdown rows of tombstoned notes and journal days, by path: files a deletion on

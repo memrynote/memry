@@ -50,6 +50,8 @@ use crate::sync::store;
 
 mod attachments;
 mod duplicate;
+#[cfg(feature = "markdown")]
+pub mod identity;
 pub(crate) mod link_rewrite;
 pub mod local_only;
 mod metadata;
@@ -201,16 +203,28 @@ pub(crate) fn create_in(
     device_id: &str,
     now_ms: i64,
 ) -> Result<String, StorageError> {
+    create_dated_in(tx, note, device_id, now_ms, (now_ms, now_ms))
+}
+
+/// [`create_in`] with the note's `createdAt` and `modifiedAt` given: a note made
+/// for a file that was already there carries the file's dates, as Electron's
+/// indexer gives it.
+pub(crate) fn create_dated_in(
+    tx: &Connection,
+    note: &NewNote<'_>,
+    device_id: &str,
+    now_ms: i64,
+    (created_ms, modified_ms): (i64, i64),
+) -> Result<String, StorageError> {
     valid_document_id(note.id)?;
-    let at = iso(now_ms)?;
     let mut payload = object(json!({
         "title": note.title,
         "content": note.content,
         "fileType": "markdown",
         "folderPath": note.folder_path,
         "clock": next_clock(&Object::new(), device_id)?,
-        "createdAt": at,
-        "modifiedAt": at,
+        "createdAt": iso(created_ms)?,
+        "modifiedAt": iso(modified_ms)?,
     }));
     if !note.tags.is_empty() {
         payload.insert("tags".to_owned(), json!(note.tags));

@@ -9,12 +9,9 @@ use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
-use memry_core::markdown::convert::api::Converter;
-use memry_core::markdown::schema::callout_types::{
-    CalloutTypes, sanitize_callout_type_definitions,
-};
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of_yaml};
 
+use super::converter_for;
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
@@ -221,8 +218,10 @@ impl Applier {
             }
         };
         // Seeded on `Existing` too: a crash between a create and its seed leaves an empty
-        // body, and a body that is there is left alone. Without a device key the row is
-        // still recorded, so the note is not named twice, and the next open seeds it.
+        // body, and a body that is there is left alone; one that is already the file's text
+        // answers `Unchanged`, so the row records the file's hash, which a move of the file is
+        // paired by. Without a device key the row is still recorded, so the note is not named
+        // twice, and the next open seeds it.
         let content_hash = match &file {
             None => None,
             Some(file) => match self.write_body(&note_id, path, file, Write::Seed) {
@@ -524,24 +523,6 @@ impl Applier {
             }
         }
     }
-}
-
-/// The converter with the vault's callout types. Read for every write, so a callout type added
-/// in the app is known to the next feed and write-back.
-pub(crate) fn converter_for(settings: Option<&AppSettings>) -> Converter {
-    let raw = settings.and_then(|settings| {
-        settings
-            .get_path("editor.calloutTypes")
-            .inspect_err(|error| {
-                tracing::warn!(scope = SCOPE, "callout types could not be read: {error}");
-            })
-            .ok()
-            .flatten()
-    });
-    let definitions = raw
-        .map(|value| sanitize_callout_type_definitions(&value))
-        .unwrap_or_default();
-    Converter::new(CalloutTypes::new(definitions))
 }
 
 /// Why [`Applier::read`] has no note file.
