@@ -15,6 +15,7 @@ import { DRAWER_ROW } from '@/components/tasks/drawer-section'
 import type { LinkedNote } from '@/types'
 
 import { useDebouncedValue } from '@/hooks/use-task-filters'
+import { notesService } from '@/services/notes-service'
 
 // =============================================================================
 // LinkedNoteRow Component
@@ -132,7 +133,7 @@ export const LinkInput = ({
     queryKey: ['notes', 'search', 'title', debouncedQuery],
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return []
-      const response = await window.api.notes.list({
+      const response = await notesService.list({
         limit: 50,
         sortBy: 'modified',
         sortOrder: 'desc'

@@ -28,6 +28,7 @@ pub mod journal;
 pub mod journal_ops;
 pub mod journal_rules;
 pub mod note_files;
+pub mod note_list;
 pub mod note_meta;
 pub mod note_positions;
 pub mod note_snapshots;
