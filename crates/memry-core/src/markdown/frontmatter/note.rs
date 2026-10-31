@@ -284,59 +284,9 @@ pub fn write_markdown_note(frontmatter: &YamlMap, content: &str) -> Result<Strin
 mod tests {
     use super::*;
 
-    fn body_write(raw: &str, content: &str) -> String {
-        let parsed = parse_markdown_note(raw).unwrap();
-        serialize_parsed_markdown_note(&parsed, content, false).unwrap()
-    }
-
-    /// A block that ends its file keeps its closing fence through a body write: the file's
-    /// line end goes between the fence and a body, and nowhere else (#3800).
-    #[test]
-    fn a_block_that_ends_the_file_keeps_its_closing_fence() {
-        for (raw, content, expected) in [
-            ("---\nmood: ok\n---", "added\n", "---\nmood: ok\n---\nadded"),
-            (
-                "---\r\nmood: ok\r\n---",
-                "added\nmore\n",
-                "---\r\nmood: ok\r\n---\r\nadded\r\nmore",
-            ),
-            (
-                "\u{feff}---\nmood: ok\n---",
-                "added",
-                "\u{feff}---\nmood: ok\n---\nadded",
-            ),
-            (
-                "---\nmood: ok\n---",
-                "\n\nadded\n",
-                "---\nmood: ok\n---\nadded",
-            ),
-            ("---\nmood: ok\n---", "", "---\nmood: ok\n---"),
-            ("---\nmood: ok\n---", "\n\n", "---\nmood: ok\n---"),
-            // A fence line that ends in a lone CR, in an LF file and in a CRLF one.
-            (
-                "---\nmood: ok\n---\r",
-                "added",
-                "---\nmood: ok\n---\r\nadded",
-            ),
-            (
-                "---\r\nmood: ok\r\n---\r",
-                "added",
-                "---\r\nmood: ok\r\n---\r\nadded",
-            ),
-        ] {
-            let output = body_write(raw, content);
-            assert_eq!(output, expected, "{raw:?} + {content:?}");
-            let reread = parse_markdown_note(&output).unwrap();
-            assert_eq!(
-                reread.frontmatter,
-                parse_markdown_note(raw).unwrap().frontmatter,
-                "{output:?}"
-            );
-        }
-    }
-
-    /// The verbatim path joins the same way, for a parse whose block ends without a line end
-    /// and whose body is not empty.
+    /// The verbatim path joins as the edited-body path does (the `block-at-eof-*` cases of
+    /// `markdown-convert/frontmatter.json`), for a block that ends without a line end ahead of
+    /// a body no parse of a file gives it (#3800).
     #[test]
     fn the_verbatim_path_puts_a_line_end_after_the_fence() {
         let parsed = ParsedMarkdownNote {
