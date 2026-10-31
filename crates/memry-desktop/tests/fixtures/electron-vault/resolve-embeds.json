@@ -190,6 +190,26 @@
       }
     },
     {
+      "notePath": "",
+      "notesFolder": "",
+      "resolved": {
+        "Images/photo.png": "memry-file://local/<vault>/Images/photo.png",
+        "in-notes.png": "memry-file://local/<vault>/notes/in-notes.png",
+        "att.png": "memry-file://local/<vault>/attachments/att.png",
+        "a b (1).png": "memry-file://local/<vault>/a%20b%20%281%29.png",
+        "weird#name?[x]%20.png": "memry-file://local/<vault>/weird#name?[x]%20.png",
+        "notes/../Images/photo.png": "memry-file://local/<vault>/Images/photo.png",
+        "./Images/photo.png": "memry-file://local/<vault>/Images/photo.png",
+        "ärger.png": "memry-file://local/<vault>/misc/Ärger.PNG",
+        "ÄRGER.png": "memry-file://local/<vault>/misc/Ärger.PNG",
+        "only-index.png": "memry-file://local/<vault>/idx/deep/only-index.png",
+        "sub/folder/only-index.png": "memry-file://local/<vault>/idx/deep/only-index.png",
+        "tie.png": "memry-file://local/<vault>/assets/tie.png",
+        "short.png": "memry-file://local/<vault>/q/short.png",
+        "deep.png": "memry-file://local/<vault>/z/deep.png"
+      }
+    },
+    {
       "notePath": "notes/sub/pics/../note.md",
       "notesFolder": "",
       "resolved": {

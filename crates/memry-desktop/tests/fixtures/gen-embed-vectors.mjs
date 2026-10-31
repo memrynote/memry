@@ -149,6 +149,8 @@ const cases = [
   run('root.md', ''),
   run('notes/sub/note.md', 'Library'),
   run(undefined, ''),
+  // An empty note path is no note path: `if (!notePath)` in `embedTarget`.
+  run('', ''),
   run('notes/sub/pics/../note.md', '')
 ]
 

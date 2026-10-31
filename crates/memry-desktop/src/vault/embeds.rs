@@ -11,9 +11,10 @@
 //! never a URL: where `path.relative` would give nothing to write, it resolves to nothing.
 //!
 //! Paths resolve lexically, as Node's `path.resolve` does, and compare without case on
-//! Windows, as Node's win32 `path` does. A file is looked at through symlinks, as `existsSync`
-//! and `statSync` do: a link inside the vault to a file outside it resolves, and the
-//! `memry-file` handler decides whether to serve it.
+//! Windows, as Node's win32 `path` does. Only an image target resolves, and an empty note path
+//! is no note path, as in Electron. A hit is a file whose real location is in the vault
+//! ([`resolve_under_root`]): a link or a junction that leads out of it resolves to nothing, so an
+//! embed never tells what is on disk outside the vault. Electron's `existsSync` follows it.
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
@@ -22,14 +23,21 @@ use std::path::{Component, Path, PathBuf};
 use memry_core::api::note_files::NoteFiles;
 use memry_core::domain::task_filter::locale_compare;
 use memry_core::markdown::convert::EmbedResolver;
-use memry_core::markdown::shared::empty_lines::extract_wiki_image_embed_refs;
+use memry_core::markdown::shared::empty_lines::{
+    extract_wiki_image_embed_refs, is_wiki_image_embed_target,
+};
 
 use super::config::read_vault_config;
 use super::file_types::FileType;
 use super::layout::ATTACHMENTS_DIR;
+use crate::shell::file_open::{Resolution, resolve_under_root};
 
 /// `defaultNoteFolder` when the config names none.
 const NOTES_FOLDER: &str = "notes";
+
+/// Whether Node's `path` is `path.win32` here. The helpers that branch on it take it as an
+/// argument, so both branches are tested on every platform.
+const WINDOWS: bool = cfg!(windows);
 
 /// `path.resolve(base, rel)` for a `rel` that is not absolute: `.` and `..` segments fold away
 /// without looking at the disk, and `..` past the root stays at the root.
@@ -48,8 +56,8 @@ fn resolve(base: &Path, rel: &str) -> PathBuf {
 }
 
 /// One segment of two paths is the same: byte for byte, or without case on Windows.
-fn same(a: &Component<'_>, b: &Component<'_>) -> bool {
-    if cfg!(windows) {
+fn same(a: &Component<'_>, b: &Component<'_>, windows: bool) -> bool {
+    if windows {
         a.as_os_str().to_string_lossy().to_lowercase()
             == b.as_os_str().to_string_lossy().to_lowercase()
     } else {
@@ -61,7 +69,11 @@ fn same(a: &Component<'_>, b: &Component<'_>) -> bool {
 fn split_common<'a>(from: &Path, to: &'a Path) -> (usize, Vec<Component<'a>>) {
     let from: Vec<_> = from.components().collect();
     let to: Vec<_> = to.components().collect();
-    let common = from.iter().zip(&to).take_while(|(a, b)| same(a, b)).count();
+    let common = from
+        .iter()
+        .zip(&to)
+        .take_while(|(a, b)| same(a, b, WINDOWS))
+        .count();
     (from.len() - common, to[common..].to_vec())
 }
 
@@ -89,8 +101,8 @@ fn relative(from: &Path, to: &Path) -> String {
 }
 
 /// `path.basename`: the last segment, trailing separators dropped.
-fn basename(path: &str) -> &str {
-    let separators: &[char] = if cfg!(windows) { &['/', '\\'] } else { &['/'] };
+fn basename(path: &str, windows: bool) -> &str {
+    let separators: &[char] = if windows { &['/', '\\'] } else { &['/'] };
     let trimmed = path.trim_end_matches(separators);
     trimmed.rsplit(separators).next().unwrap_or(trimmed)
 }
@@ -113,9 +125,9 @@ fn encode(url: &str) -> String {
 }
 
 /// `toMemryFileUrl`.
-fn memry_file_url(abs: &Path) -> String {
+fn memry_file_url(abs: &Path, windows: bool) -> String {
     let path = abs.to_string_lossy();
-    if cfg!(windows) {
+    if windows {
         format!("memry-file://local/{}", path.replace('\\', "/"))
     } else {
         format!(
@@ -128,11 +140,17 @@ fn memry_file_url(abs: &Path) -> String {
 /// `embedTarget`: relative to the note when its path is known, the file's URL otherwise.
 fn target(root: &Path, abs: &Path, note_path: Option<&str>) -> Option<String> {
     let Some(note_path) = note_path else {
-        return Some(encode(&memry_file_url(abs)));
+        return Some(encode(&memry_file_url(abs, WINDOWS)));
     };
     let note = resolve(root, note_path);
     let rel = relative(note.parent().unwrap_or(root), abs);
     (!rel.is_empty()).then(|| encode(&rel))
+}
+
+/// A file at `abs`, a path in the vault, whose real location is in the vault too.
+fn is_vault_file(root: &Path, abs: &Path) -> bool {
+    let rel = relative(root, abs);
+    matches!(resolve_under_root(root, &rel), Ok(Resolution::Inside(real)) if real.is_file())
 }
 
 /// `findOnDisk`: from the vault root, from the note's folder, from the notes folder, then from
@@ -153,7 +171,7 @@ fn on_disk(
     candidates
         .into_iter()
         .filter(|candidate| is_inside(root, candidate))
-        .find(|candidate| std::fs::metadata(candidate).is_ok_and(|meta| meta.is_file()))
+        .find(|candidate| is_vault_file(root, candidate))
 }
 
 /// `lookupByFilenames`: the image of each lowercased file name, from the rows of every image in
@@ -181,7 +199,7 @@ fn by_file_name(
                 },
             );
             let abs = resolve(root, paths.first()?);
-            (is_inside(root, &abs) && abs.exists()).then_some((name, abs))
+            (is_inside(root, &abs) && is_vault_file(root, &abs)).then_some((name, abs))
         })
         .collect()
 }
@@ -195,6 +213,7 @@ pub fn resolve_embeds(
     refs: &[String],
     note_path: Option<&str>,
 ) -> BTreeMap<String, String> {
+    let note_path = note_path.filter(|path| !path.is_empty());
     let configured = read_vault_config(root).default_note_folder;
     let notes_folder = if configured.is_empty() {
         NOTES_FOLDER
@@ -204,7 +223,10 @@ pub fn resolve_embeds(
     let mut resolved = BTreeMap::new();
     let mut pending = Vec::new();
     for reference in refs {
-        if has_scheme(reference) || Path::new(reference).has_root() {
+        if !is_wiki_image_embed_target(reference)
+            || has_scheme(reference)
+            || Path::new(reference).has_root()
+        {
             continue;
         }
         match on_disk(root, notes_folder, reference, note_path) {
@@ -213,7 +235,7 @@ pub fn resolve_embeds(
                     resolved.insert(reference.clone(), target);
                 }
             }
-            None => pending.push((reference, basename(reference).to_lowercase())),
+            None => pending.push((reference, basename(reference, WINDOWS).to_lowercase())),
         }
     }
     if pending.is_empty() {
@@ -252,5 +274,35 @@ impl Resolved {
 impl EmbedResolver for Resolved {
     fn resolve(&self, target: &str, _note_path: Option<&str>) -> Option<String> {
         self.0.get(target).cloned()
+    }
+}
+
+/// The Windows branches, against Node's `path.win32` (`basename`, the case-insensitive
+/// `relative`) and the win32 branch of `toMemryFileUrl`, run on every platform.
+#[cfg(test)]
+mod tests {
+    use std::path::{Component, Path};
+
+    use super::{basename, memry_file_url, same};
+
+    #[test]
+    fn the_windows_branches_answer_as_node_s_win32_path() {
+        // path.win32.basename / path.posix.basename
+        assert_eq!(basename("img\\photo.png", true), "photo.png");
+        assert_eq!(basename("a/b\\c.png", true), "c.png");
+        assert_eq!(basename("dir\\", true), "dir");
+        assert_eq!(basename("img\\photo.png", false), "img\\photo.png");
+        // path.win32.relative('C:\\Vault\\Notes', 'c:\\vault\\img\\x.png') === '..\\img\\x.png'
+        let (img, upper) = (
+            Component::Normal("Img".as_ref()),
+            Component::Normal("img".as_ref()),
+        );
+        assert!(same(&img, &upper, true));
+        assert!(!same(&img, &upper, false));
+        // 'memry-file://local/' + path.win32.normalize(p).replace(/\\/g, '/')
+        let url = memry_file_url(Path::new("C:\\Vault\\img\\a b.png"), true);
+        assert_eq!(url, "memry-file://local/C:/Vault/img/a b.png");
+        let url = memry_file_url(Path::new("/Users/v/img/a.png"), false);
+        assert_eq!(url, "memry-file://local/Users/v/img/a.png");
     }
 }
