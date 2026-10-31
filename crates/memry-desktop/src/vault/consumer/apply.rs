@@ -104,7 +104,14 @@ impl Applier {
                 size,
                 modified_ms,
                 ..
-            } => self.changed(&mut lane, &note_id, &path, size, modified_ms),
+            } => self.changed(
+                &mut lane,
+                &note_id,
+                &path,
+                size,
+                modified_ms,
+                ChangeSource::Watcher,
+            ),
             VaultEvent::Removed { note_id, path } => {
                 self.removed(&mut lane, &note_id, &path);
                 Step::Done
@@ -177,8 +184,14 @@ impl Applier {
         modified_ms: i64,
         origin: ActivitySource,
     ) -> Step {
+        let source = match origin {
+            ActivitySource::Scan => ChangeSource::Walk,
+            _ => ChangeSource::Watcher,
+        };
         match lane.row_at(path) {
-            Ok(Some(row)) => return self.changed(lane, &row.note_id, path, size, modified_ms),
+            Ok(Some(row)) => {
+                return self.changed(lane, &row.note_id, path, size, modified_ms, source);
+            }
             Ok(None) => {}
             Err(error) => {
                 tracing::error!(scope = SCOPE, "note_files could not be read: {error}");
@@ -244,6 +257,7 @@ impl Applier {
             note_id,
             path: path.to_owned(),
             created,
+            source,
         });
         self.report_found(path, origin, created);
         Step::Done
@@ -257,6 +271,7 @@ impl Applier {
         path: &str,
         size: u64,
         modified_ms: i64,
+        source: ChangeSource,
     ) -> Step {
         let Some(file_type) = file_type_of_extension(&extension(path)) else {
             return Step::Done;
@@ -348,7 +363,7 @@ impl Applier {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
             content_hash,
-            source: ChangeSource::Watcher,
+            source,
         });
         Step::Done
     }
@@ -395,6 +410,7 @@ impl Applier {
         lane.publish(Applied::Removed {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
+            source: ChangeSource::Watcher,
         });
         self.report_removed(path);
     }

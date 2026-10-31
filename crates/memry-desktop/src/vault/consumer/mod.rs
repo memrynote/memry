@@ -79,9 +79,13 @@ use crate::vault::watch::VaultEvent;
 /// Who changed a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeSource {
-    /// An edit outside the app, fed into the note.
+    /// A change outside the app, which the watcher found while the vault was open.
     Watcher,
-    /// The app wrote the file.
+    /// What the open walk found changed while the vault was closed. No note event goes out
+    /// for it, as Electron's open-time index sends none: the index's progress refreshes the
+    /// lists once the walk's notes are in.
+    Walk,
+    /// The app wrote, created or removed the file.
     App,
 }
 
@@ -93,6 +97,7 @@ pub enum Applied {
         note_id: String,
         path: String,
         created: bool,
+        source: ChangeSource,
     },
     Changed {
         note_id: String,
@@ -103,6 +108,7 @@ pub enum Applied {
     Removed {
         note_id: String,
         path: String,
+        source: ChangeSource,
     },
     Renamed {
         note_id: String,
@@ -112,9 +118,7 @@ pub enum Applied {
     /// The open walk offered every file of the vault. `complete` is `false` when the walk hit
     /// its caps, or when the identity adopts nothing (files without a row stay unindexed);
     /// the next open walks again.
-    Indexed {
-        complete: bool,
-    },
+    Indexed { complete: bool },
     /// A watcher fact that changes no row (`Unsupported`, `Unreadable`, `Unreachable`,
     /// `Reachable`, `Rescanned`, `WatchFailed`), passed on as it came.
     Vault(VaultEvent),

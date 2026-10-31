@@ -118,6 +118,12 @@ pub fn get_file(open: &OpenVault, note_id: &str) -> Result<Option<FileView>, Not
     }))
 }
 
+/// The live note `note_id` as the list shows it, `None` without a row (`notes:created`).
+pub fn list_item(open: &OpenVault, note_id: &str) -> Result<Option<NoteListItemView>, NotesError> {
+    let listed = open.vault.note_files().listed_by_id(note_id)?;
+    Ok(listed.map(|note| NoteListItemView::of(note, false)))
+}
+
 pub fn list(open: &OpenVault, options: &NoteListOptions) -> Result<NoteListPageView, NotesError> {
     let query = NoteListQuery {
         folder: options.folder.clone().filter(|folder| !folder.is_empty()),

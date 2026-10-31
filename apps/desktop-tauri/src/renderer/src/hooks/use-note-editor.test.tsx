@@ -79,7 +79,8 @@ describe('useNoteEditor', () => {
 
     unmount()
 
-    expect(unsubDeleted).toHaveBeenCalled()
+    // A Rust event's listener is removed once its registration settles.
+    await waitFor(() => expect(unsubDeleted).toHaveBeenCalled())
     expect(unsubExternal).toHaveBeenCalled()
   })
 

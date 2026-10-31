@@ -3,7 +3,9 @@
 
 use super::layout::{CANVAS_DIR, CANVAS_FILE_EXT};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, specta::Type)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum FileType {
     Markdown,

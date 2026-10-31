@@ -47,6 +47,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::locale::locale_list,
             crate::commands::locale::locale_set,
             // notes
+            crate::commands::notes::notes_create,
+            crate::commands::notes::notes_delete,
             crate::commands::notes::notes_exists,
             crate::commands::notes::notes_get,
             crate::commands::notes::notes_get_by_path,
@@ -153,6 +155,10 @@ pub fn builder() -> Builder<Wry> {
             crate::events::MenuCommandInvokedEvent,
             // updater
             crate::events::UpdaterStateChangedEvent,
+            // notes
+            crate::events::NoteCreatedEvent,
+            crate::events::NoteDeletedEvent,
+            crate::events::NoteUpdatedEvent,
             // vault
             crate::events::VaultActivityChangedEvent,
             crate::events::VaultErrorEvent,
