@@ -13,7 +13,7 @@
 //! Paths resolve lexically, as Node's `path.resolve` does, and compare without case on
 //! Windows, as Node's win32 `path` does. Only an image target resolves, and an empty note path
 //! is no note path, as in Electron. A hit is a file whose real location is in the vault
-//! ([`resolve_under_root`]): a link or a junction that leads out of it resolves to nothing, so an
+//! ([`UnderRoot`]): a link or a junction that leads out of it resolves to nothing, so an
 //! embed never tells what is on disk outside the vault. Electron's `existsSync` follows it.
 
 use std::cmp::Ordering;
@@ -30,7 +30,7 @@ use memry_core::markdown::shared::empty_lines::{
 use super::config::read_vault_config;
 use super::file_types::FileType;
 use super::layout::ATTACHMENTS_DIR;
-use crate::shell::file_open::{Resolution, resolve_under_root};
+use crate::shell::file_open::{Resolution, UnderRoot};
 
 /// `defaultNoteFolder` when the config names none.
 const NOTES_FOLDER: &str = "notes";
@@ -147,15 +147,20 @@ fn target(root: &Path, abs: &Path, note_path: Option<&str>) -> Option<String> {
     (!rel.is_empty()).then(|| encode(&rel))
 }
 
-/// A file at `abs`, a path in the vault, whose real location is in the vault too.
-fn is_vault_file(root: &Path, abs: &Path) -> bool {
+/// A file at `abs`, a path in the vault, whose real location is in the vault too. Most
+/// candidates are misses, so a plain `stat` turns them away before the real location is asked.
+fn is_vault_file(vault: &UnderRoot, root: &Path, abs: &Path) -> bool {
+    if !std::fs::metadata(abs).is_ok_and(|meta| meta.is_file()) {
+        return false;
+    }
     let rel = relative(root, abs);
-    matches!(resolve_under_root(root, &rel), Ok(Resolution::Inside(real)) if real.is_file())
+    matches!(vault.resolve(&rel), Ok(Resolution::Inside(real)) if real.is_file())
 }
 
 /// `findOnDisk`: from the vault root, from the note's folder, from the notes folder, then from
 /// the root attachments folder, which the index never holds.
 fn on_disk(
+    vault: &UnderRoot,
     root: &Path,
     notes_folder: &str,
     target: &str,
@@ -171,13 +176,14 @@ fn on_disk(
     candidates
         .into_iter()
         .filter(|candidate| is_inside(root, candidate))
-        .find(|candidate| is_vault_file(root, candidate))
+        .find(|candidate| is_vault_file(vault, root, candidate))
 }
 
 /// `lookupByFilenames`: the image of each lowercased file name, from the rows of every image in
 /// the vault. Several folders can hold one name; the shortest path wins, as in Obsidian, and
 /// only when it is on disk.
 fn by_file_name(
+    vault: &UnderRoot,
     root: &Path,
     files: &NoteFiles,
     names: &BTreeSet<String>,
@@ -199,7 +205,7 @@ fn by_file_name(
                 },
             );
             let abs = resolve(root, paths.first()?);
-            (is_inside(root, &abs) && is_vault_file(root, &abs)).then_some((name, abs))
+            (is_inside(root, &abs) && is_vault_file(vault, root, &abs)).then_some((name, abs))
         })
         .collect()
 }
@@ -214,6 +220,16 @@ pub fn resolve_embeds(
     note_path: Option<&str>,
 ) -> BTreeMap<String, String> {
     let note_path = note_path.filter(|path| !path.is_empty());
+    let vault = match UnderRoot::new(root) {
+        Ok(vault) => vault,
+        Err(error) => {
+            tracing::warn!(
+                scope = "vault_embeds",
+                "the vault folder could not be read: {error}"
+            );
+            return BTreeMap::new();
+        }
+    };
     let configured = read_vault_config(root).default_note_folder;
     let notes_folder = if configured.is_empty() {
         NOTES_FOLDER
@@ -229,7 +245,7 @@ pub fn resolve_embeds(
         {
             continue;
         }
-        match on_disk(root, notes_folder, reference, note_path) {
+        match on_disk(&vault, root, notes_folder, reference, note_path) {
             Some(abs) => {
                 if let Some(target) = target(root, &abs, note_path) {
                     resolved.insert(reference.clone(), target);
@@ -242,7 +258,7 @@ pub fn resolve_embeds(
         return resolved;
     }
     let names = pending.iter().map(|(_, name)| name.clone()).collect();
-    let found = by_file_name(root, files, &names);
+    let found = by_file_name(&vault, root, files, &names);
     for (reference, name) in pending {
         if let Some(target) = found
             .get(&name)
