@@ -86,3 +86,145 @@ fn a_file_an_existing_note_adopts_is_not_listed_as_added() {
     f.added("moved.md");
     assert_eq!(listed(&f), vec![]);
 }
+
+/// A note no one can read while the guard lives: no permission on unix; on Windows an open
+/// handle that shares nothing, as an antivirus scan holds a file. Fails when the file still
+/// reads (a test run as root).
+#[must_use]
+fn lock(f: &Fixture, rel: &str) -> Option<std::fs::File> {
+    let path = f.root.join(rel);
+    #[cfg(unix)]
+    let held = {
+        use std::os::unix::fs::PermissionsExt as _;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o000)).unwrap();
+        None
+    };
+    #[cfg(windows)]
+    let held = {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        let open = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&path);
+        Some(open.unwrap())
+    };
+    assert!(std::fs::read(&path).is_err(), "{rel} must not be readable");
+    held
+}
+
+/// The walk is told of a read that failed, a new file's or a known note's whose file changed;
+/// a file that is not UTF-8 is read as text, as Electron reads it, and is no failure.
+#[test]
+fn the_walk_is_told_of_the_reads_that_failed() {
+    let f = fixture();
+    f.write("known.md", "x\n");
+    f.added("known.md");
+    f.write("known.md", "edited while closed\n");
+    f.write("new.md", "x\n");
+    std::fs::write(f.root.join("latin1.md"), b"caf\xe9\n").unwrap();
+    let _held = (lock(&f, "known.md"), lock(&f, "new.md"));
+    let mut scan = ScanActivity::default();
+    for rel in ["known.md", "latin1.md", "new.md"] {
+        let meta = std::fs::symlink_metadata(f.root.join(rel)).unwrap();
+        f.applier.walked(rel, &meta, &mut scan);
+    }
+    let failed: Vec<_> = scan
+        .failed
+        .iter()
+        .map(|failure| {
+            (
+                failure.path.as_str(),
+                failure.reason,
+                failure.message.is_some(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        failed,
+        [
+            ("known.md", "read-failed", true),
+            ("new.md", "read-failed", true)
+        ]
+    );
+    assert_eq!(scan.failed_count, 2);
+}
+
+/// The walk and the watcher find one unreadable file in one open: one entry, whichever told
+/// first.
+#[test]
+fn a_file_the_walk_and_the_watcher_both_find_unreadable_is_one_entry() {
+    for walk_first in [true, false] {
+        let f = fixture();
+        f.applier.activity.open(&f.root);
+        let watcher = || {
+            f.applier.apply(VaultEvent::Unreadable {
+                path: "locked.md".into(),
+                reason: "EACCES".into(),
+            })
+        };
+        let mut scan = ScanActivity::default();
+        scan.fail("locked.md", "read-failed", Some("EACCES".into()));
+        if !walk_first {
+            watcher();
+        }
+        f.applier.report_scan(&scan);
+        watcher();
+        let failed: Vec<_> = listed(&f)
+            .into_iter()
+            .filter(|(kind, ..)| *kind == ActivityKind::Failed)
+            .collect();
+        assert_eq!(failed.len(), 1, "walk first: {walk_first}");
+    }
+}
+
+fn failed(f: &Fixture) -> usize {
+    listed(f)
+        .into_iter()
+        .filter(|(kind, ..)| *kind == ActivityKind::Failed)
+        .count()
+}
+
+fn unreadable(f: &Fixture, path: &str) {
+    f.applier.apply(VaultEvent::Unreadable {
+        path: path.into(),
+        reason: "EACCES".into(),
+    });
+}
+
+/// Past the fifty it lists, the walk's summarized failures hold their keys too: the watcher's
+/// report of one, the retry's, is no second entry.
+#[test]
+fn a_summarized_failure_the_watcher_reports_again_is_no_news() {
+    let f = fixture();
+    f.applier.activity.open(&f.root);
+    let paths: Vec<_> = (0..55).map(|n| format!("f{n}.md")).collect();
+    let mut scan = ScanActivity::default();
+    for path in &paths {
+        scan.fail(path, "read-failed", Some("EACCES".into()));
+    }
+    f.applier.report_scan(&scan);
+    for path in &paths {
+        unreadable(&f, path);
+    }
+    assert_eq!(failed(&f), 50);
+    let summaries = listed(&f)
+        .into_iter()
+        .filter(|(kind, ..)| *kind == ActivityKind::Scan)
+        .count();
+    assert_eq!(summaries, 1);
+}
+
+/// A file that read again is reported the next time it cannot be read, inside the window too.
+#[test]
+fn a_file_that_read_again_is_reported_when_it_fails_again() {
+    let f = fixture();
+    f.applier.activity.open(&f.root);
+    unreadable(&f, "a.md");
+    unreadable(&f, "a.md");
+    assert_eq!(failed(&f), 1);
+    f.write("a.md", "x\n");
+    f.added("a.md");
+    unreadable(&f, "a.md");
+    unreadable(&f, "a.md");
+    assert_eq!(failed(&f), 2);
+}

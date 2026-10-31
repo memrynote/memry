@@ -156,6 +156,11 @@ impl Log {
         self.cap_pending();
     }
 
+    /// `key` is no repeat any more: what it stood for was undone (a file that read again).
+    pub(super) fn release(&mut self, key: &str) {
+        self.recent_keys.remove(key);
+    }
+
     /// `false` for a repeat of `key` inside its window.
     pub(super) fn admit(&mut self, key: &str, window: i64, now_ms: i64) -> bool {
         if self
