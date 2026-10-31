@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   createHashTagInlineContent,
   extractInlineTags,
@@ -6,6 +6,20 @@ import {
   normalizeHashTags
 } from './hash-tag'
 import { renderInlineSpec } from './inline-spec-render.test-helper'
+
+vi.mock('@/services/custom-icons-service', () => ({
+  customIconsService: {
+    list: async () => [
+      {
+        id: 'star',
+        name: 'Star',
+        ext: 'png',
+        path: '/vault/.memry/icons/star.png',
+        createdAt: '2026-09-30T00:00:00.000Z'
+      }
+    ]
+  }
+}))
 
 describe('hash tag inline content', () => {
   it('creates, renders, parses, and serializes hash tag inline content', () => {
@@ -190,29 +204,6 @@ describe('hash tag inline content', () => {
 })
 
 describe('hash tag with an uploaded icon', () => {
-  const host = window as unknown as { api?: unknown }
-  const previousApi = host.api
-
-  beforeAll(() => {
-    host.api = {
-      customIcons: {
-        list: vi.fn(async () => [
-          {
-            id: 'star',
-            name: 'Star',
-            ext: 'png',
-            path: '/vault/.memry/icons/star.png',
-            createdAt: '2026-09-30T00:00:00.000Z'
-          }
-        ])
-      }
-    }
-  })
-
-  afterAll(() => {
-    host.api = previousApi
-  })
-
   it('draws a custom:<id> tag icon as its image, never as the reference text', async () => {
     const render = renderInlineSpec('hashTag', HashTag, {
       props: { tag: 'books', color: 'blue', icon: 'custom:star' }
