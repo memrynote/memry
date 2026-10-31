@@ -1,6 +1,6 @@
 //! A vault close whose OS watch is slow to stop, as notify's FSEvents stop is while fseventsd
 //! is slow (#3784). The close lets the vault go without waiting for that stop, and the watch
-//! still stopping reports nothing into the vault opened next.
+//! still stopping reports nothing into the open that follows.
 //!
 //! The close hooks get the session's own deadline, so a slow runner cannot make a close that
 //! nothing blocks overrun it.
@@ -65,14 +65,15 @@ fn a_close_writes_its_last_edit_without_waiting_for_the_os_watch_to_stop() {
     gate.release();
 }
 
-/// A file written into a closed vault while its OS watch is still stopping reaches no fact
-/// and no row, while the vault opened since reports its own new file.
+/// The vault opens again on the same folder while its old OS watch is still stopping. A file
+/// written then is reported once: by the new watch, never by the old one as well.
 #[test]
-fn an_os_watch_still_stopping_reports_nothing_into_the_next_vault() {
+fn a_file_written_while_the_old_os_watch_still_stops_is_reported_once() {
     let t = two_with(HOOK_DEADLINE);
     let mut facts = t.tier.subscribe();
     let gate = Gate::at(&t.tier, Hold::OsWatchStop);
-    t.session.open(&t.a, OpenSource::Select).unwrap();
+    t.session.open(&t.b, OpenSource::Select).unwrap();
+    facts_until(&mut facts, indexed);
     t.session.close();
     gate.wait_reached();
     let vault = t
@@ -81,22 +82,17 @@ fn an_os_watch_still_stopping_reports_nothing_into_the_next_vault() {
         .unwrap()
         .vault
         .vault;
+    // The reopen's walk is over, so only a watch can report the new file.
+    facts_until(&mut facts, indexed);
 
-    std::fs::write(t.a.join("late.md"), "written in A after it closed\n").unwrap();
-    std::fs::write(t.b.join("live.md"), "written in B\n").unwrap();
-    let mut seen = Vec::new();
-    eventually("B's new file", || {
-        seen.extend(drain(&mut facts));
-        names(&seen, "live.md").then_some(())
-    });
-    // A fact about A's file would have come with B's: the same debounce and grace.
+    std::fs::write(t.b.join("late.md"), "written after the reopen\n").unwrap();
+    let mut seen = facts_until(&mut facts, |fact| names(fact, "late.md"));
+    // A second report, from either watch, would come within the same debounce and grace.
     std::thread::sleep(Duration::from_secs(1));
-    seen.extend(drain(&mut facts));
-    assert!(
-        !names(&seen, "late.md"),
-        "A's closed watch reported: {seen:?}"
-    );
-    assert!(vault.note_files().by_path("late.md").unwrap().is_none());
+    seen.extend(std::iter::from_fn(|| facts.try_recv().ok()));
+    let reports: Vec<_> = seen.iter().filter(|fact| names(fact, "late.md")).collect();
+    assert_eq!(reports.len(), 1, "{seen:?}");
+    assert!(vault.note_files().by_path("late.md").unwrap().is_some());
     gate.release();
     drop(vault);
     t.session.close();
@@ -121,10 +117,26 @@ fn open_b(t: &Two) -> (Arc<Vault>, String) {
     (vault, id)
 }
 
-fn drain(facts: &mut Receiver<Applied>) -> Vec<Applied> {
-    std::iter::from_fn(|| facts.try_recv().ok()).collect()
+/// The facts up to and including the first that `until` accepts.
+fn facts_until(facts: &mut Receiver<Applied>, until: impl Fn(&Applied) -> bool) -> Vec<Applied> {
+    let mut seen = Vec::new();
+    eventually("the fact", || {
+        while let Ok(fact) = facts.try_recv() {
+            let done = until(&fact);
+            seen.push(fact);
+            if done {
+                return Some(());
+            }
+        }
+        None
+    });
+    seen
 }
 
-fn names(facts: &[Applied], rel: &str) -> bool {
-    facts.iter().any(|fact| format!("{fact:?}").contains(rel))
+fn indexed(fact: &Applied) -> bool {
+    matches!(fact, Applied::Indexed { .. })
+}
+
+fn names(fact: &Applied, rel: &str) -> bool {
+    format!("{fact:?}").contains(rel)
 }

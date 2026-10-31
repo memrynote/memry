@@ -17,6 +17,8 @@ use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
 use crate::vault::config::read_vault_config;
+#[cfg(test)]
+use crate::vault::watch::HoldFn;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
 use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed, reconcile};
 
@@ -41,9 +43,6 @@ pub struct VaultTier {
     #[cfg(test)]
     holds: Mutex<Vec<(Hold, HoldFn)>>,
 }
-
-#[cfg(test)]
-type HoldFn = Box<dyn FnOnce() + Send>;
 
 /// A point in a stop or a start where a test runs its closure.
 #[cfg(test)]

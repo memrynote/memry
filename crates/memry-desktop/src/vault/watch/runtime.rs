@@ -60,8 +60,9 @@ pub struct VaultWatcher {
     os_stop_hold: Arc<Mutex<Option<HoldFn>>>,
 }
 
+/// What a test runs where it holds a stop or a start.
 #[cfg(test)]
-type HoldFn = Box<dyn FnOnce() + Send>;
+pub(crate) type HoldFn = Box<dyn FnOnce() + Send>;
 
 impl VaultWatcher {
     /// Starts watching `root`. The OS watcher is set up before this returns, so a failure
@@ -185,7 +186,9 @@ impl Drop for VaultWatcher {
 /// blocked in fseventsd calls, #3784), and a vault close waits for the worker that holds the
 /// watch, so it would keep every handle on the vault until then and the reopen would find the
 /// vault held. The watch holds nothing of the vault: its callback only queues into the worker's
-/// channel, which drops whatever arrives once the worker is gone.
+/// channel, which drops whatever arrives once the worker is gone. Until the stop ends, it does
+/// keep notify's thread (the fsevents loop blocked in fseventsd) and, through the callback's
+/// sender, that channel's buffer ([`CHANNEL_CAPACITY`] messages, 4 MiB) alive.
 struct OsWatch {
     /// Taken by the drop.
     watcher: Option<RecommendedWatcher>,
