@@ -150,8 +150,44 @@ fn a_generated_vault_is_measured_once_per_note_and_a_reindex_reports_to_the_tota
     e.close();
 }
 
-/// A close stops a reindex between two files, the asker hears the vault is gone, and the
-/// vault opens again: nothing of the index outlives the close.
+/// Runs a reindex, holds its task at the first step `at` names, calls `held`, then closes the
+/// vault: the reindex answers that the vault is gone, and so does the next one.
+fn close_inside_a_reindex(
+    e: &mut Env,
+    index: &Arc<NoteIndex>,
+    at: fn(IndexProgress) -> bool,
+    held: impl FnOnce(&Env),
+) {
+    let (started, first) = mpsc::channel();
+    let session = e.session.clone();
+    let asked = index.clone();
+    let reindex = std::thread::spawn(move || {
+        asked.reindex(move |step| {
+            if at(step) {
+                let _ = started.send(());
+                // Progress runs on the task's thread: the task waits here until the close began.
+                until("the close to begin", || session.current().is_none());
+            }
+        })
+    });
+    first.recv().unwrap();
+    held(e);
+    e.close();
+    let result = reindex.join().unwrap();
+    assert!(matches!(result, Err(IndexError::NotOpen)), "{result:?}");
+    assert!(matches!(index.reindex(|_| {}), Err(IndexError::NotOpen)));
+}
+
+fn index_meta_rows(e: &Env) -> i64 {
+    let index = rusqlite::Connection::open(e.vault.join(".memry/core/index.db")).unwrap();
+    index.busy_timeout(Duration::from_secs(5)).unwrap();
+    index
+        .query_row("SELECT count(*) FROM index_meta", [], |row| row.get(0))
+        .unwrap()
+}
+
+/// A close stops a reindex between two files, and inside its search reindex, which then
+/// commits nothing; the vault opens again each time: nothing of the index outlives the close.
 #[test]
 fn a_close_ends_a_reindex_and_the_vault_opens_again() {
     let (mut e, _store, _) = seeded(NOTES);
@@ -161,27 +197,35 @@ fn a_close_ends_a_reindex_and_the_vault_opens_again() {
     e.open();
     until("every note measured", || all_indexed(&e));
 
-    let (started, first) = mpsc::channel();
-    let session = e.session.clone();
-    let asked = index.clone();
-    let reindex = std::thread::spawn(move || {
-        asked.reindex(move |step| {
-            if step.built == 0 {
-                let _ = started.send(());
-                // Held at the first step until the close began, so the close lands inside.
-                until("the close to begin", || session.current().is_none());
-            }
-        })
-    });
-    first.recv().unwrap();
-    e.close();
-    let result = reindex.join().unwrap();
-    assert!(matches!(result, Err(IndexError::NotOpen)), "{result:?}");
-    assert!(matches!(index.reindex(|_| {}), Err(IndexError::NotOpen)));
+    close_inside_a_reindex(&mut e, &index, |step| step.built == 0, |_| {});
+
+    // Every file read, the search reindex next. Without its watermarks the search index owes a
+    // full rebuild of every note, which the close stops before it commits.
+    e.open();
+    close_inside_a_reindex(
+        &mut e,
+        &index,
+        |step| step.total > 0 && step.built == step.total,
+        |e| {
+            rusqlite::Connection::open(e.vault.join(".memry/core/index.db"))
+                .unwrap()
+                .execute("DELETE FROM index_meta", [])
+                .unwrap();
+        },
+    );
+    assert_eq!(
+        index_meta_rows(&e),
+        0,
+        "the stopped search reindex committed"
+    );
 
     e.open();
     let done = index.reindex(|_| {}).unwrap();
     assert_eq!(done.indexed, NOTES);
+    assert!(
+        index_meta_rows(&e) > 0,
+        "the next reindex rebuilt the search index"
+    );
     // Closed again with its task idle: the close wakes it, and the vault opens again.
     e.close();
     e.open();
