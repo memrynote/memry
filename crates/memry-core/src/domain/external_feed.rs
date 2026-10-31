@@ -61,6 +61,10 @@
 //! text is its first body. (Electron answered "false" there and let the next
 //! editor open seed it; with no editor in the picture the feed is the seed.)
 //!
+//! A journal day's file is fed as a note's is (Step 13m): its body is a document
+//! in the same feed, keyed by the day's record id (chapter 07 §7.1), and its
+//! update is queued under the day's item type ([`body_owner`]).
+//!
 //! [`seed_body_if_empty`] is the same step for a file whose note record already
 //! exists (adopted by folder path and title, or left by a crash between the
 //! record and its seed): it writes only into an empty body, so it can never
@@ -84,8 +88,8 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
 use crate::crdt::registry::UpdateSink;
 use crate::domain::body_write::append_in;
-use crate::domain::notes::ITEM_TYPE;
-use crate::domain::{note_snapshots, owed_file_body, reads};
+use crate::domain::notes::journal_day::body_owner;
+use crate::domain::{note_snapshots, owed_file_body};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::{Converter, ReplaceOptions};
 use crate::markdown::convert::apply::ReplaceOutcome;
@@ -122,9 +126,8 @@ pub enum FeedOutcome {
     /// an edit the document did not take. The caller logs it with the note id and
     /// the reason, and does not treat the file as read.
     Refused(Refusal),
-    /// This vault holds no live note by that id. A journal day's file answers
-    /// this too: journals are not fed (their documents live under `journal_entries`).
-    /// The caller must not treat the file as read.
+    /// This vault holds no live note or journal day by that id. The caller must
+    /// not treat the file as read.
     NoNote,
 }
 
@@ -212,9 +215,9 @@ fn author(
         embeds,
     } = input;
     let markdown = markdown.strip_prefix('\u{feff}').unwrap_or(markdown);
-    if !reads::note_exists(conn, note_id) {
+    let Some(owner) = body_owner(conn, note_id)? else {
         return Ok(FeedOutcome::NoNote);
-    }
+    };
     if classify_markdown_content(markdown, MarkdownClassThresholds::default())
         .large_file
         .is_some()
@@ -310,13 +313,13 @@ fn author(
                 &previous.markdown,
             ),
             body: &previous.markdown,
-            title: &title(&tx, note_id)?,
+            title: &owner.title,
             reason: note_snapshots::SIGNIFICANT,
         };
         note_snapshots::keep(&tx, version, now_ms)?;
     }
     for update in &updates {
-        append_in(&tx, ITEM_TYPE, note_id, update, now_ms)?;
+        append_in(&tx, owner.item_type, note_id, update, now_ms)?;
     }
     owed_file_body::clear(&tx, note_id)?;
     tx.commit().map_err(storage_failed)?;
@@ -406,15 +409,6 @@ pub fn same_text(body: &str, file: &str) -> bool {
 /// (header, compressed frame, AEAD tag), not the markdown or the raw update.
 fn rides_as_one_update(update: &[u8]) -> bool {
     crdt_envelope::packed_len(update) <= MAX_UPDATE_BYTES
-}
-
-fn title(conn: &Connection, note_id: &str) -> Result<String, CrdtError> {
-    conn.query_row(
-        "SELECT title FROM notes WHERE id = ?1",
-        rusqlite::params![note_id],
-        |row| row.get(0),
-    )
-    .map_err(storage_failed)
 }
 
 fn storage_failed(error: rusqlite::Error) -> CrdtError {

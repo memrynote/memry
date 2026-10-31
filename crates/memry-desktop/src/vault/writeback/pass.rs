@@ -7,13 +7,13 @@ use std::sync::{Arc, Mutex};
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
 use memry_core::domain::external_feed::same_text;
-use memry_core::domain::journal::valid_date;
 use memry_core::domain::write_back::BodyRead;
 use memry_core::markdown::frontmatter::{
     ParsedMarkdownNote, YamlMap, YamlValue, serialize_parsed_markdown_note, split_frontmatter_block,
 };
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
 
+use super::journal::{Dated, dated_block, set_date};
 use crate::vault::consumer::rows::{RowOwner, RowSession, RowStat, now_ms};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
@@ -51,8 +51,6 @@ pub enum Keep {
     Closed,
     NoRow,
     NotMarkdown,
-    /// A journal day: journal files are not fed, so the document never holds one.
-    Journal,
     /// The row names a file that is not there.
     NoFile,
     /// The row has no hash: the document is not known to hold the file.
@@ -116,9 +114,11 @@ impl Pass {
         // The row's stamp: taken before the body is read, so an edit made after the read is
         // after the stamp and the note stays behind its body (`reconcile`).
         let read_at = now_ms();
-        if is_journal(note_id) {
-            return Outcome::Kept(Keep::Journal);
-        }
+        // A journal day's file takes the day's date in its frontmatter (`journal`).
+        let file_date = match self.vault.write_back().file_date(note_id) {
+            Ok(date) => date,
+            Err(error) => return Outcome::Failed(format!("the journal day: {error}")),
+        };
         let row = match lane.files().by_id(note_id) {
             Ok(Some(row)) => row,
             Ok(None) => return Outcome::Kept(Keep::NoRow),
@@ -175,7 +175,13 @@ impl Pass {
         } else {
             body.markdown.as_str()
         };
-        let output = match file_for(parsed, markdown, &body.writing, &file.raw) {
+        let output = match file_for(
+            parsed,
+            markdown,
+            &body.writing,
+            &file.raw,
+            (note_id, file_date.as_deref()),
+        ) {
             Ok(output) => output,
             Err(reason) => return Outcome::Failed(reason),
         };
@@ -268,18 +274,23 @@ impl Pass {
 }
 
 /// The file the body makes of `parsed`: its frontmatter block kept byte for byte unless the
-/// `writing` data changed it, its line ends, and the byte order mark of `raw`.
+/// `writing` data changed it, or, for `note_id` a journal day whose file carries `file_date`,
+/// its `date` entry (`journal`); its line ends, and the byte order mark of `raw`.
 fn file_for(
     mut parsed: ParsedMarkdownNote,
     markdown: &str,
     writing: &WritingFrontmatter,
     raw: &str,
+    (note_id, file_date): (&str, Option<&str>),
 ) -> Result<String, String> {
     let edited = match &parsed.frontmatter {
         YamlValue::Map(map) => {
             let mut merged: YamlMap = (**map).clone();
             let edited = merge_writing_yaml(&mut merged, writing);
             if edited {
+                if let Some(date) = file_date {
+                    set_date(&mut merged, date);
+                }
                 parsed.frontmatter = YamlValue::map(merged);
             }
             edited
@@ -287,6 +298,21 @@ fn file_for(
         // A top level that is a list or a scalar is the author's; no key is added to it.
         _ => false,
     };
+    // The date rides on a write of the body; it never writes a file on its own.
+    if !edited
+        && markdown != parsed.content
+        && let Some(date) = file_date
+    {
+        match dated_block(&parsed, raw, date) {
+            Dated::Says => {}
+            Dated::Set(block) => parsed.raw_frontmatter_block = Some(block),
+            Dated::NotInPlace(why) => tracing::warn!(
+                scope = "vault_writeback",
+                note_id,
+                "a journal day's file is written without the day's date: {why}"
+            ),
+        }
+    }
     let mut output = serialize_parsed_markdown_note(&parsed, markdown, edited)
         .map_err(|error| format!("the frontmatter could not be written: {error}"))?;
     if raw.starts_with(BOM) && !output.starts_with(BOM) {
@@ -304,10 +330,4 @@ pub(super) fn replaces_unheld_bytes(raw: &str, output: &str) -> bool {
         split_frontmatter_block(output),
     );
     old.block != new.block || old.body != new.body
-}
-
-fn is_journal(note_id: &str) -> bool {
-    note_id
-        .strip_prefix('j')
-        .is_some_and(|date| valid_date(date).is_ok())
 }

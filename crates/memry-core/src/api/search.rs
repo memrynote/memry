@@ -27,6 +27,8 @@ use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 use crate::domain::link_reads::{self, Incoming, LinkTarget};
 #[cfg(feature = "markdown")]
 use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
+#[cfg(feature = "markdown")]
+use crate::domain::notes::journal_day;
 use crate::domain::search::{self, HitKind, SearchHit};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
@@ -199,9 +201,20 @@ impl Search {
 #[cfg(feature = "markdown")]
 impl Search {
     /// Measures each file on the caller's thread, then stores the rows in one transaction:
-    /// the index writer is not held while a large file is measured.
+    /// the index writer is not held while a large file is measured. Each row takes the
+    /// journal day of its record ([`journal_day::file_date`]).
     pub fn index_note_files(&self, files: Vec<MeasuredFile>) -> Result<usize, StorageError> {
-        let rows: Vec<NoteStatsRow> = files.into_iter().map(NoteStatsRow::measured).collect();
+        let ids: Vec<String> = files.iter().map(|file| file.note_id.clone()).collect();
+        let dates = self.data.read_blocking(move |data| {
+            ids.iter()
+                .map(|id| journal_day::file_date(data, id))
+                .collect::<Result<Vec<_>, _>>()
+        })?;
+        let rows: Vec<NoteStatsRow> = files
+            .into_iter()
+            .zip(dates)
+            .map(|(file, date)| NoteStatsRow::measured(file, date))
+            .collect();
         self.index
             .call_blocking(move |index| note_stats::write(index, &rows, now_ms()))
     }
@@ -227,15 +240,10 @@ impl Search {
     }
 
     /// The markdown notes to measure, smallest file first ([`note_stats::unindexed`]).
-    /// `day_of` is the journal day a vault path names.
-    pub fn unindexed_notes(
-        &self,
-        all: bool,
-        day_of: &dyn Fn(&str) -> Option<String>,
-    ) -> Result<Vec<Unindexed>, StorageError> {
+    pub fn unindexed_notes(&self, all: bool) -> Result<Vec<Unindexed>, StorageError> {
         let index = self.index.clone();
         self.data.read_blocking(move |data| {
-            index.read_blocking(|index| note_stats::unindexed(data, index, all, day_of))
+            index.read_blocking(|index| note_stats::unindexed(data, index, all))
         })
     }
 }

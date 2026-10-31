@@ -169,6 +169,22 @@ pub fn pulled_item(db: &Db, item_type: &str, id: &str, payload: &Value) {
     });
 }
 
+/// A deletion another device pushed, applied as a pull applies it.
+pub fn pulled_deleted(db: &Db, item_type: &str, id: &str) {
+    let inbound = InboundRecord {
+        item_type: item_type.to_owned(),
+        item_id: id.to_owned(),
+        payload_json: "{}".to_owned(),
+        server_cursor: Some(2),
+        signer_device_id: Some("device-b".to_owned()),
+        updated_at: NOW,
+        deleted_at: Some(NOW),
+    };
+    run(db, |conn| {
+        sync_items::apply_remote(conn, &inbound, NOW).map(drop)
+    });
+}
+
 /// A row whose hash is of the file's text, as the tier records one the note's document took.
 pub fn give_row(db: &Db, id: &str, path: &str) {
     give_row_hashes(db, id, path, Some("hash"), Some("hash"));
