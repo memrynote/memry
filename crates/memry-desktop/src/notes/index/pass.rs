@@ -15,17 +15,17 @@ use memry_core::markdown::shared::markdown_class::{
 
 use super::{BATCH, BATCH_BYTES, Backfilled, IndexError, IndexProgress};
 use crate::session::OpenVault;
-use crate::vault::config::read_vault_config;
-use crate::vault::journal_format::{normalize_journal_folder, parse_journal_date};
 use crate::vault::note_file::{NoteFileError, read_note};
 
-/// One open vault's index.
+/// One open vault's index. A note's journal day is its record's, which the core reads when it
+/// stores the row (`Search::index_note_files`): the vault tier decided which day a file is
+/// when it named it (`vault::journal_format::JournalDays`), so no path is read for a day here.
+/// An unreadable or changed vault config changes no stored day, and a day owed a move of its
+/// file has none.
 pub struct Indexer {
     root: PathBuf,
     pub(super) vault: Arc<Vault>,
     pub(super) search: Arc<Search>,
-    journal_folder: String,
-    journal_format: String,
 }
 
 /// What a pass did, and what it leaves owed.
@@ -47,13 +47,10 @@ enum Read {
 
 impl Indexer {
     pub fn new(vault: &OpenVault) -> Self {
-        let config = read_vault_config(&vault.path);
         Self {
             root: vault.path.clone(),
             vault: vault.vault.clone(),
             search: vault.search.clone(),
-            journal_folder: normalize_journal_folder(&config.journal_folder),
-            journal_format: config.journal_date_format,
         }
     }
 
@@ -64,8 +61,7 @@ impl Indexer {
         if pruned > 0 {
             tracing::info!(scope = "note_index", pruned, "rows of gone notes dropped");
         }
-        self.search
-            .unindexed_notes(all, &|path| self.journal_day(path))
+        self.search.unindexed_notes(all)
     }
 
     /// The notes a pass works: a scan's when one is owed, and the queued ones, which a scan
@@ -169,7 +165,6 @@ impl Indexer {
             Ok(Some(file)) => Read::File(MeasuredFile {
                 note_id: note.note_id.clone(),
                 file_hash: file.hash,
-                date: self.journal_day(&note.path),
                 text: file.raw,
             }),
             // Gone: its `Removed` fact, or the next scan's prune, drops the row.
@@ -186,18 +181,6 @@ impl Indexer {
                 Read::Failed
             }
         }
-    }
-
-    /// `extractDateFromPath`: the day a path under the journal folder names in its format.
-    fn journal_day(&self, path: &str) -> Option<String> {
-        if self.journal_folder.is_empty() {
-            return None;
-        }
-        let stem = path
-            .strip_prefix(&self.journal_folder)?
-            .strip_prefix('/')?
-            .strip_suffix(".md")?;
-        parse_journal_date(stem, &self.journal_format).map(|date| date.to_string())
     }
 }
 
