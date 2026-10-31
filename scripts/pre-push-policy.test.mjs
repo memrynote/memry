@@ -440,6 +440,34 @@ describe('pre-push hook re-runs pre-commit checks over the pushed commits', () =
       )
     }))
 
+  it('refuses when a pushed file cannot be read, as in a partial clone', () =>
+    withFixture((fx) => {
+      fx.commit('tools/config.ts', leakedToken)
+      const blob = fx.git('rev-parse', 'HEAD:tools/config.ts').toString().trim()
+      rmSync(join(fx.repo, '.git/objects', blob.slice(0, 2), blob.slice(2)))
+      assertRefused(
+        fx,
+        fx.push('HEAD:refs/heads/feature'),
+        /git cat-file could not read tools\/config\.ts at [0-9a-f]+ \("[0-9a-f]+ missing"\)/
+      )
+    }))
+
+  it('checks the oxfmt config only when the push changes it', () =>
+    withFixture((fx) => {
+      // Someone else's hookless push leaves the config unformatted on main.
+      const config = readFileSync(join(fx.repo, '.oxfmtrc.jsonc'), 'utf8')
+      fx.commit('.oxfmtrc.jsonc', config.replace('"singleQuote": true', '"singleQuote":    true'))
+      fx.git('push', '-q', 'origin', 'HEAD:main')
+      fx.commit('tools/a.ts', clean)
+      const untouched = fx.push('HEAD:refs/heads/feature')
+      assert.equal(untouched.status, 0, untouched.stderr)
+
+      fx.commit('.oxfmtrc.jsonc', config.replace('"semi": false', '"semi":    false'))
+      const touched = fx.push('HEAD:refs/heads/feature')
+      assert.equal(touched.status, 1)
+      assert.match(touched.stderr, /are not formatted:\n\n {2}\.oxfmtrc\.jsonc/)
+    }))
+
   it('skips files the push deletes and files only the merged base changed', () =>
     withFixture((fx) => {
       // Someone else's hookless push leaves an unformatted file on main.

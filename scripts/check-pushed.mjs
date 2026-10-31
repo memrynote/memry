@@ -66,9 +66,16 @@ function readFiles(localSha, include) {
   const output = git(['cat-file', '--batch'], entries.map(({ blob }) => `${blob}\n`).join(''))
   let offset = 0
   return entries.map(({ path }) => {
-    // Each object is "<id> blob <size>\n<content>\n".
+    // Each object is "<id> blob <size>\n<content>\n"; anything else (a `missing` object in a
+    // partial clone) would read as an empty file and pass unchecked.
     const headerEnd = output.indexOf(10, offset)
-    const size = Number(output.toString('utf8', offset, headerEnd).split(' ')[2])
+    const header = output.toString('utf8', offset, headerEnd === -1 ? undefined : headerEnd)
+    const size = Number(header.match(/^[0-9a-f]+ blob (\d+)$/)?.[1])
+    if (!Number.isFinite(size)) {
+      throw new Error(
+        `git cat-file could not read ${path} at ${localSha} ("${header}"). Fetch the missing objects (\`git fetch --refetch\`), then push again.`
+      )
+    }
     const content = output.subarray(headerEnd + 1, headerEnd + 1 + size)
     offset = headerEnd + 1 + size + 1
     return { path, content }
@@ -127,7 +134,11 @@ function main(remote, localSha, remoteSha) {
   const secrets = files
     .filter(({ path, content }) => touched.has(path) && !content.includes(0))
     .flatMap(({ path, content }) => scanTextForSecrets(path, content.toString('utf8')))
-  const unformatted = listUnformatted(files)
+  // The config files sit in the snapshot for oxfmt to read; one the push left alone is not its
+  // problem, so an unformatted config on the base does not refuse every push.
+  const unformatted = listUnformatted(files).filter(
+    (path) => touched.has(path) || !formatConfigPaths.has(path)
+  )
 
   if (secrets.length > 0) {
     console.error(
