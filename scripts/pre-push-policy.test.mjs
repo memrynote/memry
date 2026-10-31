@@ -1,12 +1,21 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
 
 const prePushPath = new URL('../.husky/pre-push', import.meta.url).pathname
 const prePush = readFileSync(prePushPath, 'utf8')
+const scriptsDir = new URL('.', import.meta.url).pathname
 
 // Fake pnpm: `docs:impact --base <sha>` passes only when <sha>...HEAD touches apps/docs.
 const fakePnpm = `#!/bin/sh
@@ -34,6 +43,9 @@ function makeFixture() {
   execFileSync('git', ['clone', '-q', join(root, 'origin.git'), repo], { stdio: 'pipe' })
   git('config', 'user.email', 't@t')
   git('config', 'user.name', 't')
+  // The hook runs `node scripts/...` from the repo root; point that at this checkout's scripts.
+  symlinkSync(scriptsDir, join(repo, 'scripts'))
+  writeFileSync(join(repo, '.git/info/exclude'), 'scripts\n')
   const commit = (path, body) => {
     mkdirSync(join(repo, path, '..'), { recursive: true })
     writeFileSync(join(repo, path), body)
@@ -41,6 +53,8 @@ function makeFixture() {
     git('commit', '-q', '-m', path)
   }
   commit('README.md', 'base\n')
+  // The format check reads the oxfmt config at the pushed commit, as in the real repo.
+  commit('.oxfmtrc.jsonc', readFileSync(new URL('../.oxfmtrc.jsonc', import.meta.url)))
   git('push', '-q', 'origin', 'HEAD:main')
   git('fetch', '-q', 'origin')
   git('checkout', '-q', '-b', 'docs-gate-fixture', 'origin/main')
@@ -56,7 +70,7 @@ function makeFixture() {
     spawnSync('git', ['--git-dir', origin, 'rev-parse', '--verify', '--quiet', ref], {
       encoding: 'utf8'
     }).stdout.trim()
-  return { root, origin, git, commit, runHook, push, remoteRef }
+  return { root, repo, origin, git, commit, runHook, push, remoteRef }
 }
 
 function withFixture(test) {
@@ -256,5 +270,68 @@ describe('pre-push hook force-push refusal', () => {
       )
       assert.doesNotMatch(result.stderr, /rebasing/)
       assert.equal(fx.remoteRef('main'), theirs)
+    }))
+})
+
+describe('pre-push hook re-runs pre-commit checks over the pushed commits', () => {
+  // Fixture commits run no hooks, as `git commit --no-verify` does. Paths sit under tools/,
+  // which the docs gate ignores, so a refusal here comes from the range checks.
+  // Assembled at runtime so this file does not trip the scanner (check-staged-secrets.test.mjs).
+  const leakedToken = `export const token = '${['ghp', 'abc123def456ghi789jkl012'].join('_')}'\n`
+  const unformatted = 'export const a = "x";\n'
+
+  it('passes a clean range on a new branch and on an update', () =>
+    withFixture((fx) => {
+      fx.commit('tools/a.ts', "export const a = 'x'\n")
+      const created = fx.push('HEAD:refs/heads/feature')
+      assert.equal(created.status, 0, created.stderr)
+      fx.commit('tools/b.ts', "export const b = 'y'\n")
+      const updated = fx.push('HEAD:refs/heads/feature')
+      assert.equal(updated.status, 0, updated.stderr)
+    }))
+
+  it('refuses a new branch whose commit holds a secret', () =>
+    withFixture((fx) => {
+      fx.commit('tools/config.ts', leakedToken)
+      const result = fx.push('HEAD:refs/heads/feature')
+      assert.equal(result.status, 1)
+      assert.match(result.stderr, /secret scan: potential secrets detected in the pushed commits/)
+      assert.match(result.stderr, /tools\/config\.ts:1 github-token/)
+      assert.equal(fx.remoteRef('feature'), '')
+    }))
+
+  it('refuses an update whose new commit holds an unformatted file', () =>
+    withFixture((fx) => {
+      fx.commit('tools/a.ts', "export const a = 'x'\n")
+      assert.equal(fx.push('HEAD:refs/heads/feature').status, 0)
+      const pushed = fx.remoteRef('feature')
+      fx.commit('tools/b.ts', unformatted)
+      const result = fx.push('HEAD:refs/heads/feature')
+      assert.equal(result.status, 1)
+      assert.match(result.stdout + result.stderr, /tools\/b\.ts/)
+      assert.match(result.stderr, /format check: files in the pushed commits/)
+      assert.equal(fx.remoteRef('feature'), pushed)
+    }))
+
+  it('checks the pushed commit, not the working tree', () =>
+    withFixture((fx) => {
+      fx.commit('tools/b.ts', unformatted)
+      writeFileSync(join(fx.repo, 'tools/b.ts'), "export const a = 'x'\n")
+      assert.equal(fx.push('HEAD:refs/heads/feature').status, 1)
+    }))
+
+  it('skips files the push deletes and files only the merged base changed', () =>
+    withFixture((fx) => {
+      // Someone else's hookless push leaves an unformatted file on main.
+      fx.git('checkout', '-q', 'main')
+      fx.commit('tools/theirs.ts', unformatted)
+      fx.git('push', '-q', 'origin', 'HEAD:main')
+      fx.git('checkout', '-q', 'docs-gate-fixture')
+      fx.commit('tools/gone.ts', unformatted)
+      fx.git('rm', '-q', 'tools/gone.ts')
+      fx.git('commit', '-q', '-m', 'remove')
+      fx.git('merge', '-q', '--no-edit', 'origin/main')
+      const result = fx.push('HEAD:refs/heads/feature')
+      assert.equal(result.status, 0, result.stderr)
     }))
 })
