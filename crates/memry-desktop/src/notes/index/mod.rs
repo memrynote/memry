@@ -10,8 +10,9 @@
 //!   the rest of the queue back. Nothing is worked before the open walk ends (`Indexed`):
 //!   tier 0 goes first, and a pass beside a first walk would hold its database locks. The
 //!   end of the walk and a lagged subscription (facts were lost, the walk's end among them,
-//!   maybe) run a scan instead: every markdown note whose row is missing or names other
-//!   bytes than its file ([`Search::unindexed_notes`]).
+//!   maybe) run a scan instead ([`Indexer::scan`]): the rows of notes with no markdown file
+//!   are dropped, then every markdown note whose row is missing or names other bytes than
+//!   its file is measured ([`Search::unindexed_notes`]).
 //! - **Links and body tags** have one owner, the core search reindex, which reads them from the
 //!   note's document. A pass that measured anything ends with [`Search::reindex`].
 //! - **Not measured:** a file past the large-file byte ceiling (Electron streams it; a
@@ -133,7 +134,7 @@ impl NoteIndex {
         mut progress: impl FnMut(IndexProgress),
     ) -> Result<Backfilled, IndexError> {
         let indexer = lock(&self.current).clone().ok_or(IndexError::NotOpen)?;
-        let notes = indexer.search.unindexed_notes(true)?;
+        let notes = indexer.scan(true)?;
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         // A close ends the pass: it must not keep the closed vault's databases open.
         let closed = || {
@@ -215,7 +216,7 @@ impl Indexer {
                         armed = None;
                         let notes = if std::mem::take(&mut scan) {
                             queue.clear();
-                            self.search.unindexed_notes(false)
+                            self.scan(false)
                         } else {
                             self.queued(std::mem::take(&mut queue))
                         };
@@ -237,6 +238,16 @@ impl Indexer {
         if let Err(error) = outcome {
             tracing::warn!(scope = "note_index", "index pass failed: {error}");
         }
+    }
+
+    /// Drops the rows of notes that lost their markdown file while no fact said so, then
+    /// lists the notes to measure: those without a current row, or every one (`all`).
+    pub fn scan(&self, all: bool) -> Result<Vec<Unindexed>, StorageError> {
+        let pruned = self.search.prune_note_stats()?;
+        if pruned > 0 {
+            tracing::info!(scope = "note_index", pruned, "rows of gone notes dropped");
+        }
+        self.search.unindexed_notes(all)
     }
 
     fn queued(&self, ids: BTreeSet<String>) -> Result<Vec<Unindexed>, StorageError> {

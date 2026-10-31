@@ -192,3 +192,21 @@ fn a_version_2_index_migrates_in_place_to_note_stats() {
     index_all(&search);
     assert!(listed(&search, false).is_empty());
 }
+
+#[test]
+fn rows_of_notes_without_a_markdown_file_are_pruned() {
+    let dir = scratch();
+    let (vault, search) = open(dir.path());
+    seed_three(&vault);
+    index_all(&search);
+    search
+        .index_note_files(vec![measured("ghost", "h-ghost")])
+        .expect("a row no file names");
+    assert!(vault.note_files().remove("mid").expect("remove"));
+
+    assert_eq!(search.prune_note_stats().expect("prune"), 2);
+    assert_eq!(search.note_stats("mid").expect("read"), None);
+    assert_eq!(search.note_stats("ghost").expect("read"), None);
+    assert!(search.note_stats("small").expect("read").is_some());
+    assert_eq!(search.prune_note_stats().expect("prune again"), 0);
+}

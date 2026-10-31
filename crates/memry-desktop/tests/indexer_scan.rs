@@ -15,8 +15,9 @@ mod vault_env;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use memry_core::domain::note_stats::measure;
+use memry_core::domain::note_stats::{MeasuredFile, measure};
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::{Backfilled, IndexProgress, Indexer, NoteIndex};
 use memry_desktop::session::projection::CancelToken;
 use memry_desktop::vault::consumer::Applied;
@@ -233,9 +234,17 @@ fn facts_keep_the_rows_current_and_lost_facts_run_a_scan() {
         open.search.note_stats(gone).unwrap().is_none()
     });
 
-    // Facts lost to a lagged subscription: the indexer scans and measures what has no row.
+    // Facts lost to a lagged subscription: the indexer scans, measures what has no row and
+    // drops the row of a note no fact said was gone.
     let (lost, _) = &notes[2];
     assert!(open.search.forget_note_stats(lost).unwrap());
+    let ghost = MeasuredFile {
+        note_id: "ghost".into(),
+        file_hash: "h".into(),
+        date: None,
+        text: "gone".into(),
+    };
+    open.search.index_note_files(vec![ghost]).unwrap();
     let (sender, receiver) = tokio::sync::broadcast::channel(1);
     // Facts that ask for no scan themselves: only the lag can.
     for _ in 0..3 {
@@ -251,10 +260,45 @@ fn facts_keep_the_rows_current_and_lost_facts_run_a_scan() {
         scope.spawn(|| indexer.run(receiver, &cancel));
         // Cancelled on the way out, a failed wait included, so the scope can join the task.
         let _stop = CancelOnDrop(&cancel);
-        until("the lost note measured", || {
+        until("the lost note measured and the ghost dropped", || {
             open.search.note_stats(lost).unwrap().is_some()
+                && open.search.note_stats("ghost").unwrap().is_none()
         });
     });
+    e.close();
+}
+
+/// A vault the app has never seen: the open walk gives every file its note through the notes
+/// identity (tier 0), and the index measures each once (tier 1). Ids come from the identity.
+#[test]
+fn a_fresh_vault_gets_its_notes_and_then_their_stats() {
+    let mut e = env(|store| Some(NotesIdentity::new(store)));
+    for i in 0..NOTES {
+        e.write(&path_of(i), &note_text(i));
+    }
+    let index = NoteIndex::new(e.tier.clone());
+    index.register(&e.session);
+    let started = Instant::now();
+    e.open();
+    e.facts_until(indexed);
+    let tier0 = started.elapsed();
+    until("every note measured", || all_indexed(&e));
+    let tier1 = started.elapsed();
+    println!("fresh {NOTES} notes: tier 0 {tier0:?}, tier 1 {tier1:?}");
+    let rows = e.rows();
+    assert_eq!(rows.len(), NOTES);
+    let search = e.session.current().unwrap().search;
+    for (id, path) in rows {
+        let i: usize = path
+            .trim_end_matches(".md")
+            .rsplit(' ')
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap();
+        let stored = search.note_stats(&id).unwrap().expect("a row");
+        assert_eq!(stored.stats, measure(&note_text(i)), "{path}");
+    }
     e.close();
 }
 

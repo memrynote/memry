@@ -170,6 +170,14 @@ impl Search {
             .read_blocking(move |index| note_stats::read(index, &note_id))
     }
 
+    /// Drops the rows of notes with no markdown file row ([`note_stats::prune`]). Holds the
+    /// index writer while it reads the rows, so no row measured meanwhile is dropped.
+    pub fn prune_note_stats(&self) -> Result<usize, StorageError> {
+        let data = self.data.clone();
+        self.index
+            .call_blocking(move |index| data.read_blocking(|data| note_stats::prune(data, index)))
+    }
+
     /// The markdown notes to measure, smallest file first ([`note_stats::unindexed`]).
     pub fn unindexed_notes(&self, all: bool) -> Result<Vec<Unindexed>, StorageError> {
         let index = self.index.clone();
