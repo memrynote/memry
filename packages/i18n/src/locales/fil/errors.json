@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Hindi matanggal ang bersyon",
     "reorderFailed": "Hindi maisaayos ang pagkakasunod ng mga tala",
     "importFilesFailed": "Hindi ma-import ang mga file",
-    "setLocalOnlyFailed": "Hindi maitakda bilang lokal lang"
+    "setLocalOnlyFailed": "Hindi maitakda bilang lokal lang",
+    "tooLargeToSync": "Masyadong malaki ang talang ito para i-sync, kaya mananatili ito sa device na ito. Maaayos ito kapag hinati mo ito sa mas maliliit na tala."
   },
   "database": {
     "connectionFailed": "Hindi makakonekta sa lokal na database. Subukang i-restart ang app.",

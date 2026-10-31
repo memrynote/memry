@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Det gick inte att radera versionen",
     "reorderFailed": "Det gick inte att ändra ordning på anteckningarna",
     "importFilesFailed": "Det gick inte att importera filer",
-    "setLocalOnlyFailed": "Det gick inte att göra anteckningen endast lokal"
+    "setLocalOnlyFailed": "Det gick inte att göra anteckningen endast lokal",
+    "tooLargeToSync": "Den här anteckningen är för stor för att synkroniseras, så den stannar på den här enheten. Dela upp den i mindre anteckningar så löser det sig."
   },
   "database": {
     "connectionFailed": "Det gick inte att ansluta till den lokala databasen. Försök att starta om appen.",

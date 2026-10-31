@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Kunne ikke slette versjonen",
     "reorderFailed": "Kunne ikke endre rekkefølgen på notatene",
     "importFilesFailed": "Kunne ikke importere filene",
-    "setLocalOnlyFailed": "Kunne ikke angi at notatet bare skal lagres lokalt"
+    "setLocalOnlyFailed": "Kunne ikke angi at notatet bare skal lagres lokalt",
+    "tooLargeToSync": "Dette notatet er for stort til å synkroniseres, så det blir værende på denne enheten. Del det opp i mindre notater for å løse dette."
   },
   "database": {
     "connectionFailed": "Kunne ikke koble til den lokale databasen. Prøv å starte appen på nytt.",

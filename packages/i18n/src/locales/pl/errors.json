@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Nie udało się usunąć wersji",
     "reorderFailed": "Nie udało się zmienić kolejności notatek",
     "importFilesFailed": "Nie udało się zaimportować plików",
-    "setLocalOnlyFailed": "Nie udało się ustawić trybu tylko lokalnego"
+    "setLocalOnlyFailed": "Nie udało się ustawić trybu tylko lokalnego",
+    "tooLargeToSync": "Ta notatka jest zbyt duża, aby ją zsynchronizować, więc pozostaje na tym urządzeniu. Podziel ją na mniejsze notatki, aby rozwiązać problem."
   },
   "database": {
     "connectionFailed": "Nie udało się połączyć z lokalną bazą danych. Spróbuj ponownie uruchomić aplikację.",

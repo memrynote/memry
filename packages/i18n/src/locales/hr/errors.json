@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Brisanje verzije nije uspjelo",
     "reorderFailed": "Promjena redoslijeda bilješki nije uspjela",
     "importFilesFailed": "Uvoz datoteka nije uspio",
-    "setLocalOnlyFailed": "Postavljanje na „Samo lokalno” nije uspjelo"
+    "setLocalOnlyFailed": "Postavljanje na „Samo lokalno” nije uspjelo",
+    "tooLargeToSync": "Ova je bilješka prevelika za sinkronizaciju pa ostaje na ovom uređaju. Podijelite je na manje bilješke da biste to riješili."
   },
   "database": {
     "connectionFailed": "Nije moguće povezati se s lokalnom bazom podataka. Pokušajte ponovno pokrenuti aplikaciju.",

@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Nu s-a putut șterge versiunea",
     "reorderFailed": "Nu s-au putut reordona notițele",
     "importFilesFailed": "Nu s-au putut importa fișierele",
-    "setLocalOnlyFailed": "Nu s-a putut seta modul doar local"
+    "setLocalOnlyFailed": "Nu s-a putut seta modul doar local",
+    "tooLargeToSync": "Această notiță este prea mare pentru sincronizare, așa că rămâne pe acest dispozitiv. Împărțirea ei în notițe mai mici va rezolva problema."
   },
   "database": {
     "connectionFailed": "Nu s-a putut conecta la baza de date locală. Încercați să reporniți aplicația.",

@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Không thể xóa phiên bản",
     "reorderFailed": "Không thể sắp xếp lại ghi chú",
     "importFilesFailed": "Không thể nhập tệp",
-    "setLocalOnlyFailed": "Không thể đặt chế độ chỉ lưu cục bộ"
+    "setLocalOnlyFailed": "Không thể đặt chế độ chỉ lưu cục bộ",
+    "tooLargeToSync": "Ghi chú này quá lớn để đồng bộ, nên nó chỉ được lưu trên thiết bị này. Tách ghi chú đó thành các ghi chú nhỏ hơn sẽ khắc phục được lỗi này."
   },
   "database": {
     "connectionFailed": "Không thể kết nối với cơ sở dữ liệu cục bộ. Thử khởi động lại ứng dụng.",
