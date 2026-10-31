@@ -100,7 +100,7 @@ runs:
         electron=true
         if [ "$listed" = true ]; then
           electron=false
-          if printf '%s\n' "$files" | grep -Eq '^(apps/(desktop|extension|cli)/|packages/|scripts/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|tsconfig[^/]*\.json$|oxlint\.config\.mts$|\.oxfmtrc\.jsonc$|turbo\.json$|\.nvmrc$|\.github/(workflows/desktop-ci\.yml|actions/))'; then
+          if printf '%s\n' "$files" | grep -Eq '^(apps/(desktop|extension|cli)/|packages/|scripts/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|tsconfig[^/]*\.json$|oxlint\.config\.mts$|\.oxfmtrc\.jsonc$|turbo\.json$|\.nvmrc$|\.husky/|\.github/(workflows/desktop-ci\.yml|actions/))'; then
             electron=true
           fi
         fi
