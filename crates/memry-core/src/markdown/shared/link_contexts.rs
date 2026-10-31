@@ -294,7 +294,7 @@ mod tests {
         let found = link_contexts(&table, "Plan");
         assert_eq!(found.count, 30);
         assert!(found.truncated);
-        assert!(found.contexts.len() < 30);
+        assert_eq!(found.contexts.len(), 27);
         let short = link_contexts("[[Plan]] and [[plan]]", "Plan");
         assert_eq!(
             (short.count, short.truncated, short.contexts.len()),

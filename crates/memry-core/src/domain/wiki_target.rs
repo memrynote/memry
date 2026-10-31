@@ -142,13 +142,21 @@ impl WikiNames {
     ) -> Result<Self, StorageError> {
         let keys: HashSet<String> = targets.into_iter().flat_map(target_keys).collect();
         let keys = to_json(&keys)?;
+        // Both reads in one snapshot, so a rename committed between them is not half seen.
+        let snapshot = if conn.is_autocommit() {
+            Some(conn.unchecked_transaction().map_err(failed)?)
+        } else {
+            None
+        };
         let mut statement = conn.prepare(CANDIDATES).map_err(failed)?;
         let ids = statement
             .query_map([keys], |row| row.get::<_, String>(0))
             .map_err(failed)?
             .collect::<Result<HashSet<_>, _>>()
             .map_err(failed)?;
-        Ok(Self::ranked(rows(conn, Some(&to_json(&ids)?))?))
+        let rows = rows(conn, Some(&to_json(&ids)?))?;
+        drop(snapshot);
+        Ok(Self::ranked(rows))
     }
 
     /// Builds the index with its tie-break: notes before journal days, then
@@ -280,6 +288,11 @@ impl WikiNames {
 }
 
 /// The keys one row claims in [`WikiNames`]'s lookup maps, one field per map.
+///
+/// `wiki_name_keys` stores these, so a change to what a key is ([`name_key`], [`fold`], the
+/// NFC step, a new map) leaves stored keys stale: it ships with a data migration that marks
+/// every row owed (`INSERT INTO wiki_names_owed (id) SELECT id FROM notes UNION SELECT id
+/// FROM journal_entries`), as 0019 does.
 struct Claims {
     /// `by_path`: a markdown note's folded `folder/Title.md`.
     path: Option<String>,
@@ -367,7 +380,10 @@ fn half_keys(half: &str) -> Vec<String> {
 /// target, and the day a date or `j<date>` names ([`WikiNames::journal_on`]).
 fn target_keys(target: &str) -> Vec<String> {
     let raw = target.trim();
-    let mut keys = half_keys(raw);
+    // Untrimmed too: `resolve` trims with JavaScript's rule, which keeps U+0085 that `trim`
+    // drops, so a bare title is looked up as written.
+    let mut keys = half_keys(target);
+    keys.extend(half_keys(raw));
     keys.extend(half_keys(split(raw).0));
     if let Some((date, _)) = crate::domain::note_meta::journal_date_of(raw) {
         keys.push(date);

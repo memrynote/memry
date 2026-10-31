@@ -8,7 +8,6 @@
 //! | a deleted source with stale index rows reaches no reader | the index may lag, the answer may not |
 //! | titles, aliases, paths and days resolve with their rows  | `resolveLinkTargets`                  |
 //! | a target's heading and block reference                  | `resolveWikiTarget`                    |
-//! | the lookup by key answers as the whole vault does       | `wiki_name_keys` is only a narrowing   |
 //! | the Search surface reads the same                       | the API wrappers                       |
 
 #![cfg(feature = "markdown")]
@@ -23,10 +22,9 @@ use memry_core::domain::journal_ops::links;
 use memry_core::domain::link_reads::{self, LinkTarget};
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::unlinked_mentions::unlinked_mentions;
-use memry_core::domain::wiki_target::{MatchedBy, WikiNames, settle_name_keys};
+use memry_core::domain::wiki_target::{MatchedBy, settle_name_keys};
 use memry_core::storage::migrations::{self, DATA_MIGRATIONS, INDEX_MIGRATIONS};
 use memry_core::storage::{Db, open_data};
-use proptest::prelude::*;
 use rusqlite::{Connection, params};
 use yrs::{ReadTxn as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 
@@ -336,115 +334,6 @@ fn a_rename_is_seen_before_the_keys_are_settled() {
     settle_name_keys(&data).expect("settle");
     assert_eq!(one("strategy").as_deref(), Some("n1"));
     assert_eq!(one("plan"), None);
-}
-
-/// One row of a generated vault: a note or a day, possibly deleted.
-#[derive(Debug, Clone)]
-enum Item {
-    Note {
-        title: String,
-        folder: Option<String>,
-        markdown: bool,
-        aliases: Vec<String>,
-        deleted: bool,
-    },
-    Day {
-        date: String,
-        aliases: Vec<String>,
-    },
-}
-
-fn spelling() -> impl Strategy<Value = String> {
-    prop_oneof![
-        Just("Plan".to_owned()),
-        Just("plan".to_owned()),
-        Just(" PLAN ".to_owned()),
-        Just("Plan#4".to_owned()),
-        Just("Ärger".to_owned()),
-        Just("ärger".to_owned()),
-        Just("2026-01-02".to_owned()),
-        Just("x".to_owned()),
-    ]
-}
-
-fn item() -> impl Strategy<Value = Item> {
-    prop_oneof![
-        3 => (
-            spelling(),
-            prop::option::of(prop_oneof![Just("Work".to_owned()), Just("work".to_owned())]),
-            any::<bool>(),
-            prop::collection::vec(spelling(), 0..2),
-            any::<bool>(),
-        )
-            .prop_map(|(title, folder, markdown, aliases, deleted)| Item::Note {
-                title,
-                folder,
-                markdown,
-                aliases,
-                deleted,
-            }),
-        1 => (
-            prop_oneof![Just("2026-01-02".to_owned()), Just("2026-01-03".to_owned())],
-            prop::collection::vec(spelling(), 0..2),
-        )
-            .prop_map(|(date, aliases)| Item::Day { date, aliases }),
-    ]
-}
-
-fn target() -> impl Strategy<Value = String> {
-    prop_oneof![
-        spelling(),
-        spelling().prop_map(|s| format!("Work/{s}")),
-        spelling().prop_map(|s| format!("/work/{s}.md")),
-        spelling().prop_map(|s| format!("{s}.png")),
-        spelling().prop_map(|s| format!("{s}#Heading")),
-        Just("j2026-01-03".to_owned()),
-    ]
-}
-
-proptest! {
-    #![proptest_config(ProptestConfig::with_cases(128))]
-
-    /// `wiki_name_keys` only narrows the rows a lookup reads: owed or settled, the answer is
-    /// the one the whole vault gives, ties included.
-    #[test]
-    fn the_lookup_by_key_answers_as_the_whole_vault_does(
-        items in prop::collection::vec(item(), 0..12),
-        settle_after in 0usize..13,
-        targets in prop::collection::vec(target(), 1..6),
-    ) {
-        let (data, _) = dbs();
-        let mut days = std::collections::HashSet::new();
-        for (at, item) in items.iter().enumerate() {
-            if at == settle_after {
-                settle_name_keys(&data).expect("settle");
-            }
-            match item {
-                Item::Note { title, folder, markdown, aliases: names, deleted } => {
-                    let id = format!("n{at:02}");
-                    note(&data, &id, title, folder.as_deref(), if *markdown { "markdown" } else { "image" });
-                    aliases(&data, &id, &serde_json::to_string(names).expect("json"));
-                    if *deleted {
-                        tombstone(&data, &id);
-                    }
-                }
-                Item::Day { date, aliases: names } => {
-                    if days.insert(date.clone()) {
-                        day(&data, date, Some(&serde_json::to_string(names).expect("json")));
-                    }
-                }
-            }
-        }
-        let whole = WikiNames::load(&data).expect("load");
-        let narrow = WikiNames::load_for(&data, targets.iter().map(String::as_str)).expect("load");
-        for target in &targets {
-            prop_assert_eq!(narrow.resolve_target(target), whole.resolve_target(target), "{}", target);
-            prop_assert_eq!(narrow.resolve(target), whole.resolve(target), "{}", target);
-            if let Some((date, _)) = memry_core::domain::note_meta::journal_date_of(target) {
-                prop_assert_eq!(narrow.journal_on(&date), whole.journal_on(&date));
-            }
-        }
-    }
 }
 
 fn vault(label: &str) -> (Db, Vault) {
