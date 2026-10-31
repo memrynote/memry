@@ -7,6 +7,7 @@ use memry_core::markdown::frontmatter::{
 };
 
 use super::{assert_wrote, fixture};
+use crate::vault::hash::content_hash;
 use crate::vault::writeback::Outcome;
 use crate::vault::writeback::journal::{dated_block, set_date};
 
@@ -77,9 +78,65 @@ fn a_day_whose_date_says_another_day_has_only_that_line_replaced() {
     );
 }
 
-/// The date rides on a body write: a day whose file holds its body is not written to add it.
+/// A day owed a move of its file (`journal/2025-01-01.md` renamed to another day's path, or out
+/// of the journal) is not that day's file any more: a body write leaves its `date:` as it is.
+#[test]
+fn a_day_owed_a_move_keeps_the_files_date() {
+    let text = "---\ndate: '2025-01-02'\n---\nA day.\n";
+    for rel in ["journal/2025-01-02.md", "archive/2025-01-01.md"] {
+        let mut f = fixture();
+        let id = f.adopt_day(rel, "2025-01-01", text);
+        f.writer.owe_place(&id, "journal/2025-01-01.md").unwrap();
+        f.paragraph_from_sync(&id, "from the other device");
+        let outcome = f.run(&id);
+        let file = assert_wrote(&mut f, &outcome, rel);
+        assert!(
+            file.starts_with("---\ndate: '2025-01-02'\n---\nA day.\n"),
+            "{file}"
+        );
+    }
+}
+
+/// The writing tools data the document holds and the file does not stringifies the block
+/// again: the day's date goes in, and the file's tags stay, never the record's.
+#[test]
+fn a_writing_data_change_writes_the_date_and_the_files_tags() {
+    let mut f = fixture();
+    let rel = "journal/2025-01-20.md";
+    let body = "one <!--alt:k3x9q2-->two<!--/alt:k3x9q2--> three\n";
+    let writing = "writing:\n  alternatives:\n    k3x9q2:\n      versions:\n        - text: two\n";
+    let id = f.adopt_day(rel, "2025-01-20", &format!("---\n{writing}---\n{body}"));
+    let journal = f.vault.journal(f.store.clone()).unwrap();
+    journal
+        .set_tags("2025-01-20".to_owned(), vec!["record-only".to_owned()])
+        .unwrap();
+    // The document holds the alternatives the file no longer does.
+    let text = format!("---\ntags: [mine]\n---\n{body}");
+    f.write(rel, &text);
+    f.record(&id, rel, Some(content_hash(&text)));
+    let outcome = f.run(&id);
+    let file = assert_wrote(&mut f, &outcome, rel);
+    let block = split_frontmatter_block(&file).block.unwrap();
+    assert!(block.contains("tags:\n  - mine\n"), "{block}");
+    assert!(block.contains("date: '2025-01-20'\n"), "{block}");
+    assert!(block.contains("k3x9q2"), "{block}");
+    assert!(!file.contains("record-only"), "{file}");
+}
+
+/// The date rides on a body write: a day whose file holds its body is not written to add it,
+/// whatever the spelling around its block.
 #[test]
 fn a_day_without_a_date_gets_one_with_its_next_body_write_only() {
+    for text in [
+        "---\nmood: ok\n---\n\n\nA journal day.\n",
+        "---\r\nmood: ok\r\n---\r\nA journal day.  \r\n",
+        "---\nmood: ok\n---\n* a\n* b",
+    ] {
+        let mut f = fixture();
+        let id = f.adopt_day("journal/2025-01-01.md", "2025-01-01", text);
+        assert_eq!(f.run(&id), Outcome::Unchanged, "{text:?}");
+        assert_eq!(f.read("journal/2025-01-01.md"), text);
+    }
     let mut f = fixture();
     let id = f.adopt_day("journal/2025-01-01.md", "2025-01-01", "A journal day.\n");
     assert_eq!(f.run(&id), Outcome::Unchanged);
@@ -120,6 +177,10 @@ fn the_date_is_set_in_place_or_the_block_is_left_as_it_is() {
         (
             "---\ndate:\n  '2025-01-14'\n# kept\nmood: ok\n---\n",
             "---\ndate: '2025-01-20'\n# kept\nmood: ok\n---\n",
+        ),
+        (
+            "---\ndate: 2025-01-14\n  # kept too\nmood: ok\n---\n",
+            "---\ndate: 2025-01-20\n  # kept too\nmood: ok\n---\n",
         ),
         (
             "---\ndate: [2025-01-14]\n---\n",

@@ -21,6 +21,7 @@ use rusqlite::Connection;
 use crate::api::errors::StorageError;
 use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::errors::CrdtError;
+use crate::domain::notes::identity;
 use crate::domain::notes::journal_day::body_owner;
 use crate::domain::{journal, note_snapshots, owed_file_body, reads};
 use crate::markdown::convert::EmbedResolver;
@@ -117,10 +118,13 @@ pub fn title(conn: &Connection, note_id: &str) -> Result<Option<String>, Storage
 }
 
 /// The date of the live journal day `id`, which its file's `date` frontmatter says; `None` for
-/// a note, or no live record.
+/// a note, no live record, or a day owed a move of its file ([`identity::owes_place`]): its
+/// record no longer says which day, or whether a day, the moved file is.
 pub fn journal_date(conn: &Connection, id: &str) -> Result<Option<String>, StorageError> {
-    Ok(match body_owner(conn, id)? {
-        Some(owner) if owner.item_type == journal::ITEM_TYPE => Some(owner.title),
-        _ => None,
-    })
+    match body_owner(conn, id)? {
+        Some(owner) if owner.item_type == journal::ITEM_TYPE => {
+            Ok((!identity::owes_place(conn, id)?).then_some(owner.title))
+        }
+        _ => Ok(None),
+    }
 }

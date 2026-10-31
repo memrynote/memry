@@ -114,8 +114,8 @@
 //!   document until then.
 //!
 //! A journal day's file is written as a note's is, by the same rules (Step 13m): its row says
-//! the document holds it once the consumer fed it. Its frontmatter takes the day's `date` in
-//! place and nothing else, never the day's tags (`journal`). A file the note has no row or no
+//! the document holds it once the consumer fed it. A body write sets the day's `date` in its
+//! frontmatter, in place, and never writes the day's tags (`journal`). A file the note has no row or no
 //! file for is not created: the note records create files (Step 13).
 
 mod deleted;

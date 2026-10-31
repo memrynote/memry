@@ -13,7 +13,8 @@
 //!   `YYYY-MM-DD` string, as `normalizeDateValue` reads them) is left as it is; a missing one is
 //!   one line added before the closing fence, spelled as Electron spells a new key
 //!   (`date: 'YYYY-MM-DD'`); an entry that says another day is replaced by one line, bare when
-//!   it held a YAML date. A splice is kept only when the block it makes parses to the old keys
+//!   it held a YAML date (the entry's own lines go, a comment on them included; a comment line
+//!   after them stays). A splice is kept only when the block it makes parses to the old keys
 //!   with the new date, in their order; otherwise the block is left as it is and the date is
 //!   not written: a flow mapping, a quoted key, a top level that is a list or a scalar. A file
 //!   with no block gets `---\ndate: 'YYYY-MM-DD'\n---\n`, as Electron writes it, unless it
@@ -131,11 +132,12 @@ fn starts_entry(line: &str) -> bool {
     }
 }
 
-/// `/^(?:[ \t]|-(?:\s|$))/`: a line that continues the entry above it.
+/// `/^(?:[ \t]|-(?:\s|$))/`: a line that continues the entry above it. A comment line does
+/// not, unless a line after it does.
 fn continues_entry(line: &str) -> bool {
     let mut chars = line.chars();
     match chars.next() {
-        Some(' ' | '\t') => true,
+        Some(' ' | '\t') => !line.trim_start().starts_with('#'),
         Some('-') => chars.next().is_none_or(char::is_whitespace),
         _ => false,
     }

@@ -24,8 +24,13 @@
 //!
 //! A date the record cannot hold (`2025-02-31`, which Electron's file names allow) defers.
 //!
+//! A new day does not take the file's frontmatter `tags` onto its record, as a new note does
+//! not; Electron does (`declaredTags`, `vault/ingest-backfill.ts`). That port is the journal
+//! service's (Step 13m part 2), with the notes'.
+//!
 //! Notes and days share one body feed (chapter 07 §7.1): [`body_owner`] is how the feed and the
-//! write-back tell a note's body from a day's.
+//! write-back tell a note's body from a day's. A day's kept versions are titled by its date;
+//! Electron titles them by the file name, which differs for a format like `YYYY-MM-DD dddd`.
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 
