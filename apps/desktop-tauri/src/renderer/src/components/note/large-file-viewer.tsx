@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState, type RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useT } from '@memry/i18n/renderer'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
+import { useNoteFileActions } from '@/hooks/use-note-file-actions'
 import { cn } from '@/lib/utils'
 import { formatBytes } from '@/lib/format'
 import { Button } from '@/components/ui/button'
@@ -86,6 +87,8 @@ export const LargeFileViewer = memo(function LargeFileViewer({
 }: LargeFileViewerProps) {
   const { t } = useT('notes')
   const fileActions = useFileActionLabels()
+  // The file actions with their failure toasts; a large file holds no lock of its own here.
+  const fileOps = useNoteFileActions({ noteId, hasOwnLock: false })
   const { state, sessionId, getLine, isTruncated, ensureRange } = useLargeFileSession(noteId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const search = useLargeFileSearch(sessionId)
@@ -195,18 +198,10 @@ export const LargeFileViewer = memo(function LargeFileViewer({
           maxBytes={state.maxBytes}
           actions={
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void window.api.notes.openExternal(noteId)}
-              >
+              <Button variant="outline" size="sm" onClick={() => void fileOps.openExternal()}>
                 {fileActions.openInDefaultApp}
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void window.api.notes.revealInFinder(noteId)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => void fileOps.revealInFinder()}>
                 {fileActions.revealInFolder}
               </Button>
             </>

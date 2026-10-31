@@ -7,6 +7,7 @@ import { useDayPanel } from '@/contexts/day-panel-context'
 import { createLogger } from '@/lib/logger'
 import { STAR_PROMPT_EVENT, STAR_PROMPT_KEY } from './star-prompt'
 import { recordOnboarded, TOUR_KEY } from './onboarding-record'
+import { notesService } from '@/services/notes-service'
 
 const log = createLogger('FirstRunTour')
 
@@ -23,7 +24,7 @@ async function wasOnboarded(): Promise<boolean> {
   if (onboardingCompleted) return true
   const returning =
     localStorage.getItem(TOUR_KEY) !== null ||
-    (await window.api.notes.list({ limit: 1, fields: 'tree' })).total > 0
+    (await notesService.list({ limit: 1, fields: 'tree' })).total > 0
   if (returning) await recordOnboarded()
   return returning
 }

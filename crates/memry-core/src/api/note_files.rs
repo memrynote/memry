@@ -10,7 +10,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::api::errors::StorageError;
+use crate::domain::inbox::queries::FiledVoice;
 use crate::domain::note_files::{self, NoteFile, NoteFileStat};
+use crate::domain::note_list::{self, ListedNote, NoteListPage, NoteListQuery};
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
 use crate::domain::owed_file_body;
 use crate::storage::Db;
@@ -28,6 +30,13 @@ impl NoteFiles {
         let path = path.to_owned();
         self.db
             .read_blocking(move |conn| note_files::by_path(conn, &path))
+    }
+
+    /// The voice capture filed to `path`, when one was.
+    pub fn filed_voice(&self, path: &str) -> Result<Option<FiledVoice>, StorageError> {
+        let path = path.to_owned();
+        self.db
+            .read_blocking(move |conn| crate::domain::inbox::queries::filed_voice(conn, &path))
     }
 
     pub fn by_id(&self, note_id: &str) -> Result<Option<NoteFile>, StorageError> {
@@ -152,5 +161,25 @@ impl NoteFiles {
 
     pub fn local_only_count(&self) -> Result<i64, StorageError> {
         self.db.read_blocking(note_files::local_only_count)
+    }
+
+    /// The live notes with a file, one page ([`note_list::list`]).
+    pub fn list_notes(&self, query: NoteListQuery) -> Result<NoteListPage, StorageError> {
+        self.db
+            .read_blocking(move |conn| note_list::list(conn, &query))
+    }
+
+    /// The live note `note_id`, when it has a file ([`note_list::by_id`]).
+    pub fn listed_by_id(&self, note_id: &str) -> Result<Option<ListedNote>, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .read_blocking(move |conn| note_list::by_id(conn, &note_id))
+    }
+
+    /// The live note whose file is at `path` ([`note_list::by_path`]).
+    pub fn listed_by_path(&self, path: &str) -> Result<Option<ListedNote>, StorageError> {
+        let path = path.to_owned();
+        self.db
+            .read_blocking(move |conn| note_list::by_path(conn, &path))
     }
 }

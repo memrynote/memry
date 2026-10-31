@@ -65,4 +65,19 @@ describe('createWindowApiForwarder', () => {
     expect(proxy.count()).toBe(99)
     expect(replacement.count).toHaveBeenCalled()
   })
+
+  it('answers a ported name itself and every other name from the API below', async () => {
+    const below = new Proxy({} as TestApi, {
+      get: () => () => Promise.reject(new Error('not ported'))
+    })
+    const count = vi.fn(() => 7)
+    const proxy = createWindowApiForwarder<TestApi>(() => below, { count })
+
+    expect(proxy.count()).toBe(7)
+    expect('count' in proxy).toBe(true)
+    await expect(proxy.greet('Kaan')).rejects.toThrow('not ported')
+    // A name the ported object only inherits is not one it ports.
+    const inherited = (proxy as unknown as { hasOwnProperty: unknown }).hasOwnProperty
+    expect(inherited).not.toBe(Object.prototype.hasOwnProperty)
+  })
 })

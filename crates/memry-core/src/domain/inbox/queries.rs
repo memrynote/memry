@@ -273,3 +273,31 @@ pub fn exists(conn: &Connection, item_id: &str) -> Result<bool, StorageError> {
     .map(|n| n > 0)
     .map_err(failed)
 }
+
+/// The voice capture last filed to a vault file (`getFileById`): its transcription and the
+/// transcription's status, as desktop stored them.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FiledVoice {
+    pub transcription: Option<String>,
+    pub status: Option<String>,
+}
+
+/// The live voice capture last filed to the vault file at `path`, when one was.
+pub fn filed_voice(conn: &Connection, path: &str) -> Result<Option<FiledVoice>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT transcription, transcription_status FROM inbox_view
+              WHERE type = 'voice' AND filed_to = ?1 AND deleted_at IS NULL
+              ORDER BY filed_at DESC LIMIT 1",
+        )
+        .map_err(failed)?;
+    let mut rows = statement
+        .query_map(params![path], |row| {
+            Ok(FiledVoice {
+                transcription: row.get(0)?,
+                status: row.get(1)?,
+            })
+        })
+        .map_err(failed)?;
+    rows.next().transpose().map_err(failed)
+}

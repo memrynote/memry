@@ -47,15 +47,19 @@ vi.mock('@/lib/logger', () => {
 })
 
 // ============================================================================
-// The generated Tauri bindings, as the vault service, the updater store and the window service
-// reach them. Component tests drive them through the `window.api.vault`, `window.api.updater`
-// and window-function mocks below (the Electron names), so the bindings forward to them: the
-// owners' own tests (services/vault-service.test.ts, hooks/use-app-updater.test.tsx) mock the
-// bindings directly.
+// The generated Tauri bindings, as the vault service, the notes service, the updater store and
+// the window service reach them. Component tests drive them through the `window.api.vault`,
+// `window.api.notes`, `window.api.updater` and window-function mocks below (the Electron names),
+// so the bindings forward to them: the owners' own tests (services/vault-service.test.ts,
+// services/notes-service.test.ts, hooks/use-app-updater.test.tsx) mock the bindings directly.
 // ============================================================================
 
 vi.mock('../src/generated/bindings', () => {
   const vault = () => window.api.vault
+  // `window.api.notes` is typed without the ported reads (preload/index.d.ts); the mock below
+  // still provides them, for component tests to drive.
+  const notes = () =>
+    window.api.notes as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
   // The preload type no longer declares the ported updater; the mock below still provides it.
   const updater = () =>
     (window.api as unknown as { updater: Record<string, (...args: unknown[]) => unknown> }).updater
@@ -89,6 +93,13 @@ vi.mock('../src/generated/bindings', () => {
       vaultReveal: () => vault().reveal(),
       vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon),
       vaultReindex: () => vault().reindex(),
+      notesGet: (id: string) => notes().get(id),
+      notesGetByPath: (path: string) => notes().getByPath(path),
+      notesGetFile: (id: string) => notes().getFile(id),
+      notesList: (options: unknown) => notes().list(options),
+      notesExists: (titleOrPath: string) => notes().exists(titleOrPath),
+      notesOpenExternal: (id: string) => notes().openExternal(id),
+      notesRevealInFinder: (id: string) => notes().revealInFinder(id),
       updaterGetState: () => updater().getState(),
       updaterCheckForUpdates: () => updater().checkForUpdates(),
       updaterDownloadUpdate: () => updater().downloadUpdate(),
