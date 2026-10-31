@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   CUSTOM_ICON_INPUT_EXTENSIONS,
+  CUSTOM_ICON_MAX_INPUT_BYTES,
   CUSTOM_ICON_NAME_MAX_LENGTH,
   type CustomIconInputExtension
 } from '@memry/contracts/custom-icons-api'
@@ -9,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { refreshCustomIcons, useCustomIcons } from '@/lib/custom-icons-store'
+import { customIconsService } from '@/services/custom-icons-service'
 import { ArrowRight, Check, Link, Loader2, Pencil, Trash2, Upload, X } from '@/lib/icons'
 
 const log = createLogger('CustomIconGrid')
@@ -25,28 +27,6 @@ function defaultNameFor(fileName: string): string {
   return (withoutExt || fileName).slice(0, CUSTOM_ICON_NAME_MAX_LENGTH)
 }
 
-/**
- * FileReader rather than `arrayBuffer()` + `btoa`: spreading a 2 MB byte array
- * into `String.fromCharCode` overflows the call stack.
- */
-function readAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.addEventListener('load', () => {
-      const result = reader.result
-      if (typeof result !== 'string') {
-        reject(new Error('Failed to read file as data URL'))
-        return
-      }
-      resolve(result.slice(result.indexOf(',') + 1))
-    })
-    reader.addEventListener('error', () => {
-      reject(reader.error ?? new Error('Failed to read file'))
-    })
-    reader.readAsDataURL(file)
-  })
-}
-
 interface CustomIconGridProps {
   onSelect: (iconId: string) => void
 }
@@ -57,7 +37,7 @@ interface CustomIconGridProps {
  * Icons arrive by drop, file picker or link, keep a user-editable name, and
  * stay listed until deleted — the library is the point, not a one-shot upload.
  *
- * A pasted link is downloaded by the main process and stored like any other
+ * A pasted link is downloaded by the Rust side and stored like any other
  * icon; nothing here ever renders from a remote address.
  */
 export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Element {
@@ -81,8 +61,7 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
 
   const addFiles = useCallback(
     async (files: File[]) => {
-      const api = window.api?.customIcons
-      if (!api || files.length === 0) return
+      if (files.length === 0) return
 
       setIsAdding(true)
       setError(null)
@@ -93,11 +72,16 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
             setError(t('menus.emoji.custom.unsupportedFile', { name: file.name }))
             continue
           }
-          await api.add({
-            name: defaultNameFor(file.name),
-            ext,
-            dataBase64: await readAsBase64(file)
-          })
+          // Refused here before the whole file is read into memory; Rust checks again.
+          if (file.size === 0 || file.size > CUSTOM_ICON_MAX_INPUT_BYTES) {
+            setError(t('errors:customIcon.tooLarge'))
+            continue
+          }
+          await customIconsService.add(
+            new Uint8Array(await file.arrayBuffer()),
+            defaultNameFor(file.name),
+            ext
+          )
         }
         await refreshCustomIcons()
       } catch (err) {
@@ -112,14 +96,13 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
 
   const addFromUrl = useCallback(
     async (link: string) => {
-      const api = window.api?.customIcons
       const trimmed = link.trim()
-      if (!api || !trimmed) return
+      if (!trimmed) return
 
       setIsDownloading(true)
       setError(null)
       try {
-        await api.addFromUrl({ url: trimmed })
+        await customIconsService.addFromUrl(trimmed)
         await refreshCustomIcons()
         setUrl('')
       } catch (err) {
@@ -159,7 +142,7 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
   const handleDelete = useCallback(
     async (id: string) => {
       try {
-        await window.api?.customIcons.delete(id)
+        await customIconsService.delete(id)
         await refreshCustomIcons()
       } catch (err) {
         log.warn('Failed to delete custom icon', err)
@@ -175,7 +158,7 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
     setRenamingId(null)
     if (!id || !name) return
     try {
-      await window.api?.customIcons.rename({ id, name })
+      await customIconsService.rename(id, name)
       await refreshCustomIcons()
     } catch (err) {
       log.warn('Failed to rename custom icon', err)

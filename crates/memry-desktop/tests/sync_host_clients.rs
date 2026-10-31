@@ -29,6 +29,14 @@ const ALLOWED: &[(&str, &str)] = &[
         "the pinned transport's own errors",
     ),
     (
+        "crates/memry-desktop/src/notes/icons/remote.rs",
+        "the image link a person pastes as a custom icon, one GET",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/custom_icons.rs",
+        "the image link a person pastes as a custom icon, one GET",
+    ),
+    (
         "crates/memry-desktop/src/notes/unsplash/mod.rs",
         "api.unsplash.com",
     ),
