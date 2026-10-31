@@ -21,6 +21,7 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
+use memry_desktop::vault::hash::content_hash;
 use rusqlite::OptionalExtension as _;
 use serde_json::Value;
 use vault_env::{Env, env, indexed};
@@ -43,6 +44,30 @@ fn notes_env_with_store() -> (Env, Arc<dyn SecureStore>) {
 
 fn owes_file_body(e: &Env, id: &str) -> bool {
     e.core().note_files().owes_file_body(id).unwrap()
+}
+
+/// Waits until `holds`, a state the tier reaches, for up to [`vault_env::WAIT`]: a stalled
+/// watcher or consumer only makes it later, never false.
+fn until(what: &str, holds: impl Fn() -> bool) {
+    let deadline = std::time::Instant::now() + vault_env::WAIT;
+    while !holds() {
+        assert!(std::time::Instant::now() < deadline, "never: {what}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+/// The note's row names `text` as the bytes on disk and as what its document holds.
+fn row_holds(e: &Env, id: &str, text: &str) -> bool {
+    let row = e.core().note_files().by_id(id).unwrap();
+    let hash = Some(content_hash(text));
+    row.is_some_and(|row| row.content_hash == hash && row.file_hash == hash)
+}
+
+/// The note's row stays and names no bytes: its file went and the note was kept.
+fn row_kept_without_hashes(e: &Env, id: &str) -> bool {
+    let row = e.core().note_files().by_id(id).unwrap();
+    let row = row.expect("the removal deleted the note");
+    row.content_hash.is_none() && row.file_hash.is_none()
 }
 
 /// The manual slot of `path`, if it has one.
@@ -348,7 +373,9 @@ fn a_named_note_that_grew_large_still_follows_its_file() {
     e.facts_until(indexed);
     let id = row_id(&e, "grow.md").unwrap();
     e.write("grow.md", &"x".repeat(200 * 1024));
-    std::thread::sleep(Duration::from_millis(1000));
+    until("the large text owes the file body", || {
+        owes_file_body(&e, &id)
+    });
     e.drain();
 
     fs::rename(e.vault.join("grow.md"), e.vault.join("moved.md")).unwrap();
@@ -365,20 +392,9 @@ fn a_named_note_that_grew_large_still_follows_its_file() {
     assert_eq!(row_id(&e, "closed.md"), Some(id.clone()));
 
     fs::remove_file(e.vault.join("closed.md")).unwrap();
-    // The kept note's row stays and names no bytes; a deleted note's row goes.
-    let deadline = std::time::Instant::now() + vault_env::WAIT;
-    loop {
-        let row = e.core().note_files().by_id(&id).unwrap();
-        let row = row.expect("the removal deleted the note");
-        if row.content_hash.is_none() && row.file_hash.is_none() {
-            break;
-        }
-        assert!(
-            std::time::Instant::now() < deadline,
-            "the removal never reached the row: {row:?}"
-        );
-        std::thread::sleep(Duration::from_millis(20));
-    }
+    until("the removal kept the note", || {
+        row_kept_without_hashes(&e, &id)
+    });
     assert_eq!(records(&e), live);
     assert!(!outbox(&e).contains(&("delete".to_owned(), id)));
 }
@@ -743,12 +759,14 @@ fn a_large_paste_undone_outside_lets_the_app_write_the_file_again() {
     e.facts_until(indexed);
     let id = row_id(&e, "a.md").unwrap();
     e.write("a.md", &"x".repeat(200 * 1024));
-    std::thread::sleep(Duration::from_millis(1000));
-    assert!(owes_file_body(&e, &id));
+    until("the large paste owes the file body", || {
+        owes_file_body(&e, &id)
+    });
 
     e.write("a.md", "Small\n");
-    std::thread::sleep(Duration::from_millis(1000));
-    assert!(!owes_file_body(&e, &id));
+    until("the undone paste owes nothing", || {
+        !owes_file_body(&e, &id) && row_holds(&e, &id, "Small\n")
+    });
     e.drain();
     e.edit_in_app(&store, &id, "typed in the app");
     e.tier.schedule(&id);
@@ -774,12 +792,11 @@ fn a_removed_file_whose_note_has_an_edit_the_file_never_got_keeps_the_note() {
     let broken = "---\nfoo: [unclosed\n---\nBroken\n";
     e.write("a.md", broken);
     e.write("b.md", broken);
-    let deadline = std::time::Instant::now() + vault_env::WAIT;
-    while e.body(&a) != "Broken" || e.body(&b) != "Broken" {
-        assert!(std::time::Instant::now() < deadline, "never fed");
-        std::thread::sleep(Duration::from_millis(20));
-    }
-    std::thread::sleep(vault_env::QUIET);
+    until("both rows hold the broken files", || {
+        row_holds(&e, &a, broken) && row_holds(&e, &b, broken)
+    });
+    // An edit stamped in the row's own millisecond is not after it.
+    std::thread::sleep(Duration::from_millis(2));
     e.edit_in_app(&store, &a, "typed in the app");
     e.tier.schedule(&a);
     assert!(e.tier.flush(vault_env::WAIT));
@@ -793,7 +810,9 @@ fn a_removed_file_whose_note_has_an_edit_the_file_never_got_keeps_the_note() {
     fs::remove_file(e.vault.join("a.md")).unwrap();
     fs::remove_file(e.vault.join("b.md")).unwrap();
     e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == b));
-    std::thread::sleep(vault_env::QUIET);
+    until("the removal kept the edited note", || {
+        row_kept_without_hashes(&e, &a)
+    });
     let records = records(&e);
     assert!(
         records.contains(&(a.clone(), "a".to_owned(), None, false)),
