@@ -333,7 +333,7 @@ else `\n` — and `hadTrailingNewline`, and **never trims the body**
 
 ### 12.4.2 The preservation rule
 
-**Normative** (`packages/app-core/src/markdown.ts:46-89`):
+**Normative** (`packages/app-core/src/markdown.ts:46-90`):
 
 - unless the frontmatter was edited, **the original raw block is re-emitted
   verbatim** (`:65-67`), which is what preserves comments, key order, quoting, CR
@@ -347,11 +347,13 @@ else `\n` — and `hadTrailingNewline`, and **never trims the body**
   own leading blank lines are dropped (`:75-77`). A file with none gets none, so
   the separator never changes on a save;
 - **a block that ends the file, with no line end after its closing fence, gets
-  the file's line end before a body that is not empty** (`:80-89`): `---\nmood:
+  the file's line end before a body that is not empty** (`:80-90`): `---\nmood:
   ok\n---` with the body `added` is written `---\nmood: ok\n---\nadded`. A fence
   line that ends in a lone `\r` gets only the `\n`. An empty body adds nothing,
   so such a file with no body stays as it is. The `block-at-eof-*` serialize
-  cases of `markdown-convert/frontmatter.json` pin it.
+  cases of `markdown-convert/frontmatter.json` pin it. A writer that edits a
+  block in place joins it to the body through the same function, as a journal
+  save does (`apps/desktop/src/main/vault/journal.ts:450-453`).
 
 Builds before this rule wrote the body against the fence (`---\nmood: ok\n---added`,
 #3800). Such a file has no closing fence, so by §12.4.1 it is all body and its
@@ -361,7 +363,7 @@ Electron), and a CLI note update keeps none.
 
 New files are written **LF only with a single trailing newline**, and user
 content never flows through `matter.stringify`
-(`packages/app-core/src/markdown.ts:129-142`).
+(`packages/app-core/src/markdown.ts:130-143`).
 
 ### 12.4.3 The decision: the only guarantee is the verbatim path
 
@@ -377,7 +379,7 @@ all.**
 The regenerated order is a composition of JavaScript semantics and js-yaml
 defaults, **not a policy**: `stringifyFrontmatterBlock` drops `undefined`, emits
 `''` for zero keys, and hands the object to `matter.stringify`
-(`packages/app-core/src/markdown.ts:115-127`); gray-matter 4.0.3 does
+(`packages/app-core/src/markdown.ts:116-128`); gray-matter 4.0.3 does
 `Object.assign({}, file.data, data)` and calls `yaml.safeDump`; js-yaml 3.15.1
 defaults are `sortKeys: false`, `lineWidth: 80`, `noCompatMode: false`.
 
@@ -388,7 +390,7 @@ Per path:
 | CRDT write-back   | `{ ...existing }`, and `merged.tags = yjsTags` only when there is no file yet (`apps/desktop/src/main/sync/crdt-writeback.ts:1052-1063`) — existing keys hold position and an existing file keeps its own `tags:`. Journal `{ ...existing, date }` (`:966`) still takes a non-empty array                                   |
 | remote tags       | assignment or `delete` in place (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:357-361`, `:404-408`)                                                                                                                                                                                                            |
 | remote properties | `replacePropertiesOnRoot` normalises, deletes every property key, then re-adds them in the **record's** order (`apps/desktop/src/main/vault/frontmatter.ts:414-434`, `:438-449`, `:452-461`). **Editing one property moves every property to the end of the block.**                                                        |
-| new file          | `serializeNote` → `normalizePropertiesToRoot` → `writeMarkdownNote` (`apps/desktop/src/main/vault/frontmatter.ts:186-188`, `packages/app-core/src/markdown.ts:133-142`); a remote create builds `{tags?, aliases?, properties?}` in that literal order (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:601-607`) |
+| new file          | `serializeNote` → `normalizePropertiesToRoot` → `writeMarkdownNote` (`apps/desktop/src/main/vault/frontmatter.ts:186-188`, `packages/app-core/src/markdown.ts:134-143`); a remote create builds `{tags?, aliases?, properties?}` in that literal order (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:601-607`) |
 
 **Value re-spelling is part of the same loss.** `parseNote` uses js-yaml
 `safeLoad`, so `date: 2026-07-05` becomes a `Date`

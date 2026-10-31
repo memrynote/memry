@@ -81,8 +81,9 @@ export function serializeParsedMarkdownNote(
  * The block, then the body. A block that ended its file has no line end after
  * its closing fence; the file's line end goes there before a body, or the fence
  * runs into the body and the whole block reads back as body text (#3800).
+ * Every writer that puts a body after a raw or edited block joins them here.
  */
-function joinBlockAndBody(block: string, body: string, eol: Eol): string {
+export function joinBlockAndBody(block: string, body: string, eol: Eol): string {
   if (block === '' || body === '' || block.endsWith('\n')) return block + body
   // A fence line that ends in a lone `\r` takes the `\n` that makes it a line end.
   return block + (block.endsWith('\r') ? '\n' : eol) + body
