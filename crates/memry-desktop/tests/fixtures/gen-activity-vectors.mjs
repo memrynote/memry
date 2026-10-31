@@ -6,7 +6,8 @@
 // newest first, and the file it writes back once it compacted. `kept` holds the lines this app
 // keeps byte for byte (every JSON object inside the retention window); Electron keeps only the
 // ones its schema reads, rewritten. The `electron-writes` case is a file Electron's own writers
-// left, built by calling them. The record cases are the lines Electron appends for given fields.
+// left, built by calling them. The record cases are the lines Electron appends for given fields,
+// and the scan cases the lines `recordScanActivity` appends for what a walk found.
 import { createRequire } from 'node:module'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -389,6 +390,102 @@ const surrogateCut = await recordCase('cut-inside-pair', {
 })
 
 // ---------------------------------------------------------------------------------------------
+// The lines Electron's `recordScanActivity` appends for what a walk found, over a log that may
+// already hold lines (an unsupported file reported before is not reported again).
+
+async function scanCase(name, scan, mode, before = []) {
+  const vault = freshVault()
+  const prior = before.map((fields) => line(fields)).join('\n')
+  if (before.length > 0) writeFileSync(join(memry(vault), 'activity.jsonl'), `${prior}\n`)
+  log.openActivityLog(vault)
+  clock = NOW
+  log.recordScanActivity(scan, mode)
+  await log.flushActivityLog()
+  const text = readLog(vault) ?? ''
+  await log.closeActivityLog()
+  rmSync(vault, { recursive: true, force: true })
+  const lines = text
+    .split('\n')
+    .filter((l) => l !== '')
+    .slice(before.length)
+  return { name, scan, mode, before: before.map((fields) => line(fields)), lines }
+}
+
+const walk = (fields) => ({
+  added: [],
+  addedCount: 0,
+  failed: [],
+  failedCount: 0,
+  unsupported: [],
+  unsupportedCount: 0,
+  ...fields
+})
+const paths = (n, at) => Array.from({ length: n }, (_, i) => at(i))
+const scans = [
+  await scanCase(
+    'a-few-of-each',
+    walk({
+      added: ['a.md', 'b/c d.md'],
+      addedCount: 2,
+      failed: [
+        { path: 'locked.md', reason: 'read-failed', message: 'EACCES' },
+        { path: 'odd.md', reason: 'index-failed' }
+      ],
+      failedCount: 2,
+      unsupported: ['x.HEIC', 'board.canvas', '~$lock.docx', 'notes.md~', 'dir\\Makefile'],
+      unsupportedCount: 5
+    }),
+    'scan'
+  ),
+  await scanCase(
+    'many-added',
+    walk({ added: paths(60, (i) => `new/${i}.md`), addedCount: 61 }),
+    'scan'
+  ),
+  await scanCase(
+    'twenty-added-each-listed',
+    walk({ added: paths(20, (i) => `n${i}.md`), addedCount: 20 }),
+    'scan'
+  ),
+  await scanCase(
+    'first-build',
+    walk({ added: ['a.md', 'b.md'], addedCount: 2, unsupported: ['x.bin'], unsupportedCount: 1 }),
+    'rebuild'
+  ),
+  await scanCase('rebuild-of-nothing', walk({}), 'rebuild'),
+  await scanCase(
+    'failures-past-fifty',
+    walk({
+      failed: paths(55, (i) => ({ path: `f${i}.md`, reason: 'read-failed', message: `E${i}` })),
+      failedCount: 70
+    }),
+    'scan'
+  ),
+  await scanCase(
+    'skips-past-the-per-walk-cap-and-the-collection-cap',
+    walk({ unsupported: paths(530, (i) => `u/${i}.bin`), unsupportedCount: 600 }),
+    'scan'
+  ),
+  await scanCase(
+    'a-skip-reported-before',
+    walk({ unsupported: ['old.heic', 'new.heic'], unsupportedCount: 2 }),
+    'scan',
+    [
+      {
+        v: 1,
+        id: 'before',
+        at: iso(NOW - DAY),
+        kind: 'skipped',
+        source: 'watcher',
+        path: 'old.heic',
+        reason: 'unsupported-type',
+        message: '.heic'
+      }
+    ]
+  )
+]
+
+// ---------------------------------------------------------------------------------------------
 // The settings file Electron writes.
 
 async function settingsCase(days) {
@@ -404,6 +501,6 @@ const settings = [await settingsCase(7), await settingsCase(30), await settingsC
 
 writeFileSync(
   join(here, 'electron-vault', 'activity-jsonl.json'),
-  `${JSON.stringify({ now: NOW, reads, records, surrogateCut, settings }, null, 2)}\n`
+  `${JSON.stringify({ now: NOW, reads, records, surrogateCut, settings, scans }, null, 2)}\n`
 )
 process.exit(0)

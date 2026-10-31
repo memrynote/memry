@@ -24,10 +24,14 @@
 //! [`CHANGED_THROTTLE`], and at once when a log opens or closes.
 //! [`ActivityLog::flush`] writes what is buffered now; the `flush-activity-log` shutdown step
 //! and the vault close call it.
+//!
+//! What the open walk found (new notes' files, failed reads, unsupported files) is recorded once
+//! the walk ended, as Electron's `indexVault` does ([`ActivityLog::record_scan`]).
 
 mod disk;
 mod entry;
 mod parse;
+mod scan;
 mod store;
 
 use std::path::{Path, PathBuf};
@@ -49,6 +53,7 @@ pub use entry::{
 };
 pub use parse::{MAX_COUNTS, MAX_TEXT_BYTES, steps};
 use parse::{Read, read_line};
+pub use scan::{SCAN_COLLECT_LIMIT, ScanActivity, ScanFailure, ScanMode};
 use store::{Log, extension, is_user_content};
 
 use crate::error::{CoreError, FailureKind};

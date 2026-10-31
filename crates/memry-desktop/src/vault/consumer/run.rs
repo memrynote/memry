@@ -22,6 +22,7 @@ use std::time::{Duration, Instant};
 
 use super::Applied;
 use super::apply::{Applier, Step};
+use crate::vault::activity::ScanActivity;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::walk::{Limits, walk_vault_with};
 use crate::vault::watch::filter::WatchFilter;
@@ -263,10 +264,25 @@ impl Run {
     /// of the walk: a `![[photo.png]]` resolves through the image rows, and a note seeded
     /// before its image got its row would keep the embed as written, a file the hash rule
     /// never feeds again.
+    ///
+    /// A walk that ends tells the activity log what it found (`indexVault`'s scan activity):
+    /// the files that got a new note, the ones whose read failed and the unsupported ones. One
+    /// a close stops tells nothing, and so does one whose identity deferred every file it found
+    /// (an Electron vault not imported yet, whose files are left as they are).
     fn walk(&mut self) {
         let root = self.applier.root.clone();
         let walk = walk_vault_with(&root, &self.exclude, Limits::DEFAULT);
         let complete = walk.truncated.is_none() && walk.too_deep == 0;
+        let collected = walk.unsupported.len();
+        let mut scan = ScanActivity {
+            unsupported: walk
+                .unsupported
+                .into_iter()
+                .filter(|path| !self.filter.ignores(path))
+                .collect(),
+            ..ScanActivity::default()
+        };
+        scan.unsupported_count = walk.unsupported_count - (collected - scan.unsupported.len());
         let (notes, others): (Vec<_>, Vec<_>) = walk
             .files
             .into_iter()
@@ -286,9 +302,12 @@ impl Run {
                 continue;
             };
             if meta.is_file() {
-                let step = self.applier.walked(&path, &meta);
+                let step = self.applier.walked(&path, &meta, &mut scan);
                 self.after(step, Some(&path));
             }
+        }
+        if !scan.deferred_all() {
+            self.applier.activity.record_scan(&root, &scan, scan.mode());
         }
         if let Ok(lane) = self.applier.rows.lane_of(self.applier.session) {
             lane.publish(Applied::Indexed {

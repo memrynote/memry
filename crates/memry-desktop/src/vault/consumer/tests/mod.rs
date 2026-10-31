@@ -25,6 +25,7 @@ use super::apply::{Applier, Step};
 use super::identity::{Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal};
 use super::rows::{RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
+use crate::vault::activity::ScanActivity;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
 use crate::vault::watch::VaultEvent;
@@ -208,7 +209,8 @@ impl Fixture {
 
     pub(super) fn walked(&self, rel: &str) -> Step {
         let meta = std::fs::symlink_metadata(self.root.join(rel)).unwrap();
-        self.applier.walked(rel, &meta)
+        self.applier
+            .walked(rel, &meta, &mut ScanActivity::default())
     }
 
     pub(super) fn changed(&self, note_id: &str, rel: &str) -> Step {
