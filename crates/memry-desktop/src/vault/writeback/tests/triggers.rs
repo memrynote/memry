@@ -81,6 +81,45 @@ fn a_write_keeps_the_byte_order_mark_the_line_ends_and_the_frontmatter_block() {
     }
 }
 
+/// A frontmatter block that ends its file, with no line end after the closing fence, keeps the
+/// fence through a body write from the app or from sync: the file's line end goes between the
+/// fence and the body, and every other byte of the block stays (#3800). The block's bytes
+/// change, so the replaced file is kept; the written file reads back as the document's body.
+#[test]
+fn a_block_that_ends_the_file_keeps_its_closing_fence_through_a_write() {
+    for (text, expected) in [
+        ("---\nmood: ok\n---", "---\nmood: ok\n---\nadded"),
+        ("---\r\nmood: ok\r\n---", "---\r\nmood: ok\r\n---\r\nadded"),
+        (
+            "\u{feff}---\nmood: ok\n---",
+            "\u{feff}---\nmood: ok\n---\nadded",
+        ),
+    ] {
+        let mut f = fixture();
+        let id = f.adopt("n.md", text);
+        f.edit_in_app(&id, "added");
+        let outcome = f.run(&id);
+        assert!(
+            matches!(
+                outcome,
+                Outcome::Wrote {
+                    version_kept: true,
+                    ..
+                }
+            ),
+            "{outcome:?}"
+        );
+        assert_eq!(assert_wrote(&mut f, &outcome, "n.md"), expected, "{text:?}");
+        assert_eq!(f.versions(&id), vec![text.to_owned()]);
+        assert_eq!(f.run(&id), Outcome::Unchanged, "{text:?}");
+        f.paragraph_from_sync(&id, "from the other device");
+        let outcome = f.run(&id);
+        let file = assert_wrote(&mut f, &outcome, "n.md");
+        assert!(file.starts_with(expected), "{file:?}");
+        assert!(file.ends_with("from the other device"), "{file:?}");
+    }
+}
+
 /// The file a write replaces is kept when the app did not write it in this session; its own
 /// last write is not kept again.
 #[test]
