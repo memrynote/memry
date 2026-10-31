@@ -357,3 +357,4 @@ mod lane;
 mod late_close;
 #[cfg(windows)]
 mod replace_race;
+mod slow_watch_stop;
