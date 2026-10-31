@@ -15,7 +15,7 @@ const ignoredPathPatterns = [
 
 // The Secret scan job in .github/workflows/security-ci.yml leaves these media extensions out of its
 // sparse checkout; a path dropped from this list must come back there too, or it is never read.
-const binaryPathPattern =
+export const binaryPathPattern =
   /\.(?:avif|br|dmg|eot|flac|gif|gz|icns|ico|jpe?g|m4v|mov|mp3|mp4|ogg|otf|pdf|png|tgz|ttf|wav|webm|webp|woff2?|zip)$/i
 const sourceCodePathPattern = /\.[cm]?[jt]sx?$/i
 
