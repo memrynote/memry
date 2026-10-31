@@ -40,9 +40,10 @@ pub struct Incoming {
 }
 
 /// Every live note or journal day whose links resolved to `target_id`, once per source,
-/// by source title and then id, and the target's own title, read in the same statement. `getIncomingLinks` matches `target_id` only: a link the
-/// index resolved to another note of the same name is that note's backlink. A self link
-/// and a tombstoned source are left out.
+/// by source title and then id, and the target's own title, read in the same statement.
+/// `getIncomingLinks` matches `target_id` only: a link the index resolved to another note of
+/// the same name is that note's backlink. A self link and a tombstoned source are left out;
+/// so is a second link from the same source, which Electron lists as a second card.
 pub fn incoming(
     data: &Connection,
     index: &Connection,
@@ -73,12 +74,7 @@ pub fn incoming(
             })
         })
         .collect();
-    out.sort_by(|a, b| {
-        a.source_title
-            .to_lowercase()
-            .cmp(&b.source_title.to_lowercase())
-            .then_with(|| a.source_id.cmp(&b.source_id))
-    });
+    out.sort_by_cached_key(|link| (link.source_title.to_lowercase(), link.source_id.clone()));
     Ok(Incoming {
         target_title,
         sources: out,
@@ -108,7 +104,10 @@ pub fn resolve_titles(
     data: &Connection,
     queries: &[String],
 ) -> Result<Vec<Option<LinkTarget>>, StorageError> {
-    let names = WikiNames::load(data)?;
+    if queries.is_empty() {
+        return Ok(Vec::new());
+    }
+    let names = WikiNames::load_for(data, queries.iter().map(String::as_str))?;
     let found: Vec<Option<WikiMatch>> = queries.iter().map(|query| names.resolve(query)).collect();
     targets(data, found)
 }
@@ -119,7 +118,7 @@ pub fn resolve_target(
     data: &Connection,
     target: &str,
 ) -> Result<Option<(LinkTarget, Option<String>)>, StorageError> {
-    let Some((found, heading)) = WikiNames::load(data)?.resolve_target(target) else {
+    let Some((found, heading)) = WikiNames::load_for(data, [target])?.resolve_target(target) else {
         return Ok(None);
     };
     Ok(targets(data, vec![Some(found)])?

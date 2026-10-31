@@ -159,7 +159,7 @@ pub fn outgoing_links(
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
 
-    let names = WikiNames::load(data)?;
+    let names = WikiNames::load_for(data, titles.iter().map(String::as_str))?;
     let mut out = Vec::with_capacity(titles.len());
     for target_title in titles {
         let resolved = note_meta::wiki_target_kind(&names, &target_title)?;

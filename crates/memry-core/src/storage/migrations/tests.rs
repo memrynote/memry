@@ -52,7 +52,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 18);
+    assert_eq!(version, 19);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -165,7 +165,7 @@ fn an_older_database_steps_forward_without_losing_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 18);
+    assert_eq!(version, 19);
 
     let (count, payload): (i64, String) = db
         .call_blocking(|conn| {
@@ -265,7 +265,7 @@ fn note_snapshots_applies_to_a_version_12_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 18);
+    assert_eq!(version, 19);
 
     let (device, indexes): (String, i64) = db
         .call_blocking(|conn| {
@@ -325,7 +325,7 @@ fn local_settings_applies_to_a_version_13_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 18);
+    assert_eq!(version, 19);
 
     let (device, rows): (String, i64) = db
         .call_blocking(|conn| {
@@ -411,7 +411,7 @@ fn note_files_applies_to_a_version_14_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 18);
+    assert_eq!(version, 19);
 
     let (kept, files): (i64, i64) = db
         .call_blocking(|conn| {
@@ -450,7 +450,7 @@ fn note_positions_applies_to_a_version_15_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 18);
+    assert_eq!(version, 19);
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
         conn.execute_batch(DATA_MIGRATIONS[15].sql)
@@ -496,7 +496,7 @@ fn note_file_hashes_applies_to_a_version_16_database_and_names_the_hashes_rows_h
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 18);
+    assert_eq!(version, 19);
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
         conn.execute_batch(DATA_MIGRATIONS[16].sql)
@@ -543,7 +543,7 @@ fn the_note_identity_migration_applies_to_a_version_17_database_and_answers_the_
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 18);
+    assert_eq!(version, 19);
     db.call_blocking(|conn| {
         conn.execute_batch(DATA_MIGRATIONS[17].sql)
             .map_err(|err| StorageError::Failed {
@@ -588,6 +588,83 @@ fn the_note_identity_migration_applies_to_a_version_17_database_and_answers_the_
     );
     assert!(
         !plan.iter().any(|step| step.starts_with("SCAN n")),
+        "{plan:?}"
+    );
+}
+
+/// Every existing row is owed its wiki name keys, every later write of a name owes them again,
+/// and the lookup seeks the keys by index.
+#[test]
+fn the_wiki_name_keys_migration_owes_every_row_and_follows_every_name_write() {
+    let db = Db::open_in_memory().expect("open");
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..18]))
+        .expect("a database as the last build left it");
+    let failed = |err: rusqlite::Error| StorageError::Failed {
+        what: err.to_string(),
+    };
+    db.call_blocking(|conn| {
+        conn.execute_batch(
+            "INSERT INTO notes (id, title) VALUES ('n1', 'Plan'); \
+             INSERT INTO journal_entries (id, date) VALUES ('j2026-01-02', '2026-01-02');",
+        )
+        .map_err(failed)
+    })
+    .expect("rows to keep");
+    let version = db
+        .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+        .expect("step forward");
+    assert_eq!(version, 19);
+    db.call_blocking(|conn| conn.execute_batch(DATA_MIGRATIONS[18].sql).map_err(failed))
+        .expect("idempotent");
+
+    let owed = |conn: &rusqlite::Connection| -> Result<Vec<String>, StorageError> {
+        let mut statement = conn
+            .prepare("SELECT DISTINCT id FROM wiki_names_owed ORDER BY id")
+            .map_err(failed)?;
+        let ids = statement
+            .query_map([], |row| row.get(0))
+            .map_err(failed)?
+            .collect::<Result<_, _>>()
+            .map_err(failed)?;
+        Ok(ids)
+    };
+    let (before, after_settle, after_writes, plan) = db
+        .call_blocking(|conn| {
+            let before = owed(conn)?;
+            crate::domain::wiki_target::settle_name_keys(conn)?;
+            conn.execute("UPDATE notes SET modified_at = 5 WHERE id = 'n1'", [])
+                .map_err(failed)?;
+            // A write that changes no name owes nothing.
+            let after_settle = owed(conn)?;
+            conn.execute_batch(
+                "INSERT INTO notes (id, title) VALUES ('n2', 'Other'); \
+                 UPDATE notes SET aliases = '[\"Q3\"]' WHERE id = 'n1'; \
+                 INSERT OR REPLACE INTO journal_aliases (journal_id, aliases) \
+                   VALUES ('j2026-01-02', '[\"Kickoff\"]'); \
+                 DELETE FROM journal_entries WHERE id = 'j2026-01-02';",
+            )
+            .map_err(failed)?;
+            let after_writes = owed(conn)?;
+            let mut statement = conn
+                .prepare(&format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    crate::domain::wiki_target::CANDIDATES
+                ))
+                .map_err(failed)?;
+            let plan: Vec<String> = statement
+                .query_map(["[\"plan\"]"], |row| row.get::<_, String>(3))
+                .map_err(failed)?
+                .collect::<Result<_, _>>()
+                .map_err(failed)?;
+            Ok((before, after_settle, after_writes, plan))
+        })
+        .expect("read back");
+    assert_eq!(before, ["j2026-01-02", "n1"]);
+    assert!(after_settle.is_empty());
+    assert_eq!(after_writes, ["j2026-01-02", "n1", "n2"]);
+    assert!(
+        plan.iter()
+            .any(|step| step.starts_with("SEARCH wiki_name_keys USING PRIMARY KEY")),
         "{plan:?}"
     );
 }

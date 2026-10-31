@@ -21,7 +21,10 @@
 //!
 //! Untrusted input: the scan keeps one cached position of the next `]`, so it is linear in the
 //! text times the title's length ([`steps`]), and the snippets of one text stop once they hold
-//! eight times its bytes plus 64.
+//! eight times its bytes plus 64. A snippet can hold up to 150 UTF-16 units around a link a
+//! dozen bytes long, so a note dense with links reaches that bound: a table with one link per
+//! short row does. The scan still counts every link, so [`LinkContexts::count`] is the
+//! reference's `contexts.length` and [`LinkContexts::truncated`] says snippets are missing.
 
 use std::cell::Cell;
 
@@ -65,17 +68,29 @@ fn canon(c: char) -> char {
     }
 }
 
+/// The links to one title in one text.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LinkContexts {
+    /// The text around each link, in order, until the output bound.
+    pub contexts: Vec<LinkContext>,
+    /// Every link, those past the bound included.
+    pub count: usize,
+    /// Some links have no snippet: `contexts` stopped at the output bound.
+    pub truncated: bool,
+}
+
 /// Every link to `title` in `content`, in order.
-pub fn link_contexts(content: &str, title: &str) -> Vec<LinkContext> {
+pub fn link_contexts(content: &str, title: &str) -> LinkContexts {
     let title: Vec<char> = title.chars().map(canon).collect();
+    let mut out = LinkContexts::default();
     if title.is_empty() {
-        return Vec::new();
+        return out;
     }
     let budget = 8 * content.len() + 64;
     let mut used = 0;
-    let mut out = Vec::new();
-    // The byte index of the first `]` at or after a position the scan passed, or the length
-    // when there is none; positions only grow, so it is found again only once passed.
+    // The byte index of the first `]` at or after `from` for the latest `from` that needed one,
+    // or the length when there is none. Each `from` is past the last, so a cached `]` still at
+    // or after it is the first one, and the text is searched for `]` only once overall.
     let mut next_close: Option<usize> = None;
     let mut at = 0;
     while let Some(found) = content[at..].find("[[") {
@@ -119,13 +134,18 @@ pub fn link_contexts(content: &str, title: &str) -> Vec<LinkContext> {
             at = open + 1;
             continue;
         };
+        out.count += 1;
+        at = end;
+        if out.truncated {
+            continue;
+        }
         let context = around(content, open, end);
         used += context.snippet.len();
         if used > budget {
-            break;
+            out.truncated = true;
+            continue;
         }
-        out.push(context);
-        at = end;
+        out.contexts.push(context);
     }
     out
 }
@@ -206,6 +226,7 @@ mod tests {
 
     fn shown(content: &str, title: &str) -> Vec<(String, String)> {
         link_contexts(content, title)
+            .contexts
             .into_iter()
             .map(|context| {
                 let units: Vec<u16> = context.snippet.encode_utf16().collect();
@@ -252,6 +273,32 @@ mod tests {
         assert_eq!(
             snippet,
             &format!("...{} [[Plan]] {}...", "a".repeat(72), "b".repeat(74))
+        );
+    }
+
+    #[test]
+    fn links_do_not_overlap() {
+        // The alias runs to the first `]]`, so the inner link is part of the outer one.
+        assert_eq!(
+            shown("[[Plan|see [[Plan]] here", "Plan"),
+            [(
+                "[[Plan|see [[Plan]] here".to_owned(),
+                "[[Plan|see [[Plan]]".to_owned()
+            )]
+        );
+    }
+
+    #[test]
+    fn a_dense_table_counts_every_link_past_the_output_bound() {
+        let table: String = (0..30).map(|i| format!("| {i} | [[Plan]] |\n")).collect();
+        let found = link_contexts(&table, "Plan");
+        assert_eq!(found.count, 30);
+        assert!(found.truncated);
+        assert!(found.contexts.len() < 30);
+        let short = link_contexts("[[Plan]] and [[plan]]", "Plan");
+        assert_eq!(
+            (short.count, short.truncated, short.contexts.len()),
+            (2, false, 2)
         );
     }
 

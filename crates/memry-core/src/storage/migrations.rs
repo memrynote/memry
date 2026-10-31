@@ -130,6 +130,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_identity",
         sql: include_str!("migrations/data/0018_note_identity.sql"),
     },
+    Migration {
+        version: 19,
+        name: "wiki_name_keys",
+        sql: include_str!("migrations/data/0019_wiki_name_keys.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

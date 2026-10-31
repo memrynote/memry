@@ -44,15 +44,55 @@ fn every_scan_is_linear_in_the_text_times_the_title() {
 #[test]
 fn dense_links_stop_at_the_output_bound() {
     let text = "[[a]]".repeat(10_000);
-    let total: usize = link_contexts(&text, "a")
-        .iter()
-        .map(|c| c.snippet.len())
-        .sum();
+    let found = link_contexts(&text, "a");
+    let total: usize = found.contexts.iter().map(|c| c.snippet.len()).sum();
     assert_output_bounded("dense links", text.len(), total);
+    assert_eq!((found.count, found.truncated), (10_000, true));
 }
 
 fn utf16(text: &str) -> Vec<u16> {
     text.encode_utf16().collect()
+}
+
+/// The reference's matches of `[[Plan]]` and `[[Plan|text]]` (ASCII case), by the regular
+/// expression's rule: leftmost first, a match resumes the scan after itself, a failed one moves
+/// on one character. Newline runs fold to one space, as a snippet shows them.
+fn reference_links(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut at = 0;
+    while at < text.len() {
+        let rest = &text[at..];
+        let end = rest
+            .strip_prefix("[[")
+            .and_then(|r| r.get(..4).filter(|t| t.eq_ignore_ascii_case("plan")))
+            .and_then(|_| {
+                let after = &rest[6..];
+                if after.starts_with("]]") {
+                    return Some(8);
+                }
+                let alias = after.strip_prefix('|')?;
+                let close = alias.find(']')?;
+                (close > 0 && alias[close..].starts_with("]]")).then_some(7 + close + 2)
+            });
+        match end {
+            Some(end) => {
+                let mut link = String::new();
+                let mut in_run = false;
+                for c in rest[..end].chars() {
+                    if c != '\n' {
+                        link.push(c);
+                    } else if !in_run {
+                        link.push(' ');
+                    }
+                    in_run = c == '\n';
+                }
+                out.push(link);
+                at += end;
+            }
+            None => at += rest.chars().next().map_or(1, char::len_utf8),
+        }
+    }
+    out
 }
 
 proptest! {
@@ -75,16 +115,18 @@ proptest! {
     ) {
         let text = parts.concat();
         let found = link_contexts(&text, "Plan");
-        let total: usize = found.iter().map(|c| c.snippet.len()).sum();
+        let total: usize = found.contexts.iter().map(|c| c.snippet.len()).sum();
         prop_assert!(total <= output_bound(text.len()));
-        for context in found {
+        let expected = reference_links(&text);
+        prop_assert_eq!(found.count, expected.len());
+        prop_assert_eq!(found.truncated, found.contexts.len() < expected.len());
+        for (context, expected) in found.contexts.iter().zip(&expected) {
             let units = utf16(&context.snippet);
             prop_assert!(context.link_start <= context.link_end);
             prop_assert!(context.link_end <= units.len());
             let link = String::from_utf16(&units[context.link_start..context.link_end]);
             prop_assert!(link.is_ok());
-            let link = link.unwrap_or_default().to_lowercase();
-            prop_assert!(link.starts_with("[[plan") && link.ends_with("]]"), "{link}");
+            prop_assert_eq!(&link.unwrap_or_default(), expected);
         }
     }
 }
