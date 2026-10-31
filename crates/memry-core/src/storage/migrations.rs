@@ -263,3 +263,5 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod wiki_names_tests;
