@@ -96,8 +96,8 @@ impl Indexer {
 
     /// Reads and measures `notes` in batches of at most [`BATCH`] files and [`BATCH_BYTES`],
     /// then brings the search index up to date when `links` is owed. `progress` gets `built`
-    /// of `total` first, after each batch and at the end; `stop` ends the pass between files
-    /// and inside the search reindex.
+    /// of `total` first, after each batch and at the end, and none once `stop` is set; `stop`
+    /// ends the pass between files and inside the search reindex.
     pub(super) fn pass(
         &self,
         notes: Vec<Unindexed>,
@@ -116,6 +116,12 @@ impl Indexer {
         };
         // Owed before the first write: a pass that ends early leaves it owed.
         *links |= total > 0;
+        // No step once the vault is closing, the total included (`indexVault` after a cancel).
+        let mut progress = |step| {
+            if !stop() {
+                progress(step);
+            }
+        };
         progress(IndexProgress { built: 0, total });
         let mut batch: Vec<MeasuredFile> = Vec::new();
         let mut bytes = 0;

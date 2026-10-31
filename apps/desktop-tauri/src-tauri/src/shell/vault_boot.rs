@@ -26,8 +26,9 @@ use tokio::sync::broadcast::error::RecvError;
 
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::events::{
-    CrdtWriteBackFailedEvent, VaultActivityChangedEvent, VaultErrorEvent, VaultIndexRecoveredEvent,
-    VaultListChangedEvent, VaultStatusChangedEvent, WriteBackFailureReason, broadcast,
+    CrdtWriteBackFailedEvent, VaultActivityChangedEvent, VaultErrorEvent, VaultIndexProgressEvent,
+    VaultIndexRecoveredEvent, VaultListChangedEvent, VaultStatusChangedEvent,
+    WriteBackFailureReason, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -101,8 +102,8 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// Starts the vault watcher and its consumer with every open and stops them with every close,
 /// with the notes identity (Step 13d) naming the note of each file. The tier is managed so the
 /// app's own file operations reach its own-write record and its row lane. The note index
-/// follows the tier's facts in the background of every open, and is managed for
-/// `vault_reindex`.
+/// follows the tier's facts in the background of every open, broadcasts the progress of each
+/// open's pass, and is managed for `vault_reindex`.
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -115,7 +116,10 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     let tier = VaultTier::new(store.inner().clone());
     tier.set_identity(NotesIdentity::new(store.inner().clone()));
     tier.register(session);
-    let index = NoteIndex::new(tier.clone());
+    let reporter = app.clone();
+    let index = NoteIndex::new(tier.clone(), move |step| {
+        broadcast(&reporter, VaultIndexProgressEvent::from(step));
+    });
     index.register(session);
     app.manage(index);
     register_flushes(app, &tier);

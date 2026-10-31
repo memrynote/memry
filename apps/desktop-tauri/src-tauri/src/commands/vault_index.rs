@@ -20,16 +20,7 @@ pub async fn vault_reindex(app: AppHandle<Wry>) -> Result<(), CommandError> {
     blocking("vault_reindex", move || {
         let index = index.ok_or_else(not_open)?;
         index
-            .reindex(move |step| {
-                let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
-                broadcast(
-                    &app,
-                    VaultIndexProgressEvent {
-                        index_built: count(step.built),
-                        index_total: count(step.total),
-                    },
-                );
-            })
+            .reindex(move |step| broadcast(&app, VaultIndexProgressEvent::from(step)))
             .map(drop)
             .map_err(|error| match error {
                 IndexError::NotOpen => not_open(),

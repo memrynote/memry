@@ -10,14 +10,15 @@ mod device_key;
 mod index_support;
 mod vault_env;
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use index_support::{all_indexed, note_text, path_of, seeded, until, with_task};
+use index_support::{
+    all_indexed, note_text, path_of, seeded, until, with_reporting_task, with_task,
+};
 use memry_core::domain::note_stats::{MeasuredFile, measure};
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::index::{IDLE_DELAY, NoteIndex};
+use memry_desktop::notes::index::{IDLE_DELAY, IndexProgress, NoteIndex};
 use memry_desktop::vault::consumer::rows::RowStat;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::file_types::FileType;
@@ -37,10 +38,28 @@ fn stale_row(id: &str, text: &str) -> MeasuredFile {
     }
 }
 
+/// The watcher's first pass ended: the walk starts.
+fn rescanned() -> Applied {
+    Applied::Vault(VaultEvent::Rescanned {
+        missing: 0,
+        removed: 0,
+        added: 0,
+        changed: 0,
+        removals_withheld: false,
+    })
+}
+
+type Reported = Arc<Mutex<Vec<IndexProgress>>>;
+
+fn reporter(reported: &Reported) -> impl Fn(IndexProgress) + Sync + use<> {
+    let reported = reported.clone();
+    move |step| reported.lock().unwrap().push(step)
+}
+
 #[test]
 fn facts_keep_the_rows_current_and_lost_facts_run_a_scan() {
     let (mut e, _store, notes) = seeded(3);
-    let index = NoteIndex::new(e.tier.clone());
+    let index = NoteIndex::new(e.tier.clone(), |_| {});
     index.register(&e.session);
     e.drain();
     e.open();
@@ -213,7 +232,7 @@ fn a_fresh_vault_gets_its_notes_then_their_stats_and_links_at_every_open() {
     for i in 0..FRESH {
         e.write(&path_of(i), &note_text(i));
     }
-    let index = NoteIndex::new(e.tier.clone());
+    let index = NoteIndex::new(e.tier.clone(), |_| {});
     index.register(&e.session);
     let started = Instant::now();
     e.open();
@@ -272,36 +291,30 @@ fn a_walk_holds_the_work_and_a_reindex_through_a_watcher_failure() {
     let open = e.session.current().unwrap();
     let (sender, receiver) = broadcast::channel(16);
     with_task(&open, receiver, |handle| {
-        let rescanned = VaultEvent::Rescanned {
-            missing: 0,
-            removed: 0,
-            added: 0,
-            changed: 0,
-            removals_withheld: false,
-        };
-        sender.send(Applied::Vault(rescanned)).unwrap();
+        sender.send(rescanned()).unwrap();
         let failed = VaultEvent::WatchFailed {
             message: "an OS watcher error".into(),
             limit: false,
         };
         sender.send(Applied::Vault(failed)).unwrap();
-        let steps = Arc::new(AtomicUsize::new(0));
+        let steps: Arc<Mutex<Vec<IndexProgress>>> = Arc::default();
         let seen = steps.clone();
         let answer = handle
-            .reindex(Box::new(move |_| {
-                seen.fetch_add(1, Ordering::SeqCst);
-            }))
+            .reindex(Box::new(move |step| seen.lock().unwrap().push(step)))
             .unwrap();
         // Twice the queue's delay, then nothing measured and no progress: the walk runs.
         std::thread::sleep(IDLE_DELAY * 2);
         for (id, _) in &notes {
             assert!(open.search.note_stats(id).unwrap().is_none(), "{id}");
         }
-        assert_eq!(steps.load(Ordering::SeqCst), 0);
+        assert!(steps.lock().unwrap().is_empty());
 
         sender.send(Applied::Indexed { complete: true }).unwrap();
         let done = answer.recv().unwrap().unwrap();
         assert_eq!(done.indexed, notes.len());
+        // Less than a batch: the step after the last write is the total.
+        let step = |built| IndexProgress { built, total: 2 };
+        assert_eq!(*steps.lock().unwrap(), [step(0), step(2)]);
     });
     e.close();
 }
@@ -323,7 +336,7 @@ fn an_edit_beside_a_file_that_never_reads_is_not_held_by_its_backoff() {
         mode(0o644).unwrap();
         return;
     }
-    let index = NoteIndex::new(e.tier.clone());
+    let index = NoteIndex::new(e.tier.clone(), |_| {});
     index.register(&e.session);
     e.drain();
     e.open();
@@ -397,5 +410,73 @@ fn a_rename_whose_fact_was_lost_still_moves_the_journal_day() {
         });
     });
     drop(open);
+    e.close();
+}
+
+/// A reindex asked during the walk runs at its end and takes the open's pass: its own callback
+/// refreshes the list, so no later pass reports the open's progress.
+#[test]
+fn a_reindex_at_the_walks_end_takes_the_opens_report() {
+    let (mut e, _store, notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let reported = Reported::default();
+    let (sender, receiver) = broadcast::channel(16);
+    with_reporting_task(&open, receiver, &reporter(&reported), |handle| {
+        sender.send(rescanned()).unwrap();
+        let answer = handle.reindex(Box::new(|_| {})).unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        assert_eq!(answer.recv().unwrap().unwrap().indexed, notes.len());
+
+        // A live pass after it.
+        let ((id, path), text) = (&notes[0], note_text(0));
+        open.search
+            .index_note_files(vec![stale_row(id, &text)])
+            .unwrap();
+        sender
+            .send(Applied::Changed {
+                note_id: id.clone(),
+                path: path.clone(),
+                content_hash: Some(content_hash(&text)),
+                source: ChangeSource::Watcher,
+            })
+            .unwrap();
+        until("the live pass measured", || {
+            open.search.note_stats(id).unwrap().unwrap().stats == measure(&text)
+        });
+    });
+    assert_eq!(*reported.lock().unwrap(), []);
+    e.close();
+}
+
+/// A watcher that failed before any walk takes the open's report with its pass. A walk that
+/// comes after all the same reports again at its end: its pass is the one that fills the list.
+#[test]
+fn the_walks_end_reports_though_a_failed_watchers_pass_reported_first() {
+    let (mut e, _store, _) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let reported = Reported::default();
+    let (sender, receiver) = broadcast::channel(16);
+    let step = |built, total| IndexProgress { built, total };
+    with_reporting_task(&open, receiver, &reporter(&reported), |_| {
+        let failed = VaultEvent::WatchFailed {
+            message: "no watcher".into(),
+            limit: false,
+        };
+        sender.send(Applied::Vault(failed)).unwrap();
+        until("the failed watcher's pass reported its total", || {
+            reported.lock().unwrap().last() == Some(&step(2, 2))
+        });
+        reported.lock().unwrap().clear();
+
+        sender.send(rescanned()).unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("the walk's pass reported", || {
+            !reported.lock().unwrap().is_empty()
+        });
+        // Nothing left to measure: `0` of `0`, which still refreshes the list.
+        assert_eq!(*reported.lock().unwrap(), [step(0, 0)]);
+    });
     e.close();
 }
