@@ -12,6 +12,7 @@ pub mod config;
 pub mod consumer;
 pub mod covers;
 pub mod embeds;
+pub mod file_move;
 pub mod file_types;
 pub mod fs_atomic;
 pub mod hash;
