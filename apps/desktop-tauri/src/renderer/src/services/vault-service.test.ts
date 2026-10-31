@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
     vaultSwitch: vi.fn(),
     vaultRemove: vi.fn(),
     vaultReveal: vi.fn(),
-    vaultSetIcon: vi.fn()
+    vaultSetIcon: vi.fn(),
+    vaultReindex: vi.fn()
   },
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
   unlisten: vi.fn()
@@ -30,13 +31,15 @@ vi.mock('../../../generated/bindings', () => {
       vaultStatusChangedEvent: event('status'),
       vaultListChangedEvent: event('list'),
       vaultErrorEvent: event('error'),
-      vaultIndexRecoveredEvent: event('recovered')
+      vaultIndexRecoveredEvent: event('recovered'),
+      vaultIndexProgressEvent: event('progress')
     }
   }
 })
 
 import {
   onVaultError,
+  onVaultIndexProgress,
   onVaultIndexRecovered,
   onVaultListChanged,
   onVaultStatusChanged,
@@ -208,5 +211,24 @@ describe('vault-service events', () => {
     expect(onError).toHaveBeenCalledWith('boom')
     expect(onList).toHaveBeenCalledTimes(1)
     expect(onRecovered.mock.calls.map(([event]) => event.reason)).toEqual(['missing', 'corrupt'])
+  })
+
+  it('reindexes through the command and reports progress as the Electron percentage', async () => {
+    mocks.commands.vaultReindex.mockResolvedValue(null)
+    await vaultService.reindex()
+    expect(mocks.commands.vaultReindex).toHaveBeenCalledTimes(1)
+
+    const onProgress = vi.fn()
+    onVaultIndexProgress(onProgress)
+    await vi.waitFor(() => expect(mocks.listeners.has('progress')).toBe(true))
+    for (const [indexBuilt, indexTotal] of [
+      [0, 3],
+      [1, 3],
+      [3, 3],
+      [0, 0]
+    ]) {
+      mocks.listeners.get('progress')?.({ payload: { indexBuilt, indexTotal } })
+    }
+    expect(onProgress.mock.calls.map(([percent]) => percent)).toEqual([0, 33, 100, 100])
   })
 })

@@ -7,6 +7,7 @@
 //! | hostile query text never reaches the FTS5 parser  | FTS5 input is user input      |
 //! | the body column is `extract_text` output          | §A.3, chapter 12 §12.1        |
 //! | a second pass touches only what moved             | §A.5 watermarks, FR-053       |
+//! | a stopped pass commits nothing                    | desktop close, #3530 13e      |
 //! | a body update alone re-indexes the note           | the log is a watermark source |
 //! | a tombstone leaves the index and the results      | §A.1                          |
 //! | a dropped index rebuilds to the same answers      | §A.1, index.db is rebuildable |
@@ -258,6 +259,34 @@ fn a_second_pass_touches_only_what_moved() {
         "old survived"
     );
     assert_eq!(ids(&notes(&data, &index, "Beta")), vec!["edge"]);
+}
+
+/// Desktop's note index stops a pass when the vault closes: the rows done so far roll back
+/// with the watermarks, so the next pass is the whole one again, never half of one.
+#[test]
+fn a_stopped_pass_commits_nothing_and_the_next_does_it_all() {
+    let (data, index) = databases();
+    put(&data, "note", "a", r#"{"title":"Alpha"}"#, NOW);
+    put(&data, "note", "b", r#"{"title":"Beta"}"#, NOW);
+    let calls = std::cell::Cell::new(0);
+    let after_one = || {
+        calls.set(calls.get() + 1);
+        calls.get() > 1
+    };
+    let stopped = search::reindex_until(&data, &index, NOW, &after_one).expect("reindex");
+    assert_eq!(stopped, None);
+    assert_eq!(watermark(&index, NOTES_WATERMARK_KEY), None);
+    assert!(
+        notes(&data, &index, "Alpha").is_empty(),
+        "nothing committed"
+    );
+
+    let done = search::reindex_until(&data, &index, NOW, &|| false)
+        .expect("reindex")
+        .expect("not stopped");
+    assert!(done.full);
+    assert_eq!(done.notes_indexed, 2);
+    assert_eq!(ids(&notes(&data, &index, "Alpha")), vec!["a"]);
 }
 
 #[test]

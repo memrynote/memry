@@ -88,6 +88,7 @@ vi.mock('../src/generated/bindings', () => {
       vaultRemove: (path: string) => vault().remove(path),
       vaultReveal: () => vault().reveal(),
       vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon),
+      vaultReindex: () => vault().reindex(),
       updaterGetState: () => updater().getState(),
       updaterCheckForUpdates: () => updater().checkForUpdates(),
       updaterDownloadUpdate: () => updater().downloadUpdate(),
@@ -111,6 +112,11 @@ vi.mock('../src/generated/bindings', () => {
       updaterStateChangedEvent: event(() => api().onUpdaterStateChanged),
       menuCommandInvokedEvent: event(() => api().onMenuCommand),
       appNavigationRequestedEvent: event(() => api().onAppNavigationCommand),
+      // The Electron payload is the percentage; as built of 100 it maps back to itself.
+      vaultIndexProgressEvent: event(
+        () => window.api.onVaultIndexProgress,
+        (progress) => ({ indexBuilt: progress, indexTotal: 100 })
+      ),
       // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
       customIconsUpdatedEvent: { listen: async () => () => undefined },
       vaultIndexRecoveredEvent: event(

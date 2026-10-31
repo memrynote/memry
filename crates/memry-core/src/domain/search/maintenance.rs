@@ -87,6 +87,21 @@ pub fn reindex(
     index: &Connection,
     now_ms: i64,
 ) -> Result<Reindexed, StorageError> {
+    reindex_until(data, index, now_ms, &|| false).map(|done| done.unwrap_or_default())
+}
+
+/// [`reindex`] that `stop` can end between two rows, for a caller that must let go of both
+/// databases promptly (desktop's vault close). A stopped pass commits nothing to `index.db`:
+/// the index is as it was, the watermarks too, and the next pass does the whole work. The
+/// `data.db` body tags of the notes it reached are written outside that transaction; each is
+/// derived from the note's document, so the next pass writes the same rows again. `None` when
+/// stopped.
+pub fn reindex_until(
+    data: &Connection,
+    index: &Connection,
+    now_ms: i64,
+    stop: &dyn Fn() -> bool,
+) -> Result<Option<Reindexed>, StorageError> {
     let version: i64 = data
         .query_row("PRAGMA user_version", [], |row| row.get(0))
         .map_err(failed)?;
@@ -118,6 +133,9 @@ pub fn reindex(
     if !note_ids.is_empty() {
         let names = WikiNames::load(data)?;
         for id in &note_ids {
+            if stop() {
+                return Ok(None);
+            }
             index_note(data, &names, &transaction, id, now_ms, &mut done)?;
         }
         if !full {
@@ -126,6 +144,9 @@ pub fn reindex(
     }
     let (task_ids, tasks_high) = task_candidates(data, tasks_from)?;
     for id in &task_ids {
+        if stop() {
+            return Ok(None);
+        }
         index_task(data, &transaction, id, &mut done)?;
     }
 
@@ -142,7 +163,7 @@ pub fn reindex(
         &tasks_high.unwrap_or(tasks_from).max(tasks_from).to_string(),
     )?;
     transaction.commit().map_err(failed)?;
-    Ok(done)
+    Ok(Some(done))
 }
 
 /// Every note or journal whose record, body log or body snapshot moved at or

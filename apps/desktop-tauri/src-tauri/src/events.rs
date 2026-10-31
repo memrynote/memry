@@ -85,6 +85,16 @@ pub struct VaultActivityChangedEvent;
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultListChangedEvent;
 
+/// A reindex measured `index_built` of `index_total` notes (`vault:index-progress`). At most
+/// one per 250 ms and never backwards. A reindex that finishes ends with `index_built ==
+/// index_total`; one the vault's close stops ends without it.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultIndexProgressEvent {
+    pub index_built: u32,
+    pub index_total: u32,
+}
+
 /// `index.db` was rebuilt empty (`vault:index-recovered`). `reason` is `missing` for a first
 /// open (nothing was repaired) and `corrupt` otherwise; `detail` is the core's text.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

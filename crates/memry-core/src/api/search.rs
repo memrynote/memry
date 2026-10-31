@@ -139,6 +139,21 @@ impl Search {
 }
 
 impl Search {
+    /// [`Search::reindex`] that `stop` can end between two rows; a stopped pass commits
+    /// nothing (`None`). For desktop's note index, which must let go of both databases when
+    /// the vault closes. Not on the FFI surface.
+    pub fn reindex_until(
+        &self,
+        stop: &dyn Fn() -> bool,
+    ) -> Result<Option<ReindexSummary>, StorageError> {
+        let index = self.index.clone();
+        self.data.call_blocking(move |data| {
+            index.call_blocking(|index| {
+                Ok(search::reindex_until(data, index, now_ms(), stop)?.map(summary))
+            })
+        })
+    }
+
     /// The `index.db` handle, for the desktop e2e debug query. Not on the FFI surface.
     #[doc(hidden)]
     pub fn index_handle(&self) -> Db {
@@ -170,11 +185,24 @@ impl Search {
             .read_blocking(move |index| note_stats::read(index, &note_id))
     }
 
+    /// Drops the rows of notes with no markdown file row ([`note_stats::prune`]). Holds the
+    /// index writer while it reads the rows, so no row measured meanwhile is dropped.
+    pub fn prune_note_stats(&self) -> Result<usize, StorageError> {
+        let data = self.data.clone();
+        self.index
+            .call_blocking(move |index| data.read_blocking(|data| note_stats::prune(data, index)))
+    }
+
     /// The markdown notes to measure, smallest file first ([`note_stats::unindexed`]).
-    pub fn unindexed_notes(&self, all: bool) -> Result<Vec<Unindexed>, StorageError> {
+    /// `day_of` is the journal day a vault path names.
+    pub fn unindexed_notes(
+        &self,
+        all: bool,
+        day_of: &dyn Fn(&str) -> Option<String>,
+    ) -> Result<Vec<Unindexed>, StorageError> {
         let index = self.index.clone();
         self.data.read_blocking(move |data| {
-            index.read_blocking(|index| note_stats::unindexed(data, index, all))
+            index.read_blocking(|index| note_stats::unindexed(data, index, all, day_of))
         })
     }
 }
@@ -392,16 +420,17 @@ impl Search {
     pub fn reindex(&self) -> Result<ReindexSummary, StorageError> {
         let index = self.index.clone();
         self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
-                let done = search::reindex(data, index, now_ms())?;
-                Ok(ReindexSummary {
-                    full: done.full,
-                    notes_indexed: done.notes_indexed as u32,
-                    tasks_indexed: done.tasks_indexed as u32,
-                    corrupt_skipped: done.corrupt_skipped as u32,
-                })
-            })
+            index.call_blocking(|index| Ok(summary(search::reindex(data, index, now_ms())?)))
         })
+    }
+}
+
+fn summary(done: search::Reindexed) -> ReindexSummary {
+    ReindexSummary {
+        full: done.full,
+        notes_indexed: done.notes_indexed as u32,
+        tasks_indexed: done.tasks_indexed as u32,
+        corrupt_skipped: done.corrupt_skipped as u32,
     }
 }
 

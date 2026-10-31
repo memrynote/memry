@@ -68,6 +68,7 @@ mod maintenance;
 
 pub use maintenance::{
     DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
+    reindex_until,
 };
 
 /// The `fts_notes` ranking expression. Part of the contract (§A.5).

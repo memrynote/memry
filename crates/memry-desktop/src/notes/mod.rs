@@ -2,4 +2,5 @@
 
 pub mod icons;
 pub mod identity;
+pub mod index;
 pub mod unsplash;
