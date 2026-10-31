@@ -99,8 +99,9 @@ pub struct NoteCreatedEvent {
     pub source: NoteEventSource,
 }
 
-/// A note's file changed outside the app (`notes:updated`). `changes` is empty: the body
-/// reaches the open editor through its document, and the lists refetch.
+/// A note's file changed outside the app (`notes:updated`). `changes` holds the fields the
+/// edit may have changed, as the note reads now (`NoteView::changes`); the body reaches the
+/// open editor through its document.
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event,
 )]

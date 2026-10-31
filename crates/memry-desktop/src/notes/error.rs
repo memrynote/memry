@@ -28,6 +28,8 @@ pub enum NotesError {
     NameConflict,
     #[error("the title is empty or longer than 200 characters")]
     InvalidTitle,
+    #[error("a note takes at most 50 tags of at most 50 characters each")]
+    InvalidTags,
     #[error(transparent)]
     Storage(#[from] StorageError),
     #[error(transparent)]
@@ -96,6 +98,7 @@ impl CoreError for NotesError {
                 (FailureKind::Invalid, "name_conflict")
             }
             Self::InvalidTitle => (FailureKind::Invalid, "invalid_title"),
+            Self::InvalidTags => (FailureKind::Invalid, "invalid_tags"),
             Self::Crdt(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
             Self::File(_) => (FailureKind::Storage, "note_file_failed"),

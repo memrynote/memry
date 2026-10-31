@@ -182,11 +182,19 @@ export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () =
   )
 }
 
-/** A note changed; `changes` names the `Note` fields that did, empty for an outside edit. */
+/**
+ * A note changed; `changes` holds the `Note` fields that may have, as the note reads now. Its
+ * `modified` arrives as epoch milliseconds and is handed on as a `Date`, as every `Note` date is.
+ */
 export function onNoteUpdated(callback: (event: NoteUpdatedEvent) => void): () => void {
-  return subscribeToEvent(events.noteUpdatedEvent, ({ id, changes, source }) =>
-    callback({ id, changes, source })
-  )
+  return subscribeToEvent(events.noteUpdatedEvent, ({ id, changes, source }) => {
+    const { modified, ...rest } = changes
+    callback({
+      id,
+      changes: typeof modified === 'number' ? { ...rest, modified: new Date(modified) } : rest,
+      source
+    })
+  })
 }
 
 export function onNoteDeleted(callback: (event: NoteDeletedEvent) => void): () => void {

@@ -1,27 +1,36 @@
-//! A note deleted in the app (`deleteNote`, `vault/notes-crud.ts`): for good, not to the OS
-//! trash. In the note's write order and under the rows' lane:
-//! 1. the record: a tombstone for every other device, none for a local-only note, which the
+//! A note deleted in the app (`deleteNote`, `vault/notes-crud.ts`). In the note's write order
+//! and under the rows' lane:
+//! 1. the file, first as in Electron, so a file that cannot go fails the delete and leaves the
+//!    note whole. A file whose bytes are the ones the note's document took (the row's content
+//!    hash) is removed for good; any other file holds text the note never read (an outside edit
+//!    not fed yet, a file too large to take), so it goes to the OS trash instead, as the open
+//!    reconcile does with a deleted note's file (`vault::writeback::deleted`). Either way the
+//!    own-write record is told first, so the watcher's report of the removal is the app's;
+//! 2. the record: a tombstone for every other device, none for a local-only note, which the
 //!    core reads off the row that is still there (`domain::notes::local_only`);
-//! 2. the file, told to the own-write record first, so the watcher's report of its removal is
-//!    the app's and never an outside delete;
 //! 3. the row, then the note's slot in the sidebar order.
 //!
-//! A file that cannot be removed fails the delete with the row kept: the record is a
-//! tombstone and the row still names the file's bytes, so the next open's walk trashes the
-//! file (`vault::writeback::deleted`) rather than making it a new note.
+//! A record that cannot be tombstoned after its file went fails the delete with the row kept:
+//! the row names a file that is gone, so the next open's watcher reports its removal and the
+//! identity deletes the note on the row's evidence (`identity::removed`).
 //!
 //! Not here yet: the date reminders Electron clears (Step 21) and the locked-folder check
 //! (`assertNoteWritable`, Step 13n).
 
 use std::io::{self, ErrorKind};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+use memry_core::domain::note_files::NoteFile as Row;
 
 use super::error::{NotesError, SCOPE};
 use super::service::NotesService;
 use crate::session::OpenVault;
 use crate::shell::file_open::Resolution;
 use crate::vault::consumer::{Applied, ChangeSource};
+use crate::vault::file_types::FileType;
+use crate::vault::note_file::hash_file;
 use crate::vault::paths::resolve_vault_file;
+use crate::vault::watch::EchoGuard;
 
 impl NotesService {
     pub fn delete(&self, open: &OpenVault, note_id: &str) -> Result<(), NotesError> {
@@ -37,11 +46,12 @@ impl NotesService {
         let Some(row) = lane.files().by_id(note_id)? else {
             return Err(NotesError::NotFound(note_id.to_owned()));
         };
-        writer.delete(note_id.to_owned())?;
-        let removed = self
-            .tier
-            .echo()
-            .removing(&row.path, || remove_vault_file(root, &row.path));
+        let echo = self.tier.echo();
+        let removed = if holds_unread_text(root, &row) {
+            self.trash_file(&echo, root, &row.path)
+        } else {
+            unlink(&echo, root, &row.path)
+        };
         if let Err(error) = removed {
             tracing::error!(
                 scope = SCOPE,
@@ -50,6 +60,7 @@ impl NotesService {
             );
             return Err(error.into());
         }
+        writer.delete(note_id.to_owned())?;
         lane.remove(note_id)?;
         lane.publish(Applied::Removed {
             note_id: note_id.to_owned(),
@@ -66,18 +77,57 @@ impl NotesService {
         }
         Ok(())
     }
+
+    /// Moves the file at `rel` to the OS trash, told to the own-write record first.
+    fn trash_file(&self, echo: &EchoGuard, root: &Path, rel: &str) -> io::Result<()> {
+        let Some(path) = removal_target(root, rel)? else {
+            return Ok(());
+        };
+        echo.will_remove(rel);
+        (self.trash)(&path).map_err(|error| {
+            // Still there: a later removal of it is an outside one.
+            echo.cancel_removal(rel);
+            io::Error::other(format!("the trash refused it: {error}"))
+        })
+    }
 }
 
-/// Unlinks the vault file at `rel`; one already gone is no error. The folder is resolved
-/// through links and must stay inside the vault; the name itself is unlinked, so a file that is
-/// a link loses the link and never its target.
-pub(crate) fn remove_vault_file(root: &Path, rel: &str) -> io::Result<()> {
+/// Whether the markdown file of `row` holds text its note's document never took: bytes other
+/// than the row's content hash names, or a file that cannot be hashed. A missing file holds
+/// nothing; a file of another type is the note itself.
+fn holds_unread_text(root: &Path, row: &Row) -> bool {
+    if row.file_type != FileType::Markdown.as_str() {
+        return false;
+    }
+    match hash_file(root, &row.path) {
+        Ok(None) => false,
+        Ok(Some(hash)) => row.content_hash.as_deref() != Some(hash.as_str()),
+        Err(_) => true,
+    }
+}
+
+/// Unlinks the vault file at `rel`, told to the own-write record in the same step; one already
+/// gone is no error.
+pub(super) fn unlink(echo: &EchoGuard, root: &Path, rel: &str) -> io::Result<()> {
+    let Some(path) = removal_target(root, rel)? else {
+        return Ok(());
+    };
+    echo.removing(rel, || match std::fs::remove_file(&path) {
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+        other => other,
+    })
+}
+
+/// Where the file at `rel` is, its folder resolved through links and kept inside the vault, or
+/// `None` when the folder is gone. The name itself is not resolved, so a file that is a link
+/// loses the link and never its target.
+fn removal_target(root: &Path, rel: &str) -> io::Result<Option<PathBuf>> {
     let (folder, name) = rel.rsplit_once('/').unwrap_or(("", rel));
     let folder = match folder {
         "" => root.to_path_buf(),
         folder => match resolve_vault_file(root, folder)? {
             Resolution::Inside(real) => real,
-            Resolution::Missing => return Ok(()),
+            Resolution::Missing => return Ok(None),
             Resolution::Outside => {
                 return Err(io::Error::other(
                     "the note's folder resolves outside the vault",
@@ -85,8 +135,5 @@ pub(crate) fn remove_vault_file(root: &Path, rel: &str) -> io::Result<()> {
             }
         },
     };
-    match std::fs::remove_file(folder.join(name)) {
-        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
-        other => other,
-    }
+    Ok(Some(folder.join(name)))
 }

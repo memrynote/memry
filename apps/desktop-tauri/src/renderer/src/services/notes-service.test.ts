@@ -246,7 +246,7 @@ describe('notes-service', () => {
     const note = { id: 'n', path: 'a.md', title: 'a', created: CREATED, modified: MODIFIED }
     listeners.get('created')?.({ payload: { note, source: 'internal' } })
     listeners.get('updated')?.({
-      payload: { id: 'n', changes: { title: 'b' }, source: 'internal' }
+      payload: { id: 'n', changes: { title: 'b', modified: MODIFIED }, source: 'external' }
     })
     listeners.get('deleted')?.({ payload: { id: 'n', path: 'a.md', source: 'internal' } })
 
@@ -254,7 +254,12 @@ describe('notes-service', () => {
       note: { ...note, created: new Date(CREATED), modified: new Date(MODIFIED) },
       source: 'internal'
     })
-    expect(updated).toHaveBeenCalledWith({ id: 'n', changes: { title: 'b' }, source: 'internal' })
+    // `modified` is a `Date`, as every `Note` date the renderer reads.
+    expect(updated).toHaveBeenCalledWith({
+      id: 'n',
+      changes: { title: 'b', modified: new Date(MODIFIED) },
+      source: 'external'
+    })
     expect(deleted).toHaveBeenCalledWith({ id: 'n', path: 'a.md', source: 'internal' })
     for (const stop of stops) stop()
     await vi.waitFor(() => expect(listeners.size).toBe(0))

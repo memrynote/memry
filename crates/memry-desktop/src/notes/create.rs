@@ -2,18 +2,31 @@
 //!
 //! Order, all under the rows' lane so no watcher fact for the path lands in between:
 //! 1. the path: the title's file name in the folder (the vault's default note folder when none
-//!    is given), the first free `<name> N.md`; inside the vault or refused;
-//! 2. the record, with the tags, properties and icon (one outbox row): a failure here leaves
-//!    nothing on disk;
+//!    is given), the first that no note holds under any spelling the volume folds and no file
+//!    or link stands at, as `<name> N.md`; inside the vault or refused;
+//! 2. the record, with the tags, the user properties and the icon (one outbox row);
 //! 3. the row, with no hash yet, so the watcher's report of the file is a change of this note;
-//! 4. the file, created (never replacing one that appeared meanwhile), told to the own-write
+//! 4. the file, created and never replacing one that appeared meanwhile, told to the own-write
 //!    record first;
-//! 5. the body, seeded from the file, and the row's hashes once the document holds its text.
+//! 5. the body, seeded from the file, then the row's hashes once the document holds its text,
+//!    and only then the `Added` fact, so a create taken back sends no note event.
 //!
-//! Any failure after the file landed takes back what this call made: the file (told as the
-//! app's removal), the record (a tombstone after its create), then the row. A crash between 4
-//! and 5 leaves a row without a hash, and the next open walk seeds the empty body from the
-//! file, as for any file the app wrote and did not read back.
+//! The row comes before the file because a file without a row is offered to the identity, which
+//! takes it for a row-less note only by its folder and title (`identity::adopt`): `Plan 1.md` is
+//! not the title `Plan`, so after a crash between the two it would become a second note.
+//!
+//! A failure takes back what this call made: the file only when this call wrote it (a file that
+//! was there first stays as it is, and the watcher makes it a note), the record (a tombstone
+//! after its create), then the row. A crash leaves one of three states, each one an open
+//! converges or the user can act on:
+//! - between 2 and 3: a live record with no row and no file. It is not listed here (a note
+//!   lists once a row names its file) and syncs as an empty note; a file of that folder and
+//!   title is adopted as it.
+//! - between 3 and 4: a row with no hash and no file. The removal the next open's watcher finds
+//!   keeps the note, since nothing proves only the file went (`identity::removed`), so it lists
+//!   with its file missing until it is deleted, or a file at its path brings it back.
+//! - between 4 and 5: a row without a hash beside the file, whose text seeds the empty body at
+//!   the next open walk, as for any file the app wrote and did not read back.
 //!
 //! Not here yet, though Electron's create does them: the template a folder (`.folder.md`,
 //! Step 13h) or a tag (Step 13j) names, a `template` id (Step 13l), and the note's date
@@ -28,7 +41,8 @@ use memry_core::markdown::shared::writing_tools::WritingFrontmatter;
 use serde_json::{Map, Value};
 
 use super::error::{NotesError, SCOPE};
-use super::frontmatter::{file_fields, new_file_frontmatter};
+use super::frontmatter::{file_fields, is_reserved_key, new_file_frontmatter};
+use super::read;
 use super::service::NotesService;
 use super::view::{NoteView, SizeClass};
 use crate::session::OpenVault;
@@ -39,13 +53,17 @@ use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
-use crate::vault::note_file::write_new_note;
+use crate::vault::note_file::{NoteFileError, write_new_note};
 use crate::vault::paths::{generate_note_path, resolve_vault_file, unique_candidates};
+use crate::vault::watch::EchoGuard;
 
 /// Names tried before a create gives up: `<title>.md`, then `<title> 1.md` up to this.
 const MAX_CANDIDATES: usize = 10_000;
 /// `NoteCreateSchema`: `title` is 1 to 200 UTF-16 units.
 const MAX_TITLE_UNITS: usize = 200;
+/// `NoteCreateSchema`: at most 50 tags of at most 50 UTF-16 units each.
+const MAX_TAGS: usize = 50;
+const MAX_TAG_UNITS: usize = 50;
 
 /// What a create is asked to make.
 #[derive(Debug, Clone, Default)]
@@ -58,28 +76,53 @@ pub struct NewNoteFile {
     pub emoji: Option<String>,
 }
 
+impl NewNoteFile {
+    /// `NoteCreateSchema` and `createNote`'s reading of it: the title's and the tags' limits,
+    /// an exact repeat of a tag dropped (`new Set`), a body of whitespace alone made empty, and
+    /// the reserved frontmatter keys left out of the properties (`writePropertiesToRoot`), for
+    /// the record as for the file.
+    fn checked(mut self) -> Result<Self, NotesError> {
+        let units = |text: &str| text.encode_utf16().count();
+        let title_units = units(&self.title);
+        if title_units == 0 || title_units > MAX_TITLE_UNITS {
+            return Err(NotesError::InvalidTitle);
+        }
+        if self.tags.len() > MAX_TAGS || self.tags.iter().any(|tag| units(tag) > MAX_TAG_UNITS) {
+            return Err(NotesError::InvalidTags);
+        }
+        let mut seen = std::collections::HashSet::new();
+        self.tags.retain(|tag| seen.insert(tag.clone()));
+        // `String.prototype.trim` also strips the byte order mark.
+        if self
+            .content
+            .trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}')
+            .is_empty()
+        {
+            self.content.clear();
+        }
+        self.properties
+            .retain(|name, value| !is_reserved_key(name, value));
+        Ok(self)
+    }
+}
+
 impl NotesService {
     pub fn create(&self, open: &OpenVault, note: NewNoteFile) -> Result<NoteView, NotesError> {
-        self.create_checked(open, note, &mut || Ok(()))
+        self.create_checked(open, note, &mut || {}, &mut || Ok(()))
     }
 
-    /// [`Self::create`] with a hook that runs once the file landed, before its body is seeded,
-    /// so a test can fail the step after the file.
+    /// [`Self::create`] with two hooks for tests: `before_file` runs with the row reserved and
+    /// before the file is written, `after_file` once the file landed and before its body is
+    /// seeded, so a test can fail the step after it.
     #[doc(hidden)]
     pub fn create_checked(
         &self,
         open: &OpenVault,
         note: NewNoteFile,
+        before_file: &mut dyn FnMut(),
         after_file: &mut dyn FnMut() -> Result<(), NotesError>,
     ) -> Result<NoteView, NotesError> {
-        let units = note.title.encode_utf16().count();
-        if units == 0 || units > MAX_TITLE_UNITS {
-            return Err(NotesError::InvalidTitle);
-        }
-        // `new Set(tags)`: an exact repeat goes, the first spelling stays.
-        let mut seen = std::collections::HashSet::new();
-        let mut note = note;
-        note.tags.retain(|tag| seen.insert(tag.clone()));
+        let note = note.checked()?;
         let root = open.path.as_path();
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;
@@ -88,10 +131,8 @@ impl NotesService {
         let mut lane = rows.lane_of(session)?;
         let rel = free_path(&lane, root, &note)?;
         let folder = rel.rsplit_once('/').map(|(folder, _)| folder);
-        let output = write_markdown_note(
-            &new_file_frontmatter(&note.tags, &note.properties),
-            &note.content,
-        )?;
+        let frontmatter = new_file_frontmatter(&note.tags, &note.properties);
+        let output = write_markdown_note(&frontmatter, &note.content)?;
         let hash = content_hash(&output);
         let properties = (!note.properties.is_empty()).then_some(&note.properties);
         let id = writer.create_with(
@@ -111,43 +152,38 @@ impl NotesService {
             undo_record(&writer, &id);
             return Err(error.into());
         }
-        lane.publish(Applied::Added {
-            note_id: id.clone(),
-            path: rel.clone(),
-            created: true,
-            source: ChangeSource::App,
-        });
+        before_file();
         let echo = self.tier.echo();
         echo.will_write(&rel, &hash);
-        let landed = write_new_note(
-            root,
-            &rel,
-            &new_file_frontmatter(&note.tags, &note.properties),
-            &note.content,
-        );
-        let seeded = landed
-            .map_err(NotesError::from)
-            .and_then(|()| after_file())
-            .and_then(|()| {
-                let feed_input = Seed {
-                    root,
-                    open,
-                    id: &id,
-                    rel: &rel,
-                    raw: &output,
-                };
-                feed_input.run(self, &feed)
+        if let Err(error) = write_new_note(root, &rel, &frontmatter, &note.content) {
+            // Not this call's file: what stands there now is someone else's, its bytes too.
+            echo.cancel_write(&rel);
+            undo_record(&writer, &id);
+            remove_row(&mut lane, &id);
+            return Err(match error {
+                NoteFileError::AlreadyExists => NotesError::NameConflict,
+                error => error.into(),
             });
+        }
+        let seeded = after_file().and_then(|()| {
+            let feed_input = Seed {
+                root,
+                open,
+                id: &id,
+                rel: &rel,
+                raw: &output,
+            };
+            feed_input.run(self, &feed)
+        });
+        let take_back = |lane: &mut Lane<'_>, error: NotesError| {
+            remove_file(&echo, root, &rel);
+            undo_record(&writer, &id);
+            remove_row(lane, &id);
+            Err(error)
+        };
         let holds_text = match seeded {
             Ok(holds_text) => holds_text,
-            Err(error) => {
-                if !matches!(error, NotesError::File(_)) {
-                    remove_file(&echo, root, &rel);
-                }
-                undo_record(&writer, &id);
-                remove_row(&mut lane, &id, &rel);
-                return Err(error);
-            }
+            Err(error) => return take_back(&mut lane, error),
         };
         let stat = RowStat {
             file_type: FileType::Markdown,
@@ -156,11 +192,14 @@ impl NotesService {
             file_hash: Some(hash.clone()),
         };
         if let Err(error) = lane.put(&id, &rel, stat) {
-            remove_file(&echo, root, &rel);
-            undo_record(&writer, &id);
-            remove_row(&mut lane, &id, &rel);
-            return Err(error.into());
+            return take_back(&mut lane, error.into());
         }
+        lane.publish(Applied::Added {
+            note_id: id.clone(),
+            path: rel.clone(),
+            created: true,
+            source: ChangeSource::App,
+        });
         lane.publish(Applied::Changed {
             note_id: id.clone(),
             path: rel.clone(),
@@ -179,6 +218,10 @@ impl NotesService {
                 note_id = id,
                 "the new note got no slot: {error}"
             );
+        }
+        if !holds_text {
+            // Past the large-file class: the note as a read classifies it, without its text.
+            return read::get(open, &id, None)?.ok_or(NotesError::NotFound(id));
         }
         let now = now_ms();
         let parsed = memry_core::markdown::frontmatter::parse_markdown_note(&output)?;
@@ -204,7 +247,9 @@ impl NotesService {
     }
 }
 
-/// The first name for the note that no file and no row holds, vault-relative with `/`.
+/// The first name for the note that no note holds and nothing stands at, vault-relative with
+/// `/`. The folder is resolved through links and must stay inside the vault; at the name, any
+/// entry takes it: a file, a folder, a link, a dangling one included.
 fn free_path(lane: &Lane<'_>, root: &Path, note: &NewNoteFile) -> Result<String, NotesError> {
     let folder = note.folder.as_deref().filter(|folder| !folder.is_empty());
     let notes_dir = match folder {
@@ -212,23 +257,32 @@ fn free_path(lane: &Lane<'_>, root: &Path, note: &NewNoteFile) -> Result<String,
         None => root.join(read_vault_config(root).default_note_folder),
     };
     let base = generate_note_path(&notes_dir, &note.title, folder);
+    let Some(base_rel) = vault_relative(root, &base) else {
+        return Err(NotesError::Outside);
+    };
+    // `None`: the folder is not there yet, so no name in it is taken on disk.
+    let real_folder = match base_rel.rsplit_once('/') {
+        None => Some(root.to_path_buf()),
+        Some((folder, _)) => match resolve_vault_file(root, folder)? {
+            Resolution::Inside(real) => Some(real),
+            Resolution::Missing => None,
+            Resolution::Outside => return Err(NotesError::Outside),
+        },
+    };
     for candidate in unique_candidates(&base).take(MAX_CANDIDATES) {
         let Some(rel) = vault_relative(root, &candidate) else {
             return Err(NotesError::Outside);
         };
-        if lane.check_free(&rel).is_err() || lane.row_at(&rel)?.is_some() {
+        // The folded key covers the exact spelling too.
+        if lane.check_free(&rel).is_err() {
             continue;
         }
-        // Resolved through links: a folder linked outside the vault is refused, and a name
-        // something is at, a dangling link included, is taken.
-        match resolve_vault_file(root, &rel)? {
-            Resolution::Outside => return Err(NotesError::Outside),
-            Resolution::Inside(_) => {}
-            Resolution::Missing => {
-                if root.join(&rel).symlink_metadata().is_err() {
-                    return Ok(rel);
-                }
-            }
+        let name = rel.rsplit_once('/').map_or(rel.as_str(), |(_, name)| name);
+        let taken = real_folder
+            .as_ref()
+            .is_some_and(|folder| folder.join(name).symlink_metadata().is_ok());
+        if !taken {
+            return Ok(rel);
         }
     }
     Err(NotesError::NameConflict)
@@ -297,9 +351,8 @@ impl Seed<'_> {
 }
 
 /// Takes back the file this create wrote, as the app's own removal.
-fn remove_file(echo: &crate::vault::watch::EchoGuard, root: &Path, rel: &str) {
-    let removed = echo.removing(rel, || super::delete::remove_vault_file(root, rel));
-    if let Err(error) = removed {
+fn remove_file(echo: &EchoGuard, root: &Path, rel: &str) {
+    if let Err(error) = super::delete::unlink(echo, root, rel) {
         tracing::error!(
             scope = SCOPE,
             "a failed create left its new file behind: {error}"
@@ -318,17 +371,13 @@ fn undo_record(writer: &memry_core::api::notes_write::NotesWriter, id: &str) {
     }
 }
 
-fn remove_row(lane: &mut Lane<'_>, id: &str, rel: &str) {
-    match lane.remove(id) {
-        Ok(()) => lane.publish(Applied::Removed {
-            note_id: id.to_owned(),
-            path: rel.to_owned(),
-            source: ChangeSource::App,
-        }),
-        Err(error) => tracing::error!(
+/// Removes the row this create reserved. No fact goes out: none went out for it.
+fn remove_row(lane: &mut Lane<'_>, id: &str) {
+    if let Err(error) = lane.remove(id) {
+        tracing::error!(
             scope = SCOPE,
             note_id = id,
             "a failed create left its row: {error}"
-        ),
+        );
     }
 }

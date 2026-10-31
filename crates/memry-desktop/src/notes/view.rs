@@ -3,8 +3,9 @@
 //! `Date`s.
 
 use memry_core::domain::note_list::{ListedNote, NoteSort};
+use memry_core::domain::note_stats::measure;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::vault::file_types::FileType;
 
@@ -76,6 +77,27 @@ pub struct NoteView {
     pub size_class: SizeClass,
     pub large_file: Option<LargeFileInfo>,
     pub content_omitted: bool,
+}
+
+impl NoteView {
+    /// The `changes` of an outside edit's `notes:updated` (`handleFileChange` of desktop
+    /// `vault/watcher.ts`): what the edit may have changed, as the note reads now, so the
+    /// backlinks, the unlinked mentions, the similar notes and the properties panel take the new
+    /// text and fields. A large note's text is not read, so `content` is left out rather than
+    /// sent empty. `modified` is epoch milliseconds, which the renderer's service makes a `Date`.
+    pub fn changes(&self) -> Map<String, Value> {
+        let mut changes = Map::new();
+        changes.insert("title".into(), json!(self.title));
+        if !self.content_omitted {
+            changes.insert("content".into(), json!(self.content));
+        }
+        changes.insert("tags".into(), json!(self.tags));
+        changes.insert("properties".into(), Value::Object(self.properties.clone()));
+        changes.insert("modified".into(), json!(self.modified));
+        changes.insert("wordCount".into(), json!(self.word_count));
+        changes.insert("snippet".into(), json!(measure(&self.content).snippet));
+        changes
+    }
 }
 
 /// `NoteListItem`. `word_count` is `None` until the note index (Step 13e) measured the file.

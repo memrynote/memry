@@ -640,8 +640,9 @@ export type NoteListPageView = {
 export type NoteListSortBy = "modified" | "created" | "title" | "position";
 
 /**
- *  A note's file changed outside the app (`notes:updated`). `changes` is empty: the body
- *  reaches the open editor through its document, and the lists refetch.
+ *  A note's file changed outside the app (`notes:updated`). `changes` holds the fields the
+ *  edit may have changed, as the note reads now (`NoteView::changes`); the body reaches the
+ *  open editor through its document.
  */
 export type NoteUpdatedEvent = {
 	id: string,

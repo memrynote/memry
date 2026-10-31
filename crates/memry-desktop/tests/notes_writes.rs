@@ -1,12 +1,16 @@
 //! The app's own note writes (Step 13f, #3530) under the running vault tier: a create writes
-//! the record, then the row, then the file, and takes all three back when a step after the
-//! file fails; a delete is for good and leaves the tombstone the 13d rules ask for; the watcher
-//! reports neither back as an outside change, in its facts or in the activity log.
+//! the record, then the row, then the file, takes back what it made when a step fails, and
+//! never writes over or takes back a file it did not write; a delete removes the file first,
+//! for good when the note's document holds its text and to the trash when it does not, then
+//! leaves the tombstone the 13d rules ask for; the watcher reports neither back as an outside
+//! change, in its facts or in the activity log; an outside edit reads back as the fields
+//! `notes:updated` carries.
 
 mod device_key;
 mod vault_env;
 
 use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 
 use memry_core::seams::secure_store::SecureStore;
@@ -31,8 +35,13 @@ fn opened() -> (Env, Arc<NotesService>) {
     });
     e.open();
     e.facts_until(indexed);
-    let notes = NotesService::new(e.tier.clone(), kept.expect("the store"));
+    let notes = NotesService::with_trash(e.tier.clone(), kept.expect("the store"), bin);
     (e, notes)
+}
+
+/// The test's trash: the file moves beside itself as `<name>.trashed`, which no note reads.
+fn bin(path: &Path) -> Result<(), String> {
+    fs::rename(path, path.with_extension("trashed")).map_err(|error| error.to_string())
 }
 
 fn plan() -> NewNoteFile {
@@ -180,16 +189,29 @@ fn a_create_writes_the_record_then_the_row_then_the_file_and_seeds_the_body() {
     let (mut e, notes) = opened();
     let open = e.session.current().unwrap();
     order_work_folder(&e);
+    let mut before_file = None;
     let mut at_file = None;
     let note = notes
-        .create_checked(&open, plan(), &mut || {
-            // The file has landed and its body is not seeded yet.
-            let row = e.rows();
-            let file = fs::read_to_string(e.vault.join("work/Plan.md")).ok();
-            at_file = Some((records(&e), row, file));
-            Ok(())
-        })
+        .create_checked(
+            &open,
+            plan(),
+            &mut || {
+                // The row is reserved and the file not written: a crash here leaves no file
+                // that a later open would make a second note.
+                before_file = Some((e.rows(), e.vault.join("work/Plan.md").exists()));
+            },
+            &mut || {
+                // The file has landed and its body is not seeded yet.
+                let row = e.rows();
+                let file = fs::read_to_string(e.vault.join("work/Plan.md")).ok();
+                at_file = Some((records(&e), row, file));
+                Ok(())
+            },
+        )
         .unwrap();
+    let (rows_before, file_before) = before_file.expect("the hook ran");
+    assert_eq!(rows_before.len(), 1, "the row comes before the file");
+    assert!(!file_before, "the file came before the row");
     let (records_then, rows_then, file_then) = at_file.expect("the hook ran");
     assert_eq!(
         records_then,
@@ -238,7 +260,7 @@ fn a_create_writes_the_record_then_the_row_then_the_file_and_seeds_the_body() {
 fn a_failure_after_the_file_takes_back_the_file_the_row_and_the_record() {
     let (mut e, notes) = opened();
     let open = e.session.current().unwrap();
-    let failed = notes.create_checked(&open, plan(), &mut || {
+    let failed = notes.create_checked(&open, plan(), &mut || {}, &mut || {
         Err(NotesError::Io(std::io::Error::other("injected")))
     });
     assert!(matches!(failed, Err(NotesError::Io(_))), "{failed:?}");
@@ -250,12 +272,9 @@ fn a_failure_after_the_file_takes_back_the_file_the_row_and_the_record() {
     let records = records(&e);
     assert_eq!(records.len(), 1);
     assert!(records[0].1, "the record is not a tombstone");
-    // The removal is the app's: no note is made of it, none is deleted twice.
-    let id = &records[0].0;
-    assert_eq!(
-        row_facts(&mut e),
-        [added(id, "work/Plan.md"), removed(id, "work/Plan.md")]
-    );
+    // The note never was: no fact went out for it, so no note event; the removal is the
+    // app's, so the watcher makes no note of it.
+    assert_eq!(row_facts(&mut e), []);
     assert_eq!(e.rows(), []);
 }
 
@@ -303,6 +322,10 @@ fn a_delete_removes_the_file_for_good_and_queues_the_tombstone() {
 
     notes.delete(&open, &note.id).unwrap();
     assert!(!e.vault.join("work/Plan.md").exists());
+    assert!(
+        !e.vault.join("work/Plan.trashed").exists(),
+        "a file whose text the note held went to the trash"
+    );
     assert_eq!(e.rows(), []);
     assert_eq!(records(&e), [(note.id.clone(), true)]);
     assert_eq!(
@@ -365,4 +388,256 @@ fn what_the_open_walk_finds_is_the_walks_and_what_the_watcher_finds_is_the_watch
         ),
         "{watched:?}"
     );
+}
+
+/// The `properties` the record of `id` holds, as stored.
+fn record_properties(e: &Env, id: &str) -> Option<String> {
+    let id = id.to_owned();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            Ok(conn
+                .query_row("SELECT properties FROM notes WHERE id = ?1", [id], |row| {
+                    row.get(0)
+                })
+                .unwrap())
+        })
+        .unwrap()
+}
+
+#[test]
+fn a_file_that_appears_before_the_create_writes_stays_and_becomes_its_own_note() {
+    let (mut e, notes) = opened();
+    let open = e.session.current().unwrap();
+    // The very bytes the create would write: the own-write record must not take them for its.
+    let failed = notes.create_checked(
+        &open,
+        plan(),
+        &mut || e.write("work/Plan.md", PLAN_FILE),
+        &mut || Ok(()),
+    );
+    assert!(
+        matches!(failed, Err(NotesError::NameConflict)),
+        "{failed:?}"
+    );
+    assert_eq!(e.read("work/Plan.md"), PLAN_FILE, "the file was replaced");
+    let records = records(&e);
+    assert_eq!(records.len(), 1);
+    let (taken_back, tombstone) = &records[0];
+    assert!(tombstone, "the create's record is not a tombstone");
+    // The watcher finds the file no row holds and makes it a note of its own.
+    let facts = e.facts_until(|fact| {
+        matches!(fact, Applied::Added { path, source: ChangeSource::Watcher, .. }
+            if path == "work/Plan.md")
+    });
+    let Some(Applied::Added { note_id, .. }) = facts.last() else {
+        panic!("{facts:?}");
+    };
+    assert_ne!(note_id, taken_back);
+    assert_eq!(e.rows(), [(note_id.clone(), "work/Plan.md".to_owned())]);
+    assert_eq!(e.read("work/Plan.md"), PLAN_FILE);
+}
+
+#[test]
+fn a_name_an_unread_file_or_another_spelling_holds_is_skipped() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    // A file no row names yet: the watcher holds a new file back for its grace first.
+    e.write("work/Plan.md", "From elsewhere\n");
+    let note = notes.create(&open, plan()).unwrap();
+    assert_eq!(note.path, "work/Plan 1.md");
+    assert_eq!(e.read("work/Plan.md"), "From elsewhere\n");
+}
+
+#[test]
+fn a_row_left_without_its_file_keeps_its_name_under_every_spelling() {
+    let (mut e, notes) = opened();
+    let lower = |title: &str| NewNoteFile {
+        title: title.into(),
+        folder: Some("lower".into()),
+        ..NewNoteFile::default()
+    };
+    let open = e.session.current().unwrap();
+    let kept = notes.create(&open, lower("plan")).unwrap();
+    assert_eq!(kept.path, "lower/plan.md");
+    // What a crash between a create's row and its file leaves: a row with no hash, no file.
+    drop(open);
+    e.close();
+    fs::remove_file(e.vault.join("lower/plan.md")).unwrap();
+    rusqlite::Connection::open(e.vault.join(".memry/core/data.db"))
+        .unwrap()
+        .execute_batch("UPDATE note_files SET content_hash = NULL; DELETE FROM note_file_hashes;")
+        .unwrap();
+    e.open();
+    e.facts_until(indexed);
+    row_facts(&mut e);
+    // Nothing proves only the file went, so the note stays, listed with its file missing.
+    assert_eq!(e.rows(), [(kept.id.clone(), "lower/plan.md".to_owned())]);
+    let open = e.session.current().unwrap();
+    // No file stands at `Plan.md`: the row's folded spelling alone takes the name, as on a
+    // case-insensitive volume the two are one file.
+    let note = notes.create(&open, lower("Plan")).unwrap();
+    assert_eq!(note.path, "lower/Plan 1.md");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_name_a_dangling_link_holds_is_skipped() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    fs::create_dir_all(e.vault.join("work")).unwrap();
+    std::os::unix::fs::symlink("nowhere.md", e.vault.join("work/Plan.md")).unwrap();
+    let note = notes.create(&open, plan()).unwrap();
+    assert_eq!(note.path, "work/Plan 1.md");
+    assert!(
+        e.vault.join("work/Plan.md").symlink_metadata().is_ok(),
+        "the link went"
+    );
+}
+
+#[test]
+fn a_create_checks_its_input_as_electron_does() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    let tags = |tags: Vec<String>| NewNoteFile { tags, ..plan() };
+    let too_many = notes.create(&open, tags(vec!["t".into(); 51]));
+    assert!(
+        matches!(too_many, Err(NotesError::InvalidTags)),
+        "{too_many:?}"
+    );
+    let too_long = notes.create(&open, tags(vec!["t".repeat(51)]));
+    assert!(
+        matches!(too_long, Err(NotesError::InvalidTags)),
+        "{too_long:?}"
+    );
+    assert_eq!(records(&e), [], "a refused create made a record");
+
+    // Whitespace alone is no body; reserved keys reach neither the file nor the record.
+    let note = notes
+        .create(
+            &open,
+            NewNoteFile {
+                content: " \n\t\u{feff}\n".into(),
+                properties: json!({ "status": "open", "tags": ["x"], "aliases": ["y"] })
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+                ..plan()
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        e.read("work/Plan.md"),
+        "---\ntags:\n  - alpha\nstatus: open\n---\n"
+    );
+    assert_eq!(note.content, "");
+    assert_eq!(
+        record_properties(&e, &note.id).as_deref(),
+        Some(r#"{"status":"open"}"#)
+    );
+}
+
+#[test]
+fn a_file_that_cannot_be_removed_fails_the_delete_and_leaves_the_note_whole() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    let note = notes.create(&open, plan()).unwrap();
+    let file = e.vault.join("work/Plan.md");
+    // An unlink refused: a read-only folder on Unix, a read-only file on Windows.
+    #[cfg(unix)]
+    let held = {
+        use std::os::unix::fs::PermissionsExt as _;
+        let folder = e.vault.join("work");
+        fs::set_permissions(&folder, fs::Permissions::from_mode(0o555)).unwrap();
+        move || fs::set_permissions(&folder, fs::Permissions::from_mode(0o755)).unwrap()
+    };
+    #[cfg(windows)]
+    let held = {
+        let mut permissions = fs::metadata(&file).unwrap().permissions();
+        permissions.set_readonly(true);
+        fs::set_permissions(&file, permissions).unwrap();
+        let file = file.clone();
+        move || {
+            let mut permissions = fs::metadata(&file).unwrap().permissions();
+            #[allow(clippy::permissions_set_readonly_false)]
+            permissions.set_readonly(false);
+            fs::set_permissions(&file, permissions).unwrap();
+        }
+    };
+    let failed = notes.delete(&open, &note.id);
+    held();
+    assert!(matches!(failed, Err(NotesError::Io(_))), "{failed:?}");
+    assert_eq!(e.read("work/Plan.md"), PLAN_FILE);
+    assert!(file.exists());
+    assert_eq!(records(&e), [(note.id.clone(), false)], "the record went");
+    assert_eq!(e.rows(), [(note.id.clone(), "work/Plan.md".to_owned())]);
+    assert!(
+        !queued(&e, &note.id).iter().any(|op| op == "delete"),
+        "a tombstone was queued"
+    );
+    // Once the file can go, the delete goes through.
+    notes.delete(&open, &note.id).unwrap();
+    assert!(!file.exists());
+}
+
+#[test]
+fn a_file_with_text_the_note_never_took_goes_to_the_trash() {
+    let (mut e, notes) = opened();
+    let open = e.session.current().unwrap();
+    let note = notes.create(&open, plan()).unwrap();
+    // The row names other text than the file's: an outside edit the watcher has not fed yet.
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute("UPDATE note_files SET content_hash = 'older'", [])
+                .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(row_facts(&mut e), [added(&note.id, "work/Plan.md")]);
+
+    notes.delete(&open, &note.id).unwrap();
+    assert!(!e.vault.join("work/Plan.md").exists());
+    assert_eq!(e.read("work/Plan.trashed"), PLAN_FILE, "not in the trash");
+    assert_eq!(records(&e), [(note.id.clone(), true)]);
+    assert_eq!(e.rows(), []);
+    assert_eq!(row_facts(&mut e), [removed(&note.id, "work/Plan.md")]);
+}
+
+#[test]
+fn an_outside_edit_reads_back_as_the_fields_notes_updated_carries() {
+    let (mut e, notes) = opened();
+    let open = e.session.current().unwrap();
+    let note = notes.create(&open, plan()).unwrap();
+    row_facts(&mut e);
+    e.write(
+        "work/Plan.md",
+        "---\ntags:\n  - alpha\nstatus: done\n---\nHello there, world\n",
+    );
+    e.facts_until(|fact| {
+        matches!(fact, Applied::Changed { note_id, source: ChangeSource::Watcher, .. }
+            if *note_id == note.id)
+    });
+    let changes = read::get(&open, &note.id, None).unwrap().unwrap().changes();
+    let mut keys: Vec<_> = changes.keys().map(String::as_str).collect();
+    keys.sort_unstable();
+    assert_eq!(
+        keys,
+        [
+            "content",
+            "modified",
+            "properties",
+            "snippet",
+            "tags",
+            "title",
+            "wordCount"
+        ]
+    );
+    assert_eq!(changes["title"], "Plan");
+    assert_eq!(changes["content"], "Hello there, world\n");
+    assert_eq!(changes["tags"], json!(["alpha"]));
+    assert_eq!(changes["properties"], json!({ "status": "done" }));
+    assert_eq!(changes["wordCount"], 3);
+    assert_eq!(changes["snippet"], "Hello there, world");
+    assert!(changes["modified"].is_i64());
 }

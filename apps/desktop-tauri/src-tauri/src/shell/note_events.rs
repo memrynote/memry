@@ -9,9 +9,14 @@
 //!   refetches its lists (`use-notes-query.ts`). A first open of a large vault would otherwise
 //!   send one event, and one read, per file.
 //!
+//! A created note is read for its list item, an outside edit for the fields it may have changed
+//! ([`NoteView::changes`]). Facts missed because this thread fell behind are made up for with
+//! one refetch of the lists.
+//!
 //! Renames and moves are Step 13g's.
 
 use memry_desktop::notes::read;
+use memry_desktop::notes::view::NoteView;
 use memry_desktop::session::Session;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use tauri::{AppHandle, Manager, Wry};
@@ -19,7 +24,8 @@ use tokio::sync::broadcast::Receiver;
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::events::{
-    NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteUpdatedEvent, broadcast,
+    NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteUpdatedEvent, VaultIndexProgressEvent,
+    broadcast,
 };
 
 pub fn forward(app: AppHandle<Wry>, mut facts: Receiver<Applied>) {
@@ -27,9 +33,17 @@ pub fn forward(app: AppHandle<Wry>, mut facts: Receiver<Applied>) {
         loop {
             match facts.blocking_recv() {
                 Ok(fact) => emit(&app, fact),
-                // The lists refetch on the next event; nothing replays the missed ones.
+                // Nothing replays the missed facts: the lists refetch instead, on the signal of
+                // an index with nothing left to do (`use-notes-query.ts`).
                 Err(RecvError::Lagged(missed)) => {
                     tracing::warn!(scope = "notes", missed, "note events were dropped");
+                    broadcast(
+                        &app,
+                        VaultIndexProgressEvent {
+                            index_built: 0,
+                            index_total: 0,
+                        },
+                    );
                 }
                 Err(RecvError::Closed) => return,
             }
@@ -44,28 +58,51 @@ enum Outgoing {
         note_id: String,
         source: NoteEventSource,
     },
-    Updated(NoteUpdatedEvent),
+    Updated {
+        note_id: String,
+    },
     Deleted(NoteDeletedEvent),
 }
 
 fn emit(app: &AppHandle<Wry>, fact: Applied) {
-    match outgoing(fact) {
-        Some(Outgoing::Created { note_id, source }) => {
-            let Some(open) = app.state::<Session>().current() else {
-                return;
-            };
-            match read::list_item(&open, &note_id) {
-                Ok(Some(note)) => broadcast(app, NoteCreatedEvent { note, source }),
-                // Gone again before it could be read: its removal follows.
-                Ok(None) => {}
-                Err(error) => {
-                    tracing::warn!(scope = "notes", note_id, "a new note was not read: {error}");
-                }
+    let Some(outgoing) = outgoing(fact) else {
+        return;
+    };
+    if let Outgoing::Deleted(event) = outgoing {
+        return broadcast(app, event);
+    }
+    let Some(open) = app.state::<Session>().current() else {
+        return;
+    };
+    match outgoing {
+        Outgoing::Created { note_id, source } => match read::list_item(&open, &note_id) {
+            Ok(Some(note)) => broadcast(app, NoteCreatedEvent { note, source }),
+            // Gone again before it could be read: its removal follows.
+            Ok(None) => {}
+            Err(error) => {
+                tracing::warn!(scope = "notes", note_id, "a new note was not read: {error}");
             }
-        }
-        Some(Outgoing::Updated(event)) => broadcast(app, event),
-        Some(Outgoing::Deleted(event)) => broadcast(app, event),
-        None => {}
+        },
+        Outgoing::Updated { note_id } => match read::get(&open, &note_id, None) {
+            Ok(Some(note)) => broadcast(app, updated(&note)),
+            Ok(None) => {}
+            Err(error) => {
+                tracing::warn!(
+                    scope = "notes",
+                    note_id,
+                    "an edited note was not read: {error}"
+                );
+            }
+        },
+        Outgoing::Deleted(_) => {}
+    }
+}
+
+fn updated(note: &NoteView) -> NoteUpdatedEvent {
+    NoteUpdatedEvent {
+        id: note.id.clone(),
+        changes: note.changes(),
+        source: NoteEventSource::External,
     }
 }
 
@@ -81,11 +118,7 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
             note_id,
             source: ChangeSource::Watcher,
             ..
-        } => Some(Outgoing::Updated(NoteUpdatedEvent {
-            id: note_id,
-            changes: serde_json::Map::new(),
-            source: NoteEventSource::External,
-        })),
+        } => Some(Outgoing::Updated { note_id }),
         Applied::Removed {
             note_id,
             path,
@@ -169,11 +202,9 @@ mod tests {
         );
         assert_eq!(
             outgoing(changed(ChangeSource::Watcher)),
-            Some(Outgoing::Updated(NoteUpdatedEvent {
-                id: "n".into(),
-                changes: serde_json::Map::new(),
-                source: NoteEventSource::External,
-            }))
+            Some(Outgoing::Updated {
+                note_id: "n".into()
+            })
         );
         // The app's own write-back is `sync` in Electron, which the renderer ignores.
         assert_eq!(outgoing(changed(ChangeSource::App)), None);
