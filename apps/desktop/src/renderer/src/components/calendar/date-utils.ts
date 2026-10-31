@@ -79,16 +79,17 @@ export function addLocalDays(value: string, amount: number): string {
   return toLocalDateString(date)
 }
 
+// Clamps the day to the target month's length: Oct 31 + 1 month is Nov 30, not
+// Dec 1, so a month step never skips or repeats a month.
 export function addLocalMonths(value: string, amount: number): string {
-  const date = parseLocalDate(value)
-  date.setMonth(date.getMonth() + amount)
-  return toLocalDateString(date)
+  const [year, month, day] = value.split('-').map(Number)
+  const targetMonth = month - 1 + amount
+  const lastDay = new Date(year, targetMonth + 1, 0).getDate()
+  return toLocalDateString(new Date(year, targetMonth, Math.min(day, lastDay)))
 }
 
 export function addLocalYears(value: string, amount: number): string {
-  const date = parseLocalDate(value)
-  date.setFullYear(date.getFullYear() + amount)
-  return toLocalDateString(date)
+  return addLocalMonths(value, 12 * amount)
 }
 
 export function toStartOfLocalDayIso(value: string): string {
