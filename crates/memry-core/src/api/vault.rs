@@ -139,6 +139,16 @@ impl Vault {
     ) -> Result<crate::domain::app_settings::AppSettings, AuthError> {
         crate::domain::app_settings::AppSettings::over(self.db.clone(), &store)
     }
+
+    /// This vault's custom icon library, written under this device's identity (desktop
+    /// Step 13o). Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn custom_icons(
+        &self,
+        store: Arc<dyn SecureStore>,
+    ) -> Result<crate::domain::custom_icons::CustomIconStore, AuthError> {
+        crate::domain::custom_icons::CustomIconStore::over(self.db.clone(), &store)
+    }
 }
 
 #[uniffi::export]

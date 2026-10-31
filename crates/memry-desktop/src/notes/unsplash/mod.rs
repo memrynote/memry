@@ -35,6 +35,8 @@ use serde::Serialize;
 use serde_json::Value;
 use url::Url;
 
+use crate::http::read_capped;
+
 pub use photo::{InvalidPhoto, UnsplashPhoto};
 
 const SEARCH_ENDPOINT: &str = "https://api.unsplash.com/search/photos";
@@ -403,33 +405,6 @@ fn extension_for(response: &Response) -> Option<&'static str> {
         .iter()
         .find(|(known, _)| mime.as_deref() == Some(known))
         .map(|(_, extension)| *extension)
-}
-
-#[derive(Debug, thiserror::Error)]
-enum ReadError {
-    #[error("the body is larger than {cap} bytes")]
-    TooLarge { cap: usize },
-    #[error("the connection failed while reading the body")]
-    Transport,
-}
-
-/// The whole body, or an error as soon as it is known to exceed `cap`: by `Content-Length` before
-/// reading, by the running count after.
-async fn read_capped(mut response: Response, cap: usize) -> Result<Vec<u8>, ReadError> {
-    if response
-        .content_length()
-        .is_some_and(|length| length > cap as u64)
-    {
-        return Err(ReadError::TooLarge { cap });
-    }
-    let mut body = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(|_| ReadError::Transport)? {
-        if body.len() + chunk.len() > cap {
-            return Err(ReadError::TooLarge { cap });
-        }
-        body.extend_from_slice(&chunk);
-    }
-    Ok(body)
 }
 
 type CacheKey = (String, u32);

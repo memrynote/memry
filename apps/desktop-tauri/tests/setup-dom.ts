@@ -111,6 +111,8 @@ vi.mock('../src/generated/bindings', () => {
       updaterStateChangedEvent: event(() => api().onUpdaterStateChanged),
       menuCommandInvokedEvent: event(() => api().onMenuCommand),
       appNavigationRequestedEvent: event(() => api().onAppNavigationCommand),
+      // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
+      customIconsUpdatedEvent: { listen: async () => () => undefined },
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })
