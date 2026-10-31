@@ -95,6 +95,14 @@ export const commands = {
 	 *  shows or hides the menu bar, Windows pops the menu up. Returns whether a menu bar shows.
 	 */
 	menuToggleAlt: () => __TAURI_INVOKE<boolean>("menu_toggle_alt"),
+	/**  The links the note makes and the notes linking to it, with the text around each link. */
+	notesGetLinks: (id: string) => __TAURI_INVOKE<NoteLinksView>("notes_get_links", { id }),
+	/**  The note `title` names as a whole (no heading split), or `null`. */
+	notesResolveByTitle: (title: string) => __TAURI_INVOKE<LinkResolutionView | null>("notes_resolve_by_title", { title }),
+	/**  Each title mapped to the note it names, or `null`: one call per editor mount. */
+	notesResolveTitles: (titles: string[]) => __TAURI_INVOKE<{ [key in string]: TitleMatchView | null }>("notes_resolve_titles", { titles }),
+	/**  The note a wiki-link target names, heading half and all (`Note#Heading`), or `null`. */
+	notesResolveWikiTarget: (target: string) => __TAURI_INVOKE<LinkTargetView | null>("notes_resolve_wiki_target", { target }),
 	/**  Stores the zoom factor for the next launch's first paint (`startupValues`). */
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
 	/**  A group of the open vault, or its defaults while no vault is open. */
@@ -261,6 +269,21 @@ export type AppUpdateState = {
 	autoDownloadEnabled: boolean,
 	autoCheckEnabled: boolean,
 	installFailed: InstallFailed | null,
+};
+
+/**  A link's text in the linking note (`BacklinkContext`); offsets are UTF-16 units. */
+export type BacklinkContextView = {
+	snippet: string,
+	linkStart: number,
+	linkEnd: number,
+};
+
+/**  A note linking to this one (`Backlink`). */
+export type BacklinkView = {
+	sourceId: string,
+	sourcePath: string,
+	sourceTitle: string,
+	contexts: BacklinkContextView[],
 };
 
 export type BuildKind = "dev" | "packaged";
@@ -453,6 +476,23 @@ export type InstallFailed = {
 
 export type ItemKind = "normal" | "separator";
 
+/**  `WikiLinkResolution`, and `WikiLinkTargetResolution` with `heading`. */
+export type LinkResolutionView = {
+	id: string,
+	path: string,
+	title: string,
+	fileType: string,
+};
+
+export type LinkTargetView = {
+	id: string,
+	path: string,
+	title: string,
+	fileType: string,
+	/**  The heading to scroll to, `None` when the link names none. */
+	heading: string | null,
+};
+
 /**  The UI language changed (`locale:changed`). */
 export type LocaleChangedEvent = {
 	locale: string,
@@ -504,6 +544,20 @@ export type MovesRecovered = {
 	 *  `(incomplete move)` folders: nothing was undone, the notes are only in sight again.
 	 */
 	shownFolders: number,
+};
+
+/**  A link the note makes (`NoteLink`). */
+export type NoteLinkView = {
+	sourceId: string,
+	/**  `None` for a broken link. */
+	targetId: string | null,
+	targetTitle: string,
+};
+
+/**  `NoteLinksResponse`. */
+export type NoteLinksView = {
+	outgoing: NoteLinkView[],
+	incoming: BacklinkView[],
 };
 
 /**
@@ -621,6 +675,12 @@ export type TelemetryFlushResult = {
 export type TelemetrySettings = {
 	enabled: boolean,
 	autoSendDiagnostics: boolean,
+};
+
+/**  One entry of `WikiLinkTitleResolutions`. */
+export type TitleMatchView = {
+	id: string,
+	path: string,
 };
 
 /**

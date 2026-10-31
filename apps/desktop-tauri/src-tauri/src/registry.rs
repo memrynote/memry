@@ -64,6 +64,11 @@ pub fn builder() -> Builder<Wry> {
             // menu
             crate::commands::shell::menu_hide_alt,
             crate::commands::shell::menu_toggle_alt,
+            // note links
+            crate::commands::note_links::notes_get_links,
+            crate::commands::note_links::notes_resolve_by_title,
+            crate::commands::note_links::notes_resolve_titles,
+            crate::commands::note_links::notes_resolve_wiki_target,
             // settings
             crate::commands::settings::app_set_zoom_factor,
             crate::commands::settings::settings_get_group,
