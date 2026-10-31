@@ -7,8 +7,8 @@
 //! `sync_items`, which holds a local create from the moment its transaction
 //! commits and an icon another device pushed from the moment it is applied, so
 //! there is no second copy to keep in step. The `.memry/icons/` files are a
-//! mirror the desktop shell rebuilds from this list on apply and at startup;
-//! this module never touches a file.
+//! mirror the desktop shell rebuilds from this list (`notes::icons::list` in
+//! memry-desktop writes every missing file); this module never touches a file.
 //!
 //! What a payload holds is checked at the door and not on the way out: a write
 //! here accepts the formats desktop stores (`png` and `svg`, re-encoded or
@@ -17,12 +17,17 @@
 //! stands; one that cannot be read is reported in [`CustomIcons::skipped`]
 //! instead of being dropped without a word.
 
+use std::sync::Arc;
+
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 
-use crate::api::errors::StorageError;
+use crate::api::errors::{AuthError, StorageError};
+use crate::api::tasks::Tasks;
+use crate::seams::secure_store::SecureStore;
+use crate::storage::Db;
 use crate::storage::repositories::Change;
 use crate::storage::repositories::schema::Object;
 use crate::sync::outbox;
@@ -224,6 +229,48 @@ pub fn rename(
     )?
     .acknowledge();
     Ok(())
+}
+
+/// The functions of this module over one vault's database, writing under this device's
+/// identity. Built by `Vault::custom_icons`; each call blocks.
+pub struct CustomIconStore {
+    db: Db,
+    device_id: String,
+}
+
+impl CustomIconStore {
+    pub(crate) fn over(db: Db, store: &Arc<dyn SecureStore>) -> Result<Self, AuthError> {
+        let tasks = Tasks::over(db, store)?;
+        Ok(Self {
+            db: tasks.db,
+            device_id: tasks.device_id,
+        })
+    }
+
+    pub fn list(&self) -> Result<CustomIcons, StorageError> {
+        self.db.read_blocking(list)
+    }
+
+    pub fn create(
+        &self,
+        name: &str,
+        ext: &str,
+        data: &str,
+        now_ms: i64,
+    ) -> Result<String, StorageError> {
+        self.db
+            .call_blocking(|conn| create(conn, name, ext, data, &self.device_id, now_ms))
+    }
+
+    pub fn rename(&self, id: &str, name: &str, now_ms: i64) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| rename(conn, id, name, &self.device_id, now_ms))
+    }
+
+    pub fn delete(&self, id: &str, now_ms: i64) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| delete(conn, id, &self.device_id, now_ms))
+    }
 }
 
 /// Deletes a live icon.
