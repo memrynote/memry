@@ -32,6 +32,8 @@
 //! and [`set_hash`] replace it too, and [`set_file_hash`] records a read that
 //! changed nothing else.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 use crate::api::errors::StorageError;
@@ -485,6 +487,35 @@ pub fn list_paths(conn: &Connection) -> Result<Vec<(String, String)>, StorageErr
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)
+}
+
+/// The paths of the `file_type` rows whose file name, lowercased, is one of `names`, grouped
+/// by that name, each group in path order. For the vault tier's embed lookup
+/// (`lookupByFilenames` of `vault/resolve-embed.ts`). The table stores whole paths, so every
+/// row of the type is read, once for a whole batch of names.
+pub fn by_filename_lower(
+    conn: &Connection,
+    file_type: &str,
+    names: &BTreeSet<String>,
+) -> Result<BTreeMap<String, Vec<String>>, StorageError> {
+    let mut found: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    if names.is_empty() {
+        return Ok(found);
+    }
+    let mut statement = conn
+        .prepare("SELECT path FROM note_files WHERE file_type = ?1 ORDER BY path")
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![file_type], |row| row.get::<_, String>(0))
+        .map_err(failed)?;
+    for path in rows {
+        let path = path.map_err(failed)?;
+        let name = path.rsplit('/').next().unwrap_or(&path).to_lowercase();
+        if names.contains(&name) {
+            found.entry(name).or_default().push(path);
+        }
+    }
+    Ok(found)
 }
 
 /// Writes the flag and nothing else. [`crate::domain::notes::local_only::set`]

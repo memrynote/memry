@@ -44,6 +44,7 @@ impl NoteIdentity for WithBody {
                 note_path: None,
                 writing: Some(Default::default()),
                 frontmatter: None,
+                embeds: None,
             };
             feed.seed_body_if_empty(&Converter::new(CalloutTypes::new([])), input)
                 .map_err(|e| other(&e))?;

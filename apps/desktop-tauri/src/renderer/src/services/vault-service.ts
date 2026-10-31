@@ -203,17 +203,6 @@ export const vaultService: VaultClientAPI = {
   },
 
   /**
-   * Map Obsidian image embed targets (`![[photo.png]]`) to loadable
-   * `memry-file://` URLs. Targets not found in the vault are omitted.
-   */
-  resolveEmbeds: (input: {
-    refs: string[]
-    notePath?: string
-  }): Promise<Record<string, string>> => {
-    return window.api.vault.resolveEmbeds(input)
-  },
-
-  /**
    * Set a listed vault's icon, or reset it to the default with null. Synced
    * account-wide once the vault syncs.
    */

@@ -19,6 +19,7 @@ use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
 use crate::vault::activity::{ActivityLog, ActivitySource};
+use crate::vault::embeds::Resolved;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
 use crate::vault::watch::VaultEvent;
@@ -482,6 +483,8 @@ impl Applier {
             return Body::NoKey;
         };
         let split = file.split();
+        // Outside the feed's write: the lookup reads the database the feed holds.
+        let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), split.body, path);
         let input = FeedInput {
             note_id,
             markdown: split.body,
@@ -490,6 +493,7 @@ impl Applier {
             // state, so the document keeps what it holds.
             writing: writing_of(file),
             frontmatter: split.block,
+            embeds: Some(&embeds),
         };
         let converter = converter_for(self.settings.as_ref());
         let outcome = match write {

@@ -32,6 +32,7 @@ fn input<'a>(note_id: &'a str, markdown: &'a str) -> FeedInput<'a> {
         note_path: Some("a.md"),
         writing: None,
         frontmatter: None,
+        embeds: None,
     }
 }
 

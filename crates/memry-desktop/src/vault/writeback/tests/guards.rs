@@ -70,6 +70,7 @@ fn a_file_whose_edit_was_refused_is_never_written_over() {
         note_path: Some("n.md"),
         writing: None,
         frontmatter: None,
+        embeds: None,
     };
     let outcome = f
         .vault

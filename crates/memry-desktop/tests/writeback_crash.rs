@@ -82,11 +82,13 @@ fn a_page_committed_before_a_crash_reaches_the_file_on_the_next_open() {
     e.open();
     e.facts_until(app_changed(&id));
     let converter = Converter::new(CalloutTypes::new(Vec::new()));
-    let Ok(BodyRead::Body(body)) =
-        e.core()
-            .write_back()
-            .body(&converter, &id, "n.md", "first words\n")
-    else {
+    let Ok(BodyRead::Body(body)) = e.core().write_back().body(
+        &converter,
+        &id,
+        "n.md",
+        "first words\n",
+        &memry_core::markdown::convert::NoEmbeds,
+    ) else {
         panic!("the committed document has no body to write");
     };
     // The file is the converter's markdown with the final newline the file had.

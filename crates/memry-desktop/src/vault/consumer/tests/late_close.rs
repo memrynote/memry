@@ -11,7 +11,7 @@ use crate::registry::{AppConfig, VaultRegistry};
 use crate::session::{OpenSource, Session};
 use crate::vault::consumer::{Hold, VaultTier};
 
-const WAIT: Duration = Duration::from_secs(20);
+pub(super) const WAIT: Duration = Duration::from_secs(20);
 
 /// A note for every new file.
 struct MakesNotes(Arc<dyn SecureStore>);
@@ -44,7 +44,7 @@ impl NoteIdentity for MakesNotes {
     }
 }
 
-fn eventually<T>(what: &str, mut probe: impl FnMut() -> Option<T>) -> T {
+pub(super) fn eventually<T>(what: &str, mut probe: impl FnMut() -> Option<T>) -> T {
     let deadline = Instant::now() + WAIT;
     loop {
         if let Some(value) = probe() {
@@ -55,17 +55,22 @@ fn eventually<T>(what: &str, mut probe: impl FnMut() -> Option<T>) -> T {
     }
 }
 
-/// Two vaults, `a` empty and `b` with one file, on one session whose close hooks get 300 ms.
-struct Two {
+/// Two vaults, `a` empty and `b` with one file, on one session.
+pub(super) struct Two {
     _dir: tempfile::TempDir,
-    a: PathBuf,
-    b: PathBuf,
-    session: Session,
-    store: Arc<dyn SecureStore>,
-    tier: Arc<VaultTier>,
+    pub(super) a: PathBuf,
+    pub(super) b: PathBuf,
+    pub(super) session: Session,
+    pub(super) store: Arc<dyn SecureStore>,
+    pub(super) tier: Arc<VaultTier>,
 }
 
+/// [`Two`] whose close hooks get 300 ms.
 fn two() -> Two {
+    two_with(Duration::from_millis(300))
+}
+
+pub(super) fn two_with(hook_deadline: Duration) -> Two {
     let dir = tempfile::tempdir().unwrap();
     let (a, b) = (dir.path().join("a"), dir.path().join("b"));
     std::fs::create_dir_all(&a).unwrap();
@@ -74,7 +79,7 @@ fn two() -> Two {
     let registry = VaultRegistry::new(Arc::new(AppConfig::load(
         dir.path().join("memry-config.json"),
     )));
-    let session = Session::with_hook_deadline(registry, Duration::from_millis(300));
+    let session = Session::with_hook_deadline(registry, hook_deadline);
     let store = with_device_key();
     let tier = VaultTier::new(store.clone());
     tier.set_identity(Arc::new(MakesNotes(store.clone())));
@@ -89,20 +94,28 @@ fn two() -> Two {
     }
 }
 
-/// A stop held at `at` until it is let go, and whether it went on after that.
-struct Gate {
+/// A stop held at `at` until it is let go, whether it got there, and whether it went on after
+/// that.
+pub(super) struct Gate {
     open: Arc<(Mutex<bool>, Condvar)>,
+    reached: Arc<AtomicBool>,
     resumed: Arc<AtomicBool>,
 }
 
 impl Gate {
-    fn at(tier: &VaultTier, at: Hold) -> Self {
+    pub(super) fn at(tier: &VaultTier, at: Hold) -> Self {
         let gate = Self {
             open: Arc::default(),
+            reached: Arc::default(),
             resumed: Arc::default(),
         };
-        let (open, resumed) = (gate.open.clone(), gate.resumed.clone());
+        let (open, reached, resumed) = (
+            gate.open.clone(),
+            gate.reached.clone(),
+            gate.resumed.clone(),
+        );
         tier.hold_at(at, move || {
+            reached.store(true, Ordering::SeqCst);
             let (done, signal) = &*open;
             let held = done.lock().unwrap();
             let _ = signal
@@ -113,8 +126,15 @@ impl Gate {
         gate
     }
 
+    /// Waits until the stop is held.
+    pub(super) fn wait_reached(&self) {
+        eventually("the stop held", || {
+            self.reached.load(Ordering::SeqCst).then_some(())
+        });
+    }
+
     /// Lets the stop go on and gives it time to finish.
-    fn release(self) {
+    pub(super) fn release(self) {
         let (done, signal) = &*self.open;
         *done.lock().unwrap() = true;
         signal.notify_all();

@@ -20,6 +20,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::errors::CrdtError;
 use crate::domain::{note_snapshots, owed_file_body, reads};
+use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::markdown::convert::note_body::NoteBody;
 use crate::markdown::convert::restore::SerializeOptions;
@@ -43,13 +44,16 @@ pub enum BodyRead {
 }
 
 /// The body for the file at `note_path`, whose body is `file_body` (read with the bytes the
-/// caller compared): the serializer restores the author's spelling from it.
+/// caller compared): the serializer restores the author's spelling from it. `embeds` is the
+/// vault's image embed lookup for the proof parse, the one the body was seeded with. It runs
+/// while this database's writer is held, so it must not read this database.
 pub fn body_for_file(
     conn: &Connection,
     converter: &Converter,
     note_id: &str,
     note_path: &str,
     file_body: &str,
+    embeds: &dyn EmbedResolver,
 ) -> Result<BodyRead, CrdtError> {
     if !reads::note_exists(conn, note_id) {
         return Ok(BodyRead::NoNote);
@@ -65,6 +69,7 @@ pub fn body_for_file(
     let options = SerializeOptions {
         note_path: Some(note_path),
         read_file_body: Some(&read_file_body),
+        embeds: Some(embeds),
         ..SerializeOptions::default()
     };
     // `None` too when the author's spelling could not be restored from the file

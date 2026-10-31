@@ -17,6 +17,8 @@ use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
 use crate::vault::config::read_vault_config;
+#[cfg(test)]
+use crate::vault::watch::HoldFn;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
 use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed, reconcile};
 
@@ -42,9 +44,6 @@ pub struct VaultTier {
     holds: Mutex<Vec<(Hold, HoldFn)>>,
 }
 
-#[cfg(test)]
-type HoldFn = Box<dyn FnOnce() + Send>;
-
 /// A point in a stop or a start where a test runs its closure.
 #[cfg(test)]
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -55,6 +54,9 @@ pub(crate) enum Hold {
     ConsumerStopped,
     /// A start, right before its watcher starts.
     WatcherStart,
+    /// The stop of the OS watch a start sets up, on the thread that stops it, right before it
+    /// stops.
+    OsWatchStop,
 }
 
 /// What one open of a vault owns. A stop works only on the handle it took when it began, and
@@ -242,6 +244,10 @@ impl VaultTier {
             new_files,
         )
         .map_err(|error| error.to_string())?;
+        #[cfg(test)]
+        if let Some(then) = self.take_hold(Hold::OsWatchStop) {
+            watcher.hold_os_stop(then);
+        }
         let feed = vault
             .vault
             .external_feed(self.store.clone())
@@ -299,16 +305,18 @@ impl VaultTier {
 
     #[cfg(test)]
     fn hold(&self, at: Hold) {
-        let then = {
-            let mut holds = self.holds.lock().unwrap_or_else(|e| e.into_inner());
-            holds
-                .iter()
-                .position(|(point, _)| *point == at)
-                .map(|i| holds.remove(i).1)
-        };
-        if let Some(then) = then {
+        if let Some(then) = self.take_hold(at) {
             then();
         }
+    }
+
+    #[cfg(test)]
+    fn take_hold(&self, at: Hold) -> Option<HoldFn> {
+        let mut holds = self.holds.lock().unwrap_or_else(|e| e.into_inner());
+        holds
+            .iter()
+            .position(|(point, _)| *point == at)
+            .map(|i| holds.remove(i).1)
     }
 
     /// Registers the open and close hooks. A watcher that cannot start fails its hook, which
