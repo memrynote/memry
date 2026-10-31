@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  addLocalMonths,
+  addLocalYears,
   dateFromDayIndex,
   dayIndexFromDate,
   isMultiDaySpan,
@@ -130,5 +132,27 @@ describe('dayIndexFromDate / dateFromDayIndex', () => {
     const diff = dayIndexFromDate('2026-04-24') - dayIndexFromDate('2026-04-17')
     // #then
     expect(diff).toBe(7)
+  })
+})
+
+describe('addLocalMonths / addLocalYears', () => {
+  it('clamps to the last day of a shorter target month instead of overflowing', () => {
+    expect(addLocalMonths('2026-10-31', 1)).toBe('2026-11-30')
+    expect(addLocalMonths('2026-10-31', -1)).toBe('2026-09-30')
+    expect(addLocalMonths('2027-01-31', 1)).toBe('2027-02-28')
+    expect(addLocalMonths('2028-01-31', 1)).toBe('2028-02-29')
+    expect(addLocalMonths('2026-03-31', -1)).toBe('2026-02-28')
+    expect(addLocalMonths('2026-03-31', 3)).toBe('2026-06-30')
+    expect(addLocalMonths('2026-12-31', 2)).toBe('2027-02-28')
+  })
+
+  it('keeps the day when the target month has it', () => {
+    expect(addLocalMonths('2028-02-29', 1)).toBe('2028-03-29')
+    expect(addLocalMonths('2026-01-15', -13)).toBe('2024-12-15')
+  })
+
+  it('moves Feb 29 to Feb 28 in a non-leap year', () => {
+    expect(addLocalYears('2028-02-29', 1)).toBe('2029-02-28')
+    expect(addLocalYears('2028-02-29', -4)).toBe('2024-02-29')
   })
 })
