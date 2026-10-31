@@ -439,6 +439,9 @@ export type FileView = {
 	fileSize: number | null,
 	created: number,
 	modified: number,
+	/**  The text of the voice capture filed as this file, when one was. */
+	transcription: string | null,
+	transcriptionStatus: TranscriptionStatus | null,
 };
 
 /**
@@ -542,6 +545,9 @@ export type MovesRecovered = {
 	shownFolders: number,
 };
 
+/**  `NoteListSchema.fields`: `tree` drops the fields the sidebar never reads. */
+export type NoteListFields = "full" | "tree";
+
 /**  `NoteListItem`. `word_count` is `None` until the note index (Step 13e) measured the file. */
 export type NoteListItemView = {
 	id: string,
@@ -562,21 +568,19 @@ export type NoteListItemView = {
 };
 
 /**
- *  `NoteListSchema`'s options this slice reads. `sortBy: 'position'` sorts as `modified`, as in
- *  `listNotesFromCache`; journal entries are not listed until Step 13m.
+ *  `NoteListSchema`'s options this slice reads; a value the schema does not name is refused,
+ *  as zod refuses it. `includeJournals` is not read: journal entries are not listed until Step
+ *  13m.
  */
 export type NoteListOptions = {
 	folder?: string | null,
 	tags?: string[] | null,
-	/**  `modified` (the default), `created`, `title` or `position`. */
-	sortBy?: string | null,
-	/**  `asc` or `desc` (the default). */
-	sortOrder?: string | null,
+	sortBy?: NoteListSortBy | null,
+	sortOrder?: SortOrder | null,
 	/**  1 to 10000, 100 when absent. */
 	limit?: number | null,
 	offset?: number | null,
-	/**  `tree` drops the fields the sidebar never reads. */
-	fields?: string | null,
+	fields?: NoteListFields | null,
 };
 
 /**  `NoteListResponse`. */
@@ -585,6 +589,9 @@ export type NoteListPageView = {
 	total: number,
 	hasMore: boolean,
 };
+
+/**  `NoteListSchema.sortBy`. `position` sorts as `modified`, as in `listNotesFromCache`. */
+export type NoteListSortBy = "modified" | "created" | "title" | "position";
 
 /**  `Note`. */
 export type NoteView = {
@@ -668,6 +675,8 @@ export type ShortcutStatus = "unbound" | "registered" | "in_use" | "unsupported"
 /**  `NoteSizeClass`. */
 export type SizeClass = "note" | "large-file";
 
+export type SortOrder = "asc" | "desc";
+
 /**  What the page needs to build its menu. */
 export type SpellResult = {
 	/**
@@ -728,6 +737,9 @@ export type TelemetrySettings = {
 	enabled: boolean,
 	autoSendDiagnostics: boolean,
 };
+
+/**  `FileMetadata.transcriptionStatus`. */
+export type TranscriptionStatus = "pending" | "processing" | "complete" | "failed";
 
 /**
  *  Why an Unsplash request produced nothing. The wire names are the contract's

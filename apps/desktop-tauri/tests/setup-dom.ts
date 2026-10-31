@@ -47,15 +47,16 @@ vi.mock('@/lib/logger', () => {
 })
 
 // ============================================================================
-// The generated Tauri bindings, as the vault service, the updater store and the window service
-// reach them. Component tests drive them through the `window.api.vault`, `window.api.updater`
-// and window-function mocks below (the Electron names), so the bindings forward to them: the
-// owners' own tests (services/vault-service.test.ts, hooks/use-app-updater.test.tsx) mock the
-// bindings directly.
+// The generated Tauri bindings, as the vault service, the notes service, the updater store and
+// the window service reach them. Component tests drive them through the `window.api.vault`,
+// `window.api.notes`, `window.api.updater` and window-function mocks below (the Electron names),
+// so the bindings forward to them: the owners' own tests (services/vault-service.test.ts,
+// services/notes-service.test.ts, hooks/use-app-updater.test.tsx) mock the bindings directly.
 // ============================================================================
 
 vi.mock('../src/generated/bindings', () => {
   const vault = () => window.api.vault
+  const notes = () => window.api.notes
   // The preload type no longer declares the ported updater; the mock below still provides it.
   const updater = () =>
     (window.api as unknown as { updater: Record<string, (...args: unknown[]) => unknown> }).updater
@@ -88,6 +89,13 @@ vi.mock('../src/generated/bindings', () => {
       vaultRemove: (path: string) => vault().remove(path),
       vaultReveal: () => vault().reveal(),
       vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon),
+      notesGet: (id: string) => notes().get(id),
+      notesGetByPath: (path: string) => notes().getByPath(path),
+      notesGetFile: (id: string) => notes().getFile(id),
+      notesList: (options: Parameters<typeof window.api.notes.list>[0]) => notes().list(options),
+      notesExists: (titleOrPath: string) => notes().exists(titleOrPath),
+      notesOpenExternal: (id: string) => notes().openExternal(id),
+      notesRevealInFinder: (id: string) => notes().revealInFinder(id),
       updaterGetState: () => updater().getState(),
       updaterCheckForUpdates: () => updater().checkForUpdates(),
       updaterDownloadUpdate: () => updater().downloadUpdate(),

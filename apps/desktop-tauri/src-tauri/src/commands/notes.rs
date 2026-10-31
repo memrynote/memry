@@ -9,11 +9,12 @@ use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::read;
 use memry_desktop::notes::view::{FileView, NoteListOptions, NoteListPageView, NoteView};
 use memry_desktop::session::{OpenVault, Session};
+use memry_desktop::telemetry::Service;
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
-use crate::shell::external;
+use crate::shell::{external, services};
 
 /// The open vault, or the localized "no vault is open".
 fn open_vault<R: Runtime>(app: &AppHandle<R>) -> Result<OpenVault, CommandError> {
@@ -35,7 +36,16 @@ fn failed(error: &NotesError) -> CommandError {
 #[specta::specta]
 pub async fn notes_get(app: AppHandle<Wry>, id: String) -> Result<Option<NoteView>, CommandError> {
     blocking("notes_get", move || {
-        read::get(&open_vault(&app)?, &id).map_err(|error| failed(&error))
+        let telemetry = services::telemetry(&app);
+        let note = read::get(&open_vault(&app)?, &id, telemetry.as_deref())
+            .map_err(|error| failed(&error))?;
+        if let (Some(_), Some(telemetry)) = (&note, &telemetry) {
+            let mut event = Service::event("note_opened", "notes", "opened");
+            event.object_type = Some("note".to_owned());
+            event.result = Some("success".to_owned());
+            telemetry.track_main_event(event);
+        }
+        Ok(note)
     })
     .await
 }
@@ -47,7 +57,9 @@ pub async fn notes_get_by_path(
     path: String,
 ) -> Result<Option<NoteView>, CommandError> {
     blocking("notes_get_by_path", move || {
-        read::get_by_path(&open_vault(&app)?, &path).map_err(|error| failed(&error))
+        let telemetry = services::telemetry(&app);
+        read::get_by_path(&open_vault(&app)?, &path, telemetry.as_deref())
+            .map_err(|error| failed(&error))
     })
     .await
 }

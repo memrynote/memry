@@ -41,15 +41,17 @@ fn is_image_ref(text: &str) -> bool {
     COVER_IMAGE_EXTENSIONS.iter().any(|ext| path.ends_with(ext))
 }
 
-/// `isCoverValue`: a known wash (`wash:<id>`), an http(s) URL or an image path.
-pub fn is_cover_value(value: &Value) -> bool {
-    let Some(text) = value.as_str() else {
-        return false;
-    };
+/// `isCoverValue` of a string: a known wash (`wash:<id>`), an http(s) URL or an image path.
+pub fn is_cover_text(text: &str) -> bool {
     match text.strip_prefix("wash:") {
         Some(id) => COVER_WASH_IDS.contains(&id),
         None => is_image_ref(text),
     }
+}
+
+/// `isCoverValue`: a string [`is_cover_text`] accepts.
+pub fn is_cover_value(value: &Value) -> bool {
+    value.as_str().is_some_and(is_cover_text)
 }
 
 fn number_in(value: &Value, min: f64, max: f64) -> bool {

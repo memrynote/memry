@@ -3,6 +3,7 @@
 //! except the legacy nested `properties` envelope and the cover and writing keys while their
 //! values are theirs (`isReservedFrontmatterKey`).
 
+use memry_core::domain::note_stats::header_tags;
 use memry_core::markdown::frontmatter::YamlValue;
 use memry_core::markdown::shared::cover_image::is_cover_key_value;
 use memry_core::markdown::shared::writing_tools::{
@@ -35,8 +36,8 @@ pub struct FileFields {
 
 /// The fields of a parsed frontmatter; a top level that is not a map has none. A lone `tags`
 /// or `aliases` value reads as a one-item list, in the frontmatter too (`parseNote`).
-pub fn file_fields(frontmatter: &YamlValue) -> FileFields {
-    let Value::Object(mut frontmatter) = to_json(frontmatter) else {
+pub fn file_fields(yaml: &YamlValue) -> FileFields {
+    let (YamlValue::Map(map), Value::Object(mut frontmatter)) = (yaml, to_json(yaml)) else {
         return FileFields::default();
     };
     for key in ["tags", "aliases"] {
@@ -48,7 +49,8 @@ pub fn file_fields(frontmatter: &YamlValue) -> FileFields {
         }
     }
     FileFields {
-        header_tags: header_tags(frontmatter.get("tags")),
+        // The index's reader, so a note's header tags read the same wherever they are read.
+        header_tags: header_tags(map),
         aliases: match frontmatter.get("aliases") {
             Some(Value::Array(items)) => items.iter().map(scalar_text).collect(),
             _ => Vec::new(),
@@ -85,33 +87,12 @@ fn truthy(value: &Value) -> bool {
     }
 }
 
-/// `extractTags`: a list's items trimmed, empty dropped, folded duplicates after the first
-/// dropped. A list item that is not text throws in TypeScript; here it is skipped.
-fn header_tags(value: Option<&Value>) -> Vec<String> {
-    let Some(Value::Array(items)) = value else {
-        return Vec::new();
-    };
-    let mut seen = std::collections::HashSet::new();
-    items
-        .iter()
-        .filter_map(Value::as_str)
-        .map(js_trim)
-        .filter(|tag| !tag.is_empty() && seen.insert(memry_core::domain::tags::fold(tag)))
-        .map(str::to_owned)
-        .collect()
-}
-
 /// `stringifyScalar`.
 fn scalar_text(value: &Value) -> String {
     match value {
         Value::String(text) => text.clone(),
         other => other.to_string(),
     }
-}
-
-/// JavaScript's `String.prototype.trim`.
-fn js_trim(text: &str) -> &str {
-    text.trim_matches(|c: char| c != '\u{0085}' && (c.is_whitespace() || c == '\u{FEFF}'))
 }
 
 /// The value as the renderer reads it over IPC: a YAML date is its ISO text, bytes and a

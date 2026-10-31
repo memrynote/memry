@@ -10,6 +10,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::api::errors::StorageError;
+use crate::domain::inbox::queries::FiledVoice;
 use crate::domain::note_files::{self, NoteFile, NoteFileStat};
 use crate::domain::note_list::{self, ListedNote, NoteListPage, NoteListQuery};
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
@@ -29,6 +30,13 @@ impl NoteFiles {
         let path = path.to_owned();
         self.db
             .read_blocking(move |conn| note_files::by_path(conn, &path))
+    }
+
+    /// The voice capture filed to `path`, when one was.
+    pub fn filed_voice(&self, path: &str) -> Result<Option<FiledVoice>, StorageError> {
+        let path = path.to_owned();
+        self.db
+            .read_blocking(move |conn| crate::domain::inbox::queries::filed_voice(conn, &path))
     }
 
     pub fn by_id(&self, note_id: &str) -> Result<Option<NoteFile>, StorageError> {

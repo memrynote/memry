@@ -36,6 +36,7 @@ import {
 } from './journal-query-keys'
 import { mergeInlineTagEdits, type InlineTagEdit } from './use-inline-tag-edits'
 import { getI18n } from 'react-i18next'
+import { notesService } from '@/services/notes-service'
 
 const log = createLogger('Hook:JournalEntry')
 
@@ -248,9 +249,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         if (cancelled || currentDateRef.current !== date) return
 
         const content = await resolveRandomLines(template.content, async (title) => {
-          const target = await window.api.notes.resolveByTitle(title)
+          const target = await notesService.resolveByTitle(title)
           if (!target) return null
-          return (await window.api.notes.get(target.id))?.content ?? null
+          return (await notesService.get(target.id))?.content ?? null
         })
         if (cancelled || currentDateRef.current !== date) return
 

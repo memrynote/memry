@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   close: vi.fn(),
   openExternal: vi.fn(),
   revealInFinder: vi.fn(),
+  toastError: vi.fn(),
   indexListeners: [] as Array<(event: LargeFileIndexEvent) => void>,
   searchListeners: [] as Array<(event: LargeFileSearchProgressEvent) => void>,
   scrollToIndex: vi.fn(),
@@ -27,6 +28,8 @@ const mocks = vi.hoisted(() => ({
   measure: vi.fn(),
   resizeObservers: [] as Array<{ emit: (width: number) => void }>
 }))
+
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError, success: vi.fn() } }))
 
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: ({ count }: { count: number }) => {
@@ -168,6 +171,7 @@ describe('LargeFileViewer', () => {
     mocks.close.mockReset().mockResolvedValue(undefined)
     mocks.openExternal.mockReset().mockResolvedValue(undefined)
     mocks.revealInFinder.mockReset().mockResolvedValue(undefined)
+    mocks.toastError.mockReset()
 
     const api = window.api as unknown as Record<string, unknown>
     api.notes = {
@@ -351,6 +355,28 @@ describe('LargeFileViewer', () => {
 
     // #then
     expect(mocks.openExternal).toHaveBeenCalledWith('note-1')
+  })
+
+  it('shows why opening or revealing a too-large file failed', async () => {
+    // #given a file past the ceiling whose open and reveal both fail
+    mocks.open.mockResolvedValue({
+      status: 'too-large',
+      fileBytes: 3_000_000_000,
+      maxBytes: 2_147_483_645
+    } satisfies LargeFileOpenResult)
+    mocks.openExternal.mockRejectedValue(new Error('No app opens this file'))
+    mocks.revealInFinder.mockRejectedValue(new Error('The file is gone'))
+    render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={3_000_000_000} />)
+    await screen.findByTestId('large-file-notice')
+
+    // #when
+    await userEvent.click(screen.getByRole('button', { name: 'Open in default app' }))
+    await userEvent.click(screen.getByRole('button', { name: /Reveal in|Show in/ }))
+
+    // #then each failure reaches the screen
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(2))
+    expect(mocks.toastError).toHaveBeenNthCalledWith(1, 'No app opens this file')
+    expect(mocks.toastError).toHaveBeenNthCalledWith(2, 'The file is gone')
   })
 
   it('says so when the scan fails rather than spinning forever', async () => {

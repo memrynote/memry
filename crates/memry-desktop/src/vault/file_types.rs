@@ -14,7 +14,6 @@ pub enum FileType {
 }
 
 impl FileType {
-    /// The value stored in `note_files.file_type`.
     /// The type a stored `note_files.file_type` names; `None` for a value a newer build wrote.
     pub fn of_stored(stored: &str) -> Option<Self> {
         [
@@ -28,6 +27,7 @@ impl FileType {
         .find(|kind| kind.as_str() == stored)
     }
 
+    /// The value stored in `note_files.file_type`.
     pub fn as_str(self) -> &'static str {
         match self {
             FileType::Markdown => "markdown",

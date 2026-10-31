@@ -24,18 +24,12 @@ use crate::domain::notes::failed;
 use crate::domain::tags;
 use crate::markdown::frontmatter::js::{iso_string, js_trim, number_to_string};
 use crate::markdown::frontmatter::{YamlMap, YamlValue, gray_matter_data, split_frontmatter_block};
+use crate::markdown::shared::cover_image::is_cover_text;
 use crate::markdown::shared::markdown_code::strip_markdown_comments;
 use crate::markdown::shared::task_block::scan_task_checkbox_states;
 
 /// `createSnippet`'s default `maxLength`, which `syncNoteToCache` uses.
 pub const SNIPPET_LENGTH: usize = 200;
-
-const COVER_IMAGE_EXTENSIONS: [&str; 7] =
-    [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif"];
-/// `COVER_WASHES` ids of `packages/shared/src/cover-image.ts`.
-const COVER_WASH_IDS: [&str; 12] = [
-    "sage", "sand", "lilac", "clay", "ash", "fog", "wheat", "moss", "slate", "bark", "mist", "plum",
-];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoteStats {
@@ -164,30 +158,13 @@ fn cover(value: &YamlValue) -> Option<String> {
     let YamlValue::String(text) = value else {
         return None;
     };
-    let is_cover = match text.strip_prefix("wash:") {
-        Some(id) => COVER_WASH_IDS.contains(&id),
-        None => is_image_ref(text),
-    };
-    is_cover.then(|| text.clone())
-}
-
-fn is_image_ref(text: &str) -> bool {
-    let lower_head = text.get(..8).unwrap_or(text).to_ascii_lowercase();
-    if lower_head.starts_with("http://") || lower_head.starts_with("https://") {
-        return true;
-    }
-    let path = text
-        .split(['?', '#'])
-        .next()
-        .unwrap_or_default()
-        .to_lowercase();
-    !text.is_empty() && COVER_IMAGE_EXTENSIONS.iter().any(|ext| path.ends_with(ext))
+    is_cover_text(text).then(|| text.clone())
 }
 
 /// `parseNote`'s read of `tags` (a lone value becomes a one-item list) then `extractTags`:
 /// trimmed, empty dropped, folded duplicates after the first dropped. A list item that is not
 /// a string throws in `extractTags`; here it is skipped.
-fn header_tags(map: &YamlMap) -> Vec<String> {
+pub fn header_tags(map: &YamlMap) -> Vec<String> {
     let raws: Vec<String> = match map.get("tags") {
         Some(YamlValue::Seq(items)) => items
             .iter()

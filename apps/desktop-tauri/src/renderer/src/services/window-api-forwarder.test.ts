@@ -76,5 +76,8 @@ describe('createWindowApiForwarder', () => {
     expect(proxy.count()).toBe(7)
     expect('count' in proxy).toBe(true)
     await expect(proxy.greet('Kaan')).rejects.toThrow('not ported')
+    // A name the ported object only inherits is not one it ports.
+    const inherited = (proxy as unknown as { hasOwnProperty: unknown }).hasOwnProperty
+    expect(inherited).not.toBe(Object.prototype.hasOwnProperty)
   })
 })

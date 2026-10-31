@@ -3,8 +3,12 @@ import { createMockApi } from '@tests/setup-dom'
 
 const commands = vi.hoisted(() => ({
   notesGet: vi.fn(),
+  notesGetByPath: vi.fn(),
   notesGetFile: vi.fn(),
-  notesList: vi.fn()
+  notesList: vi.fn(),
+  notesExists: vi.fn(),
+  notesOpenExternal: vi.fn(),
+  notesRevealInFinder: vi.fn()
 }))
 
 vi.mock('../../../generated/bindings', () => ({ commands }))
@@ -20,6 +24,13 @@ import {
   onTagsChanged,
   onFolderConfigUpdated
 } from './notes-service'
+
+// Every non-test renderer source, read as text for the cutover guard below.
+const sources = import.meta.glob<string>(['../**/*.{ts,tsx}', '!../**/*.test.{ts,tsx}'], {
+  query: '?raw',
+  import: 'default',
+  eager: true
+})
 
 const CREATED = Date.UTC(2026, 0, 2)
 const MODIFIED = Date.UTC(2026, 0, 3)
@@ -72,6 +83,51 @@ describe('notes-service', () => {
     expect(await notesService.get('gone')).toBeNull()
     expect((await notesService.getFile('file-1'))?.modified).toEqual(new Date(MODIFIED))
     expect(api.notes.list).not.toHaveBeenCalled()
+  })
+
+  it('reads by path, answers exists, and opens or reveals through the commands', async () => {
+    commands.notesGetByPath.mockResolvedValue({
+      id: 'note-1',
+      path: 'work/Plan.md',
+      title: 'Plan',
+      content: 'body',
+      frontmatter: {},
+      created: CREATED,
+      modified: MODIFIED,
+      tags: [],
+      aliases: [],
+      wordCount: 1,
+      properties: {}
+    })
+    commands.notesExists.mockResolvedValue(true)
+    commands.notesOpenExternal.mockRejectedValue({ code: 'notes.not_found' })
+    commands.notesRevealInFinder.mockResolvedValue(null)
+
+    const note = await notesService.getByPath('work/Plan.md')
+    expect(commands.notesGetByPath).toHaveBeenCalledWith('work/Plan.md')
+    expect(note?.modified).toEqual(new Date(MODIFIED))
+    expect(await notesService.exists('Plan')).toBe(true)
+    expect(commands.notesExists).toHaveBeenCalledWith('Plan')
+    await expect(notesService.openExternal('gone')).rejects.toEqual({ code: 'notes.not_found' })
+    await notesService.revealInFinder('note-1')
+    expect(commands.notesRevealInFinder).toHaveBeenCalledWith('note-1')
+    expect(api.notes.getByPath).not.toHaveBeenCalled()
+    expect(api.notes.exists).not.toHaveBeenCalled()
+  })
+
+  // A ported method reached as `window.api.notes.x` lands on the not-ported shim and rejects,
+  // so every caller must go through notesService. A name counts as ported when notesService
+  // still serves it with window.api.notes emptied.
+  it('leaves no renderer caller on window.api.notes for a ported method', () => {
+    ;(window as Window & { api: unknown }).api = { notes: {} }
+    const service = notesService as unknown as Record<string, unknown>
+    const strays = Object.entries(sources).flatMap(([path, source]) =>
+      [...source.matchAll(/window\.api\.notes\.(\w+)/g)]
+        .filter(([, name]) => typeof service[name] === 'function')
+        .map(([call]) => `${path}: ${call}`)
+    )
+    expect(Object.keys(sources).length).toBeGreaterThan(100)
+    expect(strays).toEqual([])
   })
 
   it('forwards the methods later steps port to window.api.notes', async () => {

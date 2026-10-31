@@ -115,8 +115,9 @@ pub(crate) fn dates(note: &ListedNote) -> (i64, i64) {
     (created, note.modified_at.unwrap_or(created))
 }
 
-/// `NoteListSchema`'s options this slice reads. `sortBy: 'position'` sorts as `modified`, as in
-/// `listNotesFromCache`; journal entries are not listed until Step 13m.
+/// `NoteListSchema`'s options this slice reads; a value the schema does not name is refused,
+/// as zod refuses it. `includeJournals` is not read: journal entries are not listed until Step
+/// 13m.
 #[derive(Debug, Clone, Default, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NoteListOptions {
@@ -124,28 +125,50 @@ pub struct NoteListOptions {
     pub folder: Option<String>,
     #[serde(default)]
     pub tags: Option<Vec<String>>,
-    /// `modified` (the default), `created`, `title` or `position`.
     #[serde(default)]
-    pub sort_by: Option<String>,
-    /// `asc` or `desc` (the default).
+    pub sort_by: Option<NoteListSortBy>,
     #[serde(default)]
-    pub sort_order: Option<String>,
+    pub sort_order: Option<SortOrder>,
     /// 1 to 10000, 100 when absent.
     #[serde(default)]
     pub limit: Option<u32>,
     #[serde(default)]
     pub offset: Option<u32>,
-    /// `tree` drops the fields the sidebar never reads.
     #[serde(default)]
-    pub fields: Option<String>,
+    pub fields: Option<NoteListFields>,
+}
+
+/// `NoteListSchema.sortBy`. `position` sorts as `modified`, as in `listNotesFromCache`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum NoteListSortBy {
+    Modified,
+    Created,
+    Title,
+    Position,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum SortOrder {
+    Asc,
+    Desc,
+}
+
+/// `NoteListSchema.fields`: `tree` drops the fields the sidebar never reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum NoteListFields {
+    Full,
+    Tree,
 }
 
 impl NoteListOptions {
     pub(crate) fn sort(&self) -> NoteSort {
-        match self.sort_by.as_deref() {
-            Some("created") => NoteSort::Created,
-            Some("title") => NoteSort::Title,
-            _ => NoteSort::Modified,
+        match self.sort_by {
+            Some(NoteListSortBy::Created) => NoteSort::Created,
+            Some(NoteListSortBy::Title) => NoteSort::Title,
+            Some(NoteListSortBy::Modified | NoteListSortBy::Position) | None => NoteSort::Modified,
         }
     }
 }
@@ -195,4 +218,30 @@ pub struct FileView {
     pub file_size: Option<i64>,
     pub created: i64,
     pub modified: i64,
+    /// The text of the voice capture filed as this file, when one was.
+    pub transcription: Option<String>,
+    pub transcription_status: Option<TranscriptionStatus>,
+}
+
+/// `FileMetadata.transcriptionStatus`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "lowercase")]
+pub enum TranscriptionStatus {
+    Pending,
+    Processing,
+    Complete,
+    Failed,
+}
+
+impl TranscriptionStatus {
+    /// The stored status; `None` for a value no build writes.
+    pub fn parse(stored: &str) -> Option<Self> {
+        match stored {
+            "pending" => Some(Self::Pending),
+            "processing" => Some(Self::Processing),
+            "complete" => Some(Self::Complete),
+            "failed" => Some(Self::Failed),
+            _ => None,
+        }
+    }
 }

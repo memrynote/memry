@@ -11,12 +11,12 @@ export function createWindowApiForwarder<T extends object>(
   return new Proxy({} as T, {
     get(_target, property) {
       // oxlint-disable-next-line anti-slop/no-reflect-get -- a forwarding proxy resolves arbitrary property keys by definition
-      if (property in ported) return Reflect.get(ported, property)
+      if (Object.hasOwn(ported, property)) return Reflect.get(ported, property)
       // oxlint-disable-next-line anti-slop/no-reflect-get -- a forwarding proxy resolves arbitrary property keys by definition
       return Reflect.get(selectApi(), property)
     },
     has(_target, property) {
-      return property in ported || property in selectApi()
+      return Object.hasOwn(ported, property) || property in selectApi()
     },
     ownKeys() {
       return [...new Set([...Reflect.ownKeys(selectApi()), ...Reflect.ownKeys(ported)])]
