@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::notes::index::{Indexer, TaskHandle, task_channel};
+use memry_desktop::notes::index::{IndexProgress, Indexer, TaskHandle, task_channel};
 use memry_desktop::session::OpenVault;
 use memry_desktop::session::projection::CancelToken;
 use memry_desktop::vault::consumer::Applied;
@@ -97,11 +97,21 @@ pub fn all_indexed(e: &Env) -> bool {
 
 /// Runs an index task of `open` beside the test, over `facts`, until the guard drops.
 pub fn with_task(open: &OpenVault, facts: Receiver<Applied>, test: impl FnOnce(&TaskHandle)) {
+    with_reporting_task(open, facts, &|_| {}, test);
+}
+
+/// [`with_task`] whose open's pass progress goes to `report`.
+pub fn with_reporting_task(
+    open: &OpenVault,
+    facts: Receiver<Applied>,
+    report: &(dyn Fn(IndexProgress) + Sync),
+    test: impl FnOnce(&TaskHandle),
+) {
     let indexer = Indexer::new(open);
     let cancel = CancelToken::default();
     let (handle, inbox) = task_channel();
     std::thread::scope(|scope| {
-        scope.spawn(|| indexer.run(facts, inbox, &cancel).unwrap());
+        scope.spawn(|| indexer.run(facts, inbox, &cancel, report).unwrap());
         // Stopped on the way out, a failed wait included, so the scope can join the task.
         let _stop = StopOnDrop(&handle, &cancel);
         test(&handle);

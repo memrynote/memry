@@ -888,9 +888,10 @@ export type VaultErrorEvent = {
 };
 
 /**
- *  A reindex measured `index_built` of `index_total` notes (`vault:index-progress`). At most
- *  one per 250 ms and never backwards. A reindex that finishes ends with `index_built ==
- *  index_total`; one the vault's close stops ends without it.
+ *  A reindex, or an open's first index pass, measured `index_built` of `index_total` notes
+ *  (`vault:index-progress`). At most one per 250 ms and never backwards within a pass. A pass
+ *  that read every file ends with `index_built == index_total` (`0` of `0` for an open with
+ *  nothing to measure); one a close or a failed write stops ends without it.
  */
 export type VaultIndexProgressEvent = {
 	indexBuilt: number,
