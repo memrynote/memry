@@ -375,8 +375,8 @@ fn a_file_moved_while_closed_keeps_its_note_and_the_record_follows() {
 
 /// A note moved into the journal folder becomes a journal day to Electron, which deletes the
 /// note and lists the day as a new item. Until the journal service (Step 13m part 2) ports
-/// that, the record stays as it was and nothing is pushed; the row follows the file, and the record is owed the move. Moved out
-/// again, the record follows the file to where it is now.
+/// that, the record stays as it was and nothing is pushed; the row follows the file, and the
+/// record is owed the move. Moved out again, the record follows the file to where it is now.
 #[test]
 fn a_move_into_the_journal_folder_leaves_the_record_and_pushes_nothing() {
     let mut e = notes_env();
@@ -621,6 +621,34 @@ fn a_crash_between_the_create_and_the_row_seeds_the_same_note_once() {
     assert_eq!(e.rows(), vec![(id.clone(), "x.md".to_owned())]);
     assert_eq!(records(&e).len(), 1);
     assert_eq!(e.body(&id), "Recovered");
+}
+
+/// A live note no row names, in the journal folder and titled with a day, claims that day's
+/// file (`claimed`, `vault/watcher.ts`): the file is the note, and no day is minted for it.
+#[test]
+fn a_note_that_claims_a_day_files_place_keeps_it() {
+    let mut e = notes_env();
+    e.open();
+    e.facts_until(indexed);
+    let store = device_key::with_device_key();
+    let id = e
+        .core()
+        .notes_writer(store)
+        .unwrap()
+        .create("2025-01-01".to_owned(), Some("journal".to_owned()))
+        .unwrap();
+    e.close();
+
+    e.write("journal/2025-01-01.md", "Mine\n");
+    e.drain();
+    e.open();
+    e.facts_until(added("journal/2025-01-01.md"));
+    assert_eq!(
+        e.rows(),
+        vec![(id.clone(), "journal/2025-01-01.md".to_owned())]
+    );
+    assert!(days(&e).is_empty(), "{:?}", days(&e));
+    assert_eq!(e.body(&id), "Mine");
 }
 
 /// A note whose body holds an Obsidian image embed (12f-3b resolves `![[img.png]]` to an image

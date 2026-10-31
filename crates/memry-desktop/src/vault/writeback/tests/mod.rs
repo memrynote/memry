@@ -107,6 +107,8 @@ impl Fixture {
         let day = FileDay {
             path: rel,
             date,
+            title: date,
+            folder_path: None,
             body: "",
             created_ms: 0,
             modified_ms: 0,

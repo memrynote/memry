@@ -414,16 +414,6 @@ pub fn owe_place(
     tx.commit().map_err(failed)
 }
 
-/// Whether the record `note_id` is owed a move of its file ([`owe_place`]).
-pub fn owes_place(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
-    conn.query_row(
-        "SELECT EXISTS (SELECT 1 FROM note_place_owed WHERE note_id = ?1)",
-        params![note_id],
-        |row| row.get(0),
-    )
-    .map_err(failed)
-}
-
 /// A move the record is owed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwedPlace {

@@ -8,6 +8,9 @@
 //! gets a note id, and never a second day id. As for a note, a file gets its day only on
 //! evidence; otherwise the answer is [`Adopted::Deferred`], and the next open asks again:
 //!
+//! - a live note no row names with the file's folder and title claims the file, as Electron
+//!   keeps a claimed id (`vault/watcher.ts`): the file is that note's to [`super::identity`],
+//!   and here it defers, so one file never gets a second id;
 //! - an entry for the day that no row names is the file's when its body is empty or already
 //!   the file's text: a day pulled before its file was written, or one a crash left between
 //!   its create and its row. One whose body says something else, is owed a pull, or is not one
@@ -34,7 +37,9 @@
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 
-use super::identity::{Adopted, Deferral, Evidence, body_says, mints_beside_electron};
+use super::identity::{
+    Adopted, Deferral, Evidence, body_says, has_unfiled_note, mints_beside_electron,
+};
 use super::{failed, iso};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
@@ -51,6 +56,10 @@ pub struct FileDay<'a> {
     pub path: &'a str,
     /// The day the path names, `YYYY-MM-DD`.
     pub date: &'a str,
+    /// The file name without `.md`, the title a note at this path has.
+    pub title: &'a str,
+    /// The folder the file is in, `None` at the vault root.
+    pub folder_path: Option<&'a str>,
     /// The file's markdown below its frontmatter block.
     pub body: &'a str,
     /// When the file was created, for a new entry's `createdAt`.
@@ -83,6 +92,9 @@ pub fn adopt_day(
     };
     let id = journal::document_id_for(date)?;
     let tx = conn.unchecked_transaction().map_err(failed)?;
+    if has_unfiled_note(&tx, file.title, file.folder_path)? {
+        return Ok(UNDECIDED);
+    }
     match journal::entry_for(&tx, date)? {
         None => {}
         Some((held, _)) if held != id => return Ok(UNDECIDED),
@@ -119,6 +131,24 @@ pub fn adopt_day(
     let opened = journal::open_day_dated_in(&tx, date, device_id, now_ms, dates)?;
     tx.commit().map_err(failed)?;
     Ok(Adopted::Created(opened.id))
+}
+
+/// The day the vault file of the record `id` is, the date its frontmatter carries: the live
+/// journal day's date. `None` for a note, no live record, or a day owed a move of its file
+/// ([`super::identity::owe_place`]): the record no longer says which day, or whether a day, the
+/// moved file is. The write-back's date and the index's day both read it.
+pub fn file_date(conn: &Connection, id: &str) -> Result<Option<String>, StorageError> {
+    conn.prepare_cached(
+        "SELECT date FROM journal_entries
+          WHERE id = ?1 AND deleted_at IS NULL
+            AND NOT EXISTS (SELECT 1 FROM note_place_owed WHERE note_id = ?1)",
+    )
+    .and_then(|mut statement| {
+        statement
+            .query_row(params![id], |row| row.get(0))
+            .optional()
+    })
+    .map_err(failed)
 }
 
 /// The live record a body belongs to.

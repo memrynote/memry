@@ -3,8 +3,8 @@
 //! `journal-format-migration.ts`).
 
 use memry_desktop::vault::journal_format::{
-    JournalDate, format_journal_filename, normalize_journal_date_format, normalize_journal_folder,
-    parse_journal_date,
+    JournalDate, JournalDays, format_journal_filename, normalize_journal_date_format,
+    normalize_journal_folder, parse_journal_date,
 };
 use memry_desktop::vault::journal_rename::{
     JournalRenamePlan, SkipReason, is_complete_journal_format, plan_journal_renames,
@@ -110,4 +110,36 @@ fn every_plan_equals_electrons() {
         let plan = plan_journal_renames(&files, &text(case, "from"), &text(case, "to"));
         assert_eq!(plan_json(&plan), case["plan"], "{case}");
     }
+}
+
+/// The day a vault path names: a `.md` file right in the journal folder's format, the folder
+/// and the format taken as the config holds them (normalized the same way).
+#[test]
+fn a_path_names_a_day_under_the_journal_folder_in_its_format() {
+    let flat = JournalDays::new("journal", "YYYY-MM-DD");
+    assert_eq!(
+        flat.day_of("journal/2025-01-01.md").as_deref(),
+        Some("2025-01-01")
+    );
+    for path in [
+        "journals/2025-01-01.md",
+        "journal/2025-01-01.txt",
+        "journal/x/2025-01-01.md",
+        "journal/Ideas.md",
+        "2025-01-01.md",
+    ] {
+        assert_eq!(flat.day_of(path), None, "{path}");
+    }
+    assert_eq!(
+        JournalDays::new("", "YYYY-MM-DD").day_of("2025-01-01.md"),
+        None
+    );
+    let nested = JournalDays::new("/a/b/", " YYYY\\MMMM/./YYYY-MM-DD ");
+    assert_eq!(
+        nested.day_of("a/b/2025/January/2025-01-14.md").as_deref(),
+        Some("2025-01-14")
+    );
+    assert_eq!(nested.day_of("a/b/2025-01-14.md"), None);
+    assert!(nested.is_of("/a/b/", " YYYY\\MMMM/./YYYY-MM-DD "));
+    assert!(!nested.is_of("a/b", "YYYY/MMMM/YYYY-MM-DD"));
 }

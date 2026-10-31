@@ -9,18 +9,24 @@
 //!   the file).
 //! - **`date` is the one key a pass sets**, to the day's date, when it writes the file for its
 //!   body (a body the file already holds writes nothing, date or not), in place, and every
-//!   other byte of the block stays: an entry that already says the day (a YAML date of that day, or the
-//!   `YYYY-MM-DD` string, as `normalizeDateValue` reads them) is left as it is; a missing one is
-//!   one line added before the closing fence, spelled as Electron spells a new key
-//!   (`date: 'YYYY-MM-DD'`); an entry that says another day is replaced by one line, bare when
-//!   it held a YAML date (the entry's own lines go, a comment on them included; a comment line
-//!   after them stays). A splice is kept only when the block it makes parses to the old keys
-//!   with the new date, in their order; otherwise the block is left as it is and the date is
-//!   not written: a flow mapping, a quoted key, a top level that is a list or a scalar. A file
-//!   with no block gets `---\ndate: 'YYYY-MM-DD'\n---\n`, as Electron writes it, unless it
-//!   opens with a byte order mark.
+//!   other byte of the block stays:
+//!   - an entry that already says the day (a YAML date of that day, or the `YYYY-MM-DD`
+//!     string, as `normalizeDateValue` reads them) is left as it is;
+//!   - a missing one is one line added before the closing fence, spelled as Electron spells a
+//!     new key (`date: 'YYYY-MM-DD'`);
+//!   - an entry that says another day is replaced by one line, bare when it held a YAML date
+//!     (the entry's own lines go, a comment on them included; a comment line after them stays);
+//!   - a file with no block gets `---\ndate: 'YYYY-MM-DD'\n---\n`, as Electron writes it.
+//!
+//!   A splice is kept only when the block it makes parses to the old keys with the new date,
+//!   in their order. Otherwise the block is left as it is, the date is not written, and the
+//!   pass logs why ([`Dated::NotInPlace`]): a flow mapping, a quoted key, a top level that is a
+//!   list or a scalar, a file with no block that opens with a byte order mark.
 //! - **The writing tools data is body data** the document holds (`vault::consumer`): a change
-//!   to it stringifies the block again, as for a note, with the date set in it ([`set_date`]).
+//!   to it stringifies the whole block again, as for a note and as Electron does, with the date
+//!   set in it ([`set_date`]). That is the one exception to the date-only rule (Kaan, #3801
+//!   review): the bytes of the other keys may be reformatted, a version of the file is kept
+//!   before it is replaced, and no tag value ever comes from the record.
 
 use memry_core::markdown::frontmatter::{
     ParsedMarkdownNote, YamlMap, YamlValue, gray_matter_data, stringify_frontmatter_block,
@@ -37,29 +43,44 @@ pub(super) fn set_date(map: &mut YamlMap, date: &str) {
     }
 }
 
-/// The block of the day `date`'s file with its `date` set in place, or `None` when the block
-/// stays as it is: it already says the day, or it cannot be edited in place.
-pub(super) fn dated_block(parsed: &ParsedMarkdownNote, raw: &str, date: &str) -> Option<String> {
+/// What a body write does to the block of a day's file.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum Dated {
+    /// The block stays: it already says the day.
+    Says,
+    /// The block with its `date` set in place.
+    Set(String),
+    /// The block stays without the day's date, for this reason: it cannot be set in place.
+    NotInPlace(&'static str),
+}
+
+/// The block of the day `date`'s file with its `date` set in place, if it can be.
+pub(super) fn dated_block(parsed: &ParsedMarkdownNote, raw: &str, date: &str) -> Dated {
     // A top level that is a list or a scalar is the author's; no key is added to it.
     let YamlValue::Map(map) = &parsed.frontmatter else {
-        return None;
+        return Dated::NotInPlace("the frontmatter's top level is not a map");
     };
     let old = map.get(KEY);
     if says_day(old, date) {
-        return None;
+        return Dated::Says;
     }
     let Some(block) = &parsed.raw_frontmatter_block else {
         if raw.starts_with(BOM) {
-            return None;
+            return Dated::NotInPlace("a file with a byte order mark and no frontmatter");
         }
         let mut fresh = YamlMap::new();
         fresh.insert(KEY.to_owned(), YamlValue::String(date.to_owned()));
-        return stringify_frontmatter_block(&fresh, parsed.eol).ok();
+        return match stringify_frontmatter_block(&fresh, parsed.eol) {
+            Ok(block) => Dated::Set(block),
+            Err(_) => Dated::NotInPlace("the new frontmatter could not be written"),
+        };
     };
     let lines: Vec<&str> = block.split_inclusive('\n').collect();
-    // The split ends a block on its closing fence line.
-    let (fence, inner) = lines.split_last()?;
-    let eol = if inner.first()?.ends_with("\r\n") {
+    // The split ends a block on its closing fence line, after at least the opening one.
+    let Some((fence, inner)) = lines.split_last().filter(|(_, inner)| !inner.is_empty()) else {
+        return Dated::NotInPlace("the frontmatter has no lines");
+    };
+    let eol = if inner[0].ends_with("\r\n") {
         "\r\n"
     } else {
         "\n"
@@ -67,7 +88,9 @@ pub(super) fn dated_block(parsed: &ParsedMarkdownNote, raw: &str, date: &str) ->
     let (from, to, value) = match old {
         None => (inner.len(), inner.len(), quoted(date)),
         Some(old) => {
-            let (from, to) = entry_lines(inner)?;
+            let Some((from, to)) = entry_lines(inner) else {
+                return Dated::NotInPlace("the date is not a plain top-level key");
+            };
             let value = match old {
                 YamlValue::Date(_) => date.to_owned(),
                 _ => quoted(date),
@@ -83,7 +106,11 @@ pub(super) fn dated_block(parsed: &ParsedMarkdownNote, raw: &str, date: &str) ->
         fence,
     ]
     .concat();
-    holds_map_with_date(&edited, map, &line).then_some(edited)
+    if holds_map_with_date(&edited, map, &line) {
+        Dated::Set(edited)
+    } else {
+        Dated::NotInPlace("a date line there would change what the frontmatter says")
+    }
 }
 
 /// Whether a frontmatter value says the day `date` (`normalizeDateValue`): a YAML date on that

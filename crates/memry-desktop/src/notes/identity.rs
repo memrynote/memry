@@ -24,8 +24,12 @@
 //! - A file whose path names a day is that day's journal entry, `j<YYYY-MM-DD>`
 //!   on every device: it is under the journal folder and its path below it,
 //!   without `.md`, parses in the journal date format (`extractDateFromPath`,
-//!   `database/queries/notes/journal-queries.ts`). Any other file is a note, one
-//!   under the journal folder included (`newMarkdownFileId`).
+//!   `database/queries/notes/journal-queries.ts`), unless a live note no row names already
+//!   has its folder and title: that note claims it, as Electron keeps a claimed id
+//!   (`vault/watcher.ts`). Any other file is a note, one under the journal folder included
+//!   (`newMarkdownFileId`). Which day a path names is `JournalDays`'s
+//!   (`vault::journal_format`), from the vault config read at every ask: a config changed
+//!   while the vault is open applies to the next file event.
 //! - A move keeps what the file is when the record's day (none for a note) is the
 //!   day the new path names (`renameKeepsJournalDate`, `vault/watcher.ts`): a
 //!   note's record takes the new title and folder, and a day's record is left as
@@ -73,9 +77,7 @@ use crate::vault::consumer::identity::{
 };
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
-use crate::vault::journal_format::{
-    JournalFormat, normalize_journal_date_format, normalize_journal_folder,
-};
+use crate::vault::journal_format::JournalDays;
 
 const SCOPE: &str = "note_identity";
 
@@ -92,6 +94,8 @@ pub struct NotesIdentity {
     told: Mutex<HashSet<(Notice, PathBuf)>>,
     /// The vaults whose owed moves were settled since they opened, and none owed since.
     settled: Mutex<HashSet<PathBuf>>,
+    /// The journal days of the last config read, kept while the config says the same.
+    days: Mutex<Option<JournalDays>>,
 }
 
 impl NotesIdentity {
@@ -100,6 +104,7 @@ impl NotesIdentity {
             store,
             told: Mutex::default(),
             settled: Mutex::default(),
+            days: Mutex::default(),
         })
     }
 
@@ -141,14 +146,18 @@ impl NotesIdentity {
     }
 
     /// Where the vault's journal days are; `None` when the vault config is there but unreadable.
+    /// Read at every ask, so a config changed while the vault is open applies to the next file
+    /// event; compiled again only when it changed.
     fn journal(&self, root: &Path) -> Option<JournalDays> {
         match read_vault_config_strict(root) {
-            Ok(config) => Some(JournalDays {
-                folder: normalize_journal_folder(&config.journal_folder),
-                format: JournalFormat::new(&normalize_journal_date_format(
-                    &config.journal_date_format,
-                )),
-            }),
+            Ok(config) => {
+                let (folder, format) = (&config.journal_folder, &config.journal_date_format);
+                let mut days = self.days.lock().unwrap_or_else(PoisonError::into_inner);
+                if !days.as_ref().is_some_and(|days| days.is_of(folder, format)) {
+                    *days = Some(JournalDays::new(folder, format));
+                }
+                days.clone()
+            }
             Err(_) => {
                 self.tell_once(Notice::ConfigUnreadable, root);
                 None
@@ -225,7 +234,7 @@ impl NotesIdentity {
             if skip == Some(owed.note_id.as_str()) {
                 continue;
             }
-            match journal.keeps_kind(writer, &owed.note_id, &owed.path) {
+            match keeps_kind(journal, writer, &owed.note_id, &owed.path) {
                 Ok(true) => {}
                 Ok(false) => continue,
                 Err(error) => {
@@ -303,40 +312,48 @@ impl NoteIdentity for NotesIdentity {
         let body = split_frontmatter_block(&text.raw).body;
         let created_ms = created_ms(&ctx.root.join(file.path)).unwrap_or(file.modified_ms);
         let electron_db_beside = ctx.root.join(".memry").join("data.db").is_file();
-        let adopted = if let Some(date) = journal.day_of(file.path) {
-            let day = FileDay {
-                path: file.path,
-                date: &date,
-                body,
-                created_ms,
-                modified_ms: file.modified_ms,
-                electron_db_beside,
-            };
-            let reader = if writer.may_be_a_day(&date)? {
-                Some(self.reader(ctx, file.path, body)?)
-            } else {
-                None
-            };
-            let (converter, embeds) = parts(reader.as_ref());
-            writer.adopt_day(day, converter, embeds)
-        } else {
-            let (folder_path, title) = place(file.path);
-            let note = FileNote {
-                path: file.path,
-                title,
-                folder_path,
-                body,
-                created_ms,
-                modified_ms: file.modified_ms,
-                electron_db_beside,
-            };
-            let reader = if writer.may_be_a_note(title, folder_path)? {
-                Some(self.reader(ctx, file.path, body)?)
-            } else {
-                None
-            };
-            let (converter, embeds) = parts(reader.as_ref());
-            writer.adopt_file(note, converter, embeds)
+        let (folder_path, title) = place(file.path);
+        // A note that claims the file's place keeps it, a day's path too (`claimed`,
+        // `vault/watcher.ts`): the file is that note or waits, never a second id for it.
+        let claimed = writer.may_be_a_note(title, folder_path)?;
+        let adopted = match journal.day_of(file.path) {
+            Some(date) if !claimed => {
+                let day = FileDay {
+                    path: file.path,
+                    date: &date,
+                    title,
+                    folder_path,
+                    body,
+                    created_ms,
+                    modified_ms: file.modified_ms,
+                    electron_db_beside,
+                };
+                let reader = if writer.may_be_a_day(&date)? {
+                    Some(self.reader(ctx, file.path, body)?)
+                } else {
+                    None
+                };
+                let (converter, embeds) = parts(reader.as_ref());
+                writer.adopt_day(day, converter, embeds)
+            }
+            _ => {
+                let note = FileNote {
+                    path: file.path,
+                    title,
+                    folder_path,
+                    body,
+                    created_ms,
+                    modified_ms: file.modified_ms,
+                    electron_db_beside,
+                };
+                let reader = if claimed {
+                    Some(self.reader(ctx, file.path, body)?)
+                } else {
+                    None
+                };
+                let (converter, embeds) = parts(reader.as_ref());
+                writer.adopt_file(note, converter, embeds)
+            }
         };
         let adopted = adopted.map_err(|error| IdentityError::Other(error.to_string()))?;
         Ok(self.adoption(adopted, ctx.root))
@@ -382,7 +399,7 @@ impl NoteIdentity for NotesIdentity {
         let writer = self.writer(ctx)?;
         let journal = self.journal(ctx.root);
         let keeps = match &journal {
-            Some(journal) => journal.keeps_kind(&writer, note_id, new_path)?,
+            Some(journal) => keeps_kind(journal, &writer, note_id, new_path)?,
             None => false,
         };
         if !keeps {
@@ -441,36 +458,15 @@ fn place(path: &str) -> (Option<&str>, &str) {
     (folder, title)
 }
 
-/// Where a vault's journal days are: its journal folder, normalized (empty for none), and the
-/// date format their paths below it parse in.
-struct JournalDays {
-    folder: String,
-    format: JournalFormat,
-}
-
-impl JournalDays {
-    /// The day `path` names (`extractDateFromPath`, `journalStem`): a `.md` file under the
-    /// journal folder whose path below it, without `.md`, parses in the format. No journal
-    /// folder configured means no day.
-    fn day_of(&self, path: &str) -> Option<String> {
-        if self.folder.is_empty() {
-            return None;
-        }
-        let below = path.strip_prefix(&self.folder)?.strip_prefix('/')?;
-        let date = self.format.parse(below.strip_suffix(".md")?)?;
-        Some(date.to_string())
-    }
-
-    /// Whether the record `id` at `path` is what it was: its day (none for a note) is the day
-    /// `path` names.
-    fn keeps_kind(
-        &self,
-        writer: &NotesWriter,
-        id: &str,
-        path: &str,
-    ) -> Result<bool, IdentityError> {
-        Ok(writer.journal_date(id)? == self.day_of(path))
-    }
+/// Whether the record `id` at `path` is what it was: its day (none for a note) is the day
+/// `path` names.
+fn keeps_kind(
+    journal: &JournalDays,
+    writer: &NotesWriter,
+    id: &str,
+    path: &str,
+) -> Result<bool, IdentityError> {
+    Ok(writer.journal_date(id)? == journal.day_of(path))
 }
 
 /// The converter and the embed lookup of a reader, borrowed.
@@ -500,31 +496,6 @@ mod tests {
         assert_eq!(place("x/y/a.b.md"), (Some("x/y"), "a.b"));
         assert_eq!(place("x/Note.MD"), (Some("x"), "Note.MD"));
         assert_eq!(place("x/.md"), (Some("x"), ".md"));
-    }
-
-    #[test]
-    fn a_path_names_a_day_under_the_journal_folder_in_its_format() {
-        let days = |folder: &str, format: &str| JournalDays {
-            folder: folder.to_owned(),
-            format: JournalFormat::new(format),
-        };
-        let flat = days("journal", "YYYY-MM-DD");
-        assert_eq!(
-            flat.day_of("journal/2025-01-01.md").as_deref(),
-            Some("2025-01-01")
-        );
-        assert_eq!(flat.day_of("journals/2025-01-01.md"), None);
-        assert_eq!(flat.day_of("journal/2025-01-01.txt"), None);
-        assert_eq!(flat.day_of("journal/x/2025-01-01.md"), None);
-        assert_eq!(flat.day_of("journal/Ideas.md"), None);
-        assert_eq!(flat.day_of("2025-01-01.md"), None);
-        assert_eq!(days("", "YYYY-MM-DD").day_of("2025-01-01.md"), None);
-        let nested = days("a/b", "YYYY/MMMM/YYYY-MM-DD");
-        assert_eq!(
-            nested.day_of("a/b/2025/January/2025-01-14.md").as_deref(),
-            Some("2025-01-14")
-        );
-        assert_eq!(nested.day_of("a/b/2025-01-14.md"), None);
     }
 
     #[test]

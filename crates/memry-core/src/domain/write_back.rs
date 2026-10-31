@@ -14,16 +14,15 @@
 //!
 //! The file-side rules (the row's hash, the bytes on disk) are the shell's. A journal day's
 //! body is read as a note's is (Step 13m); the shell writes its frontmatter by the day's rule,
-//! with the day's date ([`journal_date`]).
+//! with the day's date ([`crate::domain::notes::journal_day::file_date`]).
 
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
 use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::errors::CrdtError;
-use crate::domain::notes::identity;
 use crate::domain::notes::journal_day::body_owner;
-use crate::domain::{journal, note_snapshots, owed_file_body, reads};
+use crate::domain::{note_snapshots, owed_file_body, reads};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::markdown::convert::note_body::NoteBody;
@@ -115,16 +114,4 @@ pub fn keep_replaced(
 /// neither.
 pub fn title(conn: &Connection, note_id: &str) -> Result<Option<String>, StorageError> {
     Ok(body_owner(conn, note_id)?.map(|owner| owner.title))
-}
-
-/// The date of the live journal day `id`, which its file's `date` frontmatter says; `None` for
-/// a note, no live record, or a day owed a move of its file ([`identity::owes_place`]): its
-/// record no longer says which day, or whether a day, the moved file is.
-pub fn journal_date(conn: &Connection, id: &str) -> Result<Option<String>, StorageError> {
-    match body_owner(conn, id)? {
-        Some(owner) if owner.item_type == journal::ITEM_TYPE => {
-            Ok((!identity::owes_place(conn, id)?).then_some(owner.title))
-        }
-        _ => Ok(None),
-    }
 }

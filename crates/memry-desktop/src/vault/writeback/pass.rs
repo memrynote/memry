@@ -13,7 +13,7 @@ use memry_core::markdown::frontmatter::{
 };
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
 
-use super::journal::{dated_block, set_date};
+use super::journal::{Dated, dated_block, set_date};
 use crate::vault::consumer::rows::{RowOwner, RowSession, RowStat, now_ms};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
@@ -115,7 +115,7 @@ impl Pass {
         // after the stamp and the note stays behind its body (`reconcile`).
         let read_at = now_ms();
         // A journal day's file takes the day's date in its frontmatter (`journal`).
-        let journal_date = match self.vault.write_back().journal_date(note_id) {
+        let file_date = match self.vault.write_back().file_date(note_id) {
             Ok(date) => date,
             Err(error) => return Outcome::Failed(format!("the journal day: {error}")),
         };
@@ -180,7 +180,7 @@ impl Pass {
             markdown,
             &body.writing,
             &file.raw,
-            journal_date.as_deref(),
+            (note_id, file_date.as_deref()),
         ) {
             Ok(output) => output,
             Err(reason) => return Outcome::Failed(reason),
@@ -274,21 +274,21 @@ impl Pass {
 }
 
 /// The file the body makes of `parsed`: its frontmatter block kept byte for byte unless the
-/// `writing` data changed it, or, for the journal day of `journal_date`, its `date` entry
-/// (`journal`); its line ends, and the byte order mark of `raw`.
+/// `writing` data changed it, or, for `note_id` a journal day whose file carries `file_date`,
+/// its `date` entry (`journal`); its line ends, and the byte order mark of `raw`.
 fn file_for(
     mut parsed: ParsedMarkdownNote,
     markdown: &str,
     writing: &WritingFrontmatter,
     raw: &str,
-    journal_date: Option<&str>,
+    (note_id, file_date): (&str, Option<&str>),
 ) -> Result<String, String> {
     let edited = match &parsed.frontmatter {
         YamlValue::Map(map) => {
             let mut merged: YamlMap = (**map).clone();
             let edited = merge_writing_yaml(&mut merged, writing);
             if edited {
-                if let Some(date) = journal_date {
+                if let Some(date) = file_date {
                     set_date(&mut merged, date);
                 }
                 parsed.frontmatter = YamlValue::map(merged);
@@ -301,10 +301,17 @@ fn file_for(
     // The date rides on a write of the body; it never writes a file on its own.
     if !edited
         && markdown != parsed.content
-        && let Some(date) = journal_date
-        && let Some(block) = dated_block(&parsed, raw, date)
+        && let Some(date) = file_date
     {
-        parsed.raw_frontmatter_block = Some(block);
+        match dated_block(&parsed, raw, date) {
+            Dated::Says => {}
+            Dated::Set(block) => parsed.raw_frontmatter_block = Some(block),
+            Dated::NotInPlace(why) => tracing::warn!(
+                scope = "vault_writeback",
+                note_id,
+                "a journal day's file is written without the day's date: {why}"
+            ),
+        }
     }
     let mut output = serialize_parsed_markdown_note(&parsed, markdown, edited)
         .map_err(|error| format!("the frontmatter could not be written: {error}"))?;

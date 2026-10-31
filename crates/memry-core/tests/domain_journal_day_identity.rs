@@ -1,14 +1,15 @@
 //! The journal day a vault file is, against real SQLite (desktop Step 13m, #3530).
 //!
-//! | Test                                                             | Rule                                 |
-//! | ---------------------------------------------------------------- | ------------------------------------ |
-//! | a day file creates its day with the file's dates, once           | `newMarkdownFileId`, §1.9.1 minting  |
-//! | a day already here is the file's only when its text is           | a file is named only on evidence     |
-//! | a day another file holds, a foreign holder, a date no record ... | one file per day, §1.9.1             |
-//! | a deleted day comes back with its file only on evidence          | a revive shows the body it had       |
-//! | an Electron vault the core did not import creates no day         | Electron's days come from Step 36    |
-//! | a removed day file deletes its day once, on the row's evidence   | `enqueueJournalDelete`, §5.8         |
-//! | a day's file is fed and read back as a note's                    | one body feed, chapter 07 §7.1       |
+//! | Test                                                     | Rule                        |
+//! | -------------------------------------------------------- | --------------------------- |
+//! | a day file creates its day with the file's dates, once   | `newMarkdownFileId`, §1.9.1 |
+//! | a note claiming the file's place keeps it from the day   | a claimed id is kept        |
+//! | a day already here is the file's only when its text is   | named only on evidence      |
+//! | a day another file holds, a foreign holder, no such date | one file per day, §1.9.1    |
+//! | a deleted day comes back with its file only on evidence  | a revive shows its body     |
+//! | an Electron vault the core did not import creates no day | days come from Step 36      |
+//! | a removed day file deletes its day once, on evidence     | `enqueueJournalDelete`      |
+//! | a day's file is fed and read back as a note's            | one body feed, ch. 07 §7.1  |
 
 #![cfg(feature = "markdown")]
 
@@ -43,6 +44,8 @@ fn day_file(body: &'static str) -> FileDay<'static> {
     FileDay {
         path: PATH,
         date: "2025-01-14",
+        title: "2025-01-14",
+        folder_path: Some("journal"),
         body,
         created_ms: BORN,
         modified_ms: TOUCHED,
@@ -105,6 +108,28 @@ fn a_day_file_creates_its_day_with_the_files_dates_once() {
     assert_eq!(outbox(&db), vec![("upsert".to_owned(), DAY.to_owned())]);
 }
 
+/// A live note in the journal folder titled with the day, which no row names (pulled before
+/// its file was written, or its row lost), claims the day's file: no day is minted for it.
+#[test]
+fn a_note_that_claims_the_files_place_keeps_it_from_the_day() {
+    let db = open("day-claimed");
+    create(&db, "n1", "2025-01-14", Some("journal"));
+    clear_outbox(&db);
+    assert_eq!(adopt(&db, day_file("A day.\n")), UNDECIDED);
+    assert_eq!(entry(&db, "2025-01-14"), None);
+    assert!(outbox(&db).is_empty());
+
+    // Another folder's note of that title claims nothing here.
+    create(&db, "n2", "2025-01-15", Some("notes"));
+    let elsewhere = FileDay {
+        path: "journal/2025-01-15.md",
+        date: "2025-01-15",
+        title: "2025-01-15",
+        ..day_file("x")
+    };
+    assert_eq!(adopt(&db, elsewhere), created("j2025-01-15"));
+}
+
 #[test]
 fn a_day_already_here_is_the_files_only_when_its_text_is() {
     let db = open("day-pulled");
@@ -145,6 +170,7 @@ fn a_day_another_file_holds_a_foreign_holder_and_a_date_no_record_holds_defer() 
     let foreign = FileDay {
         path: "journal/2025-01-15.md",
         date: "2025-01-15",
+        title: "2025-01-15",
         ..day_file("x")
     };
     assert_eq!(adopt(&db, foreign), UNDECIDED);
@@ -153,6 +179,7 @@ fn a_day_another_file_holds_a_foreign_holder_and_a_date_no_record_holds_defer() 
     let no_day = FileDay {
         path: "journal/2025-02-31.md",
         date: "2025-02-31",
+        title: "2025-02-31",
         ..day_file("x")
     };
     assert_eq!(adopt(&db, no_day), UNDECIDED);
@@ -272,7 +299,7 @@ fn a_days_file_is_fed_and_read_back_as_a_notes() {
     };
     assert_eq!(body.markdown.trim_end(), "First words");
     assert_eq!(
-        run(&db, |conn| write_back::journal_date(conn, DAY)).as_deref(),
+        run(&db, |conn| journal_day::file_date(conn, DAY)).as_deref(),
         Some("2025-01-14")
     );
 
@@ -305,9 +332,13 @@ fn a_days_file_is_fed_and_read_back_as_a_notes() {
     });
     assert_eq!(titles, vec!["2025-01-14".to_owned()]);
 
+    // Owed a move of its file, the day no longer says which day the file is.
+    run(&db, |conn| identity::owe_place(conn, DAY, PATH, NOW));
+    assert_eq!(run(&db, |conn| journal_day::file_date(conn, DAY)), None);
+
     // A note has no day; a deleted day has no body to feed.
     create(&db, "n1", "Plan", None);
-    assert_eq!(run(&db, |conn| write_back::journal_date(conn, "n1")), None);
+    assert_eq!(run(&db, |conn| journal_day::file_date(conn, "n1")), None);
     run(&db, |conn| {
         journal::delete_day(conn, "2025-01-14", DEVICE, NOW + 1)
     });

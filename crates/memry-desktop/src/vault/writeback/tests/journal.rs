@@ -2,6 +2,8 @@
 //! its `date` entry only, never its tags, over the files Electron writes
 //! (`tests/fixtures/electron-journal`, `scripts/electron-fixtures/capture-journal.mjs`).
 
+use std::sync::{Arc, Mutex};
+
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, parse_markdown_note, split_frontmatter_block,
 };
@@ -9,7 +11,7 @@ use memry_core::markdown::frontmatter::{
 use super::{assert_wrote, fixture};
 use crate::vault::hash::content_hash;
 use crate::vault::writeback::Outcome;
-use crate::vault::writeback::journal::{dated_block, set_date};
+use crate::vault::writeback::journal::{Dated, dated_block, set_date};
 
 const ELECTRON: [(&str, &str, &str); 3] = [
     (
@@ -150,7 +152,7 @@ fn a_day_without_a_date_gets_one_with_its_next_body_write_only() {
     );
 }
 
-fn dated(raw: &str) -> Option<String> {
+fn dated(raw: &str) -> Dated {
     dated_block(&parse_markdown_note(raw).unwrap(), raw, "2025-01-20")
 }
 
@@ -189,18 +191,61 @@ fn the_date_is_set_in_place_or_the_block_is_left_as_it_is() {
         ("x\n", "---\ndate: '2025-01-20'\n---\n"),
     ];
     for (raw, block) in set {
-        assert_eq!(dated(raw).as_deref(), Some(block), "{raw:?}");
+        assert_eq!(dated(raw), Dated::Set(block.to_owned()), "{raw:?}");
     }
     for raw in [
         "---\ndate: '2025-01-20'\ntags: [a]\n---\n",
         "---\ndate: 2025-01-20\n---\n",
         "---\ndate: 2025-01-20T23:30:00+02:00\n---\n",
+    ] {
+        assert_eq!(dated(raw), Dated::Says, "{raw:?}");
+    }
+    for raw in [
         "---\n{tags: [a]}\n---\n",
         "---\n'date': '2025-01-14'\n---\n",
         "---\n- a\n---\n",
         "\u{feff}x\n",
     ] {
-        assert_eq!(dated(raw), None, "{raw:?}");
+        assert!(matches!(dated(raw), Dated::NotInPlace(_)), "{raw:?}");
+    }
+}
+
+/// A block the date cannot be set in keeps every byte through a body write, and the write is
+/// logged with the day and the reason, never the file's path.
+#[test]
+fn a_block_the_date_cannot_be_set_in_is_kept_and_logged() {
+    let mut f = fixture();
+    let rel = "journal/2025-01-20.md";
+    let text = "---\n{tags: [a]}\n---\nA day.\n";
+    let id = f.adopt_day(rel, "2025-01-20", text);
+    f.paragraph_from_sync(&id, "from the other device");
+    let written = Arc::new(Mutex::new(Vec::<u8>::new()));
+    let subscriber = tracing_subscriber::fmt()
+        .with_writer(Mutex::new(Capture(written.clone())))
+        .with_ansi(false)
+        .finish();
+    let outcome = tracing::subscriber::with_default(subscriber, || f.run(&id));
+    let file = assert_wrote(&mut f, &outcome, rel);
+    assert!(
+        file.starts_with("---\n{tags: [a]}\n---\nA day.\n"),
+        "{file}"
+    );
+    let log = String::from_utf8(written.lock().unwrap().clone()).unwrap();
+    assert!(log.contains("without the day's date"), "{log}");
+    assert!(log.contains(&id), "{log}");
+    assert!(!log.contains(rel), "a path reached the log: {log}");
+}
+
+struct Capture(Arc<Mutex<Vec<u8>>>);
+
+impl std::io::Write for Capture {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().unwrap().extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }
 
