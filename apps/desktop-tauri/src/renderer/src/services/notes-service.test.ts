@@ -25,13 +25,6 @@ import {
   onFolderConfigUpdated
 } from './notes-service'
 
-// Every non-test renderer source, read as text for the cutover guard below.
-const sources = import.meta.glob<string>(['../**/*.{ts,tsx}', '!../**/*.test.{ts,tsx}'], {
-  query: '?raw',
-  import: 'default',
-  eager: true
-})
-
 const CREATED = Date.UTC(2026, 0, 2)
 const MODIFIED = Date.UTC(2026, 0, 3)
 
@@ -113,21 +106,6 @@ describe('notes-service', () => {
     expect(commands.notesRevealInFinder).toHaveBeenCalledWith('note-1')
     expect(api.notes.getByPath).not.toHaveBeenCalled()
     expect(api.notes.exists).not.toHaveBeenCalled()
-  })
-
-  // A ported method reached as `window.api.notes.x` lands on the not-ported shim and rejects,
-  // so every caller must go through notesService. A name counts as ported when notesService
-  // still serves it with window.api.notes emptied.
-  it('leaves no renderer caller on window.api.notes for a ported method', () => {
-    ;(window as Window & { api: unknown }).api = { notes: {} }
-    const service = notesService as unknown as Record<string, unknown>
-    const strays = Object.entries(sources).flatMap(([path, source]) =>
-      [...source.matchAll(/window\.api\.notes\.(\w+)/g)]
-        .filter(([, name]) => typeof service[name] === 'function')
-        .map(([call]) => `${path}: ${call}`)
-    )
-    expect(Object.keys(sources).length).toBeGreaterThan(100)
-    expect(strays).toEqual([])
   })
 
   it('forwards the methods later steps port to window.api.notes', async () => {

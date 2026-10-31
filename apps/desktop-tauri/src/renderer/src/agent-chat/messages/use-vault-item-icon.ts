@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { notesService } from '@/services/notes-service'
 
 /**
  * Resolves an item's own icon straight from the vault, keyed by the id inside
@@ -25,7 +26,7 @@ type VaultIconKind = 'note'
 
 async function fetchIcon(kind: VaultIconKind, id: string): Promise<string | null> {
   if (kind === 'note') {
-    const note = await window.api?.notes?.get?.(id)
+    const note = await notesService.get(id)
     return note?.emoji ?? null
   }
   return null

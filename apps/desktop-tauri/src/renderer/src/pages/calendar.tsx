@@ -86,6 +86,7 @@ import { reminderService } from '@/services/reminder-service'
 import { buildReminderTargetTab } from '@/lib/open-reminder-target'
 import { getI18n } from 'react-i18next'
 import type { CalendarEventReadOnlyMetadata } from '@/components/calendar/calendar-event-popover'
+import { notesService } from '@/services/notes-service'
 
 const log = createLogger('CalendarPage')
 
@@ -826,7 +827,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   const handleNoteOpen = (noteId: string, anchorId?: string | null) => {
     const tCalendar = getI18n().getFixedT(null, 'calendar')
     setNotePopoverState(null)
-    void window.api.notes
+    void notesService
       .get(noteId)
       .then((note) => {
         if (!note) return

@@ -126,7 +126,13 @@ const ported = {
   }
 } satisfies Partial<NotesClientAPI>
 
-export const notesService: NotesClientAPI = createWindowApiForwarder(() => window.api.notes, ported)
+/** The note methods served from Rust; `window.api.notes` is typed without them. */
+export type PortedNoteMethod = keyof typeof ported
+
+export const notesService: NotesClientAPI = createWindowApiForwarder<
+  NotesClientAPI,
+  PortedNoteMethod
+>(() => window.api.notes, ported)
 
 export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
   return window.api.onNoteCreated(callback)

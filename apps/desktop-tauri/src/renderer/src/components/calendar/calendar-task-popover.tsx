@@ -27,6 +27,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import type { SnoozeTarget } from '@/lib/snooze-options'
 import type { AnchorRect } from './types'
 import type { RepeatConfig } from '@/services/tasks-service'
+import { notesService } from '@/services/notes-service'
 
 const log = createLogger('CalendarTaskPopover')
 
@@ -191,7 +192,7 @@ export function CalendarTaskPopover({
 
   const handleOpenSourceNote = useCallback((): void => {
     if (!task?.sourceNoteId) return
-    window.api.notes
+    notesService
       .get(task.sourceNoteId)
       .then((note) => {
         if (!note) return
