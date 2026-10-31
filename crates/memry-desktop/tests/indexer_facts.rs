@@ -10,14 +10,13 @@ mod device_key;
 mod index_support;
 mod vault_env;
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use index_support::{all_indexed, note_text, path_of, seeded, until, with_task};
 use memry_core::domain::note_stats::{MeasuredFile, measure};
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::index::{IDLE_DELAY, NoteIndex};
+use memry_desktop::notes::index::{IDLE_DELAY, IndexProgress, NoteIndex};
 use memry_desktop::vault::consumer::rows::RowStat;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::file_types::FileType;
@@ -40,7 +39,7 @@ fn stale_row(id: &str, text: &str) -> MeasuredFile {
 #[test]
 fn facts_keep_the_rows_current_and_lost_facts_run_a_scan() {
     let (mut e, _store, notes) = seeded(3);
-    let index = NoteIndex::new(e.tier.clone());
+    let index = NoteIndex::new(e.tier.clone(), |_| {});
     index.register(&e.session);
     e.drain();
     e.open();
@@ -213,7 +212,7 @@ fn a_fresh_vault_gets_its_notes_then_their_stats_and_links_at_every_open() {
     for i in 0..FRESH {
         e.write(&path_of(i), &note_text(i));
     }
-    let index = NoteIndex::new(e.tier.clone());
+    let index = NoteIndex::new(e.tier.clone(), |_| {});
     index.register(&e.session);
     let started = Instant::now();
     e.open();
@@ -285,23 +284,24 @@ fn a_walk_holds_the_work_and_a_reindex_through_a_watcher_failure() {
             limit: false,
         };
         sender.send(Applied::Vault(failed)).unwrap();
-        let steps = Arc::new(AtomicUsize::new(0));
+        let steps: Arc<Mutex<Vec<IndexProgress>>> = Arc::default();
         let seen = steps.clone();
         let answer = handle
-            .reindex(Box::new(move |_| {
-                seen.fetch_add(1, Ordering::SeqCst);
-            }))
+            .reindex(Box::new(move |step| seen.lock().unwrap().push(step)))
             .unwrap();
         // Twice the queue's delay, then nothing measured and no progress: the walk runs.
         std::thread::sleep(IDLE_DELAY * 2);
         for (id, _) in &notes {
             assert!(open.search.note_stats(id).unwrap().is_none(), "{id}");
         }
-        assert_eq!(steps.load(Ordering::SeqCst), 0);
+        assert!(steps.lock().unwrap().is_empty());
 
         sender.send(Applied::Indexed { complete: true }).unwrap();
         let done = answer.recv().unwrap().unwrap();
         assert_eq!(done.indexed, notes.len());
+        // Less than a batch: the step after the last write is the total.
+        let step = |built| IndexProgress { built, total: 2 };
+        assert_eq!(*steps.lock().unwrap(), [step(0), step(2)]);
     });
     e.close();
 }
@@ -323,7 +323,7 @@ fn an_edit_beside_a_file_that_never_reads_is_not_held_by_its_backoff() {
         mode(0o644).unwrap();
         return;
     }
-    let index = NoteIndex::new(e.tier.clone());
+    let index = NoteIndex::new(e.tier.clone(), |_| {});
     index.register(&e.session);
     e.drain();
     e.open();

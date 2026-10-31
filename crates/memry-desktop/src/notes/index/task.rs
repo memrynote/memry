@@ -155,21 +155,29 @@ impl Owed {
 impl Indexer {
     /// The task: facts and requests in, passes out, until the handle stops it or `cancel` is
     /// seen. Errs only when it could not start.
+    /// seen. Errs only when it could not start. `report` gets the open's pass progress.
     pub fn run(
         &self,
         facts: Receiver<Applied>,
         inbox: TaskInbox,
         cancel: &CancelToken,
+        report: &dyn Fn(IndexProgress),
     ) -> Result<(), String> {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_time()
             .build()
             .map_err(|error| format!("the note index task has no runtime: {error}"))?;
-        runtime.block_on(self.serve(facts, inbox, cancel));
+        runtime.block_on(self.serve(facts, inbox, cancel, report));
         Ok(())
     }
 
-    async fn serve(&self, mut facts: Receiver<Applied>, inbox: TaskInbox, cancel: &CancelToken) {
+    async fn serve(
+        &self,
+        mut facts: Receiver<Applied>,
+        inbox: TaskInbox,
+        cancel: &CancelToken,
+        report: &dyn Fn(IndexProgress),
+    ) {
         let TaskInbox(mut commands) = inbox;
         // Owed at every open: a pass that wrote rows may have ended before its search reindex.
         let mut owed = Owed {
@@ -177,6 +185,9 @@ impl Indexer {
             ..Owed::default()
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
+        // The open's pass, the first after the walk, reports its progress (`indexVault` on
+        // open): the renderer refreshes the notes list on it. No later pass reports.
+        let mut report = Some(report);
         while !cancel.is_cancelled() {
             if owed.walked() {
                 for (progress, answer) in waiting.drain(..) {
@@ -200,7 +211,9 @@ impl Indexer {
                     }
                     Err(RecvError::Closed) => return,
                 },
-                () = tokio::time::sleep_until(wake), if next.is_some() => self.work(&mut owed, cancel),
+                () = tokio::time::sleep_until(wake), if next.is_some() => {
+                    self.work(&mut owed, cancel, report.take());
+                }
             }
         }
     }
@@ -236,14 +249,24 @@ impl Indexer {
         }
     }
 
-    fn work(&self, owed: &mut Owed, cancel: &CancelToken) {
+    /// One pass over what is owed. With `report`, its progress goes out as a reindex's does:
+    /// throttled, never backwards, ending at the total once every file was read.
+    fn work(&self, owed: &mut Owed, cancel: &CancelToken, report: Option<&dyn Fn(IndexProgress)>) {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
         owed.due = None;
         let stop = || cancel.is_cancelled();
+        let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
+        let mut progress = |step| {
+            if let Some(report) = report
+                && throttle.offer(step, Instant::now())
+            {
+                report(step);
+            }
+        };
         let outcome = self
             .listed(scan, &ids)
-            .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut |_| {}));
+            .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut progress));
         owed.settle(ids, scan, &outcome);
     }
 

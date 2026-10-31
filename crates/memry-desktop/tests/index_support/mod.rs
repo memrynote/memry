@@ -101,7 +101,7 @@ pub fn with_task(open: &OpenVault, facts: Receiver<Applied>, test: impl FnOnce(&
     let cancel = CancelToken::default();
     let (handle, inbox) = task_channel();
     std::thread::scope(|scope| {
-        scope.spawn(|| indexer.run(facts, inbox, &cancel).unwrap());
+        scope.spawn(|| indexer.run(facts, inbox, &cancel, &|_| {}).unwrap());
         // Stopped on the way out, a failed wait included, so the scope can join the task.
         let _stop = StopOnDrop(&handle, &cancel);
         test(&handle);
