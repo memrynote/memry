@@ -8,7 +8,6 @@ mod device_key;
 mod vault_env;
 
 use std::fs;
-use std::path::PathBuf;
 
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::vault::activity::{
@@ -141,17 +140,27 @@ fn open_walked(e: &mut Env) {
     e.facts_until(indexed);
 }
 
-/// A note no one may read: `None` where nothing keeps it from being read (another OS, or run
-/// as root).
-fn locked(e: &Env, rel: &str) -> Option<PathBuf> {
+/// A note no one can read while the guard lives: no permission on unix; on Windows an open
+/// handle that shares nothing, as an antivirus scan holds a file. Fails when the file still
+/// reads (a test run as root).
+#[must_use]
+fn locked(e: &Env, rel: &str) -> Option<fs::File> {
     let path = e.vault.join(rel);
     fs::write(&path, "# locked\n").unwrap();
     #[cfg(unix)]
-    {
+    let held = {
         use std::os::unix::fs::PermissionsExt as _;
         fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
-    }
-    fs::read(&path).is_err().then_some(path)
+        None
+    };
+    #[cfg(windows)]
+    let held = {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        let open = fs::OpenOptions::new().read(true).share_mode(0).open(&path);
+        Some(open.unwrap())
+    };
+    assert!(fs::read(&path).is_err(), "{rel} must not be readable");
+    held
 }
 
 /// The walk's failed read is retried: the watcher looks at the file again and reports it
@@ -214,11 +223,9 @@ fn a_later_open_records_the_files_that_came_while_closed() {
     e.write("two.md", "# two\n");
     e.write("tool.bin", "bytes");
     fs::write(e.vault.join("latin1.md"), b"caf\xe9\n").unwrap();
-    let locked = locked(&e, "locked.md");
+    let _held = locked(&e, "locked.md");
     open_walked(&mut e);
-    if locked.is_some() {
-        retried(&mut e, "locked.md");
-    }
+    retried(&mut e, "locked.md");
 
     let entries = listed(&e).split_off(first);
     let failed: Vec<_> = entries
@@ -230,10 +237,7 @@ fn a_later_open_records_the_files_that_came_while_closed() {
             .iter()
             .map(|entry| summary(entry))
             .collect::<Vec<_>>(),
-        locked
-            .iter()
-            .map(|_| (ActivityKind::Failed, Some("locked.md"), Some("read-failed")))
-            .collect::<Vec<_>>()
+        [(ActivityKind::Failed, Some("locked.md"), Some("read-failed"))]
     );
     assert!(failed.iter().all(|entry| entry.message.is_some()));
     let others: Vec<_> = entries
@@ -293,11 +297,9 @@ fn a_vault_whose_files_all_wait_still_records_its_problems() {
     let mut e = env(|store| Some(NotesIdentity::new(store)));
     e.write("photo.png", "not an image");
     e.write("tool.bin", "bytes");
-    let locked = locked(&e, "locked.md");
+    let _held = locked(&e, "locked.md");
     open_walked(&mut e);
-    if locked.is_some() {
-        retried(&mut e, "locked.md");
-    }
+    retried(&mut e, "locked.md");
     let entries = listed(&e);
     let failed = (ActivityKind::Failed, Some("locked.md"), Some("read-failed"));
     let skipped = (
@@ -306,8 +308,10 @@ fn a_vault_whose_files_all_wait_still_records_its_problems() {
         Some("unsupported-type"),
     );
     // The watcher's start rescan finds the note unreadable before the walk begins.
-    let expected: Vec<_> = locked.iter().map(|_| failed).chain([skipped]).collect();
-    assert_eq!(entries.iter().map(summary).collect::<Vec<_>>(), expected);
+    assert_eq!(
+        entries.iter().map(summary).collect::<Vec<_>>(),
+        [failed, skipped]
+    );
     e.close();
 }
 
@@ -318,11 +322,9 @@ fn an_electron_vault_not_imported_gets_no_activity_entry() {
     let mut e = env(|store| Some(NotesIdentity::new(store)));
     e.write(".memry/data.db", "");
     e.write("tool.bin", "bytes");
-    let locked = locked(&e, "locked.md");
+    let _held = locked(&e, "locked.md");
     open_walked(&mut e);
-    if locked.is_some() {
-        retried(&mut e, "locked.md");
-    }
+    retried(&mut e, "locked.md");
     e.write("later.heic", "not an image");
     e.facts_until(|fact| {
         matches!(fact, Applied::Vault(VaultEvent::Unsupported { path }) if path == "later.heic")

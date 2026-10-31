@@ -87,15 +87,29 @@ fn a_file_an_existing_note_adopts_is_not_listed_as_added() {
     assert_eq!(listed(&f), vec![]);
 }
 
-/// A note no one may read; `false` where nothing keeps it from being read (another OS, root).
-fn lock(f: &Fixture, rel: &str) -> bool {
+/// A note no one can read while the guard lives: no permission on unix; on Windows an open
+/// handle that shares nothing, as an antivirus scan holds a file. Fails when the file still
+/// reads (a test run as root).
+#[must_use]
+fn lock(f: &Fixture, rel: &str) -> Option<std::fs::File> {
     let path = f.root.join(rel);
     #[cfg(unix)]
-    {
+    let held = {
         use std::os::unix::fs::PermissionsExt as _;
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o000)).unwrap();
-    }
-    std::fs::read(&path).is_err()
+        None
+    };
+    #[cfg(windows)]
+    let held = {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        let open = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&path);
+        Some(open.unwrap())
+    };
+    assert!(std::fs::read(&path).is_err(), "{rel} must not be readable");
+    held
 }
 
 /// The walk is told of a read that failed, a new file's or a known note's whose file changed;
@@ -108,9 +122,7 @@ fn the_walk_is_told_of_the_reads_that_failed() {
     f.write("known.md", "edited while closed\n");
     f.write("new.md", "x\n");
     std::fs::write(f.root.join("latin1.md"), b"caf\xe9\n").unwrap();
-    if !(lock(&f, "known.md") && lock(&f, "new.md")) {
-        return;
-    }
+    let _held = (lock(&f, "known.md"), lock(&f, "new.md"));
     let mut scan = ScanActivity::default();
     for rel in ["known.md", "latin1.md", "new.md"] {
         let meta = std::fs::symlink_metadata(f.root.join(rel)).unwrap();
