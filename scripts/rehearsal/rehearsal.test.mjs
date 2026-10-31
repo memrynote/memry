@@ -5,13 +5,15 @@ import { feedValues, patchConstant, publishOverrides } from './build-electron-re
 import { pollUntil } from './drive-electron-update.mjs'
 import {
   assertPublishConfirmed,
+  assertWorkflowMatches,
   dispatchFields,
   FEED_REPO,
   flag,
   isPreviousFullOf,
   parseRehearsalVersion,
   rehearsalTag,
-  windowsPlan
+  windowsPlan,
+  workflowRef
 } from './rehearse.mjs'
 
 const velopack = {
@@ -105,6 +107,20 @@ describe('rehearse', () => {
       'source_ref=feat/x'
     ])
     assert.ok(!dispatchFields('2099.101.4', []).some((field) => field.startsWith('source_ref')))
+  })
+
+  it("runs the rehearsal repo workflow only when it is this checkout's copy", () => {
+    assert.equal(workflowRef([]), 'main')
+    assert.equal(workflowRef(['--workflow-ref', 'feat-x']), 'feat-x')
+    const local =
+      'jobs:\n  windows:\n    steps:\n      - run: node scripts/release/pe-imports.mjs pack/Memrynote.exe\n'
+    assert.doesNotThrow(() => assertWorkflowMatches(local, local, 'main'))
+    // The copy `2099.101.17` and `.18` ran: the step is missing.
+    const stale = 'jobs:\n  windows:\n    steps:\n'
+    assert.throws(
+      () => assertWorkflowMatches(stale, local, 'main'),
+      /memry-update-rehearsal@main has a different update-bridge-rehearsal\.yml than this checkout/
+    )
   })
 })
 
