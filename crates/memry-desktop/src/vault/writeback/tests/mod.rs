@@ -13,6 +13,8 @@ use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::domain::notes::identity::Adopted;
+use memry_core::domain::notes::journal_day::FileDay;
 use memry_core::markdown::frontmatter::{parse_markdown_note, split_frontmatter_block};
 use memry_core::markdown::shared::writing_tools::writing_of_yaml;
 use memry_core::seams::secure_store::SecureStore;
@@ -95,13 +97,37 @@ impl Fixture {
     /// for a file it fed (`Fed` or `Unchanged`, the row with the file's hash), its image embeds
     /// resolved as the consumer resolves them.
     pub(super) fn adopt(&mut self, rel: &str, text: &str) -> String {
-        self.write(rel, text);
         let id = self.writer.create("Note".into(), None).unwrap();
+        self.seed(&id, rel, text);
+        id
+    }
+
+    /// [`Self::adopt`] for the journal day `date` at `rel`, as the vault tier names it.
+    pub(super) fn adopt_day(&mut self, rel: &str, date: &str, text: &str) -> String {
+        let day = FileDay {
+            path: rel,
+            date,
+            title: date,
+            folder_path: None,
+            body: "",
+            created_ms: 0,
+            modified_ms: 0,
+            electron_db_beside: false,
+        };
+        let Adopted::Created(id) = self.writer.adopt_day(day, None, None).unwrap() else {
+            panic!("no day created");
+        };
+        self.seed(&id, rel, text);
+        id
+    }
+
+    fn seed(&mut self, id: &str, rel: &str, text: &str) {
+        self.write(rel, text);
         let parsed = parse_markdown_note(text).unwrap();
         let split = split_frontmatter_block(text);
         let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), split.body, rel);
         let input = FeedInput {
-            note_id: &id,
+            note_id: id,
             markdown: split.body,
             note_path: Some(rel),
             writing: Some(writing_of_yaml(&parsed.frontmatter)),
@@ -115,9 +141,8 @@ impl Fixture {
             .seed_body_if_empty(&converter_for(None), input)
             .unwrap();
         assert_eq!(outcome, FeedOutcome::Fed);
-        self.record(&id, rel, Some(content_hash(text)));
+        self.record(id, rel, Some(content_hash(text)));
         self.facts();
-        id
     }
 
     /// The row the consumer or the app records for the note's file.
@@ -327,6 +352,7 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
 mod deleted;
 mod embeds;
 mod guards;
+mod journal;
 mod perf;
 mod reconcile;
 mod schedule;

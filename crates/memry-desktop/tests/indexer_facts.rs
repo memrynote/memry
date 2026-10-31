@@ -2,9 +2,10 @@
 //! watcher, and converges: an app write, a removal and lost facts keep the rows current; nothing
 //! is worked before the open walk ends, a watcher failure inside it and a reindex included; a
 //! scan keeps the queued notes; a failed watcher still owes the scan; a file that cannot be read
-//! is measured once it reads, and its backoff does not hold back an edit; a rename whose fact
-//! was lost still moves the journal day; and the search index (links) is brought up to date at
-//! every open, not only after a pass that wrote rows.
+//! is measured once it reads, and its backoff does not hold back an edit; a day file moved to
+//! another day's path while the app was closed loses its stored day, though no fact said so;
+//! and the search index (links) is brought up to date at every open, not only after a pass that
+//! wrote rows.
 
 mod device_key;
 mod index_support;
@@ -33,7 +34,6 @@ fn stale_row(id: &str, text: &str) -> MeasuredFile {
     MeasuredFile {
         note_id: id.to_owned(),
         file_hash: content_hash(text),
-        date: None,
         text: "stale".to_owned(),
     }
 }
@@ -106,7 +106,6 @@ fn facts_keep_the_rows_current_and_lost_facts_run_a_scan() {
     let ghost = MeasuredFile {
         note_id: "ghost".into(),
         file_hash: "h".into(),
-        date: None,
         text: "gone".into(),
     };
     open.search.index_note_files(vec![ghost]).unwrap();
@@ -371,43 +370,51 @@ fn an_edit_beside_a_file_that_never_reads_is_not_held_by_its_backoff() {
     e.close();
 }
 
-/// A rename that kept the bytes, made while the app was closed and found by the next open, is a
-/// fact this task never hears (as one dropped by a lag or queued at a close). The scan still
-/// lists the note, by the journal day its path names now, and the row takes the day.
+/// A day's row takes the day its record says. Its file moved to another day's path while the
+/// app was closed is owed that move (13m part 2 ports what Electron does with it), and the
+/// path's day is never stored for it: the open's scan, which no fact asked for, measures the
+/// row again with no day.
 #[test]
-fn a_rename_whose_fact_was_lost_still_moves_the_journal_day() {
-    let (mut e, _store, notes) = seeded(1);
-    let (id, path) = &notes[0];
-    let text = note_text(0);
+fn a_day_moved_to_another_days_path_keeps_no_day_in_the_index() {
+    let mut e = env(|store| Some(NotesIdentity::new(store)));
+    e.write("journal/2026-01-05.md", "A day\n");
     e.open();
-    let row = MeasuredFile {
-        note_id: id.clone(),
-        file_hash: content_hash(&text),
-        date: None,
-        text: text.clone(),
-    };
-    e.session
-        .current()
-        .unwrap()
-        .search
-        .index_note_files(vec![row])
-        .unwrap();
-    e.close();
-    let day = "journal/2026-01-05.md";
-    std::fs::create_dir_all(e.vault.join("journal")).unwrap();
-    std::fs::rename(e.vault.join(path), e.vault.join(day)).unwrap();
-
-    e.open();
-    until("the open renamed the row", || {
-        e.rows().iter().any(|(row, at)| row == id && at == day)
-    });
+    e.facts_until(indexed);
+    let id = "j2026-01-05";
     let open = e.session.current().unwrap();
-    assert_eq!(open.search.note_stats(id).unwrap().unwrap().date, None);
+    let day = |open: &memry_desktop::session::OpenVault| {
+        open.search.note_stats(id).unwrap().and_then(|row| row.date)
+    };
     let (sender, receiver) = broadcast::channel(16);
     with_task(&open, receiver, |_| {
         sender.send(Applied::Indexed { complete: true }).unwrap();
-        until("the note's journal day", || {
-            open.search.note_stats(id).unwrap().unwrap().date.as_deref() == Some("2026-01-05")
+        until("the day's row", || {
+            day(&open).as_deref() == Some("2026-01-05")
+        });
+    });
+    drop(open);
+    e.close();
+
+    std::fs::rename(
+        e.vault.join("journal/2026-01-05.md"),
+        e.vault.join("journal/2026-01-06.md"),
+    )
+    .unwrap();
+    e.open();
+    until("the open moved the row", || {
+        e.rows()
+            .iter()
+            .any(|(row, at)| row == id && at == "journal/2026-01-06.md")
+    });
+    let open = e.session.current().unwrap();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |_| {
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("the day dropped from the row", || {
+            open.search
+                .note_stats(id)
+                .unwrap()
+                .is_some_and(|row| row.date.is_none())
         });
     });
     drop(open);

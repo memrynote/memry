@@ -52,6 +52,8 @@ mod attachments;
 mod duplicate;
 #[cfg(feature = "markdown")]
 pub mod identity;
+#[cfg(feature = "markdown")]
+pub mod journal_day;
 pub(crate) mod link_rewrite;
 pub mod local_only;
 mod metadata;

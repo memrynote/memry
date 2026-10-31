@@ -12,13 +12,16 @@
 //!   the read drops, a mark or attribute a newer build wrote;
 //! - the serializer gave nothing, which includes an author's spelling it could not restore.
 //!
-//! The file-side rules (the row's hash, the bytes on disk) are the shell's.
+//! The file-side rules (the row's hash, the bytes on disk) are the shell's. A journal day's
+//! body is read as a note's is (Step 13m); the shell writes its frontmatter by the day's rule,
+//! with the day's date ([`crate::domain::notes::journal_day::file_date`]).
 
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
 use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::errors::CrdtError;
+use crate::domain::notes::journal_day::body_owner;
 use crate::domain::{note_snapshots, owed_file_body, reads};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
@@ -30,7 +33,7 @@ use crate::sync::body_debt;
 pub enum BodyRead {
     /// What the file gets: the body and its `writing` frontmatter.
     Body(NoteBody),
-    /// No live note by that id.
+    /// No live note or journal day by that id.
     NoNote,
     /// The file holds an edit the document did not take.
     FileAhead,
@@ -55,7 +58,7 @@ pub fn body_for_file(
     file_body: &str,
     embeds: &dyn EmbedResolver,
 ) -> Result<BodyRead, CrdtError> {
-    if !reads::note_exists(conn, note_id) {
+    if body_owner(conn, note_id)?.is_none() {
         return Ok(BodyRead::NoNote);
     }
     if owed_file_body::owes(conn, note_id)? {
@@ -107,15 +110,8 @@ pub fn keep_replaced(
     note_snapshots::keep(conn, version, now_ms)
 }
 
-/// The note's title, `None` for no note by that id.
+/// The live note's title, or the live day's date: the title its versions carry. `None` for
+/// neither.
 pub fn title(conn: &Connection, note_id: &str) -> Result<Option<String>, StorageError> {
-    conn.query_row(
-        "SELECT title FROM notes WHERE id = ?1",
-        rusqlite::params![note_id],
-        |row| row.get(0),
-    )
-    .optional()
-    .map_err(|error| StorageError::Failed {
-        what: error.to_string(),
-    })
+    Ok(body_owner(conn, note_id)?.map(|owner| owner.title))
 }

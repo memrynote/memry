@@ -11,7 +11,7 @@
 //!   timer once per burst. `Removed` drops its row. The end of the open walk (`Indexed`), a
 //!   lagged subscription and a failed watcher owe a scan: the rows of notes with no markdown
 //!   file are dropped, and every markdown note whose row is missing, names other bytes than its
-//!   file or another journal day than its path is measured, with the queue
+//!   file or another journal day than its record is measured, with the queue
 //!   ([`Indexer::scan`]). Nothing is worked, a reindex included, before the walk ends or a
 //!   failed watcher means none will come: tier 0 goes first, and a pass beside a first walk
 //!   holds its database locks.

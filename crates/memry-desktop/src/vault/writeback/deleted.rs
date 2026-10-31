@@ -101,8 +101,8 @@ impl Pass {
                         "a deleted note's file"
                     );
                 }
-                // A file the document never took (a journal day's, which is not fed) is kept on
-                // every open: that is no news.
+                // A file the document never took (one whose row holds no hash) is kept on every
+                // open: that is no news.
                 Leftover::Kept if row.content_hash.is_none() => tracing::debug!(
                     scope = SCOPE,
                     note_id = row.note_id,
