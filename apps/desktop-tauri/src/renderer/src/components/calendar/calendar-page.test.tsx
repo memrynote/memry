@@ -1,5 +1,5 @@
 import { DndContext } from '@dnd-kit/core'
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { CalendarPage } from '@/pages/calendar'
@@ -433,13 +433,8 @@ describe('CalendarPage', () => {
     expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-view', 'timeline')
   })
 
-  it('restores the timeline view and steps it a month at a time without calendar filters', async () => {
-    const user = userEvent.setup()
+  it('restores the timeline view without calendar filters', async () => {
     localStorage.setItem('calendar-view', 'timeline')
-    const now = new Date()
-    const nextMonth = new Intl.DateTimeFormat('en', { month: 'long' }).format(
-      new Date(now.getFullYear(), now.getMonth() + 1, 1)
-    )
 
     renderWithProviders(<CalendarPageInDndContext />)
 
@@ -447,9 +442,65 @@ describe('CalendarPage', () => {
       expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-view', 'timeline')
     )
     expect(screen.queryByRole('button', { name: 'Filter calendars' })).not.toBeInTheDocument()
+  })
 
-    await user.click(screen.getByRole('button', { name: 'Next period' }))
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(nextMonth)
+  // Each "today" is a day the neighbouring month lacks. A step that lets the day
+  // overflow (Oct 31 + 1 month = Dec 1, Mar 31 - 1 month = Mar 3) skips or repeats a month.
+  describe.each(['month', 'timeline'] as const)('the %s view', (view) => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it.each([
+      {
+        today: [2026, 9, 31],
+        next: 'November 2026',
+        current: 'October 2026',
+        previous: 'September 2026'
+      },
+      {
+        today: [2027, 0, 31],
+        next: 'February 2027',
+        current: 'January 2027',
+        previous: 'December 2026'
+      },
+      {
+        today: [2026, 2, 31],
+        next: 'April 2026',
+        current: 'March 2026',
+        previous: 'February 2026'
+      },
+      {
+        today: [2028, 1, 29],
+        next: 'March 2028',
+        current: 'February 2028',
+        previous: 'January 2028'
+      }
+    ])(
+      'steps one month per click from the last day of $current',
+      async ({ today, next, current, previous }) => {
+        const [year, month, day] = today
+        vi.useFakeTimers({ toFake: ['Date'] })
+        vi.setSystemTime(new Date(year, month, day, 12))
+        const user = userEvent.setup()
+        localStorage.setItem('calendar-view', view)
+
+        renderWithProviders(<CalendarPageInDndContext />)
+
+        await waitFor(() =>
+          expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-view', view)
+        )
+        const heading = screen.getByRole('heading', { level: 2 })
+        expect(heading).toHaveTextContent(current)
+
+        await user.click(screen.getByRole('button', { name: 'Next period' }))
+        expect(heading).toHaveTextContent(next)
+        await user.click(screen.getByRole('button', { name: 'Previous period' }))
+        expect(heading).toHaveTextContent(current)
+        await user.click(screen.getByRole('button', { name: 'Previous period' }))
+        expect(heading).toHaveTextContent(previous)
+      }
+    )
   })
 
   it('restores a persisted view and wires period navigation controls', async () => {

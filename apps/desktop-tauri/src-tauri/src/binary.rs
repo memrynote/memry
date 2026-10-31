@@ -13,11 +13,14 @@ use crate::commands::error::{CommandError, ErrorKind};
 pub const META_HEADER: &str = "x-memry-meta";
 
 /// Names of the binary commands, routed to [`handler`] by `registry::invoke_handler`.
-pub const COMMANDS: &[&str] = &["drop_stage_chunk"];
+pub const COMMANDS: &[&str] = &["custom_icons_add", "drop_stage_chunk"];
 
 /// The handler of the binary commands. Domain steps add `tauri::generate_handler!` entries.
 pub fn handler<R: Runtime>() -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static {
-    tauri::generate_handler![crate::commands::drop_stage::drop_stage_chunk]
+    tauri::generate_handler![
+        crate::commands::custom_icons::custom_icons_add,
+        crate::commands::drop_stage::drop_stage_chunk
+    ]
 }
 
 /// The raw request body.
