@@ -120,7 +120,7 @@ node scripts/check-test-timing.mjs
 - Shared code has no app-only changes. A change in `packages/` keeps every consumer green, including desktop, the CLI, and the sync server.
 - A failing test is a defect until proven otherwise. Fix the owner and keep a regression test. Skipping, loosening, or deleting a test to get green needs Kaan's approval.
 - Tests protect user-visible behavior and contracts, not implementation details. Test the seam that can lose data through the real adapter. A mocked boundary supplements that test and is never evidence that the boundary works. A bug fix ships with a test that fails without the fix.
-- Pre-commit runs lint-staged (oxfmt, and oxlint errors without type information or fixes) and the whitespace, staged-secret, and renderer guard checks, plus `check:lockfile` and `ipc:check` when their inputs change. Pre-push refuses force pushes and checks the branch name and the [docs gate](apps/docs/AGENTS.md#docs-gate). CI owns lint, typecheck, and tests, so they stay out of pre-push unless Kaan asks.
+- Pre-commit runs lint-staged (oxfmt, and oxlint errors without type information or fixes) and the whitespace, staged-secret, and renderer guard checks, plus `check:lockfile` and `ipc:check` when their inputs change. Pre-push refuses force pushes, re-runs the staged-secret scan and the oxfmt check over the files the pushed commits add or change, read at the pushed commit (so `--no-verify` commits are still checked), and checks the branch name and the [docs gate](apps/docs/AGENTS.md#docs-gate). CI owns lint, typecheck, and tests, so they stay out of pre-push unless Kaan asks.
 
 ## Authority and safety
 

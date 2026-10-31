@@ -57,9 +57,16 @@ fn measured(id: &str, hash: &str) -> MeasuredFile {
     }
 }
 
+/// The day a path under `journal/` names, as desktop's journal rule reads one.
+fn journal_day(path: &str) -> Option<String> {
+    path.strip_prefix("journal/")?
+        .strip_suffix(".md")
+        .map(str::to_owned)
+}
+
 fn listed(search: &Search, all: bool) -> Vec<String> {
     search
-        .unindexed_notes(all)
+        .unindexed_notes(all, &journal_day)
         .expect("list")
         .into_iter()
         .map(|note| note.note_id)
@@ -127,6 +134,52 @@ fn the_stored_hash_against_the_file_hash_decides_what_is_listed() {
     assert_eq!(listed(&search, true), ["same", "moved-on", "unread"]);
 }
 
+/// A rename that kept the bytes names another journal day: the row's day against the one the
+/// path names now lists it, though the hashes agree.
+#[test]
+fn the_day_the_path_names_now_decides_too() {
+    let dir = scratch();
+    let (vault, search) = open(dir.path());
+    let day = |id: &str, date: Option<&str>| MeasuredFile {
+        date: date.map(str::to_owned),
+        ..measured(id, "h1")
+    };
+    row(
+        &vault,
+        "kept",
+        "journal/2026-01-05.md",
+        "markdown",
+        10,
+        Some("h1"),
+    );
+    row(
+        &vault,
+        "into",
+        "journal/2026-01-06.md",
+        "markdown",
+        20,
+        Some("h1"),
+    );
+    row(&vault, "out", "notes/out.md", "markdown", 30, Some("h1"));
+    row(
+        &vault,
+        "moved",
+        "journal/2026-01-08.md",
+        "markdown",
+        40,
+        Some("h1"),
+    );
+    let files = vec![
+        day("kept", Some("2026-01-05")),
+        day("into", None),
+        day("out", Some("2026-01-07")),
+        day("moved", Some("2026-01-07")),
+    ];
+    search.index_note_files(files).expect("write");
+
+    assert_eq!(listed(&search, false), ["into", "out", "moved"]);
+}
+
 #[test]
 fn rows_survive_a_reopen() {
     let dir = scratch();
@@ -191,4 +244,22 @@ fn a_version_2_index_migrates_in_place_to_note_stats() {
     assert_eq!(listed(&search, false), ["small", "mid", "big"]);
     index_all(&search);
     assert!(listed(&search, false).is_empty());
+}
+
+#[test]
+fn rows_of_notes_without_a_markdown_file_are_pruned() {
+    let dir = scratch();
+    let (vault, search) = open(dir.path());
+    seed_three(&vault);
+    index_all(&search);
+    search
+        .index_note_files(vec![measured("ghost", "h-ghost")])
+        .expect("a row no file names");
+    assert!(vault.note_files().remove("mid").expect("remove"));
+
+    assert_eq!(search.prune_note_stats().expect("prune"), 2);
+    assert_eq!(search.note_stats("mid").expect("read"), None);
+    assert_eq!(search.note_stats("ghost").expect("read"), None);
+    assert!(search.note_stats("small").expect("read").is_some());
+    assert_eq!(search.prune_note_stats().expect("prune again"), 0);
 }
