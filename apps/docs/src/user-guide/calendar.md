@@ -20,6 +20,8 @@ The current view persists per tab.
 
 Opening Calendar always lands on today, in that view. The date you navigate to is kept for as long as the app stays open — switch to another tab and back and you return to it — but it is not carried over to the next launch, and no dialog is ever open for you when the page appears. Earlier versions restored the last date you had visited along with the last **New event** click, so Calendar could open on a day weeks in the past with the event-creation dialog already up.
 
+The previous and next buttons move one whole month in month view, and one whole year in year view, even from the end of a month. From 31 October, next goes to November and previous to September; from 29 February, next year lands on 28 February. Earlier versions let the day run over into the following month, so 31 October stepped to December and 31 March stepped back to March again.
+
 Day and week views show a current-time marker on today's grid; event chips remain the
 clickable target for opening or editing events.
 
