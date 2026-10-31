@@ -7,6 +7,8 @@
 //! [`crate::domain::note_files`]. Every method blocks; the shell runs them in
 //! `spawn_blocking`.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use crate::api::errors::StorageError;
 use crate::domain::note_files::{self, NoteFile, NoteFileStat};
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
@@ -118,6 +120,16 @@ impl NoteFiles {
 
     pub fn list_paths(&self) -> Result<Vec<(String, String)>, StorageError> {
         self.db.read_blocking(note_files::list_paths)
+    }
+
+    /// [`note_files::by_filename_lower`].
+    pub fn by_filename_lower(
+        &self,
+        file_type: &str,
+        names: &BTreeSet<String>,
+    ) -> Result<BTreeMap<String, Vec<String>>, StorageError> {
+        self.db
+            .read_blocking(|conn| note_files::by_filename_lower(conn, file_type, names))
     }
 
     /// Sets or clears the note's local-only flag and settles its outbox rows

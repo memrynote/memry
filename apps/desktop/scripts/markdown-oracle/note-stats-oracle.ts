@@ -1,34 +1,10 @@
 /**
- * The `note-stats.json` vector file: what `syncNoteToCache` measures in a vault file. Inputs
- * are below; the outputs come from running the Electron functions on them, exactly as
- * `extractNoteMetadata` (note-sync.ts) and the task id scan of
- * note-derived-state-projector.ts call them. The Rust core reproduces the file
- * (`crates/memry-core/tests/note_stats_vectors.rs`).
+ * The cases of the `note-stats.json` vector file: what `syncNoteToCache` measures in a vault
+ * file. `oracle-serve.oracle.ts` runs Electron's own `extractNoteMetadata` (note-sync.ts) and
+ * the task id scan of note-derived-state-projector.ts on each; the Rust core reproduces the
+ * file (`crates/memry-core/tests/note_stats_vectors.rs`).
  */
-import { COVER_FRONTMATTER_KEY, isCoverValue } from '@memry/shared/cover-image'
-import { scanTaskCheckboxStates } from '@memry/shared/task-block'
-
-import {
-  calculateWordCount,
-  createSnippet,
-  extractTags,
-  parseNote
-} from '../../src/main/vault/frontmatter'
 import type { OracleCase } from './cases-frontmatter'
-
-export function noteStats(raw: string): unknown {
-  const parsed = parseNote(raw)
-  const body = parsed.content
-  const cover: unknown = parsed.frontmatter[COVER_FRONTMATTER_KEY]
-  return {
-    wordCount: calculateWordCount(body),
-    characterCount: body.length,
-    snippet: createSnippet(body),
-    cover: isCoverValue(cover) ? cover : null,
-    taskIds: [...scanTaskCheckboxStates(body).keys()],
-    headerTags: extractTags(parsed.frontmatter)
-  }
-}
 
 const FM = (yaml: string): string => `---\n${yaml}---\n`
 const words = (count: number, word = 'word'): string =>
@@ -79,7 +55,13 @@ export function noteStatsCases(): OracleCase[] {
     'list-frontmatter': `${FM('- a\n- b\n')}x`,
     'task-ids':
       '- [ ] first {task:t1}\n- [x] second {task:t2}\n  - [ ] nested {task:t3}\n- [ ] first again {task:t1}\n- [ ] plain',
-    'unclosed-frontmatter': '---\ntags: [a]\nno close'
+    'unclosed-frontmatter': '---\ntags: [a]\nno close',
+    'tags-true': `${FM('tags: true\n')}x`,
+    'tags-date': `${FM('tags: 2024-01-01\n')}x`,
+    'tags-nan': `${FM('tags: .nan\n')}x`,
+    'wiki-embed': 'before ![[embed.png]] after ![[Note#Part|shown]] end',
+    cjk: `漢字かなまじり文です。 한국어 문장 中文句子\n\n${'字'.repeat(250)}`,
+    rtl: 'مرحبا بالعالم هذا نص عربي\nשלום עולם זה טקסט בעברית\n'
   }
   return Object.entries(texts).map(([slug, text]) => ({
     id: `note-stats/${slug}`,

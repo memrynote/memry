@@ -1,6 +1,8 @@
 //! A vault write changes only the bytes it means to and never replaces a file it did not
 //! read: exclusive creation, kept file attributes, and a containment check at the rename.
 
+mod on_warning;
+
 use std::fs;
 use std::path::Path;
 
@@ -11,6 +13,7 @@ use memry_desktop::vault::fs_atomic::{
 use memry_desktop::vault::note_file::{
     NoteFileError, hash_file, read_note, write_new_note, write_new_note_checked, write_note,
 };
+use on_warning::{HARD_LINK_REFUSED, on_warnings};
 
 fn entries(dir: &Path) -> Vec<String> {
     let mut names: Vec<_> = fs::read_dir(dir)
@@ -236,7 +239,8 @@ fn a_hard_linked_note_is_refused_with_its_own_error_and_both_names_keep_their_by
 }
 
 /// A create links the new file into place and then drops the temp name. A reader in that
-/// window sees a second link on a file nobody linked, and must look again, not fail.
+/// window sees a second link on a file nobody linked, and must look again, not fail. The temp
+/// name goes when the reader first refuses the file ([`on_warning`]), never by the clock.
 #[test]
 fn a_reader_in_the_create_window_waits_for_the_temp_link_to_go() {
     let dir = tempfile::tempdir().unwrap();
@@ -244,11 +248,17 @@ fn a_reader_in_the_create_window_waits_for_the_temp_link_to_go() {
     fs::write(&note, "fresh\n").unwrap();
     let temp = dir.path().join(".0123456789ab.tmp");
     fs::hard_link(&note, &temp).unwrap();
-    let remover = std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_millis(25));
-        fs::remove_file(temp).unwrap();
+    let drop_temp = move |refusal: usize| {
+        if refusal == 1 {
+            fs::remove_file(&temp).unwrap();
+        }
+    };
+    let (read, refusals) = on_warnings(HARD_LINK_REFUSED, drop_temp, || {
+        read_note(dir.path(), "a.md")
     });
-    let read = read_note(dir.path(), "a.md").unwrap().expect("the note");
-    assert_eq!(read.raw, "fresh\n");
-    remover.join().unwrap();
+    assert_eq!(
+        refusals, 1,
+        "the reader never saw the second link: {read:?}"
+    );
+    assert_eq!(read.unwrap().expect("the note").raw, "fresh\n");
 }

@@ -32,6 +32,8 @@
 //! and [`set_hash`] replace it too, and [`set_file_hash`] records a read that
 //! changed nothing else.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 use crate::api::errors::StorageError;
@@ -236,6 +238,11 @@ pub fn set_file_hash(
 /// [`upsert_stat`] for a file read again and found to be the bytes its row names: the row's
 /// stamp moves to `stat.indexed_at` only while no body entry is stamped after it, since the
 /// read says nothing of the body ([`NoteFile::indexed_at`]). The row must exist.
+///
+/// The file is back to the text its row's hash names, which the document took, so it is no
+/// longer ahead of the document: a file body the note owed ([`crate::domain::owed_file_body`],
+/// a text the document refused, since replaced by this one) is owed no more, and the
+/// write-back may write the document again.
 pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), StorageError> {
     check_path(&stat.path)?;
     let tx = conn.unchecked_transaction().map_err(failed)?;
@@ -270,6 +277,7 @@ pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), Storag
         return Err(not_found(&stat.note_id));
     }
     write_file_hash(&tx, &stat.note_id, stat.file_hash.as_deref())?;
+    crate::domain::owed_file_body::clear(&tx, &stat.note_id)?;
     tx.commit().map_err(failed)
 }
 
@@ -451,6 +459,21 @@ pub fn behind_bodies(conn: &Connection) -> Result<Vec<String>, StorageError> {
         .map_err(failed)
 }
 
+/// Whether the note's body moved after its row's stamp ([`behind_bodies`], for one note whatever
+/// its row's hashes): an edit, or a merged page, its file has not been written with. `false`
+/// for a note without a row.
+pub fn behind_body(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    conn.query_row(
+        &format!(
+            "SELECT EXISTS (SELECT 1 FROM note_files WHERE note_id = ?1 AND {})",
+            body_moved_after_stamp()
+        ),
+        params![note_id],
+        |row| row.get(0),
+    )
+    .map_err(failed)
+}
+
 /// The markdown rows of tombstoned notes and journal days, by path: files a deletion on
 /// another device, or one whose file operation a crash cut short, left in the vault. A note
 /// this vault has no record of is not among them: its record may not have arrived yet, and
@@ -485,6 +508,35 @@ pub fn list_paths(conn: &Connection) -> Result<Vec<(String, String)>, StorageErr
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)
+}
+
+/// The paths of the `file_type` rows whose file name, lowercased, is one of `names`, grouped
+/// by that name, each group in path order. For the vault tier's embed lookup
+/// (`lookupByFilenames` of `vault/resolve-embed.ts`). The table stores whole paths, so every
+/// row of the type is read, once for a whole batch of names.
+pub fn by_filename_lower(
+    conn: &Connection,
+    file_type: &str,
+    names: &BTreeSet<String>,
+) -> Result<BTreeMap<String, Vec<String>>, StorageError> {
+    let mut found: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    if names.is_empty() {
+        return Ok(found);
+    }
+    let mut statement = conn
+        .prepare("SELECT path FROM note_files WHERE file_type = ?1 ORDER BY path")
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![file_type], |row| row.get::<_, String>(0))
+        .map_err(failed)?;
+    for path in rows {
+        let path = path.map_err(failed)?;
+        let name = path.rsplit('/').next().unwrap_or(&path).to_lowercase();
+        if names.contains(&name) {
+            found.entry(name).or_default().push(path);
+        }
+    }
+    Ok(found)
 }
 
 /// Writes the flag and nothing else. [`crate::domain::notes::local_only::set`]

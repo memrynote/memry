@@ -4,6 +4,8 @@
 //! survives every write, an entry this build cannot read survives every write, a file it
 //! cannot read is never replaced, and a hostile file cannot stall or crash a read.
 
+mod on_warning;
+
 use std::fs;
 use std::path::Path;
 
@@ -322,31 +324,40 @@ fn a_definition_no_build_reads_back_is_never_written() {
 
 /// A read that fails for a moment (a Windows sharing violation, here a permission taken away
 /// and given back) is retried as a write's rename is: the read, and the check right before the
-/// rename that reads the file again, so the write lands.
+/// rename that reads the file again, so the write lands. The permission comes back at the first
+/// failed try ([`on_warning`]), never by the clock.
 #[cfg(unix)]
 #[test]
 fn a_file_unreadable_for_a_moment_is_read_again() {
     use std::os::unix::fs::PermissionsExt;
+
+    use crate::on_warning::{TRANSIENT_RETRY, on_warnings};
     let dir = vault_with(Some(b"---\nproperties: {A: {type: url}}\n---\n"));
     let path = properties_path(dir.path());
-    let mode = |bits| fs::set_permissions(&path, fs::Permissions::from_mode(bits)).unwrap();
-    let for_a_moment = || {
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        mode(0o644);
+    let mode =
+        |path: &Path, bits| fs::set_permissions(path, fs::Permissions::from_mode(bits)).unwrap();
+    let give_back = || {
+        let path = path.clone();
+        move |_| mode(&path, 0o644)
     };
-    std::thread::scope(|scope| {
-        mode(0o000);
-        scope.spawn(for_a_moment);
-        assert!(read(dir.path()).is_ok());
+    let (read_once, tries) = on_warnings(TRANSIENT_RETRY, give_back(), || {
+        mode(&path, 0o000);
+        read(dir.path())
     });
-    std::thread::scope(|scope| {
+    assert!(
+        read_once.is_ok() && tries == 1,
+        "{read_once:?} after {tries} failed tries"
+    );
+    let (updated, tries) = on_warnings(TRANSIENT_RETRY, give_back(), || {
         update(dir.path(), |definitions| {
-            mode(0o000);
-            scope.spawn(for_a_moment);
+            mode(&path, 0o000);
             definitions.insert("X".into(), text_definition());
         })
-        .unwrap();
     });
+    assert!(
+        updated.is_ok() && tries == 1,
+        "{updated:?} after {tries} failed tries"
+    );
     let file = read(dir.path()).unwrap();
     assert!(file.definitions.get("A").is_some() && file.definitions.get("X").is_some());
 }

@@ -150,23 +150,31 @@ fn warn_once(path: &Path, message: &str) {
 
 /// `readVaultConfig`. Never fails: the defaults stand in for a missing or unusable file.
 pub fn read_vault_config(vault: &Path) -> VaultConfig {
+    read_vault_config_strict(vault).unwrap_or_else(|message| {
+        warn_once(&config_path(vault), &message);
+        VaultConfig::default()
+    })
+}
+
+/// [`read_vault_config`] that tells an unusable file (`Err`, with why) from a missing one (the
+/// defaults), for a caller that must not act on defaults standing in for the user's settings.
+pub fn read_vault_config_strict(vault: &Path) -> Result<VaultConfig, String> {
     let path = config_path(vault);
     let (file, stamp) = match open_config(vault) {
         Ok(Some(opened)) => opened,
         Ok(None) => {
             invalidate_path(&path);
-            return VaultConfig::default();
+            return Ok(VaultConfig::default());
         }
         Err(message) => {
             invalidate_path(&path);
-            warn_once(&path, &message);
-            return VaultConfig::default();
+            return Err(message);
         }
     };
     if let Some(entry) = cache().get(&path)
         && entry.stamp == stamp
     {
-        return entry.config.clone();
+        return Ok(entry.config.clone());
     }
     match read_object(file) {
         Ok(map) => {
@@ -178,12 +186,11 @@ pub fn read_vault_config(vault: &Path) -> VaultConfig {
                     stamp,
                 },
             );
-            config
+            Ok(config)
         }
         Err(message) => {
             invalidate_path(&path);
-            warn_once(&path, &message);
-            VaultConfig::default()
+            Err(message)
         }
     }
 }

@@ -6,9 +6,15 @@ import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { CustomIconGrid } from './CustomIconGrid'
 
+const { add, addFromUrl } = vi.hoisted(() => ({ add: vi.fn(), addFromUrl: vi.fn() }))
+
 vi.mock('@/lib/custom-icons-store', () => ({
   useCustomIcons: () => [],
   refreshCustomIcons: vi.fn(async () => {})
+}))
+
+vi.mock('@/services/custom-icons-service', () => ({
+  customIconsService: { add, addFromUrl }
 }))
 
 let i18n: I18nInstance
@@ -17,14 +23,9 @@ beforeAll(async () => {
   i18n = await createRendererI18n({ locale: 'en' })
 })
 
-const addFromUrl = vi.fn()
-
 beforeEach(() => {
   vi.clearAllMocks()
   addFromUrl.mockResolvedValue({ id: 'icon-1' })
-  ;(window as unknown as { api: unknown }).api = {
-    customIcons: { add: vi.fn(), addFromUrl, rename: vi.fn(), delete: vi.fn(), list: vi.fn() }
-  }
 })
 
 const renderGrid = () =>
@@ -35,16 +36,14 @@ const renderGrid = () =>
   )
 
 describe('CustomIconGrid link input', () => {
-  it('hands the link to the main process and clears the field', async () => {
+  it('hands the link to the download command and clears the field', async () => {
     const user = userEvent.setup()
     renderGrid()
 
     const input = screen.getByLabelText('Image link')
     await user.type(input, 'https://example.com/star.png{Enter}')
 
-    await waitFor(() =>
-      expect(addFromUrl).toHaveBeenCalledWith({ url: 'https://example.com/star.png' })
-    )
+    await waitFor(() => expect(addFromUrl).toHaveBeenCalledWith('https://example.com/star.png'))
     await waitFor(() => expect(input).toHaveValue(''))
   })
 
@@ -68,5 +67,20 @@ describe('CustomIconGrid link input', () => {
     await user.type(screen.getByLabelText('Image link'), '   {Enter}')
 
     expect(addFromUrl).not.toHaveBeenCalled()
+  })
+})
+
+describe('CustomIconGrid upload', () => {
+  it('refuses a file over 2 MB before reading it', async () => {
+    const user = userEvent.setup()
+    const { container } = renderGrid()
+    const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'huge.png', { type: 'image/png' })
+
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, big)
+
+    expect(
+      await screen.findByText('That image is too large. Pick a file under 2 MB.')
+    ).toBeInTheDocument()
+    expect(add).not.toHaveBeenCalled()
   })
 })

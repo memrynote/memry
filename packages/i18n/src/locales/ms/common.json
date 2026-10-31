@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Semak panel peringatan untuk butiran",
     "searchIndexRepaired": "Indeks carian dibaiki",
     "searchIndexRepairedHint": "Sebahagian indeks carian telah rosak, jadi Memry membinanya semula. Nota anda tidak terjejas.",
+    "folderMoveUndone": "Pemindahan folder yang terganggu telah dibuat asal",
+    "folderMoveUndoneHint": "Nota telah kembali ke folder asalnya.",
+    "folderMoveShown": "Nota daripada pemindahan folder yang terganggu kelihatan semula",
+    "folderMoveConflictCopies": "Nota yang namanya telah diambil sementara itu berakhir dengan “{suffix}”.",
+    "folderMoveIncomplete": "Sesetengah nota berada dalam folder yang namanya berakhir dengan “{suffix}”.",
+    "folderMoveNothingDeleted": "Tiada apa-apa yang dipadam.",
     "drop": {
       "tooLarge": "Satu fail yang dilepaskan lebih besar daripada 2 GB.",
       "tooMany": "Terlalu banyak fail menunggu untuk diimport. Lepaskan lebih sedikit fail dan cuba lagi.",

@@ -86,6 +86,9 @@ icu_decimal = "2.4.0"
 notify = "8.2.1"
 # Deleted notes' files go to the OS trash, not an unlink (`vault::trash`).
 trash = "5.2.9"
+# Custom icons (`notes::icons`): raster uploads are decoded and re-encoded as PNG. Only the four
+# input formats of `CUSTOM_ICON_INPUT_EXTENSIONS` are compiled in.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

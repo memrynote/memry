@@ -122,6 +122,21 @@ impl Vault {
         crate::api::external_feed::ExternalFeed::over(self.db.clone(), &store)
     }
 
+    /// Records what this vault's core database was created over, once (desktop
+    /// Step 13d): each open says whether Electron's `data.db` is beside it, and
+    /// the first answer recorded stays. See
+    /// [`crate::domain::notes::identity::record_origin`].
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[cfg(feature = "markdown")]
+    #[doc(hidden)]
+    pub fn record_origin(
+        &self,
+        origin: crate::domain::notes::identity::Origin,
+    ) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| crate::domain::notes::identity::record_origin(conn, origin))
+    }
+
     /// What the vault write-back puts in note files (desktop Step 12e-3).
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[cfg(feature = "markdown")]
@@ -138,6 +153,16 @@ impl Vault {
         store: Arc<dyn SecureStore>,
     ) -> Result<crate::domain::app_settings::AppSettings, AuthError> {
         crate::domain::app_settings::AppSettings::over(self.db.clone(), &store)
+    }
+
+    /// This vault's custom icon library, written under this device's identity (desktop
+    /// Step 13o). Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn custom_icons(
+        &self,
+        store: Arc<dyn SecureStore>,
+    ) -> Result<crate::domain::custom_icons::CustomIconStore, AuthError> {
+        crate::domain::custom_icons::CustomIconStore::over(self.db.clone(), &store)
     }
 }
 

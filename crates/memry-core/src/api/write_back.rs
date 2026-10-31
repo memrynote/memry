@@ -6,6 +6,7 @@
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::write_back::{self, BodyRead};
+use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::storage::Db;
 
@@ -25,11 +26,12 @@ impl WriteBackReader {
         note_id: &str,
         note_path: &str,
         file_body: &str,
+        embeds: &dyn EmbedResolver,
     ) -> Result<BodyRead, CrdtError> {
         self.db
             .call_blocking(move |conn| {
                 Ok(write_back::body_for_file(
-                    conn, converter, note_id, note_path, file_body,
+                    conn, converter, note_id, note_path, file_body, embeds,
                 ))
             })
             .map_err(CrdtError::from)?

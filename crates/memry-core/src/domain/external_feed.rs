@@ -71,7 +71,8 @@
 //! update it authors packs past the server's 5 MiB cap
 //! ([`crate::protocol::crdt_envelope::packed_len`], the measure the server
 //! applies; the raw markdown length is wrong both ways). The caller must not
-//! treat the file as read. The same holds for [`FeedOutcome::Refused`].
+//! treat the file as read, and the note owes its file body, as for
+//! [`FeedOutcome::Refused`].
 
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -85,6 +86,7 @@ use crate::crdt::registry::UpdateSink;
 use crate::domain::body_write::append_in;
 use crate::domain::notes::ITEM_TYPE;
 use crate::domain::{note_snapshots, owed_file_body, reads};
+use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::{Converter, ReplaceOptions};
 use crate::markdown::convert::apply::ReplaceOutcome;
 use crate::markdown::convert::restore::SerializeOptions;
@@ -105,9 +107,13 @@ pub enum FeedOutcome {
     /// owes its file body.
     Owed,
     /// No update can carry this markdown: large-file class, or its update packs
-    /// past [`MAX_UPDATE_BYTES`].
+    /// past [`MAX_UPDATE_BYTES`]. Nothing was written to the document, and the
+    /// note now owes its file body: the file holds a text the document did not
+    /// take, so the write-back keeps it and the vault tier pairs no move by the
+    /// row's older hash.
     LargeFile,
-    /// Seed only: the document already holds a body, which was left alone.
+    /// Seed only: the document already holds a body, not the file's text, and it
+    /// was left alone.
     BodyPresent,
     /// The document's body already serializes to this markdown: nothing was
     /// written, and the file counts as read.
@@ -146,6 +152,10 @@ pub struct FeedInput<'a> {
     /// The file's frontmatter block, verbatim (`split_frontmatter_block`), which a
     /// kept version carries above the body it replaced, as the file did.
     pub frontmatter: Option<&'a str>,
+    /// The vault's image embed lookup, for the file's markdown and for the proof parse of the
+    /// body it replaces; none leaves every `![[target]]` as written. It runs while this
+    /// database's writer is held, so it must not read this database.
+    pub embeds: Option<&'a dyn EmbedResolver>,
 }
 
 /// Replaces the body of the note with the file's text.
@@ -160,7 +170,8 @@ pub fn feed_external_edit(
 }
 
 /// Gives a note with an empty body the file's text, and does nothing to one that
-/// has a body.
+/// has a body: [`FeedOutcome::Unchanged`] when that body already serializes to the
+/// file's text (the file counts as read), else [`FeedOutcome::BodyPresent`].
 pub fn seed_body_if_empty(
     conn: &Connection,
     converter: &Converter,
@@ -198,6 +209,7 @@ fn author(
         note_path,
         writing,
         frontmatter,
+        embeds,
     } = input;
     let markdown = markdown.strip_prefix('\u{feff}').unwrap_or(markdown);
     if !reads::note_exists(conn, note_id) {
@@ -207,6 +219,7 @@ fn author(
         .large_file
         .is_some()
     {
+        owed_file_body::record(conn, note_id, now_ms)?;
         return Ok(FeedOutcome::LargeFile);
     }
 
@@ -229,20 +242,23 @@ fn author(
     };
     let document = epoch::open_for_write(&tx, device_id, note_id, sink)?;
     let empty = body_is_empty(&document)?;
-    if write == Write::SeedIfEmpty && !empty {
-        return Ok(FeedOutcome::BodyPresent);
-    }
+    let seed = write == Write::SeedIfEmpty;
     // The body as the write-back would write it. One this build cannot write out
     // whole (a block a newer build added, a node the schema would drop) is never
-    // replaced, and one the file already says is not fed again.
+    // replaced, and one the file already says is not fed again. A seed replaces
+    // no body: it only tells one the file already says from one it does not.
     let replaced = if empty {
         None
     } else {
         let options = SerializeOptions {
             note_path,
+            embeds,
             ..SerializeOptions::default()
         };
         let Some(body) = converter.serialize_note_body(&document, BODY_FRAGMENT, &options) else {
+            if seed {
+                return Ok(FeedOutcome::BodyPresent);
+            }
             return refuse(tx, note_id, now_ms, Refusal::BodyNotRepresentable);
         };
         // Text first: a file that reads back what the document says (the app's own
@@ -254,6 +270,9 @@ fn author(
             owed_file_body::clear(&tx, note_id)?;
             tx.commit().map_err(storage_failed)?;
             return Ok(FeedOutcome::Unchanged);
+        }
+        if seed {
+            return Ok(FeedOutcome::BodyPresent);
         }
         if !body.unrepresentable.is_empty() || !converter.reads_losslessly(&document, BODY_FRAGMENT)
         {
@@ -268,12 +287,12 @@ fn author(
             note_path,
             writing,
             unless_changed_from: None,
-            embeds: None,
+            embeds,
         },
     );
     match outcome {
         ReplaceOutcome::Replaced => {}
-        ReplaceOutcome::RefusedLargeFile => return Ok(FeedOutcome::LargeFile),
+        ReplaceOutcome::RefusedLargeFile => return too_large(tx, note_id, now_ms),
         ReplaceOutcome::Changed | ReplaceOutcome::Failed => {
             return refuse(tx, note_id, now_ms, Refusal::FileNotConvertible);
         }
@@ -281,7 +300,7 @@ fn author(
 
     let updates = std::mem::take(&mut *authored.lock().unwrap_or_else(PoisonError::into_inner));
     if !updates.iter().all(|update| rides_as_one_update(update)) {
-        return Ok(FeedOutcome::LargeFile);
+        return too_large(tx, note_id, now_ms);
     }
     if let Some(previous) = replaced {
         let version = note_snapshots::Version {
@@ -302,6 +321,18 @@ fn author(
     owed_file_body::clear(&tx, note_id)?;
     tx.commit().map_err(storage_failed)?;
     Ok(FeedOutcome::Fed)
+}
+
+/// No update can carry the file's text: the file owes its body, as a refused
+/// feed's does ([`refuse`]).
+fn too_large(
+    tx: rusqlite::Transaction<'_>,
+    note_id: &str,
+    now_ms: i64,
+) -> Result<FeedOutcome, CrdtError> {
+    owed_file_body::record(&tx, note_id, now_ms)?;
+    tx.commit().map_err(storage_failed)?;
+    Ok(FeedOutcome::LargeFile)
 }
 
 /// The file holds an edit the document did not take: it owes its body, so the

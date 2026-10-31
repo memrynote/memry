@@ -39,7 +39,7 @@ pub use preferences::{
 };
 pub use vault_config::{
     VaultConfig, VaultConfigPatch, invalidate_vault_config_cache, read_vault_config,
-    write_vault_config,
+    read_vault_config_strict, write_vault_config,
 };
 
 use super::fs_atomic::{self, WriteError};

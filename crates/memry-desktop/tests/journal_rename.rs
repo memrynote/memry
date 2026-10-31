@@ -4,6 +4,7 @@
 //! The planner's rules are pinned against Electron in `journal_format_vectors.rs`.
 
 mod device_key;
+mod on_warning;
 mod vault_env;
 
 use std::collections::HashSet;
@@ -353,27 +354,33 @@ fn a_pruned_folder_made_again_and_moved_out_is_a_delete() {
 
 /// A delete by another program while a move waits to try again is that program's. The move
 /// fails on a month folder it cannot write in, so it retries after 50, 150 and 450 ms; the
-/// file is deleted during the longest wait. The record that the old name goes is up only while
-/// the move is tried, never while it waits.
+/// file is deleted as the longest wait begins, at the third failed try ([`on_warning`]), never
+/// by the clock. The record that the old name goes is up only while the move is tried, never
+/// while it waits.
 #[cfg(unix)]
 #[test]
 fn a_delete_while_a_move_waits_to_retry_is_still_a_delete() {
     use std::os::unix::fs::PermissionsExt;
+
+    use crate::on_warning::{TRANSIENT_RETRY, on_warnings};
     let (mut e, identity) = watched(Removal::Deleted, &[("2025-01-14.md", "entry\n")]);
     let id = id_at(&e, "journal/2025-01-14.md");
     let month = e.vault.join("journal/2025/January");
     fs::create_dir_all(&month).unwrap();
     fs::set_permissions(&month, fs::Permissions::from_mode(0o555)).unwrap();
     let source = e.vault.join("journal/2025-01-14.md");
-    let deleter = std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_millis(300));
-        fs::remove_file(source).unwrap();
-    });
+    let delete = move |try_: usize| {
+        if try_ == 3 {
+            fs::remove_file(&source).unwrap();
+        }
+    };
 
-    let result = rename(&e, "journal", DAILY, NESTED);
-    deleter.join().unwrap();
+    let (result, tries) = on_warnings(TRANSIENT_RETRY, delete, || {
+        rename(&e, "journal", DAILY, NESTED)
+    });
     fs::set_permissions(&month, fs::Permissions::from_mode(0o755)).unwrap();
 
+    assert_eq!(tries, 3, "the move did not wait to try again: {result:?}");
     assert_eq!(result.failed, 1, "{result:?}");
     e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == id));
     assert_eq!(identity.asked.lock().unwrap().as_slice(), [id]);

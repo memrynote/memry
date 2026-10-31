@@ -104,16 +104,13 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 
 ## Vault write-back
 
-Until Step 13 (#3530) names notes and Step 14 (#3531) edits them, these commands drive the
-write-back (`src-tauri/src/e2e/vault_writeback.rs`, over `memry_desktop::e2e::vault`).
-`specs/vault/writeback.e2e.ts`, `vault-files.e2e.ts`, `vault-markdown-fidelity.e2e.ts` and
-the soak (`e2e/soak/writeback-soak.ts`, on the VM through `writeback-soak-vm.ts`) use them:
+The app makes every markdown file outside the journal folder a note (Step 13d, #3530). Until
+Step 14 (#3531) edits notes, these commands drive the write-back
+(`src-tauri/src/e2e/vault_writeback.rs`, over `memry_desktop::e2e::vault`).
+`specs/vault/writeback.e2e.ts`, `identity.e2e.ts`, `vault-files.e2e.ts`,
+`vault-markdown-fidelity.e2e.ts` and the soak (`e2e/soak/writeback-soak.ts`, on the VM through
+`writeback-soak-vm.ts`) use them:
 
-- `e2e_vault_adopt_files` makes every new markdown file a note, titled by its file name, and
-  opens the vault again so its files are offered at once. It writes the marker
-  `<appDataDir>/e2e-adopt-files`, which keeps it on for every later launch of the profile, so a
-  relaunch keeps naming notes. A fresh profile (`fresh()`, `launch-tauri`) has no marker;
-  delete the file to turn it off on a kept one.
 - `e2e_vault_note_files` lists the rows: `{ noteId, path, contentHash }`. A row with a hash
   has its file's text in the note.
 - `e2e_note_edit` retypes a note's first block, then schedules its write-back. It edits

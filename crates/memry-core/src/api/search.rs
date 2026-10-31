@@ -25,7 +25,7 @@ use rusqlite::OptionalExtension as _;
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 #[cfg(feature = "markdown")]
-use crate::domain::note_stats::{self, MeasuredFile, StoredStats, Unindexed};
+use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
 use crate::domain::search::{self, HitKind, SearchHit};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
@@ -150,10 +150,12 @@ impl Search {
 /// iOS does not keep, so none of it is on the FFI surface.
 #[cfg(feature = "markdown")]
 impl Search {
-    /// Measures each file and stores its row, all in one transaction.
+    /// Measures each file on the caller's thread, then stores the rows in one transaction:
+    /// the index writer is not held while a large file is measured.
     pub fn index_note_files(&self, files: Vec<MeasuredFile>) -> Result<usize, StorageError> {
+        let rows: Vec<NoteStatsRow> = files.into_iter().map(NoteStatsRow::measured).collect();
         self.index
-            .call_blocking(move |index| note_stats::write(index, &files, now_ms()))
+            .call_blocking(move |index| note_stats::write(index, &rows, now_ms()))
     }
 
     pub fn forget_note_stats(&self, note_id: &str) -> Result<bool, StorageError> {

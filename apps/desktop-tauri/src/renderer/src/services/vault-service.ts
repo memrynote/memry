@@ -80,11 +80,12 @@ async function readStatus(callback: (status: VaultStatus) => void): Promise<void
 }
 
 function toStatus(wire: Awaited<ReturnType<typeof commands.vaultGetStatus>>): VaultStatus {
-  const { indexBuilt, indexTotal, ...rest } = wire
+  const { indexBuilt, indexTotal, movesRecovered, ...rest } = wire
   return {
     ...rest,
     ...(indexBuilt != null && { indexBuilt }),
-    ...(indexTotal != null && { indexTotal })
+    ...(indexTotal != null && { indexTotal }),
+    ...(movesRecovered != null && { movesRecovered })
   }
 }
 
@@ -199,17 +200,6 @@ export const vaultService: VaultClientAPI = {
    */
   deleteFromAccount: (vaultUuid: string): Promise<void> => {
     return window.api.vault.deleteFromAccount(vaultUuid)
-  },
-
-  /**
-   * Map Obsidian image embed targets (`![[photo.png]]`) to loadable
-   * `memry-file://` URLs. Targets not found in the vault are omitted.
-   */
-  resolveEmbeds: (input: {
-    refs: string[]
-    notePath?: string
-  }): Promise<Record<string, string>> => {
-    return window.api.vault.resolveEmbeds(input)
   },
 
   /**

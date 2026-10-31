@@ -52,7 +52,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 17);
+    assert_eq!(version, 18);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -165,7 +165,7 @@ fn an_older_database_steps_forward_without_losing_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 17);
+    assert_eq!(version, 18);
 
     let (count, payload): (i64, String) = db
         .call_blocking(|conn| {
@@ -265,7 +265,7 @@ fn note_snapshots_applies_to_a_version_12_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 17);
+    assert_eq!(version, 18);
 
     let (device, indexes): (String, i64) = db
         .call_blocking(|conn| {
@@ -325,7 +325,7 @@ fn local_settings_applies_to_a_version_13_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 17);
+    assert_eq!(version, 18);
 
     let (device, rows): (String, i64) = db
         .call_blocking(|conn| {
@@ -411,7 +411,7 @@ fn note_files_applies_to_a_version_14_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 17);
+    assert_eq!(version, 18);
 
     let (kept, files): (i64, i64) = db
         .call_blocking(|conn| {
@@ -450,7 +450,7 @@ fn note_positions_applies_to_a_version_15_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 17);
+    assert_eq!(version, 18);
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
         conn.execute_batch(DATA_MIGRATIONS[15].sql)
@@ -496,7 +496,7 @@ fn note_file_hashes_applies_to_a_version_16_database_and_names_the_hashes_rows_h
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 17);
+    assert_eq!(version, 18);
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
         conn.execute_batch(DATA_MIGRATIONS[16].sql)
@@ -519,4 +519,75 @@ fn note_file_hashes_applies_to_a_version_16_database_and_names_the_hashes_rows_h
         })
         .expect("read back");
     assert_eq!(hashes, vec![("hashed".to_owned(), "h1".to_owned())]);
+}
+
+/// The identity's lookup is the real query (`domain::notes::identity`), so it needs the markdown
+/// feature its module is built with.
+#[cfg(feature = "markdown")]
+#[test]
+fn the_note_identity_migration_applies_to_a_version_17_database_and_answers_the_identity() {
+    let db = Db::open_in_memory().expect("open");
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..17]))
+        .expect("a database as the last build left it");
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO notes (id, title, folder_path) VALUES ('n1', 'Plan', 'Work')",
+            [],
+        )
+        .map_err(|err| StorageError::Failed {
+            what: err.to_string(),
+        })
+    })
+    .expect("a row to keep");
+
+    let version = db
+        .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+        .expect("step forward");
+    assert_eq!(version, 18);
+    db.call_blocking(|conn| {
+        conn.execute_batch(DATA_MIGRATIONS[17].sql)
+            .map_err(|err| StorageError::Failed {
+                what: err.to_string(),
+            })
+    })
+    .expect("idempotent");
+
+    let (kept, owed, plan): (i64, i64, Vec<String>) = db
+        .call_blocking(|conn| {
+            let failed = |err: rusqlite::Error| StorageError::Failed {
+                what: err.to_string(),
+            };
+            let kept = conn
+                .query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))
+                .map_err(failed)?;
+            let owed = conn
+                .query_row("SELECT COUNT(*) FROM note_place_owed", [], |row| row.get(0))
+                .map_err(failed)?;
+            let mut statement = conn
+                .prepare(&format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    crate::domain::notes::identity::UNFILED_NOTES
+                ))
+                .map_err(failed)?;
+            let plan = statement
+                .query_map(rusqlite::params!["Plan", "Work"], |row| {
+                    row.get::<_, String>(3)
+                })
+                .map_err(failed)?
+                .collect::<Result<_, _>>()
+                .map_err(failed)?;
+            Ok((kept, owed, plan))
+        })
+        .expect("read back");
+    assert_eq!((kept, owed), (1, 0));
+    // The notes are searched by the index, not scanned.
+    assert!(
+        plan.iter()
+            .any(|step| step.starts_with("SEARCH n USING INDEX idx_notes_live_title")),
+        "{plan:?}"
+    );
+    assert!(
+        !plan.iter().any(|step| step.starts_with("SCAN n")),
+        "{plan:?}"
+    );
 }

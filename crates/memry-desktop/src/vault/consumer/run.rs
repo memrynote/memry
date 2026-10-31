@@ -22,6 +22,7 @@ use std::time::{Duration, Instant};
 
 use super::Applied;
 use super::apply::{Applier, Step};
+use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::walk::{Limits, walk_vault_with};
 use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{EventSink, VaultEvent, WatchHandle};
@@ -257,11 +258,20 @@ impl Run {
     /// no new or edited file when nothing went missing, so this is where they are found.
     /// The facts that arrive meanwhile are applied between files, so a long walk does not
     /// overflow the queue.
+    ///
+    /// Every other file comes before the notes, so a note's seed never depends on the order
+    /// of the walk: a `![[photo.png]]` resolves through the image rows, and a note seeded
+    /// before its image got its row would keep the embed as written, a file the hash rule
+    /// never feeds again.
     fn walk(&mut self) {
         let root = self.applier.root.clone();
         let walk = walk_vault_with(&root, &self.exclude, Limits::DEFAULT);
         let complete = walk.truncated.is_none() && walk.too_deep == 0;
-        for path in walk.files {
+        let (notes, others): (Vec<_>, Vec<_>) = walk
+            .files
+            .into_iter()
+            .partition(|path| file_type_of_extension(&extension(path)) == Some(FileType::Markdown));
+        for path in others.into_iter().chain(notes) {
             if self.stopped() {
                 return;
             }

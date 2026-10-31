@@ -51,11 +51,31 @@ pub struct NoteStats {
 #[derive(Debug, Clone)]
 pub struct MeasuredFile {
     pub note_id: String,
-    /// The vault tier's hash of `text` (`note_files.file_hash` names the same bytes).
+    /// The vault tier's hash of `text` (`note_file_hashes.file_hash` names the same bytes).
     pub file_hash: String,
     /// The journal day the path names.
     pub date: Option<String>,
     pub text: String,
+}
+
+/// A row to store: a file's [`measure`], with what the row records beside it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NoteStatsRow {
+    pub note_id: String,
+    pub file_hash: String,
+    pub date: Option<String>,
+    pub stats: NoteStats,
+}
+
+impl NoteStatsRow {
+    pub fn measured(file: MeasuredFile) -> Self {
+        Self {
+            stats: measure(&file.text),
+            note_id: file.note_id,
+            file_hash: file.file_hash,
+            date: file.date,
+        }
+    }
 }
 
 /// A `note_stats` row.
@@ -198,15 +218,16 @@ fn stringify_truthy(value: &YamlValue) -> Option<String> {
     }
 }
 
-/// Measures and stores each file, in one transaction. Returns the rows written.
+/// Stores each row, in one transaction. Returns the rows written. Measured before, so the
+/// index writer is held only for the inserts.
 pub fn write(
     index: &Connection,
-    files: &[MeasuredFile],
+    rows: &[NoteStatsRow],
     now_ms: i64,
 ) -> Result<usize, StorageError> {
     let transaction = index.unchecked_transaction().map_err(failed)?;
-    for file in files {
-        let stats = measure(&file.text);
+    for row in rows {
+        let stats = &row.stats;
         transaction
             .execute(
                 "INSERT INTO note_stats (note_id, file_hash, word_count, character_count, snippet,
@@ -219,22 +240,22 @@ pub fn write(
                      header_tags = excluded.header_tags, date = excluded.date,
                      indexed_at = excluded.indexed_at",
                 params![
-                    file.note_id,
-                    file.file_hash,
+                    row.note_id,
+                    row.file_hash,
                     stats.word_count,
                     stats.character_count,
                     stats.snippet,
                     stats.cover,
                     json(&stats.task_ids)?,
                     json(&stats.header_tags)?,
-                    file.date,
+                    row.date,
                     now_ms,
                 ],
             )
             .map_err(failed)?;
     }
     transaction.commit().map_err(failed)?;
-    Ok(files.len())
+    Ok(rows.len())
 }
 
 pub fn forget(index: &Connection, note_id: &str) -> Result<bool, StorageError> {
@@ -361,6 +382,24 @@ mod tests {
         assert_eq!(word_count("one ```two\nthree``` four `five six` seven"), 3);
         assert_eq!(word_count("a `` b ```c"), 2);
         assert_eq!(word_count("`open only"), 2);
+    }
+
+    /// A deliberate divergence from Electron, approved by Kaan on 31 Oct (#3786): Electron's
+    /// `stringifyScalar` makes a map or a `!!binary` value one tag (its JSON, the decoded
+    /// bytes), and `extractTags` throws on a list item that is not a string, which fails the
+    /// note's whole sync. Here a map or binary is no tag, such an item is skipped, and the
+    /// note's other stats are still stored.
+    #[test]
+    fn map_and_binary_tags_are_none_and_non_string_items_are_skipped() {
+        let tags_of = |yaml: &str| measure(&format!("---\n{yaml}---\nbody\n")).header_tags;
+        assert_eq!(tags_of("tags:\n  a: 1\n"), Vec::<String>::new());
+        assert_eq!(tags_of("tags: !!binary aGk=\n"), Vec::<String>::new());
+        assert_eq!(
+            tags_of("tags:\n  - one\n  - 2\n  - true\n  - {a: 1}\n  - [x]\n  - null\n  - two\n"),
+            vec!["one".to_owned(), "two".to_owned()]
+        );
+        let odd = measure("---\ntags:\n  - 2\n  - {a: 1}\n---\nthree words here\n");
+        assert_eq!(odd.word_count, 3, "the counts are kept");
     }
 
     #[test]

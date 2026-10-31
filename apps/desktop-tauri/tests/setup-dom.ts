@@ -117,6 +117,8 @@ vi.mock('../src/generated/bindings', () => {
         () => window.api.onVaultIndexProgress,
         (progress) => ({ indexBuilt: progress, indexTotal: 100 })
       ),
+      // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
+      customIconsUpdatedEvent: { listen: async () => () => undefined },
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })

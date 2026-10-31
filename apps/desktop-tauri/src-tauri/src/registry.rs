@@ -22,6 +22,11 @@ pub fn builder() -> Builder<Wry> {
         .commands(collect_commands![
             // app
             crate::commands::app::app_info,
+            // custom icons (`custom_icons_add` is a binary command)
+            crate::commands::custom_icons::custom_icons_add_from_url,
+            crate::commands::custom_icons::custom_icons_delete,
+            crate::commands::custom_icons::custom_icons_list,
+            crate::commands::custom_icons::custom_icons_rename,
             // diagnostics
             crate::commands::diagnostics::diagnostics_preview_report,
             crate::commands::diagnostics::diagnostics_send_report,
@@ -112,6 +117,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_activity::vault_activity_set_retention,
             // vault index
             crate::commands::vault_index::vault_reindex,
+            // vault files
+            crate::commands::vault_files::vault_resolve_embeds,
             // window
             crate::commands::shell::window_close,
             crate::commands::shell::window_minimize,
@@ -123,6 +130,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AppNavigationRequestedEvent,
             // crdt
             crate::events::CrdtWriteBackFailedEvent,
+            // custom icons
+            crate::events::CustomIconsUpdatedEvent,
             // flush
             crate::events::FlushRequestedEvent,
             // inbox

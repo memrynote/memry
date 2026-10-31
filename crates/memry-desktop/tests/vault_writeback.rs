@@ -312,8 +312,22 @@ async fn every_way_the_app_quits_writes_the_scheduled_edit_first() {
     }
 }
 
-/// A step before the flush wedges and spends the budget. The edit it schedules just before
-/// the budget ends is not due until after it, so only the last chance's flush writes it.
+/// Runs its closure when it is dropped.
+struct OnDrop(Option<Box<dyn FnOnce() + Send>>);
+
+impl Drop for OnDrop {
+    fn drop(&mut self) {
+        if let Some(then) = self.0.take() {
+            then();
+        }
+    }
+}
+
+/// A step before the flush wedges and spends the budget. The edit it schedules as the budget
+/// ends is not due until after it, so only the last chance's flush writes it. The sequence
+/// drops the wedged step when the budget ends, and the edit is scheduled then: tied to that
+/// moment and not to a margin on the clock, a stalled runner cannot push it past the last
+/// chance.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_step_that_wedges_before_the_flush_leaves_it_the_last_chance() {
     let (e, identity, id) = one_note();
@@ -324,17 +338,19 @@ async fn a_step_that_wedges_before_the_flush_leaves_it_the_last_chance() {
             identity.store.clone() as Arc<dyn SecureStore>,
             id.clone(),
         );
-        Arc::new(move |_, deadline| {
+        Arc::new(move |_, _| {
             let (tier, core, store, id) = (tier.clone(), core.clone(), store.clone(), id.clone());
-            Box::pin(async move {
-                let margin = Duration::from_millis(400);
-                tokio::time::sleep(deadline.remaining().saturating_sub(margin)).await;
-                tokio::task::spawn_blocking(move || {
+            // On a thread of its own: the core's blocking calls do not run on a runtime worker.
+            let at_the_end = OnDrop(Some(Box::new(move || {
+                std::thread::spawn(move || {
                     edit_in_app(&core, &store, &id, "typed in the app");
                     tier.schedule(&id);
                 })
-                .await
+                .join()
                 .unwrap();
+            })));
+            Box::pin(async move {
+                let _at_the_end = at_the_end;
                 std::future::pending().await
             })
         })

@@ -6,6 +6,16 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 /** Commands */
 export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	/**
+	 *  Downloads the image behind `url` once and adds it like an upload, named `name` or after the
+	 *  link.
+	 */
+	customIconsAddFromUrl: (url: string, name: string | null) => __TAURI_INVOKE<CustomIconView>("custom_icons_add_from_url", { url, name }),
+	/**  Deletes an icon and its file. `false` when there was no such icon. */
+	customIconsDelete: (id: string) => __TAURI_INVOKE<boolean>("custom_icons_delete", { id }),
+	/**  Every icon, oldest first. Writes the file of an icon that has none. */
+	customIconsList: () => __TAURI_INVOKE<CustomIconView[]>("custom_icons_list"),
+	customIconsRename: (id: string, name: string) => __TAURI_INVOKE<CustomIconView>("custom_icons_rename", { id, name }),
 	diagnosticsPreviewReport: (trigger: DiagnosticTrigger) => __TAURI_INVOKE<DiagnosticPreview>("diagnostics_preview_report", { trigger }),
 	diagnosticsSendReport: (report: DiagnosticReport) => __TAURI_INVOKE<DiagnosticSendResult>("diagnostics_send_report", { report }),
 	/**
@@ -176,6 +186,12 @@ export const commands = {
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
 	/**  Measures every note of the open vault again; resolves once the last progress went out. */
 	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
+	/**
+	 *  What each `![[target]]` image embed of `refs` resolves to in the open vault: relative to the
+	 *  note at `note_path` when given, a `memry-file://` URL otherwise. An embed that names no file
+	 *  is left out, and so is every embed while no vault is open.
+	 */
+	vaultResolveEmbeds: (refs: string[], notePath: string | null) => __TAURI_INVOKE<{ [key in string]: string }>("vault_resolve_embeds", { refs, notePath }),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
@@ -193,6 +209,7 @@ export const commands = {
 export const events = {
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
 	crdtWriteBackFailedEvent: makeEvent<CrdtWriteBackFailedEvent, CrdtWriteBackFailedEvent>("crdt-write-back-failed-event"),
+	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
@@ -286,6 +303,26 @@ export type CrdtWriteBackFailedEvent = {
 	noteId: string,
 	title: string | null,
 	reason: WriteBackFailureReason,
+};
+
+/**  One icon as the renderer sees it (`CustomIconSchema`). */
+export type CustomIconView = {
+	id: string,
+	name: string,
+	/**  `png` or `svg`. */
+	ext: string,
+	/**  The absolute path of the file under `<vault>/.memry/icons`. */
+	path: string,
+	/**  Empty when a peer's record carries none. */
+	createdAt: string,
+};
+
+/**
+ *  A custom icon was added, renamed or deleted (`custom-icons:updated`). The renderer refetches
+ *  the library.
+ */
+export type CustomIconsUpdatedEvent = {
+	id: string,
 };
 
 /**  One shipped line (`DiagnosticLogLineSchema`). */
@@ -447,6 +484,26 @@ export type Modifiers = {
 	ctrl?: boolean,
 	shift?: boolean,
 	alt?: boolean,
+};
+
+/**
+ *  What the open's sweep of interrupted folder moves did ([`crate::vault::move_journal`]), for
+ *  the notice the renderer shows once per `id`. Counts only: the folders' names are the user's.
+ */
+export type MovesRecovered = {
+	/**  New for each open that swept something, so each notice shows once. */
+	id: string,
+	/**  Moves this app journaled that were put back where they were. */
+	undone: number,
+	/**  Notes that came back beside the note that took their name, as `<name> (conflict copy)`. */
+	conflictCopies: number,
+	/**  `(incomplete move)` folders holding what an undone move could not put back. */
+	keptFolders: number,
+	/**
+	 *  Hidden folders of a move no usable record names (Electron's, a newer build's), shown as
+	 *  `(incomplete move)` folders: nothing was undone, the notes are only in sight again.
+	 */
+	shownFolders: number,
 };
 
 /**
@@ -700,6 +757,8 @@ export type VaultStatus = {
 	indexBuilt?: number | null,
 	indexTotal?: number | null,
 	error: string | null,
+	/**  What the open's sweep of interrupted folder moves did, while that vault is open. */
+	movesRecovered?: MovesRecovered | null,
 };
 
 /**

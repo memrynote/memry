@@ -304,6 +304,7 @@ impl Fixture {
             note_path: None,
             writing: None,
             frontmatter: None,
+            embeds: None,
         };
         self.vault
             .external_feed(self.store.clone())
@@ -350,6 +351,7 @@ pub(super) fn only_note(f: &Fixture, rel: &str) -> String {
 }
 
 mod activity;
+mod embeds;
 mod facts;
 mod flood;
 mod hash_rule;
@@ -357,3 +359,4 @@ mod lane;
 mod late_close;
 #[cfg(windows)]
 mod replace_race;
+mod slow_watch_stop;

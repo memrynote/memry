@@ -2,6 +2,7 @@
 //! paths to `registry.rs`.
 
 pub mod app;
+pub mod custom_icons;
 pub mod diagnostics;
 pub mod drop_stage;
 pub mod error;
@@ -17,6 +18,7 @@ pub mod unsplash;
 pub mod updater;
 pub mod vault;
 pub mod vault_activity;
+pub mod vault_files;
 pub mod vault_index;
 
 use error::{CommandError, ErrorKind, log_failure};

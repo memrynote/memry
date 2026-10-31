@@ -1,4 +1,5 @@
 import type { GeneratedRpcApi } from '@memry/rpc'
+import type { MovesRecovered } from '../generated/bindings'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
@@ -118,12 +119,6 @@ import type {
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
 import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
-import type {
-  CustomIcon,
-  CustomIconAddInput,
-  CustomIconAddFromUrlInput,
-  CustomIconRenameInput
-} from '@memry/contracts/custom-icons-api'
 import type {
   VaultLockExternalEditRestoredEvent,
   VaultLockSetInput,
@@ -560,6 +555,8 @@ export interface VaultStatus {
   /** Total files the in-flight background index build will visit. Absent outside a build. */
   indexTotal?: number
   error: string | null
+  /** What the open's sweep of interrupted folder moves did, while that vault is open (#3754). */
+  movesRecovered?: MovesRecovered
 }
 
 export interface VaultConfig {
@@ -617,7 +614,6 @@ export interface VaultClientAPI {
   listAccount(): Promise<AccountVaultInfo[]>
   downloadRemote(vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse>
   deleteFromAccount(vaultUuid: string): Promise<void>
-  resolveEmbeds(input: { refs: string[]; notePath?: string }): Promise<Record<string, string>>
   setIcon(path: string, icon: string | null): Promise<void>
   prepareSandbox(reset?: boolean): Promise<{ path: string }>
 }
@@ -771,14 +767,6 @@ export interface OcrLanguagesClientAPI {
   get(): Promise<OcrLanguagesState>
   set(input: OcrLanguagesSetInput): Promise<OcrLanguagesState>
   retry(): Promise<OcrLanguagesState>
-}
-
-export interface CustomIconsClientAPI {
-  list(): Promise<CustomIcon[]>
-  add(input: CustomIconAddInput): Promise<CustomIcon>
-  addFromUrl(input: CustomIconAddFromUrlInput): Promise<CustomIcon>
-  rename(input: CustomIconRenameInput): Promise<CustomIcon>
-  delete(id: string): Promise<{ success: boolean }>
 }
 
 export interface HomePagesClientAPI {
@@ -2041,7 +2029,6 @@ interface API extends GeneratedRpcApi {
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
   homePages: HomePagesClientAPI
-  customIcons: CustomIconsClientAPI
   vaultLocks: VaultLocksClientAPI
   sticky: StickyClientAPI
   noteFold: NoteFoldClientAPI
@@ -2110,7 +2097,6 @@ interface API extends GeneratedRpcApi {
   // Home boards event subscriptions (local writes and remote applies both emit)
   onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
   onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
-  onCustomIconsUpdated: (callback: (event: { id: string }) => void) => () => void
   onVaultLocksChanged: (callback: (state: VaultLockState) => void) => () => void
   onOcrLanguagesChanged: (callback: (state: OcrLanguagesState) => void) => () => void
   onVaultLockExternalEditRestored: (

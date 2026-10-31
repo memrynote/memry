@@ -187,6 +187,12 @@
     "moreRemindersDueHint": "Consultez le panneau des rappels pour en savoir plus",
     "searchIndexRepaired": "Index de recherche réparé",
     "searchIndexRepairedHint": "Une partie de l'index de recherche était endommagée, Memry l'a donc reconstruit. Vos notes n'ont pas été modifiées.",
+    "folderMoveUndone": "Un déplacement de dossier interrompu a été annulé",
+    "folderMoveUndoneHint": "Ses notes sont de retour dans le dossier d'où elles ont été déplacées.",
+    "folderMoveShown": "Les notes d'un déplacement de dossier interrompu sont de nouveau visibles",
+    "folderMoveConflictCopies": "Les notes dont le nom a été pris entre-temps se terminent par « {suffix} ».",
+    "folderMoveIncomplete": "Certaines notes se trouvent dans des dossiers se terminant par « {suffix} ».",
+    "folderMoveNothingDeleted": "Rien n'a été supprimé.",
     "drop": {
       "tooLarge": "Un fichier déposé dépasse 2 Go.",
       "tooMany": "Trop de fichiers attendent d'être importés. Déposez moins de fichiers et réessayez.",

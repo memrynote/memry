@@ -30,6 +30,7 @@
 //!    reads, including when one is swapped in between the open and the re-check.
 //! 5. A file with more than one hard link is refused unless the caller says [`LinkPolicy::Allow`].
 
+use std::borrow::Cow;
 use std::fs::{self, File, OpenOptions};
 use std::io;
 use std::path::{Component, Path, PathBuf};
@@ -84,16 +85,50 @@ fn is_plain_relative(rel: &str) -> bool {
     !(cfg!(windows) && rel.contains(':'))
 }
 
+/// Whether `name` is one path segment that every platform reads as written. This is the owner of
+/// the check for a file or folder name that arrives as data (a synced id, a file name in a
+/// ref), where [`is_plain_relative`] takes a path a person's own file system holds. No
+/// separator of either platform. No `:` on any platform: on Windows `C:x` is a drive-relative
+/// path, which `PathBuf::push` takes for a whole new path, and `a:b` an alternate data stream.
+/// No NUL. No trailing `.` or space, which Windows strips, so `b1.` would be the folder `b1`;
+/// that also refuses `.` and `..`. What is left of a non-empty name is exactly one normal
+/// component on every platform.
+pub fn is_plain_segment(name: &str) -> bool {
+    !name.is_empty() && !name.contains(['/', '\\', ':', '\0']) && !name.ends_with(['.', ' '])
+}
+
 /// `resolveVaultFile`. `root` must exist.
 pub fn resolve_under_root(root: &Path, rel: &str) -> io::Result<Resolution> {
-    resolve(root, rel, Rooted::AtRoot)
+    resolve(root, None, rel, Rooted::AtRoot)
+}
+
+/// [`resolve_under_root`] for many paths under one root, made canonical once instead of on
+/// every path.
+pub struct UnderRoot {
+    root: PathBuf,
+    real_root: PathBuf,
+}
+
+impl UnderRoot {
+    /// `root` must exist.
+    pub fn new(root: &Path) -> io::Result<Self> {
+        Ok(Self {
+            root: root.to_path_buf(),
+            real_root: fs::canonicalize(root)?,
+        })
+    }
+
+    /// [`resolve_under_root`] of `rel`.
+    pub fn resolve(&self, rel: &str) -> io::Result<Resolution> {
+        resolve(&self.root, Some(&self.real_root), rel, Rooted::AtRoot)
+    }
 }
 
 /// [`resolve_under_root`], with `Inside` holding the canonical target itself instead of the
 /// target re-rooted at `root`: for a path handed to another program, which follows any link
 /// left in it after this check.
 pub fn resolve_real_under_root(root: &Path, rel: &str) -> io::Result<Resolution> {
-    resolve(root, rel, Rooted::Real)
+    resolve(root, None, rel, Rooted::Real)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -102,11 +137,20 @@ enum Rooted {
     Real,
 }
 
-fn resolve(root: &Path, rel: &str, rooted: Rooted) -> io::Result<Resolution> {
+/// `real_root` is `root` made canonical, when the caller already has it.
+fn resolve(
+    root: &Path,
+    real_root: Option<&Path>,
+    rel: &str,
+    rooted: Rooted,
+) -> io::Result<Resolution> {
     if !is_plain_relative(rel) {
         return Ok(Resolution::Outside);
     }
-    let real_root = fs::canonicalize(root)?;
+    let real_root = match real_root {
+        Some(real_root) => Cow::Borrowed(real_root),
+        None => Cow::Owned(fs::canonicalize(root)?),
+    };
     let joined = root.join(rel);
     let mut probe = joined.clone();
     loop {

@@ -6,10 +6,13 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use memry_core::api::errors::StorageError;
 use memry_core::api::vault::Vault;
+use memry_core::domain::notes::identity::Origin;
 use memry_core::storage::OpenOptions;
 use memry_core::storage::recovery_prune::prune_settled;
+use uuid::Uuid;
 
 use super::projection::{DEFAULT_QUEUE_LIMIT, ProjectionRuntime};
+use super::response::MovesRecovered;
 use super::{
     Open, OpenSource, OpenStage, OpenVault, Session, SessionError, SessionEvent, SessionStatus,
     VaultOpened, lock,
@@ -17,6 +20,7 @@ use super::{
 use crate::registry::vaults::basename;
 use crate::vault::config::{invalidate_vault_config_cache, read_vault_config};
 use crate::vault::init::{CountLimits, count_markdown_files, init_vault, is_vault_initialized};
+use crate::vault::move_journal::sweep as sweep_moves;
 
 /// Settled `data.db.corrupt-*` quarantines kept. Core decides which are settled
 /// ([`prune_settled`]); this only says how many of those to keep.
@@ -70,6 +74,27 @@ fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
     Ok(core)
 }
 
+/// What the core was created over, for the note identity: a core created over Electron's
+/// `data.db` is never imported (Step 36 answers `NativeFirst`), so no file of it gets a new note
+/// id. Every open records it unless it is there, so a core whose first open stopped before this
+/// (or failed here) gets it at the next one; until then no id is minted beside Electron's
+/// database. A core with Electron's database beside it when this first runs counts as created
+/// over it.
+fn record_origin(path: &Path, vault: &Vault) {
+    let origin = if path.join(".memry").join("data.db").is_file() {
+        Origin::OverElectron
+    } else {
+        Origin::Native
+    };
+    if let Err(error) = vault.record_origin(origin) {
+        tracing::error!(
+            %error,
+            ?origin,
+            "the vault's origin was not recorded; the next open tries again"
+        );
+    }
+}
+
 impl Session {
     pub(super) fn open_locked(
         &self,
@@ -99,6 +124,7 @@ impl Session {
             },
             other => SessionError::Storage(other),
         })?;
+        record_origin(path, &vault);
         let (search, index_reason) = vault.search_reporting()?;
         if let Some(reason) = &index_reason {
             self.emit(SessionEvent::IndexRecovered {
@@ -113,12 +139,33 @@ impl Session {
             Err(error) => tracing::warn!(%error, "could not prune data.db quarantines"),
         }
 
-        let note_count = count_markdown_files(
-            path,
-            &read_vault_config(path).exclude_patterns,
-            CountLimits::DEFAULT,
-        )
-        .count;
+        let exclude = read_vault_config(path).exclude_patterns;
+        let counted = count_markdown_files(path, &exclude, CountLimits::DEFAULT);
+        // Before any open hook, so before the watcher: a folder move a crash interrupted is put
+        // back or shown, and its notes are never reported removed.
+        let swept = sweep_moves(path, &counted.staging);
+        let moves_recovered = swept.changed().then(|| {
+            tracing::warn!(
+                undone = swept.undone,
+                conflict_copies = swept.conflict_copies.len(),
+                kept = swept.kept.len(),
+                shown = swept.shown.len(),
+                "swept interrupted folder moves"
+            );
+            let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+            MovesRecovered {
+                id: Uuid::new_v4().simple().to_string(),
+                undone: count(swept.undone),
+                conflict_copies: count(swept.conflict_copies.len()),
+                kept_folders: count(swept.kept.len()),
+                shown_folders: count(swept.shown.len()),
+            }
+        });
+        let note_count = if moves_recovered.is_some() {
+            count_markdown_files(path, &exclude, CountLimits::DEFAULT).count
+        } else {
+            counted.count
+        };
         let stored = match self
             .inner
             .registry
@@ -160,12 +207,14 @@ impl Session {
                 view: view.clone(),
                 runtime: runtime.clone(),
                 background: Vec::new(),
+                moves_recovered: moves_recovered.clone(),
             });
         }
         self.emit(SessionEvent::StatusChanged(SessionStatus {
             is_open: true,
             path: Some(path_text.clone()),
             error: None,
+            moves_recovered,
         }));
         self.emit(SessionEvent::Opened {
             path: path_text,

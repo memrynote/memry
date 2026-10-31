@@ -38,3 +38,33 @@ pub fn builder() -> reqwest::ClientBuilder {
         .connect_timeout(CONNECT_TIMEOUT)
         .user_agent(concat!("MemryNote/", env!("CARGO_PKG_VERSION")))
 }
+
+#[derive(Debug, thiserror::Error)]
+pub enum ReadError {
+    #[error("the body is larger than {cap} bytes")]
+    TooLarge { cap: usize },
+    #[error("the connection failed while reading the body")]
+    Transport(#[source] reqwest::Error),
+}
+
+/// The whole body, or an error as soon as it is known to exceed `cap`: by `Content-Length` before
+/// reading, by the running count after. Every body of an untrusted host is read through this.
+pub async fn read_capped(
+    mut response: reqwest::Response,
+    cap: usize,
+) -> Result<Vec<u8>, ReadError> {
+    if response
+        .content_length()
+        .is_some_and(|length| length > cap as u64)
+    {
+        return Err(ReadError::TooLarge { cap });
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(ReadError::Transport)? {
+        if body.len() + chunk.len() > cap {
+            return Err(ReadError::TooLarge { cap });
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(body)
+}

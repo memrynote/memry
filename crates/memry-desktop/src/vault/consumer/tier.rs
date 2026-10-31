@@ -10,13 +10,15 @@ use memry_core::seams::secure_store::SecureStore;
 use tokio::sync::broadcast;
 
 use super::apply::Applier;
-use super::identity::{DeferIdentity, NoteIdentity};
+use super::identity::{DeferIdentity, IdentityCtx, NoteIdentity};
 use super::rows::{RowOwner, RowSession};
 use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
 use crate::vault::config::read_vault_config;
+#[cfg(test)]
+use crate::vault::watch::HoldFn;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
 use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed, reconcile};
 
@@ -42,9 +44,6 @@ pub struct VaultTier {
     holds: Mutex<Vec<(Hold, HoldFn)>>,
 }
 
-#[cfg(test)]
-type HoldFn = Box<dyn FnOnce() + Send>;
-
 /// A point in a stop or a start where a test runs its closure.
 #[cfg(test)]
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -55,6 +54,9 @@ pub(crate) enum Hold {
     ConsumerStopped,
     /// A start, right before its watcher starts.
     WatcherStart,
+    /// The stop of the OS watch a start sets up, on the thread that stops it, right before it
+    /// stops.
+    OsWatchStop,
 }
 
 /// What one open of a vault owns. A stop works only on the handle it took when it began, and
@@ -164,7 +166,8 @@ impl VaultTier {
         })
     }
 
-    /// The identity of the next open on ([`DeferIdentity`] until Step 13 sets its own).
+    /// The identity of the next open on ([`DeferIdentity`] until one is set; the app sets the
+    /// notes identity, `crate::notes::identity`).
     pub fn set_identity(&self, identity: Arc<dyn NoteIdentity>) {
         *self.identity.lock().unwrap_or_else(|e| e.into_inner()) = identity;
     }
@@ -225,6 +228,10 @@ impl VaultTier {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone();
+        identity.opened(&IdentityCtx {
+            root: &vault.path,
+            vault: &vault.vault,
+        });
         let new_files = if identity.adopts() {
             NewFiles::Report
         } else {
@@ -242,6 +249,10 @@ impl VaultTier {
             new_files,
         )
         .map_err(|error| error.to_string())?;
+        #[cfg(test)]
+        if let Some(then) = self.take_hold(Hold::OsWatchStop) {
+            watcher.hold_os_stop(then);
+        }
         let feed = vault
             .vault
             .external_feed(self.store.clone())
@@ -299,16 +310,18 @@ impl VaultTier {
 
     #[cfg(test)]
     fn hold(&self, at: Hold) {
-        let then = {
-            let mut holds = self.holds.lock().unwrap_or_else(|e| e.into_inner());
-            holds
-                .iter()
-                .position(|(point, _)| *point == at)
-                .map(|i| holds.remove(i).1)
-        };
-        if let Some(then) = then {
+        if let Some(then) = self.take_hold(at) {
             then();
         }
+    }
+
+    #[cfg(test)]
+    fn take_hold(&self, at: Hold) -> Option<HoldFn> {
+        let mut holds = self.holds.lock().unwrap_or_else(|e| e.into_inner());
+        holds
+            .iter()
+            .position(|(point, _)| *point == at)
+            .map(|i| holds.remove(i).1)
     }
 
     /// Registers the open and close hooks. A watcher that cannot start fails its hook, which

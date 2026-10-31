@@ -3,8 +3,13 @@
 
 /// The app's own folder: config, databases, icons, activity log.
 pub const MEMRY_DIR: &str = ".memry";
+/// The journal of folder moves in flight, `<id>.json` inside [`MEMRY_DIR`]
+/// (`vault::move_journal`).
+pub const MOVES_DIR: &str = "moves";
 /// Custom icons, `<id>.<ext>` inside [`MEMRY_DIR`].
 pub const ICONS_DIR: &str = "icons";
+/// Home board covers, `<boardId>/<file>` inside [`MEMRY_DIR`].
+pub const HOME_COVERS_DIR: &str = "home-covers";
 /// The app's attachment storage. Only the vault root's folder of this name is the app's: a
 /// nested folder of the same name is the user's own and holds ordinary notes (#3161).
 pub const ATTACHMENTS_DIR: &str = "attachments";

@@ -32,6 +32,7 @@ fn input<'a>(note_id: &'a str, markdown: &'a str) -> FeedInput<'a> {
         note_path: Some("a.md"),
         writing: None,
         frontmatter: None,
+        embeds: None,
     }
 }
 
@@ -215,17 +216,22 @@ fn a_note_whose_server_body_has_not_arrived_owes_its_file_and_nothing_is_written
     assert!(f.body(&id).contains("an edit made outside"));
 }
 
+/// The file then holds a text the document did not take: it owes its body, so the write-back
+/// keeps it and the vault tier does not pair the file's move by the row's older hash. A feed
+/// the document takes later clears the debt.
 #[test]
-fn a_large_file_is_never_fed_and_owes_nothing() {
+fn a_large_file_is_never_fed_and_owes_its_file() {
     let f = fixture();
     let id = f.note();
     let big = "word ".repeat(300_000);
     assert_eq!(f.feed(&id, &big), FeedOutcome::LargeFile);
     assert_eq!((f.updates(&id), f.queued_updates(&id)), (0, 0));
+    assert!(f.owes_file_body(&id));
+    assert_eq!(f.feed(&id, "small again"), FeedOutcome::Fed);
     assert!(!f.owes_file_body(&id));
     f.owe_body_pull(&id);
     assert_eq!(f.feed(&id, &big), FeedOutcome::LargeFile, "owed or not");
-    assert!(!f.owes_file_body(&id));
+    assert!(f.owes_file_body(&id));
 }
 
 #[test]
@@ -326,6 +332,11 @@ fn a_seed_fills_an_empty_body_and_never_replaces_one() {
         "{body}"
     );
     assert_eq!((f.updates(&id), f.queued_updates(&id)), (1, 1));
+
+    // The file the body already says counts as read, so its row can record the hash a move of
+    // the file is paired by; nothing is written.
+    assert_eq!(f.seed(&id, "the file's text\n"), FeedOutcome::Unchanged);
+    assert_eq!((f.updates(&id), f.queued_updates(&id)), (1, 1));
 }
 
 #[test]
@@ -347,6 +358,7 @@ fn a_seed_of_a_large_file_is_refused_like_a_feed() {
         FeedOutcome::LargeFile
     );
     assert_eq!(f.updates(&id), 0);
+    assert!(f.owes_file_body(&id));
 }
 
 // ---------------------------------------------------------------------------
