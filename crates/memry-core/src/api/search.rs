@@ -24,6 +24,8 @@ use rusqlite::OptionalExtension as _;
 
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
+#[cfg(feature = "markdown")]
+use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
 use crate::domain::search::{self, HitKind, SearchHit};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
@@ -141,6 +143,39 @@ impl Search {
     #[doc(hidden)]
     pub fn index_handle(&self) -> Db {
         self.index.clone()
+    }
+}
+
+/// The desktop note index (`note_stats`, [`note_stats`]): measured from vault files, which
+/// iOS does not keep, so none of it is on the FFI surface.
+#[cfg(feature = "markdown")]
+impl Search {
+    /// Measures each file on the caller's thread, then stores the rows in one transaction:
+    /// the index writer is not held while a large file is measured.
+    pub fn index_note_files(&self, files: Vec<MeasuredFile>) -> Result<usize, StorageError> {
+        let rows: Vec<NoteStatsRow> = files.into_iter().map(NoteStatsRow::measured).collect();
+        self.index
+            .call_blocking(move |index| note_stats::write(index, &rows, now_ms()))
+    }
+
+    pub fn forget_note_stats(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.index
+            .call_blocking(move |index| note_stats::forget(index, &note_id))
+    }
+
+    pub fn note_stats(&self, note_id: &str) -> Result<Option<StoredStats>, StorageError> {
+        let note_id = note_id.to_owned();
+        self.index
+            .read_blocking(move |index| note_stats::read(index, &note_id))
+    }
+
+    /// The markdown notes to measure, smallest file first ([`note_stats::unindexed`]).
+    pub fn unindexed_notes(&self, all: bool) -> Result<Vec<Unindexed>, StorageError> {
+        let index = self.index.clone();
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| note_stats::unindexed(data, index, all))
+        })
     }
 }
 

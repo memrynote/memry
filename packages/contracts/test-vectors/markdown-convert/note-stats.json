@@ -1,0 +1,787 @@
+{
+  "meta": {
+    "spec": "tauri-v2-3522-markdown-convert",
+    "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
+    "note": "What syncNoteToCache measures in a vault file (extractNoteMetadata of note-sync.ts and the task id scan of note-derived-state-projector.ts): calculateWordCount, the body length in UTF-16 code units, createSnippet at its default 200, the cover when isCoverValue, scanTaskCheckboxStates ids and extractTags, over the parseNote body and frontmatter.",
+    "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
+    "caseCount": 42
+  },
+  "cases": [
+    {
+      "id": "note-stats/note-fidelity",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags:\n  - reading\n  - focus\nproperties:\n  status: reading\n  rating: 5\n---\nReading notes.\n\n![Cover](../../attachments/note-fidelity-1/cover.png)\n\n[Paper](../../attachments/note-fidelity-1/paper.pdf)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 4,
+          "characterCount": 123,
+          "snippet": "Reading notes. !Cover Paper",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": [
+            "reading",
+            "focus"
+          ]
+        }
+      }
+    },
+    {
+      "id": "note-stats/empty",
+      "op": "note-stats",
+      "input": {
+        "text": ""
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 0,
+          "characterCount": 0,
+          "snippet": "",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/frontmatter-only",
+      "op": "note-stats",
+      "input": {
+        "text": "---\na: 1\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 0,
+          "characterCount": 0,
+          "snippet": "",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/plain-words",
+      "op": "note-stats",
+      "input": {
+        "text": "one two  three\n\nfour\tfive\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 5,
+          "characterCount": 26,
+          "snippet": "one two three four five",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/js-whitespace",
+      "op": "note-stats",
+      "input": {
+        "text": "a b c　d﻿ef"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 5,
+          "characterCount": 11,
+          "snippet": "a b c d ef",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/fenced-code",
+      "op": "note-stats",
+      "input": {
+        "text": "before\n```ts\nconst a = 1\n```\nafter ``` lone"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 4,
+          "characterCount": 43,
+          "snippet": "before ```ts const a = 1 ``` after ``` lone",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/two-fences",
+      "op": "note-stats",
+      "input": {
+        "text": "```\nx y\n```\nmid\n```\nz\n```\nend"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 2,
+          "characterCount": 29,
+          "snippet": "``` x y ``` mid ``` z ``` end",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/inline-code",
+      "op": "note-stats",
+      "input": {
+        "text": "run `npm test` now and `` this ` too"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 5,
+          "characterCount": 36,
+          "snippet": "run `npm test` now and `` this ` too",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/unclosed-span",
+      "op": "note-stats",
+      "input": {
+        "text": "tick `left open here"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 4,
+          "characterCount": 20,
+          "snippet": "tick `left open here",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/headings",
+      "op": "note-stats",
+      "input": {
+        "text": "# Title\n## Sub heading\n#not-a-heading\n   # indented"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 8,
+          "characterCount": 51,
+          "snippet": "Title Sub heading #not-a-heading # indented",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/links",
+      "op": "note-stats",
+      "input": {
+        "text": "see [the docs](https://x.test/a) and [[Target|alias]] and [[Note#Part]] and [[#Only]]"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 9,
+          "characterCount": 85,
+          "snippet": "see the docs and alias and Note and Only",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/images",
+      "op": "note-stats",
+      "input": {
+        "text": "![alt](img.png) text ![](b.png)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 3,
+          "characterCount": 31,
+          "snippet": "!alt text",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/emphasis",
+      "op": "note-stats",
+      "input": {
+        "text": "**bold** _it_ ***both*** __under__ a*b*c"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 5,
+          "characterCount": 40,
+          "snippet": "bold it both under abc",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/comments",
+      "op": "note-stats",
+      "input": {
+        "text": "keep <!-- hidden --> this %% and that %% end\n<!--\nblock\n-->\nafter"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 14,
+          "characterCount": 65,
+          "snippet": "keep this end after",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/comment-in-code",
+      "op": "note-stats",
+      "input": {
+        "text": "`<!-- shown -->` and\n```\n%% kept %%\n```"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 39,
+          "snippet": "`<!-- shown -->` and ``` %% kept %% ```",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/span-tags",
+      "op": "note-stats",
+      "input": {
+        "text": "a <span style=\"color: red\">red</span> word"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 5,
+          "characterCount": 42,
+          "snippet": "a red word",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/snippet-word-cut",
+      "op": "note-stats",
+      "input": {
+        "text": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20 word21 word22 word23 word24 word25 word26 word27 word28 word29 word30 word31 word32 word33 word34 word35 word36 word37 word38 word39"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 40,
+          "characterCount": 269,
+          "snippet": "word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20 word21 word22 word23 word24 word25 word26 word27 word28 word29...",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/snippet-hard-cut",
+      "op": "note-stats",
+      "input": {
+        "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 2,
+          "characterCount": 221,
+          "snippet": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/snippet-exact",
+      "op": "note-stats",
+      "input": {
+        "text": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 200,
+          "snippet": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/snippet-surrogates",
+      "op": "note-stats",
+      "input": {
+        "text": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 2,
+          "characterCount": 231,
+          "snippet": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé...",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/crlf",
+      "op": "note-stats",
+      "input": {
+        "text": "---\r\ntags: [a]\r\n---\r\nline one\r\nline two\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 4,
+          "characterCount": 20,
+          "snippet": "line one line two",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": [
+            "a"
+          ]
+        }
+      }
+    },
+    {
+      "id": "note-stats/bom",
+      "op": "note-stats",
+      "input": {
+        "text": "﻿---\ntags: solo\n---\nbody text"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 2,
+          "characterCount": 9,
+          "snippet": "body text",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": [
+            "solo"
+          ]
+        }
+      }
+    },
+    {
+      "id": "note-stats/tags-scalar-number",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: 42\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": [
+            "42"
+          ]
+        }
+      }
+    },
+    {
+      "id": "note-stats/tags-duplicates",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags:\n  - Work\n  - work\n  - \" spaced \"\n  - \"\"\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": [
+            "Work",
+            "spaced"
+          ]
+        }
+      }
+    },
+    {
+      "id": "note-stats/tags-false",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: false\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/tags-empty-list",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: []\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/cover-wash",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ncover: wash:sage\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": "wash:sage",
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/cover-unknown-wash",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ncover: wash:teal\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/cover-url",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ncover: HTTPS://img.test/a\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": "HTTPS://img.test/a",
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/cover-path-query",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ncover: covers/A.PNG?v=2\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": "covers/A.PNG?v=2",
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/cover-prose",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ncover: Hardback\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/cover-number",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ncover: 7\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/broken-frontmatter",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: [a, b\ncover: wash:sage\n---\nstill counted words"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 3,
+          "characterCount": 19,
+          "snippet": "still counted words",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/list-frontmatter",
+      "op": "note-stats",
+      "input": {
+        "text": "---\n- a\n- b\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/task-ids",
+      "op": "note-stats",
+      "input": {
+        "text": "- [ ] first {task:t1}\n- [x] second {task:t2}\n  - [ ] nested {task:t3}\n- [ ] first again {task:t1}\n- [ ] plain"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 24,
+          "characterCount": 109,
+          "snippet": "- [ ] first {task:t1} - [x] second {task:t2} - [ ] nested {task:t3} - [ ] first again {task:t1} - [ ] plain",
+          "cover": null,
+          "taskIds": [
+            "t1",
+            "t2",
+            "t3"
+          ],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/unclosed-frontmatter",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: [a]\nno close"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 5,
+          "characterCount": 22,
+          "snippet": "--- tags: [a] no close",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/tags-true",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: true\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": [
+            "true"
+          ]
+        }
+      }
+    },
+    {
+      "id": "note-stats/tags-date",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: 2024-01-01\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": [
+            "2024-01-01T00:00:00.000Z"
+          ]
+        }
+      }
+    },
+    {
+      "id": "note-stats/tags-nan",
+      "op": "note-stats",
+      "input": {
+        "text": "---\ntags: .nan\n---\nx"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 1,
+          "characterCount": 1,
+          "snippet": "x",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/wiki-embed",
+      "op": "note-stats",
+      "input": {
+        "text": "before ![[embed.png]] after ![[Note#Part|shown]] end"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 5,
+          "characterCount": 52,
+          "snippet": "before !embed.png after !shown end",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/cjk",
+      "op": "note-stats",
+      "input": {
+        "text": "漢字かなまじり文です。 한국어 문장 中文句子\n\n字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 5,
+          "characterCount": 275,
+          "snippet": "漢字かなまじり文です。 한국어 문장 中文句子 字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字...",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    },
+    {
+      "id": "note-stats/rtl",
+      "op": "note-stats",
+      "input": {
+        "text": "مرحبا بالعالم هذا نص عربي\nשלום עולם זה טקסט בעברית\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "wordCount": 10,
+          "characterCount": 51,
+          "snippet": "مرحبا بالعالم هذا نص عربي שלום עולם זה טקסט בעברית",
+          "cover": null,
+          "taskIds": [],
+          "headerTags": []
+        }
+      }
+    }
+  ]
+}

@@ -166,6 +166,7 @@ const CLASSES: readonly VectorClass[] = [
     files: [
       'frontmatter.json',
       'markdown-class.json',
+      'note-stats.json',
       'pm-schema.json',
       'yxml.json',
       'md-to-html.json',
