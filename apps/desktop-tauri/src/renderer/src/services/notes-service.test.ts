@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
 
 const commands = vi.hoisted(() => ({
+  notesCreate: vi.fn(),
+  notesDelete: vi.fn(),
   notesGet: vi.fn(),
   notesGetByPath: vi.fn(),
   notesGetFile: vi.fn(),
@@ -17,7 +19,23 @@ const commands = vi.hoisted(() => ({
   notesGetLocalOnlyCount: vi.fn()
 }))
 
-vi.mock('../../../generated/bindings', () => ({ commands }))
+// Each Rust event's last listener, for a test to send a payload through.
+const listeners = vi.hoisted(() => new Map<string, (event: { payload: unknown }) => void>())
+const events = vi.hoisted(() => {
+  const event = (name: string) => ({
+    listen: async (handler: (event: { payload: unknown }) => void) => {
+      listeners.set(name, handler)
+      return () => listeners.delete(name)
+    }
+  })
+  return {
+    noteCreatedEvent: event('created'),
+    noteUpdatedEvent: event('updated'),
+    noteDeletedEvent: event('deleted')
+  }
+})
+
+vi.mock('../../../generated/bindings', () => ({ commands, events }))
 
 import {
   notesService,
@@ -152,6 +170,73 @@ describe('notes-service', () => {
     expect(api.notes.resolveTitles).not.toHaveBeenCalled()
   })
 
+  it('creates and deletes through the commands, rejecting what it cannot create yet', async () => {
+    commands.notesCreate.mockResolvedValue({
+      id: 'note-1',
+      path: 'work/Plan.md',
+      title: 'Plan',
+      content: 'Hello',
+      frontmatter: {},
+      created: CREATED,
+      modified: MODIFIED,
+      tags: ['alpha'],
+      headerTags: ['alpha'],
+      aliases: [],
+      wordCount: 1,
+      properties: { status: 'open' },
+      emoji: null,
+      localOnly: false,
+      sizeClass: 'note',
+      largeFile: null,
+      contentOmitted: false
+    })
+    commands.notesDelete.mockResolvedValue(null)
+
+    const input = {
+      title: 'Plan',
+      content: 'Hello',
+      folder: 'work',
+      tags: ['alpha'],
+      properties: { status: 'open' }
+    }
+    const created = await notesService.create(input)
+    expect(commands.notesCreate).toHaveBeenCalledWith({ ...input, emoji: undefined })
+    expect(created.success).toBe(true)
+    expect(created.note?.modified).toEqual(new Date(MODIFIED))
+    expect(await notesService.delete('note-1')).toEqual({ success: true })
+    expect(commands.notesDelete).toHaveBeenCalledWith('note-1')
+
+    // A template (13l) or plain checklists (32) would be dropped, so the create is refused.
+    await expect(notesService.create({ title: 'T', template: 'weekly' })).rejects.toMatchObject({
+      name: 'NotPortedError'
+    })
+    await expect(notesService.create({ title: 'T', plainChecklists: true })).rejects.toMatchObject({
+      name: 'NotPortedError'
+    })
+    expect(commands.notesCreate).toHaveBeenCalledTimes(1)
+    // A failure answers as Electron's handler does, with the command's message.
+    commands.notesDelete.mockRejectedValue({
+      kind: 'not_found',
+      code: 'note_not_found',
+      message: 'note not found: gone'
+    })
+    expect(await notesService.delete('gone')).toEqual({
+      success: false,
+      error: 'note not found: gone'
+    })
+    commands.notesCreate.mockRejectedValue({
+      kind: 'conflict',
+      code: 'name_conflict',
+      message: 'name taken'
+    })
+    expect(await notesService.create(input)).toEqual({
+      success: false,
+      note: null,
+      error: 'name taken'
+    })
+    expect(api.notes.create).not.toHaveBeenCalled()
+  })
+
   it('sets local-only through its command and rejects when the change did not happen', async () => {
     commands.notesSetLocalOnly.mockResolvedValueOnce({
       id: 'note-1',
@@ -189,14 +274,8 @@ describe('notes-service', () => {
   })
 
   it('forwards the methods later steps port to window.api.notes', async () => {
-    const createResponse = { success: true, note: { id: 'note-1' } }
-    api.notes.create = vi.fn().mockResolvedValue(createResponse)
     api.notes.update = vi.fn().mockResolvedValue({ success: true })
     api.notes.rename = vi.fn().mockResolvedValue({ success: true })
-
-    const createInput = { title: 'New note', content: 'Hello' }
-    expect(await notesService.create(createInput)).toEqual(createResponse)
-    expect(api.notes.create).toHaveBeenCalledWith(createInput)
 
     const updateInput = { id: 'note-1', title: 'Updated' }
     await notesService.update(updateInput)
@@ -239,84 +318,54 @@ describe('notes-service', () => {
     expect(api.notes.restoreVersion).toHaveBeenCalledWith('snapshot-1')
   })
 
-  it('registers note event subscriptions', () => {
+  it('hands the created, updated and deleted note events from Rust on in the renderer shape', async () => {
+    const created = vi.fn()
+    const updated = vi.fn()
+    const deleted = vi.fn()
+    const stops = [onNoteCreated(created), onNoteUpdated(updated), onNoteDeleted(deleted)]
+    await vi.waitFor(() => expect(listeners.size).toBe(3))
+
+    const note = { id: 'n', path: 'a.md', title: 'a', created: CREATED, modified: MODIFIED }
+    listeners.get('created')?.({ payload: { note, source: 'internal' } })
+    listeners.get('updated')?.({
+      payload: { id: 'n', changes: { title: 'b', modified: MODIFIED }, source: 'external' }
+    })
+    listeners.get('deleted')?.({ payload: { id: 'n', path: 'a.md', source: 'internal' } })
+
+    expect(created).toHaveBeenCalledWith({
+      note: { ...note, created: new Date(CREATED), modified: new Date(MODIFIED) },
+      source: 'internal'
+    })
+    // `modified` is a `Date`, as every `Note` date the renderer reads.
+    expect(updated).toHaveBeenCalledWith({
+      id: 'n',
+      changes: { title: 'b', modified: new Date(MODIFIED) },
+      source: 'external'
+    })
+    expect(deleted).toHaveBeenCalledWith({ id: 'n', path: 'a.md', source: 'internal' })
+    for (const stop of stops) stop()
+    await vi.waitFor(() => expect(listeners.size).toBe(0))
+  })
+
+  it('registers the note event subscriptions not yet ported on window.api', () => {
     const unsubscribe = vi.fn()
-    api.onNoteCreated = vi.fn(() => unsubscribe)
-    api.onNoteUpdated = vi.fn(() => unsubscribe)
-    api.onNoteDeleted = vi.fn(() => unsubscribe)
     api.onNoteRenamed = vi.fn(() => unsubscribe)
     api.onNoteMoved = vi.fn(() => unsubscribe)
     api.onNoteExternalChange = vi.fn(() => unsubscribe)
     api.onTagsChanged = vi.fn(() => unsubscribe)
     api.onFolderConfigUpdated = vi.fn(() => unsubscribe)
+    const handler = vi.fn()
 
-    const createdHandler = vi.fn()
-    const updatedHandler = vi.fn()
-    const deletedHandler = vi.fn()
-    const renamedHandler = vi.fn()
-    const movedHandler = vi.fn()
-    const externalHandler = vi.fn()
-
-    expect(onNoteCreated(createdHandler)).toBe(unsubscribe)
-    expect(api.onNoteCreated).toHaveBeenCalledWith(createdHandler)
-
-    expect(onNoteUpdated(updatedHandler)).toBe(unsubscribe)
-    // onNoteUpdated wraps the handler to normalize `changes` — see below.
-    expect(api.onNoteUpdated).toHaveBeenCalledWith(expect.any(Function))
-
-    expect(onNoteDeleted(deletedHandler)).toBe(unsubscribe)
-    expect(api.onNoteDeleted).toHaveBeenCalledWith(deletedHandler)
-
-    expect(onNoteRenamed(renamedHandler)).toBe(unsubscribe)
-    expect(api.onNoteRenamed).toHaveBeenCalledWith(renamedHandler)
-
-    expect(onNoteMoved(movedHandler)).toBe(unsubscribe)
-    expect(api.onNoteMoved).toHaveBeenCalledWith(movedHandler)
-
-    expect(onNoteExternalChange(externalHandler)).toBe(unsubscribe)
-    expect(api.onNoteExternalChange).toHaveBeenCalledWith(externalHandler)
-
-    expect(onTagsChanged(createdHandler)).toBe(unsubscribe)
-    expect(api.onTagsChanged).toHaveBeenCalledWith(createdHandler)
-
-    expect(onFolderConfigUpdated(updatedHandler)).toBe(unsubscribe)
-    expect(api.onFolderConfigUpdated).toHaveBeenCalledWith(updatedHandler)
-  })
-
-  describe('onNoteUpdated payload normalization', () => {
-    // Regression: the sync path shipped `{ id, source: 'sync' }` with no
-    // `changes` for months. Subscribers read `changes.content` unguarded, so
-    // every pulled note threw inside the preload listener loop and the
-    // subscriber silently missed the event.
-    it('substitutes an empty changes object when the emitter omits it', () => {
-      let emit: ((event: unknown) => void) | undefined
-      api.onNoteUpdated = vi.fn((cb: (event: unknown) => void) => {
-        emit = cb
-        return vi.fn()
-      })
-
-      const handler = vi.fn()
-      onNoteUpdated(handler)
-      emit?.({ id: 'note-1', source: 'sync' })
-
-      expect(handler).toHaveBeenCalledWith({ id: 'note-1', source: 'sync', changes: {} })
-      expect(() => handler.mock.calls[0][0].changes.content).not.toThrow()
-    })
-
-    it('passes a well-formed payload through untouched', () => {
-      let emit: ((event: unknown) => void) | undefined
-      api.onNoteUpdated = vi.fn((cb: (event: unknown) => void) => {
-        emit = cb
-        return vi.fn()
-      })
-
-      const payload = { id: 'note-1', changes: { content: 'hello' }, source: 'sync' }
-      const handler = vi.fn()
-      onNoteUpdated(handler)
-      emit?.(payload)
-
-      expect(handler).toHaveBeenCalledWith(payload)
-    })
+    expect(onNoteRenamed(handler)).toBe(unsubscribe)
+    expect(api.onNoteRenamed).toHaveBeenCalledWith(handler)
+    expect(onNoteMoved(handler)).toBe(unsubscribe)
+    expect(api.onNoteMoved).toHaveBeenCalledWith(handler)
+    expect(onNoteExternalChange(handler)).toBe(unsubscribe)
+    expect(api.onNoteExternalChange).toHaveBeenCalledWith(handler)
+    expect(onTagsChanged(handler)).toBe(unsubscribe)
+    expect(api.onTagsChanged).toHaveBeenCalledWith(handler)
+    expect(onFolderConfigUpdated(handler)).toBe(unsubscribe)
+    expect(api.onFolderConfigUpdated).toHaveBeenCalledWith(handler)
   })
 
   describe('position operations', () => {

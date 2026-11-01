@@ -8,16 +8,13 @@ use std::sync::Arc;
 use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
-use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
-use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of_yaml};
 
 use super::activity::report_unread;
-use super::converter_for;
+use super::body::{Body, Write};
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
 use crate::vault::activity::{ActivityLog, ScanActivity, failure_key};
-use crate::vault::embeds::Resolved;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
 use crate::vault::watch::VaultEvent;
@@ -46,37 +43,6 @@ pub(super) struct Applier {
     pub(super) feed: Option<ExternalFeed>,
     pub(super) settings: Option<AppSettings>,
     pub(super) activity: Arc<ActivityLog>,
-}
-
-/// Whether the note's document now holds the file's text: only then does the row record the
-/// file's hash. `BodyPresent` is not: a seed answers it before it compares any text, so the
-/// body it left alone can differ from the file. A file whose frontmatter does not parse is
-/// (#3750): its body is the document's now, and the next read of the same bytes must not
-/// replace the edits made in the app since. Its block is never written over: the write-back
-/// cannot read the file back, fails, and tells the user.
-fn holds_file(outcome: FeedOutcome) -> bool {
-    matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged)
-}
-
-/// The writing tools data the whole file says (none without the key, or with the author's
-/// own), or `None` when its frontmatter does not parse and may hold some.
-fn writing_of(file: &NoteFile) -> Option<WritingFrontmatter> {
-    if file.split().block.is_none() {
-        return Some(WritingFrontmatter::default());
-    }
-    file.parse()
-        .ok()
-        .map(|parsed| writing_of_yaml(&parsed.frontmatter))
-}
-
-/// What a body write came to.
-enum Body {
-    /// The feed answered; `holds_file` when the document now holds the file's text.
-    Wrote { holds_file: bool },
-    /// This device has no signing key: nothing was written (the tier said so once).
-    NoKey,
-    /// The write failed; the fact is retried.
-    Failed,
 }
 
 impl Applier {
@@ -172,6 +138,7 @@ impl Applier {
         modified_ms: i64,
         scan: Option<&mut ScanActivity>,
     ) -> Step {
+        let source = walk_or_watcher(scan.as_deref());
         match lane.row_at(path) {
             Ok(Some(row)) => {
                 return self.changed(lane, &row.note_id, path, size, modified_ms, scan);
@@ -245,6 +212,7 @@ impl Applier {
             note_id,
             path: path.to_owned(),
             created,
+            source,
         });
         self.report_found(path, created, scan);
         Step::Done
@@ -260,6 +228,7 @@ impl Applier {
         modified_ms: i64,
         scan: Option<&mut ScanActivity>,
     ) -> Step {
+        let source = walk_or_watcher(scan.as_deref());
         let Some(file_type) = file_type_of_extension(&extension(path)) else {
             return Step::Done;
         };
@@ -351,7 +320,7 @@ impl Applier {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
             content_hash,
-            source: ChangeSource::Watcher,
+            source,
         });
         Step::Done
     }
@@ -398,6 +367,7 @@ impl Applier {
         lane.publish(Applied::Removed {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
+            source: ChangeSource::Watcher,
         });
         self.report_removed(path);
     }
@@ -488,54 +458,6 @@ impl Applier {
             }
         }
     }
-
-    /// Seeds or replaces the note's body with the file's text.
-    fn write_body(&self, note_id: &str, path: &str, file: &NoteFile, write: Write) -> Body {
-        let Some(feed) = &self.feed else {
-            return Body::NoKey;
-        };
-        let split = file.split();
-        // Outside the feed's write: the lookup reads the database the feed holds.
-        let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), split.body, path);
-        let input = FeedInput {
-            note_id,
-            markdown: split.body,
-            note_path: Some(path),
-            // `None` for a frontmatter that does not parse says nothing about the writing
-            // state, so the document keeps what it holds.
-            writing: writing_of(file),
-            frontmatter: split.block,
-            embeds: Some(&embeds),
-        };
-        let converter = converter_for(self.settings.as_ref());
-        let outcome = match write {
-            Write::Seed => feed.seed_body_if_empty(&converter, input),
-            Write::Replace => feed.feed(&converter, input),
-        };
-        match outcome {
-            Ok(outcome) => {
-                if !matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) {
-                    tracing::warn!(
-                        scope = SCOPE,
-                        note_id,
-                        outcome = ?outcome,
-                        "a file's text did not reach its note"
-                    );
-                }
-                Body::Wrote {
-                    holds_file: holds_file(outcome),
-                }
-            }
-            Err(error) => {
-                tracing::error!(
-                    scope = SCOPE,
-                    note_id,
-                    "a file's text did not reach its note: {error}"
-                );
-                Body::Failed
-            }
-        }
-    }
 }
 
 /// Why [`Applier::read`] has no note file.
@@ -552,6 +474,15 @@ enum Unread {
     },
 }
 
+/// Who found a file: the open walk, which hands its activity in, or the watcher.
+fn walk_or_watcher(scan: Option<&ScanActivity>) -> ChangeSource {
+    if scan.is_some() {
+        ChangeSource::Walk
+    } else {
+        ChangeSource::Watcher
+    }
+}
+
 /// Moves the row's pairing hash from `had` to the bytes on disk now, or to none when they are
 /// unknown; a hash already there is not written again.
 fn record_file_hash(lane: &Lane<'_>, note_id: &str, had: Option<&str>, now: Option<&str>) {
@@ -565,12 +496,6 @@ fn record_file_hash(lane: &Lane<'_>, note_id: &str, had: Option<&str>, now: Opti
             "the file hash was not recorded: {error}"
         );
     }
-}
-
-#[derive(Clone, Copy)]
-enum Write {
-    Seed,
-    Replace,
 }
 
 fn log_watch(event: &VaultEvent) {

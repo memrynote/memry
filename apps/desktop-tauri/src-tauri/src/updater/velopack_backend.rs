@@ -26,25 +26,49 @@ use super::channel;
 const PRODUCTION_FEED: &str = "https://github.com/memrynote/memry";
 
 /// Rehearsal builds set `MEMRY_UPDATE_FEED_URL` at build time, and `build_env.rs` hands it over
-/// trimmed and only when it is not blank; a production build never has one.
-pub const FEED_URL: &str = match option_env!("MEMRY_BUILD_MEMRY_UPDATE_FEED_URL") {
-    Some(feed) => feed,
-    None => PRODUCTION_FEED,
+/// trimmed and only when it is not blank; a production build never has one. What differs between
+/// the two builds derives from this one constant, through `FEED`.
+const REHEARSAL_FEED: Option<&str> = option_env!("MEMRY_BUILD_MEMRY_UPDATE_FEED_URL");
+
+/// The feed a build reads: the production one, or the rehearsal one compiled in instead.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Feed {
+    Production,
+    Rehearsal(&'static str),
+}
+
+const FEED: Feed = match REHEARSAL_FEED {
+    Some(url) => Feed::Rehearsal(url),
+    None => Feed::Production,
 };
+
+pub const FEED_URL: &str = FEED.url();
 
 /// The GitHub token a rehearsal build reads its feed with. Velopack reads a GitHub feed through
 /// the REST API, which allows 60 unauthenticated requests an hour per IP, and the proof jobs run
 /// on shared CI runners whose IP often has none left. Only the proof workflow sets it.
 const FEED_TOKEN_VAR: &str = "MEMRY_REHEARSAL_FEED_TOKEN";
 
-/// The token for a rehearsal build's GitHub feed. A production build has no rehearsal feed, so it
-/// never reads the variable and always reads the feed as users do.
-fn feed_token(rehearsal_feed: Option<&str>, env: &LaunchEnv) -> Option<String> {
-    rehearsal_feed
-        .filter(|feed| feed.starts_with("https://github.com/"))
-        .and(env.get(FEED_TOKEN_VAR))
-        .filter(|token| !token.is_empty())
-        .map(str::to_owned)
+impl Feed {
+    const fn url(self) -> &'static str {
+        match self {
+            Feed::Production => PRODUCTION_FEED,
+            Feed::Rehearsal(url) => url,
+        }
+    }
+
+    /// The token for a rehearsal build's GitHub feed. Production has none, so it never reads the
+    /// variable and always reads the feed as users do.
+    fn token(self, env: &LaunchEnv) -> Option<String> {
+        match self {
+            Feed::Production => None,
+            Feed::Rehearsal(url) => Some(url)
+                .filter(|url| url.starts_with("https://github.com/"))
+                .and(env.get(FEED_TOKEN_VAR))
+                .filter(|token| !token.is_empty())
+                .map(str::to_owned),
+        }
+    }
 }
 
 pub struct VelopackBackend {
@@ -65,7 +89,7 @@ impl VelopackBackend {
     pub fn new(env: &LaunchEnv) -> Result<Self, String> {
         let switch = channel::current();
         let options = Some(switch.options());
-        let token = feed_token(option_env!("MEMRY_BUILD_MEMRY_UPDATE_FEED_URL"), env);
+        let token = FEED.token(env);
         let authenticated = token.is_some();
         let manager = match token {
             Some(token) => UpdateManager::new(

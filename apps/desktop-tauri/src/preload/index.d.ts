@@ -2,7 +2,7 @@ import type { GeneratedRpcApi } from '@memry/rpc'
 import type { MovesRecovered } from '../generated/bindings'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
-import type { PortedNoteMethod } from '../renderer/src/services/notes-service'
+import type { PortedNoteEvent, PortedNoteMethod } from '../renderer/src/services/notes-service'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
@@ -2016,7 +2016,10 @@ interface CallNotesServiceInstead {
   readonly 'use notesService from @/services/notes-service': never
 }
 
-interface API extends Omit<GeneratedRpcApi, 'notes'> {
+/** The note subscriptions the notes service takes from Rust events, refused the same way. */
+type PortedNoteEventMarkers = { readonly [K in PortedNoteEvent]: CallNotesServiceInstead }
+
+interface API extends Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent>, PortedNoteEventMarkers {
   notes: Omit<NotesClientAPI, PortedNoteMethod> & {
     readonly [K in PortedNoteMethod]: CallNotesServiceInstead
   }

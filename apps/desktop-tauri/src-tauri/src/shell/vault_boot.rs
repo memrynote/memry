@@ -10,6 +10,7 @@ use memry_desktop::launch_timeline::LaunchPhase;
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::notes::service::NotesService;
 use memry_desktop::paths::AppPaths;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
@@ -101,9 +102,10 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 
 /// Starts the vault watcher and its consumer with every open and stops them with every close,
 /// with the notes identity (Step 13d) naming the note of each file. The tier is managed so the
-/// app's own file operations reach its own-write record and its row lane. The note index
-/// follows the tier's facts in the background of every open, broadcasts the progress of each
-/// open's pass, and is managed for `vault_reindex`.
+/// app's own file operations reach its own-write record and its row lane, and the notes service
+/// (Step 13f) over it, whose row facts become the note events. The note index follows the
+/// tier's facts in the background of every open, broadcasts the progress of each open's pass,
+/// and is managed for `vault_reindex`.
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -126,6 +128,9 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     forward_writeback_failures(app.clone(), tier.subscribe_failures());
     forward_activity_changes(app.clone(), tier.activity().subscribe());
     app.manage(tier.activity());
+    let notes = NotesService::new(tier.clone(), store.inner().clone());
+    crate::shell::note_events::forward(app.clone(), tier.subscribe());
+    app.manage(notes);
     app.manage(tier);
 }
 

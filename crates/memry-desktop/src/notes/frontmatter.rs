@@ -4,7 +4,7 @@
 //! values are theirs (`isReservedFrontmatterKey`).
 
 use memry_core::domain::note_stats::header_tags;
-use memry_core::markdown::frontmatter::YamlValue;
+use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml};
 use memry_core::markdown::shared::cover_image::is_cover_key_value;
 use memry_core::markdown::shared::writing_tools::{
     WRITING_FRONTMATTER_KEY, is_writing_frontmatter_value,
@@ -19,6 +19,23 @@ pub fn is_reserved_key(name: &str, value: &Value) -> bool {
         WRITING_FRONTMATTER_KEY => is_writing_frontmatter_value(value),
         _ => is_cover_key_value(name, value),
     }
+}
+
+/// The frontmatter of a new note file (`createNote`): `tags` when there are any, then the
+/// properties in their order, reserved keys left out (`writePropertiesToRoot`). Empty when
+/// there is neither, so the file has no block.
+pub fn new_file_frontmatter(tags: &[String], properties: &Map<String, Value>) -> YamlMap {
+    let mut map = YamlMap::new();
+    if !tags.is_empty() {
+        let items = tags.iter().cloned().map(YamlValue::String).collect();
+        map.insert("tags".to_owned(), YamlValue::seq(items));
+    }
+    for (name, value) in properties {
+        if !is_reserved_key(name, value) {
+            map.insert(name.clone(), json_to_yaml(value));
+        }
+    }
+    map
 }
 
 /// What `parseNote` and the index read off a note file's frontmatter.

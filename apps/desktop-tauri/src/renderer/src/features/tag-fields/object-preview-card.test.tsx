@@ -232,13 +232,17 @@ describe('ObjectPreviewBody', () => {
     mockObject({ 'Job title': 'Mathematician' })
     renderPreview()
     expect(await screen.findByText('Mathematician')).toBeInTheDocument()
-    const emit = api.onNoteUpdated.mock.calls[0][0] as (event: { id: string }) => void
+    const emit = api.onNoteUpdated.mock.calls[0][0] as (event: {
+      id: string
+      changes: Record<string, unknown>
+      source: string
+    }) => void
 
     api.properties.get.mockResolvedValue([{ name: 'Job title', value: 'Engineer', type: 'text' }])
-    act(() => emit({ id: 'someone-else' }))
+    act(() => emit({ id: 'someone-else', changes: {}, source: 'external' }))
     expect(api.properties.get).toHaveBeenCalledTimes(1)
 
-    act(() => emit({ id: 'person-1' }))
+    act(() => emit({ id: 'person-1', changes: {}, source: 'external' }))
     expect(await screen.findByText('Engineer')).toBeInTheDocument()
     expect(screen.queryByText('Mathematician')).not.toBeInTheDocument()
   })
