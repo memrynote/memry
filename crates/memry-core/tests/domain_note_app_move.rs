@@ -308,7 +308,7 @@ fn a_record_this_build_cannot_read_is_never_replaced_or_deleted() {
         run(&db, |conn| app_move::abandon(conn));
         let refused = db.call_blocking(|conn| app_move::begin(conn, "n1", &moved));
         assert!(refused.is_err(), "{value}");
-        // A title given in place still runs the transaction that forgets this note's record.
+        // A title given in place still runs the transaction that forgets a version 1 record.
         let title = format!("Plan {n}");
         let in_place = AppMoved {
             old_path: "Plan.md",

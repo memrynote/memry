@@ -158,14 +158,10 @@ fn parse(value: &str) -> Recorded {
     }
 }
 
-/// Forgets the recorded move, when it is a version 1 record (`note_id`'s, if given): the file
-/// did not move, went back, or the note followed it.
-fn forget(conn: &Connection, note_id: Option<&str>) -> Result<(), StorageError> {
-    let ours = match pending(conn)? {
-        Some(Recorded::Move(recorded)) => note_id.is_none_or(|id| recorded.note_id == id),
-        Some(Recorded::Unknown(_)) | None => false,
-    };
-    if ours {
+/// Forgets a version 1 record: the file did not move, went back, or the note followed it. A
+/// record this build cannot read stays.
+pub fn abandon(conn: &Connection) -> Result<(), StorageError> {
+    if let Some(Recorded::Move(_)) = pending(conn)? {
         conn.execute(
             "DELETE FROM meta WHERE key = ?1",
             params![APP_MOVE_META_KEY],
@@ -175,14 +171,8 @@ fn forget(conn: &Connection, note_id: Option<&str>) -> Result<(), StorageError> 
     Ok(())
 }
 
-/// Forgets a version 1 record: the file did not move, or went back. A record this build cannot
-/// read stays.
-pub fn abandon(conn: &Connection) -> Result<(), StorageError> {
-    forget(conn, None)
-}
-
 /// The note's file is at `moved.new_path` now: record, row and slot follow it in one
-/// transaction, which also forgets the note's record of the move ([`begin`]). An `Err` leaves
+/// transaction, which also forgets the record of the move ([`begin`]). An `Err` leaves
 /// all of it as it was.
 pub fn moved_by_app(
     conn: &Connection,
@@ -211,6 +201,6 @@ pub fn moved_by_app(
         owe_in(&tx, note_id, moved.old_path, now_ms)?;
     }
     note_files::rename_path(&tx, note_id, moved.new_path)?;
-    forget(&tx, Some(note_id))?;
+    abandon(&tx)?;
     tx.commit().map_err(failed)
 }
