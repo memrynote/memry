@@ -54,7 +54,7 @@ describe('buildPackArgs', () => {
         '--icon',
         'icon.ico',
         '--framework',
-        'webview2,vcredist143-x64',
+        'webview2',
         '--noPortable',
         '--signTemplate',
         'sign {{file}}'
@@ -70,7 +70,7 @@ describe('buildPackArgs', () => {
       '--icon',
       'icon.ico',
       '--framework',
-      'webview2,vcredist143-arm64',
+      'webview2',
       '--noPortable'
     ])
   })

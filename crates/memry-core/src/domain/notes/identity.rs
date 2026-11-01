@@ -354,7 +354,7 @@ fn created_content(
 /// Whether a new note id may be minted beside Electron's database: the import
 /// brought Electron's notes into the core, or the core is recorded as created
 /// for a vault that was not Electron's. Nothing recorded is not evidence.
-pub(super) fn mints_beside_electron(conn: &Connection) -> Result<bool, StorageError> {
+pub fn mints_beside_electron(conn: &Connection) -> Result<bool, StorageError> {
     conn.query_row(
         "SELECT EXISTS (SELECT 1 FROM meta WHERE key = ?1)
              OR EXISTS (SELECT 1 FROM meta WHERE key = ?2 AND value = 'native')",
@@ -390,22 +390,14 @@ pub fn renamed(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    if let Some((title, folder)) = live_place(&tx, note_id)? {
-        let mut changes = Vec::new();
-        if title != moved.title {
-            changes.push(("title", Change::set(moved.title)));
-        }
-        if folder.as_deref() != moved.folder_path {
-            let folder = moved
-                .folder_path
-                .map_or(Value::Null, |path| Value::String(path.to_owned()));
-            changes.push(("folderPath", Change::Set(folder)));
-        }
-        if !changes.is_empty() {
-            edit_in(&tx, ITEM_TYPE, note_id, changes, device_id, now_ms)?;
-            outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, note_id), now_ms)?;
-        }
-    }
+    follow(
+        &tx,
+        note_id,
+        Some(moved.title),
+        moved.folder_path,
+        device_id,
+        now_ms,
+    )?;
     if folder_of(moved.old_path) == folder_of(moved.new_path) {
         note_positions::carry(&tx, moved.old_path, moved.new_path)?;
     } else {
@@ -413,6 +405,35 @@ pub fn renamed(
     }
     settle_place(&tx, note_id)?;
     tx.commit().map_err(failed)
+}
+
+/// The live note `note_id` takes `title` (its own kept for `None`) and `folder_path` (`None`
+/// at the vault root), in one edit with one outbox row. Nothing is written when the record
+/// already says both, nor for a record that is not a live note.
+pub(super) fn follow(
+    conn: &Connection,
+    note_id: &str,
+    title: Option<&str>,
+    folder_path: Option<&str>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let Some((was_title, was_folder)) = live_place(conn, note_id)? else {
+        return Ok(());
+    };
+    let mut changes = Vec::new();
+    if let Some(title) = title.filter(|title| *title != was_title) {
+        changes.push(("title", Change::set(title)));
+    }
+    if was_folder.as_deref() != folder_path {
+        let folder = folder_path.map_or(Value::Null, |path| Value::String(path.to_owned()));
+        changes.push(("folderPath", Change::Set(folder)));
+    }
+    if !changes.is_empty() {
+        edit_in(conn, ITEM_TYPE, note_id, changes, device_id, now_ms)?;
+        outbox::enqueue(conn, &outbox::Change::upsert(ITEM_TYPE, note_id), now_ms)?;
+    }
+    Ok(())
 }
 
 /// A move of the note's file from `from_path` that the record was not given
@@ -427,14 +448,24 @@ pub fn owe_place(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    tx.execute(
+    owe_in(&tx, note_id, from_path, now_ms)?;
+    tx.commit().map_err(failed)
+}
+
+/// [`owe_place`] in the caller's transaction.
+pub(super) fn owe_in(
+    conn: &Connection,
+    note_id: &str,
+    from_path: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    conn.execute(
         "INSERT INTO note_place_owed (note_id, from_path, marked_at) VALUES (?1, ?2, ?3)
          ON CONFLICT(note_id) DO NOTHING",
         params![note_id, from_path, now_ms],
     )
     .map_err(failed)?;
-    note_positions::remove(&tx, from_path)?;
-    tx.commit().map_err(failed)
+    note_positions::remove(conn, from_path).map(drop)
 }
 
 /// A move the record is owed.
@@ -475,7 +506,7 @@ pub fn owed_places(conn: &Connection) -> Result<Vec<OwedPlace>, StorageError> {
     owed.collect::<Result<_, _>>().map_err(failed)
 }
 
-fn settle_place(conn: &Connection, note_id: &str) -> Result<(), StorageError> {
+pub(super) fn settle_place(conn: &Connection, note_id: &str) -> Result<(), StorageError> {
     conn.execute(
         "DELETE FROM note_place_owed WHERE note_id = ?1",
         params![note_id],
@@ -484,7 +515,7 @@ fn settle_place(conn: &Connection, note_id: &str) -> Result<(), StorageError> {
     .map_err(failed)
 }
 
-fn folder_of(path: &str) -> &str {
+pub(super) fn folder_of(path: &str) -> &str {
     path.rsplit_once('/').map_or("", |(folder, _)| folder)
 }
 

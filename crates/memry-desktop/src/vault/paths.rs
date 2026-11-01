@@ -131,12 +131,18 @@ fn truncate_utf16(text: &str, max: usize) -> &str {
     &text[..end]
 }
 
+/// Bytes a new name may take before its ` N` counter and extension: APFS and ext4 hold at most
+/// 255 UTF-8 bytes in one name, and 200 UTF-16 units of CJK text are 600.
+const MAX_NEW_NAME_BYTES: usize = 240;
+
 /// The name of a **new** file for `title`: [`sanitize_filename`] (Electron's rule, pinned by
 /// vectors) plus what Windows needs of a name that did not exist before:
 /// - control characters are dropped (the rule already turns white space into spaces);
 /// - dots and spaces at the end go, because Windows strips them and two names become one;
 /// - a reserved device name (`CON`, `NUL`, `COM1` ... with or without an extension) gets a
-///   `_` after its base, because `nul.md` opens the device on Windows.
+///   `_` after its base, because `nul.md` opens the device on Windows;
+/// - at most [`MAX_NEW_NAME_BYTES`], cut between characters, so `<name> N.<ext>` fits every
+///   volume, and a cut that leaves a dot or a space at the end drops it.
 ///
 /// A file that already exists keeps its name: nothing renames existing files through this.
 pub fn sanitize_new_filename(title: &str) -> String {
@@ -156,7 +162,12 @@ pub fn sanitize_new_filename(title: &str) -> String {
     } else {
         name.to_owned()
     };
-    truncate_utf16(&hardened, MAX_FILENAME_UTF16).to_owned()
+    let cut = truncate_utf16(&hardened, MAX_FILENAME_UTF16);
+    let cut = &cut[..cut.floor_char_boundary(MAX_NEW_NAME_BYTES)];
+    match cut.trim_end_matches(['.', ' ']) {
+        "" => "untitled".to_owned(),
+        cut => cut.to_owned(),
+    }
 }
 
 fn is_reserved_windows_name(base: &str) -> bool {

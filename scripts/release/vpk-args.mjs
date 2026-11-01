@@ -12,14 +12,14 @@ export const TARGETS = {
     runtime: 'win-x64',
     channel: 'win',
     mainExe: 'Memrynote.exe',
-    framework: 'webview2,vcredist143-x64'
+    framework: 'webview2'
   },
   'win-arm64': {
     os: 'win',
     runtime: 'win-arm64',
     channel: 'win-arm64',
     mainExe: 'Memrynote.exe',
-    framework: 'webview2,vcredist143-arm64'
+    framework: 'webview2'
   },
   'osx-arm64': { os: 'osx', runtime: 'osx-arm64', channel: 'osx-arm64', mainExe: 'MemryNote' },
   'osx-x64': { os: 'osx', runtime: 'osx-x64', channel: 'osx-x64', mainExe: 'MemryNote' },

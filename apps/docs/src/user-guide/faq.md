@@ -23,3 +23,19 @@ Yes. Memry reads the text inside PDFs and images in your vault, including scans 
 No. Memry does not support annotations on PDFs yet. You can't highlight, underline, or draw on a PDF page in Memry.
 
 As a workaround, embed the PDF in a note and write your comments around it in the note, or open the PDF in another app from the viewer's `⋯` menu with **Open in default app**.
+
+## How does Memry update itself?
+
+Memry checks for a new version 10 seconds after its window opens and then every 4 hours. When one is found, the Settings gear on the rail gets a dot. Click the gear to download the update, restart into it now, or let it install the next time you quit. You can also turn on automatic downloads, skip a version, or turn checks off. See [Updates](/user-guide/settings#updates).
+
+The Linux `.deb` package does not update itself. Install the new `.deb` from the release page instead.
+
+## Is my vault safe if an update fails?
+
+Yes. An update replaces the app, not your notes, and the vault is never part of the install. When an install does not finish, Memry opens on the version you had and shows **MemryNote couldn't finish installing** with a manual download. See [Updates](/user-guide/settings#updates).
+
+## Why does Windows say Memry needs the WebView2 Runtime?
+
+Memry draws its window with Microsoft Edge WebView2, a part of Windows 10 and 11 that can be removed. When Memry starts without it, it installs the runtime from a copy of Microsoft's installer that ships with the app. A box says **MemryNote is installing the Microsoft Edge WebView2 Runtime** while that runs, which can take up to two minutes, and then Memry opens.
+
+If the install does not work, for example because the computer is offline, a box titled **MemryNote can't start** explains what is missing. Choose **Yes** to open Microsoft's download page, run the installer, then open Memry again.

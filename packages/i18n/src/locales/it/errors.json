@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Impossibile eliminare la versione",
     "reorderFailed": "Impossibile riordinare le note",
     "importFilesFailed": "Impossibile importare i file",
-    "setLocalOnlyFailed": "Impossibile impostare la nota come solo locale"
+    "setLocalOnlyFailed": "Impossibile impostare la nota come solo locale",
+    "tooLargeToSync": "Questa nota è troppo grande per essere sincronizzata, quindi resta su questo dispositivo. Per risolvere, dividila in note più piccole."
   },
   "database": {
     "connectionFailed": "Impossibile connettersi al database locale. Prova a riavviare l'app.",

@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Die Version konnte nicht gelöscht werden",
     "reorderFailed": "Die Notizen konnten nicht neu angeordnet werden",
     "importFilesFailed": "Die Dateien konnten nicht importiert werden",
-    "setLocalOnlyFailed": "„Nur lokal“ konnte nicht festgelegt werden"
+    "setLocalOnlyFailed": "„Nur lokal“ konnte nicht festgelegt werden",
+    "tooLargeToSync": "Diese Notiz ist zu groß für die Synchronisierung und bleibt daher auf diesem Gerät. Teile sie in kleinere Notizen auf, um das zu beheben."
   },
   "database": {
     "connectionFailed": "Es konnte keine Verbindung zur lokalen Datenbank hergestellt werden. Versuche, die App neu zu starten.",

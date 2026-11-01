@@ -8,7 +8,6 @@ pub mod drop_stage;
 pub mod error;
 pub mod locale;
 pub mod logging;
-pub mod note_links;
 pub mod notes;
 pub mod settings;
 pub mod shell;

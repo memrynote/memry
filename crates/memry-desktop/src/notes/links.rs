@@ -14,8 +14,9 @@
 //! Electron listed each). A journal day is a source with text once a file row names it
 //! (13m); a day with none is listed at the path the journal settings give it, with no text.
 
+use std::cell::OnceCell;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use memry_core::api::errors::StorageError;
@@ -29,9 +30,7 @@ use crate::session::OpenVault;
 use crate::shell::file_open::is_plain_segment;
 use crate::vault::config::read_vault_config;
 use crate::vault::file_types::FileType;
-use crate::vault::journal_format::{
-    JournalDate, format_journal_filename, normalize_journal_folder,
-};
+use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::read_note;
 
 const SCOPE: &str = "note_links";
@@ -137,15 +136,16 @@ impl NoteLinks {
             .collect();
         let incoming = self.search.incoming_links(id)?;
         let title = incoming.target_title.unwrap_or_default();
+        let days = Days::new(&self.root);
         let incoming = incoming
             .sources
             .into_iter()
-            .map(|source| self.backlink(source, &title))
+            .map(|source| self.backlink(source, &title, &days))
             .collect();
         Ok(NoteLinksView { outgoing, incoming })
     }
 
-    fn backlink(&self, source: IncomingLink, target_title: &str) -> BacklinkView {
+    fn backlink(&self, source: IncomingLink, target_title: &str, days: &Days) -> BacklinkView {
         let found = match &source.source_path {
             Some(path) if !target_title.is_empty() => self.contexts(path, target_title, &source),
             _ => LinkContexts::default(),
@@ -154,12 +154,7 @@ impl NoteLinks {
             source_path: source
                 .source_path
                 .clone()
-                .or_else(|| {
-                    source
-                        .source_date
-                        .as_deref()
-                        .and_then(|d| self.journal_path(d))
-                })
+                .or_else(|| source.source_date.as_deref().and_then(|d| days.path_of(d)))
                 .unwrap_or_default(),
             source_id: source.source_id,
             source_title: source.source_title,
@@ -206,7 +201,7 @@ impl NoteLinks {
             .pop()
             .flatten()
             .map(|target| {
-                let (id, path, title, file_type) = self.named(target);
+                let (id, path, title, file_type) = named(target, &Days::new(&self.root));
                 LinkResolutionView {
                     id,
                     path,
@@ -225,12 +220,13 @@ impl NoteLinks {
         distinct.sort();
         distinct.dedup();
         let found = self.search.resolve_link_titles(distinct.clone())?;
+        let days = Days::new(&self.root);
         Ok(distinct
             .into_iter()
             .zip(found)
             .map(|(title, target)| {
                 let found = target.map(|target| {
-                    let (id, path, _, _) = self.named(target);
+                    let (id, path, _, _) = named(target, &days);
                     TitleMatchView { id, path }
                 });
                 (title, found)
@@ -247,7 +243,7 @@ impl NoteLinks {
             .search
             .resolve_link_target(target)?
             .map(|(target, heading)| {
-                let (id, path, title, file_type) = self.named(target);
+                let (id, path, title, file_type) = named(target, &Days::new(&self.root));
                 LinkTargetView {
                     id,
                     path,
@@ -257,38 +253,51 @@ impl NoteLinks {
                 }
             }))
     }
+}
 
-    /// The id, path, title and file type of a resolution. A note with no file row (one synced
-    /// here whose file is not written yet) is named where its file goes, `folder/Title.md`,
-    /// when every segment is a plain name; a journal day where the vault's journal settings
-    /// put it.
-    ///
-    /// A file type a newer build stored reads as markdown, as Electron reads a missing one
-    /// (`fileType ?? 'markdown'`): the link still opens its note.
-    fn named(&self, target: LinkTarget) -> (String, String, String, FileType) {
-        let path = target
-            .path
-            .clone()
-            .or_else(|| match &target.journal_date {
-                Some(date) => self.journal_path(date),
-                None => planned_path(&target),
-            })
-            .unwrap_or_default();
-        let file_type = FileType::of_stored(&target.file_type).unwrap_or(FileType::Markdown);
-        (target.id, path, target.title, file_type)
+/// The id, path, title and file type of a resolution. A note with no file row (one synced here
+/// whose file is not written yet) is named where its file goes, `folder/Title.md`, when every
+/// segment is a plain name; a journal day where the vault's journal settings put it.
+///
+/// A file type this build does not know, which a newer build stored, is reported as markdown: a
+/// stated divergence, since Electron passes the stored string through and reads only a missing
+/// one as markdown (`fileType ?? 'markdown'`). The type is an enum here, and the link still opens
+/// its note.
+fn named(target: LinkTarget, days: &Days) -> (String, String, String, FileType) {
+    let path = target
+        .path
+        .clone()
+        .or_else(|| match &target.journal_date {
+            Some(date) => days.path_of(date),
+            None => planned_path(&target),
+        })
+        .unwrap_or_default();
+    let file_type = FileType::of_stored(&target.file_type).unwrap_or(FileType::Markdown);
+    (target.id, path, target.title, file_type)
+}
+
+/// The vault's journal days ([`JournalDays`], the one owner of a day's path), read from its
+/// config at most once per call and only when a day has no file row.
+struct Days<'a> {
+    root: &'a Path,
+    days: OnceCell<JournalDays>,
+}
+
+impl<'a> Days<'a> {
+    fn new(root: &'a Path) -> Self {
+        Self {
+            root,
+            days: OnceCell::new(),
+        }
     }
 
-    /// `getJournalPath`: the day's file under the journal folder, in the journal date format.
-    fn journal_path(&self, date: &str) -> Option<String> {
-        let config = read_vault_config(&self.root);
-        let file =
-            format_journal_filename(JournalDate::from_iso(date)?, &config.journal_date_format);
-        let folder = normalize_journal_folder(&config.journal_folder);
-        Some(if folder.is_empty() {
-            format!("{file}.md")
-        } else {
-            format!("{folder}/{file}.md")
-        })
+    fn path_of(&self, date: &str) -> Option<String> {
+        self.days
+            .get_or_init(|| {
+                let config = read_vault_config(self.root);
+                JournalDays::new(&config.journal_folder, &config.journal_date_format)
+            })
+            .path_of(date)
     }
 }
 

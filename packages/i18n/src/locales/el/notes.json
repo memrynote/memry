@@ -771,6 +771,7 @@
     "expandSection": "Ανάπτυξη ενότητας αντίστροφων συνδέσμων",
     "showMore": "Εμφάνιση {count} ακόμη αντίστροφων συνδέσμων",
     "more": "{count} ακόμη",
+    "moreInNote": "{count, plural, one {Ακόμη # σύνδεσμος σε αυτή τη σημείωση} other {Ακόμη # σύνδεσμοι σε αυτή τη σημείωση}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Εμφανίζεται σε πύλη"
   },

@@ -133,7 +133,16 @@ const ported = {
   resolveTitles: (titles: string[]): Promise<WikiLinkTitleResolutions> =>
     commands.notesResolveTitles(titles),
   resolveWikiTarget: (target: string): Promise<WikiLinkTargetResolution | null> =>
-    commands.notesResolveWikiTarget(target)
+    commands.notesResolveWikiTarget(target),
+  // Rejects on failure rather than answering `success: false`: the note page reads no envelope
+  // and would announce a change that did not happen (a note too large to sync stays local-only).
+  setLocalOnly: async (id: string, localOnly: boolean) => {
+    const note = await commands.notesSetLocalOnly(id, localOnly)
+    return { success: true, note: toNote(note) }
+  },
+  getLocalOnlyCount: async (): Promise<{ count: number }> => ({
+    count: await commands.notesGetLocalOnlyCount()
+  })
 } satisfies Partial<NotesClientAPI>
 
 /** The note methods served from Rust; `window.api.notes` is typed without them. */
