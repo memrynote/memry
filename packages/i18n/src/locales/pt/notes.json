@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, one {# bloco a mais} other {# blocos a mais}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Não é possível mover para a lixeira",
+    "description": "“{title}” não pode ser movida para a lixeira. Excluir permanentemente? Isso não pode ser desfeito.",
+    "keep": "Manter nota",
+    "deletePermanently": "Excluir permanentemente",
+    "kept": "A nota foi mantida. Não foi possível movê-la para a lixeira."
   }
 }

@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, one {# weiterer Block} other {# weitere Blöcke}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Verschieben in den Papierkorb nicht möglich",
+    "description": "„{title}“ kann nicht in den Papierkorb verschoben werden. Endgültig löschen? Das kann nicht rückgängig gemacht werden.",
+    "keep": "Notiz behalten",
+    "deletePermanently": "Endgültig löschen",
+    "kept": "Die Notiz wurde behalten. Sie konnte nicht in den Papierkorb verschoben werden."
   }
 }

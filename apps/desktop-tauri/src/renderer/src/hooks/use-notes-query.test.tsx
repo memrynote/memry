@@ -43,6 +43,7 @@ const mocks = vi.hoisted(() => ({
     moved: [] as EmptyHandler[],
     linksChanged: [] as ((event: { sourceIds: string[]; targetIds: string[] }) => void)[],
     external: [] as NoteHandler[],
+    dropped: [] as EmptyHandler[],
     tagsChanged: [] as EmptyHandler[],
     folderConfigUpdated: [] as EmptyHandler[],
     indexProgress: [] as ((progress: number) => void)[],
@@ -79,6 +80,10 @@ vi.mock('@/services/notes-service', () => ({
   },
   onNoteExternalChange: (callback: NoteHandler) => {
     mocks.handlers.external.push(callback)
+    return vi.fn()
+  },
+  onNoteEventsDropped: (callback: EmptyHandler) => {
+    mocks.handlers.dropped.push(callback)
     return vi.fn()
   },
   onTagsChanged: (callback: EmptyHandler) => {
@@ -247,6 +252,30 @@ describe('use-notes-query', () => {
     await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(4))
   })
 
+  it('refetches the lists, the tags and the open note when note events were dropped', async () => {
+    const list = renderHook(() => useNotesList(), { wrapper })
+    const open = renderHook(() => useNote('n1'), { wrapper })
+    const tags = renderHook(() => useNoteTagsQuery(), { wrapper })
+    await waitFor(() => expect(list.result.current.notes[0]?.title).toBe('First'))
+    await waitFor(() => expect(open.result.current.note?.title).toBe('First'))
+    await waitFor(() => expect(tags.result.current.tags).toHaveLength(1))
+    expect(mocks.handlers.dropped).toHaveLength(2)
+
+    mocks.notesService.list.mockResolvedValue({
+      notes: [listItem('n2', 'Missed')],
+      total: 1,
+      hasMore: false
+    } satisfies NoteListResponse)
+    mocks.notesService.get.mockResolvedValue(note('n1', 'Edited outside'))
+    await act(async () => {
+      for (const dropped of mocks.handlers.dropped) dropped()
+    })
+
+    await waitFor(() => expect(list.result.current.notes[0]?.title).toBe('Missed'))
+    await waitFor(() => expect(open.result.current.note?.title).toBe('Edited outside'))
+    await waitFor(() => expect(mocks.tagsService.getAllWithCounts).toHaveBeenCalledTimes(2))
+  })
+
   it('#1832: refetches lists on background index-build progress, throttled, always at completion', async () => {
     const { result } = renderHook(() => useNotesList(), { wrapper })
 
@@ -408,5 +437,16 @@ describe('use-notes-query', () => {
     expect(mocks.notesService.move).toHaveBeenCalledWith('n1', 'Archive')
     expect(mocks.notesService.delete.mock.calls[0][0]).toBe('n1')
     expect(queryClient.getQueryData(notesKeys.note('n1'))).toBeUndefined()
+  })
+
+  it('keeps a note cached when its delete did not happen', async () => {
+    queryClient.setQueryData(notesKeys.note('n1'), note('n1', 'First'))
+    mocks.notesService.delete.mockResolvedValueOnce({ success: false, error: 'kept' })
+    const { result } = renderHook(() => useNoteMutations(), { wrapper })
+
+    await act(async () => {
+      await result.current.deleteNote.mutateAsync('n1')
+    })
+    expect(queryClient.getQueryData(notesKeys.note('n1'))).toEqual(note('n1', 'First'))
   })
 })

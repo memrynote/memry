@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, other {블록 #개 더}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "휴지통으로 이동할 수 없음",
+    "description": "“{title}”을(를) 휴지통으로 이동할 수 없습니다. 영구적으로 삭제할까요? 되돌릴 수 없습니다.",
+    "keep": "노트 유지",
+    "deletePermanently": "영구 삭제",
+    "kept": "노트를 유지했습니다. 휴지통으로 이동할 수 없었습니다."
   }
 }

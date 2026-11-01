@@ -30,6 +30,10 @@ pub enum NotesError {
     InvalidTitle,
     #[error("a note takes at most 50 tags of at most 50 characters each")]
     InvalidTags,
+    /// The note's file holds text the note never read, and the OS trash refused it. The note
+    /// is whole; the user decides whether it goes for good (#3813).
+    #[error("the note's file could not be moved to the trash: {0}")]
+    TrashUnavailable(String),
     #[error(transparent)]
     Storage(#[from] StorageError),
     #[error(transparent)]
@@ -99,6 +103,7 @@ impl CoreError for NotesError {
             }
             Self::InvalidTitle => (FailureKind::Invalid, "invalid_title"),
             Self::InvalidTags => (FailureKind::Invalid, "invalid_tags"),
+            Self::TrashUnavailable(_) => (FailureKind::Storage, "note_trash_unavailable"),
             Self::Crdt(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
             Self::File(_) => (FailureKind::Storage, "note_file_failed"),

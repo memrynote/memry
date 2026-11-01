@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, other {他のブロック # 件}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "ゴミ箱に移動できません",
+    "description": "「{title}」をゴミ箱に移動できません。完全に削除しますか？この操作は元に戻せません。",
+    "keep": "ノートを残す",
+    "deletePermanently": "完全に削除",
+    "kept": "ノートは残されました。ゴミ箱に移動できませんでした。"
   }
 }
