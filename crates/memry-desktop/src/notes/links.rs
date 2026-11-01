@@ -22,7 +22,7 @@ use std::sync::Arc;
 use memry_core::api::errors::StorageError;
 use memry_core::api::search::Search;
 use memry_core::domain::link_reads::{IncomingLink, LinkTarget};
-use memry_core::markdown::shared::link_contexts::{LinkContexts, link_contexts};
+use memry_core::markdown::shared::link_contexts::{LinkContext, LinkContexts, link_contexts};
 use memry_core::markdown::shared::markdown_code::strip_markdown_comments;
 use serde::Serialize;
 
@@ -52,6 +52,16 @@ pub struct BacklinkContextView {
     pub snippet: String,
     pub link_start: u32,
     pub link_end: u32,
+}
+
+impl From<LinkContext> for BacklinkContextView {
+    fn from(context: LinkContext) -> Self {
+        Self {
+            snippet: context.snippet,
+            link_start: units(context.link_start),
+            link_end: units(context.link_end),
+        }
+    }
 }
 
 /// A note linking to this one (`Backlink`).
@@ -158,15 +168,7 @@ impl NoteLinks {
                 .unwrap_or_default(),
             source_id: source.source_id,
             source_title: source.source_title,
-            contexts: found
-                .contexts
-                .into_iter()
-                .map(|context| BacklinkContextView {
-                    snippet: context.snippet,
-                    link_start: units(context.link_start),
-                    link_end: units(context.link_end),
-                })
-                .collect(),
+            contexts: found.contexts.into_iter().map(Into::into).collect(),
             mention_count: units(found.count),
             truncated: found.truncated,
         }
@@ -318,6 +320,6 @@ fn planned_path(target: &LinkTarget) -> Option<String> {
         .then(|| segments.join("/"))
 }
 
-fn units(offset: usize) -> u32 {
+pub(super) fn units(offset: usize) -> u32 {
     u32::try_from(offset).unwrap_or(u32::MAX)
 }
