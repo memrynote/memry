@@ -173,12 +173,11 @@ test('Restart to install on a quick quit hands off once with a relaunch', async 
   await download(app, page)
 
   await page.getByRole('button', { name: /Update ready/ }).click()
+  const restartNow = page.getByRole('button', { name: 'Restart now' })
+  await expect(restartNow).toBeVisible()
   // Nothing holds this quit, so the app can exit before the click's reply comes back
   // (ECONNREFUSED on linux-x64, run 41154998415). The exit and the apply below are the proof.
-  await page
-    .getByRole('button', { name: 'Restart now' })
-    .click()
-    .catch(() => undefined)
+  await restartNow.click().catch(() => undefined)
 
   await waitForExit(app)
   expect(applies(appDataDir)).toEqual([{ silent: true, restart: true }])
