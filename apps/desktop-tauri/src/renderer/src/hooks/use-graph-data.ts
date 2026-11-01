@@ -1,7 +1,12 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
-import { onNoteCreated, onNoteUpdated, onNoteDeleted } from '@/services/notes-service'
+import {
+  onNoteCreated,
+  onNoteUpdated,
+  onNoteDeleted,
+  onNoteLinksChanged
+} from '@/services/notes-service'
 import { onTaskCreated, onTaskUpdated, onTaskDeleted } from '@/services/tasks-service'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 
@@ -52,6 +57,8 @@ export function useGraphReactivity(): void {
       onNoteCreated(invalidateAll),
       onNoteUpdated(invalidateAll),
       onNoteDeleted(invalidateAll),
+      // Edges are the index's links, written after the note event: this comes after the commit.
+      onNoteLinksChanged(invalidateAll),
       onTaskCreated(invalidateAll),
       onTaskUpdated(invalidateAll),
       onTaskDeleted(invalidateAll),

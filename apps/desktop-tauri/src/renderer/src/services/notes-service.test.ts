@@ -16,6 +16,8 @@ const commands = vi.hoisted(() => ({
   notesResolveByTitle: vi.fn(),
   notesResolveTitles: vi.fn(),
   notesResolveWikiTarget: vi.fn(),
+  notesGetUnlinkedMentions: vi.fn(),
+  notesPreviewByTitle: vi.fn(),
   notesSetLocalOnly: vi.fn(),
   notesGetLocalOnlyCount: vi.fn(),
   notesGetPropertyDefinitions: vi.fn(),
@@ -175,6 +177,49 @@ describe('notes-service', () => {
     expect(commands.notesResolveWikiTarget).toHaveBeenCalledWith('Plan#Goals')
     expect(api.notes.getLinks).not.toHaveBeenCalled()
     expect(api.notes.resolveTitles).not.toHaveBeenCalled()
+  })
+
+  it('reads unlinked mentions and a link card from Rust, the card opening from its body', async () => {
+    const mention = {
+      sourceId: 'note-2',
+      sourcePath: 'Standup.md',
+      sourceTitle: 'Standup',
+      contexts: [{ snippet: 'the Plan today', linkStart: 4, linkEnd: 8 }],
+      mentionCount: 1,
+      truncated: false
+    }
+    commands.notesGetUnlinkedMentions.mockResolvedValue([mention])
+    const card = {
+      id: 'note-1',
+      title: 'Plan',
+      emoji: null,
+      snippet: 'Goals',
+      tags: [{ name: 'work', color: 'stone' }],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      matchedName: 'Roadmap',
+      path: 'Plan.md',
+      cover: null,
+      description: null
+    }
+    commands.notesPreviewByTitle
+      .mockResolvedValueOnce({ ...card, body: '# Goals\n\n- [ ] ship **it**' })
+      .mockResolvedValueOnce({ ...card, description: 'Why', body: null })
+      .mockResolvedValueOnce(null)
+
+    expect(await notesService.getUnlinkedMentions('note-1')).toEqual([mention])
+    expect(commands.notesGetUnlinkedMentions).toHaveBeenCalledWith('note-1')
+    expect(await notesService.previewByTitle('Roadmap')).toEqual({
+      ...card,
+      bodyText: 'Goals ship it'
+    })
+    expect(await notesService.previewByTitle('Roadmap')).toEqual({
+      ...card,
+      description: 'Why',
+      bodyText: null
+    })
+    expect(await notesService.previewByTitle('Gone')).toBeNull()
+    expect(api.notes.getUnlinkedMentions).not.toHaveBeenCalled()
+    expect(api.notes.previewByTitle).not.toHaveBeenCalled()
   })
 
   it('creates and deletes through the commands, rejecting what it cannot create yet', async () => {

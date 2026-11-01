@@ -1,7 +1,13 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UnlinkedMention } from '@memry/contracts/notes-api'
-import { notesService, onNoteCreated, onNoteDeleted, onNoteUpdated } from '@/services/notes-service'
+import {
+  notesService,
+  onNoteCreated,
+  onNoteDeleted,
+  onNoteLinksChanged,
+  onNoteUpdated
+} from '@/services/notes-service'
 
 const EMPTY: UnlinkedMention[] = []
 
@@ -28,10 +34,17 @@ export function useUnlinkedMentionsQuery(noteId: string | null, enabled: boolean
     const unsubUpdated = onNoteUpdated((event) => {
       if (event.id === noteId || event.changes.content !== undefined) refresh()
     })
+    // A source that gains a link to this note becomes a backlink and leaves the list; one that
+    // drops its last link may join it. The index sends this after it committed the links, where
+    // a note event comes before.
+    const unsubLinks = onNoteLinksChanged(({ targetIds }) => {
+      if (targetIds.includes(noteId)) refresh()
+    })
     const unsubCreated = onNoteCreated(refresh)
     const unsubDeleted = onNoteDeleted(refresh)
     return () => {
       unsubUpdated()
+      unsubLinks()
       unsubCreated()
       unsubDeleted()
     }
