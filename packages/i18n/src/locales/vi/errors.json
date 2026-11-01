@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Không thể tạo định nghĩa thuộc tính",
     "updateDefinitionFailed": "Không thể cập nhật định nghĩa thuộc tính",
     "setCalendarVisibilityFailed": "Không thể đặt hiển thị thuộc tính lịch",
-    "definitionsFileUnreadable": "Không thể lưu thay đổi thuộc tính vì không đọc được .memry/properties.md. Hãy sửa hoặc xóa tệp đó, rồi thử lại."
+    "definitionsFileUnreadable": "Không thể lưu thay đổi thuộc tính vì không đọc được .memry/properties.md. Hãy sửa hoặc xóa tệp đó, rồi thử lại.",
+    "definitionsFileWriteFailed": "Không thể lưu thay đổi thuộc tính vì không ghi được vào .memry/properties.md."
   },
   "reminder": {
     "notFound": "Không tìm thấy lời nhắc",

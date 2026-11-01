@@ -69,14 +69,18 @@ fn option(input: OptionInput) -> SelectOption {
     }
 }
 
-/// An option of `add_option`, `add_status_option`: `PropertyOptionInputSchema`.
+/// An option of `add_option`, `add_status_option`: `PropertyOptionInputSchema`, which keeps
+/// only the value and the color.
 fn new_option(input: OptionInput) -> Result<SelectOption, DefinitionsError> {
     if input.value.is_empty() || input.color.is_empty() {
         return Err(DefinitionsError::Invalid(
             "an option needs a value and a color",
         ));
     }
-    Ok(option(input))
+    Ok(SelectOption {
+        default: None,
+        ..option(input)
+    })
 }
 
 fn option_list(kind: &mut PropertyKind) -> Option<&mut Vec<SelectOption>> {

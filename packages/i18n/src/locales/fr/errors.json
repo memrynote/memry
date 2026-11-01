@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Impossible de créer la définition de propriété",
     "updateDefinitionFailed": "Impossible de mettre à jour la définition de propriété",
     "setCalendarVisibilityFailed": "Impossible de modifier la visibilité de la propriété dans le calendrier",
-    "definitionsFileUnreadable": "Impossible d'enregistrer les modifications des propriétés, car .memry/properties.md est illisible. Corrigez ou supprimez ce fichier, puis réessayez."
+    "definitionsFileUnreadable": "Impossible d'enregistrer les modifications des propriétés, car .memry/properties.md est illisible. Corrigez ou supprimez ce fichier, puis réessayez.",
+    "definitionsFileWriteFailed": "Impossible d'enregistrer les modifications des propriétés, car .memry/properties.md ne peut pas être écrit."
   },
   "reminder": {
     "notFound": "Rappel introuvable",

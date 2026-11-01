@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Ominaisuuden määrityksen luominen epäonnistui",
     "updateDefinitionFailed": "Ominaisuuden määrityksen päivittäminen epäonnistui",
     "setCalendarVisibilityFailed": "Kalenteriominaisuuden näkyvyyden asettaminen epäonnistui",
-    "definitionsFileUnreadable": "Ominaisuuksien muutoksia ei voi tallentaa, koska tiedostoa .memry/properties.md ei voi lukea. Korjaa tai poista tiedosto ja yritä uudelleen."
+    "definitionsFileUnreadable": "Ominaisuuksien muutoksia ei voi tallentaa, koska tiedostoa .memry/properties.md ei voi lukea. Korjaa tai poista tiedosto ja yritä uudelleen.",
+    "definitionsFileWriteFailed": "Ominaisuuksien muutoksia ei voi tallentaa, koska tiedostoon .memry/properties.md ei voi kirjoittaa."
   },
   "reminder": {
     "notFound": "Muistutusta ei löytynyt",

@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Özellik tanımı oluşturulamadı",
     "updateDefinitionFailed": "Özellik tanımı güncellenemedi",
     "setCalendarVisibilityFailed": "Takvim özelliği görünürlüğü ayarlanamadı",
-    "definitionsFileUnreadable": "Özellik değişiklikleri kaydedilemiyor çünkü .memry/properties.md okunamıyor. Bu dosyayı düzeltin ya da kaldırın, sonra yeniden deneyin."
+    "definitionsFileUnreadable": "Özellik değişiklikleri kaydedilemiyor çünkü .memry/properties.md okunamıyor. Bu dosyayı düzeltin ya da kaldırın, sonra yeniden deneyin.",
+    "definitionsFileWriteFailed": ".memry/properties.md dosyasına yazılamadığı için özellik değişiklikleri kaydedilemiyor."
   },
   "reminder": {
     "notFound": "Hatırlatıcı bulunamadı",

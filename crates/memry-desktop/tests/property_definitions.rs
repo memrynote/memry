@@ -385,12 +385,13 @@ fn a_create_keeps_what_the_type_shares_and_an_update_what_it_does_not_name() {
         ),
         (DefinitionType::Status, None, Some("rose"))
     );
+    // An added option keeps only its value and color, as `PropertyOptionInputSchema` does.
+    let review = OptionInput {
+        default: Some(true),
+        ..option("Review", "amber")
+    };
     f.definitions
-        .add_status_option(
-            "Stage",
-            StatusCategoryKey::InProgress,
-            option("Review", "amber"),
-        )
+        .add_status_option("Stage", StatusCategoryKey::InProgress, review)
         .unwrap();
     // Ensuring the type it has changes nothing.
     f.definitions.ensure("Stage", EnsuredType::Status).unwrap();
@@ -400,7 +401,12 @@ fn a_create_keeps_what_the_type_shares_and_an_update_what_it_does_not_name() {
     recolor.color = Some("sky".into());
     let updated = f.definitions.update(recolor).unwrap().unwrap();
     assert_eq!(updated.color.as_deref(), Some("sky"));
-    assert!(updated.options.unwrap().contains("Review"));
+    assert!(
+        updated
+            .options
+            .unwrap()
+            .contains(r#"[{"value":"In Progress","color":"amber"},{"value":"Review","color":"amber"}]"#)
+    );
     assert_eq!(
         updated.created_at,
         f.definitions.list().unwrap()[0].created_at
@@ -437,6 +443,30 @@ fn a_create_keeps_what_the_type_shares_and_an_update_what_it_does_not_name() {
     let kind = view("Kind");
     assert_eq!((kind.type_name, kind.color), (DefinitionType::Date, None));
     assert_eq!(f.definitions.calendar_names(), ["Kind"]);
+
+    // An update keeps the calendar flag and every field it does not name.
+    let mut due = input("Kind", None);
+    due.default_value = Some("today".into());
+    f.definitions.update(due).unwrap();
+    let mut recolor = input("Kind", None);
+    recolor.color = Some("sky".into());
+    let kind = f.definitions.update(recolor).unwrap().unwrap();
+    assert_eq!(
+        (kind.default_value.as_deref(), kind.color.as_deref()),
+        (Some("today"), Some("sky"))
+    );
+    assert_eq!(f.definitions.calendar_names(), ["Kind"]);
+
+    // An added list option keeps only its value and color too.
+    let flagged = OptionInput {
+        default: Some(true),
+        ..option("New", "sky")
+    };
+    f.definitions.add_option("Fresh", flagged).unwrap();
+    assert_eq!(
+        view("Fresh").options.as_deref(),
+        Some(r#"[{"value":"New","color":"sky"}]"#)
+    );
 }
 
 #[test]

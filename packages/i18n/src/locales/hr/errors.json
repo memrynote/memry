@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Stvaranje definicije svojstva nije uspjelo",
     "updateDefinitionFailed": "Ažuriranje definicije svojstva nije uspjelo",
     "setCalendarVisibilityFailed": "Postavljanje vidljivosti svojstva u kalendaru nije uspjelo",
-    "definitionsFileUnreadable": "Promjene svojstava nije moguće spremiti jer se .memry/properties.md ne može pročitati. Popravite ili uklonite tu datoteku pa pokušajte ponovno."
+    "definitionsFileUnreadable": "Promjene svojstava nije moguće spremiti jer se .memry/properties.md ne može pročitati. Popravite ili uklonite tu datoteku pa pokušajte ponovno.",
+    "definitionsFileWriteFailed": "Promjene svojstava nije moguće spremiti jer se u .memry/properties.md ne može pisati."
   },
   "reminder": {
     "notFound": "Podsjetnik nije pronađen",

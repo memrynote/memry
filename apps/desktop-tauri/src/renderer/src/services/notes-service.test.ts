@@ -315,6 +315,18 @@ describe('notes-service', () => {
       error: expect.stringContaining('.memry/properties.md')
     })
 
+    // A write that fails: the localized reason, without the Rust text and its vault path.
+    commands.notesCreatePropertyDefinition.mockRejectedValueOnce({
+      kind: 'storage',
+      code: 'property_definitions_write_failed',
+      message: 'the property definitions file /vault/.memry/properties.md cannot be written'
+    })
+    expect(await notesService.createPropertyDefinition({ name: 'Stage', type: 'text' })).toEqual({
+      success: false,
+      definition: null,
+      error: "Can't save property changes because .memry/properties.md can't be written."
+    })
+
     commands.notesUpdatePropertyDefinition.mockResolvedValueOnce(null)
     expect(await notesService.updatePropertyDefinition({ name: 'Missing' })).toEqual({
       success: false,

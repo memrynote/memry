@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Nem sikerült létrehozni a tulajdonságdefiníciót",
     "updateDefinitionFailed": "Nem sikerült frissíteni a tulajdonságdefiníciót",
     "setCalendarVisibilityFailed": "Nem sikerült beállítani a naptártulajdonság láthatóságát",
-    "definitionsFileUnreadable": "A tulajdonságmódosítások nem menthetők, mert a .memry/properties.md nem olvasható. Javítsa vagy távolítsa el a fájlt, majd próbálja újra."
+    "definitionsFileUnreadable": "A tulajdonságmódosítások nem menthetők, mert a .memry/properties.md nem olvasható. Javítsa vagy távolítsa el a fájlt, majd próbálja újra.",
+    "definitionsFileWriteFailed": "A tulajdonságok módosításai nem menthetők, mert a .memry/properties.md fájl nem írható."
   },
   "reminder": {
     "notFound": "Az emlékeztető nem található",
