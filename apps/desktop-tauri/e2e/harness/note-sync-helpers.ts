@@ -48,7 +48,7 @@ export async function findNoteHandle(
             emoji: string | null
           } | null)
         : null
-      if (fromId?.title === expectedTitle) {
+      if (fromId && fromId.title === expectedTitle) {
         return {
           id: fromId.id,
           title: fromId.title,
