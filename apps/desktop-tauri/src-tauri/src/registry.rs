@@ -111,12 +111,22 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_open_path,
             crate::commands::shell::shell_reveal_path,
             crate::commands::shell::shell_take_crash_reload,
+            // tags
+            crate::commands::tags::tags_get_all_with_counts,
+            crate::commands::tags::tags_get_notes_by_tag,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,
             crate::commands::telemetry::telemetry_set_auto_send_diagnostics,
             crate::commands::telemetry::telemetry_set_enabled,
             crate::commands::telemetry::telemetry_track,
+            // templates
+            crate::commands::templates::templates_create,
+            crate::commands::templates::templates_delete,
+            crate::commands::templates::templates_duplicate,
+            crate::commands::templates::templates_get,
+            crate::commands::templates::templates_list,
+            crate::commands::templates::templates_update,
             // unsplash
             crate::commands::unsplash::unsplash_search,
             // updater
@@ -172,6 +182,10 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
+            // templates
+            crate::events::TemplateCreatedEvent,
+            crate::events::TemplateDeletedEvent,
+            crate::events::TemplateUpdatedEvent,
             // updater
             crate::events::UpdaterStateChangedEvent,
             // notes

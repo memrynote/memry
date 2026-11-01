@@ -3,6 +3,7 @@ import type { MovesRecovered } from '../generated/bindings'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type { PortedNoteEvent, PortedNoteMethod } from '../renderer/src/services/notes-service'
+import type { PortedTagMethod } from '../renderer/src/services/tags-service'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
@@ -210,75 +211,6 @@ export type AttachmentResult = NotesRpc.AttachmentResult
 export type AttachmentInfo = NotesRpc.AttachmentInfo
 export type DeleteAttachmentResponse = NotesRpc.DeleteAttachmentResponse
 
-// Template types (Phase 15)
-export type TemplatePropertyType =
-  | 'text'
-  | 'number'
-  | 'checkbox'
-  | 'date'
-  | 'select'
-  | 'multiselect'
-  | 'url'
-  | 'rating'
-  | 'project'
-
-export interface TemplateProperty {
-  name: string
-  type: TemplatePropertyType
-  value: unknown
-  options?: string[]
-}
-
-export interface Template {
-  id: string
-  name: string
-  description?: string
-  icon?: string | null
-  isBuiltIn: boolean
-  tags: string[]
-  properties: TemplateProperty[]
-  content: string
-  createdAt: string
-  modifiedAt: string
-}
-
-export interface TemplateListItem {
-  id: string
-  name: string
-  description?: string
-  icon?: string | null
-  isBuiltIn: boolean
-}
-
-export interface TemplateCreateInput {
-  name: string
-  description?: string
-  icon?: string | null
-  tags?: string[]
-  properties?: TemplateProperty[]
-  content?: string
-}
-
-export interface TemplateUpdateInput {
-  id: string
-  name?: string
-  description?: string
-  icon?: string | null
-  tags?: string[]
-  properties?: TemplateProperty[]
-  content?: string
-}
-
-export interface TemplateCreateResponse {
-  success: boolean
-  template: Template | null
-  error?: string
-}
-
-export interface TemplateListResponse {
-  templates: TemplateListItem[]
-}
-
 export type FolderConfig = NotesRpc.FolderConfig
 export type FolderInfo = NotesRpc.FolderInfo
 
@@ -289,19 +221,6 @@ export type SnapshotReason = NotesRpc.SnapshotListItem['reason']
 export type SnapshotListItem = NotesRpc.SnapshotListItem
 export type SnapshotDetail = NotesRpc.SnapshotDetail
 export type RestoreVersionResponse = NotesRpc.RestoreVersionResponse
-
-export interface TemplateCreatedEvent {
-  template: Template
-}
-
-export interface TemplateUpdatedEvent {
-  id: string
-  template: Template
-}
-
-export interface TemplateDeletedEvent {
-  id: string
-}
 
 export type NoteListItem = NotesRpc.NoteListItem
 export type FileMetadata = NotesRpc.FileMetadata
@@ -659,16 +578,6 @@ export interface SavedFiltersClientAPI {
   update(input: SavedFilterUpdateInput): Promise<SavedFilterCreateResponse>
   delete(id: string): Promise<{ success: boolean; error?: string }>
   reorder(ids: string[], positions: number[]): Promise<{ success: boolean; error?: string }>
-}
-
-// Templates client API interface
-export interface TemplatesClientAPI {
-  list(): Promise<TemplateListResponse>
-  get(id: string): Promise<Template | null>
-  create(input: TemplateCreateInput): Promise<TemplateCreateResponse>
-  update(input: TemplateUpdateInput): Promise<TemplateCreateResponse>
-  delete(id: string): Promise<{ success: boolean; error?: string }>
-  duplicate(id: string, newName: string): Promise<TemplateCreateResponse>
 }
 
 // Journal client API interface
@@ -2019,6 +1928,11 @@ interface CallNotesServiceInstead {
 /** The note subscriptions the notes service takes from Rust events, refused the same way. */
 type PortedNoteEventMarkers = { readonly [K in PortedNoteEvent]: CallNotesServiceInstead }
 
+/** A tag method `tagsService` serves from Rust, refused the same way. */
+interface CallTagsServiceInstead {
+  readonly 'use tagsService from @/services/tags-service': never
+}
+
 interface API extends Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent>, PortedNoteEventMarkers {
   notes: Omit<NotesClientAPI, PortedNoteMethod> & {
     readonly [K in PortedNoteMethod]: CallNotesServiceInstead
@@ -2026,10 +1940,11 @@ interface API extends Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent>, PortedNo
   vault: VaultClientAPI
   properties: PropertiesClientAPI
   savedFilters: SavedFiltersClientAPI
-  templates: TemplatesClientAPI
   journal: JournalClientAPI
   bookmarks: BookmarksClientAPI
-  tags: TagsClientAPI
+  tags: Omit<TagsClientAPI, PortedTagMethod> & {
+    readonly [K in PortedTagMethod]: CallTagsServiceInstead
+  }
   reminders: RemindersClientAPI
   recents: RecentsClientAPI
   portals: PortalsClientAPI
@@ -2109,9 +2024,6 @@ interface API extends Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent>, PortedNo
   onSavedFilterUpdated: (callback: (event: SavedFilterUpdatedEvent) => void) => () => void
   onSavedFilterDeleted: (callback: (event: SavedFilterDeletedEvent) => void) => () => void
   // Templates event subscriptions
-  onTemplateCreated: (callback: (event: TemplateCreatedEvent) => void) => () => void
-  onTemplateUpdated: (callback: (event: TemplateUpdatedEvent) => void) => () => void
-  onTemplateDeleted: (callback: (event: TemplateDeletedEvent) => void) => () => void
   // Home boards event subscriptions (local writes and remote applies both emit)
   onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
   onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void

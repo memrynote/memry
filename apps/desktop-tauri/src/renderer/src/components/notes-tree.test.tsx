@@ -134,6 +134,10 @@ const mockGeneralSettings = {
   onboardingCompleted: false
 }
 
+vi.mock('@/services/templates-service', () => ({
+  templatesService: { list: vi.fn().mockResolvedValue({ templates: [] }) }
+}))
+
 vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({
     settings: mockGeneralSettings,
@@ -244,19 +248,9 @@ const setupMocks = (
 // T521: NotesTree - Folder Tree Display Tests
 // ============================================================================
 
-const patchTemplatesMock = () => {
-  // SAFETY: the DOM test setup installs `window.api` as a plain mock object;
-  // only `templates.list` is replaced, and only when the mock provides it.
-  const w = window as unknown as { api?: { templates?: Record<string, unknown> } }
-  if (w.api?.templates) {
-    w.api.templates.list = vi.fn().mockResolvedValue({ templates: [] })
-  }
-}
-
 describe('T521: NotesTree - folder tree display', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    patchTemplatesMock()
     setupMocks()
   })
 
@@ -431,7 +425,6 @@ describe('T521: NotesTree - folder tree display', () => {
 describe('T522: NotesTree - context menu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    patchTemplatesMock()
     setupMocks()
   })
 
@@ -582,7 +575,6 @@ describe('NotesTree - one folder subtree, view options', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
-    patchTemplatesMock()
     setupMocks(deepNotes, deepFolders)
   })
 
@@ -713,7 +705,6 @@ describe('NotesTree - one folder subtree, view options', () => {
 describe('T522: NotesTree - inline rename', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    patchTemplatesMock()
     setupMocks()
   })
 
@@ -751,7 +742,6 @@ describe('T522: NotesTree - inline rename', () => {
 describe('T522: NotesTree - delete', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    patchTemplatesMock()
     setupMocks()
   })
 
@@ -798,7 +788,6 @@ describe('T522: NotesTree - delete', () => {
 describe('T522: NotesTree - multi-selection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    patchTemplatesMock()
     setupMocks()
   })
 
@@ -824,7 +813,6 @@ describe('NotesTree - multi-selection context menu', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    patchTemplatesMock()
     setupMocks()
     bulkCreate = vi.fn().mockResolvedValue({ success: true, createdCount: 2 })
     // SAFETY: the DOM test setup installs `window.api` as a plain mock object.
@@ -936,7 +924,6 @@ describe('NotesTree - multi-selection context menu', () => {
 describe('T522: NotesTree - keyboard navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    patchTemplatesMock()
     setupMocks()
   })
 
@@ -978,7 +965,6 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     // The tree persists expanded folders on a 500 ms debounce; a slow earlier test
     // leaves Projects expanded here, so the click under test would collapse it.
     localStorage.clear()
-    patchTemplatesMock()
     capturedActionsRef = createRef<NotesTreeActions | null>()
 
     createNoteMock = vi.fn().mockResolvedValue({
@@ -1144,7 +1130,6 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
 describe('NotesTree - accessibility', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    patchTemplatesMock()
     setupMocks()
   })
 

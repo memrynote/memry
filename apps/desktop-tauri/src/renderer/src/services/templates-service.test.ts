@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createMockApi } from '@tests/setup-dom'
 import {
   listTemplates,
   getTemplate,
@@ -7,59 +6,119 @@ import {
   updateTemplate,
   deleteTemplate,
   duplicateTemplate,
-  onTemplateCreated,
-  onTemplateUpdated,
-  onTemplateDeleted
+  onTemplateCreated
 } from './templates-service'
 
+const commands = vi.hoisted(() => ({
+  templatesList: vi.fn(),
+  templatesGet: vi.fn(),
+  templatesCreate: vi.fn(),
+  templatesUpdate: vi.fn(),
+  templatesDelete: vi.fn(),
+  templatesDuplicate: vi.fn()
+}))
+const events = vi.hoisted(() => ({
+  templateCreatedEvent: { listen: vi.fn() },
+  templateUpdatedEvent: { listen: vi.fn() },
+  templateDeletedEvent: { listen: vi.fn() }
+}))
+
+vi.mock('../../../generated/bindings', () => ({ commands, events }))
+
+const view = {
+  id: 'tpl-1',
+  name: 'Weekly',
+  description: null,
+  icon: null,
+  isBuiltIn: false,
+  tags: ['weekly'],
+  properties: [{ name: 'Stage', type: 'select', value: 'Draft', options: ['Draft'] }],
+  content: 'Body',
+  createdAt: '2025-10-09T08:53:20.000Z',
+  modifiedAt: '2025-10-09T08:53:20.000Z'
+}
+
+beforeEach(() => {
+  for (const command of Object.values(commands)) command.mockReset()
+})
+
 describe('templates-service', () => {
-  let api: any
+  it('answers a write with the template, a missing description left out', async () => {
+    commands.templatesCreate.mockResolvedValue(view)
+    const input = { name: 'Weekly', content: 'Body' }
 
-  beforeEach(() => {
-    api = createMockApi()
-    api.templates.list = vi.fn().mockResolvedValue({ templates: [] })
-    api.templates.get = vi.fn().mockResolvedValue(null)
-    api.templates.create = vi.fn().mockResolvedValue({ success: true, template: null })
-    api.templates.update = vi.fn().mockResolvedValue({ success: true, template: null })
-    api.templates.delete = vi.fn().mockResolvedValue({ success: true })
-    api.templates.duplicate = vi.fn().mockResolvedValue({ success: true, template: null })
+    const created = await createTemplate(input)
 
-    api.onTemplateCreated = vi.fn().mockReturnValue(() => {})
-    api.onTemplateUpdated = vi.fn().mockReturnValue(() => {})
-    api.onTemplateDeleted = vi.fn().mockReturnValue(() => {})
-    ;(window as Window & { api: unknown }).api = api
+    expect(commands.templatesCreate).toHaveBeenCalledWith(input)
+    expect(created).toEqual({ success: true, template: { ...view, description: undefined } })
   })
 
-  it('forwards template CRUD and duplicate operations', async () => {
-    await listTemplates()
-    expect(api.templates.list).toHaveBeenCalled()
+  it('answers a refused write with its message, as Electron withErrorHandler does', async () => {
+    commands.templatesUpdate.mockRejectedValue({
+      kind: 'invalid',
+      code: 'invalid',
+      message: 'built-in template `blank` cannot be changed'
+    })
+    commands.templatesDelete.mockRejectedValue({
+      kind: 'not_found',
+      code: 'not_found',
+      message: 'not found: template x'
+    })
 
-    await getTemplate('tpl-1')
-    expect(api.templates.get).toHaveBeenCalledWith('tpl-1')
-
-    const createInput = { name: 'Template', content: 'Hello' }
-    await createTemplate(createInput)
-    expect(api.templates.create).toHaveBeenCalledWith(createInput)
-
-    const updateInput = { id: 'tpl-1', name: 'Updated' }
-    await updateTemplate(updateInput)
-    expect(api.templates.update).toHaveBeenCalledWith(updateInput)
-
-    await deleteTemplate('tpl-1')
-    expect(api.templates.delete).toHaveBeenCalledWith('tpl-1')
-
-    await duplicateTemplate('tpl-1', 'Copy')
-    expect(api.templates.duplicate).toHaveBeenCalledWith('tpl-1', 'Copy')
+    await expect(updateTemplate({ id: 'blank', name: 'x' })).resolves.toEqual({
+      success: false,
+      template: null,
+      error: 'built-in template `blank` cannot be changed'
+    })
+    await expect(deleteTemplate('x')).resolves.toEqual({
+      success: false,
+      error: 'not found: template x'
+    })
   })
 
-  it('registers template event subscriptions', () => {
-    const unsubscribe = vi.fn()
-    api.onTemplateCreated = vi.fn(() => unsubscribe)
-    api.onTemplateUpdated = vi.fn(() => unsubscribe)
-    api.onTemplateDeleted = vi.fn(() => unsubscribe)
+  it('lists, reads, duplicates and deletes through the commands', async () => {
+    commands.templatesList.mockResolvedValue([
+      { id: 'blank', name: 'Blank Note', description: 'Start', icon: '📄', isBuiltIn: true },
+      { id: 'tpl-1', name: 'Weekly', description: null, icon: null, isBuiltIn: false }
+    ])
+    commands.templatesGet.mockResolvedValue(null)
+    commands.templatesDuplicate.mockResolvedValue({ ...view, id: 'tpl-2' })
+    commands.templatesDelete.mockResolvedValue(null)
 
-    expect(onTemplateCreated(vi.fn())).toBe(unsubscribe)
-    expect(onTemplateUpdated(vi.fn())).toBe(unsubscribe)
-    expect(onTemplateDeleted(vi.fn())).toBe(unsubscribe)
+    const listed = await listTemplates()
+    expect(listed.templates[1]).toEqual({
+      id: 'tpl-1',
+      name: 'Weekly',
+      description: undefined,
+      icon: null,
+      isBuiltIn: false
+    })
+    await expect(getTemplate('gone')).resolves.toBeNull()
+    expect(commands.templatesGet).toHaveBeenCalledWith('gone')
+    await expect(duplicateTemplate('tpl-1', 'Copy')).resolves.toMatchObject({
+      success: true,
+      template: { id: 'tpl-2' }
+    })
+    expect(commands.templatesDuplicate).toHaveBeenCalledWith('tpl-1', 'Copy')
+    await expect(deleteTemplate('tpl-1')).resolves.toEqual({ success: true })
+  })
+
+  it('hands each template event to the subscriber until it unsubscribes', async () => {
+    let handler: ((event: { payload: { id: string } }) => void) | undefined
+    const unlisten = vi.fn()
+    events.templateCreatedEvent.listen.mockImplementation(async (h) => {
+      handler = h
+      return unlisten
+    })
+    const callback = vi.fn()
+
+    const unsubscribe = onTemplateCreated(callback)
+    await Promise.resolve()
+    handler?.({ payload: { id: 'tpl-1' } })
+    unsubscribe()
+    handler?.({ payload: { id: 'tpl-2' } })
+
+    expect(callback).toHaveBeenCalledTimes(1)
+    expect(callback).toHaveBeenCalledWith({ id: 'tpl-1' })
   })
 })
