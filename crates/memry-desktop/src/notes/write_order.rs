@@ -8,33 +8,74 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 #[derive(Default)]
 pub struct WriteOrder {
-    notes: Mutex<HashMap<String, Arc<Mutex<()>>>>,
+    notes: Mutex<HashMap<String, Turn>>,
+}
+
+/// A note's turn: the lock its writes take one at a time, and how many writes hold or wait
+/// for it. The count changes only under the map's lock, so the last write to leave drops the
+/// entry; a handle count read there could still include a write that has left the map's lock
+/// but not yet dropped its handle.
+#[derive(Default)]
+struct Turn {
+    lock: Arc<Mutex<()>>,
+    writes: usize,
 }
 
 impl WriteOrder {
     /// Runs `write` once every earlier write of `note_id` has finished. Blocks: call it off the
     /// async runtime. A write that fails does not stop the next one.
     pub fn run<T>(&self, note_id: &str, write: impl FnOnce() -> T) -> T {
-        let turn = self.notes().entry(note_id.to_owned()).or_default().clone();
-        let result = {
-            let _held = turn.lock().unwrap_or_else(PoisonError::into_inner);
-            write()
+        let lock = {
+            let mut notes = self.notes();
+            let turn = notes.entry(note_id.to_owned()).or_default();
+            turn.writes += 1;
+            turn.lock.clone()
         };
-        let mut notes = self.notes();
-        // The map's own handle and ours: nobody else holds or waits for this note.
-        if Arc::strong_count(&turn) == 2 {
-            notes.remove(note_id);
-        }
-        result
+        // Counted out however the write ends, a panic included.
+        let _leave = Leave {
+            order: self,
+            note_id,
+        };
+        let _held = lock.lock().unwrap_or_else(PoisonError::into_inner);
+        write()
     }
 
-    fn notes(&self) -> MutexGuard<'_, HashMap<String, Arc<Mutex<()>>>> {
+    fn notes(&self) -> MutexGuard<'_, HashMap<String, Turn>> {
         self.notes.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn leave(&self, note_id: &str) {
+        let mut notes = self.notes();
+        if let Some(turn) = notes.get_mut(note_id) {
+            turn.writes -= 1;
+            if turn.writes == 0 {
+                notes.remove(note_id);
+            }
+        }
     }
 
     #[cfg(test)]
     fn len(&self) -> usize {
         self.notes().len()
+    }
+
+    /// How many writes of `note_id` hold or wait for its turn.
+    #[cfg(test)]
+    fn writes(&self, note_id: &str) -> usize {
+        self.notes().get(note_id).map_or(0, |turn| turn.writes)
+    }
+}
+
+/// A write's leaving of its note's turn, after its hold of the lock: declared before the hold,
+/// so it drops after it.
+struct Leave<'a> {
+    order: &'a WriteOrder,
+    note_id: &'a str,
+}
+
+impl Drop for Leave<'_> {
+    fn drop(&mut self) {
+        self.order.leave(self.note_id);
     }
 }
 
@@ -62,15 +103,14 @@ mod tests {
             })
         };
         first_entered.recv().unwrap();
-        let (queued, second_queued) = mpsc::channel();
         let second = {
             let (order, log) = (order.clone(), log.clone());
-            thread::spawn(move || {
-                queued.send(()).unwrap();
-                order.run("n", || log.lock().unwrap().push("second"));
-            })
+            thread::spawn(move || order.run("n", || log.lock().unwrap().push("second")))
         };
-        second_queued.recv().unwrap();
+        // The second write is in line once it counts itself in.
+        while order.writes("n") < 2 {
+            thread::yield_now();
+        }
         // Another note does not wait for `n`.
         order.run("other", || log.lock().unwrap().push("other"));
         release.send(()).unwrap();
@@ -88,5 +128,9 @@ mod tests {
         let failed: Result<(), &str> = order.run("n", || Err("refused"));
         assert!(failed.is_err());
         assert_eq!(order.run("n", || 7), 7);
+        let panicked = std::panic::catch_unwind(|| order.run("n", || panic!("broken write")));
+        assert!(panicked.is_err());
+        assert_eq!(order.run("n", || 8), 8);
+        assert_eq!(order.len(), 0);
     }
 }
