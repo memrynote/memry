@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Nie można przenieść do kosza",
-    "description": "Nie można przenieść „{title}” do kosza na tym dysku. Usunąć trwale? Tej operacji nie można cofnąć.",
+    "description": "Nie można przenieść „{title}” do kosza. Usunąć trwale? Tej operacji nie można cofnąć.",
     "keep": "Zachowaj notatkę",
     "deletePermanently": "Usuń trwale",
     "kept": "Notatka została zachowana. Nie udało się przenieść jej do kosza."

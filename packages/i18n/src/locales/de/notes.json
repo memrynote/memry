@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Verschieben in den Papierkorb nicht möglich",
-    "description": "„{title}“ kann auf diesem Laufwerk nicht in den Papierkorb verschoben werden. Endgültig löschen? Das kann nicht rückgängig gemacht werden.",
+    "description": "„{title}“ kann nicht in den Papierkorb verschoben werden. Endgültig löschen? Das kann nicht rückgängig gemacht werden.",
     "keep": "Notiz behalten",
     "deletePermanently": "Endgültig löschen",
     "kept": "Die Notiz wurde behalten. Sie konnte nicht in den Papierkorb verschoben werden."

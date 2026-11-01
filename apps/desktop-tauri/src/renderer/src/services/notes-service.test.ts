@@ -247,7 +247,7 @@ describe('notes-service', () => {
       commands.notesDelete.mockReset()
       commands.notesDelete.mockRejectedValueOnce(refused).mockResolvedValueOnce(null)
       const deleting = notesService.delete('n')
-      await vi.waitFor(() => expect(current()?.title).toBe('Plan'))
+      await vi.waitFor(() => expect(current()).toMatchObject({ noteId: 'n', title: 'Plan' }))
       answer(current(), permanent)
       return deleting
     }
@@ -268,6 +268,16 @@ describe('notes-service', () => {
     commands.notesDelete.mockRejectedValueOnce({ ...refused, code: 'note_file_failed' })
     expect(await notesService.delete('n')).toEqual({ success: false, error: 'no trash' })
     expect(current()).toBeNull()
+
+    // A note that cannot be read is not asked about: the refusal is the answer.
+    for (const read of [() => Promise.resolve(null), () => Promise.reject(new Error('gone'))]) {
+      commands.notesDelete.mockReset()
+      commands.notesDelete.mockRejectedValueOnce(refused)
+      commands.notesGet.mockImplementationOnce(read)
+      expect(await notesService.delete('n')).toEqual({ success: false, error: 'no trash' })
+      expect(current()).toBeNull()
+      expect(commands.notesDelete).toHaveBeenCalledTimes(1)
+    }
   })
 
   it('sets local-only through its command and rejects when the change did not happen', async () => {

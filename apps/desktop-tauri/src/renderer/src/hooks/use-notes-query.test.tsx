@@ -401,4 +401,15 @@ describe('use-notes-query', () => {
     expect(mocks.notesService.delete.mock.calls[0][0]).toBe('n1')
     expect(queryClient.getQueryData(notesKeys.note('n1'))).toBeUndefined()
   })
+
+  it('keeps a note cached when its delete did not happen', async () => {
+    queryClient.setQueryData(notesKeys.note('n1'), note('n1', 'First'))
+    mocks.notesService.delete.mockResolvedValueOnce({ success: false, error: 'kept' })
+    const { result } = renderHook(() => useNoteMutations(), { wrapper })
+
+    await act(async () => {
+      await result.current.deleteNote.mutateAsync('n1')
+    })
+    expect(queryClient.getQueryData(notesKeys.note('n1'))).toEqual(note('n1', 'First'))
+  })
 })

@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Nu se poate muta în coșul de gunoi",
-    "description": "„{title}” nu poate fi mutată în coșul de gunoi pe această unitate. O ștergi definitiv? Acțiunea nu poate fi anulată.",
+    "description": "„{title}” nu poate fi mutată în coșul de gunoi. O ștergi definitiv? Acțiunea nu poate fi anulată.",
     "keep": "Păstrează nota",
     "deletePermanently": "Șterge definitiv",
     "kept": "Nota a fost păstrată. Nu a putut fi mutată în coșul de gunoi."

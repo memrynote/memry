@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Kan niet naar de prullenbak",
-    "description": "“{title}” kan op deze schijf niet naar de prullenbak worden verplaatst. Permanent verwijderen? Dit kan niet ongedaan worden gemaakt.",
+    "description": "“{title}” kan niet naar de prullenbak worden verplaatst. Permanent verwijderen? Dit kan niet ongedaan worden gemaakt.",
     "keep": "Notitie behouden",
     "deletePermanently": "Permanent verwijderen",
     "kept": "De notitie is behouden. Ze kon niet naar de prullenbak worden verplaatst."

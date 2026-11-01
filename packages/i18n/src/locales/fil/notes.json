@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Hindi mailipat sa basurahan",
-    "description": "Hindi mailipat ang “{title}” sa basurahan sa drive na ito. Burahin ito nang permanente? Hindi na ito maibabalik.",
+    "description": "Hindi mailipat ang “{title}” sa basurahan. Burahin ito nang permanente? Hindi na ito maibabalik.",
     "keep": "Panatilihin ang tala",
     "deletePermanently": "Burahin nang permanente",
     "kept": "Pinanatili ang tala. Hindi ito mailipat sa basurahan."

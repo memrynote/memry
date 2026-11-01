@@ -7,7 +7,8 @@
 //!    reconcile does with a deleted note's file (`vault::writeback::deleted`). Where the trash
 //!    refuses it (a Linux mount with no usable `.Trash-<uid>`), the delete fails with
 //!    [`NotesError::TrashUnavailable`] and leaves the note whole; the user is asked, and a
-//!    delete the user confirmed as permanent unlinks that file (#3813). Either way the
+//!    delete the user confirmed as permanent tries the trash again and unlinks that file only
+//!    if the trash still refuses (#3813). Either way the
 //!    own-write record is told first, so the watcher's report of the removal is the app's;
 //! 2. the record: a tombstone for every other device, none for a local-only note, which the
 //!    core reads off the row that is still there (`domain::notes::local_only`);
@@ -40,7 +41,7 @@ use crate::vault::paths::resolve_vault_file;
 use crate::vault::watch::EchoGuard;
 
 impl NotesService {
-    /// `permanent`: the user confirmed that a file the trash refuses is removed for good.
+    /// `permanent`: the user confirmed that a file the trash still refuses is removed for good.
     pub fn delete(
         &self,
         open: &OpenVault,
@@ -66,8 +67,15 @@ impl NotesService {
             return Err(NotesError::NotFound(note_id.to_owned()));
         };
         let echo = self.tier.echo();
-        let removed = if holds_unread_text(root, &row) && !permanent {
-            self.trash_file(&echo, root, &row.path)
+        let removed = if holds_unread_text(root, &row) {
+            // A refusal may not last (a sync client or a scanner holding the file, a folder
+            // made writable since): a confirmed delete tries the trash again first.
+            match self.trash_file(&echo, root, &row.path) {
+                Err(NotesError::TrashUnavailable(_)) if permanent => {
+                    unlink(&echo, root, &row.path).map_err(NotesError::from)
+                }
+                trashed => trashed,
+            }
         } else {
             unlink(&echo, root, &row.path).map_err(NotesError::from)
         };

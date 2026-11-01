@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Kan ikke flyttes til papirkurven",
-    "description": "“{title}” kan ikke flyttes til papirkurven på denne disken. Vil du slette den permanent? Dette kan ikke angres.",
+    "description": "“{title}” kan ikke flyttes til papirkurven. Vil du slette den permanent? Dette kan ikke angres.",
     "keep": "Behold notat",
     "deletePermanently": "Slett permanent",
     "kept": "Notatet ble beholdt. Det kunne ikke flyttes til papirkurven."

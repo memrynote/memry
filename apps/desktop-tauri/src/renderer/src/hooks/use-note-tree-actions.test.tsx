@@ -337,6 +337,21 @@ describe('useNoteTreeActions', () => {
     expect(notesService.revealInFinder).toHaveBeenCalledWith('work-a')
   })
 
+  it('says why a note stayed when its delete did not happen', async () => {
+    const { result, mutations } = renderActions()
+    mutations.deleteNote.mutateAsync.mockResolvedValueOnce({
+      success: false,
+      error: 'The note was kept.'
+    })
+
+    act(() => result.current.handleDeleteClick(workA))
+    await act(async () => {
+      await result.current.handleDeleteConfirm()
+    })
+    expect(toast.error).toHaveBeenCalledWith('The note was kept.')
+    expect(mocks.closeTab).not.toHaveBeenCalledWith('/notes/work-a')
+  })
+
   it('reveals a folder in the OS file manager and swallows a failed reveal (#2205)', async () => {
     const { result } = renderActions()
 

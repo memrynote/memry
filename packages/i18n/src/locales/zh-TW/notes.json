@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "無法移到垃圾桶",
-    "description": "此磁碟上的「{title}」無法移到垃圾桶。要永久刪除嗎？此動作無法復原。",
+    "description": "「{title}」無法移到垃圾桶。要永久刪除嗎？此動作無法復原。",
     "keep": "保留筆記",
     "deletePermanently": "永久刪除",
     "kept": "已保留筆記。無法將其移到垃圾桶。"

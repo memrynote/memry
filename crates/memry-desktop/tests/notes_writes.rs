@@ -12,6 +12,7 @@ mod vault_env;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::create::NewNoteFile;
@@ -653,6 +654,18 @@ fn an_outside_edit_reads_back_as_the_fields_notes_updated_carries() {
     assert!(changes["modified"].is_i64());
 }
 
+/// Gives every note's file text its note never took, so a delete wants the trash.
+fn hold_unread_text(e: &Env) {
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute("UPDATE note_files SET content_hash = 'older'", [])
+                .unwrap();
+            Ok(())
+        })
+        .unwrap();
+}
+
 /// A trash that refuses every file, as a Linux mount with no usable `.Trash-<uid>` does.
 fn no_trash(_: &Path) -> Result<(), String> {
     Err("no trash on this volume".into())
@@ -663,15 +676,7 @@ fn a_file_the_trash_refuses_stays_until_the_user_confirms_a_permanent_delete() {
     let (mut e, notes) = opened_with(no_trash);
     let open = e.session.current().unwrap();
     let note = notes.create(&open, plan()).unwrap();
-    // Text the note never took, so the delete wants the trash.
-    e.core()
-        .db_handle()
-        .call_blocking(|conn| {
-            conn.execute("UPDATE note_files SET content_hash = 'older'", [])
-                .unwrap();
-            Ok(())
-        })
-        .unwrap();
+    hold_unread_text(&e);
     assert_eq!(row_facts(&mut e), [added(&note.id, "work/Plan.md")]);
 
     let refused = notes.delete(&open, &note.id, false);
@@ -694,6 +699,39 @@ fn a_file_the_trash_refuses_stays_until_the_user_confirms_a_permanent_delete() {
     assert!(!e.vault.join("work/Plan.trashed").exists());
     assert_eq!(records(&e), [(note.id.clone(), true)]);
     assert_eq!(e.rows(), []);
+    assert_eq!(row_facts(&mut e), [removed(&note.id, "work/Plan.md")]);
+}
+
+/// Set once the trash below has refused its first file.
+static REFUSED_ONCE: AtomicBool = AtomicBool::new(false);
+
+/// A trash that refuses the first file and takes the next, as one does once a sync client or a
+/// scanner lets the file go.
+fn trash_after_a_refusal(path: &Path) -> Result<(), String> {
+    if REFUSED_ONCE.swap(true, Ordering::SeqCst) {
+        bin(path)
+    } else {
+        Err("the file is in use".into())
+    }
+}
+
+#[test]
+fn a_confirmed_delete_uses_the_trash_once_it_takes_the_file() {
+    let (mut e, notes) = opened_with(trash_after_a_refusal);
+    let open = e.session.current().unwrap();
+    let note = notes.create(&open, plan()).unwrap();
+    hold_unread_text(&e);
+    assert_eq!(row_facts(&mut e), [added(&note.id, "work/Plan.md")]);
+    let refused = notes.delete(&open, &note.id, false);
+    assert!(
+        matches!(refused, Err(NotesError::TrashUnavailable(_))),
+        "{refused:?}"
+    );
+
+    notes.delete(&open, &note.id, true).unwrap();
+    assert!(!e.vault.join("work/Plan.md").exists());
+    assert_eq!(e.read("work/Plan.trashed"), PLAN_FILE, "not in the trash");
+    assert_eq!(records(&e), [(note.id.clone(), true)]);
     assert_eq!(row_facts(&mut e), [removed(&note.id, "work/Plan.md")]);
 }
 

@@ -6,11 +6,15 @@
  */
 
 export interface Question {
+  /** New for every question, so the dialog shows each one afresh. */
+  id: number
+  noteId: string
   title: string
   answer: (permanent: boolean) => void
 }
 
 const questions: Question[] = []
+let asked = 0
 const listeners = new Set<() => void>()
 
 function changed(): void {
@@ -26,10 +30,11 @@ export function subscribe(listener: () => void): () => void {
 
 export const current = (): Question | null => questions[0] ?? null
 
-/** Resolves true when the user chose to delete the note `title` for good. */
-export function askPermanentDelete(title: string): Promise<boolean> {
+/** Resolves true when the user chose to delete the note `noteId`, named `title`, for good. */
+export function askPermanentDelete(noteId: string, title: string): Promise<boolean> {
   return new Promise((resolve) => {
-    questions.push({ title, answer: resolve })
+    asked += 1
+    questions.push({ id: asked, noteId, title, answer: resolve })
     if (questions.length === 1) changed()
   })
 }

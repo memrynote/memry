@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Can't move to trash",
-    "description": "“{title}” can't be moved to the trash on this drive. Delete it permanently? This can't be undone.",
+    "description": "“{title}” can't be moved to the trash. Delete it permanently? This can't be undone.",
     "keep": "Keep note",
     "deletePermanently": "Delete permanently",
     "kept": "The note was kept. It could not be moved to the trash."

@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "无法移到废纸篓",
-    "description": "此磁盘上的“{title}”无法移到废纸篓。要永久删除吗？此操作无法撤销。",
+    "description": "“{title}”无法移到废纸篓。要永久删除吗？此操作无法撤销。",
     "keep": "保留笔记",
     "deletePermanently": "永久删除",
     "kept": "笔记已保留。无法将其移到废纸篓。"

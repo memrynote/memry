@@ -580,7 +580,9 @@ export function useNoteMutations() {
 
   const deleteNote = useMutation({
     mutationFn: notesService.delete,
-    onSuccess: (_, noteId) => {
+    onSuccess: (result, noteId) => {
+      // A note the delete left (kept, or its file could not go) stays cached.
+      if (!result.success) return
       // Remove from cache
       queryClient.removeQueries({ queryKey: notesKeys.note(noteId) })
       // Invalidate lists

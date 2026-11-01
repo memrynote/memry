@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Kan inte flyttas till papperskorgen",
-    "description": "”{title}” kan inte flyttas till papperskorgen på den här enheten. Radera den permanent? Det går inte att ångra.",
+    "description": "”{title}” kan inte flyttas till papperskorgen. Radera den permanent? Det går inte att ångra.",
     "keep": "Behåll anteckning",
     "deletePermanently": "Radera permanent",
     "kept": "Anteckningen behölls. Den kunde inte flyttas till papperskorgen."

@@ -659,6 +659,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
             closeTab(`/notes/${note.id}`)
           } else {
             everyDeleteSucceeded = false
+            if (result.error) toast.error(result.error)
           }
         }
 

@@ -7,7 +7,15 @@ import { getI18n } from 'react-i18next'
  * Loads real note data via useNotes() hook and saves changes via updateNote().
  */
 
-import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useMemo,
+  useSyncExternalStore
+} from 'react'
 import { cn } from '@/lib/utils'
 import { openLink } from '@/lib/external-link-guard'
 import { useReducedMotion } from 'motion/react'
@@ -177,6 +185,7 @@ import { useNoteFold } from '@/components/note/fold/use-note-fold'
 
 import { useT } from '@memry/i18n/renderer'
 import { getTabIconForFileType } from '@memry/shared/file-types'
+import * as trashQuestion from '@/lib/permanent-delete-question'
 
 const log = createLogger('Page:Note')
 
@@ -695,11 +704,11 @@ export function NotePage({ noteId }: NotePageProps) {
       // TanStack Query will handle the cache invalidation and refetch.
       // We just need to update lastSavedContent and force editor remount.
       if (typeof event.changes.content !== 'string') return
+      if (event.changes.content === lastSavedContent.current) return
       takeContent(event.changes.content)
     }
 
     const takeContent = (content: string) => {
-      if (content === lastSavedContent.current) return
       lastSavedContent.current = content
       setEventContentOverride({ noteId, content })
       setExternalUpdateCount((c) => c + 1)
@@ -707,13 +716,19 @@ export function NotePage({ noteId }: NotePageProps) {
 
     const unsubUpdated = onNoteUpdated(handleUpdated)
 
-    // A dropped event may have been an outside edit of this note: its text is read again.
+    // A dropped event may have been an outside edit of this note: its text is read again. The
+    // text the editor holds is taken when the signal arrives: the note's query refetches on
+    // the same signal and moves `lastSavedContent` before this read answers.
     const unsubDropped = onNoteEventsDropped(() => {
       if (isSavingRef.current) return
+      const shown = lastSavedContent.current
       notesService
         .get(noteId)
         .then((fresh) => {
-          if (fresh && !fresh.contentOmitted) takeContent(fresh.content)
+          if (!fresh || fresh.contentOmitted || fresh.content === shown) return
+          // Typing not saved yet is the user's newest text; its save follows.
+          if (pendingMarkdownRef.current !== null) return
+          takeContent(fresh.content)
         })
         .catch((readError: unknown) => log.warn('the note was not read again', readError))
     })
@@ -1236,6 +1251,16 @@ export function NotePage({ noteId }: NotePageProps) {
   const noteDeleteGuard = useNoteDeleteGuard()
   const deleteTasksChoice = useNoteTasksChoice(dialog.is('delete'), noteId ? [noteId] : [])
   const carriedTaskIdsToDelete = deleteTasksChoice.taskIdsToDelete
+
+  // The trash refused this note's file and the user is asked whether it goes for good: that
+  // question replaces the delete dialog, which a Keep would otherwise leave open (#3813).
+  const askedAboutThisNote = useSyncExternalStore(
+    trashQuestion.subscribe,
+    () => trashQuestion.current()?.noteId === noteId
+  )
+  useEffect(() => {
+    if (askedAboutThisNote && dialog.is('delete')) dialog.close()
+  }, [askedAboutThisNote, dialog])
 
   // Delete the current note, then close its tab
   const handleDeleteConfirm = useCallback(async () => {

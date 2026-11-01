@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Nedá sa presunúť do koša",
-    "description": "„{title}“ sa na tomto disku nedá presunúť do koša. Odstrániť natrvalo? Túto akciu nemožno vrátiť.",
+    "description": "„{title}“ sa nedá presunúť do koša. Odstrániť natrvalo? Túto akciu nemožno vrátiť.",
     "keep": "Ponechať poznámku",
     "deletePermanently": "Odstrániť natrvalo",
     "kept": "Poznámka bola ponechaná. Nepodarilo sa ju presunúť do koša."

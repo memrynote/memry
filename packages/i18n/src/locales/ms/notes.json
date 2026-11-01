@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Tidak dapat dialihkan ke tong sampah",
-    "description": "“{title}” tidak dapat dialihkan ke tong sampah pada pemacu ini. Padam secara kekal? Tindakan ini tidak boleh dibuat asal.",
+    "description": "“{title}” tidak dapat dialihkan ke tong sampah. Padam secara kekal? Tindakan ini tidak boleh dibuat asal.",
     "keep": "Simpan nota",
     "deletePermanently": "Padam secara kekal",
     "kept": "Nota telah disimpan. Ia tidak dapat dialihkan ke tong sampah."

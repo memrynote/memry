@@ -9,7 +9,7 @@
  * @module note/permanent-delete-confirm
  */
 
-import { useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import {
   AlertDialog,
@@ -23,9 +23,21 @@ import {
 } from '@/components/ui/alert-dialog'
 import { answer, current, subscribe } from '@/lib/permanent-delete-question'
 
+/**
+ * How long a question shows before it can be answered with a permanent delete: a double click
+ * or a held key meant for the question before must not delete the next note unread.
+ */
+const ARM_MS = 500
+
 export function PermanentDeleteConfirm(): React.JSX.Element {
   const { t } = useT('notes')
   const question = useSyncExternalStore(subscribe, current)
+  const [armed, setArmed] = useState<number | null>(null)
+  useEffect(() => {
+    if (!question) return undefined
+    const timer = setTimeout(() => setArmed(question.id), ARM_MS)
+    return () => clearTimeout(timer)
+  }, [question])
   return (
     <AlertDialog
       open={question !== null}
@@ -33,7 +45,9 @@ export function PermanentDeleteConfirm(): React.JSX.Element {
         if (!open) answer(question, false)
       }}
     >
-      <AlertDialogContent>
+      {/* A new content per question: focus starts again on Keep, never on the button the
+          last question was answered with. */}
+      <AlertDialogContent key={question?.id}>
         <AlertDialogHeader>
           <AlertDialogTitle>{t('trashUnavailable.title')}</AlertDialogTitle>
           <AlertDialogDescription>
@@ -46,6 +60,7 @@ export function PermanentDeleteConfirm(): React.JSX.Element {
           </AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={question === null || armed !== question.id}
             onClick={() => answer(question, true)}
           >
             {t('trashUnavailable.deletePermanently')}

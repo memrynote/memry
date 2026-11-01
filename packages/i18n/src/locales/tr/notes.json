@@ -2195,7 +2195,7 @@
   },
   "trashUnavailable": {
     "title": "Çöp kutusuna taşınamıyor",
-    "description": "“{title}” bu sürücüde çöp kutusuna taşınamıyor. Kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
+    "description": "“{title}” çöp kutusuna taşınamıyor. Kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
     "keep": "Notu tut",
     "deletePermanently": "Kalıcı olarak sil",
     "kept": "Not tutuldu. Çöp kutusuna taşınamadı."
