@@ -23,7 +23,9 @@
 //! - **Links, body tags and full text** have one owner, the core search reindex, which reads
 //!   them from the note's document. It is owed at every open and after every pass that wrote a
 //!   row, and stops when the vault closes ([`Search::reindex_until`]); a stopped one commits
-//!   nothing to `index.db` and stays owed.
+//!   nothing to `index.db` and stays owed. The links a committed one changed go to the `links`
+//!   callback, once per pass: a note event goes out when the file's row changes, before this,
+//!   so a links panel refetching on it would read the links the edit replaced.
 //! - **Not measured:** a file in the large-file class (Electron streams it; a follow-up).
 //! - [`NoteIndex::reindex`] (`vault_reindex`) measures every note again, through the task once
 //!   the open walk ended, and reports its progress at most once per [`PROGRESS_INTERVAL`],
@@ -42,6 +44,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use memry_core::api::errors::StorageError;
+pub use memry_core::domain::search::LinkChanges;
 use tokio::sync::broadcast::Receiver;
 
 pub use pass::Indexer;
@@ -106,18 +109,22 @@ pub struct NoteIndex {
     tier: Arc<VaultTier>,
     slot: Mutex<Slot>,
     report: Box<dyn Fn(IndexProgress) + Send + Sync>,
+    links: Box<dyn Fn(LinkChanges) + Send + Sync>,
 }
 
 impl NoteIndex {
-    /// `report` gets the progress of each open's pass, on the task's thread.
+    /// `report` gets the progress of each open's pass, and `links` the links each pass
+    /// changed once it committed them (`NoteLinksChangedEvent`), on the task's thread.
     pub fn new(
         tier: Arc<VaultTier>,
         report: impl Fn(IndexProgress) + Send + Sync + 'static,
+        links: impl Fn(LinkChanges) + Send + Sync + 'static,
     ) -> Arc<Self> {
         Arc::new(Self {
             tier,
             slot: Mutex::new(Slot::Closed),
             report: Box::new(report),
+            links: Box::new(links),
         })
     }
 
@@ -148,7 +155,8 @@ impl NoteIndex {
                 let Some((handle, (facts, inbox))) = started else {
                     return Err("the open subscribed no facts".into());
                 };
-                let ended = Indexer::new(vault).run(facts, inbox, cancel, &index.report);
+                let ended =
+                    Indexer::new(vault).run(facts, inbox, cancel, &index.report, &index.links);
                 if ended.is_err() {
                     let mut slot = lock(&index.slot);
                     if matches!(&*slot, Slot::Open { handle: open, .. } if open.same(&handle)) {

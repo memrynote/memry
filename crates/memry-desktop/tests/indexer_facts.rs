@@ -59,7 +59,7 @@ fn reporter(reported: &Reported) -> impl Fn(IndexProgress) + Sync + use<> {
 #[test]
 fn facts_keep_the_rows_current_and_lost_facts_run_a_scan() {
     let (mut e, _store, notes) = seeded(3);
-    let index = NoteIndex::new(e.tier.clone(), |_| {});
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {});
     index.register(&e.session);
     e.drain();
     e.open();
@@ -232,7 +232,7 @@ fn a_fresh_vault_gets_its_notes_then_their_stats_and_links_at_every_open() {
     for i in 0..FRESH {
         e.write(&path_of(i), &note_text(i));
     }
-    let index = NoteIndex::new(e.tier.clone(), |_| {});
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {});
     index.register(&e.session);
     let started = Instant::now();
     e.open();
@@ -336,7 +336,7 @@ fn an_edit_beside_a_file_that_never_reads_is_not_held_by_its_backoff() {
         mode(0o644).unwrap();
         return;
     }
-    let index = NoteIndex::new(e.tier.clone(), |_| {});
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {});
     index.register(&e.session);
     e.drain();
     e.open();

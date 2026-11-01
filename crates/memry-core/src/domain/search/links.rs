@@ -12,6 +12,9 @@
 //!
 //! `target_key` is the target's `name_key`, so [`reresolve`] can find the rows
 //! a changed title, alias or path could move.
+//!
+//! A pass reports what it changed ([`LinkChanges`]): desktop tells the renderer once the pass
+//! committed, so a links panel refetches what the pass wrote rather than what it replaced.
 
 use std::collections::BTreeSet;
 
@@ -24,6 +27,45 @@ use crate::domain::notes::names::name_key;
 use crate::domain::wiki_target::{self, WikiNames};
 
 use super::failed;
+
+/// The links one search reindex changed (`NoteLinksChangedEvent`): the notes and days whose
+/// `note_links` rows changed, and every note or day that gained or lost a link to it.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LinkChanges {
+    pub sources: BTreeSet<String>,
+    pub targets: BTreeSet<String>,
+}
+
+impl LinkChanges {
+    pub fn is_empty(&self) -> bool {
+        self.sources.is_empty() && self.targets.is_empty()
+    }
+
+    /// `id`'s rows went from `before` to `after` ([`rows`]).
+    pub(super) fn note(&mut self, id: &str, before: &Rows, after: &Rows) {
+        if before == after {
+            return;
+        }
+        self.sources.insert(id.to_owned());
+        let moved = before.symmetric_difference(after);
+        self.targets
+            .extend(moved.filter_map(|(_, target_id)| target_id.clone()));
+    }
+}
+
+/// One source's links: each target title and the id it resolved to.
+pub(super) type Rows = BTreeSet<(String, Option<String>)>;
+
+pub(super) fn rows(index: &Connection, id: &str) -> Result<Rows, StorageError> {
+    let mut statement = index
+        .prepare_cached("SELECT target_title, target_id FROM note_links WHERE source_id = ?1")
+        .map_err(failed)?;
+    statement
+        .query_map(params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
+}
 
 pub(super) fn write(
     names: &WikiNames,
@@ -79,6 +121,7 @@ pub(super) fn reresolve(
     names: &WikiNames,
     index: &Connection,
     changed: &BTreeSet<String>,
+    changes: &mut LinkChanges,
 ) -> Result<(), StorageError> {
     let mut keys = BTreeSet::new();
     let mut prefixes = BTreeSet::new();
@@ -129,6 +172,8 @@ pub(super) fn reresolve(
                     params![source_id, title, now],
                 )
                 .map_err(failed)?;
+            changes.targets.extend(stored.into_iter().chain(now));
+            changes.sources.insert(source_id);
         }
     }
     Ok(())

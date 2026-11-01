@@ -248,6 +248,7 @@ export const events = {
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
 	noteDeletedEvent: makeEvent<NoteDeletedEvent, NoteDeletedEvent>("note-deleted-event"),
+	noteLinksChangedEvent: makeEvent<NoteLinksChangedEvent, NoteLinksChangedEvent>("note-links-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
@@ -651,6 +652,16 @@ export type NoteLinkView = {
 	/**  `None` for a broken link. */
 	targetId: string | null,
 	targetTitle: string,
+};
+
+/**
+ *  The note index committed links that changed (`notes:links-changed`): the notes whose links
+ *  changed, and every note that gained or lost a link to it. Sent after the rows are written,
+ *  so a links panel refetching on it reads them.
+ */
+export type NoteLinksChangedEvent = {
+	sourceIds: string[],
+	targetIds: string[],
 };
 
 /**  `NoteLinksResponse`. */

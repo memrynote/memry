@@ -110,7 +110,7 @@ pub fn with_reporting_task(
     let cancel = CancelToken::default();
     let (handle, inbox) = task_channel();
     std::thread::scope(|scope| {
-        scope.spawn(|| indexer.run(facts, inbox, &cancel, report).unwrap());
+        scope.spawn(|| indexer.run(facts, inbox, &cancel, report, &|_| {}).unwrap());
         // Stopped on the way out, a failed wait included, so the scope can join the task.
         let _stop = StopOnDrop(&handle, &cancel);
         test(&handle);

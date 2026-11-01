@@ -29,7 +29,7 @@ use crate::domain::link_reads::{self, Incoming, LinkTarget, MentionSources};
 use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
 #[cfg(feature = "markdown")]
 use crate::domain::notes::journal_day;
-use crate::domain::search::{self, HitKind, SearchHit};
+use crate::domain::search::{self, HitKind, LinkChanges, SearchHit};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
@@ -143,16 +143,17 @@ impl Search {
 
 impl Search {
     /// [`Search::reindex`] that `stop` can end between two rows; a stopped pass commits
-    /// nothing (`None`). For desktop's note index, which must let go of both databases when
-    /// the vault closes. Not on the FFI surface.
+    /// nothing (`None`). Otherwise the links it committed changes to, which desktop announces.
+    /// For desktop's note index, which must let go of both databases when the vault closes.
+    /// Not on the FFI surface.
     pub fn reindex_until(
         &self,
         stop: &dyn Fn() -> bool,
-    ) -> Result<Option<ReindexSummary>, StorageError> {
+    ) -> Result<Option<LinkChanges>, StorageError> {
         let index = self.index.clone();
         self.data.call_blocking(move |data| {
             index.call_blocking(|index| {
-                Ok(search::reindex_until(data, index, now_ms(), stop)?.map(summary))
+                Ok(search::reindex_until(data, index, now_ms(), stop)?.map(|done| done.links))
             })
         })
     }
