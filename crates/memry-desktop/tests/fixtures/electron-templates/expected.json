@@ -1,0 +1,126 @@
+{
+  "imported": 5,
+  "rows": [
+    {
+      "id": "fromfilename",
+      "name": "fromfilename",
+      "description": null,
+      "icon": null,
+      "tags": [
+        "hand"
+      ],
+      "properties": [],
+      "content": "Written by hand.",
+      "createdAt": "2024-12-24T10:00:00.000Z",
+      "modifiedAt": "2024-12-25T10:00:00.000Z"
+    },
+    {
+      "id": "k3j9x2m1q8wz",
+      "name": "Weekly Plan — Ünïcode",
+      "description": "Plan the week: goals, \"quotes\" and colons",
+      "icon": "🗓️",
+      "tags": [
+        "planning",
+        "Weekly"
+      ],
+      "properties": [
+        {
+          "name": "summary",
+          "type": "text",
+          "value": ""
+        },
+        {
+          "name": "points",
+          "type": "number",
+          "value": 3
+        },
+        {
+          "name": "done",
+          "type": "checkbox",
+          "value": false
+        },
+        {
+          "name": "due",
+          "type": "date",
+          "value": null
+        },
+        {
+          "name": "stage",
+          "type": "select",
+          "value": "draft",
+          "options": [
+            "draft",
+            "final"
+          ]
+        },
+        {
+          "name": "areas",
+          "type": "multiselect",
+          "value": [
+            "home",
+            "work"
+          ],
+          "options": [
+            "home",
+            "work"
+          ]
+        },
+        {
+          "name": "link",
+          "type": "url",
+          "value": "https://example.com/a?b=c#d"
+        },
+        {
+          "name": "energy",
+          "type": "rating",
+          "value": 4
+        },
+        {
+          "name": "project",
+          "type": "project",
+          "value": null
+        }
+      ],
+      "content": "# {{title}}\n\n## Goals\n\n- [ ] first goal {task:t1abc}\n- [ ] second\n\n> 2025-01-01: keep this",
+      "createdAt": "2025-03-04T05:06:07.890Z",
+      "modifiedAt": "2025-03-05T05:06:07.890Z"
+    },
+    {
+      "id": "minimal0001",
+      "name": "Minimal",
+      "description": null,
+      "icon": null,
+      "tags": [],
+      "properties": [],
+      "content": "",
+      "createdAt": "2025-02-01T00:00:00.000Z",
+      "modifiedAt": "2025-02-01T00:00:00.000Z"
+    },
+    {
+      "id": "numeric-name",
+      "name": "2024.0",
+      "description": null,
+      "icon": null,
+      "tags": [
+        "year"
+      ],
+      "properties": [],
+      "content": "The year.",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "modifiedAt": "2024-01-02T00:00:00.000Z"
+    },
+    {
+      "id": "realid42",
+      "name": "Named apart from its file",
+      "description": null,
+      "icon": null,
+      "tags": [
+        "x"
+      ],
+      "properties": [],
+      "content": "Padded body",
+      "createdAt": "2025-02-02T00:00:00.000Z",
+      "modifiedAt": "2025-02-02T00:00:00.000Z"
+    }
+  ]
+}

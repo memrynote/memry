@@ -76,7 +76,8 @@ pub fn create(
                 "name": template.name,
                 "description": template.description,
                 "icon": template.icon,
-                "tags": template.tags,
+                // Case variants collapse, first spelling kept, as an edit's tags do.
+                "tags": crate::domain::tags::dedupe(template.tags.iter().cloned()),
                 "properties": template.properties,
                 "content": template.content,
                 "clock": next_clock(&Default::default(), device_id)?,

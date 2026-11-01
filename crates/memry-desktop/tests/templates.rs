@@ -10,6 +10,8 @@
 //! | a delete removes the template's legacy file, and only that  | `deleteTemplate`                      |
 //! | a legacy file reached through a link is left alone           | no write outside the path named       |
 //! | a refused delete keeps the legacy file                       | file goes only after the tombstone    |
+//! | every built-in is Electron's, field for field                | `BUILT_IN_TEMPLATES` (fixture)        |
+//! | a property the editor sends without a value saves as null    | `TemplatePropertySchema.value`        |
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -295,4 +297,78 @@ fn a_refused_delete_keeps_the_legacy_file() {
     let missing = write_legacy(&lib, "never-was");
     assert!(lib.templates.delete("never-was", NOW).is_err());
     assert!(file.exists() && missing.exists());
+}
+
+/// Electron's `BUILT_IN_TEMPLATES`, written by `scripts/electron-fixtures/capture-templates.mjs`.
+fn electron_built_ins() -> Vec<serde_json::Value> {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/electron-templates/built-ins.json"
+    );
+    serde_json::from_str(&std::fs::read_to_string(path).expect("the fixture")).expect("JSON")
+}
+
+#[test]
+fn every_built_in_is_electrons_field_for_field() {
+    let lib = library();
+    let electron = electron_built_ins();
+    let listed: Vec<String> = lib
+        .templates
+        .list()
+        .expect("list")
+        .into_iter()
+        .filter(|t| t.is_built_in)
+        .map(|t| t.id)
+        .collect();
+    let mut ids: Vec<String> = electron
+        .iter()
+        .map(|t| t["id"].as_str().expect("an id").to_owned())
+        .collect();
+    let mut sorted = listed.clone();
+    sorted.sort();
+    ids.sort();
+    assert_eq!(sorted, ids, "the same built-ins, no more and no fewer");
+    for expected in electron {
+        let id = expected["id"].as_str().expect("an id");
+        let view = lib.templates.get(id).expect("get").expect("a built-in");
+        let mut got = serde_json::to_value(&view).expect("JSON");
+        let fields = got.as_object_mut().expect("an object");
+        assert_eq!(fields.remove("createdAt"), Some(json!(BUILT_IN_TIMESTAMP)));
+        assert_eq!(fields.remove("modifiedAt"), Some(json!(BUILT_IN_TIMESTAMP)));
+        assert_eq!(got, expected, "built-in {id}");
+    }
+}
+
+#[test]
+fn a_property_the_editor_sends_without_a_value_saves_as_null() {
+    let lib = library();
+    // As the renderer sends it over IPC: `TemplatePropertySchema.value` is `z.unknown()`.
+    let create: TemplateCreateInput = serde_json::from_value(json!({
+        "name": "No values",
+        "properties": [{ "name": "Due", "type": "date" }],
+    }))
+    .expect("a create without a value");
+    let made = lib.templates.create(&create, NOW).expect("create");
+    assert_eq!(
+        made.properties,
+        [json!({ "name": "Due", "type": "date", "value": null })]
+    );
+    let update: TemplateUpdateInput = serde_json::from_value(json!({
+        "id": made.id,
+        "properties": [{ "name": "Owner", "type": "text" }, stage()],
+    }))
+    .expect("an update without a value");
+    let saved = lib.templates.update(&update, NOW + 1).expect("update");
+    let read = lib
+        .templates
+        .get(&saved.id)
+        .expect("get")
+        .expect("the template");
+    assert_eq!(
+        read.properties,
+        [
+            json!({ "name": "Owner", "type": "text", "value": null }),
+            serde_json::to_value(stage()).expect("JSON"),
+        ]
+    );
 }

@@ -13,6 +13,8 @@
 //!
 //! Every function blocks (SQLite, files); an async caller runs it on a blocking thread.
 
+pub mod legacy;
+
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -52,7 +54,7 @@ pub enum TemplatePropertyType {
 }
 
 /// `TemplatePropertySchema`, as a write takes it.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
 pub struct TemplateProperty {
     pub name: String,
     #[serde(rename = "type")]
@@ -61,6 +63,36 @@ pub struct TemplateProperty {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[specta(optional, type = Vec<String>)]
     pub options: Option<Vec<String>>,
+}
+
+/// `value` is `z.unknown()`, so an editor may send none: it saves as `null`. Read by hand so the
+/// TypeScript type keeps `value` required, as the contracts' `TemplateProperty` does; a
+/// `#[serde(default)]` would make specta export it optional.
+impl<'de> Deserialize<'de> for TemplateProperty {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct Wire {
+            name: String,
+            #[serde(rename = "type")]
+            kind: TemplatePropertyType,
+            #[serde(default)]
+            value: Value,
+            #[serde(default)]
+            options: Option<Vec<String>>,
+        }
+        let Wire {
+            name,
+            kind,
+            value,
+            options,
+        } = Wire::deserialize(d)?;
+        Ok(Self {
+            name,
+            kind,
+            value,
+            options,
+        })
+    }
 }
 
 /// One template (`Template`). `properties` are the stored objects as they are: a peer may hold

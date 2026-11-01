@@ -69,6 +69,8 @@
     "crates/memry-desktop/tests/fixtures/electron-vault/",
     // Journal day files Electron wrote (scripts/electron-fixtures/capture-journal.mjs).
     "crates/memry-desktop/tests/fixtures/electron-journal/",
+    // Template files and rows Electron wrote (scripts/electron-fixtures/capture-templates.mjs).
+    "crates/memry-desktop/tests/fixtures/electron-templates/",
     "crates/memry-desktop/tests/fixtures/*.json",
     "crates/memry-desktop/tests/fixtures/electron-vault/*.json",
 

@@ -70,6 +70,8 @@ pub mod task_tree;
 pub mod task_views;
 pub mod tasks;
 pub mod template_admin;
+#[cfg(feature = "markdown")]
+pub mod template_legacy;
 pub mod template_store;
 pub mod templates;
 pub mod unlinked_mentions;
