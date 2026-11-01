@@ -462,7 +462,7 @@ neither list is a wire constraint on the other.
   tag on an item, in a definition's `name`, and in the names in `schema`
   (§13.7.7.2); a definition's key is the trimmed name, folded
   (`packages/shared/src/tag-fold.ts:42-44`,
-  `crates/memry-core/src/domain/tag_admin.rs:65-67`). The vectors are
+  `crates/memry-core/src/domain/tags.rs:78-82`). The vectors are
   `packages/contracts/test-vectors/tag-fold.json`
   (`packages/contracts/scripts/vectors/tag-fold.ts`), verified by
   `packages/contracts/src/__tests__/tag-fold.test.ts` and
@@ -477,7 +477,11 @@ neither list is a wire constraint on the other.
   spelling at the length of a folded name; a rename keeps a child's suffix by
   `/` segment (`packages/shared/src/tag-fold.ts:51-54`).
 - A definition's sync id stays the name its row was first stored under, which
-  may keep the typed spelling (`Ünal`). Builds before this rule could hold two
+  may keep the typed spelling (`Ünal`). A new definition is stored under the
+  trimmed spelling (`apps/desktop/src/main/database/queries/tag-definitions.ts:81-82`);
+  the core writes it over the tombstone of a deleted definition of the same tag
+  when one exists, because its projection keys names without ASCII case
+  (`crates/memry-core/src/domain/tag_admin.rs:413-416`). Builds before this rule could hold two
   live definitions that now fold equal. A client MUST read one of them, the
   survivor: the higher `schema.t` (none below 0), then the older `createdAt`,
   then the smaller id by UTF-16 code unit
@@ -553,7 +557,7 @@ definition whose `schema` names `from`
   the rewrite wins the §6.11 join against the value it replaces. The rewritten
   definition is written and pushed like any other definition edit
   (`crates/memry-core/src/domain/tag_rename.rs:100`,
-  `crates/memry-core/src/domain/tag_admin.rs:361`).
+  `crates/memry-core/src/domain/tag_admin.rs:383`).
 - A rename renames each `/` child of `from` too, so it applies the rule once
   per renamed tag: `from` to `to`, and each `from/rest` any item or
   definition holds to `to/rest`, children first

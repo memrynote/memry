@@ -267,6 +267,33 @@ fn the_hubs_edits_change_records_and_never_a_note_file() {
     e.close();
 }
 
+/// A tag the hub defines before any note carries it is listed as it was typed (Electron's
+/// `getOrCreateTag` keeps the trimmed spelling), from a colour and from a drag alike.
+#[test]
+fn a_tag_the_hub_defines_keeps_its_capitals() {
+    let (mut e, open, store) = opened();
+    let hub = Hub::open(&open, store).unwrap();
+    let category = hub.create_category("Areas").unwrap();
+    hub.set_color(" Roadmap ", "teal").unwrap();
+    hub.reorder(&ReorderInput {
+        tags: Some(vec![TagAssignmentInput {
+            tag: "Q3 Goals".to_owned(),
+            category_id: Some(category.id.clone()),
+            sort_order: 0,
+        }]),
+        categories: None,
+    })
+    .unwrap();
+    let list = tags::all_with_counts(&open).unwrap();
+    assert_eq!(tag(&list, "roadmap").name, "Roadmap");
+    let goals = tag(&list, "q3 goals");
+    assert_eq!(
+        (goals.name.as_str(), goals.category_id.as_deref()),
+        ("Q3 Goals", Some(category.id.as_str()))
+    );
+    e.close();
+}
+
 #[test]
 fn the_hub_refuses_a_blank_tag_and_an_empty_icon() {
     let (mut e, open, store) = opened();

@@ -132,6 +132,7 @@ describe('tags-service', () => {
       success: false,
       error: 'gone'
     })
+    expect(commands.tagsDeleteCategory).toHaveBeenCalledWith('cat-1')
 
     commands.tagsListCategories.mockRejectedValue({
       kind: 'storage',
@@ -143,13 +144,22 @@ describe('tags-service', () => {
 
   it('forwards the methods later steps port to window.api.tags', async () => {
     api.tags.pinNoteToTag = vi.fn().mockResolvedValue({ success: true })
+    api.tags.unpinNoteFromTag = vi.fn().mockResolvedValue({ success: true })
     api.tags.renameTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
+    api.tags.deleteTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
+    api.tags.removeTagFromNote = vi.fn().mockResolvedValue({ success: true })
     api.tags.mergeTag = vi.fn().mockResolvedValue({ success: true, affectedItems: 0 })
 
     await tagsService.pinNoteToTag({ noteId: 'note-1', tag: 'focus' })
     expect(api.tags.pinNoteToTag).toHaveBeenCalledWith({ noteId: 'note-1', tag: 'focus' })
+    await tagsService.unpinNoteFromTag({ noteId: 'note-1', tag: 'focus' })
+    expect(api.tags.unpinNoteFromTag).toHaveBeenCalledWith({ noteId: 'note-1', tag: 'focus' })
     await tagsService.renameTag({ oldName: 'old', newName: 'new' })
     expect(api.tags.renameTag).toHaveBeenCalledWith({ oldName: 'old', newName: 'new' })
+    await tagsService.deleteTag('new')
+    expect(api.tags.deleteTag).toHaveBeenCalledWith('new')
+    await tagsService.removeTagFromNote({ noteId: 'note-2', tag: 'focus' })
+    expect(api.tags.removeTagFromNote).toHaveBeenCalledWith({ noteId: 'note-2', tag: 'focus' })
     await tagsService.mergeTag({ source: 'old', target: 'new' })
     expect(api.tags.mergeTag).toHaveBeenCalledWith({ source: 'old', target: 'new' })
   })
