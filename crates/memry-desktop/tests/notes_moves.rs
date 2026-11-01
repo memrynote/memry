@@ -291,7 +291,11 @@ fn a_folder_the_vault_would_lose_the_note_in_is_refused() {
     let (e, notes, store) = opened();
     let open = e.session.current().unwrap();
     let made = notes.create(&open, note("Plan", "work")).unwrap();
-    let windows_only: &[&str] = if cfg!(windows) { &["a:b", "a\\b"] } else { &[] };
+    let windows_only: &[&str] = if cfg!(windows) {
+        &["a:b", "a\\b", "x."]
+    } else {
+        &[]
+    };
     for folder in [".git", "attachments", "a/../b", "/.."]
         .iter()
         .chain(windows_only)

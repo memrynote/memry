@@ -214,8 +214,13 @@ fn plain_folder(folder: &str) -> Result<String, NotesError> {
         .split('/')
         .filter(|segment| !segment.is_empty() && *segment != ".")
         .collect();
-    let one_name =
-        |segment: &&str| is_plain_relative(segment) && Path::new(segment).components().count() == 1;
+    // Windows strips a trailing dot or space, so no folder there ends in one: `x.` would be
+    // created as `x` while the record says `x.`.
+    let one_name = |segment: &&str| {
+        is_plain_relative(segment)
+            && Path::new(segment).components().count() == 1
+            && !(cfg!(windows) && segment.ends_with(['.', ' ']))
+    };
     if !segments.iter().all(one_name) {
         return Err(NotesError::InvalidFolder);
     }
