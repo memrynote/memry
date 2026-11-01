@@ -41,14 +41,14 @@ fn the_mask_is_linear_in_the_text() {
 }
 
 #[test]
-fn dense_mentions_stop_at_the_output_bound() {
+fn dense_mentions_stop_at_the_output_bound_and_still_count_every_one() {
     let text = "plan ".repeat(10_000);
     let mentions = find_unlinked_mentions(&text, &names());
-    let total: usize = mention_contexts(&text, &mentions)
-        .iter()
-        .map(|c| c.snippet.len())
-        .sum();
+    let found = mention_contexts(&text, &mentions);
+    let total: usize = found.contexts.iter().map(|c| c.snippet.len()).sum();
     assert_output_bounded("dense mentions", text.len(), total);
+    assert_eq!((found.count, found.truncated), (10_000, true));
+    assert!(found.contexts.len() < 10_000, "{}", found.contexts.len());
 }
 
 fn utf16(text: &str) -> Vec<u16> {
@@ -81,7 +81,10 @@ proptest! {
             prop_assert_eq!(&text[mention.start..mention.end], mention.text.as_str());
             prop_assert_eq!(mention.text.to_lowercase(), "plan");
         }
-        let contexts = mention_contexts(&text, &mentions);
+        let found = mention_contexts(&text, &mentions);
+        prop_assert_eq!(found.count, mentions.len());
+        prop_assert_eq!(found.truncated, found.contexts.len() < mentions.len());
+        let contexts = found.contexts;
         let total: usize = contexts.iter().map(|c| c.snippet.len()).sum();
         prop_assert!(total <= output_bound(text.len()));
         for (context, mention) in contexts.iter().zip(&mentions) {

@@ -16,7 +16,7 @@ use std::cell::Cell;
 
 use crate::domain::unlinked_mentions::{PlainMention, find_plain_mentions};
 use crate::markdown::frontmatter::js::is_js_whitespace;
-use crate::markdown::shared::link_contexts::LinkContext;
+use crate::markdown::shared::link_contexts::{LinkContext, LinkContexts};
 use crate::markdown::shared::markdown_code::{mask_markdown_code, replace_markdown_comments};
 
 /// UTF-16 units of text kept on each side of a mention (`SNIPPET_RADIUS`).
@@ -81,11 +81,12 @@ pub fn link_unlinked_mention(
 /// [`MENTION_RADIUS`] UTF-16 units each side, `…` where it was cut, every white space read as
 /// one space. Offsets are UTF-16 units into the snippet. A cut never splits a surrogate pair
 /// (the reference can leave half of one), and the snippets stop once they hold eight times the
-/// text's bytes plus 64 (untrusted input; the reference has no bound).
-pub fn mention_contexts(markdown: &str, mentions: &[PlainMention]) -> Vec<LinkContext> {
+/// text's bytes plus 64 (untrusted input; the reference has no bound): `count` still counts
+/// every mention, and `truncated` says some have no snippet.
+pub fn mention_contexts(markdown: &str, mentions: &[PlainMention]) -> LinkContexts {
     let budget = 8 * markdown.len() + 64;
     let mut used = 0;
-    mentions
+    let contexts: Vec<LinkContext> = mentions
         .iter()
         .map(|mention| {
             let from = back(markdown, mention.start, MENTION_RADIUS);
@@ -108,7 +109,12 @@ pub fn mention_contexts(markdown: &str, mentions: &[PlainMention]) -> Vec<LinkCo
             used += context.snippet.len();
             used <= budget
         })
-        .collect()
+        .collect();
+    LinkContexts {
+        truncated: contexts.len() < mentions.len(),
+        count: mentions.len(),
+        contexts,
+    }
 }
 
 /// The byte index `radius` UTF-16 units before `at`, never inside a character.
@@ -268,7 +274,7 @@ mod tests {
     fn snippets_cut_with_an_ellipsis_and_read_white_space_as_spaces() {
         let text = format!("{}\tPlan\n{}", "a".repeat(70), "b".repeat(70));
         let mentions = find_unlinked_mentions(&text, &names(&["Plan"]));
-        let context = &mention_contexts(&text, &mentions)[0];
+        let context = &mention_contexts(&text, &mentions).contexts[0];
         assert_eq!(
             context.snippet,
             format!("…{} Plan {}…", "a".repeat(59), "b".repeat(59))
