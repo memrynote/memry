@@ -91,6 +91,9 @@ fn note_files_is_written_only_through_the_lane() {
         ".rename_prefix(",
         ".set_hash(",
         ".moved_by_app(",
+        // The app move's record: one move per note, which the lane runs one at a time.
+        ".begin_app_move(",
+        ".abandon_app_move(",
         "note_files().remove(",
         "files.remove(",
     ];
