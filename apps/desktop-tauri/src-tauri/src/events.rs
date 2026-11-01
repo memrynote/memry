@@ -169,6 +169,26 @@ impl From<LinkChanges> for NoteLinksChangedEvent {
     }
 }
 
+/// A tag's colour changed (`tags:color-updated`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct TagColorUpdatedEvent {
+    pub tag: String,
+    pub color: String,
+}
+
+/// The tag hub's categories, or which tags sit in them, changed (`tags:categories-changed`).
+/// `categoryId` names the category when one did; a drag names none.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct TagCategoriesChangedEvent {
+    pub category_id: Option<String>,
+}
+
+/// Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer
+/// refetches.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct NoteTagsChangedEvent;
+
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultListChangedEvent;

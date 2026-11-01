@@ -71,6 +71,16 @@ vi.mock('../src/generated/bindings', () => {
   // `window.api.tags` is typed without the ported tag methods; component tests still set them.
   const tags = () =>
     window.api.tags as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+  // Component tests answer a tag write in Electron's envelope; a command answers, or rejects.
+  const answered = async <T>(
+    call: Promise<unknown>,
+    pick: (result: Record<string, unknown>) => T
+  ): Promise<T> => {
+    const result = ((await call) ?? {}) as Record<string, unknown>
+    if (result.success === false)
+      throw new Error(typeof result.error === 'string' ? result.error : '')
+    return pick(result)
+  }
   // The window functions are off `window.api`'s type; the mock below still provides them.
   const win = () => window.api as unknown as Record<string, (...args: unknown[]) => unknown>
   const definition = async (result: Promise<unknown>) => {
@@ -174,6 +184,18 @@ vi.mock('../src/generated/bindings', () => {
       tagsGetAllWithCounts: async () =>
         ((await tags().getAllWithCounts()) as { tags: unknown[] }).tags,
       tagsGetNotesByTag: (input: unknown) => tags().getNotesByTag(input),
+      tagsUpdateColor: (tag: string, color: string) =>
+        answered(tags().updateTagColor({ tag, color }), () => null),
+      tagsUpdateIcon: (tag: string, icon: string | null) =>
+        answered(tags().updateTagIcon({ tag, icon }), () => null),
+      tagsListCategories: () =>
+        answered(tags().listCategories(), (result) => result.categories ?? []),
+      tagsCreateCategory: (name: string) =>
+        answered(tags().createCategory({ name }), (result) => result.category),
+      tagsRenameCategory: (id: string, name: string) =>
+        answered(tags().renameCategory({ id, name }), () => null),
+      tagsDeleteCategory: (id: string) => answered(tags().deleteCategory({ id }), () => null),
+      tagsReorder: (input: unknown) => answered(tags().reorder(input), () => null),
       updaterGetState: () => updater().getState(),
       updaterCheckForUpdates: () => updater().checkForUpdates(),
       updaterDownloadUpdate: () => updater().downloadUpdate(),
@@ -210,6 +232,9 @@ vi.mock('../src/generated/bindings', () => {
       // No Electron channel: Electron sends every note event.
       noteEventsDroppedEvent: { listen: async () => () => undefined },
       noteLinksChangedEvent: event(() => api().onLinksChanged),
+      noteTagsChangedEvent: event(() => api().onTagsChanged),
+      tagColorUpdatedEvent: event(() => api().onTagColorUpdated),
+      tagCategoriesChangedEvent: event(() => api().onTagCategoriesChanged),
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })

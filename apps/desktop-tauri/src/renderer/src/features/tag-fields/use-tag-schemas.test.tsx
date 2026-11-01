@@ -228,7 +228,8 @@ describe('keeping the snapshot fresh', () => {
     expect(offTags).not.toHaveBeenCalled()
 
     second.unmount()
-    expect(offTags).toHaveBeenCalledTimes(1)
+    // The tag event is a Tauri event, whose unlisten settles after its listen does.
+    await waitFor(() => expect(offTags).toHaveBeenCalledTimes(1))
     expect(offDefinitions).toHaveBeenCalledTimes(1)
   })
 })

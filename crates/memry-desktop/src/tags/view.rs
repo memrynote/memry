@@ -2,6 +2,7 @@
 //! travel as ISO strings here, as Electron's tag answers carry its index's text columns.
 
 use memry_core::domain::note_list::NoteSort;
+use memry_core::domain::tag_categories::TagCategory;
 use memry_core::domain::tag_reads::{TagCount, TagNotes, TaggedNote};
 use memry_core::storage::repositories::instants::to_iso8601;
 use serde::{Deserialize, Serialize};
@@ -140,6 +141,54 @@ impl NotesByTagView {
             unpinned_notes: unpinned,
         }
     }
+}
+
+/// `TagCategoryRow`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TagCategoryView {
+    pub id: String,
+    pub name: String,
+    pub sort_order: i64,
+    pub tag_count: i64,
+}
+
+impl From<TagCategory> for TagCategoryView {
+    fn from(category: TagCategory) -> Self {
+        Self {
+            id: category.id,
+            name: category.name,
+            sort_order: category.sort_order,
+            tag_count: category.tag_count,
+        }
+    }
+}
+
+/// `TagAssignment`: where a drag put a tag.
+#[derive(Debug, Clone, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TagAssignmentInput {
+    pub tag: String,
+    pub category_id: Option<String>,
+    pub sort_order: i64,
+}
+
+/// A category's slot after a drag.
+#[derive(Debug, Clone, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CategoryOrderInput {
+    pub id: String,
+    pub sort_order: i64,
+}
+
+/// `tags:reorder`'s payload.
+#[derive(Debug, Clone, Default, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ReorderInput {
+    #[serde(default)]
+    pub tags: Option<Vec<TagAssignmentInput>>,
+    #[serde(default)]
+    pub categories: Option<Vec<CategoryOrderInput>>,
 }
 
 #[cfg(test)]

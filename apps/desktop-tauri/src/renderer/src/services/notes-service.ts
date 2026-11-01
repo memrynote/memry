@@ -316,7 +316,7 @@ export function onNoteEventsDropped(callback: () => void): () => void {
 }
 
 /** The subscriptions below that Rust events serve; `window.api` is typed without them. */
-export type PortedNoteEvent = 'onNoteCreated' | 'onNoteUpdated' | 'onNoteDeleted'
+export type PortedNoteEvent = 'onNoteCreated' | 'onNoteUpdated' | 'onNoteDeleted' | 'onTagsChanged'
 
 /** A note made by the app or from a file that appeared (`shell/note_events.rs`). */
 export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
@@ -367,8 +367,9 @@ export function onNoteExternalChange(
   return window.api.onNoteExternalChange(callback)
 }
 
+/** Something the tag list shows changed (`commands/tags.rs`); the payload is empty. */
 export function onTagsChanged(callback: () => void): () => void {
-  return window.api.onTagsChanged(callback)
+  return subscribeToEvent(events.noteTagsChangedEvent, () => callback())
 }
 
 export function onFolderConfigUpdated(callback: (event: { path: string }) => void): () => void {

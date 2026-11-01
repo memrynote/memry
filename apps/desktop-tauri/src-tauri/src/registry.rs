@@ -114,8 +114,15 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_reveal_path,
             crate::commands::shell::shell_take_crash_reload,
             // tags
+            crate::commands::tags::tags_create_category,
+            crate::commands::tags::tags_delete_category,
             crate::commands::tags::tags_get_all_with_counts,
             crate::commands::tags::tags_get_notes_by_tag,
+            crate::commands::tags::tags_list_categories,
+            crate::commands::tags::tags_rename_category,
+            crate::commands::tags::tags_reorder,
+            crate::commands::tags::tags_update_color,
+            crate::commands::tags::tags_update_icon,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,
@@ -195,7 +202,11 @@ pub fn builder() -> Builder<Wry> {
             crate::events::NoteDeletedEvent,
             crate::events::NoteEventsDroppedEvent,
             crate::events::NoteLinksChangedEvent,
+            crate::events::NoteTagsChangedEvent,
             crate::events::NoteUpdatedEvent,
+            // tags
+            crate::events::TagCategoriesChangedEvent,
+            crate::events::TagColorUpdatedEvent,
             // vault
             crate::events::VaultActivityChangedEvent,
             crate::events::VaultErrorEvent,

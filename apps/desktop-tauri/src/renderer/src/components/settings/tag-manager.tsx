@@ -37,6 +37,7 @@ import { Search, MoreHorizontal, Pencil, Merge, Trash2, Palette, Tag } from '@/l
 import { toast } from 'sonner'
 import { renameTagWithProgress, toastTagRenamed } from '@/features/tag-fields/rename-toasts'
 import { useTags } from '@/hooks/use-tags'
+import { tagsService } from '@/services/tags-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { getTagColors, COLOR_ROWS, TAG_COLORS } from '@/components/note/tags-row/tag-colors'
@@ -144,8 +145,9 @@ export function TagManager() {
     async (colorName: string) => {
       if (!colorTarget) return
       try {
-        await window.api.tags.updateTagColor({ tag: colorTarget, color: colorName })
-        toast.success(t('tags.toasts.colorUpdated', { name: colorTarget }))
+        const result = await tagsService.updateTagColor({ tag: colorTarget, color: colorName })
+        if (result.success) toast.success(t('tags.toasts.colorUpdated', { name: colorTarget }))
+        else toast.error(result.error ?? t('tags.toasts.colorFailed'))
       } catch (err) {
         toast.error(extractErrorMessage(err, t('tags.toasts.colorFailed')))
       }
@@ -157,7 +159,8 @@ export function TagManager() {
   const handleIconChange = useCallback(
     async (tagName: string, icon: string | null) => {
       try {
-        await window.api.tags.updateTagIcon({ tag: tagName, icon })
+        const result = await tagsService.updateTagIcon({ tag: tagName, icon })
+        if (!result.success) toast.error(result.error ?? t('tags.toasts.iconFailed'))
       } catch (err) {
         toast.error(extractErrorMessage(err, t('tags.toasts.iconFailed')))
       }

@@ -155,6 +155,25 @@ impl Vault {
         crate::domain::app_settings::AppSettings::over(self.db.clone(), &store)
     }
 
+    /// The desktop tag hub's edits, written under this device's identity (desktop Step 13j).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn tag_hub(
+        &self,
+        store: Arc<dyn SecureStore>,
+    ) -> Result<crate::api::tag_hub::TagHub, AuthError> {
+        crate::api::tag_hub::TagHub::over(self.db.clone(), &store)
+    }
+
+    /// The tag hub's categories with their tag counts (desktop Step 13j); a read, so no
+    /// identity. Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn tag_categories(
+        &self,
+    ) -> Result<Vec<crate::domain::tag_categories::TagCategory>, StorageError> {
+        self.db.read_blocking(crate::domain::tag_categories::list)
+    }
+
     /// This vault's custom icon library, written under this device's identity (desktop
     /// Step 13o). Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[doc(hidden)]

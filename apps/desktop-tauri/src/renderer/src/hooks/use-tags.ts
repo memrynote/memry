@@ -3,6 +3,7 @@ import { createLogger } from '@/lib/logger'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { getI18n } from 'react-i18next'
+import { onTagsChanged } from '@/services/notes-service'
 import { tagsService } from '@/services/tags-service'
 
 const log = createLogger('Hook:Tags')
@@ -51,7 +52,7 @@ export function useTags() {
   useEffect(() => {
     const refetch = () => void fetchTags()
     const unsubs = [
-      window.api.onTagsChanged(refetch),
+      onTagsChanged(refetch),
       window.api.onTagRenamed(refetch),
       window.api.onTagDeleted(refetch)
     ]

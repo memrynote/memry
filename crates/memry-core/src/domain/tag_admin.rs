@@ -7,7 +7,7 @@
 //! the tag, each through its own writer so each ticks the clock its type
 //! merges on ([`tags::set`] for the document types, [`tasks::set_tags`] for
 //! tasks) and each lands in the outbox. The `tag_definition` item (id = the
-//! trimmed name, folded: [`definition_id`]; older desktops keyed it by the
+//! spelling it was first written with: [`definition_id`]; older desktops keyed it by the
 //! lowercased name, so lookups go through [`definitions`], never the id) is moved the way desktop's
 //! `syncTagDefinitionRename` / `syncMergedTagDefinitions` move it: the old id
 //! is tombstoned and the new one created carrying the old colour and icon.
@@ -61,9 +61,9 @@ pub fn default_color(tag: &str) -> &'static str {
     PALETTE[(i64::from(hash).unsigned_abs() % 20) as usize]
 }
 
-/// The id a new definition is written under: the tag's key.
+/// The id a new definition is written under: the trimmed spelling (desktop `getOrCreateTag`).
 pub fn definition_id(tag: &str) -> String {
-    tags::tag_key(tag)
+    tag.trim().to_owned()
 }
 
 /// One live `tag_definition`, as the reads need it.
@@ -158,6 +158,31 @@ fn definition_ids(conn: &Connection, tag: &str) -> Result<Vec<String>, StorageEr
         .into_iter()
         .filter(|id| tags::tag_key(id) == key)
         .collect())
+}
+
+/// The id a new definition of `tag` is written under when the tag was deleted before: the
+/// projection's deleted row first, else a deleted `tag_definition` item, which is all a device
+/// holds of a remote delete for a tag it never had live. Writing over it keeps one item per tag:
+/// the projection keys `tag_definitions.name` without ASCII case, so a second spelling would
+/// land on the deleted row's name.
+fn deleted_id(conn: &Connection, tag: &str) -> Result<Option<String>, StorageError> {
+    let key = tags::tag_key(tag);
+    let mut statement = conn
+        .prepare(
+            "SELECT name FROM (
+               SELECT name, 0 AS source FROM tag_definitions WHERE deleted_at IS NOT NULL
+               UNION ALL
+               SELECT item_id, 1 FROM sync_items
+                WHERE item_type = ?1 AND deleted_at IS NOT NULL)
+             ORDER BY source, name COLLATE BINARY",
+        )
+        .map_err(failed)?;
+    let ids = statement
+        .query_map([DEFINITION_TYPE], |row| row.get::<_, String>(0))
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    Ok(ids.into_iter().find(|id| tags::tag_key(id) == key))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -394,7 +419,18 @@ pub(crate) fn upsert_definition_in(
         }
         return Ok(());
     }
-    let id = definition_id(name);
+    let id = match deleted_id(tx, name)? {
+        Some(id) => id,
+        None => definition_id(name),
+    };
+    // A delete of another spelling's item marks this item's projection row deleted too (the
+    // row matches names without ASCII case), while the item itself lives on: the tag is that
+    // item, so the create edits it, which projects it live again.
+    if sync_items::load(tx, DEFINITION_TYPE, &id)?.is_some_and(|row| row.deleted_at.is_none()) {
+        edit_in(tx, DEFINITION_TYPE, &id, changes, device_id, now_ms)?;
+        outbox::enqueue(tx, &outbox::Change::upsert(DEFINITION_TYPE, &id), now_ms)?;
+        return Ok(());
+    }
     let mut payload = template.cloned().unwrap_or_else(|| json!({}));
     let map = payload
         .as_object_mut()
@@ -416,8 +452,8 @@ pub(crate) fn upsert_definition_in(
         }
     }
     // A template is another name's definition: its clock is not this id's
-    // lineage. The id is deterministic, so a name deleted before is created
-    // over its own tombstone with a clock past the delete (#2409).
+    // lineage. A name deleted before is created over its own tombstone, in
+    // the spelling it had, with a clock past the delete (#2409).
     map.remove("clock");
     map.insert("createdAt".into(), json!(iso(now_ms)?));
     map.remove("modifiedAt");

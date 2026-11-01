@@ -3,7 +3,7 @@ import type { MovesRecovered } from '../generated/bindings'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type { PortedNoteEvent, PortedNoteMethod } from '../renderer/src/services/notes-service'
-import type { PortedTagMethod } from '../renderer/src/services/tags-service'
+import type { PortedTagEvent, PortedTagMethod } from '../renderer/src/services/tags-service'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
@@ -1928,12 +1928,18 @@ interface CallNotesServiceInstead {
 /** The note subscriptions the notes service takes from Rust events, refused the same way. */
 type PortedNoteEventMarkers = { readonly [K in PortedNoteEvent]: CallNotesServiceInstead }
 
-/** A tag method `tagsService` serves from Rust, refused the same way. */
+/** A tag method or subscription `tagsService` serves from Rust, refused the same way. */
 interface CallTagsServiceInstead {
   readonly 'use tagsService from @/services/tags-service': never
 }
 
-interface API extends Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent>, PortedNoteEventMarkers {
+type PortedTagEventMarkers = { readonly [K in PortedTagEvent]: CallTagsServiceInstead }
+
+interface API
+  extends
+    Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent | PortedTagEvent>,
+    PortedNoteEventMarkers,
+    PortedTagEventMarkers {
   notes: Omit<NotesClientAPI, PortedNoteMethod> & {
     readonly [K in PortedNoteMethod]: CallNotesServiceInstead
   }
@@ -2045,10 +2051,8 @@ interface API extends Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent>, PortedNo
   onBookmarksReordered: (callback: (event: BookmarksReorderedEvent) => void) => () => void
   // Tags event subscriptions
   onTagRenamed: (callback: (event: TagRenamedEvent) => void) => () => void
-  onTagColorUpdated: (callback: (event: TagColorUpdatedEvent) => void) => () => void
   onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
-  onTagCategoriesChanged: (callback: () => void) => () => void
   onTagsProgress: (callback: (event: TagsProgressEvent) => void) => () => void
   onPropertyDefinitionChanged: (callback: (event: { name: string }) => void) => () => void
   // Reminder event subscriptions
