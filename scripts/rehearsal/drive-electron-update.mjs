@@ -3,7 +3,7 @@
 // Usage: node scripts/rehearsal/drive-electron-update.mjs <cdp-port> [--timeout-s 600]
 // Uses the global WebSocket of Node 24. On NSIS installs the state stays `downloading` until the
 // hand-off is armed, so the poll waits for `downloaded` and fails with the last state on timeout.
-import { fileURLToPath } from 'node:url'
+import { isMain } from '../release/is-main.mjs'
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -95,7 +95,7 @@ async function main(argv) {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta)) {
   try {
     await main(process.argv.slice(2))
   } catch (error) {

@@ -3,7 +3,8 @@
 // beside the executable (the Tauri resource directory on Windows is the executable directory).
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+
+import { isMain } from './is-main.mjs'
 
 export const WINDOWS_MAIN_EXE = 'Memrynote.exe'
 
@@ -72,6 +73,6 @@ function main(argv) {
   console.log(`Staged ${staged.length} entries into ${outDir}: ${staged.join(', ')}`)
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta)) {
   main(process.argv.slice(2))
 }

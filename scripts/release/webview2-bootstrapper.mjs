@@ -18,6 +18,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { buildOsslsigncodeVerifyArgs } from '../velopack-release-utils.mjs'
+import { isMain } from './is-main.mjs'
 
 export const FWLINK = 'https://go.microsoft.com/fwlink/p/?LinkId=2124703'
 /** Relative to the pack dir, which Velopack installs as `current\`. */
@@ -171,7 +172,7 @@ export function updatePin({
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta)) {
   const [arg] = process.argv.slice(2)
   if (!arg) {
     console.error('usage: webview2-bootstrapper.mjs <pack-dir> | --update')
