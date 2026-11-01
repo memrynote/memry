@@ -307,7 +307,7 @@
     "tsdav": "2.3.4",
     "typescript": "^7.0.2",
     "typescript-6": "npm:typescript@~6.0.3",
-    "vite": "^7.3.6",
+    "vite": "^7.3.7",
     "vitest": "4.1.10",
     "ws": "^8.19.0",
     "y-indexeddb": "^9.0.12",
