@@ -66,9 +66,16 @@ export const commands = {
 	notesGetLinks: (id: string) => __TAURI_INVOKE<NoteLinksView>("notes_get_links", { id }),
 	/**  `notes:get-local-only-count`. */
 	notesGetLocalOnlyCount: () => __TAURI_INVOKE<number>("notes_get_local_only_count"),
+	/**
+	 *  The notes that spell this note's title or an alias as plain text, with the text around
+	 *  each mention.
+	 */
+	notesGetUnlinkedMentions: (id: string) => __TAURI_INVOKE<UnlinkedMentionView[]>("notes_get_unlinked_mentions", { id }),
 	notesList: (options: NoteListOptions) => __TAURI_INVOKE<NoteListPageView>("notes_list", { options }),
 	/**  `notes:open-external`: the note's file in the OS's default app. */
 	notesOpenExternal: (id: string) => __TAURI_INVOKE<null>("notes_open_external", { id }),
+	/**  The hover card of the note `title` names, or `null`. */
+	notesPreviewByTitle: (title: string) => __TAURI_INVOKE<WikiLinkPreviewView | null>("notes_preview_by_title", { title }),
 	/**  The note `title` names as a whole (no heading split), or `null`. */
 	notesResolveByTitle: (title: string) => __TAURI_INVOKE<LinkResolutionView | null>("notes_resolve_by_title", { title }),
 	/**  Each title mapped to the note it names, or `null`: one call per editor mount. */
@@ -850,6 +857,12 @@ export type OptionInput = {
 	default?: boolean | null,
 };
 
+/**  A tag on the card, with its colour (`stone` when the tag has no definition). */
+export type PreviewTagView = {
+	name: string,
+	color: string,
+};
+
 /**
  *  A definition as the renderer reads it (`PropertyDefinition` of `@memry/rpc`): what Electron's
  *  `property_definitions` row holds.
@@ -1082,6 +1095,21 @@ export type TitleMatchView = {
 /**  `FileMetadata.transcriptionStatus`. */
 export type TranscriptionStatus = "pending" | "processing" | "complete" | "failed";
 
+/**  `UnlinkedMention`. `contexts[i]` is the mention `notes:link-mention` takes as `ordinal` `i`. */
+export type UnlinkedMentionView = {
+	sourceId: string,
+	sourcePath: string,
+	sourceTitle: string,
+	contexts: BacklinkContextView[],
+	/**  Every mention in the source: more than `contexts` holds when `truncated`. */
+	mentionCount: number,
+	/**
+	 *  The source mentions the note so densely that its snippets stopped at the output bound
+	 *  (`mention_contexts`): `contexts` holds the first ones.
+	 */
+	truncated: boolean,
+};
+
 /**
  *  Why an Unsplash request produced nothing. The wire names are the contract's
  *  `UnsplashFailureReason`; `NotConfigured` is "hide the Photos tab", not an error to show.
@@ -1227,6 +1255,29 @@ export type VaultStatus = {
  *  it subscribes, because events before that are not replayed.
  */
 export type VaultStatusChangedEvent = VaultStatus;
+
+/**  `WikiLinkPreview`, with the body in place of `bodyText`. */
+export type WikiLinkPreviewView = {
+	id: string,
+	title: string,
+	emoji: string | null,
+	snippet: string | null,
+	tags: PreviewTagView[],
+	/**  ISO 8601. */
+	createdAt: string,
+	/**  The other name the link was written with, `None` when it named the title or path. */
+	matchedName: string | null,
+	path: string,
+	/**  The raw frontmatter `cover`. */
+	cover: string | null,
+	/**  The note's `description` property when it is text that is not blank. */
+	description: string | null,
+	/**
+	 *  The body after the frontmatter, for the card's opening; `None` when the card shows the
+	 *  description instead, or the note is too large for its text to be read.
+	 */
+	body: string | null,
+};
 
 /**
  *  The pointer is over a native caption button (`minimize`, `maximize`, `close`) or left them.

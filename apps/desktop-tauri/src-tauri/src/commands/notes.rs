@@ -3,7 +3,9 @@
 //! from the vault tier's row facts.
 //! A note's links and the note a wiki link names (`notes:get-links`, `notes:resolve-by-title`,
 //! `notes:resolve-titles`, `notes:resolve-wiki-target`, #3530 13i) go through
-//! `memry_desktop::notes::links`.
+//! `memry_desktop::notes::links`; a note's unlinked mentions (`notes:get-unlinked-mentions`)
+//! through `memry_desktop::notes::mentions`, and a wiki link's hover card
+//! (`notes:preview-by-title`) through `memry_desktop::notes::link_preview`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -12,9 +14,11 @@ use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
+use memry_desktop::notes::link_preview::{self, WikiLinkPreviewView};
 use memry_desktop::notes::links::{
     LinkResolutionView, LinkTargetView, NoteLinks, NoteLinksView, TitleMatchView,
 };
+use memry_desktop::notes::mentions::{Mentions, UnlinkedMentionView};
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::view::{
     FileView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
@@ -280,6 +284,35 @@ pub async fn notes_resolve_wiki_target(
         links(&app)?
             .resolve_wiki_target(&target)
             .map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
+/// The notes that spell this note's title or an alias as plain text, with the text around
+/// each mention.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_get_unlinked_mentions(
+    app: AppHandle<Wry>,
+    id: String,
+) -> Result<Vec<UnlinkedMentionView>, CommandError> {
+    blocking("notes_get_unlinked_mentions", move || {
+        Mentions::new(&open_vault(&app)?)
+            .get(&id)
+            .map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
+/// The hover card of the note `title` names, or `null`.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_preview_by_title(
+    app: AppHandle<Wry>,
+    title: String,
+) -> Result<Option<WikiLinkPreviewView>, CommandError> {
+    blocking("notes_preview_by_title", move || {
+        link_preview::preview_by_title(&open_vault(&app)?, &title).map_err(|error| failed(&error))
     })
     .await
 }

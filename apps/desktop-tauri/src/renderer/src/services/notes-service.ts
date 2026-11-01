@@ -38,7 +38,8 @@ import type {
   WikiLinkTargetResolution,
   WikiLinkTitleResolutions
 } from '@memry/rpc/notes'
-import type { NoteLinksChangedEvent } from '@memry/contracts/notes-api'
+import type { NoteLinksChangedEvent, UnlinkedMention } from '@memry/contracts/notes-api'
+import { markdownPreviewText } from '@memry/shared/markdown-preview-text'
 import { getI18n } from 'react-i18next'
 import {
   commands,
@@ -202,6 +203,16 @@ const ported = {
     commands.notesResolveTitles(titles),
   resolveWikiTarget: (target: string): Promise<WikiLinkTargetResolution | null> =>
     commands.notesResolveWikiTarget(target),
+  getUnlinkedMentions: (id: string): Promise<UnlinkedMention[]> =>
+    commands.notesGetUnlinkedMentions(id),
+  // The card's opening is read here from the body Rust sends, with the function Electron's main
+  // ran on it; a card with a description gets no body.
+  previewByTitle: async (title: string): Promise<WikiLinkPreview | null> => {
+    const preview = await commands.notesPreviewByTitle(title)
+    if (!preview) return null
+    const { body, ...rest } = preview
+    return { ...rest, bodyText: body === null ? null : markdownPreviewText(body) }
+  },
   // Rejects on failure rather than answering `success: false`: the note page reads no envelope
   // and would announce a change that did not happen (a note too large to sync stays local-only).
   setLocalOnly: async (id: string, localOnly: boolean) => {
