@@ -23,7 +23,10 @@ const commands = vi.hoisted(() => ({
   notesGetPropertyDefinitions: vi.fn(),
   notesCreatePropertyDefinition: vi.fn(),
   notesUpdatePropertyDefinition: vi.fn(),
-  notesAddStatusOption: vi.fn()
+  notesAddStatusOption: vi.fn(),
+  notesRename: vi.fn(),
+  notesReorder: vi.fn(),
+  notesGetAllPositions: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -39,6 +42,7 @@ const events = vi.hoisted(() => {
     noteCreatedEvent: event('created'),
     noteUpdatedEvent: event('updated'),
     noteDeletedEvent: event('deleted'),
+    noteRenamedEvent: event('renamed'),
     noteTagsChangedEvent: event('tags'),
     noteEventsDroppedEvent: event('dropped')
   }
@@ -432,14 +436,37 @@ describe('notes-service', () => {
 
   it('forwards the methods later steps port to window.api.notes', async () => {
     api.notes.update = vi.fn().mockResolvedValue({ success: true })
-    api.notes.rename = vi.fn().mockResolvedValue({ success: true })
 
     const updateInput = { id: 'note-1', title: 'Updated' }
     await notesService.update(updateInput)
     expect(api.notes.update).toHaveBeenCalledWith(updateInput)
+  })
 
-    await notesService.rename('note-1', 'Renamed')
-    expect(api.notes.rename).toHaveBeenCalledWith('note-1', 'Renamed')
+  it("renames through its command, a failure in Electron's shape", async () => {
+    const view = {
+      id: 'note-1',
+      path: 'Renamed.md',
+      title: 'Renamed',
+      created: CREATED,
+      modified: MODIFIED
+    }
+    commands.notesRename.mockResolvedValue(view)
+    await expect(notesService.rename('note-1', 'Renamed')).resolves.toEqual({
+      success: true,
+      note: { ...view, created: new Date(CREATED), modified: new Date(MODIFIED) }
+    })
+    expect(commands.notesRename).toHaveBeenCalledWith('note-1', 'Renamed')
+
+    commands.notesRename.mockRejectedValue({
+      kind: 'invalid',
+      code: 'name_conflict',
+      message: 'taken'
+    })
+    await expect(notesService.rename('note-1', 'Other')).resolves.toEqual({
+      success: false,
+      error: 'taken',
+      note: null
+    })
   })
 
   it('forwards attachments, export, and version helpers', async () => {
@@ -523,16 +550,30 @@ describe('notes-service', () => {
     await vi.waitFor(() => expect(listeners.has('dropped')).toBe(false))
   })
 
+  it('hands on a rename from Rust as it comes', async () => {
+    const renamed = vi.fn()
+    const stop = onNoteRenamed(renamed)
+    await vi.waitFor(() => expect(listeners.has('renamed')).toBe(true))
+    const payload = {
+      id: 'n',
+      oldPath: 'plan.md',
+      newPath: 'Plan.md',
+      oldTitle: 'plan',
+      newTitle: 'Plan'
+    }
+    listeners.get('renamed')?.({ payload })
+    expect(renamed).toHaveBeenCalledWith(payload)
+    stop()
+    await vi.waitFor(() => expect(listeners.has('renamed')).toBe(false))
+  })
+
   it('registers the note event subscriptions not yet ported on window.api', () => {
     const unsubscribe = vi.fn()
-    api.onNoteRenamed = vi.fn(() => unsubscribe)
     api.onNoteMoved = vi.fn(() => unsubscribe)
     api.onNoteExternalChange = vi.fn(() => unsubscribe)
     api.onFolderConfigUpdated = vi.fn(() => unsubscribe)
     const handler = vi.fn()
 
-    expect(onNoteRenamed(handler)).toBe(unsubscribe)
-    expect(api.onNoteRenamed).toHaveBeenCalledWith(handler)
     expect(onNoteMoved(handler)).toBe(unsubscribe)
     expect(api.onNoteMoved).toHaveBeenCalledWith(handler)
     expect(onNoteExternalChange(handler)).toBe(unsubscribe)
@@ -573,62 +614,38 @@ describe('notes-service', () => {
       expect(result).toEqual(positionsResponse)
     })
 
-    it('getAllPositions returns position map', async () => {
-      const response = {
+    it('reads every slot and reorders through the commands', async () => {
+      commands.notesGetAllPositions.mockResolvedValue({ 'b.md': 0, 'a.md': 1 })
+      await expect(notesService.getAllPositions()).resolves.toEqual({
         success: true,
-        positions: {
-          'projects/note1.md': 0,
-          'projects/note2.md': 1,
-          'archive/old.md': 0
-        }
-      }
-      api.notes.getAllPositions = vi.fn().mockResolvedValue(response)
+        positions: { 'b.md': 0, 'a.md': 1 }
+      })
 
-      const result = await notesService.getAllPositions()
-
-      expect(api.notes.getAllPositions).toHaveBeenCalled()
-      expect(result).toEqual(response)
+      commands.notesReorder.mockResolvedValue(null)
+      await expect(
+        notesService.reorder('projects', ['projects/b.md', 'projects/a.md'])
+      ).resolves.toEqual({
+        success: true
+      })
+      expect(commands.notesReorder).toHaveBeenCalledWith('projects', [
+        'projects/b.md',
+        'projects/a.md'
+      ])
     })
 
-    it('getAllPositions handles error response', async () => {
-      const errorResponse = {
+    it("answers a failed read or reorder in Electron's shape", async () => {
+      const refusal = { kind: 'invalid', code: 'no_vault_open', message: 'No vault is open' }
+      commands.notesGetAllPositions.mockRejectedValue(refusal)
+      await expect(notesService.getAllPositions()).resolves.toEqual({
         success: false,
         positions: {},
-        error: 'Database error'
-      }
-      api.notes.getAllPositions = vi.fn().mockResolvedValue(errorResponse)
-
-      const result = await notesService.getAllPositions()
-
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('Database error')
-    })
-
-    it('reorder forwards folder path and note paths to api', async () => {
-      api.notes.reorder = vi.fn().mockResolvedValue({ success: true })
-
-      const result = await notesService.reorder('projects', [
-        'projects/note2.md',
-        'projects/note1.md',
-        'projects/note3.md'
-      ])
-
-      expect(api.notes.reorder).toHaveBeenCalledWith('projects', [
-        'projects/note2.md',
-        'projects/note1.md',
-        'projects/note3.md'
-      ])
-      expect(result).toEqual({ success: true })
-    })
-
-    it('reorder handles error response', async () => {
-      const errorResponse = { success: false, error: 'Reorder failed' }
-      api.notes.reorder = vi.fn().mockResolvedValue(errorResponse)
-
-      const result = await notesService.reorder('projects', ['projects/note1.md'])
-
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('Reorder failed')
+        error: 'No vault is open'
+      })
+      commands.notesReorder.mockRejectedValue(refusal)
+      await expect(notesService.reorder('projects', [])).resolves.toEqual({
+        success: false,
+        error: 'No vault is open'
+      })
     })
   })
 })

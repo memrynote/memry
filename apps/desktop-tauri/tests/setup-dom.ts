@@ -133,6 +133,27 @@ vi.mock('../src/generated/bindings', () => {
         if (result?.success === false) throw new Error(result.error ?? '')
         return null
       },
+      notesRename: async (id: string, newTitle: string) => {
+        const result = (await notes().rename(id, newTitle)) as
+          | { success?: boolean; note?: unknown; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return result?.note
+      },
+      notesReorder: async (folderPath: string, notePaths: string[]) => {
+        const result = (await notes().reorder(folderPath, notePaths)) as
+          | { success?: boolean; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return null
+      },
+      notesGetAllPositions: async () => {
+        const result = (await notes().getAllPositions()) as
+          | { success?: boolean; positions?: unknown; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return result?.positions ?? {}
+      },
       notesGet: (id: string) => notes().get(id),
       notesGetByPath: (path: string) => notes().getByPath(path),
       notesGetFile: (id: string) => notes().getFile(id),
@@ -229,6 +250,7 @@ vi.mock('../src/generated/bindings', () => {
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),
       noteDeletedEvent: event(() => api().onNoteDeleted),
+      noteRenamedEvent: event(() => api().onNoteRenamed),
       // No Electron channel: Electron sends every note event.
       noteEventsDroppedEvent: { listen: async () => () => undefined },
       noteLinksChangedEvent: event(() => api().onLinksChanged),

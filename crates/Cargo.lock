@@ -3919,6 +3919,7 @@ dependencies = [
  "font-kit",
  "gtk",
  "libloading 0.9.0",
+ "memry-core",
  "memry-desktop",
  "minidumper",
  "objc2",
