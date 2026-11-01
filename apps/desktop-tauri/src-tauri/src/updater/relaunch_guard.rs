@@ -122,7 +122,8 @@ pub fn apply(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
 /// The splash never says the app reopens by itself (#3728): nothing does after an install at a
 /// quit, and after Restart to install this process holds the single-instance lock while it lives,
-/// so it absorbs the updater's own start of the new build when that start comes first (#3773).
+/// so it absorbs the updater's own start of the new build when that start comes before this
+/// process exits (#3773).
 fn splash_copy(locale: &str) -> PrebootCopy {
     PrebootCopy {
         title: i18n::t(
@@ -246,9 +247,10 @@ mod tests {
         assert!(exit_time(on_screen, show_limit, stay) >= show_limit + stay);
         drop(kept);
 
-        // A splash that failed to build dropped its sender: only the stay is left.
+        // A splash that failed to build dropped its sender: only the stay is left. The show limit
+        // is far above the watchdog of `exit_time`, so waiting it out fails the test.
         let (dropped, on_screen) = mpsc::channel::<()>();
         drop(dropped);
-        exit_time(on_screen, Duration::from_secs(30), stay);
+        exit_time(on_screen, Duration::from_secs(3600), stay);
     }
 }
