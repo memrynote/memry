@@ -80,14 +80,14 @@ export function BacklinksSection({
         sorted.sort((a, b) => a.noteTitle.localeCompare(b.noteTitle))
         break
       case 'mentions':
-        sorted.sort((a, b) => b.mentions.length - a.mentions.length)
+        sorted.sort((a, b) => b.mentionCount - a.mentionCount)
         break
     }
     return sorted
   }, [backlinks, sortBy])
 
   const totalReferences = useMemo(
-    () => backlinks.reduce((sum, bl) => sum + bl.mentions.length, 0),
+    () => backlinks.reduce((sum, bl) => sum + bl.mentionCount, 0),
     [backlinks]
   )
 

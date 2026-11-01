@@ -119,6 +119,7 @@ fn incoming_lists_each_live_source_once_and_never_the_target() {
     file(&data, "n2", "Work/beta.md");
     note(&data, "n3", "Alpha", None, "markdown");
     day(&data, "2026-01-02", None);
+    file(&data, "j2026-01-02", "Journal/2026-01-02.md");
     // Two spellings from one source are two rows, and one card.
     link(&index, "n2", "n1", "Plan");
     link(&index, "n2", "n1", "plan");
@@ -143,7 +144,12 @@ fn incoming_lists_each_live_source_once_and_never_the_target() {
     assert_eq!(
         shown,
         [
-            ("j2026-01-02", "2026-01-02", "journal", None),
+            (
+                "j2026-01-02",
+                "2026-01-02",
+                "journal",
+                Some("Journal/2026-01-02.md")
+            ),
             ("n3", "Alpha", "note", None),
             ("n2", "beta", "note", Some("Work/beta.md")),
         ]
@@ -192,7 +198,8 @@ fn a_deleted_source_with_stale_index_rows_reaches_no_reader() {
 }
 
 /// A vault with each kind of name: a markdown note in a folder with a file row, a note with
-/// an alias and no file row, an attachment, a day with an alias, and a title holding `#`.
+/// an alias and no file row, an attachment, a day with an alias and a file row (13m), and a
+/// title holding `#`.
 fn names_vault() -> Connection {
     let (data, _) = dbs();
     note(&data, "n1", "Plan", Some("Work"), "markdown");
@@ -202,6 +209,7 @@ fn names_vault() -> Connection {
     note(&data, "n3", "diagram", None, "image");
     note(&data, "n4", "Sprint #4", None, "markdown");
     day(&data, "2026-01-02", Some(r#"["Kickoff"]"#));
+    file(&data, "j2026-01-02", "Journal/2026-01-02.md");
     data
 }
 
@@ -255,14 +263,14 @@ fn titles_aliases_paths_and_days_resolve_with_their_rows() {
                 Some((
                     "j2026-01-02",
                     "2026-01-02",
-                    None,
+                    Some("Journal/2026-01-02.md"),
                     "markdown",
                     MatchedBy::Title
                 )),
                 Some((
                     "j2026-01-02",
                     "2026-01-02",
-                    None,
+                    Some("Journal/2026-01-02.md"),
                     "markdown",
                     MatchedBy::Alias
                 )),

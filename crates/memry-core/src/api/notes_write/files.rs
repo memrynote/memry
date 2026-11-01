@@ -9,7 +9,7 @@ use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::journal;
-use crate::domain::notes::app_move::{self, AppMoved};
+use crate::domain::notes::app_move::{self, AppMoved, BeginError, Recorded};
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::domain::notes::{self, NewNote};
@@ -145,6 +145,31 @@ impl NotesWriter {
         self.db.call_blocking(move |conn| {
             app_move::moved_by_app(conn, note_id, &moved, &device_id, now_ms())
         })
+    }
+
+    /// Records a note's app move before its file moves ([`app_move::begin`]). Only the vault
+    /// tier's rows' lane calls it, which runs one move at a time.
+    pub fn begin_app_move(&self, note_id: &str, moved: AppMoved<'_>) -> Result<(), BeginError> {
+        self.db
+            .call_blocking(move |conn| Ok(app_move::begin(conn, note_id, &moved)))?
+    }
+
+    /// Every note's record of an app move never finished or forgotten
+    /// ([`app_move::pending`]).
+    pub fn pending_app_moves(&self) -> Result<Vec<(String, Recorded)>, StorageError> {
+        self.db.read_blocking(app_move::pending)
+    }
+
+    /// Forgets the note's record of the move from `old_path` to `new_path`
+    /// ([`app_move::abandon`]). Only the vault tier's rows' lane calls it.
+    pub fn abandon_app_move(
+        &self,
+        note_id: &str,
+        old_path: &str,
+        new_path: &str,
+    ) -> Result<bool, StorageError> {
+        self.db
+            .call_blocking(move |conn| app_move::abandon(conn, note_id, old_path, new_path))
     }
 
     /// The note's file moved from `from_path` and its record was left as it was

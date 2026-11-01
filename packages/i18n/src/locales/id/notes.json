@@ -771,6 +771,7 @@
     "expandSection": "Perluas bagian tautan balik",
     "showMore": "Tampilkan {count} tautan balik lainnya",
     "more": "{count} lainnya",
+    "moreInNote": "{count} tautan lainnya di catatan ini",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Ditampilkan di portal"
   },

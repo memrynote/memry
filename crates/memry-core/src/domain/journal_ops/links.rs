@@ -207,8 +207,8 @@ pub(crate) fn live_item(data: &Connection, id: &str) -> Result<Option<Item>, Sto
     Ok(journal.map(|(date, stamp)| Item::Journal { date, stamp }))
 }
 
-/// A live note or journal day, with the vault path of a note's file when it
-/// has one (`note_files`).
+/// A live note or journal day, with the vault path of its file when a
+/// `note_files` row names it (a day's names its `j<date>` id).
 pub(crate) struct Source {
     pub(crate) item: Item,
     pub(crate) path: Option<String>,
@@ -245,8 +245,8 @@ pub(crate) fn live_items<'a>(
              FROM notes n LEFT JOIN note_files f ON f.note_id = n.id \
              WHERE n.deleted_at IS NULL AND n.id IN (SELECT value FROM json_each(?1)) \
              UNION ALL \
-             SELECT j.id, j.date, COALESCE(j.modified_at, j.created_at, 0), 1, NULL \
-             FROM journal_entries j \
+             SELECT j.id, j.date, COALESCE(j.modified_at, j.created_at, 0), 1, f.path \
+             FROM journal_entries j LEFT JOIN note_files f ON f.note_id = j.id \
              WHERE j.deleted_at IS NULL AND j.id IN (SELECT value FROM json_each(?1))",
         )
         .map_err(failed)?;

@@ -12,6 +12,8 @@ import type * as ReactQueryModule from '@tanstack/react-query'
 import type * as UseTagSchemasModule from '@/features/tag-fields/use-tag-schemas'
 import type * as VaultLocksStoreModule from '@/lib/vault-locks-store'
 import type * as BacklinksModule from '@/components/note/backlinks'
+import type * as UseNotesQueryModule from '@/hooks/use-notes-query'
+import type * as NotesServiceModule from '@/services/notes-service'
 
 // The reveal action's label branches on platform. Pin macOS so these
 // assertions read the Finder wording whatever host the suite runs on.
@@ -25,6 +27,8 @@ Object.defineProperty(navigator, 'platform', {
 
 const mocks = vi.hoisted(() => ({
   isNoteLocked: false,
+  /** The links hook and the backlinks panel as they ship, fed by the `notesGetLinks` binding. */
+  realLinks: false,
   /** Null: the note's own lock follows `isNoteLocked`. */
   hasOwnNoteLock: null as boolean | null,
   setVaultLock: vi.fn(),
@@ -144,54 +148,60 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/hooks/use-notes-query', () => ({
-  graphKeys: { local: (id: string) => ['graph', id] },
-  notesKeys: { note: (id: string) => ['notes', 'note', id] },
-  useNote: () => ({
-    note: mocks.noteState.note,
-    isLoading: mocks.noteState.isLoading,
-    error: mocks.noteState.error,
-    refetch: mocks.refetchNote
-  }),
-  useNoteMutations: () => ({
-    createNote: { mutateAsync: mocks.createNote },
-    updateNote: { mutateAsync: mocks.updateNote },
-    renameNote: { mutateAsync: mocks.renameNote },
-    deleteNote: { mutateAsync: mocks.deleteNote },
-    moveNote: { mutateAsync: mocks.moveNote }
-  }),
-  useNoteLinksQuery: () => ({
-    incoming: [
-      {
-        sourceId: 'backlink-1',
-        sourceTitle: 'Backlink Note',
-        sourcePath: 'notes/Work/backlink.md',
-        contexts: [{ snippet: 'See [[Test Note]]', linkStart: 4, linkEnd: 17 }]
-      },
-      // Same sourceId as above, but referenced through a relation property
-      // instead of a wikilink — must resolve to a different `id` (see
-      // backlinkId in components/note/backlinks/types.ts).
-      {
-        sourceId: 'backlink-1',
-        sourceTitle: 'Backlink Note',
-        sourcePath: 'notes/Work/backlink.md',
-        contexts: [],
-        via: { kind: 'property', propertyName: 'father' }
-      }
-    ],
-    outgoing: [
-      { sourceId: 'note-1', targetId: 'existing-note', targetTitle: 'Existing Note' },
-      { sourceId: 'note-1', targetId: null, targetTitle: 'New Note' }
-    ],
-    isLoading: false
-  }),
-  useNoteTagsQuery: () => ({
-    tags: [
-      { tag: 'work', color: 'blue' },
-      { tag: 'later', color: 'green' }
-    ]
-  })
-}))
+vi.mock('@/hooks/use-notes-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof UseNotesQueryModule>()
+  return {
+    graphKeys: { local: (id: string) => ['graph', id] },
+    notesKeys: { note: (id: string) => ['notes', 'note', id] },
+    useNote: () => ({
+      note: mocks.noteState.note,
+      isLoading: mocks.noteState.isLoading,
+      error: mocks.noteState.error,
+      refetch: mocks.refetchNote
+    }),
+    useNoteMutations: () => ({
+      createNote: { mutateAsync: mocks.createNote },
+      updateNote: { mutateAsync: mocks.updateNote },
+      renameNote: { mutateAsync: mocks.renameNote },
+      deleteNote: { mutateAsync: mocks.deleteNote },
+      moveNote: { mutateAsync: mocks.moveNote }
+    }),
+    useNoteLinksQuery: (...args: Parameters<typeof actual.useNoteLinksQuery>) =>
+      mocks.realLinks
+        ? actual.useNoteLinksQuery(...args)
+        : {
+            incoming: [
+              {
+                sourceId: 'backlink-1',
+                sourceTitle: 'Backlink Note',
+                sourcePath: 'notes/Work/backlink.md',
+                contexts: [{ snippet: 'See [[Test Note]]', linkStart: 4, linkEnd: 17 }]
+              },
+              // Same sourceId as above, but referenced through a relation property
+              // instead of a wikilink — must resolve to a different `id` (see
+              // backlinkId in components/note/backlinks/types.ts).
+              {
+                sourceId: 'backlink-1',
+                sourceTitle: 'Backlink Note',
+                sourcePath: 'notes/Work/backlink.md',
+                contexts: [],
+                via: { kind: 'property', propertyName: 'father' }
+              }
+            ],
+            outgoing: [
+              { sourceId: 'note-1', targetId: 'existing-note', targetTitle: 'Existing Note' },
+              { sourceId: 'note-1', targetId: null, targetTitle: 'New Note' }
+            ],
+            isLoading: false
+          },
+    useNoteTagsQuery: () => ({
+      tags: [
+        { tag: 'work', color: 'blue' },
+        { tag: 'later', color: 'green' }
+      ]
+    })
+  }
+})
 
 vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
   ...(await importOriginal<typeof UseTagSchemasModule>()),
@@ -240,34 +250,39 @@ vi.mock('@/hooks/use-tasks-linked-to-note', () => ({
   })
 }))
 
-vi.mock('@/services/notes-service', () => ({
-  notesService: {
-    setLocalOnly: mocks.setLocalOnly,
-    update: mocks.notesUpdate,
-    revealInFinder: mocks.revealInFinder,
-    openExternal: mocks.openExternal,
-    // #800 getFile probe (note.tsx): null → treated as a real markdown note.
-    getFile: vi.fn(async () => null),
-    resolveByTitle: mocks.resolveByTitle
-  },
-  onNoteDeleted: (handler: (event: { id: string }) => void) => {
-    mocks.deletedHandler = handler
-    mocks.onDeleted(handler)
-    return vi.fn()
-  },
-  onNoteUpdated: (
-    handler: (event: { id: string; changes: Record<string, unknown>; source?: string }) => void
-  ) => {
-    mocks.updatedHandler = handler
-    mocks.onUpdated(handler)
-    return vi.fn()
-  },
-  onNoteRenamed: (handler: (event: { id: string; newTitle: string }) => void) => {
-    mocks.renamedHandler = handler
-    mocks.onRenamed(handler)
-    return vi.fn()
+vi.mock('@/services/notes-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof NotesServiceModule>()
+  return {
+    ...actual,
+    notesService: {
+      ...actual.notesService,
+      setLocalOnly: mocks.setLocalOnly,
+      update: mocks.notesUpdate,
+      revealInFinder: mocks.revealInFinder,
+      openExternal: mocks.openExternal,
+      // #800 getFile probe (note.tsx): null → treated as a real markdown note.
+      getFile: vi.fn(async () => null),
+      resolveByTitle: mocks.resolveByTitle
+    },
+    onNoteDeleted: (handler: (event: { id: string }) => void) => {
+      mocks.deletedHandler = handler
+      mocks.onDeleted(handler)
+      return vi.fn()
+    },
+    onNoteUpdated: (
+      handler: (event: { id: string; changes: Record<string, unknown>; source?: string }) => void
+    ) => {
+      mocks.updatedHandler = handler
+      mocks.onUpdated(handler)
+      return vi.fn()
+    },
+    onNoteRenamed: (handler: (event: { id: string; newTitle: string }) => void) => {
+      mocks.renamedHandler = handler
+      mocks.onRenamed(handler)
+      return vi.fn()
+    }
   }
-}))
+})
 
 vi.mock('@/lib/wikilink-resolver', () => ({
   resolveWikiLink: mocks.resolveWikiLink
@@ -693,32 +708,40 @@ vi.mock('@/components/note/ghost-affordance-row', () => ({
   )
 }))
 
-vi.mock('@/components/note/backlinks', async (importOriginal) => ({
-  ...(await importOriginal<typeof BacklinksModule>()),
-  // Fetches through its own service hook; covered by UnlinkedMentionsSection.test.tsx.
-  UnlinkedMentionsSection: () => null,
-  BacklinksSection: ({
-    backlinks,
-    onBacklinkClick
-  }: {
-    backlinks: { id: string }[]
-    onBacklinkClick: (noteId: string, mention?: { snippet: string }) => void
-  }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() => onBacklinkClick('backlink-1', { snippet: '[[Test Note]]' })}
-      >
-        Open backlink
-      </button>
-      {backlinks.map((backlink) => (
-        <span key={backlink.id} data-testid="backlink-id">
-          {backlink.id}
-        </span>
-      ))}
-    </div>
-  )
-}))
+vi.mock('@/components/note/backlinks', async (importOriginal) => {
+  const actual = await importOriginal<typeof BacklinksModule>()
+  return {
+    ...actual,
+    // Fetches through its own service hook; covered by UnlinkedMentionsSection.test.tsx.
+    UnlinkedMentionsSection: () => null,
+    BacklinksSection: (props: React.ComponentProps<typeof actual.BacklinksSection>) =>
+      mocks.realLinks ? (
+        <actual.BacklinksSection {...props} />
+      ) : (
+        (({
+          backlinks,
+          onBacklinkClick
+        }: {
+          backlinks: { id: string }[]
+          onBacklinkClick: (noteId: string, mention?: { snippet: string }) => void
+        }) => (
+          <div>
+            <button
+              type="button"
+              onClick={() => onBacklinkClick('backlink-1', { snippet: '[[Test Note]]' })}
+            >
+              Open backlink
+            </button>
+            {backlinks.map((backlink) => (
+              <span key={backlink.id} data-testid="backlink-id">
+                {backlink.id}
+              </span>
+            ))}
+          </div>
+        ))(props)
+      )
+  }
+})
 
 // Stands in for the drawer the tab's host opens over the note; the drawer
 // itself is covered by its own tests.
@@ -974,6 +997,7 @@ describe('NotePage', () => {
     mocks.onMarkdownChange = null
     mocks.propertyOnBlocked = null
     mocks.isNoteLocked = false
+    mocks.realLinks = false
     mocks.hasOwnNoteLock = null
     mocks.setVaultLock.mockReset().mockResolvedValue(undefined)
     mocks.propertyCanEdit = null
@@ -1163,6 +1187,32 @@ describe('NotePage', () => {
     await screen.findByRole('button', { name: 'Test Note' })
     const ids = screen.getAllByTestId('backlink-id').map((el) => el.textContent)
     expect(ids).toEqual(['backlink-1', 'backlink-1:property:father'])
+  })
+
+  it('shows every link a dense source holds and how many have no snippet', async () => {
+    mocks.realLinks = true
+    const getLinks = vi.spyOn(commands, 'notesGetLinks').mockResolvedValue({
+      outgoing: [],
+      incoming: [
+        {
+          sourceId: 'dense',
+          sourcePath: 'notes/Dense.md',
+          sourceTitle: 'Dense',
+          contexts: [
+            { snippet: 'one [[Test Note]]', linkStart: 4, linkEnd: 17 },
+            { snippet: 'two [[Test Note]]', linkStart: 4, linkEnd: 17 }
+          ],
+          mentionCount: 60,
+          truncated: true
+        }
+      ]
+    })
+
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    expect(await screen.findByText('60')).toBeInTheDocument()
+    expect(getLinks).toHaveBeenCalledWith('note-1')
+    expect(screen.getByRole('listitem')).toHaveTextContent('backlinks.moreInNote:{"count":58}')
   })
 
   it('omits the review rail when there are no comments, keeping note controls', async () => {

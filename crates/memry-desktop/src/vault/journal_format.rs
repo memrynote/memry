@@ -337,6 +337,19 @@ impl JournalDays {
         let date = self.format.parse(below.strip_suffix(".md")?)?;
         Some(date.to_string())
     }
+
+    /// Where the file of `date` (`YYYY-MM-DD`) goes (`getJournalRelativePath`): the date in the
+    /// format under the journal folder, with `.md`. With no folder configured it goes in the
+    /// vault root, as Electron writes it, though [`Self::day_of`] names no day there. `None` for
+    /// a date that is not `YYYY-MM-DD`.
+    pub fn path_of(&self, date: &str) -> Option<String> {
+        let file = self.format.render(JournalDate::from_iso(date)?);
+        Some(if self.folder.is_empty() {
+            format!("{file}.md")
+        } else {
+            format!("{}/{file}.md", self.folder)
+        })
+    }
 }
 
 /// `parseJournalDate`.

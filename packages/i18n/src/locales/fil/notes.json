@@ -771,6 +771,7 @@
     "expandSection": "I-expand ang seksyon ng mga backlink",
     "showMore": "Ipakita ang {count} pang backlink",
     "more": "{count} pa",
+    "moreInNote": "{count, plural, one {# pang link sa talang ito} other {# pang link sa talang ito}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Ipinapakita sa isang portal"
   },
