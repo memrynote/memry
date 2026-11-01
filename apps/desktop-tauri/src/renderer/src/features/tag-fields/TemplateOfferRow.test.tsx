@@ -9,14 +9,16 @@ import { insertTemplateBlocks } from '@/components/note/content-area/insert-temp
 import { TemplateOffers } from './TemplateOfferRow'
 import { templateOffers } from './template-offers'
 
+const templates = vi.hoisted(() => ({ get: vi.fn() }))
+
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
+vi.mock('@/services/templates-service', () => ({ templatesService: templates }))
 vi.mock('@/components/note/content-area/insert-template', () => ({
   insertTemplateBlocks: vi.fn()
 }))
 
 type Api = {
   tags: Record<string, Mock>
-  templates: Record<string, Mock>
   onTagsChanged: Mock
   onPropertyDefinitionChanged: Mock
 }
@@ -70,7 +72,7 @@ beforeEach(() => {
   api.onTagsChanged = vi.fn().mockReturnValue(() => {})
   api.onPropertyDefinitionChanged = vi.fn().mockReturnValue(() => {})
   api.tags.getSchemaSnapshot = vi.fn().mockResolvedValue(snapshot)
-  api.templates.get = vi.fn().mockResolvedValue({ id: 'tpl-person', content: '## Notes\n' })
+  templates.get.mockReset().mockResolvedValue({ id: 'tpl-person', content: '## Notes\n' })
   vi.mocked(insertTemplateBlocks).mockReset().mockResolvedValue({ ok: true, insertedBlockIds: [] })
   vi.mocked(toast.error).mockClear()
   act(() => templateOffers.mark(noteId, 'person'))
@@ -93,7 +95,7 @@ describe('template offer row', () => {
         notePath: 'people/ada.md'
       })
     )
-    expect(api.templates.get).toHaveBeenCalledWith('tpl-person')
+    expect(templates.get).toHaveBeenCalledWith('tpl-person')
     await waitFor(() => expect(screen.queryByTestId('template-offer-row')).not.toBeInTheDocument())
     expect(templateOffers.pending(noteId)).toEqual([])
   })
@@ -109,7 +111,7 @@ describe('template offer row', () => {
   })
 
   it('keeps the offer and reports an error when the template no longer exists', async () => {
-    api.templates.get.mockResolvedValue(null)
+    templates.get.mockResolvedValue(null)
     renderOffers()
 
     await userEvent.click(await screen.findByRole('button', { name: 'Add' }))
@@ -145,7 +147,7 @@ describe('template offer row', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Add' }))
 
-    expect(api.templates.get).not.toHaveBeenCalled()
+    expect(templates.get).not.toHaveBeenCalled()
     expect(screen.getByTestId('template-offer-row')).toBeInTheDocument()
   })
 

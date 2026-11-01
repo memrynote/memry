@@ -504,17 +504,6 @@ const createMockApi = () => ({
     reorder: vi.fn().mockResolvedValue({ success: true })
   },
 
-  // Templates API
-  templates: {
-    list: vi.fn().mockResolvedValue([]),
-    get: vi.fn().mockResolvedValue(null),
-    create: vi.fn().mockResolvedValue({ success: true }),
-    update: vi.fn().mockResolvedValue({ success: true }),
-    delete: vi.fn().mockResolvedValue({ success: true }),
-    duplicate: vi.fn().mockResolvedValue({ success: true }),
-    apply: vi.fn().mockResolvedValue({ success: true })
-  },
-
   // Tags API
   tags: {
     list: vi.fn().mockResolvedValue([]),

@@ -22,6 +22,7 @@ pub mod settings;
 pub mod shell;
 pub mod startup_values;
 pub mod telemetry;
+pub mod templates;
 pub mod updater;
 pub mod vault;
 pub mod web;
