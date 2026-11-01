@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Не удалось создать определение свойства",
     "updateDefinitionFailed": "Не удалось обновить определение свойства",
     "setCalendarVisibilityFailed": "Не удалось изменить видимость свойства в календаре",
-    "definitionsFileUnreadable": "Не удаётся сохранить изменения свойств: файл .memry/properties.md нельзя прочитать. Исправьте или удалите его и повторите попытку."
+    "definitionsFileUnreadable": "Не удаётся сохранить изменения свойств: файл .memry/properties.md нельзя прочитать. Исправьте или удалите его и повторите попытку.",
+    "definitionsFileWriteFailed": "Не удаётся сохранить изменения свойств: в файл .memry/properties.md нельзя записать."
   },
   "reminder": {
     "notFound": "Напоминание не найдено",

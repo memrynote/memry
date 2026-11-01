@@ -9,9 +9,9 @@
 // `build` dispatches .github/workflows/update-bridge-rehearsal.yml at `--workflow-ref` (default
 // `main`) of the rehearsal repo to build memry's `--source-ref` (default: the workflow's own
 // `source_ref` default) and waits. It pins both refs to commits first and refuses when the two
-// copies of the workflow at those commits differ, and it cancels a run that started from another
-// rehearsal commit. `assemble` downloads the artifacts, packs and signs both Windows packs (each
-// with the pinned WebView2 bootstrapper of
+// copies of the workflow at those commits differ, and it stops on a run that started from another
+// rehearsal commit, cancelling it when gh printed its id. `assemble` downloads the artifacts,
+// packs and signs both Windows packs (each with the pinned WebView2 bootstrapper of
 // `../release/webview2-bootstrapper.mjs`, checked again inside the package), writes the bridge
 // feeds and leaves the final asset set in `.rehearsal-state/<version>/assets`. `--no-windows`
 // skips the Certum-signed Windows packs and `latest.yml`, for a macOS and Linux feed that needs no
@@ -138,37 +138,77 @@ function runsSince(startedAfter) {
 const runIdIn = (printed) => printed.match(/\/actions\/runs\/(\d+)/)?.[1]
 
 /**
- * The run a gh that prints no URL dispatched: the newest run created since the dispatch. An older
- * run, someone else's or a previous build's, is never it.
+ * Calls `attempt` every 5 s for up to two minutes until it returns a value. A failed call, such as
+ * a network error or a run GitHub does not list yet, is tried again.
  */
-function listedRun(startedAfter) {
+function poll(what, attempt, timeoutMessage) {
   const deadline = Date.now() + 120_000
   while (Date.now() < deadline) {
     try {
-      const [newest] = runsSince(startedAfter)
-      if (newest) return { id: String(newest.databaseId), headSha: newest.headSha }
+      const value = attempt()
+      if (value !== undefined) return value
     } catch (error) {
-      console.warn(`Listing the runs failed, trying again: ${error.message}`)
+      console.warn(`${what} failed, trying again: ${error.message}`)
     }
     spawnSync('sleep', ['5'])
   }
-  throw new Error('The dispatched run did not appear')
+  throw new Error(timeoutMessage)
 }
+
+/** The run gh printed: certainly the one this build dispatched. */
+const printedRun = (id) => ({
+  id,
+  printed: true,
+  headSha: poll(
+    `Reading run ${id}`,
+    () =>
+      capture('gh', ['run', 'view', id, '-R', FEED_REPO, '--json', 'headSha', '-q', '.headSha']),
+    `${FEED_REPO} run ${id} could not be read`
+  )
+})
+
+/**
+ * The run a gh that prints no URL dispatched: the newest run created since the dispatch. An older
+ * run, someone else's or a previous build's, is never it. Another dispatch in the same seconds can
+ * still be newer, so this is a best guess.
+ */
+const listedRun = (startedAfter) =>
+  poll(
+    'Listing the runs',
+    () => {
+      const [newest] = runsSince(startedAfter)
+      return newest && { id: String(newest.databaseId), printed: false, headSha: newest.headSha }
+    },
+    'The dispatched run did not appear'
+  )
 
 /**
  * The dispatched run must have started from the rehearsal commit whose workflow was checked: a
- * branch that moved in between runs a copy nobody compared, so that run is cancelled.
+ * branch that moved in between runs a copy nobody compared. Only a run gh printed is certainly
+ * this build's, so only that one is cancelled; a listed run may be someone else's.
  */
 function assertStartedFrom(started, rehearsalSha) {
   if (started.headSha === rehearsalSha) return
-  spawnSync('gh', ['run', 'cancel', '-R', FEED_REPO, started.id], {
-    stdio: 'inherit',
+  const mismatch =
+    `${FEED_REPO} run ${started.id} started from ${started.headSha.slice(0, 10)}, not ` +
+    `the checked ${rehearsalSha.slice(0, 10)}: its ${WORKFLOW} was not compared.`
+  if (!started.printed) {
+    throw new Error(
+      `${mismatch} It is the newest run since the dispatch, not one gh named, so it was left running. Check it, cancel it if it is this build's, and build again.`
+    )
+  }
+  const cancel = spawnSync('gh', ['run', 'cancel', '-R', FEED_REPO, started.id], {
+    encoding: 'utf8',
     cwd: repoRoot
   })
-  throw new Error(
-    `${FEED_REPO} run ${started.id} started from ${started.headSha.slice(0, 10)}, not ` +
-      `the checked ${rehearsalSha.slice(0, 10)}: its ${WORKFLOW} was not compared. Cancelled it; build again.`
-  )
+  if (cancel.status !== 0) {
+    const reason =
+      cancel.error?.message ?? (cancel.stderr.trim() || `gh exited with ${cancel.status}`)
+    throw new Error(
+      `${mismatch} Cancelling it failed (${reason}): cancel it by hand and build again.`
+    )
+  }
+  throw new Error(`${mismatch} Cancelled it; build again.`)
 }
 
 /** The `default:` of a `workflow_dispatch` input in a copy of the workflow. */
@@ -259,22 +299,7 @@ function cmdBuild(version, argv) {
   if (dispatched.error) throw dispatched.error
   if (dispatched.status !== 0) throw new Error(`gh exited with ${dispatched.status}`)
   const printed = runIdIn(`${dispatched.stdout}\n${dispatched.stderr}`)
-  const started = printed
-    ? {
-        id: printed,
-        headSha: capture('gh', [
-          'run',
-          'view',
-          printed,
-          '-R',
-          FEED_REPO,
-          '--json',
-          'headSha',
-          '-q',
-          '.headSha'
-        ])
-      }
-    : listedRun(startedAfter)
+  const started = printed ? printedRun(printed) : listedRun(startedAfter)
   assertStartedFrom(started, rehearsal.sha)
   run('gh', ['run', 'watch', '-R', FEED_REPO, started.id, '--exit-status'])
   console.log(`build run: ${started.id}`)

@@ -26,11 +26,13 @@ export async function pollUntil(read, isDone, { timeoutMs, intervalMs = 2000 }) 
 
 /**
  * The main window's page. The app opens more pages later, such as the PDF host once a vault with
- * PDFs is indexed, and those have no `window.api`.
+ * PDFs is indexed, and those have no `window.api`. Quick Capture and the sticky windows load the
+ * same `index.html` with their own hash (`#quick-capture`, `#sticky`, `#sticky-tab`), while the
+ * main window loads it bare, so a URL with a hash or a query is never the main window.
  */
 export function mainPage(targets) {
   return targets.find(
-    (target) => target.type === 'page' && /\/renderer\/index\.html(?:[?#].*)?$/.test(target.url)
+    (target) => target.type === 'page' && target.url.endsWith('/renderer/index.html')
   )
 }
 

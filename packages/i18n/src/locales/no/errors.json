@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Kunne ikke opprette egenskapsdefinisjonen",
     "updateDefinitionFailed": "Kunne ikke oppdatere egenskapsdefinisjonen",
     "setCalendarVisibilityFailed": "Kunne ikke angi synlighet for kalenderegenskapen",
-    "definitionsFileUnreadable": "Kan ikke lagre egenskapsendringer fordi .memry/properties.md ikke kan leses. Fiks eller fjern filen, og prøv igjen."
+    "definitionsFileUnreadable": "Kan ikke lagre egenskapsendringer fordi .memry/properties.md ikke kan leses. Fiks eller fjern filen, og prøv igjen.",
+    "definitionsFileWriteFailed": "Kan ikke lagre egenskapsendringer fordi det ikke kan skrives til .memry/properties.md."
   },
   "reminder": {
     "notFound": "Finner ikke påminnelsen",

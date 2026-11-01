@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Nepodarilo sa vytvoriť definíciu vlastnosti",
     "updateDefinitionFailed": "Nepodarilo sa aktualizovať definíciu vlastnosti",
     "setCalendarVisibilityFailed": "Nepodarilo sa nastaviť viditeľnosť vlastnosti v kalendári",
-    "definitionsFileUnreadable": "Zmeny vlastností sa nedajú uložiť, pretože súbor .memry/properties.md sa nedá prečítať. Opravte alebo odstráňte tento súbor a skúste to znova."
+    "definitionsFileUnreadable": "Zmeny vlastností sa nedajú uložiť, pretože súbor .memry/properties.md sa nedá prečítať. Opravte alebo odstráňte tento súbor a skúste to znova.",
+    "definitionsFileWriteFailed": "Zmeny vlastností sa nedajú uložiť, pretože do súboru .memry/properties.md sa nedá zapisovať."
   },
   "reminder": {
     "notFound": "Pripomienka sa nenašla",

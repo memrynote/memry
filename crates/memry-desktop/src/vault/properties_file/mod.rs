@@ -64,8 +64,9 @@ pub const PROPERTIES_FILE: &str = "properties.md";
 /// The i18n key of the message for a write refused because the file cannot be read.
 pub const UNREADABLE_KEY: &str = "errors:property.definitionsFileUnreadable";
 /// A real file is a few kilobytes (24 status properties written by Electron take 1.7 KB). Past
-/// this it is not read at all. Read whole, a file at the cap holds up to about 100 times its
-/// size while it is read (`tests/properties_file_memory.rs`): about 100 MB here.
+/// this it is not read at all, and [`update`] refuses to write it. Read whole, a file at the cap
+/// holds up to about 100 times its size while it is read (`tests/properties_file_memory.rs`):
+/// about 100 MB here.
 pub const MAX_PROPERTIES_BYTES: u64 = 1024 * 1024;
 
 /// `<vault>/.memry/properties.md`, vault-relative with `/` separators.
@@ -176,6 +177,14 @@ pub fn update<R>(
     let bytes = file
         .serialize()
         .map_err(|message| write_failed(vault, message))?;
+    // A synced definition can be large enough to carry the file past what [`read`] reads, and
+    // every later edit would then be refused.
+    if bytes.len() as u64 > MAX_PROPERTIES_BYTES {
+        return Err(write_failed(
+            vault,
+            format!("it would be larger than {MAX_PROPERTIES_BYTES} bytes"),
+        ));
+    }
     match raw {
         Some(raw) if raw == bytes => Ok(result),
         raw => write(vault, raw.as_deref(), &bytes).map(|()| result),

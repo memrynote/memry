@@ -82,6 +82,21 @@ export const commands = {
 	 *  the note.
 	 */
 	notesSetLocalOnly: (id: string, localOnly: boolean) => __TAURI_INVOKE<NoteView>("notes_set_local_only", { id, localOnly }),
+	notesAddPropertyOption: (propertyName: string, option: OptionInput) => __TAURI_INVOKE<null>("notes_add_property_option", { propertyName, option }),
+	notesAddStatusOption: (propertyName: string, categoryKey: StatusCategoryKey, option: OptionInput) => __TAURI_INVOKE<null>("notes_add_status_option", { propertyName, categoryKey, option }),
+	/**  `notes:create-property-definition`. `type` is required. */
+	notesCreatePropertyDefinition: (input: DefinitionInput) => __TAURI_INVOKE<PropertyDefinitionView | null>("notes_create_property_definition", { input }),
+	notesDeletePropertyDefinition: (name: string) => __TAURI_INVOKE<null>("notes_delete_property_definition", { name }),
+	notesEnsurePropertyDefinition: (name: string, kind: EnsuredType) => __TAURI_INVOKE<null>("notes_ensure_property_definition", { name, kind }),
+	notesGetCalendarPropertyNames: () => __TAURI_INVOKE<string[]>("notes_get_calendar_property_names"),
+	/**  `notes:get-property-definitions`: by name. */
+	notesGetPropertyDefinitions: () => __TAURI_INVOKE<PropertyDefinitionView[]>("notes_get_property_definitions"),
+	notesRemovePropertyOption: (propertyName: string, optionValue: string) => __TAURI_INVOKE<null>("notes_remove_property_option", { propertyName, optionValue }),
+	notesRenamePropertyOption: (propertyName: string, oldValue: string, newValue: string) => __TAURI_INVOKE<null>("notes_rename_property_option", { propertyName, oldValue, newValue }),
+	notesSetCalendarPropertyVisibility: (name: string, showOnCalendar: boolean) => __TAURI_INVOKE<null>("notes_set_calendar_property_visibility", { name, showOnCalendar }),
+	notesUpdateOptionColor: (propertyName: string, optionValue: string, newColor: string) => __TAURI_INVOKE<null>("notes_update_option_color", { propertyName, optionValue, newColor }),
+	/**  `notes:update-property-definition`: `null` when there is no definition of the name. */
+	notesUpdatePropertyDefinition: (input: DefinitionInput) => __TAURI_INVOKE<PropertyDefinitionView | null>("notes_update_property_definition", { input }),
 	/**
 	 *  Whether notifications may show. macOS answers `prompt` until the user was asked; the first
 	 *  notification asks.
@@ -424,6 +439,25 @@ export type CustomIconsUpdatedEvent = {
 	id: string,
 };
 
+/**  `CreatePropertyDefinitionSchema`, and `UpdatePropertyDefinitionSchema` with `type` left out. */
+export type DefinitionInput = {
+	name: string,
+	type?: DefinitionType | null,
+	options?: OptionInput[] | null,
+	/**
+	 *  Already text: the renderer's service turns any other value into text as Electron's
+	 *  `stringifyDefaultValue` does.
+	 */
+	defaultValue?: string | null,
+	color?: string | null,
+};
+
+/**
+ *  The types a definition holds. A create or an update takes every one but `project`
+ *  (`PROPERTY_TYPE_ENUM`), which is system-managed.
+ */
+export type DefinitionType = "text" | "number" | "checkbox" | "date" | "url" | "status" | "select" | "multiselect" | "project";
+
 /**  One shipped line (`DiagnosticLogLineSchema`). */
 export type DiagnosticLine = {
 	ts: string,
@@ -480,6 +514,9 @@ export type DiagnosticTrigger = {
 	errorCode?: string | null,
 	stack?: string | null,
 };
+
+/**  The types `notes:ensure-property-definition` creates. */
+export type EnsuredType = "status" | "select" | "multiselect";
 
 export type ErrorDetail = {
 	message?: string | null,
@@ -832,6 +869,27 @@ export type NotificationRequest = {
 
 export type NotificationRoute = { kind: "focus" } | { kind: "deepLink"; value: string } | { kind: "handler"; value: string };
 
+export type OptionInput = {
+	value: string,
+	color: string,
+	default?: boolean | null,
+};
+
+/**
+ *  A definition as the renderer reads it (`PropertyDefinition` of `@memry/rpc`): what Electron's
+ *  `property_definitions` row holds.
+ */
+export type PropertyDefinitionView = {
+	name: string,
+	type: DefinitionType,
+	/**  JSON text: the option list, or `{"categories": …}` for a status. */
+	options: string | null,
+	defaultValue: string | null,
+	color: string | null,
+	/**  When the record was created; empty for a definition only the file holds. */
+	createdAt: string,
+};
+
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {
 	tags?: TagAssignmentInput[] | null,
@@ -914,6 +972,8 @@ export type StartupState = {
 	direction: string,
 	startupVault: string | null,
 };
+
+export type StatusCategoryKey = "todo" | "in_progress" | "done";
 
 /**  `TagAssignment`: where a drag put a tag. */
 export type TagAssignmentInput = {

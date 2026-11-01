@@ -39,12 +39,15 @@ import type {
   WikiLinkTitleResolutions
 } from '@memry/rpc/notes'
 import type { NoteLinksChangedEvent } from '@memry/contracts/notes-api'
+import { getI18n } from 'react-i18next'
 import {
   commands,
   events,
+  type DefinitionInput,
   type FileView,
   type NoteListItemView,
   type NoteView,
+  type PropertyDefinitionView,
   type Value
 } from '../../../generated/bindings'
 import { extractErrorMessage } from '../lib/ipc-error'
@@ -109,9 +112,37 @@ function failure(error: unknown): { success: false; error?: string } {
   return message ? { success: false, error: message } : { success: false }
 }
 
+/** `stringifyDefaultValue` of Electron's `ipc/notes-handlers.ts`; none keeps the stored one. */
+function defaultValueText(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value)
+  }
+  if (typeof value === 'symbol') return value.description ?? value.toString()
+  if (value instanceof Date) return value.toISOString()
+  return JSON.stringify(value) ?? ''
+}
+
 /**
- * The notes commands of Step 13f and the link reads of Step 13i (`commands/notes.rs`); every
- * other method still goes to `window.api.notes`.
+ * A definition as Electron's list gives it. `@memry/rpc` types `type` without `project`, which
+ * that list returns as well.
+ */
+function toDefinition(view: PropertyDefinitionView): PropertyDefinition {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the same fields; only the `type` union is wider than the rpc one, as Electron's own rows are
+  return view as PropertyDefinition
+}
+
+function definitionInput(
+  input: CreatePropertyDefinitionInput | UpdatePropertyDefinitionInput
+): DefinitionInput {
+  return { ...input, defaultValue: defaultValueText(input.defaultValue) }
+}
+
+/**
+ * The notes commands of Step 13f, the link reads of Step 13i and the property definitions of
+ * Step 13k (`commands/notes.rs`, `commands/property_definitions.rs`); every other method still
+ * goes to `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
@@ -179,7 +210,66 @@ const ported = {
   },
   getLocalOnlyCount: async (): Promise<{ count: number }> => ({
     count: await commands.notesGetLocalOnlyCount()
-  })
+  }),
+  getPropertyDefinitions: async (): Promise<PropertyDefinition[]> =>
+    (await commands.notesGetPropertyDefinitions()).map(toDefinition),
+  // A create or an update answers its failure as Electron's `registerCommand` does; the option
+  // edits reject.
+  createPropertyDefinition: async (
+    input: CreatePropertyDefinitionInput
+  ): Promise<CreatePropertyDefinitionResponse> => {
+    try {
+      const definition = await commands.notesCreatePropertyDefinition(definitionInput(input))
+      return { success: true, definition: definition && toDefinition(definition) }
+    } catch (error) {
+      return { ...failure(error), definition: null }
+    }
+  },
+  updatePropertyDefinition: async (
+    input: UpdatePropertyDefinitionInput
+  ): Promise<CreatePropertyDefinitionResponse> => {
+    try {
+      const definition = await commands.notesUpdatePropertyDefinition(definitionInput(input))
+      if (definition) return { success: true, definition: toDefinition(definition) }
+      const error = getI18n().t('system:error.definitionNotFound')
+      return { success: false, definition: null, error }
+    } catch (error) {
+      return { ...failure(error), definition: null }
+    }
+  },
+  ensurePropertyDefinition: async (name, type) => {
+    await commands.notesEnsurePropertyDefinition(name, type)
+    return { success: true }
+  },
+  addPropertyOption: async (propertyName, option) => {
+    await commands.notesAddPropertyOption(propertyName, option)
+    return { success: true }
+  },
+  addStatusOption: async (propertyName, categoryKey, option) => {
+    await commands.notesAddStatusOption(propertyName, categoryKey, option)
+    return { success: true }
+  },
+  removePropertyOption: async (propertyName, optionValue) => {
+    await commands.notesRemovePropertyOption(propertyName, optionValue)
+    return { success: true }
+  },
+  renamePropertyOption: async (propertyName, oldValue, newValue) => {
+    await commands.notesRenamePropertyOption(propertyName, oldValue, newValue)
+    return { success: true }
+  },
+  updateOptionColor: async (propertyName, optionValue, newColor) => {
+    await commands.notesUpdateOptionColor(propertyName, optionValue, newColor)
+    return { success: true }
+  },
+  deletePropertyDefinition: async (name) => {
+    await commands.notesDeletePropertyDefinition(name)
+    return { success: true }
+  },
+  setCalendarPropertyVisibility: async (name, showOnCalendar) => {
+    await commands.notesSetCalendarPropertyVisibility(name, showOnCalendar)
+    return { success: true }
+  },
+  getCalendarPropertyNames: (): Promise<string[]> => commands.notesGetCalendarPropertyNames()
 } satisfies Partial<NotesClientAPI>
 
 /** The note methods served from Rust; `window.api.notes` is typed without them. */
