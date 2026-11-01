@@ -68,6 +68,9 @@ vi.mock('../src/generated/bindings', () => {
       string,
       () => (handler: (payload: unknown) => void) => () => void
     >
+  // `window.api.tags` is typed without the ported tag methods; component tests still set them.
+  const tags = () =>
+    window.api.tags as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
   // The window functions are off `window.api`'s type; the mock below still provides them.
   const win = () => window.api as unknown as Record<string, (...args: unknown[]) => unknown>
   const event = (
@@ -124,6 +127,9 @@ vi.mock('../src/generated/bindings', () => {
         ((await notes().setLocalOnly(id, localOnly)) as { note?: unknown } | undefined)?.note,
       notesGetLocalOnlyCount: async () =>
         ((await notes().getLocalOnlyCount()) as { count: number }).count,
+      tagsGetAllWithCounts: async () =>
+        ((await tags().getAllWithCounts()) as { tags: unknown[] }).tags,
+      tagsGetNotesByTag: (input: unknown) => tags().getNotesByTag(input),
       updaterGetState: () => updater().getState(),
       updaterCheckForUpdates: () => updater().checkForUpdates(),
       updaterDownloadUpdate: () => updater().downloadUpdate(),

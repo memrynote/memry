@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
+
+const commands = vi.hoisted(() => ({
+  tagsGetAllWithCounts: vi.fn(),
+  tagsGetNotesByTag: vi.fn()
+}))
+
+vi.mock('../../../generated/bindings', () => ({ commands }))
+
 import {
   tagsService,
   onTagRenamed,
@@ -13,28 +21,44 @@ describe('tags-service', () => {
 
   beforeEach(() => {
     api = createMockApi()
-    api.tags.getNotesByTag = vi
-      .fn()
-      .mockResolvedValue({ tag: 'focus', count: 0, pinnedNotes: [], unpinnedNotes: [] })
+    ;(window as Window & { api: unknown }).api = api
+    for (const command of Object.values(commands)) command.mockReset()
+  })
+
+  it('reads the tag list and a tag’s notes through the commands, rejecting as Electron rethrows', async () => {
+    const tag = {
+      name: 'work',
+      count: 2,
+      color: 'teal',
+      icon: null,
+      categoryId: null,
+      sortOrder: 0
+    }
+    commands.tagsGetAllWithCounts.mockResolvedValue([tag])
+    const notes = { tag: 'work', color: 'teal', count: 0, pinnedNotes: [], unpinnedNotes: [] }
+    commands.tagsGetNotesByTag.mockResolvedValue(notes)
+
+    await expect(tagsService.getAllWithCounts()).resolves.toEqual({ tags: [tag] })
+    const input = { tag: 'work', sortBy: 'title', sortOrder: 'asc', includeDescendants: true }
+    await expect(tagsService.getNotesByTag(input as never)).resolves.toEqual(notes)
+    expect(commands.tagsGetNotesByTag).toHaveBeenCalledWith(input)
+
+    commands.tagsGetAllWithCounts.mockRejectedValue({
+      kind: 'invalid',
+      code: 'no_vault_open',
+      message: 'closed'
+    })
+    await expect(tagsService.getAllWithCounts()).rejects.toMatchObject({ code: 'no_vault_open' })
+  })
+
+  it('forwards the methods later steps port to window.api.tags', async () => {
     api.tags.pinNoteToTag = vi.fn().mockResolvedValue({ success: true })
     api.tags.unpinNoteFromTag = vi.fn().mockResolvedValue({ success: true })
     api.tags.renameTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
     api.tags.updateTagColor = vi.fn().mockResolvedValue({ success: true })
     api.tags.deleteTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
     api.tags.removeTagFromNote = vi.fn().mockResolvedValue({ success: true })
-    api.tags.getAllWithCounts = vi.fn().mockResolvedValue({ tags: [] })
     api.tags.mergeTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
-
-    api.onTagRenamed = vi.fn().mockReturnValue(() => {})
-    api.onTagColorUpdated = vi.fn().mockReturnValue(() => {})
-    api.onTagDeleted = vi.fn().mockReturnValue(() => {})
-    api.onTagNotesChanged = vi.fn().mockReturnValue(() => {})
-    ;(window as Window & { api: unknown }).api = api
-  })
-
-  it('forwards tag operations to window.api.tags', async () => {
-    await tagsService.getNotesByTag({ tag: 'focus', sortBy: 'modified' })
-    expect(api.tags.getNotesByTag).toHaveBeenCalledWith({ tag: 'focus', sortBy: 'modified' })
 
     await tagsService.pinNoteToTag({ noteId: 'note-1', tag: 'focus' })
     expect(api.tags.pinNoteToTag).toHaveBeenCalledWith({ noteId: 'note-1', tag: 'focus' })
@@ -53,9 +77,6 @@ describe('tags-service', () => {
 
     await tagsService.removeTagFromNote({ noteId: 'note-2', tag: 'focus' })
     expect(api.tags.removeTagFromNote).toHaveBeenCalledWith({ noteId: 'note-2', tag: 'focus' })
-
-    await tagsService.getAllWithCounts()
-    expect(api.tags.getAllWithCounts).toHaveBeenCalled()
 
     await tagsService.mergeTag({ source: 'old', target: 'new' })
     expect(api.tags.mergeTag).toHaveBeenCalledWith({ source: 'old', target: 'new' })

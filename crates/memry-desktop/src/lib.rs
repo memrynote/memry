@@ -21,6 +21,7 @@ pub mod session;
 pub mod settings;
 pub mod shell;
 pub mod startup_values;
+pub mod tags;
 pub mod telemetry;
 pub mod updater;
 pub mod vault;
