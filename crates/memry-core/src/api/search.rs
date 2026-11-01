@@ -34,6 +34,9 @@ use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
 
+#[cfg(feature = "markdown")]
+mod tags;
+
 /// One search result.
 ///
 /// Flattened from [`SearchHit`] because uniffi has no enum-with-payload that

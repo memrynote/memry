@@ -55,6 +55,8 @@ pub mod tag_admin;
 pub mod tag_body_rename;
 pub mod tag_categories;
 pub mod tag_fields;
+#[cfg(feature = "markdown")]
+pub mod tag_reads;
 pub mod tag_rename;
 pub mod tag_schema_refs;
 pub mod tags;

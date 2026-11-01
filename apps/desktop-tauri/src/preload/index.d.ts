@@ -3,6 +3,7 @@ import type { MovesRecovered } from '../generated/bindings'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type { PortedNoteEvent, PortedNoteMethod } from '../renderer/src/services/notes-service'
+import type { PortedTagMethod } from '../renderer/src/services/tags-service'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
@@ -2019,6 +2020,11 @@ interface CallNotesServiceInstead {
 /** The note subscriptions the notes service takes from Rust events, refused the same way. */
 type PortedNoteEventMarkers = { readonly [K in PortedNoteEvent]: CallNotesServiceInstead }
 
+/** A tag method `tagsService` serves from Rust, refused the same way. */
+interface CallTagsServiceInstead {
+  readonly 'use tagsService from @/services/tags-service': never
+}
+
 interface API extends Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent>, PortedNoteEventMarkers {
   notes: Omit<NotesClientAPI, PortedNoteMethod> & {
     readonly [K in PortedNoteMethod]: CallNotesServiceInstead
@@ -2029,7 +2035,9 @@ interface API extends Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent>, PortedNo
   templates: TemplatesClientAPI
   journal: JournalClientAPI
   bookmarks: BookmarksClientAPI
-  tags: TagsClientAPI
+  tags: Omit<TagsClientAPI, PortedTagMethod> & {
+    readonly [K in PortedTagMethod]: CallTagsServiceInstead
+  }
   reminders: RemindersClientAPI
   recents: RecentsClientAPI
   portals: PortalsClientAPI

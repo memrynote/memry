@@ -3,6 +3,7 @@ import { createLogger } from '@/lib/logger'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { getI18n } from 'react-i18next'
+import { tagsService } from '@/services/tags-service'
 
 const log = createLogger('Hook:Tags')
 
@@ -21,7 +22,7 @@ export function useTags() {
 
   const fetchTags = useCallback(async () => {
     try {
-      const result = await window.api.tags.getAllWithCounts()
+      const result = await tagsService.getAllWithCounts()
       if (!mountedRef.current) return
       setTags(result.tags)
       setError(null)

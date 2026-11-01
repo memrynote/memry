@@ -14,6 +14,7 @@ pub mod shell;
 pub mod shell_integrations;
 pub mod shortcuts;
 pub mod spell;
+pub mod tags;
 pub mod telemetry;
 pub mod unsplash;
 pub mod updater;

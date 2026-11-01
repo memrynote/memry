@@ -165,6 +165,8 @@ export const commands = {
 	 *  tells the user that recent edits may be lost.
 	 */
 	shellTakeCrashReload: () => __TAURI_INVOKE<boolean>("shell_take_crash_reload"),
+	tagsGetAllWithCounts: () => __TAURI_INVOKE<TagWithCountView[]>("tags_get_all_with_counts"),
+	tagsGetNotesByTag: (input: NotesByTagInput) => __TAURI_INVOKE<NotesByTagView>("tags_get_notes_by_tag", { input }),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
@@ -682,6 +684,23 @@ export type NoteView = {
 	contentOmitted: boolean,
 };
 
+/**  `GetNotesByTagSchema`: `modified`, descending, the tag alone when a field is absent. */
+export type NotesByTagInput = {
+	tag: string,
+	sortBy?: TagSortBy | null,
+	sortOrder?: SortOrder | null,
+	includeDescendants?: boolean | null,
+};
+
+/**  `GetNotesByTagResponse`. */
+export type NotesByTagView = {
+	tag: string,
+	color: string,
+	count: number,
+	pinnedNotes: TagNoteItemView[],
+	unpinnedNotes: TagNoteItemView[],
+};
+
 /**
  *  Whether the app may show notifications. `prompt`: macOS has not asked the user yet, and the
  *  first notification asks. Windows and Linux answer granted.
@@ -774,6 +793,33 @@ export type StartupState = {
 	/**  `ltr` or `rtl`, from the locale. */
 	direction: string,
 	startupVault: string | null,
+};
+
+/**  `TagNoteItem`. */
+export type TagNoteItemView = {
+	id: string,
+	path: string,
+	title: string,
+	created: string,
+	modified: string,
+	tags: string[],
+	wordCount: number,
+	isPinned: boolean,
+	pinnedAt: string | null,
+	emoji: string | null,
+};
+
+/**  `GetNotesByTagSchema.sortBy`. */
+export type TagSortBy = "modified" | "created" | "title";
+
+/**  `TagWithCount`. */
+export type TagWithCountView = {
+	name: string,
+	count: number,
+	color: string,
+	icon: string | null,
+	categoryId: string | null,
+	sortOrder: number,
 };
 
 export type TelemetryEvent = {
