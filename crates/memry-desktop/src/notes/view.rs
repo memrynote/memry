@@ -3,10 +3,30 @@
 //! `Date`s.
 
 use memry_core::domain::note_list::{ListedNote, NoteSort};
+use memry_core::domain::note_stats::measure;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::vault::file_types::FileType;
+
+/// `NoteCreateSchema`, without the parts later slices own: `template` (Step 13l) and
+/// `plainChecklists` (Step 32), which the renderer's service refuses until then.
+#[derive(Debug, Clone, Default, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteCreateInput {
+    pub title: String,
+    #[serde(default)]
+    pub content: Option<String>,
+    /// Vault-relative. `None` puts the note in the vault's default note folder.
+    #[serde(default)]
+    pub folder: Option<String>,
+    #[serde(default)]
+    pub tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub properties: Option<Map<String, Value>>,
+    #[serde(default)]
+    pub emoji: Option<String>,
+}
 
 /// `NoteSizeClass`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
@@ -61,8 +81,30 @@ pub struct NoteView {
     pub content_omitted: bool,
 }
 
+impl NoteView {
+    /// The `changes` of an outside edit's `notes:updated` (`handleFileChange` of desktop
+    /// `vault/watcher.ts`): what the edit may have changed, as the note reads now, so the
+    /// backlinks, the unlinked mentions, the similar notes and the properties panel take the new
+    /// text and fields. A large note's text is not read, so `content` is left out rather than
+    /// sent empty. `modified` is epoch milliseconds, which the renderer's service makes a `Date`.
+    pub fn changes(&self) -> Map<String, Value> {
+        let mut changes = Map::new();
+        changes.insert("title".into(), json!(self.title));
+        if !self.content_omitted {
+            changes.insert("content".into(), json!(self.content));
+        }
+        changes.insert("tags".into(), json!(self.tags));
+        changes.insert("properties".into(), Value::Object(self.properties.clone()));
+        changes.insert("modified".into(), json!(self.modified));
+        changes.insert("wordCount".into(), json!(self.word_count));
+        changes.insert("snippet".into(), json!(measure(&self.content).snippet));
+        changes
+    }
+}
+
 /// `NoteListItem`. `word_count` is `None` until the note index (Step 13e) measured the file.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+/// Deserialize is for the note event that carries it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NoteListItemView {
     pub id: String,
@@ -75,17 +117,17 @@ pub struct NoteListItemView {
     pub emoji: Option<String>,
     pub local_only: bool,
     /// `None` for a type a newer build stored.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[specta(optional, type = FileType)]
     pub file_type: Option<FileType>,
     /// Left out of the sidebar's `tree` shape, as `listNotes` leaves them.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[specta(optional, type = Vec<String>)]
     pub aliases: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[specta(optional, type = String)]
     pub mime_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[specta(optional, type = i64)]
     pub file_size: Option<i64>,
 }

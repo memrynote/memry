@@ -1,5 +1,7 @@
 //! Notes-domain services of the desktop app.
 
+pub mod create;
+pub mod delete;
 pub mod error;
 pub mod frontmatter;
 pub mod icons;
@@ -7,5 +9,7 @@ pub mod identity;
 pub mod index;
 pub mod local_only;
 pub mod read;
+pub mod service;
 pub mod unsplash;
 pub mod view;
+pub mod write_order;

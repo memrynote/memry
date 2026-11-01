@@ -8,7 +8,7 @@
 use std::path::Path;
 
 use super::Pass;
-use crate::vault::consumer::Applied;
+use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::note_file::read_note;
 
 const SCOPE: &str = "vault_writeback";
@@ -84,6 +84,7 @@ impl Pass {
                         lane.publish(Applied::Removed {
                             note_id: row.note_id.clone(),
                             path: row.path.clone(),
+                            source: ChangeSource::App,
                         });
                         leftover
                     }

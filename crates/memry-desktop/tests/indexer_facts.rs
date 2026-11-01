@@ -115,6 +115,7 @@ fn facts_keep_the_rows_current_and_lost_facts_run_a_scan() {
         let none = Applied::Removed {
             note_id: "no-such-note".into(),
             path: "none.md".into(),
+            source: ChangeSource::Watcher,
         };
         sender.send(none).unwrap();
     }

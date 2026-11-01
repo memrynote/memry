@@ -303,8 +303,11 @@ describe('useWikiLinkHover', () => {
 
     // The note gets created (this window or another device): drop the cache.
     api.notes.previewByTitle.mockResolvedValue({ id: 'nte_ghost', title: 'Ghost' })
-    const createdCallbacks = api.onNoteCreated.mock.calls.map((call) => call[0] as () => void)
-    act(() => createdCallbacks.forEach((callback) => callback()))
+    const createdCallbacks = api.onNoteCreated.mock.calls.map(
+      (call) => call[0] as (event: unknown) => void
+    )
+    const note = { id: 'nte_ghost', path: 'Ghost.md', title: 'Ghost' }
+    act(() => createdCallbacks.forEach((callback) => callback({ note, source: 'external' })))
 
     void act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
     void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
