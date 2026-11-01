@@ -198,16 +198,16 @@ importers:
     devDependencies:
       '@ai-sdk/anthropic':
         specifier: ^3.0.107
-        version: 3.0.107(zod@4.3.6)
+        version: 3.0.107(zod@4.6.7)
       '@ai-sdk/google':
         specifier: ^3.0.124
-        version: 3.0.124(zod@4.3.6)
+        version: 3.0.124(zod@4.6.7)
       '@ai-sdk/openai':
         specifier: ^3.0.91
-        version: 3.0.91(zod@4.3.6)
+        version: 3.0.91(zod@4.6.7)
       '@ai-sdk/openai-compatible':
         specifier: ^2.0.81
-        version: 2.0.81(zod@4.3.6)
+        version: 2.0.81(zod@4.6.7)
       '@blocknote/code-block':
         specifier: ^0.54.2
         version: 0.54.2(@blocknote/core@0.54.2(@types/hast@3.0.5)(y-prosemirror@1.3.7(patch_hash=485382d91d52cf599b2cfe6be351839d1875c7b1d63087fede5fc31f4a849009)(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))
@@ -228,7 +228,7 @@ importers:
         version: 0.54.2(@date-fns/tz@1.4.1)(@floating-ui/dom@1.8.0)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.3.0))(@types/react@19.3.0)(date-fns@4.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(tailwindcss@4.1.18)(y-prosemirror@1.3.7(patch_hash=485382d91d52cf599b2cfe6be351839d1875c7b1d63087fede5fc31f4a849009)(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)
       '@blocknote/xl-ai':
         specifier: ^0.54.2
-        version: 0.54.2(@floating-ui/dom@1.8.0)(@tiptap/pm@3.31.3)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(y-prosemirror@1.3.7(patch_hash=485382d91d52cf599b2cfe6be351839d1875c7b1d63087fede5fc31f4a849009)(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)(zod@4.3.6)
+        version: 0.54.2(@floating-ui/dom@1.8.0)(@tiptap/pm@3.31.3)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(y-prosemirror@1.3.7(patch_hash=485382d91d52cf599b2cfe6be351839d1875c7b1d63087fede5fc31f4a849009)(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)(zod@4.6.7)
       '@blocknote/xl-multi-column':
         specifier: ^0.54.2
         version: 0.54.2(@floating-ui/dom@1.8.0)(@tiptap/pm@3.31.3)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(y-prosemirror@1.3.7(patch_hash=485382d91d52cf599b2cfe6be351839d1875c7b1d63087fede5fc31f4a849009)(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)
@@ -354,7 +354,7 @@ importers:
         version: link:../../tests/sync-harness
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
-        version: 1.30.0(zod@4.3.6)
+        version: 1.30.0(zod@4.6.7)
       '@noble/hashes':
         specifier: ^2.0.1
         version: 2.3.0
@@ -537,7 +537,7 @@ importers:
         version: 4.1.10(vitest@4.1.10)
       ai:
         specifier: ^6.0.246
-        version: 6.0.246(zod@4.3.6)
+        version: 6.0.246(zod@4.6.7)
       autoprefixer:
         specifier: ^10.4.23
         version: 10.4.24(postcss@8.5.32)
@@ -678,10 +678,10 @@ importers:
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       ollama-ai-provider-v2:
         specifier: ^3.6.0
-        version: 3.6.0(ai@6.0.246(zod@4.3.6))(zod@4.3.6)
+        version: 3.6.0(ai@6.0.246(zod@4.6.7))(zod@4.6.7)
       openai:
         specifier: ^6.15.0
-        version: 6.18.0(ws@8.22.1)(zod@4.3.6)
+        version: 6.18.0(ws@8.22.1)(zod@4.6.7)
       pako:
         specifier: ^2.1.0
         version: 2.1.0
@@ -777,7 +777,7 @@ importers:
         version: 3.4.0
       zod:
         specifier: ^4.3.4
-        version: 4.3.6
+        version: 4.6.7
 
   apps/docs:
     dependencies:
@@ -985,7 +985,7 @@ importers:
         version: 6.1.3
       zod:
         specifier: ^4.3.4
-        version: 4.3.6
+        version: 4.6.7
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250204.0
@@ -1066,7 +1066,7 @@ importers:
         version: link:../shared
       zod:
         specifier: ^4.3.4
-        version: 4.3.6
+        version: 4.6.7
     devDependencies:
       '@memry/editor-schema':
         specifier: workspace:*
@@ -1209,7 +1209,7 @@ importers:
         version: 15.7.4(i18next@23.16.8)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
       zod:
         specifier: ^4.3.4
-        version: 4.3.6
+        version: 4.6.7
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
@@ -1244,7 +1244,7 @@ importers:
         version: link:../contracts
       zod:
         specifier: ^4.3.4
-        version: 4.3.6
+        version: 4.6.7
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
@@ -1309,7 +1309,7 @@ importers:
         version: 13.6.29
       zod:
         specifier: ^4.3.4
-        version: 4.3.6
+        version: 4.6.7
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
@@ -1331,7 +1331,7 @@ importers:
         version: link:../contracts
       zod:
         specifier: ^4.3.4
-        version: 4.3.6
+        version: 4.6.7
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
@@ -14858,8 +14858,8 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
@@ -14890,74 +14890,74 @@ snapshots:
 
   '@adobe/css-tools@4.4.4': {}
 
-  '@ai-sdk/anthropic@3.0.107(zod@4.3.6)':
+  '@ai-sdk/anthropic@3.0.107(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.14
-      '@ai-sdk/provider-utils': 4.0.42(zod@4.3.6)
-      zod: 4.3.6
+      '@ai-sdk/provider-utils': 4.0.42(zod@4.6.7)
+      zod: 4.6.7
 
-  '@ai-sdk/gateway@3.0.166(zod@4.3.6)':
+  '@ai-sdk/gateway@3.0.166(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.14
-      '@ai-sdk/provider-utils': 4.0.42(zod@4.3.6)
+      '@ai-sdk/provider-utils': 4.0.42(zod@4.6.7)
       '@vercel/oidc': 3.2.0
-      zod: 4.3.6
+      zod: 4.6.7
 
-  '@ai-sdk/gateway@3.0.66(zod@4.3.6)':
+  '@ai-sdk/gateway@3.0.66(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.8
-      '@ai-sdk/provider-utils': 4.0.19(zod@4.3.6)
+      '@ai-sdk/provider-utils': 4.0.19(zod@4.6.7)
       '@vercel/oidc': 3.1.0
-      zod: 4.3.6
+      zod: 4.6.7
 
-  '@ai-sdk/google@3.0.124(zod@4.3.6)':
+  '@ai-sdk/google@3.0.124(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.16
-      '@ai-sdk/provider-utils': 4.0.51(zod@4.3.6)
-      zod: 4.3.6
+      '@ai-sdk/provider-utils': 4.0.51(zod@4.6.7)
+      zod: 4.6.7
 
-  '@ai-sdk/openai-compatible@2.0.81(zod@4.3.6)':
+  '@ai-sdk/openai-compatible@2.0.81(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.18
-      '@ai-sdk/provider-utils': 4.0.57(zod@4.3.6)
-      zod: 4.3.6
+      '@ai-sdk/provider-utils': 4.0.57(zod@4.6.7)
+      zod: 4.6.7
 
-  '@ai-sdk/openai@3.0.91(zod@4.3.6)':
+  '@ai-sdk/openai@3.0.91(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.14
-      '@ai-sdk/provider-utils': 4.0.42(zod@4.3.6)
-      zod: 4.3.6
+      '@ai-sdk/provider-utils': 4.0.42(zod@4.6.7)
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@4.0.19(zod@4.3.6)':
+  '@ai-sdk/provider-utils@4.0.19(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.8
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.1.0
-      zod: 4.3.6
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@4.0.42(zod@4.3.6)':
+  '@ai-sdk/provider-utils@4.0.42(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.14
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.1.0
       undici: 7.28.0
-      zod: 4.3.6
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@4.0.51(zod@4.3.6)':
+  '@ai-sdk/provider-utils@4.0.51(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.16
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.1.0
       undici: 7.28.0
-      zod: 4.3.6
+      zod: 4.6.7
 
-  '@ai-sdk/provider-utils@4.0.57(zod@4.3.6)':
+  '@ai-sdk/provider-utils@4.0.57(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 3.0.18
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.1.0
       undici: 7.28.0
-      zod: 4.3.6
+      zod: 4.6.7
 
   '@ai-sdk/provider@3.0.14':
     dependencies:
@@ -14975,10 +14975,10 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@3.0.118(react@19.3.0)(zod@4.3.6)':
+  '@ai-sdk/react@3.0.118(react@19.3.0)(zod@4.6.7)':
     dependencies:
-      '@ai-sdk/provider-utils': 4.0.19(zod@4.3.6)
-      ai: 6.0.116(zod@4.3.6)
+      '@ai-sdk/provider-utils': 4.0.19(zod@4.6.7)
+      ai: 6.0.116(zod@4.6.7)
       react: 19.3.0
       swr: 2.4.1(react@19.3.0)
       throttleit: 2.1.0
@@ -15924,16 +15924,16 @@ snapshots:
       - y-protocols
       - yjs
 
-  '@blocknote/xl-ai@0.54.2(@floating-ui/dom@1.8.0)(@tiptap/pm@3.31.3)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(y-prosemirror@1.3.7(patch_hash=485382d91d52cf599b2cfe6be351839d1875c7b1d63087fede5fc31f4a849009)(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)(zod@4.3.6)':
+  '@blocknote/xl-ai@0.54.2(@floating-ui/dom@1.8.0)(@tiptap/pm@3.31.3)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(y-prosemirror@1.3.7(patch_hash=485382d91d52cf599b2cfe6be351839d1875c7b1d63087fede5fc31f4a849009)(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)(zod@4.6.7)':
     dependencies:
-      '@ai-sdk/provider-utils': 4.0.57(zod@4.3.6)
-      '@ai-sdk/react': 3.0.118(react@19.3.0)(zod@4.3.6)
+      '@ai-sdk/provider-utils': 4.0.57(zod@4.6.7)
+      '@ai-sdk/react': 3.0.118(react@19.3.0)(zod@4.6.7)
       '@blocknote/core': 0.54.2(@types/hast@3.0.5)(y-prosemirror@1.3.7(patch_hash=485382d91d52cf599b2cfe6be351839d1875c7b1d63087fede5fc31f4a849009)(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)
       '@blocknote/react': 0.54.2(@floating-ui/dom@1.8.0)(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(y-prosemirror@1.3.7(patch_hash=485382d91d52cf599b2cfe6be351839d1875c7b1d63087fede5fc31f4a849009)(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-view@1.42.4)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29))(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)
       '@floating-ui/react': 0.27.20(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@handlewithcare/prosemirror-suggest-changes': 0.1.8(prosemirror-model@1.25.11)(prosemirror-state@1.4.4)(prosemirror-transform@1.12.1)(prosemirror-view@1.42.4)
       '@tiptap/core': 3.31.3(@tiptap/pm@3.31.3)
-      ai: 6.0.246(zod@4.3.6)
+      ai: 6.0.246(zod@4.6.7)
       lodash.isequal: 4.5.0
       lodash.merge: 4.6.2
       prosemirror-changeset: 2.4.3
@@ -17401,7 +17401,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@modelcontextprotocol/sdk@1.30.0(zod@4.3.6)':
+  '@modelcontextprotocol/sdk@1.30.0(zod@4.6.7)':
     dependencies:
       '@hono/node-server': 2.0.12(hono@4.13.13)
       ajv: 8.18.0
@@ -17418,8 +17418,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.3.6
-      zod-to-json-schema: 3.25.1(zod@4.3.6)
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.1(zod@4.6.7)
     transitivePeerDependencies:
       - supports-color
 
@@ -21335,21 +21335,21 @@ snapshots:
       prompts: 2.4.2
       yaml: 2.9.1
 
-  ai@6.0.116(zod@4.3.6):
+  ai@6.0.116(zod@4.6.7):
     dependencies:
-      '@ai-sdk/gateway': 3.0.66(zod@4.3.6)
+      '@ai-sdk/gateway': 3.0.66(zod@4.6.7)
       '@ai-sdk/provider': 3.0.8
-      '@ai-sdk/provider-utils': 4.0.19(zod@4.3.6)
+      '@ai-sdk/provider-utils': 4.0.19(zod@4.6.7)
       '@opentelemetry/api': 1.9.0
-      zod: 4.3.6
+      zod: 4.6.7
 
-  ai@6.0.246(zod@4.3.6):
+  ai@6.0.246(zod@4.6.7):
     dependencies:
-      '@ai-sdk/gateway': 3.0.166(zod@4.3.6)
+      '@ai-sdk/gateway': 3.0.166(zod@4.6.7)
       '@ai-sdk/provider': 3.0.14
-      '@ai-sdk/provider-utils': 4.0.42(zod@4.3.6)
+      '@ai-sdk/provider-utils': 4.0.42(zod@4.6.7)
       '@opentelemetry/api': 1.9.1
-      zod: 4.3.6
+      zod: 4.6.7
 
   ajv-formats@3.0.1(ajv@8.18.0):
     optionalDependencies:
@@ -23248,8 +23248,8 @@ snapshots:
       '@babel/parser': 7.29.12
       eslint: 9.39.4(jiti@2.7.0)
       hermes-parser: 0.25.1
-      zod: 4.3.6
-      zod-validation-error: 4.0.2(zod@4.3.6)
+      zod: 4.6.7
+      zod-validation-error: 4.0.2(zod@4.6.7)
     transitivePeerDependencies:
       - supports-color
 
@@ -26758,12 +26758,12 @@ snapshots:
 
   ohash@2.0.11: {}
 
-  ollama-ai-provider-v2@3.6.0(ai@6.0.246(zod@4.3.6))(zod@4.3.6):
+  ollama-ai-provider-v2@3.6.0(ai@6.0.246(zod@4.6.7))(zod@4.6.7):
     dependencies:
       '@ai-sdk/provider': 3.0.18
-      '@ai-sdk/provider-utils': 4.0.57(zod@4.3.6)
-      ai: 6.0.246(zod@4.3.6)
-      zod: 4.3.6
+      '@ai-sdk/provider-utils': 4.0.57(zod@4.6.7)
+      ai: 6.0.246(zod@4.6.7)
+      zod: 4.6.7
 
   on-exit-leak-free@2.1.2: {}
 
@@ -26856,10 +26856,10 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  openai@6.18.0(ws@8.22.1)(zod@4.3.6):
+  openai@6.18.0(ws@8.22.1)(zod@4.6.7):
     optionalDependencies:
       ws: 8.22.1
-      zod: 4.3.6
+      zod: 4.6.7
 
   opencollective-postinstall@2.0.3: {}
 
@@ -27593,7 +27593,7 @@ snapshots:
       jsonwebtoken: 9.0.3
       listr2: 10.2.1
       ofetch: 1.5.1
-      zod: 4.3.6
+      zod: 4.6.7
 
   pump@3.0.3:
     dependencies:
@@ -28452,7 +28452,7 @@ snapshots:
     dependencies:
       '@vercel/sandbox': 1.9.0
       debug: 4.4.3
-      zod: 4.3.6
+      zod: 4.6.7
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
@@ -30509,13 +30509,13 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  zod-to-json-schema@3.25.1(zod@4.3.6):
+  zod-to-json-schema@3.25.1(zod@4.6.7):
     dependencies:
-      zod: 4.3.6
+      zod: 4.6.7
 
-  zod-validation-error@4.0.2(zod@4.3.6):
+  zod-validation-error@4.0.2(zod@4.6.7):
     dependencies:
-      zod: 4.3.6
+      zod: 4.6.7
 
   zod@3.22.4: {}
 
@@ -30523,7 +30523,7 @@ snapshots:
 
   zod@3.25.76: {}
 
-  zod@4.3.6: {}
+  zod@4.6.7: {}
 
   zustand@4.5.7(@types/react@19.3.0)(react@19.3.0):
     dependencies:
