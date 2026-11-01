@@ -9,6 +9,8 @@
 // turns a dependency that needs the redistributable into a failed pack instead.
 import { readFileSync } from 'node:fs'
 
+import { isMain } from './is-main.mjs'
+
 /** The UCRT API sets of Windows 10 and later: `api-ms-win-crt-<name>-l1-1-0.dll`. */
 const SYSTEM_UCRT = new Set([
   'conio',
@@ -105,9 +107,7 @@ export function assertNoRedist(exePath) {
   }
 }
 
-// `import.meta.main`, not a path comparison: `node` started through a symlink or another spelling
-// of the path leaves `process.argv[1]` unequal to this file, and the check would skip and exit 0.
-if (import.meta.main) {
+if (isMain(import.meta)) {
   assertNoRedist(process.argv[2])
   console.log(`${process.argv[2]}: no Visual C++ redistributable import`)
 }

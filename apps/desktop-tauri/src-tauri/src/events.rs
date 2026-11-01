@@ -2,7 +2,7 @@
 //! `<Domain><Noun><Verb>Event` (`CalendarChangedEvent`, `SyncStatusChangedEvent`). Domain steps
 //! add their events here and list them in `registry.rs`; none calls `emit` directly.
 
-use memry_desktop::notes::index::IndexProgress;
+use memry_desktop::notes::index::{IndexProgress, LinkChanges};
 use memry_desktop::notes::view::NoteListItemView;
 use memry_desktop::session::response::VaultStatus;
 use memry_desktop::updater::state::AppUpdateState;
@@ -128,6 +128,25 @@ pub struct NoteDeletedEvent {
 /// note it shows.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct NoteEventsDroppedEvent;
+
+/// The note index committed links that changed (`notes:links-changed`): the notes whose links
+/// changed, and every note that gained or lost a link to it. Sent after the rows are written,
+/// so a links panel refetching on it reads them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteLinksChangedEvent {
+    pub source_ids: Vec<String>,
+    pub target_ids: Vec<String>,
+}
+
+impl From<LinkChanges> for NoteLinksChangedEvent {
+    fn from(changes: LinkChanges) -> Self {
+        Self {
+            source_ids: changes.sources.into_iter().collect(),
+            target_ids: changes.targets.into_iter().collect(),
+        }
+    }
+}
 
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

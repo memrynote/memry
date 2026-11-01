@@ -22,6 +22,7 @@ import {
   onNoteCreated,
   onNoteUpdated,
   onNoteDeleted,
+  onNoteLinksChanged,
   onNoteRenamed,
   onNoteMoved,
   onNoteExternalChange,
@@ -517,6 +518,11 @@ export function useNoteLinksQuery(noteId: string | null, options: { enabled?: bo
       }
     })
 
+    // The index wrote links that touch this note. A note event comes before the index has
+    // written the edit's links, so this is what shows them.
+    const unsubLinks = onNoteLinksChanged(({ sourceIds, targetIds }) => {
+      if (sourceIds.includes(noteId) || targetIds.includes(noteId)) refresh()
+    })
     // A created note resolves any outgoing link that named its title.
     const unsubCreated = onNoteCreated(refresh)
     const unsubDeleted = onNoteDeleted(refresh)
@@ -528,6 +534,7 @@ export function useNoteLinksQuery(noteId: string | null, options: { enabled?: bo
 
     return () => {
       unsubUpdated()
+      unsubLinks()
       unsubCreated()
       unsubDeleted()
       unsubCanvasCreated()

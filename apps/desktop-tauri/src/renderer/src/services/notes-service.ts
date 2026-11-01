@@ -248,8 +248,13 @@ export function onNoteRenamed(callback: (event: NoteRenamedEvent) => void): () =
   return window.api.onNoteRenamed(callback)
 }
 
+/**
+ * The note index committed links that changed: the notes whose links changed (`sourceIds`) and
+ * every note that gained or lost a link to it (`targetIds`). It comes after the rows are written,
+ * where a note event comes before, so a links read on it sees the edit.
+ */
 export function onNoteLinksChanged(callback: (event: NoteLinksChangedEvent) => void): () => void {
-  return window.api.onLinksChanged(callback)
+  return subscribeToEvent(events.noteLinksChangedEvent, callback)
 }
 
 export function onNoteMoved(callback: (event: NoteMovedEvent) => void): () => void {

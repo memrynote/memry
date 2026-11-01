@@ -8,7 +8,8 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+
+import { isMain } from '../release/is-main.mjs'
 
 const FEED_FILES = [
   {
@@ -133,7 +134,7 @@ export function build({ tag, feedRepo, keep = false, repoRoot = process.cwd() })
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta)) {
   const [tag, feedRepo, ...flags] = process.argv.slice(2)
   if (!tag || !feedRepo) {
     console.error('usage: build-electron-rehearsal.mjs <tag> <feed_repo> [--keep]')

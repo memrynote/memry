@@ -9,6 +9,7 @@ use memry_core::api::errors::StorageError;
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 use memry_core::domain::note_stats::{MeasuredFile, Unindexed};
+use memry_core::domain::search::LinkChanges;
 use memry_core::markdown::shared::markdown_class::{
     MarkdownClassThresholds, classify_markdown_content, classify_markdown_stat,
 };
@@ -91,7 +92,8 @@ impl Indexer {
     }
 
     /// Reads and measures `notes` in batches of at most [`BATCH`] files and [`BATCH_BYTES`],
-    /// then brings the search index up to date when `links` is owed. `progress` gets `built`
+    /// then brings the search index up to date when `links` is owed, and hands `announce` the
+    /// links it changed once they are committed. `progress` gets `built`
     /// of `total` first, after each batch and at the end, and none once `stop` is set; `stop`
     /// ends the pass between files and inside the search reindex.
     pub(super) fn pass(
@@ -100,6 +102,7 @@ impl Indexer {
         links: &mut bool,
         stop: &dyn Fn() -> bool,
         progress: &mut dyn FnMut(IndexProgress),
+        announce: &dyn Fn(LinkChanges),
     ) -> Result<Pass, IndexError> {
         let total = notes.len();
         let mut pass = Pass {
@@ -147,7 +150,12 @@ impl Indexer {
         progress(built(&pass, total));
         if *links {
             match self.search.reindex_until(stop)? {
-                Some(_) => *links = false,
+                Some(changed) => {
+                    *links = false;
+                    if !changed.is_empty() {
+                        announce(changed);
+                    }
+                }
                 None => pass.stopped = true,
             }
         }
