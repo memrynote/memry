@@ -141,8 +141,11 @@ const MAX_NEW_NAME_BYTES: usize = 240;
 /// - dots and spaces at the end go, because Windows strips them and two names become one;
 /// - a reserved device name (`CON`, `NUL`, `COM1` ... with or without an extension) gets a
 ///   `_` after its base, because `nul.md` opens the device on Windows;
-/// - at most [`MAX_NEW_NAME_BYTES`], cut between characters, so `<name> N.<ext>` fits every
-///   volume, and a cut that leaves a dot or a space at the end drops it.
+/// - at most [`MAX_NEW_NAME_BYTES`], cut between characters, so `<name> 9999.md` fits the
+///   255-byte names of APFS, ext4, btrfs and XFS and the 255 UTF-16 units of NTFS, and a cut
+///   that leaves a dot or a space at the end drops it. Not every volume: HFS+ counts UTF-16
+///   units after decomposing (a `ΐ` of 2 bytes is 3), and eCryptfs holds 143 bytes.
+///   Electron does not cut: a name of 241 to 252 bytes is kept there and cut here.
 ///
 /// A file that already exists keeps its name: nothing renames existing files through this.
 pub fn sanitize_new_filename(title: &str) -> String {
@@ -164,10 +167,8 @@ pub fn sanitize_new_filename(title: &str) -> String {
     };
     let cut = truncate_utf16(&hardened, MAX_FILENAME_UTF16);
     let cut = &cut[..cut.floor_char_boundary(MAX_NEW_NAME_BYTES)];
-    match cut.trim_end_matches(['.', ' ']) {
-        "" => "untitled".to_owned(),
-        cut => cut.to_owned(),
-    }
+    // Never empty: the name starts with neither (`sanitize_filename` strips both there).
+    cut.trim_end_matches(['.', ' ']).to_owned()
 }
 
 fn is_reserved_windows_name(base: &str) -> bool {

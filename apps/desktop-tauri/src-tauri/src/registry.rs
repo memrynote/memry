@@ -53,9 +53,13 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_get,
             crate::commands::notes::notes_get_by_path,
             crate::commands::notes::notes_get_file,
+            crate::commands::notes::notes_get_links,
             crate::commands::notes::notes_get_local_only_count,
             crate::commands::notes::notes_list,
             crate::commands::notes::notes_open_external,
+            crate::commands::notes::notes_resolve_by_title,
+            crate::commands::notes::notes_resolve_titles,
+            crate::commands::notes::notes_resolve_wiki_target,
             crate::commands::notes::notes_reveal_in_finder,
             crate::commands::notes::notes_set_local_only,
             // notification

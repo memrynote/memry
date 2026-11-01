@@ -62,11 +62,19 @@ export const commands = {
 	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
 	notesGetByPath: (path: string) => __TAURI_INVOKE<NoteView | null>("notes_get_by_path", { path }),
 	notesGetFile: (id: string) => __TAURI_INVOKE<FileView | null>("notes_get_file", { id }),
+	/**  The links the note makes and the notes linking to it, with the text around each link. */
+	notesGetLinks: (id: string) => __TAURI_INVOKE<NoteLinksView>("notes_get_links", { id }),
 	/**  `notes:get-local-only-count`. */
 	notesGetLocalOnlyCount: () => __TAURI_INVOKE<number>("notes_get_local_only_count"),
 	notesList: (options: NoteListOptions) => __TAURI_INVOKE<NoteListPageView>("notes_list", { options }),
 	/**  `notes:open-external`: the note's file in the OS's default app. */
 	notesOpenExternal: (id: string) => __TAURI_INVOKE<null>("notes_open_external", { id }),
+	/**  The note `title` names as a whole (no heading split), or `null`. */
+	notesResolveByTitle: (title: string) => __TAURI_INVOKE<LinkResolutionView | null>("notes_resolve_by_title", { title }),
+	/**  Each title mapped to the note it names, or `null`: one call per editor mount. */
+	notesResolveTitles: (titles: string[]) => __TAURI_INVOKE<{ [key in string]: TitleMatchView | null }>("notes_resolve_titles", { titles }),
+	/**  The note a wiki-link target names, heading half and all (`Note#Heading`), or `null`. */
+	notesResolveWikiTarget: (target: string) => __TAURI_INVOKE<LinkTargetView | null>("notes_resolve_wiki_target", { target }),
 	/**  `notes:reveal-in-finder`: the note's file in the OS file manager. */
 	notesRevealInFinder: (id: string) => __TAURI_INVOKE<null>("notes_reveal_in_finder", { id }),
 	/**
@@ -307,6 +315,31 @@ export type AppUpdateState = {
 /**  The kinds of a note whose file is not markdown. */
 export type AttachedFileType = "pdf" | "image" | "audio" | "video";
 
+/**  A link's text in the linking note (`BacklinkContext`); offsets are UTF-16 units. */
+export type BacklinkContextView = {
+	snippet: string,
+	linkStart: number,
+	linkEnd: number,
+};
+
+/**  A note linking to this one (`Backlink`). */
+export type BacklinkView = {
+	sourceId: string,
+	sourcePath: string,
+	sourceTitle: string,
+	contexts: BacklinkContextView[],
+	/**
+	 *  Every link to the note in the source's file: Electron's `contexts.length`, which the
+	 *  panel counts and sorts by. More than `contexts` holds when `truncated`.
+	 */
+	mentionCount: number,
+	/**
+	 *  The file links so densely that its snippets stopped at the output bound
+	 *  (`link_contexts`): `contexts` holds the first ones.
+	 */
+	truncated: boolean,
+};
+
 export type BuildKind = "dev" | "packaged";
 
 /**  A caption button's rectangle in client coordinates, physical pixels. */
@@ -526,6 +559,23 @@ export type LargeFileInfo = {
 /**  `NoteLargeFileReason`. */
 export type LargeFileReasonView = "file-bytes" | "block-bytes";
 
+/**  `WikiLinkResolution`, and `WikiLinkTargetResolution` with `heading`. */
+export type LinkResolutionView = {
+	id: string,
+	path: string,
+	title: string,
+	fileType: FileType,
+};
+
+export type LinkTargetView = {
+	id: string,
+	path: string,
+	title: string,
+	fileType: FileType,
+	/**  The heading to scroll to, `None` when the link names none. */
+	heading: string | null,
+};
+
 /**  The UI language changed (`locale:changed`). */
 export type LocaleChangedEvent = {
 	locale: string,
@@ -608,6 +658,20 @@ export type NoteDeletedEvent = {
 
 /**  Who made a note change (`NoteEventSource`): the app, or an edit outside it. */
 export type NoteEventSource = "internal" | "external";
+
+/**  A link the note makes (`NoteLink`). */
+export type NoteLinkView = {
+	sourceId: string,
+	/**  `None` for a broken link. */
+	targetId: string | null,
+	targetTitle: string,
+};
+
+/**  `NoteLinksResponse`. */
+export type NoteLinksView = {
+	outgoing: NoteLinkView[],
+	incoming: BacklinkView[],
+};
 
 /**  `NoteListSchema.fields`: `tree` drops the fields the sidebar never reads. */
 export type NoteListFields = "full" | "tree";
@@ -890,6 +954,12 @@ export type TemplateView = {
 	content: string,
 	createdAt: string,
 	modifiedAt: string,
+};
+
+/**  One entry of `WikiLinkTitleResolutions`. */
+export type TitleMatchView = {
+	id: string,
+	path: string,
 };
 
 /**  `FileMetadata.transcriptionStatus`. */

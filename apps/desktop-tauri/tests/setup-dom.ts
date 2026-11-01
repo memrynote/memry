@@ -116,6 +116,10 @@ vi.mock('../src/generated/bindings', () => {
       notesExists: (titleOrPath: string) => notes().exists(titleOrPath),
       notesOpenExternal: (id: string) => notes().openExternal(id),
       notesRevealInFinder: (id: string) => notes().revealInFinder(id),
+      notesGetLinks: (id: string) => notes().getLinks(id),
+      notesResolveByTitle: (title: string) => notes().resolveByTitle(title),
+      notesResolveTitles: (titles: string[]) => notes().resolveTitles(titles),
+      notesResolveWikiTarget: (target: string) => notes().resolveWikiTarget(target),
       notesSetLocalOnly: async (id: string, localOnly: boolean) =>
         ((await notes().setLocalOnly(id, localOnly)) as { note?: unknown } | undefined)?.note,
       notesGetLocalOnlyCount: async () =>
@@ -672,6 +676,7 @@ const createMockApi = () => ({
   onLinksChanged: vi.fn().mockReturnValue(() => {}),
   onNoteMoved: vi.fn().mockReturnValue(() => {}),
   onNoteExternalChange: vi.fn().mockReturnValue(() => {}),
+  onCanvasCreated: vi.fn().mockReturnValue(() => {}),
   onCanvasUpdated: vi.fn().mockReturnValue(() => {}),
   onHomePageCreated: vi.fn().mockReturnValue(() => {}),
   onHomePageUpdated: vi.fn().mockReturnValue(() => {}),

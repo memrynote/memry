@@ -162,6 +162,13 @@ export interface Backlink {
   sourceTitle: string
   contexts: BacklinkContext[]
   via?: LinkVia
+  /**
+   * Every link to the note in the source, when it is more than `contexts`
+   * holds. Absent means `contexts.length` (Electron sends none).
+   */
+  mentionCount?: number
+  /** Some links have no context: the source's snippets stopped at a size bound. */
+  truncated?: boolean
 }
 
 // ============================================================================
