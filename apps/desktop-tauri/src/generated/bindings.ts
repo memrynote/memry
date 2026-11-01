@@ -55,11 +55,19 @@ export const commands = {
 	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
 	notesGetByPath: (path: string) => __TAURI_INVOKE<NoteView | null>("notes_get_by_path", { path }),
 	notesGetFile: (id: string) => __TAURI_INVOKE<FileView | null>("notes_get_file", { id }),
+	/**  The links the note makes and the notes linking to it, with the text around each link. */
+	notesGetLinks: (id: string) => __TAURI_INVOKE<NoteLinksView>("notes_get_links", { id }),
 	/**  `notes:get-local-only-count`. */
 	notesGetLocalOnlyCount: () => __TAURI_INVOKE<number>("notes_get_local_only_count"),
 	notesList: (options: NoteListOptions) => __TAURI_INVOKE<NoteListPageView>("notes_list", { options }),
 	/**  `notes:open-external`: the note's file in the OS's default app. */
 	notesOpenExternal: (id: string) => __TAURI_INVOKE<null>("notes_open_external", { id }),
+	/**  The note `title` names as a whole (no heading split), or `null`. */
+	notesResolveByTitle: (title: string) => __TAURI_INVOKE<LinkResolutionView | null>("notes_resolve_by_title", { title }),
+	/**  Each title mapped to the note it names, or `null`: one call per editor mount. */
+	notesResolveTitles: (titles: string[]) => __TAURI_INVOKE<{ [key in string]: TitleMatchView | null }>("notes_resolve_titles", { titles }),
+	/**  The note a wiki-link target names, heading half and all (`Note#Heading`), or `null`. */
+	notesResolveWikiTarget: (target: string) => __TAURI_INVOKE<LinkTargetView | null>("notes_resolve_wiki_target", { target }),
 	/**  `notes:reveal-in-finder`: the note's file in the OS file manager. */
 	notesRevealInFinder: (id: string) => __TAURI_INVOKE<null>("notes_reveal_in_finder", { id }),
 	/**
@@ -112,14 +120,6 @@ export const commands = {
 	 *  shows or hides the menu bar, Windows pops the menu up. Returns whether a menu bar shows.
 	 */
 	menuToggleAlt: () => __TAURI_INVOKE<boolean>("menu_toggle_alt"),
-	/**  The links the note makes and the notes linking to it, with the text around each link. */
-	notesGetLinks: (id: string) => __TAURI_INVOKE<NoteLinksView>("notes_get_links", { id }),
-	/**  The note `title` names as a whole (no heading split), or `null`. */
-	notesResolveByTitle: (title: string) => __TAURI_INVOKE<LinkResolutionView | null>("notes_resolve_by_title", { title }),
-	/**  Each title mapped to the note it names, or `null`: one call per editor mount. */
-	notesResolveTitles: (titles: string[]) => __TAURI_INVOKE<{ [key in string]: TitleMatchView | null }>("notes_resolve_titles", { titles }),
-	/**  The note a wiki-link target names, heading half and all (`Note#Heading`), or `null`. */
-	notesResolveWikiTarget: (target: string) => __TAURI_INVOKE<LinkTargetView | null>("notes_resolve_wiki_target", { target }),
 	/**  Stores the zoom factor for the next launch's first paint (`startupValues`). */
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
 	/**  A group of the open vault, or its defaults while no vault is open. */

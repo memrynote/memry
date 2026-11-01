@@ -9,7 +9,7 @@ vi.mock('@memry/i18n/renderer', () => ({
       if (key === 'backlinks.viaProperty') return `${values?.property} → ${values?.title}`
       if (key === 'backlinks.fromAria') return `Backlinks from ${values?.title}`
       if (key === 'canvasLinks.connectedOn') return `Connected on ${values?.canvas}`
-      if (key === 'backlinks.more') return `${values?.count} more`
+      if (key === 'backlinks.moreInNote') return `${values?.count} more links in this note`
       return key.split('.').at(-1) ?? key
     }
   })
@@ -87,7 +87,7 @@ describe('BacklinkCard', () => {
     render(<BacklinkCard backlink={dense} defaultExpanded onClick={vi.fn()} />)
 
     expect(screen.getByText('30')).toBeInTheDocument()
-    expect(screen.getByText('28 more')).toBeInTheDocument()
+    expect(screen.getByRole('listitem')).toHaveTextContent('28 more links in this note')
   })
 
   it('names no missing snippets when every link has one', () => {
@@ -103,6 +103,6 @@ describe('BacklinkCard', () => {
     render(<BacklinkCard backlink={whole} defaultExpanded onClick={vi.fn()} />)
 
     expect(screen.getByText('2')).toBeInTheDocument()
-    expect(screen.queryByText(/more$/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/more links in this note$/)).not.toBeInTheDocument()
   })
 })

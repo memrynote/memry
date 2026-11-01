@@ -771,6 +771,7 @@
     "expandSection": "展开反向链接部分",
     "showMore": "再显示 {count} 条反向链接",
     "more": "还有 {count} 条",
+    "moreInNote": "此笔记中还有 {count} 个链接",
     "viaProperty": "{property} → {title}",
     "viaPortal": "显示在传送门中"
   },

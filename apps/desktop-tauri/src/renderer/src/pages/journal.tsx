@@ -64,7 +64,7 @@ import {
   BacklinksSection,
   OutgoingLinksSection,
   type Backlink,
-  backlinkId
+  toBacklink
 } from '@/components/note/backlinks'
 
 import { TagsRow, type Tag } from '@/components/note/tags-row'
@@ -1090,23 +1090,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         .slice(0, -1)
         .join('/')
         .replace(/^notes\//, '')
-      return {
-        id: backlinkId(bl.sourceId, bl.via),
-        noteId: bl.sourceId,
-        noteTitle: bl.sourceTitle,
-        folder: folderPath,
-        // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
-        date: new Date(),
-        mentions: (bl.contexts ?? []).map((ctx, i) => ({
-          id: `mention-${bl.sourceId}-${i}`,
-          snippet: ctx.snippet,
-          linkStart: ctx.linkStart,
-          linkEnd: ctx.linkEnd
-        })),
-        mentionCount: bl.mentionCount ?? (bl.contexts ?? []).length,
-        truncated: bl.truncated ?? false,
-        via: bl.via
-      }
+      // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
+      return toBacklink(bl, folderPath, new Date())
     })
   }, [rawBacklinks])
 

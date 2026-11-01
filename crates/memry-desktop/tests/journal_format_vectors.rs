@@ -143,3 +143,21 @@ fn a_path_names_a_day_under_the_journal_folder_in_its_format() {
     assert!(nested.is_of("/a/b/", " YYYY\\MMMM/./YYYY-MM-DD "));
     assert!(!nested.is_of("a/b", "YYYY/MMMM/YYYY-MM-DD"));
 }
+
+/// A day's file goes where its path names it, the config's folder and format normalized: the
+/// format as typed (` YYYY\MMMM/./YYYY-MM-DD `) would name `a/b/ 2025\January/./2025-01-14 .md`.
+#[test]
+fn a_day_goes_at_the_path_that_names_it() {
+    let nested = JournalDays::new("/a/b/", " YYYY\\MMMM/./YYYY-MM-DD ");
+    let path = nested.path_of("2025-01-14");
+    assert_eq!(path.as_deref(), Some("a/b/2025/January/2025-01-14.md"));
+    assert_eq!(
+        nested.day_of(path.as_deref().unwrap()).as_deref(),
+        Some("2025-01-14")
+    );
+    assert_eq!(
+        JournalDays::new("", "").path_of("2025-01-14").as_deref(),
+        Some("2025-01-14.md")
+    );
+    assert_eq!(nested.path_of("2025-1-14"), None);
+}

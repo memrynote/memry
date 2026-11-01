@@ -121,8 +121,9 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
             </button>
           ))}
           {truncated && (
-            <span className="px-1.5 py-1 text-[11px] text-text-tertiary">
-              {t('backlinks.more', { count: mentionCount - mentions.length })}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an item of the role="list" above, which is a div for its layout
+            <span role="listitem" className="px-1.5 py-1 text-[11px] text-text-tertiary">
+              {t('backlinks.moreInNote', { count: mentionCount - mentions.length })}
             </span>
           )}
         </div>
