@@ -54,7 +54,7 @@ overrides:
   lodash: '>=4.18.1'
   path-to-regexp: '>=8.4.2'
   picomatch: '>=4.0.4'
-  vite: ^7.3.6
+  vite: ^7.3.7
   markdown-it: '>=14.2.0'
   # BlockNote 0.54 pulls @tiptap/pm 3.31.3 (prosemirror-model 1.25.11,
   # prosemirror-view 1.42.4). Two copies of prosemirror-model make structurally
