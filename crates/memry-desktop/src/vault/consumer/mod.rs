@@ -5,6 +5,7 @@
 //! - [`identity`]: which note a file belongs to, decided by Step 13's records.
 //! - [`rows`]: the one lane that writes `note_files`, for the consumer and the app alike.
 //! - `apply`: one fact applied to the rows.
+//! - `body`: a file's text fed into its note's body, for `apply`.
 //! - `converter`: the converter note bodies are read and written with, the vault's callouts.
 //! - `run`: the thread that applies facts in the watcher's order, the open walk and retries.
 //!
@@ -58,6 +59,7 @@
 
 mod activity;
 mod apply;
+mod body;
 mod converter;
 pub mod identity;
 pub mod rows;
