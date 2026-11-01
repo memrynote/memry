@@ -43,6 +43,7 @@ use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log;
 use crate::domain::body_tags::ALL_NOTE_TAGS;
+use crate::domain::task_filter::locale_compare;
 use crate::domain::notes::names::parse_stored;
 use crate::domain::{tag_admin, tags, template_admin};
 
@@ -262,7 +263,8 @@ pub struct TemplateSummary {
 }
 
 /// Every template a note can be made from, as desktop's `listTemplates`
-/// lists them: the built-ins by name, then the vault's own by name. A synced
+/// lists them: the built-ins by name, then the vault's own by name, each half in
+/// `localeCompare` order (`task_filter::locale_compare`). A synced
 /// template whose id collides with a built-in is skipped; the built-in wins.
 pub fn templates(conn: &Connection) -> Result<Vec<TemplateSummary>, StorageError> {
     let mut built_ins: Vec<TemplateSummary> = template_admin::BUILT_INS
@@ -274,12 +276,10 @@ pub fn templates(conn: &Connection) -> Result<Vec<TemplateSummary>, StorageError
             icon: Some(b.icon.to_owned()),
         })
         .collect();
-    built_ins.sort_by_key(|t| t.name.to_lowercase());
+    // Desktop sorts both halves with `localeCompare`.
+    built_ins.sort_by(|a, b| locale_compare(&a.name, &b.name));
     let mut statement = conn
-        .prepare(
-            "SELECT id, name, description, icon FROM templates \
-             WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE, id",
-        )
+        .prepare("SELECT id, name, description, icon FROM templates WHERE deleted_at IS NULL")
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {
@@ -291,12 +291,15 @@ pub fn templates(conn: &Connection) -> Result<Vec<TemplateSummary>, StorageError
             })
         })
         .map_err(failed)?;
+    let mut custom = Vec::new();
     for row in rows {
         let template = row.map_err(failed)?;
         if !template_admin::is_built_in(&template.id) {
-            built_ins.push(template);
+            custom.push(template);
         }
     }
+    custom.sort_by(|a, b| locale_compare(&a.name, &b.name).then_with(|| a.id.cmp(&b.id)));
+    built_ins.extend(custom);
     Ok(built_ins)
 }
 

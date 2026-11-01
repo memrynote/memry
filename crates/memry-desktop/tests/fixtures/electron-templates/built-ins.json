@@ -1,0 +1,192 @@
+[
+  {
+    "id": "blank",
+    "name": "Blank Note",
+    "description": "Start with an empty note",
+    "icon": "📄",
+    "isBuiltIn": true,
+    "tags": [],
+    "properties": [],
+    "content": ""
+  },
+  {
+    "id": "meeting-notes",
+    "name": "Meeting Notes",
+    "description": "Meeting agenda and notes template",
+    "icon": "📝",
+    "isBuiltIn": true,
+    "tags": [
+      "meeting"
+    ],
+    "properties": [
+      {
+        "name": "date",
+        "type": "date",
+        "value": null
+      },
+      {
+        "name": "attendees",
+        "type": "text",
+        "value": ""
+      },
+      {
+        "name": "status",
+        "type": "select",
+        "value": "scheduled",
+        "options": [
+          "scheduled",
+          "completed",
+          "cancelled"
+        ]
+      }
+    ],
+    "content": "## Attendees\n\n-\n\n## Agenda\n\n1.\n2.\n3.\n\n## Notes\n\n## Action Items\n\n- [ ]\n"
+  },
+  {
+    "id": "project-brief",
+    "name": "Project Brief",
+    "description": "Template for project documentation",
+    "icon": "📋",
+    "isBuiltIn": true,
+    "tags": [
+      "project"
+    ],
+    "properties": [
+      {
+        "name": "status",
+        "type": "select",
+        "value": "planning",
+        "options": [
+          "planning",
+          "active",
+          "on-hold",
+          "completed"
+        ]
+      },
+      {
+        "name": "priority",
+        "type": "rating",
+        "value": 3
+      },
+      {
+        "name": "startDate",
+        "type": "date",
+        "value": null
+      },
+      {
+        "name": "dueDate",
+        "type": "date",
+        "value": null
+      }
+    ],
+    "content": "## Overview\n\nBrief description of the project...\n\n## Goals\n\n-\n-\n\n## Scope\n\n### In Scope\n\n-\n\n### Out of Scope\n\n-\n\n## Timeline\n\n## Notes\n\n"
+  },
+  {
+    "id": "daily-standup",
+    "name": "Daily Standup",
+    "description": "Daily standup format",
+    "icon": "✅",
+    "isBuiltIn": true,
+    "tags": [
+      "standup",
+      "daily"
+    ],
+    "properties": [
+      {
+        "name": "date",
+        "type": "date",
+        "value": null
+      }
+    ],
+    "content": "## What I did yesterday\n\n-\n\n## What I'm doing today\n\n-\n\n## Blockers\n\n-\n"
+  },
+  {
+    "id": "morning-pages",
+    "name": "Morning Pages",
+    "description": "Stream of consciousness writing to start your day",
+    "icon": "🌅",
+    "isBuiltIn": true,
+    "tags": [
+      "morning",
+      "reflection"
+    ],
+    "properties": [
+      {
+        "name": "mood",
+        "type": "select",
+        "value": "neutral",
+        "options": [
+          "great",
+          "good",
+          "neutral",
+          "low",
+          "difficult"
+        ]
+      }
+    ],
+    "content": "# Morning Pages\n\nWrite freely for the next few minutes. Don't worry about grammar, spelling, or making sense. Just let your thoughts flow...\n\n---\n\n"
+  },
+  {
+    "id": "daily-reflection",
+    "name": "Daily Reflection",
+    "description": "End-of-day reflection and gratitude",
+    "icon": "🌆",
+    "isBuiltIn": true,
+    "tags": [
+      "reflection",
+      "gratitude"
+    ],
+    "properties": [
+      {
+        "name": "mood",
+        "type": "select",
+        "value": "neutral",
+        "options": [
+          "great",
+          "good",
+          "neutral",
+          "low",
+          "difficult"
+        ]
+      },
+      {
+        "name": "energy",
+        "type": "rating",
+        "value": 3
+      }
+    ],
+    "content": "# Daily Reflection\n\n## What went well today?\n\n-\n\n## What could have gone better?\n\n-\n\n## What am I grateful for?\n\n1.\n2.\n3.\n\n## What did I learn?\n\n"
+  },
+  {
+    "id": "gratitude-journal",
+    "name": "Gratitude Journal",
+    "description": "Focus on what you appreciate",
+    "icon": "🙏",
+    "isBuiltIn": true,
+    "tags": [
+      "gratitude"
+    ],
+    "properties": [],
+    "content": "# Gratitude\n\nToday I am grateful for:\n\n1.\n2.\n3.\n4.\n5.\n\n---\n\n*One moment that made me smile:*\n\n"
+  },
+  {
+    "id": "weekly-review",
+    "name": "Weekly Review",
+    "description": "Reflect on your week and plan ahead",
+    "icon": "📅",
+    "isBuiltIn": true,
+    "tags": [
+      "weekly",
+      "review",
+      "planning"
+    ],
+    "properties": [
+      {
+        "name": "weekNumber",
+        "type": "number",
+        "value": 0
+      }
+    ],
+    "content": "# Weekly Review\n\n## Wins This Week\n\n-\n\n## Challenges Faced\n\n-\n\n## Lessons Learned\n\n-\n\n## Next Week's Focus\n\n1.\n2.\n3.\n\n## Energy & Wellbeing Check\n\nHow do I feel about this week overall?\n\n"
+  }
+]
