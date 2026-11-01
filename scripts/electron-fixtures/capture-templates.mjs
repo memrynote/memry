@@ -7,7 +7,8 @@
 // Builds before #938 kept custom templates as `.memry/templates/<id>.md` and wrote every
 // built-in there too. Their writer, `serializeTemplate` (apps/desktop/src/main/vault/templates.ts
 // at 8946af3c5a^), is reproduced below verbatim, over gray-matter as it ran. A few hand edits
-// sit beside the written files. Electron's own `migrateTemplateFilesToDb`
+// sit beside the written files, among them two Electron imports differently from the Tauri
+// import (an unquoted date, which it drops; see `template_legacy`). Electron's own `migrateTemplateFilesToDb`
 // (`vault/templates-migration.ts`) then imports the folder into a test data DB, and its rows are
 // `expected.json` (the clock column left out: Electron leaves it NULL for `seedUnclocked`, the
 // core stamps one). `built-ins.json` is Electron's `BUILT_IN_TEMPLATES` itself, which pins the
@@ -136,6 +137,10 @@ describe.skipIf(!OUT)('electron templates fixture', () => {
     // Hand edits: no id (the file name is the id), no name, quoted timestamps.
     fs.writeFileSync(path.join(dir, 'fromfilename.md'),
       "---\\ncreatedAt: '2024-12-24T10:00:00.000Z'\\nmodifiedAt: '2024-12-25T10:00:00.000Z'\\ntags:\\n  - hand\\n---\\nWritten by hand.\\n")
+    // A YAML number where text goes: SQLite's text affinity stores it as its digits.
+    fs.writeFileSync(path.join(dir, 'numeric-name.md'), "---\\nname: 2024\\ntags:\\n  - year\\ncreatedAt: '2024-01-01T00:00:00.000Z'\\nmodifiedAt: '2024-01-02T00:00:00.000Z'\\n---\\nThe year.\\n")
+    // An unquoted timestamp is a YAML Date, which Electron's driver cannot bind: never imported.
+    fs.writeFileSync(path.join(dir, 'unquoted-dates.md'), '---\\nid: dated1\\nname: Dated\\ncreatedAt: 2024-05-06T07:08:09.000Z\\n---\\nBody\\n')
     // Frontmatter that does not parse is skipped, and the import is still flagged.
     fs.writeFileSync(path.join(dir, 'broken.md'), '---\\nname: [unclosed\\n---\\nbody\\n')
     // Not markdown: never read.

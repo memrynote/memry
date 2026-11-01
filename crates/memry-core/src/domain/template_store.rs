@@ -20,6 +20,8 @@ use crate::storage::repositories::sync_items;
 use super::reads::{self, TemplateSummary};
 use super::tasks::model::new_task_id;
 use super::template_admin::{self, BUILT_INS, BuiltIn, TemplateEdit, is_built_in};
+#[cfg(feature = "markdown")]
+use super::template_legacy;
 use super::templates::{self, ITEM_TYPE, NewTemplate};
 
 /// One whole template (`Template` of `templates-api.ts`).
@@ -218,5 +220,32 @@ impl TemplateStore {
     pub fn delete(&self, id: &str, now_ms: i64) -> Result<(), StorageError> {
         self.db
             .call_blocking(|conn| delete(conn, id, &self.device_id, now_ms))
+    }
+}
+
+/// The pre-sync template files' import ([`super::template_legacy`]).
+#[cfg(feature = "markdown")]
+impl TemplateStore {
+    pub fn legacy_imported(&self) -> Result<bool, StorageError> {
+        self.db.read_blocking(template_legacy::imported)
+    }
+
+    pub fn mark_legacy_imported(&self) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| template_legacy::mark_imported(conn))
+    }
+
+    pub fn beside_electron(&self) -> Result<template_legacy::BesideElectron, StorageError> {
+        self.db.read_blocking(template_legacy::beside_electron)
+    }
+
+    /// `false` when the database has ever held the template's id.
+    pub fn import_legacy(
+        &self,
+        template: &template_legacy::LegacyTemplate,
+        now_ms: i64,
+    ) -> Result<bool, StorageError> {
+        self.db
+            .call_blocking(|conn| template_legacy::import(conn, template, &self.device_id, now_ms))
     }
 }

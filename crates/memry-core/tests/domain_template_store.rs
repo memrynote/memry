@@ -199,8 +199,16 @@ fn the_vaults_templates_list_in_locale_compare_order() {
     let db = open("order");
     let names = run(&db, |conn| {
         for (i, name) in [
-            "Zeta", "\u{dc}n\u{ef}code", "apple", "\u{c9}clair", "banana", "Apple", "\u{e9}tude",
-            "_draft", "10 tips", "2 tips",
+            "Zeta",
+            "\u{dc}n\u{ef}code",
+            "apple",
+            "\u{c9}clair",
+            "banana",
+            "Apple",
+            "\u{e9}tude",
+            "_draft",
+            "10 tips",
+            "2 tips",
         ]
         .into_iter()
         .enumerate()
@@ -217,8 +225,16 @@ fn the_vaults_templates_list_in_locale_compare_order() {
     assert_eq!(
         names,
         [
-            "_draft", "10 tips", "2 tips", "apple", "Apple", "banana", "\u{c9}clair", "\u{e9}tude",
-            "\u{dc}n\u{ef}code", "Zeta",
+            "_draft",
+            "10 tips",
+            "2 tips",
+            "apple",
+            "Apple",
+            "banana",
+            "\u{c9}clair",
+            "\u{e9}tude",
+            "\u{dc}n\u{ef}code",
+            "Zeta",
         ]
     );
 }

@@ -43,8 +43,8 @@ use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log;
 use crate::domain::body_tags::ALL_NOTE_TAGS;
-use crate::domain::task_filter::locale_compare;
 use crate::domain::notes::names::parse_stored;
+use crate::domain::task_filter::locale_compare;
 use crate::domain::{tag_admin, tags, template_admin};
 
 /// The device id the read-only document registry runs under.

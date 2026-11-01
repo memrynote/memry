@@ -1,11 +1,13 @@
 // Templates in the running app (Step 13l, #3530), ported from Electron's `templates.e2e.ts`: the
-// template commands called from the page as `services/templates-service.ts` calls them, and the
-// Settings › Templates list following their events. Applying a template to a note and saving a
+// template commands called from the page as `services/templates-service.ts` calls them, the
+// Settings › Templates list following their events, and a pre-sync template file imported when
+// the vault opens. Applying a template to a note and saving a
 // note as one move over with `notes_apply_template` (13l-4).
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import type { Page } from '../../harness/pw-compat/page'
+import { restart } from '../../harness/tauri-lifecycle'
 import { test, expect } from '../../harness/test'
 import { invoke, vaultStatus } from '../../harness/vault-commands'
 import { pollUntil } from '../../harness/wait'
@@ -116,4 +118,41 @@ test('Settings › Templates follows the template events and refuses to change a
   )
   expect(refused).toBe('invalid')
   await expect(page.getByRole('button', { name: 'Blank Note', exact: true })).toBeVisible()
+})
+
+test('a pre-sync template file is imported when the vault opens, once, and stays on disk', async ({
+  app,
+  page,
+  testVaultPath
+}) => {
+  await ready(page)
+  const id = `legacy-${stamp()}`
+  // The fixture vault opened without a template folder, which leaves the import unflagged, so
+  // a folder that appears later (a cloud client hydrating it) is read at the next open.
+  const legacyDir = join(testVaultPath, '.memry', 'templates')
+  mkdirSync(legacyDir, { recursive: true })
+  const file = join(legacyDir, `${id}.md`)
+  const text = `---\nid: ${id}\nname: From an old build\ntags:\n  - old\n---\n\n## Kept body\n`
+  writeFileSync(file, text)
+  expect(await invoke<Template | null>(page, 'templates_get', { id })).toBeNull()
+
+  await restart(app)
+  await ready(page)
+  expect(await invoke<Template | null>(page, 'templates_get', { id })).toMatchObject({
+    id,
+    name: 'From an old build',
+    isBuiltIn: false,
+    tags: ['old'],
+    content: '## Kept body'
+  })
+  expect(readFileSync(file, 'utf8')).toBe(text)
+
+  // Flagged now: a rename made in the app is not undone by the file at the next open.
+  await invoke(page, 'templates_update', { input: { id, name: 'Renamed in the app' } })
+  await restart(app)
+  await ready(page)
+  const listed = await invoke<ListItem[]>(page, 'templates_list')
+  expect(listed.filter((template) => template.id === id).map((t) => t.name)).toEqual([
+    'Renamed in the app'
+  ])
 })

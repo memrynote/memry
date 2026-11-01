@@ -1,5 +1,5 @@
 {
-  "imported": 4,
+  "imported": 5,
   "rows": [
     {
       "id": "fromfilename",
@@ -95,6 +95,19 @@
       "content": "",
       "createdAt": "2025-02-01T00:00:00.000Z",
       "modifiedAt": "2025-02-01T00:00:00.000Z"
+    },
+    {
+      "id": "numeric-name",
+      "name": "2024.0",
+      "description": null,
+      "icon": null,
+      "tags": [
+        "year"
+      ],
+      "properties": [],
+      "content": "The year.",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "modifiedAt": "2024-01-02T00:00:00.000Z"
     },
     {
       "id": "realid42",

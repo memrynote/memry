@@ -13,6 +13,8 @@
 //!
 //! Every function blocks (SQLite, files); an async caller runs it on a blocking thread.
 
+pub mod legacy;
+
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
