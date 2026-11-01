@@ -235,21 +235,23 @@ impl VaultTier {
         };
         // Before the identity settles what it owes, and before the watcher: the file an app
         // move left at its new path is the note's again, never a new file.
-        match (
-            vault.vault.notes_writer(self.store.clone()),
-            self.rows.lane_of(session),
-        ) {
-            (Ok(writer), Ok(mut lane)) => {
+        let settled = vault
+            .vault
+            .notes_writer(self.store.clone())
+            .map_err(|error| error.to_string())
+            .and_then(|writer| {
+                let mut lane = self
+                    .rows
+                    .lane_of(session)
+                    .map_err(|error| error.to_string())?;
                 finish_interrupted(&ctx, &writer, &mut lane, &*identity);
-            }
-            (Err(error), _) => tracing::warn!(
+                Ok(())
+            });
+        if let Err(error) = settled {
+            tracing::warn!(
                 scope = "vault_consumer",
                 "the interrupted app moves wait for the next open: {error}"
-            ),
-            (_, Err(error)) => tracing::warn!(
-                scope = "vault_consumer",
-                "the interrupted app moves wait for the next open: {error}"
-            ),
+            );
         }
         identity.opened(&ctx);
         let new_files = if identity.adopts() {

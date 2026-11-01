@@ -369,7 +369,7 @@ impl Lane<'_> {
 
     /// Forgets the note's record of an app move ([`NotesWriter::abandon_app_move`]). Under the
     /// lane, as the move it records and its [`NotesWriter::begin_app_move`], so a note has one
-    /// move at a time.
+    /// move at a time. Writes no row: `&mut self` is only the proof that the lane is held.
     pub(crate) fn forget_move(
         &mut self,
         writer: &NotesWriter,

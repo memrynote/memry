@@ -19,7 +19,7 @@ use unicode_normalization::UnicodeNormalization;
 
 use super::consumer::identity::{IdentityCtx, NoteIdentity};
 use super::consumer::rows::Lane;
-use crate::shell::file_open::is_plain_segment;
+use crate::shell::file_open::is_plain_relative;
 
 const SCOPE: &str = "app_move";
 
@@ -127,13 +127,16 @@ fn found(root: &Path, lane: &Lane<'_>, note_id: &str, pending: &PendingMove) -> 
 }
 
 /// Whether `rel` is an entry of its folder under exactly that name (NFC): a volume that folds
-/// case answers a lookup of either spelling of a respelled file. A missing folder lists
-/// nothing; one that cannot be read, or a segment that is not one plain name, is an `Err`.
+/// case answers a lookup of either spelling of a respelled file. Only the name is compared:
+/// the folders are opened as recorded, and the move that respells a file leaves them as they
+/// are. A missing folder lists nothing; one that cannot be read is an `Err`, and so is a path
+/// that leads out of the vault ([`is_plain_relative`]: a name the user's file system holds,
+/// `Re: plan.md` or a folder `Notes `, is a path of the vault).
 fn listed(root: &Path, rel: &str) -> Result<bool, String> {
-    let segments: Vec<&str> = rel.split('/').collect();
-    if !segments.iter().all(|segment| is_plain_segment(segment)) {
+    if !is_plain_relative(rel) {
         return Err("the record names no path in the vault".to_owned());
     }
+    let segments: Vec<&str> = rel.split('/').collect();
     let (name, folders) = segments.split_last().expect("split yields a segment");
     let folder = folders
         .iter()

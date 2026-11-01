@@ -133,14 +133,15 @@ pub trait NoteIdentity: Send + Sync {
     /// Whether the app's own move of the note's file to `new_path` keeps what the file is, so
     /// its record may follow (Step 13g). `false` when it changes that, or when that is not
     /// known: the record then stays as it was and is owed the move, as for
-    /// [`Self::on_renamed`]. An identity that names nothing a day keeps every move.
+    /// [`Self::on_renamed`]. An identity that does not say keeps nothing (fails closed): a
+    /// record owed a move is settled later, one moved into the wrong kind is not.
     fn keeps_kind(
         &self,
         _ctx: &IdentityCtx<'_>,
         _note_id: &str,
         _new_path: &str,
     ) -> Result<bool, IdentityError> {
-        Ok(true)
+        Ok(false)
     }
 }
 

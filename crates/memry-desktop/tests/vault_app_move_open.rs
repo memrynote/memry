@@ -314,13 +314,7 @@ fn a_recorded_move_the_open_cannot_settle_is_logged_and_stays() {
             indexed_at: 0,
         })
         .unwrap();
-    let log = Log::default();
-    let subscriber = tracing_subscriber::fmt()
-        .with_writer(log.clone())
-        .with_max_level(tracing::Level::WARN)
-        .finish();
-
-    tracing::subscriber::with_default(subscriber, || {
+    let log = logged(tracing::Level::WARN, || {
         reopen(&mut e, false, |e| {
             rename(e, "Held.md", "Holder.md");
             rename(e, "Plan.md", "Plan 2.md");
@@ -331,8 +325,7 @@ fn a_recorded_move_the_open_cannot_settle_is_logged_and_stays() {
     for (id, value) in unread {
         assert_eq!(record(&e, id).as_deref(), Some(value));
     }
-    let stays = "an interrupted app move stays for the next open";
-    assert_eq!(log.text().matches(stays).count(), 3, "{}", log.text());
+    assert_eq!(log.matches(STAYS).count(), 3, "{log}");
     assert_eq!(row(&e, &later).as_deref(), Some("Later.md"));
     assert_eq!(row(&e, &plan).as_deref(), Some("Plan 2.md"));
 }
@@ -355,10 +348,77 @@ fn a_recorded_move_whose_folder_cannot_be_listed_stays() {
     fs::create_dir(&locked).unwrap();
     rename(&e, "Plan.md", "locked/Plan.md");
     mode(0o000);
-    e.open();
+    let log = logged(tracing::Level::WARN, || e.open());
     mode(0o755);
 
     assert!(record(&e, &id).is_some());
+    assert_eq!(log.matches(STAYS).count(), 1, "{log}");
+}
+
+/// A name the user's file system holds is a path of the vault: a `:` in a file name and a
+/// folder whose name ends in a space (both refused on Windows, which never lists them).
+#[cfg(unix)]
+#[test]
+fn a_recorded_move_of_a_name_with_a_colon_is_finished_when_the_vault_opens() {
+    let (mut e, store) = opened();
+    let id = markdown_note(&mut e, "Notes /Re: plan.md");
+    begin(
+        &e,
+        &store,
+        &id,
+        "Notes /Re: plan.md",
+        "Notes /Re: plan Q3.md",
+        "Re: plan Q3",
+    );
+
+    reopen(&mut e, true, |e| {
+        rename(e, "Notes /Re: plan.md", "Notes /Re: plan Q3.md");
+    });
+
+    assert_eq!(row(&e, &id).as_deref(), Some("Notes /Re: plan Q3.md"));
+    assert_eq!(title(&e, &id), "Re: plan Q3");
+    assert_eq!(record(&e, &id), None);
+}
+
+/// A volume that stores names decomposed (HFS+) lists `Café.md` as `Cafe\u{301}.md`, while
+/// the record holds what the app asked for. The open compares the two composed. Asserted on
+/// the finish's own line, since a volume that does not normalize then sees two names.
+#[test]
+fn a_recorded_move_whose_name_is_stored_decomposed_is_finished() {
+    let (mut e, store) = opened();
+    let id = markdown_note(&mut e, "Plan.md");
+    begin(
+        &e,
+        &store,
+        &id,
+        "Plan.md",
+        "Caf\u{e9}.md",
+        "Caf\u{e9}: menu",
+    );
+    e.close();
+    rename(&e, "Plan.md", "Cafe\u{301}.md");
+
+    let log = logged(tracing::Level::INFO, || e.open());
+
+    let finished = log
+        .lines()
+        .any(|line| line.contains("finished an interrupted app move") && line.contains(&id));
+    assert!(finished, "{log}");
+    assert_eq!(record(&e, &id), None);
+}
+
+const STAYS: &str = "an interrupted app move stays for the next open";
+
+/// What `f` logged at `level` and above on this thread, where the open's hooks run.
+fn logged(level: tracing::Level, f: impl FnOnce()) -> String {
+    let log = Log::default();
+    let subscriber = tracing_subscriber::fmt()
+        .with_writer(log.clone())
+        .with_max_level(level)
+        .with_ansi(false)
+        .finish();
+    tracing::subscriber::with_default(subscriber, f);
+    log.text()
 }
 
 /// What the open logged, for the test that it said why it left a record.
