@@ -161,7 +161,7 @@ fn convert_newlines(content: &str, eol: Eol) -> String {
 }
 
 /// `Object.entries(value)` as a map, for the edited path.
-fn entries_of(value: &YamlValue) -> YamlMap {
+pub(super) fn entries_of(value: &YamlValue) -> YamlMap {
     match value {
         YamlValue::Map(map) => (**map).clone(),
         YamlValue::Seq(items) => {
