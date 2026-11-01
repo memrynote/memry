@@ -8,7 +8,7 @@
 //! also carries the `#tags` typed into or deleted from it: a plain tag joins or leaves the
 //! header with them, and a tag with fields stays a mention in the text.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use serde::Deserialize;
 
@@ -75,9 +75,16 @@ pub struct Update<'a> {
 /// `applyHeaderTagEdit`: `current` with `edit`'s removes, renames and adds.
 pub fn apply(current: &[String], edit: &HeaderTagEdit) -> Vec<String> {
     let removed: HashSet<String> = edit.remove.iter().map(|tag| tag_key(tag)).collect();
+    // The last rename of a name wins, as in the `Map` desktop builds from the list.
+    let renames: HashMap<String, &str> = edit
+        .rename
+        .iter()
+        .map(|rename| (tag_key(&rename.from), rename.to.trim()))
+        .collect();
+    let mut held = HashSet::new();
     let mut next: Vec<String> = Vec::new();
     let mut append = |tag: &str| {
-        if !tag.is_empty() && !next.iter().any(|held| tag_key(held) == tag_key(tag)) {
+        if !tag.is_empty() && held.insert(tag_key(tag)) {
             next.push(tag.to_owned());
         }
     };
@@ -86,13 +93,7 @@ pub fn apply(current: &[String], edit: &HeaderTagEdit) -> Vec<String> {
         if removed.contains(&key) {
             continue;
         }
-        // The last rename of a name wins, as in the `Map` desktop builds from the list.
-        let renamed = edit
-            .rename
-            .iter()
-            .rev()
-            .find(|rename| tag_key(&rename.from) == key);
-        append(renamed.map_or(tag.as_str(), |rename| rename.to.trim()));
+        append(renames.get(&key).copied().unwrap_or(tag));
     }
     for tag in &edit.add {
         append(tag.trim());
@@ -138,18 +139,17 @@ pub fn compare(before: &[String], after: &[String]) -> Option<HeaderTagChange> {
     if before == after {
         return None;
     }
-    let holds = |list: &[String], tag: &str| list.iter().any(|held| fold(held) == fold(tag));
+    let keys = |list: &[String]| list.iter().map(|tag| fold(tag)).collect::<HashSet<_>>();
+    let (before_keys, after_keys) = (keys(before), keys(after));
+    let missing = |list: &[String], keys: &HashSet<String>| {
+        list.iter()
+            .filter(|tag| !keys.contains(&fold(tag)))
+            .cloned()
+            .collect()
+    };
     Some(HeaderTagChange {
-        added: after
-            .iter()
-            .filter(|tag| !holds(before, tag))
-            .cloned()
-            .collect(),
-        removed: before
-            .iter()
-            .filter(|tag| !holds(after, tag))
-            .cloned()
-            .collect(),
+        added: missing(after, &before_keys),
+        removed: missing(before, &after_keys),
     })
 }
 

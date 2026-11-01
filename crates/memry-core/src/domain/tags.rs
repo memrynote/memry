@@ -36,6 +36,9 @@
 //! which wins. The record payload is where §13.7.1 puts `tags`, so that is the
 //! only copy this core writes.
 
+use std::cell::Cell;
+use std::collections::HashSet;
+
 use rusqlite::Connection;
 use serde_json::Value;
 
@@ -58,6 +61,7 @@ pub const TAGGABLE_TYPES: [&str; 2] = ["note", "journal"];
 /// module comment. `fold(fold(s)) == fold(s)` and
 /// `fold(&s.to_lowercase()) == fold(s)`.
 pub fn fold(tag: &str) -> String {
+    FOLDS.with(|folds| folds.set(folds.get() + 1));
     let mut out = String::with_capacity(tag.len());
     let mut after_i = false;
     for c in tag.chars() {
@@ -73,6 +77,17 @@ pub fn fold(tag: &str) -> String {
         after_i = c == '\u{0130}' || (folded.next() == Some('i') && folded.next().is_none());
     }
     out
+}
+
+thread_local! {
+    static FOLDS: Cell<usize> = const { Cell::new(0) };
+}
+
+/// The folds this thread has run, for the complexity tests: a pairwise compare of a list's
+/// tags folds quadratically many times.
+#[doc(hidden)]
+pub fn folds() -> usize {
+    FOLDS.with(Cell::get)
 }
 
 /// A tag's key: the trimmed spelling, folded. `tag_definition` ids and schema
@@ -96,13 +111,10 @@ pub fn dedupe<I>(tags: I) -> Vec<String>
 where
     I: IntoIterator<Item = String>,
 {
-    let mut kept: Vec<String> = Vec::new();
-    for tag in tags {
-        if !kept.iter().any(|existing| same_tag(existing, &tag)) {
-            kept.push(tag);
-        }
-    }
-    kept
+    let mut seen = HashSet::new();
+    tags.into_iter()
+        .filter(|tag| seen.insert(fold(tag)))
+        .collect()
 }
 
 /// The tags on an item, exactly as the payload spells them.
