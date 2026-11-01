@@ -276,7 +276,8 @@
     "createDefinitionFailed": "無法建立屬性定義",
     "updateDefinitionFailed": "無法更新屬性定義",
     "setCalendarVisibilityFailed": "無法設定行事曆屬性的顯示狀態",
-    "definitionsFileUnreadable": "無法儲存屬性變更，因為無法讀取 .memry/properties.md。請修復或移除該檔案，然後再試一次。"
+    "definitionsFileUnreadable": "無法儲存屬性變更，因為無法讀取 .memry/properties.md。請修復或移除該檔案，然後再試一次。",
+    "definitionsFileWriteFailed": "無法儲存屬性變更，因為無法寫入 .memry/properties.md。"
   },
   "reminder": {
     "notFound": "找不到提醒",

@@ -20,7 +20,9 @@ const FIXED_MESSAGE_KEYS = new Map<string, string>([
  * Rust message stays English for the logs.
  */
 const COMMAND_CODE_KEYS = new Map<string, string>([
-  ['note_too_large_to_sync', 'errors:note.tooLargeToSync']
+  ['note_too_large_to_sync', 'errors:note.tooLargeToSync'],
+  ['property_definitions_unreadable', 'errors:property.definitionsFileUnreadable'],
+  ['property_definitions_write_failed', 'errors:property.definitionsFileWriteFailed']
 ])
 
 const IPC_PREFIX_PATTERNS = [

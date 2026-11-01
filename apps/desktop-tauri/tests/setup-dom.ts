@@ -73,6 +73,17 @@ vi.mock('../src/generated/bindings', () => {
     window.api.tags as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
   // The window functions are off `window.api`'s type; the mock below still provides them.
   const win = () => window.api as unknown as Record<string, (...args: unknown[]) => unknown>
+  const definition = async (result: Promise<unknown>) => {
+    const answer = (await result) as
+      | { success?: boolean; definition?: unknown; error?: string }
+      | undefined
+    if (answer?.success === false) throw new Error(answer.error ?? '')
+    return answer?.definition ?? null
+  }
+  const done = async (result: Promise<unknown>) => {
+    await result
+    return null
+  }
   const event = (
     subscribe: () => (handler: (payload: unknown) => void) => () => void,
     wrap = (p: unknown) => p
@@ -127,6 +138,29 @@ vi.mock('../src/generated/bindings', () => {
         ((await notes().setLocalOnly(id, localOnly)) as { note?: unknown } | undefined)?.note,
       notesGetLocalOnlyCount: async () =>
         ((await notes().getLocalOnlyCount()) as { count: number }).count,
+      // Component tests answer the definition writes in Electron's envelope; a command answers
+      // with the definition, or rejects.
+      notesGetPropertyDefinitions: () => notes().getPropertyDefinitions(),
+      notesCreatePropertyDefinition: async (input: unknown) =>
+        definition(notes().createPropertyDefinition(input)),
+      notesUpdatePropertyDefinition: async (input: unknown) =>
+        definition(notes().updatePropertyDefinition(input)),
+      notesEnsurePropertyDefinition: (name: string, kind: string) =>
+        done(notes().ensurePropertyDefinition(name, kind)),
+      notesAddPropertyOption: (name: string, option: unknown) =>
+        done(notes().addPropertyOption(name, option)),
+      notesAddStatusOption: (name: string, category: string, option: unknown) =>
+        done(notes().addStatusOption(name, category, option)),
+      notesRemovePropertyOption: (name: string, value: string) =>
+        done(notes().removePropertyOption(name, value)),
+      notesRenamePropertyOption: (name: string, from: string, to: string) =>
+        done(notes().renamePropertyOption(name, from, to)),
+      notesUpdateOptionColor: (name: string, value: string, color: string) =>
+        done(notes().updateOptionColor(name, value, color)),
+      notesDeletePropertyDefinition: (name: string) => done(notes().deletePropertyDefinition(name)),
+      notesSetCalendarPropertyVisibility: (name: string, show: boolean) =>
+        done(notes().setCalendarPropertyVisibility(name, show)),
+      notesGetCalendarPropertyNames: () => notes().getCalendarPropertyNames(),
       tagsGetAllWithCounts: async () =>
         ((await tags().getAllWithCounts()) as { tags: unknown[] }).tags,
       tagsGetNotesByTag: (input: unknown) => tags().getNotesByTag(input),

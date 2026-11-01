@@ -276,7 +276,8 @@
     "createDefinitionFailed": "تعذّر إنشاء تعريف الخاصية",
     "updateDefinitionFailed": "تعذّر تحديث تعريف الخاصية",
     "setCalendarVisibilityFailed": "تعذّر ضبط ظهور خاصية التقويم",
-    "definitionsFileUnreadable": "لا يمكن حفظ تغييرات الخصائص لأن الملف .memry/properties.md غير قابل للقراءة. أصلح هذا الملف أو أزله، ثم حاول مرة أخرى."
+    "definitionsFileUnreadable": "لا يمكن حفظ تغييرات الخصائص لأن الملف .memry/properties.md غير قابل للقراءة. أصلح هذا الملف أو أزله، ثم حاول مرة أخرى.",
+    "definitionsFileWriteFailed": "لا يمكن حفظ تغييرات الخصائص لأنه تعذّرت الكتابة في الملف .memry/properties.md."
   },
   "reminder": {
     "notFound": "لم يتم العثور على التذكير",
