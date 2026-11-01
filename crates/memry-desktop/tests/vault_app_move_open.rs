@@ -338,7 +338,8 @@ fn a_recorded_move_the_open_cannot_settle_is_logged_and_stays() {
 }
 
 /// A folder of the move that cannot be listed leaves the open unable to tell where the file
-/// is: the record stays.
+/// is: the record stays. The open's hooks run before `open` returns, so the finish has run;
+/// the walk is not awaited, since a watcher on Linux cannot start over a folder it cannot read.
 #[cfg(unix)]
 #[test]
 fn a_recorded_move_whose_folder_cannot_be_listed_stays() {
@@ -350,11 +351,11 @@ fn a_recorded_move_whose_folder_cannot_be_listed_stays() {
     let locked = e.vault.join("locked");
     let mode = |mode| fs::set_permissions(&locked, fs::Permissions::from_mode(mode)).unwrap();
 
-    reopen(&mut e, false, |e| {
-        fs::create_dir(&locked).unwrap();
-        rename(e, "Plan.md", "locked/Plan.md");
-        mode(0o000);
-    });
+    e.close();
+    fs::create_dir(&locked).unwrap();
+    rename(&e, "Plan.md", "locked/Plan.md");
+    mode(0o000);
+    e.open();
     mode(0o755);
 
     assert!(record(&e, &id).is_some());
