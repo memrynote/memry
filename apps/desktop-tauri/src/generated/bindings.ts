@@ -180,6 +180,17 @@ export const commands = {
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
 	telemetrySetEnabled: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_enabled", { enabled }),
 	telemetryTrack: (event: TelemetryEvent) => __TAURI_INVOKE<null>("telemetry_track", { event }),
+	templatesCreate: (input: TemplateCreateInput) => __TAURI_INVOKE<TemplateView>("templates_create", { input }),
+	/**  Deletes a template of the vault and its pre-sync file; a built-in is refused. */
+	templatesDelete: (id: string) => __TAURI_INVOKE<null>("templates_delete", { id }),
+	/**  Copies a built-in or a template of the vault into a new template named `new_name`. */
+	templatesDuplicate: (id: string, newName: string) => __TAURI_INVOKE<TemplateView>("templates_duplicate", { id, newName }),
+	/**  A built-in or a template of the vault; `null` for any other id. */
+	templatesGet: (id: string) => __TAURI_INVOKE<TemplateView | null>("templates_get", { id }),
+	/**  Built-ins by name, then the vault's own by name. */
+	templatesList: () => __TAURI_INVOKE<TemplateListItem[]>("templates_list"),
+	/**  Saves the fields `input` names; a built-in is refused. */
+	templatesUpdate: (input: TemplateUpdateInput) => __TAURI_INVOKE<TemplateView>("templates_update", { input }),
 	/**
 	 *  Searches photos. An empty `query` is the capability probe: it answers from the key alone
 	 *  without a request.
@@ -254,6 +265,9 @@ export const events = {
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
+	templateCreatedEvent: makeEvent<TemplateCreatedEvent, TemplateCreatedEvent>("template-created-event"),
+	templateDeletedEvent: makeEvent<TemplateDeletedEvent, TemplateDeletedEvent>("template-deleted-event"),
+	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
 	updaterStateChangedEvent: makeEvent<UpdaterStateChangedEvent, UpdaterStateChangedEvent>("updater-state-changed-event"),
 	vaultActivityChangedEvent: makeEvent<VaultActivityChangedEvent, VaultActivityChangedEvent>("vault-activity-changed-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
@@ -923,6 +937,80 @@ export type TelemetryFlushResult = {
 export type TelemetrySettings = {
 	enabled: boolean,
 	autoSendDiagnostics: boolean,
+};
+
+/**  `TemplateCreateInput`. */
+export type TemplateCreateInput = {
+	name: string,
+	description?: string | null,
+	icon?: string | null,
+	tags?: string[],
+	properties?: TemplateProperty[],
+	content?: string,
+};
+
+/**  A template was created or duplicated (`templates:created`). The renderer refetches the list. */
+export type TemplateCreatedEvent = {
+	id: string,
+};
+
+/**  A template was deleted (`templates:deleted`). The renderer refetches the list. */
+export type TemplateDeletedEvent = {
+	id: string,
+};
+
+/**  One row of the list (`TemplateListItem`). */
+export type TemplateListItem = {
+	id: string,
+	name: string,
+	description?: string | null,
+	icon: string | null,
+	isBuiltIn: boolean,
+};
+
+/**  `TemplatePropertySchema`, as a write takes it. */
+export type TemplateProperty = {
+	name: string,
+	type: TemplatePropertyType,
+	value: Value,
+	options?: string[],
+};
+
+/**  `TemplatePropertyType`. */
+export type TemplatePropertyType = "text" | "number" | "checkbox" | "date" | "select" | "multiselect" | "url" | "rating" | "project";
+
+/**  `TemplateUpdateInput`: an absent field stays; `icon: null` clears the icon. */
+export type TemplateUpdateInput = {
+	id: string,
+	name?: string | null,
+	description?: string | null,
+	icon?: string | null,
+	tags?: string[] | null,
+	properties?: TemplateProperty[] | null,
+	content?: string | null,
+};
+
+/**  A template was saved (`templates:updated`). The renderer refetches the list. */
+export type TemplateUpdatedEvent = {
+	id: string,
+};
+
+/**
+ *  One template (`Template`). `properties` are the stored objects as they are: a peer may hold
+ *  a type this build does not know.
+ */
+export type TemplateView = {
+	id: string,
+	name: string,
+	description?: string | null,
+	icon: string | null,
+	isBuiltIn: boolean,
+	tags: string[],
+	/**  Typed for the renderer as Electron's `rowToTemplate` types them; held as stored. */
+	properties: TemplateProperty[],
+	content: string,
+	createdAt: string,
+	modifiedAt: string,
 };
 
 /**  One entry of `WikiLinkTitleResolutions`. */

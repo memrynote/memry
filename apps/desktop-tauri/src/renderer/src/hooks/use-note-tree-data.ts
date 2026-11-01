@@ -8,6 +8,7 @@ import {
   type NoteListItem
 } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
+import { templatesService } from '@/services/templates-service'
 import {
   buildTreeFromNotes,
   hideVaultFiles,
@@ -118,7 +119,7 @@ export function useNoteTreeData(): NoteTreeData {
       if (folders.length === 0) return
 
       try {
-        const templatesResponse = await window.api.templates.list()
+        const templatesResponse = await templatesService.list()
         const templatesMap = new Map(templatesResponse.templates.map((t) => [t.id, t.name]))
 
         const namesMap = new Map<string, string>()

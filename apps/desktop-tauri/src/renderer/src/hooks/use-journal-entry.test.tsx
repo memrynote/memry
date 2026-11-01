@@ -20,6 +20,8 @@ import {
 } from '@/lib/vault-workspace-lifecycle'
 import { useJournalEntry } from './use-journal-entry'
 
+const templates = vi.hoisted(() => ({ get: vi.fn() }))
+vi.mock('@/services/templates-service', () => ({ getTemplate: templates.get }))
 vi.mock('react-i18next', () => ({
   getI18n: () => ({
     language: 'en-US',
@@ -77,7 +79,7 @@ describe('useJournalEntry dedicated hook', () => {
       showAIConnections: true,
       showStatsFooter: false
     })
-    ;(window.api.templates.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+    templates.get.mockResolvedValue({
       id: 'daily',
       name: 'Daily',
       isBuiltIn: false,
@@ -108,7 +110,7 @@ describe('useJournalEntry dedicated hook', () => {
     ;(window.api.settings.getJournalSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
       defaultTemplate: 'daily'
     })
-    ;(window.api.templates.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+    templates.get.mockResolvedValue({
       id: 'daily',
       name: 'Daily',
       isBuiltIn: false,

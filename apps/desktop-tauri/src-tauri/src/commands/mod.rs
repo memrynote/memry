@@ -16,6 +16,7 @@ pub mod shortcuts;
 pub mod spell;
 pub mod tags;
 pub mod telemetry;
+pub mod templates;
 pub mod unsplash;
 pub mod updater;
 pub mod vault;

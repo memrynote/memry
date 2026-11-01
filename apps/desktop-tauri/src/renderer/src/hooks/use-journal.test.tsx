@@ -23,6 +23,9 @@ import {
   cleanupHookTestEnvironment
 } from '@tests/utils/hook-test-wrapper'
 
+const templates = vi.hoisted(() => ({ get: vi.fn() }))
+vi.mock('@/services/templates-service', () => ({ getTemplate: templates.get }))
+
 // ============================================================================
 // Test Setup
 // ============================================================================
@@ -98,7 +101,7 @@ describe('useJournalEntry', () => {
         showAIConnections: true,
         showStatsFooter: false
       })
-      ;(window.api.templates.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      templates.get.mockResolvedValue({
         id: 'daily-reflection',
         name: 'Daily Reflection',
         description: 'Reflect on the day',

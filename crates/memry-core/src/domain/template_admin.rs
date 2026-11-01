@@ -130,6 +130,8 @@ pub struct TemplateEdit {
     pub description: Option<Option<String>>,
     pub icon: Option<Option<String>>,
     pub tags: Option<Vec<String>>,
+    /// `TemplatePropertySchema` objects, written as given: the caller checked their shape.
+    pub properties: Option<Vec<Value>>,
     pub content: Option<String>,
 }
 
@@ -289,6 +291,9 @@ pub fn update(
             "tags",
             Change::set(crate::domain::tags::dedupe(tags.clone())),
         ));
+    }
+    if let Some(properties) = &change.properties {
+        changes.push(("properties", Change::Set(Value::Array(properties.clone()))));
     }
     if let Some(content) = &change.content {
         changes.push(("content", Change::set(content.clone())));

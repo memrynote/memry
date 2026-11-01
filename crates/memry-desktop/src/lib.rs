@@ -23,6 +23,7 @@ pub mod shell;
 pub mod startup_values;
 pub mod tags;
 pub mod telemetry;
+pub mod templates;
 pub mod updater;
 pub mod vault;
 pub mod web;

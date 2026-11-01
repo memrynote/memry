@@ -76,6 +76,8 @@ vi.mock('@/contexts/tabs', () => ({
   })
 }))
 
+const templates = vi.hoisted(() => ({ list: vi.fn() }))
+vi.mock('@/services/templates-service', () => ({ templatesService: templates }))
 vi.mock('@/services/notes-service', () => ({
   notesService: {
     create: vi.fn(),
@@ -185,7 +187,7 @@ describe('useNoteTreeActions', () => {
     vi.clearAllMocks()
     mocks.createInSelectedFolder = true
     mocks.openPagesInNewTab = true
-    window.api.templates.list.mockResolvedValue({
+    templates.list.mockResolvedValue({
       success: true,
       templates: [{ id: 'tpl-1', name: 'Meeting note' }]
     })

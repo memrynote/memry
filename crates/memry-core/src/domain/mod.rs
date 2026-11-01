@@ -70,6 +70,7 @@ pub mod task_tree;
 pub mod task_views;
 pub mod tasks;
 pub mod template_admin;
+pub mod template_store;
 pub mod templates;
 pub mod unlinked_mentions;
 pub mod wiki_suggest;

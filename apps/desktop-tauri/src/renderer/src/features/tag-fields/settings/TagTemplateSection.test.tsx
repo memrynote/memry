@@ -9,6 +9,8 @@ const toastMock = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), warning:
 vi.mock('sonner', () => ({ toast: toastMock }))
 
 const openTab = vi.hoisted(() => vi.fn())
+const templates = vi.hoisted(() => ({ get: vi.fn(), create: vi.fn() }))
+vi.mock('@/services/templates-service', () => ({ templatesService: templates }))
 vi.mock('@/contexts/tabs', () => ({ useTabs: () => ({ openTab }) }))
 
 function resolvedTag(overrides: Partial<ResolvedTag> = {}): ResolvedTag {
@@ -50,13 +52,11 @@ beforeEach(() => {
   vi.clearAllMocks()
   editSchema.mockResolvedValue({ snapshot: {} })
   Object.assign(window.api.tags, { editSchema })
-  vi.mocked(window.api.templates.get).mockResolvedValue(
-    template('## Agenda\nTopics to cover\n## Notes\n') as never
-  )
-  vi.mocked(window.api.templates.create).mockResolvedValue({
+  templates.get.mockResolvedValue(template('## Agenda\nTopics to cover\n## Notes\n'))
+  templates.create.mockResolvedValue({
     success: true,
     template: template('## Notes\n', 'Person')
-  } as never)
+  })
 })
 
 function renderSection(
@@ -92,7 +92,7 @@ describe('TagTemplateSection without a template', () => {
     await user.click(screen.getByRole('button', { name: 'Create template' }))
 
     await waitFor(() =>
-      expect(window.api.templates.create).toHaveBeenCalledWith({
+      expect(templates.create).toHaveBeenCalledWith({
         name: 'Person',
         content: '## Notes\n'
       })
@@ -117,10 +117,10 @@ describe('TagTemplateSection without a template', () => {
   })
 
   it('reports why creation failed and attaches nothing', async () => {
-    vi.mocked(window.api.templates.create).mockResolvedValue({
+    templates.create.mockResolvedValue({
       success: false,
       error: 'Templates folder is read-only'
-    } as never)
+    })
     const user = userEvent.setup()
     renderSection(resolvedTag())
 
@@ -151,7 +151,7 @@ describe('TagTemplateSection without a template', () => {
   })
 
   it('offers to create again when the attached template no longer exists', async () => {
-    vi.mocked(window.api.templates.get).mockResolvedValue(null)
+    templates.get.mockResolvedValue(null)
     renderSection(resolvedTag({ template: { id: 'gone', autofill: true, inheritedFrom: null } }))
 
     expect(await screen.findByText(/No template yet/)).toBeInTheDocument()
@@ -169,13 +169,11 @@ describe('TagTemplateSection with a template', () => {
     expect(screen.getByText('Topics to cover')).toBeInTheDocument()
     expect(screen.getByText('Notes')).toBeInTheDocument()
     expect(screen.getByText('-')).toBeInTheDocument()
-    expect(window.api.templates.get).toHaveBeenCalledWith('tpl-1')
+    expect(templates.get).toHaveBeenCalledWith('tpl-1')
   })
 
   it('shows the template name when it has no headings to preview', async () => {
-    vi.mocked(window.api.templates.get).mockResolvedValue(
-      template('just text', 'Quick note') as never
-    )
+    templates.get.mockResolvedValue(template('just text', 'Quick note'))
     renderSection(attached)
 
     expect(await screen.findByText('Quick note')).toBeInTheDocument()
