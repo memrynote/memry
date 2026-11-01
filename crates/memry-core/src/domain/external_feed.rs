@@ -36,7 +36,9 @@
 //!   a synced body pushes no second copy;
 //! - a body that is replaced is first kept as a version of the whole file, under
 //!   the file's frontmatter ([`super::note_snapshots::keep`]), so an edit this device holds and the file
-//!   does not (a peer's, merged after the file was last written) can be restored.
+//!   does not (a peer's, merged after the file was last written) can be restored. The app's own
+//!   write ([`feed_app_edit`]) keeps none of a body that is the text it read: that is the
+//!   user's previous save.
 //!
 //! The replace is not a merge. Two devices feeding the same new text into one
 //! body at the same time each delete the old body and insert their copy, and the
@@ -169,7 +171,38 @@ pub fn feed_external_edit(
     device_id: &str,
     now_ms: i64,
 ) -> Result<FeedOutcome, CrdtError> {
-    author(conn, converter, input, device_id, now_ms, Write::Replace)
+    author(
+        conn,
+        converter,
+        input,
+        device_id,
+        now_ms,
+        Write::Replace { read: None },
+    )
+}
+
+/// The app's own edit of a note's file: the body the app wrote (`input.markdown`) replaces the
+/// note's, as [`feed_external_edit`] does, after the app read `read`, the file's body before its
+/// write. A replaced body is kept as a version only when it is not the text the app read: it
+/// then holds what the file did not (a peer's edit merged after the file was last written).
+/// The body the app read is the note as the user saw it, so an editor save keeps no version of
+/// its own previous save (desktop's note command feeds a save with none).
+pub fn feed_app_edit(
+    conn: &Connection,
+    converter: &Converter,
+    input: FeedInput<'_>,
+    read: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<FeedOutcome, CrdtError> {
+    author(
+        conn,
+        converter,
+        input,
+        device_id,
+        now_ms,
+        Write::Replace { read: Some(read) },
+    )
 }
 
 /// Gives a note with an empty body the file's text, and does nothing to one that
@@ -193,8 +226,11 @@ pub fn seed_body_if_empty(
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Write {
-    Replace,
+enum Write<'r> {
+    /// `read`: the file body the app read before its own write, which needs no version.
+    Replace {
+        read: Option<&'r str>,
+    },
     SeedIfEmpty,
 }
 
@@ -204,7 +240,7 @@ fn author(
     input: FeedInput<'_>,
     device_id: &str,
     now_ms: i64,
-    write: Write,
+    write: Write<'_>,
 ) -> Result<FeedOutcome, CrdtError> {
     let FeedInput {
         note_id,
@@ -305,7 +341,13 @@ fn author(
     if !updates.iter().all(|update| rides_as_one_update(update)) {
         return too_large(tx, note_id, now_ms);
     }
-    if let Some(previous) = replaced {
+    let read = match write {
+        Write::Replace { read } => read,
+        Write::SeedIfEmpty => None,
+    };
+    if let Some(previous) =
+        replaced.filter(|body| read.is_none_or(|read| !same_text(&body.markdown, read)))
+    {
         let version = note_snapshots::Version {
             note_id,
             content: &as_file(

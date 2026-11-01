@@ -14,6 +14,7 @@ use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::crdt::blocks::Block;
+use crate::domain::journal_rules::is_js_whitespace;
 use crate::domain::notes::failed;
 use crate::domain::tags;
 
@@ -46,6 +47,56 @@ pub fn extract(blocks: &[Block]) -> Vec<String> {
     tags::dedupe(found)
 }
 
+/// The `#tags` of a markdown body, as desktop's `extractInlineTagsFromMarkdown` reads them: every
+/// fenced span (three backticks to the next three) and inline code span removed, then the tags
+/// of the text left. Deduped case-insensitively, first spelling kept.
+pub fn extract_markdown(markdown: &str) -> Vec<String> {
+    let text = without_inline_code(&without_fences(markdown));
+    let mut found = Vec::new();
+    scan(&text, &mut found);
+    tags::dedupe(found)
+}
+
+/// `/```[\s\S]*?```/g` replaced with nothing: an opening run with no closing one ends the
+/// removals, since no later opening has one either.
+fn without_fences(text: &str) -> String {
+    const FENCE: &str = "```";
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(open) = rest.find(FENCE) {
+        let Some(close) = rest[open + FENCE.len()..].find(FENCE) else {
+            break;
+        };
+        out.push_str(&rest[..open]);
+        rest = &rest[open + FENCE.len() + close + FENCE.len()..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// `` /`[^`]+`/g `` replaced with nothing.
+fn without_inline_code(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(open) = rest.find('`') {
+        let after = &rest[open + 1..];
+        match after.find('`') {
+            // At least one character between the two backticks.
+            Some(close) if close > 0 => {
+                out.push_str(&rest[..open]);
+                rest = &after[close + 1..];
+            }
+            Some(_) => {
+                out.push_str(&rest[..=open]);
+                rest = after;
+            }
+            None => break,
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
 fn scan(line: &str, found: &mut Vec<String>) {
     for (start, end) in tag_spans(line, None) {
         found.push(line[start..end].to_owned());
@@ -66,7 +117,8 @@ pub(crate) fn tag_spans(line: &str, char_before_line: Option<char>) -> Vec<(usiz
             char_at(at - 1)
         };
         let starts = char_at(at) == Some('#')
-            && preceding.is_none_or(char::is_whitespace)
+            // JavaScript's `\s`, which the desktop grammar tests: U+FEFF starts a tag, U+0085 does not.
+            && preceding.is_none_or(is_js_whitespace)
             && char_at(at + 1).is_some_and(|c| c.is_ascii_alphabetic());
         if !starts {
             at += 1;
