@@ -123,13 +123,13 @@ pub fn next(
         Some(edit) if inline => apply_inline(existing.header_tags, edit, with_fields),
         Some(edit) => apply(existing.header_tags, edit),
     };
-    if !inline && !update.ignore_inline_tags {
-        if let Some(edit) = update
+    if !inline
+        && !update.ignore_inline_tags
+        && let Some(edit) = update
             .content
             .and_then(|content| inline_edit_between(existing.content, content))
-        {
-            tags = apply_inline(&tags, &edit, with_fields);
-        }
+    {
+        tags = apply_inline(&tags, &edit, with_fields);
     }
     tags
 }
