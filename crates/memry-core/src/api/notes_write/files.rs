@@ -26,6 +26,13 @@ impl NotesWriter {
             .call_blocking(move |conn| identity::has_unfiled_note(conn, title, folder_path))
     }
 
+    /// Whether a file beside Electron's database may get a new note id
+    /// ([`identity::mints_beside_electron`]).
+    pub fn mints_beside_electron(&self) -> Result<bool, StorageError> {
+        self.db
+            .call_blocking(|conn| identity::mints_beside_electron(conn))
+    }
+
     /// The note of a file no row names: a note that is that file already, or a
     /// new one ([`identity::adopt`]).
     pub fn adopt_file(

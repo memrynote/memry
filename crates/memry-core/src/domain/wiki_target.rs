@@ -23,8 +23,18 @@
 //! attachment, whose title desktop takes from the filename without its
 //! extension (`indexer.ts`). The extension itself is not projected, so a path
 //! link to an attachment matches on any extension.
+//!
+//! A lookup reads only the rows that can answer it ([`WikiNames::load_for`]):
+//! `wiki_name_keys` holds every key each live note and day claims, computed here
+//! because SQLite's `lower()` folds ASCII only. Triggers on `notes`,
+//! `journal_entries` and `journal_aliases` list a changed id in
+//! `wiki_names_owed` (data migration 0019), so a row written by any writer, an
+//! older build's included, is read whole until [`settle_name_keys`] stores its
+//! keys again. A lookup is answered from every row claiming one of its keys plus
+//! every owed row, and the tie-break needs only the rows claiming a key, so the
+//! answer is the one [`WikiNames::load`] gives.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use rusqlite::Connection;
 
@@ -112,66 +122,40 @@ struct Row {
     aliases: Vec<String>,
 }
 
+/// The ids that claim one of the keys in `?1` (a JSON array), and every owed id.
+pub(crate) const CANDIDATES: &str = "SELECT id FROM wiki_name_keys \
+     WHERE key IN (SELECT value FROM json_each(?1)) UNION SELECT id FROM wiki_names_owed";
+
 impl WikiNames {
+    /// Every live note and day: the whole vault's names, for a pass over many targets.
     pub fn load(conn: &Connection) -> Result<Self, StorageError> {
-        let mut rows = Vec::new();
-        let mut notes = conn
-            .prepare(
-                "SELECT id, title, folder_path, file_type, aliases FROM notes \
-                 WHERE deleted_at IS NULL",
-            )
+        Ok(Self::ranked(rows(conn, None)?))
+    }
+
+    /// The rows that can answer `targets`, each a whole wiki-link target or a bare
+    /// title: those whose stored keys hold one of the targets' keys, and every row
+    /// owed new keys. Resolving any of `targets` gives what [`WikiNames::load`]
+    /// gives; reads grow with the matches and the owed rows, not with the vault.
+    pub fn load_for<'a>(
+        conn: &Connection,
+        targets: impl IntoIterator<Item = &'a str>,
+    ) -> Result<Self, StorageError> {
+        let keys: HashSet<String> = targets.into_iter().flat_map(target_keys).collect();
+        let keys = to_json(&keys)?;
+        // Both reads in one snapshot, so a rename committed between them is not half seen.
+        let snapshot = if conn.is_autocommit() {
+            Some(conn.unchecked_transaction().map_err(failed)?)
+        } else {
+            None
+        };
+        let mut statement = conn.prepare(CANDIDATES).map_err(failed)?;
+        let ids = statement
+            .query_map([keys], |row| row.get::<_, String>(0))
+            .map_err(failed)?
+            .collect::<Result<HashSet<_>, _>>()
             .map_err(failed)?;
-        let found = notes
-            .query_map([], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, Option<String>>(2)?,
-                    row.get::<_, String>(3)?,
-                    row.get::<_, Option<String>>(4)?,
-                ))
-            })
-            .map_err(failed)?;
-        for row in found {
-            let (id, title, folder, file_type, aliases) = row.map_err(failed)?;
-            let stem = match folder.filter(|folder| !folder.is_empty()) {
-                Some(folder) => format!("{folder}/{title}"),
-                None => title.clone(),
-            };
-            rows.push(Row {
-                aliases: parse_aliases(&id, aliases)?,
-                id,
-                title,
-                stem: Some((stem, file_type == "markdown")),
-                journal_date: None,
-            });
-        }
-        let mut days = conn
-            .prepare(
-                "SELECT j.id, j.date, a.aliases FROM journal_entries j \
-                 LEFT JOIN journal_aliases a ON a.journal_id = j.id \
-                 WHERE j.deleted_at IS NULL",
-            )
-            .map_err(failed)?;
-        let found = days
-            .query_map([], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, Option<String>>(2)?,
-                ))
-            })
-            .map_err(failed)?;
-        for row in found {
-            let (id, date, aliases) = row.map_err(failed)?;
-            rows.push(Row {
-                aliases: parse_aliases(&id, aliases)?,
-                id,
-                title: date.clone(),
-                stem: None,
-                journal_date: Some(date),
-            });
-        }
+        let rows = rows(conn, Some(&to_json(&ids)?))?;
+        drop(snapshot);
         Ok(Self::ranked(rows))
     }
 
@@ -193,44 +177,25 @@ impl WikiNames {
             by_date: HashMap::new(),
         };
         for (at, row) in rows.into_iter().enumerate() {
-            let mut link_keys = Vec::new();
-            let mut link_prefixes = Vec::new();
-            if let Some((stem, markdown)) = &row.stem {
-                let map = if *markdown {
-                    names.by_path.entry(fold(&format!("{stem}.md")))
-                } else {
-                    names.by_file.entry(fold(stem))
-                };
-                map.or_insert(at);
-                if let Some(key) = name_key(stem) {
-                    if *markdown {
-                        link_keys.extend([
-                            format!("{key}.md"),
-                            format!("/{key}"),
-                            format!("/{key}.md"),
-                        ]);
-                    } else {
-                        link_prefixes.extend([format!("{key}."), format!("/{key}.")]);
-                    }
-                    link_keys.push(key);
-                }
+            let claims = Claims::of(&row);
+            if let Some(path) = claims.path {
+                names.by_path.entry(path).or_insert(at);
             }
-            names.by_title.entry(row.title.clone()).or_insert(at);
-            if let Some(key) = name_key(&row.title) {
-                names.by_title_key.entry(key.clone()).or_insert(at);
-                link_keys.push(key);
+            if let Some(file) = claims.file {
+                names.by_file.entry(file).or_insert(at);
             }
-            for alias in &row.aliases {
-                if let Some(key) = name_key(alias) {
-                    names.by_alias_key.entry(key.clone()).or_insert(at);
-                    link_keys.push(key);
-                }
+            names.by_title.entry(claims.title).or_insert(at);
+            if let Some(key) = claims.title_key {
+                names.by_title_key.entry(key).or_insert(at);
+            }
+            for key in claims.alias_keys {
+                names.by_alias_key.entry(key).or_insert(at);
             }
             if let Some(date) = &row.journal_date {
                 names.by_date.entry(date.clone()).or_insert(at);
-                link_keys.push(format!("j{date}"));
             }
             names.by_id.entry(row.id.clone()).or_insert(at);
+            let (link_keys, link_prefixes) = link_forms(&row);
             names.entries.push(Entry {
                 id: row.id,
                 journal_date: row.journal_date,
@@ -320,6 +285,229 @@ impl WikiNames {
             matched_by,
         }
     }
+}
+
+/// The keys one row claims in [`WikiNames`]'s lookup maps, one field per map.
+///
+/// `wiki_name_keys` stores these, so a change to what a key is ([`name_key`], [`fold`], the
+/// NFC step, a new map) leaves stored keys stale: it ships with a data migration that marks
+/// every row owed (`INSERT INTO wiki_names_owed (id) SELECT id FROM notes UNION SELECT id
+/// FROM journal_entries`), as 0019 does.
+struct Claims {
+    /// `by_path`: a markdown note's folded `folder/Title.md`.
+    path: Option<String>,
+    /// `by_file`: an attachment's folded `folder/Title`.
+    file: Option<String>,
+    /// `by_title`: the title as written (a day's date).
+    title: String,
+    title_key: Option<String>,
+    alias_keys: Vec<String>,
+}
+
+impl Claims {
+    fn of(row: &Row) -> Self {
+        let (path, file) = match &row.stem {
+            Some((stem, true)) => (Some(fold(&format!("{stem}.md"))), None),
+            Some((stem, false)) => (None, Some(fold(stem))),
+            None => (None, None),
+        };
+        Self {
+            path,
+            file,
+            title: row.title.clone(),
+            title_key: name_key(&row.title),
+            alias_keys: row
+                .aliases
+                .iter()
+                .filter_map(|alias| name_key(alias))
+                .collect(),
+        }
+    }
+
+    /// Every claim, as `wiki_name_keys` stores them. A day's date is its title.
+    fn all(self) -> impl Iterator<Item = String> {
+        self.path
+            .into_iter()
+            .chain(self.file)
+            .chain([self.title])
+            .chain(self.title_key)
+            .chain(self.alias_keys)
+    }
+}
+
+/// The `note_links.target_key` forms that link to the row (`link_keys`), and the prefixes
+/// of an attachment's forms with any extension.
+fn link_forms(row: &Row) -> (Vec<String>, Vec<String>) {
+    let mut link_keys = Vec::new();
+    let mut link_prefixes = Vec::new();
+    if let Some((stem, markdown)) = &row.stem
+        && let Some(key) = name_key(stem)
+    {
+        if *markdown {
+            link_keys.extend([format!("{key}.md"), format!("/{key}"), format!("/{key}.md")]);
+        } else {
+            link_prefixes.extend([format!("{key}."), format!("/{key}.")]);
+        }
+        link_keys.push(key);
+    }
+    link_keys.extend(name_key(&row.title));
+    link_keys.extend(row.aliases.iter().filter_map(|alias| name_key(alias)));
+    if let Some(date) = &row.journal_date {
+        link_keys.push(format!("j{date}"));
+    }
+    (link_keys, link_prefixes)
+}
+
+/// Every key a lookup of `half` reads in [`WikiNames::resolve`]: the path forms of a half
+/// with a `/`, the title as written, and its name key.
+fn half_keys(half: &str) -> Vec<String> {
+    let written = js_trim(half);
+    let mut keys = vec![written.to_owned()];
+    if written.contains('/') {
+        let stem = written.strip_prefix('/').unwrap_or(written);
+        let folded = fold(stem);
+        keys.push(fold(&format!("{stem}.md")));
+        if let Some((bare, _)) = folded.rsplit_once('.') {
+            keys.push(bare.to_owned());
+        }
+        keys.push(folded);
+    }
+    keys.extend(name_key(half));
+    keys
+}
+
+/// Every key resolving `target` reads: [`WikiNames::resolve_target`]'s note half and whole
+/// target, and the day a date or `j<date>` names ([`WikiNames::journal_on`]).
+fn target_keys(target: &str) -> Vec<String> {
+    let raw = target.trim();
+    // Untrimmed too: `resolve` trims with JavaScript's rule, which keeps U+0085 that `trim`
+    // drops, so a bare title is looked up as written.
+    let mut keys = half_keys(target);
+    keys.extend(half_keys(raw));
+    keys.extend(half_keys(split(raw).0));
+    if let Some((date, _)) = crate::domain::note_meta::journal_date_of(raw) {
+        keys.push(date);
+    }
+    keys
+}
+
+/// Stores the keys of every id `wiki_names_owed` lists and clears the list: an id no longer
+/// live keeps no key. On `data.db`'s writer, in one transaction. The number of ids settled.
+pub fn settle_name_keys(conn: &Connection) -> Result<usize, StorageError> {
+    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let ids = {
+        let mut statement = transaction
+            .prepare("SELECT DISTINCT id FROM wiki_names_owed")
+            .map_err(failed)?;
+        statement
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(failed)?
+            .collect::<Result<HashSet<_>, _>>()
+            .map_err(failed)?
+    };
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let list = to_json(&ids)?;
+    transaction
+        .execute(
+            "DELETE FROM wiki_name_keys WHERE id IN (SELECT value FROM json_each(?1))",
+            [&list],
+        )
+        .map_err(failed)?;
+    {
+        let mut insert = transaction
+            .prepare("INSERT OR IGNORE INTO wiki_name_keys (key, id) VALUES (?1, ?2)")
+            .map_err(failed)?;
+        for row in rows(&transaction, Some(&list))? {
+            for key in Claims::of(&row).all() {
+                insert.execute([&key, &row.id]).map_err(failed)?;
+            }
+        }
+    }
+    transaction
+        .execute(
+            "DELETE FROM wiki_names_owed WHERE id IN (SELECT value FROM json_each(?1))",
+            [&list],
+        )
+        .map_err(failed)?;
+    transaction.commit().map_err(failed)?;
+    Ok(ids.len())
+}
+
+/// The live notes and days, all of them or those whose id `ids` (a JSON array) lists.
+fn rows(conn: &Connection, ids: Option<&str>) -> Result<Vec<Row>, StorageError> {
+    let only = if ids.is_some() {
+        " AND id IN (SELECT value FROM json_each(?1))"
+    } else {
+        ""
+    };
+    let mut rows = Vec::new();
+    let mut notes = conn
+        .prepare(&format!(
+            "SELECT id, title, folder_path, file_type, aliases FROM notes \
+             WHERE deleted_at IS NULL{only}"
+        ))
+        .map_err(failed)?;
+    let found = notes
+        .query_map(rusqlite::params_from_iter(ids), |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
+        })
+        .map_err(failed)?;
+    for row in found {
+        let (id, title, folder, file_type, aliases) = row.map_err(failed)?;
+        let stem = match folder.filter(|folder| !folder.is_empty()) {
+            Some(folder) => format!("{folder}/{title}"),
+            None => title.clone(),
+        };
+        rows.push(Row {
+            aliases: parse_aliases(&id, aliases)?,
+            id,
+            title,
+            stem: Some((stem, file_type == "markdown")),
+            journal_date: None,
+        });
+    }
+    let only = only.replace("id IN", "j.id IN");
+    let mut days = conn
+        .prepare(&format!(
+            "SELECT j.id, j.date, a.aliases FROM journal_entries j \
+             LEFT JOIN journal_aliases a ON a.journal_id = j.id \
+             WHERE j.deleted_at IS NULL{only}"
+        ))
+        .map_err(failed)?;
+    let found = days
+        .query_map(rusqlite::params_from_iter(ids), |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })
+        .map_err(failed)?;
+    for row in found {
+        let (id, date, aliases) = row.map_err(failed)?;
+        rows.push(Row {
+            aliases: parse_aliases(&id, aliases)?,
+            id,
+            title: date.clone(),
+            stem: None,
+            journal_date: Some(date),
+        });
+    }
+    Ok(rows)
+}
+
+fn to_json(ids: &HashSet<String>) -> Result<String, StorageError> {
+    serde_json::to_string(ids).map_err(|error| StorageError::Failed {
+        what: format!("keys will not serialise: {error}"),
+    })
 }
 
 fn parse_aliases(id: &str, raw: Option<String>) -> Result<Vec<String>, StorageError> {

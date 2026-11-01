@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "split, parse, serialize, dump, load and write of the note frontmatter (protocol 12.4): gray-matter 4.0.3 over js-yaml 3.15.1 and @memry/app-core/markdown. status \"error\" means the oracle threw; the message is not part of the contract.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 457
+    "caseCount": 464
   },
   "cases": [
     {
@@ -1522,6 +1522,97 @@
       "expected": {
         "status": "ok",
         "output": "---\na: 1\n---\ny"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/block-at-eof-new-body",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\nmood: ok\n---",
+        "content": "added\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nmood: ok\n---\nadded"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/block-at-eof-crlf",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\r\nmood: ok\r\n---",
+        "content": "added\nmore\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\r\nmood: ok\r\n---\r\nadded\r\nmore"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/block-at-eof-bom",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "﻿---\nmood: ok\n---",
+        "content": "added"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "﻿---\nmood: ok\n---\nadded"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/block-at-eof-empty-body",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\nmood: ok\n---",
+        "content": ""
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nmood: ok\n---"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/block-at-eof-blank-body",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\nmood: ok\n---",
+        "content": "\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nmood: ok\n---"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/block-at-eof-leading-newlines",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\nmood: ok\n---",
+        "content": "\n\nadded\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\nmood: ok\n---\nadded"
+      }
+    },
+    {
+      "id": "frontmatter/serialize/block-at-eof-lone-cr",
+      "op": "serialize",
+      "input": {
+        "frontmatterEdited": false,
+        "raw": "---\r\nmood: ok\r\n---\r",
+        "content": "added"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "---\r\nmood: ok\r\n---\r\nadded"
       }
     },
     {
