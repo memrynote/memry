@@ -132,7 +132,7 @@ fn a_deleted_notes_file_goes_to_the_trash_and_its_row_with_it() {
     );
     let facts = f.facts();
     assert!(
-        facts.iter().any(|fact| matches!(fact, Applied::Removed { note_id, path } if *note_id == id && path == "n.md")),
+        facts.iter().any(|fact| matches!(fact, Applied::Removed { note_id, path, .. } if *note_id == id && path == "n.md")),
         "{facts:?}"
     );
     assert_eq!(f.read("live.md"), "still here\n");

@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Update-bridge rehearsal driver. Runs on Kaan's Mac (Windows packs are signed with the Certum key).
 //
-//   node scripts/rehearsal/rehearse.mjs build <version> [--previous-tag <tag>] [--source-ref <ref>]
+//   node scripts/rehearsal/rehearse.mjs build <version> [--previous-tag <tag>] [--source-ref <ref>] [--workflow-ref <ref>]
 //   node scripts/rehearsal/rehearse.mjs assemble <version> [--run <id>] [--previous-tag <tag>] [--no-windows | --unsigned-windows [--with-latest]]
 //   node scripts/rehearsal/rehearse.mjs publish <version> --confirm-repo memrynote/memry-update-rehearsal
 //   node scripts/rehearsal/rehearse.mjs electron-baseline <tag> [--run <id>]
 //
-// `build` dispatches .github/workflows/update-bridge-rehearsal.yml and waits. `assemble` downloads
+// `build` dispatches .github/workflows/update-bridge-rehearsal.yml at `--workflow-ref` (default
+// `main`) of the rehearsal repo and waits; it refuses when that copy differs from this checkout's. `assemble` downloads
 // the artifacts, packs and signs both Windows packs (each with the pinned WebView2 bootstrapper of
 // `../release/webview2-bootstrapper.mjs`, checked again inside the package), writes the bridge
 // feeds and leaves the final asset set in `.rehearsal-state/<version>/assets`. `--no-windows`
@@ -51,6 +52,7 @@ import {
 export const FEED_REPO = 'memrynote/memry-update-rehearsal'
 const WORKFLOW = 'update-bridge-rehearsal.yml'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+const workflowPath = path.join(repoRoot, '.github/workflows', WORKFLOW)
 const iconPath = path.join(repoRoot, 'apps/desktop-tauri/src-tauri/icons/icon.ico')
 const signScript = path.join(repoRoot, 'scripts/sign-windows-binary.sh')
 const caPaths = ['ccsca2021.pem', 'ctnca2.pem'].map((name) =>
@@ -140,9 +142,45 @@ export function dispatchFields(version, argv) {
   ].flatMap((field) => ['-f', field])
 }
 
+/** The rehearsal repo branch whose copy of the workflow `build` runs. */
+export const workflowRef = (argv) => flag(argv, '--workflow-ref') ?? 'main'
+
+/**
+ * The rehearsal repo runs its own copy of the workflow, the one at the dispatched ref, and a stale
+ * copy skips the checks this checkout added: `2099.101.17` and `.18` were built from a `main`
+ * without the `pe-imports` step, so it never ran. `build` refuses to dispatch such a copy.
+ */
+export function assertWorkflowMatches(remote, local, ref) {
+  if (remote !== local) {
+    throw new Error(
+      `${FEED_REPO}@${ref} has a different ${WORKFLOW} than this checkout. Push this ` +
+        `checkout's copy to a branch there and pass --workflow-ref <branch>, or sync ${ref}.`
+    )
+  }
+}
+
+function remoteWorkflow(ref) {
+  const url = `repos/${FEED_REPO}/contents/.github/workflows/${WORKFLOW}?ref=${encodeURIComponent(ref)}`
+  return execFileSync('gh', ['api', '-H', 'Accept: application/vnd.github.raw', url], {
+    encoding: 'utf8',
+    cwd: repoRoot
+  })
+}
+
 function cmdBuild(version, argv) {
+  const ref = workflowRef(argv)
+  assertWorkflowMatches(remoteWorkflow(ref), readFileSync(workflowPath, 'utf8'), ref)
   const startedAfter = new Date(Date.now() - 5000).toISOString()
-  run('gh', ['workflow', 'run', WORKFLOW, '-R', FEED_REPO, ...dispatchFields(version, argv)])
+  run('gh', [
+    'workflow',
+    'run',
+    WORKFLOW,
+    '-R',
+    FEED_REPO,
+    '--ref',
+    ref,
+    ...dispatchFields(version, argv)
+  ])
   const deadline = Date.now() + 120_000
   let id
   while (!id && Date.now() < deadline) {

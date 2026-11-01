@@ -39,10 +39,15 @@ import type {
 import type { NoteLinksChangedEvent } from '@memry/contracts/notes-api'
 import {
   commands,
+  events,
   type FileView,
   type NoteListItemView,
-  type NoteView
+  type NoteView,
+  type Value
 } from '../../../generated/bindings'
+import { extractErrorMessage } from '../lib/ipc-error'
+import { NotPortedError } from '../lib/not-ported'
+import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
 export type {
@@ -96,11 +101,44 @@ function toFile(view: FileView): FileMetadata {
   return { ...view, created: new Date(view.created), modified: new Date(view.modified) }
 }
 
+/** A failed create or delete as Electron's `withErrorHandler` answers it: the error's message. */
+function failure(error: unknown): { success: false; error?: string } {
+  const message = extractErrorMessage(error, '')
+  return message ? { success: false, error: message } : { success: false }
+}
+
 /**
- * The note reads of Step 13f (`commands/notes.rs`). Every other method, the create and the
- * delete included, still goes to `window.api.notes`.
+ * The notes commands of Step 13f (`commands/notes.rs`); every other method still goes to
+ * `window.api.notes`.
  */
 const ported = {
+  create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
+    // Their steps (13l, 32) port them; a create without them would lose what was asked.
+    if (input.template !== undefined) throw new NotPortedError('notes.create({ template })')
+    if (input.plainChecklists) throw new NotPortedError('notes.create({ plainChecklists })')
+    try {
+      const note = await commands.notesCreate({
+        title: input.title,
+        content: input.content,
+        folder: input.folder,
+        tags: input.tags,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- property values are the JSON the command carries as is
+        properties: input.properties as Record<string, Value> | undefined,
+        emoji: input.emoji
+      })
+      return { success: true, note: toNote(note) }
+    } catch (error) {
+      return { ...failure(error), note: null }
+    }
+  },
+  delete: async (id: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await commands.notesDelete(id)
+      return { success: true }
+    } catch (error) {
+      return failure(error)
+    }
+  },
   get: async (id: string): Promise<Note | null> => {
     const note = await commands.notesGet(id)
     return note ? toNote(note) : null
@@ -143,22 +181,33 @@ export const notesService: NotesClientAPI = createWindowApiForwarder<
   PortedNoteMethod
 >(() => window.api.notes, ported)
 
+/** The subscriptions below that Rust events serve; `window.api` is typed without them. */
+export type PortedNoteEvent = 'onNoteCreated' | 'onNoteUpdated' | 'onNoteDeleted'
+
+/** A note made by the app or from a file that appeared (`shell/note_events.rs`). */
 export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
-  return window.api.onNoteCreated(callback)
+  return subscribeToEvent(events.noteCreatedEvent, ({ note, source }) =>
+    callback({ note: toListItem(note), source })
+  )
 }
 
+/**
+ * A note changed; `changes` holds the `Note` fields that may have, as the note reads now. Its
+ * `modified` arrives as epoch milliseconds and is handed on as a `Date`, as every `Note` date is.
+ */
 export function onNoteUpdated(callback: (event: NoteUpdatedEvent) => void): () => void {
-  // `changes` is required by the contract but the wire is untyped, and a main
-  // process from an older install can still send a payload without it. Every
-  // subscriber dereferences `changes`, so normalize once here rather than
-  // guarding at each call site — a throwing listener silently drops the event.
-  return window.api.onNoteUpdated((event) => {
-    callback(event.changes ? event : { ...event, changes: {} })
+  return subscribeToEvent(events.noteUpdatedEvent, ({ id, changes, source }) => {
+    const { modified, ...rest } = changes
+    callback({
+      id,
+      changes: typeof modified === 'number' ? { ...rest, modified: new Date(modified) } : rest,
+      source
+    })
   })
 }
 
 export function onNoteDeleted(callback: (event: NoteDeletedEvent) => void): () => void {
-  return window.api.onNoteDeleted(callback)
+  return subscribeToEvent(events.noteDeletedEvent, callback)
 }
 
 export function onNoteRenamed(callback: (event: NoteRenamedEvent) => void): () => void {

@@ -93,6 +93,22 @@ vi.mock('../src/generated/bindings', () => {
       vaultReveal: () => vault().reveal(),
       vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon),
       vaultReindex: () => vault().reindex(),
+      // Component tests answer in Electron's envelope; a command answers with the note, or
+      // rejects.
+      notesCreate: async (input: unknown) => {
+        const result = (await notes().create(input)) as
+          | { success?: boolean; note?: unknown; error?: string }
+          | undefined
+        if (!result?.success || !result.note) throw new Error(result?.error ?? '')
+        return result.note
+      },
+      notesDelete: async (id: string) => {
+        const result = (await notes().delete(id)) as
+          | { success?: boolean; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return null
+      },
       notesGet: (id: string) => notes().get(id),
       notesGetByPath: (path: string) => notes().getByPath(path),
       notesGetFile: (id: string) => notes().getFile(id),
@@ -134,6 +150,9 @@ vi.mock('../src/generated/bindings', () => {
       ),
       // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
       customIconsUpdatedEvent: { listen: async () => () => undefined },
+      noteCreatedEvent: event(() => api().onNoteCreated),
+      noteUpdatedEvent: event(() => api().onNoteUpdated),
+      noteDeletedEvent: event(() => api().onNoteDeleted),
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })

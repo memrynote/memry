@@ -1,8 +1,9 @@
 //! [`NotesWriter`]'s answers to the desktop vault tier about the note or journal
 //! day a vault file is (Steps 13d, 13m): [`crate::domain::notes::identity`] and
-//! [`crate::domain::notes::journal_day`]. Not exported over UniFFI: iOS keeps no
+//! [`crate::domain::notes::journal_day`], and the desktop app's own create of a
+//! note it writes a file for (Step 13f). Not exported over UniFFI: iOS keeps no
 //! vault files. Every method blocks; the shell runs them on the tier's consumer
-//! thread.
+//! thread or in `spawn_blocking`.
 
 use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
@@ -11,10 +12,42 @@ use crate::domain::journal;
 use crate::domain::notes::app_move::{self, AppMoved, BeginError, Recorded};
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
+use crate::domain::notes::{self, NewNote};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
+use crate::storage::repositories::schema::Object;
 
 impl NotesWriter {
+    /// Creates a note the app is about to write a file for, with the file's frontmatter tags,
+    /// its user properties and its icon, in one transaction with its one outbox row (desktop
+    /// `createNote`). The body is not written here: the file's text seeds the document once
+    /// the file is on disk, as [`Self::create`] says why.
+    pub fn create_with(
+        &self,
+        title: &str,
+        folder_path: Option<&str>,
+        tags: &[String],
+        properties: Option<&Object>,
+        emoji: Option<&str>,
+    ) -> Result<String, StorageError> {
+        let id = Self::new_id();
+        let device_id = self.device_id.clone();
+        let note = NewNote {
+            id: &id,
+            title,
+            folder_path,
+            content: "",
+            tags,
+            properties,
+            emoji,
+        };
+        self.db.call_blocking(|conn| {
+            let _payload = notes::create(conn, &note, &device_id, now_ms())?.acknowledge();
+            Ok(())
+        })?;
+        Ok(id)
+    }
+
     /// Whether a note may be the file of this title and folder: [`Self::adopt_file`]
     /// then needs a converter to read its body with.
     pub fn may_be_a_note(

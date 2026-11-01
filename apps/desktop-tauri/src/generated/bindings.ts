@@ -50,6 +50,13 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**
+	 *  `notes:create`. A template id (Step 13l) and `plainChecklists` (Step 32) are not read: the
+	 *  renderer's service refuses them until their steps.
+	 */
+	notesCreate: (input: NoteCreateInput) => __TAURI_INVOKE<NoteView>("notes_create", { input }),
+	/**  `notes:delete`: for good, not to the OS trash. */
+	notesDelete: (id: string) => __TAURI_INVOKE<null>("notes_delete", { id }),
 	/**  `notes:exists`: a `.md` path, or a title a link would resolve. */
 	notesExists: (titleOrPath: string) => __TAURI_INVOKE<boolean>("notes_exists", { titleOrPath }),
 	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
@@ -231,6 +238,9 @@ export const events = {
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
+	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
+	noteDeletedEvent: makeEvent<NoteDeletedEvent, NoteDeletedEvent>("note-deleted-event"),
+	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	updaterStateChangedEvent: makeEvent<UpdaterStateChangedEvent, UpdaterStateChangedEvent>("updater-state-changed-event"),
@@ -555,10 +565,43 @@ export type MovesRecovered = {
 	shownFolders: number,
 };
 
+/**
+ *  `NoteCreateSchema`, without the parts later slices own: `template` (Step 13l) and
+ *  `plainChecklists` (Step 32), which the renderer's service refuses until then.
+ */
+export type NoteCreateInput = {
+	title: string,
+	content?: string | null,
+	/**  Vault-relative. `None` puts the note in the vault's default note folder. */
+	folder?: string | null,
+	tags?: string[] | null,
+	properties?: { [key in string]: Value } | null,
+	emoji?: string | null,
+};
+
+/**  A note was made, by the app or from a file that appeared (`notes:created`). */
+export type NoteCreatedEvent = {
+	note: NoteListItemView,
+	source: NoteEventSource,
+};
+
+/**  A note was deleted, in the app or by its file's removal (`notes:deleted`). */
+export type NoteDeletedEvent = {
+	id: string,
+	path: string,
+	source: NoteEventSource,
+};
+
+/**  Who made a note change (`NoteEventSource`): the app, or an edit outside it. */
+export type NoteEventSource = "internal" | "external";
+
 /**  `NoteListSchema.fields`: `tree` drops the fields the sidebar never reads. */
 export type NoteListFields = "full" | "tree";
 
-/**  `NoteListItem`. `word_count` is `None` until the note index (Step 13e) measured the file. */
+/**
+ *  `NoteListItem`. `word_count` is `None` until the note index (Step 13e) measured the file.
+ *  Deserialize is for the note event that carries it.
+ */
 export type NoteListItemView = {
 	id: string,
 	path: string,
@@ -602,6 +645,17 @@ export type NoteListPageView = {
 
 /**  `NoteListSchema.sortBy`. `position` sorts as `modified`, as in `listNotesFromCache`. */
 export type NoteListSortBy = "modified" | "created" | "title" | "position";
+
+/**
+ *  A note's file changed outside the app (`notes:updated`). `changes` holds the fields the
+ *  edit may have changed, as the note reads now (`NoteView::changes`); the body reaches the
+ *  open editor through its document.
+ */
+export type NoteUpdatedEvent = {
+	id: string,
+	changes: { [key in string]: Value },
+	source: NoteEventSource,
+};
 
 /**  `Note`. */
 export type NoteView = {

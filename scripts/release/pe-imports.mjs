@@ -8,7 +8,6 @@
 // a declared prerequisite the machine lacks stops an unattended migration at a dialog. This check
 // turns a dependency that needs the redistributable into a failed pack instead.
 import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 
 /** The UCRT API sets of Windows 10 and later: `api-ms-win-crt-<name>-l1-1-0.dll`. */
 const SYSTEM_UCRT = new Set([
@@ -28,7 +27,15 @@ const SYSTEM_UCRT = new Set([
   'time',
   'utility'
 ])
-const REDIST = /^(vcruntime|msvcp|msvcr|concrt|vccorlib|ucrtbased)/
+/**
+ * The DLLs of the Visual C++ redistributable: the runtime (`vcruntime140`, `vcruntime140_1`), the
+ * C++ library (`msvcp140`, `msvcp140_atomic_wait`), the older CRTs (`msvcr100` to `msvcr120`),
+ * ConcRT, C++/CX, OpenMP (`vcomp`), C++ AMP (`vcamp`), MFC (`mfc140u`, `mfcm140`) and the debug
+ * UCRT. Windows ships its own `msvcrt.dll`, `msvcp_win.dll`, `msvcp60.dll`, `mfc42.dll` and
+ * `ucrtbase.dll`, so a versioned name below 7.0 or without a version is not the redistributable.
+ */
+const REDIST =
+  /^(?:(?:msvcp|msvcr|mfcm?)(?:[7-9]\d|1\d\d)|(?:vcruntime|concrt|vccorlib|vcomp|vcamp)\d|ucrtbased\.dll$)/
 
 const IMPORT_DIRECTORY = 1
 const DELAY_IMPORT_DIRECTORY = 13
@@ -98,7 +105,9 @@ export function assertNoRedist(exePath) {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// `import.meta.main`, not a path comparison: `node` started through a symlink or another spelling
+// of the path leaves `process.argv[1]` unequal to this file, and the check would skip and exit 0.
+if (import.meta.main) {
   assertNoRedist(process.argv[2])
   console.log(`${process.argv[2]}: no Visual C++ redistributable import`)
 }

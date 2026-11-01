@@ -3,6 +3,7 @@
 //! add their events here and list them in `registry.rs`; none calls `emit` directly.
 
 use memry_desktop::notes::index::IndexProgress;
+use memry_desktop::notes::view::NoteListItemView;
 use memry_desktop::session::response::VaultStatus;
 use memry_desktop::updater::state::AppUpdateState;
 use serde::Serialize;
@@ -81,6 +82,46 @@ pub struct CustomIconsUpdatedEvent {
 /// (`vault-activity:changed`). No payload; the renderer refetches. Throttled by the log.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultActivityChangedEvent;
+
+/// Who made a note change (`NoteEventSource`): the app, or an edit outside it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum NoteEventSource {
+    Internal,
+    External,
+}
+
+/// A note was made, by the app or from a file that appeared (`notes:created`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteCreatedEvent {
+    pub note: NoteListItemView,
+    pub source: NoteEventSource,
+}
+
+/// A note's file changed outside the app (`notes:updated`). `changes` holds the fields the
+/// edit may have changed, as the note reads now (`NoteView::changes`); the body reaches the
+/// open editor through its document.
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteUpdatedEvent {
+    pub id: String,
+    pub changes: serde_json::Map<String, serde_json::Value>,
+    pub source: NoteEventSource,
+}
+
+/// A note was deleted, in the app or by its file's removal (`notes:deleted`).
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteDeletedEvent {
+    pub id: String,
+    pub path: String,
+    pub source: NoteEventSource,
+}
 
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

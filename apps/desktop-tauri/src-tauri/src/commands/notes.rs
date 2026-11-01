@@ -1,12 +1,17 @@
 //! The notes commands of Step 13f (`notes:*` of `ipc/notes-handlers.ts`), each one call of
-//! `memry_desktop::notes`. This part reads; the create, the delete and their events follow.
+//! `memry_desktop::notes`. The note events are not sent here: `shell::note_events` sends them
+//! from the vault tier's row facts.
 
 use std::sync::Arc;
 
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
+use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
-use memry_desktop::notes::view::{FileView, NoteListOptions, NoteListPageView, NoteView};
+use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::view::{
+    FileView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
+};
 use memry_desktop::notes::{local_only, read};
 use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::telemetry::Service;
@@ -32,6 +37,66 @@ fn failed(error: &NotesError) -> CommandError {
     CommandError::from_core(error)
 }
 
+/// The notes service `vault_boot` manages with the vault tier.
+fn service<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<NotesService>, CommandError> {
+    let service = app.try_state::<Arc<NotesService>>();
+    service
+        .map(|service| service.inner().clone())
+        .ok_or_else(|| failed(&NotesError::Closed))
+}
+
+/// `note_created` / `note_deleted`, as the Electron handlers count them.
+fn track(app: &AppHandle<Wry>, name: &str, action: &str) {
+    if let Some(telemetry) = services::telemetry(app) {
+        let mut event = Service::event(name, "notes", action);
+        event.object_type = Some("note".to_owned());
+        event.result = Some("success".to_owned());
+        telemetry.track_main_event(event);
+    }
+}
+
+/// `notes:create`. A template id (Step 13l) and `plainChecklists` (Step 32) are not read: the
+/// renderer's service refuses them until their steps.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_create(
+    app: AppHandle<Wry>,
+    input: NoteCreateInput,
+) -> Result<NoteView, CommandError> {
+    blocking("notes_create", move || {
+        let open = open_vault(&app)?;
+        let note = NewNoteFile {
+            title: input.title,
+            content: input.content.unwrap_or_default(),
+            folder: input.folder,
+            tags: input.tags.unwrap_or_default(),
+            properties: input.properties.unwrap_or_default(),
+            emoji: input.emoji,
+        };
+        let created = service(&app)?
+            .create(&open, note)
+            .map_err(|error| failed(&error))?;
+        track(&app, "note_created", "created");
+        Ok(created)
+    })
+    .await
+}
+
+/// `notes:delete`: for good, not to the OS trash.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_delete(app: AppHandle<Wry>, id: String) -> Result<(), CommandError> {
+    blocking("notes_delete", move || {
+        let open = open_vault(&app)?;
+        service(&app)?
+            .delete(&open, &id)
+            .map_err(|error| failed(&error))?;
+        track(&app, "note_deleted", "deleted");
+        Ok(())
+    })
+    .await
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_get(app: AppHandle<Wry>, id: String) -> Result<Option<NoteView>, CommandError> {
@@ -39,11 +104,8 @@ pub async fn notes_get(app: AppHandle<Wry>, id: String) -> Result<Option<NoteVie
         let telemetry = services::telemetry(&app);
         let note = read::get(&open_vault(&app)?, &id, telemetry.as_deref())
             .map_err(|error| failed(&error))?;
-        if let (Some(_), Some(telemetry)) = (&note, &telemetry) {
-            let mut event = Service::event("note_opened", "notes", "opened");
-            event.object_type = Some("note".to_owned());
-            event.result = Some("success".to_owned());
-            telemetry.track_main_event(event);
+        if note.is_some() {
+            track(&app, "note_opened", "opened");
         }
         Ok(note)
     })

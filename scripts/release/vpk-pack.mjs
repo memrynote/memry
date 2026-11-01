@@ -6,7 +6,6 @@
 import { spawnSync } from 'node:child_process'
 import { readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
 import { assertNoRedist } from './pe-imports.mjs'
@@ -15,11 +14,12 @@ import { assertBootstrapperPacked } from './webview2-bootstrapper.mjs'
 
 /**
  * Throws when `packDir` cannot become a `target` pack: a Windows one ships the pinned WebView2
- * bootstrapper and an exe that needs no Visual C++ redistributable.
+ * bootstrapper and an exe that needs no Visual C++ redistributable. `pin` defaults to the
+ * committed one (`webview2-bootstrapper.json`).
  */
-export function assertPackable(target, packDir) {
+export function assertPackable(target, packDir, pin) {
   if (!target.startsWith('win-')) return
-  assertBootstrapperPacked(packDir)
+  assertBootstrapperPacked(packDir, pin)
   assertNoRedist(path.join(packDir, TARGETS[target].mainExe))
 }
 
@@ -77,7 +77,9 @@ export function parsePackCli(argv) {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// `import.meta.main`, not a path comparison: started through a symlink, the pack and its checks
+// would skip and exit 0.
+if (import.meta.main) {
   const { target, options } = parsePackCli(process.argv.slice(2))
   assertPackable(target, options.packDir)
   const args = buildPackArgs(target, options)
