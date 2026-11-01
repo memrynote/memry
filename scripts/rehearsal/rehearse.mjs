@@ -7,7 +7,9 @@
 //   node scripts/rehearsal/rehearse.mjs electron-baseline <tag> [--run <id>]
 //
 // `build` dispatches .github/workflows/update-bridge-rehearsal.yml at `--workflow-ref` (default
-// `main`) of the rehearsal repo and waits; it refuses when that copy differs from this checkout's. `assemble` downloads
+// `main`) of the rehearsal repo to build memry's `--source-ref` (default `feat/tauri-v2`) and
+// waits. It pins both refs to commits first and refuses when the two copies of the workflow at
+// those commits differ, or when the run started from another rehearsal commit. `assemble` downloads
 // the artifacts, packs and signs both Windows packs (each with the pinned WebView2 bootstrapper of
 // `../release/webview2-bootstrapper.mjs`, checked again inside the package), writes the bridge
 // feeds and leaves the final asset set in `.rehearsal-state/<version>/assets`. `--no-windows`
@@ -33,6 +35,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { buildOsslsigncodeVerifyArgs, isSignatureVerified } from '../velopack-release-utils.mjs'
+import { isMain } from '../release/is-main.mjs'
 import {
   buildLatestLinuxYml,
   buildLatestMacYml,
@@ -50,9 +53,11 @@ import {
 } from '../release/webview2-bootstrapper.mjs'
 
 export const FEED_REPO = 'memrynote/memry-update-rehearsal'
+const SOURCE_REPO = 'memrynote/memry'
+/** The workflow's own default for `source_ref`. `build` always passes the commit it resolved. */
+const DEFAULT_SOURCE_REF = 'feat/tauri-v2'
 const WORKFLOW = 'update-bridge-rehearsal.yml'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
-const workflowPath = path.join(repoRoot, '.github/workflows', WORKFLOW)
 const iconPath = path.join(repoRoot, 'apps/desktop-tauri/src-tauri/icons/icon.ico')
 const signScript = path.join(repoRoot, 'scripts/sign-windows-binary.sh')
 const caPaths = ['ccsca2021.pem', 'ctnca2.pem'].map((name) =>
@@ -113,7 +118,8 @@ function readSigningPin() {
   }
 }
 
-function latestRunId(startedAfter) {
+/** The runs of the workflow created at or after `startedAfter`, newest first. */
+function runsSince(startedAfter) {
   const out = capture('gh', [
     'run',
     'list',
@@ -124,52 +130,79 @@ function latestRunId(startedAfter) {
     '--limit',
     '5',
     '--json',
-    'databaseId,createdAt'
+    'databaseId,createdAt,headSha'
   ])
-  const runs = JSON.parse(out).filter((r) => r.createdAt >= startedAfter)
-  if (runs.length === 0) throw new Error('The dispatched run did not appear')
-  return runs[0].databaseId
+  return JSON.parse(out).filter((r) => r.createdAt >= startedAfter)
 }
-
-/** The workflow inputs of `build`. Without `--source-ref` the workflow builds its default branch. */
-export function dispatchFields(version, argv) {
-  const sourceRef = flag(argv, '--source-ref')
-  return [
-    `version=${version}`,
-    `feed_repo=${FEED_REPO}`,
-    `previous_tag=${flag(argv, '--previous-tag') ?? ''}`,
-    ...(sourceRef ? [`source_ref=${sourceRef}`] : [])
-  ].flatMap((field) => ['-f', field])
-}
-
-/** The rehearsal repo branch whose copy of the workflow `build` runs. */
-export const workflowRef = (argv) => flag(argv, '--workflow-ref') ?? 'main'
 
 /**
- * The rehearsal repo runs its own copy of the workflow, the one at the dispatched ref, and a stale
- * copy skips the checks this checkout added: `2099.101.17` and `.18` were built from a `main`
- * without the `pe-imports` step, so it never ran. `build` refuses to dispatch such a copy.
+ * The id of the run `build` dispatched, the newest one since the dispatch, or `undefined` before
+ * it appears. It must have started from the rehearsal commit whose workflow was checked: a branch
+ * that moved in between runs a copy nobody compared.
  */
-export function assertWorkflowMatches(remote, local, ref) {
-  if (remote !== local) {
+function dispatchedRun(runs, rehearsalSha) {
+  const [newest] = runs
+  if (!newest) return undefined
+  if (newest.headSha !== rehearsalSha) {
     throw new Error(
-      `${FEED_REPO}@${ref} has a different ${WORKFLOW} than this checkout. Push this ` +
-        `checkout's copy to a branch there and pass --workflow-ref <branch>, or sync ${ref}.`
+      `${FEED_REPO} run ${newest.databaseId} started from ${newest.headSha.slice(0, 10)}, not ` +
+        `the checked ${rehearsalSha.slice(0, 10)}: its ${WORKFLOW} was not compared. Cancel it and build again.`
+    )
+  }
+  return newest.databaseId
+}
+
+/** The commit `ref` (a branch, a tag or a commit) of `repo` names on GitHub. */
+function commitSha(repo, ref) {
+  const sha = capture('gh', [
+    'api',
+    '-H',
+    'Accept: application/vnd.github.sha',
+    `repos/${repo}/commits/${encodeURIComponent(ref)}`
+  ])
+  if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error(`${repo}@${ref} resolved to "${sha}"`)
+  return sha
+}
+
+const workflowAt = (repo, sha) =>
+  execFileSync(
+    'gh',
+    [
+      'api',
+      '-H',
+      'Accept: application/vnd.github.raw',
+      `repos/${repo}/contents/.github/workflows/${WORKFLOW}?ref=${sha}`
+    ],
+    { encoding: 'utf8', cwd: repoRoot }
+  )
+
+/**
+ * The rehearsal repo runs its own copy of the workflow, the one at the dispatched ref, while the
+ * jobs check out memry at `source_ref`. A copy that differs from memry's at that commit skips or
+ * breaks steps the source expects: `2099.101.17` and `.18` were built from a `main` without the
+ * `pe-imports` step, so it never ran. This checkout's copy does not count, since the run never
+ * reads it.
+ */
+function assertWorkflowMatches(rehearsal, source) {
+  if (rehearsal.copy !== source.copy) {
+    throw new Error(
+      `${FEED_REPO}@${rehearsal.ref} (${rehearsal.sha.slice(0, 10)}) has a different ${WORKFLOW} ` +
+        `than ${SOURCE_REPO}@${source.ref} (${source.sha.slice(0, 10)}), the commit it would build. ` +
+        `Push memry's copy at that commit to a branch there and pass --workflow-ref <branch>, or sync ${rehearsal.ref}.`
     )
   }
 }
 
-function remoteWorkflow(ref) {
-  const url = `repos/${FEED_REPO}/contents/.github/workflows/${WORKFLOW}?ref=${encodeURIComponent(ref)}`
-  return execFileSync('gh', ['api', '-H', 'Accept: application/vnd.github.raw', url], {
-    encoding: 'utf8',
-    cwd: repoRoot
-  })
+/** `ref` of `repo`, the commit it names now and the workflow copy at that commit. */
+function pinRef(repo, ref) {
+  const sha = commitSha(repo, ref)
+  return { ref, sha, copy: workflowAt(repo, sha) }
 }
 
 function cmdBuild(version, argv) {
-  const ref = workflowRef(argv)
-  assertWorkflowMatches(remoteWorkflow(ref), readFileSync(workflowPath, 'utf8'), ref)
+  const rehearsal = pinRef(FEED_REPO, flag(argv, '--workflow-ref') ?? 'main')
+  const source = pinRef(SOURCE_REPO, flag(argv, '--source-ref') ?? DEFAULT_SOURCE_REF)
+  assertWorkflowMatches(rehearsal, source)
   const startedAfter = new Date(Date.now() - 5000).toISOString()
   run('gh', [
     'workflow',
@@ -178,17 +211,25 @@ function cmdBuild(version, argv) {
     '-R',
     FEED_REPO,
     '--ref',
-    ref,
-    ...dispatchFields(version, argv)
+    rehearsal.ref,
+    ...[
+      `version=${version}`,
+      `feed_repo=${FEED_REPO}`,
+      `previous_tag=${flag(argv, '--previous-tag') ?? ''}`,
+      `source_ref=${source.sha}`
+    ].flatMap((field) => ['-f', field])
   ])
   const deadline = Date.now() + 120_000
   let id
   while (!id && Date.now() < deadline) {
+    let runs = []
     try {
-      id = latestRunId(startedAfter)
-    } catch {
-      spawnSync('sleep', ['5'])
+      runs = runsSince(startedAfter)
+    } catch (error) {
+      console.warn(`Listing the runs failed, trying again: ${error.message}`)
     }
+    id = dispatchedRun(runs, rehearsal.sha)
+    if (!id) spawnSync('sleep', ['5'])
   }
   if (!id) throw new Error('The dispatched run did not appear')
   run('gh', ['run', 'watch', '-R', FEED_REPO, String(id), '--exit-status'])
@@ -475,7 +516,7 @@ function cmdElectronBaseline(tag, argv) {
   console.log(`Baseline installer: ${path.join(outputDir, assetNames('win-x64', version).setup)}`)
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta)) {
   const [command, subject, ...rest] = process.argv.slice(2)
   try {
     if (command === 'build') cmdBuild(parseRehearsalVersion(subject), rest)

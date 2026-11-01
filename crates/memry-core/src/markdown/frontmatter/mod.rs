@@ -3,6 +3,7 @@
 //! `packages/app-core/src/markdown.ts`. Specified in
 //! `docs/protocol/12-note-body-format.md` section 12.4.
 
+mod edit;
 pub(crate) mod js;
 mod json;
 mod note;
@@ -12,6 +13,9 @@ mod value;
 mod yaml_dump;
 mod yaml_load;
 
+#[doc(hidden)]
+pub use edit::equal_visits;
+pub use edit::{deep_strict_equal, edit_frontmatter_block, serialize_updated_note};
 pub use json::{json_to_yaml, yaml_to_json};
 pub use note::{
     Eol, ParsedMarkdownNote, gray_matter_data, gray_matter_parts, parse_markdown_note,

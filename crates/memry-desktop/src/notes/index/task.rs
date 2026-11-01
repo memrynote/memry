@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::sync::mpsc as reply;
 use std::time::Instant;
 
+use memry_core::domain::search::LinkChanges;
 use tokio::sync::broadcast::Receiver;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::mpsc;
@@ -157,19 +158,21 @@ impl Owed {
 
 impl Indexer {
     /// The task: facts and requests in, passes out, until the handle stops it or `cancel` is
-    /// seen. Errs only when it could not start. `report` gets the open's pass progress.
+    /// seen. Errs only when it could not start. `report` gets the open's pass progress,
+    /// `announce` the links each pass changed, once committed.
     pub fn run(
         &self,
         facts: Receiver<Applied>,
         inbox: TaskInbox,
         cancel: &CancelToken,
         report: &dyn Fn(IndexProgress),
+        announce: &dyn Fn(LinkChanges),
     ) -> Result<(), String> {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_time()
             .build()
             .map_err(|error| format!("the note index task has no runtime: {error}"))?;
-        runtime.block_on(self.serve(facts, inbox, cancel, report));
+        runtime.block_on(self.serve(facts, inbox, cancel, report, announce));
         Ok(())
     }
 
@@ -179,6 +182,7 @@ impl Indexer {
         inbox: TaskInbox,
         cancel: &CancelToken,
         report: &dyn Fn(IndexProgress),
+        announce: &dyn Fn(LinkChanges),
     ) {
         let TaskInbox(mut commands) = inbox;
         // Owed at every open: a pass that wrote rows may have ended before its search reindex.
@@ -195,7 +199,7 @@ impl Indexer {
                     // It reports through its own callback, which refreshes the list.
                     owed.report = false;
                     // The asker may have gone; the work is done either way.
-                    let _ = answer.send(self.reindex(&mut owed, progress, cancel));
+                    let _ = answer.send(self.reindex(&mut owed, progress, cancel, announce));
                 }
             }
             let next = owed.next();
@@ -216,7 +220,7 @@ impl Indexer {
                 },
                 () = tokio::time::sleep_until(wake), if next.is_some() => {
                     let report = std::mem::take(&mut owed.report).then_some(report);
-                    self.work(&mut owed, cancel, report);
+                    self.work(&mut owed, cancel, report, announce);
                 }
             }
         }
@@ -260,7 +264,13 @@ impl Indexer {
 
     /// One pass over what is owed. With `report`, its progress goes out as a reindex's does:
     /// throttled, never backwards, ending at the total once every file was read.
-    fn work(&self, owed: &mut Owed, cancel: &CancelToken, report: Option<&dyn Fn(IndexProgress)>) {
+    fn work(
+        &self,
+        owed: &mut Owed,
+        cancel: &CancelToken,
+        report: Option<&dyn Fn(IndexProgress)>,
+        announce: &dyn Fn(LinkChanges),
+    ) {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
         owed.due = None;
@@ -275,7 +285,7 @@ impl Indexer {
         };
         let outcome = self
             .listed(scan, &ids)
-            .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut progress));
+            .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut progress, announce));
         owed.settle(ids, scan, &outcome);
     }
 
@@ -285,17 +295,19 @@ impl Indexer {
         owed: &mut Owed,
         mut progress: Progress,
         cancel: &CancelToken,
+        announce: &dyn Fn(LinkChanges),
     ) -> Result<Backfilled, IndexError> {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
         let stop = || cancel.is_cancelled();
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         let outcome = self.scan(true).map_err(IndexError::from).and_then(|notes| {
-            self.pass(notes, &mut owed.links, &stop, &mut |step| {
+            let mut progress = |step| {
                 if throttle.offer(step, Instant::now()) {
                     progress(step);
                 }
-            })
+            };
+            self.pass(notes, &mut owed.links, &stop, &mut progress, announce)
         });
         owed.settle(ids, scan, &outcome);
         match outcome {

@@ -78,6 +78,8 @@ const WINDOWS_UCRT_SETS = [
 ].map((set) => `api-ms-win-crt-${set}-l1-1-0.dll`)
 
 const tmp = () => mkdtempSync(path.join(os.tmpdir(), 'pe-imports-'))
+// A kill for a hung child, not a performance bound: generous for a cold start on a loaded runner.
+const SPAWN_TIMEOUT_MS = 60_000
 
 function exeIn(dir, imports) {
   const file = path.join(dir, 'Memrynote.exe')
@@ -191,24 +193,32 @@ describe('pe-imports', () => {
 
   // The CI step and the pack run this file as a program. Started through a symlink, a path
   // comparison against `process.argv[1]` skipped the check and exited 0.
-  it('as a program, checks the exe however its path is spelled', () => {
+  it('as a program, checks the exe however its path is spelled', (t) => {
     const script = fileURLToPath(new URL('./pe-imports.mjs', import.meta.url))
     const dir = tmp()
     const linked = path.join(dir, 'linked-pe-imports.mjs')
-    symlinkSync(script, linked)
+    try {
+      symlinkSync(script, linked)
+    } catch (error) {
+      if (process.platform !== 'win32' || error.code !== 'EPERM') throw error
+      t.skip('Windows creates symlinks only in Developer Mode or as admin (EPERM)')
+      return
+    }
     const redist = exeIn(mkdtempSync(path.join(dir, 'redist-')), ['VCRUNTIME140.dll'])
     const clean = exeIn(mkdtempSync(path.join(dir, 'clean-')), HYBRID_CRT)
+    const program = (args) =>
+      spawnSync(process.execPath, args, { encoding: 'utf8', timeout: SPAWN_TIMEOUT_MS })
 
     for (const entry of [script, linked]) {
-      const refused = spawnSync(process.execPath, [entry, redist], { encoding: 'utf8' })
+      const refused = program([entry, redist])
       assert.notEqual(refused.status, 0, `${entry} passed an exe that imports vcruntime140.dll`)
       assert.match(refused.stderr, /imports vcruntime140\.dll/)
 
-      const passed = spawnSync(process.execPath, [entry, clean], { encoding: 'utf8' })
+      const passed = program([entry, clean])
       assert.equal(passed.status, 0, passed.stderr)
       assert.match(passed.stdout, /no Visual C\+\+ redistributable import/)
     }
-    const noExe = spawnSync(process.execPath, [linked], { encoding: 'utf8' })
+    const noExe = program([linked])
     assert.notEqual(noExe.status, 0)
   })
 })
