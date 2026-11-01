@@ -16,14 +16,14 @@ use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
-use crate::domain::notes::{self, edit, failed, iso, object, tombstone_local};
-use crate::domain::recreate::write_over_tombstone;
+use crate::domain::notes::{self, edit, failed};
 use crate::storage::repositories::{Change, sync_items};
-use crate::sync::outbox;
 
 mod options;
+pub mod records;
 
 use options::{flatten, is_value, map_arrays};
+use records::DefinitionRecord;
 
 pub const ITEM_TYPE: &str = "property_definition";
 
@@ -267,7 +267,7 @@ const DEFINITION_TYPES: [&str; 10] = [
 /// `JSON.stringify({ categories: DEFAULT_STATUS_CATEGORIES })`
 /// (`packages/contracts/src/property-types.ts`), spelled out so the category
 /// order survives: a parsed map would sort the keys.
-const DEFAULT_STATUS_OPTIONS: &str = concat!(
+pub const DEFAULT_STATUS_OPTIONS: &str = concat!(
     r#"{"categories":{"#,
     r#""todo":{"label":"To-do","options":[{"value":"Not started","color":"stone","default":true}]},"#,
     r#""in_progress":{"label":"In progress","options":[{"value":"In Progress","color":"amber"}]},"#,
@@ -301,26 +301,18 @@ pub fn ensure_definition(
         return Ok(());
     }
     let options = match type_name {
-        "status" => Value::String(DEFAULT_STATUS_OPTIONS.to_owned()),
-        "select" | "multiselect" => Value::String("[]".to_owned()),
-        _ => Value::Null,
+        "status" => Some(DEFAULT_STATUS_OPTIONS),
+        "select" | "multiselect" => Some("[]"),
+        _ => None,
     };
-    let payload = object(json!({
-        "name": name,
-        "type": type_name,
-        "options": options,
-        "defaultValue": null,
-        "color": null,
-        "createdAt": iso(now_ms)?,
-    }));
-    outbox::commit(
-        conn,
-        &outbox::Change::upsert(ITEM_TYPE, name),
-        now_ms,
-        |tx| write_over_tombstone(tx, ITEM_TYPE, name, payload, device_id, now_ms),
-    )?
-    .acknowledge();
-    Ok(())
+    let record = DefinitionRecord {
+        name: name.to_owned(),
+        type_name: type_name.to_owned(),
+        options: options.map(str::to_owned),
+        default_value: None,
+        color: None,
+    };
+    records::insert(conn, &record, device_id, now_ms)
 }
 
 /// Tombstones the definition. Note values are left as they are (desktop).
@@ -330,18 +322,11 @@ pub fn delete_definition(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let live = sync_items::load(conn, ITEM_TYPE, name)?.is_some_and(|row| row.deleted_at.is_none());
-    if !live {
-        return Err(refuse(format!("no property `{name}`")));
+    if records::remove(conn, name, device_id, now_ms)? {
+        Ok(())
+    } else {
+        Err(refuse(format!("no property `{name}`")))
     }
-    outbox::commit(
-        conn,
-        &outbox::Change::delete(ITEM_TYPE, name),
-        now_ms,
-        |tx| tombstone_local(tx, ITEM_TYPE, name, device_id, now_ms),
-    )?
-    .acknowledge();
-    Ok(())
 }
 
 #[cfg(test)]

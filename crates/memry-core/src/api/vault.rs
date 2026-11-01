@@ -164,6 +164,16 @@ impl Vault {
     ) -> Result<crate::domain::custom_icons::CustomIconStore, AuthError> {
         crate::domain::custom_icons::CustomIconStore::over(self.db.clone(), &store)
     }
+
+    /// This vault's property definition records, written under this device's identity (desktop
+    /// Step 13k). Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn property_definition_records(
+        &self,
+        store: Arc<dyn SecureStore>,
+    ) -> Result<crate::domain::property_admin::records::DefinitionRecords, AuthError> {
+        crate::domain::property_admin::records::DefinitionRecords::over(self.db.clone(), &store)
+    }
 }
 
 #[uniffi::export]

@@ -16,7 +16,11 @@ const commands = vi.hoisted(() => ({
   notesResolveTitles: vi.fn(),
   notesResolveWikiTarget: vi.fn(),
   notesSetLocalOnly: vi.fn(),
-  notesGetLocalOnlyCount: vi.fn()
+  notesGetLocalOnlyCount: vi.fn(),
+  notesGetPropertyDefinitions: vi.fn(),
+  notesCreatePropertyDefinition: vi.fn(),
+  notesUpdatePropertyDefinition: vi.fn(),
+  notesAddStatusOption: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -271,6 +275,58 @@ describe('notes-service', () => {
     expect(await notesService.getLocalOnlyCount()).toEqual({ count: 3 })
     expect(api.notes.setLocalOnly).not.toHaveBeenCalled()
     expect(api.notes.getLocalOnlyCount).not.toHaveBeenCalled()
+  })
+
+  it("writes property definitions through their commands, failures in Electron's shape", async () => {
+    const stage = {
+      name: 'Stage',
+      type: 'select',
+      options: '[]',
+      defaultValue: '3',
+      color: null,
+      createdAt: ''
+    }
+    commands.notesCreatePropertyDefinition.mockResolvedValueOnce(stage)
+    // A default value that is not text is sent as Electron's handler stores it.
+    expect(
+      await notesService.createPropertyDefinition({
+        name: 'Stage',
+        type: 'select',
+        defaultValue: 3
+      })
+    ).toEqual({ success: true, definition: stage })
+    expect(commands.notesCreatePropertyDefinition).toHaveBeenCalledWith({
+      name: 'Stage',
+      type: 'select',
+      defaultValue: '3'
+    })
+
+    // A file that cannot be read: the localized reason, not the Rust text.
+    const unreadable = {
+      kind: 'propertyWrite',
+      code: 'property_definitions_unreadable',
+      message: 'x'
+    }
+    commands.notesCreatePropertyDefinition.mockRejectedValueOnce(unreadable)
+    const refused = await notesService.createPropertyDefinition({ name: 'Stage', type: 'text' })
+    expect(refused).toEqual({
+      success: false,
+      definition: null,
+      error: expect.stringContaining('.memry/properties.md')
+    })
+
+    commands.notesUpdatePropertyDefinition.mockResolvedValueOnce(null)
+    expect(await notesService.updatePropertyDefinition({ name: 'Missing' })).toEqual({
+      success: false,
+      definition: null,
+      error: 'Definition not found'
+    })
+
+    commands.notesAddStatusOption.mockRejectedValueOnce(unreadable)
+    await expect(
+      notesService.addStatusOption('Status', 'todo', { value: 'Later', color: 'sky' })
+    ).rejects.toEqual(unreadable)
+    expect(api.notes.addStatusOption).not.toHaveBeenCalled()
   })
 
   it('forwards the methods later steps port to window.api.notes', async () => {
