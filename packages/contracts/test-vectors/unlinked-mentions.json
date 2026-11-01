@@ -6,7 +6,7 @@
     "class": "unlinked-mentions",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/shared/src/unlinked-mentions.ts",
-    "caseCount": 21
+    "caseCount": 22
   },
   "cases": [
     {
@@ -254,6 +254,24 @@
         }
       ],
       "linked": "éhttps://plan.example and 1http://[[Plan|plan]]"
+    },
+    {
+      "name": "url-scheme-letters",
+      "pins": "a scheme letter is an ASCII letter, or ſ or the Kelvin sign, which fold to s and k under the i and u flags; a scheme can hold +, . and -",
+      "markdown": "ſ://x/plan K://x/plan x+https://plan a.http://plan b-ftp://plan then plan",
+      "names": [
+        "Plan"
+      ],
+      "title": "Plan",
+      "ordinal": 0,
+      "expected": [
+        {
+          "start": 69,
+          "end": 73,
+          "text": "plan"
+        }
+      ],
+      "linked": "ſ://x/plan K://x/plan x+https://plan a.http://plan b-ftp://plan then [[Plan|plan]]"
     },
     {
       "name": "unclosed",

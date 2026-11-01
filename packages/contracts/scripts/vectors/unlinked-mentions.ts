@@ -128,6 +128,14 @@ const MARKDOWN_CASES: Array<{
     ordinal: 1
   },
   {
+    name: 'url-scheme-letters',
+    pins: 'a scheme letter is an ASCII letter, or ſ or the Kelvin sign, which fold to s and k under the i and u flags; a scheme can hold +, . and -',
+    markdown: '\u017F://x/plan \u212A://x/plan x+https://plan a.http://plan b-ftp://plan then plan',
+    names: ['Plan'],
+    title: 'Plan',
+    ordinal: 0
+  },
+  {
     name: 'unclosed',
     pins: 'an unclosed link or comment is text',
     markdown: '[[Plan and [Plan](x plan <!-- plan',

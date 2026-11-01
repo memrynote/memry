@@ -55,6 +55,10 @@ fn is_word_char(c: Option<char>) -> bool {
 }
 
 /// Every whole-word mention of `names` in `text`, in order.
+///
+/// Costs O(text length × total name length): each position tries every name, longest first,
+/// as the reference's alternation does. A target has a title and a few aliases, so this stays
+/// linear in practice.
 pub fn find_plain_mentions(text: &str, names: &[String]) -> Vec<PlainMention> {
     let mut seen = HashSet::new();
     let mut folded: Vec<Vec<String>> = Vec::new();

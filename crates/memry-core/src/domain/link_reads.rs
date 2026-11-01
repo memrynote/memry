@@ -108,7 +108,13 @@ pub struct MentionSources {
 /// The live notes and days whose indexed text holds every word of one of the target's names
 /// (`getUnlinkedMentions`'s candidates), less the target and every source whose links
 /// resolved to it, which is a backlink. `None` when the target is not live. The caller
-/// matches each candidate's markdown exactly (`mention_mask`).
+/// matches each candidate's markdown exactly (`mention_mask`). Sources sort as [`incoming`]'s
+/// do: by title, then id.
+///
+/// Only `note_links` sources count as backlinks here. Electron's `getIncomingReferences` also
+/// drops notes that reference the target from a property and notes that embed it as a portal
+/// (`link-queries.ts:69`); those indexes are not ported, so such a note still lists its plain
+/// mentions until they are.
 pub fn mention_sources(
     data: &Connection,
     index: &Connection,

@@ -1053,7 +1053,7 @@ and holds at most 32.
 An unlinked mention is body text that spells a note's title or one of its
 aliases without linking to it. Both implementations match with one rule
 (`packages/shared/src/unlinked-mentions.ts:36`,
-`crates/memry-core/src/domain/unlinked_mentions.rs:58`), pinned by the
+`crates/memry-core/src/domain/unlinked_mentions.rs:62`), pinned by the
 `unlinked-mentions` vectors:
 
 1. each name is trimmed, and a name under 3 characters is skipped;
@@ -1066,13 +1066,14 @@ aliases without linking to it. Both implementations match with one rule
 Desktop scans markdown, frontmatter split off, and first blanks code,
 comments, wiki links, markdown links and URLs to spaces of the same UTF-16
 length (`packages/shared/src/unlinked-mentions.ts:91`,
-`crates/memry-core/src/markdown/shared/mention_mask.rs:141`); offsets are
+`crates/memry-core/src/markdown/shared/mention_mask.rs:147`); offsets are
 UTF-16 units into that markdown. A linked run is a wiki link or embed
 (`!?[[…]]` holding no `[`, `]` or line break), a markdown link or image
 whose label holds none of those and whose target holds no parenthesis or white
-space, or a URL: a letter, then letters, digits, `+`, `.` or `-`, then `://`,
-not preceded by a letter, digit, `+`, `.` or `-`, running to white space,
-`<`, `>` or a parenthesis (`packages/shared/src/unlinked-mentions.ts:86`).
+space, or a URL: an ASCII letter (or `ſ` or the Kelvin sign `K`, which fold
+to `s` and `k` under case folding), then such letters, digits, `+`, `.` or
+`-`, then `://`, not preceded by a letter, digit, `+`, `.` or `-`, running
+to white space, `<`, `>` or a parenthesis (`packages/shared/src/unlinked-mentions.ts:86`).
 Linking the `ordinal`-th mention writes `[[Title]]` when it spells the title
 and `[[Title|text]]` otherwise, and links nothing when there is no such
 mention (`packages/shared/src/unlinked-mentions.ts:112`,
