@@ -34,7 +34,7 @@ overrides:
   '@xmldom/xmldom': 0.8.15
   shell-quote: '>=1.11.0'
   linkify-it: '>=5.0.2 <6'
-  dompurify: '>=3.4.13'
+  dompurify: '>=3.4.17'
   form-data: '>=4.0.6'
   fast-uri: '>=3.1.4 <4'
   ip-address: '>=10.7.3'
@@ -8709,8 +8709,8 @@ packages:
     resolution: {integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==}
     engines: {node: '>= 4'}
 
-  dompurify@3.4.13:
-    resolution: {integrity: sha512-2vmYIoqjze2d+kakP8S/nS5shfsl587kzwEjcGlTdiksUVgFHnFCsLYDVj/JNqJVOQZGSYBTmuycv0PodwmnMQ==}
+  dompurify@3.4.17:
+    resolution: {integrity: sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==}
 
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
@@ -22899,7 +22899,7 @@ snapshots:
     dependencies:
       domelementtype: 2.3.0
 
-  dompurify@3.4.13:
+  dompurify@3.4.17:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
@@ -25629,7 +25629,7 @@ snapshots:
       d3-sankey: 0.12.3
       dagre-d3-es: 7.0.14
       dayjs: 1.11.20
-      dompurify: 3.4.13
+      dompurify: 3.4.17
       es-toolkit: 1.46.1
       katex: 0.16.45
       khroma: 2.1.0
@@ -27350,7 +27350,7 @@ snapshots:
       '@posthog/core': 1.44.0
       '@posthog/types': 1.397.1
       core-js: 3.49.0
-      dompurify: 3.4.13
+      dompurify: 3.4.17
       fflate: 0.4.9
       preact: 10.29.7
       query-selector-shadow-dom: 1.0.1
