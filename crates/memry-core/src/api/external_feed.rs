@@ -55,6 +55,23 @@ impl ExternalFeed {
         self.run(external_feed::feed_external_edit, converter, input)
     }
 
+    /// The app's own write of a note's body, after it read `read` from the file. See
+    /// [`external_feed::feed_app_edit`].
+    pub fn feed_app_edit(
+        &self,
+        converter: &Converter,
+        input: FeedInput<'_>,
+        read: &str,
+    ) -> Result<FeedOutcome, CrdtError> {
+        self.run(
+            |conn, converter, input, device_id, now_ms| {
+                external_feed::feed_app_edit(conn, converter, input, read, device_id, now_ms)
+            },
+            converter,
+            input,
+        )
+    }
+
     /// Gives the note the file's text when its body is empty, and leaves a body
     /// it has alone ([`FeedOutcome::BodyPresent`]).
     pub fn seed_body_if_empty(
@@ -67,7 +84,7 @@ impl ExternalFeed {
 
     fn run(
         &self,
-        step: fn(
+        step: impl FnOnce(
             &rusqlite::Connection,
             &Converter,
             FeedInput<'_>,

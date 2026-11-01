@@ -828,3 +828,47 @@ fn a_link_written_by_blocknote_0_47_is_fed_and_kept_whole() {
         "the kept version lost what markdown holds"
     );
 }
+
+fn app_edit(f: &Fixture, id: &str, markdown: &str, read: &str) -> FeedOutcome {
+    f.feed
+        .feed_app_edit(&f.converter, input(id, markdown), read)
+        .expect("the feed itself does not fail")
+}
+
+#[test]
+fn an_app_save_over_the_text_it_read_keeps_no_version() {
+    let f = fixture();
+    let id = f.note();
+    assert_eq!(f.feed(&id, "first text"), FeedOutcome::Fed);
+    // Line ends and trailing newlines the body cannot hold do not count.
+    assert_eq!(
+        app_edit(&f, &id, "second text", "first text\r\n\n"),
+        FeedOutcome::Fed
+    );
+    assert_eq!(
+        app_edit(&f, &id, "third text", "second text"),
+        FeedOutcome::Fed
+    );
+    assert_eq!(
+        app_edit(&f, &id, "third text", "second text"),
+        FeedOutcome::Unchanged
+    );
+    assert_eq!(versions(&f, &id), [], "an editor save is not a version");
+    assert_eq!(f.body(&id).trim_end(), "third text");
+}
+
+#[test]
+fn an_app_save_over_a_body_the_file_never_held_keeps_that_body() {
+    let f = fixture();
+    let id = f.note();
+    // The body holds a text merged after the file was written: the app read the older file.
+    assert_eq!(f.feed(&id, "a peer's text"), FeedOutcome::Fed);
+    assert_eq!(
+        app_edit(&f, &id, "the user's save", "the file before"),
+        FeedOutcome::Fed
+    );
+    let kept = versions(&f, &id);
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    assert!(kept[0].0.contains("a peer's text"), "{kept:?}");
+    assert_eq!(f.body(&id).trim_end(), "the user's save");
+}

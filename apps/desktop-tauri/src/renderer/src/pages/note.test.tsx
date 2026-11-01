@@ -1593,6 +1593,19 @@ describe('NotePage', () => {
       expect(revision()).toBe('0')
     })
 
+    it('keeps text a save wrote while the read was out', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+      act(() => mocks.droppedHandler?.())
+      act(() => mocks.onMarkdownChange?.('Saved during read'))
+      await waitFor(() => expect(mocks.updateNote).toHaveBeenCalled(), { timeout: 3000 })
+      // The read ran before the save landed on disk.
+      await act(async () => answer({ id: 'note-1', content: 'Edited on disk' }))
+
+      expect(revision()).toBe('0')
+    })
+
     it('reads nothing while a save runs', async () => {
       mocks.updateNote.mockImplementation(() => new Promise(() => undefined))
       renderWithProviders(<NotePage noteId="note-1" />)

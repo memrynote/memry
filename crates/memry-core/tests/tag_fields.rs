@@ -159,3 +159,32 @@ fn a_schema_this_build_cannot_read_lists_no_fields() {
     let meta = note(&db, &["book", "film"], json!({}));
     assert!(meta.tag_fields.is_empty());
 }
+
+#[test]
+fn a_tag_has_fields_of_its_own_or_through_an_ancestor() {
+    let db = open();
+    define_tag(
+        &db,
+        "Person",
+        json!({ "t": 1, "fields": [{ "name": "born" }] }),
+    );
+    define_tag(&db, "Author", json!({ "t": 1, "extends": "person" }));
+    define_tag(
+        &db,
+        "Reserved",
+        json!({ "t": 1, "fields": [{ "name": "Tags" }] }),
+    );
+    define_tag(
+        &db,
+        "Unreadable",
+        json!({ "t": "one", "fields": [{ "name": "x" }] }),
+    );
+    define_tag(&db, "Orphan", json!({ "t": 1, "extends": "missing" }));
+    define_tag(&db, "Plain", Value::Null);
+    let with_fields = db
+        .call_blocking(|conn: &mut Connection| memry_core::domain::tag_fields::with_fields(conn))
+        .expect("the read");
+    let mut keys: Vec<String> = with_fields.into_iter().collect();
+    keys.sort();
+    assert_eq!(keys, ["author", "person"]);
+}

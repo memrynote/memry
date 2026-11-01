@@ -198,6 +198,19 @@ fn ancestors(key: &str, defs: &BTreeMap<String, Def>) -> Vec<String> {
     chain
 }
 
+/// The keys of the tags with fields, their own or an ancestor's (desktop `tagsWithFields`, the
+/// `hasFields` of `resolveTagSchemas`). A body's `#tag` of one of these never joins or leaves a
+/// note's header ([`super::header_tags`]).
+pub fn with_fields(conn: &Connection) -> Result<HashSet<String>, StorageError> {
+    let defs = definitions(conn)?;
+    let has_own = |key: &str| !own_fields(defs.get(key)).is_empty();
+    Ok(defs
+        .keys()
+        .filter(|key| has_own(key) || ancestors(key, &defs).iter().any(|a| has_own(a)))
+        .cloned()
+        .collect())
+}
+
 /// The tag field groups of an item carrying `tags` and property `values`, in
 /// the order desktop draws them: each tag's own fields, then each ancestor's,
 /// nearest first. A field shown once is not shown again under a later tag.

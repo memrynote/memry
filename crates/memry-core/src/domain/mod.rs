@@ -23,6 +23,7 @@ pub mod custom_icons;
 #[cfg(feature = "markdown")]
 pub mod external_feed;
 pub mod folders;
+pub mod header_tags;
 pub mod inbox;
 pub mod journal;
 pub mod journal_ops;
