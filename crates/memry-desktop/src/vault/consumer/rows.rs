@@ -1,10 +1,10 @@
 //! The one lane that writes `note_files`. The consumer takes it for each watcher event; the
-//! app's own file operations (Step 13's create, rename and move) take it through
-//! [`RowOwner`]'s methods or [`RowOwner::lane_of`], the write-back (`vault::writeback`) holds it
-//! for a whole pass, a journal rename (`vault::journal_rename`) for each file it moves, and the
-//! vault open for the app move a crash cut short (`vault::app_move`). Either way a write checks
-//! [`PathIndex`] first and keeps it in step, and the [`Applied`] fact goes out after the row is written, under
-//! the lane, so subscribers see the facts in the order the rows changed.
+//! app's own file operations (Step 13's create) take it through [`RowOwner`]'s methods, the
+//! write-back (`vault::writeback`) holds it for a whole pass, a journal rename
+//! (`vault::journal_rename`) for each file it moves, and the vault open for the app move a
+//! crash cut short (`vault::app_move`). Either way a write checks [`PathIndex`] first and keeps
+//! it in step, and the [`Applied`] fact goes out after the row is written, under the lane, so
+//! subscribers see the facts in the order the rows changed.
 //!
 //! An app operation names the vault session it started in ([`RowSession`]): one that
 //! finishes after its vault closed, or after another vault opened, writes nothing.
