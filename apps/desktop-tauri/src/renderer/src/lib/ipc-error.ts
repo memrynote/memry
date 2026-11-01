@@ -121,6 +121,11 @@ function isCommandError(error: unknown): error is { kind: string; code: string; 
   )
 }
 
+/** The `code` of a rejected Tauri command, or undefined for any other failure. */
+export function commandErrorCode(error: unknown): string | undefined {
+  return isCommandError(error) ? error.code : undefined
+}
+
 function rawMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   if (typeof error === 'string') return error

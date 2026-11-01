@@ -11,7 +11,7 @@
 //!
 //! A created note is read for its list item, an outside edit for the fields it may have changed
 //! ([`NoteView::changes`]). Facts missed because this thread fell behind are made up for with
-//! one refetch of the lists.
+//! one [`NoteEventsDroppedEvent`], on which the renderer refetches what it shows.
 //!
 //! Renames and moves are Step 13g's.
 
@@ -24,7 +24,7 @@ use tokio::sync::broadcast::Receiver;
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::events::{
-    NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteUpdatedEvent, VaultIndexProgressEvent,
+    NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteEventsDroppedEvent, NoteUpdatedEvent,
     broadcast,
 };
 
@@ -33,17 +33,10 @@ pub fn forward(app: AppHandle<Wry>, mut facts: Receiver<Applied>) {
         loop {
             match facts.blocking_recv() {
                 Ok(fact) => emit(&app, fact),
-                // Nothing replays the missed facts: the lists refetch instead, on the signal of
-                // an index with nothing left to do (`use-notes-query.ts`).
+                // Nothing replays the missed facts: the renderer refetches instead.
                 Err(RecvError::Lagged(missed)) => {
                     tracing::warn!(scope = "notes", missed, "note events were dropped");
-                    broadcast(
-                        &app,
-                        VaultIndexProgressEvent {
-                            index_built: 0,
-                            index_total: 0,
-                        },
-                    );
+                    broadcast(&app, NoteEventsDroppedEvent);
                 }
                 Err(RecvError::Closed) => return,
             }

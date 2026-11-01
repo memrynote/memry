@@ -4,6 +4,11 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
 import { TaskDetailHost } from '@/components/tasks/task-detail-host'
 import { NotePage } from './note'
+import {
+  answer as answerTrashQuestion,
+  askPermanentDelete,
+  current as currentTrashQuestion
+} from '@/lib/permanent-delete-question'
 import { isNewNoteTitlePending, markNewNoteTitlePending } from '@/lib/new-note-title'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
@@ -99,6 +104,8 @@ const mocks = vi.hoisted(() => ({
     | ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void)
     | null,
   renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
+  droppedHandler: null as (() => void) | null,
+  notesGet: vi.fn(),
   findInPageEnabled: undefined as boolean | undefined,
   findInPage: {
     isOpen: true,
@@ -262,7 +269,12 @@ vi.mock('@/services/notes-service', async (importOriginal) => {
       openExternal: mocks.openExternal,
       // #800 getFile probe (note.tsx): null → treated as a real markdown note.
       getFile: vi.fn(async () => null),
+      get: mocks.notesGet,
       resolveByTitle: mocks.resolveByTitle
+    },
+    onNoteEventsDropped: (handler: () => void) => {
+      mocks.droppedHandler = handler
+      return vi.fn()
     },
     onNoteDeleted: (handler: (event: { id: string }) => void) => {
       mocks.deletedHandler = handler
@@ -1535,6 +1547,64 @@ describe('NotePage', () => {
     expect(mocks.contentAreaMounts).toBe(1)
   })
 
+  describe('when note events were dropped', () => {
+    const revision = () => screen.getByTestId('editor-external-revision').textContent
+    let answer: (note: unknown) => void
+    beforeEach(() => {
+      mocks.notesGet.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            answer = resolve
+          })
+      )
+    })
+
+    it('hands text changed on disk to the editor, though the note query took it first', async () => {
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+      expect(revision()).toBe('0')
+
+      act(() => mocks.droppedHandler?.())
+      expect(mocks.notesGet).toHaveBeenCalledWith('note-1')
+      // The note query refetches on the same signal and answers first.
+      mocks.noteState.note = { ...note, content: 'Edited while dropped' }
+      page.rerender(<NotePage noteId="note-1" />)
+      await act(async () => answer({ id: 'note-1', content: 'Edited while dropped' }))
+
+      expect(revision()).toBe('1')
+      expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Edited while dropped')
+      expect(mocks.contentAreaMounts).toBe(1)
+    })
+
+    it('leaves the editor alone for the same text, a large note, or typing not saved yet', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+      const dropAndRead = async (fresh: unknown) => {
+        act(() => mocks.droppedHandler?.())
+        await act(async () => answer(fresh))
+      }
+
+      await dropAndRead({ id: 'note-1', content: 'Original body' })
+      await dropAndRead({ id: 'note-1', content: '', contentOmitted: true })
+      act(() => mocks.onMarkdownChange?.('Typed, not saved'))
+      await dropAndRead({ id: 'note-1', content: 'Edited on disk' })
+
+      expect(mocks.notesGet).toHaveBeenCalledTimes(3)
+      expect(revision()).toBe('0')
+    })
+
+    it('reads nothing while a save runs', async () => {
+      mocks.updateNote.mockImplementation(() => new Promise(() => undefined))
+      renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+      act(() => mocks.onMarkdownChange?.('Saving now'))
+      await waitFor(() => expect(mocks.updateNote).toHaveBeenCalled(), { timeout: 3000 })
+
+      act(() => mocks.droppedHandler?.())
+      expect(mocks.notesGet).not.toHaveBeenCalled()
+    })
+  })
+
   it('hands an on-disk external content update to the live editor without remounting', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
     expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
@@ -1800,6 +1870,36 @@ describe('NotePage', () => {
       await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
       expect(mocks.closeTab).not.toHaveBeenCalled()
       expect(toast.error).toHaveBeenCalledWith('nope')
+      // A failure leaves the question open, to try again.
+      expect(screen.getByTestId('delete-dialog')).toBeInTheDocument()
+    })
+
+    it('gives way to the trash question about this note, and stays closed on Keep', async () => {
+      mocks.deleteNote.mockImplementationOnce(async (id: string) =>
+        (await askPermanentDelete(id, 'Original'))
+          ? { success: true }
+          : { success: false, error: 'kept' }
+      )
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.delete' }))
+      fireEvent.click(screen.getByRole('button', { name: 'page.deleteConfirm.confirm' }))
+      await waitFor(() => expect(currentTrashQuestion()?.noteId).toBe('note-1'))
+      await waitFor(() => expect(screen.queryByTestId('delete-dialog')).not.toBeInTheDocument())
+
+      act(() => answerTrashQuestion(currentTrashQuestion(), false))
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('kept'))
+      expect(screen.queryByTestId('delete-dialog')).not.toBeInTheDocument()
+      expect(mocks.closeTab).not.toHaveBeenCalled()
+    })
+
+    it('keeps its delete dialog for a trash question about another note', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.delete' }))
+
+      act(() => void askPermanentDelete('note-2', 'Other'))
+      expect(screen.getByTestId('delete-dialog')).toBeInTheDocument()
+      act(() => answerTrashQuestion(currentTrashQuestion(), false))
     })
 
     it('surfaces an error toast when copy path fails', async () => {

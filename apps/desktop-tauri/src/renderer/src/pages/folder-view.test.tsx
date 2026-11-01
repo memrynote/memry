@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   updateNoteHeaderTags: vi.fn(),
   updateNoteIcons: vi.fn(),
   toastSuccess: vi.fn(),
+  toastError: vi.fn(),
   setActiveViewIndex: vi.fn(),
   updateView: vi.fn(),
   addView: vi.fn(),
@@ -194,7 +195,7 @@ vi.mock('@/hooks/use-folder-view', () => ({
 }))
 
 vi.mock('sonner', () => ({
-  toast: { success: mocks.toastSuccess, error: vi.fn() }
+  toast: { success: mocks.toastSuccess, error: mocks.toastError }
 }))
 
 vi.mock('@/components/ui/button', () => ({
@@ -1164,5 +1165,20 @@ describe('FolderViewPage stale selection after a filter change', () => {
 
     await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith('note-1'))
     expect(mocks.deleteNote).toHaveBeenCalledWith('note-2')
+  })
+
+  it('brings back a note the user kept, and says why', async () => {
+    mocks.folderState.notes = [note, secondNote]
+    mocks.deleteNote.mockImplementation(async (id: string) =>
+      id === 'note-2' ? { success: false, error: 'The note was kept.' } : { success: true }
+    )
+    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Select two notes' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bulk delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'button.delete' }))
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('The note was kept.'))
+    expect(mocks.refresh).toHaveBeenCalled()
   })
 })

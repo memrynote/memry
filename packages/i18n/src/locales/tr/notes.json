@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, one {# blok daha} other {# blok daha}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Çöp kutusuna taşınamıyor",
+    "description": "“{title}” çöp kutusuna taşınamıyor. Kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
+    "keep": "Notu tut",
+    "deletePermanently": "Kalıcı olarak sil",
+    "kept": "Not tutuldu. Çöp kutusuna taşınamadı."
   }
 }

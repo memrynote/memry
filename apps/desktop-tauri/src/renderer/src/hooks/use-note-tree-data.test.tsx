@@ -34,6 +34,7 @@ vi.mock('@/services/notes-service', () => {
     onNoteRenamed: unsubscribe,
     onNoteMoved: unsubscribe,
     onNoteExternalChange: unsubscribe,
+    onNoteEventsDropped: unsubscribe,
     onTagsChanged: unsubscribe,
     onFolderConfigUpdated: unsubscribe
   }

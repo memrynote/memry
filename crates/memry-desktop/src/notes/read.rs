@@ -252,14 +252,37 @@ fn with_header_tags(mut tags: Vec<String>, header: &[String]) -> Vec<String> {
     tags
 }
 
-/// `largeFileNote`: the note without its text, which the editor never mounts.
-fn large_note(listed: ListedNote, class: MarkdownClassification, read: bool) -> NoteView {
-    let (created, modified) = dates(&listed);
+/// How a read of the markdown file `raw` classifies it: `None` for a note, else the large
+/// file's info, as [`get`] answers it.
+pub(super) fn large_file_of(raw: &str) -> Option<LargeFileInfo> {
+    let thresholds = MarkdownClassThresholds::default();
+    if let Some(class) = classify_markdown_stat(raw.len(), thresholds) {
+        return Some(large_file_info(&class, false));
+    }
+    let class = classify_markdown_content(raw, thresholds);
+    class
+        .large_file
+        .is_some()
+        .then(|| large_file_info(&class, true))
+}
+
+/// `read`: the file's blocks were read, not only its size.
+fn large_file_info(class: &MarkdownClassification, read: bool) -> LargeFileInfo {
     let to_u32 = |bytes: usize| u32::try_from(bytes).unwrap_or(u32::MAX);
     let reason = match class.large_file {
         Some(LargeFileReason::BlockBytes) => LargeFileReasonView::BlockBytes,
         _ => LargeFileReasonView::FileBytes,
     };
+    LargeFileInfo {
+        reason,
+        file_bytes: to_u32(class.file_bytes),
+        largest_block_bytes: read.then(|| to_u32(class.largest_block_bytes)),
+    }
+}
+
+/// `largeFileNote`: the note without its text, which the editor never mounts.
+fn large_note(listed: ListedNote, class: MarkdownClassification, read: bool) -> NoteView {
+    let (created, modified) = dates(&listed);
     NoteView {
         id: listed.id,
         path: listed.path,
@@ -277,11 +300,7 @@ fn large_note(listed: ListedNote, class: MarkdownClassification, read: bool) -> 
         emoji: listed.emoji,
         local_only: listed.local_only,
         size_class: SizeClass::LargeFile,
-        large_file: Some(LargeFileInfo {
-            reason,
-            file_bytes: to_u32(class.file_bytes),
-            largest_block_bytes: read.then(|| to_u32(class.largest_block_bytes)),
-        }),
+        large_file: Some(large_file_info(&class, read)),
         content_omitted: true,
     }
 }
