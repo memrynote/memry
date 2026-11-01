@@ -10,9 +10,13 @@
 //!    core reads off the row that is still there (`domain::notes::local_only`);
 //! 3. the row, then the note's slot in the sidebar order.
 //!
-//! A record that cannot be tombstoned after its file went fails the delete with the row kept:
-//! the row names a file that is gone, so the next open's watcher reports its removal and the
-//! identity deletes the note on the row's evidence (`identity::removed`).
+//! A record that cannot be tombstoned after its file went fails the delete with the row kept,
+//! naming a file that is gone. The next open's watcher reports the removal, and the identity
+//! decides on the row's evidence (`identity::removed`): a file that was unlinked held the text
+//! the row names, so the note is deleted then; a file that went to the trash held text the note
+//! never took, so nothing proves only the file went and the note stays, listed with its file
+//! missing. Either way a second delete goes through: the file is gone, so only the record and
+//! the row are left to go.
 //!
 //! Not here yet: the date reminders Electron clears (Step 21) and the locked-folder check
 //! (`assertNoteWritable`, Step 13n).

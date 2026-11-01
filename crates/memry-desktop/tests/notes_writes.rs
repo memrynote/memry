@@ -439,7 +439,7 @@ fn a_file_that_appears_before_the_create_writes_stays_and_becomes_its_own_note()
 }
 
 #[test]
-fn a_name_an_unread_file_or_another_spelling_holds_is_skipped() {
+fn a_name_a_file_no_row_names_yet_holds_is_skipped() {
     let (e, notes) = opened();
     let open = e.session.current().unwrap();
     // A file no row names yet: the watcher holds a new file back for its grace first.
