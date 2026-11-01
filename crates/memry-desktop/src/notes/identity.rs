@@ -458,6 +458,20 @@ impl NoteIdentity for NotesIdentity {
         };
         Ok(writer.file_moved(note_id, moved)?)
     }
+
+    /// The rule [`Self::on_renamed`] follows, for the app's own move: the journal days unknown
+    /// keep nothing.
+    fn keeps_kind(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        new_path: &str,
+    ) -> Result<bool, IdentityError> {
+        match self.journal(ctx.root) {
+            Some(journal) => keeps_kind(&journal, &*self.writer(ctx)?, note_id, new_path),
+            None => Ok(false),
+        }
+    }
 }
 
 /// Large-file class (`packages/shared/src/markdown-class.ts`): the size alone, else the text.
