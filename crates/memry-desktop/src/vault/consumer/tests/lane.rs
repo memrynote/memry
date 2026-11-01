@@ -90,6 +90,7 @@ fn note_files_is_written_only_through_the_lane() {
         ".rename_path(",
         ".rename_prefix(",
         ".set_hash(",
+        ".moved_by_app(",
         "note_files().remove(",
         "files.remove(",
     ];

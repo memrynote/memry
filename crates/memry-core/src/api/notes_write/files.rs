@@ -8,7 +8,7 @@ use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::journal;
-use crate::domain::notes::app_move::{self, AppMoved, PendingMove};
+use crate::domain::notes::app_move::{self, AppMoved, Recorded};
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::markdown::convert::EmbedResolver;
@@ -120,12 +120,13 @@ impl NotesWriter {
             .call_blocking(move |conn| app_move::begin(conn, note_id, &moved))
     }
 
-    /// The app move recorded and never finished or forgotten ([`app_move::pending`]).
-    pub fn pending_app_move(&self) -> Result<Option<PendingMove>, StorageError> {
+    /// What is recorded of an app move never finished or forgotten ([`app_move::pending`]).
+    pub fn pending_app_move(&self) -> Result<Option<Recorded>, StorageError> {
         self.db.call_blocking(|conn| app_move::pending(conn))
     }
 
-    /// Forgets the recorded app move ([`app_move::abandon`]).
+    /// Forgets the recorded app move, unless this build cannot read it
+    /// ([`app_move::abandon`]).
     pub fn abandon_app_move(&self) -> Result<(), StorageError> {
         self.db.call_blocking(|conn| app_move::abandon(conn))
     }

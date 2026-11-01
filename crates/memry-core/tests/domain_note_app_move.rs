@@ -10,18 +10,21 @@
 //! | a move the record was owed is settled                  | `identity::renamed`'s settle       |
 //! | a recorded move reads back until its transaction ...   | the next open finishes or forgets  |
 //! | a move whose transaction fails keeps its record ...    | the tier forgets it after put-back |
-//! | a record from a later build reads ...                  | the `v1` record is a contract      |
+//! | a version 1 record with a field a later build added    | the `v1` record is a contract      |
+//! | a record this build cannot read is never replaced ...  | left for the build that wrote it   |
 
 #![cfg(feature = "markdown")]
 
 mod note_identity_support;
 
+use memry_core::api::errors::StorageError;
 use memry_core::domain::note_files;
-use memry_core::domain::notes::app_move::{self, AppMoved, PendingMove};
+use memry_core::domain::notes::app_move::{self, AppMoved, PendingMove, Recorded};
 use memry_core::domain::notes::identity;
 use note_identity_support::{
     DEVICE, NOW, clear_outbox, create, give_row, open, outbox, payload, place, position, run,
 };
+use rusqlite::OptionalExtension;
 use serde_json::{Value, json};
 
 fn row_path(db: &memry_core::storage::Db, id: &str) -> Option<String> {
@@ -197,7 +200,10 @@ fn a_recorded_move_reads_back_until_its_transaction_forgets_it() {
         new_path: "Work/Plan Q3.md".to_owned(),
         title: Some("Plan: Q3".to_owned()),
     };
-    assert_eq!(run(&db, |conn| app_move::pending(conn)), Some(recorded));
+    assert_eq!(
+        run(&db, |conn| app_move::pending(conn)),
+        Some(Recorded::Move(recorded))
+    );
 
     run(&db, |conn| {
         app_move::moved_by_app(conn, "n1", &moved, DEVICE, NOW + 1)
@@ -228,27 +234,92 @@ fn a_move_whose_transaction_fails_keeps_its_record_and_abandon_forgets_it() {
     assert_eq!(run(&db, |conn| app_move::pending(conn)), None);
 }
 
-#[test]
-fn a_record_from_a_later_build_reads_and_one_that_does_not_parse_is_an_error() {
-    let db = open("app-move-pending-formats");
-    let put = |value: &str| {
-        db.call_blocking(|conn| {
-            conn.execute(
-                "INSERT INTO meta (key, value) VALUES (?1, ?2)
-                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                [app_move::APP_MOVE_META_KEY, value],
-            )
-            .map(drop)
-            .map_err(|error| memry_core::api::errors::StorageError::Failed {
-                what: error.to_string(),
-            })
+fn put_record(db: &memry_core::storage::Db, value: &str) {
+    run(db, |conn| {
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [app_move::APP_MOVE_META_KEY, value],
+        )
+        .map(drop)
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
         })
-        .unwrap();
-    };
-    put(r#"{"noteId":"n1","oldPath":"a.pdf","newPath":"b.pdf","title":null,"later":1}"#);
-    let read = run(&db, |conn| app_move::pending(conn)).expect("a record");
-    assert_eq!((read.old_path.as_str(), read.title), ("a.pdf", None));
+    });
+}
 
-    put("not json");
-    assert!(db.call_blocking(|conn| app_move::pending(conn)).is_err());
+fn raw_record(db: &memry_core::storage::Db) -> Option<String> {
+    run(db, |conn| {
+        conn.query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            [app_move::APP_MOVE_META_KEY],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+}
+
+#[test]
+fn a_version_1_record_with_a_field_a_later_build_added_reads() {
+    let db = open("app-move-record-later-field");
+    put_record(
+        &db,
+        r#"{"version":1,"noteId":"n1","oldPath":"a.pdf","newPath":"b.pdf","title":null,"later":1}"#,
+    );
+    let read = run(&db, |conn| app_move::pending(conn));
+    let Some(Recorded::Move(read)) = read else {
+        panic!("{read:?}")
+    };
+    assert_eq!((read.old_path.as_str(), read.title), ("a.pdf", None));
+}
+
+/// Another version's record, or one that does not parse, is left exactly as it was by every
+/// call: the version that wrote it finishes it.
+#[test]
+fn a_record_this_build_cannot_read_is_never_replaced_or_deleted() {
+    let db = open("app-move-record-unknown");
+    create(&db, "n1", "Plan", None);
+    give_row(&db, "n1", "Plan.md");
+    let moved = AppMoved {
+        old_path: "Plan.md",
+        new_path: "Later.md",
+        title: Some("Later"),
+        keeps_kind: true,
+    };
+    for (n, value) in [
+        "not json",
+        r#"{"version":2,"noteId":"n1","oldPath":"Plan.md","newPath":"Later.md"}"#,
+        r#"{"noteId":"n1","oldPath":"Plan.md","newPath":"Later.md","title":null}"#,
+        r#"{"version":1,"noteId":7}"#,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        put_record(&db, value);
+        let read = run(&db, |conn| app_move::pending(conn));
+        assert!(
+            matches!(read, Some(Recorded::Unknown(_))),
+            "{value}: {read:?}"
+        );
+
+        run(&db, |conn| app_move::abandon(conn));
+        let refused = db.call_blocking(|conn| app_move::begin(conn, "n1", &moved));
+        assert!(refused.is_err(), "{value}");
+        // A title given in place still runs the transaction that forgets this note's record.
+        let title = format!("Plan {n}");
+        let in_place = AppMoved {
+            old_path: "Plan.md",
+            new_path: "Plan.md",
+            title: Some(&title),
+            keeps_kind: true,
+        };
+        run(&db, |conn| {
+            app_move::moved_by_app(conn, "n1", &in_place, DEVICE, NOW + 1)
+        });
+        assert_eq!(payload(&db, "n1")["title"], json!(title));
+        assert_eq!(raw_record(&db).as_deref(), Some(value));
+    }
 }

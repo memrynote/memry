@@ -1,8 +1,9 @@
 //! The one lane that writes `note_files`. The consumer takes it for each watcher event; the
-//! app's own file operations (Step 13's create) take it through [`RowOwner`]'s methods, the
-//! write-back (`vault::writeback`) holds it for a whole pass, and a journal rename
-//! (`vault::journal_rename`) for each file it moves. Either way a write checks [`PathIndex`]
-//! first and keeps it in step, and the [`Applied`] fact goes out after the row is written, under
+//! app's own file operations (Step 13's create, rename and move) take it through
+//! [`RowOwner`]'s methods or [`RowOwner::lane_of`], the write-back (`vault::writeback`) holds it
+//! for a whole pass, a journal rename (`vault::journal_rename`) for each file it moves, and the
+//! vault open for the app move a crash cut short (`vault::app_move`). Either way a write checks
+//! [`PathIndex`] first and keeps it in step, and the [`Applied`] fact goes out after the row is written, under
 //! the lane, so subscribers see the facts in the order the rows changed.
 //!
 //! An app operation names the vault session it started in ([`RowSession`]): one that
@@ -19,8 +20,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_core::api::errors::StorageError;
 use memry_core::api::note_files::NoteFiles;
+use memry_core::api::notes_write::NotesWriter;
 use memry_core::api::vault::Vault;
 use memry_core::domain::note_files::{NoteFile as Row, NoteFileStat};
+use memry_core::domain::notes::app_move::AppMoved;
 use tokio::sync::broadcast;
 
 use super::{Applied, ChangeSource};
@@ -341,6 +344,22 @@ impl Lane<'_> {
         state.index.check(note_id, new_path)?;
         state.files.rename_path(note_id, new_path)?;
         state.index.insert(note_id, new_path);
+        Ok(())
+    }
+
+    /// The app moved the note's file (Step 13g): the record, this row and the note's manual
+    /// slot follow it in one core transaction ([`NotesWriter::moved_by_app`]), so an `Err`
+    /// leaves all three where they were.
+    pub(crate) fn move_by_app(
+        &mut self,
+        writer: &NotesWriter,
+        note_id: &str,
+        moved: AppMoved<'_>,
+    ) -> Result<(), RowError> {
+        let state = self.state_mut();
+        state.index.check(note_id, moved.new_path)?;
+        writer.moved_by_app(note_id, moved)?;
+        state.index.insert(note_id, moved.new_path);
         Ok(())
     }
 
