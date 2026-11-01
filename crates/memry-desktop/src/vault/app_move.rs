@@ -8,20 +8,124 @@
 //! moved file is never taken for a new one. That serves a markdown note and a file note (PDF,
 //! image) alike: a file note's row has no hash, so nothing else could pair its moved file
 //! with it.
+//!
+//! [`NoteFileMove`] is the live half: it records the move and moves the file, and puts the
+//! file back when the transaction fails.
 
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use memry_core::api::notes_write::NotesWriter;
-use memry_core::domain::notes::app_move::{AppMoved, PendingMove, Recorded};
+use memry_core::domain::notes::app_move::{AppMoved, BeginError, PendingMove, Recorded};
 use unicode_normalization::UnicodeNormalization;
 
 use super::consumer::identity::{IdentityCtx, NoteIdentity};
 use super::consumer::rows::Lane;
+use super::file_move::FileMove;
+use super::path_key::folded_key;
+use super::watch::EchoGuard;
 use crate::shell::file_open::is_plain_relative;
 
 const SCOPE: &str = "app_move";
+
+/// Why [`NoteFileMove::forward`] did not move the file.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum MoveError {
+    #[error(transparent)]
+    Begin(#[from] BeginError),
+    #[error(transparent)]
+    Io(#[from] io::Error),
+}
+
+/// One app move of a note's file, between two vault-relative paths, under the rows' lane.
+pub(crate) struct NoteFileMove<'a> {
+    pub echo: &'a EchoGuard,
+    pub root: &'a Path,
+    pub old: &'a str,
+    pub new: &'a str,
+    /// A markdown note's row has the hash of its bytes, which the watcher pairs a move on.
+    pub pairs_on_hash: bool,
+}
+
+impl NoteFileMove<'_> {
+    /// Records the move ([`Lane::begin_move`]), then moves the file without replacing anything
+    /// ([`FileMove`], on disk when it returns). A file that did not move forgets the record.
+    pub(crate) fn forward(
+        &self,
+        lane: &mut Lane<'_>,
+        writer: &NotesWriter,
+        note_id: &str,
+        moved: AppMoved<'_>,
+    ) -> Result<(), MoveError> {
+        lane.begin_move(writer, note_id, moved)?;
+        let (source, target) = (on_disk(self.root, self.old), on_disk(self.root, self.new));
+        if let Err(error) = self.file_move(&source, &target, self.old).run(self.echo) {
+            self.forget(lane, writer, note_id);
+            return Err(error.into());
+        }
+        Ok(())
+    }
+
+    /// Puts the file back after the record and row could not follow it: file and row must
+    /// agree, or the moved file is taken for a new note and the row stranded. A file that went
+    /// back forgets the record. One that could not stays at the new path with its record, for
+    /// the next open to finish ([`finish_interrupted`]); meanwhile a markdown note's old name
+    /// is withdrawn from the own-write record, so the watcher sees an outside move and pairs it
+    /// on the row's hash, and a file note's stays, so its old name going is not taken for the
+    /// note's removal.
+    pub(crate) fn back(&self, lane: &mut Lane<'_>, writer: &NotesWriter, note_id: &str) {
+        let (source, target) = (on_disk(self.root, self.new), on_disk(self.root, self.old));
+        match self.file_move(&source, &target, self.new).run(self.echo) {
+            Ok(()) => {
+                self.echo.cancel_removal(self.old);
+                self.forget(lane, writer, note_id);
+            }
+            Err(error) => {
+                tracing::error!(
+                    scope = SCOPE,
+                    note_id,
+                    "a note's file could not go back after its record did not move: {error}"
+                );
+                if self.pairs_on_hash {
+                    self.echo.cancel_removal(self.old);
+                }
+            }
+        }
+    }
+
+    /// Forgets the record of a move whose file did not move or went back. A record that stays
+    /// is forgotten by the next open, which finds the file at the old path.
+    fn forget(&self, lane: &mut Lane<'_>, writer: &NotesWriter, note_id: &str) {
+        if let Err(error) = lane.forget_move(writer, note_id, self.old, self.new) {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "the record of an undone app move waits for the next open: {error}"
+            );
+        }
+    }
+
+    fn file_move<'p>(
+        &self,
+        source: &'p Path,
+        target: &'p Path,
+        source_rel: &'p str,
+    ) -> FileMove<'p> {
+        FileMove {
+            source,
+            target,
+            source_rel,
+            case_only: folded_key(self.old) == folded_key(self.new),
+        }
+    }
+}
+
+/// The file at the vault-relative, `/`-separated `rel`.
+pub(crate) fn on_disk(root: &Path, rel: &str) -> PathBuf {
+    rel.split('/')
+        .fold(root.to_path_buf(), |path, segment| path.join(segment))
+}
 
 /// Settles each note's recorded app move, before the walk. Nothing here stops the open: a
 /// record that cannot be settled now is logged and stays for the next open, and its note
