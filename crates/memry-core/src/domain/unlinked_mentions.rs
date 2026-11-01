@@ -21,7 +21,7 @@ use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::api::search::BacklinkOrder;
-use crate::domain::journal_ops::links::{self, Item, live_item};
+use crate::domain::journal_ops::links;
 use crate::domain::notes::failed;
 use crate::domain::notes::names::{js_trim, parse_stored};
 use crate::domain::tags;
@@ -146,23 +146,25 @@ pub fn unlinked_mentions(
         })
         .map_err(failed)?;
 
-    let mut out = Vec::new();
+    let mut found = Vec::new();
     for candidate in candidates {
         let (source_id, content) = candidate.map_err(failed)?;
         if source_id == target_id || linked.contains(&source_id) {
             continue;
         }
         let mentions = find_plain_mentions(&content, &names);
-        if mentions.is_empty() {
-            continue;
+        if !mentions.is_empty() {
+            found.push((source_id, mentions));
         }
-        let Some(source) = live_item(data, &source_id)? else {
+    }
+    // One read for every source, not one per source.
+    let sources = links::live_items(data, found.iter().map(|(id, _)| id.as_str()))?;
+    let mut out = Vec::new();
+    for (source_id, mentions) in found {
+        let Some(source) = sources.get(&source_id) else {
             continue;
         };
-        let (source_title, source_kind, source_date) = match source {
-            Item::Note { title, .. } => (title, "note", None),
-            Item::Journal { date, .. } => (date.clone(), "journal", Some(date)),
-        };
+        let (source_title, source_kind, source_date) = source.named();
         out.push(UnlinkedMention {
             source_id,
             source_title,

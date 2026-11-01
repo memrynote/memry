@@ -24,10 +24,14 @@
 //! [`CHANGED_THROTTLE`], and at once when a log opens or closes.
 //! [`ActivityLog::flush`] writes what is buffered now; the `flush-activity-log` shutdown step
 //! and the vault close call it.
+//!
+//! What the open walk found (new notes' files, failed reads, unsupported files) is recorded once
+//! the walk ended, as Electron's `indexVault` does ([`ActivityLog::record_scan`]).
 
 mod disk;
 mod entry;
 mod parse;
+mod scan;
 mod store;
 
 use std::path::{Path, PathBuf};
@@ -49,6 +53,9 @@ pub use entry::{
 };
 pub use parse::{MAX_COUNTS, MAX_TEXT_BYTES, steps};
 use parse::{Read, read_line};
+pub use scan::{
+    SCAN_COLLECT_LIMIT, ScanActivity, ScanFailure, ScanMode, UNREADABLE_REPORT_MS, failure_key,
+};
 use store::{Log, extension, is_user_content};
 
 use crate::error::{CoreError, FailureKind};
@@ -354,6 +361,28 @@ impl ActivityLog {
     pub fn record(&self, root: &Path, input: ActivityInput) -> bool {
         let mut state = self.shared.state();
         self.record_in(&mut state, root, input)
+    }
+
+    /// Holds `keys` as if their entries were recorded now, recording none: a later report of
+    /// one inside `window` is a repeat. Nothing while that vault is not the open one.
+    pub fn claim(&self, root: &Path, keys: impl IntoIterator<Item = String>, window: i64) {
+        let now_ms = (self.shared.clock)();
+        let mut state = self.shared.state();
+        let Some(log) = state.log.as_mut().filter(|log| log.root == root) else {
+            return;
+        };
+        for key in keys {
+            log.admit(&key, window, now_ms);
+        }
+    }
+
+    /// `key` stands for nothing any more (the file it named read again): its next report is
+    /// recorded, inside its window too.
+    pub fn release(&self, root: &Path, key: &str) {
+        let mut state = self.shared.state();
+        if let Some(log) = state.log.as_mut().filter(|log| log.root == root) {
+            log.release(key);
+        }
     }
 
     fn record_in(&self, state: &mut State, root: &Path, input: ActivityInput) -> bool {

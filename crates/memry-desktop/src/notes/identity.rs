@@ -268,7 +268,35 @@ impl NotesIdentity {
     }
 }
 
+/// Electron's database is beside the vault's files (`<vault>/.memry/data.db`).
+fn electron_db_beside(root: &Path) -> bool {
+    root.join(".memry").join("data.db").is_file()
+}
+
 impl NoteIdentity for NotesIdentity {
+    /// An Electron vault whose notes were not imported: by the core's rule, a file of it that
+    /// matches no note the core has defers ([`Deferral::ElectronNotImported`]) instead of
+    /// getting a new id. One whose answer cannot be read is left too, as the file asks then
+    /// fail.
+    fn leaves_vault(&self, ctx: &IdentityCtx<'_>) -> bool {
+        if !electron_db_beside(ctx.root) {
+            return false;
+        }
+        let mints = self
+            .writer(ctx)
+            .and_then(|writer| Ok(writer.mints_beside_electron()?));
+        match mints {
+            Ok(mints) => !mints,
+            Err(error) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    "whether this vault's notes were imported could not be read: {error}"
+                );
+                true
+            }
+        }
+    }
+
     /// Settles the moves owed from an earlier session, when the vault config reads; else the
     /// first ask that reads it does.
     fn opened(&self, ctx: &IdentityCtx<'_>) {
@@ -313,7 +341,7 @@ impl NoteIdentity for NotesIdentity {
         self.settle_owed(ctx.root, &writer, &journal, None);
         let body = split_frontmatter_block(&text.raw).body;
         let created_ms = created_ms(&ctx.root.join(file.path)).unwrap_or(file.modified_ms);
-        let electron_db_beside = ctx.root.join(".memry").join("data.db").is_file();
+        let electron_db_beside = electron_db_beside(ctx.root);
         let (folder_path, title) = place(file.path);
         // Whether a reader is built only: the core decides in its transaction whether a note
         // claims a day's path. A note pulled in after this read makes the day file wait.

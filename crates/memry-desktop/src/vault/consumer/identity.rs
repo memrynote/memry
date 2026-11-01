@@ -86,6 +86,14 @@ pub trait NoteIdentity: Send + Sync {
         true
     }
 
+    /// Whether the vault is one this app does not index yet (an Electron vault it did not
+    /// import): no file of it gets a new note id while this holds, though one may still be
+    /// matched to a note the core already has. Its activity log is left as it is: neither the
+    /// walk nor the watcher's unsupported or unreadable files are recorded in it.
+    fn leaves_vault(&self, _ctx: &IdentityCtx<'_>) -> bool {
+        false
+    }
+
     /// The tier opened the vault, before its consumer starts: for what the identity owes the
     /// vault from an earlier session. Its failures are its own to log.
     fn opened(&self, _ctx: &IdentityCtx<'_>) {}
