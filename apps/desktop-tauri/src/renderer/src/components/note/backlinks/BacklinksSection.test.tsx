@@ -26,7 +26,9 @@ function buildBacklinks(): Backlink[] {
       noteId: 'note-a',
       noteTitle: 'Zulu',
       date: new Date('2026-05-10'),
-      mentions: [{ id: 'm1', snippet: 'WIKI mention text', linkStart: 0, linkEnd: 4 }]
+      mentions: [{ id: 'm1', snippet: 'WIKI mention text', linkStart: 0, linkEnd: 4 }],
+      mentionCount: 1,
+      truncated: false
     },
     {
       id: 'note-a:property:father',
@@ -37,14 +39,18 @@ function buildBacklinks(): Backlink[] {
       mentions: [
         { id: 'm2', snippet: 'PROPERTY mention text', linkStart: 0, linkEnd: 8 },
         { id: 'm2b', snippet: 'PROPERTY mention text two', linkStart: 0, linkEnd: 8 }
-      ]
+      ],
+      mentionCount: 2,
+      truncated: false
     },
     {
       id: 'note-b',
       noteId: 'note-b',
       noteTitle: 'Alpha',
       date: new Date('2026-05-01'),
-      mentions: [{ id: 'm3', snippet: 'other mention', linkStart: 0, linkEnd: 5 }]
+      mentions: [{ id: 'm3', snippet: 'other mention', linkStart: 0, linkEnd: 5 }],
+      mentionCount: 1,
+      truncated: false
     }
   ]
 }
@@ -84,5 +90,39 @@ describe('BacklinksSection — two entries sharing a sourceId', () => {
     fireEvent.click(screen.getByRole('button', { name: 'expand father → Zulu' }))
     expect(screen.getByText('WIKI mention text')).toBeInTheDocument()
     expect(screen.getByText('PROPERTY mention text')).toBeInTheDocument()
+  })
+})
+
+describe('BacklinksSection — counts', () => {
+  it('sorts and totals by every link, not by the snippets a cut source kept', () => {
+    const backlinks: Backlink[] = [
+      {
+        id: 'note-a',
+        noteId: 'note-a',
+        noteTitle: 'Few',
+        date: new Date('2026-05-10'),
+        mentions: [
+          { id: 'a1', snippet: 'few one', linkStart: 0, linkEnd: 3 },
+          { id: 'a2', snippet: 'few two', linkStart: 0, linkEnd: 3 }
+        ],
+        mentionCount: 2,
+        truncated: false
+      },
+      {
+        id: 'note-b',
+        noteId: 'note-b',
+        noteTitle: 'Dense',
+        date: new Date('2026-05-01'),
+        mentions: [{ id: 'b1', snippet: 'dense one', linkStart: 0, linkEnd: 5 }],
+        mentionCount: 40,
+        truncated: true
+      }
+    ]
+
+    render(<BacklinksSection backlinks={backlinks} sortBy="mentions" onBacklinkClick={vi.fn()} />)
+
+    const titles = screen.getAllByRole('link').map((link) => link.textContent)
+    expect(titles).toEqual(['Dense', 'Few'])
+    expect(screen.getByText('2 notes, 42 refs')).toBeInTheDocument()
   })
 })

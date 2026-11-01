@@ -1,4 +1,4 @@
-import type { LinkVia } from '@memry/contracts/notes-api'
+import type { Backlink as WireBacklink, LinkVia } from '@memry/contracts/notes-api'
 
 export interface Mention {
   id: string
@@ -13,7 +13,9 @@ export interface Backlink {
   noteTitle: string
   folder?: string // Parent folder name
   date: Date // When link was created or note updated
-  mentions: Mention[] // All mentions of current note
+  mentions: Mention[] // The text around each link, up to the source's snippet bound
+  mentionCount: number // Every link in the source, past the bound too
+  truncated: boolean // Some links have no `mentions` entry
   via?: LinkVia // Set for relation-property, canvas-arrow and portal entries
 }
 
@@ -64,4 +66,30 @@ export function formatBacklinkDate(date: Date): string {
     ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' })
   }
   return date.toLocaleDateString('en-US', options)
+}
+
+/**
+ * The card for a backlink as `notes:get-links` sends it, in `folder`. The count is every link in
+ * the source, which the card shows and the panel sorts and totals by; a source whose snippets
+ * stopped at the size bound sends it with `truncated`. Electron sends neither: its count is the
+ * snippets it sent. note.tsx and journal.tsx both map through this.
+ */
+export function toBacklink(wire: WireBacklink, folder: string, date: Date): Backlink {
+  const contexts = wire.contexts ?? []
+  return {
+    id: backlinkId(wire.sourceId, wire.via),
+    noteId: wire.sourceId,
+    noteTitle: wire.sourceTitle,
+    folder,
+    date,
+    mentions: contexts.map((ctx, i) => ({
+      id: `mention-${wire.sourceId}-${i}`,
+      snippet: ctx.snippet,
+      linkStart: ctx.linkStart,
+      linkEnd: ctx.linkEnd
+    })),
+    mentionCount: wire.mentionCount ?? contexts.length,
+    truncated: wire.truncated ?? false,
+    via: wire.via
+  }
 }

@@ -771,6 +771,7 @@
     "expandSection": "展開反向連結區段",
     "showMore": "再顯示 {count} 個反向連結",
     "more": "還有 {count} 個",
+    "moreInNote": "此筆記中還有 {count} 個連結",
     "viaProperty": "{property} → {title}",
     "viaPortal": "顯示於入口中"
   },

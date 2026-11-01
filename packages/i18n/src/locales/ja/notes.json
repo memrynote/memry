@@ -771,6 +771,7 @@
     "expandSection": "バックリンクセクションを展開",
     "showMore": "さらにバックリンクを {count} 件表示",
     "more": "ほか {count} 件",
+    "moreInNote": "このノート内のほかのリンク {count} 件",
     "viaProperty": "{property} → {title}",
     "viaPortal": "ポータルに表示"
   },

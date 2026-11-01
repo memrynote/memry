@@ -54,7 +54,7 @@ import {
   BacklinksSection,
   OutgoingLinksSection,
   UnlinkedMentionsSection,
-  backlinkId
+  toBacklink
 } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import { LinkedHereOrBacklinks } from '@/features/tag-fields/linked-here-section'
@@ -775,21 +775,8 @@ export function NotePage({ noteId }: NotePageProps) {
       const withoutNotesPrefix = pathParts[0] === 'notes' ? pathParts.slice(1) : pathParts
       const folderPath = withoutNotesPrefix.slice(0, -1).join('/')
 
-      return {
-        id: backlinkId(bl.sourceId, bl.via),
-        noteId: bl.sourceId,
-        noteTitle: bl.sourceTitle,
-        folder: folderPath,
-        // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
-        date: new Date(),
-        mentions: (bl.contexts ?? []).map((ctx, i) => ({
-          id: `mention-${bl.sourceId}-${i}`,
-          snippet: ctx.snippet,
-          linkStart: ctx.linkStart,
-          linkEnd: ctx.linkEnd
-        })),
-        via: bl.via
-      }
+      // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
+      return toBacklink(bl, folderPath, new Date())
     })
   }, [rawBacklinks])
 

@@ -771,6 +771,7 @@
     "expandSection": "Abschnitt „Rückverweise“ aufklappen",
     "showMore": "{count} weitere Rückverweise anzeigen",
     "more": "{count} weitere",
+    "moreInNote": "{count, plural, one {# weiterer Link in dieser Notiz} other {# weitere Links in dieser Notiz}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "In einem Portal angezeigt"
   },
