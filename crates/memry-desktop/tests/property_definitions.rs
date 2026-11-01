@@ -22,6 +22,7 @@ use memry_desktop::notes::property_definitions::{
     PropertyDefinitions, StatusCategoryKey,
 };
 use memry_desktop::vault::properties_file::{parse, properties_path};
+use memry_test_kit::on_small_stack;
 use serde_json::Value;
 
 const VECTORS: &str = include_str!("fixtures/electron-vault/properties-md.json");
@@ -491,4 +492,26 @@ fn an_edit_of_a_missing_or_wrong_definition_says_so() {
     // Nothing above reached either store.
     assert_eq!(f.file(), before);
     assert_eq!(f.queued(), queued);
+}
+
+/// A record from another device is untrusted: options nested far past any real definition read
+/// as none on a small stack, and an edit of the name writes a definition every build reads.
+#[test]
+fn a_deeply_nested_synced_definition_reads_as_no_options() {
+    on_small_stack(|| {
+        let f = fixture();
+        let deep = format!("{}{}", "[".repeat(100_000), "]".repeat(100_000));
+        let hostile = record("Deep", "select", Some(&deep), None);
+        f.records.put(&hostile, 1_760_000_000_000).unwrap();
+        let listed = f.definitions.list().unwrap();
+        assert_eq!(listed[0].options.as_deref(), Some("[]"));
+        f.definitions
+            .add_option("Deep", option("A", "sky"))
+            .unwrap();
+        let file = parse(&f.file().unwrap()).unwrap();
+        assert_eq!(
+            format!("{:?}", file.definitions.get("Deep").unwrap().kind),
+            r#"Select([SelectOption { value: "A", color: "sky", default: None }])"#
+        );
+    });
 }

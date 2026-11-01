@@ -320,6 +320,29 @@ fn a_definition_no_build_reads_back_is_never_written() {
         "{result:?}"
     );
     assert_eq!(on_disk(dir.path()), before);
+
+    // A definition (a synced one, say) that would carry the file past the size every read
+    // refuses is not written: the next edit would be refused.
+    let options = (0..30_000)
+        .map(|n| SelectOption {
+            value: format!("option {n:05}"),
+            color: "sky".into(),
+            default: None,
+        })
+        .collect();
+    let huge = PropertyDefinition {
+        kind: PropertyKind::Select(options),
+        default_value: None,
+        color: None,
+    };
+    let result = update(dir.path(), |definitions| {
+        definitions.insert("Huge".into(), huge)
+    });
+    assert!(
+        matches!(result, Err(PropertiesFileError::Write { .. })),
+        "{result:?}"
+    );
+    assert_eq!(on_disk(dir.path()), before);
 }
 
 /// A read that fails for a moment (a Windows sharing violation, here a permission taken away
