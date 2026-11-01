@@ -771,6 +771,7 @@
     "expandSection": "Expandera avsnittet med bakåtlänkar",
     "showMore": "Visa {count} fler bakåtlänkar",
     "more": "{count} till",
+    "moreInNote": "{count, plural, one {# länk till i den här anteckningen} other {# länkar till i den här anteckningen}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Visas i en portal"
   },

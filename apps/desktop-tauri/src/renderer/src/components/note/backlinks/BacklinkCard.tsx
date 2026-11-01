@@ -13,7 +13,7 @@ interface BacklinkCardProps {
 
 export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: BacklinkCardProps) {
   const { t } = useT('notes')
-  const { noteId, noteTitle, mentions, via } = backlink
+  const { noteId, noteTitle, mentions, mentionCount, truncated, via } = backlink
   const displayLabel =
     via?.kind === 'property'
       ? t('backlinks.viaProperty', { property: via.propertyName, title: noteTitle })
@@ -93,9 +93,9 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
           </div>
         )}
 
-        {mentions.length > 1 && (
+        {mentionCount > 1 && (
           <span className="flex-shrink-0 text-[11px] tabular-nums text-text-tertiary">
-            {mentions.length}
+            {mentionCount}
           </span>
         )}
       </div>
@@ -120,6 +120,12 @@ export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: Bac
               <BacklinkSnippet mention={mention} />
             </button>
           ))}
+          {truncated && (
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an item of the role="list" above, which is a div for its layout
+            <span role="listitem" className="px-1.5 py-1 text-[11px] text-text-tertiary">
+              {t('backlinks.moreInNote', { count: mentionCount - mentions.length })}
+            </span>
+          )}
         </div>
       )}
     </div>

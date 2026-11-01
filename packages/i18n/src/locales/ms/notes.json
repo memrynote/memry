@@ -771,6 +771,7 @@
     "expandSection": "Kembangkan bahagian pautan balik",
     "showMore": "Tunjukkan {count} lagi pautan balik",
     "more": "{count} lagi",
+    "moreInNote": "{count} lagi pautan dalam nota ini",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Ditunjukkan dalam portal"
   },

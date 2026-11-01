@@ -771,6 +771,7 @@
     "expandSection": "Geri bağlantılar bölümünü genişlet",
     "showMore": "{count} geri bağlantı daha göster",
     "more": "{count} tane daha",
+    "moreInNote": "{count, plural, one {Bu notta # bağlantı daha} other {Bu notta # bağlantı daha}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Bir portalda gösteriliyor"
   },

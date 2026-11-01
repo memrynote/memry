@@ -771,6 +771,7 @@
     "expandSection": "הרחבת אזור הקישורים הנכנסים",
     "showMore": "הצגת {count} קישורים נכנסים נוספים",
     "more": "עוד {count}",
+    "moreInNote": "{count, plural, one {קישור נוסף אחד בפתק זה} two {עוד שני קישורים בפתק זה} other {עוד # קישורים בפתק זה}}",
     "viaProperty": "{property} ← {title}",
     "viaPortal": "מוצג בפורטל"
   },
