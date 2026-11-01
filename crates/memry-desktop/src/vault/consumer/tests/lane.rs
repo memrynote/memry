@@ -80,7 +80,9 @@ fn an_identity_that_adopts_nothing_reads_no_new_file() {
 /// A tripwire, not a proof: it scans the source of this crate and of the Tauri app for calls
 /// that write `note_files` rows outside the lane, by name. `note_files` rows are written
 /// through the lane only, so its path index and its facts never miss a write. A new writer
-/// elsewhere is a bug: take the lane (`RowOwner`) instead.
+/// elsewhere is a bug: take the lane (`RowOwner`) instead. The same holds for the record of an
+/// app move (`app_move`): the lane runs one move at a time, so a note has one. A call through
+/// an alias (`use ... as`) is not seen.
 #[test]
 fn note_files_is_written_only_through_the_lane() {
     let crate_src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
@@ -90,10 +92,15 @@ fn note_files_is_written_only_through_the_lane() {
         ".rename_path(",
         ".rename_prefix(",
         ".set_hash(",
+        // An app move: by method, by `NotesWriter::` path, or by the core's functions.
         ".moved_by_app(",
-        // The app move's record: one move per note, which the lane runs one at a time.
+        "::moved_by_app(",
         ".begin_app_move(",
+        "::begin_app_move(",
         ".abandon_app_move(",
+        "::abandon_app_move(",
+        "app_move::begin(",
+        "app_move::abandon(",
         "note_files().remove(",
         "files.remove(",
     ];

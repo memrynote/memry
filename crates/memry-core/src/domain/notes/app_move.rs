@@ -123,6 +123,10 @@ struct Record {
 /// Records the note's move before its file moves, on disk before it returns
 /// (`synchronous = FULL` for this one write), so the next open knows of it whatever happens
 /// to the file next. Writes no note. One move per note: refused while the note has a record.
+///
+/// Runs on its own, never inside a transaction: SQLite refuses to change `synchronous` inside
+/// one ("Safety level may not be changed inside a transaction"), so `begin` would fail there
+/// and record nothing.
 pub fn begin(conn: &Connection, note_id: &str, moved: &AppMoved<'_>) -> Result<(), BeginError> {
     match recorded(conn, note_id)? {
         Some(Recorded::Move(_)) => return Err(BeginError::Unsettled),
@@ -148,6 +152,9 @@ pub fn begin(conn: &Connection, note_id: &str, moved: &AppMoved<'_>) -> Result<(
         params![record_key(note_id), value],
     );
     let restored = conn.pragma_update(None, "synchronous", was);
+    // A record written and a setting not restored is still an `Err`: the caller does not move
+    // the file, so the record names a move that never happened. It holds the note's moves
+    // back (`Unsettled`) until the next open finds the file at the old path and forgets it.
     written.map_err(failed)?;
     restored.map_err(failed)?;
     Ok(())
