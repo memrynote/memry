@@ -401,12 +401,9 @@ fn a_create_keeps_what_the_type_shares_and_an_update_what_it_does_not_name() {
     recolor.color = Some("sky".into());
     let updated = f.definitions.update(recolor).unwrap().unwrap();
     assert_eq!(updated.color.as_deref(), Some("sky"));
-    assert!(
-        updated
-            .options
-            .unwrap()
-            .contains(r#"[{"value":"In Progress","color":"amber"},{"value":"Review","color":"amber"}]"#)
-    );
+    assert!(updated.options.unwrap().contains(
+        r#"[{"value":"In Progress","color":"amber"},{"value":"Review","color":"amber"}]"#
+    ));
     assert_eq!(
         updated.created_at,
         f.definitions.list().unwrap()[0].created_at
