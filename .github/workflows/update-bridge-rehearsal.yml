@@ -21,7 +21,7 @@ on:
         required: false
         default: ''
       source_ref:
-        description: Branch or tag of memrynote/memry to build
+        description: Branch, tag or commit of memrynote/memry to build. rehearse.mjs build passes the commit it checked and reads its default from here
         required: false
         default: feat/tauri-v2
       electron_tag:
