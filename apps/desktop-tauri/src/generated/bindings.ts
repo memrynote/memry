@@ -64,6 +64,8 @@ export const commands = {
 	/**  `notes:exists`: a `.md` path, or a title a link would resolve. */
 	notesExists: (titleOrPath: string) => __TAURI_INVOKE<boolean>("notes_exists", { titleOrPath }),
 	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
+	/**  `notes:get-all-positions`: every hand-ordered item's slot, by path. */
+	notesGetAllPositions: () => __TAURI_INVOKE<{ [key in string]: number }>("notes_get_all_positions"),
 	notesGetByPath: (path: string) => __TAURI_INVOKE<NoteView | null>("notes_get_by_path", { path }),
 	notesGetFile: (id: string) => __TAURI_INVOKE<FileView | null>("notes_get_file", { id }),
 	/**  The links the note makes and the notes linking to it, with the text around each link. */
@@ -80,6 +82,13 @@ export const commands = {
 	notesOpenExternal: (id: string) => __TAURI_INVOKE<null>("notes_open_external", { id }),
 	/**  The hover card of the note `title` names, or `null`. */
 	notesPreviewByTitle: (title: string) => __TAURI_INVOKE<WikiLinkPreviewView | null>("notes_preview_by_title", { title }),
+	/**
+	 *  `notes:rename`: the note's new title, and its file the name that title makes in its folder.
+	 *  Answers the note.
+	 */
+	notesRename: (id: string, newTitle: string) => __TAURI_INVOKE<NoteView>("notes_rename", { id, newTitle }),
+	/**  `notes:reorder`: the paths become the hand-made order of the folder (`""` is the root). */
+	notesReorder: (folderPath: string, notePaths: string[]) => __TAURI_INVOKE<null>("notes_reorder", { folderPath, notePaths }),
 	/**  The note `title` names as a whole (no heading split), or `null`. */
 	notesResolveByTitle: (title: string) => __TAURI_INVOKE<LinkResolutionView | null>("notes_resolve_by_title", { title }),
 	/**  Each title mapped to the note it names, or `null`: one call per editor mount. */
@@ -299,6 +308,7 @@ export const events = {
 	noteDeletedEvent: makeEvent<NoteDeletedEvent, NoteDeletedEvent>("note-deleted-event"),
 	noteEventsDroppedEvent: makeEvent<NoteEventsDroppedEvent, NoteEventsDroppedEvent>("note-events-dropped-event"),
 	noteLinksChangedEvent: makeEvent<NoteLinksChangedEvent, NoteLinksChangedEvent>("note-links-changed-event"),
+	noteRenamedEvent: makeEvent<NoteRenamedEvent, NoteRenamedEvent>("note-renamed-event"),
 	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
@@ -811,6 +821,20 @@ export type NoteListPageView = {
 
 /**  `NoteListSchema.sortBy`. `position` sorts as `modified`, as in `listNotesFromCache`. */
 export type NoteListSortBy = "modified" | "created" | "title" | "position";
+
+/**
+ *  A note's file moved or the app renamed the note (`notes:renamed`), by the app or by a move
+ *  outside it. A rename to a title the file name already says names one path. `newTitle` is the
+ *  title the note has now; `oldTitle` is the old file's name without `.md`, as Electron's
+ *  watcher sends it (no renderer reads it).
+ */
+export type NoteRenamedEvent = {
+	id: string,
+	oldPath: string,
+	newPath: string,
+	oldTitle: string,
+	newTitle: string,
+};
 
 /**
  *  Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer

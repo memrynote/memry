@@ -149,5 +149,6 @@ objc2-user-notifications = { version = "0.3.2", default-features = false, featur
 objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std", "block2", "objc2-app-kit", "objc2-core-foundation", "WKWebView", "WKNavigationAction", "WKFrameInfo", "WKNavigationDelegate"] }
 
 [dev-dependencies]
+memry-core = { path = "../../../crates/memry-core" }
 tauri = { version = "2.12", features = ["specta", "test"] }
 tempfile = "3"

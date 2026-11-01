@@ -142,9 +142,9 @@ function definitionInput(
 }
 
 /**
- * The notes commands of Step 13f, the link reads of Step 13i and the property definitions of
- * Step 13k (`commands/notes.rs`, `commands/property_definitions.rs`); every other method still
- * goes to `window.api.notes`.
+ * The notes commands of Step 13f, the rename and manual order of Step 13g, the link reads of
+ * Step 13i and the property definitions of Step 13k (`commands/notes.rs`,
+ * `commands/property_definitions.rs`); every other method still goes to `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
@@ -187,6 +187,29 @@ const ported = {
       return { success: true }
     } catch (error) {
       return failure(error)
+    }
+  },
+  // A failed rename or reorder answers as Electron's `registerCommand` does.
+  rename: async (id: string, newTitle: string): Promise<NoteUpdateResponse> => {
+    try {
+      return { success: true, note: toNote(await commands.notesRename(id, newTitle)) }
+    } catch (error) {
+      return { ...failure(error), note: null }
+    }
+  },
+  reorder: async (folderPath: string, notePaths: string[]) => {
+    try {
+      await commands.notesReorder(folderPath, notePaths)
+      return { success: true }
+    } catch (error) {
+      return failure(error)
+    }
+  },
+  getAllPositions: async () => {
+    try {
+      return { success: true, positions: await commands.notesGetAllPositions() }
+    } catch (error) {
+      return { ...failure(error), positions: {} }
     }
   },
   get: async (id: string): Promise<Note | null> => {
@@ -316,7 +339,12 @@ export function onNoteEventsDropped(callback: () => void): () => void {
 }
 
 /** The subscriptions below that Rust events serve; `window.api` is typed without them. */
-export type PortedNoteEvent = 'onNoteCreated' | 'onNoteUpdated' | 'onNoteDeleted' | 'onTagsChanged'
+export type PortedNoteEvent =
+  | 'onNoteCreated'
+  | 'onNoteUpdated'
+  | 'onNoteDeleted'
+  | 'onNoteRenamed'
+  | 'onTagsChanged'
 
 /** A note made by the app or from a file that appeared (`shell/note_events.rs`). */
 export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
@@ -344,8 +372,12 @@ export function onNoteDeleted(callback: (event: NoteDeletedEvent) => void): () =
   return subscribeToEvent(events.noteDeletedEvent, callback)
 }
 
+/**
+ * A note renamed by the app, or its file moved outside it; a rename to a title the file name
+ * already says names one path, and `newTitle` is the title the note has now.
+ */
 export function onNoteRenamed(callback: (event: NoteRenamedEvent) => void): () => void {
-  return window.api.onNoteRenamed(callback)
+  return subscribeToEvent(events.noteRenamedEvent, callback)
 }
 
 /**

@@ -6,6 +6,9 @@
 //! `memry_desktop::notes::links`; a note's unlinked mentions (`notes:get-unlinked-mentions`)
 //! through `memry_desktop::notes::mentions`, and a wiki link's hover card
 //! (`notes:preview-by-title`) through `memry_desktop::notes::link_preview`.
+//! A note's rename (`notes:rename`) and the sidebar's manual order (`notes:reorder`,
+//! `notes:get-all-positions`, #3530 13g) go through `memry_desktop::notes::{moves, positions}`;
+//! the rename's `NoteRenamedEvent` comes from its row fact, as every note event does.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -23,7 +26,7 @@ use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::view::{
     FileView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
 };
-use memry_desktop::notes::{local_only, read};
+use memry_desktop::notes::{local_only, positions, read};
 use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::telemetry::Service;
 use tauri::{AppHandle, Manager, Runtime, Wry};
@@ -110,6 +113,53 @@ pub async fn notes_delete(
             .map_err(|error| failed(&error))?;
         track(&app, "note_deleted", "deleted");
         Ok(())
+    })
+    .await
+}
+
+/// `notes:rename`: the note's new title, and its file the name that title makes in its folder.
+/// Answers the note.
+// This command and the two below are generic over the runtime so a test drives them on a mock
+// app (`tests/notes_rename.rs`).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_rename<R: Runtime>(
+    app: AppHandle<R>,
+    id: String,
+    new_title: String,
+) -> Result<NoteView, CommandError> {
+    blocking("notes_rename", move || {
+        let open = open_vault(&app)?;
+        service(&app)?
+            .rename(&open, &id, &new_title)
+            .map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// `notes:reorder`: the paths become the hand-made order of the folder (`""` is the root).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_reorder<R: Runtime>(
+    app: AppHandle<R>,
+    folder_path: String,
+    note_paths: Vec<String>,
+) -> Result<(), CommandError> {
+    blocking("notes_reorder", move || {
+        positions::reorder(&open_vault(&app)?, &folder_path, note_paths)
+            .map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// `notes:get-all-positions`: every hand-ordered item's slot, by path.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_get_all_positions<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<BTreeMap<String, i64>, CommandError> {
+    blocking("notes_get_all_positions", move || {
+        positions::all(&open_vault(&app)?).map_err(|error| failed(&error))
     })
     .await
 }

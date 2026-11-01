@@ -144,6 +144,22 @@ pub struct NoteDeletedEvent {
     pub source: NoteEventSource,
 }
 
+/// A note's file moved or the app renamed the note (`notes:renamed`), by the app or by a move
+/// outside it. A rename to a title the file name already says names one path. `newTitle` is the
+/// title the note has now; `oldTitle` is the old file's name without `.md`, as Electron's
+/// watcher sends it (no renderer reads it).
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteRenamedEvent {
+    pub id: String,
+    pub old_path: String,
+    pub new_path: String,
+    pub old_title: String,
+    pub new_title: String,
+}
+
 /// Note events were dropped because their forwarder fell behind (no Electron channel: Electron
 /// sends every event). No payload; the renderer refetches its note lists, its tags and every
 /// note it shows.

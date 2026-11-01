@@ -1,4 +1,4 @@
-//! The note events (`notes:created`, `notes:updated`, `notes:deleted`), from the vault tier's
+//! The note events (`notes:created`, `notes:updated`, `notes:deleted`, `notes:renamed`), from the vault tier's
 //! row facts: the one place they are emitted. A fact names who caused it, so the app's create
 //! and delete and the watcher's reports go out the same way with their `source`. Two kinds of
 //! fact emit nothing:
@@ -13,22 +13,26 @@
 //! ([`NoteView::changes`]). Facts missed because this thread fell behind are made up for with
 //! one [`NoteEventsDroppedEvent`], on which the renderer refetches what it shows.
 //!
-//! Renames and moves are Step 13g's.
+//! A renamed or moved note is read for the title it has now. The app's move to another folder
+//! sends `notes:moved` instead once `notes:move` is exposed (Step 13g-3); until then every
+//! `Renamed` fact is a rename, the app's or an outside move, which Electron's watcher also
+//! sends as `notes:renamed`.
 
 use memry_desktop::notes::read;
 use memry_desktop::notes::view::NoteView;
 use memry_desktop::session::Session;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, Runtime};
 use tokio::sync::broadcast::Receiver;
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::events::{
-    NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteEventsDroppedEvent, NoteUpdatedEvent,
-    broadcast,
+    NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteEventsDroppedEvent, NoteRenamedEvent,
+    NoteUpdatedEvent, broadcast,
 };
 
-pub fn forward(app: AppHandle<Wry>, mut facts: Receiver<Applied>) {
+/// Generic over the runtime so a test drives it on a mock app.
+pub fn forward<R: Runtime>(app: AppHandle<R>, mut facts: Receiver<Applied>) {
     std::thread::spawn(move || {
         loop {
             match facts.blocking_recv() {
@@ -55,9 +59,14 @@ enum Outgoing {
         note_id: String,
     },
     Deleted(NoteDeletedEvent),
+    Renamed {
+        note_id: String,
+        old_path: String,
+        new_path: String,
+    },
 }
 
-fn emit(app: &AppHandle<Wry>, fact: Applied) {
+fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
     let Some(outgoing) = outgoing(fact) else {
         return;
     };
@@ -87,8 +96,38 @@ fn emit(app: &AppHandle<Wry>, fact: Applied) {
                 );
             }
         },
+        Outgoing::Renamed {
+            note_id,
+            old_path,
+            new_path,
+        } => match read::list_item(&open, &note_id) {
+            Ok(Some(note)) => broadcast(
+                app,
+                NoteRenamedEvent {
+                    old_title: file_title(&old_path).to_owned(),
+                    id: note_id,
+                    old_path,
+                    new_path,
+                    new_title: note.title,
+                },
+            ),
+            Ok(None) => {}
+            Err(error) => {
+                tracing::warn!(
+                    scope = "notes",
+                    note_id,
+                    "a renamed note was not read: {error}"
+                );
+            }
+        },
         Outgoing::Deleted(_) => {}
     }
+}
+
+/// `path.basename(path, '.md')`.
+fn file_title(path: &str) -> &str {
+    let name = path.rsplit_once('/').map_or(path, |(_, name)| name);
+    name.strip_suffix(".md").unwrap_or(name)
 }
 
 fn updated(note: &NoteView) -> NoteUpdatedEvent {
@@ -121,6 +160,15 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
             path,
             source: source_of(source),
         })),
+        Applied::Renamed {
+            note_id,
+            old_path,
+            new_path,
+        } => Some(Outgoing::Renamed {
+            note_id,
+            old_path,
+            new_path,
+        }),
         _ => None,
     }
 }

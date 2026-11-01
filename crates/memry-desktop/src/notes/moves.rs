@@ -7,7 +7,9 @@
 //! for either path lands in between:
 //! 1. the target: the first free `<name>.md`, `<name> 1.md`, ... that no other note holds under
 //!    any spelling the volume may fold and nothing on disk is at. The note's own file under
-//!    another spelling is free: a rename that changes only case respells it in place;
+//!    another spelling is free: a rename that changes only case respells it in place, and a move
+//!    to the note's own folder moves nothing. Both diverge from Electron on purpose: its
+//!    `generateUniquePath` finds the note's own file taken and numbers it (`Plan 1.md`);
 //! 2. the move recorded in the core, then the file moved without replacing anything and synced
 //!    into its folders, the own-write record told first that the old name goes, so the watcher
 //!    never takes the move for a delete and a new file ([`NoteFileMove`]);
@@ -28,7 +30,8 @@
 //!
 //! Also refused: a folder that is not a plain path of the vault ([`is_plain_relative`], each
 //! segment one name), one the vault ignores, so the note would drop out of it at the next open,
-//! and a folder reached through a link, which the open walk does not enter for the same reason.
+//! a folder reached through a link, which the open walk does not enter for the same reason, and
+//! a folder path a file already holds.
 //!
 //! Not here yet: the inbound `[[link]]` rewrite (13g-2), a moved note's relative embeds
 //! (`rewriteNoteRefsForMove`, 13g-3), and the locked-folder check (Step 13n).
@@ -239,11 +242,11 @@ fn free_target(
     name: &str,
 ) -> Result<String, NotesError> {
     if !folder.is_empty() {
+        if !plain_folders(root, folder)? {
+            return Err(NotesError::InvalidFolder);
+        }
         if resolve_vault_file(root, folder)? == Resolution::Outside {
             return Err(NotesError::Outside);
-        }
-        if through_link(root, folder)? {
-            return Err(NotesError::InvalidFolder);
         }
     }
     let filter = WatchFilter::new(read_vault_config(root).exclude_patterns);
@@ -279,20 +282,21 @@ fn free_target(
     Err(NotesError::NameConflict)
 }
 
-/// Whether a folder on the way to `folder` is a link (a junction on Windows). The open walk
-/// enters none, so a note moved under one would read as removed at the next open.
-fn through_link(root: &Path, folder: &str) -> io::Result<bool> {
+/// Whether each segment of `folder` that is there is a plain folder: not a link (a junction on
+/// Windows), which the open walk does not enter, so a note moved under one would read as
+/// removed at the next open, and not a file, which the move could not create the folder over.
+fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
     let mut path = root.to_path_buf();
     for segment in folder.split('/') {
         path.push(segment);
         match fs::symlink_metadata(&path) {
-            Ok(meta) if meta.file_type().is_symlink() => return Ok(true),
+            Ok(meta) if !meta.file_type().is_dir() => return Ok(false),
             Ok(_) => {}
-            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
+            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(true),
             Err(error) => return Err(error),
         }
     }
-    Ok(false)
+    Ok(true)
 }
 
 fn identity_failed(error: IdentityError) -> NotesError {

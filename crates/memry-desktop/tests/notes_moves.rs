@@ -273,17 +273,26 @@ fn a_move_keeps_the_name_unless_taken_and_tops_the_new_folder() {
 }
 
 /// On a volume that folds case the new name is the old file; it is respelled in place, never
-/// numbered past itself. On one that does not it is a plain rename.
+/// numbered past itself (Electron's `generateUniquePath` gives `Plan 1.md` there; the respelling
+/// is a deliberate divergence). On one that does not it is a plain rename. Either way the
+/// watcher takes it for no delete and no new note: the one fact is the app's `Renamed`.
 #[test]
 fn a_rename_that_changes_only_case_respells_the_file() {
-    let (e, notes, _) = opened();
+    let (mut e, notes, _) = opened();
     let open = e.session.current().unwrap();
     let made = notes.create(&open, note("plan", "work")).unwrap();
+    e.drain();
 
-    let renamed = notes.rename(&open, &made.id, "Plan").unwrap();
-    assert_eq!(renamed.path, "work/Plan.md");
+    let renamed_note = notes.rename(&open, &made.id, "Plan").unwrap();
+    assert_eq!(renamed_note.path, "work/Plan.md");
+    assert_eq!(renamed_note.title, "Plan");
     assert_eq!(names_in(&e, "work"), ["Plan.md"]);
     assert_eq!(e.rows(), [(made.id.clone(), "work/Plan.md".to_owned())]);
+    assert_eq!(
+        row_facts(&mut e),
+        [renamed(&made.id, "work/plan.md", "work/Plan.md")]
+    );
+    assert_eq!(note_count(&e), 1);
 }
 
 #[test]
@@ -314,6 +323,15 @@ fn a_folder_the_vault_would_lose_the_note_in_is_refused() {
         assert!(
             matches!(refused, Err(NotesError::InvalidFolder)),
             "{refused:?}"
+        );
+    }
+    // A file where a folder of the path should be: no folder can be made there.
+    e.write("taken", "a file\n");
+    for folder in ["taken", "taken/deeper"] {
+        let refused = notes.move_to_folder(&open, &made.id, folder);
+        assert!(
+            matches!(refused, Err(NotesError::InvalidFolder)),
+            "{folder}: {refused:?}"
         );
     }
     let empty = notes.rename(&open, &made.id, "");
