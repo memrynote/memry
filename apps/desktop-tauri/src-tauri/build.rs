@@ -26,6 +26,8 @@ fn main() {
     // Test executables link the whole Tauri runtime, which needs Common Controls v6 on Windows.
     // `tauri_build` embeds that manifest in the app binary only, so a test executable would
     // exit with STATUS_ENTRYPOINT_NOT_FOUND. Embed the same dependency in the test targets.
+    // `-tests` reaches `tests/*.rs` only; Cargo has no link arg for the lib's unit tests, so a
+    // test that links the runtime (`tauri::test::mock_app`) lives under `tests/`.
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
     if target_os == "windows" && target_env == "msvc" {
