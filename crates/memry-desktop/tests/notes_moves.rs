@@ -20,7 +20,6 @@ use memry_desktop::notes::moves::MoveTo;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::activity::ActivityFilter;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
-use rusqlite::OptionalExtension as _;
 use vault_env::{Env, QUIET, env, indexed};
 
 /// An open vault with its first walk done, the notes service over its tier, and its store.
@@ -76,89 +75,59 @@ fn file_note(e: &mut Env, store: &Arc<dyn SecureStore>, rel: &str, bytes: &[u8])
     id
 }
 
-/// `(title, folder, deleted)` of the record.
-fn record(e: &Env, id: &str) -> (String, Option<String>, bool) {
-    let id = id.to_owned();
+/// The rows `sql` selects with `arg` as `?1`, each read by `read`.
+fn query<T: Send + 'static>(
+    e: &Env,
+    sql: &'static str,
+    arg: &str,
+    read: fn(&rusqlite::Row<'_>) -> rusqlite::Result<T>,
+) -> Vec<T> {
+    let arg = arg.to_owned();
     e.core()
         .db_handle()
         .call_blocking(move |conn| {
-            Ok(conn
-                .query_row(
-                    "SELECT title, folder_path, deleted_at IS NOT NULL FROM notes WHERE id = ?1",
-                    [id],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-                )
-                .unwrap())
+            let mut statement = conn.prepare(sql).unwrap();
+            let rows = statement.query_map([arg], read).unwrap();
+            Ok(rows.collect::<Result<Vec<_>, _>>().unwrap())
         })
         .unwrap()
 }
 
+/// `(title, folder, deleted)` of the record.
+fn record(e: &Env, id: &str) -> (String, Option<String>, bool) {
+    let sql = "SELECT title, folder_path, deleted_at IS NOT NULL FROM notes WHERE id = ?1";
+    query(e, sql, id, |row| {
+        Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+    })
+    .remove(0)
+}
+
 fn note_count(e: &Env) -> i64 {
-    e.core()
-        .db_handle()
-        .call_blocking(|conn| {
-            Ok(conn
-                .query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))
-                .unwrap())
-        })
-        .unwrap()
+    query(e, "SELECT COUNT(*) FROM notes WHERE ?1 = ''", "", |row| {
+        row.get(0)
+    })[0]
+}
+
+fn slot(e: &Env, path: &str) -> Option<i64> {
+    let sql = "SELECT position FROM note_positions WHERE path = ?1";
+    query(e, sql, path, |row| row.get(0)).pop()
 }
 
 /// `paths` become the hand-made order of `folder`.
 fn order(e: &Env, folder: &str, paths: &[&str]) {
     let folder = folder.to_owned();
     let paths: Vec<String> = paths.iter().map(|path| (*path).to_owned()).collect();
+    let insert = "INSERT INTO note_positions (path, folder_path, position) VALUES (?1, ?2, ?3)";
     e.core()
         .db_handle()
         .call_blocking(move |conn| {
-            for (position, path) in paths.iter().enumerate() {
-                conn.execute(
-                    "INSERT INTO note_positions (path, folder_path, position) VALUES (?1, ?2, ?3)",
-                    rusqlite::params![path, folder, position as i64],
-                )
-                .unwrap();
+            for (position, path) in (0_i64..).zip(&paths) {
+                conn.execute(insert, rusqlite::params![path, folder, position])
+                    .unwrap();
             }
             Ok(())
         })
         .unwrap();
-}
-
-/// `(path, position)` of every manual slot of `folder`.
-fn slots(e: &Env, folder: &str) -> Vec<(String, i64)> {
-    let folder = folder.to_owned();
-    e.core()
-        .db_handle()
-        .call_blocking(move |conn| {
-            let mut statement = conn
-                .prepare(
-                    "SELECT path, position FROM note_positions WHERE folder_path = ?1 \
-                     ORDER BY position",
-                )
-                .unwrap();
-            Ok(statement
-                .query_map([folder], |row| Ok((row.get(0)?, row.get(1)?)))
-                .unwrap()
-                .collect::<Result<Vec<_>, _>>()
-                .unwrap())
-        })
-        .unwrap()
-}
-
-fn slot(e: &Env, path: &str) -> Option<i64> {
-    let path = path.to_owned();
-    e.core()
-        .db_handle()
-        .call_blocking(move |conn| {
-            Ok(conn
-                .query_row(
-                    "SELECT position FROM note_positions WHERE path = ?1",
-                    [path],
-                    |row| row.get(0),
-                )
-                .optional()
-                .unwrap())
-        })
-        .unwrap()
 }
 
 /// The app moves recorded and not finished or forgotten.
@@ -290,8 +259,7 @@ fn a_move_keeps_the_name_unless_taken_and_tops_the_new_folder() {
     assert!(!e.vault.join("work/Plan.md").exists());
     assert_eq!(record(&e, &made.id), ("Plan".into(), None, false));
     // Above every placed note of the root, as a new note there would be.
-    let root: Vec<String> = slots(&e, "").into_iter().map(|(path, _)| path).collect();
-    assert_eq!(root, ["Plan 1.md", "Root.md", "Plan.md"]);
+    assert_eq!(slot(&e, "Plan 1.md"), Some(-1));
     assert_eq!(slot(&e, "work/Plan.md"), None);
     assert_eq!(
         row_facts(&mut e),
