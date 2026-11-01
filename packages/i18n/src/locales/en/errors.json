@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Failed to delete version",
     "reorderFailed": "Failed to reorder notes",
     "importFilesFailed": "Failed to import files",
-    "setLocalOnlyFailed": "Failed to set local-only"
+    "setLocalOnlyFailed": "Failed to set local-only",
+    "tooLargeToSync": "This note is too large to sync, so it stays on this device. Splitting it into smaller notes will fix this."
   },
   "database": {
     "connectionFailed": "Could not connect to the local database. Try restarting the app.",

@@ -96,25 +96,30 @@ project or sending product feedback.
 
 ### Updates
 
-Shows the installed version. If a newer version is available, a button lets you check, download, and install.
+The first row shows where updates stand, such as **Up to date · checked 2 min. ago** or **Version v2026-11-01 ready to install**, with one button for the next step: **Check now**, **Download Update** or **Restart to Install**. Two switches follow:
 
-An update never takes the window. It announces itself as one quiet row at the foot of the sidebar panel, beside the Settings gear on the rail, and nothing else happens until you act on it.
+- **Automatically check for updates** — on by default. memrynote checks 10 seconds after its window opens, then every 4 hours.
+- **Automatically download updates** — off by default. Turn it on and a release found by a check downloads in the background.
 
-With **Automatically download & install updates** on, which is the default, you never see the download at all. The first thing you meet is **Update ready**, meaning the new version is already on disk and only needs a restart. Turn the setting off and an earlier **Update available** row appears instead, with a **Download** action, and a thin progress line along the bottom edge of the row while it fetches. memrynote only shows progress for a download you started; one it started on your own behalf stays silent.
+When an update waits on you, one more row says so in the same words as the gear: **Update available** with **Download**, **Update ready** with **Restart now**, or **Update failed**.
 
-Hover the row for a moment, or click it, and a small panel opens with the version, up to three highlights from the release, and two ways out:
+An update never takes the window. When one waits on you, the Settings gear at the foot of the rail gets a dot, and its label reads **Update available** or **Update ready**. Clicking the gear then opens a small panel instead of Settings. The panel shows the new version, the version you run, up to three lines of the release notes and **All changes**, which opens the full notes on GitHub in your browser. Its buttons depend on the state:
 
-- **Restart now** — quit and install immediately. Your tabs, scroll position, and cursor come back where they were.
-- **On next quit** — close the panel and carry on. The update installs the next time you quit on your own. memrynote does not ask again, and there is no toast or reminder.
-- **All changes** — opens the full release notes on GitHub in your browser.
+- **Download** and **Not now**, when the update is available but not downloaded.
+- **Restart now** — quit and install immediately. The window shows **Installing v2026-11-01** while memrynote closes, then the installer replaces the app and opens the new version. Your tabs, scroll position, and cursor come back where they were.
+- **On next quit** — close the panel and carry on. The update installs, without reopening memrynote, the next time you quit on your own. memrynote does not ask again, and there is no toast or reminder.
+
+**Open settings** at the bottom of the panel opens Settings as the gear does otherwise. A **⋯** menu in the same panel holds the rarer choices: skip this version, turn off automatic updates, or copy your version details for a bug report.
+
+A download you started shows a row with a progress line above the gear. One that memrynote started on its own stays silent.
 
 After the restart, the new version's release notes open as one extra read-only tab in the background. Nothing you had open is replaced or taken over — close the tab and you are exactly where you left off. It is never saved to your vault or synced, so it does not come back after the next restart.
 
-A **⋯** menu in the same panel holds the rarer choices: skip this version, turn off automatic updates, or copy your version details for a bug report.
+On macOS the app's Dock icon disappears while the installer swaps the app. If you open memrynote during those seconds, a small window says **Installing update…** and **Open MemryNote again in a moment**, then closes by itself. Open it again once the install is done.
 
-If an install fails, the row turns red and a dialog explains what happened. Your vault is never involved — an update replaces the app, not your notes — so a failed install leaves you on your current version with everything intact. The dialog shows the installer's own error and offers a manual download.
+If an install fails, memrynote opens on the version you already had and shows **MemryNote couldn't finish installing** with the version. Your vault is never involved — an update replaces the app, not your notes — so you keep working as before. The dialog offers **Download manually**, **Try again** and **Copy details**. Close it and an **Update failed** row with **Details** stays above the gear until an update installs. A check that fails because you are offline only puts its error in the first row of this section, with no dialog and no red row, and memrynote checks again 4 hours later or when you press **Check now**.
 
-You can also run a check from the menu bar without opening Settings: **memrynote → Check for Updates…** on macOS, **Help → Check for Updates…** on Windows and Linux. The result is reported as a toast. In a development build the toast says updates are packaged-release only.
+You can also run a check from the menu bar without opening Settings: **MemryNote → Check for Updates…** on macOS, **Help → Check for Updates…** on Windows and Linux. The result is reported as a toast. A copy of memrynote that the installer did not set up, such as a development build or the Linux `.deb` package, does not update itself: Settings shows **Available in packaged releases**, and the menu check says so in its toast. To update a `.deb` install, install the new `.deb` from the release page.
 
 ### Language & Region
 

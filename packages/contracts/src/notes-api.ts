@@ -62,6 +62,8 @@ export interface Note {
   aliases: string[]
   wordCount: number
   emoji?: string | null // Emoji icon for visual identification
+  /** The note's changes never leave this device. Absent where a read does not report it. */
+  localOnly?: boolean
   /**
    * Absent on notes written by older app versions, which is read as `'note'`.
    * `'large-file'` means the file is too big, or holds too large a single block,

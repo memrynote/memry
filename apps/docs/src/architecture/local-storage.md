@@ -414,6 +414,7 @@ Notes are plain `.md` files in the vault, and the write path is built around byt
 - Every save site compares against the on-disk bytes first; identical content skips the write entirely — no mtime churn, no watcher echo, no sync item, no snapshot.
 - The raw frontmatter block is captured at parse time and re-emitted verbatim unless a property/tag edit actually happened; only then is the block re-stringified.
 - CRLF vs LF and the presence of a final newline are detected per file and preserved. New files get LF with a single trailing newline.
+- A frontmatter block whose closing `---` ends the file, with no line end after it, gets the file's line end before a body is written below it. Without it the fence would run into the body (`---added`) and the whole block would read back as body text (#3800). Protocol chapter 12 §12.4.2 specifies the rule, and the `block-at-eof-*` cases of `markdown-convert/frontmatter.json` hold the TypeScript and Rust writers to it.
 
 A golden round-trip test suite (`apps/desktop/src/main/vault/byte-preservation.golden.test.ts`) holds this contract against adversarial files (YAML comments/anchors, CRLF, BOM, missing final newline, Obsidian syntax).
 

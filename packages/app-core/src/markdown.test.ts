@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { snippet } from './markdown.ts'
+import { joinBlockAndBody, serializeParsedMarkdownNote, snippet } from './markdown.ts'
 
 test('snippet: strips memry block-nesting comment markers (issue #518)', () => {
   const content = [
@@ -46,6 +46,34 @@ test('snippet: collapses whitespace and caps length at 180 chars', () => {
   const result = snippet(content)
   assert.ok(result.length <= 180)
   assert.ok(!/\s{2,}/.test(result))
+})
+
+test('joinBlockAndBody: a fence that ends the file takes its line end before a body (#3800)', () => {
+  const cases: Array<[string, string, '\n' | '\r\n', string]> = [
+    ['---\nmood: ok\n---', 'x', '\n', '---\nmood: ok\n---\nx'],
+    ['---\r\nmood: ok\r\n---', 'x', '\r\n', '---\r\nmood: ok\r\n---\r\nx'],
+    ['---\r\nmood: ok\r\n---\r', 'x', '\r\n', '---\r\nmood: ok\r\n---\r\nx'],
+    ['---\nmood: ok\n---\n', 'x', '\n', '---\nmood: ok\n---\nx'],
+    ['---\nmood: ok\n---', '', '\n', '---\nmood: ok\n---'],
+    ['', 'x', '\n', 'x']
+  ]
+  for (const [block, body, eol, file] of cases) {
+    assert.equal(joinBlockAndBody(block, body, eol), file, JSON.stringify([block, body]))
+  }
+})
+
+test('serializeParsedMarkdownNote: the verbatim path joins a fence that ends without a line end', () => {
+  const parsed = {
+    frontmatter: {},
+    content: 'kept\n',
+    rawFrontmatterBlock: '---\r\nmood: ok\r\n---',
+    eol: '\r\n' as const,
+    hadTrailingNewline: true
+  }
+  assert.equal(
+    serializeParsedMarkdownNote(parsed, 'kept\n', { frontmatterEdited: false }),
+    '---\r\nmood: ok\r\n---\r\nkept\n'
+  )
 })
 
 test('snippet: a wiki link reads as its note half, or its alias (issue #1556)', () => {

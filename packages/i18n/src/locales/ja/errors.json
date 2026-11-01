@@ -35,7 +35,8 @@
     "deleteVersionFailed": "バージョンを削除できませんでした",
     "reorderFailed": "ノートを並べ替えられませんでした",
     "importFilesFailed": "ファイルをインポートできませんでした",
-    "setLocalOnlyFailed": "ローカルのみに設定できませんでした"
+    "setLocalOnlyFailed": "ローカルのみに設定できませんでした",
+    "tooLargeToSync": "このノートは大きすぎて同期できないため、このデバイスにのみ保存されます。小さなノートに分割すると解決します。"
   },
   "database": {
     "connectionFailed": "ローカルデータベースに接続できませんでした。アプリを再起動してみてください。",

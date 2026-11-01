@@ -226,6 +226,7 @@ fn note_of(
         aliases: fields.aliases,
         properties: fields.properties,
         emoji: listed.emoji,
+        local_only: listed.local_only,
         size_class: SizeClass::Note,
         large_file: None,
         content_omitted: false,
@@ -268,6 +269,7 @@ fn large_note(listed: ListedNote, class: MarkdownClassification, read: bool) -> 
         // The record's, as Electron reads the index's: the file is never parsed.
         properties: listed.properties,
         emoji: listed.emoji,
+        local_only: listed.local_only,
         size_class: SizeClass::LargeFile,
         large_file: Some(LargeFileInfo {
             reason,

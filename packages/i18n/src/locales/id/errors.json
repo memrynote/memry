@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Gagal menghapus versi",
     "reorderFailed": "Gagal menyusun ulang catatan",
     "importFilesFailed": "Gagal mengimpor file",
-    "setLocalOnlyFailed": "Gagal menjadikan catatan hanya lokal"
+    "setLocalOnlyFailed": "Gagal menjadikan catatan hanya lokal",
+    "tooLargeToSync": "Catatan ini terlalu besar untuk disinkronkan, jadi tetap berada di perangkat ini. Pisahkan menjadi beberapa catatan yang lebih kecil untuk mengatasinya."
   },
   "database": {
     "connectionFailed": "Tidak dapat terhubung ke basis data lokal. Coba mulai ulang aplikasi.",

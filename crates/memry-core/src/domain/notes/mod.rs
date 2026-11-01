@@ -48,6 +48,8 @@ use crate::sync::clock::{self, OFFLINE_CLOCK_DEVICE_ID, VectorClock};
 use crate::sync::outbox::{self, Durable};
 use crate::sync::store;
 
+#[cfg(feature = "markdown")]
+pub mod app_move;
 mod attachments;
 mod duplicate;
 #[cfg(feature = "markdown")]

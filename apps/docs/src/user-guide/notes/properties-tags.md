@@ -289,7 +289,7 @@ lookups.
 
 In the vault's markdown files, a note's frontmatter contains only your own properties (plus `tags` and `aliases`). MemryNote keeps its internal bookkeeping — the note id and created/modified dates — in the local database and never writes its own keys into your files; a note with no properties has no frontmatter block at all.
 
-Frontmatter in your `.md` files is treated as yours: memrynote re-emits the original block byte-for-byte (comments, key order, and quoting included) unless you actually edit a property, tag, or alias in the app. Saving a note without changing anything writes nothing to disk at all.
+Frontmatter in your `.md` files is treated as yours: memrynote re-emits the original block byte-for-byte (comments, key order, and quoting included) unless you actually edit a property, tag, or alias in the app. Saving a note without changing anything writes nothing to disk at all. The one exception: when the block's closing `---` is the very end of the file, the first text written below it gets a line break after the `---`, so the block stays frontmatter.
 
 When you or an agent do edit a property, tag, or alias, only the lines of that key change. Every other key keeps its line byte for byte, in its place, with its quoting, comments and line endings. A plain date such as `due: 2026-10-07` stays a plain date, also when you change it. A key you remove loses its lines, and a new key goes at the end of the block. The same holds for journal entries.
 

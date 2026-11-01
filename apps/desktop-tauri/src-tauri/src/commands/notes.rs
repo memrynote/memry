@@ -6,8 +6,8 @@ use std::sync::Arc;
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::error::NotesError;
-use memry_desktop::notes::read;
 use memry_desktop::notes::view::{FileView, NoteListOptions, NoteListPageView, NoteView};
+use memry_desktop::notes::{local_only, read};
 use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::telemetry::Service;
 use tauri::{AppHandle, Manager, Runtime, Wry};
@@ -119,6 +119,33 @@ pub async fn notes_reveal_in_finder(app: AppHandle<Wry>, id: String) -> Result<(
     blocking("notes_reveal_in_finder", move || {
         let path = read::file_path(&open_vault(&app)?, &id).map_err(|error| failed(&error))?;
         external::reveal_path(&app, &path.to_string_lossy())
+    })
+    .await
+}
+
+/// `notes:set-local-only`: the note's changes stop leaving this device, or sync again. Answers
+/// the note.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_set_local_only(
+    app: AppHandle<Wry>,
+    id: String,
+    local_only: bool,
+) -> Result<NoteView, CommandError> {
+    blocking("notes_set_local_only", move || {
+        let telemetry = services::telemetry(&app);
+        local_only::set(&open_vault(&app)?, &id, local_only, telemetry.as_deref())
+            .map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
+/// `notes:get-local-only-count`.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_get_local_only_count(app: AppHandle<Wry>) -> Result<i64, CommandError> {
+    blocking("notes_get_local_only_count", move || {
+        local_only::count(&open_vault(&app)?).map_err(|error| failed(&error))
     })
     .await
 }
