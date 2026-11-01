@@ -463,9 +463,10 @@ export default defineConfig({
     {
       files: [
         'apps/landing/src/pages/{AIAgent,Calendar,Inbox,Journal,Notes,Pricing,Tasks}.tsx',
-        'apps/landing/src/lib/{alternatives,constants}.ts'
+        'apps/landing/src/lib/{alternatives,blog,constants}.ts'
       ],
-      // Landing page content and comparison/pricing data tables: copy and markup, not logic.
+      // Landing page content, blog posts, and comparison/pricing data tables: copy and markup,
+      // not logic.
       rules: disable('max-lines')
     },
     {

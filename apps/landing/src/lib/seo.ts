@@ -200,9 +200,9 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/blog/migrating-from-evernote-notion-to-markdown'
   },
   blogBestE2EENotes: {
-    title: 'The best end-to-end encrypted notes apps in 2026, and how to pick one — memrynote',
+    title: 'The best end-to-end encrypted notes apps in 2026 — memrynote',
     description:
-      'How to choose an end-to-end encrypted notes app: who holds the keys, where notes live on disk, and what works offline. memrynote and four others compared.',
+      'Joplin, Anytype, Notesnook, Standard Notes, Obsidian, Proton Docs, and MemryNote compared: what the server can see, offline use, price, and where each falls short.',
     path: '/blog/best-end-to-end-encrypted-notes-apps'
   },
   blogPrivateNotionAlternatives: {
@@ -612,11 +612,11 @@ export function getArticleJsonLd(post: {
   datePublished: string
   dateModified?: string
   author: { name: string; url?: string }
+  faqs?: readonly { question: string; answer: string }[]
 }): string {
   const canonical = getCanonicalUrl(`/blog/${post.slug}`)
 
-  return JSON.stringify({
-    '@context': 'https://schema.org',
+  const article = {
     '@type': 'Article',
     mainEntityOfPage: {
       '@type': 'WebPage',
@@ -642,6 +642,28 @@ export function getArticleJsonLd(post: {
         url: `${BASE_URL}/favicon.svg`
       }
     }
+  }
+
+  if (!post.faqs || post.faqs.length === 0) {
+    return JSON.stringify({ '@context': 'https://schema.org', ...article })
+  }
+
+  // Posts with an on-page FAQ also emit FAQPage, for AI-search citation (Google retired
+  // FAQ rich results in May 2026). The questions match what the post renders.
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [
+      article,
+      {
+        '@type': 'FAQPage',
+        '@id': `${canonical}#faq`,
+        mainEntity: post.faqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: { '@type': 'Answer', text: faq.answer }
+        }))
+      }
+    ]
   })
 }
 
