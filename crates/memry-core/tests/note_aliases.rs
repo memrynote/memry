@@ -102,6 +102,14 @@ fn reindex(data: &Connection, index: &Connection, at: i64) -> search::Reindexed 
     search::reindex(data, index, at).expect("reindex")
 }
 
+fn changes(sources: &[&str], targets: &[&str]) -> search::LinkChanges {
+    let set = |ids: &[&str]| ids.iter().map(|id| (*id).to_owned()).collect();
+    search::LinkChanges {
+        sources: set(sources),
+        targets: set(targets),
+    }
+}
+
 fn aliases(data: &Connection, id: &str) -> Vec<String> {
     note_meta::metadata(data, id)
         .expect("read")
@@ -168,13 +176,17 @@ fn a_link_follows_an_alias_added_and_removed() {
     assert!(reindex(&data, &index, NOW).full);
     assert_eq!(linked(&index, "source"), None);
 
+    // The source is not indexed again: the alias moves its link, and the pass says so.
     set_aliases(&data, "herbert", &["Herbert"], NOW + 10);
-    assert!(!reindex(&data, &index, NOW + 10).full);
+    let done = reindex(&data, &index, NOW + 10);
+    assert!(!done.full);
     assert_eq!(linked(&index, "source").as_deref(), Some("herbert"));
+    assert_eq!(done.links, changes(&["source"], &["herbert"]));
 
     set_aliases(&data, "herbert", &[], NOW + 20);
-    reindex(&data, &index, NOW + 20);
+    let done = reindex(&data, &index, NOW + 20);
     assert_eq!(linked(&index, "source"), None);
+    assert_eq!(done.links, changes(&["source"], &["herbert"]));
 }
 
 #[test]
@@ -210,8 +222,9 @@ fn a_new_title_takes_a_link_from_an_alias_holder() {
     assert_eq!(linked(&index, "source").as_deref(), Some("a-shared"));
 
     note(&data, "z-team", "Team", NOW + 10);
-    reindex(&data, &index, NOW + 10);
+    let done = reindex(&data, &index, NOW + 10);
     assert_eq!(linked(&index, "source").as_deref(), Some("z-team"));
+    assert_eq!(done.links, changes(&["source"], &["a-shared", "z-team"]));
 }
 
 #[test]
