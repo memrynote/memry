@@ -771,6 +771,7 @@
     "expandSection": "Expandir seção de backlinks",
     "showMore": "Mostrar mais {count} backlinks",
     "more": "mais {count}",
+    "moreInNote": "{count, plural, one {Mais # link nesta nota} other {Mais # links nesta nota}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Exibido em um portal"
   },

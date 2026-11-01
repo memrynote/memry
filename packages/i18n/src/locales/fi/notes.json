@@ -771,6 +771,7 @@
     "expandSection": "Laajenna takaisinlinkkiosio",
     "showMore": "{count, plural, one {Näytä vielä # takaisinlinkki} other {Näytä vielä # takaisinlinkkiä}}",
     "more": "vielä {count}",
+    "moreInNote": "{count, plural, one {# linkki lisää tässä muistiinpanossa} other {# linkkiä lisää tässä muistiinpanossa}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Näytetään portaalissa"
   },

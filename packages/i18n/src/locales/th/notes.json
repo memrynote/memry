@@ -771,6 +771,7 @@
     "expandSection": "ขยายส่วนลิงก์ย้อนกลับ",
     "showMore": "แสดงลิงก์ย้อนกลับอีก {count} รายการ",
     "more": "อีก {count} รายการ",
+    "moreInNote": "ลิงก์เพิ่มเติมในโน้ตนี้ {count} รายการ",
     "viaProperty": "{property} → {title}",
     "viaPortal": "แสดงในพอร์ทัล"
   },

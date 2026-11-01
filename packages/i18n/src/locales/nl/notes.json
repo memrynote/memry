@@ -771,6 +771,7 @@
     "expandSection": "Backlinksectie uitvouwen",
     "showMore": "Nog {count} backlinks tonen",
     "more": "Nog {count}",
+    "moreInNote": "{count, plural, one {Nog # link in deze notitie} other {Nog # links in deze notitie}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Getoond in een portaal"
   },

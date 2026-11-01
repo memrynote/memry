@@ -771,6 +771,7 @@
     "expandSection": "Développer la section des rétroliens",
     "showMore": "Afficher {count} rétroliens de plus",
     "more": "{count} de plus",
+    "moreInNote": "{count, plural, one {# autre lien dans cette note} other {# autres liens dans cette note}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Affiché dans un portail"
   },

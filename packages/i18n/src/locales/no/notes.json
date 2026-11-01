@@ -771,6 +771,7 @@
     "expandSection": "Utvid delen med tilbakelenker",
     "showMore": "Vis {count} flere tilbakelenker",
     "more": "{count} til",
+    "moreInNote": "{count, plural, one {# lenke til i dette notatet} other {# lenker til i dette notatet}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Vist i en portal"
   },

@@ -771,6 +771,7 @@
     "expandSection": "Rozbalit sekci zpětných odkazů",
     "showMore": "{count, plural, one {Zobrazit # další zpětný odkaz} few {Zobrazit # další zpětné odkazy} other {Zobrazit # dalších zpětných odkazů}}",
     "more": "{count, plural, one {# další} few {# další} other {# dalších}}",
+    "moreInNote": "{count, plural, one {Ještě # odkaz v této poznámce} few {Ještě # odkazy v této poznámce} many {Ještě # odkazu v této poznámce} other {Ještě # odkazů v této poznámce}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Zobrazeno v portálu"
   },

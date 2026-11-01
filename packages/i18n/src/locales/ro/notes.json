@@ -771,6 +771,7 @@
     "expandSection": "Extinde secțiunea de linkuri inverse",
     "showMore": "Afișează încă {count, plural, one {# link invers} few {# linkuri inverse} other {# de linkuri inverse}}",
     "more": "Încă {count}",
+    "moreInNote": "{count, plural, one {Încă # link în această notă} few {Încă # linkuri în această notă} other {Încă # de linkuri în această notă}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Afișat într-un portal"
   },

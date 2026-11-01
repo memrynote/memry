@@ -771,6 +771,7 @@
     "expandSection": "Visszahivatkozások szakasz kibontása",
     "showMore": "További {count} visszahivatkozás megjelenítése",
     "more": "{count} további",
+    "moreInNote": "{count, plural, one {Még # hivatkozás ebben a jegyzetben} other {Még # hivatkozás ebben a jegyzetben}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Portálban megjelenítve"
   },

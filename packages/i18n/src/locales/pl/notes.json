@@ -771,6 +771,7 @@
     "expandSection": "Rozwiń sekcję linków zwrotnych",
     "showMore": "Pokaż więcej linków zwrotnych: {count}",
     "more": "Jeszcze {count}",
+    "moreInNote": "{count, plural, one {Jeszcze # link w tej notatce} few {Jeszcze # linki w tej notatce} many {Jeszcze # linków w tej notatce} other {Jeszcze # linku w tej notatce}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Pokazane w portalu"
   },

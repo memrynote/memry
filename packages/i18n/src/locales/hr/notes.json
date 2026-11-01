@@ -771,6 +771,7 @@
     "expandSection": "Proširi odjeljak povratnih poveznica",
     "showMore": "{count, plural, one {Prikaži još # povratnu poveznicu} few {Prikaži još # povratne poveznice} other {Prikaži još # povratnih poveznica}}",
     "more": "Još {count}",
+    "moreInNote": "{count, plural, one {Još # poveznica u ovoj bilješci} few {Još # poveznice u ovoj bilješci} other {Još # poveznica u ovoj bilješci}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Prikazano u portalu"
   },

@@ -34,7 +34,9 @@ import type {
   SnapshotListItem,
   UpdatePropertyDefinitionInput,
   WikiLinkPreview,
-  WikiLinkResolution
+  WikiLinkResolution,
+  WikiLinkTargetResolution,
+  WikiLinkTitleResolutions
 } from '@memry/rpc/notes'
 import type { NoteLinksChangedEvent } from '@memry/contracts/notes-api'
 import {
@@ -110,8 +112,8 @@ function failure(error: unknown): { success: false; error?: string } {
 }
 
 /**
- * The notes commands of Step 13f (`commands/notes.rs`); every other method still goes to
- * `window.api.notes`.
+ * The notes commands of Step 13f and the link reads of Step 13i (`commands/notes.rs`); every
+ * other method still goes to `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
@@ -175,6 +177,13 @@ const ported = {
   revealInFinder: async (id: string): Promise<void> => {
     await commands.notesRevealInFinder(id)
   },
+  getLinks: (id: string): Promise<NoteLinksResponse> => commands.notesGetLinks(id),
+  resolveByTitle: (title: string): Promise<WikiLinkResolution | null> =>
+    commands.notesResolveByTitle(title),
+  resolveTitles: (titles: string[]): Promise<WikiLinkTitleResolutions> =>
+    commands.notesResolveTitles(titles),
+  resolveWikiTarget: (target: string): Promise<WikiLinkTargetResolution | null> =>
+    commands.notesResolveWikiTarget(target),
   // Rejects on failure rather than answering `success: false`: the note page reads no envelope
   // and would announce a change that did not happen (a note too large to sync stays local-only).
   setLocalOnly: async (id: string, localOnly: boolean) => {

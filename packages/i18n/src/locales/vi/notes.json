@@ -771,6 +771,7 @@
     "expandSection": "Mở rộng phần liên kết ngược",
     "showMore": "Hiển thị thêm {count} liên kết ngược",
     "more": "{count} mục khác",
+    "moreInNote": "Thêm {count} liên kết trong ghi chú này",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Hiển thị trong một portal"
   },

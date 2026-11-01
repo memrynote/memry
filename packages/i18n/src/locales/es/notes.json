@@ -771,6 +771,7 @@
     "expandSection": "Expandir la sección de enlaces entrantes",
     "showMore": "Mostrar {count} enlaces entrantes más",
     "more": "{count} más",
+    "moreInNote": "{count, plural, one {# enlace más en esta nota} other {# enlaces más en esta nota}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Se muestra en un portal"
   },

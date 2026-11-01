@@ -771,6 +771,7 @@
     "expandSection": "Udvid sektionen med tilbagelinks",
     "showMore": "Vis {count} flere tilbagelinks",
     "more": "{count} flere",
+    "moreInNote": "{count, plural, one {# link mere i denne note} other {# links mere i denne note}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Vist i en portal"
   },
