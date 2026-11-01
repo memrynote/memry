@@ -50,7 +50,6 @@ import {
   type PropertyDefinitionView,
   type Value
 } from '../../../generated/bindings'
-import { getI18n } from 'react-i18next'
 import { askPermanentDelete } from '../lib/permanent-delete-question'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 import { NotPortedError } from '../lib/not-ported'
