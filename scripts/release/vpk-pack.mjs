@@ -8,6 +8,7 @@ import { readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
 
+import { isMain } from './is-main.mjs'
 import { assertNoRedist } from './pe-imports.mjs'
 import { buildPackArgs, publishedName, TARGETS } from './vpk-args.mjs'
 import { assertBootstrapperPacked } from './webview2-bootstrapper.mjs'
@@ -77,9 +78,7 @@ export function parsePackCli(argv) {
   }
 }
 
-// `import.meta.main`, not a path comparison: started through a symlink, the pack and its checks
-// would skip and exit 0.
-if (import.meta.main) {
+if (isMain(import.meta)) {
   const { target, options } = parsePackCli(process.argv.slice(2))
   assertPackable(target, options.packDir)
   const args = buildPackArgs(target, options)
