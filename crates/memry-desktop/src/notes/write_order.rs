@@ -46,7 +46,10 @@ impl WriteOrder {
 
     fn leave(&self, note_id: &str) {
         let mut notes = self.notes();
-        if let Some(turn) = notes.get_mut(note_id) {
+        let turn = notes.get_mut(note_id);
+        // A write counted itself in under the same lock; its entry goes only when it leaves.
+        debug_assert!(turn.is_some(), "a write left a note with no turn");
+        if let Some(turn) = turn {
             turn.writes -= 1;
             if turn.writes == 0 {
                 notes.remove(note_id);
@@ -83,8 +86,12 @@ impl Drop for Leave<'_> {
 mod tests {
     use std::sync::mpsc;
     use std::thread;
+    use std::time::{Duration, Instant};
 
     use super::*;
+
+    /// Longest a step of a test waits on another thread.
+    const WAIT: Duration = Duration::from_secs(25);
 
     #[test]
     fn a_second_write_of_a_note_waits_for_the_first_and_an_idle_note_is_dropped() {
@@ -107,8 +114,18 @@ mod tests {
             let (order, log) = (order.clone(), log.clone());
             thread::spawn(move || order.run("n", || log.lock().unwrap().push("second")))
         };
-        // The second write is in line once it counts itself in.
+        // The second write is in line once it counts itself in. The deadline only keeps a
+        // broken run from hanging; the wait is over at once.
+        let deadline = Instant::now() + WAIT;
         while order.writes("n") < 2 {
+            assert!(
+                !second.is_finished(),
+                "the second write ended before it was in line"
+            );
+            assert!(
+                Instant::now() < deadline,
+                "the second write never got in line"
+            );
             thread::yield_now();
         }
         // Another note does not wait for `n`.
