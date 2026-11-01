@@ -41,7 +41,9 @@ impl LinkChanges {
         self.sources.is_empty() && self.targets.is_empty()
     }
 
-    /// `id`'s rows went from `before` to `after` ([`rows`]).
+    /// `id`'s rows went from `before` to `after` ([`rows`]). A row is a spelling and the id it
+    /// resolved to, so a link respelled to the same note (`[[Plan]]` to `[[plan]]`) changes the
+    /// source though no target moved: its panel refetches, since its snippets did change.
     pub(super) fn note(&mut self, id: &str, before: &Rows, after: &Rows) {
         if before == after {
             return;

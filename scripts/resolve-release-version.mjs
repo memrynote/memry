@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 import { appendFileSync, readFileSync } from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
+import { isMain } from './release/is-main.mjs'
 import { buildDateReleaseVersion } from './release-utils.mjs'
 
 function parseArgs(argv) {
@@ -98,7 +97,7 @@ function runCli() {
   console.log(JSON.stringify(result, null, 2))
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isMain(import.meta)) {
   try {
     runCli()
   } catch (error) {

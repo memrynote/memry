@@ -7,10 +7,11 @@
 //   node scripts/rehearsal/rehearse.mjs electron-baseline <tag> [--run <id>]
 //
 // `build` dispatches .github/workflows/update-bridge-rehearsal.yml at `--workflow-ref` (default
-// `main`) of the rehearsal repo to build memry's `--source-ref` (default `feat/tauri-v2`) and
-// waits. It pins both refs to commits first and refuses when the two copies of the workflow at
-// those commits differ, or when the run started from another rehearsal commit. `assemble` downloads
-// the artifacts, packs and signs both Windows packs (each with the pinned WebView2 bootstrapper of
+// `main`) of the rehearsal repo to build memry's `--source-ref` (default: the workflow's own
+// `source_ref` default) and waits. It pins both refs to commits first and refuses when the two
+// copies of the workflow at those commits differ, and it cancels a run that started from another
+// rehearsal commit. `assemble` downloads the artifacts, packs and signs both Windows packs (each
+// with the pinned WebView2 bootstrapper of
 // `../release/webview2-bootstrapper.mjs`, checked again inside the package), writes the bridge
 // feeds and leaves the final asset set in `.rehearsal-state/<version>/assets`. `--no-windows`
 // skips the Certum-signed Windows packs and `latest.yml`, for a macOS and Linux feed that needs no
@@ -54,8 +55,6 @@ import {
 
 export const FEED_REPO = 'memrynote/memry-update-rehearsal'
 const SOURCE_REPO = 'memrynote/memry'
-/** The workflow's own default for `source_ref`. `build` always passes the commit it resolved. */
-const DEFAULT_SOURCE_REF = 'feat/tauri-v2'
 const WORKFLOW = 'update-bridge-rehearsal.yml'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const iconPath = path.join(repoRoot, 'apps/desktop-tauri/src-tauri/icons/icon.ico')
@@ -135,21 +134,52 @@ function runsSince(startedAfter) {
   return JSON.parse(out).filter((r) => r.createdAt >= startedAfter)
 }
 
+/** The run id in what `gh workflow run` printed: gh 2.101 prints the new run's URL. */
+const runIdIn = (printed) => printed.match(/\/actions\/runs\/(\d+)/)?.[1]
+
 /**
- * The id of the run `build` dispatched, the newest one since the dispatch, or `undefined` before
- * it appears. It must have started from the rehearsal commit whose workflow was checked: a branch
- * that moved in between runs a copy nobody compared.
+ * The run a gh that prints no URL dispatched: the newest run created since the dispatch. An older
+ * run, someone else's or a previous build's, is never it.
  */
-function dispatchedRun(runs, rehearsalSha) {
-  const [newest] = runs
-  if (!newest) return undefined
-  if (newest.headSha !== rehearsalSha) {
-    throw new Error(
-      `${FEED_REPO} run ${newest.databaseId} started from ${newest.headSha.slice(0, 10)}, not ` +
-        `the checked ${rehearsalSha.slice(0, 10)}: its ${WORKFLOW} was not compared. Cancel it and build again.`
-    )
+function listedRun(startedAfter) {
+  const deadline = Date.now() + 120_000
+  while (Date.now() < deadline) {
+    try {
+      const [newest] = runsSince(startedAfter)
+      if (newest) return { id: String(newest.databaseId), headSha: newest.headSha }
+    } catch (error) {
+      console.warn(`Listing the runs failed, trying again: ${error.message}`)
+    }
+    spawnSync('sleep', ['5'])
   }
-  return newest.databaseId
+  throw new Error('The dispatched run did not appear')
+}
+
+/**
+ * The dispatched run must have started from the rehearsal commit whose workflow was checked: a
+ * branch that moved in between runs a copy nobody compared, so that run is cancelled.
+ */
+function assertStartedFrom(started, rehearsalSha) {
+  if (started.headSha === rehearsalSha) return
+  spawnSync('gh', ['run', 'cancel', '-R', FEED_REPO, started.id], {
+    stdio: 'inherit',
+    cwd: repoRoot
+  })
+  throw new Error(
+    `${FEED_REPO} run ${started.id} started from ${started.headSha.slice(0, 10)}, not ` +
+      `the checked ${rehearsalSha.slice(0, 10)}: its ${WORKFLOW} was not compared. Cancelled it; build again.`
+  )
+}
+
+/** The `default:` of a `workflow_dispatch` input in a copy of the workflow. */
+export function inputDefault(copy, input) {
+  const block = copy.match(new RegExp(`^ {6}${input}:\\n((?: {8}.*\\n)+)`, 'm'))?.[1]
+  const value = block
+    ?.match(/^ {8}default: *(.*)$/m)?.[1]
+    .trim()
+    .replace(/^(['"])(.*)\1$/, '$2')
+  if (!value) throw new Error(`The ${WORKFLOW} copy has no default for its ${input} input`)
+  return value
 }
 
 /** The commit `ref` (a branch, a tag or a commit) of `repo` names on GitHub. */
@@ -201,10 +231,13 @@ function pinRef(repo, ref) {
 
 function cmdBuild(version, argv) {
   const rehearsal = pinRef(FEED_REPO, flag(argv, '--workflow-ref') ?? 'main')
-  const source = pinRef(SOURCE_REPO, flag(argv, '--source-ref') ?? DEFAULT_SOURCE_REF)
+  const source = pinRef(
+    SOURCE_REPO,
+    flag(argv, '--source-ref') ?? inputDefault(rehearsal.copy, 'source_ref')
+  )
   assertWorkflowMatches(rehearsal, source)
   const startedAfter = new Date(Date.now() - 5000).toISOString()
-  run('gh', [
+  const dispatch = [
     'workflow',
     'run',
     WORKFLOW,
@@ -218,23 +251,34 @@ function cmdBuild(version, argv) {
       `previous_tag=${flag(argv, '--previous-tag') ?? ''}`,
       `source_ref=${source.sha}`
     ].flatMap((field) => ['-f', field])
-  ])
-  const deadline = Date.now() + 120_000
-  let id
-  while (!id && Date.now() < deadline) {
-    let runs = []
-    try {
-      runs = runsSince(startedAfter)
-    } catch (error) {
-      console.warn(`Listing the runs failed, trying again: ${error.message}`)
-    }
-    id = dispatchedRun(runs, rehearsal.sha)
-    if (!id) spawnSync('sleep', ['5'])
-  }
-  if (!id) throw new Error('The dispatched run did not appear')
-  run('gh', ['run', 'watch', '-R', FEED_REPO, String(id), '--exit-status'])
-  console.log(`build run: ${id}`)
-  writeFileSync(path.join(stateDir(version), 'run-id'), String(id))
+  ]
+  console.log(`$ gh ${dispatch.join(' ')}`)
+  const dispatched = spawnSync('gh', dispatch, { encoding: 'utf8', cwd: repoRoot })
+  process.stdout.write(dispatched.stdout ?? '')
+  process.stderr.write(dispatched.stderr ?? '')
+  if (dispatched.error) throw dispatched.error
+  if (dispatched.status !== 0) throw new Error(`gh exited with ${dispatched.status}`)
+  const printed = runIdIn(`${dispatched.stdout}\n${dispatched.stderr}`)
+  const started = printed
+    ? {
+        id: printed,
+        headSha: capture('gh', [
+          'run',
+          'view',
+          printed,
+          '-R',
+          FEED_REPO,
+          '--json',
+          'headSha',
+          '-q',
+          '.headSha'
+        ])
+      }
+    : listedRun(startedAfter)
+  assertStartedFrom(started, rehearsal.sha)
+  run('gh', ['run', 'watch', '-R', FEED_REPO, started.id, '--exit-status'])
+  console.log(`build run: ${started.id}`)
+  writeFileSync(path.join(stateDir(version), 'run-id'), started.id)
 }
 
 function downloadArtifacts(version, runId) {

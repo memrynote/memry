@@ -17,6 +17,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { isMain } from './release/is-main.mjs'
+
 // Darwin 22 is macOS 13: electron-updater skips the release on macOS 12 and older. Only the
 // update-bridge feeds (Tauri needs macOS 13) require it; the Electron production manifest does not
 // carry the key, so the default check must not ask for it.
@@ -192,6 +194,6 @@ function main() {
   console.log(`  x64:     ${x64Zip.url} (sha512 ${x64Zip.sha512.slice(0, 12)}…)`)
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isMain(import.meta)) {
   main()
 }
