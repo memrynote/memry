@@ -1,20 +1,53 @@
 //! [`NotesWriter`]'s answers to the desktop vault tier about the note or journal
 //! day a vault file is (Steps 13d, 13m): [`crate::domain::notes::identity`] and
-//! [`crate::domain::notes::journal_day`]. Not exported over UniFFI: iOS keeps no
+//! [`crate::domain::notes::journal_day`], and the desktop app's own create of a
+//! note it writes a file for (Step 13f). Not exported over UniFFI: iOS keeps no
 //! vault files. Every method blocks; the shell runs them on the tier's consumer
-//! thread.
+//! thread or in `spawn_blocking`.
 
 use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::journal;
-use crate::domain::notes::app_move::{self, AppMoved};
+use crate::domain::notes::app_move::{self, AppMoved, BeginError, Recorded};
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
+use crate::domain::notes::{self, NewNote};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
+use crate::storage::repositories::schema::Object;
 
 impl NotesWriter {
+    /// Creates a note the app is about to write a file for, with the file's frontmatter tags,
+    /// its user properties and its icon, in one transaction with its one outbox row (desktop
+    /// `createNote`). The body is not written here: the file's text seeds the document once
+    /// the file is on disk, as [`Self::create`] says why.
+    pub fn create_with(
+        &self,
+        title: &str,
+        folder_path: Option<&str>,
+        tags: &[String],
+        properties: Option<&Object>,
+        emoji: Option<&str>,
+    ) -> Result<String, StorageError> {
+        let id = Self::new_id();
+        let device_id = self.device_id.clone();
+        let note = NewNote {
+            id: &id,
+            title,
+            folder_path,
+            content: "",
+            tags,
+            properties,
+            emoji,
+        };
+        self.db.call_blocking(|conn| {
+            let _payload = notes::create(conn, &note, &device_id, now_ms())?.acknowledge();
+            Ok(())
+        })?;
+        Ok(id)
+    }
+
     /// Whether a note may be the file of this title and folder: [`Self::adopt_file`]
     /// then needs a converter to read its body with.
     pub fn may_be_a_note(
@@ -112,6 +145,31 @@ impl NotesWriter {
         self.db.call_blocking(move |conn| {
             app_move::moved_by_app(conn, note_id, &moved, &device_id, now_ms())
         })
+    }
+
+    /// Records a note's app move before its file moves ([`app_move::begin`]). Only the vault
+    /// tier's rows' lane calls it, which runs one move at a time.
+    pub fn begin_app_move(&self, note_id: &str, moved: AppMoved<'_>) -> Result<(), BeginError> {
+        self.db
+            .call_blocking(move |conn| Ok(app_move::begin(conn, note_id, &moved)))?
+    }
+
+    /// Every note's record of an app move never finished or forgotten
+    /// ([`app_move::pending`]).
+    pub fn pending_app_moves(&self) -> Result<Vec<(String, Recorded)>, StorageError> {
+        self.db.read_blocking(app_move::pending)
+    }
+
+    /// Forgets the note's record of the move from `old_path` to `new_path`
+    /// ([`app_move::abandon`]). Only the vault tier's rows' lane calls it.
+    pub fn abandon_app_move(
+        &self,
+        note_id: &str,
+        old_path: &str,
+        new_path: &str,
+    ) -> Result<bool, StorageError> {
+        self.db
+            .call_blocking(move |conn| app_move::abandon(conn, note_id, old_path, new_path))
     }
 
     /// The note's file moved from `from_path` and its record was left as it was

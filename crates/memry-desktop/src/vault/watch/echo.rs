@@ -66,6 +66,15 @@ impl EchoGuard {
         self.lock().put(path, Expected::Hash(hash.to_owned()));
     }
 
+    /// The write told with [`Self::will_write`] did not happen (a file was there first): what
+    /// is seen at `path` from now on is not the app's, the same bytes included.
+    pub fn cancel_write(&self, path: &str) {
+        let mut state = self.lock();
+        if matches!(state.by_path.get(path), Some(Expected::Hash(_))) {
+            state.forget(path);
+        }
+    }
+
     /// The app is about to remove `path`.
     pub fn will_remove(&self, path: &str) {
         self.lock().put(path, Expected::Gone);

@@ -22,10 +22,10 @@
 //!
 //! Never overwrites. A target already on disk (under any case), held by a row, or claimed by
 //! another file of the same pass leaves the source as it is, and the move itself refuses a file
-//! that appeared there since ([`super::fs_atomic::rename_no_replace`]). A new name that differs from the file's
-//! only in case is a respelling in place only when it names that very file, and no link to it
-//! (a symbolic link, or a second hard link a rename would leave behind). A format that cannot
-//! name every date renames nothing.
+//! that appeared there since ([`super::fs_atomic::rename_no_replace`]). A new name that differs
+//! from the file's only in case is a respelling in place only when it names that very file, and
+//! no link to it (a symbolic link, or a second hard link a rename would leave behind). A format
+//! that cannot name every date renames nothing.
 //!
 //! Each file and its row move as one step under the rows' lane, the file first: when the row
 //! cannot move, the file goes back. The consumer and the write-back take the same lane, so they
