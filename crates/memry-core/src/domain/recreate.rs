@@ -189,7 +189,7 @@ mod tests {
             let tombstone = clock_of([("device-a", 1), ("device-b", 4)]);
             apply_page(
                 conn,
-                vec![remote_delete("tag_definition", "work", tombstone.clone())],
+                vec![remote_delete("tag_definition", "Work", tombstone.clone())],
                 vec![],
                 NOW + 1,
                 None,
@@ -197,7 +197,7 @@ mod tests {
 
             tag_admin::set_color(conn, "Work", "sky", "device-a", NOW + 2)?;
 
-            let clock = stored_clock(conn, "tag_definition", "work");
+            let clock = stored_clock(conn, "tag_definition", "Work");
             assert_eq!(compare(&clock, &tombstone), ClockOrder::After);
             Ok(())
         })
@@ -211,11 +211,11 @@ mod tests {
         db.call_blocking(|conn| {
             tag_admin::set_color(conn, "Work", "rose", "device-a", NOW)?;
             tag_admin::delete(conn, "Work", "device-a", NOW + 1)?;
-            let deleted = stored_clock(conn, "tag_definition", "work");
+            let deleted = stored_clock(conn, "tag_definition", "Work");
 
             tag_admin::set_color(conn, "Work", "sky", "device-a", NOW + 2)?;
 
-            let clock = stored_clock(conn, "tag_definition", "work");
+            let clock = stored_clock(conn, "tag_definition", "Work");
             assert_eq!(compare(&clock, &deleted), ClockOrder::After);
             Ok(())
         })

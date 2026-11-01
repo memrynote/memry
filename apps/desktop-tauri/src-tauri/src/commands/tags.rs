@@ -51,7 +51,10 @@ fn category_name<R: Runtime>(app: &AppHandle<R>, name: &str) -> Result<(), Comma
 
 /// A hub write that landed, for [`announce`].
 enum Written {
-    Color { tag: String, color: String },
+    Color {
+        tag: String,
+        color: String,
+    },
     Icon,
     CategoryCreated(String),
     /// Renamed or deleted.
@@ -310,6 +313,10 @@ mod tests {
             [categories(r#"{"categoryId":"cat-1"}"#)]
         );
         assert_eq!(sent(Written::Drag), [categories(r#"{"categoryId":null}"#)]);
-        assert_eq!(service.queued().len(), 1, "only a created category is tracked");
+        assert_eq!(
+            service.queued().len(),
+            1,
+            "only a created category is tracked"
+        );
     }
 }

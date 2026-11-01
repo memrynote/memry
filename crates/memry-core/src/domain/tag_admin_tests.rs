@@ -97,7 +97,10 @@ fn merge_into_an_existing_tag_dedupes_and_counts_items() {
     db.call_blocking(|c| {
         assert!(live_definition(c, "job")?.is_none());
         // A new definition keeps the spelling it was written with (desktop `getOrCreateTag`).
-        assert_eq!(live_definition(c, "Work")?.expect("Work")["name"], json!("Work"));
+        assert_eq!(
+            live_definition(c, "Work")?.expect("Work")["name"],
+            json!("Work")
+        );
         Ok(())
     })
     .expect("defs");
@@ -217,7 +220,10 @@ fn a_new_definition_keeps_its_trimmed_spelling() {
         assert!(live_definition(c, "planning")?.is_none());
         // Later edits find it by its key, in any case.
         set_icon(c, "PLANNING", Some("💡"), "phone", NOW + 2)?;
-        assert_eq!(live_definition(c, "Planning")?.expect("Planning")["icon"], json!("💡"));
+        assert_eq!(
+            live_definition(c, "Planning")?.expect("Planning")["icon"],
+            json!("💡")
+        );
         Ok(())
     })
     .expect("spelling");
@@ -226,7 +232,10 @@ fn a_new_definition_keeps_its_trimmed_spelling() {
         .iter()
         .find(|t| tags::same_tag(&t.name, "planning"))
         .expect("planning");
-    assert_eq!((planning.name.as_str(), planning.color.as_deref()), ("Planning", Some("teal")));
+    assert_eq!(
+        (planning.name.as_str(), planning.color.as_deref()),
+        ("Planning", Some("teal"))
+    );
 }
 
 /// The projection keys `tag_definitions.name` without ASCII case, so a tag deleted and made
@@ -237,10 +246,16 @@ fn a_deleted_tag_made_again_in_another_case_reuses_its_tombstone() {
     db.call_blocking(|c| {
         delete(c, "job", "phone", NOW + 1)?;
         set_color(c, "Job", "sage", "phone", NOW + 2)?;
-        assert_eq!(live_definition(c, "job")?.expect("job")["color"], json!("sage"));
+        assert_eq!(
+            live_definition(c, "job")?.expect("job")["color"],
+            json!("sage")
+        );
         assert!(live_definition(c, "Job")?.is_none());
         set_icon(c, "JOB", Some("💼"), "phone", NOW + 3)?;
-        assert_eq!(live_definition(c, "job")?.expect("job")["icon"], json!("💼"));
+        assert_eq!(
+            live_definition(c, "job")?.expect("job")["icon"],
+            json!("💼")
+        );
         Ok(())
     })
     .expect("respell");
