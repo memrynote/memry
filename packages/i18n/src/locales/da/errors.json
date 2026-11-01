@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Kunne ikke slette versionen",
     "reorderFailed": "Kunne ikke omarrangere noterne",
     "importFilesFailed": "Kunne ikke importere filerne",
-    "setLocalOnlyFailed": "Kunne ikke gøre noten kun lokal"
+    "setLocalOnlyFailed": "Kunne ikke gøre noten kun lokal",
+    "tooLargeToSync": "Denne note er for stor til at blive synkroniseret, så den bliver på denne enhed. Del den op i mindre noter for at løse problemet."
   },
   "database": {
     "connectionFailed": "Kunne ikke oprette forbindelse til den lokale database. Prøv at genstarte appen.",

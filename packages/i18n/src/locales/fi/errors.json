@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Version poistaminen epäonnistui",
     "reorderFailed": "Muistiinpanojen järjestäminen epäonnistui",
     "importFilesFailed": "Tiedostojen tuominen epäonnistui",
-    "setLocalOnlyFailed": "Vain paikallinen -asetuksen tallentaminen epäonnistui"
+    "setLocalOnlyFailed": "Vain paikallinen -asetuksen tallentaminen epäonnistui",
+    "tooLargeToSync": "Tämä muistiinpano on liian suuri synkronoitavaksi, joten se pysyy tällä laitteella. Jaa se pienempiin muistiinpanoihin, niin ongelma korjaantuu."
   },
   "database": {
     "connectionFailed": "Yhteyden muodostaminen paikalliseen tietokantaan epäonnistui. Yritä käynnistää sovellus uudelleen.",

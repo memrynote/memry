@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Nepodařilo se smazat verzi",
     "reorderFailed": "Nepodařilo se změnit pořadí poznámek",
     "importFilesFailed": "Nepodařilo se importovat soubory",
-    "setLocalOnlyFailed": "Poznámku se nepodařilo nastavit jako pouze místní"
+    "setLocalOnlyFailed": "Poznámku se nepodařilo nastavit jako pouze místní",
+    "tooLargeToSync": "Tato poznámka je příliš velká na synchronizaci, proto zůstává v tomto zařízení. Pomůže ji rozdělit na menší poznámky."
   },
   "database": {
     "connectionFailed": "K místní databázi se nepodařilo připojit. Zkuste aplikaci restartovat.",

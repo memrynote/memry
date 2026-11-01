@@ -55,11 +55,18 @@ export const commands = {
 	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
 	notesGetByPath: (path: string) => __TAURI_INVOKE<NoteView | null>("notes_get_by_path", { path }),
 	notesGetFile: (id: string) => __TAURI_INVOKE<FileView | null>("notes_get_file", { id }),
+	/**  `notes:get-local-only-count`. */
+	notesGetLocalOnlyCount: () => __TAURI_INVOKE<number>("notes_get_local_only_count"),
 	notesList: (options: NoteListOptions) => __TAURI_INVOKE<NoteListPageView>("notes_list", { options }),
 	/**  `notes:open-external`: the note's file in the OS's default app. */
 	notesOpenExternal: (id: string) => __TAURI_INVOKE<null>("notes_open_external", { id }),
 	/**  `notes:reveal-in-finder`: the note's file in the OS file manager. */
 	notesRevealInFinder: (id: string) => __TAURI_INVOKE<null>("notes_reveal_in_finder", { id }),
+	/**
+	 *  `notes:set-local-only`: the note's changes stop leaving this device, or sync again. Answers
+	 *  the note.
+	 */
+	notesSetLocalOnly: (id: string, localOnly: boolean) => __TAURI_INVOKE<NoteView>("notes_set_local_only", { id, localOnly }),
 	/**
 	 *  Whether notifications may show. macOS answers `prompt` until the user was asked; the first
 	 *  notification asks.
@@ -614,6 +621,8 @@ export type NoteView = {
 	wordCount: number,
 	properties: { [key in string]: Value },
 	emoji: string | null,
+	/**  The note's changes and body never leave this device (`note_files.local_only`). */
+	localOnly: boolean,
 	sizeClass: SizeClass,
 	largeFile: LargeFileInfo | null,
 	contentOmitted: boolean,

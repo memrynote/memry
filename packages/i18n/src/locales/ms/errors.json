@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Gagal memadamkan versi",
     "reorderFailed": "Gagal menyusun semula nota",
     "importFilesFailed": "Gagal mengimport fail",
-    "setLocalOnlyFailed": "Gagal menetapkan sebagai setempat sahaja"
+    "setLocalOnlyFailed": "Gagal menetapkan sebagai setempat sahaja",
+    "tooLargeToSync": "Nota ini terlalu besar untuk disegerakkan, jadi ia kekal pada peranti ini. Pisahkan nota itu kepada beberapa nota yang lebih kecil untuk menyelesaikannya."
   },
   "database": {
     "connectionFailed": "Tidak dapat menyambung ke pangkalan data setempat. Cuba mulakan semula apl.",

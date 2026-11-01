@@ -35,7 +35,8 @@
     "deleteVersionFailed": "無法刪除版本",
     "reorderFailed": "無法重新排序筆記",
     "importFilesFailed": "無法匯入檔案",
-    "setLocalOnlyFailed": "無法設定為僅限本機"
+    "setLocalOnlyFailed": "無法設定為僅限本機",
+    "tooLargeToSync": "這則筆記太大，無法同步，因此只會保留在此裝置上。將它分割成較小的筆記即可解決。"
   },
   "database": {
     "connectionFailed": "無法連線到本機資料庫。請嘗試重新啟動應用程式。",

@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Kan de versie niet verwijderen",
     "reorderFailed": "Kan de volgorde van de notities niet wijzigen",
     "importFilesFailed": "Kan de bestanden niet importeren",
-    "setLocalOnlyFailed": "Kan de notitie niet op alleen lokaal instellen"
+    "setLocalOnlyFailed": "Kan de notitie niet op alleen lokaal instellen",
+    "tooLargeToSync": "Deze notitie is te groot om te synchroniseren en blijft daarom op dit apparaat. Splits de notitie op in kleinere notities om dit op te lossen."
   },
   "database": {
     "connectionFailed": "Kan geen verbinding maken met de lokale database. Probeer de app opnieuw te starten.",

@@ -26,6 +26,7 @@ interface PaneProps {
   isLocked?: boolean
   isDeleted?: boolean
   isBookmarked?: boolean
+  setLocalOnly?: (value: boolean) => Promise<void>
 }
 
 function NotePane({
@@ -33,7 +34,8 @@ function NotePane({
   dialog,
   isLocked = false,
   isDeleted = false,
-  isBookmarked = false
+  isBookmarked = false,
+  setLocalOnly = vi.fn().mockResolvedValue(undefined)
 }: PaneProps): null {
   useNoteCommands({
     note,
@@ -50,7 +52,7 @@ function NotePane({
     isBookmarked,
     toggleBookmark: vi.fn().mockResolvedValue(true),
     mindMap: { isAvailable: false, isOpen: false, toggle: vi.fn() },
-    setLocalOnly: vi.fn().mockResolvedValue(undefined),
+    setLocalOnly,
     setFullWidth: vi.fn().mockResolvedValue(undefined)
   })
   return null
@@ -133,6 +135,29 @@ describe('note commands', () => {
       </>
     )
     expect(available.find((c) => c.id === 'note.toggleBookmark')?.label).toBe('Remove bookmark')
+  })
+
+  it('turns local-only off for a local-only note, whatever its frontmatter holds', async () => {
+    const setLocalOnly = vi.fn().mockResolvedValue(undefined)
+    const pane = (note: Note): ReactNode => (
+      <>
+        <Probe />
+        {inTab('t', <NotePane note={note} dialog={dialogSpy()} setLocalOnly={setLocalOnly} />)}
+      </>
+    )
+    const label = (): string | undefined =>
+      available.find((c) => c.id === 'note.toggleLocalOnly')?.label
+    const { rerender } = render(pane(noteOf('a', { localOnly: true })))
+    activate('t')
+    expect(label()).toBe('Disable local only')
+    await runCommand('note.toggleLocalOnly', 'palette')
+    expect(setLocalOnly).toHaveBeenLastCalledWith(false)
+
+    // A `localOnly` key in the file is a user property (the frontmatter diet, #697).
+    rerender(pane(noteOf('a', { localOnly: false, frontmatter: { localOnly: true } })))
+    expect(label()).toBe('Set local only')
+    await runCommand('note.toggleLocalOnly', 'palette')
+    expect(setLocalOnly).toHaveBeenLastCalledWith(true)
   })
 
   it('leaves a locked note read-only but movable, and offers nothing on a deleted one', () => {
