@@ -40,8 +40,15 @@ export async function findNoteHandle(
 ): Promise<NoteHandle | null> {
   return page.evaluate(
     async ({ noteId, expectedTitle }) => {
-      const fromId = noteId ? await window.api.notes.get(noteId) : null
-      if (fromId?.title === expectedTitle) {
+      const invoke = window.__TAURI_INTERNALS__.invoke
+      const fromId = noteId
+        ? ((await invoke('notes_get', { id: noteId })) as {
+            id: string
+            title: string
+            emoji: string | null
+          } | null)
+        : null
+      if (fromId && fromId.title === expectedTitle) {
         return {
           id: fromId.id,
           title: fromId.title,
@@ -49,7 +56,11 @@ export async function findNoteHandle(
         }
       }
 
-      const match = await window.api.notes.resolveByTitle(expectedTitle)
+      const match = (await invoke('notes_resolve_by_title', { title: expectedTitle })) as {
+        id: string
+        title: string
+        fileType: string
+      } | null
       if (match?.fileType === 'markdown') {
         return { id: match.id, title: match.title, emoji: null }
       }

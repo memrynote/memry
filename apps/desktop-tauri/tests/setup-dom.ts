@@ -144,6 +144,16 @@ vi.mock('../src/generated/bindings', () => {
       notesResolveByTitle: (title: string) => notes().resolveByTitle(title),
       notesResolveTitles: (titles: string[]) => notes().resolveTitles(titles),
       notesResolveWikiTarget: (target: string) => notes().resolveWikiTarget(target),
+      notesGetUnlinkedMentions: (id: string) => notes().getUnlinkedMentions(id),
+      // The card's opening travels as `body`; the service reads `bodyText` from it.
+      notesPreviewByTitle: async (title: string) => {
+        const preview = (await notes().previewByTitle(title)) as {
+          bodyText?: string | null
+        } | null
+        if (!preview) return null
+        const { bodyText, ...rest } = preview
+        return { ...rest, body: bodyText ?? null }
+      },
       notesSetLocalOnly: async (id: string, localOnly: boolean) =>
         ((await notes().setLocalOnly(id, localOnly)) as { note?: unknown } | undefined)?.note,
       notesGetLocalOnlyCount: async () =>
@@ -350,6 +360,7 @@ const createMockApi = () => ({
     resolveTitles: vi.fn().mockResolvedValue({}),
     resolveWikiTarget: vi.fn().mockResolvedValue(null),
     previewByTitle: vi.fn().mockResolvedValue(null),
+    getUnlinkedMentions: vi.fn().mockResolvedValue([]),
     exists: vi.fn().mockResolvedValue(false),
     openExternal: vi.fn().mockResolvedValue({ success: true }),
     revealInFinder: vi.fn().mockResolvedValue({ success: true }),
