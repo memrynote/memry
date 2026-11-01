@@ -8,9 +8,7 @@
     },
     "paper": {
       "command": "~/.paper/bin/paper",
-      "args": [
-        "mcp"
-      ]
+      "args": ["mcp"]
     },
     "playwright-memry": {
       "command": "npx",
@@ -25,9 +23,7 @@
     },
     "webdriver-memry": {
       "command": "node",
-      "args": [
-        "apps/desktop-tauri/scripts/webdriver-mcp.mjs"
-      ],
+      "args": ["apps/desktop-tauri/scripts/webdriver-mcp.mjs"],
       "env": {
         "MEMRY_WEBDRIVER_URL": "http://127.0.0.1:9222",
         "MEMRY_AGENT_SCREENSHOT_DIR": "/tmp/memry-webdriver-mcp"
