@@ -105,7 +105,8 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// app's own file operations reach its own-write record and its row lane, and the notes service
 /// (Step 13f) over it, whose row facts become the note events. The note index follows the
 /// tier's facts in the background of every open, broadcasts the progress of each open's pass
-/// and the links each pass committed, and is managed for `vault_reindex`.
+/// and the links each pass committed, and is managed for `vault_reindex`. The pre-sync template
+/// files import as the vault opens (Step 13l), into its activity log.
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -130,6 +131,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     register_flushes(app, &tier);
     forward_writeback_failures(app.clone(), tier.subscribe_failures());
     forward_activity_changes(app.clone(), tier.activity().subscribe());
+    memry_desktop::templates::legacy::register(session, store.inner().clone(), tier.activity());
     app.manage(tier.activity());
     let notes = NotesService::new(tier.clone(), store.inner().clone());
     crate::shell::note_events::forward(app.clone(), tier.subscribe());

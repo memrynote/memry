@@ -15,10 +15,11 @@ import type {
   CreateCategoryResponse,
   TagsClientAPI
 } from '../../../preload/index.d'
+import { commands } from '../../../generated/bindings'
 
 /**
- * Tags service - thin wrapper around window.api.tags
- * Provides a typed interface for tag operations in the renderer process.
+ * Tags service. The methods in `ported` are the Rust commands of Step 13j (`commands/tags.rs`);
+ * every other method still forwards to `window.api.tags`.
  *
  * `TagsClientAPI` is the shape of `window.api.tags` (the wire-level IPC
  * surface); most methods here forward 1:1 and are checked against it via
@@ -33,18 +34,26 @@ type TagsService = Omit<TagsClientAPI, 'createCategory' | 'renameCategory' | 'de
   deleteCategory: (id: string) => Promise<CategoryOperationResponse>
 }
 
-export const tagsService: TagsService = {
-  /**
-   * Get notes for a specific tag with pinned status.
-   */
+/** The tag reads of Step 13j. A failure rejects, as Electron's handlers rethrow it. */
+const ported = {
+  /** A tag's notes, pinned ones apart. */
   getNotesByTag: (input: {
     tag: string
     sortBy?: 'modified' | 'created' | 'title'
     sortOrder?: 'asc' | 'desc'
     includeDescendants?: boolean
-  }): Promise<GetNotesByTagResponse> => {
-    return window.api.tags.getNotesByTag(input)
-  },
+  }): Promise<GetNotesByTagResponse> => commands.tagsGetNotesByTag(input),
+
+  getAllWithCounts: async (): Promise<GetAllWithCountsResponse> => ({
+    tags: await commands.tagsGetAllWithCounts()
+  })
+}
+
+/** The tag methods served from Rust; `window.api.tags` is typed without them. */
+export type PortedTagMethod = keyof typeof ported
+
+export const tagsService: TagsService = {
+  ...ported,
 
   /**
    * Pin a note to a tag.
@@ -97,10 +106,6 @@ export const tagsService: TagsService = {
    */
   removeTagFromNote: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> => {
     return window.api.tags.removeTagFromNote(input)
-  },
-
-  getAllWithCounts: (): Promise<GetAllWithCountsResponse> => {
-    return window.api.tags.getAllWithCounts()
   },
 
   mergeTag: (input: { source: string; target: string }): Promise<MergeTagResponse> => {

@@ -71,7 +71,13 @@ async function startSite(): Promise<Site> {
     origin: `http://${address}:${port}`,
     loopback: `http://127.0.0.1:${port}`,
     hits,
-    close: () => new Promise((resolve) => server.close(() => resolve()))
+    close: () =>
+      new Promise((resolve) => {
+        server.close(() => resolve())
+        // WebView2 requests a page before the guard cancels its navigation and leaves the sockets
+        // open; without this, `close` waits for Node's headers timeout (about 100 s).
+        server.closeAllConnections()
+      })
   }
 }
 
@@ -453,10 +459,14 @@ test('no link gesture or drop unloads the app, cancels its requests or loads in 
     expect(result.missing).toBe(false)
     expect(result.fileTypes).toContain('Files')
     expect(result.claims).toEqual(['dragover zone', 'drop zone'])
+    // Each gesture opens once. The five `shell_open_link` calls run concurrently, so they reach
+    // the shell in any order.
     await expect
-      .poll(() => opens(app), { timeout: 15_000 })
+      .poll(async () => (await opens(app)).toSorted(), { timeout: 15_000 })
       .toEqual(
-        ['/left', '/middle', '/ctrl', '/enter', '/dragged'].map((p) => `url ${site.origin}${p}`)
+        ['/left', '/middle', '/ctrl', '/enter', '/dragged']
+          .map((p) => `url ${site.origin}${p}`)
+          .toSorted()
       )
     const slow = await page.evaluate(
       () => (window as unknown as { __slow: Promise<string> }).__slow

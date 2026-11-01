@@ -62,6 +62,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          key: ubuntu-22.04
 
       - name: Differential, 20000 inputs
         working-directory: crates
@@ -135,6 +136,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates/memry-core/fuzz
+          key: ubuntu-22.04
 
       - name: Fuzz, 10 minutes
         working-directory: crates/memry-core
@@ -172,6 +174,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          key: ${{ matrix.os }}
 
       # doc_to_markdown misses its budget today (#3600); the numbers are the
       # record, so the step reports and does not fail. Set MEMRY_PERF_ENFORCE=1

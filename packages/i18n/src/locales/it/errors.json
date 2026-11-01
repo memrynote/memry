@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Impossibile creare la definizione della proprietà",
     "updateDefinitionFailed": "Impossibile aggiornare la definizione della proprietà",
     "setCalendarVisibilityFailed": "Impossibile impostare la visibilità della proprietà nel calendario",
-    "definitionsFileUnreadable": "Impossibile salvare le modifiche alle proprietà perché .memry/properties.md non è leggibile. Correggi o rimuovi quel file, poi riprova."
+    "definitionsFileUnreadable": "Impossibile salvare le modifiche alle proprietà perché .memry/properties.md non è leggibile. Correggi o rimuovi quel file, poi riprova.",
+    "definitionsFileWriteFailed": "Impossibile salvare le modifiche alle proprietà perché non è possibile scrivere .memry/properties.md."
   },
   "reminder": {
     "notFound": "Promemoria non trovato",

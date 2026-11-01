@@ -24,11 +24,23 @@ export async function pollUntil(read, isDone, { timeoutMs, intervalMs = 2000 }) 
   throw new Error(`Timed out. Last state: ${describeState(last)}`)
 }
 
+/**
+ * The main window's page. The app opens more pages later, such as the PDF host once a vault with
+ * PDFs is indexed, and those have no `window.api`. Quick Capture and the sticky windows load the
+ * same `index.html` with their own hash (`#quick-capture`, `#sticky`, `#sticky-tab`), while the
+ * main window loads it bare, so a URL with a hash or a query is never the main window.
+ */
+export function mainPage(targets) {
+  return targets.find(
+    (target) => target.type === 'page' && target.url.endsWith('/renderer/index.html')
+  )
+}
+
 async function connect(port) {
   const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json()
-  const page = targets.find((target) => target.type === 'page')
+  const page = mainPage(targets)
   if (!page) {
-    throw new Error(`No page target on port ${port}`)
+    throw new Error(`No main window page target on port ${port}`)
   }
   const socket = new WebSocket(page.webSocketDebuggerUrl)
   await new Promise((resolve, reject) => {

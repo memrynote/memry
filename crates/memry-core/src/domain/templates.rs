@@ -42,6 +42,9 @@ pub struct NewTemplate<'a> {
     pub name: &'a str,
     pub description: Option<&'a str>,
     pub icon: Option<&'a str>,
+    pub tags: &'a [String],
+    /// `TemplatePropertySchema` objects, written as given: the caller checked their shape.
+    pub properties: &'a [Value],
     /// Held verbatim. Never parsed here.
     pub content: &'a str,
 }
@@ -73,6 +76,9 @@ pub fn create(
                 "name": template.name,
                 "description": template.description,
                 "icon": template.icon,
+                // Case variants collapse, first spelling kept, as an edit's tags do.
+                "tags": crate::domain::tags::dedupe(template.tags.iter().cloned()),
+                "properties": template.properties,
                 "content": template.content,
                 "clock": next_clock(&Default::default(), device_id)?,
                 "createdAt": at,

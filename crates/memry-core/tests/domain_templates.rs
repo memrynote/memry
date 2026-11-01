@@ -36,6 +36,8 @@ fn template(id: &str) -> NewTemplate<'_> {
         name: "Daily",
         description: Some("the daily page"),
         icon: None,
+        tags: &[],
+        properties: &[],
         content: BODY,
     }
 }

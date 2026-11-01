@@ -72,6 +72,12 @@ pub struct Definition {
     pub id: String,
     pub color: String,
     pub icon: Option<String>,
+    /// The tag hub's category and slot.
+    pub category_id: Option<String>,
+    pub sort_order: i64,
+    /// Someone decided something about the tag (desktop's `isAuthored`): a colour picked, an
+    /// icon, a category or a schema. A definition only minted on the way past is not.
+    pub authored: bool,
     schema_t: Option<f64>,
     created_at: Option<i64>,
 }
@@ -97,7 +103,10 @@ pub fn definitions(conn: &Connection) -> Result<BTreeMap<String, Definition>, St
         .prepare(
             "SELECT d.name, d.color, d.icon, d.created_at,
                     CASE WHEN json_type(s.payload, '$.schema.t') IN ('integer', 'real')
-                         THEN json_extract(s.payload, '$.schema.t') END
+                         THEN json_extract(s.payload, '$.schema.t') END,
+                    d.category_id, d.sort_order,
+                    d.color_authored <> 0 OR d.icon IS NOT NULL OR d.category_id IS NOT NULL
+                      OR COALESCE(json_type(s.payload, '$.schema'), 'null') <> 'null'
                FROM tag_definitions d
                LEFT JOIN sync_items s ON s.item_type = ?1 AND s.item_id = d.name
                 AND json_valid(s.payload)
@@ -112,6 +121,9 @@ pub fn definitions(conn: &Connection) -> Result<BTreeMap<String, Definition>, St
                 icon: row.get(2)?,
                 created_at: row.get(3)?,
                 schema_t: row.get(4)?,
+                category_id: row.get(5)?,
+                sort_order: row.get(6)?,
+                authored: row.get(7)?,
             })
         })
         .map_err(failed)?;

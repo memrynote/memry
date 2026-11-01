@@ -320,6 +320,46 @@ pub fn read(index: &Connection, note_id: &str) -> Result<Option<StoredStats>, St
     .transpose()
 }
 
+/// What the index read from one file for the tag reads ([`super::tag_reads`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FileTags {
+    pub header_tags: Vec<String>,
+    pub word_count: u32,
+    /// The bytes measured (`note_file_hashes.file_hash` names the file's bytes now).
+    pub file_hash: Option<String>,
+}
+
+/// Every row's header tags, word count and measured bytes, by note id.
+pub fn file_tags(index: &Connection) -> Result<HashMap<String, FileTags>, StorageError> {
+    let mut statement = index
+        .prepare("SELECT note_id, header_tags, word_count, file_hash FROM note_stats")
+        .map_err(failed)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get(2)?,
+                row.get(3)?,
+            ))
+        })
+        .map_err(failed)?;
+    let mut out = HashMap::new();
+    for row in rows {
+        let (note_id, header_tags, word_count, file_hash) = row.map_err(failed)?;
+        let header_tags = strings(&header_tags)?;
+        out.insert(
+            note_id,
+            FileTags {
+                header_tags,
+                word_count,
+                file_hash,
+            },
+        );
+    }
+    Ok(out)
+}
+
 /// Every live markdown note with a file whose row is missing, names other bytes than the
 /// file's last read (`note_files.file_hash`), or another journal day than its record says now
 /// ([`journal_day::file_date`]): a day whose move became owed, or was applied, since its row

@@ -21,7 +21,7 @@ on:
         required: false
         default: ''
       source_ref:
-        description: Branch or tag of memrynote/memry to build
+        description: Branch, tag or commit of memrynote/memry to build. rehearse.mjs build passes the commit it checked and reads its default from here
         required: false
         default: feat/tauri-v2
       electron_tag:
@@ -106,6 +106,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          key: ${{ matrix.os }}
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build
         run: pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }}
@@ -151,6 +152,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          key: ${{ matrix.os }}
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - uses: actions/setup-dotnet@v4
         with:
@@ -253,6 +255,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          key: ubuntu-22.04
       - name: Install system libraries
         run: |
           sudo apt-get update

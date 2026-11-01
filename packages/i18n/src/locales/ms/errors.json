@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Gagal membuat definisi sifat",
     "updateDefinitionFailed": "Gagal mengemas kini definisi sifat",
     "setCalendarVisibilityFailed": "Gagal menetapkan keterlihatan sifat kalendar",
-    "definitionsFileUnreadable": "Tidak dapat menyimpan perubahan sifat kerana .memry/properties.md tidak dapat dibaca. Betulkan atau buang fail itu, kemudian cuba lagi."
+    "definitionsFileUnreadable": "Tidak dapat menyimpan perubahan sifat kerana .memry/properties.md tidak dapat dibaca. Betulkan atau buang fail itu, kemudian cuba lagi.",
+    "definitionsFileWriteFailed": "Tidak dapat menyimpan perubahan sifat kerana .memry/properties.md tidak dapat ditulis."
   },
   "reminder": {
     "notFound": "Peringatan tidak ditemui",

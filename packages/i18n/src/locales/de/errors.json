@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Die Eigenschaftsdefinition konnte nicht erstellt werden",
     "updateDefinitionFailed": "Die Eigenschaftsdefinition konnte nicht aktualisiert werden",
     "setCalendarVisibilityFailed": "Die Kalendersichtbarkeit der Eigenschaft konnte nicht festgelegt werden",
-    "definitionsFileUnreadable": "Eigenschaftsänderungen können nicht gespeichert werden, weil .memry/properties.md nicht gelesen werden kann. Repariere oder entferne die Datei und versuche es dann erneut."
+    "definitionsFileUnreadable": "Eigenschaftsänderungen können nicht gespeichert werden, weil .memry/properties.md nicht gelesen werden kann. Repariere oder entferne die Datei und versuche es dann erneut.",
+    "definitionsFileWriteFailed": "Eigenschaftsänderungen können nicht gespeichert werden, weil .memry/properties.md nicht geschrieben werden kann."
   },
   "reminder": {
     "notFound": "Erinnerung nicht gefunden",

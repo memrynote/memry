@@ -6,6 +6,7 @@ const toastSuccess = vi.hoisted(() => vi.fn())
 const toastError = vi.hoisted(() => vi.fn())
 const openTab = vi.hoisted(() => vi.fn())
 const flushAllPendingSaves = vi.hoisted(() => vi.fn())
+const createTemplate = vi.hoisted(() => vi.fn())
 
 vi.mock('sonner', () => ({ toast: { success: toastSuccess, error: toastError } }))
 vi.mock('@memry/i18n/renderer', () => ({ useT: () => ({ t: (key: string) => key }) }))
@@ -14,12 +15,12 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
 }))
 vi.mock('@/lib/save-registry', () => ({ flushAllPendingSaves }))
+vi.mock('@/services/templates-service', () => ({ templatesService: { create: createTemplate } }))
 
 import { SaveNoteAsTemplateDialog } from './save-note-as-template-dialog'
 
 const getNote = vi.fn()
 const getProperties = vi.fn()
-const createTemplate = vi.fn()
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -41,8 +42,7 @@ beforeEach(() => {
   })
   ;(window as unknown as { api: unknown }).api = {
     notes: { get: getNote },
-    properties: { get: getProperties },
-    templates: { create: createTemplate }
+    properties: { get: getProperties }
   }
 })
 

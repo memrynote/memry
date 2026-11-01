@@ -10,6 +10,7 @@ import type { Note } from '@memry/contracts/notes-api'
 import type { NoteListItem, useNoteMutations } from '@/hooks/use-notes-query'
 import type { FolderInfo } from '../../../preload/index.d'
 import { notesService } from '@/services/notes-service'
+import { templatesService } from '@/services/templates-service'
 import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
 import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
 import { toast } from 'sonner'
@@ -729,7 +730,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
             template: templateId,
             inherit: true
           })
-          const templatesResponse = await window.api.templates.list()
+          const templatesResponse = await templatesService.list()
           const template = templatesResponse.templates.find((t) => t.id === templateId)
           if (template) {
             deps.setFolderTemplateNames((prev) => {

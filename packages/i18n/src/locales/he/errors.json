@@ -276,7 +276,8 @@
     "createDefinitionFailed": "יצירת הגדרת המאפיין נכשלה",
     "updateDefinitionFailed": "עדכון הגדרת המאפיין נכשל",
     "setCalendarVisibilityFailed": "הגדרת נראות המאפיין בלוח השנה נכשלה",
-    "definitionsFileUnreadable": "לא ניתן לשמור שינויים במאפיינים כי אי אפשר לקרוא את הקובץ .memry/properties.md. יש לתקן או להסיר את הקובץ ולנסות שוב."
+    "definitionsFileUnreadable": "לא ניתן לשמור שינויים במאפיינים כי אי אפשר לקרוא את הקובץ .memry/properties.md. יש לתקן או להסיר את הקובץ ולנסות שוב.",
+    "definitionsFileWriteFailed": "לא ניתן לשמור שינויים במאפיינים כי אי אפשר לכתוב לקובץ .memry/properties.md."
   },
   "reminder": {
     "notFound": "התזכורת לא נמצאה",

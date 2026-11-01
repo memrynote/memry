@@ -6,7 +6,7 @@
     "class": "unlinked-mentions",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/shared/src/unlinked-mentions.ts",
-    "caseCount": 12
+    "caseCount": 22
   },
   "cases": [
     {
@@ -147,6 +147,224 @@
       "text": "Anything at all.",
       "names": [],
       "expected": []
+    }
+  ],
+  "markdown": [
+    {
+      "name": "code",
+      "pins": "code spans and fenced code are not scanned",
+      "markdown": "Plan `Plan` here.\n\n```\nPlan\n```\n\nplan again",
+      "names": [
+        "Plan"
+      ],
+      "title": "Plan",
+      "ordinal": 1,
+      "expected": [
+        {
+          "start": 0,
+          "end": 4,
+          "text": "Plan"
+        },
+        {
+          "start": 33,
+          "end": 37,
+          "text": "plan"
+        }
+      ],
+      "linked": "Plan `Plan` here.\n\n```\nPlan\n```\n\n[[Plan|plan]] again"
+    },
+    {
+      "name": "comments",
+      "pins": "HTML and Obsidian comments are not scanned",
+      "markdown": "<!-- Plan -->\nPlan %% Plan %% PLAN\n",
+      "names": [
+        "Plan"
+      ],
+      "title": "Plan",
+      "ordinal": 1,
+      "expected": [
+        {
+          "start": 14,
+          "end": 18,
+          "text": "Plan"
+        },
+        {
+          "start": 30,
+          "end": 34,
+          "text": "PLAN"
+        }
+      ],
+      "linked": "<!-- Plan -->\nPlan %% Plan %% [[Plan|PLAN]]\n"
+    },
+    {
+      "name": "links",
+      "pins": "wiki links, embeds, markdown links and images are not scanned",
+      "markdown": "[[Plan]] [[Other|Plan]] ![[Plan.png]] [Plan](Plan.md) ![Plan](plan.png) Plan",
+      "names": [
+        "Plan"
+      ],
+      "title": "Plan",
+      "ordinal": 0,
+      "expected": [
+        {
+          "start": 72,
+          "end": 76,
+          "text": "Plan"
+        }
+      ],
+      "linked": "[[Plan]] [[Other|Plan]] ![[Plan.png]] [Plan](Plan.md) ![Plan](plan.png) [[Plan]]"
+    },
+    {
+      "name": "urls",
+      "pins": "a URL that starts a word is not scanned",
+      "markdown": "See https://example.com/plan and (ftp://x/plan) then plan.",
+      "names": [
+        "Plan"
+      ],
+      "title": "Plan",
+      "ordinal": 0,
+      "expected": [
+        {
+          "start": 53,
+          "end": 57,
+          "text": "plan"
+        }
+      ],
+      "linked": "See https://example.com/plan and (ftp://x/plan) then [[Plan|plan]]."
+    },
+    {
+      "name": "url-inside-a-word",
+      "pins": "a scheme preceded by a letter, digit, +, . or - is not a URL",
+      "markdown": "éhttps://plan.example and 1http://plan",
+      "names": [
+        "Plan"
+      ],
+      "title": "Plan",
+      "ordinal": 1,
+      "expected": [
+        {
+          "start": 9,
+          "end": 13,
+          "text": "plan"
+        },
+        {
+          "start": 34,
+          "end": 38,
+          "text": "plan"
+        }
+      ],
+      "linked": "éhttps://plan.example and 1http://[[Plan|plan]]"
+    },
+    {
+      "name": "url-scheme-letters",
+      "pins": "a scheme letter is an ASCII letter, or ſ or the Kelvin sign, which fold to s and k under the i and u flags; a scheme can hold +, . and -",
+      "markdown": "ſ://x/plan K://x/plan x+https://plan a.http://plan b-ftp://plan then plan",
+      "names": [
+        "Plan"
+      ],
+      "title": "Plan",
+      "ordinal": 0,
+      "expected": [
+        {
+          "start": 69,
+          "end": 73,
+          "text": "plan"
+        }
+      ],
+      "linked": "ſ://x/plan K://x/plan x+https://plan a.http://plan b-ftp://plan then [[Plan|plan]]"
+    },
+    {
+      "name": "unclosed",
+      "pins": "an unclosed link or comment is text",
+      "markdown": "[[Plan and [Plan](x plan <!-- plan",
+      "names": [
+        "Plan"
+      ],
+      "title": "Plan",
+      "ordinal": 2,
+      "expected": [
+        {
+          "start": 2,
+          "end": 6,
+          "text": "Plan"
+        },
+        {
+          "start": 12,
+          "end": 16,
+          "text": "Plan"
+        },
+        {
+          "start": 20,
+          "end": 24,
+          "text": "plan"
+        },
+        {
+          "start": 30,
+          "end": 34,
+          "text": "plan"
+        }
+      ],
+      "linked": "[[Plan and [Plan](x [[Plan|plan]] <!-- plan"
+    },
+    {
+      "name": "offsets-after-masked-non-ascii",
+      "pins": "offsets index the markdown after blanked astral and accented text",
+      "markdown": "`😀é` [[ü]] Plan",
+      "names": [
+        "Plan"
+      ],
+      "title": "Plan",
+      "ordinal": 0,
+      "expected": [
+        {
+          "start": 12,
+          "end": 16,
+          "text": "Plan"
+        }
+      ],
+      "linked": "`😀é` [[ü]] [[Plan]]"
+    },
+    {
+      "name": "alias-link",
+      "pins": "a mention spelled otherwise links as [[Title|text]]",
+      "markdown": "The roadmap and the Roadmap.",
+      "names": [
+        "Q3 Plan",
+        "Roadmap"
+      ],
+      "title": "Q3 Plan",
+      "ordinal": 1,
+      "expected": [
+        {
+          "start": 4,
+          "end": 11,
+          "text": "roadmap"
+        },
+        {
+          "start": 20,
+          "end": 27,
+          "text": "Roadmap"
+        }
+      ],
+      "linked": "The roadmap and the [[Q3 Plan|Roadmap]]."
+    },
+    {
+      "name": "ordinal-out-of-range",
+      "pins": "a mention that is gone links nothing",
+      "markdown": "Plan once.",
+      "names": [
+        "Plan"
+      ],
+      "title": "Plan",
+      "ordinal": 1,
+      "expected": [
+        {
+          "start": 0,
+          "end": 4,
+          "text": "Plan"
+        }
+      ],
+      "linked": null
     }
   ]
 }
