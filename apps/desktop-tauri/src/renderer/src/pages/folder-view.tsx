@@ -782,17 +782,22 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         notesToDelete.map((noteId) => notesService.delete(noteId))
       )
 
-      // Check for failures
-      const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-
+      // A note that stayed (its delete failed, or the user kept it) comes back, told why.
+      const failures = results.filter((r) => r.status === 'rejected' || !r.value.success)
       if (failures.length > 0) {
         log.error(`${failures.length} notes failed to delete:`, failures)
         await refresh() // Restore correct state on failure
+        const [first] = failures
+        const fallback = t('page.toast.deleteFailed')
+        toast.error(
+          first.status === 'rejected'
+            ? extractErrorMessage(first.reason, fallback)
+            : (first.value.error ?? fallback)
+        )
+      } else {
+        // The tasks go only if every note they came from did.
+        await deleteNoteTasks(taskIds)
       }
-
-      // The tasks go only if every note they came from did.
-      const everyDeleteSucceeded = results.every((r) => r.status === 'fulfilled' && r.value.success)
-      if (everyDeleteSucceeded) await deleteNoteTasks(taskIds)
     } catch (err) {
       log.error('Failed to delete notes:', err)
       await refresh() // Restore correct state on error
@@ -808,7 +813,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     carriedTaskIdsToDelete,
     removeNotesOptimistically,
     refresh,
-    EXIT_ANIMATION_DURATION
+    EXIT_ANIMATION_DURATION,
+    t
   ])
 
   // Navigate to a breadcrumb ancestor folder

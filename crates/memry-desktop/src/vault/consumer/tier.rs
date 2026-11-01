@@ -16,6 +16,7 @@ use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
+use crate::vault::app_move::finish_interrupted;
 use crate::vault::config::read_vault_config;
 #[cfg(test)]
 use crate::vault::watch::HoldFn;
@@ -228,10 +229,31 @@ impl VaultTier {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone();
-        identity.opened(&IdentityCtx {
+        let ctx = IdentityCtx {
             root: &vault.path,
             vault: &vault.vault,
-        });
+        };
+        // Before the identity settles what it owes, and before the watcher: the file an app
+        // move left at its new path is the note's again, never a new file.
+        let settled = vault
+            .vault
+            .notes_writer(self.store.clone())
+            .map_err(|error| error.to_string())
+            .and_then(|writer| {
+                let mut lane = self
+                    .rows
+                    .lane_of(session)
+                    .map_err(|error| error.to_string())?;
+                finish_interrupted(&ctx, &writer, &mut lane, &*identity);
+                Ok(())
+            });
+        if let Err(error) = settled {
+            tracing::warn!(
+                scope = "vault_consumer",
+                "the interrupted app moves wait for the next open: {error}"
+            );
+        }
+        identity.opened(&ctx);
         let new_files = if identity.adopts() {
             NewFiles::Report
         } else {

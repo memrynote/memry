@@ -27,9 +27,11 @@ use vault_env::{WAIT, env, indexed};
 /// An announcement, and each announced target's backlinks (source titles) read when it came.
 type Announced = (LinkChanges, BTreeMap<String, Vec<String>>);
 
-/// The first announcement naming `source` as changed. Every one before it changed some link.
-fn announced_for(heard: &Receiver<Announced>, source: &str) -> Announced {
+/// The first announcement naming `source` as changed, and those before it, each of which
+/// changed some link.
+fn announced_for(heard: &Receiver<Announced>, source: &str) -> (Announced, Vec<LinkChanges>) {
     let deadline = Instant::now() + WAIT;
+    let mut before = Vec::new();
     loop {
         let left = deadline.saturating_duration_since(Instant::now());
         let (changes, seen) = heard
@@ -37,8 +39,9 @@ fn announced_for(heard: &Receiver<Announced>, source: &str) -> Announced {
             .unwrap_or_else(|_| panic!("no announcement for {source}"));
         assert!(!changes.is_empty(), "an announcement that changed nothing");
         if changes.sources.contains(source) {
-            return (changes, seen);
+            return ((changes, seen), before);
         }
+        before.push(changes);
     }
 }
 
@@ -93,12 +96,12 @@ fn the_links_an_edit_changed_are_announced_once_they_read_back() {
     *reader.lock().unwrap() = Some(NoteLinks::new(&e.session.current().unwrap()));
 
     e.write("Late.md", "Now about [[Target]] too.\n");
-    let (changes, seen) = announced_for(&heard, &late);
+    let ((changes, seen), _) = announced_for(&heard, &late);
     assert!(changes.targets.contains(&target), "{changes:?}");
     assert_eq!(seen[&target], ["Early", "Late"]);
 
     e.write("Late.md", "Gone again.\n");
-    let (changes, seen) = announced_for(&heard, &late);
+    let ((changes, seen), _) = announced_for(&heard, &late);
     assert!(changes.targets.contains(&target), "{changes:?}");
     assert_eq!(seen[&target], ["Early"]);
 
@@ -114,7 +117,12 @@ fn the_links_an_edit_changed_are_announced_once_they_read_back() {
 
     // A forward link resolves once its note exists: the new note gained a backlink.
     e.write("Early.md", "See [[Target]] and [[Ghost]].\n");
-    let (changes, _) = announced_for(&heard, &early);
+    let ((changes, _), before) = announced_for(&heard, &early);
+    // The link-free edit's pass came first and announced nothing for Late.
+    assert!(
+        before.iter().all(|other| !other.sources.contains(&late)),
+        "{before:?}"
+    );
     assert!(!changes.targets.contains(&target), "{changes:?}");
     e.write("Ghost.md", "# Ghost\n");
     let ghost = {
@@ -129,7 +137,7 @@ fn the_links_an_edit_changed_are_announced_once_they_read_back() {
         });
         found.unwrap()
     };
-    let (changes, seen) = announced_for(&heard, &early);
+    let ((changes, seen), _) = announced_for(&heard, &early);
     assert!(changes.targets.contains(&ghost), "{changes:?}");
     assert_eq!(seen[&ghost], ["Early"]);
     drop(links);

@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, other {# khối nữa}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Không thể chuyển vào thùng rác",
+    "description": "Không thể chuyển “{title}” vào thùng rác. Xóa vĩnh viễn? Thao tác này không thể hoàn tác.",
+    "keep": "Giữ ghi chú",
+    "deletePermanently": "Xóa vĩnh viễn",
+    "kept": "Đã giữ ghi chú. Không thể chuyển ghi chú vào thùng rác."
   }
 }

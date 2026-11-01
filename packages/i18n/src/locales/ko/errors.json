@@ -276,7 +276,8 @@
     "createDefinitionFailed": "속성 정의를 만들지 못했습니다.",
     "updateDefinitionFailed": "속성 정의를 업데이트하지 못했습니다.",
     "setCalendarVisibilityFailed": "캘린더 속성 표시 여부를 설정하지 못했습니다.",
-    "definitionsFileUnreadable": ".memry/properties.md를 읽을 수 없어 속성 변경을 저장할 수 없습니다. 해당 파일을 고치거나 제거한 뒤 다시 시도하세요."
+    "definitionsFileUnreadable": ".memry/properties.md를 읽을 수 없어 속성 변경을 저장할 수 없습니다. 해당 파일을 고치거나 제거한 뒤 다시 시도하세요.",
+    "definitionsFileWriteFailed": ".memry/properties.md에 쓸 수 없어 속성 변경 사항을 저장할 수 없습니다."
   },
   "reminder": {
     "notFound": "리마인더를 찾을 수 없습니다.",

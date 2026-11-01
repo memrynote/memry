@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Не вдалося створити визначення властивості",
     "updateDefinitionFailed": "Не вдалося оновити визначення властивості",
     "setCalendarVisibilityFailed": "Не вдалося налаштувати видимість властивості в календарі",
-    "definitionsFileUnreadable": "Не вдається зберегти зміни властивостей, бо файл .memry/properties.md неможливо прочитати. Виправте або видаліть його й спробуйте ще раз."
+    "definitionsFileUnreadable": "Не вдається зберегти зміни властивостей, бо файл .memry/properties.md неможливо прочитати. Виправте або видаліть його й спробуйте ще раз.",
+    "definitionsFileWriteFailed": "Не вдається зберегти зміни властивостей, бо у файл .memry/properties.md неможливо записати."
   },
   "reminder": {
     "notFound": "Нагадування не знайдено",

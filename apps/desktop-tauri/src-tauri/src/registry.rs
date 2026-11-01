@@ -62,6 +62,19 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_resolve_wiki_target,
             crate::commands::notes::notes_reveal_in_finder,
             crate::commands::notes::notes_set_local_only,
+            // notes: property definitions
+            crate::commands::property_definitions::notes_add_property_option,
+            crate::commands::property_definitions::notes_add_status_option,
+            crate::commands::property_definitions::notes_create_property_definition,
+            crate::commands::property_definitions::notes_delete_property_definition,
+            crate::commands::property_definitions::notes_ensure_property_definition,
+            crate::commands::property_definitions::notes_get_calendar_property_names,
+            crate::commands::property_definitions::notes_get_property_definitions,
+            crate::commands::property_definitions::notes_remove_property_option,
+            crate::commands::property_definitions::notes_rename_property_option,
+            crate::commands::property_definitions::notes_set_calendar_property_visibility,
+            crate::commands::property_definitions::notes_update_option_color,
+            crate::commands::property_definitions::notes_update_property_definition,
             // notification
             crate::commands::shell_integrations::notification_permission,
             crate::commands::shell_integrations::notification_show,
@@ -178,6 +191,7 @@ pub fn builder() -> Builder<Wry> {
             // notes
             crate::events::NoteCreatedEvent,
             crate::events::NoteDeletedEvent,
+            crate::events::NoteEventsDroppedEvent,
             crate::events::NoteLinksChangedEvent,
             crate::events::NoteUpdatedEvent,
             // vault

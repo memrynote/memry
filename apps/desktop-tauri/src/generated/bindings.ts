@@ -55,8 +55,12 @@ export const commands = {
 	 *  renderer's service refuses them until their steps.
 	 */
 	notesCreate: (input: NoteCreateInput) => __TAURI_INVOKE<NoteView>("notes_create", { input }),
-	/**  `notes:delete`: for good, not to the OS trash. */
-	notesDelete: (id: string) => __TAURI_INVOKE<null>("notes_delete", { id }),
+	/**
+	 *  `notes:delete`. A file holding text the note never read goes to the OS trash; where the
+	 *  trash refuses it the delete fails with `note_trash_unavailable`, and the renderer asks the
+	 *  user before it deletes again with `permanent` (#3813).
+	 */
+	notesDelete: (id: string, permanent: boolean | null) => __TAURI_INVOKE<null>("notes_delete", { id, permanent }),
 	/**  `notes:exists`: a `.md` path, or a title a link would resolve. */
 	notesExists: (titleOrPath: string) => __TAURI_INVOKE<boolean>("notes_exists", { titleOrPath }),
 	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
@@ -82,6 +86,21 @@ export const commands = {
 	 *  the note.
 	 */
 	notesSetLocalOnly: (id: string, localOnly: boolean) => __TAURI_INVOKE<NoteView>("notes_set_local_only", { id, localOnly }),
+	notesAddPropertyOption: (propertyName: string, option: OptionInput) => __TAURI_INVOKE<null>("notes_add_property_option", { propertyName, option }),
+	notesAddStatusOption: (propertyName: string, categoryKey: StatusCategoryKey, option: OptionInput) => __TAURI_INVOKE<null>("notes_add_status_option", { propertyName, categoryKey, option }),
+	/**  `notes:create-property-definition`. `type` is required. */
+	notesCreatePropertyDefinition: (input: DefinitionInput) => __TAURI_INVOKE<PropertyDefinitionView | null>("notes_create_property_definition", { input }),
+	notesDeletePropertyDefinition: (name: string) => __TAURI_INVOKE<null>("notes_delete_property_definition", { name }),
+	notesEnsurePropertyDefinition: (name: string, kind: EnsuredType) => __TAURI_INVOKE<null>("notes_ensure_property_definition", { name, kind }),
+	notesGetCalendarPropertyNames: () => __TAURI_INVOKE<string[]>("notes_get_calendar_property_names"),
+	/**  `notes:get-property-definitions`: by name. */
+	notesGetPropertyDefinitions: () => __TAURI_INVOKE<PropertyDefinitionView[]>("notes_get_property_definitions"),
+	notesRemovePropertyOption: (propertyName: string, optionValue: string) => __TAURI_INVOKE<null>("notes_remove_property_option", { propertyName, optionValue }),
+	notesRenamePropertyOption: (propertyName: string, oldValue: string, newValue: string) => __TAURI_INVOKE<null>("notes_rename_property_option", { propertyName, oldValue, newValue }),
+	notesSetCalendarPropertyVisibility: (name: string, showOnCalendar: boolean) => __TAURI_INVOKE<null>("notes_set_calendar_property_visibility", { name, showOnCalendar }),
+	notesUpdateOptionColor: (propertyName: string, optionValue: string, newColor: string) => __TAURI_INVOKE<null>("notes_update_option_color", { propertyName, optionValue, newColor }),
+	/**  `notes:update-property-definition`: `null` when there is no definition of the name. */
+	notesUpdatePropertyDefinition: (input: DefinitionInput) => __TAURI_INVOKE<PropertyDefinitionView | null>("notes_update_property_definition", { input }),
 	/**
 	 *  Whether notifications may show. macOS answers `prompt` until the user was asked; the first
 	 *  notification asks.
@@ -261,6 +280,7 @@ export const events = {
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
 	noteDeletedEvent: makeEvent<NoteDeletedEvent, NoteDeletedEvent>("note-deleted-event"),
+	noteEventsDroppedEvent: makeEvent<NoteEventsDroppedEvent, NoteEventsDroppedEvent>("note-events-dropped-event"),
 	noteLinksChangedEvent: makeEvent<NoteLinksChangedEvent, NoteLinksChangedEvent>("note-links-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
@@ -405,6 +425,25 @@ export type CustomIconsUpdatedEvent = {
 	id: string,
 };
 
+/**  `CreatePropertyDefinitionSchema`, and `UpdatePropertyDefinitionSchema` with `type` left out. */
+export type DefinitionInput = {
+	name: string,
+	type?: DefinitionType | null,
+	options?: OptionInput[] | null,
+	/**
+	 *  Already text: the renderer's service turns any other value into text as Electron's
+	 *  `stringifyDefaultValue` does.
+	 */
+	defaultValue?: string | null,
+	color?: string | null,
+};
+
+/**
+ *  The types a definition holds. A create or an update takes every one but `project`
+ *  (`PROPERTY_TYPE_ENUM`), which is system-managed.
+ */
+export type DefinitionType = "text" | "number" | "checkbox" | "date" | "url" | "status" | "select" | "multiselect" | "project";
+
 /**  One shipped line (`DiagnosticLogLineSchema`). */
 export type DiagnosticLine = {
 	ts: string,
@@ -461,6 +500,9 @@ export type DiagnosticTrigger = {
 	errorCode?: string | null,
 	stack?: string | null,
 };
+
+/**  The types `notes:ensure-property-definition` creates. */
+export type EnsuredType = "status" | "select" | "multiselect";
 
 export type ErrorDetail = {
 	message?: string | null,
@@ -662,6 +704,13 @@ export type NoteDeletedEvent = {
 /**  Who made a note change (`NoteEventSource`): the app, or an edit outside it. */
 export type NoteEventSource = "internal" | "external";
 
+/**
+ *  Note events were dropped because their forwarder fell behind (no Electron channel: Electron
+ *  sends every event). No payload; the renderer refetches its note lists, its tags and every
+ *  note it shows.
+ */
+export type NoteEventsDroppedEvent = null;
+
 /**  A link the note makes (`NoteLink`). */
 export type NoteLinkView = {
 	sourceId: string,
@@ -807,6 +856,27 @@ export type NotificationRequest = {
 
 export type NotificationRoute = { kind: "focus" } | { kind: "deepLink"; value: string } | { kind: "handler"; value: string };
 
+export type OptionInput = {
+	value: string,
+	color: string,
+	default?: boolean | null,
+};
+
+/**
+ *  A definition as the renderer reads it (`PropertyDefinition` of `@memry/rpc`): what Electron's
+ *  `property_definitions` row holds.
+ */
+export type PropertyDefinitionView = {
+	name: string,
+	type: DefinitionType,
+	/**  JSON text: the option list, or `{"categories": …}` for a status. */
+	options: string | null,
+	defaultValue: string | null,
+	color: string | null,
+	/**  When the record was created; empty for a definition only the file holds. */
+	createdAt: string,
+};
+
 export type SandboxInfo = {
 	path: string,
 	exists: boolean,
@@ -883,6 +953,8 @@ export type StartupState = {
 	direction: string,
 	startupVault: string | null,
 };
+
+export type StatusCategoryKey = "todo" | "in_progress" | "done";
 
 /**  `TagNoteItem`. */
 export type TagNoteItemView = {

@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, one {# další blok} few {# další bloky} many {# dalšího bloku} other {# dalších bloků}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Nelze přesunout do koše",
+    "description": "„{title}“ nelze přesunout do koše. Smazat trvale? Tuto akci nelze vrátit.",
+    "keep": "Ponechat poznámku",
+    "deletePermanently": "Smazat trvale",
+    "kept": "Poznámka byla ponechána. Nešlo ji přesunout do koše."
   }
 }

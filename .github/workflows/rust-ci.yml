@@ -209,6 +209,9 @@ jobs:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
         with:
           workspaces: crates
+          # The image in the key: rust-cache keys on job id + OS + arch only, so main's ubuntu-latest
+          # (26.04) save restored here and its build scripts needed GLIBC_2.39 (#3846).
+          key: ${{ matrix.os }}
           save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
 
       # A restore cut off at the step timeout can leave half an archive on disk. Start the
@@ -478,6 +481,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          key: macos-26
           save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
 
       # Glob, not a fixed path: the runner image names it Xcode_26.x.app and the

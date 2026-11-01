@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, one {# lohko lisää} other {# lohkoa lisää}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Siirto roskakoriin ei onnistu",
+    "description": "Kohdetta “{title}” ei voi siirtää roskakoriin. Poistetaanko se pysyvästi? Tätä ei voi kumota.",
+    "keep": "Säilytä muistiinpano",
+    "deletePermanently": "Poista pysyvästi",
+    "kept": "Muistiinpano säilytettiin. Sitä ei voitu siirtää roskakoriin."
   }
 }

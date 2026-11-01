@@ -4,7 +4,11 @@
 //!    note whole. A file whose bytes are the ones the note's document took (the row's content
 //!    hash) is removed for good; any other file holds text the note never read (an outside edit
 //!    not fed yet, a file too large to take), so it goes to the OS trash instead, as the open
-//!    reconcile does with a deleted note's file (`vault::writeback::deleted`). Either way the
+//!    reconcile does with a deleted note's file (`vault::writeback::deleted`). Where the trash
+//!    refuses it (a Linux mount with no usable `.Trash-<uid>`), the delete fails with
+//!    [`NotesError::TrashUnavailable`] and leaves the note whole; the user is asked, and a
+//!    delete the user confirmed as permanent tries the trash again and unlinks that file only
+//!    if the trash still refuses (#3813). Either way the
 //!    own-write record is told first, so the watcher's report of the removal is the app's;
 //! 2. the record: a tombstone for every other device, none for a local-only note, which the
 //!    core reads off the row that is still there (`domain::notes::local_only`);
@@ -37,11 +41,23 @@ use crate::vault::paths::resolve_vault_file;
 use crate::vault::watch::EchoGuard;
 
 impl NotesService {
-    pub fn delete(&self, open: &OpenVault, note_id: &str) -> Result<(), NotesError> {
-        self.order.run(note_id, || self.delete_now(open, note_id))
+    /// `permanent`: the user confirmed that a file the trash still refuses is removed for good.
+    pub fn delete(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        permanent: bool,
+    ) -> Result<(), NotesError> {
+        self.order
+            .run(note_id, || self.delete_now(open, note_id, permanent))
     }
 
-    fn delete_now(&self, open: &OpenVault, note_id: &str) -> Result<(), NotesError> {
+    fn delete_now(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        permanent: bool,
+    ) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;
@@ -52,9 +68,16 @@ impl NotesService {
         };
         let echo = self.tier.echo();
         let removed = if holds_unread_text(root, &row) {
-            self.trash_file(&echo, root, &row.path)
+            // A refusal may not last (a sync client or a scanner holding the file, a folder
+            // made writable since): a confirmed delete tries the trash again first.
+            match self.trash_file(&echo, root, &row.path) {
+                Err(NotesError::TrashUnavailable(_)) if permanent => {
+                    unlink(&echo, root, &row.path).map_err(NotesError::from)
+                }
+                trashed => trashed,
+            }
         } else {
-            unlink(&echo, root, &row.path)
+            unlink(&echo, root, &row.path).map_err(NotesError::from)
         };
         if let Err(error) = removed {
             tracing::error!(
@@ -62,7 +85,7 @@ impl NotesService {
                 note_id,
                 "a deleted note's file could not be removed: {error}"
             );
-            return Err(error.into());
+            return Err(error);
         }
         writer.delete(note_id.to_owned())?;
         lane.remove(note_id)?;
@@ -83,7 +106,7 @@ impl NotesService {
     }
 
     /// Moves the file at `rel` to the OS trash, told to the own-write record first.
-    fn trash_file(&self, echo: &EchoGuard, root: &Path, rel: &str) -> io::Result<()> {
+    fn trash_file(&self, echo: &EchoGuard, root: &Path, rel: &str) -> Result<(), NotesError> {
         let Some(path) = removal_target(root, rel)? else {
             return Ok(());
         };
@@ -91,7 +114,7 @@ impl NotesService {
         (self.trash)(&path).map_err(|error| {
             // Still there: a later removal of it is an outside one.
             echo.cancel_removal(rel);
-            io::Error::other(format!("the trash refused it: {error}"))
+            NotesError::TrashUnavailable(error)
         })
     }
 }

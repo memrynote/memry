@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Hindi makagawa ng depinisyon ng property",
     "updateDefinitionFailed": "Hindi ma-update ang depinisyon ng property",
     "setCalendarVisibilityFailed": "Hindi maitakda ang pagpapakita ng property sa kalendaryo",
-    "definitionsFileUnreadable": "Hindi ma-save ang mga pagbabago sa property dahil hindi mabasa ang .memry/properties.md. Ayusin o alisin ang file na iyon, tapos subukan ulit."
+    "definitionsFileUnreadable": "Hindi ma-save ang mga pagbabago sa property dahil hindi mabasa ang .memry/properties.md. Ayusin o alisin ang file na iyon, tapos subukan ulit.",
+    "definitionsFileWriteFailed": "Hindi ma-save ang mga pagbabago sa property dahil hindi masulatan ang .memry/properties.md."
   },
   "reminder": {
     "notFound": "Hindi nahanap ang paalala",

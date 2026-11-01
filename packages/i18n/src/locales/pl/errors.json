@@ -276,7 +276,8 @@
     "createDefinitionFailed": "Nie udało się utworzyć definicji właściwości",
     "updateDefinitionFailed": "Nie udało się zaktualizować definicji właściwości",
     "setCalendarVisibilityFailed": "Nie udało się ustawić widoczności właściwości w kalendarzu",
-    "definitionsFileUnreadable": "Nie można zapisać zmian właściwości, bo pliku .memry/properties.md nie da się odczytać. Napraw lub usuń ten plik, a potem spróbuj ponownie."
+    "definitionsFileUnreadable": "Nie można zapisać zmian właściwości, bo pliku .memry/properties.md nie da się odczytać. Napraw lub usuń ten plik, a potem spróbuj ponownie.",
+    "definitionsFileWriteFailed": "Nie można zapisać zmian właściwości, bo do pliku .memry/properties.md nie da się zapisać."
   },
   "reminder": {
     "notFound": "Nie znaleziono przypomnienia",

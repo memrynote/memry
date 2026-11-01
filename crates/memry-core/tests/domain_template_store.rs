@@ -7,6 +7,8 @@
 //! | a built-in is read from code and never changed               | `assertNotBuiltIn`                    |
 //! | a deleted template is gone for every call                    | `NOT_FOUND` after `deleteTemplate`    |
 //! | a stored row with a built-in's id is never read              | the built-in wins                     |
+//! | the vault's templates list in `localeCompare` order          | `listTemplates`' `localeCompare`      |
+//! | case-variant tags collapse on a create as on an update       | one tag rule for both writes          |
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::reads;
@@ -190,4 +192,68 @@ fn a_stored_row_with_a_built_ins_id_is_never_read() {
         assert_eq!((got.name.as_str(), got.is_built_in), ("Blank Note", true));
         Ok(())
     });
+}
+
+#[test]
+fn the_vaults_templates_list_in_locale_compare_order() {
+    let db = open("order");
+    let names = run(&db, |conn| {
+        for (i, name) in [
+            "Zeta",
+            "\u{dc}n\u{ef}code",
+            "apple",
+            "\u{c9}clair",
+            "banana",
+            "Apple",
+            "\u{e9}tude",
+            "_draft",
+            "10 tips",
+            "2 tips",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            template_store::create(conn, &fields(name), DEVICE, NOW + i as i64)?;
+        }
+        reads::templates(conn)
+    })
+    .into_iter()
+    .skip(8)
+    .map(|t| t.name)
+    .collect::<Vec<_>>();
+    // Node 22: `names.toSorted((a, b) => a.localeCompare(b))`.
+    assert_eq!(
+        names,
+        [
+            "_draft",
+            "10 tips",
+            "2 tips",
+            "apple",
+            "Apple",
+            "banana",
+            "\u{c9}clair",
+            "\u{e9}tude",
+            "\u{dc}n\u{ef}code",
+            "Zeta",
+        ]
+    );
+}
+
+#[test]
+fn case_variant_tags_collapse_on_a_create_as_on_an_update() {
+    let db = open("tags");
+    let (created, updated) = run(&db, |conn| {
+        let mut tagged = fields("Tagged");
+        tagged.tags = vec!["Work".into(), "work".into(), "Home".into(), "WORK".into()];
+        let id = template_store::create(conn, &tagged, DEVICE, NOW)?;
+        let created = payload(conn, &id)["tags"].clone();
+        let edit = TemplateEdit {
+            tags: Some(vec!["home".into(), "Home".into(), "Later".into()]),
+            ..TemplateEdit::default()
+        };
+        template_store::update(conn, &id, &edit, DEVICE, NOW + 1)?;
+        Ok((created, payload(conn, &id)["tags"].clone()))
+    });
+    assert_eq!(created, json!(["Work", "Home"]));
+    assert_eq!(updated, json!(["home", "Later"]));
 }

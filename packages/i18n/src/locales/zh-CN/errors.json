@@ -276,7 +276,8 @@
     "createDefinitionFailed": "创建属性定义失败",
     "updateDefinitionFailed": "更新属性定义失败",
     "setCalendarVisibilityFailed": "设置属性在日历上的可见性失败",
-    "definitionsFileUnreadable": "无法保存属性更改，因为无法读取 .memry/properties.md。请修复或移除该文件，然后重试。"
+    "definitionsFileUnreadable": "无法保存属性更改，因为无法读取 .memry/properties.md。请修复或移除该文件，然后重试。",
+    "definitionsFileWriteFailed": "无法保存属性更改，因为无法写入 .memry/properties.md。"
   },
   "reminder": {
     "notFound": "未找到提醒",

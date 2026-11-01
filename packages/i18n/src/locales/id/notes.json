@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, other {# blok lagi}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Tidak dapat dipindahkan ke tempat sampah",
+    "description": "“{title}” tidak dapat dipindahkan ke tempat sampah. Hapus secara permanen? Tindakan ini tidak dapat dibatalkan.",
+    "keep": "Simpan catatan",
+    "deletePermanently": "Hapus permanen",
+    "kept": "Catatan disimpan. Catatan tidak dapat dipindahkan ke tempat sampah."
   }
 }

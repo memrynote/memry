@@ -69,7 +69,7 @@ pub enum OpenError {
 }
 
 /// Whether `rel` is a plain relative path. The only syntactic check; the file system does the rest.
-fn is_plain_relative(rel: &str) -> bool {
+pub(crate) fn is_plain_relative(rel: &str) -> bool {
     if rel.is_empty() || rel.contains('\0') {
         return false;
     }
