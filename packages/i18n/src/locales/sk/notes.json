@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, one {# ďalší blok} few {# ďalšie bloky} other {# ďalších blokov}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Nedá sa presunúť do koša",
+    "description": "„{title}“ sa nedá presunúť do koša. Odstrániť natrvalo? Túto akciu nemožno vrátiť.",
+    "keep": "Ponechať poznámku",
+    "deletePermanently": "Odstrániť natrvalo",
+    "kept": "Poznámka bola ponechaná. Nepodarilo sa ju presunúť do koša."
   }
 }

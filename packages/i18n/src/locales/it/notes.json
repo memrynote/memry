@@ -2192,5 +2192,12 @@
         "other": "… {count, plural, one {# altro blocco} other {# altri blocchi}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Impossibile spostare nel cestino",
+    "description": "“{title}” non può essere spostata nel cestino. Eliminarla definitivamente? L'operazione non può essere annullata.",
+    "keep": "Mantieni nota",
+    "deletePermanently": "Elimina definitivamente",
+    "kept": "La nota è stata mantenuta. Non è stato possibile spostarla nel cestino."
   }
 }

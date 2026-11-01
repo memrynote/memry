@@ -86,18 +86,19 @@ impl NoteView {
     /// `vault/watcher.ts`): what the edit may have changed, as the note reads now, so the
     /// backlinks, the unlinked mentions, the similar notes and the properties panel take the new
     /// text and fields. A large note's text is not read, so `content` is left out rather than
-    /// sent empty. `modified` is epoch milliseconds, which the renderer's service makes a `Date`.
+    /// sent empty, and `snippet`, which is made from it, with it. `modified` is epoch
+    /// milliseconds, which the renderer's service makes a `Date`.
     pub fn changes(&self) -> Map<String, Value> {
         let mut changes = Map::new();
         changes.insert("title".into(), json!(self.title));
         if !self.content_omitted {
             changes.insert("content".into(), json!(self.content));
+            changes.insert("snippet".into(), json!(measure(&self.content).snippet));
         }
         changes.insert("tags".into(), json!(self.tags));
         changes.insert("properties".into(), Value::Object(self.properties.clone()));
         changes.insert("modified".into(), json!(self.modified));
         changes.insert("wordCount".into(), json!(self.word_count));
-        changes.insert("snippet".into(), json!(measure(&self.content).snippet));
         changes
     }
 }
@@ -287,5 +288,42 @@ impl TranscriptionStatus {
             "failed" => Some(Self::Failed),
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn note(content: &str, content_omitted: bool) -> NoteView {
+        NoteView {
+            id: "n".into(),
+            path: "n.md".into(),
+            title: "N".into(),
+            content: content.into(),
+            frontmatter: Map::new(),
+            created: 1,
+            modified: 2,
+            tags: Vec::new(),
+            header_tags: Vec::new(),
+            aliases: Vec::new(),
+            word_count: 0,
+            properties: Map::new(),
+            emoji: None,
+            local_only: false,
+            size_class: SizeClass::Note,
+            large_file: None,
+            content_omitted,
+        }
+    }
+
+    #[test]
+    fn a_large_note_s_changes_leave_out_its_text_and_the_snippet_made_from_it() {
+        let changes = note("", true).changes();
+        assert!(!changes.contains_key("content"), "{changes:?}");
+        assert!(!changes.contains_key("snippet"), "{changes:?}");
+        let changes = note("Some text", false).changes();
+        assert_eq!(changes["content"], "Some text");
+        assert_eq!(changes["snippet"], "Some text");
     }
 }
