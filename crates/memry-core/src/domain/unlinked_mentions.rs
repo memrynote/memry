@@ -55,6 +55,10 @@ fn is_word_char(c: Option<char>) -> bool {
 }
 
 /// Every whole-word mention of `names` in `text`, in order.
+///
+/// Costs O(text length × total name length): each position tries every name, longest first,
+/// as the reference's alternation does. A target has a title and a few aliases, so this stays
+/// linear in practice.
 pub fn find_plain_mentions(text: &str, names: &[String]) -> Vec<PlainMention> {
     let mut seen = HashSet::new();
     let mut folded: Vec<Vec<String>> = Vec::new();
@@ -123,14 +127,9 @@ pub fn unlinked_mentions(
     target_id: &str,
 ) -> Result<Vec<UnlinkedMention>, StorageError> {
     let names = target_names(data, target_id)?;
-    let phrases: Vec<String> = names
-        .iter()
-        .filter(|name| name.chars().any(char::is_alphanumeric))
-        .map(|name| format!("\"{}\"", js_trim(name).replace('"', "\"\"")))
-        .collect();
-    if phrases.is_empty() {
+    let Some(query) = fts_query(&names) else {
         return Ok(Vec::new());
-    }
+    };
     let linked: HashSet<String> = links::backlinks(data, index, target_id, BacklinkOrder::Title)?
         .into_iter()
         .map(|row| row.source_id)
@@ -139,7 +138,6 @@ pub fn unlinked_mentions(
     let mut statement = index
         .prepare("SELECT id, content FROM fts_notes WHERE fts_notes MATCH ?1")
         .map_err(failed)?;
-    let query = format!("content : ({})", phrases.join(" OR "));
     let candidates = statement
         .query_map(params![query], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
@@ -182,8 +180,22 @@ pub fn unlinked_mentions(
     Ok(out)
 }
 
-/// The target's title (a day's date) and aliases.
-fn target_names(data: &Connection, target_id: &str) -> Result<Vec<String>, StorageError> {
+/// The FTS query for notes holding every word of at least one of `names`, `None` when no name
+/// has a letter or digit (and so no FTS token).
+pub(crate) fn fts_query(names: &[String]) -> Option<String> {
+    let phrases: Vec<String> = names
+        .iter()
+        .filter(|name| name.chars().any(char::is_alphanumeric))
+        .map(|name| format!("\"{}\"", js_trim(name).replace('"', "\"\"")))
+        .collect();
+    (!phrases.is_empty()).then(|| format!("content : ({})", phrases.join(" OR ")))
+}
+
+/// The target's title (a day's date) and aliases, empty when it is not live.
+pub(crate) fn target_names(
+    data: &Connection,
+    target_id: &str,
+) -> Result<Vec<String>, StorageError> {
     let row: Option<(String, Option<String>)> = data
         .query_row(
             "SELECT title, aliases FROM notes WHERE id = ?1 AND deleted_at IS NULL \

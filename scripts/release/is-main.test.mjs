@@ -4,7 +4,7 @@ import { mkdtempSync, symlinkSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, it } from 'node:test'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { isMain } from './is-main.mjs'
 
@@ -24,10 +24,12 @@ function trySymlink(target, link) {
 }
 
 describe('isMain', () => {
-  it('throws on a Node without import.meta.main instead of reading it as imported', () => {
+  // Node before 20.11 has neither `import.meta.main` nor `import.meta.filename`, only `url`.
+  it('names the program when this Node has no import.meta.main, instead of reading it as imported', () => {
+    const program = path.join(scripts, 'release', 'pe-imports.mjs')
     assert.throws(
-      () => isMain({ filename: '/scripts/release/pe-imports.mjs' }),
-      /\/scripts\/release\/pe-imports\.mjs needs import\.meta\.main/
+      () => isMain({ url: pathToFileURL(program).href }),
+      (error) => error.message.startsWith(`${program} needs import.meta.main`)
     )
   })
 
@@ -59,6 +61,16 @@ describe('isMain', () => {
         program: 'rehearsal/drive-electron-update.mjs',
         args: [],
         error: /usage: drive-electron-update\.mjs/
+      },
+      {
+        program: 'validate-mac-update-manifest.mjs',
+        args: [path.join(dir, 'missing-latest-mac.yml')],
+        error: /Merged manifest not found/
+      },
+      {
+        program: 'resolve-release-version.mjs',
+        args: [],
+        error: /--releases-file is required/
       }
     ]
     for (const { program, args, error } of programs) {

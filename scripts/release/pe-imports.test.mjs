@@ -219,6 +219,8 @@ describe('pe-imports', () => {
       assert.match(passed.stdout, /no Visual C\+\+ redistributable import/)
     }
     const noExe = program([linked])
+    // A child killed by the timeout has status null, which is not 0 either.
+    assert.equal(noExe.signal, null, 'pe-imports.mjs was killed, not refused')
     assert.notEqual(noExe.status, 0)
   })
 })

@@ -5,9 +5,11 @@
 //! the consumer and write-back, the image embed lookup, the side files under `.memry/` (the
 //! activity log, custom icons, home board covers, property definitions), and the tree
 //! operations (the folder move `move_dir` with its journal `move_journal`, the journal renames
-//! of a date format change, the Obsidian open-as-copy).
+//! of a date format change, the open's finish of an app move a crash cut short `app_move`, the
+//! Obsidian open-as-copy).
 
 pub mod activity;
+pub mod app_move;
 pub mod config;
 pub mod consumer;
 pub mod covers;

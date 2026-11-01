@@ -7,13 +7,14 @@
 //! the size of the vault or the number of links, so a note with many backlinks opens as
 //! fast as one with none.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
-use crate::domain::journal_ops::links::{id_list, live_items};
+use crate::domain::journal_ops::links::{Source, id_list, live_items};
 use crate::domain::notes::failed;
+use crate::domain::unlinked_mentions::{fts_query, target_names};
 use crate::domain::wiki_target::{MatchedBy, WikiMatch, WikiNames};
 
 /// One note or journal day whose body links to the target.
@@ -49,16 +50,32 @@ pub fn incoming(
     index: &Connection,
     target_id: &str,
 ) -> Result<Incoming, StorageError> {
+    let ids = linking_ids(index, target_id)?;
+    let sources = live_items(data, ids.iter().map(String::as_str).chain([target_id]))?;
+    Ok(Incoming {
+        target_title: sources.get(target_id).map(|target| target.named().0),
+        sources: named_sources(&sources, ids, target_id),
+    })
+}
+
+/// The ids of the notes and days whose links resolved to `target_id`.
+fn linking_ids(index: &Connection, target_id: &str) -> Result<Vec<String>, StorageError> {
     let mut statement = index
         .prepare("SELECT DISTINCT source_id FROM note_links WHERE target_id = ?1")
         .map_err(failed)?;
-    let ids = statement
+    statement
         .query_map(params![target_id], |row| row.get::<_, String>(0))
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(failed)?;
-    let sources = live_items(data, ids.iter().map(String::as_str).chain([target_id]))?;
-    let target_title = sources.get(target_id).map(|target| target.named().0);
+        .map_err(failed)
+}
+
+/// `ids` that name a live item other than `target_id`, named, by title and then id.
+fn named_sources(
+    sources: &HashMap<String, Source>,
+    ids: Vec<String>,
+    target_id: &str,
+) -> Vec<IncomingLink> {
     let mut out: Vec<IncomingLink> = ids
         .into_iter()
         .filter(|id| id != target_id)
@@ -75,10 +92,61 @@ pub fn incoming(
         })
         .collect();
     out.sort_by_cached_key(|link| (link.source_title.to_lowercase(), link.source_id.clone()));
-    Ok(Incoming {
-        target_title,
-        sources: out,
-    })
+    out
+}
+
+/// The target's names and the notes and days that may mention one of them unlinked.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MentionSources {
+    /// The target's title (a day's date), which a linked mention spells.
+    pub title: String,
+    /// The title, then the aliases.
+    pub names: Vec<String>,
+    pub sources: Vec<IncomingLink>,
+}
+
+/// The live notes and days whose indexed text holds every word of one of the target's names
+/// (`getUnlinkedMentions`'s candidates), less the target and every source whose links
+/// resolved to it, which is a backlink. `None` when the target is not live. The caller
+/// matches each candidate's markdown exactly (`mention_mask`). Sources sort as [`incoming`]'s
+/// do: by title, then id.
+///
+/// Only `note_links` sources count as backlinks here. Electron's `getIncomingReferences` also
+/// drops notes that reference the target from a property and notes that embed it as a portal
+/// (`link-queries.ts:69`); those indexes are not ported, so such a note still lists its plain
+/// mentions until they are.
+pub fn mention_sources(
+    data: &Connection,
+    index: &Connection,
+    target_id: &str,
+) -> Result<Option<MentionSources>, StorageError> {
+    let names = target_names(data, target_id)?;
+    let Some(title) = names.first().cloned() else {
+        return Ok(None);
+    };
+    let Some(query) = fts_query(&names) else {
+        return Ok(Some(MentionSources {
+            title,
+            names,
+            sources: Vec::new(),
+        }));
+    };
+    let linked: HashSet<String> = linking_ids(index, target_id)?.into_iter().collect();
+    let mut statement = index
+        .prepare("SELECT id FROM fts_notes WHERE fts_notes MATCH ?1")
+        .map_err(failed)?;
+    let ids = statement
+        .query_map(params![query], |row| row.get::<_, String>(0))
+        .map_err(failed)?
+        .filter(|id| id.as_ref().is_ok_and(|id| !linked.contains(id)))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    let sources = live_items(data, ids.iter().map(String::as_str))?;
+    Ok(Some(MentionSources {
+        title,
+        names,
+        sources: named_sources(&sources, ids, target_id),
+    }))
 }
 
 /// The note or journal day a title or wiki-link target names.
