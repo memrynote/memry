@@ -157,6 +157,7 @@ vi.mock('../src/generated/bindings', () => {
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),
       noteDeletedEvent: event(() => api().onNoteDeleted),
+      noteLinksChangedEvent: event(() => api().onLinksChanged),
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })

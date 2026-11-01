@@ -155,7 +155,7 @@ fn backlinks_carry_the_text_around_each_link_from_the_linking_file() {
     // A day's file is its day (13m): its links have text like a note's.
     e.write("journal/2025-01-01.md", "Met about [[Target]] today\n");
     e.write("Dense.md", &"[[Target]]\n".repeat(60));
-    let index = NoteIndex::new(e.tier.clone(), |_| {});
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {});
     index.register(&e.session);
     e.open();
     e.facts_until(indexed);

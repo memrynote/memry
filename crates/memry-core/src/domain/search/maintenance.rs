@@ -43,6 +43,7 @@ use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, strings, text};
 
 use super::failed;
+use super::links::{self, LinkChanges};
 
 /// `index_meta` key: the `data.db` `user_version` the index was built against.
 pub const DATA_VERSION_KEY: &str = "data.user_version";
@@ -76,6 +77,8 @@ pub struct Reindexed {
     pub tasks_removed: usize,
     /// Rows the apply path had already flagged corrupt. Not an error here.
     pub corrupt_skipped: usize,
+    /// The links the pass changed, in rows it committed.
+    pub links: LinkChanges,
 }
 
 /// Brings `index.db` up to date with `data.db`, incrementally where it can.
@@ -142,7 +145,7 @@ pub fn reindex_until(
             index_note(data, &names, &transaction, id, now_ms, &mut done)?;
         }
         if !full {
-            super::links::reresolve(&names, &transaction, &note_ids)?;
+            super::links::reresolve(&names, &transaction, &note_ids, &mut done.links)?;
         }
     }
     let (task_ids, tasks_high) = task_candidates(data, tasks_from)?;
@@ -230,9 +233,23 @@ fn candidates(
     Ok((ids, high))
 }
 
-/// Re-indexes one note or journal: delete first, then insert if it still earns
-/// a row.
+/// Re-indexes one note or journal, and notes what that did to its links.
 fn index_note(
+    data: &Connection,
+    names: &WikiNames,
+    index: &Connection,
+    id: &str,
+    now_ms: i64,
+    done: &mut Reindexed,
+) -> Result<(), StorageError> {
+    let before = links::rows(index, id)?;
+    index_note_rows(data, names, index, id, now_ms, done)?;
+    done.links.note(id, &before, &links::rows(index, id)?);
+    Ok(())
+}
+
+/// Delete first, then insert if it still earns a row.
+fn index_note_rows(
     data: &Connection,
     names: &WikiNames,
     index: &Connection,

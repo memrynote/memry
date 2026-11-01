@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => ({
     deleted: [] as NoteHandler[],
     renamed: [] as NoteHandler[],
     moved: [] as EmptyHandler[],
+    linksChanged: [] as ((event: { sourceIds: string[]; targetIds: string[] }) => void)[],
     external: [] as NoteHandler[],
     tagsChanged: [] as EmptyHandler[],
     folderConfigUpdated: [] as EmptyHandler[],
@@ -70,6 +71,10 @@ vi.mock('@/services/notes-service', () => ({
   },
   onNoteMoved: (callback: EmptyHandler) => {
     mocks.handlers.moved.push(callback)
+    return vi.fn()
+  },
+  onNoteLinksChanged: (callback: (event: { sourceIds: string[]; targetIds: string[] }) => void) => {
+    mocks.handlers.linksChanged.push(callback)
     return vi.fn()
   },
   onNoteExternalChange: (callback: NoteHandler) => {
@@ -332,6 +337,38 @@ describe('use-notes-query', () => {
         { sourceId: 'n1', targetId: 'n9', targetTitle: 'Later' }
       ])
     )
+  })
+
+  it('refetches links when the index wrote links that touch the note, and only then', async () => {
+    mocks.notesService.getLinks.mockResolvedValueOnce({ outgoing: [], incoming: [] })
+    const { result } = renderHook(() => useNoteLinksQuery('n1'), { wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    const calls = () => mocks.notesService.getLinks.mock.calls.length
+    const before = calls()
+
+    await act(async () => {
+      mocks.handlers.linksChanged.forEach((handler) =>
+        handler({ sourceIds: ['n7'], targetIds: ['n8'] })
+      )
+    })
+    expect(calls()).toBe(before)
+
+    const backlink = { sourceId: 'n7', sourcePath: 'Seven.md', sourceTitle: 'Seven', contexts: [] }
+    mocks.notesService.getLinks.mockResolvedValueOnce({ outgoing: [], incoming: [backlink] })
+    await act(async () => {
+      mocks.handlers.linksChanged.forEach((handler) =>
+        handler({ sourceIds: ['n7'], targetIds: ['n1'] })
+      )
+    })
+    await waitFor(() => expect(result.current.incoming).toEqual([backlink]))
+
+    mocks.notesService.getLinks.mockResolvedValueOnce({ outgoing: [], incoming: [] })
+    await act(async () => {
+      mocks.handlers.linksChanged.forEach((handler) =>
+        handler({ sourceIds: ['n1'], targetIds: [] })
+      )
+    })
+    await waitFor(() => expect(result.current.incoming).toEqual([]))
   })
 
   it('refetches links when a canvas changes, so a new arrow shows as a connection', async () => {

@@ -66,6 +66,8 @@ mod links;
 mod literal_links;
 mod maintenance;
 
+pub use links::LinkChanges;
+
 pub use maintenance::{
     DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
     reindex_until,
