@@ -11,7 +11,7 @@
 import path from 'path'
 import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
-import { splitFrontmatterBlock } from '@memry/app-core/markdown'
+import { joinBlockAndBody, splitFrontmatterBlock } from '@memry/app-core/markdown'
 import { extractJournalPreview } from '@memry/domain-notes/journal'
 import { getStatus, getConfig } from './status'
 import {
@@ -447,8 +447,10 @@ function editJournalFile(
   const block = editFrontmatterBlock(previous.rawFrontmatterBlock, previous.frontmatter, next)
   if (!block) return null
   const body = splitFrontmatterBlock(serialized).body
-  if (body.trim() === previous.content.trim()) return block + previous.content
-  return block + body.replace(/\r?\n/g, previous.eol)
+  if (body.trim() === previous.content.trim()) {
+    return joinBlockAndBody(block, previous.content, previous.eol)
+  }
+  return joinBlockAndBody(block, body.replace(/\r?\n/g, previous.eol), previous.eol)
 }
 
 /**

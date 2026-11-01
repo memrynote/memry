@@ -97,6 +97,25 @@ describe('extractErrorMessage', () => {
     )
   })
 
+  it('shows the text of a command failure the user acts on, by its code', async () => {
+    const i18n = createInstance()
+    await i18n.use(initReactI18next).init({
+      lng: 'en',
+      fallbackLng: 'en',
+      resources: RESOURCES
+    })
+
+    const tooLarge = {
+      kind: 'sync',
+      code: 'note_too_large_to_sync',
+      message: 'this note is too large to sync, so it stays on this device'
+    }
+    expect(extractErrorMessage(tooLarge, 'fallback')).toBe(
+      'This note is too large to sync, so it stays on this device. Splitting it into smaller notes will fix this.'
+    )
+    expect(extractErrorMessage({ ...tooLarge, code: 'other' }, 'fallback')).toBe(tooLarge.message)
+  })
+
   it('shows the fixed lock refusal in the user language (#2606)', async () => {
     const i18n = createInstance()
     await i18n.use(initReactI18next).init({

@@ -10,12 +10,13 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::{Mutex, PoisonError};
 
+use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::updater::backend::{CheckOutcome, UpdateBackend};
 use memry_desktop::updater::marker::Installer;
 use memry_desktop::updater::notes::plain_text_release_notes;
 use memry_desktop::updater::severity::{NetworkKind, UpdateError, UpdateErrorKind};
 use memry_desktop::updater::state::AvailableUpdate;
-use velopack::sources::AutoSource;
+use velopack::sources::{AutoSource, GithubSource};
 use velopack::{NetworkError, UpdateCheck, UpdateInfo, UpdateManager, VelopackAsset};
 
 use super::channel;
@@ -30,6 +31,21 @@ pub const FEED_URL: &str = match option_env!("MEMRY_BUILD_MEMRY_UPDATE_FEED_URL"
     Some(feed) => feed,
     None => PRODUCTION_FEED,
 };
+
+/// The GitHub token a rehearsal build reads its feed with. Velopack reads a GitHub feed through
+/// the REST API, which allows 60 unauthenticated requests an hour per IP, and the proof jobs run
+/// on shared CI runners whose IP often has none left. Only the proof workflow sets it.
+const FEED_TOKEN_VAR: &str = "MEMRY_REHEARSAL_FEED_TOKEN";
+
+/// The token for a rehearsal build's GitHub feed. A production build has no rehearsal feed, so it
+/// never reads the variable and always reads the feed as users do.
+fn feed_token(rehearsal_feed: Option<&str>, env: &LaunchEnv) -> Option<String> {
+    rehearsal_feed
+        .filter(|feed| feed.starts_with("https://github.com/"))
+        .and(env.get(FEED_TOKEN_VAR))
+        .filter(|token| !token.is_empty())
+        .map(str::to_owned)
+}
 
 pub struct VelopackBackend {
     manager: UpdateManager,
@@ -46,16 +62,27 @@ pub struct VelopackBackend {
 impl VelopackBackend {
     /// `Err` with the reason when this process is not a Velopack install: a dev run, a `.deb`, a
     /// portable copy, an AppImage started without `APPIMAGE`.
-    pub fn new() -> Result<Self, String> {
+    pub fn new(env: &LaunchEnv) -> Result<Self, String> {
         let switch = channel::current();
-        let manager = UpdateManager::new(AutoSource::new(FEED_URL), Some(switch.options()), None)
-            .map_err(|error| error.to_string())?;
+        let options = Some(switch.options());
+        let token = feed_token(option_env!("MEMRY_BUILD_MEMRY_UPDATE_FEED_URL"), env);
+        let authenticated = token.is_some();
+        let manager = match token {
+            Some(token) => UpdateManager::new(
+                GithubSource::new(FEED_URL, Some(token), false),
+                options,
+                None,
+            ),
+            None => UpdateManager::new(AutoSource::new(FEED_URL), options, None),
+        }
+        .map_err(|error| error.to_string())?;
         let current = manager.get_current_version();
         let channel = installed_channel();
         tracing::info!(
             scope = "Updater",
-            "velopack: current={current} channel={} feed={FEED_URL}",
+            "velopack: current={current} channel={} feed={FEED_URL}{}",
             switch.describe(&channel),
+            if authenticated { " (token)" } else { "" },
         );
         Ok(Self {
             manager,

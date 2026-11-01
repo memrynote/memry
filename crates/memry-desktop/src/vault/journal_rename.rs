@@ -22,7 +22,7 @@
 //!
 //! Never overwrites. A target already on disk (under any case), held by a row, or claimed by
 //! another file of the same pass leaves the source as it is, and the move itself refuses a file
-//! that appeared there since ([`rename_no_replace`]). A new name that differs from the file's
+//! that appeared there since ([`super::fs_atomic::rename_no_replace`]). A new name that differs from the file's
 //! only in case is a respelling in place only when it names that very file, and no link to it
 //! (a symbolic link, or a second hard link a rename would leave behind). A format that cannot
 //! name every date renames nothing.
@@ -30,8 +30,8 @@
 //! Each file and its row move as one step under the rows' lane, the file first: when the row
 //! cannot move, the file goes back. The consumer and the write-back take the same lane, so they
 //! see the file and its row at the old path or both at the new one. The lane is held for one
-//! rename and its retries on a transient error ([`RETRY_DELAYS_MS`], under a second), and for a
-//! second one when the file goes back. A crash between the file and its row leaves the file at
+//! rename and its retries on a transient error ([`FileMove::run`]), and for a second one when
+//! the file goes back. A crash between the file and its row leaves the file at
 //! the new path and the row at the old, which the next open's rescan pairs as a move of that
 //! note.
 //!
@@ -52,19 +52,18 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 
 use memry_core::api::vault::Vault;
 
 use super::consumer::rows::{RowError, RowOwner, RowSession};
 use super::consumer::{Applied, VaultTier};
-use super::fs_atomic::{RETRY_DELAYS_MS, rename_no_replace, with_transient_retry};
+use super::file_move::FileMove;
 use super::journal_format::{
     JournalDate, JournalFormat, normalize_journal_date_format, normalize_journal_folder,
 };
 use super::paths::{resolve_vault_file, safe_join};
 use super::watch::EchoGuard;
-use crate::shell::file_open::{Resolution, file_identity};
+use crate::shell::file_open::Resolution;
 use crate::web::extract::utils::js;
 
 const SCOPE: &str = "journal_rename";
@@ -353,7 +352,7 @@ fn move_one(
     let created = folders_of(to)
         .take_while(|folder| journal.path(folder).is_some_and(|path| !exists(&path)))
         .count();
-    let forward = Move {
+    let forward = FileMove {
         source: &source,
         target: &target,
         source_rel: &from_path,
@@ -370,7 +369,7 @@ fn move_one(
         if let Err(error) = lane.rename(&row.note_id, &to_path) {
             // File and row must agree, or the moved file is taken for a new note and the row
             // stranded.
-            let back = Move {
+            let back = FileMove {
                 source: &target,
                 target: &source,
                 source_rel: &to_path,
@@ -406,58 +405,6 @@ fn move_one(
         );
     }
     Ok(Moved::Done)
-}
-
-/// One file move, without replacing anything.
-struct Move<'a> {
-    source: &'a Path,
-    target: &'a Path,
-    /// The source, relative to the vault: the name the watcher is told goes.
-    source_rel: &'a str,
-    /// The new name differs from the old only in case. On a volume that folds case it names
-    /// the source itself, and that respelling is a plain rename.
-    case_only: bool,
-}
-
-impl Move<'_> {
-    /// Creates the target's folders and moves the file. The record that the source's name
-    /// goes is made with each try and stays only after the one that moved the file
-    /// ([`EchoGuard::removing`]): between tries a delete or move by another program is that
-    /// program's, and the watcher reports it.
-    fn run(&self, echo: &EchoGuard) -> io::Result<()> {
-        if let Some(parent) = self.target.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
-        let attempt = |rename: fn(&Path, &Path) -> io::Result<()>| {
-            with_transient_retry(&delays, || {
-                echo.removing(self.source_rel, || rename(self.source, self.target))
-            })
-        };
-        match attempt(rename_no_replace) {
-            Err(error)
-                if error.kind() == io::ErrorKind::AlreadyExists
-                    && self.case_only
-                    && is_respelling(self.source, self.target) =>
-            {
-                attempt(|source, target| fs::rename(source, target))
-            }
-            other => other,
-        }
-    }
-}
-
-/// Whether `target` is `source` itself under another spelling: one regular file with a single
-/// link. A symbolic link there would be replaced, and a rename between two hard links of one
-/// file does nothing and leaves both.
-fn is_respelling(source: &Path, target: &Path) -> bool {
-    let id = |path: &Path| {
-        if !fs::symlink_metadata(path)?.is_file() {
-            return Err(io::Error::from(io::ErrorKind::InvalidInput));
-        }
-        fs::File::open(path).and_then(|file| file_identity(&file))
-    };
-    matches!((id(source), id(target)), (Ok((a, 1)), Ok((b, 1))) if a == b)
 }
 
 /// Every file under `dir` as a `/`-separated path relative to it; dot entries (`.obsidian`,

@@ -578,9 +578,16 @@ pub fn is_local_only(conn: &Connection, note_id: &str) -> Result<bool, StorageEr
     Ok(flag.is_some_and(|flag| flag != 0))
 }
 
+/// How many local-only notes there are (`countLocalOnlyNoteMetadata`). A tombstoned note or
+/// journal day whose row has not gone yet is not one: Electron's delete removes the row.
 pub fn local_only_count(conn: &Connection) -> Result<i64, StorageError> {
     conn.query_row(
-        "SELECT COUNT(*) FROM note_files WHERE local_only <> 0",
+        "SELECT COUNT(*) FROM note_files f
+          WHERE f.local_only <> 0
+            AND NOT EXISTS (SELECT 1 FROM notes n
+                             WHERE n.id = f.note_id AND n.deleted_at IS NOT NULL)
+            AND NOT EXISTS (SELECT 1 FROM journal_entries j
+                             WHERE j.id = f.note_id AND j.deleted_at IS NOT NULL)",
         [],
         |row| row.get(0),
     )

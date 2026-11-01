@@ -63,6 +63,8 @@ export interface Note {
   wordCount: number
   properties: Record<string, unknown>
   emoji?: string | null
+  /** The note's changes never leave this device. Absent where a read does not report it. */
+  localOnly?: boolean
   /**
    * Absent on notes from older app versions, which is read as `'note'`.
    * `'large-file'` opens read-only instead of in the editor.

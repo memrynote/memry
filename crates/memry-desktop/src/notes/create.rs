@@ -240,6 +240,8 @@ impl NotesService {
             aliases: Vec::new(),
             properties: note.properties,
             emoji: note.emoji,
+            // A new row carries no flag: a note is made local-only afterwards.
+            local_only: false,
             size_class: SizeClass::Note,
             large_file: None,
             content_omitted: false,

@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Não foi possível excluir a versão",
     "reorderFailed": "Não foi possível reordenar as notas",
     "importFilesFailed": "Não foi possível importar os arquivos",
-    "setLocalOnlyFailed": "Não foi possível definir como somente local"
+    "setLocalOnlyFailed": "Não foi possível definir como somente local",
+    "tooLargeToSync": "Esta nota é grande demais para sincronizar, então ela fica neste dispositivo. Dividi-la em notas menores resolve isso."
   },
   "database": {
     "connectionFailed": "Não foi possível conectar-se ao banco de dados local. Tente reiniciar o aplicativo.",

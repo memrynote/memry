@@ -4,8 +4,8 @@
 #![cfg(feature = "markdown")]
 
 use memry_core::markdown::frontmatter::{
-    Eol, YamlMap, YamlValue, parse_markdown_note, safe_dump, safe_load, split_frontmatter_block,
-    stringify_frontmatter_block,
+    Eol, YamlMap, YamlValue, parse_markdown_note, safe_dump, safe_load,
+    serialize_parsed_markdown_note, split_frontmatter_block, stringify_frontmatter_block,
 };
 use memry_test_kit::{DEFAULT_CASES, proptest_config};
 use proptest::prelude::*;
@@ -42,6 +42,31 @@ fn scalar_string() -> impl Strategy<Value = String> {
         ])
         .prop_map(str::to_owned),
     ]
+}
+
+/// A note whose block has distinct plain keys and closes with or without a line end, a body
+/// only after one.
+fn note_with_block() -> impl Strategy<Value = String> {
+    (
+        prop::bool::ANY,
+        prop::sample::select(vec!["\n", "\r\n"]),
+        prop::collection::vec("[a-z]{0,4}", 0..3),
+        prop::sample::select(vec!["", "\r", "\n", "\r\n"]),
+        "[a-z\r\n-]{0,20}",
+    )
+        .prop_map(|(bom, eol, values, fence_end, body)| {
+            let mut raw = String::from(if bom { "\u{feff}---" } else { "---" });
+            raw.push_str(eol);
+            for (at, value) in values.iter().enumerate() {
+                raw.push_str(&format!("k{at}: {value}{eol}"));
+            }
+            raw.push_str("---");
+            raw.push_str(fence_end);
+            if fence_end.ends_with('\n') {
+                raw.push_str(&body);
+            }
+            raw
+        })
 }
 
 fn value() -> impl Strategy<Value = YamlValue> {
@@ -93,5 +118,17 @@ proptest! {
         prop_assert_eq!(loaded.as_ref().ok().and_then(Option::as_ref), Some(&expected), "{}", dumped);
         let block = stringify_frontmatter_block(&frontmatter, Eol::CrLf).expect("shallow value dumps");
         prop_assert!(block.is_empty() || block.ends_with("---\r\n"));
+    }
+
+    /// A body write keeps the block, one that ends the file included: its closing fence never
+    /// runs into the body (#3800).
+    #[test]
+    fn a_body_write_keeps_the_frontmatter_block(raw in note_with_block(), content in "[a-z\r\n-]{0,20}") {
+        let parsed = parse_markdown_note(&raw).expect("plain keys load");
+        let block = parsed.raw_frontmatter_block.clone().expect("the block closes");
+        let output = serialize_parsed_markdown_note(&parsed, &content, false).expect("unedited path never dumps");
+        let fence = |block: &str| block.trim_end_matches(['\r', '\n']).to_owned();
+        prop_assert_eq!(split_frontmatter_block(&output).block.map(fence), Some(fence(&block)), "{:?}", output);
+        prop_assert_eq!(parse_markdown_note(&output).ok().map(|note| note.frontmatter), Some(parsed.frontmatter));
     }
 }

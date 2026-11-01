@@ -53,9 +53,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_get,
             crate::commands::notes::notes_get_by_path,
             crate::commands::notes::notes_get_file,
+            crate::commands::notes::notes_get_local_only_count,
             crate::commands::notes::notes_list,
             crate::commands::notes::notes_open_external,
             crate::commands::notes::notes_reveal_in_finder,
+            crate::commands::notes::notes_set_local_only,
             // notification
             crate::commands::shell_integrations::notification_permission,
             crate::commands::shell_integrations::notification_show,

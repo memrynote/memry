@@ -35,7 +35,8 @@
     "deleteVersionFailed": "버전을 삭제하지 못했습니다.",
     "reorderFailed": "노트 순서를 변경하지 못했습니다.",
     "importFilesFailed": "파일을 가져오지 못했습니다.",
-    "setLocalOnlyFailed": "로컬 전용 설정을 적용하지 못했습니다."
+    "setLocalOnlyFailed": "로컬 전용 설정을 적용하지 못했습니다.",
+    "tooLargeToSync": "이 노트는 너무 커서 동기화할 수 없으므로 이 기기에만 남아 있습니다. 더 작은 노트로 나누면 해결됩니다."
   },
   "database": {
     "connectionFailed": "로컬 데이터베이스에 연결하지 못했습니다. 앱을 다시 시작해 보세요.",

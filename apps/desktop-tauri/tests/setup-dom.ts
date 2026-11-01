@@ -116,6 +116,10 @@ vi.mock('../src/generated/bindings', () => {
       notesExists: (titleOrPath: string) => notes().exists(titleOrPath),
       notesOpenExternal: (id: string) => notes().openExternal(id),
       notesRevealInFinder: (id: string) => notes().revealInFinder(id),
+      notesSetLocalOnly: async (id: string, localOnly: boolean) =>
+        ((await notes().setLocalOnly(id, localOnly)) as { note?: unknown } | undefined)?.note,
+      notesGetLocalOnlyCount: async () =>
+        ((await notes().getLocalOnlyCount()) as { count: number }).count,
       updaterGetState: () => updater().getState(),
       updaterCheckForUpdates: () => updater().checkForUpdates(),
       updaterDownloadUpdate: () => updater().downloadUpdate(),

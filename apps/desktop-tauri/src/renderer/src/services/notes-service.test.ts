@@ -10,7 +10,9 @@ const commands = vi.hoisted(() => ({
   notesList: vi.fn(),
   notesExists: vi.fn(),
   notesOpenExternal: vi.fn(),
-  notesRevealInFinder: vi.fn()
+  notesRevealInFinder: vi.fn(),
+  notesSetLocalOnly: vi.fn(),
+  notesGetLocalOnlyCount: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -141,7 +143,9 @@ describe('notes-service', () => {
       wordCount: 1,
       properties: { status: 'open' },
       emoji: null,
+      localOnly: false,
       sizeClass: 'note',
+      largeFile: null,
       contentOmitted: false
     })
     commands.notesDelete.mockResolvedValue(null)
@@ -189,6 +193,42 @@ describe('notes-service', () => {
       error: 'name taken'
     })
     expect(api.notes.create).not.toHaveBeenCalled()
+  })
+
+  it('sets local-only through its command and rejects when the change did not happen', async () => {
+    commands.notesSetLocalOnly.mockResolvedValueOnce({
+      id: 'note-1',
+      path: 'Plan.md',
+      title: 'Plan',
+      content: '',
+      frontmatter: {},
+      created: CREATED,
+      modified: MODIFIED,
+      tags: [],
+      headerTags: [],
+      aliases: [],
+      wordCount: 0,
+      properties: {},
+      emoji: null,
+      localOnly: true,
+      sizeClass: 'note',
+      largeFile: null,
+      contentOmitted: false
+    })
+    const result = await notesService.setLocalOnly('note-1', true)
+    expect(commands.notesSetLocalOnly).toHaveBeenCalledWith('note-1', true)
+    expect(result.success).toBe(true)
+    expect(result.note?.localOnly).toBe(true)
+    expect(result.note?.modified).toEqual(new Date(MODIFIED))
+
+    const tooLarge = { kind: 'sync', code: 'note_too_large_to_sync', message: 'too large' }
+    commands.notesSetLocalOnly.mockRejectedValueOnce(tooLarge)
+    await expect(notesService.setLocalOnly('note-1', false)).rejects.toEqual(tooLarge)
+
+    commands.notesGetLocalOnlyCount.mockResolvedValue(3)
+    expect(await notesService.getLocalOnlyCount()).toEqual({ count: 3 })
+    expect(api.notes.setLocalOnly).not.toHaveBeenCalled()
+    expect(api.notes.getLocalOnlyCount).not.toHaveBeenCalled()
   })
 
   it('forwards the methods later steps port to window.api.notes', async () => {

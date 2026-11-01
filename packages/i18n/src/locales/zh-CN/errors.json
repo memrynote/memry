@@ -35,7 +35,8 @@
     "deleteVersionFailed": "删除版本失败",
     "reorderFailed": "重新排序笔记失败",
     "importFilesFailed": "导入文件失败",
-    "setLocalOnlyFailed": "设置“仅本地”失败"
+    "setLocalOnlyFailed": "设置“仅本地”失败",
+    "tooLargeToSync": "此笔记过大，无法同步，因此仅保存在此设备上。将其拆分为多篇较小的笔记即可解决。"
   },
   "database": {
     "connectionFailed": "无法连接到本地数据库。请尝试重启应用。",
