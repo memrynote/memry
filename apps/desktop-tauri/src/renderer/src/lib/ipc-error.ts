@@ -15,6 +15,14 @@ const FIXED_MESSAGE_KEYS = new Map<string, string>([
   [VAULT_LOCKED_FOLDER_MESSAGE, 'errors:vaultLock.folderReadOnly']
 ])
 
+/**
+ * The text of a Tauri command's failure, by its `code`, for the failures the user acts on. The
+ * Rust message stays English for the logs.
+ */
+const COMMAND_CODE_KEYS = new Map<string, string>([
+  ['note_too_large_to_sync', 'errors:note.tooLargeToSync']
+])
+
 const IPC_PREFIX_PATTERNS = [
   /^Error occurred in handler for ['"][^'"]+['"]:\s*(?:Error:\s*)?/i,
   /^Error invoking remote method ['"][^'"]+['"]:\s*(?:Error:\s*)?/i,
@@ -114,7 +122,8 @@ function isCommandError(error: unknown): error is { kind: string; code: string; 
 function rawMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   if (typeof error === 'string') return error
-  return isCommandError(error) ? error.message : ''
+  if (!isCommandError(error)) return ''
+  return COMMAND_CODE_KEYS.get(error.code) ?? error.message
 }
 
 export function extractErrorMessage(error: unknown, fallback = 'Something went wrong'): string {

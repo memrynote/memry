@@ -54,6 +54,8 @@ pub struct NoteView {
     pub word_count: u32,
     pub properties: Map<String, Value>,
     pub emoji: Option<String>,
+    /// The note's changes and body never leave this device (`note_files.local_only`).
+    pub local_only: bool,
     pub size_class: SizeClass,
     pub large_file: Option<LargeFileInfo>,
     pub content_omitted: bool,

@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Nepodarilo sa odstrániť verziu",
     "reorderFailed": "Nepodarilo sa zmeniť poradie poznámok",
     "importFilesFailed": "Nepodarilo sa importovať súbory",
-    "setLocalOnlyFailed": "Nepodarilo sa nastaviť režim len lokálne"
+    "setLocalOnlyFailed": "Nepodarilo sa nastaviť režim len lokálne",
+    "tooLargeToSync": "Táto poznámka je príliš veľká na synchronizáciu, preto zostáva v tomto zariadení. Pomôže jej rozdelenie na menšie poznámky."
   },
   "database": {
     "connectionFailed": "Nepodarilo sa pripojiť k lokálnej databáze. Skúste reštartovať aplikáciu.",

@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Sürüm silinemedi",
     "reorderFailed": "Notlar yeniden sıralanamadı",
     "importFilesFailed": "Dosyalar içe aktarılamadı",
-    "setLocalOnlyFailed": "“Yalnızca yerel” ayarı uygulanamadı"
+    "setLocalOnlyFailed": "“Yalnızca yerel” ayarı uygulanamadı",
+    "tooLargeToSync": "Bu not eşitlenemeyecek kadar büyük, bu yüzden bu cihazda kalıyor. Notu daha küçük notlara bölmek sorunu çözer."
   },
   "database": {
     "connectionFailed": "Yerel veritabanına bağlanılamadı. Uygulamayı yeniden başlatmayı deneyin.",

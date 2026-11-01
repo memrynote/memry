@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Impossible de supprimer la version",
     "reorderFailed": "Impossible de réorganiser les notes",
     "importFilesFailed": "Impossible d'importer les fichiers",
-    "setLocalOnlyFailed": "Impossible d'activer le mode local uniquement"
+    "setLocalOnlyFailed": "Impossible d'activer le mode local uniquement",
+    "tooLargeToSync": "Cette note est trop volumineuse pour être synchronisée, elle reste donc sur cet appareil. Divisez-la en notes plus petites pour résoudre le problème."
   },
   "database": {
     "connectionFailed": "Impossible de se connecter à la base de données locale. Essayez de redémarrer l'application.",

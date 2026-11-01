@@ -72,7 +72,7 @@ export function useNoteCommands(input: NoteCommandInput): {
   const ready = note !== null && !isDeleted
   const canEdit = ready && !isLocked
   const hasEditor = ready && note.sizeClass !== 'large-file'
-  const isLocalOnly = note?.frontmatter.localOnly ?? false
+  const isLocalOnly = note?.localOnly ?? false
 
   const labels: Record<NoteCommandId, string> = {
     'note.find': t('editor.toolbar.find'),

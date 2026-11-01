@@ -35,7 +35,8 @@
     "deleteVersionFailed": "Nem sikerült törölni a verziót",
     "reorderFailed": "Nem sikerült átrendezni a jegyzeteket",
     "importFilesFailed": "Nem sikerült importálni a fájlokat",
-    "setLocalOnlyFailed": "Nem sikerült beállítani a csak helyi módot"
+    "setLocalOnlyFailed": "Nem sikerült beállítani a csak helyi módot",
+    "tooLargeToSync": "Ez a jegyzet túl nagy a szinkronizáláshoz, ezért ezen az eszközön marad. Ha kisebb jegyzetekre bontja, a probléma megszűnik."
   },
   "database": {
     "connectionFailed": "Nem sikerült csatlakozni a helyi adatbázishoz. Próbálja újraindítani az alkalmazást.",
