@@ -112,6 +112,8 @@ pub enum Applied {
         path: String,
         source: ChangeSource,
     },
+    /// The note's file moved, or the app renamed the note in place (`old_path == new_path`, a
+    /// title its file name already says).
     Renamed {
         note_id: String,
         old_path: String,

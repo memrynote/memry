@@ -173,6 +173,14 @@ impl VaultTier {
         *self.identity.lock().unwrap_or_else(|e| e.into_inner()) = identity;
     }
 
+    /// The identity set last, which the app's own file moves ask too.
+    pub(crate) fn identity(&self) -> Arc<dyn NoteIdentity> {
+        self.identity
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
     /// Stops the open the tier holds now. Joined outside the locks: each waits for its
     /// current step. The watcher first, so no fact reaches a consumer that is stopping. The
     /// write-back last and still reachable, so it runs what was scheduled until it stopped,
@@ -224,11 +232,7 @@ impl VaultTier {
         echo: Arc<EchoGuard>,
     ) -> Result<Open, String> {
         let exclude = read_vault_config(&vault.path).exclude_patterns;
-        let identity = self
-            .identity
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .clone();
+        let identity = self.identity();
         let ctx = IdentityCtx {
             root: &vault.path,
             vault: &vault.vault,

@@ -368,7 +368,7 @@ fn create_file(temp: &Path, target: &Path) -> io::Result<()> {
 }
 
 #[cfg(unix)]
-fn sync_dir(dir: &Path) {
+pub(crate) fn sync_dir(dir: &Path) {
     // The rename is only durable once the directory entry is. A volume that cannot sync a
     // directory is logged; the file itself is already in place.
     let synced = fs::File::open(dir).and_then(|d| d.sync_all());
@@ -382,7 +382,7 @@ fn sync_dir(dir: &Path) {
 }
 
 #[cfg(windows)]
-fn sync_dir(_dir: &Path) {
+pub(crate) fn sync_dir(_dir: &Path) {
     // MOVEFILE_WRITE_THROUGH already waits for the move to reach disk.
 }
 

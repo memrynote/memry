@@ -11,6 +11,7 @@ pub mod link_preview;
 pub mod links;
 pub mod local_only;
 pub mod mentions;
+pub mod moves;
 pub mod property_definitions;
 pub mod read;
 pub mod service;

@@ -8,7 +8,7 @@ use std::io;
 use std::path::Path;
 use std::time::Duration;
 
-use super::fs_atomic::{RETRY_DELAYS_MS, rename_no_replace, with_transient_retry};
+use super::fs_atomic::{RETRY_DELAYS_MS, rename_no_replace, sync_dir, with_transient_retry};
 use super::watch::EchoGuard;
 use crate::shell::file_open::file_identity;
 
@@ -29,9 +29,16 @@ impl FileMove<'_> {
     /// with each try and stays only after the one that moved the file
     /// ([`EchoGuard::removing`]): between tries a delete or move by another program is that
     /// program's, and the watcher reports it.
+    ///
+    /// On disk before it returns, so a record written after it never names a move a power cut
+    /// undoes: each folder it creates is synced into its parent before the move, and the
+    /// target's and the source's folders after it (Unix; Windows moves with
+    /// `MOVEFILE_WRITE_THROUGH`, but for a case-only respelling and a volume without an
+    /// exclusive rename, which take a plain rename). A folder that cannot be synced is logged
+    /// ([`sync_dir`]).
     pub(crate) fn run(&self, echo: &EchoGuard) -> io::Result<()> {
         if let Some(parent) = self.target.parent() {
-            fs::create_dir_all(parent)?;
+            create_folders(parent)?;
         }
         let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
         let attempt = |rename: fn(&Path, &Path) -> io::Result<()>| {
@@ -39,7 +46,7 @@ impl FileMove<'_> {
                 echo.removing(self.source_rel, || rename(self.source, self.target))
             })
         };
-        match attempt(rename_no_replace) {
+        let moved = match attempt(rename_no_replace) {
             Err(error)
                 if error.kind() == io::ErrorKind::AlreadyExists
                     && self.case_only
@@ -48,8 +55,29 @@ impl FileMove<'_> {
                 attempt(|source, target| fs::rename(source, target))
             }
             other => other,
+        };
+        if moved.is_ok() {
+            let (to, from) = (self.target.parent(), self.source.parent());
+            to.into_iter().for_each(sync_dir);
+            from.filter(|from| Some(*from) != to)
+                .into_iter()
+                .for_each(sync_dir);
         }
+        moved
     }
+}
+
+/// Creates `folder` and the folders above it that are missing, each synced into its parent.
+fn create_folders(folder: &Path) -> io::Result<()> {
+    let missing: Vec<&Path> = folder
+        .ancestors()
+        .take_while(|at| fs::symlink_metadata(at).is_err())
+        .collect();
+    fs::create_dir_all(folder)?;
+    for created in missing.iter().rev() {
+        created.parent().into_iter().for_each(sync_dir);
+    }
+    Ok(())
 }
 
 /// Whether `target` is `source` itself under another spelling: one regular file with a single

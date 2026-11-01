@@ -2,10 +2,12 @@
 
 use memry_core::api::errors::{AuthError, StorageError};
 use memry_core::crdt::errors::CrdtError;
+use memry_core::domain::notes::app_move::BeginError;
 use memry_core::markdown::frontmatter::YamlError;
 
 use crate::error::{CoreError, FailureKind};
 use crate::shell::file_open::OpenError;
+use crate::vault::app_move::MoveError;
 use crate::vault::consumer::rows::RowError;
 use crate::vault::note_file::NoteFileError;
 
@@ -30,6 +32,14 @@ pub enum NotesError {
     InvalidTitle,
     #[error("a note takes at most 50 tags of at most 50 characters each")]
     InvalidTags,
+    /// A move's folder is not one the vault's notes can be in: not a plain path of the vault,
+    /// one the vault ignores (a dot folder, the root `attachments` folder, an exclude pattern),
+    /// or a folder reached through a link.
+    #[error("notes cannot be moved into that folder")]
+    InvalidFolder,
+    /// The note's last app move is not settled, or another version of the app recorded one.
+    #[error(transparent)]
+    MovePending(BeginError),
     /// The note's file holds text the note never read, and the OS trash refused it. The note
     /// is whole; the user decides whether it goes for good (#3813).
     #[error("the note's file could not be moved to the trash: {0}")]
@@ -81,6 +91,27 @@ impl Unopenable {
     }
 }
 
+impl From<BeginError> for NotesError {
+    fn from(error: BeginError) -> Self {
+        match error {
+            BeginError::Storage(error) => Self::Storage(error),
+            pending => Self::MovePending(pending),
+        }
+    }
+}
+
+impl From<MoveError> for NotesError {
+    fn from(error: MoveError) -> Self {
+        match error {
+            MoveError::Begin(error) => error.into(),
+            MoveError::Io(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                Self::NameConflict
+            }
+            MoveError::Io(error) => Self::Io(error),
+        }
+    }
+}
+
 impl From<OpenError> for NotesError {
     fn from(error: OpenError) -> Self {
         match error {
@@ -103,6 +134,11 @@ impl CoreError for NotesError {
             }
             Self::InvalidTitle => (FailureKind::Invalid, "invalid_title"),
             Self::InvalidTags => (FailureKind::Invalid, "invalid_tags"),
+            Self::InvalidFolder => (FailureKind::Invalid, "invalid_folder"),
+            Self::MovePending(BeginError::Unreadable(_)) => {
+                (FailureKind::Invalid, "note_move_unreadable")
+            }
+            Self::MovePending(_) => (FailureKind::Invalid, "note_move_unsettled"),
             Self::TrashUnavailable(_) => (FailureKind::Storage, "note_trash_unavailable"),
             Self::Crdt(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
