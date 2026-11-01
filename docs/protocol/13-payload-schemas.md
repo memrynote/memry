@@ -479,9 +479,15 @@ neither list is a wire constraint on the other.
 - A definition's sync id stays the name its row was first stored under, which
   may keep the typed spelling (`Ünal`). A new definition is stored under the
   trimmed spelling (`apps/desktop/src/main/database/queries/tag-definitions.ts:81-82`);
-  the core writes it over the tombstone of a deleted definition of the same tag
-  when one exists, because its projection keys names without ASCII case
-  (`crates/memry-core/src/domain/tag_admin.rs:413-416`). Builds before this rule could hold two
+  the core writes it over a deleted definition of the same tag when one exists,
+  because its projection keys names without ASCII case: the projection's deleted
+  row first, else a deleted `tag_definition` item, which is all a device holds
+  of a peer's delete of a tag it never had live
+  (`crates/memry-core/src/domain/tag_admin.rs:163-186`,
+  `crates/memry-core/src/domain/tag_admin.rs:422-425`). A peer's delete of one
+  spelling's item marks the projection row of another spelling's live item
+  deleted too; the core then edits that live item, which projects it live again
+  (`crates/memry-core/src/domain/tag_admin.rs:426-433`). Builds before this rule could hold two
   live definitions that now fold equal. A client MUST read one of them, the
   survivor: the higher `schema.t` (none below 0), then the older `createdAt`,
   then the smaller id by UTF-16 code unit
@@ -557,7 +563,7 @@ definition whose `schema` names `from`
   the rewrite wins the §6.11 join against the value it replaces. The rewritten
   definition is written and pushed like any other definition edit
   (`crates/memry-core/src/domain/tag_rename.rs:100`,
-  `crates/memry-core/src/domain/tag_admin.rs:383`).
+  `crates/memry-core/src/domain/tag_admin.rs:392`).
 - A rename renames each `/` child of `from` too, so it applies the rule once
   per renamed tag: `from` to `to`, and each `from/rest` any item or
   definition holds to `to/rest`, children first

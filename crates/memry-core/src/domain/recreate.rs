@@ -204,6 +204,71 @@ mod tests {
         .expect("re-create");
     }
 
+    // #2409: a device that never had the tag holds the peer's delete only as a `sync_items`
+    // tombstone; a new definition in another case is written over it, not beside it.
+    #[test]
+    fn a_tag_definition_re_created_in_another_case_writes_over_the_remote_tombstone() {
+        let (db, _dir) = open("recreate-tag-remote-case");
+        db.call_blocking(|conn| {
+            let tombstone = clock_of([("device-b", 4)]);
+            apply_page(
+                conn,
+                vec![remote_delete("tag_definition", "work", tombstone.clone())],
+                vec![],
+                NOW + 1,
+                None,
+            )?;
+
+            tag_admin::set_color(conn, "Work", "sky", "device-a", NOW + 2)?;
+
+            let row = sync_items::load(conn, "tag_definition", "work")?.expect("work");
+            assert_eq!(row.deleted_at, None);
+            let clock = stored_clock(conn, "tag_definition", "work");
+            assert_eq!(compare(&clock, &tombstone), ClockOrder::After);
+            assert!(sync_items::load(conn, "tag_definition", "Work")?.is_none());
+            Ok(())
+        })
+        .expect("re-create");
+    }
+
+    // A peer's delete of `WORK` marks the projection row of the live `work` deleted (it matches
+    // without ASCII case). Colouring `Work` edits the live item instead of failing to create it.
+    #[test]
+    fn a_tag_whose_projection_a_peer_delete_hid_is_edited_not_re_created() {
+        let (db, _dir) = open("recreate-tag-shadowed");
+        db.call_blocking(|conn| {
+            tag_admin::set_color(conn, "work", "rose", "device-a", NOW)?;
+            apply_page(
+                conn,
+                vec![remote_delete(
+                    "tag_definition",
+                    "WORK",
+                    clock_of([("device-b", 1)]),
+                )],
+                vec![],
+                NOW + 1,
+                None,
+            )?;
+            assert!(tag_admin::definitions(conn)?.is_empty());
+
+            tag_admin::set_color(conn, "Work", "sky", "device-a", NOW + 2)?;
+
+            let live = tag_admin::live_definition(conn, "work")?.expect("work lives");
+            assert_eq!(live["color"], serde_json::json!("sky"));
+            let shown = tag_admin::definitions(conn)?;
+            assert_eq!(shown.get("work").map(|d| d.id.as_str()), Some("work"));
+            assert!(
+                sync_items::load(conn, "tag_definition", "WORK")?
+                    .expect("WORK")
+                    .deleted_at
+                    .is_some()
+            );
+            assert!(sync_items::load(conn, "tag_definition", "Work")?.is_none());
+            Ok(())
+        })
+        .expect("edit");
+    }
+
     // #2409: the same after this device's own delete.
     #[test]
     fn a_tag_definition_re_created_after_a_local_delete_ticks_past_it() {

@@ -160,16 +160,25 @@ fn definition_ids(conn: &Connection, tag: &str) -> Result<Vec<String>, StorageEr
         .collect())
 }
 
-/// A deleted definition's id for `tag`. A new definition is written over it: the projection
-/// keys `tag_definitions.name` without ASCII case, so a second spelling would collide with
-/// the tombstoned row.
-fn tombstoned_id(conn: &Connection, tag: &str) -> Result<Option<String>, StorageError> {
+/// The id a new definition of `tag` is written under when the tag was deleted before: the
+/// projection's deleted row first, else a deleted `tag_definition` item, which is all a device
+/// holds of a remote delete for a tag it never had live. Writing over it keeps one item per tag:
+/// the projection keys `tag_definitions.name` without ASCII case, so a second spelling would
+/// land on the deleted row's name.
+fn deleted_id(conn: &Connection, tag: &str) -> Result<Option<String>, StorageError> {
     let key = tags::tag_key(tag);
     let mut statement = conn
-        .prepare("SELECT name FROM tag_definitions WHERE deleted_at IS NOT NULL")
+        .prepare(
+            "SELECT name FROM (
+               SELECT name, 0 AS source FROM tag_definitions WHERE deleted_at IS NOT NULL
+               UNION ALL
+               SELECT item_id, 1 FROM sync_items
+                WHERE item_type = ?1 AND deleted_at IS NOT NULL)
+             ORDER BY source, name COLLATE BINARY",
+        )
         .map_err(failed)?;
     let ids = statement
-        .query_map([], |row| row.get::<_, String>(0))
+        .query_map([DEFINITION_TYPE], |row| row.get::<_, String>(0))
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
@@ -410,10 +419,18 @@ pub(crate) fn upsert_definition_in(
         }
         return Ok(());
     }
-    let id = match tombstoned_id(tx, name)? {
+    let id = match deleted_id(tx, name)? {
         Some(id) => id,
         None => definition_id(name),
     };
+    // A delete of another spelling's item marks this item's projection row deleted too (the
+    // row matches names without ASCII case), while the item itself lives on: the tag is that
+    // item, so the create edits it, which projects it live again.
+    if sync_items::load(tx, DEFINITION_TYPE, &id)?.is_some_and(|row| row.deleted_at.is_none()) {
+        edit_in(tx, DEFINITION_TYPE, &id, changes, device_id, now_ms)?;
+        outbox::enqueue(tx, &outbox::Change::upsert(DEFINITION_TYPE, &id), now_ms)?;
+        return Ok(());
+    }
     let mut payload = template.cloned().unwrap_or_else(|| json!({}));
     let map = payload
         .as_object_mut()
