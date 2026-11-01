@@ -29,7 +29,7 @@
     "i18next-icu": "^2.3.0",
     "i18next-resources-to-backend": "^1.2.1",
     "intl-messageformat": "^10.7.0",
-    "zod": "^4.3.4"
+    "zod": "^4.6.6"
   },
   "peerDependencies": {
     "react": "^19.0.0",
