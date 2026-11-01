@@ -173,8 +173,18 @@ export const commands = {
 	 *  tells the user that recent edits may be lost.
 	 */
 	shellTakeCrashReload: () => __TAURI_INVOKE<boolean>("shell_take_crash_reload"),
+	tagsCreateCategory: (name: string) => __TAURI_INVOKE<TagCategoryView>("tags_create_category", { name }),
+	/**  The category's tags become uncategorised. */
+	tagsDeleteCategory: (id: string) => __TAURI_INVOKE<null>("tags_delete_category", { id }),
 	tagsGetAllWithCounts: () => __TAURI_INVOKE<TagWithCountView[]>("tags_get_all_with_counts"),
 	tagsGetNotesByTag: (input: NotesByTagInput) => __TAURI_INVOKE<NotesByTagView>("tags_get_notes_by_tag", { input }),
+	tagsListCategories: () => __TAURI_INVOKE<TagCategoryView[]>("tags_list_categories"),
+	tagsRenameCategory: (id: string, name: string) => __TAURI_INVOKE<null>("tags_rename_category", { id, name }),
+	/**  A drag in the tag hub: tag assignments and category order, all or nothing. */
+	tagsReorder: (input: ReorderInput) => __TAURI_INVOKE<null>("tags_reorder", { input }),
+	tagsUpdateColor: (tag: string, color: string) => __TAURI_INVOKE<null>("tags_update_color", { tag, color }),
+	/**  `icon` is an emoji or `icon:Name`; `None` clears it. */
+	tagsUpdateIcon: (tag: string, icon: string | null) => __TAURI_INVOKE<null>("tags_update_icon", { tag, icon }),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
@@ -262,9 +272,12 @@ export const events = {
 	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
 	noteDeletedEvent: makeEvent<NoteDeletedEvent, NoteDeletedEvent>("note-deleted-event"),
 	noteLinksChangedEvent: makeEvent<NoteLinksChangedEvent, NoteLinksChangedEvent>("note-links-changed-event"),
+	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
+	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
+	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
 	templateCreatedEvent: makeEvent<TemplateCreatedEvent, TemplateCreatedEvent>("template-created-event"),
 	templateDeletedEvent: makeEvent<TemplateDeletedEvent, TemplateDeletedEvent>("template-deleted-event"),
 	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
@@ -351,6 +364,12 @@ export type CaptionRect = {
 	y: number | null,
 	width: number | null,
 	height: number | null,
+};
+
+/**  A category's slot after a drag. */
+export type CategoryOrderInput = {
+	id: string,
+	sortOrder: number,
 };
 
 /**
@@ -738,6 +757,12 @@ export type NoteListPageView = {
 export type NoteListSortBy = "modified" | "created" | "title" | "position";
 
 /**
+ *  Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer
+ *  refetches.
+ */
+export type NoteTagsChangedEvent = null;
+
+/**
  *  A note's file changed outside the app (`notes:updated`). `changes` holds the fields the
  *  edit may have changed, as the note reads now (`NoteView::changes`); the body reaches the
  *  open editor through its document.
@@ -806,6 +831,12 @@ export type NotificationRequest = {
 };
 
 export type NotificationRoute = { kind: "focus" } | { kind: "deepLink"; value: string } | { kind: "handler"; value: string };
+
+/**  `tags:reorder`'s payload. */
+export type ReorderInput = {
+	tags?: TagAssignmentInput[] | null,
+	categories?: CategoryOrderInput[] | null,
+};
 
 export type SandboxInfo = {
 	path: string,
@@ -882,6 +913,35 @@ export type StartupState = {
 	/**  `ltr` or `rtl`, from the locale. */
 	direction: string,
 	startupVault: string | null,
+};
+
+/**  `TagAssignment`: where a drag put a tag. */
+export type TagAssignmentInput = {
+	tag: string,
+	categoryId: string | null,
+	sortOrder: number,
+};
+
+/**
+ *  The tag hub's categories, or which tags sit in them, changed (`tags:categories-changed`).
+ *  `categoryId` names the category when one did; a drag names none.
+ */
+export type TagCategoriesChangedEvent = {
+	categoryId: string | null,
+};
+
+/**  `TagCategoryRow`. */
+export type TagCategoryView = {
+	id: string,
+	name: string,
+	sortOrder: number,
+	tagCount: number,
+};
+
+/**  A tag's colour changed (`tags:color-updated`). */
+export type TagColorUpdatedEvent = {
+	tag: string,
+	color: string,
 };
 
 /**  `TagNoteItem`. */

@@ -31,7 +31,8 @@ const events = vi.hoisted(() => {
   return {
     noteCreatedEvent: event('created'),
     noteUpdatedEvent: event('updated'),
-    noteDeletedEvent: event('deleted')
+    noteDeletedEvent: event('deleted'),
+    noteTagsChangedEvent: event('tags')
   }
 })
 
@@ -318,12 +319,18 @@ describe('notes-service', () => {
     expect(api.notes.restoreVersion).toHaveBeenCalledWith('snapshot-1')
   })
 
-  it('hands the created, updated and deleted note events from Rust on in the renderer shape', async () => {
+  it('hands the note and tag-list events from Rust on in the renderer shape', async () => {
     const created = vi.fn()
     const updated = vi.fn()
     const deleted = vi.fn()
-    const stops = [onNoteCreated(created), onNoteUpdated(updated), onNoteDeleted(deleted)]
-    await vi.waitFor(() => expect(listeners.size).toBe(3))
+    const tagsChanged = vi.fn()
+    const stops = [
+      onNoteCreated(created),
+      onNoteUpdated(updated),
+      onNoteDeleted(deleted),
+      onTagsChanged(tagsChanged)
+    ]
+    await vi.waitFor(() => expect(listeners.size).toBe(4))
 
     const note = { id: 'n', path: 'a.md', title: 'a', created: CREATED, modified: MODIFIED }
     listeners.get('created')?.({ payload: { note, source: 'internal' } })
@@ -331,6 +338,7 @@ describe('notes-service', () => {
       payload: { id: 'n', changes: { title: 'b', modified: MODIFIED }, source: 'external' }
     })
     listeners.get('deleted')?.({ payload: { id: 'n', path: 'a.md', source: 'internal' } })
+    listeners.get('tags')?.({ payload: null })
 
     expect(created).toHaveBeenCalledWith({
       note: { ...note, created: new Date(CREATED), modified: new Date(MODIFIED) },
@@ -343,6 +351,8 @@ describe('notes-service', () => {
       source: 'external'
     })
     expect(deleted).toHaveBeenCalledWith({ id: 'n', path: 'a.md', source: 'internal' })
+    // `notes:tags-changed` carries nothing the renderer reads.
+    expect(tagsChanged).toHaveBeenCalledWith()
     for (const stop of stops) stop()
     await vi.waitFor(() => expect(listeners.size).toBe(0))
   })
@@ -352,7 +362,6 @@ describe('notes-service', () => {
     api.onNoteRenamed = vi.fn(() => unsubscribe)
     api.onNoteMoved = vi.fn(() => unsubscribe)
     api.onNoteExternalChange = vi.fn(() => unsubscribe)
-    api.onTagsChanged = vi.fn(() => unsubscribe)
     api.onFolderConfigUpdated = vi.fn(() => unsubscribe)
     const handler = vi.fn()
 
@@ -362,8 +371,6 @@ describe('notes-service', () => {
     expect(api.onNoteMoved).toHaveBeenCalledWith(handler)
     expect(onNoteExternalChange(handler)).toBe(unsubscribe)
     expect(api.onNoteExternalChange).toHaveBeenCalledWith(handler)
-    expect(onTagsChanged(handler)).toBe(unsubscribe)
-    expect(api.onTagsChanged).toHaveBeenCalledWith(handler)
     expect(onFolderConfigUpdated(handler)).toBe(unsubscribe)
     expect(api.onFolderConfigUpdated).toHaveBeenCalledWith(handler)
   })

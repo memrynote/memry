@@ -15,7 +15,9 @@ import type {
   CreateCategoryResponse,
   TagsClientAPI
 } from '../../../preload/index.d'
-import { commands } from '../../../generated/bindings'
+import { commands, events } from '../../../generated/bindings'
+import { extractErrorMessage } from '../lib/ipc-error'
+import { subscribeToEvent } from './tauri-event'
 
 /**
  * Tags service. The methods in `ported` are the Rust commands of Step 13j (`commands/tags.rs`);
@@ -25,8 +27,7 @@ import { commands } from '../../../generated/bindings'
  * surface); most methods here forward 1:1 and are checked against it via
  * `TagsService` below. The three tag category methods that take flat
  * arguments (`createCategory`, `renameCategory`, `deleteCategory`) are
- * deliberately overridden for ergonomic call sites and wrap the values
- * back into the object shape `window.api.tags` expects.
+ * deliberately overridden for ergonomic call sites.
  */
 type TagsService = Omit<TagsClientAPI, 'createCategory' | 'renameCategory' | 'deleteCategory'> & {
   createCategory: (name: string) => Promise<CreateCategoryResponse>
@@ -34,9 +35,27 @@ type TagsService = Omit<TagsClientAPI, 'createCategory' | 'renameCategory' | 'de
   deleteCategory: (id: string) => Promise<CategoryOperationResponse>
 }
 
-/** The tag reads of Step 13j. A failure rejects, as Electron's handlers rethrow it. */
+/** A failed write as Electron's tag handlers answer it: the error's message. */
+function failure(error: unknown): { success: false; error?: string } {
+  const message = extractErrorMessage(error, '')
+  return message ? { success: false, error: message } : { success: false }
+}
+
+/** Runs a write that answers `{ success }`, a rejection becoming `{ success: false }`. */
+async function settled(write: () => Promise<unknown>): Promise<TagOperationResponse> {
+  try {
+    await write()
+    return { success: true }
+  } catch (error) {
+    return failure(error)
+  }
+}
+
+/**
+ * The tag commands of Step 13j. The list and a tag's notes reject on failure, as Electron's
+ * handlers rethrow; the writes answer `{ success: false, error }`, as its handlers do.
+ */
 const ported = {
-  /** A tag's notes, pinned ones apart. */
   getNotesByTag: (input: {
     tag: string
     sortBy?: 'modified' | 'created' | 'title'
@@ -44,9 +63,45 @@ const ported = {
     includeDescendants?: boolean
   }): Promise<GetNotesByTagResponse> => commands.tagsGetNotesByTag(input),
 
+  updateTagColor: (input: { tag: string; color: string }): Promise<TagOperationResponse> =>
+    settled(() => commands.tagsUpdateColor(input.tag, input.color)),
+
+  /** A raw emoji or "icon:Name"; null clears it. */
+  updateTagIcon: (input: { tag: string; icon: string | null }): Promise<TagOperationResponse> =>
+    settled(() => commands.tagsUpdateIcon(input.tag, input.icon)),
+
   getAllWithCounts: async (): Promise<GetAllWithCountsResponse> => ({
     tags: await commands.tagsGetAllWithCounts()
-  })
+  }),
+
+  listCategories: async (): Promise<ListCategoriesResponse> => {
+    try {
+      return { success: true, categories: await commands.tagsListCategories() }
+    } catch (error) {
+      return failure(error)
+    }
+  },
+
+  createCategory: async (name: string): Promise<CreateCategoryResponse> => {
+    try {
+      return { success: true, category: await commands.tagsCreateCategory(name) }
+    } catch (error) {
+      return failure(error)
+    }
+  },
+
+  renameCategory: (id: string, name: string): Promise<CategoryOperationResponse> =>
+    settled(() => commands.tagsRenameCategory(id, name)),
+
+  /** Its tags become uncategorized, not deleted. */
+  deleteCategory: (id: string): Promise<CategoryOperationResponse> =>
+    settled(() => commands.tagsDeleteCategory(id)),
+
+  /** A drag result: tag assignments and/or category order, in one call. */
+  reorder: (payload: {
+    tags?: TagAssignment[]
+    categories?: { id: string; sortOrder: number }[]
+  }): Promise<CategoryOperationResponse> => settled(() => commands.tagsReorder(payload))
 }
 
 /** The tag methods served from Rust; `window.api.tags` is typed without them. */
@@ -81,20 +136,6 @@ export const tagsService: TagsService = {
   },
 
   /**
-   * Update tag color.
-   */
-  updateTagColor: (input: { tag: string; color: string }): Promise<TagOperationResponse> => {
-    return window.api.tags.updateTagColor(input)
-  },
-
-  /**
-   * Update tag icon (raw emoji or "icon:Name", null clears).
-   */
-  updateTagIcon: (input: { tag: string; icon: string | null }): Promise<TagOperationResponse> => {
-    return window.api.tags.updateTagIcon(input)
-  },
-
-  /**
    * Delete a tag from all notes.
    */
   deleteTag: (tag: string): Promise<DeleteTagResponse> => {
@@ -110,44 +151,6 @@ export const tagsService: TagsService = {
 
   mergeTag: (input: { source: string; target: string }): Promise<MergeTagResponse> => {
     return window.api.tags.mergeTag(input)
-  },
-
-  /**
-   * List tag categories with their tag counts.
-   */
-  listCategories: (): Promise<ListCategoriesResponse> => {
-    return window.api.tags.listCategories()
-  },
-
-  /**
-   * Create a tag category.
-   */
-  createCategory: (name: string): Promise<CreateCategoryResponse> => {
-    return window.api.tags.createCategory({ name })
-  },
-
-  /**
-   * Rename a tag category.
-   */
-  renameCategory: (id: string, name: string): Promise<CategoryOperationResponse> => {
-    return window.api.tags.renameCategory({ id, name })
-  },
-
-  /**
-   * Delete a tag category. Its tags become uncategorized, not deleted.
-   */
-  deleteCategory: (id: string): Promise<CategoryOperationResponse> => {
-    return window.api.tags.deleteCategory({ id })
-  },
-
-  /**
-   * Apply a drag result: tag assignments and/or category order, in one call.
-   */
-  reorder: (payload: {
-    tags?: TagAssignment[]
-    categories?: { id: string; sortOrder: number }[]
-  }): Promise<CategoryOperationResponse> => {
-    return window.api.tags.reorder(payload)
   },
 
   getSchemaSnapshot: () => window.api.tags.getSchemaSnapshot(),
@@ -182,7 +185,7 @@ export function onTagRenamed(callback: (event: TagRenamedEvent) => void): () => 
  * @returns Unsubscribe function
  */
 export function onTagColorUpdated(callback: (event: TagColorUpdatedEvent) => void): () => void {
-  return window.api.onTagColorUpdated(callback)
+  return subscribeToEvent(events.tagColorUpdatedEvent, callback)
 }
 
 /**
@@ -206,8 +209,11 @@ export function onTagNotesChanged(callback: (event: TagNotesChangedEvent) => voi
  * @returns Unsubscribe function
  */
 export function onTagCategoriesChanged(callback: () => void): () => void {
-  return window.api.onTagCategoriesChanged(callback)
+  return subscribeToEvent(events.tagCategoriesChangedEvent, () => callback())
 }
+
+/** The subscriptions above that Rust events serve; `window.api` is typed without them. */
+export type PortedTagEvent = 'onTagColorUpdated' | 'onTagCategoriesChanged'
 
 // ============================================================================
 // Type Re-exports

@@ -26,19 +26,6 @@ beforeEach(() => {
 })
 
 describe('tag categories through the real tags service', () => {
-  it('creates, renames and deletes a category with the argument shape the IPC expects', async () => {
-    const { result } = renderHook(() => useTagCategories())
-    await waitFor(() => expect(result.current.categories).toHaveLength(1))
-
-    await act(() => result.current.createCategory('Blog'))
-    await act(() => result.current.renameCategory('cat-1', 'Projects'))
-    await act(() => result.current.deleteCategory('cat-1'))
-
-    expect(api.tags.createCategory).toHaveBeenCalledWith({ name: 'Blog' })
-    expect(api.tags.renameCategory).toHaveBeenCalledWith({ id: 'cat-1', name: 'Projects' })
-    expect(api.tags.deleteCategory).toHaveBeenCalledWith({ id: 'cat-1' })
-  })
-
   it('reloads the categories after one is created', async () => {
     const { result } = renderHook(() => useTagCategories())
     await waitFor(() => expect(result.current.categories).toHaveLength(1))
