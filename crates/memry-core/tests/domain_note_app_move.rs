@@ -8,13 +8,16 @@
 //! | a move that changes what the file is leaves it owed    | Step 13m, the watcher's rule       |
 //! | a move whose row cannot move changes nothing           | one transaction, so a crash pairs  |
 //! | a move the record was owed is settled                  | `identity::renamed`'s settle       |
+//! | a recorded move reads back until its transaction ...   | the next open finishes or forgets  |
+//! | a move whose transaction fails keeps its record ...    | the tier forgets it after put-back |
+//! | a record from a later build reads ...                  | the `v1` record is a contract      |
 
 #![cfg(feature = "markdown")]
 
 mod note_identity_support;
 
 use memry_core::domain::note_files;
-use memry_core::domain::notes::app_move::{self, AppMoved};
+use memry_core::domain::notes::app_move::{self, AppMoved, PendingMove};
 use memry_core::domain::notes::identity;
 use note_identity_support::{
     DEVICE, NOW, clear_outbox, create, give_row, open, outbox, payload, place, position, run,
@@ -172,4 +175,80 @@ fn a_move_the_record_was_owed_is_settled() {
     assert!(owed(&db).is_empty());
     assert_eq!(payload(&db, "n1")["folderPath"], json!("Work"));
     assert_eq!(outbox(&db), vec![("upsert".to_owned(), "n1".to_owned())]);
+}
+
+#[test]
+fn a_recorded_move_reads_back_until_its_transaction_forgets_it() {
+    let db = open("app-move-pending");
+    create(&db, "n1", "Plan", Some("Work"));
+    give_row(&db, "n1", "Work/Plan.md");
+    let moved = AppMoved {
+        old_path: "Work/Plan.md",
+        new_path: "Work/Plan Q3.md",
+        title: Some("Plan: Q3"),
+        keeps_kind: true,
+    };
+    assert_eq!(run(&db, |conn| app_move::pending(conn)), None);
+
+    run(&db, |conn| app_move::begin(conn, "n1", &moved));
+    let recorded = PendingMove {
+        note_id: "n1".to_owned(),
+        old_path: "Work/Plan.md".to_owned(),
+        new_path: "Work/Plan Q3.md".to_owned(),
+        title: Some("Plan: Q3".to_owned()),
+    };
+    assert_eq!(run(&db, |conn| app_move::pending(conn)), Some(recorded));
+
+    run(&db, |conn| {
+        app_move::moved_by_app(conn, "n1", &moved, DEVICE, NOW + 1)
+    });
+    assert_eq!(run(&db, |conn| app_move::pending(conn)), None);
+}
+
+#[test]
+fn a_move_whose_transaction_fails_keeps_its_record_and_abandon_forgets_it() {
+    let db = open("app-move-pending-refused");
+    create(&db, "n1", "Plan", None);
+    create(&db, "n2", "Taken", None);
+    give_row(&db, "n1", "Plan.md");
+    give_row(&db, "n2", "Taken.md");
+    let moved = AppMoved {
+        old_path: "Plan.md",
+        new_path: "Taken.md",
+        title: None,
+        keeps_kind: true,
+    };
+    run(&db, |conn| app_move::begin(conn, "n1", &moved));
+    let refused =
+        db.call_blocking(|conn| app_move::moved_by_app(conn, "n1", &moved, DEVICE, NOW + 1));
+    assert!(refused.is_err());
+    assert!(run(&db, |conn| app_move::pending(conn)).is_some());
+
+    run(&db, |conn| app_move::abandon(conn));
+    assert_eq!(run(&db, |conn| app_move::pending(conn)), None);
+}
+
+#[test]
+fn a_record_from_a_later_build_reads_and_one_that_does_not_parse_is_an_error() {
+    let db = open("app-move-pending-formats");
+    let put = |value: &str| {
+        db.call_blocking(|conn| {
+            conn.execute(
+                "INSERT INTO meta (key, value) VALUES (?1, ?2)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                [app_move::APP_MOVE_META_KEY, value],
+            )
+            .map(drop)
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+        })
+        .unwrap();
+    };
+    put(r#"{"noteId":"n1","oldPath":"a.pdf","newPath":"b.pdf","title":null,"later":1}"#);
+    let read = run(&db, |conn| app_move::pending(conn)).expect("a record");
+    assert_eq!((read.old_path.as_str(), read.title), ("a.pdf", None));
+
+    put("not json");
+    assert!(db.call_blocking(|conn| app_move::pending(conn)).is_err());
 }
