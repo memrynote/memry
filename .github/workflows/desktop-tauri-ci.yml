@@ -189,6 +189,7 @@ jobs:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
         with:
           workspaces: crates
+          key: ubuntu-22.04
           save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
 
       # A restore cut off at the step timeout can leave half an archive on disk. Start the
@@ -336,7 +337,7 @@ jobs:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
         with:
           workspaces: crates
-          key: ${{ matrix.variant }}-${{ matrix.triple }}
+          key: ${{ matrix.os }}-${{ matrix.variant }}-${{ matrix.triple }}
           save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
 
       # A restore cut off at the step timeout can leave half an archive on disk. Start the
