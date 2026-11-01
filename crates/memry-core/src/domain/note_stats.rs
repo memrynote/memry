@@ -325,12 +325,14 @@ pub fn read(index: &Connection, note_id: &str) -> Result<Option<StoredStats>, St
 pub struct FileTags {
     pub header_tags: Vec<String>,
     pub word_count: u32,
+    /// The bytes measured (`note_file_hashes.file_hash` names the file's bytes now).
+    pub file_hash: Option<String>,
 }
 
-/// Every row's header tags and word count, by note id.
+/// Every row's header tags, word count and measured bytes, by note id.
 pub fn file_tags(index: &Connection) -> Result<HashMap<String, FileTags>, StorageError> {
     let mut statement = index
-        .prepare("SELECT note_id, header_tags, word_count FROM note_stats")
+        .prepare("SELECT note_id, header_tags, word_count, file_hash FROM note_stats")
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {
@@ -338,18 +340,20 @@ pub fn file_tags(index: &Connection) -> Result<HashMap<String, FileTags>, Storag
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get(2)?,
+                row.get(3)?,
             ))
         })
         .map_err(failed)?;
     let mut out = HashMap::new();
     for row in rows {
-        let (note_id, header_tags, word_count) = row.map_err(failed)?;
+        let (note_id, header_tags, word_count, file_hash) = row.map_err(failed)?;
         let header_tags = strings(&header_tags)?;
         out.insert(
             note_id,
             FileTags {
                 header_tags,
                 word_count,
+                file_hash,
             },
         );
     }

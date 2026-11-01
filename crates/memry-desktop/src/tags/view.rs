@@ -67,6 +67,10 @@ impl NotesByTagInput {
     pub(crate) fn ascending(&self) -> bool {
         self.sort_order == Some(SortOrder::Asc)
     }
+
+    pub(crate) fn descendants(&self) -> bool {
+        self.include_descendants.unwrap_or(false)
+    }
 }
 
 /// `TagNoteItem`.
@@ -154,6 +158,65 @@ mod tests {
             word_count: 0,
             pinned_at,
         }
+    }
+
+    /// The agent MCP sends `{ tag }` alone: `modified`, newest first, the tag without its
+    /// descendants (`GetNotesByTagSchema`'s defaults).
+    #[test]
+    fn a_tag_alone_reads_with_the_schema_defaults() {
+        let read = |input: serde_json::Value| {
+            let input: NotesByTagInput = serde_json::from_value(input).unwrap();
+            (input.sort(), input.ascending(), input.descendants())
+        };
+        let alone = read(serde_json::json!({ "tag": "work" }));
+        assert_eq!(alone, (NoteSort::Modified, false, false));
+        let every = serde_json::json!({
+            "tag": "work", "sortBy": "created", "sortOrder": "asc", "includeDescendants": true,
+        });
+        assert_eq!(read(every), (NoteSort::Created, true, true));
+        let title = serde_json::json!({ "tag": "work", "sortBy": "title", "sortOrder": "desc" });
+        assert_eq!(read(title), (NoteSort::Title, false, false));
+    }
+
+    /// `TagWithCount` and `TagNoteItem` as `tags-api.ts` declares them.
+    #[test]
+    fn the_answers_carry_the_tags_api_shapes() {
+        let tag = TagWithCountView::from(TagCount {
+            name: "work".to_owned(),
+            count: 2,
+            color: "teal".to_owned(),
+            icon: Some("icon:Star".to_owned()),
+            category_id: Some("cat-1".to_owned()),
+            sort_order: 3,
+        });
+        assert_eq!(
+            serde_json::to_value(tag).unwrap(),
+            serde_json::json!({
+                "name": "work", "count": 2, "color": "teal", "icon": "icon:Star",
+                "categoryId": "cat-1", "sortOrder": 3,
+            })
+        );
+        let item = TagNoteItemView::from(TaggedNote {
+            id: "n".to_owned(),
+            path: "a/n.md".to_owned(),
+            title: "N".to_owned(),
+            emoji: Some("📚".to_owned()),
+            created_at: Some(1_000),
+            modified_at: None,
+            tags: vec!["work".to_owned(), "plan".to_owned()],
+            word_count: 7,
+            pinned_at: None,
+        });
+        // A record without its modified instant reads as created then.
+        assert_eq!(
+            serde_json::to_value(item).unwrap(),
+            serde_json::json!({
+                "id": "n", "path": "a/n.md", "title": "N",
+                "created": "1970-01-01T00:00:01.000Z", "modified": "1970-01-01T00:00:01.000Z",
+                "tags": ["work", "plan"], "wordCount": 7, "isPinned": false, "pinnedAt": null,
+                "emoji": "📚",
+            })
+        );
     }
 
     /// The renderer shows the two lists apart; `count` covers both.

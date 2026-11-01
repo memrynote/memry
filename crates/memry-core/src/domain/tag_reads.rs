@@ -2,13 +2,21 @@
 //! `findNotesWithTagInfo` (`database/queries/notes/tag-queries.ts`).
 //!
 //! Electron reads a note's tags from its index of the file: the frontmatter `tags:` and the
-//! body's `#tags`. Here they sit in three places, and a note carries their union by tag fold
-//! (§13.7.7), in the order the note reads give it (`notes::read` on desktop):
+//! body's `#tags`. Here they sit in three places, and a note carries them by tag fold (§13.7.7),
+//! in the order the note reads give it (`notes::read` on desktop):
 //! - the record's `tags` (`note_tags`), which the app writes together with the file's header;
 //! - the body's `#tags` (`note_body_tags`), parsed from the document;
 //! - the file's header tags as the note index last measured them (`note_stats` in `index.db`,
 //!   [`FileTags`]), the only place a file the open adopted carries them: the identity gives its
 //!   record none.
+//!
+//! When the index measured the bytes on disk now (its row's hash is the file's,
+//! `note_file_hashes`), the file's header tags stand for the header and the record's are left
+//! out: an edit outside the app reaches the file and the index, never the record, so a tag
+//! removed there would otherwise keep counting. Until the index catches up with a change, the
+//! record's tags, the body's and the header's last measure are joined, since an app edit
+//! writes the record first. The record itself still keeps a tag removed outside the app, so
+//! peers keep it (#3825: the feed's job, not a read's).
 //!
 //! Only a note or journal day with a file row is counted or listed, as Electron's index holds
 //! files only and the note list lists only those. A task counts with its own tags. Each item
@@ -48,29 +56,77 @@ pub struct TaggedNote {
     pub modified_at: Option<i64>,
     pub tags: Vec<String>,
     pub word_count: u32,
-    /// When the record pinned the tag to the note (`pinnedTags`), `None` when it did not.
+    /// When this device applied the record payload that last carried the tag in `pinnedTags`
+    /// (`note_tags.pinned_at`, restamped by every apply, so the last update rather than the
+    /// pin); `None` when the record does not pin it.
     pub pinned_at: Option<i64>,
 }
 
-/// Each filed note by id, with when its record pinned each of its tags (by position).
-type Filed = BTreeMap<String, (TaggedNote, Vec<Option<i64>>)>;
+/// A note with when its record pinned each of its tags, by position.
+type WithPins = (TaggedNote, Vec<Option<i64>>);
 
-/// The live notes and journal days that have a file row, each with its tags. The record's
-/// rows come with when each tag was pinned.
-fn filed(data: &Connection, files: &HashMap<String, FileTags>) -> Result<Filed, StorageError> {
+/// A filed note while its tags are gathered.
+struct Gathered {
+    note: TaggedNote,
+    /// The index's row measured the bytes on disk now.
+    current: bool,
+    /// The record's tags in its order, with when each was pinned.
+    record: Vec<(String, Option<i64>)>,
+    body: Vec<String>,
+}
+
+impl Gathered {
+    /// The note with one spelling per tag, and the pin of each: the file's header tags then the
+    /// body's when the index is current, else the record's, the body's and the header's.
+    fn into_tagged(self, header: &[String]) -> WithPins {
+        let Self {
+            mut note,
+            current,
+            record,
+            body,
+        } = self;
+        let header = header.iter().map(String::as_str);
+        let body = body.iter().map(String::as_str);
+        let ordered: Vec<&str> = if current {
+            header.chain(body).collect()
+        } else {
+            let record = record.iter().map(|(tag, _)| tag.as_str());
+            record.chain(body).chain(header).collect()
+        };
+        let mut pins = Vec::new();
+        for tag in ordered {
+            if note.tags.iter().any(|kept| fold(kept) == fold(tag)) {
+                continue;
+            }
+            note.tags.push(tag.to_owned());
+            let pin = record.iter().find(|(kept, _)| fold(kept) == fold(tag));
+            pins.push(pin.and_then(|(_, pinned_at)| *pinned_at));
+        }
+        (note, pins)
+    }
+}
+
+/// The live notes and journal days that have a file row, by id, each with its tags and when
+/// its record pinned each of them (by position).
+fn filed(
+    data: &Connection,
+    files: &HashMap<String, FileTags>,
+) -> Result<Vec<WithPins>, StorageError> {
     let mut statement = data
         .prepare(
             "SELECT f.note_id, f.path, COALESCE(n.title, j.date), n.emoji,
-                    COALESCE(n.created_at, j.created_at), COALESCE(n.modified_at, j.modified_at)
+                    COALESCE(n.created_at, j.created_at), COALESCE(n.modified_at, j.modified_at),
+                    h.file_hash
                FROM note_files f
                LEFT JOIN notes n ON n.id = f.note_id AND n.deleted_at IS NULL
                LEFT JOIN journal_entries j ON j.id = f.note_id AND j.deleted_at IS NULL
+               LEFT JOIN note_file_hashes h ON h.note_id = f.note_id
               WHERE n.id IS NOT NULL OR j.id IS NOT NULL",
         )
         .map_err(failed)?;
     let rows = statement
         .query_map([], |row| {
-            Ok(TaggedNote {
+            let note = TaggedNote {
                 id: row.get(0)?,
                 path: row.get(1)?,
                 title: row.get(2)?,
@@ -80,23 +136,25 @@ fn filed(data: &Connection, files: &HashMap<String, FileTags>) -> Result<Filed, 
                 tags: Vec::new(),
                 word_count: 0,
                 pinned_at: None,
-            })
+            };
+            Ok((note, row.get::<_, Option<String>>(6)?))
         })
         .map_err(failed)?;
-    let mut out = BTreeMap::new();
+    let mut gathered = BTreeMap::new();
     for row in rows {
-        let mut note = row.map_err(failed)?;
-        note.word_count = files.get(&note.id).map_or(0, |file| file.word_count);
-        out.insert(note.id.clone(), (note, Vec::new()));
+        let (mut note, on_disk) = row.map_err(failed)?;
+        let file = files.get(&note.id);
+        note.word_count = file.map_or(0, |file| file.word_count);
+        let measured = file.and_then(|file| file.file_hash.as_deref());
+        let current = measured.is_some() && measured == on_disk.as_deref();
+        let entry = Gathered {
+            note,
+            current,
+            record: Vec::new(),
+            body: Vec::new(),
+        };
+        gathered.insert(entry.note.id.clone(), entry);
     }
-    let add = |out: &mut Filed, id: &str, tag: &str, pinned_at: Option<i64>| {
-        if let Some((note, pins)) = out.get_mut(id)
-            && !note.tags.iter().any(|kept| fold(kept) == fold(tag))
-        {
-            note.tags.push(tag.to_owned());
-            pins.push(pinned_at);
-        }
-    };
     let mut statement = data
         .prepare(
             "SELECT note_id, tag, pinned_at FROM note_tags WHERE deleted_at IS NULL
@@ -108,7 +166,9 @@ fn filed(data: &Connection, files: &HashMap<String, FileTags>) -> Result<Filed, 
         .map_err(failed)?;
     for row in rows {
         let (id, tag, pinned_at): (String, String, Option<i64>) = row.map_err(failed)?;
-        add(&mut out, &id, &tag, pinned_at);
+        if let Some(entry) = gathered.get_mut(&id) {
+            entry.record.push((tag, pinned_at));
+        }
     }
     let mut statement = data
         .prepare("SELECT note_id, tag FROM note_body_tags ORDER BY note_id, rowid")
@@ -118,14 +178,17 @@ fn filed(data: &Connection, files: &HashMap<String, FileTags>) -> Result<Filed, 
         .map_err(failed)?;
     for row in rows {
         let (id, tag): (String, String) = row.map_err(failed)?;
-        add(&mut out, &id, &tag, None);
-    }
-    for (id, file) in files {
-        for tag in &file.header_tags {
-            add(&mut out, id, tag, None);
+        if let Some(entry) = gathered.get_mut(&id) {
+            entry.body.push(tag);
         }
     }
-    Ok(out)
+    Ok(gathered
+        .into_iter()
+        .map(|(id, entry)| {
+            let header = files.get(&id).map_or(&[][..], |file| &file.header_tags);
+            entry.into_tagged(header)
+        })
+        .collect())
 }
 
 /// Each live task's tags, one spelling per tag.
@@ -177,7 +240,7 @@ pub fn counts(
     files: &HashMap<String, FileTags>,
 ) -> Result<Vec<TagCount>, StorageError> {
     let mut tallies: BTreeMap<String, Tally> = BTreeMap::new();
-    for (note, _) in filed(data, files)?.values() {
+    for (note, _) in &filed(data, files)? {
         for tag in &note.tags {
             let tally = tallies.entry(tag_key(tag)).or_default();
             tally.count += 1;
@@ -245,9 +308,9 @@ fn matches(tag: &str, wanted: &str, descendants: bool) -> bool {
     key == wanted || (descendants && key.starts_with(&format!("{wanted}/")))
 }
 
-/// The notes and journal days carrying `tag` (or a `/` descendant of it), pinned first by when
-/// they were pinned, the rest by `sort` (`findNotesWithTagInfo`). A note's pin is the one its
-/// record holds for its first matching tag.
+/// The notes and journal days carrying `tag` (or a `/` descendant of it), pinned first by
+/// `pinned_at`, the rest by `sort` (`findNotesWithTagInfo`). A note's pin is the one its record
+/// holds for its first matching tag.
 pub fn tagged(
     data: &Connection,
     files: &HashMap<String, FileTags>,
@@ -259,7 +322,7 @@ pub fn tagged(
     let wanted = fold(tag);
     let mut pinned = Vec::new();
     let mut rest = Vec::new();
-    for (mut note, pins) in filed(data, files)?.into_values() {
+    for (mut note, pins) in filed(data, files)? {
         let Some(at) = note
             .tags
             .iter()

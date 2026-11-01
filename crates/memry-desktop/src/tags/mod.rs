@@ -21,14 +21,19 @@ pub fn all_with_counts(open: &OpenVault) -> Result<Vec<TagWithCountView>, Storag
         .collect())
 }
 
-/// `tags:get-notes-by-tag`.
+/// `tags:get-notes-by-tag`. An empty tag is refused (`GetNotesByTagSchema`: `min(1)`).
 pub fn notes_by_tag(
     open: &OpenVault,
     input: &NotesByTagInput,
 ) -> Result<NotesByTagView, StorageError> {
+    if input.tag.is_empty() {
+        return Err(StorageError::Invalid {
+            what: "a tag needs a name".to_owned(),
+        });
+    }
     let tagged = open.search.tagged_notes(
         &input.tag,
-        input.include_descendants.unwrap_or(false),
+        input.descendants(),
         input.sort(),
         input.ascending(),
     )?;

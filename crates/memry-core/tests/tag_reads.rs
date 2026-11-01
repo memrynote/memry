@@ -9,6 +9,7 @@
 //! | the tag-fold vectors group spellings                       | §13.7.7 tag identity, `tagIs`/`tagKey`   |
 //! | used by count, then authored unused by name                | `getAllTagsWithCounts`, `isAuthored`     |
 //! | a tag's notes: pinned first, then sorted, descendants      | `findNotesWithTagInfo`                   |
+//! | a current file's header stands for the record's tags       | an outside edit reaches the file only    |
 
 #![cfg(feature = "markdown")]
 
@@ -41,6 +42,11 @@ fn open() -> (tempfile::TempDir, Vault, Arc<Search>) {
 
 /// Applies a record as a pull would.
 fn record(vault: &Vault, item_type: &str, id: &str, payload: Value, deleted: bool) {
+    record_at(vault, item_type, id, payload, deleted, 1);
+}
+
+/// [`record`] applied at `now` (a pin's `pinned_at` is its apply time).
+fn record_at(vault: &Vault, item_type: &str, id: &str, payload: Value, deleted: bool, now: i64) {
     let (item_type, id, payload) = (item_type.to_owned(), id.to_owned(), payload.to_string());
     vault
         .db_handle()
@@ -56,7 +62,7 @@ fn record(vault: &Vault, item_type: &str, id: &str, payload: Value, deleted: boo
                     updated_at: 1,
                     deleted_at: deleted.then_some(2),
                 },
-                1,
+                now,
             )?;
             Ok(())
         })
@@ -71,8 +77,14 @@ fn note(vault: &Vault, id: &str, title: &str, tags: &[&str], modified: &str) {
     record(vault, "note", id, payload, false);
 }
 
-/// The file row the vault tier writes for a note's file.
+/// The file row the vault tier writes for a note's file, whose bytes it does not know.
 fn filed(vault: &Vault, id: &str, path: &str) {
+    filed_as(vault, id, path, None);
+}
+
+/// [`filed`] with the hash of the bytes on disk now: [`measured`]'s `hash-<id>` makes the
+/// index current.
+fn filed_as(vault: &Vault, id: &str, path: &str, file_hash: Option<&str>) {
     vault
         .note_files()
         .upsert_stat(NoteFileStat {
@@ -82,7 +94,7 @@ fn filed(vault: &Vault, id: &str, path: &str) {
             mime_type: None,
             file_size: Some(1),
             content_hash: None,
-            file_hash: None,
+            file_hash: file_hash.map(str::to_owned),
             indexed_at: 1,
         })
         .expect("row");
@@ -130,9 +142,15 @@ fn pair(name: &str, count: u32) -> (String, u32) {
 #[test]
 fn a_note_counts_once_per_tag_across_its_record_body_and_file() {
     let (_dir, vault, search) = open();
-    note(&vault, "n1", "One", &["Work"], "2026-01-02T00:00:00.000Z");
+    note(
+        &vault,
+        "n1",
+        "One",
+        &["Work", "Alpha"],
+        "2026-01-02T00:00:00.000Z",
+    );
     filed(&vault, "n1", "One.md");
-    body(&vault, "n1", &["work", "idea"]);
+    body(&vault, "n1", &["work", "mid", "idea"]);
     measured(&search, "n1", "---\ntags: [WORK, plan]\n---\nwords #work\n");
     // Adopted from disk: the record carries no tags, the file does.
     note(&vault, "n2", "Two", &[], "2026-01-03T00:00:00.000Z");
@@ -141,7 +159,13 @@ fn a_note_counts_once_per_tag_across_its_record_body_and_file() {
 
     assert_eq!(
         counted(&search),
-        vec![pair("Work", 2), pair("idea", 1), pair("plan", 1)]
+        vec![
+            pair("Work", 2),
+            pair("Alpha", 1),
+            pair("idea", 1),
+            pair("mid", 1),
+            pair("plan", 1)
+        ]
     );
     let n1 = search
         .tagged_notes("PLAN", false, NoteSort::Modified, false)
@@ -150,8 +174,8 @@ fn a_note_counts_once_per_tag_across_its_record_body_and_file() {
     assert_eq!(ids(&n1), ["n1"]);
     assert_eq!(
         n1[0].tags,
-        ["Work", "idea", "plan"],
-        "record, body, then file"
+        ["Work", "Alpha", "mid", "idea", "plan"],
+        "record, body, then file, each in its own order"
     );
 }
 
@@ -183,10 +207,19 @@ fn only_filed_notes_and_days_count_and_tasks_count_with_their_own_tags() {
         &vault,
         "journal",
         "j2026-01-05",
-        json!({"date": "2026-01-05", "tags": ["A"], "clock": {"peer": 1}}),
+        json!({
+            "date": "2026-01-05", "tags": ["A"], "clock": {"peer": 1},
+            "createdAt": "2026-01-05T08:00:00.000Z", "modifiedAt": "2026-01-05T09:00:00.000Z",
+        }),
         false,
     );
     filed(&vault, "j2026-01-05", "journal/2026-01-05.md");
+    // A day deleted the same way.
+    let day = json!({"date": "2026-01-06", "tags": ["a"], "clock": {"peer": 1}});
+    record(&vault, "journal", "j2026-01-06", day.clone(), false);
+    filed(&vault, "j2026-01-06", "journal/2026-01-06.md");
+    measured(&search, "j2026-01-06", "---\ntags: [a]\n---\n");
+    record(&vault, "journal", "j2026-01-06", day, true);
     record(
         &vault,
         "task",
@@ -201,8 +234,14 @@ fn only_filed_notes_and_days_count_and_tasks_count_with_their_own_tags() {
         json!({"title": "t", "tags": ["c"]}),
         true,
     );
+    // Only an array's strings are tags.
+    let odd = [json!("solo"), json!([7, "c", null])];
+    for (i, tags) in odd.into_iter().enumerate() {
+        let payload = json!({"title": "t", "tags": tags, "clock": {"peer": 1}});
+        record(&vault, "task", &format!("odd{i}"), payload, false);
+    }
 
-    assert_eq!(counted(&search), vec![pair("A", 3), pair("c", 1)]);
+    assert_eq!(counted(&search), vec![pair("A", 3), pair("c", 2)]);
     let day = search
         .tagged_notes("a", false, NoteSort::Title, true)
         .expect("tagged")
@@ -210,6 +249,12 @@ fn only_filed_notes_and_days_count_and_tasks_count_with_their_own_tags() {
     assert_eq!(ids(&day), ["j2026-01-05", "kept"]);
     assert_eq!(day[0].title, "2026-01-05", "a day is titled by its date");
     assert_eq!(day[0].path, "journal/2026-01-05.md");
+    assert!(
+        day[0]
+            .created_at
+            .is_some_and(|c| c < day[0].modified_at.expect("modified"))
+    );
+    assert_eq!(day[0].emoji, None);
 }
 
 #[test]
@@ -282,7 +327,13 @@ fn the_tag_fold_vectors_group_the_spellings_of_one_tag() {
 #[test]
 fn used_tags_come_by_count_then_the_authored_unused_ones_by_name() {
     let (_dir, vault, search) = open();
-    for (id, tags) in [("n1", vec!["rare", "common"]), ("n2", vec!["common"])] {
+    // `  rare ` and `rare` are one tag, listed trimmed.
+    let used = [
+        ("n1", vec!["rare", "common"]),
+        ("n2", vec!["common"]),
+        ("n3", vec!["  rare "]),
+    ];
+    for (id, tags) in used {
         note(&vault, id, id, &tags, "2026-01-02T00:00:00.000Z");
         filed(&vault, id, &format!("{id}.md"));
     }
@@ -297,7 +348,8 @@ fn used_tags_come_by_count_then_the_authored_unused_ones_by_name() {
         "common",
         json!({"icon": "📚", "categoryId": "cat-1", "sortOrder": 4}),
     );
-    definition("zeta", json!({"icon": "icon:Star", "colorAuthored": false}));
+    // Capitalised, so the fold order differs from the byte order.
+    definition("Zeta", json!({"icon": "icon:Star", "colorAuthored": false}));
     definition("Alpha", json!({"colorAuthored": true}));
     definition(
         "beta",
@@ -309,6 +361,7 @@ fn used_tags_come_by_count_then_the_authored_unused_ones_by_name() {
     );
     // Minted on the way past and never used: Electron collects it, here it is left out.
     definition("minted", json!({"colorAuthored": false}));
+    definition("unschemed", json!({"schema": null, "colorAuthored": false}));
 
     let counts = search.tag_counts().expect("counts");
     let names: Vec<(&str, u32)> = counts.iter().map(|t| (t.name.as_str(), t.count)).collect();
@@ -316,11 +369,11 @@ fn used_tags_come_by_count_then_the_authored_unused_ones_by_name() {
         names,
         [
             ("common", 2),
-            ("rare", 1),
+            ("rare", 2),
             ("Alpha", 0),
             ("beta", 0),
             ("schema", 0),
-            ("zeta", 0)
+            ("Zeta", 0)
         ]
     );
     let common = &counts[0];
@@ -333,6 +386,16 @@ fn used_tags_come_by_count_then_the_authored_unused_ones_by_name() {
         (Some("cat-1"), 4)
     );
     assert_eq!(counts[1].color, default_color("rare"), "no definition");
+    assert_eq!(
+        (counts[1].category_id.as_deref(), counts[1].sort_order),
+        (None, 0)
+    );
+    let zeta = &counts[5];
+    assert_eq!(
+        (zeta.color.as_str(), zeta.icon.as_deref()),
+        ("teal", Some("icon:Star")),
+        "an unused tag shows its definition"
+    );
     let color = |tag: &str| {
         search
             .tagged_notes(tag, false, NoteSort::Title, true)
@@ -348,23 +411,31 @@ fn used_tags_come_by_count_then_the_authored_unused_ones_by_name() {
 #[test]
 fn a_tags_notes_list_the_pinned_first_then_sorted_with_descendants_on_request() {
     let (_dir, vault, search) = open();
-    let notes: [(&str, &str, &[&str], &str); 5] = [
-        ("a", "Banana", &["Project"], "2026-01-05T00:00:00.000Z"),
-        ("b", "apple", &["project/Sub"], "2026-01-04T00:00:00.000Z"),
-        ("c", "Cherry", &["projects"], "2026-01-03T00:00:00.000Z"),
-        ("d", "date", &["project"], "2026-01-02T00:00:00.000Z"),
-        ("e", "Elder", &["project"], "2026-01-01T00:00:00.000Z"),
+    // Created in an order that is neither the titles' nor the modified instants'.
+    let notes: [(&str, &str, &[&str], &str, &str); 6] = [
+        ("a", "Banana", &["Project"], "01", "05"),
+        ("b", "apple", &["project/Sub"], "03", "04"),
+        ("c", "Cherry", &["projects"], "04", "03"),
+        ("d", "date", &["project"], "02", "02"),
+        ("e", "Elder", &["project"], "05", "01"),
+        ("f", "Fig", &["project"], "06", "06"),
     ];
-    for (id, title, tags, modified) in notes {
-        note(&vault, id, title, tags, modified);
+    let day = |dd: &str| format!("2026-01-{dd}T00:00:00.000Z");
+    for (id, title, tags, created, modified) in notes {
+        let payload = json!({
+            "title": title, "tags": tags, "emoji": (id == "a").then_some("📚"),
+            "clock": {"peer": 1}, "createdAt": day(created), "modifiedAt": day(modified),
+        });
+        record(&vault, "note", id, payload, false);
         filed(&vault, id, &format!("{id}.md"));
     }
-    // Pinned by its record; the pin reads from `pinnedTags`.
-    let pinned = json!({
-        "title": "Elder", "tags": ["project"], "pinnedTags": ["project"], "clock": {"peer": 2},
-        "createdAt": "2026-01-01T00:00:00.000Z", "modifiedAt": "2026-01-01T00:00:00.000Z",
-    });
-    record(&vault, "note", "e", pinned, false);
+    // Pinned by their records, `e` later than `f`; the pin reads from `pinnedTags`.
+    for (id, title, now) in [("e", "Elder", 7), ("f", "Fig", 3)] {
+        let pinned = json!({
+            "title": title, "tags": ["project"], "pinnedTags": ["project"], "clock": {"peer": 2},
+        });
+        record_at(&vault, "note", id, pinned, false, now);
+    }
 
     let by = |descendants, sort, ascending| {
         ids(&search
@@ -375,16 +446,22 @@ fn a_tags_notes_list_the_pinned_first_then_sorted_with_descendants_on_request() 
         .map(str::to_owned)
         .collect::<Vec<_>>()
     };
-    assert_eq!(by(false, NoteSort::Modified, false), ["e", "a", "d"]);
-    assert_eq!(by(false, NoteSort::Modified, true), ["e", "d", "a"]);
-    assert_eq!(by(true, NoteSort::Title, true), ["e", "b", "a", "d"]);
-    assert_eq!(by(true, NoteSort::Title, false), ["e", "d", "a", "b"]);
-    let elder = search
+    assert_eq!(by(false, NoteSort::Modified, false), ["f", "e", "a", "d"]);
+    assert_eq!(by(false, NoteSort::Modified, true), ["f", "e", "d", "a"]);
+    assert_eq!(by(true, NoteSort::Title, true), ["f", "e", "b", "a", "d"]);
+    assert_eq!(by(true, NoteSort::Title, false), ["f", "e", "d", "a", "b"]);
+    assert_eq!(by(true, NoteSort::Created, true), ["f", "e", "a", "d", "b"]);
+    assert_eq!(
+        by(true, NoteSort::Created, false),
+        ["f", "e", "b", "d", "a"]
+    );
+    let listed = search
         .tagged_notes("project", false, NoteSort::Title, true)
         .expect("tagged")
         .notes;
-    assert!(elder[0].pinned_at.is_some());
-    assert!(elder[1..].iter().all(|note| note.pinned_at.is_none()));
+    let pins: Vec<Option<i64>> = listed.iter().map(|note| note.pinned_at).collect();
+    assert_eq!(pins, [Some(3), Some(7), None, None]);
+    assert_eq!(listed[2].emoji.as_deref(), Some("📚"));
 }
 
 #[test]
@@ -410,4 +487,43 @@ fn a_missing_index_row_still_lists_the_records_tags() {
             .word_count,
         3
     );
+}
+
+/// An edit outside the app reaches the file and the index, never the record: once the index
+/// measured the bytes on disk now, the file's header stands for the record's tags, so a tag
+/// removed there stops counting. A note or day the index has not caught up with keeps the
+/// record's.
+#[test]
+fn a_current_files_header_stands_for_the_records_tags() {
+    let (_dir, vault, search) = open();
+    // The record still pins `Keep` and carries `gone`; the file now has `keep` alone.
+    let payload = json!({
+        "title": "Plan", "tags": ["gone", "Keep"], "pinnedTags": ["Keep"], "clock": {"peer": 1},
+    });
+    record_at(&vault, "note", "plan", payload, false, 5);
+    filed_as(&vault, "plan", "Plan.md", Some("hash-plan"));
+    measured(&search, "plan", "---\ntags: [keep]\n---\nBody\n");
+    let day = json!({"date": "2026-01-05", "tags": ["gone"], "clock": {"peer": 1}});
+    record(&vault, "journal", "day", day, false);
+    filed_as(&vault, "day", "journal/2026-01-05.md", Some("hash-day"));
+    measured(&search, "day", "Nothing\n");
+
+    assert_eq!(counted(&search), vec![pair("keep", 1)]);
+    let gone = search.tagged_notes("gone", false, NoteSort::Title, true);
+    assert!(gone.expect("tagged").notes.is_empty());
+    let keep = search
+        .tagged_notes("KEEP", false, NoteSort::Title, true)
+        .expect("tagged")
+        .notes;
+    assert_eq!(keep[0].tags, ["keep"]);
+    assert_eq!(
+        keep[0].pinned_at,
+        Some(5),
+        "the record's pin, matched by fold"
+    );
+
+    // The bytes changed again and the index has not measured them yet.
+    filed_as(&vault, "plan", "Plan.md", Some("hash-newer"));
+    filed_as(&vault, "day", "journal/2026-01-05.md", None);
+    assert_eq!(counted(&search), vec![pair("gone", 2), pair("Keep", 1)]);
 }
