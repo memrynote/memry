@@ -62,8 +62,11 @@ describe('PermanentDeleteConfirm', () => {
     await user.click(deleteButton())
     expect(await first).toBe(true)
     expect(await screen.findByText(/Two/)).toBeInTheDocument()
+    let answer: boolean | undefined
+    void second.then((value) => (answer = value))
     await user.keyboard('{Enter}')
-    expect(await second).toBe(false)
+    // An Enter that answers nothing fails here, not at the test timeout.
+    await waitFor(() => expect(answer).toBe(false), { timeout: 1000 })
     expect(current()).toBeNull()
   })
 })

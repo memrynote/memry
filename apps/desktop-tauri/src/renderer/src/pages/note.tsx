@@ -728,6 +728,9 @@ export function NotePage({ noteId }: NotePageProps) {
           if (!fresh || fresh.contentOmitted || fresh.content === shown) return
           // Typing not saved yet is the user's newest text; its save follows.
           if (pendingMarkdownRef.current !== null) return
+          // A save that finished during the read wrote newer text than the read saw.
+          const saved = lastSavedContent.current
+          if (saved !== shown && saved !== fresh.content) return
           takeContent(fresh.content)
         })
         .catch((readError: unknown) => log.warn('the note was not read again', readError))
