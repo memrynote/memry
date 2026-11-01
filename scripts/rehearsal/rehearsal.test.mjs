@@ -100,9 +100,10 @@ describe('rehearse', () => {
 })
 
 // `gh` for `rehearse.mjs build`: `api` replies come from the state file, `workflow run` prints the
-// URL of run 88 (as gh 2.101 does) unless `printUrl` is false, `run view` gives run 88's head, and
-// each `run list` returns the next entry of `lists` (the last one repeats), with `now` as the time
-// of the call. Every call is appended to the log.
+// URL of run 88 (as gh 2.101 does) unless `printUrl` is false, `run view` gives run 88's head after
+// failing `viewFailures` times, `run cancel` fails when `cancelFails`, and each `run list` returns
+// the next entry of `lists` (the last one repeats), with `now` as the time of the call. Every call
+// is appended to the log.
 const FAKE_GH = `#!/usr/bin/env node
 const fs = require('node:fs')
 const args = process.argv.slice(2)
@@ -119,7 +120,15 @@ if (args[0] === 'api' && url) {
 } else if (call === 'workflow run') {
   if (state.printUrl) console.log('https://github.com/' + state.feedRepo + '/actions/runs/88')
 } else if (call === 'run view') {
+  const seen = fs.readFileSync(process.env.FAKE_GH_LOG, 'utf8').split('\\n')
+  if (seen.filter((line) => line.startsWith('["run","view"')).length <= state.viewFailures) {
+    console.error('fake gh: HTTP 404: run not found')
+    process.exit(1)
+  }
   process.stdout.write(state.runHeadSha)
+} else if (call === 'run cancel' && state.cancelFails) {
+  console.error('fake gh: cancel refused')
+  process.exit(1)
 } else if (call === 'run list') {
   const seen = fs.readFileSync(process.env.FAKE_GH_LOG, 'utf8').split('\\n')
   const index = seen.filter((line) => line.startsWith('["run","list"')).length - 1
@@ -154,7 +163,9 @@ function build(
     runHeadSha = REHEARSAL_SHA,
     printUrl = true,
     lists = [[]],
-    sourceRef = 'feat/x'
+    sourceRef = 'feat/x',
+    viewFailures = 0,
+    cancelFails = false
   }
 ) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'rehearse-build-'))
@@ -168,6 +179,8 @@ function build(
       printUrl,
       runHeadSha,
       lists,
+      viewFailures,
+      cancelFails,
       api: {
         [`repos/${FEED_REPO}/commits/main`]: REHEARSAL_SHA,
         'repos/memrynote/memry/commits/feat%2Fx': SOURCE_SHA,
@@ -199,7 +212,8 @@ function build(
   return {
     ...result,
     dispatch: calls.find(([a, b]) => a === 'workflow' && b === 'run'),
-    cancels: calls.filter(([a, b]) => a === 'run' && b === 'cancel')
+    cancels: calls.filter(([a, b]) => a === 'run' && b === 'cancel'),
+    views: calls.filter(([a, b]) => a === 'run' && b === 'view')
   }
 }
 
@@ -215,8 +229,9 @@ describe(
     // A copy that is neither this checkout's nor the source commit's.
     const elsewhere =
       'jobs:\n  windows:\n    steps:\n      - run: node scripts/release/pe-imports.mjs pack/Memrynote.exe\n'
-    const versions = ['2099.999.1', '2099.999.2', '2099.999.3', '2099.999.4', '2099.999.5']
-    const [refused, wrongRun, recorded, listed, defaulted] = versions
+    const versions = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `2099.999.${n}`)
+    const [refused, wrongRun, recorded, listed, defaulted, listedWrong, cancelFailed, viewRetried] =
+      versions
     // `build` records the run id under `.rehearsal-state/<version>`.
     after(() => {
       for (const version of versions) {
@@ -261,8 +276,37 @@ describe(
         `source_ref=${SOURCE_SHA}`
       ])
       assert.equal(result.status, 1, result.stderr)
-      assert.match(result.stderr, /run 88 started from cccccccccc, not the checked aaaaaaaaaa/)
+      assert.match(
+        result.stderr,
+        /run 88 started from cccccccccc, not the checked aaaaaaaaaa: .* Cancelled it; build again\./
+      )
       assert.deepEqual(result.cancels, [['run', 'cancel', '-R', FEED_REPO, '88']])
+    })
+
+    it('says so when cancelling the mismatched run fails, instead of claiming it cancelled it', () => {
+      const result = build(cancelFailed, {
+        rehearsalCopy: elsewhere,
+        sourceCopy: elsewhere,
+        runHeadSha: 'c'.repeat(40),
+        cancelFails: true
+      })
+      assert.equal(result.status, 1, result.stderr)
+      assert.match(
+        result.stderr,
+        /Cancelling it failed \(fake gh: cancel refused\): cancel it by hand and build again\./
+      )
+      assert.doesNotMatch(result.stderr, /Cancelled it/)
+    })
+
+    it('reads the printed run again when GitHub does not list it yet', () => {
+      const result = build(viewRetried, {
+        rehearsalCopy: elsewhere,
+        sourceCopy: elsewhere,
+        viewFailures: 1
+      })
+      assert.equal(result.status, 0, result.stderr)
+      assert.match(result.stdout, /build run: 88/)
+      assert.equal(result.views.length, 2)
     })
 
     it('records the run gh printed when it started from the checked commit', () => {
@@ -290,6 +334,20 @@ describe(
       assert.deepEqual(result.cancels, [])
     })
 
+    // A listed run is only the newest since the dispatch, and may be another dispatch's.
+    it('without a printed URL, leaves a mismatched newest run running', () => {
+      const newest = { databaseId: 77, createdAt: 'now', headSha: 'c'.repeat(40) }
+      const result = build(listedWrong, {
+        rehearsalCopy: elsewhere,
+        sourceCopy: elsewhere,
+        printUrl: false,
+        lists: [[newest]]
+      })
+      assert.equal(result.status, 1, result.stderr)
+      assert.match(result.stderr, /run 77 started from cccccccccc, .* so it was left running/)
+      assert.deepEqual(result.cancels, [])
+    })
+
     it("pins the workflow's own source_ref default when no --source-ref is given", () => {
       const copy = `on:\n  workflow_dispatch:\n    inputs:\n      source_ref:\n        description: x\n        required: false\n        default: 'feat/x'\n${elsewhere}`
       const result = build(defaulted, { rehearsalCopy: copy, sourceCopy: copy, sourceRef: null })
@@ -308,17 +366,19 @@ describe(
 )
 
 describe('drive-electron-update', () => {
-  // The PDF host page appears once a vault with PDFs is indexed, and may be listed first.
-  it('attaches to the main window page, not the PDF host page listed before it', () => {
+  // The PDF host page appears once a vault with PDFs is indexed, and Quick Capture loads the same
+  // index.html with a hash; either may be listed first.
+  it('attaches to the main window page, not the PDF host or Quick Capture page listed before it', () => {
     const renderer =
       'file:///C:/Users/a/AppData/Local/Programs/Memrynote/resources/app.asar/out/renderer'
     const targets = [
       { type: 'page', title: 'MemryNote PDF host', url: `${renderer}/pdf-host.html` },
+      { type: 'page', title: 'Quick Capture', url: `${renderer}/index.html#quick-capture` },
       { type: 'page', title: 'MemryNote', url: `${renderer}/index.html` },
       { type: 'worker', title: '', url: '' }
     ]
-    assert.equal(mainPage(targets), targets[1])
-    assert.equal(mainPage([targets[0], targets[2]]), undefined)
+    assert.equal(mainPage(targets), targets[2])
+    assert.equal(mainPage([targets[0], targets[1], targets[3]]), undefined)
   })
 
   it('returns the first matching state and reports the last state on timeout', async () => {
