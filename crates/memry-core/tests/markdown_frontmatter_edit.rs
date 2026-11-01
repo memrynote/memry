@@ -1,8 +1,8 @@
 //! The in-place frontmatter edit (`serialize_updated_note`) byte for byte against the Electron
 //! property edits in `fixtures/frontmatter-edit.json` (captured by
 //! `scripts/electron-fixtures/capture-frontmatter-edit.mjs`): every golden vault file and a few
-//! handmade ones, each taking a property set, a property merge and a header tag edit as
-//! Electron's `updateNote` writes them.
+//! handmade ones, each taking a property set, a property merge, a header tag edit and a body
+//! edit as Electron's `updateNote` writes them.
 
 #![cfg(feature = "markdown")]
 
@@ -64,7 +64,13 @@ fn case_outcome(files: &Json, case: &Json) -> Result<(), String> {
             ));
         }
     }
-    let content = parsed.content.clone();
+    // An editor save changes the body too; every other case keeps the file's.
+    let content = case
+        .get("content")
+        .map_or(parsed.content.as_str(), |body| {
+            body.as_str().expect("content")
+        })
+        .to_owned();
     let output = serialize_updated_note(parsed, &reading, next, &content, edited)
         .map_err(|error| error.to_string())?;
     bytes_equal(case["output"].as_str().expect("output"), &output)
@@ -80,7 +86,8 @@ fn every_electron_property_edit_writes_the_same_bytes() {
     );
     // The fixture covers both ways out of the in-place edit.
     let in_place = |want: bool| cases.iter().filter(|c| c["inPlace"] == want).count();
-    assert!(in_place(true) > 200 && in_place(false) > 10);
+    assert!(in_place(true) > 300 && in_place(false) > 50);
+    assert!(cases.iter().filter(|c| c.get("content").is_some()).count() > 80);
     let mut failures = Failures::default();
     for case in cases {
         let id = case["id"].as_str().expect("id");

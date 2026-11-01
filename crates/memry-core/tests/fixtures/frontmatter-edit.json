@@ -3,7 +3,7 @@
     "oracle": "apps/desktop updateNote: parseNote, nextNoteFrontmatter, serializeUpdatedNote",
     "capture": "scripts/electron-fixtures/capture-frontmatter-edit.mjs",
     "yamlJsonEncoding": "apps/desktop/scripts/markdown-oracle/yaml-json.ts",
-    "caseCount": 369
+    "caseCount": 512
   },
   "files": {
     "golden/block-ids.md": "Paragraph one anchors here. ^abc123\n\nAnother referenced block. ^block-ref-42\n",
@@ -44,7 +44,12 @@
     "handmade/column-zero-comment": "---\nstatus: draft\n# between\nnext: 1\n---\nBody\n",
     "handmade/tags-scalar": "---\ntags: solo\nstatus: x\n---\nBody\n",
     "handmade/list-dash-at-column-zero": "---\nlist:\n- a\n- b\nstatus: x\n---\nBody\n",
-    "handmade/cover-and-writing": "---\ncover: wash:sage\nstatus: x\n---\nBody\n"
+    "handmade/cover-and-writing": "---\ncover: wash:sage\nstatus: x\n---\nBody\n",
+    "handmade/block-at-eof-crlf": "---\r\nstatus: x\r\n---",
+    "handmade/bom-crlf": "﻿---\r\nstatus: x\r\n---\r\nBody\r\n",
+    "handmade/nbsp-key": "---\n weird: 1\n---\nBody\n",
+    "handmade/indented-root": "---\n  a: 1\n---\nBody\n",
+    "handmade/keep-chomp": "---\na: |+\n  x\n\nb: 1\n---\nBody\n"
   },
   "cases": [
     {
@@ -88,6 +93,28 @@
       "output": "---\ntags:\n  - added-tag\n---\nParagraph one anchors here. ^abc123\n\nAnother referenced block. ^block-ref-42\n"
     },
     {
+      "id": "golden/block-ids.md/body",
+      "file": "golden/block-ids.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {},
+      "next": {},
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "New first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/block-ids.md/merge-add-and-body",
+      "file": "golden/block-ids.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {},
+      "next": { "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": null,
+      "output": "---\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "golden/bom.md/set-same",
       "file": "golden/bom.md",
       "op": { "kind": "set", "properties": {} },
@@ -126,6 +153,28 @@
       "edited": true,
       "inPlace": true,
       "output": "﻿---\ntags:\n  - bom\n  - added-tag\n---\nBOM body.\n"
+    },
+    {
+      "id": "golden/bom.md/body",
+      "file": "golden/bom.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "tags": ["bom"] },
+      "next": { "tags": ["bom"] },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "﻿---\ntags:\n  - bom\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/bom.md/merge-add-and-body",
+      "file": "golden/bom.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "tags": ["bom"] },
+      "next": { "tags": ["bom"], "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "﻿---\ntags:\n  - bom\nfresh: true\n---\nOne\nTwo\n"
     },
     {
       "id": "golden/bom.md/tags-remove-all",
@@ -178,6 +227,28 @@
       "output": "---\r\ntags:\r\n  - crlf\r\n  - added-tag\r\n---\r\nCRLF body line one.\r\nLine two.\r\n"
     },
     {
+      "id": "golden/crlf.md/body",
+      "file": "golden/crlf.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "tags": ["crlf"] },
+      "next": { "tags": ["crlf"] },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\r\ntags:\r\n  - crlf\r\n---\r\nNew first line.\r\n\r\nSecond paragraph.\r\n"
+    },
+    {
+      "id": "golden/crlf.md/merge-add-and-body",
+      "file": "golden/crlf.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "tags": ["crlf"] },
+      "next": { "tags": ["crlf"], "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\r\ntags:\r\n  - crlf\r\nfresh: true\r\n---\r\nOne\r\nTwo\r\n"
+    },
+    {
       "id": "golden/crlf.md/tags-remove-all",
       "file": "golden/crlf.md",
       "op": { "kind": "tags", "headerTags": [] },
@@ -228,6 +299,28 @@
       "output": "---\ntags:\n  - added-tag\n---\nrating:: 9\nauthor:: [[Some Author]]\n\nParagraph with [due:: 2026-08-01] inline field.\n"
     },
     {
+      "id": "golden/dataview-inline-fields.md/body",
+      "file": "golden/dataview-inline-fields.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {},
+      "next": {},
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "New first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/dataview-inline-fields.md/merge-add-and-body",
+      "file": "golden/dataview-inline-fields.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {},
+      "next": { "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": null,
+      "output": "---\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "golden/empty-frontmatter.md/set-same",
       "file": "golden/empty-frontmatter.md",
       "op": { "kind": "set", "properties": {} },
@@ -266,6 +359,28 @@
       "edited": true,
       "inPlace": true,
       "output": "---\ntags:\n  - added-tag\n---\n\nBody after an empty frontmatter block.\n"
+    },
+    {
+      "id": "golden/empty-frontmatter.md/body",
+      "file": "golden/empty-frontmatter.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {},
+      "next": {},
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/empty-frontmatter.md/merge-add-and-body",
+      "file": "golden/empty-frontmatter.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {},
+      "next": { "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nfresh: true\n---\n\nOne\nTwo\n"
     },
     {
       "id": "golden/nested-callouts.md/set-same",
@@ -308,6 +423,28 @@
       "output": "---\ntags:\n  - added-tag\n---\n> [!note] Outer callout\n> Outer body text\n>\n> > [!warning] Inner callout\n> > Inner body text\n"
     },
     {
+      "id": "golden/nested-callouts.md/body",
+      "file": "golden/nested-callouts.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {},
+      "next": {},
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "New first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/nested-callouts.md/merge-add-and-body",
+      "file": "golden/nested-callouts.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {},
+      "next": { "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": null,
+      "output": "---\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "golden/no-frontmatter.md/set-same",
       "file": "golden/no-frontmatter.md",
       "op": { "kind": "set", "properties": {} },
@@ -348,6 +485,28 @@
       "output": "---\ntags:\n  - added-tag\n---\nJust a plain note with **bold** text and no frontmatter.\n"
     },
     {
+      "id": "golden/no-frontmatter.md/body",
+      "file": "golden/no-frontmatter.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {},
+      "next": {},
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "New first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/no-frontmatter.md/merge-add-and-body",
+      "file": "golden/no-frontmatter.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {},
+      "next": { "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": null,
+      "output": "---\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "golden/no-trailing-newline.md/set-same",
       "file": "golden/no-trailing-newline.md",
       "op": { "kind": "set", "properties": { "kept": "value" } },
@@ -386,6 +545,28 @@
       "edited": true,
       "inPlace": true,
       "output": "---\nkept: value\ntags:\n  - added-tag\n---\nNo final newline here."
+    },
+    {
+      "id": "golden/no-trailing-newline.md/body",
+      "file": "golden/no-trailing-newline.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "kept": "value" },
+      "next": { "kept": "value" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\nkept: value\n---\nNew first line.\n\nSecond paragraph."
+    },
+    {
+      "id": "golden/no-trailing-newline.md/merge-add-and-body",
+      "file": "golden/no-trailing-newline.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "kept": "value" },
+      "next": { "kept": "value", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nkept: value\nfresh: true\n---\nOne\nTwo"
     },
     {
       "id": "golden/no-trailing-newline.md/set-change-first",
@@ -498,6 +679,28 @@
       "output": "---\ntags:\n  - added-tag\n---\nText with %%inline comment%% inside.\n\n%%\nblock comment\nspanning lines\n%%\n\nAfter the comment.\n"
     },
     {
+      "id": "golden/percent-comments.md/body",
+      "file": "golden/percent-comments.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {},
+      "next": {},
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "New first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/percent-comments.md/merge-add-and-body",
+      "file": "golden/percent-comments.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {},
+      "next": { "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": null,
+      "output": "---\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "golden/roundtrip-alignment.md/set-same",
       "file": "golden/roundtrip-alignment.md",
       "op": { "kind": "set", "properties": { "title": "Text alignment round-trip corpus" } },
@@ -539,6 +742,28 @@
       "edited": true,
       "inPlace": true,
       "output": "---\ntitle: Text alignment round-trip corpus\ntags:\n  - added-tag\n---\n\nA paragraph nobody has aligned\n\n<!-- align:center -->\nCentred paragraph\n\n<!-- align:right -->\n## Right-aligned heading\n\n<!-- align:justify -->\nJustified paragraph\n"
+    },
+    {
+      "id": "golden/roundtrip-alignment.md/body",
+      "file": "golden/roundtrip-alignment.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "title": "Text alignment round-trip corpus" },
+      "next": { "title": "Text alignment round-trip corpus" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntitle: Text alignment round-trip corpus\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/roundtrip-alignment.md/merge-add-and-body",
+      "file": "golden/roundtrip-alignment.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "title": "Text alignment round-trip corpus" },
+      "next": { "title": "Text alignment round-trip corpus", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntitle: Text alignment round-trip corpus\nfresh: true\n---\n\nOne\nTwo\n"
     },
     {
       "id": "golden/roundtrip-alignment.md/set-change-first",
@@ -657,6 +882,28 @@
       "output": "---\ntitle: Block marker round-trip corpus\ntags:\n  - added-tag\n---\n\nEvery custom block whose on-disk form is a marker, as Memry writes it.\n\n![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)\n\n![bookmark](https://example.com/a)\n\n<!-- file:{\"url\":\"memry-file://local/v/a/x.pdf\",\"name\":\"x.pdf\",\"size\":1234,\"mimeType\":\"application/pdf\"} -->\n\n- [ ] a task {task:t1}\n\n- [x] a done task {task:t2}\n\n$$\nE = mc^2\n$$\n\n![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)\n\n| a        | b               |\n| -------- | --------------- |\n| [x] done | ![alt](img.png) |\n\n| a                     | b                   |\n| --------------------- | ------------------- |\n| [[Roadmap\\|the plan]] | **bold** *it* ~~s~~ |\n"
     },
     {
+      "id": "golden/roundtrip-block-markers.md/body",
+      "file": "golden/roundtrip-block-markers.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "title": "Block marker round-trip corpus" },
+      "next": { "title": "Block marker round-trip corpus" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntitle: Block marker round-trip corpus\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/roundtrip-block-markers.md/merge-add-and-body",
+      "file": "golden/roundtrip-block-markers.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "title": "Block marker round-trip corpus" },
+      "next": { "title": "Block marker round-trip corpus", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntitle: Block marker round-trip corpus\nfresh: true\n---\n\nOne\nTwo\n"
+    },
+    {
       "id": "golden/roundtrip-block-markers.md/set-change-first",
       "file": "golden/roundtrip-block-markers.md",
       "op": { "kind": "set", "properties": { "title": "changed" } },
@@ -768,6 +1015,28 @@
       "edited": true,
       "inPlace": true,
       "output": "---\ntitle: Callout round-trip corpus\ntags:\n  - added-tag\n---\n\n> [!info]\n> Heads up\n\n> [!warning]\n> Careful now\n\n> [!error]\n> Something broke\n\n> [!success]\n> All done\n\n> [!note]\n> A type Memry shares with other apps\n\n> [!tip]\n> So is this one\n\n> [!danger]\n> A foreign type stays byte-identical\n\n> [!info]-\n> Starts closed\n\n> [!tip]+\n> Starts open\n\n> [!mytype]\n> A custom type nobody defined stays a quote\n\n> [!mytype]-\n> With a fold marker too\n"
+    },
+    {
+      "id": "golden/roundtrip-callouts.md/body",
+      "file": "golden/roundtrip-callouts.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "title": "Callout round-trip corpus" },
+      "next": { "title": "Callout round-trip corpus" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntitle: Callout round-trip corpus\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/roundtrip-callouts.md/merge-add-and-body",
+      "file": "golden/roundtrip-callouts.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "title": "Callout round-trip corpus" },
+      "next": { "title": "Callout round-trip corpus", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntitle: Callout round-trip corpus\nfresh: true\n---\n\nOne\nTwo\n"
     },
     {
       "id": "golden/roundtrip-callouts.md/set-change-first",
@@ -889,6 +1158,28 @@
       "output": "---\ntitle: Tokens inside containers round-trip corpus\ntags:\n  - added-tag\n---\n\n- ((mention:https%3A%2F%2Fexample.com%2Fa_b_c))\n- ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))\n- [[Roadmap|the plan]]\n\n<details data-memry-toggle>\n<summary>Tokens in a toggle body</summary>\n\n((mention:https%3A%2F%2Fexample.com%2Fa_b_c)) and ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))\n\n</details>\n"
     },
     {
+      "id": "golden/roundtrip-containers.md/body",
+      "file": "golden/roundtrip-containers.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "title": "Tokens inside containers round-trip corpus" },
+      "next": { "title": "Tokens inside containers round-trip corpus" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntitle: Tokens inside containers round-trip corpus\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/roundtrip-containers.md/merge-add-and-body",
+      "file": "golden/roundtrip-containers.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "title": "Tokens inside containers round-trip corpus" },
+      "next": { "title": "Tokens inside containers round-trip corpus", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntitle: Tokens inside containers round-trip corpus\nfresh: true\n---\n\nOne\nTwo\n"
+    },
+    {
       "id": "golden/roundtrip-containers.md/set-change-first",
       "file": "golden/roundtrip-containers.md",
       "op": { "kind": "set", "properties": { "title": "changed" } },
@@ -1005,6 +1296,28 @@
       "output": "---\ntitle: Inline token round-trip corpus\ntags:\n  - added-tag\n---\n\nIntro ((mention:https%3A%2F%2Fexample.com%2Fa_b_c)) outro.\n\nA parenthesised article ((mention:https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FRust_%28programming_language%29)) survives.\n\nQuery strings ((mention:https%3A%2F%2Fexample.com%2F%3Fa%3D1%26b%3D2%26c%3Dx_y)) and spaces ((mention:https%3A%2F%2Fexample.com%2Fa%20b)) too.\n\nNon-ASCII ((mention:https%3A%2F%2Fexample.com%2F%E6%97%A5%E6%9C%AC%E8%AA%9E)) as well.\n\nBefore ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)) after.\n\nSee [[Roadmap]] and [[Roadmap|the plan]] and #tag inline with ((date:eyJhbmNob3JJZCI6ImZpeHR1cmUtYW5jaG9yIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)).\n"
     },
     {
+      "id": "golden/roundtrip-inline-tokens.md/body",
+      "file": "golden/roundtrip-inline-tokens.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "title": "Inline token round-trip corpus" },
+      "next": { "title": "Inline token round-trip corpus" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntitle: Inline token round-trip corpus\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/roundtrip-inline-tokens.md/merge-add-and-body",
+      "file": "golden/roundtrip-inline-tokens.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "title": "Inline token round-trip corpus" },
+      "next": { "title": "Inline token round-trip corpus", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntitle: Inline token round-trip corpus\nfresh: true\n---\n\nOne\nTwo\n"
+    },
+    {
       "id": "golden/roundtrip-inline-tokens.md/set-change-first",
       "file": "golden/roundtrip-inline-tokens.md",
       "op": { "kind": "set", "properties": { "title": "changed" } },
@@ -1118,6 +1431,28 @@
       "output": "---\ntitle: Blockquote round-trip corpus\ntags:\n  - added-tag\n---\n\n> A flat quote stays one block\n\n> One\n>\n> Two\n\n> [!info]\n> One\n>\n> Two\n\n> [!note] Outer callout\n> Outer body text\n>\n> > [!warning] Inner callout\n> > Inner body text\n\n> Intro\n>\n> - one\n> - two\n\n> Intro\n>\n> ```ts\n> const x = 1\n> ```\n"
     },
     {
+      "id": "golden/roundtrip-quotes.md/body",
+      "file": "golden/roundtrip-quotes.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "title": "Blockquote round-trip corpus" },
+      "next": { "title": "Blockquote round-trip corpus" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntitle: Blockquote round-trip corpus\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/roundtrip-quotes.md/merge-add-and-body",
+      "file": "golden/roundtrip-quotes.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "title": "Blockquote round-trip corpus" },
+      "next": { "title": "Blockquote round-trip corpus", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntitle: Blockquote round-trip corpus\nfresh: true\n---\n\nOne\nTwo\n"
+    },
+    {
       "id": "golden/roundtrip-quotes.md/set-change-first",
       "file": "golden/roundtrip-quotes.md",
       "op": { "kind": "set", "properties": { "title": "changed" } },
@@ -1229,6 +1564,28 @@
       "edited": true,
       "inPlace": true,
       "output": "---\ntitle: Table layout marker round-trip corpus\ntags:\n  - added-tag\n---\n\nA table nobody has resized\n\n| Name | Status |\n| ---- | ------ |\n| Ship | Done   |\n\n<!-- table-colors:{\"1:0\":{\"textColor\":\"red\"}} -->\n<!-- table-layout:{\"columnWidths\":[120,null]} -->\n| Name | Status |\n| ---- | ------ |\n| Ship | Done   |\n"
+    },
+    {
+      "id": "golden/roundtrip-table-layout.md/body",
+      "file": "golden/roundtrip-table-layout.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "title": "Table layout marker round-trip corpus" },
+      "next": { "title": "Table layout marker round-trip corpus" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntitle: Table layout marker round-trip corpus\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/roundtrip-table-layout.md/merge-add-and-body",
+      "file": "golden/roundtrip-table-layout.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "title": "Table layout marker round-trip corpus" },
+      "next": { "title": "Table layout marker round-trip corpus", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntitle: Table layout marker round-trip corpus\nfresh: true\n---\n\nOne\nTwo\n"
     },
     {
       "id": "golden/roundtrip-table-layout.md/set-change-first",
@@ -1347,6 +1704,28 @@
       "output": "---\ntitle: Toggle round-trip corpus\ntags:\n  - added-tag\n---\n\n<details data-memry-toggle>\n<summary>Empty toggle</summary>\n</details>\n\n<details data-memry-toggle>\n<summary>Toggle with a body</summary>\n\nBody line\n\n</details>\n\n<details data-memry-toggle>\n<summary>Outer</summary>\n\n<details data-memry-toggle>\n<summary>Inner</summary>\n\nDeep body\n\n</details>\n\n</details>\n\n<details data-memry-toggle>\n<summary>Code fence body</summary>\n\n```ts\nconst x = 1\n```\n\n</details>\n\n<details data-memry-toggle open>\n<summary>Left expanded</summary>\n\nVisible body\n\n</details>\n\n\n<details data-memry-toggle>\n<summary>Two blank lines above me, one below</summary>\n\nBody line\n\n</details>\n\n<details>\n<summary>A hand-written details block</summary>\n\nLeft exactly as its author wrote it\n\n</details>\n\n<details data-memry-toggle>\n<summary>Never closed</summary>\n\nThe open and summary lines above stay in the file.\n"
     },
     {
+      "id": "golden/roundtrip-toggles.md/body",
+      "file": "golden/roundtrip-toggles.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "title": "Toggle round-trip corpus" },
+      "next": { "title": "Toggle round-trip corpus" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntitle: Toggle round-trip corpus\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/roundtrip-toggles.md/merge-add-and-body",
+      "file": "golden/roundtrip-toggles.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "title": "Toggle round-trip corpus" },
+      "next": { "title": "Toggle round-trip corpus", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntitle: Toggle round-trip corpus\nfresh: true\n---\n\nOne\nTwo\n"
+    },
+    {
       "id": "golden/roundtrip-toggles.md/set-change-first",
       "file": "golden/roundtrip-toggles.md",
       "op": { "kind": "set", "properties": { "title": "changed" } },
@@ -1457,6 +1836,28 @@
       "output": "---\ntags:\n  - added-tag\n---\n# Tasks\n\n- [ ] Plan trip ➕ 2026-01-01 ⏳ 2026-01-02 🛫 2026-01-03 📅 2026-01-04 🔁 every week\n- [x] Shipped thing ✅ 2026-01-05\n"
     },
     {
+      "id": "golden/tasks-emoji.md/body",
+      "file": "golden/tasks-emoji.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {},
+      "next": {},
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "New first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/tasks-emoji.md/merge-add-and-body",
+      "file": "golden/tasks-emoji.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {},
+      "next": { "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": null,
+      "output": "---\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "golden/yaml-anchors.md/set-same",
       "file": "golden/yaml-anchors.md",
       "op": {
@@ -1532,6 +1933,38 @@
       "edited": true,
       "inPlace": false,
       "output": "---\ndefaults:\n  owner: kaan\ncurrent:\n  owner: kaan\n  status: open\ntags:\n  - added-tag\n---\n\nAnchored frontmatter body.\n"
+    },
+    {
+      "id": "golden/yaml-anchors.md/body",
+      "file": "golden/yaml-anchors.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {
+        "defaults": { "owner": "kaan" },
+        "current": { "owner": "kaan", "status": "open" }
+      },
+      "next": { "defaults": { "owner": "kaan" }, "current": { "owner": "kaan", "status": "open" } },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ndefaults: &shared\n  owner: kaan\ncurrent:\n  <<: *shared\n  status: open\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/yaml-anchors.md/merge-add-and-body",
+      "file": "golden/yaml-anchors.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {
+        "defaults": { "owner": "kaan" },
+        "current": { "owner": "kaan", "status": "open" }
+      },
+      "next": {
+        "defaults": { "owner": "kaan" },
+        "current": { "owner": "kaan", "status": "open" },
+        "fresh": true
+      },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": false,
+      "output": "---\ndefaults:\n  owner: kaan\ncurrent:\n  owner: kaan\n  status: open\nfresh: true\n---\n\nOne\nTwo\n"
     },
     {
       "id": "golden/yaml-anchors.md/set-change-first",
@@ -1680,6 +2113,28 @@
       "output": "---\n# review metadata comment\nstatus: draft # inline comment\npriority: 2\ntags:\n  - added-tag\n---\n\nBody with a [[Wiki Link]] and text.\n"
     },
     {
+      "id": "golden/yaml-comments.md/body",
+      "file": "golden/yaml-comments.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "status": "draft", "priority": 2 },
+      "next": { "status": "draft", "priority": 2 },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\n# review metadata comment\nstatus: draft # inline comment\npriority: 2\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/yaml-comments.md/merge-add-and-body",
+      "file": "golden/yaml-comments.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "status": "draft", "priority": 2 },
+      "next": { "status": "draft", "priority": 2, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\n# review metadata comment\nstatus: draft # inline comment\npriority: 2\nfresh: true\n---\n\nOne\nTwo\n"
+    },
+    {
       "id": "golden/yaml-comments.md/set-change-first",
       "file": "golden/yaml-comments.md",
       "op": { "kind": "set", "properties": { "status": "changed", "priority": 2 } },
@@ -1788,6 +2243,28 @@
       "edited": true,
       "inPlace": true,
       "output": "---\ntags:\n  - alpha\n  - beta\n  - added-tag\ncoords: { x: 1, y: 2 }\n---\n\nFlow style body.\n"
+    },
+    {
+      "id": "golden/yaml-flow-style.md/body",
+      "file": "golden/yaml-flow-style.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "tags": ["alpha", "beta"], "coords": { "x": 1, "y": 2 } },
+      "next": { "tags": ["alpha", "beta"], "coords": { "x": 1, "y": 2 } },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntags: [alpha, beta]\ncoords: { x: 1, y: 2 }\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/yaml-flow-style.md/merge-add-and-body",
+      "file": "golden/yaml-flow-style.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "tags": ["alpha", "beta"], "coords": { "x": 1, "y": 2 } },
+      "next": { "tags": ["alpha", "beta"], "coords": { "x": 1, "y": 2 }, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntags: [alpha, beta]\ncoords: { x: 1, y: 2 }\nfresh: true\n---\n\nOne\nTwo\n"
     },
     {
       "id": "golden/yaml-flow-style.md/set-change-first",
@@ -1978,6 +2455,53 @@
       "edited": true,
       "inPlace": true,
       "output": "---\nsingle: \"It's quoted\"\ndouble: 'line with \"escapes\"'\nplain: unquoted value\nlink: '[[wikilink]]'\ntrailing-spaces-value: 'keep  '\ntags:\n  - added-tag\n---\n\nQuoting survives verbatim.\n"
+    },
+    {
+      "id": "golden/yaml-weird-quoting.md/body",
+      "file": "golden/yaml-weird-quoting.md",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {
+        "single": "It's quoted",
+        "double": "line with \"escapes\"",
+        "plain": "unquoted value",
+        "link": "[[wikilink]]",
+        "trailing-spaces-value": "keep  "
+      },
+      "next": {
+        "single": "It's quoted",
+        "double": "line with \"escapes\"",
+        "plain": "unquoted value",
+        "link": "[[wikilink]]",
+        "trailing-spaces-value": "keep  "
+      },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\nsingle: \"It's quoted\"\ndouble: 'line with \"escapes\"'\nplain: unquoted value\nlink: '[[wikilink]]'\ntrailing-spaces-value: 'keep  '\n---\n\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "golden/yaml-weird-quoting.md/merge-add-and-body",
+      "file": "golden/yaml-weird-quoting.md",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {
+        "single": "It's quoted",
+        "double": "line with \"escapes\"",
+        "plain": "unquoted value",
+        "link": "[[wikilink]]",
+        "trailing-spaces-value": "keep  "
+      },
+      "next": {
+        "single": "It's quoted",
+        "double": "line with \"escapes\"",
+        "plain": "unquoted value",
+        "link": "[[wikilink]]",
+        "trailing-spaces-value": "keep  ",
+        "fresh": true
+      },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nsingle: \"It's quoted\"\ndouble: 'line with \"escapes\"'\nplain: unquoted value\nlink: '[[wikilink]]'\ntrailing-spaces-value: 'keep  '\nfresh: true\n---\n\nOne\nTwo\n"
     },
     {
       "id": "golden/yaml-weird-quoting.md/set-change-first",
@@ -2247,6 +2771,49 @@
       "edited": true,
       "inPlace": true,
       "output": "---\ntitle: A\nstatus: draft\ndue: 2026-10-07\ntags:\n  - x\n  - added-tag\n---\nBody\n"
+    },
+    {
+      "id": "handmade/simple/body",
+      "file": "handmade/simple",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {
+        "title": "A",
+        "status": "draft",
+        "due": { "$date": "2026-10-07T00:00:00.000Z" },
+        "tags": ["x"]
+      },
+      "next": {
+        "title": "A",
+        "status": "draft",
+        "due": { "$date": "2026-10-07T00:00:00.000Z" },
+        "tags": ["x"]
+      },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntitle: A\nstatus: draft\ndue: 2026-10-07\ntags:\n  - x\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/simple/merge-add-and-body",
+      "file": "handmade/simple",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {
+        "title": "A",
+        "status": "draft",
+        "due": { "$date": "2026-10-07T00:00:00.000Z" },
+        "tags": ["x"]
+      },
+      "next": {
+        "title": "A",
+        "status": "draft",
+        "due": { "$date": "2026-10-07T00:00:00.000Z" },
+        "tags": ["x"],
+        "fresh": true
+      },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntitle: A\nstatus: draft\ndue: 2026-10-07\ntags:\n  - x\nfresh: true\n---\nOne\nTwo\n"
     },
     {
       "id": "handmade/simple/set-change-first",
@@ -2529,6 +3096,28 @@
       "output": "---\r\n# the author\r\nstatus: draft # trailing\r\n\r\nrating: 3\r\ntags:\r\n  - added-tag\r\n---\r\nBody\r\n"
     },
     {
+      "id": "handmade/crlf-comments/body",
+      "file": "handmade/crlf-comments",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "status": "draft", "rating": 3 },
+      "next": { "status": "draft", "rating": 3 },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\r\n# the author\r\nstatus: draft # trailing\r\n\r\nrating: 3\r\n---\r\nNew first line.\r\n\r\nSecond paragraph.\r\n"
+    },
+    {
+      "id": "handmade/crlf-comments/merge-add-and-body",
+      "file": "handmade/crlf-comments",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "status": "draft", "rating": 3 },
+      "next": { "status": "draft", "rating": 3, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\r\n# the author\r\nstatus: draft # trailing\r\n\r\nrating: 3\r\nfresh: true\r\n---\r\nOne\r\nTwo\r\n"
+    },
+    {
       "id": "handmade/crlf-comments/set-change-first",
       "file": "handmade/crlf-comments",
       "op": { "kind": "set", "properties": { "status": "changed", "rating": 3 } },
@@ -2640,6 +3229,28 @@
       "edited": true,
       "inPlace": true,
       "output": "---\nstatus: 'draft'\nnote: \"a: b\"\nempty:\ntags:\n  - added-tag\n---\nBody\n"
+    },
+    {
+      "id": "handmade/quoted/body",
+      "file": "handmade/quoted",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "status": "draft", "note": "a: b", "empty": null },
+      "next": { "status": "draft", "note": "a: b", "empty": null },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\nstatus: 'draft'\nnote: \"a: b\"\nempty:\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/quoted/merge-add-and-body",
+      "file": "handmade/quoted",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "status": "draft", "note": "a: b", "empty": null },
+      "next": { "status": "draft", "note": "a: b", "empty": null, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nstatus: 'draft'\nnote: \"a: b\"\nempty:\nfresh: true\n---\nOne\nTwo\n"
     },
     {
       "id": "handmade/quoted/set-change-first",
@@ -2781,6 +3392,33 @@
       "output": "---\nsummary: |\n  line one\n  line two\nlist:\n  - a\n  - b\nstatus: x\ntags:\n  - added-tag\n---\nBody"
     },
     {
+      "id": "handmade/multiline/body",
+      "file": "handmade/multiline",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "summary": "line one\nline two\n", "list": ["a", "b"], "status": "x" },
+      "next": { "summary": "line one\nline two\n", "list": ["a", "b"], "status": "x" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\nsummary: |\n  line one\n  line two\nlist:\n  - a\n  - b\nstatus: x\n---\nNew first line.\n\nSecond paragraph."
+    },
+    {
+      "id": "handmade/multiline/merge-add-and-body",
+      "file": "handmade/multiline",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "summary": "line one\nline two\n", "list": ["a", "b"], "status": "x" },
+      "next": {
+        "summary": "line one\nline two\n",
+        "list": ["a", "b"],
+        "status": "x",
+        "fresh": true
+      },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nsummary: |\n  line one\n  line two\nlist:\n  - a\n  - b\nstatus: x\nfresh: true\n---\nOne\nTwo"
+    },
+    {
       "id": "handmade/multiline/set-change-first",
       "file": "handmade/multiline",
       "op": {
@@ -2911,6 +3549,28 @@
       "output": "---\nb: 3\na: 1\ntags:\n  - added-tag\n---\nBody\n"
     },
     {
+      "id": "handmade/nested-envelope/body",
+      "file": "handmade/nested-envelope",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "properties": { "a": 1, "b": 2 }, "b": 3 },
+      "next": { "b": 3, "a": 1 },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nb: 3\na: 1\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/nested-envelope/merge-add-and-body",
+      "file": "handmade/nested-envelope",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "properties": { "a": 1, "b": 2 }, "b": 3 },
+      "next": { "b": 3, "a": 1, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nb: 3\na: 1\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "handmade/nested-envelope/set-change-first",
       "file": "handmade/nested-envelope",
       "op": { "kind": "set", "properties": { "a": "changed", "b": 3 } },
@@ -3022,6 +3682,28 @@
       "edited": true,
       "inPlace": false,
       "output": "---\nbase: hello\ncopy: hello\nstatus: x\ntags:\n  - added-tag\n---\nBody\n"
+    },
+    {
+      "id": "handmade/anchor/body",
+      "file": "handmade/anchor",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "base": "hello", "copy": "hello", "status": "x" },
+      "next": { "base": "hello", "copy": "hello", "status": "x" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\nbase: &b hello\ncopy: *b\nstatus: x\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/anchor/merge-add-and-body",
+      "file": "handmade/anchor",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "base": "hello", "copy": "hello", "status": "x" },
+      "next": { "base": "hello", "copy": "hello", "status": "x", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": false,
+      "output": "---\nbase: hello\ncopy: hello\nstatus: x\nfresh: true\n---\nOne\nTwo\n"
     },
     {
       "id": "handmade/anchor/set-change-first",
@@ -3137,6 +3819,28 @@
       "output": "---\nstatus: x\nrating: 2\ntags:\n  - added-tag\n---\nBody\n"
     },
     {
+      "id": "handmade/flow-map/body",
+      "file": "handmade/flow-map",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "status": "x", "rating": 2 },
+      "next": { "status": "x", "rating": 2 },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\n{status: x, rating: 2}\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/flow-map/merge-add-and-body",
+      "file": "handmade/flow-map",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "status": "x", "rating": 2 },
+      "next": { "status": "x", "rating": 2, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": false,
+      "output": "---\nstatus: x\nrating: 2\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "handmade/flow-map/set-change-first",
       "file": "handmade/flow-map",
       "op": { "kind": "set", "properties": { "status": "changed", "rating": 2 } },
@@ -3247,6 +3951,28 @@
       "output": "---\ntags:\n  - added-tag\n---\nJust a body\n"
     },
     {
+      "id": "handmade/no-frontmatter/body",
+      "file": "handmade/no-frontmatter",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {},
+      "next": {},
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "New first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/no-frontmatter/merge-add-and-body",
+      "file": "handmade/no-frontmatter",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {},
+      "next": { "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": null,
+      "output": "---\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "handmade/empty-block/set-same",
       "file": "handmade/empty-block",
       "op": { "kind": "set", "properties": {} },
@@ -3285,6 +4011,28 @@
       "edited": true,
       "inPlace": true,
       "output": "---\ntags:\n  - added-tag\n---\nBody\n"
+    },
+    {
+      "id": "handmade/empty-block/body",
+      "file": "handmade/empty-block",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {},
+      "next": {},
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/empty-block/merge-add-and-body",
+      "file": "handmade/empty-block",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {},
+      "next": { "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nfresh: true\n---\nOne\nTwo\n"
     },
     {
       "id": "handmade/dates/set-same",
@@ -3375,6 +4123,45 @@
       "edited": true,
       "inPlace": true,
       "output": "---\ndue: 2026-10-07\nwhen: '2026-10-07'\nat: 2026-10-07T10:30:00.000Z\ntags:\n  - added-tag\n---\n"
+    },
+    {
+      "id": "handmade/dates/body",
+      "file": "handmade/dates",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": {
+        "due": { "$date": "2026-10-07T00:00:00.000Z" },
+        "when": "2026-10-07",
+        "at": { "$date": "2026-10-07T10:30:00.000Z" }
+      },
+      "next": {
+        "due": { "$date": "2026-10-07T00:00:00.000Z" },
+        "when": "2026-10-07",
+        "at": { "$date": "2026-10-07T10:30:00.000Z" }
+      },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ndue: 2026-10-07\nwhen: '2026-10-07'\nat: 2026-10-07T10:30:00.000Z\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/dates/merge-add-and-body",
+      "file": "handmade/dates",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": {
+        "due": { "$date": "2026-10-07T00:00:00.000Z" },
+        "when": "2026-10-07",
+        "at": { "$date": "2026-10-07T10:30:00.000Z" }
+      },
+      "next": {
+        "due": { "$date": "2026-10-07T00:00:00.000Z" },
+        "when": "2026-10-07",
+        "at": { "$date": "2026-10-07T10:30:00.000Z" },
+        "fresh": true
+      },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ndue: 2026-10-07\nwhen: '2026-10-07'\nat: 2026-10-07T10:30:00.000Z\nfresh: true\n---\nOne\nTwo\n"
     },
     {
       "id": "handmade/dates/set-change-first",
@@ -3630,6 +4417,28 @@
       "output": "---\nstatus: x\ntags:\n  - added-tag\n---"
     },
     {
+      "id": "handmade/block-at-eof/body",
+      "file": "handmade/block-at-eof",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "status": "x" },
+      "next": { "status": "x" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\nstatus: x\n---\nNew first line.\n\nSecond paragraph."
+    },
+    {
+      "id": "handmade/block-at-eof/merge-add-and-body",
+      "file": "handmade/block-at-eof",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "status": "x" },
+      "next": { "status": "x", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nstatus: x\nfresh: true\n---\nOne\nTwo"
+    },
+    {
       "id": "handmade/block-at-eof/set-change-first",
       "file": "handmade/block-at-eof",
       "op": { "kind": "set", "properties": { "status": "changed" } },
@@ -3738,6 +4547,28 @@
       "edited": true,
       "inPlace": true,
       "output": "﻿---\nstatus: x\ntags:\n  - added-tag\n---\nBody\n"
+    },
+    {
+      "id": "handmade/bom/body",
+      "file": "handmade/bom",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "status": "x" },
+      "next": { "status": "x" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "﻿---\nstatus: x\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/bom/merge-add-and-body",
+      "file": "handmade/bom",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "status": "x" },
+      "next": { "status": "x", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "﻿---\nstatus: x\nfresh: true\n---\nOne\nTwo\n"
     },
     {
       "id": "handmade/bom/set-change-first",
@@ -3850,6 +4681,28 @@
       "output": "---\nstatus: draft\n  # an indented comment\nnext: 1\ntags:\n  - added-tag\n---\nBody\n"
     },
     {
+      "id": "handmade/indented-comment/body",
+      "file": "handmade/indented-comment",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "status": "draft", "next": 1 },
+      "next": { "status": "draft", "next": 1 },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\nstatus: draft\n  # an indented comment\nnext: 1\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/indented-comment/merge-add-and-body",
+      "file": "handmade/indented-comment",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "status": "draft", "next": 1 },
+      "next": { "status": "draft", "next": 1, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nstatus: draft\n  # an indented comment\nnext: 1\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "handmade/indented-comment/set-change-first",
       "file": "handmade/indented-comment",
       "op": { "kind": "set", "properties": { "status": "changed", "next": 1 } },
@@ -3960,6 +4813,28 @@
       "output": "---\nstatus: draft\n# between\nnext: 1\ntags:\n  - added-tag\n---\nBody\n"
     },
     {
+      "id": "handmade/column-zero-comment/body",
+      "file": "handmade/column-zero-comment",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "status": "draft", "next": 1 },
+      "next": { "status": "draft", "next": 1 },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\nstatus: draft\n# between\nnext: 1\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/column-zero-comment/merge-add-and-body",
+      "file": "handmade/column-zero-comment",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "status": "draft", "next": 1 },
+      "next": { "status": "draft", "next": 1, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nstatus: draft\n# between\nnext: 1\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "handmade/column-zero-comment/set-change-first",
       "file": "handmade/column-zero-comment",
       "op": { "kind": "set", "properties": { "status": "changed", "next": 1 } },
@@ -4068,6 +4943,28 @@
       "edited": true,
       "inPlace": true,
       "output": "---\ntags:\n  - solo\n  - added-tag\nstatus: x\n---\nBody\n"
+    },
+    {
+      "id": "handmade/tags-scalar/body",
+      "file": "handmade/tags-scalar",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "tags": ["solo"], "status": "x" },
+      "next": { "tags": ["solo"], "status": "x" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ntags: solo\nstatus: x\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/tags-scalar/merge-add-and-body",
+      "file": "handmade/tags-scalar",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "tags": ["solo"], "status": "x" },
+      "next": { "tags": ["solo"], "status": "x", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ntags: solo\nstatus: x\nfresh: true\n---\nOne\nTwo\n"
     },
     {
       "id": "handmade/tags-scalar/set-change-first",
@@ -4193,6 +5090,28 @@
       "output": "---\nlist:\n- a\n- b\nstatus: x\ntags:\n  - added-tag\n---\nBody\n"
     },
     {
+      "id": "handmade/list-dash-at-column-zero/body",
+      "file": "handmade/list-dash-at-column-zero",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "list": ["a", "b"], "status": "x" },
+      "next": { "list": ["a", "b"], "status": "x" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\nlist:\n- a\n- b\nstatus: x\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/list-dash-at-column-zero/merge-add-and-body",
+      "file": "handmade/list-dash-at-column-zero",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "list": ["a", "b"], "status": "x" },
+      "next": { "list": ["a", "b"], "status": "x", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\nlist:\n- a\n- b\nstatus: x\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "handmade/list-dash-at-column-zero/set-change-first",
       "file": "handmade/list-dash-at-column-zero",
       "op": { "kind": "set", "properties": { "list": "changed", "status": "x" } },
@@ -4313,6 +5232,28 @@
       "output": "---\ncover: wash:sage\nstatus: x\ntags:\n  - added-tag\n---\nBody\n"
     },
     {
+      "id": "handmade/cover-and-writing/body",
+      "file": "handmade/cover-and-writing",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "cover": "wash:sage", "status": "x" },
+      "next": { "cover": "wash:sage", "status": "x" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\ncover: wash:sage\nstatus: x\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/cover-and-writing/merge-add-and-body",
+      "file": "handmade/cover-and-writing",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "cover": "wash:sage", "status": "x" },
+      "next": { "cover": "wash:sage", "status": "x", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\ncover: wash:sage\nstatus: x\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
       "id": "handmade/cover-and-writing/set-change-first",
       "file": "handmade/cover-and-writing",
       "op": { "kind": "set", "properties": { "status": "changed" } },
@@ -4381,6 +5322,666 @@
       "edited": true,
       "inPlace": true,
       "output": "---\ncover: wash:sage\n---\nBody\n"
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/set-same",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "set", "properties": { "status": "x" } },
+      "reading": { "status": "x" },
+      "next": { "status": "x" },
+      "edited": false,
+      "inPlace": null,
+      "output": "---\r\nstatus: x\r\n---"
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/set-add",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "set", "properties": { "status": "x", "added": "new value" } },
+      "reading": { "status": "x" },
+      "next": { "status": "x", "added": "new value" },
+      "edited": true,
+      "inPlace": true,
+      "output": "---\r\nstatus: x\r\nadded: new value\r\n---"
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/merge-add",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "merge", "patch": { "fresh": true } },
+      "reading": { "status": "x" },
+      "next": { "status": "x", "fresh": true },
+      "edited": true,
+      "inPlace": true,
+      "output": "---\r\nstatus: x\r\nfresh: true\r\n---"
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/tags-add",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "tags", "headerTags": ["added-tag"] },
+      "reading": { "status": "x" },
+      "next": { "status": "x", "tags": ["added-tag"] },
+      "edited": true,
+      "inPlace": true,
+      "output": "---\r\nstatus: x\r\ntags:\r\n  - added-tag\r\n---"
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/body",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "status": "x" },
+      "next": { "status": "x" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\r\nstatus: x\r\n---\r\nNew first line.\r\n\r\nSecond paragraph."
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/merge-add-and-body",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "status": "x" },
+      "next": { "status": "x", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "---\r\nstatus: x\r\nfresh: true\r\n---\r\nOne\r\nTwo"
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/set-change-first",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "set", "properties": { "status": "changed" } },
+      "reading": { "status": "x" },
+      "next": { "status": "changed" },
+      "edited": true,
+      "inPlace": true,
+      "output": "---\r\nstatus: changed\r\n---"
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/set-remove-first",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "set", "properties": {} },
+      "reading": { "status": "x" },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": ""
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/set-rename-first",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "set", "properties": { "status renamed": "x" } },
+      "reading": { "status": "x" },
+      "next": { "status renamed": "x" },
+      "edited": true,
+      "inPlace": true,
+      "output": "---\r\nstatus renamed: x\r\n---"
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/merge-set-first",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "merge", "patch": { "status": 42 } },
+      "reading": { "status": "x" },
+      "next": { "status": 42 },
+      "edited": true,
+      "inPlace": true,
+      "output": "---\r\nstatus: 42\r\n---"
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/merge-remove-first",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "merge", "patch": { "status": null } },
+      "reading": { "status": "x" },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": ""
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/merge-remove-first-and-add",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "merge", "patch": { "status": null, "fresh": "x" } },
+      "reading": { "status": "x" },
+      "next": { "fresh": "x" },
+      "edited": true,
+      "inPlace": true,
+      "output": "---\r\nfresh: x\r\n---"
+    },
+    {
+      "id": "handmade/block-at-eof-crlf/set-remove-all",
+      "file": "handmade/block-at-eof-crlf",
+      "op": { "kind": "set", "properties": {} },
+      "reading": { "status": "x" },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": ""
+    },
+    {
+      "id": "handmade/bom-crlf/set-same",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "set", "properties": { "status": "x" } },
+      "reading": { "status": "x" },
+      "next": { "status": "x" },
+      "edited": false,
+      "inPlace": null,
+      "output": "﻿---\r\nstatus: x\r\n---\r\nBody\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/set-add",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "set", "properties": { "status": "x", "added": "new value" } },
+      "reading": { "status": "x" },
+      "next": { "status": "x", "added": "new value" },
+      "edited": true,
+      "inPlace": true,
+      "output": "﻿---\r\nstatus: x\r\nadded: new value\r\n---\r\nBody\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/merge-add",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "merge", "patch": { "fresh": true } },
+      "reading": { "status": "x" },
+      "next": { "status": "x", "fresh": true },
+      "edited": true,
+      "inPlace": true,
+      "output": "﻿---\r\nstatus: x\r\nfresh: true\r\n---\r\nBody\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/tags-add",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "tags", "headerTags": ["added-tag"] },
+      "reading": { "status": "x" },
+      "next": { "status": "x", "tags": ["added-tag"] },
+      "edited": true,
+      "inPlace": true,
+      "output": "﻿---\r\nstatus: x\r\ntags:\r\n  - added-tag\r\n---\r\nBody\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/body",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "status": "x" },
+      "next": { "status": "x" },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "﻿---\r\nstatus: x\r\n---\r\nNew first line.\r\n\r\nSecond paragraph.\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/merge-add-and-body",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "status": "x" },
+      "next": { "status": "x", "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": true,
+      "output": "﻿---\r\nstatus: x\r\nfresh: true\r\n---\r\nOne\r\nTwo\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/set-change-first",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "set", "properties": { "status": "changed" } },
+      "reading": { "status": "x" },
+      "next": { "status": "changed" },
+      "edited": true,
+      "inPlace": true,
+      "output": "﻿---\r\nstatus: changed\r\n---\r\nBody\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/set-remove-first",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "set", "properties": {} },
+      "reading": { "status": "x" },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": "Body\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/set-rename-first",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "set", "properties": { "status renamed": "x" } },
+      "reading": { "status": "x" },
+      "next": { "status renamed": "x" },
+      "edited": true,
+      "inPlace": true,
+      "output": "﻿---\r\nstatus renamed: x\r\n---\r\nBody\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/merge-set-first",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "merge", "patch": { "status": 42 } },
+      "reading": { "status": "x" },
+      "next": { "status": 42 },
+      "edited": true,
+      "inPlace": true,
+      "output": "﻿---\r\nstatus: 42\r\n---\r\nBody\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/merge-remove-first",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "merge", "patch": { "status": null } },
+      "reading": { "status": "x" },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": "Body\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/merge-remove-first-and-add",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "merge", "patch": { "status": null, "fresh": "x" } },
+      "reading": { "status": "x" },
+      "next": { "fresh": "x" },
+      "edited": true,
+      "inPlace": true,
+      "output": "﻿---\r\nfresh: x\r\n---\r\nBody\r\n"
+    },
+    {
+      "id": "handmade/bom-crlf/set-remove-all",
+      "file": "handmade/bom-crlf",
+      "op": { "kind": "set", "properties": {} },
+      "reading": { "status": "x" },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": "Body\r\n"
+    },
+    {
+      "id": "handmade/nbsp-key/set-same",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "set", "properties": { " weird": 1 } },
+      "reading": { " weird": 1 },
+      "next": { " weird": 1 },
+      "edited": false,
+      "inPlace": null,
+      "output": "---\n weird: 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/nbsp-key/set-add",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "set", "properties": { " weird": 1, "added": "new value" } },
+      "reading": { " weird": 1 },
+      "next": { " weird": 1, "added": "new value" },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\n\"\\_weird\": 1\nadded: new value\n---\nBody\n"
+    },
+    {
+      "id": "handmade/nbsp-key/merge-add",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "merge", "patch": { "fresh": true } },
+      "reading": { " weird": 1 },
+      "next": { " weird": 1, "fresh": true },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\n\"\\_weird\": 1\nfresh: true\n---\nBody\n"
+    },
+    {
+      "id": "handmade/nbsp-key/tags-add",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "tags", "headerTags": ["added-tag"] },
+      "reading": { " weird": 1 },
+      "next": { " weird": 1, "tags": ["added-tag"] },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\n\"\\_weird\": 1\ntags:\n  - added-tag\n---\nBody\n"
+    },
+    {
+      "id": "handmade/nbsp-key/body",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { " weird": 1 },
+      "next": { " weird": 1 },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\n weird: 1\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/nbsp-key/merge-add-and-body",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { " weird": 1 },
+      "next": { " weird": 1, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": false,
+      "output": "---\n\"\\_weird\": 1\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
+      "id": "handmade/nbsp-key/set-change-first",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "set", "properties": { " weird": "changed" } },
+      "reading": { " weird": 1 },
+      "next": { " weird": "changed" },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\n\"\\_weird\": changed\n---\nBody\n"
+    },
+    {
+      "id": "handmade/nbsp-key/set-remove-first",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "set", "properties": {} },
+      "reading": { " weird": 1 },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": "Body\n"
+    },
+    {
+      "id": "handmade/nbsp-key/set-rename-first",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "set", "properties": { " weird renamed": 1 } },
+      "reading": { " weird": 1 },
+      "next": { " weird renamed": 1 },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\n\"\\_weird renamed\": 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/nbsp-key/merge-set-first",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "merge", "patch": { " weird": 42 } },
+      "reading": { " weird": 1 },
+      "next": { " weird": 42 },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\n\"\\_weird\": 42\n---\nBody\n"
+    },
+    {
+      "id": "handmade/nbsp-key/merge-remove-first",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "merge", "patch": { " weird": null } },
+      "reading": { " weird": 1 },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": "Body\n"
+    },
+    {
+      "id": "handmade/nbsp-key/merge-remove-first-and-add",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "merge", "patch": { " weird": null, "fresh": "x" } },
+      "reading": { " weird": 1 },
+      "next": { "fresh": "x" },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\nfresh: x\n---\nBody\n"
+    },
+    {
+      "id": "handmade/nbsp-key/set-remove-all",
+      "file": "handmade/nbsp-key",
+      "op": { "kind": "set", "properties": {} },
+      "reading": { " weird": 1 },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": "Body\n"
+    },
+    {
+      "id": "handmade/indented-root/set-same",
+      "file": "handmade/indented-root",
+      "op": { "kind": "set", "properties": { "a": 1 } },
+      "reading": { "a": 1 },
+      "next": { "a": 1 },
+      "edited": false,
+      "inPlace": null,
+      "output": "---\n  a: 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/indented-root/set-add",
+      "file": "handmade/indented-root",
+      "op": { "kind": "set", "properties": { "a": 1, "added": "new value" } },
+      "reading": { "a": 1 },
+      "next": { "a": 1, "added": "new value" },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: 1\nadded: new value\n---\nBody\n"
+    },
+    {
+      "id": "handmade/indented-root/merge-add",
+      "file": "handmade/indented-root",
+      "op": { "kind": "merge", "patch": { "fresh": true } },
+      "reading": { "a": 1 },
+      "next": { "a": 1, "fresh": true },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: 1\nfresh: true\n---\nBody\n"
+    },
+    {
+      "id": "handmade/indented-root/tags-add",
+      "file": "handmade/indented-root",
+      "op": { "kind": "tags", "headerTags": ["added-tag"] },
+      "reading": { "a": 1 },
+      "next": { "a": 1, "tags": ["added-tag"] },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: 1\ntags:\n  - added-tag\n---\nBody\n"
+    },
+    {
+      "id": "handmade/indented-root/body",
+      "file": "handmade/indented-root",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "a": 1 },
+      "next": { "a": 1 },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\n  a: 1\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/indented-root/merge-add-and-body",
+      "file": "handmade/indented-root",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "a": 1 },
+      "next": { "a": 1, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: 1\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
+      "id": "handmade/indented-root/set-change-first",
+      "file": "handmade/indented-root",
+      "op": { "kind": "set", "properties": { "a": "changed" } },
+      "reading": { "a": 1 },
+      "next": { "a": "changed" },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: changed\n---\nBody\n"
+    },
+    {
+      "id": "handmade/indented-root/set-remove-first",
+      "file": "handmade/indented-root",
+      "op": { "kind": "set", "properties": {} },
+      "reading": { "a": 1 },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": "Body\n"
+    },
+    {
+      "id": "handmade/indented-root/set-rename-first",
+      "file": "handmade/indented-root",
+      "op": { "kind": "set", "properties": { "a renamed": 1 } },
+      "reading": { "a": 1 },
+      "next": { "a renamed": 1 },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na renamed: 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/indented-root/merge-set-first",
+      "file": "handmade/indented-root",
+      "op": { "kind": "merge", "patch": { "a": 42 } },
+      "reading": { "a": 1 },
+      "next": { "a": 42 },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: 42\n---\nBody\n"
+    },
+    {
+      "id": "handmade/indented-root/merge-remove-first",
+      "file": "handmade/indented-root",
+      "op": { "kind": "merge", "patch": { "a": null } },
+      "reading": { "a": 1 },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": "Body\n"
+    },
+    {
+      "id": "handmade/indented-root/merge-remove-first-and-add",
+      "file": "handmade/indented-root",
+      "op": { "kind": "merge", "patch": { "a": null, "fresh": "x" } },
+      "reading": { "a": 1 },
+      "next": { "fresh": "x" },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\nfresh: x\n---\nBody\n"
+    },
+    {
+      "id": "handmade/indented-root/set-remove-all",
+      "file": "handmade/indented-root",
+      "op": { "kind": "set", "properties": {} },
+      "reading": { "a": 1 },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": "Body\n"
+    },
+    {
+      "id": "handmade/keep-chomp/set-same",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "set", "properties": { "a": "x\n\n", "b": 1 } },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "a": "x\n\n", "b": 1 },
+      "edited": false,
+      "inPlace": null,
+      "output": "---\na: |+\n  x\n\nb: 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/keep-chomp/set-add",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "set", "properties": { "a": "x\n\n", "b": 1, "added": "new value" } },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "a": "x\n\n", "b": 1, "added": "new value" },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: |+\n  x\n\nb: 1\nadded: new value\n---\nBody\n"
+    },
+    {
+      "id": "handmade/keep-chomp/merge-add",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "merge", "patch": { "fresh": true } },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "a": "x\n\n", "b": 1, "fresh": true },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: |+\n  x\n\nb: 1\nfresh: true\n---\nBody\n"
+    },
+    {
+      "id": "handmade/keep-chomp/tags-add",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "tags", "headerTags": ["added-tag"] },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "a": "x\n\n", "b": 1, "tags": ["added-tag"] },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: |+\n  x\n\nb: 1\ntags:\n  - added-tag\n---\nBody\n"
+    },
+    {
+      "id": "handmade/keep-chomp/body",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "body", "content": "New first line.\n\nSecond paragraph.\n" },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "a": "x\n\n", "b": 1 },
+      "content": "New first line.\n\nSecond paragraph.\n",
+      "edited": false,
+      "inPlace": null,
+      "output": "---\na: |+\n  x\n\nb: 1\n---\nNew first line.\n\nSecond paragraph.\n"
+    },
+    {
+      "id": "handmade/keep-chomp/merge-add-and-body",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "body", "content": "One\r\nTwo", "patch": { "fresh": true } },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "a": "x\n\n", "b": 1, "fresh": true },
+      "content": "One\r\nTwo",
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: |+\n  x\n\nb: 1\nfresh: true\n---\nOne\nTwo\n"
+    },
+    {
+      "id": "handmade/keep-chomp/set-change-first",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "set", "properties": { "a": "changed", "b": 1 } },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "a": "changed", "b": 1 },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: changed\nb: 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/keep-chomp/set-remove-first",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "set", "properties": { "b": 1 } },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "b": 1 },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\nb: 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/keep-chomp/set-rename-first",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "set", "properties": { "a renamed": "x\n\n", "b": 1 } },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "a renamed": "x\n\n", "b": 1 },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na renamed: |+\n  x\n\nb: 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/keep-chomp/merge-set-first",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "merge", "patch": { "a": 42 } },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "a": 42, "b": 1 },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\na: 42\nb: 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/keep-chomp/merge-remove-first",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "merge", "patch": { "a": null } },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "b": 1 },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\nb: 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/keep-chomp/merge-remove-first-and-add",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "merge", "patch": { "a": null, "fresh": "x" } },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": { "fresh": "x", "b": 1 },
+      "edited": true,
+      "inPlace": false,
+      "output": "---\nfresh: x\nb: 1\n---\nBody\n"
+    },
+    {
+      "id": "handmade/keep-chomp/set-remove-all",
+      "file": "handmade/keep-chomp",
+      "op": { "kind": "set", "properties": {} },
+      "reading": { "a": "x\n\n", "b": 1 },
+      "next": {},
+      "edited": true,
+      "inPlace": true,
+      "output": "Body\n"
     }
   ]
 }

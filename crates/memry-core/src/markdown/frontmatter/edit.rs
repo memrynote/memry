@@ -4,8 +4,8 @@
 //! loses its lines and a new key goes at the end. Comments, blank lines, quoting, key order and
 //! line ends survive. Re-stringifying the whole block would reorder keys and re-spell every
 //! scalar (`due: 2026-10-07` becomes an ISO timestamp), so that happens only for a block whose
-//! lines cannot be matched one to one with the keys it parses to (anchors, duplicate keys, a
-//! flow mapping).
+//! lines cannot be matched one to one with the keys it parses to (an alias of another key's
+//! anchor, a flow mapping, a key no line starts, an entry that reads otherwise alone).
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -212,7 +212,7 @@ fn parse_yaml_date(value: &str) -> Option<i64> {
     }
     let (hour, minute, second) = (digits(11, 2)?, digits(14, 2)?, digits(17, 2)?);
     let mut rest = &text[19..];
-    let mut fraction = 0;
+    let (mut fraction, mut any_fraction) = (0, false);
     if let Some(after) = rest.strip_prefix('.') {
         let count = after.bytes().take_while(u8::is_ascii_digit).count();
         if count == 0 {
@@ -221,6 +221,8 @@ fn parse_yaml_date(value: &str) -> Option<i64> {
         fraction = format!("{:0<3}", &after[..count.min(3)])
             .parse::<i64>()
             .ok()?;
+        // A digit past the milliseconds still makes 24:00 a time after the day's end.
+        any_fraction = after[..count].bytes().any(|digit| digit != b'0');
         rest = &after[count..];
     }
     let offset_minutes = match rest {
@@ -248,7 +250,7 @@ fn parse_yaml_date(value: &str) -> Option<i64> {
         }
     };
     // `new Date(text)`: 24:00 only as the end of the day, no 60th minute or second.
-    let end_of_day = hour == 24 && minute == 0 && second == 0 && fraction == 0;
+    let end_of_day = hour == 24 && minute == 0 && second == 0 && !any_fraction;
     if (hour > 23 && !end_of_day) || minute > 59 || second > 59 {
         return None;
     }
@@ -294,8 +296,8 @@ fn entry_lines(key: &str, value: &YamlValue, cr: &str) -> Result<Vec<String>, Ya
 }
 
 /// `editFrontmatterBlock`: the block with `next` as its keys, `Ok(None)` when its lines cannot
-/// be matched one to one with the keys it parses to (anchors, duplicate keys, a flow mapping),
-/// so the caller re-stringifies instead. `reading` is the caller's reading of the block (a lone
+/// be matched one to one with the keys it parses to (see the module comment), so the caller
+/// re-stringifies instead. `reading` is the caller's reading of the block (a lone
 /// `tags` value read as a list); a value equal to it or to the block's own reading is
 /// unchanged. No keys is no block. An error is a value that does not stringify.
 pub fn edit_frontmatter_block(
@@ -428,6 +430,10 @@ mod tests {
             Some("2026-10-08T00:00:00.000Z")
         );
         assert_eq!(
+            at("2026-10-07T24:00:00.0000Z").as_deref(),
+            Some("2026-10-08T00:00:00.000Z")
+        );
+        assert_eq!(
             at("\"2026-10-07T10:30:00.000Z\"").as_deref(),
             Some("2026-10-07T10:30:00.000Z")
         );
@@ -439,6 +445,8 @@ mod tests {
             "2026-02-30",
             "0050-02-29",
             "2026-10-07T24:00:01Z",
+            "2026-10-07T24:00:00.001Z",
+            "2026-10-07T24:00:00.0001Z",
             "2026-10-07T23:60:00Z",
             "2026-10-07T10:30:00+24:00",
             "2026-10-07T10:30:00.Z",

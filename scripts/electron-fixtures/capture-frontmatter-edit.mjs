@@ -9,10 +9,12 @@
 // sends it, a header tag edit) and `serializeUpdatedNote`, which edits the block in place
 // (`editFrontmatterBlock`) and stringifies it again when it cannot. Every golden vault file
 // takes every edit, and a few handmade files cover CRLF, comments, dates, a block at the end of
-// the file, an alias, a flow mapping and the legacy nested `properties` envelope. `files` holds
-// each file's text; a case names its file, Electron's reading of its frontmatter, the next
-// frontmatter, whether it was edited, whether the block was edited in place, and the bytes
-// Electron wrote. The fixture is replaced whole.
+// the file, an alias, a flow mapping, the legacy nested `properties` envelope and blocks whose
+// lines cannot be matched to their keys. Two edits also change the body, as an editor save does.
+// `files` holds each file's text; a case names its file, Electron's reading of its frontmatter,
+// the next frontmatter, the new body when it changed, whether the frontmatter was edited,
+// whether the block was edited in place, and the bytes Electron wrote. The fixture is replaced
+// whole.
 //
 // The capture runs under the desktop app's vitest config, so it writes its test into
 // apps/desktop/src/main/vault for the run and removes it after.
@@ -58,13 +60,21 @@ const HANDMADE: Record<string, string> = {
   'column-zero-comment': '---\\nstatus: draft\\n# between\\nnext: 1\\n---\\nBody\\n',
   'tags-scalar': '---\\ntags: solo\\nstatus: x\\n---\\nBody\\n',
   'list-dash-at-column-zero': '---\\nlist:\\n- a\\n- b\\nstatus: x\\n---\\nBody\\n',
-  'cover-and-writing': '---\\ncover: wash:sage\\nstatus: x\\n---\\nBody\\n'
+  'cover-and-writing': '---\\ncover: wash:sage\\nstatus: x\\n---\\nBody\\n',
+  'block-at-eof-crlf': '---\\r\\nstatus: x\\r\\n---',
+  'bom-crlf': '\\ufeff---\\r\\nstatus: x\\r\\n---\\r\\nBody\\r\\n',
+  // A key no line starts: the block's keys outnumber its entries.
+  'nbsp-key': '---\\n\\u00a0weird: 1\\n---\\nBody\\n',
+  'indented-root': '---\\n  a: 1\\n---\\nBody\\n',
+  // An entry that reads otherwise alone: the kept blank line belongs to \`a\` only in the block.
+  'keep-chomp': '---\\na: |+\\n  x\\n\\nb: 1\\n---\\nBody\\n'
 }
 
 type Op =
   | { kind: 'set'; properties: Record<string, unknown> }
   | { kind: 'merge'; patch: Record<string, unknown> }
   | { kind: 'tags'; headerTags: string[] }
+  | { kind: 'body'; content: string; patch?: Record<string, unknown> }
 
 function ops(properties: Record<string, unknown>, tags: string[]): Array<[string, Op]> {
   const names = Object.keys(properties)
@@ -73,7 +83,9 @@ function ops(properties: Record<string, unknown>, tags: string[]): Array<[string
     ['set-same', { kind: 'set', properties: { ...properties } }],
     ['set-add', { kind: 'set', properties: { ...properties, added: 'new value' } }],
     ['merge-add', { kind: 'merge', patch: { fresh: true } }],
-    ['tags-add', { kind: 'tags', headerTags: [...tags, 'added-tag'] }]
+    ['tags-add', { kind: 'tags', headerTags: [...tags, 'added-tag'] }],
+    ['body', { kind: 'body', content: 'New first line.\\n\\nSecond paragraph.\\n' }],
+    ['merge-add-and-body', { kind: 'body', content: 'One\\r\\nTwo', patch: { fresh: true } }]
   ]
   if (first !== undefined) {
     const rest = { ...properties }
@@ -129,13 +141,15 @@ describe.skipIf(!OUT)('electron frontmatter edit fixture', () => {
         const change = op.kind === 'tags' ? compareHeaderTags(tags, headerTags) : null
         const input =
           op.kind === 'set' ? { properties: op.properties }
-            : op.kind === 'merge' ? { propertyPatch: op.patch } : {}
+            : op.kind === 'merge' ? { propertyPatch: op.patch }
+              : op.kind === 'body' && op.patch ? { propertyPatch: op.patch } : {}
+        const content = op.kind === 'body' ? op.content : parsed.content
         const { frontmatter, edited } = nextNoteFrontmatter(existing, input, headerTags, change)
         const inPlace =
           edited && parsed.rawFrontmatterBlock !== null
             ? editFrontmatterBlock(parsed.rawFrontmatterBlock, parsed.frontmatter, frontmatter) !== null
             : null
-        const output = serializeUpdatedNote(parsed, frontmatter, parsed.content, {
+        const output = serializeUpdatedNote(parsed, frontmatter, content, {
           frontmatterEdited: edited
         })
         cases.push({
@@ -144,6 +158,7 @@ describe.skipIf(!OUT)('electron frontmatter edit fixture', () => {
           op: encodeYaml(op),
           reading: encodeYaml(parsed.frontmatter),
           next: encodeYaml(frontmatter),
+          ...(op.kind === 'body' ? { content } : {}),
           edited,
           inPlace,
           output
