@@ -95,6 +95,8 @@ const mocks = vi.hoisted(() => ({
     | ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void)
     | null,
   renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
+  droppedHandler: null as (() => void) | null,
+  notesGet: vi.fn(),
   findInPageEnabled: undefined as boolean | undefined,
   findInPage: {
     isOpen: true,
@@ -248,7 +250,12 @@ vi.mock('@/services/notes-service', () => ({
     openExternal: mocks.openExternal,
     // #800 getFile probe (note.tsx): null → treated as a real markdown note.
     getFile: vi.fn(async () => null),
+    get: mocks.notesGet,
     resolveByTitle: mocks.resolveByTitle
+  },
+  onNoteEventsDropped: (handler: () => void) => {
+    mocks.droppedHandler = handler
+    return vi.fn()
   },
   onNoteDeleted: (handler: (event: { id: string }) => void) => {
     mocks.deletedHandler = handler
@@ -1482,6 +1489,22 @@ describe('NotePage', () => {
 
     expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Agent edited body')
     expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+    expect(mocks.contentAreaMounts).toBe(1)
+  })
+
+  it('reads the open note again when note events were dropped, and takes text changed on disk', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    mocks.notesGet.mockResolvedValueOnce({ id: 'note-1', content: 'Edited while dropped' })
+    await act(async () => {
+      mocks.droppedHandler?.()
+    })
+
+    expect(mocks.notesGet).toHaveBeenCalledWith('note-1')
+    await waitFor(() =>
+      expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Edited while dropped')
+    )
     expect(mocks.contentAreaMounts).toBe(1)
   })
 

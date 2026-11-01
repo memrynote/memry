@@ -82,14 +82,20 @@ pub async fn notes_create(
     .await
 }
 
-/// `notes:delete`: for good, not to the OS trash.
+/// `notes:delete`. A file holding text the note never read goes to the OS trash; where the
+/// trash refuses it the delete fails with `note_trash_unavailable`, and the renderer asks the
+/// user before it deletes again with `permanent` (#3813).
 #[tauri::command]
 #[specta::specta]
-pub async fn notes_delete(app: AppHandle<Wry>, id: String) -> Result<(), CommandError> {
+pub async fn notes_delete(
+    app: AppHandle<Wry>,
+    id: String,
+    permanent: Option<bool>,
+) -> Result<(), CommandError> {
     blocking("notes_delete", move || {
         let open = open_vault(&app)?;
         service(&app)?
-            .delete(&open, &id)
+            .delete(&open, &id, permanent.unwrap_or(false))
             .map_err(|error| failed(&error))?;
         track(&app, "note_deleted", "deleted");
         Ok(())

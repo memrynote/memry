@@ -77,7 +77,13 @@ import { TemplateOffers } from '@/features/tag-fields/TemplateOfferRow'
 import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
-import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
+import {
+  notesService,
+  onNoteDeleted,
+  onNoteEventsDropped,
+  onNoteUpdated,
+  onNoteRenamed
+} from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
 import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
@@ -689,18 +695,32 @@ export function NotePage({ noteId }: NotePageProps) {
       // TanStack Query will handle the cache invalidation and refetch.
       // We just need to update lastSavedContent and force editor remount.
       if (typeof event.changes.content !== 'string') return
-      if (event.changes.content === lastSavedContent.current) return
+      takeContent(event.changes.content)
+    }
 
-      lastSavedContent.current = event.changes.content
-      setEventContentOverride({ noteId, content: event.changes.content })
-
+    const takeContent = (content: string) => {
+      if (content === lastSavedContent.current) return
+      lastSavedContent.current = content
+      setEventContentOverride({ noteId, content })
       setExternalUpdateCount((c) => c + 1)
     }
 
     const unsubUpdated = onNoteUpdated(handleUpdated)
 
+    // A dropped event may have been an outside edit of this note: its text is read again.
+    const unsubDropped = onNoteEventsDropped(() => {
+      if (isSavingRef.current) return
+      notesService
+        .get(noteId)
+        .then((fresh) => {
+          if (fresh && !fresh.contentOmitted) takeContent(fresh.content)
+        })
+        .catch((readError: unknown) => log.warn('the note was not read again', readError))
+    })
+
     return () => {
       unsubUpdated()
+      unsubDropped()
     }
   }, [noteId])
 

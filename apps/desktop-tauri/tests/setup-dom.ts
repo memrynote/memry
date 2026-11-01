@@ -153,6 +153,8 @@ vi.mock('../src/generated/bindings', () => {
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),
       noteDeletedEvent: event(() => api().onNoteDeleted),
+      // No Electron channel: Electron sends every note event.
+      noteEventsDroppedEvent: { listen: async () => () => undefined },
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })

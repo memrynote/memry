@@ -18,7 +18,7 @@ use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::read;
-use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::service::{NotesService, Trash};
 use memry_desktop::vault::activity::{ActivityFilter, ActivityKind};
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::hash::content_hash;
@@ -28,6 +28,11 @@ use vault_env::{Env, env, indexed};
 
 /// An open vault with its first walk done, and the notes service over its tier.
 fn opened() -> (Env, Arc<NotesService>) {
+    opened_with(bin)
+}
+
+/// [`opened`] with the OS trash `trash`.
+fn opened_with(trash: Trash) -> (Env, Arc<NotesService>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
     let mut e = env(|store| {
         kept = Some(store.clone());
@@ -35,7 +40,7 @@ fn opened() -> (Env, Arc<NotesService>) {
     });
     e.open();
     e.facts_until(indexed);
-    let notes = NotesService::with_trash(e.tier.clone(), kept.expect("the store"), bin);
+    let notes = NotesService::with_trash(e.tier.clone(), kept.expect("the store"), trash);
     (e, notes)
 }
 
@@ -320,7 +325,7 @@ fn a_delete_removes_the_file_for_good_and_queues_the_tombstone() {
     assert_eq!(slot(&e, "work/Plan.md"), Some(4));
     assert_eq!(row_facts(&mut e), [added(&note.id, "work/Plan.md")]);
 
-    notes.delete(&open, &note.id).unwrap();
+    notes.delete(&open, &note.id, false).unwrap();
     assert!(!e.vault.join("work/Plan.md").exists());
     assert!(
         !e.vault.join("work/Plan.trashed").exists(),
@@ -335,7 +340,7 @@ fn a_delete_removes_the_file_for_good_and_queues_the_tombstone() {
     assert_eq!(slot(&e, "work/Plan.md"), None);
     assert_eq!(read::get(&open, &note.id, None).unwrap(), None);
     assert_eq!(row_facts(&mut e), [removed(&note.id, "work/Plan.md")]);
-    let again = notes.delete(&open, &note.id);
+    let again = notes.delete(&open, &note.id, false);
     assert!(matches!(again, Err(NotesError::NotFound(_))), "{again:?}");
     // The app's removal is not one the watcher found.
     outside_file(&mut e, "Outside.md");
@@ -355,7 +360,7 @@ fn a_local_only_note_is_deleted_here_and_pushes_no_tombstone() {
         .set_local_only(&note.id, true)
         .unwrap();
 
-    notes.delete(&open, &note.id).unwrap();
+    notes.delete(&open, &note.id, false).unwrap();
     assert!(!e.vault.join("work/Plan.md").exists());
     assert_eq!(records(&e), [(note.id.clone(), true)]);
     assert_eq!(queued(&e, &note.id), Vec::<String>::new());
@@ -570,7 +575,7 @@ fn a_file_that_cannot_be_removed_fails_the_delete_and_leaves_the_note_whole() {
         "the file could be removed, so the test proves nothing"
     );
     assert!(file.exists());
-    let failed = notes.delete(&open, &note.id);
+    let failed = notes.delete(&open, &note.id, false);
     held();
     assert!(matches!(failed, Err(NotesError::Io(_))), "{failed:?}");
     assert_eq!(e.read("work/Plan.md"), PLAN_FILE);
@@ -582,7 +587,7 @@ fn a_file_that_cannot_be_removed_fails_the_delete_and_leaves_the_note_whole() {
         "a tombstone was queued"
     );
     // Once the file can go, the delete goes through.
-    notes.delete(&open, &note.id).unwrap();
+    notes.delete(&open, &note.id, false).unwrap();
     assert!(!file.exists());
 }
 
@@ -602,7 +607,7 @@ fn a_file_with_text_the_note_never_took_goes_to_the_trash() {
         .unwrap();
     assert_eq!(row_facts(&mut e), [added(&note.id, "work/Plan.md")]);
 
-    notes.delete(&open, &note.id).unwrap();
+    notes.delete(&open, &note.id, false).unwrap();
     assert!(!e.vault.join("work/Plan.md").exists());
     assert_eq!(e.read("work/Plan.trashed"), PLAN_FILE, "not in the trash");
     assert_eq!(records(&e), [(note.id.clone(), true)]);
@@ -646,4 +651,75 @@ fn an_outside_edit_reads_back_as_the_fields_notes_updated_carries() {
     assert_eq!(changes["wordCount"], 3);
     assert_eq!(changes["snippet"], "Hello there, world");
     assert!(changes["modified"].is_i64());
+}
+
+/// A trash that refuses every file, as a Linux mount with no usable `.Trash-<uid>` does.
+fn no_trash(_: &Path) -> Result<(), String> {
+    Err("no trash on this volume".into())
+}
+
+#[test]
+fn a_file_the_trash_refuses_stays_until_the_user_confirms_a_permanent_delete() {
+    let (mut e, notes) = opened_with(no_trash);
+    let open = e.session.current().unwrap();
+    let note = notes.create(&open, plan()).unwrap();
+    // Text the note never took, so the delete wants the trash.
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute("UPDATE note_files SET content_hash = 'older'", [])
+                .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(row_facts(&mut e), [added(&note.id, "work/Plan.md")]);
+
+    let refused = notes.delete(&open, &note.id, false);
+    assert!(
+        matches!(refused, Err(NotesError::TrashUnavailable(_))),
+        "{refused:?}"
+    );
+    assert_eq!(e.read("work/Plan.md"), PLAN_FILE);
+    assert_eq!(records(&e), [(note.id.clone(), false)], "the record went");
+    assert_eq!(e.rows(), [(note.id.clone(), "work/Plan.md".to_owned())]);
+    assert!(
+        !queued(&e, &note.id).iter().any(|op| op == "delete"),
+        "a tombstone was queued"
+    );
+    assert_eq!(row_facts(&mut e), [], "the refused delete sent a fact");
+
+    // The user said yes: the file goes for good, and the note with it.
+    notes.delete(&open, &note.id, true).unwrap();
+    assert!(!e.vault.join("work/Plan.md").exists());
+    assert!(!e.vault.join("work/Plan.trashed").exists());
+    assert_eq!(records(&e), [(note.id.clone(), true)]);
+    assert_eq!(e.rows(), []);
+    assert_eq!(row_facts(&mut e), [removed(&note.id, "work/Plan.md")]);
+}
+
+#[test]
+fn a_create_past_the_large_file_class_answers_as_a_read_of_it_does() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    // Past the file class, then under it with one block past the block class.
+    for (title, content) in [
+        ("Big", "word ".repeat(220_000)),
+        ("Wide", "x".repeat(200_000)),
+    ] {
+        let note = notes
+            .create(
+                &open,
+                NewNoteFile {
+                    title: title.into(),
+                    content,
+                    ..plan()
+                },
+            )
+            .unwrap();
+        let mut read = read::get(&open, &note.id, None).unwrap().expect("the note");
+        assert!(read.large_file.is_some(), "{title} is not a large file");
+        (read.created, read.modified) = (note.created, note.modified);
+        assert_eq!(note, read, "{title}");
+    }
+    assert!(e.vault.join("work/Big.md").exists());
 }

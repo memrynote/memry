@@ -2191,5 +2191,12 @@
         "other": "… {count, plural, one {# kolejny blok} few {# kolejne bloki} many {# kolejnych bloków} other {# kolejnego bloku}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Nie można przenieść do kosza",
+    "description": "Nie można przenieść „{title}” do kosza na tym dysku. Usunąć trwale? Tej operacji nie można cofnąć.",
+    "keep": "Zachowaj notatkę",
+    "deletePermanently": "Usuń trwale",
+    "kept": "Notatka została zachowana. Nie udało się przenieść jej do kosza."
   }
 }

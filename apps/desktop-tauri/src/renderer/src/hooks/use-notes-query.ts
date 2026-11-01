@@ -25,6 +25,7 @@ import {
   onNoteRenamed,
   onNoteMoved,
   onNoteExternalChange,
+  onNoteEventsDropped,
   onTagsChanged,
   onFolderConfigUpdated
 } from '@/services/notes-service'
@@ -210,11 +211,17 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
       }
     })
 
+    // A dropped event may have been this note's.
+    const unsubDropped = onNoteEventsDropped(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
+    })
+
     return () => {
       unsubUpdated()
       unsubRenamed()
       unsubDeleted()
       unsubExternal()
+      unsubDropped()
     }
   }, [id, queryClient])
 
@@ -283,6 +290,12 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
+    // Dropped events may have been any note's: the lists and the tags may be stale.
+    const unsubDropped = onNoteEventsDropped(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
+    })
+
     return () => {
       unsubCreated()
       unsubUpdated()
@@ -290,6 +303,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
       unsubRenamed()
       unsubMoved()
       unsubIndexProgress()
+      unsubDropped()
     }
   }, [queryClient])
 

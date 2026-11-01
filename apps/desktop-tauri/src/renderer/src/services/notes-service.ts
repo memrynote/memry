@@ -45,7 +45,9 @@ import {
   type NoteView,
   type Value
 } from '../../../generated/bindings'
-import { extractErrorMessage } from '../lib/ipc-error'
+import { getI18n } from 'react-i18next'
+import { askPermanentDelete } from '../lib/permanent-delete-question'
+import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 import { NotPortedError } from '../lib/not-ported'
 import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
@@ -133,7 +135,18 @@ const ported = {
   },
   delete: async (id: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      await commands.notesDelete(id)
+      await commands.notesDelete(id, null)
+      return { success: true }
+    } catch (error) {
+      if (commandErrorCode(error) !== 'note_trash_unavailable') return failure(error)
+    }
+    // The trash refused a file with text the note never read (#3813): the user decides.
+    const note = await commands.notesGet(id).catch(() => null)
+    if (!(await askPermanentDelete(note?.title ?? ''))) {
+      return { success: false, error: getI18n().t('notes:trashUnavailable.kept') }
+    }
+    try {
+      await commands.notesDelete(id, true)
       return { success: true }
     } catch (error) {
       return failure(error)
@@ -180,6 +193,14 @@ export const notesService: NotesClientAPI = createWindowApiForwarder<
   NotesClientAPI,
   PortedNoteMethod
 >(() => window.api.notes, ported)
+
+/**
+ * Note events were dropped (`shell/note_events.rs`): whatever the app shows of notes may be
+ * stale. Not an Electron channel: Electron sends every event.
+ */
+export function onNoteEventsDropped(callback: () => void): () => void {
+  return subscribeToEvent(events.noteEventsDroppedEvent, () => callback())
+}
 
 /** The subscriptions below that Rust events serve; `window.api` is typed without them. */
 export type PortedNoteEvent = 'onNoteCreated' | 'onNoteUpdated' | 'onNoteDeleted'

@@ -2191,5 +2191,12 @@
         "other": "… {count, plural, one {# blok više} few {# bloka više} other {# blokova više}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Nije moguće premjestiti u smeće",
+    "description": "„{title}” nije moguće premjestiti u smeće na ovom disku. Trajno izbrisati? Ovo se ne može poništiti.",
+    "keep": "Zadrži bilješku",
+    "deletePermanently": "Trajno izbriši",
+    "kept": "Bilješka je zadržana. Nije ju bilo moguće premjestiti u smeće."
   }
 }

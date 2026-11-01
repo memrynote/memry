@@ -2191,5 +2191,12 @@
         "other": "… {count, plural, one {# bloque más} other {# bloques más}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "No se puede mover a la papelera",
+    "description": "“{title}” no se puede mover a la papelera en esta unidad. ¿Eliminarla permanentemente? No se puede deshacer.",
+    "keep": "Conservar nota",
+    "deletePermanently": "Eliminar permanentemente",
+    "kept": "Se conservó la nota. No se pudo mover a la papelera."
   }
 }

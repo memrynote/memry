@@ -2191,5 +2191,12 @@
         "other": "… {count, plural, one {# további blokk} other {# további blokk}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Nem helyezhető át a kukába",
+    "description": "A(z) „{title}” nem helyezhető át a kukába ezen a meghajtón. Véglegesen törli? Ez nem vonható vissza.",
+    "keep": "Jegyzet megtartása",
+    "deletePermanently": "Végleges törlés",
+    "kept": "A jegyzet megmaradt. Nem sikerült áthelyezni a kukába."
   }
 }

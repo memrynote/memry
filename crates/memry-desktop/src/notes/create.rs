@@ -41,7 +41,7 @@ use memry_core::markdown::shared::writing_tools::WritingFrontmatter;
 use serde_json::{Map, Value};
 
 use super::error::{NotesError, SCOPE};
-use super::frontmatter::{file_fields, is_reserved_key, new_file_frontmatter};
+use super::frontmatter::{FileFields, file_fields, is_reserved_key, new_file_frontmatter};
 use super::read;
 use super::service::NotesService;
 use super::view::{NoteView, SizeClass};
@@ -219,34 +219,57 @@ impl NotesService {
                 "the new note got no slot: {error}"
             );
         }
-        if !holds_text {
-            // Past the large-file class: the note as a read classifies it, without its text.
-            return read::get(open, &id, None)?.ok_or(NotesError::NotFound(id));
-        }
-        let now = now_ms();
-        let parsed = memry_core::markdown::frontmatter::parse_markdown_note(&output)?;
-        let fields = file_fields(&parsed.frontmatter);
-        Ok(NoteView {
-            id,
-            path: rel,
-            title: note.title,
-            word_count: word_count(&note.content),
-            content: note.content,
-            frontmatter: fields.frontmatter,
-            created: now,
-            modified: now,
-            tags: note.tags,
-            header_tags: fields.header_tags,
-            aliases: Vec::new(),
-            properties: note.properties,
-            emoji: note.emoji,
-            // A new row carries no flag: a note is made local-only afterwards.
-            local_only: false,
-            size_class: SizeClass::Note,
-            large_file: None,
-            content_omitted: false,
-        })
+        // The answer is made from the bytes written, not read back: the note is made, so the
+        // create cannot fail from here on, and the renderer gets the note it can open.
+        Ok(new_note_view(id, rel, note, &output))
     }
+}
+
+/// The note just written as `output`, as a read of it answers: past the large-file class,
+/// without its text and the fields of its frontmatter (`read::get`).
+fn new_note_view(id: String, path: String, note: NewNoteFile, output: &str) -> NoteView {
+    let now = now_ms();
+    let mut view = NoteView {
+        id,
+        path,
+        title: note.title,
+        word_count: 0,
+        content: String::new(),
+        frontmatter: Map::new(),
+        created: now,
+        modified: now,
+        tags: note.tags,
+        header_tags: Vec::new(),
+        aliases: Vec::new(),
+        properties: note.properties,
+        emoji: note.emoji,
+        // A new row carries no flag: a note is made local-only afterwards.
+        local_only: false,
+        size_class: SizeClass::LargeFile,
+        large_file: read::large_file_of(output),
+        content_omitted: true,
+    };
+    if view.large_file.is_some() {
+        return view;
+    }
+    let fields = match memry_core::markdown::frontmatter::parse_markdown_note(output) {
+        Ok(parsed) => file_fields(&parsed.frontmatter),
+        Err(error) => {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id = view.id,
+                "a new note's frontmatter did not read back: {error}"
+            );
+            FileFields::default()
+        }
+    };
+    view.word_count = word_count(&note.content);
+    view.content = note.content;
+    view.frontmatter = fields.frontmatter;
+    view.header_tags = fields.header_tags;
+    view.size_class = SizeClass::Note;
+    view.content_omitted = false;
+    view
 }
 
 /// The first name for the note that no note holds and nothing stands at, vault-relative with

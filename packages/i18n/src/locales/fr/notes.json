@@ -2191,5 +2191,12 @@
         "other": "… {count, plural, one {# bloc de plus} other {# blocs de plus}}"
       }
     }
+  },
+  "trashUnavailable": {
+    "title": "Impossible de déplacer vers la corbeille",
+    "description": "« {title} » ne peut pas être déplacée vers la corbeille sur ce disque. La supprimer définitivement ? Cette action est irréversible.",
+    "keep": "Garder la note",
+    "deletePermanently": "Supprimer définitivement",
+    "kept": "La note a été conservée. Elle n'a pas pu être déplacée vers la corbeille."
   }
 }

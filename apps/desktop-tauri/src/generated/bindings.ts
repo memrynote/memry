@@ -55,8 +55,12 @@ export const commands = {
 	 *  renderer's service refuses them until their steps.
 	 */
 	notesCreate: (input: NoteCreateInput) => __TAURI_INVOKE<NoteView>("notes_create", { input }),
-	/**  `notes:delete`: for good, not to the OS trash. */
-	notesDelete: (id: string) => __TAURI_INVOKE<null>("notes_delete", { id }),
+	/**
+	 *  `notes:delete`. A file holding text the note never read goes to the OS trash; where the
+	 *  trash refuses it the delete fails with `note_trash_unavailable`, and the renderer asks the
+	 *  user before it deletes again with `permanent` (#3813).
+	 */
+	notesDelete: (id: string, permanent: boolean | null) => __TAURI_INVOKE<null>("notes_delete", { id, permanent }),
 	/**  `notes:exists`: a `.md` path, or a title a link would resolve. */
 	notesExists: (titleOrPath: string) => __TAURI_INVOKE<boolean>("notes_exists", { titleOrPath }),
 	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
@@ -240,6 +244,7 @@ export const events = {
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
 	noteDeletedEvent: makeEvent<NoteDeletedEvent, NoteDeletedEvent>("note-deleted-event"),
+	noteEventsDroppedEvent: makeEvent<NoteEventsDroppedEvent, NoteEventsDroppedEvent>("note-events-dropped-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
@@ -594,6 +599,13 @@ export type NoteDeletedEvent = {
 
 /**  Who made a note change (`NoteEventSource`): the app, or an edit outside it. */
 export type NoteEventSource = "internal" | "external";
+
+/**
+ *  Note events were dropped because their forwarder fell behind (no Electron channel: Electron
+ *  sends every event). No payload; the renderer refetches its note lists, its tags and every
+ *  note it shows.
+ */
+export type NoteEventsDroppedEvent = null;
 
 /**  `NoteListSchema.fields`: `tree` drops the fields the sidebar never reads. */
 export type NoteListFields = "full" | "tree";

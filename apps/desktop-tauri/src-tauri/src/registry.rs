@@ -160,6 +160,7 @@ pub fn builder() -> Builder<Wry> {
             // notes
             crate::events::NoteCreatedEvent,
             crate::events::NoteDeletedEvent,
+            crate::events::NoteEventsDroppedEvent,
             crate::events::NoteUpdatedEvent,
             // vault
             crate::events::VaultActivityChangedEvent,

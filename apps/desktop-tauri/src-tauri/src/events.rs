@@ -123,6 +123,12 @@ pub struct NoteDeletedEvent {
     pub source: NoteEventSource,
 }
 
+/// Note events were dropped because their forwarder fell behind (no Electron channel: Electron
+/// sends every event). No payload; the renderer refetches its note lists, its tags and every
+/// note it shows.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct NoteEventsDroppedEvent;
+
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultListChangedEvent;

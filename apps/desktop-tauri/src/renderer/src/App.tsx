@@ -102,6 +102,7 @@ import {
 } from '@/lib/vault-switch-state'
 import { UpdatingScreen } from '@/components/updating-screen'
 import { UpdateInstallFailedDialog } from '@/components/updater/update-install-failed-dialog'
+import { PermanentDeleteConfirm } from '@/components/note/permanent-delete-confirm'
 import { ReleaseNotesDevTrigger } from '@/components/updater/release-notes-dev-trigger'
 import { useAppUpdaterSelector } from '@/hooks/use-app-updater'
 import { trackTelemetry } from '@/lib/telemetry'
@@ -965,6 +966,7 @@ function AppScreen(): React.JSX.Element {
       storageKey={THEME_STORAGE_KEY}
     >
       <VaultStack activePath={vaultPath} />
+      <PermanentDeleteConfirm />
       <UpdateInstallFailedDialog />
       <Toaster />
     </ThemeProvider>

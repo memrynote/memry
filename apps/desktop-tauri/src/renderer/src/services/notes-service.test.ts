@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
+import { answer, current } from '@/lib/permanent-delete-question'
 
 const commands = vi.hoisted(() => ({
   notesCreate: vi.fn(),
@@ -27,7 +28,8 @@ const events = vi.hoisted(() => {
   return {
     noteCreatedEvent: event('created'),
     noteUpdatedEvent: event('updated'),
-    noteDeletedEvent: event('deleted')
+    noteDeletedEvent: event('deleted'),
+    noteEventsDroppedEvent: event('dropped')
   }
 })
 
@@ -38,6 +40,7 @@ import {
   onNoteCreated,
   onNoteUpdated,
   onNoteDeleted,
+  onNoteEventsDropped,
   onNoteRenamed,
   onNoteMoved,
   onNoteExternalChange,
@@ -162,7 +165,7 @@ describe('notes-service', () => {
     expect(created.success).toBe(true)
     expect(created.note?.modified).toEqual(new Date(MODIFIED))
     expect(await notesService.delete('note-1')).toEqual({ success: true })
-    expect(commands.notesDelete).toHaveBeenCalledWith('note-1')
+    expect(commands.notesDelete).toHaveBeenCalledWith('note-1', null)
 
     // A template (13l) or plain checklists (32) would be dropped, so the create is refused.
     await expect(notesService.create({ title: 'T', template: 'weekly' })).rejects.toMatchObject({
@@ -193,6 +196,36 @@ describe('notes-service', () => {
       error: 'name taken'
     })
     expect(api.notes.create).not.toHaveBeenCalled()
+  })
+
+  it('asks before a delete the trash refused goes for good, and deletes only on yes', async () => {
+    const refused = { kind: 'storage', code: 'note_trash_unavailable', message: 'no trash' }
+    commands.notesGet.mockResolvedValue({ id: 'n', title: 'Plan', created: 0, modified: 0 })
+    const ask = async (permanent: boolean) => {
+      commands.notesDelete.mockReset()
+      commands.notesDelete.mockRejectedValueOnce(refused).mockResolvedValueOnce(null)
+      const deleting = notesService.delete('n')
+      await vi.waitFor(() => expect(current()?.title).toBe('Plan'))
+      answer(current(), permanent)
+      return deleting
+    }
+
+    expect(await ask(true)).toEqual({ success: true })
+    expect(commands.notesDelete.mock.calls).toEqual([
+      ['n', null],
+      ['n', true]
+    ])
+
+    const kept = await ask(false)
+    expect(kept.success).toBe(false)
+    expect(kept.error).toEqual(expect.any(String))
+    expect(commands.notesDelete.mock.calls).toEqual([['n', null]])
+
+    // Any other failure is answered at once, with no question.
+    commands.notesDelete.mockReset()
+    commands.notesDelete.mockRejectedValueOnce({ ...refused, code: 'note_file_failed' })
+    expect(await notesService.delete('n')).toEqual({ success: false, error: 'no trash' })
+    expect(current()).toBeNull()
   })
 
   it('sets local-only through its command and rejects when the change did not happen', async () => {
@@ -303,6 +336,16 @@ describe('notes-service', () => {
     expect(deleted).toHaveBeenCalledWith({ id: 'n', path: 'a.md', source: 'internal' })
     for (const stop of stops) stop()
     await vi.waitFor(() => expect(listeners.size).toBe(0))
+  })
+
+  it('hands on the signal that note events were dropped', async () => {
+    const dropped = vi.fn()
+    const stop = onNoteEventsDropped(dropped)
+    await vi.waitFor(() => expect(listeners.has('dropped')).toBe(true))
+    listeners.get('dropped')?.({ payload: null })
+    expect(dropped).toHaveBeenCalledTimes(1)
+    stop()
+    await vi.waitFor(() => expect(listeners.has('dropped')).toBe(false))
   })
 
   it('registers the note event subscriptions not yet ported on window.api', () => {
