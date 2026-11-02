@@ -12,7 +12,8 @@
 //! | the local prune follows the store      | §7.7 (the client's half)    |
 //! | a pushed snapshot stores a NULL revision | §7.13.4, until #2187      |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

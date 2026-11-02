@@ -4,7 +4,8 @@
 //! pusher onto the single-note route, and a document with unmerged remote
 //! state never reaches the wire.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

@@ -32,8 +32,8 @@ use memry_core::markdown::schema::quote::{
 use memry_core::markdown::shared::youtube::{extract_youtube_video_id, get_youtube_thumbnail_url};
 use serde_json::{Value, json};
 
-use crate::scan::scan_all;
-use crate::stubs::Stub;
+use crate::markdown_layer_blocks_vectors::scan::scan_all;
+use crate::markdown_layer_blocks_vectors::stubs::Stub;
 
 struct Args<'a>(&'a [Value]);
 

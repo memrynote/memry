@@ -1,5 +1,6 @@
 //! Conformance for `tag-schema-refs.json` (chapter 13 §13.7.7.2).
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::domain::tag_schema_refs::rewrite_schema_reference;
 use serde_json::Value;

@@ -2,7 +2,8 @@
 //! file captures carry desktop's attachment path and metadata, and every
 //! write lands in the outbox.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

@@ -5,7 +5,8 @@
 //! `svg_inert`, so every case is a real gap. The output the app writes passes the check and
 //! is a fixpoint. Icons as the usual editors export them keep their drawing.
 
-mod svg_inert;
+#[allow(unused_imports)]
+use crate::svg_inert;
 
 use memry_desktop::vault::svg::{sanitize_svg, sanitize_svg_as_typescript};
 use memry_test_kit::proptest_config;

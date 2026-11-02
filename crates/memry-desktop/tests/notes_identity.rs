@@ -5,8 +5,10 @@
 //! shows: rows, bodies and ids across opens, and a vault Electron wrote
 //! (`tests/fixtures/electron-vault`, captured by `scripts/electron-fixtures/capture-vault.mjs`).
 
-mod device_key;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::collections::BTreeMap;
 use std::fs;

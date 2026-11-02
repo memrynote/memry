@@ -5,7 +5,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 #[path = "markdown_layer_blocks_vectors/dispatch.rs"]
 mod dispatch;

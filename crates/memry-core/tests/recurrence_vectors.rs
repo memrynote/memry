@@ -7,7 +7,8 @@
 //! `repeat-phrase.ts`. Each test checks every case in its section and panics
 //! once, listing every mismatch, so one run shows the whole gap.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::domain::calendar::{CivilDate, LocalDateTime};
 use memry_core::domain::recurrence::{

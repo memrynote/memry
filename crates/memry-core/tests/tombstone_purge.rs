@@ -13,7 +13,8 @@
 //! record cipher are the two seams the core does not own. **Nothing here
 //! reaches a network.**
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

@@ -6,7 +6,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::ReplaceOptions;

@@ -28,7 +28,8 @@
 //! turns red and forces the flag's removal. Remove the flag, never the case —
 //! the convention `ROUNDTRIP_CASES` already uses on the TypeScript side.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::sync::Arc;
 

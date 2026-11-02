@@ -15,7 +15,8 @@
 //! | a journal hit carries its date                    | §A.5                          |
 //! | tasks rank in their own corpus                    | §A.5                          |
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::domain::search::{
     self, HitKind, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, SearchHit, TASKS_WATERMARK_KEY,

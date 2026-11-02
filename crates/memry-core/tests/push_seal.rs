@@ -21,8 +21,10 @@
 //! | a policy refusal leaves the queue untouched  | chapter 11 §11.9                        |
 //! | a delete push attests what it sends          | chapter 04 §4.8.4 (#2408)               |
 
-mod http_fakes;
-mod support;
+#[allow(unused_imports)]
+use crate::http_fakes;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::path::PathBuf;
 use std::sync::Arc;

@@ -1,7 +1,8 @@
 //! The Unsplash service against `unsplash_server`, a local TLS server standing in for the API and
 //! the image CDN.
 
-mod unsplash_server;
+#[allow(unused_imports)]
+use crate::unsplash_server;
 
 use std::sync::{Arc, Mutex};
 

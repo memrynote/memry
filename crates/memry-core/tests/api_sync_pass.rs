@@ -6,7 +6,8 @@
 //! and a `/sync/push` that the pull preceded, signed as the device the server
 //! registered (the access token's `device_id`), never the local clock id.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

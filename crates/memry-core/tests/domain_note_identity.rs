@@ -17,7 +17,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod note_identity_support;
+#[allow(unused_imports)]
+use crate::note_identity_support;
 
 use std::collections::HashMap;
 

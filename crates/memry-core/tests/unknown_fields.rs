@@ -25,7 +25,8 @@
 //! times, and a stale remote record overwriting a newer local one for eleven
 //! types. All three were invisible to a unit test and visible here.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};

@@ -7,7 +7,8 @@
 //! single run shows the whole gap. The committed JSON is the only input and
 //! nothing here recomputes an expectation.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::domain::calendar::{CivilDate, LocalDateTime};
 use memry_core::domain::task_parse::completion::{

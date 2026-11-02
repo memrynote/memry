@@ -2,8 +2,10 @@
 //! on the note and the list, nothing of the note is queued while it is set, whether the edit
 //! comes from the editor or from the file, and clearing it queues the whole note.
 
-mod device_key;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::sync::Arc;
 

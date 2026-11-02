@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
+autotests = false
 
 [lib]
 name = "memry_core"
@@ -91,3 +92,47 @@ serde_json = { workspace = true, features = ["float_roundtrip"] }
 ciborium = { workspace = true }
 hex = { workspace = true }
 base64 = { workspace = true }
+
+# Integration tests: one binary for every file that runs in a shared process
+
+# (tests/integration.rs), and a target of its own for each file that needs one.
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[[test]]
+name = "markdown_corpus"
+path = "tests/markdown_corpus.rs"
+
+[[test]]
+name = "markdown_differential"
+path = "tests/markdown_differential.rs"
+
+[[test]]
+name = "markdown_frontmatter_proptest"
+path = "tests/markdown_frontmatter_proptest.rs"
+
+[[test]]
+name = "markdown_layer_text_vectors"
+path = "tests/markdown_layer_text_vectors.rs"
+
+[[test]]
+name = "markdown_perf"
+path = "tests/markdown_perf.rs"
+
+[[test]]
+name = "markdown_proptest"
+path = "tests/markdown_proptest.rs"
+
+[[test]]
+name = "markdown_url_differential"
+path = "tests/markdown_url_differential.rs"
+
+[[test]]
+name = "outbox_durability"
+path = "tests/outbox_durability.rs"
+
+[[test]]
+name = "read_pool_contention"
+path = "tests/read_pool_contention.rs"

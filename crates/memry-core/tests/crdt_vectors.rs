@@ -5,7 +5,8 @@
 //! same: the committed JSON is the only input, nothing here regenerates or
 //! recomputes an expectation.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::crypto::sodium;
 use memry_core::protocol::crdt_envelope::{

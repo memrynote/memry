@@ -5,7 +5,8 @@
 //! the two ciphers are fakes. The body cipher hands packed bytes back as the
 //! plaintext.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};

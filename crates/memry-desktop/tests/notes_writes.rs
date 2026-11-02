@@ -6,8 +6,10 @@
 //! change, in its facts or in the activity log; an outside edit reads back as the fields
 //! `notes:updated` carries.
 
-mod device_key;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::fs;
 use std::path::Path;

@@ -9,9 +9,12 @@
 //!   new note is announced as a target.
 //! - An edit that changes no link announces nothing.
 
-mod device_key;
-mod index_support;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::index_support;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::collections::BTreeMap;
 use std::sync::mpsc::{self, Receiver};

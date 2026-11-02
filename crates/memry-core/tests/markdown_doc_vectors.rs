@@ -4,7 +4,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use serde_json::Value as Json;
 use support::doc_case::{

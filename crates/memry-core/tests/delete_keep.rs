@@ -6,7 +6,8 @@
 //! its `bodyStateVector` (#3037); a cipher that opens nothing is a delete
 //! without one.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

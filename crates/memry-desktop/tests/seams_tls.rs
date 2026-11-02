@@ -1,7 +1,8 @@
 //! Certificate pinning against a local rustls server with a test CA (`seams::tls`): the pin table
 //! decides after the chain and the hostname were accepted, never instead of them.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::collections::HashMap;
 use std::sync::Arc;

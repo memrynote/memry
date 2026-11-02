@@ -3,9 +3,12 @@
 //! replaced, each moved file keeps its note, and the watcher adds or removes no note after.
 //! The planner's rules are pinned against Electron in `journal_format_vectors.rs`.
 
-mod device_key;
-mod on_warning;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::on_warning;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::collections::HashSet;
 use std::fs;

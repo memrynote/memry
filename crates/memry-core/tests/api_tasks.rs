@@ -13,7 +13,8 @@
 //! | undoing a delete brings the task and subtasks back        | TP051             |
 //! | a missing item and a refused write are typed errors       | TP092             |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

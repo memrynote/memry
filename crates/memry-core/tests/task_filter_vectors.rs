@@ -6,7 +6,8 @@
 //! mismatches and fails once, listing each case's input, expected and actual
 //! value, so one run shows everything that differs.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::collections::HashMap;
 

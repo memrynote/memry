@@ -11,7 +11,8 @@
 //! | the damaged file is moved aside, never deleted      | production data, maybe the only copy |
 //! | the rebuilt database opens and takes writes         | the vault is usable again            |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::{Path, PathBuf};
 

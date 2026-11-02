@@ -15,7 +15,8 @@
 //! | a 501 open falls back silently        | chapter 10 §10.5, §10.12          |
 //! | a failed renewal drops the header     | §10.11 (Q10.2), mid-run           |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::collections::HashMap;
 use std::path::PathBuf;

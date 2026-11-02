@@ -5,7 +5,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use support::doc_case::roundtrip_of;
 use support::vector_compare::{Failures, bytes_equal};

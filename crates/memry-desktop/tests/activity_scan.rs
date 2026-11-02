@@ -4,8 +4,10 @@
 //! first open's one "index built" summary, a later open's entries for the files that came while
 //! the app was closed, and nothing at all in an Electron vault this app did not import.
 
-mod device_key;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::fs;
 

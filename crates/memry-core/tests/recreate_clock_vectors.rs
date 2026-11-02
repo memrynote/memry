@@ -4,7 +4,8 @@
 //! `packages/contracts/test-vectors/README.md` — and nothing here recomputes an
 //! expectation.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::sync::clock::{VectorClock, increment, recreate_base};
 use serde_json::Value as Json;

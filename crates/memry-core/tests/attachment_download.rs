@@ -13,8 +13,10 @@
 //!   (§14.4.1);
 //! - the signature is checked before the file key is unwrapped (§14.4.1).
 
-mod http_fakes;
-mod support;
+#[allow(unused_imports)]
+use crate::http_fakes;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::sync::Arc;
 

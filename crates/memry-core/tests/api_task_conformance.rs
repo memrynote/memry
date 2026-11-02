@@ -1,7 +1,8 @@
 //! The task conformance seam answers the committed vectors (spec 004 TP080):
 //! what the Swift harness will compare, checked here first against the file.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::api::task_conformance::{task_due_windows_conformance, task_filtering_conformance};
 use serde_json::Value;

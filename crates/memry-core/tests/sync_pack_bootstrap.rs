@@ -4,7 +4,8 @@
 //! 08 reader. The only fake is the `Transport`. The pack bytes are built here
 //! because the client is never a pack writer (§8.1).
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

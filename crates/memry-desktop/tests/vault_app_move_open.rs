@@ -4,8 +4,10 @@
 //! path is finished before the walk, one with nothing to finish is forgotten, and one the open
 //! cannot settle, or cannot read, is logged and stays.
 
-mod device_key;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::fs;
 use std::io::{self, Write};

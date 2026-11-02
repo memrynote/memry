@@ -4,7 +4,8 @@
 //! due window, the Done sections, every sidebar view, every project arm and the
 //! tab badges. The committed JSON is the only input.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::collections::HashMap;
 

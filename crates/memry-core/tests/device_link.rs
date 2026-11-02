@@ -11,7 +11,8 @@
 //! first, reads the posted key out of the recorded request, and only then
 //! pushes the answer.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};

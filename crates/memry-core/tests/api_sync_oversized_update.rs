@@ -10,7 +10,8 @@
 //! transport plays the server: routes by path, refuses a long update, and
 //! records the bodies it was sent.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};

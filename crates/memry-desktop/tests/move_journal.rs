@@ -5,7 +5,8 @@
 //! touches nothing but a journaled move's folders and folders named exactly
 //! `.memry-move-<12 hex>`.
 
-mod move_tree;
+#[allow(unused_imports)]
+use crate::move_tree;
 
 use std::any::Any;
 use std::fs;

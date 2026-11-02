@@ -4,7 +4,8 @@
 //!
 //! Desktop's `cursorSkipRepair` shape: absent, `pending:<cursor>`, `done`.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

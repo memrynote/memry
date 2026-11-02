@@ -6,7 +6,8 @@
 //! seed must build the same document. Block ids are random on both sides, so
 //! both renderings drop the `id` of every `blockContainer`.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::sync::Arc;
 

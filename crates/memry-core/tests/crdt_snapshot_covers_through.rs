@@ -5,7 +5,8 @@
 //! refuses the claim (`CRDT_SNAPSHOT_NOT_COVERED`) leaves the document owed,
 //! so the next push is refused locally rather than sent again.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

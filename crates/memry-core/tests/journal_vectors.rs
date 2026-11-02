@@ -2,7 +2,8 @@
 //! every section of `journal.json` against `domain::journal_rules`. The
 //! committed JSON is the only input.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::collections::BTreeMap;
 

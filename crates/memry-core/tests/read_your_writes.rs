@@ -7,7 +7,8 @@
 //! stale or write-demanding connection fails here. In-memory databases, which
 //! most unit tests use, have no pool; these tests do.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::sync::Arc;
 

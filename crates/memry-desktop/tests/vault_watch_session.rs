@@ -2,7 +2,8 @@
 //! (12d review): the own-write record does not outlive a session, a stopped watcher reports
 //! nothing, and an edit no OS event announced is found by the safety-net rescan.
 
-mod device_key;
+#[allow(unused_imports)]
+use crate::device_key;
 
 use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};

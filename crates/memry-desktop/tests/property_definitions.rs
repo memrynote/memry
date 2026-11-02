@@ -9,7 +9,8 @@
 //! | a create keeps what the type shares                         | `notes:create-` / `update-property-definition` |
 //! | an edit of a missing or wrong definition says so            | `requireDefinition`, `addStatusOption`  |
 
-mod device_key;
+#[allow(unused_imports)]
+use crate::device_key;
 
 use std::fs;
 use std::path::PathBuf;
