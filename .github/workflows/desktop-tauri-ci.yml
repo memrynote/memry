@@ -305,14 +305,15 @@ jobs:
         uses: ./.github/actions/free-disk
 
       # Experiment: windows-11-arm spends ~11 min restoring and linking the pnpm store, against
-      # ~1.5 min on windows-2022. Real-time scanning of every file written is the suspect.
-      - name: Turn off Defender real-time scanning (Windows)
+      # ~1.5 min on windows-2022. Real-time scanning of every file written is the suspect. The
+      # runner's Defender is tamper-protected, so real-time scanning stays on; exclusions may not.
+      - name: Exclude build paths from Defender (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Get-MpComputerStatus | Select-Object AMRunningMode, RealTimeProtectionEnabled, IsTamperProtected | Format-List
-          Set-MpPreference -DisableRealtimeMonitoring $true
-          Get-MpComputerStatus | Select-Object RealTimeProtectionEnabled | Format-List
+          $paths = @($env:GITHUB_WORKSPACE, $env:RUNNER_TEMP, $env:RUNNER_TOOL_CACHE, "$env:LOCALAPPDATA\pnpm", "$env:USERPROFILE\.cargo", "$env:USERPROFILE\.rustup")
+          Add-MpPreference -ExclusionPath $paths
+          (Get-MpPreference).ExclusionPath
 
       - name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
