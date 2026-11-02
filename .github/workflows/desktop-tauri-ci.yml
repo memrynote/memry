@@ -229,12 +229,18 @@ jobs:
       - name: Release and rehearsal script tests
         run: node --test scripts/release/*.test.mjs scripts/rehearsal/*.test.mjs
 
+  # The 1069 jsdom test files took 17 minutes in one vitest run on a 4-vCPU runner, the longest job
+  # of the fast tier once Rust CI went Linux-only. Three shards keep each under the Linux e2e build.
   renderer-tests:
-    name: Renderer tests
+    name: Renderer tests (${{ matrix.shard }}/3)
     needs: plan
     if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -252,10 +258,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Test
-        run: pnpm --filter @memry/desktop-tauri test
+      - name: Test (shard ${{ matrix.shard }}/3)
+        run: pnpm --filter @memry/desktop-tauri test --shard=${{ matrix.shard }}/3
 
       - name: Script tests
+        if: matrix.shard == 1
         run: pnpm --filter @memry/desktop-tauri test:scripts
 
   # Fast tier: linux-x64 only, and only when the diff can change app behavior. Full: every leg the plan
