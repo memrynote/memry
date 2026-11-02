@@ -9,7 +9,8 @@
 //! | the re-driver fetches a referenced, missing picture | re-driver, no note re-apply  |
 //! | the re-driver defers on cellular by default         | prefetch on cellular opt-in  |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

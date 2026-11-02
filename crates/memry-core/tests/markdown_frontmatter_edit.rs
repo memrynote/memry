@@ -6,7 +6,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, deep_strict_equal, edit_frontmatter_block, equal_visits, gray_matter_data,

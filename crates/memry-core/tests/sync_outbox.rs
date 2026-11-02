@@ -19,7 +19,8 @@
 //! | the three blocked states stay distinct    | chapter 11 §11.7.1, FR-035                  |
 //! | a 402 demotes to `Unentitled`             | chapter 11 §11.7.1, chapter 00 §0.5         |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

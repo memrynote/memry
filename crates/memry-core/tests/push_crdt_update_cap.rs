@@ -6,7 +6,8 @@
 //! defines. The end-to-end path through `sync_now` is in
 //! `api_sync_oversized_update.rs`.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};

@@ -5,7 +5,8 @@
 //! production TypeScript path, so "the vector is wrong" is the last hypothesis
 //! to reach for, not the first.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::collections::BTreeMap;
 

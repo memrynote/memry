@@ -7,7 +7,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::sync::Arc;
 

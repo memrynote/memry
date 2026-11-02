@@ -16,7 +16,8 @@
 //! `hadConflicts: false`, and the override was deleted as its own comment
 //! predicted. The case is now asserted from the file like every other one.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::collections::BTreeMap;
 

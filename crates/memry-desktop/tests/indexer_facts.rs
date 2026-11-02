@@ -7,9 +7,12 @@
 //! and the search index (links) is brought up to date at every open, not only after a pass that
 //! wrote rows.
 
-mod device_key;
-mod index_support;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::index_support;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::sync::{Arc, Mutex};
 use std::time::Instant;

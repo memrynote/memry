@@ -3,7 +3,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::markdown::shared::markdown_class::{
     LargeFileReason, MarkdownClassThresholds, classify_markdown_content,

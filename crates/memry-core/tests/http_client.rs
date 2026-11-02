@@ -4,7 +4,8 @@
 //! Every test drives a scripted `Transport`. The core opens no socket of its
 //! own here or anywhere (Constitution I).
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::sync::Arc;
 use std::sync::Mutex;

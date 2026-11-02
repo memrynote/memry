@@ -1,4 +1,5 @@
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::domain::notes::names::{name_key, normalize_aliases};
 use memry_core::domain::wiki_target::{self, MatchedBy};

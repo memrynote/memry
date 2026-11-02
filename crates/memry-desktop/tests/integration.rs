@@ -1,0 +1,194 @@
+//! Every integration test of this crate that does not need a process of its own, built as one
+//! test binary. Each file under tests/ used to be a binary of its own that linked the crate and
+//! its dependencies again: hundreds of links per CI run. A file that needs its own process (it
+//! re-runs its binary, pins process-wide state, installs a global allocator, or a command names
+//! it with `--test`) gets a `[[test]]` target in Cargo.toml instead. `every_test_file_is_built`
+//! keeps a new file from being left out of both: with `autotests = false` it would never compile.
+
+mod device_key;
+mod index_support;
+mod move_tree;
+mod on_warning;
+mod support;
+mod svg_inert;
+mod unsplash_server;
+mod vault_env;
+
+#[path = "activity_log.rs"]
+mod activity_log;
+#[path = "activity_scan.rs"]
+mod activity_scan;
+#[path = "article_constants.rs"]
+mod article_constants;
+#[path = "article_dom.rs"]
+mod article_dom;
+#[path = "article_map.rs"]
+mod article_map;
+#[path = "article_markdown.rs"]
+mod article_markdown;
+#[path = "article_mathml.rs"]
+mod article_mathml;
+#[path = "article_metadata.rs"]
+mod article_metadata;
+#[path = "article_mutations.rs"]
+mod article_mutations;
+#[path = "article_pipeline.rs"]
+mod article_pipeline;
+#[path = "article_removals.rs"]
+mod article_removals;
+#[path = "article_standardize.rs"]
+mod article_standardize;
+#[path = "article_temml.rs"]
+mod article_temml;
+#[path = "article_vectors.rs"]
+mod article_vectors;
+#[path = "byte_preservation.rs"]
+mod byte_preservation;
+#[path = "command_failure.rs"]
+mod command_failure;
+#[path = "config_compat.rs"]
+mod config_compat;
+#[path = "content_hash_vectors.rs"]
+mod content_hash_vectors;
+#[path = "custom_icons.rs"]
+mod custom_icons;
+#[path = "debug_query.rs"]
+mod debug_query;
+#[path = "e2e.rs"]
+mod e2e;
+#[path = "embeds.rs"]
+mod embeds;
+#[path = "file_open.rs"]
+mod file_open;
+#[path = "fs_atomic.rs"]
+mod fs_atomic;
+#[path = "home_covers.rs"]
+mod home_covers;
+#[path = "http.rs"]
+mod http;
+#[path = "i18n_vectors.rs"]
+mod i18n_vectors;
+#[path = "icons.rs"]
+mod icons;
+#[path = "import_copy.rs"]
+mod import_copy;
+#[path = "indexer_facts.rs"]
+mod indexer_facts;
+#[path = "indexer_scan.rs"]
+mod indexer_scan;
+#[path = "journal_format_vectors.rs"]
+mod journal_format_vectors;
+#[path = "journal_rename.rs"]
+mod journal_rename;
+#[path = "logging.rs"]
+mod logging;
+#[path = "logship.rs"]
+mod logship;
+#[path = "move_dir.rs"]
+mod move_dir;
+#[path = "move_journal.rs"]
+mod move_journal;
+#[path = "note_links.rs"]
+mod note_links;
+#[path = "note_links_changed.rs"]
+mod note_links_changed;
+#[path = "note_mentions.rs"]
+mod note_mentions;
+#[path = "notes_identity.rs"]
+mod notes_identity;
+#[path = "notes_local_only.rs"]
+mod notes_local_only;
+#[path = "notes_moves.rs"]
+mod notes_moves;
+#[path = "notes_service.rs"]
+mod notes_service;
+#[path = "notes_writes.rs"]
+mod notes_writes;
+#[path = "path_collision.rs"]
+mod path_collision;
+#[path = "paths.rs"]
+mod paths;
+#[path = "properties_file.rs"]
+mod properties_file;
+#[path = "property_definitions.rs"]
+mod property_definitions;
+#[path = "sanitize_svg_inert.rs"]
+mod sanitize_svg_inert;
+#[path = "sanitize_svg_untrusted.rs"]
+mod sanitize_svg_untrusted;
+#[path = "sanitize_svg_vectors.rs"]
+mod sanitize_svg_vectors;
+#[path = "seams_tls.rs"]
+mod seams_tls;
+#[path = "seams_transport.rs"]
+mod seams_transport;
+#[path = "settings_service.rs"]
+mod settings_service;
+#[path = "sync_host_clients.rs"]
+mod sync_host_clients;
+#[path = "tags.rs"]
+mod tags;
+#[path = "telemetry_flush.rs"]
+mod telemetry_flush;
+#[path = "templates.rs"]
+mod templates;
+#[path = "templates_legacy.rs"]
+mod templates_legacy;
+#[path = "unsplash.rs"]
+mod unsplash;
+#[path = "untrusted_scheme_input.rs"]
+mod untrusted_scheme_input;
+#[path = "vault_app_move_open.rs"]
+mod vault_app_move_open;
+#[path = "vault_config.rs"]
+mod vault_config;
+#[path = "vault_consumer.rs"]
+mod vault_consumer;
+#[path = "vault_init.rs"]
+mod vault_init;
+#[path = "vault_pairing.rs"]
+mod vault_pairing;
+#[path = "vault_paths.rs"]
+mod vault_paths;
+#[path = "vault_walk.rs"]
+mod vault_walk;
+#[path = "vault_watch.rs"]
+mod vault_watch;
+#[path = "vault_watch_reported.rs"]
+mod vault_watch_reported;
+#[path = "vault_watch_session.rs"]
+mod vault_watch_session;
+#[path = "vault_writeback.rs"]
+mod vault_writeback;
+#[path = "vault_writes.rs"]
+mod vault_writes;
+
+#[test]
+fn every_test_file_is_built() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let this =
+        std::fs::read_to_string(root.join("tests/integration.rs")).expect("read integration.rs");
+    let manifest = std::fs::read_to_string(root.join("Cargo.toml")).expect("read Cargo.toml");
+    let mut missing = Vec::new();
+    for entry in std::fs::read_dir(root.join("tests")).expect("list tests/") {
+        let name = entry
+            .expect("dir entry")
+            .file_name()
+            .into_string()
+            .expect("utf-8 name");
+        let Some(stem) = name.strip_suffix(".rs") else {
+            continue;
+        };
+        let built = stem == "integration"
+            || this.contains(&format!("#[path = \"{name}\"]"))
+            || this.contains(&format!("mod {stem};"))
+            || manifest.contains(&format!("path = \"tests/{name}\""));
+        if !built {
+            missing.push(name);
+        }
+    }
+    assert!(
+        missing.is_empty(),
+        "add these to tests/integration.rs, or give them a [[test]] target in Cargo.toml: {missing:?}"
+    );
+}

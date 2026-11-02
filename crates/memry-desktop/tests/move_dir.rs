@@ -8,7 +8,8 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
-mod move_tree;
+#[allow(unused_imports)]
+use crate::move_tree;
 
 use memry_desktop::vault::move_dir::{
     IncompleteRollback, Step, move_dir, move_dir_checked, simulated_hold,

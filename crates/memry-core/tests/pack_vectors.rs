@@ -9,7 +9,8 @@
 //! The harness rule is otherwise the usual one: the committed JSON is the
 //! input and the only input, and no expectation is recomputed.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::protocol::pack::{
     self, PACK_HEADER_SIZE, PACK_MAGIC, PACK_MAX_ENTRIES, PACK_VERSION, PackError, PackKind,

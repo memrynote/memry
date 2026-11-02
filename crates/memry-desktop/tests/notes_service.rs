@@ -2,8 +2,10 @@
 //! comes from its file, read bounded and classified by size before the editor gets it; a list
 //! is the records and their rows in one query.
 
-mod device_key;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::path::Path;
 use std::sync::Arc;

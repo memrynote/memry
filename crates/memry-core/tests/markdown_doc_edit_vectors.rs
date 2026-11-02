@@ -4,7 +4,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::markdown::convert::api::{Converter, ReplaceOptions};
 use memry_core::markdown::convert::apply::{ReplaceOutcome, fragment_snapshot};

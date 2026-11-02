@@ -17,7 +17,8 @@
 //! corpus authored through BlockNote itself. Nothing here recomputes an
 //! expectation; the committed JSON is the only input (README rule 2).
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::sync::Arc;
 

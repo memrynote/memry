@@ -4,9 +4,12 @@
 //! leaves them once the index measured it, and the hub's edits change records only, never a
 //! note file.
 
-mod device_key;
-mod index_support;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::index_support;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::path::Path;
 use std::sync::Arc;

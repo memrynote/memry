@@ -10,7 +10,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod note_identity_support;
+#[allow(unused_imports)]
+use crate::note_identity_support;
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::notes::identity::{self, Moved, OwedPlace, Removed};

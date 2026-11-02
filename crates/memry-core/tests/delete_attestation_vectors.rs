@@ -5,7 +5,8 @@
 //! so this file is what stops the two ports from drifting: a divergence would
 //! make every attestation this core pushes fail the server's per-item check.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::crypto::cbor::field_order;
 use memry_core::crypto::sodium;

@@ -22,7 +22,8 @@
 //! | a body fetch for an unknown note is refused     | chapter 07 §7.15                      |
 //! | a locked device refuses before the first request | no key, no network                   |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

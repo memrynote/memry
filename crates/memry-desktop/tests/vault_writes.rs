@@ -1,7 +1,8 @@
 //! A vault write changes only the bytes it means to and never replaces a file it did not
 //! read: exclusive creation, kept file attributes, and a containment check at the rename.
 
-mod on_warning;
+#[allow(unused_imports)]
+use crate::on_warning;
 
 use std::fs;
 use std::path::Path;

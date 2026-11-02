@@ -14,7 +14,8 @@
 //! | a status named Status follows the tasks too            | the picker names a new one `Status`   |
 //! | a note without tasks, or another type, is left alone   | the stored value stands               |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::sync::Arc;
 

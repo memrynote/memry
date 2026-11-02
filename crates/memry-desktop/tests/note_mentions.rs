@@ -3,9 +3,12 @@
 //! `notes_preview_by_title` commands call, over a real session: records, rows, files and the
 //! note index in a temp vault.
 
-mod device_key;
-mod index_support;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::index_support;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::sync::{Arc, Mutex};
 

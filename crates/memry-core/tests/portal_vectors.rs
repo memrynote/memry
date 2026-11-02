@@ -5,7 +5,8 @@
 //! `depth`, `inline[].text`); they are lifted into the core's own `Block`, and
 //! the ids that come back are compared with `expectedIds`.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::collections::HashMap;
 

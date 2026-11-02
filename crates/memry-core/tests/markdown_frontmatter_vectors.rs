@@ -4,7 +4,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::markdown::frontmatter::{
     Eol, ParsedMarkdownNote, YamlValue, parse_markdown_note, safe_load,

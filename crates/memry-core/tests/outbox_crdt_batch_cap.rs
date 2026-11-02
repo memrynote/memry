@@ -11,7 +11,8 @@
 //! Real SQLite, real `HttpClient`, real packed envelopes. The transport plays
 //! the server's one relevant rule: a body past the ceiling is a 413.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::collections::HashMap;
 use std::path::PathBuf;

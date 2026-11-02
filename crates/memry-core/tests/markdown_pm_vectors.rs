@@ -4,7 +4,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::markdown::pm::schema::{AttrSpec, Default, Excludes, Marks};
 use memry_core::markdown::pm::specs::{MARK_SPECS, NODE_SPECS, TOP_NODE};

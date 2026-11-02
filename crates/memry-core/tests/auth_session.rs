@@ -1,7 +1,8 @@
 //! The authentication tier, T098: chapter 02 over a scripted `Transport`, and
 //! data-model §C.1 edge for edge, failure edges included.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::sync::Arc;
 use std::time::Duration;

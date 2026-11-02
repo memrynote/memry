@@ -12,7 +12,8 @@
 //! produce the same bytes. The inputs are the class's own; nothing here
 //! recomputes an expectation.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::collections::HashMap;
 use std::sync::Arc;

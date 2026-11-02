@@ -35,7 +35,8 @@
 //! local Y.Doc and the local update log, never pull bodies for a tombstoned
 //! id, and never read the surviving server rows as evidence the delete failed.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

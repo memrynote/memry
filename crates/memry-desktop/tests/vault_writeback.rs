@@ -3,8 +3,10 @@
 //! whichever way the app quits. The single-pass rules and the timing are the unit tests in
 //! `src/vault/writeback/tests/`.
 
-mod device_key;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};

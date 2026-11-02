@@ -9,7 +9,8 @@
 //! and two failure cases (a confirm MAC under the wrong subkey, and a SAS from
 //! a transcript with one byte changed).
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;

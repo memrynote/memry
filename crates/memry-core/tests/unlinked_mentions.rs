@@ -1,7 +1,8 @@
 //! Unlinked mentions (#3320): the `unlinked-mentions` vectors, and the query
 //! over a reindexed vault.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::sync::Arc;
 

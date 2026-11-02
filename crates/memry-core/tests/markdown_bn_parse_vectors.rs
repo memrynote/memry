@@ -5,7 +5,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::markdown::bn::html_to_blocks::{html_to_blocks, markdown_to_blocks};
 use serde_json::Value as Json;

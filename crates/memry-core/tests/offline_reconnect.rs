@@ -27,7 +27,8 @@
 //! core guarantees is that the call succeeds immediately and completely. The
 //! seam's own doc comment claims more than the core currently wires.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};

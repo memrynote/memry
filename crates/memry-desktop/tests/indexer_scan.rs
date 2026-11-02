@@ -10,9 +10,12 @@
 //! cargo test -p memry-desktop --release --test indexer_scan -- --ignored --nocapture
 //! ```
 
-mod device_key;
-mod index_support;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::index_support;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, mpsc};

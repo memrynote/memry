@@ -74,6 +74,7 @@ node ../scripts/check-line-ceilings.mjs
 node ../scripts/check-test-timing.mjs   # no wall-clock upper bound in a test; drive time through the code's clock or a gate
 ```
 
+- `memry-core` and `memry-desktop` build their integration tests as one binary each, `tests/integration.rs`, with `autotests = false`. A new test file gets a `#[path = "<file>.rs"] mod <file>;` line there and reaches the crate's own items through `crate::<file>::`. A file that needs its own process (it re-runs its binary, pins process-wide state, installs a global allocator, or a command names it with `--test`) gets a `[[test]]` target in the crate's `Cargo.toml` instead. `every_test_file_is_built` fails for a file in neither place. Plain `cargo test` runs a binary's tests as threads of one process; nextest, which CI uses, gives each test a process.
 - `memry-cli` does not build on Windows: `crates/memry-cli/src/session.rs` imports `std::os::unix`. The `windows-2022` and `windows-11-arm` legs of `rust-ci.yml` run clippy with `--exclude memry-cli`, and `cargo test -p memry-cli` runs on the Ubuntu leg only.
 - 600 lines per Rust source file in every crate, `apps/desktop-tauri/src-tauri` included. The repo-wide oxlint `max-lines` limit of 800 applies to `apps/desktop-tauri/src`.
 

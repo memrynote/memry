@@ -10,7 +10,8 @@
 //! build system. Running the primitive vectors through it a second time is what
 //! makes the first run mean something.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use dryoc::classic::crypto_aead_xchacha20poly1305_ietf::{
     crypto_aead_xchacha20poly1305_ietf_decrypt, crypto_aead_xchacha20poly1305_ietf_encrypt,

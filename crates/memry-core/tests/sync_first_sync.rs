@@ -16,7 +16,8 @@
 //! | elevated bodies run in parallel          | §10.7; the body pass's concurrency  |
 //! | a 429 in the bodies pass is paused out   | §7.10 `retryOn429: false`           |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};

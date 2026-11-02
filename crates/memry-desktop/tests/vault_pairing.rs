@@ -4,8 +4,10 @@
 //! bytes, no file of a note whose file went, and no one of several identical files its name
 //! does not single out takes its id.
 
-mod device_key;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::fs;
 use std::sync::{Arc, Mutex};

@@ -6,7 +6,8 @@
 //! plaintext, or fails on the bytes `bad`, so an entry's `data` is base64 of
 //! the update it carries.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

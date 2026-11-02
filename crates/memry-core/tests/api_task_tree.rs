@@ -2,7 +2,8 @@
 //! `Tasks::move_under_places`) through the exported API: any depth, the own
 //! branch locked, and the device-local `tasks.nestedSubtasks` gate.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;

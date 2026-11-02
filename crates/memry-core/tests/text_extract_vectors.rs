@@ -13,7 +13,8 @@
 //! others need none of it. The harness rule is unchanged — the committed JSON
 //! is the only input and nothing here recomputes an expectation.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::sync::Arc;
 

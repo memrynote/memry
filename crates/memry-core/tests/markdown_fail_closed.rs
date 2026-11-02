@@ -7,7 +7,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::crdt::registry::Document;
 use memry_core::markdown::convert::restore::SerializeOptions;

@@ -8,9 +8,12 @@
 //!   with its comments stripped, and count every link past the snippet bound; a broken link
 //!   has no target.
 
-mod device_key;
-mod index_support;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::index_support;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

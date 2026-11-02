@@ -1,7 +1,8 @@
 //! `NativeTransport` against local HTTP and WebSocket servers: it moves bytes, never retries, and
 //! reports a failure in the seam's vocabulary.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use std::collections::HashMap;
 use std::sync::Arc;

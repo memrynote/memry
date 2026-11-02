@@ -1,5 +1,6 @@
 //! Conformance for `tag-fold.json` (chapter 13 §13.7.7, tag identity).
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::domain::tags::{fold, tag_key};
 use serde_json::Value;

@@ -21,7 +21,8 @@
 //! | two passes serialised               | §C.3, "two concurrent passes race the cursor" |
 //! | the push payload rebuilt at send    | chapter 06 §6.5.2 P2 and P3                 |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};

@@ -3,8 +3,10 @@
 //! unit tests in `src/vault/consumer/tests.rs`; these cover what only the running pair does:
 //! the order of the start rescan and the open walk, and the stop with the vault.
 
-mod device_key;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::fs;
 use std::sync::{Arc, Mutex};

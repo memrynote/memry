@@ -12,7 +12,8 @@
 //! | no master key makes no request                       | nothing to seal the name with          |
 //! | the billing routes post their documented bodies      | `routes/auth.ts:812-867`               |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::sync::Arc;
 

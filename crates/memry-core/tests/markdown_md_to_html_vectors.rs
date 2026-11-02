@@ -3,7 +3,8 @@
 
 #![cfg(feature = "markdown")]
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::markdown::bn::md_to_html::markdown_to_html;
 use support::vector_compare::{Failures, bytes_equal};

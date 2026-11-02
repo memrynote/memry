@@ -4,8 +4,10 @@
 //! and a new note. A step that fails puts the file back and forgets the record. The vault
 //! open's finish of a move a crash cut short is `vault_app_move_open.rs`.
 
-mod device_key;
-mod vault_env;
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::vault_env;
 
 use std::fs;
 use std::sync::Arc;

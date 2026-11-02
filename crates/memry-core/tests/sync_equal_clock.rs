@@ -11,7 +11,8 @@
 //! | a page re-pulled after a crash            | §5.11, the cursor after apply      |
 //! | a skipped record owes no body             | §5.11, the debt a page created     |
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};

@@ -12,7 +12,8 @@
 //!   the half of R06 that is not about the file arriving;
 //! - that a dereference longer than the cap is split rather than truncated.
 
-mod http_fakes;
+#[allow(unused_imports)]
+use crate::http_fakes;
 
 use std::sync::Arc;
 

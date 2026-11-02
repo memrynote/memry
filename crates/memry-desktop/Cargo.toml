@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 description = "Desktop services of MemryNote. Never depends on tauri."
+autotests = false
 
 [dependencies]
 # The markdown converter is a desktop-only feature of the core; iOS keeps it off.
@@ -135,3 +136,67 @@ zbus = { version = "5.19.0", default-features = false, features = ["blocking-api
 
 [build-dependencies]
 serde_json.workspace = true
+
+# Integration tests: one binary for every file that runs in a shared process
+
+# (tests/integration.rs), and a target of its own for each file that needs one.
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[[test]]
+name = "activity_log_memory"
+path = "tests/activity_log_memory.rs"
+
+[[test]]
+name = "custom_icons_memory"
+path = "tests/custom_icons_memory.rs"
+
+[[test]]
+name = "electron_secrets_live"
+path = "tests/electron_secrets_live.rs"
+
+[[test]]
+name = "electron_secrets_locked"
+path = "tests/electron_secrets_locked.rs"
+
+[[test]]
+name = "extract_bench"
+path = "tests/extract_bench.rs"
+
+[[test]]
+name = "keyring_live"
+path = "tests/keyring_live.rs"
+
+[[test]]
+name = "obsidian_copy"
+path = "tests/obsidian_copy.rs"
+
+[[test]]
+name = "properties_file_memory"
+path = "tests/properties_file_memory.rs"
+
+[[test]]
+name = "reachability_live"
+path = "tests/reachability_live.rs"
+
+[[test]]
+name = "redact_vectors"
+path = "tests/redact_vectors.rs"
+
+[[test]]
+name = "sanitize_svg_memory"
+path = "tests/sanitize_svg_memory.rs"
+
+[[test]]
+name = "telemetry_vectors"
+path = "tests/telemetry_vectors.rs"
+
+[[test]]
+name = "watch_perf"
+path = "tests/watch_perf.rs"
+
+[[test]]
+name = "writeback_crash"
+path = "tests/writeback_crash.rs"

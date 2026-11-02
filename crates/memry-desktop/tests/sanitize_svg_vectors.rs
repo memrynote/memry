@@ -5,7 +5,8 @@
 //! The ported passes equal the TypeScript byte for byte. The output the app writes may differ
 //! from it only by dropping parts and writing a `<` as `&lt;`, and it is inert and stable.
 
-mod svg_inert;
+#[allow(unused_imports)]
+use crate::svg_inert;
 
 use base64::Engine;
 use memry_desktop::vault::svg::{sanitize_svg, sanitize_svg_as_typescript};

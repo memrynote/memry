@@ -11,7 +11,7 @@ use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::markdown::schema::quote::{read_structured_quote_run, resolve_quote_run};
 use serde_json::{Value, json};
 
-use crate::stubs::{Stub, js_trim};
+use crate::markdown_layer_blocks_vectors::stubs::{Stub, js_trim};
 
 pub fn scan_all(markdown: &str, custom: &CalloutTypes) -> Result<Value, String> {
     let lines: Vec<String> = markdown.split('\n').map(str::to_owned).collect();

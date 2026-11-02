@@ -4,7 +4,8 @@
 //! survives every write, an entry this build cannot read survives every write, a file it
 //! cannot read is never replaced, and a hostile file cannot stall or crash a read.
 
-mod on_warning;
+#[allow(unused_imports)]
+use crate::on_warning;
 
 use std::fs;
 use std::path::Path;

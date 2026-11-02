@@ -3,7 +3,8 @@
 //! have seen. The committed JSON is the only input, and nothing here
 //! recomputes an expectation.
 
-mod support;
+#[allow(unused_imports)]
+use crate::support;
 
 use memry_core::sync::clock::VectorClock;
 use memry_core::sync::delete_keep::{
