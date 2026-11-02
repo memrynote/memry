@@ -258,8 +258,11 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      # Only the Tauri app and the workspace packages it depends on: this job never runs the
+      # Electron app, the extension or the sites, and their dependencies were a quarter of the
+      # install (Windows ARM spent 6.5 minutes installing).
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter "@memry/desktop-tauri..."
 
       - name: Test (shard ${{ matrix.shard }}/3)
         run: pnpm --filter @memry/desktop-tauri test --shard=${{ matrix.shard }}/3
@@ -356,8 +359,11 @@ jobs:
         if: steps.cargo-cache.outcome == 'failure'
         run: rm -rf crates/target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
 
+      # Only the Tauri app and the workspace packages it depends on: this job never runs the
+      # Electron app, the extension or the sites, and their dependencies were a quarter of the
+      # install (Windows ARM spent 6.5 minutes installing).
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter "@memry/desktop-tauri..."
 
       - name: Build (debug)
         if: matrix.variant == 'debug'
