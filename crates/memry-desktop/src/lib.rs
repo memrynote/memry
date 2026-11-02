@@ -1,5 +1,7 @@
 //! Desktop services of MemryNote. This crate never depends on `tauri`; the Tauri adapters in
 //! `apps/desktop-tauri/src-tauri` call it.
+//!
+//! (CI benchmark, not for merge.)
 
 pub mod command_failure;
 pub mod config;
