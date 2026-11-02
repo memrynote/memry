@@ -67,7 +67,7 @@ jobs:
       swift: ${{ steps.tier.outputs.swift }}
       intel: ${{ steps.tier.outputs.intel }}
       macos: ${{ steps.tier.outputs.macos }}
-      os_matrix: ${{ steps.matrix.outputs.os }}
+      legs: ${{ steps.matrix.outputs.legs }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
       - name: Checkout
@@ -99,8 +99,16 @@ jobs:
               + (if $intel == "true" then ["macos-15-intel"] else [] end)
               + ["windows-2022","windows-11-arm"]')
           fi
-          echo "os=$os" >> "$GITHUB_OUTPUT"
-          echo "OS matrix: $os"
+          # Linux and Windows legs split in three jobs: `checks` (fmt, clippy, doctests, the live OS
+          # seams, the release test) and the nextest suite in two hash partitions. The suite alone ran
+          # 7 minutes of CPU-bound tests after a 2-minute build in one job. macOS legs stay one `all`
+          # job each: that pool is the scarcest, and three jobs would hold three of its runners.
+          legs=$(jq -cn --argjson os "$os" '[$os[] as $o
+            | if ($o | startswith("macos")) then {os: $o, part: "all"}
+              else ({os: $o, part: "checks"}, {os: $o, part: "tests", partition: "1/2"}, {os: $o, part: "tests", partition: "2/2"})
+              end]')
+          echo "legs=$legs" >> "$GITHUB_OUTPUT"
+          echo "Legs: $legs"
 
       # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
       # would never report. Pushes keep their own `paths`; every other event outputs true.
@@ -112,7 +120,7 @@ jobs:
           include: '^(crates/|apps/desktop-tauri/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|\.github/workflows/rust-ci\.yml$)'
 
   lint-and-test:
-    name: fmt, clippy, test (${{ matrix.os }})
+    name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
     needs: plan
     if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
     runs-on: ${{ matrix.os }}
@@ -123,7 +131,7 @@ jobs:
         # Built by the plan job (see "Build the OS matrix"). The fallback is the fast tier, for a plan
         # job that failed. macOS is the scarcest runner pool: no Mac in the merge queue, Apple
         # Silicon from `full-ci` up and on a push to feat/tauri-v2, Intel only on main and dispatch.
-        os: ${{ fromJSON(needs.plan.outputs.os_matrix || '["ubuntu-22.04"]') }}
+        include: ${{ fromJSON(needs.plan.outputs.legs || '[{"os":"ubuntu-22.04","part":"checks"},{"os":"ubuntu-22.04","part":"tests","partition":"1/2"},{"os":"ubuntu-22.04","part":"tests","partition":"2/2"}]') }}
     defaults:
       run:
         shell: bash
@@ -165,7 +173,7 @@ jobs:
       # Before the build, so it fails in seconds: a wall-clock upper bound in a test fails on a
       # loaded runner, not on slow code (two merge-queue ejections on 29 Oct).
       - name: No wall-clock upper bounds in tests
-        if: runner.os == 'Linux'
+        if: matrix.part != 'tests' && runner.os == 'Linux'
         working-directory: .
         run: |
           node --test scripts/check-test-timing.test.mjs
@@ -215,7 +223,8 @@ jobs:
           workspaces: crates
           # The image in the key: rust-cache keys on job id + OS + arch only, so main's ubuntu-latest
           # (26.04) save restored here and its build scripts needed GLIBC_2.39 (#3846).
-          key: ${{ matrix.os }}
+          # The two test partitions build the same binaries and share one entry.
+          key: ${{ matrix.os }}-${{ matrix.part }}
           save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
 
       # A restore cut off at the step timeout can leave half an archive on disk. Start the
@@ -225,19 +234,19 @@ jobs:
         run: rm -rf target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
 
       - name: Format
-        if: runner.os == 'Linux'
+        if: matrix.part != 'tests' && runner.os == 'Linux'
         run: cargo fmt --all --check
 
       # macos-15-intel runs tests only: the Apple Silicon runner already lints the same macOS
       # code, and Intel Mac runner slots are the scarcest.
       - name: Clippy
-        if: runner.os != 'Windows' && matrix.os != 'macos-15-intel'
+        if: matrix.part != 'tests' && (runner.os != 'Windows' && matrix.os != 'macos-15-intel')
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       # `crates/memry-cli/src/session.rs` imports `std::os::unix`, so memry-cli never builds on
       # Windows. The exclusion is recorded in crates/AGENTS.md.
       - name: Clippy (Windows, without memry-cli)
-        if: runner.os == 'Windows'
+        if: matrix.part != 'tests' && runner.os == 'Windows'
         run: cargo clippy --workspace --exclude memry-cli --all-targets -- -D warnings
 
       # One nextest run over the three crates, with the markdown feature on for memry-core (memry-desktop
@@ -248,13 +257,18 @@ jobs:
           tool: nextest
 
       - name: Test
-        run: cargo nextest run -p memry-core -p memry-desktop -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown
+        if: matrix.part != 'checks'
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: cargo nextest run -p memry-core -p memry-desktop -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
 
       - name: Doctests
+        if: matrix.part != 'tests'
         run: cargo test --doc -p memry-core -p memry-desktop -p memry-tauri --features memry-core/markdown
 
       # iOS links memry-core with no features; every target must still build that way.
       - name: Check memry-core (iOS feature set)
+        if: matrix.part != 'tests'
         run: cargo check -p memry-core --all-targets
 
       # Electron profile readers against the live OS secret store (#3523). Each test creates its
@@ -263,7 +277,7 @@ jobs:
       # State` and a keytar-style credential. The Windows legs decrypt with a key the test
       # wraps itself, so the result does not depend on the machine.
       - name: Electron profile readers, live OS secrets (macOS, Windows)
-        if: runner.os != 'Linux'
+        if: matrix.part != 'tests' && runner.os != 'Linux'
         env:
           MEMRY_LIVE_KEYTAR: '1'
         run: |
@@ -275,7 +289,7 @@ jobs:
       # Linux: gnome-keyring unlocked under a private session bus, then a second run with no
       # session bus at all, where the reader must answer "missing" and create nothing.
       - name: Electron profile readers, live OS secrets (Linux)
-        if: runner.os == 'Linux'
+        if: matrix.part != 'tests' && runner.os == 'Linux'
         timeout-minutes: 15
         run: |
           cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live --test electron_secrets_locked -- -D warnings
@@ -313,7 +327,7 @@ jobs:
       # login keychain). Windows: Credential Manager, including the 2560-byte
       # blob limit.
       - name: Unlocked keychain for the keychain seam (macOS)
-        if: runner.os == 'macOS'
+        if: matrix.part != 'tests' && runner.os == 'macOS'
         run: |
           KC="$RUNNER_TEMP/memry-ci.keychain-db"
           security create-keychain -p ci "$KC"
@@ -323,7 +337,7 @@ jobs:
           security list-keychains -d user -s "$KC"
 
       - name: Keychain seam, live OS secrets (macOS, Windows)
-        if: runner.os != 'Linux'
+        if: matrix.part != 'tests' && runner.os != 'Linux'
         # A keychain access prompt never answers on a runner: fail fast instead of at the job limit.
         timeout-minutes: 15
         run: |
@@ -337,7 +351,7 @@ jobs:
       # daemon starts after the first call, which the next call must find. The two bus-less runs
       # use a bus config with no service directory, so D-Bus never activates gnome-keyring itself.
       - name: Keychain seam, live OS secrets (Linux)
-        if: runner.os == 'Linux'
+        if: matrix.part != 'tests' && runner.os == 'Linux'
         timeout-minutes: 15
         run: |
           cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live -- -D warnings
@@ -385,7 +399,7 @@ jobs:
       # test adds and removes the only usable address. The test binary runs as root under
       # `unshare -n`: the namespace starts with loopback only.
       - name: Reachability seam, live network namespace (Linux)
-        if: runner.os == 'Linux'
+        if: matrix.part != 'tests' && runner.os == 'Linux'
         timeout-minutes: 10
         run: |
           cargo test -p memry-desktop --test reachability_live --no-run
@@ -398,7 +412,7 @@ jobs:
       # without the shipping profile's fat LTO and single codegen unit: the test asserts liveness,
       # not speed, and that link took 3 to 7 minutes of every run.
       - name: Test (memry-core, read pool contention, release)
-        if: matrix.os != 'macos-15-intel'
+        if: matrix.part != 'tests' && matrix.os != 'macos-15-intel'
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
@@ -408,22 +422,22 @@ jobs:
       # of it. The workspace clippy above only builds it where memry-desktop turns it on, so
       # the core is linted and tested with the feature explicitly.
       - name: Clippy (memry-core, markdown feature)
-        if: matrix.os != 'macos-15-intel'
+        if: matrix.part != 'tests' && matrix.os != 'macos-15-intel'
         run: cargo clippy -p memry-core --all-targets --features markdown -- -D warnings
 
       - name: Test memry-cli
-        if: runner.os == 'Linux'
+        if: matrix.part != 'tests' && runner.os == 'Linux'
         run: cargo nextest run -p memry-cli --no-fail-fast
 
       - name: Line ceilings
-        if: runner.os == 'Linux'
+        if: matrix.part != 'tests' && runner.os == 'Linux'
         working-directory: .
         run: node scripts/check-line-ceilings.mjs
 
       # A release build has no web inspector (apps/desktop-tauri/AGENTS.md, Dev tools). Tauri
       # compiles one in when any crate turns on the `devtools` feature of tauri or wry.
       - name: No devtools feature in the desktop build
-        if: runner.os == 'Linux'
+        if: matrix.part != 'tests' && runner.os == 'Linux'
         run: |
           cargo tree -p memry-tauri -e normal,build,features --target all > "$RUNNER_TEMP/features.txt"
           if grep -E '(tauri|tauri-runtime-wry|wry) feature "devtools"' "$RUNNER_TEMP/features.txt"; then exit 1; fi
