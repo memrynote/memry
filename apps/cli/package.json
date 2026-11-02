@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*",
-    "@types/node": "^25.9.5",
+    "@types/node": "^25.9.9",
     "@types/better-sqlite3": "^7.6.13"
   }
 }

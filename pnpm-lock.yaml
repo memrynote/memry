@@ -151,7 +151,7 @@ importers:
         specifier: ^7.6.13
         version: 7.6.13
       '@types/node':
-        specifier: ^25.9.5
+        specifier: ^25.9.9
         version: 25.9.9
 
   apps/desktop:
@@ -509,7 +509,7 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
       '@types/node':
-        specifier: ^25.9.5
+        specifier: ^25.9.9
         version: 25.9.9
       '@types/pako':
         specifier: ^2.0.4
@@ -805,7 +805,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.3.7(@types/node@25.9.9)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.21.0)(yaml@2.9.1))
       '@types/node':
-        specifier: ^25.9.5
+        specifier: ^25.9.9
         version: 25.9.9
       '@types/react':
         specifier: ^19.2.5
@@ -1034,7 +1034,7 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       '@types/node':
-        specifier: ^25.9.5
+        specifier: ^25.9.9
         version: 25.9.9
 
   packages/article-extract:
