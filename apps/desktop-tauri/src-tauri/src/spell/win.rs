@@ -67,7 +67,12 @@ impl WinSpell {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .send(build(reply))
             .ok()?;
-        answer.recv_timeout(REPLY_WAIT).ok()
+        answer
+            .recv_timeout(REPLY_WAIT)
+            .inspect_err(|error| {
+                tracing::warn!(scope = "Spell", "no answer from the spell checker: {error}");
+            })
+            .ok()
     }
 }
 
@@ -109,7 +114,11 @@ fn serve(checker: &ISpellChecker, inbox: &std::sync::mpsc::Receiver<Request>) {
             Request::Add(word, reply) => {
                 let word = HSTRING::from(word);
                 // SAFETY: `checker` is live and `word` is a valid wide string.
-                let _ = reply.send(unsafe { checker.Add(&word) }.is_ok());
+                let added = unsafe { checker.Add(&word) };
+                if let Err(error) = &added {
+                    tracing::warn!(scope = "Spell", "Windows did not add the word: {error}");
+                }
+                let _ = reply.send(added.is_ok());
             }
         }
     }
