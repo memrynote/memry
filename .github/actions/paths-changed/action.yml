@@ -41,6 +41,5 @@ runs:
           echo "::warning::could not list the PR files; running the path-gated jobs"
           echo "changed=true" >> "$GITHUB_OUTPUT"; exit 0
         fi
-        changed=false
-        if printf '%s\n' "$files" | grep -Ev "$EXCLUDE" | grep -Eq "$INCLUDE"; then changed=true; fi
+        changed=$(printf '%s\n' "$files" | bash "$GITHUB_ACTION_PATH/changed.sh")
         echo "changed=$changed" >> "$GITHUB_OUTPUT"; echo "paths: changed=$changed"

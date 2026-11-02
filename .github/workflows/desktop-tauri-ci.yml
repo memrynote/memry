@@ -42,6 +42,9 @@ env:
   HUSKY: 0
   NODE_OPTIONS: --max-old-space-size=4096
   CARGO_TERM_COLOR: always
+  # Line tables keep file:line in panics and backtraces of the debug builds this workflow uploads;
+  # full debug info only made every link slower and the cargo cache larger.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
 
 jobs:
   # Tiering: a PR into feat/tauri-v2 runs the fast tier; `full-ci`, a push to feat/tauri-v2 and
