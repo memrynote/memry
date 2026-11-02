@@ -45,7 +45,7 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 
 ## E2E
 
-WebdriverIO drives a built app. `pnpm build:e2e` builds it (cargo feature `e2e`, `VITE_MEMRY_E2E=1`, `src-tauri/tauri.e2e.conf.json`). `pnpm test:e2e` runs `e2e/specs/**` (one app per worker) and `pnpm test:e2e:multi` runs `e2e/specs/two-device/**` (instances A and B). `MEMRY_E2E_BINARY` overrides the binary path.
+WebdriverIO drives a built app. `pnpm build:e2e` builds it (cargo feature `e2e`, `VITE_MEMRY_E2E=1`, `src-tauri/tauri.e2e.conf.json`). `pnpm test:e2e` runs `e2e/specs/**` (one app per worker, 2 workers unless `MEMRY_E2E_WORKERS` says otherwise) and `pnpm test:e2e:multi` runs `e2e/specs/two-device/**` (instances A and B). `MEMRY_E2E_BINARY` overrides the binary path.
 
 - The driver exists only in an `e2e` build and starts only with `MEMRY_E2E=1` (`E2eGate`). A release build links none of it, and `scripts/smoke-launch.mjs --expect-no-driver` proves that.
 - Specs import `test` and `expect` from `e2e/harness/test.ts`, a Playwright-shaped layer (`page`, `locator`, `expect`, fixtures) over mocha and WebDriver. A fresh app per test; `restart(app)` relaunches it on the same data.
