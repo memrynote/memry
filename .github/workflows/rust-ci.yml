@@ -46,6 +46,9 @@ env:
   RUSTFLAGS: -D warnings
   # Fixed proptest seed on PR, merge_group and push runs; the nightly workflow uses a random one.
   PROPTEST_RNG_SEED: '20261027'
+  # Line tables keep file:line in panics and backtraces. Full debug info made the 280 test binaries
+  # tens of GB (the Ubuntu disk ran out, #3638), slowed every link and doubled the cargo cache.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
 
 jobs:
   # Tiering: a PR into feat/tauri-v2 runs the fast tier; `full-ci`, a push to feat/tauri-v2 and
@@ -78,8 +81,9 @@ jobs:
         with:
           token: ${{ github.token }}
 
-      # Fast tier: Linux and Windows. Full adds Windows ARM, plus Apple Silicon unless the run is a
-      # merge-queue run (macos=false) and Intel only where plan.intel is true (main, dispatch).
+      # Fast tier: Linux only; Windows runs in the merge queue, where a Windows-only failure ejects the
+      # PR. Full adds Windows x64 and ARM, plus Apple Silicon unless the run is a merge-queue run
+      # (macos=false) and Intel only where plan.intel is true (main, dispatch).
       - name: Build the OS matrix
         id: matrix
         env:
@@ -87,7 +91,7 @@ jobs:
           MACOS: ${{ steps.tier.outputs.macos }}
           INTEL: ${{ steps.tier.outputs.intel }}
         run: |
-          os='["ubuntu-22.04","windows-2022"]'
+          os='["ubuntu-22.04"]'
           if [ "$FULL" = true ]; then
             os=$(jq -cn --arg macos "$MACOS" --arg intel "$INTEL" '
               ["ubuntu-22.04"]
@@ -119,7 +123,7 @@ jobs:
         # Built by the plan job (see "Build the OS matrix"). The fallback is the fast tier, for a plan
         # job that failed. macOS is the scarcest runner pool: no Mac in the merge queue, Apple
         # Silicon from `full-ci` up and on a push to feat/tauri-v2, Intel only on main and dispatch.
-        os: ${{ fromJSON(needs.plan.outputs.os_matrix || '["ubuntu-22.04","windows-2022"]') }}
+        os: ${{ fromJSON(needs.plan.outputs.os_matrix || '["ubuntu-22.04"]') }}
     defaults:
       run:
         shell: bash
@@ -389,10 +393,15 @@ jobs:
             | jq -r 'select(.reason == "compiler-artifact" and .target.name == "reachability_live" and .executable != null) | .executable')
           sudo unshare -n "$binary" --ignored
 
-      # Release only: the latency assertions are meaningless in a debug build. Proves reads
-      # through the pool do not wait behind a held write transaction.
+      # Proves reads through the pool do not wait behind a held write transaction, at the release
+      # build's data volume (the test seeds 25x more rows without debug assertions). Optimised but
+      # without the shipping profile's fat LTO and single codegen unit: the test asserts liveness,
+      # not speed, and that link took 3 to 7 minutes of every run.
       - name: Test (memry-core, read pool contention, release)
         if: matrix.os != 'macos-15-intel'
+        env:
+          CARGO_PROFILE_RELEASE_LTO: 'false'
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
         run: cargo test -p memry-core --release --test read_pool_contention
 
       # The markdown converter (cargo feature `markdown`) is off by default so iOS links none

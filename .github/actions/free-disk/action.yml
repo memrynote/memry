@@ -1,5 +1,5 @@
 name: Free disk space
-description: Removes preinstalled Linux runner toolchains this repo never uses (.NET, Android SDK, GHC, CodeQL, Swift, Docker images) so a large Rust link does not run the runner out of disk. Prints df before and after. A no-op on macOS and Windows.
+description: Removes preinstalled Linux runner toolchains this repo never uses (.NET, Android SDK, GHC, CodeQL, Swift, Docker images) so a large Rust link does not run the runner out of disk. The removal runs in the background and the step returns at once. A no-op on macOS and Windows.
 runs:
   using: composite
   steps:
@@ -7,15 +7,14 @@ runs:
       if: runner.os == 'Linux'
       shell: bash
       run: |
-        echo "::group::df -h before"
         df -h /
-        echo "::endgroup::"
+        # Deleting ~26 GB takes ~2 minutes of rm, which used to block every Linux Rust and Tauri job
+        # before its first useful step. The disk fills only when the build links (#3638), minutes
+        # after setup, so the removal overlaps setup instead. The runner reaps it at job end.
         # Each path is absent on some images (and on arm runners), so a miss is fine.
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
-          /opt/hostedtoolcache/CodeQL /usr/share/swift 2>/dev/null || true
-        if command -v docker >/dev/null 2>&1; then
-          sudo docker system prune --all --force >/dev/null 2>&1 || true
-        fi
-        echo "::group::df -h after"
-        df -h /
-        echo "::endgroup::"
+        sudo nohup bash -c '
+          rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/share/swift
+          if command -v docker >/dev/null 2>&1; then docker system prune --all --force; fi
+          df -h /
+        ' > "$RUNNER_TEMP/free-disk.log" 2>&1 &
