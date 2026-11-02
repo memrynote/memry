@@ -234,7 +234,7 @@
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "4.1.10",
     "@vitest/ui": "4.1.10",
-    "ai": "^6.0.246",
+    "ai": "^6.0.320",
     "autoprefixer": "^10.4.23",
     "bip39": "^3.1.0",
     "cborg": "^4.5.8",
