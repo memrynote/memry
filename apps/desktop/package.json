@@ -121,7 +121,7 @@
     "yjs": "^13.6.29"
   },
   "devDependencies": {
-    "@ai-sdk/anthropic": "^3.0.107",
+    "@ai-sdk/anthropic": "^3.0.137",
     "@ai-sdk/google": "^3.0.124",
     "@ai-sdk/openai": "^3.0.91",
     "@ai-sdk/openai-compatible": "^2.0.81",
