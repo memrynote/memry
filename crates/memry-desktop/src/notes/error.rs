@@ -1,6 +1,6 @@
 //! How a note operation fails (Step 13f, #3530), and the failure the shell turns it into.
 
-use memry_core::api::errors::{AuthError, StorageError};
+use memry_core::api::errors::{AuthError, PropertyWriteError, StorageError};
 use memry_core::crdt::errors::CrdtError;
 use memry_core::domain::notes::app_move::BeginError;
 use memry_core::markdown::frontmatter::YamlError;
@@ -72,6 +72,10 @@ pub enum NotesError {
     /// Only a markdown note's file holds a body and frontmatter to edit (`NOT_MARKDOWN`).
     #[error("only a markdown note can be edited")]
     NotMarkdown,
+    #[error("template not found: {0}")]
+    TemplateNotFound(String),
+    #[error(transparent)]
+    Property(#[from] PropertyWriteError),
     #[error("{0}")]
     Io(#[from] std::io::Error),
 }
@@ -179,6 +183,8 @@ impl CoreError for NotesError {
                 (FailureKind::Invalid, "frontmatter_failed")
             }
             Self::NotMarkdown => (FailureKind::Invalid, "note_not_markdown"),
+            Self::TemplateNotFound(_) => (FailureKind::NotFound, "template_not_found"),
+            Self::Property(error) => error.kind_and_code(),
             Self::Outside => (FailureKind::Invalid, "outside_vault"),
             Self::Unopenable(Unopenable::HardLinked) => (FailureKind::Invalid, "note_hard_linked"),
             Self::Unopenable(Unopenable::NotRegular) => (FailureKind::Invalid, "note_not_regular"),

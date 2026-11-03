@@ -3,7 +3,8 @@
 //! sends through the shell's note events: `NoteRenamedEvent` for the note, and an outside
 //! edit's `NoteUpdatedEvent` for each file whose links followed it (13g-2); `notes_update`
 //! (#3530 13f-3c) and the `notes:updated` and `notes:tags-changed` it sends; `notes_create`
-//! from a template (13l-3), with the icon left out or cleared.
+//! from a template (13l-3), with the icon left out or cleared; `notes_apply_template` (13l-4)
+//! and the events it sends.
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -14,6 +15,7 @@ use std::time::{Duration, Instant};
 use memry_core::api::errors::SecureStoreError;
 use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::notes::apply_template::{ApplyTemplateInput, TemplateMode};
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
@@ -25,7 +27,8 @@ use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
 use memry_tauri::commands::notes::{
-    notes_create, notes_get_all_positions, notes_rename, notes_reorder, notes_update,
+    notes_apply_template, notes_create, notes_get_all_positions, notes_rename, notes_reorder,
+    notes_update,
 };
 use memry_tauri::events::{NoteRenamedEvent, NoteTagsChangedEvent, NoteUpdatedEvent};
 use memry_tauri::shell::note_events;
@@ -382,4 +385,47 @@ fn a_create_from_a_template_takes_its_icon_unless_the_input_clears_it() {
         ["meeting"],
         "the rest of the template still applies"
     );
+}
+
+#[test]
+fn an_applied_template_answers_the_note_and_sends_an_external_notes_updated() {
+    let f = opened();
+    let id = f.create("Plan", "");
+    let input = ApplyTemplateInput {
+        note_id: id.clone(),
+        template_id: "meeting-notes".into(),
+        mode: TemplateMode::Full,
+    };
+    let call = notes_apply_template(f.app.handle().clone(), input);
+    let note = tauri::async_runtime::block_on(call).unwrap();
+    assert_eq!(note.header_tags, ["meeting"]);
+    assert_eq!(note.emoji.as_deref(), Some("📝"));
+    assert!(note.content.starts_with("## Attendees"), "{}", note.content);
+
+    let deadline = Instant::now() + WAIT;
+    while f.edited.lock().unwrap().len() < 2 {
+        assert!(Instant::now() < deadline, "{:?}", f.edited.lock().unwrap());
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let mut events = std::mem::take(&mut *f.edited.lock().unwrap());
+    events.sort_by_key(|(name, _)| *name);
+    assert_eq!(events[0], (NoteTagsChangedEvent::NAME, Value::Null));
+    assert_eq!(events[1].0, NoteUpdatedEvent::NAME);
+    // An open editor takes the template's body, as it takes an outside edit; the note's query
+    // refetches on it for the icon.
+    assert_eq!(events[1].1["source"], "external");
+    assert!(
+        events[1].1["changes"]["content"]
+            .as_str()
+            .is_some_and(|content| content.starts_with("## Attendees"))
+    );
+
+    let gone = ApplyTemplateInput {
+        note_id: id,
+        template_id: "gone".into(),
+        mode: TemplateMode::Body,
+    };
+    let call = notes_apply_template(f.app.handle().clone(), gone);
+    let error = tauri::async_runtime::block_on(call).unwrap_err();
+    assert_eq!(error.code, "template_not_found");
 }

@@ -10,13 +10,16 @@
 //! A note's rename (`notes:rename`) and the sidebar's manual order (`notes:reorder`,
 //! `notes:get-all-positions`, #3530 13g) go through `memry_desktop::notes::{moves, positions}`;
 //! the rename's `NoteRenamedEvent` comes from its row fact, as every note event does.
-//! A note's edit (`notes:update`, #3530 13f-3c) goes through `memry_desktop::notes::update`.
+//! A note's edit (`notes:update`, #3530 13f-3c) goes through `memry_desktop::notes::update`, a
+//! template applied to it (`notes:apply-template`, 13l-4) through
+//! `memry_desktop::notes::apply_template`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
+use memry_desktop::notes::apply_template::ApplyTemplateInput;
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::link_preview::{self, WikiLinkPreviewView};
@@ -166,6 +169,29 @@ pub async fn notes_update<R: Runtime>(
             broadcast(&app, NoteTagsChangedEvent);
         }
         Ok(updated.note)
+    })
+    .await
+}
+
+/// `notes:apply-template`: the note takes the template's body, and in `full` mode its tags,
+/// the property values it lacks and its icon when it has none. Answers the note, and sends
+/// `notes:tags-changed` when its tags changed; its `notes:updated` comes from its row fact.
+// Generic over the runtime so a test drives it on a mock app (`tests/notes_rename.rs`).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_apply_template<R: Runtime>(
+    app: AppHandle<R>,
+    input: ApplyTemplateInput,
+) -> Result<NoteView, CommandError> {
+    blocking("notes_apply_template", move || {
+        let open = open_vault(&app)?;
+        let applied = service(&app)?
+            .apply_template(&open, input)
+            .map_err(|error| failed(&error))?;
+        if applied.tags_changed {
+            broadcast(&app, NoteTagsChangedEvent);
+        }
+        Ok(applied.note)
     })
     .await
 }

@@ -1,4 +1,5 @@
 import type {
+  ApplyTemplateInput,
   AttachmentInfo,
   AttachmentResult,
   CreatePropertyDefinitionInput,
@@ -148,9 +149,9 @@ function definitionInput(
 
 /**
  * The notes commands of Step 13f (the edit of 13f-3c included), the rename and manual order of
- * Step 13g, the link reads and the mention link of Step 13i and the property definitions of
- * Step 13k (`commands/notes.rs`, `commands/property_definitions.rs`); every other method still
- * goes to `window.api.notes`.
+ * Step 13g, the link reads and the mention link of Step 13i, the property definitions of
+ * Step 13k and a template applied to a note (13l) (`commands/notes.rs`,
+ * `commands/property_definitions.rs`); every other method still goes to `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
@@ -204,6 +205,18 @@ const ported = {
     try {
       const { id, content, headerTags, emoji } = input
       const note = await commands.notesUpdate({ id, content, headerTags, emoji })
+      return { success: true, note: toNote(note) }
+    } catch (error) {
+      return { ...failure(error), note: null }
+    }
+  },
+  // `plainChecklists` is Step 32's; an apply without it would drop what was asked. A failure
+  // answers as Electron's `registerCommand` does.
+  applyTemplate: async (input: ApplyTemplateInput): Promise<NoteUpdateResponse> => {
+    if (input.plainChecklists) throw new NotPortedError('notes.applyTemplate({ plainChecklists })')
+    try {
+      const { noteId, templateId, mode } = input
+      const note = await commands.notesApplyTemplate({ noteId, templateId, mode })
       return { success: true, note: toNote(note) }
     } catch (error) {
       return { ...failure(error), note: null }

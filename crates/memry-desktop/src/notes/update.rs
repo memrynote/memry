@@ -290,8 +290,8 @@ fn next_text(
     Ok((output, plan))
 }
 
-/// A save the seam kept the file from, as the caller sees it.
-fn refused(id: &str, kept: Kept) -> NotesError {
+/// An edit the seam kept the file from, as the caller sees it (a save, a template applied).
+pub(super) fn refused(id: &str, kept: Kept) -> NotesError {
     match kept {
         Kept::NoRow | Kept::NoFile | Kept::NoBody => NotesError::NotFound(id.to_owned()),
         Kept::NotMarkdown => NotesError::NotMarkdown,
@@ -307,7 +307,7 @@ fn refused(id: &str, kept: Kept) -> NotesError {
 }
 
 /// A body's `#tags`, by tag fold.
-fn tag_keys(body: &str) -> HashSet<String> {
+pub(super) fn tag_keys(body: &str) -> HashSet<String> {
     body_tags::extract_markdown(body)
         .iter()
         .map(|tag| fold(tag))
