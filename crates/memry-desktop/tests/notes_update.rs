@@ -9,6 +9,7 @@ use crate::vault_env;
 use std::sync::Arc;
 
 use memry_core::seams::secure_store::SecureStore;
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
@@ -18,6 +19,7 @@ use memry_desktop::vault::activity::ActivityFilter;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::hash::content_hash;
 use memry_desktop::vault::note_file::NoteFileError;
+use serde_json::json;
 use vault_env::{Env, env, indexed};
 
 /// An open vault holding `files`, its first walk done, and the notes service over its tier.
@@ -135,11 +137,9 @@ fn a_save_writes_the_file_and_feeds_the_body_with_no_version_or_echo() {
     assert_eq!(updated.note.content, "Second text\n");
     assert!(!updated.tags_changed);
     assert_eq!(e.body(&id), "Second text");
-    assert_eq!(
-        e.versions(&id),
-        Vec::<String>::new(),
-        "a save is not a version"
-    );
+    // The first save of a run cannot tell the file it replaces from an outside edit the editor
+    // never showed, so it keeps it, as the write-back does.
+    assert_eq!(e.versions(&id), [PLAN]);
     let row = e.core().note_files().by_id(&id).unwrap().unwrap();
     let hash = Some(content_hash(file));
     assert_eq!((row.content_hash, row.file_hash), (hash.clone(), hash));
@@ -156,6 +156,11 @@ fn a_save_writes_the_file_and_feeds_the_body_with_no_version_or_echo() {
     notes.update(&open, save(&id, "Second text\n")).unwrap();
     assert_eq!(e.read("Plan.md"), file);
     assert_eq!(edits(&quiet_facts(&mut e)), 0);
+
+    // A save over the run's own save keeps no version of it.
+    notes.update(&open, save(&id, "Third text\n")).unwrap();
+    assert_eq!(e.body(&id), "Third text");
+    assert_eq!(e.versions(&id), [PLAN], "a save is not a version");
 }
 
 #[test]
@@ -239,6 +244,113 @@ fn an_outside_edit_that_lands_during_a_save_wins_and_the_save_is_kept() {
         versions.iter().any(|v| v.contains("The user's save")),
         "the save was lost: {versions:?}"
     );
+}
+
+#[test]
+fn a_refused_save_leaves_the_record_as_the_file_says() {
+    let (mut e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let tags = record_tags(&e, &id);
+    // The outside edit keeps the header, so only the refused save could move the record.
+    let outside = PLAN.replace("First text", "From another editor");
+    let vault = e.vault.clone();
+    let input = NoteUpdateInput {
+        emoji: Some(Some("🌱".to_owned())),
+        ..add_tags(&id, &["gamma"])
+    };
+    let refused = notes.update_checked(&open, input, &mut || {
+        std::fs::write(vault.join("Plan.md"), &outside).unwrap();
+    });
+    assert!(refused.is_err(), "{refused:?}");
+    let listed = |e: &Env| e.core().note_files().listed_by_id(&id).unwrap().unwrap();
+    assert_eq!((listed(&e).tags, listed(&e).emoji), (tags.clone(), None));
+    e.facts_until(|fact| {
+        matches!(
+            fact,
+            Applied::Changed {
+                source: ChangeSource::Watcher,
+                ..
+            }
+        )
+    });
+    assert_eq!(e.read("Plan.md"), outside);
+    assert_eq!((listed(&e).tags, listed(&e).emoji), (tags, None));
+}
+
+#[test]
+fn a_save_after_an_outside_edit_the_editor_never_showed_keeps_that_edit() {
+    let (mut e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, save(&id, "The user's save\n")).unwrap();
+    let outside = "---\nstatus: open\n---\nFrom another editor\n";
+    let vault = e.vault.clone();
+    let refused = notes.update_checked(&open, save(&id, "The user's next save\n"), &mut || {
+        std::fs::write(vault.join("Plan.md"), outside).unwrap();
+    });
+    assert!(refused.is_err(), "{refused:?}");
+    e.facts_until(|fact| {
+        matches!(
+            fact,
+            Applied::Changed {
+                source: ChangeSource::Watcher,
+                ..
+            }
+        )
+    });
+    assert_eq!(e.body(&id), "From another editor");
+    // The editor still shows the user's text and saves it again.
+    notes
+        .update(&open, save(&id, "The user's next save, again\n"))
+        .unwrap();
+    assert_eq!(e.body(&id), "The user's next save, again");
+    assert!(
+        e.versions(&id).iter().any(|v| v == outside),
+        "the outside edit was lost: {:?}",
+        e.versions(&id)
+    );
+}
+
+#[test]
+fn a_tag_with_fields_typed_into_the_body_changes_the_tags_and_not_the_header() {
+    let (e, notes) = opened(&[("Plan.md", PLAN)]);
+    let record = InboundRecord {
+        item_type: "tag_definition".to_owned(),
+        item_id: "person".to_owned(),
+        payload_json: json!({
+            "name": "person", "color": "blue", "schema": { "t": 1, "fields": [{ "name": "role" }] }
+        })
+        .to_string(),
+        server_cursor: Some(1),
+        signer_device_id: Some("device-b".to_owned()),
+        updated_at: 1_760_000_000_000,
+        deleted_at: None,
+    };
+    e.core()
+        .db_handle()
+        .call_blocking(move |data| sync_items::apply_remote(data, &record, 1_760_000_000_000))
+        .unwrap();
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let updated = notes
+        .update(&open, save(&id, "First text #person\n"))
+        .unwrap();
+    assert!(updated.tags_changed);
+    assert_eq!(updated.note.header_tags, ["Alpha", "beta"]);
+    assert!(e.read("Plan.md").contains("tags: [Alpha, beta, alpha]\n"));
+}
+
+#[test]
+fn a_tag_edit_of_a_marked_file_with_no_frontmatter_keeps_one_mark() {
+    let (e, notes) = opened(&[("Plan.md", "\u{feff}First text\n")]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, add_tags(&id, &["gamma"])).unwrap();
+    let file = e.read("Plan.md");
+    assert_eq!(file.matches('\u{feff}').count(), 1, "{file:?}");
+    assert!(file.starts_with("\u{feff}---\n"), "{file:?}");
+    assert!(file.ends_with("---\nFirst text\n"), "{file:?}");
 }
 
 #[test]

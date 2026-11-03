@@ -242,16 +242,28 @@ fn an_edit_answers_the_note_and_sends_internal_notes_updated_and_tags_changed() 
     assert_eq!(events[1].1["source"], "internal");
     assert_eq!(events[1].1["changes"]["headerTags"], json!(["idea"]));
 
-    // A save that leaves the tags sends no `notes:tags-changed`.
+    // A save that leaves the tags sends no `notes:tags-changed`. The command sends it before it
+    // answers, so once a later tag edit answered, its own is the only one heard.
     edit(NoteUpdateInput {
         id: id.clone(),
         content: Some("About the plan".into()),
         ..NoteUpdateInput::default()
     });
-    let events = f.next_edited(1);
-    assert_eq!(events[0].0, NoteUpdatedEvent::NAME);
-    std::thread::sleep(Duration::from_millis(500));
-    assert_eq!(*f.edited.lock().unwrap(), Vec::new());
+    edit(NoteUpdateInput {
+        id: id.clone(),
+        header_tags: Some(HeaderTagEditInput {
+            add: Some(vec!["later".into()]),
+            ..HeaderTagEditInput::default()
+        }),
+        ..NoteUpdateInput::default()
+    });
+    let events = f.next_edited(3);
+    let names: Vec<&str> = events.iter().map(|(name, _)| *name).collect();
+    let tags_changed = names
+        .iter()
+        .filter(|name| **name == NoteTagsChangedEvent::NAME)
+        .count();
+    assert_eq!(tags_changed, 1, "{events:?}");
 }
 
 #[test]

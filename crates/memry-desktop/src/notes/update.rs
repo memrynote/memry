@@ -8,12 +8,14 @@
 //! 2. the next header tags ([`header_tags::next`]) against the file's: the `tags:` key is
 //!    written only when [`header_tags::compare`] reports a change, so an unchanged list keeps
 //!    the file's spelling, and every other key keeps its lines (`serialize_updated_note`);
-//! 3. the record's icon and, when the header changed, its tags (one outbox row each);
-//! 4. a new body, fed into the note's document with the body read in 1
-//!    ([`ExternalFeed::feed_app_edit`]), so a save keeps no version of the text the user saw.
-//!    A file holding text the document never took (an outside edit not fed yet) is kept as a
-//!    version first;
-//! 5. the file, written over only while it is still the file read in 1 (`write_note_over`);
+//! 3. a new body, fed into the note's document with the body read in 1
+//!    ([`ExternalFeed::feed_app_edit`]), so a save keeps no version of the text it replaces.
+//!    A file this run's last update of the note did not write is kept as a version first: an
+//!    outside edit, fed or not, that an editor which never showed it would save over (the
+//!    write-back's rule for the files it replaces);
+//! 4. the file, written over only while it is still the file read in 1 (`write_note_over`);
+//! 5. the record's icon and, when the header changed, its tags (one outbox row each), only
+//!    once the file holds them, so a refused write leaves the record as the file says;
 //! 6. the row's hashes, then [`Applied::Changed`] with [`ChangeSource::Edit`].
 //!
 //! **Order against the watcher.** The feed comes before the write: an outside edit that lands
@@ -27,10 +29,10 @@
 //!
 //! Not here, with their owners: the title (`notes:rename`), `frontmatter`, `properties` and
 //! `propertyPatch` (13k), `aliases` (13i), the tag templates (13j, 13l), date reminders
-//! (Step 21), locks (Step 14), and Electron's significant-change version of the file before a
-//! save (Step 14's versions).
+//! (Step 21) and locks (Step 14).
 
 use std::collections::HashSet;
+use std::sync::PoisonError;
 
 use memry_core::domain::body_tags;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
@@ -250,11 +252,14 @@ impl NotesService {
             .content
             .as_deref()
             .is_some_and(|content| tag_keys(&parsed.content) != tag_keys(content));
-        let read_body = parsed.content.clone();
+        // A file with no frontmatter keeps its byte order mark in the body; it goes back once,
+        // ahead of whatever block the edit adds.
+        let unmarked = |body: &str| body.strip_prefix(BOM).unwrap_or(body).to_owned();
+        let read_body = unmarked(&parsed.content);
         let writing = writing_of_yaml(&parsed.frontmatter);
         let mut next = frontmatter.clone();
         header_tags::set_tags(&mut next, &tags, change.as_ref());
-        let body = edit.content.as_deref().unwrap_or(&read_body).to_owned();
+        let body = unmarked(edit.content.as_deref().unwrap_or(&read_body));
         let mut output =
             serialize_updated_note(parsed, &frontmatter, next, &body, change.is_some())?;
         if file.raw.starts_with(BOM) && !output.starts_with(BOM) {
@@ -265,18 +270,13 @@ impl NotesService {
             .emoji
             .as_ref()
             .is_some_and(|emoji| *emoji != listed.emoji);
-        if let Some(emoji) = edit.emoji.clone().filter(|_| emoji_changed) {
-            writer.set_icon(id.to_owned(), emoji)?;
-        }
-        if change.is_some() {
-            writer.set_tags(id.to_owned(), tags)?;
-        }
 
         let held = row.content_hash.as_deref() == Some(file.hash.as_str());
         let (holds, fed) = match edit.content {
             None => (held, false),
             Some(_) => {
-                if !held && body != read_body {
+                let ours = self.saved_file(id).as_deref() == Some(file.hash.as_str());
+                if !ours && body != read_body {
                     open.vault
                         .write_back()
                         .keep_replaced(id, &file.raw, &read_body)?;
@@ -331,6 +331,16 @@ impl NotesService {
                 return Err(error.into());
             }
         }
+        self.saved
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(id.to_owned(), hash.clone());
+        if let Some(emoji) = edit.emoji.clone().filter(|_| emoji_changed) {
+            writer.set_icon(id.to_owned(), emoji)?;
+        }
+        if change.is_some() {
+            writer.set_tags(id.to_owned(), tags)?;
+        }
         let mut content_hash = row.content_hash.clone();
         if holds && (wrote || !held) {
             // A save's feed made the body the file's now; a tag edit moved no body, so the row
@@ -357,6 +367,17 @@ impl NotesService {
             });
         }
         Ok(change.is_some() || body_tags_changed)
+    }
+}
+
+impl NotesService {
+    /// The hash of the file this run's last update of the note wrote.
+    fn saved_file(&self, id: &str) -> Option<String> {
+        self.saved
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(id)
+            .cloned()
     }
 }
 

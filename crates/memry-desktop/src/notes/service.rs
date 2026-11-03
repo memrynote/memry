@@ -14,8 +14,9 @@
 //! one at a time ([`WriteOrder`]); every write tells the tier's own-write record first, so the
 //! watcher never reports it back as an outside edit or an outside delete.
 
+use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use memry_core::seams::secure_store::SecureStore;
 
@@ -31,6 +32,8 @@ pub struct NotesService {
     pub(crate) store: Arc<dyn SecureStore>,
     pub(crate) order: WriteOrder,
     pub(crate) trash: Trash,
+    /// By note id, the hash of the file the last update of this run wrote ([`super::update`]).
+    pub(crate) saved: Mutex<HashMap<String, String>>,
 }
 
 impl NotesService {
@@ -50,6 +53,7 @@ impl NotesService {
             store,
             order: WriteOrder::default(),
             trash,
+            saved: Mutex::default(),
         })
     }
 }
