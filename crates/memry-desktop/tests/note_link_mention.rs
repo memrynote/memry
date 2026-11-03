@@ -248,3 +248,42 @@ fn a_gone_mention_a_changed_file_and_an_unknown_note_write_nothing() {
     drop(open);
     e.close();
 }
+
+#[test]
+fn a_document_ahead_of_its_file_or_an_unreadable_frontmatter_is_never_linked_over() {
+    let (e, notes, store) = opened(&[
+        ("Target.md", "# Target\n".to_owned()),
+        ("Standup.md", "Typed first.\n\nTarget again.\n".to_owned()),
+        ("Broken.md", "---\nkey: [open\n---\nTarget here.\n".to_owned()),
+    ]);
+    let open = e.session.current().unwrap();
+    let target = id_at(&e, "Target.md");
+
+    // The reviewer's probe: an edit the document holds and its file does not yet. Linking
+    // would feed the file's old body over it.
+    let source = id_at(&e, "Standup.md");
+    e.edit_in_app(&store, &source, "Edited in the app");
+    assert!(!notes.link_mention(&open, &source, &target, 0).unwrap());
+    assert_eq!(e.read("Standup.md"), "Typed first.\n\nTarget again.\n");
+    assert!(e.body(&source).contains("Edited in the app"), "{}", e.body(&source));
+
+    // A frontmatter that does not parse is not rewritten.
+    let broken = id_at(&e, "Broken.md");
+    assert!(!notes.link_mention(&open, &broken, &target, 0).unwrap());
+    assert_eq!(e.read("Broken.md"), "---\nkey: [open\n---\nTarget here.\n");
+
+    // A row without a content hash: the document is not known to hold the file.
+    e.write("Unread.md", "Target unread.\n");
+    let rows = e.tier.rows();
+    let stat = RowStat {
+        file_type: FileType::Markdown,
+        size: 15,
+        content_hash: None,
+        file_hash: None,
+    };
+    rows.reserve(rows.session_for(&open.vault).unwrap(), "n-unread", "Unread.md", stat)
+        .unwrap();
+    assert!(!notes.link_mention(&open, "n-unread", &target, 0).unwrap());
+    assert_eq!(e.read("Unread.md"), "Target unread.\n");
+    drop(open);
+}
