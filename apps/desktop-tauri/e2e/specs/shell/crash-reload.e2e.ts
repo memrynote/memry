@@ -17,13 +17,20 @@ test('three page crashes in a minute are three reloads, each told to the user', 
   test.slow()
   for (let crash = 1; crash <= 3; crash += 1) {
     await app.executor.execute('window.__memryBeforeCrash = true')
+    const bootsBefore = readMainLog(app.dirs.logDir).split('renderer started').length - 1
     await invokeTest(app, 'e2e_kill_page')
-    // No WebDriver call until the shell has reloaded: on Windows a script in flight when the
-    // renderer dies hangs the session for about a minute.
-    const reloaded = await pollUntil(() => reloads(app.dirs.logDir) >= crash, {
-      timeoutMs: 30_000,
-      intervalMs: 100
-    })
+    // The reload-request log precedes navigation. Wait for the new renderer's app_info call:
+    // a WebDriver script crossing navigation loses its result and waits the full script timeout.
+    const reloaded = await pollUntil(
+      () => {
+        const log = readMainLog(app.dirs.logDir)
+        return (
+          log.split(RELOADED).length - 1 >= crash &&
+          log.split('renderer started').length - 1 > bootsBefore
+        )
+      },
+      { timeoutMs: 30_000, intervalMs: 100 }
+    )
     expect(reloaded).toBe(true)
 
     const fresh = await pollUntil(
