@@ -43,6 +43,8 @@ pub mod owed_file_body;
 pub mod projects;
 pub mod properties;
 pub mod property_admin;
+#[cfg(feature = "markdown")]
+pub mod property_values;
 pub mod reads;
 mod recreate;
 pub mod recurrence;

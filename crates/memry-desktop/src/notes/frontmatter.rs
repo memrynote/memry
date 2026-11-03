@@ -21,6 +21,11 @@ pub fn is_reserved_key(name: &str, value: &Value) -> bool {
     }
 }
 
+/// [`is_reserved_key`] for a frontmatter value as the file holds it.
+pub fn is_reserved_yaml(name: &str, value: &YamlValue) -> bool {
+    is_reserved_key(name, &to_json(value))
+}
+
 /// The frontmatter of a new note file (`createNote`): `tags` when there are any, then the
 /// properties in their order, reserved keys left out (`writePropertiesToRoot`). Empty when
 /// there is neither, so the file has no block.

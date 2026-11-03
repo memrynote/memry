@@ -104,6 +104,8 @@ mod notes_create_template;
 mod notes_identity;
 #[path = "notes_link_rewrite.rs"]
 mod notes_link_rewrite;
+#[path = "notes_properties.rs"]
+mod notes_properties;
 #[path = "notes_local_only.rs"]
 mod notes_local_only;
 #[path = "notes_moves.rs"]

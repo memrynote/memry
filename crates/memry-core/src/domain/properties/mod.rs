@@ -308,6 +308,34 @@ fn reordered(values: &Map<String, Value>, ordered: &[String]) -> Map<String, Val
     next
 }
 
+/// Makes a note's or a journal day's values `values`, whole and in their order, as the desktop
+/// app's file of it holds them. The file is the desktop's truth for its values, and it already
+/// holds them, so a value whose type the file changed is taken rather than refused as [`set`]
+/// refuses it: a refusal here would leave the record and the file apart for good. The same
+/// values in the same order write nothing. `Ok(false)` when no note or day has that id.
+pub fn mirror_file(
+    conn: &Connection,
+    item_id: &str,
+    values: Map<String, Value>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    for item_type in PROPERTIED_TYPES {
+        let Some(payload) = stored(conn, item_type, item_id)? else {
+            continue;
+        };
+        let current = read_values(payload.object(), item_type, item_id)?;
+        // A map compares without its order, which is the property order here.
+        if current != values || !current.keys().eq(values.keys()) {
+            write(
+                conn, item_type, item_id, &payload, values, device_id, now_ms,
+            )?;
+        }
+        return Ok(true);
+    }
+    Ok(false)
+}
+
 /// The rule FR-048 names. See the module comment for what is exempt and why.
 pub fn refuse_retype(
     name: &str,

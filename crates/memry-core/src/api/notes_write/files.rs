@@ -13,6 +13,7 @@ use crate::domain::notes::app_move::{self, AppMoved, BeginError, Recorded};
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::domain::notes::{self, NewNote};
+use crate::domain::properties;
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::storage::repositories::schema::Object;
@@ -182,6 +183,15 @@ impl NotesWriter {
     /// The moves the records are owed ([`identity::owed_places`]).
     pub fn owed_places(&self) -> Result<Vec<OwedPlace>, StorageError> {
         self.db.call_blocking(|conn| identity::owed_places(conn))
+    }
+
+    /// The note's or journal day's file holds `values` as its properties now: the record takes
+    /// them whole ([`properties::mirror_file`]). `false` when no note or day has that id.
+    pub fn file_properties(&self, id: &str, values: Object) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            properties::mirror_file(conn, id, values, &device_id, now_ms())
+        })
     }
 
     /// The note's file at `path` is gone ([`identity::removed`]).

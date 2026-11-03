@@ -7,7 +7,7 @@ use memry_core::markdown::frontmatter::YamlError;
 
 use crate::error::{CoreError, FailureKind};
 use crate::shell::file_open::OpenError;
-use crate::vault::app_edit::AppEditError;
+use crate::vault::app_edit::{AppEditError, Kept};
 use crate::vault::app_move::MoveError;
 use crate::vault::consumer::rows::RowError;
 use crate::vault::note_file::NoteFileError;
@@ -63,6 +63,20 @@ pub enum NotesError {
     File(#[from] NoteFileError),
     #[error("the frontmatter could not be written: {0}")]
     Yaml(#[from] YamlError),
+    /// The note's frontmatter is a list or a scalar, which has no keys to write.
+    #[error("the note's frontmatter is not a set of keys, so its properties cannot be written")]
+    FrontmatterNotAMap,
+    /// Only a markdown note's file holds a frontmatter to edit (`NOT_MARKDOWN`).
+    #[error("only a markdown note can be edited")]
+    NotMarkdown,
+    /// The app's edit of the note's file was not made: the file or the note's document holds an
+    /// edit the other does not have yet ([`Kept`]). The user tries again.
+    #[error("the note changed while it was being edited ({0:?}); try again")]
+    EditKept(Kept),
+    #[error("the note has no property `{0}`")]
+    PropertyNotFound(String),
+    #[error("the note already has a property `{0}`")]
+    PropertyExists(String),
     #[error("{0}")]
     Io(#[from] std::io::Error),
 }
@@ -167,6 +181,11 @@ impl CoreError for NotesError {
             Self::Auth(error) => error.kind_and_code(),
             Self::File(_) => (FailureKind::Storage, "note_file_failed"),
             Self::Yaml(_) => (FailureKind::Invalid, "frontmatter_failed"),
+            Self::FrontmatterNotAMap => (FailureKind::PropertyWrite, "frontmatter_not_a_map"),
+            Self::NotMarkdown => (FailureKind::Invalid, "not_markdown"),
+            Self::EditKept(_) => (FailureKind::PropertyWrite, "note_edit_kept"),
+            Self::PropertyNotFound(_) => (FailureKind::NotFound, "property_not_found"),
+            Self::PropertyExists(_) => (FailureKind::PropertyWrite, "property_exists"),
             Self::Outside => (FailureKind::Invalid, "outside_vault"),
             Self::Unopenable(Unopenable::HardLinked) => (FailureKind::Invalid, "note_hard_linked"),
             Self::Unopenable(Unopenable::NotRegular) => (FailureKind::Invalid, "note_not_regular"),

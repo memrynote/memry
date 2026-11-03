@@ -88,6 +88,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::notification_permission,
             crate::commands::shell_integrations::notification_show,
             crate::commands::shell_integrations::notification_supported,
+            // properties
+            crate::commands::properties::properties_get,
+            crate::commands::properties::properties_merge,
+            crate::commands::properties::properties_rename,
+            crate::commands::properties::properties_set,
             // shortcut
             crate::commands::shortcuts::shortcut_register_global_capture,
             crate::commands::shortcuts::shortcut_set_global_capture,

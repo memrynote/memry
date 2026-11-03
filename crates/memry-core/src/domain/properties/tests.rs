@@ -339,3 +339,46 @@ fn a_properties_value_that_will_not_read_is_an_error_and_never_an_empty_map() {
     })
     .expect("unreadable");
 }
+
+#[test]
+fn a_file_mirror_takes_the_values_whole_a_retype_included_and_an_equal_one_writes_nothing() {
+    let (db, _dir) = open("props-mirror", NOTE);
+    seed(
+        &db,
+        "journal",
+        "day-1",
+        r#"{"date":"2026-10-07","properties":{"mood":"ok"},"clock":{"device-a":1}}"#,
+    );
+    db.call_blocking(|conn| {
+        // The same values in the same order: nothing queued.
+        let same = json!({ "area": "Work", "effort": 3 });
+        let same = same.as_object().expect("object").clone();
+        assert!(mirror_file(conn, "note-1", same, DEVICE, NOW + 1)?);
+        assert_eq!(queued(conn), 0);
+
+        // The file retyped `effort`, dropped `area` and moved a new key first.
+        let next = json!({ "due": "2026-10-07", "effort": "three" });
+        let next = next.as_object().expect("object").clone();
+        assert!(mirror_file(conn, "note-1", next, DEVICE, NOW + 2)?);
+        assert_eq!(pushed_order(conn), vec!["due", "effort"]);
+        assert_eq!(pushed(conn)["properties"]["effort"], json!("three"));
+        assert_eq!(pushed(conn)["coverImage"], json!({ "url": "memry://cover/1" }));
+        assert_eq!(queued(conn), 1);
+
+        // A reorder alone is a change.
+        let reordered = json!({ "effort": "three", "due": "2026-10-07" });
+        let reordered = reordered.as_object().expect("object").clone();
+        assert!(mirror_file(conn, "note-1", reordered, DEVICE, NOW + 3)?);
+        assert_eq!(pushed_order(conn), vec!["effort", "due"]);
+
+        // A journal day's record takes its file's values too.
+        let day = json!({ "mood": "good" });
+        let day = day.as_object().expect("object").clone();
+        assert!(mirror_file(conn, "day-1", day, DEVICE, NOW + 4)?);
+        assert_eq!(values(conn, "journal", "day-1")?["mood"], json!("good"));
+
+        assert!(!mirror_file(conn, "nobody", Map::new(), DEVICE, NOW + 5)?);
+        Ok(())
+    })
+    .expect("mirror");
+}
