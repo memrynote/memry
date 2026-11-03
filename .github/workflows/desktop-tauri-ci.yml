@@ -82,6 +82,9 @@ jobs:
       # e2e leg: nothing downloads it. The merge queue also skips the windows-arm64 e2e leg: at
       # ~29 min it held every queue group ~10 min past the next job, mostly in pnpm disk I/O on the
       # runner's one drive. It still runs on the push after the merge and under `full-ci`.
+      # linux-x64 (the fast tier's longest job) and windows-x64 (the queue's) run their e2e specs
+      # in two legs (`shard` 1 and 2). Each leg builds its own app: a warm build is 3-4 min, and a
+      # specs job that downloaded it would wait on `needs: build`, the whole matrix.
       - name: Build the build matrix
         id: matrix
         env:
@@ -100,7 +103,8 @@ jobs:
               {platform: "linux-arm64", os: "ubuntu-22.04-arm", triple: "aarch64-unknown-linux-gnu", on: true}
             ]
             | map(select(.on and ($full == "true" or .platform == "linux-x64")) | del(.on))
-            | {include: [.[] | . as $p | ("debug", "e2e") as $variant | select($p.platform != "macos-x64" or $variant != "e2e") | select($queue != "true" or $p.platform != "windows-arm64" or $variant != "e2e") | $p + {variant: $variant}]}')
+            | {include: [.[] | . as $p | ("debug", "e2e") as $variant | select($p.platform != "macos-x64" or $variant != "e2e") | select($queue != "true" or $p.platform != "windows-arm64" or $variant != "e2e") | $p + {variant: $variant}
+              | if .variant == "e2e" and (.platform == "linux-x64" or .platform == "windows-x64") then (. + {shard: 1}), (. + {shard: 2}) else . end]}')
           echo "build=$matrix" >> "$GITHUB_OUTPUT"
           echo "Build matrix: $matrix"
 
@@ -283,7 +287,7 @@ jobs:
   # arm64 Ubuntu VM runs (tart; the vm-repro skill downloads its e2e one); it has no smoke or
   # specs. macos-x64 has no e2e leg: nothing downloads it.
   build:
-    name: Build ${{ matrix.variant }} (${{ matrix.platform }})
+    name: Build ${{ matrix.variant }}${{ matrix.shard && format(' {0}/2', matrix.shard) || '' }} (${{ matrix.platform }})
     needs: plan
     if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && (needs.plan.result == 'failure' || needs.plan.outputs.full == 'true' || needs.plan.outputs.tauri == 'true') }}
     runs-on: ${{ matrix.os }}
@@ -292,7 +296,7 @@ jobs:
       fail-fast: false
       # Built by the plan job (see "Build the build matrix"). The fallback is the fast tier, for a plan
       # job that failed.
-      matrix: ${{ fromJSON(needs.plan.outputs.build_matrix || '{"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"debug"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e"}]}') }}
+      matrix: ${{ fromJSON(needs.plan.outputs.build_matrix || '{"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"debug"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e","shard":1},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e","shard":2}]}') }}
     env:
       VITE_MEMRY_DEV_API_PROXY: '1'
     defaults:
@@ -354,7 +358,8 @@ jobs:
         with:
           workspaces: crates
           key: ${{ matrix.os }}-${{ matrix.variant }}-${{ matrix.triple }}
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          # Of two e2e shards, the first saves the entry both restore.
+          save-if: ${{ matrix.shard != 2 && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
 
       # A restore cut off at the step timeout can leave half an archive on disk. Start the
       # build cold rather than from files cargo might trust.
@@ -412,6 +417,7 @@ jobs:
         run: node apps/desktop-tauri/scripts/smoke-launch.mjs "${{ steps.binary.outputs.path }}" --expect-no-driver
 
       - name: Upload app
+        if: matrix.shard != 2
         uses: actions/upload-artifact@v4
         with:
           name: memry-tauri-${{ matrix.variant }}-${{ matrix.platform }}
@@ -419,7 +425,7 @@ jobs:
           retention-days: 14
 
       - name: Harness unit tests
-        if: matrix.variant == 'e2e' && matrix.platform != 'linux-arm64'
+        if: matrix.variant == 'e2e' && matrix.platform != 'linux-arm64' && matrix.shard != 2
         run: pnpm --filter @memry/desktop-tauri test:e2e:harness
 
       # `dbus-run-session` gives libsecret a session bus; the keyring is unlocked with an empty
@@ -430,9 +436,11 @@ jobs:
           MEMRY_E2E_BINARY: ${{ github.workspace }}/${{ steps.binary.outputs.path }}
           # One app per vCPU: 4 on the Windows runners, 2 on the 3-vCPU macOS runner.
           MEMRY_E2E_WORKERS: ${{ runner.os == 'Windows' && '4' || '2' }}
+          SHARD: ${{ matrix.shard && format('--shard={0}/2', matrix.shard) || '' }}
+        # The two-device spec runs once, in the first shard.
         run: |
-          pnpm --filter @memry/desktop-tauri test:e2e
-          pnpm --filter @memry/desktop-tauri test:e2e:multi
+          pnpm --filter @memry/desktop-tauri test:e2e ${SHARD:+"$SHARD"}
+          if [ "${{ matrix.shard }}" != 2 ]; then pnpm --filter @memry/desktop-tauri test:e2e:multi; fi
 
       - name: E2E specs (Linux)
         if: matrix.variant == 'e2e' && matrix.platform == 'linux-x64'
@@ -440,10 +448,13 @@ jobs:
           MEMRY_E2E_BINARY: ${{ github.workspace }}/${{ steps.binary.outputs.path }}
           # One app per vCPU. The 48 specs hold ~15 minutes of app time; two workers took ~10.
           MEMRY_E2E_WORKERS: '4'
+          SHARD: ${{ matrix.shard && format('--shard={0}/2', matrix.shard) || '' }}
         run: |
+          specs="pnpm --filter @memry/desktop-tauri test:e2e${SHARD:+ $SHARD}"
+          if [ "${{ matrix.shard }}" != 2 ]; then specs="$specs && pnpm --filter @memry/desktop-tauri test:e2e:multi"; fi
           dbus-run-session -- bash -c "
             echo '' | gnome-keyring-daemon --unlock --components=secrets >/dev/null
-            xvfb-run -a -s '-screen 0 1920x1080x24' bash -c 'pnpm --filter @memry/desktop-tauri test:e2e && pnpm --filter @memry/desktop-tauri test:e2e:multi'
+            xvfb-run -a -s '-screen 0 1920x1080x24' bash -c '$specs'
           "
 
       - name: Purge leaked e2e keychain items
@@ -454,7 +465,7 @@ jobs:
         if: always() && matrix.variant == 'e2e' && matrix.platform != 'linux-arm64'
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-results-${{ matrix.platform }}
+          name: e2e-results-${{ matrix.platform }}${{ matrix.shard && format('-{0}', matrix.shard) || '' }}
           path: apps/desktop-tauri/test-results/e2e
           if-no-files-found: ignore
           retention-days: 7
