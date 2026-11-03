@@ -14,10 +14,10 @@
 //! a percent escape is never re-encoded for nothing.
 //!
 //! Untrusted input: the text is a vault file. The scan does not recurse, looks at each byte a
-//! bounded number of times ([`ref_steps`]), and the text grows to at most twice its length
-//! plus [`ref_growth`] bytes per ref, which takes at least five bytes of it (JSON may escape
-//! in a marker what a percent escape decoded, `%01` to `\u0001`). A marker's JSON goes
-//! through `serde_json`, whose recursion limit refuses a deep payload.
+//! bounded number of times ([`ref_steps`]), and the text grows to at most three times its
+//! length plus [`ref_growth`] bytes per rewritten ref: a raw `(` or space in a marker's `url`
+//! is written `%28` or `%20`, and the new folder's depth sets the `../` a ref gains. A
+//! marker's JSON goes through `serde_json`, whose recursion limit refuses a deep payload.
 
 use std::cell::Cell;
 
@@ -38,8 +38,9 @@ pub struct NoteRefsOptions<'a> {
 }
 
 /// `rewriteNoteRefsForMove`: `body`, a note file with its frontmatter, with every
-/// vault-internal relative ref re-pointed from `old_note_path` to `new_note_path` (both
-/// vault-relative), or `None` when nothing changed, so nothing is written.
+/// vault-internal relative ref re-pointed from `old_note_path` to `new_note_path` (both clean
+/// vault-relative paths: no `..` segment, no leading `/`), or `None` when nothing changed, so
+/// nothing is written.
 pub fn rewrite_note_refs_for_move(
     body: &str,
     old_note_path: &str,
@@ -65,6 +66,7 @@ pub fn rewrite_note_refs_for_move(
 
 /// The most bytes one rewritten ref adds: a `../` per folder of the new path, and the old
 /// folder (each byte percent-encoded at worst) with its `/`.
+#[doc(hidden)]
 pub fn ref_growth(old_note_path: &str, new_note_path: &str) -> usize {
     3 * new_note_path.split(['/', '\\']).count() + 3 * (dir_of(old_note_path).len() + 1)
 }
@@ -120,28 +122,21 @@ impl Refs<'_> {
 
     /// `line.replace(/(!\[[^\]]*\]\()([^()\s]*)(\))/g, ...)`, as a linear scan with the same
     /// leftmost, non-overlapping matches. Every start between a failed start and its `]` shares
-    /// that `]`, and fails the same way, so the scan resumes past it.
+    /// that `]`, and fails the same way, so the scan resumes past it: each `]` is looked for
+    /// once.
     fn image_refs(&self, line: &str, changed: &mut bool) -> String {
         let mut out = String::new();
         let mut copied = 0;
         let mut pos = 0;
-        // The first `]` at or after a position, kept while searches move forward.
-        let mut close: Option<usize> = None;
         while let Some(found) = line[pos..].find("![") {
             step(found + 2);
             let open = pos + found;
             let alt = open + 2;
-            let bracket = match close {
-                Some(at) if at >= alt => at,
-                _ => match line[alt..].find(']') {
-                    Some(at) => {
-                        step(at + 1);
-                        alt + at
-                    }
-                    None => break,
-                },
+            let Some(at) = line[alt..].find(']') else {
+                break;
             };
-            close = Some(bracket);
+            step(at + 1);
+            let bracket = alt + at;
             if line.as_bytes().get(bracket + 1) != Some(&b'(') {
                 pos = bracket + 1;
                 continue;
@@ -225,6 +220,7 @@ fn marker_url_span(line: &str) -> Option<(usize, usize)> {
 
 /// `path.posix.dirname` of the `/`-separated path, `""` for the vault root.
 fn dir_of(note_path: &str) -> String {
+    debug_assert!(is_clean(note_path), "not a clean vault path: {note_path}");
     let path = note_path.replace('\\', "/");
     let trimmed = path.trim_end_matches('/');
     match trimmed.rfind('/') {
@@ -291,11 +287,24 @@ fn resolve_against(dir: &str, reference: &str) -> Option<String> {
             segment => segments.push(segment),
         }
     }
-    (!segments.is_empty()).then(|| segments.join("/"))
+    // `path.posix.normalize` keeps a trailing `/`: `x/../` is `./`, the vault root, not `.`.
+    if segments.is_empty() && !joined.ends_with('/') {
+        return None;
+    }
+    Some(segments.join("/"))
+}
+
+/// A vault path with no `..` segment and no leading `/`, as the paths of the vault's rows are.
+fn is_clean(path: &str) -> bool {
+    !path.starts_with(['/', '\\']) && !path.split(['/', '\\']).any(|segment| segment == "..")
 }
 
 /// `path.posix.relative(from, to)` of two vault paths that do not climb above the root.
 fn relative(from: &str, to: &str) -> String {
+    debug_assert!(
+        is_clean(from) && is_clean(to),
+        "not clean vault paths: {from}, {to}"
+    );
     let from: Vec<&str> = from.split('/').filter(|s| !s.is_empty()).collect();
     let to: Vec<&str> = to.split('/').filter(|s| !s.is_empty()).collect();
     let common = from.iter().zip(&to).take_while(|(a, b)| a == b).count();

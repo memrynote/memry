@@ -157,6 +157,19 @@ fn percent_escapes_stay_encoded_or_untouched() {
 }
 
 #[test]
+fn a_ref_to_the_vault_root_with_a_trailing_slash_follows() {
+    // `path.posix.normalize('x/../')` is `./`, which names the root; `x/..` is `.`, which
+    // names nothing.
+    assert_eq!(
+        plain("![](../)\n", "x/Foo.md", "n1/Foo.md"),
+        some("![](..)\n")
+    );
+    assert_eq!(plain("![](./)\n", "Foo.md", "n1/Foo.md"), some("![](..)\n"));
+    assert_eq!(plain("![](..)\n", "x/Foo.md", "n1/Foo.md"), None);
+    assert_eq!(plain("![](../)\n", "x/Foo.md", "Foo.md"), None);
+}
+
+#[test]
 fn every_ref_in_a_body_follows_and_the_rest_keeps_its_bytes() {
     let body = [
         "---",
@@ -284,6 +297,7 @@ proptest! {
                 Just("![](%01)".to_owned()),
                 Just("![](a%20(b)".to_owned()),
                 Just("<!-- file:{\"url\":\"%01%3E--\",\"name\":\"a\"} -->\n".to_owned()),
+                Just(format!("<!-- file:{{\"url\":\"{}\",\"name\":\"a\"}} -->\n", "( ) ".repeat(50))),
                 Just("\n".to_owned()),
                 "[a-z!\\[\\]()%]{0,8}",
             ],
@@ -294,8 +308,17 @@ proptest! {
     ) {
         let body = parts.concat();
         if let Some(out) = plain(&body, &old, &new) {
-            let refs = body.len() / 5 + 1;
-            prop_assert!(out.len() <= 2 * body.len() + refs * ref_growth(&old, &new));
+            let refs: usize = body
+                .split('\n')
+                .map(|line| {
+                    if line.trim().starts_with("<!-- file:") {
+                        1
+                    } else {
+                        reference_refs(line).len()
+                    }
+                })
+                .sum();
+            prop_assert!(out.len() <= 3 * body.len() + refs * ref_growth(&old, &new));
         }
     }
 }
