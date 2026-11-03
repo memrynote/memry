@@ -19,9 +19,10 @@ use crate::startup::{self, Stage};
 
 type Factory = Box<dyn Fn() -> Option<Arc<dyn SpellBackend>> + Send + Sync>;
 
-/// The platform backend, or none when the platform has no dictionary. The backend is built on
-/// first use, which is always on the blocking pool: the Windows one waits up to five seconds for
-/// COM and the dictionary, and boot must not.
+/// The platform backend, or none when the platform has no dictionary. The backend is built on the
+/// blocking pool once boot has shown the window, or by the first spelling call if that comes
+/// first: the Windows one waits up to five seconds for COM and then loads its dictionary, and
+/// neither boot nor the first right-click should wait for that.
 pub struct SpellService {
     backend: OnceLock<Option<Arc<dyn SpellBackend>>>,
     make: Factory,
@@ -61,6 +62,17 @@ impl SpellService {
 
 pub fn register_stages() {
     startup::register(Stage::Handlers, "register spell checker", register);
+    startup::register(
+        Stage::Schedulers,
+        "build spell checker",
+        build_in_background,
+    );
+}
+
+fn build_in_background(app: &AppHandle<Wry>) -> Result<(), CommandError> {
+    let app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || app.state::<SpellService>().backend());
+    Ok(())
 }
 
 fn register(app: &AppHandle<Wry>) -> Result<(), CommandError> {

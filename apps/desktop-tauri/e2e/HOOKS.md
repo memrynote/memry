@@ -104,6 +104,17 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 - With an open gate `vault_reveal` and `vault_activity_reveal` record the path instead of
   opening a file manager; `e2e_revealed_paths` reads it back.
 
+## Spelling
+
+`specs/shell/spellcheck.e2e.ts` uses two commands (`src-tauri/src/e2e/shell_integrations.rs`):
+
+- `e2e_spell_ready` answers `true` once the spell checker has loaded its dictionary, `false`
+  while it loads, and `null` when the machine has none; it builds the checker if startup has not
+  yet. The Windows checker loads in the background after startup, and a call made during the
+  load can give up after five seconds, so a spec polls this before its first spelling call.
+- `e2e_forget_spelled_word` takes an added word back out of the macOS dictionary; elsewhere it
+  does nothing, and the spec adds a fresh word per attempt.
+
 ## Vault write-back
 
 The app makes every markdown file outside the journal folder a note (Step 13d, #3530). Until
