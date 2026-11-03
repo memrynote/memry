@@ -468,15 +468,53 @@ const typedErrorCode = (error: unknown, depth = 0): string | undefined => {
   return typedErrorCode(candidate.cause, depth + 1)
 }
 
+// The sync-server pins `$exception_fingerprint` to errorCode, so every ZodError
+// used to share the one code `ZodError` and Error Tracking merged unrelated
+// contract failures into a single issue. A ZodError instead reports its first
+// issue's `code` and `path` plus the call site that parsed it. Array indices
+// collapse to `N`, and a path key ships only when it is an identifier-shaped
+// schema field name: a `z.record` key can be user content (a tag, a path), so
+// anything else is `K`. Issue messages are never read, since they echo input.
+const ZOD_PATH_KEY = /^[A-Za-z_][A-Za-z0-9_]{0,31}$/
+const MAX_ZOD_PATH_CHARS = 24
+
+const zodErrorCode = (error: unknown, site?: string): string | undefined => {
+  if (readProp(error, 'name') !== 'ZodError') return undefined
+  const issues = readProp(error, 'issues')
+  const first: unknown = Array.isArray(issues) ? issues[0] : undefined
+  if (first === undefined) return undefined
+  const code = readProp(first, 'code')
+  const path = readProp(first, 'path')
+  if (typeof code !== 'string' || !TYPED_ERROR_CODE.test(code) || !Array.isArray(path)) {
+    return undefined
+  }
+  const segments = path.map((segment: unknown) =>
+    typeof segment === 'number'
+      ? 'N'
+      : typeof segment === 'string' && ZOD_PATH_KEY.test(segment)
+        ? segment
+        : 'K'
+  )
+  // The tail of the path names the field; a long prefix is the part to drop.
+  const joined = segments.join('.')
+  const where = joined ? joined.slice(-MAX_ZOD_PATH_CHARS) : 'root'
+  const siteToken = site ? toSafeToken(site, '') : ''
+  const full = `ZodError:${code}:${where}${siteToken ? `:${siteToken}` : ''}`
+  return full.slice(0, 64)
+}
+
 /**
  * Derive the `errorCode` dimension for an error. Prefers a typed code the error
  * carries (NoteError.telemetryCode, NoteError.code, better-sqlite3's error.code,
  * or Node's ECONNREFUSED nested on `.cause`) over the class name, so a failure
  * says NOTE_WRITE_FAILED:EBUSY / SQLITE_BUSY rather than collapsing every note
- * failure to "NoteError" and every DB failure to "SqliteError". Falls back to the
- * class name, then the constructor name.
+ * failure to "NoteError" and every DB failure to "SqliteError". A ZodError
+ * reports `ZodError:<issue code>:<path>[:<site>]`. Falls back to the class
+ * name, then the constructor name.
  */
-export const toErrorCode = (error: unknown): string => {
+export const toErrorCode = (error: unknown, site?: string): string => {
+  const zod = zodErrorCode(error, site)
+  if (zod) return zod
   const typed = typedErrorCode(error)
   if (typed) return typed
   const name = readProp(error, 'name')
