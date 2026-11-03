@@ -6,11 +6,12 @@
 //! - **The files stay.** Nothing here removes one: an older build downgraded onto the vault
 //!   still reads them, and each template is durable in the database before the flag says so.
 //!   Only a delete of the template removes its file ([`super::Templates::delete`]).
-//! - **Once, and only once everything landed.** The flag is set when no file failed to read.
-//!   A file that could not be read (a lock, a cloud client still hydrating it, a link out of
-//!   the vault) leaves it unset, so the next open tries again; one that never imports
-//!   (frontmatter that does not parse, too large) does not hold it. An absent folder sets
-//!   nothing: a folder a cloud client brings later still imports.
+//! - **Once, and only once everything landed.** The flag is set when no file failed to read
+//!   or to insert. A file that could not be read (a lock, a cloud client still hydrating it, a
+//!   link out of the vault) or whose insert the database refused leaves it unset, so the next
+//!   open tries again; one that never imports (frontmatter that does not parse, too large)
+//!   does not hold it. An absent folder sets nothing: a folder a cloud client brings later
+//!   still imports.
 //! - **Repeats are harmless.** Each template commits on its own, and an id the database ever
 //!   held is never written again, so a crash halfway and the next open's run add nothing twice
 //!   and bring back nothing deleted.
@@ -54,6 +55,8 @@ pub struct LegacyImport {
     pub imported: usize,
     /// Files that could not be read, vault-relative, with why; the flag waits for them.
     pub failed: Vec<(String, String)>,
+    /// Files whose insert the database refused, with why; the flag waits for them too.
+    pub unsaved: Vec<(String, String)>,
     /// Files that will never import, with why.
     pub refused: Vec<(String, String)>,
     pub outcome: LegacyOutcome,
@@ -64,7 +67,7 @@ pub enum LegacyOutcome {
     /// Every file landed: the flag is set (now or before).
     #[default]
     Done,
-    /// Some file failed to read; the next open runs again.
+    /// Some file failed to read or to insert; the next open runs again.
     Retry,
     /// There is no template folder; nothing is set.
     NoFolder,
@@ -186,15 +189,16 @@ impl Templates {
             match template_legacy::parse(stem, &text, &now) {
                 Parsed::BuiltIn => {}
                 Parsed::Refused(why) => run.refused.push((path, why)),
-                // An insert the database refuses is skipped, as Electron's catch skips it.
+                // An insert the database refuses (busy, an I/O error, a full disk) holds the
+                // flag as a read failure does (#3845). Electron's catch skips the file for good.
                 Parsed::Template(template) => match self.store.import_legacy(&template, now_ms) {
                     Ok(true) => run.imported += 1,
                     Ok(false) => {}
-                    Err(error) => run.refused.push((path, error.to_string())),
+                    Err(error) => run.unsaved.push((path, error.to_string())),
                 },
             }
         }
-        if run.failed.is_empty() {
+        if run.failed.is_empty() && run.unsaved.is_empty() {
             self.store.mark_legacy_imported().map_err(storage)?;
         } else {
             run.outcome = LegacyOutcome::Retry;
@@ -203,7 +207,8 @@ impl Templates {
     }
 }
 
-/// The activity entries a run leaves: a file that failed to read, and one that never imports.
+/// The activity entries a run leaves: a file that failed to read or to insert, and one that
+/// never imports.
 pub fn activity(run: &LegacyImport) -> Vec<ActivityInput> {
     let failed = run.failed.iter().map(|(path, why)| {
         ActivityInput::new(ActivityKind::Failed, ActivitySource::Import)
@@ -211,6 +216,16 @@ pub fn activity(run: &LegacyImport) -> Vec<ActivityInput> {
             .reason("read-failed")
             .message(why.clone())
             .dedupe(format!("template-import:failed:{path}"), ACTIVITY_WINDOW_MS)
+    });
+    // No coded reason: the file was read, and the renderer shows the database's message.
+    let unsaved = run.unsaved.iter().map(|(path, why)| {
+        ActivityInput::new(ActivityKind::Failed, ActivitySource::Import)
+            .path(path.clone())
+            .message(why.clone())
+            .dedupe(
+                format!("template-import:unsaved:{path}"),
+                ACTIVITY_WINDOW_MS,
+            )
     });
     let refused = run.refused.iter().map(|(path, why)| {
         let entry = ActivityInput::new(ActivityKind::Skipped, ActivitySource::Import)
@@ -225,7 +240,7 @@ pub fn activity(run: &LegacyImport) -> Vec<ActivityInput> {
             entry.message(why.clone())
         }
     });
-    failed.chain(refused).collect()
+    failed.chain(unsaved).chain(refused).collect()
 }
 
 /// Runs the import as every vault opens, before it reads as open, as Electron's `openVault`
@@ -250,6 +265,7 @@ pub fn register(session: &Session, store: Arc<dyn SecureStore>, log: Arc<Activit
                             scope = "templates",
                             imported = run.imported,
                             failed = run.failed.len(),
+                            unsaved = run.unsaved.len(),
                             refused = run.refused.len(),
                             "template files: {:?}",
                             run.outcome

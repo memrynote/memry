@@ -1,8 +1,8 @@
 // Templates in the running app (Step 13l, #3530), ported from Electron's `templates.e2e.ts`: the
 // template commands called from the page as `services/templates-service.ts` calls them, the
-// Settings › Templates list following their events, and a pre-sync template file imported when
-// the vault opens. Applying a template to a note and saving a
-// note as one move over with `notes_apply_template` (13l-4).
+// Settings › Templates list following their events, a pre-sync template file imported when the
+// vault opens, and a note made from a template (`createNote`). Applying a template to a note and
+// saving a note as one move over with `notes_apply_template` (13l-4).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -19,6 +19,15 @@ interface Template {
   tags: string[]
   properties: unknown[]
   content: string
+}
+
+interface NoteView {
+  id: string
+  path: string
+  content: string
+  tags: string[]
+  properties: Record<string, unknown>
+  emoji: string | null
 }
 
 interface ListItem {
@@ -92,6 +101,51 @@ test('creates, updates, duplicates, deletes, and persists templates in the vault
   expect(existsSync(legacyFile)).toBe(false)
   expect(existsSync(join(legacyDir, `${duplicate.id}.md`))).toBe(false)
   expect(await invoke<Template | null>(page, 'templates_get', { id: created.id })).toBeNull()
+})
+
+test('a note made from a template holds its body, tags, properties and icon', async ({
+  page,
+  testVaultPath
+}) => {
+  await ready(page)
+  const template = await invoke<Template>(page, 'templates_create', {
+    input: {
+      name: `Brief ${stamp()}`,
+      icon: 'B',
+      tags: ['brief'],
+      properties: [{ name: 'Stage', type: 'select', value: 'Draft', options: ['Draft', 'Final'] }],
+      content: '# {{title}}\n\nWritten for {{title}}'
+    }
+  })
+  const title = `Launch ${stamp()}`
+  const note = await invoke<NoteView>(page, 'notes_create', {
+    input: {
+      title,
+      folder: 'Briefs',
+      template: template.id,
+      tags: ['launch'],
+      properties: { Owner: 'Kaan' }
+    }
+  })
+
+  expect(note).toMatchObject({
+    path: `Briefs/${title}.md`,
+    tags: ['brief', 'launch'],
+    properties: { Stage: 'Draft', Owner: 'Kaan' },
+    emoji: 'B'
+  })
+  expect(readFileSync(join(testVaultPath, note.path), 'utf8')).toBe(
+    `---\ntags:\n  - brief\n  - launch\nStage: Draft\nOwner: Kaan\n---\n# ${title}\n\nWritten for ${title}\n`
+  )
+  // An explicit `null` icon keeps the template's off the note.
+  const bare = await invoke<NoteView>(page, 'notes_create', {
+    input: { title: `${title} bare`, folder: 'Briefs', template: template.id, emoji: null }
+  })
+  expect(bare.emoji).toBeNull()
+  expect(await invoke<NoteView>(page, 'notes_get', { id: note.id })).toMatchObject({
+    emoji: 'B',
+    tags: ['brief', 'launch']
+  })
 })
 
 test('Settings › Templates follows the template events and refuses to change a built-in', async ({

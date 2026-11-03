@@ -9,8 +9,8 @@ use serde_json::{Map, Value, json};
 
 use crate::vault::file_types::FileType;
 
-/// `NoteCreateSchema`, without the parts later slices own: `template` (Step 13l) and
-/// `plainChecklists` (Step 32), which the renderer's service refuses until then.
+/// `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
+/// refuses until then.
 #[derive(Debug, Clone, Default, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NoteCreateInput {
@@ -24,8 +24,13 @@ pub struct NoteCreateInput {
     pub tags: Option<Vec<String>>,
     #[serde(default)]
     pub properties: Option<Map<String, Value>>,
+    /// The template to make the note from (`templates_get`'s ids).
     #[serde(default)]
-    pub emoji: Option<String>,
+    pub template: Option<String>,
+    /// Absent: the template's icon, if any; `null`: no icon.
+    #[serde(default, deserialize_with = "crate::templates::present")]
+    #[specta(optional, type = Option<String>)]
+    pub emoji: Option<Option<String>>,
 }
 
 /// `NoteSizeClass`.
