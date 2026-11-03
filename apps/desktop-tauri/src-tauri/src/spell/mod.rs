@@ -1,6 +1,7 @@
 //! Spelling suggestions and the personal dictionary, one backend per platform behind
 //! `memry_desktop::shell::spell::SpellBackend`: `NSSpellChecker` on macOS, `ISpellChecker` on
 //! Windows, Enchant (loaded at run time) on Linux.
+// CI benchmark, not for merge.
 
 #[cfg(target_os = "linux")]
 mod linux;
