@@ -57,6 +57,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_get_links,
             crate::commands::notes::notes_get_local_only_count,
             crate::commands::notes::notes_get_unlinked_mentions,
+            crate::commands::notes::notes_link_mention,
             crate::commands::notes::notes_list,
             crate::commands::notes::notes_open_external,
             crate::commands::notes::notes_preview_by_title,

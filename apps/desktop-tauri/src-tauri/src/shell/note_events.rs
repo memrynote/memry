@@ -3,7 +3,9 @@
 //! and delete and the watcher's reports go out the same way with their `source`. Two kinds of
 //! fact emit nothing:
 //! - the app's own writes of a body (`Changed` by the app): Electron's write-back is `sync`,
-//!   which the renderer ignores;
+//!   which the renderer ignores. A text the app rewrote for the user away from the editor
+//!   (`ChangeSource::Rewrite`, a mention linked) goes out as an outside edit does, as
+//!   Electron's `landSourceRewrite` sends it;
 //! - what the open walk found (`ChangeSource::Walk`): Electron's open-time index sends no note
 //!   events either, and the index pass after the walk reports progress, on which the renderer
 //!   refetches its lists (`use-notes-query.ts`). A first open of a large vault would otherwise
@@ -148,7 +150,7 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
         }),
         Applied::Changed {
             note_id,
-            source: ChangeSource::Watcher,
+            source: ChangeSource::Watcher | ChangeSource::Rewrite,
             ..
         } => Some(Outgoing::Updated { note_id }),
         Applied::Removed {
@@ -176,7 +178,9 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
 fn source_of(source: ChangeSource) -> NoteEventSource {
     match source {
         ChangeSource::App => NoteEventSource::Internal,
-        ChangeSource::Watcher | ChangeSource::Walk => NoteEventSource::External,
+        ChangeSource::Watcher | ChangeSource::Walk | ChangeSource::Rewrite => {
+            NoteEventSource::External
+        }
     }
 }
 
@@ -243,6 +247,13 @@ mod tests {
         );
         assert_eq!(
             outgoing(changed(ChangeSource::Watcher)),
+            Some(Outgoing::Updated {
+                note_id: "n".into()
+            })
+        );
+        // A mention linked reloads an editor showing the note, as `landSourceRewrite` does.
+        assert_eq!(
+            outgoing(changed(ChangeSource::Rewrite)),
             Some(Outgoing::Updated {
                 note_id: "n".into()
             })

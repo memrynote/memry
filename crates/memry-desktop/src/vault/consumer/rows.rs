@@ -2,7 +2,7 @@
 //! app's own file operations (Step 13's create) take it through [`RowOwner`]'s methods, the
 //! write-back (`vault::writeback`) holds it for a whole pass, a journal rename
 //! (`vault::journal_rename`) for each file it moves, a note's rename or move in the app
-//! (`notes::moves`) for the whole step, and the vault open for the app move a crash cut short
+//! (`notes::moves`) and a mention linked (`notes::link_mention`) for the whole step, and the vault open for the app move a crash cut short
 //! (`vault::app_move`). Either way a write checks [`PathIndex`] first and keeps
 //! it in step, and the [`Applied`] fact goes out after the row is written, under the lane, so
 //! subscribers see the facts in the order the rows changed.
@@ -273,7 +273,7 @@ impl Lane<'_> {
     /// moves, to the bytes on disk now or to none. The row's size, stamp and content hash stay
     /// those of what the document holds, which the write-back compares with; the walk then
     /// reads the file again at every open, as it did before file hashes.
-    pub(super) fn record_file_hash(
+    pub(crate) fn record_file_hash(
         &self,
         note_id: &str,
         hash: Option<&str>,

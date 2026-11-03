@@ -88,6 +88,8 @@ mod logship;
 mod move_dir;
 #[path = "move_journal.rs"]
 mod move_journal;
+#[path = "note_link_mention.rs"]
+mod note_link_mention;
 #[path = "note_links.rs"]
 mod note_links;
 #[path = "note_links_changed.rs"]

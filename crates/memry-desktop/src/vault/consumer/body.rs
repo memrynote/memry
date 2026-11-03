@@ -23,7 +23,7 @@ fn holds_file(outcome: FeedOutcome) -> bool {
 
 /// The writing tools data the whole file says (none without the key, or with the author's
 /// own), or `None` when its frontmatter does not parse and may hold some.
-fn writing_of(file: &NoteFile) -> Option<WritingFrontmatter> {
+pub(crate) fn writing_of(file: &NoteFile) -> Option<WritingFrontmatter> {
     if file.split().block.is_none() {
         return Some(WritingFrontmatter::default());
     }
