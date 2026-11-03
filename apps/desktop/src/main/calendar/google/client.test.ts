@@ -598,6 +598,54 @@ describe('google calendar client — push channels (Task 7)', () => {
       ])
     })
 
+    it('skips a malformed event, logs it without content, and syncs the rest of the page', async () => {
+      loggerMock.warn.mockClear()
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            nextSyncToken: 'cursor-2',
+            items: [
+              { id: 'good-1', start: { dateTime: '2026-05-10T10:00:00.000Z' } },
+              {
+                id: 'bad-1',
+                summary: 'Secret title',
+                start: { dateTime: '2026-05-10T10:00:00.000Z' },
+                attendees: [{ displayName: 'No email' }]
+              },
+              { summary: 'No id at all' },
+              {
+                id: 'gone-1',
+                status: 'cancelled',
+                summary: 'Deleted with odd shape',
+                attendees: [{ displayName: 'No email' }]
+              },
+              { id: 'good-2', start: { date: '2026-05-11' } }
+            ]
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      const result = await client.listEvents({ calendarId: 'primary', syncCursor: 'cursor-1' })
+
+      expect(result.nextSyncCursor).toBe('cursor-2')
+      expect(result.events.map((event) => [event.id, event.status])).toEqual([
+        ['good-1', 'confirmed'],
+        ['gone-1', 'cancelled'],
+        ['good-2', 'confirmed']
+      ])
+      expect(loggerMock.warn).toHaveBeenCalledWith(
+        'Skipping malformed Google Calendar event',
+        expect.objectContaining({
+          calendarId: 'primary',
+          eventId: 'bad-1',
+          issuePaths: ['attendees.0.email']
+        })
+      )
+      expect(JSON.stringify(loggerMock.warn.mock.calls)).not.toContain('Secret title')
+    })
+
     it('resets a stale sync cursor on HTTP 410 and fetches individual timed events', async () => {
       fetchMock.mockResolvedValueOnce(new Response('gone', { status: 410 })).mockResolvedValueOnce(
         new Response(

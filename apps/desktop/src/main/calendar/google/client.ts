@@ -108,10 +108,18 @@ const GoogleEventSchema = z.object({
   originalStartTime: GoogleEventDateSchema.optional()
 })
 
+// Items stay unknown at the page level and are parsed one by one in listEvents, so a single
+// malformed event cannot fail the whole page (and with it the whole calendar's sync).
 const GoogleEventsListSchema = z.object({
-  items: z.array(GoogleEventSchema).default([]),
+  items: z.array(z.unknown()).default([]),
   nextPageToken: z.string().optional(),
   nextSyncToken: z.string().optional()
+})
+
+// What a deletion needs even when the rest of the event is malformed.
+const GoogleCancelledEventStubSchema = z.object({
+  id: z.string().min(1),
+  status: z.literal('cancelled')
 })
 
 const GoogleTokenRefreshSchema = z.object({
@@ -137,6 +145,11 @@ function resolveGoogleClientId(): string {
 
 function resolveGoogleClientSecret(): string | undefined {
   return process.env.GOOGLE_CALENDAR_CLIENT_SECRET?.trim() || undefined
+}
+
+function eventIdOf(item: unknown): string | null {
+  const id = z.object({ id: z.string() }).safeParse(item)
+  return id.success ? id.data.id : null
 }
 
 function mapCalendar(item: z.infer<typeof GoogleCalendarListItemSchema>): GoogleCalendarDescriptor {
@@ -559,7 +572,30 @@ export function createGoogleCalendarClient(
 
         const parsed = GoogleEventsListSchema.parse(await response.json())
         for (const item of parsed.items) {
-          events.push(mapRemoteEvent(input.calendarId, item))
+          const event = GoogleEventSchema.safeParse(item)
+          if (event.success) {
+            events.push(mapRemoteEvent(input.calendarId, event.data))
+            continue
+          }
+          // The cursor advances past a skipped event, so an incremental sync never sends it
+          // again until Google changes it. A cancelled one is still applied as a deletion,
+          // so a malformed tombstone cannot leave the event visible locally.
+          const stub = GoogleCancelledEventStubSchema.safeParse(item)
+          log.warn('Skipping malformed Google Calendar event', {
+            calendarId: input.calendarId,
+            eventId: stub.success ? stub.data.id : eventIdOf(item),
+            issuePaths: event.error.issues.map((issue) => issue.path.join('.')),
+            keptAsCancelled: stub.success
+          })
+          if (stub.success) {
+            events.push(
+              mapRemoteEvent(input.calendarId, {
+                id: stub.data.id,
+                status: 'cancelled',
+                start: { date: '1970-01-01' }
+              })
+            )
+          }
         }
 
         if (!parsed.nextPageToken) {
