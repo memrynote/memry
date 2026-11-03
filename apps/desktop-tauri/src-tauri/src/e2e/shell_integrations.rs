@@ -283,7 +283,7 @@ pub fn e2e_apply_login_item(app: AppHandle<Wry>, enabled: bool) -> Result<(), Co
     crate::autostart::apply_to_os(&app, enabled)
 }
 
-/// Builds the spell checker if no call has yet, and says whether it has loaded its dictionary:
+/// Builds the spell checker if startup has not yet, and says whether it has loaded its dictionary:
 /// `true` loaded, `false` still loading, `null` no dictionary on this machine.
 #[tauri::command]
 pub async fn e2e_spell_ready(app: AppHandle<Wry>) -> Result<Option<bool>, CommandError> {

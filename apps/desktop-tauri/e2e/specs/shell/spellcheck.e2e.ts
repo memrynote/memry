@@ -13,10 +13,10 @@ interface SpellResult {
 
 const check = (page: Page, word: string) => invoke<SpellResult>(page, 'spell_check_word', { word })
 
-// The Windows checker loads its dictionary on first use. On a busy runner the load outlasted the
-// five seconds a call waits, so the call answered with no suggestions or a failed add (#3888).
-// A headless Linux runner may have no Enchant dictionary; there is nothing to load, and the page
-// shows no suggestions, which the unit tests cover.
+// The Windows checker loads its dictionary in the background after startup. On a busy runner a
+// call made during the load outlasted the five seconds it waits, and answered with no suggestions
+// or a failed add (#3888). Only a headless Linux runner may have no dictionary (no Enchant); the
+// page then shows no suggestions, which the unit tests cover. Elsewhere `none` fails the spec.
 async function dictionary(app: TauriApp): Promise<'loaded' | 'none'> {
   const state = await pollUntil(
     async () => {
@@ -26,6 +26,7 @@ async function dictionary(app: TauriApp): Promise<'loaded' | 'none'> {
     { timeoutMs: 60_000 }
   )
   expect(['loaded', 'none']).toContain(state ?? 'still loading after 60 s')
+  if (process.platform !== 'linux') expect(state).toBe('loaded')
   return state ?? 'none'
 }
 
@@ -33,7 +34,7 @@ test('a misspelled word comes back with suggestions and a correct one does not',
   app,
   page
 }) => {
-  test.skip((await dictionary(app)) === 'none', 'no spell dictionary on this machine')
+  test.skip((await dictionary(app)) === 'none', 'no Enchant dictionary on this Linux runner')
   const typo = await check(page, 'teh')
   expect(typo.misspelled).toBe(true)
   expect(typo.suggestions).toContain('the')
@@ -43,7 +44,7 @@ test('a misspelled word comes back with suggestions and a correct one does not',
 })
 
 test('a word added to the personal dictionary stops being misspelled', async ({ app, page }) => {
-  test.skip((await dictionary(app)) === 'none', 'no spell dictionary on this machine')
+  test.skip((await dictionary(app)) === 'none', 'no Enchant dictionary on this Linux runner')
   // Nonsense that no dictionary knows and no word list will ever contain, fresh per attempt:
   // Windows and Linux keep an added word for the OS user, so a retry of the same word found it
   // already learned.

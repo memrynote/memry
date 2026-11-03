@@ -4,7 +4,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Sender, channel};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use memry_desktop::shell::spell::{SpellBackend, windows_language_candidates};
 use windows::Win32::Globalization::{
@@ -20,7 +20,8 @@ const REPLY_WAIT: Duration = Duration::from_secs(5);
 const LOCALE_NAME_MAX_LENGTH: usize = 85;
 /// Checked and asked for suggestions once before the first request: a short typo and a long
 /// unknown word, which load different parts of the dictionary. On a cold Windows session the
-/// first suggestions took 3 s on an idle VM and over five on a busy CI runner (#3888).
+/// first suggestions took 3 s on an idle VM and over five on a busy CI runner (#3888). `Add` is
+/// not warmed: it would write the word into the user's dictionary.
 const WARM_UP_WORDS: [&str; 2] = ["teh", "memrywarmupqxzv"];
 
 enum Request {
@@ -53,10 +54,7 @@ impl WinSpell {
                 let checker = create_checker();
                 let _ = ready_tx.send(checker.is_some());
                 if let Some(checker) = checker {
-                    for word in WARM_UP_WORDS {
-                        is_correct(&checker, word);
-                        suggestions(&checker, word, 1);
-                    }
+                    warm_up(&checker);
                     warmed.store(true, Ordering::Release);
                     serve(&checker, &inbox);
                 }
@@ -74,7 +72,7 @@ impl WinSpell {
             })
     }
 
-    fn ask<T>(&self, build: impl FnOnce(Sender<T>) -> Request) -> Option<T> {
+    fn ask<T>(&self, kind: &str, build: impl FnOnce(Sender<T>) -> Request) -> Option<T> {
         let (reply, answer) = channel();
         self.requests
             .lock()
@@ -84,7 +82,10 @@ impl WinSpell {
         answer
             .recv_timeout(REPLY_WAIT)
             .inspect_err(|error| {
-                tracing::warn!(scope = "Spell", "no answer from the spell checker: {error}");
+                tracing::warn!(
+                    scope = "Spell",
+                    "no answer to {kind} from the spell checker: {error}"
+                );
             })
             .ok()
     }
@@ -116,14 +117,34 @@ fn create_checker() -> Option<ISpellChecker> {
     None
 }
 
+/// Loads the dictionary before the first request, so no request waits behind the load.
+fn warm_up(checker: &ISpellChecker) {
+    let started = Instant::now();
+    let failure = WARM_UP_WORDS.iter().find_map(|word| {
+        is_correct(checker, word)
+            .and(suggestions(checker, word, 1))
+            .err()
+    });
+    let elapsed = started.elapsed().as_millis();
+    match failure {
+        None => tracing::info!(scope = "Spell", "dictionary loaded in {elapsed} ms"),
+        Some(error) => {
+            tracing::warn!(
+                scope = "Spell",
+                "dictionary warm-up failed after {elapsed} ms: {error}"
+            );
+        }
+    }
+}
+
 fn serve(checker: &ISpellChecker, inbox: &std::sync::mpsc::Receiver<Request>) {
     for request in inbox {
         match request {
             Request::Check(word, reply) => {
-                let _ = reply.send(is_correct(checker, &word));
+                let _ = reply.send(is_correct(checker, &word).unwrap_or(true));
             }
             Request::Suggest(word, max, reply) => {
-                let _ = reply.send(suggestions(checker, &word, max));
+                let _ = reply.send(suggestions(checker, &word, max).unwrap_or_default());
             }
             Request::Add(word, reply) => {
                 let word = HSTRING::from(word);
@@ -138,26 +159,26 @@ fn serve(checker: &ISpellChecker, inbox: &std::sync::mpsc::Receiver<Request>) {
     }
 }
 
-fn is_correct(checker: &ISpellChecker, word: &str) -> bool {
+fn is_correct(checker: &ISpellChecker, word: &str) -> windows::core::Result<bool> {
     let word = HSTRING::from(word);
     // SAFETY: `checker` is live and `word` is a valid wide string.
-    let Ok(errors) = (unsafe { checker.Check(&word) }) else {
-        return true;
-    };
+    let errors = unsafe { checker.Check(&word) }?;
     // The enumeration yields one error per misspelled range; none means the text is correct.
     let mut first = None;
     // SAFETY: `errors` is the live enumeration just returned; `first` is a valid out slot. The
     // call succeeds with S_FALSE and no error at the end of the enumeration.
     let status = unsafe { errors.Next(&mut first) };
-    status.is_err() || first.is_none()
+    Ok(status.is_err() || first.is_none())
 }
 
-fn suggestions(checker: &ISpellChecker, word: &str, max: usize) -> Vec<String> {
+fn suggestions(
+    checker: &ISpellChecker,
+    word: &str,
+    max: usize,
+) -> windows::core::Result<Vec<String>> {
     let word = HSTRING::from(word);
     // SAFETY: `checker` is live and `word` is a valid wide string.
-    let Ok(list) = (unsafe { checker.Suggest(&word) }) else {
-        return Vec::new();
-    };
+    let list = unsafe { checker.Suggest(&word) }?;
     let mut found = Vec::new();
     while found.len() < max {
         let mut item = [PWSTR::null()];
@@ -175,22 +196,24 @@ fn suggestions(checker: &ISpellChecker, word: &str, max: usize) -> Vec<String> {
             CoTaskMemFree(Some(item[0].0.cast()));
         }
     }
-    found
+    Ok(found)
 }
 
 impl SpellBackend for WinSpell {
     fn check(&self, word: &str) -> bool {
-        self.ask(|reply| Request::Check(word.to_owned(), reply))
+        self.ask("Check", |reply| Request::Check(word.to_owned(), reply))
             .unwrap_or(true)
     }
 
     fn suggest(&self, word: &str, max: usize) -> Vec<String> {
-        self.ask(|reply| Request::Suggest(word.to_owned(), max, reply))
-            .unwrap_or_default()
+        self.ask("Suggest", |reply| {
+            Request::Suggest(word.to_owned(), max, reply)
+        })
+        .unwrap_or_default()
     }
 
     fn add(&self, word: &str) -> bool {
-        self.ask(|reply| Request::Add(word.to_owned(), reply))
+        self.ask("Add", |reply| Request::Add(word.to_owned(), reply))
             .unwrap_or(false)
     }
 
