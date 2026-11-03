@@ -15,6 +15,7 @@ import {
   inputDefault,
   isPreviousFullOf,
   parseRehearsalVersion,
+  poll,
   rehearsalTag,
   windowsPlan
 } from './rehearse.mjs'
@@ -99,9 +100,60 @@ describe('rehearse', () => {
   })
 })
 
+describe('poll', () => {
+  // A clock that moves only when poll sleeps.
+  const fakeClock = () => {
+    let time = 0
+    return { now: () => time, sleep: (ms) => (time += ms) }
+  }
+
+  it('fails at once on a gh error that waiting does not fix, such as expired auth', () => {
+    let calls = 0
+    assert.throws(
+      () =>
+        poll(
+          'Reading run 88',
+          () => {
+            calls += 1
+            throw new Error('Command failed: gh run view 88\nHTTP 401: Bad credentials')
+          },
+          'run 88 could not be read',
+          fakeClock()
+        ),
+      /Reading run 88 failed: .*HTTP 401: Bad credentials/s
+    )
+    assert.equal(calls, 1)
+  })
+
+  it('names the last failure when it gives up', () => {
+    let calls = 0
+    assert.throws(
+      () =>
+        poll(
+          'Reading run 88',
+          () => {
+            calls += 1
+            throw new Error(`HTTP 404: Not Found (call ${calls})`)
+          },
+          'run 88 could not be read',
+          fakeClock()
+        ),
+      (error) => {
+        assert.match(
+          error.message,
+          /^run 88 could not be read\. Last failure: HTTP 404: Not Found \(call (\d+)\)$/
+        )
+        assert.equal(error.cause.message, `HTTP 404: Not Found (call ${calls})`)
+        return true
+      }
+    )
+    assert.ok(calls > 1, `a 404 is tried again (${calls} calls)`)
+  })
+})
+
 // `gh` for `rehearse.mjs build`: `api` replies come from the state file, `workflow run` prints the
 // URL of run 88 (as gh 2.101 does) unless `printUrl` is false, `run view` gives run 88's head after
-// failing `viewFailures` times, `run cancel` fails when `cancelFails`, and each `run list` returns
+// failing `viewFailures` times (always, with `viewError` as its message, when that is set), `run cancel` fails when `cancelFails`, and each `run list` returns
 // the next entry of `lists` (the last one repeats), with `now` as the time of the call. Every call
 // is appended to the log.
 const FAKE_GH = `#!/usr/bin/env node
@@ -119,6 +171,9 @@ if (args[0] === 'api' && url) {
   process.stdout.write(state.api[url])
 } else if (call === 'workflow run') {
   if (state.printUrl) console.log('https://github.com/' + state.feedRepo + '/actions/runs/88')
+} else if (call === 'run view' && state.viewError) {
+  console.error(state.viewError)
+  process.exit(1)
 } else if (call === 'run view') {
   const seen = fs.readFileSync(process.env.FAKE_GH_LOG, 'utf8').split('\\n')
   if (seen.filter((line) => line.startsWith('["run","view"')).length <= state.viewFailures) {
@@ -165,6 +220,7 @@ function build(
     lists = [[]],
     sourceRef = 'feat/x',
     viewFailures = 0,
+    viewError = null,
     cancelFails = false
   }
 ) {
@@ -180,6 +236,7 @@ function build(
       runHeadSha,
       lists,
       viewFailures,
+      viewError,
       cancelFails,
       api: {
         [`repos/${FEED_REPO}/commits/main`]: REHEARSAL_SHA,
@@ -229,9 +286,18 @@ describe(
     // A copy that is neither this checkout's nor the source commit's.
     const elsewhere =
       'jobs:\n  windows:\n    steps:\n      - run: node scripts/release/pe-imports.mjs pack/Memrynote.exe\n'
-    const versions = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `2099.999.${n}`)
-    const [refused, wrongRun, recorded, listed, defaulted, listedWrong, cancelFailed, viewRetried] =
-      versions
+    const versions = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `2099.999.${n}`)
+    const [
+      refused,
+      wrongRun,
+      recorded,
+      listed,
+      defaulted,
+      listedWrong,
+      cancelFailed,
+      viewRetried,
+      viewRefused
+    ] = versions
     // `build` records the run id under `.rehearsal-state/<version>`.
     after(() => {
       for (const version of versions) {
@@ -307,6 +373,17 @@ describe(
       assert.equal(result.status, 0, result.stderr)
       assert.match(result.stdout, /build run: 88/)
       assert.equal(result.views.length, 2)
+    })
+
+    it('stops at the first read of the printed run that fails for good, such as expired gh auth', () => {
+      const result = build(viewRefused, {
+        rehearsalCopy: elsewhere,
+        sourceCopy: elsewhere,
+        viewError: 'HTTP 401: Bad credentials (https://api.github.com/repos/x/actions/runs/88)'
+      })
+      assert.equal(result.status, 1, result.stderr)
+      assert.match(result.stderr, /Reading run 88 failed: .*HTTP 401: Bad credentials/s)
+      assert.equal(result.views.length, 1)
     })
 
     it('records the run gh printed when it started from the checked commit', () => {

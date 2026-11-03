@@ -138,21 +138,42 @@ function runsSince(startedAfter) {
 const runIdIn = (printed) => printed.match(/\/actions\/runs\/(\d+)/)?.[1]
 
 /**
- * Calls `attempt` every 5 s for up to two minutes until it returns a value. A failed call, such as
- * a network error or a run GitHub does not list yet, is tried again.
+ * Whether waiting can fix a failed gh call: GitHub's 404 for a run in the first seconds after the
+ * dispatch, a server error, a rate limit or a network failure. Anything else, such as expired auth
+ * (401) or a missing scope (403), fails the same way on every try.
  */
-function poll(what, attempt, timeoutMessage) {
-  const deadline = Date.now() + 120_000
-  while (Date.now() < deadline) {
+const isTransient = (error) =>
+  /HTTP (404|429|5\d\d)|not found|could not find|timed? ?out|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|connection reset|unexpected EOF|TLS handshake/i.test(
+    error.message
+  )
+
+/**
+ * Calls `attempt` every 5 s for up to two minutes until it returns a value. A transient failure is
+ * tried again; any other fails at once. The timeout error names the last failure.
+ */
+export function poll(
+  what,
+  attempt,
+  timeoutMessage,
+  { now = Date.now, sleep = (ms) => spawnSync('sleep', [String(ms / 1000)]) } = {}
+) {
+  const deadline = now() + 120_000
+  let lastFailure
+  while (now() < deadline) {
     try {
       const value = attempt()
       if (value !== undefined) return value
     } catch (error) {
+      if (!isTransient(error)) throw new Error(`${what} failed: ${error.message}`, { cause: error })
+      lastFailure = error
       console.warn(`${what} failed, trying again: ${error.message}`)
     }
-    spawnSync('sleep', ['5'])
+    sleep(5000)
   }
-  throw new Error(timeoutMessage)
+  throw new Error(
+    lastFailure ? `${timeoutMessage}. Last failure: ${lastFailure.message}` : timeoutMessage,
+    { cause: lastFailure }
+  )
 }
 
 /** The run gh printed: certainly the one this build dispatched. */
