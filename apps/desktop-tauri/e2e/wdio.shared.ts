@@ -7,10 +7,11 @@ import { fileURLToPath } from 'node:url'
 
 import E2eJunitReporter from './harness/junit-reporter'
 import { removeDir } from './harness/remove-dir'
-import { binaryPath, driverReady, forceKill, freePort, spawnApp } from './harness/app-process'
+import { binaryPath, driverReady, freePort, spawnApp, stopChild } from './harness/app-process'
 import { EXPECT_TIMEOUT_MS, IS_CI, TEST_TIMEOUT_MS } from './harness/budgets'
 import { purgeAllCreatedDevices, startRun } from './harness/registry'
 import { verifyE2eBinary } from './harness/verify-binary'
+import { failedWorkerReport } from './harness/worker-report'
 
 // Opens the run-time gate of the e2e build in the launcher and in every worker.
 process.env.MEMRY_E2E = '1'
@@ -29,6 +30,11 @@ type Target = { port?: number; hostname?: string }
 // worker instead (one per multiremote instance) on a free port and points the worker at it. A
 // test restarts its app through the harness; this app only exists so the session can open.
 const workerApps = new Map<string, { children: ChildProcess[]; ports: number[] }>()
+
+/** The profile an app uses until a test writes its control file (`e2e::control`). */
+function defaultProfile(port: number): string {
+  return join(tmpdir(), 'memry-e2e', `default-${port}`)
+}
 
 async function startWorkerApps(cid: string, caps: unknown): Promise<void> {
   const targets: Target[] = []
@@ -90,12 +96,24 @@ export const sharedConfig = {
   async onWorkerStart(cid: string, caps: unknown): Promise<void> {
     await startWorkerApps(cid, caps)
   },
-  onWorkerEnd(cid: string): void {
-    const started = workerApps.get(cid)
-    for (const child of started?.children ?? []) if (child.pid) forceKill(child.pid)
-    for (const port of started?.ports ?? []) {
-      removeDir(join(tmpdir(), 'memry-e2e', `default-${port}`))
+  onWorkerEnd(
+    cid: string,
+    exitCode: number,
+    specs: string[],
+    retries: number,
+    signal: NodeJS.Signals | null
+  ): void {
+    const started = workerApps.get(cid) ?? { children: [], ports: [] }
+    if (exitCode !== 0) {
+      const apps = started.ports.map((port, i) => ({
+        port,
+        child: started.children.at(i),
+        logDir: join(defaultProfile(port), 'logs')
+      }))
+      console.error(failedWorkerReport({ cid, exitCode, signal, specs, retries }, apps))
     }
+    for (const child of started.children) stopChild(child)
+    for (const port of started.ports) removeDir(defaultProfile(port))
     workerApps.delete(cid)
   },
   // The last test disposes its app, and WebdriverIO ends the session after this hook with a

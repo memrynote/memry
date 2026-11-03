@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { HarnessError } from './errors'
-import { pollUntil } from './wait'
+import { HarnessError } from './errors.ts'
+import { pollUntil } from './wait.ts'
 
 const crateTarget = fileURLToPath(new URL('../../../../crates/target/debug', import.meta.url))
 
@@ -104,6 +104,16 @@ export function isAlive(pid: number): boolean {
   } catch (error) {
     return (error as NodeJS.ErrnoException).code === 'EPERM'
   }
+}
+
+/**
+ * Ends a process this one spawned, with its process tree on Windows, unless it already exited:
+ * Windows gives an exited process's pid to the next process at once, and `taskkill` would end
+ * that one. Until Node reports the exit it holds the child's handle (Windows) or has not reaped
+ * it (Unix), so the pid is still the child's.
+ */
+export function stopChild(child: ChildProcess): void {
+  if (child.pid && child.exitCode === null && child.signalCode === null) forceKill(child.pid)
 }
 
 export function forceKill(pid: number): void {
