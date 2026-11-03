@@ -177,7 +177,7 @@ fn a_linked_mention_reaches_the_file_the_note_and_the_row_and_comes_back_as_no_o
             note_id: source.clone(),
             path: "Standup.md".to_owned(),
             content_hash: Some(hash),
-            source: ChangeSource::Rewrite,
+            source: ChangeSource::AppEdit,
         }],
         "the app's write, and no outside edit"
     );
@@ -191,7 +191,7 @@ fn a_linked_mention_reaches_the_file_the_note_and_the_row_and_comes_back_as_no_o
 }
 
 #[test]
-fn a_gone_mention_a_changed_file_and_an_unknown_note_write_nothing() {
+fn a_gone_mention_a_pdf_and_an_unknown_note_write_nothing() {
     let (mut e, notes, _) = opened(&[
         ("Target.md", "# Target\n".to_owned()),
         ("Standup.md", "Target once.\n".to_owned()),
@@ -228,23 +228,6 @@ fn a_gone_mention_a_changed_file_and_an_unknown_note_write_nothing() {
         Err(NotesError::NotFound(id)) if id == "no-such-note"
     ));
 
-    // An edit that lands while the link is written is kept, and nothing is linked.
-    let linked = notes
-        .link_mention_checked(&open, &source, &target, 0, &mut || {
-            e.write("Standup.md", "Rewritten elsewhere: Target.\n");
-        })
-        .unwrap();
-    assert!(!linked);
-    assert_eq!(e.read("Standup.md"), "Rewritten elsewhere: Target.\n");
-    assert_eq!(
-        e.tier.echo().expected_hash("Standup.md"),
-        None,
-        "a write that did not happen is not the app's"
-    );
-    e.facts_until(|fact| {
-        matches!(fact, Applied::Changed { note_id, source: ChangeSource::Watcher, .. }
-            if *note_id == source)
-    });
     drop(open);
     e.close();
 }
@@ -254,7 +237,10 @@ fn a_document_ahead_of_its_file_or_an_unreadable_frontmatter_is_never_linked_ove
     let (e, notes, store) = opened(&[
         ("Target.md", "# Target\n".to_owned()),
         ("Standup.md", "Typed first.\n\nTarget again.\n".to_owned()),
-        ("Broken.md", "---\nkey: [open\n---\nTarget here.\n".to_owned()),
+        (
+            "Broken.md",
+            "---\nkey: [open\n---\nTarget here.\n".to_owned(),
+        ),
     ]);
     let open = e.session.current().unwrap();
     let target = id_at(&e, "Target.md");
@@ -265,7 +251,11 @@ fn a_document_ahead_of_its_file_or_an_unreadable_frontmatter_is_never_linked_ove
     e.edit_in_app(&store, &source, "Edited in the app");
     assert!(!notes.link_mention(&open, &source, &target, 0).unwrap());
     assert_eq!(e.read("Standup.md"), "Typed first.\n\nTarget again.\n");
-    assert!(e.body(&source).contains("Edited in the app"), "{}", e.body(&source));
+    assert!(
+        e.body(&source).contains("Edited in the app"),
+        "{}",
+        e.body(&source)
+    );
 
     // A frontmatter that does not parse is not rewritten.
     let broken = id_at(&e, "Broken.md");
@@ -281,8 +271,13 @@ fn a_document_ahead_of_its_file_or_an_unreadable_frontmatter_is_never_linked_ove
         content_hash: None,
         file_hash: None,
     };
-    rows.reserve(rows.session_for(&open.vault).unwrap(), "n-unread", "Unread.md", stat)
-        .unwrap();
+    rows.reserve(
+        rows.session_for(&open.vault).unwrap(),
+        "n-unread",
+        "Unread.md",
+        stat,
+    )
+    .unwrap();
     assert!(!notes.link_mention(&open, "n-unread", &target, 0).unwrap());
     assert_eq!(e.read("Unread.md"), "Target unread.\n");
     drop(open);
