@@ -42,6 +42,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::badge_set,
             // flush
             crate::commands::shell_integrations::flush_done,
+            // journal
+            crate::commands::journal::journal_create_entry,
+            crate::commands::journal::journal_delete_entry,
+            crate::commands::journal::journal_get_entry,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
@@ -189,6 +193,9 @@ pub fn builder() -> Builder<Wry> {
             crate::events::FlushRequestedEvent,
             // inbox
             crate::events::InboxOpenItemEvent,
+            // journal
+            crate::events::JournalEntryCreatedEvent,
+            crate::events::JournalEntryDeletedEvent,
             // locale
             crate::events::LocaleChangedEvent,
             // settings

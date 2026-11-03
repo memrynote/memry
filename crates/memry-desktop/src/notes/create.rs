@@ -38,8 +38,10 @@
 
 use std::path::Path;
 
+use memry_core::crdt::errors::CrdtError;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::domain::note_stats::word_count;
+use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::{split_frontmatter_block, write_markdown_note};
 use memry_core::markdown::shared::writing_tools::WritingFrontmatter;
 use serde_json::{Map, Value};
@@ -362,23 +364,47 @@ fn vault_relative(root: &Path, path: &Path) -> Option<String> {
     (!segments.is_empty()).then(|| segments.join("/"))
 }
 
-/// The body seeded from the file just written.
-struct Seed<'a> {
-    root: &'a Path,
-    open: &'a OpenVault,
-    id: &'a str,
-    rel: &'a str,
-    raw: &'a str,
+/// The body seeded from the file just written: a note's, or a journal day's (`crate::journal`).
+pub(crate) struct Seed<'a> {
+    pub(crate) root: &'a Path,
+    pub(crate) open: &'a OpenVault,
+    pub(crate) id: &'a str,
+    pub(crate) rel: &'a str,
+    pub(crate) raw: &'a str,
 }
 
 impl Seed<'_> {
     /// `Ok(true)` when the document now holds the file's text; `Ok(false)` when it did not take
     /// it (a body past the large-file class), which leaves the row without a content hash, so
     /// the write-back never writes over the file.
-    fn run(
+    pub(crate) fn run(
         &self,
         service: &NotesService,
         feed: &memry_core::api::external_feed::ExternalFeed,
+    ) -> Result<bool, NotesError> {
+        self.feed_with(service, |converter, input| {
+            feed.seed_body_if_empty(converter, input)
+        })
+    }
+
+    /// [`Self::run`] over a body the document already holds: the file's text replaces it as the
+    /// app's edit after reading `read` from the file, so a body other than `read` is kept as a
+    /// version first (`feed_app_edit`).
+    pub(crate) fn replace(
+        &self,
+        service: &NotesService,
+        feed: &memry_core::api::external_feed::ExternalFeed,
+        read: &str,
+    ) -> Result<bool, NotesError> {
+        self.feed_with(service, |converter, input| {
+            feed.feed_app_edit(converter, input, read)
+        })
+    }
+
+    fn feed_with(
+        &self,
+        service: &NotesService,
+        step: impl FnOnce(&Converter, FeedInput<'_>) -> Result<FeedOutcome, CrdtError>,
     ) -> Result<bool, NotesError> {
         let split = split_frontmatter_block(self.raw);
         // Outside the feed's write: the lookup reads the database the feed holds.
@@ -398,7 +424,7 @@ impl Seed<'_> {
             frontmatter: split.block,
             embeds: Some(&embeds),
         };
-        let outcome = feed.seed_body_if_empty(&converter_for(settings.as_ref()), input)?;
+        let outcome = step(&converter_for(settings.as_ref()), input)?;
         if !matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) {
             tracing::warn!(
                 scope = SCOPE,
@@ -412,7 +438,7 @@ impl Seed<'_> {
 }
 
 /// Takes back the file this create wrote, as the app's own removal.
-fn remove_file(echo: &EchoGuard, root: &Path, rel: &str) {
+pub(crate) fn remove_file(echo: &EchoGuard, root: &Path, rel: &str) {
     if let Err(error) = super::delete::unlink(echo, root, rel) {
         tracing::error!(
             scope = SCOPE,
@@ -433,7 +459,7 @@ fn undo_record(writer: &memry_core::api::notes_write::NotesWriter, id: &str) {
 }
 
 /// Removes the row this create reserved. No fact goes out: none went out for it.
-fn remove_row(lane: &mut Lane<'_>, id: &str) {
+pub(crate) fn remove_row(lane: &mut Lane<'_>, id: &str) {
     if let Err(error) = lane.remove(id) {
         tracing::error!(
             scope = SCOPE,

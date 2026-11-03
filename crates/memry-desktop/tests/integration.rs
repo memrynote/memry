@@ -80,6 +80,8 @@ mod indexer_scan;
 mod journal_format_vectors;
 #[path = "journal_rename.rs"]
 mod journal_rename;
+#[path = "journal_service.rs"]
+mod journal_service;
 #[path = "logging.rs"]
 mod logging;
 #[path = "logship.rs"]
