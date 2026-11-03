@@ -69,8 +69,8 @@ fn track(app: &AppHandle<Wry>, name: &str, action: &str) {
     }
 }
 
-/// `notes:create`. A template id (Step 13l) and `plainChecklists` (Step 32) are not read: the
-/// renderer's service refuses them until their steps.
+/// `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
+/// (Step 32) is not read: the renderer's service refuses it until its step.
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_create(
@@ -86,6 +86,7 @@ pub async fn notes_create(
             tags: input.tags.unwrap_or_default(),
             properties: input.properties.unwrap_or_default(),
             emoji: input.emoji,
+            template: input.template,
         };
         let created = service(&app)?
             .create(&open, note)

@@ -51,8 +51,8 @@ export const commands = {
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
 	/**
-	 *  `notes:create`. A template id (Step 13l) and `plainChecklists` (Step 32) are not read: the
-	 *  renderer's service refuses them until their steps.
+	 *  `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
+	 *  (Step 32) is not read: the renderer's service refuses it until its step.
 	 */
 	notesCreate: (input: NoteCreateInput) => __TAURI_INVOKE<NoteView>("notes_create", { input }),
 	/**
@@ -711,8 +711,8 @@ export type MovesRecovered = {
 };
 
 /**
- *  `NoteCreateSchema`, without the parts later slices own: `template` (Step 13l) and
- *  `plainChecklists` (Step 32), which the renderer's service refuses until then.
+ *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
+ *  refuses until then.
  */
 export type NoteCreateInput = {
 	title: string,
@@ -721,6 +721,9 @@ export type NoteCreateInput = {
 	folder?: string | null,
 	tags?: string[] | null,
 	properties?: { [key in string]: Value } | null,
+	/**  The template to make the note from (`templates_get`'s ids). */
+	template?: string | null,
+	/**  Absent: the template's icon, if any; `null`: no icon. */
 	emoji?: string | null,
 };
 
