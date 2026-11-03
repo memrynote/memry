@@ -567,6 +567,37 @@ describe('google calendar client — push channels (Task 7)', () => {
       ).resolves.toEqual({ events: [], nextSyncCursor: 'cursor-3' })
     })
 
+    it('keeps syncing when Google returns a conference entry point without entryPointType', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            nextSyncToken: 'cursor-2',
+            items: [
+              {
+                id: 'event-1',
+                start: { dateTime: '2026-05-10T10:00:00.000Z' },
+                conferenceData: {
+                  entryPoints: [
+                    { entryPointType: 'video', uri: 'https://zoom.us/j/123' },
+                    { uri: 'https://zoom.us/skype/123', label: 'Skype' }
+                  ]
+                }
+              }
+            ]
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      const result = await client.listEvents({ calendarId: 'primary', syncCursor: null })
+
+      expect(result.nextSyncCursor).toBe('cursor-2')
+      expect(result.events[0].conferenceData?.entryPoints).toEqual([
+        expect.objectContaining({ entryPointType: 'video', uri: 'https://zoom.us/j/123' })
+      ])
+    })
+
     it('resets a stale sync cursor on HTTP 410 and fetches individual timed events', async () => {
       fetchMock.mockResolvedValueOnce(new Response('gone', { status: 410 })).mockResolvedValueOnce(
         new Response(
