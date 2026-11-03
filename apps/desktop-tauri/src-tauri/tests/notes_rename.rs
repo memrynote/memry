@@ -2,7 +2,8 @@
 //! mock app over a real vault, vault tier and note index (#3530 13g), and the events a rename
 //! sends through the shell's note events: `NoteRenamedEvent` for the note, and an outside
 //! edit's `NoteUpdatedEvent` for each file whose links followed it (13g-2); `notes_update`
-//! (#3530 13f-3c) and the `notes:updated` and `notes:tags-changed` it sends.
+//! (#3530 13f-3c) and the `notes:updated` and `notes:tags-changed` it sends; `notes_create`
+//! from a template (13l-3), with the icon left out or cleared.
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -19,11 +20,12 @@ use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput};
+use memry_desktop::notes::view::NoteCreateInput;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
 use memry_tauri::commands::notes::{
-    notes_get_all_positions, notes_rename, notes_reorder, notes_update,
+    notes_create, notes_get_all_positions, notes_rename, notes_reorder, notes_update,
 };
 use memry_tauri::events::{NoteRenamedEvent, NoteTagsChangedEvent, NoteUpdatedEvent};
 use memry_tauri::shell::note_events;
@@ -360,5 +362,24 @@ fn a_reorder_sets_the_slots_and_a_rename_carries_its_slot() {
     assert_eq!(
         f.positions(),
         slots(&[("Alpha.md", 1), ("B.md", 0), ("work/C.md", 0)])
+    );
+}
+
+#[test]
+fn a_create_from_a_template_takes_its_icon_unless_the_input_clears_it() {
+    let f = opened();
+    let create = |input: Value| {
+        let input: NoteCreateInput = serde_json::from_value(input).unwrap();
+        tauri::async_runtime::block_on(notes_create(f.app.handle().clone(), input)).unwrap()
+    };
+    let absent = create(json!({ "title": "Absent", "template": "meeting-notes" }));
+    assert_eq!(absent.emoji.as_deref(), Some("📝"));
+    assert_eq!(absent.tags, ["meeting"]);
+    let cleared = create(json!({ "title": "Cleared", "template": "meeting-notes", "emoji": null }));
+    assert_eq!(cleared.emoji, None);
+    assert_eq!(
+        cleared.tags,
+        ["meeting"],
+        "the rest of the template still applies"
     );
 }

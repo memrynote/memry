@@ -51,7 +51,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::locale::locale_list,
             crate::commands::locale::locale_set,
             // notes
-            crate::commands::notes::notes_create,
+            crate::commands::notes::notes_create::<Wry>,
             crate::commands::notes::notes_delete,
             crate::commands::notes::notes_exists,
             crate::commands::notes::notes_get,

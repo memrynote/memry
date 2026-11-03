@@ -64,7 +64,7 @@ fn service<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<NotesService>, CommandE
 }
 
 /// `note_created` / `note_deleted`, as the Electron handlers count them.
-fn track(app: &AppHandle<Wry>, name: &str, action: &str) {
+fn track<R: Runtime>(app: &AppHandle<R>, name: &str, action: &str) {
     if let Some(telemetry) = services::telemetry(app) {
         let mut event = Service::event(name, "notes", action);
         event.object_type = Some("note".to_owned());
@@ -75,10 +75,11 @@ fn track(app: &AppHandle<Wry>, name: &str, action: &str) {
 
 /// `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
 /// (Step 32) is not read: the renderer's service refuses it until its step.
+// Generic over the runtime so a test drives it on a mock app (`tests/notes_rename.rs`).
 #[tauri::command]
 #[specta::specta]
-pub async fn notes_create(
-    app: AppHandle<Wry>,
+pub async fn notes_create<R: Runtime>(
+    app: AppHandle<R>,
     input: NoteCreateInput,
 ) -> Result<NoteView, CommandError> {
     blocking("notes_create", move || {

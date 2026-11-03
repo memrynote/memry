@@ -113,30 +113,23 @@ impl NewNoteFile {
     /// none was given, its tags first, its property values under the given ones (each in its
     /// first place), and its icon when none was asked for. Then an exact repeat of a tag goes
     /// (`new Set`) and the reserved keys leave the properties (`writePropertiesToRoot`), for the
-    /// record as for the file.
-    fn merged(mut self, template: Option<TemplateView>) -> Self {
+    /// record as for the file. A template whose properties do not read refuses the note.
+    fn merged(mut self, template: Option<TemplateView>) -> Result<Self, NotesError> {
         if let Some(template) = template {
             if self.content.is_empty() {
-                // As written: Electron's `String.replace` would read `$&` in a title as a pattern.
-                self.content = template.content.replace("{{title}}", &self.title);
+                self.content = template.body_for(&self.title);
             }
-            self.tags = template.tags.into_iter().chain(self.tags).collect();
-            let mut properties = Map::new();
-            for property in &template.properties {
-                if let Some(name) = property.get("name").and_then(Value::as_str) {
-                    let value = property.get("value").cloned().unwrap_or(Value::Null);
-                    properties.insert(name.to_owned(), value);
-                }
-            }
+            let mut properties = template.note_properties()?;
             properties.extend(std::mem::take(&mut self.properties));
             self.properties = properties;
+            self.tags = template.tags.into_iter().chain(self.tags).collect();
             self.emoji.get_or_insert(template.icon);
         }
         let mut seen = std::collections::HashSet::new();
         self.tags.retain(|tag| seen.insert(tag.clone()));
         self.properties
             .retain(|name, value| !is_reserved_key(name, value));
-        self
+        Ok(self)
     }
 }
 
@@ -160,7 +153,7 @@ impl NotesService {
         let templates =
             Templates::new(open.path.clone(), open.vault.templates(self.store.clone())?);
         let template = templates.for_new_note(note.template.as_deref(), &note.tags)?;
-        let note = note.merged(template);
+        let note = note.merged(template)?;
         let root = open.path.as_path();
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;

@@ -10,6 +10,10 @@
 //! | a tag's template applies when none is named                      | `resolveTagSchemas` `template`        |
 //! | a template that is not there makes a plain note                  | `if (template)`, no fallback after    |
 //! | the command tells an absent icon from a cleared one              | `emoji` undefined vs `null`           |
+//! | a tag's own template wins, then the nearest ancestor's           | `resolveTagSchemas` inheritance       |
+//! | an empty template id names none                                  | `!templateId`                         |
+//! | a property with no value is left out                             | `writePropertiesToRoot` drops it      |
+//! | a property with no name refuses the note                         | core `templates::properties_of`       |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -77,6 +81,26 @@ fn define_tag(e: &Env, name: &str, schema: Value) {
         .db_handle()
         .call_blocking(move |conn| sync_items::apply_remote(conn, &record, NOW).map(drop))
         .expect("the definition");
+}
+
+/// A template as another device synced it, with `properties` as stored.
+fn sync_template(e: &Env, id: &str, properties: Value) {
+    let record = InboundRecord {
+        item_type: "template".into(),
+        item_id: id.into(),
+        payload_json: json!({
+            "name": id, "content": "Synced body", "tags": [], "properties": properties,
+        })
+        .to_string(),
+        server_cursor: Some(1),
+        signer_device_id: Some("device-b".into()),
+        updated_at: NOW,
+        deleted_at: None,
+    };
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| sync_items::apply_remote(conn, &record, NOW).map(drop))
+        .expect("the template");
 }
 
 #[test]
@@ -289,4 +313,96 @@ fn the_command_tells_an_absent_icon_from_a_cleared_one() {
         input(json!({ "title": "T", "emoji": "🚀" })).emoji,
         Some(Some("🚀".to_owned()))
     );
+}
+
+#[test]
+fn a_tags_own_template_wins_then_the_nearest_ancestors() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    define_tag(
+        &e,
+        "org",
+        json!({ "t": 1, "template": { "id": "weekly-review" } }),
+    );
+    define_tag(
+        &e,
+        "client",
+        json!({ "t": 1, "extends": "org", "template": { "id": "meeting-notes" } }),
+    );
+    define_tag(&e, "acme", json!({ "t": 1, "extends": "client" }));
+    define_tag(
+        &e,
+        "vip",
+        json!({ "t": 1, "extends": "client", "template": { "id": "project-brief" } }),
+    );
+    let made = |title: &str, tag: &str| {
+        notes
+            .create(
+                &open,
+                NewNoteFile {
+                    tags: vec![tag.into()],
+                    ..note(title, None)
+                },
+            )
+            .unwrap()
+            .emoji
+    };
+    assert_eq!(made("Own", "vip").as_deref(), Some("📋"), "its own");
+    assert_eq!(
+        made("Nearer", "acme").as_deref(),
+        Some("📝"),
+        "the parent's, not the grandparent's"
+    );
+}
+
+#[test]
+fn an_empty_template_id_names_none_and_a_tags_template_applies() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    define_tag(
+        &e,
+        "client",
+        json!({ "t": 1, "template": { "id": "meeting-notes" } }),
+    );
+    let made = notes
+        .create(
+            &open,
+            NewNoteFile {
+                tags: vec!["client".into()],
+                ..note("Empty id", Some(""))
+            },
+        )
+        .unwrap();
+    assert_eq!(made.emoji.as_deref(), Some("📝"));
+    assert!(made.content.starts_with("## Attendees"));
+}
+
+#[test]
+fn a_template_property_with_no_value_is_left_out() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    sync_template(
+        &e,
+        "tpl-unset",
+        json!([{ "name": "stage", "type": "text" }, { "name": "owner", "type": "text", "value": "Kaan" }]),
+    );
+    let made = notes
+        .create(&open, note("Unset", Some("tpl-unset")))
+        .unwrap();
+    assert_eq!(made.properties, object(json!({ "owner": "Kaan" })));
+    assert_eq!(e.read(&made.path), "---\nowner: Kaan\n---\nSynced body\n");
+}
+
+#[test]
+fn a_template_property_with_no_name_refuses_the_note() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    sync_template(
+        &e,
+        "tpl-nameless",
+        json!([{ "type": "text", "value": "lost" }]),
+    );
+    let refused = notes.create(&open, note("Nameless", Some("tpl-nameless")));
+    assert!(refused.is_err(), "{refused:?}");
+    assert!(!e.vault.join("Nameless.md").exists());
 }

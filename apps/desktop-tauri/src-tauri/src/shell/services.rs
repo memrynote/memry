@@ -28,7 +28,7 @@ use memry_desktop::telemetry::service::{Context, FLUSH_INTERVAL, FlushReason, Se
 use memry_desktop::telemetry::sink::TelemetryFailureSink;
 use memry_desktop::vault::config as vault_config;
 use serde_json::Value;
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use crate::commands::error::{CommandError, ErrorKind, register_sink};
 use crate::shell::vault_boot::CONFIG_FILE;
@@ -286,7 +286,7 @@ fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 }
 
 /// The telemetry service, once its stage has run.
-pub fn telemetry(app: &AppHandle<Wry>) -> Option<Arc<Service>> {
+pub fn telemetry<R: Runtime>(app: &AppHandle<R>) -> Option<Arc<Service>> {
     app.try_state::<Arc<Service>>()
         .map(|state| state.inner().clone())
 }
