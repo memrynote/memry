@@ -20,7 +20,8 @@ pub fn e2e_trigger_crash() -> Result<(), CommandError> {
 /// specs send it with `sendTest`.
 #[tauri::command]
 pub fn e2e_kill_page(webview: tauri::Webview<tauri::Wry>) -> Result<(), CommandError> {
-    // On the main thread `with_webview` runs at once, inside the handler of this page's message.
+    // From this task `with_webview` queues the kill on the event loop; called here, on the main
+    // thread, it would run at once inside the handler of this page's message.
     tauri::async_runtime::spawn(async move {
         if let Err(error) = webview.with_webview(kill) {
             tracing::warn!(scope = "E2e", "page not killed: {error}");
