@@ -298,7 +298,9 @@ fn an_edit_answers_the_note_and_sends_internal_notes_updated_and_tags_changed() 
     let f = opened();
     let id = f.create("Plan", "");
     let edit = |input: NoteUpdateInput| {
-        tauri::async_runtime::block_on(notes_update(f.app.handle().clone(), input)).unwrap()
+        tauri::async_runtime::block_on(notes_update(f.app.handle().clone(), input))
+            .unwrap()
+            .note
     };
     let note = edit(NoteUpdateInput {
         id: id.clone(),

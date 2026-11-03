@@ -200,6 +200,10 @@ impl NotesService {
             }
         })?;
         let note = read::get(open, id, None)?.ok_or_else(not_found)?;
-        Ok(Updated { note, tags_changed })
+        Ok(Updated {
+            note,
+            tags_changed,
+            tag_template: None,
+        })
     }
 }

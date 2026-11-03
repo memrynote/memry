@@ -68,6 +68,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_rename::<Wry>,
             crate::commands::notes::notes_update::<Wry>,
             crate::commands::notes::notes_apply_template::<Wry>,
+            crate::commands::notes::notes_undo_tag_template::<Wry>,
             crate::commands::notes::notes_reorder::<Wry>,
             crate::commands::notes::notes_resolve_by_title,
             crate::commands::notes::notes_resolve_titles,

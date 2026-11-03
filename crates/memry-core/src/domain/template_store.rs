@@ -207,6 +207,16 @@ impl TemplateStore {
         self.db.read_blocking(|conn| get(conn, id))
     }
 
+    /// The template a tag of `tags` names, and whether it fills an empty body
+    /// ([`super::tag_fields::tag_template`]).
+    pub fn tag_template(
+        &self,
+        tags: &[String],
+    ) -> Result<Option<super::tag_fields::TagTemplate>, StorageError> {
+        self.db
+            .read_blocking(|conn| super::tag_fields::tag_template(conn, tags))
+    }
+
     /// The id of the template a tag of `tags` names ([`super::tag_fields::template_of`]).
     pub fn of_tags(&self, tags: &[String]) -> Result<Option<String>, StorageError> {
         self.db

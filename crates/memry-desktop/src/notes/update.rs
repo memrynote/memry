@@ -12,9 +12,11 @@
 //!    outbox row each), so a refused write leaves the record as the file says; the note event
 //!    ([`ChangeSource::Save`]) reads them.
 //!
+//! Once the turn ends, a header tag the edit added may bring its template
+//! ([`super::tag_template`], `applyTagTemplateAfterAdd`), in a turn of its own.
+//!
 //! Not here, with their owners: the title (`notes:rename`), `frontmatter`, `properties` and
-//! `propertyPatch` (13k), `aliases` (13i), the tag templates (13j, 13l), date reminders
-//! (Step 21) and locks (Step 14).
+//! `propertyPatch` (13k), `aliases` (13i), date reminders (Step 21) and locks (Step 14).
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -24,7 +26,7 @@ use memry_core::domain::header_tags::{
     self, EditSource, Existing, HeaderTagEdit, HeaderTagRename, Update,
 };
 use memry_core::domain::note_stats::header_tags as file_header_tags;
-use memry_core::domain::tags::fold;
+use memry_core::domain::tags::{fold, tag_key};
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, parse_markdown_note, serialize_updated_note,
 };
@@ -33,6 +35,7 @@ use serde::{Deserialize, Deserializer};
 use super::error::NotesError;
 use super::read;
 use super::service::NotesService;
+use super::tag_template::TagTemplateOutcome;
 use super::view::NoteView;
 use super::write_order::NoteTurn;
 use crate::session::OpenVault;
@@ -138,6 +141,8 @@ pub struct Updated {
     pub note: NoteView,
     /// The note's header tags or its body's `#tags` changed (`notes:tags-changed`).
     pub tags_changed: bool,
+    /// What a header tag the edit added did with its template ([`super::tag_template`]).
+    pub tag_template: Option<TagTemplateOutcome>,
 }
 
 /// An update, checked.
@@ -171,12 +176,29 @@ impl NotesService {
             content: input.content,
             emoji: input.emoji,
         };
-        let tags_changed = self
+        let (tags_changed, added) = self
             .order
             .run(&edit.id, |turn| self.update_now(open, &edit, turn, between))?;
+        // `addedInOrder`: the added tags in the order the caller asked for them.
+        let added = match edit.header_tags.as_ref().filter(|e| !e.add.is_empty()) {
+            None => added,
+            Some(asked) => {
+                let added: HashSet<String> = added.iter().map(|tag| tag_key(tag)).collect();
+                let asked = asked.add.iter().filter(|tag| added.contains(&tag_key(tag)));
+                asked.cloned().collect()
+            }
+        };
+        let tag_template = match added.is_empty() {
+            true => None,
+            false => self.tag_template_after_add(open, &edit.id, &added),
+        };
         let note = read::get(open, &edit.id, None)?
             .ok_or_else(|| NotesError::NotFound(edit.id.clone()))?;
-        Ok(Updated { note, tags_changed })
+        Ok(Updated {
+            note,
+            tags_changed,
+            tag_template,
+        })
     }
 
     fn update_now(
@@ -185,7 +207,7 @@ impl NotesService {
         edit: &Edit,
         turn: &NoteTurn<'_>,
         between: &mut dyn FnMut(),
-    ) -> Result<bool, NotesError> {
+    ) -> Result<(bool, Vec<String>), NotesError> {
         let id = edit.id.as_str();
         let writer = open.vault.notes_writer(self.store.clone())?;
         let with_fields = match edit.header_tags.is_some() || edit.content.is_some() {
@@ -224,9 +246,11 @@ impl NotesService {
             },
             between,
         )?;
-        let tags_changed = planned.into_inner().is_some_and(|plan| plan.tags_changed);
+        let plan = planned.into_inner();
         match edited {
-            Edited::Wrote { .. } | Edited::Unchanged => Ok(tags_changed),
+            Edited::Wrote { .. } | Edited::Unchanged => {
+                Ok(plan.map_or((false, Vec::new()), |plan| (plan.tags_changed, plan.added)))
+            }
             Edited::Kept(kept) => Err(refused(id, kept)),
         }
     }
@@ -240,6 +264,8 @@ struct Plan {
     tags: Option<Vec<String>>,
     /// The header tags or the body's `#tags` changed (`notes:tags-changed`).
     tags_changed: bool,
+    /// The tags the header gained, by tag fold.
+    added: Vec<String>,
 }
 
 /// The file's next text: `text`, the file without a byte order mark, with the update applied.
@@ -286,6 +312,7 @@ fn next_text(
         emoji: edit.emoji.clone().filter(|next| *next != emoji),
         tags: edited.then_some(tags),
         tags_changed: edited || body_tags_changed,
+        added: change.map(|change| change.added).unwrap_or_default(),
     };
     Ok((output, plan))
 }

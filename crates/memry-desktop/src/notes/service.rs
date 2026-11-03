@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 use memry_core::seams::secure_store::SecureStore;
 
+use super::tag_template::Undos;
 use super::write_order::WriteOrder;
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::consumer::VaultTier;
@@ -35,6 +36,8 @@ pub struct NotesService {
     /// The files this run wrote for its notes, which a save replaces with no version: set by a
     /// create ([`super::create`]), kept by the saves ([`super::update`]).
     pub(crate) own_files: OwnFiles,
+    /// The tag templates' fills that can still be taken back ([`super::tag_template`]).
+    pub(crate) undos: Undos,
 }
 
 impl NotesService {
@@ -55,6 +58,7 @@ impl NotesService {
             order: WriteOrder::default(),
             trash,
             own_files: OwnFiles::default(),
+            undos: Undos::default(),
         })
     }
 }
