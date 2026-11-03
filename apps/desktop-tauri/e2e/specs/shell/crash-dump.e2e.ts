@@ -3,7 +3,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { test, expect } from '../../harness/test'
-import { invokeTest } from '../../harness/invoke-test'
+import { invokeTest, sendTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
 import { appInfo } from '../../harness/tauri-lifecycle'
 import { pollUntil } from '../../harness/wait'
@@ -30,8 +30,7 @@ test('a native crash leaves a minidump written by the out-of-process monitor', a
   const { appDataDir, pid } = await appInfo(app)
   expect(dumpsIn(appDataDir)).toEqual([])
 
-  // Fire and forget: the process ends before the reply.
-  await invokeTest(app, 'e2e_trigger_crash').catch(() => undefined)
+  await sendTest(app, 'e2e_trigger_crash')
 
   const written = await pollUntil(() => dumpsIn(appDataDir).length > 0 || undefined, {
     timeoutMs: 30_000,

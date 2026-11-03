@@ -76,8 +76,9 @@ pub fn create(
                 "name": template.name,
                 "description": template.description,
                 "icon": template.icon,
-                // Case variants collapse, first spelling kept, as an edit's tags do.
-                "tags": crate::domain::tags::dedupe(template.tags.iter().cloned()),
+                // As given, as desktop's `createTemplate` stores them (#3845). An edit
+                // collapses case variants (`template_admin::update`), a rule iOS shares.
+                "tags": template.tags,
                 "properties": template.properties,
                 "content": template.content,
                 "clock": next_clock(&Default::default(), device_id)?,

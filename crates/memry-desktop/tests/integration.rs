@@ -82,6 +82,8 @@ mod indexer_scan;
 mod journal_format_vectors;
 #[path = "journal_rename.rs"]
 mod journal_rename;
+#[path = "journal_service.rs"]
+mod journal_service;
 #[path = "logging.rs"]
 mod logging;
 #[path = "logship.rs"]
@@ -96,6 +98,8 @@ mod note_links;
 mod note_links_changed;
 #[path = "note_mentions.rs"]
 mod note_mentions;
+#[path = "notes_create_template.rs"]
+mod notes_create_template;
 #[path = "notes_identity.rs"]
 mod notes_identity;
 #[path = "notes_link_rewrite.rs"]

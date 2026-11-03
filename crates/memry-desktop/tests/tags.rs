@@ -20,6 +20,7 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::error::{CoreError, FailureKind};
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::identity::NotesIdentity;
+use memry_desktop::notes::read;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::view::SortOrder;
 use memry_desktop::session::OpenVault;
@@ -160,6 +161,8 @@ fn a_tag_removed_from_the_file_outside_the_app_leaves_the_list_once_measured() {
         .unwrap();
     reindex(&e, &open);
     assert_eq!(tag(&tags::all_with_counts(&open).unwrap(), "x").count, 1);
+    let header = |open: &OpenVault| read::get(open, &note.id, None).unwrap().unwrap().tags;
+    assert_eq!(header(&open), ["x"]);
 
     let outside = "Body\n";
     e.write(&note.path, outside);
@@ -173,6 +176,7 @@ fn a_tag_removed_from_the_file_outside_the_app_leaves_the_list_once_measured() {
     let list = tags::all_with_counts(&open).unwrap();
     assert!(list.iter().all(|tag| tag_key(&tag.name) != "x"), "{list:?}");
     assert_eq!(tags::notes_by_tag(&open, &by_tag("x")).unwrap().count, 0);
+    assert!(header(&open).is_empty(), "the note header follows the list");
     e.close();
 }
 
@@ -330,5 +334,62 @@ fn the_hub_refuses_a_blank_tag_and_an_empty_icon() {
     let list = tags::all_with_counts(&open).unwrap();
     assert_eq!(list.len(), 3);
     assert!(list.iter().all(|tag| tag.icon.is_none()));
+    e.close();
+}
+
+/// A pin changes the note's record and never its file. A tag only the file's header carries (an
+/// adopted file, whose record holds no tags until #3825) is refused, not pinned unseen.
+#[test]
+fn a_pin_changes_the_record_only_and_a_header_only_tag_is_refused() {
+    let mut kept: Option<Arc<dyn SecureStore>> = None;
+    let mut e = env(|store| {
+        kept = Some(store.clone());
+        Some(NotesIdentity::new(store))
+    });
+    e.write("Plan.md", PLAN);
+    e.open();
+    e.facts_until(indexed);
+    let open = e.session.current().expect("open");
+    let store = kept.expect("the store");
+    let notes = NotesService::with_trash(e.tier.clone(), store.clone(), |_: &Path| {
+        Err("no bin".to_owned())
+    });
+    let note = notes
+        .create(
+            &open,
+            NewNoteFile {
+                title: "Pinned".into(),
+                content: "Body".into(),
+                tags: vec!["Work".into()],
+                ..NewNoteFile::default()
+            },
+        )
+        .unwrap();
+    reindex(&e, &open);
+    let text = e.read(&note.path);
+    let hub = Hub::open(&open, store).unwrap();
+
+    assert!(hub.set_pinned(&note.id, "WORK", true).unwrap());
+    assert!(
+        !hub.set_pinned(&note.id, "work", true).unwrap(),
+        "already pinned"
+    );
+    let by = tags::notes_by_tag(&open, &by_tag("work")).unwrap();
+    let pinned: Vec<&str> = by.pinned_notes.iter().map(|n| n.id.as_str()).collect();
+    assert_eq!(pinned, [note.id.as_str()]);
+    assert!(by.pinned_notes[0].is_pinned && by.pinned_notes[0].pinned_at.is_some());
+    assert_eq!(by.unpinned_notes.len(), 1, "Plan.md carries work too");
+
+    let plan = by.unpinned_notes[0].id.clone();
+    let refused = hub.set_pinned(&plan, "work", true).unwrap_err();
+    assert_eq!(refused.kind_and_code(), (FailureKind::Invalid, "invalid"));
+    let blank = hub.set_pinned(&note.id, " ", true).unwrap_err();
+    assert_eq!(blank.kind_and_code(), (FailureKind::Invalid, "invalid"));
+
+    assert!(hub.set_pinned(&note.id, "work", false).unwrap());
+    let by = tags::notes_by_tag(&open, &by_tag("work")).unwrap();
+    assert!(by.pinned_notes.is_empty());
+    assert_eq!(e.read(&note.path), text, "the note's file is untouched");
+    assert_eq!(e.read("Plan.md"), PLAN);
     e.close();
 }

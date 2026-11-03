@@ -252,6 +252,61 @@ fn unpin(
     Ok((kept != pinned).then_some(kept))
 }
 
+/// Pins `tag` on the live note or journal day `item_id` (`tags:pin-note-to-tag`), or unpins it
+/// (`tags:unpin-note-from-tag`). A pin adds the record's spelling of the tag to `pinnedTags`;
+/// an unpin drops every spelling of it. Returns whether anything was written: a pin already
+/// there in the record's spelling, or an unpin of a tag not pinned, writes nothing, as [`add`]
+/// does.
+///
+/// Only a tag in the record's `tags` can be pinned, and anything else is refused rather than
+/// written unseen: the projection keeps a pin on the tag's `note_tags` row, which a tag carried
+/// only by the body, or by a file header the record never took (an adopted file, #3825), does
+/// not have. `modifiedAt` is kept, as Electron's pin leaves the note's file alone.
+pub fn set_pinned(
+    conn: &Connection,
+    item_id: &str,
+    tag: &str,
+    pinned: bool,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let item_type = live_type(conn, item_id)?;
+    let payload = require(conn, item_type, item_id)?;
+    let object = payload.object();
+    let mut pins = read_tags(object, "pinnedTags", item_type, item_id)?;
+    let before = pins.len();
+    if pinned {
+        let tags = read_tags(object, "tags", item_type, item_id)?;
+        let Some(spelling) = tags.into_iter().find(|kept| same_tag(kept, tag)) else {
+            return Err(StorageError::Invalid {
+                what: format!("{item_type}/{item_id}: its record does not carry the tag to pin"),
+            });
+        };
+        // The projection matches the exact spelling, so a pin in another case reads unpinned
+        // and is rewritten rather than taken as already pinned.
+        if pins.contains(&spelling) {
+            return Ok(false);
+        }
+        pins.retain(|pin| !same_tag(pin, tag));
+        pins.push(spelling);
+    } else {
+        pins.retain(|pin| !same_tag(pin, tag));
+        if pins.len() == before {
+            return Ok(false);
+        }
+    }
+    let ticked = clock::increment(&document_clock(object, item_type, item_id)?, device_id);
+    let changes = [
+        ("pinnedTags", Change::set(pins)),
+        ("clock", Change::set(clock_value(&ticked))),
+    ];
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    sync_items::apply_local_edit_in(&tx, item_type, item_id, &changes, now_ms)?;
+    outbox::enqueue(&tx, &outbox::Change::upsert(item_type, item_id), now_ms)?;
+    tx.commit().map_err(failed)?;
+    Ok(true)
+}
+
 /// Merges the new arrays into the payload and publishes the item, in one
 /// transaction.
 ///
@@ -315,6 +370,19 @@ fn stored(
         .map_err(|error| StorageError::Failed {
             what: format!("{item_type}/{item_id} payload will not parse: {error}"),
         })
+}
+
+/// Which of [`TAGGABLE_TYPES`] the live item `item_id` is.
+fn live_type(conn: &Connection, item_id: &str) -> Result<&'static str, StorageError> {
+    for item_type in TAGGABLE_TYPES {
+        let row = sync_items::load(conn, item_type, item_id)?;
+        if row.is_some_and(|row| row.deleted_at.is_none()) {
+            return Ok(item_type);
+        }
+    }
+    Err(StorageError::NotFound {
+        what: format!("no note or journal day {item_id}"),
+    })
 }
 
 /// The stored payload of an item an edit is about to change. Absent is an

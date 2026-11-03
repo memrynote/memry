@@ -43,6 +43,12 @@ export const commands = {
 	 *  asked, with the id that was issued.
 	 */
 	flushDone: (requestId: string) => __TAURI_INVOKE<null>("flush_done", { requestId }),
+	/**  The day made on its first write; a day that has a file is answered as it is. */
+	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
+	/**  `success` is whether the day had an entry to delete. */
+	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
+	/**  The day's entry, `null` when it has no file. Browsing never makes a day. */
+	journalGetEntry: (date: string) => __TAURI_INVOKE<JournalEntryView | null>("journal_get_entry", { date }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
 	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
 	/**
@@ -51,8 +57,8 @@ export const commands = {
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
 	/**
-	 *  `notes:create`. A template id (Step 13l) and `plainChecklists` (Step 32) are not read: the
-	 *  renderer's service refuses them until their steps.
+	 *  `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
+	 *  (Step 32) is not read: the renderer's service refuses it until its step.
 	 */
 	notesCreate: (input: NoteCreateInput) => __TAURI_INVOKE<NoteView>("notes_create", { input }),
 	/**
@@ -214,9 +220,12 @@ export const commands = {
 	tagsGetAllWithCounts: () => __TAURI_INVOKE<TagWithCountView[]>("tags_get_all_with_counts"),
 	tagsGetNotesByTag: (input: NotesByTagInput) => __TAURI_INVOKE<NotesByTagView>("tags_get_notes_by_tag", { input }),
 	tagsListCategories: () => __TAURI_INVOKE<TagCategoryView[]>("tags_list_categories"),
+	/**  Only a tag the note's record carries can be pinned (`memry_core::domain::tags::set_pinned`). */
+	tagsPinNoteToTag: (noteId: string, tag: string) => __TAURI_INVOKE<null>("tags_pin_note_to_tag", { noteId, tag }),
 	tagsRenameCategory: (id: string, name: string) => __TAURI_INVOKE<null>("tags_rename_category", { id, name }),
 	/**  A drag in the tag hub: tag assignments and category order, all or nothing. */
 	tagsReorder: (input: ReorderInput) => __TAURI_INVOKE<null>("tags_reorder", { input }),
+	tagsUnpinNoteFromTag: (noteId: string, tag: string) => __TAURI_INVOKE<null>("tags_unpin_note_from_tag", { noteId, tag }),
 	tagsUpdateColor: (tag: string, color: string) => __TAURI_INVOKE<null>("tags_update_color", { tag, color }),
 	/**  `icon` is an emoji or `icon:Name`; `None` clears it. */
 	tagsUpdateIcon: (tag: string, icon: string | null) => __TAURI_INVOKE<null>("tags_update_icon", { tag, icon }),
@@ -302,6 +311,8 @@ export const events = {
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
+	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
+	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
@@ -315,6 +326,7 @@ export const events = {
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
 	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
+	tagNotesChangedEvent: makeEvent<TagNotesChangedEvent, TagNotesChangedEvent>("tag-notes-changed-event"),
 	templateCreatedEvent: makeEvent<TemplateCreatedEvent, TemplateCreatedEvent>("template-created-event"),
 	templateDeletedEvent: makeEvent<TemplateDeletedEvent, TemplateDeletedEvent>("template-deleted-event"),
 	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
@@ -629,6 +641,49 @@ export type InstallFailed = {
 
 export type ItemKind = "normal" | "separator";
 
+/**  `CreateEntryInputSchema`. */
+export type JournalCreateInput = {
+	date: string,
+	content?: string | null,
+	tags?: string[] | null,
+	properties?: { [key in string]: Value } | null,
+};
+
+/**  `DeleteEntryOutputSchema`. */
+export type JournalDeleteOutput = {
+	success: boolean,
+};
+
+/**  A day's entry was made on its first write (`journal:entryCreated`). */
+export type JournalEntryCreatedEvent = {
+	date: string,
+	entry: JournalEntryView,
+};
+
+/**  A day's entry was deleted (`journal:entryDeleted`). */
+export type JournalEntryDeletedEvent = {
+	date: string,
+};
+
+/**  `JournalEntry` (`packages/contracts/src/journal-api.ts`). */
+export type JournalEntryView = {
+	id: string,
+	/**  `YYYY-MM-DD` */
+	date: string,
+	/**  The markdown below the frontmatter, trimmed. */
+	content: string,
+	wordCount: number,
+	/**  UTF-16 code units of `content`. */
+	characterCount: number,
+	tags: string[],
+	aliases: string[],
+	/**  `None` when the file carries none, as Electron leaves the key out. */
+	properties: { [key in string]: Value } | null,
+	/**  ISO 8601. */
+	createdAt: string,
+	modifiedAt: string,
+};
+
 /**  `NoteLargeFileInfo`. */
 export type LargeFileInfo = {
 	reason: LargeFileReasonView,
@@ -711,8 +766,8 @@ export type MovesRecovered = {
 };
 
 /**
- *  `NoteCreateSchema`, without the parts later slices own: `template` (Step 13l) and
- *  `plainChecklists` (Step 32), which the renderer's service refuses until then.
+ *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
+ *  refuses until then.
  */
 export type NoteCreateInput = {
 	title: string,
@@ -721,6 +776,9 @@ export type NoteCreateInput = {
 	folder?: string | null,
 	tags?: string[] | null,
 	properties?: { [key in string]: Value } | null,
+	/**  The template to make the note from (`templates_get`'s ids). */
+	template?: string | null,
+	/**  Absent: the template's icon, if any; `null`: no icon. */
 	emoji?: string | null,
 };
 
@@ -1053,6 +1111,9 @@ export type TagColorUpdatedEvent = {
 	color: string,
 };
 
+/**  What happened to a note in a tag, for [`TagNotesChangedEvent`]. */
+export type TagNoteAction = "pinned" | "unpinned";
+
 /**  `TagNoteItem`. */
 export type TagNoteItemView = {
 	id: string,
@@ -1065,6 +1126,13 @@ export type TagNoteItemView = {
 	isPinned: boolean,
 	pinnedAt: string | null,
 	emoji: string | null,
+};
+
+/**  A note was pinned in a tag or unpinned from it (`tags:notes-changed`). */
+export type TagNotesChangedEvent = {
+	tag: string,
+	noteId: string,
+	action: TagNoteAction,
 };
 
 /**  `GetNotesByTagSchema.sortBy`. */

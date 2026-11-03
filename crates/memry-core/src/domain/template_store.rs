@@ -207,6 +207,12 @@ impl TemplateStore {
         self.db.read_blocking(|conn| get(conn, id))
     }
 
+    /// The id of the template a tag of `tags` names ([`super::tag_fields::template_of`]).
+    pub fn of_tags(&self, tags: &[String]) -> Result<Option<String>, StorageError> {
+        self.db
+            .read_blocking(|conn| super::tag_fields::template_of(conn, tags))
+    }
+
     pub fn create(&self, fields: &TemplateFields, now_ms: i64) -> Result<String, StorageError> {
         self.db
             .call_blocking(|conn| create(conn, fields, &self.device_id, now_ms))

@@ -4,6 +4,10 @@ import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type { PortedNoteEvent, PortedNoteMethod } from '../renderer/src/services/notes-service'
 import type { PortedTagEvent, PortedTagMethod } from '../renderer/src/services/tags-service'
+import type {
+  PortedJournalEvent,
+  PortedJournalMethod
+} from '../renderer/src/services/journal-service'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
@@ -1935,18 +1939,28 @@ interface CallTagsServiceInstead {
 
 type PortedTagEventMarkers = { readonly [K in PortedTagEvent]: CallTagsServiceInstead }
 
+/** A journal method or subscription `journalService` serves from Rust, refused the same way. */
+interface CallJournalServiceInstead {
+  readonly 'use journalService from @/services/journal-service': never
+}
+
+type PortedJournalEventMarkers = { readonly [K in PortedJournalEvent]: CallJournalServiceInstead }
+
 interface API
   extends
     Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent | PortedTagEvent>,
     PortedNoteEventMarkers,
-    PortedTagEventMarkers {
+    PortedTagEventMarkers,
+    PortedJournalEventMarkers {
   notes: Omit<NotesClientAPI, PortedNoteMethod> & {
     readonly [K in PortedNoteMethod]: CallNotesServiceInstead
   }
   vault: VaultClientAPI
   properties: PropertiesClientAPI
   savedFilters: SavedFiltersClientAPI
-  journal: JournalClientAPI
+  journal: Omit<JournalClientAPI, PortedJournalMethod> & {
+    readonly [K in PortedJournalMethod]: CallJournalServiceInstead
+  }
   bookmarks: BookmarksClientAPI
   tags: Omit<TagsClientAPI, PortedTagMethod> & {
     readonly [K in PortedTagMethod]: CallTagsServiceInstead
@@ -2040,9 +2054,7 @@ interface API
   ) => () => void
   onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
-  onJournalEntryCreated: (callback: (event: JournalEntryCreatedEvent) => void) => () => void
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void
-  onJournalEntryDeleted: (callback: (event: JournalEntryDeletedEvent) => void) => () => void
   onJournalExternalChange: (callback: (event: JournalExternalChangeEvent) => void) => () => void
   // Bookmarks event subscriptions
   onBookmarkCreated: (callback: (event: BookmarkCreatedEvent) => void) => () => void
