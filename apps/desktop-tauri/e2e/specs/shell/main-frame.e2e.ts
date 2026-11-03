@@ -461,17 +461,18 @@ test('no link gesture or drop unloads the app, cancels its requests or loads in 
     expect(result.claims).toEqual(['dragover zone', 'drop zone'])
     // Each gesture opens once. The five `shell_open_link` calls run concurrently, so they reach
     // the shell in any order.
+    const gestures = ['/left', '/middle', '/ctrl', '/enter', '/dragged']
+      .map((p) => `url ${site.origin}${p}`)
+      .toSorted()
     await expect
       .poll(async () => (await opens(app)).toSorted(), { timeout: 15_000 })
-      .toEqual(
-        ['/left', '/middle', '/ctrl', '/enter', '/dragged']
-          .map((p) => `url ${site.origin}${p}`)
-          .toSorted()
-      )
+      .toEqual(gestures)
     const slow = await page.evaluate(
       () => (window as unknown as { __slow: Promise<string> }).__slow
     )
     expect(slow).toBe('slow')
+    // The fixture held that request for 2.5 s: no gesture opened a second time meanwhile.
+    expect((await opens(app)).toSorted()).toEqual(gestures)
     expect(
       await page.evaluate(() => (window as unknown as { __unloaded?: boolean }).__unloaded === true)
     ).toBe(false)

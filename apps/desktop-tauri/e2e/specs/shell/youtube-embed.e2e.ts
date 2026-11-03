@@ -11,7 +11,10 @@ test('the YouTube embed page loads in the app and its player is not sent to the 
   const shell = await page.evaluate(() => window.__MEMRY_SHELL__)
   const src = `${shell!.loopbackOrigin}/e/${shell!.loopbackToken}/youtube/dQw4w9WgXcQ`
   // The page nests the player, so a loaded page has one subframe; the count is readable across
-  // origins.
+  // origins. The subframe exists once the page parses, whatever the player's origin answers, so
+  // nothing here waits on YouTube. A local stand-in cannot replace the player: this page's CSP and
+  // the app's frame only https://www.youtube-nocookie.com, and the guard refuses other loopback
+  // frames.
   const frames = await page.evaluate(
     (url) =>
       new Promise<number>((resolve) => {

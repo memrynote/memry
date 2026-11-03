@@ -7,10 +7,11 @@ import { fileURLToPath } from 'node:url'
 
 import E2eJunitReporter from './harness/junit-reporter'
 import { removeDir } from './harness/remove-dir'
-import { binaryPath, driverReady, forceKill, freePort, spawnApp } from './harness/app-process'
+import { binaryPath, driverReady, freePort, spawnApp, stopChild } from './harness/app-process'
 import { EXPECT_TIMEOUT_MS, IS_CI, TEST_TIMEOUT_MS } from './harness/budgets'
 import { purgeAllCreatedDevices, startRun } from './harness/registry'
 import { verifyE2eBinary } from './harness/verify-binary'
+import { failedWorkerReport } from './harness/worker-report'
 
 // Opens the run-time gate of the e2e build in the launcher and in every worker.
 process.env.MEMRY_E2E = '1'
@@ -90,10 +91,20 @@ export const sharedConfig = {
   async onWorkerStart(cid: string, caps: unknown): Promise<void> {
     await startWorkerApps(cid, caps)
   },
-  onWorkerEnd(cid: string): void {
-    const started = workerApps.get(cid)
-    for (const child of started?.children ?? []) if (child.pid) forceKill(child.pid)
-    for (const port of started?.ports ?? []) {
+  onWorkerEnd(
+    cid: string,
+    exitCode: number,
+    specs: string[],
+    retries: number,
+    signal: NodeJS.Signals | null
+  ): void {
+    const started = workerApps.get(cid) ?? { children: [], ports: [] }
+    if (exitCode !== 0) {
+      const apps = started.children.map((child, i) => ({ child, port: started.ports[i] }))
+      console.error(failedWorkerReport({ cid, exitCode, signal, specs, retries }, apps))
+    }
+    for (const child of started.children) stopChild(child)
+    for (const port of started.ports) {
       removeDir(join(tmpdir(), 'memry-e2e', `default-${port}`))
     }
     workerApps.delete(cid)
