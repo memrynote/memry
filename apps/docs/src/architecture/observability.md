@@ -914,6 +914,12 @@ path, an email, a URL, free-form prose — is **rejected outright** and the clas
 instead, because a character-substituted path (`_Users_kaan_secret.md`) still leaks its structure.
 The class name itself still passes through the safe-token rules (no `@`, `://`, `/`, `\`, ≤64 chars).
 
+A `ZodError` reports `ZodError:<first issue code>:<path>[:<call site>]`, for example
+`ZodError:too_big:title:tasks:create`, so Error Tracking splits contract failures by field and by
+IPC channel instead of merging them under one `ZodError` issue. Array indices in the path become
+`N`, and a path key ships only when it is an identifier-shaped field name (anything else, such as a
+`z.record` key that may be user content, becomes `K`). Issue messages never ship.
+
 An **unhandled rejection** can carry any value as its reason — a string, a plain object, or a
 cross-realm `Error` that fails `instanceof Error` — and those carry no stack, which previously
 landed in Loki as an unactionable bare `Error` with an empty stack. Reasons are normalized before
