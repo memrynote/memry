@@ -65,7 +65,9 @@ const GoogleRemindersSchema = z.object({
 })
 
 const GoogleConferenceEntryPointSchema = z.object({
-  entryPointType: z.string(),
+  // Google omits this on some third-party conference entries. Requiring it failed the whole
+  // events page, so mapRemoteEvent drops untyped entries instead.
+  entryPointType: z.string().optional(),
   uri: z.string().optional(),
   label: z.string().optional(),
   pin: z.string().optional(),
@@ -199,15 +201,21 @@ function mapRemoteEvent(
             }
           : null,
         entryPoints:
-          raw.conferenceData.entryPoints?.map((ep) => ({
-            entryPointType: ep.entryPointType,
-            uri: ep.uri ?? null,
-            label: ep.label ?? null,
-            pin: ep.pin ?? null,
-            meetingCode: ep.meetingCode ?? null,
-            passcode: ep.passcode ?? null,
-            regionCode: ep.regionCode ?? null
-          })) ?? [],
+          raw.conferenceData.entryPoints?.flatMap((ep) =>
+            ep.entryPointType
+              ? [
+                  {
+                    entryPointType: ep.entryPointType,
+                    uri: ep.uri ?? null,
+                    label: ep.label ?? null,
+                    pin: ep.pin ?? null,
+                    meetingCode: ep.meetingCode ?? null,
+                    passcode: ep.passcode ?? null,
+                    regionCode: ep.regionCode ?? null
+                  }
+                ]
+              : []
+          ) ?? [],
         notes: raw.conferenceData.notes ?? null
       }
     : null
