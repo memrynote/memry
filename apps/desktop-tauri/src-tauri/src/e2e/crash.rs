@@ -14,13 +14,14 @@ pub fn e2e_trigger_crash() -> Result<(), CommandError> {
     ))
 }
 
-/// Ends the web content process of the calling page a moment after the reply, the way a renderer
-/// crash does: WebView2 crashes its renderer (`Page.crash`), WKWebView's process is killed, and
-/// WebKitGTK terminates its web process. The process-death hooks then see a real death.
+/// Ends the web content process of the calling page the way a renderer crash does: WebView2
+/// crashes its renderer (`Page.crash`), WKWebView's process is killed, and WebKitGTK terminates
+/// its web process. The process-death hooks then see a real death. The reply never returns, so
+/// specs send it with `sendTest`.
 #[tauri::command]
 pub fn e2e_kill_page(webview: tauri::Webview<tauri::Wry>) -> Result<(), CommandError> {
+    // On the main thread `with_webview` runs at once, inside the handler of this page's message.
     tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         if let Err(error) = webview.with_webview(kill) {
             tracing::warn!(scope = "E2e", "page not killed: {error}");
         }
