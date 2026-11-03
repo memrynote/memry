@@ -9,6 +9,7 @@
 //! | the date property is reserved                      | D5                      |
 //! | a write equal to the stored value writes nothing   | no clock tick, no push  |
 //! | a retype is refused and a tombstone revives        | FR-048, D2              |
+//! | desktop's first write opens the day with its fields | D2, `createJournalEntry` |
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::journal_ops::{metadata, reads};
@@ -429,4 +430,82 @@ fn names_create_the_day_normalize_and_an_empty_list_clears_with_an_array() {
         Ok(())
     })
     .expect("aliases");
+}
+
+#[test]
+fn desktop_s_first_write_opens_the_day_with_its_fields_and_a_live_day_keeps_its_own() {
+    let db = open("open-with");
+    db.call_blocking(|conn| {
+        let fields = json!({"mood": "calm", "date": "1999-01-01", "rating": 4});
+        let fields = fields.as_object().expect("a map");
+        let opened =
+            metadata::open_with(conn, DAY, &strings(&["work", "Work"]), fields, DEVICE, NOW)?;
+        assert_eq!(opened.id, "j2099-06-15");
+        assert!(opened.opened);
+        assert_eq!(opened.tags, strings(&["work"]));
+        assert_eq!(
+            opened.properties,
+            *json!({"mood": "calm", "rating": 4}).as_object().unwrap()
+        );
+        let created = payload_of(conn, "j2099-06-15");
+        assert_schema_shape(&created);
+        assert_eq!(created["content"], json!(""), "a create keeps its content");
+        assert_eq!(created["tags"], json!(["work"]));
+        assert_eq!(created["properties"], json!({"mood": "calm", "rating": 4}));
+        assert_eq!(created["clock"], json!({"device-a": 1}));
+        assert_eq!(
+            queued(conn),
+            1,
+            "one outbox row for the create and its fields"
+        );
+
+        let stamp = reads::stamp(conn, DAY)?.expect("a live day");
+        assert_eq!(stamp.id, "j2099-06-15");
+        assert_eq!(stamp.tags, strings(&["work"]));
+        assert_eq!(stamp.path, None, "no row names a file yet");
+        assert_eq!(stamp.created_at, Some(NOW));
+
+        let before = raw_of(conn, "j2099-06-15");
+        let again = metadata::open_with(
+            conn,
+            DAY,
+            &strings(&["other"]),
+            &serde_json::Map::new(),
+            DEVICE,
+            NOW + 1,
+        )?;
+        assert!(!again.opened);
+        assert_eq!(again.tags, strings(&["work"]), "a live day keeps its tags");
+        assert_eq!(again.properties, opened.properties);
+        assert_eq!(raw_of(conn, "j2099-06-15"), before, "and writes nothing");
+        Ok(())
+    })
+    .expect("open with");
+}
+
+#[test]
+fn a_deleted_day_opened_by_desktop_s_first_write_takes_the_new_fields_and_keeps_its_id() {
+    let db = open("open-with-revive");
+    db.call_blocking(|conn| {
+        let stored = json!({"date": DAY, "tags": ["old"], "properties": {"energy": 3, "date": DAY}, "clock": {"device-b": 1}});
+        let mut tombstone = remote("desktop-day", stored);
+        tombstone.deleted_at = Some(NOW);
+        sync_items::apply_remote(conn, &tombstone, NOW)?;
+        assert_eq!(reads::stamp(conn, DAY)?, None, "a deleted day has no stamp");
+
+        let fields = json!({"mood": "calm"});
+        let opened = metadata::open_with(conn, DAY, &strings(&["new"]), fields.as_object().unwrap(), DEVICE, NOW + 1)?;
+        assert_eq!(opened.id, "desktop-day", "the existing id wins");
+        assert!(opened.opened);
+        assert_eq!(opened.tags, strings(&["new"]));
+        assert_eq!(opened.properties, *fields.as_object().unwrap());
+        let payload = payload_of(conn, "desktop-day");
+        assert_eq!(payload["tags"], json!(["new"]));
+        assert_eq!(payload["properties"], json!({"date": DAY, "mood": "calm"}), "the stored date stays");
+        assert_eq!(payload["content"], Value::Null);
+        assert!(sync_items::load(conn, "journal", "desktop-day")?.expect("the row").deleted_at.is_none());
+        assert_eq!(queued(conn), 1);
+        Ok(())
+    })
+    .expect("revive");
 }

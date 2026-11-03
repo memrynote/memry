@@ -326,20 +326,20 @@ fn vault_relative(root: &Path, path: &Path) -> Option<String> {
     (!segments.is_empty()).then(|| segments.join("/"))
 }
 
-/// The body seeded from the file just written.
-struct Seed<'a> {
-    root: &'a Path,
-    open: &'a OpenVault,
-    id: &'a str,
-    rel: &'a str,
-    raw: &'a str,
+/// The body seeded from the file just written: a note's, or a journal day's (`crate::journal`).
+pub(crate) struct Seed<'a> {
+    pub(crate) root: &'a Path,
+    pub(crate) open: &'a OpenVault,
+    pub(crate) id: &'a str,
+    pub(crate) rel: &'a str,
+    pub(crate) raw: &'a str,
 }
 
 impl Seed<'_> {
     /// `Ok(true)` when the document now holds the file's text; `Ok(false)` when it did not take
     /// it (a body past the large-file class), which leaves the row without a content hash, so
     /// the write-back never writes over the file.
-    fn run(
+    pub(crate) fn run(
         &self,
         service: &NotesService,
         feed: &memry_core::api::external_feed::ExternalFeed,
@@ -376,7 +376,7 @@ impl Seed<'_> {
 }
 
 /// Takes back the file this create wrote, as the app's own removal.
-fn remove_file(echo: &EchoGuard, root: &Path, rel: &str) {
+pub(crate) fn remove_file(echo: &EchoGuard, root: &Path, rel: &str) {
     if let Err(error) = super::delete::unlink(echo, root, rel) {
         tracing::error!(
             scope = SCOPE,
@@ -397,7 +397,7 @@ fn undo_record(writer: &memry_core::api::notes_write::NotesWriter, id: &str) {
 }
 
 /// Removes the row this create reserved. No fact goes out: none went out for it.
-fn remove_row(lane: &mut Lane<'_>, id: &str) {
+pub(crate) fn remove_row(lane: &mut Lane<'_>, id: &str) {
     if let Err(error) = lane.remove(id) {
         tracing::error!(
             scope = SCOPE,

@@ -173,6 +173,71 @@ pub fn rename_property(
     })
 }
 
+/// A day opened by its first write on desktop (`createJournalEntry`): the record and what it
+/// holds after the write.
+#[derive(Debug, Clone, PartialEq)]
+pub struct OpenedWith {
+    pub id: String,
+    /// This call created the entry, or revived a deleted one: a failed write after it takes the
+    /// entry back.
+    pub opened: bool,
+    pub tags: Vec<String>,
+    /// Without the reserved `date`.
+    pub properties: Map<String, Value>,
+}
+
+/// Opens the day for `date` with `tags` and `properties`, in one transaction and one outbox row.
+/// A day created or revived here takes both, a revived one in place of what it was deleted
+/// with; a live entry keeps its own, and the answer is what it holds, so the file the caller
+/// writes from the answer says what the record says. A `date` property is dropped, a stored
+/// one kept.
+pub fn open_with(
+    conn: &Connection,
+    date: &str,
+    tags: &[String],
+    properties: &Map<String, Value>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<OpenedWith, StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let opened = journal::open_day_in(&tx, date, device_id, now_ms)?;
+    let stored = require_payload(&tx, ITEM_TYPE, &opened.id)?;
+    let object = stored.object();
+    let mut values = properties::read_values(object, ITEM_TYPE, date)?;
+    if !(opened.created || opened.revived) {
+        return Ok(OpenedWith {
+            tags: tags::list(&tx, ITEM_TYPE, &opened.id)?,
+            properties: visible(values),
+            id: opened.id,
+            opened: false,
+        });
+    }
+    let (next_tags, mut changes) = tags::set_changes(object, ITEM_TYPE, date, tags)?;
+    values.retain(|name, _| name == RESERVED_PROPERTY);
+    for (name, value) in properties {
+        if name != RESERVED_PROPERTY {
+            values.insert(name.clone(), value.clone());
+        }
+    }
+    if properties::read_values(object, ITEM_TYPE, date)? != values {
+        changes.extend(properties_change(&values));
+    }
+    if !changes.is_empty() {
+        if opened.revived {
+            changes.push(("content", Change::Set(Value::Null)));
+        }
+        sync_items::apply_local_edit_in(&tx, ITEM_TYPE, &opened.id, &changes, now_ms)?;
+        outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, &opened.id), now_ms)?;
+    }
+    tx.commit().map_err(failed)?;
+    Ok(OpenedWith {
+        id: opened.id,
+        opened: true,
+        tags: next_tags,
+        properties: visible(values),
+    })
+}
+
 /// One metadata write on the day for `date`, in one transaction.
 ///
 /// `plan` reads the stored payload and returns the changes to merge (empty

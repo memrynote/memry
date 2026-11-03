@@ -270,6 +270,20 @@ pub fn write_new_note_checked(
     between: &mut dyn FnMut(),
 ) -> Result<(), NoteFileError> {
     let output = write_markdown_note(frontmatter, content)?;
+    write_new_text_checked(vault, rel, &output, between)
+}
+
+/// Creates a new vault file holding `output` as given, under [`write_new_note`]'s rules.
+pub fn write_new_text(vault: &Path, rel: &str, output: &str) -> Result<(), NoteFileError> {
+    write_new_text_checked(vault, rel, output, &mut || {})
+}
+
+fn write_new_text_checked(
+    vault: &Path,
+    rel: &str,
+    output: &str,
+    between: &mut dyn FnMut(),
+) -> Result<(), NoteFileError> {
     let (path, aimed_at) = target(vault, rel)?;
     let mut check = still_contained(vault, rel, &path, aimed_at, between);
     fs_atomic::atomic_create_checked(&path, output.as_bytes(), &default_delays(), &mut check)

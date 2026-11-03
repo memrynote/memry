@@ -43,6 +43,12 @@ export const commands = {
 	 *  asked, with the id that was issued.
 	 */
 	flushDone: (requestId: string) => __TAURI_INVOKE<null>("flush_done", { requestId }),
+	/**  The day made on its first write; a day that has a file is answered as it is. */
+	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
+	/**  `success` is whether the day had an entry to delete. */
+	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
+	/**  The day's entry, `null` when it has no file. Browsing never makes a day. */
+	journalGetEntry: (date: string) => __TAURI_INVOKE<JournalEntryView | null>("journal_get_entry", { date }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
 	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
 	/**
@@ -302,6 +308,8 @@ export const events = {
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
+	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
+	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
@@ -628,6 +636,49 @@ export type InstallFailed = {
 };
 
 export type ItemKind = "normal" | "separator";
+
+/**  `CreateEntryInputSchema`. */
+export type JournalCreateInput = {
+	date: string,
+	content?: string | null,
+	tags?: string[] | null,
+	properties?: { [key in string]: Value } | null,
+};
+
+/**  `DeleteEntryOutputSchema`. */
+export type JournalDeleteOutput = {
+	success: boolean,
+};
+
+/**  A day's entry was made on its first write (`journal:entryCreated`). */
+export type JournalEntryCreatedEvent = {
+	date: string,
+	entry: JournalEntryView,
+};
+
+/**  A day's entry was deleted (`journal:entryDeleted`). */
+export type JournalEntryDeletedEvent = {
+	date: string,
+};
+
+/**  `JournalEntry` (`packages/contracts/src/journal-api.ts`). */
+export type JournalEntryView = {
+	id: string,
+	/**  `YYYY-MM-DD` */
+	date: string,
+	/**  The markdown below the frontmatter, trimmed. */
+	content: string,
+	wordCount: number,
+	/**  UTF-16 code units of `content`. */
+	characterCount: number,
+	tags: string[],
+	aliases: string[],
+	/**  `None` when the file carries none, as Electron leaves the key out. */
+	properties: { [key in string]: Value } | null,
+	/**  ISO 8601. */
+	createdAt: string,
+	modifiedAt: string,
+};
 
 /**  `NoteLargeFileInfo`. */
 export type LargeFileInfo = {
