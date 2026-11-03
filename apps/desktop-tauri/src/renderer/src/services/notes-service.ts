@@ -38,7 +38,12 @@ import type {
   WikiLinkTargetResolution,
   WikiLinkTitleResolutions
 } from '@memry/rpc/notes'
-import type { NoteLinksChangedEvent, UnlinkedMention } from '@memry/contracts/notes-api'
+import type {
+  NoteLinkMention,
+  NoteLinkMentionResponse,
+  NoteLinksChangedEvent,
+  UnlinkedMention
+} from '@memry/contracts/notes-api'
 import { markdownPreviewText } from '@memry/shared/markdown-preview-text'
 import { getI18n } from 'react-i18next'
 import {
@@ -142,8 +147,8 @@ function definitionInput(
 }
 
 /**
- * The notes commands of Step 13f, the rename and manual order of Step 13g, the link reads of
- * Step 13i and the property definitions of Step 13k (`commands/notes.rs`,
+ * The notes commands of Step 13f, the rename and manual order of Step 13g, the link reads and
+ * the mention link of Step 13i and the property definitions of Step 13k (`commands/notes.rs`,
  * `commands/property_definitions.rs`); every other method still goes to `window.api.notes`.
  */
 const ported = {
@@ -245,6 +250,13 @@ const ported = {
     commands.notesResolveWikiTarget(target),
   getUnlinkedMentions: (id: string): Promise<UnlinkedMention[]> =>
     commands.notesGetUnlinkedMentions(id),
+  linkMention: async ({
+    sourceId,
+    targetId,
+    ordinal
+  }: NoteLinkMention): Promise<NoteLinkMentionResponse> => ({
+    linked: await commands.notesLinkMention(sourceId, targetId, ordinal)
+  }),
   // The card's opening is read here from the body Rust sends, with the function Electron's main
   // ran on it; a card with a description gets no body.
   previewByTitle: async (title: string): Promise<WikiLinkPreview | null> => {

@@ -188,3 +188,68 @@ fn a_link_card_reads_the_note_its_name_resolves_to() {
     drop(open);
     e.close();
 }
+
+#[test]
+fn only_a_markdown_source_is_read_for_mentions() {
+    let mut e = env(|_| None);
+    e.open();
+    let core = e.core();
+    let rows = e.tier.rows();
+    let session = rows.session_for(&core).unwrap();
+    apply(
+        &core,
+        "note",
+        "n-target",
+        json!({ "title": "Target", "fileType": "markdown" }),
+    );
+    // Two sources whose indexed text spells the target, as a PDF's extracted text would: the
+    // markdown one is read, the PDF (whose bytes here are text) is not.
+    for (id, title, path, file_type) in [
+        ("n-note", "Note", "Note.md", FileType::Markdown),
+        ("n-clip", "Clip", "Clip.pdf", FileType::Pdf),
+    ] {
+        let kind = if file_type == FileType::Pdf {
+            "pdf"
+        } else {
+            "markdown"
+        };
+        apply(
+            &core,
+            "note",
+            id,
+            json!({ "title": title, "fileType": kind }),
+        );
+        let text = "About Target.\n";
+        e.write(path, text);
+        let stat = RowStat {
+            file_type,
+            size: text.len() as u64,
+            content_hash: None,
+            file_hash: None,
+        };
+        rows.reserve(session, id, path, stat).unwrap();
+        let (id, title) = (id.to_owned(), title.to_owned());
+        e.session
+            .current()
+            .unwrap()
+            .search
+            .index_handle()
+            .call_blocking(move |index| {
+                index
+                    .execute(
+                        "INSERT INTO fts_notes (id, title, content, tags) VALUES (?1, ?2, ?3, '')",
+                        rusqlite::params![id, title, text],
+                    )
+                    .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                        what: error.to_string(),
+                    })
+            })
+            .unwrap();
+    }
+    let got = Mentions::new(&e.session.current().unwrap())
+        .get("n-target")
+        .unwrap();
+    let sources: Vec<&str> = got.iter().map(|m| m.source_id.as_str()).collect();
+    assert_eq!(sources, ["n-note"]);
+    e.close();
+}

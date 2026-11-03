@@ -8,6 +8,10 @@
 //! - `bodyText` is not computed here: the card's opening is `markdownPreviewText` of the body,
 //!   which the renderer runs on `body` (the same function Electron's main ran).
 //! - A journal day reads as no card until its reads are ported (13m): `read::get` lists notes.
+//! - A note past the large-file class (`content_omitted`) gets no `snippet` and no `cover`.
+//!   Electron's snippet for one comes from its large-file index head (`backfillLargeFile`), and
+//!   its cover is what was indexed while the file was small; that index is Step 14's (large
+//!   files), and the note index measures no large file.
 
 use memry_core::domain::note_stats::measure;
 use memry_core::domain::wiki_target::MatchedBy;

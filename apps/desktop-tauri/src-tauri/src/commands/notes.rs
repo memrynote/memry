@@ -4,7 +4,8 @@
 //! A note's links and the note a wiki link names (`notes:get-links`, `notes:resolve-by-title`,
 //! `notes:resolve-titles`, `notes:resolve-wiki-target`, #3530 13i) go through
 //! `memry_desktop::notes::links`; a note's unlinked mentions (`notes:get-unlinked-mentions`)
-//! through `memry_desktop::notes::mentions`, and a wiki link's hover card
+//! through `memry_desktop::notes::mentions`, linking one of them (`notes:link-mention`) through
+//! `NotesService::link_mention`, and a wiki link's hover card
 //! (`notes:preview-by-title`) through `memry_desktop::notes::link_preview`.
 //! A note's rename (`notes:rename`) and the sidebar's manual order (`notes:reorder`,
 //! `notes:get-all-positions`, #3530 13g) go through `memry_desktop::notes::{moves, positions}`;
@@ -362,6 +363,25 @@ pub async fn notes_get_unlinked_mentions(
         Mentions::new(&open_vault(&app)?)
             .get(&id)
             .map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
+/// `notes:link-mention`: the source's `ordinal`-th unlinked mention of the target becomes a wiki
+/// link to it. `false` when that mention is gone (the source changed since it was listed).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_link_mention<R: Runtime>(
+    app: AppHandle<R>,
+    source_id: String,
+    target_id: String,
+    ordinal: u32,
+) -> Result<bool, CommandError> {
+    blocking("notes_link_mention", move || {
+        let open = open_vault(&app)?;
+        service(&app)?
+            .link_mention(&open, &source_id, &target_id, ordinal as usize)
+            .map_err(|error| failed(&error))
     })
     .await
 }
