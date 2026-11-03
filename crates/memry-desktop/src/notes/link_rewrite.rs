@@ -7,15 +7,20 @@
 //!   old title or path unresolved, the note's own file included (`getInboundLinkSourceIds`,
 //!   [`memry_core::domain::link_reads::rewrite_sources`]).
 //! - **Which links**: the core decides, as for iOS's documents
-//!   ([`memry_core::domain::notes::link_rewrite::rewrite_text`]), over the whole file,
-//!   frontmatter included, as Electron rewrites it.
-//! - **How**: through [`AppEdit`], in each source's own write turn: the file, then its
-//!   document, then its row, then a note event the renderer takes as an outside edit
-//!   (`ChangeSource::AppEdit`), so an open editor shows the new link.
+//!   ([`memry_core::domain::notes::link_rewrite::rewrite_file`]), over the whole file,
+//!   frontmatter included, as Electron rewrites it; a frontmatter value is written as YAML
+//!   writes it where Electron's raw rewrite would break the block. A link the new name would
+//!   turn into another link (a `|`, `]` or `#` in it) is left, and the log says so.
+//! - **How**: through [`AppEdit`] with [`Precondition::Held`], in each source's own write turn:
+//!   its document, then its file, then its row, then a note event the renderer takes as an
+//!   outside edit (`ChangeSource::AppEdit`), so an open editor shows the new link.
 //!
 //! The rename already happened, so nothing here fails it: a source that cannot be read, holds
 //! an outside edit not fed yet, or whose document is ahead of its file, keeps its links, and
-//! the log says why. Repairing nine links of ten beats unwinding a rename.
+//! the log says why. So does a source the large-file class keeps out of its document (the
+//! index holds no links of it) or whose server body is not pulled. Repairing nine links of ten
+//! beats unwinding a rename. A crash between two sources leaves the rest stale, with no record
+//! to finish them (as in Electron; a replayed record is a follow-up).
 //!
 //! Divergences from Electron, stated: a path link names a note's folder and title, as Tauri
 //! resolves it (`wiki_target`), where Electron used the file's path (they differ only for a
@@ -24,12 +29,12 @@
 //! (Step 14).
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::notes::link_rewrite::{LinkNames, rewrite_text};
+use memry_core::domain::notes::link_rewrite::{FileRewrite, LinkNames, rewrite_file};
 
 use super::error::{NotesError, SCOPE};
 use super::service::NotesService;
 use crate::session::OpenVault;
-use crate::vault::app_edit::{AppEdit, Edited};
+use crate::vault::app_edit::{AppEdit, Edited, Precondition};
 use crate::vault::consumer::ChangeSource;
 
 impl NotesService {
@@ -75,11 +80,24 @@ impl NotesService {
                 .any(|target| target.id != note_id))
         };
         for source in sources {
-            let rewritten = self.order.run(&source, || {
-                edit.run(&source, ChangeSource::AppEdit, |file| {
-                    rewrite_text(&file.raw, note_id, from, to, claimed).map_err(NotesError::from)
+            let mut found = FileRewrite::default();
+            let rewritten = self.order.run(&source, |turn| {
+                edit.run(turn, Precondition::Held, ChangeSource::AppEdit, |text| {
+                    found = rewrite_file(text, note_id, from, to, claimed)?;
+                    Ok::<_, NotesError>(found.text.take())
                 })
             });
+            if found.skipped > 0 || found.frontmatter_kept {
+                tracing::warn!(
+                    scope = SCOPE,
+                    note_id,
+                    source,
+                    skipped = found.skipped,
+                    frontmatter_kept = found.frontmatter_kept,
+                    "links to a renamed note were left: the new name would spell another \
+                     link, or the frontmatter cannot be edited key by key"
+                );
+            }
             match rewritten {
                 Ok(Edited::Wrote { held: true, .. } | Edited::Unchanged) => {}
                 Ok(outcome) => tracing::warn!(

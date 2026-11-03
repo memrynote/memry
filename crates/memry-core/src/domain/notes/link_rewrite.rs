@@ -29,10 +29,10 @@
 //! The rename already committed, so a source that fails is reported on
 //! stderr and skipped: repairing nine links of ten beats failing a rename.
 //!
-//! **Desktop rewrites the text of a source's file instead** ([`rewrite_text`]), as
-//! `rewriteInboundWikiLinks` does: the vault file is the note there, and its vault tier writes
-//! the file and feeds the document from it. The same [`rewrite_target`] decides each link, so
-//! the two shells follow a rename alike.
+//! **Desktop rewrites the text of a source's file instead** (`rewrite_file`, the body through
+//! [`rewrite_text`]), as `rewriteInboundWikiLinks` does: the vault file is the note there, and
+//! its vault tier writes the file and feeds the document from it. The same [`rewrite_target`]
+//! decides each link, so the two shells follow a rename alike.
 //!
 //! Untrusted input: [`rewrite_text`] reads vault files. Its scan looks at each byte a bounded
 //! number of times ([`text_steps`]), and the text grows by at most the new name per link.
@@ -48,6 +48,11 @@ use crate::crdt::{BODY_FRAGMENT, update_log};
 use crate::domain::{body_write, journal, wiki_target};
 
 use super::failed;
+
+#[cfg(feature = "markdown")]
+mod file;
+#[cfg(feature = "markdown")]
+pub use file::{FileRewrite, rewrite_file};
 
 /// What a link can name a note by.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -295,6 +300,8 @@ fn text_step(n: usize) {
 /// A link is the reference's `\[\[([^\]|]+)(\|[^\]]+)?\]\]`, flag `g`: leftmost first, links do
 /// not overlap, and a failed one moves on. A failed candidate rules out every candidate that
 /// starts before the bracket it stopped at, so the scan resumes there.
+///
+/// A link the new name would turn into another link is left as it was (see [`spells_another`]).
 pub fn rewrite_text(
     text: &str,
     note_id: &str,
@@ -305,6 +312,16 @@ pub fn rewrite_text(
     let Some(rule) = Rule::of(note_id, from, to) else {
         return Ok(None);
     };
+    scan(text, &rule, &other_claims, &mut 0)
+}
+
+/// [`rewrite_text`] under `rule`, counting into `skipped` the links [`spells_another`] keeps.
+fn scan(
+    text: &str,
+    rule: &Rule<'_>,
+    other_claims: &impl Fn(&str) -> Result<bool, StorageError>,
+    skipped: &mut usize,
+) -> Result<Option<String>, StorageError> {
     let bytes = text.as_bytes();
     // The first byte at or after `from` that is one of `stops`, or the length.
     let scan = |from: usize, stops: &[u8]| {
@@ -348,7 +365,12 @@ pub fn rewrite_text(
             continue;
         }
         at = close + 2;
-        if let Some(next) = rewrite_target(&text[start..end_target], &rule, &other_claims)? {
+        let target = &text[start..end_target];
+        if let Some(next) = rewrite_target(target, rule, other_claims)? {
+            if spells_another(target, rule, other_claims)? {
+                *skipped += 1;
+                continue;
+            }
             out.push_str(&text[copied..open]);
             out.push_str("[[");
             out.push_str(&next);
@@ -362,6 +384,26 @@ pub fn rewrite_text(
     }
     out.push_str(&text[copied..]);
     Ok(Some(out))
+}
+
+/// Whether the name `target` is re-pointed at would spell another link: a `|` or a `]` ends the
+/// target early, and a `#` starts a heading, so the link names what comes before it: a path, a
+/// title another note holds (the `[[Sprint #4]]` rule), or, beside a heading, never the note.
+fn spells_another(
+    target: &str,
+    rule: &Rule<'_>,
+    other_claims: &impl Fn(&str) -> Result<bool, StorageError>,
+) -> Result<bool, StorageError> {
+    let path = wiki_target::path_stem(wiki_target::split(target.trim()).0).is_some();
+    let name = if path { &rule.to_stem } else { &rule.to_title };
+    if name.contains(['|', ']']) {
+        return Ok(true);
+    }
+    match name.split_once('#') {
+        None => Ok(false),
+        Some(_) if path => Ok(true),
+        Some((head, _)) => Ok(target.contains('#') || other_claims(head.trim())?),
+    }
 }
 
 /// Whether `title` now names something other than `renamed`.

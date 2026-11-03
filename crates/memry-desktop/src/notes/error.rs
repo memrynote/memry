@@ -7,6 +7,7 @@ use memry_core::markdown::frontmatter::YamlError;
 
 use crate::error::{CoreError, FailureKind};
 use crate::shell::file_open::OpenError;
+use crate::vault::app_edit::AppEditError;
 use crate::vault::app_move::MoveError;
 use crate::vault::consumer::rows::RowError;
 use crate::vault::note_file::NoteFileError;
@@ -87,6 +88,18 @@ impl Unopenable {
             }
             Self::NotRegular => "the note's path is not a regular file",
             Self::KeptChanging => "the note's file kept changing while it was opened; try again",
+        }
+    }
+}
+
+impl From<AppEditError> for NotesError {
+    fn from(error: AppEditError) -> Self {
+        match error {
+            AppEditError::Rows(error) => error.into(),
+            AppEditError::Storage(error) => Self::Storage(error),
+            AppEditError::Crdt(error) => Self::Crdt(error),
+            AppEditError::Auth(error) => Self::Auth(error),
+            AppEditError::File(error) => Self::File(error),
         }
     }
 }

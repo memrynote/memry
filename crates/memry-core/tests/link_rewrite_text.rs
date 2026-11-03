@@ -115,6 +115,26 @@ fn a_hash_title_is_left_alone_when_split_resolution_wins() {
     );
 }
 
+/// A new name with `|` or `]` would end the link early, and one with `#` names what comes
+/// before it: a path, or a title another note holds. Such a link is left as it was.
+#[test]
+fn a_new_name_that_spells_another_link_is_not_written() {
+    let to = |title: &str, other: fn(&str) -> bool| {
+        rename("[[Plan]] [[Notes/Plan]]", "Plan", title, other)
+    };
+    assert_eq!(to("A|B", no_other), None);
+    assert_eq!(to("A]B", no_other), None);
+    assert_eq!(to("C# Notes", |title| title == "C"), None);
+    assert_eq!(
+        to("C# Notes", no_other).as_deref(),
+        Some("[[C# Notes]] [[Notes/Plan]]")
+    );
+    assert_eq!(rename("[[Plan#Goals]]", "Plan", "C# Notes", no_other), None);
+    let (from, to) = (names("Plan", Some("A")), names("Plan", Some("B|C")));
+    let moved = rewrite_text("[[A/Plan]] [[Plan]]", "renamed", &from, &to, |_| Ok(false));
+    assert_eq!(moved.unwrap(), None);
+}
+
 #[test]
 fn a_move_rewrites_only_path_links() {
     let (from, to) = (names("Plan", Some("A")), names("Plan", Some("B/C")));

@@ -90,8 +90,8 @@ pub enum ChangeSource {
     /// The app wrote, created or removed the file.
     App,
     /// The app edited the file's text for the user, outside the editor (`vault::app_edit`: the
-    /// links to a renamed note). The renderer takes it as it takes an outside edit, as
-    /// Electron's `landSourceRewrite` sends it.
+    /// links to a renamed note, a linked mention, a template's apply). The renderer takes it as
+    /// it takes an outside edit, as Electron's `landSourceRewrite` sends it.
     AppEdit,
 }
 

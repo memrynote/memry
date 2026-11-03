@@ -18,6 +18,8 @@ mod vault_env;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "app_edit.rs"]
+mod app_edit;
 #[path = "article_constants.rs"]
 mod article_constants;
 #[path = "article_dom.rs"]

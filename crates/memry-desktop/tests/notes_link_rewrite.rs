@@ -1,9 +1,8 @@
 //! The links to a note follow its rename and its move (Step 13g-2, #3530), over a real
 //! session, tier, watcher and index: each linking file is rewritten in place, frontmatter
 //! included, its note's document takes the new text, its row the new hash, and the renderer is
-//! told as for an outside edit; the watcher reports none of it back. The app-edit seam
-//! (`vault::app_edit`) keeps a file the note does not hold as it is: an outside edit not fed
-//! yet, a document ahead of its file, an edit that would break the frontmatter.
+//! told as for an outside edit; the watcher reports none of it back. The seam itself is
+//! `app_edit.rs`.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -16,19 +15,17 @@ use std::sync::Arc;
 
 use index_support::until;
 use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::NotesService;
-use memry_desktop::vault::app_edit::{AppEdit, Edited, Kept};
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::hash::content_hash;
 use vault_env::{Env, QUIET, env, indexed};
 
 /// An open vault over `files`, its first walk and index pass done, with the notes service and
 /// the store.
-fn opened(files: &[(&str, &str)]) -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
+pub(crate) fn opened(files: &[(&str, &str)]) -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
     let mut e = env(|store| {
         kept = Some(store.clone());
@@ -45,7 +42,7 @@ fn opened(files: &[(&str, &str)]) -> (Env, Arc<NotesService>, Arc<dyn SecureStor
     (e, notes, store)
 }
 
-fn id_at(e: &Env, path: &str) -> String {
+pub(crate) fn id_at(e: &Env, path: &str) -> String {
     e.rows()
         .into_iter()
         .find(|(_, p)| p == path)
@@ -53,7 +50,7 @@ fn id_at(e: &Env, path: &str) -> String {
         .0
 }
 
-fn row_hash(e: &Env, id: &str) -> Option<String> {
+pub(crate) fn row_hash(e: &Env, id: &str) -> Option<String> {
     e.core()
         .note_files()
         .by_id(id)
@@ -63,7 +60,7 @@ fn row_hash(e: &Env, id: &str) -> Option<String> {
 }
 
 /// The `Changed` facts of the next quiet spell, by source.
-fn changes(e: &mut Env) -> Vec<(String, ChangeSource)> {
+pub(crate) fn changes(e: &mut Env) -> Vec<(String, ChangeSource)> {
     std::thread::sleep(QUIET);
     e.drain()
         .into_iter()
@@ -132,71 +129,28 @@ See [[Roadmap]], [[Roadmap#Goals|the goals]] and [[Other]].\n\nAlso [[work/Roadm
     assert_eq!(e.read("archive/Roadmap.md"), "Back to [[Roadmap]].\n");
 }
 
+/// A title the frontmatter's quoting cannot hold as written (`'` in a single-quoted value): the
+/// value is written as YAML writes it, every other line kept, and the body follows too.
 #[test]
-fn a_file_the_note_does_not_hold_keeps_its_text() {
-    let (e, _, store) = opened(&[("Ideas.md", "See [[Plan]].\n")]);
+fn a_title_with_a_quote_follows_in_the_frontmatter_and_the_body() {
+    let (e, notes, _) = opened(&[
+        ("Plan.md", "The plan.\n"),
+        (
+            "Ideas.md",
+            "---\n# mine\nrelated: '[[Plan]]'\ntags: [x]\n---\nSee [[Plan]].\n",
+        ),
+    ]);
     let open = e.session.current().unwrap();
-    let ideas = id_at(&e, "Ideas.md");
-    let edit = AppEdit::new(&e.tier, &store, &open).unwrap();
-    let run = |text: &'static str| -> Edited {
-        edit.run(&ideas, ChangeSource::AppEdit, |_| {
-            Ok::<_, NotesError>(Some(text.to_owned()))
-        })
-        .unwrap()
-    };
+    let plan = id_at(&e, "Plan.md");
+    let links = NoteLinks::new(&open);
+    until("the links indexed", || {
+        links.get(&plan).unwrap().incoming.len() == 1
+    });
 
-    // An edit that would leave a frontmatter that does not parse.
+    notes.rename(&open, &plan, "Kaan's Plan").unwrap();
+
     assert_eq!(
-        run("---\na: [\n---\nSee [[Roadmap]].\n"),
-        Edited::Kept(Kept::FrontmatterBroken)
+        e.read("Ideas.md"),
+        "---\n# mine\nrelated: '[[Kaan''s Plan]]'\ntags: [x]\n---\nSee [[Kaan's Plan]].\n"
     );
-    assert_eq!(e.read("Ideas.md"), "See [[Plan]].\n");
-
-    // The document is ahead of its file: an edit in the app the write-back has not written.
-    e.edit_in_app(&store, &ideas, "Edited in the app");
-    assert_eq!(run("See [[Roadmap]].\n"), Edited::Kept(Kept::BodyAhead));
-    assert_eq!(e.read("Ideas.md"), "See [[Plan]].\n");
-    assert_eq!(e.body(&ideas), "Edited in the app");
-
-    // The file is not the one its row names: an outside edit the note has not taken.
-    e.core()
-        .note_files()
-        .set_hash(&ideas, Some("not-the-file"))
-        .unwrap();
-    assert_eq!(run("See [[Roadmap]].\n"), Edited::Kept(Kept::FileChanged));
-    assert_eq!(e.read("Ideas.md"), "See [[Plan]].\n");
-}
-
-#[test]
-fn an_edit_lands_in_the_file_the_document_and_the_row() {
-    let (mut e, _, store) = opened(&[("Ideas.md", "---\nkeep: 'as is'\n---\nSee [[Plan]].\n")]);
-    let open = e.session.current().unwrap();
-    let ideas = id_at(&e, "Ideas.md");
-    e.drain();
-    let edit = AppEdit::new(&e.tier, &store, &open).unwrap();
-    let text = "---\nkeep: 'as is'\n---\nSee [[Plan]] and more.\n";
-    let done = edit
-        .run(&ideas, ChangeSource::App, |file| {
-            Ok::<_, NotesError>(Some(file.raw.replace("]].", "]] and more.")))
-        })
-        .unwrap();
-    assert_eq!(
-        done,
-        Edited::Wrote {
-            hash: content_hash(text),
-            held: true
-        }
-    );
-    assert_eq!(e.read("Ideas.md"), text);
-    assert_eq!(e.body(&ideas), "See [[Plan]] and more.");
-    assert_eq!(row_hash(&e, &ideas), Some(content_hash(text)));
-    // No version of the body the edit replaced: it was the file's.
-    assert!(e.versions(&ideas).is_empty());
-    assert_eq!(
-        changes(&mut e),
-        [("Ideas.md".to_owned(), ChangeSource::App)]
-    );
-    // Nothing to change is no write.
-    let none = edit.run(&ideas, ChangeSource::App, |_| Ok::<_, NotesError>(None));
-    assert_eq!(none.unwrap(), Edited::Unchanged);
 }

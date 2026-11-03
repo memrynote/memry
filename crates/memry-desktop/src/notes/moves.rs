@@ -116,7 +116,7 @@ impl NotesService {
         }
         let renamed = self
             .order
-            .run(note_id, || self.move_now(open, note_id, to, after_file))?;
+            .run(note_id, |_| self.move_now(open, note_id, to, after_file))?;
         if let Some((from, to)) = renamed {
             self.rewrite_inbound(open, note_id, &from, &to);
         }
