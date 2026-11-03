@@ -1,8 +1,9 @@
 //! The Windows spell checker (`ISpellChecker`). COM objects live on the thread that made them,
 //! so one thread owns the checker and every call is a message to it.
 
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Sender, channel};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use memry_desktop::shell::spell::{SpellBackend, windows_language_candidates};
@@ -17,6 +18,10 @@ use windows::core::{HSTRING, PWSTR};
 
 const REPLY_WAIT: Duration = Duration::from_secs(5);
 const LOCALE_NAME_MAX_LENGTH: usize = 85;
+/// Checked and asked for suggestions once before the first request: a short typo and a long
+/// unknown word, which load different parts of the dictionary. On a cold Windows session the
+/// first suggestions took 3 s on an idle VM and over five on a busy CI runner (#3888).
+const WARM_UP_WORDS: [&str; 2] = ["teh", "memrywarmupqxzv"];
 
 enum Request {
     Check(String, Sender<bool>),
@@ -26,6 +31,7 @@ enum Request {
 
 pub struct WinSpell {
     requests: Mutex<Sender<Request>>,
+    warm: Arc<AtomicBool>,
 }
 
 impl WinSpell {
@@ -34,6 +40,8 @@ impl WinSpell {
     pub fn start() -> Option<Self> {
         let (requests, inbox) = channel::<Request>();
         let (ready_tx, ready_rx) = channel::<bool>();
+        let warm = Arc::new(AtomicBool::new(false));
+        let warmed = warm.clone();
         std::thread::Builder::new()
             .name("spell-checker".to_owned())
             .spawn(move || {
@@ -45,6 +53,11 @@ impl WinSpell {
                 let checker = create_checker();
                 let _ = ready_tx.send(checker.is_some());
                 if let Some(checker) = checker {
+                    for word in WARM_UP_WORDS {
+                        is_correct(&checker, word);
+                        suggestions(&checker, word, 1);
+                    }
+                    warmed.store(true, Ordering::Release);
                     serve(&checker, &inbox);
                 }
                 // SAFETY: pairs the successful `CoInitializeEx` above.
@@ -57,6 +70,7 @@ impl WinSpell {
             .filter(|ready| *ready)
             .map(|_| Self {
                 requests: Mutex::new(requests),
+                warm,
             })
     }
 
@@ -178,5 +192,9 @@ impl SpellBackend for WinSpell {
     fn add(&self, word: &str) -> bool {
         self.ask(|reply| Request::Add(word.to_owned(), reply))
             .unwrap_or(false)
+    }
+
+    fn ready(&self) -> bool {
+        self.warm.load(Ordering::Acquire)
     }
 }

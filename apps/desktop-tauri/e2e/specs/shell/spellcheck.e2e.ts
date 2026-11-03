@@ -1,6 +1,7 @@
 import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
 import type { Page } from '../../harness/pw-compat/page'
+import type { TauriApp } from '../../harness/tauri-lifecycle'
 import { invoke } from '../../harness/vault-commands'
 import { pollUntil, readMainLog } from '../../harness/wait'
 
@@ -12,13 +13,28 @@ interface SpellResult {
 
 const check = (page: Page, word: string) => invoke<SpellResult>(page, 'spell_check_word', { word })
 
-// A headless Linux runner may have no Enchant dictionary; `available: false` is then the answer
-// and the page shows no suggestions, which the unit tests cover.
+// The Windows checker loads its dictionary on first use. On a busy runner the load outlasted the
+// five seconds a call waits, so the call answered with no suggestions or a failed add (#3888).
+// A headless Linux runner may have no Enchant dictionary; there is nothing to load, and the page
+// shows no suggestions, which the unit tests cover.
+async function dictionary(app: TauriApp): Promise<'loaded' | 'none'> {
+  const state = await pollUntil(
+    async () => {
+      const ready = await invokeTest<boolean | null>(app, 'e2e_spell_ready')
+      return ready === null ? ('none' as const) : ready && ('loaded' as const)
+    },
+    { timeoutMs: 60_000 }
+  )
+  expect(['loaded', 'none']).toContain(state ?? 'still loading after 60 s')
+  return state ?? 'none'
+}
+
 test('a misspelled word comes back with suggestions and a correct one does not', async ({
+  app,
   page
 }) => {
+  test.skip((await dictionary(app)) === 'none', 'no spell dictionary on this machine')
   const typo = await check(page, 'teh')
-  test.skip(!typo.available, 'no spell dictionary on this machine')
   expect(typo.misspelled).toBe(true)
   expect(typo.suggestions).toContain('the')
   expect(typo.suggestions.length).toBeLessThanOrEqual(8)
@@ -27,6 +43,7 @@ test('a misspelled word comes back with suggestions and a correct one does not',
 })
 
 test('a word added to the personal dictionary stops being misspelled', async ({ app, page }) => {
+  test.skip((await dictionary(app)) === 'none', 'no spell dictionary on this machine')
   // Nonsense that no dictionary knows and no word list will ever contain, fresh per attempt:
   // Windows and Linux keep an added word for the OS user, so a retry of the same word found it
   // already learned.
@@ -35,8 +52,7 @@ test('a word added to the personal dictionary stops being misspelled', async ({ 
   ).join('')
   const word = `memrzqxwv${suffix}`
   const before = await check(page, word)
-  test.skip(!before.available, 'no spell dictionary on this machine')
-  expect(before.misspelled).toBe(true)
+  expect(before).toMatchObject({ available: true, misspelled: true })
   try {
     const added = await invoke<boolean>(page, 'spell_add_word', { word })
     // A refusal fails with the app's spelling log, which says whether the platform refused or

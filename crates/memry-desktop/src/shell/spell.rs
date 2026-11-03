@@ -19,6 +19,11 @@ pub trait SpellBackend: Send + Sync {
     fn suggest(&self, word: &str, max: usize) -> Vec<String>;
     /// Adds `word` to the personal dictionary; false when the backend refused.
     fn add(&self, word: &str) -> bool;
+    /// False while the backend still loads its dictionary. A call made then waits behind the
+    /// load and may give up before it ends.
+    fn ready(&self) -> bool {
+        true
+    }
 }
 
 /// What the page needs to build its menu.
