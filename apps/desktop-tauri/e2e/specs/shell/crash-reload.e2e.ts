@@ -2,7 +2,7 @@
 // shell reloads the page up to three times a minute and the page tells the user. Each death
 // spends one reload: a second subscription to the same death would spend two (#3527 10h).
 import { test, expect } from '../../harness/test'
-import { invokeTest } from '../../harness/invoke-test'
+import { sendTest } from '../../harness/invoke-test'
 import { pollUntil, readMainLog, sleep } from '../../harness/wait'
 
 const RELOADED = 'reloading main after its web process ended'
@@ -18,7 +18,7 @@ test('three page crashes in a minute are three reloads, each told to the user', 
   for (let crash = 1; crash <= 3; crash += 1) {
     await app.executor.execute('window.__memryBeforeCrash = true')
     const bootsBefore = readMainLog(app.dirs.logDir).split('renderer started').length - 1
-    await invokeTest(app, 'e2e_kill_page')
+    await sendTest(app, 'e2e_kill_page')
     // The reload-request log precedes navigation. Wait for the new renderer's app_info call:
     // a WebDriver script crossing navigation loses its result and waits the full script timeout.
     const reloaded = await pollUntil(
