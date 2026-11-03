@@ -1,6 +1,6 @@
 //! The app-edit seam (`vault::app_edit`, #3530 13g-2) over a real session, tier, watcher and
-//! index: what each precondition replaces and what it keeps, a text the document does not take
-//! reaching it through the watcher, and the byte order mark.
+//! index: what `Held` replaces and what it keeps, a text the document does not take reaching it
+//! through the watcher, and the byte order mark.
 
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::markdown::convert::api::Converter;
@@ -170,53 +170,6 @@ fn held_edit_lands_in_the_document_the_file_and_the_row_with_one_byte_order_mark
         None
     });
     assert_eq!(none, Edited::Unchanged);
-}
-
-#[test]
-fn a_save_keeps_what_it_would_lose_then_replaces_it() {
-    let (e, _, store) = opened(&[("Ideas.md", "First text.\n")]);
-    let open = e.session.current().unwrap();
-    let ideas = id_at(&e, "Ideas.md");
-    // The document holds an edit its file lacks (a merge from sync, say), and the file is not
-    // the one its row names (an outside edit not fed yet).
-    e.edit_in_app(&store, &ideas, "Merged from another device");
-    e.core()
-        .note_files()
-        .set_hash(&ideas, Some("not-the-file"))
-        .unwrap();
-    let edit = AppEdit::new(&e.tier, &store, &open).unwrap();
-    let save = |text: &'static str| {
-        run(&edit, &ideas, Precondition::Save, ChangeSource::App, |_| {
-            Some(text.to_owned())
-        })
-    };
-
-    assert_eq!(
-        save("The save.\n"),
-        Edited::Wrote {
-            hash: content_hash("The save.\n"),
-            held: true
-        }
-    );
-    assert_eq!(e.read("Ideas.md"), "The save.\n");
-    assert_eq!(e.body(&ideas), "The save.");
-    assert_eq!(row_hash(&e, &ideas), Some(content_hash("The save.\n")));
-    let versions = e.versions(&ideas);
-    assert!(
-        versions.contains(&"First text.\n".to_owned()),
-        "{versions:?}"
-    );
-    assert!(
-        versions
-            .iter()
-            .any(|version| version.contains("Merged from another device")),
-        "{versions:?}"
-    );
-
-    // A save over a file its document holds keeps nothing more.
-    save("Saved again.\n");
-    assert_eq!(e.read("Ideas.md"), "Saved again.\n");
-    assert_eq!(e.versions(&ideas).len(), versions.len());
 }
 
 #[test]

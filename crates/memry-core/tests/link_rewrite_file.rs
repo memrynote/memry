@@ -30,11 +30,19 @@ fn wrote(text: &str, to: &str) -> String {
 }
 
 #[test]
-fn a_value_the_quoting_cannot_hold_is_written_by_yaml_and_every_other_line_kept() {
+fn a_value_the_quoting_cannot_hold_is_written_by_yaml_and_untouched_lines_kept() {
     let text = "---\n# mine\nrelated: '[[Plan]]'\ntags: [x]\n---\nSee [[Plan]].\n";
     assert_eq!(
         wrote(text, "Kaan's Plan"),
         "---\n# mine\nrelated: '[[Kaan''s Plan]]'\ntags: [x]\n---\nSee [[Kaan's Plan]].\n"
+    );
+    // Then every key that names the note is written by YAML, the double-quoted one too.
+    assert_eq!(
+        wrote(
+            "---\na: '[[Plan]]'\nb: \"[[Plan]]\"\nc: \"[[Other]]\"\n---\n",
+            "Kaan's Plan"
+        ),
+        "---\na: '[[Kaan''s Plan]]'\nb: '[[Kaan''s Plan]]'\nc: \"[[Other]]\"\n---\n"
     );
     // A raw `\` in a double-quoted value would read as an escape.
     assert_eq!(

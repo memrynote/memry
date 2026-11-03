@@ -1,9 +1,9 @@
 //! The app's edit of an existing note's file and document (Step 13g-2, #3530): the one owner of
 //! "the app changes the text of a note file and the note's document follows". The inbound link
 //! repair of a rename runs through it (`notes::link_rewrite`, Electron `landSourceRewrite`), and
-//! so are meant to: the editor's save (`notes:update`, 13f-3c), the property writer (13k-3), the
-//! linked mention and aliases (13i-5), a template's apply (13l-4) and the tag rename across
-//! notes (13j-4).
+//! so are meant to: the property writer (13k-3), the linked mention and aliases (13i-5), a
+//! template's apply (13l-4), the tag rename across notes (13j-4) and, with a precondition of its
+//! own, the editor's save (`notes:update`, 13f-3c).
 //!
 //! [`AppEdit::run`] takes the note's write turn ([`NoteTurn`]) and holds the rows' lane from
 //! the read to the row, so no watcher fact and no write-back pass for the note lands in
@@ -12,34 +12,33 @@
 //!   hash, and the document must serialize to its text and `writing` data. Anything else is
 //!   [`Edited::Kept`] and nothing changes: an outside edit not fed yet, a document ahead of its
 //!   file, a body not pulled or not representable. The edit keeps no version, since it replaces
-//!   only what both already hold.
-//! - [`Precondition::Save`]: the user's save, which replaces whatever is there, and first keeps
-//!   a version of what it would lose. A file the document is not known to hold (another hash
-//!   than its row's, or a document that differs from it) is kept whole, as Electron's
-//!   `writeNote` keeps its significant snapshot. A document body that is not the file's text
-//!   (a merge from sync the write-back has not written yet) is kept by the feed.
+//!   only what both already hold. The document is compared before the feed and fed without
+//!   `unless_changed_from`: the note's turn and the lane keep every writer of this device out
+//!   in between, and no body writer runs outside them today. One that does (the resident
+//!   editor, Step 14) must pass the body read as `unless_changed_from` here.
 //!
-//! In both, a frontmatter that does not parse, in the file or in the edit's text, is kept as it
-//! is (#3750). The caller's closure gets the file's text without a byte order mark and returns
-//! the whole new text, or `None`; the seam puts the mark back once, where the file had it.
+//! A frontmatter that does not parse, in the file or in the edit's text, is kept as it is
+//! (#3750). The caller's closure gets the file's text without a byte order mark and returns the
+//! whole new text, or `None`; the seam puts the mark back once, where the file had it.
 //!
 //! **Order: the document first, then the file, then the row.**
-//! 1. read (row, file, checks); 2. keep a version (`Save`); 3. feed the new body
-//!    ([`ExternalFeed::feed_app_edit`] with the body read, so the text the user saw is no
-//!    version); 4. the own-write record, then the file, replaced only while it is still the
-//!    bytes read ([`write_note_over`]); 5. the row's hashes, then [`Applied::Changed`] with the
-//!    caller's [`ChangeSource`].
+//! 1. read (row, file, checks); 2. feed the new body ([`ExternalFeed::feed_app_edit`] with the
+//!    body read, so the text the user saw is no version); 3. the own-write record, then the
+//!    file, replaced only while it is still the bytes read ([`write_note_over`]); 4. the row's
+//!    hashes, then [`Applied::Changed`] with the caller's [`ChangeSource`].
 //!
 //! Why this order, against the other (file, then feed):
-//! - **Crash between the feed and the file**: the document holds the edit and the row still
-//!   names the old file, so the next open's reconcile writes the document out
-//!   (`vault::writeback`, "every open brings the files left behind to their bodies"). The other
-//!   order leaves the edit in the file only, which the walk feeds at the next open; both lose
-//!   nothing.
+//! - **Crash between the feed and the file**: the document holds the body edit and the row
+//!   still names the old file, so the next open's reconcile writes the document's body out
+//!   (`vault::writeback`, "every open brings the files left behind to their bodies"). The
+//!   frontmatter is not in the document (but for its `writing` data), so a frontmatter change
+//!   the edit made is lost there, and the edit must be made again (a rename's link repair: a
+//!   replayed record, #3886). The other order leaves the whole edit in the file, which the walk
+//!   feeds at the next open.
 //! - **An outside edit that lands between the read and the write** makes the write refuse
 //!   ([`Kept::FileChanged`]). The document already holds the edit, and the consumer, once the
 //!   lane is free, feeds the outside edit over it and keeps the edit as a version: the outside
-//!   edit wins and the user's save is not lost. The other order loses the save.
+//!   edit wins and the edit is not lost. The other order loses it.
 //! - **A feed that does not take the text** (an error, a large file, a refused or owed body):
 //!   the file is written anyway, the own-write record is cleared rather than told, and the row
 //!   is left. The watcher then reports the write once the lane is free, and the consumer feeds
@@ -80,13 +79,11 @@ use crate::session::OpenVault;
 const SCOPE: &str = "app_edit";
 const BOM: char = '\u{feff}';
 
-/// What an edit may replace (see the module comment).
+/// What an edit may replace (see the module comment). The editor's save adds its own (13f-3c).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Precondition {
     /// Only a file the document holds; anything else is kept.
     Held,
-    /// The user's save: whatever is there, kept as a version first when it would be lost.
-    Save,
 }
 
 /// What an edit came to.
@@ -108,22 +105,22 @@ pub enum Kept {
     NotMarkdown,
     /// The row names a file that is not there.
     NoFile,
-    /// `Held`: the row has no hash, so the document is not known to hold the file.
+    /// The row has no hash, so the document is not known to hold the file.
     NotRead,
-    /// `Held`: the file differs from its row's hash (an outside edit not fed yet). Both: the
-    /// file changed while the write ran.
+    /// The file differs from its row's hash (an outside edit not fed yet), or changed while the
+    /// write ran.
     FileChanged,
     /// The file's frontmatter does not parse.
     FrontmatterUnreadable,
     /// The edit's text has a frontmatter that does not parse.
     FrontmatterBroken,
-    /// `Held`: the document holds an edit its file does not have yet.
+    /// The document holds an edit its file does not have yet.
     BodyAhead,
-    /// `Held`: the file holds an edit the document did not take.
+    /// The file holds an edit the document did not take.
     FileAhead,
-    /// `Held`: the note's server body has not been pulled.
+    /// The note's server body has not been pulled.
     BodyNotPulled,
-    /// `Held`: the document holds what a markdown file cannot, or does not serialize.
+    /// The document holds what a markdown file cannot, or does not serialize.
     NotRepresentable,
     /// No live note or journal day by that id.
     NoBody,
@@ -207,31 +204,17 @@ impl AppEdit {
             return Ok(Edited::Kept(Kept::FrontmatterUnreadable));
         };
         let read_body = split_frontmatter_block(read).body;
-        // Whether the document holds the file read: else a save keeps it as a version first.
-        let holds_file = match precondition {
-            Precondition::Held => {
-                let Some(row_hash) = &row.content_hash else {
-                    return Ok(Edited::Kept(Kept::NotRead));
-                };
-                if *row_hash != file.hash {
-                    return Ok(Edited::Kept(Kept::FileChanged));
-                }
-                let differs = self.document_differs(note_id, &row.path, read, &parsed.frontmatter);
-                if let Some(kept) = differs.map_err(AppEditError::from)? {
-                    return Ok(Edited::Kept(kept));
-                }
-                true
-            }
-            Precondition::Save => {
-                let differs = self.document_differs(note_id, &row.path, read, &parsed.frontmatter);
-                match differs.map_err(AppEditError::from)? {
-                    Some(Kept::NoBody) => return Ok(Edited::Kept(Kept::NoBody)),
-                    differs => {
-                        differs.is_none() && row.content_hash.as_deref() == Some(file.hash.as_str())
-                    }
-                }
-            }
+        let Precondition::Held = precondition;
+        let Some(row_hash) = &row.content_hash else {
+            return Ok(Edited::Kept(Kept::NotRead));
         };
+        if *row_hash != file.hash {
+            return Ok(Edited::Kept(Kept::FileChanged));
+        }
+        let differs = self.document_differs(note_id, &row.path, read, &parsed.frontmatter);
+        if let Some(kept) = differs.map_err(AppEditError::from)? {
+            return Ok(Edited::Kept(kept));
+        }
         let Some(next) = edit(read)? else {
             return Ok(Edited::Unchanged);
         };
@@ -247,12 +230,6 @@ impl AppEdit {
         let Ok(edited) = parse_markdown_note(next) else {
             return Ok(Edited::Kept(Kept::FrontmatterBroken));
         };
-        if !holds_file {
-            self.vault
-                .write_back()
-                .keep_replaced(note_id, &file.raw, read_body)
-                .map_err(AppEditError::from)?;
-        }
         let Some(takes) = self.feed_text(note_id, &row.path, next, &edited.frontmatter, read_body)
         else {
             return Ok(Edited::Kept(Kept::NoBody));

@@ -1,10 +1,11 @@
 //! [`rewrite_file`]: the inbound link repair over a whole vault file, its frontmatter read as
 //! YAML. Electron rewrites the file's raw text, frontmatter included, so a title YAML must
 //! quote otherwise (`'` in a single-quoted value, `\` in a double-quoted one) breaks the block
-//! or changes what it says. Here the block's raw rewrite is kept only when it reads back as its
-//! values rewritten one by one, which is Electron's bytes in every case YAML allows. Otherwise
-//! the changed keys are written again by the frontmatter editor ([`edit_frontmatter_block`]),
-//! every other line kept; a block it cannot edit key by key keeps its links.
+//! or changes what it says. Here the block's raw rewrite, Electron's bytes, is kept when it
+//! reads back as its values rewritten one by one. Otherwise every key whose value changed is
+//! written again by the frontmatter editor ([`edit_frontmatter_block`]), as YAML spells it, and
+//! only the keys and lines that name no renamed note keep their bytes; a block it cannot edit
+//! key by key keeps its links.
 //!
 //! Untrusted input: a value is walked once per collection, however many aliases share it. Its
 //! depth is the loader's to bound (`MAX_YAML_DEPTH` in the text, one alias subtree more in the
