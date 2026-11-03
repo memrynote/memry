@@ -148,6 +148,20 @@ impl Fixture {
         tauri::async_runtime::block_on(notes_get_all_positions(self.app.handle().clone())).unwrap()
     }
 
+    /// The next `count` events of an edit heard, taken.
+    fn next_edited(&self, count: usize) -> Vec<(&'static str, Value)> {
+        let deadline = Instant::now() + WAIT;
+        loop {
+            let mut edited = self.edited.lock().unwrap();
+            if edited.len() >= count {
+                return std::mem::take(&mut *edited);
+            }
+            drop(edited);
+            assert!(Instant::now() < deadline, "no {count} edit events");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
     /// The next `NoteRenamedEvent` heard.
     fn next_renamed(&self) -> Value {
         let deadline = Instant::now() + WAIT;
@@ -221,15 +235,7 @@ fn an_edit_answers_the_note_and_sends_internal_notes_updated_and_tags_changed() 
         ..NoteUpdateInput::default()
     });
     assert_eq!(note.header_tags, ["idea"]);
-    let heard = |count: usize| {
-        let deadline = Instant::now() + WAIT;
-        while f.edited.lock().unwrap().len() < count {
-            assert!(Instant::now() < deadline, "{:?}", f.edited.lock().unwrap());
-            std::thread::sleep(Duration::from_millis(20));
-        }
-        std::mem::take(&mut *f.edited.lock().unwrap())
-    };
-    let mut events = heard(2);
+    let mut events = f.next_edited(2);
     events.sort_by_key(|(name, _)| *name);
     assert_eq!(events[0], (NoteTagsChangedEvent::NAME, Value::Null));
     assert_eq!(events[1].0, NoteUpdatedEvent::NAME);
@@ -242,7 +248,7 @@ fn an_edit_answers_the_note_and_sends_internal_notes_updated_and_tags_changed() 
         content: Some("About the plan".into()),
         ..NoteUpdateInput::default()
     });
-    let events = heard(1);
+    let events = f.next_edited(1);
     assert_eq!(events[0].0, NoteUpdatedEvent::NAME);
     std::thread::sleep(Duration::from_millis(500));
     assert_eq!(*f.edited.lock().unwrap(), Vec::new());
