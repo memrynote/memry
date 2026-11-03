@@ -122,6 +122,35 @@ fn both_real_prefers_memrynote() {
     assert_eq!(profile.dir, root.path().join("memrynote"));
 }
 
+/// #3822: the Electron app on Windows kept `@memry\desktop` and wrote only `logs` under
+/// `memrynote`; a stray file there (an `.updaterId`) hid the real profile and its install marker.
+#[test]
+fn a_stray_file_in_memrynote_does_not_hide_the_legacy_profile() {
+    for host in [HostOs::Windows, HostOs::MacOs, HostOs::Linux] {
+        let root = tempfile::tempdir().unwrap();
+        let stray = root.path().join("memrynote");
+        fs::create_dir_all(stray.join("logs")).unwrap();
+        fs::write(stray.join(".updaterId"), "id").unwrap();
+        let old = legacy(root.path());
+        make_profile(&old);
+        fs::write(old.join("update-install-attempt.json"), "{}").unwrap();
+        let profile = locate_profile(&env(root.path(), host)).unwrap().unwrap();
+        assert_eq!(profile.dir, old, "{host:?}");
+        assert!(profile.other_candidates.is_empty(), "{host:?}");
+    }
+}
+
+#[test]
+fn a_memrynote_profile_without_memry_files_is_still_found_alone() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = root.path().join("memrynote");
+    fs::create_dir_all(dir.join("Local Storage/leveldb")).unwrap();
+    let profile = locate_profile(&env(root.path(), HostOs::MacOs))
+        .unwrap()
+        .unwrap();
+    assert_eq!(profile.dir, dir);
+}
+
 #[test]
 fn log_only_new_directory_is_not_a_profile() {
     let root = tempfile::tempdir().unwrap();

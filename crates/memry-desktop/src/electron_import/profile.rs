@@ -304,10 +304,14 @@ pub fn locate_profile(env: &ProfileEnv) -> Result<Option<ElectronProfile>, Impor
             let new_dir = env.app_data.join(MEMRYNOTE_APP_NAME);
             let legacy_dir = env.app_data.join("@memry").join("desktop");
             let chromium_dir = env.app_data.join(CHROMIUM_DIR_NAME);
-            let usual = if let Some(dir) = resolve_candidate(&new_dir) {
-                Some((dir, !is_symlink(&legacy_dir)))
-            } else {
-                resolve_candidate(&legacy_dir).map(|dir| (dir, false))
+            let usual = match (resolve_candidate(&new_dir), resolve_candidate(&legacy_dir)) {
+                // A `memrynote` without a file this app writes (a stray file another program
+                // left, #3822) does not hide a legacy profile that has them.
+                (Some(new), Some(old)) if !has_memry_files(&new) && has_memry_files(&old) => {
+                    Some((old, false))
+                }
+                (Some(new), _) => Some((new, !is_symlink(&legacy_dir))),
+                (None, old) => old.map(|dir| (dir, false)),
             };
             // `Chromium` is a generic name: it counts only with files this app writes.
             let chromium = resolve_candidate(&chromium_dir).filter(|d| has_memry_files(d));
