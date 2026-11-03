@@ -1,6 +1,7 @@
 //! The journal service of the desktop app (Step 13m, #3530): a day's entry as the journal page
-//! reads it, made on its first write and deleted (`journal:getEntry`, `journal:createEntry`,
-//! `journal:deleteEntry` of `ipc/journal-handlers.ts`).
+//! reads it, made on its first write, edited and deleted (`journal:getEntry`,
+//! `journal:createEntry`, `journal:updateEntry`, `journal:deleteEntry` of
+//! `ipc/journal-handlers.ts`).
 //!
 //! A day is a core journal record (its id, tags, instants and body) and a vault file at the
 //! path its date makes (`JournalDays::path_of`). Where the two meet:
@@ -10,11 +11,13 @@
 //!   journal tags live on the record, never written back to the file (#3530, decided);
 //! - a create ([`write`]) writes the file Electron's `createJournalEntry` writes, in the order
 //!   13f's note create uses;
+//! - an update ([`update`]) edits the file through the app-edit seam and the record's tags and
+//!   properties after it;
 //! - the write-back keeps the file's body in step with the document after that (13m-1).
 //!
-//! Not here yet: `journal:updateEntry` (13m-3), the calendar reads (13m-4), and the moves that
-//! change what a file is (13m-5).
+//! Not here yet: the calendar reads (13m-4), and the moves that change what a file is (13m-5).
 
+pub mod update;
 pub mod write;
 
 use std::io::Read as _;
@@ -163,7 +166,7 @@ pub(crate) fn view_of(date: &str, raw: &str, stamp: Option<&DayStamp>) -> Journa
 }
 
 /// `extractJournalProperties`: the legacy nested envelope first, then the top level, which wins.
-fn properties_of(frontmatter: &Map<String, Value>) -> Map<String, Value> {
+pub(super) fn properties_of(frontmatter: &Map<String, Value>) -> Map<String, Value> {
     let mut out = Map::new();
     if let Some(Value::Object(nested)) = frontmatter.get("properties") {
         for (name, value) in nested {

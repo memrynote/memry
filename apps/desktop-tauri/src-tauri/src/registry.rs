@@ -46,6 +46,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::journal::journal_create_entry,
             crate::commands::journal::journal_delete_entry,
             crate::commands::journal::journal_get_entry,
+            crate::commands::journal::journal_update_entry,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
@@ -198,6 +199,7 @@ pub fn builder() -> Builder<Wry> {
             // journal
             crate::events::JournalEntryCreatedEvent,
             crate::events::JournalEntryDeletedEvent,
+            crate::events::JournalEntryUpdatedEvent,
             // locale
             crate::events::LocaleChangedEvent,
             // settings

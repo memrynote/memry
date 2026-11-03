@@ -97,7 +97,7 @@ impl NotesService {
         })
     }
 
-    fn create_day_now(
+    pub(super) fn create_day_now(
         &self,
         open: &OpenVault,
         date: &str,
@@ -230,6 +230,8 @@ impl NotesService {
         if let Err(error) = lane.put(&opened.id, &rel, stat) {
             return take_back(&mut lane, error.into());
         }
+        // The day's first save replaces this file with no version of it.
+        self.own_files.wrote(&opened.id, &hash);
         lane.publish(Applied::Added {
             note_id: opened.id.clone(),
             path: rel.clone(),
@@ -345,12 +347,16 @@ fn text_of(
 }
 
 /// The day as a read of it answers, for a create that found it made.
-fn answer(open: &OpenVault, journal: &Journal, date: &str) -> Result<JournalEntryView, NotesError> {
+pub(super) fn answer(
+    open: &OpenVault,
+    journal: &Journal,
+    date: &str,
+) -> Result<JournalEntryView, NotesError> {
     entry(open, journal, date)?.ok_or_else(|| NotesError::NotFound(date.to_owned()))
 }
 
 /// Days are written in order by date: a day's record id is known only once it is opened.
-fn order_key(date: &str) -> String {
+pub(super) fn order_key(date: &str) -> String {
     format!("journal:{date}")
 }
 

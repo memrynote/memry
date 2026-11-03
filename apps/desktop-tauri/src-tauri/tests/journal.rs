@@ -5,7 +5,9 @@ use memry_desktop::seams::transport::NativeTransport;
 use memry_desktop::telemetry::Service;
 use memry_desktop::telemetry::service::{Context, Sender};
 use memry_tauri::commands::journal::{Landed, announce};
-use memry_tauri::events::{JournalEntryCreatedEvent, JournalEntryDeletedEvent};
+use memry_tauri::events::{
+    JournalEntryCreatedEvent, JournalEntryDeletedEvent, JournalEntryUpdatedEvent,
+};
 use serde_json::{Value, json};
 use tauri::test::mock_app;
 use tauri::{Listener, Manager};
@@ -51,6 +53,7 @@ fn each_journal_command_sends_electrons_events_and_a_found_read_its_telemetry() 
     let heard = Arc::new(Mutex::new(Vec::<(&str, Value)>::new()));
     for name in [
         JournalEntryCreatedEvent::NAME,
+        JournalEntryUpdatedEvent::NAME,
         JournalEntryDeletedEvent::NAME,
     ] {
         let sink = Arc::clone(&heard);
@@ -94,7 +97,12 @@ fn each_journal_command_sends_electrons_events_and_a_found_read_its_telemetry() 
     });
     assert_eq!(
         sent(Landed::Created(&entry)),
-        [(JournalEntryCreatedEvent::NAME, created)]
+        [(JournalEntryCreatedEvent::NAME, created.clone())]
+    );
+    assert_eq!(
+        sent(Landed::Updated(&entry)),
+        [(JournalEntryUpdatedEvent::NAME, created)],
+        "an update sends the entry as a create does"
     );
 
     let deleted = |success| Landed::Deleted {

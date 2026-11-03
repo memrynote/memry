@@ -10,6 +10,7 @@
 //! | a write equal to the stored value writes nothing   | no clock tick, no push  |
 //! | a retype is refused and a tombstone revives        | FR-048, D2              |
 //! | desktop's first write opens the day with its fields | D2, `createJournalEntry` |
+//! | desktop's update replaces the properties           | `updateJournalEntry`    |
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::journal_ops::{metadata, reads};
@@ -549,4 +550,39 @@ fn a_deleted_day_opened_with_no_fields_pushes_no_deleted_content() {
         Ok(())
     })
     .expect("revive");
+}
+
+#[test]
+fn desktop_s_update_replaces_the_properties_in_their_order_and_keeps_the_stored_date() {
+    let db = open("set-properties");
+    db.call_blocking(|conn| {
+        let stored = json!({"date": DAY, "properties": {"date": DAY, "mood": "calm", "rating": 4}, "clock": {"device-b": 1}});
+        sync_items::apply_remote(conn, &remote("desktop-day", stored), NOW)?;
+        let fields = json!({"rating": "high", "energy": 2, "date": "1999-01-01"});
+        let set = metadata::set_properties(conn, DAY, fields.as_object().unwrap(), DEVICE, NOW + 1)?;
+        let names: Vec<&str> = set.keys().map(String::as_str).collect();
+        assert_eq!(names, ["rating", "energy"], "the given order, no retype refusal");
+        let payload = payload_of(conn, "desktop-day");
+        assert_eq!(
+            payload["properties"],
+            json!({"date": DAY, "rating": "high", "energy": 2}),
+            "the stored date stays and the given one is dropped"
+        );
+        assert_eq!(payload["content"], Value::Null);
+        assert_eq!(queued(conn), 1);
+
+        let before = raw_of(conn, "desktop-day");
+        metadata::set_properties(conn, DAY, &set, DEVICE, NOW + 2)?;
+        assert_eq!(raw_of(conn, "desktop-day"), before, "the same map writes nothing");
+        assert_eq!(queued(conn), 1);
+
+        let cleared = metadata::set_properties(conn, DAY, &serde_json::Map::new(), DEVICE, NOW + 3)?;
+        assert!(cleared.is_empty());
+        assert_eq!(payload_of(conn, "desktop-day")["properties"], json!({"date": DAY}));
+
+        metadata::set_properties(conn, "2099-06-16", &set, DEVICE, NOW + 4)?;
+        assert!(reads::stamp(conn, "2099-06-16")?.is_none(), "an absent day stays absent");
+        Ok(())
+    })
+    .expect("set properties");
 }

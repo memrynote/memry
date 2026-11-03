@@ -109,6 +109,35 @@ pub fn set_property(
     })
 }
 
+/// Replaces the day's properties with `properties` in their order, as desktop's
+/// `journal:updateEntry` replaces the file's (`writeJournalEntryWithContent`): no
+/// retype check, an empty map clears them all. A given `date` is dropped, a stored
+/// one kept. An unchanged map writes nothing. Returns the day's properties
+/// without `date`; an absent day stays absent and answers the given map.
+pub fn set_properties(
+    conn: &Connection,
+    date: &str,
+    properties: &Map<String, Value>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Map<String, Value>, StorageError> {
+    write_day(conn, date, false, device_id, now_ms, |object| {
+        let stored = properties::read_values(object, ITEM_TYPE, date)?;
+        let mut values = stored.clone();
+        values.retain(|name, _| name == RESERVED_PROPERTY);
+        for (name, value) in properties {
+            if name != RESERVED_PROPERTY {
+                values.insert(name.clone(), value.clone());
+            }
+        }
+        let changes = match stored == values {
+            true => Vec::new(),
+            false => properties_change(&values),
+        };
+        Ok((changes, visible(values)))
+    })
+}
+
 /// Clears one property, leaving the key present and `null` (§13.4). An absent
 /// day stays absent.
 pub fn clear_property(

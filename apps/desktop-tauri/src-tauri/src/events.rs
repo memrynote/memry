@@ -87,6 +87,14 @@ pub struct JournalEntryCreatedEvent {
     pub entry: JournalEntryView,
 }
 
+/// A day's entry was edited in the app (`journal:entryUpdated`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct JournalEntryUpdatedEvent {
+    pub date: String,
+    pub entry: JournalEntryView,
+}
+
 /// A day's entry was deleted (`journal:entryDeleted`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
