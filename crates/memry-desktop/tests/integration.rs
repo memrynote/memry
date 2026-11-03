@@ -102,6 +102,8 @@ mod notes_local_only;
 mod notes_moves;
 #[path = "notes_service.rs"]
 mod notes_service;
+#[path = "notes_update.rs"]
+mod notes_update;
 #[path = "notes_writes.rs"]
 mod notes_writes;
 #[path = "path_collision.rs"]

@@ -186,7 +186,8 @@ pub fn feed_external_edit(
 /// write. A replaced body is kept as a version only when it is not the text the app read: it
 /// then holds what the file did not (a peer's edit merged after the file was last written).
 /// The body the app read is the note as the user saw it, so an editor save keeps no version of
-/// its own previous save (desktop's note command feeds a save with none).
+/// its own previous save (desktop's note command feeds a save with none). A leading byte-order
+/// mark of `read` is dropped, as `input.markdown`'s is.
 pub fn feed_app_edit(
     conn: &Connection,
     converter: &Converter,
@@ -195,6 +196,7 @@ pub fn feed_app_edit(
     device_id: &str,
     now_ms: i64,
 ) -> Result<FeedOutcome, CrdtError> {
+    let read = read.strip_prefix('\u{feff}').unwrap_or(read);
     author(
         conn,
         converter,

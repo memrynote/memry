@@ -859,6 +859,22 @@ fn an_app_save_over_the_text_it_read_keeps_no_version() {
 }
 
 #[test]
+fn an_app_save_over_a_file_with_a_byte_order_mark_keeps_no_version() {
+    let f = fixture();
+    let id = f.note();
+    assert_eq!(f.feed(&id, "\u{feff}first text"), FeedOutcome::Fed);
+    assert_eq!(
+        app_edit(&f, &id, "\u{feff}second text", "\u{feff}first text"),
+        FeedOutcome::Fed
+    );
+    assert_eq!(
+        versions(&f, &id),
+        [],
+        "the mark is not part of the text read"
+    );
+}
+
+#[test]
 fn an_app_save_over_a_body_the_file_never_held_keeps_that_body() {
     let f = fixture();
     let id = f.note();

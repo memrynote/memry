@@ -9,6 +9,7 @@
 //! A note's rename (`notes:rename`) and the sidebar's manual order (`notes:reorder`,
 //! `notes:get-all-positions`, #3530 13g) go through `memry_desktop::notes::{moves, positions}`;
 //! the rename's `NoteRenamedEvent` comes from its row fact, as every note event does.
+//! A note's edit (`notes:update`, #3530 13f-3c) goes through `memry_desktop::notes::update`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -23,6 +24,7 @@ use memry_desktop::notes::links::{
 };
 use memry_desktop::notes::mentions::{Mentions, UnlinkedMentionView};
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::update::NoteUpdateInput;
 use memry_desktop::notes::view::{
     FileView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
 };
@@ -33,6 +35,7 @@ use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
+use crate::events::{NoteTagsChangedEvent, broadcast};
 use crate::shell::{external, services};
 
 /// The open vault, or the localized "no vault is open".
@@ -133,6 +136,29 @@ pub async fn notes_rename<R: Runtime>(
         service(&app)?
             .rename(&open, &id, &new_title)
             .map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// `notes:update`: an editor save of the note's body, an edit of its header tags, its icon.
+/// Answers the note, and sends `notes:tags-changed` when its tags changed; its `notes:updated`
+/// comes from its row fact.
+// Generic over the runtime so a test drives it on a mock app (`tests/notes_rename.rs`).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_update<R: Runtime>(
+    app: AppHandle<R>,
+    input: NoteUpdateInput,
+) -> Result<NoteView, CommandError> {
+    blocking("notes_update", move || {
+        let open = open_vault(&app)?;
+        let updated = service(&app)?
+            .update(&open, input)
+            .map_err(|error| failed(&error))?;
+        if updated.tags_changed {
+            broadcast(&app, NoteTagsChangedEvent);
+        }
+        Ok(updated.note)
     })
     .await
 }

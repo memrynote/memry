@@ -220,10 +220,8 @@ fn apply_inline(
     apply(current, &edit)
 }
 
-#[cfg(feature = "markdown")]
 pub use frontmatter::set_tags;
 
-#[cfg(feature = "markdown")]
 mod frontmatter {
     use std::sync::Arc;
 

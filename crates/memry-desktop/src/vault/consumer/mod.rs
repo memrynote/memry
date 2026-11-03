@@ -89,6 +89,9 @@ pub enum ChangeSource {
     Walk,
     /// The app wrote, created or removed the file.
     App,
+    /// The user edited the note in the app (`notes:update`): its body, its header tags or its
+    /// icon. Electron sends it as an `internal` `notes:updated`.
+    Edit,
 }
 
 /// A change to the rows, published after the row is written.

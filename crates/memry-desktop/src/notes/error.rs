@@ -54,6 +54,12 @@ pub enum NotesError {
     File(#[from] NoteFileError),
     #[error("the frontmatter could not be written: {0}")]
     Yaml(#[from] YamlError),
+    /// The note's frontmatter is a list or a scalar, which has no `tags` key to write.
+    #[error("the note's frontmatter is not a set of keys, so its tags cannot be written")]
+    FrontmatterNotAMap,
+    /// Only a markdown note's file holds a body and frontmatter to edit (`NOT_MARKDOWN`).
+    #[error("only a markdown note can be edited")]
+    NotMarkdown,
     #[error("{0}")]
     Io(#[from] std::io::Error),
 }
@@ -143,7 +149,10 @@ impl CoreError for NotesError {
             Self::Crdt(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
             Self::File(_) => (FailureKind::Storage, "note_file_failed"),
-            Self::Yaml(_) => (FailureKind::Invalid, "frontmatter_failed"),
+            Self::Yaml(_) | Self::FrontmatterNotAMap => {
+                (FailureKind::Invalid, "frontmatter_failed")
+            }
+            Self::NotMarkdown => (FailureKind::Invalid, "note_not_markdown"),
             Self::Outside => (FailureKind::Invalid, "outside_vault"),
             Self::Unopenable(Unopenable::HardLinked) => (FailureKind::Invalid, "note_hard_linked"),
             Self::Unopenable(Unopenable::NotRegular) => (FailureKind::Invalid, "note_not_regular"),

@@ -1,6 +1,7 @@
 //! `notes_rename`, `notes_reorder` and `notes_get_all_positions` through their commands on a
 //! mock app over a real vault and vault tier (#3530 13g), and the `NoteRenamedEvent` a rename's
-//! row fact sends through the shell's note events.
+//! row fact sends through the shell's note events; `notes_update` (#3530 13f-3c) and the
+//! `notes:updated` and `notes:tags-changed` it sends.
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -14,11 +15,14 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput};
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
-use memry_tauri::commands::notes::{notes_get_all_positions, notes_rename, notes_reorder};
-use memry_tauri::events::NoteRenamedEvent;
+use memry_tauri::commands::notes::{
+    notes_get_all_positions, notes_rename, notes_reorder, notes_update,
+};
+use memry_tauri::events::{NoteRenamedEvent, NoteTagsChangedEvent, NoteUpdatedEvent};
 use memry_tauri::shell::note_events;
 use serde_json::{Value, json};
 use tauri::test::{MockRuntime, mock_app};
@@ -57,6 +61,8 @@ struct Fixture {
     app: App<MockRuntime>,
     notes: Arc<NotesService>,
     renamed: Arc<Mutex<Vec<Value>>>,
+    /// `(event name, payload)` of every `NoteUpdatedEvent` and `NoteTagsChangedEvent`.
+    edited: Arc<Mutex<Vec<(&'static str, Value)>>>,
 }
 
 /// An open vault with its first walk done, its tier's note events forwarded, and every
@@ -95,12 +101,21 @@ fn opened() -> Fixture {
         let payload = serde_json::from_str(event.payload()).unwrap();
         sink.lock().unwrap().push(payload);
     });
+    let edited = Arc::new(Mutex::new(Vec::new()));
+    for name in [NoteUpdatedEvent::NAME, NoteTagsChangedEvent::NAME] {
+        let sink = Arc::clone(&edited);
+        app.listen_any(name, move |event| {
+            let payload = serde_json::from_str(event.payload()).unwrap();
+            sink.lock().unwrap().push((name, payload));
+        });
+    }
     Fixture {
         _dir: dir,
         vault,
         app,
         notes,
         renamed,
+        edited,
     }
 }
 
@@ -188,6 +203,49 @@ fn a_rename_answers_the_note_and_sends_notes_renamed_with_the_new_title() {
     assert_eq!(f.rename("missing", "X"), Err("note_not_found".into()));
     std::thread::sleep(Duration::from_millis(500));
     assert_eq!(*f.renamed.lock().unwrap(), Vec::<Value>::new());
+}
+
+#[test]
+fn an_edit_answers_the_note_and_sends_internal_notes_updated_and_tags_changed() {
+    let f = opened();
+    let id = f.create("Plan", "");
+    let edit = |input: NoteUpdateInput| {
+        tauri::async_runtime::block_on(notes_update(f.app.handle().clone(), input)).unwrap()
+    };
+    let note = edit(NoteUpdateInput {
+        id: id.clone(),
+        header_tags: Some(HeaderTagEditInput {
+            add: Some(vec!["idea".into()]),
+            ..HeaderTagEditInput::default()
+        }),
+        ..NoteUpdateInput::default()
+    });
+    assert_eq!(note.header_tags, ["idea"]);
+    let heard = |count: usize| {
+        let deadline = Instant::now() + WAIT;
+        while f.edited.lock().unwrap().len() < count {
+            assert!(Instant::now() < deadline, "{:?}", f.edited.lock().unwrap());
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        std::mem::take(&mut *f.edited.lock().unwrap())
+    };
+    let mut events = heard(2);
+    events.sort_by_key(|(name, _)| *name);
+    assert_eq!(events[0], (NoteTagsChangedEvent::NAME, Value::Null));
+    assert_eq!(events[1].0, NoteUpdatedEvent::NAME);
+    assert_eq!(events[1].1["source"], "internal");
+    assert_eq!(events[1].1["changes"]["headerTags"], json!(["idea"]));
+
+    // A save that leaves the tags sends no `notes:tags-changed`.
+    edit(NoteUpdateInput {
+        id: id.clone(),
+        content: Some("About the plan".into()),
+        ..NoteUpdateInput::default()
+    });
+    let events = heard(1);
+    assert_eq!(events[0].0, NoteUpdatedEvent::NAME);
+    std::thread::sleep(Duration::from_millis(500));
+    assert_eq!(*f.edited.lock().unwrap(), Vec::new());
 }
 
 #[test]

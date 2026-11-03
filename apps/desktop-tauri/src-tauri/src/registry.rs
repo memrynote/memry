@@ -61,6 +61,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_open_external,
             crate::commands::notes::notes_preview_by_title,
             crate::commands::notes::notes_rename::<Wry>,
+            crate::commands::notes::notes_update::<Wry>,
             crate::commands::notes::notes_reorder::<Wry>,
             crate::commands::notes::notes_resolve_by_title,
             crate::commands::notes::notes_resolve_titles,
