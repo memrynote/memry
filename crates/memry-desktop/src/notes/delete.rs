@@ -49,7 +49,7 @@ impl NotesService {
         permanent: bool,
     ) -> Result<(), NotesError> {
         self.order
-            .run(note_id, || self.delete_now(open, note_id, permanent))
+            .run(note_id, |_| self.delete_now(open, note_id, permanent))
     }
 
     fn delete_now(
@@ -66,27 +66,7 @@ impl NotesService {
         let Some(row) = lane.files().by_id(note_id)? else {
             return Err(NotesError::NotFound(note_id.to_owned()));
         };
-        let echo = self.tier.echo();
-        let removed = if holds_unread_text(root, &row) {
-            // A refusal may not last (a sync client or a scanner holding the file, a folder
-            // made writable since): a confirmed delete tries the trash again first.
-            match self.trash_file(&echo, root, &row.path) {
-                Err(NotesError::TrashUnavailable(_)) if permanent => {
-                    unlink(&echo, root, &row.path).map_err(NotesError::from)
-                }
-                trashed => trashed,
-            }
-        } else {
-            unlink(&echo, root, &row.path).map_err(NotesError::from)
-        };
-        if let Err(error) = removed {
-            tracing::error!(
-                scope = SCOPE,
-                note_id,
-                "a deleted note's file could not be removed: {error}"
-            );
-            return Err(error);
-        }
+        self.remove_file_of(root, &row, permanent)?;
         writer.delete(note_id.to_owned())?;
         lane.remove(note_id)?;
         lane.publish(Applied::Removed {
@@ -105,8 +85,43 @@ impl NotesService {
         Ok(())
     }
 
+    /// Step 1 of a delete, for a note's row or a journal day's: the file for good when its
+    /// document took its bytes, to the trash otherwise.
+    pub(crate) fn remove_file_of(
+        &self,
+        root: &Path,
+        row: &Row,
+        permanent: bool,
+    ) -> Result<(), NotesError> {
+        let echo = self.tier.echo();
+        let removed = if holds_unread_text(root, row) {
+            // A refusal may not last (a sync client or a scanner holding the file, a folder
+            // made writable since): a confirmed delete tries the trash again first.
+            match self.trash_file(&echo, root, &row.path) {
+                Err(NotesError::TrashUnavailable(_)) if permanent => {
+                    unlink(&echo, root, &row.path).map_err(NotesError::from)
+                }
+                trashed => trashed,
+            }
+        } else {
+            unlink(&echo, root, &row.path).map_err(NotesError::from)
+        };
+        removed.inspect_err(|error| {
+            tracing::error!(
+                scope = SCOPE,
+                note_id = row.note_id,
+                "a deleted note's file could not be removed: {error}"
+            );
+        })
+    }
+
     /// Moves the file at `rel` to the OS trash, told to the own-write record first.
-    fn trash_file(&self, echo: &EchoGuard, root: &Path, rel: &str) -> Result<(), NotesError> {
+    pub(crate) fn trash_file(
+        &self,
+        echo: &EchoGuard,
+        root: &Path,
+        rel: &str,
+    ) -> Result<(), NotesError> {
         let Some(path) = removal_target(root, rel)? else {
             return Ok(());
         };

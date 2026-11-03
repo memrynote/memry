@@ -8,6 +8,7 @@ pub mod electron_import;
 pub mod error;
 pub mod http;
 pub mod i18n;
+pub mod journal;
 pub mod launch_env;
 pub mod launch_timeline;
 pub mod locale;

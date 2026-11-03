@@ -29,6 +29,7 @@ use crate::domain::link_reads::{self, Incoming, LinkTarget, MentionSources};
 use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
 #[cfg(feature = "markdown")]
 use crate::domain::notes::journal_day;
+use crate::domain::notes::link_rewrite::LinkNames;
 use crate::domain::search::{self, HitKind, LinkChanges, SearchHit};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
@@ -178,6 +179,18 @@ impl Search {
         self.data.read_blocking(move |data| {
             index.read_blocking(|index| link_reads::incoming(data, index, &target_id))
         })
+    }
+
+    /// The notes and days whose links may name the note once called `from`
+    /// ([`link_reads::rewrite_sources`]).
+    pub fn link_rewrite_sources(
+        &self,
+        target_id: &str,
+        from: &LinkNames,
+    ) -> Result<Vec<String>, StorageError> {
+        let (target_id, from) = (target_id.to_owned(), from.clone());
+        self.index
+            .read_blocking(move |index| link_reads::rewrite_sources(index, &target_id, &from))
     }
 
     /// The notes and days that may mention `target_id` unlinked ([`link_reads::mention_sources`]).

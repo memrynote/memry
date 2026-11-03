@@ -9,13 +9,15 @@
 
 use std::collections::{HashMap, HashSet};
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, params, params_from_iter};
 
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{Source, id_list, live_items};
 use crate::domain::notes::failed;
+use crate::domain::notes::link_rewrite::LinkNames;
+use crate::domain::notes::names::name_key;
 use crate::domain::unlinked_mentions::{fts_query, target_names};
-use crate::domain::wiki_target::{MatchedBy, WikiMatch, WikiNames};
+use crate::domain::wiki_target::{self, MatchedBy, WikiMatch, WikiNames};
 
 /// One note or journal day whose body links to the target.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,6 +58,45 @@ pub fn incoming(
         target_title: sources.get(target_id).map(|target| target.named().0),
         sources: named_sources(&sources, ids, target_id),
     })
+}
+
+/// The notes and days whose links may name the note once called `from`, the note itself
+/// included, by id (desktop `getInboundLinkSourceIds`): a link resolved to `target_id`, or one
+/// left unresolved under the old title (its note half) or the old path, which a reindex after
+/// the rename leaves it as.
+pub fn rewrite_sources(
+    index: &Connection,
+    target_id: &str,
+    from: &LinkNames,
+) -> Result<Vec<String>, StorageError> {
+    let title = match wiki_target::split(&from.title).0 {
+        "" => from.title.as_str(),
+        note => note,
+    };
+    let stem = from.path_stem();
+    let paths = [stem.clone(), format!("{stem}.md")]
+        .into_iter()
+        .filter(|_| !stem.is_empty())
+        .flat_map(|form| [format!("/{form}"), form]);
+    let mut keys: Vec<String> = std::iter::once(title.to_owned())
+        .chain(paths)
+        .filter_map(|form| name_key(&form))
+        .collect();
+    keys.sort();
+    keys.dedup();
+    let marks = vec!["?"; keys.len()].join(", ");
+    let mut statement = index
+        .prepare(&format!(
+            "SELECT DISTINCT source_id FROM note_links WHERE target_id = ?
+              OR (target_id IS NULL AND target_key IN ({marks})) ORDER BY source_id"
+        ))
+        .map_err(failed)?;
+    let args = std::iter::once(target_id.to_owned()).chain(keys);
+    statement
+        .query_map(params_from_iter(args), |row| row.get(0))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
 }
 
 /// The ids of the notes and days whose links resolved to `target_id`.

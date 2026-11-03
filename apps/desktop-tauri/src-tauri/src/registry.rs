@@ -42,6 +42,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::badge_set,
             // flush
             crate::commands::shell_integrations::flush_done,
+            // journal
+            crate::commands::journal::journal_create_entry,
+            crate::commands::journal::journal_delete_entry,
+            crate::commands::journal::journal_get_entry,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
@@ -123,8 +127,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_get_all_with_counts,
             crate::commands::tags::tags_get_notes_by_tag,
             crate::commands::tags::tags_list_categories,
+            crate::commands::tags::tags_pin_note_to_tag::<Wry>,
             crate::commands::tags::tags_rename_category,
             crate::commands::tags::tags_reorder,
+            crate::commands::tags::tags_unpin_note_from_tag::<Wry>,
             crate::commands::tags::tags_update_color,
             crate::commands::tags::tags_update_icon,
             // telemetry
@@ -188,6 +194,9 @@ pub fn builder() -> Builder<Wry> {
             crate::events::FlushRequestedEvent,
             // inbox
             crate::events::InboxOpenItemEvent,
+            // journal
+            crate::events::JournalEntryCreatedEvent,
+            crate::events::JournalEntryDeletedEvent,
             // locale
             crate::events::LocaleChangedEvent,
             // settings
@@ -212,6 +221,7 @@ pub fn builder() -> Builder<Wry> {
             // tags
             crate::events::TagCategoriesChangedEvent,
             crate::events::TagColorUpdatedEvent,
+            crate::events::TagNotesChangedEvent,
             // vault
             crate::events::VaultActivityChangedEvent,
             crate::events::VaultErrorEvent,

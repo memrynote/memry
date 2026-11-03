@@ -28,15 +28,21 @@
 //! - between 4 and 5: a row without a hash beside the file, whose text seeds the empty body at
 //!   the next open walk, as for any file the app wrote and did not read back.
 //!
-//! Not here yet, though Electron's create does them: the template a folder (`.folder.md`,
-//! Step 13h) or a tag (Step 13j) names, a `template` id (Step 13l), and the note's date
-//! reminders (Step 21).
+//! A template (Step 13l) is read before any of it: the one named, else the one a tag names
+//! (`Templates::for_new_note`). Its body, tags, properties and icon are merged under what the
+//! caller gave, as `createNote` merges `applyTemplate`'s, and the merged note is what the steps
+//! write.
+//!
+//! Not here yet, though Electron's create does them: the template a folder names
+//! (`.folder.md`, Step 13h), and the note's date reminders (Step 21).
 
 use std::path::Path;
 use std::sync::PoisonError;
 
+use memry_core::crdt::errors::CrdtError;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::domain::note_stats::word_count;
+use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::{split_frontmatter_block, write_markdown_note};
 use memry_core::markdown::shared::writing_tools::WritingFrontmatter;
 use serde_json::{Map, Value};
@@ -48,6 +54,7 @@ use super::service::NotesService;
 use super::view::{NoteView, SizeClass};
 use crate::session::OpenVault;
 use crate::shell::file_open::Resolution;
+use crate::templates::{TemplateView, Templates};
 use crate::vault::config::read_vault_config;
 use crate::vault::consumer::rows::{Lane, RowStat, now_ms};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
@@ -74,14 +81,15 @@ pub struct NewNoteFile {
     pub folder: Option<String>,
     pub tags: Vec<String>,
     pub properties: Map<String, Value>,
-    pub emoji: Option<String>,
+    /// `None`: the template's icon, if any; `Some(None)`: no icon.
+    pub emoji: Option<Option<String>>,
+    /// The template to make the note from; a tag's template when `None`.
+    pub template: Option<String>,
 }
 
 impl NewNoteFile {
     /// `NoteCreateSchema` and `createNote`'s reading of it: the title's and the tags' limits,
-    /// an exact repeat of a tag dropped (`new Set`), a body of whitespace alone made empty, and
-    /// the reserved frontmatter keys left out of the properties (`writePropertiesToRoot`), for
-    /// the record as for the file.
+    /// checked on what the caller gave, and a body of whitespace alone made empty.
     fn checked(mut self) -> Result<Self, NotesError> {
         let units = |text: &str| text.encode_utf16().count();
         let title_units = units(&self.title);
@@ -91,8 +99,6 @@ impl NewNoteFile {
         if self.tags.len() > MAX_TAGS || self.tags.iter().any(|tag| units(tag) > MAX_TAG_UNITS) {
             return Err(NotesError::InvalidTags);
         }
-        let mut seen = std::collections::HashSet::new();
-        self.tags.retain(|tag| seen.insert(tag.clone()));
         // `String.prototype.trim` also strips the byte order mark.
         if self
             .content
@@ -101,9 +107,37 @@ impl NewNoteFile {
         {
             self.content.clear();
         }
+        Ok(self)
+    }
+
+    /// `createNote`'s merge of `applyTemplate`: the template's body with `{{title}}` filled when
+    /// none was given, its tags first, its property values under the given ones (each in its
+    /// first place), and its icon when none was asked for. Then an exact repeat of a tag goes
+    /// (`new Set`) and the reserved keys leave the properties (`writePropertiesToRoot`), for the
+    /// record as for the file.
+    fn merged(mut self, template: Option<TemplateView>) -> Self {
+        if let Some(template) = template {
+            if self.content.is_empty() {
+                // As written: Electron's `String.replace` would read `$&` in a title as a pattern.
+                self.content = template.content.replace("{{title}}", &self.title);
+            }
+            self.tags = template.tags.into_iter().chain(self.tags).collect();
+            let mut properties = Map::new();
+            for property in &template.properties {
+                if let Some(name) = property.get("name").and_then(Value::as_str) {
+                    let value = property.get("value").cloned().unwrap_or(Value::Null);
+                    properties.insert(name.to_owned(), value);
+                }
+            }
+            properties.extend(std::mem::take(&mut self.properties));
+            self.properties = properties;
+            self.emoji.get_or_insert(template.icon);
+        }
+        let mut seen = std::collections::HashSet::new();
+        self.tags.retain(|tag| seen.insert(tag.clone()));
         self.properties
             .retain(|name, value| !is_reserved_key(name, value));
-        Ok(self)
+        self
     }
 }
 
@@ -124,6 +158,10 @@ impl NotesService {
         after_file: &mut dyn FnMut() -> Result<(), NotesError>,
     ) -> Result<NoteView, NotesError> {
         let note = note.checked()?;
+        let templates =
+            Templates::new(open.path.clone(), open.vault.templates(self.store.clone())?);
+        let template = templates.for_new_note(note.template.as_deref(), &note.tags)?;
+        let note = note.merged(template);
         let root = open.path.as_path();
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;
@@ -141,7 +179,7 @@ impl NotesService {
             folder,
             &note.tags,
             properties,
-            note.emoji.as_deref(),
+            note.emoji.as_ref().and_then(Option::as_deref),
         )?;
         let unseeded = RowStat {
             file_type: FileType::Markdown,
@@ -248,7 +286,7 @@ fn new_note_view(id: String, path: String, note: NewNoteFile, output: &str) -> N
         header_tags: Vec::new(),
         aliases: Vec::new(),
         properties: note.properties,
-        emoji: note.emoji,
+        emoji: note.emoji.flatten(),
         // A new row carries no flag: a note is made local-only afterwards.
         local_only: false,
         size_class: SizeClass::LargeFile,
@@ -332,23 +370,47 @@ fn vault_relative(root: &Path, path: &Path) -> Option<String> {
     (!segments.is_empty()).then(|| segments.join("/"))
 }
 
-/// The body seeded from the file just written.
-struct Seed<'a> {
-    root: &'a Path,
-    open: &'a OpenVault,
-    id: &'a str,
-    rel: &'a str,
-    raw: &'a str,
+/// The body seeded from the file just written: a note's, or a journal day's (`crate::journal`).
+pub(crate) struct Seed<'a> {
+    pub(crate) root: &'a Path,
+    pub(crate) open: &'a OpenVault,
+    pub(crate) id: &'a str,
+    pub(crate) rel: &'a str,
+    pub(crate) raw: &'a str,
 }
 
 impl Seed<'_> {
     /// `Ok(true)` when the document now holds the file's text; `Ok(false)` when it did not take
     /// it (a body past the large-file class), which leaves the row without a content hash, so
     /// the write-back never writes over the file.
-    fn run(
+    pub(crate) fn run(
         &self,
         service: &NotesService,
         feed: &memry_core::api::external_feed::ExternalFeed,
+    ) -> Result<bool, NotesError> {
+        self.feed_with(service, |converter, input| {
+            feed.seed_body_if_empty(converter, input)
+        })
+    }
+
+    /// [`Self::run`] over a body the document already holds: the file's text replaces it as the
+    /// app's edit after reading `read` from the file, so a body other than `read` is kept as a
+    /// version first (`feed_app_edit`).
+    pub(crate) fn replace(
+        &self,
+        service: &NotesService,
+        feed: &memry_core::api::external_feed::ExternalFeed,
+        read: &str,
+    ) -> Result<bool, NotesError> {
+        self.feed_with(service, |converter, input| {
+            feed.feed_app_edit(converter, input, read)
+        })
+    }
+
+    fn feed_with(
+        &self,
+        service: &NotesService,
+        step: impl FnOnce(&Converter, FeedInput<'_>) -> Result<FeedOutcome, CrdtError>,
     ) -> Result<bool, NotesError> {
         let split = split_frontmatter_block(self.raw);
         // Outside the feed's write: the lookup reads the database the feed holds.
@@ -368,7 +430,7 @@ impl Seed<'_> {
             frontmatter: split.block,
             embeds: Some(&embeds),
         };
-        let outcome = feed.seed_body_if_empty(&converter_for(settings.as_ref()), input)?;
+        let outcome = step(&converter_for(settings.as_ref()), input)?;
         if !matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) {
             tracing::warn!(
                 scope = SCOPE,
@@ -382,7 +444,7 @@ impl Seed<'_> {
 }
 
 /// Takes back the file this create wrote, as the app's own removal.
-fn remove_file(echo: &EchoGuard, root: &Path, rel: &str) {
+pub(crate) fn remove_file(echo: &EchoGuard, root: &Path, rel: &str) {
     if let Err(error) = super::delete::unlink(echo, root, rel) {
         tracing::error!(
             scope = SCOPE,
@@ -403,7 +465,7 @@ fn undo_record(writer: &memry_core::api::notes_write::NotesWriter, id: &str) {
 }
 
 /// Removes the row this create reserved. No fact goes out: none went out for it.
-fn remove_row(lane: &mut Lane<'_>, id: &str) {
+pub(crate) fn remove_row(lane: &mut Lane<'_>, id: &str) {
     if let Err(error) = lane.remove(id) {
         tracing::error!(
             scope = SCOPE,

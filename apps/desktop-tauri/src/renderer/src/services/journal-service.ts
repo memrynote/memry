@@ -1,65 +1,51 @@
 import type {
   JournalClientAPI,
   JournalEntry,
-  HeatmapEntry,
-  MonthEntryPreview,
-  MonthStats,
-  DayContext,
-  JournalTagCount,
-  JournalStreak,
   JournalEntryCreatedEvent,
   JournalEntryUpdatedEvent,
   JournalEntryDeletedEvent,
   JournalExternalChangeEvent
 } from '../../../preload/index.d'
-import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
+import { commands, events, type JournalEntryView, type Value } from '../../../generated/bindings'
+import { subscribeToEvent } from './tauri-event'
+import { createWindowApiForwarder } from './window-api-forwarder'
 
-/**
- * Journal service - thin wrapper around window.api.journal
- * Provides a typed interface for journal operations in the renderer process.
- */
-export const journalService: JournalClientAPI = {
-  // =========================================================================
-  // Entry CRUD
-  // =========================================================================
+/** A day's entry as Rust sends it, with `properties` left out when the file has none. */
+function toEntry({ properties, ...entry }: JournalEntryView): JournalEntry {
+  return properties === null ? entry : { ...entry, properties }
+}
 
+/** The journal methods served from Rust commands (`commands/journal.rs`, #3530 13m-2). */
+const ported = {
   /**
    * Get a journal entry by date.
    * @param date - Date in YYYY-MM-DD format
    * @returns Journal entry or null if not found
    */
-  getEntry: (date: string): Promise<JournalEntry | null> => {
-    return window.api.journal.getEntry(date)
+  getEntry: async (date: string): Promise<JournalEntry | null> => {
+    const entry = await commands.journalGetEntry(date)
+    return entry && toEntry(entry)
   },
 
   /**
-   * Create a new journal entry.
+   * Create a new journal entry. A day that has a file already is answered as it is.
    * @param input - Entry creation input
    * @returns Created journal entry
    */
-  createEntry: (input: {
+  createEntry: async (input: {
     date: string
     content?: string
     tags?: string[]
     properties?: Record<string, unknown>
   }): Promise<JournalEntry> => {
-    return window.api.journal.createEntry(input)
-  },
-
-  /**
-   * Update an existing journal entry.
-   * Creates the entry if it doesn't exist.
-   * @param input - Entry update input
-   * @returns Updated journal entry
-   */
-  updateEntry: (input: {
-    date: string
-    content?: string
-    tags?: string[]
-    inlineTags?: { add?: string[]; remove?: string[] }
-    properties?: Record<string, unknown>
-  }): Promise<JournalEntry> => {
-    return window.api.journal.updateEntry(input)
+    const entry = await commands.journalCreateEntry({
+      date: input.date,
+      content: input.content,
+      tags: input.tags,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- property values are the JSON the command carries as is
+      properties: input.properties as Record<string, Value> | undefined
+    })
+    return toEntry(entry)
   },
 
   /**
@@ -67,88 +53,27 @@ export const journalService: JournalClientAPI = {
    * @param date - Date in YYYY-MM-DD format
    * @returns Success status
    */
-  deleteEntry: (date: string): Promise<{ success: boolean }> => {
-    return window.api.journal.deleteEntry(date)
-  },
+  deleteEntry: (date: string): Promise<{ success: boolean }> => commands.journalDeleteEntry(date)
+} satisfies Partial<JournalClientAPI>
 
-  // =========================================================================
-  // Calendar & Views
-  // =========================================================================
+/** The journal methods served from Rust; `window.api.journal` is typed without them. */
+export type PortedJournalMethod = keyof typeof ported
 
-  /**
-   * Get heatmap data for a year.
-   * @param year - Year (e.g., 2024)
-   * @returns Array of heatmap entries with date, character count, and activity level
-   */
-  getHeatmap: (year: number): Promise<HeatmapEntry[]> => {
-    return window.api.journal.getHeatmap(year)
-  },
-
-  /**
-   * Get entries for a specific month with preview data.
-   * @param year - Year (e.g., 2024)
-   * @param month - Month (1-12)
-   * @returns Array of month entry previews
-   */
-  getMonthEntries: (year: number, month: number): Promise<MonthEntryPreview[]> => {
-    return window.api.journal.getMonthEntries(year, month)
-  },
-
-  /**
-   * Get statistics for each month in a year.
-   * @param year - Year (e.g., 2024)
-   * @returns Array of monthly statistics
-   */
-  getYearStats: (year: number): Promise<MonthStats[]> => {
-    return window.api.journal.getYearStats(year)
-  },
-
-  // =========================================================================
-  // Context
-  // =========================================================================
-
-  /**
-   * Get tasks and events for a specific date.
-   * @param date - Date in YYYY-MM-DD format
-   * @returns Day context with tasks and events
-   */
-  getDayContext: (date: string): Promise<DayContext> => {
-    return window.api.journal.getDayContext(date)
-  },
-
-  // =========================================================================
-  // Tags & Search
-  // =========================================================================
-
-  /**
-   * Get all tags used in journal entries with counts.
-   * @returns Array of tag counts
-   */
-  getAllTags: (): Promise<JournalTagCount[]> => {
-    return window.api.journal.getAllTags()
-  },
-
-  // =========================================================================
-  // Streak
-  // =========================================================================
-
-  /**
-   * Get current and longest journaling streak.
-   * @returns Streak information
-   */
-  getStreak: (): Promise<JournalStreak> => {
-    return window.api.journal.getStreak()
-  },
-
-  /** Entries' days and property values in `[from, to]`, for charts. */
-  getPropertyRows: (from: string, to: string): Promise<GetPropertyRowsOutput> => {
-    return window.api.journal.getPropertyRows(from, to)
-  }
-}
+/**
+ * Journal service - the journal operations of the renderer: the ported ones over Rust commands,
+ * the rest through `window.api.journal`.
+ */
+export const journalService: JournalClientAPI = createWindowApiForwarder<
+  JournalClientAPI,
+  PortedJournalMethod
+>(() => window.api.journal, ported)
 
 // ============================================================================
 // Event Subscription Helpers
 // ============================================================================
+
+/** The subscriptions below that Rust events serve; `window.api` is typed without them. */
+export type PortedJournalEvent = 'onJournalEntryCreated' | 'onJournalEntryDeleted'
 
 /**
  * Subscribe to journal entry created events.
@@ -158,7 +83,9 @@ export const journalService: JournalClientAPI = {
 export function onJournalEntryCreated(
   callback: (event: JournalEntryCreatedEvent) => void
 ): () => void {
-  return window.api.onJournalEntryCreated(callback)
+  return subscribeToEvent(events.journalEntryCreatedEvent, ({ date, entry }) =>
+    callback({ date, entry: toEntry(entry) })
+  )
 }
 
 /**
@@ -180,7 +107,7 @@ export function onJournalEntryUpdated(
 export function onJournalEntryDeleted(
   callback: (event: JournalEntryDeletedEvent) => void
 ): () => void {
-  return window.api.onJournalEntryDeleted(callback)
+  return subscribeToEvent(events.journalEntryDeletedEvent, callback)
 }
 
 /**

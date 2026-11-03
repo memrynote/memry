@@ -273,7 +273,7 @@ impl Lane<'_> {
     /// moves, to the bytes on disk now or to none. The row's size, stamp and content hash stay
     /// those of what the document holds, which the write-back compares with; the walk then
     /// reads the file again at every open, as it did before file hashes.
-    pub(super) fn record_file_hash(
+    pub(crate) fn record_file_hash(
         &self,
         note_id: &str,
         hash: Option<&str>,

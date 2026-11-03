@@ -192,6 +192,50 @@ pub fn day(conn: &Connection, date: &str) -> Result<Option<JournalDay>, CrdtErro
     }))
 }
 
+/// What desktop reads of a live day besides its file (`findStoredJournalEntry`): the record's
+/// id, tags and instants, and the path of the day's file when a row names it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DayStamp {
+    pub id: String,
+    /// Vault-relative; `None` for a day with no file yet.
+    pub path: Option<String>,
+    pub tags: Vec<String>,
+    pub created_at: Option<i64>,
+    pub modified_at: Option<i64>,
+}
+
+/// The live day for `date` as [`DayStamp`], `None` without one. Never replays a body.
+pub fn stamp(conn: &Connection, date: &str) -> Result<Option<DayStamp>, StorageError> {
+    let date = journal::valid_date(date)?;
+    let row = conn
+        .query_row(
+            "SELECT j.id, f.path, j.created_at, j.modified_at FROM journal_entries j
+               LEFT JOIN note_files f ON f.note_id = j.id
+              WHERE j.date = ?1 AND j.deleted_at IS NULL",
+            params![date],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(failed)?;
+    let Some((id, path, created_at, modified_at)) = row else {
+        return Ok(None);
+    };
+    Ok(Some(DayStamp {
+        tags: tags::list(conn, ITEM_TYPE, &id)?,
+        id,
+        path,
+        created_at,
+        modified_at,
+    }))
+}
+
 /// Every day of `month` (1-12) of `year`, newest first, flagged against
 /// `today`, with the month's entry count and the streak.
 pub fn month(

@@ -8,7 +8,8 @@
 // service and of its sync apply, writes each file: a new day with tags, aliases and
 // properties; a tags update of a day an older build wrote (legacy `id`, `created`, `modified`
 // keys and nested `properties`, which Electron edits in place); and a tags update of a day
-// with CRLF line ends and a comment. The files replace the whole fixture.
+// with CRLF line ends and a comment; and the files `createJournalEntry` makes for a new day,
+// with tags and properties and with neither. The files replace the whole fixture.
 //
 // The capture runs under the desktop app's vitest config, so it writes its test into
 // apps/desktop/src/main/vault for the run and removes it after.
@@ -71,6 +72,10 @@ describe.skipIf(!OUT)('electron journal fixture', () => {
     fs.writeFileSync(path.join(journal, '2025-01-16.md'),
       "---\\r\\ndate: '2025-01-16'\\r\\n# the author's comment\\r\\ntags: [plain]\\r\\nweather: \\"sunny\\"\\r\\n---\\r\\nWindows line ends.\\r\\n")
     write('crlf.md', '2025-01-16', null, ['plain', 'synced'])
+
+    write('new.md', '2025-01-17', 'Morning pages.\\n\\n- [ ] call Ann', ['work', 'Ideas'],
+      { mood: 'calm', rating: 4 })
+    write('bare.md', '2025-01-18', '')
 
     const out = OUT as string
     fs.rmSync(out, { recursive: true, force: true })

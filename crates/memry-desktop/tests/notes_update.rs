@@ -93,7 +93,7 @@ fn edits(facts: &[Applied]) -> usize {
             matches!(
                 fact,
                 Applied::Changed {
-                    source: ChangeSource::Edit,
+                    source: ChangeSource::Save,
                     ..
                 }
             )

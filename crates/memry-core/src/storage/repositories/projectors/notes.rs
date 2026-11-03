@@ -16,6 +16,8 @@
 //! optional field is `opt_null`, because a projector substitutes and never
 //! refuses (§13.3, §A.4, spec-defect 53).
 
+use std::collections::HashMap;
+
 use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
@@ -202,12 +204,24 @@ pub fn project_journal(
 ///
 /// `pinned_at` records membership of `pinnedTags`, not an instant the payload
 /// carries — the payload has no such instant — so it holds the apply time of
-/// the payload that pinned it.
+/// the payload that pinned it. A tag pinned before keeps its instant through
+/// later payloads (`applyPinnedTags`), so editing a pinned note does not move it
+/// to the end of the pinned list.
 fn project_tags(
     conn: &Connection,
     item: ItemContext<'_>,
     view: &Object,
 ) -> Result<(), StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT tag, pinned_at FROM note_tags WHERE note_id = ?1 AND pinned_at IS NOT NULL",
+        )
+        .map_err(failed)?;
+    let was_pinned: HashMap<String, i64> = statement
+        .query_map(params![item.item_id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)?;
     conn.execute(
         "DELETE FROM note_tags WHERE note_id = ?1",
         params![item.item_id],
@@ -217,7 +231,9 @@ fn project_tags(
     let pinned = strings(view, "pinnedTags");
     let clock = clock_text(view);
     for (position, tag) in strings(view, "tags").into_iter().enumerate() {
-        let pinned_at = pinned.contains(&tag).then_some(item.synced_at);
+        let pinned_at = pinned
+            .contains(&tag)
+            .then(|| was_pinned.get(&tag).copied().unwrap_or(item.synced_at));
         conn.execute(
             "INSERT INTO note_tags (note_id, tag, position, pinned_at, clock, synced_at, deleted_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)

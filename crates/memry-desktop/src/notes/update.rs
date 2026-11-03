@@ -17,7 +17,7 @@
 //! 4. the file, written over only while it is still the file read in 1 (`write_note_over`);
 //! 5. the record's icon and, when the header changed, its tags (one outbox row each), only
 //!    once the file holds them, so a refused write leaves the record as the file says;
-//! 6. the row's hashes, then [`Applied::Changed`] with [`ChangeSource::Edit`].
+//! 6. the row's hashes, then [`Applied::Changed`] with [`ChangeSource::Save`].
 //!
 //! **Order against the watcher.** The feed comes before the write: an outside edit that lands
 //! between 1 and 5 makes the write refuse, and the consumer, once the lane is free, feeds that
@@ -194,7 +194,7 @@ impl NotesService {
         };
         let tags_changed = self
             .order
-            .run(&edit.id, || self.update_now(open, &edit, between))?;
+            .run(&edit.id, |_| self.update_now(open, &edit, between))?;
         let note = read::get(open, &edit.id, None)?
             .ok_or_else(|| NotesError::NotFound(edit.id.clone()))?;
         Ok(Updated { note, tags_changed })
@@ -370,7 +370,7 @@ impl NotesService {
                 note_id: id.to_owned(),
                 path: row.path,
                 content_hash,
-                source: ChangeSource::Edit,
+                source: ChangeSource::Save,
             });
         }
         Ok(change.is_some() || body_tags_changed)

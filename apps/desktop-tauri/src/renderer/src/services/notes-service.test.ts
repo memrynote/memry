@@ -258,20 +258,32 @@ describe('notes-service', () => {
       properties: { status: 'open' }
     }
     const created = await notesService.create(input)
-    expect(commands.notesCreate).toHaveBeenCalledWith({ ...input, emoji: undefined })
+    expect(commands.notesCreate).toHaveBeenCalledWith({
+      ...input,
+      template: undefined,
+      emoji: undefined
+    })
     expect(created.success).toBe(true)
     expect(created.note?.modified).toEqual(new Date(MODIFIED))
     expect(await notesService.delete('note-1')).toEqual({ success: true })
     expect(commands.notesDelete).toHaveBeenCalledWith('note-1', null)
 
-    // A template (13l) or plain checklists (32) would be dropped, so the create is refused.
-    await expect(notesService.create({ title: 'T', template: 'weekly' })).rejects.toMatchObject({
-      name: 'NotPortedError'
+    // A template and a cleared icon reach the command as asked.
+    await notesService.create({ title: 'T', template: 'weekly', emoji: null })
+    expect(commands.notesCreate).toHaveBeenLastCalledWith({
+      title: 'T',
+      content: undefined,
+      folder: undefined,
+      tags: undefined,
+      properties: undefined,
+      template: 'weekly',
+      emoji: null
     })
+    // Plain checklists (Step 32) would be dropped, so the create is refused.
     await expect(notesService.create({ title: 'T', plainChecklists: true })).rejects.toMatchObject({
       name: 'NotPortedError'
     })
-    expect(commands.notesCreate).toHaveBeenCalledTimes(1)
+    expect(commands.notesCreate).toHaveBeenCalledTimes(2)
     // A failure answers as Electron's handler does, with the command's message.
     commands.notesDelete.mockRejectedValue({
       kind: 'not_found',

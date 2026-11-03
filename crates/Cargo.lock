@@ -3918,6 +3918,7 @@ dependencies = [
  "dunce",
  "font-kit",
  "gtk",
+ "keyring-core",
  "libloading 0.9.0",
  "memry-core",
  "memry-desktop",

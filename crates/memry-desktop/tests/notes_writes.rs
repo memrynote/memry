@@ -59,7 +59,8 @@ fn plan() -> NewNoteFile {
         folder: Some("work".into()),
         tags: vec!["alpha".into()],
         properties: json!({ "status": "open" }).as_object().unwrap().clone(),
-        emoji: Some("🙂".into()),
+        emoji: Some(Some("🙂".into())),
+        template: None,
     }
 }
 
@@ -302,7 +303,8 @@ fn a_note_made_from_a_note_carries_its_tags_properties_and_icon_beside_it() {
             .map(|(folder, _)| folder.to_owned()),
         tags: source.header_tags.clone(),
         properties: source.properties.clone(),
-        emoji: source.emoji.clone(),
+        emoji: Some(source.emoji.clone()),
+        template: None,
     };
     let copy = notes.create(&open, from("Plan")).unwrap();
     assert_eq!(copy.path, "work/Plan 1.md", "the taken name was reused");
