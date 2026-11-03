@@ -22,7 +22,11 @@
 //!    `source: external`, as `landSourceRewrite` does, so an editor showing the source reloads.
 //!
 //! `false` for a mention that is gone, a source that is not a markdown file or has no file, and
-//! a file that changed while the link was written; a target or source that is not a note is
+//! a file that changed while the link was written. An ordinal is only a count: when the source
+//! changed after the panel listed it but still holds that many mentions, the ordinal names
+//! whichever mention now sits at that place, and that one is linked. Electron does the same;
+//! naming the mention itself (its text and offset) is a change of the `notes:link-mention`
+//! contract. A target or source that is not a note is
 //! [`NotesError::NotFound`]. A body the feed fails on is an error once the file and row are
 //! written, as Electron's feed failure fails the call after its file write. Not here yet,
 //! stated: the lock check (`assertNoteWritable`, Step 14), and `journal:entry-updated` for a

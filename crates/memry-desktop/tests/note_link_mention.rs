@@ -23,7 +23,9 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::mentions::Mentions;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::vault::consumer::rows::RowStat;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
+use memry_desktop::vault::file_types::FileType;
 use memry_desktop::vault::hash::content_hash;
 use serde_json::Value;
 use vault_env::{Env, env, indexed};
@@ -199,6 +201,24 @@ fn a_gone_mention_a_changed_file_and_an_unknown_note_write_nothing() {
 
     assert!(!notes.link_mention(&open, &source, &target, 1).unwrap());
     assert_eq!(e.read("Standup.md"), "Target once.\n");
+    // A PDF whose bytes spell the target is not a markdown note: it is never rewritten.
+    e.write("Clip.pdf", "About Target.\n");
+    let rows = e.tier.rows();
+    let stat = RowStat {
+        file_type: FileType::Pdf,
+        size: 14,
+        content_hash: None,
+        file_hash: None,
+    };
+    rows.reserve(
+        rows.session_for(&open.vault).unwrap(),
+        "n-clip",
+        "Clip.pdf",
+        stat,
+    )
+    .unwrap();
+    assert!(!notes.link_mention(&open, "n-clip", &target, 0).unwrap());
+    assert_eq!(e.read("Clip.pdf"), "About Target.\n");
     assert!(matches!(
         notes.link_mention(&open, &source, "no-such-note", 0),
         Err(NotesError::NotFound(id)) if id == "no-such-note"

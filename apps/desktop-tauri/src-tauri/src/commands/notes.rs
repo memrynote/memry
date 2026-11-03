@@ -365,8 +365,8 @@ pub async fn notes_get_unlinked_mentions(
 /// link to it. `false` when that mention is gone (the source changed since it was listed).
 #[tauri::command]
 #[specta::specta]
-pub async fn notes_link_mention(
-    app: AppHandle<Wry>,
+pub async fn notes_link_mention<R: Runtime>(
+    app: AppHandle<R>,
     source_id: String,
     target_id: String,
     ordinal: u32,
