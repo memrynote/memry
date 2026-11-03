@@ -8,6 +8,7 @@ use crate::vault_env;
 
 use std::sync::Arc;
 
+use crate::index_support::until;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::notes::create::NewNoteFile;
@@ -24,6 +25,12 @@ use vault_env::{Env, env, indexed};
 
 /// An open vault holding `files`, its first walk done, and the notes service over its tier.
 fn opened(files: &[(&str, &str)]) -> (Env, Arc<NotesService>) {
+    let (e, notes, _) = opened_with_store(files);
+    (e, notes)
+}
+
+/// [`opened`], and the store its notes write with.
+fn opened_with_store(files: &[(&str, &str)]) -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
     let mut e = env(|store| {
         kept = Some(store.clone());
@@ -34,8 +41,9 @@ fn opened(files: &[(&str, &str)]) -> (Env, Arc<NotesService>) {
     }
     e.open();
     e.facts_until(indexed);
-    let notes = NotesService::new(e.tier.clone(), kept.expect("the store"));
-    (e, notes)
+    let store = kept.expect("the store");
+    let notes = NotesService::new(e.tier.clone(), store.clone());
+    (e, notes, store)
 }
 
 /// The id of the note at `rel`.
@@ -376,6 +384,105 @@ fn a_tag_edit_between_two_saves_keeps_the_file_the_run_wrote() {
         e.versions(&id),
         [PLAN],
         "a save over the run's own file kept a version"
+    );
+}
+
+/// Waits for the watcher to feed the outside edit of `rel`.
+fn fed_by_watcher(e: &mut Env) {
+    e.facts_until(|fact| {
+        matches!(
+            fact,
+            Applied::Changed {
+                source: ChangeSource::Watcher,
+                ..
+            }
+        )
+    });
+}
+
+const OUTSIDE: &str = "---\nstatus: open\n---\nFrom another editor\n";
+
+#[test]
+fn a_save_over_an_outside_edit_the_watcher_fed_keeps_that_edit() {
+    let (mut e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, save(&id, "The user's save\n")).unwrap();
+    std::fs::write(e.vault.join("Plan.md"), OUTSIDE).unwrap();
+    fed_by_watcher(&mut e);
+    assert_eq!(e.body(&id), "From another editor");
+    // The editor never showed it and saves what it still holds.
+    notes
+        .update(&open, save(&id, "The user's save, again\n"))
+        .unwrap();
+    assert!(
+        e.versions(&id).iter().any(|v| v == OUTSIDE),
+        "the outside edit was lost: {:?}",
+        e.versions(&id)
+    );
+}
+
+#[test]
+fn a_tag_edit_while_the_document_is_ahead_leaves_the_document() {
+    let (e, notes, store) = opened_with_store(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    // An edit in the app the write-back has not written to the file yet.
+    e.edit_in_app(&store, &id, "Edited in the app");
+    notes.update(&open, add_tags(&id, &["gamma"])).unwrap();
+    assert!(
+        e.read("Plan.md").contains("  - gamma\n"),
+        "{}",
+        e.read("Plan.md")
+    );
+    assert_eq!(
+        e.body(&id),
+        "Edited in the app",
+        "the file's old body went over the document"
+    );
+}
+
+#[test]
+fn a_tag_edit_over_an_outside_edit_not_fed_yet_is_not_the_runs_own_file() {
+    let (e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, save(&id, "The user's save\n")).unwrap();
+    // No wait for the watcher: the tag edit lands on a file its row does not name.
+    std::fs::write(e.vault.join("Plan.md"), OUTSIDE).unwrap();
+    notes.update(&open, add_tags(&id, &["gamma"])).unwrap();
+    // Once the watcher brought the tagged file in, only the mark tells it from the run's own.
+    until("the row to name the tagged file", || {
+        let row = e.core().note_files().by_id(&id).unwrap().unwrap();
+        row.content_hash == Some(content_hash(&e.read("Plan.md")))
+    });
+    assert_eq!(e.body(&id), "From another editor");
+    notes
+        .update(&open, save(&id, "The user's save, again\n"))
+        .unwrap();
+    assert!(
+        e.versions(&id)
+            .iter()
+            .any(|v| v.contains("From another editor")),
+        "the outside edit was lost: {:?}",
+        e.versions(&id)
+    );
+}
+
+#[test]
+fn a_save_over_the_runs_own_file_its_row_does_not_name_keeps_it() {
+    let (e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, save(&id, "The user's save\n")).unwrap();
+    let saved = e.read("Plan.md");
+    // The document holds the file, but the row no longer says so.
+    e.core().note_files().set_hash(&id, None).unwrap();
+    notes.update(&open, save(&id, "The next save\n")).unwrap();
+    assert!(
+        e.versions(&id).contains(&saved),
+        "a file the row does not name was replaced with no version: {:?}",
+        e.versions(&id)
     );
 }
 

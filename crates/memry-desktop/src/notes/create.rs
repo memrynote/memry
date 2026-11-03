@@ -37,7 +37,6 @@
 //! (`.folder.md`, Step 13h), and the note's date reminders (Step 21).
 
 use std::path::Path;
-use std::sync::PoisonError;
 
 use memry_core::crdt::errors::CrdtError;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
@@ -234,10 +233,7 @@ impl NotesService {
             return take_back(&mut lane, error.into());
         }
         // The note's first save replaces this file with no version of it.
-        self.saved
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert(id.clone(), hash.clone());
+        self.own_files.wrote(&id, &hash);
         lane.publish(Applied::Added {
             note_id: id.clone(),
             path: rel.clone(),

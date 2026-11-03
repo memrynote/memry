@@ -14,13 +14,13 @@
 //! one at a time ([`WriteOrder`]); every write tells the tier's own-write record first, so the
 //! watcher never reports it back as an outside edit or an outside delete.
 
-use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use memry_core::seams::secure_store::SecureStore;
 
 use super::write_order::WriteOrder;
+use crate::vault::app_edit::OwnFiles;
 use crate::vault::consumer::VaultTier;
 use crate::vault::trash::move_to_trash;
 
@@ -32,10 +32,9 @@ pub struct NotesService {
     pub(crate) store: Arc<dyn SecureStore>,
     pub(crate) order: WriteOrder,
     pub(crate) trash: Trash,
-    /// By note id, the hash of the file this run wrote for the note: set by its create and by
-    /// a save, moved by an edit with no body only when that file was still on disk, dropped when
-    /// such an edit lands on a file this run did not write ([`super::update`]).
-    pub(crate) saved: Mutex<HashMap<String, String>>,
+    /// The files this run wrote for its notes, which a save replaces with no version: set by a
+    /// create ([`super::create`]), kept by the saves ([`super::update`]).
+    pub(crate) own_files: OwnFiles,
 }
 
 impl NotesService {
@@ -55,7 +54,7 @@ impl NotesService {
             store,
             order: WriteOrder::default(),
             trash,
-            saved: Mutex::default(),
+            own_files: OwnFiles::default(),
         })
     }
 }
