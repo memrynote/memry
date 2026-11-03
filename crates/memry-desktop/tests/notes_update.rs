@@ -1,7 +1,7 @@
 //! A note edited in the app (`notes:update`, #3530 13f-3c) under the running vault tier: a save
-//! writes the file and feeds its body with no version of the text the user saw, the `tags:` key
-//! changes only when the header tag list does, and the watcher reports none of it back; an
-//! outside edit that lands during a save wins and the save is kept as a version.
+//! writes the file and feeds its body, keeping a version only of a file this run did not write,
+//! the `tags:` key changes only when the header tag list does, and the watcher reports none of
+//! it back; an outside edit that lands during a save wins and the save is kept as a version.
 
 #[allow(unused_imports)]
 use crate::vault_env;
@@ -126,7 +126,7 @@ const PLAN: &str =
     "---\n# kept as written\nstatus: open\ntags: [Alpha, beta, alpha]\n---\nFirst text\n";
 
 #[test]
-fn a_save_writes_the_file_and_feeds_the_body_with_no_version_or_echo() {
+fn a_save_writes_the_file_feeds_the_body_and_keeps_only_the_file_it_found() {
     let (mut e, notes) = opened(&[("Plan.md", PLAN)]);
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
@@ -310,6 +310,94 @@ fn a_save_after_an_outside_edit_the_editor_never_showed_keeps_that_edit() {
         "the outside edit was lost: {:?}",
         e.versions(&id)
     );
+}
+
+/// A save, then an outside edit the watcher feeds, then `between` (an edit with no body), then
+/// the editor's save of the text it still shows: the outside edit must be kept as a version.
+fn outside_edit_kept_across(between: impl FnOnce(&str) -> NoteUpdateInput) {
+    let (mut e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, save(&id, "The user's save\n")).unwrap();
+    std::fs::write(
+        e.vault.join("Plan.md"),
+        "---\nstatus: open\n---\nFrom another editor\n",
+    )
+    .unwrap();
+    e.facts_until(|fact| {
+        matches!(
+            fact,
+            Applied::Changed {
+                source: ChangeSource::Watcher,
+                ..
+            }
+        )
+    });
+    assert_eq!(e.body(&id), "From another editor");
+    notes.update(&open, between(&id)).unwrap();
+    notes
+        .update(&open, save(&id, "The user's save, again\n"))
+        .unwrap();
+    assert_eq!(e.body(&id), "The user's save, again");
+    assert!(
+        e.versions(&id)
+            .iter()
+            .any(|v| v.contains("From another editor")),
+        "the outside edit was lost: {:?}",
+        e.versions(&id)
+    );
+}
+
+#[test]
+fn a_tag_edit_after_an_outside_edit_leaves_that_edit_to_be_kept_by_the_next_save() {
+    outside_edit_kept_across(|id| add_tags(id, &["gamma"]));
+}
+
+#[test]
+fn an_icon_change_after_an_outside_edit_leaves_that_edit_to_be_kept_by_the_next_save() {
+    outside_edit_kept_across(|id| NoteUpdateInput {
+        id: id.to_owned(),
+        emoji: Some(Some("🌱".to_owned())),
+        ..NoteUpdateInput::default()
+    });
+}
+
+#[test]
+fn a_tag_edit_between_two_saves_keeps_the_file_the_run_wrote() {
+    let (e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, save(&id, "The user's save\n")).unwrap();
+    notes.update(&open, add_tags(&id, &["gamma"])).unwrap();
+    notes
+        .update(&open, save(&id, "The user's next save\n"))
+        .unwrap();
+    assert_eq!(
+        e.versions(&id),
+        [PLAN],
+        "a save over the run's own file kept a version"
+    );
+}
+
+#[test]
+fn the_saves_of_a_new_note_keep_no_version_of_the_file_its_create_wrote() {
+    let (e, notes) = opened(&[]);
+    let open = e.session.current().unwrap();
+    let note = notes
+        .create(
+            &open,
+            NewNoteFile {
+                title: "Plan".into(),
+                ..NewNoteFile::default()
+            },
+        )
+        .unwrap();
+    notes.update(&open, save(&note.id, "First text\n")).unwrap();
+    notes
+        .update(&open, save(&note.id, "Second text\n"))
+        .unwrap();
+    assert_eq!(e.body(&note.id), "Second text");
+    assert_eq!(e.versions(&note.id), Vec::<String>::new());
 }
 
 #[test]

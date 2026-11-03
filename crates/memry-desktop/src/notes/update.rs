@@ -10,9 +10,10 @@
 //!    the file's spelling, and every other key keeps its lines (`serialize_updated_note`);
 //! 3. a new body, fed into the note's document with the body read in 1
 //!    ([`ExternalFeed::feed_app_edit`]), so a save keeps no version of the text it replaces.
-//!    A file this run's last update of the note did not write is kept as a version first: an
-//!    outside edit, fed or not, that an editor which never showed it would save over (the
-//!    write-back's rule for the files it replaces);
+//!    A file this run did not write for the note (its create or a save, as
+//!    `NotesService::saved` records) is kept as a version first: an outside edit, fed or not,
+//!    that an editor which never showed it would save over (the write-back's rule for the files
+//!    it replaces);
 //! 4. the file, written over only while it is still the file read in 1 (`write_note_over`);
 //! 5. the record's icon and, when the header changed, its tags (one outbox row each), only
 //!    once the file holds them, so a refused write leaves the record as the file says;
@@ -331,10 +332,16 @@ impl NotesService {
                 return Err(error.into());
             }
         }
-        self.saved
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert(id.to_owned(), hash.clone());
+        {
+            let mut saved = self.saved.lock().unwrap_or_else(PoisonError::into_inner);
+            // An edit with no body (tags, icon) leaves the text as it found it: the file stays
+            // ours only if it was, so an outside edit it lands on is still kept by the next save.
+            if edit.content.is_some() || saved.get(id) == Some(&file.hash) {
+                saved.insert(id.to_owned(), hash.clone());
+            } else {
+                saved.remove(id);
+            }
+        }
         if let Some(emoji) = edit.emoji.clone().filter(|_| emoji_changed) {
             writer.set_icon(id.to_owned(), emoji)?;
         }
@@ -371,7 +378,7 @@ impl NotesService {
 }
 
 impl NotesService {
-    /// The hash of the file this run's last update of the note wrote.
+    /// The hash of the file this run wrote for the note, while it is still the note's text.
     fn saved_file(&self, id: &str) -> Option<String> {
         self.saved
             .lock()

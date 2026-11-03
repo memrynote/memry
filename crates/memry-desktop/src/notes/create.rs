@@ -33,6 +33,7 @@
 //! reminders (Step 21).
 
 use std::path::Path;
+use std::sync::PoisonError;
 
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::domain::note_stats::word_count;
@@ -194,6 +195,11 @@ impl NotesService {
         if let Err(error) = lane.put(&id, &rel, stat) {
             return take_back(&mut lane, error.into());
         }
+        // The note's first save replaces this file with no version of it.
+        self.saved
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(id.clone(), hash.clone());
         lane.publish(Applied::Added {
             note_id: id.clone(),
             path: rel.clone(),

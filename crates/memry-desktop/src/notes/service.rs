@@ -32,7 +32,9 @@ pub struct NotesService {
     pub(crate) store: Arc<dyn SecureStore>,
     pub(crate) order: WriteOrder,
     pub(crate) trash: Trash,
-    /// By note id, the hash of the file the last update of this run wrote ([`super::update`]).
+    /// By note id, the hash of the file this run wrote for the note: set by its create and by
+    /// a save, moved by an edit with no body only when that file was still on disk, dropped when
+    /// such an edit lands on a file this run did not write ([`super::update`]).
     pub(crate) saved: Mutex<HashMap<String, String>>,
 }
 
