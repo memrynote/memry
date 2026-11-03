@@ -1,7 +1,8 @@
 //! `TagHub`: the desktop tag hub's edits (`tags:update-color`, `tags:update-icon`, the category
-//! commands and `tags:reorder`) over [`tag_admin`] and [`tag_categories`], under this device's
-//! identity. Reached from [`crate::api::vault::Vault::tag_hub`]. Not on the FFI surface: iOS
-//! sets a colour and an icon through [`Tasks`] and has no hub. Every method blocks.
+//! commands, `tags:reorder`) and a tag's pins, over [`tag_admin`], [`tag_categories`] and
+//! [`tags`], under this device's identity. Reached from [`crate::api::vault::Vault::tag_hub`].
+//! Not on the FFI surface: iOS sets a colour and an icon through [`Tasks`] and has no hub. Every
+//! method blocks.
 
 use std::sync::Arc;
 
@@ -10,6 +11,7 @@ use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
 use crate::domain::tag_admin;
 use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
+use crate::domain::tags;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
 
@@ -37,6 +39,14 @@ impl TagHub {
     pub fn set_icon(&self, tag: &str, icon: Option<&str>) -> Result<(), StorageError> {
         self.db
             .call_blocking(|conn| tag_admin::set_icon(conn, tag, icon, &self.device_id, now_ms()))
+    }
+
+    /// Pins or unpins `tag` on the note or journal day `id` ([`tags::set_pinned`]); `false`
+    /// when it already was so.
+    pub fn set_pinned(&self, id: &str, tag: &str, pinned: bool) -> Result<bool, StorageError> {
+        self.db.call_blocking(|conn| {
+            tags::set_pinned(conn, id, tag, pinned, &self.device_id, now_ms())
+        })
     }
 
     pub fn create_category(&self, name: &str) -> Result<TagCategory, StorageError> {

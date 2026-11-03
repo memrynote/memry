@@ -286,6 +286,8 @@ pub fn update(
             Change::Set(icon.clone().map(Value::from).unwrap_or(Value::Null)),
         ));
     }
+    // Case variants collapse, first spelling kept. Desktop's `updateTemplate` stores the list
+    // as given; this rule is older than desktop on Tauri, and iOS's `update_template` uses it.
     if let Some(tags) = &change.tags {
         changes.push((
             "tags",

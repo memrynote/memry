@@ -435,6 +435,30 @@ impl Journal {
     }
 }
 
+/// Desktop's journal service (Step 13m, #3530). Not exported: iOS writes no day files.
+#[doc(hidden)]
+impl Journal {
+    /// The live day's id, tags, instants and file path; `None` without a live day.
+    pub fn stamp(&self, date: &str) -> Result<Option<reads::DayStamp>, StorageError> {
+        let date = date.to_owned();
+        self.db.read_blocking(move |conn| reads::stamp(conn, &date))
+    }
+
+    /// [`metadata::open_with`]: the day opened for its first write, with what it holds after.
+    pub fn open_with(
+        &self,
+        date: &str,
+        tags: &[String],
+        properties: &serde_json::Map<String, Value>,
+    ) -> Result<metadata::OpenedWith, StorageError> {
+        let (date, tags, properties) = (date.to_owned(), tags.to_vec(), properties.clone());
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            metadata::open_with(conn, &date, &tags, &properties, &device_id, now_ms())
+        })
+    }
+}
+
 /// The weekday of a calendar date, 0 = Sunday; `nil` for a date that does not
 /// parse. The shell uses it to label a day and to bind weekday templates.
 #[uniffi::export]

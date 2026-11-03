@@ -1,7 +1,8 @@
 //! The tags of the open vault as the renderer sees them (`ipc/tags-handlers.ts`): the tag list
-//! with counts, a tag's notes, and the tag hub's edits (colour, icon, categories, drag). None of
-//! them touches a note file: the list and a tag's notes are reads, and the hub's edits change
-//! the synced `tag_definition` and `tag_category` records only.
+//! with counts, a tag's notes, the tag hub's edits (colour, icon, categories, drag) and a tag's
+//! pins. None of them touches a note file: the list and a tag's notes are reads, the hub's edits
+//! change the synced `tag_definition` and `tag_category` records only, and a pin the note's
+//! record (`pinnedTags`).
 //!
 //! The rules live in the core: which tags a note carries and how they count
 //! ([`memry_core::domain::tag_reads`]), how a definition and a category are written
@@ -127,6 +128,18 @@ impl Hub {
             .into());
         }
         Ok(self.hub.set_icon(tag_name(tag)?, icon)?)
+    }
+
+    /// `tags:pin-note-to-tag` and `tags:unpin-note-from-tag`: the note's record pins the tag, or
+    /// stops pinning it. `false` when it already was so, which Electron answers as a success.
+    pub fn set_pinned(&self, note_id: &str, tag: &str, pinned: bool) -> Result<bool, TagsError> {
+        if note_id.is_empty() {
+            return Err(StorageError::Invalid {
+                what: "a pin needs a note".to_owned(),
+            }
+            .into());
+        }
+        Ok(self.hub.set_pinned(note_id, tag_name(tag)?, pinned)?)
     }
 
     pub fn create_category(&self, name: &str) -> Result<TagCategoryView, TagsError> {

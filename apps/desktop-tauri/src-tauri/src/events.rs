@@ -2,6 +2,7 @@
 //! `<Domain><Noun><Verb>Event` (`CalendarChangedEvent`, `SyncStatusChangedEvent`). Domain steps
 //! add their events here and list them in `registry.rs`; none calls `emit` directly.
 
+use memry_desktop::journal::JournalEntryView;
 use memry_desktop::notes::index::{IndexProgress, LinkChanges};
 use memry_desktop::notes::view::NoteListItemView;
 use memry_desktop::session::response::VaultStatus;
@@ -76,6 +77,21 @@ pub enum WriteBackFailureReason {
 #[serde(rename_all = "camelCase")]
 pub struct CustomIconsUpdatedEvent {
     pub id: String,
+}
+
+/// A day's entry was made on its first write (`journal:entryCreated`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct JournalEntryCreatedEvent {
+    pub date: String,
+    pub entry: JournalEntryView,
+}
+
+/// A day's entry was deleted (`journal:entryDeleted`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct JournalEntryDeletedEvent {
+    pub date: String,
 }
 
 /// A template was created or duplicated (`templates:created`). The renderer refetches the list.
@@ -198,6 +214,23 @@ pub struct TagColorUpdatedEvent {
 #[serde(rename_all = "camelCase")]
 pub struct TagCategoriesChangedEvent {
     pub category_id: Option<String>,
+}
+
+/// What happened to a note in a tag, for [`TagNotesChangedEvent`].
+#[derive(Debug, Clone, Copy, Serialize, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "lowercase")]
+pub enum TagNoteAction {
+    Pinned,
+    Unpinned,
+}
+
+/// A note was pinned in a tag or unpinned from it (`tags:notes-changed`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct TagNotesChangedEvent {
+    pub tag: String,
+    pub note_id: String,
+    pub action: TagNoteAction,
 }
 
 /// Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer

@@ -215,9 +215,9 @@ export class Locator {
 
   async fill(text: string, options: { timeout?: number } = {}): Promise<void> {
     await this.actionable(options)
-    const result = await this.core.pw<{ done?: boolean; error?: string }>('fill', this.spec, text)
+    const result = await this.core.pw<{ done?: boolean; failure?: string }>('fill', this.spec, text)
     if (!result.done)
-      throw new HarnessError(`${this}: fill failed: ${result.error ?? 'element changed'}`)
+      throw new HarnessError(`${this}: fill failed: ${result.failure ?? 'element changed'}`)
   }
 
   async clear(): Promise<void> {

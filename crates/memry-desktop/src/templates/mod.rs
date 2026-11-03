@@ -177,7 +177,7 @@ pub struct TemplateUpdateInput {
 }
 
 /// A field that is present, `null` included; `#[serde(default)]` makes an absent one `None`.
-fn present<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Option<String>>, D::Error> {
+pub(crate) fn present<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Option<String>>, D::Error> {
     Option::<String>::deserialize(d).map(Some)
 }
 
@@ -306,6 +306,22 @@ impl Templates {
     /// A built-in or a live template of the vault; `None` otherwise.
     pub fn get(&self, id: &str) -> Result<Option<TemplateView>, StorageError> {
         Ok(self.store.get(id)?.map(view))
+    }
+
+    /// The template a new note takes (`createNote`): the one named, else the one a tag of
+    /// `tags` names. `None` when that one is not there: no other is tried, as in Electron.
+    // Step 13h adds the folder's template (`.folder.md`) after the tags'.
+    pub fn for_new_note(
+        &self,
+        named: Option<&str>,
+        tags: &[String],
+    ) -> Result<Option<TemplateView>, StorageError> {
+        // `!templateId`: an empty id names none.
+        let id = match named.filter(|id| !id.is_empty()) {
+            Some(id) => Some(id.to_owned()),
+            None => self.store.of_tags(tags)?,
+        };
+        id.map_or(Ok(None), |id| self.get(&id))
     }
 
     fn written(&self, id: &str) -> Result<TemplateView, StorageError> {

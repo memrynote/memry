@@ -96,15 +96,16 @@ export class PageCore {
       const [spec, arg, done] = arguments;
       Promise.resolve().then(() => { ${body} }).then(
         (value) => done({ ok: true, undef: value === undefined, value: value === undefined ? null : value }),
-        (error) => done({ ok: false, error: String(error && error.stack || error) })
+        (error) => done({ ok: false, failure: String(error && error.stack || error) })
       );`
     const outcome = (await this.browser.executeAsync(script, spec ?? null, args[0] ?? null)) as {
       ok: boolean
       undef?: boolean
       value?: unknown
-      error?: string
+      // Not `error`: WebDriver reads a result with an `error` key as a failed command and resends it.
+      failure?: string
     }
-    if (!outcome.ok) throw new HarnessError(`evaluate failed: ${outcome.error}`)
+    if (!outcome.ok) throw new HarnessError(`evaluate failed: ${outcome.failure}`)
     return (outcome.undef ? undefined : outcome.value) as T
   }
 

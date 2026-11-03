@@ -9,6 +9,7 @@
 //! | a value the insert would refuse refuses the file             | the driver binds no boolean or list  |
 //! | numbers read as SQLite stored Electron's, dates as ISO text  | text affinity; a kept unquoted date  |
 //! | an id the database ever held is never written again         | `onConflictDoNothing`, no resurrect  |
+//! | a template another device synced is left as it came          | the file never overwrites a peer's   |
 //! | the flag is set once and stays                               | `templates.importedFromFiles`        |
 
 #![cfg(feature = "markdown")]
@@ -16,7 +17,7 @@
 use memry_core::api::errors::StorageError;
 use memry_core::domain::template_legacy::{self, LegacyTemplate, Parsed};
 use memry_core::domain::template_store;
-use memry_core::storage::repositories::sync_items;
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
 use serde_json::{Value, json};
@@ -177,4 +178,62 @@ fn the_flag_is_set_once_and_stays() {
         Ok((before, after, template_legacy::imported(conn)?))
     });
     assert_eq!((before, after, twice), (false, true, true));
+}
+
+#[test]
+fn a_template_another_device_synced_is_left_as_it_came() {
+    let db = open("synced");
+    let synced = json!({
+        "name": "Newer, from the phone",
+        "description": null,
+        "icon": "P",
+        "tags": ["phone"],
+        "properties": [],
+        "content": "Edited elsewhere",
+        "clock": { "device-b": 7 },
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-06-01T00:00:00.000Z",
+    })
+    .to_string();
+    let record = InboundRecord {
+        item_type: "template".into(),
+        item_id: "legacy1".into(),
+        payload_json: synced.clone(),
+        server_cursor: Some(1),
+        signer_device_id: Some("device-b".into()),
+        updated_at: NOW_MS,
+        deleted_at: None,
+    };
+    let (imported, stored, queued) = run(&db, move |conn| {
+        sync_items::apply_remote(conn, &record, NOW_MS)?;
+        let file = template(
+            "legacy1",
+            "---\nname: Stale file\ntags: [old]\n---\nOld body",
+        );
+        let imported = template_legacy::import(conn, &file, DEVICE, NOW_MS + 1)?;
+        let stored: String = conn
+            .query_row(
+                "SELECT payload FROM sync_items WHERE item_type = 'template' AND item_id = 'legacy1'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("the synced row");
+        let queued: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM outbox WHERE item_id = 'legacy1'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("the outbox");
+        Ok((imported, stored, queued))
+    });
+    assert!(
+        !imported,
+        "the file's stale bytes replaced a peer's template"
+    );
+    assert_eq!(
+        stored, synced,
+        "the synced payload is byte for byte as it came"
+    );
+    assert_eq!(queued, 0, "nothing is pushed back over the peer's version");
 }

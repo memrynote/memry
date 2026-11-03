@@ -1,4 +1,6 @@
 import { waitForAppReady, createNote } from '../../harness/app-helpers'
+import { HarnessError } from '../../harness/errors'
+import { invokeTest } from '../../harness/invoke-test'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 
@@ -31,6 +33,41 @@ async function showFixturePage(page: Page): Promise<void> {
     el('reveal').addEventListener('click', () => el('late').removeAttribute('hidden'))
   })
 }
+
+async function failureOf(run: () => Promise<unknown>): Promise<string> {
+  try {
+    await run()
+  } catch (error) {
+    return error instanceof HarnessError ? error.message : `not a HarnessError: ${String(error)}`
+  }
+  return 'no failure'
+}
+
+// A script result with an `error` key reads to WebDriver as a failed command, which it resends.
+test('a failing command, evaluate or fill runs once and throws the harness error', async ({
+  app,
+  page
+}) => {
+  expect(await failureOf(() => invokeTest(app, 'e2e_no_such_command'))).toContain(
+    'e2e_no_such_command failed:'
+  )
+
+  await showFixturePage(page)
+  const evaluated = await failureOf(() =>
+    page.evaluate(() => {
+      const counted = window as Window & { __memryRuns?: number }
+      counted.__memryRuns = (counted.__memryRuns ?? 0) + 1
+      throw new Error('boom')
+    })
+  )
+  expect(evaluated).toContain('evaluate failed:')
+  const runs = await page.evaluate(() => (window as Window & { __memryRuns?: number }).__memryRuns)
+  expect(runs).toBe(1)
+
+  expect(await failureOf(() => page.locator('#hover-target').fill('x'))).toContain(
+    'fill failed: element is not an input'
+  )
+})
 
 test('the app helpers run against the live app', async ({ page }) => {
   await waitForAppReady(page)

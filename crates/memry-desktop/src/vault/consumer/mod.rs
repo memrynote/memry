@@ -68,7 +68,6 @@ mod run;
 pub(crate) mod tests;
 mod tier;
 
-pub(crate) use body::writing_of;
 pub(crate) use converter::{converter_for, converter_of};
 pub use run::{FIRST_RETRY, MAX_RETRIES, QUEUE_CAPACITY};
 #[cfg(test)]
@@ -90,10 +89,10 @@ pub enum ChangeSource {
     Walk,
     /// The app wrote, created or removed the file.
     App,
-    /// The app rewrote the file's text for the user, away from the editor (a mention linked,
-    /// `notes::link_mention`): an editor showing the note reloads it, as for an outside edit
-    /// (Electron's `landSourceRewrite` sends `notes:updated` with `source: external`).
-    Rewrite,
+    /// The app edited the file's text for the user, outside the editor (`vault::app_edit`: the
+    /// links to a renamed note, a linked mention, a template's apply). The renderer takes it as
+    /// it takes an outside edit, as Electron's `landSourceRewrite` sends it.
+    AppEdit,
 }
 
 /// A change to the rows, published after the row is written.

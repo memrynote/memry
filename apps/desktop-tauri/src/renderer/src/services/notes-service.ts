@@ -153,8 +153,7 @@ function definitionInput(
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
-    // Their steps (13l, 32) port them; a create without them would lose what was asked.
-    if (input.template !== undefined) throw new NotPortedError('notes.create({ template })')
+    // Step 32 ports it; a create without it would lose what was asked.
     if (input.plainChecklists) throw new NotPortedError('notes.create({ plainChecklists })')
     try {
       const note = await commands.notesCreate({
@@ -164,6 +163,8 @@ const ported = {
         tags: input.tags,
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- property values are the JSON the command carries as is
         properties: input.properties as Record<string, Value> | undefined,
+        template: input.template,
+        // Left out, the template's icon; `null`, none.
         emoji: input.emoji
       })
       return { success: true, note: toNote(note) }

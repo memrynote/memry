@@ -6,6 +6,7 @@
 //! | ------------------------------------------------------------- | ----------------------------------- |
 //! | Electron's files import as Electron imported them             | `migrateTemplateFilesToDb` rows     |
 //! | a file that cannot be read holds the flag, the next open ends | retry, no doubles, files stay       |
+//! | an insert the database refuses holds the flag, as a read does  | a busy or full disk is retried      |
 //! | a link out of the vault is never read                          | #2936                               |
 //! | no folder sets nothing, and a folder that comes later imports  | the late cloud folder               |
 //! | beside Electron's database the import waits or defers to it    | Step 36 carries Electron's rows     |
@@ -251,6 +252,43 @@ fn a_file_that_cannot_be_read_holds_the_flag_and_the_next_open_ends_it() {
     assert_eq!(lib.import(), LegacyImport::default());
 }
 
+#[test]
+fn an_insert_the_database_refuses_holds_the_flag_as_a_read_does() {
+    let lib = Lib::new();
+    lib.write("good.md", "---\nid: good\nname: Good\n---\nbody");
+    let held = lib.write("held.md", "---\nid: held\nname: Held\n---\nbody");
+    // A write the database refuses for a while: a busy lock, an I/O error, a full disk.
+    lib.core()
+        .execute_batch(
+            "CREATE TRIGGER refuse_held BEFORE INSERT ON sync_items \
+             WHEN NEW.item_type = 'template' AND NEW.item_id = 'held' \
+             BEGIN SELECT RAISE(ABORT, 'database or disk is full'); END;",
+        )
+        .expect("the trigger");
+
+    let run = lib.import();
+    assert_eq!(run.outcome, LegacyOutcome::Retry);
+    assert_eq!(run.imported, 1);
+    assert_eq!(
+        run.unsaved
+            .iter()
+            .map(|(path, _)| path.as_str())
+            .collect::<Vec<_>>(),
+        [".memry/templates/held.md"]
+    );
+    assert!(run.refused.is_empty() && run.failed.is_empty(), "{run:?}");
+    assert_eq!(lib.payload("held"), None);
+
+    lib.core()
+        .execute_batch("DROP TRIGGER refuse_held;")
+        .expect("drop the trigger");
+    let last = lib.import();
+    assert_eq!((last.outcome, last.imported), (LegacyOutcome::Done, 1));
+    assert_eq!(lib.customs(), ["good", "held"]);
+    assert!(held.is_file(), "the file stays");
+    assert_eq!(lib.import(), LegacyImport::default());
+}
+
 #[cfg(unix)]
 #[test]
 fn a_link_out_of_the_vault_is_never_read() {
@@ -322,6 +360,7 @@ fn what_failed_and_what_never_imports_reach_the_activity_log() {
     let run = LegacyImport {
         imported: 0,
         failed: vec![(".memry/templates/a.md".into(), "busy".into())],
+        unsaved: vec![(".memry/templates/d.md".into(), "disk full".into())],
         refused: vec![
             (".memry/templates/b.md".into(), "frontmatter: bad".into()),
             (".memry/templates/c.md".into(), "file-too-large".into()),
@@ -350,6 +389,13 @@ fn what_failed_and_what_never_imports_reach_the_activity_log() {
                 Some(".memry/templates/a.md"),
                 Some("read-failed"),
                 Some("busy"),
+            ),
+            (
+                ActivityKind::Failed,
+                ActivitySource::Import,
+                Some(".memry/templates/d.md"),
+                None,
+                Some("disk full"),
             ),
             (
                 ActivityKind::Skipped,

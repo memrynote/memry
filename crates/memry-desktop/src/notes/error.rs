@@ -7,6 +7,7 @@ use memry_core::markdown::frontmatter::YamlError;
 
 use crate::error::{CoreError, FailureKind};
 use crate::shell::file_open::OpenError;
+use crate::vault::app_edit::AppEditError;
 use crate::vault::app_move::MoveError;
 use crate::vault::consumer::rows::RowError;
 use crate::vault::note_file::NoteFileError;
@@ -44,6 +45,14 @@ pub enum NotesError {
     /// is whole; the user decides whether it goes for good (#3813).
     #[error("the note's file could not be moved to the trash: {0}")]
     TrashUnavailable(String),
+    /// A journal day's file is past the size the journal page reads whole (Step 13m); it is
+    /// never cut.
+    #[error("the day's file is larger than {0} bytes, which the journal does not open")]
+    TooLarge(usize),
+    /// A live day's text could not be written to its new file: it is not here yet, or the file
+    /// would lose part of it. Nothing was written.
+    #[error("the day's text cannot be written to its file yet: {0}")]
+    DayTextUnwritable(String),
     #[error(transparent)]
     Storage(#[from] StorageError),
     #[error(transparent)]
@@ -87,6 +96,18 @@ impl Unopenable {
             }
             Self::NotRegular => "the note's path is not a regular file",
             Self::KeptChanging => "the note's file kept changing while it was opened; try again",
+        }
+    }
+}
+
+impl From<AppEditError> for NotesError {
+    fn from(error: AppEditError) -> Self {
+        match error {
+            AppEditError::Rows(error) => error.into(),
+            AppEditError::Storage(error) => Self::Storage(error),
+            AppEditError::Crdt(error) => Self::Crdt(error),
+            AppEditError::Auth(error) => Self::Auth(error),
+            AppEditError::File(error) => Self::File(error),
         }
     }
 }
@@ -140,6 +161,8 @@ impl CoreError for NotesError {
             }
             Self::MovePending(_) => (FailureKind::Invalid, "note_move_unsettled"),
             Self::TrashUnavailable(_) => (FailureKind::Storage, "note_trash_unavailable"),
+            Self::TooLarge(_) => (FailureKind::Invalid, "journal_day_too_large"),
+            Self::DayTextUnwritable(_) => (FailureKind::Invalid, "journal_day_unwritable"),
             Self::Crdt(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
             Self::File(_) => (FailureKind::Storage, "note_file_failed"),

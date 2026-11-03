@@ -416,7 +416,11 @@ export function memryPwInstall(win) {
       else doc.execCommand('insertText', false, text)
       return { count: 1, done: true }
     }
-    return { count: 1, done: false, error: 'element is not an input, textarea or contenteditable' }
+    return {
+      count: 1,
+      done: false,
+      failure: 'element is not an input, textarea or contenteditable'
+    }
   }
 
   function focus(spec) {

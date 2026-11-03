@@ -1,5 +1,29 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
+
+const commands = vi.hoisted(() => ({
+  journalGetEntry: vi.fn(),
+  journalCreateEntry: vi.fn(),
+  journalDeleteEntry: vi.fn()
+}))
+
+// Each Rust event's last listener, for a test to send a payload through.
+const listeners = vi.hoisted(() => new Map<string, (event: { payload: unknown }) => void>())
+const events = vi.hoisted(() => {
+  const event = (name: string) => ({
+    listen: async (handler: (event: { payload: unknown }) => void) => {
+      listeners.set(name, handler)
+      return () => listeners.delete(name)
+    }
+  })
+  return {
+    journalEntryCreatedEvent: event('created'),
+    journalEntryDeletedEvent: event('deleted')
+  }
+})
+
+vi.mock('../../../generated/bindings', () => ({ commands, events }))
+
 import {
   journalService,
   onJournalEntryCreated,
@@ -13,15 +37,27 @@ import {
   isFutureDate
 } from './journal-service'
 
+const view = {
+  id: 'j2025-01-01',
+  date: '2025-01-01',
+  content: 'Hello',
+  wordCount: 1,
+  characterCount: 5,
+  tags: ['mood'],
+  aliases: [],
+  properties: null,
+  createdAt: '2025-01-01T08:00:00.000Z',
+  modifiedAt: '2025-01-01T08:00:00.000Z'
+}
+
 describe('journal-service', () => {
   let api: any
 
   beforeEach(() => {
+    vi.clearAllMocks()
+    listeners.clear()
     api = createMockApi()
-    api.journal.getEntry = vi.fn().mockResolvedValue({ id: 'j-1' })
-    api.journal.createEntry = vi.fn().mockResolvedValue({ id: 'j-1' })
     api.journal.updateEntry = vi.fn().mockResolvedValue({ id: 'j-1' })
-    api.journal.deleteEntry = vi.fn().mockResolvedValue({ success: true })
     api.journal.getHeatmap = vi.fn().mockResolvedValue([])
     api.journal.getMonthEntries = vi.fn().mockResolvedValue([])
     api.journal.getYearStats = vi.fn().mockResolvedValue([])
@@ -31,27 +67,47 @@ describe('journal-service', () => {
     api.journal.getAllTags = vi.fn().mockResolvedValue([])
     api.journal.getStreak = vi.fn().mockResolvedValue({ currentStreak: 0, longestStreak: 0 })
 
-    api.onJournalEntryCreated = vi.fn().mockReturnValue(() => {})
     api.onJournalEntryUpdated = vi.fn().mockReturnValue(() => {})
-    api.onJournalEntryDeleted = vi.fn().mockReturnValue(() => {})
     api.onJournalExternalChange = vi.fn().mockReturnValue(() => {})
     ;(window as Window & { api: unknown }).api = api
   })
 
-  it('forwards journal CRUD and calendar operations', async () => {
-    await journalService.getEntry('2025-01-01')
-    expect(api.journal.getEntry).toHaveBeenCalledWith('2025-01-01')
+  it('reads, creates and deletes an entry through the Rust commands', async () => {
+    commands.journalGetEntry.mockResolvedValueOnce(null).mockResolvedValueOnce(view)
+    expect(await journalService.getEntry('2025-01-01')).toBeNull()
+    // A file without properties leaves the key out, as Electron's entry does.
+    expect(await journalService.getEntry('2025-01-01')).toEqual({
+      id: 'j2025-01-01',
+      date: '2025-01-01',
+      content: 'Hello',
+      wordCount: 1,
+      characterCount: 5,
+      tags: ['mood'],
+      aliases: [],
+      createdAt: '2025-01-01T08:00:00.000Z',
+      modifiedAt: '2025-01-01T08:00:00.000Z'
+    })
+    expect(commands.journalGetEntry).toHaveBeenCalledWith('2025-01-01')
 
-    const createInput = { date: '2025-01-01', content: 'Hello', tags: ['mood'] }
-    await journalService.createEntry(createInput)
-    expect(api.journal.createEntry).toHaveBeenCalledWith(createInput)
+    commands.journalCreateEntry.mockResolvedValue({ ...view, properties: { mood: 'calm' } })
+    const createInput = {
+      date: '2025-01-01',
+      content: 'Hello',
+      tags: ['mood'],
+      properties: { mood: 'calm' }
+    }
+    expect((await journalService.createEntry(createInput)).properties).toEqual({ mood: 'calm' })
+    expect(commands.journalCreateEntry).toHaveBeenCalledWith(createInput)
 
+    commands.journalDeleteEntry.mockResolvedValue({ success: true })
+    expect(await journalService.deleteEntry('2025-01-01')).toEqual({ success: true })
+    expect(commands.journalDeleteEntry).toHaveBeenCalledWith('2025-01-01')
+  })
+
+  it('forwards the calendar, context and tag reads it does not serve yet', async () => {
     const updateInput = { date: '2025-01-01', content: 'Updated' }
     await journalService.updateEntry(updateInput)
     expect(api.journal.updateEntry).toHaveBeenCalledWith(updateInput)
-
-    await journalService.deleteEntry('2025-01-01')
-    expect(api.journal.deleteEntry).toHaveBeenCalledWith('2025-01-01')
 
     await journalService.getHeatmap(2025)
     expect(api.journal.getHeatmap).toHaveBeenCalledWith(2025)
@@ -61,9 +117,7 @@ describe('journal-service', () => {
 
     await journalService.getYearStats(2025)
     expect(api.journal.getYearStats).toHaveBeenCalledWith(2025)
-  })
 
-  it('forwards context and tag queries', async () => {
     await journalService.getDayContext('2025-01-02')
     expect(api.journal.getDayContext).toHaveBeenCalledWith('2025-01-02')
 
@@ -74,16 +128,24 @@ describe('journal-service', () => {
     expect(api.journal.getStreak).toHaveBeenCalled()
   })
 
-  it('registers journal event subscriptions', () => {
-    const unsubscribe = vi.fn()
-    api.onJournalEntryCreated = vi.fn(() => unsubscribe)
-    api.onJournalEntryUpdated = vi.fn(() => unsubscribe)
-    api.onJournalEntryDeleted = vi.fn(() => unsubscribe)
-    api.onJournalExternalChange = vi.fn(() => unsubscribe)
+  it('takes the created and deleted events from Rust and the rest from window.api', async () => {
+    const created = vi.fn()
+    const deleted = vi.fn()
+    onJournalEntryCreated(created)
+    onJournalEntryDeleted(deleted)
+    await vi.waitFor(() => expect(listeners.size).toBe(2))
+    listeners.get('created')?.({ payload: { date: '2025-01-01', entry: view } })
+    listeners.get('deleted')?.({ payload: { date: '2025-01-01' } })
+    expect(created).toHaveBeenCalledWith({
+      date: '2025-01-01',
+      entry: expect.not.objectContaining({ properties: null })
+    })
+    expect(deleted).toHaveBeenCalledWith({ date: '2025-01-01' })
 
-    expect(onJournalEntryCreated(vi.fn())).toBe(unsubscribe)
+    const unsubscribe = vi.fn()
+    api.onJournalEntryUpdated = vi.fn(() => unsubscribe)
+    api.onJournalExternalChange = vi.fn(() => unsubscribe)
     expect(onJournalEntryUpdated(vi.fn())).toBe(unsubscribe)
-    expect(onJournalEntryDeleted(vi.fn())).toBe(unsubscribe)
     expect(onJournalExternalChange(vi.fn())).toBe(unsubscribe)
   })
 

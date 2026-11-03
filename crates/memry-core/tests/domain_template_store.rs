@@ -8,7 +8,7 @@
 //! | a deleted template is gone for every call                    | `NOT_FOUND` after `deleteTemplate`    |
 //! | a stored row with a built-in's id is never read              | the built-in wins                     |
 //! | the vault's templates list in `localeCompare` order          | `listTemplates`' `localeCompare`      |
-//! | case-variant tags collapse on a create as on an update       | one tag rule for both writes          |
+//! | a create keeps its tags as given; an update collapses them   | `createTemplate`; core edit rule      |
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::reads;
@@ -240,7 +240,7 @@ fn the_vaults_templates_list_in_locale_compare_order() {
 }
 
 #[test]
-fn case_variant_tags_collapse_on_a_create_as_on_an_update() {
+fn a_create_keeps_its_tags_as_given_and_an_update_collapses_case_variants() {
     let db = open("tags");
     let (created, updated) = run(&db, |conn| {
         let mut tagged = fields("Tagged");
@@ -254,6 +254,8 @@ fn case_variant_tags_collapse_on_a_create_as_on_an_update() {
         template_store::update(conn, &id, &edit, DEVICE, NOW + 1)?;
         Ok((created, payload(conn, &id)["tags"].clone()))
     });
-    assert_eq!(created, json!(["Work", "Home"]));
+    // `createTemplate` stores `input.tags` as it is (`vault/templates.ts`).
+    assert_eq!(created, json!(["Work", "work", "Home", "WORK"]));
+    // The core's edit rule, older than desktop on Tauri and shared with iOS: first spelling kept.
     assert_eq!(updated, json!(["home", "Later"]));
 }
