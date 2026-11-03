@@ -33,6 +33,7 @@ use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
+use crate::events::{NoteTagsChangedEvent, broadcast};
 use crate::shell::{external, services};
 
 /// The open vault, or the localized "no vault is open".
@@ -91,6 +92,10 @@ pub async fn notes_create(
             .create(&open, note)
             .map_err(|error| failed(&error))?;
         track(&app, "note_created", "created");
+        // Electron's `createNote` refreshes the tag lists when the new note carries tags.
+        if !created.tags.is_empty() {
+            broadcast(&app, NoteTagsChangedEvent);
+        }
         Ok(created)
     })
     .await

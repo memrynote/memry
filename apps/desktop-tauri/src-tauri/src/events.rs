@@ -200,6 +200,23 @@ pub struct TagCategoriesChangedEvent {
     pub category_id: Option<String>,
 }
 
+/// What happened to a note in a tag, for [`TagNotesChangedEvent`].
+#[derive(Debug, Clone, Copy, Serialize, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "lowercase")]
+pub enum TagNoteAction {
+    Pinned,
+    Unpinned,
+}
+
+/// A note was pinned in a tag or unpinned from it (`tags:notes-changed`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct TagNotesChangedEvent {
+    pub tag: String,
+    pub note_id: String,
+    pub action: TagNoteAction,
+}
+
 /// Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer
 /// refetches.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

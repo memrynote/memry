@@ -3,14 +3,12 @@
 //! file, opened under the vault and refusing links, its size classified before a byte is read
 //! (`classifyMarkdownStat`), then by its blocks (`classifyMarkdownContent`).
 
-use std::collections::HashSet;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use memry_core::domain::inbox::queries::FiledVoice;
 use memry_core::domain::note_list::{ListedNote, NoteListQuery};
 use memry_core::domain::note_stats::word_count;
-use memry_core::domain::tags::fold;
 use memry_core::markdown::frontmatter::{gray_matter_data, split_frontmatter_block};
 use memry_core::markdown::shared::markdown_class::{
     LargeFileReason, MarkdownClassThresholds, MarkdownClassification, classify_markdown_content,
@@ -43,7 +41,7 @@ pub fn get(
     telemetry: Option<&Service>,
 ) -> Result<Option<NoteView>, NotesError> {
     match open.vault.note_files().listed_by_id(note_id)? {
-        Some(listed) => note_of(&open.path, listed, telemetry),
+        Some(listed) => note_of(open, listed, telemetry),
         None => Ok(None),
     }
 }
@@ -55,7 +53,7 @@ pub fn get_by_path(
     telemetry: Option<&Service>,
 ) -> Result<Option<NoteView>, NotesError> {
     match open.vault.note_files().listed_by_path(path)? {
-        Some(listed) => note_of(&open.path, listed, telemetry),
+        Some(listed) => note_of(open, listed, telemetry),
         None => Ok(None),
     }
 }
@@ -160,12 +158,12 @@ pub fn file_path(open: &OpenVault, note_id: &str) -> Result<PathBuf, NotesError>
 }
 
 fn note_of(
-    root: &Path,
+    open: &OpenVault,
     listed: ListedNote,
     telemetry: Option<&Service>,
 ) -> Result<Option<NoteView>, NotesError> {
     let thresholds = MarkdownClassThresholds::default();
-    let file = match open_vault_file(root, &listed.path) {
+    let file = match open_vault_file(&open.path, &listed.path) {
         Ok(Some(file)) => file,
         Ok(None) => {
             tracing::warn!(
@@ -218,6 +216,12 @@ fn note_of(
     };
     let content = split.body.to_owned();
     let (created, modified) = dates(&listed);
+    // The tag list's rule, over the header just read: a tag removed from the file outside the
+    // app leaves the header once the index measured the file, as it leaves the list.
+    let tags = open
+        .search
+        .note_tags(&listed.id, fields.header_tags.clone())?
+        .unwrap_or_default();
     Ok(Some(NoteView {
         id: listed.id,
         path: listed.path,
@@ -227,7 +231,7 @@ fn note_of(
         frontmatter: fields.frontmatter,
         created,
         modified,
-        tags: with_header_tags(listed.tags, &fields.header_tags),
+        tags,
         header_tags: fields.header_tags,
         aliases: fields.aliases,
         properties: fields.properties,
@@ -237,19 +241,6 @@ fn note_of(
         large_file: None,
         content_omitted: false,
     }))
-}
-
-/// `getNoteTags`: the record's and the body's tags, then the file's header tags they lack. A
-/// file the identity adopted has its header tags only in the file until the note index (Step
-/// 13e) records them.
-fn with_header_tags(mut tags: Vec<String>, header: &[String]) -> Vec<String> {
-    let mut seen: HashSet<String> = tags.iter().map(|tag| fold(tag)).collect();
-    for tag in header {
-        if seen.insert(fold(tag)) {
-            tags.push(tag.clone());
-        }
-    }
-    tags
 }
 
 /// How a read of the markdown file `raw` classifies it: `None` for a note, else the large

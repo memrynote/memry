@@ -1,8 +1,8 @@
-//! The tag list, a tag's notes and the tag hub's edits (`tags:*` of `ipc/tags-handlers.ts`),
-//! each one call of `memry_desktop::tags`. None of them writes a note file. After a write they
-//! send what Electron's handler sends: [`TagColorUpdatedEvent`] and [`NoteTagsChangedEvent`]
-//! for a colour, [`NoteTagsChangedEvent`] for an icon, [`TagCategoriesChangedEvent`] for a
-//! category or a drag.
+//! The tag list, a tag's notes, the tag hub's edits and a tag's pins (`tags:*` of
+//! `ipc/tags-handlers.ts`), each one call of `memry_desktop::tags`. None of them writes a note
+//! file. After a write they send what Electron's handler sends: [`TagColorUpdatedEvent`] and
+//! [`NoteTagsChangedEvent`] for a colour, [`NoteTagsChangedEvent`] for an icon,
+//! [`TagCategoriesChangedEvent`] for a category or a drag, [`TagNotesChangedEvent`] for a pin.
 
 use std::sync::Arc;
 
@@ -13,14 +13,15 @@ use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::tags::view::{
     NotesByTagInput, NotesByTagView, ReorderInput, TagCategoryView, TagWithCountView,
 };
-use memry_desktop::tags::{self, Hub};
+use memry_desktop::tags::{self, Hub, TagsError};
 use memry_desktop::telemetry::Service;
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
 use crate::events::{
-    NoteTagsChangedEvent, TagCategoriesChangedEvent, TagColorUpdatedEvent, broadcast,
+    NoteTagsChangedEvent, TagCategoriesChangedEvent, TagColorUpdatedEvent, TagNoteAction,
+    TagNotesChangedEvent, broadcast,
 };
 
 /// The open vault, or the localized "no vault is open".
@@ -60,6 +61,11 @@ pub enum Written {
     /// Renamed or deleted.
     Category(String),
     Drag,
+    Pin {
+        tag: String,
+        note_id: String,
+        action: TagNoteAction,
+    },
 }
 
 /// What Electron's handler sends once the write landed: the events, and the telemetry of a
@@ -93,6 +99,18 @@ pub fn announce<R: Runtime>(app: &AppHandle<R>, written: Written) {
             },
         ),
         Written::Drag => broadcast(app, TagCategoriesChangedEvent { category_id: None }),
+        Written::Pin {
+            tag,
+            note_id,
+            action,
+        } => broadcast(
+            app,
+            TagNotesChangedEvent {
+                tag,
+                note_id,
+                action,
+            },
+        ),
     }
 }
 
@@ -232,6 +250,68 @@ pub async fn tags_reorder(app: AppHandle<Wry>, input: ReorderInput) -> Result<()
             .map_err(|error| CommandError::from_core(&error))?;
         announce(&app, Written::Drag);
         Ok(())
+    })
+    .await
+}
+
+/// A pin the core refused or failed, worded as Electron's handler words it (`key`), with the
+/// core's kind and code; the cause goes to the log.
+fn pin_failed<R: Runtime>(app: &AppHandle<R>, key: &str, error: &TagsError) -> CommandError {
+    tracing::warn!(scope = "TagsHandlers", "a tag pin failed: {error}");
+    let core = CommandError::from_core(error);
+    let locale = app.state::<Arc<LocaleService>>().get();
+    CommandError::new(core.kind, core.code, i18n::t(locale, key, &Args::new()))
+}
+
+/// Pins or unpins a note in a tag and sends [`TagNotesChangedEvent`], as Electron does after
+/// every pin, also one that changed nothing.
+fn set_pinned<R: Runtime>(
+    app: &AppHandle<R>,
+    note_id: String,
+    tag: String,
+    action: TagNoteAction,
+) -> Result<(), CommandError> {
+    let (pinned, key) = match action {
+        TagNoteAction::Pinned => (true, "errors:tag.pinNoteFailed"),
+        TagNoteAction::Unpinned => (false, "errors:tag.unpinNoteFailed"),
+    };
+    hub(app)?
+        .set_pinned(&note_id, &tag, pinned)
+        .map_err(|error| pin_failed(app, key, &error))?;
+    announce(
+        app,
+        Written::Pin {
+            tag,
+            note_id,
+            action,
+        },
+    );
+    Ok(())
+}
+
+/// Only a tag the note's record carries can be pinned (`memry_core::domain::tags::set_pinned`).
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_pin_note_to_tag(
+    app: AppHandle<Wry>,
+    note_id: String,
+    tag: String,
+) -> Result<(), CommandError> {
+    blocking("tags_pin_note_to_tag", move || {
+        set_pinned(&app, note_id, tag, TagNoteAction::Pinned)
+    })
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_unpin_note_from_tag(
+    app: AppHandle<Wry>,
+    note_id: String,
+    tag: String,
+) -> Result<(), CommandError> {
+    blocking("tags_unpin_note_from_tag", move || {
+        set_pinned(&app, note_id, tag, TagNoteAction::Unpinned)
     })
     .await
 }
