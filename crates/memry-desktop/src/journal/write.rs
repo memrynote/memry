@@ -13,7 +13,10 @@
 //! answers it as a read does. Where the file's text comes from:
 //! - a new day: the caller's, which seeds the empty body;
 //! - a deleted day opened again: the caller's, which replaces the body the day was deleted
-//!   with, kept as a version first (`ExternalFeed::feed_app_edit`), so file and body agree;
+//!   with, kept as a version first (`ExternalFeed::feed_app_edit`), so file and body agree. A
+//!   body that does not take it fails the create, which deletes the day again. Known gap: a
+//!   crash after the revive and before the feed leaves a live day holding the deleted body and
+//!   no file, and the next create writes that body to the file, as for a synced day;
 //! - a live day with no file (one another device made): its own body, which the document
 //!   holds; the caller's text goes only into an empty one. A body that is not here yet or that
 //!   the file would not hold whole fails the create, and nothing is written.
@@ -195,8 +198,16 @@ impl NotesService {
             };
             match text {
                 Text::Given => seed.run(self, &feed),
-                // No file was read: the deleted body is not the text the user saw.
-                Text::OverDeleted => seed.replace(self, &feed, ""),
+                // No file was read: the deleted body is not the text the user saw. A body that
+                // keeps the deleted text (the file's text too large, refused, or owed) takes the
+                // day back.
+                Text::OverDeleted => seed.replace(self, &feed, "").and_then(|replaced| {
+                    replaced.then_some(true).ok_or_else(|| {
+                        NotesError::DayTextUnwritable(
+                            "the deleted day's text could not be replaced".to_owned(),
+                        )
+                    })
+                }),
                 Text::Held(_) => Ok(true),
             }
         });

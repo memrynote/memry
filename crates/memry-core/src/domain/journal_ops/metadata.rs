@@ -193,7 +193,7 @@ pub struct OpenedWith {
 /// A day created or revived here takes both, a revived one in place of what it was deleted
 /// with; a live entry keeps its own, and the answer is what it holds, so the file the caller
 /// writes from the answer says what the record says. A `date` property is dropped, a stored
-/// one kept.
+/// one kept. A revived day's record `content` is cleared: the caller replaces its body.
 pub fn open_with(
     conn: &Connection,
     date: &str,
@@ -226,10 +226,12 @@ pub fn open_with(
     if properties::read_values(object, ITEM_TYPE, date)? != values {
         changes.extend(properties_change(&values));
     }
+    // A revived day's stored `content` is the text it was deleted with: its upsert never
+    // carries it, whether or not the fields changed.
+    if opened.revived {
+        changes.push(("content", Change::Set(Value::Null)));
+    }
     if !changes.is_empty() {
-        if opened.revived {
-            changes.push(("content", Change::Set(Value::Null)));
-        }
         sync_items::apply_local_edit_in(&tx, ITEM_TYPE, &opened.id, &changes, now_ms)?;
         outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, &opened.id), now_ms)?;
     }

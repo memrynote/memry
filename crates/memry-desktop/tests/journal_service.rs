@@ -489,3 +489,32 @@ fn a_note_at_the_days_path_refuses_the_create_and_reads_under_the_notes_id() {
     );
     assert_eq!(read.content, "A note.");
 }
+
+#[test]
+fn a_deleted_day_whose_text_its_body_cannot_take_is_not_made_again() {
+    let (mut e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    notes.create_day(&open, new_day()).unwrap();
+    assert!(notes.delete_day(&open, DAY).unwrap());
+    e.drain();
+
+    // Past the large-file class: the document keeps the deleted body.
+    let large = NewDay {
+        date: DAY.into(),
+        content: "x".repeat(1024 * 1024 + 1),
+        ..NewDay::default()
+    };
+    let made = notes.create_day(&open, large);
+    assert!(
+        matches!(made, Err(NotesError::DayTextUnwritable(_))),
+        "{:?}",
+        made.map(|day| day.id)
+    );
+    assert!(!e.vault.join(DAY_FILE).exists(), "the file is taken back");
+    assert_eq!(e.rows(), []);
+    assert_eq!(
+        record(&e, "j2025-01-17").map(|r| r.0),
+        Some(true),
+        "and the day is deleted again"
+    );
+}

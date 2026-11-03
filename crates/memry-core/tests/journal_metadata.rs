@@ -527,3 +527,26 @@ fn the_properties_a_first_write_answers_keep_their_order_without_the_date() {
     })
     .expect("order");
 }
+
+#[test]
+fn a_deleted_day_opened_with_no_fields_pushes_no_deleted_content() {
+    let db = open("open-with-revive-content");
+    db.call_blocking(|conn| {
+        let stored =
+            json!({"date": DAY, "content": "Deleted secret text\n", "clock": {"device-b": 1}});
+        sync_items::apply_remote(conn, &remote("secret-day", stored), NOW)?;
+        assert!(memry_core::domain::journal::delete_day(
+            conn, DAY, DEVICE, NOW
+        )?);
+
+        let opened = metadata::open_with(conn, DAY, &[], &serde_json::Map::new(), DEVICE, NOW + 1)?;
+        assert!(opened.revived);
+        assert_eq!(
+            payload_of(conn, "secret-day")["content"],
+            Value::Null,
+            "the revive's upsert carries none of the deleted text"
+        );
+        Ok(())
+    })
+    .expect("revive");
+}
