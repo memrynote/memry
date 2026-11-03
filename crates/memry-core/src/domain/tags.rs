@@ -255,7 +255,8 @@ fn unpin(
 /// Pins `tag` on the live note or journal day `item_id` (`tags:pin-note-to-tag`), or unpins it
 /// (`tags:unpin-note-from-tag`). A pin adds the record's spelling of the tag to `pinnedTags`;
 /// an unpin drops every spelling of it. Returns whether anything was written: a pin already
-/// there, or an unpin of a tag not pinned, writes nothing, as [`add`] does.
+/// there in the record's spelling, or an unpin of a tag not pinned, writes nothing, as [`add`]
+/// does.
 ///
 /// Only a tag in the record's `tags` can be pinned, and anything else is refused rather than
 /// written unseen: the projection keeps a pin on the tag's `note_tags` row, which a tag carried
@@ -275,15 +276,18 @@ pub fn set_pinned(
     let mut pins = read_tags(object, "pinnedTags", item_type, item_id)?;
     let before = pins.len();
     if pinned {
-        if pins.iter().any(|pin| same_tag(pin, tag)) {
-            return Ok(false);
-        }
         let tags = read_tags(object, "tags", item_type, item_id)?;
         let Some(spelling) = tags.into_iter().find(|kept| same_tag(kept, tag)) else {
             return Err(StorageError::Invalid {
                 what: format!("{item_type}/{item_id}: its record does not carry the tag to pin"),
             });
         };
+        // The projection matches the exact spelling, so a pin in another case reads unpinned
+        // and is rewritten rather than taken as already pinned.
+        if pins.contains(&spelling) {
+            return Ok(false);
+        }
+        pins.retain(|pin| !same_tag(pin, tag));
         pins.push(spelling);
     } else {
         pins.retain(|pin| !same_tag(pin, tag));

@@ -122,10 +122,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_get_all_with_counts,
             crate::commands::tags::tags_get_notes_by_tag,
             crate::commands::tags::tags_list_categories,
-            crate::commands::tags::tags_pin_note_to_tag,
+            crate::commands::tags::tags_pin_note_to_tag::<Wry>,
             crate::commands::tags::tags_rename_category,
             crate::commands::tags::tags_reorder,
-            crate::commands::tags::tags_unpin_note_from_tag,
+            crate::commands::tags::tags_unpin_note_from_tag::<Wry>,
             crate::commands::tags::tags_update_color,
             crate::commands::tags::tags_update_icon,
             // telemetry

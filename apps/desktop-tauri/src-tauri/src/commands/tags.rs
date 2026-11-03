@@ -292,8 +292,8 @@ fn set_pinned<R: Runtime>(
 /// Only a tag the note's record carries can be pinned (`memry_core::domain::tags::set_pinned`).
 #[tauri::command]
 #[specta::specta]
-pub async fn tags_pin_note_to_tag(
-    app: AppHandle<Wry>,
+pub async fn tags_pin_note_to_tag<R: Runtime>(
+    app: AppHandle<R>,
     note_id: String,
     tag: String,
 ) -> Result<(), CommandError> {
@@ -305,8 +305,8 @@ pub async fn tags_pin_note_to_tag(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn tags_unpin_note_from_tag(
-    app: AppHandle<Wry>,
+pub async fn tags_unpin_note_from_tag<R: Runtime>(
+    app: AppHandle<R>,
     note_id: String,
     tag: String,
 ) -> Result<(), CommandError> {

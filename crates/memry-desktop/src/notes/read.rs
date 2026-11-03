@@ -217,10 +217,22 @@ fn note_of(
     let content = split.body.to_owned();
     let (created, modified) = dates(&listed);
     // The tag list's rule, over the header just read: a tag removed from the file outside the
-    // app leaves the header once the index measured the file, as it leaves the list.
+    // app leaves the header once the index measured the file, as it leaves the list. An index
+    // that cannot be read joins every tag rather than failing the open.
+    let file_hash = match open.search.note_stats(&listed.id) {
+        Ok(stats) => stats.and_then(|stats| stats.file_hash),
+        Err(error) => {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id = listed.id,
+                "a note's index row does not read: {error}"
+            );
+            None
+        }
+    };
     let tags = open
         .search
-        .note_tags(&listed.id, fields.header_tags.clone())?
+        .note_tags(&listed.id, fields.header_tags.clone(), file_hash)?
         .unwrap_or_default();
     Ok(Some(NoteView {
         id: listed.id,

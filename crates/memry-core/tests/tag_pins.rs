@@ -207,3 +207,33 @@ fn a_pinned_note_keeps_its_pin_instant_through_later_payloads() {
         [("b".to_owned(), Some(5)), ("a".to_owned(), Some(12))]
     );
 }
+
+/// The projection matches a pin by the record's exact spelling, so a pin in another case (left by
+/// a `tags::set` that recased the tag, or sent so by a peer) reads unpinned. Pinning again
+/// rewrites it in the record's spelling instead of answering "already pinned".
+#[test]
+fn a_pin_in_another_case_is_rewritten_in_the_records_spelling() {
+    let (_dir, vault, search) = open();
+    pulled(
+        &vault,
+        "note",
+        "plan",
+        note("Plan", &["work"], &["Work"], 1),
+        1,
+    );
+    assert_eq!(listed(&search, "work"), [("plan".to_owned(), None)]);
+    assert!(pin(&vault, "plan", "work", true, 20).unwrap());
+    assert_eq!(pushed(&vault, "plan").0["pinnedTags"], json!(["work"]));
+    assert_eq!(listed(&search, "work"), [("plan".to_owned(), Some(20))]);
+
+    pulled(&vault, "note", "home", note("Home", &["Home"], &[], 1), 1);
+    assert!(pin(&vault, "home", "home", true, 30).unwrap());
+    vault
+        .db_handle()
+        .call_blocking(|conn| tags::set(conn, "note", "home", &["home".to_owned()], DEVICE, 31))
+        .unwrap();
+    assert_eq!(listed(&search, "home"), [("home".to_owned(), None)]);
+    assert!(pin(&vault, "home", "HOME", true, 40).unwrap());
+    assert_eq!(pushed(&vault, "home").0["pinnedTags"], json!(["home"]));
+    assert_eq!(listed(&search, "home"), [("home".to_owned(), Some(40))]);
+}

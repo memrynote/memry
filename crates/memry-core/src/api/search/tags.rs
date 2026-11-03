@@ -34,20 +34,18 @@ impl Search {
     }
 
     /// The tags of the note or journal day `id` as the tag list counts them
-    /// ([`tag_reads::of_note`]), `header` being its file's header tags as just read.
+    /// ([`tag_reads::of_note`]), `header` being its file's header tags as just read and
+    /// `file_hash` the hash its [`Self::note_stats`] row last measured.
     pub fn note_tags(
         &self,
         id: &str,
         header: Vec<String>,
+        file_hash: Option<String>,
     ) -> Result<Option<Vec<String>>, StorageError> {
-        let owned = id.to_owned();
-        let stored = self
-            .index
-            .read_blocking(move |index| note_stats::read(index, &owned))?;
         let file = FileTags {
             header_tags: header,
             word_count: 0,
-            file_hash: stored.and_then(|stats| stats.file_hash),
+            file_hash,
         };
         let id = id.to_owned();
         self.data
