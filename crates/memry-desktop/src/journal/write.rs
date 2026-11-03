@@ -92,7 +92,7 @@ impl NotesService {
         after_file: &mut dyn FnMut() -> Result<(), NotesError>,
     ) -> Result<JournalEntryView, NotesError> {
         let date = valid_date(&day.date)?.to_owned();
-        self.order.run(&order_key(&date), || {
+        self.order.run(&order_key(&date), |_| {
             self.create_day_now(open, &date, day, after_file)
         })
     }
@@ -251,7 +251,7 @@ impl NotesService {
     pub fn delete_day(&self, open: &OpenVault, date: &str) -> Result<bool, NotesError> {
         let date = valid_date(date)?;
         self.order
-            .run(&order_key(date), || self.delete_day_now(open, date))
+            .run(&order_key(date), |_| self.delete_day_now(open, date))
     }
 
     fn delete_day_now(&self, open: &OpenVault, date: &str) -> Result<bool, NotesError> {
