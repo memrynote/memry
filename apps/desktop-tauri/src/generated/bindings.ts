@@ -214,9 +214,12 @@ export const commands = {
 	tagsGetAllWithCounts: () => __TAURI_INVOKE<TagWithCountView[]>("tags_get_all_with_counts"),
 	tagsGetNotesByTag: (input: NotesByTagInput) => __TAURI_INVOKE<NotesByTagView>("tags_get_notes_by_tag", { input }),
 	tagsListCategories: () => __TAURI_INVOKE<TagCategoryView[]>("tags_list_categories"),
+	/**  Only a tag the note's record carries can be pinned (`memry_core::domain::tags::set_pinned`). */
+	tagsPinNoteToTag: (noteId: string, tag: string) => __TAURI_INVOKE<null>("tags_pin_note_to_tag", { noteId, tag }),
 	tagsRenameCategory: (id: string, name: string) => __TAURI_INVOKE<null>("tags_rename_category", { id, name }),
 	/**  A drag in the tag hub: tag assignments and category order, all or nothing. */
 	tagsReorder: (input: ReorderInput) => __TAURI_INVOKE<null>("tags_reorder", { input }),
+	tagsUnpinNoteFromTag: (noteId: string, tag: string) => __TAURI_INVOKE<null>("tags_unpin_note_from_tag", { noteId, tag }),
 	tagsUpdateColor: (tag: string, color: string) => __TAURI_INVOKE<null>("tags_update_color", { tag, color }),
 	/**  `icon` is an emoji or `icon:Name`; `None` clears it. */
 	tagsUpdateIcon: (tag: string, icon: string | null) => __TAURI_INVOKE<null>("tags_update_icon", { tag, icon }),
@@ -315,6 +318,7 @@ export const events = {
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
 	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
+	tagNotesChangedEvent: makeEvent<TagNotesChangedEvent, TagNotesChangedEvent>("tag-notes-changed-event"),
 	templateCreatedEvent: makeEvent<TemplateCreatedEvent, TemplateCreatedEvent>("template-created-event"),
 	templateDeletedEvent: makeEvent<TemplateDeletedEvent, TemplateDeletedEvent>("template-deleted-event"),
 	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
@@ -1056,6 +1060,9 @@ export type TagColorUpdatedEvent = {
 	color: string,
 };
 
+/**  What happened to a note in a tag, for [`TagNotesChangedEvent`]. */
+export type TagNoteAction = "pinned" | "unpinned";
+
 /**  `TagNoteItem`. */
 export type TagNoteItemView = {
 	id: string,
@@ -1068,6 +1075,13 @@ export type TagNoteItemView = {
 	isPinned: boolean,
 	pinnedAt: string | null,
 	emoji: string | null,
+};
+
+/**  A note was pinned in a tag or unpinned from it (`tags:notes-changed`). */
+export type TagNotesChangedEvent = {
+	tag: string,
+	noteId: string,
+	action: TagNoteAction,
 };
 
 /**  `GetNotesByTagSchema.sortBy`. */

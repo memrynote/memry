@@ -24,7 +24,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use rusqlite::Connection;
+use rusqlite::{Connection, params_from_iter};
 
 use crate::api::errors::StorageError;
 use crate::domain::note_list::NoteSort;
@@ -56,9 +56,8 @@ pub struct TaggedNote {
     pub modified_at: Option<i64>,
     pub tags: Vec<String>,
     pub word_count: u32,
-    /// When this device applied the record payload that last carried the tag in `pinnedTags`
-    /// (`note_tags.pinned_at`, restamped by every apply, so the last update rather than the
-    /// pin); `None` when the record does not pin it.
+    /// When this device applied the record payload that pinned the tag (`note_tags.pinned_at`,
+    /// kept through later payloads that still pin it); `None` when the record does not pin it.
     pub pinned_at: Option<i64>,
 }
 
@@ -107,13 +106,23 @@ impl Gathered {
 }
 
 /// The live notes and journal days that have a file row, by id, each with its tags and when
-/// its record pinned each of them (by position).
+/// its record pinned each of them (by position); `only` the one with that id.
 fn filed(
     data: &Connection,
     files: &HashMap<String, FileTags>,
+    only: Option<&str>,
 ) -> Result<Vec<WithPins>, StorageError> {
+    let args: Vec<&str> = only.into_iter().collect();
+    let (one_file, one_row, one_body) = match only {
+        Some(_) => (
+            " AND f.note_id = ?1",
+            " AND note_id = ?1",
+            " WHERE note_id = ?1",
+        ),
+        None => ("", "", ""),
+    };
     let mut statement = data
-        .prepare(
+        .prepare(&format!(
             "SELECT f.note_id, f.path, COALESCE(n.title, j.date), n.emoji,
                     COALESCE(n.created_at, j.created_at), COALESCE(n.modified_at, j.modified_at),
                     h.file_hash
@@ -121,11 +130,11 @@ fn filed(
                LEFT JOIN notes n ON n.id = f.note_id AND n.deleted_at IS NULL
                LEFT JOIN journal_entries j ON j.id = f.note_id AND j.deleted_at IS NULL
                LEFT JOIN note_file_hashes h ON h.note_id = f.note_id
-              WHERE n.id IS NOT NULL OR j.id IS NOT NULL",
-        )
+              WHERE (n.id IS NOT NULL OR j.id IS NOT NULL){one_file}"
+        ))
         .map_err(failed)?;
     let rows = statement
-        .query_map([], |row| {
+        .query_map(params_from_iter(&args), |row| {
             let note = TaggedNote {
                 id: row.get(0)?,
                 path: row.get(1)?,
@@ -156,13 +165,15 @@ fn filed(
         gathered.insert(entry.note.id.clone(), entry);
     }
     let mut statement = data
-        .prepare(
-            "SELECT note_id, tag, pinned_at FROM note_tags WHERE deleted_at IS NULL
-              ORDER BY note_id, position",
-        )
+        .prepare(&format!(
+            "SELECT note_id, tag, pinned_at FROM note_tags WHERE deleted_at IS NULL{one_row}
+              ORDER BY note_id, position"
+        ))
         .map_err(failed)?;
     let rows = statement
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+        .query_map(params_from_iter(&args), |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        })
         .map_err(failed)?;
     for row in rows {
         let (id, tag, pinned_at): (String, String, Option<i64>) = row.map_err(failed)?;
@@ -171,10 +182,14 @@ fn filed(
         }
     }
     let mut statement = data
-        .prepare("SELECT note_id, tag FROM note_body_tags ORDER BY note_id, rowid")
+        .prepare(&format!(
+            "SELECT note_id, tag FROM note_body_tags{one_body} ORDER BY note_id, rowid"
+        ))
         .map_err(failed)?;
     let rows = statement
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .query_map(params_from_iter(&args), |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
         .map_err(failed)?;
     for row in rows {
         let (id, tag): (String, String) = row.map_err(failed)?;
@@ -189,6 +204,20 @@ fn filed(
             entry.into_tagged(header)
         })
         .collect())
+}
+
+/// The tags of the filed note or journal day `id` by the rule the list counts them by, `None`
+/// when it has no live record or no file row. `file` is what is known of its file: the note's
+/// own read passes the header it just took from the bytes, with the hash of the bytes the
+/// index last measured.
+pub fn of_note(
+    data: &Connection,
+    id: &str,
+    file: FileTags,
+) -> Result<Option<Vec<String>>, StorageError> {
+    let files = HashMap::from([(id.to_owned(), file)]);
+    let mut filed = filed(data, &files, Some(id))?;
+    Ok(filed.pop().map(|(note, _)| note.tags))
 }
 
 /// Each live task's tags, one spelling per tag.
@@ -240,7 +269,7 @@ pub fn counts(
     files: &HashMap<String, FileTags>,
 ) -> Result<Vec<TagCount>, StorageError> {
     let mut tallies: BTreeMap<String, Tally> = BTreeMap::new();
-    for (note, _) in &filed(data, files)? {
+    for (note, _) in &filed(data, files, None)? {
         for tag in &note.tags {
             let tally = tallies.entry(tag_key(tag)).or_default();
             tally.count += 1;
@@ -322,7 +351,7 @@ pub fn tagged(
     let wanted = fold(tag);
     let mut pinned = Vec::new();
     let mut rest = Vec::new();
-    for (mut note, pins) in filed(data, files)? {
+    for (mut note, pins) in filed(data, files, None)? {
         let Some(at) = note
             .tags
             .iter()

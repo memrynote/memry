@@ -101,7 +101,13 @@ const ported = {
   reorder: (payload: {
     tags?: TagAssignment[]
     categories?: { id: string; sortOrder: number }[]
-  }): Promise<CategoryOperationResponse> => settled(() => commands.tagsReorder(payload))
+  }): Promise<CategoryOperationResponse> => settled(() => commands.tagsReorder(payload)),
+
+  pinNoteToTag: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> =>
+    settled(() => commands.tagsPinNoteToTag(input.noteId, input.tag)),
+
+  unpinNoteFromTag: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> =>
+    settled(() => commands.tagsUnpinNoteFromTag(input.noteId, input.tag))
 }
 
 /** The tag methods served from Rust; `window.api.tags` is typed without them. */
@@ -109,20 +115,6 @@ export type PortedTagMethod = keyof typeof ported
 
 export const tagsService: TagsService = {
   ...ported,
-
-  /**
-   * Pin a note to a tag.
-   */
-  pinNoteToTag: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> => {
-    return window.api.tags.pinNoteToTag(input)
-  },
-
-  /**
-   * Unpin a note from a tag.
-   */
-  unpinNoteFromTag: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> => {
-    return window.api.tags.unpinNoteFromTag(input)
-  },
 
   /**
    * Rename a tag across all notes.
@@ -197,11 +189,11 @@ export function onTagDeleted(callback: (event: TagDeletedEvent) => void): () => 
 }
 
 /**
- * Subscribe to tag notes changed events (pin/unpin/add/remove).
+ * Subscribe to tag notes changed events (pin/unpin; Rust sends no add/remove yet).
  * @returns Unsubscribe function
  */
 export function onTagNotesChanged(callback: (event: TagNotesChangedEvent) => void): () => void {
-  return window.api.onTagNotesChanged(callback)
+  return subscribeToEvent(events.tagNotesChangedEvent, callback)
 }
 
 /**
@@ -213,7 +205,7 @@ export function onTagCategoriesChanged(callback: () => void): () => void {
 }
 
 /** The subscriptions above that Rust events serve; `window.api` is typed without them. */
-export type PortedTagEvent = 'onTagColorUpdated' | 'onTagCategoriesChanged'
+export type PortedTagEvent = 'onTagColorUpdated' | 'onTagCategoriesChanged' | 'onTagNotesChanged'
 
 // ============================================================================
 // Type Re-exports

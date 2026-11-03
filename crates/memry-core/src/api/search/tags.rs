@@ -3,7 +3,7 @@
 
 use crate::api::errors::StorageError;
 use crate::domain::note_list::NoteSort;
-use crate::domain::note_stats;
+use crate::domain::note_stats::{self, FileTags};
 use crate::domain::tag_admin;
 use crate::domain::tag_reads::{self, TagCount, TagNotes};
 use crate::domain::tags::tag_key;
@@ -31,6 +31,25 @@ impl Search {
         self.data.read_blocking(move |data| {
             tag_reads::tagged(data, &files, &tag, descendants, sort, ascending)
         })
+    }
+
+    /// The tags of the note or journal day `id` as the tag list counts them
+    /// ([`tag_reads::of_note`]), `header` being its file's header tags as just read and
+    /// `file_hash` the hash its [`Self::note_stats`] row last measured.
+    pub fn note_tags(
+        &self,
+        id: &str,
+        header: Vec<String>,
+        file_hash: Option<String>,
+    ) -> Result<Option<Vec<String>>, StorageError> {
+        let file = FileTags {
+            header_tags: header,
+            word_count: 0,
+            file_hash,
+        };
+        let id = id.to_owned();
+        self.data
+            .read_blocking(move |data| tag_reads::of_note(data, &id, file))
     }
 
     /// The colour each of `tags` was given, `None` for a tag with no definition. Looked up by

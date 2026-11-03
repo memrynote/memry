@@ -4,7 +4,10 @@ use memry_desktop::seams::transport::NativeTransport;
 use memry_desktop::telemetry::Service;
 use memry_desktop::telemetry::service::{Context, Sender};
 use memry_tauri::commands::tags::{Written, announce};
-use memry_tauri::events::{NoteTagsChangedEvent, TagCategoriesChangedEvent, TagColorUpdatedEvent};
+use memry_tauri::events::{
+    NoteTagsChangedEvent, TagCategoriesChangedEvent, TagColorUpdatedEvent, TagNoteAction,
+    TagNotesChangedEvent,
+};
 use tauri::test::mock_app;
 use tauri::{Listener, Manager};
 use tauri_specta::Event;
@@ -36,6 +39,7 @@ fn each_hub_write_sends_electrons_events_and_a_new_category_its_telemetry() {
         TagColorUpdatedEvent::NAME,
         NoteTagsChangedEvent::NAME,
         TagCategoriesChangedEvent::NAME,
+        TagNotesChangedEvent::NAME,
     ] {
         let sink = Arc::clone(&heard);
         app.listen_any(name, move |event| {
@@ -75,6 +79,18 @@ fn each_hub_write_sends_electrons_events_and_a_new_category_its_telemetry() {
         [categories(r#"{"categoryId":"cat-1"}"#)]
     );
     assert_eq!(sent(Written::Drag), [categories(r#"{"categoryId":null}"#)]);
+    for (action, wire) in [
+        (TagNoteAction::Pinned, "pinned"),
+        (TagNoteAction::Unpinned, "unpinned"),
+    ] {
+        let written = Written::Pin {
+            tag: "Work".into(),
+            note_id: "n-1".into(),
+            action,
+        };
+        let payload = format!(r#"{{"tag":"Work","noteId":"n-1","action":"{wire}"}}"#);
+        assert_eq!(sent(written), [(TagNotesChangedEvent::NAME, payload)]);
+    }
     assert_eq!(
         service.queued().len(),
         1,
