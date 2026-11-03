@@ -429,7 +429,21 @@ fn a_tag_edit_while_the_document_is_ahead_leaves_the_document() {
     let id = id_at(&e, "Plan.md");
     // An edit in the app the write-back has not written to the file yet.
     e.edit_in_app(&store, &id, "Edited in the app");
+    let stamp = |e: &Env| {
+        e.core()
+            .note_files()
+            .by_id(&id)
+            .unwrap()
+            .unwrap()
+            .indexed_at
+    };
+    let before = stamp(&e);
     notes.update(&open, add_tags(&id, &["gamma"])).unwrap();
+    assert_eq!(
+        stamp(&e),
+        before,
+        "a fresh stamp says the file holds the document, so the write-back leaves it behind"
+    );
     assert!(
         e.read("Plan.md").contains("  - gamma\n"),
         "{}",

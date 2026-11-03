@@ -1,6 +1,6 @@
 //! The app-edit seam (`vault::app_edit`, #3530 13g-2) over a real session, tier, watcher and
 //! index: what `Held` replaces and what it keeps, a text the document does not take reaching it
-//! through the watcher, and the byte order mark.
+//! through the watcher (a feed that fails included), and the byte order mark.
 
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::markdown::convert::api::Converter;
@@ -9,7 +9,7 @@ use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::markdown::shared::writing_tools::writing_of_yaml;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::write_order::WriteOrder;
-use memry_desktop::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
+use memry_desktop::vault::app_edit::{AppEdit, Edited, Kept, OwnFiles, Precondition};
 use memry_desktop::vault::consumer::ChangeSource;
 use memry_desktop::vault::hash::content_hash;
 
@@ -201,4 +201,49 @@ fn a_text_the_document_does_not_take_is_written_and_brought_in_by_the_watcher() 
         file_hash(&e, &id) == Some(content_hash(&big))
     });
     assert_eq!(row_hash(&e, &id), Some(content_hash("Small.\n")));
+}
+
+#[test]
+fn a_save_whose_feed_fails_is_written_and_brought_in_by_the_watcher() {
+    let (e, _, store) = opened(&[("Plan.md", "First text.\n")]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let edit = AppEdit::new(&e.tier, &store, &open).unwrap();
+    edit.fail_next_feed();
+    let own = OwnFiles::default();
+    let saved = "Second text.\n";
+    // Read under the lane, after the write and before the watcher can report it.
+    let mut row_at_landing = None;
+    let done = WriteOrder::default()
+        .run(&id, |turn| {
+            edit.run_then(
+                turn,
+                Precondition::Save(&own),
+                ChangeSource::Save,
+                |_| Ok::<_, NotesError>(Some(saved.to_owned())),
+                || {
+                    row_at_landing = Some(row_hash(&e, &id));
+                    Ok(false)
+                },
+                &mut || {},
+            )
+        })
+        .unwrap();
+    assert_eq!(
+        done,
+        Edited::Wrote {
+            hash: content_hash(saved),
+            held: false
+        }
+    );
+    assert_eq!(e.read("Plan.md"), saved);
+    assert_eq!(
+        row_at_landing,
+        Some(Some(content_hash("First text.\n"))),
+        "the row named a file the document does not hold"
+    );
+    // No own-write record absorbs the write: the watcher reports it and the consumer feeds it.
+    until("the watcher fed the saved file", || {
+        e.body(&id) == "Second text." && row_hash(&e, &id) == Some(content_hash(saved))
+    });
 }

@@ -64,6 +64,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use memry_core::api::errors::{AuthError, StorageError};
@@ -200,6 +201,7 @@ pub struct AppEdit {
     echo: Arc<EchoGuard>,
     feed: ExternalFeed,
     converter: Converter,
+    fail_next_feed: AtomicBool,
 }
 
 impl AppEdit {
@@ -219,7 +221,14 @@ impl AppEdit {
             feed: open.vault.external_feed(store.clone())?,
             converter: converter_for(settings.as_ref()),
             rows,
+            fail_next_feed: AtomicBool::new(false),
         })
+    }
+
+    /// Test hook: this edit's next feed fails, as for a document that does not load.
+    #[doc(hidden)]
+    pub fn fail_next_feed(&self) {
+        self.fail_next_feed.store(true, Ordering::Relaxed);
     }
 
     /// Edits the note whose turn `turn` is: `edit` gets the file's text without a byte order
@@ -426,7 +435,14 @@ impl AppEdit {
             frontmatter: split.block,
             embeds: Some(&embeds),
         };
-        match self.feed.feed_app_edit(&self.converter, input, read) {
+        let fed = match self.fail_next_feed.swap(false, Ordering::Relaxed) {
+            true => Err(CrdtError::Undecodable {
+                doc_id: note_id.to_owned(),
+                what: "test fault".to_owned(),
+            }),
+            false => self.feed.feed_app_edit(&self.converter, input, read),
+        };
+        match fed {
             Ok(FeedOutcome::Fed | FeedOutcome::Unchanged) => Some(true),
             Ok(FeedOutcome::NoNote) => None,
             Ok(outcome) => {
