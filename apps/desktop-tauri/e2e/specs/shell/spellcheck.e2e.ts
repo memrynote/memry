@@ -2,7 +2,7 @@ import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
 import type { Page } from '../../harness/pw-compat/page'
 import { invoke } from '../../harness/vault-commands'
-import { pollUntil } from '../../harness/wait'
+import { pollUntil, readMainLog } from '../../harness/wait'
 
 interface SpellResult {
   available: boolean
@@ -27,13 +27,24 @@ test('a misspelled word comes back with suggestions and a correct one does not',
 })
 
 test('a word added to the personal dictionary stops being misspelled', async ({ app, page }) => {
-  // Nonsense that no dictionary knows and no word list will ever contain.
-  const word = 'memrzqxwv'
+  // Nonsense that no dictionary knows and no word list will ever contain, fresh per attempt:
+  // Windows and Linux keep an added word for the OS user, so a retry of the same word found it
+  // already learned.
+  const suffix = Array.from({ length: 6 }, () =>
+    String.fromCharCode(97 + Math.floor(Math.random() * 26))
+  ).join('')
+  const word = `memrzqxwv${suffix}`
   const before = await check(page, word)
   test.skip(!before.available, 'no spell dictionary on this machine')
   expect(before.misspelled).toBe(true)
   try {
-    expect(await invoke<boolean>(page, 'spell_add_word', { word })).toBe(true)
+    const added = await invoke<boolean>(page, 'spell_add_word', { word })
+    // A refusal fails with the app's spelling log, which says whether the platform refused or
+    // did not answer in time.
+    const refusal = readMainLog(app.dirs.logDir)
+      .split('\n')
+      .filter((line) => line.includes('[Spell]'))
+    expect(added ? 'added' : refusal.join('\n')).toBe('added')
     const learned = await pollUntil(
       async () => !(await check(page, word)).misspelled || undefined,
       { timeoutMs: 5_000 }
