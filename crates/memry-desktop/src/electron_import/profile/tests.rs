@@ -98,6 +98,8 @@ fn migrated_profile_with_legacy_symlink_uses_legacy_name() {
         .unwrap();
     assert_eq!(profile.dir, new_dir);
     assert_eq!(names(&profile), [LEGACY_APP_NAME, MEMRYNOTE_APP_NAME]);
+    // The link is the same directory, not a second profile.
+    assert!(profile.other_candidates.is_empty());
 }
 
 #[test]
@@ -138,6 +140,37 @@ fn a_stray_file_in_memrynote_does_not_hide_the_legacy_profile() {
         assert_eq!(profile.dir, old, "{host:?}");
         assert!(profile.other_candidates.is_empty(), "{host:?}");
     }
+}
+
+#[test]
+fn a_stray_file_in_the_legacy_directory_does_not_beat_memrynote() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = root.path().join("memrynote");
+    fs::create_dir_all(dir.join("Local Storage/leveldb")).unwrap();
+    let old = legacy(root.path());
+    fs::create_dir_all(&old).unwrap();
+    fs::write(old.join(".updaterId"), "id").unwrap();
+    let profile = locate_profile(&env(root.path(), HostOs::Windows))
+        .unwrap()
+        .unwrap();
+    assert_eq!(profile.dir, dir);
+    assert!(profile.other_candidates.is_empty());
+}
+
+/// Electron boots into `memrynote` when both exist; the legacy directory's data is reported, not
+/// read, so Step 37 can surface it.
+#[test]
+fn a_legacy_profile_with_memry_files_beside_memrynote_is_reported() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = root.path().join("memrynote");
+    make_profile(&dir);
+    let old = legacy(root.path());
+    make_profile(&old);
+    let profile = locate_profile(&env(root.path(), HostOs::MacOs))
+        .unwrap()
+        .unwrap();
+    assert_eq!(profile.dir, dir);
+    assert_eq!(profile.other_candidates, [old]);
 }
 
 #[test]

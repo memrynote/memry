@@ -2,7 +2,9 @@
 //!
 //! Mirrors `apps/desktop/src/main/app-identity.ts` (`isProfileDir`, `applyMemrynoteIdentity`),
 //! rewritten for read-only use: the Electron app moves directories and writes the pin, this code
-//! only looks.
+//! only looks. One deliberate exception (#3822): Electron boots into any non-empty `memrynote`,
+//! while this reader prefers a legacy `@memry/desktop` that holds memry files over a `memrynote`
+//! that holds none (a stray file another program left).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -304,18 +306,27 @@ pub fn locate_profile(env: &ProfileEnv) -> Result<Option<ElectronProfile>, Impor
             let new_dir = env.app_data.join(MEMRYNOTE_APP_NAME);
             let legacy_dir = env.app_data.join("@memry").join("desktop");
             let chromium_dir = env.app_data.join(CHROMIUM_DIR_NAME);
-            let usual = match (resolve_candidate(&new_dir), resolve_candidate(&legacy_dir)) {
-                // A `memrynote` without a file this app writes (a stray file another program
-                // left, #3822) does not hide a legacy profile that has them.
-                (Some(new), Some(old)) if !has_memry_files(&new) && has_memry_files(&old) => {
-                    Some((old, false))
-                }
-                (Some(new), _) => Some((new, !is_symlink(&legacy_dir))),
-                (None, old) => old.map(|dir| (dir, false)),
-            };
+            let (usual, legacy_beside) =
+                match (resolve_candidate(&new_dir), resolve_candidate(&legacy_dir)) {
+                    // A `memrynote` without a file this app writes (a stray file another
+                    // program left, #3822) does not hide a legacy profile that has them.
+                    (Some(new), Some(old)) if !has_memry_files(&new) && has_memry_files(&old) => {
+                        (Some((old, false)), None)
+                    }
+                    // A legacy directory with memry files that is not `memrynote` itself (the
+                    // compatibility link) is a second profile, reported like `Chromium`.
+                    (Some(new), old) => {
+                        let beside = old.filter(|old| {
+                            has_memry_files(old)
+                                && fs::canonicalize(old).ok() != fs::canonicalize(&new).ok()
+                        });
+                        (Some((new, !is_symlink(&legacy_dir))), beside)
+                    }
+                    (None, old) => (old.map(|dir| (dir, false)), None),
+                };
             // `Chromium` is a generic name: it counts only with files this app writes.
             let chromium = resolve_candidate(&chromium_dir).filter(|d| has_memry_files(d));
-            match (usual, chromium) {
+            let (dir, born, mut others) = match (usual, chromium) {
                 (None, None) => return Ok(None),
                 (Some((dir, born)), None) => (dir, born, Vec::new()),
                 (None, Some(dir)) => (dir, false, Vec::new()),
@@ -330,7 +341,9 @@ pub fn locate_profile(env: &ProfileEnv) -> Result<Option<ElectronProfile>, Impor
                         (dir, born, vec![other])
                     }
                 }
-            }
+            };
+            others.extend(legacy_beside);
+            (dir, born, others)
         }
     };
     let pin = IdentityPin::read(&dir)?;
