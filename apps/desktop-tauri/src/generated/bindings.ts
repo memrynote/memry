@@ -83,6 +83,11 @@ export const commands = {
 	 *  each mention.
 	 */
 	notesGetUnlinkedMentions: (id: string) => __TAURI_INVOKE<UnlinkedMentionView[]>("notes_get_unlinked_mentions", { id }),
+	/**
+	 *  `notes:link-mention`: the source's `ordinal`-th unlinked mention of the target becomes a wiki
+	 *  link to it. `false` when that mention is gone (the source changed since it was listed).
+	 */
+	notesLinkMention: (sourceId: string, targetId: string, ordinal: number) => __TAURI_INVOKE<boolean>("notes_link_mention", { sourceId, targetId, ordinal }),
 	notesList: (options: NoteListOptions) => __TAURI_INVOKE<NoteListPageView>("notes_list", { options }),
 	/**  `notes:open-external`: the note's file in the OS's default app. */
 	notesOpenExternal: (id: string) => __TAURI_INVOKE<null>("notes_open_external", { id }),

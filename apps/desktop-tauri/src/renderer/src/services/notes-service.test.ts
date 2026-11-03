@@ -17,6 +17,7 @@ const commands = vi.hoisted(() => ({
   notesResolveTitles: vi.fn(),
   notesResolveWikiTarget: vi.fn(),
   notesGetUnlinkedMentions: vi.fn(),
+  notesLinkMention: vi.fn(),
   notesPreviewByTitle: vi.fn(),
   notesSetLocalOnly: vi.fn(),
   notesGetLocalOnlyCount: vi.fn(),
@@ -226,6 +227,22 @@ describe('notes-service', () => {
     expect(await notesService.previewByTitle('Gone')).toBeNull()
     expect(api.notes.getUnlinkedMentions).not.toHaveBeenCalled()
     expect(api.notes.previewByTitle).not.toHaveBeenCalled()
+  })
+
+  it("links a mention through its command, in Electron's answer", async () => {
+    api.notes.linkMention = vi.fn()
+    commands.notesLinkMention.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+
+    const input = { sourceId: 'note-2', targetId: 'note-1', ordinal: 1 }
+    expect(await notesService.linkMention(input)).toEqual({ linked: true })
+    expect(commands.notesLinkMention).toHaveBeenCalledWith('note-2', 'note-1', 1)
+    expect(await notesService.linkMention(input)).toEqual({ linked: false })
+    commands.notesLinkMention.mockRejectedValueOnce({ kind: 'NotFound', message: 'gone' })
+    await expect(notesService.linkMention(input)).rejects.toEqual({
+      kind: 'NotFound',
+      message: 'gone'
+    })
+    expect(api.notes.linkMention).not.toHaveBeenCalled()
   })
 
   it('creates and deletes through the commands, rejecting what it cannot create yet', async () => {

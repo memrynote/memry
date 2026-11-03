@@ -202,6 +202,14 @@ impl Search {
         })
     }
 
+    /// The names a mention of `target_id` spells: its title (a day's date), then its aliases,
+    /// as [`Search::mention_sources`] lists them. Empty when the target is not live.
+    pub fn mention_names(&self, target_id: &str) -> Result<Vec<String>, StorageError> {
+        let target_id = target_id.to_owned();
+        self.data
+            .read_blocking(move |data| unlinked_mentions::target_names(data, &target_id))
+    }
+
     /// What each of `queries` names as a whole ([`link_reads::resolve_titles`]).
     pub fn resolve_link_titles(
         &self,
