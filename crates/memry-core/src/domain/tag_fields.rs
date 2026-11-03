@@ -211,6 +211,33 @@ pub fn with_fields(conn: &Connection) -> Result<HashSet<String>, StorageError> {
         .collect())
 }
 
+/// The template a new note carrying `item_tags` takes when it names none (desktop `createNote`):
+/// the first tag, in order and by `foldTag`, whose schema names one, its own or the nearest
+/// ancestor's (the `template` of `resolveTagSchemas`).
+pub fn template_of(
+    conn: &Connection,
+    item_tags: &[String],
+) -> Result<Option<String>, StorageError> {
+    if item_tags.is_empty() {
+        return Ok(None);
+    }
+    let defs = definitions(conn)?;
+    let named = |key: &str| {
+        defs.get(key)
+            .and_then(|d| d.schema.as_ref())
+            .and_then(|s| s.get("template"))
+            .and_then(|t| t.get("id"))
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+    };
+    Ok(item_tags.iter().find_map(|tag| {
+        let key = tags::fold(tag);
+        defs.get(&key)?.schema.as_ref()?;
+        let mut owners = std::iter::once(key.clone()).chain(ancestors(&key, &defs));
+        owners.find_map(|owner| named(&owner))
+    }))
+}
+
 /// The tag field groups of an item carrying `tags` and property `values`, in
 /// the order desktop draws them: each tag's own fields, then each ancestor's,
 /// nearest first. A field shown once is not shown again under a later tag.
