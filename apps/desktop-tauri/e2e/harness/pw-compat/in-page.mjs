@@ -485,7 +485,7 @@ export function memryPwInstall(win) {
 
   /** Starts recording which events the driver itself dispatches for the next input. */
   function watch() {
-    seen = {}
+    seen = { activeBefore: doc.activeElement }
     if (watching) return true
     watching = (event) => {
       seen[event.type] = true
@@ -521,7 +521,9 @@ export function memryPwInstall(win) {
   /**
    * Some embedded drivers (macOS WKWebView) dispatch synthetic `mousedown`, `mouseup` and `click`
    * only. Add what a real click does and was not seen: pointer events, focus, `dblclick` and
-   * `contextmenu`. Idempotent against drivers that already did it.
+   * `contextmenu`. Idempotent against drivers that already did it. A real click moves focus on
+   * `mousedown`, before any handler runs, so focus a handler moved during the click is left where
+   * it put it.
    */
   function fixup(x, y, button, clickCount) {
     const el = doc.elementFromPoint(x, y)
@@ -537,7 +539,7 @@ export function memryPwInstall(win) {
       el.dispatchEvent(new win.PointerEvent('pointerdown', init))
       el.dispatchEvent(new win.PointerEvent('pointerup', { ...init, buttons: 0 }))
     }
-    if (button === 0 && !seen.prevented) {
+    if (button === 0 && !seen.prevented && doc.activeElement === seen.activeBefore) {
       const focusable = el.closest(FOCUSABLE)
       if (focusable) {
         if (doc.activeElement !== focusable) focusable.focus()
