@@ -145,7 +145,8 @@ fn a_merge_and_a_rename_keep_every_other_line() {
     assert_eq!(merged.removed, ["stage", "gone"]);
     assert_eq!(
         e.read("Plan.md"),
-        NOTE.replace("stage: Draft\n", "").replace("score: 3", "score: 5")
+        NOTE.replace("stage: Draft\n", "")
+            .replace("score: 3", "score: 5")
     );
 
     notes

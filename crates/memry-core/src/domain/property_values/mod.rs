@@ -11,8 +11,8 @@ use std::sync::Arc;
 
 use serde_json::{Map, Number, Value};
 
-use crate::markdown::frontmatter::js::{iso_string, number_to_string};
 use crate::markdown::frontmatter::YamlValue;
+use crate::markdown::frontmatter::js::{iso_string, number_to_string};
 use crate::markdown::shared::block_colors::js_value::{js_number, js_parse, js_stringify};
 
 /// `PROJECT_PROPERTY_KEY`: the one key whose type is always `project`.
@@ -61,7 +61,14 @@ fn is_relation(value: &YamlValue) -> bool {
 
 /// `parseRelationUri` succeeds: `memry://<kind>/<id>`, a journal's id a `YYYY-MM-DD` day.
 fn is_relation_uri(text: &str) -> bool {
-    const KINDS: [&str; 6] = ["note", "task", "event", "external-event", "canvas", "journal"];
+    const KINDS: [&str; 6] = [
+        "note",
+        "task",
+        "event",
+        "external-event",
+        "canvas",
+        "journal",
+    ];
     let Some((kind, id)) = text
         .strip_prefix("memry://")
         .and_then(|rest| rest.split_once('/'))
@@ -79,10 +86,13 @@ fn is_relation_uri(text: &str) -> bool {
 /// Whether `text` has the shape `pattern` gives, `d` standing for an ASCII digit.
 fn shaped(text: &str, pattern: &str) -> bool {
     text.len() == pattern.len()
-        && text.bytes().zip(pattern.bytes()).all(|(byte, want)| match want {
-            b'd' => byte.is_ascii_digit(),
-            want => byte == want,
-        })
+        && text
+            .bytes()
+            .zip(pattern.bytes())
+            .all(|(byte, want)| match want {
+                b'd' => byte.is_ascii_digit(),
+                want => byte == want,
+            })
 }
 
 /// `isISODate`: `YYYY-MM-DD`, optionally with `THH:MM:SS`, `.mmm` and `Z`, that `new Date`
@@ -110,7 +120,8 @@ fn is_iso_date(text: &str) -> bool {
         return false;
     }
     let (hour, minute, second) = (number(11), number(14), number(17));
-    let end_of_day = hour == 24 && minute == 0 && second == 0 && millis.trim_matches(['.', '0']).is_empty();
+    let end_of_day =
+        hour == 24 && minute == 0 && second == 0 && millis.trim_matches(['.', '0']).is_empty();
     (hour < 24 || end_of_day) && minute < 60 && second < 60
 }
 

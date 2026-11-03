@@ -109,7 +109,7 @@ fn laughs() -> String {
     let mut yaml = String::from("l0: &l0 [a, b, c, d, e, f, g, h, i, j]\n");
     for level in 1..6 {
         let prev = format!("*l{}", level - 1);
-        let refs = vec![prev.as_str(); 10].join(", ");
+        let refs = [prev.as_str(); 10].join(", ");
         yaml.push_str(&format!("l{level}: &l{level} [{refs}]\n"));
     }
     yaml
@@ -123,7 +123,10 @@ fn a_list_an_alias_brought_in_before_reads_as_null_and_the_walk_stays_linear() {
     memry_test_kit::assert_steps_at_most("alias expansion", json_visits, 2 * nodes + 10, || {
         got = indexed_properties(yaml.iter(), |_| None);
     });
-    assert_eq!(got[0].value, json!("[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\"]"));
+    assert_eq!(
+        got[0].value,
+        json!("[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\"]")
+    );
     assert!(got[1..].iter().all(|p| p.value.is_null()), "{got:?}");
     // Within one value too: `[*a, *a]` repeats one list.
     let yaml = values("a: &a [x]\nb: [*a, *a]");
@@ -136,10 +139,14 @@ fn a_list_an_alias_brought_in_before_reads_as_null_and_the_walk_stays_linear() {
 fn the_deepest_value_the_loader_reads_converts_on_a_small_stack() {
     let depth = crate::markdown::frontmatter::value::MAX_YAML_DEPTH - 2;
     let yaml = format!("deep: {}x{}", "[".repeat(depth), "]".repeat(depth));
-    let got = memry_test_kit::on_small_stack(move || {
-        indexed_properties(values(&yaml).iter(), |_| None)
-    });
-    assert!(got[0].value.as_str().is_some_and(|text| text.contains("\"x\"")));
+    let got =
+        memry_test_kit::on_small_stack(move || indexed_properties(values(&yaml).iter(), |_| None));
+    assert!(
+        got[0]
+            .value
+            .as_str()
+            .is_some_and(|text| text.contains("\"x\""))
+    );
 }
 
 mod properties {
@@ -151,8 +158,18 @@ mod properties {
         prop_oneof![
             "[a-z0-9 :./-]{0,12}",
             prop::sample::select(vec![
-                "2026-10-07", "2026-10-07T10:00:00Z", "1e21", ".5", "0x1F", "true", "~",
-                "'memry://note/a1'", "https://x.y", "!!binary aGVsbG8=", "'\"\"'", "-0",
+                "2026-10-07",
+                "2026-10-07T10:00:00Z",
+                "1e21",
+                ".5",
+                "0x1F",
+                "true",
+                "~",
+                "'memry://note/a1'",
+                "https://x.y",
+                "!!binary aGVsbG8=",
+                "'\"\"'",
+                "-0",
             ])
             .prop_map(str::to_owned),
         ]
@@ -161,9 +178,13 @@ mod properties {
     fn value() -> impl Strategy<Value = String> {
         scalar().prop_recursive(4, 24, 4, |inner| {
             prop_oneof![
-                prop::collection::vec(inner.clone(), 0..4).prop_map(|items| format!("[{}]", items.join(", "))),
+                prop::collection::vec(inner.clone(), 0..4)
+                    .prop_map(|items| format!("[{}]", items.join(", "))),
                 prop::collection::vec(("[a-z]{1,3}", inner), 0..3).prop_map(|entries| {
-                    let entries: Vec<String> = entries.into_iter().map(|(k, v)| format!("{k}: {v}")).collect();
+                    let entries: Vec<String> = entries
+                        .into_iter()
+                        .map(|(k, v)| format!("{k}: {v}"))
+                        .collect();
                     format!("{{{}}}", entries.join(", "))
                 }),
             ]

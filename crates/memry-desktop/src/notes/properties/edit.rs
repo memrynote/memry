@@ -190,7 +190,10 @@ mod tests {
         };
         let next = edited(&file, &set).unwrap();
         assert_eq!(keys(&next), ["tags", "cover"]);
-        assert_eq!(next.get("cover"), Some(&YamlValue::String("wash:sage".into())));
+        assert_eq!(
+            next.get("cover"),
+            Some(&YamlValue::String("wash:sage".into()))
+        );
     }
 
     #[test]

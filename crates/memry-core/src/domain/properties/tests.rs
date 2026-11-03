@@ -362,7 +362,10 @@ fn a_file_mirror_takes_the_values_whole_a_retype_included_and_an_equal_one_write
         assert!(mirror_file(conn, "note-1", next, DEVICE, NOW + 2)?);
         assert_eq!(pushed_order(conn), vec!["due", "effort"]);
         assert_eq!(pushed(conn)["properties"]["effort"], json!("three"));
-        assert_eq!(pushed(conn)["coverImage"], json!({ "url": "memry://cover/1" }));
+        assert_eq!(
+            pushed(conn)["coverImage"],
+            json!({ "url": "memry://cover/1" })
+        );
         assert_eq!(queued(conn), 1);
 
         // A reorder alone is a change.
