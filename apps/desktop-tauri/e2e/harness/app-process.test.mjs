@@ -5,7 +5,6 @@ import { test } from 'node:test'
 
 import { stopChild } from './app-process.ts'
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const idle = () => spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'])
 
 test('stopChild ends a child that still runs', async () => {
@@ -21,16 +20,12 @@ test('stopChild leaves alone the process that took an exited child pid', async (
   const gone = spawn(process.execPath, ['-e', ''])
   await once(gone, 'exit')
   const bystander = idle()
-  let bystanderExited = false
-  bystander.once('exit', () => {
-    bystanderExited = true
-  })
+  const exited = once(bystander, 'exit')
   Object.defineProperty(gone, 'pid', { value: bystander.pid })
-  try {
-    stopChild(gone)
-    await sleep(1_000)
-    assert.equal(bystanderExited, false)
-  } finally {
-    bystander.kill('SIGKILL')
-  }
+  stopChild(gone)
+  // Still alive for this signal: a kill by stopChild (SIGKILL, or taskkill's code 1 on Windows)
+  // would have ended it first.
+  bystander.kill('SIGTERM')
+  const [, signal] = await exited
+  assert.equal(signal, 'SIGTERM')
 })

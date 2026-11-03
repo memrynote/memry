@@ -426,6 +426,8 @@ jobs:
 
       - name: Harness unit tests
         if: matrix.variant == 'e2e' && matrix.platform != 'linux-arm64' && matrix.shard != 2
+        # A test that awaits a child's exit would otherwise hang to the job limit.
+        timeout-minutes: 5
         run: pnpm --filter @memry/desktop-tauri test:e2e:harness
 
       # `dbus-run-session` gives libsecret a session bus; the keyring is unlocked with an empty

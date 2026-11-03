@@ -31,6 +31,11 @@ type Target = { port?: number; hostname?: string }
 // test restarts its app through the harness; this app only exists so the session can open.
 const workerApps = new Map<string, { children: ChildProcess[]; ports: number[] }>()
 
+/** The profile an app uses until a test writes its control file (`e2e::control`). */
+function defaultProfile(port: number): string {
+  return join(tmpdir(), 'memry-e2e', `default-${port}`)
+}
+
 async function startWorkerApps(cid: string, caps: unknown): Promise<void> {
   const targets: Target[] = []
   const record = caps as Record<string, unknown>
@@ -100,13 +105,15 @@ export const sharedConfig = {
   ): void {
     const started = workerApps.get(cid) ?? { children: [], ports: [] }
     if (exitCode !== 0) {
-      const apps = started.children.map((child, i) => ({ child, port: started.ports[i] }))
+      const apps = started.ports.map((port, i) => ({
+        port,
+        child: started.children.at(i),
+        logDir: join(defaultProfile(port), 'logs')
+      }))
       console.error(failedWorkerReport({ cid, exitCode, signal, specs, retries }, apps))
     }
     for (const child of started.children) stopChild(child)
-    for (const port of started.ports) {
-      removeDir(join(tmpdir(), 'memry-e2e', `default-${port}`))
-    }
+    for (const port of started.ports) removeDir(defaultProfile(port))
     workerApps.delete(cid)
   },
   // The last test disposes its app, and WebdriverIO ends the session after this hook with a

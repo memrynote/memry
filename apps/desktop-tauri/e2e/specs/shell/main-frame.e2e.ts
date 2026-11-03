@@ -471,7 +471,7 @@ test('no link gesture or drop unloads the app, cancels its requests or loads in 
       () => (window as unknown as { __slow: Promise<string> }).__slow
     )
     expect(slow).toBe('slow')
-    // The fixture held that request for 2.5 s: no gesture opened a second time meanwhile.
+    // No gesture opened a second time between the poll and the /slow response.
     expect((await opens(app)).toSorted()).toEqual(gestures)
     expect(
       await page.evaluate(() => (window as unknown as { __unloaded?: boolean }).__unloaded === true)
