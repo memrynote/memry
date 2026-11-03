@@ -10,21 +10,40 @@
 //! 4. the body seeded from the file, the row's hashes, then the `Added` fact.
 //!
 //! A day that has a file already, by its row or at its path, is never written over: the create
-//! answers it as a read does. A failure takes back what this call made: its file, the record
-//! when this call opened it (a tombstone, as a note create's), and the row. A crash between 1
-//! and 2 leaves a live day with no file, whose next create writes it; between 2 and 3, a row
-//! with no file, which a create then writes; between 3 and 4, a file whose text seeds the
-//! empty body at the next open walk.
+//! answers it as a read does. Where the file's text comes from:
+//! - a new day: the caller's, which seeds the empty body;
+//! - a deleted day opened again: the caller's, which replaces the body the day was deleted
+//!   with, kept as a version first (`ExternalFeed::feed_app_edit`), so file and body agree;
+//! - a live day with no file (one another device made): its own body, which the document
+//!   holds; the caller's text goes only into an empty one. A body that is not here yet or that
+//!   the file would not hold whole fails the create, and nothing is written.
+//!
+//! A failure takes back what this call made: its file, the record when this call opened it (a
+//! tombstone, as a note create's), and the row. A crash between 1 and 2 leaves a live day with
+//! no file, whose next create writes it; between 2 and 3, a row with no hash and no file, which
+//! the next create finishes; between 3 and 4, a file whose text seeds the empty body at the
+//! next open walk.
 //!
 //! **Delete** (`journal:deleteEntry`): the file first, for good when the day's document took
-//! its bytes and to the trash otherwise (13f's delete), then the tombstone, then the row. A day
-//! with no record is left alone, its file included: the identity makes that file a day.
+//! its bytes and to the trash otherwise (13f's delete), then the tombstone, then the row. A
+//! file at the day's path that no row names (one the identity left unclaimed) is the one the
+//! page shows: it goes to the trash, told to the own-write record first.
+//!
+//! Not here yet: the task links Electron's delete takes off the day (`unlinkTasksFromDeletedNote`
+//! through `updateTask`, Step 21).
+
+use std::path::Path;
 
 use memry_core::api::journal::Journal;
 use memry_core::domain::journal::valid_date;
+use memry_core::domain::journal_ops::metadata::OpenedWith;
+use memry_core::domain::journal_ops::reads::DayStamp;
+use memry_core::domain::write_back::BodyRead;
+use memry_core::markdown::convert::note_body::NoteBody;
 use memry_core::markdown::frontmatter::{
     YamlError, YamlMap, YamlValue, json_to_yaml, write_markdown_note,
 };
+use memry_core::markdown::shared::writing_tools::merge_writing_yaml;
 use serde_json::{Map, Value};
 
 use super::{JournalEntryView, RESERVED_KEYS, SCOPE, day_path, entry, view_of};
@@ -33,11 +52,13 @@ use crate::notes::error::NotesError;
 use crate::notes::frontmatter::is_reserved_key;
 use crate::notes::service::NotesService;
 use crate::session::OpenVault;
-use crate::vault::consumer::rows::RowStat;
-use crate::vault::consumer::{Applied, ChangeSource};
+use crate::vault::consumer::rows::{Lane, RowStat};
+use crate::vault::consumer::{Applied, ChangeSource, converter_for};
+use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
 use crate::vault::note_file::{NoteFileError, write_new_text};
+use crate::vault::paths::open_vault_file;
 
 /// What `journal:createEntry` is asked to make (`CreateEntryInputSchema`).
 #[derive(Debug, Clone, Default)]
@@ -86,21 +107,37 @@ impl NotesService {
         let journal = open.vault.journal(self.store.clone())?;
         let feed = open.vault.external_feed(self.store.clone())?;
         let mut lane = rows.lane_of(session)?;
-        let rel = day_path(root, date)?;
         let existing = |lane| {
             drop(lane);
             answer(open, &journal, date)
         };
-        if journal
-            .stamp(date)?
-            .is_some_and(|stamp| stamp.path.is_some())
-        {
-            return existing(lane);
-        }
-        // Another note's or day's file stands at the path.
-        if lane.row_at(&rel)?.is_some() {
-            return Err(NotesError::NameConflict);
-        }
+        let rel = match journal.stamp(date)? {
+            Some(DayStamp {
+                id,
+                path: Some(path),
+                ..
+            }) => {
+                // A create that stopped between its row and its file left a row no text was
+                // read into and no file: this create finishes it.
+                let unfinished = lane
+                    .files()
+                    .by_id(&id)?
+                    .is_some_and(|row| row.content_hash.is_none())
+                    && open_vault_file(root, &path)?.is_none();
+                if !unfinished {
+                    return existing(lane);
+                }
+                path
+            }
+            _ => {
+                let rel = day_path(root, date)?;
+                // Another note's or day's file stands at the path.
+                if lane.row_at(&rel)?.is_some() {
+                    return Err(NotesError::NameConflict);
+                }
+                rel
+            }
+        };
         let mut properties = day.properties;
         properties.retain(|name, value| {
             !RESERVED_KEYS.contains(&name.as_str()) && !is_reserved_key(name, value)
@@ -111,11 +148,19 @@ impl NotesService {
                 undo_record(&journal, date);
             }
         };
-        let frontmatter = day_frontmatter(date, &opened.tags, &opened.properties);
-        // `serializeJournalEntry` writes the trimmed text.
-        let content = day
-            .content
-            .trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}');
+        // Fails only for a live day, which this call did not open.
+        let text = text_of(self, open, &opened, &rel)?;
+        let mut frontmatter = day_frontmatter(date, &opened.tags, &opened.properties);
+        let content = match &text {
+            Text::Held(body) => {
+                merge_writing_yaml(&mut frontmatter, &body.writing);
+                body.markdown.as_str()
+            }
+            // `serializeJournalEntry` writes the trimmed text.
+            Text::Given | Text::OverDeleted => day
+                .content
+                .trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}'),
+        };
         let output = day_file(&frontmatter, content)?;
         let hash = content_hash(&output);
         let unseeded = RowStat {
@@ -148,7 +193,12 @@ impl NotesService {
                 rel: &rel,
                 raw: &output,
             };
-            seed.run(self, &feed)
+            match text {
+                Text::Given => seed.run(self, &feed),
+                // No file was read: the deleted body is not the text the user saw.
+                Text::OverDeleted => seed.replace(self, &feed, ""),
+                Text::Held(_) => Ok(true),
+            }
         });
         let take_back = |lane: &mut _, error: NotesError| {
             remove_file(&echo, root, &rel);
@@ -198,15 +248,23 @@ impl NotesService {
         let session = rows.session_for(&open.vault)?;
         let journal = open.vault.journal(self.store.clone())?;
         let mut lane = rows.lane_of(session)?;
-        let Some(stamp) = journal.stamp(date)? else {
-            return Ok(false);
+        let stamp = journal.stamp(date)?;
+        let row = match &stamp {
+            Some(stamp) => lane.files().by_id(&stamp.id)?,
+            None => None,
         };
-        let row = lane.files().by_id(&stamp.id)?;
-        if let Some(row) = &row {
+        let trashed = match &row {
             // Electron unlinks a day's file for good; one holding text the day never took goes
             // to the trash first.
-            self.remove_file_of(&open.path, row, true)?;
-        }
+            Some(row) => {
+                self.remove_file_of(&open.path, row, true)?;
+                false
+            }
+            None => self.trash_unnamed(&lane, &open.path, date)?,
+        };
+        let Some(stamp) = stamp else {
+            return Ok(trashed);
+        };
         journal.delete_day(date.to_owned())?;
         if let Some(row) = row {
             lane.remove(&stamp.id)?;
@@ -218,6 +276,61 @@ impl NotesService {
         }
         Ok(true)
     }
+
+    /// Moves the file at the day's path to the trash when no row names it; `false` when there
+    /// is none, or a note's row holds it.
+    fn trash_unnamed(&self, lane: &Lane<'_>, root: &Path, date: &str) -> Result<bool, NotesError> {
+        // A config that makes no path for the day names no file either.
+        let Ok(rel) = day_path(root, date) else {
+            return Ok(false);
+        };
+        if lane.row_at(&rel)?.is_some() || open_vault_file(root, &rel)?.is_none() {
+            return Ok(false);
+        }
+        self.trash_file(&self.tier.echo(), root, &rel)?;
+        Ok(true)
+    }
+}
+
+/// Where a new day file's text comes from (the module docs).
+enum Text {
+    Given,
+    OverDeleted,
+    Held(NoteBody),
+}
+
+/// The text source of the day `opened`, whose file goes at `rel`.
+fn text_of(
+    service: &NotesService,
+    open: &OpenVault,
+    opened: &OpenedWith,
+    rel: &str,
+) -> Result<Text, NotesError> {
+    if opened.revived {
+        return Ok(Text::OverDeleted);
+    }
+    if opened.opened {
+        return Ok(Text::Given);
+    }
+    let settings = open.vault.app_settings(service.store.clone()).ok();
+    let embeds = Resolved::of_markdown(&open.path, &open.vault.note_files(), "", rel);
+    let read = open.vault.write_back().body(
+        &converter_for(settings.as_ref()),
+        &opened.id,
+        rel,
+        "",
+        &embeds,
+    )?;
+    let why = match read {
+        BodyRead::Body(body) if body.markdown.trim().is_empty() => return Ok(Text::Given),
+        BodyRead::Body(body) => return Ok(Text::Held(body)),
+        BodyRead::NoNote => "the day is gone".to_owned(),
+        BodyRead::FileAhead => "the day owes a file's text".to_owned(),
+        BodyRead::BodyNotPulled => "the day's text has not arrived from sync".to_owned(),
+        BodyRead::NotRepresentable(_) => "the file would not hold all of the day".to_owned(),
+        BodyRead::Failed(reason) => reason.to_owned(),
+    };
+    Err(NotesError::DayTextUnwritable(why))
 }
 
 /// The day as a read of it answers, for a create that found it made.

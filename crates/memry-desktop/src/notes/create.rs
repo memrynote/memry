@@ -34,8 +34,10 @@
 
 use std::path::Path;
 
+use memry_core::crdt::errors::CrdtError;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::domain::note_stats::word_count;
+use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::{split_frontmatter_block, write_markdown_note};
 use memry_core::markdown::shared::writing_tools::WritingFrontmatter;
 use serde_json::{Map, Value};
@@ -344,6 +346,30 @@ impl Seed<'_> {
         service: &NotesService,
         feed: &memry_core::api::external_feed::ExternalFeed,
     ) -> Result<bool, NotesError> {
+        self.feed_with(service, |converter, input| {
+            feed.seed_body_if_empty(converter, input)
+        })
+    }
+
+    /// [`Self::run`] over a body the document already holds: the file's text replaces it as the
+    /// app's edit after reading `read` from the file, so a body other than `read` is kept as a
+    /// version first (`feed_app_edit`).
+    pub(crate) fn replace(
+        &self,
+        service: &NotesService,
+        feed: &memry_core::api::external_feed::ExternalFeed,
+        read: &str,
+    ) -> Result<bool, NotesError> {
+        self.feed_with(service, |converter, input| {
+            feed.feed_app_edit(converter, input, read)
+        })
+    }
+
+    fn feed_with(
+        &self,
+        service: &NotesService,
+        step: impl FnOnce(&Converter, FeedInput<'_>) -> Result<FeedOutcome, CrdtError>,
+    ) -> Result<bool, NotesError> {
         let split = split_frontmatter_block(self.raw);
         // Outside the feed's write: the lookup reads the database the feed holds.
         let embeds = Resolved::of_markdown(
@@ -362,7 +388,7 @@ impl Seed<'_> {
             frontmatter: split.block,
             embeds: Some(&embeds),
         };
-        let outcome = feed.seed_body_if_empty(&converter_for(settings.as_ref()), input)?;
+        let outcome = step(&converter_for(settings.as_ref()), input)?;
         if !matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) {
             tracing::warn!(
                 scope = SCOPE,

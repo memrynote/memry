@@ -73,7 +73,10 @@ pub struct JournalEntryView {
 }
 
 /// The day's entry, `None` when it has no file. A day the core has no record of reads from the
-/// file at its path under the id it will get (`j<date>`).
+/// file at its path, under the id of the row that names that file (a note's, as Electron's
+/// `findStoredJournalEntry` answers the cache row at the path), else the id it will get
+/// (`j<date>`). An empty file is an empty entry (Electron reads none and seeds the template
+/// over it; a create here never writes over a file).
 pub fn entry(
     open: &OpenVault,
     journal: &Journal,
@@ -88,7 +91,13 @@ pub fn entry(
     let Some(raw) = read_day_file(&open.path, &path)? else {
         return Ok(None);
     };
-    Ok(Some(view_of(date, &raw, stamp.as_ref())))
+    let mut view = view_of(date, &raw, stamp.as_ref());
+    if stamp.is_none()
+        && let Some(row) = open.vault.note_files().by_path(&path)?
+    {
+        view.id = row.note_id;
+    }
+    Ok(Some(view))
 }
 
 /// Where the file of `date` goes under the vault's config (`getJournalRelativePath`).
@@ -99,15 +108,20 @@ pub(crate) fn day_path(root: &Path, date: &str) -> Result<String, NotesError> {
         .ok_or_else(|| NotesError::NotFound(date.to_owned()))
 }
 
-/// The text of the day file at `rel`, read as a note's is: under the vault, refusing links,
-/// bounded by the large-file ceiling; `None` when it is not there.
+/// The text of the day file at `rel`, read as a note's is: under the vault, refusing links;
+/// `None` when it is not there. A file past the large-file ceiling fails the read: the page
+/// shows a day whole or not at all.
 fn read_day_file(root: &Path, rel: &str) -> Result<Option<String>, NotesError> {
     let Some(file) = open_vault_file(root, rel)? else {
         return Ok(None);
     };
-    let ceiling = MarkdownClassThresholds::default().max_file_bytes as u64;
+    let ceiling = MarkdownClassThresholds::default().max_file_bytes;
     let mut bytes = Vec::new();
-    file.take(ceiling).read_to_end(&mut bytes)?;
+    // One byte past the ceiling tells a file at it from one past it.
+    file.take(ceiling as u64 + 1).read_to_end(&mut bytes)?;
+    if bytes.len() > ceiling {
+        return Err(NotesError::TooLarge(ceiling));
+    }
     Ok(Some(String::from_utf8_lossy(&bytes).into_owned()))
 }
 

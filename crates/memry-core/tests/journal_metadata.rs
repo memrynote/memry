@@ -441,7 +441,7 @@ fn desktop_s_first_write_opens_the_day_with_its_fields_and_a_live_day_keeps_its_
         let opened =
             metadata::open_with(conn, DAY, &strings(&["work", "Work"]), fields, DEVICE, NOW)?;
         assert_eq!(opened.id, "j2099-06-15");
-        assert!(opened.opened);
+        assert!(opened.opened && !opened.revived);
         assert_eq!(opened.tags, strings(&["work"]));
         assert_eq!(
             opened.properties,
@@ -496,7 +496,7 @@ fn a_deleted_day_opened_by_desktop_s_first_write_takes_the_new_fields_and_keeps_
         let fields = json!({"mood": "calm"});
         let opened = metadata::open_with(conn, DAY, &strings(&["new"]), fields.as_object().unwrap(), DEVICE, NOW + 1)?;
         assert_eq!(opened.id, "desktop-day", "the existing id wins");
-        assert!(opened.opened);
+        assert!(opened.opened && opened.revived);
         assert_eq!(opened.tags, strings(&["new"]));
         assert_eq!(opened.properties, *fields.as_object().unwrap());
         let payload = payload_of(conn, "desktop-day");
@@ -508,4 +508,22 @@ fn a_deleted_day_opened_by_desktop_s_first_write_takes_the_new_fields_and_keeps_
         Ok(())
     })
     .expect("revive");
+}
+
+#[test]
+fn the_properties_a_first_write_answers_keep_their_order_without_the_date() {
+    let db = open("open-with-order");
+    db.call_blocking(|conn| {
+        let stored = json!({"date": DAY, "properties": {"date": DAY}, "clock": {"device-b": 1}});
+        let mut tombstone = remote("ordered-day", stored);
+        tombstone.deleted_at = Some(NOW);
+        sync_items::apply_remote(conn, &tombstone, NOW)?;
+        let fields = json!({"a": 1, "b": 2});
+        let opened =
+            metadata::open_with(conn, DAY, &[], fields.as_object().unwrap(), DEVICE, NOW + 1)?;
+        let names: Vec<&str> = opened.properties.keys().map(String::as_str).collect();
+        assert_eq!(names, ["a", "b"], "the file writes them in this order");
+        Ok(())
+    })
+    .expect("order");
 }

@@ -116,7 +116,12 @@ impl NotesService {
     }
 
     /// Moves the file at `rel` to the OS trash, told to the own-write record first.
-    fn trash_file(&self, echo: &EchoGuard, root: &Path, rel: &str) -> Result<(), NotesError> {
+    pub(crate) fn trash_file(
+        &self,
+        echo: &EchoGuard,
+        root: &Path,
+        rel: &str,
+    ) -> Result<(), NotesError> {
         let Some(path) = removal_target(root, rel)? else {
             return Ok(());
         };

@@ -181,6 +181,9 @@ pub struct OpenedWith {
     /// This call created the entry, or revived a deleted one: a failed write after it takes the
     /// entry back.
     pub opened: bool,
+    /// This call revived a deleted entry, whose document still holds the body it was deleted
+    /// with.
+    pub revived: bool,
     pub tags: Vec<String>,
     /// Without the reserved `date`.
     pub properties: Map<String, Value>,
@@ -210,6 +213,7 @@ pub fn open_with(
             properties: visible(values),
             id: opened.id,
             opened: false,
+            revived: false,
         });
     }
     let (next_tags, mut changes) = tags::set_changes(object, ITEM_TYPE, date, tags)?;
@@ -233,6 +237,7 @@ pub fn open_with(
     Ok(OpenedWith {
         id: opened.id,
         opened: true,
+        revived: opened.revived,
         tags: next_tags,
         properties: visible(values),
     })
@@ -300,8 +305,8 @@ fn properties_change(values: &Map<String, Value>) -> Vec<(&'static str, Change)>
     vec![("properties", Change::Set(Value::Object(values.clone())))]
 }
 
-/// The property map a caller sees: everything but the reserved `date`.
+/// The property map a caller sees: everything but the reserved `date`, the rest in their order.
 fn visible(mut values: Map<String, Value>) -> Map<String, Value> {
-    values.remove(RESERVED_PROPERTY);
+    values.shift_remove(RESERVED_PROPERTY);
     values
 }

@@ -12,12 +12,11 @@ use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::telemetry::Service;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::CommandError;
 use crate::events::{JournalEntryCreatedEvent, JournalEntryDeletedEvent, broadcast};
-use crate::shell::services;
 
 /// `CreateEntryInputSchema`.
 #[derive(Debug, Clone, Deserialize, specta::Type)]
@@ -55,13 +54,46 @@ fn open_vault(app: &AppHandle<Wry>) -> Result<memry_desktop::session::OpenVault,
         .ok_or_else(|| failed(&NotesError::Closed))
 }
 
-/// `journal_opened`, as the Electron handler counts it.
-fn track_opened(app: &AppHandle<Wry>) {
-    if let Some(telemetry) = services::telemetry(app) {
-        let mut event = Service::event("journal_opened", "journal", "opened");
-        event.object_type = Some("journal".to_owned());
-        event.result = Some("success".to_owned());
-        telemetry.track_main_event(event);
+/// A journal command that landed, for [`announce`].
+pub enum Landed<'a> {
+    /// A read; `found` when the day has an entry.
+    Read {
+        found: bool,
+    },
+    Created(&'a JournalEntryView),
+    /// `success` when the day had an entry to delete.
+    Deleted {
+        date: String,
+        success: bool,
+    },
+}
+
+/// What Electron's handlers send once the command landed: `journal_opened` for a read that
+/// found the entry, `journal:entryCreated` with the entry, and `journal:entryDeleted` only when
+/// an entry was deleted. Public for `tests/journal.rs`: a lib unit test that links the Tauri
+/// runtime cannot load on Windows (see `build.rs`).
+pub fn announce<R: Runtime>(app: &AppHandle<R>, landed: Landed<'_>) {
+    match landed {
+        Landed::Read { found: true } => {
+            if let Some(telemetry) = app.try_state::<Arc<Service>>() {
+                let mut event = Service::event("journal_opened", "journal", "opened");
+                event.object_type = Some("journal".to_owned());
+                event.result = Some("success".to_owned());
+                telemetry.track_main_event(event);
+            }
+        }
+        Landed::Created(entry) => broadcast(
+            app,
+            JournalEntryCreatedEvent {
+                date: entry.date.clone(),
+                entry: entry.clone(),
+            },
+        ),
+        Landed::Deleted {
+            date,
+            success: true,
+        } => broadcast(app, JournalEntryDeletedEvent { date }),
+        Landed::Read { found: false } | Landed::Deleted { success: false, .. } => {}
     }
 }
 
@@ -80,9 +112,8 @@ pub async fn journal_get_entry(
             .journal(store)
             .map_err(|error| failed(&error.into()))?;
         let entry = journal::entry(&open, &day, &date).map_err(|error| failed(&error))?;
-        if entry.is_some() {
-            track_opened(&app);
-        }
+        let found = entry.is_some();
+        announce(&app, Landed::Read { found });
         Ok(entry)
     })
     .await
@@ -106,13 +137,7 @@ pub async fn journal_create_entry(
         let entry = service(&app)?
             .create_day(&open, day)
             .map_err(|error| failed(&error))?;
-        broadcast(
-            &app,
-            JournalEntryCreatedEvent {
-                date: entry.date.clone(),
-                entry: entry.clone(),
-            },
-        );
+        announce(&app, Landed::Created(&entry));
         Ok(entry)
     })
     .await
@@ -130,9 +155,7 @@ pub async fn journal_delete_entry(
         let success = service(&app)?
             .delete_day(&open, &date)
             .map_err(|error| failed(&error))?;
-        if success {
-            broadcast(&app, JournalEntryDeletedEvent { date });
-        }
+        announce(&app, Landed::Deleted { date, success });
         Ok(JournalDeleteOutput { success })
     })
     .await
