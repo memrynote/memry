@@ -9,6 +9,7 @@
 //! Obsidian open-as-copy).
 
 pub mod activity;
+pub mod app_edit;
 pub mod app_move;
 pub mod config;
 pub mod consumer;

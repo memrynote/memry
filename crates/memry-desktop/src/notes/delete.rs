@@ -49,7 +49,7 @@ impl NotesService {
         permanent: bool,
     ) -> Result<(), NotesError> {
         self.order
-            .run(note_id, || self.delete_now(open, note_id, permanent))
+            .run(note_id, |_| self.delete_now(open, note_id, permanent))
     }
 
     fn delete_now(

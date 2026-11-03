@@ -206,6 +206,10 @@ mod link_contexts_untrusted;
 mod link_reads;
 #[path = "link_reads_load.rs"]
 mod link_reads_load;
+#[path = "link_rewrite_file.rs"]
+mod link_rewrite_file;
+#[path = "link_rewrite_text.rs"]
+mod link_rewrite_text;
 #[path = "linking_vectors.rs"]
 mod linking_vectors;
 #[path = "local_first_account.rs"]

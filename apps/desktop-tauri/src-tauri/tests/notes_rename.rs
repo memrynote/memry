@@ -1,6 +1,7 @@
 //! `notes_rename`, `notes_reorder` and `notes_get_all_positions` through their commands on a
-//! mock app over a real vault and vault tier (#3530 13g), and the `NoteRenamedEvent` a rename's
-//! row fact sends through the shell's note events.
+//! mock app over a real vault, vault tier and note index (#3530 13g), and the events a rename
+//! sends through the shell's note events: `NoteRenamedEvent` for the note, and an outside
+//! edit's `NoteUpdatedEvent` for each file whose links followed it (13g-2).
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -13,12 +14,14 @@ use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::identity::NotesIdentity;
+use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
 use memry_tauri::commands::notes::{notes_get_all_positions, notes_rename, notes_reorder};
-use memry_tauri::events::NoteRenamedEvent;
+use memry_tauri::events::{NoteRenamedEvent, NoteUpdatedEvent};
 use memry_tauri::shell::note_events;
 use serde_json::{Value, json};
 use tauri::test::{MockRuntime, mock_app};
@@ -57,10 +60,22 @@ struct Fixture {
     app: App<MockRuntime>,
     notes: Arc<NotesService>,
     renamed: Arc<Mutex<Vec<Value>>>,
+    updated: Arc<Mutex<Vec<Value>>>,
 }
 
-/// An open vault with its first walk done, its tier's note events forwarded, and every
-/// `NoteRenamedEvent` heard.
+/// Every payload of `event` heard on `app`.
+fn heard(app: &App<MockRuntime>, event: &str) -> Arc<Mutex<Vec<Value>>> {
+    let payloads = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&payloads);
+    app.listen_any(event, move |event| {
+        let payload = serde_json::from_str(event.payload()).unwrap();
+        sink.lock().unwrap().push(payload);
+    });
+    payloads
+}
+
+/// An open vault with its first walk and index pass done, its tier's note events forwarded,
+/// and every `NoteRenamedEvent` and `NoteUpdatedEvent` heard.
 fn opened() -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let vault = dir.path().join("vault");
@@ -76,6 +91,7 @@ fn opened() -> Fixture {
     let tier = VaultTier::new(store.clone());
     tier.set_identity(NotesIdentity::new(store.clone()));
     tier.register(&session);
+    NoteIndex::new(tier.clone(), |_| {}, |_| {}).register(&session);
     let mut facts = tier.subscribe();
     session.open(&vault, OpenSource::Select).unwrap();
     let deadline = Instant::now() + WAIT;
@@ -89,27 +105,28 @@ fn opened() -> Fixture {
     let notes = NotesService::new(tier.clone(), store);
     app.manage(notes.clone());
     note_events::forward(app.handle().clone(), tier.subscribe());
-    let renamed = Arc::new(Mutex::new(Vec::new()));
-    let sink = Arc::clone(&renamed);
-    app.listen_any(NoteRenamedEvent::NAME, move |event| {
-        let payload = serde_json::from_str(event.payload()).unwrap();
-        sink.lock().unwrap().push(payload);
-    });
+    let renamed = heard(&app, NoteRenamedEvent::NAME);
+    let updated = heard(&app, NoteUpdatedEvent::NAME);
     Fixture {
         _dir: dir,
         vault,
         app,
         notes,
         renamed,
+        updated,
     }
 }
 
 impl Fixture {
     fn create(&self, title: &str, folder: &str) -> String {
+        self.create_with(title, folder, &format!("About {title}"))
+    }
+
+    fn create_with(&self, title: &str, folder: &str, content: &str) -> String {
         let open = self.app.state::<Session>().current().unwrap();
         let note = NewNoteFile {
             title: title.into(),
-            content: format!("About {title}"),
+            content: content.into(),
             folder: Some(folder.into()),
             ..NewNoteFile::default()
         };
@@ -144,6 +161,58 @@ impl Fixture {
             std::thread::sleep(Duration::from_millis(20));
         }
     }
+
+    /// The first `NoteUpdatedEvent` heard for `id`.
+    fn updated_for(&self, id: &str) -> Value {
+        let deadline = Instant::now() + WAIT;
+        loop {
+            let found = self
+                .updated
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|e| e["id"] == id)
+                .cloned();
+            if let Some(event) = found {
+                return event;
+            }
+            assert!(Instant::now() < deadline, "no NoteUpdatedEvent for {id}");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+}
+
+#[test]
+fn a_rename_rewrites_the_links_to_it_and_tells_the_renderer_as_an_outside_edit() {
+    let f = opened();
+    let plan = f.create("Plan", "work");
+    let ideas = f.create_with(
+        "Ideas",
+        "",
+        "See [[Plan]] and [[work/Plan#Goals|the goals]].",
+    );
+    let open = f.app.state::<Session>().current().unwrap();
+    let links = NoteLinks::new(&open);
+    let deadline = Instant::now() + WAIT;
+    while links.get(&plan).unwrap().incoming.is_empty() {
+        assert!(Instant::now() < deadline, "the link was not indexed");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let before = fs::read_to_string(f.vault.join("Ideas.md")).unwrap();
+
+    assert_eq!(
+        f.rename(&plan, "Roadmap"),
+        Ok(("work/Roadmap.md".into(), "Roadmap".into()))
+    );
+
+    let after = before
+        .replace("[[Plan]]", "[[Roadmap]]")
+        .replace("[[work/Plan#", "[[work/Roadmap#");
+    assert_ne!(after, before);
+    assert_eq!(fs::read_to_string(f.vault.join("Ideas.md")).unwrap(), after);
+    let event = f.updated_for(&ideas);
+    assert_eq!(event["source"], "external");
+    assert!(event["changes"].is_object(), "{event}");
 }
 
 #[test]

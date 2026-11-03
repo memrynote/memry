@@ -21,10 +21,23 @@ struct Turn {
     writes: usize,
 }
 
+/// Proof that a write holds `note_id`'s turn, for as long as the write runs: only
+/// [`WriteOrder::run`] makes one. A seam that edits a note takes it (`vault::app_edit`), so it
+/// cannot run outside the note's turn or for another note.
+pub struct NoteTurn<'a> {
+    note_id: &'a str,
+}
+
+impl NoteTurn<'_> {
+    pub fn note_id(&self) -> &str {
+        self.note_id
+    }
+}
+
 impl WriteOrder {
     /// Runs `write` once every earlier write of `note_id` has finished. Blocks: call it off the
     /// async runtime. A write that fails does not stop the next one.
-    pub fn run<T>(&self, note_id: &str, write: impl FnOnce() -> T) -> T {
+    pub fn run<T>(&self, note_id: &str, write: impl FnOnce(&NoteTurn<'_>) -> T) -> T {
         let lock = {
             let mut notes = self.notes();
             let turn = notes.entry(note_id.to_owned()).or_default();
@@ -37,7 +50,7 @@ impl WriteOrder {
             note_id,
         };
         let _held = lock.lock().unwrap_or_else(PoisonError::into_inner);
-        write()
+        write(&NoteTurn { note_id })
     }
 
     fn notes(&self) -> MutexGuard<'_, HashMap<String, Turn>> {
@@ -102,7 +115,7 @@ mod tests {
         let first = {
             let (order, log) = (order.clone(), log.clone());
             thread::spawn(move || {
-                order.run("n", || {
+                order.run("n", |_| {
                     entered.send(()).unwrap();
                     released.recv().unwrap();
                     log.lock().unwrap().push("first");
@@ -112,7 +125,7 @@ mod tests {
         first_entered.recv().unwrap();
         let second = {
             let (order, log) = (order.clone(), log.clone());
-            thread::spawn(move || order.run("n", || log.lock().unwrap().push("second")))
+            thread::spawn(move || order.run("n", |_| log.lock().unwrap().push("second")))
         };
         // The second write is in line once it counts itself in. The deadline only keeps a
         // broken run from hanging; the wait is over at once.
@@ -129,7 +142,7 @@ mod tests {
             thread::yield_now();
         }
         // Another note does not wait for `n`.
-        order.run("other", || log.lock().unwrap().push("other"));
+        order.run("other", |_| log.lock().unwrap().push("other"));
         release.send(()).unwrap();
         first.join().unwrap();
         second.join().unwrap();
@@ -142,12 +155,12 @@ mod tests {
     #[test]
     fn a_failed_write_does_not_stop_the_next() {
         let order = WriteOrder::default();
-        let failed: Result<(), &str> = order.run("n", || Err("refused"));
+        let failed: Result<(), &str> = order.run("n", |_| Err("refused"));
         assert!(failed.is_err());
-        assert_eq!(order.run("n", || 7), 7);
-        let panicked = std::panic::catch_unwind(|| order.run("n", || panic!("broken write")));
+        assert_eq!(order.run("n", |_| 7), 7);
+        let panicked = std::panic::catch_unwind(|| order.run("n", |_| panic!("broken write")));
         assert!(panicked.is_err());
-        assert_eq!(order.run("n", || 8), 8);
+        assert_eq!(order.run("n", |_| 8), 8);
         assert_eq!(order.len(), 0);
     }
 }

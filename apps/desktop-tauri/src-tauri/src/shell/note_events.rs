@@ -3,7 +3,8 @@
 //! and delete and the watcher's reports go out the same way with their `source`. Two kinds of
 //! fact emit nothing:
 //! - the app's own writes of a body (`Changed` by the app): Electron's write-back is `sync`,
-//!   which the renderer ignores;
+//!   which the renderer ignores. An edit the app makes for the user outside the editor
+//!   (`ChangeSource::AppEdit`, the links to a renamed note) goes out as an outside edit does;
 //! - what the open walk found (`ChangeSource::Walk`): Electron's open-time index sends no note
 //!   events either, and the index pass after the walk reports progress, on which the renderer
 //!   refetches its lists (`use-notes-query.ts`). A first open of a large vault would otherwise
@@ -148,7 +149,7 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
         }),
         Applied::Changed {
             note_id,
-            source: ChangeSource::Watcher,
+            source: ChangeSource::Watcher | ChangeSource::AppEdit,
             ..
         } => Some(Outgoing::Updated { note_id }),
         Applied::Removed {
@@ -176,7 +177,9 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
 fn source_of(source: ChangeSource) -> NoteEventSource {
     match source {
         ChangeSource::App => NoteEventSource::Internal,
-        ChangeSource::Watcher | ChangeSource::Walk => NoteEventSource::External,
+        ChangeSource::Watcher | ChangeSource::Walk | ChangeSource::AppEdit => {
+            NoteEventSource::External
+        }
     }
 }
 
@@ -247,8 +250,15 @@ mod tests {
                 note_id: "n".into()
             })
         );
-        // The app's own write-back is `sync` in Electron, which the renderer ignores.
+        // The app's own write-back is `sync` in Electron, which the renderer ignores; its edit
+        // for the user (a renamed note's links) is `external`, as `landSourceRewrite` sends it.
         assert_eq!(outgoing(changed(ChangeSource::App)), None);
+        assert_eq!(
+            outgoing(changed(ChangeSource::AppEdit)),
+            Some(Outgoing::Updated {
+                note_id: "n".into()
+            })
+        );
         // The open walk's notes reach the lists through the index's progress instead.
         assert_eq!(outgoing(added(ChangeSource::Walk)), None);
         assert_eq!(outgoing(changed(ChangeSource::Walk)), None);

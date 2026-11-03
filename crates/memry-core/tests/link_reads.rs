@@ -9,6 +9,8 @@
 //! | titles, aliases, paths and days resolve with their rows  | `resolveLinkTargets`                  |
 //! | a target's heading and block reference                  | `resolveWikiTarget`                    |
 //! | the Search surface reads the same                       | the API wrappers                       |
+//! | a rename's sources: resolved rows, and unresolved ones   | `getInboundLinkSourceIds`              |
+//! | under an old title or path form                         |                                        |
 
 #![cfg(feature = "markdown")]
 
@@ -20,6 +22,8 @@ use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::domain::journal_ops::links;
 use memry_core::domain::link_reads::{self, LinkTarget};
+use memry_core::domain::notes::link_rewrite::LinkNames;
+use memry_core::domain::notes::names::name_key;
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::unlinked_mentions::unlinked_mentions;
 use memry_core::domain::wiki_target::{MatchedBy, settle_name_keys};
@@ -491,4 +495,65 @@ fn the_search_surface_reads_links_and_names() {
             .sources
             .is_empty()
     );
+}
+
+/// A link row as the index writes it, keyed for an unresolved lookup.
+fn keyed_link(index: &Connection, source: &str, target: Option<&str>, title: &str) {
+    index
+        .execute(
+            "INSERT INTO note_links (source_id, target_id, target_title, target_key) \
+             VALUES (?1, ?2, ?3, ?4)",
+            params![source, target, title, name_key(title)],
+        )
+        .expect("link");
+}
+
+#[test]
+fn a_renames_sources_are_its_resolved_rows_and_unresolved_ones_under_an_old_name() {
+    let (_, index) = dbs();
+    let names = |title: &str, folder: Option<&str>| LinkNames {
+        title: title.to_owned(),
+        folder: folder.map(str::to_owned),
+        markdown: true,
+    };
+    let sources = |from: &LinkNames| link_reads::rewrite_sources(&index, "n1", from).unwrap();
+    keyed_link(&index, "resolved", Some("n1"), "Anything");
+    // Unresolved under the old title, any case, and under each path form of `x`.
+    keyed_link(&index, "title", None, "UNRESOLVED");
+    for (source, title) in [
+        ("x", "x"),
+        ("x-md", "x.md"),
+        ("x-slash", "/x"),
+        ("x-slash-md", "/X.md"),
+    ] {
+        keyed_link(&index, source, None, title);
+    }
+    for (source, title) in [
+        ("w", "work/x"),
+        ("w-md", "work/x.md"),
+        ("w-slash", "/Work/x"),
+    ] {
+        keyed_link(&index, source, None, title);
+    }
+    // Not sources: a row another note resolved under the old name, and other names.
+    keyed_link(&index, "other-note", Some("n2"), "x");
+    keyed_link(&index, "other-name", None, "Target");
+    keyed_link(&index, "other-path", None, "work/y");
+
+    assert_eq!(sources(&names("Unresolved", None)), ["resolved", "title"]);
+    assert_eq!(
+        sources(&names("x", None)),
+        ["resolved", "x", "x-md", "x-slash", "x-slash-md"]
+    );
+    // In a folder, the bare title is the title form; its path forms carry the folder.
+    assert_eq!(
+        sources(&names("x", Some("work"))),
+        ["resolved", "w", "w-md", "w-slash", "x"]
+    );
+    // An attachment has no path form a link spells.
+    let attachment = LinkNames {
+        markdown: false,
+        ..names("Target", Some("work"))
+    };
+    assert_eq!(sources(&attachment), ["other-name", "resolved"]);
 }

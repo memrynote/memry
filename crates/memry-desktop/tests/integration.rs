@@ -18,6 +18,8 @@ mod vault_env;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "app_edit.rs"]
+mod app_edit;
 #[path = "article_constants.rs"]
 mod article_constants;
 #[path = "article_dom.rs"]
@@ -100,6 +102,8 @@ mod note_mentions;
 mod notes_create_template;
 #[path = "notes_identity.rs"]
 mod notes_identity;
+#[path = "notes_link_rewrite.rs"]
+mod notes_link_rewrite;
 #[path = "notes_local_only.rs"]
 mod notes_local_only;
 #[path = "notes_moves.rs"]
