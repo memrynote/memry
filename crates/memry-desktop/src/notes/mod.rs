@@ -8,6 +8,7 @@ pub mod icons;
 pub mod identity;
 pub mod index;
 pub mod link_preview;
+pub mod link_rewrite;
 pub mod links;
 pub mod local_only;
 pub mod mentions;

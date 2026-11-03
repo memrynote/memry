@@ -20,7 +20,10 @@
 //!    title included, owed the move, as the watcher's move does (Step 13m);
 //! 4. [`Applied::Renamed`], under the lane, for whatever follows the rows (the note index, the
 //!    shell's note events). A rename whose file keeps its name (a title its name already says)
-//!    sends it with the same old and new path.
+//!    sends it with the same old and new path;
+//! 5. once the note's turn ended, the links to it in other notes' files follow its new title or
+//!    path ([`super::link_rewrite`]), each in its own note's turn. A move that changed what the
+//!    file is changed no name a link spells, and repairs none.
 //!
 //! A failed step 3 moves the file back and forgets the record of the move. A crash between 2 and
 //! 3 leaves the file at its new name, its row at the old one and the record of the move, which
@@ -33,8 +36,8 @@
 //! a folder reached through a link, which the open walk does not enter for the same reason, and
 //! a folder path a file already holds.
 //!
-//! Not here yet: the inbound `[[link]]` rewrite (13g-2), a moved note's relative embeds
-//! (`rewriteNoteRefsForMove`, 13g-3), and the locked-folder check (Step 13n).
+//! Not here yet: a moved note's relative embeds (`rewriteNoteRefsForMove`, 13g-3), and the
+//! locked-folder check (Step 13n).
 
 use std::fs;
 use std::io::{self, ErrorKind};
@@ -42,6 +45,7 @@ use std::path::Path;
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::notes::app_move::AppMoved;
+use memry_core::domain::notes::link_rewrite::LinkNames;
 
 use super::error::NotesError;
 use super::read;
@@ -110,18 +114,23 @@ impl NotesService {
                 return Err(NotesError::InvalidTitle);
             }
         }
-        self.order
+        let renamed = self
+            .order
             .run(note_id, || self.move_now(open, note_id, to, after_file))?;
+        if let Some((from, to)) = renamed {
+            self.rewrite_inbound(open, note_id, &from, &to);
+        }
         read::get(open, note_id, None)?.ok_or_else(|| NotesError::NotFound(note_id.to_owned()))
     }
 
+    /// Moves the note; the names a link spelled it by before and after, when they may differ.
     fn move_now(
         &self,
         open: &OpenVault,
         note_id: &str,
         to: MoveTo<'_>,
         after_file: &mut dyn FnMut() -> Result<(), NotesError>,
-    ) -> Result<(), NotesError> {
+    ) -> Result<Option<(LinkNames, LinkNames)>, NotesError> {
         let root = open.path.as_path();
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;
@@ -160,7 +169,7 @@ impl NotesService {
             keeps_kind,
         };
         if new == old && moved.title.is_none_or(|title| title == listed.title) {
-            return Ok(());
+            return Ok(None);
         }
         let echo = self.tier.echo();
         let file = (new != old).then(|| NoteFileMove {
@@ -180,12 +189,22 @@ impl NotesService {
             }
             return Err(error);
         }
+        let markdown = row.file_type == FileType::Markdown.as_str();
+        let names = |title: &str, path: &str| LinkNames {
+            title: title.to_owned(),
+            folder: path.rsplit_once('/').map(|(folder, _)| folder.to_owned()),
+            markdown,
+        };
+        let renamed = keeps_kind.then(|| {
+            let to = names(moved.title.unwrap_or(&listed.title), &new);
+            (names(&listed.title, &old), to)
+        });
         lane.publish(Applied::Renamed {
             note_id: note_id.to_owned(),
             old_path: old,
             new_path: new,
         });
-        Ok(())
+        Ok(renamed)
     }
 }
 

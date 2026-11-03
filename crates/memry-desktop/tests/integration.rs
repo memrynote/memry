@@ -96,6 +96,8 @@ mod note_links_changed;
 mod note_mentions;
 #[path = "notes_identity.rs"]
 mod notes_identity;
+#[path = "notes_link_rewrite.rs"]
+mod notes_link_rewrite;
 #[path = "notes_local_only.rs"]
 mod notes_local_only;
 #[path = "notes_moves.rs"]
