@@ -90,12 +90,26 @@ pub enum ChangeSource {
     /// The app wrote, created or removed the file.
     App,
     /// The app edited the file's text for the user, outside the editor (`vault::app_edit`: the
-    /// links to a renamed note, a linked mention, a template's apply). The renderer takes it as
-    /// it takes an outside edit, as Electron's `landSourceRewrite` sends it.
+    /// links to a renamed note, a moved note's embeds, a linked mention, a template's apply).
+    /// The renderer takes it as it takes an outside edit, as Electron's `landSourceRewrite`
+    /// sends it.
     AppEdit,
     /// The user's save in the editor (`notes:update`, `vault::app_edit`'s `Save`): its body,
     /// its header tags or its icon. Electron sends it as an `internal` `notes:updated`.
     Save,
+}
+
+/// What moved a note's file, for the note event it sends.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MoveKind {
+    /// The app renamed the note, or its file moved outside the app (`notes:renamed`, as
+    /// Electron's watcher sends an outside move).
+    Renamed,
+    /// The app moved the note to another folder (`notes:moved`).
+    Moved,
+    /// A journal date format change renamed the day's file. Electron's
+    /// `journal-format-migration` sends no note event for it, and nor does this app.
+    JournalFormat,
 }
 
 /// A change to the rows, published after the row is written.
@@ -125,6 +139,7 @@ pub enum Applied {
         note_id: String,
         old_path: String,
         new_path: String,
+        kind: MoveKind,
     },
     /// The open walk offered every file of the vault. `complete` is `false` when the walk hit
     /// its caps, or when the identity adopts nothing (files without a row stay unindexed);

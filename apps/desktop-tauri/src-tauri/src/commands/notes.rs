@@ -7,9 +7,10 @@
 //! through `memry_desktop::notes::mentions`, linking one of them (`notes:link-mention`) through
 //! `NotesService::link_mention`, and a wiki link's hover card
 //! (`notes:preview-by-title`) through `memry_desktop::notes::link_preview`.
-//! A note's rename (`notes:rename`) and the sidebar's manual order (`notes:reorder`,
-//! `notes:get-all-positions`, #3530 13g) go through `memry_desktop::notes::{moves, positions}`;
-//! the rename's `NoteRenamedEvent` comes from its row fact, as every note event does.
+//! A note's rename and move (`notes:rename`, `notes:move`) and the sidebar's manual order
+//! (`notes:reorder`, `notes:get-all-positions`, #3530 13g) go through
+//! `memry_desktop::notes::{moves, positions}`; the `NoteRenamedEvent` and `NoteMovedEvent` come
+//! from their row facts, as every note event does.
 //! A note's edit (`notes:update`, #3530 13f-3c) goes through `memry_desktop::notes::update`.
 
 use std::collections::BTreeMap;
@@ -128,8 +129,8 @@ pub async fn notes_delete(
 
 /// `notes:rename`: the note's new title, and its file the name that title makes in its folder.
 /// Answers the note.
-// This command and the two below are generic over the runtime so a test drives them on a mock
-// app (`tests/notes_rename.rs`).
+// This command, `notes_move`, `notes_reorder` and `notes_get_all_positions` are generic over the
+// runtime so a test drives them on a mock app (`tests/notes_rename.rs`).
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_rename<R: Runtime>(
@@ -165,6 +166,24 @@ pub async fn notes_update<R: Runtime>(
             broadcast(&app, NoteTagsChangedEvent);
         }
         Ok(updated.note)
+    })
+    .await
+}
+
+/// `notes:move`: the note's file, under its name (numbered when taken), in another folder of
+/// the vault (`""` is the root). Answers the note.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_move<R: Runtime>(
+    app: AppHandle<R>,
+    id: String,
+    new_folder: String,
+) -> Result<NoteView, CommandError> {
+    blocking("notes_move", move || {
+        let open = open_vault(&app)?;
+        service(&app)?
+            .move_to_folder(&open, &id, &new_folder)
+            .map_err(|error| failed(&error))
     })
     .await
 }

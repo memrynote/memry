@@ -154,6 +154,13 @@ vi.mock('../src/generated/bindings', () => {
         if (result?.success === false) throw new Error(result.error ?? '')
         return result?.note ?? result
       },
+      notesMove: async (id: string, newFolder: string) => {
+        const result = (await notes().move(id, newFolder)) as
+          | { success?: boolean; note?: unknown; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return result?.note
+      },
       notesReorder: async (folderPath: string, notePaths: string[]) => {
         const result = (await notes().reorder(folderPath, notePaths)) as
           | { success?: boolean; error?: string }
@@ -267,6 +274,7 @@ vi.mock('../src/generated/bindings', () => {
       noteUpdatedEvent: event(() => api().onNoteUpdated),
       noteDeletedEvent: event(() => api().onNoteDeleted),
       noteRenamedEvent: event(() => api().onNoteRenamed),
+      noteMovedEvent: event(() => api().onNoteMoved),
       // No Electron channel: Electron sends every note event.
       noteEventsDroppedEvent: { listen: async () => () => undefined },
       noteLinksChangedEvent: event(() => api().onLinksChanged),

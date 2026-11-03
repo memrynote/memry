@@ -27,6 +27,7 @@ const commands = vi.hoisted(() => ({
   notesAddStatusOption: vi.fn(),
   notesRename: vi.fn(),
   notesUpdate: vi.fn(),
+  notesMove: vi.fn(),
   notesReorder: vi.fn(),
   notesGetAllPositions: vi.fn()
 }))
@@ -45,6 +46,7 @@ const events = vi.hoisted(() => {
     noteUpdatedEvent: event('updated'),
     noteDeletedEvent: event('deleted'),
     noteRenamedEvent: event('renamed'),
+    noteMovedEvent: event('moved'),
     noteTagsChangedEvent: event('tags'),
     noteEventsDroppedEvent: event('dropped')
   }
@@ -538,6 +540,33 @@ describe('notes-service', () => {
     })
   })
 
+  it("moves through its command, a failure in Electron's shape", async () => {
+    const view = {
+      id: 'note-1',
+      path: 'archive/Plan.md',
+      title: 'Plan',
+      created: CREATED,
+      modified: MODIFIED
+    }
+    commands.notesMove.mockResolvedValue(view)
+    await expect(notesService.move('note-1', 'archive')).resolves.toEqual({
+      success: true,
+      note: { ...view, created: new Date(CREATED), modified: new Date(MODIFIED) }
+    })
+    expect(commands.notesMove).toHaveBeenCalledWith('note-1', 'archive')
+
+    commands.notesMove.mockRejectedValue({
+      kind: 'invalid',
+      code: 'invalid_folder',
+      message: 'not a folder of the vault'
+    })
+    await expect(notesService.move('note-1', '.git')).resolves.toEqual({
+      success: false,
+      error: 'not a folder of the vault',
+      note: null
+    })
+  })
+
   it('forwards attachments, export, and version helpers', async () => {
     api.notes.uploadAttachment = vi.fn().mockResolvedValue({ success: true })
     api.notes.exportPdf = vi.fn().mockResolvedValue({ success: true })
@@ -636,15 +665,23 @@ describe('notes-service', () => {
     await vi.waitFor(() => expect(listeners.has('renamed')).toBe(false))
   })
 
+  it('hands on a move from Rust as it comes', async () => {
+    const moved = vi.fn()
+    const stop = onNoteMoved(moved)
+    await vi.waitFor(() => expect(listeners.has('moved')).toBe(true))
+    const payload = { id: 'n', oldPath: 'work/Plan.md', newPath: 'archive/Plan.md' }
+    listeners.get('moved')?.({ payload })
+    expect(moved).toHaveBeenCalledWith(payload)
+    stop()
+    await vi.waitFor(() => expect(listeners.has('moved')).toBe(false))
+  })
+
   it('registers the note event subscriptions not yet ported on window.api', () => {
     const unsubscribe = vi.fn()
-    api.onNoteMoved = vi.fn(() => unsubscribe)
     api.onNoteExternalChange = vi.fn(() => unsubscribe)
     api.onFolderConfigUpdated = vi.fn(() => unsubscribe)
     const handler = vi.fn()
 
-    expect(onNoteMoved(handler)).toBe(unsubscribe)
-    expect(api.onNoteMoved).toHaveBeenCalledWith(handler)
     expect(onNoteExternalChange(handler)).toBe(unsubscribe)
     expect(api.onNoteExternalChange).toHaveBeenCalledWith(handler)
     expect(onFolderConfigUpdated(handler)).toBe(unsubscribe)

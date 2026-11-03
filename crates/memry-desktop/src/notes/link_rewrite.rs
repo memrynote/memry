@@ -22,6 +22,14 @@
 //! beats unwinding a rename. A crash between two sources leaves the rest stale, with no record
 //! to finish them (as in Electron; a replayed record is a follow-up).
 //!
+//! **The moved note's own refs** (`rewriteNoteRefsForMove`, `vault/notes-rename.ts:226`): a
+//! markdown note moved to another folder has every relative `![](ref)` and file block `url`
+//! re-pointed from its new folder at the file it named
+//! ([`memry_core::markdown::schema::blocks::note_refs`]), in its own next write turn, through
+//! the same [`AppEdit`] with [`Precondition::Held`], before the links to it are repaired. Its
+//! mobile vault-root refs (`attachments/<id>/...`) stay. A note whose document is ahead of its
+//! file keeps its refs, and the log says so; until Step 14 only a sync merge makes one.
+//!
 //! Divergences from Electron, stated: a path link names a note's folder and title, as Tauri
 //! resolves it (`wiki_target`), where Electron used the file's path (they differ only for a
 //! file named other than its title); `[[Folder/Old.md]]` follows too (the core's rule). Not
@@ -29,24 +37,72 @@
 //! (Step 14).
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::notes::link_rewrite::{FileRewrite, LinkNames, rewrite_file};
+use memry_core::domain::notes::link_rewrite::{FileRewrite, rewrite_file};
+use memry_core::markdown::schema::blocks::note_refs::{
+    NoteRefsOptions, rewrite_note_refs_for_move,
+};
 
 use super::error::{NotesError, SCOPE};
+use super::moves::Named;
 use super::service::NotesService;
 use crate::session::OpenVault;
 use crate::vault::app_edit::{AppEdit, Edited, Precondition};
 use crate::vault::consumer::ChangeSource;
 
 impl NotesService {
+    /// Re-points the relative refs of `note_id`, a markdown note moved from `from` to `to`.
+    /// Never fails: see the module comment.
+    pub(super) fn rewrite_own_refs(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        from: &Named,
+        to: &Named,
+    ) {
+        if !from.link.markdown || from.link.folder == to.link.folder {
+            return;
+        }
+        let options = NoteRefsOptions {
+            source_note_id: Some(note_id),
+            preserve_root_relative_attachments: true,
+        };
+        let rewritten = AppEdit::new(&self.tier, &self.store, open)
+            .map_err(NotesError::from)
+            .and_then(|edit| {
+                self.order.run(note_id, |turn| {
+                    edit.run(turn, Precondition::Held, ChangeSource::AppEdit, |text| {
+                        Ok::<_, NotesError>(rewrite_note_refs_for_move(
+                            text, &from.path, &to.path, options,
+                        ))
+                    })
+                })
+            });
+        match rewritten {
+            Ok(Edited::Wrote { held: true, .. } | Edited::Unchanged) => {}
+            Ok(outcome) => tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                outcome = ?outcome,
+                "a moved note's relative embeds were not re-pointed"
+            ),
+            Err(error) => tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "a moved note's relative embeds were not re-pointed: {error}"
+            ),
+        }
+    }
+
     /// Re-points the links to `note_id`, which was named `from` and is named `to` now. Never
     /// fails: see the module comment.
     pub(super) fn rewrite_inbound(
         &self,
         open: &OpenVault,
         note_id: &str,
-        from: &LinkNames,
-        to: &LinkNames,
+        from: &Named,
+        to: &Named,
     ) {
+        let (from, to) = (&from.link, &to.link);
         let sources = match open.search.link_rewrite_sources(note_id, from) {
             Ok(sources) => sources,
             Err(error) => {

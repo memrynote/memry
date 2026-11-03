@@ -21,7 +21,7 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::moves::MoveTo;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::activity::ActivityFilter;
-use memry_desktop::vault::consumer::{Applied, ChangeSource};
+use memry_desktop::vault::consumer::{Applied, ChangeSource, MoveKind};
 use vault_env::{Env, QUIET, env, indexed};
 
 /// An open vault with its first walk done, the notes service over its tier, and its store.
@@ -159,10 +159,19 @@ fn row_facts(e: &mut Env) -> Vec<Applied> {
 }
 
 fn renamed(id: &str, old: &str, new: &str) -> Applied {
+    path_changed(id, old, new, MoveKind::Renamed)
+}
+
+fn moved_fact(id: &str, old: &str, new: &str) -> Applied {
+    path_changed(id, old, new, MoveKind::Moved)
+}
+
+fn path_changed(id: &str, old: &str, new: &str, kind: MoveKind) -> Applied {
     Applied::Renamed {
         note_id: id.to_owned(),
         old_path: old.to_owned(),
         new_path: new.to_owned(),
+        kind,
     }
 }
 
@@ -265,7 +274,7 @@ fn a_move_keeps_the_name_unless_taken_and_tops_the_new_folder() {
     assert_eq!(slot(&e, "work/Plan.md"), None);
     assert_eq!(
         row_facts(&mut e),
-        [renamed(&made.id, "work/Plan.md", "Plan 1.md")]
+        [moved_fact(&made.id, "work/Plan.md", "Plan 1.md")]
     );
 
     // Into a folder that is not there yet, which the move makes; empty and `.` segments go.
@@ -374,7 +383,7 @@ fn a_file_note_is_renamed_and_moved_like_a_markdown_note() {
         row_facts(&mut e),
         [
             renamed(&id, "scan.pdf", "Scan March.pdf"),
-            renamed(&id, "Scan March.pdf", "docs/Scan March.pdf"),
+            moved_fact(&id, "Scan March.pdf", "docs/Scan March.pdf"),
         ]
     );
     assert_eq!(pending(&e, &store), []);

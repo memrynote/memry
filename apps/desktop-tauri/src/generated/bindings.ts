@@ -94,6 +94,11 @@ export const commands = {
 	/**  The hover card of the note `title` names, or `null`. */
 	notesPreviewByTitle: (title: string) => __TAURI_INVOKE<WikiLinkPreviewView | null>("notes_preview_by_title", { title }),
 	/**
+	 *  `notes:move`: the note's file, under its name (numbered when taken), in another folder of
+	 *  the vault (`""` is the root). Answers the note.
+	 */
+	notesMove: (id: string, newFolder: string) => __TAURI_INVOKE<NoteView>("notes_move", { id, newFolder }),
+	/**
 	 *  `notes:rename`: the note's new title, and its file the name that title makes in its folder.
 	 *  Answers the note.
 	 */
@@ -330,6 +335,7 @@ export const events = {
 	noteDeletedEvent: makeEvent<NoteDeletedEvent, NoteDeletedEvent>("note-deleted-event"),
 	noteEventsDroppedEvent: makeEvent<NoteEventsDroppedEvent, NoteEventsDroppedEvent>("note-events-dropped-event"),
 	noteLinksChangedEvent: makeEvent<NoteLinksChangedEvent, NoteLinksChangedEvent>("note-links-changed-event"),
+	noteMovedEvent: makeEvent<NoteMovedEvent, NoteMovedEvent>("note-moved-event"),
 	noteRenamedEvent: makeEvent<NoteRenamedEvent, NoteRenamedEvent>("note-renamed-event"),
 	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
@@ -905,6 +911,16 @@ export type NoteListPageView = {
 
 /**  `NoteListSchema.sortBy`. `position` sorts as `modified`, as in `listNotesFromCache`. */
 export type NoteListSortBy = "modified" | "created" | "title" | "position";
+
+/**
+ *  The app moved a note to another folder (`notes:moved`, Electron's `moveNote`). The title
+ *  stays; the renderer refetches what it shows of the note.
+ */
+export type NoteMovedEvent = {
+	id: string,
+	oldPath: string,
+	newPath: string,
+};
 
 /**
  *  A note's file moved or the app renamed the note (`notes:renamed`), by the app or by a move

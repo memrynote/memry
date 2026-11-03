@@ -56,7 +56,7 @@ use std::sync::Arc;
 use memry_core::api::vault::Vault;
 
 use super::consumer::rows::{RowError, RowOwner, RowSession};
-use super::consumer::{Applied, VaultTier};
+use super::consumer::{Applied, MoveKind, VaultTier};
 use super::file_move::FileMove;
 use super::journal_format::{
     JournalDate, JournalFormat, normalize_journal_date_format, normalize_journal_folder,
@@ -395,6 +395,7 @@ fn move_one(
             note_id: row.note_id,
             old_path: from_path.clone(),
             new_path: to_path.clone(),
+            kind: MoveKind::JournalFormat,
         });
     }
     // The manual order is a convenience: a slot that did not follow is not worth the move.
