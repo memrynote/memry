@@ -140,10 +140,11 @@ const runIdIn = (printed) => printed.match(/\/actions\/runs\/(\d+)/)?.[1]
 /**
  * Whether waiting can fix a failed gh call: GitHub's 404 for a run in the first seconds after the
  * dispatch, a server error, a rate limit or a network failure. Anything else, such as expired auth
- * (401) or a missing scope (403), fails the same way on every try.
+ * (401) or a missing scope (403), fails the same way on every try. The patterns are gh's (Go)
+ * messages, not Node error codes.
  */
 const isTransient = (error) =>
-  /HTTP (404|429|5\d\d)|not found|could not find|timed? ?out|ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|connection reset|unexpected EOF|TLS handshake/i.test(
+  /HTTP (404|429|5\d\d)|not found|could not find|rate limit|timed? ?out|error connecting to|connection (reset|refused)|\bEOF\b|TLS handshake/i.test(
     error.message
   )
 
@@ -163,6 +164,7 @@ export function poll(
     try {
       const value = attempt()
       if (value !== undefined) return value
+      lastFailure = undefined
     } catch (error) {
       if (!isTransient(error)) throw new Error(`${what} failed: ${error.message}`, { cause: error })
       lastFailure = error

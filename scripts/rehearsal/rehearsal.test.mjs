@@ -125,6 +125,63 @@ describe('poll', () => {
     assert.equal(calls, 1)
   })
 
+  // gh is a Go program: these are its messages, not Node's error codes.
+  const failures = [
+    ['HTTP 404: Not Found (https://api.github.com/repos/o/r/actions/runs/88)', true],
+    ['HTTP 502: Bad Gateway', true],
+    ['error connecting to api.github.com', true],
+    ['dial tcp 140.82.121.6:443: connect: connection refused', true],
+    ['read tcp 10.0.0.2:51234->140.82.121.6:443: read: connection reset by peer', true],
+    ['Get "https://api.github.com/graphql": EOF', true],
+    ['net/http: TLS handshake timeout', true],
+    ['HTTP 403: API rate limit exceeded for user ID 1.', true],
+    ['HTTP 403: You have exceeded a secondary rate limit.', true],
+    ['HTTP 401: Bad credentials', false],
+    ['HTTP 403: Resource not accessible by integration', false],
+    ['To get started with GitHub CLI, please run:  gh auth login', false],
+    ["GraphQL: Could not resolve to a Repository with the name 'o/r'.", false]
+  ]
+  for (const [message, transient] of failures) {
+    it(`${transient ? 'tries again after' : 'fails at once on'}: ${message}`, () => {
+      let calls = 0
+      const attempt = () => {
+        calls += 1
+        if (calls === 1) throw new Error(`Command failed: gh api x\n${message}`)
+        return 'ok'
+      }
+      if (transient) {
+        assert.equal(poll('Reading', attempt, 'gave up', fakeClock()), 'ok')
+        assert.equal(calls, 2)
+      } else {
+        assert.throws(() => poll('Reading', attempt, 'gave up', fakeClock()), /Reading failed/)
+        assert.equal(calls, 1)
+      }
+    })
+  }
+
+  it('does not blame a failure that later tries answered without error', () => {
+    let calls = 0
+    assert.throws(
+      () =>
+        poll(
+          'Listing the runs',
+          () => {
+            calls += 1
+            if (calls === 1) throw new Error('HTTP 502: Bad Gateway')
+            return undefined
+          },
+          'The dispatched run did not appear',
+          fakeClock()
+        ),
+      (error) => {
+        assert.equal(error.message, 'The dispatched run did not appear')
+        assert.equal(error.cause, undefined)
+        return true
+      }
+    )
+    assert.ok(calls > 2)
+  })
+
   it('names the last failure when it gives up', () => {
     let calls = 0
     assert.throws(
