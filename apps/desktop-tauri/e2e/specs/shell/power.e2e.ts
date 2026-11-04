@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { test, expect } from '../../harness/test'
-import { invokeTest } from '../../harness/invoke-test'
+import { invokeTest, sendTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
 import {
   startFakeSessionManager,
@@ -77,6 +77,21 @@ for (const hidden of [false, true]) {
     expect(log).not.toContain('flush of window main timed out')
   })
 }
+
+// WebView2 reports its browser's death on the main thread, and on a loaded arm64 runner it had
+// not reported it 2.2 s into a sign-out, so the quit's flush waited its timeout on a dead page
+// (#3940). Here the main thread is held through the flush, so the report cannot come at all.
+test('a quit does not wait on a page whose browser process ended unreported', async ({ app }) => {
+  test.skip(process.platform !== 'win32', 'WebView2 is Windows-only')
+
+  await sendTest(app, 'e2e_quit_after_browser_exit')
+
+  expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 10_000, intervalMs: 50 })).toBe(true)
+  const log = readMainLog(app.dirs.logDir)
+  expect(log).toContain('e2e: ended the WebView2 browser process')
+  expect(log).toContain('cleanup complete')
+  expect(log).not.toContain('flush of window main timed out')
+})
 
 // A Linux logout quits the session manager and the display server with it, and Xlib's IO error
 // handler then ends the app with _exit(1); logind announces nothing. The session manager asks

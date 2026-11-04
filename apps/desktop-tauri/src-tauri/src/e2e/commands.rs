@@ -32,6 +32,7 @@ e2e_commands! {
         e2e_global_shortcut_state,
         e2e_hide_to_tray,
         e2e_post_power_event,
+        e2e_quit_after_browser_exit,
         e2e_save_held_edit,
         e2e_send_session_end,
         e2e_slow_shutdown_step,

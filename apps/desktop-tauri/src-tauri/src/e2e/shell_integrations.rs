@@ -255,6 +255,68 @@ async fn browser_process_id(window: &tauri::WebviewWindow<Wry>) -> Result<u32, C
         .map_err(|error| invalid("e2e_webview", error))
 }
 
+/// Ends the WebView2 browser process, then starts the session-end quit and holds the main thread
+/// until the quit is done or the flush's timeout and a second have passed. WebView2 raises
+/// `ProcessFailed` on the main thread, so it cannot report the death meanwhile, as it had not
+/// 2.2 s after the browser ended on a loaded arm64 runner (#3940); the quit's flush of the dead
+/// page must still not wait its timeout. The page dies before the reply: send it with `sendTest`.
+#[tauri::command]
+pub async fn e2e_quit_after_browser_exit(app: AppHandle<Wry>) -> Result<(), CommandError> {
+    #[cfg(windows)]
+    {
+        let window = crate::windows::registry::WindowRegistry::main_window(&app)
+            .ok_or_else(|| invalid("e2e_no_main_window", "no main window"))?;
+        let pid = browser_process_id(&window).await?;
+        let handle = app.clone();
+        app.run_on_main_thread(move || {
+            end_process(pid);
+            crate::shutdown::begin_session_end(&handle);
+            memry_desktop::shell::power::wait_for(
+                FLUSH_WINDOW_TIMEOUT + std::time::Duration::from_secs(1),
+                || crate::shutdown::is_completed(&handle),
+                std::thread::sleep,
+            );
+        })
+        .map_err(|error| invalid("e2e_main_thread", error))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+        Err(invalid(
+            "e2e_windows_only",
+            "WebView2 exists on Windows only",
+        ))
+    }
+}
+
+/// Ends process `pid` and waits until it has exited.
+#[cfg(windows)]
+fn end_process(pid: u32) {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{
+        OpenProcess, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE, TerminateProcess, WaitForSingleObject,
+    };
+
+    // SAFETY: plain Win32 calls; the handle is closed after use.
+    unsafe {
+        match OpenProcess(PROCESS_TERMINATE | PROCESS_SYNCHRONIZE, false, pid) {
+            Ok(process) => {
+                let ended = TerminateProcess(process, 1);
+                WaitForSingleObject(process, 5_000);
+                let _ = CloseHandle(process);
+                tracing::info!(
+                    scope = "Power",
+                    "e2e: ended the WebView2 browser process {pid}: {ended:?}"
+                );
+            }
+            Err(error) => tracing::warn!(
+                scope = "Power",
+                "e2e: could not open the WebView2 browser process {pid}: {error}"
+            ),
+        }
+    }
+}
+
 /// Writes `text` to `e2e-held-edit.txt` in the app data folder, durably. The e2e page's held edit
 /// (`window.__memryE2eHoldEdit`) calls this only when the save registry is flushed, as a note
 /// page's unsaved markdown reaches main only then.
