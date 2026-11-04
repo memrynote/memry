@@ -276,25 +276,30 @@ jobs:
       # `<test app> Safe Storage`. Windows: a real CryptProtectData round trip through `Local
       # State` and a keytar-style credential. The Windows legs decrypt with a key the test
       # wraps itself, so the result does not depend on the machine.
+      # The live steps run under nextest's `live` profile with --no-capture: each test prints START
+      # and its result, and a test that hangs is killed after 5 minutes (crates/.config/nextest.toml)
+      # and named. Their passing runs take under 3 minutes, so the 10-minute step limit fails a hang
+      # long before the job limit (#3907).
       - name: Electron profile readers, live OS secrets (macOS, Windows)
         if: matrix.part != 'tests' && runner.os != 'Linux'
+        timeout-minutes: 10
         env:
           MEMRY_LIVE_KEYTAR: '1'
         run: |
           if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
             cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
           fi
-          cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live
+          cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test electron_secrets_live
 
       # Linux: gnome-keyring unlocked under a private session bus, then a second run with no
       # session bus at all, where the reader must answer "missing" and create nothing.
       - name: Electron profile readers, live OS secrets (Linux)
         if: matrix.part != 'tests' && runner.os == 'Linux'
-        timeout-minutes: 15
+        timeout-minutes: 10
         run: |
           cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live --test electron_secrets_locked -- -D warnings
-          cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live --test electron_secrets_locked --no-run
-          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_KEYTAR=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live'
+          cargo nextest run -p memry-desktop --features live-os-secrets --test electron_secrets_live --test electron_secrets_locked --no-run
+          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_KEYTAR=1 cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test electron_secrets_live'
           # A keyring that holds a keytar item but was never unlocked in this session (login without
           # PAM unlock): a cold gnome-keyring hides the item's attributes, and the listing must say
           # "denied", never "empty". The first session writes the item into an encrypted keyring, the
@@ -306,7 +311,7 @@ jobs:
             pkill -x gnome-keyring-d
             sleep 1
             gnome-keyring-daemon --start --components=secrets >/dev/null
-            MEMRY_LIVE_LOCKED_KEYRING=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_locked
+            MEMRY_LIVE_LOCKED_KEYRING=1 cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test electron_secrets_locked
           '
           # Service stopped, in the SAME session as the keyring check: the reader is pointed at a
           # bus socket that does not exist, must say "missing", and must not have created an item
@@ -317,7 +322,7 @@ jobs:
             echo -n probe | secret-tool store --label probe xdg:schema chrome_libsecret_os_crypt_password_v2 application memry-live-probe
             secret-tool search --all xdg:schema chrome_libsecret_os_crypt_password_v2 2>&1 | grep -q memry-live-probe
             secret-tool clear xdg:schema chrome_libsecret_os_crypt_password_v2 application memry-live-probe
-            DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live
+            DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test electron_secrets_live
             ! secret-tool search --all xdg:schema chrome_libsecret_os_crypt_password_v2 2>&1 | grep -q memry-live
           '
 
@@ -339,12 +344,12 @@ jobs:
       - name: Keychain seam, live OS secrets (macOS, Windows)
         if: matrix.part != 'tests' && runner.os != 'Linux'
         # A keychain access prompt never answers on a runner: fail fast instead of at the job limit.
-        timeout-minutes: 15
+        timeout-minutes: 10
         run: |
           if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
             cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live -- -D warnings
           fi
-          cargo test -p memry-desktop --features live-os-secrets --test keyring_live
+          cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test keyring_live
 
       # Linux: an unlocked gnome-keyring under a private session bus; then a bus with no Secret
       # Service at all (every call must answer "locked" and store nothing); then a bus where the
@@ -352,11 +357,11 @@ jobs:
       # use a bus config with no service directory, so D-Bus never activates gnome-keyring itself.
       - name: Keychain seam, live OS secrets (Linux)
         if: matrix.part != 'tests' && runner.os == 'Linux'
-        timeout-minutes: 15
+        timeout-minutes: 10
         run: |
           cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live -- -D warnings
-          cargo test -p memry-desktop --features live-os-secrets --test keyring_live --no-run
-          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && cargo test -p memry-desktop --features live-os-secrets --test keyring_live'
+          cargo nextest run -p memry-desktop --features live-os-secrets --test keyring_live --no-run
+          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test keyring_live'
           # The store's item in a keyring that is locked in this session (login without PAM unlock):
           # the item is hidden from every search, so the store must say "locked", never "no key".
           dbus-run-session -- bash -c '
@@ -366,7 +371,7 @@ jobs:
             pkill -x gnome-keyring-d
             sleep 1
             gnome-keyring-daemon --start --components=secrets >/dev/null
-            MEMRY_LIVE_LOCKED_KEYRING=1 MEMRY_LIVE_LOCKED_SUFFIX=lockedrun cargo test -p memry-desktop --features live-os-secrets --test keyring_live a_locked_keyring
+            MEMRY_LIVE_LOCKED_KEYRING=1 MEMRY_LIVE_LOCKED_SUFFIX=lockedrun cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test keyring_live a_locked_keyring
           '
           # The store's item, its collection locked after it was written: the search shows it as
           # locked, the unlock prompt has no prompter and is dismissed, and get and delete say "locked".
@@ -375,10 +380,10 @@ jobs:
             echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null
             echo -n AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8= | secret-tool store --label memry-live service com.memrynote.memry username master-key-lockeditem
             gdbus call --session --dest org.freedesktop.secrets --object-path /org/freedesktop/secrets --method org.freedesktop.Secret.Service.Lock "[objectpath \"/org/freedesktop/secrets/collection/login\"]" >/dev/null
-            MEMRY_LIVE_LOCKED_ITEM=1 MEMRY_LIVE_LOCKED_SUFFIX=lockeditem cargo test -p memry-desktop --features live-os-secrets --test keyring_live an_item_that_cannot
+            MEMRY_LIVE_LOCKED_ITEM=1 MEMRY_LIVE_LOCKED_SUFFIX=lockeditem cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test keyring_live an_item_that_cannot
           '
           # The keyring daemon restarts under a running store: the next locked-collection check reconnects.
-          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_RESTART_DAEMON=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_live a_keyring_daemon'
+          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_RESTART_DAEMON=1 cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test keyring_live a_keyring_daemon'
           cat > "$RUNNER_TEMP/bare-bus.conf" <<'EOF'
           <!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
           <busconfig>
@@ -392,8 +397,8 @@ jobs:
             </policy>
           </busconfig>
           EOF
-          dbus-run-session --config-file="$RUNNER_TEMP/bare-bus.conf" -- bash -c 'MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_live'
-          dbus-run-session --config-file="$RUNNER_TEMP/bare-bus.conf" -- bash -c 'MEMRY_LIVE_LATE_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_live a_secret_service_that_starts_late'
+          dbus-run-session --config-file="$RUNNER_TEMP/bare-bus.conf" -- bash -c 'MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test keyring_live'
+          dbus-run-session --config-file="$RUNNER_TEMP/bare-bus.conf" -- bash -c 'MEMRY_LIVE_LATE_SERVICE=1 cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test keyring_live a_secret_service_that_starts_late'
 
       # DesktopReachability over the real OS watcher, in a network namespace of its own where the
       # test adds and removes the only usable address. The test binary runs as root under
