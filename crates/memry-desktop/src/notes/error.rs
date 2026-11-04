@@ -90,6 +90,10 @@ pub enum NotesError {
     /// follow it, which this version does not do yet.
     #[error("the folder holds the journal folder, which cannot be moved yet")]
     FolderHoldsJournal,
+    /// The folder to delete is inside the journal folder (a year folder of a nested date
+    /// format): it holds days, which a note delete does not take.
+    #[error("the folder is inside the journal folder; delete its days in the journal")]
+    FolderInJournal,
     /// The folder did not move, and what could not go back waits in `<name> (incomplete
     /// move)` beside it (`vault::move_dir`'s rollback). The message names the pattern, not the
     /// folder: command failures are logged with their message.
@@ -225,6 +229,7 @@ impl CoreError for NotesError {
             Self::MovePending(BeginError::Unreadable(_)) => {
                 (FailureKind::Invalid, "note_move_unreadable")
             }
+            Self::MovePending(BeginError::NotANote(_)) => (FailureKind::Invalid, "invalid_folder"),
             Self::MovePending(_) => (FailureKind::Invalid, "note_move_unsettled"),
             Self::TrashUnavailable(_) => (FailureKind::Storage, "note_trash_unavailable"),
             Self::TooLarge(_) => (FailureKind::Invalid, "journal_day_too_large"),
@@ -261,6 +266,7 @@ impl CoreError for NotesError {
             Self::Storage(error) => error.kind_and_code(),
             Self::FolderNotFound => (FailureKind::NotFound, "folder_not_found"),
             Self::FolderHoldsJournal => (FailureKind::Invalid, "folder_holds_journal"),
+            Self::FolderInJournal => (FailureKind::Invalid, "folder_in_journal"),
             Self::FolderMoveIncomplete => (FailureKind::Storage, "folder_move_incomplete"),
             Self::FolderFile(FolderFileError::Unreadable { .. }) => {
                 (FailureKind::Invalid, "folder_file_unreadable")

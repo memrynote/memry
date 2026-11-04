@@ -68,7 +68,8 @@ const isUnder = (candidate: string, folderPath: string): boolean =>
 const mocks = vi.hoisted(() => ({
   scrollToIndex: vi.fn(),
   renameFolder: vi.fn(),
-  deleteFolder: vi.fn()
+  deleteFolder: vi.fn(),
+  toastError: vi.fn()
 }))
 
 /** `fs.rename`: moves the directory and everything under it, ENOENT if absent. */
@@ -99,6 +100,8 @@ const deleteFolderOnDisk = async (folderPath: string): Promise<unknown> => {
 vi.mock('@/lib/ipc-error', () => ({
   extractErrorMessage: (_err: unknown, fallback: string) => fallback
 }))
+
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError, success: vi.fn() } }))
 
 vi.mock('@/lib/telemetry-diagnostics', () => ({
   trackRendererError: vi.fn()
@@ -454,6 +457,24 @@ describe('folder rename → rename → delete', () => {
       await waitFor(() => expect(folderNodePaths(container)).toEqual([]))
 
       expect(notesInVault()).toEqual(extraNotes.map((n) => n.path).toSorted())
+    })
+
+    // A folder the app could not delete (the trash refused it, a stale path) is still on disk,
+    // and the user is told so with the dialog still open on it.
+    it('a folder delete that fails says why and keeps the dialog open', async () => {
+      await renderSettled()
+      mocks.deleteFolder.mockResolvedValueOnce({
+        success: false,
+        error: 'Failed to delete folder'
+      })
+      const user = userEvent.setup()
+
+      await user.click(within(folderRows('Projcts')[0]).getByRole('button', { name: /^delete$/i }))
+      await user.click(await screen.findByTestId('confirm-delete'))
+
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Failed to delete folder'))
+      expect(screen.getByTestId('confirm-delete')).toBeInTheDocument()
+      expect(folderRows('Projcts')).toHaveLength(1)
     })
 
     // Expansion is keyed by folder path. Renaming must move that key, not drop

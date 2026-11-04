@@ -37,7 +37,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 use crate::api::errors::StorageError;
-use crate::crdt::update_log;
+
+mod behind;
+
+use behind::body_moved_after_stamp;
+pub use behind::{behind_bodies, behind_body};
 
 const COLUMNS: &str = "f.note_id, f.path, f.file_type, f.mime_type, f.file_size, f.content_hash,
      f.local_only, f.indexed_at, h.file_hash";
@@ -281,20 +285,6 @@ pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), Storag
     tx.commit().map_err(failed)
 }
 
-/// The SQL test, over a `note_files` row, that an entry of the note's body log or snapshot,
-/// in either namespace ([`update_log`]), is stamped after the row.
-fn body_moved_after_stamp() -> String {
-    let local = update_log::LOCAL_NAMESPACE_PREFIX;
-    format!(
-        "(EXISTS (SELECT 1 FROM yjs_updates u
-                   WHERE u.doc_id IN (note_files.note_id, '{local}' || note_files.note_id)
-                     AND u.created_at > note_files.indexed_at)
-          OR EXISTS (SELECT 1 FROM yjs_snapshots s
-                      WHERE s.doc_id IN (note_files.note_id, '{local}' || note_files.note_id)
-                        AND s.compacted_at > note_files.indexed_at))"
-    )
-}
-
 /// Records the hash of the bytes now on disk, which the document holds, as both hashes; `None`
 /// clears both (the file went, so the row names no bytes at all).
 pub fn set_hash(
@@ -397,6 +387,12 @@ pub fn rename_prefix(
 /// Removes the row of a note. `false` when there was none.
 pub fn remove(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
+    let removed = remove_in(&tx, note_id)?;
+    tx.commit().map_err(failed).map(|()| removed)
+}
+
+/// [`remove`] in the caller's transaction.
+pub(crate) fn remove_in(tx: &Connection, note_id: &str) -> Result<bool, StorageError> {
     let removed = tx
         .execute(
             "DELETE FROM note_files WHERE note_id = ?1",
@@ -406,11 +402,10 @@ pub fn remove(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
         .map_err(failed)?;
     // The marker, the file hash and an owed move are file state of the note: they go with the
     // row. A debt left would be the next row's of the id (a day's repeats), hiding its date.
-    crate::domain::owed_file_body::clear(&tx, note_id)?;
-    write_file_hash(&tx, note_id, None)?;
+    crate::domain::owed_file_body::clear(tx, note_id)?;
+    write_file_hash(tx, note_id, None)?;
     let owed = "DELETE FROM note_place_owed WHERE note_id = ?1";
     tx.execute(owed, params![note_id]).map_err(failed)?;
-    tx.commit().map_err(failed)?;
     Ok(removed)
 }
 
@@ -433,48 +428,6 @@ pub fn list_missing_candidates(conn: &Connection) -> Result<Vec<NoteFile>, Stora
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)
-}
-
-/// Every note whose file may be behind its body, in id order: the row says the document
-/// holds the file (a markdown row with a hash), and an entry of the note's body log or
-/// snapshot, in either namespace ([`update_log`]), is stamped after the row
-/// (`indexed_at`). The stamps are this device's clock at apply time, the same reading the
-/// search index's watermark relies on (`domain::search::maintenance`).
-///
-/// A row's stamp is the time up to which it accounts for the body ([`NoteFile::indexed_at`]),
-/// so this names every note whose body moved after that: an edit or a merged page whose
-/// write-back never ran. An entry stamped in the same millisecond as the row is not counted,
-/// so the feed that recorded the row does not name its own note.
-pub fn behind_bodies(conn: &Connection) -> Result<Vec<String>, StorageError> {
-    let mut statement = conn
-        .prepare(&format!(
-            "SELECT note_id FROM note_files
-              WHERE file_type = 'markdown' AND content_hash IS NOT NULL
-                AND {}
-              ORDER BY note_id",
-            body_moved_after_stamp()
-        ))
-        .map_err(failed)?;
-    statement
-        .query_map([], |row| row.get(0))
-        .map_err(failed)?
-        .collect::<Result<_, _>>()
-        .map_err(failed)
-}
-
-/// Whether the note's body moved after its row's stamp ([`behind_bodies`], for one note whatever
-/// its row's hashes): an edit, or a merged page, its file has not been written with. `false`
-/// for a note without a row.
-pub fn behind_body(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
-    conn.query_row(
-        &format!(
-            "SELECT EXISTS (SELECT 1 FROM note_files WHERE note_id = ?1 AND {})",
-            body_moved_after_stamp()
-        ),
-        params![note_id],
-        |row| row.get(0),
-    )
-    .map_err(failed)
 }
 
 /// The markdown rows of tombstoned notes and journal days, by path: files a deletion on

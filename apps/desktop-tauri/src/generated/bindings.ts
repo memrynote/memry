@@ -79,6 +79,11 @@ export const commands = {
 	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
+	 *  `notes:delete-folder`: the folder to the OS trash with everything in it, and its notes and
+	 *  records deleted (`notes::folder_delete`).
+	 */
+	notesDeleteFolder: (path: string) => __TAURI_INVOKE<null>("notes_delete_folder", { path }),
+	/**
 	 *  `notes:get-folder-config`: the folder's `.folder.md`, `null` when it has none or it cannot
 	 *  be read.
 	 */

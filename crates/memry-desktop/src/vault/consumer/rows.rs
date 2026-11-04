@@ -404,6 +404,43 @@ impl Lane<'_> {
         writer.begin_folder_move(from, to, moves)
     }
 
+    /// Records the app's delete of the folder at `path` ([`NotesWriter::begin_folder_delete`]).
+    /// Writes no row: `&mut self` is only the proof that the lane is held.
+    pub(crate) fn begin_folder_delete(
+        &mut self,
+        writer: &NotesWriter,
+        path: &str,
+        note_ids: &[&str],
+    ) -> Result<(), BeginError> {
+        writer.begin_folder_delete(path, note_ids)
+    }
+
+    /// Forgets the record of the folder's delete ([`NotesWriter::abandon_folder_delete`]).
+    pub(crate) fn forget_folder_delete(
+        &mut self,
+        writer: &NotesWriter,
+        path: &str,
+    ) -> Result<bool, StorageError> {
+        writer.abandon_folder_delete(path)
+    }
+
+    /// The folder at `path` left the disk with the notes `note_ids`: their records, their rows,
+    /// the folder's records and its order go in one transaction
+    /// ([`NotesWriter::folder_deleted_by_app`]), and the index forgets the notes.
+    pub(crate) fn folder_deleted_by_app(
+        &mut self,
+        writer: &NotesWriter,
+        path: &str,
+        note_ids: &[&str],
+    ) -> Result<(), RowError> {
+        writer.folder_deleted_by_app(path, note_ids)?;
+        let state = self.state_mut();
+        for note_id in note_ids {
+            state.index.remove_note(note_id);
+        }
+        Ok(())
+    }
+
     /// Forgets the folder's record of an app move ([`NotesWriter::abandon_folder_move`]),
     /// under the lane as [`Lane::forget_move`].
     pub(crate) fn forget_folder_move(
