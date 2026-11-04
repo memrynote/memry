@@ -6,7 +6,7 @@ import { renameSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { isAlive } from '../../harness/app-process'
-import { invokeTest } from '../../harness/invoke-test'
+import { invokeTest, sendTest } from '../../harness/invoke-test'
 import { restart } from '../../harness/tauri-lifecycle'
 import { test, expect } from '../../harness/test'
 import { pollUntil } from '../../harness/wait'
@@ -50,7 +50,8 @@ test('the vault files become notes once, and a rename made while closed keeps th
   expect(idOf(opened, DAY)).toBe('j2025-01-01')
   const ids = NOTES.map((path) => idOf(opened, path))
 
-  await invokeTest(app, 'e2e_request_quit')
+  // The exit can beat the driver's read of the reply (#3884); the spec asserts the exit instead.
+  await sendTest(app, 'e2e_request_quit')
   expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })).toBe(true)
   renameSync(
     join(testVaultPath, 'notes/sample-project.md'),
