@@ -180,8 +180,9 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
   /**
    * A folder rename or move carries every note inside it along. Moving the
-   * journal folder itself, or a folder above it, is not a change: main points
-   * the journal setting at the new place.
+   * journal folder itself, or a folder above it, asks nothing here: Electron's
+   * main points the journal setting at the new place, and Tauri refuses the
+   * move (`folder_holds_journal`) until the settings port lets it follow.
    */
   const confirmFolderJournalChange = useCallback(
     (oldPath: string, newPath: string): Promise<boolean> => {
@@ -579,7 +580,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           : folderRenameValue.trim()
 
         if (!(await confirmFolderJournalChange(oldPath, newPath))) return
-        await notesService.renameFolder(oldPath, newPath)
+        const renamed = await notesService.renameFolder(oldPath, newPath)
+        if (!renamed.success) throw new Error(renamed.error)
         deps.renameFolderPath(oldPath, newPath)
         await refreshFolderTree()
       } catch (err) {
@@ -854,7 +856,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       if (!(await confirmFolderJournalChange(sourceFolderPath, newPath))) return false
 
       try {
-        await notesService.renameFolder(sourceFolderPath, newPath)
+        const moved = await notesService.renameFolder(sourceFolderPath, newPath)
+        if (!moved.success) throw new Error(moved.error)
         deps.renameFolderPath(sourceFolderPath, newPath)
         await refreshFolderTree()
         return true

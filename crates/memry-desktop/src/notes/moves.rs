@@ -330,7 +330,7 @@ fn free_target(
 /// Whether each segment of `folder` that is there is a plain folder: not a link (a junction on
 /// Windows), which the open walk does not enter, so a note moved under one would read as
 /// removed at the next open, and not a file, which the move could not create the folder over.
-fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
+pub(super) fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
     let mut path = root.to_path_buf();
     for segment in folder.split('/') {
         path.push(segment);
@@ -344,7 +344,7 @@ fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
     Ok(true)
 }
 
-fn identity_failed(error: IdentityError) -> NotesError {
+pub(super) fn identity_failed(error: IdentityError) -> NotesError {
     match error {
         IdentityError::Storage(error) => NotesError::Storage(error),
         IdentityError::Other(what) => NotesError::Storage(StorageError::Failed { what }),

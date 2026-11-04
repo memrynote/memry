@@ -122,7 +122,8 @@ export function useTreeDragDrop({
       }
 
       try {
-        await notesService.renameFolder(sourceFolderPath, newPath)
+        const moved = await notesService.renameFolder(sourceFolderPath, newPath)
+        if (!moved.success) throw new Error(moved.error)
         await refreshFolders()
         return true
       } catch (err) {

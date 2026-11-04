@@ -196,7 +196,7 @@ describe('useNoteTreeActions', () => {
       success: true,
       note: createNote('created', 'Other/New note.md')
     })
-    vi.mocked(notesService.renameFolder).mockResolvedValue(true)
+    vi.mocked(notesService.renameFolder).mockResolvedValue({ success: true })
     vi.mocked(notesService.deleteFolder).mockResolvedValue(true)
     vi.mocked(notesService.setFolderConfig).mockResolvedValue({ success: true })
     vi.mocked(notesService.reorder).mockResolvedValue({ success: true })
@@ -456,7 +456,11 @@ describe('useNoteTreeActions', () => {
   })
 
   it('says so when a dropped folder cannot be moved (#2206)', async () => {
-    vi.mocked(notesService.renameFolder).mockRejectedValueOnce(new Error('Failed to rename folder'))
+    // A refusal answers in Electron's shape, `{ success: false, error }`.
+    vi.mocked(notesService.renameFolder).mockResolvedValueOnce({
+      success: false,
+      error: 'Failed to rename folder'
+    })
     const { result, deps } = renderActions()
 
     await act(async () => {

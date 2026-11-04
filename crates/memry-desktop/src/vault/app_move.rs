@@ -9,6 +9,12 @@
 //! image) alike: a file note's row has no hash, so nothing else could pair its moved file
 //! with it.
 //!
+//! A folder the app moved (`notes::folder_move`) records its own move beside its notes'. When
+//! the folder is at its new path and gone from the old one, the open finishes it as the live
+//! move would have: the notes found moved, the folder's `folder_config` records and its manual
+//! order follow in one transaction ([`Lane::folder_moved_by_app`]). Otherwise it forgets the
+//! folder's record, and each note's record is settled on its own.
+//!
 //! [`NoteFileMove`] is the live half: it records the move and moves the file, and puts the
 //! file back when the transaction fails.
 
@@ -17,7 +23,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use memry_core::api::notes_write::NotesWriter;
-use memry_core::domain::notes::app_move::{AppMoved, BeginError, PendingMove, Recorded};
+use memry_core::domain::notes::app_move::{
+    AppMoved, BeginError, FolderRecorded, PendingFolderMove, PendingMove, Recorded,
+};
 use unicode_normalization::UnicodeNormalization;
 
 use super::consumer::identity::{IdentityCtx, NoteIdentity};
@@ -136,6 +144,7 @@ pub(crate) fn finish_interrupted(
     lane: &mut Lane<'_>,
     identity: &dyn NoteIdentity,
 ) {
+    finish_folders(ctx, writer, lane, identity);
     let pending = match writer.pending_app_moves() {
         Ok(pending) => pending,
         Err(error) => {
@@ -165,6 +174,92 @@ pub(crate) fn finish_interrupted(
             ),
         }
     }
+}
+
+/// Settles each folder's recorded app move, before its notes' are settled one by one.
+fn finish_folders(
+    ctx: &IdentityCtx<'_>,
+    writer: &NotesWriter,
+    lane: &mut Lane<'_>,
+    identity: &dyn NoteIdentity,
+) {
+    let read = writer
+        .pending_folder_moves()
+        .and_then(|folders| Ok((folders, writer.pending_app_moves()?)));
+    let (folders, notes) = match read {
+        Ok(read) => read,
+        Err(error) => {
+            return tracing::error!(
+                scope = SCOPE,
+                "the interrupted folder moves are unread; they wait for the next open: {error}"
+            );
+        }
+    };
+    for recorded in folders {
+        let settled = match recorded {
+            FolderRecorded::Move(folder) => {
+                settle_folder(ctx, writer, lane, identity, &folder, &notes)
+            }
+            FolderRecorded::Unreadable(why) => Err(format!(
+                "another version of the app recorded it, and this one cannot read it: {why}"
+            )),
+        };
+        match settled {
+            Ok(done) => tracing::info!(scope = SCOPE, "{done}"),
+            Err(error) => tracing::warn!(
+                scope = SCOPE,
+                "an interrupted folder move stays for the next open: {error}"
+            ),
+        }
+    }
+}
+
+fn settle_folder(
+    ctx: &IdentityCtx<'_>,
+    writer: &NotesWriter,
+    lane: &mut Lane<'_>,
+    identity: &dyn NoteIdentity,
+    folder: &PendingFolderMove,
+    notes: &[(String, Recorded)],
+) -> Result<&'static str, String> {
+    let (from, to) = (folder.from.as_str(), folder.to.as_str());
+    if (listed(ctx.root, to)?, listed(ctx.root, from)?) != (true, false) {
+        lane.forget_folder_move(writer, from, to)
+            .map_err(|error| error.to_string())?;
+        return Ok("forgot an interrupted folder move that had not moved its folder");
+    }
+    let mut carried = Vec::new();
+    for (note_id, recorded) in notes {
+        let Recorded::Move(pending) = recorded else {
+            continue;
+        };
+        let carried_by_it = pending
+            .old_path
+            .strip_prefix(from)
+            .and_then(|rest| rest.strip_prefix('/'))
+            .is_some_and(|rest| pending.new_path == format!("{to}/{rest}"));
+        if carried_by_it && found(ctx.root, lane, note_id, pending) == Found::Moved {
+            let keeps_kind = identity
+                .keeps_kind(ctx, note_id, &pending.new_path)
+                .map_err(|error| error.to_string())?;
+            carried.push((note_id.as_str(), pending, keeps_kind));
+        }
+    }
+    let moves: Vec<(&str, AppMoved<'_>)> = carried
+        .iter()
+        .map(|(note_id, pending, keeps_kind)| {
+            let moved = AppMoved {
+                old_path: &pending.old_path,
+                new_path: &pending.new_path,
+                title: None,
+                keeps_kind: *keeps_kind,
+            };
+            (*note_id, moved)
+        })
+        .collect();
+    lane.folder_moved_by_app(writer, from, to, &moves)
+        .map_err(|error| error.to_string())?;
+    Ok("finished an interrupted folder move")
 }
 
 /// What the open finds of a note's recorded move.

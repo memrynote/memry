@@ -82,6 +82,22 @@ pub enum NotesError {
     PropertyNotFound(String),
     #[error("the note already has a property `{0}`")]
     PropertyExists(String),
+    /// The folder to rename or move is not there (anymore): another window, a sync or a file
+    /// manager moved it first (#2531).
+    #[error("the folder is not there anymore")]
+    FolderNotFound,
+    /// The journal folder is, or is inside, the folder to move. Its setting would have to
+    /// follow it, which this version does not do yet.
+    #[error("the folder holds the journal folder, which cannot be moved yet")]
+    FolderHoldsJournal,
+    /// The folder did not move, and what could not go back waits in `<name> (incomplete
+    /// move)` beside it (`vault::move_dir`'s rollback). The message names the pattern, not the
+    /// folder: command failures are logged with their message.
+    #[error(
+        "the folder did not move; files that could not go back are in the folder of its name \
+         followed by “(incomplete move)”, beside it"
+    )]
+    FolderMoveIncomplete,
     #[error("template not found: {0}")]
     TemplateNotFound(String),
     /// A folder's `.folder.md` cannot be read, so it is not written over, or cannot be
@@ -243,6 +259,9 @@ impl CoreError for NotesError {
                 (FailureKind::Storage, "note_kept_changing")
             }
             Self::Storage(error) => error.kind_and_code(),
+            Self::FolderNotFound => (FailureKind::NotFound, "folder_not_found"),
+            Self::FolderHoldsJournal => (FailureKind::Invalid, "folder_holds_journal"),
+            Self::FolderMoveIncomplete => (FailureKind::Storage, "folder_move_incomplete"),
             Self::FolderFile(FolderFileError::Unreadable { .. }) => {
                 (FailureKind::Invalid, "folder_file_unreadable")
             }
