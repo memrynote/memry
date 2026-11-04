@@ -17,6 +17,7 @@ pub mod covers;
 pub mod embeds;
 pub mod file_move;
 pub mod file_types;
+pub mod folder_file;
 pub mod fs_atomic;
 pub mod hash;
 pub mod icons;

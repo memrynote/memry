@@ -62,6 +62,8 @@ mod e2e;
 mod embeds;
 #[path = "file_open.rs"]
 mod file_open;
+#[path = "folder_file.rs"]
+mod folder_file;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
 #[path = "home_covers.rs"]
