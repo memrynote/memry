@@ -404,9 +404,12 @@ pub fn remove(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
         )
         .map(|n| n > 0)
         .map_err(failed)?;
-    // The marker and the file hash are file state of the same note: they go with the row.
+    // The marker, the file hash and an owed move are file state of the note: they go with the
+    // row. A debt left would be the next row's of the id (a day's repeats), hiding its date.
     crate::domain::owed_file_body::clear(&tx, note_id)?;
     write_file_hash(&tx, note_id, None)?;
+    let owed = "DELETE FROM note_place_owed WHERE note_id = ?1";
+    tx.execute(owed, params![note_id]).map_err(failed)?;
     tx.commit().map_err(failed)?;
     Ok(removed)
 }

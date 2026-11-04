@@ -41,8 +41,8 @@ pub fn removed(
 /// transaction: the debt stays until the tier drops the row, so a crash before that is finished
 /// by the next open, which asks again and is answered `Deleted` with nothing written. One the
 /// removal may not delete is only owed the move, as before, and so is one to `to_day`, the date
-/// the new path names, when that day is here already: the file is not the new day then, and a
-/// delete would leave the record's text in a file nothing names.
+/// the new path names, when the file cannot be that day ([`day_taken`]): the delete would leave
+/// the record's text in a file no item names, and push it to every device.
 pub fn crossed(
     conn: &Connection,
     note_id: &str,
@@ -56,7 +56,7 @@ pub fn crossed(
     let live = live_place(&tx, note_id)?.is_some() || live_day(&tx, note_id)?;
     if live
         && let Some(date) = to_day
-        && live_day(&tx, &format!("j{date}"))?
+        && day_taken(&tx, date, note_id)?
     {
         tx.commit().map_err(failed)?;
         return Ok(Removed::Undecided);
@@ -108,6 +108,18 @@ fn removal_deletes(conn: &Connection, note_id: &str) -> Result<bool, StorageErro
         && !owed_file_body::owes(conn, note_id)?
         && !note_files::behind_body(conn, note_id)?
         && !body_debt::is_owed(conn, note_id)?)
+}
+
+/// Whether a file at the path of `date` cannot become that day, so a note crossing there
+/// would be deleted for nothing: the date is one no record holds (`2025-02-31`), or an entry
+/// other than `note_id` has it, live or deleted. [`super::journal_day::adopt_day`] puts such a
+/// file off, a deleted day whose text is another included. Electron revives the day with the
+/// file's text (`newMarkdownFileId`); here the note stays, owed the move.
+fn day_taken(conn: &Connection, date: &str, note_id: &str) -> Result<bool, StorageError> {
+    if journal::valid_date(date).is_err() {
+        return Ok(true);
+    }
+    Ok(journal::entry_for(conn, date)?.is_some_and(|(held, _)| held != note_id))
 }
 
 /// Whether `id` is a live journal day's record.

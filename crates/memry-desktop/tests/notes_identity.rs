@@ -98,10 +98,7 @@ fn owed(e: &Env) -> Vec<String> {
         .db_handle()
         .call_blocking(|conn| {
             let mut statement = conn
-                .prepare(
-                    "SELECT o.note_id FROM note_place_owed o \
-                       JOIN note_files f ON f.note_id = o.note_id ORDER BY o.note_id",
-                )
+                .prepare("SELECT note_id FROM note_place_owed ORDER BY note_id")
                 .unwrap();
             Ok(statement
                 .query_map([], |row| row.get(0))
@@ -1153,6 +1150,141 @@ fn a_settled_move_leaves_the_slot_of_a_file_at_the_path_it_left() {
         "{records:?}"
     );
     assert_eq!(slot(&e, "a.md"), Some(kept));
+}
+
+/// A day moved out of the journal, edited as the note it became, and moved back: the deleted
+/// day has other text, so the file cannot be that day again. The note stays, owed the move,
+/// instead of being deleted for a file no item would name.
+#[test]
+fn a_day_moved_out_edited_as_a_note_and_moved_back_keeps_the_note() {
+    let mut e = notes_env();
+    e.write("journal/2025-01-02.md", "A day\n");
+    e.open();
+    e.facts_until(added("journal/2025-01-02.md"));
+    e.facts_until(indexed);
+    fs::create_dir_all(e.vault.join("Notes")).unwrap();
+    fs::rename(
+        e.vault.join("journal/2025-01-02.md"),
+        e.vault.join("Notes/2025-01-02.md"),
+    )
+    .unwrap();
+    e.facts_until(added("Notes/2025-01-02.md"));
+    let note = row_id(&e, "Notes/2025-01-02.md").unwrap();
+    assert!(owed(&e).is_empty(), "{:?}", owed(&e));
+    e.write("Notes/2025-01-02.md", "As a note\n");
+    until("the edit reached the note", || e.body(&note) == "As a note");
+
+    fs::rename(
+        e.vault.join("Notes/2025-01-02.md"),
+        e.vault.join("journal/2025-01-02.md"),
+    )
+    .unwrap();
+    until("the note's row follows its file", || {
+        row_id(&e, "journal/2025-01-02.md").is_some()
+    });
+    assert_eq!(row_id(&e, "journal/2025-01-02.md"), Some(note.clone()));
+    assert!(
+        records(&e)
+            .iter()
+            .any(|(id, _, _, deleted)| id == &note && !deleted)
+    );
+    assert_eq!(e.body(&note), "As a note");
+    assert!(!outbox(&e).contains(&("delete".to_owned(), note.clone())));
+    assert_eq!(owed(&e), vec![note.clone()]);
+
+    reopen(&mut e);
+    assert_eq!(row_id(&e, "journal/2025-01-02.md"), Some(note.clone()));
+    assert!(!outbox(&e).contains(&("delete".to_owned(), note)));
+}
+
+/// A day's file deleted, then a note's file moved onto its path: the note stays, owed.
+#[test]
+fn a_note_moved_onto_a_deleted_days_path_keeps_the_note() {
+    let mut e = notes_env();
+    e.write("journal/2025-01-02.md", "A day\n");
+    e.write("Meeting.md", "Agenda\n");
+    e.open();
+    e.facts_until(added("Meeting.md"));
+    e.facts_until(indexed);
+    let meeting = row_id(&e, "Meeting.md").unwrap();
+    fs::remove_file(e.vault.join("journal/2025-01-02.md")).unwrap();
+    until("the day is deleted", || {
+        days(&e) == vec![("j2025-01-02".to_owned(), "2025-01-02".to_owned(), true)]
+    });
+
+    fs::rename(
+        e.vault.join("Meeting.md"),
+        e.vault.join("journal/2025-01-02.md"),
+    )
+    .unwrap();
+    until("the note's row follows its file", || {
+        row_id(&e, "journal/2025-01-02.md").is_some()
+    });
+    assert_eq!(row_id(&e, "journal/2025-01-02.md"), Some(meeting.clone()));
+    assert!(
+        records(&e)
+            .iter()
+            .any(|(id, _, _, deleted)| id == &meeting && !deleted)
+    );
+    assert_eq!(e.body(&meeting), "Agenda");
+    assert!(!outbox(&e).contains(&("delete".to_owned(), meeting)));
+}
+
+/// A crash after a crossing deleted the record and before the tier dropped its row (here the
+/// core's crossing with no file event, then the file moved while closed): the next open makes
+/// the file anew once, and deletes nothing more.
+#[test]
+fn a_crossing_cut_short_after_the_records_delete_is_made_at_the_next_open() {
+    let mut e = notes_env();
+    e.write("2025-01-03.md", "Soon a day\n");
+    e.open();
+    e.facts_until(added("2025-01-03.md"));
+    e.facts_until(indexed);
+    let note = row_id(&e, "2025-01-03.md").unwrap();
+
+    let id = note.clone();
+    let crossed = e
+        .core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            memry_core::domain::notes::identity::crossed(
+                conn,
+                &id,
+                "2025-01-03.md",
+                Some("2025-01-03"),
+                "device-a",
+                1,
+            )
+        })
+        .unwrap();
+    assert_eq!(
+        crossed,
+        memry_core::domain::notes::identity::Removed::Deleted
+    );
+    let deletes = |e: &Env| {
+        outbox(e)
+            .iter()
+            .filter(|(op, id)| op == "delete" && id == &note)
+            .count()
+    };
+    assert_eq!(deletes(&e), 1);
+    assert_eq!(row_id(&e, "2025-01-03.md"), Some(note.clone()));
+    e.close();
+    fs::create_dir_all(e.vault.join("journal")).unwrap();
+    fs::rename(
+        e.vault.join("2025-01-03.md"),
+        e.vault.join("journal/2025-01-03.md"),
+    )
+    .unwrap();
+
+    reopen(&mut e);
+    assert_eq!(
+        row_id(&e, "journal/2025-01-03.md").as_deref(),
+        Some("j2025-01-03")
+    );
+    assert_eq!(e.body("j2025-01-03"), "Soon a day");
+    assert_eq!(deletes(&e), 1);
+    assert!(owed(&e).is_empty(), "{:?}", owed(&e));
 }
 
 /// Writes the vault config as another program would: Electron on the same vault, a sync

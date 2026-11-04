@@ -15,13 +15,14 @@
 use crate::note_identity_support;
 
 use memry_core::api::errors::StorageError;
+use memry_core::domain::note_files;
 use memry_core::domain::notes::identity::{self, Moved, OwedPlace, Removed};
 use memry_core::domain::notes::local_only;
 use memry_core::domain::owed_file_body;
 use memry_core::sync::body_debt;
 use note_identity_support::{
     DEVICE, NOW, clear_outbox, create, deleted, give_body, give_body_at, give_row, give_row_hashes,
-    open, outbox, payload, place, position, pulled_item, run,
+    open, outbox, payload, place, position, pulled_deleted, pulled_item, run,
 };
 use serde_json::{Value, json};
 
@@ -341,4 +342,113 @@ fn a_crossing_deletes_once_and_stays_owed_while_its_row_is() {
     assert!(!deleted(&db, "held"));
     assert!(outbox(&db).is_empty());
     assert_eq!(owed(&db).len(), 2);
+}
+
+/// The notes owed a move, read from the table itself: [`identity::owed_places`] leaves out a
+/// debt whose row is gone, which is the debt that must not outlive it.
+fn owed_raw(db: &memry_core::storage::Db) -> Vec<String> {
+    run(db, |conn| {
+        let mut statement = conn
+            .prepare("SELECT note_id FROM note_place_owed ORDER BY note_id")
+            .unwrap();
+        Ok(statement
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<Vec<String>, _>>()
+            .unwrap())
+    })
+}
+
+fn day_deleted(db: &memry_core::storage::Db, id: &str) -> bool {
+    run(db, |conn| {
+        Ok(conn
+            .query_row(
+                "SELECT deleted_at IS NOT NULL FROM journal_entries WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .expect("the day"))
+    })
+}
+
+/// A day's entry deleted before, and a note's file moved onto its path (the day moved out and
+/// back as a note, or its file deleted and another moved there): the file cannot become that
+/// day, whose text is another, so the note is not deleted for it. It stays, owed the move.
+#[test]
+fn a_crossing_onto_a_deleted_day_keeps_the_note_owed() {
+    let db = open("crossed-deleted-day");
+    pulled_item(
+        &db,
+        "journal",
+        "j2025-01-09",
+        &json!({"date": "2025-01-09", "content": "Gone\n", "clock": {"device-b": 1}}),
+    );
+    pulled_deleted(&db, "journal", "j2025-01-09");
+    assert!(day_deleted(&db, "j2025-01-09"));
+    create(&db, "meeting", "Meeting", None);
+    give_row(&db, "meeting", "journal/2025-01-09.md");
+    clear_outbox(&db);
+    let crossed = run(&db, |conn| {
+        identity::crossed(
+            conn,
+            "meeting",
+            "Meeting.md",
+            Some("2025-01-09"),
+            DEVICE,
+            NOW + 1,
+        )
+    });
+    assert_eq!(crossed, Removed::Undecided);
+    assert!(!deleted(&db, "meeting"));
+    assert!(outbox(&db).is_empty());
+    assert_eq!(owed_raw(&db), vec!["meeting".to_owned()]);
+}
+
+/// A day moved out of the journal: its entry is deleted as a day (`journal`), once, owed the
+/// move while its row is; the row's removal ends the debt.
+#[test]
+fn a_day_moved_out_of_the_journal_is_deleted_once_and_its_debt_goes_with_its_row() {
+    let db = open("crossed-day-out");
+    pulled_item(
+        &db,
+        "journal",
+        "j2025-01-10",
+        &json!({"date": "2025-01-10", "content": "Out\n", "clock": {"device-b": 1}}),
+    );
+    give_row(&db, "j2025-01-10", "Notes/2025-01-10.md");
+    clear_outbox(&db);
+    let crossed = run(&db, |conn| {
+        identity::crossed(
+            conn,
+            "j2025-01-10",
+            "journal/2025-01-10.md",
+            None,
+            DEVICE,
+            NOW + 1,
+        )
+    });
+    assert_eq!(crossed, Removed::Deleted);
+    assert!(day_deleted(&db, "j2025-01-10"));
+    assert_eq!(
+        outbox(&db),
+        vec![("delete".to_owned(), "j2025-01-10".to_owned())]
+    );
+    assert_eq!(owed_raw(&db), vec!["j2025-01-10".to_owned()]);
+
+    clear_outbox(&db);
+    let again = run(&db, |conn| {
+        identity::crossed(
+            conn,
+            "j2025-01-10",
+            "journal/2025-01-10.md",
+            None,
+            DEVICE,
+            NOW + 2,
+        )
+    });
+    assert_eq!(again, Removed::Deleted);
+    assert!(outbox(&db).is_empty());
+
+    run(&db, |conn| note_files::remove(conn, "j2025-01-10"));
+    assert!(owed_raw(&db).is_empty(), "{:?}", owed_raw(&db));
 }
