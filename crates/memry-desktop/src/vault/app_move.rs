@@ -20,7 +20,9 @@
 //! when it is still there, the open forgets the record.
 //!
 //! [`NoteFileMove`] is the live half: it records the move and moves the file, and puts the
-//! file back when the transaction fails.
+//! file back when the transaction fails. A file that cannot go back stays at its new path with
+//! the record, and the watcher is told that both names are the app's, so the session reports
+//! neither a removal nor a new note and the next open finishes the move.
 
 use std::fs;
 use std::io;
@@ -35,7 +37,7 @@ use unicode_normalization::UnicodeNormalization;
 
 use super::consumer::identity::{IdentityCtx, NoteIdentity};
 use super::consumer::rows::Lane;
-use super::file_move::FileMove;
+use super::file_move::{FileMove, FileMoveError};
 use super::path_key::folded_key;
 use super::watch::EchoGuard;
 use crate::shell::file_open::is_plain_relative;
@@ -47,8 +49,20 @@ const SCOPE: &str = "app_move";
 pub(crate) enum MoveError {
     #[error(transparent)]
     Begin(#[from] BeginError),
+    /// A folder of the new path could not be made (a file holds its name).
+    #[error("the note's new folder could not be made: {0}")]
+    Folder(io::Error),
     #[error(transparent)]
-    Io(#[from] io::Error),
+    Io(io::Error),
+}
+
+impl From<FileMoveError> for MoveError {
+    fn from(error: FileMoveError) -> Self {
+        match error {
+            FileMoveError::Folder(error) => Self::Folder(error),
+            FileMoveError::Move(error) => Self::Io(error),
+        }
+    }
 }
 
 /// One app move of a note's file, between two vault-relative paths, under the rows' lane.
@@ -57,13 +71,16 @@ pub(crate) struct NoteFileMove<'a> {
     pub root: &'a Path,
     pub old: &'a str,
     pub new: &'a str,
-    /// A markdown note's row has the hash of its bytes, which the watcher pairs a move on.
-    pub pairs_on_hash: bool,
+    /// The hash of the bytes the file holds, as its row says (a markdown note's): its sighting
+    /// at the new path is the app's own write, so the watcher never takes the moved file for a
+    /// new note, the time before the row follows included.
+    pub hash: Option<&'a str>,
 }
 
 impl NoteFileMove<'_> {
     /// Records the move ([`Lane::begin_move`]), then moves the file without replacing anything
-    /// ([`FileMove`], on disk when it returns). A file that did not move forgets the record.
+    /// ([`FileMove`], on disk when it returns). A file that did not move forgets the record and
+    /// the new name's own write.
     pub(crate) fn forward(
         &self,
         lane: &mut Lane<'_>,
@@ -73,7 +90,11 @@ impl NoteFileMove<'_> {
     ) -> Result<(), MoveError> {
         lane.begin_move(writer, note_id, moved)?;
         let (source, target) = (on_disk(self.root, self.old), on_disk(self.root, self.new));
+        if let Some(hash) = self.hash {
+            self.echo.will_write(self.new, hash);
+        }
         if let Err(error) = self.file_move(&source, &target, self.old).run(self.echo) {
+            self.echo.cancel_write(self.new);
             self.forget(lane, writer, note_id);
             return Err(error.into());
         }
@@ -83,10 +104,14 @@ impl NoteFileMove<'_> {
     /// Puts the file back after the record and row could not follow it: file and row must
     /// agree, or the moved file is taken for a new note and the row stranded. A file that went
     /// back forgets the record. One that could not stays at the new path with its record, for
-    /// the next open to finish ([`finish_interrupted`]); meanwhile a markdown note's old name
-    /// is withdrawn from the own-write record, so the watcher sees an outside move and pairs it
-    /// on the row's hash, and a file note's stays, so its old name going is not taken for the
-    /// note's removal.
+    /// the next open to finish ([`finish_interrupted`]), and both names stay the app's: the
+    /// old name's going is not the note's removal, and the new name's file (a markdown note's,
+    /// [`Self::hash`]) is not a new note. Withdrawing the old name instead, for the watcher to
+    /// pair the move on the hash, loses to the tries of the move back: they take over half a
+    /// second, and by then the watcher has taken the old name's going for the app's and holds
+    /// the new name as a new note. A file note's new name is not recorded (it has no hash);
+    /// nothing adopts a file note as new yet, and what will must not take a recorded move's
+    /// new path for one.
     pub(crate) fn back(&self, lane: &mut Lane<'_>, writer: &NotesWriter, note_id: &str) {
         let (source, target) = (on_disk(self.root, self.new), on_disk(self.root, self.old));
         match self.file_move(&source, &target, self.new).run(self.echo) {
@@ -94,16 +119,12 @@ impl NoteFileMove<'_> {
                 self.echo.cancel_removal(self.old);
                 self.forget(lane, writer, note_id);
             }
-            Err(error) => {
-                tracing::error!(
-                    scope = SCOPE,
-                    note_id,
-                    "a note's file could not go back after its record did not move: {error}"
-                );
-                if self.pairs_on_hash {
-                    self.echo.cancel_removal(self.old);
-                }
-            }
+            Err(error) => tracing::error!(
+                scope = SCOPE,
+                note_id,
+                "a note's file could not go back after its record did not move; the next open \
+                 finishes its move: {error}"
+            ),
         }
     }
 

@@ -3,11 +3,13 @@
 // to the installer. Every apply the backend saw is a line of `e2e-updater-applies.jsonl` in the
 // data dir, so a spec reads it after the process exited.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import * as http from 'node:http'
 import { join } from 'node:path'
 
 import { test, expect } from '../../harness/test'
-import { invokeTest } from '../../harness/invoke-test'
+import { invokeTest, sendTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
+import { SELECTORS } from '../../harness/app-helpers'
 import { sendQuitEvent } from '../../harness/mac-quit-event'
 import {
   startFakeSessionManager,
@@ -19,7 +21,40 @@ import { invoke } from '../../harness/vault-commands'
 import { pollUntil, readMainLog, waitForMainLog } from '../../harness/wait'
 import type { Page } from '../../harness/pw-compat/page'
 
-test.use({ extraEnv: { MEMRY_TEST_UPDATER: 'scripted' } })
+interface ShippedEvent {
+  name: string
+  action: string
+  source?: string
+  errorCode?: string
+}
+
+/** What the app's telemetry shipped, as the sync server's `/telemetry/batch` receives it. */
+const shipped: ShippedEvent[] = []
+const telemetryServer = http.createServer((request, response) => {
+  let body = ''
+  request.on('data', (chunk) => {
+    body += chunk
+  })
+  request.on('end', () => {
+    const batch = JSON.parse(body || '{}') as { events?: ShippedEvent[] }
+    shipped.push(...(batch.events ?? []))
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ accepted: batch.events?.length ?? 0 }))
+  })
+})
+await new Promise<void>((resolve) => telemetryServer.listen(0, '127.0.0.1', resolve))
+telemetryServer.unref()
+const telemetryAddress = telemetryServer.address()
+const telemetryPort =
+  typeof telemetryAddress === 'object' && telemetryAddress ? telemetryAddress.port : 0
+
+// Telemetry stays off (the e2e build is not a production one) until a test turns it on.
+test.use({
+  extraEnv: {
+    MEMRY_TEST_UPDATER: 'scripted',
+    TELEMETRY_ENDPOINT: `http://127.0.0.1:${telemetryPort}/telemetry/batch`
+  }
+})
 
 const VERSION = 'v2026-11-01'
 const NOTES = '<h2>New</h2><ul><li>Faster sync on large vaults</li></ul>'
@@ -90,12 +125,29 @@ async function waitForExit(app: App): Promise<void> {
   expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })).toBe(true)
 }
 
-test('a manual check surfaces the release in the settings popover', async ({ app, page }) => {
+test('a manual check surfaces the release, and its notes open in a background tab after the install', async ({
+  app,
+  page
+}) => {
   await script(app, page, [available])
   expect((await check(page)).status).toBe('available')
 
   await page.getByRole('button', { name: /Update available/ }).click()
   await expect(page.getByText(`MemryNote ${VERSION} is available`)).toBeVisible()
+  await expect(page.getByText('Faster sync on large vaults')).toBeVisible()
+
+  // The launch after the install runs the release the popover offered.
+  // A new object: the file's launch options share the old one with every later test.
+  app.control.extraEnv = { ...app.control.extraEnv, MEMRY_TEST_UPDATER_VERSION: available.version }
+  await restart(app)
+  await expect.poll(async () => (await state(page)).currentVersion).toBe(VERSION)
+
+  const notesTab = page.locator(`${SELECTORS.tab}[aria-label="MemryNote 2026-11-01"]`)
+  await expect(notesTab).toHaveCount(1)
+  // Opened in the background: the tab the user was on keeps the focus.
+  await expect(notesTab).toHaveAttribute('aria-selected', 'false')
+  await notesTab.click()
+  await expect(page.getByRole('heading', { name: 'New', exact: true })).toBeVisible()
   await expect(page.getByText('Faster sync on large vaults')).toBeVisible()
 })
 
@@ -147,6 +199,71 @@ test('an offline check rejects with its network code and leaves the error in the
   expect(after.error).toContain('could not be resolved')
 })
 
+/** Every updater failure telemetry shipped, after a flush of what is queued. */
+async function shippedUpdaterFailures(page: Page): Promise<ShippedEvent[]> {
+  await invoke(page, 'telemetry_flush')
+  return shipped.filter(
+    (event) =>
+      event.source === 'updater' &&
+      (event.name === 'app_error_seen' || event.name === 'app_log_recorded')
+  )
+}
+
+test('an offline check is a warning and shows one error, with no failed-update row', async ({
+  app,
+  page
+}) => {
+  await invoke(page, 'telemetry_set_enabled', { enabled: true })
+  await script(app, page, [
+    { kind: 'fail', error: 'offline' },
+    { kind: 'fail', error: 'offline' }
+  ])
+  // Counts every error toast that appears, since a toast leaves on its own after a few seconds.
+  await page.evaluate(() => {
+    const body = document.body
+    body.dataset.errorToasts = '0'
+    new MutationObserver((records) => {
+      const selector = '[data-sonner-toast][data-type="error"]'
+      for (const record of records)
+        for (const node of record.addedNodes) {
+          if (!(node instanceof Element)) continue
+          const added = (node.matches(selector) ? 1 : 0) + node.querySelectorAll(selector).length
+          body.dataset.errorToasts = String(Number(body.dataset.errorToasts) + added)
+        }
+    }).observe(body, { childList: true, subtree: true })
+  })
+  const errorToasts = () => page.evaluate(() => Number(document.body.dataset.errorToasts))
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: 'General', exact: true }).click()
+  await page.getByRole('button', { name: 'Check now' }).click()
+  await expect.poll(async () => (await state(page)).status).toBe('error')
+  await expect.poll(errorToasts).toBe(1)
+  await expect(page.getByText(/could not be resolved/).first()).toBeVisible()
+  // Red is for an install that failed; being offline is not one.
+  await expect(page.getByText('Update failed')).toHaveCount(0)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  // Turning auto check back on runs a check in the background, which fails offline again.
+  const autoCheck = page.getByRole('switch', { name: 'Automatically check for updates' })
+  await autoCheck.click()
+  await expect.poll(async () => (await state(page)).autoCheckEnabled).toBe(false)
+  await autoCheck.click()
+  await expect.poll(async () => (await shippedUpdaterFailures(page)).length).toBe(2)
+
+  const failures = await shippedUpdaterFailures(page)
+  // A warning (`app_log_recorded` at `warn`), never an exception in Error Tracking.
+  expect(failures.map(({ name, action, errorCode }) => ({ name, action, errorCode }))).toEqual([
+    { name: 'app_log_recorded', action: 'warn', errorCode: 'HOST_NOT_FOUND' },
+    { name: 'app_log_recorded', action: 'warn', errorCode: 'HOST_NOT_FOUND' }
+  ])
+  expect(await errorToasts()).toBe(1)
+  // Back in the workspace, the sidebar footer has no failed-update row either.
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('settings-view')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Update failed' })).toHaveCount(0)
+})
+
 test('Restart to install shows the Installing screen and hands off once with a relaunch', async ({
   app,
   page
@@ -191,7 +308,7 @@ test('a normal quit installs a downloaded update without a relaunch', async ({ a
   const { appDataDir } = await appInfo(app)
   await download(app, page)
 
-  await invokeTest(app, 'e2e_request_quit')
+  await sendTest(app, 'e2e_request_quit')
   await waitForExit(app)
   expect(applies(appDataDir)).toEqual([{ silent: true, restart: false }])
 })
@@ -255,7 +372,7 @@ test('a sign-out leaves a downloaded update to the next normal quit', async ({ a
 
   await restart(app)
   await download(app, page)
-  await invokeTest(app, 'e2e_request_quit')
+  await sendTest(app, 'e2e_request_quit')
   await waitForExit(app)
   expect(applies(appDataDir)).toEqual([{ silent: true, restart: false }])
 })
@@ -343,7 +460,7 @@ withSessionManager('gnome')(
 
     sessionManager.cancelLogout(app.pid)
     expect(await waitForMainLog(app, 'the logout was called off', 5_000)).toBe(true)
-    await invokeTest(app, 'e2e_request_quit')
+    await sendTest(app, 'e2e_request_quit')
     await waitForExit(app)
     expect(applies(appDataDir)).toEqual([{ silent: true, restart: false }])
   }

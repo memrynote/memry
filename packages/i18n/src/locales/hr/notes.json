@@ -2202,6 +2202,8 @@
   },
   "movedRefsKept": {
     "changing": "„{title}” je premještena, ali se u tom trenutku mijenjala pa njezine poveznice na slike i datoteke i dalje vode u staru mapu. Provjerite ih u bilješci.",
-    "unreadable": "„{title}” je premještena, ali Memry ne može urediti njezinu datoteku pa njezine poveznice na slike i datoteke i dalje vode u staru mapu. Ažurirajte ih ručno."
+    "unreadable": "„{title}” je premještena, ali Memry ne može urediti njezinu datoteku pa njezine poveznice na slike i datoteke i dalje vode u staru mapu. Ažurirajte ih ručno.",
+    "several": "{count, plural, one {# bilješka je premještena, ali njezine poveznice na slike i datoteke i dalje vode u staru mapu. Provjerite ih u bilješci.} few {# bilješke su premještene, ali njihove poveznice na slike i datoteke i dalje vode u stare mape. Provjerite ih u svakoj bilješci.} other {# bilješki je premješteno, ali njihove poveznice na slike i datoteke i dalje vode u stare mape. Provjerite ih u svakoj bilješci.}}",
+    "severalUnreadable": "{count, plural, one {# bilješka je premještena, ali njezine poveznice na slike i datoteke i dalje vode u staru mapu. Memry ne može urediti neke od njihovih datoteka. Ažurirajte ih ručno.} few {# bilješke su premještene, ali njihove poveznice na slike i datoteke i dalje vode u stare mape. Memry ne može urediti neke od njihovih datoteka. Ažurirajte ih ručno.} other {# bilješki je premješteno, ali njihove poveznice na slike i datoteke i dalje vode u stare mape. Memry ne može urediti neke od njihovih datoteka. Ažurirajte ih ručno.}}"
   }
 }

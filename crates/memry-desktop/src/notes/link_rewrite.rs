@@ -41,6 +41,7 @@
 //! here: the journal page's own event for a rewritten day (Step 13m), and the lock check
 //! (Step 14).
 
+#[cfg(feature = "test-hooks")]
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
@@ -100,6 +101,7 @@ impl NotesService {
         let rewritten = AppEdit::new(&self.tier, &self.store, open)
             .map_err(NotesError::from)
             .and_then(|edit| {
+                #[cfg(feature = "test-hooks")]
                 if self.fail_next_ref_feed.swap(false, Ordering::Relaxed) {
                     edit.fail_next_feed();
                 }

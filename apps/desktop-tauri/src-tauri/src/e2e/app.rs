@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use memry_desktop::e2e::control;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::paths::{AppPaths, DEVICE_VAR};
@@ -36,13 +34,10 @@ pub fn e2e_app_info<R: Runtime>(app: AppHandle<R>) -> Result<E2eAppInfo, Command
     })
 }
 
-/// Exits 100 ms later, so the reply returns first.
+/// Quits the app. The exit can beat the reply to the driver, so specs send it with `sendTest`.
 #[tauri::command]
 pub fn e2e_request_quit<R: Runtime>(app: AppHandle<R>) {
-    std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(100));
-        app.exit(0);
-    });
+    app.exit(0);
 }
 
 /// Emits a Tauri event to every window; the replacement for `webContents.send` in specs.
