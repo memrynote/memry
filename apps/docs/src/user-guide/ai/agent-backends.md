@@ -94,6 +94,38 @@ bearer_token_env_var = "MEMRYNOTE_MCP_TOKEN"
 
 Then set `MEMRYNOTE_MCP_TOKEN` to the token in the shell that runs `codex`.
 
+Claude Desktop starts local MCP servers as commands, so it reaches the HTTP endpoint through the
+[`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridge, which needs Node.js. Add this to
+`claude_desktop_config.json` (on macOS, `~/Library/Application Support/Claude/`; on Windows,
+`%APPDATA%\Claude\`), then restart Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "memrynote": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://127.0.0.1:<port>/mcp",
+        "--allow-http",
+        "--header",
+        "Authorization:${MEMRYNOTE_AUTH}"
+      ],
+      "env": {
+        "MEMRYNOTE_AUTH": "Bearer <token>"
+      }
+    }
+  }
+}
+```
+
+- Keep `/mcp` at the end of the URL. Any other path returns `404` with `{"error":"not_found"}`,
+  and Claude Desktop reports that the server disconnected.
+- `--allow-http` is required because the endpoint is plain HTTP on `127.0.0.1`.
+- If Claude Desktop cannot find `npx`, set `command` to its full path, such as
+  `/opt/homebrew/bin/npx` (run `which npx` to find it).
+
 Limits of this setup:
 
 - External clients are read-only. The write tools are listed, but a call fails with
