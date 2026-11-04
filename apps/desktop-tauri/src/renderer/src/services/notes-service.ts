@@ -43,6 +43,7 @@ import type {
   NoteLinkMention,
   NoteLinkMentionResponse,
   NoteLinksChangedEvent,
+  UndoTagTemplateResponse,
   UnlinkedMention
 } from '@memry/contracts/notes-api'
 import { markdownPreviewText } from '@memry/shared/markdown-preview-text'
@@ -56,6 +57,7 @@ import {
   type NoteListItemView,
   type NoteView,
   type PropertyDefinitionView,
+  type UndoTagTemplateInput,
   type Value
 } from '../../../generated/bindings'
 import { askPermanentDelete } from '../lib/permanent-delete-question'
@@ -206,8 +208,10 @@ const ported = {
     if (input.frontmatter !== undefined) throw new NotPortedError('notes.update({ frontmatter })')
     try {
       const { id, content, headerTags, emoji } = input
-      const note = await commands.notesUpdate({ id, content, headerTags, emoji })
-      return { success: true, note: toNote(note) }
+      const { note, tagTemplate } = await commands.notesUpdate({ id, content, headerTags, emoji })
+      return tagTemplate
+        ? { success: true, note: toNote(note), tagTemplate }
+        : { success: true, note: toNote(note) }
     } catch (error) {
       return { ...failure(error), note: null }
     }
@@ -224,6 +228,10 @@ const ported = {
       return { ...failure(error), note: null }
     }
   },
+  // Rejects on failure, as Electron's `notes:undo-tag-template` handler does.
+  undoTagTemplate: async (input: UndoTagTemplateInput): Promise<UndoTagTemplateResponse> => ({
+    status: await commands.notesUndoTagTemplate(input)
+  }),
   // A failed rename, move or reorder answers as Electron's `registerCommand` does.
   rename: async (id: string, newTitle: string): Promise<NoteUpdateResponse> => {
     try {

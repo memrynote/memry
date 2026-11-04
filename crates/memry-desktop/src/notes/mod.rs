@@ -22,6 +22,7 @@ pub mod properties;
 pub mod property_definitions;
 pub mod read;
 pub mod service;
+pub mod tag_template;
 pub mod unsplash;
 pub mod update;
 pub mod view;

@@ -164,11 +164,13 @@ vi.mock('../src/generated/bindings', () => {
       // A test answers in Electron's envelope, or with the note alone.
       notesUpdate: async (input: unknown) => {
         const result = (await notes().update(input)) as
-          | { success?: boolean; note?: unknown; error?: string }
+          | { success?: boolean; note?: unknown; error?: string; tagTemplate?: unknown }
           | undefined
         if (result?.success === false) throw new Error(result.error ?? '')
-        return result?.note ?? result
+        return { note: result?.note ?? result, tagTemplate: result?.tagTemplate }
       },
+      notesUndoTagTemplate: async (input: unknown) =>
+        ((await notes().undoTagTemplate(input)) as { status: string }).status,
       notesApplyTemplate: async (input: unknown) => {
         const result = (await notes().applyTemplate(input)) as
           | { success?: boolean; note?: unknown; error?: string }

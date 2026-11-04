@@ -128,6 +128,8 @@ mod notes_outside_after_reopen;
 mod notes_properties;
 #[path = "notes_service.rs"]
 mod notes_service;
+#[path = "notes_tag_template.rs"]
+mod notes_tag_template;
 #[path = "notes_update.rs"]
 mod notes_update;
 #[path = "notes_writes.rs"]

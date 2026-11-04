@@ -22,6 +22,7 @@ use memry_core::api::journal::Journal;
 use memry_core::seams::secure_store::SecureStore;
 
 use super::error::NotesError;
+use super::tag_template::Undos;
 use super::write_order::WriteOrder;
 use crate::session::OpenVault;
 use crate::vault::app_edit::OwnFiles;
@@ -39,6 +40,8 @@ pub struct NotesService {
     /// The files this run wrote for its notes, which a save replaces with no version: set by a
     /// create ([`super::create`]), kept by the saves ([`super::update`]).
     pub(crate) own_files: OwnFiles,
+    /// The tag templates' fills that can still be taken back ([`super::tag_template`]).
+    pub(crate) undos: Undos,
     /// Test hook: runs once inside the next journal save, after the day's new file is written
     /// aside and before it lands ([`Self::before_next_day_file_lands`]).
     pub(crate) day_file_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
@@ -64,6 +67,7 @@ impl NotesService {
             order: WriteOrder::default(),
             trash,
             own_files: OwnFiles::default(),
+            undos: Undos::default(),
             day_file_lands: Mutex::new(None),
             fail_next_ref_feed: AtomicBool::new(false),
         })

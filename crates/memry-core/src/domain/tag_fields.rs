@@ -211,31 +211,57 @@ pub fn with_fields(conn: &Connection) -> Result<HashSet<String>, StorageError> {
         .collect())
 }
 
-/// The template a new note carrying `item_tags` takes when it names none (desktop `createNote`):
-/// the first tag, in order and by `foldTag`, whose schema names one, its own or the nearest
-/// ancestor's (the `template` of `resolveTagSchemas`).
-pub fn template_of(
+/// The template a tag names, its own or the nearest ancestor's (the `template` of desktop
+/// `resolveTagSchemas`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TagTemplate {
+    /// The tag of `item_tags` that names it, as given.
+    pub tag: String,
+    pub id: String,
+    /// `autofill === true`: a note that gains the tag with an empty body takes the template.
+    pub autofill: bool,
+}
+
+/// The first tag of `item_tags`, in order and by `foldTag`, whose schema names a template, its
+/// own or the nearest ancestor's, and that template (desktop `firstTagTemplate`).
+pub fn tag_template(
     conn: &Connection,
     item_tags: &[String],
-) -> Result<Option<String>, StorageError> {
+) -> Result<Option<TagTemplate>, StorageError> {
     if item_tags.is_empty() {
         return Ok(None);
     }
     let defs = definitions(conn)?;
     let named = |key: &str| {
-        defs.get(key)
-            .and_then(|d| d.schema.as_ref())
-            .and_then(|s| s.get("template"))
-            .and_then(|t| t.get("id"))
-            .and_then(Value::as_str)
-            .map(str::to_owned)
+        let template = defs
+            .get(key)?
+            .schema
+            .as_ref()?
+            .get("template")?
+            .as_object()?;
+        let id = template.get("id")?.as_str()?.to_owned();
+        Some((id, template.get("autofill") == Some(&Value::Bool(true))))
     };
     Ok(item_tags.iter().find_map(|tag| {
         let key = tags::fold(tag);
         defs.get(&key)?.schema.as_ref()?;
         let mut owners = std::iter::once(key.clone()).chain(ancestors(&key, &defs));
-        owners.find_map(|owner| named(&owner))
+        let (id, autofill) = owners.find_map(|owner| named(&owner))?;
+        Some(TagTemplate {
+            tag: tag.clone(),
+            id,
+            autofill,
+        })
     }))
+}
+
+/// The template a new note carrying `item_tags` takes when it names none (desktop `createNote`):
+/// [`tag_template`]'s.
+pub fn template_of(
+    conn: &Connection,
+    item_tags: &[String],
+) -> Result<Option<String>, StorageError> {
+    Ok(tag_template(conn, item_tags)?.map(|template| template.id))
 }
 
 /// The tag field groups of an item carrying `tags` and property `values`, in
