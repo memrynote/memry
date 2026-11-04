@@ -1,11 +1,15 @@
 //! The moves a note's or journal day's record is owed (Step 13m-6, #3530): a move that changes
 //! what the file is ([`keeps_kind`]) is made at the next open's walk ([`crossings`]), the
 //! record deleted for the consumer to make the file anew, as Electron does
-//! (`renameKeepsJournalDate`, `vault/watcher.ts`).
+//! (`renameKeepsJournalDate`, `vault/watcher.ts`). A day the whole journal folder carried is
+//! held, never crossed ([`held`]).
+
+use std::path::Path;
 
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::notes::identity::Removed;
 
+use crate::journal::folder_follow::journal_folder_moved;
 use crate::vault::consumer::identity::{Crossed, IdentityError};
 use crate::vault::journal_format::JournalDays;
 
@@ -22,9 +26,26 @@ pub(super) fn keeps_kind(
     Ok(writer.journal_date(id)? == journal.day_of(path))
 }
 
+/// Whether the move of the day `id` from `from` to `to` is the journal folder moving whole
+/// ([`journal_folder_moved`]). Crossed, every day would be deleted and the delete synced; it is
+/// owed instead, until the config follows the folder and the move keeps what the file is.
+pub(super) fn held(
+    root: &Path,
+    journal: &JournalDays,
+    writer: &NotesWriter,
+    id: &str,
+    from: &str,
+    to: &str,
+) -> Result<bool, IdentityError> {
+    Ok(writer.journal_date(id)?.is_some()
+        && journal.day_of(to).is_none()
+        && journal_folder_moved(root, journal.folder(), from, to).is_some())
+}
+
 /// Each owed move that changes what its file is, with its record deleted as the watcher's move
-/// deletes it ([`NotesWriter::file_crossed`]); one whose record stays is left owed.
-pub(super) fn crossings(journal: &JournalDays, writer: &NotesWriter) -> Vec<Crossed> {
+/// deletes it ([`NotesWriter::file_crossed`]); one whose record stays is left owed, and so is a
+/// day the journal folder carried ([`held`]).
+pub(super) fn crossings(root: &Path, journal: &JournalDays, writer: &NotesWriter) -> Vec<Crossed> {
     let owed = match writer.owed_places() {
         Ok(owed) => owed,
         Err(error) => {
@@ -35,7 +56,16 @@ pub(super) fn crossings(journal: &JournalDays, writer: &NotesWriter) -> Vec<Cros
     let mut crossed = Vec::new();
     for owed in owed {
         let removed = keeps_kind(journal, writer, &owed.note_id, &owed.path).and_then(|keeps| {
-            if keeps {
+            if keeps
+                || held(
+                    root,
+                    journal,
+                    writer,
+                    &owed.note_id,
+                    &owed.from_path,
+                    &owed.path,
+                )?
+            {
                 return Ok(None);
             }
             let to_day = journal.day_of(&owed.path);

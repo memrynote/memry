@@ -83,7 +83,7 @@ use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
 
-use super::owed_moves::{self, keeps_kind};
+use super::owed_moves::{self, held, keeps_kind};
 
 const SCOPE: &str = "note_identity";
 
@@ -431,7 +431,8 @@ impl NoteIdentity for NotesIdentity {
     /// that changes it, a note into a day, a day out of the journal or to another day, deletes
     /// the record for the consumer to make the file anew, as Electron does; one whose removal
     /// may not delete it is owed the move, and so is a move while the journal days are
-    /// unknown. Neither pushes anything; the row follows the file.
+    /// unknown, and so is a day the whole journal folder carried ([`held`]): crossed, a folder
+    /// renamed in Finder would delete every day. Neither pushes anything; the row follows the file.
     fn on_renamed(
         &self,
         ctx: &IdentityCtx<'_>,
@@ -450,6 +451,16 @@ impl NoteIdentity for NotesIdentity {
             self.unsettle(ctx.root);
             return Ok(Rename::Followed);
         };
+        if held(ctx.root, &journal, &writer, note_id, old_path, new_path)? {
+            tracing::info!(
+                scope = SCOPE,
+                note_id,
+                "a day the journal folder carried is held, owed"
+            );
+            writer.owe_place(note_id, old_path)?;
+            self.unsettle(ctx.root);
+            return Ok(Rename::Followed);
+        }
         if !keeps_kind(&journal, &writer, note_id, new_path)? {
             let to_day = journal.day_of(new_path);
             return match writer.file_crossed(note_id, old_path, to_day.as_deref())? {
@@ -485,7 +496,7 @@ impl NoteIdentity for NotesIdentity {
             return Vec::new();
         };
         match self.writer(ctx) {
-            Ok(writer) => owed_moves::crossings(&journal, &writer),
+            Ok(writer) => owed_moves::crossings(ctx.root, &journal, &writer),
             Err(error) => {
                 tracing::error!(scope = SCOPE, "the owed moves could not be read: {error}");
                 Vec::new()

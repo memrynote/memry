@@ -18,10 +18,12 @@
 //!   each day's file, the charts ([`property_rows`]) the records' property values, and the day
 //!   panel ([`day_context`]) the tasks due on a day.
 //!
-//! Not here yet: the journal folder following a move of the folder (13m-7).
+//! Not here yet: the journal folder following a move of the folder (13m-7); until then a day
+//! the folder carries is held ([`folder_follow`]).
 
 pub mod calendar;
 pub mod day_context;
+pub mod folder_follow;
 pub mod property_rows;
 pub mod update;
 pub mod write;

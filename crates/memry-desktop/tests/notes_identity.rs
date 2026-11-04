@@ -1154,3 +1154,103 @@ fn a_settled_move_leaves_the_slot_of_a_file_at_the_path_it_left() {
     );
     assert_eq!(slot(&e, "a.md"), Some(kept));
 }
+
+/// Writes the vault config as another program would: Electron on the same vault, a sync
+/// client, a hand edit.
+fn config_written_outside(e: &Env, key: &str, value: &str) {
+    let path = e.vault.join(".memry/config.json");
+    let mut config: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    config[key] = Value::String(value.to_owned());
+    fs::write(&path, serde_json::to_vec_pretty(&config).unwrap()).unwrap();
+}
+
+fn no_day_deleted(e: &Env) {
+    assert!(
+        days(e).iter().all(|(_, _, deleted)| !deleted),
+        "{:?}",
+        days(e)
+    );
+    assert!(
+        !outbox(e)
+            .iter()
+            .any(|(op, id)| op == "delete" && id.starts_with('j')),
+        "{:?}",
+        outbox(e)
+    );
+}
+
+/// A config another program changed (Electron on the same vault, a sync client, a hand edit)
+/// makes no day a note: an edit lands in the day its row names, and the next open keeps it.
+#[test]
+fn an_outside_edit_of_the_journal_settings_turns_no_day_into_a_note() {
+    for (key, value) in [
+        ("journalFolder", "Diary"),
+        ("journalDateFormat", "DD-MM-YYYY"),
+    ] {
+        let mut e = notes_env();
+        e.write("journal/2025-01-02.md", "A day\n");
+        e.open();
+        e.facts_until(added("journal/2025-01-02.md"));
+        e.facts_until(indexed);
+        config_written_outside(&e, key, value);
+        e.write("journal/2025-01-02.md", "A day, edited\n");
+        until("the edit reached the day", || {
+            e.body("j2025-01-02") == "A day, edited"
+        });
+        no_day_deleted(&e);
+        reopen(&mut e);
+        no_day_deleted(&e);
+        assert_eq!(
+            row_id(&e, "journal/2025-01-02.md").as_deref(),
+            Some("j2025-01-02"),
+            "{key}"
+        );
+    }
+}
+
+/// The journal folder renamed in Finder moves every day out of the folder the config names.
+/// Crossed, each would be deleted and the delete synced (#3930); held, each stays its day, owed
+/// the move until the config follows the folder, live and at the next open.
+#[test]
+fn a_journal_folder_renamed_outside_the_app_keeps_its_days() {
+    let mut e = notes_env();
+    e.write("journal/2025-01-02.md", "A day\n");
+    e.write("journal/2025-01-03.md", "Another day\n");
+    e.open();
+    e.facts_until(added("journal/2025-01-03.md"));
+    e.facts_until(indexed);
+    fs::rename(e.vault.join("journal"), e.vault.join("Diary")).unwrap();
+    until("both days are at their new paths", || {
+        row_id(&e, "Diary/2025-01-02.md").is_some() && row_id(&e, "Diary/2025-01-03.md").is_some()
+    });
+    let held = || vec!["j2025-01-02".to_owned(), "j2025-01-03".to_owned()];
+    assert_eq!(
+        row_id(&e, "Diary/2025-01-02.md").as_deref(),
+        Some("j2025-01-02")
+    );
+    no_day_deleted(&e);
+    assert_eq!(owed(&e), held());
+
+    reopen(&mut e);
+    no_day_deleted(&e);
+    assert_eq!(owed(&e), held());
+    assert_eq!(e.body("j2025-01-03"), "Another day");
+}
+
+#[test]
+fn a_journal_folder_renamed_while_closed_keeps_its_days() {
+    let mut e = notes_env();
+    e.write("journal/2025-01-02.md", "A day\n");
+    e.open();
+    e.facts_until(added("journal/2025-01-02.md"));
+    e.facts_until(indexed);
+    e.close();
+    fs::rename(e.vault.join("journal"), e.vault.join("Diary")).unwrap();
+    reopen(&mut e);
+    no_day_deleted(&e);
+    assert_eq!(
+        row_id(&e, "Diary/2025-01-02.md").as_deref(),
+        Some("j2025-01-02")
+    );
+    assert_eq!(owed(&e), vec!["j2025-01-02".to_owned()]);
+}
