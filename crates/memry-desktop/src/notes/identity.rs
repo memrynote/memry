@@ -62,11 +62,12 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::UNIX_EPOCH;
 
 use memry_core::api::notes_write::NotesWriter;
+use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::notes::identity::{Adopted, Deferral, FileNote, Moved, Removed};
 use memry_core::domain::notes::journal_day::FileDay;
 use memry_core::markdown::convert::EmbedResolver;
 use memry_core::markdown::convert::api::Converter;
-use memry_core::markdown::frontmatter::split_frontmatter_block;
+use memry_core::markdown::frontmatter::{YamlValue, gray_matter_data, split_frontmatter_block};
 use memry_core::markdown::shared::markdown_class::{
     MarkdownClassThresholds, classify_markdown_content, classify_markdown_stat,
 };
@@ -339,7 +340,8 @@ impl NoteIdentity for NotesIdentity {
         };
         let writer = self.writer(ctx)?;
         self.settle_owed(ctx.root, &writer, &journal, None);
-        let body = split_frontmatter_block(&text.raw).body;
+        let split = split_frontmatter_block(&text.raw);
+        let body = split.body;
         let created_ms = created_ms(&ctx.root.join(file.path)).unwrap_or(file.modified_ms);
         let electron_db_beside = electron_db_beside(ctx.root);
         let (folder_path, title) = place(file.path);
@@ -348,12 +350,14 @@ impl NoteIdentity for NotesIdentity {
         let may_be_a_note = writer.may_be_a_note(title, folder_path)?;
         let adopted = match journal.day_of(file.path) {
             Some(date) => {
+                let tags = declared_tags(split.block);
                 let day = FileDay {
                     path: file.path,
                     date: &date,
                     title,
                     folder_path,
                     body,
+                    tags: &tags,
                     created_ms,
                     modified_ms: file.modified_ms,
                     electron_db_beside,
@@ -511,6 +515,14 @@ fn keeps_kind(
     path: &str,
 ) -> Result<bool, IdentityError> {
     Ok(writer.journal_date(id)? == journal.day_of(path))
+}
+
+/// The `tags` a frontmatter block declares (`extractTags`); none when it does not parse.
+fn declared_tags(block: Option<&str>) -> Vec<String> {
+    match block.map(gray_matter_data) {
+        Some(Ok(YamlValue::Map(map))) => header_tags(&map),
+        _ => Vec::new(),
+    }
 }
 
 /// The converter and the embed lookup of a reader, borrowed.

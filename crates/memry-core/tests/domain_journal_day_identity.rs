@@ -8,6 +8,8 @@
 //! | a day already here is the file's only when its text is   | named only on evidence      |
 //! | a day another file holds, a foreign holder, no such date | one file per day, §1.9.1    |
 //! | a deleted day comes back with its file only on evidence  | a revive shows its body     |
+//! | a found day takes the tags its file declares             | `declaredTags`              |
+//! | a found day keeps the tags its record holds              | `initForNote`               |
 //! | an Electron vault the core did not import creates no day | days come from Step 36      |
 //! | a removed day file deletes its day once, on evidence     | `enqueueJournalDelete`      |
 //! | a day's file is fed and read back as a note's            | one body feed, ch. 07 §7.1  |
@@ -49,6 +51,7 @@ fn day_file(body: &'static str) -> FileDay<'static> {
         title: "2025-01-14",
         folder_path: Some("journal"),
         body,
+        tags: &[],
         created_ms: BORN,
         modified_ms: TOUCHED,
         electron_db_beside: false,
@@ -266,6 +269,68 @@ fn a_deleted_day_comes_back_with_its_file_only_on_evidence() {
 
     assert_eq!(adopt(&db, day_file("Old text\n")), created(DAY));
     assert_eq!(entry(&db, "2025-01-14"), Some((DAY.to_owned(), false)));
+    assert_eq!(outbox(&db), vec![("upsert".to_owned(), DAY.to_owned())]);
+}
+
+/// A found day takes the tags its frontmatter declares onto its new record, in the create's
+/// transaction and its one push (`declaredTags`).
+#[test]
+fn a_found_day_takes_the_tags_its_file_declares() {
+    let db = open("day-declared-tags");
+    let tags = ["walk".to_owned(), "Rain".to_owned()];
+    let file = FileDay {
+        tags: &tags,
+        ..day_file("A day.\n")
+    };
+    assert_eq!(adopt(&db, file), Adopted::Created(DAY.to_owned()));
+    assert_eq!(day_payload(&db, DAY)["tags"], json!(["walk", "Rain"]));
+    assert_eq!(outbox(&db).len(), 1);
+}
+
+/// The file's tags fill a record that has none, and never replace or clear the ones it holds
+/// (`initForNote`): a day pulled with tags keeps them when its file is found again, whether the
+/// day is the file's already or comes back from a delete.
+#[test]
+fn a_found_day_keeps_the_tags_its_record_holds() {
+    let db = open("day-kept-tags");
+    let pulled = json!({
+        "date": "2025-01-14",
+        "content": "The day's text\n",
+        "tags": ["pulled"],
+        "clock": {"device-b": 1}
+    });
+    pulled_item(&db, "journal", DAY, &pulled);
+    let declared = ["walk".to_owned()];
+    let with_tags = FileDay {
+        tags: &declared,
+        ..day_file("The day's text\n")
+    };
+    assert_eq!(adopt(&db, with_tags), Adopted::Existing(DAY.to_owned()));
+    assert_eq!(day_payload(&db, DAY)["tags"], json!(["pulled"]));
+    assert!(outbox(&db).is_empty());
+
+    run(&db, |conn| {
+        journal::delete_day(conn, "2025-01-14", DEVICE, NOW + 1)
+    });
+    clear_outbox(&db);
+    assert_eq!(adopt(&db, day_file("The day's text\n")), created(DAY));
+    assert_eq!(
+        day_payload(&db, DAY)["tags"],
+        json!(["pulled"]),
+        "a file with none"
+    );
+    assert_eq!(outbox(&db), vec![("upsert".to_owned(), DAY.to_owned())]);
+
+    run(&db, |conn| {
+        journal::delete_day(conn, "2025-01-14", DEVICE, NOW + 2)
+    });
+    clear_outbox(&db);
+    assert_eq!(adopt(&db, with_tags), created(DAY));
+    assert_eq!(
+        day_payload(&db, DAY)["tags"],
+        json!(["pulled"]),
+        "a file with others"
+    );
     assert_eq!(outbox(&db), vec![("upsert".to_owned(), DAY.to_owned())]);
 }
 

@@ -414,3 +414,24 @@ fn a_tagged_day_is_listed_for_its_tag_and_a_deleted_one_is_not() {
             .is_empty()
     );
 }
+
+/// A pulled day whose payload holds a `date` property (another build's) charts its other values
+/// only: the day's own date is the row's, not a property (D5).
+#[test]
+fn a_days_values_leave_out_a_date_property_a_payload_carries() {
+    let (dir, _vault, journal) = open("day-values-date");
+    inbound(
+        &behind(&dir),
+        "journal",
+        "j2099-06-15",
+        json!({
+            "date": TODAY,
+            "properties": { "date": "2001-01-01", "mood": 3 },
+            "clock": {"desktop": 1}
+        }),
+    );
+    let days = journal.day_values().expect("values");
+    assert_eq!(days.len(), 1);
+    assert_eq!(days[0].date, TODAY);
+    assert_eq!(Value::Object(days[0].values.clone()), json!({ "mood": 3 }));
+}

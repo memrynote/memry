@@ -1,10 +1,11 @@
 //! A mock app over a real vault, vault tier and note index, for the command tests that go
-//! through the IPC a renderer calls (`journal_calendar.rs`, `properties.rs`).
+//! through the IPC a renderer calls (`journal_calendar.rs`, `properties.rs`), with the tier's
+//! journal events forwarded as the app forwards them.
 
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use memry_core::api::errors::SecureStoreError;
@@ -16,13 +17,14 @@ use memry_desktop::notes::service::NotesService;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
+use memry_tauri::shell::journal_events;
 use serde_json::Value;
 use tauri::ipc::{CallbackFn, InvokeBody, InvokeResponseBody};
 use tauri::test::{
     INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder, mock_context, noop_assets,
 };
 use tauri::webview::InvokeRequest;
-use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 #[cfg(windows)]
 const LOCAL_ORIGIN: &str = "http://tauri.localhost";
@@ -84,7 +86,19 @@ impl Mocked {
         let tier = VaultTier::new(store.clone());
         tier.set_identity(NotesIdentity::new(store.clone()));
         tier.register(&session);
-        let index = NoteIndex::new(tier.clone(), |_| {}, |_| {});
+        // The app is built after the open; the index's `landed` reaches it once it is.
+        let handle: Arc<OnceLock<AppHandle<MockRuntime>>> = Arc::default();
+        let lander = handle.clone();
+        let index = NoteIndex::new(
+            tier.clone(),
+            |_| {},
+            |_| {},
+            move |note_id| {
+                if let Some(app) = lander.get() {
+                    journal_events::landed(app, note_id);
+                }
+            },
+        );
         index.register(&session);
         let mut facts = tier.subscribe();
         session.open(&vault, OpenSource::Select).unwrap();
@@ -100,7 +114,9 @@ impl Mocked {
             .unwrap();
         app.manage(session);
         app.manage(index);
-        app.manage(NotesService::new(tier, store));
+        app.manage(NotesService::new(tier.clone(), store));
+        let _ = handle.set(app.handle().clone());
+        journal_events::forward(app.handle().clone(), tier.subscribe());
         let webview = WebviewWindowBuilder::new(&app, "main", WebviewUrl::default())
             .build()
             .unwrap();

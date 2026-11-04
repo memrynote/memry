@@ -87,7 +87,7 @@ fn open_and_measure(
     e: &mut Env,
     report: impl Fn(IndexProgress) + Send + Sync + 'static,
 ) -> (Arc<NoteIndex>, Measured) {
-    let index = NoteIndex::new(e.tier.clone(), report, |_| {});
+    let index = NoteIndex::new(e.tier.clone(), report, |_| {}, |_| {});
     index.register(&e.session);
     e.drain();
     let started = Instant::now();
@@ -253,7 +253,7 @@ fn index_meta_rows(e: &Env) -> i64 {
 #[test]
 fn a_close_ends_a_reindex_and_the_vault_opens_again() {
     let (mut e, _store, _) = seeded(NOTES);
-    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {});
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {});
     assert!(matches!(index.reindex(|_| {}), Err(IndexError::NotOpen)));
     index.register(&e.session);
     e.open();

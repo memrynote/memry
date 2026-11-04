@@ -398,7 +398,7 @@ fn require(
 }
 
 /// One of the payload's string arrays, or an error. Never a silent empty.
-fn read_tags(
+pub(crate) fn read_tags(
     object: &Object,
     key: &str,
     item_type: &str,
