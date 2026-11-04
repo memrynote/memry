@@ -19,11 +19,19 @@
 //!    changes what the file is (a note into a journal day's path) leaves the record as it was,
 //!    title included, owed the move, as the watcher's move does (Step 13m);
 //! 4. [`Applied::Renamed`], under the lane, for whatever follows the rows (the note index, the
-//!    shell's note events). A rename whose file keeps its name (a title its name already says)
-//!    sends it with the same old and new path;
-//! 5. once the note's turn ended, the links to it in other notes' files follow its new title or
-//!    path ([`super::link_rewrite`]), each in its own note's turn. A move that changed what the
-//!    file is changed no name a link spells, and repairs none.
+//!    shell's note events): [`MoveKind::Renamed`] for a rename, [`MoveKind::Moved`] for a
+//!    move. A rename whose file keeps its name (a title its name already says) sends it with
+//!    the same old and new path;
+//! 5. once the note's turn ended, a markdown note moved to another folder has its relative
+//!    embeds re-pointed from there (`rewriteNoteRefsForMove`), in its own next turn (the answer
+//!    says why when they could not be: [`MovedNoteView::refs_kept`]), and the links to it in
+//!    other notes' files follow its new title or path, each in its own note's turn
+//!    ([`super::link_rewrite`]). A move that changed what the file is changed no name a link
+//!    spells, and repairs none.
+//!
+//! Step 5 has no durable record: a crash between the move and its repairs leaves them undone,
+//! as in Electron. The moved note's own refs are not replayable blindly either (the arithmetic
+//! is not idempotent), so a replayed record (#3886) must store which repairs ran.
 //!
 //! A failed step 3 moves the file back and forgets the record of the move. A crash between 2 and
 //! 3 leaves the file at its new name, its row at the old one and the record of the move, which
@@ -36,8 +44,7 @@
 //! a folder reached through a link, which the open walk does not enter for the same reason, and
 //! a folder path a file already holds.
 //!
-//! Not here yet: a moved note's relative embeds (`rewriteNoteRefsForMove`, 13g-3), and the
-//! locked-folder check (Step 13n).
+//! Not here yet: the locked-folder check (Step 14).
 
 use std::fs;
 use std::io::{self, ErrorKind};
@@ -50,14 +57,14 @@ use memry_core::domain::notes::link_rewrite::LinkNames;
 use super::error::NotesError;
 use super::read;
 use super::service::NotesService;
-use super::view::NoteView;
+use super::view::{MovedNoteView, NoteView};
 use crate::session::OpenVault;
 use crate::shell::file_open::{Resolution, is_plain_relative};
 use crate::vault::app_move::{NoteFileMove, on_disk};
 use crate::vault::config::read_vault_config;
-use crate::vault::consumer::Applied;
 use crate::vault::consumer::identity::{IdentityCtx, IdentityError};
 use crate::vault::consumer::rows::Lane;
+use crate::vault::consumer::{Applied, MoveKind};
 use crate::vault::file_move::is_respelling;
 use crate::vault::file_types::FileType;
 use crate::vault::path_key::folded_key;
@@ -87,6 +94,7 @@ impl NotesService {
         title: &str,
     ) -> Result<NoteView, NotesError> {
         self.move_checked(open, note_id, MoveTo::Title(title), &mut || Ok(()))
+            .map(|moved| moved.note)
     }
 
     pub fn move_to_folder(
@@ -94,7 +102,7 @@ impl NotesService {
         open: &OpenVault,
         note_id: &str,
         folder: &str,
-    ) -> Result<NoteView, NotesError> {
+    ) -> Result<MovedNoteView, NotesError> {
         self.move_checked(open, note_id, MoveTo::Folder(folder), &mut || Ok(()))
     }
 
@@ -107,30 +115,35 @@ impl NotesService {
         note_id: &str,
         to: MoveTo<'_>,
         after_file: &mut dyn FnMut() -> Result<(), NotesError>,
-    ) -> Result<NoteView, NotesError> {
+    ) -> Result<MovedNoteView, NotesError> {
         if let MoveTo::Title(title) = to {
             let units = title.encode_utf16().count();
             if units == 0 || units > MAX_TITLE_UNITS {
                 return Err(NotesError::InvalidTitle);
             }
         }
-        let renamed = self
+        let followed = self
             .order
             .run(note_id, |_| self.move_now(open, note_id, to, after_file))?;
-        if let Some((from, to)) = renamed {
+        let refs_kept = followed.and_then(|(from, to)| {
+            let kept = self.rewrite_own_refs(open, note_id, &from, &to);
             self.rewrite_inbound(open, note_id, &from, &to);
-        }
-        read::get(open, note_id, None)?.ok_or_else(|| NotesError::NotFound(note_id.to_owned()))
+            kept
+        });
+        let note = read::get(open, note_id, None)?
+            .ok_or_else(|| NotesError::NotFound(note_id.to_owned()))?;
+        Ok(MovedNoteView { note, refs_kept })
     }
 
-    /// Moves the note; the names a link spelled it by before and after, when they may differ.
+    /// Moves the note; the names a link spelled it by before and after, with its paths, when
+    /// they may differ.
     fn move_now(
         &self,
         open: &OpenVault,
         note_id: &str,
         to: MoveTo<'_>,
         after_file: &mut dyn FnMut() -> Result<(), NotesError>,
-    ) -> Result<Option<(LinkNames, LinkNames)>, NotesError> {
+    ) -> Result<Option<(Named, Named)>, NotesError> {
         let root = open.path.as_path();
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;
@@ -190,10 +203,13 @@ impl NotesService {
             return Err(error);
         }
         let markdown = row.file_type == FileType::Markdown.as_str();
-        let names = |title: &str, path: &str| LinkNames {
-            title: title.to_owned(),
-            folder: path.rsplit_once('/').map(|(folder, _)| folder.to_owned()),
-            markdown,
+        let names = |title: &str, path: &str| Named {
+            path: path.to_owned(),
+            link: LinkNames {
+                title: title.to_owned(),
+                folder: path.rsplit_once('/').map(|(folder, _)| folder.to_owned()),
+                markdown,
+            },
         };
         let renamed = keeps_kind.then(|| {
             let to = names(moved.title.unwrap_or(&listed.title), &new);
@@ -203,9 +219,19 @@ impl NotesService {
             note_id: note_id.to_owned(),
             old_path: old,
             new_path: new,
+            kind: match to {
+                MoveTo::Title(_) => MoveKind::Renamed,
+                MoveTo::Folder(_) => MoveKind::Moved,
+            },
         });
         Ok(renamed)
     }
+}
+
+/// A note's path, and the names a link spells it by there.
+pub(super) struct Named {
+    pub path: String,
+    pub link: LinkNames,
 }
 
 /// The file name `title` gives the note whose file is `name`, its extension kept. A file that
@@ -231,7 +257,7 @@ fn extension_of(name: &str) -> &str {
 /// A move's folder, a path of the vault the sidebar lists: empty segments (`a//b`, a leading
 /// or trailing `/`) and `.` dropped as `path.join` drops them, and every other segment one name
 /// of the user's file system ([`is_plain_relative`]; `Re: plan` is a folder on macOS).
-fn plain_folder(folder: &str) -> Result<String, NotesError> {
+pub(super) fn plain_folder(folder: &str) -> Result<String, NotesError> {
     let segments: Vec<&str> = folder
         .split('/')
         .filter(|segment| !segment.is_empty() && *segment != ".")

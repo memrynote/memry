@@ -46,11 +46,18 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::journal::journal_create_entry,
             crate::commands::journal::journal_delete_entry,
             crate::commands::journal::journal_get_entry,
+            crate::commands::journal::journal_update_entry,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
             crate::commands::locale::locale_set,
             // notes
+            crate::commands::folders::notes_create_folder::<Wry>,
+            crate::commands::folders::notes_get_folder_config::<Wry>,
+            crate::commands::folders::notes_get_folder_template::<Wry>,
+            crate::commands::folders::notes_get_folders::<Wry>,
+            crate::commands::folders::notes_reveal_folder_in_finder,
+            crate::commands::folders::notes_set_folder_config::<Wry>,
             crate::commands::notes::notes_create::<Wry>,
             crate::commands::notes::notes_delete,
             crate::commands::notes::notes_exists,
@@ -65,6 +72,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_list,
             crate::commands::notes::notes_open_external,
             crate::commands::notes::notes_preview_by_title,
+            crate::commands::notes::notes_move::<Wry>,
             crate::commands::notes::notes_rename::<Wry>,
             crate::commands::notes::notes_update::<Wry>,
             crate::commands::notes::notes_apply_template::<Wry>,
@@ -205,6 +213,7 @@ pub fn builder() -> Builder<Wry> {
             // journal
             crate::events::JournalEntryCreatedEvent,
             crate::events::JournalEntryDeletedEvent,
+            crate::events::JournalEntryUpdatedEvent,
             // locale
             crate::events::LocaleChangedEvent,
             // settings
@@ -223,6 +232,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::NoteDeletedEvent,
             crate::events::NoteEventsDroppedEvent,
             crate::events::NoteLinksChangedEvent,
+            crate::events::NoteMovedEvent,
             crate::events::NoteRenamedEvent,
             crate::events::NoteTagsChangedEvent,
             crate::events::NoteUpdatedEvent,

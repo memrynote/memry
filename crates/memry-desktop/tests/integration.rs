@@ -86,6 +86,8 @@ mod journal_format_vectors;
 mod journal_rename;
 #[path = "journal_service.rs"]
 mod journal_service;
+#[path = "journal_update.rs"]
+mod journal_update;
 #[path = "logging.rs"]
 mod logging;
 #[path = "logship.rs"]
@@ -106,6 +108,8 @@ mod note_mentions;
 mod notes_apply_template;
 #[path = "notes_create_template.rs"]
 mod notes_create_template;
+#[path = "notes_folders.rs"]
+mod notes_folders;
 #[path = "notes_identity.rs"]
 mod notes_identity;
 #[path = "notes_link_rewrite.rs"]

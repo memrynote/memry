@@ -2199,5 +2199,9 @@
     "keep": "Garder la note",
     "deletePermanently": "Supprimer définitivement",
     "kept": "La note a été conservée. Elle n'a pas pu être déplacée vers la corbeille."
+  },
+  "movedRefsKept": {
+    "changing": "« {title} » a été déplacée, mais elle changeait à ce moment-là : ses liens vers des images et des fichiers pointent encore vers son ancien dossier. Vérifiez-les dans la note.",
+    "unreadable": "« {title} » a été déplacée, mais Memry ne peut pas modifier son fichier : ses liens vers des images et des fichiers pointent encore vers son ancien dossier. Mettez-les à jour à la main."
   }
 }

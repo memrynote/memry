@@ -4,6 +4,7 @@ pub mod apply_template;
 pub mod create;
 pub mod delete;
 pub mod error;
+pub mod folders;
 pub mod frontmatter;
 pub mod icons;
 pub mod identity;

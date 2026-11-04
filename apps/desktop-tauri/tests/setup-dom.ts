@@ -131,6 +131,7 @@ vi.mock('../src/generated/bindings', () => {
       // rejects.
       journalGetEntry: (date: string) => journal().getEntry(date),
       journalCreateEntry: (input: unknown) => journal().createEntry(input),
+      journalUpdateEntry: (input: unknown) => journal().updateEntry(input),
       journalDeleteEntry: (date: string) => journal().deleteEntry(date),
       notesCreate: async (input: unknown) => {
         const result = (await notes().create(input)) as
@@ -169,6 +170,13 @@ vi.mock('../src/generated/bindings', () => {
           | undefined
         if (result?.success === false) throw new Error(result.error ?? '')
         return result?.note ?? result
+      },
+      notesMove: async (id: string, newFolder: string) => {
+        const result = (await notes().move(id, newFolder)) as
+          | { success?: boolean; note?: unknown; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return { note: result?.note, refsKept: null }
       },
       notesReorder: async (folderPath: string, notePaths: string[]) => {
         const result = (await notes().reorder(folderPath, notePaths)) as
@@ -232,6 +240,25 @@ vi.mock('../src/generated/bindings', () => {
       notesSetCalendarPropertyVisibility: (name: string, show: boolean) =>
         done(notes().setCalendarPropertyVisibility(name, show)),
       notesGetCalendarPropertyNames: () => notes().getCalendarPropertyNames(),
+      notesGetFolders: () => notes().getFolders(),
+      notesCreateFolder: async (path: string) => {
+        const result = (await notes().createFolder(path)) as
+          | { success?: boolean; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return null
+      },
+      notesRevealFolderInFinder: (folderPath: string) =>
+        done(notes().revealFolderInFinder(folderPath)),
+      notesGetFolderConfig: (folderPath: string) => notes().getFolderConfig(folderPath),
+      notesSetFolderConfig: async (folderPath: string, config: unknown) => {
+        const result = (await notes().setFolderConfig(folderPath, config)) as
+          | { success?: boolean; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return null
+      },
+      notesGetFolderTemplate: (folderPath: string) => notes().getFolderTemplate(folderPath),
       tagsGetAllWithCounts: async () =>
         ((await tags().getAllWithCounts()) as { tags: unknown[] }).tags,
       tagsGetNotesByTag: (input: unknown) => tags().getNotesByTag(input),
@@ -285,11 +312,13 @@ vi.mock('../src/generated/bindings', () => {
       // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
       customIconsUpdatedEvent: { listen: async () => () => undefined },
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
+      journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),
       noteDeletedEvent: event(() => api().onNoteDeleted),
       noteRenamedEvent: event(() => api().onNoteRenamed),
+      noteMovedEvent: event(() => api().onNoteMoved),
       // No Electron channel: Electron sends every note event.
       noteEventsDroppedEvent: { listen: async () => () => undefined },
       noteLinksChangedEvent: event(() => api().onLinksChanged),

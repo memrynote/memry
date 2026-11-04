@@ -40,7 +40,7 @@ use serde_json::{Map, Value};
 use super::error::{NotesError, SCOPE};
 use super::frontmatter::{is_reserved_key, user_properties};
 use super::properties::edit::{PropertyEdit, edited};
-use super::properties::{mirror_properties, property_delta};
+use super::properties::{file_delta, mirror_properties};
 use super::read;
 use super::service::NotesService;
 use super::update::{Updated, tag_keys};
@@ -139,7 +139,7 @@ pub fn applied(
         };
         next = edited(&next, &fill)?;
     }
-    let properties = property_delta(&reading, &next, types);
+    let properties = file_delta(&reading, &next, types);
     let edited = change.is_some() || !properties.0.is_empty() || !properties.1.is_empty();
     if edited && !matches!(parsed.frontmatter, YamlValue::Map(_)) {
         // A top level that is a list or a scalar is the author's; no key goes into it.

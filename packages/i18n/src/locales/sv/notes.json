@@ -2199,5 +2199,9 @@
     "keep": "Behåll anteckning",
     "deletePermanently": "Radera permanent",
     "kept": "Anteckningen behölls. Den kunde inte flyttas till papperskorgen."
+  },
+  "movedRefsKept": {
+    "changing": "”{title}” flyttades, men den ändrades just då, så dess länkar till bilder och filer pekar fortfarande på den gamla mappen. Kontrollera dem i anteckningen.",
+    "unreadable": "”{title}” flyttades, men Memry kan inte redigera filen, så dess länkar till bilder och filer pekar fortfarande på den gamla mappen. Uppdatera dem manuellt."
   }
 }

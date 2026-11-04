@@ -2199,5 +2199,9 @@
     "keep": "Behold notat",
     "deletePermanently": "Slett permanent",
     "kept": "Notatet ble beholdt. Det kunne ikke flyttes til papirkurven."
+  },
+  "movedRefsKept": {
+    "changing": "“{title}” ble flyttet, men den endret seg i det øyeblikket, så lenkene til bilder og filer peker fortsatt til den gamle mappen. Sjekk dem i notatet.",
+    "unreadable": "“{title}” ble flyttet, men Memry kan ikke redigere filen, så lenkene til bilder og filer peker fortsatt til den gamle mappen. Oppdater dem manuelt."
   }
 }

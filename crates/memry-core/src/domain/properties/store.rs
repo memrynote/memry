@@ -31,11 +31,17 @@ pub(super) fn write(
     let modified_at = instants::to_iso8601(now_ms).ok_or_else(|| StorageError::Failed {
         what: format!("{now_ms} is not a representable instant"),
     })?;
-    let changes = [
+    let mut changes = vec![
         ("properties", Change::Set(Value::Object(values.clone()))),
         ("clock", Change::set(clock_value(&ticked))),
         ("modifiedAt", Change::set(modified_at)),
     ];
+    if item_type == "journal" {
+        // A day's text is its document's. Electron's pull takes a non-null `content` over its
+        // own file's body (`journal.ts`), so the create's text must not ride along again; the
+        // journal metadata writer clears it the same way (`journal_ops::metadata::write_day`).
+        changes.push(("content", Change::Set(Value::Null)));
+    }
 
     let tx = conn.unchecked_transaction().map_err(failed)?;
     sync_items::apply_local_edit_in(&tx, item_type, item_id, &changes, now_ms)?;

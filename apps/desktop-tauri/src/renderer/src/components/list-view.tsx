@@ -18,6 +18,7 @@ import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import type { InboxItemListItem, Folder } from '@/types'
 import { openLink } from '@/lib/external-link-guard'
+import { notesService } from '@/services/notes-service'
 
 type InboxItem = InboxItemListItem
 
@@ -86,7 +87,7 @@ const ListView = ({
   const { data: vaultFolders = [] } = useQuery({
     queryKey: ['vault', 'folders'],
     queryFn: async () => {
-      const folderInfos = await window.api.notes.getFolders()
+      const folderInfos = await notesService.getFolders()
       const folders: Folder[] = [{ id: '', name: 'Notes (root)', path: '' }]
       for (const fi of folderInfos) {
         if (fi.path) {

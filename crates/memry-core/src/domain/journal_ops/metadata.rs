@@ -52,6 +52,21 @@ pub fn set_tags(
     })
 }
 
+/// [`set_tags`] for a live day only: a day that is absent or deleted stays so, and the given
+/// list is returned. For a mirror of a write the day's file already holds.
+pub fn set_live_tags(
+    conn: &Connection,
+    date: &str,
+    tags: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Vec<String>, StorageError> {
+    write_day(conn, date, false, device_id, now_ms, |object| {
+        let (next, changes) = tags::set_changes(object, ITEM_TYPE, date, tags)?;
+        Ok((changes, next))
+    })
+}
+
 /// Replaces the day's `aliases`, normalized as a note's are with the date as
 /// the title (desktop `remoteAliases(data.aliases, date)`). An empty list is
 /// written as `[]`, which clears on every receiver; `null` would keep theirs.

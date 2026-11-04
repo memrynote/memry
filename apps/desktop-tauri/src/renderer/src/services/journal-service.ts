@@ -49,6 +49,29 @@ const ported = {
   },
 
   /**
+   * Update a journal entry: its text, tags or properties. A day with no file is created.
+   * @param input - Entry update input
+   * @returns Updated journal entry
+   */
+  updateEntry: async (input: {
+    date: string
+    content?: string
+    tags?: string[]
+    inlineTags?: { add?: string[]; remove?: string[] }
+    properties?: Record<string, unknown>
+  }): Promise<JournalEntry> => {
+    const entry = await commands.journalUpdateEntry({
+      date: input.date,
+      content: input.content,
+      tags: input.tags,
+      inlineTags: input.inlineTags,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- property values are the JSON the command carries as is
+      properties: input.properties as Record<string, Value> | undefined
+    })
+    return toEntry(entry)
+  },
+
+  /**
    * Delete a journal entry.
    * @param date - Date in YYYY-MM-DD format
    * @returns Success status
@@ -73,7 +96,10 @@ export const journalService: JournalClientAPI = createWindowApiForwarder<
 // ============================================================================
 
 /** The subscriptions below that Rust events serve; `window.api` is typed without them. */
-export type PortedJournalEvent = 'onJournalEntryCreated' | 'onJournalEntryDeleted'
+export type PortedJournalEvent =
+  | 'onJournalEntryCreated'
+  | 'onJournalEntryUpdated'
+  | 'onJournalEntryDeleted'
 
 /**
  * Subscribe to journal entry created events.
@@ -96,7 +122,11 @@ export function onJournalEntryCreated(
 export function onJournalEntryUpdated(
   callback: (event: JournalEntryUpdatedEvent) => void
 ): () => void {
-  return window.api.onJournalEntryUpdated(callback)
+  // The rest of the payload rides along: the renderer reads a `source` the watcher's and the
+  // sync's events will carry (13m-5).
+  return subscribeToEvent(events.journalEntryUpdatedEvent, (event) =>
+    callback({ ...event, entry: toEntry(event.entry) })
+  )
 }
 
 /**

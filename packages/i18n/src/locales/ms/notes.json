@@ -2199,5 +2199,9 @@
     "keep": "Simpan nota",
     "deletePermanently": "Padam secara kekal",
     "kept": "Nota telah disimpan. Ia tidak dapat dialihkan ke tong sampah."
+  },
+  "movedRefsKept": {
+    "changing": "“{title}” telah dialihkan, tetapi ia sedang berubah pada masa itu, jadi pautannya ke imej dan fail masih menghala ke folder lamanya. Semak dalam nota.",
+    "unreadable": "“{title}” telah dialihkan, tetapi Memry tidak dapat mengedit failnya, jadi pautannya ke imej dan fail masih menghala ke folder lamanya. Kemas kini secara manual."
   }
 }

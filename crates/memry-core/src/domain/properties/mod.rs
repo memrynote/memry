@@ -47,6 +47,7 @@ use serde_json::{Map, Value};
 use thiserror::Error;
 
 use crate::api::errors::StorageError;
+use crate::storage::repositories::sync_items;
 
 mod store;
 
@@ -316,8 +317,8 @@ fn reordered(values: &Map<String, Value>, ordered: &[String]) -> Map<String, Val
 ///
 /// A value whose type the edit changed is taken rather than refused as [`set`] refuses it: the
 /// file already holds it, and a refusal would leave the record and the file apart for good. An
-/// edit that leaves the record as it was writes nothing. `Ok(false)` when no note or day has
-/// that id.
+/// edit that leaves the record as it was writes nothing. `Ok(false)` when no live note or day
+/// has that id.
 pub fn mirror_file(
     conn: &Connection,
     item_id: &str,
@@ -330,6 +331,10 @@ pub fn mirror_file(
         let Some(payload) = stored(conn, item_type, item_id)? else {
             continue;
         };
+        if sync_items::load(conn, item_type, item_id)?.is_some_and(|row| row.deleted_at.is_some()) {
+            // A deleted note or day takes no edit: its queued delete must not become an upsert.
+            return Ok(false);
+        }
         let current = read_values(payload.object(), item_type, item_id)?;
         let mut next = current.clone();
         for name in removed {

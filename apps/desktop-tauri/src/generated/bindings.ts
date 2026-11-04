@@ -49,6 +49,8 @@ export const commands = {
 	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
 	/**  The day's entry, `null` when it has no file. Browsing never makes a day. */
 	journalGetEntry: (date: string) => __TAURI_INVOKE<JournalEntryView | null>("journal_get_entry", { date }),
+	/**  The day edited: its text, tags or properties; a day with no file is made. */
+	journalUpdateEntry: (input: JournalUpdateInput) => __TAURI_INVOKE<JournalEntryView>("journal_update_entry", { input }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
 	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
 	/**
@@ -56,6 +58,21 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
+	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
+	/**
+	 *  `notes:get-folder-config`: the folder's `.folder.md`, `null` when it has none or it cannot
+	 *  be read.
+	 */
+	notesGetFolderConfig: (folderPath: string) => __TAURI_INVOKE<FolderConfigView | null>("notes_get_folder_config", { folderPath }),
+	/**  `notes:get-folder-template`: the template a new note in the folder takes, inherited. */
+	notesGetFolderTemplate: (folderPath: string) => __TAURI_INVOKE<string | null>("notes_get_folder_template", { folderPath }),
+	/**  `notes:get-folders`: every folder the notes tree lists, with its icon. */
+	notesGetFolders: () => __TAURI_INVOKE<FolderView[]>("notes_get_folders"),
+	/**  `notes:reveal-folder-in-finder`: the folder itself, selected in its parent. */
+	notesRevealFolderInFinder: (folderPath: string) => __TAURI_INVOKE<null>("notes_reveal_folder_in_finder", { folderPath }),
+	/**  `notes:set-folder-config`: the icon, template and `inherit`; the folder's views stay. */
+	notesSetFolderConfig: (folderPath: string, config: FolderConfigInput) => __TAURI_INVOKE<null>("notes_set_folder_config", { folderPath, config }),
 	/**
 	 *  `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
 	 *  (Step 32) is not read: the renderer's service refuses it until its step.
@@ -93,6 +110,12 @@ export const commands = {
 	notesOpenExternal: (id: string) => __TAURI_INVOKE<null>("notes_open_external", { id }),
 	/**  The hover card of the note `title` names, or `null`. */
 	notesPreviewByTitle: (title: string) => __TAURI_INVOKE<WikiLinkPreviewView | null>("notes_preview_by_title", { title }),
+	/**
+	 *  `notes:move`: the note's file, under its name (numbered when taken), in another folder of
+	 *  the vault (`""` is the root). Answers the note, and why its relative refs still point from
+	 *  its old folder when they could not follow it.
+	 */
+	notesMove: (id: string, newFolder: string) => __TAURI_INVOKE<MovedNoteView>("notes_move", { id, newFolder }),
 	/**
 	 *  `notes:rename`: the note's new title, and its file the name that title makes in its folder.
 	 *  Answers the note.
@@ -346,12 +369,14 @@ export const events = {
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
+	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
 	noteDeletedEvent: makeEvent<NoteDeletedEvent, NoteDeletedEvent>("note-deleted-event"),
 	noteEventsDroppedEvent: makeEvent<NoteEventsDroppedEvent, NoteEventsDroppedEvent>("note-events-dropped-event"),
 	noteLinksChangedEvent: makeEvent<NoteLinksChangedEvent, NoteLinksChangedEvent>("note-links-changed-event"),
+	noteMovedEvent: makeEvent<NoteMovedEvent, NoteMovedEvent>("note-moved-event"),
 	noteRenamedEvent: makeEvent<NoteRenamedEvent, NoteRenamedEvent>("note-renamed-event"),
 	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
@@ -652,6 +677,32 @@ export type FlushRequestedEvent = {
 	requestId: string,
 };
 
+/**  `notes:set-folder-config`'s config, as `FolderConfigSchema` parses it. */
+export type FolderConfigInput = {
+	/**  Absent: the file's icon stays; `null`: none. */
+	icon?: string | null,
+	template?: string | null,
+	/**  `z.boolean().optional().default(true)`. */
+	inherit?: boolean | null,
+};
+
+/**  A folder's settings as the renderer reads them (`FolderConfig` of `@memry/rpc/notes`). */
+export type FolderConfigView = {
+	icon?: string | null,
+	template?: string | null,
+	inherit: boolean,
+	views?: Value | null,
+	formulas?: Value | null,
+	properties?: Value | null,
+	summaries?: Value | null,
+};
+
+/**  A folder of the tree (`FolderInfo` of `@memry/rpc/notes`). */
+export type FolderView = {
+	path: string,
+	icon: string | null,
+};
+
 export type GetVaultsResponse = {
 	vaults: VaultInfo[],
 	currentVault: string | null,
@@ -720,6 +771,12 @@ export type JournalEntryDeletedEvent = {
 	date: string,
 };
 
+/**  A day's entry was edited in the app (`journal:entryUpdated`). */
+export type JournalEntryUpdatedEvent = {
+	date: string,
+	entry: JournalEntryView,
+};
+
 /**  `JournalEntry` (`packages/contracts/src/journal-api.ts`). */
 export type JournalEntryView = {
 	id: string,
@@ -737,6 +794,21 @@ export type JournalEntryView = {
 	/**  ISO 8601. */
 	createdAt: string,
 	modifiedAt: string,
+};
+
+/**  The `#tags` typed into or deleted from the body (`UpdateEntryInputSchema.inlineTags`). */
+export type JournalInlineTags = {
+	add?: string[] | null,
+	remove?: string[] | null,
+};
+
+/**  `UpdateEntryInputSchema`. */
+export type JournalUpdateInput = {
+	date: string,
+	content?: string | null,
+	tags?: string[] | null,
+	inlineTags?: JournalInlineTags | null,
+	properties?: { [key in string]: Value } | null,
 };
 
 /**  `NoteLargeFileInfo`. */
@@ -798,6 +870,16 @@ export type Modifiers = {
 	ctrl?: boolean,
 	shift?: boolean,
 	alt?: boolean,
+};
+
+/**
+ *  `notes:move`'s answer: the note, and why its relative links to images and files still point
+ *  from its old folder when they could not follow it (`rewriteNoteRefsForMove`; Electron logs
+ *  that and answers success).
+ */
+export type MovedNoteView = {
+	note: NoteView,
+	refsKept: RefsKept | null,
 };
 
 /**
@@ -934,6 +1016,16 @@ export type NoteListPageView = {
 
 /**  `NoteListSchema.sortBy`. `position` sorts as `modified`, as in `listNotesFromCache`. */
 export type NoteListSortBy = "modified" | "created" | "title" | "position";
+
+/**
+ *  The app moved a note to another folder (`notes:moved`, Electron's `moveNote`). The title
+ *  stays; the renderer refetches what it shows of the note.
+ */
+export type NoteMovedEvent = {
+	id: string,
+	oldPath: string,
+	newPath: string,
+};
 
 /**
  *  A note's file moved or the app renamed the note (`notes:renamed`), by the app or by a move
@@ -1076,6 +1168,13 @@ export type PropertyValueView = {
 	value: Value,
 	type: string,
 };
+
+/**
+ *  Why a moved note's relative refs were left as they were: `changing`, the note changed while
+ *  it moved (an outside edit or a sync merge not written yet); `unreadable`, the app cannot edit
+ *  the file (a frontmatter that does not parse, a document a markdown file cannot hold).
+ */
+export type RefsKept = "changing" | "unreadable";
 
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {

@@ -87,6 +87,14 @@ pub struct JournalEntryCreatedEvent {
     pub entry: JournalEntryView,
 }
 
+/// A day's entry was edited in the app (`journal:entryUpdated`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct JournalEntryUpdatedEvent {
+    pub date: String,
+    pub entry: JournalEntryView,
+}
+
 /// A day's entry was deleted (`journal:entryDeleted`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
@@ -174,6 +182,18 @@ pub struct NoteRenamedEvent {
     pub new_path: String,
     pub old_title: String,
     pub new_title: String,
+}
+
+/// The app moved a note to another folder (`notes:moved`, Electron's `moveNote`). The title
+/// stays; the renderer refetches what it shows of the note.
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteMovedEvent {
+    pub id: String,
+    pub old_path: String,
+    pub new_path: String,
 }
 
 /// Note events were dropped because their forwarder fell behind (no Electron channel: Electron
