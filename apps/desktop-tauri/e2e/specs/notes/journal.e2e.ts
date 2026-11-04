@@ -54,14 +54,17 @@ interface ElementKeys {
   elementSendKeys(elementId: string, text: string): Promise<void>
 }
 
+/** The day's editor once its day has loaded: the one shown while it loads takes no input. */
+const DAY_EDITOR = '.bn-editor[contenteditable="true"]'
+
 /**
  * Types at the end of the day's text. WebKit's driver sends key actions to no editable
  * element, so the keys go to the editor itself (WebDriver Element Send Keys).
  */
 async function typeInDay(page: Page, text: string): Promise<void> {
-  await expect(page.locator('.bn-editor').first()).toBeVisible()
+  await expect(page.locator(DAY_EDITOR).first()).toBeVisible()
   const driver = browser as unknown as ElementKeys
-  const editor = await driver.findElement('css selector', '.bn-editor')
+  const editor = await driver.findElement('css selector', DAY_EDITOR)
   await driver.elementSendKeys(Object.values(editor)[0], text)
 }
 
