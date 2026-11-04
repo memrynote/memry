@@ -701,6 +701,9 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         deps.setSelectedIds([])
       } catch (err) {
         log.error('Failed to delete items', err)
+        // What went before the throw is unknown here, so the dialog closes on the reason.
+        toast.error(extractErrorMessage(err))
+        setIsDeleteDialogOpen(false)
       } finally {
         setIsDeleting(false)
       }

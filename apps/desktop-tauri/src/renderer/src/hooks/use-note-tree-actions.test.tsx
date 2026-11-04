@@ -790,5 +790,17 @@ describe('useNoteTreeActions', () => {
       expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
       expect(result.current.journalFolder).toBe('Daily')
     })
+
+    it('says why when a delete throws, and closes the dialog', async () => {
+      const { result } = renderJournalActions()
+      mocks.deleteJournalEntry.mockRejectedValueOnce(new Error('The day could not be deleted'))
+
+      act(() => result.current.handleDeleteClick(entry))
+      await act(async () => {
+        await result.current.handleDeleteConfirm()
+      })
+      expect(toast.error).toHaveBeenCalledWith('The day could not be deleted')
+      expect(result.current.isDeleteDialogOpen).toBe(false)
+    })
   })
 })
