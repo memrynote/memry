@@ -109,6 +109,23 @@ fn no_writer_replaces_a_config_it_cannot_parse() {
     }
 }
 
+/// A general or editor write that names no portable field (`onboardingCompleted`, which the
+/// renderer writes at every start on a vault with notes) has nothing to mirror. Rewriting the
+/// file anyway replaced it under an edit another program made at the same time: on Windows CI a
+/// `defaultNoteFolder` written right after the vault opened was lost to that rewrite.
+#[test]
+fn a_write_with_no_portable_field_leaves_the_file_alone() {
+    let compact = br#"{"version":"1.0.0","preferences":{},"defaultNoteFolder":"movies"}"#;
+    let dir = vault_with(compact);
+    merge_preferences(
+        dir.path(),
+        &object(json!({"onboardingCompleted": true})),
+        &object(json!({"notPortable": 1})),
+    )
+    .unwrap();
+    assert_eq!(bytes(dir.path()), compact, "the file is untouched");
+}
+
 #[test]
 fn a_write_keeps_every_other_key_in_value_and_order() {
     let dir = vault_with(ELECTRON.as_bytes());

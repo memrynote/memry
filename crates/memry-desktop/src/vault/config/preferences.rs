@@ -141,7 +141,13 @@ pub fn merge_preferences(
     general: &Map<String, Value>,
     editor: &Map<String, Value>,
 ) -> Result<(), ConfigError> {
-    if general.is_empty() && editor.is_empty() {
+    // Nothing portable to mirror: a rewrite would only replace the file under another
+    // program's edit.
+    let portable_general = general
+        .keys()
+        .any(|f| PORTABLE_GENERAL.contains(&f.as_str()));
+    let portable_editor = editor.keys().any(|f| PORTABLE_EDITOR.contains(&f.as_str()));
+    if !portable_general && !portable_editor {
         return Ok(());
     }
     update(vault, |config| {
@@ -163,7 +169,7 @@ pub fn merge_preferences(
                 prefs.insert(field.clone(), value.clone());
             }
         }
-        if editor.keys().any(|f| PORTABLE_EDITOR.contains(&f.as_str())) {
+        if portable_editor {
             let stored = object_at(prefs, "editor");
             for (field, value) in editor {
                 if PORTABLE_EDITOR.contains(&field.as_str()) {
