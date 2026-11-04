@@ -16,10 +16,13 @@
 //! | the same during the first edit of an Electron file        | the server's record wins the retry    |
 //! | an edit keeps the option keys a newer build wrote         | §13.7.9 opaque `options`, #3844       |
 //! | a renamed option keeps its keys                           | #3844                                 |
+//! | a rename onto a held value keeps each option's keys       | the same, by place                    |
+//! | an edit whose mirror row write fails still lands          | the next settle records it            |
 //! | a hard-linked file is replaced, its other name kept       | #3843, Electron's `atomicWrite`       |
 
 use std::fs;
 
+use memry_core::domain::property_admin::mirror::META_KEY;
 use memry_core::sync::apply::apply_inbound;
 use memry_core::sync::store::mark_deleted;
 use memry_desktop::notes::property_definitions::{
@@ -336,6 +339,77 @@ fn a_renamed_option_keeps_its_keys() {
     assert_eq!(
         options_of(&f, "Stage"),
         json!([{"value":"Sketch","color":"violet","icon":"pen"}])
+    );
+}
+
+#[test]
+fn a_rename_onto_a_held_value_keeps_each_options_keys() {
+    let f = fixture();
+    stage(&f);
+    let select = json!([
+        {"value":"B","color":"violet","icon":"b"},
+        {"value":"A","color":"green","icon":"a"}
+    ]);
+    let fields = json!({ "type": "select", "options": select.to_string() });
+    pull(&f, "Stage", fields, false);
+    f.definitions.rename_option("Stage", "A", "B").unwrap();
+    assert_eq!(
+        options_of(&f, "Stage"),
+        json!([
+            {"value":"B","color":"violet","icon":"b"},
+            {"value":"B","color":"green","icon":"a"}
+        ])
+    );
+}
+
+/// The record write commits before the mirror row is written: a failure of the row leaves an
+/// edit that landed, which the next settle records.
+#[test]
+fn an_edit_whose_mirror_row_write_fails_still_lands() {
+    let f = fixture();
+    stage(&f);
+    let core = f.core.db_handle();
+    f.definitions.before_record_write(move || {
+        core.call_blocking(|c| {
+            for (event, at) in [("INSERT", "refuse_insert"), ("UPDATE", "refuse_update")] {
+                c.execute_batch(&format!(
+                    "CREATE TRIGGER IF NOT EXISTS {at} BEFORE {event} ON meta
+                     WHEN NEW.key = '{META_KEY}' BEGIN SELECT RAISE(ABORT, 'refused'); END;"
+                ))
+                .unwrap();
+            }
+            Ok(())
+        })
+        .unwrap();
+    });
+    f.definitions
+        .set_option_color("Stage", "Draft", "rose")
+        .unwrap();
+    let rose = json!([{"value":"Draft","color":"rose"}]);
+    assert_eq!(options_of(&f, "Stage"), rose);
+    assert!(
+        !f.records.snapshot().unwrap().pulled().is_empty(),
+        "unrecorded"
+    );
+
+    f.core
+        .db_handle()
+        .call_blocking(|c| {
+            c.execute_batch("DROP TRIGGER refuse_insert; DROP TRIGGER refuse_update;")
+                .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    let listed = f.definitions.list().unwrap();
+    let listed: Value = serde_json::from_str(listed[0].options.as_deref().unwrap()).unwrap();
+    assert_eq!(listed, rose);
+    let PropertyKind::Select(options) = file_definition(&f, "Stage").unwrap() else {
+        panic!("a select");
+    };
+    assert_eq!(options[0].color, "rose");
+    assert!(
+        f.records.snapshot().unwrap().pulled().is_empty(),
+        "recorded"
     );
 }
 

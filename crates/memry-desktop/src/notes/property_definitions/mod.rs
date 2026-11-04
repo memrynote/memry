@@ -235,11 +235,12 @@ impl PropertyDefinitions {
         self.change_renaming(name, None, decide)
     }
 
-    /// [`Self::change`] of an edit that renames an option, which keeps its record entry.
+    /// [`Self::change`] of an edit that renames the option `renamed` (its old value), which
+    /// keeps its record entry.
     fn change_renaming<T>(
         &self,
         name: &str,
-        renamed: Renamed<'_>,
+        renamed: Option<&str>,
         mut decide: impl FnMut(Option<PropertyDefinition>) -> Result<(Next, T), DefinitionsError>,
     ) -> Result<T, DefinitionsError> {
         let name = named(name)?;
@@ -248,10 +249,12 @@ impl PropertyDefinitions {
             let snapshot = self.records.snapshot()?;
             let pulled = snapshot.pulled();
             let prior = snapshot.record(name);
+            let mut before = None;
             let (next, out) = properties_file::update(&self.vault, |definitions| {
                 settle_into(definitions, &pulled);
                 let synced = prior.and_then(definition_of);
                 let current = definitions.get(name).cloned().or(synced);
+                before = current.as_ref().map(|current| current.kind.clone());
                 let (next, out) = decide(current)?;
                 match &next {
                     Next::Put(definition) => {
@@ -263,7 +266,10 @@ impl PropertyDefinitions {
                 Ok::<_, DefinitionsError>((next, out))
             })??;
             let edit = match next {
-                Next::Put(definition) => Edit::Put(record_of(name, &definition, prior, renamed)),
+                Next::Put(definition) => {
+                    let renamed: Renamed<'_> = renamed.zip(before.as_ref());
+                    Edit::Put(record_of(name, &definition, prior, renamed))
+                }
                 Next::Remove => Edit::Remove,
                 Next::Keep => Edit::Keep,
             };
@@ -454,7 +460,7 @@ impl PropertyDefinitions {
     fn edit_options(
         &self,
         name: &str,
-        renamed: Renamed<'_>,
+        renamed: Option<&str>,
         mut change: impl FnMut(&mut Vec<SelectOption>),
     ) -> Result<(), DefinitionsError> {
         self.change_renaming(name, renamed, |existing| {
@@ -475,7 +481,7 @@ impl PropertyDefinitions {
         if new.is_empty() {
             return Err(DefinitionsError::Invalid("an option needs a value"));
         }
-        self.edit_options(name, Some((old, new)), |list| {
+        self.edit_options(name, Some(old), |list| {
             for option in list.iter_mut().filter(|o| o.value == old) {
                 new.clone_into(&mut option.value);
             }

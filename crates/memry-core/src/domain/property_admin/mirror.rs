@@ -154,8 +154,8 @@ fn taken(conn: &Connection) -> Result<Map<String, Value>, StorageError> {
         .map_err(failed)?;
     Ok(match text.map(|text| serde_json::from_str(&text)) {
         Some(Ok(Value::Object(taken))) => taken,
-        // A row this build cannot read starts over: the file wins for every name it lists
-        // until the next write records it again.
+        // A row this build cannot read starts over: every record the server sent wins, and
+        // the file wins over one only this device wrote, until the next write records it.
         Some(_) => {
             eprintln!("memry-core: the `{META_KEY}` row does not read; starting over");
             Map::new()
