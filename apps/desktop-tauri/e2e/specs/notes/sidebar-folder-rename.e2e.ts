@@ -127,6 +127,12 @@ test('the rename field stays open past the virtualization threshold', async ({
   await expect(notesFolder).toBeVisible({ timeout: 30_000 })
   await notesFolder.click()
   await expect(folderRow(page, 'notes/Work')).toBeVisible({ timeout: 30_000 })
+  // The tree turns virtualized only once every bulk note is listed, and that swap remounts every
+  // row, an open menu or rename field with it. The virtualized tree nests the treeitem under the
+  // row's positioned wrapper; the plain tree puts both on one element.
+  await expect(
+    page.locator('[data-tree-node-id="folder-notes/Work"] > [role="treeitem"]')
+  ).toBeVisible({ timeout: 30_000 })
 
   await openRename(page, 'notes/Work')
   await commitRename(page, 'Studio')
