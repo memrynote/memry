@@ -2202,6 +2202,7 @@
   },
   "movedRefsKept": {
     "changing": "“{title}” siirrettiin, mutta se oli muuttumassa juuri silloin, joten sen linkit kuviin ja tiedostoihin osoittavat yhä vanhaan kansioon. Tarkista ne muistiinpanosta.",
-    "unreadable": "“{title}” siirrettiin, mutta Memry ei voi muokata sen tiedostoa, joten sen linkit kuviin ja tiedostoihin osoittavat yhä vanhaan kansioon. Päivitä ne käsin."
+    "unreadable": "“{title}” siirrettiin, mutta Memry ei voi muokata sen tiedostoa, joten sen linkit kuviin ja tiedostoihin osoittavat yhä vanhaan kansioon. Päivitä ne käsin.",
+    "several": "{count, plural, one {# muistiinpano siirrettiin, mutta sen linkit kuviin ja tiedostoihin osoittavat yhä vanhaan kansioon. Tarkista ne muistiinpanosta.} other {# muistiinpanoa siirrettiin, mutta niiden linkit kuviin ja tiedostoihin osoittavat yhä vanhoihin kansioihin. Tarkista ne jokaisesta muistiinpanosta.}}"
   }
 }

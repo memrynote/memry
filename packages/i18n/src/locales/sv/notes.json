@@ -2202,6 +2202,7 @@
   },
   "movedRefsKept": {
     "changing": "”{title}” flyttades, men den ändrades just då, så dess länkar till bilder och filer pekar fortfarande på den gamla mappen. Kontrollera dem i anteckningen.",
-    "unreadable": "”{title}” flyttades, men Memry kan inte redigera filen, så dess länkar till bilder och filer pekar fortfarande på den gamla mappen. Uppdatera dem manuellt."
+    "unreadable": "”{title}” flyttades, men Memry kan inte redigera filen, så dess länkar till bilder och filer pekar fortfarande på den gamla mappen. Uppdatera dem manuellt.",
+    "several": "{count, plural, one {# anteckning flyttades, men dess länkar till bilder och filer pekar fortfarande på den gamla mappen. Kontrollera dem i anteckningen.} other {# anteckningar flyttades, men deras länkar till bilder och filer pekar fortfarande på de gamla mapparna. Kontrollera dem i varje anteckning.}}"
   }
 }

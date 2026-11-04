@@ -2202,6 +2202,7 @@
   },
   "movedRefsKept": {
     "changing": "“{title}” moved, but it was changing at the time, so its links to images and files still point to its old folder. Check them in the note.",
-    "unreadable": "“{title}” moved, but Memry can't edit its file, so its links to images and files still point to its old folder. Update them by hand."
+    "unreadable": "“{title}” moved, but Memry can't edit its file, so its links to images and files still point to its old folder. Update them by hand.",
+    "several": "{count, plural, one {# note moved, but its links to images and files still point to its old folder. Check them in the note.} other {# notes moved, but their links to images and files still point to their old folders. Check them in each note.}}"
   }
 }

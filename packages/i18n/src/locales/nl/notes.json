@@ -2202,6 +2202,7 @@
   },
   "movedRefsKept": {
     "changing": "“{title}” is verplaatst, maar veranderde op dat moment, dus de links naar afbeeldingen en bestanden wijzen nog naar de oude map. Controleer ze in de notitie.",
-    "unreadable": "“{title}” is verplaatst, maar Memry kan het bestand niet bewerken, dus de links naar afbeeldingen en bestanden wijzen nog naar de oude map. Werk ze handmatig bij."
+    "unreadable": "“{title}” is verplaatst, maar Memry kan het bestand niet bewerken, dus de links naar afbeeldingen en bestanden wijzen nog naar de oude map. Werk ze handmatig bij.",
+    "several": "{count, plural, one {# notitie is verplaatst, maar de links naar afbeeldingen en bestanden wijzen nog naar de oude map. Controleer ze in de notitie.} other {# notities zijn verplaatst, maar hun links naar afbeeldingen en bestanden wijzen nog naar hun oude mappen. Controleer ze in elke notitie.}}"
   }
 }

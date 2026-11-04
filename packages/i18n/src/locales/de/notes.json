@@ -2202,6 +2202,7 @@
   },
   "movedRefsKept": {
     "changing": "„{title}“ wurde verschoben, hat sich dabei aber geändert, daher zeigen die Links auf Bilder und Dateien noch auf den alten Ordner. Prüfe sie in der Notiz.",
-    "unreadable": "„{title}“ wurde verschoben, aber Memry kann die Datei nicht bearbeiten, daher zeigen die Links auf Bilder und Dateien noch auf den alten Ordner. Passe sie manuell an."
+    "unreadable": "„{title}“ wurde verschoben, aber Memry kann die Datei nicht bearbeiten, daher zeigen die Links auf Bilder und Dateien noch auf den alten Ordner. Passe sie manuell an.",
+    "several": "{count, plural, one {# Notiz wurde verschoben, aber ihre Links auf Bilder und Dateien zeigen noch auf den alten Ordner. Prüfe sie in der Notiz.} other {# Notizen wurden verschoben, aber ihre Links auf Bilder und Dateien zeigen noch auf ihre alten Ordner. Prüfe sie in jeder Notiz.}}"
   }
 }

@@ -2202,6 +2202,7 @@
   },
   "movedRefsKept": {
     "changing": "Poznámka „{title}“ bola presunutá, ale v tej chvíli sa menila, takže jej odkazy na obrázky a súbory stále smerujú do pôvodného priečinka. Skontrolujte ich v poznámke.",
-    "unreadable": "Poznámka „{title}“ bola presunutá, ale Memry nemôže upraviť jej súbor, takže jej odkazy na obrázky a súbory stále smerujú do pôvodného priečinka. Upravte ich ručne."
+    "unreadable": "Poznámka „{title}“ bola presunutá, ale Memry nemôže upraviť jej súbor, takže jej odkazy na obrázky a súbory stále smerujú do pôvodného priečinka. Upravte ich ručne.",
+    "several": "{count, plural, one {# poznámka bola presunutá, ale jej odkazy na obrázky a súbory stále smerujú do pôvodného priečinka. Skontrolujte ich v poznámke.} few {# poznámky boli presunuté, ale ich odkazy na obrázky a súbory stále smerujú do pôvodných priečinkov. Skontrolujte ich v každej poznámke.} many {# poznámky bolo presunutých, ale ich odkazy na obrázky a súbory stále smerujú do pôvodných priečinkov. Skontrolujte ich v každej poznámke.} other {# poznámok bolo presunutých, ale ich odkazy na obrázky a súbory stále smerujú do pôvodných priečinkov. Skontrolujte ich v každej poznámke.}}"
   }
 }

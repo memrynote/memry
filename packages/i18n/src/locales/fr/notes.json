@@ -2202,6 +2202,7 @@
   },
   "movedRefsKept": {
     "changing": "« {title} » a été déplacée, mais elle changeait à ce moment-là : ses liens vers des images et des fichiers pointent encore vers son ancien dossier. Vérifiez-les dans la note.",
-    "unreadable": "« {title} » a été déplacée, mais Memry ne peut pas modifier son fichier : ses liens vers des images et des fichiers pointent encore vers son ancien dossier. Mettez-les à jour à la main."
+    "unreadable": "« {title} » a été déplacée, mais Memry ne peut pas modifier son fichier : ses liens vers des images et des fichiers pointent encore vers son ancien dossier. Mettez-les à jour à la main.",
+    "several": "{count, plural, one {# note a été déplacée, mais ses liens vers des images et des fichiers pointent encore vers son ancien dossier. Vérifiez-les dans la note.} many {# notes ont été déplacées, mais leurs liens vers des images et des fichiers pointent encore vers leurs anciens dossiers. Vérifiez-les dans chaque note.} other {# notes ont été déplacées, mais leurs liens vers des images et des fichiers pointent encore vers leurs anciens dossiers. Vérifiez-les dans chaque note.}}"
   }
 }

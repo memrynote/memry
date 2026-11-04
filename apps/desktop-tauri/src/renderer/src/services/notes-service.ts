@@ -57,6 +57,7 @@ import {
   type NoteListItemView,
   type NoteView,
   type PropertyDefinitionView,
+  type RefsKept,
   type UndoTagTemplateInput,
   type Value
 } from '../../../generated/bindings'
@@ -115,6 +116,24 @@ function toListItem(view: NoteListItemView): NoteListItem {
 
 function toFile(view: FileView): FileMetadata {
   return { ...view, created: new Date(view.created), modified: new Date(view.modified) }
+}
+
+// A bulk move (the folder view, a multi-select drag) answers note by note. The notes whose
+// refs stayed share one warning, which counts them until it closes.
+const REFS_KEPT_TOAST = 'notes-moved-refs-kept'
+const refsKeptNotes = new Set<string>()
+
+function warnRefsKept(note: NoteView, refsKept: RefsKept): void {
+  const t = getI18n().getFixedT(null, 'notes')
+  refsKeptNotes.add(note.id)
+  const message =
+    refsKeptNotes.size > 1
+      ? t('movedRefsKept.several', { count: refsKeptNotes.size })
+      : refsKept === 'changing'
+        ? t('movedRefsKept.changing', { title: note.title })
+        : t('movedRefsKept.unreadable', { title: note.title })
+  const closed = (): void => refsKeptNotes.clear()
+  toast.warning(message, { id: REFS_KEPT_TOAST, onDismiss: closed, onAutoClose: closed })
 }
 
 /** A failed create or delete as Electron's `withErrorHandler` answers it: the error's message. */
@@ -245,11 +264,7 @@ const ported = {
   move: async (id: string, newFolder: string): Promise<NoteUpdateResponse> => {
     try {
       const { note, refsKept } = await commands.notesMove(id, newFolder)
-      const t = getI18n().getFixedT(null, 'notes')
-      if (refsKept === 'changing') toast.warning(t('movedRefsKept.changing', { title: note.title }))
-      if (refsKept === 'unreadable') {
-        toast.warning(t('movedRefsKept.unreadable', { title: note.title }))
-      }
+      if (refsKept) warnRefsKept(note, refsKept)
       return { success: true, note: toNote(note) }
     } catch (error) {
       return { ...failure(error), note: null }

@@ -2202,6 +2202,7 @@
   },
   "movedRefsKept": {
     "changing": "„{title}“ byla přesunuta, ale v tu chvíli se měnila, takže její odkazy na obrázky a soubory stále míří do původní složky. Zkontrolujte je v poznámce.",
-    "unreadable": "„{title}“ byla přesunuta, ale Memry nemůže upravit její soubor, takže její odkazy na obrázky a soubory stále míří do původní složky. Upravte je ručně."
+    "unreadable": "„{title}“ byla přesunuta, ale Memry nemůže upravit její soubor, takže její odkazy na obrázky a soubory stále míří do původní složky. Upravte je ručně.",
+    "several": "{count, plural, one {# poznámka byla přesunuta, ale její odkazy na obrázky a soubory stále míří do původní složky. Zkontrolujte je v poznámce.} few {# poznámky byly přesunuty, ale jejich odkazy na obrázky a soubory stále míří do původních složek. Zkontrolujte je v každé poznámce.} many {# poznámky bylo přesunuto, ale jejich odkazy na obrázky a soubory stále míří do původních složek. Zkontrolujte je v každé poznámce.} other {# poznámek bylo přesunuto, ale jejich odkazy na obrázky a soubory stále míří do původních složek. Zkontrolujte je v každé poznámce.}}"
   }
 }
