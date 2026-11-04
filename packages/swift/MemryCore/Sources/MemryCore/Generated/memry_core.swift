@@ -932,6 +932,12 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
      */
     func deviceApprover()  -> DeviceApprover
     
+    /**
+     * Sends one telemetry batch, already serialised by the shell. Never
+     * retries on its own: the shell's flush timer is the retry.
+     */
+    func sendTelemetry(batchJson: Data) async  -> TelemetryDelivery
+    
 }
 /**
  * The session. One per account on the device.
@@ -1644,6 +1650,27 @@ open func deviceApprover() -> DeviceApprover  {
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Sends one telemetry batch, already serialised by the shell. Never
+     * retries on its own: the shell's flush timer is the retry.
+     */
+open func sendTelemetry(batchJson: Data)async  -> TelemetryDelivery  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_send_telemetry(
+                        self.uniffiCloneHandle(),FfiConverterData.lower(batchJson)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeTelemetryDelivery_lift,
+            errorHandler: nil
+            
+        )
 }
     
 
@@ -30481,6 +30508,93 @@ public func FfiConverterTypeSyncPhase_lower(_ value: SyncPhase) -> RustBuffer {
 
 
 /**
+ * What the shell does with a batch after one send.
+ */
+
+public enum TelemetryDelivery: Equatable, Hashable {
+    
+    /**
+     * The server took it. Drop it from the queue.
+     */
+    case accepted
+    /**
+     * The server refused this batch and will refuse it again, such as a 400
+     * from a server on older contracts. Drop it: keeping it would block every
+     * batch queued behind it.
+     */
+    case rejected
+    /**
+     * No answer, a rate limit, or a 5xx. Keep it and send it on a later flush.
+     */
+    case retryLater
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TelemetryDelivery: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTelemetryDelivery: FfiConverterRustBuffer {
+    typealias SwiftType = TelemetryDelivery
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TelemetryDelivery {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .accepted
+        
+        case 2: return .rejected
+        
+        case 3: return .retryLater
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TelemetryDelivery, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .accepted:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .rejected:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .retryLater:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTelemetryDelivery_lift(_ buf: RustBuffer) throws -> TelemetryDelivery {
+    return try FfiConverterTypeTelemetryDelivery.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTelemetryDelivery_lower(_ value: TelemetryDelivery) -> RustBuffer {
+    return FfiConverterTypeTelemetryDelivery.lower(value)
+}
+
+
+
+/**
  * Failures of the `Transport` seam (research R5).
  *
  * A non-2xx HTTP status is **not** one of these: it is a successful response
@@ -34201,6 +34315,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_device_approver() != 31031) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_send_telemetry() != 21711) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_create_event() != 11228) {

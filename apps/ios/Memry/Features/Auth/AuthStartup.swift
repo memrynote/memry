@@ -259,6 +259,11 @@ final class AuthStartup {
     /// after launch is published, so there is one path and not two.
     private func publish(_ state: AuthState) {
         guard let session else { return }
+        let telemetryState: TelemetryAuthState = switch state {
+        case .registered, .refreshing: .signedIn
+        default: .signedOut
+        }
+        Task { await Telemetry.shared.setAuthState(telemetryState) }
         phase = .ready(SignInViewModel(session: session, executor: executor, state: state, google: google))
     }
 
@@ -304,6 +309,8 @@ final class AuthStartup {
             self.session = session
             // T237. The unwrapped session, for `Vault.sync(session:)`.
             coreSession = session
+            // Telemetry sends through the core so the token stays there.
+            await Telemetry.shared.attach(sender: session)
             deviceLink = graph.deviceLink
             // **T165, spec-defect 121.** `AuthSession::new` builds the machine
             // in `SignedOut` whatever the keychain holds, so before this line a

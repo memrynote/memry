@@ -28,6 +28,7 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = ReminderNotificationDelegate.shared
         CalendarBackgroundRefresh.register()
+        TelemetryLaunch.start()
         // One-time hints (the Notes "+" hold). A failure only means no tips.
         do {
             try Tips.configure()
@@ -77,6 +78,9 @@ struct RootView: View {
             .task { await shell.consume() }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 shell.scenePhaseChanged(to: phase)
+                // `.inactive` is a pulled-down Control Center as often as a
+                // departure, so only the two ends move telemetry.
+                if phase != .inactive { TelemetryLaunch.scenePhaseChanged(active: phase == .active) }
                 // Scroll offsets are held in memory; leaving the foreground
                 // comes before any kill, so write them now.
                 if phase != .active { LaunchSnapshot.shared.flush() }

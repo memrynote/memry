@@ -64,7 +64,8 @@ final class LocalSettings {
             ?? (Calendar.current.firstWeekday == 1 ? .sunday : .monday)
         newNotesFolder = defaults.string(forKey: Key.folder)
         spellCheck = defaults.object(forKey: Key.spell) as? Bool ?? true
-        usageMetrics = defaults.object(forKey: Key.metrics) as? Bool ?? false
+        // Absent means on, as on desktop: only an explicit opt-out turns it off.
+        usageMetrics = defaults.object(forKey: Key.metrics) as? Bool ?? true
         attachmentDownload = AttachmentDownload(rawValue: defaults.string(forKey: Key.download) ?? "") ?? .wifi
         imageFiling = ImageFiling(rawValue: defaults.string(forKey: Key.filing) ?? "") ?? .embed
         askEveryTime = defaults.object(forKey: Key.ask) as? Bool ?? true
@@ -87,7 +88,13 @@ final class LocalSettings {
     /// `nil` is the vault root.
     var newNotesFolder: String? { didSet { defaults.set(newNotesFolder, forKey: Key.folder) } }
     var spellCheck: Bool { didSet { defaults.set(spellCheck, forKey: Key.spell) } }
-    var usageMetrics: Bool { didSet { defaults.set(usageMetrics, forKey: Key.metrics) } }
+    var usageMetrics: Bool {
+        didSet {
+            defaults.set(usageMetrics, forKey: Key.metrics)
+            let on = usageMetrics
+            Task { await Telemetry.shared.setEnabled(on) }
+        }
+    }
     var attachmentDownload: AttachmentDownload { didSet { defaults.set(attachmentDownload.rawValue, forKey: Key.download) } }
     var imageFiling: ImageFiling { didSet { defaults.set(imageFiling.rawValue, forKey: Key.filing) } }
     var askEveryTime: Bool { didSet { defaults.set(askEveryTime, forKey: Key.ask) } }
