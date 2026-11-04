@@ -444,6 +444,15 @@ impl Journal {
         self.db.read_blocking(move |conn| reads::stamp(conn, &date))
     }
 
+    /// [`metadata::set_live_tags`]: the live day's tags replaced; no day is made or revived.
+    pub fn set_live_tags(&self, date: &str, tags: &[String]) -> Result<Vec<String>, StorageError> {
+        let (date, tags) = (date.to_owned(), tags.to_vec());
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            metadata::set_live_tags(conn, &date, &tags, &device_id, now_ms())
+        })
+    }
+
     /// [`metadata::set_properties`]: the live day's properties replaced, in their order.
     pub fn set_properties(
         &self,

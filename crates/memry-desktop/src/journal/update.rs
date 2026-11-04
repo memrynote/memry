@@ -3,19 +3,24 @@
 //!
 //! In the day's write order (by date, as its create and delete), then:
 //! - a day with no file is made by its first write ([`NotesService::create_day`]'s steps), as
-//!   Electron's update creates a missing entry;
+//!   Electron's update creates a missing entry. When the record held a text (another device's)
+//!   the file is made with it, and the user's text then goes over it as a save, which keeps the
+//!   held text as a version;
 //! - a live day's file is edited through the app-edit seam's editor save
 //!   ([`Precondition::Save`]), inside the day's own turn (its record id, the turn every other
 //!   app edit of the day takes; the date's turn is always taken first): its body when the text
 //!   changed (trimmed, as `serializeJournalEntry` writes it) with `date` set in place as the
 //!   write-back sets it, and its properties at the top level when the update names them, every
-//!   other key keeping its lines. The seam feeds the body to the day's document, keeps a file
-//!   the run did not write (an outside edit, fed or not) as a version first, and never puts the
-//!   file's old body over a document that is ahead when only the properties change. The fact
-//!   goes out as [`ChangeSource::App`]: the command sends `journal:entryUpdated` itself, and
-//!   Electron sends no `notes:updated` for a day;
+//!   other key keeping its lines. A new body follows the block with one line end, as
+//!   `joinBlockAndBody` writes it; a body equal once trimmed keeps its bytes. The seam feeds
+//!   the body to the day's document, keeps a file the run did not write (an outside edit, fed
+//!   or not) as a version first, and never puts the file's old body over a document that is
+//!   ahead when only the properties change. The fact goes out as [`ChangeSource::App`]: the
+//!   command sends `journal:entryUpdated` itself, and Electron sends no `notes:updated` for a
+//!   day;
 //! - the record, once the file holds the edit (the seam's `landed`, under the lane and before
-//!   the fact; a refused write leaves it): its tags when they changed (the file's `tags:` are
+//!   the fact; a refused write leaves it, and a day deleted meanwhile stays deleted): its tags
+//!   when they changed (the file's `tags:` are
 //!   the author's bytes, never written: decision on #3530), and its properties when the update
 //!   names them. A tags-only update writes the record alone.
 //!
@@ -34,7 +39,7 @@ use std::collections::HashSet;
 use memry_core::domain::header_tags::{self, EditSource, Existing, HeaderTagEdit, Update};
 use memry_core::domain::journal::valid_date;
 use memry_core::markdown::frontmatter::{
-    ParsedMarkdownNote, YamlMap, YamlValue, json_to_yaml, parse_markdown_note,
+    Eol, ParsedMarkdownNote, YamlMap, YamlValue, json_to_yaml, parse_markdown_note,
     serialize_parsed_markdown_note, serialize_updated_note,
 };
 use memry_core::markdown::shared::markdown_class::MarkdownClassThresholds;
@@ -49,6 +54,7 @@ use crate::session::OpenVault;
 use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
 use crate::vault::consumer::ChangeSource;
 use crate::vault::writeback::journal::{Dated, dated_block, set_date};
+use memry_core::api::journal::Journal;
 
 /// What `journal:updateEntry` is asked to change (`UpdateEntryInputSchema`); `None` leaves it.
 #[derive(Debug, Clone, Default)]
@@ -96,30 +102,61 @@ impl NotesService {
     ) -> Result<DayUpdated, NotesError> {
         let journal = open.vault.journal(self.store.clone())?;
         let Some(existing) = entry(open, &journal, date)? else {
+            let typed = update.content.clone();
             let day = NewDay {
                 date: date.to_owned(),
-                content: update.content.clone().unwrap_or_default(),
+                content: typed.clone().unwrap_or_default(),
                 tags: next_tags(open, &[], &update)?,
                 properties: update.properties.unwrap_or_default(),
             };
-            let entry = self.create_day_now(open, date, day, &mut || Ok(()))?;
+            let made = self.create_day_now(open, date, day, &mut || Ok(()))?;
+            // The record held a text (another device's), and the file holds it now: the user's
+            // text goes over it as a save, which keeps it as a version.
+            let over_held = typed
+                .as_deref()
+                .is_some_and(|typed| trimmed(typed) != made.content.trim());
+            let entry = match over_held {
+                true => {
+                    let save = DayUpdate {
+                        content: typed,
+                        ..DayUpdate::default()
+                    };
+                    self.save_day(open, &journal, date, &made.tags, save)?
+                }
+                false => made,
+            };
             return Ok(DayUpdated {
                 entry,
                 created: true,
             });
         };
+        Ok(DayUpdated {
+            entry: self.save_day(open, &journal, date, &existing.tags, update)?,
+            created: false,
+        })
+    }
+
+    /// The update of a day whose file is there; `current` are the record's tags.
+    fn save_day(
+        &self,
+        open: &OpenVault,
+        journal: &Journal,
+        date: &str,
+        current: &[String],
+        update: DayUpdate,
+    ) -> Result<JournalEntryView, NotesError> {
         let unheld = || NotesError::DayTextUnwritable("the file is not the day's yet".to_owned());
         let stamp = journal.stamp(date)?.ok_or_else(unheld)?;
         if stamp.path.is_none() {
             return Err(unheld());
         }
-        let tags = next_tags(open, &existing.tags, &update)?;
+        let tags = next_tags(open, current, &update)?;
         let properties = update.properties.as_ref().map(given_properties);
-        let tags_changed = header_tags::compare(&existing.tags, &tags).is_some();
+        let tags_changed = header_tags::compare(current, &tags).is_some();
         // The record's tags and properties, once the file holds the edit.
         let mirror = || -> Result<bool, NotesError> {
             if tags_changed {
-                journal.set_tags(date.to_owned(), tags.clone())?;
+                journal.set_live_tags(date, &tags)?;
             }
             if let Some(properties) = &properties {
                 journal.set_properties(date, properties)?;
@@ -144,11 +181,13 @@ impl NotesService {
                 return Err(NotesError::DayTextUnwritable(kept_reason(&kept).to_owned()));
             }
         }
-        Ok(DayUpdated {
-            entry: answer(open, &journal, date)?,
-            created: false,
-        })
+        answer(open, journal, date)
     }
+}
+
+/// `serializeJournalEntry` writes the text trimmed.
+fn trimmed(content: &str) -> &str {
+    content.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}')
 }
 
 /// The day's tags after `update`, from `current` (`givenTags` and `applyInlineTagEdit`).
@@ -205,20 +244,35 @@ impl FileChange<'_> {
         if read.len() > ceiling {
             return Err(NotesError::TooLarge(ceiling));
         }
-        let parsed = parse_markdown_note(read)?;
-        // `serializeJournalEntry` trims; a body equal once trimmed keeps its bytes.
+        let mut parsed = parse_markdown_note(read)?;
+        // A body equal once trimmed keeps its bytes (`editJournalFile`).
         let body = self
             .content
-            .map(|content| content.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}'))
+            .map(trimmed)
             .filter(|content| *content != parsed.content.trim());
         let frontmatter = self.next_frontmatter(&parsed)?;
         let output = match (frontmatter, body) {
             (None, None) => return Ok(None),
-            (Some((reading, next)), body) => {
-                let body = body.unwrap_or(&parsed.content).to_owned();
+            (frontmatter, Some(body)) => {
+                // `joinBlockAndBody(block, body)`: the text and one line end, right after the
+                // block, in the file's line ends.
+                let eol = match parsed.eol {
+                    Eol::Lf => "\n",
+                    Eol::CrLf => "\r\n",
+                };
+                parsed.content = format!("{body}\n").replace("\r\n", "\n").replace('\n', eol);
+                let body = parsed.content.clone();
+                match frontmatter {
+                    Some((reading, next)) => {
+                        serialize_updated_note(parsed, &reading, next, &body, true)?
+                    }
+                    None => body_with_date(parsed, read, self.date, &body)?,
+                }
+            }
+            (Some((reading, next)), None) => {
+                let body = parsed.content.clone();
                 serialize_updated_note(parsed, &reading, next, &body, true)?
             }
-            (None, Some(body)) => body_with_date(parsed, read, self.date, body)?,
         };
         if output.len() > ceiling {
             return Err(NotesError::TooLarge(ceiling));

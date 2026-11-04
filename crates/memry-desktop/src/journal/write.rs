@@ -188,6 +188,9 @@ impl NotesService {
                 error => Err(error.into()),
             };
         }
+        // The user's text, or none: a held text is another device's, and the first save over it
+        // keeps it as a version.
+        let users = !matches!(text, Text::Held(_));
         let seeded = after_file().and_then(|()| {
             let seed = Seed {
                 root,
@@ -230,8 +233,10 @@ impl NotesService {
         if let Err(error) = lane.put(&opened.id, &rel, stat) {
             return take_back(&mut lane, error.into());
         }
-        // The day's first save replaces this file with no version of it.
-        self.own_files.wrote(&opened.id, &hash);
+        if users {
+            // The day's first save replaces this file with no version of it.
+            self.own_files.wrote(&opened.id, &hash);
+        }
         lane.publish(Applied::Added {
             note_id: opened.id.clone(),
             path: rel.clone(),

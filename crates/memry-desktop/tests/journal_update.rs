@@ -329,11 +329,17 @@ fn a_save_over_an_outside_edit_keeps_that_edit_as_a_version() {
     let (mut e, notes, _) = opened();
     made(&mut e, &notes);
     let open = e.session.current().unwrap();
-    // Fed or not yet when the save runs, the outside edit is the user's text too.
+    // The watcher fed it: the document holds it, and the file is not the run's own.
     e.write(
         DAY_FILE,
         &NEW_FILE.replace("call Ann", "call Bob, typed outside"),
     );
+    e.facts_until(|fact| {
+        matches!(
+            fact,
+            Applied::Changed { path, source: ChangeSource::Watcher, .. } if path == DAY_FILE
+        )
+    });
     let saved = notes
         .update_day(
             &open,
@@ -407,5 +413,161 @@ fn a_save_the_seam_refuses_leaves_the_records_tags_and_properties() {
             Some(r#"{"mood":"calm","rating":4}"#.to_owned())
         ),
         "the record says what the file says"
+    );
+}
+
+/// An outside edit, then the given metadata-only saves, then a body save, which keeps the
+/// outside edit as a version: a save that left the body never makes a file it did not write
+/// the run's own. `fed` waits for the watcher to feed the edit first.
+fn metadata_saves_then_a_body_save(fed: bool) {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    e.write(
+        DAY_FILE,
+        &NEW_FILE.replace("call Ann", "call Bob, typed outside"),
+    );
+    if fed {
+        e.facts_until(|fact| {
+            matches!(
+                fact,
+                Applied::Changed { path, source: ChangeSource::Watcher, .. } if path == DAY_FILE
+            )
+        });
+    }
+    for metadata in [
+        DayUpdate {
+            properties: Some(json!({ "mood": "tired" }).as_object().unwrap().clone()),
+            ..update(DAY)
+        },
+        DayUpdate {
+            tags: Some(vec!["work".into()]),
+            ..update(DAY)
+        },
+    ] {
+        notes.update_day(&open, metadata).unwrap();
+    }
+    assert!(e.read(DAY_FILE).contains("call Bob, typed outside"));
+    notes
+        .update_day(
+            &open,
+            DayUpdate {
+                content: Some("Typed in the app.".into()),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert!(
+        e.versions(ID)
+            .iter()
+            .any(|version| version.contains("typed outside")),
+        "the outside edit was lost: {:?}",
+        e.versions(ID)
+    );
+}
+
+#[test]
+fn a_metadata_save_over_a_fed_outside_edit_leaves_it_to_be_kept_by_the_next_body_save() {
+    metadata_saves_then_a_body_save(true);
+}
+
+#[test]
+fn a_metadata_save_over_an_outside_edit_maybe_not_fed_leaves_it_to_be_kept_too() {
+    // Saved right after the write, most often before the watcher reports it.
+    metadata_saves_then_a_body_save(false);
+}
+
+#[test]
+fn a_first_save_over_a_text_only_the_record_holds_keeps_that_text_as_a_version() {
+    let (e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store).unwrap();
+    let edit = BlockEdit::InsertParagraph {
+        after_block_id: None,
+        text: "From the phone.".into(),
+        new_block_id: "b-phone".into(),
+    };
+    journal.edit_day(DAY.into(), edit).unwrap();
+    let saved = notes
+        .update_day(
+            &open,
+            DayUpdate {
+                content: Some("Typed on desktop.".into()),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert!(saved.created, "the day had no file");
+    assert_eq!(saved.entry.content, "Typed on desktop.");
+    assert!(
+        e.read(DAY_FILE).ends_with("---\nTyped on desktop.\n"),
+        "{}",
+        e.read(DAY_FILE)
+    );
+    assert_eq!(e.body(ID), "Typed on desktop.");
+    assert!(
+        e.versions(ID)
+            .iter()
+            .any(|version| version.contains("From the phone.")),
+        "the phone's text was lost: {:?}",
+        e.versions(ID)
+    );
+}
+
+#[test]
+fn the_first_words_of_an_empty_day_follow_its_block_as_electron_writes_them() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    notes.update_day(&open, update(DAY)).unwrap();
+    assert_eq!(e.read(DAY_FILE), format!("---\ndate: '{DAY}'\n---\n\n"));
+    notes
+        .update_day(
+            &open,
+            DayUpdate {
+                content: Some("First words.".into()),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        e.read(DAY_FILE),
+        format!("---\ndate: '{DAY}'\n---\nFirst words.\n"),
+        "`joinBlockAndBody(block, body)`, with no blank line between"
+    );
+}
+
+#[test]
+fn a_text_equal_once_trimmed_keeps_a_bodys_own_blank_lines() {
+    let (mut e, notes, _) = opened();
+    let file = format!("---\ndate: '{DAY}'\n---\n\n\nMorning pages.\n\n\n");
+    e.write(DAY_FILE, &file);
+    e.facts_until(|fact| matches!(fact, Applied::Added { note_id, .. } if note_id == ID));
+    let open = e.session.current().unwrap();
+    for content in ["Morning pages.", "\nMorning pages.\n\n"] {
+        notes
+            .update_day(
+                &open,
+                DayUpdate {
+                    content: Some(content.into()),
+                    ..update(DAY)
+                },
+            )
+            .unwrap();
+        assert_eq!(e.read(DAY_FILE), file, "{content:?}");
+    }
+    notes
+        .update_day(
+            &open,
+            DayUpdate {
+                content: Some("Morning pages.".into()),
+                properties: Some(json!({ "mood": "calm" }).as_object().unwrap().clone()),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        e.read(DAY_FILE),
+        format!("---\ndate: '{DAY}'\nmood: calm\n---\n\n\nMorning pages.\n\n\n"),
+        "a properties edit keeps the body's bytes"
     );
 }

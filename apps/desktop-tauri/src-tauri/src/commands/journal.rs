@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use memry_desktop::journal::update::{DayUpdate, InlineTags};
+use memry_desktop::journal::update::{DayUpdate, DayUpdated, InlineTags};
 use memry_desktop::journal::write::NewDay;
 use memry_desktop::journal::{self, JournalEntryView};
 use memry_desktop::notes::error::NotesError;
@@ -89,7 +89,8 @@ pub enum Landed<'a> {
         found: bool,
     },
     Created(&'a JournalEntryView),
-    Updated(&'a JournalEntryView),
+    /// An update; one that made the day lands as a create.
+    Saved(&'a DayUpdated),
     /// `success` when the day had an entry to delete.
     Deleted {
         date: String,
@@ -99,9 +100,9 @@ pub enum Landed<'a> {
 
 /// What Electron's handlers send once the command landed: `journal_opened` for a read that
 /// found the entry, `journal:entryCreated` and `journal:entryUpdated` with the entry, and
-/// `journal:entryDeleted` only when an entry was deleted. An update that made the day lands as
-/// `Created`, as Electron's update sends only `journal:entryCreated` then. Public for `tests/journal.rs`: a lib unit test that links the Tauri
-/// runtime cannot load on Windows (see `build.rs`).
+/// `journal:entryDeleted` only when an entry was deleted. An update that made the day sends
+/// only `journal:entryCreated`, as Electron's does. Public for `tests/journal.rs`: a lib unit
+/// test that links the Tauri runtime cannot load on Windows (see `build.rs`).
 pub fn announce<R: Runtime>(app: &AppHandle<R>, landed: Landed<'_>) {
     match landed {
         Landed::Read { found: true } => {
@@ -119,7 +120,14 @@ pub fn announce<R: Runtime>(app: &AppHandle<R>, landed: Landed<'_>) {
                 entry: entry.clone(),
             },
         ),
-        Landed::Updated(entry) => broadcast(
+        Landed::Saved(DayUpdated {
+            entry,
+            created: true,
+        }) => announce(app, Landed::Created(entry)),
+        Landed::Saved(DayUpdated {
+            entry,
+            created: false,
+        }) => broadcast(
             app,
             JournalEntryUpdatedEvent {
                 date: entry.date.clone(),
@@ -202,11 +210,7 @@ pub async fn journal_update_entry(
         let updated = service(&app)?
             .update_day(&open, update)
             .map_err(|error| failed(&error))?;
-        let landed = match updated.created {
-            true => Landed::Created(&updated.entry),
-            false => Landed::Updated(&updated.entry),
-        };
-        announce(&app, landed);
+        announce(&app, Landed::Saved(&updated));
         Ok(updated.entry)
     })
     .await

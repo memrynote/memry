@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use memry_desktop::journal::JournalEntryView;
+use memry_desktop::journal::update::DayUpdated;
 use memry_desktop::seams::transport::NativeTransport;
 use memry_desktop::telemetry::Service;
 use memry_desktop::telemetry::service::{Context, Sender};
@@ -63,6 +64,11 @@ fn each_journal_command_sends_electrons_events_and_a_found_read_its_telemetry() 
         });
     }
     let entry = day();
+    let saved = |made| DayUpdated {
+        entry: entry.clone(),
+        created: made,
+    };
+    let (updated, made) = (saved(false), saved(true));
     let sent = |landed| {
         announce(app.handle(), landed);
         std::mem::take(&mut *heard.lock().expect("lock"))
@@ -100,9 +106,14 @@ fn each_journal_command_sends_electrons_events_and_a_found_read_its_telemetry() 
         [(JournalEntryCreatedEvent::NAME, created.clone())]
     );
     assert_eq!(
-        sent(Landed::Updated(&entry)),
-        [(JournalEntryUpdatedEvent::NAME, created)],
+        sent(Landed::Saved(&updated)),
+        [(JournalEntryUpdatedEvent::NAME, created.clone())],
         "an update sends the entry as a create does"
+    );
+    assert_eq!(
+        sent(Landed::Saved(&made)),
+        [(JournalEntryCreatedEvent::NAME, created)],
+        "an update that made the day sends its create alone"
     );
 
     let deleted = |success| Landed::Deleted {
