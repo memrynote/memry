@@ -2,10 +2,12 @@
 //! when it runs, never as the event described it, so a fact applied twice, or applied after
 //! the open walk already covered its path, changes nothing more.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_core::api::external_feed::ExternalFeed;
+use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
 
@@ -13,7 +15,7 @@ use super::activity::report_unread;
 use super::body::{Body, Write};
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
-use super::{Applied, ChangeSource, MoveKind};
+use super::{Applied, ChangeSource, MAX_RETRIES, MoveKind};
 use crate::vault::activity::{ActivityLog, ScanActivity, failure_key};
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
@@ -35,6 +37,7 @@ pub(super) enum Step {
 pub(super) struct Applier {
     pub(super) root: PathBuf,
     pub(super) vault: Arc<Vault>,
+    pub(super) search: Arc<Search>,
     pub(super) rows: Arc<RowOwner>,
     /// The rows' session of the open this consumer belongs to: a consumer that outlives its
     /// vault's close writes nothing into a later open's rows.
@@ -45,6 +48,8 @@ pub(super) struct Applier {
     pub(super) settings: Option<AppSettings>,
     pub(super) activity: Arc<ActivityLog>,
     pub(super) own_files: Arc<OwnFiles>,
+    /// By note id, how many times in a row an outside edit did not reach its record.
+    pub(super) untaken: Mutex<HashMap<String, u32>>,
 }
 
 impl Applier {
@@ -126,7 +131,44 @@ impl Applier {
         IdentityCtx {
             root: &self.root,
             vault: &self.vault,
+            search: &self.search,
         }
+    }
+
+    /// Tells the identity of an outside edit of the note's file (`on_changed`); `false` when its
+    /// record did not take it and the fact is to be retried. Once it failed past the retries,
+    /// the edit goes on without it, the record keeping what it had, so the row names the file
+    /// the document holds and the app's edits of it are not refused for good.
+    fn told(&self, note_id: &str, previous: &str, file: &NoteFile) -> bool {
+        let Err(error) = self
+            .identity
+            .on_changed(&self.ctx(), note_id, previous, file)
+        else {
+            self.untaken
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .remove(note_id);
+            return true;
+        };
+        let mut untaken = self.untaken.lock().unwrap_or_else(PoisonError::into_inner);
+        let failures = untaken.entry(note_id.to_owned()).or_default();
+        *failures += 1;
+        if *failures <= MAX_RETRIES {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "an outside edit did not reach the note's record, retried: {error}"
+            );
+            return false;
+        }
+        untaken.remove(note_id);
+        tracing::error!(
+            scope = SCOPE,
+            note_id,
+            "an outside edit did not reach the note's record after {MAX_RETRIES} retries; its \
+             record keeps what it had: {error}"
+        );
+        true
     }
 
     /// A file at `path`. A row there makes it a change of that row's note; otherwise the
@@ -289,7 +331,20 @@ impl Applier {
                 None => Write::Seed,
             };
             match self.write_body(note_id, path, &file, write) {
-                Body::Wrote { holds_file: true } => Some(file.hash),
+                Body::Wrote { holds_file: true } => {
+                    // An outside edit of the file the row named (a seed's row names none):
+                    // what its frontmatter says reaches the record. Bytes the app wrote carry
+                    // their record already.
+                    if let Some(previous) = row.content_hash.as_deref()
+                        && self.own_files.writer(note_id, &file.hash).is_none()
+                        && !self.told(note_id, previous, &file)
+                    {
+                        // The bytes were read: a move before the retry pairs on them.
+                        record_file_hash(lane, note_id, row.file_hash.as_deref(), Some(&file.hash));
+                        return Step::Retry(path.to_owned());
+                    }
+                    Some(file.hash)
+                }
                 // The document did not take the text: the row keeps naming what it holds, and
                 // only the bytes it pairs on move, so a move while closed stays a move.
                 Body::Wrote { holds_file: false } | Body::NoKey => {

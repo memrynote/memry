@@ -190,6 +190,7 @@ impl NotesService {
         let ctx = IdentityCtx {
             root,
             vault: &open.vault,
+            search: &open.search,
         };
         let keeps_kind = identity
             .keeps_kind(&ctx, note_id, &new)
