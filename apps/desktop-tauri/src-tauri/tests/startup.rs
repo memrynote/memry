@@ -176,3 +176,46 @@ fn the_launch_checks_webview2_after_the_relaunch_guard_and_before_any_other_guar
         usize::from(cfg!(windows))
     );
 }
+
+/// #3773: a guarded launch opens its bundle again in the run callback's `Exit`
+/// (`relaunch_guard::hand_off_on_exit`), which must come after the single-instance plugin's
+/// `Exit` removed the socket. In the other order the new launch would hand itself to the
+/// exiting process and exit, and nothing would run.
+#[test]
+fn plugins_see_the_exit_before_the_run_callback() {
+    let seen = std::sync::Arc::new(Mutex::new(Vec::new()));
+    let plugin = {
+        let seen = seen.clone();
+        tauri::plugin::Builder::<MockRuntime>::new("exit-order")
+            .on_event(move |_, event| {
+                if let tauri::RunEvent::Exit = event {
+                    seen.lock().expect("lock").push("plugin");
+                }
+            })
+            .build()
+    };
+    let app = tauri::test::mock_builder()
+        .plugin(plugin)
+        .build(tauri::test::mock_context(tauri::test::noop_assets()))
+        .expect("mock app");
+    tauri::WebviewWindowBuilder::new(&app, "main", tauri::WebviewUrl::default())
+        .build()
+        .expect("mock window");
+    let in_callback = seen.clone();
+    app.run(move |handle, event| match event {
+        tauri::RunEvent::Ready => {
+            use tauri::Manager;
+            handle
+                .get_webview_window("main")
+                .expect("the window")
+                .close()
+                .expect("close");
+        }
+        tauri::RunEvent::Exit => in_callback.lock().expect("lock").push("run callback"),
+        _ => {}
+    });
+    assert_eq!(
+        seen.lock().expect("lock").as_slice(),
+        ["plugin", "run callback"]
+    );
+}
