@@ -1,5 +1,6 @@
 // The note surfaces the notes CRUD specs drive (Step 13f, #3530): notes made and read through the
 // commands the renderer calls, and a note opened from the Collections tree as a user opens one.
+import { HarnessError } from './errors'
 import { expect } from './pw-compat/expect'
 import type { Page } from './pw-compat/page'
 import { invoke, vaultStatus } from './vault-commands'
@@ -73,8 +74,14 @@ export async function newNote(
     async () => (await listedNotes(page)).find((note) => !known.includes(note.id) && where(note)),
     { timeoutMs: 30_000 }
   )
-  expect(found).not.toBe(undefined)
-  return found as ListedNote
+  if (found) return found
+  // Where the note went instead: every listed note, and the folder a create without one reads.
+  const notes = (await listedNotes(page)).map((note) => `${note.path} [${note.title}]`)
+  const config = await invoke<unknown>(page, 'e2e_vault_config')
+  throw new HarnessError(
+    `no new note matched within 30 s; known ${JSON.stringify(known)}; ` +
+      `listed ${JSON.stringify(notes)}; vault config ${JSON.stringify(config)}`
+  )
 }
 
 export async function expandCollections(page: Page): Promise<void> {
