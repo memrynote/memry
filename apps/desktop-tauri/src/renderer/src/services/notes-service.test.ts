@@ -731,11 +731,19 @@ describe('notes-service', () => {
     expect(first?.[0]).toContain('Plan')
     expect(calls.at(-1)?.[0]).toMatch(/^3 notes moved/)
 
-    // Once it closed, the next move's warning names its note again.
+    // A note whose file Memry cannot edit keeps "by hand" in the summary.
+    expect(calls.at(-1)?.[0]).toMatch(/by hand/)
+
+    // Once it closed, the next move's warning names its note again, and a batch of notes that
+    // were only changing is told to check them.
     calls.at(-1)?.[1]?.onAutoClose?.()
     commands.notesMove.mockResolvedValueOnce({ note: view('e', 'Solo'), refsKept: 'changing' })
     await notesService.move('e', 'archive')
     expect(calls.at(-1)?.[0]).toContain('Solo')
+    commands.notesMove.mockResolvedValueOnce({ note: view('f', 'Duo'), refsKept: 'changing' })
+    await notesService.move('f', 'archive')
+    expect(calls.at(-1)?.[0]).toMatch(/^2 notes moved/)
+    expect(calls.at(-1)?.[0]).toMatch(/Check them in each note/)
     calls.at(-1)?.[1]?.onDismiss?.()
   })
 

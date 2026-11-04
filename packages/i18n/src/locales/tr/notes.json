@@ -2203,6 +2203,7 @@
   "movedRefsKept": {
     "changing": "“{title}” taşındı, ancak o sırada değişiyordu; bu yüzden görsellere ve dosyalara olan bağlantıları hâlâ eski klasörünü gösteriyor. Notta kontrol edin.",
     "unreadable": "“{title}” taşındı, ancak Memry dosyasını düzenleyemiyor; bu yüzden görsellere ve dosyalara olan bağlantıları hâlâ eski klasörünü gösteriyor. Elle güncelleyin.",
-    "several": "{count, plural, one {# not taşındı, ancak görsellere ve dosyalara olan bağlantıları hâlâ eski klasörünü gösteriyor. Notta kontrol edin.} other {# not taşındı, ancak görsellere ve dosyalara olan bağlantıları hâlâ eski klasörlerini gösteriyor. Her notta kontrol edin.}}"
+    "several": "{count, plural, one {# not taşındı, ancak görsellere ve dosyalara olan bağlantıları hâlâ eski klasörünü gösteriyor. Notta kontrol edin.} other {# not taşındı, ancak görsellere ve dosyalara olan bağlantıları hâlâ eski klasörlerini gösteriyor. Her notta kontrol edin.}}",
+    "severalUnreadable": "{count, plural, one {# not taşındı, ancak görsellere ve dosyalara olan bağlantıları hâlâ eski klasörünü gösteriyor. Memry bazı dosyalarını düzenleyemiyor. Elle güncelleyin.} other {# not taşındı, ancak görsellere ve dosyalara olan bağlantıları hâlâ eski klasörlerini gösteriyor. Memry bazı dosyalarını düzenleyemiyor. Elle güncelleyin.}}"
   }
 }

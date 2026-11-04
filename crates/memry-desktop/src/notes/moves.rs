@@ -43,10 +43,11 @@
 //! Also refused: a folder that is not a plain path of the vault ([`is_plain_relative`], each
 //! segment one name), one the vault ignores, so the note would drop out of it at the next open,
 //! a folder reached through a link, which the open walk does not enter for the same reason, and
-//! a folder path a file already holds. A folder the volume finds under another case or
-//! normalization (`WORK` for `work/` on APFS or NTFS) is named as the disk spells it, so the
-//! record, the row and the sidebar name the folder the file lands in (Electron records the
-//! spelling given, beside the one on disk).
+//! a folder path a file already holds. A folder its parent holds in another case or Unicode
+//! form (`WORK` for `work/`) is named as the disk spells it, on every volume: the record, the
+//! row and the sidebar name the folder the file lands in on a disk that folds case, and a
+//! case-sensitive one makes no second spelling for those disks to receive (Electron records
+//! the spelling given; `create_folder` refuses one).
 //!
 //! Not here yet: the locked-folder check (Step 14).
 
@@ -59,6 +60,7 @@ use memry_core::domain::notes::app_move::AppMoved;
 use memry_core::domain::notes::link_rewrite::LinkNames;
 
 use super::error::NotesError;
+use super::folders::sibling_named;
 use super::read;
 use super::service::NotesService;
 use super::view::{MovedNoteView, NoteView};
@@ -361,48 +363,29 @@ pub(super) fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
 /// `folder` as the disk spells it, when each segment that is there is a plain folder: not a
 /// link (a junction on Windows), which the open walk does not enter, so a note moved under one
 /// would read as removed at the next open, and not a file, which the move could not create the
-/// folder over. A segment the volume finds under another case or normalization takes the name
-/// its parent lists; the segments not there yet stay as given.
+/// folder over. A segment its parent holds in another case or Unicode form takes that spelling
+/// on every volume ([`sibling_named`], the rule `create_folder` refuses a second spelling by);
+/// the segments not there yet stay as given.
 fn folder_on_disk(root: &Path, folder: &str) -> io::Result<Option<String>> {
     let mut path = root.to_path_buf();
     let mut spelled = Vec::new();
     let mut segments = folder.split('/');
     for segment in segments.by_ref() {
-        match fs::symlink_metadata(path.join(segment)) {
+        let Some(listed) = sibling_named(&path, segment)? else {
+            spelled.push(segment.to_owned());
+            break;
+        };
+        path.push(&listed);
+        spelled.push(listed);
+        match fs::symlink_metadata(&path) {
             Ok(meta) if !meta.file_type().is_dir() => return Ok(None),
-            Ok(_) => {
-                let listed = listed_name(&path, segment)?;
-                path.push(&listed);
-                spelled.push(listed);
-            }
-            Err(error) if error.kind() == ErrorKind::NotFound => {
-                spelled.push(segment.to_owned());
-                break;
-            }
+            Ok(_) => {}
+            Err(error) if error.kind() == ErrorKind::NotFound => break,
             Err(error) => return Err(error),
         }
     }
     spelled.extend(segments.map(str::to_owned));
     Ok(Some(spelled.join("/")))
-}
-
-/// The entry of `parent` that `name`, which the volume found there, names: `name` itself when
-/// listed so, else the one entry it folds to ([`folded_key`]).
-fn listed_name(parent: &Path, name: &str) -> io::Result<String> {
-    let key = folded_key(name);
-    let mut folded = None;
-    for entry in fs::read_dir(parent)? {
-        let Ok(listed) = entry?.file_name().into_string() else {
-            continue;
-        };
-        if listed == name {
-            return Ok(listed);
-        }
-        if folded.is_none() && folded_key(&listed) == key {
-            folded = Some(listed);
-        }
-    }
-    Ok(folded.unwrap_or_else(|| name.to_owned()))
 }
 
 pub(super) fn identity_failed(error: IdentityError) -> NotesError {

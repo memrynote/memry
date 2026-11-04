@@ -192,14 +192,13 @@ impl From<MoveError> for NotesError {
         match error {
             MoveError::Begin(error) => error.into(),
             // A file took a folder's name after the move's own look (`moves::free_target`): the
-            // folder is no folder of the vault. Windows says a folder below a file is not found.
+            // folder is no folder of the vault. Windows says a folder below a file is not found;
+            // elsewhere not found is the vault itself gone (a drive unplugged), an I/O failure.
             MoveError::Folder(error)
                 if matches!(
                     error.kind(),
-                    std::io::ErrorKind::AlreadyExists
-                        | std::io::ErrorKind::NotADirectory
-                        | std::io::ErrorKind::NotFound
-                ) =>
+                    std::io::ErrorKind::AlreadyExists | std::io::ErrorKind::NotADirectory
+                ) || (cfg!(windows) && error.kind() == std::io::ErrorKind::NotFound) =>
             {
                 Self::InvalidFolder
             }
@@ -312,6 +311,15 @@ mod tests {
             assert_eq!(error.kind_and_code().1, "invalid_folder", "{error:?}");
         }
         assert!(source.is_file());
+
+        // Off Windows a folder that is not found is the vault gone, not a folder a file holds.
+        let gone = MoveError::Folder(std::io::ErrorKind::NotFound.into());
+        let expected = if cfg!(windows) {
+            "invalid_folder"
+        } else {
+            "note_file_failed"
+        };
+        assert_eq!(NotesError::from(gone).kind_and_code().1, expected);
     }
 
     #[test]

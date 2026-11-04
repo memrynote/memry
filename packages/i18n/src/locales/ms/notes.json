@@ -2203,6 +2203,7 @@
   "movedRefsKept": {
     "changing": "“{title}” telah dialihkan, tetapi ia sedang berubah pada masa itu, jadi pautannya ke imej dan fail masih menghala ke folder lamanya. Semak dalam nota.",
     "unreadable": "“{title}” telah dialihkan, tetapi Memry tidak dapat mengedit failnya, jadi pautannya ke imej dan fail masih menghala ke folder lamanya. Kemas kini secara manual.",
-    "several": "{count, plural, other {# nota telah dialihkan, tetapi pautannya ke imej dan fail masih menghala ke folder lama. Semak dalam setiap nota.}}"
+    "several": "{count, plural, other {# nota telah dialihkan, tetapi pautannya ke imej dan fail masih menghala ke folder lama. Semak dalam setiap nota.}}",
+    "severalUnreadable": "{count, plural, other {# nota telah dialihkan, tetapi pautannya ke imej dan fail masih menghala ke folder lama. Memry tidak dapat mengedit sebahagian failnya. Kemas kini secara manual.}}"
   }
 }

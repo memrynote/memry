@@ -16,12 +16,14 @@ use memry_desktop::session::OpenVault;
 use unicode_normalization::UnicodeNormalization;
 use vault_env::indexed;
 
-use crate::notes_moves::{file_note, note, note_count, opened, pending, record, row_facts};
+use crate::notes_moves::{
+    file_note, names_in, note, note_count, opened, pending, record, row_facts,
+};
 
-/// A folder named in another case or normalization than the one on disk is that folder on a
-/// volume that folds them (APFS, NTFS): the note lands in it, and its record and row name the
-/// folder as the disk spells it, never a second spelling the sidebar would show beside it. On a
-/// volume that does not fold, the name is a folder of its own, which the move makes.
+/// A folder named in another case or Unicode form than one its parent holds is that folder,
+/// on every volume: the note lands in it, and its record and row name the folder as the disk
+/// spells it. A volume that folds them (APFS, NTFS) would put the file there anyway, and one
+/// that does not (ext4) makes no second spelling that a device on the other kind receives.
 #[test]
 fn a_move_into_a_folder_spelled_another_way_takes_the_disk_s_spelling() {
     let (e, notes, _) = opened();
@@ -29,34 +31,34 @@ fn a_move_into_a_folder_spelled_another_way_takes_the_disk_s_spelling() {
     let made = notes.create(&open, note("Plan", "")).unwrap();
     let decomposed: String = "Café".nfd().collect();
     fs::create_dir_all(e.vault.join("work").join(&decomposed)).unwrap();
-    let folds_case = e.vault.join("WORK").is_dir();
-    let folds_form = e.vault.join("work/Café").is_dir();
 
     let moved = notes.move_to_folder(&open, &made.id, "WORK").unwrap();
-    let folder = if folds_case { "work" } else { "WORK" };
-    assert_eq!(moved.note.path, format!("{folder}/Plan.md"));
-    assert_eq!(record(&e, &made.id).1.as_deref(), Some(folder));
-    assert_eq!(e.rows(), [(made.id.clone(), format!("{folder}/Plan.md"))]);
+    assert_eq!(moved.note.path, "work/Plan.md");
+    assert_eq!(record(&e, &made.id).1.as_deref(), Some("work"));
+    assert_eq!(e.rows(), [(made.id.clone(), "work/Plan.md".to_owned())]);
+    let spellings = |folder: &str, of: &str| -> Vec<String> {
+        let of = of.nfc().collect::<String>().to_lowercase();
+        names_in(&e, folder)
+            .into_iter()
+            .filter(|name| name.nfc().collect::<String>().to_lowercase() == of)
+            .collect()
+    };
+    assert_eq!(spellings("", "work"), ["work"]);
 
     let moved = notes
         .move_to_folder(&open, &made.id, "Work/Café/Q3")
         .unwrap();
-    let folder = match (folds_case, folds_form) {
-        (true, true) => format!("work/{decomposed}/Q3"),
-        (true, false) => "work/Café/Q3".to_owned(),
-        (false, _) => "Work/Café/Q3".to_owned(),
-    };
+    let folder = format!("work/{decomposed}/Q3");
     assert_eq!(moved.note.path, format!("{folder}/Plan.md"));
     assert_eq!(record(&e, &made.id).1, Some(folder.clone()));
     assert!(e.vault.join(&folder).join("Plan.md").is_file());
+    assert_eq!(spellings("work", "café"), [decomposed]);
 
     // The note's own folder under another spelling moves nothing.
-    if folds_case {
-        let stayed = notes
-            .move_to_folder(&open, &made.id, &folder.to_uppercase())
-            .unwrap();
-        assert_eq!(stayed.note.path, format!("{folder}/Plan.md"));
-    }
+    let stayed = notes
+        .move_to_folder(&open, &made.id, &folder.to_uppercase())
+        .unwrap();
+    assert_eq!(stayed.note.path, format!("{folder}/Plan.md"));
 }
 
 /// Moves the note to `archive` with its folder `from` made read-only once the file moved, and

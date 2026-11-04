@@ -119,19 +119,25 @@ function toFile(view: FileView): FileMetadata {
 }
 
 // A bulk move (the folder view, a multi-select drag) answers note by note. The notes whose
-// refs stayed share one warning, which counts them until it closes.
+// refs stayed share one warning, which counts them until it closes. One whose file Memry
+// cannot edit keeps the warning's "by hand".
 const REFS_KEPT_TOAST = 'notes-moved-refs-kept'
-const refsKeptNotes = new Set<string>()
+const refsKeptNotes = new Map<string, RefsKept>()
+
+function refsKeptMessage(note: NoteView, refsKept: RefsKept): string {
+  const t = getI18n().getFixedT(null, 'notes')
+  const count = refsKeptNotes.size
+  const unreadable = [...refsKeptNotes.values()].includes('unreadable')
+  if (count > 1 && unreadable) return t('movedRefsKept.severalUnreadable', { count })
+  if (count > 1) return t('movedRefsKept.several', { count })
+  return refsKept === 'changing'
+    ? t('movedRefsKept.changing', { title: note.title })
+    : t('movedRefsKept.unreadable', { title: note.title })
+}
 
 function warnRefsKept(note: NoteView, refsKept: RefsKept): void {
-  const t = getI18n().getFixedT(null, 'notes')
-  refsKeptNotes.add(note.id)
-  const message =
-    refsKeptNotes.size > 1
-      ? t('movedRefsKept.several', { count: refsKeptNotes.size })
-      : refsKept === 'changing'
-        ? t('movedRefsKept.changing', { title: note.title })
-        : t('movedRefsKept.unreadable', { title: note.title })
+  refsKeptNotes.set(note.id, refsKept)
+  const message = refsKeptMessage(note, refsKept)
   const closed = (): void => refsKeptNotes.clear()
   toast.warning(message, { id: REFS_KEPT_TOAST, onDismiss: closed, onAutoClose: closed })
 }

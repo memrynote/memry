@@ -180,7 +180,7 @@ fn path_changed(id: &str, old: &str, new: &str, kind: MoveKind) -> Applied {
     }
 }
 
-fn names_in(e: &Env, folder: &str) -> Vec<String> {
+pub(crate) fn names_in(e: &Env, folder: &str) -> Vec<String> {
     let mut names: Vec<String> = fs::read_dir(e.vault.join(folder))
         .unwrap()
         .map(|entry| entry.unwrap().file_name().into_string().unwrap())

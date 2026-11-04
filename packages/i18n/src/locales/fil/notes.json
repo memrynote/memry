@@ -2203,6 +2203,7 @@
   "movedRefsKept": {
     "changing": "Nailipat ang “{title}”, pero nagbabago ito noon, kaya nakaturo pa rin sa lumang folder ang mga link nito sa mga larawan at file. Tingnan ang mga ito sa note.",
     "unreadable": "Nailipat ang “{title}”, pero hindi ma-edit ng Memry ang file nito, kaya nakaturo pa rin sa lumang folder ang mga link nito sa mga larawan at file. I-update ang mga ito nang mano-mano.",
-    "several": "{count, plural, one {Nailipat ang # note, pero nakaturo pa rin sa lumang folder ang mga link nito sa mga larawan at file. Tingnan ang mga ito sa note.} other {Nailipat ang # na note, pero nakaturo pa rin sa mga lumang folder ang mga link nila sa mga larawan at file. Tingnan ang mga ito sa bawat note.}}"
+    "several": "{count, plural, one {Nailipat ang # note, pero nakaturo pa rin sa lumang folder ang mga link nito sa mga larawan at file. Tingnan ang mga ito sa note.} other {Nailipat ang # na note, pero nakaturo pa rin sa mga lumang folder ang mga link nila sa mga larawan at file. Tingnan ang mga ito sa bawat note.}}",
+    "severalUnreadable": "{count, plural, one {Nailipat ang # note, pero nakaturo pa rin sa lumang folder ang mga link nito sa mga larawan at file. Hindi ma-edit ng Memry ang ilan sa mga file nila. I-update ang mga ito nang mano-mano.} other {Nailipat ang # na note, pero nakaturo pa rin sa mga lumang folder ang mga link nila sa mga larawan at file. Hindi ma-edit ng Memry ang ilan sa mga file nila. I-update ang mga ito nang mano-mano.}}"
   }
 }

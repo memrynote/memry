@@ -2203,6 +2203,7 @@
   "movedRefsKept": {
     "changing": "“{title}” ble flyttet, men den endret seg i det øyeblikket, så lenkene til bilder og filer peker fortsatt til den gamle mappen. Sjekk dem i notatet.",
     "unreadable": "“{title}” ble flyttet, men Memry kan ikke redigere filen, så lenkene til bilder og filer peker fortsatt til den gamle mappen. Oppdater dem manuelt.",
-    "several": "{count, plural, one {# notat ble flyttet, men lenkene til bilder og filer peker fortsatt til den gamle mappen. Sjekk dem i notatet.} other {# notater ble flyttet, men lenkene deres til bilder og filer peker fortsatt til de gamle mappene. Sjekk dem i hvert notat.}}"
+    "several": "{count, plural, one {# notat ble flyttet, men lenkene til bilder og filer peker fortsatt til den gamle mappen. Sjekk dem i notatet.} other {# notater ble flyttet, men lenkene deres til bilder og filer peker fortsatt til de gamle mappene. Sjekk dem i hvert notat.}}",
+    "severalUnreadable": "{count, plural, one {# notat ble flyttet, men lenkene til bilder og filer peker fortsatt til den gamle mappen. Memry kan ikke redigere noen av filene. Oppdater dem manuelt.} other {# notater ble flyttet, men lenkene deres til bilder og filer peker fortsatt til de gamle mappene. Memry kan ikke redigere noen av filene. Oppdater dem manuelt.}}"
   }
 }

@@ -2203,6 +2203,7 @@
   "movedRefsKept": {
     "changing": "“{title}” telah dipindahkan, tetapi sedang berubah saat itu, jadi tautannya ke gambar dan file masih mengarah ke folder lamanya. Periksa di catatan.",
     "unreadable": "“{title}” telah dipindahkan, tetapi Memry tidak dapat mengedit filenya, jadi tautannya ke gambar dan file masih mengarah ke folder lamanya. Perbarui secara manual.",
-    "several": "{count, plural, other {# catatan telah dipindahkan, tetapi tautannya ke gambar dan file masih mengarah ke folder lama. Periksa di setiap catatan.}}"
+    "several": "{count, plural, other {# catatan telah dipindahkan, tetapi tautannya ke gambar dan file masih mengarah ke folder lama. Periksa di setiap catatan.}}",
+    "severalUnreadable": "{count, plural, other {# catatan telah dipindahkan, tetapi tautannya ke gambar dan file masih mengarah ke folder lama. Memry tidak dapat mengedit sebagian filenya. Perbarui secara manual.}}"
   }
 }
