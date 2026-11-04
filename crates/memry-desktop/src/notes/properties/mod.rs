@@ -111,6 +111,7 @@ impl NotesService {
             return Ok(views(&values, &types));
         }
         Ok(file_properties(&file, &types)
+            .unwrap_or_default()
             .into_iter()
             .map(view)
             .collect())
@@ -284,12 +285,16 @@ pub fn definition_types(
     }
 }
 
-/// The user properties the file's frontmatter holds, read as the index reads them; none for a
-/// frontmatter that does not parse or is not a mapping (`parseNote` reads none).
-pub fn file_properties(file: &NoteFile, types: &HashMap<String, String>) -> Vec<IndexedProperty> {
-    match file.parse().map(|parsed| parsed.frontmatter) {
-        Ok(YamlValue::Map(map)) => indexed(&user_properties(&map), types),
-        _ => Vec::new(),
+/// The user properties the file's frontmatter holds, read as the index reads them; `None` for a
+/// frontmatter that does not parse or is not a mapping, which `parseNote` reads as none (a file
+/// with no frontmatter reads as an empty mapping).
+pub fn file_properties(
+    file: &NoteFile,
+    types: &HashMap<String, String>,
+) -> Option<Vec<IndexedProperty>> {
+    match file.parse().ok()?.frontmatter {
+        YamlValue::Map(map) => Some(indexed(&user_properties(&map), types)),
+        _ => None,
     }
 }
 

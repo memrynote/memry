@@ -38,6 +38,9 @@
 //!   changed type since their rows were written (`retypeIndexedProperties`), and every note when
 //!   the index never recorded the definitions (an index from before the rows were filled). A
 //!   definition command asks for that pass ([`NoteIndex::retype`]).
+//! - **An outside edit reaches the record** before the rows are replaced: the property keys the
+//!   file set or dropped since the index last read it ([`outside`]). Not for a note whose last
+//!   fact was the app's own write, which mirrored its record already.
 //! - **Not measured:** a file in the large-file class (Electron streams it; a follow-up).
 //! - [`NoteIndex::reindex`] (`vault_reindex`) measures every note again, through the task once
 //!   the open walk ended, and reports its progress at most once per [`PROGRESS_INTERVAL`],
@@ -48,6 +51,7 @@
 //!
 //! [`Search::reindex_until`]: memry_core::api::search::Search::reindex_until
 
+mod outside;
 mod pass;
 mod progress;
 mod task;
