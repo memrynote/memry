@@ -775,6 +775,8 @@ describe('useNoteTreeActions', () => {
       expect(mocks.confirmNoteDelete).toHaveBeenCalledWith([{ id: entry.id, title: entry.title }])
       expect(mocks.deleteJournalEntry).not.toHaveBeenCalled()
       expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
+      // The dialog leaves closing to the delete, so a declined one closes it here.
+      expect(result.current.isDeleteDialogOpen).toBe(false)
     })
 
     it('deletes a journal entry as a journal, by date', async () => {

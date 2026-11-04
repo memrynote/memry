@@ -642,7 +642,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       const proceed = await noteDeleteGuard.confirmNoteDelete(
         [...notesToDelete, ...inFolders].map((note) => ({ id: note.id, title: note.title }))
       )
-      if (!proceed) return
+      if (!proceed) {
+        setIsDeleteDialogOpen(false)
+        return
+      }
 
       setIsDeleting(true)
       try {

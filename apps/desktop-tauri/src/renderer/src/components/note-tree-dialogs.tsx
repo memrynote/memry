@@ -78,7 +78,12 @@ export function NoteTreeDeleteDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={() => onConfirm(tasksChoice.taskIdsToDelete)}
+            onClick={(event) => {
+              // The delete closes the dialog once it went through; a folder it could not
+              // delete keeps it open on that folder.
+              event.preventDefault()
+              onConfirm(tasksChoice.taskIdsToDelete)
+            }}
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
