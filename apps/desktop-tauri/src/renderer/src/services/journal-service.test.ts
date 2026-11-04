@@ -5,7 +5,11 @@ const commands = vi.hoisted(() => ({
   journalGetEntry: vi.fn(),
   journalCreateEntry: vi.fn(),
   journalUpdateEntry: vi.fn(),
-  journalDeleteEntry: vi.fn()
+  journalDeleteEntry: vi.fn(),
+  journalGetHeatmap: vi.fn(),
+  journalGetMonthEntries: vi.fn(),
+  journalGetYearStats: vi.fn(),
+  journalGetStreak: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -59,14 +63,10 @@ describe('journal-service', () => {
     vi.clearAllMocks()
     listeners.clear()
     api = createMockApi()
-    api.journal.getHeatmap = vi.fn().mockResolvedValue([])
-    api.journal.getMonthEntries = vi.fn().mockResolvedValue([])
-    api.journal.getYearStats = vi.fn().mockResolvedValue([])
     api.journal.getDayContext = vi
       .fn()
       .mockResolvedValue({ date: '2025-01-01', tasks: [], events: [] })
     api.journal.getAllTags = vi.fn().mockResolvedValue([])
-    api.journal.getStreak = vi.fn().mockResolvedValue({ currentStreak: 0, longestStreak: 0 })
 
     api.onJournalExternalChange = vi.fn().mockReturnValue(() => {})
     ;(window as Window & { api: unknown }).api = api
@@ -116,24 +116,39 @@ describe('journal-service', () => {
     expect(commands.journalDeleteEntry).toHaveBeenCalledWith('2025-01-01')
   })
 
-  it('forwards the calendar, context and tag reads it does not serve yet', async () => {
-    await journalService.getHeatmap(2025)
-    expect(api.journal.getHeatmap).toHaveBeenCalledWith(2025)
+  it('reads the calendar through the Rust commands, a level as the contract types it', async () => {
+    commands.journalGetHeatmap.mockResolvedValue([
+      { date: '2025-01-02', characterCount: 40, level: 1 }
+    ])
+    expect(await journalService.getHeatmap(2025)).toEqual([
+      { date: '2025-01-02', characterCount: 40, level: 1 }
+    ])
+    expect(commands.journalGetHeatmap).toHaveBeenCalledWith(2025)
 
-    await journalService.getMonthEntries(2025, 1)
-    expect(api.journal.getMonthEntries).toHaveBeenCalledWith(2025, 1)
+    const preview = { date: '2025-01-02', preview: 'Hi', wordCount: 1, characterCount: 2, tags: [] }
+    commands.journalGetMonthEntries.mockResolvedValue([{ ...preview, activityLevel: 9 }])
+    expect(await journalService.getMonthEntries(2025, 1)).toEqual([
+      { ...preview, activityLevel: 0 }
+    ])
+    expect(commands.journalGetMonthEntries).toHaveBeenCalledWith(2025, 1)
 
-    await journalService.getYearStats(2025)
-    expect(api.journal.getYearStats).toHaveBeenCalledWith(2025)
+    // Rust's `f64` is typed `number | null`; the contract's `averageLevel` is a number.
+    const stats = { year: 2025, month: 1, entryCount: 1, totalWordCount: 1, totalCharacterCount: 2 }
+    commands.journalGetYearStats.mockResolvedValue([{ ...stats, averageLevel: null }])
+    expect(await journalService.getYearStats(2025)).toEqual([{ ...stats, averageLevel: 0 }])
+    expect(commands.journalGetYearStats).toHaveBeenCalledWith(2025)
 
+    const streak = { currentStreak: 2, longestStreak: 5, lastEntryDate: '2025-01-02' }
+    commands.journalGetStreak.mockResolvedValue(streak)
+    expect(await journalService.getStreak()).toEqual(streak)
+  })
+
+  it('forwards the context and tag reads it does not serve yet', async () => {
     await journalService.getDayContext('2025-01-02')
     expect(api.journal.getDayContext).toHaveBeenCalledWith('2025-01-02')
 
     await journalService.getAllTags()
     expect(api.journal.getAllTags).toHaveBeenCalled()
-
-    await journalService.getStreak()
-    expect(api.journal.getStreak).toHaveBeenCalled()
   })
 
   it('takes the created, updated and deleted events from Rust and the rest from window.api', async () => {

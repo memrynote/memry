@@ -18,10 +18,13 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
+use memry_core::api::journal::Journal;
 use memry_core::seams::secure_store::SecureStore;
 
+use super::error::NotesError;
 use super::tag_template::Undos;
 use super::write_order::WriteOrder;
+use crate::session::OpenVault;
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::consumer::VaultTier;
 use crate::vault::trash::move_to_trash;
@@ -68,6 +71,11 @@ impl NotesService {
             day_file_lands: Mutex::new(None),
             fail_next_ref_feed: AtomicBool::new(false),
         })
+    }
+
+    /// The journal of the open vault, for its reads (`journal::calendar`).
+    pub fn journal(&self, open: &OpenVault) -> Result<Arc<Journal>, NotesError> {
+        Ok(open.vault.journal(self.store.clone())?)
     }
 
     /// Test hook: `hook` runs inside the next journal save, between its file write and the

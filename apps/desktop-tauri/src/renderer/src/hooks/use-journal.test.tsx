@@ -409,9 +409,9 @@ describe('useJournalHeatmap', () => {
 
   it('should load heatmap data for a year', async () => {
     const mockHeatmap = [
-      { date: '2026-01-01', activityLevel: 2 },
-      { date: '2026-01-02', activityLevel: 3 },
-      { date: '2026-01-03', activityLevel: 1 }
+      { date: '2026-01-01', characterCount: 300, level: 2 },
+      { date: '2026-01-02', characterCount: 800, level: 3 },
+      { date: '2026-01-03', characterCount: 40, level: 1 }
     ]
 
     ;(window.api.journal.getHeatmap as ReturnType<typeof vi.fn>).mockResolvedValue(mockHeatmap)
@@ -484,8 +484,22 @@ describe('useMonthEntries', () => {
 
   it('should load month entries', async () => {
     const mockEntries = [
-      { date: '2026-01-01', preview: 'Entry 1 preview...', wordCount: 100 },
-      { date: '2026-01-15', preview: 'Entry 2 preview...', wordCount: 200 }
+      {
+        date: '2026-01-15',
+        preview: 'Entry 2 preview...',
+        wordCount: 200,
+        characterCount: 1200,
+        activityLevel: 4,
+        tags: []
+      },
+      {
+        date: '2026-01-01',
+        preview: 'Entry 1 preview...',
+        wordCount: 100,
+        characterCount: 600,
+        activityLevel: 3,
+        tags: ['work']
+      }
     ]
 
     ;(window.api.journal.getMonth as ReturnType<typeof vi.fn>).mockResolvedValue(mockEntries)
@@ -539,8 +553,22 @@ describe('useYearStats', () => {
 
   it('should load year stats', async () => {
     const mockStats = [
-      { month: 1, entryCount: 15, wordCount: 5000 },
-      { month: 2, entryCount: 20, wordCount: 7500 }
+      {
+        year: 2026,
+        month: 1,
+        entryCount: 15,
+        totalWordCount: 5000,
+        totalCharacterCount: 25000,
+        averageLevel: 3.2
+      },
+      {
+        year: 2026,
+        month: 2,
+        entryCount: 20,
+        totalWordCount: 7500,
+        totalCharacterCount: 40000,
+        averageLevel: 3.5
+      }
     ]
 
     ;(window.api.journal.getYearStats as ReturnType<typeof vi.fn>).mockResolvedValue(mockStats)

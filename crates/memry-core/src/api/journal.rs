@@ -444,6 +444,18 @@ impl Journal {
         self.db.read_blocking(move |conn| reads::stamp(conn, &date))
     }
 
+    /// [`reads::calendar_days`]: the live days in `from..=to`, oldest first.
+    pub fn calendar_days(
+        &self,
+        from: &str,
+        to: &str,
+    ) -> Result<Vec<reads::CalendarDay>, CrdtError> {
+        let (from, to) = (from.to_owned(), to.to_owned());
+        self.db
+            .read_blocking(move |conn| Ok(reads::calendar_days(conn, &from, &to)))
+            .map_err(CrdtError::from)?
+    }
+
     /// [`metadata::set_live_tags`]: the live day's tags replaced; no day is made or revived.
     pub fn set_live_tags(&self, date: &str, tags: &[String]) -> Result<Vec<String>, StorageError> {
         let (date, tags) = (date.to_owned(), tags.to_vec());

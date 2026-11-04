@@ -1,8 +1,9 @@
 // The journal's day entry in the running app (Step 13m-3, #3530): today's day is made by its
 // first edit, the text typed into it is saved to the day's file and the day's document, a
 // `#tag` typed into the body joins the day's tags on its record (never the file's), and the day
-// reads back after a restart. Ported from the Electron `journal` spec's entry-creation and
-// tag cases, which asserted nothing; the calendar and heatmap cases move with 13m-4.
+// reads back after a restart. Ported from the Electron `journal` spec's entry-creation, tag,
+// calendar and heatmap cases, which asserted nothing. The calendar (13m-4) lists the day files
+// of the vault with their previews and counts, and drops a deleted day.
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -119,4 +120,68 @@ test('a #tag typed into a day joins its tags on the record, and the file keeps i
     { timeoutMs: 20_000 }
   )
   expect(text).not.toMatch(/^tags:/m)
+})
+
+interface MonthEntry {
+  date: string
+  preview: string
+  activityLevel: number
+}
+
+async function monthEntries(page: Page, year: number, month: number): Promise<MonthEntry[]> {
+  return (await page.evaluate(
+    (args) => window.__TAURI__.core.invoke('journal_get_month_entries', args),
+    { year, month }
+  )) as MonthEntry[]
+}
+
+test('the calendar shows the saved days of the month and year, and drops a deleted day', async ({
+  page
+}) => {
+  await waitForAppReady(page)
+  expect(await pollUntil(async () => (await vaultStatus(page)).isOpen, { timeoutMs: 30_000 })).toBe(
+    true
+  )
+  const date = await today(page)
+  const [year, month] = [Number(date.slice(0, 4)), Number(date.slice(5, 7))]
+  const [first, second] = [`${date.slice(0, 8)}01`, `${date.slice(0, 8)}02`]
+  const create = (input: { date: string; content: string; tags?: string[] }) =>
+    page.evaluate((args) => window.__TAURI__.core.invoke('journal_create_entry', args), { input })
+  await create({ date: first, content: 'Walked by the river.' })
+  await create({ date: second, content: 'Read a **book**.', tags: ['books'] })
+
+  // The first read after the saves has their counts: each save answers once its day is measured.
+  const listed = await monthEntries(page, year, month)
+  expect(listed.map((day) => [day.date, day.preview, day.activityLevel])).toEqual([
+    [second, 'Read a book.', 1],
+    [first, 'Walked by the river.', 1]
+  ])
+  const heatmap = (await page.evaluate(
+    (y) => window.__TAURI__.core.invoke('journal_get_heatmap', { year: y }),
+    year
+  )) as { date: string; level: number }[]
+  expect(heatmap.map((day) => [day.date, day.level])).toEqual([
+    [first, 1],
+    [second, 1]
+  ])
+
+  await navigateTo(page, 'journal')
+  const dateNav = page.locator('nav[aria-label="Journal date navigation"]')
+  const monthName = await page.evaluate(() => new Date().toLocaleString('en-US', { month: 'long' }))
+  await dateNav.getByRole('button', { name: monthName, exact: true }).click()
+  await expect(page.getByText('Walked by the river.')).toBeVisible()
+  await expect(page.getByText('Read a book.')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Go to year view' }).click()
+  await expect(page.getByText('2 days', { exact: true })).toBeVisible()
+
+  // A deleted day leaves the calendar.
+  expect(
+    await page.evaluate(
+      (day) => window.__TAURI__.core.invoke('journal_delete_entry', { date: day }),
+      second
+    )
+  ).toEqual({ success: true })
+  await expect(page.getByText('1 day', { exact: true })).toBeVisible()
+  expect((await monthEntries(page, year, month)).map((day) => day.date)).toEqual([first])
 })
