@@ -95,9 +95,10 @@ export const commands = {
 	notesPreviewByTitle: (title: string) => __TAURI_INVOKE<WikiLinkPreviewView | null>("notes_preview_by_title", { title }),
 	/**
 	 *  `notes:move`: the note's file, under its name (numbered when taken), in another folder of
-	 *  the vault (`""` is the root). Answers the note.
+	 *  the vault (`""` is the root). Answers the note, and why its relative refs still point from
+	 *  its old folder when they could not follow it.
 	 */
-	notesMove: (id: string, newFolder: string) => __TAURI_INVOKE<NoteView>("notes_move", { id, newFolder }),
+	notesMove: (id: string, newFolder: string) => __TAURI_INVOKE<MovedNoteView>("notes_move", { id, newFolder }),
 	/**
 	 *  `notes:rename`: the note's new title, and its file the name that title makes in its folder.
 	 *  Answers the note.
@@ -778,6 +779,16 @@ export type Modifiers = {
 };
 
 /**
+ *  `notes:move`'s answer: the note, and why its relative links to images and files still point
+ *  from its old folder when they could not follow it (`rewriteNoteRefsForMove`; Electron logs
+ *  that and answers success).
+ */
+export type MovedNoteView = {
+	note: NoteView,
+	refsKept: RefsKept | null,
+};
+
+/**
  *  What the open's sweep of interrupted folder moves did ([`crate::vault::move_journal`]), for
  *  the notice the renderer shows once per `id`. Counts only: the folders' names are the user's.
  */
@@ -1047,6 +1058,13 @@ export type PropertyDefinitionView = {
 	/**  When the record was created; empty for a definition only the file holds. */
 	createdAt: string,
 };
+
+/**
+ *  Why a moved note's relative refs were left as they were: `changing`, the note changed while
+ *  it moved (an outside edit or a sync merge not written yet); `unreadable`, the app cannot edit
+ *  the file (a frontmatter that does not parse, a document a markdown file cannot hold).
+ */
+export type RefsKept = "changing" | "unreadable";
 
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {

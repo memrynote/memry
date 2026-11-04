@@ -2199,5 +2199,9 @@
     "keep": "Jegyzet megtartása",
     "deletePermanently": "Végleges törlés",
     "kept": "A jegyzet megmaradt. Nem sikerült áthelyezni a kukába."
+  },
+  "movedRefsKept": {
+    "changing": "„{title}” át lett helyezve, de közben változott, ezért a képekre és fájlokra mutató hivatkozásai még a régi mappára mutatnak. Ellenőrizd őket a jegyzetben.",
+    "unreadable": "„{title}” át lett helyezve, de a Memry nem tudja szerkeszteni a fájlját, ezért a képekre és fájlokra mutató hivatkozásai még a régi mappára mutatnak. Frissítsd őket kézzel."
   }
 }

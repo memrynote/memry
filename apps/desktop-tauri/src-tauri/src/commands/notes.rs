@@ -28,7 +28,7 @@ use memry_desktop::notes::mentions::{Mentions, UnlinkedMentionView};
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::NoteUpdateInput;
 use memry_desktop::notes::view::{
-    FileView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
+    FileView, MovedNoteView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
 };
 use memry_desktop::notes::{local_only, positions, read};
 use memry_desktop::session::{OpenVault, Session};
@@ -171,14 +171,15 @@ pub async fn notes_update<R: Runtime>(
 }
 
 /// `notes:move`: the note's file, under its name (numbered when taken), in another folder of
-/// the vault (`""` is the root). Answers the note.
+/// the vault (`""` is the root). Answers the note, and why its relative refs still point from
+/// its old folder when they could not follow it.
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_move<R: Runtime>(
     app: AppHandle<R>,
     id: String,
     new_folder: String,
-) -> Result<NoteView, CommandError> {
+) -> Result<MovedNoteView, CommandError> {
     blocking("notes_move", move || {
         let open = open_vault(&app)?;
         service(&app)?

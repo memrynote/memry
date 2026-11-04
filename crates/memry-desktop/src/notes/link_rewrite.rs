@@ -26,15 +26,20 @@
 //! markdown note moved to another folder has every relative `![](ref)` and file block `url`
 //! re-pointed from its new folder at the file it named
 //! ([`memry_core::markdown::schema::blocks::note_refs`]), in its own next write turn, through
-//! the same [`AppEdit`] with [`Precondition::Held`], before the links to it are repaired. Its
-//! mobile vault-root refs (`attachments/<id>/...`) stay. A note whose document is ahead of its
-//! file keeps its refs, and the log says so; until Step 14 only a sync merge makes one.
+//! the same [`AppEdit`] with [`Precondition::HeldAt`] its old path, which its document was built
+//! at, before the links to it are repaired. Its mobile vault-root refs (`attachments/<id>/...`)
+//! stay. A refused edit wrote nothing, so a note that was changing (an outside edit not read
+//! yet, a document ahead of its file) is tried once more once the write-back caught up. A note
+//! still refused keeps its refs, and the move's answer says why ([`RefsKept`]), so the renderer
+//! tells the user: Electron only logs it.
 //!
 //! Divergences from Electron, stated: a path link names a note's folder and title, as Tauri
 //! resolves it (`wiki_target`), where Electron used the file's path (they differ only for a
 //! file named other than its title); `[[Folder/Old.md]]` follows too (the core's rule). Not
 //! here: the journal page's own event for a rewritten day (Step 13m), and the lock check
 //! (Step 14).
+
+use std::time::Duration;
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::notes::link_rewrite::{FileRewrite, rewrite_file};
@@ -45,52 +50,85 @@ use memry_core::markdown::schema::blocks::note_refs::{
 use super::error::{NotesError, SCOPE};
 use super::moves::Named;
 use super::service::NotesService;
+use super::view::RefsKept;
 use crate::session::OpenVault;
-use crate::vault::app_edit::{AppEdit, Edited, Precondition};
+use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
 use crate::vault::consumer::ChangeSource;
 
+/// How long a moved note's refs wait for the write-back before their second try.
+const SETTLE: Duration = Duration::from_secs(2);
+
 impl NotesService {
-    /// Re-points the relative refs of `note_id`, a markdown note moved from `from` to `to`.
-    /// Never fails: see the module comment.
+    /// Re-points the relative refs of `note_id`, a markdown note moved from `from` to `to`, and
+    /// answers why they were left when they were. Never fails the move: see the module comment.
     pub(super) fn rewrite_own_refs(
         &self,
         open: &OpenVault,
         note_id: &str,
         from: &Named,
         to: &Named,
-    ) {
+    ) -> Option<RefsKept> {
         if !from.link.markdown || from.link.folder == to.link.folder {
-            return;
+            return None;
         }
+        match self.try_own_refs(open, note_id, from, to)? {
+            // A refusal wrote nothing, so one more try once the write-back caught up is safe.
+            RefsKept::Changing => {
+                self.tier.flush(SETTLE);
+                self.try_own_refs(open, note_id, from, to)
+            }
+            RefsKept::Unreadable => Some(RefsKept::Unreadable),
+        }
+    }
+
+    fn try_own_refs(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        from: &Named,
+        to: &Named,
+    ) -> Option<RefsKept> {
         let options = NoteRefsOptions {
             source_note_id: Some(note_id),
             preserve_root_relative_attachments: true,
         };
+        let held = Precondition::HeldAt(&from.path);
         let rewritten = AppEdit::new(&self.tier, &self.store, open)
             .map_err(NotesError::from)
             .and_then(|edit| {
                 self.order.run(note_id, |turn| {
-                    edit.run(turn, Precondition::Held, ChangeSource::AppEdit, |text| {
+                    edit.run(turn, held, ChangeSource::AppEdit, |text| {
                         Ok::<_, NotesError>(rewrite_note_refs_for_move(
                             text, &from.path, &to.path, options,
                         ))
                     })
                 })
             });
-        match rewritten {
-            Ok(Edited::Wrote { held: true, .. } | Edited::Unchanged) => {}
-            Ok(outcome) => tracing::warn!(
-                scope = SCOPE,
-                note_id,
-                outcome = ?outcome,
-                "a moved note's relative embeds were not re-pointed"
-            ),
-            Err(error) => tracing::warn!(
-                scope = SCOPE,
-                note_id,
-                "a moved note's relative embeds were not re-pointed: {error}"
-            ),
-        }
+        let kept = match rewritten {
+            // A write the document did not take is the watcher's to bring in.
+            Ok(Edited::Wrote { .. } | Edited::Unchanged) => return None,
+            Ok(Edited::Kept(kept)) => kept,
+            Err(error) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    note_id,
+                    "a moved note's relative refs were not re-pointed: {error}"
+                );
+                return Some(RefsKept::Changing);
+            }
+        };
+        tracing::warn!(
+            scope = SCOPE,
+            note_id,
+            kept = ?kept,
+            "a moved note's relative refs were not re-pointed"
+        );
+        Some(match kept {
+            Kept::FrontmatterUnreadable | Kept::FrontmatterBroken | Kept::NotRepresentable => {
+                RefsKept::Unreadable
+            }
+            _ => RefsKept::Changing,
+        })
     }
 
     /// Re-points the links to `note_id`, which was named `from` and is named `to` now. Never

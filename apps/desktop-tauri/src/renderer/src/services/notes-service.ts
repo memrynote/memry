@@ -46,6 +46,7 @@ import type {
 } from '@memry/contracts/notes-api'
 import { markdownPreviewText } from '@memry/shared/markdown-preview-text'
 import { getI18n } from 'react-i18next'
+import { toast } from 'sonner'
 import {
   commands,
   events,
@@ -217,9 +218,17 @@ const ported = {
       return { ...failure(error), note: null }
     }
   },
+  // A move whose relative refs could not follow the note still moved it; the user is told
+  // the links point from the old folder, which Electron only logs.
   move: async (id: string, newFolder: string): Promise<NoteUpdateResponse> => {
     try {
-      return { success: true, note: toNote(await commands.notesMove(id, newFolder)) }
+      const { note, refsKept } = await commands.notesMove(id, newFolder)
+      const t = getI18n().getFixedT(null, 'notes')
+      if (refsKept === 'changing') toast.warning(t('movedRefsKept.changing', { title: note.title }))
+      if (refsKept === 'unreadable') {
+        toast.warning(t('movedRefsKept.unreadable', { title: note.title }))
+      }
+      return { success: true, note: toNote(note) }
     } catch (error) {
       return { ...failure(error), note: null }
     }

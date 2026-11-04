@@ -2199,5 +2199,9 @@
     "keep": "Ponechať poznámku",
     "deletePermanently": "Odstrániť natrvalo",
     "kept": "Poznámka bola ponechaná. Nepodarilo sa ju presunúť do koša."
+  },
+  "movedRefsKept": {
+    "changing": "Poznámka „{title}“ bola presunutá, ale v tej chvíli sa menila, takže jej odkazy na obrázky a súbory stále smerujú do pôvodného priečinka. Skontrolujte ich v poznámke.",
+    "unreadable": "Poznámka „{title}“ bola presunutá, ale Memry nemôže upraviť jej súbor, takže jej odkazy na obrázky a súbory stále smerujú do pôvodného priečinka. Upravte ich ručne."
   }
 }

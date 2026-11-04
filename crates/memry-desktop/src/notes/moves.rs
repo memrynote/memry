@@ -23,10 +23,11 @@
 //!    move. A rename whose file keeps its name (a title its name already says) sends it with
 //!    the same old and new path;
 //! 5. once the note's turn ended, a markdown note moved to another folder has its relative
-//!    embeds re-pointed from there (`rewriteNoteRefsForMove`), in its own next turn, and the
-//!    links to it in other notes' files follow its new title or path, each in its own note's
-//!    turn ([`super::link_rewrite`]). A move that changed what the file is changed no name a
-//!    link spells, and repairs none.
+//!    embeds re-pointed from there (`rewriteNoteRefsForMove`), in its own next turn (the answer
+//!    says why when they could not be: [`MovedNoteView::refs_kept`]), and the links to it in
+//!    other notes' files follow its new title or path, each in its own note's turn
+//!    ([`super::link_rewrite`]). A move that changed what the file is changed no name a link
+//!    spells, and repairs none.
 //!
 //! Step 5 has no durable record: a crash between the move and its repairs leaves them undone,
 //! as in Electron. The moved note's own refs are not replayable blindly either (the arithmetic
@@ -56,7 +57,7 @@ use memry_core::domain::notes::link_rewrite::LinkNames;
 use super::error::NotesError;
 use super::read;
 use super::service::NotesService;
-use super::view::NoteView;
+use super::view::{MovedNoteView, NoteView};
 use crate::session::OpenVault;
 use crate::shell::file_open::{Resolution, is_plain_relative};
 use crate::vault::app_move::{NoteFileMove, on_disk};
@@ -93,6 +94,7 @@ impl NotesService {
         title: &str,
     ) -> Result<NoteView, NotesError> {
         self.move_checked(open, note_id, MoveTo::Title(title), &mut || Ok(()))
+            .map(|moved| moved.note)
     }
 
     pub fn move_to_folder(
@@ -100,7 +102,7 @@ impl NotesService {
         open: &OpenVault,
         note_id: &str,
         folder: &str,
-    ) -> Result<NoteView, NotesError> {
+    ) -> Result<MovedNoteView, NotesError> {
         self.move_checked(open, note_id, MoveTo::Folder(folder), &mut || Ok(()))
     }
 
@@ -113,7 +115,7 @@ impl NotesService {
         note_id: &str,
         to: MoveTo<'_>,
         after_file: &mut dyn FnMut() -> Result<(), NotesError>,
-    ) -> Result<NoteView, NotesError> {
+    ) -> Result<MovedNoteView, NotesError> {
         if let MoveTo::Title(title) = to {
             let units = title.encode_utf16().count();
             if units == 0 || units > MAX_TITLE_UNITS {
@@ -123,11 +125,14 @@ impl NotesService {
         let followed = self
             .order
             .run(note_id, |_| self.move_now(open, note_id, to, after_file))?;
-        if let Some((from, to)) = followed {
-            self.rewrite_own_refs(open, note_id, &from, &to);
+        let refs_kept = followed.and_then(|(from, to)| {
+            let kept = self.rewrite_own_refs(open, note_id, &from, &to);
             self.rewrite_inbound(open, note_id, &from, &to);
-        }
-        read::get(open, note_id, None)?.ok_or_else(|| NotesError::NotFound(note_id.to_owned()))
+            kept
+        });
+        let note = read::get(open, note_id, None)?
+            .ok_or_else(|| NotesError::NotFound(note_id.to_owned()))?;
+        Ok(MovedNoteView { note, refs_kept })
     }
 
     /// Moves the note; the names a link spelled it by before and after, with its paths, when

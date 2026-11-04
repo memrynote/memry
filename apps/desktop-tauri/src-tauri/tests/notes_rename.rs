@@ -20,6 +20,7 @@ use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput};
+use memry_desktop::notes::view::RefsKept;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
@@ -164,7 +165,7 @@ impl Fixture {
     fn move_to(&self, id: &str, folder: &str) -> Result<String, String> {
         let call = notes_move(self.app.handle().clone(), id.into(), folder.into());
         tauri::async_runtime::block_on(call)
-            .map(|note| note.path)
+            .map(|moved| moved.note.path)
             .map_err(|error| error.code)
     }
 
@@ -363,10 +364,14 @@ fn an_edit_answers_the_note_and_sends_internal_notes_updated_and_tags_changed() 
 #[test]
 fn a_move_re_points_the_note_s_embeds_and_sends_notes_moved() {
     let f = opened();
+    // The document resolved the Obsidian embed from `work/`: from the new folder it names
+    // another file, which must not read as a document ahead of its file.
+    fs::create_dir_all(f.vault.join("work/img")).unwrap();
+    fs::write(f.vault.join("work/img/photo.png"), b"png").unwrap();
     let id = f.create_with(
         "Plan",
         "work",
-        "![photo](images/photo.png)\n\n![web](https://example.com/a.png)",
+        "![[img/photo.png]]\n\n![photo](images/photo.png)\n\n![web](https://example.com/a.png)",
     );
     let before = fs::read_to_string(f.vault.join("work/Plan.md")).unwrap();
 
@@ -399,6 +404,37 @@ fn a_move_re_points_the_note_s_embeds_and_sends_notes_moved() {
     std::thread::sleep(Duration::from_millis(500));
     assert_eq!(*f.moved.lock().unwrap(), Vec::<Value>::new());
     assert_eq!(*f.renamed.lock().unwrap(), Vec::<Value>::new());
+}
+
+/// A note changed outside the app and not read yet when it moves keeps its refs, which the
+/// move's answer says, so the renderer tells the user; the outside edit stays in the file.
+#[test]
+fn a_move_of_a_note_changed_outside_answers_that_its_refs_stayed() {
+    let f = opened();
+    let id = f.create_with("Plan", "work", "![photo](images/photo.png)");
+    let edited = format!(
+        "{}\nEdited elsewhere\n",
+        fs::read_to_string(f.vault.join("work/Plan.md")).unwrap()
+    );
+    fs::write(f.vault.join("work/Plan.md"), &edited).unwrap();
+
+    let call = notes_move(f.app.handle().clone(), id.clone(), "archive".into());
+    let moved = tauri::async_runtime::block_on(call).unwrap();
+
+    assert_eq!(moved.note.path, "archive/Plan.md");
+    assert_eq!(moved.refs_kept, Some(RefsKept::Changing));
+    assert_eq!(
+        fs::read_to_string(f.vault.join("archive/Plan.md")).unwrap(),
+        edited
+    );
+    let taken = f.updated_for(&id);
+    assert_eq!(taken["source"], "external");
+    assert!(
+        taken["changes"]["content"]
+            .as_str()
+            .is_some_and(|content| content.contains("Edited elsewhere")),
+        "{taken}"
+    );
 }
 
 #[test]

@@ -53,6 +53,8 @@ const events = vi.hoisted(() => {
 })
 
 vi.mock('../../../generated/bindings', () => ({ commands, events }))
+const toast = vi.hoisted(() => ({ warning: vi.fn() }))
+vi.mock('sonner', () => ({ toast }))
 
 import {
   notesService,
@@ -548,12 +550,13 @@ describe('notes-service', () => {
       created: CREATED,
       modified: MODIFIED
     }
-    commands.notesMove.mockResolvedValue(view)
+    commands.notesMove.mockResolvedValue({ note: view, refsKept: null })
     await expect(notesService.move('note-1', 'archive')).resolves.toEqual({
       success: true,
       note: { ...view, created: new Date(CREATED), modified: new Date(MODIFIED) }
     })
     expect(commands.notesMove).toHaveBeenCalledWith('note-1', 'archive')
+    expect(toast.warning).not.toHaveBeenCalled()
 
     commands.notesMove.mockRejectedValue({
       kind: 'invalid',
@@ -565,6 +568,21 @@ describe('notes-service', () => {
       error: 'not a folder of the vault',
       note: null
     })
+  })
+
+  it('moves a note whose refs stayed, and tells the user why', async () => {
+    const view = { id: 'note-1', path: 'archive/Plan.md', title: 'Plan', created: 0, modified: 0 }
+    for (const refsKept of ['changing', 'unreadable']) {
+      toast.warning.mockClear()
+      commands.notesMove.mockResolvedValue({ note: view, refsKept })
+      await expect(notesService.move('note-1', 'archive')).resolves.toMatchObject({
+        success: true,
+        note: { path: 'archive/Plan.md' }
+      })
+      expect(toast.warning).toHaveBeenCalledOnce()
+      expect(toast.warning.mock.calls[0]?.[0]).toContain('Plan')
+    }
+    expect(toast.warning.mock.calls[0]?.[0]).toMatch(/by hand/)
   })
 
   it('forwards attachments, export, and version helpers', async () => {

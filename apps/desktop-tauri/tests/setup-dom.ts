@@ -159,7 +159,7 @@ vi.mock('../src/generated/bindings', () => {
           | { success?: boolean; note?: unknown; error?: string }
           | undefined
         if (result?.success === false) throw new Error(result.error ?? '')
-        return result?.note
+        return { note: result?.note, refsKept: null }
       },
       notesReorder: async (folderPath: string, notePaths: string[]) => {
         const result = (await notes().reorder(folderPath, notePaths)) as
