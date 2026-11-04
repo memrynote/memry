@@ -15,6 +15,8 @@
 //! | a folder a link leads to is never pruned                          | links stay                    |
 //! | a folder made again during the wait is kept with its file         | `pruneDeletedFolders` order   |
 //! | a file written after the scan keeps its folder, not the ones gone | `rmdir`, not a tree delete    |
+//! | a pulled delete with no local record or clock still removes it    | `applyDelete`, #2512          |
+//! | the folder holding the journal stays, the one beside it goes      | the journal is not sync's     |
 //! | another spelling of a live folder is never touched                | case-blind disks              |
 //! | a folder sync may not reach is never touched                      | `create_folder`'s refusals    |
 //! | a folder file with text or unknown keys keeps its folder          | decision, Electron removes it |
@@ -286,8 +288,9 @@ fn a_file_written_after_the_scan_keeps_its_folder_not_the_ones_gone() {
             fs::write(e.vault.join("a/x.md"), "written meanwhile\n").unwrap();
         }
     };
+    // From `a`: its empty `a/b` goes before the late note keeps `a`.
     let removed = notes
-        .prune_deleted_folders_checked(&open, "a/b", false, NOW, &mut late)
+        .prune_deleted_folders_checked(&open, "a", false, NOW, &mut late)
         .unwrap();
     assert_eq!(removed, ["a/b"]);
     assert_eq!(
@@ -340,7 +343,15 @@ fn a_folder_sync_may_not_reach_is_never_touched() {
         ..Default::default()
     };
     write_vault_config(&e.vault, &shown).unwrap();
-    for path in ["", ".hidden", "attachments/x", "journal", "journal/2026"] {
+    for path in [
+        "",
+        ".hidden",
+        "attachments/x",
+        "canvases/x",
+        "node_modules/x",
+        "journal",
+        "journal/2026",
+    ] {
         notes
             .apply_remote_folder(&open, path, Some("lucide:x"))
             .unwrap();
@@ -352,6 +363,8 @@ fn a_folder_sync_may_not_reach_is_never_touched() {
     assert!(!e.vault.join(".folder.md").exists());
     assert!(!e.vault.join(".hidden").exists());
     assert!(!e.vault.join("attachments/x").exists());
+    assert!(!e.vault.join("canvases/x").exists());
+    assert!(!e.vault.join("node_modules/x").exists());
     assert!(e.vault.join("journal/2026").is_dir());
     assert!(!e.vault.join("journal/.folder.md").exists());
 }
@@ -384,4 +397,46 @@ fn a_folder_file_with_text_or_unknown_keys_keeps_its_folder() {
             text
         );
     }
+}
+
+/// A pulled delete whose folder has no record here, or whose tombstone carries no clock (a
+/// legacy one), removes it all the same, as `applyDelete` does: a folder left with neither looks
+/// made in a file manager, and the backfill would sync it back (#2512).
+#[test]
+fn a_pulled_delete_with_no_local_record_or_clock_still_removes_it() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    fs::create_dir(e.vault.join("Old")).unwrap();
+    fs::write(
+        e.vault.join("Old/.folder.md"),
+        "---\nicon: 'lucide:x'\n---\n\n",
+    )
+    .unwrap();
+    let removed = notes
+        .prune_deleted_folders_checked(&open, "Old", true, NOW, &mut |_| {})
+        .unwrap();
+    assert_eq!(removed, ["Old"]);
+    assert!(!e.vault.join("Old").exists());
+}
+
+/// The journal is not sync's to prune: a deleted folder beside it goes, the deleted folder
+/// holding it stays, though the journal folder holds nothing yet.
+#[test]
+fn the_folder_holding_the_journal_stays_the_one_beside_it_goes() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    let journal = VaultConfigPatch {
+        journal_folder: Some("life/journal".to_owned()),
+        ..Default::default()
+    };
+    write_vault_config(&e.vault, &journal).unwrap();
+    notes.create_folder(&open, "life").unwrap();
+    notes.create_folder(&open, "life/old").unwrap();
+    fs::create_dir(e.vault.join("life/journal")).unwrap();
+    delete_records(&e, "life");
+    let removed = notes
+        .prune_deleted_folders_checked(&open, "life/old", false, NOW, &mut |_| {})
+        .unwrap();
+    assert_eq!(removed, ["life/old"]);
+    assert!(e.vault.join("life/journal").is_dir());
 }

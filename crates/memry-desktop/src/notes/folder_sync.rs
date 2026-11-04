@@ -22,7 +22,6 @@
 //! [`NotesWriter::folder_deleted`]: memry_core::api::notes_write::NotesWriter::folder_deleted
 
 use std::fs;
-use std::io;
 use std::path::Path;
 
 use super::error::{NotesError, SCOPE};
@@ -114,21 +113,28 @@ impl NotesService {
             if !known_deleted && !writer.folder_deleted(&current)? {
                 break;
             }
-            known_deleted = false;
-            // The wait gives a pulled upsert or the user time to make the folder again: it goes
-            // only when it is still deleted afterwards (Electron checks after its wait).
+            // The wait gives a pulled upsert or the user time to make the folder again, so it
+            // goes only when that did not happen meanwhile. The folder whose delete the caller
+            // applied may have no record or tombstone clock here (Electron prunes it all the
+            // same, #2512): for it only a live record says it was made again.
+            let applied = std::mem::take(&mut known_deleted);
             let mut confirm = || {
-                writer
-                    .folder_deleted(&current)
-                    .map_err(|error| io::Error::other(error.to_string()))
+                let gone = if applied {
+                    !open
+                        .vault
+                        .notes()
+                        .folders()?
+                        .iter()
+                        .any(|row| row.path == current)
+                } else {
+                    writer.folder_deleted(&current)?
+                };
+                Ok::<_, NotesError>(gone)
             };
-            let removal = empty_folder::remove_if_empty_checked(
-                root,
-                &current,
-                quiet,
-                &mut confirm,
-                &mut || after_wait(&current),
-            )?;
+            let removal =
+                empty_folder::remove_if_empty(root, &current, quiet, &mut confirm, &mut || {
+                    after_wait(&current)
+                })?;
             match removal {
                 Removal::Removed => {
                     tracing::info!(scope = SCOPE, "removed a folder deleted on another device");

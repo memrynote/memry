@@ -253,4 +253,13 @@ fn a_pulled_folder_reaches_the_vault_and_the_renderer_hears_of_it() {
         f.vault.join("Remote").is_dir(),
         "a folder with no tombstone stays"
     );
+
+    // As a pull leaves a delete of a folder this device has no record of: no record, no clock.
+    fs::create_dir(f.vault.join("Remote/Unknown")).unwrap();
+    tauri::async_runtime::block_on(folder_sync::remote_folder_deleted(
+        f.app.clone(),
+        "Remote/Unknown".to_owned(),
+    ));
+    assert_eq!(heard(), [r#"{"path":"Remote/Unknown"}"#]);
+    assert!(!f.vault.join("Remote/Unknown").exists());
 }

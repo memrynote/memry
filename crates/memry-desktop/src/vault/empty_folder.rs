@@ -67,27 +67,16 @@ struct Scan {
 }
 
 /// Removes the folder at `rel` when it holds only subfolders and disposable files, once nothing
-/// in it changed for `quiet.window` and `confirm` still says it may go. Blocks: call it on a
-/// blocking thread.
-pub fn remove_if_empty(
+/// in it changed for `quiet.window` and `confirm` still says it may go. `after_wait` runs once
+/// the wait is over, before `confirm`, where a test acts as another writer would. Blocks: call
+/// it on a blocking thread.
+pub fn remove_if_empty<E: From<io::Error>>(
     root: &Path,
     rel: &str,
     quiet: Quiet,
-    confirm: &mut dyn FnMut() -> io::Result<bool>,
-) -> io::Result<Removal> {
-    remove_if_empty_checked(root, rel, quiet, confirm, &mut || {})
-}
-
-/// [`remove_if_empty`] with a hook that runs once the wait is over, before `confirm`, so a test
-/// can act there as another writer would.
-#[doc(hidden)]
-pub fn remove_if_empty_checked(
-    root: &Path,
-    rel: &str,
-    quiet: Quiet,
-    confirm: &mut dyn FnMut() -> io::Result<bool>,
+    confirm: &mut dyn FnMut() -> Result<bool, E>,
     after_wait: &mut dyn FnMut(),
-) -> io::Result<Removal> {
+) -> Result<Removal, E> {
     let dir = on_disk(root, rel);
     let started = Instant::now();
     let scan = loop {
@@ -98,7 +87,7 @@ pub fn remove_if_empty_checked(
             {
                 return Ok(Removal::Missing);
             }
-            Err(error) => return Err(error),
+            Err(error) => return Err(error.into()),
         };
         if let Some(kept) = &scan.kept {
             return Ok(Removal::HoldsFiles {
@@ -122,7 +111,7 @@ pub fn remove_if_empty_checked(
         return Ok(Removal::Declined);
     }
     for file in &scan.disposable {
-        gone_is_fine(fs::remove_file(file))?;
+        gone_is_fine(fs::remove_file(file)).map_err(E::from)?;
     }
     let mut removed = Vec::new();
     for dir in &scan.dirs {
@@ -133,7 +122,7 @@ pub fn remove_if_empty_checked(
                     removed,
                 });
             }
-            other => gone_is_fine(other)?,
+            other => gone_is_fine(other).map_err(E::from)?,
         }
         removed.push(relative(root, dir));
     }
