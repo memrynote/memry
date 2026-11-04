@@ -19,3 +19,11 @@ slow-timeout = { period = "60s", terminate-after = 5 }
 [[profile.default.overrides]]
 filter = 'test(/^markdown_depth::/) | binary(markdown_proptest)'
 slow-timeout = { period = "60s", terminate-after = 15 }
+
+# The live OS secret steps of rust-ci.yml (#3907). It keeps the default profile's limits and test
+# group, reports every test, and runs the rest after one fails or hangs. The steps add
+# --no-capture, which nextest has no setting for, to print each test's START line.
+[profile.live]
+status-level = "all"
+final-status-level = "all"
+fail-fast = false
