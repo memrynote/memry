@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { commands } from '../../../../../../generated/bindings'
 
 import { CheckboxEditor } from './CheckboxEditor'
@@ -103,6 +103,66 @@ describe('note info property editors', () => {
     vi.clearAllMocks()
     mocks.pickerValueChange = null
   })
+  afterEach(() => vi.restoreAllMocks())
+
+  // WebView2 blurs the focused field when the window is deactivated (#3919). An empty option
+  // field closes on blur, so another window opening used to close it before the user typed.
+  it.each([
+    [
+      'select',
+      () => (
+        <SelectEditor
+          value={null}
+          options={options}
+          defaultOpen
+          onChange={vi.fn()}
+          onAddOption={vi.fn()}
+        />
+      ),
+      'properties.newOption'
+    ],
+    [
+      'multiselect',
+      () => (
+        <MultiselectEditor
+          value={[]}
+          options={options}
+          defaultOpen
+          onChange={vi.fn()}
+          onAddOption={vi.fn()}
+        />
+      ),
+      'properties.newOption'
+    ],
+    [
+      'status',
+      () => (
+        <StatusEditor
+          value={null}
+          categories={categories}
+          defaultOpen
+          onChange={vi.fn()}
+          onAddOption={vi.fn()}
+        />
+      ),
+      'button.add'
+    ]
+  ])(
+    'the %s option name field stays open when the app window loses focus',
+    (_kind, editor, opener) => {
+      render(editor())
+      fireEvent.click(screen.getAllByRole('button', { name: opener })[0])
+      const field = () => screen.queryByPlaceholderText('properties.optionName')
+
+      const windowFocused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+      fireEvent.blur(field()!)
+      expect(field()).toBeInTheDocument()
+
+      windowFocused.mockReturnValue(true)
+      fireEvent.blur(field()!)
+      expect(field()).not.toBeInTheDocument()
+    }
+  )
 
   it('edits text, long text, numbers, dates, and urls through keyboard and blur paths', () => {
     const onTextChange = vi.fn()

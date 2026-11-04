@@ -8,7 +8,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { CanvasRowNameInput, type CanvasRowEdit } from './canvas-row-name-input'
 
@@ -25,6 +25,24 @@ function makeEdit(overrides: Partial<CanvasRowEdit> = {}): CanvasRowEdit {
 }
 
 describe('CanvasRowNameInput', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('keeps the field when the app window loses focus, and commits on a blur inside the app', () => {
+    // WebView2 blurs the focused field when the window is deactivated (#3919); that is not the
+    // user clicking away.
+    const edit = makeEdit()
+    render(<CanvasRowNameInput edit={edit} ariaLabel="name" />)
+    const input = screen.getByLabelText('name')
+
+    const windowFocused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    fireEvent.blur(input)
+    expect(edit.onSubmit).not.toHaveBeenCalled()
+
+    windowFocused.mockReturnValue(true)
+    fireEvent.blur(input)
+    expect(edit.onSubmit).toHaveBeenCalledOnce()
+  })
+
   it('keeps its keystrokes out of the row it is rendered in', () => {
     // The row's own F2 and Delete shortcuts live one React parent up, and
     // synthetic events bubble there, so typing a name would otherwise fire
