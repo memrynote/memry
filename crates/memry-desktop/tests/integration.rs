@@ -80,6 +80,8 @@ mod import_copy;
 mod indexer_facts;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
+#[path = "journal_calendar.rs"]
+mod journal_calendar;
 #[path = "journal_format_vectors.rs"]
 mod journal_format_vectors;
 #[path = "journal_rename.rs"]

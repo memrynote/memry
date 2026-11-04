@@ -1,6 +1,11 @@
 import type {
+  ActivityLevel,
+  HeatmapEntry,
   JournalClientAPI,
   JournalEntry,
+  JournalStreak,
+  MonthEntryPreview,
+  MonthStats,
   JournalEntryCreatedEvent,
   JournalEntryUpdatedEvent,
   JournalEntryDeletedEvent,
@@ -15,7 +20,14 @@ function toEntry({ properties, ...entry }: JournalEntryView): JournalEntry {
   return properties === null ? entry : { ...entry, properties }
 }
 
-/** The journal methods served from Rust commands (`commands/journal.rs`, #3530 13m-2). */
+const LEVELS = [0, 1, 2, 3, 4] as const
+
+/** An activity level as Rust sends it, a number 0-4. */
+function toLevel(level: number): ActivityLevel {
+  return LEVELS[level] ?? 0
+}
+
+/** The journal methods served from Rust commands (`commands/journal.rs`, #3530 13m-2, 13m-4). */
 const ported = {
   /**
    * Get a journal entry by date.
@@ -76,7 +88,28 @@ const ported = {
    * @param date - Date in YYYY-MM-DD format
    * @returns Success status
    */
-  deleteEntry: (date: string): Promise<{ success: boolean }> => commands.journalDeleteEntry(date)
+  deleteEntry: (date: string): Promise<{ success: boolean }> => commands.journalDeleteEntry(date),
+
+  /** The live days of a year, oldest first. */
+  getHeatmap: async (year: number): Promise<HeatmapEntry[]> =>
+    (await commands.journalGetHeatmap(year)).map((day) => ({ ...day, level: toLevel(day.level) })),
+
+  /** The live days of a month (1-12), newest first, with their previews. */
+  getMonthEntries: async (year: number, month: number): Promise<MonthEntryPreview[]> =>
+    (await commands.journalGetMonthEntries(year, month)).map((day) => ({
+      ...day,
+      activityLevel: toLevel(day.activityLevel)
+    })),
+
+  /** One row per month of the year that has a live day. */
+  getYearStats: async (year: number): Promise<MonthStats[]> =>
+    (await commands.journalGetYearStats(year)).map((month) => ({
+      ...month,
+      averageLevel: month.averageLevel ?? 0
+    })),
+
+  /** The current and longest runs of live days. */
+  getStreak: (): Promise<JournalStreak> => commands.journalGetStreak()
 } satisfies Partial<JournalClientAPI>
 
 /** The journal methods served from Rust; `window.api.journal` is typed without them. */

@@ -1,5 +1,5 @@
 //! The index task of one open vault: what the facts owe, when it is paid, and the `vault_reindex`
-//! requests, in one loop that parks until a fact, a request or the owed work's time.
+//! and app-write measure requests, in one loop that parks until a fact, a request or the owed work's time.
 
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -23,9 +23,17 @@ use crate::vault::watch::VaultEvent;
 pub type Progress = Box<dyn FnMut(IndexProgress) + Send>;
 pub type Answer = reply::Receiver<Result<Backfilled, IndexError>>;
 type Reply = reply::Sender<Result<Backfilled, IndexError>>;
+pub type Measured = reply::Receiver<Result<bool, IndexError>>;
 
 enum Command {
-    Reindex { progress: Progress, answer: Reply },
+    Reindex {
+        progress: Progress,
+        answer: Reply,
+    },
+    Measure {
+        note_id: String,
+        answer: reply::Sender<Result<bool, IndexError>>,
+    },
     Stop,
 }
 
@@ -53,6 +61,15 @@ impl TaskHandle {
         let (answer, receiver) = reply::channel();
         self.0
             .send(Command::Reindex { progress, answer })
+            .ok()
+            .map(|()| receiver)
+    }
+
+    /// Asks for one note measured now; `None` when the task already ended.
+    pub fn measure(&self, note_id: String) -> Option<Measured> {
+        let (answer, receiver) = reply::channel();
+        self.0
+            .send(Command::Measure { note_id, answer })
             .ok()
             .map(|()| receiver)
     }
@@ -208,6 +225,10 @@ impl Indexer {
                 biased;
                 command = commands.recv() => match command {
                     Some(Command::Reindex { progress, answer }) => waiting.push((progress, answer)),
+                    // The asker may have gone; the row is written either way.
+                    Some(Command::Measure { note_id, answer }) => {
+                        let _ = answer.send(self.measure(&mut owed, note_id));
+                    }
                     Some(Command::Stop) | None => return,
                 },
                 fact = facts.recv() => match fact {
@@ -287,6 +308,22 @@ impl Indexer {
             .listed(scan, &ids)
             .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut progress, announce));
         owed.settle(ids, scan, &outcome);
+    }
+
+    /// One note measured now, an app write's (`NoteIndex::measure`); `false` when it is left to
+    /// a pass: the walk has not ended, or the file did not read. Its search reindex is owed to
+    /// the next pass, as the write's own fact owes it.
+    fn measure(&self, owed: &mut Owed, note_id: String) -> Result<bool, IndexError> {
+        if !owed.walked() {
+            return Ok(false);
+        }
+        owed.links = true;
+        owed.arm();
+        let measured = self.measure_now(&note_id);
+        if !matches!(measured, Ok(true)) {
+            owed.queue.insert(note_id);
+        }
+        measured
     }
 
     /// Every note measured again, the queue and an owed scan with it.
