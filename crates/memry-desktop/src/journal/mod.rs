@@ -15,12 +15,14 @@
 //!   properties after it;
 //! - the write-back keeps the file's body in step with the document after that (13m-1);
 //! - the calendar ([`calendar`]) lists the live records, measured by the note index's row of
-//!   each day's file.
+//!   each day's file, the charts ([`property_rows`]) the records' property values, and the day
+//!   panel ([`day_context`]) the tasks due on a day.
 //!
-//! Not here yet: the property rows and day context (13m-4b), and the moves that change what a
-//! file is (13m-5).
+//! Not here yet: the moves that change what a file is (13m-5).
 
 pub mod calendar;
+pub mod day_context;
+pub mod property_rows;
 pub mod update;
 pub mod write;
 
