@@ -14,6 +14,7 @@ use memry_core::api::vault::Vault;
 use memry_core::domain::note_files::NoteFileStat;
 use memry_core::storage::OpenOptions;
 use memry_desktop::vault::file_types::FileType;
+use memry_desktop::vault::fs_atomic::{atomic_create, atomic_create_streamed, create_unique};
 use memry_desktop::vault::hash::content_hash;
 use memry_desktop::vault::watch::reconcile::Reconciler;
 use memry_desktop::vault::watch::{EchoGuard, EventSink, NewFiles, VaultEvent, VaultWatcher};
@@ -445,6 +446,37 @@ fn a_file_with_a_second_hard_link_is_reported_unreadable_and_left_alone() {
         "Unreadable",
         |ev| matches!(ev, VaultEvent::Unreadable { path, .. } if path == "a.md"),
     );
+}
+
+/// A file the app created (`atomic_create`, `create_unique`, `atomic_create_streamed`) is an
+/// ordinary file to a watcher started after it: its outside edit and removal are reported. A
+/// create that linked the temp file into place left an inode FSEvents reports nothing more for
+/// once its temp name went (#3912).
+#[test]
+fn a_file_the_app_created_is_watched_like_any_other_by_a_later_watcher() {
+    let mut e = env_unwatched();
+    atomic_create(&e.root.join("made.md"), b"one").unwrap();
+    create_unique(&e.root.join("unique.md"), b"one").unwrap();
+    let mode = fs::metadata(e.root.join("made.md")).unwrap().permissions();
+    atomic_create_streamed(&e.root.join("copy.md"), &mut &b"one"[..], mode, &mut || {
+        Ok(())
+    })
+    .unwrap();
+    for (id, rel) in [("n1", "made.md"), ("n2", "unique.md"), ("n3", "copy.md")] {
+        e.index(id, rel, "one");
+    }
+    e.start();
+    e.wait_for(0, "the start rescan", |ev| {
+        matches!(ev, VaultEvent::Rescanned { .. })
+    });
+
+    let mark = e.mark();
+    e.write("made.md", "two");
+    e.wait_for(mark, "Changed", is_changed("made.md"));
+    fs::remove_file(e.root.join("unique.md")).unwrap();
+    e.wait_for(mark, "Removed", is_removed("unique.md"));
+    fs::remove_file(e.root.join("copy.md")).unwrap();
+    e.wait_for(mark, "Removed", is_removed("copy.md"));
 }
 
 #[test]

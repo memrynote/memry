@@ -11,9 +11,12 @@
 //!   quarantine flags), so a save does not quietly turn a 0644 note into 0600 or drop its tags.
 //!   Windows ACLs are not copied: the successor inherits the folder's, as a rename from the
 //!   Electron app did.
-//! - [`atomic_create`] makes a file that must not exist yet. It links (Unix) or moves without
-//!   replacing (Windows) the finished temp file into place, so a file another process created
-//!   after the caller looked is never overwritten: the call fails with `AlreadyExists`.
+//! - [`atomic_create`] makes a file that must not exist yet. It moves the finished temp file
+//!   into place without replacing ([`rename_no_replace`]'s exclusive rename), so a file another
+//!   process created after the caller looked is never overwritten: the call fails with
+//!   `AlreadyExists`. Only a Unix volume with no exclusive rename gets a hard link instead: on
+//!   APFS, FSEvents reports nothing more to a later stream for a file that once had a second
+//!   link, so a note created that way would lose its outside edits and deletes (#3912).
 //!   [`create_unique`] picks the first free `<name> N<ext>` that way, and
 //!   [`atomic_create_streamed`] creates a copy of another file that way, streamed instead of
 //!   held in memory.
@@ -145,8 +148,8 @@ fn open_temp(temp: &Path) -> io::Result<fs::File> {
     options.open(temp)
 }
 
-/// Best effort: a write error is the one to report. After a create the temp file is the second
-/// name of the new file and has done its job.
+/// Best effort: a write error is the one to report. After a create the temp file was moved, or
+/// is the second name of the new file and has done its job.
 fn remove_temp(temp: &Path, written: bool) {
     let removed = fs::remove_file(temp);
     // A Windows create moves the temp file, so there is nothing left to remove.
@@ -333,6 +336,10 @@ fn exclusive_rename_unsupported(err: &io::Error) -> bool {
 
 #[cfg(unix)]
 fn create_file(temp: &Path, target: &Path) -> io::Result<()> {
+    match exclusive_rename(temp, target) {
+        Err(err) if exclusive_rename_unsupported(&err) => {}
+        other => return other,
+    }
     match fs::hard_link(temp, target) {
         Ok(()) => Ok(()),
         Err(err) if err.kind() == io::ErrorKind::AlreadyExists => Err(err),
