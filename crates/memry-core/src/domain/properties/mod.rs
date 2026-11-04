@@ -308,15 +308,21 @@ fn reordered(values: &Map<String, Value>, ordered: &[String]) -> Map<String, Val
     next
 }
 
-/// Makes a note's or a journal day's values `values`, whole and in their order, as the desktop
-/// app's file of it holds them. The file is the desktop's truth for its values, and it already
-/// holds them, so a value whose type the file changed is taken rather than refused as [`set`]
-/// refuses it: a refusal here would leave the record and the file apart for good. The same
-/// values in the same order write nothing. `Ok(false)` when no note or day has that id.
+/// Gives a note's or a journal day's record the values an edit of the desktop app's file of it
+/// just wrote: `changed` set (a key the record holds keeps its place, a new one goes last) and
+/// `removed` dropped. Every other key keeps the record's value. The file is not the record's
+/// copy: a value a sync pull brought in is in the record and not in the file yet, so taking the
+/// file's whole map would send the stale file value back over it.
+///
+/// A value whose type the edit changed is taken rather than refused as [`set`] refuses it: the
+/// file already holds it, and a refusal would leave the record and the file apart for good. An
+/// edit that leaves the record as it was writes nothing. `Ok(false)` when no note or day has
+/// that id.
 pub fn mirror_file(
     conn: &Connection,
     item_id: &str,
-    values: Map<String, Value>,
+    changed: Map<String, Value>,
+    removed: &[String],
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
@@ -325,11 +331,22 @@ pub fn mirror_file(
             continue;
         };
         let current = read_values(payload.object(), item_type, item_id)?;
+        let mut next = current.clone();
+        for name in removed {
+            // `shift_remove` keeps the other keys' order, which is the property order.
+            next.shift_remove(name);
+        }
+        for (name, value) in changed {
+            match next.get_mut(&name) {
+                Some(held) => *held = value,
+                None => {
+                    next.insert(name, value);
+                }
+            }
+        }
         // A map compares without its order, which is the property order here.
-        if current != values || !current.keys().eq(values.keys()) {
-            write(
-                conn, item_type, item_id, &payload, values, device_id, now_ms,
-            )?;
+        if current != next || !current.keys().eq(next.keys()) {
+            write(conn, item_type, item_id, &payload, next, device_id, now_ms)?;
         }
         return Ok(true);
     }

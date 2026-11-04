@@ -1,6 +1,7 @@
 //! What a property edit makes of a note's frontmatter, on the values the file holds
-//! (`vault/frontmatter.ts`): its user properties (`extractProperties`), the legacy nested
-//! envelope moved to the top level (`normalizePropertiesToRoot`), and the three edits.
+//! (`vault/frontmatter.ts`): the legacy nested envelope moved to the top level
+//! (`normalizePropertiesToRoot`), and the three edits. Which keys are user properties is
+//! [`user_properties`].
 //!
 //! - **Set** (`properties:set`): the renderer sends its whole record and the record it was
 //!   shown (`base`). Only what the user changed against `base` lands: a changed or new value is
@@ -17,7 +18,7 @@ use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml};
 use serde_json::{Map, Value};
 
 use crate::notes::error::NotesError;
-use crate::notes::frontmatter::{is_reserved_key, is_reserved_yaml};
+use crate::notes::frontmatter::{is_reserved_key, is_reserved_yaml, user_properties};
 
 /// A property edit of one note.
 #[derive(Debug, Clone, PartialEq)]
@@ -31,24 +32,6 @@ pub enum PropertyEdit {
         from: String,
         to: String,
     },
-}
-
-/// `extractProperties`: the legacy nested envelope first, then the top level, which wins.
-pub fn user_properties(frontmatter: &YamlMap) -> YamlMap {
-    let mut out = YamlMap::new();
-    if let Some(YamlValue::Map(nested)) = frontmatter.get("properties") {
-        for (name, value) in nested.iter() {
-            if !is_reserved_yaml(name, value) {
-                out.insert(name.to_owned(), value.clone());
-            }
-        }
-    }
-    for (name, value) in frontmatter.iter() {
-        if !is_reserved_yaml(name, value) {
-            out.insert(name.to_owned(), value.clone());
-        }
-    }
-    out
 }
 
 /// `normalizePropertiesToRoot`: the nested envelope's keys at the top level, where a top-level

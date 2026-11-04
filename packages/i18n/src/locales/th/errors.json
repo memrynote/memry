@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "อัปเดตคำจำกัดความคุณสมบัติไม่สำเร็จ",
     "setCalendarVisibilityFailed": "ตั้งค่าการแสดงคุณสมบัติในปฏิทินไม่สำเร็จ",
     "definitionsFileUnreadable": "บันทึกการเปลี่ยนแปลงพร็อพเพอร์ตีไม่ได้เพราะอ่าน .memry/properties.md ไม่ได้ แก้ไขหรือลบไฟล์นั้น แล้วลองอีกครั้ง",
-    "definitionsFileWriteFailed": "ไม่สามารถบันทึกการเปลี่ยนแปลงคุณสมบัติได้ เพราะเขียนไฟล์ .memry/properties.md ไม่ได้"
+    "definitionsFileWriteFailed": "ไม่สามารถบันทึกการเปลี่ยนแปลงคุณสมบัติได้ เพราะเขียนไฟล์ .memry/properties.md ไม่ได้",
+    "noteChanged": "โน้ตนี้เปลี่ยนไประหว่างที่กำลังบันทึกคุณสมบัติ โปรดลองอีกครั้ง",
+    "noteNotPulled": "ข้อความของโน้ตนี้ยังซิงค์ไม่เสร็จ จึงยังเปลี่ยนคุณสมบัติไม่ได้"
   },
   "reminder": {
     "notFound": "ไม่พบการเตือน",

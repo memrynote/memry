@@ -9,9 +9,10 @@
 //!   place ([`serialize_updated_note`]), so every key the edit leaves keeps its bytes and the body
 //!   is not touched, then the note's document and row follow and the renderer hears of it as of
 //!   an outside edit. A file the seam keeps (an outside edit not fed yet, a document ahead of
-//!   its file) is refused with [`NotesError::EditKept`], and the user tries again. Once the file
-//!   holds the edit, the record takes the file's values whole, in the same turn, so sync sends
-//!   what the file says (`buildNotePushPayload` reads the index).
+//!   its file) is refused with [`NotesError::EditKept`]. Once the file holds the edit, the
+//!   record takes the keys the edit set or dropped, in the same turn, so sync sends the edit
+//!   (`buildNotePushPayload` reads the index). Every other key keeps the record's value: a value
+//!   a pull brought in is not in the file yet (13k-4), and the file's stale one must not go back.
 //!
 //! What an edit makes of the frontmatter is [`edit`]. Not here: the header status a status
 //! property takes from the note's tasks (`fillHeaderStatus`, Step 21), the `note_properties`
@@ -30,8 +31,9 @@ use memry_core::markdown::frontmatter::{
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use self::edit::{PropertyEdit, edited, user_properties};
+use self::edit::{PropertyEdit, edited};
 use super::error::{NotesError, SCOPE};
+use super::frontmatter::user_properties;
 use super::property_definitions::PropertyDefinitions;
 use super::read::large_file_of;
 use super::service::NotesService;
@@ -196,12 +198,13 @@ impl NotesService {
                     true,
                 )?))
             })?;
-            let held = indexed(&user_properties(&read), &types);
-            let names = held.iter().map(|p| p.name.clone()).collect();
+            let held = stored(&indexed(&user_properties(&read), &types));
+            let names = held.keys().cloned().collect();
             match done {
                 Edited::Wrote { .. } => {
                     let stored = stored(&indexed(&user_properties(&next), &types));
-                    if !writer.file_properties(note_id, stored.clone())? {
+                    let (changed, removed) = delta(&held, &stored);
+                    if !writer.file_properties(note_id, changed, removed)? {
                         tracing::warn!(
                             scope = SCOPE,
                             note_id,
@@ -210,12 +213,15 @@ impl NotesService {
                     }
                     Ok((names, stored))
                 }
-                Edited::Unchanged => Ok((names, stored(&held))),
+                Edited::Unchanged => Ok((names, held)),
                 Edited::Kept(Kept::NoRow | Kept::NoFile | Kept::NoBody) => {
                     Err(NotesError::NotFound(note_id.to_owned()))
                 }
                 Edited::Kept(Kept::NotMarkdown) => Err(NotesError::NotMarkdown),
-                Edited::Kept(kept) => Err(NotesError::EditKept(kept)),
+                Edited::Kept(kept) => {
+                    tracing::info!(scope = SCOPE, note_id, ?kept, "a property edit was refused");
+                    Err(NotesError::EditKept(kept))
+                }
             }
         })
     }
@@ -261,6 +267,26 @@ fn stored(properties: &[IndexedProperty]) -> Map<String, Value> {
         .iter()
         .map(|p| (p.name.clone(), p.value.clone()))
         .collect()
+}
+
+/// The keys an edit set (new or with another value) and the keys it dropped, from the values
+/// the file held to the values it holds. Only these reach the record: see
+/// [`memry_core::domain::properties::mirror_file`] for why the rest must not.
+fn delta(
+    before: &Map<String, Value>,
+    after: &Map<String, Value>,
+) -> (Map<String, Value>, Vec<String>) {
+    let changed = after
+        .iter()
+        .filter(|(name, value)| before.get(*name) != Some(value))
+        .map(|(name, value)| (name.clone(), value.clone()))
+        .collect();
+    let removed = before
+        .keys()
+        .filter(|name| !after.contains_key(*name))
+        .cloned()
+        .collect();
+    (changed, removed)
 }
 
 fn views(values: &YamlMap, types: &HashMap<String, String>) -> Vec<PropertyValueView> {

@@ -115,24 +115,87 @@ fn laughs() -> String {
     yaml
 }
 
+/// The same as maps: `m0` holds two strings, each next level ten entries naming the last.
+fn map_laughs() -> String {
+    let mut yaml = String::from("m0: &m0 {a: x, b: y}\n");
+    for level in 1..6 {
+        let entries: Vec<String> = (0..10)
+            .map(|at| format!("k{at}: *m{}", level - 1))
+            .collect();
+        yaml.push_str(&format!("m{level}: &m{level} {{{}}}\n", entries.join(", ")));
+    }
+    yaml
+}
+
+/// The steps a note's values may take: each node once, plus the alias budget.
+fn step_bound(distinct_nodes: usize) -> usize {
+    distinct_nodes + ALIAS_NODES_PER_NODE * distinct_nodes + ALIAS_NODES_BASE
+}
+
 #[test]
-fn a_list_an_alias_brought_in_before_reads_as_null_and_the_walk_stays_linear() {
+fn nested_list_aliases_expand_until_the_budget_runs_out_and_the_walk_stays_linear() {
     let yaml = values(laughs().trim_end());
-    let nodes = 11 + 5 * 11;
+    // Six values, and ten items in each of the six lists.
+    let nodes = 6 + 6 * 10;
     let mut got = Vec::new();
-    memry_test_kit::assert_steps_at_most("alias expansion", json_visits, 2 * nodes + 10, || {
-        got = indexed_properties(yaml.iter(), |_| None);
-    });
-    assert_eq!(
-        got[0].value,
-        json!("[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\"]")
+    memry_test_kit::assert_steps_at_most(
+        "list alias expansion",
+        json_visits,
+        step_bound(nodes),
+        || {
+            got = indexed_properties(yaml.iter(), |_| None);
+        },
     );
-    assert!(got[1..].iter().all(|p| p.value.is_null()), "{got:?}");
-    // Within one value too: `[*a, *a]` repeats one list.
-    let yaml = values("a: &a [x]\nb: [*a, *a]");
-    let got = indexed_properties(yaml.iter(), |_| None);
-    assert_eq!(got[0].value, json!("[\"x\"]"));
-    assert!(got[1].value.is_null());
+    let l0 = "[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\"]";
+    assert_eq!(got[0].value, json!(l0));
+    assert_eq!(got[1].value, json!(format!("[{}]", [l0; 10].join(","))));
+    assert!(got[2..].iter().all(|p| p.value.is_null()), "{got:?}");
+}
+
+#[test]
+fn nested_map_aliases_expand_until_the_budget_runs_out_and_the_walk_stays_linear() {
+    let yaml = values(map_laughs().trim_end());
+    // Six values, two entries in `m0` and ten in each of the five maps after it.
+    let nodes = 6 + 2 + 5 * 10;
+    let mut got = Vec::new();
+    memry_test_kit::assert_steps_at_most(
+        "map alias expansion",
+        json_visits,
+        step_bound(nodes),
+        || {
+            got = indexed_properties(yaml.iter(), |_| None);
+        },
+    );
+    // Each level is ten copies of the one before.
+    let next = |inner: &str| {
+        let entries: Vec<String> = (0..10).map(|at| format!("\"k{at}\":{inner}")).collect();
+        format!("{{{}}}", entries.join(","))
+    };
+    let m0 = "{\"a\":\"x\",\"b\":\"y\"}".to_owned();
+    let m1 = next(&m0);
+    let m2 = next(&m1);
+    let expanded: Vec<&Value> = got[..3].iter().map(|p| &p.value).collect();
+    assert_eq!(expanded, [&json!(m0), &json!(m1), &json!(m2)]);
+    assert!(got[3..].iter().all(|p| p.value.is_null()), "{got:?}");
+}
+
+#[test]
+fn an_ordinary_alias_reads_as_electron_reads_it() {
+    let yaml = values("a: &x [1]\nb: *x\nc: [*x, *x]\nd: &m {k: v}\ne: [*m, *m]");
+    let got: Vec<Value> = indexed_properties(yaml.iter(), |_| None)
+        .into_iter()
+        .map(|p| p.value)
+        .collect();
+    assert_eq!(
+        got,
+        [
+            json!("[1]"),
+            json!("[1]"),
+            json!("[[1],[1]]"),
+            json!("{\"k\":\"v\"}"),
+            json!("[{\"k\":\"v\"},{\"k\":\"v\"}]"),
+        ]
+    );
 }
 
 #[test]

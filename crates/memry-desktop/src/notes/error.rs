@@ -69,9 +69,10 @@ pub enum NotesError {
     /// Only a markdown note's file holds a frontmatter to edit (`NOT_MARKDOWN`).
     #[error("only a markdown note can be edited")]
     NotMarkdown,
-    /// The app's edit of the note's file was not made: the file or the note's document holds an
-    /// edit the other does not have yet ([`Kept`]). The user tries again.
-    #[error("the note changed while it was being edited ({0:?}); try again")]
+    /// The app's edit of the note's file was not made ([`Kept`]). Only an edit the file or the
+    /// note's document has and the other does not have yet passes with a retry; the message says
+    /// which. The variant is logged where the edit is refused, never shown.
+    #[error("{}", kept_message(.0))]
     EditKept(Kept),
     #[error("the note has no property `{0}`")]
     PropertyNotFound(String),
@@ -79,6 +80,31 @@ pub enum NotesError {
     PropertyExists(String),
     #[error("{0}")]
     Io(#[from] std::io::Error),
+}
+
+/// Whether trying the edit again can succeed: the file or the document catches up on its own.
+fn kept_is_retryable(kept: &Kept) -> bool {
+    matches!(
+        kept,
+        Kept::FileChanged | Kept::NotRead | Kept::BodyAhead | Kept::FileAhead
+    )
+}
+
+fn kept_message(kept: &Kept) -> &'static str {
+    match kept {
+        _ if kept_is_retryable(kept) => "the note changed while it was being edited; try again",
+        Kept::FrontmatterUnreadable | Kept::FrontmatterBroken => {
+            "the note's frontmatter could not be read, so the edit was not made"
+        }
+        Kept::BodyNotPulled => {
+            "the note's text has not arrived from sync yet, so the edit was not made"
+        }
+        Kept::NotRepresentable => {
+            "the note holds content its markdown file cannot, so the edit was not made"
+        }
+        Kept::NotMarkdown => "only a markdown note can be edited",
+        _ => "the note's file is not there, so the edit was not made",
+    }
 }
 
 impl From<RowError> for NotesError {
@@ -183,7 +209,18 @@ impl CoreError for NotesError {
             Self::Yaml(_) => (FailureKind::Invalid, "frontmatter_failed"),
             Self::FrontmatterNotAMap => (FailureKind::PropertyWrite, "frontmatter_not_a_map"),
             Self::NotMarkdown => (FailureKind::Invalid, "not_markdown"),
-            Self::EditKept(_) => (FailureKind::PropertyWrite, "note_edit_kept"),
+            Self::EditKept(kept) if kept_is_retryable(kept) => {
+                (FailureKind::PropertyWrite, "note_edit_kept")
+            }
+            Self::EditKept(Kept::FrontmatterUnreadable | Kept::FrontmatterBroken) => {
+                (FailureKind::Invalid, "frontmatter_unreadable")
+            }
+            Self::EditKept(Kept::BodyNotPulled) => (FailureKind::Invalid, "note_body_not_pulled"),
+            Self::EditKept(Kept::NotRepresentable) => {
+                (FailureKind::Invalid, "note_not_representable")
+            }
+            Self::EditKept(Kept::NotMarkdown) => (FailureKind::Invalid, "not_markdown"),
+            Self::EditKept(_) => (FailureKind::NotFound, "note_not_found"),
             Self::PropertyNotFound(_) => (FailureKind::NotFound, "property_not_found"),
             Self::PropertyExists(_) => (FailureKind::PropertyWrite, "property_exists"),
             Self::Outside => (FailureKind::Invalid, "outside_vault"),
@@ -194,6 +231,41 @@ impl CoreError for NotesError {
             }
             Self::Storage(error) => error.kind_and_code(),
             Self::Io(_) => (FailureKind::Storage, "note_file_failed"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_refusal_a_retry_can_pass_says_try_again_and_none_names_its_variant() {
+        let all = [
+            Kept::NoRow,
+            Kept::NotMarkdown,
+            Kept::NoFile,
+            Kept::NotRead,
+            Kept::FileChanged,
+            Kept::FrontmatterUnreadable,
+            Kept::FrontmatterBroken,
+            Kept::BodyAhead,
+            Kept::FileAhead,
+            Kept::BodyNotPulled,
+            Kept::NotRepresentable,
+            Kept::NoBody,
+        ];
+        for kept in all {
+            let variant = format!("{kept:?}");
+            let error = NotesError::EditKept(kept);
+            let message = error.to_string();
+            let (_, code) = error.kind_and_code();
+            assert_eq!(
+                message.contains("try again"),
+                code == "note_edit_kept",
+                "{variant}"
+            );
+            assert!(!message.contains(&variant), "{message}");
         }
     }
 }

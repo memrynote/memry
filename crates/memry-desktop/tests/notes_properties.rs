@@ -4,7 +4,9 @@
 //! refuse a file whose outside edit the note has not taken.
 
 use index_support::until;
+use memry_core::domain::property_values::{self, ALIAS_NODES_BASE, ALIAS_NODES_PER_NODE};
 use memry_desktop::notes::error::NotesError;
+use memry_desktop::notes::frontmatter;
 use memry_desktop::notes::properties::PropertyValueView;
 use memry_desktop::vault::app_edit::Kept;
 use memry_desktop::vault::consumer::ChangeSource;
@@ -70,7 +72,9 @@ owner: Kaan\n---\nThe body.\n";
     assert_eq!(set.removed, ["score"]);
     let stored = json!({ "due": "2026-10-07", "stage": "Done", "owner": "Kaan" });
     assert_eq!(Value::Object(set.properties), stored);
-    assert_eq!(synced(&e, &id), stored);
+    // The record takes the keys the edit set; the adopted note's record held none of the file's
+    // values (the index fill is 13k-4), and `due` was not edited.
+    assert_eq!(synced(&e, &id), json!({ "stage": "Done", "owner": "Kaan" }));
     assert_eq!(e.body(&id), "The body.");
     assert_eq!(row_hash(&e, &id), Some(content_hash(expected)));
     // Told as an edit for the user; the watcher reported nothing back.
@@ -107,6 +111,64 @@ fn a_set_keeps_an_outside_edit_the_panel_had_not_shown() {
     next.insert("stage".into(), json!("Done"));
     notes.set_properties(&open, &id, next, base).unwrap();
     assert_eq!(e.read("Plan.md"), outside.replace("Draft", "Done"));
+}
+
+#[test]
+fn an_edit_of_another_key_never_sends_the_files_stale_value_over_a_pulled_one() {
+    let (e, notes, store) = opened(&[("Plan.md", NOTE)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    // Another device set `stage: Done`; the pull reached the record and not the file (13k-4).
+    let writer = e.core().notes_writer(store).unwrap();
+    writer
+        .set_property(id.clone(), "stage".into(), "\"Done\"".into())
+        .unwrap();
+    assert_eq!(synced(&e, &id)["stage"], json!("Done"));
+
+    // This device's panel shows the file and the user changes the score.
+    let base = record(&notes.properties(&open, &id).unwrap());
+    assert_eq!(base["stage"], json!("Draft"));
+    let mut next = base.clone();
+    next.insert("score".into(), json!(4));
+    notes.set_properties(&open, &id, next, base).unwrap();
+
+    assert_eq!(e.read("Plan.md"), NOTE.replace("score: 3", "score: 4"));
+    let synced = synced(&e, &id);
+    assert_eq!(
+        (&synced["stage"], &synced["score"]),
+        (&json!("Done"), &json!(4))
+    );
+}
+
+#[test]
+fn the_panels_read_of_nested_aliases_stays_linear_under_every_key() {
+    // Six levels of ten aliases each, a million values, under ordinary, `writing` and cover keys.
+    let mut yaml = String::from("l0: &l0 [a, b, c, d, e, f, g, h, i, j]\n");
+    for level in 1..6 {
+        let refs = vec![format!("*l{}", level - 1); 10].join(", ");
+        yaml.push_str(&format!("l{level}: &l{level} [{refs}]\n"));
+    }
+    yaml.push_str("writing: { alternatives: *l5 }\ncover: *l5\n");
+    let (e, notes, _) = opened(&[("Laughs.md", &format!("---\n{yaml}---\nBody\n"))]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Laughs.md");
+
+    // Eight values and the 60 items of the six lists; the read and the `writing` gate each walk
+    // them once and spend at most the alias budget.
+    let nodes = 8 + 6 * 10;
+    let once = nodes + ALIAS_NODES_PER_NODE * nodes + ALIAS_NODES_BASE;
+    let steps = || property_values::json_visits() + frontmatter::json_visits();
+    let mut shown = Vec::new();
+    memry_test_kit::assert_steps_at_most("the panel's read", steps, 2 * once, || {
+        shown = notes.properties(&open, &id).unwrap();
+    });
+    let names: Vec<&str> = shown.iter().map(|view| view.name.as_str()).collect();
+    assert_eq!(
+        names,
+        ["l0", "l1", "l2", "l3", "l4", "l5", "writing", "cover"]
+    );
+    assert!(shown[..2].iter().all(|view| view.value.is_string()));
+    assert!(shown[2..].iter().all(|view| view.value.is_null()));
 }
 
 #[test]

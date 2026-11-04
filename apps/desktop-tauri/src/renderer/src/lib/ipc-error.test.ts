@@ -2,6 +2,7 @@ import { createInstance } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { describe, expect, it } from 'vitest'
 import { RESOURCES } from '@memry/i18n/locales'
+import { createRendererI18n } from '@memry/i18n/renderer'
 
 import { extractErrorMessage, getVaultLockRefusal } from './ipc-error'
 
@@ -114,6 +115,30 @@ describe('extractErrorMessage', () => {
       'This note is too large to sync, so it stays on this device. Splitting it into smaller notes will fix this.'
     )
     expect(extractErrorMessage({ ...tooLarge, code: 'other' }, 'fallback')).toBe(tooLarge.message)
+  })
+
+  it('says which property edit refusals a retry fixes, and names the property', async () => {
+    await createRendererI18n({ locale: 'en' })
+    const refused = (code: string) => ({ kind: 'invalid', code, message: 'rust text' })
+
+    expect(extractErrorMessage(refused('note_edit_kept'), 'fallback')).toBe(
+      'This note changed while its properties were being saved. Try again.'
+    )
+    expect(extractErrorMessage(refused('frontmatter_unreadable'), 'fallback')).toBe(
+      'This note has invalid metadata and cannot be read.'
+    )
+    expect(extractErrorMessage(refused('note_body_not_pulled'), 'fallback')).toBe(
+      "This note's text hasn't finished syncing, so its properties can't be changed yet."
+    )
+    expect(extractErrorMessage(refused('note_not_representable'), 'fallback')).toBe(
+      'Failed to set properties'
+    )
+    expect(extractErrorMessage(refused('property_exists'), 'fallback', { name: 'due' })).toBe(
+      'Property "due" already exists'
+    )
+    expect(extractErrorMessage(refused('property_not_found'), 'fallback', { name: 'due' })).toBe(
+      'Property "due" not found'
+    )
   })
 
   it('shows the fixed lock refusal in the user language (#2606)', async () => {

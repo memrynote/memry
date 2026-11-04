@@ -5,7 +5,7 @@
 
 use memry_desktop::notes::properties::{PropertyValueView, SetPropertiesView};
 use serde_json::{Map, Value};
-use tauri::{AppHandle, Wry};
+use tauri::{AppHandle, Runtime};
 
 use super::blocking;
 use super::error::CommandError;
@@ -14,8 +14,8 @@ use super::notes::{open_vault, service};
 /// `properties:get`: the note's values in its frontmatter's order; none for no note.
 #[tauri::command]
 #[specta::specta]
-pub async fn properties_get(
-    app: AppHandle<Wry>,
+pub async fn properties_get<R: Runtime>(
+    app: AppHandle<R>,
     entity_id: String,
 ) -> Result<Vec<PropertyValueView>, CommandError> {
     blocking("properties_get", move || {
@@ -30,8 +30,8 @@ pub async fn properties_get(
 /// shown; only the user's changes between the two are written.
 #[tauri::command]
 #[specta::specta]
-pub async fn properties_set(
-    app: AppHandle<Wry>,
+pub async fn properties_set<R: Runtime>(
+    app: AppHandle<R>,
     entity_id: String,
     properties: Map<String, Value>,
     base: Map<String, Value>,
@@ -47,8 +47,8 @@ pub async fn properties_set(
 /// `properties:merge`: the given keys set, a `null` one removed, the rest left.
 #[tauri::command]
 #[specta::specta]
-pub async fn properties_merge(
-    app: AppHandle<Wry>,
+pub async fn properties_merge<R: Runtime>(
+    app: AppHandle<R>,
     entity_id: String,
     values: Map<String, Value>,
 ) -> Result<SetPropertiesView, CommandError> {
@@ -63,8 +63,8 @@ pub async fn properties_merge(
 /// `properties:rename`, on this note only.
 #[tauri::command]
 #[specta::specta]
-pub async fn properties_rename(
-    app: AppHandle<Wry>,
+pub async fn properties_rename<R: Runtime>(
+    app: AppHandle<R>,
     entity_id: String,
     old_name: String,
     new_name: String,

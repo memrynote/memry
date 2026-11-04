@@ -11,7 +11,7 @@
 
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import { commands, type Value } from '../../../generated/bindings'
-import { extractErrorMessage } from '../lib/ipc-error'
+import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 
 export type { ResolvedRelationRef }
 
@@ -42,8 +42,11 @@ function values(record: Record<string, unknown>): Record<string, Value> {
 }
 
 /** A write's failure answered as Electron's `withErrorHandler` answers it. */
-function failure(error: unknown): { success: false; error?: string } {
-  const message = extractErrorMessage(error, '')
+function failure(
+  error: unknown,
+  placeholders?: Record<string, string>
+): { success: false; error?: string } {
+  const message = extractErrorMessage(error, '', placeholders)
   return message ? { success: false, error: message } : { success: false }
 }
 
@@ -109,7 +112,9 @@ export const propertiesService = {
       await commands.propertiesRename(entityId, oldName, newName)
       return { success: true }
     } catch (error) {
-      return failure(error)
+      // Electron names the taken new name, or the missing old one.
+      const name = commandErrorCode(error) === 'property_exists' ? newName : oldName
+      return failure(error, { name })
     }
   },
 

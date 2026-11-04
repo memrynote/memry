@@ -455,7 +455,7 @@ describe('useFolderView', () => {
       await result.current.updateNoteProperty('missing', 'status', 'new')
     })
 
-    expect(mocks.propertiesSet).toHaveBeenCalledWith('n1', {}, expect.any(Object))
+    expect(mocks.propertiesSet).toHaveBeenCalledWith('n1', {}, { status: 'draft' })
     expect(mocks.propertiesSet).toHaveBeenCalledWith('missing', { status: 'new' }, {})
 
     mocks.notesUpdate.mockResolvedValueOnce({ success: false, error: 'No tags' })

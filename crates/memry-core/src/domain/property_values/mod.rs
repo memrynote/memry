@@ -140,18 +140,25 @@ pub struct IndexedProperty {
 
 /// The properties `properties` (a frontmatter's user keys, in order) as the index gives them
 /// back, `defined` naming each one's definition type. A value reads as its round trip through
-/// the index's text ([`indexed_value`]). A list or a map that an alias already brought in once
-/// reads as `null`: expanding it again would let a few lines of aliases stand for gigabytes.
+/// the index's text ([`indexed_value`]).
+///
+/// An alias expands as js-yaml loads it, so `b: *a` and `[*a, *a]` read as Electron reads them.
+/// Only a repeat costs: each node of a collection met again (an alias) draws on one budget for
+/// the whole note, [`ALIAS_NODES_PER_NODE`] times the nodes the values hold without their
+/// repeats, plus [`ALIAS_NODES_BASE`]. A value that runs out reads as `null`, so a few lines
+/// of nested aliases cannot stand for gigabytes. A value with no alias in it, such as one the
+/// user just set, never draws on the budget.
 pub fn indexed_properties<'a>(
     properties: impl IntoIterator<Item = (&'a str, &'a YamlValue)>,
     defined: impl Fn(&str) -> Option<String>,
 ) -> Vec<IndexedProperty> {
-    let mut seen = HashSet::new();
+    let properties: Vec<(&str, &YamlValue)> = properties.into_iter().collect();
+    let mut walk = Walk::over(properties.iter().map(|(_, value)| *value));
     properties
         .into_iter()
         .map(|(name, value)| {
             let type_name = property_type(name, value, defined(name).as_deref());
-            let value = serialized(value, &mut seen)
+            let value = serialized(value, &mut walk)
                 .map_or(Value::Null, |text| indexed_value(text, &type_name));
             IndexedProperty {
                 name: name.to_owned(),
@@ -160,6 +167,58 @@ pub fn indexed_properties<'a>(
             }
         })
         .collect()
+}
+
+/// The alias budget's nodes per node of the values without their repeats, as the size bound of
+/// the untrusted-input tests allows eight bytes out per byte in.
+pub const ALIAS_NODES_PER_NODE: usize = 8;
+/// The alias budget's nodes on top, for a note with few values.
+pub const ALIAS_NODES_BASE: usize = 64;
+
+/// Whether `value` expands within the alias budget [`indexed_properties`] gives a note of this
+/// one value: a caller about to convert a value whole asks this first.
+pub fn expands_within_alias_budget(value: &YamlValue) -> bool {
+    json_of(value, &mut Walk::over(std::iter::once(value)), false).is_some()
+}
+
+/// The collections met so far, and the nodes repeats may still expand.
+struct Walk {
+    seen: HashSet<usize>,
+    budget: usize,
+}
+
+impl Walk {
+    fn over<'a>(values: impl Iterator<Item = &'a YamlValue>) -> Self {
+        Self {
+            seen: HashSet::new(),
+            budget: ALIAS_NODES_PER_NODE
+                .saturating_mul(distinct_nodes(values))
+                .saturating_add(ALIAS_NODES_BASE),
+        }
+    }
+}
+
+/// The nodes of `values` with each collection counted once however many aliases name it: the
+/// values, and the items and entries of every distinct collection. Iterative, so any depth is
+/// safe.
+fn distinct_nodes<'a>(values: impl Iterator<Item = &'a YamlValue>) -> usize {
+    let mut seen = HashSet::new();
+    let mut stack: Vec<&YamlValue> = values.collect();
+    let mut nodes = stack.len();
+    while let Some(value) = stack.pop() {
+        let children: Vec<&YamlValue> = match value {
+            YamlValue::Seq(items) if seen.insert(Arc::as_ptr(items) as usize) => {
+                items.iter().collect()
+            }
+            YamlValue::Map(map) if seen.insert(Arc::as_ptr(map) as *const u8 as usize) => {
+                map.iter().map(|(_, value)| value).collect()
+            }
+            _ => continue,
+        };
+        nodes += children.len();
+        stack.extend(children);
+    }
+    nodes
 }
 
 /// `deserializeValue` of the index's text by the type: a number that is not one reads as
@@ -176,15 +235,15 @@ fn indexed_value(text: String, type_name: &str) -> Value {
     }
 }
 
-/// `serializeValue`: `None` for `null`, and for a collection an alias brought in before.
-fn serialized(value: &YamlValue, seen: &mut HashSet<usize>) -> Option<String> {
+/// `serializeValue`: `None` for `null`, and for a collection whose aliases ran out of budget.
+fn serialized(value: &YamlValue, walk: &mut Walk) -> Option<String> {
     Some(match value {
         YamlValue::Null => return None,
         YamlValue::String(text) => text.clone(),
         YamlValue::Number(x) => number_to_string(*x),
         YamlValue::Bool(b) => b.to_string(),
         YamlValue::Date(ms) => spelled_date(*ms),
-        other => js_stringify(&json_of(other, seen)?),
+        other => js_stringify(&json_of(other, walk, false)?),
     })
 }
 
@@ -207,10 +266,20 @@ fn spelled_date(ms: i64) -> String {
 }
 
 /// The value as `JSON.stringify` sees it: a date as its ISO text (`Date#toJSON`), bytes as a
-/// `Buffer`'s JSON, a number that is not finite as `null`. `None` for a collection in `seen`,
-/// which holds every collection turned into JSON so far.
-fn json_of(value: &YamlValue, seen: &mut HashSet<usize>) -> Option<Value> {
+/// `Buffer`'s JSON, a number that is not finite as `null`. `repeat` when the value is inside a
+/// collection met before; a collection met again starts a repeat. A repeat's every node draws
+/// on the budget, and `None` once the budget is spent.
+fn json_of(value: &YamlValue, walk: &mut Walk, repeat: bool) -> Option<Value> {
     VISITS.with(|visits| visits.set(visits.get() + 1));
+    let repeat = repeat
+        || match value {
+            YamlValue::Seq(items) => !walk.seen.insert(Arc::as_ptr(items) as usize),
+            YamlValue::Map(map) => !walk.seen.insert(Arc::as_ptr(map) as *const u8 as usize),
+            _ => false,
+        };
+    if repeat {
+        walk.budget = walk.budget.checked_sub(1)?;
+    }
     Some(match value {
         YamlValue::Null => Value::Null,
         YamlValue::Bool(b) => Value::Bool(*b),
@@ -224,27 +293,17 @@ fn json_of(value: &YamlValue, seen: &mut HashSet<usize>) -> Option<Value> {
             buffer.insert("data".into(), Value::Array(data));
             Value::Object(buffer)
         }
-        YamlValue::Seq(items) => {
-            if !seen.insert(Arc::as_ptr(items) as usize) {
-                return None;
-            }
-            Value::Array(
-                items
-                    .iter()
-                    .map(|item| json_of(item, seen))
-                    .collect::<Option<_>>()?,
-            )
-        }
-        YamlValue::Map(map) => {
-            if !seen.insert(Arc::as_ptr(map) as usize) {
-                return None;
-            }
-            Value::Object(
-                map.iter()
-                    .map(|(key, value)| Some((key.to_owned(), json_of(value, seen)?)))
-                    .collect::<Option<_>>()?,
-            )
-        }
+        YamlValue::Seq(items) => Value::Array(
+            items
+                .iter()
+                .map(|item| json_of(item, walk, repeat))
+                .collect::<Option<_>>()?,
+        ),
+        YamlValue::Map(map) => Value::Object(
+            map.iter()
+                .map(|(key, value)| Some((key.to_owned(), json_of(value, walk, repeat)?)))
+                .collect::<Option<_>>()?,
+        ),
     })
 }
 

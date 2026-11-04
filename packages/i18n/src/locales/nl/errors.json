@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "Kan de eigenschapsdefinitie niet bijwerken",
     "setCalendarVisibilityFailed": "Kan de zichtbaarheid van de agenda-eigenschap niet instellen",
     "definitionsFileUnreadable": "Kan eigenschapswijzigingen niet opslaan omdat .memry/properties.md niet kan worden gelezen. Herstel of verwijder dat bestand en probeer het opnieuw.",
-    "definitionsFileWriteFailed": "Eigenschapswijzigingen kunnen niet worden opgeslagen omdat .memry/properties.md niet kan worden geschreven."
+    "definitionsFileWriteFailed": "Eigenschapswijzigingen kunnen niet worden opgeslagen omdat .memry/properties.md niet kan worden geschreven.",
+    "noteChanged": "Deze notitie is gewijzigd terwijl de eigenschappen werden opgeslagen. Probeer het opnieuw.",
+    "noteNotPulled": "De tekst van deze notitie is nog niet klaar met synchroniseren, dus de eigenschappen kunnen nog niet worden gewijzigd."
   },
   "reminder": {
     "notFound": "Herinnering niet gevonden",
