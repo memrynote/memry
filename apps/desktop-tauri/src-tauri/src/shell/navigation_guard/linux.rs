@@ -13,8 +13,10 @@
 //! The response comes too late to be harmless: once the navigation policy said yes, WebKit runs the
 //! page's `beforeunload` and stops all of its loads (`FrameLoader::continueLoadAfterNavigationPolicy`)
 //! before the request is made. An in-flight `ipc://` fetch is aborted, and Tauri resends the
-//! command over `postMessage`, so a command the shell already received can run twice. So on Linux
-//! no main-frame navigation may start in the first place:
+//! command over `postMessage`, so a command the shell already received can run twice. The page then
+//! sends every command over `postMessage`, which wry tags with the view's URI, and until the refused
+//! load fails that URI is the refused URL: Tauri refuses the command as a remote page's ("not
+//! allowed"). So on Linux no main-frame navigation may start in the first place:
 //! - No event of the app keeps a default action that navigates the top frame
 //!   (`external-link-guard.ts`): link activation (`click`, `auxclick`; any button, modifier or
 //!   Enter), any drag outside a text field (`dragenter`, `dragover`, `drop`; links, files, images,

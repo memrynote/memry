@@ -6,7 +6,7 @@
 
 use std::sync::{Mutex, PoisonError};
 
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 use crate::commands::error::CommandError;
 
@@ -34,6 +34,11 @@ pub fn e2e_revealed_paths<R: Runtime>(app: AppHandle<R>) -> Result<Vec<String>, 
 #[derive(Default)]
 pub struct OsOpenLog(Mutex<Vec<String>>);
 
+/// Sent to the page with each recorded open. On Linux a command the page sends while a main-frame
+/// navigation it started is loading is refused (`shell::navigation_guard::linux`), so a spec that
+/// navigated waits for the open here, without a command, and reads `e2e_os_opens` after it.
+const OS_OPEN_EVENT: &str = "e2e-os-open";
+
 /// `true` when the call was recorded (an open gate), so the caller skips the OS.
 pub fn record_os_open<R: Runtime>(app: &AppHandle<R>, what: &str) -> bool {
     let Some(log) = app.try_state::<OsOpenLog>() else {
@@ -43,6 +48,9 @@ pub fn record_os_open<R: Runtime>(app: &AppHandle<R>, what: &str) -> bool {
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .push(what.to_owned());
+    if let Err(error) = app.emit(OS_OPEN_EVENT, what) {
+        tracing::warn!(scope = "E2e", "the os open event was not sent: {error}");
+    }
     true
 }
 

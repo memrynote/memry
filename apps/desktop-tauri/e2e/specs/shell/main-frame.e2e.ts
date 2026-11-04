@@ -83,6 +83,28 @@ async function startSite(): Promise<Site> {
 
 const opens = (app: TauriApp): Promise<string[]> => invokeTest<string[]>(app, 'e2e_os_opens')
 
+/**
+ * Collects the opens the app announces to the page (`e2e-os-open`) and returns their reader, which
+ * sends no command. On Linux a command sent while a navigation the page started is loading is
+ * refused (`navigation_guard/linux.rs`), and the open comes when that load failed: after a script
+ * navigation, a spec waits here before its next command.
+ */
+async function watchOsOpens(page: Page): Promise<() => Promise<string[]>> {
+  await page.evaluate(() => {
+    const state = window as unknown as {
+      __osOpens: string[]
+      __TAURI__: {
+        event: { listen(name: string, cb: (e: { payload: string }) => void): Promise<unknown> }
+      }
+    }
+    state.__osOpens = []
+    return state.__TAURI__.event
+      .listen('e2e-os-open', (event) => state.__osOpens.push(event.payload))
+      .then(() => true)
+  })
+  return () => page.evaluate(() => (window as unknown as { __osOpens: string[] }).__osOpens)
+}
+
 /** Marks the app's document, so a later check can tell it was never replaced or reloaded. */
 async function markDocument(page: Page): Promise<string> {
   await page.evaluate(() => {
@@ -114,6 +136,7 @@ test('a page that would stop, chain, redirect or open windows never runs, and op
   const site = await startSite()
   try {
     const href = await markDocument(page)
+    const announced = await watchOsOpens(page)
     const expected: string[] = []
     for (const path of ['/stop', '/chain', '/redirect', '/popup']) {
       // A script that assigns `location`: the renderer's click listener never sees it.
@@ -121,7 +144,7 @@ test('a page that would stop, chain, redirect or open windows never runs, and op
       // WebKitGTK hands the main frame's URL over only once the load ended, after the redirect.
       const opened = path === '/redirect' && process.platform === 'linux' ? '/landing' : path
       expected.push(`url ${site.origin}${opened}`)
-      await expect.poll(() => opens(app), { timeout: 15_000 }).toEqual(expected)
+      await expect.poll(announced, { timeout: 15_000 }).toEqual(expected)
     }
     await page.waitForTimeout(SETTLE_MS)
 
@@ -198,6 +221,7 @@ test('an embed never replaces the app, and a vault file in the main frame goes t
   const pdf = join(folder, 'abc123-doc.pdf')
   writeFileSync(pdf, '%PDF-1.4\n')
   const href = await markDocument(page)
+  const announced = await watchOsOpens(page)
 
   // Tauri counts a registered scheme's page as local, so an embed in the main frame could call
   // the app's commands: it is refused before it loads.
@@ -207,7 +231,7 @@ test('an embed never replaces the app, and a vault file in the main frame goes t
   expect(await opens(app)).toEqual([])
 
   await page.evaluate((url) => location.assign(url), webviewUrl('memry-file', pdf))
-  await expect.poll(() => opens(app), { timeout: 15_000 }).toHaveLength(1)
+  await expect.poll(announced, { timeout: 15_000 }).toHaveLength(1)
   expect((await opens(app))[0]).toMatch(/^path .*abc123-doc\.pdf$/)
   await page.waitForTimeout(SETTLE_MS)
   expect(await opens(app)).toHaveLength(1)
@@ -488,8 +512,9 @@ test('back, forward and reload keep the app', async ({ app, page }) => {
   const site = await startSite()
   try {
     await markDocument(page)
+    const announced = await watchOsOpens(page)
     await page.evaluate((url) => location.assign(url), `${site.origin}/stop`)
-    await expect.poll(() => opens(app), { timeout: 15_000 }).toHaveLength(1)
+    await expect.poll(announced, { timeout: 15_000 }).toHaveLength(1)
     // Back and forward over a hash route stay in the same document.
     const base = await page.evaluate(() => location.href)
     const origin = await page.evaluate(() => location.origin)
