@@ -47,6 +47,8 @@ export const commands = {
 	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
 	/**  `success` is whether the day had an entry to delete. */
 	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
+	/**  The tasks due on `date` and the count overdue before it (`journal:getDayContext`). */
+	journalGetDayContext: (date: string) => __TAURI_INVOKE<DayContextView>("journal_get_day_context", { date }),
 	/**  The day's entry, `null` when it has no file. Browsing never makes a day. */
 	journalGetEntry: (date: string) => __TAURI_INVOKE<JournalEntryView | null>("journal_get_entry", { date }),
 	/**  The live days of the year the calendar shows (`journal:getHeatmap`), oldest first. */
@@ -534,6 +536,32 @@ export type CustomIconView = {
  */
 export type CustomIconsUpdatedEvent = {
 	id: string,
+};
+
+/**  `DayContext`. */
+export type DayContextView = {
+	date: string,
+	/**  Not archived, completed ones included; by due time (none first), then position. */
+	tasks: DayTaskView[],
+	events: DayEventView[],
+	/**  Not completed, not archived, due before the day. */
+	overdueCount: number,
+};
+
+/**  `ScheduleEvent`: none yet, as in Electron. */
+export type DayEventView = never;
+
+export type DayTaskPriority = "low" | "medium" | "high" | "urgent";
+
+/**  `DayTask`. */
+export type DayTaskView = {
+	id: string,
+	title: string,
+	completed: boolean,
+	/**  Left out for no priority (`mapPriority`). */
+	priority?: DayTaskPriority,
+	/**  Always `false`: a task due on the day is not overdue for it. */
+	isOverdue: boolean,
 };
 
 /**  `CreatePropertyDefinitionSchema`, and `UpdatePropertyDefinitionSchema` with `type` left out. */

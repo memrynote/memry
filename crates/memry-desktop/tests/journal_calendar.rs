@@ -1,7 +1,8 @@
 //! The journal calendar's reads (Step 13m-4, #3530) over a running vault and note index: the
 //! days are the live journal records, a day with a file is measured by the index's row of that
 //! file, a day with no file yet by its text, and a deleted day never shows, its file on disk or
-//! not. The charts' property rows (13m-4b) are the records' values.
+//! not. The charts' property rows (13m-4b) are the records' values, and the day panel's
+//! context the tasks store's.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -13,6 +14,8 @@ use crate::vault_env;
 use std::sync::{Arc, Mutex};
 
 use index_support::until;
+use memry_core::api::projects::ProjectDraft;
+use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::calendar::{self, HeatmapEntryView, MonthEntryView, MonthStatsView};
@@ -248,5 +251,97 @@ fn the_charts_take_each_live_days_values_and_every_property_in_use() {
             .journal_property_rows(&open, "2025-3-1", "2025-03-31")
             .is_err()
     );
+    e.close();
+}
+
+#[test]
+fn the_day_context_lists_the_days_tasks_and_counts_the_overdue_ones() {
+    let store: Mutex<Option<Arc<dyn SecureStore>>> = Mutex::default();
+    let mut e = env(|s| {
+        *store.lock().unwrap() = Some(s.clone());
+        Some(NotesIdentity::new(s))
+    });
+    e.open();
+    let store = store.lock().unwrap().clone().unwrap();
+    let open = e.session.current().unwrap();
+    let tasks = open.vault.tasks(store.clone()).unwrap();
+    let project = tasks
+        .create_project(ProjectDraft {
+            name: "Home".into(),
+            description: None,
+            color: None,
+            icon: None,
+            statuses: None,
+        })
+        .unwrap();
+    let task = |title: &str, due: &str, time: Option<&str>, priority| {
+        let made = tasks
+            .create(NewTaskInput {
+                title: title.into(),
+                project_id: project.clone(),
+                status_id: None,
+                parent_id: None,
+                priority,
+                description: None,
+                due_date: Some(due.into()),
+                due_time: time.map(str::to_owned),
+                start_date: None,
+                repeat: None,
+                repeat_from: None,
+                tags: Vec::new(),
+                linked_note_ids: Vec::new(),
+                linked_canvas_ids: Vec::new(),
+                source_note_id: None,
+                position: None,
+            })
+            .unwrap();
+        made.created[0].clone()
+    };
+    let late = task("Late", "2025-03-01", None, 0);
+    let late_done = task("Late, done", "2025-03-01", None, 0);
+    tasks
+        .complete(late_done.clone(), "2025-03-02T10:00:00".into())
+        .unwrap();
+    let late_archived = task("Late, archived", "2025-02-01", None, 0);
+    let late_deleted = task("Late, deleted", "2025-02-01", None, 0);
+    tasks.delete(late_deleted, false).unwrap();
+    let afternoon = task("Afternoon", "2025-03-05", Some("15:00"), 3);
+    let morning = task("Morning", "2025-03-05", Some("09:00"), 0);
+    let anytime = task("Anytime", "2025-03-05", None, 4);
+    tasks
+        .complete(anytime.clone(), "2025-03-05T08:00:00".into())
+        .unwrap();
+    let shelved = task("Shelved", "2025-03-05", None, 1);
+    tasks.bulk_archive(vec![late_archived, shelved]).unwrap();
+    task("Tomorrow", "2025-03-06", None, 2);
+
+    let notes = NotesService::new(e.tier.clone(), store);
+    let context = notes.journal_day_context(&open, "2025-03-05").unwrap();
+    assert_eq!(
+        serde_json::to_value(&context).unwrap(),
+        json!({
+            "date": "2025-03-05",
+            "tasks": [
+                { "id": anytime, "title": "Anytime", "completed": true, "priority": "urgent", "isOverdue": false },
+                { "id": morning, "title": "Morning", "completed": false, "isOverdue": false },
+                { "id": afternoon, "title": "Afternoon", "completed": false, "priority": "high", "isOverdue": false },
+            ],
+            "events": [],
+            "overdueCount": 1,
+        }),
+        "due that day and not archived, by time (none first); overdue: open, live, due before"
+    );
+    assert_eq!(
+        notes
+            .journal_day_context(&open, "2025-03-01")
+            .unwrap()
+            .tasks
+            .iter()
+            .map(|task| task.id.as_str())
+            .collect::<Vec<_>>(),
+        [late.as_str(), late_done.as_str()],
+        "a day's completed task is listed too"
+    );
+    assert!(notes.journal_day_context(&open, "2025-3-5").is_err());
     e.close();
 }

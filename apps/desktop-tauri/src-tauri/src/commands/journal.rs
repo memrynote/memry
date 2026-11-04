@@ -1,7 +1,8 @@
 //! The journal commands of Step 13m (`journal:getEntry`, `journal:createEntry`,
-//! `journal:updateEntry`, `journal:deleteEntry` and the calendar's `getHeatmap`,
-//! `getMonthEntries`, `getYearStats`, `getStreak` and `getPropertyRows` of `ipc/journal-handlers.ts`), each one call
-//! of `memry_desktop::journal`. A create, an update and a delete send their journal event after
+//! `journal:updateEntry`, `journal:deleteEntry`, the calendar's `getHeatmap`,
+//! `getMonthEntries`, `getYearStats` and `getStreak`, the charts' `getPropertyRows` and the day
+//! panel's `getDayContext` of `ipc/journal-handlers.ts`), each one call of
+//! `memry_desktop::journal`. A create, an update and a delete send their journal event after
 //! the write; a create and an update once the note index measured the day's file, so the
 //! calendar's refetch on the event reads the saved counts ([`measure`]).
 
@@ -10,6 +11,7 @@ use std::sync::Arc;
 use memry_desktop::journal::calendar::{
     self, HeatmapEntryView, MonthEntryView, MonthStatsView, StreakView,
 };
+use memry_desktop::journal::day_context::DayContextView;
 use memry_desktop::journal::property_rows::PropertyRowsView;
 use memry_desktop::journal::update::{DayUpdate, DayUpdated, InlineTags};
 use memry_desktop::journal::write::NewDay;
@@ -77,7 +79,11 @@ fn failed(error: &NotesError) -> CommandError {
 
 /// The saved day's file measured into its index row before the save's event goes out, as
 /// Electron's handler syncs its cache before it emits. A day the index could not measure now
-/// gets its counts from the next pass, which is logged.
+/// (the open walk is running, the file did not read, or a long pass held it past
+/// `MEASURE_WAIT`) gets its counts from a later pass, which is logged. No event follows that
+/// pass: the journal's events say what the app or the disk did to a day, and a second sender
+/// for "the counts landed" would be a second path into them. The calendar reads the counts on
+/// its next refetch, at the next save or its query going stale.
 fn measure<R: Runtime>(app: &AppHandle<R>, entry: &JournalEntryView) {
     let Some(index) = app.try_state::<Arc<NoteIndex>>() else {
         tracing::warn!(
@@ -211,6 +217,8 @@ pub async fn journal_update_entry<R: Runtime>(
 ) -> Result<JournalEntryView, CommandError> {
     blocking("journal_update_entry", move || {
         let open = notes::open_vault(&app)?;
+        // A tags-only update writes the record alone: the file, and so its counts, stay.
+        let rewrites_file = input.content.is_some() || input.properties.is_some();
         let update = DayUpdate {
             date: input.date,
             content: input.content,
@@ -224,7 +232,9 @@ pub async fn journal_update_entry<R: Runtime>(
         let updated = notes::service(&app)?
             .update_day(&open, update)
             .map_err(|error| failed(&error))?;
-        measure(&app, &updated.entry);
+        if rewrites_file || updated.created {
+            measure(&app, &updated.entry);
+        }
         announce(&app, Landed::Saved(&updated));
         Ok(updated.entry)
     })
@@ -328,6 +338,21 @@ pub async fn journal_get_property_rows<R: Runtime>(
     blocking("journal_get_property_rows", move || {
         notes::service(&app)?
             .journal_property_rows(&notes::open_vault(&app)?, &from, &to)
+            .map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// The tasks due on `date` and the count overdue before it (`journal:getDayContext`).
+#[tauri::command]
+#[specta::specta]
+pub async fn journal_get_day_context<R: Runtime>(
+    app: AppHandle<R>,
+    date: String,
+) -> Result<DayContextView, CommandError> {
+    blocking("journal_get_day_context", move || {
+        notes::service(&app)?
+            .journal_day_context(&notes::open_vault(&app)?, &date)
             .map_err(|error| failed(&error))
     })
     .await
