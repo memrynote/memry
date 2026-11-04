@@ -1,10 +1,13 @@
 // Dragging in the sidebar's Collections tree, ported from Electron's `sidebar-folder-drag.e2e.ts`.
 // The notes part (Step 13g-3, #3530): a note dropped on another folder moves there through
 // `notes_move`, its file keeps its name, its relative embed is re-pointed from the new folder,
-// and the tree shows it once, under the folder it was dropped on. The folder part (a folder
-// holding a subfolder dropped on another folder, #2206) arrives with the folder moves (13h).
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+// and the tree shows it once, under the folder it was dropped on. The folder part (Step 13h,
+// #2206): a folder holding a subfolder dropped on another folder moves there through
+// `notes_rename_folder`. On Windows the watcher holds every directory open and Windows will not
+// rename one while anything beneath it is open, so the move failed and the drop did nothing; a
+// folder with no subfolder moved fine. The Windows e2e job is the run on the failing platform.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
@@ -24,15 +27,23 @@ async function ready(page: Page): Promise<void> {
   )
 }
 
-/** Opens the Collections section and expands `folders`, outermost first. */
+/**
+ * Opens the Collections section and expands `folders`, outermost first. A row that just mounted
+ * may not show its toggle yet, so each folder is clicked open until it says it is.
+ */
 async function expand(page: Page, folders: string[]): Promise<void> {
   const section = page.locator('#section-header-collections')
   if ((await section.getAttribute('aria-expanded')) === 'false') await section.click()
   for (const folder of folders) {
     const node = row(page, `folder-${folder}`)
     await expect(node).toBeVisible({ timeout: 30_000 })
-    const toggle = node.getByRole('button', { name: 'Expand folder' })
-    if (await toggle.isVisible()) await toggle.click()
+    const open = async () => {
+      if (await node.getByRole('button', { name: 'Collapse folder' }).isVisible()) return true
+      const toggle = node.getByRole('button', { name: 'Expand folder' })
+      if (await toggle.isVisible()) await toggle.click()
+      return false
+    }
+    expect(await pollUntil(open, { timeoutMs: 15_000, intervalMs: 300 })).toBe(true)
   }
 }
 
@@ -40,7 +51,8 @@ async function expand(page: Page, folders: string[]): Promise<void> {
  * Drags the row `fromId` onto the middle of the row `toId` ("inside") with the HTML5 drag events
  * the tree listens to. The harness's WebDriver pointer actions do not start the webview's native
  * drag (tried: the drop never fired), so the events are sent in the page, each at the row's
- * middle, carrying one shared `dataTransfer`.
+ * middle, carrying one shared `dataTransfer`. The virtualized tree puts `data-tree-node-id` on a
+ * positioned wrapper and listens on the `treeitem` row inside it, so that row gets the events.
  */
 async function dragOnto(page: Page, fromId: string, toId: string): Promise<void> {
   await page.evaluate(
@@ -48,7 +60,7 @@ async function dragOnto(page: Page, fromId: string, toId: string): Promise<void>
       const node = (id: string) => {
         const found = document.querySelector(`[data-tree-node-id="${id}"]`)
         if (!found) throw new Error(`no row ${id}`)
-        return found
+        return found.querySelector(':scope > [role="treeitem"]') ?? found
       }
       const store = new Map<string, string>()
       const dataTransfer = {
@@ -116,3 +128,57 @@ test('a note dropped on another folder moves there with its embeds', async ({
   const noteRows = page.locator('[data-tree-node-id]:not([data-tree-node-id^="folder-"])')
   await expect(noteRows.filter({ hasText: 'Drag me' })).toHaveCount(1)
 })
+
+/** `Beta` holding `Gamma`, a `Delta` to drop it on, and `filler` notes beside them. */
+function seed(vault: string, filler: number): void {
+  const write = (rel: string, title: string) => {
+    const file = join(vault, 'notes', rel)
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, `---\ntitle: ${title}\n---\n\nfiller\n`)
+  }
+  write('Beta/beta-note.md', 'beta-note')
+  write('Beta/Gamma/gamma-note.md', 'gamma-note')
+  write('Delta/delta-note.md', 'delta-note')
+  for (let i = 0; i < filler; i++) write(`filler-${String(i).padStart(3, '0')}.md`, `Filler ${i}`)
+}
+
+for (const [tree, filler] of [
+  ['plain', 0],
+  // Past VIRTUALIZATION_THRESHOLD (100), the tree most real vaults render.
+  ['virtualized', 150]
+] as const) {
+  test(`a folder holding a subfolder drops into another folder (${tree} tree)`, async ({
+    page,
+    testVaultPath
+  }) => {
+    test.slow()
+    seed(testVaultPath, filler)
+    await ready(page)
+    await page.reload()
+    await ready(page)
+    await expand(page, ['notes'])
+    await expect(row(page, 'folder-notes/Beta')).toBeVisible({ timeout: 30_000 })
+    await expect(row(page, 'folder-notes/Delta')).toBeVisible()
+    // Only once every filler note is listed does the tree turn virtualized; dropping before that
+    // would test the plain tree twice.
+    const virtualizedRow = page.locator(
+      '[data-tree-node-id="folder-notes/Beta"] > [role="treeitem"]'
+    )
+    if (filler > 0) await expect(virtualizedRow).toBeVisible({ timeout: 30_000 })
+
+    await dragOnto(page, 'folder-notes/Beta', 'folder-notes/Delta')
+
+    const onDisk = (rel: string) => existsSync(join(testVaultPath, 'notes', rel))
+    expect(
+      await pollUntil(async () => onDisk('Delta/Beta/Gamma/gamma-note.md'), { timeoutMs: 15_000 })
+    ).toBe(true)
+    expect(onDisk('Beta')).toBe(false)
+
+    await expect(row(page, 'folder-notes/Beta')).toHaveCount(0, { timeout: 15_000 })
+    await expand(page, ['notes/Delta', 'notes/Delta/Beta', 'notes/Delta/Beta/Gamma'])
+    // Once, not twice: the note followed its folder instead of a second copy being indexed at
+    // the new path.
+    const noteRows = page.locator('[data-tree-node-id]:not([data-tree-node-id^="folder-"])')
+    await expect(noteRows.filter({ hasText: 'gamma-note' })).toHaveCount(1, { timeout: 15_000 })
+  })
+}

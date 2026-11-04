@@ -32,6 +32,7 @@ const commands = vi.hoisted(() => ({
   notesGetAllPositions: vi.fn(),
   notesGetFolders: vi.fn(),
   notesCreateFolder: vi.fn(),
+  notesRenameFolder: vi.fn(),
   notesGetFolderConfig: vi.fn(),
   notesSetFolderConfig: vi.fn(),
   notesGetFolderTemplate: vi.fn()
@@ -495,6 +496,21 @@ describe('notes-service', () => {
     await expect(notesService.createFolder('Work')).resolves.toEqual({
       success: false,
       error: 'taken'
+    })
+
+    commands.notesRenameFolder.mockResolvedValueOnce(null)
+    await expect(notesService.renameFolder('Work', 'Archive/Work')).resolves.toEqual({
+      success: true
+    })
+    expect(commands.notesRenameFolder).toHaveBeenCalledWith('Work', 'Archive/Work')
+    commands.notesRenameFolder.mockRejectedValueOnce({
+      kind: 'invalid',
+      code: 'folder_holds_journal',
+      message: 'the journal'
+    })
+    await expect(notesService.renameFolder('Work', 'Else')).resolves.toEqual({
+      success: false,
+      error: 'the journal'
     })
 
     commands.notesGetFolderConfig.mockResolvedValueOnce({

@@ -318,6 +318,26 @@ fn relocate(
     })
 }
 
+/// The `folder_config` records at and under `from` re-keyed to `to`, and the
+/// subtree's manual order carried, in the caller's transaction: what a folder
+/// the desktop app moved on disk leaves to its records once its notes followed
+/// it (`notes::app_move::folder_moved_by_app`). `from` may be a folder no record
+/// can name (it then has none); `to` must be one.
+pub(crate) fn rekey_subtree(
+    tx: &Connection,
+    from: &str,
+    to: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let to = valid_path(to)?;
+    for folder in folders_within(tx, from)? {
+        let target = rewritten(&folder, from, to);
+        move_config(tx, &folder, &target, device_id, now_ms)?;
+    }
+    note_positions::carry_folder(tx, from, to)
+}
+
 /// Re-keys one `folder_config`: the same payload under the new id, and a
 /// tombstone under the old one.
 ///

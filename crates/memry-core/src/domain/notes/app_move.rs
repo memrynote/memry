@@ -30,6 +30,13 @@
 //! record stays as it was and is owed the move ([`super::identity::owe_place`]), and only the
 //! row follows the file.
 //!
+//! A folder the app renames or moves (Step 13h) moves each note in it the same way: every
+//! note's move is recorded first ([`begin_all`], one synced write), the folder moves on disk,
+//! and [`folder_moved_by_app`] then moves every record and row, re-keys the folder's
+//! `folder_config` records and carries its manual order, in one transaction. A crash in
+//! between leaves each note's record for the next open to finish one by one, as after a note's
+//! own move; the folder's records and slots stay at the old path then.
+//!
 //! The inbound `[[link]]` rewrite is not here: it edits other notes' files, which only the
 //! vault tier writes.
 
@@ -39,7 +46,7 @@ use serde::{Deserialize, Serialize};
 use super::failed;
 use super::identity::{folder_of, follow, owe_in, settle_place};
 use crate::api::errors::StorageError;
-use crate::domain::{note_files, note_positions};
+use crate::domain::{folders, note_files, note_positions};
 
 /// Where the app moved a note's file.
 #[derive(Debug, Clone, Copy)]
@@ -128,36 +135,55 @@ struct Record {
 /// one ("Safety level may not be changed inside a transaction"), so `begin` would fail there
 /// and record nothing.
 pub fn begin(conn: &Connection, note_id: &str, moved: &AppMoved<'_>) -> Result<(), BeginError> {
-    match recorded(conn, note_id)? {
-        Some(Recorded::Move(_)) => return Err(BeginError::Unsettled),
-        Some(Recorded::Unreadable(why)) => return Err(BeginError::Unreadable(why)),
-        None => {}
+    begin_all(conn, &[(note_id, *moved)])
+}
+
+/// [`begin`] for the notes of a folder the app moves: every record, or none, in one synced
+/// transaction. Refused when any of the notes has a record.
+pub fn begin_all(conn: &Connection, moves: &[(&str, AppMoved<'_>)]) -> Result<(), BeginError> {
+    let mut records = Vec::with_capacity(moves.len());
+    for (note_id, moved) in moves {
+        match recorded(conn, note_id)? {
+            Some(Recorded::Move(_)) => return Err(BeginError::Unsettled),
+            Some(Recorded::Unreadable(why)) => return Err(BeginError::Unreadable(why)),
+            None => {}
+        }
+        let record = Record {
+            version: RECORD_VERSION,
+            old_path: moved.old_path.to_owned(),
+            new_path: moved.new_path.to_owned(),
+            title: moved.title.map(str::to_owned),
+        };
+        let value = serde_json::to_string(&record).map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })?;
+        records.push((record_key(note_id), value));
     }
-    let record = Record {
-        version: RECORD_VERSION,
-        old_path: moved.old_path.to_owned(),
-        new_path: moved.new_path.to_owned(),
-        title: moved.title.map(str::to_owned),
-    };
-    let value = serde_json::to_string(&record).map_err(|error| StorageError::Failed {
-        what: error.to_string(),
-    })?;
     let was: i64 = conn
         .query_row("PRAGMA synchronous", [], |row| row.get(0))
         .map_err(failed)?;
     conn.pragma_update(None, "synchronous", "FULL")
         .map_err(failed)?;
-    let written = conn.execute(
-        "INSERT INTO meta (key, value) VALUES (?1, ?2)",
-        params![record_key(note_id), value],
-    );
+    let written = insert_records(conn, &records);
     let restored = conn.pragma_update(None, "synchronous", was);
     // A record written and a setting not restored is still an `Err`: the caller does not move
     // the file, so the record names a move that never happened. It holds the note's moves
     // back (`Unsettled`) until the next open finds the file at the old path and forgets it.
-    written.map_err(failed)?;
+    written?;
     restored.map_err(failed)?;
     Ok(())
+}
+
+fn insert_records(conn: &Connection, records: &[(String, String)]) -> Result<(), StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    for (key, value) in records {
+        tx.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+            params![key, value],
+        )
+        .map_err(failed)?;
+    }
+    tx.commit().map_err(failed)
 }
 
 /// Every note's record, in note id order.
@@ -255,21 +281,57 @@ pub fn moved_by_app(
         "a move that changes what the file is keeps the record's title"
     );
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let (old_folder, new_folder) = (folder_of(moved.old_path), folder_of(moved.new_path));
-    if moved.keeps_kind {
-        let folder = (!new_folder.is_empty()).then_some(new_folder);
-        follow(&tx, note_id, moved.title, folder, device_id, now_ms)?;
+    follow_file(&tx, note_id, moved, device_id, now_ms, |tx| {
+        let (old_folder, new_folder) = (folder_of(moved.old_path), folder_of(moved.new_path));
         if old_folder == new_folder {
-            note_positions::carry(&tx, moved.old_path, moved.new_path)?;
+            note_positions::carry(tx, moved.old_path, moved.new_path)
         } else {
-            note_positions::remove(&tx, moved.old_path)?;
-            note_positions::place_at_top(&tx, moved.new_path, new_folder)?;
+            note_positions::remove(tx, moved.old_path)?;
+            note_positions::place_at_top(tx, moved.new_path, new_folder)
         }
-        settle_place(&tx, note_id)?;
-    } else {
-        owe_in(&tx, note_id, moved.old_path, now_ms)?;
-    }
-    note_files::rename_path(&tx, note_id, moved.new_path)?;
-    abandon(&tx, note_id, moved.old_path, moved.new_path)?;
+    })?;
     tx.commit().map_err(failed)
+}
+
+/// The folder `from` is at `to` on disk now, with every note in it ([`AppMoved`] each, under
+/// `to`): records, rows and the folder's `folder_config` records follow, and its manual order
+/// is carried, notes' slots included, in one transaction that also forgets each note's record
+/// of the move ([`begin_all`]). An `Err` leaves all of it as it was.
+pub fn folder_moved_by_app(
+    conn: &Connection,
+    from: &str,
+    to: &str,
+    moves: &[(&str, AppMoved<'_>)],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    for (note_id, moved) in moves {
+        follow_file(&tx, note_id, moved, device_id, now_ms, |_| Ok(()))?;
+    }
+    folders::rekey_subtree(&tx, from, to, device_id, now_ms)?;
+    tx.commit().map_err(failed)
+}
+
+/// One note's record and row follow its file, in the caller's transaction; `place` moves its
+/// manual slot when the file kept what it is.
+fn follow_file(
+    tx: &Connection,
+    note_id: &str,
+    moved: &AppMoved<'_>,
+    device_id: &str,
+    now_ms: i64,
+    place: impl FnOnce(&Connection) -> Result<(), StorageError>,
+) -> Result<(), StorageError> {
+    if moved.keeps_kind {
+        let new_folder = folder_of(moved.new_path);
+        let folder = (!new_folder.is_empty()).then_some(new_folder);
+        follow(tx, note_id, moved.title, folder, device_id, now_ms)?;
+        place(tx)?;
+        settle_place(tx, note_id)?;
+    } else {
+        owe_in(tx, note_id, moved.old_path, now_ms)?;
+    }
+    note_files::rename_path(tx, note_id, moved.new_path)?;
+    abandon(tx, note_id, moved.old_path, moved.new_path).map(drop)
 }

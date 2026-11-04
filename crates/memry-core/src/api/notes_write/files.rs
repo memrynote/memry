@@ -155,6 +155,27 @@ impl NotesWriter {
             .call_blocking(move |conn| Ok(app_move::begin(conn, note_id, &moved)))?
     }
 
+    /// Records the moves of the notes of a folder the app moves, all or none
+    /// ([`app_move::begin_all`]). Only the vault tier's rows' lane calls it.
+    pub fn begin_app_moves(&self, moves: &[(&str, AppMoved<'_>)]) -> Result<(), BeginError> {
+        self.db
+            .call_blocking(move |conn| Ok(app_move::begin_all(conn, moves)))?
+    }
+
+    /// The folder `from` moved to `to` with its notes: records, rows, folder records and
+    /// manual order follow in one transaction ([`app_move::folder_moved_by_app`]).
+    pub fn folder_moved_by_app(
+        &self,
+        from: &str,
+        to: &str,
+        moves: &[(&str, AppMoved<'_>)],
+    ) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            app_move::folder_moved_by_app(conn, from, to, moves, &device_id, now_ms())
+        })
+    }
+
     /// Every note's record of an app move never finished or forgotten
     /// ([`app_move::pending`]).
     pub fn pending_app_moves(&self) -> Result<Vec<(String, Recorded)>, StorageError> {

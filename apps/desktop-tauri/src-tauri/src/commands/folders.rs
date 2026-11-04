@@ -38,6 +38,23 @@ pub async fn notes_create_folder<R: Runtime>(
     .await
 }
 
+/// `notes:rename-folder`: the folder at `old_path` to `new_path`, a rename in place or a drag
+/// to another parent, its notes with it (`notes::folder_move`).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_rename_folder<R: Runtime>(
+    app: AppHandle<R>,
+    old_path: String,
+    new_path: String,
+) -> Result<(), CommandError> {
+    blocking("notes_rename_folder", move || {
+        service(&app)?
+            .rename_folder(&open_vault(&app)?, &old_path, &new_path)
+            .map_err(|error| failed(&error))
+    })
+    .await
+}
+
 /// `notes:reveal-folder-in-finder`: the folder itself, selected in its parent.
 #[tauri::command]
 #[specta::specta]

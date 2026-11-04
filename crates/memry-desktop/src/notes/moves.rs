@@ -344,7 +344,7 @@ fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
     Ok(true)
 }
 
-fn identity_failed(error: IdentityError) -> NotesError {
+pub(super) fn identity_failed(error: IdentityError) -> NotesError {
     match error {
         IdentityError::Storage(error) => NotesError::Storage(error),
         IdentityError::Other(what) => NotesError::Storage(StorageError::Failed { what }),

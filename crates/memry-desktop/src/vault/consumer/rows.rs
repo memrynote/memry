@@ -2,7 +2,8 @@
 //! app's own file operations (Step 13's create) take it through [`RowOwner`]'s methods, the
 //! write-back (`vault::writeback`) holds it for a whole pass, a journal rename
 //! (`vault::journal_rename`) for each file it moves, a note's rename or move in the app
-//! (`notes::moves`) for the whole step, and the vault open for the app move a crash cut short
+//! (`notes::moves`) for the whole step, a folder's rename or move (`notes::folder_move`) for
+//! the whole step too, and the vault open for the app move a crash cut short
 //! (`vault::app_move`). Either way a write checks [`PathIndex`] first and keeps
 //! it in step, and the [`Applied`] fact goes out after the row is written, under the lane, so
 //! subscribers see the facts in the order the rows changed.
@@ -367,6 +368,38 @@ impl Lane<'_> {
         writer.moved_by_app(note_id, moved)?;
         state.index.insert(note_id, moved.new_path);
         Ok(())
+    }
+
+    /// The app moved the folder `from` to `to` with the notes of `moves` (Step 13h): their
+    /// records and rows, the folder's records and its manual order follow in one core
+    /// transaction ([`NotesWriter::folder_moved_by_app`]); an `Err` leaves all of it where it
+    /// was. Publishes no fact, as [`Lane::move_by_app`].
+    pub(crate) fn folder_moved_by_app(
+        &mut self,
+        writer: &NotesWriter,
+        from: &str,
+        to: &str,
+        moves: &[(&str, AppMoved<'_>)],
+    ) -> Result<(), RowError> {
+        let state = self.state_mut();
+        for (note_id, moved) in moves {
+            state.index.check(note_id, moved.new_path)?;
+        }
+        writer.folder_moved_by_app(from, to, moves)?;
+        for (note_id, moved) in moves {
+            state.index.insert(note_id, moved.new_path);
+        }
+        Ok(())
+    }
+
+    /// [`Lane::begin_move`] for every note of a folder the app moves, all or none
+    /// ([`NotesWriter::begin_app_moves`]).
+    pub(crate) fn begin_moves(
+        &mut self,
+        writer: &NotesWriter,
+        moves: &[(&str, AppMoved<'_>)],
+    ) -> Result<(), BeginError> {
+        writer.begin_app_moves(moves)
     }
 
     /// Records the note's app move before its file moves ([`NotesWriter::begin_app_move`]).

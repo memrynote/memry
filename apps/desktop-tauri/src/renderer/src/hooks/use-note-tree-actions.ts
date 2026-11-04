@@ -579,7 +579,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           : folderRenameValue.trim()
 
         if (!(await confirmFolderJournalChange(oldPath, newPath))) return
-        await notesService.renameFolder(oldPath, newPath)
+        const renamed = await notesService.renameFolder(oldPath, newPath)
+        if (!renamed.success) throw new Error(renamed.error)
         deps.renameFolderPath(oldPath, newPath)
         await refreshFolderTree()
       } catch (err) {
@@ -854,7 +855,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       if (!(await confirmFolderJournalChange(sourceFolderPath, newPath))) return false
 
       try {
-        await notesService.renameFolder(sourceFolderPath, newPath)
+        const moved = await notesService.renameFolder(sourceFolderPath, newPath)
+        if (!moved.success) throw new Error(moved.error)
         deps.renameFolderPath(sourceFolderPath, newPath)
         await refreshFolderTree()
         return true
