@@ -44,7 +44,7 @@ fn opened(files: &[(&str, String)]) -> (Env, Arc<NotesService>, Arc<dyn SecureSt
     for (path, text) in files {
         e.write(path, text);
     }
-    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {});
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {});
     index.register(&e.session);
     e.open();
     e.facts_until(indexed);

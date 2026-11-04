@@ -15,7 +15,8 @@ const { mockGetHeatmap, mockGetEntry, listeners, server } = vi.hoisted(() => ({
     created: new Set<JournalListener>(),
     updated: new Set<JournalListener>(),
     deleted: new Set<JournalListener>(),
-    external: new Set<JournalListener>()
+    external: new Set<JournalListener>(),
+    dropped: new Set<JournalListener>()
   },
   server: { entries: new Map<string, string>() }
 }))
@@ -32,7 +33,8 @@ vi.mock('@/services/journal-service', () => ({
   onJournalEntryCreated: subscription(listeners.created),
   onJournalEntryUpdated: subscription(listeners.updated),
   onJournalEntryDeleted: subscription(listeners.deleted),
-  onJournalExternalChange: subscription(listeners.external)
+  onJournalExternalChange: subscription(listeners.external),
+  onJournalEventsDropped: subscription(listeners.dropped)
 }))
 
 vi.mock('@/hooks/use-general-settings', () => ({
@@ -159,6 +161,22 @@ describe('home journal widget stays current', () => {
 
     expect(showsText('Yesterday note, with more added')).toBe(true)
     expect(mockGetEntry.mock.calls.length).toBeGreaterThan(entryCallsAfterMount)
+  })
+
+  it('refetches what it shows when journal events were dropped', async () => {
+    renderApp()
+    await waitFor(() => expect(showsText('Yesterday note')).toBe(true))
+
+    write(TODAY, 'Written while events were dropped')
+    write(YESTERDAY, 'Yesterday note, edited while events were dropped')
+    act(() => {
+      for (const listener of Array.from(listeners.dropped)) listener({ date: '' })
+    })
+    await settle()
+
+    expect(showsText('Written while events were dropped')).toBe(true)
+    expect(showsText('Yesterday note, edited while events were dropped')).toBe(true)
+    expect(dayMarkedAsHavingAnEntry(TODAY)).toBe(true)
   })
 
   it('shows an entry created while the board tab was unmounted', async () => {

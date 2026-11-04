@@ -23,7 +23,8 @@ vi.mock('@/services/journal-service', () => ({
   },
   onJournalEntryUpdated: () => () => {},
   onJournalEntryDeleted: () => () => {},
-  onJournalExternalChange: () => () => {}
+  onJournalExternalChange: () => () => {},
+  onJournalEventsDropped: () => () => {}
 }))
 
 vi.mock('@/hooks/use-general-settings', () => ({

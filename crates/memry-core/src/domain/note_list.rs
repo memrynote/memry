@@ -8,6 +8,10 @@
 //! Electron's `getNoteTags` gives (`setNoteTags`): the frontmatter's by position, then each
 //! body tag the frontmatter lacks by tag fold, in body order.
 //!
+//! With `include_journals` the live journal days that have a file are listed too
+//! (`includeJournals`), titled by their file's name as Electron's index titles them, with their
+//! date. Their tags are the record's and the body's, read as a note's.
+//!
 //! Every tag read here is keyed by the listed note's id, so it searches the tag tables'
 //! `(note_id, tag)` keys instead of scanning every tag in the vault per listed note.
 
@@ -36,6 +40,8 @@ pub struct ListedNote {
     pub mime_type: Option<String>,
     pub file_size: Option<i64>,
     pub local_only: bool,
+    /// The day of a journal entry, `YYYY-MM-DD`; `None` for a note.
+    pub journal_date: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -56,6 +62,8 @@ pub struct NoteListQuery {
     pub ascending: bool,
     pub limit: u32,
     pub offset: u32,
+    /// The journal days with a file too.
+    pub include_journals: bool,
 }
 
 /// One page, and how many notes the query matches in all.
@@ -68,6 +76,18 @@ pub struct NoteListPage {
 
 const COLUMNS: &str = "n.id, f.path, n.title, n.emoji, n.created_at, n.modified_at, n.aliases, \
      f.file_type, f.mime_type, f.file_size, f.local_only, n.properties";
+
+/// The listed items with `include_journals`: the notes and the days, in the notes' columns. A
+/// day's title is its file's name without `.md` (`extractTitleFromPath`): the name is what
+/// `rtrim` leaves of the path after its folder, which `rtrim` takes off the non-`/` tail of.
+const WITH_DAYS: &str = "(SELECT n.id, n.title, n.emoji, n.created_at, n.modified_at, n.aliases, \
+     n.properties, n.deleted_at, NULL AS date FROM notes n \
+     UNION ALL \
+     SELECT j.id, CASE WHEN substr(name, -3) = '.md' AND length(name) > 3 \
+     THEN substr(name, 1, length(name) - 3) ELSE name END, NULL, j.created_at, j.modified_at, \
+     NULL, j.properties, j.deleted_at, j.date FROM journal_entries j \
+     JOIN (SELECT note_id, substr(path, length(rtrim(path, replace(path, '/', ''))) + 1) AS name \
+     FROM note_files) d ON d.note_id = j.id)";
 
 /// The listed note's tags as a JSON array. `note_body_tags`' rowid is its insertion order,
 /// which `body_tags::write` keeps as the body's.
@@ -102,8 +122,13 @@ fn statements(query: &NoteListQuery) -> (String, String, Vec<SqlValue>) {
             args.len()
         ));
     }
+    let (items, date) = if query.include_journals {
+        (WITH_DAYS, "n.date")
+    } else {
+        ("notes", "NULL")
+    };
     let from = format!(
-        "FROM notes n JOIN note_files f ON f.note_id = n.id WHERE {}",
+        "FROM {items} n JOIN note_files f ON f.note_id = n.id WHERE {}",
         filters.join(" AND ")
     );
     let order = match query.sort {
@@ -115,7 +140,7 @@ fn statements(query: &NoteListQuery) -> (String, String, Vec<SqlValue>) {
     // One past the page tells whether more follow.
     let fetch = i64::from(query.limit) + 1;
     let page = format!(
-        "SELECT {COLUMNS}, {TAGS_COLUMN} {from} ORDER BY {order} {direction}, n.id \
+        "SELECT {COLUMNS}, {TAGS_COLUMN}, {date} {from} ORDER BY {order} {direction}, n.id \
          LIMIT {fetch} OFFSET {}",
         query.offset
     );
@@ -155,7 +180,7 @@ pub fn by_path(conn: &Connection, path: &str) -> Result<Option<ListedNote>, Stor
 
 fn one(conn: &Connection, filter: &str, value: &str) -> Result<Option<ListedNote>, StorageError> {
     let sql = format!(
-        "SELECT {COLUMNS}, {TAGS_COLUMN} FROM notes n JOIN note_files f ON f.note_id = n.id \
+        "SELECT {COLUMNS}, {TAGS_COLUMN}, NULL FROM notes n JOIN note_files f ON f.note_id = n.id \
          WHERE n.deleted_at IS NULL AND {filter}"
     );
     let mut statement = conn.prepare(&sql).map_err(failed)?;
@@ -186,6 +211,7 @@ fn read(row: &Row<'_>) -> rusqlite::Result<ListedNote> {
         mime_type: row.get(8)?,
         file_size: row.get(9)?,
         local_only: row.get::<_, i64>(10)? != 0,
+        journal_date: row.get(13)?,
     })
 }
 

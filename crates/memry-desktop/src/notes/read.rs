@@ -130,6 +130,7 @@ pub fn list(open: &OpenVault, options: &NoteListOptions) -> Result<NoteListPageV
         ascending: options.sort_order == Some(SortOrder::Asc),
         limit: options.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT),
         offset: options.offset.unwrap_or(0),
+        include_journals: options.include_journals == Some(true),
     };
     let page = open.vault.note_files().list_notes(query)?;
     let tree = options.fields == Some(NoteListFields::Tree);

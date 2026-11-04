@@ -235,7 +235,7 @@ impl NotesService {
         }
         if users {
             // The day's first save replaces this file with no version of it.
-            self.own_files.wrote(&opened.id, &hash);
+            self.own_files.wrote(&opened.id, &hash, ChangeSource::App);
         }
         lane.publish(Applied::Added {
             note_id: opened.id.clone(),

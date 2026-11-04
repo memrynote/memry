@@ -34,7 +34,7 @@ pub(crate) fn opened(files: &[(&str, &str)]) -> (Env, Arc<NotesService>, Arc<dyn
     for (rel, text) in files {
         e.write(rel, text);
     }
-    NoteIndex::new(e.tier.clone(), |_| {}, |_| {}).register(&e.session);
+    NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {}).register(&e.session);
     e.open();
     e.facts_until(indexed);
     let store = kept.expect("the store");

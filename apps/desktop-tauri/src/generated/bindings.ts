@@ -393,6 +393,8 @@ export const events = {
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
+	journalEventsDroppedEvent: makeEvent<JournalEventsDroppedEvent, JournalEventsDroppedEvent>("journal-events-dropped-event"),
+	journalExternalChangeEvent: makeEvent<JournalExternalChangeEvent, JournalExternalChangeEvent>("journal-external-change-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
@@ -816,21 +818,29 @@ export type JournalDeleteOutput = {
 	success: boolean,
 };
 
-/**  A day's entry was made on its first write (`journal:entryCreated`). */
+/**
+ *  A day's entry was made on its first write, or its file appeared outside the app
+ *  (`journal:entryCreated`).
+ */
 export type JournalEntryCreatedEvent = {
 	date: string,
 	entry: JournalEntryView,
+	/**  `external` for a file found outside the app; left out for the app's own write. */
+	source?: NoteEventSource,
 };
 
-/**  A day's entry was deleted (`journal:entryDeleted`). */
+/**  A day's entry was deleted, in the app or by its file's removal (`journal:entryDeleted`). */
 export type JournalEntryDeletedEvent = {
 	date: string,
+	source?: NoteEventSource,
 };
 
-/**  A day's entry was edited in the app (`journal:entryUpdated`). */
+/**  A day's entry was edited in the app or outside it (`journal:entryUpdated`). */
 export type JournalEntryUpdatedEvent = {
 	date: string,
 	entry: JournalEntryView,
+	/**  `external` for an edit outside the app, on which an open editor takes the file's text. */
+	source?: NoteEventSource,
 };
 
 /**  `JournalEntry` (`packages/contracts/src/journal-api.ts`). */
@@ -850,6 +860,25 @@ export type JournalEntryView = {
 	/**  ISO 8601. */
 	createdAt: string,
 	modifiedAt: string,
+};
+
+/**
+ *  Journal events were dropped because their forwarder fell behind (no Electron channel:
+ *  Electron sends every event). No payload; the renderer refetches its journal reads and, unless
+ *  the open day holds unsaved text, that day.
+ */
+export type JournalEventsDroppedEvent = null;
+
+/**  `JournalExternalChangeEvent.type`. */
+export type JournalExternalChange = "modified";
+
+/**
+ *  A day's counts landed after the event of its save or edit went out (`journal:externalChange`,
+ *  which Electron defines and never sends): the renderer refetches the day's reads.
+ */
+export type JournalExternalChangeEvent = {
+	date: string,
+	type: JournalExternalChange,
 };
 
 /**  The `#tags` typed into or deleted from the body (`UpdateEntryInputSchema.inlineTags`). */
@@ -1085,12 +1114,13 @@ export type NoteListItemView = {
 	aliases?: string[],
 	mimeType?: string,
 	fileSize?: number,
+	/**  A journal entry's day, in an `includeJournals` list. */
+	journalDate?: string,
 };
 
 /**
  *  `NoteListSchema`'s options this slice reads; a value the schema does not name is refused,
- *  as zod refuses it. `includeJournals` is not read: journal entries are not listed until Step
- *  13m.
+ *  as zod refuses it.
  */
 export type NoteListOptions = {
 	folder?: string | null,
@@ -1101,6 +1131,8 @@ export type NoteListOptions = {
 	limit?: number | null,
 	offset?: number | null,
 	fields?: NoteListFields | null,
+	/**  The journal days with a file are listed too (the sidebar's `journalShowInSidebar`). */
+	includeJournals?: boolean | null,
 };
 
 /**  `NoteListResponse`. */

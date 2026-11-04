@@ -15,6 +15,7 @@ use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource, MoveKind};
 use crate::vault::activity::{ActivityLog, ScanActivity, failure_key};
+use crate::vault::app_edit::OwnFiles;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
 use crate::vault::watch::VaultEvent;
@@ -43,6 +44,7 @@ pub(super) struct Applier {
     pub(super) feed: Option<ExternalFeed>,
     pub(super) settings: Option<AppSettings>,
     pub(super) activity: Arc<ActivityLog>,
+    pub(super) own_files: Arc<OwnFiles>,
 }
 
 impl Applier {
@@ -316,6 +318,20 @@ impl Applier {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
             return Step::Retry(path.to_owned());
         }
+        // The bytes a save wrote that its document did not take (`AppEdit`, `cancel_write`)
+        // are its writer's: reported as an outside edit, they would make an open editor drop
+        // what was typed since. Any other bytes replaced the app's file.
+        let writer = content_hash
+            .as_deref()
+            .and_then(|hash| self.own_files.writer(note_id, hash));
+        let source = match writer {
+            Some(writer) if source == ChangeSource::Watcher => writer,
+            Some(_) => source,
+            None => {
+                self.own_files.forget(note_id);
+                source
+            }
+        };
         lane.publish(Applied::Changed {
             note_id: note_id.to_owned(),
             path: path.to_owned(),

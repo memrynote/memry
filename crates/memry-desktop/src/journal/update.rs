@@ -56,7 +56,7 @@ use crate::notes::frontmatter::{is_reserved_yaml, user_properties};
 use crate::notes::properties::file_delta;
 use crate::notes::service::NotesService;
 use crate::session::OpenVault;
-use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
+use crate::vault::app_edit::{Edited, Kept, Precondition};
 use crate::vault::consumer::ChangeSource;
 use crate::vault::writeback::journal::{Dated, dated_block, set_date};
 use memry_core::api::journal::Journal;
@@ -188,7 +188,7 @@ impl NotesService {
             }
             Ok(false)
         };
-        let edit = AppEdit::new(&self.tier, &self.store, open)?;
+        let edit = self.save_edit(open)?;
         let edited = self.order.run(&stamp.id, |turn| {
             let save = Precondition::Save(&self.own_files);
             let text = |read: &str| change.text(read);
