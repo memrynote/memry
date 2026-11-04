@@ -27,6 +27,7 @@ const commands = vi.hoisted(() => ({
   notesAddStatusOption: vi.fn(),
   notesRename: vi.fn(),
   notesUpdate: vi.fn(),
+  notesApplyTemplate: vi.fn(),
   notesMove: vi.fn(),
   notesReorder: vi.fn(),
   notesGetAllPositions: vi.fn(),
@@ -587,6 +588,34 @@ describe('notes-service', () => {
     ).rejects.toThrow('notes.update({ frontmatter }) is not ported')
     expect(commands.notesUpdate).not.toHaveBeenCalled()
     expect(api.notes.update).not.toHaveBeenCalled()
+  })
+
+  it("applies a template through its command, a failure in Electron's shape", async () => {
+    const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
+    commands.notesApplyTemplate.mockResolvedValue(view)
+    const input = { noteId: 'note-1', templateId: 'blank', mode: 'full' as const }
+    await expect(notesService.applyTemplate(input)).resolves.toEqual({
+      success: true,
+      note: { ...view, created: new Date(CREATED), modified: new Date(MODIFIED) }
+    })
+    expect(commands.notesApplyTemplate).toHaveBeenCalledWith(input)
+
+    commands.notesApplyTemplate.mockRejectedValue({
+      kind: 'NotFound',
+      code: 'template_not_found',
+      message: 'template not found: blank'
+    })
+    await expect(notesService.applyTemplate({ ...input, mode: 'body' })).resolves.toEqual({
+      success: false,
+      error: 'template not found: blank',
+      note: null
+    })
+
+    commands.notesApplyTemplate.mockClear()
+    await expect(notesService.applyTemplate({ ...input, plainChecklists: true })).rejects.toThrow(
+      'notes.applyTemplate({ plainChecklists }) is not ported'
+    )
+    expect(commands.notesApplyTemplate).not.toHaveBeenCalled()
   })
 
   it("renames through its command, a failure in Electron's shape", async () => {

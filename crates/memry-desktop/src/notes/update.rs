@@ -30,15 +30,14 @@ use memry_core::markdown::frontmatter::{
 };
 use serde::{Deserialize, Deserializer};
 
-use super::error::NotesError;
+use super::error::{NotesError, SCOPE};
 use super::read;
 use super::service::NotesService;
 use super::view::NoteView;
 use super::write_order::NoteTurn;
 use crate::session::OpenVault;
-use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
+use crate::vault::app_edit::{AppEdit, Edited, Precondition};
 use crate::vault::consumer::ChangeSource;
-use crate::vault::note_file::NoteFileError;
 
 /// `HeaderTagEditSchema`: at most 50 names per list, each 1 to 50 UTF-16 units once trimmed.
 const MAX_EDIT_TAGS: usize = 50;
@@ -227,7 +226,10 @@ impl NotesService {
         let tags_changed = planned.into_inner().is_some_and(|plan| plan.tags_changed);
         match edited {
             Edited::Wrote { .. } | Edited::Unchanged => Ok(tags_changed),
-            Edited::Kept(kept) => Err(refused(id, kept)),
+            Edited::Kept(kept) => {
+                tracing::info!(scope = SCOPE, note_id = id, ?kept, "a save was refused");
+                Err(NotesError::EditKept(kept))
+            }
         }
     }
 }
@@ -290,24 +292,8 @@ fn next_text(
     Ok((output, plan))
 }
 
-/// A save the seam kept the file from, as the caller sees it.
-fn refused(id: &str, kept: Kept) -> NotesError {
-    match kept {
-        Kept::NoRow | Kept::NoFile | Kept::NoBody => NotesError::NotFound(id.to_owned()),
-        Kept::NotMarkdown => NotesError::NotMarkdown,
-        Kept::FrontmatterUnreadable | Kept::FrontmatterBroken => NotesError::FrontmatterUnreadable,
-        // An outside edit landed during the write; the rest are `Held`'s alone.
-        Kept::FileChanged
-        | Kept::NotRead
-        | Kept::BodyAhead
-        | Kept::FileAhead
-        | Kept::BodyNotPulled
-        | Kept::NotRepresentable => NotesError::File(NoteFileError::ChangedUnderWrite),
-    }
-}
-
 /// A body's `#tags`, by tag fold.
-fn tag_keys(body: &str) -> HashSet<String> {
+pub(super) fn tag_keys(body: &str) -> HashSet<String> {
     body_tags::extract_markdown(body)
         .iter()
         .map(|tag| fold(tag))

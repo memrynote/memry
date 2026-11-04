@@ -98,6 +98,8 @@ pub enum NotesError {
          followed by “(incomplete move)”, beside it"
     )]
     FolderMoveIncomplete,
+    #[error("template not found: {0}")]
+    TemplateNotFound(String),
     /// A folder's `.folder.md` cannot be read, so it is not written over, or cannot be
     /// written.
     #[error(transparent)]
@@ -249,6 +251,7 @@ impl CoreError for NotesError {
             Self::EditKept(_) => (FailureKind::NotFound, "note_not_found"),
             Self::PropertyNotFound(_) => (FailureKind::NotFound, "property_not_found"),
             Self::PropertyExists(_) => (FailureKind::PropertyWrite, "property_exists"),
+            Self::TemplateNotFound(_) => (FailureKind::NotFound, "template_not_found"),
             Self::Outside => (FailureKind::Invalid, "outside_vault"),
             Self::Unopenable(Unopenable::HardLinked) => (FailureKind::Invalid, "note_hard_linked"),
             Self::Unopenable(Unopenable::NotRegular) => (FailureKind::Invalid, "note_not_regular"),

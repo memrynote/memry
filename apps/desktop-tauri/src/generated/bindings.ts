@@ -143,6 +143,12 @@ export const commands = {
 	 *  comes from its row fact.
 	 */
 	notesUpdate: (input: NoteUpdateInput) => __TAURI_INVOKE<NoteView>("notes_update", { input }),
+	/**
+	 *  `notes:apply-template`: the note takes the template's body, and in `full` mode its tags,
+	 *  the property values it lacks and its icon when it has none. Answers the note, and sends
+	 *  `notes:tags-changed` when its tags changed; its `notes:updated` comes from its row fact.
+	 */
+	notesApplyTemplate: (input: ApplyTemplateInput) => __TAURI_INVOKE<NoteView>("notes_apply_template", { input }),
 	/**  `notes:reorder`: the paths become the hand-made order of the folder (`""` is the root). */
 	notesReorder: (folderPath: string, notePaths: string[]) => __TAURI_INVOKE<null>("notes_reorder", { folderPath, notePaths }),
 	/**  The note `title` names as a whole (no heading split), or `null`. */
@@ -438,6 +444,13 @@ export type AppUpdateState = {
 	autoDownloadEnabled: boolean,
 	autoCheckEnabled: boolean,
 	installFailed: InstallFailed | null,
+};
+
+/**  `ApplyTemplateSchema`, the fields this step reads. */
+export type ApplyTemplateInput = {
+	noteId: string,
+	templateId: string,
+	mode: TemplateMode,
 };
 
 /**  The kinds of a note whose file is not markdown. */
@@ -1417,6 +1430,9 @@ export type TemplateListItem = {
 	icon: string | null,
 	isBuiltIn: boolean,
 };
+
+/**  `ApplyTemplateSchema.mode`. */
+export type TemplateMode = "full" | "body";
 
 /**  `TemplatePropertySchema`, as a write takes it. */
 export type TemplateProperty = {

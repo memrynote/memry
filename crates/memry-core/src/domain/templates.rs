@@ -198,7 +198,11 @@ pub(crate) fn seed_of(tx: &Connection, template_id: &str) -> Result<Seed, Storag
         return Ok(Seed {
             content: b.content.to_owned(),
             tags: b.tags.iter().map(|t| (*t).to_owned()).collect(),
-            properties: properties_of(template_id, &object(json!({ "properties": properties })))?,
+            properties: properties_of(
+                template_id,
+                &object(json!({ "properties": properties })),
+                AbsentValue::Null,
+            )?,
             icon: Some(b.icon.to_owned()),
         });
     }
@@ -246,13 +250,22 @@ pub(crate) fn seed_of(tx: &Connection, template_id: &str) -> Result<Seed, Storag
     Ok(Seed {
         content,
         tags,
-        properties: properties_of(template_id, stored.object())?,
+        properties: properties_of(template_id, stored.object(), AbsentValue::Null)?,
         icon: stored
             .object()
             .get("icon")
             .and_then(Value::as_str)
             .map(str::to_owned),
     })
+}
+
+/// What a template property with no `value` key gives the note.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AbsentValue {
+    /// An explicit null (the core's create).
+    Null,
+    /// No key, as desktop's `writePropertiesToRoot` drops an `undefined` value.
+    Skip,
 }
 
 /// Chapter 13 §13.7.6: a template's `properties` array becomes the note's
@@ -267,7 +280,15 @@ pub(crate) fn seed_of(tx: &Connection, template_id: &str) -> Result<Seed, Storag
 /// record does. Every malformed shape is an error rather than a skip: a
 /// template whose properties silently vanished would look like the user's own
 /// doing, and this is the `GET /sync/vaults` lesson applied to a local read.
-pub(crate) fn properties_of(template_id: &str, template: &Object) -> Result<Object, StorageError> {
+///
+/// The one reader of a template's properties for the note it makes: the core's
+/// create (iOS, journal seeding) and desktop's file writes (`createNote`,
+/// `applyTemplate`) differ only in `absent`.
+pub fn properties_of(
+    template_id: &str,
+    template: &Object,
+    absent: AbsentValue,
+) -> Result<Object, StorageError> {
     let refuse = |what: String| StorageError::Failed { what };
     let entries = match template.get("properties") {
         None | Some(Value::Null) => return Ok(Object::new()),
@@ -293,8 +314,11 @@ pub(crate) fn properties_of(template_id: &str, template: &Object) -> Result<Obje
         };
         // `value` is `z.unknown()`, so any JSON is legal — including an
         // explicit null, and including absent, which §13.4 keeps distinct.
-        let value = entry.get("value").cloned().unwrap_or(Value::Null);
-        properties.insert(name.clone(), value);
+        match (entry.get("value"), absent) {
+            (Some(value), _) => properties.insert(name.clone(), value.clone()),
+            (None, AbsentValue::Null) => properties.insert(name.clone(), Value::Null),
+            (None, AbsentValue::Skip) => None,
+        };
     }
     Ok(properties)
 }
