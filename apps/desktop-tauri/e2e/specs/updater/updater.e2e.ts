@@ -6,7 +6,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { test, expect } from '../../harness/test'
-import { invokeTest } from '../../harness/invoke-test'
+import { invokeTest, sendTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
 import { sendQuitEvent } from '../../harness/mac-quit-event'
 import {
@@ -191,7 +191,7 @@ test('a normal quit installs a downloaded update without a relaunch', async ({ a
   const { appDataDir } = await appInfo(app)
   await download(app, page)
 
-  await invokeTest(app, 'e2e_request_quit')
+  await sendTest(app, 'e2e_request_quit')
   await waitForExit(app)
   expect(applies(appDataDir)).toEqual([{ silent: true, restart: false }])
 })
@@ -255,7 +255,7 @@ test('a sign-out leaves a downloaded update to the next normal quit', async ({ a
 
   await restart(app)
   await download(app, page)
-  await invokeTest(app, 'e2e_request_quit')
+  await sendTest(app, 'e2e_request_quit')
   await waitForExit(app)
   expect(applies(appDataDir)).toEqual([{ silent: true, restart: false }])
 })
@@ -343,7 +343,7 @@ withSessionManager('gnome')(
 
     sessionManager.cancelLogout(app.pid)
     expect(await waitForMainLog(app, 'the logout was called off', 5_000)).toBe(true)
-    await invokeTest(app, 'e2e_request_quit')
+    await sendTest(app, 'e2e_request_quit')
     await waitForExit(app)
     expect(applies(appDataDir)).toEqual([{ silent: true, restart: false }])
   }
