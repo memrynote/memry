@@ -190,7 +190,7 @@ impl NotesIdentity {
     /// What reads a record's body for comparing with the file at `path` whose markdown below
     /// its frontmatter is `body`. Built before the core's writer is held: the embed lookup
     /// reads the rows.
-    fn reader(
+    pub(super) fn reader(
         &self,
         ctx: &IdentityCtx<'_>,
         path: &str,
@@ -282,7 +282,7 @@ impl NotesIdentity {
 }
 
 /// Electron's database is beside the vault's files (`<vault>/.memry/data.db`).
-fn electron_db_beside(root: &Path) -> bool {
+pub(super) fn electron_db_beside(root: &Path) -> bool {
     root.join(".memry").join("data.db").is_file()
 }
 
@@ -462,8 +462,9 @@ impl NoteIdentity for NotesIdentity {
             return Ok(Rename::Followed);
         }
         if !keeps_kind(&journal, &writer, note_id, new_path)? {
-            let to_day = journal.day_of(new_path);
-            return match writer.file_crossed(note_id, old_path, to_day.as_deref())? {
+            return match owed_moves::cross(
+                self, ctx, &writer, &journal, note_id, old_path, new_path,
+            )? {
                 Removed::Deleted => Ok(Rename::Crossed),
                 Removed::Undecided => {
                     tracing::warn!(
@@ -496,7 +497,7 @@ impl NoteIdentity for NotesIdentity {
             return Vec::new();
         };
         match self.writer(ctx) {
-            Ok(writer) => owed_moves::crossings(ctx.root, &journal, &writer),
+            Ok(writer) => owed_moves::crossings(self, ctx, &journal, &writer),
             Err(error) => {
                 tracing::error!(scope = SCOPE, "the owed moves could not be read: {error}");
                 Vec::new()
@@ -520,7 +521,7 @@ impl NoteIdentity for NotesIdentity {
 }
 
 /// Large-file class (`packages/shared/src/markdown-class.ts`): the size alone, else the text.
-fn is_large_file(size: u64, raw: &str) -> bool {
+pub(super) fn is_large_file(size: u64, raw: &str) -> bool {
     let thresholds = MarkdownClassThresholds::default();
     let by_size = usize::try_from(size).map_or(true, |bytes| {
         classify_markdown_stat(bytes, thresholds).is_some()
@@ -535,7 +536,7 @@ fn is_large_file(size: u64, raw: &str) -> bool {
 /// without `.md`, as `path.basename(p, '.md')` reads it (a name that is only `.md` keeps it).
 /// Exact: a title that differs from a record's only in case or Unicode normalization is
 /// another title, as it is to Electron.
-fn place(path: &str) -> (Option<&str>, &str) {
+pub(super) fn place(path: &str) -> (Option<&str>, &str) {
     let (folder, name) = match path.rsplit_once('/') {
         Some((folder, name)) => (Some(folder), name),
         None => (None, path),

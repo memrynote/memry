@@ -11,7 +11,9 @@ use crate::crdt::errors::CrdtError;
 use crate::domain::journal;
 use crate::domain::notes::app_move::{self, AppMoved, BeginError, FolderRecorded, Recorded};
 use crate::domain::notes::folder_delete::{self, FolderDeleteRecorded};
-use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
+use crate::domain::notes::identity::{
+    self, Adopted, Crossing, FileNote, Moved, OwedPlace, Removed,
+};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::domain::notes::{self, NewNote};
 use crate::domain::properties;
@@ -275,17 +277,25 @@ impl NotesWriter {
             .call_blocking(move |conn| identity::removed(conn, note_id, path, &device_id, now_ms()))
     }
 
-    /// The note's or day's file moved from `from_path` to where it is the other kind, the day
-    /// `to_day` if that is a day's path ([`identity::crossed`]).
+    /// The note's or day's file moved to where it is the other kind ([`identity::crossed`]).
     pub fn file_crossed(
         &self,
         note_id: &str,
-        from_path: &str,
-        to_day: Option<&str>,
-    ) -> Result<Removed, StorageError> {
+        to: Crossing<'_>,
+        converter: Option<&Converter>,
+        embeds: Option<&dyn EmbedResolver>,
+    ) -> Result<Removed, CrdtError> {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            identity::crossed(conn, note_id, from_path, to_day, &device_id, now_ms())
-        })
+            Ok(identity::crossed(
+                conn,
+                converter,
+                embeds,
+                note_id,
+                &to,
+                &device_id,
+                now_ms(),
+            ))
+        })?
     }
 }

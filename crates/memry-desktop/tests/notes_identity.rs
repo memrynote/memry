@@ -20,6 +20,8 @@ use std::time::Duration;
 use flate2::read::GzDecoder;
 use memry_core::domain::note_positions;
 use memry_core::domain::notes::identity::VAULT_ORIGIN_META_KEY;
+use memry_core::markdown::convert::api::Converter;
+use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::notes::identity::NotesIdentity;
@@ -91,8 +93,8 @@ fn slot(e: &Env, path: &str) -> Option<i64> {
         .unwrap()
 }
 
-/// The records owed a move of their file, by id.
-/// The notes owed a move, as the core counts them: a debt whose row is gone is owed no more.
+/// The records owed a move of their file, by id, read from the table itself: a debt whose row
+/// is gone must not be there.
 fn owed(e: &Env) -> Vec<String> {
     e.core()
         .db_handle()
@@ -1197,6 +1199,48 @@ fn a_day_moved_out_edited_as_a_note_and_moved_back_keeps_the_note() {
     assert!(!outbox(&e).contains(&("delete".to_owned(), note)));
 }
 
+/// A day moved out of the journal and back unedited: the file is the deleted day's text, so
+/// it is that day again, revived, and the note it was meanwhile is deleted, as Electron does.
+#[test]
+fn a_day_moved_out_and_back_unedited_is_the_day_again() {
+    let mut e = notes_env();
+    e.write("journal/2025-01-02.md", "A day\n");
+    e.open();
+    e.facts_until(added("journal/2025-01-02.md"));
+    e.facts_until(indexed);
+    fs::create_dir_all(e.vault.join("Notes")).unwrap();
+    fs::rename(
+        e.vault.join("journal/2025-01-02.md"),
+        e.vault.join("Notes/2025-01-02.md"),
+    )
+    .unwrap();
+    e.facts_until(added("Notes/2025-01-02.md"));
+    let note = row_id(&e, "Notes/2025-01-02.md").unwrap();
+
+    fs::rename(
+        e.vault.join("Notes/2025-01-02.md"),
+        e.vault.join("journal/2025-01-02.md"),
+    )
+    .unwrap();
+    e.facts_until(added("journal/2025-01-02.md"));
+    assert_eq!(
+        row_id(&e, "journal/2025-01-02.md").as_deref(),
+        Some("j2025-01-02")
+    );
+    assert_eq!(
+        days(&e),
+        vec![("j2025-01-02".to_owned(), "2025-01-02".to_owned(), false)]
+    );
+    assert_eq!(e.body("j2025-01-02"), "A day");
+    assert!(
+        records(&e)
+            .iter()
+            .any(|(id, _, _, deleted)| id == &note && *deleted)
+    );
+    assert!(outbox(&e).contains(&("delete".to_owned(), note)));
+    assert!(owed(&e).is_empty(), "{:?}", owed(&e));
+}
+
 /// A day's file deleted, then a note's file moved onto its path: the note stays, owed.
 #[test]
 fn a_note_moved_onto_a_deleted_days_path_keeps_the_note() {
@@ -1247,14 +1291,26 @@ fn a_crossing_cut_short_after_the_records_delete_is_made_at_the_next_open() {
         .core()
         .db_handle()
         .call_blocking(move |conn| {
-            memry_core::domain::notes::identity::crossed(
+            let crossing = memry_core::domain::notes::identity::Crossing {
+                from_path: "2025-01-03.md",
+                path: "journal/2025-01-03.md",
+                title: "2025-01-03",
+                folder_path: Some("journal"),
+                day: Some("2025-01-03"),
+                body: "Soon a day\n",
+                electron_db_beside: false,
+            };
+            let converter = Converter::new(CalloutTypes::new(Vec::new()));
+            let crossed = memry_core::domain::notes::identity::crossed(
                 conn,
+                Some(&converter),
+                None,
                 &id,
-                "2025-01-03.md",
-                Some("2025-01-03"),
+                &crossing,
                 "device-a",
                 1,
-            )
+            );
+            Ok(crossed.unwrap())
         })
         .unwrap();
     assert_eq!(

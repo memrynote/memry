@@ -7,10 +7,12 @@
 use std::path::Path;
 
 use memry_core::api::notes_write::NotesWriter;
-use memry_core::domain::notes::identity::Removed;
+use memry_core::domain::notes::identity::{Crossing, Removed};
+use memry_core::markdown::frontmatter::split_frontmatter_block;
 
+use super::identity::{NotesIdentity, electron_db_beside, is_large_file, place};
 use crate::journal::folder_follow::journal_folder_moved;
-use crate::vault::consumer::identity::{Crossed, IdentityError};
+use crate::vault::consumer::identity::{Crossed, IdentityCtx, IdentityError};
 use crate::vault::journal_format::JournalDays;
 
 const SCOPE: &str = "note_identity";
@@ -45,7 +47,13 @@ pub(super) fn held(
 /// Each owed move that changes what its file is, with its record deleted as the watcher's move
 /// deletes it ([`NotesWriter::file_crossed`]); one whose record stays is left owed, and so is a
 /// day the journal folder carried ([`held`]).
-pub(super) fn crossings(root: &Path, journal: &JournalDays, writer: &NotesWriter) -> Vec<Crossed> {
+pub(super) fn crossings(
+    identity: &NotesIdentity,
+    ctx: &IdentityCtx<'_>,
+    journal: &JournalDays,
+    writer: &NotesWriter,
+) -> Vec<Crossed> {
+    let root = ctx.root;
     let owed = match writer.owed_places() {
         Ok(owed) => owed,
         Err(error) => {
@@ -68,11 +76,9 @@ pub(super) fn crossings(root: &Path, journal: &JournalDays, writer: &NotesWriter
             {
                 return Ok(None);
             }
-            let to_day = journal.day_of(&owed.path);
-            Ok(Some(writer.file_crossed(
-                &owed.note_id,
-                &owed.from_path,
-                to_day.as_deref(),
+            let (id, from) = (&owed.note_id, &owed.from_path);
+            Ok(Some(cross(
+                identity, ctx, writer, journal, id, from, &owed.path,
             )?))
         });
         match removed {
@@ -89,4 +95,41 @@ pub(super) fn crossings(root: &Path, journal: &JournalDays, writer: &NotesWriter
         }
     }
     crossed
+}
+
+/// Makes the crossing of the record `id`'s file from `from` to `to` as the core decides
+/// ([`NotesWriter::file_crossed`]), with what the file says there. A file not read, or of the
+/// large-file class, which the tier would not make a note or a day, is only owed the move.
+pub(super) fn cross(
+    identity: &NotesIdentity,
+    ctx: &IdentityCtx<'_>,
+    writer: &NotesWriter,
+    journal: &JournalDays,
+    id: &str,
+    from: &str,
+    to: &str,
+) -> Result<Removed, IdentityError> {
+    let raw = match std::fs::read_to_string(ctx.root.join(to)) {
+        Ok(raw) if !is_large_file(u64::try_from(raw.len()).unwrap_or(u64::MAX), &raw) => raw,
+        _ => {
+            writer.owe_place(id, from)?;
+            return Ok(Removed::Undecided);
+        }
+    };
+    let body = split_frontmatter_block(&raw).body;
+    let (folder_path, title) = place(to);
+    let day = journal.day_of(to);
+    let crossing = Crossing {
+        from_path: from,
+        path: to,
+        title,
+        folder_path,
+        day: day.as_deref(),
+        body,
+        electron_db_beside: electron_db_beside(ctx.root),
+    };
+    let (converter, embeds) = identity.reader(ctx, to, body)?;
+    writer
+        .file_crossed(id, crossing, Some(&converter), Some(&embeds))
+        .map_err(|error| IdentityError::Other(error.to_string()))
 }

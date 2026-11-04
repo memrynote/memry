@@ -71,7 +71,7 @@ use std::sync::Arc;
 use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::Value;
 
-pub use super::removal::{crossed, removed};
+pub use super::removal::{Crossing, crossed, removed};
 use super::{ITEM_TYPE, NewNote, create_dated_in, edit_in, failed, iso};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;

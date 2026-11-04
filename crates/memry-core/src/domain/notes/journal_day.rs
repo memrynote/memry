@@ -104,32 +104,11 @@ pub fn adopt_day(
         return Ok(UNDECIDED);
     };
     let id = journal::document_id_for(date)?;
-    match journal::entry_for(&tx, date)? {
-        None => {}
-        Some((held, _)) if held != id => return Ok(UNDECIDED),
-        Some((_, deleted)) => {
-            if note_files::by_id(&tx, &id)?.is_some() {
-                return Ok(UNDECIDED);
-            }
-            let Some(converter) = converter else {
-                return Ok(UNDECIDED);
-            };
-            let evidence = body_says(
-                &tx,
-                converter,
-                embeds,
-                journal::ITEM_TYPE,
-                &id,
-                (file.path, file.body),
-                device_id,
-            )?;
-            if !matches!(evidence, Evidence::Same) {
-                return Ok(UNDECIDED);
-            }
-            if !deleted {
-                return Ok(Adopted::Existing(id));
-            }
-        }
+    let text = (file.path, file.body);
+    match day_entry(&tx, converter, embeds, date, &id, text, device_id)? {
+        DayEntry::Taken => return Ok(UNDECIDED),
+        DayEntry::Existing => return Ok(Adopted::Existing(id)),
+        DayEntry::Free => {}
     }
     if file.electron_db_beside && !mints_beside_electron(&tx)? {
         return Ok(Adopted::Deferred(Deferral::ElectronNotImported));
@@ -141,6 +120,55 @@ pub fn adopt_day(
     metadata::tag_found_day_in(&tx, &opened, file.tags, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(Adopted::Created(opened.id))
+}
+
+/// What the entry of the day `date` (id `id`) says of a file at its path, `text` its path and
+/// its markdown below the frontmatter: the rule [`adopt_day`] decides by, and
+/// [`super::removal::crossed`] before it deletes a note whose file crossed there.
+pub(super) enum DayEntry {
+    /// No entry, or a deleted one the file revives: the file may be a new or revived day.
+    Free,
+    /// A live entry no row names that the file already is.
+    Existing,
+    /// Held by another id or another file, or one whose body is not the file's text (or
+    /// cannot be read without `converter`): the file is put off.
+    Taken,
+}
+
+pub(super) fn day_entry(
+    conn: &Connection,
+    converter: Option<&Converter>,
+    embeds: Option<&dyn EmbedResolver>,
+    date: &str,
+    id: &str,
+    text: (&str, &str),
+    device_id: &str,
+) -> Result<DayEntry, CrdtError> {
+    let deleted = match journal::entry_for(conn, date)? {
+        None => return Ok(DayEntry::Free),
+        Some((held, _)) if held != id => return Ok(DayEntry::Taken),
+        Some((_, deleted)) => deleted,
+    };
+    if note_files::by_id(conn, id)?.is_some() {
+        return Ok(DayEntry::Taken);
+    }
+    let Some(converter) = converter else {
+        return Ok(DayEntry::Taken);
+    };
+    let evidence = body_says(
+        conn,
+        converter,
+        embeds,
+        journal::ITEM_TYPE,
+        id,
+        text,
+        device_id,
+    )?;
+    Ok(match evidence {
+        Evidence::Same if deleted => DayEntry::Free,
+        Evidence::Same => DayEntry::Existing,
+        _ => DayEntry::Taken,
+    })
 }
 
 /// The day the vault file of the record `id` is, the date its frontmatter carries: the live
