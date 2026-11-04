@@ -323,6 +323,7 @@ fn relocate(
 /// the desktop app moved on disk leaves to its records once its notes followed
 /// it (`notes::app_move::folder_moved_by_app`). `from` may be a folder no record
 /// can name (it then has none); `to` must be one.
+#[cfg(feature = "markdown")]
 pub(crate) fn rekey_subtree(
     tx: &Connection,
     from: &str,
