@@ -4,7 +4,7 @@ import { release, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { driverReady, forceKill, isAlive, spawnApp } from './app-process'
-import { GRACEFUL_CLOSE_MS } from './budgets'
+import { GRACEFUL_CLOSE_MS, SCRIPT_TIMEOUT_MS } from './budgets'
 import { HarnessError } from './errors'
 import { removeDir } from './remove-dir'
 import { type Executor, invokeTest } from './invoke-test'
@@ -214,7 +214,7 @@ async function start(
   const child = await spawnApp(base.port)
   const exited = new Promise<number | null>((resolve) => child.once('exit', resolve))
   await executor.reloadSession()
-  await executor.setTimeout({ script: 60_000 })
+  await executor.setTimeout({ script: SCRIPT_TIMEOUT_MS })
   const info = await waitForApp(executor)
   assertControlApplied(info, base.control)
   const app: TauriApp = { ...base, executor, pid: info.pid, exited }

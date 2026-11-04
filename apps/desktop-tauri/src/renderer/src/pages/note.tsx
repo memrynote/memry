@@ -328,14 +328,6 @@ export function NotePage({ noteId }: NotePageProps) {
     setFreshTitleNoteId(noteId)
   }
   const isFreshTitle = !!noteId && freshTitleNoteId === noteId
-  const hasNote = !!note
-  useEffect(() => {
-    if (!isFreshTitle || !hasNote || !noteId) return undefined
-    clearNewNoteTitlePending(noteId)
-    // Deferred past the tab switch and the editor mount, which focus on their own.
-    const frame = requestAnimationFrame(() => titleInputRef.current?.focus())
-    return () => cancelAnimationFrame(frame)
-  }, [isFreshTitle, hasNote, noteId])
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
   const [eventContentOverride, setEventContentOverride] = useState<{
     noteId: string
@@ -357,6 +349,16 @@ export function NotePage({ noteId }: NotePageProps) {
     status: 'note'
   })
   const fileProbeStatus = fileProbe.id === noteId ? fileProbe.status : 'pending'
+  // The title renders once the note is loaded and the probe said it is a note,
+  // whichever answers last.
+  const isTitleShown = !!note && fileProbeStatus === 'note'
+  useEffect(() => {
+    if (!isFreshTitle || !isTitleShown || !noteId) return undefined
+    clearNewNoteTitlePending(noteId)
+    // Deferred past the tab switch and the editor mount, which focus on their own.
+    const frame = requestAnimationFrame(() => titleInputRef.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [isFreshTitle, isTitleShown, noteId])
   useEffect(() => {
     if (!noteId) return undefined
     let cancelled = false

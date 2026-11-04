@@ -117,3 +117,19 @@ test('keyboard and mouse reach the page like Playwright', async ({ page }) => {
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2)
   await expect(page.locator('#inc')).toHaveText('Count: 1')
 })
+
+test('reload resolves in the new document, ready for the next call', async ({ page }) => {
+  await waitForAppReady(page)
+  await page.evaluate(() => {
+    ;(window as Window & { __memryOldDocument?: boolean }).__memryOldDocument = true
+  })
+  await page.reload()
+  // The driver's refresh returns once `location.reload()` ran. A call made then lands in the old
+  // document or, sent while it unloads, gets no answer until the script timeout.
+  expect(
+    await page.evaluate(() => ({
+      old: (window as Window & { __memryOldDocument?: boolean }).__memryOldDocument === true,
+      state: document.readyState
+    }))
+  ).toEqual({ old: false, state: 'complete' })
+})

@@ -13,6 +13,7 @@ export interface PwBrowser {
   releaseActions(): Promise<void>
   takeScreenshot(): Promise<string>
   refresh(): Promise<void>
+  setTimeout(timeouts: { script?: number }): Promise<void>
   getUrl(): Promise<string>
   getTitle(): Promise<string>
 }
