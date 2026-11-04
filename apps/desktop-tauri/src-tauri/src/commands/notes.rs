@@ -7,9 +7,10 @@
 //! through `memry_desktop::notes::mentions`, linking one of them (`notes:link-mention`) through
 //! `NotesService::link_mention`, and a wiki link's hover card
 //! (`notes:preview-by-title`) through `memry_desktop::notes::link_preview`.
-//! A note's rename (`notes:rename`) and the sidebar's manual order (`notes:reorder`,
-//! `notes:get-all-positions`, #3530 13g) go through `memry_desktop::notes::{moves, positions}`;
-//! the rename's `NoteRenamedEvent` comes from its row fact, as every note event does.
+//! A note's rename and move (`notes:rename`, `notes:move`) and the sidebar's manual order
+//! (`notes:reorder`, `notes:get-all-positions`, #3530 13g) go through
+//! `memry_desktop::notes::{moves, positions}`; the `NoteRenamedEvent` and `NoteMovedEvent` come
+//! from their row facts, as every note event does.
 //! A note's edit (`notes:update`, #3530 13f-3c) goes through `memry_desktop::notes::update`, a
 //! template applied to it (`notes:apply-template`, 13l-4) through
 //! `memry_desktop::notes::apply_template`.
@@ -30,7 +31,7 @@ use memry_desktop::notes::mentions::{Mentions, UnlinkedMentionView};
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::NoteUpdateInput;
 use memry_desktop::notes::view::{
-    FileView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
+    FileView, MovedNoteView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
 };
 use memry_desktop::notes::{local_only, positions, read};
 use memry_desktop::session::{OpenVault, Session};
@@ -132,8 +133,8 @@ pub async fn notes_delete(
 
 /// `notes:rename`: the note's new title, and its file the name that title makes in its folder.
 /// Answers the note.
-// This command and the two below are generic over the runtime so a test drives them on a mock
-// app (`tests/notes_rename.rs`).
+// This command, `notes_move`, `notes_reorder` and `notes_get_all_positions` are generic over the
+// runtime so a test drives them on a mock app (`tests/notes_rename.rs`).
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_rename<R: Runtime>(
@@ -193,6 +194,25 @@ pub async fn notes_apply_template<R: Runtime>(
         }
         track(&app, "note_updated", "template_applied");
         Ok(applied.note)
+    })
+    .await
+}
+
+/// `notes:move`: the note's file, under its name (numbered when taken), in another folder of
+/// the vault (`""` is the root). Answers the note, and why its relative refs still point from
+/// its old folder when they could not follow it.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_move<R: Runtime>(
+    app: AppHandle<R>,
+    id: String,
+    new_folder: String,
+) -> Result<MovedNoteView, CommandError> {
+    blocking("notes_move", move || {
+        let open = open_vault(&app)?;
+        service(&app)?
+            .move_to_folder(&open, &id, &new_folder)
+            .map_err(|error| failed(&error))
     })
     .await
 }

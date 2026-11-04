@@ -108,6 +108,26 @@ impl NoteView {
     }
 }
 
+/// `notes:move`'s answer: the note, and why its relative links to images and files still point
+/// from its old folder when they could not follow it (`rewriteNoteRefsForMove`; Electron logs
+/// that and answers success).
+#[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MovedNoteView {
+    pub note: NoteView,
+    pub refs_kept: Option<RefsKept>,
+}
+
+/// Why a moved note's relative refs were left as they were: `changing`, the note changed while
+/// it moved (an outside edit or a sync merge not written yet); `unreadable`, the app cannot edit
+/// the file (a frontmatter that does not parse, a document a markdown file cannot hold).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "kebab-case")]
+pub enum RefsKept {
+    Changing,
+    Unreadable,
+}
+
 /// `NoteListItem`. `word_count` is `None` until the note index (Step 13e) measured the file.
 /// Deserialize is for the note event that carries it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]

@@ -2199,5 +2199,9 @@
     "keep": "Conservar nota",
     "deletePermanently": "Eliminar permanentemente",
     "kept": "Se conservó la nota. No se pudo mover a la papelera."
+  },
+  "movedRefsKept": {
+    "changing": "“{title}” se movió, pero estaba cambiando en ese momento, así que sus enlaces a imágenes y archivos siguen apuntando a su carpeta anterior. Revísalos en la nota.",
+    "unreadable": "“{title}” se movió, pero Memry no puede editar su archivo, así que sus enlaces a imágenes y archivos siguen apuntando a su carpeta anterior. Actualízalos a mano."
   }
 }

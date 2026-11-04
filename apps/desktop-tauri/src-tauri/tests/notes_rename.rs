@@ -1,10 +1,11 @@
-//! `notes_rename`, `notes_reorder` and `notes_get_all_positions` through their commands on a
-//! mock app over a real vault, vault tier and note index (#3530 13g), and the events a rename
-//! sends through the shell's note events: `NoteRenamedEvent` for the note, and an outside
-//! edit's `NoteUpdatedEvent` for each file whose links followed it (13g-2); `notes_update`
-//! (#3530 13f-3c) and the `notes:updated` and `notes:tags-changed` it sends; `notes_create`
-//! from a template (13l-3), with the icon left out or cleared; `notes_apply_template` (13l-4)
-//! and the events it sends.
+//! `notes_rename`, `notes_move`, `notes_reorder` and `notes_get_all_positions` through their
+//! commands on a mock app over a real vault, vault tier and note index (#3530 13g), and the
+//! events a rename or move sends through the shell's note events: `NoteRenamedEvent` or
+//! `NoteMovedEvent` for the note, and an outside edit's `NoteUpdatedEvent` for each file whose
+//! links followed it (13g-2) or, on a move, for the note whose relative embeds did (13g-3);
+//! `notes_update` (#3530 13f-3c) and the `notes:updated` and `notes:tags-changed` it sends;
+//! `notes_create` from a template (13l-3), with the icon left out or cleared;
+//! `notes_apply_template` (13l-4) and the events it sends.
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -23,14 +24,17 @@ use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput};
 use memry_desktop::notes::view::NoteCreateInput;
+use memry_desktop::notes::view::RefsKept;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
 use memry_tauri::commands::notes::{
-    notes_apply_template, notes_create, notes_get_all_positions, notes_rename, notes_reorder,
-    notes_update,
+    notes_apply_template, notes_create, notes_get_all_positions, notes_move, notes_rename,
+    notes_reorder, notes_update,
 };
-use memry_tauri::events::{NoteRenamedEvent, NoteTagsChangedEvent, NoteUpdatedEvent};
+use memry_tauri::events::{
+    NoteMovedEvent, NoteRenamedEvent, NoteTagsChangedEvent, NoteUpdatedEvent,
+};
 use memry_tauri::shell::note_events;
 use serde_json::{Value, json};
 use tauri::test::{MockRuntime, mock_app};
@@ -69,6 +73,7 @@ struct Fixture {
     app: App<MockRuntime>,
     notes: Arc<NotesService>,
     renamed: Arc<Mutex<Vec<Value>>>,
+    moved: Arc<Mutex<Vec<Value>>>,
     updated: Arc<Mutex<Vec<Value>>>,
     /// `(event name, payload)` of every `NoteUpdatedEvent` and `NoteTagsChangedEvent`.
     edited: Arc<Mutex<Vec<(&'static str, Value)>>>,
@@ -117,6 +122,7 @@ fn opened() -> Fixture {
     app.manage(notes.clone());
     note_events::forward(app.handle().clone(), tier.subscribe());
     let renamed = heard(&app, NoteRenamedEvent::NAME);
+    let moved = heard(&app, NoteMovedEvent::NAME);
     let updated = heard(&app, NoteUpdatedEvent::NAME);
     let edited = Arc::new(Mutex::new(Vec::new()));
     for name in [NoteUpdatedEvent::NAME, NoteTagsChangedEvent::NAME] {
@@ -132,6 +138,7 @@ fn opened() -> Fixture {
         app,
         notes,
         renamed,
+        moved,
         updated,
         edited,
     }
@@ -157,6 +164,13 @@ impl Fixture {
         let call = notes_rename(self.app.handle().clone(), id.into(), title.into());
         tauri::async_runtime::block_on(call)
             .map(|note| (note.path, note.title))
+            .map_err(|error| error.code)
+    }
+
+    fn move_to(&self, id: &str, folder: &str) -> Result<String, String> {
+        let call = notes_move(self.app.handle().clone(), id.into(), folder.into());
+        tauri::async_runtime::block_on(call)
+            .map(|moved| moved.note.path)
             .map_err(|error| error.code)
     }
 
@@ -192,6 +206,18 @@ impl Fixture {
                 return event;
             }
             assert!(Instant::now() < deadline, "no NoteRenamedEvent");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    /// The next `NoteMovedEvent` heard.
+    fn next_moved(&self) -> Value {
+        let deadline = Instant::now() + WAIT;
+        loop {
+            if let Some(event) = self.moved.lock().unwrap().pop() {
+                return event;
+            }
+            assert!(Instant::now() < deadline, "no NoteMovedEvent");
             std::thread::sleep(Duration::from_millis(20));
         }
     }
@@ -338,6 +364,82 @@ fn an_edit_answers_the_note_and_sends_internal_notes_updated_and_tags_changed() 
         .filter(|name| **name == NoteTagsChangedEvent::NAME)
         .count();
     assert_eq!(tags_changed, 1, "{events:?}");
+}
+
+#[test]
+fn a_move_re_points_the_note_s_embeds_and_sends_notes_moved() {
+    let f = opened();
+    // The document resolved the Obsidian embed from `work/`: from the new folder it names
+    // another file, which must not read as a document ahead of its file.
+    fs::create_dir_all(f.vault.join("work/img")).unwrap();
+    fs::write(f.vault.join("work/img/photo.png"), b"png").unwrap();
+    let id = f.create_with(
+        "Plan",
+        "work",
+        "![[img/photo.png]]\n\n![photo](images/photo.png)\n\n![web](https://example.com/a.png)",
+    );
+    let before = fs::read_to_string(f.vault.join("work/Plan.md")).unwrap();
+
+    assert_eq!(
+        f.move_to(&id, "archive/2026"),
+        Ok("archive/2026/Plan.md".into())
+    );
+
+    let after = before.replace("](images/photo.png)", "](../../work/images/photo.png)");
+    assert_ne!(after, before);
+    let moved = fs::read_to_string(f.vault.join("archive/2026/Plan.md")).unwrap();
+    assert_eq!(moved, after);
+    assert!(!f.vault.join("work/Plan.md").exists());
+    let event = json!({
+        "id": id, "oldPath": "work/Plan.md", "newPath": "archive/2026/Plan.md",
+    });
+    assert_eq!(f.next_moved(), event);
+    assert_eq!(f.updated_for(&id)["source"], "external");
+
+    // A move to the root takes the parents back off; to the same folder, nothing changes.
+    assert_eq!(f.move_to(&id, ""), Ok("Plan.md".into()));
+    assert!(
+        fs::read_to_string(f.vault.join("Plan.md"))
+            .unwrap()
+            .contains("](work/images/photo.png)")
+    );
+    f.next_moved();
+    assert_eq!(f.move_to(&id, ""), Ok("Plan.md".into()));
+    assert_eq!(f.move_to(&id, ".git"), Err("invalid_folder".into()));
+    std::thread::sleep(Duration::from_millis(500));
+    assert_eq!(*f.moved.lock().unwrap(), Vec::<Value>::new());
+    assert_eq!(*f.renamed.lock().unwrap(), Vec::<Value>::new());
+}
+
+/// A note changed outside the app and not read yet when it moves keeps its refs, which the
+/// move's answer says, so the renderer tells the user; the outside edit stays in the file.
+#[test]
+fn a_move_of_a_note_changed_outside_answers_that_its_refs_stayed() {
+    let f = opened();
+    let id = f.create_with("Plan", "work", "![photo](images/photo.png)");
+    let edited = format!(
+        "{}\nEdited elsewhere\n",
+        fs::read_to_string(f.vault.join("work/Plan.md")).unwrap()
+    );
+    fs::write(f.vault.join("work/Plan.md"), &edited).unwrap();
+
+    let call = notes_move(f.app.handle().clone(), id.clone(), "archive".into());
+    let moved = tauri::async_runtime::block_on(call).unwrap();
+
+    assert_eq!(moved.note.path, "archive/Plan.md");
+    assert_eq!(moved.refs_kept, Some(RefsKept::Changing));
+    assert_eq!(
+        fs::read_to_string(f.vault.join("archive/Plan.md")).unwrap(),
+        edited
+    );
+    let taken = f.updated_for(&id);
+    assert_eq!(taken["source"], "external");
+    assert!(
+        taken["changes"]["content"]
+            .as_str()
+            .is_some_and(|content| content.contains("Edited elsewhere")),
+        "{taken}"
+    );
 }
 
 #[test]

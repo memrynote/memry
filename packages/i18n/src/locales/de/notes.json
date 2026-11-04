@@ -2199,5 +2199,9 @@
     "keep": "Notiz behalten",
     "deletePermanently": "Endgültig löschen",
     "kept": "Die Notiz wurde behalten. Sie konnte nicht in den Papierkorb verschoben werden."
+  },
+  "movedRefsKept": {
+    "changing": "„{title}“ wurde verschoben, hat sich dabei aber geändert, daher zeigen die Links auf Bilder und Dateien noch auf den alten Ordner. Prüfe sie in der Notiz.",
+    "unreadable": "„{title}“ wurde verschoben, aber Memry kann die Datei nicht bearbeiten, daher zeigen die Links auf Bilder und Dateien noch auf den alten Ordner. Passe sie manuell an."
   }
 }
