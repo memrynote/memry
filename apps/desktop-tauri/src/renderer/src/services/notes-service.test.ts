@@ -26,6 +26,7 @@ const commands = vi.hoisted(() => ({
   notesUpdatePropertyDefinition: vi.fn(),
   notesAddStatusOption: vi.fn(),
   notesRename: vi.fn(),
+  notesUpdate: vi.fn(),
   notesReorder: vi.fn(),
   notesGetAllPositions: vi.fn()
 }))
@@ -464,11 +465,50 @@ describe('notes-service', () => {
   })
 
   it('forwards the methods later steps port to window.api.notes', async () => {
-    api.notes.update = vi.fn().mockResolvedValue({ success: true })
+    api.notes.createFolder = vi.fn().mockResolvedValue({ success: true })
 
-    const updateInput = { id: 'note-1', title: 'Updated' }
-    await notesService.update(updateInput)
-    expect(api.notes.update).toHaveBeenCalledWith(updateInput)
+    await notesService.createFolder('Projects')
+    expect(api.notes.createFolder).toHaveBeenCalledWith('Projects')
+  })
+
+  it("edits through its command, a failure in Electron's shape", async () => {
+    const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
+    commands.notesUpdate.mockResolvedValue(view)
+    const headerTags = { add: ['idea'], source: 'inline' as const }
+    await expect(
+      notesService.update({ id: 'note-1', content: 'Body', headerTags, emoji: null })
+    ).resolves.toEqual({
+      success: true,
+      note: { ...view, created: new Date(CREATED), modified: new Date(MODIFIED) }
+    })
+    expect(commands.notesUpdate).toHaveBeenCalledWith({
+      id: 'note-1',
+      content: 'Body',
+      headerTags,
+      emoji: null
+    })
+
+    commands.notesUpdate.mockRejectedValue({
+      kind: 'storage',
+      code: 'note_file_failed',
+      message: 'the file changed while it was being written'
+    })
+    await expect(notesService.update({ id: 'note-1', content: 'Other' })).resolves.toEqual({
+      success: false,
+      error: 'the file changed while it was being written',
+      note: null
+    })
+  })
+
+  it('refuses the edits later steps port rather than drop them', async () => {
+    await expect(notesService.update({ id: 'note-1', title: 'Renamed' })).rejects.toThrow(
+      'notes.update({ title }) is not ported'
+    )
+    await expect(
+      notesService.update({ id: 'note-1', frontmatter: { fullWidth: true } })
+    ).rejects.toThrow('notes.update({ frontmatter }) is not ported')
+    expect(commands.notesUpdate).not.toHaveBeenCalled()
+    expect(api.notes.update).not.toHaveBeenCalled()
   })
 
   it("renames through its command, a failure in Electron's shape", async () => {

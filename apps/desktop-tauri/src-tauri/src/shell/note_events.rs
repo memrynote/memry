@@ -3,8 +3,10 @@
 //! and delete and the watcher's reports go out the same way with their `source`. Two kinds of
 //! fact emit nothing:
 //! - the app's own writes of a body (`Changed` by the app): Electron's write-back is `sync`,
-//!   which the renderer ignores. An edit the app makes for the user outside the editor
-//!   (`ChangeSource::AppEdit`, the links to a renamed note) goes out as an outside edit does;
+//!   which the renderer ignores. The user's save (`Changed` by [`ChangeSource::Save`]) sends an
+//!   `internal` `notes:updated`, as Electron's `updateNote` does; an edit the app makes for the
+//!   user outside the editor (`ChangeSource::AppEdit`, the links to a renamed note) goes out as
+//!   an outside edit does;
 //! - what the open walk found (`ChangeSource::Walk`): Electron's open-time index sends no note
 //!   events either, and the index pass after the walk reports progress, on which the renderer
 //!   refetches its lists (`use-notes-query.ts`). A first open of a large vault would otherwise
@@ -23,6 +25,7 @@ use memry_desktop::notes::read;
 use memry_desktop::notes::view::NoteView;
 use memry_desktop::session::Session;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
+use serde_json::json;
 use tauri::{AppHandle, Manager, Runtime};
 use tokio::sync::broadcast::Receiver;
 use tokio::sync::broadcast::error::RecvError;
@@ -58,6 +61,7 @@ enum Outgoing {
     },
     Updated {
         note_id: String,
+        source: NoteEventSource,
     },
     Deleted(NoteDeletedEvent),
     Renamed {
@@ -86,8 +90,8 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
                 tracing::warn!(scope = "notes", note_id, "a new note was not read: {error}");
             }
         },
-        Outgoing::Updated { note_id } => match read::get(&open, &note_id, None) {
-            Ok(Some(note)) => broadcast(app, updated(&note)),
+        Outgoing::Updated { note_id, source } => match read::get(&open, &note_id, None) {
+            Ok(Some(note)) => broadcast(app, updated(&note, source)),
             Ok(None) => {}
             Err(error) => {
                 tracing::warn!(
@@ -131,11 +135,17 @@ fn file_title(path: &str) -> &str {
     name.strip_suffix(".md").unwrap_or(name)
 }
 
-fn updated(note: &NoteView) -> NoteUpdatedEvent {
+/// An edit in the app also says the header tags and the icon, as Electron's `updateNote` does.
+fn updated(note: &NoteView, source: NoteEventSource) -> NoteUpdatedEvent {
+    let mut changes = note.changes();
+    if source == NoteEventSource::Internal {
+        changes.insert("headerTags".into(), json!(note.header_tags));
+        changes.insert("emoji".into(), json!(note.emoji));
+    }
     NoteUpdatedEvent {
         id: note.id.clone(),
-        changes: note.changes(),
-        source: NoteEventSource::External,
+        changes,
+        source,
     }
 }
 
@@ -149,9 +159,12 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
         }),
         Applied::Changed {
             note_id,
-            source: ChangeSource::Watcher | ChangeSource::AppEdit,
+            source: source @ (ChangeSource::Watcher | ChangeSource::AppEdit | ChangeSource::Save),
             ..
-        } => Some(Outgoing::Updated { note_id }),
+        } => Some(Outgoing::Updated {
+            note_id,
+            source: source_of(source),
+        }),
         Applied::Removed {
             note_id,
             path,
@@ -176,7 +189,7 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
 
 fn source_of(source: ChangeSource) -> NoteEventSource {
     match source {
-        ChangeSource::App => NoteEventSource::Internal,
+        ChangeSource::App | ChangeSource::Save => NoteEventSource::Internal,
         ChangeSource::Watcher | ChangeSource::Walk | ChangeSource::AppEdit => {
             NoteEventSource::External
         }
@@ -247,7 +260,16 @@ mod tests {
         assert_eq!(
             outgoing(changed(ChangeSource::Watcher)),
             Some(Outgoing::Updated {
-                note_id: "n".into()
+                note_id: "n".into(),
+                source: NoteEventSource::External,
+            })
+        );
+        // The user's edit in the app, as Electron's `updateNote` sends it.
+        assert_eq!(
+            outgoing(changed(ChangeSource::Save)),
+            Some(Outgoing::Updated {
+                note_id: "n".into(),
+                source: NoteEventSource::Internal,
             })
         );
         // The app's own write-back is `sync` in Electron, which the renderer ignores; its edit
@@ -256,7 +278,8 @@ mod tests {
         assert_eq!(
             outgoing(changed(ChangeSource::AppEdit)),
             Some(Outgoing::Updated {
-                note_id: "n".into()
+                note_id: "n".into(),
+                source: NoteEventSource::External,
             })
         );
         // The open walk's notes reach the lists through the index's progress instead.

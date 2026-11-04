@@ -12,7 +12,7 @@ import { getI18n } from 'react-i18next'
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { Note } from '@memry/rpc/notes'
+import type { Note, NoteUpdateResponse } from '@memry/rpc/notes'
 import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
@@ -26,6 +26,12 @@ import { toast } from 'sonner'
 // ============================================================================
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+
+/** The note an update answered; a failed one (Electron's envelope) is thrown. */
+function updatedNote(result: NoteUpdateResponse): Note {
+  if (!result.success || !result.note) throw new Error(result.error ?? '')
+  return result.note
+}
 
 export interface UseNoteEditorOptions {
   /** Debounce delay in milliseconds (default: 1000) */
@@ -237,18 +243,14 @@ export function useNoteEditor(
       setSaveStatus('saving')
 
       try {
-        const result = await notesService.update({ id: noteId, content })
-        if (result) {
-          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
-          setNote(result as unknown as Note)
-          lastSavedContentRef.current = content
-          setSaveStatus('saved')
+        setNote(updatedNote(await notesService.update({ id: noteId, content })))
+        lastSavedContentRef.current = content
+        setSaveStatus('saved')
 
-          // Reset to idle after 2 seconds
-          scheduleTimeout(() => {
-            setSaveStatus((current) => (current === 'saved' ? 'idle' : current))
-          }, 2000)
-        }
+        // Reset to idle after 2 seconds
+        scheduleTimeout(() => {
+          setSaveStatus((current) => (current === 'saved' ? 'idle' : current))
+        }, 2000)
       } catch (err) {
         trackRendererError('note_save_failed', err)
         const message = extractErrorMessage(
@@ -334,11 +336,7 @@ export function useNoteEditor(
       if (!noteId || !note || isDeleted) return
 
       try {
-        const result = await notesService.update({ id: noteId, emoji })
-        if (result) {
-          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
-          setNote(result as unknown as Note)
-        }
+        setNote(updatedNote(await notesService.update({ id: noteId, emoji })))
       } catch (err) {
         trackRendererError('note_emoji_update_failed', err)
         const message = extractErrorMessage(
@@ -359,11 +357,7 @@ export function useNoteEditor(
       if (!noteId || !note || isDeleted) return
 
       try {
-        const result = await notesService.update({ id: noteId, headerTags })
-        if (result) {
-          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- notesService.update/create results are IPC payloads typed as a union; the Note shape is what the hook stores
-          setNote(result as unknown as Note)
-        }
+        setNote(updatedNote(await notesService.update({ id: noteId, headerTags })))
       } catch (err) {
         trackRendererError('note_tags_update_failed', err)
         const message = extractErrorMessage(

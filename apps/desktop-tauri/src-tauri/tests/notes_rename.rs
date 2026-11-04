@@ -1,7 +1,8 @@
 //! `notes_rename`, `notes_reorder` and `notes_get_all_positions` through their commands on a
 //! mock app over a real vault, vault tier and note index (#3530 13g), and the events a rename
 //! sends through the shell's note events: `NoteRenamedEvent` for the note, and an outside
-//! edit's `NoteUpdatedEvent` for each file whose links followed it (13g-2).
+//! edit's `NoteUpdatedEvent` for each file whose links followed it (13g-2); `notes_update`
+//! (#3530 13f-3c) and the `notes:updated` and `notes:tags-changed` it sends.
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -17,11 +18,14 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput};
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
-use memry_tauri::commands::notes::{notes_get_all_positions, notes_rename, notes_reorder};
-use memry_tauri::events::{NoteRenamedEvent, NoteUpdatedEvent};
+use memry_tauri::commands::notes::{
+    notes_get_all_positions, notes_rename, notes_reorder, notes_update,
+};
+use memry_tauri::events::{NoteRenamedEvent, NoteTagsChangedEvent, NoteUpdatedEvent};
 use memry_tauri::shell::note_events;
 use serde_json::{Value, json};
 use tauri::test::{MockRuntime, mock_app};
@@ -61,6 +65,8 @@ struct Fixture {
     notes: Arc<NotesService>,
     renamed: Arc<Mutex<Vec<Value>>>,
     updated: Arc<Mutex<Vec<Value>>>,
+    /// `(event name, payload)` of every `NoteUpdatedEvent` and `NoteTagsChangedEvent`.
+    edited: Arc<Mutex<Vec<(&'static str, Value)>>>,
 }
 
 /// Every payload of `event` heard on `app`.
@@ -107,6 +113,14 @@ fn opened() -> Fixture {
     note_events::forward(app.handle().clone(), tier.subscribe());
     let renamed = heard(&app, NoteRenamedEvent::NAME);
     let updated = heard(&app, NoteUpdatedEvent::NAME);
+    let edited = Arc::new(Mutex::new(Vec::new()));
+    for name in [NoteUpdatedEvent::NAME, NoteTagsChangedEvent::NAME] {
+        let sink = Arc::clone(&edited);
+        app.listen_any(name, move |event| {
+            let payload = serde_json::from_str(event.payload()).unwrap();
+            sink.lock().unwrap().push((name, payload));
+        });
+    }
     Fixture {
         _dir: dir,
         vault,
@@ -114,6 +128,7 @@ fn opened() -> Fixture {
         notes,
         renamed,
         updated,
+        edited,
     }
 }
 
@@ -148,6 +163,20 @@ impl Fixture {
 
     fn positions(&self) -> BTreeMap<String, i64> {
         tauri::async_runtime::block_on(notes_get_all_positions(self.app.handle().clone())).unwrap()
+    }
+
+    /// The next `count` events of an edit heard, taken.
+    fn next_edited(&self, count: usize) -> Vec<(&'static str, Value)> {
+        let deadline = Instant::now() + WAIT;
+        loop {
+            let mut edited = self.edited.lock().unwrap();
+            if edited.len() >= count {
+                return std::mem::take(&mut *edited);
+            }
+            drop(edited);
+            assert!(Instant::now() < deadline, "no {count} edit events");
+            std::thread::sleep(Duration::from_millis(20));
+        }
     }
 
     /// The next `NoteRenamedEvent` heard.
@@ -257,6 +286,53 @@ fn a_rename_answers_the_note_and_sends_notes_renamed_with_the_new_title() {
     assert_eq!(f.rename("missing", "X"), Err("note_not_found".into()));
     std::thread::sleep(Duration::from_millis(500));
     assert_eq!(*f.renamed.lock().unwrap(), Vec::<Value>::new());
+}
+
+#[test]
+fn an_edit_answers_the_note_and_sends_internal_notes_updated_and_tags_changed() {
+    let f = opened();
+    let id = f.create("Plan", "");
+    let edit = |input: NoteUpdateInput| {
+        tauri::async_runtime::block_on(notes_update(f.app.handle().clone(), input)).unwrap()
+    };
+    let note = edit(NoteUpdateInput {
+        id: id.clone(),
+        header_tags: Some(HeaderTagEditInput {
+            add: Some(vec!["idea".into()]),
+            ..HeaderTagEditInput::default()
+        }),
+        ..NoteUpdateInput::default()
+    });
+    assert_eq!(note.header_tags, ["idea"]);
+    let mut events = f.next_edited(2);
+    events.sort_by_key(|(name, _)| *name);
+    assert_eq!(events[0], (NoteTagsChangedEvent::NAME, Value::Null));
+    assert_eq!(events[1].0, NoteUpdatedEvent::NAME);
+    assert_eq!(events[1].1["source"], "internal");
+    assert_eq!(events[1].1["changes"]["headerTags"], json!(["idea"]));
+
+    // A save that leaves the tags sends no `notes:tags-changed`. The command sends it before it
+    // answers, so once a later tag edit answered, its own is the only one heard.
+    edit(NoteUpdateInput {
+        id: id.clone(),
+        content: Some("About the plan".into()),
+        ..NoteUpdateInput::default()
+    });
+    edit(NoteUpdateInput {
+        id: id.clone(),
+        header_tags: Some(HeaderTagEditInput {
+            add: Some(vec!["later".into()]),
+            ..HeaderTagEditInput::default()
+        }),
+        ..NoteUpdateInput::default()
+    });
+    let events = f.next_edited(3);
+    let names: Vec<&str> = events.iter().map(|(name, _)| *name).collect();
+    let tags_changed = names
+        .iter()
+        .filter(|name| **name == NoteTagsChangedEvent::NAME)
+        .count();
+    assert_eq!(tags_changed, 1, "{events:?}");
 }
 
 #[test]

@@ -16,16 +16,26 @@
 //!   `unless_changed_from`: the note's turn and the lane keep every writer of this device out
 //!   in between, and no body writer runs outside them today. One that does (the resident
 //!   editor, Step 14) must pass the body read as `unless_changed_from` here.
+//! - [`Precondition::Save`]: the user's save (`notes:update`, Electron `writeNote`), which
+//!   replaces whatever is there. A save that moves the body first keeps a version of the whole
+//!   file unless it is the run's own ([`OwnFiles`]) and its row names it; the feed keeps the
+//!   document's body when it is not the body read (a merge from sync the write-back has not
+//!   written). A save that leaves the body as read (a header tag edit) feeds nothing and keeps
+//!   no version, so a document ahead of its file keeps its text; the file then counts as the
+//!   document's (own-write record, row) only if the row named it. Only a frontmatter that does
+//!   not parse, a missing row, file or note, a file that is not markdown, and an edit that
+//!   lands during the write ([`Kept::FileChanged`]) keep the file.
 //!
 //! A frontmatter that does not parse, in the file or in the edit's text, is kept as it is
 //! (#3750). The caller's closure gets the file's text without a byte order mark and returns the
 //! whole new text, or `None`; the seam puts the mark back once, where the file had it.
 //!
 //! **Order: the document first, then the file, then the row.**
-//! 1. read (row, file, checks); 2. feed the new body ([`ExternalFeed::feed_app_edit`] with the
-//!    body read, so the text the user saw is no version); 3. the own-write record, then the
-//!    file, replaced only while it is still the bytes read ([`write_note_over`]); 4. the row's
-//!    hashes, then [`Applied::Changed`] with the caller's [`ChangeSource`].
+//! 1. read (row, file, checks); 2. `Save` only: the version of the file; 3. feed the new body
+//!    ([`ExternalFeed::feed_app_edit`] with the body read, so the text the user saw is no
+//!    version); 4. the own-write record, then the file, replaced only while it is still the
+//!    bytes read ([`write_note_over_checked`]); 5. the row's hashes, the caller's `landed`
+//!    ([`AppEdit::run_then`]), then [`Applied::Changed`] with the caller's [`ChangeSource`].
 //!
 //! Why this order, against the other (file, then feed):
 //! - **Crash between the feed and the file**: the document holds the body edit and the row
@@ -52,8 +62,10 @@
 //! the document ahead of its file, which the next open's reconcile writes. Not here: the lock
 //! check (Step 14), and a rewritten journal day's own event (Step 13m).
 
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use memry_core::api::errors::{AuthError, StorageError};
 use memry_core::api::external_feed::ExternalFeed;
@@ -66,12 +78,12 @@ use memry_core::markdown::frontmatter::{YamlValue, parse_markdown_note, split_fr
 use memry_core::markdown::shared::writing_tools::writing_of_yaml;
 use memry_core::seams::secure_store::SecureStore;
 
-use super::consumer::rows::{RowError, RowOwner, RowSession, RowStat};
+use super::consumer::rows::{RowError, RowOwner, RowSession, RowStat, now_ms};
 use super::consumer::{Applied, ChangeSource, VaultTier, converter_for};
 use super::embeds::Resolved;
 use super::file_types::FileType;
 use super::hash::content_hash;
-use super::note_file::{NoteFileError, read_note, write_note_over};
+use super::note_file::{NoteFileError, read_note, write_note_over_checked};
 use super::watch::EchoGuard;
 use crate::notes::write_order::NoteTurn;
 use crate::session::OpenVault;
@@ -79,11 +91,48 @@ use crate::session::OpenVault;
 const SCOPE: &str = "app_edit";
 const BOM: char = '\u{feff}';
 
-/// What an edit may replace (see the module comment). The editor's save adds its own (13f-3c).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Precondition {
+/// What an edit may replace (see the module comment).
+#[derive(Debug, Clone, Copy)]
+pub enum Precondition<'a> {
     /// Only a file the document holds; anything else is kept.
     Held,
+    /// The user's save: whatever is there, a file that is not the run's own kept as a version
+    /// first.
+    Save(&'a OwnFiles),
+}
+
+/// By note id, the hash of the file this run wrote for the note: set by its create and by a
+/// save that moved its body, carried by a save that did not only while that file was still
+/// on disk, dropped when such a save lands on another. A save replaces the run's own file, the
+/// row naming it, with no version: the user saw it. Any other file may hold an outside edit
+/// the editor never showed (canvas, project overview), fed or not, so it is kept first.
+#[derive(Debug, Default)]
+pub struct OwnFiles(Mutex<HashMap<String, String>>);
+
+impl OwnFiles {
+    /// This run wrote `hash` as the note's text.
+    pub fn wrote(&self, note_id: &str, hash: &str) {
+        self.marks().insert(note_id.to_owned(), hash.to_owned());
+    }
+
+    fn is(&self, note_id: &str, hash: &str) -> bool {
+        self.marks().get(note_id).is_some_and(|own| own == hash)
+    }
+
+    /// A save that left the body: `to` is the run's own only if `from`, the file it replaced,
+    /// was.
+    fn carried(&self, note_id: &str, from: &str, to: &str) {
+        let mut marks = self.marks();
+        if marks.get(note_id).is_some_and(|own| own == from) {
+            marks.insert(note_id.to_owned(), to.to_owned());
+        } else {
+            marks.remove(note_id);
+        }
+    }
+
+    fn marks(&self) -> MutexGuard<'_, HashMap<String, String>> {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner)
+    }
 }
 
 /// What an edit came to.
@@ -152,6 +201,7 @@ pub struct AppEdit {
     echo: Arc<EchoGuard>,
     feed: ExternalFeed,
     converter: Converter,
+    fail_next_feed: AtomicBool,
 }
 
 impl AppEdit {
@@ -171,7 +221,14 @@ impl AppEdit {
             feed: open.vault.external_feed(store.clone())?,
             converter: converter_for(settings.as_ref()),
             rows,
+            fail_next_feed: AtomicBool::new(false),
         })
+    }
+
+    /// Test hook: this edit's next feed fails, as for a document that does not load.
+    #[doc(hidden)]
+    pub fn fail_next_feed(&self) {
+        self.fail_next_feed.store(true, Ordering::Relaxed);
     }
 
     /// Edits the note whose turn `turn` is: `edit` gets the file's text without a byte order
@@ -180,9 +237,27 @@ impl AppEdit {
     pub fn run<E: From<AppEditError>>(
         &self,
         turn: &NoteTurn<'_>,
-        precondition: Precondition,
+        precondition: Precondition<'_>,
         source: ChangeSource,
         edit: impl FnOnce(&str) -> Result<Option<String>, E>,
+    ) -> Result<Edited, E> {
+        self.run_then(turn, precondition, source, edit, || Ok(false), &mut || {})
+    }
+
+    /// [`Self::run`], and `landed` once the file holds the edit, or the edit left it as it was:
+    /// under the lane and before the note event, so a caller's record mirrors (an icon, tags)
+    /// wait for the file, a refused write leaves them, and the event reads them. `landed`
+    /// answers whether the note changed though its file did not, which sends the event anyway.
+    /// `between` runs after the new file is written aside and before its rename, so a test can
+    /// edit the file in that window.
+    pub fn run_then<E: From<AppEditError>>(
+        &self,
+        turn: &NoteTurn<'_>,
+        precondition: Precondition<'_>,
+        source: ChangeSource,
+        edit: impl FnOnce(&str) -> Result<Option<String>, E>,
+        landed: impl FnOnce() -> Result<bool, E>,
+        between: &mut dyn FnMut(),
     ) -> Result<Edited, E> {
         let note_id = turn.note_id();
         let mut lane = self
@@ -204,35 +279,67 @@ impl AppEdit {
             return Ok(Edited::Kept(Kept::FrontmatterUnreadable));
         };
         let read_body = split_frontmatter_block(read).body;
-        let Precondition::Held = precondition;
-        let Some(row_hash) = &row.content_hash else {
-            return Ok(Edited::Kept(Kept::NotRead));
+        let row_names_file = row.content_hash.as_deref() == Some(file.hash.as_str());
+        let own = match precondition {
+            Precondition::Held => {
+                if row.content_hash.is_none() {
+                    return Ok(Edited::Kept(Kept::NotRead));
+                }
+                if !row_names_file {
+                    return Ok(Edited::Kept(Kept::FileChanged));
+                }
+                let differs = self.document_differs(note_id, &row.path, read, &parsed.frontmatter);
+                if let Some(kept) = differs.map_err(AppEditError::from)? {
+                    return Ok(Edited::Kept(kept));
+                }
+                None
+            }
+            Precondition::Save(own) => Some(own),
         };
-        if *row_hash != file.hash {
-            return Ok(Edited::Kept(Kept::FileChanged));
-        }
-        let differs = self.document_differs(note_id, &row.path, read, &parsed.frontmatter);
-        if let Some(kept) = differs.map_err(AppEditError::from)? {
-            return Ok(Edited::Kept(kept));
-        }
-        let Some(next) = edit(read)? else {
+        let text = edit(read)?.map(|next| match bom {
+            true => format!("{BOM}{}", bare(&next)),
+            false => bare(&next).to_owned(),
+        });
+        let Some(text) = text.filter(|text| *text != file.raw) else {
+            if let Some(own) = own {
+                own.carried(note_id, &file.hash, &file.hash);
+            }
+            if landed()? {
+                lane.publish(Applied::Changed {
+                    note_id: note_id.to_owned(),
+                    path: row.path,
+                    content_hash: row.content_hash,
+                    source,
+                });
+            }
             return Ok(Edited::Unchanged);
         };
-        let next = bare(&next);
-        let text = if bom {
-            format!("{BOM}{next}")
-        } else {
-            next.to_owned()
-        };
-        if text == file.raw {
-            return Ok(Edited::Unchanged);
-        }
+        let next = bare(&text);
         let Ok(edited) = parse_markdown_note(next) else {
             return Ok(Edited::Kept(Kept::FrontmatterBroken));
         };
-        let Some(takes) = self.feed_text(note_id, &row.path, next, &edited.frontmatter, read_body)
-        else {
-            return Ok(Edited::Kept(Kept::NoBody));
+        // A save that leaves the body as read (a header tag edit) feeds nothing, so a document
+        // ahead of its file keeps its text, and loses nothing a version would hold.
+        let body_moved = own.is_none() || split_frontmatter_block(next).body != read_body;
+        if let Some(own) = own
+            && body_moved
+            && !(row_names_file && own.is(note_id, &file.hash))
+        {
+            self.vault
+                .write_back()
+                .keep_replaced(note_id, &file.raw, read_body)
+                .map_err(AppEditError::from)?;
+        }
+        let takes = match body_moved {
+            true => {
+                let fed = self.feed_text(note_id, &row.path, next, &edited.frontmatter, read_body);
+                let Some(takes) = fed else {
+                    return Ok(Edited::Kept(Kept::NoBody));
+                };
+                takes
+            }
+            // The document holds what the row names; the file is its text only if that is it.
+            false => row_names_file,
         };
         let hash = content_hash(&text);
         if takes {
@@ -241,24 +348,38 @@ impl AppEdit {
             // What the watcher sees next must reach the consumer, which feeds it.
             self.echo.cancel_write(&row.path);
         }
-        if let Err(error) = write_note_over(&self.root, &row.path, &text, &file.hash) {
+        if let Err(error) =
+            write_note_over_checked(&self.root, &row.path, &text, &file.hash, between)
+        {
             self.echo.cancel_write(&row.path);
             return match error {
                 NoteFileError::ChangedUnderWrite => Ok(Edited::Kept(Kept::FileChanged)),
                 error => Err(AppEditError::from(error).into()),
             };
         }
+        if let Some(own) = own {
+            match body_moved {
+                true => own.wrote(note_id, &hash),
+                false => own.carried(note_id, &file.hash, &hash),
+            }
+        }
+        if takes {
+            let stat = RowStat {
+                file_type: FileType::Markdown,
+                size: text.len() as u64,
+                content_hash: Some(hash.clone()),
+                file_hash: Some(hash.clone()),
+            };
+            // A body left as read keeps the row's stamp, so a document ahead of the file stays
+            // ahead for the write-back.
+            let at = if body_moved { now_ms() } else { row.indexed_at };
+            lane.put_as_of(note_id, &row.path, stat, at)
+                .map_err(AppEditError::from)?;
+        }
+        landed()?;
         if !takes {
             return Ok(Edited::Wrote { hash, held: false });
         }
-        let stat = RowStat {
-            file_type: FileType::Markdown,
-            size: text.len() as u64,
-            content_hash: Some(hash.clone()),
-            file_hash: Some(hash.clone()),
-        };
-        lane.put(note_id, &row.path, stat)
-            .map_err(AppEditError::from)?;
         lane.publish(Applied::Changed {
             note_id: note_id.to_owned(),
             path: row.path,
@@ -314,7 +435,14 @@ impl AppEdit {
             frontmatter: split.block,
             embeds: Some(&embeds),
         };
-        match self.feed.feed_app_edit(&self.converter, input, read) {
+        let fed = match self.fail_next_feed.swap(false, Ordering::Relaxed) {
+            true => Err(CrdtError::Undecodable {
+                doc_id: note_id.to_owned(),
+                what: "test fault".to_owned(),
+            }),
+            false => self.feed.feed_app_edit(&self.converter, input, read),
+        };
+        match fed {
             Ok(FeedOutcome::Fed | FeedOutcome::Unchanged) => Some(true),
             Ok(FeedOutcome::NoNote) => None,
             Ok(outcome) => {
