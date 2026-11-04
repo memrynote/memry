@@ -82,8 +82,10 @@ pub fn monitor_entry() -> Option<i32> {
         }
     };
     // A client disconnect ends the monitor only after the app connected. An app that ends before
-    // that (a quit or a kill during the boot) is seen through stdin instead. A crashing app keeps
-    // stdin open until its dump request returns, so the dump is written first.
+    // that (a quit or a kill during the boot) is seen through stdin instead. A dump in progress is
+    // still finished: `Server::run` reads the flag only between events, never while it writes a
+    // dump, so stdin closing mid-dump (on macOS the client stops waiting for the ack after 5 s)
+    // ends the monitor only once the dump is written.
     static APP_GONE: AtomicBool = AtomicBool::new(false);
     std::thread::spawn(|| {
         let _ = std::io::copy(&mut std::io::stdin(), &mut std::io::sink());
