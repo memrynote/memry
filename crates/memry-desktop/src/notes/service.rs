@@ -15,8 +15,8 @@
 //! watcher never reports it back as an outside edit or an outside delete.
 
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_core::seams::secure_store::SecureStore;
 
@@ -36,6 +36,9 @@ pub struct NotesService {
     /// The files this run wrote for its notes, which a save replaces with no version: set by a
     /// create ([`super::create`]), kept by the saves ([`super::update`]).
     pub(crate) own_files: OwnFiles,
+    /// Test hook: runs once inside the next journal save, after the day's new file is written
+    /// aside and before it lands ([`Self::before_next_day_file_lands`]).
+    pub(crate) day_file_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
     /// Test hook: the next moved note's refs edit fails its feed (`AppEdit::fail_next_feed`).
     pub(crate) fail_next_ref_feed: AtomicBool,
 }
@@ -58,8 +61,19 @@ impl NotesService {
             order: WriteOrder::default(),
             trash,
             own_files: OwnFiles::default(),
+            day_file_lands: Mutex::new(None),
             fail_next_ref_feed: AtomicBool::new(false),
         })
+    }
+
+    /// Test hook: `hook` runs inside the next journal save, between its file write and the
+    /// record's mirror, as a pull or an outside edit can.
+    #[doc(hidden)]
+    pub fn before_next_day_file_lands(&self, hook: Box<dyn FnOnce() + Send>) {
+        *self
+            .day_file_lands
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(hook);
     }
 
     /// Test hook: the next moved note's refs edit fails its feed, as for a document that does

@@ -49,6 +49,8 @@ export const commands = {
 	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
 	/**  The day's entry, `null` when it has no file. Browsing never makes a day. */
 	journalGetEntry: (date: string) => __TAURI_INVOKE<JournalEntryView | null>("journal_get_entry", { date }),
+	/**  The day edited: its text, tags or properties; a day with no file is made. */
+	journalUpdateEntry: (input: JournalUpdateInput) => __TAURI_INVOKE<JournalEntryView>("journal_update_entry", { input }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
 	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
 	/**
@@ -341,6 +343,7 @@ export const events = {
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
+	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
@@ -709,6 +712,12 @@ export type JournalEntryDeletedEvent = {
 	date: string,
 };
 
+/**  A day's entry was edited in the app (`journal:entryUpdated`). */
+export type JournalEntryUpdatedEvent = {
+	date: string,
+	entry: JournalEntryView,
+};
+
 /**  `JournalEntry` (`packages/contracts/src/journal-api.ts`). */
 export type JournalEntryView = {
 	id: string,
@@ -726,6 +735,21 @@ export type JournalEntryView = {
 	/**  ISO 8601. */
 	createdAt: string,
 	modifiedAt: string,
+};
+
+/**  The `#tags` typed into or deleted from the body (`UpdateEntryInputSchema.inlineTags`). */
+export type JournalInlineTags = {
+	add?: string[] | null,
+	remove?: string[] | null,
+};
+
+/**  `UpdateEntryInputSchema`. */
+export type JournalUpdateInput = {
+	date: string,
+	content?: string | null,
+	tags?: string[] | null,
+	inlineTags?: JournalInlineTags | null,
+	properties?: { [key in string]: Value } | null,
 };
 
 /**  `NoteLargeFileInfo`. */

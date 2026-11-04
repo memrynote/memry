@@ -131,6 +131,7 @@ vi.mock('../src/generated/bindings', () => {
       // rejects.
       journalGetEntry: (date: string) => journal().getEntry(date),
       journalCreateEntry: (input: unknown) => journal().createEntry(input),
+      journalUpdateEntry: (input: unknown) => journal().updateEntry(input),
       journalDeleteEntry: (date: string) => journal().deleteEntry(date),
       notesCreate: async (input: unknown) => {
         const result = (await notes().create(input)) as
@@ -283,6 +284,7 @@ vi.mock('../src/generated/bindings', () => {
       // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
       customIconsUpdatedEvent: { listen: async () => () => undefined },
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
+      journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),

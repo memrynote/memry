@@ -37,7 +37,7 @@ const BOM: char = '\u{feff}';
 const KEY: &str = "date";
 
 /// Sets `date` in a map whose block is stringified again anyway, unless it already says the day.
-pub(super) fn set_date(map: &mut YamlMap, date: &str) {
+pub(crate) fn set_date(map: &mut YamlMap, date: &str) {
     if !says_day(map.get(KEY), date) {
         map.insert(KEY.to_owned(), YamlValue::String(date.to_owned()));
     }
@@ -45,7 +45,7 @@ pub(super) fn set_date(map: &mut YamlMap, date: &str) {
 
 /// What a body write does to the block of a day's file.
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum Dated {
+pub(crate) enum Dated {
     /// The block stays: it already says the day.
     Says,
     /// The block with its `date` set in place.
@@ -55,7 +55,7 @@ pub(super) enum Dated {
 }
 
 /// The block of the day `date`'s file with its `date` set in place, if it can be.
-pub(super) fn dated_block(parsed: &ParsedMarkdownNote, raw: &str, date: &str) -> Dated {
+pub(crate) fn dated_block(parsed: &ParsedMarkdownNote, raw: &str, date: &str) -> Dated {
     // A top level that is a list or a scalar is the author's; no key is added to it.
     let YamlValue::Map(map) = &parsed.frontmatter else {
         return Dated::NotInPlace("the frontmatter's top level is not a map");

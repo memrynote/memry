@@ -417,3 +417,67 @@ fn a_file_mirror_keeps_a_pulled_value_the_file_does_not_hold_yet() {
     })
     .expect("mirror");
 }
+
+fn ops(conn: &Connection, item_id: &str) -> Vec<String> {
+    let mut statement = conn
+        .prepare("SELECT op FROM outbox WHERE item_id = ?1 ORDER BY rowid")
+        .expect("outbox");
+    statement
+        .query_map([item_id], |row| row.get(0))
+        .expect("ops")
+        .collect::<Result<_, _>>()
+        .expect("ops")
+}
+
+#[test]
+fn a_file_mirror_of_a_journal_day_pushes_no_create_text() {
+    let (db, _dir) = open("props-mirror-day-content", NOTE);
+    // Electron's create pushes the day's text in `content`; its pull takes a non-null
+    // `content` over its own file's body (`journal.ts`).
+    seed(
+        &db,
+        "journal",
+        "day-1",
+        r#"{"date":"2026-10-07","content":"Created text\n","properties":{"mood":"ok"},"clock":{"device-a":1}}"#,
+    );
+    db.call_blocking(|conn| {
+        let day = object(json!({ "mood": "good" }));
+        assert!(mirror_file(conn, "day-1", day, &[], DEVICE, NOW + 1)?);
+        let raw = sync_items::push_payload(conn, "journal", "day-1")?.expect("payload");
+        let pushed: Value = serde_json::from_str(&raw).expect("json");
+        assert_eq!(pushed["content"], Value::Null, "{pushed}");
+        assert_eq!(pushed["properties"]["mood"], json!("good"));
+        Ok(())
+    })
+    .expect("mirror");
+}
+
+#[test]
+fn a_file_mirror_of_a_deleted_note_or_day_writes_nothing() {
+    let (db, _dir) = open("props-mirror-deleted", NOTE);
+    seed(
+        &db,
+        "journal",
+        "j2026-10-07",
+        r#"{"date":"2026-10-07","properties":{"mood":"ok"},"clock":{"device-a":1}}"#,
+    );
+    db.call_blocking(|conn| {
+        crate::domain::notes::delete(conn, "note-1", DEVICE, NOW + 1)?;
+        assert!(crate::domain::journal::delete_day(
+            conn,
+            "2026-10-07",
+            DEVICE,
+            NOW + 1
+        )?);
+        for id in ["note-1", "j2026-10-07"] {
+            let changed = object(json!({ "mood": "good" }));
+            assert!(
+                !mirror_file(conn, id, changed, &[], DEVICE, NOW + 2)?,
+                "{id}"
+            );
+            assert_eq!(ops(conn, id), ["delete"], "{id}: the delete stays queued");
+        }
+        Ok(())
+    })
+    .expect("mirror");
+}
