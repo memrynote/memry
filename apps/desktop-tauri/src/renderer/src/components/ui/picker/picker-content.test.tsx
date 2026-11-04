@@ -104,6 +104,15 @@ describe('PickerList', () => {
     expect(list.className).toContain('overflow-y-auto')
     expect(list.className).toContain('min-h-0')
   })
+
+  it('never scrolls sideways', () => {
+    // A separator bleeds into the list's padding (`-mx-1`), which made the list 4px wider than
+    // its box. GTK's overlay scrollbar then took clicks along the list's bottom 21px, so on Linux
+    // the note menu's last row, Delete note, could not be clicked.
+    renderPicker()
+
+    expect(screen.getByRole('listbox').className).toContain('overflow-x-hidden')
+  })
 })
 
 describe('PickerContent keyboard navigation', () => {
