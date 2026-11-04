@@ -15,9 +15,7 @@ use std::sync::{Arc, Mutex};
 use index_support::until;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::journal::calendar::{
-    self, HeatmapEntryView, MonthEntryView, MonthStatsView, StreakView,
-};
+use memry_desktop::journal::calendar::{self, HeatmapEntryView, MonthEntryView, MonthStatsView};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use vault_env::{env, indexed};
@@ -121,17 +119,60 @@ fn the_calendar_lists_live_days_measured_from_their_files_or_their_text() {
     );
     assert_eq!(calendar::year_stats(&open, &journal, 2024).unwrap(), []);
 
+    // The run 3rd-5th, counted from the UTC date of the instant: on its last day and the day
+    // after it is current, from two days after it is not. The deleted 6th does not extend it.
+    const MARCH_6: u64 = 1_741_219_200_000;
+    const DAY: u64 = 86_400_000;
+    let streak = |now| {
+        let streak = calendar::streak(&journal, now).unwrap();
+        assert_eq!(
+            (streak.longest_streak, streak.last_entry_date.as_deref()),
+            (3, Some("2025-03-05"))
+        );
+        streak.current_streak
+    };
+    assert_eq!(streak(MARCH_6 - DAY), 3, "the 5th, at midnight");
     assert_eq!(
-        calendar::streak(&journal).unwrap(),
-        StreakView {
-            current_streak: 0,
-            longest_streak: 3,
-            last_entry_date: Some("2025-03-05".into()),
-        },
-        "the deleted 6th does not extend the run"
+        streak(MARCH_6 - 1),
+        3,
+        "the 5th, a millisecond before midnight"
     );
+    assert_eq!(
+        streak(MARCH_6 + DAY - 1),
+        3,
+        "the 6th, a millisecond before midnight"
+    );
+    assert_eq!(streak(MARCH_6 + DAY), 0, "the 7th, at midnight");
 
-    assert!(calendar::heatmap(&open, &journal, 1969).is_err());
-    assert!(calendar::month_entries(&open, &journal, 2025, 13).is_err());
+    // `GetHeatmapInputSchema`'s 1970-2100 and a month 1-12.
+    for year in [1970, 2100] {
+        assert!(calendar::heatmap(&open, &journal, year).is_ok(), "{year}");
+        assert!(
+            calendar::year_stats(&open, &journal, year).is_ok(),
+            "{year}"
+        );
+        assert!(
+            calendar::month_entries(&open, &journal, year, 1).is_ok(),
+            "{year}"
+        );
+    }
+    assert!(calendar::month_entries(&open, &journal, 2025, 12).is_ok());
+    for year in [1969, 2101] {
+        assert!(calendar::heatmap(&open, &journal, year).is_err(), "{year}");
+        assert!(
+            calendar::year_stats(&open, &journal, year).is_err(),
+            "{year}"
+        );
+        assert!(
+            calendar::month_entries(&open, &journal, year, 1).is_err(),
+            "{year}"
+        );
+    }
+    for month in [0, 13] {
+        assert!(
+            calendar::month_entries(&open, &journal, 2025, month).is_err(),
+            "{month}"
+        );
+    }
     e.close();
 }

@@ -251,8 +251,8 @@ pub struct CalendarDay {
 pub enum DayHeld {
     /// The vault-relative path of the day's file row.
     File(String),
-    /// No file row: the extracted text (D6), empty for a body not pulled, and the tags.
-    Record { text: String, tags: Vec<String> },
+    /// No file row: the extracted text (D6), empty for a body not pulled.
+    Record { text: String },
 }
 
 /// Every live day whose date falls in `from..=to` (compared as strings), oldest first, as
@@ -287,7 +287,6 @@ pub fn calendar_days(
                 Some(path) => DayHeld::File(path),
                 None => DayHeld::Record {
                     text: day_body(conn, &id)?.text,
-                    tags: tags::list(conn, ITEM_TYPE, &id)?,
                 },
             };
             Ok(CalendarDay { id, date, held })

@@ -43,14 +43,14 @@ pub fn builder() -> Builder<Wry> {
             // flush
             crate::commands::shell_integrations::flush_done,
             // journal
-            crate::commands::journal::journal_create_entry,
-            crate::commands::journal::journal_delete_entry,
-            crate::commands::journal::journal_get_entry,
+            crate::commands::journal::journal_create_entry::<Wry>,
+            crate::commands::journal::journal_delete_entry::<Wry>,
+            crate::commands::journal::journal_get_entry::<Wry>,
             crate::commands::journal::journal_get_heatmap::<Wry>,
             crate::commands::journal::journal_get_month_entries::<Wry>,
             crate::commands::journal::journal_get_streak::<Wry>,
             crate::commands::journal::journal_get_year_stats::<Wry>,
-            crate::commands::journal::journal_update_entry,
+            crate::commands::journal::journal_update_entry::<Wry>,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,

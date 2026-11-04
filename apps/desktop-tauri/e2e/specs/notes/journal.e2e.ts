@@ -4,7 +4,7 @@
 // reads back after a restart. Ported from the Electron `journal` spec's entry-creation, tag,
 // calendar and heatmap cases, which asserted nothing. The calendar (13m-4) lists the day files
 // of the vault with their previews and counts, and drops a deleted day.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { browser } from '@wdio/globals'
@@ -135,9 +135,8 @@ async function monthEntries(page: Page, year: number, month: number): Promise<Mo
   )) as MonthEntry[]
 }
 
-test('the calendar shows the day files of the month and year, and drops a deleted day', async ({
-  page,
-  testVaultPath
+test('the calendar shows the saved days of the month and year, and drops a deleted day', async ({
+  page
 }) => {
   await waitForAppReady(page)
   expect(await pollUntil(async () => (await vaultStatus(page)).isOpen, { timeoutMs: 30_000 })).toBe(
@@ -146,24 +145,16 @@ test('the calendar shows the day files of the month and year, and drops a delete
   const date = await today(page)
   const [year, month] = [Number(date.slice(0, 4)), Number(date.slice(5, 7))]
   const [first, second] = [`${date.slice(0, 8)}01`, `${date.slice(0, 8)}02`]
-  mkdirSync(join(testVaultPath, 'journal'), { recursive: true })
-  writeFileSync(join(testVaultPath, 'journal', `${first}.md`), 'Walked by the river.\n')
-  writeFileSync(
-    join(testVaultPath, 'journal', `${second}.md`),
-    '---\ntags: [books]\n---\nRead a **book**.\n'
-  )
+  const create = (input: { date: string; content: string; tags?: string[] }) =>
+    page.evaluate((args) => window.__TAURI__.core.invoke('journal_create_entry', args), { input })
+  await create({ date: first, content: 'Walked by the river.' })
+  await create({ date: second, content: 'Read a **book**.', tags: ['books'] })
 
-  // The day files become days of the calendar, newest first, measured once indexed.
-  const listed = await pollUntil(
-    async () => {
-      const days = await monthEntries(page, year, month)
-      return days.length === 2 && days.every((day) => day.activityLevel > 0) ? days : undefined
-    },
-    { timeoutMs: 30_000 }
-  )
-  expect(listed?.map((day) => [day.date, day.preview])).toEqual([
-    [second, 'Read a book.'],
-    [first, 'Walked by the river.']
+  // The first read after the saves has their counts: each save answers once its day is measured.
+  const listed = await monthEntries(page, year, month)
+  expect(listed.map((day) => [day.date, day.preview, day.activityLevel])).toEqual([
+    [second, 'Read a book.', 1],
+    [first, 'Walked by the river.', 1]
   ])
   const heatmap = (await page.evaluate(
     (y) => window.__TAURI__.core.invoke('journal_get_heatmap', { year: y }),
@@ -174,7 +165,6 @@ test('the calendar shows the day files of the month and year, and drops a delete
     [second, 1]
   ])
 
-  // Written outside the app before the page opens: an outside edit's journal event is 13m-5's.
   await navigateTo(page, 'journal')
   const dateNav = page.locator('nav[aria-label="Journal date navigation"]')
   const monthName = await page.evaluate(() => new Date().toLocaleString('en-US', { month: 'long' }))

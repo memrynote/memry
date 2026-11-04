@@ -26,6 +26,10 @@
 //!   nothing to `index.db` and stays owed. The links a committed one changed go to the `links`
 //!   callback, once per pass: a note event goes out when the file's row changes, before this,
 //!   so a links panel refetching on it would read the links the edit replaced.
+//! - **An app write is measured before it answers** ([`NoteIndex::measure`]): a journal save
+//!   sends its event once the day's row holds the saved text, so the calendar's refetch on it
+//!   reads the new counts, as Electron's handler syncs its cache before it emits. Through the
+//!   task, so the row has one writer; its search reindex is the next pass's.
 //! - **Not measured:** a file in the large-file class (Electron streams it; a follow-up).
 //! - [`NoteIndex::reindex`] (`vault_reindex`) measures every note again, through the task once
 //!   the open walk ended, and reports its progress at most once per [`PROGRESS_INTERVAL`],
@@ -40,6 +44,7 @@ mod pass;
 mod progress;
 mod task;
 
+use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
@@ -67,6 +72,9 @@ pub const BATCH_BYTES: usize = 8 * 1024 * 1024;
 pub const RETRY_FIRST: Duration = Duration::from_secs(1);
 /// The longest wait between retries.
 pub const RETRY_MAX: Duration = Duration::from_secs(300);
+/// How long an app write waits for its note to be measured: a save is not held behind a long
+/// reindex, whose pass measures the note anyway.
+pub const MEASURE_WAIT: Duration = Duration::from_secs(2);
 
 #[derive(Debug, thiserror::Error)]
 pub enum IndexError {
@@ -195,6 +203,25 @@ impl NoteIndex {
         answer
             .and_then(|answer| answer.recv().ok())
             .unwrap_or_else(|| Err(self.gone()))
+    }
+
+    /// Measures one note of the open vault now, through its task, once the open walk ended:
+    /// `false` when it is left to a pass (the walk has not ended, the file did not read, or
+    /// the task did not answer within [`MEASURE_WAIT`]). Blocks.
+    pub fn measure(&self, note_id: &str) -> Result<bool, IndexError> {
+        let handle = match &*lock(&self.slot) {
+            Slot::Closed => return Err(IndexError::NotOpen),
+            Slot::Failed => return Err(IndexError::NotRunning),
+            Slot::Open { handle, .. } => handle.clone(),
+        };
+        let Some(answer) = handle.measure(note_id.to_owned()) else {
+            return Err(self.gone());
+        };
+        match answer.recv_timeout(MEASURE_WAIT) {
+            Ok(measured) => measured,
+            Err(RecvTimeoutError::Timeout) => Ok(false),
+            Err(RecvTimeoutError::Disconnected) => Err(self.gone()),
+        }
     }
 
     /// Why a request got no answer: the vault closed, or its task ended.

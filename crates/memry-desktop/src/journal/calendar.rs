@@ -20,13 +20,12 @@ use memry_core::domain::journal_rules::{
     extract_journal_preview, heatmap_day, utf16_len, year_month_stats,
 };
 use memry_core::domain::note_stats::{FileTags, word_count};
-use memry_core::storage::repositories::instants::to_iso8601;
 use serde::Serialize;
 
 use super::{SCOPE, read_day_file, view_of};
 use crate::notes::error::NotesError;
 use crate::session::OpenVault;
-use crate::vault::consumer::rows::now_ms;
+use crate::telemetry::time::iso;
 
 /// `HeatmapEntry` (`packages/contracts/src/journal-api.ts`).
 #[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
@@ -129,7 +128,10 @@ pub fn month_entries(
                     tags.unwrap_or_default(),
                 )
             }
-            DayHeld::Record { text, tags } => (preview_of(text), tags.clone()),
+            DayHeld::Record { text } => {
+                let tags = journal.stamp(&it.day.date)?.map(|day| day.tags);
+                (preview_of(text), tags.unwrap_or_default())
+            }
         };
         entries.push(MonthEntryView {
             preview,
@@ -171,11 +173,10 @@ pub fn year_stats(
         .collect())
 }
 
-/// The current and longest runs of live days.
-pub fn streak(journal: &Journal) -> Result<StreakView, NotesError> {
-    let today =
-        to_iso8601(now_ms()).ok_or_else(|| invalid("the clock is past year 9999".into()))?;
-    let streak = journal.streak(today[..10].to_owned())?;
+/// The current and longest runs of live days, the current one counted from the UTC date of
+/// `now_ms` (`utcDateKey`).
+pub fn streak(journal: &Journal, now_ms: u64) -> Result<StreakView, NotesError> {
+    let streak = journal.streak(iso(now_ms)[..10].to_owned())?;
     Ok(StreakView {
         current_streak: streak.current,
         longest_streak: streak.longest,
@@ -204,7 +205,7 @@ fn measured(
                 ),
                 None => (0, 0, None),
             },
-            DayHeld::Record { text, .. } => (
+            DayHeld::Record { text } => (
                 word_count(text),
                 u32::try_from(utf16_len(text)).unwrap_or(u32::MAX),
                 None,
