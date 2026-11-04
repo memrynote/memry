@@ -50,6 +50,7 @@ pub struct NotesService {
     #[cfg(feature = "test-hooks")]
     pub(crate) fail_next_ref_feed: AtomicBool,
     /// Test hook: the next save's edit fails its feed.
+    #[cfg(feature = "test-hooks")]
     fail_next_save_feed: AtomicBool,
 }
 
@@ -76,6 +77,7 @@ impl NotesService {
             day_file_lands: Mutex::new(None),
             #[cfg(feature = "test-hooks")]
             fail_next_ref_feed: AtomicBool::new(false),
+            #[cfg(feature = "test-hooks")]
             fail_next_save_feed: AtomicBool::new(false),
         })
     }
@@ -98,6 +100,7 @@ impl NotesService {
     /// The edit a note's or a day's save runs through.
     pub(crate) fn save_edit(&self, open: &OpenVault) -> Result<AppEdit, AppEditError> {
         let edit = AppEdit::new(&self.tier, &self.store, open)?;
+        #[cfg(feature = "test-hooks")]
         if self.fail_next_save_feed.swap(false, Ordering::Relaxed) {
             edit.fail_next_feed();
         }
@@ -106,6 +109,7 @@ impl NotesService {
 
     /// Test hook: the next save's feed fails, as for a document that does not load, so its
     /// file is written and the watcher brings it in.
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn fail_next_save_feed(&self) {
         self.fail_next_save_feed.store(true, Ordering::Relaxed);
