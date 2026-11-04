@@ -88,6 +88,8 @@ test('a quit does not wait on a page whose browser process ended unreported', as
 
   expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 10_000, intervalMs: 50 })).toBe(true)
   const log = readMainLog(app.dirs.logDir)
+  // DIAGNOSTIC #3940, removed before merge.
+  console.log(`DIAG3940\n${log.slice(Math.max(0, log.indexOf('e2e: ended the WebView2') - 4000))}`)
   expect(log).toContain('e2e: ended the WebView2 browser process')
   expect(log).toContain('cleanup complete')
   // The flush gave up because the page was gone, not because it ran out of time.
