@@ -35,6 +35,8 @@ const mocks = vi.hoisted(() => ({
   saveError: null as string | null,
   entryError: null as string | null,
   externalUpdateCount: 0,
+  /** `undefined`: the open tab's date, as a loaded day reports it. */
+  loadedForDate: undefined as string | null | undefined,
   contentAreaMounts: 0,
   contentAreaProps: null as any,
   propertySectionOptions: null as any,
@@ -112,7 +114,10 @@ vi.mock('@/hooks/use-journal', () => ({
   useJournalEntry: () => ({
     entry: mocks.entry,
     isLoading: false,
-    loadedForDate: mocks.activeTab.viewState?.date ?? '2026-01-15',
+    loadedForDate:
+      mocks.loadedForDate === undefined
+        ? (mocks.activeTab.viewState?.date ?? '2026-01-15')
+        : mocks.loadedForDate,
     error: mocks.entryError,
     saveError: mocks.saveError,
     externalUpdateCount: mocks.externalUpdateCount,
@@ -511,6 +516,7 @@ describe('JournalPage', () => {
     mocks.saveError = null
     mocks.entryError = null
     mocks.externalUpdateCount = 0
+    mocks.loadedForDate = undefined
     mocks.contentAreaMounts = 0
     mocks.heatmapYears = []
     mocks.yearStats = [{ month: 1, entryCount: 1, totalCharacterCount: 7, averageLevel: 2 }]
@@ -891,6 +897,18 @@ describe('JournalPage', () => {
 
     await waitFor(() => expect(mocks.deleteEntry).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(mocks.contentAreaMounts).toBeGreaterThan(mountsBefore))
+  })
+
+  // The editor shown while the day loads is replaced by a new one once it has: what was typed
+  // into it would be dropped, or saved and then overwritten by the next save from the new one.
+  it('takes no input before its day has loaded', () => {
+    mocks.loadedForDate = null
+    const { rerender } = render(<JournalPage />)
+    expect(mocks.contentAreaProps.editable).toBe(false)
+
+    mocks.loadedForDate = undefined
+    rerender(<JournalPage />)
+    expect(mocks.contentAreaProps.editable).toBe(true)
   })
 
   describe('a journal entry under a lock (#2606)', () => {
