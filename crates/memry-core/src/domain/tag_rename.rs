@@ -16,7 +16,14 @@
 //! shared part has left and the holders not renamed yet, each struck off as it is done, so that
 //! an interrupted rename is finished at the next open by visiting only what is left. Renaming
 //! again what was renamed is not a no-op when the new name sits under the old one (`a` to
-//! `a/b` would make `a/b/b`), which is why the plan is kept rather than recomputed.
+//! `a/b` would make `a/b/b`), which is why the plan is kept rather than recomputed: a holder the
+//! rename could not write stays listed and the rename stays recorded, and a [`begin`] of the
+//! same rename (or the next open) tries what is left, never a fresh plan.
+//!
+//! A holder's file and its record are two writes: a run stopped after the file and before
+//! [`rename_holder`] leaves the holder listed, and writing its file again would rename it twice.
+//! So the file edit is recorded first ([`start_holder`]: the file's hashes before and after),
+//! and a resume that finds the after text renames the record alone.
 
 use std::collections::BTreeSet;
 
@@ -59,10 +66,25 @@ pub struct Holder {
 pub struct RenamePlan {
     #[serde(flatten)]
     pub job: RenameJob,
-    #[serde(default)]
+    /// Required, so a row without a plan reads as an error, never as nothing left to do.
     pairs: Vec<(String, String)>,
-    #[serde(default)]
     pub holders: Vec<Holder>,
+    /// The holder whose file was being written when the rename stopped, if any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub started: Option<Started>,
+}
+
+/// A holder's file edit begun and not yet struck off: the hashes of the file's text before and
+/// after it, so a resume that finds the after text knows the file took the rename already, and
+/// its record's lists then, which its record is renamed from: an outside edit read meanwhile
+/// may have carried the file's renamed header into the record (#3825).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Started {
+    pub id: String,
+    pub before: String,
+    pub after: String,
+    tags: Vec<String>,
+    pinned: Option<Vec<String>>,
 }
 
 fn pairs(conn: &Connection, old: &str, new: &str) -> Result<Vec<(String, String)>, StorageError> {
@@ -147,6 +169,7 @@ pub fn begin(
             job: job.clone(),
             pairs: pairs(&tx, &job.from, job.to.trim())?,
             holders,
+            started: None,
         },
     };
     save(&tx, &plan)?;
@@ -224,19 +247,51 @@ pub fn rename_holder(
         return Ok(false);
     };
     let (from, to) = (&plan.job.from, plan.job.to.trim());
-    let wrote = tags::rename(&tx, id, from, to, device_id, now_ms)?;
+    let before = plan.started.as_ref().filter(|started| started.id == id);
+    let before = before.map(|started| (&started.tags[..], started.pinned.as_deref()));
+    let wrote = tags::rename_from(&tx, id, before, from, to, device_id, now_ms)?;
     plan.holders.remove(at);
+    plan.started = None;
     save(&tx, &plan)?;
     tx.commit().map_err(failed)?;
     Ok(wrote)
 }
 
-/// Strikes the holder `id` off the recorded rename without renaming it: one a rename could not
-/// write, which keeps the old name.
-pub fn skip_holder(conn: &Connection, id: &str) -> Result<(), StorageError> {
+/// Forgets the file edit begun on the holder `id`, which did not write its file: the holder stays
+/// listed, to be tried again.
+pub fn unstart_holder(conn: &Connection, id: &str) -> Result<(), StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    if let Some(mut plan) = recorded(&tx)?
+        && plan
+            .started
+            .as_ref()
+            .is_some_and(|started| started.id == id)
+    {
+        plan.started = None;
+        save(&tx, &plan)?;
+    }
+    tx.commit().map_err(failed)
+}
+
+/// Records that the holder `id`'s file is about to go from the text hashed `before` to the one
+/// hashed `after`, with its record's lists now, until [`rename_holder`] strikes it off or
+/// [`unstart_holder`] forgets it.
+pub fn start_holder(
+    conn: &Connection,
+    id: &str,
+    before: &str,
+    after: &str,
+) -> Result<(), StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
     if let Some(mut plan) = recorded(&tx)? {
-        plan.holders.retain(|holder| holder.id != id);
+        let (tags, pinned) = tags::lists(&tx, id)?.unwrap_or_default();
+        plan.started = Some(Started {
+            id: id.to_owned(),
+            before: before.to_owned(),
+            after: after.to_owned(),
+            tags,
+            pinned,
+        });
         save(&tx, &plan)?;
     }
     tx.commit().map_err(failed)

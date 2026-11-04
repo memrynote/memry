@@ -46,6 +46,18 @@ pub struct NotesService {
     /// Test hook: runs once inside the next journal save, after the day's new file is written
     /// aside and before it lands ([`Self::before_next_day_file_lands`]).
     pub(crate) day_file_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
+    /// Test hook: runs once inside the next tag rename's edit of a file, after its new text is
+    /// written aside and before it lands ([`Self::before_next_rename_lands`]).
+    #[cfg(feature = "test-hooks")]
+    pub(crate) rename_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
+    /// Test hook: the next tag rename stops after a note's file is written and before its
+    /// record is ([`Self::crash_after_next_rename_write`]).
+    #[cfg(feature = "test-hooks")]
+    pub(crate) crash_after_rename_write: AtomicBool,
+    /// Test hook: the next tag rename's next file edit fails
+    /// ([`Self::fail_next_rename_edit`]).
+    #[cfg(feature = "test-hooks")]
+    pub(crate) fail_rename_edit: AtomicBool,
     /// Test hook: the next moved note's refs edit fails its feed (`AppEdit::fail_next_feed`).
     #[cfg(feature = "test-hooks")]
     pub(crate) fail_next_ref_feed: AtomicBool,
@@ -76,6 +88,12 @@ impl NotesService {
             undos: Undos::default(),
             day_file_lands: Mutex::new(None),
             #[cfg(feature = "test-hooks")]
+            rename_lands: Mutex::new(None),
+            #[cfg(feature = "test-hooks")]
+            crash_after_rename_write: AtomicBool::new(false),
+            #[cfg(feature = "test-hooks")]
+            fail_rename_edit: AtomicBool::new(false),
+            #[cfg(feature = "test-hooks")]
             fail_next_ref_feed: AtomicBool::new(false),
             #[cfg(feature = "test-hooks")]
             fail_next_save_feed: AtomicBool::new(false),
@@ -95,6 +113,32 @@ impl NotesService {
             .day_file_lands
             .lock()
             .unwrap_or_else(PoisonError::into_inner) = Some(hook);
+    }
+
+    /// Test hook: `hook` runs inside the next tag rename's edit of a file, between the write of
+    /// its new text aside and its rename over the file, as an outside edit can.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn before_next_rename_lands(&self, hook: Box<dyn FnOnce() + Send>) {
+        *self
+            .rename_lands
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(hook);
+    }
+
+    /// The next tag rename stops as a crash would, after a note's file is written and before
+    /// its record takes the new name.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn crash_after_next_rename_write(&self) {
+        self.crash_after_rename_write.store(true, Ordering::Relaxed);
+    }
+
+    /// The next tag rename's next file edit fails, as a note it cannot write does.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn fail_next_rename_edit(&self) {
+        self.fail_rename_edit.store(true, Ordering::Relaxed);
     }
 
     /// The edit a note's or a day's save runs through.

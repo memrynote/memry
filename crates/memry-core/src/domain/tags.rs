@@ -222,6 +222,43 @@ pub fn rename(
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
+    rename_from(conn, item_id, None, old, new, device_id, now_ms)
+}
+
+/// The live note or journal day's `tags` and `pinnedTags` (`None` without the key), `None`
+/// when it is not live.
+#[allow(clippy::type_complexity)]
+pub fn lists(
+    conn: &Connection,
+    item_id: &str,
+) -> Result<Option<(Vec<String>, Option<Vec<String>>)>, StorageError> {
+    let item_type = match live_type(conn, item_id) {
+        Ok(item_type) => item_type,
+        Err(StorageError::NotFound { .. }) => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let payload = require(conn, item_type, item_id)?;
+    let object = payload.object();
+    let tags = read_tags(object, "tags", item_type, item_id)?;
+    let pins = match object.contains_key("pinnedTags") {
+        true => Some(read_tags(object, "pinnedTags", item_type, item_id)?),
+        false => None,
+    };
+    Ok(Some((tags, pins)))
+}
+
+/// [`rename`] of the lists `before` (from [`lists`]) rather than the item's own, so a rename
+/// that ran on them once lands on the same lists however often it runs again.
+#[allow(clippy::too_many_arguments)]
+pub fn rename_from(
+    conn: &Connection,
+    item_id: &str,
+    before: Option<(&[String], Option<&[String]>)>,
+    old: &str,
+    new: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
     let item_type = match live_type(conn, item_id) {
         Ok(item_type) => item_type,
         Err(StorageError::NotFound { .. }) => return Ok(false),
@@ -230,18 +267,22 @@ pub fn rename(
     let payload = require(conn, item_type, item_id)?;
     let object = payload.object();
     let tags = read_tags(object, "tags", item_type, item_id)?;
-    let next = renamed_list(&tags, old, new);
-    let pinned = match object.contains_key("pinnedTags") {
-        true => {
-            let pins = read_tags(object, "pinnedTags", item_type, item_id)?;
+    let pins = match object.contains_key("pinnedTags") {
+        true => Some(read_tags(object, "pinnedTags", item_type, item_id)?),
+        false => None,
+    };
+    let (from_tags, from_pins) = before.unwrap_or((&tags, pins.as_deref()));
+    let next = renamed_list(from_tags, old, new);
+    let pinned = match (&pins, from_pins) {
+        (Some(pins), Some(from_pins)) => {
             // In the list's spelling, which the projection matches a pin by.
-            let spelled = renamed_list(&pins, old, new).into_iter().map(|pin| {
+            let spelled = renamed_list(from_pins, old, new).into_iter().map(|pin| {
                 let kept = next.iter().find(|tag| same_tag(tag, &pin));
                 kept.cloned().unwrap_or(pin)
             });
-            Some(dedupe(spelled)).filter(|next| *next != pins)
+            Some(dedupe(spelled)).filter(|next| next != pins)
         }
-        false => None,
+        _ => None,
     };
     if next == tags && pinned.is_none() {
         return Ok(false);

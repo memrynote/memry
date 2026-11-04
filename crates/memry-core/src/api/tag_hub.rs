@@ -84,11 +84,17 @@ impl TagHub {
             .call_blocking(|conn| tag_rename::rename_holder(conn, id, &self.device_id, now_ms()))
     }
 
-    /// The holder `id` struck off the recorded rename, keeping the old name
-    /// ([`tag_rename::skip_holder`]).
-    pub fn rename_skip(&self, id: &str) -> Result<(), StorageError> {
+    /// The holder's file edit about to be written ([`tag_rename::start_holder`]).
+    pub fn rename_start(&self, id: &str, before: &str, after: &str) -> Result<(), StorageError> {
         self.db
-            .call_blocking(|conn| tag_rename::skip_holder(conn, id))
+            .call_blocking(|conn| tag_rename::start_holder(conn, id, before, after))
+    }
+
+    /// The file edit begun on the holder `id` forgotten, its file not written
+    /// ([`tag_rename::unstart_holder`]).
+    pub fn rename_unstart(&self, id: &str) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| tag_rename::unstart_holder(conn, id))
     }
 
     pub fn create_category(&self, name: &str) -> Result<TagCategory, StorageError> {

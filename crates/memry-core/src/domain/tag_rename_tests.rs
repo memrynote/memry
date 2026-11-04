@@ -301,6 +301,11 @@ fn a_recorded_rename_refuses_another_until_it_is_finished() {
         c.execute("INSERT INTO meta (key, value) VALUES (?1, 'x')", [JOB])
             .map_err(failed)?;
         assert!(recorded(c).is_err());
+        // A row an earlier head of this branch wrote, with no plan, does not read either.
+        let old = r#"{"from":"job","to":"career","runId":"r1"}"#;
+        c.execute("UPDATE meta SET value = ?2 WHERE key = ?1", [JOB, old])
+            .map_err(failed)?;
+        assert!(recorded(c).is_err());
         Ok(())
     })
     .expect("job");
@@ -382,19 +387,25 @@ fn a_rename_under_the_old_name_lands_once_however_often_it_runs() {
     assert_eq!(upserts(&db, "n5"), 1);
 }
 
-/// A holder the rename could not write is struck off and keeps the old name.
+/// A file edit begun and not written is forgotten for that holder only, which stays listed.
 #[test]
-fn a_skipped_holder_is_struck_off_and_keeps_the_old_name() {
-    let (db, _d) = vault("tags-rename-skip");
+fn an_unwritten_file_edit_is_forgotten_and_its_holder_stays_listed() {
+    let (db, _d) = vault("tags-rename-unstart");
     db.call_blocking(|c| {
         let listed = holders(c, Vec::new(), "job")?;
-        begin(c, &job("job", "career"), listed)?;
-        skip_holder(c, "n1")?;
-        let left = recorded(c)?.expect("plan").holders;
-        assert!(left.iter().all(|holder| holder.id != "n1"));
-        assert!(!rename_holder(c, "n1", "phone", NOW + 1)?);
+        begin(c, &job("job", "career"), listed.clone())?;
+        start_holder(c, "n1", "b", "a")?;
+        unstart_holder(c, "n2")?;
+        let started = recorded(c)?.expect("plan").started.expect("started");
+        let snapshot: Vec<&str> = started.tags.iter().map(String::as_str).collect();
+        assert_eq!(
+            (started.id.as_str(), snapshot),
+            ("n1", vec!["Job", "job/Lead", "ideas"])
+        );
+        unstart_holder(c, "n1")?;
+        let plan = recorded(c)?.expect("plan");
+        assert_eq!((plan.started, plan.holders), (None, listed));
         Ok(())
     })
-    .expect("skip");
-    assert_eq!(tags_of(&db, "note", "n1"), vec!["Job", "job/Lead", "ideas"]);
+    .expect("unstart");
 }
