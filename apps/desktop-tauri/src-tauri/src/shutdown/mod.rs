@@ -226,6 +226,7 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
     // to shut down, and the exit it scheduled must pass.
     if startup::boot_halted() {
         if let RunEvent::Exit = event {
+            crate::updater::relaunch_guard::hand_off_on_exit();
             flush_log(app);
         }
         return;

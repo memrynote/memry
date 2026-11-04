@@ -39,9 +39,11 @@
 //! writes the file back at once when it dropped a `relation` entry; the Step 13 open does the
 //! same by calling [`update`] with a change that does nothing, which writes only then.
 //!
-//! A hard-linked file is read and replaced as Electron's `readFile` and `atomicWrite` do. The
-//! read only takes definitions from it, and the replace renames a new file over the vault's
-//! name, so the other name keeps its bytes and nothing outside the vault is written.
+//! A hard-linked file is read and replaced as Electron's `readFile` and `atomicWrite` do, and as
+//! the vault's other `.memry` files are (#3843: refusing it would stop every definition edit on
+//! a vault Electron edits). The read only takes definitions from it, and the replace renames a
+//! new file over the vault's name, so the other name keeps its bytes and nothing outside the
+//! vault is written (`tests/property_definitions_sync.rs`).
 
 mod model;
 

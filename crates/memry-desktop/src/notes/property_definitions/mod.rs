@@ -6,19 +6,25 @@
 //! other devices see. The app shows their union, the file winning for every name it lists, as
 //! Electron's reload folds the synced rows into what the file holds.
 //!
-//! Every edit runs in one turn: it reads the union's definition of the name, writes the file
-//! through [`properties_file::update`], then makes the record equal to what the file now
-//! holds, as Electron's rebuild of its rows and `enqueuePropertyDefinitionUpsert` do. A file
-//! that cannot be read refuses the edit, and neither store changes. When the record write
+//! The file is kept from shadowing a newer record: before the file is read for a list or an
+//! edit, every record a pull changed since the file last took it is written into the file
+//! ([`settle`], Electron's `applyRemoteUpsert` / `applyRemoteDelete`, #2896). A pull that
+//! lands while an edit runs is taken the same way, and the edit is decided again over it.
+//!
+//! Every edit runs in one turn: it settles the file, reads the union's definition of the name,
+//! writes the file through [`properties_file::update`], then makes the record equal to what
+//! the file now holds, as Electron's rebuild of its rows and `enqueuePropertyDefinitionUpsert`
+//! do, keeping the keys of the record's opaque `options` this build does not read (#3844). A
+//! file that cannot be read refuses the edit, and neither store changes. When the record write
 //! fails after the file was written, the error reaches the caller and the next edit of the
 //! name writes the record again. A date's calendar flag lives only in this device's file.
 //!
-//! Not yet ported: writing a pulled definition into the file (`applyRemoteUpsert`, #2896), so
-//! until then the file shadows a newer record of a name it lists; and re-typing the indexed
-//! note values when a definition changes type (`retypeIndexedProperties`), which waits for the
-//! note property index.
+//! Not yet ported: re-typing the indexed note values when a definition changes type
+//! (`retypeIndexedProperties`), which waits for the note property index.
 
+mod kind;
 mod record;
+mod settle;
 mod view;
 
 use std::path::PathBuf;
@@ -26,7 +32,9 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_core::api::auth::ensure_device_identity;
 use memry_core::api::errors::AuthError;
-use memry_core::domain::property_admin::records::{DefinitionRecords, StoredDefinition};
+use memry_core::api::errors::StorageError;
+use memry_core::domain::property_admin::mirror::{Edit, Written};
+use memry_core::domain::property_admin::records::DefinitionRecords;
 use memry_core::seams::secure_store::SecureStore;
 
 use crate::session::OpenVault;
@@ -34,7 +42,9 @@ use crate::vault::consumer::rows::now_ms;
 use crate::vault::properties_file::{
     self, PropertyDefinition, PropertyKind, SelectOption, StatusCategories,
 };
-use record::{default_categories, definition_of, options_text, record_of};
+use kind::{each_list, kind_of, new_option, option_list, options_of, type_of};
+use record::{Renamed, default_categories, definition_of, options_text, record_of};
+use settle::settle_into;
 pub use view::{
     DefinitionInput, DefinitionType, DefinitionsError, EnsuredType, OptionInput,
     PropertyDefinitionView, StatusCategoryKey,
@@ -54,116 +64,14 @@ enum Next {
 /// a database call.
 static TURN: Mutex<()> = Mutex::new(());
 
+/// How often an edit is decided again over a pull that landed while it ran.
+const ATTEMPTS: usize = 3;
+
 fn named(name: &str) -> Result<&str, DefinitionsError> {
     if name.is_empty() {
         return Err(DefinitionsError::Invalid("a property needs a name"));
     }
     Ok(name)
-}
-
-fn option(input: OptionInput) -> SelectOption {
-    SelectOption {
-        value: input.value,
-        color: input.color,
-        default: input.default,
-    }
-}
-
-/// An option of `add_option`, `add_status_option`: `PropertyOptionInputSchema`, which keeps
-/// only the value and the color.
-fn new_option(input: OptionInput) -> Result<SelectOption, DefinitionsError> {
-    if input.value.is_empty() || input.color.is_empty() {
-        return Err(DefinitionsError::Invalid(
-            "an option needs a value and a color",
-        ));
-    }
-    Ok(SelectOption {
-        default: None,
-        ..option(input)
-    })
-}
-
-fn option_list(kind: &mut PropertyKind) -> Option<&mut Vec<SelectOption>> {
-    match kind {
-        PropertyKind::Text(options)
-        | PropertyKind::Number(options)
-        | PropertyKind::Checkbox(options)
-        | PropertyKind::Url(options)
-        | PropertyKind::Select(options)
-        | PropertyKind::Multiselect(options) => Some(options),
-        PropertyKind::Status(_) | PropertyKind::Date { .. } | PropertyKind::Project => None,
-    }
-}
-
-/// The option list of a type that has one.
-fn options_of(kind: Option<&PropertyKind>) -> Vec<SelectOption> {
-    kind.and_then(|kind| option_list(&mut kind.clone()).map(std::mem::take))
-        .unwrap_or_default()
-}
-
-/// Every option list of the definition: the type's own, or each status category's.
-fn each_list(kind: &mut PropertyKind, mut change: impl FnMut(&mut Vec<SelectOption>)) {
-    if let PropertyKind::Status(categories) = kind {
-        for category in [
-            &mut categories.todo,
-            &mut categories.in_progress,
-            &mut categories.done,
-        ] {
-            change(&mut category.options);
-        }
-    } else if let Some(options) = option_list(kind) {
-        change(options);
-    }
-}
-
-/// The kind of type `wanted`, keeping what `prior` (the definition it replaces) carries that
-/// the type has too; `options` replaces an option list. `normalizeDefinition` of Electron.
-fn kind_of(
-    wanted: DefinitionType,
-    options: Option<Vec<OptionInput>>,
-    prior: Option<&PropertyKind>,
-) -> PropertyKind {
-    let list = || {
-        options.map_or_else(
-            || options_of(prior),
-            |options| options.into_iter().map(option).collect(),
-        )
-    };
-    match wanted {
-        DefinitionType::Text => PropertyKind::Text(list()),
-        DefinitionType::Number => PropertyKind::Number(list()),
-        DefinitionType::Checkbox => PropertyKind::Checkbox(list()),
-        DefinitionType::Url => PropertyKind::Url(list()),
-        DefinitionType::Select => PropertyKind::Select(list()),
-        DefinitionType::Multiselect => PropertyKind::Multiselect(list()),
-        DefinitionType::Status => match prior {
-            Some(PropertyKind::Status(categories)) => PropertyKind::Status(categories.clone()),
-            _ => PropertyKind::Status(default_categories()),
-        },
-        DefinitionType::Project => PropertyKind::Project,
-        DefinitionType::Date => PropertyKind::Date {
-            show_on_calendar: matches!(
-                prior,
-                Some(PropertyKind::Date {
-                    show_on_calendar: true
-                })
-            ),
-        },
-    }
-}
-
-fn type_of(kind: &PropertyKind) -> DefinitionType {
-    match kind {
-        PropertyKind::Text(_) => DefinitionType::Text,
-        PropertyKind::Number(_) => DefinitionType::Number,
-        PropertyKind::Checkbox(_) => DefinitionType::Checkbox,
-        PropertyKind::Url(_) => DefinitionType::Url,
-        PropertyKind::Select(_) => DefinitionType::Select,
-        PropertyKind::Multiselect(_) => DefinitionType::Multiselect,
-        PropertyKind::Status(_) => DefinitionType::Status,
-        PropertyKind::Date { .. } => DefinitionType::Date,
-        PropertyKind::Project => DefinitionType::Project,
-    }
 }
 
 /// The type a create or an update names: any but `project`.
@@ -199,11 +107,22 @@ fn view_of(
 pub struct PropertyDefinitions {
     vault: PathBuf,
     records: DefinitionRecords,
+    /// Test hook: runs once the file holds an edit, before its record is written.
+    between: Mutex<Option<Box<dyn FnMut() + Send>>>,
 }
 
 impl PropertyDefinitions {
     pub fn new(vault: PathBuf, records: DefinitionRecords) -> Self {
-        Self { vault, records }
+        Self {
+            vault,
+            records,
+            between: Mutex::new(None),
+        }
+    }
+
+    #[doc(hidden)]
+    pub fn before_record_write(&self, hook: impl FnMut() + Send + 'static) {
+        *self.between.lock().unwrap_or_else(PoisonError::into_inner) = Some(Box::new(hook));
     }
 
     /// The definitions of `open`, whose records are written under the device identity in
@@ -233,6 +152,12 @@ impl PropertyDefinitions {
 
     /// Every definition, by name (`notes:get-property-definitions`).
     pub fn list(&self) -> Result<Vec<PropertyDefinitionView>, DefinitionsError> {
+        if let Err(error) = self.settle() {
+            tracing::warn!(
+                scope = "PropertyDefinitions",
+                "pulled definitions are not in the file yet: {error}"
+            );
+        }
         let records = self.records.list()?;
         let mut views: Vec<PropertyDefinitionView> = Vec::new();
         let file = self.file();
@@ -284,43 +209,99 @@ impl PropertyDefinitions {
             .collect()
     }
 
+    /// Writes every record a pull changed since the file took it into the file. Returns the
+    /// names whose definition the file changed. The list does this before it reads, and so
+    /// does every edit; a caller that learns of a pull (the sync driver) can do it at once.
+    pub fn settle(&self) -> Result<Vec<String>, DefinitionsError> {
+        let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
+        let snapshot = self.records.snapshot()?;
+        let pulled = snapshot.pulled();
+        if pulled.is_empty() {
+            return Ok(Vec::new());
+        }
+        let changed =
+            properties_file::update(&self.vault, |definitions| settle_into(definitions, &pulled))?;
+        self.records.take(&snapshot)?;
+        Ok(changed)
+    }
+
     /// One edit of `name`'s definition: `decide` gets the union's definition and says what
-    /// becomes of it.
+    /// becomes of it. It runs again over a pull that changed the record meanwhile.
     fn change<T>(
         &self,
         name: &str,
-        decide: impl FnOnce(Option<PropertyDefinition>) -> Result<(Next, T), DefinitionsError>,
+        decide: impl FnMut(Option<PropertyDefinition>) -> Result<(Next, T), DefinitionsError>,
+    ) -> Result<T, DefinitionsError> {
+        self.change_renaming(name, None, decide)
+    }
+
+    /// [`Self::change`] of an edit that renames the option `renamed` (its old value), which
+    /// keeps its record entry.
+    fn change_renaming<T>(
+        &self,
+        name: &str,
+        renamed: Option<&str>,
+        mut decide: impl FnMut(Option<PropertyDefinition>) -> Result<(Next, T), DefinitionsError>,
     ) -> Result<T, DefinitionsError> {
         let name = named(name)?;
         let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
-        let stored: Option<StoredDefinition> = self
-            .records
-            .list()?
-            .into_iter()
-            .find(|stored| stored.record.name == name);
-        let synced = stored
-            .as_ref()
-            .and_then(|stored| definition_of(&stored.record));
-        let (next, out) = properties_file::update(&self.vault, |definitions| {
-            let current = definitions.get(name).cloned().or(synced);
-            let (next, out) = decide(current)?;
-            match &next {
-                Next::Put(definition) => definitions.insert(name.to_owned(), definition.clone()),
-                Next::Remove => drop(definitions.remove(name)),
-                Next::Keep => {}
+        for _ in 0..ATTEMPTS {
+            let snapshot = self.records.snapshot()?;
+            let pulled = snapshot.pulled();
+            let prior = snapshot.record(name);
+            let mut before = None;
+            let (next, out) = properties_file::update(&self.vault, |definitions| {
+                settle_into(definitions, &pulled);
+                let synced = prior.and_then(definition_of);
+                let current = definitions.get(name).cloned().or(synced);
+                before = current.as_ref().map(|current| current.kind.clone());
+                let (next, out) = decide(current)?;
+                match &next {
+                    Next::Put(definition) => {
+                        definitions.insert(name.to_owned(), definition.clone());
+                    }
+                    Next::Remove => drop(definitions.remove(name)),
+                    Next::Keep => {}
+                }
+                Ok::<_, DefinitionsError>((next, out))
+            })??;
+            let edit = match next {
+                Next::Put(definition) => {
+                    let renamed: Renamed<'_> = renamed.zip(before.as_ref());
+                    Edit::Put(record_of(name, &definition, prior, renamed))
+                }
+                Next::Remove => Edit::Remove,
+                Next::Keep => Edit::Keep,
+            };
+            if let Some(between) = self
+                .between
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .as_mut()
+            {
+                between();
             }
-            Ok::<_, DefinitionsError>((next, out))
-        })??;
-        match next {
-            Next::Put(definition) => {
-                self.records.put(&record_of(name, &definition), now_ms())?;
+            match self.records.write(&snapshot, name, &edit, now_ms())? {
+                Written::Done => return Ok(out),
+                Written::Unrecorded(error) => {
+                    tracing::warn!(
+                        scope = "PropertyDefinitions",
+                        name,
+                        "the edit landed; recording what the file holds failed: {error}"
+                    );
+                    return Ok(out);
+                }
+                Written::Moved => tracing::info!(
+                    scope = "PropertyDefinitions",
+                    name,
+                    "a pull changed the definition during the edit; deciding again over it"
+                ),
             }
-            Next::Remove if stored.is_some() => {
-                self.records.remove(name, now_ms())?;
-            }
-            Next::Remove | Next::Keep => {}
         }
-        Ok(out)
+        Err(StorageError::Failed {
+            what: format!("the definition of {name} kept changing on another device"),
+        }
+        .into())
     }
 
     fn view(&self, name: &str) -> Result<Option<PropertyDefinitionView>, DefinitionsError> {
@@ -340,15 +321,17 @@ impl PropertyDefinitions {
                 .as_ref()
                 .filter(|definition| type_of(&definition.kind) == wanted);
             let definition = PropertyDefinition {
-                kind: kind_of(wanted, input.options, same.map(|same| &same.kind)),
+                kind: kind_of(wanted, input.options.clone(), same.map(|same| &same.kind)),
                 default_value: filled(
                     input
                         .default_value
+                        .clone()
                         .or_else(|| same.and_then(|same| same.default_value.clone())),
                 ),
                 color: filled(
                     input
                         .color
+                        .clone()
                         .or_else(|| existing.as_ref().and_then(|e| e.color.clone())),
                 ),
             };
@@ -369,9 +352,9 @@ impl PropertyDefinitions {
             };
             let wanted = named.unwrap_or_else(|| type_of(&existing.kind));
             let definition = PropertyDefinition {
-                kind: kind_of(wanted, input.options, Some(&existing.kind)),
-                default_value: filled(input.default_value.or(existing.default_value)),
-                color: filled(input.color.or(existing.color)),
+                kind: kind_of(wanted, input.options.clone(), Some(&existing.kind)),
+                default_value: filled(input.default_value.clone().or(existing.default_value)),
+                color: filled(input.color.clone().or(existing.color)),
             };
             Ok((Next::Put(definition), true))
         })?;
@@ -420,14 +403,16 @@ impl PropertyDefinitions {
         self.change(name, |existing| {
             let Some(mut definition) = existing else {
                 let definition = PropertyDefinition {
-                    kind: PropertyKind::Select(vec![added]),
+                    kind: PropertyKind::Select(vec![added.clone()]),
                     default_value: None,
                     color: None,
                 };
                 return Ok((Next::Put(definition), ()));
             };
             match option_list(&mut definition.kind) {
-                Some(list) if list.iter().all(|o| o.value != added.value) => list.push(added),
+                Some(list) if list.iter().all(|o| o.value != added.value) => {
+                    list.push(added.clone());
+                }
                 _ => return Ok((Next::Keep, ())),
             }
             Ok((Next::Put(definition), ()))
@@ -461,7 +446,7 @@ impl PropertyDefinitions {
             if target.options.iter().any(|o| o.value == added.value) {
                 return Ok((Next::Keep, ()));
             }
-            target.options.push(added);
+            target.options.push(added.clone());
             let definition = PropertyDefinition {
                 kind: PropertyKind::Status(categories),
                 default_value,
@@ -475,19 +460,20 @@ impl PropertyDefinitions {
     fn edit_options(
         &self,
         name: &str,
-        change: impl FnMut(&mut Vec<SelectOption>),
+        renamed: Option<&str>,
+        mut change: impl FnMut(&mut Vec<SelectOption>),
     ) -> Result<(), DefinitionsError> {
-        self.change(name, |existing| {
+        self.change_renaming(name, renamed, |existing| {
             let mut definition =
                 existing.ok_or_else(|| DefinitionsError::NotFound(name.to_owned()))?;
-            each_list(&mut definition.kind, change);
+            each_list(&mut definition.kind, &mut change);
             Ok((Next::Put(definition), ()))
         })
     }
 
     /// `notes:remove-property-option`. Note values keep the option.
     pub fn remove_option(&self, name: &str, value: &str) -> Result<(), DefinitionsError> {
-        self.edit_options(name, |list| list.retain(|o| o.value != value))
+        self.edit_options(name, None, |list| list.retain(|o| o.value != value))
     }
 
     /// `notes:rename-property-option`. Note values keep the old name, as in Electron.
@@ -495,7 +481,7 @@ impl PropertyDefinitions {
         if new.is_empty() {
             return Err(DefinitionsError::Invalid("an option needs a value"));
         }
-        self.edit_options(name, |list| {
+        self.edit_options(name, Some(old), |list| {
             for option in list.iter_mut().filter(|o| o.value == old) {
                 new.clone_into(&mut option.value);
             }
@@ -512,7 +498,7 @@ impl PropertyDefinitions {
         if color.is_empty() {
             return Err(DefinitionsError::Invalid("an option needs a color"));
         }
-        self.edit_options(name, |list| {
+        self.edit_options(name, None, |list| {
             for option in list.iter_mut().filter(|o| o.value == value) {
                 color.clone_into(&mut option.color);
             }
