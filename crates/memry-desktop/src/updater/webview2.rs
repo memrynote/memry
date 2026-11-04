@@ -1,9 +1,15 @@
-//! The WebView2 runtime check of a Windows launch, before any webview exists. Velopack's Setup
-//! installs the runtime (`--framework webview2`), so a missing one was removed afterwards. The
-//! app then runs the Microsoft bootstrapper it ships beside its executable, and starts only once
-//! the runtime is there. Step 44 (#3561) reads the outcome codes in telemetry.
+//! The WebView2 runtime check of a Windows launch, before the Tauri runtime exists. Velopack's
+//! Setup installs the runtime (`--framework webview2`), so a missing one was removed afterwards.
+//! The app then runs the Microsoft bootstrapper it ships beside its executable, and starts only
+//! once the runtime is there. Step 44 (#3561) reads the outcome codes in telemetry.
+//!
+//! The check runs in `main`, before the Tauri runtime is built: `tauri-runtime-wry` asks for the
+//! runtime once, in `Wry::init`, and refuses every webview of a process whose answer was no, even
+//! after the bootstrapper installed it (#3915). Logging starts later, inside the runtime, so
+//! [`ensure`] returns a [`Check`] that the launch logs and reports once it can.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use crate::telemetry::TelemetryEvent;
 use crate::telemetry::service::Service as Telemetry;
@@ -78,65 +84,118 @@ pub fn is_installed_version(pv: &str) -> bool {
     parts.is_some_and(|parts| parts.iter().any(|&part| part > 0))
 }
 
-/// The registry first, as Microsoft documents it; the loader for every runtime it does not list.
-fn installed(runtime: &impl Runtime) -> Option<String> {
-    runtime
-        .versions()
-        .into_iter()
-        .find(|pv| is_installed_version(pv))
-        .or_else(|| {
-            let version = runtime.loader_version()?;
+/// What the check found and did, for the launch to log and report once logging runs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Check {
+    pub outcome: Outcome,
+    /// The runtime version the window will use, when there is one.
+    pub version: Option<String>,
+    /// Only the WebView2 loader found it: a Fixed Version runtime or an allowed Edge channel.
+    pub found_by_loader: bool,
+    pub bootstrapper: PathBuf,
+    /// How long the bootstrapper ran, when it ran.
+    pub bootstrapper_ran: Option<Duration>,
+    pub bootstrapper_error: Option<String>,
+    /// Why the check ran without the lock that keeps a second launch from installing at the same
+    /// time. The caller sets it.
+    pub lock_warning: Option<String>,
+    /// The installing notice was still on screen after the bootstrapper ended. The caller sets it.
+    pub notice_stuck: bool,
+}
+
+impl Check {
+    /// The lines `ensure` would have logged had logging been running.
+    pub fn log(&self) {
+        let code = self.outcome.code();
+        let version = self.version.as_deref().unwrap_or_default();
+        if self.found_by_loader {
             tracing::info!(
                 scope = "WebView2",
                 "no Evergreen runtime in the registry; the WebView2 loader finds {version}"
             );
-            Some(version)
-        })
+        }
+        if let Some(ran) = self.bootstrapper_ran {
+            tracing::warn!(
+                scope = "WebView2",
+                "no runtime; the bootstrapper ran for {} s before the window runtime started",
+                ran.as_secs()
+            );
+        }
+        if let Some(error) = &self.bootstrapper_error {
+            tracing::warn!(scope = "WebView2", "bootstrapper failed: {error}");
+        }
+        if self.notice_stuck {
+            tracing::warn!(
+                scope = "WebView2",
+                "the installing notice did not close; it stays until dismissed"
+            );
+        }
+        if let Some(warning) = &self.lock_warning {
+            tracing::warn!(scope = "WebView2", "{warning}");
+        }
+        match self.outcome {
+            Outcome::Present | Outcome::Installed => {
+                tracing::info!(scope = "WebView2", "{code}: runtime {version}");
+            }
+            Outcome::Missing => tracing::error!(
+                scope = "WebView2",
+                "{code}: no runtime and no bootstrapper at {}",
+                self.bootstrapper.display()
+            ),
+            Outcome::InstallFailed => tracing::error!(
+                scope = "WebView2",
+                "{code}: still no runtime after the bootstrapper"
+            ),
+        }
+    }
+}
+
+/// The registry first, as Microsoft documents it; the loader for every runtime it does not list.
+/// The flag is true when only the loader found it.
+fn installed(runtime: &impl Runtime) -> Option<(String, bool)> {
+    runtime
+        .versions()
+        .into_iter()
+        .find(|pv| is_installed_version(pv))
+        .map(|pv| (pv, false))
+        .or_else(|| runtime.loader_version().map(|version| (version, true)))
 }
 
 /// Finds the runtime, and installs it with `bootstrapper` when it is missing.
-pub fn ensure(runtime: &impl Runtime, bootstrapper: &Path) -> Outcome {
-    if let Some(version) = installed(runtime) {
-        tracing::info!(
-            scope = "WebView2",
-            "{}: runtime {version}",
-            Outcome::Present.code()
-        );
-        return Outcome::Present;
+pub fn ensure(runtime: &impl Runtime, bootstrapper: &Path) -> Check {
+    let mut check = Check {
+        outcome: Outcome::Present,
+        version: None,
+        found_by_loader: false,
+        bootstrapper: bootstrapper.to_owned(),
+        bootstrapper_ran: None,
+        bootstrapper_error: None,
+        lock_warning: None,
+        notice_stuck: false,
+    };
+    if let Some((version, by_loader)) = installed(runtime) {
+        check.version = Some(version);
+        check.found_by_loader = by_loader;
+        return check;
     }
     if !bootstrapper.is_file() {
-        tracing::error!(
-            scope = "WebView2",
-            "{}: no runtime and no bootstrapper at {}",
-            Outcome::Missing.code(),
-            bootstrapper.display()
-        );
-        return Outcome::Missing;
+        check.outcome = Outcome::Missing;
+        return check;
     }
-    tracing::warn!(scope = "WebView2", "no runtime; running the bootstrapper");
     // The runtime is detected again either way: a bootstrapper can fail after the runtime
     // landed, or another installer can finish it meanwhile.
-    if let Err(error) = runtime.run_bootstrapper(bootstrapper) {
-        tracing::warn!(scope = "WebView2", "bootstrapper failed: {error}");
-    }
+    let started = Instant::now();
+    check.bootstrapper_error = runtime.run_bootstrapper(bootstrapper).err();
+    check.bootstrapper_ran = Some(started.elapsed());
     match installed(runtime) {
-        Some(version) => {
-            tracing::info!(
-                scope = "WebView2",
-                "{}: runtime {version}",
-                Outcome::Installed.code()
-            );
-            Outcome::Installed
+        Some((version, by_loader)) => {
+            check.outcome = Outcome::Installed;
+            check.version = Some(version);
+            check.found_by_loader = by_loader;
         }
-        None => {
-            tracing::error!(
-                scope = "WebView2",
-                "{}: still no runtime after the bootstrapper",
-                Outcome::InstallFailed.code()
-            );
-            Outcome::InstallFailed
-        }
+        None => check.outcome = Outcome::InstallFailed,
     }
+    check
 }
 
 #[cfg(test)]
@@ -209,7 +268,10 @@ mod tests {
         let dir = tempfile::tempdir().expect("tmp");
         // The HKLM key of an uninstalled runtime, then the HKCU one of the live install.
         let machine = Machine::new(&["0.0.0.0", "131.0.2903.70"], &[], false);
-        assert_eq!(ensure(&machine, &bootstrapper(&dir)), Outcome::Present);
+        let check = ensure(&machine, &bootstrapper(&dir));
+        assert_eq!(check.outcome, Outcome::Present);
+        assert_eq!(check.version.as_deref(), Some("131.0.2903.70"));
+        assert_eq!(check.bootstrapper_ran, None);
         assert_eq!(machine.runs.get(), 0);
     }
 
@@ -221,9 +283,11 @@ mod tests {
             loader: Some("132.0.2957.11".to_owned()),
             ..Machine::new(&["0.0.0.0"], &[], true)
         };
-        assert_eq!(ensure(&machine, &bootstrapper(&dir)), Outcome::Present);
+        let check = ensure(&machine, &bootstrapper(&dir));
+        assert_eq!(check.outcome, Outcome::Present);
+        assert!(check.found_by_loader);
         assert_eq!(
-            ensure(&machine, &dir.path().join("none.exe")),
+            ensure(&machine, &dir.path().join("none.exe")).outcome,
             Outcome::Present
         );
         assert_eq!(machine.runs.get(), 0);
@@ -233,12 +297,21 @@ mod tests {
     fn a_missing_runtime_is_installed_and_detected_again() {
         let dir = tempfile::tempdir().expect("tmp");
         let machine = Machine::new(&["0.0.0.0"], &["131.0.2903.70"], false);
-        assert_eq!(ensure(&machine, &bootstrapper(&dir)), Outcome::Installed);
+        let check = ensure(&machine, &bootstrapper(&dir));
+        assert_eq!(check.outcome, Outcome::Installed);
+        assert_eq!(check.version.as_deref(), Some("131.0.2903.70"));
+        assert!(check.bootstrapper_ran.is_some());
+        assert_eq!(check.bootstrapper_error, None);
         assert_eq!(machine.runs.get(), 1);
 
         // A bootstrapper that reports a failure after the runtime landed still starts the app.
         let machine = Machine::new(&[], &["131.0.2903.70"], true);
-        assert_eq!(ensure(&machine, &bootstrapper(&dir)), Outcome::Installed);
+        let check = ensure(&machine, &bootstrapper(&dir));
+        assert_eq!(check.outcome, Outcome::Installed);
+        assert_eq!(
+            check.bootstrapper_error.as_deref(),
+            Some("exit code 0x80040c01")
+        );
     }
 
     #[test]
@@ -246,7 +319,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("tmp");
         for fails in [false, true] {
             let machine = Machine::new(&[], &[], fails);
-            let outcome = ensure(&machine, &bootstrapper(&dir));
+            let outcome = ensure(&machine, &bootstrapper(&dir)).outcome;
             assert_eq!(outcome, Outcome::InstallFailed);
             assert!(!outcome.starts());
         }
@@ -256,7 +329,9 @@ mod tests {
     fn no_bootstrapper_file_is_missing_without_running_anything() {
         let dir = tempfile::tempdir().expect("tmp");
         let machine = Machine::new(&[], &["131.0.2903.70"], false);
-        let outcome = ensure(&machine, &dir.path().join(BOOTSTRAPPER));
+        let check = ensure(&machine, &dir.path().join(BOOTSTRAPPER));
+        assert_eq!(check.bootstrapper, dir.path().join(BOOTSTRAPPER));
+        let outcome = check.outcome;
         assert_eq!(outcome, Outcome::Missing);
         assert!(!outcome.starts());
         assert_eq!(machine.runs.get(), 0);
