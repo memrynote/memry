@@ -13,6 +13,7 @@ struct MemryApp: App {
                 // `memry://calendar?...` (spec 007 CL022). Held until the vault
                 // shell exists, which may be after sign-in or unlock.
                 .onOpenURL { url in
+                    DeepLinkTelemetry.opened(url)
                     if let link = CalendarLink(url: url) { CalendarLinks.shared.request(link) }
                 }
         }

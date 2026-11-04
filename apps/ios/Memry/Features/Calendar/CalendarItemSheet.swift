@@ -270,6 +270,7 @@ struct CalendarEventSheet: View {
             timezone: nil, isAllDay: nil, targetCalendarId: .keep, color: .keep
         )
         if await store.write({ try $0.updateEvent(id: id, changes: changes) }) != nil {
+            CalendarTelemetry.eventUpdated(changes)
             dismiss()
         } else {
             store.clearFailure()

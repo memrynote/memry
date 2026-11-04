@@ -209,6 +209,7 @@ final class TasksStore {
         let core = core
         do {
             let change = try await executor.run { try work(core) }
+            TasksTelemetry.track(change)
             if let message {
                 undoable = TasksUndo(message: message, change: change)
                 toast = message

@@ -189,6 +189,7 @@ extension CalendarScreen {
     func delete(_ item: CalendarItem) async {
         let id = item.sourceId
         if await store.write({ try $0.deleteEvent(id: id) }) != nil {
+            CalendarTelemetry.eventDeleted()
             sheet = nil
         }
     }

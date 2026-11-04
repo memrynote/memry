@@ -82,12 +82,12 @@ final class LocalSettings {
         lastSyncedAt = defaults.object(forKey: Key.lastSynced) as? Date
     }
 
-    var clockFormat: ClockFormat { didSet { defaults.set(clockFormat.rawValue, forKey: Key.clock) } }
-    var dateFormat: DateFormatChoice { didSet { defaults.set(dateFormat.rawValue, forKey: Key.date) } }
-    var weekStart: WeekStart { didSet { defaults.set(weekStart.rawValue, forKey: Key.week) } }
+    var clockFormat: ClockFormat { didSet { defaults.set(clockFormat.rawValue, forKey: Key.clock); Self.trackChanged("clockFormat") } }
+    var dateFormat: DateFormatChoice { didSet { defaults.set(dateFormat.rawValue, forKey: Key.date); Self.trackChanged("dateFormat") } }
+    var weekStart: WeekStart { didSet { defaults.set(weekStart.rawValue, forKey: Key.week); Self.trackChanged("weekStart") } }
     /// `nil` is the vault root.
-    var newNotesFolder: String? { didSet { defaults.set(newNotesFolder, forKey: Key.folder) } }
-    var spellCheck: Bool { didSet { defaults.set(spellCheck, forKey: Key.spell) } }
+    var newNotesFolder: String? { didSet { defaults.set(newNotesFolder, forKey: Key.folder); Self.trackChanged("newNotesFolder") } }
+    var spellCheck: Bool { didSet { defaults.set(spellCheck, forKey: Key.spell); Self.trackChanged("spellCheck") } }
     var usageMetrics: Bool {
         didSet {
             defaults.set(usageMetrics, forKey: Key.metrics)
@@ -95,15 +95,15 @@ final class LocalSettings {
             Task { await Telemetry.shared.setEnabled(on) }
         }
     }
-    var attachmentDownload: AttachmentDownload { didSet { defaults.set(attachmentDownload.rawValue, forKey: Key.download) } }
-    var imageFiling: ImageFiling { didSet { defaults.set(imageFiling.rawValue, forKey: Key.filing) } }
-    var askEveryTime: Bool { didSet { defaults.set(askEveryTime, forKey: Key.ask) } }
-    var journalShowTasks: Bool { didSet { defaults.set(journalShowTasks, forKey: Key.journalTasks) } }
-    var journalShowStats: Bool { didSet { defaults.set(journalShowStats, forKey: Key.journalStats) } }
-    var journalFolder: String { didSet { defaults.set(journalFolder, forKey: Key.journalFolder) } }
-    var journalDateFormat: String { didSet { defaults.set(journalDateFormat, forKey: Key.journalDate) } }
+    var attachmentDownload: AttachmentDownload { didSet { defaults.set(attachmentDownload.rawValue, forKey: Key.download); Self.trackChanged("attachmentDownload") } }
+    var imageFiling: ImageFiling { didSet { defaults.set(imageFiling.rawValue, forKey: Key.filing); Self.trackChanged("inbox.imageFiling") } }
+    var askEveryTime: Bool { didSet { defaults.set(askEveryTime, forKey: Key.ask); Self.trackChanged("inbox.askEveryTime") } }
+    var journalShowTasks: Bool { didSet { defaults.set(journalShowTasks, forKey: Key.journalTasks); Self.trackChanged("journal.showTasks") } }
+    var journalShowStats: Bool { didSet { defaults.set(journalShowStats, forKey: Key.journalStats); Self.trackChanged("journal.showStatsFooter") } }
+    var journalFolder: String { didSet { defaults.set(journalFolder, forKey: Key.journalFolder); Self.trackChanged("journal.folder") } }
+    var journalDateFormat: String { didSet { defaults.set(journalDateFormat, forKey: Key.journalDate); Self.trackChanged("journal.dateFormat") } }
     /// The journal page's "Different template per day" switch.
-    var perDayTemplates: Bool { didSet { defaults.set(perDayTemplates, forKey: Key.perDay) } }
+    var perDayTemplates: Bool { didSet { defaults.set(perDayTemplates, forKey: Key.perDay); Self.trackChanged("journal.perDay") } }
     private(set) var enabledFeatures: Set<AppFeature>
     /// The last sync pass that finished on this iPhone (spec 006 ST15).
     var lastSyncedAt: Date? { didSet { defaults.set(lastSyncedAt, forKey: Key.lastSynced) } }
@@ -123,7 +123,19 @@ final class LocalSettings {
         if !on, feature != .calendar, shippedOn.filter({ $0 != .calendar }) == [feature] { return false }
         if on { enabledFeatures.insert(feature) } else { enabledFeatures.remove(feature) }
         defaults.set(on, forKey: Key.feature(feature))
+        Self.trackChanged("features.\(feature.rawValue)")
         return true
+    }
+
+    private static var lastTracked: [String: ContinuousClock.Instant] = [:]
+
+    /// Desktop's `setting_changed`: the setting's name, never its value. Once
+    /// per key per 5 s, so a colour picker drag is one change, not hundreds.
+    static func trackChanged(_ setting: String) {
+        let now = ContinuousClock.now
+        if let last = lastTracked[setting], now - last < .seconds(5) { return }
+        lastTracked[setting] = now
+        Telemetry.shared.track(.settingChanged, surface: .settings, action: "changed", dimension: (.setting, setting))
     }
 
     private enum Key {

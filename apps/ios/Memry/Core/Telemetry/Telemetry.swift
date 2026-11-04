@@ -33,6 +33,8 @@ actor Telemetry {
     private let store: TelemetryQueueStore
     private var queue: [TelemetryEvent]
     private var enabled = false
+    /// Whether this build reports at all; the user's switch works inside it.
+    private var allowed = false
     private var context: TelemetryContext?
     private var sender: (any TelemetrySending)?
     private var authState: TelemetryAuthState = .anonymous
@@ -51,8 +53,9 @@ actor Telemetry {
 
     /// Called once at launch, before any other event is worth recording.
     /// Emits `app_started`, and `app_update_installed` when the version moved.
-    func start(context: TelemetryContext, enabled: Bool, previousVersion: String?) {
+    func start(context: TelemetryContext, allowed: Bool, enabled: Bool, previousVersion: String?) {
         self.context = context
+        self.allowed = allowed
         setEnabled(enabled)
         record(TelemetryEvent.make(.appStarted, surface: .app, action: "started", result: .success))
         if let previousVersion, previousVersion != context.appVersion {
@@ -67,8 +70,8 @@ actor Telemetry {
     }
 
     func setEnabled(_ on: Bool) {
-        enabled = on
-        guard !on else { return }
+        enabled = allowed && on
+        guard !enabled else { return }
         queue.removeAll()
         unsaved = 0
         store.save(queue)

@@ -81,16 +81,19 @@ struct CoreNoteMetadataWriter: NoteMetadataWriting {
 
     func setIcon(id: String, icon: String?) async throws {
         try await executor.run { try writer().setIcon(id: id, icon: icon) }
+        NotesTelemetry.noteUpdated(id)
     }
 
     func setTags(id: String, tags: [String]) async throws {
         try await executor.run { try writer().setTags(id: id, tags: tags) }
+        NotesTelemetry.noteUpdated(id)
     }
 
     func setCover(id: String, url: String?, offsetY: Double) async throws {
         try await executor.run {
             try writer().setCover(id: id, url: url, offsetY: offsetY)
         }
+        NotesTelemetry.noteUpdated(id)
     }
 
     func setAliases(id: String, aliases: [String]) async throws {
@@ -101,22 +104,26 @@ struct CoreNoteMetadataWriter: NoteMetadataWriting {
         try await executor.run {
             try writer().setProperty(id: id, name: name, valueJson: valueJson)
         }
+        NotesTelemetry.noteUpdated(id)
     }
 
     func clearProperty(id: String, name: String) async throws {
         try await executor.run { try writer().clearProperty(id: id, name: name) }
+        NotesTelemetry.noteUpdated(id)
     }
 
     func renameProperty(id: String, from: String, to: String) async throws {
         try await executor.run {
             try writer().renameProperty(id: id, from: from, to: to)
         }
+        NotesTelemetry.noteUpdated(id)
     }
 
     func reorderProperties(id: String, names: [String]) async throws {
         try await executor.run {
             try writer().reorderProperties(id: id, names: names)
         }
+        NotesTelemetry.noteUpdated(id)
     }
 
     func ensurePropertyDefinition(name: String, typeName: String) async throws {

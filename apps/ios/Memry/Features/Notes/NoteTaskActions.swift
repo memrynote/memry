@@ -52,17 +52,22 @@ struct CoreNoteTasks: NoteTaskWriting {
     }
 
     func complete(taskId: String, localNow: String) async throws {
-        _ = try await executor.run { try tasks().complete(id: taskId, localNow: localNow) }
+        let completion = try await executor.run { try tasks().complete(id: taskId, localNow: localNow) }
+        TasksTelemetry.track(completion.change)
     }
 
     func uncomplete(taskId: String) async throws {
-        _ = try await executor.run { try tasks().uncomplete(id: taskId) }
+        TasksTelemetry.track(try await executor.run { try tasks().uncomplete(id: taskId) })
     }
 
     func convertChecklistItem(noteId: String, blockId: String, localNow: String) async throws -> String? {
-        try await executor.run {
+        let id = try await executor.run {
             try tasks().convertChecklistItem(noteId: noteId, blockId: blockId, localNow: localNow)
         }
+        if id != nil {
+            Telemetry.shared.track(.taskCreated, surface: .tasks, action: "created", objectType: "task", result: .success)
+        }
+        return id
     }
 
     /// One read and one write, as desktop's: a task that is gone, or whose
@@ -73,7 +78,7 @@ struct CoreNoteTasks: NoteTaskWriting {
             guard let task = try tasks.get(id: taskId) else { return }
             let current = task.linkedNoteIds
             let next = NoteTaskLinks.relinked(current, unlink: unlink, link: link)
-            if next != current { _ = try tasks.setLinkedNoteIds(id: taskId, ids: next) }
+            if next != current { TasksTelemetry.track(try tasks.setLinkedNoteIds(id: taskId, ids: next)) }
         }
     }
 }

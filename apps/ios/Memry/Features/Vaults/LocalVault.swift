@@ -45,6 +45,7 @@ struct LocalVaultStore: @unchecked Sendable {
         let minted = UUID().uuidString.lowercased()
         defaults.set(minted, forKey: Key.id)
         defaults.set(false, forKey: Key.attached)
+        Telemetry.shared.track(.vaultCreated, surface: .vault, action: "created", source: "create", result: .success)
         return minted
     }
 

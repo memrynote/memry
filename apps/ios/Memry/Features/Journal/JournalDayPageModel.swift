@@ -75,6 +75,11 @@ final class JournalDayPageModel {
     func seedIfNeeded(store: JournalStore) async {
         guard !seedChecked else { return }
         seedChecked = true
+        defer {
+            if store.cachedDay(date) != nil {
+                Telemetry.shared.track(.journalOpened, surface: .journal, action: "opened", objectType: "journal", result: .success)
+            }
+        }
         guard store.hasRead(date), store.cachedDay(date) == nil else { return }
         if await store.seedIfNeeded(date) {
             await store.loadDay(date)

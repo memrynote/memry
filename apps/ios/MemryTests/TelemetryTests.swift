@@ -31,7 +31,7 @@ private func makeTelemetry(enabled: Bool = true) async -> (Telemetry, URL) {
         locale: "en-US",
         timezoneOffsetMinutes: 180
     )
-    await telemetry.start(context: context, enabled: enabled, previousVersion: nil)
+    await telemetry.start(context: context, allowed: true, enabled: enabled, previousVersion: nil)
     return (telemetry, url)
 }
 
@@ -90,6 +90,24 @@ struct TelemetryTests {
         #expect(await Telemetry(store: TelemetryQueueStore(url: url)).pending.isEmpty)
     }
 
+    @Test func aBuildThatDoesNotReportIgnoresTheSwitch() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("telemetry-\(UUID().uuidString).json")
+        let telemetry = Telemetry(store: TelemetryQueueStore(url: url))
+        let context = TelemetryContext(
+            installId: "11111111-1111-4111-8111-111111111111",
+            sessionId: "22222222-2222-4222-8222-222222222222",
+            appVersion: "0.1.0",
+            buildChannel: "staging",
+            locale: "en-US",
+            timezoneOffsetMinutes: 0
+        )
+        await telemetry.start(context: context, allowed: false, enabled: true, previousVersion: nil)
+        await telemetry.setEnabled(true)
+        await telemetry.record(TelemetryEvent.make(.noteCreated, surface: .notes, action: "created"))
+
+        #expect(await telemetry.pending.isEmpty)
+    }
+
     @Test func aVersionChangeReportsTheUpdate() async throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("telemetry-\(UUID().uuidString).json")
         let telemetry = Telemetry(store: TelemetryQueueStore(url: url))
@@ -101,7 +119,7 @@ struct TelemetryTests {
             locale: "en-US",
             timezoneOffsetMinutes: 0
         )
-        await telemetry.start(context: context, enabled: true, previousVersion: "0.1.0")
+        await telemetry.start(context: context, allowed: true, enabled: true, previousVersion: "0.1.0")
 
         let update = try #require(await telemetry.pending.last)
         #expect(update.name == .appUpdateInstalled)

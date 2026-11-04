@@ -64,7 +64,7 @@ struct TaskComposerChips: View {
             removeDate: { draft.due = .cleared },
             pickDateTime: { pickSheet(.when) },
             setRule: { rule in draft.rule = rule.map { .set($0, repeatFrom: nil) } ?? .cleared },
-            addReminder: { date in draft.reminder = date }
+            addReminder: { preset in draft.reminder = preset.date }
         )
     }
 

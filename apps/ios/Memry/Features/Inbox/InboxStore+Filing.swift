@@ -49,16 +49,23 @@ extension InboxStore {
     /// row, the File sheet without note links.
     /// `sidebarFallback`: the user asked for an image "in the sidebar", which
     /// this phone cannot write, so it lands in a note and the toast says so.
-    func file(_ item: InboxItemRecord, to folder: String, tags: [String], sidebarFallback: Bool = false) async {
+    func file(
+        _ item: InboxItemRecord,
+        to folder: String,
+        tags: [String],
+        sidebarFallback: Bool = false,
+        filedAction: StaticString = "folder"
+    ) async {
         let id = item.id
         let now = localNow()
         let target: String? = folder.isEmpty ? nil : folder
-        if item.isBinary {
-            guard await fileBinary(item, folder: target, tags: tags, action: "folder") else { return }
+        let filed = if item.isBinary {
+            await fileBinary(item, folder: target, tags: tags, action: "folder")
         } else {
-            guard await writeRemoving([id], { try $0.fileToFolder(id: id, folder: target, tags: tags, localNow: now) }) != nil
-            else { return }
+            await writeRemoving([id], { try $0.fileToFolder(id: id, folder: target, tags: tags, localNow: now) }) != nil
         }
+        trackFiled(filedAction, ok: filed)
+        guard filed else { return }
         let message = sidebarFallback ? InboxCopy.embedFellBackToLink : InboxCopy.filedTo(InboxFolderName.leaf(folder))
         showToast(message) { [weak self] in
             await self?.write { try $0.undoFile(id: id) }
@@ -84,23 +91,30 @@ extension InboxStore {
             } else {
                 await newNote(owner.title, folder: target)
             }
-            guard let ownerId else { return }
+            guard let ownerId else {
+                trackFiled("linked", ok: false)
+                return
+            }
             // An image lands inside the first note; desktop's link mode puts a
             // file in the sidebar, which this phone cannot write (§6 IB025).
             guard await attach(item, toNote: ownerId, notePath: nil) else {
+                trackFiled("linked", ok: false)
                 if owner.noteId == nil { await discard(ownerId) }
                 return
             }
             if imageMode == .link, item.itemType == "image" { showToast(InboxCopy.embedFellBackToLink) }
             let path = "attachments/\(ownerId)/\(uploadName(item))"
-            _ = await writeRemoving([id]) { try $0.markFiled(id: id, filedTo: path, action: "linked") }
+            let marked = await writeRemoving([id]) { try $0.markFiled(id: id, filedTo: path, action: "linked") }
+            trackFiled("linked", ok: marked != nil)
             if imageMode != .link || item.itemType != "image" { showToast(InboxCopy.linkedToNotes(notes.count)) }
             return
         }
         let targets = notes.map { InboxLinkTarget(noteId: $0.noteId, newTitle: $0.noteId == nil ? $0.title : nil) }
-        guard await writeRemoving([id], {
+        let linked = await writeRemoving([id], {
             try $0.linkToNotes(id: id, targets: targets, tags: tags, folder: target, localNow: now)
-        }) != nil else { return }
+        }) != nil
+        trackFiled("linked", ok: linked)
+        guard linked else { return }
         showToast(InboxCopy.linkedToNotes(notes.count))
     }
 
@@ -119,6 +133,7 @@ extension InboxStore {
         for item in binaries where await fileBinary(item, folder: target, tags: tags, action: "folder") {
             processed += 1
         }
+        trackBulk(.inboxFiled, "filed", processed: processed == 0 ? nil : processed)
         let name = InboxFolderName.leaf(folder)
         showToast(processed == ids.count
             ? InboxCopy.filedItemsTo(processed, name)
@@ -129,12 +144,14 @@ extension InboxStore {
 
     func convertToNote(_ item: InboxItemRecord) async {
         if item.isBinary {
-            await file(item, to: "", tags: [])
+            await file(item, to: "", tags: [], filedAction: "note")
             return
         }
         let id = item.id
         let now = localNow()
-        guard await writeRemoving([id], { try $0.convertToNote(id: id, localNow: now) }) != nil else { return }
+        let converted = await writeRemoving([id], { try $0.convertToNote(id: id, localNow: now) }) != nil
+        trackFiled("note", ok: converted)
+        guard converted else { return }
         showToast(InboxCopy.convertedTo(InboxCopy.convertNote))
     }
 
@@ -153,7 +170,11 @@ extension InboxStore {
                 id: id, projectId: projectId, dueDate: dueDate, dueTime: dueTime, priority: priority, localNow: now
             )
         }
+        trackFiled("task", ok: filed != nil)
         guard let filed else { return nil }
+        Telemetry.shared.track(
+            .taskCreated, surface: .inbox, action: "created", objectType: "task", source: "inbox_conversion", result: .success
+        )
         showToast(InboxCopy.convertedTo(InboxCopy.convertTask))
         return filed.targetId
     }
@@ -162,8 +183,9 @@ extension InboxStore {
         let id = item.id
         let now = localNow()
         let when = Int64(date.timeIntervalSince1970 * 1000)
-        guard await writeRemoving([id], { try $0.convertToReminder(id: id, remindAtMs: when, localNow: now) }) != nil
-        else { return }
+        let converted = await writeRemoving([id], { try $0.convertToReminder(id: id, remindAtMs: when, localNow: now) }) != nil
+        trackFiled("reminder", ok: converted)
+        guard converted else { return }
         showToast(InboxCopy.convertedTo(InboxCopy.convertReminder))
     }
 

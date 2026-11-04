@@ -162,14 +162,19 @@ struct JournalReminderSheet: View {
     }
 
     private func deleteReminder(_ reminder: JournalReminder) {
-        Task { await store.deleteReminder(reminder, tasks: tasks) }
+        Task {
+            guard await store.deleteReminder(reminder, tasks: tasks) else { return }
+            Telemetry.shared.track(.reminderDeleted, surface: .journal, action: "deleted")
+        }
     }
 
     private func save() {
         let instant = when
         let note = note
         Task {
-            if await store.setReminder(on: date, at: instant, note: note, tasks: tasks) != nil { dismiss() }
+            guard await store.setReminder(on: date, at: instant, note: note, tasks: tasks) != nil else { return }
+            Telemetry.shared.track(.reminderCreated, surface: .journal, action: "created", source: "custom")
+            dismiss()
         }
     }
 

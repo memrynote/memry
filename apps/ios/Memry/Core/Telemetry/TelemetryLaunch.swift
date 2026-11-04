@@ -34,8 +34,15 @@ enum TelemetryLaunch {
             locale: String(Locale.current.identifier(.bcp47).prefix(16)),
             timezoneOffsetMinutes: TimeZone.current.secondsFromGMT() / 60
         )
+        // As on desktop, only production builds report by default. A Debug
+        // build opts in with `--telemetry`; a test host never reports, since
+        // the unit plan runs inside the app and its writes are not usage.
+        let process = ProcessInfo.processInfo
+        let underTest = process.environment["XCTestConfigurationFilePath"] != nil
+        let reports = channel == "production" || process.arguments.contains("--telemetry")
+        let allowed = !underTest && reports
         let enabled = LocalSettings.shared.usageMetrics
-        Task { await Telemetry.shared.start(context: context, enabled: enabled, previousVersion: previousVersion) }
+        Task { await Telemetry.shared.start(context: context, allowed: allowed, enabled: enabled, previousVersion: previousVersion) }
         MXMetricManager.shared.add(crashes)
     }
 

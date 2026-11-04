@@ -120,11 +120,18 @@ struct AuthRootView: View {
             WelcomeView(onFinish: { welcomeSeen = true }, onSignIn: {
                 welcomeSeen = true
                 wantsSignIn = true
+                Telemetry.shared.track(.onboardingCompleted, surface: .onboarding, action: "returning", result: .success)
             })
         case .choice:
             StartChoiceView(
-                onLocal: { localVaultId = LocalVaultStore().create() },
-                onSync: { wantsSignIn = true }
+                onLocal: {
+                    localVaultId = LocalVaultStore().create()
+                    Telemetry.shared.track(.onboardingCompleted, surface: .onboarding, action: "new", result: .success)
+                },
+                onSync: {
+                    wantsSignIn = true
+                    Telemetry.shared.track(.onboardingCompleted, surface: .onboarding, action: "returning", result: .success)
+                }
             )
         case let .signIn(canGoBack):
             // Back only while signed out: there is nothing to return to when

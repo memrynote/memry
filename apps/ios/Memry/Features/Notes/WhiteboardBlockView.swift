@@ -37,7 +37,9 @@ struct CoreWhiteboardBoards: WhiteboardBoards {
     }
 
     func create(title: String, ownerNoteId: String) async throws -> CanvasRecord {
-        try await executor.run { try canvases().create(title: title, ownerNoteId: ownerNoteId, scene: nil) }
+        let record = try await executor.run { try canvases().create(title: title, ownerNoteId: ownerNoteId, scene: nil) }
+        Telemetry.shared.track(.canvasCreated, surface: .canvas, action: "created", objectType: "canvas", result: .success)
+        return record
     }
 
     func save(_ id: String, scene: String) async throws {

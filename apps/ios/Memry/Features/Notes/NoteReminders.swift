@@ -84,6 +84,7 @@ final class NoteRemindersViewModel {
                 remindAt: NoteInstants.string(from: date),
                 title: title
             )
+            Telemetry.shared.track(.reminderCreated, surface: .notes, action: "created", source: "custom")
             await wrote()
         } catch {
             failure = ErrorMapping.userFacing(error)

@@ -138,7 +138,15 @@ extension VaultFilling {
 /// The production filler: the core's own `VaultSync`.
 struct CoreVaultFiller: VaultFilling {
     func syncNow() async throws -> SyncPassSummary {
-        try await sync.syncNow()
+        let start = ContinuousClock.now
+        do {
+            let pass = try await sync.syncNow()
+            SyncTelemetry.passCompleted(pass, since: start)
+            return pass
+        } catch {
+            SyncTelemetry.passFailed(error, since: start)
+            throw error
+        }
     }
 
     func pendingChanges() async throws -> UInt32 {

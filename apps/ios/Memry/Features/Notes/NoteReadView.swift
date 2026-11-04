@@ -16,6 +16,7 @@ import SwiftUI
 
 struct NoteReadView: View {
     @State private var model: NoteReadViewModel
+    @State private var reportedOpen = false
 
     /// The production entry point. `NotesListView.body`'s one
     /// `navigationDestination(for: NoteRoute.self)` calls exactly this, with
@@ -377,6 +378,10 @@ struct NoteReadView: View {
         .modifier(NotePageSync(actions: actions, metadata: metadataModel, reminders: reminders))
         .task {
             await model.loadIfNeeded()
+            if !reportedOpen, case .ready = model.phase {
+                reportedOpen = true
+                Telemetry.shared.track(.noteOpened, surface: .notes, action: "opened", objectType: "note", result: .success)
+            }
             // After the body and its bindings are on screen, not before: the
             // placeholders are what FR-045 asks to be visible first, and a
             // fetch that finished early would still only re-render them.

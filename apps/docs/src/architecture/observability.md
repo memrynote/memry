@@ -174,6 +174,14 @@ split or filter by app while a signed-in user's desktop and iPhone resolve to on
 server must accept `ios` before an iOS build sends it: a server on older contracts rejects the
 whole batch with a 400.
 
+On iOS (`apps/ios/Memry/Core/Telemetry/`), the shell builds and queues the batch on disk and the
+Rust core sends it (`AuthSession.sendTelemetry`), so the access token never leaves the core. Only
+Release builds report by default; a Debug build opts in with the `--telemetry` launch argument,
+and the unit-test host never reports. The user's switch is Settings → General → Share Anonymous
+Usage Metrics. Error- and fault-level `Log` lines become `app_error_seen`, and MetricKit's crash
+diagnostics become `app_crashed` on the next launch, coded by Mach exception and signal
+(`EXC_BAD_ACCESS:SIGSEGV`). Symbolicated stacks stay in TestFlight and Xcode Organizer.
+
 ### What Ships
 
 Only enums and event metadata:

@@ -283,7 +283,12 @@ final class InboxStore {
     func resurfaceDue() async {
         let core = core
         let back = await read { _ in try core.resurfaceDue() } ?? []
-        if !back.isEmpty { scheduleSync() }
+        guard !back.isEmpty else { return }
+        Telemetry.shared.track(
+            .inboxSnoozed, surface: .inbox, action: "resurfaced", result: .success,
+            metrics: TelemetryMetrics(itemCount: Double(back.count))
+        )
+        scheduleSync()
     }
 
     func showToast(_ message: String, undo: (@MainActor () async -> Void)? = nil) {
