@@ -26,6 +26,7 @@ export interface TargetState {
   visible?: boolean
   enabled?: boolean
   hit?: boolean
+  cover?: string
   box?: { x: number; y: number; width: number; height: number }
   x?: number
   y?: number
@@ -129,7 +130,7 @@ export class PageCore {
         if (force) return state
         if (!state.visible) reason = 'not visible'
         else if (enabled && !state.enabled) reason = 'not enabled'
-        else if (!state.hit) reason = 'covered by another element'
+        else if (!state.hit) reason = `covered by ${state.cover}`
         else if (!state.stable) reason = 'not stable'
         else return state
       } else {
