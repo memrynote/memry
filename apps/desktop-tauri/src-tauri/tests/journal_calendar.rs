@@ -4,11 +4,19 @@
 
 mod support;
 
+use std::fs;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use memry_desktop::session::Session;
+use memry_tauri::events::{
+    JournalEntryCreatedEvent, JournalEntryDeletedEvent, JournalEntryUpdatedEvent,
+};
 use serde_json::{Value, json};
 use support::{Mocked, WAIT};
 use tauri::test::MockRuntime;
+use tauri::{Listener, Manager};
+use tauri_specta::Event;
 use tauri_specta::{ErrorHandlingMode, collect_commands};
 
 /// A vault holding one day file, opened with its first walk done and the file measured, and a
@@ -146,5 +154,78 @@ fn a_read_straight_after_a_save_has_the_saved_counts() {
             &month[0]["activityLevel"]
         ),
         (&json!("2025-03-10"), &json!(475), &json!(2))
+    );
+}
+
+/// (event, payload, the day's character count in the index when the event went out)
+type Heard = Mutex<Vec<(&'static str, Value, Option<u32>)>>;
+
+/// The `count`th event heard, once it is.
+fn nth(heard: &Heard, count: usize) -> (&'static str, Value, Option<u32>) {
+    let deadline = Instant::now() + WAIT;
+    while heard.lock().unwrap().len() < count {
+        assert!(Instant::now() < deadline, "no journal event {count}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    heard.lock().unwrap()[count - 1].clone()
+}
+
+/// A day file that appears, is edited and is removed outside the app sends
+/// `journal:entryCreated`, `entryUpdated` and `entryDeleted` with `source: 'external'`, the
+/// first two once the index measured the file: the calendar's refetch on them reads its counts.
+#[test]
+fn a_day_file_changed_outside_sends_its_journal_event_once_measured() {
+    let mocked = opened();
+    let heard: Arc<Heard> = Arc::default();
+    for name in [
+        JournalEntryCreatedEvent::NAME,
+        JournalEntryUpdatedEvent::NAME,
+        JournalEntryDeletedEvent::NAME,
+    ] {
+        let sink = heard.clone();
+        let app = mocked.webview.app_handle().clone();
+        mocked.webview.app_handle().listen_any(name, move |event| {
+            let payload: Value = serde_json::from_str(event.payload()).unwrap();
+            let open = app.state::<Session>().current().unwrap();
+            let counted = open
+                .search
+                .note_stats("j2025-03-12")
+                .unwrap()
+                .map(|row| row.stats.character_count);
+            sink.lock().unwrap().push((name, payload, counted));
+        });
+    }
+    let next = |count: usize| nth(&heard, count);
+
+    let file = mocked.vault.join("journal/2025-03-12.md");
+    fs::write(&file, "Outside.\n").unwrap();
+    let (name, payload, counted) = next(1);
+    assert_eq!(name, JournalEntryCreatedEvent::NAME);
+    assert_eq!(
+        (
+            &payload["date"],
+            &payload["source"],
+            &payload["entry"]["content"]
+        ),
+        (&json!("2025-03-12"), &json!("external"), &json!("Outside."))
+    );
+    assert_eq!(counted, Some(9));
+
+    fs::write(&file, "Outside, and longer now.\n").unwrap();
+    let (name, payload, counted) = next(2);
+    assert_eq!(name, JournalEntryUpdatedEvent::NAME);
+    assert_eq!(payload["source"], json!("external"));
+    assert_eq!(
+        payload["entry"]["content"],
+        json!("Outside, and longer now.")
+    );
+    assert_eq!(counted, Some(25));
+
+    fs::remove_file(&file).unwrap();
+    let (name, payload, _) = next(3);
+    assert_eq!(name, JournalEntryDeletedEvent::NAME);
+    assert_eq!(
+        payload,
+        json!({ "date": "2025-03-12", "source": "external" })
     );
 }

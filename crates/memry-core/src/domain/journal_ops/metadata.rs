@@ -283,7 +283,7 @@ where
     }
     let opened = journal::open_day_in(&tx, date, device_id, now_ms)?;
     let stored = require_payload(&tx, ITEM_TYPE, &opened.id)?;
-    let (mut changes, out) = plan(stored.object())?;
+    let (changes, out) = plan(stored.object())?;
     let opened_now = opened.created || opened.revived;
     if changes.is_empty() {
         // Dropping the transaction rolls back; a revive alone is still a write.
@@ -292,21 +292,48 @@ where
         }
         return Ok(out);
     }
+    edit_in(&tx, &opened, stored.object(), changes, device_id, now_ms)?;
+    tx.commit().map_err(failed)?;
+    Ok(out)
+}
+
+/// The file's declared `tags` onto a day the caller's transaction just made or revived from a
+/// file it found (`declaredTags`, `vault/ingest-backfill.ts`).
+pub(crate) fn tag_found_day_in(
+    tx: &Connection,
+    opened: &journal::OpenedDay,
+    tags: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let stored = require_payload(tx, ITEM_TYPE, &opened.id)?;
+    let (_, changes) = tags::set_changes(stored.object(), ITEM_TYPE, &opened.date, tags)?;
+    if changes.is_empty() {
+        return Ok(());
+    }
+    edit_in(tx, opened, stored.object(), changes, device_id, now_ms)
+}
+
+/// `changes` written to the day `open_day_in` gave, and queued.
+fn edit_in(
+    tx: &Connection,
+    opened: &journal::OpenedDay,
+    stored: &Object,
+    mut changes: Vec<(&'static str, Change)>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
     if !opened.created {
         changes.push(("content", Change::Set(Value::Null)));
     }
-    if !opened_now {
+    if !(opened.created || opened.revived) {
         // `open_day_in` already stamped a created or revived day.
-        changes.push((
-            "clock",
-            Change::Set(next_clock(stored.object(), device_id)?),
-        ));
+        changes.push(("clock", Change::Set(next_clock(stored, device_id)?)));
         changes.push(("modifiedAt", Change::set(iso(now_ms)?)));
     }
-    sync_items::apply_local_edit_in(&tx, ITEM_TYPE, &opened.id, &changes, now_ms)?;
-    outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, &opened.id), now_ms)?;
-    tx.commit().map_err(failed)?;
-    Ok(out)
+    sync_items::apply_local_edit_in(tx, ITEM_TYPE, &opened.id, &changes, now_ms)?;
+    outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &opened.id), now_ms)?;
+    Ok(())
 }
 
 fn refuse_reserved(name: &str) -> Result<(), StorageError> {

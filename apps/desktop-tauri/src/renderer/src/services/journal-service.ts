@@ -141,6 +141,7 @@ export type PortedJournalEvent =
   | 'onJournalEntryCreated'
   | 'onJournalEntryUpdated'
   | 'onJournalEntryDeleted'
+  | 'onJournalExternalChange'
 
 /**
  * Subscribe to journal entry created events.
@@ -163,8 +164,8 @@ export function onJournalEntryCreated(
 export function onJournalEntryUpdated(
   callback: (event: JournalEntryUpdatedEvent) => void
 ): () => void {
-  // The rest of the payload rides along: the renderer reads a `source` the watcher's and the
-  // sync's events will carry (13m-5).
+  // The rest of the payload rides along: an outside edit's `source: 'external'` makes an open
+  // editor take the file's text.
   return subscribeToEvent(events.journalEntryUpdatedEvent, (event) =>
     callback({ ...event, entry: toEntry(event.entry) })
   )
@@ -182,14 +183,14 @@ export function onJournalEntryDeleted(
 }
 
 /**
- * Subscribe to journal external change events.
+ * Subscribe to journal external change events: a day's counts landed after its event went out.
  * @param callback - Callback function
  * @returns Unsubscribe function
  */
 export function onJournalExternalChange(
   callback: (event: JournalExternalChangeEvent) => void
 ): () => void {
-  return window.api.onJournalExternalChange(callback)
+  return subscribeToEvent(events.journalExternalChangeEvent, callback)
 }
 
 // ============================================================================

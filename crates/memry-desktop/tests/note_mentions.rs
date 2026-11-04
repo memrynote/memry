@@ -56,7 +56,7 @@ fn mentions_are_read_from_each_source_body_and_leave_out_backlinks_and_the_note_
     );
     e.write("Linked.md", "[[Target]] and Target in plain text\n");
     e.write("Elsewhere.md", "Nothing to see.\n");
-    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {});
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {});
     index.register(&e.session);
     e.open();
     e.facts_until(indexed);

@@ -156,6 +156,10 @@ pub struct NoteListItemView {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[specta(optional, type = i64)]
     pub file_size: Option<i64>,
+    /// A journal entry's day, in an `includeJournals` list.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[specta(optional, type = String)]
+    pub journal_date: Option<String>,
 }
 
 impl NoteListItemView {
@@ -175,6 +179,7 @@ impl NoteListItemView {
             aliases: (!tree).then_some(note.aliases),
             mime_type: if tree { None } else { note.mime_type },
             file_size: if tree { None } else { note.file_size },
+            journal_date: note.journal_date,
         }
     }
 }
@@ -186,8 +191,7 @@ pub(crate) fn dates(note: &ListedNote) -> (i64, i64) {
 }
 
 /// `NoteListSchema`'s options this slice reads; a value the schema does not name is refused,
-/// as zod refuses it. `includeJournals` is not read: journal entries are not listed until Step
-/// 13m.
+/// as zod refuses it.
 #[derive(Debug, Clone, Default, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NoteListOptions {
@@ -206,6 +210,9 @@ pub struct NoteListOptions {
     pub offset: Option<u32>,
     #[serde(default)]
     pub fields: Option<NoteListFields>,
+    /// The journal days with a file are listed too (the sidebar's `journalShowInSidebar`).
+    #[serde(default)]
+    pub include_journals: Option<bool>,
 }
 
 /// `NoteListSchema.sortBy`. `position` sorts as `modified`, as in `listNotesFromCache`.

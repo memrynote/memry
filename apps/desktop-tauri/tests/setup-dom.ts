@@ -319,6 +319,7 @@ vi.mock('../src/generated/bindings', () => {
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),
+      journalExternalChangeEvent: event(() => api().onJournalExternalChange),
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),
       noteDeletedEvent: event(() => api().onNoteDeleted),

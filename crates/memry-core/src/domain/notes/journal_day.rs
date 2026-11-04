@@ -29,9 +29,10 @@
 //!
 //! A date the record cannot hold (`2025-02-31`, which Electron's file names allow) defers.
 //!
-//! A new day does not take the file's frontmatter `tags` onto its record, as a new note does
-//! not; Electron does (`declaredTags`, `vault/ingest-backfill.ts`). That port is the journal
-//! service's (Step 13m part 2), with the notes'.
+//! A new or revived day takes the file's frontmatter `tags` onto its record, in the same
+//! transaction, as Electron seeds a found day's document with them (`declaredTags`,
+//! `vault/ingest-backfill.ts`). A body `#tag` is not one: the record's tags are the ones the
+//! file declares. A day the file was already (`Existing`) keeps its record's tags.
 //!
 //! Notes and days share one body feed (chapter 07 §7.1): [`body_owner`] is how the feed and the
 //! write-back tell a note's body from a day's. A day's kept versions are titled by its date;
@@ -45,6 +46,7 @@ use super::identity::{
 use super::{failed, iso};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
+use crate::domain::journal_ops::metadata;
 use crate::domain::{journal, note_files};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
@@ -64,6 +66,8 @@ pub struct FileDay<'a> {
     pub folder_path: Option<&'a str>,
     /// The file's markdown below its frontmatter block.
     pub body: &'a str,
+    /// The frontmatter's `tags` (`extractTags`): a new or revived day takes them.
+    pub tags: &'a [String],
     /// When the file was created, for a new entry's `createdAt`.
     pub created_ms: i64,
     /// When the file was last modified, for a new entry's `modifiedAt`.
@@ -134,6 +138,7 @@ pub fn adopt_day(
     let carried = |ms: i64| if iso(ms).is_ok() { ms } else { now_ms };
     let dates = (carried(file.created_ms), carried(file.modified_ms));
     let opened = journal::open_day_dated_in(&tx, date, device_id, now_ms, dates)?;
+    metadata::tag_found_day_in(&tx, &opened, file.tags, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(Adopted::Created(opened.id))
 }

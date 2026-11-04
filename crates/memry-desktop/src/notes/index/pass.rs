@@ -36,6 +36,8 @@ pub(super) struct Pass {
     pub unread: Vec<String>,
     /// Ended by `stop` before it finished.
     pub stopped: bool,
+    /// The notes whose rows it wrote.
+    pub written: Vec<String>,
 }
 
 enum Read {
@@ -112,6 +114,7 @@ impl Indexer {
             },
             unread: Vec::new(),
             stopped: false,
+            written: Vec::new(),
         };
         // Owed before the first write: a pass that ends early leaves it owed.
         *links |= total > 0;
@@ -138,13 +141,13 @@ impl Indexer {
                 Read::Failed => pass.unread.push(note.note_id),
             }
             if batch.len() >= BATCH || bytes >= BATCH_BYTES {
-                pass.done.indexed += self.search.index_note_files(std::mem::take(&mut batch))?;
+                self.write(&mut pass, std::mem::take(&mut batch))?;
                 bytes = 0;
                 progress(built(&pass, total));
             }
         }
         if !batch.is_empty() {
-            pass.done.indexed += self.search.index_note_files(batch)?;
+            self.write(&mut pass, batch)?;
         }
         pass.done.unread = pass.unread.len();
         progress(built(&pass, total));
@@ -160,6 +163,13 @@ impl Indexer {
             }
         }
         Ok(pass)
+    }
+
+    fn write(&self, pass: &mut Pass, batch: Vec<MeasuredFile>) -> Result<(), IndexError> {
+        let ids: Vec<String> = batch.iter().map(|file| file.note_id.clone()).collect();
+        pass.done.indexed += self.search.index_note_files(batch)?;
+        pass.written.extend(ids);
+        Ok(())
     }
 
     /// The note's file measured into its row, outside a pass; `false` when it has no markdown

@@ -110,6 +110,7 @@ impl Fixture {
             title: date,
             folder_path: None,
             body: "",
+            tags: &[],
             created_ms: 0,
             modified_ms: 0,
             electron_db_beside: false,

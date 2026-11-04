@@ -292,6 +292,58 @@ fn a_deleted_note_is_gone_from_the_list_and_every_read() {
     assert!(!read::exists(&open, "work/Plan.md").unwrap());
 }
 
+/// `includeJournals` (the sidebar's `journalShowInSidebar`) lists the live days that have a file
+/// beside the notes, titled by the file's name and with their date; without it, notes only.
+#[test]
+fn a_list_with_journals_has_the_live_days_titled_by_their_files() {
+    let (e, open, _) = opened_with(&[
+        ("journal/2025-03-01.md", "First day\n"),
+        ("journal/2025-03-02.md", "Second day\n"),
+        ("journal/2025-03-03.md", "Deleted day\n"),
+    ]);
+    plant(
+        &e,
+        "UPDATE journal_entries SET deleted_at = 1 WHERE id = 'j2025-03-03'",
+        [],
+    );
+    let by_title = |include_journals, folder: Option<&str>| NoteListOptions {
+        sort_by: Some(NoteListSortBy::Title),
+        sort_order: Some(SortOrder::Asc),
+        include_journals,
+        folder: folder.map(str::to_owned),
+        ..NoteListOptions::default()
+    };
+    assert_eq!(titles(&open, &by_title(None, None)), ["Loose", "Plan"]);
+    let with = read::list(&open, &by_title(Some(true), None)).unwrap();
+    assert_eq!(
+        with.notes
+            .iter()
+            .map(|n| (n.title.as_str(), n.journal_date.as_deref(), n.id.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            ("2025-03-01", Some("2025-03-01"), "j2025-03-01"),
+            ("2025-03-02", Some("2025-03-02"), "j2025-03-02"),
+            ("Loose", None, id_of(&open, "Loose.md").as_str()),
+            ("Plan", None, id_of(&open, "work/Plan.md").as_str()),
+        ]
+    );
+    assert_eq!(with.total, 4);
+    assert_eq!(
+        titles(&open, &by_title(Some(true), Some("journal"))),
+        ["2025-03-01", "2025-03-02"]
+    );
+    assert_eq!(
+        serde_json::to_value(&with.notes[0]).unwrap()["journalDate"],
+        json!("2025-03-01")
+    );
+    assert!(
+        serde_json::to_value(&with.notes[2])
+            .unwrap()
+            .get("journalDate")
+            .is_none()
+    );
+}
+
 #[test]
 fn a_tag_filter_folds_case_and_wants_every_tag() {
     let (e, open, store) = opened();

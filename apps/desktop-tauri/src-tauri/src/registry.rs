@@ -219,6 +219,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::JournalEntryCreatedEvent,
             crate::events::JournalEntryDeletedEvent,
             crate::events::JournalEntryUpdatedEvent,
+            crate::events::JournalExternalChangeEvent,
             // locale
             crate::events::LocaleChangedEvent,
             // settings
