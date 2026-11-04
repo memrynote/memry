@@ -55,7 +55,7 @@ pub(crate) fn open_vault<R: Runtime>(app: &AppHandle<R>) -> Result<OpenVault, Co
     })
 }
 
-fn failed(error: &NotesError) -> CommandError {
+pub(super) fn failed(error: &NotesError) -> CommandError {
     CommandError::from_core(error)
 }
 
