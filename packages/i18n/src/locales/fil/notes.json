@@ -2199,5 +2199,9 @@
     "keep": "Panatilihin ang tala",
     "deletePermanently": "Burahin nang permanente",
     "kept": "Pinanatili ang tala. Hindi ito mailipat sa basurahan."
+  },
+  "movedRefsKept": {
+    "changing": "Nailipat ang “{title}”, pero nagbabago ito noon, kaya nakaturo pa rin sa lumang folder ang mga link nito sa mga larawan at file. Tingnan ang mga ito sa note.",
+    "unreadable": "Nailipat ang “{title}”, pero hindi ma-edit ng Memry ang file nito, kaya nakaturo pa rin sa lumang folder ang mga link nito sa mga larawan at file. I-update ang mga ito nang mano-mano."
   }
 }

@@ -21,7 +21,7 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::moves::MoveTo;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::activity::ActivityFilter;
-use memry_desktop::vault::consumer::{Applied, ChangeSource};
+use memry_desktop::vault::consumer::{Applied, ChangeSource, MoveKind};
 use vault_env::{Env, QUIET, env, indexed};
 
 /// An open vault with its first walk done, the notes service over its tier, and its store.
@@ -159,10 +159,19 @@ fn row_facts(e: &mut Env) -> Vec<Applied> {
 }
 
 fn renamed(id: &str, old: &str, new: &str) -> Applied {
+    path_changed(id, old, new, MoveKind::Renamed)
+}
+
+fn moved_fact(id: &str, old: &str, new: &str) -> Applied {
+    path_changed(id, old, new, MoveKind::Moved)
+}
+
+fn path_changed(id: &str, old: &str, new: &str, kind: MoveKind) -> Applied {
     Applied::Renamed {
         note_id: id.to_owned(),
         old_path: old.to_owned(),
         new_path: new.to_owned(),
+        kind,
     }
 }
 
@@ -205,10 +214,13 @@ fn a_rename_moves_the_file_and_the_note_keeps_its_id_title_and_slot() {
     });
     assert_eq!(seen, Some((true, vec![(made.id.clone(), recorded)])));
     assert_eq!(
-        (renamed_note.id.as_str(), renamed_note.path.as_str()),
+        (
+            renamed_note.note.id.as_str(),
+            renamed_note.note.path.as_str()
+        ),
         (made.id.as_str(), "work/Plan Q3.md")
     );
-    assert_eq!(renamed_note.title, "Plan: Q3");
+    assert_eq!(renamed_note.note.title, "Plan: Q3");
     assert_eq!(names_in(&e, "work"), ["Other.md", "Plan Q3.md"]);
     assert_eq!(
         e.read("work/Plan Q3.md"),
@@ -255,8 +267,8 @@ fn a_move_keeps_the_name_unless_taken_and_tops_the_new_folder() {
     e.drain();
 
     let moved = notes.move_to_folder(&open, &made.id, "").unwrap();
-    assert_eq!(moved.path, "Plan 1.md");
-    assert_eq!(moved.title, "Plan");
+    assert_eq!(moved.note.path, "Plan 1.md");
+    assert_eq!(moved.note.title, "Plan");
     assert_eq!(e.read("Plan 1.md"), bytes);
     assert!(!e.vault.join("work/Plan.md").exists());
     assert_eq!(record(&e, &made.id), ("Plan".into(), None, false));
@@ -265,12 +277,12 @@ fn a_move_keeps_the_name_unless_taken_and_tops_the_new_folder() {
     assert_eq!(slot(&e, "work/Plan.md"), None);
     assert_eq!(
         row_facts(&mut e),
-        [renamed(&made.id, "work/Plan.md", "Plan 1.md")]
+        [moved_fact(&made.id, "work/Plan.md", "Plan 1.md")]
     );
 
     // Into a folder that is not there yet, which the move makes; empty and `.` segments go.
     let deeper = notes.move_to_folder(&open, &made.id, "a//./b/").unwrap();
-    assert_eq!(deeper.path, "a/b/Plan 1.md");
+    assert_eq!(deeper.note.path, "a/b/Plan 1.md");
     assert_eq!(record(&e, &made.id).1.as_deref(), Some("a/b"));
 }
 
@@ -346,7 +358,7 @@ fn a_folder_the_vault_would_lose_the_note_in_is_refused() {
     #[cfg(unix)]
     {
         let moved = notes.move_to_folder(&open, &made.id, "Re: plan ").unwrap();
-        assert_eq!(moved.path, "Re: plan /Plan.md");
+        assert_eq!(moved.note.path, "Re: plan /Plan.md");
     }
 }
 
@@ -368,13 +380,13 @@ fn a_file_note_is_renamed_and_moved_like_a_markdown_note() {
     assert!(!e.vault.join("scan.pdf").exists());
     assert_eq!(record(&e, &id), ("Scan: March".into(), None, false));
     let moved = notes.move_to_folder(&open, &id, "docs").unwrap();
-    assert_eq!(moved.path, "docs/Scan March.pdf");
+    assert_eq!(moved.note.path, "docs/Scan March.pdf");
     assert_eq!(e.rows(), [(id.clone(), "docs/Scan March.pdf".to_owned())]);
     assert_eq!(
         row_facts(&mut e),
         [
             renamed(&id, "scan.pdf", "Scan March.pdf"),
-            renamed(&id, "Scan March.pdf", "docs/Scan March.pdf"),
+            moved_fact(&id, "Scan March.pdf", "docs/Scan March.pdf"),
         ]
     );
     assert_eq!(pending(&e, &store), []);
@@ -518,7 +530,7 @@ fn a_move_into_a_days_path_leaves_the_record_owed() {
     let made = notes.create(&open, note("2025-01-14", "work")).unwrap();
 
     let moved = notes.move_to_folder(&open, &made.id, "journal").unwrap();
-    assert_eq!(moved.path, "journal/2025-01-14.md");
+    assert_eq!(moved.note.path, "journal/2025-01-14.md");
     assert_eq!(
         record(&e, &made.id),
         ("2025-01-14".into(), Some("work".into()), false)
@@ -530,4 +542,98 @@ fn a_move_into_a_days_path_leaves_the_record_owed() {
         (owed[0].note_id.as_str(), owed[0].from_path.as_str()),
         (made.id.as_str(), "work/2025-01-14.md")
     );
+}
+
+/// A markdown note moved to another folder has its relative refs re-pointed at the files they
+/// named, in a write of its own the renderer takes as an outside edit (#3530 13g-3). Its
+/// Obsidian embed, which its document resolved from the old folder, does not make the document
+/// read as ahead of its file at the new one.
+#[test]
+fn a_moved_note_s_relative_refs_follow_it() {
+    let (mut e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    fs::create_dir_all(e.vault.join("work/img")).unwrap();
+    fs::write(e.vault.join("work/img/photo.png"), b"png").unwrap();
+    fs::write(e.vault.join("work/img/other.png"), b"png").unwrap();
+    let made = notes
+        .create(
+            &open,
+            NewNoteFile {
+                content: "![[img/photo.png]]\n\n![o](img/other.png)".into(),
+                ..note("Plan", "work")
+            },
+        )
+        .unwrap();
+    let before = e.read("work/Plan.md");
+    e.drain();
+
+    let moved = notes.move_to_folder(&open, &made.id, "archive").unwrap();
+
+    assert_eq!(moved.refs_kept, None);
+    let after = before.replace("](img/other.png)", "](../work/img/other.png)");
+    assert_ne!(after, before);
+    assert_eq!(e.read("archive/Plan.md"), after);
+    let edited = e.drain().into_iter().any(|fact| {
+        matches!(&fact, Applied::Changed { note_id, path, source: ChangeSource::AppEdit, .. }
+            if *note_id == made.id && path == "archive/Plan.md")
+    });
+    assert!(edited, "no app edit of the moved note");
+}
+
+/// A move that finds the note's document ahead of its file, its write-back scheduled, tries its
+/// refs once more after the write-back wrote it: the file gets both the edit and the refs.
+#[test]
+fn a_moved_note_whose_document_is_ahead_has_its_refs_follow_once_written() {
+    let (mut e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let made = notes
+        .create(
+            &open,
+            NewNoteFile {
+                content: "Intro\n\n![o](img/other.png)".into(),
+                ..note("Plan", "work")
+            },
+        )
+        .unwrap();
+    e.drain();
+    e.edit_in_app(&store, &made.id, "Intro edited");
+    e.tier.schedule(&made.id);
+
+    let moved = notes.move_to_folder(&open, &made.id, "archive").unwrap();
+
+    assert_eq!(moved.refs_kept, None);
+    let file = e.read("archive/Plan.md");
+    assert!(file.contains("](../work/img/other.png)"), "{file}");
+    assert!(file.contains("Intro edited"), "{file}");
+}
+
+/// A refs edit whose text the document did not take still wrote the file, which the watcher
+/// brings in: the move answers no refusal.
+#[test]
+fn a_moved_note_s_refs_the_document_did_not_take_are_written_for_the_watcher() {
+    let (mut e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    let made = notes
+        .create(
+            &open,
+            NewNoteFile {
+                content: "![o](img/other.png)".into(),
+                ..note("Plan", "work")
+            },
+        )
+        .unwrap();
+    e.drain();
+    notes.fail_next_ref_feed();
+
+    let moved = notes.move_to_folder(&open, &made.id, "archive").unwrap();
+
+    assert_eq!(moved.refs_kept, None);
+    assert!(
+        e.read("archive/Plan.md")
+            .contains("](../work/img/other.png)")
+    );
+    e.facts_until(|fact| {
+        matches!(fact, Applied::Changed { note_id, source: ChangeSource::Watcher, .. }
+            if *note_id == made.id)
+    });
 }

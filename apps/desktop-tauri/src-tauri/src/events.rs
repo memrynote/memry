@@ -176,6 +176,18 @@ pub struct NoteRenamedEvent {
     pub new_title: String,
 }
 
+/// The app moved a note to another folder (`notes:moved`, Electron's `moveNote`). The title
+/// stays; the renderer refetches what it shows of the note.
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteMovedEvent {
+    pub id: String,
+    pub old_path: String,
+    pub new_path: String,
+}
+
 /// Note events were dropped because their forwarder fell behind (no Electron channel: Electron
 /// sends every event). No payload; the renderer refetches its note lists, its tags and every
 /// note it shows.

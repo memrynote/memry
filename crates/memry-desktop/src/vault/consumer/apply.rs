@@ -13,7 +13,7 @@ use super::activity::report_unread;
 use super::body::{Body, Write};
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
-use super::{Applied, ChangeSource};
+use super::{Applied, ChangeSource, MoveKind};
 use crate::vault::activity::{ActivityLog, ScanActivity, failure_key};
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
@@ -415,6 +415,7 @@ impl Applier {
             note_id: note_id.to_owned(),
             old_path: old_path.to_owned(),
             new_path: new_path.to_owned(),
+            kind: MoveKind::Renamed,
         });
         self.report_renamed(old_path, new_path);
     }

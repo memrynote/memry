@@ -2199,5 +2199,9 @@
     "keep": "Notu tut",
     "deletePermanently": "Kalıcı olarak sil",
     "kept": "Not tutuldu. Çöp kutusuna taşınamadı."
+  },
+  "movedRefsKept": {
+    "changing": "“{title}” taşındı, ancak o sırada değişiyordu; bu yüzden görsellere ve dosyalara olan bağlantıları hâlâ eski klasörünü gösteriyor. Notta kontrol edin.",
+    "unreadable": "“{title}” taşındı, ancak Memry dosyasını düzenleyemiyor; bu yüzden görsellere ve dosyalara olan bağlantıları hâlâ eski klasörünü gösteriyor. Elle güncelleyin."
   }
 }

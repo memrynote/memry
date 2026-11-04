@@ -2199,5 +2199,9 @@
     "keep": "Păstrează nota",
     "deletePermanently": "Șterge definitiv",
     "kept": "Nota a fost păstrată. Nu a putut fi mutată în coșul de gunoi."
+  },
+  "movedRefsKept": {
+    "changing": "„{title}” a fost mutată, dar se schimba în acel moment, așa că linkurile ei către imagini și fișiere indică încă vechiul dosar. Verifică-le în notă.",
+    "unreadable": "„{title}” a fost mutată, dar Memry nu îi poate edita fișierul, așa că linkurile ei către imagini și fișiere indică încă vechiul dosar. Actualizează-le manual."
   }
 }

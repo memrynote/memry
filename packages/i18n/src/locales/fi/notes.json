@@ -2199,5 +2199,9 @@
     "keep": "Säilytä muistiinpano",
     "deletePermanently": "Poista pysyvästi",
     "kept": "Muistiinpano säilytettiin. Sitä ei voitu siirtää roskakoriin."
+  },
+  "movedRefsKept": {
+    "changing": "“{title}” siirrettiin, mutta se oli muuttumassa juuri silloin, joten sen linkit kuviin ja tiedostoihin osoittavat yhä vanhaan kansioon. Tarkista ne muistiinpanosta.",
+    "unreadable": "“{title}” siirrettiin, mutta Memry ei voi muokata sen tiedostoa, joten sen linkit kuviin ja tiedostoihin osoittavat yhä vanhaan kansioon. Päivitä ne käsin."
   }
 }

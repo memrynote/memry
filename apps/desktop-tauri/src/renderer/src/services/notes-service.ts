@@ -46,6 +46,7 @@ import type {
 } from '@memry/contracts/notes-api'
 import { markdownPreviewText } from '@memry/shared/markdown-preview-text'
 import { getI18n } from 'react-i18next'
+import { toast } from 'sonner'
 import {
   commands,
   events,
@@ -147,8 +148,8 @@ function definitionInput(
 }
 
 /**
- * The notes commands of Step 13f (the edit of 13f-3c included), the rename and manual order of
- * Step 13g, the link reads and the mention link of Step 13i, the property definitions of
+ * The notes commands of Step 13f (the edit of 13f-3c included), the rename, move and manual
+ * order of Step 13g, the link reads and the mention link of Step 13i, the property definitions of
  * Step 13k and the folder reads, create and settings of Step 13h (`commands/notes.rs`,
  * `commands/property_definitions.rs`, `commands/folders.rs`); every other method still goes to
  * `window.api.notes`.
@@ -210,10 +211,25 @@ const ported = {
       return { ...failure(error), note: null }
     }
   },
-  // A failed rename or reorder answers as Electron's `registerCommand` does.
+  // A failed rename, move or reorder answers as Electron's `registerCommand` does.
   rename: async (id: string, newTitle: string): Promise<NoteUpdateResponse> => {
     try {
       return { success: true, note: toNote(await commands.notesRename(id, newTitle)) }
+    } catch (error) {
+      return { ...failure(error), note: null }
+    }
+  },
+  // A move whose relative refs could not follow the note still moved it; the user is told
+  // the links point from the old folder, which Electron only logs.
+  move: async (id: string, newFolder: string): Promise<NoteUpdateResponse> => {
+    try {
+      const { note, refsKept } = await commands.notesMove(id, newFolder)
+      const t = getI18n().getFixedT(null, 'notes')
+      if (refsKept === 'changing') toast.warning(t('movedRefsKept.changing', { title: note.title }))
+      if (refsKept === 'unreadable') {
+        toast.warning(t('movedRefsKept.unreadable', { title: note.title }))
+      }
+      return { success: true, note: toNote(note) }
     } catch (error) {
       return { ...failure(error), note: null }
     }
@@ -402,6 +418,7 @@ export type PortedNoteEvent =
   | 'onNoteUpdated'
   | 'onNoteDeleted'
   | 'onNoteRenamed'
+  | 'onNoteMoved'
   | 'onTagsChanged'
 
 /** A note made by the app or from a file that appeared (`shell/note_events.rs`). */
@@ -447,8 +464,9 @@ export function onNoteLinksChanged(callback: (event: NoteLinksChangedEvent) => v
   return subscribeToEvent(events.noteLinksChangedEvent, callback)
 }
 
+/** The app moved a note to another folder; its title stays. */
 export function onNoteMoved(callback: (event: NoteMovedEvent) => void): () => void {
-  return window.api.onNoteMoved(callback)
+  return subscribeToEvent(events.noteMovedEvent, callback)
 }
 
 export function onNoteExternalChange(
