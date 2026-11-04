@@ -121,6 +121,10 @@ pub enum BeginError {
          finish ({0}); open the vault in that version"
     )]
     Unreadable(String),
+    /// A folder's delete found this row, whose id no note delete can tombstone (a journal
+    /// day's, or a row with no note); nothing was recorded.
+    #[error("the folder holds {0}, which is not a note this delete can take")]
+    NotANote(String),
     #[error(transparent)]
     Storage(#[from] StorageError),
 }
@@ -213,19 +217,26 @@ fn begin_records(
         };
         records.push((record_key(note_id), json(&record)?));
     }
+    Ok(write_synced(conn, &records)?)
+}
+
+/// Inserts `records` into `meta` in one transaction, on disk before it returns
+/// (`synchronous = FULL` for this one write). A record written and a setting not restored is
+/// still an `Err`: the caller does not touch the disk, so the record names a change that never
+/// happened, and the next open finds that out and forgets it.
+pub(super) fn write_synced(
+    conn: &Connection,
+    records: &[(String, String)],
+) -> Result<(), StorageError> {
     let was: i64 = conn
         .query_row("PRAGMA synchronous", [], |row| row.get(0))
         .map_err(failed)?;
     conn.pragma_update(None, "synchronous", "FULL")
         .map_err(failed)?;
-    let written = insert_records(conn, &records);
+    let written = insert_records(conn, records);
     let restored = conn.pragma_update(None, "synchronous", was);
-    // A record written and a setting not restored is still an `Err`: the caller does not move
-    // the file, so the record names a move that never happened. It holds the note's moves
-    // back (`Unsettled`) until the next open finds the file at the old path and forgets it.
     written?;
-    restored.map_err(failed)?;
-    Ok(())
+    restored.map_err(failed)
 }
 
 fn json(record: &impl Serialize) -> Result<String, StorageError> {

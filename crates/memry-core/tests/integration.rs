@@ -126,6 +126,8 @@ mod domain_local_only;
 mod domain_note_app_move;
 #[path = "domain_note_files.rs"]
 mod domain_note_files;
+#[path = "domain_note_folder_delete.rs"]
+mod domain_note_folder_delete;
 #[path = "domain_note_folder_move.rs"]
 mod domain_note_folder_move;
 #[path = "domain_note_identity.rs"]

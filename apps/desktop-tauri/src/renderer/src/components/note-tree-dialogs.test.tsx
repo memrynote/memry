@@ -53,6 +53,28 @@ describe('NoteTreeDeleteDialog', () => {
     expect(onConfirm).toHaveBeenCalledWith([])
   })
 
+  // The delete decides: a folder it could not delete keeps the dialog open on it (#3922).
+  it('leaves closing to the delete it confirms', async () => {
+    getCarriedTasks.mockResolvedValue({ taskIds: [] })
+    const onOpenChange = vi.fn()
+    const onConfirm = vi.fn()
+    renderWithProviders(
+      <NoteTreeDeleteDialog
+        open
+        onOpenChange={onOpenChange}
+        notesToDelete={[]}
+        foldersToDelete={['Archive']}
+        isDeleting={false}
+        onConfirm={onConfirm}
+      />
+    )
+    await waitFor(() => expect(getCarriedTasks).toHaveBeenCalled())
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(onConfirm).toHaveBeenCalledWith([])
+    expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
   it('keeps the tasks unless the box is ticked', async () => {
     getCarriedTasks.mockResolvedValue({ taskIds: ['t1', 't2'] })
     const onConfirm = renderDialog()

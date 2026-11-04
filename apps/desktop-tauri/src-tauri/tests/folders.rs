@@ -93,6 +93,7 @@ fn opened() -> Fixture {
         .error_handling(ErrorHandlingMode::Throw)
         .commands(collect_commands![
             memry_tauri::commands::folders::notes_create_folder::<MockRuntime>,
+            memry_tauri::commands::folders::notes_delete_folder::<MockRuntime>,
             memry_tauri::commands::folders::notes_get_folder_config::<MockRuntime>,
             memry_tauri::commands::folders::notes_get_folder_template::<MockRuntime>,
             memry_tauri::commands::folders::notes_get_folders::<MockRuntime>,
@@ -180,6 +181,9 @@ fn a_folder_created_and_set_through_the_ipc_reads_back() {
         json!({ "oldPath": "Work/Plans", "newPath": "Work/Again" }),
     );
     assert_eq!(gone.unwrap_err()["code"], "folder_not_found");
+    // The refusal only: a delete that went through would use the OS trash of the machine.
+    let missing = f.invoke("notes_delete_folder", json!({ "path": "Work/Plans" }));
+    assert_eq!(missing.unwrap_err()["code"], "folder_not_found");
 }
 
 #[test]

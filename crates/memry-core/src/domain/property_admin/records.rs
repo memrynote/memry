@@ -9,6 +9,7 @@ use std::sync::Arc;
 use rusqlite::Connection;
 use serde_json::{Value, json};
 
+use super::mirror::{self, Edit, Snapshot, Written};
 use super::{DEFINITION_TYPES, ITEM_TYPE, refuse};
 use crate::api::errors::{AuthError, StorageError};
 use crate::api::tasks::Tasks;
@@ -192,14 +193,27 @@ impl DefinitionRecords {
         self.db.read_blocking(list)
     }
 
-    pub fn put(&self, record: &DefinitionRecord, now_ms: i64) -> Result<bool, StorageError> {
-        self.db
-            .call_blocking(|conn| put(conn, record, &self.device_id, now_ms))
+    /// [`mirror::snapshot`].
+    pub fn snapshot(&self) -> Result<Snapshot, StorageError> {
+        self.db.read_blocking(mirror::snapshot)
     }
 
-    pub fn remove(&self, name: &str, now_ms: i64) -> Result<bool, StorageError> {
-        self.db
-            .call_blocking(|conn| remove(conn, name, &self.device_id, now_ms))
+    /// [`mirror::take`].
+    pub fn take(&self, snapshot: &Snapshot) -> Result<(), StorageError> {
+        self.db.call_blocking(|conn| mirror::take(conn, snapshot))
+    }
+
+    /// [`mirror::write`].
+    pub fn write(
+        &self,
+        snapshot: &Snapshot,
+        name: &str,
+        edit: &Edit,
+        now_ms: i64,
+    ) -> Result<Written, StorageError> {
+        self.db.call_blocking(|conn| {
+            mirror::write(conn, snapshot, name, edit, &self.device_id, now_ms)
+        })
     }
 }
 

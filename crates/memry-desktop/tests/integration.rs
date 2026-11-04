@@ -110,6 +110,8 @@ mod note_mentions;
 mod notes_apply_template;
 #[path = "notes_create_template.rs"]
 mod notes_create_template;
+#[path = "notes_folder_delete.rs"]
+mod notes_folder_delete;
 #[path = "notes_folder_move.rs"]
 mod notes_folder_move;
 #[path = "notes_folders.rs"]
@@ -144,6 +146,8 @@ mod paths;
 mod properties_file;
 #[path = "property_definitions.rs"]
 mod property_definitions;
+#[path = "property_definitions_sync.rs"]
+mod property_definitions_sync;
 #[path = "sanitize_svg_inert.rs"]
 mod sanitize_svg_inert;
 #[path = "sanitize_svg_untrusted.rs"]

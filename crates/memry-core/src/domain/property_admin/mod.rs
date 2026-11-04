@@ -19,6 +19,7 @@ use crate::api::errors::StorageError;
 use crate::domain::notes::{self, edit, failed};
 use crate::storage::repositories::{Change, sync_items};
 
+pub mod mirror;
 mod options;
 pub mod records;
 
