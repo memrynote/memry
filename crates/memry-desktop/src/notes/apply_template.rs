@@ -13,15 +13,15 @@
 //! `updateNote` reads a body change (`header_tags::next`), and every frontmatter key the apply
 //! does not touch keeps its bytes (`serialize_updated_note`).
 //!
-//! The text goes through the app-edit seam ([`AppEdit`], [`Precondition::Held`]): the file,
+//! The text goes through the app-edit seam ([`AppEdit`], [`Precondition::Replace`]): the file,
 //! then the note's document, then its row, then a note event the renderer takes as an outside
 //! edit (`ChangeSource::AppEdit`), so an open editor shows the template. Once the file holds
 //! the text, and before that event, the record takes the icon, the header tags and the property
 //! values, as `notes:update` writes them. A note whose file or document the seam keeps (an
 //! outside edit not fed yet, an edit the document has and the file not) is refused as a save
 //! is, and the user applies again. An apply that replaces the body keeps a version of the file
-//! first, under the seam's lane, as Electron's `writeNote` keeps one before it: the user's text
-//! can be brought back.
+//! first, as Electron's `writeNote` keeps one before it, and as the seam keeps a save's: the
+//! user's text can be brought back.
 //!
 //! Not here, with their owners: `plainChecklists` (Step 32; the renderer refuses it), the lock
 //! check (Step 14) and a project property's task links (Step 21).
@@ -32,7 +32,7 @@ use std::collections::{HashMap, HashSet};
 use memry_core::domain::header_tags::{self, Existing, HeaderTagEdit, Update};
 use memry_core::domain::note_stats::header_tags as file_header_tags;
 use memry_core::markdown::frontmatter::{
-    YamlMap, YamlValue, parse_markdown_note, serialize_updated_note, split_frontmatter_block,
+    YamlMap, YamlValue, parse_markdown_note, serialize_updated_note,
 };
 use serde::Deserialize;
 use serde_json::{Map, Value};
@@ -188,7 +188,7 @@ impl NotesService {
             let planned = RefCell::new(None);
             let edited = edit.run_then(
                 turn,
-                Precondition::Held,
+                Precondition::Replace,
                 ChangeSource::AppEdit,
                 |text| {
                     let next = applied(
@@ -200,10 +200,6 @@ impl NotesService {
                         &with_fields,
                         &types,
                     )?;
-                    let read_body = split_frontmatter_block(text).body;
-                    if split_frontmatter_block(&next.text).body != read_body {
-                        open.vault.write_back().keep_replaced(id, text, read_body)?;
-                    }
                     let output = next.text.clone();
                     *planned.borrow_mut() = Some(next);
                     Ok::<_, NotesError>(Some(output))

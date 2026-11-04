@@ -6,7 +6,8 @@
 //! | ----------------------------------------------------------------- | --------------------------------------- |
 //! | full: body, tags, the values the note lacks, the icon it lacks    | `buildTemplateApplyUpdate` `full`       |
 //! | a value only the record holds wins and is written to the file     | `{ ...template, ...note }`              |
-//! | a replaced body is kept as a version first                        | `writeNote`'s snapshot                  |
+//! | a value the file and the record hold apart: neither is replaced   | the record is never replaced whole      |
+//! | a replaced body is kept as a version first, byte order mark and all | `writeNote`'s snapshot                |
 //! | body: only the body, its `#tags` moving the header as a save does | `full` off; `nextHeaderTags`            |
 //! | only the body's `#tags` changed: still `notes:tags-changed`       | `hasTagChange`                          |
 //! | a note whose document is ahead of its file is kept as it is       | `note_edit_kept`; no record written     |
@@ -204,17 +205,46 @@ fn a_value_only_the_record_holds_wins_and_is_written_to_the_file() {
 }
 
 #[test]
-fn a_replaced_body_is_kept_as_a_version_first() {
-    let (e, notes, store) = opened(&[("Plan.md", PLAN)]);
+fn a_value_the_file_and_the_record_hold_apart_is_left_on_both_sides() {
+    // A pull set the record's `stage` and has not written the file yet (13k-4).
+    let (e, notes, store) = opened(&[("Plan.md", "---\nstage: Draft\n---\nOld body\n")]);
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
     let template = brief(&e, &store);
-
-    notes
-        .apply_template(&open, input(&id, &template, TemplateMode::Body))
+    e.core()
+        .notes_writer(store.clone())
+        .unwrap()
+        .set_property(id.clone(), "stage".into(), "\"Review\"".into())
         .unwrap();
 
-    assert_eq!(e.versions(&id), [PLAN]);
+    notes
+        .apply_template(&open, input(&id, &template, TemplateMode::Full))
+        .unwrap();
+
+    assert!(
+        e.read("Plan.md").starts_with("---\nstage: Draft\n"),
+        "{}",
+        e.read("Plan.md")
+    );
+    let listed = e.core().note_files().listed_by_id(&id).unwrap().unwrap();
+    assert_eq!(listed.properties.get("stage"), Some(&json!("Review")));
+    assert_eq!(listed.properties.get("owner"), Some(&json!("Kaan")));
+}
+
+#[test]
+fn a_replaced_body_is_kept_as_a_version_first_byte_order_mark_and_all() {
+    let with_mark = format!("\u{feff}{PLAN}");
+    let (e, notes, store) = opened(&[("Plan.md", PLAN), ("Marked.md", &with_mark)]);
+    let open = e.session.current().unwrap();
+    let template = brief(&e, &store);
+
+    for (path, raw) in [("Plan.md", PLAN), ("Marked.md", with_mark.as_str())] {
+        let id = id_at(&e, path);
+        notes
+            .apply_template(&open, input(&id, &template, TemplateMode::Body))
+            .unwrap();
+        assert_eq!(e.versions(&id), [raw], "{path}");
+    }
 }
 
 #[test]
