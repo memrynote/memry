@@ -921,7 +921,7 @@ export function useFolderView({
       )
 
       try {
-        const result = await propertiesService.set(noteId, nextProperties)
+        const result = await propertiesService.set(noteId, nextProperties, currentProperties)
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to update property')
         }

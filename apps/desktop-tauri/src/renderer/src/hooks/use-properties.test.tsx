@@ -3,6 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
 import { useProperties } from './use-properties'
 
+const service = vi.hoisted(() => ({
+  get: vi.fn(),
+  set: vi.fn(),
+  merge: vi.fn(),
+  rename: vi.fn()
+}))
+
+vi.mock('@/services/properties-service', () => ({ propertiesService: service }))
+
 describe('useProperties', () => {
   let api: ReturnType<typeof createMockApi>
   const initialProperties = [
@@ -12,9 +21,9 @@ describe('useProperties', () => {
 
   beforeEach(() => {
     api = createMockApi()
-    api.properties.get = vi.fn().mockResolvedValue(initialProperties)
-    api.properties.set = vi.fn().mockResolvedValue({ success: true })
-    api.properties.rename = vi.fn().mockResolvedValue({ success: true })
+    service.get.mockResolvedValue(initialProperties)
+    service.set.mockResolvedValue({ success: true })
+    service.rename.mockResolvedValue({ success: true })
     api.onItemSynced = vi.fn().mockReturnValue(() => {})
     ;(window as Window & { api: unknown }).api = api
   })
@@ -36,12 +45,10 @@ describe('useProperties', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    expect(api.properties.get).toHaveBeenCalledWith('note-1')
+    expect(service.get).toHaveBeenCalledWith('note-1')
     expect(result.current.propertiesRecord).toEqual({ status: 'draft', priority: 2 })
 
-    api.properties.get = vi
-      .fn()
-      .mockResolvedValue([{ name: 'status', value: 'review', type: 'text' }])
+    service.get.mockResolvedValue([{ name: 'status', value: 'review', type: 'text' }])
 
     await act(async () => {
       syncCallbacks[0]({ operation: 'pull', itemId: 'note-1', type: 'note' })
@@ -62,7 +69,7 @@ describe('useProperties', () => {
 
     const { result } = renderHook(() => useProperties('note-1'))
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(api.properties.get).toHaveBeenCalledTimes(1)
+    expect(service.get).toHaveBeenCalledTimes(1)
 
     // Echo of the hook's own state, another note, and a content-only update: no refetch.
     await act(async () => {
@@ -73,15 +80,13 @@ describe('useProperties', () => {
       updateCallbacks[0]({ id: 'note-2', changes: { properties: { other: true } } })
       updateCallbacks[0]({ id: 'note-1', changes: {} })
     })
-    expect(api.properties.get).toHaveBeenCalledTimes(1)
+    expect(service.get).toHaveBeenCalledTimes(1)
 
     const related = ['memry://note/note-b']
-    api.properties.get = vi
-      .fn()
-      .mockResolvedValue([
-        ...initialProperties,
-        { name: 'related', value: related, type: 'relation' }
-      ])
+    service.get.mockResolvedValue([
+      ...initialProperties,
+      { name: 'related', value: related, type: 'relation' }
+    ])
     await act(async () => {
       updateCallbacks[0]({
         id: 'note-1',
@@ -102,46 +107,50 @@ describe('useProperties', () => {
     await act(async () => {
       await result.current.updateProperty('status', 'review')
     })
-    expect(api.properties.set).toHaveBeenLastCalledWith('note-1', {
-      status: 'review',
-      priority: 2
-    })
+    // Each write carries the record it was made from.
+    expect(service.set).toHaveBeenLastCalledWith(
+      'note-1',
+      { status: 'review', priority: 2 },
+      { status: 'draft', priority: 2 }
+    )
 
     await act(async () => {
       await result.current.addProperty('status', true)
     })
-    expect(api.properties.set).toHaveBeenLastCalledWith('note-1', {
-      status: 'review',
-      priority: 2,
-      'status 2': true
-    })
+    expect(service.set).toHaveBeenLastCalledWith(
+      'note-1',
+      { status: 'review', priority: 2, 'status 2': true },
+      { status: 'review', priority: 2 }
+    )
 
     await act(async () => {
       await result.current.removeProperty('priority')
     })
-    expect(api.properties.set).toHaveBeenLastCalledWith('note-1', {
-      status: 'review',
-      'status 2': true
-    })
+    expect(service.set).toHaveBeenLastCalledWith(
+      'note-1',
+      { status: 'review', 'status 2': true },
+      { status: 'review', priority: 2, 'status 2': true }
+    )
 
     await act(async () => {
       await result.current.renameProperty('status 2', 'done')
     })
-    expect(api.properties.rename).toHaveBeenCalledWith('note-1', 'status 2', 'done')
+    expect(service.rename).toHaveBeenCalledWith('note-1', 'status 2', 'done')
 
     await act(async () => {
       await result.current.renameProperty('done', 'done')
       await result.current.reorderProperties(['done', 'status'])
     })
-    expect(api.properties.set).toHaveBeenLastCalledWith('note-1', {
-      done: true,
-      status: 'review'
-    })
-    expect(api.properties.rename).toHaveBeenCalledTimes(1)
+    expect(service.set).toHaveBeenLastCalledWith(
+      'note-1',
+      { done: true, status: 'review' },
+      { status: 'review', done: true }
+    )
+    expect(service.rename).toHaveBeenCalledTimes(1)
   })
 
   it('rolls back from persistence errors', async () => {
-    api.properties.set = vi.fn().mockResolvedValueOnce({ success: false, error: 'write failed' })
+    service.set.mockResolvedValueOnce({ success: false, error: 'write failed' })
     const { result } = renderHook(() => useProperties('note-1'))
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
@@ -152,6 +161,6 @@ describe('useProperties', () => {
       })
     ).rejects.toThrow('write failed')
 
-    expect(api.properties.get).toHaveBeenCalledTimes(2)
+    expect(service.get).toHaveBeenCalledTimes(2)
   })
 })

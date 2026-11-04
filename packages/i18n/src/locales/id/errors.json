@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "Gagal memperbarui definisi properti",
     "setCalendarVisibilityFailed": "Gagal menyetel visibilitas properti kalender",
     "definitionsFileUnreadable": "Tidak dapat menyimpan perubahan properti karena .memry/properties.md tidak dapat dibaca. Perbaiki atau hapus file itu, lalu coba lagi.",
-    "definitionsFileWriteFailed": "Tidak dapat menyimpan perubahan properti karena .memry/properties.md tidak dapat ditulis."
+    "definitionsFileWriteFailed": "Tidak dapat menyimpan perubahan properti karena .memry/properties.md tidak dapat ditulis.",
+    "noteChanged": "Catatan ini berubah saat propertinya sedang disimpan. Coba lagi.",
+    "noteNotPulled": "Teks catatan ini belum selesai disinkronkan, jadi propertinya belum bisa diubah."
   },
   "reminder": {
     "notFound": "Pengingat tidak ditemukan",

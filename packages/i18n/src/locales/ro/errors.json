@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "Nu s-a putut actualiza definiția proprietății",
     "setCalendarVisibilityFailed": "Nu s-a putut seta vizibilitatea proprietății în calendar",
     "definitionsFileUnreadable": "Modificările proprietăților nu pot fi salvate deoarece .memry/properties.md nu poate fi citit. Repară sau elimină acel fișier, apoi încearcă din nou.",
-    "definitionsFileWriteFailed": "Modificările proprietăților nu pot fi salvate deoarece .memry/properties.md nu poate fi scris."
+    "definitionsFileWriteFailed": "Modificările proprietăților nu pot fi salvate deoarece .memry/properties.md nu poate fi scris.",
+    "noteChanged": "Această notă s-a schimbat în timp ce i se salvau proprietățile. Încearcă din nou.",
+    "noteNotPulled": "Textul acestei note nu s-a sincronizat încă, așa că proprietățile ei nu pot fi schimbate deocamdată."
   },
   "reminder": {
     "notFound": "Mementoul nu a fost găsit",
