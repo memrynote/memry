@@ -7,8 +7,9 @@ The Electron e2e suite reaches the main process through `electronApp.evaluate` a
 in `src-tauri/src/e2e/commands.rs`, and called from a spec with
 `invokeTest(app, 'e2e_...', args)` (`harness/invoke-test.ts`). Each command answers
 `e2e_disabled` unless the app runs with `MEMRY_E2E=1`, and a release build has none of them.
-A command that ends the page or the app (`e2e_kill_page`, `e2e_trigger_crash`) never replies, so
-a spec calls it with `sendTest(app, 'e2e_...')`, which does not wait for the command's reply.
+A command that ends the page or the app (`e2e_kill_page`, `e2e_request_quit`,
+`e2e_trigger_crash`) can end before its reply reaches the driver, so a spec calls it with
+`sendTest(app, 'e2e_...')`, which does not wait for the reply, and `invokeTest` rejects it.
 
 `node e2e/scripts/check-test-hooks-mapped.mjs` fails when a hook of the Electron files is missing
 from the first column of the table below. It runs in CI until Step 43 (#3560) deletes the
