@@ -161,7 +161,7 @@ Windows x64 keeps today's production package names, so Electron installs on chan
 
 ### WebView2 bootstrapper
 
-Velopack's Setup installs the WebView2 runtime (`--framework webview2`), but a user can remove it later. Without it no window opens. So every Windows pack also ships Microsoft's bootstrapper at `webview2\MicrosoftEdgeWebview2Setup.exe`. A launch that finds no runtime runs the bootstrapper before any window exists (`updater/webview2.rs`).
+Velopack's Setup installs the WebView2 runtime (`--framework webview2`), but a user can remove it later. Without it no window opens. So every Windows pack also ships Microsoft's bootstrapper at `webview2\MicrosoftEdgeWebview2Setup.exe`. A launch that finds no runtime runs the bootstrapper in `main`, before the Tauri runtime starts (`updater/webview2.rs`). It cannot wait for a later boot stage: `tauri-runtime-wry` checks for WebView2 once, when the runtime starts, and opens no webview in a process that started without it, even after the install (#3915).
 
 The packed file is pinned. `scripts/release/webview2-bootstrapper.json` holds the file's own download address, its SHA-256 and its size.
 

@@ -176,3 +176,28 @@ fn the_launch_checks_webview2_after_the_relaunch_guard_and_before_any_other_guar
         usize::from(cfg!(windows))
     );
 }
+
+/// `tauri-runtime-wry` asks for WebView2 once, when `memry_tauri::run` builds the runtime, and
+/// refuses every webview of a process whose answer was no. A runtime the bootstrapper installs
+/// after that opens no window until the next launch (#3915), so `main` checks before `run`, on
+/// Windows only. Velopack's hooks and the crash monitor child exit before it, so neither runs the
+/// bootstrapper. No CI runner lacks WebView2, so the order is read from `main` itself.
+#[test]
+fn main_installs_webview2_before_it_builds_the_tauri_runtime() {
+    let main = include_str!("../src/main.rs");
+    let position = |needle: &str| {
+        let found: Vec<_> = main.match_indices(needle).collect();
+        assert_eq!(found.len(), 1, "{needle} in main.rs: {found:?}");
+        found[0].0
+    };
+    let check = "memry_tauri::updater::webview2::check_before_runtime();";
+    let order = [
+        position("velopack::VelopackApp::build()"),
+        position("memry_tauri::guards::crash_dump::monitor_entry()"),
+        position(check),
+        position("memry_tauri::run(env, context);"),
+    ];
+    assert!(order.is_sorted(), "{order:?}");
+    let before_check = main[..position(check)].trim_end();
+    assert!(before_check.ends_with("#[cfg(windows)]"), "{before_check}");
+}
