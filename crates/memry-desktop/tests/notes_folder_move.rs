@@ -20,6 +20,8 @@
 //! | an outside delete in the fixture is reported                      | control for the silent watcher        |
 //! | after a refused move an outside delete is reported                | the removal record is withdrawn       |
 //! | a case-only rename that respells a parent is refused              | the folder's own name only            |
+//! | a folder move that puts a note under an ignored path is refused   | `excludePatterns` with a slash        |
+//! | a move that panics leaves no record of the folder's going         | the removal record is withdrawn       |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -43,7 +45,9 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::activity::ActivityFilter;
+use memry_desktop::vault::config::{VaultConfigPatch, write_vault_config};
 use memry_desktop::vault::consumer::{Applied, ChangeSource, MoveKind};
+use memry_desktop::vault::layout::DEFAULT_EXCLUDE_PATTERNS;
 use memry_desktop::vault::move_dir::{Step, simulated_hold};
 use vault_env::{Env, QUIET, env, indexed};
 
@@ -636,8 +640,10 @@ fn a_folder_move_into_an_ignored_or_linked_folder_is_refused() {
     let Work { e, notes, .. } = work();
     let open = e.session.current().unwrap();
     let refused = |old: &str, new: &str| notes.rename_folder(&open, old, new).unwrap_err();
+    // Below the root, where the tree's own filter (first segment only) does not hide it.
+    fs::create_dir(e.vault.join("Other")).unwrap();
     assert!(matches!(
-        refused("Work", "node_modules"),
+        refused("Work", "Other/node_modules"),
         NotesError::InvalidFolder
     ));
     #[cfg(unix)]
@@ -727,4 +733,53 @@ fn a_case_only_rename_that_respells_a_parent_is_refused() {
         .map(|entry| entry.unwrap().file_name().into_string().unwrap())
         .collect();
     assert!(names.contains(&"Sub".to_owned()), "{names:?}");
+}
+
+/// A pattern with a slash names a path at any depth (`vendor/cache`): `Old` holding `cache`
+/// moved to `Lib/vendor` puts a note under `Lib/vendor/cache`, which the next open would drop,
+/// so the move is refused though the target itself is neither hidden nor ignored.
+#[test]
+fn a_folder_move_that_puts_a_note_under_an_ignored_path_is_refused() {
+    let (e, notes, _) = opened();
+    let mut patterns = DEFAULT_EXCLUDE_PATTERNS.map(str::to_owned).to_vec();
+    patterns.push("vendor/cache".into());
+    let patch = VaultConfigPatch {
+        exclude_patterns: Some(patterns),
+        ..VaultConfigPatch::default()
+    };
+    write_vault_config(&e.vault, &patch).unwrap();
+    let open = e.session.current().unwrap();
+    notes.create(&open, note("Cached", "Old/cache")).unwrap();
+    fs::create_dir(e.vault.join("Lib")).unwrap();
+    let refused = notes.rename_folder(&open, "Old", "Lib/vendor");
+    assert!(
+        matches!(refused, Err(NotesError::InvalidFolder)),
+        "{refused:?}"
+    );
+    assert!(e.vault.join("Old/cache/Cached.md").exists());
+}
+
+/// A panic halfway through the move (here, in its first step) leaves no record of the folder's
+/// going behind: a note written into it and deleted outside the app afterwards is reported.
+#[test]
+fn a_move_that_panics_leaves_no_record_of_the_folders_going() {
+    let Work { mut e, notes, .. } = work();
+    let open = e.session.current().unwrap();
+    let panicked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        notes.rename_folder_checked(
+            &open,
+            "Work",
+            "Projects",
+            &mut |_| panic!("injected"),
+            &mut || Ok(()),
+        )
+    }));
+    assert!(panicked.is_err());
+    e.drain();
+
+    let later = outside_note(&mut e);
+    fs::remove_file(e.vault.join("Work/Outside.md")).unwrap();
+    let facts =
+        e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == later));
+    assert_eq!(removed_ids(&facts), [later]);
 }

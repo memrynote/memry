@@ -172,19 +172,25 @@ impl NotesService {
                 keeps_kind,
             });
         }
+        // A pattern with a slash (`vendor/cache`) can ignore a note's new path below a target it
+        // does not ignore: the next open would drop that note.
+        let filter = WatchFilter::new(read_vault_config(root).exclude_patterns);
+        if carried.iter().any(|note| filter.ignores(&note.new)) {
+            return Err(NotesError::InvalidFolder);
+        }
         let moves: Vec<(&str, AppMoved<'_>)> = carried.iter().map(Carried::moved).collect();
         lane.begin_folder_move(&writer, from, to, &moves)?;
         let echo = self.tier.echo();
-        echo.will_remove_tree(from);
+        let mut tree = TreeRecord::new(&echo, root, from, &carried);
         let (source, target) = (on_disk(root, from), on_disk(root, to));
         if let Err(error) = move_dir::move_dir_checked(root, &source, &target, step) {
             let mut undo = Undo {
                 lane: &mut lane,
                 writer: &writer,
-                echo: &echo,
                 root,
             };
-            undo.forget((from, to), &moves, &carried);
+            undo.forget((from, to), &moves);
+            tree.narrow();
             if let Some(incomplete) = IncompleteRollback::of(&error) {
                 undo.keep_aside(&ctx, &*identity, from, &carried, incomplete);
                 return Err(NotesError::FolderMoveIncomplete);
@@ -196,20 +202,22 @@ impl NotesService {
                 _ => error.into(),
             });
         }
-        echo.removed_tree(from);
+        tree.settle();
         let followed =
             after_disk().and_then(|()| Ok(lane.folder_moved_by_app(&writer, from, to, &moves)?));
         if let Err(error) = followed {
             echo.will_remove(to);
             match move_dir::move_dir(root, &target, &source) {
-                Ok(()) => Undo {
-                    lane: &mut lane,
-                    writer: &writer,
-                    echo: &echo,
-                    root,
+                Ok(()) => {
+                    Undo {
+                        lane: &mut lane,
+                        writer: &writer,
+                        root,
+                    }
+                    .forget((from, to), &moves);
+                    tree.narrow();
                 }
-                .forget((from, to), &moves, &carried),
-                // Each note's record stays, and the next open finishes its move.
+                // The folder's record and each note's stay, and the next open finishes the move.
                 Err(back) => tracing::error!(
                     scope = SCOPE,
                     "a folder could not go back after its notes did not follow it: {back}"
@@ -225,6 +233,7 @@ impl NotesService {
                 kind: MoveKind::Moved,
             });
         }
+        drop(tree);
         Ok(carried)
     }
 }
@@ -249,24 +258,65 @@ fn carried_paths(from: &str, carried: &[Carried]) -> Vec<String> {
         .collect()
 }
 
+/// The own-write record of the folder's going ([`EchoGuard::will_remove_tree`]) for the length of
+/// a move: settled once the folder is gone ([`Self::settle`]), narrowed to what is still gone
+/// when the move did not happen ([`Self::narrow`]), and narrowed on drop when neither ran, a
+/// panic included, so no unsettled record outlives the move and absorbs later deletes.
+struct TreeRecord<'a> {
+    echo: &'a EchoGuard,
+    root: &'a Path,
+    from: &'a str,
+    carried: &'a [Carried],
+    done: bool,
+}
+
+impl<'a> TreeRecord<'a> {
+    fn new(echo: &'a EchoGuard, root: &'a Path, from: &'a str, carried: &'a [Carried]) -> Self {
+        echo.will_remove_tree(from);
+        Self {
+            echo,
+            root,
+            from,
+            carried,
+            done: false,
+        }
+    }
+
+    fn settle(&mut self) {
+        self.echo.removed_tree(self.from);
+        self.done = true;
+    }
+
+    /// Keeps a record of each path not back on disk (a hidden staging folder may hold them
+    /// until the next open's sweep): the absence of one that is back is not the app's.
+    fn narrow(&mut self) {
+        let root = self.root;
+        let still_gone = carried_paths(self.from, self.carried)
+            .into_iter()
+            .filter(|path| fs::symlink_metadata(on_disk(root, path)).is_err());
+        self.echo.narrow_tree(self.from, still_gone);
+        self.done = true;
+    }
+}
+
+impl Drop for TreeRecord<'_> {
+    fn drop(&mut self) {
+        if !self.done {
+            self.narrow();
+        }
+    }
+}
+
 /// What a move that did not happen undoes, under the lane.
 struct Undo<'a, 'l> {
     lane: &'a mut Lane<'l>,
     writer: &'a memry_core::api::notes_write::NotesWriter,
-    echo: &'a EchoGuard,
     root: &'a Path,
 }
 
 impl Undo<'_, '_> {
-    /// Forgets the folder's and each note's record of the move, and narrows the own-write
-    /// record to the paths not back on disk (a hidden staging folder may hold them until the
-    /// next open's sweep): the absence of one that is back is not the app's from now on.
-    fn forget(
-        &mut self,
-        (from, to): (&str, &str),
-        moves: &[(&str, AppMoved<'_>)],
-        carried: &[Carried],
-    ) {
+    /// Forgets the folder's and each note's record of the move.
+    fn forget(&mut self, (from, to): (&str, &str), moves: &[(&str, AppMoved<'_>)]) {
         if let Err(error) = self.lane.forget_folder_move(self.writer, from, to) {
             tracing::warn!(
                 scope = SCOPE,
@@ -285,11 +335,6 @@ impl Undo<'_, '_> {
                 );
             }
         }
-        let root = self.root;
-        let still_gone = carried_paths(from, carried)
-            .into_iter()
-            .filter(|path| fs::symlink_metadata(on_disk(root, path)).is_err());
-        self.echo.narrow_tree(from, still_gone);
     }
 
     /// A rollback that left files in the visible `<name> (incomplete move)` folder: each note
