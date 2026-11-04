@@ -138,6 +138,7 @@ impl NotesService {
         let ctx = IdentityCtx {
             root,
             vault: &open.vault,
+            search: &open.search,
         };
         let mut lane = rows.lane_of(session)?;
         let mut carried = Vec::new();

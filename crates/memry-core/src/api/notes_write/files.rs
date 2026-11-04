@@ -10,6 +10,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::journal;
 use crate::domain::notes::app_move::{self, AppMoved, BeginError, FolderRecorded, Recorded};
+use crate::domain::notes::file_tags;
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::domain::notes::{self, NewNote};
@@ -128,6 +129,20 @@ impl NotesWriter {
     pub fn journal_date(&self, id: &str) -> Result<Option<String>, StorageError> {
         self.db
             .read_blocking(move |conn| journal::date_of(conn, id))
+    }
+
+    /// An edit outside the app gave the file of the note or day `id` the header tags `after`;
+    /// `before` is the list the file it replaced had, when known ([`file_tags::taken`]).
+    pub fn file_tags_edited(
+        &self,
+        id: &str,
+        before: Option<&[String]>,
+        after: &[String],
+    ) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            file_tags::taken(conn, id, before, after, &device_id, now_ms())
+        })
     }
 
     /// The note's file moved ([`identity::renamed`]).

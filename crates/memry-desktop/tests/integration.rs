@@ -124,6 +124,8 @@ mod notes_local_only;
 mod notes_moves;
 #[path = "notes_outside_after_reopen.rs"]
 mod notes_outside_after_reopen;
+#[path = "notes_outside_tags.rs"]
+mod notes_outside_tags;
 #[path = "notes_properties.rs"]
 mod notes_properties;
 #[path = "notes_service.rs"]

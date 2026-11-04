@@ -106,6 +106,8 @@ mod domain_bookmarks;
 mod domain_calendar_sync;
 #[path = "domain_custom_icons.rs"]
 mod domain_custom_icons;
+#[path = "domain_file_tags.rs"]
+mod domain_file_tags;
 #[path = "domain_folders.rs"]
 mod domain_folders;
 #[path = "domain_inbox_queries.rs"]
