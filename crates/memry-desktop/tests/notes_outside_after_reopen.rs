@@ -1,7 +1,7 @@
-//! An outside change to a note's file after the vault reopened (#3912), under the running vault
-//! tier with `NotesIdentity`: a delete removes the note and queues its tombstone, and an edit or
-//! a new file is reported, whether the app or another program wrote the file, as Electron's
-//! watcher does in any session.
+//! An outside change to a note's file in the session that created it and after the vault
+//! reopened (#3912), under the running vault tier with `NotesIdentity`: a delete removes the note
+//! and queues its tombstone, and an edit or a new file is reported, whether the app or another
+//! program wrote the file, as Electron's watcher does in any session.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -97,9 +97,18 @@ fn deletes_queued(e: &Env, id: &str) -> usize {
 }
 
 fn deleted_after_reopen(rel: &'static str, in_app: bool) {
+    deleted(rel, in_app, true);
+}
+
+fn deleted(rel: &'static str, in_app: bool, reopen: bool) {
     let (mut e, notes) = opened();
     let id = made(&mut e, &notes, rel, in_app);
-    reopened(&mut e);
+    if reopen {
+        reopened(&mut e);
+    } else {
+        std::thread::sleep(QUIET);
+        e.drain();
+    }
 
     fs::remove_file(e.vault.join(rel)).unwrap();
     e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == id));
@@ -115,6 +124,13 @@ fn an_outside_delete_of_an_app_written_note_at_the_root_after_a_reopen_removes_i
 #[test]
 fn an_outside_delete_of_an_app_written_note_in_a_folder_after_a_reopen_removes_it() {
     deleted_after_reopen("Work/Plan.md", true);
+}
+
+/// The same session: the stream that saw the create is the one that must see the delete.
+#[test]
+fn an_outside_delete_of_an_app_written_note_in_the_same_session_removes_it() {
+    deleted("Root.md", true, false);
+    deleted("Work/Plan.md", true, false);
 }
 
 #[test]
