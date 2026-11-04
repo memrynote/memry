@@ -298,8 +298,9 @@ where
 }
 
 /// The file's declared `tags` onto a day the caller's transaction just made or revived from a
-/// file it found (`declaredTags`, `vault/ingest-backfill.ts`). Desktop's only: the phone finds
-/// no files.
+/// file it found (`declaredTags`, `vault/ingest-backfill.ts`), only when the record holds none:
+/// a revived day keeps the tags it was pulled or deleted with, as Electron's `initForNote`
+/// fills an empty tag list and never clears one. Desktop's only: the phone finds no files.
 #[cfg(feature = "markdown")]
 pub(crate) fn tag_found_day_in(
     tx: &Connection,
@@ -309,6 +310,9 @@ pub(crate) fn tag_found_day_in(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let stored = require_payload(tx, ITEM_TYPE, &opened.id)?;
+    if !tags::read_tags(stored.object(), "tags", ITEM_TYPE, &opened.id)?.is_empty() {
+        return Ok(());
+    }
     let (_, changes) = tags::set_changes(stored.object(), ITEM_TYPE, &opened.date, tags)?;
     if changes.is_empty() {
         return Ok(());

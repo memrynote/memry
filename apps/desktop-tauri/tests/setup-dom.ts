@@ -320,6 +320,8 @@ vi.mock('../src/generated/bindings', () => {
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),
       journalExternalChangeEvent: event(() => api().onJournalExternalChange),
+      // No Electron channel: a test reaches it through the mock api's `onJournalEventsDropped`.
+      journalEventsDroppedEvent: event(() => api().onJournalEventsDropped),
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),
       noteDeletedEvent: event(() => api().onNoteDeleted),
@@ -875,6 +877,7 @@ const createMockApi = () => ({
   onJournalEntryUpdated: vi.fn().mockReturnValue(() => {}),
   onJournalEntryDeleted: vi.fn().mockReturnValue(() => {}),
   onJournalExternalChange: vi.fn().mockReturnValue(() => {}),
+  onJournalEventsDropped: vi.fn().mockReturnValue(() => {}),
   onMenuCommand: vi.fn().mockReturnValue(() => {}),
   onReadwiseStatusChanged: vi.fn().mockReturnValue(() => {}),
   onReminderDue: vi.fn().mockReturnValue(() => {}),

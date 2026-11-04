@@ -293,13 +293,18 @@ fn a_deleted_note_is_gone_from_the_list_and_every_read() {
 }
 
 /// `includeJournals` (the sidebar's `journalShowInSidebar`) lists the live days that have a file
-/// beside the notes, titled by the file's name and with their date; without it, notes only.
+/// beside the notes, titled by the file's name and with their date; without it, notes only. The
+/// vault names its day files `DD-MM-YYYY`, so a title is the file's, not the date.
 #[test]
 fn a_list_with_journals_has_the_live_days_titled_by_their_files() {
     let (e, open, _) = opened_with(&[
-        ("journal/2025-03-01.md", "First day\n"),
-        ("journal/2025-03-02.md", "Second day\n"),
-        ("journal/2025-03-03.md", "Deleted day\n"),
+        (
+            ".memry/config.json",
+            r#"{"journalFolder":"journal","journalDateFormat":"DD-MM-YYYY"}"#,
+        ),
+        ("journal/01-03-2025.md", "First day\n"),
+        ("journal/02-03-2025.md", "Second day\n"),
+        ("journal/03-03-2025.md", "Deleted day\n"),
     ]);
     plant(
         &e,
@@ -321,8 +326,8 @@ fn a_list_with_journals_has_the_live_days_titled_by_their_files() {
             .map(|n| (n.title.as_str(), n.journal_date.as_deref(), n.id.as_str()))
             .collect::<Vec<_>>(),
         [
-            ("2025-03-01", Some("2025-03-01"), "j2025-03-01"),
-            ("2025-03-02", Some("2025-03-02"), "j2025-03-02"),
+            ("01-03-2025", Some("2025-03-01"), "j2025-03-01"),
+            ("02-03-2025", Some("2025-03-02"), "j2025-03-02"),
             ("Loose", None, id_of(&open, "Loose.md").as_str()),
             ("Plan", None, id_of(&open, "work/Plan.md").as_str()),
         ]
@@ -330,7 +335,7 @@ fn a_list_with_journals_has_the_live_days_titled_by_their_files() {
     assert_eq!(with.total, 4);
     assert_eq!(
         titles(&open, &by_title(Some(true), Some("journal"))),
-        ["2025-03-01", "2025-03-02"]
+        ["01-03-2025", "02-03-2025"]
     );
     assert_eq!(
         serde_json::to_value(&with.notes[0]).unwrap()["journalDate"],

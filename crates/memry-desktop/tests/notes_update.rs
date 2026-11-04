@@ -603,3 +603,25 @@ fn an_icon_is_the_records_alone() {
     let kept = notes.update(&open, save(&note.id, "Hello again")).unwrap();
     assert_eq!(kept.note.emoji.as_deref(), Some("🌱"));
 }
+
+/// A save whose feed the document did not take writes the file and leaves it to the watcher to
+/// bring in. The watcher's report of those bytes, the app's own, is the app's fact: a watcher
+/// one sends an outside edit, on which the editor drops what was typed since the save.
+#[test]
+fn a_save_the_watcher_brings_in_is_reported_as_the_apps_own() {
+    let (mut e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.fail_next_save_feed();
+    notes.update(&open, save(&id, "Second text\n")).unwrap();
+    until("the watcher fed the save", || e.body(&id) == "Second text");
+    let facts = quiet_facts(&mut e);
+    assert_eq!(by_watcher(&facts), Vec::<&Applied>::new(), "{facts:?}");
+    assert!(
+        facts.iter().any(|fact| matches!(
+            fact,
+            Applied::Changed { note_id, source: ChangeSource::App, .. } if *note_id == id
+        )),
+        "{facts:?}"
+    );
+}

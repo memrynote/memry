@@ -16,6 +16,7 @@ use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
+use crate::vault::app_edit::OwnFiles;
 use crate::vault::app_move::finish_interrupted;
 use crate::vault::config::read_vault_config;
 #[cfg(test)]
@@ -40,6 +41,9 @@ pub struct VaultTier {
     /// The open's own-write record, published before its watcher starts, so a file the app
     /// writes while the vault opens is not reported back as an outside edit.
     echo: Mutex<Option<Arc<EchoGuard>>>,
+    /// The text the app wrote for each note this run, for its saves and for the consumer,
+    /// which reports the watcher's read of those bytes as the app's own.
+    own_files: Arc<OwnFiles>,
     /// Where a test holds a stop or a start, each run once: [`VaultTier::hold_at`].
     #[cfg(test)]
     holds: Mutex<Vec<(Hold, HoldFn)>>,
@@ -86,6 +90,7 @@ impl VaultTier {
             failures: broadcast::channel(64).0,
             open: Mutex::new(None),
             echo: Mutex::new(None),
+            own_files: Arc::default(),
             #[cfg(test)]
             holds: Mutex::default(),
         })
@@ -97,6 +102,11 @@ impl VaultTier {
     /// write instead of keeping the handle.
     pub fn echo(&self) -> Arc<EchoGuard> {
         lock(&self.echo).clone().unwrap_or_default()
+    }
+
+    /// What the app wrote for each note this run ([`OwnFiles`]).
+    pub fn own_files(&self) -> Arc<OwnFiles> {
+        self.own_files.clone()
     }
 
     fn current(&self) -> Option<Arc<Open>> {
@@ -309,6 +319,7 @@ impl VaultTier {
             feed,
             settings: vault.vault.app_settings(self.store.clone()).ok(),
             activity: self.activity.clone(),
+            own_files: self.own_files.clone(),
         };
         let after_walk: AfterWalk = {
             let writeback = writeback.clone();

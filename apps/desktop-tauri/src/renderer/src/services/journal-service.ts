@@ -193,6 +193,14 @@ export function onJournalExternalChange(
   return subscribeToEvent(events.journalExternalChangeEvent, callback)
 }
 
+/**
+ * Journal events were dropped (`shell/journal_events.rs`): whatever the app shows of the
+ * journal may be stale. Not an Electron channel: Electron sends every event.
+ */
+export function onJournalEventsDropped(callback: () => void): () => void {
+  return subscribeToEvent(events.journalEventsDroppedEvent, () => callback())
+}
+
 // ============================================================================
 // Utility Functions
 // ============================================================================

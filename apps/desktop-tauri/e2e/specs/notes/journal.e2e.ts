@@ -5,7 +5,7 @@
 // calendar and heatmap cases, which asserted nothing. The calendar (13m-4) lists the day files
 // of the vault with their previews and counts, and drops a deleted day. The charts (13m-4b)
 // read the saved days' property values, and the day panel its day's tasks. An edit of the day's
-// file outside the app (13m-5) reaches the open day.
+// file outside the app (13m-5) reaches the open day; the app's own saves never reach it as one.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -247,4 +247,24 @@ test('an edit of the open day file outside the app shows in the day', async ({
     readFileSync(file, 'utf8').replace('Written in the app.', 'Rewritten outside.')
   )
   await expect(page.locator('.bn-editor').first()).toContainText('Rewritten outside.')
+})
+
+test('text typed while the day saves stays in the day', async ({ page }) => {
+  await openJournal(page)
+  const date = await today(page)
+  const saved = (text: string) =>
+    pollUntil(async () => ((await entry(page, date))?.content.includes(text) ? true : undefined), {
+      timeoutMs: 20_000
+    })
+  await typeInDay(page, 'First part.')
+  expect(await saved('First part.')).toBe(true)
+  // Typed straight after the save, while its index pass and the watcher's report of the file
+  // are still to come: neither may reach the editor as an outside edit.
+  await typeInDay(page, ' Second part.')
+  expect(await saved('Second part.')).toBe(true)
+  await typeInDay(page, ' Third part.')
+  expect(await saved('Third part.')).toBe(true)
+  await expect(page.locator('.bn-editor').first()).toContainText(
+    'First part. Second part. Third part.'
+  )
 })

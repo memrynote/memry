@@ -36,7 +36,7 @@ use super::service::NotesService;
 use super::view::NoteView;
 use super::write_order::NoteTurn;
 use crate::session::OpenVault;
-use crate::vault::app_edit::{AppEdit, Edited, Precondition};
+use crate::vault::app_edit::{Edited, Precondition};
 use crate::vault::consumer::ChangeSource;
 
 /// `HeaderTagEditSchema`: at most 50 names per list, each 1 to 50 UTF-16 units once trimmed.
@@ -191,7 +191,7 @@ impl NotesService {
             true => open.vault.tags_with_fields()?,
             false => HashSet::new(),
         };
-        let app_edit = AppEdit::new(&self.tier, &self.store, open)?;
+        let app_edit = self.save_edit(open)?;
         // What the text decided, for the record once the file holds it.
         let planned = RefCell::new(None);
         let edited = app_edit.run_then(

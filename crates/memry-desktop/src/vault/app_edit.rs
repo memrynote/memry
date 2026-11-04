@@ -122,7 +122,8 @@ impl OwnFiles {
         self.marks().insert(note_id.to_owned(), hash.to_owned());
     }
 
-    fn is(&self, note_id: &str, hash: &str) -> bool {
+    /// Whether `hash` is the text this run wrote last for the note.
+    pub(crate) fn is(&self, note_id: &str, hash: &str) -> bool {
         self.marks().get(note_id).is_some_and(|own| own == hash)
     }
 

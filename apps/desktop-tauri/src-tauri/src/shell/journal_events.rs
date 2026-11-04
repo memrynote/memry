@@ -10,6 +10,9 @@
 //! so the app's writes must never look like one. What the open walk found sends nothing, as for
 //! notes (`note_events`).
 //!
+//! A forwarder that fell behind sends one [`JournalEventsDroppedEvent`], on which the renderer
+//! refetches what it shows of the journal.
+//!
 //! A found or edited day is measured by the note index before its event goes out, as Electron
 //! syncs its cache first, so the calendar's refetch reads the file's counts. A day the index
 //! leaves to a pass gets `journal:externalChange` once that pass writes its row ([`landed`]),
@@ -28,7 +31,8 @@ use tokio::sync::broadcast::error::RecvError;
 
 use crate::events::{
     JournalEntryCreatedEvent, JournalEntryDeletedEvent, JournalEntryUpdatedEvent,
-    JournalExternalChange, JournalExternalChangeEvent, NoteEventSource, broadcast,
+    JournalEventsDroppedEvent, JournalExternalChange, JournalExternalChangeEvent, NoteEventSource,
+    broadcast,
 };
 
 const SCOPE: &str = "journal";
@@ -39,9 +43,9 @@ pub fn forward<R: Runtime>(app: AppHandle<R>, mut facts: Receiver<Applied>) {
         loop {
             match facts.blocking_recv() {
                 Ok(fact) => emit(&app, fact),
-                // The note events' `NoteEventsDroppedEvent` makes the renderer refetch.
                 Err(RecvError::Lagged(missed)) => {
                     tracing::warn!(scope = SCOPE, missed, "journal events were dropped");
+                    broadcast(&app, JournalEventsDroppedEvent);
                 }
                 Err(RecvError::Closed) => return,
             }
@@ -91,6 +95,11 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
     let Some(entry) = read(app, &open, &date) else {
         return;
     };
+    // The path names a day another note holds (a note moved into the day's path): no event of
+    // that day's.
+    if entry.id != note_id {
+        return;
+    }
     match change {
         Change::Appeared => broadcast(
             app,

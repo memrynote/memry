@@ -170,12 +170,8 @@ fn nth(heard: &Heard, count: usize) -> (&'static str, Value, Option<u32>) {
     heard.lock().unwrap()[count - 1].clone()
 }
 
-/// A day file that appears, is edited and is removed outside the app sends
-/// `journal:entryCreated`, `entryUpdated` and `entryDeleted` with `source: 'external'`, the
-/// first two once the index measured the file: the calendar's refetch on them reads its counts.
-#[test]
-fn a_day_file_changed_outside_sends_its_journal_event_once_measured() {
-    let mocked = opened();
+/// Every journal event heard on `mocked`'s app, with the day's index count when it went out.
+fn hear(mocked: &Mocked) -> Arc<Heard> {
     let heard: Arc<Heard> = Arc::default();
     for name in [
         JournalEntryCreatedEvent::NAME,
@@ -195,6 +191,48 @@ fn a_day_file_changed_outside_sends_its_journal_event_once_measured() {
             sink.lock().unwrap().push((name, payload, counted));
         });
     }
+    heard
+}
+
+/// The app's own saves send their events from the commands, never as outside edits: across the
+/// index pass and the watcher's report after them, no event says `source` (an `external` update
+/// drops what the open editor has not saved).
+#[test]
+fn the_apps_own_day_saves_send_no_outside_event() {
+    let mocked = opened();
+    let heard = hear(&mocked);
+    let call = |cmd: &str, args: Value| mocked.invoke(cmd, args).unwrap();
+    call(
+        "journal_create_entry",
+        json!({ "input": { "date": "2025-03-12", "content": "Saved." } }),
+    );
+    call(
+        "journal_update_entry",
+        json!({ "input": { "date": "2025-03-12", "content": "Saved again." } }),
+    );
+    // timing-bound: past the index's idle delay and the watcher's debounce.
+    std::thread::sleep(Duration::from_millis(2500));
+    let heard = heard.lock().unwrap();
+    let names: Vec<&str> = heard.iter().map(|(name, _, _)| *name).collect();
+    assert_eq!(
+        names,
+        [
+            JournalEntryCreatedEvent::NAME,
+            JournalEntryUpdatedEvent::NAME
+        ]
+    );
+    for (name, payload, _) in heard.iter() {
+        assert!(payload.get("source").is_none(), "{name}: {payload}");
+    }
+}
+
+/// A day file that appears, is edited and is removed outside the app sends
+/// `journal:entryCreated`, `entryUpdated` and `entryDeleted` with `source: 'external'`, the
+/// first two once the index measured the file: the calendar's refetch on them reads its counts.
+#[test]
+fn a_day_file_changed_outside_sends_its_journal_event_once_measured() {
+    let mocked = opened();
+    let heard = hear(&mocked);
     let next = |count: usize| nth(&heard, count);
 
     let file = mocked.vault.join("journal/2025-03-12.md");
@@ -228,4 +266,55 @@ fn a_day_file_changed_outside_sends_its_journal_event_once_measured() {
         payload,
         json!({ "date": "2025-03-12", "source": "external" })
     );
+}
+
+/// Waits until the vault has a row for the file at `path`; its note id.
+fn row_at(mocked: &Mocked, path: &str) -> String {
+    let open = mocked.session().current().unwrap();
+    let deadline = Instant::now() + WAIT;
+    loop {
+        if let Some(row) = open.vault.note_files().by_path(path).unwrap() {
+            return row.note_id;
+        }
+        assert!(Instant::now() < deadline, "{path} was never found");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+/// A note moved outside the app to a day's path, while the day's record holds another file,
+/// stays the note until 13m-6 settles such moves: its edits send no event of the day's.
+#[test]
+fn a_note_at_a_days_path_sends_no_event_of_the_days() {
+    let mocked = opened();
+    mocked
+        .invoke(
+            "journal_create_entry",
+            json!({ "input": { "date": "2025-03-12", "content": "The day." } }),
+        )
+        .unwrap();
+    fs::write(mocked.vault.join("Note.md"), "A note.\n").unwrap();
+    let note = row_at(&mocked, "Note.md");
+    fs::write(
+        mocked.vault.join(".memry/config.json"),
+        r#"{"journalFolder":"daily","journalDateFormat":"YYYY-MM-DD"}"#,
+    )
+    .unwrap();
+    fs::create_dir_all(mocked.vault.join("daily")).unwrap();
+    fs::rename(
+        mocked.vault.join("Note.md"),
+        mocked.vault.join("daily/2025-03-12.md"),
+    )
+    .unwrap();
+    assert_eq!(row_at(&mocked, "daily/2025-03-12.md"), note);
+    let heard = hear(&mocked);
+    fs::write(
+        mocked.vault.join("daily/2025-03-12.md"),
+        "A note, edited.\n",
+    )
+    .unwrap();
+    fs::write(mocked.vault.join("Marker.md"), "Done.\n").unwrap();
+    row_at(&mocked, "Marker.md");
+    // timing-bound: the edit's fact is before the marker's; its event follows a measure.
+    std::thread::sleep(Duration::from_millis(1500));
+    assert_eq!(*heard.lock().unwrap(), Vec::new());
 }

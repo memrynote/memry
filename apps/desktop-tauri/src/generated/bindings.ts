@@ -383,6 +383,7 @@ export const events = {
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
+	journalEventsDroppedEvent: makeEvent<JournalEventsDroppedEvent, JournalEventsDroppedEvent>("journal-events-dropped-event"),
 	journalExternalChangeEvent: makeEvent<JournalExternalChangeEvent, JournalExternalChangeEvent>("journal-external-change-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
@@ -850,6 +851,13 @@ export type JournalEntryView = {
 	createdAt: string,
 	modifiedAt: string,
 };
+
+/**
+ *  Journal events were dropped because their forwarder fell behind (no Electron channel:
+ *  Electron sends every event). No payload; the renderer refetches its journal reads and, unless
+ *  the open day holds unsaved text, that day.
+ */
+export type JournalEventsDroppedEvent = null;
 
 /**  `JournalExternalChangeEvent.type`. */
 export type JournalExternalChange = "modified";

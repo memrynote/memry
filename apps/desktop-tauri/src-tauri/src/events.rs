@@ -131,6 +131,12 @@ pub enum JournalExternalChange {
     Modified,
 }
 
+/// Journal events were dropped because their forwarder fell behind (no Electron channel:
+/// Electron sends every event). No payload; the renderer refetches its journal reads and, unless
+/// the open day holds unsaved text, that day.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct JournalEventsDroppedEvent;
+
 /// A template was created or duplicated (`templates:created`). The renderer refetches the list.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]

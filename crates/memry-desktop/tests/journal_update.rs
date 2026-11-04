@@ -726,3 +726,28 @@ fn a_day_deleted_while_its_save_writes_stays_deleted() {
     assert!(!live, "the tags' mirror revived the deleted day");
     assert_eq!(queued(&e).last().map(String::as_str), Some("delete"));
 }
+
+/// A day's save whose feed the document did not take: the watcher's report of the app's own
+/// bytes is the app's fact, never an outside edit (an `external` `journal:entryUpdated` drops
+/// what the open editor holds unsaved).
+#[test]
+fn a_days_save_the_watcher_brings_in_is_reported_as_the_apps_own() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    notes.fail_next_save_feed();
+    notes
+        .update_day(
+            &open,
+            DayUpdate {
+                content: Some("Evening pages.".into()),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert!(e.read(DAY_FILE).contains("Evening pages."));
+    crate::index_support::until("the watcher fed the save", || {
+        e.body(ID).contains("Evening pages.")
+    });
+    assert_eq!(outside_facts(&mut e), Vec::<Applied>::new());
+}
