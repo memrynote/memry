@@ -106,6 +106,8 @@ mod note_links_changed;
 mod note_mentions;
 #[path = "notes_create_template.rs"]
 mod notes_create_template;
+#[path = "notes_folders.rs"]
+mod notes_folders;
 #[path = "notes_identity.rs"]
 mod notes_identity;
 #[path = "notes_link_rewrite.rs"]

@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
 import type { SearchResultItem } from '@memry/contracts/search-api'
 import { calendarService } from '@/services/calendar-service'
+import { notesService } from '@/services/notes-service'
 import { searchService } from '@/services/search-service'
 import { useProjectsList } from '@/hooks/use-projects-list'
 import { createLogger } from '@/lib/logger'
@@ -49,8 +50,8 @@ export function useCanvasLinkSearch(open: boolean, query: string): CanvasLinkSea
   useEffect(() => {
     if (!open) return undefined
     let cancelled = false
-    window.api?.notes
-      ?.getFolders?.()
+    notesService
+      .getFolders()
       .then((paths) => {
         if (!cancelled) setFolders(paths)
       })

@@ -231,6 +231,25 @@ vi.mock('../src/generated/bindings', () => {
       notesSetCalendarPropertyVisibility: (name: string, show: boolean) =>
         done(notes().setCalendarPropertyVisibility(name, show)),
       notesGetCalendarPropertyNames: () => notes().getCalendarPropertyNames(),
+      notesGetFolders: () => notes().getFolders(),
+      notesCreateFolder: async (path: string) => {
+        const result = (await notes().createFolder(path)) as
+          | { success?: boolean; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return null
+      },
+      notesRevealFolderInFinder: (folderPath: string) =>
+        done(notes().revealFolderInFinder(folderPath)),
+      notesGetFolderConfig: (folderPath: string) => notes().getFolderConfig(folderPath),
+      notesSetFolderConfig: async (folderPath: string, config: unknown) => {
+        const result = (await notes().setFolderConfig(folderPath, config)) as
+          | { success?: boolean; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return null
+      },
+      notesGetFolderTemplate: (folderPath: string) => notes().getFolderTemplate(folderPath),
       tagsGetAllWithCounts: async () =>
         ((await tags().getAllWithCounts()) as { tags: unknown[] }).tags,
       tagsGetNotesByTag: (input: unknown) => tags().getNotesByTag(input),
