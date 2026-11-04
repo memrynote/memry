@@ -9,18 +9,45 @@
 //! definition is kept, the renamed one tombstoned. Children go first, so
 //! renaming `a` to `a/b` moves an existing `a/b` to `a/b/b` before `a` lands
 //! on `a/b`.
+//!
+//! Desktop, whose note files hold the tags too, renames in parts: [`rename_shared`] for what no
+//! file holds, then each of the [`holders`] with its file, one at a time ([`tags::rename`] for
+//! the record). The rename in progress is recorded ([`begin`]) so that an interrupted one is
+//! finished at the next open; every part does nothing the second time.
 
 use std::collections::BTreeSet;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension as _, params};
+use serde::{Deserialize, Serialize};
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
 use crate::domain::tag_admin::{
     carriers, definition_for, delete_definitions, item_count, live_definition, refuse, rewrite,
-    upsert_definition,
+    rewrite_of, upsert_definition,
 };
+use crate::domain::tag_body_rename::renamed_tag;
 use crate::domain::{body_tags, tag_body_rename, tag_schema_refs, tags};
+
+/// The `meta` key of the rename in progress (desktop's `tags.renameJob` setting); an older
+/// build ignores it.
+const JOB: &str = "tags.rename_job";
+
+/// A rename in progress.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameJob {
+    pub from: String,
+    pub to: String,
+    pub run_id: String,
+}
+
+/// A live note or journal day a rename reaches.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Holder {
+    pub id: String,
+    pub day: bool,
+}
 
 fn pairs(conn: &Connection, old: &str, new: &str) -> Result<Vec<(String, String)>, StorageError> {
     let old_key = tags::fold(old.trim());
@@ -78,6 +105,113 @@ fn move_definition(
         upsert_definition(conn, to, Some(&template), Vec::new(), device_id, now_ms)?;
     }
     delete_definitions(conn, from, device_id, now_ms)
+}
+
+/// Records `job` as the rename in progress. Another rename recorded (other names) is answered
+/// and nothing is written; the same one is recorded again under the new run.
+pub fn begin(conn: &Connection, job: &RenameJob) -> Result<Option<RenameJob>, StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    if let Some(recorded) = recorded(&tx)?
+        && (recorded.from != job.from || recorded.to != job.to)
+    {
+        return Ok(Some(recorded));
+    }
+    let value = serde_json::to_string(job).map_err(|error| StorageError::Failed {
+        what: format!("a tag rename will not serialise: {error}"),
+    })?;
+    tx.execute(
+        "INSERT INTO meta (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![JOB, value],
+    )
+    .map_err(failed)?;
+    tx.commit().map_err(failed)?;
+    Ok(None)
+}
+
+/// The rename in progress. A value that does not read is an error, which [`finish`] clears.
+pub fn recorded(conn: &Connection) -> Result<Option<RenameJob>, StorageError> {
+    let raw: Option<String> = conn
+        .query_row("SELECT value FROM meta WHERE key = ?1", [JOB], |row| {
+            row.get(0)
+        })
+        .optional()
+        .map_err(failed)?;
+    raw.map(|raw| {
+        serde_json::from_str(&raw).map_err(|error| StorageError::Failed {
+            what: format!("the recorded tag rename does not read: {error}"),
+        })
+    })
+    .transpose()
+}
+
+/// No rename is in progress.
+pub fn finish(conn: &Connection) -> Result<(), StorageError> {
+    conn.execute("DELETE FROM meta WHERE key = ?1", [JOB])
+        .map_err(failed)?;
+    Ok(())
+}
+
+/// The part of [`rename`] that no file holds: the tasks' tags, the definitions and the schema
+/// references, for desktop.
+pub fn rename_shared(
+    conn: &Connection,
+    old: &str,
+    new: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let new = new.trim();
+    if new.is_empty() {
+        return Err(refuse("a tag name cannot be empty"));
+    }
+    for (from, to) in pairs(conn, old, new)? {
+        rewrite_of(conn, &["task"], &from, Some(&to), device_id, now_ms)?;
+        move_definition(conn, &from, &to, device_id, now_ms)?;
+        tag_schema_refs::rewrite_definitions(conn, &from, Some(&to), device_id, now_ms)?;
+    }
+    Ok(())
+}
+
+/// The live notes and journal days carrying `old` or a child of it, by id: in the record's
+/// tags, the body's `#tags`, or the header tags the index last read from the file (`headers`,
+/// by note id), the only place a file the open adopted carries them (#3825).
+pub fn holders(
+    conn: &Connection,
+    headers: impl IntoIterator<Item = (String, Vec<String>)>,
+    old: &str,
+) -> Result<Vec<Holder>, StorageError> {
+    let under = |tag: &str| renamed_tag(tag, old, old).is_some();
+    let mut ids: BTreeSet<String> = carriers(conn, None)?
+        .into_iter()
+        .chain(body_tags::carriers(conn)?)
+        .filter(|(item_type, _, tag)| item_type != "task" && under(tag))
+        .map(|(_, id, _)| id)
+        .collect();
+    ids.extend(
+        headers
+            .into_iter()
+            .filter(|(_, tags)| tags.iter().any(|tag| under(tag)))
+            .map(|(id, _)| id),
+    );
+    let mut statement = conn
+        .prepare(
+            "SELECT item_type FROM sync_items WHERE item_id = ?1 AND deleted_at IS NULL
+                AND item_type IN ('note', 'journal')",
+        )
+        .map_err(failed)?;
+    let mut out = Vec::new();
+    for id in ids {
+        let item_type: Option<String> = statement
+            .query_row([&id], |row| row.get(0))
+            .optional()
+            .map_err(failed)?;
+        if let Some(item_type) = item_type {
+            let day = item_type == "journal";
+            out.push(Holder { id, day });
+        }
+    }
+    Ok(out)
 }
 
 /// Renames a tag and its children everywhere. Returns the number of items
@@ -283,6 +417,115 @@ mod tests {
             Ok(())
         })
         .expect("cache");
+    }
+
+    fn upserts(db: &Db, id: &str) -> i64 {
+        let id = id.to_owned();
+        db.call_blocking(move |c| {
+            c.query_row(
+                "SELECT COUNT(*) FROM outbox WHERE op = 'upsert' AND item_id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .map_err(failed)
+        })
+        .expect("outbox")
+    }
+
+    /// Desktop's parts: the shared one leaves notes and days to their files, an item's rename
+    /// carries its pins in the list's spelling with one outbox row, and a second run of either
+    /// writes nothing.
+    #[test]
+    fn the_desktop_parts_rename_once_and_leave_notes_to_their_files() {
+        let (db, _d) = vault("tags-rename-parts");
+        seed(
+            &db,
+            "note",
+            "n4",
+            r#"{"title":"n4","tags":["job","Career"],"pinnedTags":["job"],"clock":{"desk":1}}"#,
+        );
+        db.call_blocking(|c| {
+            rename_shared(c, "job", "career", "phone", NOW + 1)?;
+            rename_shared(c, "job", "career", "phone", NOW + 2)
+        })
+        .expect("shared");
+        assert_eq!(tags_of(&db, "task", "t1"), vec!["career/Lead"]);
+        assert_eq!(tags_of(&db, "note", "n1"), vec!["Job", "job/Lead", "ideas"]);
+        assert_eq!(upserts(&db, "t1"), 1);
+        db.call_blocking(|c| {
+            assert!(live_definition(c, "job")?.is_none());
+            assert!(live_definition(c, "career")?.is_some());
+            Ok(())
+        })
+        .expect("defs");
+
+        let renamed = db
+            .call_blocking(|c| {
+                let first = tags::rename(c, "n4", "job", "career", "phone", NOW + 3)?;
+                let again = tags::rename(c, "n4", "job", "career", "phone", NOW + 4)?;
+                let gone = tags::rename(c, "none", "job", "career", "phone", NOW + 4)?;
+                Ok((first, again, gone))
+            })
+            .expect("item");
+        assert_eq!(renamed, (true, false, false));
+        assert_eq!(tags_of(&db, "note", "n4"), vec!["career"]);
+        assert_eq!(upserts(&db, "n4"), 1);
+        let pins: String = db
+            .call_blocking(|c| {
+                c.query_row(
+                    "SELECT json_extract(payload, '$.pinnedTags') FROM sync_items \
+                     WHERE item_id = 'n4'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(failed)
+            })
+            .expect("pins");
+        assert_eq!(pins, r#"["career"]"#);
+    }
+
+    #[test]
+    fn holders_are_the_live_notes_and_days_that_carry_the_tag_or_a_child() {
+        let (db, _d) = vault("tags-rename-holders");
+        let headers = [
+            ("n2".to_owned(), vec!["JOB/x".to_owned()]),
+            ("gone".to_owned(), vec!["job".to_owned()]),
+        ];
+        let holders = db
+            .call_blocking(move |c| holders(c, headers, "Job"))
+            .expect("holders");
+        let note = |id: &str| Holder {
+            id: id.into(),
+            day: false,
+        };
+        let day = Holder {
+            id: "j1".into(),
+            day: true,
+        };
+        assert_eq!(holders, vec![day, note("n1"), note("n2")]);
+    }
+
+    #[test]
+    fn a_recorded_rename_refuses_another_until_it_is_finished() {
+        let (db, _d) = vault("tags-rename-job");
+        let job = |from: &str, run: &str| RenameJob {
+            from: from.into(),
+            to: "career".into(),
+            run_id: run.into(),
+        };
+        db.call_blocking(move |c| {
+            assert_eq!(begin(c, &job("job", "r1"))?, None);
+            assert_eq!(begin(c, &job("job", "r2"))?, None);
+            assert_eq!(recorded(c)?, Some(job("job", "r2")));
+            assert_eq!(begin(c, &job("work", "r3"))?, Some(job("job", "r2")));
+            finish(c)?;
+            assert_eq!(recorded(c)?, None);
+            c.execute("INSERT INTO meta (key, value) VALUES (?1, 'x')", [JOB])
+                .map_err(failed)?;
+            assert!(recorded(c).is_err());
+            Ok(())
+        })
+        .expect("job");
     }
 
     #[test]

@@ -321,8 +321,28 @@ pub(crate) fn rewrite(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<(String, String)>, StorageError> {
+    rewrite_of(
+        conn,
+        &["note", "journal", "task"],
+        source,
+        target,
+        device_id,
+        now_ms,
+    )
+}
+
+/// [`rewrite`] over the items of `types` only.
+pub(crate) fn rewrite_of(
+    conn: &Connection,
+    types: &[&str],
+    source: &str,
+    target: Option<&str>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Vec<(String, String)>, StorageError> {
     let mut items: Vec<(String, String)> = carriers(conn, Some(source))?
         .into_iter()
+        .filter(|(item_type, _, _)| types.contains(&item_type.as_str()))
         .map(|(t, id, _)| (t, id))
         .collect();
     items.dedup();

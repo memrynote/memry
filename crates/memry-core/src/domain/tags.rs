@@ -43,6 +43,7 @@ use rusqlite::Connection;
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::domain::tag_body_rename::renamed_tag;
 use crate::storage::repositories::instants;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -204,6 +205,58 @@ pub fn set(
     let pinned = unpin(payload.object(), &next, item_type, item_id)?;
     write(
         conn, item_type, item_id, &payload, next, pinned, device_id, now_ms,
+    )
+}
+
+/// Renames `old` and every `old/…` child in the `tags` and `pinnedTags` of the live note or
+/// journal day `item_id` (a tag rename, one item at a time on desktop, whose files hold the
+/// tags too), a name that lands on one the list holds collapsing into the first spelling: one
+/// transaction and one outbox row, or nothing written when neither list changes or the item
+/// is not live. `pinnedTags` is written only when the key is there (see [`remove`]). Returns
+/// whether it wrote.
+pub fn rename(
+    conn: &Connection,
+    item_id: &str,
+    old: &str,
+    new: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let item_type = match live_type(conn, item_id) {
+        Ok(item_type) => item_type,
+        Err(StorageError::NotFound { .. }) => return Ok(false),
+        Err(error) => return Err(error),
+    };
+    let payload = require(conn, item_type, item_id)?;
+    let object = payload.object();
+    let tags = read_tags(object, "tags", item_type, item_id)?;
+    let next = renamed_list(&tags, old, new);
+    let pinned = match object.contains_key("pinnedTags") {
+        true => {
+            let pins = read_tags(object, "pinnedTags", item_type, item_id)?;
+            // In the list's spelling, which the projection matches a pin by.
+            let spelled = renamed_list(&pins, old, new).into_iter().map(|pin| {
+                let kept = next.iter().find(|tag| same_tag(tag, &pin));
+                kept.cloned().unwrap_or(pin)
+            });
+            Some(dedupe(spelled)).filter(|next| *next != pins)
+        }
+        false => None,
+    };
+    if next == tags && pinned.is_none() {
+        return Ok(false);
+    }
+    write(
+        conn, item_type, item_id, &payload, next, pinned, device_id, now_ms,
+    )?;
+    Ok(true)
+}
+
+/// `tags` with `old` and its children renamed to `new`, deduped first spelling first.
+pub fn renamed_list(tags: &[String], old: &str, new: &str) -> Vec<String> {
+    dedupe(
+        tags.iter()
+            .map(|tag| renamed_tag(tag, old, new).unwrap_or_else(|| tag.clone())),
     )
 }
 

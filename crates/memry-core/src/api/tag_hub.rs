@@ -11,6 +11,7 @@ use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
 use crate::domain::tag_admin;
 use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
+use crate::domain::tag_rename::{self, RenameJob};
 use crate::domain::tags;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
@@ -47,6 +48,35 @@ impl TagHub {
         self.db.call_blocking(|conn| {
             tags::set_pinned(conn, id, tag, pinned, &self.device_id, now_ms())
         })
+    }
+
+    /// Records `job` as the rename in progress, or answers the other one recorded
+    /// ([`tag_rename::begin`]).
+    pub fn rename_begin(&self, job: &RenameJob) -> Result<Option<RenameJob>, StorageError> {
+        self.db.call_blocking(|conn| tag_rename::begin(conn, job))
+    }
+
+    /// The rename in progress, for the open to finish ([`tag_rename::recorded`]).
+    pub fn rename_recorded(&self) -> Result<Option<RenameJob>, StorageError> {
+        self.db.read_blocking(tag_rename::recorded)
+    }
+
+    pub fn rename_finish(&self) -> Result<(), StorageError> {
+        self.db.call_blocking(|conn| tag_rename::finish(conn))
+    }
+
+    /// A rename's tasks, definitions and schema references ([`tag_rename::rename_shared`]).
+    pub fn rename_shared(&self, old: &str, new: &str) -> Result<(), StorageError> {
+        self.db.call_blocking(|conn| {
+            tag_rename::rename_shared(conn, old, new, &self.device_id, now_ms())
+        })
+    }
+
+    /// A rename in the record of the note or journal day `id` ([`tags::rename`]); `false` when
+    /// it wrote nothing.
+    pub fn rename_in(&self, id: &str, old: &str, new: &str) -> Result<bool, StorageError> {
+        self.db
+            .call_blocking(|conn| tags::rename(conn, id, old, new, &self.device_id, now_ms()))
     }
 
     pub fn create_category(&self, name: &str) -> Result<TagCategory, StorageError> {
