@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use memry_core::api::errors::SecureStoreError;
 use memry_core::crypto::sodium;
+use memry_core::domain::folders;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
@@ -233,6 +234,15 @@ fn a_pulled_folder_reaches_the_vault_and_the_renderer_hears_of_it() {
         "---\nicon: 'lucide:book'\n---\n\n"
     );
 
+    // As the pull leaves it: the record applied, then its delete.
+    let vault = f.app.state::<Session>().current().unwrap().vault;
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            folders::create(conn, "Remote/Plans", Some("lucide:book"), "other-device", 1)?;
+            folders::delete_tree(conn, "Remote/Plans", "other-device", 2).map(drop)
+        })
+        .unwrap();
     tauri::async_runtime::block_on(folder_sync::remote_folder_deleted(
         f.app.clone(),
         "Remote/Plans".to_owned(),
