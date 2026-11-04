@@ -442,7 +442,7 @@ fn check(root: &Path, from: &str, to: &str) -> Result<(), NotesError> {
 }
 
 /// Whether `path` is `root` or sits under it.
-fn within(path: &str, root: &str) -> bool {
+pub(super) fn within(path: &str, root: &str) -> bool {
     path == root
         || path
             .strip_prefix(root)

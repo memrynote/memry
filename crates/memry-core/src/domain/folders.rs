@@ -224,10 +224,21 @@ pub fn delete_tree(
 ) -> Result<Removal, StorageError> {
     let path = valid_path(path)?;
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let folders = folders_within(&tx, path)?;
-    tombstone_all(&tx, &folders, device_id, now_ms)?;
-    note_positions::drop_folder(&tx, path)?;
+    let removal = delete_tree_in(&tx, path, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
+    Ok(removal)
+}
+
+/// [`delete_tree`] in the caller's transaction, for a path [`valid_path`] accepted.
+pub(crate) fn delete_tree_in(
+    tx: &Connection,
+    path: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Removal, StorageError> {
+    let folders = folders_within(tx, path)?;
+    tombstone_all(tx, &folders, device_id, now_ms)?;
+    note_positions::drop_folder(tx, path)?;
     Ok(Removal { folders })
 }
 

@@ -10,6 +10,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::journal;
 use crate::domain::notes::app_move::{self, AppMoved, BeginError, FolderRecorded, Recorded};
+use crate::domain::notes::folder_delete::{self, FolderDeleteRecorded};
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::domain::notes::{self, NewNote};
@@ -165,6 +166,34 @@ impl NotesWriter {
     ) -> Result<(), BeginError> {
         self.db
             .call_blocking(move |conn| Ok(app_move::begin_folder(conn, from, to, moves)))?
+    }
+
+    /// Records the delete of the folder at `path` before it leaves the disk
+    /// ([`folder_delete::begin`]). Only the vault tier's rows' lane calls it.
+    pub fn begin_folder_delete(&self, path: &str, note_ids: &[&str]) -> Result<(), BeginError> {
+        self.db
+            .call_blocking(move |conn| Ok(folder_delete::begin(conn, path, note_ids)))?
+    }
+
+    /// The folder at `path` left the disk with the notes `note_ids`: tombstones, rows, folder
+    /// records and order in one transaction ([`folder_delete::deleted_by_app`]).
+    pub fn folder_deleted_by_app(&self, path: &str, note_ids: &[&str]) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            folder_delete::deleted_by_app(conn, path, note_ids, &device_id, now_ms())
+        })
+    }
+
+    /// Every folder's record of a delete never finished or forgotten
+    /// ([`folder_delete::pending`]).
+    pub fn pending_folder_deletes(&self) -> Result<Vec<FolderDeleteRecorded>, StorageError> {
+        self.db.read_blocking(folder_delete::pending)
+    }
+
+    /// Forgets the record of the folder's delete ([`folder_delete::abandon`]).
+    pub fn abandon_folder_delete(&self, path: &str) -> Result<bool, StorageError> {
+        self.db
+            .call_blocking(move |conn| folder_delete::abandon(conn, path))
     }
 
     /// Every folder's record of an app move never finished or forgotten

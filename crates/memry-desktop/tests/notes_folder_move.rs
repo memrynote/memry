@@ -43,21 +43,26 @@ use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::folders::FolderConfigInput;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::links::NoteLinks;
-use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::service::{NotesService, Trash};
 use memry_desktop::vault::activity::ActivityFilter;
 use memry_desktop::vault::config::{VaultConfigPatch, write_vault_config};
 use memry_desktop::vault::consumer::{Applied, ChangeSource, MoveKind};
 use memry_desktop::vault::layout::DEFAULT_EXCLUDE_PATTERNS;
 use memry_desktop::vault::move_dir::{Step, simulated_hold};
+use memry_desktop::vault::trash::move_to_trash;
 use vault_env::{Env, QUIET, env, indexed};
 
 /// Longer than the watcher's debounce and rename window: a pause mid-move lets it look at the
 /// disk while the rows still name the old paths, as a large or entry-wise move does.
-const MID_MOVE: std::time::Duration = std::time::Duration::from_millis(1500);
+pub(crate) const MID_MOVE: std::time::Duration = std::time::Duration::from_millis(1500);
 
 use crate::notes_link_rewrite::{id_at, opened as opened_indexed};
 
 fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
+    opened_with(move_to_trash)
+}
+
+pub(crate) fn opened_with(trash: Trash) -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
     let mut e = env(|store| {
         kept = Some(store.clone());
@@ -67,11 +72,11 @@ fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     e.facts_until(indexed);
     armed(&mut e);
     let store = kept.expect("the store");
-    let notes = NotesService::new(e.tier.clone(), store.clone());
+    let notes = NotesService::with_trash(e.tier.clone(), store.clone(), trash);
     (e, notes, store)
 }
 
-fn note(title: &str, folder: &str) -> NewNoteFile {
+pub(crate) fn note(title: &str, folder: &str) -> NewNoteFile {
     NewNoteFile {
         title: title.into(),
         content: format!("About {title}"),
@@ -112,7 +117,7 @@ fn file_note(e: &mut Env, store: &Arc<dyn SecureStore>, rel: &str) -> String {
 /// Waits until the watcher reports: a scratch note written and deleted, each seen. It arms a
 /// moment after the open, and a move made before that would pass every "the watcher reported
 /// nothing" below for want of a watcher.
-fn armed(e: &mut Env) {
+pub(crate) fn armed(e: &mut Env) {
     e.write("armed.md", "armed\n");
     let facts = e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "armed.md"));
     let Some(Applied::Added { note_id, .. }) = facts.last() else {
@@ -140,17 +145,17 @@ fn query<T: Send + 'static>(
 }
 
 /// `(id, folder_path)` of every live note, by id.
-fn folders_of_notes(e: &Env) -> Vec<(String, Option<String>)> {
+pub(crate) fn folders_of_notes(e: &Env) -> Vec<(String, Option<String>)> {
     let sql = "SELECT id, folder_path FROM notes WHERE deleted_at IS NULL ORDER BY id";
     query(e, sql, |row| Ok((row.get(0)?, row.get(1)?)))
 }
 
-fn live_folder_records(e: &Env) -> Vec<(String, Option<String>)> {
+pub(crate) fn live_folder_records(e: &Env) -> Vec<(String, Option<String>)> {
     let sql = "SELECT path, icon FROM folders WHERE deleted_at IS NULL ORDER BY path";
     query(e, sql, |row| Ok((row.get(0)?, row.get(1)?)))
 }
 
-fn slots(e: &Env) -> Vec<(String, String, i64)> {
+pub(crate) fn slots(e: &Env) -> Vec<(String, String, i64)> {
     let sql = "SELECT path, folder_path, position FROM note_positions ORDER BY path";
     query(e, sql, |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
 }
@@ -162,7 +167,7 @@ fn pending(e: &Env, store: &Arc<dyn SecureStore>) -> usize {
 
 /// The row facts once the watcher had time to report: any but the app's `Renamed` is the move
 /// taken for an outside one.
-fn row_facts(e: &mut Env) -> Vec<Applied> {
+pub(crate) fn row_facts(e: &mut Env) -> Vec<Applied> {
     std::thread::sleep(QUIET);
     let mut facts: Vec<Applied> = e
         .drain()
@@ -197,13 +202,13 @@ fn sorted(mut facts: Vec<Applied>) -> Vec<Applied> {
     facts
 }
 
-fn rows(e: &Env) -> Vec<(String, String)> {
+pub(crate) fn rows(e: &Env) -> Vec<(String, String)> {
     let mut rows = e.rows();
     rows.sort();
     rows
 }
 
-fn activity_is_empty(e: &Env) {
+pub(crate) fn activity_is_empty(e: &Env) {
     let mut activity = e.tier.activity().list(100, ActivityFilter::All).entries;
     activity.retain(|entry| entry.path.as_deref() != Some("armed.md"));
     assert!(
@@ -214,17 +219,21 @@ fn activity_is_empty(e: &Env) {
 
 /// `Work` holding `Plan.md`, `Sub/Deep.md` and a PDF, recorded with an icon, and ordered by
 /// hand in the root and in `Work`.
-struct Work {
-    e: Env,
-    notes: Arc<NotesService>,
-    store: Arc<dyn SecureStore>,
-    plan: String,
-    deep: String,
-    doc: String,
+pub(crate) struct Work {
+    pub e: Env,
+    pub notes: Arc<NotesService>,
+    pub store: Arc<dyn SecureStore>,
+    pub plan: String,
+    pub deep: String,
+    pub doc: String,
 }
 
 fn work() -> Work {
-    let (mut e, notes, store) = opened();
+    work_with(move_to_trash)
+}
+
+pub(crate) fn work_with(trash: Trash) -> Work {
+    let (mut e, notes, store) = opened_with(trash);
     let open = e.session.current().unwrap();
     notes.create_folder(&open, "Work").unwrap();
     let plan = notes.create(&open, note("Plan", "Work")).unwrap().id;
@@ -658,7 +667,7 @@ fn a_folder_move_into_an_ignored_or_linked_folder_is_refused() {
     assert!(e.vault.join("Work/Plan.md").exists());
 }
 
-fn removed_ids(facts: &[Applied]) -> Vec<String> {
+pub(crate) fn removed_ids(facts: &[Applied]) -> Vec<String> {
     facts
         .iter()
         .filter_map(|fact| match fact {
@@ -671,7 +680,7 @@ fn removed_ids(facts: &[Applied]) -> Vec<String> {
 /// A note written into `Work` from outside the app, seen by the watcher. Its delete is reported
 /// once the watcher armed; a delete of a note the app wrote in an earlier session is not (#3912),
 /// so the controls below use this one.
-fn outside_note(e: &mut Env) -> String {
+pub(crate) fn outside_note(e: &mut Env) -> String {
     e.write("Work/Outside.md", "outside\n");
     let facts =
         e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "Work/Outside.md"));

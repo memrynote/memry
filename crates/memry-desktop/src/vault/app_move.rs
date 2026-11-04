@@ -15,6 +15,10 @@
 //! order follow in one transaction ([`Lane::folder_moved_by_app`]). Otherwise it forgets the
 //! folder's record, and each note's record is settled on its own.
 //!
+//! A folder the app deleted (`notes::folder_delete`) records its delete the same way. When the
+//! folder is gone, the open runs the delete's transaction for the notes still listed under it;
+//! when it is still there, the open forgets the record.
+//!
 //! [`NoteFileMove`] is the live half: it records the move and moves the file, and puts the
 //! file back when the transaction fails.
 
@@ -26,6 +30,7 @@ use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::notes::app_move::{
     AppMoved, BeginError, FolderRecorded, PendingFolderMove, PendingMove, Recorded,
 };
+use memry_core::domain::notes::folder_delete::FolderDeleteRecorded;
 use unicode_normalization::UnicodeNormalization;
 
 use super::consumer::identity::{IdentityCtx, NoteIdentity};
@@ -145,6 +150,7 @@ pub(crate) fn finish_interrupted(
     identity: &dyn NoteIdentity,
 ) {
     finish_folders(ctx, writer, lane, identity);
+    finish_folder_deletes(ctx.root, writer, lane);
     let pending = match writer.pending_app_moves() {
         Ok(pending) => pending,
         Err(error) => {
@@ -260,6 +266,58 @@ fn settle_folder(
     lane.folder_moved_by_app(writer, from, to, &moves)
         .map_err(|error| error.to_string())?;
     Ok("finished an interrupted folder move")
+}
+
+/// Settles each folder's recorded delete, before the notes' moves.
+fn finish_folder_deletes(root: &Path, writer: &NotesWriter, lane: &mut Lane<'_>) {
+    let pending = match writer.pending_folder_deletes() {
+        Ok(pending) => pending,
+        Err(error) => {
+            return tracing::error!(
+                scope = SCOPE,
+                "the interrupted folder deletes are unread; they wait for the next open: {error}"
+            );
+        }
+    };
+    for recorded in pending {
+        let settled = match recorded {
+            FolderDeleteRecorded::Delete(path) => settle_folder_delete(root, writer, lane, &path),
+            FolderDeleteRecorded::Unreadable(_, why) => Err(format!(
+                "another version of the app recorded it, and this one cannot read it: {why}"
+            )),
+        };
+        match settled {
+            Ok(done) => tracing::info!(scope = SCOPE, "{done}"),
+            Err(error) => tracing::warn!(
+                scope = SCOPE,
+                "an interrupted folder delete stays for the next open: {error}"
+            ),
+        }
+    }
+}
+
+fn settle_folder_delete(
+    root: &Path,
+    writer: &NotesWriter,
+    lane: &mut Lane<'_>,
+    path: &str,
+) -> Result<&'static str, String> {
+    let failed = |error: &dyn std::fmt::Display| error.to_string();
+    if listed(root, path)? {
+        lane.forget_folder_delete(writer, path)
+            .map_err(|error| failed(&error))?;
+        return Ok("forgot an interrupted folder delete that had not removed its folder");
+    }
+    let below = format!("{path}/");
+    let listed_notes = lane.files().list_paths().map_err(|error| failed(&error))?;
+    let ids: Vec<&str> = listed_notes
+        .iter()
+        .filter(|(_, at)| at.starts_with(&below))
+        .map(|(id, _)| id.as_str())
+        .collect();
+    lane.folder_deleted_by_app(writer, path, &ids)
+        .map_err(|error| failed(&error))?;
+    Ok("finished an interrupted folder delete")
 }
 
 /// What the open finds of a note's recorded move.
