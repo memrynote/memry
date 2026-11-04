@@ -109,6 +109,22 @@ fn no_writer_replaces_a_config_it_cannot_parse() {
     }
 }
 
+/// `writePortableGeneralToConfig`: a settings write that names no field the vault file holds
+/// (`onboardingCompleted`, which the renderer writes as each new vault opens) does not write
+/// the file, so it cannot put back what it read over a write another program made meanwhile.
+#[test]
+fn a_write_of_no_portable_field_leaves_the_file_as_it_is() {
+    let written = b"{\n  \"journalFolder\": \"diary\",\n  \"newerBuild\": true\n}";
+    let dir = vault_with(written);
+    merge_preferences(
+        dir.path(),
+        &object(json!({"onboardingCompleted": true})),
+        &object(json!({"notPortable": 1})),
+    )
+    .unwrap();
+    assert_eq!(bytes(dir.path()), written);
+}
+
 #[test]
 fn a_write_keeps_every_other_key_in_value_and_order() {
     let dir = vault_with(ELECTRON.as_bytes());

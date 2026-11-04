@@ -135,13 +135,18 @@ pub fn read_preferences(
 
 /// Merges portable `general` and `editor` fields into `preferences`. Fields the vault file
 /// already has and the patch does not name stay as written, including unknown ones. A config
-/// that exists but cannot be read or parsed is an error and stays untouched.
+/// that exists but cannot be read or parsed is an error and stays untouched. A patch that names
+/// no portable field does not write the file (`writePortableGeneralToConfig`), so a settings
+/// write cannot put back what it read over a write another program made meanwhile.
 pub fn merge_preferences(
     vault: &Path,
     general: &Map<String, Value>,
     editor: &Map<String, Value>,
 ) -> Result<(), ConfigError> {
-    if general.is_empty() && editor.is_empty() {
+    let names = |patch: &Map<String, Value>, portable: &[&str]| {
+        patch.keys().any(|field| portable.contains(&field.as_str()))
+    };
+    if !names(general, &PORTABLE_GENERAL) && !names(editor, &PORTABLE_EDITOR) {
         return Ok(());
     }
     update(vault, |config| {
