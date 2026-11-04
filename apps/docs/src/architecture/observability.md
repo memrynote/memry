@@ -116,6 +116,17 @@ blocked for that long; the monitor logs `main thread stalled` at `warn` under th
 reached, or `startup` before the first one) and `count`. At most 20 stalls are reported per run.
 Ticks between `powerMonitor` `suspend` and `resume` never report, so system sleep is not a stall.
 
+`phase` stays on the last launch phase for the rest of the run, so it cannot tell a stall during
+editing from one at launch. Each line also carries `suspects`: the last three units of work the
+main process started (`src/main/main-activity.ts`), each with its start relative to the last
+on-time tick, for example `projection:search:note.upserted@-120ms`. The loop is single-threaded, so
+the unit that blocked it is almost always the last one started; one with a large negative offset
+only ran alongside. Units are marked at four boundaries: every `ipcMain.handle` invocation
+(`ipc:<channel>`), each projector event (`projection:<projector>:<event type>`), each reconcile
+pass (`reconcile:<projector>`), and each post-reveal startup task (`startup:<name>`). Work that
+starts outside them, such as a timer, leaves the stall attributed to an earlier unit, which the
+offset gives away. Names are code-defined labels, never user data.
+
 The main window logs `main window renderer unresponsive` when Electron emits `unresponsive`, and
 `main window renderer responsive again` with `durationMs` when it recovers. Together the two say
 whether a frozen window was the main process or the renderer.

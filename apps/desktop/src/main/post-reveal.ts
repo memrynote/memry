@@ -6,6 +6,7 @@
 // staring at nothing (#2001).
 import { isAppShuttingDown } from './app-shutdown'
 import { createLogger } from './lib/logger'
+import { markMainActivity } from './main-activity'
 
 const postRevealLog = createLogger('Startup')
 
@@ -26,6 +27,7 @@ const runTask = (name: string, task: PostRevealTask): void => {
   if (started.has(name)) return
   started.add(name)
   try {
+    markMainActivity(`startup:${name}`)
     const result = task()
     if (result instanceof Promise) {
       void result.catch((error: unknown) => {
