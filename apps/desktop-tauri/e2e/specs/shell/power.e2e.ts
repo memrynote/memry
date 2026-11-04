@@ -90,6 +90,10 @@ test('a quit does not wait on a page whose browser process ended unreported', as
   const log = readMainLog(app.dirs.logDir)
   expect(log).toContain('e2e: ended the WebView2 browser process')
   expect(log).toContain('cleanup complete')
+  // The flush gave up because the page was gone, not because it ran out of time.
+  expect(log).toMatch(
+    /window main has no page process|page of window main lost its process before its flush/
+  )
   expect(log).not.toContain('flush of window main timed out')
 })
 
