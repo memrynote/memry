@@ -59,7 +59,7 @@ fn json_number(n: f64) -> String {
     }
 }
 
-fn json_string(text: &str) -> String {
+pub(crate) fn json_string(text: &str) -> String {
     // serde_json escapes the same set as `JSON.stringify`: the quote, the
     // backslash and the control characters (`\b \f \n \r \t`, else `\u00xx`).
     Value::String(text.to_owned()).to_string()
@@ -67,7 +67,7 @@ fn json_string(text: &str) -> String {
 
 /// `escapeCommentTerminator`: `--(!?)>` becomes `--$1\u003e`, so a comment end
 /// anywhere in the payload cannot close the marker early.
-fn escape_comment_terminator(json: &str) -> String {
+pub(crate) fn escape_comment_terminator(json: &str) -> String {
     let bytes = json.as_bytes();
     let mut out = String::with_capacity(json.len());
     let mut copied = 0;

@@ -308,7 +308,11 @@ describe('useFolderView', () => {
       await result.current.refresh()
     })
 
-    expect(mocks.propertiesSet).toHaveBeenCalledWith('n1', { status: 'review' })
+    expect(mocks.propertiesSet).toHaveBeenCalledWith(
+      'n1',
+      { status: 'review' },
+      { status: 'draft' }
+    )
     expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', headerTags: { add: ['new'] } })
     expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', emoji: '🚀' })
     expect(window.api.folderView.getViews).toHaveBeenCalled()
@@ -451,8 +455,8 @@ describe('useFolderView', () => {
       await result.current.updateNoteProperty('missing', 'status', 'new')
     })
 
-    expect(mocks.propertiesSet).toHaveBeenCalledWith('n1', {})
-    expect(mocks.propertiesSet).toHaveBeenCalledWith('missing', { status: 'new' })
+    expect(mocks.propertiesSet).toHaveBeenCalledWith('n1', {}, { status: 'draft' })
+    expect(mocks.propertiesSet).toHaveBeenCalledWith('missing', { status: 'new' }, {})
 
     mocks.notesUpdate.mockResolvedValueOnce({ success: false, error: 'No tags' })
     await act(async () => {

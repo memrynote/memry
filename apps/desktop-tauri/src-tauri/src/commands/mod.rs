@@ -10,6 +10,7 @@ pub mod journal;
 pub mod locale;
 pub mod logging;
 pub mod notes;
+pub mod properties;
 pub mod property_definitions;
 pub mod settings;
 pub mod shell;

@@ -81,6 +81,13 @@ vi.mock('../src/generated/bindings', () => {
       throw new Error(typeof result.error === 'string' ? result.error : '')
     return pick(result)
   }
+  // `window.api.properties` is typed without merge and rename; component tests still set them.
+  const properties = () =>
+    window.api.properties as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+  const written = (result: Record<string, unknown>) => ({
+    properties: result.properties ?? {},
+    removed: result.removed ?? []
+  })
   // `window.api.journal` is typed without the ported journal methods; component tests still set them.
   const journal = () =>
     window.api.journal as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
@@ -232,6 +239,13 @@ vi.mock('../src/generated/bindings', () => {
         answered(tags().renameCategory({ id, name }), () => null),
       tagsDeleteCategory: (id: string) => answered(tags().deleteCategory({ id }), () => null),
       tagsReorder: (input: unknown) => answered(tags().reorder(input), () => null),
+      propertiesGet: (entityId: string) => properties().get(entityId),
+      propertiesSet: (entityId: string, values: unknown, base: unknown) =>
+        answered(properties().set(entityId, values, base), written),
+      propertiesMerge: (entityId: string, values: unknown) =>
+        answered(properties().merge(entityId, values), written),
+      propertiesRename: (entityId: string, oldName: string, newName: string) =>
+        answered(properties().rename(entityId, oldName, newName), () => null),
       updaterGetState: () => updater().getState(),
       updaterCheckForUpdates: () => updater().checkForUpdates(),
       updaterDownloadUpdate: () => updater().downloadUpdate(),

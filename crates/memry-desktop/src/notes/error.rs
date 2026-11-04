@@ -7,7 +7,7 @@ use memry_core::markdown::frontmatter::YamlError;
 
 use crate::error::{CoreError, FailureKind};
 use crate::shell::file_open::OpenError;
-use crate::vault::app_edit::AppEditError;
+use crate::vault::app_edit::{AppEditError, Kept};
 use crate::vault::app_move::MoveError;
 use crate::vault::consumer::rows::RowError;
 use crate::vault::note_file::NoteFileError;
@@ -63,17 +63,51 @@ pub enum NotesError {
     File(#[from] NoteFileError),
     #[error("the frontmatter could not be written: {0}")]
     Yaml(#[from] YamlError),
-    /// The note's frontmatter is a list or a scalar, which has no `tags` key to write.
-    #[error("the note's frontmatter is not a set of keys, so its tags cannot be written")]
+    /// The note's frontmatter is a list or a scalar, which has no keys to write.
+    #[error("the note's frontmatter is not a set of keys, so it cannot be edited")]
     FrontmatterNotAMap,
-    /// The note's frontmatter does not parse, so a save would lose it (#3750).
-    #[error("the note's frontmatter could not be read, so the note was not saved")]
+    /// The note's frontmatter does not parse, so an edit would lose it (#3750).
+    #[error("the note's frontmatter could not be read, so the edit was not made")]
     FrontmatterUnreadable,
     /// Only a markdown note's file holds a body and frontmatter to edit (`NOT_MARKDOWN`).
     #[error("only a markdown note can be edited")]
     NotMarkdown,
+    /// The app's edit of the note's file was not made ([`Kept`]). Only an edit the file or the
+    /// note's document has and the other does not have yet passes with a retry; the message says
+    /// which. The variant is logged where the edit is refused, never shown.
+    #[error("{}", kept_message(.0))]
+    EditKept(Kept),
+    #[error("the note has no property `{0}`")]
+    PropertyNotFound(String),
+    #[error("the note already has a property `{0}`")]
+    PropertyExists(String),
     #[error("{0}")]
     Io(#[from] std::io::Error),
+}
+
+/// Whether trying the edit again can succeed: the file or the document catches up on its own.
+fn kept_is_retryable(kept: &Kept) -> bool {
+    matches!(
+        kept,
+        Kept::FileChanged | Kept::NotRead | Kept::BodyAhead | Kept::FileAhead
+    )
+}
+
+fn kept_message(kept: &Kept) -> &'static str {
+    match kept {
+        _ if kept_is_retryable(kept) => "the note changed while it was being edited; try again",
+        Kept::FrontmatterUnreadable | Kept::FrontmatterBroken => {
+            "the note's frontmatter could not be read, so the edit was not made"
+        }
+        Kept::BodyNotPulled => {
+            "the note's text has not arrived from sync yet, so the edit was not made"
+        }
+        Kept::NotRepresentable => {
+            "the note holds content its markdown file cannot, so the edit was not made"
+        }
+        Kept::NotMarkdown => "only a markdown note can be edited",
+        _ => "the note's file is not there, so the edit was not made",
+    }
 }
 
 impl From<RowError> for NotesError {
@@ -175,10 +209,25 @@ impl CoreError for NotesError {
             Self::Crdt(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
             Self::File(_) => (FailureKind::Storage, "note_file_failed"),
-            Self::Yaml(_) | Self::FrontmatterNotAMap | Self::FrontmatterUnreadable => {
+            Self::Yaml(_)
+            | Self::FrontmatterNotAMap
+            | Self::FrontmatterUnreadable
+            | Self::EditKept(Kept::FrontmatterUnreadable | Kept::FrontmatterBroken) => {
                 (FailureKind::Invalid, "frontmatter_failed")
             }
-            Self::NotMarkdown => (FailureKind::Invalid, "note_not_markdown"),
+            Self::NotMarkdown | Self::EditKept(Kept::NotMarkdown) => {
+                (FailureKind::Invalid, "note_not_markdown")
+            }
+            Self::EditKept(kept) if kept_is_retryable(kept) => {
+                (FailureKind::PropertyWrite, "note_edit_kept")
+            }
+            Self::EditKept(Kept::BodyNotPulled) => (FailureKind::Invalid, "note_body_not_pulled"),
+            Self::EditKept(Kept::NotRepresentable) => {
+                (FailureKind::Invalid, "note_not_representable")
+            }
+            Self::EditKept(_) => (FailureKind::NotFound, "note_not_found"),
+            Self::PropertyNotFound(_) => (FailureKind::NotFound, "property_not_found"),
+            Self::PropertyExists(_) => (FailureKind::PropertyWrite, "property_exists"),
             Self::Outside => (FailureKind::Invalid, "outside_vault"),
             Self::Unopenable(Unopenable::HardLinked) => (FailureKind::Invalid, "note_hard_linked"),
             Self::Unopenable(Unopenable::NotRegular) => (FailureKind::Invalid, "note_not_regular"),
@@ -187,6 +236,41 @@ impl CoreError for NotesError {
             }
             Self::Storage(error) => error.kind_and_code(),
             Self::Io(_) => (FailureKind::Storage, "note_file_failed"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_refusal_a_retry_can_pass_says_try_again_and_none_names_its_variant() {
+        let all = [
+            Kept::NoRow,
+            Kept::NotMarkdown,
+            Kept::NoFile,
+            Kept::NotRead,
+            Kept::FileChanged,
+            Kept::FrontmatterUnreadable,
+            Kept::FrontmatterBroken,
+            Kept::BodyAhead,
+            Kept::FileAhead,
+            Kept::BodyNotPulled,
+            Kept::NotRepresentable,
+            Kept::NoBody,
+        ];
+        for kept in all {
+            let variant = format!("{kept:?}");
+            let error = NotesError::EditKept(kept);
+            let message = error.to_string();
+            let (_, code) = error.kind_and_code();
+            assert_eq!(
+                message.contains("try again"),
+                code == "note_edit_kept",
+                "{variant}"
+            );
+            assert!(!message.contains(&variant), "{message}");
         }
     }
 }

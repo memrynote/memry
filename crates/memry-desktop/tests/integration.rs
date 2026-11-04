@@ -112,6 +112,8 @@ mod notes_link_rewrite;
 mod notes_local_only;
 #[path = "notes_moves.rs"]
 mod notes_moves;
+#[path = "notes_properties.rs"]
+mod notes_properties;
 #[path = "notes_service.rs"]
 mod notes_service;
 #[path = "notes_update.rs"]
