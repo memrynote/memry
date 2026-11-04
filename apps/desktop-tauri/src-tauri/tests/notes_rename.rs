@@ -404,12 +404,7 @@ fn an_applied_template_answers_the_note_and_sends_an_external_notes_updated() {
     assert_eq!(note.emoji.as_deref(), Some("📝"));
     assert!(note.content.starts_with("## Attendees"), "{}", note.content);
 
-    let deadline = Instant::now() + WAIT;
-    while f.edited.lock().unwrap().len() < 2 {
-        assert!(Instant::now() < deadline, "{:?}", f.edited.lock().unwrap());
-        std::thread::sleep(Duration::from_millis(20));
-    }
-    let mut events = std::mem::take(&mut *f.edited.lock().unwrap());
+    let mut events = f.next_edited(2);
     events.sort_by_key(|(name, _)| *name);
     assert_eq!(events[0], (NoteTagsChangedEvent::NAME, Value::Null));
     assert_eq!(events[1].0, NoteUpdatedEvent::NAME);

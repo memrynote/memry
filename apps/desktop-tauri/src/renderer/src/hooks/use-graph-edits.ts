@@ -37,11 +37,13 @@ async function readProperties(entityId: string): Promise<Record<string, unknown>
   return Object.fromEntries(props.map((p) => [p.name, p.value]))
 }
 
+/** `base` is the record `properties` was made from: only the difference is written. */
 async function writeProperties(
   entityId: string,
-  properties: Record<string, unknown>
+  properties: Record<string, unknown>,
+  base: Record<string, unknown>
 ): Promise<void> {
-  const result = await propertiesService.set(entityId, properties)
+  const result = await propertiesService.set(entityId, properties, base)
   if (!result.success) throw new Error(result.error ?? 'Failed to update properties')
 }
 
@@ -67,12 +69,10 @@ export function useGraphEdits(): GraphEdits {
     async (sourceId: string, targetId: string, labels: LinkLabels): Promise<void> => {
       const uri = noteRelationUri(targetId)
       try {
-        const { properties, removedFrom } = removeRelationTarget(
-          await readProperties(sourceId),
-          uri
-        )
+        const before = await readProperties(sourceId)
+        const { properties, removedFrom } = removeRelationTarget(before, uri)
         if (removedFrom.length === 0) return
-        await writeProperties(sourceId, properties)
+        await writeProperties(sourceId, properties, before)
         refreshGraph()
         toast(t('edit.unlinked', { ...labels }), {
           action: {
@@ -81,7 +81,11 @@ export function useGraphEdits(): GraphEdits {
               void (async () => {
                 try {
                   const current = await readProperties(sourceId)
-                  await writeProperties(sourceId, restoreRelationTarget(current, removedFrom, uri))
+                  await writeProperties(
+                    sourceId,
+                    restoreRelationTarget(current, removedFrom, uri),
+                    current
+                  )
                   refreshGraph()
                 } catch (err) {
                   log.error('undo unlink failed:', err)
@@ -104,7 +108,8 @@ export function useGraphEdits(): GraphEdits {
       if (sourceId === targetId) return
       const uri = noteRelationUri(targetId)
       try {
-        const result = addRelationTarget(await readProperties(sourceId), GRAPH_LINK_PROPERTY, uri)
+        const before = await readProperties(sourceId)
+        const result = addRelationTarget(before, GRAPH_LINK_PROPERTY, uri)
         if (result.status === 'already-linked') {
           toast(t('edit.already-linked', { ...labels }))
           return
@@ -113,7 +118,7 @@ export function useGraphEdits(): GraphEdits {
           toast.error(t('edit.property-conflict', { property: GRAPH_LINK_PROPERTY }))
           return
         }
-        await writeProperties(sourceId, result.properties)
+        await writeProperties(sourceId, result.properties, before)
         refreshGraph()
         toast(t('edit.linked', { ...labels, property: GRAPH_LINK_PROPERTY }), {
           action: {
@@ -124,10 +129,11 @@ export function useGraphEdits(): GraphEdits {
                   const current = await readProperties(sourceId)
                   const value = current[GRAPH_LINK_PROPERTY]
                   if (!Array.isArray(value) || !value.includes(uri)) return
-                  await writeProperties(sourceId, {
-                    ...current,
-                    [GRAPH_LINK_PROPERTY]: value.filter((v) => v !== uri)
-                  })
+                  await writeProperties(
+                    sourceId,
+                    { ...current, [GRAPH_LINK_PROPERTY]: value.filter((v) => v !== uri) },
+                    current
+                  )
                   refreshGraph()
                 } catch (err) {
                   log.error('undo link failed:', err)

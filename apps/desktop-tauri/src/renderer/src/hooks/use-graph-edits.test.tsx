@@ -64,7 +64,12 @@ describe('useGraphEdits', () => {
 
     await act(() => edits.linkNotes('note-a', 'note-b', labels))
 
-    expect(mocks.propertiesSet).toHaveBeenCalledWith('note-a', { status: 'draft', related: [B] })
+    // The record it read goes with it, so only the new link is written.
+    expect(mocks.propertiesSet).toHaveBeenCalledWith(
+      'note-a',
+      { status: 'draft', related: [B] },
+      { status: 'draft' }
+    )
     expect(invalidate).toHaveBeenCalledWith({ queryKey: graphKeys.all })
 
     // Undo re-reads, so a property added meanwhile survives.
@@ -73,11 +78,11 @@ describe('useGraphEdits', () => {
       lastUndo()()
       await vi.waitFor(() => expect(mocks.propertiesSet).toHaveBeenCalledTimes(2))
     })
-    expect(mocks.propertiesSet).toHaveBeenLastCalledWith('note-a', {
-      status: 'draft',
-      related: [],
-      extra: 1
-    })
+    expect(mocks.propertiesSet).toHaveBeenLastCalledWith(
+      'note-a',
+      { status: 'draft', related: [], extra: 1 },
+      { status: 'draft', related: [B], extra: 1 }
+    )
   })
 
   it('does not write when the link already exists or the property is taken', async () => {
@@ -110,20 +115,22 @@ describe('useGraphEdits', () => {
 
     await act(() => edits.unlinkNotes('note-a', 'note-b', labels))
 
-    expect(mocks.propertiesSet).toHaveBeenCalledWith('note-a', {
-      related: [],
-      source: ['memry://note/c']
-    })
+    expect(mocks.propertiesSet).toHaveBeenCalledWith(
+      'note-a',
+      { related: [], source: ['memry://note/c'] },
+      { related: [B], source: [B, 'memry://note/c'] }
+    )
 
     mocks.propertiesGet.mockResolvedValue(props({ related: [], source: ['memry://note/c'] }))
     await act(async () => {
       lastUndo()()
       await vi.waitFor(() => expect(mocks.propertiesSet).toHaveBeenCalledTimes(2))
     })
-    expect(mocks.propertiesSet).toHaveBeenLastCalledWith('note-a', {
-      related: [B],
-      source: ['memry://note/c', B]
-    })
+    expect(mocks.propertiesSet).toHaveBeenLastCalledWith(
+      'note-a',
+      { related: [B], source: ['memry://note/c', B] },
+      { related: [], source: ['memry://note/c'] }
+    )
   })
 
   it('adds a tag through notes:update and removes it on undo', async () => {

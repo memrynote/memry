@@ -5,7 +5,9 @@
 //!   title. Nothing else is asked for.
 //! - **`full`**: the body, and the template's tags join the header, its property values fill
 //!   the names the note does not hold (the note's win, `{ ...template, ...note }`), and its
-//!   icon is the note's when the note has none.
+//!   icon is the note's when the note has none. The note holds a name its file has, or its
+//!   record alone: a value pulled from sync lives in the record until the pull writes the file
+//!   (13k-4), and the apply writes that value into the file instead of the template's.
 //!
 //! Either way the new body's `#tags` join the header and the old body's leave it, as Electron's
 //! `updateNote` reads a body change (`header_tags::next`), and every frontmatter key the apply
@@ -17,28 +19,31 @@
 //! the text, and before that event, the record takes the icon, the header tags and the property
 //! values, as `notes:update` writes them. A note whose file or document the seam keeps (an
 //! outside edit not fed yet, an edit the document has and the file not) is refused as a save
-//! is, and the user applies again.
+//! is, and the user applies again. An apply that replaces the body keeps a version of the file
+//! first, under the seam's lane, as Electron's `writeNote` keeps one before it: the user's text
+//! can be brought back.
 //!
 //! Not here, with their owners: `plainChecklists` (Step 32; the renderer refuses it), the lock
-//! check (Step 14), a project property's task links (Step 21), and the significant-change
-//! version Electron's `updateNote` keeps before replacing a body (Step 14's versions).
+//! check (Step 14) and a project property's task links (Step 21).
 
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use memry_core::domain::header_tags::{self, Existing, HeaderTagEdit, Update};
 use memry_core::domain::note_stats::header_tags as file_header_tags;
 use memry_core::markdown::frontmatter::{
-    YamlMap, YamlValue, json_to_yaml, parse_markdown_note, serialize_updated_note,
+    YamlMap, YamlValue, parse_markdown_note, serialize_updated_note, split_frontmatter_block,
 };
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-use super::error::NotesError;
-use super::frontmatter::{file_fields, is_reserved_key};
+use super::error::{NotesError, SCOPE};
+use super::frontmatter::{is_reserved_key, user_properties};
+use super::properties::edit::{PropertyEdit, edited};
+use super::properties::{mirror_properties, property_delta};
 use super::read;
 use super::service::NotesService;
-use super::update::{Updated, refused, tag_keys};
+use super::update::{Updated, tag_keys};
 use crate::session::OpenVault;
 use crate::templates::{TemplateView, Templates};
 use crate::vault::app_edit::{AppEdit, Edited, Precondition};
@@ -67,21 +72,25 @@ pub struct Applied {
     pub text: String,
     /// The header tags, when the apply changed them.
     pub header_tags: Option<Vec<String>>,
-    /// The property values the template gave, by name.
-    pub properties: Map<String, Value>,
+    /// The keys the record's property values take and drop once the file holds the text, as
+    /// stored by the definitions' types.
+    pub properties: (Map<String, Value>, Vec<String>),
     /// The header or the body's `#tags` changed (`notes:tags-changed`).
     pub tags_changed: bool,
 }
 
 /// The text a note file's `text` (without a byte order mark) becomes with `template` applied in
-/// `mode`, for a note titled `title`. `with_fields` holds the keys of the tags with fields,
-/// whose body `#tags` stay out of the header.
+/// `mode`, for a note titled `title` whose record holds the property values `record`.
+/// `with_fields` holds the keys of the tags with fields, whose body `#tags` stay out of the
+/// header; `types` the property definitions' types, by name.
 pub fn applied(
     text: &str,
     title: &str,
+    record: &Map<String, Value>,
     template: &TemplateView,
     mode: TemplateMode,
     with_fields: &HashSet<String>,
+    types: &HashMap<String, String>,
 ) -> Result<Applied, NotesError> {
     let parsed = parse_markdown_note(text)?;
     let reading = match &parsed.frontmatter {
@@ -109,18 +118,29 @@ pub fn applied(
 
     let mut next = reading.clone();
     header_tags::set_tags(&mut next, &tags, change.as_ref());
-    let mut properties = Map::new();
     if full {
-        let held = file_fields(&parsed.frontmatter).properties;
+        // The values the note does not hold: a record-only one (pulled, not in the file yet,
+        // 13k-4) as the record holds it, then the template's, through the property writer's
+        // edit (`writePropertiesToRoot`).
+        let in_file = user_properties(&reading);
+        let mut fill: Map<String, Value> = record
+            .iter()
+            .filter(|(name, value)| !in_file.contains_key(name) && !is_reserved_key(name, value))
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect();
         for (name, value) in template.note_properties()? {
-            if held.contains_key(&name) || is_reserved_key(&name, &value) {
-                continue;
+            if !in_file.contains_key(&name) && !record.contains_key(&name) {
+                fill.insert(name, value);
             }
-            next.insert(name.clone(), json_to_yaml(&value));
-            properties.insert(name, value);
         }
+        let fill = PropertyEdit::Set {
+            properties: fill,
+            base: Map::new(),
+        };
+        next = edited(&next, &fill)?;
     }
-    let edited = change.is_some() || !properties.is_empty();
+    let properties = property_delta(&reading, &next, types);
+    let edited = change.is_some() || !properties.0.is_empty() || !properties.1.is_empty();
     if edited && !matches!(parsed.frontmatter, YamlValue::Map(_)) {
         // A top level that is a list or a scalar is the author's; no key goes into it.
         return Err(NotesError::FrontmatterNotAMap);
@@ -149,6 +169,7 @@ impl NotesService {
             .get(&input.template_id)?
             .ok_or_else(|| NotesError::TemplateNotFound(input.template_id.clone()))?;
         let with_fields = open.vault.tags_with_fields()?;
+        let types = self.definition_types(open);
         let writer = open.vault.notes_writer(self.store.clone())?;
         let edit = AppEdit::new(&self.tier, &self.store, open)?;
         let tags_changed = self.order.run(id, |turn| {
@@ -170,10 +191,22 @@ impl NotesService {
                 Precondition::Held,
                 ChangeSource::AppEdit,
                 |text| {
-                    let next = applied(text, &listed.title, &template, input.mode, &with_fields)?;
-                    let text = next.text.clone();
+                    let next = applied(
+                        text,
+                        &listed.title,
+                        &listed.properties,
+                        &template,
+                        input.mode,
+                        &with_fields,
+                        &types,
+                    )?;
+                    let read_body = split_frontmatter_block(text).body;
+                    if split_frontmatter_block(&next.text).body != read_body {
+                        open.vault.write_back().keep_replaced(id, text, read_body)?;
+                    }
+                    let output = next.text.clone();
                     *planned.borrow_mut() = Some(next);
-                    Ok::<_, NotesError>(Some(text))
+                    Ok::<_, NotesError>(Some(output))
                 },
                 || {
                     let mut plan = planned.borrow_mut();
@@ -186,9 +219,7 @@ impl NotesService {
                     if let Some(tags) = plan.header_tags.take() {
                         writer.set_tags(id.to_owned(), tags)?;
                     }
-                    for (name, value) in std::mem::take(&mut plan.properties) {
-                        writer.set_property(id.to_owned(), name, value.to_string())?;
-                    }
+                    mirror_properties(&writer, id, std::mem::take(&mut plan.properties))?;
                     Ok(icon.is_some())
                 },
                 &mut || {},
@@ -196,7 +227,15 @@ impl NotesService {
             let tags_changed = planned.into_inner().is_some_and(|plan| plan.tags_changed);
             match edited {
                 Edited::Wrote { .. } | Edited::Unchanged => Ok(tags_changed),
-                Edited::Kept(kept) => Err(refused(id, kept)),
+                Edited::Kept(kept) => {
+                    tracing::info!(
+                        scope = SCOPE,
+                        note_id = id,
+                        ?kept,
+                        "a template was not applied"
+                    );
+                    Err(NotesError::EditKept(kept))
+                }
             }
         })?;
         let note = read::get(open, id, None)?.ok_or_else(not_found)?;

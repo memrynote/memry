@@ -482,24 +482,44 @@ export function memryPwInstall(win) {
     'input, textarea, select, button, a[href], [tabindex], [contenteditable=""], [contenteditable="true"]'
   let seen = {}
   let watching = null
+  const POINTER_BEFORE = { mousedown: 'pointerdown', mouseup: 'pointerup' }
 
-  /** Starts recording which events the driver itself dispatches for the next input. */
+  /**
+   * Starts recording which events the driver itself dispatches for the next input. A driver that
+   * sends `mousedown` and `mouseup` without pointer events gets them here, just ahead of each and
+   * on its target, as a real press orders them: added after the click, a `pointerdown` lands on
+   * whatever the click left at the point, such as the outside of a popover the click reshaped.
+   */
   function watch() {
-    seen = {}
+    seen = { activeBefore: doc.activeElement, watching: true }
     if (watching) return true
     watching = (event) => {
+      if (!seen.watching) return
+      const pointer = POINTER_BEFORE[event.type]
+      if (pointer && !seen[pointer] && typeof win.PointerEvent === 'function') {
+        event.target.dispatchEvent(
+          new win.PointerEvent(pointer, {
+            ...mouseInit(event.clientX, event.clientY, event.button, 0, event.buttons),
+            pointerId: 1,
+            pointerType: 'mouse',
+            isPrimary: true
+          })
+        )
+      }
       seen[event.type] = true
       if (event.type === 'mousedown' && event.defaultPrevented) seen.prevented = true
     }
     for (const type of [
       'pointerdown',
+      'pointerup',
       'mousedown',
+      'mouseup',
       'dblclick',
       'contextmenu',
       'mouseover',
       'pointerover'
     ]) {
-      doc.addEventListener(type, watching, true)
+      win.addEventListener(type, watching, true)
     }
     return true
   }
@@ -521,9 +541,12 @@ export function memryPwInstall(win) {
   /**
    * Some embedded drivers (macOS WKWebView) dispatch synthetic `mousedown`, `mouseup` and `click`
    * only. Add what a real click does and was not seen: pointer events, focus, `dblclick` and
-   * `contextmenu`. Idempotent against drivers that already did it.
+   * `contextmenu`. Idempotent against drivers that already did it. A real click moves focus on
+   * `mousedown`, before any handler runs, so focus a handler moved during the click is left where
+   * it put it.
    */
   function fixup(x, y, button, clickCount) {
+    seen.watching = false
     const el = doc.elementFromPoint(x, y)
     if (!el) return false
     const buttons = button === 0 ? 1 : button === 2 ? 2 : 4
@@ -537,7 +560,7 @@ export function memryPwInstall(win) {
       el.dispatchEvent(new win.PointerEvent('pointerdown', init))
       el.dispatchEvent(new win.PointerEvent('pointerup', { ...init, buttons: 0 }))
     }
-    if (button === 0 && !seen.prevented) {
+    if (button === 0 && !seen.prevented && doc.activeElement === seen.activeBefore) {
       const focusable = el.closest(FOCUSABLE)
       if (focusable) {
         if (doc.activeElement !== focusable) focusable.focus()
@@ -558,6 +581,7 @@ export function memryPwInstall(win) {
 
   /** Adds the enter and over events a driver left out of a pointer move. */
   function fixupHover(x, y) {
+    seen.watching = false
     const el = doc.elementFromPoint(x, y)
     if (!el || el === hovered || seen.mouseover) return false
     hovered = el

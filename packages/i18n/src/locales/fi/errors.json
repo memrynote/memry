@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "Ominaisuuden määrityksen päivittäminen epäonnistui",
     "setCalendarVisibilityFailed": "Kalenteriominaisuuden näkyvyyden asettaminen epäonnistui",
     "definitionsFileUnreadable": "Ominaisuuksien muutoksia ei voi tallentaa, koska tiedostoa .memry/properties.md ei voi lukea. Korjaa tai poista tiedosto ja yritä uudelleen.",
-    "definitionsFileWriteFailed": "Ominaisuuksien muutoksia ei voi tallentaa, koska tiedostoon .memry/properties.md ei voi kirjoittaa."
+    "definitionsFileWriteFailed": "Ominaisuuksien muutoksia ei voi tallentaa, koska tiedostoon .memry/properties.md ei voi kirjoittaa.",
+    "noteChanged": "Tämä muistiinpano muuttui, kun sen ominaisuuksia tallennettiin. Yritä uudelleen.",
+    "noteNotPulled": "Tämän muistiinpanon teksti ei ole vielä synkronoitunut, joten sen ominaisuuksia ei voi vielä muuttaa."
   },
   "reminder": {
     "notFound": "Muistutusta ei löytynyt",

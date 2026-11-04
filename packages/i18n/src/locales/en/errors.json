@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "Failed to update property definition",
     "setCalendarVisibilityFailed": "Failed to set calendar property visibility",
     "definitionsFileUnreadable": "Can't save property changes because .memry/properties.md can't be read. Fix or remove that file, then try again.",
-    "definitionsFileWriteFailed": "Can't save property changes because .memry/properties.md can't be written."
+    "definitionsFileWriteFailed": "Can't save property changes because .memry/properties.md can't be written.",
+    "noteChanged": "This note changed while its properties were being saved. Try again.",
+    "noteNotPulled": "This note's text hasn't finished syncing, so its properties can't be changed yet."
   },
   "reminder": {
     "notFound": "Reminder not found",

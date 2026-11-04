@@ -62,6 +62,8 @@ mod e2e;
 mod embeds;
 #[path = "file_open.rs"]
 mod file_open;
+#[path = "folder_file.rs"]
+mod folder_file;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
 #[path = "home_covers.rs"]
@@ -112,6 +114,8 @@ mod notes_link_rewrite;
 mod notes_local_only;
 #[path = "notes_moves.rs"]
 mod notes_moves;
+#[path = "notes_properties.rs"]
+mod notes_properties;
 #[path = "notes_service.rs"]
 mod notes_service;
 #[path = "notes_tag_template.rs"]

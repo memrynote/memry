@@ -1,0 +1,384 @@
+{
+  "writes": [
+    {
+      "name": "empty",
+      "config": {},
+      "bytes": null
+    },
+    {
+      "name": "inherit-true-only",
+      "config": {
+        "inherit": true
+      },
+      "bytes": null
+    },
+    {
+      "name": "icon",
+      "config": {
+        "icon": "lucide:folder"
+      },
+      "bytes": "---\nicon: 'lucide:folder'\n---\n\n"
+    },
+    {
+      "name": "icon-emoji-astral",
+      "config": {
+        "icon": "emoji:📁"
+      },
+      "bytes": "---\nicon: \"emoji:\\U0001F4C1\"\n---\n\n"
+    },
+    {
+      "name": "icon-needs-quotes",
+      "config": {
+        "icon": "a: b # c"
+      },
+      "bytes": "---\nicon: 'a: b # c'\n---\n\n"
+    },
+    {
+      "name": "template",
+      "config": {
+        "template": "meeting-notes"
+      },
+      "bytes": "---\ntemplate: meeting-notes\n---\n\n"
+    },
+    {
+      "name": "inherit-false",
+      "config": {
+        "inherit": false
+      },
+      "bytes": "---\ninherit: false\n---\n\n"
+    },
+    {
+      "name": "views",
+      "config": {
+        "views": [
+          {
+            "id": "v1",
+            "name": "Table",
+            "type": "table",
+            "columns": [
+              {
+                "id": "title"
+              }
+            ]
+          }
+        ]
+      },
+      "bytes": "---\nviews:\n  - id: v1\n    name: Table\n    type: table\n    columns:\n      - id: title\n---\n\n"
+    },
+    {
+      "name": "views-empty",
+      "config": {
+        "views": [],
+        "icon": "x"
+      },
+      "bytes": "---\nicon: x\n---\n\n"
+    },
+    {
+      "name": "formulas",
+      "config": {
+        "formulas": {
+          "total": "price * qty"
+        }
+      },
+      "bytes": "---\nformulas:\n  total: price * qty\n---\n\n"
+    },
+    {
+      "name": "formulas-empty",
+      "config": {
+        "formulas": {}
+      },
+      "bytes": null
+    },
+    {
+      "name": "properties",
+      "config": {
+        "properties": {
+          "status": {
+            "displayName": "State"
+          }
+        }
+      },
+      "bytes": "---\nproperties:\n  status:\n    displayName: State\n---\n\n"
+    },
+    {
+      "name": "summaries",
+      "config": {
+        "summaries": {
+          "price": "sum"
+        }
+      },
+      "bytes": "---\nsummaries:\n  price: sum\n---\n\n"
+    },
+    {
+      "name": "everything",
+      "config": {
+        "icon": "emoji:⭐",
+        "template": "daily",
+        "inherit": false,
+        "views": [
+          {
+            "id": "v1",
+            "name": "All",
+            "type": "table"
+          }
+        ],
+        "formulas": {
+          "a": "1 + 2"
+        },
+        "properties": {
+          "a": {
+            "width": 120
+          }
+        },
+        "summaries": {
+          "a": "count"
+        }
+      },
+      "bytes": "---\nicon: 'emoji:⭐'\ntemplate: daily\ninherit: false\nviews:\n  - id: v1\n    name: All\n    type: table\nformulas:\n  a: 1 + 2\nproperties:\n  a:\n    width: 120\nsummaries:\n  a: count\n---\n\n"
+    },
+    {
+      "name": "multiline-template",
+      "config": {
+        "template": "line one\nline two"
+      },
+      "bytes": "---\ntemplate: |-\n  line one\n  line two\n---\n\n"
+    }
+  ],
+  "reads": [
+    {
+      "name": "electron",
+      "input": "---\nicon: 'emoji:⭐'\ntemplate: daily\ninherit: false\nviews:\n  - id: v1\n    name: All\n    type: table\nformulas:\n  a: 1 + 2\nproperties:\n  a:\n    width: 120\nsummaries:\n  a: count\n---\n\n",
+      "config": {
+        "icon": "emoji:⭐",
+        "template": "daily",
+        "inherit": false,
+        "views": [
+          {
+            "id": "v1",
+            "name": "All",
+            "type": "table"
+          }
+        ],
+        "formulas": {
+          "a": "1 + 2"
+        },
+        "properties": {
+          "a": {
+            "width": 120
+          }
+        },
+        "summaries": {
+          "a": "count"
+        }
+      }
+    },
+    {
+      "name": "crlf",
+      "input": "---\r\nicon: lucide:star\r\ntemplate: t\r\n---\r\n",
+      "config": {
+        "icon": "lucide:star",
+        "template": "t",
+        "inherit": true
+      }
+    },
+    {
+      "name": "bom",
+      "input": "﻿---\nicon: lucide:star\n---\n",
+      "config": {
+        "icon": "lucide:star",
+        "inherit": true
+      }
+    },
+    {
+      "name": "unknown-keys",
+      "input": "---\nicon: x\nsort: manual\ncolor: red\n---\n",
+      "config": {
+        "icon": "x",
+        "inherit": true
+      }
+    },
+    {
+      "name": "body-after",
+      "input": "---\ntemplate: t\n---\n\nSome text\n",
+      "config": {
+        "template": "t",
+        "inherit": true
+      }
+    },
+    {
+      "name": "no-frontmatter",
+      "input": "just text\n",
+      "config": {
+        "inherit": true
+      }
+    },
+    {
+      "name": "empty",
+      "input": "",
+      "config": {
+        "inherit": true
+      }
+    },
+    {
+      "name": "empty-block",
+      "input": "---\n---\n",
+      "config": {
+        "inherit": true
+      }
+    },
+    {
+      "name": "inherit-string",
+      "input": "---\ninherit: \"false\"\n---\n",
+      "config": {
+        "inherit": true
+      }
+    },
+    {
+      "name": "inherit-false",
+      "input": "---\ninherit: false\n---\n",
+      "config": {
+        "inherit": false
+      }
+    },
+    {
+      "name": "icon-number",
+      "input": "---\nicon: 42\ntemplate: [a]\n---\n",
+      "config": {
+        "inherit": true
+      }
+    },
+    {
+      "name": "views-object",
+      "input": "---\nviews:\n  a: 1\n---\n",
+      "config": {
+        "inherit": true
+      }
+    },
+    {
+      "name": "formulas-array",
+      "input": "---\nformulas:\n  - a\n---\n",
+      "config": {
+        "inherit": true,
+        "formulas": [
+          "a"
+        ]
+      }
+    },
+    {
+      "name": "formulas-scalar",
+      "input": "---\nformulas: 3\n---\n",
+      "config": {
+        "inherit": true
+      }
+    },
+    {
+      "name": "broken-yaml",
+      "input": "---\nviews: [\n---\n",
+      "config": null
+    },
+    {
+      "name": "frontmatter-list",
+      "input": "---\n- a\n- b\n---\n",
+      "config": {
+        "inherit": true
+      }
+    },
+    {
+      "name": "anchors",
+      "input": "---\nformulas: &f\n  a: b\nproperties: *f\n---\n",
+      "config": {
+        "inherit": true,
+        "formulas": {
+          "a": "b"
+        },
+        "properties": {
+          "a": "b"
+        }
+      }
+    }
+  ],
+  "sets": [
+    {
+      "name": "template-on-missing",
+      "before": null,
+      "config": {
+        "template": "daily",
+        "inherit": true
+      },
+      "bytes": "---\ntemplate: daily\n---\n\n"
+    },
+    {
+      "name": "icon-on-missing",
+      "before": null,
+      "config": {
+        "icon": "lucide:book",
+        "inherit": true
+      },
+      "bytes": "---\nicon: 'lucide:book'\n---\n\n"
+    },
+    {
+      "name": "template-keeps-views",
+      "before": "---\nviews:\n  - id: v1\n    name: Table\n    type: table\n    columns:\n      - id: title\n---\n\n",
+      "config": {
+        "template": "daily",
+        "inherit": true
+      },
+      "bytes": "---\ntemplate: daily\nviews:\n  - id: v1\n    name: Table\n    type: table\n    columns:\n      - id: title\n---\n\n"
+    },
+    {
+      "name": "absent-icon-keeps-it",
+      "before": "---\nicon: 'emoji:⭐'\ntemplate: daily\ninherit: false\nviews:\n  - id: v1\n    name: All\n    type: table\nformulas:\n  a: 1 + 2\nproperties:\n  a:\n    width: 120\nsummaries:\n  a: count\n---\n\n",
+      "config": {
+        "template": "other",
+        "inherit": true
+      },
+      "bytes": "---\nicon: 'emoji:⭐'\ntemplate: other\nviews:\n  - id: v1\n    name: All\n    type: table\nformulas:\n  a: 1 + 2\nproperties:\n  a:\n    width: 120\nsummaries:\n  a: count\n---\n\n"
+    },
+    {
+      "name": "null-icon-clears-it",
+      "before": "---\nicon: 'emoji:⭐'\ntemplate: daily\ninherit: false\nviews:\n  - id: v1\n    name: All\n    type: table\nformulas:\n  a: 1 + 2\nproperties:\n  a:\n    width: 120\nsummaries:\n  a: count\n---\n\n",
+      "config": {
+        "icon": null,
+        "template": "daily",
+        "inherit": false
+      },
+      "bytes": "---\ntemplate: daily\ninherit: false\nviews:\n  - id: v1\n    name: All\n    type: table\nformulas:\n  a: 1 + 2\nproperties:\n  a:\n    width: 120\nsummaries:\n  a: count\n---\n\n"
+    },
+    {
+      "name": "clear-all",
+      "before": "---\nicon: x\ntemplate: t\n---\n\n",
+      "config": {
+        "icon": null,
+        "inherit": true
+      },
+      "bytes": null
+    },
+    {
+      "name": "inherit-false",
+      "before": "---\ntemplate: t\n---\n\n",
+      "config": {
+        "template": "t",
+        "inherit": false
+      },
+      "bytes": "---\ntemplate: t\ninherit: false\n---\n\n"
+    },
+    {
+      "name": "crlf-file",
+      "before": "---\r\nicon: x\r\n---\r\n",
+      "config": {
+        "template": "t",
+        "inherit": true
+      },
+      "bytes": "---\nicon: x\ntemplate: t\n---\n\n"
+    },
+    {
+      "name": "empty-file",
+      "before": "",
+      "config": {
+        "icon": "y",
+        "inherit": true
+      },
+      "bytes": "---\nicon: 'y'\n---\n\n"
+    }
+  ]
+}

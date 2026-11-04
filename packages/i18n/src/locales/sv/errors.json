@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "Det gick inte att uppdatera egenskapsdefinitionen",
     "setCalendarVisibilityFailed": "Det gick inte att ställa in egenskapens synlighet i kalendern",
     "definitionsFileUnreadable": "Det går inte att spara egenskapsändringar eftersom .memry/properties.md inte kan läsas. Åtgärda eller ta bort filen och försök igen.",
-    "definitionsFileWriteFailed": "Det går inte att spara egenskapsändringar eftersom .memry/properties.md inte kan skrivas."
+    "definitionsFileWriteFailed": "Det går inte att spara egenskapsändringar eftersom .memry/properties.md inte kan skrivas.",
+    "noteChanged": "Den här anteckningen ändrades medan dess egenskaper sparades. Försök igen.",
+    "noteNotPulled": "Texten i den här anteckningen är inte färdigsynkroniserad, så dess egenskaper kan inte ändras än."
   },
   "reminder": {
     "notFound": "Påminnelsen hittades inte",

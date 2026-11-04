@@ -12,6 +12,7 @@ pub mod callout;
 pub mod embeds;
 pub mod file;
 pub mod math;
+pub mod note_refs;
 pub mod toggle;
 
 /// `ParsedBlockShape`: a parsed block, as BlockNote block JSON.

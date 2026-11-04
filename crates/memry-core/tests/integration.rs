@@ -266,6 +266,8 @@ mod note_header_status;
 mod note_link_display;
 #[path = "note_meta.rs"]
 mod note_meta;
+#[path = "note_refs_move.rs"]
+mod note_refs_move;
 #[path = "note_stats_store.rs"]
 mod note_stats_store;
 #[path = "note_stats_vectors.rs"]

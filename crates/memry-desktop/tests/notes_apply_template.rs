@@ -5,8 +5,11 @@
 //! | Test                                                              | Rule                                    |
 //! | ----------------------------------------------------------------- | --------------------------------------- |
 //! | full: body, tags, the values the note lacks, the icon it lacks    | `buildTemplateApplyUpdate` `full`       |
+//! | a value only the record holds wins and is written to the file     | `{ ...template, ...note }`              |
+//! | a replaced body is kept as a version first                        | `writeNote`'s snapshot                  |
 //! | body: only the body, its `#tags` moving the header as a save does | `full` off; `nextHeaderTags`            |
-//! | a note whose document is ahead of its file is kept as it is       | the app-edit seam; no record written    |
+//! | only the body's `#tags` changed: still `notes:tags-changed`       | `hasTagChange`                          |
+//! | a note whose document is ahead of its file is kept as it is       | `note_edit_kept`; no record written     |
 //! | a template or a note that is not there                            | `NOT_FOUND`                             |
 
 #[allow(unused_imports)]
@@ -17,6 +20,7 @@ use crate::vault_env;
 use std::sync::Arc;
 
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::error::CoreError;
 use memry_desktop::notes::apply_template::{ApplyTemplateInput, TemplateMode};
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
@@ -25,9 +29,9 @@ use memry_desktop::notes::service::NotesService;
 use memry_desktop::templates::{
     TemplateCreateInput, TemplateProperty, TemplatePropertyType, Templates,
 };
+use memry_desktop::vault::app_edit::Kept;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::hash::content_hash;
-use memry_desktop::vault::note_file::NoteFileError;
 use serde_json::{Map, Value, json};
 use vault_env::{Env, QUIET, env, indexed};
 
@@ -167,6 +171,53 @@ fn full_gives_the_body_tags_the_values_the_note_lacks_and_the_icon_it_lacks() {
 }
 
 #[test]
+fn a_value_only_the_record_holds_wins_and_is_written_to_the_file() {
+    let (e, notes, store) = opened(&[("Plan.md", "Old body\n")]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let template = brief(&e, &store);
+    // Pulled from sync: in the record, not yet in the file (13k-4). `owner` is a number there,
+    // which the template's text would retype.
+    let writer = e.core().notes_writer(store.clone()).unwrap();
+    writer
+        .set_property(id.clone(), "stage".into(), "\"Review\"".into())
+        .unwrap();
+    writer
+        .set_property(id.clone(), "owner".into(), "5".into())
+        .unwrap();
+
+    let applied = notes
+        .apply_template(&open, input(&id, &template, TemplateMode::Full))
+        .unwrap();
+
+    assert_eq!(
+        e.read("Plan.md"),
+        "---\ntags:\n  - brief\nstage: Review\nowner: 5\n---\n# Plan\n\nFrom the template #brief\n"
+    );
+    assert_eq!(
+        applied.note.properties,
+        object(json!({ "stage": "Review", "owner": 5 }))
+    );
+    let listed = e.core().note_files().listed_by_id(&id).unwrap().unwrap();
+    assert_eq!(listed.properties.get("stage"), Some(&json!("Review")));
+    assert_eq!(listed.properties.get("owner"), Some(&json!(5)));
+}
+
+#[test]
+fn a_replaced_body_is_kept_as_a_version_first() {
+    let (e, notes, store) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let template = brief(&e, &store);
+
+    notes
+        .apply_template(&open, input(&id, &template, TemplateMode::Body))
+        .unwrap();
+
+    assert_eq!(e.versions(&id), [PLAN]);
+}
+
+#[test]
 fn body_replaces_only_the_body_and_its_tags_move_the_header_as_a_save_does() {
     let note = "---\nkeep: 'as is'\ntags: [old]\n---\nAbout #old\n";
     let (e, notes, store) = opened(&[("Plan.md", note)]);
@@ -187,6 +238,26 @@ fn body_replaces_only_the_body_and_its_tags_move_the_header_as_a_save_does() {
 }
 
 #[test]
+fn a_body_whose_tags_alone_changed_still_tells_the_tags_changed() {
+    // The header already holds `brief`; only the body gains `#brief`.
+    let note = "---\ntags: [brief]\n---\nPlain\n";
+    let (e, notes, store) = opened(&[("Plan.md", note)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let template = brief(&e, &store);
+
+    let applied = notes
+        .apply_template(&open, input(&id, &template, TemplateMode::Body))
+        .unwrap();
+
+    assert_eq!(
+        e.read("Plan.md"),
+        "---\ntags: [brief]\n---\n# Plan\n\nFrom the template #brief\n"
+    );
+    assert!(applied.tags_changed);
+}
+
+#[test]
 fn a_note_whose_document_is_ahead_of_its_file_is_kept_as_it_is() {
     let (e, notes, store) = opened(&[("Plan.md", PLAN)]);
     let open = e.session.current().unwrap();
@@ -196,13 +267,13 @@ fn a_note_whose_document_is_ahead_of_its_file_is_kept_as_it_is() {
 
     let kept = notes.apply_template(&open, input(&id, &template, TemplateMode::Full));
 
+    // Typing the write-back has not written yet: the user applies again once it is.
+    let error = kept.unwrap_err();
     assert!(
-        matches!(
-            kept,
-            Err(NotesError::File(NoteFileError::ChangedUnderWrite))
-        ),
-        "{kept:?}"
+        matches!(error, NotesError::EditKept(Kept::BodyAhead)),
+        "{error:?}"
     );
+    assert_eq!(error.kind_and_code().1, "note_edit_kept");
     assert_eq!(e.read("Plan.md"), PLAN);
     assert_eq!(e.body(&id), "Typed in the app");
     let listed = e.core().note_files().listed_by_id(&id).unwrap().unwrap();

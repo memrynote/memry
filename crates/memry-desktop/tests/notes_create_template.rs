@@ -8,6 +8,7 @@
 //! | what the caller gives wins over the template's                   | body, values, tags, icon              |
 //! | the title fills the template's placeholder, as written           | `{{title}}`                           |
 //! | a tag's template applies when none is named                      | `resolveTagSchemas` `template`        |
+//! | the folder's template applies after the tags', inherited         | `getFolderTemplate` (Step 13h)        |
 //! | a template that is not there makes a plain note                  | `if (template)`, no fallback after    |
 //! | the command tells an absent icon from a cleared one              | `emoji` undefined vs `null`           |
 //! | a tag's own template wins, then the nearest ancestor's           | `resolveTagSchemas` inheritance       |
@@ -22,14 +23,17 @@ use crate::vault_env;
 
 use std::sync::Arc;
 
+use memry_core::api::errors::StorageError;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::notes::create::NewNoteFile;
+use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::read;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::view::NoteCreateInput;
 use memry_desktop::templates::{TemplateCreateInput, Templates};
+use memry_desktop::vault::folder_file;
 use serde_json::{Map, Value, json};
 use vault_env::{Env, env, indexed};
 
@@ -261,6 +265,53 @@ fn a_tags_template_applies_when_none_is_named() {
 }
 
 #[test]
+fn the_folders_template_applies_after_the_tags_inherited() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    let set = |folder: &str, template: Option<&str>, inherit: bool| {
+        folder_file::update(&e.vault, folder, |file| file.set(None, template, inherit)).unwrap();
+    };
+    set("meetings", Some("meeting-notes"), true);
+    set("meetings/private", None, false);
+    define_tag(
+        &e,
+        "standup",
+        json!({ "t": 1, "template": { "id": "daily-standup", "autofill": true } }),
+    );
+    let made = |title: &str, folder: &str, tags: &[&str]| {
+        let note = NewNoteFile {
+            folder: Some(folder.into()),
+            tags: tags.iter().map(|tag| (*tag).to_owned()).collect(),
+            ..note(title, None)
+        };
+        notes.create(&open, note).unwrap()
+    };
+
+    // A folder below takes the template of the nearest folder above that names one.
+    let inherited = made("Sync", "meetings/weekly", &[]);
+    assert!(
+        inherited.content.starts_with("## Attendees"),
+        "{}",
+        inherited.content
+    );
+    // `inherit: false` stops the walk.
+    let stopped = made("Mine", "meetings/private/deeper", &[]);
+    assert_eq!(stopped.content, "");
+    // A tag's template comes before the folder's.
+    let by_tag = made("Standup", "meetings", &["standup"]);
+    assert!(
+        by_tag.content.starts_with("## What I did yesterday"),
+        "{}",
+        by_tag.content
+    );
+    assert!(
+        !by_tag.content.contains("## Attendees"),
+        "{}",
+        by_tag.content
+    );
+}
+
+#[test]
 fn a_template_that_is_not_there_makes_a_plain_note() {
     let (e, notes, store) = opened();
     let open = e.session.current().unwrap();
@@ -403,6 +454,13 @@ fn a_template_property_with_no_name_refuses_the_note() {
         json!([{ "type": "text", "value": "lost" }]),
     );
     let refused = notes.create(&open, note("Nameless", Some("tpl-nameless")));
-    assert!(refused.is_err(), "{refused:?}");
+    assert!(
+        matches!(
+            &refused,
+            Err(NotesError::Storage(StorageError::Failed { what }))
+                if what == "template tpl-nameless: a `properties` element has no string `name`"
+        ),
+        "{refused:?}"
+    );
     assert!(!e.vault.join("Nameless.md").exists());
 }
