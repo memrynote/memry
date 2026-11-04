@@ -96,6 +96,12 @@ export const commands = {
 	/**  The hover card of the note `title` names, or `null`. */
 	notesPreviewByTitle: (title: string) => __TAURI_INVOKE<WikiLinkPreviewView | null>("notes_preview_by_title", { title }),
 	/**
+	 *  `notes:move`: the note's file, under its name (numbered when taken), in another folder of
+	 *  the vault (`""` is the root). Answers the note, and why its relative refs still point from
+	 *  its old folder when they could not follow it.
+	 */
+	notesMove: (id: string, newFolder: string) => __TAURI_INVOKE<MovedNoteView>("notes_move", { id, newFolder }),
+	/**
 	 *  `notes:rename`: the note's new title, and its file the name that title makes in its folder.
 	 *  Answers the note.
 	 */
@@ -344,6 +350,7 @@ export const events = {
 	noteDeletedEvent: makeEvent<NoteDeletedEvent, NoteDeletedEvent>("note-deleted-event"),
 	noteEventsDroppedEvent: makeEvent<NoteEventsDroppedEvent, NoteEventsDroppedEvent>("note-events-dropped-event"),
 	noteLinksChangedEvent: makeEvent<NoteLinksChangedEvent, NoteLinksChangedEvent>("note-links-changed-event"),
+	noteMovedEvent: makeEvent<NoteMovedEvent, NoteMovedEvent>("note-moved-event"),
 	noteRenamedEvent: makeEvent<NoteRenamedEvent, NoteRenamedEvent>("note-renamed-event"),
 	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
@@ -807,6 +814,16 @@ export type Modifiers = {
 };
 
 /**
+ *  `notes:move`'s answer: the note, and why its relative links to images and files still point
+ *  from its old folder when they could not follow it (`rewriteNoteRefsForMove`; Electron logs
+ *  that and answers success).
+ */
+export type MovedNoteView = {
+	note: NoteView,
+	refsKept: RefsKept | null,
+};
+
+/**
  *  What the open's sweep of interrupted folder moves did ([`crate::vault::move_journal`]), for
  *  the notice the renderer shows once per `id`. Counts only: the folders' names are the user's.
  */
@@ -942,6 +959,16 @@ export type NoteListPageView = {
 export type NoteListSortBy = "modified" | "created" | "title" | "position";
 
 /**
+ *  The app moved a note to another folder (`notes:moved`, Electron's `moveNote`). The title
+ *  stays; the renderer refetches what it shows of the note.
+ */
+export type NoteMovedEvent = {
+	id: string,
+	oldPath: string,
+	newPath: string,
+};
+
+/**
  *  A note's file moved or the app renamed the note (`notes:renamed`), by the app or by a move
  *  outside it. A rename to a title the file name already says names one path. `newTitle` is the
  *  title the note has now; `oldTitle` is the old file's name without `.md`, as Electron's
@@ -1073,6 +1100,13 @@ export type PropertyValueView = {
 	value: Value,
 	type: string,
 };
+
+/**
+ *  Why a moved note's relative refs were left as they were: `changing`, the note changed while
+ *  it moved (an outside edit or a sync merge not written yet); `unreadable`, the app cannot edit
+ *  the file (a frontmatter that does not parse, a document a markdown file cannot hold).
+ */
+export type RefsKept = "changing" | "unreadable";
 
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {

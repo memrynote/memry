@@ -22,31 +22,140 @@
 //! beats unwinding a rename. A crash between two sources leaves the rest stale, with no record
 //! to finish them (as in Electron; a replayed record is a follow-up).
 //!
+//! **The moved note's own refs** (`rewriteNoteRefsForMove`, `vault/notes-rename.ts:226`): a
+//! markdown note moved to another folder has every relative `![](ref)` and file block `url`
+//! re-pointed from its new folder at the file it named
+//! ([`memry_core::markdown::schema::blocks::note_refs`]), in its own next write turn, through
+//! the same [`AppEdit`] with [`Precondition::HeldAt`] its old path, which its document was built
+//! at, before the links to it are repaired. Its mobile vault-root refs (`attachments/<id>/...`)
+//! stay. A refused edit wrote nothing, so a note that was changing is tried once more after the
+//! write-back ran what it had scheduled: that catches a document ahead of its file. An outside
+//! edit the watcher has not reported yet (`FileChanged`, `NotRead`, `FileAhead`) is still
+//! unread then, since nothing here waits for the watcher. A note still refused keeps its refs,
+//! and the move's answer says why ([`RefsKept`]), so the renderer tells the user: Electron only
+//! logs it.
+//!
 //! Divergences from Electron, stated: a path link names a note's folder and title, as Tauri
 //! resolves it (`wiki_target`), where Electron used the file's path (they differ only for a
 //! file named other than its title); `[[Folder/Old.md]]` follows too (the core's rule). Not
 //! here: the journal page's own event for a rewritten day (Step 13m), and the lock check
 //! (Step 14).
 
+use std::sync::atomic::Ordering;
+use std::time::Duration;
+
 use memry_core::api::errors::StorageError;
-use memry_core::domain::notes::link_rewrite::{FileRewrite, LinkNames, rewrite_file};
+use memry_core::domain::notes::link_rewrite::{FileRewrite, rewrite_file};
+use memry_core::markdown::schema::blocks::note_refs::{
+    NoteRefsOptions, rewrite_note_refs_for_move,
+};
 
 use super::error::{NotesError, SCOPE};
+use super::moves::Named;
 use super::service::NotesService;
+use super::view::RefsKept;
 use crate::session::OpenVault;
-use crate::vault::app_edit::{AppEdit, Edited, Precondition};
+use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
 use crate::vault::consumer::ChangeSource;
 
+/// How long a moved note's refs wait for the write-back before their second try.
+const SETTLE: Duration = Duration::from_secs(2);
+
 impl NotesService {
+    /// Re-points the relative refs of `note_id`, a markdown note moved from `from` to `to`, and
+    /// answers why they were left when they were. Never fails the move: see the module comment.
+    pub(super) fn rewrite_own_refs(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        from: &Named,
+        to: &Named,
+    ) -> Option<RefsKept> {
+        if !from.link.markdown || from.link.folder == to.link.folder {
+            return None;
+        }
+        match self.try_own_refs(open, note_id, from, to)? {
+            // A refusal wrote nothing, so one more try is safe; the flush writes a document
+            // that is ahead of its file out first.
+            RefsKept::Changing => {
+                self.tier.flush(SETTLE);
+                self.try_own_refs(open, note_id, from, to)
+            }
+            RefsKept::Unreadable => Some(RefsKept::Unreadable),
+        }
+    }
+
+    fn try_own_refs(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        from: &Named,
+        to: &Named,
+    ) -> Option<RefsKept> {
+        let options = NoteRefsOptions {
+            source_note_id: Some(note_id),
+            preserve_root_relative_attachments: true,
+        };
+        let held = Precondition::HeldAt(&from.path);
+        let rewritten = AppEdit::new(&self.tier, &self.store, open)
+            .map_err(NotesError::from)
+            .and_then(|edit| {
+                if self.fail_next_ref_feed.swap(false, Ordering::Relaxed) {
+                    edit.fail_next_feed();
+                }
+                self.order.run(note_id, |turn| {
+                    edit.run(turn, held, ChangeSource::AppEdit, |text| {
+                        Ok::<_, NotesError>(rewrite_note_refs_for_move(
+                            text, &from.path, &to.path, options,
+                        ))
+                    })
+                })
+            });
+        let kept = match rewritten {
+            // A write the document did not take is the watcher's to bring in.
+            Ok(Edited::Wrote { .. } | Edited::Unchanged) => return None,
+            Ok(Edited::Kept(kept)) => kept,
+            Err(error) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    note_id,
+                    "a moved note's relative refs were not re-pointed: {error}"
+                );
+                return Some(RefsKept::Changing);
+            }
+        };
+        tracing::warn!(
+            scope = SCOPE,
+            note_id,
+            kept = ?kept,
+            "a moved note's relative refs were not re-pointed"
+        );
+        Some(match kept {
+            Kept::FrontmatterUnreadable | Kept::FrontmatterBroken | Kept::NotRepresentable => {
+                RefsKept::Unreadable
+            }
+            Kept::NoRow
+            | Kept::NotMarkdown
+            | Kept::NoFile
+            | Kept::NotRead
+            | Kept::FileChanged
+            | Kept::BodyAhead
+            | Kept::FileAhead
+            | Kept::BodyNotPulled
+            | Kept::NoBody => RefsKept::Changing,
+        })
+    }
+
     /// Re-points the links to `note_id`, which was named `from` and is named `to` now. Never
     /// fails: see the module comment.
     pub(super) fn rewrite_inbound(
         &self,
         open: &OpenVault,
         note_id: &str,
-        from: &LinkNames,
-        to: &LinkNames,
+        from: &Named,
+        to: &Named,
     ) {
+        let (from, to) = (&from.link, &to.link);
         let sources = match open.search.link_rewrite_sources(note_id, from) {
             Ok(sources) => sources,
             Err(error) => {

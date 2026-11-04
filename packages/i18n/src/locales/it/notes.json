@@ -2199,5 +2199,9 @@
     "keep": "Mantieni nota",
     "deletePermanently": "Elimina definitivamente",
     "kept": "La nota è stata mantenuta. Non è stato possibile spostarla nel cestino."
+  },
+  "movedRefsKept": {
+    "changing": "“{title}” è stata spostata, ma in quel momento stava cambiando, quindi i suoi link a immagini e file puntano ancora alla vecchia cartella. Controllali nella nota.",
+    "unreadable": "“{title}” è stata spostata, ma Memry non può modificarne il file, quindi i suoi link a immagini e file puntano ancora alla vecchia cartella. Aggiornali a mano."
   }
 }

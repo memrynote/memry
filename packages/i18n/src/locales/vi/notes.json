@@ -2199,5 +2199,9 @@
     "keep": "Giữ ghi chú",
     "deletePermanently": "Xóa vĩnh viễn",
     "kept": "Đã giữ ghi chú. Không thể chuyển ghi chú vào thùng rác."
+  },
+  "movedRefsKept": {
+    "changing": "Đã di chuyển “{title}”, nhưng ghi chú đang thay đổi vào lúc đó nên các liên kết tới hình ảnh và tệp vẫn trỏ về thư mục cũ. Hãy kiểm tra trong ghi chú.",
+    "unreadable": "Đã di chuyển “{title}”, nhưng Memry không thể chỉnh sửa tệp của ghi chú nên các liên kết tới hình ảnh và tệp vẫn trỏ về thư mục cũ. Hãy cập nhật thủ công."
   }
 }

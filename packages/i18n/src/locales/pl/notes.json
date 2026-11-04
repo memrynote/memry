@@ -2199,5 +2199,9 @@
     "keep": "Zachowaj notatkę",
     "deletePermanently": "Usuń trwale",
     "kept": "Notatka została zachowana. Nie udało się przenieść jej do kosza."
+  },
+  "movedRefsKept": {
+    "changing": "Notatka „{title}” została przeniesiona, ale w tym czasie się zmieniała, więc jej linki do obrazów i plików nadal wskazują stary folder. Sprawdź je w notatce.",
+    "unreadable": "Notatka „{title}” została przeniesiona, ale Memry nie może edytować jej pliku, więc jej linki do obrazów i plików nadal wskazują stary folder. Zaktualizuj je ręcznie."
   }
 }

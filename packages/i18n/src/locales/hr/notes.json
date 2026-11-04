@@ -2199,5 +2199,9 @@
     "keep": "Zadrži bilješku",
     "deletePermanently": "Trajno izbriši",
     "kept": "Bilješka je zadržana. Nije ju bilo moguće premjestiti u smeće."
+  },
+  "movedRefsKept": {
+    "changing": "„{title}” je premještena, ali se u tom trenutku mijenjala pa njezine poveznice na slike i datoteke i dalje vode u staru mapu. Provjerite ih u bilješci.",
+    "unreadable": "„{title}” je premještena, ali Memry ne može urediti njezinu datoteku pa njezine poveznice na slike i datoteke i dalje vode u staru mapu. Ažurirajte ih ručno."
   }
 }

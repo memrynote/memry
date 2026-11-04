@@ -2199,5 +2199,9 @@
     "keep": "Manter nota",
     "deletePermanently": "Excluir permanentemente",
     "kept": "A nota foi mantida. Não foi possível movê-la para a lixeira."
+  },
+  "movedRefsKept": {
+    "changing": "“{title}” foi movida, mas estava mudando naquele momento, então seus links para imagens e arquivos ainda apontam para a pasta antiga. Confira na nota.",
+    "unreadable": "“{title}” foi movida, mas o Memry não consegue editar o arquivo, então seus links para imagens e arquivos ainda apontam para a pasta antiga. Atualize-os manualmente."
   }
 }
