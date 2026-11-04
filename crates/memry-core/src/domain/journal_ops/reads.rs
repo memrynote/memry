@@ -236,6 +236,65 @@ pub fn stamp(conn: &Connection, date: &str) -> Result<Option<DayStamp>, StorageE
     }))
 }
 
+/// A live day as desktop's calendar reads it (Step 13m-4, #3530).
+#[derive(Debug, Clone, PartialEq)]
+pub struct CalendarDay {
+    pub id: String,
+    /// `YYYY-MM-DD`
+    pub date: String,
+    pub held: DayHeld,
+}
+
+/// Where the calendar measures a day: the desktop measures a day's file in its note index, and
+/// a day no file row names yet (its file is written on its first open) by its record here.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DayHeld {
+    /// The vault-relative path of the day's file row.
+    File(String),
+    /// No file row: the extracted text (D6), empty for a body not pulled, and the tags.
+    Record { text: String, tags: Vec<String> },
+}
+
+/// Every live day whose date falls in `from..=to` (compared as strings), oldest first, as
+/// [`CalendarDay`]. A tombstoned day is never listed, whatever file is on disk.
+pub fn calendar_days(
+    conn: &Connection,
+    from: &str,
+    to: &str,
+) -> Result<Vec<CalendarDay>, CrdtError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT j.id, j.date, f.path FROM journal_entries j
+               LEFT JOIN note_files f ON f.note_id = j.id
+              WHERE j.deleted_at IS NULL AND j.date >= ?1 AND j.date <= ?2
+              ORDER BY j.date",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![from, to], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    rows.into_iter()
+        .map(|(id, date, path)| {
+            let held = match path {
+                Some(path) => DayHeld::File(path),
+                None => DayHeld::Record {
+                    text: day_body(conn, &id)?.text,
+                    tags: tags::list(conn, ITEM_TYPE, &id)?,
+                },
+            };
+            Ok(CalendarDay { id, date, held })
+        })
+        .collect()
+}
+
 /// Every day of `month` (1-12) of `year`, newest first, flagged against
 /// `today`, with the month's entry count and the streak.
 pub fn month(

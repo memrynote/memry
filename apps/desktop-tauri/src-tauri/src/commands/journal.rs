@@ -1,10 +1,14 @@
 //! The journal commands of Step 13m (`journal:getEntry`, `journal:createEntry`,
-//! `journal:updateEntry`, `journal:deleteEntry` of `ipc/journal-handlers.ts`), each one call of
-//! `memry_desktop::journal`. A create, an update and a delete send their journal event after the
-//! write.
+//! `journal:updateEntry`, `journal:deleteEntry` and the calendar's `getHeatmap`,
+//! `getMonthEntries`, `getYearStats` and `getStreak` of `ipc/journal-handlers.ts`), each one call
+//! of `memry_desktop::journal`. A create, an update and a delete send their journal event after
+//! the write.
 
 use std::sync::Arc;
 
+use memry_desktop::journal::calendar::{
+    self, HeatmapEntryView, MonthEntryView, MonthStatsView, StreakView,
+};
 use memry_desktop::journal::update::{DayUpdate, DayUpdated, InlineTags};
 use memry_desktop::journal::write::NewDay;
 use memry_desktop::journal::{self, JournalEntryView};
@@ -16,8 +20,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
-use super::blocking;
 use super::error::CommandError;
+use super::{blocking, notes};
 use crate::events::{
     JournalEntryCreatedEvent, JournalEntryDeletedEvent, JournalEntryUpdatedEvent, broadcast,
 };
@@ -230,6 +234,73 @@ pub async fn journal_delete_entry(
             .map_err(|error| failed(&error))?;
         announce(&app, Landed::Deleted { date, success });
         Ok(JournalDeleteOutput { success })
+    })
+    .await
+}
+
+/// The live days of the year the calendar shows (`journal:getHeatmap`), oldest first.
+#[tauri::command]
+#[specta::specta]
+pub async fn journal_get_heatmap<R: Runtime>(
+    app: AppHandle<R>,
+    year: u32,
+) -> Result<Vec<HeatmapEntryView>, CommandError> {
+    blocking("journal_get_heatmap", move || {
+        let open = notes::open_vault(&app)?;
+        let journal = notes::service(&app)?
+            .journal(&open)
+            .map_err(|error| failed(&error))?;
+        calendar::heatmap(&open, &journal, year).map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// The live days of a month (1-12) with their previews (`journal:getMonthEntries`), newest
+/// first.
+#[tauri::command]
+#[specta::specta]
+pub async fn journal_get_month_entries<R: Runtime>(
+    app: AppHandle<R>,
+    year: u32,
+    month: u32,
+) -> Result<Vec<MonthEntryView>, CommandError> {
+    blocking("journal_get_month_entries", move || {
+        let open = notes::open_vault(&app)?;
+        let journal = notes::service(&app)?
+            .journal(&open)
+            .map_err(|error| failed(&error))?;
+        calendar::month_entries(&open, &journal, year, month).map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// One row per month of the year that has a live day (`journal:getYearStats`).
+#[tauri::command]
+#[specta::specta]
+pub async fn journal_get_year_stats<R: Runtime>(
+    app: AppHandle<R>,
+    year: u32,
+) -> Result<Vec<MonthStatsView>, CommandError> {
+    blocking("journal_get_year_stats", move || {
+        let open = notes::open_vault(&app)?;
+        let journal = notes::service(&app)?
+            .journal(&open)
+            .map_err(|error| failed(&error))?;
+        calendar::year_stats(&open, &journal, year).map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// The current and longest runs of live days (`journal:getStreak`).
+#[tauri::command]
+#[specta::specta]
+pub async fn journal_get_streak<R: Runtime>(app: AppHandle<R>) -> Result<StreakView, CommandError> {
+    blocking("journal_get_streak", move || {
+        let open = notes::open_vault(&app)?;
+        let journal = notes::service(&app)?
+            .journal(&open)
+            .map_err(|error| failed(&error))?;
+        calendar::streak(&journal).map_err(|error| failed(&error))
     })
     .await
 }

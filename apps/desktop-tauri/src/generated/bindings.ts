@@ -49,6 +49,17 @@ export const commands = {
 	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
 	/**  The day's entry, `null` when it has no file. Browsing never makes a day. */
 	journalGetEntry: (date: string) => __TAURI_INVOKE<JournalEntryView | null>("journal_get_entry", { date }),
+	/**  The live days of the year the calendar shows (`journal:getHeatmap`), oldest first. */
+	journalGetHeatmap: (year: number) => __TAURI_INVOKE<HeatmapEntryView[]>("journal_get_heatmap", { year }),
+	/**
+	 *  The live days of a month (1-12) with their previews (`journal:getMonthEntries`), newest
+	 *  first.
+	 */
+	journalGetMonthEntries: (year: number, month: number) => __TAURI_INVOKE<MonthEntryView[]>("journal_get_month_entries", { year, month }),
+	/**  The current and longest runs of live days (`journal:getStreak`). */
+	journalGetStreak: () => __TAURI_INVOKE<StreakView>("journal_get_streak"),
+	/**  One row per month of the year that has a live day (`journal:getYearStats`). */
+	journalGetYearStats: (year: number) => __TAURI_INVOKE<MonthStatsView[]>("journal_get_year_stats", { year }),
 	/**  The day edited: its text, tags or properties; a day with no file is made. */
 	journalUpdateEntry: (input: JournalUpdateInput) => __TAURI_INVOKE<JournalEntryView>("journal_update_entry", { input }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
@@ -672,6 +683,13 @@ export type HeaderTagRenameInput = {
 
 export type HeaderTagSource = "inline";
 
+/**  `HeatmapEntry` (`packages/contracts/src/journal-api.ts`). */
+export type HeatmapEntryView = {
+	date: string,
+	characterCount: number,
+	level: number,
+};
+
 /**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
  *  (#3544), a clicked inbox notification.
@@ -811,6 +829,28 @@ export type Modifiers = {
 	ctrl?: boolean,
 	shift?: boolean,
 	alt?: boolean,
+};
+
+/**  `MonthEntryPreview`. */
+export type MonthEntryView = {
+	date: string,
+	/**  `extractPreview(content, 100)` of the day's text, empty when it does not read. */
+	preview: string,
+	wordCount: number,
+	characterCount: number,
+	activityLevel: number,
+	tags: string[],
+};
+
+/**  `MonthStats`: one month of a year that has an entry. */
+export type MonthStatsView = {
+	year: number,
+	/**  1-12 */
+	month: number,
+	entryCount: number,
+	totalWordCount: number,
+	totalCharacterCount: number,
+	averageLevel: number | null,
 };
 
 /**
@@ -1201,6 +1241,13 @@ export type StartupState = {
 };
 
 export type StatusCategoryKey = "todo" | "in_progress" | "done";
+
+/**  `JournalStreak`, counted from this device's UTC date as Electron's `getJournalStreak`. */
+export type StreakView = {
+	currentStreak: number,
+	longestStreak: number,
+	lastEntryDate: string | null,
+};
 
 /**  `TagAssignment`: where a drag put a tag. */
 export type TagAssignmentInput = {
