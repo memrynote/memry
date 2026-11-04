@@ -31,16 +31,17 @@
 //! row follows the file.
 //!
 //! A folder the app renames or moves (Step 13h) moves each note in it the same way: every
-//! note's move is recorded first ([`begin_all`], one synced write), the folder moves on disk,
-//! and [`folder_moved_by_app`] then moves every record and row, re-keys the folder's
-//! `folder_config` records and carries its manual order, in one transaction. A crash in
-//! between leaves each note's record for the next open to finish one by one, as after a note's
-//! own move; the folder's records and slots stay at the old path then.
+//! note's move and the folder's own are recorded first ([`begin_folder`], one synced write),
+//! the folder moves on disk, and [`folder_moved_by_app`] then moves every record and row,
+//! re-keys the folder's `folder_config` records and carries its manual order, in one
+//! transaction that forgets all of those records. A crash in between leaves them, and the next
+//! open runs that same transaction for the notes it finds moved ([`pending_folders`],
+//! [`abandon_folder`]), so no peer keeps a folder record at the old path.
 //!
 //! The inbound `[[link]]` rewrite is not here: it edits other notes' files, which only the
 //! vault tier writes.
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 
 use super::failed;
@@ -68,6 +69,12 @@ pub struct AppMoved<'a> {
 const PREFIX: &str = "notes.app_move.v1:";
 /// The first key after every key with [`PREFIX`] (`:` is followed by `;`).
 const PREFIX_END: &str = "notes.app_move.v1;";
+
+/// The `meta` key of a folder's record of an app move, before the folder's old path: outside
+/// [`PREFIX`]'s range, so a build that knows only the notes' records never reads it.
+const FOLDER_PREFIX: &str = "notes.folder_move.v1:";
+/// The first key after every key with [`FOLDER_PREFIX`].
+const FOLDER_PREFIX_END: &str = "notes.folder_move.v1;";
 
 /// The `version` of the record this build writes and acts on.
 const RECORD_VERSION: u64 = 1;
@@ -118,6 +125,29 @@ pub enum BeginError {
     Storage(#[from] StorageError),
 }
 
+/// A folder's app move that [`begin_folder`] recorded and that was not finished or forgotten.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingFolderMove {
+    pub from: String,
+    pub to: String,
+}
+
+/// What a folder's record holds: JSON `{"version": 1, "from", "to"}`, a format that crosses
+/// builds as [`Recorded`]'s does, and read the same way: another version, or a record that
+/// does not parse, is left as it is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FolderRecorded {
+    Move(PendingFolderMove),
+    Unreadable(String),
+}
+
+#[derive(Serialize, Deserialize)]
+struct FolderRecord {
+    version: u64,
+    from: String,
+    to: String,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Record {
@@ -135,13 +165,40 @@ struct Record {
 /// one ("Safety level may not be changed inside a transaction"), so `begin` would fail there
 /// and record nothing.
 pub fn begin(conn: &Connection, note_id: &str, moved: &AppMoved<'_>) -> Result<(), BeginError> {
-    begin_all(conn, &[(note_id, *moved)])
+    begin_records(conn, &[(note_id, *moved)], None)
 }
 
-/// [`begin`] for the notes of a folder the app moves: every record, or none, in one synced
-/// transaction. Refused when any of the notes has a record.
-pub fn begin_all(conn: &Connection, moves: &[(&str, AppMoved<'_>)]) -> Result<(), BeginError> {
-    let mut records = Vec::with_capacity(moves.len());
+/// [`begin`] for a folder the app moves from `from` to `to`, and for every note in it: each
+/// note's record and the folder's, or none, in one synced transaction. Refused when any of the
+/// notes has a record, or the folder has one.
+pub fn begin_folder(
+    conn: &Connection,
+    from: &str,
+    to: &str,
+    moves: &[(&str, AppMoved<'_>)],
+) -> Result<(), BeginError> {
+    begin_records(conn, moves, Some((from, to)))
+}
+
+fn begin_records(
+    conn: &Connection,
+    moves: &[(&str, AppMoved<'_>)],
+    folder: Option<(&str, &str)>,
+) -> Result<(), BeginError> {
+    let mut records = Vec::with_capacity(moves.len() + 1);
+    if let Some((from, to)) = folder {
+        match recorded_folder(conn, from)? {
+            Some(FolderRecorded::Move(_)) => return Err(BeginError::Unsettled),
+            Some(FolderRecorded::Unreadable(why)) => return Err(BeginError::Unreadable(why)),
+            None => {}
+        }
+        let record = FolderRecord {
+            version: RECORD_VERSION,
+            from: from.to_owned(),
+            to: to.to_owned(),
+        };
+        records.push((folder_key(from), json(&record)?));
+    }
     for (note_id, moved) in moves {
         match recorded(conn, note_id)? {
             Some(Recorded::Move(_)) => return Err(BeginError::Unsettled),
@@ -154,10 +211,7 @@ pub fn begin_all(conn: &Connection, moves: &[(&str, AppMoved<'_>)]) -> Result<()
             new_path: moved.new_path.to_owned(),
             title: moved.title.map(str::to_owned),
         };
-        let value = serde_json::to_string(&record).map_err(|error| StorageError::Failed {
-            what: error.to_string(),
-        })?;
-        records.push((record_key(note_id), value));
+        records.push((record_key(note_id), json(&record)?));
     }
     let was: i64 = conn
         .query_row("PRAGMA synchronous", [], |row| row.get(0))
@@ -172,6 +226,12 @@ pub fn begin_all(conn: &Connection, moves: &[(&str, AppMoved<'_>)]) -> Result<()
     written?;
     restored.map_err(failed)?;
     Ok(())
+}
+
+fn json(record: &impl Serialize) -> Result<String, StorageError> {
+    serde_json::to_string(record).map_err(|error| StorageError::Failed {
+        what: error.to_string(),
+    })
 }
 
 fn insert_records(conn: &Connection, records: &[(String, String)]) -> Result<(), StorageError> {
@@ -266,6 +326,73 @@ pub fn abandon(
     Ok(names_it)
 }
 
+/// The `meta` key of the record of an app move of the folder at `from`.
+fn folder_key(from: &str) -> String {
+    format!("{FOLDER_PREFIX}{from}")
+}
+
+/// Every folder's record, by old path.
+pub fn pending_folders(conn: &Connection) -> Result<Vec<FolderRecorded>, StorageError> {
+    let mut statement = conn
+        .prepare("SELECT value FROM meta WHERE key >= ?1 AND key < ?2 ORDER BY key")
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![FOLDER_PREFIX, FOLDER_PREFIX_END], |row| {
+            row.get::<_, String>(0)
+        })
+        .map_err(failed)?;
+    rows.map(|row| Ok(parse_folder(&row.map_err(failed)?)))
+        .collect()
+}
+
+fn recorded_folder(conn: &Connection, from: &str) -> Result<Option<FolderRecorded>, StorageError> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            params![folder_key(from)],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    Ok(value.as_deref().map(parse_folder))
+}
+
+fn parse_folder(value: &str) -> FolderRecorded {
+    let version = match serde_json::from_str::<serde_json::Value>(value) {
+        Ok(json) => json.get("version").and_then(serde_json::Value::as_u64),
+        Err(error) => {
+            return FolderRecorded::Unreadable(format!("a record that does not parse: {error}"));
+        }
+    };
+    match version {
+        Some(RECORD_VERSION) => match serde_json::from_str::<FolderRecord>(value) {
+            Ok(record) => FolderRecorded::Move(PendingFolderMove {
+                from: record.from,
+                to: record.to,
+            }),
+            Err(error) => FolderRecorded::Unreadable(format!(
+                "a version 1 record that does not parse: {error}"
+            )),
+        },
+        Some(version) => FolderRecorded::Unreadable(format!("a version {version} record")),
+        None => FolderRecorded::Unreadable("a record with no version".to_owned()),
+    }
+}
+
+/// Forgets the folder's record of the move from `from` to `to`; any other record stays. True
+/// when one was forgotten.
+pub fn abandon_folder(conn: &Connection, from: &str, to: &str) -> Result<bool, StorageError> {
+    let names_it = matches!(
+        recorded_folder(conn, from)?,
+        Some(FolderRecorded::Move(recorded)) if recorded.to == to
+    );
+    if names_it {
+        conn.execute("DELETE FROM meta WHERE key = ?1", params![folder_key(from)])
+            .map_err(failed)?;
+    }
+    Ok(names_it)
+}
+
 /// The note's file is at `moved.new_path` now: record, row and slot follow it in one
 /// transaction, which also forgets the note's record of this move ([`begin`], [`abandon`]).
 /// An `Err` leaves all of it as it was.
@@ -296,7 +423,7 @@ pub fn moved_by_app(
 /// The folder `from` is at `to` on disk now, with every note in it ([`AppMoved`] each, under
 /// `to`): records, rows and the folder's `folder_config` records follow, and its manual order
 /// is carried, notes' slots included, in one transaction that also forgets each note's record
-/// of the move ([`begin_all`]). An `Err` leaves all of it as it was.
+/// of the move and the folder's ([`begin_folder`]). An `Err` leaves all of it as it was.
 pub fn folder_moved_by_app(
     conn: &Connection,
     from: &str,
@@ -310,6 +437,7 @@ pub fn folder_moved_by_app(
         follow_file(&tx, note_id, moved, device_id, now_ms, |_| Ok(()))?;
     }
     folders::rekey_subtree(&tx, from, to, device_id, now_ms)?;
+    abandon_folder(&tx, from, to)?;
     tx.commit().map_err(failed)
 }
 

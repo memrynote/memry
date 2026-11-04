@@ -14,6 +14,12 @@
 //! | a folder rename the app cannot make is refused                    | #2531, no replace, journal, hidden    |
 //! | a note with an unsettled move holds its folder back               | one move per note                     |
 //! | the path links to the folder's notes follow it                    | `rewriteInboundWikiLinks`             |
+//! | a folder move a crash cut short finishes on the next open         | the folder's record, one transaction  |
+//! | a folder move a crash cut short before the disk is forgotten      | the folder's record                   |
+//! | a folder move into an ignored or linked folder is refused         | as a note's move                      |
+//! | an outside delete in the fixture is reported                      | control for the silent watcher        |
+//! | after a refused move an outside delete is reported                | the removal record is withdrawn       |
+//! | a case-only rename that respells a parent is refused              | the folder's own name only            |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -55,6 +61,7 @@ fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     });
     e.open();
     e.facts_until(indexed);
+    armed(&mut e);
     let store = kept.expect("the store");
     let notes = NotesService::new(e.tier.clone(), store.clone());
     (e, notes, store)
@@ -94,7 +101,23 @@ fn file_note(e: &mut Env, store: &Arc<dyn SecureStore>, rel: &str) -> String {
     e.close();
     e.open();
     e.facts_until(indexed);
+    armed(e);
     id
+}
+
+/// Waits until the watcher reports: a scratch note written and deleted, each seen. It arms a
+/// moment after the open, and a move made before that would pass every "the watcher reported
+/// nothing" below for want of a watcher.
+fn armed(e: &mut Env) {
+    e.write("armed.md", "armed\n");
+    let facts = e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "armed.md"));
+    let Some(Applied::Added { note_id, .. }) = facts.last() else {
+        unreachable!("facts_until ends on the fact it waits for")
+    };
+    let id = note_id.clone();
+    fs::remove_file(e.vault.join("armed.md")).unwrap();
+    e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == id));
+    e.drain();
 }
 
 fn query<T: Send + 'static>(
@@ -177,7 +200,8 @@ fn rows(e: &Env) -> Vec<(String, String)> {
 }
 
 fn activity_is_empty(e: &Env) {
-    let activity = e.tier.activity().list(100, ActivityFilter::All).entries;
+    let mut activity = e.tier.activity().list(100, ActivityFilter::All).entries;
+    activity.retain(|entry| entry.path.as_deref() != Some("armed.md"));
     assert!(
         activity.is_empty(),
         "the watcher reported the app's move: {activity:?}"
@@ -511,4 +535,196 @@ fn the_path_links_to_the_folders_notes_follow_it() {
 
     notes.rename_folder(&open, "Work", "Projects").unwrap();
     assert_eq!(e.read("Ideas.md"), "See [[Projects/Plan]] and [[Plan]].\n");
+}
+
+/// A crash once the folder moved and before its notes followed (the probe of the review): the
+/// next open finishes each note's move, and the folder's records and manual order follow it
+/// too, so no peer keeps a folder at the old path.
+#[test]
+fn a_folder_move_a_crash_cut_short_finishes_on_the_next_open() {
+    let Work {
+        mut e,
+        store,
+        plan,
+        deep,
+        doc,
+        ..
+    } = work();
+    let writer = e.core().notes_writer(store.clone()).unwrap();
+    let moved = |old: &'static str, new: &'static str| AppMoved {
+        old_path: old,
+        new_path: new,
+        title: None,
+        keeps_kind: true,
+    };
+    let moves = [
+        (plan.as_str(), moved("Work/Plan.md", "Projects/Plan.md")),
+        (
+            deep.as_str(),
+            moved("Work/Sub/Deep.md", "Projects/Sub/Deep.md"),
+        ),
+        (doc.as_str(), moved("Work/Doc.pdf", "Projects/Doc.pdf")),
+    ];
+    writer
+        .begin_folder_move("Work", "Projects", &moves)
+        .unwrap();
+    drop(writer);
+    e.close();
+    fs::rename(e.vault.join("Work"), e.vault.join("Projects")).unwrap();
+    e.open();
+    e.facts_until(indexed);
+
+    let mut expected_rows = vec![
+        (plan.clone(), "Projects/Plan.md".to_owned()),
+        (deep.clone(), "Projects/Sub/Deep.md".to_owned()),
+        (doc.clone(), "Projects/Doc.pdf".to_owned()),
+    ];
+    expected_rows.sort();
+    assert_eq!(rows(&e), expected_rows);
+    assert_eq!(
+        live_folder_records(&e),
+        [("Projects".to_owned(), Some("lucide:book".to_owned()))]
+    );
+    assert_eq!(
+        slots(&e),
+        [
+            ("Projects/Plan.md".to_owned(), "Projects".to_owned(), 1),
+            ("Projects/Sub".to_owned(), "Projects".to_owned(), 0),
+        ]
+    );
+    assert_eq!(pending(&e, &store), 0);
+}
+
+/// A crash after the records and before the folder moved: the next open forgets them all, and
+/// the folder, its notes and its records stay where they are.
+#[test]
+fn a_folder_move_a_crash_cut_short_before_the_disk_is_forgotten() {
+    let Work {
+        mut e, store, plan, ..
+    } = work();
+    let before = rows(&e);
+    let writer = e.core().notes_writer(store.clone()).unwrap();
+    let moved = AppMoved {
+        old_path: "Work/Plan.md",
+        new_path: "Projects/Plan.md",
+        title: None,
+        keeps_kind: true,
+    };
+    writer
+        .begin_folder_move("Work", "Projects", &[(plan.as_str(), moved)])
+        .unwrap();
+    drop(writer);
+    e.close();
+    e.open();
+    e.facts_until(indexed);
+
+    assert_eq!(rows(&e), before);
+    assert_eq!(
+        live_folder_records(&e),
+        [("Work".to_owned(), Some("lucide:book".to_owned()))]
+    );
+    assert_eq!(pending(&e, &store), 0);
+    let writer = e.core().notes_writer(store.clone()).unwrap();
+    assert_eq!(writer.pending_folder_moves().unwrap(), []);
+}
+
+/// A target the vault ignores (`node_modules` by default) would drop the folder's notes out of
+/// it at the next open, and one reached through a link is walked by nothing; both are refused,
+/// as a note's own move refuses them.
+#[test]
+fn a_folder_move_into_an_ignored_or_linked_folder_is_refused() {
+    let Work { e, notes, .. } = work();
+    let open = e.session.current().unwrap();
+    let refused = |old: &str, new: &str| notes.rename_folder(&open, old, new).unwrap_err();
+    assert!(matches!(
+        refused("Work", "node_modules"),
+        NotesError::InvalidFolder
+    ));
+    #[cfg(unix)]
+    {
+        fs::create_dir(e.vault.join("Real")).unwrap();
+        std::os::unix::fs::symlink(e.vault.join("Real"), e.vault.join("Link")).unwrap();
+        assert!(matches!(
+            refused("Work", "Link/Work"),
+            NotesError::InvalidFolder
+        ));
+    }
+    assert!(e.vault.join("Work/Plan.md").exists());
+}
+
+fn removed_ids(facts: &[Applied]) -> Vec<String> {
+    facts
+        .iter()
+        .filter_map(|fact| match fact {
+            Applied::Removed { note_id, .. } => Some(note_id.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A note written into `Work` from outside the app, seen by the watcher. Its delete is reported
+/// once the watcher armed; a delete of a note the app wrote in an earlier session is not (#3912),
+/// so the controls below use this one.
+fn outside_note(e: &mut Env) -> String {
+    e.write("Work/Outside.md", "outside\n");
+    let facts =
+        e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "Work/Outside.md"));
+    let Some(Applied::Added { note_id, .. }) = facts.last() else {
+        unreachable!("facts_until ends on the fact it waits for")
+    };
+    note_id.clone()
+}
+
+/// The control for every "the watcher reported nothing" above: in this fixture an outside
+/// delete in `Work` is reported, so their silence is the move's.
+#[test]
+fn an_outside_delete_in_the_fixture_is_reported() {
+    let Work { mut e, .. } = work();
+    let plan = outside_note(&mut e);
+    fs::remove_file(e.vault.join("Work/Outside.md")).unwrap();
+    let facts =
+        e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == plan));
+    assert_eq!(removed_ids(&facts), [plan]);
+}
+
+/// A move the disk refused before anything moved leaves no record of the folder's going: a
+/// delete made outside the app afterwards is reported.
+#[test]
+fn after_a_refused_move_an_outside_delete_is_reported() {
+    let Work { mut e, notes, .. } = work();
+    let plan = outside_note(&mut e);
+    let open = e.session.current().unwrap();
+    let mut refused = |step: Step<'_>| match step {
+        Step::Whole { .. } => Err(io::Error::other("injected")),
+        _ => Ok(()),
+    };
+    let failed =
+        notes.rename_folder_checked(&open, "Work", "Projects", &mut refused, &mut || Ok(()));
+    assert!(matches!(failed, Err(NotesError::Io(_))), "{failed:?}");
+    e.drain();
+
+    fs::remove_file(e.vault.join("Work/Outside.md")).unwrap();
+    let facts =
+        e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == plan));
+    assert_eq!(removed_ids(&facts), [plan]);
+}
+
+/// Only the moved folder's own name may change case: `Work/Sub` to `work/sub` respells `Work`,
+/// which the move does not own. Folded, the target is the folder itself, so it is refused as a
+/// move into itself on every volume.
+#[test]
+fn a_case_only_rename_that_respells_a_parent_is_refused() {
+    let Work { e, notes, .. } = work();
+    let open = e.session.current().unwrap();
+    let refused = notes.rename_folder(&open, "Work/Sub", "work/sub");
+    assert!(
+        matches!(refused, Err(NotesError::InvalidFolder)),
+        "{refused:?}"
+    );
+    assert!(e.vault.join("Work/Sub/Deep.md").exists());
+    let names: Vec<String> = fs::read_dir(e.vault.join("Work"))
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .collect();
+    assert!(names.contains(&"Sub".to_owned()), "{names:?}");
 }

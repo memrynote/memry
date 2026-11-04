@@ -4,15 +4,16 @@
 //!
 //! Each note in the folder moves as a note moved in the app does (`notes::moves`), all of them
 //! in one step under the rows' lane, so no watcher fact and no write-back pass lands in between:
-//! 1. every note's move is recorded in the core, all or none ([`Lane::begin_moves`]): the
-//!    next open finishes or forgets each one, file notes (PDF, image) included, whose rows have
-//!    no hash a moved file could pair on;
-//! 2. the own-write record is told that each note's old path and the folder go, so the watcher
-//!    never takes the move for deletes and new files; then the folder moves on disk without
+//! 1. the folder's move and every note's are recorded in the core, all or none
+//!    ([`Lane::begin_folder_move`]): the next open finishes or forgets them, file notes (PDF,
+//!    image) included, whose rows have no hash a moved file could pair on;
+//! 2. the own-write record is told that the folder goes with everything below it
+//!    ([`EchoGuard::will_remove_tree`]), so the watcher never takes the move for deletes and new
+//!    files; then the folder moves on disk without
 //!    replacing anything ([`move_dir`], whole, or entry by entry where Windows holds a file
 //!    beneath it open, #2206);
 //! 3. every record and row, the folder's `folder_config` records and its manual order follow,
-//!    in one core transaction that forgets the records of step 1
+//!    in one core transaction that forgets the move records of step 1
 //!    ([`Lane::folder_moved_by_app`]). The folder's `.folder.md` moved with it;
 //! 4. [`Applied::Renamed`] with [`MoveKind::Moved`] for each note, under the lane: the renderer
 //!    hears `notes:moved` per note, as Electron's `moveIndexedNotesWithFolder` sends one `MOVED`
@@ -22,18 +23,18 @@
 //!    note's own relative links to notes outside the folder are left as they are, as in Electron.
 //!
 //! A failed step 3 moves the folder back and forgets the records. A crash between 2 and 3
-//! leaves each note's record, which the next open finishes note by note
-//! ([`crate::vault::app_move::finish_interrupted`]), after the open's sweep put back any
-//! entry-wise move it cut short (`vault::move_journal`); the folder's records and manual order
-//! stay at the old path then. A note the move makes another kind of file (a note into a journal
-//! day's path) is left owed, as by its own move; Electron left it to the watcher.
+//! leaves them, and the next open runs step 3 for the folder when it is at `to` and gone from
+//! `from` ([`crate::vault::app_move::finish_interrupted`]), after the open's sweep put back any
+//! entry-wise move it cut short (`vault::move_journal`). A note the move makes another kind of
+//! file (a note into a journal day's path) is left owed, as by its own move; Electron left it to
+//! the watcher.
 //!
-//! Refused: a folder that is not there (`folder_not_found`, #2531's stale sidebar), a target
-//! that exists under any spelling but the folder's own (`name_conflict`), one inside the folder,
-//! one the tree hides or no record can name (`invalid_folder`), and moving the journal folder or
-//! a folder holding it (`folder_holds_journal`): its setting would have to follow, which waits
-//! for the settings port. Not here yet: the locked-folder check (Step 14), the shortcuts and
-//! Readwise targets that name the folder (`followFolderRenameInShortcuts`,
+//! Refused: a folder that is not there (`folder_not_found`, #2531's stale sidebar), a target that
+//! exists under any spelling but the folder's own (`name_conflict`), one inside the folder, one the
+//! tree hides, the vault ignores, a link leads to, or no record can name (`invalid_folder`), and
+//! moving the journal folder or a folder holding it (`folder_holds_journal`): its setting would
+//! have to follow, which waits for the settings port. Not here yet: the locked-folder check (Step
+//! 14), the shortcuts and Readwise targets that name the folder (`followFolderRenameInShortcuts`,
 //! `followFolderRenameInReadwise`), which have no Tauri port yet.
 
 use std::fs;
@@ -46,7 +47,7 @@ use memry_core::domain::notes::link_rewrite::LinkNames;
 
 use super::error::{NotesError, SCOPE};
 use super::folders::{respells_a_sibling, tree_filter, vault_folder};
-use super::moves::{Named, identity_failed};
+use super::moves::{Named, identity_failed, plain_folders};
 use super::service::NotesService;
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
@@ -59,6 +60,7 @@ use crate::vault::move_dir::{self, IncompleteRollback, Step};
 use crate::vault::move_journal::STAGING_PREFIX;
 use crate::vault::path_key::folded_key;
 use crate::vault::watch::EchoGuard;
+use crate::vault::watch::filter::WatchFilter;
 
 /// A note the folder carries, vault-relative paths with `/`.
 struct Carried {
@@ -171,16 +173,9 @@ impl NotesService {
             });
         }
         let moves: Vec<(&str, AppMoved<'_>)> = carried.iter().map(Carried::moved).collect();
-        lane.begin_moves(&writer, &moves)?;
+        lane.begin_folder_move(&writer, from, to, &moves)?;
         let echo = self.tier.echo();
-        // Each note's path and every folder between it and `from`: an entry-wise move takes a
-        // subfolder away whole, and the watcher would take its going for its notes' removal.
-        // The folder itself last: past its capacity the record drops its oldest entries, and
-        // `from` is the one that covers a whole rename.
-        let gone = carried_paths(from, &carried);
-        for path in &gone {
-            echo.will_remove(path);
-        }
+        echo.will_remove_tree(from);
         let (source, target) = (on_disk(root, from), on_disk(root, to));
         if let Err(error) = move_dir::move_dir_checked(root, &source, &target, step) {
             let mut undo = Undo {
@@ -189,7 +184,7 @@ impl NotesService {
                 echo: &echo,
                 root,
             };
-            undo.forget(&moves, &gone);
+            undo.forget((from, to), &moves, &carried);
             if let Some(incomplete) = IncompleteRollback::of(&error) {
                 undo.keep_aside(&ctx, &*identity, from, &carried, incomplete);
                 return Err(NotesError::FolderMoveIncomplete);
@@ -201,6 +196,7 @@ impl NotesService {
                 _ => error.into(),
             });
         }
+        echo.removed_tree(from);
         let followed =
             after_disk().and_then(|()| Ok(lane.folder_moved_by_app(&writer, from, to, &moves)?));
         if let Err(error) = followed {
@@ -212,7 +208,7 @@ impl NotesService {
                     echo: &echo,
                     root,
                 }
-                .forget(&moves, &gone),
+                .forget((from, to), &moves, &carried),
                 // Each note's record stays, and the next open finishes its move.
                 Err(back) => tracing::error!(
                     scope = SCOPE,
@@ -234,7 +230,7 @@ impl NotesService {
 }
 
 /// Every path the move takes away that the watcher could take for a note's removal: each
-/// note's file, each folder that holds one below `from`, deepest first, and `from` last.
+/// note's file, each folder that holds one below `from`, and `from`.
 fn carried_paths(from: &str, carried: &[Carried]) -> Vec<String> {
     let mut folders = std::collections::BTreeSet::new();
     for note in carried {
@@ -262,9 +258,21 @@ struct Undo<'a, 'l> {
 }
 
 impl Undo<'_, '_> {
-    /// Forgets each note's record of the move, and withdraws the own-write record of every path
-    /// that is back on disk: its absence from now on is not the app's.
-    fn forget(&mut self, moves: &[(&str, AppMoved<'_>)], gone: &[String]) {
+    /// Forgets the folder's and each note's record of the move, and narrows the own-write
+    /// record to the paths not back on disk (a hidden staging folder may hold them until the
+    /// next open's sweep): the absence of one that is back is not the app's from now on.
+    fn forget(
+        &mut self,
+        (from, to): (&str, &str),
+        moves: &[(&str, AppMoved<'_>)],
+        carried: &[Carried],
+    ) {
+        if let Err(error) = self.lane.forget_folder_move(self.writer, from, to) {
+            tracing::warn!(
+                scope = SCOPE,
+                "the record of an undone folder move waits for the next open: {error}"
+            );
+        }
         for (note_id, moved) in moves {
             if let Err(error) =
                 self.lane
@@ -277,11 +285,11 @@ impl Undo<'_, '_> {
                 );
             }
         }
-        for path in gone {
-            if fs::symlink_metadata(on_disk(self.root, path)).is_ok() {
-                self.echo.cancel_removal(path);
-            }
-        }
+        let root = self.root;
+        let still_gone = carried_paths(from, carried)
+            .into_iter()
+            .filter(|path| fs::symlink_metadata(on_disk(root, path)).is_err());
+        self.echo.narrow_tree(from, still_gone);
     }
 
     /// A rollback that left files in the visible `<name> (incomplete move)` folder: each note
@@ -343,15 +351,21 @@ fn check(root: &Path, from: &str, to: &str) -> Result<(), NotesError> {
     if from.is_empty() || to.is_empty() {
         return Err(NotesError::InvalidFolder);
     }
+    let config = read_vault_config(root);
     // Before the tree's filter, which hides the journal folder unless the sidebar shows it.
-    let journal = read_vault_config(root).journal_folder;
-    if !journal.is_empty() && within(&journal, from) {
+    if !config.journal_folder.is_empty() && within(&config.journal_folder, from) {
         return Err(NotesError::FolderHoldsJournal);
     }
     let shown = tree_filter(root);
     let hidden =
         |folder: &str| folder.split('/').any(|segment| segment.starts_with('.')) || !shown(folder);
-    if hidden(from) || hidden(to) || valid_path(to).is_err() {
+    // A folder the vault ignores drops the notes moved into it at the next open.
+    let ignored = WatchFilter::new(config.exclude_patterns).ignores(to);
+    if hidden(from) || hidden(to) || ignored || valid_path(to).is_err() {
+        return Err(NotesError::InvalidFolder);
+    }
+    // A folder reached through a link is one the open walk does not enter.
+    if !plain_folders(root, from)? || !plain_folders(root, to)? {
         return Err(NotesError::InvalidFolder);
     }
     match fs::symlink_metadata(on_disk(root, from)) {
@@ -362,7 +376,10 @@ fn check(root: &Path, from: &str, to: &str) -> Result<(), NotesError> {
         }
         Err(error) => return Err(error.into()),
     }
-    let case_only = folded_key(from) == folded_key(to);
+    // A respelling of the folder's own name only: its parent, which the move does not own,
+    // stays as it is spelled.
+    let parent = |path: &str| path.rsplit_once('/').map(|(parent, _)| parent.to_owned());
+    let case_only = folded_key(from) == folded_key(to) && parent(from) == parent(to);
     if !case_only && within(&folded_key(to), &folded_key(from)) {
         return Err(NotesError::InvalidFolder);
     }

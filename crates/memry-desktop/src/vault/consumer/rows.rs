@@ -392,14 +392,27 @@ impl Lane<'_> {
         Ok(())
     }
 
-    /// [`Lane::begin_move`] for every note of a folder the app moves, all or none
-    /// ([`NotesWriter::begin_app_moves`]).
-    pub(crate) fn begin_moves(
+    /// [`Lane::begin_move`] for a folder the app moves and every note in it, all or none
+    /// ([`NotesWriter::begin_folder_move`]).
+    pub(crate) fn begin_folder_move(
         &mut self,
         writer: &NotesWriter,
+        from: &str,
+        to: &str,
         moves: &[(&str, AppMoved<'_>)],
     ) -> Result<(), BeginError> {
-        writer.begin_app_moves(moves)
+        writer.begin_folder_move(from, to, moves)
+    }
+
+    /// Forgets the folder's record of an app move ([`NotesWriter::abandon_folder_move`]),
+    /// under the lane as [`Lane::forget_move`].
+    pub(crate) fn forget_folder_move(
+        &mut self,
+        writer: &NotesWriter,
+        from: &str,
+        to: &str,
+    ) -> Result<bool, StorageError> {
+        writer.abandon_folder_move(from, to)
     }
 
     /// Records the note's app move before its file moves ([`NotesWriter::begin_app_move`]).
