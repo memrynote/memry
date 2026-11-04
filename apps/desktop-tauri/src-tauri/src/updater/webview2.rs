@@ -1,12 +1,14 @@
-//! The WebView2 runtime check at boot (`memry_desktop::updater::webview2`), in the `Guards`
-//! stage before the crash monitor starts and long before the first window. A launch without the
-//! runtime runs the bootstrapper the pack put beside the executable. One that still has no
-//! runtime tells the user where to get it and exits with code 1, since no window could open.
+//! The WebView2 runtime check at launch (`memry_desktop::updater::webview2`). `main` runs it
+//! before the Tauri runtime is built, since `tauri-runtime-wry` asks for the runtime only then
+//! and refuses every webview of a process whose answer was no (#3915). A launch without the
+//! runtime runs the bootstrapper the pack put beside the executable there. The `Guards` stage,
+//! once logging runs, logs and reports the result, and a launch that still has no runtime tells
+//! the user where to get it and exits with code 1, since no window could open.
 
 use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
-use std::sync::mpsc;
+use std::sync::{OnceLock, mpsc};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -15,7 +17,7 @@ use memry_desktop::locale;
 use memry_desktop::paths::AppPaths;
 use memry_desktop::telemetry::TelemetryEvent;
 use memry_desktop::telemetry::service::Service as Telemetry;
-use memry_desktop::updater::webview2::{self, BOOTSTRAPPER, DOWNLOAD_URL, Outcome, Runtime};
+use memry_desktop::updater::webview2::{self, BOOTSTRAPPER, Check, DOWNLOAD_URL, Outcome, Runtime};
 use tauri::{AppHandle, Manager, Wry};
 use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
 use windows::Win32::System::Threading::{CREATE_NO_WINDOW, GetCurrentThreadId};
@@ -43,6 +45,9 @@ const CLIENT_KEYS: [(winreg::HKEY, &str); 3] = [
 
 /// How long the bootstrapper may take to download and install the runtime.
 const BOOTSTRAPPER_DEADLINE: Duration = Duration::from_secs(120);
+
+/// What `main` found before the Tauri runtime existed.
+static CHECK: OnceLock<Check> = OnceLock::new();
 
 /// This machine, with the copy of the notice shown while the bootstrapper runs.
 struct Machine {
@@ -179,26 +184,45 @@ fn run(mut command: Command, deadline: Duration) -> Result<(), String> {
     }
 }
 
+/// Finds the runtime, and installs it when it is missing. `main` calls it before
+/// `memry_tauri::run`: a runtime installed after `Wry::init` stays unusable for this process.
+pub fn check_before_runtime() {
+    CHECK.get_or_init(|| {
+        let bootstrapper = std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(|dir| dir.join(BOOTSTRAPPER)))
+            .unwrap_or_default();
+        // No config is loaded yet, so the copy follows the OS language.
+        let locale = locale::resolve_os_locale(sys_locale::get_locale().as_deref());
+        let machine = Machine {
+            notice: Notice {
+                title: "MemryNote".to_owned(),
+                body: i18n::t(
+                    locale,
+                    "system:startup.webview2Installing.body",
+                    &Args::new(),
+                ),
+                style: MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | direction(locale),
+            },
+        };
+        webview2::ensure(&machine, &bootstrapper)
+    });
+}
+
+/// Logs and reports what `check_before_runtime` found, and ends the launch when no window can
+/// open.
 pub fn apply(app: &AppHandle<Wry>) -> Result<(), CommandError> {
-    let bootstrapper = std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(|dir| dir.join(BOOTSTRAPPER)))
-        .unwrap_or_default();
-    // The config is not loaded yet, so the copy follows the OS language.
-    let locale = preboot::locale(app);
-    let machine = Machine {
-        notice: Notice {
-            title: "MemryNote".to_owned(),
-            body: i18n::t(
-                locale,
-                "system:startup.webview2Installing.body",
-                &Args::new(),
-            ),
-            style: MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | direction(locale),
-        },
+    let Some(check) = CHECK.get() else {
+        tracing::error!(
+            scope = "WebView2",
+            "the runtime was not checked before the Tauri runtime started"
+        );
+        return Ok(());
     };
+    check.log();
+    let locale = preboot::locale(app);
     settle(
-        webview2::ensure(&machine, &bootstrapper),
+        check.outcome,
         |event| {
             if crate::shell::services::telemetry_enabled(app) {
                 // The telemetry service starts later in this boot, or at the next launch when

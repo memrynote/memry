@@ -26,6 +26,10 @@ fn main() {
     memry_tauri::install_crypto_provider();
     #[cfg(windows)]
     memry_tauri::set_app_user_model_id();
+    // Before `memry_tauri::run` builds the Tauri runtime, which decides once whether WebView2 is
+    // there (#3915): a runtime the bootstrapper installs later opens no window in this process.
+    #[cfg(windows)]
+    memry_tauri::updater::webview2::check_before_runtime();
 
     let env = launch_env();
     let mut context = tauri::generate_context!();
