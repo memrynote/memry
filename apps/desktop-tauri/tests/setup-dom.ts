@@ -1020,6 +1020,20 @@ class MockIntersectionObserver {
 globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver
 
 // ============================================================================
+// Window focus
+// ============================================================================
+
+// jsdom answers `hasFocus()` from whether an element is focused, so it reads false in the middle
+// of a focus move between two elements. A browser answers whether the window has focus, which is
+// what `isWindowBlur` (lib/inline-rename-focus) reads: tests run in a focused app window, and a
+// test of a deactivated window mocks this.
+Object.defineProperty(document, 'hasFocus', {
+  configurable: true,
+  writable: true,
+  value: () => true
+})
+
+// ============================================================================
 // Mock matchMedia
 // ============================================================================
 
