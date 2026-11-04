@@ -238,28 +238,37 @@ fn under_a_file(root: &Path, folder: &str) -> io::Result<bool> {
 pub(super) fn respells_a_sibling(root: &Path, folder: &str) -> io::Result<bool> {
     let mut dir = root.to_path_buf();
     for segment in folder.split('/') {
-        let entries = match fs::read_dir(&dir) {
-            Ok(entries) => entries,
-            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
-            Err(error) => return Err(error),
-        };
-        let (wanted, folded) = (segment.nfc().collect::<String>(), folded_key(segment));
-        let mut respelled = false;
-        for entry in entries {
-            let name = entry?.file_name();
-            let Some(name) = name.to_str() else { continue };
-            if name.nfc().eq(wanted.chars()) {
-                respelled = false;
-                break;
-            }
-            respelled |= folded_key(name) == folded;
-        }
-        if respelled {
+        if sibling_named(&dir, segment)?.is_some_and(|name| !name.nfc().eq(segment.nfc())) {
             return Ok(true);
         }
         dir.push(segment);
     }
     Ok(false)
+}
+
+/// The entry of `dir` that a folder `segment` there would be on a disk that folds case or
+/// Unicode form, as `dir` lists it: one spelled as `segment` in any Unicode form, else one
+/// that differs from it in case only. `None` when there is none, or no `dir`. Every volume
+/// answers alike, so a vault copied between them keeps one spelling per folder.
+pub(super) fn sibling_named(dir: &Path, segment: &str) -> io::Result<Option<String>> {
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let (wanted, folded) = (segment.nfc().collect::<String>(), folded_key(segment));
+    let mut respelled = None;
+    for entry in entries {
+        let name = entry?.file_name();
+        let Some(name) = name.to_str() else { continue };
+        if name.nfc().eq(wanted.chars()) {
+            return Ok(Some(name.to_owned()));
+        }
+        if respelled.is_none() && folded_key(name) == folded {
+            respelled = Some(name.to_owned());
+        }
+    }
+    Ok(respelled)
 }
 
 /// `notes:get-folder-config`: `None` when the folder has no file, or one that cannot be read.

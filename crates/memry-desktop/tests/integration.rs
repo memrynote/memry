@@ -126,6 +126,8 @@ mod notes_link_rewrite;
 mod notes_local_only;
 #[path = "notes_moves.rs"]
 mod notes_moves;
+#[path = "notes_moves_edges.rs"]
+mod notes_moves_edges;
 #[path = "notes_outside_after_reopen.rs"]
 mod notes_outside_after_reopen;
 #[path = "notes_properties.rs"]

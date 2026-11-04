@@ -129,12 +129,17 @@ impl EchoGuard {
 
     /// The app removes or moves away `path` with `remove`, recorded as one step with it: the
     /// watcher, ending records in [`Self::seen_file`] and [`Self::seen_folder`], sees the path
-    /// before both or after both. A failed `remove` withdraws the record. The lock is held for
-    /// the one call, so `remove` is a single file system call, never a wait.
+    /// before both or after both. A failed `remove` puts back the record it replaced (an own
+    /// write the file still holds), or none. The lock is held for the one call, so `remove` is a
+    /// single file system call, never a wait.
     pub fn removing<T>(&self, path: &str, remove: impl FnOnce() -> io::Result<T>) -> io::Result<T> {
         let mut state = self.lock();
+        let before = state.by_path.get(path).cloned();
         state.put(path, Expected::Gone);
-        remove().inspect_err(|_| state.forget(path))
+        remove().inspect_err(|_| match before {
+            Some(before) => state.put(path, before),
+            None => state.forget(path),
+        })
     }
 
     /// The hash the app last wrote at `path`, when one is recorded. The watcher hashes the
@@ -364,11 +369,17 @@ mod tests {
     }
 
     #[test]
-    fn a_removal_that_fails_leaves_no_record() {
+    fn a_removal_that_fails_leaves_the_record_as_it_was() {
         let echo = EchoGuard::default();
-        let removed = echo.removing("a.md", || Err::<(), _>(io::ErrorKind::Other.into()));
-        assert!(removed.is_err());
+        let failed = || Err::<(), _>(io::ErrorKind::Other.into());
+        assert!(echo.removing("a.md", failed).is_err());
         assert!(!echo.absorbs_removal("a.md"));
+        echo.will_write("c.md", "h");
+        assert!(echo.removing("c.md", failed).is_err());
+        assert!(
+            echo.absorbs_write("c.md", "h"),
+            "the own write was forgotten"
+        );
         echo.removing("b.md", || Ok(())).unwrap();
         assert!(echo.absorbs_removal("b.md"));
     }

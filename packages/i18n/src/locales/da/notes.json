@@ -2202,6 +2202,8 @@
   },
   "movedRefsKept": {
     "changing": "“{title}” blev flyttet, men den ændrede sig i det øjeblik, så dens links til billeder og filer peger stadig på den gamle mappe. Tjek dem i noten.",
-    "unreadable": "“{title}” blev flyttet, men Memry kan ikke redigere dens fil, så dens links til billeder og filer peger stadig på den gamle mappe. Opdater dem manuelt."
+    "unreadable": "“{title}” blev flyttet, men Memry kan ikke redigere dens fil, så dens links til billeder og filer peger stadig på den gamle mappe. Opdater dem manuelt.",
+    "several": "{count, plural, one {# note blev flyttet, men dens links til billeder og filer peger stadig på den gamle mappe. Tjek dem i noten.} other {# noter blev flyttet, men deres links til billeder og filer peger stadig på de gamle mapper. Tjek dem i hver note.}}",
+    "severalUnreadable": "{count, plural, one {# note blev flyttet, men dens links til billeder og filer peger stadig på den gamle mappe. Memry kan ikke redigere nogle af filerne. Opdater dem manuelt.} other {# noter blev flyttet, men deres links til billeder og filer peger stadig på de gamle mapper. Memry kan ikke redigere nogle af filerne. Opdater dem manuelt.}}"
   }
 }
