@@ -67,6 +67,11 @@ fn backend(app: &AppHandle<Wry>) -> Chosen {
     if let Some(scripted) = scripted(app) {
         return Chosen {
             backend: Some(scripted),
+            // The build a spec plays, such as the one an install just put in place.
+            version: app
+                .state::<LaunchEnv>()
+                .get("MEMRY_TEST_UPDATER_VERSION")
+                .map(str::to_owned),
             ..Chosen::none(Duration::ZERO)
         };
     }
