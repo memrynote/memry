@@ -2199,5 +2199,9 @@
     "keep": "Keep note",
     "deletePermanently": "Delete permanently",
     "kept": "The note was kept. It could not be moved to the trash."
+  },
+  "movedRefsKept": {
+    "changing": "“{title}” moved, but it was changing at the time, so its links to images and files still point to its old folder. Check them in the note.",
+    "unreadable": "“{title}” moved, but Memry can't edit its file, so its links to images and files still point to its old folder. Update them by hand."
   }
 }

@@ -1,7 +1,7 @@
-//! The note events (`notes:created`, `notes:updated`, `notes:deleted`, `notes:renamed`), from the vault tier's
-//! row facts: the one place they are emitted. A fact names who caused it, so the app's create
-//! and delete and the watcher's reports go out the same way with their `source`. Two kinds of
-//! fact emit nothing:
+//! The note events (`notes:created`, `notes:updated`, `notes:deleted`, `notes:renamed`,
+//! `notes:moved`), from the vault tier's row facts: the one place they are emitted. A fact
+//! names who caused it, so the app's create and delete and the watcher's reports go out the
+//! same way with their `source`. Two kinds of fact emit nothing:
 //! - the app's own writes of a body (`Changed` by the app): Electron's write-back is `sync`,
 //!   which the renderer ignores. The user's save (`Changed` by [`ChangeSource::Save`]) sends an
 //!   `internal` `notes:updated`, as Electron's `updateNote` does; an edit the app makes for the
@@ -16,23 +16,25 @@
 //! ([`NoteView::changes`]). Facts missed because this thread fell behind are made up for with
 //! one [`NoteEventsDroppedEvent`], on which the renderer refetches what it shows.
 //!
-//! A renamed or moved note is read for the title it has now. The app's move to another folder
-//! sends `notes:moved` instead once `notes:move` is exposed (Step 13g-3); until then every
-//! `Renamed` fact is a rename, the app's or an outside move, which Electron's watcher also
-//! sends as `notes:renamed`.
+//! A `Renamed` fact sends by its [`MoveKind`]: the app's rename and a file moved outside the
+//! app send `notes:renamed` (Electron's watcher sends an outside move so), read for the title
+//! the note has now; the app's move to another folder sends `notes:moved` (`moveNote`); and a
+//! journal day renamed by a date format change sends nothing, as Electron's
+//! `journal-format-migration` sends nothing (one event per day would refetch the lists once
+//! per file).
 
 use memry_desktop::notes::read;
 use memry_desktop::notes::view::NoteView;
 use memry_desktop::session::Session;
-use memry_desktop::vault::consumer::{Applied, ChangeSource};
+use memry_desktop::vault::consumer::{Applied, ChangeSource, MoveKind};
 use serde_json::json;
 use tauri::{AppHandle, Manager, Runtime};
 use tokio::sync::broadcast::Receiver;
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::events::{
-    NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteEventsDroppedEvent, NoteRenamedEvent,
-    NoteUpdatedEvent, broadcast,
+    NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteEventsDroppedEvent, NoteMovedEvent,
+    NoteRenamedEvent, NoteUpdatedEvent, broadcast,
 };
 
 /// Generic over the runtime so a test drives it on a mock app.
@@ -64,6 +66,7 @@ enum Outgoing {
         source: NoteEventSource,
     },
     Deleted(NoteDeletedEvent),
+    Moved(NoteMovedEvent),
     Renamed {
         note_id: String,
         old_path: String,
@@ -75,9 +78,11 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
     let Some(outgoing) = outgoing(fact) else {
         return;
     };
-    if let Outgoing::Deleted(event) = outgoing {
-        return broadcast(app, event);
-    }
+    let outgoing = match outgoing {
+        Outgoing::Deleted(event) => return broadcast(app, event),
+        Outgoing::Moved(event) => return broadcast(app, event),
+        outgoing => outgoing,
+    };
     let Some(open) = app.state::<Session>().current() else {
         return;
     };
@@ -125,7 +130,7 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
                 );
             }
         },
-        Outgoing::Deleted(_) => {}
+        Outgoing::Deleted(_) | Outgoing::Moved(_) => {}
     }
 }
 
@@ -178,11 +183,20 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
             note_id,
             old_path,
             new_path,
-        } => Some(Outgoing::Renamed {
-            note_id,
-            old_path,
-            new_path,
-        }),
+            kind,
+        } => match kind {
+            MoveKind::Renamed => Some(Outgoing::Renamed {
+                note_id,
+                old_path,
+                new_path,
+            }),
+            MoveKind::Moved => Some(Outgoing::Moved(NoteMovedEvent {
+                id: note_id,
+                old_path,
+                new_path,
+            })),
+            MoveKind::JournalFormat => None,
+        },
         _ => None,
     }
 }
@@ -286,5 +300,36 @@ mod tests {
         assert_eq!(outgoing(added(ChangeSource::Walk)), None);
         assert_eq!(outgoing(changed(ChangeSource::Walk)), None);
         assert_eq!(outgoing(removed(ChangeSource::Walk)), None);
+    }
+
+    fn renamed(kind: MoveKind) -> Applied {
+        Applied::Renamed {
+            note_id: "n".into(),
+            old_path: "a.md".into(),
+            new_path: "b/a.md".into(),
+            kind,
+        }
+    }
+
+    #[test]
+    fn a_path_change_sends_by_what_moved_the_file() {
+        assert_eq!(
+            outgoing(renamed(MoveKind::Renamed)),
+            Some(Outgoing::Renamed {
+                note_id: "n".into(),
+                old_path: "a.md".into(),
+                new_path: "b/a.md".into(),
+            })
+        );
+        assert_eq!(
+            outgoing(renamed(MoveKind::Moved)),
+            Some(Outgoing::Moved(NoteMovedEvent {
+                id: "n".into(),
+                old_path: "a.md".into(),
+                new_path: "b/a.md".into(),
+            }))
+        );
+        // Electron's journal format migration sends no note event.
+        assert_eq!(outgoing(renamed(MoveKind::JournalFormat)), None);
     }
 }

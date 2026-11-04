@@ -27,7 +27,7 @@ use memry_core::domain::note_files::{NoteFile as Row, NoteFileStat};
 use memry_core::domain::notes::app_move::{AppMoved, BeginError};
 use tokio::sync::broadcast;
 
-use super::{Applied, ChangeSource};
+use super::{Applied, ChangeSource, MoveKind};
 use crate::vault::file_types::{FileType, extension, mime_of_extension};
 use crate::vault::path_key::{PathCollision, PathIndex};
 
@@ -206,6 +206,7 @@ impl RowOwner {
             note_id: note_id.to_owned(),
             old_path: row.path,
             new_path: new_path.to_owned(),
+            kind: MoveKind::Renamed,
         });
         Ok(true)
     }

@@ -2199,5 +2199,9 @@
     "keep": "Ponechat poznámku",
     "deletePermanently": "Smazat trvale",
     "kept": "Poznámka byla ponechána. Nešlo ji přesunout do koše."
+  },
+  "movedRefsKept": {
+    "changing": "„{title}“ byla přesunuta, ale v tu chvíli se měnila, takže její odkazy na obrázky a soubory stále míří do původní složky. Zkontrolujte je v poznámce.",
+    "unreadable": "„{title}“ byla přesunuta, ale Memry nemůže upravit její soubor, takže její odkazy na obrázky a soubory stále míří do původní složky. Upravte je ručně."
   }
 }

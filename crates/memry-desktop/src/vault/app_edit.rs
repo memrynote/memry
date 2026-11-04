@@ -16,6 +16,11 @@
 //!   `unless_changed_from`: the note's turn and the lane keep every writer of this device out
 //!   in between, and no body writer runs outside them today. One that does (the resident
 //!   editor, Step 14) must pass the body read as `unless_changed_from` here.
+//! - [`Precondition::HeldAt`]: [`Precondition::Held`] for a note whose file moved since its
+//!   document took it (a moved note's own refs, `notes::link_rewrite`). The document is compared
+//!   as it was built, with its Obsidian embeds resolved from the file's old path: from the new
+//!   one, `![[img/photo.png]]` names another file, and a document that holds the file would read
+//!   as ahead of it. The new text is fed at the new path.
 //! - [`Precondition::Save`]: the user's save (`notes:update`, Electron `writeNote`), which
 //!   replaces whatever is there. A save that moves the body first keeps a version of the whole
 //!   file unless it is the run's own ([`OwnFiles`]) and its row names it; the feed keeps the
@@ -96,6 +101,8 @@ const BOM: char = '\u{feff}';
 pub enum Precondition<'a> {
     /// Only a file the document holds; anything else is kept.
     Held,
+    /// [`Precondition::Held`], for a document built while its file was at this path.
+    HeldAt(&'a str),
     /// The user's save: whatever is there, a file that is not the run's own kept as a version
     /// first.
     Save(&'a OwnFiles),
@@ -281,14 +288,18 @@ impl AppEdit {
         let read_body = split_frontmatter_block(read).body;
         let row_names_file = row.content_hash.as_deref() == Some(file.hash.as_str());
         let own = match precondition {
-            Precondition::Held => {
+            Precondition::Held | Precondition::HeldAt(_) => {
                 if row.content_hash.is_none() {
                     return Ok(Edited::Kept(Kept::NotRead));
                 }
                 if !row_names_file {
                     return Ok(Edited::Kept(Kept::FileChanged));
                 }
-                let differs = self.document_differs(note_id, &row.path, read, &parsed.frontmatter);
+                let built_at = match precondition {
+                    Precondition::HeldAt(path) => path,
+                    _ => &row.path,
+                };
+                let differs = self.document_differs(note_id, built_at, read, &parsed.frontmatter);
                 if let Some(kept) = differs.map_err(AppEditError::from)? {
                     return Ok(Edited::Kept(kept));
                 }

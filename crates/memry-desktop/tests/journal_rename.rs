@@ -16,11 +16,11 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use memry_core::domain::note_positions;
-use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::consumer::identity::{
     Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal,
 };
 use memry_desktop::vault::consumer::rows::RowStat;
+use memry_desktop::vault::consumer::{Applied, MoveKind};
 use memry_desktop::vault::file_types::FileType;
 use memry_desktop::vault::journal_format::JournalDate;
 use memry_desktop::vault::journal_rename::{
@@ -269,6 +269,7 @@ fn a_journal_moves_with_its_row_and_its_order_slot_and_keeps_its_note() {
         note_id: id.clone(),
         old_path: "journal/2026-09-25.md".into(),
         new_path: format!("journal/{to}"),
+        kind: MoveKind::JournalFormat,
     }));
     assert_eq!(id_at(&e, &format!("journal/{to}")), id);
     assert_eq!(e.rows().len(), 2);
