@@ -1,7 +1,11 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FocusEvent, KeyboardEvent } from 'react'
 
-import { isMenuFocusSteal, stopInlineRenameKeyPropagation } from './inline-rename-focus'
+import {
+  handleInlineRenameBlur,
+  isMenuFocusSteal,
+  stopInlineRenameKeyPropagation
+} from './inline-rename-focus'
 
 /** A blur event carrying `relatedTarget`, which is all the helper reads. */
 function blurTo(relatedTarget: EventTarget | null): FocusEvent<HTMLElement> {
@@ -42,6 +46,34 @@ describe('isMenuFocusSteal', () => {
 
   it('treats a blur with no related target as an ordinary commit', () => {
     expect(isMenuFocusSteal(blurTo(null))).toBe(false)
+  })
+})
+
+describe('handleInlineRenameBlur', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  /** The blur a focused field gets, `windowFocused` saying whether the app window still has focus. */
+  function blur(windowFocused: boolean) {
+    const field = document.createElement('input')
+    document.body.appendChild(field)
+    field.focus()
+    vi.spyOn(document, 'hasFocus').mockReturnValue(windowFocused)
+    const commit = vi.fn()
+    handleInlineRenameBlur(
+      { relatedTarget: null, currentTarget: field } as unknown as FocusEvent<HTMLInputElement>,
+      commit
+    )
+    return commit
+  }
+
+  it('keeps the field when the app window loses focus to another window', () => {
+    // Chromium (WebView2 on Windows) blurs the focused field when the window is deactivated and
+    // focuses it again on return; WebKit fires no `focusout` there, so React never sees it.
+    expect(blur(false)).not.toHaveBeenCalled()
+  })
+
+  it('commits when focus moves elsewhere in the app', () => {
+    expect(blur(true)).toHaveBeenCalledOnce()
   })
 })
 
