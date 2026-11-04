@@ -53,6 +53,9 @@
 //!   document did not take, an app edit the write-back could not write, a pulled
 //!   change not written yet, a server body not here yet) the note is kept, with a
 //!   warning: a tombstone would delete on every device what the file never had.
+//! - An outside edit of the file a row named gives the record the file's frontmatter `tags`
+//!   (#3825, [`tags`]): a note's record takes the file's list, a journal day's what the edit
+//!   changed in it, so the tags only a day's record holds stay.
 //!
 //! Every answer is the core's; a failure is the consumer's to log and retry
 //! ([`crate::vault::consumer::MAX_RETRIES`]), and the next open asks again.
@@ -60,18 +63,13 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
-use std::time::UNIX_EPOCH;
 
 use memry_core::api::notes_write::NotesWriter;
-use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::notes::identity::{Adopted, Deferral, FileNote, Moved, Removed};
 use memry_core::domain::notes::journal_day::FileDay;
 use memry_core::markdown::convert::EmbedResolver;
 use memry_core::markdown::convert::api::Converter;
-use memry_core::markdown::frontmatter::{YamlValue, gray_matter_data, split_frontmatter_block};
-use memry_core::markdown::shared::markdown_class::{
-    MarkdownClassThresholds, classify_markdown_content, classify_markdown_stat,
-};
+use memry_core::markdown::frontmatter::split_frontmatter_block;
 use memry_core::seams::secure_store::SecureStore;
 
 use crate::vault::config::read_vault_config_strict;
@@ -82,6 +80,13 @@ use crate::vault::consumer::identity::{
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
+use crate::vault::note_file::NoteFile;
+
+mod file;
+mod tags;
+
+use file::created_ms;
+pub(super) use file::{electron_db_beside, is_large_file, place};
 
 use super::owed_moves::{self, held, keeps_kind};
 
@@ -281,11 +286,6 @@ impl NotesIdentity {
     }
 }
 
-/// Electron's database is beside the vault's files (`<vault>/.memry/data.db`).
-pub(super) fn electron_db_beside(root: &Path) -> bool {
-    root.join(".memry").join("data.db").is_file()
-}
-
 impl NoteIdentity for NotesIdentity {
     /// An Electron vault whose notes were not imported: by the core's rule, a file of it that
     /// matches no note the core has defers ([`Deferral::ElectronNotImported`]) instead of
@@ -362,7 +362,8 @@ impl NoteIdentity for NotesIdentity {
         let may_be_a_note = writer.may_be_a_note(title, folder_path)?;
         let adopted = match journal.day_of(file.path) {
             Some(date) => {
-                let tags = declared_tags(split.block);
+                let declared = tags::of_block(split.block);
+                let tags = declared.clone().unwrap_or_default();
                 let day = FileDay {
                     path: file.path,
                     date: &date,
@@ -380,7 +381,13 @@ impl NoteIdentity for NotesIdentity {
                     None
                 };
                 let (converter, embeds) = parts(reader.as_ref());
-                writer.adopt_day(day, converter, embeds)
+                let adopted = writer.adopt_day(day, converter, embeds);
+                if let (Ok(Adopted::Created(id) | Adopted::Existing(id)), Some(declared)) =
+                    (&adopted, &declared)
+                {
+                    tags::found(&writer, id, declared);
+                }
+                adopted
             }
             None => {
                 let note = FileNote {
@@ -425,6 +432,17 @@ impl NoteIdentity for NotesIdentity {
                 Removal::Kept
             }
         })
+    }
+
+    /// The file's frontmatter `tags` reach the record ([`tags::edited`]).
+    fn on_changed(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        previous: &str,
+        file: &NoteFile,
+    ) -> Result<(), IdentityError> {
+        tags::edited(&*self.writer(ctx)?, ctx.search, note_id, previous, file)
     }
 
     /// A move that keeps what the file is reaches the record (`renameKeepsJournalDate`). One
@@ -520,42 +538,6 @@ impl NoteIdentity for NotesIdentity {
     }
 }
 
-/// Large-file class (`packages/shared/src/markdown-class.ts`): the size alone, else the text.
-pub(super) fn is_large_file(size: u64, raw: &str) -> bool {
-    let thresholds = MarkdownClassThresholds::default();
-    let by_size = usize::try_from(size).map_or(true, |bytes| {
-        classify_markdown_stat(bytes, thresholds).is_some()
-    });
-    by_size
-        || classify_markdown_content(raw, thresholds)
-            .large_file
-            .is_some()
-}
-
-/// The folder (`None` at the root) and the title of a vault-relative `/` path: the file name
-/// without `.md`, as `path.basename(p, '.md')` reads it (a name that is only `.md` keeps it).
-/// Exact: a title that differs from a record's only in case or Unicode normalization is
-/// another title, as it is to Electron.
-pub(super) fn place(path: &str) -> (Option<&str>, &str) {
-    let (folder, name) = match path.rsplit_once('/') {
-        Some((folder, name)) => (Some(folder), name),
-        None => (None, path),
-    };
-    let title = match name.strip_suffix(".md") {
-        Some(stem) if !stem.is_empty() => stem,
-        _ => name,
-    };
-    (folder, title)
-}
-
-/// The `tags` a frontmatter block declares (`extractTags`); none when it does not parse.
-fn declared_tags(block: Option<&str>) -> Vec<String> {
-    match block.map(gray_matter_data) {
-        Some(Ok(YamlValue::Map(map))) => header_tags(&map),
-        _ => Vec::new(),
-    }
-}
-
 /// The converter and the embed lookup of a reader, borrowed.
 fn parts(
     reader: Option<&(Converter, Resolved)>,
@@ -563,33 +545,5 @@ fn parts(
     match reader {
         Some((converter, embeds)) => (Some(converter), Some(embeds as &dyn EmbedResolver)),
         None => (None, None),
-    }
-}
-
-/// When the file was created, where the file system records it.
-fn created_ms(path: &Path) -> Option<i64> {
-    let created = std::fs::metadata(path).ok()?.created().ok()?;
-    let since = created.duration_since(UNIX_EPOCH).ok()?;
-    i64::try_from(since.as_millis()).ok()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_title_is_the_file_name_without_md_and_the_folder_its_parent() {
-        assert_eq!(place("a.md"), (None, "a"));
-        assert_eq!(place("x/y/a.b.md"), (Some("x/y"), "a.b"));
-        assert_eq!(place("x/Note.MD"), (Some("x"), "Note.MD"));
-        assert_eq!(place("x/.md"), (Some("x"), ".md"));
-    }
-
-    #[test]
-    fn the_large_file_class_is_the_size_or_a_block() {
-        assert!(!is_large_file(5, "small"));
-        assert!(is_large_file(2 * 1024 * 1024, "small"));
-        assert!(is_large_file(200 * 1024, &"x".repeat(200 * 1024)));
-        assert!(!is_large_file(200 * 1024, &"x\n\n".repeat(60 * 1024)));
     }
 }

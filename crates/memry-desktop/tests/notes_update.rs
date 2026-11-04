@@ -257,7 +257,8 @@ fn a_refused_save_leaves_the_record_as_the_file_says() {
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
     let tags = record_tags(&e, &id);
-    // The outside edit keeps the header, so only the refused save could move the record.
+    // The outside edit keeps the header, which its record then takes (#3825); only the refused
+    // save could add `gamma` or the icon.
     let outside = PLAN.replace("First text", "From another editor");
     let vault = e.vault.clone();
     let input = NoteUpdateInput {
@@ -280,7 +281,10 @@ fn a_refused_save_leaves_the_record_as_the_file_says() {
         )
     });
     assert_eq!(e.read("Plan.md"), outside);
-    assert_eq!((listed(&e).tags, listed(&e).emoji), (tags, None));
+    assert_eq!(
+        (listed(&e).tags, listed(&e).emoji),
+        (vec!["Alpha".to_owned(), "beta".to_owned()], None)
+    );
 }
 
 #[test]

@@ -12,11 +12,10 @@
 //!
 //! When the index measured the bytes on disk now (its row's hash is the file's,
 //! `note_file_hashes`), the file's header tags stand for the header and the record's are left
-//! out: an edit outside the app reaches the file and the index, never the record, so a tag
-//! removed there would otherwise keep counting. Until the index catches up with a change, the
-//! record's tags, the body's and the header's last measure are joined, since an app edit
-//! writes the record first. The record itself still keeps a tag removed outside the app, so
-//! peers keep it (#3825: the feed's job, not a read's).
+//! out: an edit outside the app reaches the record only once the vault tier fed it
+//! (`notes::file_tags`, #3825), and a tag removed there must not count meanwhile. Until the
+//! index catches up with a change, the record's tags, the body's and the header's last measure
+//! are joined, since an app edit writes the record first.
 //!
 //! Only a note or journal day with a file row is counted or listed, as Electron's index holds
 //! files only and the note list lists only those. A task counts with its own tags. Each item

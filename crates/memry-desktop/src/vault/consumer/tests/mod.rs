@@ -84,6 +84,9 @@ pub(super) struct Recorder {
     pub(super) row_at_delete: Mutex<Vec<bool>>,
     /// The row's path when `on_renamed` ran.
     pub(super) row_at_rename: Mutex<Vec<String>>,
+    /// `(note_id, previous)` of every `on_changed`.
+    pub(super) changed: Mutex<Vec<(String, String)>>,
+    pub(super) changed_fails: AtomicBool,
 }
 
 impl NoteIdentity for Recorder {
@@ -141,6 +144,23 @@ impl NoteIdentity for Recorder {
         }
         Ok(Rename::Followed)
     }
+
+    fn on_changed(
+        &self,
+        _: &IdentityCtx<'_>,
+        note_id: &str,
+        previous: &str,
+        _: &crate::vault::note_file::NoteFile,
+    ) -> Result<(), IdentityError> {
+        self.changed
+            .lock()
+            .unwrap()
+            .push((note_id.to_owned(), previous.to_owned()));
+        if self.changed_fails.load(Ordering::SeqCst) {
+            return Err(IdentityError::Other("the record did not take it".into()));
+        }
+        Ok(())
+    }
 }
 
 pub(super) struct Fixture {
@@ -177,6 +197,8 @@ pub(super) fn fixture() -> Fixture {
         adopted: Mutex::default(),
         row_at_delete: Mutex::default(),
         row_at_rename: Mutex::default(),
+        changed: Mutex::default(),
+        changed_fails: AtomicBool::new(false),
     });
     let applier = applier(&root, &vault, &store, &rows, identity.clone());
     Fixture {
@@ -341,6 +363,7 @@ pub(super) fn applier(
     Applier {
         root: root.to_owned(),
         vault: vault.clone(),
+        search: vault.search().unwrap(),
         rows: rows.clone(),
         identity,
         feed: vault.external_feed(store.clone()).ok(),
@@ -349,6 +372,7 @@ pub(super) fn applier(
         activity: crate::vault::activity::ActivityLog::new(),
         own_files: Arc::default(),
         watch: None,
+        untaken: Mutex::default(),
     }
 }
 
@@ -363,6 +387,7 @@ mod flood;
 mod hash_rule;
 mod lane;
 mod late_close;
+mod outside_edit;
 #[cfg(windows)]
 mod replace_race;
 mod slow_watch_stop;
