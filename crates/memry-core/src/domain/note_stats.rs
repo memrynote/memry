@@ -10,6 +10,10 @@
 //! A frontmatter block that does not parse costs the note its header tags and cover, never its
 //! counts (`parseNote`, #844). Lengths are JavaScript string lengths, UTF-16 code units.
 //!
+//! The note's property values go to `note_properties` with the row, in the same transaction
+//! ([`note_properties`]): the desktop reads them from the file with the text, as their types
+//! need the definitions it owns.
+//!
 //! The rows are derived: [`unindexed`] lists every markdown note whose row is missing, names
 //! other bytes than its file's or another journal day than its record's, and the desktop
 //! indexer measures those files again. A row's journal day is the one its record says
@@ -23,8 +27,10 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 use crate::api::errors::StorageError;
 use crate::domain::journal_rules::preview::extract_journal_preview;
 use crate::domain::journal_rules::{count_words, utf16_len};
+use crate::domain::note_properties;
 use crate::domain::notes::failed;
 use crate::domain::notes::journal_day;
+use crate::domain::property_values::IndexedProperty;
 use crate::domain::tags;
 use crate::markdown::frontmatter::js::{iso_string, js_trim, number_to_string};
 use crate::markdown::frontmatter::{YamlMap, YamlValue, gray_matter_data, split_frontmatter_block};
@@ -52,15 +58,18 @@ pub struct MeasuredFile {
     /// The vault tier's hash of `text` (`note_file_hashes.file_hash` names the same bytes).
     pub file_hash: String,
     pub text: String,
+    /// The user properties `text`'s frontmatter holds, as the index reads them.
+    pub properties: Vec<IndexedProperty>,
 }
 
 /// A row to store: a file's [`measure`], with what the row records beside it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NoteStatsRow {
     pub note_id: String,
     pub file_hash: String,
     pub date: Option<String>,
     pub stats: NoteStats,
+    pub properties: Vec<IndexedProperty>,
 }
 
 impl NoteStatsRow {
@@ -71,6 +80,7 @@ impl NoteStatsRow {
             note_id: file.note_id,
             file_hash: file.file_hash,
             date,
+            properties: file.properties,
         }
     }
 }
@@ -234,6 +244,11 @@ pub fn write(
             )
             .map_err(failed)?;
     }
+    let properties: Vec<(&str, &[IndexedProperty])> = rows
+        .iter()
+        .map(|row| (row.note_id.as_str(), row.properties.as_slice()))
+        .collect();
+    note_properties::replace(&transaction, &properties)?;
     transaction.commit().map_err(failed)?;
     Ok(rows.len())
 }
@@ -267,19 +282,23 @@ pub fn prune(data: &Connection, index: &Connection) -> Result<usize, StorageErro
                 params![note_id],
             )
             .map_err(failed)?;
+        note_properties::forget(&transaction, note_id)?;
     }
     transaction.commit().map_err(failed)?;
     Ok(gone.len())
 }
 
 pub fn forget(index: &Connection, note_id: &str) -> Result<bool, StorageError> {
-    index
+    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let removed = transaction
         .execute(
             "DELETE FROM note_stats WHERE note_id = ?1",
             params![note_id],
         )
-        .map(|removed| removed > 0)
-        .map_err(failed)
+        .map_err(failed)?;
+    note_properties::forget(&transaction, note_id)?;
+    transaction.commit().map_err(failed)?;
+    Ok(removed > 0)
 }
 
 pub fn read(index: &Connection, note_id: &str) -> Result<Option<StoredStats>, StorageError> {

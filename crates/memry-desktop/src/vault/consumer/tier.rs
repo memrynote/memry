@@ -82,6 +82,11 @@ struct Open {
 }
 
 impl VaultTier {
+    /// The store holding the device key the tier writes under.
+    pub fn store(&self) -> Arc<dyn SecureStore> {
+        self.store.clone()
+    }
+
     pub fn new(store: Arc<dyn SecureStore>) -> Arc<Self> {
         Arc::new(Self {
             store,

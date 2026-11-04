@@ -106,7 +106,8 @@ pub fn with_reporting_task(
     report: &(dyn Fn(IndexProgress) + Sync),
     test: impl FnOnce(&TaskHandle),
 ) {
-    let indexer = Indexer::new(open);
+    // A store of its own: the index reads the definitions' records under it, writing none.
+    let indexer = Indexer::new(open, crate::device_key::with_device_key());
     let cancel = CancelToken::default();
     let (handle, inbox) = task_channel();
     std::thread::scope(|scope| {

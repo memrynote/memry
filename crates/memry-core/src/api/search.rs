@@ -18,6 +18,8 @@
 //! **A reindex is the caller's to schedule.** It is idempotent and safe at any
 //! time, but it walks the vault, so it is not hidden inside a keystroke.
 
+#[cfg(feature = "markdown")]
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use rusqlite::OptionalExtension as _;
@@ -25,6 +27,8 @@ use rusqlite::OptionalExtension as _;
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 use crate::domain::link_reads::{self, Incoming, LinkTarget, MentionSources};
+#[cfg(feature = "markdown")]
+use crate::domain::note_properties::{self, StoredProperty};
 #[cfg(feature = "markdown")]
 use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
 #[cfg(feature = "markdown")]
@@ -263,6 +267,36 @@ impl Search {
         let note_id = note_id.to_owned();
         self.index
             .read_blocking(move |index| note_stats::read(index, &note_id))
+    }
+
+    /// The note's `note_properties` rows ([`note_properties::read`]).
+    pub fn note_properties(&self, note_id: &str) -> Result<Vec<StoredProperty>, StorageError> {
+        let note_id = note_id.to_owned();
+        self.index
+            .read_blocking(move |index| note_properties::read(index, &note_id))
+    }
+
+    /// The notes with a `note_properties` row of any of `names`.
+    pub fn notes_holding_properties(
+        &self,
+        names: Vec<String>,
+    ) -> Result<Vec<String>, StorageError> {
+        self.index
+            .read_blocking(move |index| note_properties::holding(index, &names))
+    }
+
+    /// The definitions' types the `note_properties` rows were typed with
+    /// ([`note_properties::typed_with`]).
+    pub fn properties_typed_with(&self) -> Result<Option<BTreeMap<String, String>>, StorageError> {
+        self.index.read_blocking(note_properties::typed_with)
+    }
+
+    pub fn set_properties_typed_with(
+        &self,
+        types: BTreeMap<String, String>,
+    ) -> Result<(), StorageError> {
+        self.index
+            .call_blocking(move |index| note_properties::set_typed_with(index, &types))
     }
 
     /// Drops the rows of notes with no markdown file row ([`note_stats::prune`]). Holds the

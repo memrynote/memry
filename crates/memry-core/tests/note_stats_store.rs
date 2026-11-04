@@ -1,5 +1,6 @@
 //! `note_stats` on real `data.db` and `index.db` files (desktop Step 13e): which notes a scan
-//! lists, what a reopen keeps, and what a deleted, newer or older `index.db` leaves.
+//! lists, what a reopen keeps, and what a deleted, newer or older `index.db` leaves. A note's
+//! `note_properties` rows (13k-4b) go with its row.
 
 #![cfg(feature = "markdown")]
 
@@ -12,6 +13,7 @@ use memry_core::domain::journal;
 use memry_core::domain::note_files::NoteFileStat;
 use memry_core::domain::note_stats::{MeasuredFile, measure};
 use memry_core::domain::notes::identity;
+use memry_core::domain::property_values::IndexedProperty;
 
 const TEXT: &str = "---\ntags: [a]\n---\nsome words here\n- [ ] a task {task:t1}\n";
 
@@ -55,6 +57,12 @@ fn measured(id: &str, hash: &str) -> MeasuredFile {
         note_id: id.to_owned(),
         file_hash: hash.to_owned(),
         text: TEXT.to_owned(),
+        properties: vec![IndexedProperty {
+            name: "stage".to_owned(),
+            type_name: "text".to_owned(),
+            text: Some(id.to_owned()),
+            value: id.into(),
+        }],
     }
 }
 
@@ -269,5 +277,9 @@ fn rows_of_notes_without_a_markdown_file_are_pruned() {
     assert_eq!(search.note_stats("mid").expect("read"), None);
     assert_eq!(search.note_stats("ghost").expect("read"), None);
     assert!(search.note_stats("small").expect("read").is_some());
+    for (id, held) in [("mid", 0), ("ghost", 0), ("small", 1)] {
+        let rows = search.note_properties(id).expect("properties");
+        assert_eq!(rows.len(), held, "{id}");
+    }
     assert_eq!(search.prune_note_stats().expect("prune again"), 0);
 }
