@@ -30,6 +30,7 @@ use serde_json::{Map, Value};
 
 use crate::session::OpenVault;
 use crate::shell::file_open::{Resolution, is_plain_segment, resolve_under_root};
+use crate::vault::folder_file;
 use crate::vault::layout::MEMRY_DIR;
 
 /// `BUILT_IN_TIMESTAMP`: built-ins never look modified.
@@ -331,18 +332,25 @@ impl Templates {
     }
 
     /// The template a new note takes (`createNote`): the one named, else the one a tag of
-    /// `tags` names. `None` when that one is not there: no other is tried, as in Electron.
-    // Step 13h adds the folder's template (`.folder.md`) after the tags'.
+    /// `tags` names, else the one `folder`'s `.folder.md` gives
+    /// ([`folder_file::template_of`]). `None` when that one is not there: no other is tried,
+    /// as in Electron.
     pub fn for_new_note(
         &self,
         named: Option<&str>,
         tags: &[String],
+        folder: Option<&str>,
     ) -> Result<Option<TemplateView>, StorageError> {
         // `!templateId`: an empty id names none.
-        let id = match named.filter(|id| !id.is_empty()) {
+        let mut id = match named.filter(|id| !id.is_empty()) {
             Some(id) => Some(id.to_owned()),
             None => self.store.of_tags(tags)?,
         };
+        if id.as_deref().is_none_or(str::is_empty)
+            && let Some(folder) = folder.filter(|folder| !folder.is_empty())
+        {
+            id = folder_file::template_of(&self.vault, folder);
+        }
         id.map_or(Ok(None), |id| self.get(&id))
     }
 

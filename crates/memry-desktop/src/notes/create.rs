@@ -28,13 +28,13 @@
 //! - between 4 and 5: a row without a hash beside the file, whose text seeds the empty body at
 //!   the next open walk, as for any file the app wrote and did not read back.
 //!
-//! A template (Step 13l) is read before any of it: the one named, else the one a tag names
-//! (`Templates::for_new_note`). Its body, tags, properties and icon are merged under what the
-//! caller gave, as `createNote` merges `applyTemplate`'s, and the merged note is what the steps
-//! write.
+//! A template (Step 13l) is read before any of it: the one named, else the one a tag names,
+//! else the one the note's folder gives through its `.folder.md`, inherited from the folders
+//! above (Step 13h, `Templates::for_new_note`). Its body, tags, properties and icon are merged
+//! under what the caller gave, as `createNote` merges `applyTemplate`'s, and the merged note is
+//! what the steps write.
 //!
-//! Not here yet, though Electron's create does them: the template a folder names
-//! (`.folder.md`, Step 13h), and the note's date reminders (Step 21).
+//! Not here yet, though Electron's create does it: the note's date reminders (Step 21).
 
 use std::path::Path;
 
@@ -152,7 +152,8 @@ impl NotesService {
         let note = note.checked()?;
         let templates =
             Templates::new(open.path.clone(), open.vault.templates(self.store.clone())?);
-        let template = templates.for_new_note(note.template.as_deref(), &note.tags)?;
+        let template =
+            templates.for_new_note(note.template.as_deref(), &note.tags, note.folder.as_deref())?;
         let note = note.merged(template)?;
         let root = open.path.as_path();
         let rows = self.tier.rows();
