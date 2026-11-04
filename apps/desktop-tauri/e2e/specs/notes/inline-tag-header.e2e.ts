@@ -4,29 +4,22 @@
 // actions put no text into the editor's contenteditable, so the text goes in and out as the
 // browser's own editing commands, which reach ProseMirror as `beforeinput`.
 import { SHORTCUTS } from '../../harness/app-helpers'
-import { NOTE_EDITOR, NOTE_TITLE, getNote, listedIds, vaultOpen } from '../../harness/notes'
+import { NOTE_EDITOR, NOTE_TITLE, getNote, newNote, vaultOpen } from '../../harness/notes'
 import { test, expect } from '../../harness/test'
 
 const TAG = 'e2e-inline-car'
 
 test('joins the tags row and the file header, and leaves with the text', async ({ page }) => {
   await vaultOpen(page)
-  const known = await listedIds(page)
   await page.keyboard.press(SHORTCUTS.newNote)
   await expect(page.locator(NOTE_TITLE).first()).toBeFocused()
-  let id: string | undefined
-  await expect
-    .poll(async () => {
-      id = (await listedIds(page)).find((listed) => !known.includes(listed))
-      return id
-    })
-    .not.toBe(undefined)
+  // Cmd-N names the file `New note`; the field shows it empty.
+  const { id } = await newNote(page, [], (note) => note.title === 'New note')
 
   const editor = page.locator(NOTE_EDITOR).first()
   await editor.click()
   await page.keyboard.insertText(`Drove the #${TAG} today `)
-  const headerTags = async (): Promise<string[]> =>
-    (await getNote(page, id as string))?.headerTags ?? []
+  const headerTags = async (): Promise<string[]> => (await getNote(page, id))?.headerTags ?? []
 
   // The typed tag reaches the header and the tags row.
   await expect.poll(headerTags).toContain(TAG)

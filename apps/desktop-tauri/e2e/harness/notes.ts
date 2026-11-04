@@ -43,12 +43,38 @@ export const getNote = (page: Page, id: string) =>
 export const getNoteByPath = (page: Page, path: string) =>
   invoke<NoteView | null>(page, 'notes_get_by_path', { path })
 
-/** The ids of every note the vault lists. */
-export async function listedIds(page: Page): Promise<string[]> {
-  const list = await invoke<{ notes: { id: string }[] }>(page, 'notes_list', {
+export interface ListedNote {
+  id: string
+  path: string
+  title: string
+}
+
+/** Every note the vault lists. */
+export async function listedNotes(page: Page): Promise<ListedNote[]> {
+  const list = await invoke<{ notes: ListedNote[] }>(page, 'notes_list', {
     options: { limit: 10_000 }
   })
-  return list.notes.map((note) => note.id)
+  return list.notes
+}
+
+export const listedIds = async (page: Page): Promise<string[]> =>
+  (await listedNotes(page)).map((note) => note.id)
+
+/**
+ * The note `where` picks once it is listed, among those not in `known`. The vault's own notes may
+ * still be arriving from the open's walk, so a new note is told by what it is, not by being new.
+ */
+export async function newNote(
+  page: Page,
+  known: string[],
+  where: (note: ListedNote) => boolean
+): Promise<ListedNote> {
+  const found = await pollUntil(
+    async () => (await listedNotes(page)).find((note) => !known.includes(note.id) && where(note)),
+    { timeoutMs: 30_000 }
+  )
+  expect(found).not.toBe(undefined)
+  return found as ListedNote
 }
 
 export async function expandCollections(page: Page): Promise<void> {

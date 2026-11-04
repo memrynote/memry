@@ -15,7 +15,7 @@ import {
   type NoteView,
   createNote,
   getNote,
-  listedIds,
+  newNote,
   openFromSidebar,
   vaultOpen
 } from '../../harness/notes'
@@ -45,36 +45,28 @@ test('Cmd-N makes a note whose typed title names its file and whose typed body i
   testVaultPath
 }) => {
   await vaultOpen(page)
-  const known = await listedIds(page)
   await page.keyboard.press(SHORTCUTS.newNote)
   const title = page.locator(NOTE_TITLE).first()
   await expect(title).toBeFocused()
-  let id: string | undefined
-  await expect
-    .poll(async () => {
-      id = (await listedIds(page)).find((listed) => !known.includes(listed))
-      return id
-    })
-    .not.toBe(undefined)
+  // Cmd-N names the file `New note`; the field shows it empty.
+  const { id } = await newNote(page, [], (note) => note.title === 'New note')
 
   const name = `Groceries ${stamp()}`
   await title.fill(name)
   await title.press('Enter')
-  await expect.poll(async () => (await getNote(page, id as string))?.title).toBe(name)
+  await expect.poll(async () => (await getNote(page, id))?.title).toBe(name)
 
   // WebDriver's key actions put no text into the editor's contenteditable; the browser's own
   // editing command does, as `beforeinput`.
   await page.locator(NOTE_EDITOR).first().click()
   await page.keyboard.insertText('Milk and bread')
-  const saved = await getNote(page, id as string)
+  const saved = await getNote(page, id)
   const file = join(testVaultPath, (saved as NoteView).path)
   expect((saved as NoteView).path.endsWith(`${name}.md`)).toBe(true)
   expect(
     await pollUntil(() => existsSync(file) && readFileSync(file, 'utf8').includes('Milk and bread'))
   ).toBe(true)
-  await expect
-    .poll(async () => (await getNote(page, id as string))?.content.trim())
-    .toBe('Milk and bread')
+  await expect.poll(async () => (await getNote(page, id))?.content.trim()).toBe('Milk and bread')
 })
 
 test('an edit made outside the app reaches the open note', async ({ page, testVaultPath }) => {

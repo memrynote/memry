@@ -1,7 +1,7 @@
 // The file actions of the note page's "More actions" menu (Step 13f, #3530), ported from
 // Electron's `note-menu-actions.e2e.ts`. Electron only checked that the OS items were there;
 // the e2e build records what the app hands the OS (`e2e_os_opens`), so here they are clicked
-// and the file shown or opened is read back, as are the copied path, the move and the delete.
+// and the file shown or opened is read back, as are the move and the delete.
 import { existsSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -85,18 +85,16 @@ test('Find opens the find bar, and Rename puts the caret in the title', async ({
   await expect(page.locator(NOTE_TITLE).first()).toBeFocused()
 })
 
-// The OS clipboard is shared by every worker's app, and `menu.e2e.ts` writes it, so the copy is
-// read where the page hands it over; the toast says the write went through.
-test('Copy path puts the vault-relative path on the clipboard', async ({ page }) => {
+// The copy is read where the page hands it to the clipboard API, which answers here instead of the
+// OS. WebView2 refuses a clipboard write from a window without focus, which a CI worker's window
+// often is, and the OS clipboard is shared with every other worker's app.
+test('Copy path hands the vault-relative path to the clipboard', async ({ page }) => {
   const note = await seedAndOpen(page, `Copy Path ${stamp()}`)
   await page.evaluate(() => {
-    const clipboard = navigator.clipboard
-    const write = clipboard.writeText.bind(clipboard)
     const copies: string[] = []
     ;(window as unknown as { __copies: string[] }).__copies = copies
-    clipboard.writeText = (text: string) => {
+    navigator.clipboard.writeText = async (text: string) => {
       copies.push(text)
-      return write(text)
     }
   })
   await chooseFromNoteMenu(page, 'Copy path')

@@ -18,13 +18,12 @@ import {
   type NoteView,
   createNote,
   expandCollections,
-  listedIds,
+  newNote,
   treeRow,
   vaultOpen
 } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
-import { invoke } from '../../harness/vault-commands'
 
 const DEFAULT_FOLDER = 'movies'
 const NESTED_DEFAULT_FOLDER = 'movies/2026'
@@ -51,18 +50,9 @@ async function seedNoteInFolder(page: Page, folder: string): Promise<NoteView> {
   return seeded
 }
 
-/** The id of the note that is new since `known`, once it is listed; its path is under `folder`. */
+/** The id of the note a create put under `folder`, other than `known`. */
 async function createdIn(page: Page, folder: string, known: string[]): Promise<string> {
-  let created: string | undefined
-  await expect
-    .poll(async () => {
-      created = (await listedIds(page)).find((id) => !known.includes(id))
-      return created
-    })
-    .not.toBe(undefined)
-  const note = await invoke<NoteView>(page, 'notes_get', { id: created })
-  expect(note.path.startsWith(`${folder}/`)).toBe(true)
-  return created as string
+  return (await newNote(page, known, (note) => note.path.startsWith(`${folder}/`))).id
 }
 
 async function collapseFolder(page: Page, folder: string, childId: string): Promise<void> {
@@ -77,7 +67,6 @@ test('Cmd-N opens the default folder and shows the note it just put there', asyn
   await vaultOpen(page)
   useDefaultNoteFolder(testVaultPath, DEFAULT_FOLDER)
   const seed = await seedNoteInFolder(page, DEFAULT_FOLDER)
-  const known = await listedIds(page)
   await expandCollections(page)
 
   // The folder is on screen and shut, so nothing inside it is.
@@ -86,7 +75,7 @@ test('Cmd-N opens the default folder and shows the note it just put there', asyn
 
   await page.keyboard.press(SHORTCUTS.newNote)
 
-  const created = await createdIn(page, DEFAULT_FOLDER, known)
+  const created = await createdIn(page, DEFAULT_FOLDER, [seed.id])
   await expect(treeRow(page, seed.id)).toBeVisible()
   await expect(treeRow(page, created)).toBeVisible()
 })
@@ -99,9 +88,8 @@ test('the sidebar "+" surfaces reveal the note too', async ({ page, testVaultPat
   await expect(treeRow(page, seed.id)).toHaveCount(0)
 
   // 1. The "New" button in the sidebar header.
-  const beforeHeader = await listedIds(page)
   await page.locator('[data-tour="new-note"]').click()
-  const fromHeader = await createdIn(page, DEFAULT_FOLDER, beforeHeader)
+  const fromHeader = await createdIn(page, DEFAULT_FOLDER, [seed.id])
   await expect(treeRow(page, seed.id)).toBeVisible()
   await expect(treeRow(page, fromHeader)).toBeVisible()
 
@@ -109,10 +97,9 @@ test('the sidebar "+" surfaces reveal the note too', async ({ page, testVaultPat
 
   // 2. The "New note" icon on the Collections header, which creates through the tree's own
   //    action rather than the sidebar's.
-  const beforeTreeIcon = await listedIds(page)
   await page.locator('#section-header-collections').hover()
   await page.getByRole('button', { name: 'New note', exact: true }).first().click()
-  const fromTreeIcon = await createdIn(page, DEFAULT_FOLDER, beforeTreeIcon)
+  const fromTreeIcon = await createdIn(page, DEFAULT_FOLDER, [seed.id, fromHeader])
   await expect(treeRow(page, seed.id)).toBeVisible()
   await expect(treeRow(page, fromTreeIcon)).toBeVisible()
 })
@@ -124,7 +111,6 @@ test('a nested default folder opens every level down to the note', async ({
   await vaultOpen(page)
   useDefaultNoteFolder(testVaultPath, NESTED_DEFAULT_FOLDER)
   const seed = await seedNoteInFolder(page, NESTED_DEFAULT_FOLDER)
-  const known = await listedIds(page)
   await expandCollections(page)
 
   await expect(treeRow(page, `folder-${DEFAULT_FOLDER}`)).toBeVisible()
@@ -133,7 +119,7 @@ test('a nested default folder opens every level down to the note', async ({
 
   await page.keyboard.press(SHORTCUTS.newNote)
 
-  const created = await createdIn(page, NESTED_DEFAULT_FOLDER, known)
+  const created = await createdIn(page, NESTED_DEFAULT_FOLDER, [seed.id])
   await expect(treeRow(page, `folder-${NESTED_DEFAULT_FOLDER}`)).toBeVisible()
   await expect(treeRow(page, seed.id)).toBeVisible()
   await expect(treeRow(page, created)).toBeVisible()
