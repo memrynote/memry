@@ -259,10 +259,7 @@ final class AuthStartup {
     /// after launch is published, so there is one path and not two.
     private func publish(_ state: AuthState) {
         guard let session else { return }
-        let telemetryState: TelemetryAuthState = switch state {
-        case .registered, .refreshing: .signedIn
-        default: .signedOut
-        }
+        let telemetryState = TelemetryAuthState(state)
         Task { await Telemetry.shared.setAuthState(telemetryState) }
         phase = .ready(SignInViewModel(session: session, executor: executor, state: state, google: google))
     }

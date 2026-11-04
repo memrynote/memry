@@ -36,7 +36,12 @@ final class SignInViewModel {
     static let codeLength = 6
 
     /// The last state the core reported. Never assigned from anything else.
-    private(set) var state: AuthState
+    private(set) var state: AuthState {
+        didSet {
+            let reported = TelemetryAuthState(state)
+            Task { await Telemetry.shared.setAuthState(reported) }
+        }
+    }
     /// The action the core is working on right now, or `nil`. One value rather
     /// than a `Bool`, so the spinner can say **which** wait the user is in.
     private(set) var runningAction: SignInAction?

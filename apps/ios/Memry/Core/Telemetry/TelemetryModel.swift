@@ -1,4 +1,5 @@
 import Foundation
+import MemryCore
 
 // The wire shape of `POST /telemetry/batch`, mirrored from
 // `TelemetryBatchSchema` in `packages/contracts/src/telemetry-api.ts`. The
@@ -145,6 +146,15 @@ enum TelemetryAuthState: String, Codable, Sendable {
     case anonymous
     case signedIn = "signed_in"
     case signedOut = "signed_out"
+}
+
+extension TelemetryAuthState {
+    init(_ state: AuthState) {
+        switch state {
+        case .registered, .refreshing: self = .signedIn
+        default: self = .signedOut
+        }
+    }
 }
 
 enum TelemetrySyncState: String, Codable, Sendable {
