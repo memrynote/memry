@@ -473,6 +473,8 @@ fn a_file_the_app_created_is_watched_like_any_other_by_a_later_watcher() {
     let mark = e.mark();
     e.write("made.md", "two");
     e.wait_for(mark, "Changed", is_changed("made.md"));
+    fs::remove_file(e.root.join("made.md")).unwrap();
+    e.wait_for(mark, "Removed", is_removed("made.md"));
     fs::remove_file(e.root.join("unique.md")).unwrap();
     e.wait_for(mark, "Removed", is_removed("unique.md"));
     fs::remove_file(e.root.join("copy.md")).unwrap();
