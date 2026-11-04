@@ -11,9 +11,12 @@
 //!   quarantine flags), so a save does not quietly turn a 0644 note into 0600 or drop its tags.
 //!   Windows ACLs are not copied: the successor inherits the folder's, as a rename from the
 //!   Electron app did.
-//! - [`atomic_create`] makes a file that must not exist yet. It links (Unix) or moves without
-//!   replacing (Windows) the finished temp file into place, so a file another process created
-//!   after the caller looked is never overwritten: the call fails with `AlreadyExists`.
+//! - [`atomic_create`] makes a file that must not exist yet. It moves the finished temp file
+//!   into place without replacing ([`rename_no_replace`]'s exclusive rename), so a file another
+//!   process created after the caller looked is never overwritten: the call fails with
+//!   `AlreadyExists`. Only a Unix volume that refuses the exclusive rename gets a hard link
+//!   instead: on APFS, FSEvents reports nothing more for a file that once had a second link, so
+//!   a note created that way would lose its outside edits and deletes (#3912).
 //!   [`create_unique`] picks the first free `<name> N<ext>` that way, and
 //!   [`atomic_create_streamed`] creates a copy of another file that way, streamed instead of
 //!   held in memory.
@@ -145,8 +148,8 @@ fn open_temp(temp: &Path) -> io::Result<fs::File> {
     options.open(temp)
 }
 
-/// Best effort: a write error is the one to report. After a create the temp file is the second
-/// name of the new file and has done its job.
+/// Best effort: a write error is the one to report. After a create the temp file was moved,
+/// or is the second name of the new file and has done its job.
 fn remove_temp(temp: &Path, written: bool) {
     let removed = fs::remove_file(temp);
     // A Windows create moves the temp file, so there is nothing left to remove.
@@ -331,8 +334,46 @@ fn exclusive_rename_unsupported(err: &io::Error) -> bool {
     }
 }
 
+/// What a create does after its exclusive rename failed.
+#[cfg(unix)]
+#[derive(Debug, PartialEq, Eq)]
+enum RenameFailure {
+    /// A file is at the target: the create fails with `AlreadyExists`.
+    Exists,
+    /// A signal cut the call short: the rename is tried again.
+    Interrupted,
+    /// Any other error goes to the hard link and then the exclusive copy, which never replace a
+    /// file either. A volume can refuse the exclusive rename in ways no list of errors covers:
+    /// macOS reports `EOPNOTSUPP` (102), not `ENOTSUP` (45), on SMB and some FUSE volumes. A
+    /// lock the fallbacks hit too reaches the caller's transient retry from there.
+    Fallback,
+}
+
+#[cfg(unix)]
+fn rename_failure(err: &io::Error) -> RenameFailure {
+    match err.kind() {
+        io::ErrorKind::AlreadyExists => RenameFailure::Exists,
+        io::ErrorKind::Interrupted => RenameFailure::Interrupted,
+        _ => RenameFailure::Fallback,
+    }
+}
+
+/// Signals a create's exclusive rename sits out before it falls back.
+#[cfg(unix)]
+const RENAME_INTERRUPTS: usize = 3;
+
 #[cfg(unix)]
 fn create_file(temp: &Path, target: &Path) -> io::Result<()> {
+    for _ in 0..=RENAME_INTERRUPTS {
+        match exclusive_rename(temp, target) {
+            Ok(()) => return Ok(()),
+            Err(err) => match rename_failure(&err) {
+                RenameFailure::Exists => return Err(err),
+                RenameFailure::Interrupted => {}
+                RenameFailure::Fallback => break,
+            },
+        }
+    }
     match fs::hard_link(temp, target) {
         Ok(()) => Ok(()),
         Err(err) if err.kind() == io::ErrorKind::AlreadyExists => Err(err),
@@ -524,6 +565,30 @@ pub fn create_unique(base: &Path, bytes: &[u8]) -> Result<PathBuf, WriteError> {
             Ok(()) => return Ok(candidate),
             Err(err) if err.already_exists() => {}
             Err(err) => return Err(err),
+        }
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_create_falls_back_on_every_rename_error_but_a_file_there_or_a_signal() {
+        let of = |errno| rename_failure(&io::Error::from_raw_os_error(errno));
+        assert_eq!(of(libc::EEXIST), RenameFailure::Exists);
+        assert_eq!(of(libc::EINTR), RenameFailure::Interrupted);
+        for errno in [
+            libc::EOPNOTSUPP,
+            libc::ENOTSUP,
+            libc::EINVAL,
+            libc::ENOSYS,
+            libc::EXDEV,
+            libc::EACCES,
+            libc::EPERM,
+            libc::EBUSY,
+        ] {
+            assert_eq!(of(errno), RenameFailure::Fallback, "errno {errno}");
         }
     }
 }

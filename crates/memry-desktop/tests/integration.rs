@@ -122,6 +122,8 @@ mod notes_link_rewrite;
 mod notes_local_only;
 #[path = "notes_moves.rs"]
 mod notes_moves;
+#[path = "notes_outside_after_reopen.rs"]
+mod notes_outside_after_reopen;
 #[path = "notes_properties.rs"]
 mod notes_properties;
 #[path = "notes_service.rs"]
