@@ -324,6 +324,7 @@ impl VaultTier {
             settings: vault.vault.app_settings(self.store.clone()).ok(),
             activity: self.activity.clone(),
             own_files: self.own_files.clone(),
+            untaken: Mutex::default(),
         };
         let after_walk: AfterWalk = {
             let writeback = writeback.clone();

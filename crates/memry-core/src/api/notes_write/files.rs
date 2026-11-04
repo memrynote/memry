@@ -132,17 +132,25 @@ impl NotesWriter {
     }
 
     /// An edit outside the app gave the file of the note or day `id` the header tags `after`;
-    /// `before` is the list the file it replaced had, when known ([`file_tags::taken`]).
+    /// `indexed` is the index's measure of the file it replaced, when it measured that file
+    /// ([`file_tags::taken`]).
     pub fn file_tags_edited(
         &self,
         id: &str,
-        before: Option<&[String]>,
+        indexed: Option<&[String]>,
         after: &[String],
     ) -> Result<(), StorageError> {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            file_tags::taken(conn, id, before, after, &device_id, now_ms())
+            file_tags::taken(conn, id, indexed, after, &device_id, now_ms())
         })
+    }
+
+    /// The file of the note or day `id` says `tags`, as this device found or wrote it
+    /// ([`file_tags::seen`]).
+    pub fn file_tags_seen(&self, id: &str, tags: &[String]) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(move |conn| file_tags::seen(conn, id, tags))
     }
 
     /// The note's file moved ([`identity::renamed`]).

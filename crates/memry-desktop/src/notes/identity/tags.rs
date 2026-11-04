@@ -11,15 +11,23 @@ use super::SCOPE;
 use crate::vault::consumer::identity::IdentityError;
 use crate::vault::note_file::NoteFile;
 
-/// The `tags` a frontmatter block declares (`extractTags`); none when it does not parse.
-pub(super) fn declared(block: Option<&str>) -> Vec<String> {
-    of_block(block).unwrap_or_default()
+/// A found day file declares `tags`: what an outside edit of it is read against. A failure
+/// leaves the index's measure to stand in, and is logged.
+pub(super) fn found(writer: &NotesWriter, id: &str, tags: &[String]) {
+    if let Err(error) = writer.file_tags_seen(id, tags) {
+        tracing::warn!(
+            scope = SCOPE,
+            note_id = id,
+            "a found file's tags were not kept: {error}"
+        );
+    }
 }
 
 /// An edit outside the app replaced the note's file, whose hash was `previous`: a note's record
-/// takes the file's list, a day's what the edit changed in it, against the list the index
-/// measured in the replaced file, when it did (`file_tags::taken`). A frontmatter that does not
-/// parse, or is not a map, says nothing of the tags, and the record keeps them.
+/// takes the file's list, a day's what the edit changed in it (`file_tags::taken`), against the
+/// list kept for the day, else the index's measure of the replaced file when it read its
+/// header. A frontmatter that does not parse, or is not a map, says nothing of the tags: the
+/// record and the kept list stay as they were.
 pub(super) fn edited(
     writer: &NotesWriter,
     search: &Search,
@@ -37,14 +45,14 @@ pub(super) fn edited(
     };
     let before = search
         .note_stats(note_id)?
-        .filter(|stored| stored.file_hash.as_deref() == Some(previous))
+        .filter(|stored| stored.file_hash.as_deref() == Some(previous) && stored.stats.header_read)
         .map(|stored| stored.stats.header_tags);
     Ok(writer.file_tags_edited(note_id, before.as_deref(), &after)?)
 }
 
 /// The `tags` a frontmatter block declares: none without a block or in an empty one, and `None`
 /// for a block that does not parse or is not a map, which says nothing of them.
-fn of_block(block: Option<&str>) -> Option<Vec<String>> {
+pub(super) fn of_block(block: Option<&str>) -> Option<Vec<String>> {
     match block.map(gray_matter_data) {
         None | Some(Ok(YamlValue::Null)) => Some(Vec::new()),
         Some(Ok(YamlValue::Map(map))) => Some(header_tags(&map)),

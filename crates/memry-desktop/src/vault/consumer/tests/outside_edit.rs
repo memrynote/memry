@@ -69,7 +69,14 @@ fn a_record_that_did_not_take_the_edit_retries_it() {
     f.identity.changed_fails.store(true, Ordering::SeqCst);
     f.write("a.md", "---\ntags: [x]\n---\nfirst\n");
     assert_eq!(f.changed(&id, "a.md"), Step::Retry("a.md".into()));
-    assert_eq!(f.hash_of("a.md"), Some(content_hash("first\n")));
+    let edited = content_hash("---\ntags: [x]\n---\nfirst\n");
+    let row = f.row("a.md").unwrap();
+    assert_eq!(row.content_hash, Some(content_hash("first\n")));
+    assert_eq!(
+        row.file_hash,
+        Some(edited),
+        "a move before the retry pairs on the bytes read"
+    );
 
     f.identity.changed_fails.store(false, Ordering::SeqCst);
     assert_eq!(f.changed(&id, "a.md"), Step::Done);
@@ -79,4 +86,30 @@ fn a_record_that_did_not_take_the_edit_retries_it() {
         f.hash_of("a.md"),
         Some(content_hash("---\ntags: [x]\n---\nfirst\n"))
     );
+}
+
+/// A record that never takes it: the row moves on once the retries are spent, so it names the
+/// file the document holds and the app's edits of that file are not refused.
+#[test]
+fn a_record_that_never_takes_the_edit_lets_the_row_move_on() {
+    let mut f = fixture();
+    f.write("a.md", "first\n");
+    f.added("a.md");
+    let id = only_note(&f, "a.md");
+    f.facts();
+    f.identity.changed_fails.store(true, Ordering::SeqCst);
+    let edited = "---\ntags: [x]\n---\nfirst\n";
+    f.write("a.md", edited);
+    for _ in 0..crate::vault::consumer::MAX_RETRIES {
+        assert_eq!(f.changed(&id, "a.md"), Step::Retry("a.md".into()));
+    }
+    assert_eq!(f.changed(&id, "a.md"), Step::Done);
+    assert_eq!(f.hash_of("a.md"), Some(content_hash(edited)));
+    assert!(matches!(
+        f.facts().as_slice(),
+        [Applied::Changed {
+            source: ChangeSource::Watcher,
+            ..
+        }]
+    ));
 }

@@ -369,6 +369,7 @@ pub(super) fn applier(
         session: rows.session_for(vault).unwrap(),
         activity: crate::vault::activity::ActivityLog::new(),
         own_files: Arc::default(),
+        untaken: Mutex::default(),
     }
 }
 

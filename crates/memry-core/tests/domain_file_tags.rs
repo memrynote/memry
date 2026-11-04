@@ -6,6 +6,7 @@
 //! | a note's record takes its file's header tags, once           | the file owns a note's header |
 //! | a deleted note takes nothing                                 | a delete stays a delete       |
 //! | a day's record takes what the edit changed in its file's list | the record owns a day's tags  |
+//! | a day with no kept list is read against the index              | an older build's day          |
 //! | a deleted day takes nothing and is not revived               | a delete stays a delete       |
 
 #![cfg(feature = "markdown")]
@@ -113,6 +114,37 @@ fn a_days_record_takes_what_the_edit_changed_in_its_files_list() {
     });
     clear_outbox(&db);
 
+    // No list kept for the day: nothing to read the edit against.
+    taken(&db, DAY, None, &["rain"]);
+    assert_eq!(day_payload(&db)["tags"], json!(["walk", "picked"]));
+    assert!(outbox(&db).is_empty());
+
+    // The file's list as found: the next edit is read against it.
+    run(&db, |conn| file_tags::seen(conn, DAY, &strings(&["rain"])));
+    taken(&db, DAY, None, &["run"]);
+    assert_eq!(day_payload(&db)["tags"], json!(["walk", "picked", "run"]));
+    assert_eq!(upserts(&db), 1);
+
+    clear_outbox(&db);
+    // Against the kept list, never the index's: it says `run` was there, so nothing is new.
+    taken(&db, DAY, Some(&[]), &["Run"]);
+    taken(&db, DAY, Some(&[]), &["run"]);
+    assert_eq!(day_payload(&db)["tags"], json!(["walk", "picked", "run"]));
+    assert!(
+        outbox(&db).is_empty(),
+        "a respelling, or no change, takes nothing"
+    );
+}
+
+/// A day an older build found keeps no list: the index's measure of the replaced file stands
+/// in, and the take keeps the file's list from then on.
+#[test]
+fn a_day_with_no_kept_list_is_read_against_the_index() {
+    let db = open("file-tags-day-indexed");
+    run(&db, |conn| {
+        metadata::set_tags(conn, DATE, &strings(&["walk", "picked"]), DEVICE, NOW)
+    });
+    clear_outbox(&db);
     taken(&db, DAY, Some(&["walk"]), &["run"]);
     assert_eq!(
         day_payload(&db)["tags"],
@@ -120,16 +152,8 @@ fn a_days_record_takes_what_the_edit_changed_in_its_files_list() {
         "the record's own tag stays"
     );
     assert_eq!(upserts(&db), 1);
-
-    clear_outbox(&db);
-    taken(&db, DAY, Some(&["run"]), &["Run"]);
-    taken(&db, DAY, Some(&["run"]), &["run"]);
-    taken(&db, DAY, None, &["rain"]);
-    assert_eq!(day_payload(&db)["tags"], json!(["picked", "run"]));
-    assert!(
-        outbox(&db).is_empty(),
-        "a respelling, no change, or no known list before takes nothing"
-    );
+    taken(&db, DAY, None, &["run", "rain"]);
+    assert_eq!(day_payload(&db)["tags"], json!(["picked", "run", "rain"]));
 }
 
 #[test]

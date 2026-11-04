@@ -355,7 +355,8 @@ impl NoteIdentity for NotesIdentity {
         let may_be_a_note = writer.may_be_a_note(title, folder_path)?;
         let adopted = match journal.day_of(file.path) {
             Some(date) => {
-                let tags = tags::declared(split.block);
+                let declared = tags::of_block(split.block);
+                let tags = declared.clone().unwrap_or_default();
                 let day = FileDay {
                     path: file.path,
                     date: &date,
@@ -373,7 +374,13 @@ impl NoteIdentity for NotesIdentity {
                     None
                 };
                 let (converter, embeds) = parts(reader.as_ref());
-                writer.adopt_day(day, converter, embeds)
+                let adopted = writer.adopt_day(day, converter, embeds);
+                if let (Ok(Adopted::Created(id) | Adopted::Existing(id)), Some(declared)) =
+                    (&adopted, &declared)
+                {
+                    tags::found(&writer, id, declared);
+                }
+                adopted
             }
             None => {
                 let note = FileNote {
