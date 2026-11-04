@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { SELECTORS } from '../../harness/app-helpers'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 import { invoke, vaultStatus } from '../../harness/vault-commands'
@@ -74,6 +75,8 @@ test('the note menu applies a template: its body, icon, tag and property', async
   await page.getByRole('button', { name: 'Replace content & add template details' }).click()
   await expect(page.getByText('Template applied').first()).toBeVisible({ timeout: 10_000 })
 
+  // The open editor takes the template's body, as it takes an outside edit.
+  await expect(page.locator(SELECTORS.noteEditor).first()).toContainText('From the template')
   await expect(page.getByTestId('note-title-icon').first()).toContainText(ICON)
   await expect(
     page.getByRole('list', { name: 'Tags', exact: true }).first().getByRole('option', { name: TAG })

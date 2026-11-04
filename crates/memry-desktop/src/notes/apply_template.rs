@@ -5,7 +5,9 @@
 //!   title. Nothing else is asked for.
 //! - **`full`**: the body, and the template's tags join the header, its property values fill
 //!   the names the note does not hold (the note's win, `{ ...template, ...note }`), and its
-//!   icon is the note's when the note has none.
+//!   icon is the note's when the note has none. The note holds a name its file has, or its
+//!   record alone: a value pulled from sync lives in the record until the pull writes the file
+//!   (13k-4), and the apply writes that value into the file instead of the template's.
 //!
 //! Either way the new body's `#tags` join the header and the old body's leave it, as Electron's
 //! `updateNote` reads a body change (`header_tags::next`), and every frontmatter key the apply
@@ -17,11 +19,12 @@
 //! the text, and before that event, the record takes the icon, the header tags and the property
 //! values, as `notes:update` writes them. A note whose file or document the seam keeps (an
 //! outside edit not fed yet, an edit the document has and the file not) is refused as a save
-//! is, and the user applies again.
+//! is, and the user applies again. An apply that replaces the body keeps a version of the file
+//! first, under the seam's lane, as Electron's `writeNote` keeps one before it: the user's text
+//! can be brought back.
 //!
 //! Not here, with their owners: `plainChecklists` (Step 32; the renderer refuses it), the lock
-//! check (Step 14), a project property's task links (Step 21), and the significant-change
-//! version Electron's `updateNote` keeps before replacing a body (Step 14's versions).
+//! check (Step 14) and a project property's task links (Step 21).
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -30,6 +33,7 @@ use memry_core::domain::header_tags::{self, Existing, HeaderTagEdit, Update};
 use memry_core::domain::note_stats::header_tags as file_header_tags;
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, json_to_yaml, parse_markdown_note, serialize_updated_note,
+    split_frontmatter_block,
 };
 use serde::Deserialize;
 use serde_json::{Map, Value};
@@ -74,11 +78,13 @@ pub struct Applied {
 }
 
 /// The text a note file's `text` (without a byte order mark) becomes with `template` applied in
-/// `mode`, for a note titled `title`. `with_fields` holds the keys of the tags with fields,
-/// whose body `#tags` stay out of the header.
+/// `mode`, for a note titled `title` whose record holds the property values `record`.
+/// `with_fields` holds the keys of the tags with fields, whose body `#tags` stay out of the
+/// header.
 pub fn applied(
     text: &str,
     title: &str,
+    record: &Map<String, Value>,
     template: &TemplateView,
     mode: TemplateMode,
     with_fields: &HashSet<String>,
@@ -110,17 +116,25 @@ pub fn applied(
     let mut next = reading.clone();
     header_tags::set_tags(&mut next, &tags, change.as_ref());
     let mut properties = Map::new();
+    let mut from_record = false;
     if full {
-        let held = file_fields(&parsed.frontmatter).properties;
+        let in_file = file_fields(&parsed.frontmatter).properties;
+        for (name, value) in record {
+            if !in_file.contains_key(name) && !is_reserved_key(name, value) {
+                next.insert(name.clone(), json_to_yaml(value));
+                from_record = true;
+            }
+        }
         for (name, value) in template.note_properties()? {
-            if held.contains_key(&name) || is_reserved_key(&name, &value) {
+            let held = in_file.contains_key(&name) || record.contains_key(&name);
+            if held || is_reserved_key(&name, &value) {
                 continue;
             }
             next.insert(name.clone(), json_to_yaml(&value));
             properties.insert(name, value);
         }
     }
-    let edited = change.is_some() || !properties.is_empty();
+    let edited = change.is_some() || !properties.is_empty() || from_record;
     if edited && !matches!(parsed.frontmatter, YamlValue::Map(_)) {
         // A top level that is a list or a scalar is the author's; no key goes into it.
         return Err(NotesError::FrontmatterNotAMap);
@@ -170,10 +184,21 @@ impl NotesService {
                 Precondition::Held,
                 ChangeSource::AppEdit,
                 |text| {
-                    let next = applied(text, &listed.title, &template, input.mode, &with_fields)?;
-                    let text = next.text.clone();
+                    let next = applied(
+                        text,
+                        &listed.title,
+                        &listed.properties,
+                        &template,
+                        input.mode,
+                        &with_fields,
+                    )?;
+                    let read_body = split_frontmatter_block(text).body;
+                    if split_frontmatter_block(&next.text).body != read_body {
+                        open.vault.write_back().keep_replaced(id, text, read_body)?;
+                    }
+                    let output = next.text.clone();
                     *planned.borrow_mut() = Some(next);
-                    Ok::<_, NotesError>(Some(text))
+                    Ok::<_, NotesError>(Some(output))
                 },
                 || {
                     let mut plan = planned.borrow_mut();

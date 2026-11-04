@@ -22,9 +22,11 @@ use crate::vault_env;
 
 use std::sync::Arc;
 
+use memry_core::api::errors::StorageError;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::notes::create::NewNoteFile;
+use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::read;
 use memry_desktop::notes::service::NotesService;
@@ -403,6 +405,13 @@ fn a_template_property_with_no_name_refuses_the_note() {
         json!([{ "type": "text", "value": "lost" }]),
     );
     let refused = notes.create(&open, note("Nameless", Some("tpl-nameless")));
-    assert!(refused.is_err(), "{refused:?}");
+    assert!(
+        matches!(
+            &refused,
+            Err(NotesError::Storage(StorageError::Failed { what }))
+                if what == "template tpl-nameless: a `properties` element has no string `name`"
+        ),
+        "{refused:?}"
+    );
     assert!(!e.vault.join("Nameless.md").exists());
 }

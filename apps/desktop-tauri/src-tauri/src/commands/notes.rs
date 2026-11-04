@@ -191,6 +191,7 @@ pub async fn notes_apply_template<R: Runtime>(
         if applied.tags_changed {
             broadcast(&app, NoteTagsChangedEvent);
         }
+        track(&app, "note_updated", "template_applied");
         Ok(applied.note)
     })
     .await
