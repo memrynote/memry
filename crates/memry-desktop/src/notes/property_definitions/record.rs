@@ -1,6 +1,12 @@
 //! A definition as the file holds it ([`PropertyDefinition`]) and as its synced record carries
 //! it ([`DefinitionRecord`]): `rebuildSingleDbCache` and `definitionFromRow` of
 //! `vault/property-definitions.ts`.
+//!
+//! The record's `options` is opaque to this build (§13.7.9): a newer build may put keys in an
+//! option, in a status category, beside the categories, or add a category. The file holds none
+//! of them, so a record written from the file takes them from the record it replaces: an
+//! option keeps its keys by its value, a category by its key (#3844). An option this build
+//! cannot read (no value or no color) is not in the file and leaves the record with the edit.
 
 use memry_core::domain::property_admin::DEFAULT_STATUS_OPTIONS;
 use memry_core::domain::property_admin::records::DefinitionRecord;
@@ -10,16 +16,25 @@ use crate::vault::properties_file::{
     PropertyDefinition, PropertyKind, SelectOption, StatusCategories, StatusCategory,
 };
 
-fn options_json(options: &[SelectOption]) -> Value {
+/// `options` as JSON, each option on the object of the `prior` option with its value.
+fn options_json(options: &[SelectOption], prior: Option<&Value>) -> Value {
+    let mut unused: Vec<&Map<String, Value>> = prior
+        .and_then(Value::as_array)
+        .map(|items| items.iter().filter_map(Value::as_object).collect())
+        .unwrap_or_default();
     Value::Array(
         options
             .iter()
             .map(|option| {
-                let mut entry = Map::new();
+                let held = unused.iter().position(|held| {
+                    held.get("value").and_then(Value::as_str) == Some(&option.value)
+                });
+                let mut entry = held.map(|at| unused.remove(at).clone()).unwrap_or_default();
                 entry.insert("value".into(), json!(option.value));
                 entry.insert("color".into(), json!(option.color));
-                if let Some(flag) = option.default {
-                    entry.insert("default".into(), json!(flag));
+                match option.default {
+                    Some(flag) => drop(entry.insert("default".into(), json!(flag))),
+                    None => drop(entry.shift_remove("default")),
                 }
                 Value::Object(entry)
             })
@@ -27,36 +42,72 @@ fn options_json(options: &[SelectOption]) -> Value {
     )
 }
 
-fn category_json(category: &StatusCategory) -> Value {
-    json!({ "label": category.label, "options": options_json(&category.options) })
+/// A status's `options`: the `prior` object with its categories, each category on its prior
+/// object.
+fn categories_json(categories: &StatusCategories, prior: Option<&Value>) -> Value {
+    let mut whole = prior
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    let mut all = whole
+        .get("categories")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    for (key, category) in [
+        ("todo", &categories.todo),
+        ("in_progress", &categories.in_progress),
+        ("done", &categories.done),
+    ] {
+        let mut entry = all
+            .get(key)
+            .and_then(Value::as_object)
+            .cloned()
+            .unwrap_or_default();
+        let options = options_json(&category.options, entry.get("options"));
+        entry.insert("label".into(), json!(category.label));
+        entry.insert("options".into(), options);
+        all.insert(key.into(), Value::Object(entry));
+    }
+    whole.insert("categories".into(), Value::Object(all));
+    Value::Object(whole)
 }
 
 /// The record's `options` text: the categories of a status, no text for a date or a project,
-/// the option list of every other type.
-pub(super) fn options_text(kind: &PropertyKind) -> Option<String> {
+/// the option list of every other type; what `prior` holds that this build does not read kept.
+fn options_over(kind: &PropertyKind, prior: Option<&Value>) -> Option<String> {
     let value = match kind {
         PropertyKind::Text(options)
         | PropertyKind::Number(options)
         | PropertyKind::Checkbox(options)
         | PropertyKind::Url(options)
         | PropertyKind::Select(options)
-        | PropertyKind::Multiselect(options) => options_json(options),
-        PropertyKind::Status(categories) => json!({ "categories": {
-            "todo": category_json(&categories.todo),
-            "in_progress": category_json(&categories.in_progress),
-            "done": category_json(&categories.done),
-        }}),
+        | PropertyKind::Multiselect(options) => options_json(options, prior),
+        PropertyKind::Status(categories) => categories_json(categories, prior),
         PropertyKind::Date { .. } | PropertyKind::Project => return None,
     };
     Some(value.to_string())
 }
 
-/// The record `definition` mirrors. The calendar flag of a date stays in this device's file.
-pub(super) fn record_of(name: &str, definition: &PropertyDefinition) -> DefinitionRecord {
+/// The `options` text a definition alone gives.
+pub(super) fn options_text(kind: &PropertyKind) -> Option<String> {
+    options_over(kind, None)
+}
+
+/// The record `definition` mirrors, over the record it replaces. The calendar flag of a date
+/// stays in this device's file.
+pub(super) fn record_of(
+    name: &str,
+    definition: &PropertyDefinition,
+    prior: Option<&DefinitionRecord>,
+) -> DefinitionRecord {
+    let prior = prior
+        .and_then(|prior| prior.options.as_deref())
+        .and_then(|text| serde_json::from_str::<Value>(text).ok());
     DefinitionRecord {
         name: name.to_owned(),
         type_name: definition.kind.type_name().to_owned(),
-        options: options_text(&definition.kind),
+        options: options_over(&definition.kind, prior.as_ref()),
         default_value: definition.default_value.clone(),
         color: definition.color.clone(),
     }

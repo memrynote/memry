@@ -28,16 +28,16 @@ use serde_json::Value;
 
 const VECTORS: &str = include_str!("fixtures/electron-vault/properties-md.json");
 
-struct Fixture {
+pub(crate) struct Fixture {
     _dir: tempfile::TempDir,
-    vault: PathBuf,
-    definitions: PropertyDefinitions,
+    pub(crate) vault: PathBuf,
+    pub(crate) definitions: PropertyDefinitions,
     /// The core's records under the service, to read what they hold.
-    records: DefinitionRecords,
-    core: Vault,
+    pub(crate) records: DefinitionRecords,
+    pub(crate) core: Vault,
 }
 
-fn fixture() -> Fixture {
+pub(crate) fn fixture() -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let vault = dir.path().join("vault");
     let data = vault.join(".memry").join("core");
@@ -57,15 +57,15 @@ fn fixture() -> Fixture {
 }
 
 impl Fixture {
-    fn file(&self) -> Option<String> {
+    pub(crate) fn file(&self) -> Option<String> {
         fs::read_to_string(properties_path(&self.vault)).ok()
     }
 
-    fn set_file(&self, text: &str) {
+    pub(crate) fn set_file(&self, text: &str) {
         fs::write(properties_path(&self.vault), text).unwrap();
     }
 
-    fn record(&self, name: &str) -> Option<DefinitionRecord> {
+    pub(crate) fn record(&self, name: &str) -> Option<DefinitionRecord> {
         let listed = self.records.list().unwrap();
         listed
             .into_iter()
@@ -73,7 +73,7 @@ impl Fixture {
             .map(|stored| stored.record)
     }
 
-    fn queued(&self) -> i64 {
+    pub(crate) fn queued(&self) -> i64 {
         self.core
             .db_handle()
             .call_blocking(|conn| {
@@ -85,7 +85,7 @@ impl Fixture {
     }
 }
 
-fn option(value: &str, color: &str) -> OptionInput {
+pub(crate) fn option(value: &str, color: &str) -> OptionInput {
     OptionInput {
         value: value.into(),
         color: color.into(),
@@ -93,7 +93,7 @@ fn option(value: &str, color: &str) -> OptionInput {
     }
 }
 
-fn input(name: &str, type_name: Option<DefinitionType>) -> DefinitionInput {
+pub(crate) fn input(name: &str, type_name: Option<DefinitionType>) -> DefinitionInput {
     DefinitionInput {
         name: name.into(),
         type_name,
