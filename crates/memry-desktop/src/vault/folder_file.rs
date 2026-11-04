@@ -7,7 +7,9 @@
 //!
 //! - `icon` and `template` are strings, `inherit` is true unless it is `false`, `views` is a
 //!   list, and `formulas`, `properties` and `summaries` are objects (a list too, as JavaScript
-//!   counts one); a key of another type reads as absent ([`FolderFile::config`]);
+//!   counts one); a key of another type reads as absent ([`FolderFile::config`]) and, as in
+//!   Electron, is dropped by the next write. Only keys no build models survive a write as they
+//!   are;
 //! - a file that cannot be read is never replaced: not UTF-8, larger than
 //!   [`MAX_FOLDER_FILE_BYTES`], frontmatter that does not parse or is not a map, or aliases
 //!   that expand past [`node_budget`]. Electron reads the first ones as no file and its next
@@ -358,6 +360,18 @@ pub fn update(
     folder: &str,
     change: impl FnOnce(&mut FolderFile),
 ) -> Result<FolderFile, FolderFileError> {
+    update_checked(vault, folder, change, &mut || {})
+}
+
+/// [`update`] with a hook that runs right before the rename's last check, so a test can change
+/// the file there as another writer would.
+#[doc(hidden)]
+pub fn update_checked(
+    vault: &Path,
+    folder: &str,
+    change: impl FnOnce(&mut FolderFile),
+    between: &mut dyn FnMut(),
+) -> Result<FolderFile, FolderFileError> {
     let rel = rel_of(folder).map_err(|error| write_failed(folder, error.to_string()))?;
     let _guard = WRITE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let raw = load(vault, &rel)?;
@@ -386,8 +400,7 @@ pub fn update(
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|error| write_failed(&rel, error.to_string()))?;
     }
-    let mut between = || {};
-    let mut contained = still_contained(vault, &rel, &path, aimed_at, &mut between);
+    let mut contained = still_contained(vault, &rel, &path, aimed_at, between);
     let mut unchanged = || {
         contained()?;
         let now = load_bytes(vault, &rel)?;
@@ -423,7 +436,8 @@ pub fn template_of(vault: &Path, folder: &str) -> Option<String> {
     loop {
         match read(vault, current) {
             Ok(Some(file)) => {
-                if let Some(template) = file.template() {
+                // `if (config.template)`: an empty one names none.
+                if let Some(template) = file.template().filter(|t| !t.is_empty()) {
                     return Some(template.to_owned());
                 }
                 if !file.inherit() {

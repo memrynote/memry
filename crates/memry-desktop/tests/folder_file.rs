@@ -8,6 +8,8 @@
 //! | electron set-folder-config is these bytes                   | the merge of `notes:set-folder-config`     |
 //! | keys and text no build models are kept                      | Electron drops them; a newer build's stay  |
 //! | an unreadable file is never written over                    | #720: views lost to a silent `null`        |
+//! | another writer's change since the read is not written over  | the re-read right before the rename        |
+//! | an empty or unreadable folder file passes the template walk | `if (config.template)`, `readFolderConfig` |
 //! | aliases cannot expand past the file / nest past the dumper  | untrusted input: steps and depth           |
 //! | a write reads back as itself                                | proptest, output bounded                   |
 
@@ -137,6 +139,50 @@ fn an_unreadable_file_is_never_written_over() {
     assert_eq!(
         fs::read_to_string(vault.join("Work/.folder.md")).unwrap(),
         large
+    );
+}
+
+#[test]
+fn another_writers_change_since_the_read_is_not_written_over() {
+    let dir = tempfile::tempdir().unwrap();
+    let vault = dir.path();
+    fs::create_dir(vault.join("Work")).unwrap();
+    fs::write(vault.join("Work/.folder.md"), "---\nicon: x\n---\n\n").unwrap();
+    let theirs = "---\nicon: x\nviews:\n  - id: v1\n---\n\n";
+    let mut between = || fs::write(vault.join("Work/.folder.md"), theirs).unwrap();
+    let refused = folder_file::update_checked(
+        vault,
+        "Work",
+        |file| file.set(Some("y"), None, true),
+        &mut between,
+    );
+    assert!(
+        matches!(refused, Err(FolderFileError::Write { .. })),
+        "{refused:?}"
+    );
+    assert_eq!(
+        fs::read_to_string(vault.join("Work/.folder.md")).unwrap(),
+        theirs
+    );
+}
+
+#[test]
+fn an_empty_or_unreadable_folder_file_passes_the_template_walk() {
+    let dir = tempfile::tempdir().unwrap();
+    let vault = dir.path();
+    fs::create_dir_all(vault.join("a/b/c")).unwrap();
+    fs::write(vault.join("a/.folder.md"), "---\ntemplate: daily\n---\n\n").unwrap();
+    // `if (config.template)`: an empty template names none, and the walk goes on up.
+    fs::write(vault.join("a/b/.folder.md"), "---\ntemplate: ''\n---\n\n").unwrap();
+    assert_eq!(
+        folder_file::template_of(vault, "a/b").as_deref(),
+        Some("daily")
+    );
+    // A file that cannot be read is no file, as `readFolderConfig`'s `null`.
+    fs::write(vault.join("a/b/c/.folder.md"), "---\ntemplate: [\n---\n").unwrap();
+    assert_eq!(
+        folder_file::template_of(vault, "a/b/c").as_deref(),
+        Some("daily")
     );
 }
 

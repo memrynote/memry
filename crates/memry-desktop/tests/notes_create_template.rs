@@ -274,6 +274,11 @@ fn the_folders_template_applies_after_the_tags_inherited() {
     // A tag's template comes before the folder's.
     let by_tag = made("Standup", "meetings", &["standup"]);
     assert!(
+        by_tag.content.starts_with("## What I did yesterday"),
+        "{}",
+        by_tag.content
+    );
+    assert!(
         !by_tag.content.contains("## Attendees"),
         "{}",
         by_tag.content
