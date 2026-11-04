@@ -167,6 +167,13 @@ vi.mock('../src/generated/bindings', () => {
         if (result?.success === false) throw new Error(result.error ?? '')
         return result?.note ?? result
       },
+      notesApplyTemplate: async (input: unknown) => {
+        const result = (await notes().applyTemplate(input)) as
+          | { success?: boolean; note?: unknown; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return result?.note ?? result
+      },
       notesMove: async (id: string, newFolder: string) => {
         const result = (await notes().move(id, newFolder)) as
           | { success?: boolean; note?: unknown; error?: string }

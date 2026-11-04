@@ -22,10 +22,11 @@ use memry_core::api::auth::ensure_device_identity;
 use memry_core::api::errors::{AuthError, StorageError};
 use memry_core::domain::template_admin::{TemplateEdit, is_built_in};
 use memry_core::domain::template_store::{Template, TemplateFields, TemplateStore};
+use memry_core::domain::templates::{self, AbsentValue};
 use memry_core::markdown::shared::task_block::strip_task_block_suffixes;
 use memry_core::seams::secure_store::SecureStore;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::session::OpenVault;
 use crate::shell::file_open::{Resolution, is_plain_segment, resolve_under_root};
@@ -115,6 +116,27 @@ pub struct TemplateView {
     pub content: String,
     pub created_at: String,
     pub modified_at: String,
+}
+
+impl TemplateView {
+    /// The body a note titled `title` takes (`substituteTemplatePlaceholders`): every
+    /// `{{title}}` is the title as written. Electron's `String.replace` would read `$&` in a
+    /// title as a replacement pattern.
+    pub fn body_for(&self, title: &str) -> String {
+        self.content.replace("{{title}}", title)
+    }
+
+    /// The property values a note takes from it, by name (core
+    /// [`templates::properties_of`]): a malformed entry refuses the note, and an entry with no
+    /// value is left out, as `writePropertiesToRoot` drops an `undefined` one.
+    pub fn note_properties(&self) -> Result<Map<String, Value>, StorageError> {
+        let mut template = Map::new();
+        template.insert(
+            "properties".to_owned(),
+            Value::Array(self.properties.clone()),
+        );
+        templates::properties_of(&self.id, &template, AbsentValue::Skip)
+    }
 }
 
 /// One row of the list (`TemplateListItem`).

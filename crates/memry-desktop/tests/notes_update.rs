@@ -17,9 +17,9 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput};
 use memry_desktop::vault::activity::ActivityFilter;
+use memry_desktop::vault::app_edit::Kept;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::hash::content_hash;
-use memry_desktop::vault::note_file::NoteFileError;
 use serde_json::json;
 use vault_env::{Env, env, indexed};
 
@@ -226,10 +226,7 @@ fn an_outside_edit_that_lands_during_a_save_wins_and_the_save_is_kept() {
         std::fs::write(vault.join("Plan.md"), outside).unwrap();
     });
     assert!(
-        matches!(
-            refused,
-            Err(NotesError::File(NoteFileError::ChangedUnderWrite))
-        ),
+        matches!(refused, Err(NotesError::EditKept(Kept::FileChanged))),
         "{refused:?}"
     );
     e.facts_until(|fact| {

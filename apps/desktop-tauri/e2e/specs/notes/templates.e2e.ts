@@ -1,8 +1,9 @@
 // Templates in the running app (Step 13l, #3530), ported from Electron's `templates.e2e.ts`: the
 // template commands called from the page as `services/templates-service.ts` calls them, the
 // Settings › Templates list following their events, a pre-sync template file imported when the
-// vault opens, and a note made from a template (`createNote`). Applying a template to a note and
-// saving a note as one move over with `notes_apply_template` (13l-4).
+// vault opens, and a note made from a template (`createNote`). Applying a template to a note is
+// `apply-template-note-menu.e2e.ts` (13l-4); saving a note as one waits on the note property
+// read (13k-3).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 

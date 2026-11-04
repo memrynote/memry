@@ -1,5 +1,6 @@
 //! Notes-domain services of the desktop app.
 
+pub mod apply_template;
 pub mod create;
 pub mod delete;
 pub mod error;
