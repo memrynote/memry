@@ -8,13 +8,13 @@
 use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
-use crate::domain::journal;
 use crate::domain::notes::app_move::{self, AppMoved, BeginError, FolderRecorded, Recorded};
 use crate::domain::notes::folder_delete::{self, FolderDeleteRecorded};
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::domain::notes::{self, NewNote};
 use crate::domain::properties;
+use crate::domain::{folders, journal};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::storage::repositories::schema::Object;
@@ -188,6 +188,13 @@ impl NotesWriter {
     /// ([`folder_delete::pending`]).
     pub fn pending_folder_deletes(&self) -> Result<Vec<FolderDeleteRecorded>, StorageError> {
         self.db.read_blocking(folder_delete::pending)
+    }
+
+    /// Whether the folder at `path` was deleted here or on another device
+    /// ([`folders::deleted`]).
+    pub fn folder_deleted(&self, path: &str) -> Result<bool, StorageError> {
+        self.db
+            .read_blocking(move |conn| folders::deleted(conn, path))
     }
 
     /// Forgets the record of the folder's delete ([`folder_delete::abandon`]).

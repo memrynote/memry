@@ -1,7 +1,7 @@
 //! The folder commands through the IPC a renderer calls, on a mock app over a real vault and
 //! vault tier (#3530 13h-1b, 13h-2): the argument names the generated bindings send, a created
 //! folder, its settings and its rename read back, and a refusal reaching the renderer by its
-//! code.
+//! code. A pulled folder (#3906) reaches the vault and goes out as `FolderConfigUpdatedEvent`.
 
 use std::collections::HashMap;
 use std::fs;
@@ -17,14 +17,16 @@ use memry_desktop::notes::service::NotesService;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
+use memry_tauri::events::FolderConfigUpdatedEvent;
+use memry_tauri::shell::folder_sync;
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody, InvokeResponseBody};
 use tauri::test::{
     INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder, mock_context, noop_assets,
 };
 use tauri::webview::InvokeRequest;
-use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
-use tauri_specta::{ErrorHandlingMode, collect_commands};
+use tauri::{AppHandle, Listener, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri_specta::{ErrorHandlingMode, Event, collect_commands};
 
 #[cfg(windows)]
 const LOCAL_ORIGIN: &str = "http://tauri.localhost";
@@ -61,6 +63,7 @@ struct Fixture {
     _dir: tempfile::TempDir,
     vault: PathBuf,
     webview: WebviewWindow<MockRuntime>,
+    app: AppHandle<MockRuntime>,
 }
 
 /// An empty vault, opened with its first walk done, and a webview whose IPC routes the folder
@@ -109,11 +112,13 @@ fn opened() -> Fixture {
     let webview = WebviewWindowBuilder::new(&app, "main", WebviewUrl::default())
         .build()
         .unwrap();
+    let handle = app.handle().clone();
     std::mem::forget(app);
     Fixture {
         _dir: dir,
         vault,
         webview,
+        app: handle,
     }
 }
 
@@ -203,5 +208,39 @@ fn a_refused_create_or_write_reaches_the_renderer_by_its_code() {
     assert_eq!(
         fs::read_to_string(f.vault.join("Work/.folder.md")).unwrap(),
         "---\nviews: [\n---\n"
+    );
+}
+
+#[test]
+fn a_pulled_folder_reaches_the_vault_and_the_renderer_hears_of_it() {
+    let f = opened();
+    let heard = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&heard);
+    f.app
+        .listen_any(FolderConfigUpdatedEvent::NAME, move |event| {
+            sink.lock().unwrap().push(event.payload().to_owned());
+        });
+    let heard = || std::mem::take(&mut *heard.lock().unwrap());
+
+    tauri::async_runtime::block_on(folder_sync::remote_folder_applied(
+        f.app.clone(),
+        "Remote/Plans".to_owned(),
+        Some("lucide:book".to_owned()),
+    ));
+    assert_eq!(heard(), [r#"{"path":"Remote/Plans"}"#]);
+    assert_eq!(
+        fs::read_to_string(f.vault.join("Remote/Plans/.folder.md")).unwrap(),
+        "---\nicon: 'lucide:book'\n---\n\n"
+    );
+
+    tauri::async_runtime::block_on(folder_sync::remote_folder_deleted(
+        f.app.clone(),
+        "Remote/Plans".to_owned(),
+    ));
+    assert_eq!(heard(), [r#"{"path":"Remote/Plans"}"#]);
+    assert!(!f.vault.join("Remote/Plans").exists());
+    assert!(
+        f.vault.join("Remote").is_dir(),
+        "a folder with no tombstone stays"
     );
 }

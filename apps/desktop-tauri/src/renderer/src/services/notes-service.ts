@@ -54,6 +54,7 @@ import {
   events,
   type DefinitionInput,
   type FileView,
+  type FolderConfigUpdatedEvent,
   type NoteListItemView,
   type NoteView,
   type PropertyDefinitionView,
@@ -523,6 +524,9 @@ export function onTagsChanged(callback: () => void): () => void {
   return subscribeToEvent(events.noteTagsChangedEvent, () => callback())
 }
 
-export function onFolderConfigUpdated(callback: (event: { path: string }) => void): () => void {
-  return window.api.onFolderConfigUpdated(callback)
+/** Sync changed a folder's settings or removed the folder (`shell/folder_sync.rs`). */
+export function onFolderConfigUpdated(
+  callback: (event: FolderConfigUpdatedEvent) => void
+): () => void {
+  return subscribeToEvent(events.folderConfigUpdatedEvent, callback)
 }

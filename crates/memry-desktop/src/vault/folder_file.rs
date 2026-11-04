@@ -168,6 +168,19 @@ impl FolderFile {
         put(INHERIT, (!inherit).then_some(YamlValue::Bool(false)));
     }
 
+    /// A synced icon (`writeMergedFolderConfig`): every other key stays as the file holds it.
+    pub fn set_icon(&mut self, icon: Option<&str>) {
+        match icon {
+            Some(icon) => {
+                self.data
+                    .insert(ICON.to_owned(), YamlValue::String(icon.to_owned()));
+            }
+            None => {
+                self.data.remove(ICON);
+            }
+        }
+    }
+
     /// The bytes `writeFolderConfig` writes for this config, or `None` when it would remove the
     /// file. Keys no build models follow the modelled ones; text after the frontmatter stays.
     pub fn serialize(&self) -> Result<Option<String>, String> {

@@ -33,6 +33,7 @@ use rusqlite::Connection;
 use crate::api::errors::StorageError;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
+use crate::sync::store;
 
 use super::note_positions;
 use super::notes::link_rewrite::{self, LinkNames, Renamed};
@@ -204,6 +205,21 @@ pub fn delete(
     note_positions::drop_folder(&tx, path)?;
     tx.commit().map_err(failed)?;
     Ok(Removal { folders })
+}
+
+/// Whether the folder at `path` was deleted, here or on another device: it has
+/// no live record and a `folder_config` tombstone (`isDeletedFolder` of
+/// Electron's `deleted-folder-prune.ts`). A folder made in a file manager has
+/// neither and is not deleted.
+pub fn deleted(conn: &Connection, path: &str) -> Result<bool, StorageError> {
+    let live: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM folders WHERE path = ?1 AND deleted_at IS NULL)",
+            [path],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    Ok(!live && store::tombstone_clock(conn, ITEM_TYPE, path)?.is_some())
 }
 
 /// Tombstones a folder's whole subtree, for a shell whose folders are
