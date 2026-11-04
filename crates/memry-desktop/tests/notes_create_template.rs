@@ -8,6 +8,7 @@
 //! | what the caller gives wins over the template's                   | body, values, tags, icon              |
 //! | the title fills the template's placeholder, as written           | `{{title}}`                           |
 //! | a tag's template applies when none is named                      | `resolveTagSchemas` `template`        |
+//! | the folder's template applies after the tags', inherited         | `getFolderTemplate` (Step 13h)        |
 //! | a template that is not there makes a plain note                  | `if (template)`, no fallback after    |
 //! | the command tells an absent icon from a cleared one              | `emoji` undefined vs `null`           |
 
@@ -26,6 +27,7 @@ use memry_desktop::notes::read;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::view::NoteCreateInput;
 use memry_desktop::templates::{TemplateCreateInput, Templates};
+use memry_desktop::vault::folder_file;
 use serde_json::{Map, Value, json};
 use vault_env::{Env, env, indexed};
 
@@ -234,6 +236,48 @@ fn a_tags_template_applies_when_none_is_named() {
     assert_eq!(named.tags, ["client"]);
     assert_eq!(named.content, "");
     assert_eq!(named.emoji.as_deref(), Some("📄"));
+}
+
+#[test]
+fn the_folders_template_applies_after_the_tags_inherited() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    let set = |folder: &str, template: Option<&str>, inherit: bool| {
+        folder_file::update(&e.vault, folder, |file| file.set(None, template, inherit)).unwrap();
+    };
+    set("meetings", Some("meeting-notes"), true);
+    set("meetings/private", None, false);
+    define_tag(
+        &e,
+        "standup",
+        json!({ "t": 1, "template": { "id": "daily-standup", "autofill": true } }),
+    );
+    let made = |title: &str, folder: &str, tags: &[&str]| {
+        let note = NewNoteFile {
+            folder: Some(folder.into()),
+            tags: tags.iter().map(|tag| (*tag).to_owned()).collect(),
+            ..note(title, None)
+        };
+        notes.create(&open, note).unwrap()
+    };
+
+    // A folder below takes the template of the nearest folder above that names one.
+    let inherited = made("Sync", "meetings/weekly", &[]);
+    assert!(
+        inherited.content.starts_with("## Attendees"),
+        "{}",
+        inherited.content
+    );
+    // `inherit: false` stops the walk.
+    let stopped = made("Mine", "meetings/private/deeper", &[]);
+    assert_eq!(stopped.content, "");
+    // A tag's template comes before the folder's.
+    let by_tag = made("Standup", "meetings", &["standup"]);
+    assert!(
+        !by_tag.content.contains("## Attendees"),
+        "{}",
+        by_tag.content
+    );
 }
 
 #[test]

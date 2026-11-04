@@ -159,7 +159,8 @@ impl NotesService {
         let note = note.checked()?;
         let templates =
             Templates::new(open.path.clone(), open.vault.templates(self.store.clone())?);
-        let template = templates.for_new_note(note.template.as_deref(), &note.tags)?;
+        let template =
+            templates.for_new_note(note.template.as_deref(), &note.tags, note.folder.as_deref())?;
         let note = note.merged(template);
         let root = open.path.as_path();
         let rows = self.tier.rows();
