@@ -193,16 +193,6 @@ impl DefinitionRecords {
         self.db.read_blocking(list)
     }
 
-    pub fn put(&self, record: &DefinitionRecord, now_ms: i64) -> Result<bool, StorageError> {
-        self.db
-            .call_blocking(|conn| put(conn, record, &self.device_id, now_ms))
-    }
-
-    pub fn remove(&self, name: &str, now_ms: i64) -> Result<bool, StorageError> {
-        self.db
-            .call_blocking(|conn| remove(conn, name, &self.device_id, now_ms))
-    }
-
     /// [`mirror::snapshot`].
     pub fn snapshot(&self) -> Result<Snapshot, StorageError> {
         self.db.read_blocking(mirror::snapshot)

@@ -16,7 +16,10 @@ use std::fs;
 use std::path::PathBuf;
 
 use memry_core::api::vault::Vault;
+use memry_core::domain::property_admin::mirror::META_KEY;
 use memry_core::domain::property_admin::records::{DefinitionRecord, DefinitionRecords};
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
+use memry_core::sync::apply::apply_inbound;
 use memry_desktop::error::{CoreError, FailureKind};
 use memry_desktop::notes::property_definitions::{
     DefinitionInput, DefinitionType, DefinitionsError, EnsuredType, OptionInput,
@@ -24,7 +27,7 @@ use memry_desktop::notes::property_definitions::{
 };
 use memry_desktop::vault::properties_file::{parse, properties_path};
 use memry_test_kit::on_small_stack;
-use serde_json::Value;
+use serde_json::{Map, Value, json};
 
 const VECTORS: &str = include_str!("fixtures/electron-vault/properties-md.json");
 
@@ -73,6 +76,26 @@ impl Fixture {
             .map(|stored| stored.record)
     }
 
+    /// The mirror row as `value` holds it: `None` removes it.
+    pub(crate) fn set_mirror_row(&self, value: Option<&str>) {
+        let value = value.map(str::to_owned);
+        self.core
+            .db_handle()
+            .call_blocking(move |c| {
+                c.execute("DELETE FROM meta WHERE key = ?1", [META_KEY])
+                    .unwrap();
+                if let Some(value) = value {
+                    c.execute(
+                        "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+                        [META_KEY, value.as_str()],
+                    )
+                    .unwrap();
+                }
+                Ok(())
+            })
+            .unwrap();
+    }
+
     pub(crate) fn queued(&self) -> i64 {
         self.core
             .db_handle()
@@ -103,7 +126,64 @@ pub(crate) fn input(name: &str, type_name: Option<DefinitionType>) -> Definition
     }
 }
 
-fn record(
+pub(crate) const NOW: i64 = 1_760_000_000_000;
+
+/// The record's clock with the peer's counter past it: a peer edit made after it pulled ours.
+pub(crate) fn after(f: &Fixture, name: &str) -> Value {
+    let name = name.to_owned();
+    let stored = f
+        .core
+        .db_handle()
+        .call_blocking(move |c| sync_items::load(c, "property_definition", &name))
+        .unwrap();
+    let mut clock = stored
+        .and_then(|row| row.payload)
+        .and_then(|payload| serde_json::from_str::<Value>(&payload).ok())
+        .and_then(|payload| payload.get("clock").and_then(Value::as_object).cloned())
+        .unwrap_or_default();
+    let next = clock.get("peer").and_then(Value::as_u64).unwrap_or(0) + 1;
+    clock.insert("peer".into(), json!(next));
+    Value::Object(clock)
+}
+
+/// Another device's definition of `name` as the server sends it.
+pub(crate) fn inbound(f: &Fixture, name: &str, fields: Value, deleted: bool) -> InboundRecord {
+    let mut payload: Map<String, Value> = fields.as_object().cloned().unwrap_or_default();
+    payload.insert("name".into(), json!(name));
+    payload.insert("clock".into(), after(f, name));
+    InboundRecord {
+        item_type: "property_definition".into(),
+        item_id: name.into(),
+        payload_json: Value::Object(payload).to_string(),
+        server_cursor: Some(1),
+        signer_device_id: Some("peer".into()),
+        updated_at: NOW,
+        deleted_at: deleted.then_some(NOW),
+    }
+}
+
+/// Another device's definition of `name`, applied as a pull applies it.
+pub(crate) fn pull(f: &Fixture, name: &str, fields: Value, deleted: bool) {
+    let record = inbound(f, name, fields, deleted);
+    f.core
+        .db_handle()
+        .call_blocking(move |c| apply_inbound(c, &record, NOW))
+        .unwrap();
+}
+
+/// `record` as another device sent it, created at `NOW`.
+pub(crate) fn pull_record(f: &Fixture, record: &DefinitionRecord) {
+    let fields = json!({
+        "type": record.type_name,
+        "options": record.options,
+        "defaultValue": record.default_value,
+        "color": record.color,
+        "createdAt": "2025-10-09T08:53:20.000Z",
+    });
+    pull(f, &record.name, fields, false);
+}
+
+pub(crate) fn record(
     name: &str,
     type_name: &str,
     options: Option<&str>,
@@ -242,12 +322,16 @@ fn every_edit_writes_the_definitions_electrons_service_writes() {
 #[test]
 fn the_file_wins_and_the_records_fill_in() {
     let f = fixture();
+    // A record this device wrote, and a file that differs and was never compared with it (the
+    // mirror row lost): the file wins.
+    let mut stage = input("Stage", Some(DefinitionType::Text));
+    stage.color = Some("rose".into());
+    f.definitions.create(stage).unwrap();
+    f.set_mirror_row(None);
     f.set_file(
         "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: A\n        color: sky\n  Due:\n    type: date\n    showOnCalendar: true\n---\n",
     );
-    let now = 1_760_000_000_000;
     for stored in [
-        record("Stage", "text", None, Some("rose")),
         record(
             "Area",
             "multiselect",
@@ -256,7 +340,7 @@ fn the_file_wins_and_the_records_fill_in() {
         ),
         record("Link", "relation", None, None),
     ] {
-        f.records.put(&stored, now).unwrap();
+        pull_record(&f, &stored);
     }
 
     let listed = f.definitions.list().unwrap();
@@ -285,8 +369,8 @@ fn the_file_wins_and_the_records_fill_in() {
     assert_eq!(listed[1].created_at, "");
     assert_eq!(f.definitions.calendar_names(), ["Due"]);
 
-    // An edit of a name only a record holds puts it in the file, and the record follows the
-    // file's definition of a name both hold.
+    // A name only a record holds joined the file, and the record follows the file's definition
+    // of a name both hold.
     f.definitions
         .add_option("Area", option("Gym", "mint"))
         .unwrap();
@@ -311,12 +395,7 @@ fn the_file_wins_and_the_records_fill_in() {
 #[test]
 fn an_unreadable_file_refuses_every_edit_and_keeps_both_stores() {
     let f = fixture();
-    f.records
-        .put(
-            &record("Area", "select", Some("[]"), None),
-            1_760_000_000_000,
-        )
-        .unwrap();
+    pull_record(&f, &record("Area", "select", Some("[]"), None));
     let corrupt = "---\nproperties: [\n---\n";
     f.set_file(corrupt);
     let before = f.queued();
@@ -530,7 +609,7 @@ fn a_deeply_nested_synced_definition_reads_as_no_options() {
         let f = fixture();
         let deep = format!("{}{}", "[".repeat(100_000), "]".repeat(100_000));
         let hostile = record("Deep", "select", Some(&deep), None);
-        f.records.put(&hostile, 1_760_000_000_000).unwrap();
+        pull_record(&f, &hostile);
         let listed = f.definitions.list().unwrap();
         assert_eq!(listed[0].options.as_deref(), Some("[]"));
         f.definitions

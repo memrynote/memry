@@ -5,7 +5,8 @@
 //! The record's `options` is opaque to this build (§13.7.9): a newer build may put keys in an
 //! option, in a status category, beside the categories, or add a category. The file holds none
 //! of them, so a record written from the file takes them from the record it replaces: an
-//! option keeps its keys by its value, a category by its key (#3844). An option this build
+//! option keeps its keys by its value (a renamed one by its old value), a category by its key
+//! (#3844). An option this build
 //! cannot read (no value or no color) is not in the file and leaves the record with the edit.
 
 use memry_core::domain::property_admin::DEFAULT_STATUS_OPTIONS;
@@ -17,7 +18,10 @@ use crate::vault::properties_file::{
 };
 
 /// `options` as JSON, each option on the object of the `prior` option with its value.
-fn options_json(options: &[SelectOption], prior: Option<&Value>) -> Value {
+/// An option renamed by the edit: `(old value, new value)`.
+pub(super) type Renamed<'a> = Option<(&'a str, &'a str)>;
+
+fn options_json(options: &[SelectOption], prior: Option<&Value>, renamed: Renamed<'_>) -> Value {
     let mut unused: Vec<&Map<String, Value>> = prior
         .and_then(Value::as_array)
         .map(|items| items.iter().filter_map(Value::as_object).collect())
@@ -26,9 +30,13 @@ fn options_json(options: &[SelectOption], prior: Option<&Value>) -> Value {
         options
             .iter()
             .map(|option| {
-                let held = unused.iter().position(|held| {
-                    held.get("value").and_then(Value::as_str) == Some(&option.value)
-                });
+                let was = match renamed {
+                    Some((old, new)) if new == option.value => old,
+                    _ => option.value.as_str(),
+                };
+                let held = unused
+                    .iter()
+                    .position(|held| held.get("value").and_then(Value::as_str) == Some(was));
                 let mut entry = held.map(|at| unused.remove(at).clone()).unwrap_or_default();
                 entry.insert("value".into(), json!(option.value));
                 entry.insert("color".into(), json!(option.color));
@@ -44,7 +52,11 @@ fn options_json(options: &[SelectOption], prior: Option<&Value>) -> Value {
 
 /// A status's `options`: the `prior` object with its categories, each category on its prior
 /// object.
-fn categories_json(categories: &StatusCategories, prior: Option<&Value>) -> Value {
+fn categories_json(
+    categories: &StatusCategories,
+    prior: Option<&Value>,
+    renamed: Renamed<'_>,
+) -> Value {
     let mut whole = prior
         .and_then(Value::as_object)
         .cloned()
@@ -64,7 +76,7 @@ fn categories_json(categories: &StatusCategories, prior: Option<&Value>) -> Valu
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default();
-        let options = options_json(&category.options, entry.get("options"));
+        let options = options_json(&category.options, entry.get("options"), renamed);
         entry.insert("label".into(), json!(category.label));
         entry.insert("options".into(), options);
         all.insert(key.into(), Value::Object(entry));
@@ -75,15 +87,19 @@ fn categories_json(categories: &StatusCategories, prior: Option<&Value>) -> Valu
 
 /// The record's `options` text: the categories of a status, no text for a date or a project,
 /// the option list of every other type; what `prior` holds that this build does not read kept.
-fn options_over(kind: &PropertyKind, prior: Option<&Value>) -> Option<String> {
+fn options_over(
+    kind: &PropertyKind,
+    prior: Option<&Value>,
+    renamed: Renamed<'_>,
+) -> Option<String> {
     let value = match kind {
         PropertyKind::Text(options)
         | PropertyKind::Number(options)
         | PropertyKind::Checkbox(options)
         | PropertyKind::Url(options)
         | PropertyKind::Select(options)
-        | PropertyKind::Multiselect(options) => options_json(options, prior),
-        PropertyKind::Status(categories) => categories_json(categories, prior),
+        | PropertyKind::Multiselect(options) => options_json(options, prior, renamed),
+        PropertyKind::Status(categories) => categories_json(categories, prior, renamed),
         PropertyKind::Date { .. } | PropertyKind::Project => return None,
     };
     Some(value.to_string())
@@ -91,7 +107,7 @@ fn options_over(kind: &PropertyKind, prior: Option<&Value>) -> Option<String> {
 
 /// The `options` text a definition alone gives.
 pub(super) fn options_text(kind: &PropertyKind) -> Option<String> {
-    options_over(kind, None)
+    options_over(kind, None, None)
 }
 
 /// The record `definition` mirrors, over the record it replaces. The calendar flag of a date
@@ -100,6 +116,7 @@ pub(super) fn record_of(
     name: &str,
     definition: &PropertyDefinition,
     prior: Option<&DefinitionRecord>,
+    renamed: Renamed<'_>,
 ) -> DefinitionRecord {
     let prior = prior
         .and_then(|prior| prior.options.as_deref())
@@ -107,7 +124,7 @@ pub(super) fn record_of(
     DefinitionRecord {
         name: name.to_owned(),
         type_name: definition.kind.type_name().to_owned(),
-        options: options_over(&definition.kind, prior.as_ref()),
+        options: options_over(&definition.kind, prior.as_ref(), renamed),
         default_value: definition.default_value.clone(),
         color: definition.color.clone(),
     }

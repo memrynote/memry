@@ -15,15 +15,16 @@ use crate::vault::properties_file::{Definitions, PropertyKind};
 ///   (`relation`, a type of a newer build) leaves the file as it is, as Electron's
 ///   `applyRemoteUpsert` does.
 /// - A deleted record leaves the file.
-/// - A name the file never took a version of ([`Pulled::unseen`]): the file wins for a name it
-///   lists, and a live record of a name it does not list joins it, as Electron's reload folds
-///   the synced rows in.
+/// - A record this device wrote apart from the file, which the file never took
+///   ([`Pulled::file_wins`]): the file wins for a name it lists, and a live record of a name it
+///   does not list joins it, as Electron's reload folds its rows in. Every other record wins,
+///   the server's ones on a first run included.
 pub(super) fn settle_into(definitions: &mut Definitions, pulled: &[Pulled]) -> Vec<String> {
     let mut changed = Vec::new();
     for pulled in pulled {
         let name = pulled.name.as_str();
         let held = definitions.get(name);
-        if pulled.unseen && held.is_some() {
+        if pulled.file_wins && held.is_some() {
             continue;
         }
         match pulled.record.as_ref() {

@@ -33,12 +33,12 @@ fn a_record_the_file_has_not_taken_is_pulled_until_it_is() {
     let dir = temp_dir("props-mirror");
     let db = open_data(&dir.path().join("data.db")).unwrap();
     db.call_blocking(|c| {
-        // Written apart from the file: unseen, and taken once the file holds it.
+        // Written here apart from the file: the file wins, until the file takes it.
         put(c, &stage(r#"[{"value":"A","color":"sky"}]"#), "me", NOW)?;
         let first = snapshot(c)?;
         let pulled = first.pulled();
         assert_eq!(pulled.len(), 1);
-        assert!(pulled[0].unseen);
+        assert!(pulled[0].file_wins);
         take(c, &first)?;
         assert!(snapshot(c)?.pulled().is_empty());
 
@@ -54,7 +54,7 @@ fn a_record_the_file_has_not_taken_is_pulled_until_it_is() {
         );
         let pulled = snapshot(c)?.pulled();
         assert_eq!(pulled.len(), 1);
-        assert!(!pulled[0].unseen);
+        assert!(!pulled[0].file_wins);
         assert_eq!(
             pulled[0].record.as_ref().and_then(|r| r.options.as_deref()),
             Some(r#"[{"value":"A","color":"sky"},{"value":"Done","color":"green"}]"#)

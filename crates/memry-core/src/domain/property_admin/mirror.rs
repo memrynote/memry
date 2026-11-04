@@ -10,9 +10,14 @@
 //! last took it (`null` once deleted). A record that differs from it moved since, which only a
 //! pull does, because every write of this device records what it wrote. So the desktop writes
 //! it into the file before it reads the file or edits it. Nothing depends on a pull calling
-//! back, a crash between the two writes repeats the same file write, and a name the row does
-//! not hold yet is one the file was written apart from the record (by Electron, by hand), where
-//! the file wins as Electron's reload lets it.
+//! back, and a crash between the two writes repeats the same file write.
+//!
+//! A name the row does not hold (the first run of a vault Electron left, a lost or unreadable
+//! row) is decided by where its record came from. A record the server sent wins: Electron wrote
+//! every pulled record into its file as it applied it, so a file that differs missed a pull
+//! (another device's edit while this one was closed, or before this build). Only a record this
+//! device wrote and never pulled leaves the file winning ([`Pulled::file_wins`]), as Electron's
+//! reload lets the file win over its own rows.
 //!
 //! [`write`] puts an edit's record only while the record still holds what the edit was decided
 //! on: a pull that lands between the file read and the record write is [`Written::Moved`], and
@@ -40,17 +45,24 @@ pub struct Pulled {
     pub name: String,
     /// The record's definition, or `None` once it is deleted.
     pub record: Option<DefinitionRecord>,
-    /// The file never took a version of the name: what it lists was written apart from the
-    /// record, and it wins.
-    pub unseen: bool,
+    /// The file never took a version of the name and the server never sent the record: what
+    /// the file lists was written apart from it, and wins.
+    pub file_wins: bool,
 }
 
 /// Every record as the mirror compares it, and what the file took, read together.
 #[derive(Debug, Clone, Default)]
 pub struct Snapshot {
-    /// By name: the record's version and its live definition.
-    records: BTreeMap<String, (Value, Option<DefinitionRecord>)>,
+    /// By name: the record's version, its live definition, and whether the server sent it.
+    records: BTreeMap<String, Stored>,
     taken: Map<String, Value>,
+}
+
+#[derive(Debug, Clone)]
+struct Stored {
+    version: Value,
+    record: Option<DefinitionRecord>,
+    from_server: bool,
 }
 
 impl Snapshot {
@@ -58,11 +70,11 @@ impl Snapshot {
     pub fn pulled(&self) -> Vec<Pulled> {
         self.records
             .iter()
-            .filter(|(name, (version, _))| self.taken.get(*name) != Some(version))
-            .map(|(name, (_, record))| Pulled {
+            .filter(|(name, stored)| self.taken.get(*name) != Some(&stored.version))
+            .map(|(name, stored)| Pulled {
                 name: name.clone(),
-                record: record.clone(),
-                unseen: !self.taken.contains_key(name),
+                record: stored.record.clone(),
+                file_wins: !stored.from_server && !self.taken.contains_key(name),
             })
             .collect()
     }
@@ -71,13 +83,13 @@ impl Snapshot {
     pub fn record(&self, name: &str) -> Option<&DefinitionRecord> {
         self.records
             .get(name)
-            .and_then(|(_, record)| record.as_ref())
+            .and_then(|stored| stored.record.as_ref())
     }
 
     fn version(&self, name: &str) -> &Value {
         self.records
             .get(name)
-            .map_or(&Value::Null, |(version, _)| version)
+            .map_or(&Value::Null, |stored| &stored.version)
     }
 }
 
@@ -89,10 +101,13 @@ pub enum Edit {
     Remove,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Written {
     /// The record holds the edit (or already did), and the file's versions are recorded.
     Done,
+    /// The record holds the edit, and recording what the file holds failed (the message). The
+    /// next settle writes the record into the file again, which then holds the same.
+    Unrecorded(String),
     /// The record changed since the snapshot: nothing was written.
     Moved,
 }
@@ -159,38 +174,50 @@ fn store(conn: &Connection, taken: &Map<String, Value>) -> Result<(), StorageErr
     Ok(())
 }
 
-/// Every `property_definition` record, live or deleted, and what the file took. A record with
-/// no readable payload is left out: there is nothing in it to mirror.
+/// Every `property_definition` record, live or deleted, and what the file took. A deleted one
+/// counts with no payload (a delete of an item this device never held stores none); a live one
+/// with no readable payload is left out: there is nothing in it to mirror.
 pub fn snapshot(conn: &Connection) -> Result<Snapshot, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT item_id, payload, deleted_at FROM sync_items
-              WHERE item_type = ?1 AND payload IS NOT NULL",
+            "SELECT item_id, payload, deleted_at, server_cursor FROM sync_items
+              WHERE item_type = ?1 AND (payload IS NOT NULL OR deleted_at IS NOT NULL)",
         )
         .map_err(failed)?;
     let rows = statement
         .query_map([ITEM_TYPE], |row| {
             Ok((
                 row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(1)?,
                 row.get::<_, Option<i64>>(2)?,
+                row.get::<_, Option<i64>>(3)?,
             ))
         })
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
     let mut records = BTreeMap::new();
-    for (name, payload, deleted_at) in rows {
-        let entry = if deleted_at.is_some() {
-            (Value::Null, None)
-        } else {
-            let Ok(payload) = StoredPayload::parse(&payload) else {
-                continue;
-            };
-            let fields = payload.object();
-            (version_of(fields), Some(record_of(&name, fields)))
+    for (name, payload, deleted_at, server_cursor) in rows {
+        let from_server = server_cursor.is_some();
+        let stored = match (payload, deleted_at) {
+            (Some(payload), None) => {
+                let Ok(payload) = StoredPayload::parse(&payload) else {
+                    continue;
+                };
+                let fields = payload.object();
+                Stored {
+                    version: version_of(fields),
+                    record: Some(record_of(&name, fields)),
+                    from_server,
+                }
+            }
+            _ => Stored {
+                version: Value::Null,
+                record: None,
+                from_server,
+            },
         };
-        records.insert(name, entry);
+        records.insert(name, stored);
     }
     Ok(Snapshot {
         records,
@@ -248,13 +275,19 @@ pub fn write(
         Edit::Put(record) => drop(put(conn, record, device_id, now_ms)?),
         Edit::Remove => drop(remove(conn, name, device_id, now_ms)?),
     }
-    take(conn, snapshot)?;
-    if *edit != Edit::Keep {
+    let recorded = take(conn, snapshot).and_then(|()| {
+        if *edit == Edit::Keep {
+            return Ok(());
+        }
         let mut taken = taken(conn)?;
         taken.insert(name.to_owned(), current(conn, name)?);
-        store(conn, &taken)?;
-    }
-    Ok(Written::Done)
+        store(conn, &taken)
+    });
+    Ok(match recorded {
+        Ok(()) => Written::Done,
+        // The edit landed: reporting it failed would have the user redo it.
+        Err(error) => Written::Unrecorded(error.to_string()),
+    })
 }
 
 #[cfg(test)]

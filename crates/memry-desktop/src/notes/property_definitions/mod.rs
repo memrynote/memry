@@ -43,7 +43,7 @@ use crate::vault::properties_file::{
     self, PropertyDefinition, PropertyKind, SelectOption, StatusCategories,
 };
 use kind::{each_list, kind_of, new_option, option_list, options_of, type_of};
-use record::{default_categories, definition_of, options_text, record_of};
+use record::{Renamed, default_categories, definition_of, options_text, record_of};
 use settle::settle_into;
 pub use view::{
     DefinitionInput, DefinitionType, DefinitionsError, EnsuredType, OptionInput,
@@ -230,6 +230,16 @@ impl PropertyDefinitions {
     fn change<T>(
         &self,
         name: &str,
+        decide: impl FnMut(Option<PropertyDefinition>) -> Result<(Next, T), DefinitionsError>,
+    ) -> Result<T, DefinitionsError> {
+        self.change_renaming(name, None, decide)
+    }
+
+    /// [`Self::change`] of an edit that renames an option, which keeps its record entry.
+    fn change_renaming<T>(
+        &self,
+        name: &str,
+        renamed: Renamed<'_>,
         mut decide: impl FnMut(Option<PropertyDefinition>) -> Result<(Next, T), DefinitionsError>,
     ) -> Result<T, DefinitionsError> {
         let name = named(name)?;
@@ -253,7 +263,7 @@ impl PropertyDefinitions {
                 Ok::<_, DefinitionsError>((next, out))
             })??;
             let edit = match next {
-                Next::Put(definition) => Edit::Put(record_of(name, &definition, prior)),
+                Next::Put(definition) => Edit::Put(record_of(name, &definition, prior, renamed)),
                 Next::Remove => Edit::Remove,
                 Next::Keep => Edit::Keep,
             };
@@ -267,6 +277,14 @@ impl PropertyDefinitions {
             }
             match self.records.write(&snapshot, name, &edit, now_ms())? {
                 Written::Done => return Ok(out),
+                Written::Unrecorded(error) => {
+                    tracing::warn!(
+                        scope = "PropertyDefinitions",
+                        name,
+                        "the edit landed; recording what the file holds failed: {error}"
+                    );
+                    return Ok(out);
+                }
                 Written::Moved => tracing::info!(
                     scope = "PropertyDefinitions",
                     name,
@@ -436,9 +454,10 @@ impl PropertyDefinitions {
     fn edit_options(
         &self,
         name: &str,
+        renamed: Renamed<'_>,
         mut change: impl FnMut(&mut Vec<SelectOption>),
     ) -> Result<(), DefinitionsError> {
-        self.change(name, |existing| {
+        self.change_renaming(name, renamed, |existing| {
             let mut definition =
                 existing.ok_or_else(|| DefinitionsError::NotFound(name.to_owned()))?;
             each_list(&mut definition.kind, &mut change);
@@ -448,7 +467,7 @@ impl PropertyDefinitions {
 
     /// `notes:remove-property-option`. Note values keep the option.
     pub fn remove_option(&self, name: &str, value: &str) -> Result<(), DefinitionsError> {
-        self.edit_options(name, |list| list.retain(|o| o.value != value))
+        self.edit_options(name, None, |list| list.retain(|o| o.value != value))
     }
 
     /// `notes:rename-property-option`. Note values keep the old name, as in Electron.
@@ -456,7 +475,7 @@ impl PropertyDefinitions {
         if new.is_empty() {
             return Err(DefinitionsError::Invalid("an option needs a value"));
         }
-        self.edit_options(name, |list| {
+        self.edit_options(name, Some((old, new)), |list| {
             for option in list.iter_mut().filter(|o| o.value == old) {
                 new.clone_into(&mut option.value);
             }
@@ -473,7 +492,7 @@ impl PropertyDefinitions {
         if color.is_empty() {
             return Err(DefinitionsError::Invalid("an option needs a color"));
         }
-        self.edit_options(name, |list| {
+        self.edit_options(name, None, |list| {
             for option in list.iter_mut().filter(|o| o.value == value) {
                 color.clone_into(&mut option.color);
             }

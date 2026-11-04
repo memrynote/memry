@@ -5,63 +5,35 @@
 //! | Test                                                      | Rule                                  |
 //! | --------------------------------------------------------- | ------------------------------------- |
 //! | a pulled option survives a local edit of another          | release order of #3831: `Done` stays  |
+//! | an Electron file takes the server's records on first pull | `applyRemoteUpsert` reached its file  |
+//! | a lost or unreadable mirror row keeps the server's record | the same rule                         |
 //! | a pulled definition reaches the file                      | `applyRemoteUpsert`, calendar flag kept |
 //! | a pulled delete leaves the file                           | `applyRemoteDelete`                   |
-//! | a file written apart from its record wins until a pull    | reload's union, `mergeDatabaseDefinitions` |
+//! | a server delete of a name never held here leaves the file | the same, with no payload stored      |
+//! | a record written here apart from the file lets it win     | reload's union, `mergeDatabaseDefinitions` |
 //! | a hand edit of the file wins over an unchanged record     | #2896: a local file edit still wins   |
 //! | a pull between the file and the record write is taken     | the record write checks what it read  |
+//! | the same during the first edit of an Electron file        | the server's record wins the retry    |
 //! | an edit keeps the option keys a newer build wrote         | §13.7.9 opaque `options`, #3844       |
+//! | a renamed option keeps its keys                           | #3844                                 |
 //! | a hard-linked file is replaced, its other name kept       | #3843, Electron's `atomicWrite`       |
 
 use std::fs;
 
-use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::sync::apply::apply_inbound;
-use memry_desktop::notes::property_definitions::{DefinitionType, StatusCategoryKey};
+use memry_core::sync::store::mark_deleted;
+use memry_desktop::notes::property_definitions::{
+    DefinitionType, DefinitionsError, EnsuredType, StatusCategoryKey,
+};
 use memry_desktop::vault::properties_file::{PropertyKind, parse, properties_path};
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 
-use crate::property_definitions::{Fixture, fixture, input, option};
+use crate::property_definitions::{Fixture, NOW, fixture, inbound, input, option, pull};
 
-const NOW: i64 = 1_760_000_000_000;
-
-/// The record's clock with the peer's counter past it: a peer edit made after it pulled ours.
-fn after(f: &Fixture, name: &str) -> Value {
-    let name = name.to_owned();
-    let stored = f
-        .core
-        .db_handle()
-        .call_blocking(move |c| sync_items::load(c, "property_definition", &name))
-        .unwrap();
-    let mut clock = stored
-        .and_then(|row| row.payload)
-        .and_then(|payload| serde_json::from_str::<Value>(&payload).ok())
-        .and_then(|payload| payload.get("clock").and_then(Value::as_object).cloned())
-        .unwrap_or_default();
-    let next = clock.get("peer").and_then(Value::as_u64).unwrap_or(0) + 1;
-    clock.insert("peer".into(), json!(next));
-    Value::Object(clock)
-}
-
-/// Another device's definition of `name`, applied as a pull applies it.
-fn pull(f: &Fixture, name: &str, fields: Value, deleted: bool) {
-    let mut payload: Map<String, Value> = fields.as_object().cloned().unwrap_or_default();
-    payload.insert("name".into(), json!(name));
-    payload.insert("clock".into(), after(f, name));
-    let record = InboundRecord {
-        item_type: "property_definition".into(),
-        item_id: name.into(),
-        payload_json: Value::Object(payload).to_string(),
-        server_cursor: Some(1),
-        signer_device_id: Some("peer".into()),
-        updated_at: NOW,
-        deleted_at: deleted.then_some(NOW),
-    };
-    f.core
-        .db_handle()
-        .call_blocking(move |c| apply_inbound(c, &record, NOW))
-        .unwrap();
-}
+/// What Electron left in `properties.md`: `Stage` with `Draft` only.
+const ELECTRON_STAGE: &str = "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: Draft\n        color: violet\n---\n";
+/// `Stage` once an Electron device added `Done`.
+const BOTH: &str = r#"[{"value":"Draft","color":"violet"},{"value":"Done","color":"green"}]"#;
 
 fn options_of(f: &Fixture, name: &str) -> Value {
     serde_json::from_str(&f.record(name).unwrap().options.unwrap()).unwrap()
@@ -78,25 +50,52 @@ fn stage(f: &Fixture) {
     f.definitions.create(stage).unwrap();
 }
 
+fn pull_both(f: &Fixture) {
+    pull(
+        f,
+        "Stage",
+        json!({ "type": "select", "options": BOTH }),
+        false,
+    );
+}
+
+/// The recolor of `Draft` landed, and `Done` is kept.
+fn assert_done_kept(f: &Fixture, case: &str) {
+    assert_eq!(
+        options_of(f, "Stage"),
+        json!([{"value":"Draft","color":"rose"},{"value":"Done","color":"green"}]),
+        "{case}"
+    );
+}
+
+/// Applies `Stage` with `Done` between the edit's file write and its record write.
+fn pull_during_the_next_edit(f: &Fixture) {
+    let core = f.core.db_handle();
+    let record = inbound(
+        f,
+        "Stage",
+        json!({ "type": "select", "options": BOTH }),
+        false,
+    );
+    let mut once = Some(record);
+    f.definitions.before_record_write(move || {
+        if let Some(record) = once.take() {
+            core.call_blocking(move |c| apply_inbound(c, &record, NOW))
+                .unwrap();
+        }
+    });
+}
+
 #[test]
 fn a_pulled_option_survives_a_local_edit_of_another() {
     let f = fixture();
     stage(&f);
     // An Electron device adds `Done`; this device pulls it, then recolors `Draft`.
-    let both = r#"[{"value":"Draft","color":"violet"},{"value":"Done","color":"green"}]"#;
-    pull(
-        &f,
-        "Stage",
-        json!({ "type": "select", "options": both }),
-        false,
-    );
+    pull_both(&f);
     f.definitions
         .set_option_color("Stage", "Draft", "rose")
         .unwrap();
-    assert_eq!(
-        options_of(&f, "Stage"),
-        json!([{"value":"Draft","color":"rose"},{"value":"Done","color":"green"}])
-    );
+    assert_done_kept(&f, "pulled");
     let PropertyKind::Select(options) = file_definition(&f, "Stage").unwrap() else {
         panic!("a select");
     };
@@ -104,18 +103,40 @@ fn a_pulled_option_survives_a_local_edit_of_another() {
     assert_eq!(values, ["Draft", "Done"]);
 }
 
+/// The same on a vault Electron left: its file lacks `Done`, the first full pull brings `Stage`
+/// with it, and the file has never taken a record here.
+#[test]
+fn an_electron_file_takes_the_servers_records_on_the_first_pull() {
+    let f = fixture();
+    f.set_file(ELECTRON_STAGE);
+    pull_both(&f);
+    f.definitions
+        .set_option_color("Stage", "Draft", "rose")
+        .unwrap();
+    assert_done_kept(&f, "first pull");
+}
+
+#[test]
+fn a_lost_or_unreadable_mirror_row_keeps_the_servers_record() {
+    for row in [None, Some("not json"), Some("[1]")] {
+        let f = fixture();
+        stage(&f);
+        pull_both(&f);
+        f.set_mirror_row(row);
+        f.definitions
+            .set_option_color("Stage", "Draft", "rose")
+            .unwrap();
+        assert_done_kept(&f, &format!("{row:?}"));
+    }
+}
+
 #[test]
 fn a_pulled_definition_reaches_the_file_and_keeps_the_calendar_flag() {
     let f = fixture();
     stage(&f);
     f.definitions.set_show_on_calendar("Due", true).unwrap();
-    let both = r#"[{"value":"Draft","color":"violet"},{"value":"Done","color":"green"}]"#;
-    pull(
-        &f,
-        "Stage",
-        json!({ "type": "select", "options": both, "color": "sky" }),
-        false,
-    );
+    let stage = json!({ "type": "select", "options": BOTH, "color": "sky" });
+    pull(&f, "Stage", stage, false);
     pull(
         &f,
         "Due",
@@ -132,15 +153,13 @@ fn a_pulled_definition_reaches_the_file_and_keeps_the_calendar_flag() {
 
     let listed = f.definitions.list().unwrap();
     let stage = listed.iter().find(|d| d.name == "Stage").unwrap();
-    assert_eq!(stage.options.as_deref(), Some(both));
+    assert_eq!(stage.options.as_deref(), Some(BOTH));
     assert_eq!(stage.color.as_deref(), Some("sky"));
     let file = parse(&f.file().unwrap()).unwrap();
     let names: Vec<&str> = file.definitions.iter().map(|(name, _)| name).collect();
     assert_eq!(names, ["Stage", "Due", "Area"]);
-    assert_eq!(
-        file.definitions.get("Due").unwrap().color.as_deref(),
-        Some("amber")
-    );
+    let due = file.definitions.get("Due").unwrap();
+    assert_eq!(due.color.as_deref(), Some("amber"));
     assert_eq!(f.definitions.calendar_names(), ["Due"]);
     // Taking the pull into the file sends nothing back.
     let queued = f.queued();
@@ -152,17 +171,11 @@ fn a_pulled_definition_reaches_the_file_and_keeps_the_calendar_flag() {
 fn a_pulled_delete_leaves_the_file() {
     let f = fixture();
     stage(&f);
-    f.definitions
-        .create(input("Area", Some(DefinitionType::Text)))
-        .unwrap();
+    let area = input("Area", Some(DefinitionType::Text));
+    f.definitions.create(area).unwrap();
     pull(&f, "Stage", json!({ "type": "select" }), true);
-    let listed: Vec<String> = f
-        .definitions
-        .list()
-        .unwrap()
-        .into_iter()
-        .map(|d| d.name)
-        .collect();
+    let listed = f.definitions.list().unwrap();
+    let listed: Vec<String> = listed.into_iter().map(|d| d.name).collect();
     assert_eq!(listed, ["Area"]);
     assert_eq!(file_definition(&f, "Stage"), None);
     // A later edit of another name never brings it back.
@@ -173,39 +186,49 @@ fn a_pulled_delete_leaves_the_file() {
     assert_eq!(file_definition(&f, "Stage"), None);
 }
 
+/// A delete of an item this device never held is stored with no payload (`mark_deleted`).
 #[test]
-fn a_file_written_apart_from_its_record_wins_until_a_pull() {
+fn a_server_delete_of_a_name_never_held_here_leaves_the_file() {
     let f = fixture();
-    // Left by Electron or a hand edit: the file and the record were never compared here.
-    f.set_file(
-        "---\nproperties:\n  Stage:\n    type: select\n    options:\n      - value: A\n        color: sky\n---\n",
-    );
-    pull(
-        &f,
-        "Stage",
-        json!({ "type": "select", "options": r#"[{"value":"B","color":"rose"}]"# }),
-        false,
-    );
+    f.set_file(ELECTRON_STAGE);
+    f.core
+        .db_handle()
+        .call_blocking(|c| mark_deleted(c, "property_definition", "Stage", NOW, Some(2), NOW))
+        .unwrap();
+    let error = f
+        .definitions
+        .set_option_color("Stage", "Draft", "rose")
+        .unwrap_err();
+    assert!(matches!(error, DefinitionsError::NotFound(_)), "{error}");
+    assert_eq!(file_definition(&f, "Stage"), None);
+    assert!(f.definitions.list().unwrap().is_empty());
+    assert_eq!(f.record("Stage"), None);
+}
+
+#[test]
+fn a_record_written_here_apart_from_the_file_lets_the_file_win_until_a_pull() {
+    let f = fixture();
+    stage(&f);
+    // The mirror row is lost and the file was edited by hand meanwhile: nothing says the
+    // record is newer, so the file wins, as Electron's reload lets it.
+    f.set_mirror_row(None);
+    f.set_file(&ELECTRON_STAGE.replace("violet", "sky"));
     let before = f.file();
     let listed = f.definitions.list().unwrap();
-    assert_eq!(
-        listed[0].options.as_deref(),
-        Some(r#"[{"value":"A","color":"sky"}]"#)
-    );
+    let sky = r#"[{"value":"Draft","color":"sky"}]"#;
+    assert_eq!(listed[0].options.as_deref(), Some(sky));
     assert_eq!(f.file(), before, "the file is not rewritten");
 
     // A pull after that is newer than the file.
+    let mint = r#"[{"value":"C","color":"mint"}]"#;
     pull(
         &f,
         "Stage",
-        json!({ "type": "select", "options": r#"[{"value":"C","color":"mint"}]"# }),
+        json!({ "type": "select", "options": mint }),
         false,
     );
     let listed = f.definitions.list().unwrap();
-    assert_eq!(
-        listed[0].options.as_deref(),
-        Some(r#"[{"value":"C","color":"mint"}]"#)
-    );
+    assert_eq!(listed[0].options.as_deref(), Some(mint));
 }
 
 #[test]
@@ -218,52 +241,38 @@ fn a_hand_edit_of_the_file_wins_over_an_unchanged_record() {
     let edited = f.file().unwrap().replace("sky", "rose");
     f.set_file(&edited);
     let listed = f.definitions.list().unwrap();
-    assert_eq!(
-        listed[0].options.as_deref(),
-        Some(r#"[{"value":"Draft","color":"rose"}]"#)
-    );
+    let rose = r#"[{"value":"Draft","color":"rose"}]"#;
+    assert_eq!(listed[0].options.as_deref(), Some(rose));
     assert_eq!(f.file().as_deref(), Some(edited.as_str()));
     // The next edit of the name sends the file's definition.
     f.definitions
         .add_option("Stage", option("Done", "green"))
         .unwrap();
-    assert_eq!(
-        options_of(&f, "Stage"),
-        json!([{"value":"Draft","color":"rose"},{"value":"Done","color":"green"}])
-    );
+    assert_done_kept(&f, "hand edit");
 }
 
 #[test]
 fn a_pull_between_the_file_write_and_the_record_write_is_taken_and_the_edit_redone() {
     let f = fixture();
     stage(&f);
-    let both = r#"[{"value":"Draft","color":"violet"},{"value":"Done","color":"green"}]"#;
-    let core = f.core.db_handle();
-    let mut once = Some(InboundRecord {
-        item_type: "property_definition".into(),
-        item_id: "Stage".into(),
-        payload_json: json!({
-            "name": "Stage", "type": "select", "options": both, "clock": after(&f, "Stage")
-        })
-        .to_string(),
-        server_cursor: Some(1),
-        signer_device_id: Some("peer".into()),
-        updated_at: NOW,
-        deleted_at: None,
-    });
-    f.definitions.before_record_write(move || {
-        if let Some(record) = once.take() {
-            core.call_blocking(move |c| apply_inbound(c, &record, NOW))
-                .unwrap();
-        }
-    });
+    pull_during_the_next_edit(&f);
     f.definitions
         .set_option_color("Stage", "Draft", "rose")
         .unwrap();
-    assert_eq!(
-        options_of(&f, "Stage"),
-        json!([{"value":"Draft","color":"rose"},{"value":"Done","color":"green"}])
-    );
+    assert_done_kept(&f, "between");
+}
+
+/// The same on a first run: the file holds what Electron left and no record exists yet, so the
+/// edit creates one, and the pull lands before it.
+#[test]
+fn a_pull_during_the_first_edit_of_an_electron_file_is_taken() {
+    let f = fixture();
+    f.set_file(ELECTRON_STAGE);
+    pull_during_the_next_edit(&f);
+    f.definitions
+        .set_option_color("Stage", "Draft", "rose")
+        .unwrap();
+    assert_done_kept(&f, "first edit");
 }
 
 #[test]
@@ -274,36 +283,23 @@ fn an_edit_keeps_the_option_keys_a_newer_build_wrote() {
         {"value":"Draft","color":"violet","icon":"pen"},
         {"value":"Done","color":"green","default":true,"order":2}
     ]);
-    pull(
-        &f,
-        "Stage",
-        json!({ "type": "select", "options": select.to_string() }),
-        false,
-    );
-    f.definitions
-        .ensure(
-            "State",
-            memry_desktop::notes::property_definitions::EnsuredType::Status,
-        )
-        .unwrap();
-    let mut status: Value =
-        serde_json::from_str(&f.record("State").unwrap().options.unwrap()).unwrap();
+    let fields = json!({ "type": "select", "options": select.to_string() });
+    pull(&f, "Stage", fields, false);
+    f.definitions.ensure("State", EnsuredType::Status).unwrap();
+    let mut status: Value = options_of(&f, "State");
     status["categories"]["todo"]["hint"] = json!("not yet");
     status["categories"]["todo"]["options"][0]["icon"] = json!("circle");
     status["categories"]["blocked"] = json!({"label":"Blocked","options":[]});
     status["version"] = json!(2);
-    pull(
-        &f,
-        "State",
-        json!({ "type": "status", "options": status.to_string() }),
-        false,
-    );
+    let fields = json!({ "type": "status", "options": status.to_string() });
+    pull(&f, "State", fields, false);
 
     f.definitions
         .set_option_color("Stage", "Done", "mint")
         .unwrap();
+    let shipped = option("Shipped", "green");
     f.definitions
-        .add_status_option("State", StatusCategoryKey::Done, option("Shipped", "green"))
+        .add_status_option("State", StatusCategoryKey::Done, shipped)
         .unwrap();
 
     assert_eq!(
@@ -315,19 +311,31 @@ fn an_edit_keeps_the_option_keys_a_newer_build_wrote() {
     );
     let state = options_of(&f, "State");
     assert_eq!(state["version"], json!(2));
-    assert_eq!(
-        state["categories"]["blocked"],
-        json!({"label":"Blocked","options":[]})
-    );
+    let blocked = json!({"label":"Blocked","options":[]});
+    assert_eq!(state["categories"]["blocked"], blocked);
     assert_eq!(state["categories"]["todo"]["hint"], json!("not yet"));
-    assert_eq!(
-        state["categories"]["todo"]["options"][0]["icon"],
-        json!("circle")
-    );
+    let todo = &state["categories"]["todo"]["options"][0];
+    assert_eq!(todo["icon"], json!("circle"));
     let done = state["categories"]["done"]["options"].as_array().unwrap();
     assert_eq!(
         done.last(),
         Some(&json!({"value":"Shipped","color":"green"}))
+    );
+}
+
+#[test]
+fn a_renamed_option_keeps_its_keys() {
+    let f = fixture();
+    stage(&f);
+    let select = json!([{"value":"Draft","color":"violet","icon":"pen"}]);
+    let fields = json!({ "type": "select", "options": select.to_string() });
+    pull(&f, "Stage", fields, false);
+    f.definitions
+        .rename_option("Stage", "Draft", "Sketch")
+        .unwrap();
+    assert_eq!(
+        options_of(&f, "Stage"),
+        json!([{"value":"Sketch","color":"violet","icon":"pen"}])
     );
 }
 
@@ -342,10 +350,7 @@ fn a_hard_linked_file_is_replaced_and_its_other_name_keeps_its_bytes() {
     f.definitions
         .add_option("Stage", option("Done", "green"))
         .unwrap();
-    assert_eq!(
-        fs::read(&outside).unwrap(),
-        kept,
-        "nothing is written through the link"
-    );
+    let after = fs::read(&outside).unwrap();
+    assert_eq!(after, kept, "nothing is written through the link");
     assert!(f.file().unwrap().contains("Done"));
 }
