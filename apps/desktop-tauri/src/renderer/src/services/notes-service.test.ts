@@ -523,13 +523,13 @@ describe('notes-service', () => {
     expect(commands.notesApplyTemplate).toHaveBeenCalledWith(input)
 
     commands.notesApplyTemplate.mockRejectedValue({
-      kind: 'storage',
-      code: 'note_file_failed',
-      message: 'the file changed while it was being written'
+      kind: 'NotFound',
+      code: 'template_not_found',
+      message: 'template not found: blank'
     })
     await expect(notesService.applyTemplate({ ...input, mode: 'body' })).resolves.toEqual({
       success: false,
-      error: 'the file changed while it was being written',
+      error: 'template not found: blank',
       note: null
     })
 

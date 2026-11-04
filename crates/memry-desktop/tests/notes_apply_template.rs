@@ -9,7 +9,7 @@
 //! | a replaced body is kept as a version first                        | `writeNote`'s snapshot                  |
 //! | body: only the body, its `#tags` moving the header as a save does | `full` off; `nextHeaderTags`            |
 //! | only the body's `#tags` changed: still `notes:tags-changed`       | `hasTagChange`                          |
-//! | a note whose document is ahead of its file is kept as it is       | the app-edit seam; no record written    |
+//! | a note whose document is ahead of its file is kept as it is       | `note_edit_kept`; no record written     |
 //! | a template or a note that is not there                            | `NOT_FOUND`                             |
 
 #[allow(unused_imports)]
@@ -20,6 +20,7 @@ use crate::vault_env;
 use std::sync::Arc;
 
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::error::CoreError;
 use memry_desktop::notes::apply_template::{ApplyTemplateInput, TemplateMode};
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
@@ -28,9 +29,9 @@ use memry_desktop::notes::service::NotesService;
 use memry_desktop::templates::{
     TemplateCreateInput, TemplateProperty, TemplatePropertyType, Templates,
 };
+use memry_desktop::vault::app_edit::Kept;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::hash::content_hash;
-use memry_desktop::vault::note_file::NoteFileError;
 use serde_json::{Map, Value, json};
 use vault_env::{Env, QUIET, env, indexed};
 
@@ -266,13 +267,13 @@ fn a_note_whose_document_is_ahead_of_its_file_is_kept_as_it_is() {
 
     let kept = notes.apply_template(&open, input(&id, &template, TemplateMode::Full));
 
+    // Typing the write-back has not written yet: the user applies again once it is.
+    let error = kept.unwrap_err();
     assert!(
-        matches!(
-            kept,
-            Err(NotesError::File(NoteFileError::ChangedUnderWrite))
-        ),
-        "{kept:?}"
+        matches!(error, NotesError::EditKept(Kept::BodyAhead)),
+        "{error:?}"
     );
+    assert_eq!(error.kind_and_code().1, "note_edit_kept");
     assert_eq!(e.read("Plan.md"), PLAN);
     assert_eq!(e.body(&id), "Typed in the app");
     let listed = e.core().note_files().listed_by_id(&id).unwrap().unwrap();

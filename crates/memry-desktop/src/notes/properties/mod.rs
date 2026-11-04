@@ -15,7 +15,9 @@
 //!   (`buildNotePushPayload` reads the index). Every other key keeps the record's value: a value
 //!   a pull brought in is not in the file yet (13k-4), and the file's stale one must not go back.
 //!
-//! What an edit makes of the frontmatter is [`edit`]. Not here: the header status a status
+//! A template applied to a note (`notes:apply-template`, [`super::apply_template`]) fills values
+//! with the same edit and record mirror ([`mirror_properties`]) inside its own write of the
+//! body. What an edit makes of the frontmatter is [`edit`]. Not here: the header status a status
 //! property takes from the note's tasks (`fillHeaderStatus`, Step 21), the `note_properties`
 //! index and a type learned from a new value (13k-4), the journal page's own event for a day
 //! (Step 13m), relation chips (`properties:resolveRefs`) and the lock check (Step 14).
@@ -25,6 +27,7 @@ pub mod edit;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::property_values::{IndexedProperty, indexed_properties};
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, deep_strict_equal, json_to_yaml, parse_markdown_note,
@@ -207,18 +210,8 @@ impl NotesService {
                 // Under the lane once the file holds the edit, before the note event.
                 || {
                     let values = values.borrow();
-                    let Some((held, after)) = values.as_ref() else {
-                        return Ok(false);
-                    };
-                    let (changed, removed) = delta(held, after);
-                    let mirrored = (changed.is_empty() && removed.is_empty())
-                        || writer.file_properties(note_id, changed, removed)?;
-                    if !mirrored {
-                        tracing::warn!(
-                            scope = SCOPE,
-                            note_id,
-                            "a note's file took a property edit its record could not: no record"
-                        );
+                    if let Some((held, after)) = values.as_ref() {
+                        mirror_properties(&writer, note_id, delta(held, after))?;
                     }
                     Ok(false)
                 },
@@ -246,7 +239,7 @@ impl NotesService {
 
     /// Each defined property's type, by name: `properties.md`, then the records. Without them
     /// (the file or the records unreadable) every type is inferred from its value.
-    fn definition_types(&self, open: &OpenVault) -> HashMap<String, String> {
+    pub(super) fn definition_types(&self, open: &OpenVault) -> HashMap<String, String> {
         let listed = open
             .vault
             .property_definition_records(self.store.clone())
@@ -274,6 +267,39 @@ impl NotesService {
             }
         }
     }
+}
+
+/// The record's side of a frontmatter edit from `read` to `next`, the values as stored by the
+/// definitions' `types`: the keys it set and the keys it dropped ([`delta`]).
+pub(super) fn property_delta(
+    read: &YamlMap,
+    next: &YamlMap,
+    types: &HashMap<String, String>,
+) -> (Map<String, Value>, Vec<String>) {
+    delta(
+        &stored(&indexed(&user_properties(read), types)),
+        &stored(&indexed(&user_properties(next), types)),
+    )
+}
+
+/// Gives the record the keys a file edit set and dropped, under the lane once the file holds
+/// the edit ([`NotesWriter::file_properties`]); writes nothing for an edit of no property.
+pub(super) fn mirror_properties(
+    writer: &NotesWriter,
+    note_id: &str,
+    (changed, removed): (Map<String, Value>, Vec<String>),
+) -> Result<(), NotesError> {
+    if changed.is_empty() && removed.is_empty() {
+        return Ok(());
+    }
+    if !writer.file_properties(note_id, changed, removed)? {
+        tracing::warn!(
+            scope = SCOPE,
+            note_id,
+            "a note's file took a property edit its record could not: no record"
+        );
+    }
+    Ok(())
 }
 
 fn indexed(values: &YamlMap, types: &HashMap<String, String>) -> Vec<IndexedProperty> {
