@@ -20,8 +20,7 @@ const FIXED_MESSAGE_KEYS = new Map<string, string>([
  * Rust message stays English for the logs.
  */
 const COMMAND_CODE_KEYS = new Map<string, string>([
-  ['frontmatter_not_a_map', 'errors:note.invalidFrontmatter'],
-  ['frontmatter_unreadable', 'errors:note.invalidFrontmatter'],
+  ['frontmatter_failed', 'errors:note.invalidFrontmatter'],
   ['note_body_not_pulled', 'errors:property.noteNotPulled'],
   ['note_edit_kept', 'errors:property.noteChanged'],
   ['note_not_representable', 'errors:property.setFailed'],

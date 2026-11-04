@@ -174,6 +174,14 @@ impl Vault {
         self.db.read_blocking(crate::domain::tag_categories::list)
     }
 
+    /// [`crate::domain::tag_fields::with_fields`], for desktop's header tag edit (Step 13f). Not
+    /// part of the FFI surface.
+    #[doc(hidden)]
+    pub fn tags_with_fields(&self) -> Result<std::collections::HashSet<String>, StorageError> {
+        self.db
+            .read_blocking(crate::domain::tag_fields::with_fields)
+    }
+
     /// This vault's custom icon library, written under this device's identity (desktop
     /// Step 13o). Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[doc(hidden)]

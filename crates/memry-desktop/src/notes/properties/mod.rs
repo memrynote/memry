@@ -10,7 +10,8 @@
 //!   is not touched, then the note's document and row follow and the renderer hears of it as of
 //!   an outside edit. A file the seam keeps (an outside edit not fed yet, a document ahead of
 //!   its file) is refused with [`NotesError::EditKept`]. Once the file holds the edit, the
-//!   record takes the keys the edit set or dropped, in the same turn, so sync sends the edit
+//!   record takes the keys the edit set or dropped, under the lane before the note event
+//!   (`AppEdit::run_then`'s `landed`), so a refused write leaves it and sync sends the edit
 //!   (`buildNotePushPayload` reads the index). Every other key keeps the record's value: a value
 //!   a pull brought in is not in the file yet (13k-4), and the file's stale one must not go back.
 //!
@@ -21,6 +22,7 @@
 
 pub mod edit;
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use memry_core::domain::property_values::{IndexedProperty, indexed_properties};
@@ -171,53 +173,69 @@ impl NotesService {
         let writer = open.vault.notes_writer(self.store.clone())?;
         let seam = AppEdit::new(&self.tier, &self.store, open)?;
         self.order.run(note_id, |turn| {
-            let mut read = YamlMap::new();
-            let mut next = YamlMap::new();
-            let done = seam.run(turn, Precondition::Held, ChangeSource::AppEdit, |text| {
-                let parsed = parse_markdown_note(text)?;
-                read = match &parsed.frontmatter {
-                    YamlValue::Map(map) => (**map).clone(),
-                    _ if parsed.raw_frontmatter_block.is_none() => YamlMap::new(),
-                    // A top level that is a list or a scalar is the author's; no key goes in.
-                    _ => return Err(NotesError::FrontmatterNotAMap),
-                };
-                next = edited(&read, edit)?;
-                let changed = !deep_strict_equal(
-                    &YamlValue::map(read.clone()),
-                    &YamlValue::map(next.clone()),
-                );
-                if !changed {
-                    return Ok(None);
-                }
-                let body = parsed.content.clone();
-                Ok(Some(serialize_updated_note(
-                    parsed,
-                    &read,
-                    next.clone(),
-                    &body,
-                    true,
-                )?))
-            })?;
-            let held = stored(&indexed(&user_properties(&read), &types));
-            let names = held.keys().cloned().collect();
-            match done {
-                Edited::Wrote { .. } => {
-                    let stored = stored(&indexed(&user_properties(&next), &types));
-                    let (changed, removed) = delta(&held, &stored);
-                    if !writer.file_properties(note_id, changed, removed)? {
+            // The stored values the file held and holds after the edit, once the text decided.
+            let values = RefCell::new(None::<(Map<String, Value>, Map<String, Value>)>);
+            let done = seam.run_then(
+                turn,
+                Precondition::Held,
+                ChangeSource::AppEdit,
+                |text| {
+                    let parsed = parse_markdown_note(text)?;
+                    let read = match &parsed.frontmatter {
+                        YamlValue::Map(map) => (**map).clone(),
+                        _ if parsed.raw_frontmatter_block.is_none() => YamlMap::new(),
+                        // A top level that is a list or a scalar is the author's; no key goes in.
+                        _ => return Err(NotesError::FrontmatterNotAMap),
+                    };
+                    let next = edited(&read, edit)?;
+                    *values.borrow_mut() = Some((
+                        stored(&indexed(&user_properties(&read), &types)),
+                        stored(&indexed(&user_properties(&next), &types)),
+                    ));
+                    let changed = !deep_strict_equal(
+                        &YamlValue::map(read.clone()),
+                        &YamlValue::map(next.clone()),
+                    );
+                    if !changed {
+                        return Ok(None);
+                    }
+                    let body = parsed.content.clone();
+                    Ok(Some(serialize_updated_note(
+                        parsed, &read, next, &body, true,
+                    )?))
+                },
+                // Under the lane once the file holds the edit, before the note event.
+                || {
+                    let values = values.borrow();
+                    let Some((held, after)) = values.as_ref() else {
+                        return Ok(false);
+                    };
+                    let (changed, removed) = delta(held, after);
+                    let mirrored = (changed.is_empty() && removed.is_empty())
+                        || writer.file_properties(note_id, changed, removed)?;
+                    if !mirrored {
                         tracing::warn!(
                             scope = SCOPE,
                             note_id,
                             "a note's file took a property edit its record could not: no record"
                         );
                     }
-                    Ok((names, stored))
-                }
+                    Ok(false)
+                },
+                &mut || {},
+            )?;
+            let (held, after) = values.into_inner().unwrap_or_default();
+            let names = held.keys().cloned().collect();
+            match done {
+                Edited::Wrote { .. } => Ok((names, after)),
                 Edited::Unchanged => Ok((names, held)),
                 Edited::Kept(Kept::NoRow | Kept::NoFile | Kept::NoBody) => {
                     Err(NotesError::NotFound(note_id.to_owned()))
                 }
                 Edited::Kept(Kept::NotMarkdown) => Err(NotesError::NotMarkdown),
+                Edited::Kept(Kept::FrontmatterUnreadable | Kept::FrontmatterBroken) => {
+                    Err(NotesError::FrontmatterUnreadable)
+                }
                 Edited::Kept(kept) => {
                     tracing::info!(scope = SCOPE, note_id, ?kept, "a property edit was refused");
                     Err(NotesError::EditKept(kept))

@@ -124,7 +124,7 @@ describe('extractErrorMessage', () => {
     expect(extractErrorMessage(refused('note_edit_kept'), 'fallback')).toBe(
       'This note changed while its properties were being saved. Try again.'
     )
-    expect(extractErrorMessage(refused('frontmatter_unreadable'), 'fallback')).toBe(
+    expect(extractErrorMessage(refused('frontmatter_failed'), 'fallback')).toBe(
       'This note has invalid metadata and cannot be read.'
     )
     expect(extractErrorMessage(refused('note_body_not_pulled'), 'fallback')).toBe(

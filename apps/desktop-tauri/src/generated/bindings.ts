@@ -83,6 +83,11 @@ export const commands = {
 	 *  each mention.
 	 */
 	notesGetUnlinkedMentions: (id: string) => __TAURI_INVOKE<UnlinkedMentionView[]>("notes_get_unlinked_mentions", { id }),
+	/**
+	 *  `notes:link-mention`: the source's `ordinal`-th unlinked mention of the target becomes a wiki
+	 *  link to it. `false` when that mention is gone (the source changed since it was listed).
+	 */
+	notesLinkMention: (sourceId: string, targetId: string, ordinal: number) => __TAURI_INVOKE<boolean>("notes_link_mention", { sourceId, targetId, ordinal }),
 	notesList: (options: NoteListOptions) => __TAURI_INVOKE<NoteListPageView>("notes_list", { options }),
 	/**  `notes:open-external`: the note's file in the OS's default app. */
 	notesOpenExternal: (id: string) => __TAURI_INVOKE<null>("notes_open_external", { id }),
@@ -93,6 +98,12 @@ export const commands = {
 	 *  Answers the note.
 	 */
 	notesRename: (id: string, newTitle: string) => __TAURI_INVOKE<NoteView>("notes_rename", { id, newTitle }),
+	/**
+	 *  `notes:update`: an editor save of the note's body, an edit of its header tags, its icon.
+	 *  Answers the note, and sends `notes:tags-changed` when its tags changed; its `notes:updated`
+	 *  comes from its row fact.
+	 */
+	notesUpdate: (input: NoteUpdateInput) => __TAURI_INVOKE<NoteView>("notes_update", { input }),
 	/**  `notes:reorder`: the paths become the hand-made order of the folder (`""` is the root). */
 	notesReorder: (folderPath: string, notePaths: string[]) => __TAURI_INVOKE<null>("notes_reorder", { folderPath, notePaths }),
 	/**  The note `title` names as a whole (no heading split), or `null`. */
@@ -636,6 +647,21 @@ export type GlobalCaptureResult = {
 	fallbackRegistered: boolean,
 };
 
+/**  `HeaderTagEditSchema`. */
+export type HeaderTagEditInput = {
+	add?: string[] | null,
+	remove?: string[] | null,
+	rename?: HeaderTagRenameInput[] | null,
+	source?: HeaderTagSource | null,
+};
+
+export type HeaderTagRenameInput = {
+	from: string,
+	to: string,
+};
+
+export type HeaderTagSource = "inline";
+
 /**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
  *  (#3544), a clicked inbox notification.
@@ -910,6 +936,15 @@ export type NoteRenamedEvent = {
  *  refetches.
  */
 export type NoteTagsChangedEvent = null;
+
+/**  `NoteUpdateSchema`, the fields this step writes. */
+export type NoteUpdateInput = {
+	id: string,
+	content?: string | null,
+	headerTags?: HeaderTagEditInput | null,
+	/**  Absent leaves the icon; `null` clears it. */
+	emoji?: string | null,
+};
 
 /**
  *  A note's file changed outside the app (`notes:updated`). `changes` holds the fields the

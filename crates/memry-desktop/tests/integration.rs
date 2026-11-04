@@ -92,6 +92,8 @@ mod logship;
 mod move_dir;
 #[path = "move_journal.rs"]
 mod move_journal;
+#[path = "note_link_mention.rs"]
+mod note_link_mention;
 #[path = "note_links.rs"]
 mod note_links;
 #[path = "note_links_changed.rs"]
@@ -112,6 +114,8 @@ mod notes_moves;
 mod notes_properties;
 #[path = "notes_service.rs"]
 mod notes_service;
+#[path = "notes_update.rs"]
+mod notes_update;
 #[path = "notes_writes.rs"]
 mod notes_writes;
 #[path = "path_collision.rs"]

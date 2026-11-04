@@ -38,7 +38,12 @@ import type {
   WikiLinkTargetResolution,
   WikiLinkTitleResolutions
 } from '@memry/rpc/notes'
-import type { NoteLinksChangedEvent, UnlinkedMention } from '@memry/contracts/notes-api'
+import type {
+  NoteLinkMention,
+  NoteLinkMentionResponse,
+  NoteLinksChangedEvent,
+  UnlinkedMention
+} from '@memry/contracts/notes-api'
 import { markdownPreviewText } from '@memry/shared/markdown-preview-text'
 import { getI18n } from 'react-i18next'
 import {
@@ -142,9 +147,10 @@ function definitionInput(
 }
 
 /**
- * The notes commands of Step 13f, the rename and manual order of Step 13g, the link reads of
- * Step 13i and the property definitions of Step 13k (`commands/notes.rs`,
- * `commands/property_definitions.rs`); every other method still goes to `window.api.notes`.
+ * The notes commands of Step 13f (the edit of 13f-3c included), the rename and manual order of
+ * Step 13g, the link reads and the mention link of Step 13i and the property definitions of
+ * Step 13k (`commands/notes.rs`, `commands/property_definitions.rs`); every other method still
+ * goes to `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
@@ -188,6 +194,19 @@ const ported = {
       return { success: true }
     } catch (error) {
       return failure(error)
+    }
+  },
+  // `title` is `notes:rename`'s and `frontmatter` the property writer's (13k); an edit without
+  // them would drop what was asked. A failure answers as Electron's `registerCommand` does.
+  update: async (input: NoteUpdateInput): Promise<NoteUpdateResponse> => {
+    if (input.title !== undefined) throw new NotPortedError('notes.update({ title })')
+    if (input.frontmatter !== undefined) throw new NotPortedError('notes.update({ frontmatter })')
+    try {
+      const { id, content, headerTags, emoji } = input
+      const note = await commands.notesUpdate({ id, content, headerTags, emoji })
+      return { success: true, note: toNote(note) }
+    } catch (error) {
+      return { ...failure(error), note: null }
     }
   },
   // A failed rename or reorder answers as Electron's `registerCommand` does.
@@ -245,6 +264,13 @@ const ported = {
     commands.notesResolveWikiTarget(target),
   getUnlinkedMentions: (id: string): Promise<UnlinkedMention[]> =>
     commands.notesGetUnlinkedMentions(id),
+  linkMention: async ({
+    sourceId,
+    targetId,
+    ordinal
+  }: NoteLinkMention): Promise<NoteLinkMentionResponse> => ({
+    linked: await commands.notesLinkMention(sourceId, targetId, ordinal)
+  }),
   // The card's opening is read here from the body Rust sends, with the function Electron's main
   // ran on it; a card with a description gets no body.
   previewByTitle: async (title: string): Promise<WikiLinkPreview | null> => {

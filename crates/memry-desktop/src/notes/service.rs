@@ -20,6 +20,7 @@ use std::sync::Arc;
 use memry_core::seams::secure_store::SecureStore;
 
 use super::write_order::WriteOrder;
+use crate::vault::app_edit::OwnFiles;
 use crate::vault::consumer::VaultTier;
 use crate::vault::trash::move_to_trash;
 
@@ -31,6 +32,9 @@ pub struct NotesService {
     pub(crate) store: Arc<dyn SecureStore>,
     pub(crate) order: WriteOrder,
     pub(crate) trash: Trash,
+    /// The files this run wrote for its notes, which a save replaces with no version: set by a
+    /// create ([`super::create`]), kept by the saves ([`super::update`]).
+    pub(crate) own_files: OwnFiles,
 }
 
 impl NotesService {
@@ -50,6 +54,7 @@ impl NotesService {
             store,
             order: WriteOrder::default(),
             trash,
+            own_files: OwnFiles::default(),
         })
     }
 }

@@ -23,6 +23,8 @@ pub mod custom_icons;
 #[cfg(feature = "markdown")]
 pub mod external_feed;
 pub mod folders;
+// Desktop's note edit only: iOS writes no note file, so it links none of it.
+#[cfg(feature = "markdown")]
 pub mod header_tags;
 pub mod inbox;
 pub mod journal;

@@ -153,6 +153,14 @@ vi.mock('../src/generated/bindings', () => {
         if (result?.success === false) throw new Error(result.error ?? '')
         return result?.note
       },
+      // A test answers in Electron's envelope, or with the note alone.
+      notesUpdate: async (input: unknown) => {
+        const result = (await notes().update(input)) as
+          | { success?: boolean; note?: unknown; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return result?.note ?? result
+      },
       notesReorder: async (folderPath: string, notePaths: string[]) => {
         const result = (await notes().reorder(folderPath, notePaths)) as
           | { success?: boolean; error?: string }

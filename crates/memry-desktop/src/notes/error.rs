@@ -64,9 +64,12 @@ pub enum NotesError {
     #[error("the frontmatter could not be written: {0}")]
     Yaml(#[from] YamlError),
     /// The note's frontmatter is a list or a scalar, which has no keys to write.
-    #[error("the note's frontmatter is not a set of keys, so its properties cannot be written")]
+    #[error("the note's frontmatter is not a set of keys, so it cannot be edited")]
     FrontmatterNotAMap,
-    /// Only a markdown note's file holds a frontmatter to edit (`NOT_MARKDOWN`).
+    /// The note's frontmatter does not parse, so an edit would lose it (#3750).
+    #[error("the note's frontmatter could not be read, so the edit was not made")]
+    FrontmatterUnreadable,
+    /// Only a markdown note's file holds a body and frontmatter to edit (`NOT_MARKDOWN`).
     #[error("only a markdown note can be edited")]
     NotMarkdown,
     /// The app's edit of the note's file was not made ([`Kept`]). Only an edit the file or the
@@ -206,20 +209,22 @@ impl CoreError for NotesError {
             Self::Crdt(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
             Self::File(_) => (FailureKind::Storage, "note_file_failed"),
-            Self::Yaml(_) => (FailureKind::Invalid, "frontmatter_failed"),
-            Self::FrontmatterNotAMap => (FailureKind::PropertyWrite, "frontmatter_not_a_map"),
-            Self::NotMarkdown => (FailureKind::Invalid, "not_markdown"),
+            Self::Yaml(_)
+            | Self::FrontmatterNotAMap
+            | Self::FrontmatterUnreadable
+            | Self::EditKept(Kept::FrontmatterUnreadable | Kept::FrontmatterBroken) => {
+                (FailureKind::Invalid, "frontmatter_failed")
+            }
+            Self::NotMarkdown | Self::EditKept(Kept::NotMarkdown) => {
+                (FailureKind::Invalid, "note_not_markdown")
+            }
             Self::EditKept(kept) if kept_is_retryable(kept) => {
                 (FailureKind::PropertyWrite, "note_edit_kept")
-            }
-            Self::EditKept(Kept::FrontmatterUnreadable | Kept::FrontmatterBroken) => {
-                (FailureKind::Invalid, "frontmatter_unreadable")
             }
             Self::EditKept(Kept::BodyNotPulled) => (FailureKind::Invalid, "note_body_not_pulled"),
             Self::EditKept(Kept::NotRepresentable) => {
                 (FailureKind::Invalid, "note_not_representable")
             }
-            Self::EditKept(Kept::NotMarkdown) => (FailureKind::Invalid, "not_markdown"),
             Self::EditKept(_) => (FailureKind::NotFound, "note_not_found"),
             Self::PropertyNotFound(_) => (FailureKind::NotFound, "property_not_found"),
             Self::PropertyExists(_) => (FailureKind::PropertyWrite, "property_exists"),

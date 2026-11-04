@@ -93,6 +93,9 @@ pub enum ChangeSource {
     /// links to a renamed note, a linked mention, a template's apply). The renderer takes it as
     /// it takes an outside edit, as Electron's `landSourceRewrite` sends it.
     AppEdit,
+    /// The user's save in the editor (`notes:update`, `vault::app_edit`'s `Save`): its body,
+    /// its header tags or its icon. Electron sends it as an `internal` `notes:updated`.
+    Save,
 }
 
 /// A change to the rows, published after the row is written.

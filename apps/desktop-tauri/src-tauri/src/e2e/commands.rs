@@ -35,6 +35,7 @@ e2e_commands! {
         e2e_save_held_edit,
         e2e_send_session_end,
         e2e_slow_shutdown_step,
+        e2e_spell_ready,
         e2e_tray_probe,
         e2e_request_flush,
         e2e_trigger_shutdown_overrun

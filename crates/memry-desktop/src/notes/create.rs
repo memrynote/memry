@@ -232,6 +232,8 @@ impl NotesService {
         if let Err(error) = lane.put(&id, &rel, stat) {
             return take_back(&mut lane, error.into());
         }
+        // The note's first save replaces this file with no version of it.
+        self.own_files.wrote(&id, &hash);
         lane.publish(Applied::Added {
             note_id: id.clone(),
             path: rel.clone(),

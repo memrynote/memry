@@ -4,11 +4,13 @@
 //! A note's links and the note a wiki link names (`notes:get-links`, `notes:resolve-by-title`,
 //! `notes:resolve-titles`, `notes:resolve-wiki-target`, #3530 13i) go through
 //! `memry_desktop::notes::links`; a note's unlinked mentions (`notes:get-unlinked-mentions`)
-//! through `memry_desktop::notes::mentions`, and a wiki link's hover card
+//! through `memry_desktop::notes::mentions`, linking one of them (`notes:link-mention`) through
+//! `NotesService::link_mention`, and a wiki link's hover card
 //! (`notes:preview-by-title`) through `memry_desktop::notes::link_preview`.
 //! A note's rename (`notes:rename`) and the sidebar's manual order (`notes:reorder`,
 //! `notes:get-all-positions`, #3530 13g) go through `memry_desktop::notes::{moves, positions}`;
 //! the rename's `NoteRenamedEvent` comes from its row fact, as every note event does.
+//! A note's edit (`notes:update`, #3530 13f-3c) goes through `memry_desktop::notes::update`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -23,6 +25,7 @@ use memry_desktop::notes::links::{
 };
 use memry_desktop::notes::mentions::{Mentions, UnlinkedMentionView};
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::update::NoteUpdateInput;
 use memry_desktop::notes::view::{
     FileView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
 };
@@ -139,6 +142,29 @@ pub async fn notes_rename<R: Runtime>(
         service(&app)?
             .rename(&open, &id, &new_title)
             .map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// `notes:update`: an editor save of the note's body, an edit of its header tags, its icon.
+/// Answers the note, and sends `notes:tags-changed` when its tags changed; its `notes:updated`
+/// comes from its row fact.
+// Generic over the runtime so a test drives it on a mock app (`tests/notes_rename.rs`).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_update<R: Runtime>(
+    app: AppHandle<R>,
+    input: NoteUpdateInput,
+) -> Result<NoteView, CommandError> {
+    blocking("notes_update", move || {
+        let open = open_vault(&app)?;
+        let updated = service(&app)?
+            .update(&open, input)
+            .map_err(|error| failed(&error))?;
+        if updated.tags_changed {
+            broadcast(&app, NoteTagsChangedEvent);
+        }
+        Ok(updated.note)
     })
     .await
 }
@@ -362,6 +388,25 @@ pub async fn notes_get_unlinked_mentions(
         Mentions::new(&open_vault(&app)?)
             .get(&id)
             .map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
+/// `notes:link-mention`: the source's `ordinal`-th unlinked mention of the target becomes a wiki
+/// link to it. `false` when that mention is gone (the source changed since it was listed).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_link_mention<R: Runtime>(
+    app: AppHandle<R>,
+    source_id: String,
+    target_id: String,
+    ordinal: u32,
+) -> Result<bool, CommandError> {
+    blocking("notes_link_mention", move || {
+        let open = open_vault(&app)?;
+        service(&app)?
+            .link_mention(&open, &source_id, &target_id, ordinal as usize)
+            .map_err(|error| failed(&error))
     })
     .await
 }
