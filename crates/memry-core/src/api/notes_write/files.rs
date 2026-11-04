@@ -170,9 +170,9 @@ impl NotesWriter {
 
     /// Records the delete of the folder at `path` before it leaves the disk
     /// ([`folder_delete::begin`]). Only the vault tier's rows' lane calls it.
-    pub fn begin_folder_delete(&self, path: &str) -> Result<(), BeginError> {
+    pub fn begin_folder_delete(&self, path: &str, note_ids: &[&str]) -> Result<(), BeginError> {
         self.db
-            .call_blocking(move |conn| Ok(folder_delete::begin(conn, path)))?
+            .call_blocking(move |conn| Ok(folder_delete::begin(conn, path, note_ids)))?
     }
 
     /// The folder at `path` left the disk with the notes `note_ids`: tombstones, rows, folder

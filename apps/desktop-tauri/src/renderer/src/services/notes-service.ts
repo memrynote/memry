@@ -62,9 +62,12 @@ import {
 } from '../../../generated/bindings'
 import { askPermanentDelete } from '../lib/permanent-delete-question'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
+import { createLogger } from '../lib/logger'
 import { NotPortedError } from '../lib/not-ported'
 import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
+
+const log = createLogger('Service:Notes')
 
 export type {
   AttachmentInfo,
@@ -408,7 +411,10 @@ const ported = {
       await commands.notesDeleteFolder(path)
       return { success: true }
     } catch (error) {
-      return failure(error)
+      // Electron's text for any failed folder delete. The codes it can carry are shared with
+      // create, rename and the note delete, so they get no text of their own here.
+      log.error('Failed to delete folder', { path, error })
+      return { success: false, error: getI18n().t('errors:folder.deleteFailed') }
     }
   },
   revealFolderInFinder: async (folderPath: string): Promise<void> => {

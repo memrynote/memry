@@ -121,6 +121,10 @@ pub enum BeginError {
          finish ({0}); open the vault in that version"
     )]
     Unreadable(String),
+    /// A folder's delete found this row, whose id no note delete can tombstone (a journal
+    /// day's, or a row with no note); nothing was recorded.
+    #[error("the folder holds {0}, which is not a note this delete can take")]
+    NotANote(String),
     #[error(transparent)]
     Storage(#[from] StorageError),
 }

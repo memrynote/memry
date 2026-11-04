@@ -197,7 +197,7 @@ describe('useNoteTreeActions', () => {
       note: createNote('created', 'Other/New note.md')
     })
     vi.mocked(notesService.renameFolder).mockResolvedValue({ success: true })
-    vi.mocked(notesService.deleteFolder).mockResolvedValue(true)
+    vi.mocked(notesService.deleteFolder).mockResolvedValue({ success: true })
     vi.mocked(notesService.setFolderConfig).mockResolvedValue({ success: true })
     vi.mocked(notesService.reorder).mockResolvedValue({ success: true })
     vi.mocked(notesService.getAllPositions).mockResolvedValue({
@@ -337,6 +337,18 @@ describe('useNoteTreeActions', () => {
     })
     expect(notesService.openExternal).toHaveBeenCalledWith('work-a')
     expect(notesService.revealInFinder).toHaveBeenCalledWith('work-a')
+  })
+
+  it('deletes a folder once when a folder inside it is selected too', async () => {
+    const { result } = renderActions({ selectedIds: ['folder-Work', 'folder-Work/Nested'] })
+
+    act(() => result.current.handleBulkDelete())
+    await act(async () => {
+      await result.current.handleDeleteConfirm()
+    })
+
+    expect(notesService.deleteFolder).toHaveBeenCalledTimes(1)
+    expect(notesService.deleteFolder).toHaveBeenCalledWith('Work')
   })
 
   it('says why a note stayed when its delete did not happen', async () => {

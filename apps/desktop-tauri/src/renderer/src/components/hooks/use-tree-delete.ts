@@ -2,8 +2,6 @@ import { useState, useCallback } from 'react'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'
-import { extractErrorMessage } from '@/lib/ipc-error'
-import { toast } from 'sonner'
 
 const log = createLogger('Hook:useTreeDelete')
 
@@ -77,8 +75,7 @@ export function useTreeDelete({
       }
 
       for (const folderPath of foldersToDelete) {
-        const deleted = await notesService.deleteFolder(folderPath)
-        if (!deleted.success) throw new Error(deleted.error)
+        await notesService.deleteFolder(folderPath)
       }
 
       if (foldersToDelete.length > 0) {
@@ -91,8 +88,6 @@ export function useTreeDelete({
       setSelectedIds([])
     } catch (err) {
       log.error('Failed to delete items', err)
-      // A folder the trash refuses stays whole, and the user is told why.
-      toast.error(extractErrorMessage(err))
     } finally {
       setIsDeleting(false)
     }

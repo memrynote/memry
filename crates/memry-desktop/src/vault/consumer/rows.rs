@@ -410,8 +410,9 @@ impl Lane<'_> {
         &mut self,
         writer: &NotesWriter,
         path: &str,
+        note_ids: &[&str],
     ) -> Result<(), BeginError> {
-        writer.begin_folder_delete(path)
+        writer.begin_folder_delete(path, note_ids)
     }
 
     /// Forgets the record of the folder's delete ([`NotesWriter::abandon_folder_delete`]).

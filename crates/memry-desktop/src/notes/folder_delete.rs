@@ -9,7 +9,9 @@
 //! rows gone and reports nothing:
 //! 1. the delete is recorded in the core ([`Lane::begin_folder_delete`], one synced write);
 //! 2. the folder goes to the trash. Where the trash refuses it (a Linux mount with no usable
-//!    `.Trash-<uid>`) nothing changes and the delete fails with `trash_unavailable`;
+//!    `.Trash-<uid>`) nothing changes and the delete fails with `note_trash_unavailable`. A
+//!    trash that took part of the folder before refusing says so: the watcher reports the
+//!    notes that went as removed, as for any file that leaves the vault;
 //! 3. every note is tombstoned (none is sent for a local-only one) and loses its row, and the
 //!    folder's `folder_config` records and its manual order go, in one core transaction that
 //!    forgets the record of step 1 ([`Lane::folder_deleted_by_app`]);
@@ -20,14 +22,18 @@
 //! ([`crate::vault::app_move::finish_interrupted`]); until then the folder's delete is held back
 //! (`move_pending`).
 //!
-//! Refused: a folder that is not there (`folder_not_found`, a stale sidebar), one the
-//! tree hides or a link leads to (`invalid_folder`), and the journal folder or a folder holding it
-//! (`folder_holds_journal`), whose days are not notes this delete takes. Not here yet: the
+//! Refused: a folder that is not there under exactly that spelling (`folder_not_found`, a stale
+//! sidebar; a case-blind disk answers `work` for `Work`, whose rows this delete would miss), one
+//! the tree hides or a link leads to (`invalid_folder`), the journal folder or a folder holding
+//! it (`folder_holds_journal`), a folder inside it (`folder_in_journal`), and a folder holding a
+//! row no note delete can tombstone (the core's `begin`): days are not notes this delete takes.
+//! Not here yet: the
 //! locked-folder check (Step 14) and the confirmed permanent delete 13f offers a note the trash
 //! refuses (#3813).
 
 use std::fs;
 use std::io::ErrorKind;
+use std::path::Path;
 
 use super::error::{NotesError, SCOPE};
 use super::folder_move::within;
@@ -66,7 +72,8 @@ impl NotesService {
             .into_iter()
             .filter(|(_, at)| within(at, &folder))
             .collect();
-        lane.begin_folder_delete(&writer, &folder)?;
+        let ids: Vec<&str> = gone.iter().map(|(id, _)| id.as_str()).collect();
+        lane.begin_folder_delete(&writer, &folder, &ids)?;
         if let Err(why) = (self.trash)(&on_disk(root, &folder)) {
             if let Err(error) = lane.forget_folder_delete(&writer, &folder) {
                 tracing::warn!(
@@ -74,9 +81,24 @@ impl NotesService {
                     "the record of a refused folder delete waits for the next open: {error}"
                 );
             }
+            // What the trash took is gone from the vault, and the watcher reports it so.
+            let went = gone
+                .iter()
+                .filter(|(_, at)| matches!(fs::symlink_metadata(on_disk(root, at)), Err(error) if error.kind() == ErrorKind::NotFound))
+                .count();
+            if went > 0 {
+                tracing::warn!(
+                    scope = SCOPE,
+                    went,
+                    "the trash took part of the folder and refused the rest"
+                );
+                return Err(NotesError::TrashUnavailable(format!(
+                    "{why}; part of the folder went to the trash ({went} of {} notes)",
+                    gone.len()
+                )));
+            }
             return Err(NotesError::TrashUnavailable(why));
         }
-        let ids: Vec<&str> = gone.iter().map(|(id, _)| id.as_str()).collect();
         // The folder is in the trash: a failure leaves the record, which the next open finishes.
         after_disk().and_then(|()| Ok(lane.folder_deleted_by_app(&writer, &folder, &ids)?))?;
         for (note_id, at) in &gone {
@@ -91,13 +113,16 @@ impl NotesService {
 }
 
 /// The checks before anything goes (module doc).
-fn check(root: &std::path::Path, folder: &str) -> Result<(), NotesError> {
+fn check(root: &Path, folder: &str) -> Result<(), NotesError> {
     if folder.is_empty() {
         return Err(NotesError::InvalidFolder);
     }
     let journal = read_vault_config(root).journal_folder;
     if !journal.is_empty() && within(&journal, folder) {
         return Err(NotesError::FolderHoldsJournal);
+    }
+    if !journal.is_empty() && within(folder, &journal) {
+        return Err(NotesError::FolderInJournal);
     }
     let shown = tree_filter(root);
     if folder.split('/').any(|segment| segment.starts_with('.')) || !shown(folder) {
@@ -108,9 +133,37 @@ fn check(root: &std::path::Path, folder: &str) -> Result<(), NotesError> {
         return Err(NotesError::InvalidFolder);
     }
     match fs::symlink_metadata(on_disk(root, folder)) {
-        Ok(meta) if meta.is_dir() => Ok(()),
-        Ok(_) => Err(NotesError::InvalidFolder),
-        Err(error) if error.kind() == ErrorKind::NotFound => Err(NotesError::FolderNotFound),
-        Err(error) => Err(error.into()),
+        Ok(meta) if meta.is_dir() => {}
+        Ok(_) => return Err(NotesError::InvalidFolder),
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            return Err(NotesError::FolderNotFound);
+        }
+        Err(error) => return Err(error.into()),
     }
+    if !spelled_on_disk(root, folder)? {
+        return Err(NotesError::FolderNotFound);
+    }
+    Ok(())
+}
+
+/// Whether every segment of `folder` is an entry of its parent under exactly that name. The
+/// rows name a folder in the spelling the disk lists, so another case or Unicode form, which a
+/// case- or normalization-blind disk resolves to the same folder, would trash it with none of
+/// its notes.
+fn spelled_on_disk(root: &Path, folder: &str) -> std::io::Result<bool> {
+    let mut dir = root.to_path_buf();
+    for segment in folder.split('/') {
+        let mut found = false;
+        for entry in fs::read_dir(&dir)? {
+            if entry?.file_name() == segment {
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            return Ok(false);
+        }
+        dir.push(segment);
+    }
+    Ok(true)
 }

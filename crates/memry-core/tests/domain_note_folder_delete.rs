@@ -7,6 +7,8 @@
 //! | a local-only note in a deleted folder sends no tombstone      | local-only, Step 13f              |
 //! | a folder's delete is recorded once, and only it forgets it    | `notes.folder_delete.v1`, compat  |
 //! | a folder no record can name is deleted with its notes         | a folder made in a file manager   |
+//! | a folder holding what no note delete takes is refused unrecorded | nothing goes half              |
+//! | a record another build wrote is reported and kept             | `notes.folder_delete.v1`, compat  |
 
 #![cfg(feature = "markdown")]
 
@@ -76,7 +78,10 @@ fn work(label: &str) -> memry_core::storage::Db {
 #[test]
 fn a_folder_delete_tombstones_its_notes_rows_records_and_order() {
     let db = work("folder-delete");
-    run(&db, |conn| Ok(folder_delete::begin(conn, "Work"))).unwrap();
+    run(&db, |conn| {
+        Ok(folder_delete::begin(conn, "Work", &["n1", "n2"]))
+    })
+    .unwrap();
     assert_eq!(pending(&db), [FolderDeleteRecorded::Delete("Work".into())]);
 
     run(&db, |conn| {
@@ -124,13 +129,18 @@ fn a_local_only_note_in_a_deleted_folder_sends_no_tombstone() {
 #[test]
 fn a_folders_delete_is_recorded_once_and_only_it_forgets_it() {
     let db = work("folder-delete-record");
-    run(&db, |conn| Ok(folder_delete::begin(conn, "Work"))).unwrap();
+    run(&db, |conn| {
+        Ok(folder_delete::begin(conn, "Work", &["n1", "n2"]))
+    })
+    .unwrap();
     let keys = live(
         &db,
         "SELECT key FROM meta WHERE key LIKE 'notes.folder_delete%'",
     );
     assert_eq!(keys, ["notes.folder_delete.v1:Work"]);
-    let again = run(&db, |conn| Ok(folder_delete::begin(conn, "Work")));
+    let again = run(&db, |conn| {
+        Ok(folder_delete::begin(conn, "Work", &["n1", "n2"]))
+    });
     assert!(matches!(again, Err(BeginError::Unsettled)), "{again:?}");
     assert!(!run(&db, |conn| folder_delete::abandon(conn, "Other")));
     assert!(run(&db, |conn| folder_delete::abandon(conn, "Work")));
@@ -143,10 +153,46 @@ fn a_folder_no_record_can_name_is_deleted_with_its_notes() {
     create(&db, "n1", "Plan", Some(" pad"));
     give_row(&db, "n1", " pad/Plan.md");
     clear_outbox(&db);
-    run(&db, |conn| Ok(folder_delete::begin(conn, " pad"))).unwrap();
+    run(&db, |conn| Ok(folder_delete::begin(conn, " pad", &["n1"]))).unwrap();
     run(&db, |conn| {
         folder_delete::deleted_by_app(conn, " pad", &["n1"], DEVICE, NOW + 1)
     });
     assert_eq!(live_notes(&db), Vec::<String>::new());
     assert_eq!(pending(&db), []);
+}
+
+/// A row the note delete cannot tombstone (a journal day's, a row with no note) refuses the
+/// delete before anything is recorded, so the folder never reaches the trash.
+#[test]
+fn a_folder_holding_what_no_note_delete_takes_is_refused_unrecorded() {
+    let db = work("folder-delete-not-a-note");
+    let refused = run(&db, |conn| {
+        Ok(folder_delete::begin(conn, "Work", &["n1", "j2025-01-01"]))
+    });
+    assert!(
+        matches!(&refused, Err(BeginError::NotANote(id)) if id == "j2025-01-01"),
+        "{refused:?}"
+    );
+    assert_eq!(pending(&db), []);
+}
+
+/// A record of a version this build does not know is reported, refuses the next delete, and is
+/// never forgotten here.
+#[test]
+fn a_record_another_build_wrote_is_reported_and_kept() {
+    let db = work("folder-delete-unreadable");
+    run(&db, |conn| {
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES ('notes.folder_delete.v1:Work', '{\"version\":2}')",
+            [],
+        )
+        .unwrap();
+        Ok(())
+    });
+    let unreadable = FolderDeleteRecorded::Unreadable("Work".into(), "a version 2 record".into());
+    assert_eq!(pending(&db), std::slice::from_ref(&unreadable));
+    let again = run(&db, |conn| Ok(folder_delete::begin(conn, "Work", &["n1"])));
+    assert!(matches!(again, Err(BeginError::Unreadable(_))), "{again:?}");
+    assert!(!run(&db, |conn| folder_delete::abandon(conn, "Work")));
+    assert_eq!(pending(&db), [unreadable]);
 }

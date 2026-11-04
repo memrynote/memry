@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
 import { answer, current } from '@/lib/permanent-delete-question'
+import { getI18n } from 'react-i18next'
 
 const commands = vi.hoisted(() => ({
   notesCreate: vi.fn(),
@@ -477,6 +478,13 @@ describe('notes-service', () => {
     expect(api.notes.addStatusOption).not.toHaveBeenCalled()
   })
 
+  it('forwards the methods later steps port to window.api.notes', async () => {
+    api.notes.getCarriedTasks = vi.fn().mockResolvedValue({ taskIds: [] })
+
+    await notesService.getCarriedTasks({ noteIds: ['n1'] })
+    expect(api.notes.getCarriedTasks).toHaveBeenCalledWith({ noteIds: ['n1'] })
+  })
+
   it("reads and writes folders through their commands, a failure in Electron's shape", async () => {
     commands.notesGetFolders.mockResolvedValue([{ path: 'Work', icon: null }])
     await expect(notesService.getFolders()).resolves.toEqual([{ path: 'Work', icon: null }])
@@ -512,14 +520,15 @@ describe('notes-service', () => {
     commands.notesDeleteFolder.mockResolvedValueOnce(null)
     await expect(notesService.deleteFolder('Work')).resolves.toEqual({ success: true })
     expect(commands.notesDeleteFolder).toHaveBeenCalledWith('Work')
+    // Electron's text for any failed folder delete; the command's reason stays in the log.
     commands.notesDeleteFolder.mockRejectedValueOnce({
       kind: 'storage',
-      code: 'trash_unavailable',
+      code: 'note_trash_unavailable',
       message: 'no bin'
     })
     await expect(notesService.deleteFolder('Work')).resolves.toEqual({
       success: false,
-      error: 'no bin'
+      error: getI18n().t('errors:folder.deleteFailed')
     })
 
     commands.notesGetFolderConfig.mockResolvedValueOnce({

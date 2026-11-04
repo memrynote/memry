@@ -21,6 +21,7 @@ use super::app_move::{BeginError, write_synced};
 use super::{ITEM_TYPE, failed, tombstone_local};
 use crate::api::errors::StorageError;
 use crate::domain::{folders, note_files, note_positions};
+use crate::storage::repositories::sync_items;
 use crate::sync::outbox;
 
 const PREFIX: &str = "notes.folder_delete.v1:";
@@ -46,14 +47,21 @@ fn key(path: &str) -> String {
     format!("{PREFIX}{path}")
 }
 
-/// Records the delete of the folder at `path` before it leaves the disk, on disk before it
-/// returns. Refused while the folder has a record.
-pub fn begin(conn: &Connection, path: &str) -> Result<(), BeginError> {
+/// Records the delete of the folder at `path`, holding the notes `note_ids`, before it leaves
+/// the disk, on disk before it returns. Refused while the folder has a record, and when an id
+/// is one [`deleted_by_app`] could not tombstone: its transaction would fail after the folder
+/// left the disk, the notes still live.
+pub fn begin(conn: &Connection, path: &str, note_ids: &[&str]) -> Result<(), BeginError> {
     if let Some(recorded) = recorded(conn, path)? {
         return Err(match recorded {
             FolderDeleteRecorded::Delete(_) => BeginError::Unsettled,
             FolderDeleteRecorded::Unreadable(_, why) => BeginError::Unreadable(why),
         });
+    }
+    for note_id in note_ids {
+        if sync_items::load(conn, ITEM_TYPE, note_id)?.is_none() {
+            return Err(BeginError::NotANote((*note_id).to_owned()));
+        }
     }
     let value = serde_json::to_string(&Record {
         version: RECORD_VERSION,

@@ -8,7 +8,8 @@
 //! | a folder the trash refuses stays whole                        | 13f's trash refusal                  |
 //! | a folder delete a crash cut short finishes on the next open   | the folder's record                  |
 //! | a folder delete a crash cut short before the trash is forgotten | the folder's record                |
-//! | a folder delete the app cannot make is refused                | missing, journal, hidden, link       |
+//! | a folder delete the app cannot make is refused                | missing, journal, hidden, link, case |
+//! | a folder the trash takes only part of is reported as such     | the watcher reports what went        |
 
 #[allow(unused_imports)]
 use crate::vault_env;
@@ -160,7 +161,7 @@ fn a_folder_delete_a_crash_cut_short_before_the_trash_is_forgotten() {
     let Work { mut e, store, .. } = work_with(bin);
     let before = rows(&e);
     let writer = e.core().notes_writer(store.clone()).unwrap();
-    writer.begin_folder_delete("Work").unwrap();
+    writer.begin_folder_delete("Work", &[]).unwrap();
     drop(writer);
     e.close();
     e.open();
@@ -179,11 +180,61 @@ fn a_folder_delete_the_app_cannot_make_is_refused() {
     let refused = |path: &str| notes.delete_folder(&open, path).unwrap_err();
     assert!(matches!(refused("Gone"), NotesError::FolderNotFound));
     assert!(matches!(refused("journal"), NotesError::FolderHoldsJournal));
+    // A year folder of a nested date format holds days, which a note delete does not take.
+    fs::create_dir_all(e.vault.join("journal/2025")).unwrap();
+    assert!(matches!(
+        refused("journal/2025"),
+        NotesError::FolderInJournal
+    ));
     assert!(matches!(refused(".memry"), NotesError::InvalidFolder));
+    // Another spelling of `Work`: a case-blind disk would trash `Work`, whose rows name `Work/`.
+    assert!(matches!(refused("work"), NotesError::FolderNotFound));
+    assert!(matches!(refused("Work/sub"), NotesError::FolderNotFound));
     #[cfg(unix)]
     {
         std::os::unix::fs::symlink(e.vault.join("Work"), e.vault.join("Link")).unwrap();
         assert!(matches!(refused("Link"), NotesError::InvalidFolder));
+        assert!(matches!(refused("Link/Sub"), NotesError::InvalidFolder));
     }
     assert!(e.vault.join("Work/Plan.md").exists());
+    assert!(e.vault.join("journal/2025").exists());
+}
+
+/// The trash took `Plan.md` and then refused the rest: the delete fails saying part of the
+/// folder went, and the watcher reports the note that went as removed.
+#[test]
+fn a_folder_the_trash_takes_only_part_of_is_reported_as_such() {
+    fn part_bin(path: &Path) -> Result<(), String> {
+        let plan = path.join("Plan.md");
+        fs::rename(
+            &plan,
+            path.parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("trash-Plan.md"),
+        )
+        .map_err(|error| error.to_string())?;
+        Err("the rest stayed".to_owned())
+    }
+    let Work {
+        mut e,
+        notes,
+        store,
+        plan,
+        ..
+    } = work_with(part_bin);
+    let open = e.session.current().unwrap();
+    let refused = notes.delete_folder(&open, "Work");
+    match &refused {
+        Err(NotesError::TrashUnavailable(why)) => {
+            assert!(why.contains("part of the folder"), "{why}")
+        }
+        other => panic!("{other:?}"),
+    }
+    assert!(e.vault.join("Work/Sub/Deep.md").exists());
+    assert_eq!(pending_deletes(&e, &store), 0);
+    let facts =
+        e.facts_until(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == plan));
+    assert_eq!(removed_ids(&facts), [plan]);
 }

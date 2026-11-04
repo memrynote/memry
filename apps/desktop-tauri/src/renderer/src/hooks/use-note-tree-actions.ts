@@ -666,15 +666,30 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           }
         }
 
-        for (const folderPath of foldersToDelete) {
+        // A folder inside another selected folder goes with it.
+        const outermost = foldersToDelete.filter(
+          (folder) => !foldersToDelete.some((other) => folder.startsWith(`${other}/`))
+        )
+        const keptFolders: string[] = []
+        for (const folderPath of outermost) {
           const result = await notesService.deleteFolder(folderPath)
-          if (!result.success) everyDeleteSucceeded = false
+          if (result.success) continue
+          everyDeleteSucceeded = false
+          keptFolders.push(folderPath)
+          if (result.error) toast.error(result.error)
         }
 
         if (everyDeleteSucceeded) await deleteNoteTasks(taskIds)
 
         if (foldersToDelete.length > 0) {
           await refreshFolderTree()
+        }
+
+        // A folder still on disk keeps the dialog open on it, as the selection does.
+        if (keptFolders.length > 0) {
+          setNotesToDelete([])
+          setFoldersToDelete(keptFolders)
+          return
         }
 
         setIsDeleteDialogOpen(false)
