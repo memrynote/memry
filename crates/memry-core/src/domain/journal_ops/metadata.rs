@@ -298,7 +298,9 @@ where
 }
 
 /// The file's declared `tags` onto a day the caller's transaction just made or revived from a
-/// file it found (`declaredTags`, `vault/ingest-backfill.ts`).
+/// file it found (`declaredTags`, `vault/ingest-backfill.ts`). Desktop's only: the phone finds
+/// no files.
+#[cfg(feature = "markdown")]
 pub(crate) fn tag_found_day_in(
     tx: &Connection,
     opened: &journal::OpenedDay,
