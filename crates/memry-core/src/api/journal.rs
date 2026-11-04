@@ -453,19 +453,6 @@ impl Journal {
         })
     }
 
-    /// [`metadata::set_properties`]: the live day's properties replaced, in their order.
-    pub fn set_properties(
-        &self,
-        date: &str,
-        properties: &serde_json::Map<String, Value>,
-    ) -> Result<serde_json::Map<String, Value>, StorageError> {
-        let (date, properties) = (date.to_owned(), properties.clone());
-        let device_id = self.device_id.clone();
-        self.db.call_blocking(move |conn| {
-            metadata::set_properties(conn, &date, &properties, &device_id, now_ms())
-        })
-    }
-
     /// [`metadata::open_with`]: the day opened for its first write, with what it holds after.
     pub fn open_with(
         &self,

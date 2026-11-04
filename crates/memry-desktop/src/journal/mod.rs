@@ -166,7 +166,7 @@ pub(crate) fn view_of(date: &str, raw: &str, stamp: Option<&DayStamp>) -> Journa
 }
 
 /// `extractJournalProperties`: the legacy nested envelope first, then the top level, which wins.
-pub(super) fn properties_of(frontmatter: &Map<String, Value>) -> Map<String, Value> {
+fn properties_of(frontmatter: &Map<String, Value>) -> Map<String, Value> {
     let mut out = Map::new();
     if let Some(Value::Object(nested)) = frontmatter.get("properties") {
         for (name, value) in nested {

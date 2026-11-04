@@ -571,3 +571,35 @@ fn a_text_equal_once_trimmed_keeps_a_bodys_own_blank_lines() {
         "a properties edit keeps the body's bytes"
     );
 }
+
+#[test]
+fn a_pulled_value_the_file_has_not_yet_survives_a_save_of_another_property() {
+    let (mut e, notes, store) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    // Brought in by a pull: in the record, not in the file yet (13k-4).
+    let journal = open.vault.journal(store).unwrap();
+    journal
+        .set_property(DAY.into(), "weather".into(), r#""rain""#.into())
+        .unwrap();
+    notes
+        .update_day(
+            &open,
+            DayUpdate {
+                properties: Some(
+                    json!({ "mood": "tired", "rating": 4 })
+                        .as_object()
+                        .unwrap()
+                        .clone(),
+                ),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert!(!e.read(DAY_FILE).contains("weather"));
+    assert_eq!(
+        record(&e).1,
+        Some(r#"{"mood":"tired","rating":4,"weather":"rain"}"#.to_owned()),
+        "only the keys the save changed reach the record"
+    );
+}
