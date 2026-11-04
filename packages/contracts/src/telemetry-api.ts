@@ -116,7 +116,9 @@ export const TelemetryResultSchema = z.enum(['success', 'failed', 'canceled', 's
 export const TelemetryBuildChannelSchema = z.enum(['development', 'staging', 'production'])
 export const TelemetryAuthStateSchema = z.enum(['anonymous', 'signed_in', 'signed_out'])
 export const TelemetrySyncStateSchema = z.enum(['disabled', 'enabled', 'unknown'])
-export const TelemetryPlatformSchema = z.enum(['darwin', 'win32', 'linux'])
+// `ios` is the native iOS shell. Same DEPLOY ORDER as the event names above: a
+// server without it rejects every iOS batch with a 400.
+export const TelemetryPlatformSchema = z.enum(['darwin', 'win32', 'linux', 'ios'])
 
 const SAFE_DIMENSION_VALUE = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,64}$/
 const UUID_SHAPED_VALUE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i

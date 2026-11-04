@@ -168,6 +168,12 @@ The build channel comes from `MEMRY_ENV` when set (dev/staging profiles) and oth
 `app.isPackaged`, so packaged installs report `production`. A telemetry choice the user has
 already saved always wins over the channel default.
 
+The iOS app reports through the same `/telemetry/batch` endpoint with `platform: 'ios'`. The
+sync-server labels those events `$lib = memry-ios` (desktop is `memry-desktop`), so PostHog can
+split or filter by app while a signed-in user's desktop and iPhone resolve to one person. The
+server must accept `ios` before an iOS build sends it: a server on older contracts rejects the
+whole batch with a 400.
+
 ### What Ships
 
 Only enums and event metadata:
