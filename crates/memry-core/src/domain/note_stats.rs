@@ -49,6 +49,10 @@ pub struct NoteStats {
     pub cover: Option<String>,
     pub task_ids: Vec<String>,
     pub header_tags: Vec<String>,
+    /// Whether the frontmatter header was read: no block, or one whose top level is a map (or
+    /// empty). `false` for a block that does not parse or is a list or a scalar, whose
+    /// `header_tags` are empty and say nothing of the file's tags.
+    pub header_read: bool,
 }
 
 /// One file's text, read by the desktop indexer, with what the row records beside it.
@@ -103,11 +107,12 @@ pub struct Unindexed {
 
 pub fn measure(text: &str) -> NoteStats {
     let split = split_frontmatter_block(text);
-    let data = split.block.and_then(|block| gray_matter_data(block).ok());
+    let data = split.block.map(gray_matter_data);
     let map = match &data {
-        Some(YamlValue::Map(map)) => Some(map.as_ref()),
+        Some(Ok(YamlValue::Map(map))) => Some(map.as_ref()),
         _ => None,
     };
+    let header_read = matches!(data, None | Some(Ok(YamlValue::Map(_) | YamlValue::Null)));
     let body = split.body;
     NoteStats {
         word_count: word_count(body),
@@ -119,6 +124,7 @@ pub fn measure(text: &str) -> NoteStats {
             .map(|(id, _)| id)
             .collect(),
         header_tags: map.map(header_tags).unwrap_or_default(),
+        header_read,
     }
 }
 
@@ -221,14 +227,14 @@ pub fn write(
         transaction
             .execute(
                 "INSERT INTO note_stats (note_id, file_hash, word_count, character_count, snippet,
-                     cover, task_ids, header_tags, date, indexed_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+                     cover, task_ids, header_tags, date, indexed_at, header_read)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
                  ON CONFLICT(note_id) DO UPDATE SET
                      file_hash = excluded.file_hash, word_count = excluded.word_count,
                      character_count = excluded.character_count, snippet = excluded.snippet,
                      cover = excluded.cover, task_ids = excluded.task_ids,
                      header_tags = excluded.header_tags, date = excluded.date,
-                     indexed_at = excluded.indexed_at",
+                     indexed_at = excluded.indexed_at, header_read = excluded.header_read",
                 params![
                     row.note_id,
                     row.file_hash,
@@ -240,6 +246,7 @@ pub fn write(
                     json(&stats.header_tags)?,
                     row.date,
                     now_ms,
+                    stats.header_read,
                 ],
             )
             .map_err(failed)?;
@@ -305,7 +312,7 @@ pub fn read(index: &Connection, note_id: &str) -> Result<Option<StoredStats>, St
     let row = index
         .query_row(
             "SELECT word_count, character_count, snippet, cover, task_ids, header_tags,
-                    file_hash, date
+                    file_hash, date, header_read
              FROM note_stats WHERE note_id = ?1",
             params![note_id],
             |row| {
@@ -317,6 +324,7 @@ pub fn read(index: &Connection, note_id: &str) -> Result<Option<StoredStats>, St
                         cover: row.get(3)?,
                         task_ids: Vec::new(),
                         header_tags: Vec::new(),
+                        header_read: row.get(8)?,
                     },
                     row.get::<_, String>(4)?,
                     row.get::<_, String>(5)?,
@@ -476,6 +484,39 @@ mod tests {
         );
         let odd = measure("---\ntags:\n  - 2\n  - {a: 1}\n---\nthree words here\n");
         assert_eq!(odd.word_count, 3, "the counts are kept");
+    }
+
+    /// A block that does not parse is not "no tags" (#3825): an outside edit is never read
+    /// against it.
+    #[test]
+    fn a_header_that_does_not_parse_or_is_not_a_map_is_not_read() {
+        let read = |text: &str| measure(text).header_read;
+        assert!(read("no block\n"));
+        assert!(read("---\n---\nempty block\n"));
+        assert!(read("---\ntags: [walk]\n---\nbody\n"));
+        assert!(!read("---\ntags: [walk, \n---\nhalf typed\n"));
+        assert!(!read("---\n- a list\n---\nbody\n"));
+    }
+
+    /// Migration 0004: an older row with no header tags may be a block that did not parse.
+    #[test]
+    fn an_older_row_with_no_header_tags_is_not_taken_as_read() {
+        use crate::storage::migrations::{INDEX_MIGRATIONS, run_atomic};
+        let mut index = Connection::open_in_memory().unwrap();
+        run_atomic(&mut index, &INDEX_MIGRATIONS[..3]).unwrap();
+        for (id, tags) in [("none", "[]"), ("some", "[\"a\"]")] {
+            index
+                .execute(
+                    "INSERT INTO note_stats (note_id, word_count, character_count, snippet,
+                         task_ids, header_tags, indexed_at) VALUES (?1, 0, 0, '', '[]', ?2, 0)",
+                    params![id, tags],
+                )
+                .unwrap();
+        }
+        run_atomic(&mut index, INDEX_MIGRATIONS).unwrap();
+        let read = |id| read(&index, id).unwrap().unwrap().stats.header_read;
+        assert!(!read("none"));
+        assert!(read("some"));
     }
 
     #[test]

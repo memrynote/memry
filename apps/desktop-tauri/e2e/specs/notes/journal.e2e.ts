@@ -6,6 +6,7 @@
 // of the vault with their previews and counts, and drops a deleted day. The charts (13m-4b)
 // read the saved days' property values, and the day panel its day's tasks. An edit of the day's
 // file outside the app (13m-5) reaches the open day; the app's own saves never reach it as one.
+// A tag added to the file's frontmatter outside the app joins the day's tags on its record (#3825).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -130,6 +131,7 @@ test('a #tag typed into a day joins its tags on the record, and the file keeps i
 interface MonthEntry {
   date: string
   preview: string
+  wordCount: number
   activityLevel: number
 }
 
@@ -250,6 +252,40 @@ test('an edit of the open day file outside the app shows in the day', async ({
     readFileSync(file, 'utf8').replace('Written in the app.', 'Rewritten outside.')
   )
   await expect(page.locator('.bn-editor').first()).toContainText('Rewritten outside.')
+})
+
+test('a tag added to the day file outside the app joins the day tags on its record', async ({
+  page,
+  testVaultPath
+}) => {
+  await openJournal(page)
+  const date = await today(page)
+  const file = join(testVaultPath, 'journal', `${date}.md`)
+  await typeInDay(page, 'Written in the app.')
+  await typeInDay(page, ' About #reflection now.')
+  const [year, month] = date.split('-').map(Number)
+  // The index has measured the saved file: an outside edit is read against its tags.
+  const measured = await pollUntil(
+    async () => {
+      const day = (await monthEntries(page, year, month)).find((e) => e.date === date)
+      return day?.wordCount === 7 ? true : undefined
+    },
+    { timeoutMs: 20_000 }
+  )
+  expect(measured).toBe(true)
+
+  // A new day's file says its tags; another editor adds one to the list.
+  const text = readFileSync(file, 'utf8')
+  expect(text).toMatch(/^ {2}- reflection$/m)
+  writeFileSync(file, text.replace(/^ {2}- reflection$/m, '  - reflection\n  - outside'))
+  const tagged = await pollUntil(
+    async () => {
+      const day = await entry(page, date)
+      return day?.tags.includes('outside') ? day : undefined
+    },
+    { timeoutMs: 20_000 }
+  )
+  expect(tagged?.tags).toEqual(['reflection', 'outside'])
 })
 
 test('text typed while the day saves stays in the day', async ({ page }) => {

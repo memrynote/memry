@@ -52,6 +52,9 @@
 //!   document did not take, an app edit the write-back could not write, a pulled
 //!   change not written yet, a server body not here yet) the note is kept, with a
 //!   warning: a tombstone would delete on every device what the file never had.
+//! - An outside edit of the file a row named gives the record the file's frontmatter `tags`
+//!   (#3825, [`tags`]): a note's record takes the file's list, a journal day's what the edit
+//!   changed in it, so the tags only a day's record holds stay.
 //!
 //! Every answer is the core's; a failure is the consumer's to log and retry
 //! ([`crate::vault::consumer::MAX_RETRIES`]), and the next open asks again.
@@ -62,12 +65,11 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::UNIX_EPOCH;
 
 use memry_core::api::notes_write::NotesWriter;
-use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::notes::identity::{Adopted, Deferral, FileNote, Moved, Removed};
 use memry_core::domain::notes::journal_day::FileDay;
 use memry_core::markdown::convert::EmbedResolver;
 use memry_core::markdown::convert::api::Converter;
-use memry_core::markdown::frontmatter::{YamlValue, gray_matter_data, split_frontmatter_block};
+use memry_core::markdown::frontmatter::split_frontmatter_block;
 use memry_core::markdown::shared::markdown_class::{
     MarkdownClassThresholds, classify_markdown_content, classify_markdown_stat,
 };
@@ -81,6 +83,9 @@ use crate::vault::consumer::identity::{
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
+use crate::vault::note_file::NoteFile;
+
+mod tags;
 
 const SCOPE: &str = "note_identity";
 
@@ -350,7 +355,8 @@ impl NoteIdentity for NotesIdentity {
         let may_be_a_note = writer.may_be_a_note(title, folder_path)?;
         let adopted = match journal.day_of(file.path) {
             Some(date) => {
-                let tags = declared_tags(split.block);
+                let declared = tags::of_block(split.block);
+                let tags = declared.clone().unwrap_or_default();
                 let day = FileDay {
                     path: file.path,
                     date: &date,
@@ -368,7 +374,13 @@ impl NoteIdentity for NotesIdentity {
                     None
                 };
                 let (converter, embeds) = parts(reader.as_ref());
-                writer.adopt_day(day, converter, embeds)
+                let adopted = writer.adopt_day(day, converter, embeds);
+                if let (Ok(Adopted::Created(id) | Adopted::Existing(id)), Some(declared)) =
+                    (&adopted, &declared)
+                {
+                    tags::found(&writer, id, declared);
+                }
+                adopted
             }
             None => {
                 let note = FileNote {
@@ -413,6 +425,17 @@ impl NoteIdentity for NotesIdentity {
                 Removal::Kept
             }
         })
+    }
+
+    /// The file's frontmatter `tags` reach the record ([`tags::edited`]).
+    fn on_changed(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        previous: &str,
+        file: &NoteFile,
+    ) -> Result<(), IdentityError> {
+        tags::edited(&*self.writer(ctx)?, ctx.search, note_id, previous, file)
     }
 
     /// A move that keeps what the file is reaches the record (`renameKeepsJournalDate`). One
@@ -515,14 +538,6 @@ fn keeps_kind(
     path: &str,
 ) -> Result<bool, IdentityError> {
     Ok(writer.journal_date(id)? == journal.day_of(path))
-}
-
-/// The `tags` a frontmatter block declares (`extractTags`); none when it does not parse.
-fn declared_tags(block: Option<&str>) -> Vec<String> {
-    match block.map(gray_matter_data) {
-        Some(Ok(YamlValue::Map(map))) => header_tags(&map),
-        _ => Vec::new(),
-    }
 }
 
 /// The converter and the embed lookup of a reader, borrowed.

@@ -14,6 +14,7 @@
 use std::path::Path;
 
 use memry_core::api::errors::StorageError;
+use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 
 use crate::vault::file_types::FileType;
@@ -23,6 +24,8 @@ use crate::vault::note_file::NoteFile;
 pub struct IdentityCtx<'a> {
     pub root: &'a Path,
     pub vault: &'a Vault,
+    /// The vault's note index, which measures the files the rows name.
+    pub search: &'a Search,
 }
 
 /// A file no row names.
@@ -129,6 +132,21 @@ pub trait NoteIdentity: Send + Sync {
         old_path: &str,
         new_path: &str,
     ) -> Result<(), IdentityError>;
+
+    /// An edit outside the app replaced the note's file, and its document took the file's text
+    /// (`file`); `previous` is the hash of the file it replaced, which the row named. Gives the
+    /// record what the file's frontmatter says of it (#3825). Never called for bytes the app
+    /// wrote. An `Err` retries the fact, and the document answers the same text `Unchanged`,
+    /// so an implementation is idempotent.
+    fn on_changed(
+        &self,
+        _ctx: &IdentityCtx<'_>,
+        _note_id: &str,
+        _previous: &str,
+        _file: &NoteFile,
+    ) -> Result<(), IdentityError> {
+        Ok(())
+    }
 
     /// Whether the app's own move of the note's file to `new_path` keeps what the file is, so
     /// its record may follow (Step 13g). `false` when it changes that, or when that is not
