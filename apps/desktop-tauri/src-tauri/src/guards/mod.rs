@@ -22,8 +22,8 @@ pub fn guards() -> Vec<(&'static str, StageFn<Wry>)> {
             "updater relaunch guard",
             crate::updater::relaunch_guard::apply,
         ),
-        // Windows: a launch without WebView2 installs it here, or ends before anything else
-        // starts.
+        // Windows: reports the WebView2 check `main` ran before the Tauri runtime, and ends a
+        // launch that has no runtime before anything else starts.
         #[cfg(windows)]
         ("check webview2 runtime", crate::updater::webview2::apply),
         ("start crash dumps", crash_dump::start),

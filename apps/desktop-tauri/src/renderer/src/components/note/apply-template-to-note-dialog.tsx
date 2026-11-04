@@ -34,7 +34,7 @@ function ApplyTemplateToNoteDialogActive({
       if (submittingRef.current) return
       submittingRef.current = true
       try {
-        const res = await window.api.notes.applyTemplate({ noteId, templateId, mode })
+        const res = await notesService.applyTemplate({ noteId, templateId, mode })
         if (!res.success) throw new Error(res.error ?? 'apply failed')
         toast.success(t('applyTemplateConfirm.success'))
       } catch (err) {

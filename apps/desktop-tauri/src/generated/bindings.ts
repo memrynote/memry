@@ -47,6 +47,8 @@ export const commands = {
 	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
 	/**  `success` is whether the day had an entry to delete. */
 	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
+	/**  The tasks due on `date` and the count overdue before it (`journal:getDayContext`). */
+	journalGetDayContext: (date: string) => __TAURI_INVOKE<DayContextView>("journal_get_day_context", { date }),
 	/**  The day's entry, `null` when it has no file. Browsing never makes a day. */
 	journalGetEntry: (date: string) => __TAURI_INVOKE<JournalEntryView | null>("journal_get_entry", { date }),
 	/**  The live days of the year the calendar shows (`journal:getHeatmap`), oldest first. */
@@ -56,6 +58,11 @@ export const commands = {
 	 *  first.
 	 */
 	journalGetMonthEntries: (year: number, month: number) => __TAURI_INVOKE<MonthEntryView[]>("journal_get_month_entries", { year, month }),
+	/**
+	 *  The live days in `from..=to` with their property values, and every property in use
+	 *  (`journal:getPropertyRows`).
+	 */
+	journalGetPropertyRows: (from: string, to: string) => __TAURI_INVOKE<PropertyRowsView>("journal_get_property_rows", { from, to }),
 	/**  The current and longest runs of live days (`journal:getStreak`). */
 	journalGetStreak: () => __TAURI_INVOKE<StreakView>("journal_get_streak"),
 	/**  One row per month of the year that has a live day (`journal:getYearStats`). */
@@ -80,6 +87,11 @@ export const commands = {
 	notesGetFolderTemplate: (folderPath: string) => __TAURI_INVOKE<string | null>("notes_get_folder_template", { folderPath }),
 	/**  `notes:get-folders`: every folder the notes tree lists, with its icon. */
 	notesGetFolders: () => __TAURI_INVOKE<FolderView[]>("notes_get_folders"),
+	/**
+	 *  `notes:rename-folder`: the folder at `old_path` to `new_path`, a rename in place or a drag
+	 *  to another parent, its notes with it (`notes::folder_move`).
+	 */
+	notesRenameFolder: (oldPath: string, newPath: string) => __TAURI_INVOKE<null>("notes_rename_folder", { oldPath, newPath }),
 	/**  `notes:reveal-folder-in-finder`: the folder itself, selected in its parent. */
 	notesRevealFolderInFinder: (folderPath: string) => __TAURI_INVOKE<null>("notes_reveal_folder_in_finder", { folderPath }),
 	/**  `notes:set-folder-config`: the icon, template and `inherit`; the folder's views stay. */
@@ -138,6 +150,12 @@ export const commands = {
 	 *  comes from its row fact.
 	 */
 	notesUpdate: (input: NoteUpdateInput) => __TAURI_INVOKE<NoteView>("notes_update", { input }),
+	/**
+	 *  `notes:apply-template`: the note takes the template's body, and in `full` mode its tags,
+	 *  the property values it lacks and its icon when it has none. Answers the note, and sends
+	 *  `notes:tags-changed` when its tags changed; its `notes:updated` comes from its row fact.
+	 */
+	notesApplyTemplate: (input: ApplyTemplateInput) => __TAURI_INVOKE<NoteView>("notes_apply_template", { input }),
 	/**  `notes:reorder`: the paths become the hand-made order of the folder (`""` is the root). */
 	notesReorder: (folderPath: string, notePaths: string[]) => __TAURI_INVOKE<null>("notes_reorder", { folderPath, notePaths }),
 	/**  The note `title` names as a whole (no heading split), or `null`. */
@@ -435,6 +453,13 @@ export type AppUpdateState = {
 	installFailed: InstallFailed | null,
 };
 
+/**  `ApplyTemplateSchema`, the fields this step reads. */
+export type ApplyTemplateInput = {
+	noteId: string,
+	templateId: string,
+	mode: TemplateMode,
+};
+
 /**  The kinds of a note whose file is not markdown. */
 export type AttachedFileType = "pdf" | "image" | "audio" | "video";
 
@@ -529,6 +554,32 @@ export type CustomIconView = {
  */
 export type CustomIconsUpdatedEvent = {
 	id: string,
+};
+
+/**  `DayContext`. */
+export type DayContextView = {
+	date: string,
+	/**  Not archived, completed ones included; by due time (none first), then position. */
+	tasks: DayTaskView[],
+	events: DayEventView[],
+	/**  Not completed, not archived, due before the day. */
+	overdueCount: number,
+};
+
+/**  `ScheduleEvent`: none yet, as in Electron. */
+export type DayEventView = never;
+
+export type DayTaskPriority = "low" | "medium" | "high" | "urgent";
+
+/**  `DayTask`. */
+export type DayTaskView = {
+	id: string,
+	title: string,
+	completed: boolean,
+	/**  Left out for no priority (`mapPriority`). */
+	priority?: DayTaskPriority,
+	/**  Always `false`: a task due on the day is not overdue for it. */
+	isOverdue: boolean,
 };
 
 /**  `CreatePropertyDefinitionSchema`, and `UpdatePropertyDefinitionSchema` with `type` left out. */
@@ -800,6 +851,24 @@ export type JournalEntryView = {
 export type JournalInlineTags = {
 	add?: string[] | null,
 	remove?: string[] | null,
+};
+
+/**  `JournalPropertyRow`. */
+export type JournalPropertyRowView = {
+	id: string,
+	date: string,
+	/**  The day's file, or where it goes when it has none yet. */
+	path: string,
+	/**  A day is titled by its date, as Electron's index titles its file. */
+	title: string,
+	properties: { [key in string]: Value },
+};
+
+/**  `JournalPropertySummary`. */
+export type JournalPropertySummaryView = {
+	name: string,
+	type: string,
+	count: number,
 };
 
 /**  `UpdateEntryInputSchema`. */
@@ -1175,6 +1244,14 @@ export type PropertyDefinitionView = {
 	createdAt: string,
 };
 
+/**  `GetPropertyRowsOutput`. */
+export type PropertyRowsView = {
+	/**  The days in range, oldest first. */
+	rows: JournalPropertyRowView[],
+	/**  Every property of any live day, not only the ones in range: most used first. */
+	properties: JournalPropertySummaryView[],
+};
+
 /**  `PropertyValue` of `properties-api.ts`. */
 export type PropertyValueView = {
 	name: string,
@@ -1412,6 +1489,9 @@ export type TemplateListItem = {
 	icon: string | null,
 	isBuiltIn: boolean,
 };
+
+/**  `ApplyTemplateSchema.mode`. */
+export type TemplateMode = "full" | "body";
 
 /**  `TemplatePropertySchema`, as a write takes it. */
 export type TemplateProperty = {

@@ -59,7 +59,7 @@ use crate::shell::file_open::{
 
 const SCOPE: &str = "move_journal";
 
-pub(super) const STAGING_PREFIX: &str = ".memry-move-";
+pub(crate) const STAGING_PREFIX: &str = ".memry-move-";
 /// The hex digits of a move's id: Electron's `randomBytes(6)`.
 pub(super) const ID_LEN: usize = 12;
 const VERSION: u32 = 1;

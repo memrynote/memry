@@ -659,13 +659,14 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.CREATE_FOLDER,
       params: ['path']
     }),
-    renameFolder: defineMethod<(oldPath: string, newPath: string) => Promise<{ success: boolean }>>(
-      {
-        channel: NotesChannels.invoke.RENAME_FOLDER,
-        params: ['oldPath', 'newPath'],
-        invokeArgs: ['{ oldPath, newPath }']
-      }
-    ),
+    // `withErrorHandler` answers a failure as `{ success: false, error }`.
+    renameFolder: defineMethod<
+      (oldPath: string, newPath: string) => Promise<{ success: boolean; error?: string }>
+    >({
+      channel: NotesChannels.invoke.RENAME_FOLDER,
+      params: ['oldPath', 'newPath'],
+      invokeArgs: ['{ oldPath, newPath }']
+    }),
     deleteFolder: defineMethod<(path: string) => SuccessResponse>({
       channel: NotesChannels.invoke.DELETE_FOLDER,
       params: ['path']

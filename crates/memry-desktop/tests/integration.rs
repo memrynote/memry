@@ -106,8 +106,12 @@ mod note_links;
 mod note_links_changed;
 #[path = "note_mentions.rs"]
 mod note_mentions;
+#[path = "notes_apply_template.rs"]
+mod notes_apply_template;
 #[path = "notes_create_template.rs"]
 mod notes_create_template;
+#[path = "notes_folder_move.rs"]
+mod notes_folder_move;
 #[path = "notes_folders.rs"]
 mod notes_folders;
 #[path = "notes_identity.rs"]
@@ -118,6 +122,8 @@ mod notes_link_rewrite;
 mod notes_local_only;
 #[path = "notes_moves.rs"]
 mod notes_moves;
+#[path = "notes_outside_after_reopen.rs"]
+mod notes_outside_after_reopen;
 #[path = "notes_properties.rs"]
 mod notes_properties;
 #[path = "notes_service.rs"]

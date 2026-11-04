@@ -3,7 +3,9 @@
 //! events a rename or move sends through the shell's note events: `NoteRenamedEvent` or
 //! `NoteMovedEvent` for the note, and an outside edit's `NoteUpdatedEvent` for each file whose
 //! links followed it (13g-2) or, on a move, for the note whose relative embeds did (13g-3);
-//! `notes_update` (#3530 13f-3c) and the `notes:updated` and `notes:tags-changed` it sends.
+//! `notes_update` (#3530 13f-3c) and the `notes:updated` and `notes:tags-changed` it sends;
+//! `notes_create` from a template (13l-3), with the icon left out or cleared;
+//! `notes_apply_template` (13l-4) and the events it sends.
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -14,18 +16,21 @@ use std::time::{Duration, Instant};
 use memry_core::api::errors::SecureStoreError;
 use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::notes::apply_template::{ApplyTemplateInput, TemplateMode};
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput};
+use memry_desktop::notes::view::NoteCreateInput;
 use memry_desktop::notes::view::RefsKept;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
 use memry_tauri::commands::notes::{
-    notes_get_all_positions, notes_move, notes_rename, notes_reorder, notes_update,
+    notes_apply_template, notes_create, notes_get_all_positions, notes_move, notes_rename,
+    notes_reorder, notes_update,
 };
 use memry_tauri::events::{
     NoteMovedEvent, NoteRenamedEvent, NoteTagsChangedEvent, NoteUpdatedEvent,
@@ -463,4 +468,61 @@ fn a_reorder_sets_the_slots_and_a_rename_carries_its_slot() {
         f.positions(),
         slots(&[("Alpha.md", 1), ("B.md", 0), ("work/C.md", 0)])
     );
+}
+
+#[test]
+fn a_create_from_a_template_takes_its_icon_unless_the_input_clears_it() {
+    let f = opened();
+    let create = |input: Value| {
+        let input: NoteCreateInput = serde_json::from_value(input).unwrap();
+        tauri::async_runtime::block_on(notes_create(f.app.handle().clone(), input)).unwrap()
+    };
+    let absent = create(json!({ "title": "Absent", "template": "meeting-notes" }));
+    assert_eq!(absent.emoji.as_deref(), Some("📝"));
+    assert_eq!(absent.tags, ["meeting"]);
+    let cleared = create(json!({ "title": "Cleared", "template": "meeting-notes", "emoji": null }));
+    assert_eq!(cleared.emoji, None);
+    assert_eq!(
+        cleared.tags,
+        ["meeting"],
+        "the rest of the template still applies"
+    );
+}
+
+#[test]
+fn an_applied_template_answers_the_note_and_sends_an_external_notes_updated() {
+    let f = opened();
+    let id = f.create("Plan", "");
+    let input = ApplyTemplateInput {
+        note_id: id.clone(),
+        template_id: "meeting-notes".into(),
+        mode: TemplateMode::Full,
+    };
+    let call = notes_apply_template(f.app.handle().clone(), input);
+    let note = tauri::async_runtime::block_on(call).unwrap();
+    assert_eq!(note.header_tags, ["meeting"]);
+    assert_eq!(note.emoji.as_deref(), Some("📝"));
+    assert!(note.content.starts_with("## Attendees"), "{}", note.content);
+
+    let mut events = f.next_edited(2);
+    events.sort_by_key(|(name, _)| *name);
+    assert_eq!(events[0], (NoteTagsChangedEvent::NAME, Value::Null));
+    assert_eq!(events[1].0, NoteUpdatedEvent::NAME);
+    // An open editor takes the template's body, as it takes an outside edit; the note's query
+    // refetches on it for the icon.
+    assert_eq!(events[1].1["source"], "external");
+    assert!(
+        events[1].1["changes"]["content"]
+            .as_str()
+            .is_some_and(|content| content.starts_with("## Attendees"))
+    );
+
+    let gone = ApplyTemplateInput {
+        note_id: id,
+        template_id: "gone".into(),
+        mode: TemplateMode::Body,
+    };
+    let call = notes_apply_template(f.app.handle().clone(), gone);
+    let error = tauri::async_runtime::block_on(call).unwrap_err();
+    assert_eq!(error.code, "template_not_found");
 }

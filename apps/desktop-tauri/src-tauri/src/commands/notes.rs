@@ -11,13 +11,16 @@
 //! (`notes:reorder`, `notes:get-all-positions`, #3530 13g) go through
 //! `memry_desktop::notes::{moves, positions}`; the `NoteRenamedEvent` and `NoteMovedEvent` come
 //! from their row facts, as every note event does.
-//! A note's edit (`notes:update`, #3530 13f-3c) goes through `memry_desktop::notes::update`.
+//! A note's edit (`notes:update`, #3530 13f-3c) goes through `memry_desktop::notes::update`, a
+//! template applied to it (`notes:apply-template`, 13l-4) through
+//! `memry_desktop::notes::apply_template`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
+use memry_desktop::notes::apply_template::ApplyTemplateInput;
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::link_preview::{self, WikiLinkPreviewView};
@@ -65,7 +68,7 @@ pub(crate) fn service<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<NotesService
 }
 
 /// `note_created` / `note_deleted`, as the Electron handlers count them.
-fn track(app: &AppHandle<Wry>, name: &str, action: &str) {
+fn track<R: Runtime>(app: &AppHandle<R>, name: &str, action: &str) {
     if let Some(telemetry) = services::telemetry(app) {
         let mut event = Service::event(name, "notes", action);
         event.object_type = Some("note".to_owned());
@@ -76,10 +79,11 @@ fn track(app: &AppHandle<Wry>, name: &str, action: &str) {
 
 /// `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
 /// (Step 32) is not read: the renderer's service refuses it until its step.
+// Generic over the runtime so a test drives it on a mock app (`tests/notes_rename.rs`).
 #[tauri::command]
 #[specta::specta]
-pub async fn notes_create(
-    app: AppHandle<Wry>,
+pub async fn notes_create<R: Runtime>(
+    app: AppHandle<R>,
     input: NoteCreateInput,
 ) -> Result<NoteView, CommandError> {
     blocking("notes_create", move || {
@@ -166,6 +170,30 @@ pub async fn notes_update<R: Runtime>(
             broadcast(&app, NoteTagsChangedEvent);
         }
         Ok(updated.note)
+    })
+    .await
+}
+
+/// `notes:apply-template`: the note takes the template's body, and in `full` mode its tags,
+/// the property values it lacks and its icon when it has none. Answers the note, and sends
+/// `notes:tags-changed` when its tags changed; its `notes:updated` comes from its row fact.
+// Generic over the runtime so a test drives it on a mock app (`tests/notes_rename.rs`).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_apply_template<R: Runtime>(
+    app: AppHandle<R>,
+    input: ApplyTemplateInput,
+) -> Result<NoteView, CommandError> {
+    blocking("notes_apply_template", move || {
+        let open = open_vault(&app)?;
+        let applied = service(&app)?
+            .apply_template(&open, input)
+            .map_err(|error| failed(&error))?;
+        if applied.tags_changed {
+            broadcast(&app, NoteTagsChangedEvent);
+        }
+        track(&app, "note_updated", "template_applied");
+        Ok(applied.note)
     })
     .await
 }

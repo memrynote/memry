@@ -9,7 +9,9 @@ const commands = vi.hoisted(() => ({
   journalGetHeatmap: vi.fn(),
   journalGetMonthEntries: vi.fn(),
   journalGetYearStats: vi.fn(),
-  journalGetStreak: vi.fn()
+  journalGetStreak: vi.fn(),
+  journalGetPropertyRows: vi.fn(),
+  journalGetDayContext: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -63,9 +65,6 @@ describe('journal-service', () => {
     vi.clearAllMocks()
     listeners.clear()
     api = createMockApi()
-    api.journal.getDayContext = vi
-      .fn()
-      .mockResolvedValue({ date: '2025-01-01', tasks: [], events: [] })
     api.journal.getAllTags = vi.fn().mockResolvedValue([])
 
     api.onJournalExternalChange = vi.fn().mockReturnValue(() => {})
@@ -141,12 +140,19 @@ describe('journal-service', () => {
     const streak = { currentStreak: 2, longestStreak: 5, lastEntryDate: '2025-01-02' }
     commands.journalGetStreak.mockResolvedValue(streak)
     expect(await journalService.getStreak()).toEqual(streak)
+
+    const rows = { rows: [], properties: [{ name: 'mood', type: 'number', count: 3 }] }
+    commands.journalGetPropertyRows.mockResolvedValue(rows)
+    expect(await journalService.getPropertyRows('2025-01-01', '2025-01-31')).toEqual(rows)
+    expect(commands.journalGetPropertyRows).toHaveBeenCalledWith('2025-01-01', '2025-01-31')
+
+    const context = { date: '2025-01-02', tasks: [], events: [], overdueCount: 1 }
+    commands.journalGetDayContext.mockResolvedValue(context)
+    expect(await journalService.getDayContext('2025-01-02')).toEqual(context)
+    expect(commands.journalGetDayContext).toHaveBeenCalledWith('2025-01-02')
   })
 
-  it('forwards the context and tag reads it does not serve yet', async () => {
-    await journalService.getDayContext('2025-01-02')
-    expect(api.journal.getDayContext).toHaveBeenCalledWith('2025-01-02')
-
+  it('forwards the tag read it does not serve', async () => {
     await journalService.getAllTags()
     expect(api.journal.getAllTags).toHaveBeenCalled()
   })

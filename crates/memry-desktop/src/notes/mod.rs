@@ -1,8 +1,10 @@
 //! Notes-domain services of the desktop app.
 
+pub mod apply_template;
 pub mod create;
 pub mod delete;
 pub mod error;
+pub mod folder_move;
 pub mod folders;
 pub mod frontmatter;
 pub mod icons;

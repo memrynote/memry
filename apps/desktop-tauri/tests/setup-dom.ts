@@ -138,6 +138,8 @@ vi.mock('../src/generated/bindings', () => {
         journal().getMonthEntries(year, month),
       journalGetYearStats: (year: number) => journal().getYearStats(year),
       journalGetStreak: () => journal().getStreak(),
+      journalGetPropertyRows: (from: string, to: string) => journal().getPropertyRows(from, to),
+      journalGetDayContext: (date: string) => journal().getDayContext(date),
       notesCreate: async (input: unknown) => {
         const result = (await notes().create(input)) as
           | { success?: boolean; note?: unknown; error?: string }
@@ -162,6 +164,13 @@ vi.mock('../src/generated/bindings', () => {
       // A test answers in Electron's envelope, or with the note alone.
       notesUpdate: async (input: unknown) => {
         const result = (await notes().update(input)) as
+          | { success?: boolean; note?: unknown; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return result?.note ?? result
+      },
+      notesApplyTemplate: async (input: unknown) => {
+        const result = (await notes().applyTemplate(input)) as
           | { success?: boolean; note?: unknown; error?: string }
           | undefined
         if (result?.success === false) throw new Error(result.error ?? '')
@@ -239,6 +248,13 @@ vi.mock('../src/generated/bindings', () => {
       notesGetFolders: () => notes().getFolders(),
       notesCreateFolder: async (path: string) => {
         const result = (await notes().createFolder(path)) as
+          | { success?: boolean; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return null
+      },
+      notesRenameFolder: async (oldPath: string, newPath: string) => {
+        const result = (await notes().renameFolder(oldPath, newPath)) as
           | { success?: boolean; error?: string }
           | undefined
         if (result?.success === false) throw new Error(result.error ?? '')

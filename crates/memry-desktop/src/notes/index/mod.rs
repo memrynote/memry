@@ -29,7 +29,9 @@
 //! - **An app write is measured before it answers** ([`NoteIndex::measure`]): a journal save
 //!   sends its event once the day's row holds the saved text, so the calendar's refetch on it
 //!   reads the new counts, as Electron's handler syncs its cache before it emits. Through the
-//!   task, so the row has one writer; its search reindex is the next pass's.
+//!   task, so the row has one writer; its search reindex is the next pass's. A note it leaves
+//!   to a pass sends nothing when that pass measures it: the calendar reads the counts on its
+//!   next refetch (`commands/journal.rs`, `measure`).
 //! - **Not measured:** a file in the large-file class (Electron streams it; a follow-up).
 //! - [`NoteIndex::reindex`] (`vault_reindex`) measures every note again, through the task once
 //!   the open walk ended, and reports its progress at most once per [`PROGRESS_INTERVAL`],
