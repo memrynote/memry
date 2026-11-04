@@ -16,6 +16,7 @@
 
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use memry_core::seams::secure_store::SecureStore;
 
@@ -35,6 +36,8 @@ pub struct NotesService {
     /// The files this run wrote for its notes, which a save replaces with no version: set by a
     /// create ([`super::create`]), kept by the saves ([`super::update`]).
     pub(crate) own_files: OwnFiles,
+    /// Test hook: the next moved note's refs edit fails its feed (`AppEdit::fail_next_feed`).
+    pub(crate) fail_next_ref_feed: AtomicBool,
 }
 
 impl NotesService {
@@ -55,6 +58,14 @@ impl NotesService {
             order: WriteOrder::default(),
             trash,
             own_files: OwnFiles::default(),
+            fail_next_ref_feed: AtomicBool::new(false),
         })
+    }
+
+    /// Test hook: the next moved note's refs edit fails its feed, as for a document that does
+    /// not load, so its file is written and the watcher brings it in.
+    #[doc(hidden)]
+    pub fn fail_next_ref_feed(&self) {
+        self.fail_next_ref_feed.store(true, Ordering::Relaxed);
     }
 }

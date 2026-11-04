@@ -579,3 +579,61 @@ fn a_moved_note_s_relative_refs_follow_it() {
     });
     assert!(edited, "no app edit of the moved note");
 }
+
+/// A move that finds the note's document ahead of its file, its write-back scheduled, tries its
+/// refs once more after the write-back wrote it: the file gets both the edit and the refs.
+#[test]
+fn a_moved_note_whose_document_is_ahead_has_its_refs_follow_once_written() {
+    let (mut e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let made = notes
+        .create(
+            &open,
+            NewNoteFile {
+                content: "Intro\n\n![o](img/other.png)".into(),
+                ..note("Plan", "work")
+            },
+        )
+        .unwrap();
+    e.drain();
+    e.edit_in_app(&store, &made.id, "Intro edited");
+    e.tier.schedule(&made.id);
+
+    let moved = notes.move_to_folder(&open, &made.id, "archive").unwrap();
+
+    assert_eq!(moved.refs_kept, None);
+    let file = e.read("archive/Plan.md");
+    assert!(file.contains("](../work/img/other.png)"), "{file}");
+    assert!(file.contains("Intro edited"), "{file}");
+}
+
+/// A refs edit whose text the document did not take still wrote the file, which the watcher
+/// brings in: the move answers no refusal.
+#[test]
+fn a_moved_note_s_refs_the_document_did_not_take_are_written_for_the_watcher() {
+    let (mut e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    let made = notes
+        .create(
+            &open,
+            NewNoteFile {
+                content: "![o](img/other.png)".into(),
+                ..note("Plan", "work")
+            },
+        )
+        .unwrap();
+    e.drain();
+    notes.fail_next_ref_feed();
+
+    let moved = notes.move_to_folder(&open, &made.id, "archive").unwrap();
+
+    assert_eq!(moved.refs_kept, None);
+    assert!(
+        e.read("archive/Plan.md")
+            .contains("](../work/img/other.png)")
+    );
+    e.facts_until(|fact| {
+        matches!(fact, Applied::Changed { note_id, source: ChangeSource::Watcher, .. }
+            if *note_id == made.id)
+    });
+}

@@ -28,10 +28,12 @@
 //! ([`memry_core::markdown::schema::blocks::note_refs`]), in its own next write turn, through
 //! the same [`AppEdit`] with [`Precondition::HeldAt`] its old path, which its document was built
 //! at, before the links to it are repaired. Its mobile vault-root refs (`attachments/<id>/...`)
-//! stay. A refused edit wrote nothing, so a note that was changing (an outside edit not read
-//! yet, a document ahead of its file) is tried once more once the write-back caught up. A note
-//! still refused keeps its refs, and the move's answer says why ([`RefsKept`]), so the renderer
-//! tells the user: Electron only logs it.
+//! stay. A refused edit wrote nothing, so a note that was changing is tried once more after the
+//! write-back ran what it had scheduled: that catches a document ahead of its file. An outside
+//! edit the watcher has not reported yet (`FileChanged`, `NotRead`, `FileAhead`) is still
+//! unread then, since nothing here waits for the watcher. A note still refused keeps its refs,
+//! and the move's answer says why ([`RefsKept`]), so the renderer tells the user: Electron only
+//! logs it.
 //!
 //! Divergences from Electron, stated: a path link names a note's folder and title, as Tauri
 //! resolves it (`wiki_target`), where Electron used the file's path (they differ only for a
@@ -39,6 +41,7 @@
 //! here: the journal page's own event for a rewritten day (Step 13m), and the lock check
 //! (Step 14).
 
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use memry_core::api::errors::StorageError;
@@ -72,7 +75,8 @@ impl NotesService {
             return None;
         }
         match self.try_own_refs(open, note_id, from, to)? {
-            // A refusal wrote nothing, so one more try once the write-back caught up is safe.
+            // A refusal wrote nothing, so one more try is safe; the flush writes a document
+            // that is ahead of its file out first.
             RefsKept::Changing => {
                 self.tier.flush(SETTLE);
                 self.try_own_refs(open, note_id, from, to)
@@ -96,6 +100,9 @@ impl NotesService {
         let rewritten = AppEdit::new(&self.tier, &self.store, open)
             .map_err(NotesError::from)
             .and_then(|edit| {
+                if self.fail_next_ref_feed.swap(false, Ordering::Relaxed) {
+                    edit.fail_next_feed();
+                }
                 self.order.run(note_id, |turn| {
                     edit.run(turn, held, ChangeSource::AppEdit, |text| {
                         Ok::<_, NotesError>(rewrite_note_refs_for_move(
@@ -127,7 +134,15 @@ impl NotesService {
             Kept::FrontmatterUnreadable | Kept::FrontmatterBroken | Kept::NotRepresentable => {
                 RefsKept::Unreadable
             }
-            _ => RefsKept::Changing,
+            Kept::NoRow
+            | Kept::NotMarkdown
+            | Kept::NoFile
+            | Kept::NotRead
+            | Kept::FileChanged
+            | Kept::BodyAhead
+            | Kept::FileAhead
+            | Kept::BodyNotPulled
+            | Kept::NoBody => RefsKept::Changing,
         })
     }
 
