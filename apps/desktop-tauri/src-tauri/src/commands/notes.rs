@@ -40,7 +40,7 @@ use crate::events::{NoteTagsChangedEvent, broadcast};
 use crate::shell::{external, services};
 
 /// The open vault, or the localized "no vault is open".
-fn open_vault<R: Runtime>(app: &AppHandle<R>) -> Result<OpenVault, CommandError> {
+pub(crate) fn open_vault<R: Runtime>(app: &AppHandle<R>) -> Result<OpenVault, CommandError> {
     app.state::<Session>().current().ok_or_else(|| {
         let locale = app.state::<Arc<LocaleService>>().get();
         CommandError::new(
@@ -56,7 +56,7 @@ fn failed(error: &NotesError) -> CommandError {
 }
 
 /// The notes service `vault_boot` manages with the vault tier.
-fn service<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<NotesService>, CommandError> {
+pub(crate) fn service<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<NotesService>, CommandError> {
     let service = app.try_state::<Arc<NotesService>>();
     service
         .map(|service| service.inner().clone())

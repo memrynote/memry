@@ -71,8 +71,9 @@ async function writeTaskTags(taskId: string, tag: string, direction: Direction):
 
 /**
  * One property of a note, written through the full-record setter. The record
- * is read fresh from the index right before the write, the same way the
- * properties panel builds it, so no other property is touched.
+ * is read fresh right before the write, the same way the properties panel
+ * builds it, and goes with the edit as its base, so no other property is
+ * touched.
  */
 async function writeNoteProperty(
   noteId: string,
@@ -87,9 +88,10 @@ async function writeNoteProperty(
       ? addPropertyValue(record[binding.property], binding)
       : removePropertyValue(record[binding.property], binding)
   if (value === UNCHANGED) return false
+  const base = { ...record }
   if (value === null) delete record[binding.property]
   else record[binding.property] = value
-  const result = await propertiesService.set(noteId, record)
+  const result = await propertiesService.set(noteId, record, base)
   if (!result.success) throw new Error(result.error ?? 'Failed to update note property')
   return true
 }

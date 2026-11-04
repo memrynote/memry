@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "プロパティ定義を更新できませんでした",
     "setCalendarVisibilityFailed": "カレンダーでのプロパティの表示を設定できませんでした",
     "definitionsFileUnreadable": ".memry/properties.md を読み取れないため、プロパティの変更を保存できません。このファイルを修正または削除してから、もう一度お試しください。",
-    "definitionsFileWriteFailed": ".memry/properties.md に書き込めないため、プロパティの変更を保存できません。"
+    "definitionsFileWriteFailed": ".memry/properties.md に書き込めないため、プロパティの変更を保存できません。",
+    "noteChanged": "プロパティの保存中にこのノートが変更されました。もう一度お試しください。",
+    "noteNotPulled": "このノートの本文の同期が完了していないため、まだプロパティを変更できません。"
   },
   "reminder": {
     "notFound": "リマインダーが見つかりません",

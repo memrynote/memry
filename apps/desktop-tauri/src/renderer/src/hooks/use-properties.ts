@@ -85,10 +85,11 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
     return unsub
   }, [entityId, fetchProperties])
 
-  // Every write below sends the full record, so a stale local copy would erase
-  // a property another surface (the graph, an agent) wrote since the last
-  // fetch. Refetch when an update lands with properties this hook does not hold;
-  // this hook's own writes echo back identical and are skipped.
+  // Every write below sends the full record with the record it was made from,
+  // and only the difference is written, so a property another surface (the
+  // graph, an agent) wrote since the last fetch survives. Refetch when an
+  // update lands with properties this hook does not hold; this hook's own
+  // writes echo back identical and are skipped.
   useEffect(() => {
     if (!entityId) return undefined
     return onNoteUpdated((event) => {
@@ -109,7 +110,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       setProperties(next)
 
       try {
-        const result = await propertiesService.set(entityId, record)
+        const result = await propertiesService.set(entityId, record, toRecord(properties))
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to update property')
         }
@@ -136,7 +137,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       setProperties(next)
 
       try {
-        const result = await propertiesService.set(entityId, record)
+        const result = await propertiesService.set(entityId, record, toRecord(properties))
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to add property')
         }
@@ -160,7 +161,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       setProperties(next)
 
       try {
-        const result = await propertiesService.set(entityId, record)
+        const result = await propertiesService.set(entityId, record, toRecord(properties))
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to remove property')
         }
@@ -247,7 +248,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       setProperties(next)
 
       try {
-        const result = await propertiesService.set(entityId, record)
+        const result = await propertiesService.set(entityId, record, toRecord(properties))
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to reorder properties')
         }

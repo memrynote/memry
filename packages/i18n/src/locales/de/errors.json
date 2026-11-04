@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "Die Eigenschaftsdefinition konnte nicht aktualisiert werden",
     "setCalendarVisibilityFailed": "Die Kalendersichtbarkeit der Eigenschaft konnte nicht festgelegt werden",
     "definitionsFileUnreadable": "Eigenschaftsänderungen können nicht gespeichert werden, weil .memry/properties.md nicht gelesen werden kann. Repariere oder entferne die Datei und versuche es dann erneut.",
-    "definitionsFileWriteFailed": "Eigenschaftsänderungen können nicht gespeichert werden, weil .memry/properties.md nicht geschrieben werden kann."
+    "definitionsFileWriteFailed": "Eigenschaftsänderungen können nicht gespeichert werden, weil .memry/properties.md nicht geschrieben werden kann.",
+    "noteChanged": "Diese Notiz hat sich beim Speichern ihrer Eigenschaften geändert. Versuche es erneut.",
+    "noteNotPulled": "Der Text dieser Notiz ist noch nicht fertig synchronisiert, daher können ihre Eigenschaften noch nicht geändert werden."
   },
   "reminder": {
     "notFound": "Erinnerung nicht gefunden",

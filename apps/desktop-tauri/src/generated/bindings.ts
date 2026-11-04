@@ -150,6 +150,17 @@ export const commands = {
 	 *  Linux when a daemon owns `org.freedesktop.Notifications`.
 	 */
 	notificationSupported: () => __TAURI_INVOKE<boolean>("notification_supported"),
+	/**  `properties:get`: the note's values in its frontmatter's order; none for no note. */
+	propertiesGet: (entityId: string) => __TAURI_INVOKE<PropertyValueView[]>("properties_get", { entityId }),
+	/**  `properties:merge`: the given keys set, a `null` one removed, the rest left. */
+	propertiesMerge: (entityId: string, values: { [key in string]: Value }) => __TAURI_INVOKE<SetPropertiesView>("properties_merge", { entityId, values }),
+	/**  `properties:rename`, on this note only. */
+	propertiesRename: (entityId: string, oldName: string, newName: string) => __TAURI_INVOKE<null>("properties_rename", { entityId, oldName, newName }),
+	/**
+	 *  `properties:set`: `properties` is the panel's whole record and `base` the record it was
+	 *  shown; only the user's changes between the two are written.
+	 */
+	propertiesSet: (entityId: string, properties: { [key in string]: Value }, base: { [key in string]: Value }) => __TAURI_INVOKE<SetPropertiesView>("properties_set", { entityId, properties, base }),
 	/**  Registers the saved binding (or the fallback) and says what the OS did. */
 	shortcutRegisterGlobalCapture: () => __TAURI_INVOKE<GlobalCaptureResult>("shortcut_register_global_capture"),
 	/**
@@ -1032,6 +1043,13 @@ export type PropertyDefinitionView = {
 	createdAt: string,
 };
 
+/**  `PropertyValue` of `properties-api.ts`. */
+export type PropertyValueView = {
+	name: string,
+	value: Value,
+	type: string,
+};
+
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {
 	tags?: TagAssignmentInput[] | null,
@@ -1049,6 +1067,15 @@ export type SelectVaultResponse = {
 	error?: string | null,
 	/**  `already-exists` or `invalid-name`; absent on success and on other failures. */
 	errorCode?: string | null,
+};
+
+/**
+ *  A set's or a merge's answer (`SetPropertiesResponse` on success): the values as stored, and
+ *  the names the edit removed.
+ */
+export type SetPropertiesView = {
+	properties: { [key in string]: Value },
+	removed: string[],
 };
 
 /**

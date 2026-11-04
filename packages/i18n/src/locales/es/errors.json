@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "No se pudo actualizar la definición de la propiedad",
     "setCalendarVisibilityFailed": "No se pudo cambiar la visibilidad de la propiedad en el calendario",
     "definitionsFileUnreadable": "No se pueden guardar los cambios de propiedades porque no se puede leer .memry/properties.md. Corrige o elimina ese archivo e inténtalo de nuevo.",
-    "definitionsFileWriteFailed": "No se pueden guardar los cambios de propiedades porque no se puede escribir en .memry/properties.md."
+    "definitionsFileWriteFailed": "No se pueden guardar los cambios de propiedades porque no se puede escribir en .memry/properties.md.",
+    "noteChanged": "Esta nota cambió mientras se guardaban sus propiedades. Inténtalo de nuevo.",
+    "noteNotPulled": "El texto de esta nota aún no ha terminado de sincronizarse, así que todavía no se pueden cambiar sus propiedades."
   },
   "reminder": {
     "notFound": "Recordatorio no encontrado",

@@ -277,7 +277,9 @@
     "updateDefinitionFailed": "更新属性定义失败",
     "setCalendarVisibilityFailed": "设置属性在日历上的可见性失败",
     "definitionsFileUnreadable": "无法保存属性更改，因为无法读取 .memry/properties.md。请修复或移除该文件，然后重试。",
-    "definitionsFileWriteFailed": "无法保存属性更改，因为无法写入 .memry/properties.md。"
+    "definitionsFileWriteFailed": "无法保存属性更改，因为无法写入 .memry/properties.md。",
+    "noteChanged": "保存属性时此笔记已更改。请重试。",
+    "noteNotPulled": "此笔记的正文尚未完成同步，因此暂时无法更改其属性。"
   },
   "reminder": {
     "notFound": "未找到提醒",

@@ -3,9 +3,12 @@
 //! except the legacy nested `properties` envelope and the cover and writing keys while their
 //! values are theirs (`isReservedFrontmatterKey`).
 
+use std::cell::Cell;
+
 use memry_core::domain::note_stats::header_tags;
+use memry_core::domain::property_values::expands_within_alias_budget;
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml};
-use memry_core::markdown::shared::cover_image::is_cover_key_value;
+use memry_core::markdown::shared::cover_image::{COVER_FRONTMATTER_KEY, is_cover_key_value};
 use memry_core::markdown::shared::writing_tools::{
     WRITING_FRONTMATTER_KEY, is_writing_frontmatter_value,
 };
@@ -19,6 +22,43 @@ pub fn is_reserved_key(name: &str, value: &Value) -> bool {
         WRITING_FRONTMATTER_KEY => is_writing_frontmatter_value(value),
         _ => is_cover_key_value(name, value),
     }
+}
+
+/// [`is_reserved_key`] for a frontmatter value as the file holds it. The name decides first, and
+/// only the `writing` and cover keys' values are converted to be read: any other value is never
+/// walked, so a few lines of nested aliases under it cost nothing here. A `writing` value is
+/// converted only when its aliases expand within the budget the property read gives them, and
+/// a collection is never a cover value.
+pub fn is_reserved_yaml(name: &str, value: &YamlValue) -> bool {
+    match name {
+        "tags" | "aliases" | "properties" => true,
+        WRITING_FRONTMATTER_KEY => {
+            expands_within_alias_budget(value) && is_writing_frontmatter_value(&to_json(value))
+        }
+        _ if name.starts_with(COVER_FRONTMATTER_KEY) => {
+            !matches!(value, YamlValue::Seq(_) | YamlValue::Map(_))
+                && is_cover_key_value(name, &to_json(value))
+        }
+        _ => false,
+    }
+}
+
+/// `extractProperties`: the legacy nested envelope first, then the top level, which wins.
+pub fn user_properties(frontmatter: &YamlMap) -> YamlMap {
+    let mut out = YamlMap::new();
+    if let Some(YamlValue::Map(nested)) = frontmatter.get("properties") {
+        for (name, value) in nested.iter() {
+            if !is_reserved_yaml(name, value) {
+                out.insert(name.to_owned(), value.clone());
+            }
+        }
+    }
+    for (name, value) in frontmatter.iter() {
+        if !is_reserved_yaml(name, value) {
+            out.insert(name.to_owned(), value.clone());
+        }
+    }
+    out
 }
 
 /// The frontmatter of a new note file (`createNote`): `tags` when there are any, then the
@@ -72,27 +112,12 @@ pub fn file_fields(yaml: &YamlValue) -> FileFields {
             Some(Value::Array(items)) => items.iter().map(scalar_text).collect(),
             _ => Vec::new(),
         },
-        properties: properties(&frontmatter),
+        properties: user_properties(map)
+            .iter()
+            .map(|(name, value)| (name.to_owned(), to_json(value)))
+            .collect(),
         frontmatter,
     }
-}
-
-/// `extractProperties`: the legacy nested envelope first, then the top level, which wins.
-fn properties(frontmatter: &Map<String, Value>) -> Map<String, Value> {
-    let mut out = Map::new();
-    if let Some(Value::Object(nested)) = frontmatter.get("properties") {
-        for (name, value) in nested {
-            if !is_reserved_key(name, value) {
-                out.insert(name.clone(), value.clone());
-            }
-        }
-    }
-    for (name, value) in frontmatter {
-        if !is_reserved_key(name, value) {
-            out.insert(name.clone(), value.clone());
-        }
-    }
-    out
 }
 
 fn truthy(value: &Value) -> bool {
@@ -112,9 +137,21 @@ fn scalar_text(value: &Value) -> String {
     }
 }
 
+thread_local! {
+    static VISITS: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Values this module has turned into JSON on this thread, for tests that bound its work by
+/// steps rather than by the clock.
+#[doc(hidden)]
+pub fn json_visits() -> usize {
+    VISITS.with(Cell::get)
+}
+
 /// The value as the renderer reads it over IPC: a YAML date is its ISO text, bytes and a
 /// number that is not finite are `null`.
 fn to_json(value: &YamlValue) -> Value {
+    VISITS.with(|visits| visits.set(visits.get() + 1));
     match value {
         YamlValue::Null | YamlValue::Binary(_) => Value::Null,
         YamlValue::Bool(b) => Value::Bool(*b),

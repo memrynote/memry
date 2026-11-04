@@ -75,14 +75,22 @@ describe('applyFrameBinding', () => {
       { name: 'Rating', value: 3, type: 'number' }
     ])
     const outcome = await applyFrameBinding(note, status)
-    expect(mocks.propsSet).toHaveBeenCalledWith('n1', { Status: 'Done', Rating: 3 })
+    expect(mocks.propsSet).toHaveBeenCalledWith(
+      'n1',
+      { Status: 'Done', Rating: 3 },
+      { Status: 'Not started', Rating: 3 }
+    )
 
     mocks.propsGet.mockResolvedValueOnce([
       { name: 'Status', value: 'Done', type: 'status' },
       { name: 'Rating', value: 3, type: 'number' }
     ])
     if (outcome.status === 'applied') await outcome.revert()
-    expect(mocks.propsSet).toHaveBeenLastCalledWith('n1', { Rating: 3 })
+    expect(mocks.propsSet).toHaveBeenLastCalledWith(
+      'n1',
+      { Rating: 3 },
+      { Status: 'Done', Rating: 3 }
+    )
   })
 
   it('skips cards that cannot carry the binding without writing', async () => {
