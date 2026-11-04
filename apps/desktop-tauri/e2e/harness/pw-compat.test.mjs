@@ -227,3 +227,36 @@ test('the install script is self-contained', () => {
     1
   )
 })
+
+// ---- click fixup ------------------------------------------------------------------------------
+
+test('a driver without pointer events gets them ahead of its press, on what it pressed', () => {
+  // A popover's "New option" button swaps itself for an input on click and the popover shrinks,
+  // so after the click the point is outside it; a pointerdown there would dismiss the popover.
+  const { dom, pw } = page('<div id="outside"></div><button id="b">New</button>')
+  const doc = dom.window.document
+  const button = doc.getElementById('b')
+  button.addEventListener('click', () => button.replaceWith(doc.createElement('input')))
+  doc.elementFromPoint = () => doc.getElementById('outside')
+  const events = []
+  for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+    doc.addEventListener(type, (event) => events.push(`${type} ${event.target.id}`), true)
+  }
+
+  pw.watch()
+  const init = { bubbles: true, cancelable: true, button: 0 }
+  for (const type of ['mousedown', 'mouseup', 'click']) {
+    button.dispatchEvent(new dom.window.MouseEvent(type, init))
+  }
+  pw.fixup(10, 10, 0, 1)
+  doc.getElementById('outside').dispatchEvent(new dom.window.MouseEvent('mousedown', init))
+
+  assert.deepEqual(events, [
+    'pointerdown b',
+    'mousedown b',
+    'pointerup b',
+    'mouseup b',
+    'click b',
+    'mousedown outside'
+  ])
+})
