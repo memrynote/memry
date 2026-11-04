@@ -28,6 +28,7 @@ const commands = vi.hoisted(() => ({
   notesRename: vi.fn(),
   notesUpdate: vi.fn(),
   notesApplyTemplate: vi.fn(),
+  notesUndoTagTemplate: vi.fn(),
   notesMove: vi.fn(),
   notesReorder: vi.fn(),
   notesGetAllPositions: vi.fn(),
@@ -552,7 +553,7 @@ describe('notes-service', () => {
 
   it("edits through its command, a failure in Electron's shape", async () => {
     const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
-    commands.notesUpdate.mockResolvedValue(view)
+    commands.notesUpdate.mockResolvedValue({ note: view })
     const headerTags = { add: ['idea'], source: 'inline' as const }
     await expect(
       notesService.update({ id: 'note-1', content: 'Body', headerTags, emoji: null })
@@ -576,6 +577,23 @@ describe('notes-service', () => {
       success: false,
       error: 'the file changed while it was being written',
       note: null
+    })
+  })
+
+  it("hands on a tag's template outcome and undoes it through its command", async () => {
+    const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
+    const tagTemplate = { kind: 'applied' as const, tag: 'meeting', undoToken: 'tok' }
+    commands.notesUpdate.mockResolvedValue({ note: view, tagTemplate })
+    const result = await notesService.update({ id: 'note-1', headerTags: { add: ['meeting'] } })
+    expect(result).toMatchObject({ success: true, tagTemplate })
+
+    commands.notesUndoTagTemplate.mockResolvedValue('stale')
+    await expect(
+      notesService.undoTagTemplate({ noteId: 'note-1', undoToken: 'tok' })
+    ).resolves.toEqual({ status: 'stale' })
+    expect(commands.notesUndoTagTemplate).toHaveBeenCalledWith({
+      noteId: 'note-1',
+      undoToken: 'tok'
     })
   })
 

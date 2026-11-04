@@ -29,6 +29,7 @@ use memry_desktop::notes::links::{
 };
 use memry_desktop::notes::mentions::{Mentions, UnlinkedMentionView};
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::tag_template::{TagTemplateOutcome, UndoStatus, UndoTagTemplateInput};
 use memry_desktop::notes::update::NoteUpdateInput;
 use memry_desktop::notes::view::{
     FileView, MovedNoteView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
@@ -36,6 +37,7 @@ use memry_desktop::notes::view::{
 use memry_desktop::notes::{local_only, positions, read};
 use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::telemetry::Service;
+use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
@@ -151,6 +153,17 @@ pub async fn notes_rename<R: Runtime>(
     .await
 }
 
+/// `notes:update`'s answer: the note, and what the first header tag the edit added did with its
+/// template (filled the empty body, with an undo token, or offered it).
+#[derive(Debug, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteUpdatedView {
+    pub note: NoteView,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub tag_template: Option<TagTemplateOutcome>,
+}
+
 /// `notes:update`: an editor save of the note's body, an edit of its header tags, its icon.
 /// Answers the note, and sends `notes:tags-changed` when its tags changed; its `notes:updated`
 /// comes from its row fact.
@@ -160,7 +173,7 @@ pub async fn notes_rename<R: Runtime>(
 pub async fn notes_update<R: Runtime>(
     app: AppHandle<R>,
     input: NoteUpdateInput,
-) -> Result<NoteView, CommandError> {
+) -> Result<NoteUpdatedView, CommandError> {
     blocking("notes_update", move || {
         let open = open_vault(&app)?;
         let updated = service(&app)?
@@ -169,7 +182,27 @@ pub async fn notes_update<R: Runtime>(
         if updated.tags_changed {
             broadcast(&app, NoteTagsChangedEvent);
         }
-        Ok(updated.note)
+        Ok(NoteUpdatedView {
+            note: updated.note,
+            tag_template: updated.tag_template,
+        })
+    })
+    .await
+}
+
+/// `notes:undo-tag-template`: empties the body a tag's template filled, only while it is still
+/// what the template put there; `stale` otherwise.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_undo_tag_template<R: Runtime>(
+    app: AppHandle<R>,
+    input: UndoTagTemplateInput,
+) -> Result<UndoStatus, CommandError> {
+    blocking("notes_undo_tag_template", move || {
+        let open = open_vault(&app)?;
+        service(&app)?
+            .undo_tag_template(&open, &input)
+            .map_err(|error| failed(&error))
     })
     .await
 }

@@ -149,13 +149,18 @@ export const commands = {
 	 *  Answers the note, and sends `notes:tags-changed` when its tags changed; its `notes:updated`
 	 *  comes from its row fact.
 	 */
-	notesUpdate: (input: NoteUpdateInput) => __TAURI_INVOKE<NoteView>("notes_update", { input }),
+	notesUpdate: (input: NoteUpdateInput) => __TAURI_INVOKE<NoteUpdatedView>("notes_update", { input }),
 	/**
 	 *  `notes:apply-template`: the note takes the template's body, and in `full` mode its tags,
 	 *  the property values it lacks and its icon when it has none. Answers the note, and sends
 	 *  `notes:tags-changed` when its tags changed; its `notes:updated` comes from its row fact.
 	 */
 	notesApplyTemplate: (input: ApplyTemplateInput) => __TAURI_INVOKE<NoteView>("notes_apply_template", { input }),
+	/**
+	 *  `notes:undo-tag-template`: empties the body a tag's template filled, only while it is still
+	 *  what the template put there; `stale` otherwise.
+	 */
+	notesUndoTagTemplate: (input: UndoTagTemplateInput) => __TAURI_INVOKE<UndoStatus>("notes_undo_tag_template", { input }),
 	/**  `notes:reorder`: the paths become the hand-made order of the folder (`""` is the root). */
 	notesReorder: (folderPath: string, notePaths: string[]) => __TAURI_INVOKE<null>("notes_reorder", { folderPath, notePaths }),
 	/**  The note `title` names as a whole (no heading split), or `null`. */
@@ -1190,6 +1195,15 @@ export type NoteUpdatedEvent = {
 	source: NoteEventSource,
 };
 
+/**
+ *  `notes:update`'s answer: the note, and what the first header tag the edit added did with its
+ *  template (filled the empty body, with an undo token, or offered it).
+ */
+export type NoteUpdatedView = {
+	note: NoteView,
+	tagTemplate?: TagTemplateOutcome | null,
+};
+
 /**  `Note`. */
 export type NoteView = {
 	id: string,
@@ -1455,6 +1469,9 @@ export type TagNotesChangedEvent = {
 /**  `GetNotesByTagSchema.sortBy`. */
 export type TagSortBy = "modified" | "created" | "title";
 
+/**  `NoteTagTemplateOutcome`. */
+export type TagTemplateOutcome = { kind: "applied"; tag: string; undoToken: string } | { kind: "offered"; tag: string };
+
 /**  `TagWithCount`. */
 export type TagWithCountView = {
 	name: string,
@@ -1578,6 +1595,15 @@ export type TitleMatchView = {
 
 /**  `FileMetadata.transcriptionStatus`. */
 export type TranscriptionStatus = "pending" | "processing" | "complete" | "failed";
+
+/**  `UndoTagTemplateResponse.status`. */
+export type UndoStatus = "restored" | "stale";
+
+/**  `UndoTagTemplateSchema`. */
+export type UndoTagTemplateInput = {
+	noteId: string,
+	undoToken: string,
+};
 
 /**  `UnlinkedMention`. `contexts[i]` is the mention `notes:link-mention` takes as `ordinal` `i`. */
 export type UnlinkedMentionView = {

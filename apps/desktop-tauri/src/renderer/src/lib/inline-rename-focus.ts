@@ -26,12 +26,20 @@ export function isMenuFocusSteal(event: FocusEvent<HTMLElement>): boolean {
 
 /**
  * `onBlur` for an inline rename field: keep the field when a closing menu is
- * pulling focus away, otherwise let the caller commit.
+ * pulling focus away or the app window itself lost focus, otherwise let the
+ * caller commit.
+ *
+ * Switching to another window is not clicking away. Chromium (WebView2 on
+ * Windows) blurs the focused field when the window is deactivated and focuses
+ * it again on return, so without the window check alt-tab, a notification or
+ * another app's window opening ended the rename. WebKit (macOS, Linux) fires no
+ * `focusout` there, so React never saw that blur and the field already stayed.
  */
 export function handleInlineRenameBlur(
   event: FocusEvent<HTMLInputElement>,
   commit: () => void
 ): void {
+  if (!event.currentTarget.ownerDocument.hasFocus()) return
   if (isMenuFocusSteal(event)) {
     event.currentTarget.focus()
     return

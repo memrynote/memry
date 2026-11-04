@@ -21,6 +21,9 @@
 //!   as it was built, with its Obsidian embeds resolved from the file's old path: from the new
 //!   one, `![[img/photo.png]]` names another file, and a document that holds the file would read
 //!   as ahead of it. The new text is fed at the new path.
+//! - [`Precondition::Replace`]: [`Precondition::Held`]'s guard, for an edit that writes over the
+//!   user's text (a template applied, `notes:apply-template`). A body it changes is kept as a
+//!   version of the whole file first, as a save keeps one.
 //! - [`Precondition::Save`]: the user's save (`notes:update`, Electron `writeNote`), which
 //!   replaces whatever is there. A save that moves the body first keeps a version of the whole
 //!   file unless it is the run's own ([`OwnFiles`]) and its row names it; the feed keeps the
@@ -36,7 +39,8 @@
 //! whole new text, or `None`; the seam puts the mark back once, where the file had it.
 //!
 //! **Order: the document first, then the file, then the row.**
-//! 1. read (row, file, checks); 2. `Save` only: the version of the file; 3. feed the new body
+//! 1. read (row, file, checks); 2. `Save` and `Replace` only: the version of the file; 3. feed
+//!    the new body
 //!    ([`ExternalFeed::feed_app_edit`] with the body read, so the text the user saw is no
 //!    version); 4. the own-write record, then the file, replaced only while it is still the
 //!    bytes read ([`write_note_over_checked`]); 5. the row's hashes, the caller's `landed`
@@ -103,6 +107,9 @@ pub enum Precondition<'a> {
     Held,
     /// [`Precondition::Held`], for a document built while its file was at this path.
     HeldAt(&'a str),
+    /// [`Self::Held`], and a body the edit changes kept as a version first: the edit writes over
+    /// the user's text.
+    Replace,
     /// The user's save: whatever is there, a file that is not the run's own kept as a version
     /// first.
     Save(&'a OwnFiles),
@@ -311,7 +318,7 @@ impl AppEdit {
         let read_body = split_frontmatter_block(read).body;
         let row_names_file = row.content_hash.as_deref() == Some(file.hash.as_str());
         let own = match precondition {
-            Precondition::Held | Precondition::HeldAt(_) => {
+            Precondition::Held | Precondition::HeldAt(_) | Precondition::Replace => {
                 if row.content_hash.is_none() {
                     return Ok(Edited::Kept(Kept::NotRead));
                 }
@@ -354,11 +361,16 @@ impl AppEdit {
         };
         // A save that leaves the body as read (a header tag edit) feeds nothing, so a document
         // ahead of its file keeps its text, and loses nothing a version would hold.
-        let body_moved = own.is_none() || split_frontmatter_block(next).body != read_body;
-        if let Some(own) = own
-            && body_moved
-            && !(row_names_file && own.is(note_id, &file.hash))
-        {
+        let body_changed = split_frontmatter_block(next).body != read_body;
+        let body_moved = own.is_none() || body_changed;
+        let keeps = match precondition {
+            Precondition::Held | Precondition::HeldAt(_) => false,
+            Precondition::Replace => body_changed,
+            Precondition::Save(own) => {
+                body_changed && !(row_names_file && own.is(note_id, &file.hash))
+            }
+        };
+        if keeps {
             self.vault
                 .write_back()
                 .keep_replaced(note_id, &file.raw, read_body)
