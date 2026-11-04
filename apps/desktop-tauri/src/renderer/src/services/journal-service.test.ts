@@ -26,7 +26,8 @@ const events = vi.hoisted(() => {
   return {
     journalEntryCreatedEvent: event('created'),
     journalEntryUpdatedEvent: event('updated'),
-    journalEntryDeletedEvent: event('deleted')
+    journalEntryDeletedEvent: event('deleted'),
+    journalExternalChangeEvent: event('external')
   }
 })
 
@@ -67,7 +68,6 @@ describe('journal-service', () => {
     api = createMockApi()
     api.journal.getAllTags = vi.fn().mockResolvedValue([])
 
-    api.onJournalExternalChange = vi.fn().mockReturnValue(() => {})
     ;(window as Window & { api: unknown }).api = api
   })
 
@@ -157,30 +157,33 @@ describe('journal-service', () => {
     expect(api.journal.getAllTags).toHaveBeenCalled()
   })
 
-  it('takes the created, updated and deleted events from Rust and the rest from window.api', async () => {
+  it('takes every journal event from Rust', async () => {
     const created = vi.fn()
     const updated = vi.fn()
     const deleted = vi.fn()
     onJournalEntryCreated(created)
     onJournalEntryUpdated(updated)
+    const external = vi.fn()
     onJournalEntryDeleted(deleted)
-    await vi.waitFor(() => expect(listeners.size).toBe(3))
+    onJournalExternalChange(external)
+    await vi.waitFor(() => expect(listeners.size).toBe(4))
     listeners.get('created')?.({ payload: { date: '2025-01-01', entry: view } })
-    listeners.get('updated')?.({ payload: { date: '2025-01-01', entry: view } })
-    listeners.get('deleted')?.({ payload: { date: '2025-01-01' } })
+    listeners.get('updated')?.({
+      payload: { date: '2025-01-01', entry: view, source: 'external' }
+    })
+    listeners.get('deleted')?.({ payload: { date: '2025-01-01', source: 'external' } })
+    listeners.get('external')?.({ payload: { date: '2025-01-01', type: 'modified' } })
     expect(created).toHaveBeenCalledWith({
       date: '2025-01-01',
       entry: expect.not.objectContaining({ properties: null })
     })
     expect(updated).toHaveBeenCalledWith({
       date: '2025-01-01',
-      entry: expect.not.objectContaining({ properties: null })
+      entry: expect.not.objectContaining({ properties: null }),
+      source: 'external'
     })
-    expect(deleted).toHaveBeenCalledWith({ date: '2025-01-01' })
-
-    const unsubscribe = vi.fn()
-    api.onJournalExternalChange = vi.fn(() => unsubscribe)
-    expect(onJournalExternalChange(vi.fn())).toBe(unsubscribe)
+    expect(deleted).toHaveBeenCalledWith({ date: '2025-01-01', source: 'external' })
+    expect(external).toHaveBeenCalledWith({ date: '2025-01-01', type: 'modified' })
   })
 
   it('formats and compares journal dates', () => {

@@ -257,7 +257,8 @@ fn a_refused_save_leaves_the_record_as_the_file_says() {
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
     let tags = record_tags(&e, &id);
-    // The outside edit keeps the header, so only the refused save could move the record.
+    // The outside edit keeps the header, which its record then takes (#3825); only the refused
+    // save could add `gamma` or the icon.
     let outside = PLAN.replace("First text", "From another editor");
     let vault = e.vault.clone();
     let input = NoteUpdateInput {
@@ -280,7 +281,10 @@ fn a_refused_save_leaves_the_record_as_the_file_says() {
         )
     });
     assert_eq!(e.read("Plan.md"), outside);
-    assert_eq!((listed(&e).tags, listed(&e).emoji), (tags, None));
+    assert_eq!(
+        (listed(&e).tags, listed(&e).emoji),
+        (vec!["Alpha".to_owned(), "beta".to_owned()], None)
+    );
 }
 
 #[test]
@@ -602,4 +606,52 @@ fn an_icon_is_the_records_alone() {
     notes.update(&open, icon(Some("🌱"))).unwrap();
     let kept = notes.update(&open, save(&note.id, "Hello again")).unwrap();
     assert_eq!(kept.note.emoji.as_deref(), Some("🌱"));
+}
+
+/// A save whose feed the document did not take writes the file and leaves it to the watcher to
+/// bring in. The watcher's report of those bytes, the app's own, is the app's fact: a watcher
+/// one sends an outside edit, on which the editor drops what was typed since the save.
+#[test]
+fn a_save_the_watcher_brings_in_keeps_the_saves_source() {
+    let (mut e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.fail_next_save_feed();
+    notes.update(&open, save(&id, "Second text\n")).unwrap();
+    until("the watcher fed the save", || e.body(&id) == "Second text");
+    let facts = quiet_facts(&mut e);
+    assert_eq!(by_watcher(&facts), Vec::<&Applied>::new(), "{facts:?}");
+    assert!(
+        facts.iter().any(|fact| matches!(
+            fact,
+            Applied::Changed { note_id, source: ChangeSource::Save, .. } if *note_id == id
+        )),
+        "the save's own source, so the note's views refresh: {facts:?}"
+    );
+}
+
+/// A file the app wrote is its own only until an outside edit replaces it: the same bytes
+/// written back later (a stash pop, an undo elsewhere) are an outside edit the editor shows,
+/// and the next save keeps them as a version.
+#[test]
+fn bytes_the_app_wrote_put_back_outside_are_an_outside_edit() {
+    let (mut e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, save(&id, "Mine\n")).unwrap();
+    let mine = e.read("Plan.md");
+    quiet_facts(&mut e);
+
+    e.write("Plan.md", &mine.replace("Mine", "Theirs"));
+    until("the outside edit was fed", || e.body(&id) == "Theirs");
+    e.write("Plan.md", &mine);
+    until("the put-back was fed", || e.body(&id) == "Mine");
+    let facts = quiet_facts(&mut e);
+    assert_eq!(by_watcher(&facts).len(), 2, "{facts:?}");
+
+    notes.update(&open, save(&id, "Next\n")).unwrap();
+    assert!(
+        e.versions(&id).contains(&mine),
+        "the put-back file is kept before the save replaces it"
+    );
 }

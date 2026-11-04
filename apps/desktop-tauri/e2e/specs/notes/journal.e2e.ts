@@ -4,8 +4,10 @@
 // reads back after a restart. Ported from the Electron `journal` spec's entry-creation, tag,
 // calendar and heatmap cases, which asserted nothing. The calendar (13m-4) lists the day files
 // of the vault with their previews and counts, and drops a deleted day. The charts (13m-4b)
-// read the saved days' property values, and the day panel its day's tasks.
-import { existsSync, readFileSync } from 'node:fs'
+// read the saved days' property values, and the day panel its day's tasks. An edit of the day's
+// file outside the app (13m-5) reaches the open day; the app's own saves never reach it as one.
+// A tag added to the file's frontmatter outside the app joins the day's tags on its record (#3825).
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { browser } from '@wdio/globals'
@@ -53,14 +55,17 @@ interface ElementKeys {
   elementSendKeys(elementId: string, text: string): Promise<void>
 }
 
+/** The day's editor once its day has loaded: the one shown while it loads takes no input. */
+const DAY_EDITOR = '.bn-editor[contenteditable="true"]'
+
 /**
  * Types at the end of the day's text. WebKit's driver sends key actions to no editable
  * element, so the keys go to the editor itself (WebDriver Element Send Keys).
  */
 async function typeInDay(page: Page, text: string): Promise<void> {
-  await expect(page.locator('.bn-editor').first()).toBeVisible()
+  await expect(page.locator(DAY_EDITOR).first()).toBeVisible()
   const driver = browser as unknown as ElementKeys
-  const editor = await driver.findElement('css selector', '.bn-editor')
+  const editor = await driver.findElement('css selector', DAY_EDITOR)
   await driver.elementSendKeys(Object.values(editor)[0], text)
 }
 
@@ -126,6 +131,7 @@ test('a #tag typed into a day joins its tags on the record, and the file keeps i
 interface MonthEntry {
   date: string
   preview: string
+  wordCount: number
   activityLevel: number
 }
 
@@ -225,4 +231,79 @@ test('the charts read the saved days property values, and the day panel its task
     events: [],
     overdueCount: 0
   })
+})
+
+test('an edit of the open day file outside the app shows in the day', async ({
+  page,
+  testVaultPath
+}) => {
+  await openJournal(page)
+  const date = await today(page)
+  const file = join(testVaultPath, 'journal', `${date}.md`)
+  await typeInDay(page, 'Written in the app.')
+  expect(await pollUntil(async () => existsSync(file), { timeoutMs: 20_000 })).toBe(true)
+  await pollUntil(
+    async () => ((await entry(page, date))?.content.includes('in the app') ? true : undefined),
+    { timeoutMs: 20_000 }
+  )
+
+  writeFileSync(
+    file,
+    readFileSync(file, 'utf8').replace('Written in the app.', 'Rewritten outside.')
+  )
+  await expect(page.locator('.bn-editor').first()).toContainText('Rewritten outside.')
+})
+
+test('a tag added to the day file outside the app joins the day tags on its record', async ({
+  page,
+  testVaultPath
+}) => {
+  await openJournal(page)
+  const date = await today(page)
+  const file = join(testVaultPath, 'journal', `${date}.md`)
+  await typeInDay(page, 'Written in the app.')
+  await typeInDay(page, ' About #reflection now.')
+  const [year, month] = date.split('-').map(Number)
+  // The index has measured the saved file: an outside edit is read against its tags.
+  const measured = await pollUntil(
+    async () => {
+      const day = (await monthEntries(page, year, month)).find((e) => e.date === date)
+      return day?.wordCount === 7 ? true : undefined
+    },
+    { timeoutMs: 20_000 }
+  )
+  expect(measured).toBe(true)
+
+  // A new day's file says its tags; another editor adds one to the list.
+  const text = readFileSync(file, 'utf8')
+  expect(text).toMatch(/^ {2}- reflection$/m)
+  writeFileSync(file, text.replace(/^ {2}- reflection$/m, '  - reflection\n  - outside'))
+  const tagged = await pollUntil(
+    async () => {
+      const day = await entry(page, date)
+      return day?.tags.includes('outside') ? day : undefined
+    },
+    { timeoutMs: 20_000 }
+  )
+  expect(tagged?.tags).toEqual(['reflection', 'outside'])
+})
+
+test('text typed while the day saves stays in the day', async ({ page }) => {
+  await openJournal(page)
+  const date = await today(page)
+  const saved = (text: string) =>
+    pollUntil(async () => ((await entry(page, date))?.content.includes(text) ? true : undefined), {
+      timeoutMs: 20_000
+    })
+  await typeInDay(page, 'First part.')
+  expect(await saved('First part.')).toBe(true)
+  // Typed straight after the save, while its index pass and the watcher's report of the file
+  // are still to come: neither may reach the editor as an outside edit.
+  await typeInDay(page, ' Second part.')
+  expect(await saved('Second part.')).toBe(true)
+  await typeInDay(page, ' Third part.')
+  expect(await saved('Third part.')).toBe(true)
+  await expect(page.locator('.bn-editor').first()).toContainText(
+    'First part. Second part. Third part.'
+  )
 })

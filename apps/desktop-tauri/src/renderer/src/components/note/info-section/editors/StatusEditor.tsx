@@ -10,6 +10,7 @@ import type {
   SelectOption
 } from '@memry/contracts/property-types'
 import { useT } from '@memry/i18n/renderer'
+import { isWindowBlur } from '@/lib/inline-rename-focus'
 
 interface StatusEditorProps {
   value: string | null
@@ -130,8 +131,8 @@ export function StatusEditor({
                           setNewOptionName('')
                         }
                       }}
-                      onBlur={() => {
-                        if (!newOptionName.trim()) setCreatingInCategory(null)
+                      onBlur={(e) => {
+                        if (!isWindowBlur(e) && !newOptionName.trim()) setCreatingInCategory(null)
                       }}
                       placeholder={t('properties.optionName')}
                       className="flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"

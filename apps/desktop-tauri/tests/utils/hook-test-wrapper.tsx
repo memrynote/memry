@@ -423,6 +423,7 @@ export function createMockAPI(config?: MockAPIConfig): Record<string, unknown> {
     onJournalEntryUpdated: vi.fn().mockReturnValue(() => {}),
     onJournalEntryDeleted: vi.fn().mockReturnValue(() => {}),
     onJournalExternalChange: vi.fn().mockReturnValue(() => {}),
+    onJournalEventsDropped: vi.fn().mockReturnValue(() => {}),
     onInboxCaptured: vi.fn().mockReturnValue(() => {}),
     onInboxUpdated: vi.fn().mockReturnValue(() => {}),
     onInboxArchived: vi.fn().mockReturnValue(() => {}),

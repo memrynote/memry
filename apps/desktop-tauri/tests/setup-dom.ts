@@ -262,6 +262,13 @@ vi.mock('../src/generated/bindings', () => {
         if (result?.success === false) throw new Error(result.error ?? '')
         return null
       },
+      notesDeleteFolder: async (path: string) => {
+        const result = (await notes().deleteFolder(path)) as
+          | { success?: boolean; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return null
+      },
       notesRevealFolderInFinder: (folderPath: string) =>
         done(notes().revealFolderInFinder(folderPath)),
       notesGetFolderConfig: (folderPath: string) => notes().getFolderConfig(folderPath),
@@ -328,6 +335,9 @@ vi.mock('../src/generated/bindings', () => {
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),
+      journalExternalChangeEvent: event(() => api().onJournalExternalChange),
+      // No Electron channel: a test reaches it through the mock api's `onJournalEventsDropped`.
+      journalEventsDroppedEvent: event(() => api().onJournalEventsDropped),
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),
       noteDeletedEvent: event(() => api().onNoteDeleted),
@@ -883,6 +893,7 @@ const createMockApi = () => ({
   onJournalEntryUpdated: vi.fn().mockReturnValue(() => {}),
   onJournalEntryDeleted: vi.fn().mockReturnValue(() => {}),
   onJournalExternalChange: vi.fn().mockReturnValue(() => {}),
+  onJournalEventsDropped: vi.fn().mockReturnValue(() => {}),
   onMenuCommand: vi.fn().mockReturnValue(() => {}),
   onReadwiseStatusChanged: vi.fn().mockReturnValue(() => {}),
   onReminderDue: vi.fn().mockReturnValue(() => {}),
@@ -1018,6 +1029,20 @@ class MockIntersectionObserver {
 }
 
 globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver
+
+// ============================================================================
+// Window focus
+// ============================================================================
+
+// jsdom answers `hasFocus()` from whether an element is focused, so it reads false in the middle
+// of a focus move between two elements. A browser answers whether the window has focus, which is
+// what `isWindowBlur` (lib/inline-rename-focus) reads: tests run in a focused app window, and a
+// test of a deactivated window mocks this.
+Object.defineProperty(document, 'hasFocus', {
+  configurable: true,
+  writable: true,
+  value: () => true
+})
 
 // ============================================================================
 // Mock matchMedia

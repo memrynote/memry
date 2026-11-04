@@ -233,9 +233,24 @@ impl NotesService {
         if let Err(error) = lane.put(&opened.id, &rel, stat) {
             return take_back(&mut lane, error.into());
         }
+        // The tags the new file says: what an outside edit of it is read against (#3825).
+        let seen = open
+            .vault
+            .notes_writer(self.store.clone())
+            .map_err(|error| error.to_string())
+            .and_then(|writer| {
+                (writer.file_tags_seen(&opened.id, &opened.tags)).map_err(|error| error.to_string())
+            });
+        if let Err(error) = seen {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id = opened.id,
+                "a new day file's tags were not kept: {error}"
+            );
+        }
         if users {
             // The day's first save replaces this file with no version of it.
-            self.own_files.wrote(&opened.id, &hash);
+            self.own_files.wrote(&opened.id, &hash, ChangeSource::App);
         }
         lane.publish(Applied::Added {
             note_id: opened.id.clone(),

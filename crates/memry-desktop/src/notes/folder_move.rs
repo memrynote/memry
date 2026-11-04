@@ -138,6 +138,7 @@ impl NotesService {
         let ctx = IdentityCtx {
             root,
             vault: &open.vault,
+            search: &open.search,
         };
         let mut lane = rows.lane_of(session)?;
         let mut carried = Vec::new();
@@ -442,7 +443,7 @@ fn check(root: &Path, from: &str, to: &str) -> Result<(), NotesError> {
 }
 
 /// Whether `path` is `root` or sits under it.
-fn within(path: &str, root: &str) -> bool {
+pub(super) fn within(path: &str, root: &str) -> bool {
     path == root
         || path
             .strip_prefix(root)

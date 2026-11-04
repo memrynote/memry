@@ -43,6 +43,9 @@ const SEND_SCRIPT = `
   window.__TAURI__.core.invoke(name, args);
 `
 
+// These end the page or the app, which can beat the driver's read of the reply.
+const SEND_ONLY = new Set(['e2e_kill_page', 'e2e_request_quit', 'e2e_trigger_crash'])
+
 function checkName(name: string, caller: string): void {
   if (!/^e2e_[a-z0-9_]+$/.test(name)) {
     throw new HarnessError(`${caller} only calls e2e_<verb>_<noun> commands, got "${name}"`)
@@ -59,6 +62,9 @@ export async function invokeTest<T = unknown>(
   args: Record<string, unknown> = {}
 ): Promise<T> {
   checkName(name, 'invokeTest')
+  if (SEND_ONLY.has(name)) {
+    throw new HarnessError(`${name} ends the page or the app; call it with sendTest`)
+  }
   const outcome = (await app.executor.executeAsync(INVOKE_SCRIPT, name, args)) as InvokeOutcome
   if (!outcome.ok) {
     throw new HarnessError(`${name} failed: ${JSON.stringify(outcome.failure)}`)

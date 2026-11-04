@@ -52,6 +52,9 @@
 //!   document did not take, an app edit the write-back could not write, a pulled
 //!   change not written yet, a server body not here yet) the note is kept, with a
 //!   warning: a tombstone would delete on every device what the file never had.
+//! - An outside edit of the file a row named gives the record the file's frontmatter `tags`
+//!   (#3825, [`tags`]): a note's record takes the file's list, a journal day's what the edit
+//!   changed in it, so the tags only a day's record holds stay.
 //!
 //! Every answer is the core's; a failure is the consumer's to log and retry
 //! ([`crate::vault::consumer::MAX_RETRIES`]), and the next open asks again.
@@ -80,6 +83,9 @@ use crate::vault::consumer::identity::{
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
+use crate::vault::note_file::NoteFile;
+
+mod tags;
 
 const SCOPE: &str = "note_identity";
 
@@ -339,7 +345,8 @@ impl NoteIdentity for NotesIdentity {
         };
         let writer = self.writer(ctx)?;
         self.settle_owed(ctx.root, &writer, &journal, None);
-        let body = split_frontmatter_block(&text.raw).body;
+        let split = split_frontmatter_block(&text.raw);
+        let body = split.body;
         let created_ms = created_ms(&ctx.root.join(file.path)).unwrap_or(file.modified_ms);
         let electron_db_beside = electron_db_beside(ctx.root);
         let (folder_path, title) = place(file.path);
@@ -348,12 +355,15 @@ impl NoteIdentity for NotesIdentity {
         let may_be_a_note = writer.may_be_a_note(title, folder_path)?;
         let adopted = match journal.day_of(file.path) {
             Some(date) => {
+                let declared = tags::of_block(split.block);
+                let tags = declared.clone().unwrap_or_default();
                 let day = FileDay {
                     path: file.path,
                     date: &date,
                     title,
                     folder_path,
                     body,
+                    tags: &tags,
                     created_ms,
                     modified_ms: file.modified_ms,
                     electron_db_beside,
@@ -364,7 +374,13 @@ impl NoteIdentity for NotesIdentity {
                     None
                 };
                 let (converter, embeds) = parts(reader.as_ref());
-                writer.adopt_day(day, converter, embeds)
+                let adopted = writer.adopt_day(day, converter, embeds);
+                if let (Ok(Adopted::Created(id) | Adopted::Existing(id)), Some(declared)) =
+                    (&adopted, &declared)
+                {
+                    tags::found(&writer, id, declared);
+                }
+                adopted
             }
             None => {
                 let note = FileNote {
@@ -409,6 +425,17 @@ impl NoteIdentity for NotesIdentity {
                 Removal::Kept
             }
         })
+    }
+
+    /// The file's frontmatter `tags` reach the record ([`tags::edited`]).
+    fn on_changed(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        previous: &str,
+        file: &NoteFile,
+    ) -> Result<(), IdentityError> {
+        tags::edited(&*self.writer(ctx)?, ctx.search, note_id, previous, file)
     }
 
     /// A move that keeps what the file is reaches the record (`renameKeepsJournalDate`). One

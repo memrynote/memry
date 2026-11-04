@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
 import { answer, current } from '@/lib/permanent-delete-question'
+import { getI18n } from 'react-i18next'
 
 const commands = vi.hoisted(() => ({
   notesCreate: vi.fn(),
@@ -35,6 +36,7 @@ const commands = vi.hoisted(() => ({
   notesGetFolders: vi.fn(),
   notesCreateFolder: vi.fn(),
   notesRenameFolder: vi.fn(),
+  notesDeleteFolder: vi.fn(),
   notesGetFolderConfig: vi.fn(),
   notesSetFolderConfig: vi.fn(),
   notesGetFolderTemplate: vi.fn()
@@ -477,10 +479,10 @@ describe('notes-service', () => {
   })
 
   it('forwards the methods later steps port to window.api.notes', async () => {
-    api.notes.deleteFolder = vi.fn().mockResolvedValue({ success: true })
+    api.notes.getCarriedTasks = vi.fn().mockResolvedValue({ taskIds: [] })
 
-    await notesService.deleteFolder('Projects')
-    expect(api.notes.deleteFolder).toHaveBeenCalledWith('Projects')
+    await notesService.getCarriedTasks({ noteIds: ['n1'] })
+    expect(api.notes.getCarriedTasks).toHaveBeenCalledWith({ noteIds: ['n1'] })
   })
 
   it("reads and writes folders through their commands, a failure in Electron's shape", async () => {
@@ -513,6 +515,20 @@ describe('notes-service', () => {
     await expect(notesService.renameFolder('Work', 'Else')).resolves.toEqual({
       success: false,
       error: 'the journal'
+    })
+
+    commands.notesDeleteFolder.mockResolvedValueOnce(null)
+    await expect(notesService.deleteFolder('Work')).resolves.toEqual({ success: true })
+    expect(commands.notesDeleteFolder).toHaveBeenCalledWith('Work')
+    // Electron's text for any failed folder delete; the command's reason stays in the log.
+    commands.notesDeleteFolder.mockRejectedValueOnce({
+      kind: 'storage',
+      code: 'note_trash_unavailable',
+      message: 'no bin'
+    })
+    await expect(notesService.deleteFolder('Work')).resolves.toEqual({
+      success: false,
+      error: getI18n().t('errors:folder.deleteFailed')
     })
 
     commands.notesGetFolderConfig.mockResolvedValueOnce({
@@ -704,6 +720,47 @@ describe('notes-service', () => {
       expect(toast.warning.mock.calls[0]?.[0]).toContain('Plan')
     }
     expect(toast.warning.mock.calls[0]?.[0]).toMatch(/by hand/)
+    toast.warning.mock.calls[0]?.[1]?.onDismiss?.()
+  })
+
+  it('sums up the notes of a bulk move whose refs stayed in one warning', async () => {
+    toast.warning.mockClear()
+    const view = (id: string, title: string) => ({
+      id,
+      path: `archive/${title}.md`,
+      title,
+      created: 0,
+      modified: 0
+    })
+    commands.notesMove
+      .mockResolvedValueOnce({ note: view('a', 'Plan'), refsKept: 'changing' })
+      .mockResolvedValueOnce({ note: view('b', 'Kept'), refsKept: null })
+      .mockResolvedValueOnce({ note: view('c', 'Ideas'), refsKept: 'unreadable' })
+      .mockResolvedValueOnce({ note: view('d', 'Later'), refsKept: 'changing' })
+    await Promise.all(['a', 'b', 'c', 'd'].map((id) => notesService.move(id, 'archive')))
+
+    const calls = toast.warning.mock.calls
+    expect(calls).toHaveLength(3)
+    const [first] = calls
+    expect(first?.[1]?.id).toBeTruthy()
+    expect(calls.every(([, options]) => options?.id === first?.[1]?.id)).toBe(true)
+    expect(first?.[0]).toContain('Plan')
+    expect(calls.at(-1)?.[0]).toMatch(/^3 notes moved/)
+
+    // A note whose file Memry cannot edit keeps "by hand" in the summary.
+    expect(calls.at(-1)?.[0]).toMatch(/by hand/)
+
+    // Once it closed, the next move's warning names its note again, and a batch of notes that
+    // were only changing is told to check them.
+    calls.at(-1)?.[1]?.onAutoClose?.()
+    commands.notesMove.mockResolvedValueOnce({ note: view('e', 'Solo'), refsKept: 'changing' })
+    await notesService.move('e', 'archive')
+    expect(calls.at(-1)?.[0]).toContain('Solo')
+    commands.notesMove.mockResolvedValueOnce({ note: view('f', 'Duo'), refsKept: 'changing' })
+    await notesService.move('f', 'archive')
+    expect(calls.at(-1)?.[0]).toMatch(/^2 notes moved/)
+    expect(calls.at(-1)?.[0]).toMatch(/Check them in each note/)
+    calls.at(-1)?.[1]?.onDismiss?.()
   })
 
   it('forwards attachments, export, and version helpers', async () => {

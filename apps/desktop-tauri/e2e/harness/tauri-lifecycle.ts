@@ -7,7 +7,7 @@ import { driverReady, forceKill, isAlive, spawnApp } from './app-process'
 import { GRACEFUL_CLOSE_MS, SCRIPT_TIMEOUT_MS } from './budgets'
 import { HarnessError } from './errors'
 import { removeDir } from './remove-dir'
-import { type Executor, invokeTest } from './invoke-test'
+import { type Executor, invokeTest, sendTest } from './invoke-test'
 import { purgeKeychainForDevice } from './keychain-cleanup.mjs'
 import { recordDevice } from './registry'
 import { seedVaultRegistry } from './seed-registry.mjs'
@@ -238,7 +238,7 @@ async function start(
  */
 export async function gracefulClose(app: { executor: Executor; pid: number }): Promise<void> {
   try {
-    await invokeTest(app, 'e2e_request_quit')
+    await sendTest(app, 'e2e_request_quit')
   } catch {
     // The app may already be gone.
   }

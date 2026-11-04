@@ -16,6 +16,8 @@
 
 import * as React from 'react'
 
+import { isWindowBlur } from '@/lib/inline-rename-focus'
+
 /**
  * Everything a row needs to draw the field. Present only for the ONE row being
  * named — its absence is what tells the row to render its label instead.
@@ -125,7 +127,9 @@ export function CanvasRowNameInput({
           has just said, inline and in a toast, that it cannot use, and any edit
           the user makes clears that message and makes blur a commit again.
         */
-        onBlur={() => {
+        onBlur={(event) => {
+          // Another window taking focus is not clicking away; the field gets focus back on return.
+          if (isWindowBlur(event)) return
           if (edit.error) {
             edit.onCancel()
             return

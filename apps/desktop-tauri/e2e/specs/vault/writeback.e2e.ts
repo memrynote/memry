@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { isAlive } from '../../harness/app-process'
-import { invokeTest } from '../../harness/invoke-test'
+import { invokeTest, sendTest } from '../../harness/invoke-test'
 import { restart } from '../../harness/tauri-lifecycle'
 import { test, expect } from '../../harness/test'
 import { pollUntil, readMainLog } from '../../harness/wait'
@@ -75,7 +75,7 @@ test('an edit scheduled just before the app exits is in the file, and after the 
   const file = join(testVaultPath, 'notes/wb-quit.md')
 
   await invokeTest(app, 'e2e_note_edit', { noteId: id, text: 'typed before the quit' })
-  await invokeTest(app, 'e2e_request_quit')
+  await sendTest(app, 'e2e_request_quit')
   await exited(app)
   expect(readFileSync(file, 'utf8')).toBe('typed before the quit\n')
 

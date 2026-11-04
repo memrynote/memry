@@ -90,6 +90,10 @@ pub enum NotesError {
     /// follow it, which this version does not do yet.
     #[error("the folder holds the journal folder, which cannot be moved yet")]
     FolderHoldsJournal,
+    /// The folder to delete is inside the journal folder (a year folder of a nested date
+    /// format): it holds days, which a note delete does not take.
+    #[error("the folder is inside the journal folder; delete its days in the journal")]
+    FolderInJournal,
     /// The folder did not move, and what could not go back waits in `<name> (incomplete
     /// move)` beside it (`vault::move_dir`'s rollback). The message names the pattern, not the
     /// folder: command failures are logged with their message.
@@ -191,10 +195,21 @@ impl From<MoveError> for NotesError {
     fn from(error: MoveError) -> Self {
         match error {
             MoveError::Begin(error) => error.into(),
+            // A file took a folder's name after the move's own look (`moves::free_target`): the
+            // folder is no folder of the vault. Windows says a folder below a file is not found;
+            // elsewhere not found is the vault itself gone (a drive unplugged), an I/O failure.
+            MoveError::Folder(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::AlreadyExists | std::io::ErrorKind::NotADirectory
+                ) || (cfg!(windows) && error.kind() == std::io::ErrorKind::NotFound) =>
+            {
+                Self::InvalidFolder
+            }
             MoveError::Io(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
                 Self::NameConflict
             }
-            MoveError::Io(error) => Self::Io(error),
+            MoveError::Folder(error) | MoveError::Io(error) => Self::Io(error),
         }
     }
 }
@@ -225,6 +240,7 @@ impl CoreError for NotesError {
             Self::MovePending(BeginError::Unreadable(_)) => {
                 (FailureKind::Invalid, "note_move_unreadable")
             }
+            Self::MovePending(BeginError::NotANote(_)) => (FailureKind::Invalid, "invalid_folder"),
             Self::MovePending(_) => (FailureKind::Invalid, "note_move_unsettled"),
             Self::TrashUnavailable(_) => (FailureKind::Storage, "note_trash_unavailable"),
             Self::TooLarge(_) => (FailureKind::Invalid, "journal_day_too_large"),
@@ -261,6 +277,7 @@ impl CoreError for NotesError {
             Self::Storage(error) => error.kind_and_code(),
             Self::FolderNotFound => (FailureKind::NotFound, "folder_not_found"),
             Self::FolderHoldsJournal => (FailureKind::Invalid, "folder_holds_journal"),
+            Self::FolderInJournal => (FailureKind::Invalid, "folder_in_journal"),
             Self::FolderMoveIncomplete => (FailureKind::Storage, "folder_move_incomplete"),
             Self::FolderFile(FolderFileError::Unreadable { .. }) => {
                 (FailureKind::Invalid, "folder_file_unreadable")
@@ -276,6 +293,40 @@ impl CoreError for NotesError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vault::file_move::FileMove;
+    use crate::vault::watch::EchoGuard;
+
+    /// A file where the new folder goes is a folder the note cannot be moved into, never a
+    /// name another note holds.
+    #[test]
+    fn a_move_whose_folder_a_file_holds_fails_as_an_invalid_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("a.md");
+        std::fs::write(&source, "a note").unwrap();
+        std::fs::write(dir.path().join("taken"), "a file").unwrap();
+        for target in ["taken/a.md", "taken/deeper/a.md"] {
+            let target = dir.path().join(target);
+            let moved = FileMove {
+                source: &source,
+                target: &target,
+                source_rel: "a.md",
+                case_only: false,
+            }
+            .run(&EchoGuard::default());
+            let error = NotesError::from(MoveError::from(moved.unwrap_err()));
+            assert_eq!(error.kind_and_code().1, "invalid_folder", "{error:?}");
+        }
+        assert!(source.is_file());
+
+        // Off Windows a folder that is not found is the vault gone, not a folder a file holds.
+        let gone = MoveError::Folder(std::io::ErrorKind::NotFound.into());
+        let expected = if cfg!(windows) {
+            "invalid_folder"
+        } else {
+            "note_file_failed"
+        };
+        assert_eq!(NotesError::from(gone).kind_and_code().1, expected);
+    }
 
     #[test]
     fn only_a_refusal_a_retry_can_pass_says_try_again_and_none_names_its_variant() {

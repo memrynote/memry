@@ -2202,6 +2202,8 @@
   },
   "movedRefsKept": {
     "changing": "“{title}” foi movida, mas estava mudando naquele momento, então seus links para imagens e arquivos ainda apontam para a pasta antiga. Confira na nota.",
-    "unreadable": "“{title}” foi movida, mas o Memry não consegue editar o arquivo, então seus links para imagens e arquivos ainda apontam para a pasta antiga. Atualize-os manualmente."
+    "unreadable": "“{title}” foi movida, mas o Memry não consegue editar o arquivo, então seus links para imagens e arquivos ainda apontam para a pasta antiga. Atualize-os manualmente.",
+    "several": "{count, plural, one {# nota foi movida, mas seus links para imagens e arquivos ainda apontam para a pasta antiga. Confira na nota.} many {# notas foram movidas, mas seus links para imagens e arquivos ainda apontam para as pastas antigas. Confira em cada nota.} other {# notas foram movidas, mas seus links para imagens e arquivos ainda apontam para as pastas antigas. Confira em cada nota.}}",
+    "severalUnreadable": "{count, plural, one {# nota foi movida, mas seus links para imagens e arquivos ainda apontam para a pasta antiga. O Memry não consegue editar alguns dos arquivos. Atualize-os manualmente.} many {# notas foram movidas, mas seus links para imagens e arquivos ainda apontam para as pastas antigas. O Memry não consegue editar alguns dos arquivos. Atualize-os manualmente.} other {# notas foram movidas, mas seus links para imagens e arquivos ainda apontam para as pastas antigas. O Memry não consegue editar alguns dos arquivos. Atualize-os manualmente.}}"
   }
 }

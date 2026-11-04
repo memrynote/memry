@@ -10,6 +10,8 @@ use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::journal;
 use crate::domain::notes::app_move::{self, AppMoved, BeginError, FolderRecorded, Recorded};
+use crate::domain::notes::file_tags;
+use crate::domain::notes::folder_delete::{self, FolderDeleteRecorded};
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::domain::notes::{self, NewNote};
@@ -130,6 +132,28 @@ impl NotesWriter {
             .read_blocking(move |conn| journal::date_of(conn, id))
     }
 
+    /// An edit outside the app gave the file of the note or day `id` the header tags `after`;
+    /// `indexed` is the index's measure of the file it replaced, when it measured that file
+    /// ([`file_tags::taken`]).
+    pub fn file_tags_edited(
+        &self,
+        id: &str,
+        indexed: Option<&[String]>,
+        after: &[String],
+    ) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            file_tags::taken(conn, id, indexed, after, &device_id, now_ms())
+        })
+    }
+
+    /// The file of the note or day `id` says `tags`, as this device found or wrote it
+    /// ([`file_tags::seen`]).
+    pub fn file_tags_seen(&self, id: &str, tags: &[String]) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(move |conn| file_tags::seen(conn, id, tags))
+    }
+
     /// The note's file moved ([`identity::renamed`]).
     pub fn file_moved(&self, note_id: &str, moved: Moved<'_>) -> Result<(), StorageError> {
         let device_id = self.device_id.clone();
@@ -165,6 +189,34 @@ impl NotesWriter {
     ) -> Result<(), BeginError> {
         self.db
             .call_blocking(move |conn| Ok(app_move::begin_folder(conn, from, to, moves)))?
+    }
+
+    /// Records the delete of the folder at `path` before it leaves the disk
+    /// ([`folder_delete::begin`]). Only the vault tier's rows' lane calls it.
+    pub fn begin_folder_delete(&self, path: &str, note_ids: &[&str]) -> Result<(), BeginError> {
+        self.db
+            .call_blocking(move |conn| Ok(folder_delete::begin(conn, path, note_ids)))?
+    }
+
+    /// The folder at `path` left the disk with the notes `note_ids`: tombstones, rows, folder
+    /// records and order in one transaction ([`folder_delete::deleted_by_app`]).
+    pub fn folder_deleted_by_app(&self, path: &str, note_ids: &[&str]) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            folder_delete::deleted_by_app(conn, path, note_ids, &device_id, now_ms())
+        })
+    }
+
+    /// Every folder's record of a delete never finished or forgotten
+    /// ([`folder_delete::pending`]).
+    pub fn pending_folder_deletes(&self) -> Result<Vec<FolderDeleteRecorded>, StorageError> {
+        self.db.read_blocking(folder_delete::pending)
+    }
+
+    /// Forgets the record of the folder's delete ([`folder_delete::abandon`]).
+    pub fn abandon_folder_delete(&self, path: &str) -> Result<bool, StorageError> {
+        self.db
+            .call_blocking(move |conn| folder_delete::abandon(conn, path))
     }
 
     /// Every folder's record of an app move never finished or forgotten

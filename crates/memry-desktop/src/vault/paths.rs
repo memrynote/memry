@@ -172,7 +172,8 @@ pub fn sanitize_new_filename(title: &str) -> String {
     cut.trim_end_matches(['.', ' ']).to_owned()
 }
 
-fn is_reserved_windows_name(base: &str) -> bool {
+/// A Windows device name (`CON`, `COM1`, any case), which no file or folder there can bear.
+pub(crate) fn is_reserved_windows_name(base: &str) -> bool {
     let upper = base.to_uppercase();
     matches!(upper.as_str(), "CON" | "PRN" | "AUX" | "NUL")
         || ["COM", "LPT"].iter().any(|device| {

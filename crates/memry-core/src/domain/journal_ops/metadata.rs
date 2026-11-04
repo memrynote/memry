@@ -67,6 +67,23 @@ pub fn set_live_tags(
     })
 }
 
+/// [`set_live_tags`] inside the caller's transaction, for a write that also records what the
+/// day's file says (`notes::file_tags`).
+#[cfg(feature = "markdown")]
+pub(crate) fn set_live_tags_in(
+    tx: &Connection,
+    date: &str,
+    tags: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Vec<String>, StorageError> {
+    let (next, _) = write_day_in(tx, date, false, device_id, now_ms, |object| {
+        let (next, changes) = tags::set_changes(object, ITEM_TYPE, date, tags)?;
+        Ok::<_, StorageError>((changes, next))
+    })?;
+    Ok(next)
+}
+
 /// Replaces the day's `aliases`, normalized as a note's are with the date as
 /// the title (desktop `remoteAliases(data.aliases, date)`). An empty list is
 /// written as `[]`, which clears on every receiver; `null` would keep theirs.
@@ -278,35 +295,83 @@ where
     E: From<StorageError>,
 {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    if journal::live_entry(&tx, date)?.is_none() && !creates {
-        return plan(&Object::new()).map(|(_, out)| out);
+    let (out, wrote) = write_day_in(&tx, date, creates, device_id, now_ms, plan)?;
+    // Dropping the transaction rolls back what wrote nothing.
+    if wrote {
+        tx.commit().map_err(failed)?;
     }
-    let opened = journal::open_day_in(&tx, date, device_id, now_ms)?;
-    let stored = require_payload(&tx, ITEM_TYPE, &opened.id)?;
-    let (mut changes, out) = plan(stored.object())?;
-    let opened_now = opened.created || opened.revived;
+    Ok(out)
+}
+
+/// [`write_day`] inside the caller's transaction; `true` when it wrote (a revive alone is a
+/// write).
+fn write_day_in<T, E>(
+    tx: &Connection,
+    date: &str,
+    creates: bool,
+    device_id: &str,
+    now_ms: i64,
+    plan: impl FnOnce(&Object) -> Result<(Vec<(&'static str, Change)>, T), E>,
+) -> Result<(T, bool), E>
+where
+    E: From<StorageError>,
+{
+    if journal::live_entry(tx, date)?.is_none() && !creates {
+        return plan(&Object::new()).map(|(_, out)| (out, false));
+    }
+    let opened = journal::open_day_in(tx, date, device_id, now_ms)?;
+    let stored = require_payload(tx, ITEM_TYPE, &opened.id)?;
+    let (changes, out) = plan(stored.object())?;
     if changes.is_empty() {
-        // Dropping the transaction rolls back; a revive alone is still a write.
-        if opened_now {
-            tx.commit().map_err(failed)?;
-        }
-        return Ok(out);
+        return Ok((out, opened.created || opened.revived));
     }
+    edit_in(tx, &opened, stored.object(), changes, device_id, now_ms)?;
+    Ok((out, true))
+}
+
+/// The file's declared `tags` onto a day the caller's transaction just made or revived from a
+/// file it found (`declaredTags`, `vault/ingest-backfill.ts`), only when the record holds none:
+/// a revived day keeps the tags it was pulled or deleted with, as Electron's `initForNote`
+/// fills an empty tag list and never clears one. Desktop's only: the phone finds no files.
+#[cfg(feature = "markdown")]
+pub(crate) fn tag_found_day_in(
+    tx: &Connection,
+    opened: &journal::OpenedDay,
+    tags: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let stored = require_payload(tx, ITEM_TYPE, &opened.id)?;
+    if !tags::read_tags(stored.object(), "tags", ITEM_TYPE, &opened.id)?.is_empty() {
+        return Ok(());
+    }
+    let (_, changes) = tags::set_changes(stored.object(), ITEM_TYPE, &opened.date, tags)?;
+    if changes.is_empty() {
+        return Ok(());
+    }
+    edit_in(tx, opened, stored.object(), changes, device_id, now_ms)
+}
+
+/// `changes` written to the day `open_day_in` gave, and queued.
+fn edit_in(
+    tx: &Connection,
+    opened: &journal::OpenedDay,
+    stored: &Object,
+    mut changes: Vec<(&'static str, Change)>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
     if !opened.created {
         changes.push(("content", Change::Set(Value::Null)));
     }
-    if !opened_now {
+    if !(opened.created || opened.revived) {
         // `open_day_in` already stamped a created or revived day.
-        changes.push((
-            "clock",
-            Change::Set(next_clock(stored.object(), device_id)?),
-        ));
+        changes.push(("clock", Change::Set(next_clock(stored, device_id)?)));
         changes.push(("modifiedAt", Change::set(iso(now_ms)?)));
     }
-    sync_items::apply_local_edit_in(&tx, ITEM_TYPE, &opened.id, &changes, now_ms)?;
-    outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, &opened.id), now_ms)?;
-    tx.commit().map_err(failed)?;
-    Ok(out)
+    sync_items::apply_local_edit_in(tx, ITEM_TYPE, &opened.id, &changes, now_ms)?;
+    outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &opened.id), now_ms)?;
+    Ok(())
 }
 
 fn refuse_reserved(name: &str) -> Result<(), StorageError> {

@@ -597,10 +597,10 @@ jobs:
           for n in 1 2 3 4 5 6; do sleep 0.6; screencapture -x "shots/2-splash-$n.png" || true; done
           guarded_exit "$opened"
           # #3728: the splash says to open the app again, never "MemryNote will reopen
-          # automatically": nothing reopens it after an install at a quit, and after Restart to
-          # install, a guarded launch that is still alive when the updater starts the new build
-          # absorbs that start (#3773). M4 drives only the install at a quit; the splash timing
-          # has unit tests (`relaunch_guard::exit_after_splash`).
+          # automatically": nothing reopens it after an install at a quit. After Restart to
+          # install, a guarded launch that took over the updater's start of the new build opens
+          # the app again once it exits (#3773, M4r `real`). M4 drives only the install at a
+          # quit; the splash timing has unit tests (`relaunch_guard::exit_after_splash`).
           wait_log "pending update install in flight on launch (updater running, started as $TAURI_BASE); showing the open-again splash" 10
           installed | grep -F "$TAURI_BASE"
           echo "::endgroup::"
@@ -651,18 +651,28 @@ jobs:
           if-no-files-found: warn
 
   # Proof mode: M4 through Restart to install (`restart=true`), clicked in the open vault's update
-  # popover. A relaunch of the old bundle mid-install shows the splash and exits, and the updater
-  # then starts the new build itself, with nothing left for the user to do.
+  # popover. A relaunch of the old bundle mid-install shows the splash and exits, and the new build
+  # then runs, with nothing left for the user to do.
+  # - `held`: the updater is held, so the relaunch lands mid-install every time, and the updater
+  #   starts the new build after the guarded launch has exited.
+  # - `real`: nothing is held, and the old bundle is opened the moment the old process is gone. The
+  #   updater's start of the new build then usually reaches the guarded launch while it is alive
+  #   and hands itself over (#3773), so the guarded launch opens the app again once it exits.
   proof-tauri-macos-restart:
-    name: M4r proof (Restart to install and relaunch guard, macOS arm64)
+    name: M4r proof (Restart to install, ${{ matrix.timing }} relaunch, macOS arm64)
     needs: validate
     if: inputs.tauri_base != ''
     runs-on: macos-15
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        timing: [held, real]
     steps:
       - name: Restart to install, then relaunch mid-install
         env:
           GH_TOKEN: ${{ github.token }}
+          TIMING: ${{ matrix.timing }}
         run: |
           set -euo pipefail
           app=/Applications/MemryNote.app
@@ -742,40 +752,60 @@ jobs:
           sleep 1
           screencapture -x shots/1-popover.png || true
           press '^Restart now' 30
-          # Held as in M4, so the relaunch lands mid-install every time.
           for _ in $(seq 1 600); do updater="$(pgrep -n -x UpdateMac || true)"; [ -n "$updater" ] && break; sleep 0.05; done
           [ -n "$updater" ] || { echo "::error::Restart to install started no updater"; exit 1; }
-          kill -STOP "$updater"
-          ps -o pid,stat,command -p "$updater"
-          for _ in $(seq 1 300); do pgrep -x MemryNote >/dev/null || break; sleep 0.1; done
+          if [ "$TIMING" = held ]; then
+            # Held as in M4, so the relaunch lands mid-install every time.
+            kill -STOP "$updater"
+            ps -o pid,stat,command -p "$updater"
+            for _ in $(seq 1 300); do pgrep -x MemryNote >/dev/null || break; sleep 0.1; done
+          else
+            updater=""
+            for _ in $(seq 1 600); do pgrep -x MemryNote >/dev/null || break; sleep 0.05; done
+          fi
           if pgrep -x MemryNote >/dev/null; then echo "::error::the app did not exit for the install"; exit 1; fi
+          gone="$(date +%s)"
           logs | grep -F "velopack: applying $VERSION silent=true restart=true"
-          cat "$data/pending-update-install.json"; echo
+          cat "$data/pending-update-install.json" || true; echo
           echo "::endgroup::"
 
           echo "::group::Relaunch mid-install: the open-again splash, then exit"
           shown="$(count 'main window shown')"
           halted="$(count 'boot halted')"
           splashes="$(count 'installing splash shown')"
-          opened="$(date +%s)"
+          guarded="$(count 'pending update install in flight on launch')"
+          old_boots="$(count "velopack: current=$TAURI_BASE")"
           launch
+          echo "relaunched $(($(date +%s) - gone)) s after the old process exited"
           for n in 1 2 3 4 5 6; do sleep 0.6; screencapture -x "shots/2-splash-$n.png" || true; done
-          # The guarded launch exits 2 s after its splash shows (see M4).
-          while pgrep -x MemryNote >/dev/null && [ $(($(date +%s) - opened)) -lt 12 ]; do sleep 0.1; done
-          if pgrep -x MemryNote >/dev/null; then echo "::error::the guarded launch is still running"; exit 1; fi
+          if [ "$TIMING" = held ]; then
+            # The guarded launch exits 2 s after its splash shows (see M4).
+            while pgrep -x MemryNote >/dev/null && [ $(($(date +%s) - gone)) -lt 12 ]; do sleep 0.1; done
+            if pgrep -x MemryNote >/dev/null; then echo "::error::the guarded launch is still running"; exit 1; fi
+          else
+            # The guarded launch lives at most 8 s past its decision, plus the drain of its exit.
+            sleep 12
+          fi
+          [ "$(count 'pending update install in flight on launch')" -gt "$guarded" ] || { echo "::error::the relaunch was not guarded, so this run missed the timing it proves; rerun the job"; exit 1; }
           [ "$(count 'boot halted')" -gt "$halted" ] || { echo "::error::the guarded launch did not halt its boot"; exit 1; }
           [ "$(count 'installing splash shown')" -gt "$splashes" ] || { echo "::error::the guarded launch showed no splash"; exit 1; }
-          [ "$(count 'main window shown')" -eq "$shown" ] || { echo "::error::the guarded launch showed the main window"; exit 1; }
-          wait_log "pending update install in flight on launch (updater running, started as $TAURI_BASE); showing the open-again splash" 10
-          installed | grep -F "$TAURI_BASE"
+          if [ "$TIMING" = held ]; then
+            [ "$(count 'main window shown')" -eq "$shown" ] || { echo "::error::the guarded launch showed the main window"; exit 1; }
+            wait_log "pending update install in flight on launch (updater running, started as $TAURI_BASE); showing the open-again splash" 10
+            installed | grep -F "$TAURI_BASE"
+          fi
+          logs | grep -E 'UpdaterGuard|boot halted' | tail -10
           echo "::endgroup::"
 
-          echo "::group::The updater swaps the bundle and starts the new build, with no second click"
-          kill -CONT "$updater"
-          updater=""
+          echo "::group::The updater swaps the bundle and the new build runs, with no second click"
+          if [ "$TIMING" = held ]; then
+            kill -CONT "$updater"
+            updater=""
+          fi
           for _ in $(seq 1 90); do installed | grep -qF "$VERSION" && break; sleep 1; done
           installed | grep -F "$VERSION"
-          # Nothing here opens the app: the updater's restart does.
+          # Nothing here opens the app: the updater's restart does, or the guarded launch that
+          # took it over.
           wait_log "velopack: current=$VERSION" 120
           wait_log "the update from $TAURI_BASE applied (installer velopack)" 60
           for _ in $(seq 1 60); do [ "$(count 'main window shown')" -gt "$shown" ] && break; sleep 1; done
@@ -784,6 +814,16 @@ jobs:
           [ "$(count 'update install did not apply')" -eq 0 ] || { echo "::error::the install was reported as failed"; exit 1; }
           [ ! -e "$data/pending-update-install.json" ]
           [ ! -e "$data/update-install-attempt.json" ]
+          # One instance: the old build never booted to offer the update again, and the new build
+          # showed one main window, not one from the updater's start and one from the hand-off.
+          sleep 10
+          [ "$(count "velopack: current=$TAURI_BASE")" -eq "$old_boots" ] || { echo "::error::the old build booted after Restart to install"; exit 1; }
+          [ "$(count 'main window shown')" -eq $((shown + 1)) ] || { echo "::error::expected one new main window, saw $(($(count 'main window shown') - shown))"; exit 1; }
+          if [ "$(count "opened $app for the launch the guarded launch took over")" -gt 0 ]; then
+            echo "HAND-OVER: a launch reached the guarded launch, which opened the app again once it exited (#3773)"
+          else
+            echo "HAND-OVER: none; the updater started the new build after the guarded launch exited"
+          fi
           sleep 3
           screencapture -x shots/3-updated.png || true
           echo "::endgroup::"
@@ -791,7 +831,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: m4r-screenshots
+          name: m4r-${{ matrix.timing }}-screenshots
           path: shots/
           if-no-files-found: warn
 

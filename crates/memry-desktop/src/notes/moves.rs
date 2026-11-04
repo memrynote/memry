@@ -11,8 +11,9 @@
 //!    to the note's own folder moves nothing. Both diverge from Electron on purpose: its
 //!    `generateUniquePath` finds the note's own file taken and numbers it (`Plan 1.md`);
 //! 2. the move recorded in the core, then the file moved without replacing anything and synced
-//!    into its folders, the own-write record told first that the old name goes, so the watcher
-//!    never takes the move for a delete and a new file ([`NoteFileMove`]);
+//!    into its folders, the own-write record told first that the old name goes and that the
+//!    new name holds a markdown note's bytes, so the watcher never takes the move for a delete
+//!    and a new file ([`NoteFileMove`]);
 //! 3. the record, the row and the manual slot, in one core transaction that also forgets the
 //!    record of step 2 ([`Lane::move_by_app`]): the title given and the new folder, the new
 //!    path, and the slot carried (a rename) or the new folder's first (a move). A move that
@@ -42,7 +43,11 @@
 //! Also refused: a folder that is not a plain path of the vault ([`is_plain_relative`], each
 //! segment one name), one the vault ignores, so the note would drop out of it at the next open,
 //! a folder reached through a link, which the open walk does not enter for the same reason, and
-//! a folder path a file already holds.
+//! a folder path a file already holds. A folder its parent holds in another case or Unicode
+//! form (`WORK` for `work/`) is named as the disk spells it, on every volume: the record, the
+//! row and the sidebar name the folder the file lands in on a disk that folds case, and a
+//! case-sensitive one makes no second spelling for those disks to receive (Electron records
+//! the spelling given; `create_folder` refuses one).
 //!
 //! Not here yet: the locked-folder check (Step 14).
 
@@ -55,6 +60,7 @@ use memry_core::domain::notes::app_move::AppMoved;
 use memry_core::domain::notes::link_rewrite::LinkNames;
 
 use super::error::NotesError;
+use super::folders::sibling_named;
 use super::read;
 use super::service::NotesService;
 use super::view::{MovedNoteView, NoteView};
@@ -68,7 +74,9 @@ use crate::vault::consumer::{Applied, MoveKind};
 use crate::vault::file_move::is_respelling;
 use crate::vault::file_types::FileType;
 use crate::vault::path_key::folded_key;
-use crate::vault::paths::{resolve_vault_file, sanitize_filename, sanitize_new_filename};
+use crate::vault::paths::{
+    is_reserved_windows_name, resolve_vault_file, sanitize_filename, sanitize_new_filename,
+};
 use crate::vault::watch::filter::WatchFilter;
 
 /// Names tried before a rename or move gives up: `<name>.md`, then `<name> 1.md` up to this.
@@ -93,7 +101,7 @@ impl NotesService {
         note_id: &str,
         title: &str,
     ) -> Result<NoteView, NotesError> {
-        self.move_checked(open, note_id, MoveTo::Title(title), &mut || Ok(()))
+        self.move_note(open, note_id, MoveTo::Title(title), &mut || Ok(()))
             .map(|moved| moved.note)
     }
 
@@ -103,13 +111,24 @@ impl NotesService {
         note_id: &str,
         folder: &str,
     ) -> Result<MovedNoteView, NotesError> {
-        self.move_checked(open, note_id, MoveTo::Folder(folder), &mut || Ok(()))
+        self.move_note(open, note_id, MoveTo::Folder(folder), &mut || Ok(()))
     }
 
-    /// [`Self::rename`] and [`Self::move_to_folder`], with a hook that runs once the file
-    /// moved, before the record and row follow it, so a test can fail or cut the step there.
+    /// Test hook: [`Self::rename`] and [`Self::move_to_folder`], with `after_file` run once the
+    /// file moved, before the record and row follow it, so a test can fail or cut the step there.
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn move_checked(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        to: MoveTo<'_>,
+        after_file: &mut dyn FnMut() -> Result<(), NotesError>,
+    ) -> Result<MovedNoteView, NotesError> {
+        self.move_note(open, note_id, to, after_file)
+    }
+
+    fn move_note(
         &self,
         open: &OpenVault,
         note_id: &str,
@@ -171,6 +190,7 @@ impl NotesService {
         let ctx = IdentityCtx {
             root,
             vault: &open.vault,
+            search: &open.search,
         };
         let keeps_kind = identity
             .keeps_kind(&ctx, note_id, &new)
@@ -190,7 +210,10 @@ impl NotesService {
             root,
             old: &old,
             new: &new,
-            pairs_on_hash: row.file_type == FileType::Markdown.as_str(),
+            hash: row
+                .file_hash
+                .as_deref()
+                .filter(|_| row.file_type == FileType::Markdown.as_str()),
         });
         if let Some(file) = &file {
             file.forward(&mut lane, &writer, note_id, moved)?;
@@ -263,11 +286,15 @@ pub(super) fn plain_folder(folder: &str) -> Result<String, NotesError> {
         .filter(|segment| !segment.is_empty() && *segment != ".")
         .collect();
     // Windows strips a trailing dot or space, so no folder there ends in one: `x.` would be
-    // created as `x` while the record says `x.`.
+    // created as `x` while the record says `x.`. Nor is a device name (`con`, `nul.x`) one.
+    let windows_refuses = |segment: &str| {
+        let stem = segment.split('.').next().unwrap_or(segment);
+        segment.ends_with(['.', ' ']) || is_reserved_windows_name(stem.trim_end_matches(' '))
+    };
     let one_name = |segment: &&str| {
         is_plain_relative(segment)
             && Path::new(segment).components().count() == 1
-            && !(cfg!(windows) && segment.ends_with(['.', ' ']))
+            && !(cfg!(windows) && windows_refuses(segment))
     };
     if !segments.iter().all(one_name) {
         return Err(NotesError::InvalidFolder);
@@ -286,16 +313,18 @@ fn free_target(
     folder: &str,
     name: &str,
 ) -> Result<String, NotesError> {
-    if !folder.is_empty() {
-        if !plain_folders(root, folder)? {
-            return Err(NotesError::InvalidFolder);
+    let folder = match folder {
+        "" => String::new(),
+        folder => {
+            let folder = folder_on_disk(root, folder)?.ok_or(NotesError::InvalidFolder)?;
+            if resolve_vault_file(root, &folder)? == Resolution::Outside {
+                return Err(NotesError::Outside);
+            }
+            folder
         }
-        if resolve_vault_file(root, folder)? == Resolution::Outside {
-            return Err(NotesError::Outside);
-        }
-    }
+    };
     let filter = WatchFilter::new(read_vault_config(root).exclude_patterns);
-    let rel = |name: &str| match folder {
+    let rel = |name: &str| match folder.as_str() {
         "" => name.to_owned(),
         folder => format!("{folder}/{name}"),
     };
@@ -327,21 +356,37 @@ fn free_target(
     Err(NotesError::NameConflict)
 }
 
-/// Whether each segment of `folder` that is there is a plain folder: not a link (a junction on
-/// Windows), which the open walk does not enter, so a note moved under one would read as
-/// removed at the next open, and not a file, which the move could not create the folder over.
+/// Whether each segment of `folder` that is there is a plain folder ([`folder_on_disk`]).
 pub(super) fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
+    Ok(folder_on_disk(root, folder)?.is_some())
+}
+
+/// `folder` as the disk spells it, when each segment that is there is a plain folder: not a
+/// link (a junction on Windows), which the open walk does not enter, so a note moved under one
+/// would read as removed at the next open, and not a file, which the move could not create the
+/// folder over. A segment its parent holds in another case or Unicode form takes that spelling
+/// on every volume ([`sibling_named`], the rule `create_folder` refuses a second spelling by);
+/// the segments not there yet stay as given.
+fn folder_on_disk(root: &Path, folder: &str) -> io::Result<Option<String>> {
     let mut path = root.to_path_buf();
-    for segment in folder.split('/') {
-        path.push(segment);
+    let mut spelled = Vec::new();
+    let mut segments = folder.split('/');
+    for segment in segments.by_ref() {
+        let Some(listed) = sibling_named(&path, segment)? else {
+            spelled.push(segment.to_owned());
+            break;
+        };
+        path.push(&listed);
+        spelled.push(listed);
         match fs::symlink_metadata(&path) {
-            Ok(meta) if !meta.file_type().is_dir() => return Ok(false),
+            Ok(meta) if !meta.file_type().is_dir() => return Ok(None),
             Ok(_) => {}
-            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(true),
+            Err(error) if error.kind() == ErrorKind::NotFound => break,
             Err(error) => return Err(error),
         }
     }
-    Ok(true)
+    spelled.extend(segments.map(str::to_owned));
+    Ok(Some(spelled.join("/")))
 }
 
 pub(super) fn identity_failed(error: IdentityError) -> NotesError {

@@ -4,7 +4,8 @@ import {
   onJournalEntryCreated,
   onJournalEntryUpdated,
   onJournalEntryDeleted,
-  onJournalExternalChange
+  onJournalExternalChange,
+  onJournalEventsDropped
 } from '@/services/journal-service'
 import { journalKeys } from './journal-query-keys'
 
@@ -49,12 +50,16 @@ export function useJournalChangeEvents(): void {
     const unsubscribeUpdated = onJournalEntryUpdated((event) => invalidate(event.date))
     const unsubscribeDeleted = onJournalEntryDeleted((event) => invalidate(event.date))
     const unsubscribeExternal = onJournalExternalChange((event) => invalidate(event.date))
+    const unsubscribeDropped = onJournalEventsDropped(() => {
+      void queryClient.invalidateQueries({ queryKey: journalKeys.all })
+    })
 
     return () => {
       unsubscribeCreated()
       unsubscribeUpdated()
       unsubscribeDeleted()
       unsubscribeExternal()
+      unsubscribeDropped()
     }
   }, [queryClient])
 }

@@ -135,19 +135,18 @@ pub fn read_preferences(
 
 /// Merges portable `general` and `editor` fields into `preferences`. Fields the vault file
 /// already has and the patch does not name stay as written, including unknown ones. A config
-/// that exists but cannot be read or parsed is an error and stays untouched.
+/// that exists but cannot be read or parsed is an error and stays untouched. A patch that names
+/// no portable field does not write the file (`writePortableGeneralToConfig`), so a settings
+/// write cannot put back what it read over a write another program made meanwhile.
 pub fn merge_preferences(
     vault: &Path,
     general: &Map<String, Value>,
     editor: &Map<String, Value>,
 ) -> Result<(), ConfigError> {
-    // Nothing portable to mirror: a rewrite would only replace the file under another
-    // program's edit.
-    let portable_general = general
-        .keys()
-        .any(|f| PORTABLE_GENERAL.contains(&f.as_str()));
-    let portable_editor = editor.keys().any(|f| PORTABLE_EDITOR.contains(&f.as_str()));
-    if !portable_general && !portable_editor {
+    let names = |patch: &Map<String, Value>, portable: &[&str]| {
+        patch.keys().any(|field| portable.contains(&field.as_str()))
+    };
+    if !names(general, &PORTABLE_GENERAL) && !names(editor, &PORTABLE_EDITOR) {
         return Ok(());
     }
     update(vault, |config| {
@@ -169,7 +168,7 @@ pub fn merge_preferences(
                 prefs.insert(field.clone(), value.clone());
             }
         }
-        if portable_editor {
+        if editor.keys().any(|f| PORTABLE_EDITOR.contains(&f.as_str())) {
             let stored = object_at(prefs, "editor");
             for (field, value) in editor {
                 if PORTABLE_EDITOR.contains(&field.as_str()) {

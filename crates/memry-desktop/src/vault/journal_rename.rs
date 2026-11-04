@@ -360,6 +360,7 @@ fn move_one(
     };
     if let Err(error) = forward.run(&echo) {
         journal.remove_empty(&echo, folders_of(to).take(created));
+        let error = io::Error::from(error);
         return match error.kind() {
             io::ErrorKind::AlreadyExists => Ok(Moved::TargetTaken),
             _ => Err(MoveError::File(error)),

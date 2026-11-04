@@ -55,6 +55,22 @@ pub async fn notes_rename_folder<R: Runtime>(
     .await
 }
 
+/// `notes:delete-folder`: the folder to the OS trash with everything in it, and its notes and
+/// records deleted (`notes::folder_delete`).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_delete_folder<R: Runtime>(
+    app: AppHandle<R>,
+    path: String,
+) -> Result<(), CommandError> {
+    blocking("notes_delete_folder", move || {
+        service(&app)?
+            .delete_folder(&open_vault(&app)?, &path)
+            .map_err(|error| failed(&error))
+    })
+    .await
+}
+
 /// `notes:reveal-folder-in-finder`: the folder itself, selected in its parent.
 #[tauri::command]
 #[specta::specta]

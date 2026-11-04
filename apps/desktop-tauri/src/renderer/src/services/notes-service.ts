@@ -57,14 +57,18 @@ import {
   type NoteListItemView,
   type NoteView,
   type PropertyDefinitionView,
+  type RefsKept,
   type UndoTagTemplateInput,
   type Value
 } from '../../../generated/bindings'
 import { askPermanentDelete } from '../lib/permanent-delete-question'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
+import { createLogger } from '../lib/logger'
 import { NotPortedError } from '../lib/not-ported'
 import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
+
+const log = createLogger('Service:Notes')
 
 export type {
   AttachmentInfo,
@@ -115,6 +119,30 @@ function toListItem(view: NoteListItemView): NoteListItem {
 
 function toFile(view: FileView): FileMetadata {
   return { ...view, created: new Date(view.created), modified: new Date(view.modified) }
+}
+
+// A bulk move (the folder view, a multi-select drag) answers note by note. The notes whose
+// refs stayed share one warning, which counts them until it closes. One whose file Memry
+// cannot edit keeps the warning's "by hand".
+const REFS_KEPT_TOAST = 'notes-moved-refs-kept'
+const refsKeptNotes = new Map<string, RefsKept>()
+
+function refsKeptMessage(note: NoteView, refsKept: RefsKept): string {
+  const t = getI18n().getFixedT(null, 'notes')
+  const count = refsKeptNotes.size
+  const unreadable = [...refsKeptNotes.values()].includes('unreadable')
+  if (count > 1 && unreadable) return t('movedRefsKept.severalUnreadable', { count })
+  if (count > 1) return t('movedRefsKept.several', { count })
+  return refsKept === 'changing'
+    ? t('movedRefsKept.changing', { title: note.title })
+    : t('movedRefsKept.unreadable', { title: note.title })
+}
+
+function warnRefsKept(note: NoteView, refsKept: RefsKept): void {
+  refsKeptNotes.set(note.id, refsKept)
+  const message = refsKeptMessage(note, refsKept)
+  const closed = (): void => refsKeptNotes.clear()
+  toast.warning(message, { id: REFS_KEPT_TOAST, onDismiss: closed, onAutoClose: closed })
 }
 
 /** A failed create or delete as Electron's `withErrorHandler` answers it: the error's message. */
@@ -245,11 +273,7 @@ const ported = {
   move: async (id: string, newFolder: string): Promise<NoteUpdateResponse> => {
     try {
       const { note, refsKept } = await commands.notesMove(id, newFolder)
-      const t = getI18n().getFixedT(null, 'notes')
-      if (refsKept === 'changing') toast.warning(t('movedRefsKept.changing', { title: note.title }))
-      if (refsKept === 'unreadable') {
-        toast.warning(t('movedRefsKept.unreadable', { title: note.title }))
-      }
+      if (refsKept) warnRefsKept(note, refsKept)
       return { success: true, note: toNote(note) }
     } catch (error) {
       return { ...failure(error), note: null }
@@ -401,6 +425,17 @@ const ported = {
       return { success: true }
     } catch (error) {
       return failure(error)
+    }
+  },
+  deleteFolder: async (path: string) => {
+    try {
+      await commands.notesDeleteFolder(path)
+      return { success: true }
+    } catch (error) {
+      // Electron's text for any failed folder delete. The codes it can carry are shared with
+      // create, rename and the note delete, so they get no text of their own here.
+      log.error('Failed to delete folder', { path, error })
+      return { success: false, error: getI18n().t('errors:folder.deleteFailed') }
     }
   },
   revealFolderInFinder: async (folderPath: string): Promise<void> => {

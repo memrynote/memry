@@ -6,9 +6,9 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{ChildStdin, Command, Stdio};
 use std::sync::OnceLock;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, SystemTime};
 
 use crash_handler::{CrashEventResult, CrashHandler, make_crash_event};
@@ -28,6 +28,9 @@ const CONNECT_ATTEMPTS: u32 = 100;
 const CONNECT_RETRY: Duration = Duration::from_millis(50);
 
 static HANDLER: OnceLock<CrashHandler> = OnceLock::new();
+/// The write end of the monitor's stdin, held for the app's lifetime. The OS closes it however
+/// the app ends, which tells the monitor its app is gone.
+static MONITOR_STDIN: OnceLock<ChildStdin> = OnceLock::new();
 
 struct Monitor {
     dir: PathBuf,
@@ -78,9 +81,18 @@ pub fn monitor_entry() -> Option<i32> {
             return Some(1);
         }
     };
-    let shutdown = AtomicBool::new(false);
+    // A client disconnect ends the monitor only after the app connected. An app that ends before
+    // that (a quit or a kill during the boot) is seen through stdin instead. A dump in progress is
+    // still finished: `Server::run` reads the flag only between events, never while it writes a
+    // dump, so stdin closing mid-dump (on macOS the client stops waiting for the ack after 5 s)
+    // ends the monitor only once the dump is written.
+    static APP_GONE: AtomicBool = AtomicBool::new(false);
+    std::thread::spawn(|| {
+        let _ = std::io::copy(&mut std::io::stdin(), &mut std::io::sink());
+        APP_GONE.store(true, Ordering::Relaxed);
+    });
     let handler = Box::new(Monitor { dir: dir.into() });
-    match server.run(handler, &shutdown, Some(STALE_TIMEOUT)) {
+    match server.run(handler, &APP_GONE, Some(STALE_TIMEOUT)) {
         Ok(()) => Some(0),
         Err(error) => {
             eprintln!("crash monitor: {error}");
@@ -129,7 +141,7 @@ fn spawn_monitor(socket: &Path, dir: &Path) -> std::io::Result<()> {
         .arg(MONITOR_SWITCH)
         .arg(socket)
         .arg(dir)
-        .stdin(Stdio::null())
+        .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
     #[cfg(windows)]
@@ -138,7 +150,11 @@ fn spawn_monitor(socket: &Path, dir: &Path) -> std::io::Result<()> {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         command.creation_flags(CREATE_NO_WINDOW);
     }
-    command.spawn().map(|_child| ())
+    let mut child = command.spawn()?;
+    if let Some(stdin) = child.stdin.take() {
+        let _ = MONITOR_STDIN.set(stdin);
+    }
+    Ok(())
 }
 
 fn connect(socket: &Path) -> Option<Client> {
@@ -173,6 +189,7 @@ fn attach(socket: &Path) {
     match CrashHandler::attach(event) {
         Ok(handler) => {
             let _ = HANDLER.set(handler);
+            tracing::info!(scope = "CrashDump", "crash handler attached");
         }
         Err(error) => {
             tracing::warn!(

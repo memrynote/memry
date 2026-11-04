@@ -5,6 +5,7 @@ import { getTagColors, COLOR_NAMES } from '../../tags-row/tag-colors'
 import { SelectChip } from './SelectChip'
 import type { SelectOption } from '@memry/contracts/property-types'
 import { useT } from '@memry/i18n/renderer'
+import { isWindowBlur } from '@/lib/inline-rename-focus'
 
 interface SelectEditorProps {
   value: string | null
@@ -117,8 +118,8 @@ export function SelectEditor({
                   setNewOptionName('')
                 }
               }}
-              onBlur={() => {
-                if (!newOptionName.trim()) setIsCreating(false)
+              onBlur={(e) => {
+                if (!isWindowBlur(e) && !newOptionName.trim()) setIsCreating(false)
               }}
               placeholder={t('properties.optionName')}
               className="flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"

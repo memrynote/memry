@@ -106,6 +106,8 @@ mod domain_bookmarks;
 mod domain_calendar_sync;
 #[path = "domain_custom_icons.rs"]
 mod domain_custom_icons;
+#[path = "domain_file_tags.rs"]
+mod domain_file_tags;
 #[path = "domain_folders.rs"]
 mod domain_folders;
 #[path = "domain_inbox_queries.rs"]
@@ -124,6 +126,8 @@ mod domain_local_only;
 mod domain_note_app_move;
 #[path = "domain_note_files.rs"]
 mod domain_note_files;
+#[path = "domain_note_folder_delete.rs"]
+mod domain_note_folder_delete;
 #[path = "domain_note_folder_move.rs"]
 mod domain_note_folder_move;
 #[path = "domain_note_identity.rs"]
