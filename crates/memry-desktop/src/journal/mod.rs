@@ -18,7 +18,7 @@
 //!   each day's file, the charts ([`property_rows`]) the records' property values, and the day
 //!   panel ([`day_context`]) the tasks due on a day.
 //!
-//! Not here yet: the moves that change what a file is (13m-5).
+//! Not here yet: the moves that change what a file is (13m-6).
 
 pub mod calendar;
 pub mod day_context;
@@ -107,6 +107,13 @@ pub fn entry(
         view.id = row.note_id;
     }
     Ok(Some(view))
+}
+
+/// The day the vault file at `path` is under the vault's config (`extractJournalDate`), `None`
+/// for a note's path.
+pub fn day_of_file(root: &Path, path: &str) -> Option<String> {
+    let config = read_vault_config(root);
+    JournalDays::new(&config.journal_folder, &config.journal_date_format).day_of(path)
 }
 
 /// Where the file of `date` goes under the vault's config (`getJournalRelativePath`).

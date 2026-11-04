@@ -43,7 +43,7 @@ fn the_calendar_lists_live_days_measured_from_their_files_or_their_text() {
     );
     e.write("journal/2025-03-04.md", "Short.\n");
     e.write("journal/2025-03-06.md", "Gone.\n");
-    NoteIndex::new(e.tier.clone(), |_| {}, |_| {}).register(&e.session);
+    NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {}).register(&e.session);
     e.open();
     e.facts_until(indexed);
     let open = e.session.current().unwrap();
@@ -59,6 +59,10 @@ fn the_calendar_lists_live_days_measured_from_their_files_or_their_text() {
                 .is_some()
         });
     }
+    // A found day file's frontmatter `tags` are its new record's (`declaredTags`).
+    let found = |date: &str| journal.stamp(date).unwrap().unwrap().tags;
+    assert_eq!(found("2025-03-03"), ["walk"]);
+    assert!(found("2025-03-04").is_empty());
     // A day made on another device: a record and a text, no file here yet.
     let edit = BlockEdit::InsertParagraph {
         after_block_id: None,
@@ -343,5 +347,32 @@ fn the_day_context_lists_the_days_tasks_and_counts_the_overdue_ones() {
         "a day's completed task is listed too"
     );
     assert!(notes.journal_day_context(&open, "2025-3-5").is_err());
+    e.close();
+}
+
+/// A measure the index cannot do now (the day's file is not there yet) is left to a pass, and
+/// `landed` hears the note once a pass wrote its row: the counts the asker could not wait for.
+#[test]
+fn a_measure_left_to_a_pass_is_heard_once_the_pass_writes_the_row() {
+    let mut e = env(|s| Some(NotesIdentity::new(s)));
+    let heard: Arc<Mutex<Vec<String>>> = Arc::default();
+    let sink = heard.clone();
+    let index = NoteIndex::new(
+        e.tier.clone(),
+        |_| {},
+        |_| {},
+        move |note_id| sink.lock().unwrap().push(note_id.to_owned()),
+    );
+    index.register(&e.session);
+    e.open();
+    e.facts_until(indexed);
+    assert!(!index.measure("j2025-04-01").unwrap(), "no file yet");
+    assert!(heard.lock().unwrap().is_empty());
+
+    e.write("journal/2025-04-01.md", "Later.\n");
+    until("the pass's row heard", || !heard.lock().unwrap().is_empty());
+    assert_eq!(*heard.lock().unwrap(), ["j2025-04-01"]);
+    let open = e.session.current().unwrap();
+    assert!(open.search.note_stats("j2025-04-01").unwrap().is_some());
     e.close();
 }

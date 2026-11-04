@@ -30,8 +30,9 @@
 //!   sends its event once the day's row holds the saved text, so the calendar's refetch on it
 //!   reads the new counts, as Electron's handler syncs its cache before it emits. Through the
 //!   task, so the row has one writer; its search reindex is the next pass's. A note it leaves
-//!   to a pass sends nothing when that pass measures it: the calendar reads the counts on its
-//!   next refetch (`commands/journal.rs`, `measure`).
+//!   to a pass (the walk has not ended, the file did not read, the asker stopped waiting) goes
+//!   to the `landed` callback once a pass, or the late request itself, writes its row, so the
+//!   counts the asker could not wait for still reach the calendar.
 //! - **Not measured:** a file in the large-file class (Electron streams it; a follow-up).
 //! - [`NoteIndex::reindex`] (`vault_reindex`) measures every note again, through the task once
 //!   the open walk ended, and reports its progress at most once per [`PROGRESS_INTERVAL`],
@@ -120,21 +121,25 @@ pub struct NoteIndex {
     slot: Mutex<Slot>,
     report: Box<dyn Fn(IndexProgress) + Send + Sync>,
     links: Box<dyn Fn(LinkChanges) + Send + Sync>,
+    landed: Box<dyn Fn(&str) + Send + Sync>,
 }
 
 impl NoteIndex {
-    /// `report` gets the progress of each open's pass, and `links` the links each pass
-    /// changed once it committed them (`NoteLinksChangedEvent`), on the task's thread.
+    /// `report` gets the progress of each open's pass, `links` the links each pass changed once
+    /// it committed them (`NoteLinksChangedEvent`), and `landed` each note [`Self::measure`] left
+    /// to a pass once a pass wrote its row, all on the task's thread.
     pub fn new(
         tier: Arc<VaultTier>,
         report: impl Fn(IndexProgress) + Send + Sync + 'static,
         links: impl Fn(LinkChanges) + Send + Sync + 'static,
+        landed: impl Fn(&str) + Send + Sync + 'static,
     ) -> Arc<Self> {
         Arc::new(Self {
             tier,
             slot: Mutex::new(Slot::Closed),
             report: Box::new(report),
             links: Box::new(links),
+            landed: Box::new(landed),
         })
     }
 
@@ -165,8 +170,14 @@ impl NoteIndex {
                 let Some((handle, (facts, inbox))) = started else {
                     return Err("the open subscribed no facts".into());
                 };
-                let ended =
-                    Indexer::new(vault).run(facts, inbox, cancel, &index.report, &index.links);
+                let ended = Indexer::new(vault).run(
+                    facts,
+                    inbox,
+                    cancel,
+                    &index.report,
+                    &index.links,
+                    &index.landed,
+                );
                 if ended.is_err() {
                     let mut slot = lock(&index.slot);
                     if matches!(&*slot, Slot::Open { handle: open, .. } if open.same(&handle)) {
@@ -209,7 +220,8 @@ impl NoteIndex {
 
     /// Measures one note of the open vault now, through its task, once the open walk ended:
     /// `false` when it is left to a pass (the walk has not ended, the file did not read, or
-    /// the task did not answer within [`MEASURE_WAIT`]). Blocks.
+    /// the task did not answer within [`MEASURE_WAIT`]), whose row then goes to `landed`.
+    /// Blocks.
     pub fn measure(&self, note_id: &str) -> Result<bool, IndexError> {
         let handle = match &*lock(&self.slot) {
             Slot::Closed => return Err(IndexError::NotOpen),

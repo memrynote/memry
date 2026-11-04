@@ -121,10 +121,12 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     tier.register(session);
     let reporter = app.clone();
     let announcer = app.clone();
+    let lander = app.clone();
     let index = NoteIndex::new(
         tier.clone(),
         move |step| broadcast(&reporter, VaultIndexProgressEvent::from(step)),
         move |links| broadcast(&announcer, NoteLinksChangedEvent::from(links)),
+        move |note_id| crate::shell::journal_events::landed(&lander, note_id),
     );
     index.register(session);
     app.manage(index);
@@ -135,6 +137,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     app.manage(tier.activity());
     let notes = NotesService::new(tier.clone(), store.inner().clone());
     crate::shell::note_events::forward(app.clone(), tier.subscribe());
+    crate::shell::journal_events::forward(app.clone(), tier.subscribe());
     app.manage(notes);
     app.manage(tier);
 }

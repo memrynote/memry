@@ -355,6 +355,37 @@ describe('useJournalEntry dedicated hook', () => {
     expect(queryClient.getQueryData(['journal', 'entries', '2026-05-10'])).toBeNull()
   })
 
+  it('refetches the open day on dropped journal events, unless it holds unsaved text', async () => {
+    let dropped: (() => void) | null = null
+    const api = window.api as unknown as Record<string, ReturnType<typeof vi.fn>>
+    api.onJournalEventsDropped.mockImplementation((cb) => {
+      dropped = cb
+      return vi.fn()
+    })
+    const getEntry = window.api.journal.getEntry as ReturnType<typeof vi.fn>
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+
+    const missed = createMockJournalEntry({ date: '2026-05-10', content: 'missed edit' })
+    getEntry.mockResolvedValue(missed)
+    act(() => {
+      dropped?.()
+    })
+    await waitFor(() =>
+      expect(queryClient.getQueryData(['journal', 'entries', '2026-05-10'])).toEqual(missed)
+    )
+
+    act(() => {
+      result.current.updateContent('typed, not saved')
+    })
+    getEntry.mockClear()
+    act(() => {
+      dropped?.()
+    })
+    expect(getEntry).not.toHaveBeenCalled()
+    expect(result.current.isDirty).toBe(true)
+  })
+
   describe('leaving the vault', () => {
     const VAULT_A = '/vaults/a'
     const VAULT_B = '/vaults/b'

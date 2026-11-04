@@ -80,6 +80,7 @@ fn the_links_an_edit_changed_are_announced_once_they_read_back() {
                 .unwrap()
                 .send((changes, seen.unwrap_or_default()));
         },
+        |_| {},
     );
     index.register(&e.session);
     e.open();

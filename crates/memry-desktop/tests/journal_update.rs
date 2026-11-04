@@ -11,6 +11,7 @@ use crate::device_key;
 #[allow(unused_imports)]
 use crate::vault_env;
 
+use std::fs;
 use std::sync::Arc;
 
 use memry_core::crdt::body_edit::BlockEdit;
@@ -725,4 +726,55 @@ fn a_day_deleted_while_its_save_writes_stays_deleted() {
         .unwrap();
     assert!(!live, "the tags' mirror revived the deleted day");
     assert_eq!(queued(&e).last().map(String::as_str), Some("delete"));
+}
+
+/// A day's save whose feed the document did not take: the watcher's report of the app's own
+/// bytes is the app's fact, never an outside edit (an `external` `journal:entryUpdated` drops
+/// what the open editor holds unsaved).
+#[test]
+fn a_days_save_the_watcher_brings_in_is_reported_as_the_apps_own() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    notes.fail_next_save_feed();
+    notes
+        .update_day(
+            &open,
+            DayUpdate {
+                content: Some("Evening pages.".into()),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert!(e.read(DAY_FILE).contains("Evening pages."));
+    crate::index_support::until("the watcher fed the save", || {
+        e.body(ID).contains("Evening pages.")
+    });
+    assert_eq!(outside_facts(&mut e), Vec::<Applied>::new());
+}
+
+/// What the app wrote is its own in the vault it wrote it in: another vault's day file with
+/// the same date and bytes is not, so a save there keeps it as a version first.
+#[test]
+fn a_day_the_app_wrote_in_another_vault_is_not_its_own() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    e.close();
+    let other = e.vault.with_file_name("other");
+    fs::create_dir_all(other.join("journal")).unwrap();
+    fs::write(other.join(DAY_FILE), NEW_FILE).unwrap();
+    e.vault = other;
+    e.open();
+    e.facts_until(indexed);
+    let open = e.session.current().unwrap();
+    notes
+        .update_day(
+            &open,
+            DayUpdate {
+                content: Some("Evening pages.".into()),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert_eq!(e.versions(ID), [NEW_FILE]);
 }

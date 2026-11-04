@@ -2,7 +2,8 @@
 //! the deep-link feature of the plugin forwards a `memry://` argument to the deep-link plugin
 //! before the callback runs, so this module scans no argv. The callback only brings a window
 //! forward: the startup-error window when one shows, else the main window through the tray path,
-//! which also restores a window hidden to the tray.
+//! which also restores a window hidden to the tray. A first instance that the macOS relaunch guard
+//! halted opens the app again once it exits (`updater::relaunch_guard`, #3773).
 //!
 //! Instances of different devices already differ by identifier (`paths::profile_identifier`), so
 //! they do not collide. An open e2e gate registers no plugin at all: control-file instances run
@@ -16,6 +17,7 @@ pub fn install(builder: Builder<Wry>, e2e_gate_open: bool) -> Builder<Wry> {
         return builder;
     }
     builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        crate::updater::relaunch_guard::note_handed_over();
         if !crate::windows::startup_error::raise(app) {
             crate::tray::show_main_window(app);
         }

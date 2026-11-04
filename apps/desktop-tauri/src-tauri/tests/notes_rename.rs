@@ -107,7 +107,7 @@ fn opened() -> Fixture {
     let tier = VaultTier::new(store.clone());
     tier.set_identity(NotesIdentity::new(store.clone()));
     tier.register(&session);
-    NoteIndex::new(tier.clone(), |_| {}, |_| {}).register(&session);
+    NoteIndex::new(tier.clone(), |_| {}, |_| {}, |_| {}).register(&session);
     let mut facts = tier.subscribe();
     session.open(&vault, OpenSource::Select).unwrap();
     let deadline = Instant::now() + WAIT;

@@ -16,7 +16,7 @@ use memry_core::markdown::frontmatter::json_to_yaml;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use super::day_path;
+use super::{SCOPE, day_path};
 use crate::notes::error::NotesError;
 use crate::notes::service::NotesService;
 use crate::session::OpenVault;
@@ -78,6 +78,8 @@ impl NotesService {
             .into_iter()
             .map(|(name, types)| summary(name, &types, &defined))
             .collect();
+        // A tie by name, case folded: Electron's `localeCompare` orders by the user's locale
+        // and differs only for names outside ASCII letters, as `é` beside `e`.
         properties.sort_by(|a, b| {
             b.count
                 .cmp(&a.count)
@@ -90,7 +92,7 @@ impl NotesService {
             .map(|day| JournalPropertyRowView {
                 path: match day.path {
                     Some(path) => path,
-                    None => day_path(&open.path, &day.date).unwrap_or_default(),
+                    None => planned_path(open, &day.date),
                 },
                 title: day.date.clone(),
                 properties: day.values,
@@ -100,6 +102,19 @@ impl NotesService {
             .collect();
         Ok(PropertyRowsView { rows, properties })
     }
+}
+
+/// Where the file of a day with none yet goes; empty, and logged, for a record whose date is not
+/// `YYYY-MM-DD` (one a build that checks less may have pushed).
+fn planned_path(open: &OpenVault, date: &str) -> String {
+    day_path(&open.path, date).unwrap_or_else(|error| {
+        tracing::warn!(
+            scope = SCOPE,
+            date,
+            "a chart row's day has no path: {error}"
+        );
+        String::new()
+    })
 }
 
 /// One property's line: how many values it has, and its type.

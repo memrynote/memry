@@ -1359,7 +1359,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                   <ContentArea
                                     key={editorState.key}
                                     noteId={entry?.id}
-                                    editable={!isLocked}
+                                    // The editor shown while the day loads is replaced once it
+                                    // has: what it took would be dropped, or saved and then
+                                    // overwritten by the next save from the new one.
+                                    editable={!isLocked && editorLoadState === 'loaded'}
                                     initialContent={review.editorInitialContent}
                                     contentType="markdown"
                                     externalContentRevision={externalUpdateCount}

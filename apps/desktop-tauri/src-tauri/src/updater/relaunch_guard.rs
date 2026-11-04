@@ -4,12 +4,18 @@
 //! vault and offer the same update again while the updater replaces the files under it. So a
 //! launch that finds its own install in flight shows the "Installing update" splash for two
 //! seconds and exits. The decision is `memry_desktop::updater::guard::in_flight`.
+//!
+//! The guarded launch holds the single-instance lock from the plugin's setup until it exits, so a
+//! launch in that time hands itself over and exits: after Restart to install that is the
+//! updater's own start of the new build (#3773). The guarded launch then opens its bundle once,
+//! after it released the lock (`hand_off_on_exit`), so the absorbed launch happens after all.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::paths::AppPaths;
@@ -38,6 +44,18 @@ static LAUNCHED_BY_UPDATER: AtomicBool = AtomicBool::new(false);
 /// or when `sq.version` cannot be read: the guard then compares the app's own version and probes
 /// no updater, so it fails open and the launch boots.
 static STARTED_AS: OnceLock<Option<Installed>> = OnceLock::new();
+
+/// Set when another launch handed itself to this process through the single-instance plugin
+/// (`instance.rs`), whether or not the guard has decided yet.
+static HANDED_OVER: AtomicBool = AtomicBool::new(false);
+
+/// The bundle a guarded launch opens after it exits. Set only when the guard halts the boot.
+static HAND_OFF_TO: OnceLock<PathBuf> = OnceLock::new();
+
+/// How long the exit of a guarded launch waits, once its lock is released, for a hand-over that
+/// was queued on the socket just before: that launch has already exited, and only the listener
+/// that is still running here can record it. Reading the queued bytes takes milliseconds.
+const HAND_OVER_DRAIN: Duration = Duration::from_millis(500);
 
 pub fn note_launched_by_updater() {
     LAUNCHED_BY_UPDATER.store(true, Ordering::SeqCst);
@@ -87,6 +105,10 @@ pub fn apply(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         guard::clear(&data_dir);
         return Ok(());
     };
+    // `in_flight` holds a launch back only inside a Velopack install, so the bundle is known.
+    if let Some(installed) = started {
+        let _ = HAND_OFF_TO.set(installed.root.clone());
+    }
     tracing::info!(
         scope = "UpdaterGuard",
         "pending update install in flight on launch ({}, started as {started_as}); showing the open-again splash and exiting",
@@ -120,10 +142,74 @@ pub fn apply(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     Ok(())
 }
 
+/// Called for every launch that handed itself to this process (`instance.rs`).
+pub fn note_handed_over() {
+    HANDED_OVER.store(true, Ordering::SeqCst);
+    if HAND_OFF_TO.get().is_some() {
+        tracing::info!(
+            scope = "UpdaterGuard",
+            "a launch handed itself to the guarded launch; the app opens once this process exits"
+        );
+    }
+}
+
+/// `RunEvent::Exit` of a halted boot: a guarded launch that took over another launch opens its
+/// bundle once. The run callback sees `Exit` after the plugins (tauri `app.rs`
+/// `on_event_loop_event`, pinned by `tests/startup.rs`), so the single-instance plugin has
+/// removed its socket by now and the new launch cannot hand itself to this exiting process
+/// again. It binds the lock itself, or hands itself to whatever bound it since, so this never
+/// starts a second instance. The bundle holds the new build once the updater has swapped it, or
+/// the old one mid-swap, whose guard then decides again.
+pub fn hand_off_on_exit() {
+    let Some(bundle) = HAND_OFF_TO.get() else {
+        return;
+    };
+    if !handed_over_within(&HANDED_OVER, HAND_OVER_DRAIN) {
+        return;
+    }
+    match open_again(bundle).spawn() {
+        Ok(_) => tracing::info!(
+            scope = "UpdaterGuard",
+            "opened {} for the launch the guarded launch took over",
+            bundle.display()
+        ),
+        Err(error) => tracing::error!(
+            scope = "UpdaterGuard",
+            "could not open {} for the launch the guarded launch took over: {error}",
+            bundle.display()
+        ),
+    }
+}
+
+/// Whether a hand-over was recorded by now or arrives within `drain`.
+fn handed_over_within(handed_over: &AtomicBool, drain: Duration) -> bool {
+    let deadline = Instant::now() + drain;
+    loop {
+        if handed_over.load(Ordering::SeqCst) {
+            return true;
+        }
+        if Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+/// `-n`: this process is still alive, and without it LaunchServices would only activate it. The
+/// updater starts the app the same way (velopack `util_osx.rs` `start_package`).
+fn open_again(bundle: &Path) -> Command {
+    let mut command = Command::new("/usr/bin/open");
+    command
+        .arg("-n")
+        .arg(bundle)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    command
+}
+
 /// The splash never says the app reopens by itself (#3728): nothing does after an install at a
-/// quit, and after Restart to install this process holds the single-instance lock while it lives,
-/// so it absorbs the updater's own start of the new build when that start comes before this
-/// process exits (#3773).
+/// quit, and after Restart to install the new build may well have started on its own already.
 fn splash_copy(locale: &str) -> PrebootCopy {
     PrebootCopy {
         title: i18n::t(
@@ -213,6 +299,49 @@ mod tests {
             ["shown", "exit"]
         );
         assert!(log[1].1 >= log[0].1 + stay, "{log:?}");
+    }
+
+    /// #3773: the updater's start of the new build can reach the guarded launch while it is
+    /// still alive, in the last moment before its lock goes too.
+    #[test]
+    fn a_hand_over_recorded_before_or_during_the_drain_opens_the_app() {
+        let early = AtomicBool::new(true);
+        assert!(handed_over_within(&early, Duration::ZERO));
+
+        let late = Arc::new(AtomicBool::new(false));
+        let (done, finished) = mpsc::channel();
+        {
+            let late = late.clone();
+            std::thread::spawn(move || {
+                let _ = done.send(handed_over_within(&late, Duration::from_secs(3600)));
+            });
+        }
+        std::thread::sleep(Duration::from_millis(100));
+        late.store(true, Ordering::SeqCst);
+        assert!(
+            finished
+                .recv_timeout(Duration::from_secs(60))
+                .expect("the drain ignored the hand-over")
+        );
+    }
+
+    #[test]
+    fn no_hand_over_opens_nothing() {
+        assert!(!handed_over_within(
+            &AtomicBool::new(false),
+            Duration::from_millis(50)
+        ));
+    }
+
+    #[test]
+    fn the_app_opens_as_a_new_instance_of_the_bundle() {
+        let bundle = Path::new("/Applications/Memry Note (2).app");
+        let command = open_again(bundle);
+        assert_eq!(command.get_program(), "/usr/bin/open");
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            [std::ffi::OsStr::new("-n"), bundle.as_os_str()]
+        );
     }
 
     #[test]

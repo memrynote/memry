@@ -109,6 +109,9 @@ struct Owed {
     report: bool,
     due: Option<Instant>,
     failures: u32,
+    /// The notes an app write asked measured that were left to a pass: `landed` is told when
+    /// a pass writes their rows.
+    awaited: BTreeSet<String>,
 }
 
 impl Owed {
@@ -163,6 +166,18 @@ impl Owed {
         }
     }
 
+    /// `landed` told of each awaited note the pass wrote a row for.
+    fn land(&mut self, outcome: &Result<Pass, IndexError>, landed: &dyn Fn(&str)) {
+        let Ok(pass) = outcome else {
+            return;
+        };
+        for note_id in &pass.written {
+            if self.awaited.remove(note_id) {
+                landed(note_id);
+            }
+        }
+    }
+
     /// A pass did not finish: its notes and a scan are owed again, after a backoff.
     fn retry(&mut self, notes: BTreeSet<String>) {
         self.queue.extend(notes);
@@ -176,7 +191,8 @@ impl Owed {
 impl Indexer {
     /// The task: facts and requests in, passes out, until the handle stops it or `cancel` is
     /// seen. Errs only when it could not start. `report` gets the open's pass progress,
-    /// `announce` the links each pass changed, once committed.
+    /// `announce` the links each pass changed, once committed, and `landed` each note a
+    /// measure request left to a pass, once a pass wrote its row.
     pub fn run(
         &self,
         facts: Receiver<Applied>,
@@ -184,12 +200,13 @@ impl Indexer {
         cancel: &CancelToken,
         report: &dyn Fn(IndexProgress),
         announce: &dyn Fn(LinkChanges),
+        landed: &dyn Fn(&str),
     ) -> Result<(), String> {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_time()
             .build()
             .map_err(|error| format!("the note index task has no runtime: {error}"))?;
-        runtime.block_on(self.serve(facts, inbox, cancel, report, announce));
+        runtime.block_on(self.serve(facts, inbox, cancel, report, announce, landed));
         Ok(())
     }
 
@@ -200,6 +217,7 @@ impl Indexer {
         cancel: &CancelToken,
         report: &dyn Fn(IndexProgress),
         announce: &dyn Fn(LinkChanges),
+        landed: &dyn Fn(&str),
     ) {
         let TaskInbox(mut commands) = inbox;
         // Owed at every open: a pass that wrote rows may have ended before its search reindex.
@@ -216,7 +234,8 @@ impl Indexer {
                     // It reports through its own callback, which refreshes the list.
                     owed.report = false;
                     // The asker may have gone; the work is done either way.
-                    let _ = answer.send(self.reindex(&mut owed, progress, cancel, announce));
+                    let _ =
+                        answer.send(self.reindex(&mut owed, progress, cancel, announce, landed));
                 }
             }
             let next = owed.next();
@@ -225,9 +244,15 @@ impl Indexer {
                 biased;
                 command = commands.recv() => match command {
                     Some(Command::Reindex { progress, answer }) => waiting.push((progress, answer)),
-                    // The asker may have gone; the row is written either way.
                     Some(Command::Measure { note_id, answer }) => {
-                        let _ = answer.send(self.measure(&mut owed, note_id));
+                        let measured = self.measure(&mut owed, note_id.clone());
+                        let now = matches!(measured, Ok(true));
+                        // An asker that stopped waiting learns of the row from `landed`.
+                        if answer.send(measured).is_err() && now {
+                            landed(&note_id);
+                        } else if !now {
+                            owed.awaited.insert(note_id);
+                        }
                     }
                     Some(Command::Stop) | None => return,
                 },
@@ -241,7 +266,7 @@ impl Indexer {
                 },
                 () = tokio::time::sleep_until(wake), if next.is_some() => {
                     let report = std::mem::take(&mut owed.report).then_some(report);
-                    self.work(&mut owed, cancel, report, announce);
+                    self.work(&mut owed, cancel, report, announce, landed);
                 }
             }
         }
@@ -291,6 +316,7 @@ impl Indexer {
         cancel: &CancelToken,
         report: Option<&dyn Fn(IndexProgress)>,
         announce: &dyn Fn(LinkChanges),
+        landed: &dyn Fn(&str),
     ) {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
@@ -308,6 +334,7 @@ impl Indexer {
             .listed(scan, &ids)
             .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut progress, announce));
         owed.settle(ids, scan, &outcome);
+        owed.land(&outcome, landed);
     }
 
     /// One note measured now, an app write's (`NoteIndex::measure`); `false` when it is left to
@@ -333,6 +360,7 @@ impl Indexer {
         mut progress: Progress,
         cancel: &CancelToken,
         announce: &dyn Fn(LinkChanges),
+        landed: &dyn Fn(&str),
     ) -> Result<Backfilled, IndexError> {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
@@ -347,6 +375,7 @@ impl Indexer {
             self.pass(notes, &mut owed.links, &stop, &mut progress, announce)
         });
         owed.settle(ids, scan, &outcome);
+        owed.land(&outcome, landed);
         match outcome {
             Ok(pass) if pass.stopped => Err(IndexError::NotOpen),
             Ok(pass) => Ok(pass.done),
@@ -364,6 +393,7 @@ mod tests {
             done: Backfilled::default(),
             unread: unread.iter().map(|id| (*id).to_owned()).collect(),
             stopped: false,
+            written: Vec::new(),
         })
     }
 

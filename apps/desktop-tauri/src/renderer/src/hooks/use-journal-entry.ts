@@ -17,7 +17,8 @@ import {
   onJournalEntryUpdated,
   onJournalEntryDeleted,
   onJournalExternalChange,
-  onJournalEntryCreated
+  onJournalEntryCreated,
+  onJournalEventsDropped
 } from '@/services/journal-service'
 import { getTemplate, type Template } from '@/services/templates-service'
 import { addDays, formatDateToISO, parseISODate } from '@/lib/journal-utils'
@@ -550,11 +551,21 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
     })
 
+    // A missed event may have changed the open day: refetched unless it holds unsaved text,
+    // which its save keeps, as for `modified`.
+    const unsubscribeDropped = onJournalEventsDropped(() => {
+      const open = currentDateRef.current
+      if (open && !isDirtyRef.current) {
+        void queryClient.invalidateQueries({ queryKey: journalKeys.entry(open) })
+      }
+    })
+
     return () => {
       unsubscribeCreated()
       unsubscribeUpdated()
       unsubscribeDeleted()
       unsubscribeExternal()
+      unsubscribeDropped()
     }
   }, [queryClient])
 

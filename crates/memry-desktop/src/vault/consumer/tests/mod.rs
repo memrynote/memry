@@ -345,6 +345,7 @@ pub(super) fn applier(
         settings: vault.app_settings(store.clone()).ok(),
         session: rows.session_for(vault).unwrap(),
         activity: crate::vault::activity::ActivityLog::new(),
+        own_files: Arc::default(),
     }
 }
 

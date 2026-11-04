@@ -4,7 +4,7 @@
 //! panel's `getDayContext` of `ipc/journal-handlers.ts`), each one call of
 //! `memry_desktop::journal`. A create, an update and a delete send their journal event after
 //! the write; a create and an update once the note index measured the day's file, so the
-//! calendar's refetch on the event reads the saved counts ([`measure`]).
+//! calendar's refetch on the event reads the saved counts (`shell::journal_events::measure`).
 
 use std::sync::Arc;
 
@@ -17,7 +17,6 @@ use memry_desktop::journal::update::{DayUpdate, DayUpdated, InlineTags};
 use memry_desktop::journal::write::NewDay;
 use memry_desktop::journal::{self, JournalEntryView};
 use memry_desktop::notes::error::NotesError;
-use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::telemetry::Service;
 use memry_desktop::telemetry::time::now_ms;
 use serde::{Deserialize, Serialize};
@@ -29,6 +28,7 @@ use super::{blocking, notes};
 use crate::events::{
     JournalEntryCreatedEvent, JournalEntryDeletedEvent, JournalEntryUpdatedEvent, broadcast,
 };
+use crate::shell::journal_events;
 
 /// `CreateEntryInputSchema`.
 #[derive(Debug, Clone, Deserialize, specta::Type)]
@@ -77,32 +77,6 @@ fn failed(error: &NotesError) -> CommandError {
     CommandError::from_core(error)
 }
 
-/// The saved day's file measured into its index row before the save's event goes out, as
-/// Electron's handler syncs its cache before it emits. A day the index could not measure now
-/// (the open walk is running, the file did not read, or a long pass held it past
-/// `MEASURE_WAIT`) gets its counts from a later pass, which is logged. No event follows that
-/// pass: the journal's events say what the app or the disk did to a day, and a second sender
-/// for "the counts landed" would be a second path into them. The calendar reads the counts on
-/// its next refetch, at the next save or its query going stale.
-fn measure<R: Runtime>(app: &AppHandle<R>, entry: &JournalEntryView) {
-    let Some(index) = app.try_state::<Arc<NoteIndex>>() else {
-        tracing::warn!(
-            scope = "journal",
-            "no note index: the day's counts lag its save"
-        );
-        return;
-    };
-    match index.measure(&entry.id) {
-        Ok(true) => {}
-        Ok(false) => tracing::debug!(scope = "journal", date = entry.date, "measured later"),
-        Err(error) => tracing::warn!(
-            scope = "journal",
-            date = entry.date,
-            "the day's counts lag its save: {error}"
-        ),
-    }
-}
-
 /// A journal command that landed, for [`announce`].
 pub enum Landed<'a> {
     /// A read; `found` when the day has an entry.
@@ -139,6 +113,7 @@ pub fn announce<R: Runtime>(app: &AppHandle<R>, landed: Landed<'_>) {
             JournalEntryCreatedEvent {
                 date: entry.date.clone(),
                 entry: entry.clone(),
+                source: None,
             },
         ),
         Landed::Saved(DayUpdated {
@@ -153,12 +128,13 @@ pub fn announce<R: Runtime>(app: &AppHandle<R>, landed: Landed<'_>) {
             JournalEntryUpdatedEvent {
                 date: entry.date.clone(),
                 entry: entry.clone(),
+                source: None,
             },
         ),
         Landed::Deleted {
             date,
             success: true,
-        } => broadcast(app, JournalEntryDeletedEvent { date }),
+        } => broadcast(app, JournalEntryDeletedEvent { date, source: None }),
         Landed::Read { found: false } | Landed::Deleted { success: false, .. } => {}
     }
 }
@@ -201,7 +177,7 @@ pub async fn journal_create_entry<R: Runtime>(
         let entry = notes::service(&app)?
             .create_day(&open, day)
             .map_err(|error| failed(&error))?;
-        measure(&app, &entry);
+        journal_events::measure(&app, &entry.id, &entry.date);
         announce(&app, Landed::Created(&entry));
         Ok(entry)
     })
@@ -233,7 +209,7 @@ pub async fn journal_update_entry<R: Runtime>(
             .update_day(&open, update)
             .map_err(|error| failed(&error))?;
         if rewrites_file || updated.created {
-            measure(&app, &updated.entry);
+            journal_events::measure(&app, &updated.entry.id, &updated.entry.date);
         }
         announce(&app, Landed::Saved(&updated));
         Ok(updated.entry)

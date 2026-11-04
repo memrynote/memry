@@ -5,6 +5,7 @@ pub mod clipboard;
 pub mod dialogs;
 pub mod drop_stage;
 pub mod external;
+pub mod journal_events;
 pub mod loopback;
 pub mod navigation_guard;
 pub mod note_events;
