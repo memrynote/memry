@@ -9,7 +9,7 @@ mod json;
 mod note;
 mod scalar;
 mod split;
-mod value;
+pub(crate) mod value;
 mod yaml_dump;
 mod yaml_load;
 

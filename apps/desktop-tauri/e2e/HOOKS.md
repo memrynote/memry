@@ -175,4 +175,6 @@ Without a file the instance runs in `<temp dir>/memry-e2e/default-<port>` as dev
 Mouse input is the W3C Actions endpoint. The macOS WKWebView driver dispatches synthetic
 `mousemove`, `mousedown`, `mouseup` and `click` events only, so `pw-compat` adds the pointer
 events, focus change, `mouseover`, `dblclick` and `contextmenu` that a real click produces when
-the driver did not. Drag and drop and text selection by mouse need a driver with native input.
+the driver did not. `pointerdown` and `pointerup` go just ahead of the driver's `mousedown` and
+`mouseup`, on the same target, so a click that reshapes the page (a popover that shrinks) never
+sends its press to what ends up under the point. Drag and drop and text selection by mouse need a driver with native input.

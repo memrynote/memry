@@ -20,7 +20,13 @@ const FIXED_MESSAGE_KEYS = new Map<string, string>([
  * Rust message stays English for the logs.
  */
 const COMMAND_CODE_KEYS = new Map<string, string>([
+  ['frontmatter_failed', 'errors:note.invalidFrontmatter'],
+  ['note_body_not_pulled', 'errors:property.noteNotPulled'],
+  ['note_edit_kept', 'errors:property.noteChanged'],
+  ['note_not_representable', 'errors:property.setFailed'],
   ['note_too_large_to_sync', 'errors:note.tooLargeToSync'],
+  ['property_exists', 'errors:property.alreadyExists'],
+  ['property_not_found', 'errors:property.notFound'],
   ['property_definitions_unreadable', 'errors:property.definitionsFileUnreadable'],
   ['property_definitions_write_failed', 'errors:property.definitionsFileWriteFailed']
 ])
@@ -133,7 +139,15 @@ function rawMessage(error: unknown): string {
   return COMMAND_CODE_KEYS.get(error.code) ?? error.message
 }
 
-export function extractErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
+/**
+ * The display text of a failure. `values` fills the placeholders of the text a command code
+ * names, such as the property name of `errors:property.notFound`.
+ */
+export function extractErrorMessage(
+  error: unknown,
+  fallback = 'Something went wrong',
+  values?: Record<string, string>
+): string {
   const raw = rawMessage(error)
   if (!raw) return fallback
 
@@ -142,7 +156,7 @@ export function extractErrorMessage(error: unknown, fallback = 'Something went w
   const message = FIXED_MESSAGE_KEYS.get(stripped) ?? stripped
 
   if (message.startsWith(I18N_KEY_PREFIX)) {
-    const translated = getI18n()?.t(message)
+    const translated = getI18n()?.t(message, values)
     if (typeof translated === 'string' && translated !== message) return translated
   }
 

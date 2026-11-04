@@ -308,6 +308,51 @@ fn reordered(values: &Map<String, Value>, ordered: &[String]) -> Map<String, Val
     next
 }
 
+/// Gives a note's or a journal day's record the values an edit of the desktop app's file of it
+/// just wrote: `changed` set (a key the record holds keeps its place, a new one goes last) and
+/// `removed` dropped. Every other key keeps the record's value. The file is not the record's
+/// copy: a value a sync pull brought in is in the record and not in the file yet, so taking the
+/// file's whole map would send the stale file value back over it.
+///
+/// A value whose type the edit changed is taken rather than refused as [`set`] refuses it: the
+/// file already holds it, and a refusal would leave the record and the file apart for good. An
+/// edit that leaves the record as it was writes nothing. `Ok(false)` when no note or day has
+/// that id.
+pub fn mirror_file(
+    conn: &Connection,
+    item_id: &str,
+    changed: Map<String, Value>,
+    removed: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    for item_type in PROPERTIED_TYPES {
+        let Some(payload) = stored(conn, item_type, item_id)? else {
+            continue;
+        };
+        let current = read_values(payload.object(), item_type, item_id)?;
+        let mut next = current.clone();
+        for name in removed {
+            // `shift_remove` keeps the other keys' order, which is the property order.
+            next.shift_remove(name);
+        }
+        for (name, value) in changed {
+            match next.get_mut(&name) {
+                Some(held) => *held = value,
+                None => {
+                    next.insert(name, value);
+                }
+            }
+        }
+        // A map compares without its order, which is the property order here.
+        if current != next || !current.keys().eq(next.keys()) {
+            write(conn, item_type, item_id, &payload, next, device_id, now_ms)?;
+        }
+        return Ok(true);
+    }
+    Ok(false)
+}
+
 /// The rule FR-048 names. See the module comment for what is exempt and why.
 pub fn refuse_retype(
     name: &str,

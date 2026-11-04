@@ -339,3 +339,81 @@ fn a_properties_value_that_will_not_read_is_an_error_and_never_an_empty_map() {
     })
     .expect("unreadable");
 }
+
+fn object(value: Value) -> Map<String, Value> {
+    value.as_object().expect("object").clone()
+}
+
+#[test]
+fn a_file_mirror_takes_only_the_keys_the_edit_changed_a_retype_included() {
+    let (db, _dir) = open("props-mirror", NOTE);
+    seed(
+        &db,
+        "journal",
+        "day-1",
+        r#"{"date":"2026-10-07","properties":{"mood":"ok"},"clock":{"device-a":1}}"#,
+    );
+    db.call_blocking(|conn| {
+        // Nothing the record does not already hold: nothing queued.
+        let same = object(json!({ "effort": 3 }));
+        assert!(mirror_file(conn, "note-1", same, &[], DEVICE, NOW + 1)?);
+        assert_eq!(queued(conn), 0);
+
+        // The edit retyped `effort`, dropped `area` and added `due`, which goes last.
+        let changed = object(json!({ "due": "2026-10-07", "effort": "three" }));
+        let removed = ["area".to_owned()];
+        assert!(mirror_file(
+            conn,
+            "note-1",
+            changed,
+            &removed,
+            DEVICE,
+            NOW + 2
+        )?);
+        assert_eq!(pushed_order(conn), vec!["effort", "due"]);
+        assert_eq!(pushed(conn)["properties"]["effort"], json!("three"));
+        assert_eq!(
+            pushed(conn)["coverImage"],
+            json!({ "url": "memry://cover/1" })
+        );
+        assert_eq!(queued(conn), 1);
+
+        // A journal day's record takes its file's edit too.
+        let day = object(json!({ "mood": "good" }));
+        assert!(mirror_file(conn, "day-1", day, &[], DEVICE, NOW + 3)?);
+        assert_eq!(values(conn, "journal", "day-1")?["mood"], json!("good"));
+
+        assert!(!mirror_file(
+            conn,
+            "nobody",
+            Map::new(),
+            &[],
+            DEVICE,
+            NOW + 4
+        )?);
+        Ok(())
+    })
+    .expect("mirror");
+}
+
+#[test]
+fn a_file_mirror_keeps_a_pulled_value_the_file_does_not_hold_yet() {
+    // The file says `stage: Draft` and `effort: 3`. A pull from another device set the record's
+    // `stage` to `Done`, and nothing wrote that into the file.
+    let pulled = concat!(
+        r#"{"title":"t","properties":{"stage":"Done","effort":3},"#,
+        r#""clock":{"device-a":2}}"#,
+    );
+    let (db, _dir) = open("props-mirror-pulled", pulled);
+    db.call_blocking(|conn| {
+        // The user edits `effort` on this device; the file's stale `stage` is not sent back.
+        let changed = object(json!({ "effort": 4 }));
+        assert!(mirror_file(conn, "note-1", changed, &[], DEVICE, NOW + 1)?);
+        assert_eq!(
+            pushed(conn)["properties"],
+            json!({ "stage": "Done", "effort": 4 })
+        );
+        Ok(())
+    })
+    .expect("mirror");
+}
