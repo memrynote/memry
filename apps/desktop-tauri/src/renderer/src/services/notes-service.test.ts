@@ -35,6 +35,7 @@ const commands = vi.hoisted(() => ({
   notesGetFolders: vi.fn(),
   notesCreateFolder: vi.fn(),
   notesRenameFolder: vi.fn(),
+  notesDeleteFolder: vi.fn(),
   notesGetFolderConfig: vi.fn(),
   notesSetFolderConfig: vi.fn(),
   notesGetFolderTemplate: vi.fn()
@@ -476,13 +477,6 @@ describe('notes-service', () => {
     expect(api.notes.addStatusOption).not.toHaveBeenCalled()
   })
 
-  it('forwards the methods later steps port to window.api.notes', async () => {
-    api.notes.deleteFolder = vi.fn().mockResolvedValue({ success: true })
-
-    await notesService.deleteFolder('Projects')
-    expect(api.notes.deleteFolder).toHaveBeenCalledWith('Projects')
-  })
-
   it("reads and writes folders through their commands, a failure in Electron's shape", async () => {
     commands.notesGetFolders.mockResolvedValue([{ path: 'Work', icon: null }])
     await expect(notesService.getFolders()).resolves.toEqual([{ path: 'Work', icon: null }])
@@ -513,6 +507,19 @@ describe('notes-service', () => {
     await expect(notesService.renameFolder('Work', 'Else')).resolves.toEqual({
       success: false,
       error: 'the journal'
+    })
+
+    commands.notesDeleteFolder.mockResolvedValueOnce(null)
+    await expect(notesService.deleteFolder('Work')).resolves.toEqual({ success: true })
+    expect(commands.notesDeleteFolder).toHaveBeenCalledWith('Work')
+    commands.notesDeleteFolder.mockRejectedValueOnce({
+      kind: 'storage',
+      code: 'trash_unavailable',
+      message: 'no bin'
+    })
+    await expect(notesService.deleteFolder('Work')).resolves.toEqual({
+      success: false,
+      error: 'no bin'
     })
 
     commands.notesGetFolderConfig.mockResolvedValueOnce({

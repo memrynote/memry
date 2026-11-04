@@ -403,6 +403,14 @@ const ported = {
       return failure(error)
     }
   },
+  deleteFolder: async (path: string) => {
+    try {
+      await commands.notesDeleteFolder(path)
+      return { success: true }
+    } catch (error) {
+      return failure(error)
+    }
+  },
   revealFolderInFinder: async (folderPath: string): Promise<void> => {
     await commands.notesRevealFolderInFinder(folderPath)
   },

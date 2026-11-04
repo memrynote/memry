@@ -4,6 +4,7 @@ pub mod apply_template;
 pub mod create;
 pub mod delete;
 pub mod error;
+pub mod folder_delete;
 pub mod folder_move;
 pub mod folders;
 pub mod frontmatter;

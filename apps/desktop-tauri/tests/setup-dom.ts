@@ -262,6 +262,13 @@ vi.mock('../src/generated/bindings', () => {
         if (result?.success === false) throw new Error(result.error ?? '')
         return null
       },
+      notesDeleteFolder: async (path: string) => {
+        const result = (await notes().deleteFolder(path)) as
+          | { success?: boolean; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return null
+      },
       notesRevealFolderInFinder: (folderPath: string) =>
         done(notes().revealFolderInFinder(folderPath)),
       notesGetFolderConfig: (folderPath: string) => notes().getFolderConfig(folderPath),

@@ -397,6 +397,12 @@ pub fn rename_prefix(
 /// Removes the row of a note. `false` when there was none.
 pub fn remove(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
+    let removed = remove_in(&tx, note_id)?;
+    tx.commit().map_err(failed).map(|()| removed)
+}
+
+/// [`remove`] in the caller's transaction.
+pub(crate) fn remove_in(tx: &Connection, note_id: &str) -> Result<bool, StorageError> {
     let removed = tx
         .execute(
             "DELETE FROM note_files WHERE note_id = ?1",
@@ -405,9 +411,8 @@ pub fn remove(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
         .map(|n| n > 0)
         .map_err(failed)?;
     // The marker and the file hash are file state of the same note: they go with the row.
-    crate::domain::owed_file_body::clear(&tx, note_id)?;
-    write_file_hash(&tx, note_id, None)?;
-    tx.commit().map_err(failed)?;
+    crate::domain::owed_file_body::clear(tx, note_id)?;
+    write_file_hash(tx, note_id, None)?;
     Ok(removed)
 }
 

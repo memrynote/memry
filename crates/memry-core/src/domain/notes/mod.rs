@@ -53,6 +53,8 @@ pub mod app_move;
 mod attachments;
 mod duplicate;
 #[cfg(feature = "markdown")]
+pub mod folder_delete;
+#[cfg(feature = "markdown")]
 pub mod identity;
 #[cfg(feature = "markdown")]
 pub mod journal_day;
