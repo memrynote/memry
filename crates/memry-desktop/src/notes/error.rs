@@ -191,10 +191,22 @@ impl From<MoveError> for NotesError {
     fn from(error: MoveError) -> Self {
         match error {
             MoveError::Begin(error) => error.into(),
+            // A file took a folder's name after the move's own look (`moves::free_target`): the
+            // folder is no folder of the vault. Windows says a folder below a file is not found.
+            MoveError::Folder(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::AlreadyExists
+                        | std::io::ErrorKind::NotADirectory
+                        | std::io::ErrorKind::NotFound
+                ) =>
+            {
+                Self::InvalidFolder
+            }
             MoveError::Io(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
                 Self::NameConflict
             }
-            MoveError::Io(error) => Self::Io(error),
+            MoveError::Folder(error) | MoveError::Io(error) => Self::Io(error),
         }
     }
 }
@@ -276,6 +288,31 @@ impl CoreError for NotesError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::vault::file_move::FileMove;
+    use crate::vault::watch::EchoGuard;
+
+    /// A file where the new folder goes is a folder the note cannot be moved into, never a
+    /// name another note holds.
+    #[test]
+    fn a_move_whose_folder_a_file_holds_fails_as_an_invalid_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("a.md");
+        std::fs::write(&source, "a note").unwrap();
+        std::fs::write(dir.path().join("taken"), "a file").unwrap();
+        for target in ["taken/a.md", "taken/deeper/a.md"] {
+            let target = dir.path().join(target);
+            let moved = FileMove {
+                source: &source,
+                target: &target,
+                source_rel: "a.md",
+                case_only: false,
+            }
+            .run(&EchoGuard::default());
+            let error = NotesError::from(MoveError::from(moved.unwrap_err()));
+            assert_eq!(error.kind_and_code().1, "invalid_folder", "{error:?}");
+        }
+        assert!(source.is_file());
+    }
 
     #[test]
     fn only_a_refusal_a_retry_can_pass_says_try_again_and_none_names_its_variant() {

@@ -3861,6 +3861,7 @@ dependencies = [
  "markup5ever 0.40.0",
  "md-5",
  "memry-core",
+ "memry-desktop",
  "memry-test-kit",
  "mime_guess",
  "notify",

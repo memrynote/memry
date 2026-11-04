@@ -117,8 +117,12 @@ live-os-secrets = []
 # `KeyringStore::new` returns an in-memory store while `MEMRY_E2E=1`, so a headless CI box with no
 # keyring never hangs. Never part of a release build (the e2e feature of memry-tauri).
 e2e = []
+# The test hooks of the note services (`NotesService::move_checked`, `fail_next_ref_feed`): the
+# crate's own tests turn it on (the dev-dependency on itself below); no app build does.
+test-hooks = []
 
 [dev-dependencies]
+memry-desktop = { path = ".", features = ["test-hooks"] }
 proptest = "1"
 memry-test-kit = { path = "../memry-test-kit" }
 tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "rt-multi-thread", "test-util"] }

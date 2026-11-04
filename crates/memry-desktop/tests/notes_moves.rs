@@ -25,7 +25,7 @@ use memry_desktop::vault::consumer::{Applied, ChangeSource, MoveKind};
 use vault_env::{Env, QUIET, env, indexed};
 
 /// An open vault with its first walk done, the notes service over its tier, and its store.
-fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
+pub(crate) fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
     let mut e = env(|store| {
         kept = Some(store.clone());
@@ -38,7 +38,7 @@ fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     (e, notes, store)
 }
 
-fn note(title: &str, folder: &str) -> NewNoteFile {
+pub(crate) fn note(title: &str, folder: &str) -> NewNoteFile {
     NewNoteFile {
         title: title.into(),
         content: format!("About {title}"),
@@ -49,7 +49,12 @@ fn note(title: &str, folder: &str) -> NewNoteFile {
 
 /// A file note (no step makes one yet; attachments will): `bytes` at `rel`, a record and a
 /// row with no hash, as a PDF's row is. The vault opens again so the tier knows the row.
-fn file_note(e: &mut Env, store: &Arc<dyn SecureStore>, rel: &str, bytes: &[u8]) -> String {
+pub(crate) fn file_note(
+    e: &mut Env,
+    store: &Arc<dyn SecureStore>,
+    rel: &str,
+    bytes: &[u8],
+) -> String {
     let title = rel.trim_end_matches(".pdf");
     fs::write(e.vault.join(rel), bytes).unwrap();
     let core = e.core();
@@ -96,7 +101,7 @@ fn query<T: Send + 'static>(
 }
 
 /// `(title, folder, deleted)` of the record.
-fn record(e: &Env, id: &str) -> (String, Option<String>, bool) {
+pub(crate) fn record(e: &Env, id: &str) -> (String, Option<String>, bool) {
     let sql = "SELECT title, folder_path, deleted_at IS NOT NULL FROM notes WHERE id = ?1";
     query(e, sql, id, |row| {
         Ok((row.get(0)?, row.get(1)?, row.get(2)?))
@@ -104,7 +109,7 @@ fn record(e: &Env, id: &str) -> (String, Option<String>, bool) {
     .remove(0)
 }
 
-fn note_count(e: &Env) -> i64 {
+pub(crate) fn note_count(e: &Env) -> i64 {
     query(e, "SELECT COUNT(*) FROM notes WHERE ?1 = ''", "", |row| {
         row.get(0)
     })[0]
@@ -133,14 +138,14 @@ fn order(e: &Env, folder: &str, paths: &[&str]) {
 }
 
 /// The app moves recorded and not finished or forgotten.
-fn pending(e: &Env, store: &Arc<dyn SecureStore>) -> Vec<(String, Recorded)> {
+pub(crate) fn pending(e: &Env, store: &Arc<dyn SecureStore>) -> Vec<(String, Recorded)> {
     let writer = e.core().notes_writer(store.clone()).unwrap();
     writer.pending_app_moves().unwrap()
 }
 
 /// The row facts once the watcher had time to report what the app did, but the app's own
 /// writes of a body: a watcher fact among them is the app's move taken for an outside one.
-fn row_facts(e: &mut Env) -> Vec<Applied> {
+pub(crate) fn row_facts(e: &mut Env) -> Vec<Applied> {
     std::thread::sleep(QUIET);
     e.drain()
         .into_iter()
@@ -315,7 +320,9 @@ fn a_folder_the_vault_would_lose_the_note_in_is_refused() {
     let open = e.session.current().unwrap();
     let made = notes.create(&open, note("Plan", "work")).unwrap();
     let windows_only: &[&str] = if cfg!(windows) {
-        &["a:b", "a\\b", "x."]
+        &[
+            "a:b", "a\\b", "x.", "con", "AUX", "nul.x", "a/com1", "lpt9 ",
+        ]
     } else {
         &[]
     };

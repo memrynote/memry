@@ -15,6 +15,7 @@
 //! watcher never reports it back as an outside edit or an outside delete.
 
 use std::path::Path;
+#[cfg(feature = "test-hooks")]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -46,6 +47,7 @@ pub struct NotesService {
     /// aside and before it lands ([`Self::before_next_day_file_lands`]).
     pub(crate) day_file_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
     /// Test hook: the next moved note's refs edit fails its feed (`AppEdit::fail_next_feed`).
+    #[cfg(feature = "test-hooks")]
     pub(crate) fail_next_ref_feed: AtomicBool,
 }
 
@@ -69,6 +71,7 @@ impl NotesService {
             own_files: OwnFiles::default(),
             undos: Undos::default(),
             day_file_lands: Mutex::new(None),
+            #[cfg(feature = "test-hooks")]
             fail_next_ref_feed: AtomicBool::new(false),
         })
     }
@@ -90,6 +93,7 @@ impl NotesService {
 
     /// Test hook: the next moved note's refs edit fails its feed, as for a document that does
     /// not load, so its file is written and the watcher brings it in.
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn fail_next_ref_feed(&self) {
         self.fail_next_ref_feed.store(true, Ordering::Relaxed);
