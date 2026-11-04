@@ -650,6 +650,151 @@ jobs:
           path: shots/
           if-no-files-found: warn
 
+  # Proof mode: M4 through Restart to install (`restart=true`), clicked in the open vault's update
+  # popover. A relaunch of the old bundle mid-install shows the splash and exits, and the updater
+  # then starts the new build itself, with nothing left for the user to do.
+  proof-tauri-macos-restart:
+    name: M4r proof (Restart to install and relaunch guard, macOS arm64)
+    needs: validate
+    if: inputs.tauri_base != ''
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Restart to install, then relaunch mid-install
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          app=/Applications/MemryNote.app
+          data="$HOME/Library/Application Support/com.memrynote.memry"
+          vault="$HOME/Rehearsal Vault"
+          logs() { cat "$HOME"/Library/Logs/com.memrynote.memry/*.log 2>/dev/null || true; }
+          count() { logs | grep -cF "$1" || true; }
+          wait_log() { for _ in $(seq 1 "$2"); do logs | grep -F "$1" >/dev/null && return 0; sleep 1; done; logs | grep -E 'Updater|UpdateInstallMarker' | tail -20; return 1; }
+          # The token: see M4.
+          launch() { open --env "MEMRY_REHEARSAL_FEED_TOKEN=$GH_TOKEN" "$app"; }
+          installed() { grep -E '<version>' "$app/Contents/Resources/sq.version"; }
+          # Presses the first button of the app's windows whose accessible name matches $1, through
+          # System Events (osascript holds Accessibility on GitHub's macOS images).
+          press() {
+            osascript -l JavaScript - "$1" "$2" <<'JXA'
+          function run([pattern, seconds]) {
+            const wanted = new RegExp(pattern)
+            const events = Application('System Events')
+            const until = Date.now() + Number(seconds) * 1000
+            // An element without the attribute throws.
+            const read = (attribute) => {
+              try {
+                return attribute() ?? ''
+              } catch (error) {
+                return ''
+              }
+            }
+            let seen = []
+            while (Date.now() < until) {
+              seen = []
+              const app = events.processes.whose({ name: 'MemryNote' })
+              for (const window of app.length > 0 ? app[0].windows() : []) {
+                for (const element of window.entireContents()) {
+                  // A popover trigger (`aria-haspopup`) is an AXPopUpButton in WebKit.
+                  if (!['AXButton', 'AXPopUpButton'].includes(read(() => element.role()))) continue
+                  const label = [() => element.name(), () => element.description(), () => element.title()]
+                    .map(read)
+                    .filter(Boolean)
+                    .join(' | ')
+                  seen.push(label)
+                  if (wanted.test(label)) {
+                    element.actions.byName('AXPress').perform()
+                    return `pressed: ${label}`
+                  }
+                }
+              }
+              delay(1)
+            }
+            throw new Error(`no button matches ${pattern}; buttons: ${JSON.stringify(seen)}`)
+          }
+          JXA
+          }
+          updater=""
+          finish() {
+            status=$?
+            [ -z "$updater" ] || kill -CONT "$updater" 2>/dev/null || true
+            [ "$status" -eq 0 ] || logs | grep -E 'Updater|UpdateInstallMarker|startup|Window|Shutdown' | tail -60
+          }
+          trap finish EXIT
+          mkdir -p shots "$data" "$vault/.memry"
+          gh release download "rehearsal-$TAURI_BASE" --repo "$FEED_REPO" -p "MemryNote-$TAURI_BASE-arm64.zip" -D base
+          ditto -x -k "base/MemryNote-$TAURI_BASE-arm64.zip" /Applications
+          # An open vault, so the sidebar's settings gear carries the update popover.
+          jq -n --arg vault "$vault" '{currentVault: $vault, vaults: [{path: $vault, name: "Rehearsal Vault", noteCount: 0, taskCount: 0, lastOpened: (now | todate), isDefault: true}], updater: {autoDownload: true}}' > "$data/memry-config.json"
+          launch
+          wait_log 'main window shown' 120
+          wait_log "velopack: downloaded $VERSION" 600
+
+          echo "::group::Restart to install"
+          sleep 3
+          screencapture -x shots/0-vault.png || true
+          # A fresh profile opens the welcome tour, which hides the rest of the window from AX.
+          press '^Close \|' 30
+          sleep 1
+          screencapture -x shots/0-tour-closed.png || true
+          press 'Update ready' 60
+          sleep 1
+          screencapture -x shots/1-popover.png || true
+          press '^Restart now' 30
+          # Held as in M4, so the relaunch lands mid-install every time.
+          for _ in $(seq 1 600); do updater="$(pgrep -n -x UpdateMac || true)"; [ -n "$updater" ] && break; sleep 0.05; done
+          [ -n "$updater" ] || { echo "::error::Restart to install started no updater"; exit 1; }
+          kill -STOP "$updater"
+          ps -o pid,stat,command -p "$updater"
+          for _ in $(seq 1 300); do pgrep -x MemryNote >/dev/null || break; sleep 0.1; done
+          if pgrep -x MemryNote >/dev/null; then echo "::error::the app did not exit for the install"; exit 1; fi
+          logs | grep -F "velopack: applying $VERSION silent=true restart=true"
+          cat "$data/pending-update-install.json"; echo
+          echo "::endgroup::"
+
+          echo "::group::Relaunch mid-install: the open-again splash, then exit"
+          shown="$(count 'main window shown')"
+          halted="$(count 'boot halted')"
+          splashes="$(count 'installing splash shown')"
+          opened="$(date +%s)"
+          launch
+          for n in 1 2 3 4 5 6; do sleep 0.6; screencapture -x "shots/2-splash-$n.png" || true; done
+          # The guarded launch exits 2 s after its splash shows (see M4).
+          while pgrep -x MemryNote >/dev/null && [ $(($(date +%s) - opened)) -lt 12 ]; do sleep 0.1; done
+          if pgrep -x MemryNote >/dev/null; then echo "::error::the guarded launch is still running"; exit 1; fi
+          [ "$(count 'boot halted')" -gt "$halted" ] || { echo "::error::the guarded launch did not halt its boot"; exit 1; }
+          [ "$(count 'installing splash shown')" -gt "$splashes" ] || { echo "::error::the guarded launch showed no splash"; exit 1; }
+          [ "$(count 'main window shown')" -eq "$shown" ] || { echo "::error::the guarded launch showed the main window"; exit 1; }
+          wait_log "pending update install in flight on launch (updater running, started as $TAURI_BASE); showing the open-again splash" 10
+          installed | grep -F "$TAURI_BASE"
+          echo "::endgroup::"
+
+          echo "::group::The updater swaps the bundle and starts the new build, with no second click"
+          kill -CONT "$updater"
+          updater=""
+          for _ in $(seq 1 90); do installed | grep -qF "$VERSION" && break; sleep 1; done
+          installed | grep -F "$VERSION"
+          # Nothing here opens the app: the updater's restart does.
+          wait_log "velopack: current=$VERSION" 120
+          wait_log "the update from $TAURI_BASE applied (installer velopack)" 60
+          for _ in $(seq 1 60); do [ "$(count 'main window shown')" -gt "$shown" ] && break; sleep 1; done
+          [ "$(count 'main window shown')" -gt "$shown" ] || { echo "::error::the new build showed no main window"; exit 1; }
+          pgrep -x MemryNote >/dev/null || { echo "::error::nothing runs after the install"; exit 1; }
+          [ "$(count 'update install did not apply')" -eq 0 ] || { echo "::error::the install was reported as failed"; exit 1; }
+          [ ! -e "$data/pending-update-install.json" ]
+          [ ! -e "$data/update-install-attempt.json" ]
+          sleep 3
+          screencapture -x shots/3-updated.png || true
+          echo "::endgroup::"
+          logs | grep -E 'Updater|UpdateInstallMarker|relaunch' | tail -30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m4r-screenshots
+          path: shots/
+          if-no-files-found: warn
+
   proof-tauri-linux:
     name: L2 proof (Tauri to Tauri, AppImage)
     needs: validate

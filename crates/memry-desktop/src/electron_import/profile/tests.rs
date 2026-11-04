@@ -98,6 +98,8 @@ fn migrated_profile_with_legacy_symlink_uses_legacy_name() {
         .unwrap();
     assert_eq!(profile.dir, new_dir);
     assert_eq!(names(&profile), [LEGACY_APP_NAME, MEMRYNOTE_APP_NAME]);
+    // The link is the same directory, not a second profile.
+    assert!(profile.other_candidates.is_empty());
 }
 
 #[test]
@@ -120,6 +122,66 @@ fn both_real_prefers_memrynote() {
         .unwrap()
         .unwrap();
     assert_eq!(profile.dir, root.path().join("memrynote"));
+}
+
+/// #3822: the Electron app on Windows kept `@memry\desktop` and wrote only `logs` under
+/// `memrynote`; a stray file there (an `.updaterId`) hid the real profile and its install marker.
+#[test]
+fn a_stray_file_in_memrynote_does_not_hide_the_legacy_profile() {
+    for host in [HostOs::Windows, HostOs::MacOs, HostOs::Linux] {
+        let root = tempfile::tempdir().unwrap();
+        let stray = root.path().join("memrynote");
+        fs::create_dir_all(stray.join("logs")).unwrap();
+        fs::write(stray.join(".updaterId"), "id").unwrap();
+        let old = legacy(root.path());
+        make_profile(&old);
+        fs::write(old.join("update-install-attempt.json"), "{}").unwrap();
+        let profile = locate_profile(&env(root.path(), host)).unwrap().unwrap();
+        assert_eq!(profile.dir, old, "{host:?}");
+        assert!(profile.other_candidates.is_empty(), "{host:?}");
+    }
+}
+
+#[test]
+fn a_stray_file_in_the_legacy_directory_does_not_beat_memrynote() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = root.path().join("memrynote");
+    fs::create_dir_all(dir.join("Local Storage/leveldb")).unwrap();
+    let old = legacy(root.path());
+    fs::create_dir_all(&old).unwrap();
+    fs::write(old.join(".updaterId"), "id").unwrap();
+    let profile = locate_profile(&env(root.path(), HostOs::Windows))
+        .unwrap()
+        .unwrap();
+    assert_eq!(profile.dir, dir);
+    assert!(profile.other_candidates.is_empty());
+}
+
+/// Electron boots into `memrynote` when both exist; the legacy directory's data is reported, not
+/// read, so Step 37 can surface it.
+#[test]
+fn a_legacy_profile_with_memry_files_beside_memrynote_is_reported() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = root.path().join("memrynote");
+    make_profile(&dir);
+    let old = legacy(root.path());
+    make_profile(&old);
+    let profile = locate_profile(&env(root.path(), HostOs::MacOs))
+        .unwrap()
+        .unwrap();
+    assert_eq!(profile.dir, dir);
+    assert_eq!(profile.other_candidates, [old]);
+}
+
+#[test]
+fn a_memrynote_profile_without_memry_files_is_still_found_alone() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = root.path().join("memrynote");
+    fs::create_dir_all(dir.join("Local Storage/leveldb")).unwrap();
+    let profile = locate_profile(&env(root.path(), HostOs::MacOs))
+        .unwrap()
+        .unwrap();
+    assert_eq!(profile.dir, dir);
 }
 
 #[test]
