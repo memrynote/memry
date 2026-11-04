@@ -9,7 +9,7 @@ use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::journal;
-use crate::domain::notes::app_move::{self, AppMoved, BeginError, Recorded};
+use crate::domain::notes::app_move::{self, AppMoved, BeginError, FolderRecorded, Recorded};
 use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::domain::notes::{self, NewNote};
@@ -153,6 +153,45 @@ impl NotesWriter {
     pub fn begin_app_move(&self, note_id: &str, moved: AppMoved<'_>) -> Result<(), BeginError> {
         self.db
             .call_blocking(move |conn| Ok(app_move::begin(conn, note_id, &moved)))?
+    }
+
+    /// Records the move of a folder the app moves and of every note in it, all or none
+    /// ([`app_move::begin_folder`]). Only the vault tier's rows' lane calls it.
+    pub fn begin_folder_move(
+        &self,
+        from: &str,
+        to: &str,
+        moves: &[(&str, AppMoved<'_>)],
+    ) -> Result<(), BeginError> {
+        self.db
+            .call_blocking(move |conn| Ok(app_move::begin_folder(conn, from, to, moves)))?
+    }
+
+    /// Every folder's record of an app move never finished or forgotten
+    /// ([`app_move::pending_folders`]).
+    pub fn pending_folder_moves(&self) -> Result<Vec<FolderRecorded>, StorageError> {
+        self.db.read_blocking(app_move::pending_folders)
+    }
+
+    /// Forgets the folder's record of the move from `from` to `to`
+    /// ([`app_move::abandon_folder`]). Only the vault tier's rows' lane calls it.
+    pub fn abandon_folder_move(&self, from: &str, to: &str) -> Result<bool, StorageError> {
+        self.db
+            .call_blocking(move |conn| app_move::abandon_folder(conn, from, to))
+    }
+
+    /// The folder `from` moved to `to` with its notes: records, rows, folder records and
+    /// manual order follow in one transaction ([`app_move::folder_moved_by_app`]).
+    pub fn folder_moved_by_app(
+        &self,
+        from: &str,
+        to: &str,
+        moves: &[(&str, AppMoved<'_>)],
+    ) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            app_move::folder_moved_by_app(conn, from, to, moves, &device_id, now_ms())
+        })
     }
 
     /// Every note's record of an app move never finished or forgotten

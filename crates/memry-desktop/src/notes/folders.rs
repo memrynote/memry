@@ -113,7 +113,7 @@ fn recorded_icon(open: &OpenVault, folder: &str) -> Result<Option<Option<String>
 /// `createTreeFolderFilter`: hides the attachments and canvases folders and the first folder
 /// of each exclude pattern by their first segment, and the journal folder's subtree unless the
 /// journal is shown in the sidebar.
-fn tree_filter(root: &Path) -> impl Fn(&str) -> bool {
+pub(super) fn tree_filter(root: &Path) -> impl Fn(&str) -> bool {
     let config = read_vault_config(root);
     let hidden: Vec<String> = [ATTACHMENTS_DIR.to_owned(), CANVAS_DIR.to_owned()]
         .into_iter()
@@ -198,7 +198,7 @@ fn file_of(root: &Path, folder: &str) -> Option<folder_file::FolderFile> {
 /// A folder the renderer names (`""` is the vault root), as a plain path inside the vault. One
 /// under a file is no folder; the disk would say so in its own words (`ENOTDIR` on Unix, not
 /// found on Windows).
-fn vault_folder(root: &Path, folder: &str) -> Result<String, NotesError> {
+pub(super) fn vault_folder(root: &Path, folder: &str) -> Result<String, NotesError> {
     let folder = plain_folder(folder)?;
     if folder.is_empty() {
         return Ok(folder);
@@ -235,7 +235,7 @@ fn under_a_file(root: &Path, folder: &str) -> io::Result<bool> {
 /// case-blind disk (macOS, Windows) would create into that one while the record names this
 /// spelling, a folder the other devices then hold twice. The same name in another Unicode
 /// form is the same name.
-fn respells_a_sibling(root: &Path, folder: &str) -> io::Result<bool> {
+pub(super) fn respells_a_sibling(root: &Path, folder: &str) -> io::Result<bool> {
     let mut dir = root.to_path_buf();
     for segment in folder.split('/') {
         let entries = match fs::read_dir(&dir) {

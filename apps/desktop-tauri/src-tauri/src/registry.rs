@@ -62,6 +62,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::folders::notes_get_folder_config::<Wry>,
             crate::commands::folders::notes_get_folder_template::<Wry>,
             crate::commands::folders::notes_get_folders::<Wry>,
+            crate::commands::folders::notes_rename_folder::<Wry>,
             crate::commands::folders::notes_reveal_folder_in_finder,
             crate::commands::folders::notes_set_folder_config::<Wry>,
             crate::commands::notes::notes_create::<Wry>,

@@ -43,7 +43,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use super::fs_atomic::{RETRY_DELAYS_MS, is_transient, rename_no_replace, with_transient_retry};
+use super::fs_atomic::{
+    RETRY_DELAYS_MS, is_transient, rename_no_replace, sync_dir, with_transient_retry,
+};
 use super::move_journal::{ID_LEN, Journaled, STAGING_PREFIX, vault_relative};
 
 mod put_back;
@@ -161,8 +163,28 @@ pub fn move_dir(vault: &Path, from: &Path, to: &Path) -> io::Result<()> {
 
 /// [`move_dir`] with a hook that runs before every step and can fail it, so a test can make
 /// a step fail as Windows does.
+///
+/// On disk before it returns `Ok`, so a record written after it never names a move a power cut
+/// undoes: the target's and the source's folders are synced once the folder moved (Unix; a
+/// folder that cannot be synced is logged, [`sync_dir`]), as a file's move is
+/// (`file_move::FileMove::run`).
 #[doc(hidden)]
 pub fn move_dir_checked(
+    vault: &Path,
+    from: &Path,
+    to: &Path,
+    hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
+) -> io::Result<()> {
+    move_tree(vault, from, to, hook)?;
+    let (to, from) = (to.parent(), from.parent());
+    to.into_iter().for_each(sync_dir);
+    from.filter(|from| Some(*from) != to)
+        .into_iter()
+        .for_each(sync_dir);
+    Ok(())
+}
+
+fn move_tree(
     vault: &Path,
     from: &Path,
     to: &Path,

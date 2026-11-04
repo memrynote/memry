@@ -7,6 +7,12 @@
 //! entry) or until it is evicted, oldest first, past [`CAPACITY`]. An evicted entry costs one
 //! redundant event, which the consumer's own hash check settles.
 //!
+//! A folder the app moves away whole is one record for the folder and everything below it
+//! ([`EchoGuard::will_remove_tree`]): an entry-wise move (#2206) reports each entry's going, and
+//! one record per note would crowd out the oldest entries past [`CAPACITY`]. Until the mover says
+//! the folder is gone ([`EchoGuard::removed_tree`]) no sighting ends it, since the folder is
+//! still there while its entries leave; after that, it ends as a folder's record does.
+//!
 //! A removal's record (a file or a folder the app removes or moves away) lives while the app's
 //! removal is all the watcher could see of that path: it ends once the path is seen present
 //! again, or a folder that holds it is seen back with it, or a rescan, which stands in for
@@ -24,6 +30,21 @@ pub const CAPACITY: usize = 4096;
 enum Expected {
     Hash(String),
     Gone,
+    /// The path and everything below it; `settled` once the mover saw it go.
+    GoneTree {
+        settled: bool,
+    },
+}
+
+impl Expected {
+    /// A removal record that a sighting of its path, back on disk, ends.
+    fn ends_when_seen(&self) -> bool {
+        matches!(self, Self::Gone | Self::GoneTree { settled: true })
+    }
+
+    fn is_removal(&self) -> bool {
+        matches!(self, Self::Gone | Self::GoneTree { .. })
+    }
 }
 
 #[derive(Default)]
@@ -80,6 +101,32 @@ impl EchoGuard {
         self.lock().put(path, Expected::Gone);
     }
 
+    /// The app is about to move the folder `path` away with everything below it (module doc).
+    pub fn will_remove_tree(&self, path: &str) {
+        self.lock().put(path, Expected::GoneTree { settled: false });
+    }
+
+    /// The folder told with [`Self::will_remove_tree`] is gone: a sighting of it from now on is
+    /// the folder back, which ends the record.
+    pub fn removed_tree(&self, path: &str) {
+        if let Some(Expected::GoneTree { settled }) = self.lock().by_path.get_mut(path) {
+            *settled = true;
+        }
+    }
+
+    /// The move told with [`Self::will_remove_tree`] did not happen, or only in part: `still_gone`
+    /// keeps a record each, and the folder's record ends, as one step, so no absence below the
+    /// folder goes unrecorded in between.
+    pub fn narrow_tree(&self, path: &str, still_gone: impl IntoIterator<Item = String>) {
+        let mut state = self.lock();
+        for gone in still_gone {
+            state.put(&gone, Expected::Gone);
+        }
+        if matches!(state.by_path.get(path), Some(Expected::GoneTree { .. })) {
+            state.forget(path);
+        }
+    }
+
     /// The app removes or moves away `path` with `remove`, recorded as one step with it: the
     /// watcher, ending records in [`Self::seen_file`] and [`Self::seen_folder`], sees the path
     /// before both or after both. A failed `remove` withdraws the record. The lock is held for
@@ -110,7 +157,7 @@ impl EchoGuard {
                 state.forget(path);
                 false
             }
-            Some(Expected::Gone) | None => false,
+            Some(Expected::Gone | Expected::GoneTree { .. }) | None => false,
         }
     }
 
@@ -118,7 +165,12 @@ impl EchoGuard {
     /// at the disk, under the lock) still finds it: a later delete of it is not the app's.
     pub fn seen_file(&self, path: &str, there: impl Fn(&str) -> bool) {
         let mut state = self.lock();
-        if state.by_path.get(path) == Some(&Expected::Gone) && there(path) {
+        if state
+            .by_path
+            .get(path)
+            .is_some_and(Expected::ends_when_seen)
+            && there(path)
+        {
             state.forget(path);
         }
     }
@@ -143,7 +195,7 @@ impl EchoGuard {
         let ended: Vec<String> = state
             .by_path
             .iter()
-            .filter(|(at, what)| **what == Expected::Gone && of(at))
+            .filter(|(at, what)| what.ends_when_seen() && of(at))
             .map(|(at, _)| at.clone())
             .filter(|at| there(at))
             .collect();
@@ -156,15 +208,22 @@ impl EchoGuard {
     /// reported after all: an absence seen from now on is not the app's.
     pub fn cancel_removal(&self, path: &str) {
         let mut state = self.lock();
-        if state.by_path.get(path) == Some(&Expected::Gone) {
+        if state.by_path.get(path).is_some_and(Expected::is_removal) {
             state.forget(path);
         }
     }
 
-    /// `path` was seen missing. True when the app removed it.
+    /// `path` was seen missing. True when the app removed it, or a folder above it.
     pub fn absorbs_removal(&self, path: &str) -> bool {
         let mut state = self.lock();
-        if state.by_path.get(path) == Some(&Expected::Gone) {
+        if state.by_path.get(path).is_some_and(Expected::is_removal) {
+            return true;
+        }
+        let in_a_tree = path
+            .match_indices('/')
+            .map(|(at, _)| &path[..at])
+            .any(|folder| matches!(state.by_path.get(folder), Some(Expected::GoneTree { .. })));
+        if in_a_tree {
             return true;
         }
         state.forget(path);
@@ -271,6 +330,37 @@ mod tests {
         for (path, kept) in kept {
             assert_eq!(echo.absorbs_removal(path), kept, "{path}");
         }
+    }
+
+    #[test]
+    fn a_tree_record_absorbs_everything_below_it_and_no_sighting_ends_it_mid_move() {
+        let echo = EchoGuard::default();
+        echo.will_remove_tree("Work");
+        for path in ["Work", "Work/Plan.md", "Work/Sub/Deep.md"] {
+            assert!(echo.absorbs_removal(path), "{path}");
+        }
+        assert!(!echo.absorbs_removal("Workshop/a.md"));
+        // The folder is still there while its entries leave: neither a rescan nor its sighting
+        // ends the record before the mover says it is gone.
+        echo.seen_all(on_disk);
+        echo.seen_folder("Work", on_disk);
+        echo.seen_file("Work", on_disk);
+        assert!(echo.absorbs_removal("Work/Plan.md"));
+
+        echo.removed_tree("Work");
+        echo.seen_folder("Work", on_disk);
+        assert!(!echo.absorbs_removal("Work/Plan.md"), "the folder is back");
+        assert!(!echo.absorbs_removal("Work"));
+    }
+
+    #[test]
+    fn a_narrowed_tree_record_keeps_only_what_is_still_gone() {
+        let echo = EchoGuard::default();
+        echo.will_remove_tree("Work");
+        echo.narrow_tree("Work", ["Work/Staged.md".to_owned()]);
+        assert!(echo.absorbs_removal("Work/Staged.md"));
+        assert!(!echo.absorbs_removal("Work/Plan.md"));
+        assert!(!echo.absorbs_removal("Work"));
     }
 
     #[test]

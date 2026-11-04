@@ -1,6 +1,7 @@
 //! The folder commands through the IPC a renderer calls, on a mock app over a real vault and
-//! vault tier (#3530 13h-1b): the argument names the generated bindings send, a created folder
-//! and its settings read back, and a refused create or write reaching the renderer by its code.
+//! vault tier (#3530 13h-1b, 13h-2): the argument names the generated bindings send, a created
+//! folder, its settings and its rename read back, and a refusal reaching the renderer by its
+//! code.
 
 use std::collections::HashMap;
 use std::fs;
@@ -95,6 +96,7 @@ fn opened() -> Fixture {
             memry_tauri::commands::folders::notes_get_folder_config::<MockRuntime>,
             memry_tauri::commands::folders::notes_get_folder_template::<MockRuntime>,
             memry_tauri::commands::folders::notes_get_folders::<MockRuntime>,
+            memry_tauri::commands::folders::notes_rename_folder::<MockRuntime>,
             memry_tauri::commands::folders::notes_set_folder_config::<MockRuntime>,
         ]);
     let app = mock_builder()
@@ -166,6 +168,18 @@ fn a_folder_created_and_set_through_the_ipc_reads_back() {
         ),
         Ok(json!("daily"))
     );
+
+    let renamed = f.invoke(
+        "notes_rename_folder",
+        json!({ "oldPath": "Work/Plans", "newPath": "Work/Later" }),
+    );
+    assert_eq!(renamed, Ok(Value::Null));
+    assert!(f.vault.join("Work/Later").is_dir());
+    let gone = f.invoke(
+        "notes_rename_folder",
+        json!({ "oldPath": "Work/Plans", "newPath": "Work/Again" }),
+    );
+    assert_eq!(gone.unwrap_err()["code"], "folder_not_found");
 }
 
 #[test]

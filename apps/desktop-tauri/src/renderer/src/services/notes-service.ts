@@ -378,10 +378,18 @@ const ported = {
   },
   getCalendarPropertyNames: (): Promise<string[]> => commands.notesGetCalendarPropertyNames(),
   getFolders: (): Promise<FolderInfo[]> => commands.notesGetFolders(),
-  // A failed create or config write answers as Electron's handlers do.
+  // A failed create, rename or config write answers as Electron's handlers do.
   createFolder: async (path: string) => {
     try {
       await commands.notesCreateFolder(path)
+      return { success: true }
+    } catch (error) {
+      return failure(error)
+    }
+  },
+  renameFolder: async (oldPath: string, newPath: string) => {
+    try {
+      await commands.notesRenameFolder(oldPath, newPath)
       return { success: true }
     } catch (error) {
       return failure(error)

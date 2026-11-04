@@ -110,6 +110,8 @@ mod note_mentions;
 mod notes_apply_template;
 #[path = "notes_create_template.rs"]
 mod notes_create_template;
+#[path = "notes_folder_move.rs"]
+mod notes_folder_move;
 #[path = "notes_folders.rs"]
 mod notes_folders;
 #[path = "notes_identity.rs"]
