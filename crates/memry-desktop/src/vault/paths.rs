@@ -48,9 +48,10 @@ const HARD_LINK_RETRY_MS: [u64; 4] = [10, 30, 50, 60];
 
 /// `openVaultFile`: the file, or `None` when missing.
 ///
-/// A create puts the new file in place with a hard link and then drops the temp name, so for a
-/// moment a file this app is creating has two links. A reader that lands in that window would
-/// take it for a hard-linked file, so it looks again a few times before it says so.
+/// A create on a volume with no exclusive rename puts the new file in place with a hard link and
+/// then drops the temp name (`fs_atomic`), so for a moment a file this app is creating has two
+/// links. A reader that lands in that window would take it for a hard-linked file, so it looks
+/// again a few times before it says so.
 pub fn open_vault_file(vault: &Path, rel: &str) -> Result<Option<File>, OpenError> {
     let mut delays = HARD_LINK_RETRY_MS.into_iter();
     loop {

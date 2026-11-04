@@ -239,9 +239,10 @@ fn a_hard_linked_note_is_refused_with_its_own_error_and_both_names_keep_their_by
     );
 }
 
-/// A create links the new file into place and then drops the temp name. A reader in that
-/// window sees a second link on a file nobody linked, and must look again, not fail. The temp
-/// name goes when the reader first refuses the file ([`on_warning`]), never by the clock.
+/// A create on a volume with no exclusive rename links the new file into place and then drops
+/// the temp name. A reader in that window sees a second link on a file nobody linked, and must
+/// look again, not fail. The temp name goes when the reader first refuses the file
+/// ([`on_warning`]), never by the clock.
 #[test]
 fn a_reader_in_the_create_window_waits_for_the_temp_link_to_go() {
     let dir = tempfile::tempdir().unwrap();
