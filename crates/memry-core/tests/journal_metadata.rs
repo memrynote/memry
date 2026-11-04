@@ -10,6 +10,7 @@
 //! | a write equal to the stored value writes nothing   | no clock tick, no push  |
 //! | a retype is refused and a tombstone revives        | FR-048, D2              |
 //! | desktop's first write opens the day with its fields | D2, `createJournalEntry` |
+//! | desktop's update replaces the properties           | `updateJournalEntry`    |
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::journal_ops::{metadata, reads};
@@ -549,4 +550,38 @@ fn a_deleted_day_opened_with_no_fields_pushes_no_deleted_content() {
         Ok(())
     })
     .expect("revive");
+}
+
+#[test]
+fn desktop_s_mirror_of_a_saved_days_tags_never_revives_a_day_deleted_meanwhile() {
+    let db = open("set-live-tags");
+    db.call_blocking(|conn| {
+        let stored = json!({"date": DAY, "tags": ["work"], "clock": {"device-b": 1}});
+        sync_items::apply_remote(conn, &remote("live-day", stored), NOW)?;
+        let tags = vec!["work".to_owned(), "daily".to_owned()];
+        assert_eq!(
+            metadata::set_live_tags(conn, DAY, &tags, DEVICE, NOW + 1)?,
+            tags
+        );
+        assert_eq!(
+            payload_of(conn, "live-day")["tags"],
+            json!(["work", "daily"])
+        );
+
+        assert!(memry_core::domain::journal::delete_day(
+            conn,
+            DAY,
+            DEVICE,
+            NOW + 2
+        )?);
+        let before = queued(conn);
+        metadata::set_live_tags(conn, DAY, &tags, DEVICE, NOW + 3)?;
+        assert!(
+            reads::stamp(conn, DAY)?.is_none(),
+            "the deleted day stays deleted"
+        );
+        assert_eq!(queued(conn), before);
+        Ok(())
+    })
+    .expect("set live tags");
 }

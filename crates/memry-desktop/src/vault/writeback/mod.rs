@@ -119,7 +119,7 @@
 //! row or no file for is not created: the note records create files (Step 13).
 
 mod deleted;
-mod journal;
+pub(crate) mod journal;
 mod pass;
 mod reconcile;
 mod schedule;

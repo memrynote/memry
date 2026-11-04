@@ -86,6 +86,8 @@ mod journal_format_vectors;
 mod journal_rename;
 #[path = "journal_service.rs"]
 mod journal_service;
+#[path = "journal_update.rs"]
+mod journal_update;
 #[path = "logging.rs"]
 mod logging;
 #[path = "logship.rs"]

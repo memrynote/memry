@@ -239,7 +239,7 @@ impl NotesService {
 
     /// Each defined property's type, by name: `properties.md`, then the records. Without them
     /// (the file or the records unreadable) every type is inferred from its value.
-    pub(super) fn definition_types(&self, open: &OpenVault) -> HashMap<String, String> {
+    pub(crate) fn definition_types(&self, open: &OpenVault) -> HashMap<String, String> {
         let listed = open
             .vault
             .property_definition_records(self.store.clone())
@@ -267,19 +267,6 @@ impl NotesService {
             }
         }
     }
-}
-
-/// The record's side of a frontmatter edit from `read` to `next`, the values as stored by the
-/// definitions' `types`: the keys it set and the keys it dropped ([`delta`]).
-pub(super) fn property_delta(
-    read: &YamlMap,
-    next: &YamlMap,
-    types: &HashMap<String, String>,
-) -> (Map<String, Value>, Vec<String>) {
-    delta(
-        &stored(&indexed(&user_properties(read), types)),
-        &stored(&indexed(&user_properties(next), types)),
-    )
 }
 
 /// Gives the record the keys a file edit set and dropped, under the lane once the file holds
@@ -311,6 +298,20 @@ fn stored(properties: &[IndexedProperty]) -> Map<String, Value> {
         .iter()
         .map(|p| (p.name.clone(), p.value.clone()))
         .collect()
+}
+
+/// What the record takes from a frontmatter edit from `read` to `next`, under the lane once the
+/// file holds it: [`delta`] of their property values as stored, for
+/// `NotesWriter::file_properties`. For a writer already inside the note's turn (a journal
+/// save), which cannot take [`NotesService::set_properties`]' turn.
+pub(crate) fn file_delta(
+    read: &YamlMap,
+    next: &YamlMap,
+    types: &HashMap<String, String>,
+) -> (Map<String, Value>, Vec<String>) {
+    let held = stored(&indexed(&user_properties(read), types));
+    let after = stored(&indexed(&user_properties(next), types));
+    delta(&held, &after)
 }
 
 /// The keys an edit set (new or with another value) and the keys it dropped, from the values
