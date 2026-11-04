@@ -96,6 +96,11 @@ pub struct Check {
     /// How long the bootstrapper ran, when it ran.
     pub bootstrapper_ran: Option<Duration>,
     pub bootstrapper_error: Option<String>,
+    /// Why the check ran without the lock that keeps a second launch from installing at the same
+    /// time. The caller sets it.
+    pub lock_warning: Option<String>,
+    /// The installing notice was still on screen after the bootstrapper ended. The caller sets it.
+    pub notice_stuck: bool,
 }
 
 impl Check {
@@ -118,6 +123,15 @@ impl Check {
         }
         if let Some(error) = &self.bootstrapper_error {
             tracing::warn!(scope = "WebView2", "bootstrapper failed: {error}");
+        }
+        if self.notice_stuck {
+            tracing::warn!(
+                scope = "WebView2",
+                "the installing notice did not close; it stays until dismissed"
+            );
+        }
+        if let Some(warning) = &self.lock_warning {
+            tracing::warn!(scope = "WebView2", "{warning}");
         }
         match self.outcome {
             Outcome::Present | Outcome::Installed => {
@@ -156,6 +170,8 @@ pub fn ensure(runtime: &impl Runtime, bootstrapper: &Path) -> Check {
         bootstrapper: bootstrapper.to_owned(),
         bootstrapper_ran: None,
         bootstrapper_error: None,
+        lock_warning: None,
+        notice_stuck: false,
     };
     if let Some((version, by_loader)) = installed(runtime) {
         check.version = Some(version);

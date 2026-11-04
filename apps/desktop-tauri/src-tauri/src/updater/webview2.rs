@@ -4,7 +4,12 @@
 //! runtime runs the bootstrapper the pack put beside the executable there. The `Guards` stage,
 //! once logging runs, logs and reports the result, and a launch that still has no runtime tells
 //! the user where to get it and exits with code 1, since no window could open.
+//!
+//! The check runs before the single-instance hand-off, so a named mutex makes a second launch
+//! wait for the first one's install. It then finds the runtime and hands off to the first launch,
+//! instead of running a second bootstrapper whose failure would show a false error.
 
+use std::cell::{Cell, RefCell};
 use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
@@ -19,8 +24,15 @@ use memry_desktop::telemetry::TelemetryEvent;
 use memry_desktop::telemetry::service::Service as Telemetry;
 use memry_desktop::updater::webview2::{self, BOOTSTRAPPER, Check, DOWNLOAD_URL, Outcome, Runtime};
 use tauri::{AppHandle, Manager, Wry};
-use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
-use windows::Win32::System::Threading::{CREATE_NO_WINDOW, GetCurrentThreadId};
+use windows::Win32::Foundation::{
+    CloseHandle, HANDLE, HWND, LPARAM, WAIT_ABANDONED, WAIT_OBJECT_0, WAIT_TIMEOUT, WPARAM,
+};
+use windows::Win32::System::Threading::{
+    CREATE_NO_WINDOW, CreateMutexW, GetCurrentThreadId, ReleaseMutex, WaitForSingleObject,
+};
+use windows::Win32::UI::HiDpi::{
+    DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumThreadWindows, GetClassNameW, IDYES, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, MB_RIGHT,
     MB_RTLREADING, MB_SETFOREGROUND, MB_YESNO, MESSAGEBOX_STYLE, MessageBoxW, PostMessageW,
@@ -49,9 +61,69 @@ const BOOTSTRAPPER_DEADLINE: Duration = Duration::from_secs(120);
 /// What `main` found before the Tauri runtime existed.
 static CHECK: OnceLock<Check> = OnceLock::new();
 
+/// One check at a time per user session. An unelevated bootstrapper installs the runtime for the
+/// user, and the single-instance mutex of the Tauri plugin is per session too.
+const INSTALL_LOCK: &str = r"Local\MemryNote-WebView2";
+
+/// The longest a launch holds the lock: the bootstrapper's deadline, the checks around it and
+/// the boot up to the `Guards` stage.
+const INSTALL_LOCK_WAIT: Duration = Duration::from_secs(BOOTSTRAPPER_DEADLINE.as_secs() + 30);
+
+thread_local! {
+    /// The lock `check_before_runtime` took on the main thread. `apply` releases it on the same
+    /// thread, once the single-instance plugin holds its own mutex, so a launch that waited hands
+    /// off to this one instead of racing it to the plugin's mutex. A process that ends before
+    /// that leaves the lock abandoned, which the next waiter takes.
+    static HELD_LOCK: RefCell<Option<InstallLock>> = const { RefCell::new(None) };
+}
+
+/// A named mutex this thread owns, released when dropped.
+struct InstallLock(HANDLE);
+
+impl InstallLock {
+    /// Waits up to `wait` for `name`. `Err` says why the launch goes on without it.
+    fn acquire(name: &str, wait: Duration) -> Result<Self, String> {
+        // SAFETY: no security attributes, and the name outlives the call.
+        let handle = unsafe { CreateMutexW(None, false, &HSTRING::from(name)) }
+            .map_err(|error| format!("no WebView2 install lock ({error}); checked without it"))?;
+        let millis = u32::try_from(wait.as_millis()).unwrap_or(u32::MAX);
+        // SAFETY: a handle this function owns.
+        let waited = unsafe { WaitForSingleObject(handle, millis) };
+        // Abandoned: the launch that held it ended mid-check. The runtime is detected again.
+        if waited == WAIT_OBJECT_0 || waited == WAIT_ABANDONED {
+            return Ok(Self(handle));
+        }
+        // SAFETY: the handle is closed once, here.
+        let _ = unsafe { CloseHandle(handle) };
+        Err(if waited == WAIT_TIMEOUT {
+            format!(
+                "another launch held the WebView2 install lock for {} s; checked without it",
+                wait.as_secs()
+            )
+        } else {
+            format!(
+                "the WebView2 install lock wait failed ({:#x}); checked without it",
+                waited.0
+            )
+        })
+    }
+}
+
+impl Drop for InstallLock {
+    fn drop(&mut self) {
+        // SAFETY: this thread owns the mutex, and the handle is closed once, here.
+        unsafe {
+            let _ = ReleaseMutex(self.0);
+            let _ = CloseHandle(self.0);
+        }
+    }
+}
+
 /// This machine, with the copy of the notice shown while the bootstrapper runs.
 struct Machine {
     notice: Notice,
+    /// The notice was still on screen after the bootstrapper ended.
+    notice_stuck: Cell<bool>,
 }
 
 impl Runtime for Machine {
@@ -82,7 +154,7 @@ impl Runtime for Machine {
         // has not opened yet.
         let notice = self.notice.show();
         let result = run(command, BOOTSTRAPPER_DEADLINE);
-        let _ = notice.close();
+        self.notice_stuck.set(notice.close() == Closed::Stuck);
         result
     }
 }
@@ -100,8 +172,25 @@ struct OpenNotice {
     thread_id: Option<u32>,
 }
 
+/// How `OpenNotice::close` left the box.
+#[derive(Debug, PartialEq, Eq)]
+enum Closed {
+    /// It was on screen, and is gone now.
+    OnScreen,
+    /// The user had dismissed it already.
+    Dismissed,
+    /// It is still on screen; it stays until dismissed.
+    Stuck,
+}
+
 impl Notice {
     fn show(&self) -> OpenNotice {
+        // Tao makes the process per-monitor DPI aware only when the runtime starts, after this
+        // box, which a scaled display would otherwise stretch blurry. Tao's own call then finds the
+        // same awareness set and keeps it; an error here only means it was set already.
+        // SAFETY: a plain process-wide setting.
+        let _ =
+            unsafe { SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) };
         let (title, body, style) = (self.title.clone(), self.body.clone(), self.style);
         let (id_sender, id) = mpsc::channel();
         let thread = std::thread::spawn(move || {
@@ -119,8 +208,7 @@ impl Notice {
 
 impl OpenNotice {
     /// Closes the box, which may not be on screen yet: asked again until its thread ends.
-    /// Returns whether it closed a box that was still on screen.
-    fn close(self) -> bool {
+    fn close(self) -> Closed {
         /// `#32770` is the dialog class of a message box; the thread's IME windows are left alone.
         unsafe extern "system" fn post_close(window: HWND, found: LPARAM) -> BOOL {
             let mut class = [0u16; 16];
@@ -144,16 +232,16 @@ impl OpenNotice {
                     EnumThreadWindows(thread_id, Some(post_close), LPARAM(&raw mut found as isize))
                 };
                 if self.thread.is_finished() {
-                    return found > 0;
+                    return if found > 0 {
+                        Closed::OnScreen
+                    } else {
+                        Closed::Dismissed
+                    };
                 }
                 std::thread::sleep(Duration::from_millis(20));
             }
         }
-        tracing::warn!(
-            scope = "WebView2",
-            "the installing notice did not close; it stays until dismissed"
-        );
-        false
+        Closed::Stuck
     }
 }
 
@@ -188,6 +276,7 @@ fn run(mut command: Command, deadline: Duration) -> Result<(), String> {
 /// `memry_tauri::run`: a runtime installed after `Wry::init` stays unusable for this process.
 pub fn check_before_runtime() {
     CHECK.get_or_init(|| {
+        let lock = InstallLock::acquire(INSTALL_LOCK, INSTALL_LOCK_WAIT);
         let bootstrapper = std::env::current_exe()
             .ok()
             .and_then(|exe| exe.parent().map(|dir| dir.join(BOOTSTRAPPER)))
@@ -204,14 +293,24 @@ pub fn check_before_runtime() {
                 ),
                 style: MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND | direction(locale),
             },
+            notice_stuck: Cell::new(false),
         };
-        webview2::ensure(&machine, &bootstrapper)
+        let mut check = webview2::ensure(&machine, &bootstrapper);
+        check.notice_stuck = machine.notice_stuck.get();
+        match lock {
+            Ok(lock) => HELD_LOCK.set(Some(lock)),
+            Err(warning) => check.lock_warning = Some(warning),
+        }
+        check
     });
 }
 
 /// Logs and reports what `check_before_runtime` found, and ends the launch when no window can
 /// open.
 pub fn apply(app: &AppHandle<Wry>) -> Result<(), CommandError> {
+    // The single-instance plugin holds its mutex by now: a launch waiting here hands off to this
+    // one.
+    drop(HELD_LOCK.take());
     let Some(check) = CHECK.get() else {
         tracing::error!(
             scope = "WebView2",
@@ -304,6 +403,7 @@ mod tests {
                 body: "test".to_owned(),
                 style: MB_OK,
             },
+            notice_stuck: Cell::new(false),
         }
     }
 
@@ -365,7 +465,64 @@ mod tests {
     fn the_installing_notice_closes_when_the_bootstrapper_ends() {
         let open = machine().notice.show();
         std::thread::sleep(Duration::from_millis(500));
-        assert!(open.close());
+        assert_eq!(open.close(), Closed::OnScreen);
+    }
+
+    /// Threads stand in for launches: a mutex belongs to the thread that took it.
+    #[test]
+    fn a_second_launch_checks_only_after_the_first_one_finished_its_install() {
+        let name = r"Local\MemryNote-WebView2-test-wait";
+        let installed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (held, first_holds) = mpsc::channel();
+        let first = std::thread::spawn({
+            let installed = installed.clone();
+            move || {
+                let lock = InstallLock::acquire(name, Duration::from_secs(60)).expect("first");
+                held.send(()).expect("send");
+                std::thread::sleep(Duration::from_millis(300));
+                installed.store(true, std::sync::atomic::Ordering::SeqCst);
+                drop(lock);
+            }
+        });
+        first_holds.recv().expect("first holds the lock");
+        let second = InstallLock::acquire(name, Duration::from_secs(60)).expect("second");
+        assert!(installed.load(std::sync::atomic::Ordering::SeqCst));
+        drop(second);
+        first.join().expect("first");
+    }
+
+    #[test]
+    fn a_lock_held_past_the_wait_lets_the_launch_check_without_it() {
+        let name = r"Local\MemryNote-WebView2-test-timeout";
+        let (held, first_holds) = mpsc::channel();
+        let (done, release) = mpsc::channel::<()>();
+        let first = std::thread::spawn(move || {
+            let lock = InstallLock::acquire(name, Duration::from_secs(60)).expect("first");
+            held.send(()).expect("send");
+            let _ = release.recv();
+            drop(lock);
+        });
+        first_holds.recv().expect("first holds the lock");
+        let waited = InstallLock::acquire(name, Duration::from_millis(100));
+        assert_eq!(
+            waited.err().as_deref(),
+            Some("another launch held the WebView2 install lock for 0 s; checked without it")
+        );
+        done.send(()).expect("release");
+        first.join().expect("first");
+    }
+
+    /// A launch that ended while it held the lock (a crash, or the single-instance hand-off's
+    /// exit) does not block the next one.
+    #[test]
+    fn a_lock_left_by_an_ended_launch_is_taken() {
+        let name = r"Local\MemryNote-WebView2-test-abandoned";
+        std::thread::spawn(move || {
+            std::mem::forget(InstallLock::acquire(name, Duration::from_secs(60)).expect("first"));
+        })
+        .join()
+        .expect("first");
+        assert!(InstallLock::acquire(name, Duration::from_secs(60)).is_ok());
     }
 
     #[test]
