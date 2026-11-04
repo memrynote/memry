@@ -10,6 +10,12 @@
 //! | a config write keeps the views and mirrors the icon            | `notes:set-folder-config`                |
 //! | a folder's template is inherited until `inherit: false`        | `getFolderTemplate`                      |
 //! | a folder outside the vault is refused                          | traversal and links                      |
+//! | a folder's settings read and keep its record's icon            | one icon owner: the record, else the file |
+//! | a folder spelled like another in case only is refused          | no phantom record on a case-blind disk   |
+//! | a name no record can hold stays on this device                 | `valid_path` before the record           |
+//! | a file in the way is a name conflict, a folder under one none   | `NotADirectory` named on every disk      |
+//! | a folder the tree hides is not created                         | `createTreeFolderFilter`, dot folders    |
+//! | a folder made outside the app seeds its record with its icon   | `syncFolderConfigDiscovered`             |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -224,4 +230,127 @@ fn a_folder_outside_the_vault_is_refused() {
         assert!(!outside.path().join(".folder.md").exists());
     }
     let _ = e;
+}
+
+#[test]
+fn a_folders_settings_read_and_keep_its_records_icon() {
+    let (e, notes, open) = opened();
+    let views = "views:\n  - id: v1\n";
+    notes.create_folder(&open, "Work").unwrap();
+    notes
+        .set_folder_config(&open, "Work", &input(Some(Some("lucide:book")), None, true))
+        .unwrap();
+    // The file says otherwise, as after an edit outside the app.
+    fs::write(
+        e.vault.join("Work/.folder.md"),
+        format!("---\nicon: x\n{views}---\n\n"),
+    )
+    .unwrap();
+    let config = folders::config(&open, "Work").unwrap().unwrap();
+    assert_eq!(config.icon.as_deref(), Some("lucide:book"));
+    assert_eq!(
+        folders::list(&open).unwrap()[0].icon.as_deref(),
+        Some("lucide:book")
+    );
+
+    // A write without an icon (the renderer's `{ ...existing, template }`) keeps the record's.
+    notes
+        .set_folder_config(&open, "Work", &input(None, Some("daily"), true))
+        .unwrap();
+    assert_eq!(
+        e.read("Work/.folder.md"),
+        format!("---\nicon: 'lucide:book'\ntemplate: daily\n{views}---\n\n")
+    );
+    assert_eq!(record_icon(&open, "Work"), Some(Some("lucide:book".into())));
+}
+
+#[test]
+fn a_folder_spelled_like_another_in_case_only_is_refused() {
+    let (e, notes, open) = opened();
+    notes.create_folder(&open, "Work").unwrap();
+    for respelled in ["work", "WORK/Plans"] {
+        let refused = notes.create_folder(&open, respelled);
+        assert!(
+            matches!(refused, Err(NotesError::NameConflict)),
+            "{respelled}: {refused:?}"
+        );
+    }
+    assert_eq!(record_icon(&open, "work"), None);
+    assert_eq!(record_icon(&open, "WORK/Plans"), None);
+    notes.create_folder(&open, "Work/Plans").unwrap();
+    assert!(e.vault.join("Work/Plans").is_dir());
+}
+
+#[test]
+fn a_name_no_record_can_hold_stays_on_this_device() {
+    let (e, notes, open) = opened();
+    // A leading space: Windows keeps it, `valid_path` refuses it.
+    notes.create_folder(&open, " pad").unwrap();
+    assert!(e.vault.join(" pad").is_dir());
+    assert_eq!(record_icon(&open, " pad"), None);
+    notes
+        .set_folder_config(&open, " pad", &input(Some(Some("lucide:book")), None, true))
+        .unwrap();
+    assert_eq!(
+        e.read(" pad/.folder.md"),
+        "---\nicon: 'lucide:book'\n---\n\n"
+    );
+    assert_eq!(record_icon(&open, " pad"), None);
+}
+
+#[test]
+fn a_file_in_the_way_is_a_name_conflict_and_a_folder_under_one_none() {
+    let (e, notes, open) = opened();
+    fs::write(e.vault.join("afile"), "a file").unwrap();
+    let refused = notes.create_folder(&open, "afile");
+    assert!(
+        matches!(refused, Err(NotesError::NameConflict)),
+        "{refused:?}"
+    );
+    let refused = notes.create_folder(&open, "afile/sub");
+    assert!(
+        matches!(refused, Err(NotesError::InvalidFolder)),
+        "{refused:?}"
+    );
+    let refused = folders::config(&open, "afile/sub");
+    assert!(
+        matches!(refused, Err(NotesError::InvalidFolder)),
+        "{refused:?}"
+    );
+    assert_eq!(record_icon(&open, "afile"), None);
+}
+
+#[test]
+fn a_folder_the_tree_hides_is_not_created() {
+    let (e, notes, open) = opened();
+    for hidden in [
+        ".hidden",
+        "a/.git",
+        "attachments",
+        "attachments/x",
+        "canvases",
+    ] {
+        // The open makes `attachments` itself; nothing else may appear.
+        let there = e.vault.join(hidden).exists();
+        let refused = notes.create_folder(&open, hidden);
+        assert!(
+            matches!(refused, Err(NotesError::InvalidFolder)),
+            "{hidden}: {refused:?}"
+        );
+        assert_eq!(e.vault.join(hidden).exists(), there, "{hidden}");
+        assert_eq!(record_icon(&open, hidden), None, "{hidden}");
+    }
+}
+
+#[test]
+fn a_folder_made_outside_the_app_seeds_its_record_with_its_icon() {
+    let (e, notes, open) = opened();
+    fs::create_dir_all(e.vault.join("Old")).unwrap();
+    fs::write(
+        e.vault.join("Old/.folder.md"),
+        "---\nicon: 'emoji:⭐'\n---\n\n",
+    )
+    .unwrap();
+    notes.create_folder(&open, "Old").unwrap();
+    assert_eq!(record_icon(&open, "Old"), Some(Some("emoji:⭐".into())));
 }

@@ -5,18 +5,26 @@
 //! A folder is a directory of the vault; its settings live in its `.folder.md`
 //! ([`folder_file`]), and its icon is mirrored in the synced `folder_config` record
 //! ([`memry_core::domain::folders`]), so a folder with no notes reaches the other devices
-//! (`notes/folder-config-effects.ts`). The file is the truth here: a record that cannot be
-//! written is an error after the file was, as in Electron, and a path the record cannot name
-//! (a segment with outer spaces) keeps its file and is logged.
+//! (`notes/folder-config-effects.ts`). The file holds the template, `inherit` and the views;
+//! a record that cannot be written is an error after the file was, as in Electron, and a path
+//! the record cannot name (a segment with outer spaces) keeps its file and is logged.
+//!
+//! The icon has one owner for every read: the folder's record when it has one, else its file
+//! ([`shown_icon`]). The tree, the settings read and a settings write that leaves the icon
+//! alone all take it from there, so the renderer's `{ ...existing, template }` cannot send a
+//! stale file icon back over the record's.
 //!
 //! Not here yet: the locked-folder check (Step 14), the record backfill of folders made before
 //! records existed and of folders made in a file manager (`backfillFolderConfigs`,
-//! `syncFolderConfigDiscovered`, Step 17).
+//! `syncFolderConfigDiscovered`, Step 17, #3534), and a remote record's icon written into the
+//! folder's file (`writeMergedFolderConfig`, #3906).
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::ErrorKind;
+use std::io::{self, ErrorKind};
 use std::path::Path;
+
+use unicode_normalization::UnicodeNormalization;
 
 use memry_core::domain::folders::valid_path;
 
@@ -28,6 +36,7 @@ use crate::shell::file_open::Resolution;
 use crate::vault::config::read_vault_config;
 use crate::vault::folder_file::{self, FolderConfigView, FolderFileError};
 use crate::vault::layout::{ATTACHMENTS_DIR, CANVAS_DIR};
+use crate::vault::path_key::folded_key;
 use crate::vault::paths::resolve_vault_file;
 
 /// A folder of the tree (`FolderInfo` of `@memry/rpc/notes`).
@@ -71,13 +80,34 @@ pub fn list(open: &OpenVault) -> Result<Vec<FolderView>, NotesError> {
         .into_iter()
         .filter(|path| shown(path))
         .map(|path| {
-            let icon = match icons.get(&path) {
-                Some(icon) => icon.clone(),
-                None => file_of(root, &path).and_then(|file| file.icon().map(str::to_owned)),
-            };
+            let icon = shown_icon(icons.get(&path).cloned(), || file_icon(root, &path));
             FolderView { path, icon }
         })
         .collect())
+}
+
+/// The icon a folder shows: `recorded` (its record's, `None` without a record) when it has a
+/// record, else its file's, read only then.
+fn shown_icon(
+    recorded: Option<Option<String>>,
+    file_icon: impl FnOnce() -> Option<String>,
+) -> Option<String> {
+    recorded.unwrap_or_else(file_icon)
+}
+
+fn file_icon(root: &Path, folder: &str) -> Option<String> {
+    file_of(root, folder).and_then(|file| file.icon().map(str::to_owned))
+}
+
+/// `folder`'s record icon: `None` when it has no record.
+fn recorded_icon(open: &OpenVault, folder: &str) -> Result<Option<Option<String>>, NotesError> {
+    Ok(open
+        .vault
+        .notes()
+        .folders()?
+        .into_iter()
+        .find(|row| row.path == folder)
+        .map(|row| row.icon))
 }
 
 /// `createTreeFolderFilter`: hides the attachments and canvases folders and the first folder
@@ -165,20 +195,85 @@ fn file_of(root: &Path, folder: &str) -> Option<folder_file::FolderFile> {
         .flatten()
 }
 
-/// A folder the renderer names (`""` is the vault root), as a plain path inside the vault.
+/// A folder the renderer names (`""` is the vault root), as a plain path inside the vault. One
+/// under a file is no folder; the disk would say so in its own words (`ENOTDIR` on Unix, not
+/// found on Windows).
 fn vault_folder(root: &Path, folder: &str) -> Result<String, NotesError> {
     let folder = plain_folder(folder)?;
-    if !folder.is_empty() && resolve_vault_file(root, &folder)? == Resolution::Outside {
+    if folder.is_empty() {
+        return Ok(folder);
+    }
+    if under_a_file(root, &folder)? {
+        return Err(NotesError::InvalidFolder);
+    }
+    if resolve_vault_file(root, &folder)? == Resolution::Outside {
         return Err(NotesError::Outside);
     }
     Ok(folder)
+}
+
+/// Whether a folder above `folder` is a file. Links are followed: where one leads is
+/// [`resolve_vault_file`]'s to judge.
+fn under_a_file(root: &Path, folder: &str) -> io::Result<bool> {
+    let Some((parents, _)) = folder.rsplit_once('/') else {
+        return Ok(false);
+    };
+    let mut path = root.to_path_buf();
+    for segment in parents.split('/') {
+        path.push(segment);
+        match fs::metadata(&path) {
+            Ok(meta) if !meta.is_dir() => return Ok(true),
+            Ok(_) => {}
+            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(false)
+}
+
+/// Whether a segment of `folder` is spelled like a folder or file beside it in case only. A
+/// case-blind disk (macOS, Windows) would create into that one while the record names this
+/// spelling, a folder the other devices then hold twice. The same name in another Unicode
+/// form is the same name.
+fn respells_a_sibling(root: &Path, folder: &str) -> io::Result<bool> {
+    let mut dir = root.to_path_buf();
+    for segment in folder.split('/') {
+        let entries = match fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(false),
+            Err(error) => return Err(error),
+        };
+        let (wanted, folded) = (segment.nfc().collect::<String>(), folded_key(segment));
+        let mut respelled = false;
+        for entry in entries {
+            let name = entry?.file_name();
+            let Some(name) = name.to_str() else { continue };
+            if name.nfc().eq(wanted.chars()) {
+                respelled = false;
+                break;
+            }
+            respelled |= folded_key(name) == folded;
+        }
+        if respelled {
+            return Ok(true);
+        }
+        dir.push(segment);
+    }
+    Ok(false)
 }
 
 /// `notes:get-folder-config`: `None` when the folder has no file, or one that cannot be read.
 pub fn config(open: &OpenVault, folder: &str) -> Result<Option<FolderConfigView>, NotesError> {
     let root = open.path.as_path();
     let folder = vault_folder(root, folder)?;
-    Ok(file_of(root, &folder).map(|file| file.config()))
+    let Some(file) = file_of(root, &folder) else {
+        return Ok(None);
+    };
+    let mut config = file.config();
+    config.icon = shown_icon(recorded_icon(open, &folder)?, || {
+        file.icon().map(str::to_owned)
+    });
+    Ok(Some(config))
 }
 
 /// `notes:get-folder-template`.
@@ -201,12 +296,21 @@ impl NotesService {
     /// `createFolder`: the folder and its parents on disk, the folder above its siblings in the
     /// manual order, and its `folder_config` record when it has none, so an empty folder
     /// reaches the other devices. A folder that is there already is no error and keeps its
-    /// icon (Electron's create cleared it).
+    /// icon (Electron's create cleared it); one made outside the app gives its record its
+    /// file's icon. A folder the tree hides (a dot folder, attachments, canvases, an excluded
+    /// one) is refused, as a move into one is, and so is a spelling that differs from a
+    /// sibling's in case only.
     pub fn create_folder(&self, open: &OpenVault, folder: &str) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let folder = vault_folder(root, folder)?;
-        if folder.is_empty() {
+        if folder.is_empty()
+            || folder.split('/').any(|segment| segment.starts_with('.'))
+            || !tree_filter(root)(&folder)
+        {
             return Err(NotesError::InvalidFolder);
+        }
+        if respells_a_sibling(root, &folder)? {
+            return Err(NotesError::NameConflict);
         }
         fs::create_dir_all(on_disk(open, &folder)?).map_err(|error| match error.kind() {
             ErrorKind::AlreadyExists | ErrorKind::NotADirectory => NotesError::NameConflict,
@@ -221,22 +325,18 @@ impl NotesService {
             );
             return Ok(());
         }
-        let known = open
-            .vault
-            .notes()
-            .folders()?
-            .iter()
-            .any(|row| row.path == folder);
-        if !known {
+        if recorded_icon(open, &folder)?.is_none() {
+            let icon = file_icon(root, &folder);
             open.vault
                 .notes_writer(self.store.clone())?
-                .create_folder(folder, None)?;
+                .create_folder(folder, icon)?;
         }
         Ok(())
     }
 
-    /// `notes:set-folder-config`: the icon (kept when absent), the template and `inherit` in the
-    /// folder's file, which keeps its views; then the icon in the folder's record.
+    /// `notes:set-folder-config`: the icon, the template and `inherit` in the folder's file,
+    /// which keeps its views; then the icon in the folder's record. An absent icon keeps the
+    /// one the folder shows ([`shown_icon`]).
     pub fn set_folder_config(
         &self,
         open: &OpenVault,
@@ -245,11 +345,12 @@ impl NotesService {
     ) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let folder = vault_folder(root, folder)?;
+        let recorded = recorded_icon(open, &folder)?;
         let mut icon = None;
         folder_file::update(root, &folder, |file| {
             icon = match &input.icon {
                 Some(given) => given.clone(),
-                None => file.icon().map(str::to_owned),
+                None => shown_icon(recorded, || file.icon().map(str::to_owned)),
             };
             file.set(
                 icon.as_deref(),
