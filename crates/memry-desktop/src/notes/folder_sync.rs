@@ -12,19 +12,27 @@
 //! - [`NotesService::prune_deleted_folders`]: from a folder up to the vault root, each deleted
 //!   folder ([`NotesWriter::folder_deleted`]: no record, a tombstone) that holds nothing worth
 //!   keeping is removed ([`empty_folder::remove_if_empty`]). It stops at the first folder that is
-//!   not deleted, still holds a file, or keeps changing. A folder made in a file manager has no
-//!   tombstone and is never removed.
+//!   not deleted, before or after the quiet wait, still holds a file, or keeps changing. A folder
+//!   made in a file manager has no tombstone and is never removed.
+//!
+//! None of them touches a folder the app keeps out of sync's reach (`remote_folder`): the tree
+//! hides it, it is the journal folder or holds or sits in it, or its spelling differs from a
+//! sibling's in case only, a folder a case-blind disk would take for that sibling.
 //!
 //! [`NotesWriter::folder_deleted`]: memry_core::api::notes_write::NotesWriter::folder_deleted
 
 use std::fs;
+use std::io;
+use std::path::Path;
 
 use super::error::{NotesError, SCOPE};
-use super::folders::vault_folder;
+use super::folder_move::within;
+use super::folders::{respells_a_sibling, tree_filter, vault_folder};
 use super::moves::plain_folders;
 use super::service::NotesService;
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
+use crate::vault::config::read_vault_config;
 use crate::vault::empty_folder::{self, Quiet, Removal};
 use crate::vault::folder_file;
 
@@ -37,7 +45,9 @@ impl NotesService {
         icon: Option<&str>,
     ) -> Result<(), NotesError> {
         let root = open.path.as_path();
-        let folder = remote_folder(root, path)?;
+        let Some(folder) = remote_folder(root, path)? else {
+            return Ok(());
+        };
         fs::create_dir_all(on_disk(root, &folder))?;
         folder_file::update(root, &folder, |file| file.set_icon(icon))?;
         Ok(())
@@ -51,7 +61,9 @@ impl NotesService {
         path: &str,
     ) -> Result<Vec<String>, NotesError> {
         let root = open.path.as_path();
-        let folder = remote_folder(root, path)?;
+        let Some(folder) = remote_folder(root, path)? else {
+            return Ok(Vec::new());
+        };
         if fs::symlink_metadata(on_disk(root, &folder)).is_ok_and(|meta| meta.is_dir()) {
             // The folder goes whatever its file says: a file that cannot be read keeps its icon.
             if let Err(error) = folder_file::update(root, &folder, |file| file.set_icon(None)) {
@@ -66,57 +78,86 @@ impl NotesService {
 
     /// The deleted folders from `path` up that held nothing worth keeping, removed: the folders
     /// it removed, deepest first. `folder_config_deleted`: the caller applied the delete of
-    /// `path`'s record, so it counts as deleted without asking.
+    /// `path`'s record, so it counts as deleted without asking before the wait.
     pub fn prune_deleted_folders(
         &self,
         open: &OpenVault,
         path: &str,
         folder_config_deleted: bool,
     ) -> Result<Vec<String>, NotesError> {
-        self.prune_deleted_folders_quiet(open, path, folder_config_deleted, Quiet::default())
+        self.prune_deleted_folders_checked(
+            open,
+            path,
+            folder_config_deleted,
+            Quiet::default(),
+            &mut |_| {},
+        )
     }
 
-    /// [`Self::prune_deleted_folders`] with the quiet window and the wait for it.
+    /// [`Self::prune_deleted_folders`] with the quiet window and the wait for it, and a hook that
+    /// runs once a folder's wait is over, so a test can act there as another writer would.
     #[doc(hidden)]
-    pub fn prune_deleted_folders_quiet(
+    pub fn prune_deleted_folders_checked(
         &self,
         open: &OpenVault,
         path: &str,
         folder_config_deleted: bool,
         quiet: Quiet,
+        after_wait: &mut dyn FnMut(&str),
     ) -> Result<Vec<String>, NotesError> {
         let root = open.path.as_path();
         let writer = open.vault.notes_writer(self.store.clone())?;
-        let mut current = remote_folder(root, path)?;
+        let mut current = vault_folder(root, path)?;
         let mut known_deleted = folder_config_deleted;
         let mut removed = Vec::new();
-        while !current.is_empty() {
+        while remote_folder(root, &current)?.is_some() {
             if !known_deleted && !writer.folder_deleted(&current)? {
                 break;
             }
             known_deleted = false;
-            // A link would take the removal to what it leads to.
-            if !plain_folders(root, &current)? {
-                break;
-            }
-            match empty_folder::remove_if_empty(root, &current, quiet)? {
+            // The wait gives a pulled upsert or the user time to make the folder again: it goes
+            // only when it is still deleted afterwards (Electron checks after its wait).
+            let mut confirm = || {
+                writer
+                    .folder_deleted(&current)
+                    .map_err(|error| io::Error::other(error.to_string()))
+            };
+            let removal = empty_folder::remove_if_empty_checked(
+                root,
+                &current,
+                quiet,
+                &mut confirm,
+                &mut || after_wait(&current),
+            )?;
+            match removal {
                 Removal::Removed => {
                     tracing::info!(scope = SCOPE, "removed a folder deleted on another device");
                     removed.push(current.clone());
                 }
                 Removal::Missing => {}
-                Removal::HoldsFiles(file) => {
+                Removal::HoldsFiles {
+                    file,
+                    removed: below,
+                } => {
                     tracing::info!(
                         scope = SCOPE,
                         file,
                         "kept a folder deleted on another device, it still holds files"
                     );
+                    removed.extend(below);
                     break;
                 }
                 Removal::Busy => {
                     tracing::warn!(
                         scope = SCOPE,
                         "kept a folder deleted on another device, its files kept changing"
+                    );
+                    break;
+                }
+                Removal::Declined => {
+                    tracing::info!(
+                        scope = SCOPE,
+                        "kept a folder deleted on another device, it was made again"
                     );
                     break;
                 }
@@ -129,11 +170,34 @@ impl NotesService {
     }
 }
 
-/// A folder a record names, as a plain path inside the vault; never the vault root.
-fn remote_folder(root: &std::path::Path, path: &str) -> Result<String, NotesError> {
+/// A folder a record names, as a plain path inside the vault, or `None` (logged) for one the
+/// app keeps out of sync's reach: the vault root, a folder the tree hides (a dot folder,
+/// attachments, canvases, an excluded one), the journal folder, a folder holding it or inside
+/// it, and a spelling that differs from a sibling's in case only, which a case-blind disk would
+/// take for that sibling.
+fn remote_folder(root: &Path, path: &str) -> Result<Option<String>, NotesError> {
     let folder = vault_folder(root, path)?;
-    if folder.is_empty() || !plain_folders(root, &folder)? {
+    if folder.is_empty() {
+        return Ok(None);
+    }
+    if !plain_folders(root, &folder)? {
         return Err(NotesError::InvalidFolder);
     }
-    Ok(folder)
+    let journal = read_vault_config(root).journal_folder;
+    let skipped = if folder.split('/').any(|segment| segment.starts_with('.'))
+        || !tree_filter(root)(&folder)
+    {
+        Some("the tree hides it")
+    } else if !journal.is_empty() && (within(&journal, &folder) || within(&folder, &journal)) {
+        Some("it is or holds the journal folder, or is inside it")
+    } else if respells_a_sibling(root, &folder)? {
+        Some("a folder beside it differs in case only")
+    } else {
+        None
+    };
+    if let Some(reason) = skipped {
+        tracing::warn!(scope = SCOPE, reason, "a synced folder stays as it is here");
+        return Ok(None);
+    }
+    Ok(Some(folder))
 }

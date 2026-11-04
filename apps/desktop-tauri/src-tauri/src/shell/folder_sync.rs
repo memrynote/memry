@@ -4,6 +4,9 @@
 //! on which the renderer refetches the tree. The file work is best effort: a failure is logged
 //! with its code and never fails the pull, and the event goes out all the same because the
 //! record changed.
+//!
+//! A removal waits until the folder was left alone for 2 s, up to 60 s: Step 17 spawns these
+//! once the page committed and never awaits them inside the pull, which they would hold up.
 
 use tauri::{AppHandle, Runtime};
 

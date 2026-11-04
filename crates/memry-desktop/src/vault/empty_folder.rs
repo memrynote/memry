@@ -1,24 +1,26 @@
 //! `removeFolderIfEmpty` (`apps/desktop/src/main/vault/folders.ts`): a folder another device
-//! deleted leaves this disk only when nothing in it is worth keeping, which is subfolders,
-//! `.folder.md` and the OS view caches. A note still there (edited here after the other device
-//! deleted the folder, or one whose own delete has not been pulled yet) keeps the folder.
+//! deleted leaves this disk only when nothing in it is worth keeping, which is subfolders, the
+//! OS view caches and a `.folder.md` holding only the settings a build writes. A note still there
+//! (edited here after the other device deleted the folder, or one whose own delete has not been
+//! pulled yet) keeps the folder, and so does a `.folder.md` with text or keys no build models,
+//! which Electron removed.
 //!
-//! Nothing goes when the scan finds a kept entry, and folders go with `rmdir`, which refuses a
-//! folder that is not empty, so a file written between the scan and the removal stays with its
-//! folder. A file or folder already gone (another prune, the watcher, a file manager) counts as
-//! removed. A link, which the scan does not follow, is kept.
+//! Nothing goes when the scan finds a kept entry or the caller no longer wants the folder gone
+//! once the wait is over, and folders go with `rmdir`, which refuses a folder that is not empty:
+//! a file written after the scan stays with its folder, and the folders already removed below it
+//! are reported. A file or folder already gone (another prune, the watcher, a file manager)
+//! counts as removed. A link, which the scan does not follow, is kept.
 
 use std::fs;
-use std::io::{self, ErrorKind};
+use std::io::{self, ErrorKind, Read as _};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use super::app_move::on_disk;
-use super::folder_file::FOLDER_FILE;
+use super::folder_file::{self, FOLDER_FILE, MAX_FOLDER_FILE_BYTES};
 
-/// What may go with a folder: the folder's own settings and what the OS writes into a folder
-/// it showed.
-const DISPOSABLE: [&str; 4] = [FOLDER_FILE, ".DS_Store", "Thumbs.db", "desktop.ini"];
+/// What the OS writes into a folder it showed.
+const OS_CACHES: [&str; 3] = [".DS_Store", "Thumbs.db", "desktop.ini"];
 
 /// What [`remove_if_empty`] did with the folder.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,10 +28,16 @@ pub enum Removal {
     Removed,
     /// The folder is not there (or is not a folder).
     Missing,
-    /// The first entry that keeps it, vault-relative.
-    HoldsFiles(String),
+    /// The first entry that keeps it, vault-relative, and the folders below it that went
+    /// before a file written meanwhile kept the rest, deepest first.
+    HoldsFiles {
+        file: String,
+        removed: Vec<String>,
+    },
     /// Something in it changed within the quiet window until the wait ran out.
     Busy,
+    /// The caller no longer wanted it gone once the wait was over.
+    Declined,
 }
 
 /// How long the folder must have been left alone before it goes, and how long to wait for
@@ -59,10 +67,29 @@ struct Scan {
 }
 
 /// Removes the folder at `rel` when it holds only subfolders and disposable files, once nothing
-/// in it changed for `quiet.window`. Blocks: call it on a blocking thread.
-pub fn remove_if_empty(root: &Path, rel: &str, quiet: Quiet) -> io::Result<Removal> {
+/// in it changed for `quiet.window` and `confirm` still says it may go. Blocks: call it on a
+/// blocking thread.
+pub fn remove_if_empty(
+    root: &Path,
+    rel: &str,
+    quiet: Quiet,
+    confirm: &mut dyn FnMut() -> io::Result<bool>,
+) -> io::Result<Removal> {
+    remove_if_empty_checked(root, rel, quiet, confirm, &mut || {})
+}
+
+/// [`remove_if_empty`] with a hook that runs once the wait is over, before `confirm`, so a test
+/// can act there as another writer would.
+#[doc(hidden)]
+pub fn remove_if_empty_checked(
+    root: &Path,
+    rel: &str,
+    quiet: Quiet,
+    confirm: &mut dyn FnMut() -> io::Result<bool>,
+    after_wait: &mut dyn FnMut(),
+) -> io::Result<Removal> {
     let dir = on_disk(root, rel);
-    let started = std::time::Instant::now();
+    let started = Instant::now();
     let scan = loop {
         let scan = match scan(&dir) {
             Ok(scan) => scan,
@@ -74,13 +101,10 @@ pub fn remove_if_empty(root: &Path, rel: &str, quiet: Quiet) -> io::Result<Remov
             Err(error) => return Err(error),
         };
         if let Some(kept) = &scan.kept {
-            let at = kept.strip_prefix(root).unwrap_or(kept);
-            let rel = at
-                .components()
-                .map(|part| part.as_os_str().to_string_lossy())
-                .collect::<Vec<_>>()
-                .join("/");
-            return Ok(Removal::HoldsFiles(rel));
+            return Ok(Removal::HoldsFiles {
+                file: relative(root, kept),
+                removed: Vec::new(),
+            });
         }
         let settled = scan
             .newest
@@ -93,13 +117,36 @@ pub fn remove_if_empty(root: &Path, rel: &str, quiet: Quiet) -> io::Result<Remov
         }
         std::thread::sleep(Duration::from_millis(100).min(quiet.window));
     };
+    after_wait();
+    if !confirm()? {
+        return Ok(Removal::Declined);
+    }
     for file in &scan.disposable {
         gone_is_fine(fs::remove_file(file))?;
     }
+    let mut removed = Vec::new();
     for dir in &scan.dirs {
-        gone_is_fine(fs::remove_dir(dir))?;
+        match fs::remove_dir(dir) {
+            Err(error) if error.kind() == ErrorKind::DirectoryNotEmpty => {
+                return Ok(Removal::HoldsFiles {
+                    file: relative(root, dir),
+                    removed,
+                });
+            }
+            other => gone_is_fine(other)?,
+        }
+        removed.push(relative(root, dir));
     }
     Ok(Removal::Removed)
+}
+
+fn relative(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(path)
+        .components()
+        .map(|part| part.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 fn gone_is_fine(result: io::Result<()>) -> io::Result<()> {
@@ -140,9 +187,13 @@ fn visit(root: &Path, dir: &Path, scan: &mut Scan) -> io::Result<()> {
             Err(error) => return Err(error),
         };
         note_change(scan, Some(meta.clone()));
+        let name = entry.file_name();
         if meta.is_dir() {
             visit(root, &path, scan)?;
-        } else if meta.is_file() && DISPOSABLE.iter().any(|name| entry.file_name() == *name) {
+        } else if meta.is_file()
+            && (OS_CACHES.iter().any(|cache| name == *cache)
+                || (name == FOLDER_FILE && only_settings(&path)))
+        {
             scan.disposable.push(path);
         } else {
             scan.kept = Some(path);
@@ -153,6 +204,17 @@ fn visit(root: &Path, dir: &Path, scan: &mut Scan) -> io::Result<()> {
     }
     scan.dirs.push(dir.to_path_buf());
     Ok(())
+}
+
+/// Whether the `.folder.md` at `path` holds only settings; one that cannot be read is kept.
+fn only_settings(path: &Path) -> bool {
+    let mut raw = String::new();
+    let read = fs::File::open(path).and_then(|file| {
+        file.take(MAX_FOLDER_FILE_BYTES + 1)
+            .read_to_string(&mut raw)
+    });
+    matches!(read, Ok(len) if (len as u64) <= MAX_FOLDER_FILE_BYTES)
+        && folder_file::parse(&raw).is_ok_and(|file| file.holds_only_settings())
 }
 
 fn note_change(scan: &mut Scan, meta: Option<fs::Metadata>) {

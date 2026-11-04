@@ -13,6 +13,11 @@
 //! | a remote delete clears the icon of a folder that stays            | #2512                         |
 //! | a remote delete removes a folder that holds nothing               | `scheduleDeletedFolderPrune`  |
 //! | a folder a link leads to is never pruned                          | links stay                    |
+//! | a folder made again during the wait is kept with its file         | `pruneDeletedFolders` order   |
+//! | a file written after the scan keeps its folder, not the ones gone | `rmdir`, not a tree delete    |
+//! | another spelling of a live folder is never touched                | case-blind disks              |
+//! | a folder sync may not reach is never touched                      | `create_folder`'s refusals    |
+//! | a folder file with text or unknown keys keeps its folder          | decision, Electron removes it |
 
 #[allow(unused_imports)]
 use crate::vault_env;
@@ -25,6 +30,7 @@ use std::time::Duration;
 use memry_core::domain::folders;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::vault::config::{VaultConfigPatch, write_vault_config};
 use memry_desktop::vault::empty_folder::Quiet;
 use memry_desktop::vault::folder_file;
 use serde_json::json;
@@ -66,7 +72,7 @@ fn a_deleted_folder_goes_once_its_last_note_is_gone_then_its_parent() {
 
     assert_eq!(
         notes
-            .prune_deleted_folders_quiet(&open, "a/b", false, NOW)
+            .prune_deleted_folders_checked(&open, "a/b", false, NOW, &mut |_| {})
             .unwrap(),
         Vec::<String>::new()
     );
@@ -74,7 +80,7 @@ fn a_deleted_folder_goes_once_its_last_note_is_gone_then_its_parent() {
 
     fs::remove_file(e.vault.join("a/b/Last.md")).unwrap();
     let removed = notes
-        .prune_deleted_folders_quiet(&open, "a/b", false, NOW)
+        .prune_deleted_folders_checked(&open, "a/b", false, NOW, &mut |_| {})
         .unwrap();
     assert_eq!(removed, ["a/b", "a"]);
     assert!(!e.vault.join("a").exists());
@@ -86,7 +92,7 @@ fn a_folder_made_in_a_file_manager_is_never_removed() {
     let open = e.session.current().unwrap();
     fs::create_dir(e.vault.join("Made")).unwrap();
     let removed = notes
-        .prune_deleted_folders_quiet(&open, "Made", false, NOW)
+        .prune_deleted_folders_checked(&open, "Made", false, NOW, &mut |_| {})
         .unwrap();
     assert_eq!(removed, Vec::<String>::new());
     assert!(e.vault.join("Made").is_dir());
@@ -101,7 +107,7 @@ fn a_deleted_folder_holding_another_file_is_kept() {
     fs::write(e.vault.join("Pics/Sub/cat.png"), b"png").unwrap();
     delete_records(&e, "Pics");
     let removed = notes
-        .prune_deleted_folders_quiet(&open, "Pics", false, NOW)
+        .prune_deleted_folders_checked(&open, "Pics", false, NOW, &mut |_| {})
         .unwrap();
     assert_eq!(removed, Vec::<String>::new());
     assert!(e.vault.join("Pics/Sub/cat.png").exists());
@@ -118,7 +124,7 @@ fn a_deleted_folder_that_keeps_changing_is_kept_once_the_wait_ends() {
         timeout: Duration::from_millis(200),
     };
     let removed = notes
-        .prune_deleted_folders_quiet(&open, "Busy", false, busy)
+        .prune_deleted_folders_checked(&open, "Busy", false, busy, &mut |_| {})
         .unwrap();
     assert_eq!(removed, Vec::<String>::new());
     assert!(e.vault.join("Busy").is_dir());
@@ -228,7 +234,7 @@ fn a_folder_a_link_leads_to_is_never_pruned() {
     let open = e.session.current().unwrap();
     notes.create_folder(&open, "Real").unwrap();
     std::os::unix::fs::symlink(e.vault.join("Real"), e.vault.join("Link")).unwrap();
-    let refused = notes.prune_deleted_folders_quiet(&open, "Link", true, NOW);
+    let refused = notes.prune_deleted_folders_checked(&open, "Link", true, NOW, &mut |_| {});
     assert!(
         matches!(refused, Err(NotesError::InvalidFolder)),
         "{refused:?}"
@@ -240,4 +246,142 @@ fn a_folder_a_link_leads_to_is_never_pruned() {
     );
     assert!(e.vault.join("Real").is_dir());
     assert!(!e.vault.join("Real/Sub").exists());
+}
+
+/// Electron waits, then asks whether the folder is still deleted: one made again during the wait
+/// (a pulled upsert, the user's create) keeps its folder and `.folder.md`.
+#[test]
+fn a_folder_made_again_during_the_wait_is_kept_with_its_file() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    notes.create_folder(&open, "Back").unwrap();
+    let file = "---\ntemplate: daily\n---\n\n";
+    fs::write(e.vault.join("Back/.folder.md"), file).unwrap();
+    delete_records(&e, "Back");
+    let again = |_: &str| notes.create_folder(&open, "Back").unwrap();
+    for known in [false, true] {
+        let removed = notes
+            .prune_deleted_folders_checked(&open, "Back", known, NOW, &mut { again })
+            .unwrap();
+        assert_eq!(removed, Vec::<String>::new());
+        assert_eq!(
+            fs::read_to_string(e.vault.join("Back/.folder.md")).unwrap(),
+            file
+        );
+        delete_records(&e, "Back");
+    }
+}
+
+/// `rmdir`, never a tree delete: a note written after the scan keeps its folder, and the
+/// folders that went below it, before it, are still reported.
+#[test]
+fn a_file_written_after_the_scan_keeps_its_folder_not_the_ones_gone() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    notes.create_folder(&open, "a").unwrap();
+    notes.create_folder(&open, "a/b").unwrap();
+    delete_records(&e, "a");
+    let mut late = |at: &str| {
+        if at == "a" {
+            fs::write(e.vault.join("a/x.md"), "written meanwhile\n").unwrap();
+        }
+    };
+    let removed = notes
+        .prune_deleted_folders_checked(&open, "a/b", false, NOW, &mut late)
+        .unwrap();
+    assert_eq!(removed, ["a/b"]);
+    assert_eq!(
+        fs::read_to_string(e.vault.join("a/x.md")).unwrap(),
+        "written meanwhile\n"
+    );
+}
+
+/// A case-blind disk takes `work` for `Work`: a `work` record is never mirrored into `Work`.
+#[test]
+fn another_spelling_of_a_live_folder_is_never_touched() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    notes.create_folder(&open, "Work").unwrap();
+    fs::write(e.vault.join("Work/.folder.md"), WITH_VIEWS).unwrap();
+
+    let removed = notes
+        .prune_deleted_folders_checked(&open, "work", true, NOW, &mut |_| {})
+        .unwrap();
+    assert_eq!(removed, Vec::<String>::new());
+    assert_eq!(
+        notes.apply_remote_folder_delete(&open, "work").unwrap(),
+        Vec::<String>::new()
+    );
+    notes
+        .apply_remote_folder(&open, "work", Some("lucide:star"))
+        .unwrap();
+
+    assert_eq!(
+        fs::read_to_string(e.vault.join("Work/.folder.md")).unwrap(),
+        WITH_VIEWS
+    );
+    let names: Vec<_> = fs::read_dir(&e.vault)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    assert!(!names.iter().any(|name| name == "work"), "{names:?}");
+}
+
+/// What `create_folder` refuses, sync does not make or remove either: the vault root, a dot
+/// folder, attachments, the journal folder and a folder inside it, the journal shown in the
+/// sidebar or not.
+#[test]
+fn a_folder_sync_may_not_reach_is_never_touched() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    fs::create_dir_all(e.vault.join("journal/2026")).unwrap();
+    let shown = VaultConfigPatch {
+        journal_show_in_sidebar: Some(true),
+        ..Default::default()
+    };
+    write_vault_config(&e.vault, &shown).unwrap();
+    for path in ["", ".hidden", "attachments/x", "journal", "journal/2026"] {
+        notes
+            .apply_remote_folder(&open, path, Some("lucide:x"))
+            .unwrap();
+        let removed = notes
+            .prune_deleted_folders_checked(&open, path, true, NOW, &mut |_| {})
+            .unwrap();
+        assert_eq!(removed, Vec::<String>::new(), "{path}");
+    }
+    assert!(!e.vault.join(".folder.md").exists());
+    assert!(!e.vault.join(".hidden").exists());
+    assert!(!e.vault.join("attachments/x").exists());
+    assert!(e.vault.join("journal/2026").is_dir());
+    assert!(!e.vault.join("journal/.folder.md").exists());
+}
+
+/// Decision (Electron removes any `.folder.md`): text after the frontmatter or a key no build
+/// models is someone's, so the file stays and its folder with it.
+#[test]
+fn a_folder_file_with_text_or_unknown_keys_keeps_its_folder() {
+    let (e, notes) = opened();
+    let open = e.session.current().unwrap();
+    let kept = [
+        ("Prose", "---\nicon: x\n---\n\nWhy this folder exists.\n"),
+        ("Custom", "---\nnewerBuild: true\n---\n\n"),
+        ("Broken", "---\n- a list\n---\n"),
+    ];
+    for (folder, text) in kept {
+        notes.create_folder(&open, folder).unwrap();
+        fs::write(e.vault.join(folder).join(".folder.md"), text).unwrap();
+    }
+    delete_records(&e, "Prose");
+    delete_records(&e, "Custom");
+    delete_records(&e, "Broken");
+    for (folder, text) in kept {
+        let removed = notes
+            .prune_deleted_folders_checked(&open, folder, false, NOW, &mut |_| {})
+            .unwrap();
+        assert_eq!(removed, Vec::<String>::new(), "{folder}");
+        assert_eq!(
+            fs::read_to_string(e.vault.join(folder).join(".folder.md")).unwrap(),
+            text
+        );
+    }
 }
