@@ -51,6 +51,12 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::locale::locale_list,
             crate::commands::locale::locale_set,
             // notes
+            crate::commands::folders::notes_create_folder,
+            crate::commands::folders::notes_get_folder_config,
+            crate::commands::folders::notes_get_folder_template,
+            crate::commands::folders::notes_get_folders,
+            crate::commands::folders::notes_reveal_folder_in_finder,
+            crate::commands::folders::notes_set_folder_config,
             crate::commands::notes::notes_create,
             crate::commands::notes::notes_delete,
             crate::commands::notes::notes_exists,

@@ -10,6 +10,7 @@ use crate::shell::file_open::OpenError;
 use crate::vault::app_edit::{AppEditError, Kept};
 use crate::vault::app_move::MoveError;
 use crate::vault::consumer::rows::RowError;
+use crate::vault::folder_file::FolderFileError;
 use crate::vault::note_file::NoteFileError;
 
 pub(crate) const SCOPE: &str = "notes";
@@ -81,6 +82,10 @@ pub enum NotesError {
     PropertyNotFound(String),
     #[error("the note already has a property `{0}`")]
     PropertyExists(String),
+    /// A folder's `.folder.md` cannot be read, so it is not written over, or cannot be
+    /// written.
+    #[error(transparent)]
+    FolderFile(FolderFileError),
     #[error("{0}")]
     Io(#[from] std::io::Error),
 }
@@ -235,6 +240,12 @@ impl CoreError for NotesError {
                 (FailureKind::Storage, "note_kept_changing")
             }
             Self::Storage(error) => error.kind_and_code(),
+            Self::FolderFile(FolderFileError::Unreadable { .. }) => {
+                (FailureKind::Invalid, "folder_file_unreadable")
+            }
+            Self::FolderFile(FolderFileError::Write { .. }) => {
+                (FailureKind::Storage, "folder_file_failed")
+            }
             Self::Io(_) => (FailureKind::Storage, "note_file_failed"),
         }
     }

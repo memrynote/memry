@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { FolderSelector } from '@/components/filing/folder-selector'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import type { InboxItem, InboxItemListItem, InboxItemType, Folder } from '@/types'
+import { notesService } from '@/services/notes-service'
 
 // Bulk file panel can work with either full or list item types
 type BulkItem = InboxItem | InboxItemListItem
@@ -64,7 +65,7 @@ const BulkFilePanel = ({
   const { data: vaultFolders = [] } = useQuery({
     queryKey: ['vault', 'folders'],
     queryFn: async () => {
-      const folderInfos = await window.api.notes.getFolders()
+      const folderInfos = await notesService.getFolders()
       const folders: Folder[] = [{ id: '', name: t('detail.notesRootLabel'), path: '' }]
       for (const fi of folderInfos) {
         if (fi.path) {

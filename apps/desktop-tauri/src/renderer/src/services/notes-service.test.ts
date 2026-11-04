@@ -28,7 +28,12 @@ const commands = vi.hoisted(() => ({
   notesRename: vi.fn(),
   notesUpdate: vi.fn(),
   notesReorder: vi.fn(),
-  notesGetAllPositions: vi.fn()
+  notesGetAllPositions: vi.fn(),
+  notesGetFolders: vi.fn(),
+  notesCreateFolder: vi.fn(),
+  notesGetFolderConfig: vi.fn(),
+  notesSetFolderConfig: vi.fn(),
+  notesGetFolderTemplate: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -465,10 +470,63 @@ describe('notes-service', () => {
   })
 
   it('forwards the methods later steps port to window.api.notes', async () => {
-    api.notes.createFolder = vi.fn().mockResolvedValue({ success: true })
+    api.notes.deleteFolder = vi.fn().mockResolvedValue({ success: true })
 
-    await notesService.createFolder('Projects')
-    expect(api.notes.createFolder).toHaveBeenCalledWith('Projects')
+    await notesService.deleteFolder('Projects')
+    expect(api.notes.deleteFolder).toHaveBeenCalledWith('Projects')
+  })
+
+  it("reads and writes folders through their commands, a failure in Electron's shape", async () => {
+    commands.notesGetFolders.mockResolvedValue([{ path: 'Work', icon: null }])
+    await expect(notesService.getFolders()).resolves.toEqual([{ path: 'Work', icon: null }])
+
+    commands.notesCreateFolder.mockResolvedValueOnce(null)
+    await expect(notesService.createFolder('Work/Plans')).resolves.toEqual({ success: true })
+    expect(commands.notesCreateFolder).toHaveBeenCalledWith('Work/Plans')
+    commands.notesCreateFolder.mockRejectedValueOnce({
+      kind: 'invalid',
+      code: 'name_conflict',
+      message: 'taken'
+    })
+    await expect(notesService.createFolder('Work')).resolves.toEqual({
+      success: false,
+      error: 'taken'
+    })
+
+    commands.notesGetFolderConfig.mockResolvedValueOnce({
+      icon: 'lucide:folder',
+      template: null,
+      inherit: false,
+      views: [{ id: 'v1' }]
+    })
+    await expect(notesService.getFolderConfig('Work')).resolves.toEqual({
+      icon: 'lucide:folder',
+      template: undefined,
+      inherit: false,
+      views: [{ id: 'v1' }]
+    })
+    commands.notesGetFolderConfig.mockResolvedValueOnce(null)
+    await expect(notesService.getFolderConfig('Gone')).resolves.toBeNull()
+
+    const config = { template: 'daily', inherit: true }
+    commands.notesSetFolderConfig.mockResolvedValueOnce(null)
+    await expect(notesService.setFolderConfig('Work', config)).resolves.toEqual({
+      success: true
+    })
+    expect(commands.notesSetFolderConfig).toHaveBeenCalledWith('Work', config)
+    commands.notesSetFolderConfig.mockRejectedValueOnce({
+      kind: 'invalid',
+      code: 'folder_file_unreadable',
+      message: 'unreadable'
+    })
+    await expect(notesService.setFolderConfig('Work', config)).resolves.toEqual({
+      success: false,
+      error: 'unreadable'
+    })
+
+    commands.notesGetFolderTemplate.mockResolvedValue('daily')
+    await expect(notesService.getFolderTemplate('Work/Plans')).resolves.toBe('daily')
+    expect(commands.notesGetFolderTemplate).toHaveBeenCalledWith('Work/Plans')
   })
 
   it("edits through its command, a failure in Electron's shape", async () => {
@@ -541,9 +599,6 @@ describe('notes-service', () => {
   it('forwards attachments, export, and version helpers', async () => {
     api.notes.uploadAttachment = vi.fn().mockResolvedValue({ success: true })
     api.notes.exportPdf = vi.fn().mockResolvedValue({ success: true })
-    api.notes.getFolderConfig = vi.fn().mockResolvedValue({ template: 'default' })
-    api.notes.setFolderConfig = vi.fn().mockResolvedValue({ success: true })
-    api.notes.getFolderTemplate = vi.fn().mockResolvedValue('default')
     api.notes.getVersions = vi.fn().mockResolvedValue([])
     api.notes.restoreVersion = vi.fn().mockResolvedValue({ success: true })
 
@@ -553,16 +608,6 @@ describe('notes-service', () => {
 
     await notesService.exportPdf({ noteId: 'note-1', includeMetadata: true })
     expect(api.notes.exportPdf).toHaveBeenCalledWith({ noteId: 'note-1', includeMetadata: true })
-
-    await notesService.getFolderConfig('projects')
-    expect(api.notes.getFolderConfig).toHaveBeenCalledWith('projects')
-
-    const config = { template: 'default', inherit: true }
-    await notesService.setFolderConfig('projects', config)
-    expect(api.notes.setFolderConfig).toHaveBeenCalledWith('projects', config)
-
-    await notesService.getFolderTemplate('projects')
-    expect(api.notes.getFolderTemplate).toHaveBeenCalledWith('projects')
 
     await notesService.getVersions('note-1')
     expect(api.notes.getVersions).toHaveBeenCalledWith('note-1')

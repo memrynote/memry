@@ -231,7 +231,7 @@ fn extension_of(name: &str) -> &str {
 /// A move's folder, a path of the vault the sidebar lists: empty segments (`a//b`, a leading
 /// or trailing `/`) and `.` dropped as `path.join` drops them, and every other segment one name
 /// of the user's file system ([`is_plain_relative`]; `Re: plan` is a folder on macOS).
-fn plain_folder(folder: &str) -> Result<String, NotesError> {
+pub(super) fn plain_folder(folder: &str) -> Result<String, NotesError> {
     let segments: Vec<&str> = folder
         .split('/')
         .filter(|segment| !segment.is_empty() && *segment != ".")

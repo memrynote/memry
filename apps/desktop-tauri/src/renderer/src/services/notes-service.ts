@@ -148,9 +148,10 @@ function definitionInput(
 
 /**
  * The notes commands of Step 13f (the edit of 13f-3c included), the rename and manual order of
- * Step 13g, the link reads and the mention link of Step 13i and the property definitions of
- * Step 13k (`commands/notes.rs`, `commands/property_definitions.rs`); every other method still
- * goes to `window.api.notes`.
+ * Step 13g, the link reads and the mention link of Step 13i, the property definitions of
+ * Step 13k and the folder reads, create and settings of Step 13h (`commands/notes.rs`,
+ * `commands/property_definitions.rs`, `commands/folders.rs`); every other method still goes to
+ * `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
@@ -346,7 +347,37 @@ const ported = {
     await commands.notesSetCalendarPropertyVisibility(name, showOnCalendar)
     return { success: true }
   },
-  getCalendarPropertyNames: (): Promise<string[]> => commands.notesGetCalendarPropertyNames()
+  getCalendarPropertyNames: (): Promise<string[]> => commands.notesGetCalendarPropertyNames(),
+  getFolders: (): Promise<FolderInfo[]> => commands.notesGetFolders(),
+  // A failed create or config write answers as Electron's handlers do.
+  createFolder: async (path: string) => {
+    try {
+      await commands.notesCreateFolder(path)
+      return { success: true }
+    } catch (error) {
+      return failure(error)
+    }
+  },
+  revealFolderInFinder: async (folderPath: string): Promise<void> => {
+    await commands.notesRevealFolderInFinder(folderPath)
+  },
+  // The views, formulas, properties and summaries come along, as Electron's read gives them.
+  getFolderConfig: async (folderPath: string): Promise<FolderConfig | null> => {
+    const config = await commands.notesGetFolderConfig(folderPath)
+    if (!config) return null
+    const { template, ...rest } = config
+    return { ...rest, template: template ?? undefined }
+  },
+  setFolderConfig: async (folderPath: string, config: FolderConfig) => {
+    try {
+      await commands.notesSetFolderConfig(folderPath, config)
+      return { success: true }
+    } catch (error) {
+      return failure(error)
+    }
+  },
+  getFolderTemplate: (folderPath: string): Promise<string | null> =>
+    commands.notesGetFolderTemplate(folderPath)
 } satisfies Partial<NotesClientAPI>
 
 /** The note methods served from Rust; `window.api.notes` is typed without them. */

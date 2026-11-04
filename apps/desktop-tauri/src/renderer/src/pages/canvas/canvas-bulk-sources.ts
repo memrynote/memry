@@ -12,6 +12,7 @@
 import type { CanvasEntityRef } from '@memry/contracts/canvas-api'
 import type { NoteWithProperties, ViewScope } from '@memry/contracts/folder-view-api'
 import { isFilterEmpty } from '@/lib/filter-evaluator'
+import { notesService } from '@/services/notes-service'
 import { tagsService } from '@/services/tags-service'
 import { refsFromViewRows } from './canvas-bulk-add'
 
@@ -39,7 +40,7 @@ export async function listBulkTags(): Promise<BulkTagSource[]> {
 
 /** Vault folders, root excluded: "every note in the vault" is not a folder pick. */
 export async function listBulkFolders(): Promise<string[]> {
-  const folders = await window.api.notes.getFolders()
+  const folders = await notesService.getFolders()
   return folders
     .map((folder) => folder.path)
     .filter((path) => path.length > 0)
