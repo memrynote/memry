@@ -3,7 +3,8 @@
 // `#tag` typed into the body joins the day's tags on its record (never the file's), and the day
 // reads back after a restart. Ported from the Electron `journal` spec's entry-creation, tag,
 // calendar and heatmap cases, which asserted nothing. The calendar (13m-4) lists the day files
-// of the vault with their previews and counts, and drops a deleted day.
+// of the vault with their previews and counts, and drops a deleted day. The charts (13m-4b)
+// read the saved days' property values, and the day panel its day's tasks.
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -184,4 +185,44 @@ test('the calendar shows the saved days of the month and year, and drops a delet
   ).toEqual({ success: true })
   await expect(page.getByText('1 day', { exact: true })).toBeVisible()
   expect((await monthEntries(page, year, month)).map((day) => day.date)).toEqual([first])
+})
+
+test('the charts read the saved days property values, and the day panel its tasks', async ({
+  page
+}) => {
+  await waitForAppReady(page)
+  expect(await pollUntil(async () => (await vaultStatus(page)).isOpen, { timeoutMs: 30_000 })).toBe(
+    true
+  )
+  const date = await today(page)
+  const [first, second] = [`${date.slice(0, 8)}01`, `${date.slice(0, 8)}02`]
+  const invoke = (cmd: string, args: Record<string, unknown>) =>
+    page.evaluate((call) => window.__TAURI__.core.invoke(call.cmd, call.args), { cmd, args })
+  await invoke('journal_create_entry', {
+    input: { date: first, content: 'Slept well.', properties: { mood: 4 } }
+  })
+  await invoke('journal_create_entry', { input: { date: second, content: 'Tired.' } })
+  await invoke('journal_update_entry', {
+    input: { date: second, properties: { mood: 2, weather: 'rain' } }
+  })
+
+  const read = (await invoke('journal_get_property_rows', { from: first, to: second })) as {
+    rows: { date: string; properties: Record<string, unknown> }[]
+    properties: { name: string; type: string; count: number }[]
+  }
+  expect(read.rows.map((row) => [row.date, row.properties])).toEqual([
+    [first, { mood: 4 }],
+    [second, { mood: 2, weather: 'rain' }]
+  ])
+  expect(read.properties).toEqual([
+    { name: 'mood', type: 'number', count: 2 },
+    { name: 'weather', type: 'text', count: 1 }
+  ])
+
+  expect(await invoke('journal_get_day_context', { date: first })).toEqual({
+    date: first,
+    tasks: [],
+    events: [],
+    overdueCount: 0
+  })
 })

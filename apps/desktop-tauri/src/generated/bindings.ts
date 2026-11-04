@@ -47,6 +47,8 @@ export const commands = {
 	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
 	/**  `success` is whether the day had an entry to delete. */
 	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
+	/**  The tasks due on `date` and the count overdue before it (`journal:getDayContext`). */
+	journalGetDayContext: (date: string) => __TAURI_INVOKE<DayContextView>("journal_get_day_context", { date }),
 	/**  The day's entry, `null` when it has no file. Browsing never makes a day. */
 	journalGetEntry: (date: string) => __TAURI_INVOKE<JournalEntryView | null>("journal_get_entry", { date }),
 	/**  The live days of the year the calendar shows (`journal:getHeatmap`), oldest first. */
@@ -56,6 +58,11 @@ export const commands = {
 	 *  first.
 	 */
 	journalGetMonthEntries: (year: number, month: number) => __TAURI_INVOKE<MonthEntryView[]>("journal_get_month_entries", { year, month }),
+	/**
+	 *  The live days in `from..=to` with their property values, and every property in use
+	 *  (`journal:getPropertyRows`).
+	 */
+	journalGetPropertyRows: (from: string, to: string) => __TAURI_INVOKE<PropertyRowsView>("journal_get_property_rows", { from, to }),
 	/**  The current and longest runs of live days (`journal:getStreak`). */
 	journalGetStreak: () => __TAURI_INVOKE<StreakView>("journal_get_streak"),
 	/**  One row per month of the year that has a live day (`journal:getYearStats`). */
@@ -544,6 +551,32 @@ export type CustomIconsUpdatedEvent = {
 	id: string,
 };
 
+/**  `DayContext`. */
+export type DayContextView = {
+	date: string,
+	/**  Not archived, completed ones included; by due time (none first), then position. */
+	tasks: DayTaskView[],
+	events: DayEventView[],
+	/**  Not completed, not archived, due before the day. */
+	overdueCount: number,
+};
+
+/**  `ScheduleEvent`: none yet, as in Electron. */
+export type DayEventView = never;
+
+export type DayTaskPriority = "low" | "medium" | "high" | "urgent";
+
+/**  `DayTask`. */
+export type DayTaskView = {
+	id: string,
+	title: string,
+	completed: boolean,
+	/**  Left out for no priority (`mapPriority`). */
+	priority?: DayTaskPriority,
+	/**  Always `false`: a task due on the day is not overdue for it. */
+	isOverdue: boolean,
+};
+
 /**  `CreatePropertyDefinitionSchema`, and `UpdatePropertyDefinitionSchema` with `type` left out. */
 export type DefinitionInput = {
 	name: string,
@@ -813,6 +846,24 @@ export type JournalEntryView = {
 export type JournalInlineTags = {
 	add?: string[] | null,
 	remove?: string[] | null,
+};
+
+/**  `JournalPropertyRow`. */
+export type JournalPropertyRowView = {
+	id: string,
+	date: string,
+	/**  The day's file, or where it goes when it has none yet. */
+	path: string,
+	/**  A day is titled by its date, as Electron's index titles its file. */
+	title: string,
+	properties: { [key in string]: Value },
+};
+
+/**  `JournalPropertySummary`. */
+export type JournalPropertySummaryView = {
+	name: string,
+	type: string,
+	count: number,
 };
 
 /**  `UpdateEntryInputSchema`. */
@@ -1186,6 +1237,14 @@ export type PropertyDefinitionView = {
 	color: string | null,
 	/**  When the record was created; empty for a definition only the file holds. */
 	createdAt: string,
+};
+
+/**  `GetPropertyRowsOutput`. */
+export type PropertyRowsView = {
+	/**  The days in range, oldest first. */
+	rows: JournalPropertyRowView[],
+	/**  Every property of any live day, not only the ones in range: most used first. */
+	properties: JournalPropertySummaryView[],
 };
 
 /**  `PropertyValue` of `properties-api.ts`. */

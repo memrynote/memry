@@ -25,7 +25,7 @@ use crate::crdt::errors::CrdtError;
 use crate::crypto::keys;
 use crate::domain::calendar::LocalDateTime;
 use crate::domain::journal;
-use crate::domain::journal_ops::{body, metadata, reads, seed, settings};
+use crate::domain::journal_ops::{body, day_values, metadata, reads, seed, settings};
 use crate::domain::journal_rules::{self, JournalTemplateFormatted};
 use crate::domain::note_meta::{self, WikiTargetMatch};
 use crate::domain::note_tasks;
@@ -454,6 +454,11 @@ impl Journal {
         self.db
             .read_blocking(move |conn| Ok(reads::calendar_days(conn, &from, &to)))
             .map_err(CrdtError::from)?
+    }
+
+    /// [`day_values::day_values`]: every live day's property values, oldest first.
+    pub fn day_values(&self) -> Result<Vec<day_values::DayValues>, StorageError> {
+        self.db.read_blocking(day_values::day_values)
     }
 
     /// [`metadata::set_live_tags`]: the live day's tags replaced; no day is made or revived.
