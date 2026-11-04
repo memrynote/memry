@@ -69,6 +69,21 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
+	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
+	/**
+	 *  `notes:get-folder-config`: the folder's `.folder.md`, `null` when it has none or it cannot
+	 *  be read.
+	 */
+	notesGetFolderConfig: (folderPath: string) => __TAURI_INVOKE<FolderConfigView | null>("notes_get_folder_config", { folderPath }),
+	/**  `notes:get-folder-template`: the template a new note in the folder takes, inherited. */
+	notesGetFolderTemplate: (folderPath: string) => __TAURI_INVOKE<string | null>("notes_get_folder_template", { folderPath }),
+	/**  `notes:get-folders`: every folder the notes tree lists, with its icon. */
+	notesGetFolders: () => __TAURI_INVOKE<FolderView[]>("notes_get_folders"),
+	/**  `notes:reveal-folder-in-finder`: the folder itself, selected in its parent. */
+	notesRevealFolderInFinder: (folderPath: string) => __TAURI_INVOKE<null>("notes_reveal_folder_in_finder", { folderPath }),
+	/**  `notes:set-folder-config`: the icon, template and `inherit`; the folder's views stay. */
+	notesSetFolderConfig: (folderPath: string, config: FolderConfigInput) => __TAURI_INVOKE<null>("notes_set_folder_config", { folderPath, config }),
 	/**
 	 *  `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
 	 *  (Step 32) is not read: the renderer's service refuses it until its step.
@@ -653,6 +668,32 @@ export type FileView = {
  */
 export type FlushRequestedEvent = {
 	requestId: string,
+};
+
+/**  `notes:set-folder-config`'s config, as `FolderConfigSchema` parses it. */
+export type FolderConfigInput = {
+	/**  Absent: the file's icon stays; `null`: none. */
+	icon?: string | null,
+	template?: string | null,
+	/**  `z.boolean().optional().default(true)`. */
+	inherit?: boolean | null,
+};
+
+/**  A folder's settings as the renderer reads them (`FolderConfig` of `@memry/rpc/notes`). */
+export type FolderConfigView = {
+	icon?: string | null,
+	template?: string | null,
+	inherit: boolean,
+	views?: Value | null,
+	formulas?: Value | null,
+	properties?: Value | null,
+	summaries?: Value | null,
+};
+
+/**  A folder of the tree (`FolderInfo` of `@memry/rpc/notes`). */
+export type FolderView = {
+	path: string,
+	icon: string | null,
 };
 
 export type GetVaultsResponse = {

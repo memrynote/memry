@@ -20,6 +20,7 @@ import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import type { InboxItem, InboxItemListItem, Folder as FolderType, LinkedNote } from '@/types'
 import type { ImageFilingMode } from '@memry/domain-inbox'
 import { createLogger } from '@/lib/logger'
+import { notesService } from '@/services/notes-service'
 
 const log = createLogger('Component:FilingSection')
 
@@ -87,7 +88,7 @@ export const FilingSection = ({
   const { data: vaultFolders = [] } = useQuery({
     queryKey: ['vault', 'folders'],
     queryFn: async () => {
-      const folderInfos = await window.api.notes.getFolders()
+      const folderInfos = await notesService.getFolders()
       const folders: FolderType[] = [{ id: '', name: t('detail.notesRootLabel'), path: '' }]
       for (const fi of folderInfos) {
         const normalizedPath = normalizeFolderPath(fi.path)
@@ -228,7 +229,7 @@ export const FilingSection = ({
     if (!trimmedSearch || isCreatingFolder) return
     setIsCreatingFolder(true)
     try {
-      const result = await window.api.notes.createFolder(trimmedSearch)
+      const result = await notesService.createFolder(trimmedSearch)
       if (!result.success) {
         log.error('Failed to create folder', { path: trimmedSearch })
         return
