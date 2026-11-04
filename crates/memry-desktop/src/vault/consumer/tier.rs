@@ -41,8 +41,9 @@ pub struct VaultTier {
     /// The open's own-write record, published before its watcher starts, so a file the app
     /// writes while the vault opens is not reported back as an outside edit.
     echo: Mutex<Option<Arc<EchoGuard>>>,
-    /// The text the app wrote for each note this run, for its saves and for the consumer,
-    /// which reports the watcher's read of those bytes as the app's own.
+    /// The text the app wrote for each note in the open vault, for its saves and for the
+    /// consumer, which reports the watcher's read of those bytes as their writer's. Cleared as
+    /// a vault opens: a day's id is the same in every vault.
     own_files: Arc<OwnFiles>,
     /// Where a test holds a stop or a start, each run once: [`VaultTier::hold_at`].
     #[cfg(test)]
@@ -226,6 +227,7 @@ impl VaultTier {
             .rows
             .open(vault.vault.clone())
             .map_err(|error| error.to_string())?;
+        self.own_files.clear();
         let echo = Arc::<EchoGuard>::default();
         *lock(&self.echo) = Some(echo.clone());
         self.start_in(vault, session, echo.clone())

@@ -88,15 +88,18 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
         return;
     };
     let source = Some(NoteEventSource::External);
+    // A path can name a day another note holds (a note moved into the day's path): no event of
+    // that day's.
     if matches!(change, Change::Removed) {
+        if read(app, &open, &date).is_some_and(|entry| entry.id != note_id) {
+            return;
+        }
         return broadcast(app, JournalEntryDeletedEvent { date, source });
     }
     measure(app, &note_id, &date);
     let Some(entry) = read(app, &open, &date) else {
         return;
     };
-    // The path names a day another note holds (a note moved into the day's path): no event of
-    // that day's.
     if entry.id != note_id {
         return;
     }

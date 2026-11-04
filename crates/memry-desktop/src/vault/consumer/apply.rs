@@ -319,20 +319,24 @@ impl Applier {
             return Step::Retry(path.to_owned());
         }
         // The bytes a save wrote that its document did not take (`AppEdit`, `cancel_write`)
-        // are the app's: reported as an outside edit, they would make an open editor drop what
-        // was typed since.
-        let own = content_hash
+        // are its writer's: reported as an outside edit, they would make an open editor drop
+        // what was typed since. Any other bytes replaced the app's file.
+        let writer = content_hash
             .as_deref()
-            .is_some_and(|hash| self.own_files.is(note_id, hash));
+            .and_then(|hash| self.own_files.writer(note_id, hash));
+        let source = match writer {
+            Some(writer) if source == ChangeSource::Watcher => writer,
+            Some(_) => source,
+            None => {
+                self.own_files.forget(note_id);
+                source
+            }
+        };
         lane.publish(Applied::Changed {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
             content_hash,
-            source: if own && source == ChangeSource::Watcher {
-                ChangeSource::App
-            } else {
-                source
-            },
+            source,
         });
         Step::Done
     }

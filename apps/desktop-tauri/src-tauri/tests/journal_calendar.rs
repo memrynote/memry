@@ -281,11 +281,10 @@ fn row_at(mocked: &Mocked, path: &str) -> String {
     }
 }
 
-/// A note moved outside the app to a day's path, while the day's record holds another file,
-/// stays the note until 13m-6 settles such moves: its edits send no event of the day's.
-#[test]
-fn a_note_at_a_days_path_sends_no_event_of_the_days() {
-    let mocked = opened();
+/// Moves `Note.md`, made outside the app, to `daily/2025-03-12.md` once the day's record holds
+/// `journal/2025-03-12.md` and the config names `daily`: the note stays the note there until
+/// 13m-6 settles such moves. Heard from then on.
+fn note_moved_to_a_days_path(mocked: &Mocked) -> Arc<Heard> {
     mocked
         .invoke(
             "journal_create_entry",
@@ -293,7 +292,7 @@ fn a_note_at_a_days_path_sends_no_event_of_the_days() {
         )
         .unwrap();
     fs::write(mocked.vault.join("Note.md"), "A note.\n").unwrap();
-    let note = row_at(&mocked, "Note.md");
+    let note = row_at(mocked, "Note.md");
     fs::write(
         mocked.vault.join(".memry/config.json"),
         r#"{"journalFolder":"daily","journalDateFormat":"YYYY-MM-DD"}"#,
@@ -305,16 +304,38 @@ fn a_note_at_a_days_path_sends_no_event_of_the_days() {
         mocked.vault.join("daily/2025-03-12.md"),
     )
     .unwrap();
-    assert_eq!(row_at(&mocked, "daily/2025-03-12.md"), note);
-    let heard = hear(&mocked);
+    assert_eq!(row_at(mocked, "daily/2025-03-12.md"), note);
+    hear(mocked)
+}
+
+/// Settles the facts before `Marker.md`'s; the events of those facts follow a measure.
+fn settle(mocked: &Mocked) {
+    fs::write(mocked.vault.join("Marker.md"), "Done.\n").unwrap();
+    row_at(mocked, "Marker.md");
+    // timing-bound: the edit's fact is before the marker's; its event follows a measure.
+    std::thread::sleep(Duration::from_millis(1500));
+}
+
+/// A note at a day's path that is not the day's sends no event of the day's when edited.
+#[test]
+fn a_note_at_a_days_path_sends_no_event_of_the_days() {
+    let mocked = opened();
+    let heard = note_moved_to_a_days_path(&mocked);
     fs::write(
         mocked.vault.join("daily/2025-03-12.md"),
         "A note, edited.\n",
     )
     .unwrap();
-    fs::write(mocked.vault.join("Marker.md"), "Done.\n").unwrap();
-    row_at(&mocked, "Marker.md");
-    // timing-bound: the edit's fact is before the marker's; its event follows a measure.
-    std::thread::sleep(Duration::from_millis(1500));
+    settle(&mocked);
+    assert_eq!(*heard.lock().unwrap(), Vec::new());
+}
+
+/// Nor when removed: the day lives on in its own file.
+#[test]
+fn a_note_removed_from_a_days_path_deletes_no_day() {
+    let mocked = opened();
+    let heard = note_moved_to_a_days_path(&mocked);
+    fs::remove_file(mocked.vault.join("daily/2025-03-12.md")).unwrap();
+    settle(&mocked);
     assert_eq!(*heard.lock().unwrap(), Vec::new());
 }
