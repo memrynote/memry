@@ -9,7 +9,8 @@ const commands = vi.hoisted(() => ({
   journalGetHeatmap: vi.fn(),
   journalGetMonthEntries: vi.fn(),
   journalGetYearStats: vi.fn(),
-  journalGetStreak: vi.fn()
+  journalGetStreak: vi.fn(),
+  journalGetPropertyRows: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -141,6 +142,11 @@ describe('journal-service', () => {
     const streak = { currentStreak: 2, longestStreak: 5, lastEntryDate: '2025-01-02' }
     commands.journalGetStreak.mockResolvedValue(streak)
     expect(await journalService.getStreak()).toEqual(streak)
+
+    const rows = { rows: [], properties: [{ name: 'mood', type: 'number', count: 3 }] }
+    commands.journalGetPropertyRows.mockResolvedValue(rows)
+    expect(await journalService.getPropertyRows('2025-01-01', '2025-01-31')).toEqual(rows)
+    expect(commands.journalGetPropertyRows).toHaveBeenCalledWith('2025-01-01', '2025-01-31')
   })
 
   it('forwards the context and tag reads it does not serve yet', async () => {

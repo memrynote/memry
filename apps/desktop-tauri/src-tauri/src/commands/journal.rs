@@ -1,6 +1,6 @@
 //! The journal commands of Step 13m (`journal:getEntry`, `journal:createEntry`,
 //! `journal:updateEntry`, `journal:deleteEntry` and the calendar's `getHeatmap`,
-//! `getMonthEntries`, `getYearStats` and `getStreak` of `ipc/journal-handlers.ts`), each one call
+//! `getMonthEntries`, `getYearStats`, `getStreak` and `getPropertyRows` of `ipc/journal-handlers.ts`), each one call
 //! of `memry_desktop::journal`. A create, an update and a delete send their journal event after
 //! the write; a create and an update once the note index measured the day's file, so the
 //! calendar's refetch on the event reads the saved counts ([`measure`]).
@@ -10,6 +10,7 @@ use std::sync::Arc;
 use memry_desktop::journal::calendar::{
     self, HeatmapEntryView, MonthEntryView, MonthStatsView, StreakView,
 };
+use memry_desktop::journal::property_rows::PropertyRowsView;
 use memry_desktop::journal::update::{DayUpdate, DayUpdated, InlineTags};
 use memry_desktop::journal::write::NewDay;
 use memry_desktop::journal::{self, JournalEntryView};
@@ -311,6 +312,23 @@ pub async fn journal_get_streak<R: Runtime>(app: AppHandle<R>) -> Result<StreakV
             .journal(&open)
             .map_err(|error| failed(&error))?;
         calendar::streak(&journal, now_ms()).map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// The live days in `from..=to` with their property values, and every property in use
+/// (`journal:getPropertyRows`).
+#[tauri::command]
+#[specta::specta]
+pub async fn journal_get_property_rows<R: Runtime>(
+    app: AppHandle<R>,
+    from: String,
+    to: String,
+) -> Result<PropertyRowsView, CommandError> {
+    blocking("journal_get_property_rows", move || {
+        notes::service(&app)?
+            .journal_property_rows(&notes::open_vault(&app)?, &from, &to)
+            .map_err(|error| failed(&error))
     })
     .await
 }

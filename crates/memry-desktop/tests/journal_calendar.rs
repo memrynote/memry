@@ -1,7 +1,7 @@
 //! The journal calendar's reads (Step 13m-4, #3530) over a running vault and note index: the
 //! days are the live journal records, a day with a file is measured by the index's row of that
 //! file, a day with no file yet by its text, and a deleted day never shows, its file on disk or
-//! not.
+//! not. The charts' property rows (13m-4b) are the records' values.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -18,6 +18,9 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::calendar::{self, HeatmapEntryView, MonthEntryView, MonthStatsView};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::notes::property_definitions::PropertyDefinitions;
+use memry_desktop::notes::service::NotesService;
+use serde_json::json;
 use vault_env::{env, indexed};
 
 #[test]
@@ -174,5 +177,76 @@ fn the_calendar_lists_live_days_measured_from_their_files_or_their_text() {
             "{month}"
         );
     }
+    e.close();
+}
+
+#[test]
+fn the_charts_take_each_live_days_values_and_every_property_in_use() {
+    let store: Mutex<Option<Arc<dyn SecureStore>>> = Mutex::default();
+    let mut e = env(|s| {
+        *store.lock().unwrap() = Some(s.clone());
+        Some(NotesIdentity::new(s))
+    });
+    e.open();
+    e.facts_until(indexed);
+    let store = store.lock().unwrap().clone().unwrap();
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store.clone()).unwrap();
+    let set = |date: &str, name: &str, value: &str| {
+        journal
+            .set_property(date.into(), name.into(), value.into())
+            .unwrap();
+    };
+    set("2024-12-31", "done", "true");
+    set("2025-03-01", "mood", "3");
+    set("2025-03-01", "energy", "\"high\"");
+    set("2025-03-02", "mood", "4");
+    set("2025-03-02", "energy", "\"low\"");
+    set("2025-03-03", "energy", "\"2025-03-03\"");
+    set("2025-03-04", "mood", "5");
+    assert!(journal.delete_day("2025-03-04".into()).unwrap());
+    let mood = serde_json::from_value(json!({ "name": "mood", "type": "select" })).unwrap();
+    PropertyDefinitions::open(&open, store.clone())
+        .unwrap()
+        .create(mood)
+        .unwrap();
+
+    let notes = NotesService::new(e.tier.clone(), store);
+    let read = notes
+        .journal_property_rows(&open, "2025-03-01", "2025-03-31")
+        .unwrap();
+    let rows = serde_json::to_value(&read.rows).unwrap();
+    let row = |date: &str, properties| {
+        json!({
+            "id": format!("j{date}"),
+            "date": date,
+            "path": format!("journal/{date}.md"),
+            "title": date,
+            "properties": properties,
+        })
+    };
+    assert_eq!(
+        rows,
+        json!([
+            row("2025-03-01", json!({ "mood": 3, "energy": "high" })),
+            row("2025-03-02", json!({ "mood": 4, "energy": "low" })),
+            row("2025-03-03", json!({ "energy": "2025-03-03" })),
+        ]),
+        "the days in range, oldest first; the deleted 4th is not one"
+    );
+    assert_eq!(
+        serde_json::to_value(&read.properties).unwrap(),
+        json!([
+            { "name": "energy", "type": "text", "count": 3 },
+            { "name": "mood", "type": "select", "count": 2 },
+            { "name": "done", "type": "checkbox", "count": 1 },
+        ]),
+        "every live day's: most used first, a definition's type, else most values'"
+    );
+    assert!(
+        notes
+            .journal_property_rows(&open, "2025-3-1", "2025-03-31")
+            .is_err()
+    );
     e.close();
 }

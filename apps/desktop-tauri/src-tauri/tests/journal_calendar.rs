@@ -1,5 +1,5 @@
-//! The journal calendar's commands through the IPC a renderer calls, on a mock app over a real
-//! vault, vault tier and note index (#3530 13m-4): the argument names the generated bindings
+//! The journal calendar's and charts' commands through the IPC a renderer calls, on a mock app over a real
+//! vault, vault tier and note index (#3530 13m-4, 13m-4b): the argument names the generated bindings
 //! send, the contract's field names in the answers, and a year out of range refused by its code.
 
 mod support;
@@ -12,7 +12,7 @@ use tauri::test::MockRuntime;
 use tauri_specta::{ErrorHandlingMode, collect_commands};
 
 /// A vault holding one day file, opened with its first walk done and the file measured, and a
-/// webview whose IPC routes the calendar commands and the journal saves.
+/// webview whose IPC routes the calendar and chart commands and the journal saves.
 fn opened() -> Mocked {
     // As `registry::builder` lists them, with its error handling.
     let commands = tauri_specta::Builder::<MockRuntime>::new()
@@ -21,6 +21,7 @@ fn opened() -> Mocked {
             memry_tauri::commands::journal::journal_create_entry::<MockRuntime>,
             memry_tauri::commands::journal::journal_get_heatmap::<MockRuntime>,
             memry_tauri::commands::journal::journal_get_month_entries::<MockRuntime>,
+            memry_tauri::commands::journal::journal_get_property_rows::<MockRuntime>,
             memry_tauri::commands::journal::journal_get_streak::<MockRuntime>,
             memry_tauri::commands::journal::journal_get_year_stats::<MockRuntime>,
             memry_tauri::commands::journal::journal_update_entry::<MockRuntime>,
@@ -75,6 +76,20 @@ fn the_calendar_commands_answer_the_contracts_shapes() {
     assert_eq!(
         call("journal_get_streak", json!({})),
         Ok(json!({ "currentStreak": 0, "longestStreak": 1, "lastEntryDate": "2025-03-03" }))
+    );
+
+    assert_eq!(
+        call("journal_get_property_rows", json!({ "from": "2025-03-01", "to": "2025-03-31" })),
+        Ok(json!({
+            "rows": [{
+                "id": "j2025-03-03",
+                "date": "2025-03-03",
+                "path": "journal/2025-03-03.md",
+                "title": "2025-03-03",
+                "properties": {},
+            }],
+            "properties": [],
+        }))
     );
 
     let refused = call("journal_get_heatmap", json!({ "year": 1969 })).unwrap_err();

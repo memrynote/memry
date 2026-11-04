@@ -138,6 +138,7 @@ vi.mock('../src/generated/bindings', () => {
         journal().getMonthEntries(year, month),
       journalGetYearStats: (year: number) => journal().getYearStats(year),
       journalGetStreak: () => journal().getStreak(),
+      journalGetPropertyRows: (from: string, to: string) => journal().getPropertyRows(from, to),
       notesCreate: async (input: unknown) => {
         const result = (await notes().create(input)) as
           | { success?: boolean; note?: unknown; error?: string }

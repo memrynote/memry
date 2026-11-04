@@ -48,6 +48,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::journal::journal_get_entry::<Wry>,
             crate::commands::journal::journal_get_heatmap::<Wry>,
             crate::commands::journal::journal_get_month_entries::<Wry>,
+            crate::commands::journal::journal_get_property_rows::<Wry>,
             crate::commands::journal::journal_get_streak::<Wry>,
             crate::commands::journal::journal_get_year_stats::<Wry>,
             crate::commands::journal::journal_update_entry::<Wry>,

@@ -11,6 +11,7 @@ import type {
   JournalEntryDeletedEvent,
   JournalExternalChangeEvent
 } from '../../../preload/index.d'
+import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
 import { commands, events, type JournalEntryView, type Value } from '../../../generated/bindings'
 import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
@@ -109,7 +110,11 @@ const ported = {
     })),
 
   /** The current and longest runs of live days. */
-  getStreak: (): Promise<JournalStreak> => commands.journalGetStreak()
+  getStreak: (): Promise<JournalStreak> => commands.journalGetStreak(),
+
+  /** The live days in `from..to` with their property values, and every property in use. */
+  getPropertyRows: (from: string, to: string): Promise<GetPropertyRowsOutput> =>
+    commands.journalGetPropertyRows(from, to)
 } satisfies Partial<JournalClientAPI>
 
 /** The journal methods served from Rust; `window.api.journal` is typed without them. */

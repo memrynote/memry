@@ -56,6 +56,11 @@ export const commands = {
 	 *  first.
 	 */
 	journalGetMonthEntries: (year: number, month: number) => __TAURI_INVOKE<MonthEntryView[]>("journal_get_month_entries", { year, month }),
+	/**
+	 *  The live days in `from..=to` with their property values, and every property in use
+	 *  (`journal:getPropertyRows`).
+	 */
+	journalGetPropertyRows: (from: string, to: string) => __TAURI_INVOKE<PropertyRowsView>("journal_get_property_rows", { from, to }),
 	/**  The current and longest runs of live days (`journal:getStreak`). */
 	journalGetStreak: () => __TAURI_INVOKE<StreakView>("journal_get_streak"),
 	/**  One row per month of the year that has a live day (`journal:getYearStats`). */
@@ -802,6 +807,24 @@ export type JournalInlineTags = {
 	remove?: string[] | null,
 };
 
+/**  `JournalPropertyRow`. */
+export type JournalPropertyRowView = {
+	id: string,
+	date: string,
+	/**  The day's file, or where it goes when it has none yet. */
+	path: string,
+	/**  A day is titled by its date, as Electron's index titles its file. */
+	title: string,
+	properties: { [key in string]: Value },
+};
+
+/**  `JournalPropertySummary`. */
+export type JournalPropertySummaryView = {
+	name: string,
+	type: string,
+	count: number,
+};
+
 /**  `UpdateEntryInputSchema`. */
 export type JournalUpdateInput = {
 	date: string,
@@ -1173,6 +1196,14 @@ export type PropertyDefinitionView = {
 	color: string | null,
 	/**  When the record was created; empty for a definition only the file holds. */
 	createdAt: string,
+};
+
+/**  `GetPropertyRowsOutput`. */
+export type PropertyRowsView = {
+	/**  The days in range, oldest first. */
+	rows: JournalPropertyRowView[],
+	/**  Every property of any live day, not only the ones in range: most used first. */
+	properties: JournalPropertySummaryView[],
 };
 
 /**  `PropertyValue` of `properties-api.ts`. */

@@ -7,6 +7,7 @@
 //! ([`crate::domain::journal::open_day_in`]).
 
 pub mod body;
+pub mod day_values;
 pub mod links;
 pub mod metadata;
 pub mod reads;
