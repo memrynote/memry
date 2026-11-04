@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { test, expect } from '../../harness/test'
-import { invokeTest } from '../../harness/invoke-test'
+import { invokeTest, sendTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
 import { sendQuitEvent } from '../../harness/mac-quit-event'
 import { appInfo, restart } from '../../harness/tauri-lifecycle'
@@ -16,7 +16,7 @@ interface SessionMarker {
 }
 
 async function quitAndMeasure(app: { executor: never; pid: number }): Promise<number> {
-  await invokeTest(app, 'e2e_request_quit')
+  await sendTest(app, 'e2e_request_quit')
   const startedAt = Date.now()
   const exited = await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })
   expect(exited).toBe(true)

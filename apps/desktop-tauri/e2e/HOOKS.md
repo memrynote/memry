@@ -7,8 +7,9 @@ The Electron e2e suite reaches the main process through `electronApp.evaluate` a
 in `src-tauri/src/e2e/commands.rs`, and called from a spec with
 `invokeTest(app, 'e2e_...', args)` (`harness/invoke-test.ts`). Each command answers
 `e2e_disabled` unless the app runs with `MEMRY_E2E=1`, and a release build has none of them.
-A command that ends the page or the app (`e2e_kill_page`, `e2e_trigger_crash`) never replies, so
-a spec calls it with `sendTest(app, 'e2e_...')`, which does not wait for the command's reply.
+A command that ends the page or the app (`e2e_kill_page`, `e2e_request_quit`,
+`e2e_trigger_crash`) can end before its reply reaches the driver, so a spec calls it with
+`sendTest(app, 'e2e_...')`, which does not wait for the reply, and `invokeTest` rejects it.
 
 `node e2e/scripts/check-test-hooks-mapped.mjs` fails when a hook of the Electron files is missing
 from the first column of the table below. It runs in CI until Step 43 (#3560) deletes the
@@ -81,6 +82,7 @@ Electron suite.
 | `MEMRY_DEVICE`, `TEST_VAULT_PATH`, `SYNC_SERVER_URL`, `MEMRY_TEST_LOG_DIR` | Written by `fresh()` into the control file; see below. The app opens `currentVault` of `<appDataDir>/memry-config.json`, which `fresh()` seeds with `testVaultPath` (`harness/seed-registry.mjs`).                                                                                                                                                                                               |
 | `MEMRY_FORCE_VAULT_PICKER`                                                 | `1` starts on the picker whatever `currentVault` says; `test.use({ extraEnv: { MEMRY_FORCE_VAULT_PICKER: '1' } })`.                                                                                                                                                                                                                                                                              |
 | `MEMRY_TEST_UPDATER`                                                       | `scripted` replaces the update backend with the scripted one (`memry_desktop::updater::scripted`), read through `LaunchEnv` while `E2eGate` is open. `e2e_updater_script` queues what the next checks find, and `e2e_updater_hook_calls` lists every install hand-off, which also lands in `<appDataDir>/e2e-updater-applies.jsonl`. Replaces the Electron specs' `updater:state-changed` sends. |
+| `MEMRY_TEST_UPDATER_VERSION`                                               | With `MEMRY_TEST_UPDATER=scripted`, the raw version (`YYYY.MDD.N`) the updater reports instead of the bundle's `0.0.0`, so a spec can relaunch as the build an install put in place.                                                                                                                                                                                                             |
 
 ## Dialogs
 

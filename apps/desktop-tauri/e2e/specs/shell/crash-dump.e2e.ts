@@ -3,10 +3,10 @@ import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { test, expect } from '../../harness/test'
-import { invokeTest, sendTest } from '../../harness/invoke-test'
+import { sendTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
 import { appInfo } from '../../harness/tauri-lifecycle'
-import { pollUntil } from '../../harness/wait'
+import { pollUntil, waitForMainLog } from '../../harness/wait'
 
 /** Pids of the crash monitors started by the app `parentPid` (unix only). */
 function monitorsOf(parentPid: number): number[] {
@@ -26,9 +26,16 @@ function dumpsIn(dir: string): string[] {
   return readdirSync(dumps).filter((name) => name.endsWith('.dmp'))
 }
 
+// The handler attaches on its own thread once the monitor answers; the boot does not wait for it.
+// A crash before that leaves no dump, and a quit before that leaves the monitor with no client.
+async function handlerAttached(app: { dirs: { logDir: string } }): Promise<void> {
+  expect(await waitForMainLog(app, 'crash handler attached')).toBe(true)
+}
+
 test('a native crash leaves a minidump written by the out-of-process monitor', async ({ app }) => {
   const { appDataDir, pid } = await appInfo(app)
   expect(dumpsIn(appDataDir)).toEqual([])
+  await handlerAttached(app)
 
   await sendTest(app, 'e2e_trigger_crash')
 
@@ -50,8 +57,9 @@ test('the monitor runs beside the app and ends when the app quits', async ({ app
   })
   expect(started).toBe(true)
   const [monitor] = monitorsOf(pid)
+  await handlerAttached(app)
 
-  await invokeTest(app, 'e2e_request_quit')
+  await sendTest(app, 'e2e_request_quit')
   expect(await pollUntil(() => !isAlive(pid) || undefined, { timeoutMs: 15_000 })).toBe(true)
   expect(await pollUntil(() => !isAlive(monitor) || undefined, { timeoutMs: 15_000 })).toBe(true)
 })

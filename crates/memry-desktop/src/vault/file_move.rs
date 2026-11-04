@@ -36,9 +36,9 @@ impl FileMove<'_> {
     /// `MOVEFILE_WRITE_THROUGH`, but for a case-only respelling and a volume without an
     /// exclusive rename, which take a plain rename). A folder that cannot be synced is logged
     /// ([`sync_dir`]).
-    pub(crate) fn run(&self, echo: &EchoGuard) -> io::Result<()> {
+    pub(crate) fn run(&self, echo: &EchoGuard) -> Result<(), FileMoveError> {
         if let Some(parent) = self.target.parent() {
-            create_folders(parent)?;
+            create_folders(parent).map_err(FileMoveError::Folder)?;
         }
         let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
         let attempt = |rename: fn(&Path, &Path) -> io::Result<()>| {
@@ -63,7 +63,26 @@ impl FileMove<'_> {
                 .into_iter()
                 .for_each(sync_dir);
         }
-        moved
+        moved.map_err(FileMoveError::Move)
+    }
+}
+
+/// Why [`FileMove::run`] did not move the file.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum FileMoveError {
+    /// A folder of the target could not be made: a file holds its name, or the volume refused.
+    #[error("the target's folder could not be made: {0}")]
+    Folder(io::Error),
+    /// The move itself: `AlreadyExists` when another file holds the target.
+    #[error(transparent)]
+    Move(io::Error),
+}
+
+impl From<FileMoveError> for io::Error {
+    fn from(error: FileMoveError) -> Self {
+        match error {
+            FileMoveError::Folder(error) | FileMoveError::Move(error) => error,
+        }
     }
 }
 

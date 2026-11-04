@@ -2202,6 +2202,8 @@
   },
   "movedRefsKept": {
     "changing": "Notatka „{title}” została przeniesiona, ale w tym czasie się zmieniała, więc jej linki do obrazów i plików nadal wskazują stary folder. Sprawdź je w notatce.",
-    "unreadable": "Notatka „{title}” została przeniesiona, ale Memry nie może edytować jej pliku, więc jej linki do obrazów i plików nadal wskazują stary folder. Zaktualizuj je ręcznie."
+    "unreadable": "Notatka „{title}” została przeniesiona, ale Memry nie może edytować jej pliku, więc jej linki do obrazów i plików nadal wskazują stary folder. Zaktualizuj je ręcznie.",
+    "several": "{count, plural, one {# notatka została przeniesiona, ale jej linki do obrazów i plików nadal wskazują stary folder. Sprawdź je w notatce.} few {# notatki zostały przeniesione, ale ich linki do obrazów i plików nadal wskazują stare foldery. Sprawdź je w każdej notatce.} many {# notatek zostało przeniesionych, ale ich linki do obrazów i plików nadal wskazują stare foldery. Sprawdź je w każdej notatce.} other {# notatki zostało przeniesione, ale ich linki do obrazów i plików nadal wskazują stare foldery. Sprawdź je w każdej notatce.}}",
+    "severalUnreadable": "{count, plural, one {# notatka została przeniesiona, ale jej linki do obrazów i plików nadal wskazują stary folder. Memry nie może edytować niektórych ich plików. Zaktualizuj je ręcznie.} few {# notatki zostały przeniesione, ale ich linki do obrazów i plików nadal wskazują stare foldery. Memry nie może edytować niektórych ich plików. Zaktualizuj je ręcznie.} many {# notatek zostało przeniesionych, ale ich linki do obrazów i plików nadal wskazują stare foldery. Memry nie może edytować niektórych ich plików. Zaktualizuj je ręcznie.} other {# notatki zostało przeniesione, ale ich linki do obrazów i plików nadal wskazują stare foldery. Memry nie może edytować niektórych ich plików. Zaktualizuj je ręcznie.}}"
   }
 }
