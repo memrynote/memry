@@ -23,6 +23,20 @@ const PIXEL_DRIFT_TOLERANCE = 1 // px — single overlay DOM node; allow sub-pix
  */
 const chromeSidebarToggle = (page: Page) => page.locator('[data-sidebar="trigger"]')
 
+/**
+ * Waits until the sidebar is `state` and done sliding. The gap and the panel animate their width
+ * and offset over 200 ms, and a loaded runner can start that slide long after the click.
+ */
+async function sidebarSettled(page: Page, state: 'expanded' | 'collapsed'): Promise<void> {
+  await page.waitForFunction((want: string) => {
+    const sidebar = document.querySelector<HTMLElement>('[data-slot="sidebar"]')
+    if (sidebar?.dataset.state !== want) return false
+    return ['sidebar-gap', 'sidebar-container'].every(
+      (slot) => sidebar.querySelector(`[data-slot="${slot}"]`)?.getAnimations().length === 0
+    )
+  }, state)
+}
+
 test.describe('Sidebar & WindowControls', () => {
   test('the title-row buttons stay anchored at the same x across sidebar toggle', async ({
     page
@@ -30,6 +44,7 @@ test.describe('Sidebar & WindowControls', () => {
     // The custom traffic-light buttons are hidden (macOS draws native ones), so the anchor is
     // the history arrow that follows them.
     await ready(page)
+    await sidebarSettled(page, 'expanded')
 
     const back = page.getByLabel('Browser back').first()
     await expect(back).toBeVisible()
@@ -38,7 +53,7 @@ test.describe('Sidebar & WindowControls', () => {
 
     const sidebarToggle = chromeSidebarToggle(page)
     await sidebarToggle.click()
-    await page.waitForTimeout(400)
+    await sidebarSettled(page, 'collapsed')
 
     const collapsedBox = await page.getByLabel('Browser back').first().boundingBox()
     expect(collapsedBox).not.toBeNull()
@@ -46,7 +61,7 @@ test.describe('Sidebar & WindowControls', () => {
     expect(Math.abs(expandedBox!.y - collapsedBox!.y)).toBeLessThanOrEqual(PIXEL_DRIFT_TOLERANCE)
 
     await sidebarToggle.click()
-    await page.waitForTimeout(400)
+    await sidebarSettled(page, 'expanded')
     const reopenedBox = await page.getByLabel('Browser back').first().boundingBox()
     expect(Math.abs(reopenedBox!.x - expandedBox!.x)).toBeLessThanOrEqual(PIXEL_DRIFT_TOLERANCE)
   })
@@ -64,7 +79,7 @@ test.describe('Sidebar & WindowControls', () => {
 
     // Collapse sidebar
     await chromeSidebarToggle(page).click()
-    await page.waitForTimeout(400)
+    await sidebarSettled(page, 'collapsed')
 
     // Still visible, still disabled
     await expect(page.getByLabel('Browser back').first()).toBeVisible()
@@ -73,12 +88,13 @@ test.describe('Sidebar & WindowControls', () => {
 
   test('sidebar content reclaims full width when collapsed', async ({ page }) => {
     await ready(page)
+    await sidebarSettled(page, 'expanded')
 
     const mainContent = page.locator('#main-content')
     const expandedWidth = (await mainContent.boundingBox())!.width
 
     await chromeSidebarToggle(page).click()
-    await page.waitForTimeout(400)
+    await sidebarSettled(page, 'collapsed')
 
     const collapsedWidth = (await mainContent.boundingBox())!.width
 
@@ -92,7 +108,7 @@ test.describe('Sidebar & WindowControls', () => {
     // Collapse the sidebar
     const toggle = chromeSidebarToggle(page)
     await toggle.click()
-    await page.waitForTimeout(400)
+    await sidebarSettled(page, 'collapsed')
 
     // Main content reclaimed width — sanity check
     const mainContent = page.locator('#main-content')
@@ -100,7 +116,7 @@ test.describe('Sidebar & WindowControls', () => {
 
     // The toggle button in the fixed chrome MUST be clickable to re-open
     await toggle.click()
-    await page.waitForTimeout(400)
+    await sidebarSettled(page, 'expanded')
 
     // Sidebar re-opened — main content shrinks again
     const reopenedWidth = (await mainContent.boundingBox())!.width

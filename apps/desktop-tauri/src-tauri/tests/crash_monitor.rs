@@ -3,6 +3,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use memry_tauri::guards::crash_dump::MONITOR_SWITCH;
+use minidumper::{Client, SocketName};
 
 /// Polls `probe` every 20 ms, up to 1,500 times (30 s).
 fn poll<T>(mut probe: impl FnMut() -> Option<T>) -> Option<T> {
@@ -15,10 +16,11 @@ fn poll<T>(mut probe: impl FnMut() -> Option<T>) -> Option<T> {
     None
 }
 
-/// An app that ends before its crash handler connects (a quit or a kill during the boot) leaves
-/// the monitor no client to see disconnect; the closed stdin has to end it.
+/// The monitor serves while its app holds stdin, and ends once stdin closes even though no client
+/// disconnected: an app that ends before its handler connects (a quit or a kill during the boot)
+/// leaves the monitor nothing else to see.
 #[test]
-fn the_monitor_ends_when_its_app_is_gone_before_it_connected() {
+fn the_monitor_ends_when_its_app_is_gone_without_a_disconnect() {
     let dir = tempfile::tempdir().expect("temp dir");
     let socket = dir.path().join("monitor.sock");
     let mut monitor = Command::new(env!("CARGO_BIN_EXE_memry-tauri"))
@@ -34,6 +36,14 @@ fn the_monitor_ends_when_its_app_is_gone_before_it_connected() {
         poll(|| socket.exists().then_some(())).is_some(),
         "the monitor never listened"
     );
+    // Held until the end: the exit below has to come from stdin, not from a disconnect.
+    let client = Client::with_name(SocketName::path(&socket.to_string_lossy()))
+        .expect("connect to the monitor");
+    client.ping().expect("the monitor answers a ping");
+    assert!(
+        monitor.try_wait().expect("poll the monitor").is_none(),
+        "the monitor ended while its app held stdin"
+    );
 
     drop(monitor.stdin.take());
 
@@ -43,4 +53,5 @@ fn the_monitor_ends_when_its_app_is_gone_before_it_connected() {
     }
     let status = status.expect("the monitor outlived its app");
     assert!(status.success(), "the monitor exited with {status}");
+    drop(client);
 }
