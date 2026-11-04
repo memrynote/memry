@@ -13,10 +13,14 @@
 //!   13f's note create uses;
 //! - an update ([`update`]) edits the file through the app-edit seam and the record's tags and
 //!   properties after it;
-//! - the write-back keeps the file's body in step with the document after that (13m-1).
+//! - the write-back keeps the file's body in step with the document after that (13m-1);
+//! - the calendar ([`calendar`]) lists the live records, measured by the note index's row of
+//!   each day's file.
 //!
-//! Not here yet: the calendar reads (13m-4), and the moves that change what a file is (13m-5).
+//! Not here yet: the property rows and day context (13m-4b), and the moves that change what a
+//! file is (13m-5).
 
+pub mod calendar;
 pub mod update;
 pub mod write;
 

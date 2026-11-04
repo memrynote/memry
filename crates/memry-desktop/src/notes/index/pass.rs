@@ -162,6 +162,19 @@ impl Indexer {
         Ok(pass)
     }
 
+    /// The note's file measured into its row, outside a pass; `false` when it has no markdown
+    /// file, is in the large-file class or did not read.
+    pub(super) fn measure_now(&self, note_id: &str) -> Result<bool, IndexError> {
+        let queued = BTreeSet::from([note_id.to_owned()]);
+        let Some(note) = self.listed(false, &queued)?.pop() else {
+            return Ok(false);
+        };
+        match self.read(&note) {
+            Read::File(file) => Ok(self.search.index_note_files(vec![file])? > 0),
+            Read::Skipped | Read::Failed => Ok(false),
+        }
+    }
+
     fn read(&self, note: &Unindexed) -> Read {
         let size = note.file_size.unwrap_or_default().max(0) as usize;
         if classify_markdown_stat(size, MarkdownClassThresholds::default()).is_some() {
