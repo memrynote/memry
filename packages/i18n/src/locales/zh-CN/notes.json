@@ -2202,6 +2202,8 @@
   },
   "movedRefsKept": {
     "changing": "已移动“{title}”，但它当时正在更改，因此其指向图片和文件的链接仍指向原文件夹。请在笔记中检查。",
-    "unreadable": "已移动“{title}”，但 Memry 无法编辑其文件，因此其指向图片和文件的链接仍指向原文件夹。请手动更新。"
+    "unreadable": "已移动“{title}”，但 Memry 无法编辑其文件，因此其指向图片和文件的链接仍指向原文件夹。请手动更新。",
+    "several": "{count, plural, other {已移动 # 条笔记，但其指向图片和文件的链接仍指向原文件夹。请在各条笔记中检查。}}",
+    "severalUnreadable": "{count, plural, other {已移动 # 条笔记，但其指向图片和文件的链接仍指向原文件夹。Memry 无法编辑其中部分文件。请手动更新。}}"
   }
 }

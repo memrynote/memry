@@ -2202,6 +2202,8 @@
   },
   "movedRefsKept": {
     "changing": "„{title}” át lett helyezve, de közben változott, ezért a képekre és fájlokra mutató hivatkozásai még a régi mappára mutatnak. Ellenőrizd őket a jegyzetben.",
-    "unreadable": "„{title}” át lett helyezve, de a Memry nem tudja szerkeszteni a fájlját, ezért a képekre és fájlokra mutató hivatkozásai még a régi mappára mutatnak. Frissítsd őket kézzel."
+    "unreadable": "„{title}” át lett helyezve, de a Memry nem tudja szerkeszteni a fájlját, ezért a képekre és fájlokra mutató hivatkozásai még a régi mappára mutatnak. Frissítsd őket kézzel.",
+    "several": "{count, plural, one {# jegyzet át lett helyezve, de a képekre és fájlokra mutató hivatkozásai még a régi mappára mutatnak. Ellenőrizd őket a jegyzetben.} other {# jegyzet át lett helyezve, de a képekre és fájlokra mutató hivatkozásaik még a régi mappákra mutatnak. Ellenőrizd őket minden jegyzetben.}}",
+    "severalUnreadable": "{count, plural, one {# jegyzet át lett helyezve, de a képekre és fájlokra mutató hivatkozásai még a régi mappára mutatnak. A Memry néhány fájljukat nem tudja szerkeszteni. Frissítsd őket kézzel.} other {# jegyzet át lett helyezve, de a képekre és fájlokra mutató hivatkozásaik még a régi mappákra mutatnak. A Memry néhány fájljukat nem tudja szerkeszteni. Frissítsd őket kézzel.}}"
   }
 }
