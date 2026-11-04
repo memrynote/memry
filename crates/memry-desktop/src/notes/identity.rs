@@ -36,13 +36,14 @@
 //!   day the new path names (`renameKeepsJournalDate`, `vault/watcher.ts`): a
 //!   note's record takes the new title and folder, and a day's record is left as
 //!   it is, since a day's path is never synced. A move that changes what the file
-//!   is (a note into a day, a day out of the journal or to another day) Electron
-//!   applies as a delete of the record and a new one for the file; here the
-//!   record is left as it was, and owed the move, until the journal service
-//!   (Step 13m part 2) ports that together with the journal folder follow. A
-//!   vault config that is there but unreadable leaves the journal days unknown,
-//!   so no file is named then, and every move is owed. An owed move is applied on
-//!   a later ask once the config reads and the move keeps what the file is.
+//!   is (a note into a day, a day out of the journal or to another day) deletes
+//!   the record and the file is made anew ([`Rename::Crossed`]), as Electron does,
+//!   unless the removal may not delete it (below): then the record is left as it
+//!   was, owed the move. A vault config that is there but unreadable leaves the
+//!   journal days unknown, so no file is named then, and every move is owed. An
+//!   owed move that keeps what the file is is applied on a later ask once the
+//!   config reads; one that changes it, at the next open's walk
+//!   ([`NoteIdentity::settle_crossings`]). So is the app's own move that changes it.
 //! - A new note carries the file's creation and modification times, as
 //!   Electron's indexer gives a file it finds.
 //! - A removed file deletes its note only when its row says the file held the
@@ -76,11 +77,13 @@ use memry_core::seams::secure_store::SecureStore;
 use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::converter_of;
 use crate::vault::consumer::identity::{
-    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal,
+    Adoption, Candidate, Crossed, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
 };
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
+
+use super::owed_moves::{self, keeps_kind};
 
 const SCOPE: &str = "note_identity";
 
@@ -208,8 +211,17 @@ impl NotesIdentity {
         Ok(converter_of(&settings)?)
     }
 
-    /// Applies the moves the records are owed whose file is outside the journal folder now,
-    /// but `skip`'s (whose move the caller is about to apply): once per open, at the open or
+    /// A move was owed: the next ask settles the vault's owed moves again.
+    fn unsettle(&self, root: &Path) {
+        self.settled
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(root);
+    }
+
+    /// Applies the owed moves that keep what their file is (a crossing is the consumer's,
+    /// [`NoteIdentity::settle_crossings`]), but `skip`'s (whose move the caller is about to
+    /// apply): once per open, at the open or
     /// at the first ask after it that reads the vault config, and again after a move is owed.
     /// A failure is logged and does not fail the ask it came with: the next open tries again.
     fn settle_owed(
@@ -416,43 +428,45 @@ impl NoteIdentity for NotesIdentity {
     }
 
     /// A move that keeps what the file is reaches the record (`renameKeepsJournalDate`). One
-    /// that changes it, a note into a day, a day out of the journal or to another day, Electron
-    /// applies as a delete and a new item; until the journal service (Step 13m part 2) ports
-    /// that, with the journal folder follow (`journal-folder-follow.ts`), the record is left as
-    /// it is and nothing is pushed: the row follows the file, and the record is owed the move.
-    /// So is a move while the journal days are unknown.
-    // TODO(#3530 13m part 2): port the delete and re-create of a move that changes what the
-    // file is, and the journal folder follow, then settle such owed moves (`owed_places`).
+    /// that changes it, a note into a day, a day out of the journal or to another day, deletes
+    /// the record for the consumer to make the file anew, as Electron does; one whose removal
+    /// may not delete it is owed the move, and so is a move while the journal days are
+    /// unknown. Neither pushes anything; the row follows the file.
     fn on_renamed(
         &self,
         ctx: &IdentityCtx<'_>,
         note_id: &str,
         old_path: &str,
         new_path: &str,
-    ) -> Result<(), IdentityError> {
+    ) -> Result<Rename, IdentityError> {
         let writer = self.writer(ctx)?;
-        let journal = self.journal(ctx.root);
-        let keeps = match &journal {
-            Some(journal) => keeps_kind(journal, &writer, note_id, new_path)?,
-            None => false,
-        };
-        if !keeps {
+        let Some(journal) = self.journal(ctx.root) else {
             tracing::info!(
                 scope = SCOPE,
                 note_id,
-                "a move that may change a file between note and journal day leaves the record \
-                 as it was, owed"
+                "a move while the journal days are unknown leaves the record as it was, owed"
             );
             writer.owe_place(note_id, old_path)?;
-            self.settled
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .remove(ctx.root);
-            return Ok(());
+            self.unsettle(ctx.root);
+            return Ok(Rename::Followed);
+        };
+        if !keeps_kind(&journal, &writer, note_id, new_path)? {
+            let to_day = journal.day_of(new_path);
+            return match writer.file_crossed(note_id, old_path, to_day.as_deref())? {
+                Removed::Deleted => Ok(Rename::Crossed),
+                Removed::Undecided => {
+                    tracing::warn!(
+                        scope = SCOPE,
+                        note_id,
+                        "a move between note and journal day leaves the record as it was, owed: \
+                         the note has text its file does not, or the day is here already"
+                    );
+                    self.unsettle(ctx.root);
+                    Ok(Rename::Followed)
+                }
+            };
         }
-        if let Some(journal) = &journal {
-            self.settle_owed(ctx.root, &writer, journal, Some(note_id));
-        }
+        self.settle_owed(ctx.root, &writer, &journal, Some(note_id));
         let (folder_path, title) = place(new_path);
         let moved = Moved {
             old_path,
@@ -460,7 +474,23 @@ impl NoteIdentity for NotesIdentity {
             title,
             folder_path,
         };
-        Ok(writer.file_moved(note_id, moved)?)
+        writer.file_moved(note_id, moved)?;
+        Ok(Rename::Followed)
+    }
+
+    /// The owed moves that change what their file is, now that the journal days are known
+    /// ([`owed_moves::crossings`]).
+    fn settle_crossings(&self, ctx: &IdentityCtx<'_>) -> Vec<Crossed> {
+        let Some(journal) = self.journal(ctx.root) else {
+            return Vec::new();
+        };
+        match self.writer(ctx) {
+            Ok(writer) => owed_moves::crossings(&journal, &writer),
+            Err(error) => {
+                tracing::error!(scope = SCOPE, "the owed moves could not be read: {error}");
+                Vec::new()
+            }
+        }
     }
 
     /// The rule [`Self::on_renamed`] follows, for the app's own move: the journal days unknown
@@ -504,17 +534,6 @@ fn place(path: &str) -> (Option<&str>, &str) {
         _ => name,
     };
     (folder, title)
-}
-
-/// Whether the record `id` at `path` is what it was: its day (none for a note) is the day
-/// `path` names.
-fn keeps_kind(
-    journal: &JournalDays,
-    writer: &NotesWriter,
-    id: &str,
-    path: &str,
-) -> Result<bool, IdentityError> {
-    Ok(writer.journal_date(id)? == journal.day_of(path))
 }
 
 /// The `tags` a frontmatter block declares (`extractTags`); none when it does not parse.

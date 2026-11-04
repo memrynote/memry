@@ -18,7 +18,7 @@
 //!   each day's file, the charts ([`property_rows`]) the records' property values, and the day
 //!   panel ([`day_context`]) the tasks due on a day.
 //!
-//! Not here yet: the moves that change what a file is (13m-6).
+//! Not here yet: the journal folder following a move of the folder (13m-7).
 
 pub mod calendar;
 pub mod day_context;

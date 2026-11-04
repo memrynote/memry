@@ -71,6 +71,25 @@ pub enum Removal {
     Kept,
 }
 
+/// What a move did to the note's record.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Rename {
+    /// The record follows the file, or is owed the move: the row moves.
+    Followed,
+    /// The move changed what the file is (a note to a day's path, a day out of the journal or
+    /// to another date) and the record was deleted, as Electron re-creates such a file: the row
+    /// goes, and the file at the new path is a new one ([`NoteIdentity::adopt_or_create`]).
+    Crossed,
+}
+
+/// A record deleted for an owed move that changed what its file is ([`Rename::Crossed`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Crossed {
+    pub note_id: String,
+    /// Where the note's row and its file are.
+    pub path: String,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum IdentityError {
     #[error("storage: {0}")]
@@ -120,15 +139,25 @@ pub trait NoteIdentity: Send + Sync {
 
     /// The note's file moved or was respelled. Called before the row moves, once `new_path`
     /// is known to be free; the row still names `old_path`. Updates the record (title,
-    /// folder), never the file. The row moves only after `Ok`: on an `Err` record and row both
-    /// stay at the old path, and the next open's rescan reports the move again.
+    /// folder), or deletes it when the move changed what the file is ([`Rename::Crossed`]),
+    /// never the file. The row moves or goes only after `Ok`: on an `Err` record and row both
+    /// stay at the old path, and the next open's rescan reports the move again. A crossing
+    /// whose row the consumer did not drop (a crash) is owed, and [`Self::settle_crossings`]
+    /// returns it at the next open.
     fn on_renamed(
         &self,
         ctx: &IdentityCtx<'_>,
         note_id: &str,
         old_path: &str,
         new_path: &str,
-    ) -> Result<(), IdentityError>;
+    ) -> Result<Rename, IdentityError>;
+
+    /// Before the open walk: deletes the records of the owed moves that changed what their
+    /// file is and returns them, whose rows the consumer drops and whose files it asks about
+    /// as new ([`Rename::Crossed`]). Its failures are its own to log.
+    fn settle_crossings(&self, _ctx: &IdentityCtx<'_>) -> Vec<Crossed> {
+        Vec::new()
+    }
 
     /// Whether the app's own move of the note's file to `new_path` keeps what the file is, so
     /// its record may follow (Step 13g). `false` when it changes that, or when that is not
@@ -173,7 +202,7 @@ impl NoteIdentity for DeferIdentity {
         _: &str,
         _: &str,
         _: &str,
-    ) -> Result<(), IdentityError> {
-        Ok(())
+    ) -> Result<Rename, IdentityError> {
+        Ok(Rename::Followed)
     }
 }

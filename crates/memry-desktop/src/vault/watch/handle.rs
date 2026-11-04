@@ -13,6 +13,8 @@ pub(super) enum Msg {
     Error(notify::Error),
     /// A consumer could not apply what was reported for this vault-relative path.
     Forget(String),
+    /// The file at this vault-relative path is another note's now.
+    Rehome(String),
 }
 
 /// What a rescan does with a file no row names.
@@ -48,6 +50,18 @@ impl WatchHandle {
             tracing::warn!(
                 scope = "vault_watch",
                 "a retry was dropped; the next open looks at the file again"
+            );
+        }
+    }
+
+    /// The file at `rel` is another note's now (a move that changed what it is): what was
+    /// reported for it is dropped, so the next look, at the next debounce, reads its row.
+    /// Dropped once the watcher stopped.
+    pub fn rehome(&self, rel: String) {
+        if let Err(TrySendError::Full(_)) = self.tx.try_send(Msg::Rehome(rel)) {
+            tracing::warn!(
+                scope = "vault_watch",
+                "a moved file's new note was not told; the next open looks at the file again"
             );
         }
     }

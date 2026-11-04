@@ -7,6 +7,7 @@
 //! | a removal the row does not say is the whole note keeps it | never a delete that may lose more   |
 //! | a local-only note's removal pushes nothing                | the gate in `outbox::enqueue`       |
 //! | a move left owed keeps its first path until it is applied | evidence first, never a guess       |
+//! | a crossing deletes once and stays owed while its row is   | `renameKeepsJournalDate`, crash-safe |
 
 #![cfg(feature = "markdown")]
 
@@ -20,7 +21,7 @@ use memry_core::domain::owed_file_body;
 use memry_core::sync::body_debt;
 use note_identity_support::{
     DEVICE, NOW, clear_outbox, create, deleted, give_body, give_body_at, give_row, give_row_hashes,
-    open, outbox, payload, place, position, run,
+    open, outbox, payload, place, position, pulled_item, run,
 };
 use serde_json::{Value, json};
 
@@ -258,4 +259,86 @@ fn a_move_left_owed_keeps_its_first_path_until_it_is_applied() {
     // is a file named anew, which owes nothing.
     give_row(&db, "rowless", "Gone.md");
     assert!(owed(&db).is_empty());
+}
+
+/// A move that changed what the file is deletes the note as a removal does, and owes the move
+/// while the row is there: a crash before the tier drops the row is found by the next open,
+/// whose ask deletes nothing more. One the removal may not delete is only owed.
+#[test]
+fn a_crossing_deletes_once_and_stays_owed_while_its_row_is() {
+    let db = open("crossed");
+    create(&db, "n1", "2025-01-06", None);
+    give_row(&db, "n1", "journal/2025-01-06.md");
+    place(&db, "", &["2025-01-06.md"]);
+    clear_outbox(&db);
+    let crossed = run(&db, |conn| {
+        identity::crossed(
+            conn,
+            "n1",
+            "2025-01-06.md",
+            Some("2025-01-06"),
+            DEVICE,
+            NOW + 1,
+        )
+    });
+    assert_eq!(crossed, Removed::Deleted);
+    assert!(deleted(&db, "n1"));
+    assert_eq!(outbox(&db), vec![("delete".to_owned(), "n1".to_owned())]);
+    assert_eq!(position(&db, "2025-01-06.md"), None);
+    let n1 = OwedPlace {
+        note_id: "n1".to_owned(),
+        from_path: "2025-01-06.md".to_owned(),
+        path: "journal/2025-01-06.md".to_owned(),
+    };
+    assert_eq!(owed(&db), vec![n1]);
+
+    clear_outbox(&db);
+    let again = run(&db, |conn| {
+        identity::crossed(
+            conn,
+            "n1",
+            "2025-01-06.md",
+            Some("2025-01-06"),
+            DEVICE,
+            NOW + 2,
+        )
+    });
+    assert_eq!(again, Removed::Deleted);
+    assert!(outbox(&db).is_empty());
+    run(&db, |conn| {
+        conn.execute("DELETE FROM note_files WHERE note_id = 'n1'", [])
+            .map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })
+    });
+    assert!(owed(&db).is_empty());
+
+    create(&db, "kept", "Kept", None);
+    give_row_hashes(&db, "kept", "journal/2025-01-07.md", None, None);
+    clear_outbox(&db);
+    let kept = run(&db, |conn| {
+        identity::crossed(conn, "kept", "Kept.md", Some("2025-01-07"), DEVICE, NOW + 3)
+    });
+    assert_eq!(kept, Removed::Undecided);
+    assert!(!deleted(&db, "kept"));
+    assert!(outbox(&db).is_empty());
+    assert_eq!(owed(&db).len(), 1);
+
+    // To a day that is here already: the file is not that day, so the note stays, owed.
+    pulled_item(
+        &db,
+        "journal",
+        "j2025-01-08",
+        &json!({"date": "2025-01-08", "content": "Here\n", "clock": {"device-b": 1}}),
+    );
+    create(&db, "held", "Held", None);
+    give_row(&db, "held", "journal/2025-01-08.md");
+    clear_outbox(&db);
+    let held = run(&db, |conn| {
+        identity::crossed(conn, "held", "Held.md", Some("2025-01-08"), DEVICE, NOW + 4)
+    });
+    assert_eq!(held, Removed::Undecided);
+    assert!(!deleted(&db, "held"));
+    assert!(outbox(&db).is_empty());
+    assert_eq!(owed(&db).len(), 2);
 }

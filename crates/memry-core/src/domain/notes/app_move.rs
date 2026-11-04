@@ -26,9 +26,9 @@
 //! note there would be.
 //!
 //! A move that changes what the file is (a note into a journal day's path, a day out of the
-//! journal or to another day's) follows the rule the watcher's move follows (Step 13m): the
-//! record stays as it was and is owed the move ([`super::identity::owe_place`]), and only the
-//! row follows the file.
+//! journal or to another day's) leaves the record as it was, owed the move
+//! ([`super::identity::owe_place`]), and only the row follows the file; the tier's next open
+//! makes it as the watcher's move is made ([`super::removal::crossed`], Step 13m-6).
 //!
 //! A folder the app renames or moves (Step 13h) moves each note in it the same way: every
 //! note's move and the folder's own are recorded first ([`begin_folder`], one synced write),

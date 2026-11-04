@@ -60,6 +60,8 @@ pub mod link_rewrite;
 pub mod local_only;
 mod metadata;
 pub mod names;
+#[cfg(feature = "markdown")]
+pub mod removal;
 
 pub use attachments::*;
 pub use duplicate::duplicate;
