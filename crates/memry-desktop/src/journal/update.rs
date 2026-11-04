@@ -3,9 +3,10 @@
 //!
 //! In the day's write order (by date, as its create and delete), then:
 //! - a day with no file is made by its first write ([`NotesService::create_day`]'s steps), as
-//!   Electron's update creates a missing entry. When the record held a text (another device's)
-//!   the file is made with it, and the user's text then goes over it as a save, which keeps the
-//!   held text as a version;
+//!   Electron's update creates a missing entry. When a live record had no file yet (another
+//!   device's day), the file is made from what it holds, and the whole update then goes over
+//!   it as a save: the user's text (keeping a held text it replaces as a version), tags and
+//!   properties;
 //! - a live day's file is edited through the app-edit seam's editor save
 //!   ([`Precondition::Save`]), inside the day's own turn (its record id, the turn every other
 //!   app edit of the day takes; the date's turn is always taken first): its body when the text
@@ -37,6 +38,7 @@
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::sync::PoisonError;
 
 use memry_core::domain::header_tags::{self, EditSource, Existing, HeaderTagEdit, Update};
 use memry_core::domain::journal::valid_date;
@@ -105,27 +107,19 @@ impl NotesService {
     ) -> Result<DayUpdated, NotesError> {
         let journal = open.vault.journal(self.store.clone())?;
         let Some(existing) = entry(open, &journal, date)? else {
-            let typed = update.content.clone();
+            // A live record with no file (made on another device) keeps its own fields and text
+            // through the create; the update then goes over them as a save.
+            let held = journal.stamp(date)?.is_some();
             let day = NewDay {
                 date: date.to_owned(),
-                content: typed.clone().unwrap_or_default(),
+                content: update.content.clone().unwrap_or_default(),
                 tags: next_tags(open, &[], &update)?,
-                properties: update.properties.unwrap_or_default(),
+                properties: update.properties.clone().unwrap_or_default(),
             };
             let made = self.create_day_now(open, date, day, &mut || Ok(()))?;
-            // The record held a text (another device's), and the file holds it now: the user's
-            // text goes over it as a save, which keeps it as a version.
-            let over_held = typed
-                .as_deref()
-                .is_some_and(|typed| trimmed(typed) != made.content.trim());
-            let entry = match over_held {
-                true => {
-                    let save = DayUpdate {
-                        content: typed,
-                        ..DayUpdate::default()
-                    };
-                    self.save_day(open, &journal, date, &made.tags, save)?
-                }
+            // A held text the user's differs from is kept as a version by that save.
+            let entry = match held {
+                true => self.save_day(open, &journal, date, &made.tags, update)?,
                 false => made,
             };
             return Ok(DayUpdated {
@@ -198,7 +192,17 @@ impl NotesService {
         let edited = self.order.run(&stamp.id, |turn| {
             let save = Precondition::Save(&self.own_files);
             let text = |read: &str| change.text(read);
-            edit.run_then(turn, save, ChangeSource::App, text, landed, &mut || {})
+            let mut between = || {
+                let hook = self
+                    .day_file_lands
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .take();
+                if let Some(hook) = hook {
+                    hook();
+                }
+            };
+            edit.run_then(turn, save, ChangeSource::App, text, landed, &mut between)
         })?;
         if let Edited::Kept(kept) = edited {
             return Err(NotesError::DayTextUnwritable(kept_reason(&kept).to_owned()));

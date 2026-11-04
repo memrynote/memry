@@ -1,8 +1,10 @@
 //! A day edited in the app (Step 13m-3, #3530, `journal:updateEntry`) under the running vault
 //! tier: the editor's save writes the day's file and feeds its body, with `date` set and the
 //! file's tags left as the author wrote them; tags go to the record only; properties replace
-//! the file's and the record's; a day with no file is made; a file the page cannot read whole
-//! is refused; an outside edit the save replaces is kept as a version.
+//! the file's, and the record takes only the keys that edit set or dropped, so a pulled value
+//! stays; a day with no file is made, and a record that held one gets the whole update over
+//! it; a file the page cannot read whole is refused; an outside edit the save replaces is kept
+//! as a version.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -602,4 +604,125 @@ fn a_pulled_value_the_file_has_not_yet_survives_a_save_of_another_property() {
         Some(r#"{"mood":"tired","rating":4,"weather":"rain"}"#.to_owned()),
         "only the keys the save changed reach the record"
     );
+}
+
+#[test]
+fn a_first_save_over_a_record_only_day_takes_its_tags_and_properties() {
+    for phone_text in ["From the phone.", ""] {
+        let (e, notes, store) = opened();
+        let open = e.session.current().unwrap();
+        let journal = open.vault.journal(store).unwrap();
+        if phone_text.is_empty() {
+            // A live record with an empty body: the create writes the caller's text.
+            journal.set_tags(DAY.into(), vec!["phone".into()]).unwrap();
+        } else {
+            let edit = BlockEdit::InsertParagraph {
+                after_block_id: None,
+                text: phone_text.into(),
+                new_block_id: "b-phone".into(),
+            };
+            journal.edit_day(DAY.into(), edit).unwrap();
+        }
+        let saved = notes
+            .update_day(
+                &open,
+                DayUpdate {
+                    content: Some("Typed on desktop.".into()),
+                    tags: Some(vec!["work".into()]),
+                    properties: Some(json!({ "mood": "calm" }).as_object().unwrap().clone()),
+                    ..update(DAY)
+                },
+            )
+            .unwrap();
+        assert!(saved.created, "{phone_text:?}");
+        assert_eq!(saved.entry.tags, ["work"], "{phone_text:?}");
+        assert_eq!(
+            saved.entry.properties,
+            json!({ "mood": "calm" }).as_object().cloned(),
+            "{phone_text:?}"
+        );
+        assert!(
+            e.read(DAY_FILE).contains("mood: calm\n"),
+            "{}",
+            e.read(DAY_FILE)
+        );
+        assert!(e.read(DAY_FILE).ends_with("---\nTyped on desktop.\n"));
+        assert_eq!(
+            record(&e),
+            (
+                r#"["work"]"#.to_owned(),
+                Some(r#"{"mood":"calm"}"#.to_owned())
+            ),
+            "{phone_text:?}"
+        );
+    }
+}
+
+#[test]
+fn a_pulled_value_of_a_property_the_file_says_otherwise_survives_a_save_of_another() {
+    let (mut e, notes, store) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    // A pull set `mood: happy` on the record; the file still says `mood: calm` (13k-4).
+    let journal = open.vault.journal(store).unwrap();
+    journal
+        .set_property(DAY.into(), "mood".into(), r#""happy""#.into())
+        .unwrap();
+    notes
+        .update_day(
+            &open,
+            DayUpdate {
+                properties: Some(
+                    json!({ "mood": "calm", "rating": 5 })
+                        .as_object()
+                        .unwrap()
+                        .clone(),
+                ),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert!(e.read(DAY_FILE).contains("rating: 5\n"));
+    assert_eq!(
+        record(&e).1,
+        Some(r#"{"mood":"happy","rating":5}"#.to_owned()),
+        "the save changed `rating` only"
+    );
+}
+
+#[test]
+fn a_day_deleted_while_its_save_writes_stays_deleted() {
+    let (mut e, notes, store) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store).unwrap();
+    // A delete that lands between the file write and the record's mirror, as a pull's does.
+    notes.before_next_day_file_lands(Box::new(move || {
+        journal.delete_day(DAY.into()).unwrap();
+    }));
+    notes
+        .update_day(
+            &open,
+            DayUpdate {
+                content: Some("Typed in the app.".into()),
+                tags: Some(vec!["daily".into()]),
+                ..update(DAY)
+            },
+        )
+        .ok();
+    let live: bool = e
+        .core()
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT deleted_at IS NULL FROM sync_items WHERE item_type = 'journal' AND item_id = ?1",
+                    [ID],
+                    |row| row.get(0),
+                )
+                .unwrap())
+        })
+        .unwrap();
+    assert!(!live, "the tags' mirror revived the deleted day");
+    assert_eq!(queued(&e).last().map(String::as_str), Some("delete"));
 }
