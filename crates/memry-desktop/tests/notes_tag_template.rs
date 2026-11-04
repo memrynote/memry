@@ -5,8 +5,11 @@
 //! | Test                                                              | Rule                                  |
 //! | ----------------------------------------------------------------- | ------------------------------------- |
 //! | an autofill tag fills an empty body, and the undo empties it      | `replaceBodyIf(body.trim() === '')`   |
+//! | a body of whitespace and a byte order mark is empty               | `String.prototype.trim`               |
 //! | a body with text, or a tag that does not autofill, is offered     | `offered`                             |
-//! | an undo after the body changed, or spent, is stale                | the hash of the filled body           |
+//! | the first added tag with a template wins, in the caller's order   | `addedInOrder`                        |
+//! | typing the file does not hold yet is never written over           | the app-edit seam, `Held`             |
+//! | an undo after the body changed, or spent, or another token: stale | the hash of the filled body           |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -21,14 +24,20 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::tag_template::{TagTemplateOutcome, UndoStatus, UndoTagTemplateInput};
 use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput, Updated};
+use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use serde_json::{Value, json};
-use vault_env::{Env, env, indexed};
+use vault_env::{Env, QUIET, env, indexed};
 
 const NOW: i64 = 1_760_000_000_000;
 const MEETING_BODY: &str = "## Attendees\n\n-\n\n## Agenda\n\n1.\n2.\n3.\n\n## Notes\n\n\
 ## Action Items\n\n- [ ]\n";
 
 fn opened(files: &[(&str, &str)]) -> (Env, Arc<NotesService>) {
+    let (e, notes, _) = opened_with_store(files);
+    (e, notes)
+}
+
+fn opened_with_store(files: &[(&str, &str)]) -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
     let mut e = env(|store| {
         kept = Some(store.clone());
@@ -39,8 +48,9 @@ fn opened(files: &[(&str, &str)]) -> (Env, Arc<NotesService>) {
     }
     e.open();
     e.facts_until(indexed);
-    let notes = NotesService::new(e.tier.clone(), kept.expect("the store"));
-    (e, notes)
+    let store = kept.expect("the store");
+    let notes = NotesService::new(e.tier.clone(), store.clone());
+    (e, notes, store)
 }
 
 fn id_at(e: &Env, path: &str) -> String {
@@ -69,11 +79,15 @@ fn define_tag(e: &Env, name: &str, schema: Value) {
 }
 
 fn add_tag(e: &Env, notes: &NotesService, id: &str, tag: &str) -> Updated {
+    add_tags(e, notes, id, &[tag])
+}
+
+fn add_tags(e: &Env, notes: &NotesService, id: &str, tags: &[&str]) -> Updated {
     let open = e.session.current().unwrap();
     let input = NoteUpdateInput {
         id: id.into(),
         header_tags: Some(HeaderTagEditInput {
-            add: Some(vec![tag.into()]),
+            add: Some(tags.iter().map(|tag| (*tag).to_owned()).collect()),
             ..HeaderTagEditInput::default()
         }),
         ..NoteUpdateInput::default()
@@ -103,11 +117,31 @@ fn schemas(e: &Env) {
     );
 }
 
+/// The `Changed` facts of the next quiet spell, by source.
+fn changes(e: &mut Env) -> Vec<(String, ChangeSource)> {
+    std::thread::sleep(QUIET);
+    e.drain()
+        .into_iter()
+        .filter_map(|fact| match fact {
+            Applied::Changed { path, source, .. } => Some((path, source)),
+            _ => None,
+        })
+        .collect()
+}
+
+fn applied_token(updated: Updated) -> String {
+    match updated.tag_template {
+        Some(TagTemplateOutcome::Applied { undo_token, .. }) => undo_token,
+        other => panic!("not applied: {other:?}"),
+    }
+}
+
 #[test]
 fn an_autofill_tag_fills_an_empty_body_and_the_undo_empties_it() {
-    let (e, notes) = opened(&[("Sync.md", "---\nkeep: 'as is'\n---\n")]);
+    let (mut e, notes) = opened(&[("Sync.md", "---\nkeep: 'as is'\n---\n")]);
     schemas(&e);
     let id = id_at(&e, "Sync.md");
+    e.drain();
 
     let updated = add_tag(&e, &notes, &id, "Meeting");
 
@@ -118,6 +152,15 @@ fn an_autofill_tag_fills_an_empty_body_and_the_undo_empties_it() {
     let filled = format!("---\nkeep: 'as is'\ntags:\n  - Meeting\n---\n{MEETING_BODY}");
     assert_eq!(e.read("Sync.md"), filled);
     assert!(e.body(&id).starts_with("Attendees"), "{}", e.body(&id));
+    // The tag edit is the user's save; the fill is told as an outside edit, so an open editor
+    // takes the template's body.
+    assert_eq!(
+        changes(&mut e),
+        [
+            ("Sync.md".to_owned(), ChangeSource::Save),
+            ("Sync.md".to_owned(), ChangeSource::AppEdit)
+        ]
+    );
 
     assert_eq!(undo(&e, &notes, &id, &undo_token), UndoStatus::Restored);
     assert_eq!(
@@ -182,4 +225,83 @@ fn an_undo_after_the_body_changed_is_stale_and_keeps_the_text() {
     assert_eq!(undo(&e, &notes, &id, &undo_token), UndoStatus::Stale);
     assert!(e.read("Sync.md").ends_with("Typed after\n"));
     assert_eq!(undo(&e, &notes, &id, "made-up"), UndoStatus::Stale);
+}
+
+#[test]
+fn another_tokens_undo_is_stale_and_leaves_the_real_one() {
+    let (e, notes) = opened(&[("Sync.md", "")]);
+    schemas(&e);
+    let id = id_at(&e, "Sync.md");
+    let token = applied_token(add_tag(&e, &notes, &id, "meeting"));
+
+    assert_eq!(undo(&e, &notes, &id, "made-up"), UndoStatus::Stale);
+    assert!(e.read("Sync.md").ends_with(MEETING_BODY));
+    assert_eq!(undo(&e, &notes, &id, &token), UndoStatus::Restored);
+    assert_eq!(e.read("Sync.md"), "---\ntags:\n  - meeting\n---\n");
+}
+
+#[test]
+fn a_body_of_whitespace_and_a_byte_order_mark_is_filled() {
+    let (e, notes) = opened(&[("Sync.md", "  \n\u{feff}\n")]);
+    schemas(&e);
+    let id = id_at(&e, "Sync.md");
+
+    applied_token(add_tag(&e, &notes, &id, "meeting"));
+
+    assert!(
+        e.read("Sync.md").ends_with(MEETING_BODY),
+        "{}",
+        e.read("Sync.md")
+    );
+}
+
+#[test]
+fn the_first_added_tag_with_a_template_wins_in_the_order_asked() {
+    let (e, notes) = opened(&[("Sync.md", "")]);
+    schemas(&e);
+    let id = id_at(&e, "Sync.md");
+
+    let updated = add_tags(&e, &notes, &id, &["brief", "meeting"]);
+
+    assert_eq!(
+        updated.tag_template,
+        Some(TagTemplateOutcome::Offered {
+            tag: "brief".into()
+        })
+    );
+    assert_eq!(
+        e.read("Sync.md"),
+        "---\ntags:\n  - brief\n  - meeting\n---\n"
+    );
+}
+
+#[test]
+fn typing_the_file_does_not_hold_yet_is_never_written_over() {
+    let (e, notes, store) = opened_with_store(&[("Sync.md", ""), ("Undo.md", "")]);
+    schemas(&e);
+
+    // The fill: typed, not written back yet, so the tag's template is only offered.
+    let id = id_at(&e, "Sync.md");
+    e.edit_in_app(&store, &id, "Typed in the app");
+    let updated = add_tag(&e, &notes, &id, "meeting");
+    assert_eq!(
+        updated.tag_template,
+        Some(TagTemplateOutcome::Offered {
+            tag: "meeting".into()
+        })
+    );
+    assert_eq!(e.read("Sync.md"), "---\ntags:\n  - meeting\n---\n");
+    assert_eq!(e.body(&id), "Typed in the app");
+
+    // The undo: typed over the filled body, not written back yet.
+    let id = id_at(&e, "Undo.md");
+    let token = applied_token(add_tag(&e, &notes, &id, "meeting"));
+    e.edit_in_app(&store, &id, "Typed over the template");
+    assert_eq!(undo(&e, &notes, &id, &token), UndoStatus::Stale);
+    assert!(
+        e.body(&id).starts_with("Typed over the template"),
+        "{}",
+        e.body(&id)
+    );
+    assert!(e.read("Undo.md").ends_with(MEETING_BODY));
 }
