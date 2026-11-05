@@ -1,5 +1,6 @@
 //! Notes-domain services of the desktop app.
 
+pub mod aliases;
 pub mod apply_template;
 pub mod create;
 pub mod delete;
@@ -25,6 +26,7 @@ pub mod properties;
 pub mod property_definitions;
 pub mod read;
 pub mod service;
+pub mod tag_rename;
 pub mod tag_template;
 pub mod unsplash;
 pub mod update;

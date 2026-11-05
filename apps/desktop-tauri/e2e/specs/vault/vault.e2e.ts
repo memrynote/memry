@@ -1,11 +1,11 @@
-// Port of the Vault Creation Flow, Vault Opening/Switching and Vault Error Handling blocks of
-// `apps/desktop/tests/e2e/vault.e2e.ts`. The Vault Reindexing block needs `vault_reindex`,
-// which Step 13 (#3530) adds together with that block. Folder choices are answered through
-// the dialog queue; no native dialog opens.
+// Port of `apps/desktop/tests/e2e/vault.e2e.ts`: the Vault Creation Flow, Vault
+// Opening/Switching, Vault Reindexing (T531) and Vault Error Handling blocks. Folder choices are
+// answered through the dialog queue; no native dialog opens.
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 
+import { appReady } from '../../harness/app-ready'
 import { invokeTest } from '../../harness/invoke-test'
 import { restart } from '../../harness/tauri-lifecycle'
 import type { Page } from '../../harness/pw-compat/page'
@@ -204,6 +204,95 @@ test('a folder that is not there is an error, and the vault being worked in stay
   const status = await vaultStatus(page)
   expect(status.isOpen).toBe(true)
   expect(real(status.path as string)).toBe(real(testVaultPath))
+})
+
+interface IndexStep {
+  indexBuilt: number
+  indexTotal: number
+}
+
+interface IndexStatus {
+  isOpen: boolean
+  isIndexing: boolean
+  indexBuilt?: number
+  indexTotal?: number
+}
+
+interface IndexEvents {
+  progress: IndexStep[]
+  statuses: IndexStatus[]
+}
+
+type EventWindow = Window & {
+  __indexEvents: IndexEvents
+  __TAURI__: {
+    event: { listen(name: string, cb: (e: { payload: unknown }) => void): Promise<unknown> }
+  }
+}
+
+const noteIds = async (page: Page): Promise<string[]> =>
+  (
+    await invoke<{ notes: { id: string }[] }>(page, 'notes_list', { options: { limit: 10_000 } })
+  ).notes
+    .map((note) => note.id)
+    .toSorted()
+
+// Electron's T531 block held placeholders (no UI entry calls `vault:reindex`; `useVault().reindex`
+// has no caller). This drives `vault_reindex` as `vaultService.reindex` does and checks what the
+// renderer receives: the progress the notes list refreshes on, and the status the search
+// palette's indexing indicator reads.
+test('T531: a reindex reports progress to the total, and the indexing indicator clears', async ({
+  app,
+  page
+}) => {
+  await appReady(page)
+  const before = await noteIds(page)
+  expect(before.length).toBeGreaterThan(0)
+  await page.evaluate(() => {
+    const target = window as unknown as EventWindow
+    const seen: IndexEvents = { progress: [], statuses: [] }
+    target.__indexEvents = seen
+    const { listen } = target.__TAURI__.event
+    return Promise.all([
+      listen('vault-index-progress-event', (e) => seen.progress.push(e.payload as IndexStep)),
+      listen('vault-status-changed-event', (e) => seen.statuses.push(e.payload as IndexStatus))
+    ]).then(() => true)
+  })
+  const events = () => page.evaluate(() => (window as unknown as EventWindow).__indexEvents)
+
+  await invoke(page, 'vault_reindex')
+
+  // Events and the command's answer travel apart: wait for the status that ends the reindex.
+  await expect
+    .poll(async () => (await events()).statuses.some((status) => status.isIndexing))
+    .toBe(true)
+  await expect.poll(async () => (await events()).statuses.at(-1)?.isIndexing).toBe(false)
+  const { progress, statuses } = await events()
+
+  // The open's pass may report before the reindex, which runs after it: the reindex's steps
+  // start at its own `0`.
+  const run = progress.slice(progress.findLastIndex((step) => step.indexBuilt === 0))
+  const total = run[0]?.indexTotal ?? 0
+  const notes = await invokeTest<{ n: number }[]>(app, 'e2e_debug_index_query', {
+    sql: 'SELECT count(*) AS n FROM note_stats'
+  })
+  expect(total).toBe(notes[0]?.n)
+  expect(total).toBeGreaterThanOrEqual(before.length)
+  expect(run.at(-1)).toEqual({ indexBuilt: total, indexTotal: total })
+  expect(run.every((step, i) => i === 0 || step.indexBuilt > run[i - 1].indexBuilt)).toBe(true)
+
+  // While it ran the status said so, with counts, and the last status cleared it.
+  const indexing = statuses.filter((status) => status.isIndexing)
+  expect(indexing.every((status) => status.isOpen)).toBe(true)
+  expect(indexing.at(-1)).toMatchObject({ indexBuilt: total, indexTotal: total })
+  expect((await invoke<IndexStatus>(page, 'vault_get_status')).isIndexing).toBe(false)
+
+  // The notes are the same notes, and the palette shows no indexing indicator.
+  expect(await noteIds(page)).toEqual(before)
+  await invokeTest(app, 'e2e_menu_activate', { id: 'nav.search' })
+  await expect(page.locator('[cmdk-input]')).toBeVisible()
+  await expect(page.getByText(/indexing/i)).toHaveCount(0)
+  await page.keyboard.press('Escape')
 })
 
 test('a damaged vault config.json does not stop the list, and a vanished folder reads as missing', async ({

@@ -230,19 +230,12 @@ pub fn rename(
     let payload = require(conn, item_type, item_id)?;
     let object = payload.object();
     let tags = read_tags(object, "tags", item_type, item_id)?;
-    let next = renamed_list(&tags, old, new);
-    let pinned = match object.contains_key("pinnedTags") {
-        true => {
-            let pins = read_tags(object, "pinnedTags", item_type, item_id)?;
-            // In the list's spelling, which the projection matches a pin by.
-            let spelled = renamed_list(&pins, old, new).into_iter().map(|pin| {
-                let kept = next.iter().find(|tag| same_tag(tag, &pin));
-                kept.cloned().unwrap_or(pin)
-            });
-            Some(dedupe(spelled)).filter(|next| *next != pins)
-        }
+    let pins = match object.contains_key("pinnedTags") {
+        true => Some(read_tags(object, "pinnedTags", item_type, item_id)?),
         false => None,
     };
+    let (next, next_pins) = renamed_lists(&tags, pins.as_deref(), old, new);
+    let pinned = next_pins.filter(|next_pins| Some(next_pins) != pins.as_ref());
     if next == tags && pinned.is_none() {
         return Ok(false);
     }
@@ -250,6 +243,46 @@ pub fn rename(
         conn, item_type, item_id, &payload, next, pinned, device_id, now_ms,
     )?;
     Ok(true)
+}
+
+/// The lists [`rename`] makes of `tags` and `pins`: each pin in the spelling the renamed list
+/// holds it in, which the projection matches a pin by.
+pub fn renamed_lists(
+    tags: &[String],
+    pins: Option<&[String]>,
+    old: &str,
+    new: &str,
+) -> (Vec<String>, Option<Vec<String>>) {
+    let next = renamed_list(tags, old, new);
+    let pins = pins.map(|pins| {
+        dedupe(renamed_list(pins, old, new).into_iter().map(|pin| {
+            let kept = next.iter().find(|tag| same_tag(tag, &pin));
+            kept.cloned().unwrap_or(pin)
+        }))
+    });
+    (next, pins)
+}
+
+/// The live note or journal day's `tags` and `pinnedTags` (`None` without the key), `None`
+/// when it is not live.
+#[allow(clippy::type_complexity)]
+pub fn lists(
+    conn: &Connection,
+    item_id: &str,
+) -> Result<Option<(Vec<String>, Option<Vec<String>>)>, StorageError> {
+    let item_type = match live_type(conn, item_id) {
+        Ok(item_type) => item_type,
+        Err(StorageError::NotFound { .. }) => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let payload = require(conn, item_type, item_id)?;
+    let object = payload.object();
+    let tags = read_tags(object, "tags", item_type, item_id)?;
+    let pins = match object.contains_key("pinnedTags") {
+        true => Some(read_tags(object, "pinnedTags", item_type, item_id)?),
+        false => None,
+    };
+    Ok(Some((tags, pins)))
 }
 
 /// `tags` with `old` and its children renamed to `new`, deduped first spelling first.

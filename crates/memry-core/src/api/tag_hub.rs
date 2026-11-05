@@ -11,7 +11,7 @@ use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
 use crate::domain::tag_admin;
 use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
-use crate::domain::tag_rename::{self, Holder, RenameJob, RenamePlan};
+use crate::domain::tag_rename::{self, Holder, HolderRenamed, RenameJob, Started};
 use crate::domain::tags;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
@@ -61,11 +61,6 @@ impl TagHub {
             .call_blocking(|conn| tag_rename::begin(conn, job, holders))
     }
 
-    /// The rename in progress and what it has left ([`tag_rename::recorded`]).
-    pub fn rename_recorded(&self) -> Result<Option<RenamePlan>, StorageError> {
-        self.db.read_blocking(tag_rename::recorded)
-    }
-
     pub fn rename_finish(&self) -> Result<(), StorageError> {
         self.db.call_blocking(|conn| tag_rename::finish(conn))
     }
@@ -78,17 +73,33 @@ impl TagHub {
     }
 
     /// The recorded rename in the record of the holder `id`, struck off the plan
-    /// ([`tag_rename::rename_holder`]); `false` when the record did not change.
-    pub fn rename_in(&self, id: &str) -> Result<bool, StorageError> {
+    /// ([`tag_rename::rename_holder`]).
+    pub fn rename_in(&self, id: &str) -> Result<HolderRenamed, StorageError> {
         self.db
             .call_blocking(|conn| tag_rename::rename_holder(conn, id, &self.device_id, now_ms()))
     }
 
-    /// The holder `id` struck off the recorded rename, keeping the old name
-    /// ([`tag_rename::skip_holder`]).
-    pub fn rename_skip(&self, id: &str) -> Result<(), StorageError> {
+    /// Whether the recorded rename still lists the holder `id` ([`tag_rename::listed`]).
+    pub fn rename_listed(&self, id: &str) -> Result<bool, StorageError> {
+        self.db.read_blocking(|conn| tag_rename::listed(conn, id))
+    }
+
+    /// The file edit begun on the holder `id` ([`tag_rename::started`]).
+    pub fn rename_started(&self, id: &str) -> Result<Option<Started>, StorageError> {
+        self.db.read_blocking(|conn| tag_rename::started(conn, id))
+    }
+
+    /// The holder's file edit about to be written ([`tag_rename::start_holder`]).
+    pub fn rename_start(&self, id: &str, before: &str, after: &str) -> Result<(), StorageError> {
         self.db
-            .call_blocking(|conn| tag_rename::skip_holder(conn, id))
+            .call_blocking(|conn| tag_rename::start_holder(conn, id, before, after))
+    }
+
+    /// The file edit begun on the holder `id` forgotten, its file not written
+    /// ([`tag_rename::unstart_holder`]).
+    pub fn rename_unstart(&self, id: &str) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| tag_rename::unstart_holder(conn, id))
     }
 
     pub fn create_category(&self, name: &str) -> Result<TagCategory, StorageError> {

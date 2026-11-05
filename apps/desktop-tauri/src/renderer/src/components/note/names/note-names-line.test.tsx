@@ -1,6 +1,6 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NoteNamesLine } from './note-names-line'
 import { requestNoteNameInput } from './note-name-input-request'
 
@@ -35,6 +35,8 @@ describe('NoteNamesLine', () => {
     vi.clearAllMocks()
     mocks.resolveByTitle.mockResolvedValue(null)
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   it('renders nothing for a note without names', () => {
     const { container } = renderLine([])
@@ -115,5 +117,38 @@ describe('NoteNamesLine', () => {
       add: ['machine learning'],
       remove: []
     })
+  })
+
+  it('keeps the field when the app window loses focus, and closes on a blur inside the app', async () => {
+    // WebView2 blurs the focused field when the window is deactivated (#3919); that is not the
+    // user clicking away, and closing would drop what they typed.
+    renderLine([])
+    const input = await openAddInput()
+    await userEvent.type(input, 'AG')
+
+    const windowFocused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    fireEvent.blur(input)
+    expect(input).toBeInTheDocument()
+    expect(input).toHaveValue('AG')
+
+    windowFocused.mockReturnValue(true)
+    fireEvent.blur(input)
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('takes focus back from a menu that is closing', async () => {
+    // The More menu that opened the field animates out and can still pull focus (#3920).
+    renderLine(['AI'])
+    const input = await openAddInput()
+    const menu = document.createElement('div')
+    menu.setAttribute('role', 'menu')
+    menu.dataset.state = 'closed'
+    menu.tabIndex = -1
+    document.body.appendChild(menu)
+
+    fireEvent.blur(input, { relatedTarget: menu })
+    expect(input).toBeInTheDocument()
+    expect(input).toHaveFocus()
+    menu.remove()
   })
 })

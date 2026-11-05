@@ -112,6 +112,12 @@ export const commands = {
 	 *  user before it deletes again with `permanent` (#3813).
 	 */
 	notesDelete: (id: string, permanent: boolean | null) => __TAURI_INVOKE<null>("notes_delete", { id, permanent }),
+	/**
+	 *  `notes:edit-aliases`: names removed, then names added, in the note's or journal day's file
+	 *  and its record. Answers the names the file holds now; the `notes:updated` comes from the
+	 *  file's row fact.
+	 */
+	notesEditAliases: (input: NoteAliasEditInput) => __TAURI_INVOKE<NoteAliasesView>("notes_edit_aliases", { input }),
 	/**  `notes:exists`: a `.md` path, or a title a link would resolve. */
 	notesExists: (titleOrPath: string) => __TAURI_INVOKE<boolean>("notes_exists", { titleOrPath }),
 	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
@@ -375,7 +381,10 @@ export const commands = {
 	vaultActivityReveal: () => __TAURI_INVOKE<boolean>("vault_activity_reveal"),
 	/**  Keeps entries for `days` (7, 30 or 90). */
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
-	/**  Measures every note of the open vault again; resolves once the last progress went out. */
+	/**
+	 *  Measures every note of the open vault again; resolves once the last progress went out.
+	 *  Each step and the answer also send the vault status, which says whether it is indexing.
+	 */
 	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
 	/**
 	 *  What each `![[target]]` image embed of `refs` resolves to in the open vault: relative to the
@@ -1048,6 +1057,18 @@ export type MovesRecovered = {
 	 *  `(incomplete move)` folders: nothing was undone, the notes are only in sight again.
 	 */
 	shownFolders: number,
+};
+
+/**  `NoteAliasEditSchema`: names to remove, then names to add. */
+export type NoteAliasEditInput = {
+	id: string,
+	add: string[],
+	remove: string[],
+};
+
+/**  `NoteAliasEditResponse`: the note's other names as its file holds them now. */
+export type NoteAliasesView = {
+	aliases: string[],
 };
 
 /**

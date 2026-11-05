@@ -28,8 +28,12 @@ no user keys has no YAML block at all.
 - **Rebuilds don't re-identify notes.** Indexing an unknown path adopts the canonical id from
   `note_metadata` by path before minting a fresh one, so dropping and rebuilding the index DB
   preserves note identity.
-- **The Tauri app's watcher** is `crates/memry-desktop/src/vault/watch/`, described in
-  [Vault Files (Tauri)](/architecture/vault-files). The bullets here describe the Electron watcher.
+- **The Tauri app** keeps the same file format with other tables. A note's path, size and
+  hash live in `note_files` in `<vault>/.memry/core/data.db`, and its id, title and folder in
+  the core record, never in `note_metadata`. Its watcher is `crates/memry-desktop/src/vault/watch/`,
+  described in [Vault Files (Tauri)](/architecture/vault-files), and its note, folder and journal
+  operations are in [Notes and Folders (Tauri)](/architecture/notes-and-folders). The bullets
+  below describe the Electron watcher.
 - **External renames match by content hash.** The file watcher pairs a delete with a following add
   inside a short window using the cached content hash (identical-content collisions match FIFO),
   since files carry no embedded id to match on.
@@ -241,6 +245,11 @@ Drizzle schemas live in `packages/db-schema`. Tables of note:
 - `properties`, `property_values`
 - `sync_items`, `sync_pull_cursor`, `sync_outbox` (sync state)
 - `field_clocks` JSON column on tasks and projects (per-field vector clocks)
+
+The Tauri app uses none of these tables. Its schema is the core's, migrated from
+`crates/memry-core/src/storage/migrations/data/` and `index/`. The note tables are listed in
+[Which note a file is](/architecture/notes-and-folders#which-note-a-file-is), and `note_stats`
+(index migration `0003`) holds the counts and snippet Electron kept in `note_cache`.
 
 ### Graph Queries
 

@@ -1,6 +1,6 @@
 # Vault Files (Tauri)
 
-How the Tauri app (`apps/desktop-tauri`) keeps the Markdown files of a vault and the note documents in step. The code is in `crates/memry-desktop/src/vault/`. The Electron app does the same work in `apps/desktop/src/main/vault/` and `src/main/sync/crdt-writeback.ts`, described in [Local Storage](/architecture/local-storage) and [Markdown Write-Back](/architecture/crdt#markdown-write-back).
+How the Tauri app (`apps/desktop-tauri`) keeps the Markdown files of a vault and the note documents in step. The code is in `crates/memry-desktop/src/vault/`. The Electron app does the same work in `apps/desktop/src/main/vault/` and `src/main/sync/crdt-writeback.ts`, described in [Local Storage](/architecture/local-storage) and [Markdown Write-Back](/architecture/crdt#markdown-write-back). How the app's own note, folder and journal operations use this tier is in [Notes and Folders (Tauri)](/architecture/notes-and-folders).
 
 ## The problem
 
@@ -35,7 +35,7 @@ Known limitation: on Linux, when the inotify watch limit (`fs.inotify.max_user_w
 
 ## The consumer
 
-The consumer is the one writer of `note_files`. A row holds the file's path, size and the hash of the text the note's document holds.
+The consumer is the one writer of `note_files`. A row holds the file's path, size and the hash of the text the note's document holds. For a file no row names, the consumer asks the note identity which note or journal day the file is (`notes/identity.rs`, described in [Which note a file is](/architecture/notes-and-folders#which-note-a-file-is)).
 
 When a file changes outside the app, the consumer feeds the new text to the note's document and keeps the body it replaces as a version. The row's hash is recorded only after the document took the whole file. The write-back trusts that hash, so a hash recorded too early would let it write over text the document never had.
 
@@ -45,16 +45,17 @@ When a file changes outside the app, the consumer feeds the new text to the note
 
 **What.** A pass writes the file only when the file still has the bytes the document is known to hold. It keeps the file as it is when:
 
-- the note is a journal day: journal files are not read into a document yet, so there is nothing to write;
 - the file is missing: the pass does not create it again;
 - the file was never read into the document (its row has no hash), so the document is not known to hold it;
 - the file changed outside the app and the change has not reached the document yet; the consumer feeds it instead;
 - the file is ahead of the document, or the note's server body has not been downloaded;
 - writing the document would lose content, such as a block a newer build wrote.
 
+A journal day's file is written by the same rules. The one frontmatter key a pass sets is the day's `date`, in place, and it never writes the day's tags (`vault/writeback/journal.rs`). The exception is a change to the writing-tools data, which rewrites the whole block (a version is kept first).
+
 A pass that would write the same bytes writes nothing, so the file's modification time does not change. Before a write replaces bytes the app did not write, the old file is kept as a version.
 
-A note whose app is killed before its write still reaches its file: when the vault opens next, the open reconcile writes every note whose document is ahead of its file.
+A note whose app is killed before its write still reaches its file: when the vault opens next, the open reconcile writes every note whose document is ahead of its file. Before that, it moves to the OS trash the file of every note and journal day deleted on another device, or whose file removal a crash cut short. A file goes only while its bytes are the ones its row read, so a file edited since stays with its row.
 
 ## Shared files
 

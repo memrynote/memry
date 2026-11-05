@@ -638,11 +638,17 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 A folder's right-click menu carries the same **Reveal in Finder** item. It selects the folder
 itself inside its parent directory — it never opens into the folder's contents.
 
-**Local only** keeps the note on this device (never synced). Both halves stay put — the note's
-details and its text — and editing is unaffected. Turning it back off uploads the note again,
-including everything you wrote while it was local only.
+**Local only** keeps the note on this device (never synced). Its details and its text stay here,
+and editing is unaffected. A copy that already reached the server, and your other devices, stays
+as it was when you turned the setting on. Deleting a local-only note deletes it on this device
+only. The sidebar shows a small monitor icon beside a local-only note, and the sync status counts
+them.
 
-**Delete note** moves the note to the trash after a confirmation, then closes its tab. This does the same thing as deleting from the note list — you no longer need to close the note first.
+Turning **Local only** back off uploads the note again, including everything you wrote while it
+was local only. A note too large to sync stays local only, and a message says so. Splitting it
+into smaller notes fixes this.
+
+**Delete note** deletes the note after a confirmation, then closes its tab. This does the same thing as deleting from the note list, so you no longer need to close the note first. If the note's file holds text memrynote has not loaded, such as an edit made in another app a moment ago, the file goes to your system's trash instead of being deleted, so you can get it back.
 
 ## Drag-and-Drop Blocks
 
