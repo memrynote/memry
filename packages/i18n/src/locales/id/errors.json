@@ -13,7 +13,8 @@
     "invalidPath": "Jalur yang dipilih bukan lokasi brankas yang valid.",
     "permissionDenied": "Izin ditolak. Periksa apakah Anda memiliki akses ke folder ini.",
     "alreadyExists": "Brankas sudah ada di lokasi ini.",
-    "corrupted": "Brankas ini tampaknya rusak. Coba pulihkan dari cadangan."
+    "corrupted": "Brankas ini tampaknya rusak. Coba pulihkan dari cadangan.",
+    "configChangeNotPorted": "Versi ini belum dapat mengubah folder jurnal, format tanggal, atau folder yang dikecualikan. Pengaturan tersimpan Anda tetap dipertahankan."
   },
   "note": {
     "notFound": "Catatan ini tidak dapat ditemukan. Catatan mungkin telah dihapus.",
