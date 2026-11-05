@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useState, type KeyboardEvent } from 'react'
+import { Fragment, useEffect, useState, type FocusEvent, type KeyboardEvent } from 'react'
 import { MAX_NOTE_ALIAS_LENGTH } from '@memry/shared/note-names'
 import { useT } from '@memry/i18n/renderer'
 import { Plus } from '@/lib/icons'
+import { handleInlineRenameBlur } from '@/lib/inline-rename-focus'
 import { cn } from '@/lib/utils'
 import { onNoteNameInputRequest } from './note-name-input-request'
 import { useNameConflict } from './use-name-conflict'
@@ -171,6 +172,12 @@ interface NameInputProps {
   onBlur: () => void
 }
 
+/**
+ * Electron closes the field on any blur. Here a blur from the window losing focus (WebView2
+ * blurs on deactivation, #3919) or from a closing menu pulling focus (#3920) keeps it, as the
+ * inline rename fields do, so alt-tab or the More menu animating out does not drop the name.
+ */
+
 function NameInput({ value, label, placeholder, onChange, onKeyDown, onBlur }: NameInputProps) {
   return (
     <input
@@ -183,7 +190,7 @@ function NameInput({ value, label, placeholder, onChange, onKeyDown, onBlur }: N
       className="min-w-0 border-b border-border bg-transparent p-0 text-[13px] leading-5 text-foreground outline-none placeholder:text-text-tertiary focus:border-ring"
       onChange={(event) => onChange(event.target.value)}
       onKeyDown={onKeyDown}
-      onBlur={onBlur}
+      onBlur={(event: FocusEvent<HTMLInputElement>) => handleInlineRenameBlur(event, onBlur)}
     />
   )
 }

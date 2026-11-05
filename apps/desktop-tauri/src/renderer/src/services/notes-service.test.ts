@@ -19,6 +19,8 @@ const commands = vi.hoisted(() => ({
   notesResolveWikiTarget: vi.fn(),
   notesGetUnlinkedMentions: vi.fn(),
   notesLinkMention: vi.fn(),
+  notesEditAliases: vi.fn(),
+  tagsGetAllWithCounts: vi.fn(),
   notesPreviewByTitle: vi.fn(),
   notesSetLocalOnly: vi.fn(),
   notesGetLocalOnlyCount: vi.fn(),
@@ -258,6 +260,31 @@ describe('notes-service', () => {
       message: 'gone'
     })
     expect(api.notes.linkMention).not.toHaveBeenCalled()
+  })
+
+  it("edits a note's other names through its command, rejecting a failure", async () => {
+    api.notes.editAliases = vi.fn()
+    commands.notesEditAliases.mockResolvedValueOnce({ aliases: ['AGI'] })
+
+    const input = { id: 'note-1', add: ['AGI'], remove: ['AI'] }
+    expect(await notesService.editAliases(input)).toEqual({ aliases: ['AGI'] })
+    expect(commands.notesEditAliases).toHaveBeenCalledWith(input)
+    commands.notesEditAliases.mockRejectedValueOnce({ kind: 'propertyWrite', code: 'kept' })
+    await expect(notesService.editAliases(input)).rejects.toEqual({
+      kind: 'propertyWrite',
+      code: 'kept'
+    })
+    expect(api.notes.editAliases).not.toHaveBeenCalled()
+  })
+
+  it("reads the tag list from the tags command, in Electron's notes:get-tags shape", async () => {
+    api.notes.getTags = vi.fn()
+    commands.tagsGetAllWithCounts.mockResolvedValue([
+      { name: 'work', count: 3, color: 'blue', icon: null, categoryId: 'c1', sortOrder: 2 }
+    ])
+
+    expect(await notesService.getTags()).toEqual([{ tag: 'work', color: 'blue', count: 3 }])
+    expect(api.notes.getTags).not.toHaveBeenCalled()
   })
 
   it('creates and deletes through the commands, rejecting what it cannot create yet', async () => {
