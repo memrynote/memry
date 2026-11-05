@@ -4,11 +4,13 @@
 //! queues the name it changed. [`put`] writes only the fields that differ, so a definition
 //! that did not change queues nothing.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use rusqlite::Connection;
 use serde_json::{Value, json};
 
+use super::learned;
 use super::mirror::{self, Edit, Snapshot, Written};
 use super::{DEFINITION_TYPES, ITEM_TYPE, refuse};
 use crate::api::errors::{AuthError, StorageError};
@@ -201,6 +203,16 @@ impl DefinitionRecords {
     /// [`mirror::take`].
     pub fn take(&self, snapshot: &Snapshot) -> Result<(), StorageError> {
         self.db.call_blocking(|conn| mirror::take(conn, snapshot))
+    }
+
+    /// [`learned::learned`].
+    pub fn learned(&self) -> Result<BTreeMap<String, String>, StorageError> {
+        self.db.read_blocking(learned::learned)
+    }
+
+    /// [`learned::learn`].
+    pub fn learn(&self, wanted: &BTreeMap<String, String>) -> Result<bool, StorageError> {
+        self.db.call_blocking(|conn| learned::learn(conn, wanted))
     }
 
     /// [`mirror::write`].
