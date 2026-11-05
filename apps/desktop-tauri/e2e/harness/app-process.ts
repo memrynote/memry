@@ -12,7 +12,9 @@ const crateTarget = fileURLToPath(new URL('../../../../crates/target/debug', imp
 
 /**
  * Each launch's stderr, uploaded with the e2e results. The app logs there too, and it is the only
- * place a panic before logging starts (GTK that cannot open its display) leaves its text.
+ * place a panic before logging starts (GTK that cannot open its display) leaves its text. No run
+ * clears it: CI uploads the single-app and the two-device runs from it together, and each file
+ * name carries its port and launch time.
  */
 export const APP_OUTPUT_DIR = fileURLToPath(
   new URL('../../test-results/e2e/app-output', import.meta.url)
