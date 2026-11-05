@@ -10,7 +10,7 @@ use std::sync::Arc;
 use crate::api::errors::AuthError;
 use crate::crdt::errors::CrdtError;
 use crate::crypto::keys;
-use crate::domain::external_feed::{self, FeedInput, FeedOutcome};
+use crate::domain::external_feed::{self, FeedInput, FeedOutcome, FirstBody};
 use crate::markdown::convert::api::Converter;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
@@ -80,6 +80,12 @@ impl ExternalFeed {
         input: FeedInput<'_>,
     ) -> Result<FeedOutcome, CrdtError> {
         self.run(external_feed::seed_body_if_empty, converter, input)
+    }
+
+    /// The body the file's text gives a note this device is about to create with id
+    /// `input.note_id`, authored without the database ([`external_feed::first_body`]).
+    pub fn first_body(&self, converter: &Converter, input: FeedInput<'_>) -> Option<FirstBody> {
+        external_feed::first_body(converter, input, &self.device_id)
     }
 
     fn run(

@@ -701,6 +701,18 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         deps.setSelectedIds([])
       } catch (err) {
         log.error('Failed to delete items', err)
+        // What went before the throw is unknown here, so the dialog closes on the reason and
+        // the tree reads the disk again.
+        toast.error(extractErrorMessage(err))
+        setIsDeleteDialogOpen(false)
+        setNotesToDelete([])
+        setFoldersToDelete([])
+        deps.setSelectedIds([])
+        if (foldersToDelete.length > 0) {
+          await refreshFolderTree().catch((refreshError: unknown) => {
+            log.error('Failed to refresh the tree after a failed delete', refreshError)
+          })
+        }
       } finally {
         setIsDeleting(false)
       }

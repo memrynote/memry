@@ -88,6 +88,70 @@ pub fn page_gone(app: &AppHandle<Wry>, label: &str) {
     }
 }
 
+/// Releases the flush waits on the pages of the WebView2 browser process `pid` the moment it ends.
+/// `ProcessFailed` reports the same death, but WebView2 raises it on the main thread, with no bound
+/// on how late: on a loaded arm64 runner it had not come 2.2 s after the browser ended at a
+/// sign-out, and the quit's flush waited its full 2 s on a page that was gone (#3940). A thread
+/// blocked on the process handle hears the exit itself. One thread per browser process, which
+/// every app window of the profile shares.
+#[cfg(windows)]
+pub fn watch_browser_exit(app: &AppHandle<Wry>, label: &str, pid: u32) {
+    use windows::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows::Win32::System::Threading::{
+        INFINITE, OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject,
+    };
+
+    /// The labels of the pages each watched browser process hosts.
+    static HOSTED: LazyLock<Mutex<HashMap<u32, HashSet<String>>>> = LazyLock::new(Mutex::default);
+    let hosted = || HOSTED.lock().unwrap_or_else(PoisonError::into_inner);
+    {
+        let mut hosted = hosted();
+        let watched = hosted.contains_key(&pid);
+        hosted.entry(pid).or_default().insert(label.to_owned());
+        if watched {
+            return;
+        }
+    }
+    // SAFETY: plain Win32 call; the thread below closes the handle.
+    let process = match unsafe { OpenProcess(PROCESS_SYNCHRONIZE, false, pid) } {
+        Ok(process) => process,
+        Err(error) => {
+            hosted().remove(&pid);
+            tracing::warn!(
+                scope = "Shell",
+                "the WebView2 browser process {pid} is not watched: {error}"
+            );
+            return;
+        }
+    };
+    // A `HANDLE` is not `Send`; the thread owns it from here.
+    let raw = process.0 as isize;
+    let app = app.clone();
+    let spawned = std::thread::Builder::new()
+        .name("webview2-browser-exit".into())
+        .spawn(move || {
+            let process = HANDLE(raw as *mut _);
+            // SAFETY: the handle opened above, waited on and closed only here.
+            unsafe {
+                WaitForSingleObject(process, INFINITE);
+                let _ = CloseHandle(process);
+            }
+            tracing::warn!(scope = "Shell", "the WebView2 browser process {pid} ended");
+            for label in hosted().remove(&pid).unwrap_or_default() {
+                page_gone(&app, &label);
+            }
+        });
+    if let Err(error) = spawned {
+        hosted().remove(&pid);
+        // SAFETY: the handle opened above; the thread that would own it never started.
+        let _ = unsafe { CloseHandle(HANDLE(raw as *mut _)) };
+        tracing::warn!(
+            scope = "Shell",
+            "the WebView2 browser process {pid} is not watched: {error}"
+        );
+    }
+}
+
 /// The page of window `label` finished loading, so it answers flush requests again.
 fn page_loaded(app: &AppHandle<Wry>, label: &str) {
     if let Some(flush) = app.try_state::<FlushService>() {

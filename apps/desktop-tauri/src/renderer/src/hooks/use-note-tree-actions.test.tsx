@@ -351,6 +351,23 @@ describe('useNoteTreeActions', () => {
     expect(notesService.deleteFolder).toHaveBeenCalledWith('Work')
   })
 
+  it('refreshes the tree and clears the selection when a folder delete throws', async () => {
+    const { result, deps } = renderActions()
+    vi.mocked(notesService.deleteFolder).mockRejectedValueOnce(new Error('The disk went away'))
+
+    act(() => result.current.handleBulkDelete())
+    await act(async () => {
+      await result.current.handleDeleteConfirm()
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('The disk went away')
+    expect(result.current.isDeleteDialogOpen).toBe(false)
+    // What went before the throw is unknown: the tree reads the disk again.
+    expect(deps.refreshFolders).toHaveBeenCalled()
+    expect(deps.setSelectedIds).toHaveBeenLastCalledWith([])
+    expect(result.current.foldersToDelete).toEqual([])
+  })
+
   it('says why a note stayed when its delete did not happen', async () => {
     const { result, mutations } = renderActions()
     mutations.deleteNote.mutateAsync.mockResolvedValueOnce({
@@ -789,6 +806,18 @@ describe('useNoteTreeActions', () => {
       expect(mocks.deleteJournalEntry).toHaveBeenCalledWith('2026-10-01')
       expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
       expect(result.current.journalFolder).toBe('Daily')
+    })
+
+    it('says why when a delete throws, and closes the dialog', async () => {
+      const { result } = renderJournalActions()
+      mocks.deleteJournalEntry.mockRejectedValueOnce(new Error('The day could not be deleted'))
+
+      act(() => result.current.handleDeleteClick(entry))
+      await act(async () => {
+        await result.current.handleDeleteConfirm()
+      })
+      expect(toast.error).toHaveBeenCalledWith('The day could not be deleted')
+      expect(result.current.isDeleteDialogOpen).toBe(false)
     })
   })
 })

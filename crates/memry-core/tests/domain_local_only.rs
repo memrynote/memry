@@ -65,9 +65,9 @@ fn create_note(db: &Db, id: &'static str) {
             NOW,
         )?
         .acknowledge();
-        note_files::upsert_stat(
+        note_files::upsert_stats(
             conn,
-            &NoteFileStat {
+            &[NoteFileStat {
                 note_id: id.to_owned(),
                 path: format!("{id}.md"),
                 file_type: "markdown".to_owned(),
@@ -76,7 +76,7 @@ fn create_note(db: &Db, id: &'static str) {
                 content_hash: None,
                 file_hash: None,
                 indexed_at: NOW,
-            },
+            }],
         )
     });
 }

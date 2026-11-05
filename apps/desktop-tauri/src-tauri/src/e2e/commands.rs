@@ -28,6 +28,7 @@ e2e_commands! {
         e2e_apply_login_item,
         e2e_close_window,
         e2e_fire_global_capture,
+        e2e_flush_after_browser_exit,
         e2e_forget_spelled_word,
         e2e_global_shortcut_state,
         e2e_hide_to_tray,

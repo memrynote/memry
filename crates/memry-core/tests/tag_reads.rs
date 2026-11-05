@@ -108,6 +108,7 @@ fn measured(search: &Search, id: &str, text: &str) {
             note_id: id.to_owned(),
             file_hash: format!("hash-{id}"),
             text: text.to_owned(),
+            properties: Vec::new(),
         }])
         .expect("measured");
 }

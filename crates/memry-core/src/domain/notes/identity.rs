@@ -71,8 +71,9 @@ use std::sync::Arc;
 use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::Value;
 
+use super::new_files::create_new;
 pub use super::removal::{Crossing, crossed, removed};
-use super::{ITEM_TYPE, NewNote, create_dated_in, edit_in, failed, iso};
+use super::{ITEM_TYPE, edit_in, failed};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
@@ -207,26 +208,7 @@ pub fn adopt(
     if file.electron_db_beside && !mints_beside_electron(&tx)? {
         return Ok(Adopted::Deferred(Deferral::ElectronNotImported));
     }
-    let note = NewNote {
-        id: new_id,
-        title: file.title,
-        folder_path: file.folder_path,
-        content: "",
-        tags: &[],
-        properties: None,
-        emoji: None,
-    };
-    // A date no record can carry (a corrupt far-future time) is the creation's: refused, the
-    // file would be asked about at every open, and never named.
-    let carried = |ms: i64| if iso(ms).is_ok() { ms } else { now_ms };
-    create_dated_in(
-        &tx,
-        &note,
-        device_id,
-        now_ms,
-        (carried(file.created_ms), carried(file.modified_ms)),
-    )?;
-    outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, new_id), now_ms)?;
+    create_new(&tx, file, new_id, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(Adopted::Created(new_id.to_owned()))
 }
