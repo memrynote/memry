@@ -86,7 +86,7 @@ async function typeTitleAndStay(page: Page, view: NoteView): Promise<string> {
   return name
 }
 
-const renamedOnDisk = (vault: string, view: NoteView, name: string): Promise<boolean> =>
+const renamedOnDisk = (vault: string, view: NoteView, name: string): Promise<true | undefined> =>
   pollUntil(
     () => existsSync(join(vault, 'notes', `${name}.md`)) && !existsSync(join(vault, view.path))
   )
