@@ -149,16 +149,24 @@ export class Page {
     await this.core.browser.setTimeout({ script: RELOAD_PROBE_MS })
     try {
       const deadline = Date.now() + this.core.timeoutMs
+      // A probe sent while the old document unloads fails; the last failure is named if the
+      // deadline passes, so a dead session reads as itself and not as a slow reload.
+      let lastError: string | undefined
       for (;;) {
         const loaded = await this.core.browser
           .execute(
             "return window.__memryPwDocument !== arguments[0] && document.readyState === 'complete'",
             mark
           )
-          .catch(() => false)
+          .catch((error: unknown) => {
+            lastError = error instanceof Error ? error.message : JSON.stringify(error)
+            return false
+          })
         if (loaded === true) return
-        if (Date.now() >= deadline)
-          throw new HarnessError(`reload: no new document within ${this.core.timeoutMs} ms`)
+        if (Date.now() >= deadline) {
+          const cause = lastError === undefined ? '' : `; last probe failed: ${lastError}`
+          throw new HarnessError(`reload: no new document within ${this.core.timeoutMs} ms${cause}`)
+        }
         await sleep(100)
       }
     } finally {

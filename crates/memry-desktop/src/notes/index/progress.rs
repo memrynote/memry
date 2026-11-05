@@ -3,7 +3,7 @@
 use std::time::{Duration, Instant};
 
 /// `built` of `total` notes measured or skipped so far.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct IndexProgress {
     pub built: usize,
     pub total: usize,

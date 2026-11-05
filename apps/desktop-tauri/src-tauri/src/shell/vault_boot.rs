@@ -16,7 +16,7 @@ use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::OpenStage;
 use memry_desktop::session::prompt::{self, Asker, RecoveryPrompt};
-use memry_desktop::session::response::{VaultStatus, index_recovery_reason};
+use memry_desktop::session::response::index_recovery_reason;
 use memry_desktop::session::{OpenSource, Session, SessionEvent, StartupOutcome};
 use memry_desktop::settings::SettingsService;
 use memry_desktop::telemetry::service::Service;
@@ -26,6 +26,7 @@ use tauri::{AppHandle, Manager, Wry};
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::commands::error::{CommandError, ErrorKind};
+use crate::commands::vault_index::vault_status;
 use crate::events::{
     CrdtWriteBackFailedEvent, NoteLinksChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
     VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
@@ -315,7 +316,7 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
             match event {
                 SessionEvent::StatusChanged(status) => {
                     let is_open = status.is_open;
-                    broadcast(&app, VaultStatusChangedEvent(VaultStatus::from(status)));
+                    broadcast(&app, VaultStatusChangedEvent(vault_status(&app, status)));
                     crate::windows::main_window::on_vault_status(&app, is_open);
                     // The keyboard rebinds belong to the vault, so the menu follows it.
                     crate::menu::apply(&app, false);

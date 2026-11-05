@@ -395,7 +395,7 @@ export function memryPwInstall(win) {
         ? undefined
         : top
           ? coverOf(top)
-          : `nothing at (${cx}, ${cy}) in ${innerWidth}x${innerHeight}`,
+          : `nothing at (${cx}, ${cy}) in ${win.innerWidth}x${win.innerHeight}`,
       box,
       x: cx,
       y: cy

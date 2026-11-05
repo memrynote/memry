@@ -375,7 +375,10 @@ export const commands = {
 	vaultActivityReveal: () => __TAURI_INVOKE<boolean>("vault_activity_reveal"),
 	/**  Keeps entries for `days` (7, 30 or 90). */
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
-	/**  Measures every note of the open vault again; resolves once the last progress went out. */
+	/**
+	 *  Measures every note of the open vault again; resolves once the last progress went out.
+	 *  Each step and the answer also send the vault status, which says whether it is indexing.
+	 */
 	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
 	/**
 	 *  What each `![[target]]` image embed of `refs` resolves to in the open vault: relative to the

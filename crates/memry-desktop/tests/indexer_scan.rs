@@ -181,7 +181,9 @@ fn a_generated_vault_is_measured_once_per_note_and_its_passes_report_to_the_tota
 
     let steps = Steps::default();
     count_index_statements(&e, true);
+    assert_eq!(index.reindexing(), None);
     let done = index.reindex(recorder(&steps)).unwrap();
+    assert_eq!(index.reindexing(), None, "answered, so no longer indexing");
     let statements = count_index_statements(&e, false);
     assert_eq!(
         done,
@@ -217,7 +219,8 @@ fn a_generated_vault_is_measured_once_per_note_and_its_passes_report_to_the_tota
 }
 
 /// Runs a reindex, holds its task at the first step `at` names, calls `held`, then closes the
-/// vault: the reindex answers that the vault is gone, and so does the next one.
+/// vault: the reindex answers that the vault is gone, and so does the next one. While held, the
+/// index says it is reindexing at that step; once answered, it does not.
 fn close_inside_a_reindex(
     e: &mut Env,
     index: &Arc<NoteIndex>,
@@ -227,20 +230,23 @@ fn close_inside_a_reindex(
     let (started, first) = mpsc::channel();
     let session = e.session.clone();
     let asked = index.clone();
+    let watched = index.clone();
     let reindex = std::thread::spawn(move || {
         asked.reindex(move |step| {
             if at(step) {
-                let _ = started.send(());
+                let _ = started.send((step, watched.reindexing()));
                 // Progress runs on the task's thread: the task waits here until the close began.
                 until("the close to begin", || session.current().is_none());
             }
         })
     });
-    first.recv().unwrap();
+    let (step, reindexing) = first.recv().unwrap();
+    assert_eq!(reindexing, Some(step));
     held(e);
     e.close();
     let result = reindex.join().unwrap();
     assert!(matches!(result, Err(IndexError::NotOpen)), "{result:?}");
+    assert_eq!(index.reindexing(), None);
     assert!(matches!(index.reindex(|_| {}), Err(IndexError::NotOpen)));
 }
 
