@@ -14,6 +14,7 @@ use crate::domain::notes::failed;
 use crate::domain::tag_admin;
 use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
 use crate::domain::tag_rename::{self, Holder, RenameJob, Started};
+use crate::domain::tag_retag;
 use crate::domain::tags;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
@@ -91,6 +92,34 @@ impl TagHub {
             body_tags::write(&tx, id, tags)?;
             tx.commit().map_err(failed)
         })
+    }
+
+    /// `source` merged into `target`, or deleted with no `target`, in the record of the note or
+    /// day `id` ([`tag_retag::retag`]); `false` when it did not change.
+    pub fn retag_in(
+        &self,
+        id: &str,
+        source: &str,
+        target: Option<&str>,
+    ) -> Result<bool, StorageError> {
+        self.db.call_blocking(|conn| {
+            tag_retag::retag(conn, id, source, target, &self.device_id, now_ms())
+        })
+    }
+
+    /// A merge's part besides the notes and days ([`tag_retag::merge_shared`]): the number of
+    /// tasks retagged.
+    pub fn merge_shared(&self, source: &str, target: &str) -> Result<u32, StorageError> {
+        self.db.call_blocking(|conn| {
+            tag_retag::merge_shared(conn, source, target, &self.device_id, now_ms())
+        })
+    }
+
+    /// A delete's part besides the notes and days ([`tag_retag::delete_shared`]): the number of
+    /// tasks retagged.
+    pub fn delete_shared(&self, tag: &str) -> Result<u32, StorageError> {
+        self.db
+            .call_blocking(|conn| tag_retag::delete_shared(conn, tag, &self.device_id, now_ms()))
     }
 
     /// Whether the recorded rename still lists the holder `id` ([`tag_rename::listed`]).

@@ -38,7 +38,10 @@
 //! applied item anywhere on this path is that regression, not a convenience.
 //! The outbox rows an apply writes are new items that exist nowhere else: a
 //! canvas conflict copy ([`crate::domain::canvas::merge`]) and a kept copy of
-//! text a delete never saw ([`super::delete_keep`]).
+//! text a delete never saw ([`super::delete_keep`]). The one re-push is
+//! §6.11.4's heal of a versioned key the remote is behind on
+//! ([`super::versioned_apply`]), which §6.11.4 bounds so two clients never
+//! ping-pong.
 
 use rusqlite::Connection;
 
@@ -52,6 +55,7 @@ use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
 use super::clock::{ClockOrder, VectorClock, compare};
+use super::versioned_apply::{TAG_SCHEMA, VersionedKey};
 use super::{body_debt, delete_keep, journal_day_merge, settings_merge, store};
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
@@ -436,6 +440,10 @@ pub fn apply_inbound_on(
         }
         // Whole-document LWW plus desktop's conflict copy (canvas-handler.ts).
         canvas::ITEM_TYPE => canvas::merge::apply_remote(conn, record, now_ms, clock_device),
+        // §6.3.1's document gate, then §6.11's join of the versioned `schema`.
+        t if t == TAG_SCHEMA.item_type => {
+            apply_versioned(conn, record, &TAG_SCHEMA, now_ms, clock_device)
+        }
         _ => apply_document(conn, record, now_ms),
     };
     match merged {
@@ -477,6 +485,21 @@ fn apply_document(
             task_merge::wholesale(conn, &merged, now_ms)
         }
     }
+}
+
+/// [`apply_document`], then the join of `key` over whatever it kept, and the
+/// heal §6.11.4 owes when the remote is behind.
+fn apply_versioned(
+    conn: &Connection,
+    record: &InboundRecord,
+    key: &VersionedKey,
+    now_ms: i64,
+    clock_device: Option<&str>,
+) -> Result<Inbound, StorageError> {
+    let local = key.local(conn, record)?;
+    let inbound = apply_document(conn, record, now_ms)?;
+    key.join_after_apply(conn, record, local, &inbound, clock_device, now_ms)?;
+    Ok(inbound)
 }
 
 /// The merge's own vocabulary, in the pull's.

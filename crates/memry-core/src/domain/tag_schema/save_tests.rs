@@ -112,6 +112,17 @@ fn a_saved_edit_lands_in_the_definition_and_its_outbox_row_and_a_no_op_writes_no
         json!({"t": 1, "fields": [{"name": "Phone"}], "template": null, "extends": null, "preset": null}),
         "a tag with no definition gets one under its key"
     );
+    let minted = db
+        .call_blocking(|c| {
+            let row = sync_items::load(c, "tag_definition", "contact")?.expect("definition");
+            Ok(serde_json::from_str::<Value>(&row.payload.expect("payload")).expect("json"))
+        })
+        .expect("definition");
+    assert_eq!(
+        minted["colorAuthored"],
+        json!(false),
+        "its colour is the palette's"
+    );
 }
 
 #[test]

@@ -12,6 +12,7 @@ use crate::domain::tag_fields::is_reserved;
 use crate::domain::tag_schema_refs::rewrite_schema_reference;
 use crate::domain::tags::tag_key;
 use crate::sync::field_merge::canonical_json;
+use crate::sync::versioned;
 
 /// A field a schema gains (`NewFieldBody`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,34 +92,14 @@ pub struct Stamped {
     pub changed: bool,
 }
 
-/// `versionOf`: `t` when it is a safe integer `>= 0`, else 0.
-fn version_of(schema: &Map<String, Value>) -> u64 {
-    const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
-    match schema.get("t").and_then(Value::as_f64) {
-        Some(t) if t.fract() == 0.0 && (0.0..=MAX_SAFE_INTEGER).contains(&t) => t as u64,
-        _ => 0,
-    }
-}
-
-/// `stampVersionedValue`: `current` itself when `body` holds the same content, else the body
-/// with `t` one past `current`'s.
-fn stamp(current: Option<&Map<String, Value>>, mut body: Map<String, Value>) -> Stamped {
-    body.shift_remove("t");
-    let version = current.map_or(0, version_of);
-    if let Some(current) = current {
-        let mut same = body.clone();
-        same.insert("t".into(), json!(version));
-        if canonical(&same) == canonical(current) {
-            return Stamped {
-                next: current.clone(),
-                changed: false,
-            };
-        }
-    }
-    body.insert("t".into(), json!(version + 1));
+/// `stampVersionedValue` (§6.11.3), through the sync owner: `current` itself when `body` holds
+/// the same content, else the body with `t` one past `current`'s.
+fn stamp(current: Option<&Map<String, Value>>, body: Map<String, Value>) -> Stamped {
+    let previous = current.map(|map| Value::Object(map.clone()));
+    let next = versioned::stamp_value(previous.as_ref(), &body);
     Stamped {
-        next: body,
-        changed: true,
+        changed: current != Some(&next),
+        next,
     }
 }
 

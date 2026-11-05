@@ -27,7 +27,7 @@ use vault_env::{Env, QUIET, env, indexed};
 
 /// An open vault, its first walk done, with the note index and the notes service, which
 /// resumes a recorded rename at every open.
-fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
+pub(crate) fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     let store: Mutex<Option<Arc<dyn SecureStore>>> = Mutex::default();
     let mut e = env(|s| {
         *store.lock().unwrap() = Some(s.clone());
@@ -42,7 +42,7 @@ fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     (e, notes, store)
 }
 
-fn hub(e: &Env, store: &Arc<dyn SecureStore>) -> TagHub {
+pub(crate) fn hub(e: &Env, store: &Arc<dyn SecureStore>) -> TagHub {
     e.core().tag_hub(store.clone()).unwrap()
 }
 
@@ -63,7 +63,13 @@ fn job(from: &str, to: &str) -> RenameJob {
     }
 }
 
-fn note(notes: &NotesService, e: &Env, title: &str, content: &str, tags: &[&str]) -> String {
+pub(crate) fn note(
+    notes: &NotesService,
+    e: &Env,
+    title: &str,
+    content: &str,
+    tags: &[&str],
+) -> String {
     let open = e.session.current().unwrap();
     let note = NewNoteFile {
         title: title.into(),
@@ -75,7 +81,7 @@ fn note(notes: &NotesService, e: &Env, title: &str, content: &str, tags: &[&str]
 }
 
 /// A list of the record's payload, `tags` or `pinnedTags`.
-fn record(e: &Env, id: &str, key: &str) -> Vec<String> {
+pub(crate) fn record(e: &Env, id: &str, key: &str) -> Vec<String> {
     let (id, path) = (id.to_owned(), format!("$.{key}"));
     let list: Option<String> = e
         .core()
@@ -95,7 +101,7 @@ fn record(e: &Env, id: &str, key: &str) -> Vec<String> {
 }
 
 /// The record pushes queued for `id`, after the last [`clear_outbox`].
-fn upserts(e: &Env, id: &str) -> i64 {
+pub(crate) fn upserts(e: &Env, id: &str) -> i64 {
     let id = id.to_owned();
     e.core()
         .db_handle()
@@ -111,7 +117,7 @@ fn upserts(e: &Env, id: &str) -> i64 {
         .unwrap()
 }
 
-fn clear_outbox(e: &Env) {
+pub(crate) fn clear_outbox(e: &Env) {
     e.core()
         .db_handle()
         .call_blocking(|conn| {
@@ -121,7 +127,7 @@ fn clear_outbox(e: &Env) {
         .unwrap();
 }
 
-fn path_of(e: &Env, id: &str) -> String {
+pub(crate) fn path_of(e: &Env, id: &str) -> String {
     e.core()
         .note_files()
         .by_id(id)
@@ -131,7 +137,7 @@ fn path_of(e: &Env, id: &str) -> String {
 }
 
 /// Waits until the index measured the bytes the note's row names.
-fn measured(e: &Env, id: &str) {
+pub(crate) fn measured(e: &Env, id: &str) {
     let search = e.session.current().expect("open").search;
     until("the file measured", || {
         let row = e.core().note_files().by_id(id).unwrap().expect("a row");

@@ -148,6 +148,8 @@ mod notes_resolve_refs;
 mod notes_service;
 #[path = "notes_tag_rename.rs"]
 mod notes_tag_rename;
+#[path = "notes_tag_retag.rs"]
+mod notes_tag_retag;
 #[path = "notes_tag_template.rs"]
 mod notes_tag_template;
 #[path = "notes_update.rs"]

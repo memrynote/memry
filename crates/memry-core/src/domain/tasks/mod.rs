@@ -68,6 +68,7 @@ use crate::storage::repositories::Change;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::sync::field_merge::TASK_SYNCABLE_FIELDS;
 use crate::sync::outbox::{self, Durable};
+use crate::sync::versioned_apply::TASK_FIELDS;
 
 use super::notes::{iso, next_clock, require_payload};
 use super::task_merge;
@@ -76,7 +77,6 @@ pub mod batch;
 pub mod bulk;
 pub mod create;
 pub mod fields;
-mod fields_apply;
 pub mod lifecycle;
 pub mod model;
 pub mod structure;
@@ -347,9 +347,9 @@ pub fn apply_remote(
     now_ms: i64,
     clock_device: Option<&str>,
 ) -> Result<Inbound, StorageError> {
-    let local = fields_apply::local_fields(conn, record)?;
+    let local = TASK_FIELDS.local(conn, record)?;
     let inbound = task_merge::apply_remote_merged(conn, record, &TASK_SYNCABLE_FIELDS, now_ms)?;
-    fields_apply::join_after_apply(conn, record, local, &inbound, clock_device, now_ms)?;
+    TASK_FIELDS.join_after_apply(conn, record, local, &inbound, clock_device, now_ms)?;
     Ok(inbound)
 }
 

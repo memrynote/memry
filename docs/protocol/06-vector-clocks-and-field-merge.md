@@ -866,18 +866,21 @@ test over the production join, stamps and heal rule
 | desktop since #2265, before §6.11 | keeps them in `sync_unknown_fields` and echoes the last capture, possibly stale, under a newer clock                                                                                 | the join rejects the stale value by `t`, and the receiver heals                    |
 | desktop upgrading to §6.11        | data migration 0073 adopts a captured object into the new column once (`apps/desktop/src/main/database/drizzle-data/0073_tag_schema_task_fields.sql:14-50`)                          | the values show at once and push as stored                                         |
 | Rust core before #3310            | stores both verbatim, keeps local `fields` on a concurrent task merge, takes the remote payload on a concurrent tag definition, copies `fields` to a duplicate and a next occurrence | desktop joins and heals for it (`crates/memry-core/tests/versioned_keys_carry.rs`) |
+| Rust core before #4002            | joins and heals `fields`; stores `schema` verbatim, takes the remote payload on a concurrent tag definition and never edits it                                                       | desktop joins and heals for it                                                     |
 | server                            | stores ciphertext                                                                                                                                                                    | no change, and no version floor: an Electron desktop sends no client header        |
 
 A downgrade is inert: an older desktop never selects the two columns, strips
 the two keys, and has no migration newer than 0073 to apply.
 
-The Rust core implements §6.11.2 to §6.11.4 for `task.fields`
-(`crates/memry-core/src/sync/versioned.rs:73`, `:121`,
-`crates/memry-core/src/domain/tasks/fields_apply.rs:50`). It never edits
-`tag_definition.schema` and still stores it verbatim; a core that comes to
-edit it MUST implement the value join too. The vectors below are reproduced by
-an independent implementation in its tests and asserted against the
-production map functions.
+The Rust core implements §6.11.2 to §6.11.4 for both keys: the joins and
+stamps (`crates/memry-core/src/sync/versioned.rs:73`, `:107`, `:155`, `:177`),
+and one apply step that joins either key after its type's apply and heals
+(`crates/memry-core/src/sync/versioned_apply.rs:38`, `:45`, `:73`), run by the
+task apply and by the tag definition apply
+(`crates/memry-core/src/sync/apply.rs:444-446`). It edits
+`tag_definition.schema` since #4002, so a core that joins the schema is the
+only one that edits it. The vectors below are reproduced by an independent
+implementation in its tests and asserted against the production functions.
 
 **The shared vectors are `versioned-values.json`**
 (`packages/contracts/test-vectors/`), generated from

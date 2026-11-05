@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Penamaan semula #{from} kepada #{to} masih berjalan. Cuba lagi apabila ia selesai.",
+    "editInProgress": "Perubahan teg lain masih berjalan. Cuba lagi apabila ia selesai.",
     "renameUnfinished": "Penamaan semula #{from} kepada #{to} tidak selesai untuk {count, plural, other {# nota}}. Namakan semula #{from} kepada #{to} sekali lagi untuk menyelesaikannya.",
     "mergeSameTag": "Teg sumber dan teg sasaran ialah teg yang sama",
     "categoryNameRequired": "Nama kategori diperlukan",

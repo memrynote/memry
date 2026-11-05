@@ -12,6 +12,7 @@ use memry_core::domain::tag_rename::{Holder, RenameJob};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::create::NewNoteFile;
+use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::service::NotesService;
@@ -22,7 +23,8 @@ use memry_desktop::vault::consumer::{Applied, VaultTier};
 use memry_desktop::vault::hash::content_hash;
 use memry_tauri::commands::error::CommandError;
 use memry_tauri::commands::tags::{
-    RenameTagInput, RenameTagView, tags_rename, tags_rename_abandon, tags_rename_unfinished,
+    RenameTagInput, RenameTagView, rename_failed, tags_rename, tags_rename_abandon,
+    tags_rename_unfinished,
 };
 use memry_tauri::events::{NoteTagsChangedEvent, TagRenamedEvent, TagsProgressEvent};
 use memry_tauri::shell::journal_events;
@@ -313,4 +315,19 @@ fn measured(fixture: &Fixture) -> bool {
     let row = open.vault.note_files().by_path("Plan.md").unwrap().unwrap();
     let stats = open.search.note_stats(&row.note_id).unwrap();
     row.content_hash.is_some() && stats.and_then(|s| s.file_hash) == row.content_hash
+}
+
+/// A tag change refused while a merge, delete or removal runs says so in the window's language,
+/// not as a rename of names it does not know.
+#[test]
+fn a_tag_change_refused_while_another_runs_says_so() {
+    let fixture = opened();
+    let refused = rename_failed(fixture.app.handle(), &NotesError::TagEditInProgress);
+    assert_eq!(
+        (refused.code.as_str(), refused.message.as_str()),
+        (
+            "tag_edit_in_progress",
+            "Another tag change is still running. Try again when it finishes."
+        )
+    );
 }
