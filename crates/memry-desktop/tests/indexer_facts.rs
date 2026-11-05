@@ -38,6 +38,7 @@ fn stale_row(id: &str, text: &str) -> MeasuredFile {
         note_id: id.to_owned(),
         file_hash: content_hash(text),
         text: "stale".to_owned(),
+        properties: Vec::new(),
     }
 }
 
@@ -110,6 +111,7 @@ fn facts_keep_the_rows_current_and_lost_facts_run_a_scan() {
         note_id: "ghost".into(),
         file_hash: "h".into(),
         text: "gone".into(),
+        properties: Vec::new(),
     };
     open.search.index_note_files(vec![ghost]).unwrap();
     let (sender, receiver) = broadcast::channel(1);

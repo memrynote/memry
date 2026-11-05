@@ -41,3 +41,9 @@ pub fn with_device_key() -> Arc<dyn SecureStore> {
         .unwrap();
     Arc::new(store)
 }
+
+/// A store holding no device key: nothing writes or opens records under it.
+#[allow(dead_code, reason = "each test binary uses a part of it")]
+pub fn without_device_key() -> Arc<dyn SecureStore> {
+    Arc::new(MemoryStore::default())
+}

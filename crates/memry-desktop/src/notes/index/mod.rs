@@ -33,6 +33,11 @@
 //!   to a pass (the walk has not ended, the file did not read, the asker stopped waiting) goes
 //!   to the `landed` callback once a pass, or the late request itself, writes its row, so the
 //!   counts the asker could not wait for still reach the calendar.
+//! - **Property values** go to `note_properties` with the row, typed by the definitions
+//!   (`setNoteProperties`). A pass first reads again the notes holding a name whose definition
+//!   changed type since their rows were written (`retypeIndexedProperties`), and every note when
+//!   the index never recorded the definitions (an index from before the rows were filled). A
+//!   definition command asks for that pass ([`NoteIndex::retype`]).
 //! - **Not measured:** a file in the large-file class (Electron streams it; a follow-up).
 //! - [`NoteIndex::reindex`] (`vault_reindex`) measures every note again, through the task once
 //!   the open walk ended, and reports its progress at most once per [`PROGRESS_INTERVAL`],
@@ -170,7 +175,7 @@ impl NoteIndex {
                 let Some((handle, (facts, inbox))) = started else {
                     return Err("the open subscribed no facts".into());
                 };
-                let ended = Indexer::new(vault).run(
+                let ended = Indexer::new(vault, index.tier.store()).run(
                     facts,
                     inbox,
                     cancel,
@@ -235,6 +240,14 @@ impl NoteIndex {
             Ok(measured) => measured,
             Err(RecvTimeoutError::Timeout) => Ok(false),
             Err(RecvTimeoutError::Disconnected) => Err(self.gone()),
+        }
+    }
+
+    /// Reads again, in a pass of the open vault's task, the notes whose property rows were
+    /// typed by definitions that changed since. Nothing when no vault is open.
+    pub fn retype(&self) {
+        if let Slot::Open { handle, .. } = &*lock(&self.slot) {
+            handle.retype();
         }
     }
 

@@ -11,6 +11,7 @@
 //! | a tree delete takes the subtree, notes stay  | desktop `rm -rf`, caller deletes notes |
 //! | a tree delete drops the subtree's order rows | no inherited slot                |
 //! | a tree delete of a folder with no config     | a folder made in a file manager  |
+//! | a folder is deleted with no record and a tombstone | `isDeletedFolder`, the prune |
 
 use memry_core::domain::{folders, note_positions, notes};
 use memry_core::storage::repositories::sync_items;
@@ -464,4 +465,28 @@ fn setting_a_folder_icon_edits_in_place_creates_when_missing_and_clears_with_nul
         Ok(())
     })
     .expect("icon");
+}
+
+/// The prune removes only a folder deleted somewhere (`isDeletedFolder`): no live record and a
+/// tombstone. A folder that never had a record, or one made again over its tombstone, is not.
+#[test]
+fn a_folder_is_deleted_with_no_record_and_a_tombstone() {
+    let db = open("folders-deleted");
+    db.call_blocking(|conn| {
+        folders::create(conn, "Gone", None, DEVICE, NOW)?.acknowledge();
+        folders::create(conn, "Gone/Sub", None, DEVICE, NOW)?.acknowledge();
+        folders::create(conn, "Back", None, DEVICE, NOW)?.acknowledge();
+        assert!(!folders::deleted(conn, "Gone")?);
+
+        folders::delete_tree(conn, "Gone", DEVICE, NOW + 1)?;
+        folders::delete_tree(conn, "Back", DEVICE, NOW + 1)?;
+        folders::create(conn, "Back", None, DEVICE, NOW + 2)?.acknowledge();
+
+        assert!(folders::deleted(conn, "Gone")?);
+        assert!(folders::deleted(conn, "Gone/Sub")?);
+        assert!(!folders::deleted(conn, "Back")?);
+        assert!(!folders::deleted(conn, "Never")?);
+        Ok(())
+    })
+    .unwrap();
 }

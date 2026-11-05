@@ -299,6 +299,13 @@ pub struct NoteTagsChangedEvent;
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultConfigChangedEvent(pub VaultConfig);
 
+/// A folder's settings or its record changed, or the folder left the vault, by sync
+/// (`notes:folder-config-updated`): the folder `path` names, vault-relative.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct FolderConfigUpdatedEvent {
+    pub path: String,
+}
+
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultListChangedEvent;

@@ -17,22 +17,30 @@
 //!
 //! A template applied to a note (`notes:apply-template`, [`super::apply_template`]) fills values
 //! with the same edit and record mirror ([`mirror_properties`]) inside its own write of the
-//! body. What an edit makes of the frontmatter is [`edit`]. Not here: the header status a status
-//! property takes from the note's tasks (`fillHeaderStatus`, Step 21), the `note_properties`
-//! index and a type learned from a new value (13k-4), the journal page's own event for a day
-//! (Step 13m), relation chips (`properties:resolveRefs`) and the lock check (Step 14).
+//! body. What an edit makes of the frontmatter is [`edit`]. The note index reads the same values
+//! into `note_properties` ([`file_properties`]; `super::index`).
+//!
+//! Not here: a type learned from a new value (Electron's `learnCanonicalPropertyType`, which
+//! gives an undeclared property a synced definition at the first type its notes are synced
+//! with; 13k-4c), the header status a status property takes from the note's tasks
+//! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m), relation
+//! chips (`properties:resolveRefs`) and the lock check (Step 14).
 
 pub mod edit;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::path::Path;
+use std::sync::Arc;
 
 use memry_core::api::notes_write::NotesWriter;
+use memry_core::api::vault::Vault;
 use memry_core::domain::property_values::{IndexedProperty, indexed_properties};
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, deep_strict_equal, json_to_yaml, parse_markdown_note,
     serialize_updated_note,
 };
+use memry_core::seams::secure_store::SecureStore;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
@@ -46,7 +54,7 @@ use crate::session::OpenVault;
 use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
 use crate::vault::consumer::ChangeSource;
 use crate::vault::file_types::FileType;
-use crate::vault::note_file::read_note;
+use crate::vault::note_file::{NoteFile, read_note};
 
 /// `PropertyValue` of `properties-api.ts`.
 #[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
@@ -100,13 +108,10 @@ impl NotesService {
                 });
             return Ok(views(&values, &types));
         }
-        let Ok(parsed) = file.parse() else {
-            return Ok(Vec::new());
-        };
-        match &parsed.frontmatter {
-            YamlValue::Map(map) => Ok(views(&user_properties(map), &types)),
-            _ => Ok(Vec::new()),
-        }
+        Ok(file_properties(&file, &types)
+            .into_iter()
+            .map(view)
+            .collect())
     }
 
     /// `properties:set`: the user's changes from `base`, the record they were shown, to
@@ -237,35 +242,55 @@ impl NotesService {
         })
     }
 
-    /// Each defined property's type, by name: `properties.md`, then the records. Without them
-    /// (the file or the records unreadable) every type is inferred from its value.
+    /// Each defined property's type, by name ([`definition_types`]).
     pub(crate) fn definition_types(&self, open: &OpenVault) -> HashMap<String, String> {
-        let listed = open
-            .vault
-            .property_definition_records(self.store.clone())
-            .map_err(|error| error.to_string())
-            .and_then(|records| {
-                PropertyDefinitions::new(open.path.clone(), records)
-                    .list()
-                    .map_err(|error| error.to_string())
-            });
-        match listed {
-            Ok(definitions) => definitions
-                .into_iter()
-                .filter_map(|definition| {
-                    let type_name = serde_json::to_value(definition.type_name).ok()?;
-                    Some((definition.name, type_name.as_str()?.to_owned()))
-                })
-                .collect(),
-            Err(error) => {
-                tracing::warn!(
-                    scope = SCOPE,
-                    "property types are inferred from their values: the definitions did not \
-                     read: {error}"
-                );
-                HashMap::new()
-            }
-        }
+        definition_types(&open.path, &open.vault, self.store.clone())
+    }
+}
+
+/// Each defined property's type, by name: `properties.md`, then the records. Without them (the
+/// file or the records unreadable) every type is inferred from its value.
+pub fn definition_types(
+    path: &Path,
+    vault: &Vault,
+    store: Arc<dyn SecureStore>,
+) -> HashMap<String, String> {
+    read_definition_types(path, vault, store).unwrap_or_else(|error| {
+        tracing::warn!(
+            scope = SCOPE,
+            "property types are inferred from their values: the definitions did not read: {error}"
+        );
+        HashMap::new()
+    })
+}
+
+/// [`definition_types`], or why they did not read.
+pub fn read_definition_types(
+    path: &Path,
+    vault: &Vault,
+    store: Arc<dyn SecureStore>,
+) -> Result<HashMap<String, String>, String> {
+    let records = vault
+        .property_definition_records(store)
+        .map_err(|error| error.to_string())?;
+    let definitions = PropertyDefinitions::new(path.to_owned(), records)
+        .list()
+        .map_err(|error| error.to_string())?;
+    Ok(definitions
+        .into_iter()
+        .filter_map(|definition| {
+            let type_name = serde_json::to_value(definition.type_name).ok()?;
+            Some((definition.name, type_name.as_str()?.to_owned()))
+        })
+        .collect())
+}
+
+/// The user properties the file's frontmatter holds, read as the index reads them; none for a
+/// frontmatter that does not parse or is not a mapping (`parseNote` reads none).
+pub fn file_properties(file: &NoteFile, types: &HashMap<String, String>) -> Vec<IndexedProperty> {
+    match file.parse().map(|parsed| parsed.frontmatter) {
+        Ok(YamlValue::Map(map)) => indexed(&user_properties(&map), types),
+        _ => Vec::new(),
     }
 }
 
@@ -335,12 +360,13 @@ fn delta(
 }
 
 fn views(values: &YamlMap, types: &HashMap<String, String>) -> Vec<PropertyValueView> {
-    indexed(values, types)
-        .into_iter()
-        .map(|p| PropertyValueView {
-            name: p.name,
-            value: p.value,
-            type_name: p.type_name,
-        })
-        .collect()
+    indexed(values, types).into_iter().map(view).collect()
+}
+
+fn view(property: IndexedProperty) -> PropertyValueView {
+    PropertyValueView {
+        name: property.name,
+        value: property.value,
+        type_name: property.type_name,
+    }
 }

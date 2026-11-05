@@ -34,6 +34,8 @@ enum Command {
         note_id: String,
         answer: reply::Sender<Result<bool, IndexError>>,
     },
+    /// The definitions may have changed: a pass checks the rows' types.
+    Retype,
     Stop,
 }
 
@@ -74,6 +76,12 @@ impl TaskHandle {
             .map(|()| receiver)
     }
 
+    /// Asks for a pass that reads again the notes whose property rows the definitions typed
+    /// otherwise; a task that already ended needs none.
+    pub fn retype(&self) {
+        let _ = self.0.send(Command::Retype);
+    }
+
     pub(super) fn same(&self, other: &TaskHandle) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
     }
@@ -103,6 +111,8 @@ struct Owed {
     scan: bool,
     /// The core search reindex (links, body tags, full text).
     links: bool,
+    /// A pass, for the property rows' types alone.
+    retype: bool,
     walk: Walk,
     /// The open's pass progress (`indexVault` on open) goes out with the next pass: the
     /// renderer refreshes the notes list on it.
@@ -138,7 +148,7 @@ impl Owed {
 
     /// When the owed work is due; `None` while nothing is owed or the walk has not ended.
     fn next(&self) -> Option<Instant> {
-        let owed = self.scan || self.links || !self.queue.is_empty();
+        let owed = self.scan || self.links || self.retype || !self.queue.is_empty();
         (self.walked() && owed).then(|| self.due.unwrap_or_else(Instant::now))
     }
 
@@ -254,6 +264,10 @@ impl Indexer {
                             owed.awaited.insert(note_id);
                         }
                     }
+                    Some(Command::Retype) => {
+                        owed.retype = true;
+                        owed.arm();
+                    }
                     Some(Command::Stop) | None => return,
                 },
                 fact = facts.recv() => match fact {
@@ -320,6 +334,7 @@ impl Indexer {
     ) {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
+        owed.retype = false;
         owed.due = None;
         let stop = || cancel.is_cancelled();
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
@@ -330,9 +345,22 @@ impl Indexer {
                 report(step);
             }
         };
-        let outcome = self
-            .listed(scan, &ids)
-            .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut progress, announce));
+        let outcome = self.typing().and_then(|typing| {
+            let notes = if typing.all {
+                self.scan(true)?
+            } else {
+                let queued: BTreeSet<String> = ids.union(&typing.retype).cloned().collect();
+                self.listed(scan, &queued)?
+            };
+            self.pass(
+                notes,
+                typing,
+                &mut owed.links,
+                &stop,
+                &mut progress,
+                announce,
+            )
+        });
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);
     }
@@ -364,6 +392,7 @@ impl Indexer {
     ) -> Result<Backfilled, IndexError> {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
+        owed.retype = false;
         let stop = || cancel.is_cancelled();
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         let outcome = self.scan(true).map_err(IndexError::from).and_then(|notes| {
@@ -372,7 +401,15 @@ impl Indexer {
                     progress(step);
                 }
             };
-            self.pass(notes, &mut owed.links, &stop, &mut progress, announce)
+            let typing = self.typing_all()?;
+            self.pass(
+                notes,
+                typing,
+                &mut owed.links,
+                &stop,
+                &mut progress,
+                announce,
+            )
         });
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);

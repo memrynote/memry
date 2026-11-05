@@ -130,11 +130,13 @@ fn is_web_url(text: &str) -> bool {
     url::Url::parse(text).is_ok_and(|url| matches!(url.scheme(), "http" | "https"))
 }
 
-/// One property as the index holds it: its name, its type and its value.
+/// One property as the index holds it: its name, its type, its `note_properties.value` text
+/// (`serializeValue`) and the value that text reads back as.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IndexedProperty {
     pub name: String,
     pub type_name: String,
+    pub text: Option<String>,
     pub value: Value,
 }
 
@@ -158,11 +160,14 @@ pub fn indexed_properties<'a>(
         .into_iter()
         .map(|(name, value)| {
             let type_name = property_type(name, value, defined(name).as_deref());
-            let value = serialized(value, &mut walk)
+            let text = serialized(value, &mut walk);
+            let value = text
+                .clone()
                 .map_or(Value::Null, |text| indexed_value(text, &type_name));
             IndexedProperty {
                 name: name.to_owned(),
                 type_name,
+                text,
                 value,
             }
         })
