@@ -1,5 +1,6 @@
 //! A note edited in the app (`updateNote`, `vault/notes-crud.ts`, and `writeNoteCommand`,
-//! `notes/domain.ts`): an editor save of its body, an edit of its header tags, its icon.
+//! `notes/domain.ts`): an editor save of its body, an edit of its header tags, its icon, and
+//! named frontmatter keys (the cover and its framing, the full-width toggle; 13q-2).
 //!
 //! In the note's write order, through [`AppEdit`] with [`Precondition::Save`], which owns the
 //! read, the version of what a save would lose, the feed, the file, the row and the order
@@ -7,19 +8,26 @@
 //! 1. the next header tags ([`header_tags::next`]) against the file's: the `tags:` key is
 //!    written only when [`header_tags::compare`] reports a change, so an unchanged list keeps
 //!    the file's spelling, and every other key keeps its lines (`serialize_updated_note`);
-//! 2. the new body, or the body read when the update has none;
-//! 3. once the file holds them, the record's icon and, when the header changed, its tags (one
+//! 2. the named frontmatter keys: each set, a `null` one removed, every other key keeping its
+//!    lines; the keys Memry manages (`tags`, `aliases`, the nested `properties` envelope) are
+//!    refused, since each has its own edit;
+//! 3. the new body, or the body read when the update has none;
+//! 4. once the file holds them, the record's icon, its tags when the header changed, the
+//!    property keys the frontmatter edit set or dropped (`file_delta`, the 13k-3 rule: every
+//!    other key keeps the record's value) and its `cover` when the file's cover changed (one
 //!    outbox row each), so a refused write leaves the record as the file says; the note event
 //!    ([`ChangeSource::Save`]) reads them.
 //!
 //! Once the turn ends, a header tag the edit added may bring its template
 //! ([`super::tag_template`], `applyTagTemplateAfterAdd`), in a turn of its own.
 //!
-//! Not here, with their owners: the title (`notes:rename`), `frontmatter`, `properties` and
-//! `propertyPatch` (13k), `aliases` (13i), date reminders (Step 21) and locks (Step 14).
+//! Not here, with their owners: the title (`notes:rename`, refused here for good: Electron's
+//! update renames the record and leaves the file, and no renderer sends one), `properties` and
+//! `propertyPatch` (`properties:*`, 13k), `aliases` (`notes:edit-aliases`, 13q-1), date
+//! reminders (Step 21) and locks (Step 14).
 
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use memry_core::domain::body_tags;
 use memry_core::domain::header_tags::{
@@ -28,11 +36,16 @@ use memry_core::domain::header_tags::{
 use memry_core::domain::note_stats::header_tags as file_header_tags;
 use memry_core::domain::tags::{fold, tag_key};
 use memry_core::markdown::frontmatter::{
-    YamlMap, YamlValue, parse_markdown_note, serialize_updated_note,
+    YamlMap, YamlValue, deep_strict_equal, json_to_yaml, parse_markdown_note,
+    serialize_updated_note,
 };
+use memry_core::markdown::shared::cover_image::cover_sync;
 use serde::{Deserialize, Deserializer};
+use serde_json::{Map, Value};
 
 use super::error::{NotesError, SCOPE};
+use super::frontmatter::cover_fields;
+use super::properties::{file_delta, mirror_properties};
 use super::read;
 use super::service::NotesService;
 use super::tag_template::TagTemplateOutcome;
@@ -61,7 +74,15 @@ pub struct NoteUpdateInput {
     #[serde(default, deserialize_with = "present")]
     #[specta(optional, type = Option<String>)]
     pub emoji: Option<Option<String>>,
+    /// Frontmatter keys to set, a `null` one removed; the rest keep their lines.
+    #[serde(default)]
+    #[specta(optional)]
+    pub frontmatter: Option<Map<String, Value>>,
 }
+
+/// The frontmatter keys an update may not name: each has its own edit (header tags,
+/// `notes:edit-aliases`, the property writer).
+const MANAGED_KEYS: [&str; 3] = ["tags", "aliases", "properties"];
 
 /// `HeaderTagEditSchema`.
 #[derive(Debug, Clone, Default, Deserialize, specta::Type)]
@@ -150,6 +171,7 @@ struct Edit {
     content: Option<String>,
     header_tags: Option<HeaderTagEdit>,
     emoji: Option<Option<String>>,
+    frontmatter: Option<Map<String, Value>>,
 }
 
 impl NotesService {
@@ -174,7 +196,16 @@ impl NotesService {
             id: input.id,
             content: input.content,
             emoji: input.emoji,
+            frontmatter: input.frontmatter,
         };
+        if let Some(key) = edit
+            .frontmatter
+            .iter()
+            .flat_map(Map::keys)
+            .find(|key| MANAGED_KEYS.contains(&key.as_str()))
+        {
+            return Err(NotesError::ManagedKey(key.clone()));
+        }
         let (tags_changed, added) = self
             .order
             .run(&edit.id, |turn| self.update_now(open, &edit, turn, between))?;
@@ -213,6 +244,11 @@ impl NotesService {
             true => open.vault.tags_with_fields()?,
             false => HashSet::new(),
         };
+        // The property types a frontmatter edit's record mirror stores values with.
+        let types = match edit.frontmatter.is_some() {
+            true => self.definition_types(open),
+            false => HashMap::new(),
+        };
         let app_edit = self.save_edit(open)?;
         // What the text decided, for the record once the file holds it.
         let planned = RefCell::new(None);
@@ -226,7 +262,7 @@ impl NotesService {
                     .note_files()
                     .listed_by_id(id)?
                     .ok_or_else(|| NotesError::NotFound(id.to_owned()))?;
-                let (output, plan) = next_text(text, edit, &with_fields, listed.emoji)?;
+                let (output, plan) = next_text(text, edit, &with_fields, &types, listed.emoji)?;
                 *planned.borrow_mut() = Some(plan);
                 Ok(Some(output))
             },
@@ -240,6 +276,18 @@ impl NotesService {
                 }
                 if let Some(tags) = &plan.tags {
                     writer.set_tags(id.to_owned(), tags.clone())?;
+                }
+                if let Some(delta) = &plan.properties {
+                    mirror_properties(&writer, id, delta.clone())?;
+                }
+                if let Some(cover) = &plan.cover
+                    && !writer.file_cover(id, cover.clone())?
+                {
+                    tracing::warn!(
+                        scope = SCOPE,
+                        note_id = id,
+                        "a note's file took a cover its record could not: no record"
+                    );
                 }
                 Ok(plan.emoji.is_some())
             },
@@ -264,6 +312,10 @@ struct Plan {
     emoji: Option<Option<String>>,
     /// The new header tags, when the list changed.
     tags: Option<Vec<String>>,
+    /// The property keys the frontmatter edit set and dropped, when it touched any.
+    properties: Option<(Map<String, Value>, Vec<String>)>,
+    /// The file's cover as a push carries it, `None` for none, when it changed.
+    cover: Option<Option<Map<String, Value>>>,
     /// The header tags or the body's `#tags` changed (`notes:tags-changed`).
     tags_changed: bool,
     /// The tags the header gained, by tag fold.
@@ -275,6 +327,7 @@ fn next_text(
     text: &str,
     edit: &Edit,
     with_fields: &HashSet<String>,
+    types: &HashMap<String, String>,
     emoji: Option<String>,
 ) -> Result<(String, Plan), NotesError> {
     let parsed = parse_markdown_note(text)?;
@@ -294,7 +347,23 @@ fn next_text(
     };
     let tags = header_tags::next(&existing, &update, with_fields);
     let change = header_tags::compare(&before, &tags);
-    if change.is_some() && !matches!(parsed.frontmatter, YamlValue::Map(_)) {
+    let mut patched = frontmatter.clone();
+    for (name, value) in edit.frontmatter.iter().flatten() {
+        match value {
+            Value::Null => {
+                patched.remove(name);
+            }
+            value => {
+                patched.insert(name.clone(), json_to_yaml(value));
+            }
+        }
+    }
+    let keys_changed = !deep_strict_equal(
+        &YamlValue::map(frontmatter.clone()),
+        &YamlValue::map(patched.clone()),
+    );
+    let writes_keys = change.is_some() || keys_changed;
+    if writes_keys && !matches!(parsed.frontmatter, YamlValue::Map(_)) {
         // A top level that is a list or a scalar is the author's; no key goes into it.
         return Err(NotesError::FrontmatterNotAMap);
     }
@@ -306,14 +375,26 @@ fn next_text(
         .content
         .clone()
         .unwrap_or_else(|| parsed.content.clone());
-    let mut next = frontmatter.clone();
+    let properties = keys_changed
+        .then(|| file_delta(&frontmatter, &patched, types))
+        .filter(|(changed, removed)| !changed.is_empty() || !removed.is_empty());
+    let cover = keys_changed
+        .then(|| {
+            let held = cover_sync(&cover_fields(&frontmatter));
+            let next = cover_sync(&cover_fields(&patched));
+            (held != next).then_some(next)
+        })
+        .flatten();
+    let mut next = patched;
     header_tags::set_tags(&mut next, &tags, change.as_ref());
-    let edited = change.is_some();
-    let output = serialize_updated_note(parsed, &frontmatter, next, &body, edited)?;
+    let tags_edited = change.is_some();
+    let output = serialize_updated_note(parsed, &frontmatter, next, &body, writes_keys)?;
     let plan = Plan {
         emoji: edit.emoji.clone().filter(|next| *next != emoji),
-        tags: edited.then_some(tags),
-        tags_changed: edited || body_tags_changed,
+        tags: tags_edited.then_some(tags),
+        properties,
+        cover,
+        tags_changed: tags_edited || body_tags_changed,
         added: change.map(|change| change.added).unwrap_or_default(),
     };
     Ok((output, plan))

@@ -108,6 +108,8 @@ mod domain_calendar_sync;
 mod domain_custom_icons;
 #[path = "domain_file_aliases.rs"]
 mod domain_file_aliases;
+#[path = "domain_file_cover.rs"]
+mod domain_file_cover;
 #[path = "domain_file_tags.rs"]
 mod domain_file_tags;
 #[path = "domain_folders.rs"]

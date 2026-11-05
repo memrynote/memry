@@ -111,6 +111,39 @@ pub fn set_cover(
     edit(conn, ITEM_TYPE, note_id, changes, device_id, now_ms)
 }
 
+/// The cover an in-app edit wrote into the note's file, as its push carries it (desktop
+/// `noteCoverFromFrontmatter`, §13.7.1.1), taken by the record's `cover` field. `None` is a
+/// cover the edit removed: written as `null`, with the legacy `coverImage` as [`set_cover`]
+/// writes it, only while the record holds one, so a note whose cover never reached the record
+/// does not erase a peer's (desktop's `noteCoverForPush` sends `null` only for a cover it held).
+/// A cover the record already holds writes nothing. `false` when no live note has that id.
+pub fn take_file_cover(
+    conn: &Connection,
+    note_id: &str,
+    cover: Option<serde_json::Map<String, Value>>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let live =
+        sync_items::load(conn, ITEM_TYPE, note_id)?.is_some_and(|row| row.deleted_at.is_none());
+    if !live {
+        return Ok(false);
+    }
+    let payload = crate::domain::note_meta::note_payload(conn, note_id)?.unwrap_or_default();
+    let held = |key: &str| payload.get(key).filter(|value| !value.is_null());
+    let changes = match cover {
+        Some(cover) if held("cover") == Some(&Value::Object(cover.clone())) => return Ok(true),
+        Some(cover) => vec![("cover", Change::Set(Value::Object(cover)))],
+        None if held("cover").is_none() && held("coverImage").is_none() => return Ok(true),
+        None => vec![
+            ("cover", Change::Set(Value::Null)),
+            ("coverImage", Change::Set(Value::Null)),
+        ],
+    };
+    edit(conn, ITEM_TYPE, note_id, changes, device_id, now_ms)?;
+    Ok(true)
+}
+
 /// Replaces a note's tags (N705).
 ///
 /// **`tags` is a field of the note payload (§13.7.1), not a property.** The

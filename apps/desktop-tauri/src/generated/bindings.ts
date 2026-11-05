@@ -1226,6 +1226,8 @@ export type NoteUpdateInput = {
 	headerTags?: HeaderTagEditInput | null,
 	/**  Absent leaves the icon; `null` clears it. */
 	emoji?: string | null,
+	/**  Frontmatter keys to set, a `null` one removed; the rest keep their lines. */
+	frontmatter?: { [key in string]: Value } | null,
 };
 
 /**
