@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "A(z) #{from} átnevezése erre: #{to} még folyamatban van. Próbálja újra, amikor befejeződött.",
+    "editInProgress": "Egy másik címkemódosítás még folyamatban van. Próbálja újra, amikor befejeződött.",
     "renameUnfinished": "A(z) #{from} átnevezése erre: #{to} {count, plural, one {# jegyzetnél} other {# jegyzetnél}} nem fejeződött be. Nevezze át újra a(z) #{from} címkét erre: #{to} a befejezéshez.",
     "mergeSameTag": "A forrás- és a célcímke azonos",
     "categoryNameRequired": "A kategória neve kötelező",

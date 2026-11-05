@@ -7,6 +7,8 @@ use crate::notes_tag_rename::{
 use std::sync::Arc;
 
 use crate::vault_env::{Env, QUIET};
+use memry_core::api::errors::StorageError;
+use memry_core::domain::tag_rename::{Holder, RenameJob};
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::write::NewDay;
 use memry_desktop::notes::error::NotesError;
@@ -146,23 +148,102 @@ fn a_merge_into_another_spelling_of_the_tag_is_refused() {
     assert_eq!(upserts(&e, &plan), 0);
 }
 
-/// A merge or delete asked while a rename runs is refused.
+/// A merge, delete or removal asked while another tag change holds the lock is refused as a
+/// tag change running, and so is a rename asked then; asked while a recorded rename runs, as
+/// that rename running.
 #[test]
-fn a_merge_or_delete_asked_while_a_rename_runs_is_refused() {
+fn a_tag_change_asked_while_another_runs_is_refused_with_what_runs() {
     let (mut e, notes, store) = opened();
-    vault(&notes, &mut e, &store);
+    let [plan, ..] = vault(&notes, &mut e, &store);
     let open = e.session.current().unwrap();
+    {
+        let _held = notes.hold_tag_rename();
+        let edit =
+            |result: Result<_, NotesError>| matches!(result, Err(NotesError::TagEditInProgress));
+        assert!(edit(notes.merge_tag(&open, "job", "work").map(drop)));
+        assert!(edit(notes.delete_tag(&open, "job").map(drop)));
+        assert!(edit(
+            notes.remove_tag_from_note(&open, &plan, "job").map(drop)
+        ));
+        let job = RenameJob {
+            from: "job".into(),
+            to: "career".into(),
+            run_id: "r".into(),
+        };
+        assert!(edit(
+            notes.rename_tag(&open, &job, &mut |_, _| {}).map(drop)
+        ));
+    }
+    let recorded = RenameJob {
+        from: "old".into(),
+        to: "new".into(),
+        run_id: "earlier".into(),
+    };
+    let left = vec![Holder {
+        id: "left".into(),
+        day: false,
+    }];
+    assert_eq!(hub(&e, &store).rename_begin(&recorded, left).unwrap(), None);
     let _held = notes.hold_tag_rename();
     let merge = notes.merge_tag(&open, "job", "work");
     assert!(
-        matches!(merge, Err(NotesError::TagRenameInProgress { .. })),
+        matches!(&merge, Err(NotesError::TagRenameInProgress { from, to }) if from == "old" && to == "new"),
         "{merge:?}"
     );
-    let delete = notes.delete_tag(&open, "job");
+    assert_eq!(upserts(&e, &plan), 0);
+}
+
+/// While a rename is recorded with notes left, a merge, delete or removal is refused with what
+/// finishes it, and writes nothing: the rename's resume reads its notes' files as it left them.
+#[test]
+fn a_tag_change_asked_while_a_rename_is_left_unfinished_is_refused() {
+    let (mut e, notes, store) = opened();
+    let [plan, ..] = vault(&notes, &mut e, &store);
+    let open = e.session.current().unwrap();
+    let recorded = RenameJob {
+        from: "job".into(),
+        to: "work".into(),
+        run_id: "earlier".into(),
+    };
+    let left = vec![Holder {
+        id: plan.clone(),
+        day: false,
+    }];
+    assert_eq!(hub(&e, &store).rename_begin(&recorded, left).unwrap(), None);
+    let before = e.read("Plan.md");
+    let unfinished = |result: Result<(), NotesError>| {
+        matches!(
+            result,
+            Err(NotesError::TagRenameUnfinished { ref from, ref to, left: 1 })
+                if from == "job" && to == "work"
+        )
+    };
+    assert!(unfinished(
+        notes.merge_tag(&open, "work", "career").map(drop)
+    ));
+    assert!(unfinished(notes.delete_tag(&open, "work").map(drop)));
+    assert!(unfinished(
+        notes.remove_tag_from_note(&open, &plan, "job").map(drop)
+    ));
+    assert_eq!(e.read("Plan.md"), before);
+    assert_eq!(upserts(&e, &plan), 0);
+}
+
+/// A merge into a blank name is refused as a name that is not a tag, not as the same tag.
+#[test]
+fn a_merge_into_a_blank_name_is_refused_as_invalid() {
+    let (mut e, notes, store) = opened();
+    let [plan, ..] = vault(&notes, &mut e, &store);
+    let open = e.session.current().unwrap();
+    let refused = notes.merge_tag(&open, "job", "  ");
     assert!(
-        matches!(delete, Err(NotesError::TagRenameInProgress { .. })),
-        "{delete:?}"
+        matches!(
+            refused,
+            Err(NotesError::Storage(StorageError::Invalid { .. }))
+        ),
+        "{refused:?}"
     );
+    assert_eq!(upserts(&e, &plan), 0);
 }
 
 /// A note whose file cannot take the edit keeps the tag in its file and its record and is

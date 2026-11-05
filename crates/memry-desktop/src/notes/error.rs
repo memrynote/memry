@@ -116,6 +116,10 @@ pub enum NotesError {
     /// A tag rename is running now.
     #[error("a rename of \"{from}\" to \"{to}\" is still running")]
     TagRenameInProgress { from: String, to: String },
+    /// A tag merge, delete or removal from a note is running now, so another tag change waits
+    /// (`errors:tag.editInProgress`).
+    #[error("another tag change is still running")]
+    TagEditInProgress,
     /// A merge of a tag into another name of itself (`errors:tag.mergeSameTag`).
     #[error("a tag is merged into another tag, not into itself")]
     TagMergeSameTag,
@@ -308,6 +312,7 @@ impl CoreError for NotesError {
             Self::TemplateNotFound(_) => (FailureKind::NotFound, "template_not_found"),
             Self::TagRenameInProgress { .. } => (FailureKind::Invalid, "tag_rename_in_progress"),
             Self::TagMergeSameTag => (FailureKind::Invalid, "tag_merge_same_tag"),
+            Self::TagEditInProgress => (FailureKind::Invalid, "tag_edit_in_progress"),
             Self::TagRenameUnfinished { .. } => (FailureKind::Invalid, "tag_rename_unfinished"),
             Self::Outside => (FailureKind::Invalid, "outside_vault"),
             Self::Unopenable(Unopenable::HardLinked) => (FailureKind::Invalid, "note_hard_linked"),

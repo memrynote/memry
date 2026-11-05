@@ -548,11 +548,17 @@ pub async fn tags_rename_abandon<R: Runtime>(app: AppHandle<R>) -> Result<bool, 
 }
 
 /// A rename running now is refused with Electron's words (`errors:tag.renameInProgress`), one
-/// recorded with notes left with what finishes it (`errors:tag.renameUnfinished`); any other
-/// failure carries the cause, as Electron's handler answers it.
-fn rename_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> CommandError {
+/// recorded with notes left with what finishes it (`errors:tag.renameUnfinished`), another tag
+/// change running with `errors:tag.editInProgress`; any other failure carries the cause, as
+/// Electron's handler answers it. Public for `tests/tags_rename.rs`, which cannot hold the lock.
+pub fn rename_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> CommandError {
     let core = CommandError::from_core(error);
     let (key, from, to, left) = match error {
+        NotesError::TagEditInProgress => {
+            let locale = app.state::<Arc<LocaleService>>().get();
+            let message = i18n::t(locale, "errors:tag.editInProgress", &Args::new());
+            return CommandError::new(core.kind, core.code, message);
+        }
         NotesError::TagRenameInProgress { from, to } => {
             ("errors:tag.renameInProgress", from, to, 0)
         }
