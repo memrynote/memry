@@ -418,25 +418,86 @@ fn a_file_mirror_keeps_a_pulled_value_the_file_does_not_hold_yet() {
     .expect("mirror");
 }
 
+const PULLED: &str = concat!(
+    r#"{"title":"t","properties":{"stage":"Done","effort":3},"#,
+    r#""clock":{"device-a":2}}"#,
+);
+
+/// The record holds a pulled `stage` the file does not hold yet; the file's `Draft` is older.
 #[test]
-fn a_file_with_no_earlier_reading_only_fills_the_keys_the_record_lacks() {
-    // The record holds a pulled `stage` the file does not hold yet; the file's `stage` is older.
-    let pulled = concat!(
-        r#"{"title":"t","properties":{"stage":"Done","effort":3},"#,
-        r#""clock":{"device-a":2}}"#,
-    );
-    let (db, _dir) = open("props-fill", pulled);
+fn a_file_takes_what_it_changed_since_the_baseline_and_fills_without_one() {
+    let (db, _dir) = open("props-taken", PULLED);
     db.call_blocking(|conn| {
+        // Found: no baseline, no reading; the record keeps every key it holds.
         let file = object(json!({ "stage": "Draft", "effort": 3, "owner": "Kaan" }));
-        assert!(fill_file(conn, "note-1", file, DEVICE, NOW + 1)?);
-        assert_eq!(
-            pushed(conn)["properties"],
-            json!({ "stage": "Done", "effort": 3, "owner": "Kaan" })
-        );
-        assert!(!fill_file(conn, "note-2", Map::new(), DEVICE, NOW + 2)?);
+        assert!(taken(conn, "note-1", None, file, DEVICE, NOW + 1)?);
+        let want = json!({ "stage": "Done", "effort": 3, "owner": "Kaan" });
+        assert_eq!(pushed(conn)["properties"], want);
+        // Edited outside: what it changed since the baseline, and no other key.
+        let file = object(json!({ "stage": "Draft", "effort": 4, "owner": "Kaan" }));
+        assert!(taken(conn, "note-1", None, file, DEVICE, NOW + 2)?);
+        assert_eq!(pushed(conn)["properties"]["stage"], json!("Done"));
+        assert_eq!(pushed(conn)["properties"]["effort"], json!(4));
+        // An app edit moves the baseline, so a pull of the key after it is not reverted.
+        let edit = object(json!({ "owner": "Ada" }));
+        assert!(mirror_file(conn, "note-1", edit, &[], DEVICE, NOW + 3)?);
+        set(
+            conn,
+            "note",
+            "note-1",
+            "owner",
+            json!("Bo"),
+            DEVICE,
+            NOW + 4,
+        )
+        .expect("pulled");
+        let file = object(json!({ "stage": "Draft", "effort": 4, "owner": "Ada", "x": 1 }));
+        assert!(taken(conn, "note-1", None, file, DEVICE, NOW + 5)?);
+        let want = json!({ "stage": "Done", "effort": 4, "owner": "Bo", "x": 1 });
+        assert_eq!(pushed(conn)["properties"], want);
+        assert!(!taken(conn, "nobody", None, Map::new(), DEVICE, NOW + 6)?);
         Ok(())
     })
-    .expect("fill");
+    .expect("taken");
+}
+
+/// Without a baseline, the index's reading of the replaced file stands in.
+#[test]
+fn a_file_with_no_baseline_is_measured_against_the_index_reading() {
+    let (db, _dir) = open("props-taken-indexed", PULLED);
+    db.call_blocking(|conn| {
+        let indexed = object(json!({ "stage": "Draft", "effort": 3 }));
+        let file = object(json!({ "stage": "Draft", "effort": 5 }));
+        assert!(taken(conn, "note-1", Some(indexed), file, DEVICE, NOW + 1)?);
+        assert_eq!(
+            pushed(conn)["properties"],
+            json!({ "stage": "Done", "effort": 5 })
+        );
+        Ok(())
+    })
+    .expect("taken");
+}
+
+#[test]
+fn a_day_takes_none_of_the_reserved_journal_keys() {
+    let (db, _dir) = open("props-taken-day", NOTE);
+    seed(
+        &db,
+        "journal",
+        "day-1",
+        r#"{"date":"2026-10-07","properties":{"created":"kept"},"clock":{"device-a":1}}"#,
+    );
+    db.call_blocking(|conn| {
+        let file = object(json!({
+            "id": "j2026-10-07", "date": "2026-10-07", "created": "now", "modified": "now",
+            "emoji": "x", "mood": 2
+        }));
+        assert!(taken(conn, "day-1", None, file, DEVICE, NOW + 1)?);
+        let want = json!({ "created": "kept", "mood": 2 });
+        assert_eq!(values(conn, "journal", "day-1")?, object(want));
+        Ok(())
+    })
+    .expect("taken");
 }
 
 fn ops(conn: &Connection, item_id: &str) -> Vec<String> {

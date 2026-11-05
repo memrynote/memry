@@ -49,8 +49,10 @@ use thiserror::Error;
 use crate::api::errors::StorageError;
 use crate::storage::repositories::sync_items;
 
+mod file;
 mod store;
 
+pub use file::taken;
 pub use store::read_values;
 use store::{failed, require, stored, write};
 
@@ -317,8 +319,8 @@ fn reordered(values: &Map<String, Value>, ordered: &[String]) -> Map<String, Val
 ///
 /// A value whose type the edit changed is taken rather than refused as [`set`] refuses it: the
 /// file already holds it, and a refusal would leave the record and the file apart for good. An
-/// edit that leaves the record as it was writes nothing. `Ok(false)` when no live note or day
-/// has that id.
+/// edit that leaves the record as it was writes nothing. The file's baseline moves with the
+/// edit ([`taken`]). `Ok(false)` when no live note or day has that id.
 pub fn mirror_file(
     conn: &Connection,
     item_id: &str,
@@ -327,28 +329,46 @@ pub fn mirror_file(
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
-    edit_file(conn, item_id, device_id, now_ms, |next| {
-        for name in removed {
-            // `shift_remove` keeps the other keys' order, which is the property order.
-            next.shift_remove(name);
-        }
-        for (name, value) in changed {
-            match next.get_mut(&name) {
-                Some(held) => *held = value,
-                None => {
-                    next.insert(name, value);
-                }
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let baseline = (changed.clone(), removed.to_vec());
+    let found = edit_file(&tx, item_id, device_id, now_ms, |next| {
+        mirrored(next, changed, removed);
+    })?;
+    if found {
+        file::moved(&tx, item_id, &baseline.0, &baseline.1)?;
+    }
+    tx.commit().map_err(failed)?;
+    Ok(found)
+}
+
+/// `values` with `removed` dropped and `changed` set: a key held keeps its place, a new one goes
+/// last.
+fn mirrored(values: &mut Map<String, Value>, changed: Map<String, Value>, removed: &[String]) {
+    for name in removed {
+        // `shift_remove` keeps the other keys' order, which is the property order.
+        values.shift_remove(name);
+    }
+    for (name, value) in changed {
+        match values.get_mut(&name) {
+            Some(held) => *held = value,
+            None => {
+                values.insert(name, value);
             }
         }
-    })
+    }
 }
+
+/// The frontmatter keys of a journal day's file that are not its properties
+/// (`RESERVED_JOURNAL_KEYS` of desktop's `vault/journal.ts`; `tags` and `properties` are never
+/// a file's property values).
+pub const RESERVED_DAY_KEYS: [&str; 5] = ["id", "date", "created", "modified", "emoji"];
 
 /// Gives a note's or a journal day's record the values of a file the desktop app holds no
 /// earlier reading of, so no edit of it can be told apart: each key the record lacks is set,
 /// last, and a key it holds keeps the record's value. That value may be one a sync pull
 /// brought in that the file does not hold yet, and the server's record wins it. `Ok(false)` as
 /// [`mirror_file`].
-pub fn fill_file(
+fn fill_file(
     conn: &Connection,
     item_id: &str,
     values: Map<String, Value>,
@@ -362,7 +382,8 @@ pub fn fill_file(
     })
 }
 
-/// The record's values changed by `edit`, written when they changed.
+/// The record's values changed by `edit`, written when they changed. A day takes none of the
+/// [`RESERVED_DAY_KEYS`] it does not hold already.
 fn edit_file(
     conn: &Connection,
     item_id: &str,
@@ -381,6 +402,11 @@ fn edit_file(
         let current = read_values(payload.object(), item_type, item_id)?;
         let mut next = current.clone();
         edit(&mut next);
+        if item_type == "journal" {
+            next.retain(|name, _| {
+                current.contains_key(name) || !RESERVED_DAY_KEYS.contains(&name.as_str())
+            });
+        }
         // A map compares without its order, which is the property order here.
         if current != next || !current.keys().eq(next.keys()) {
             write(conn, item_type, item_id, &payload, next, device_id, now_ms)?;

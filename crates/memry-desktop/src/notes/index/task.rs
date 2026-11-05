@@ -17,7 +17,7 @@ use super::{
     RETRY_FIRST, RETRY_MAX,
 };
 use crate::session::projection::CancelToken;
-use crate::vault::consumer::{Applied, ChangeSource};
+use crate::vault::consumer::Applied;
 use crate::vault::watch::VaultEvent;
 
 pub type Progress = Box<dyn FnMut(IndexProgress) + Send>;
@@ -113,8 +113,6 @@ struct Owed {
     links: bool,
     /// A pass, for the property rows' types alone.
     retype: bool,
-    /// The queued notes whose last change was the app's own write: their records hold it.
-    own: BTreeSet<String>,
     walk: Walk,
     /// The open's pass progress (`indexVault` on open) goes out with the next pass: the
     /// renderer refreshes the notes list on it.
@@ -156,12 +154,6 @@ impl Owed {
 
     /// What a pass over the queued `ids` (and a scan, `scan`) leaves owed.
     fn settle(&mut self, ids: BTreeSet<String>, scan: bool, outcome: &Result<Pass, IndexError>) {
-        if let Ok(pass) = outcome
-            && pass.learned
-        {
-            self.retype = true;
-            self.arm();
-        }
         match outcome {
             Ok(pass) if pass.stopped => {
                 self.queue.extend(ids);
@@ -296,21 +288,9 @@ impl Indexer {
 
     fn take(&self, owed: &mut Owed, fact: Applied) {
         match fact {
-            Applied::Added {
-                note_id, source, ..
-            }
-            | Applied::Changed {
-                note_id, source, ..
-            } => {
-                if matches!(source, ChangeSource::Watcher | ChangeSource::Walk) {
-                    owed.own.remove(&note_id);
-                } else {
-                    owed.own.insert(note_id.clone());
-                }
-                owed.queue.insert(note_id);
-                owed.arm();
-            }
-            Applied::Renamed { note_id, .. } => {
+            Applied::Added { note_id, .. }
+            | Applied::Changed { note_id, .. }
+            | Applied::Renamed { note_id, .. } => {
                 owed.queue.insert(note_id);
                 owed.arm();
             }
@@ -354,7 +334,6 @@ impl Indexer {
     ) {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
-        let own = std::mem::take(&mut owed.own);
         owed.retype = false;
         owed.due = None;
         let stop = || cancel.is_cancelled();
@@ -366,8 +345,7 @@ impl Indexer {
                 report(step);
             }
         };
-        let outcome = self.typing().and_then(|mut typing| {
-            typing.own = own;
+        let outcome = self.typing().and_then(|typing| {
             let notes = if typing.all {
                 self.scan(true)?
             } else {
@@ -414,7 +392,6 @@ impl Indexer {
     ) -> Result<Backfilled, IndexError> {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
-        let own = std::mem::take(&mut owed.own);
         owed.retype = false;
         let stop = || cancel.is_cancelled();
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
@@ -424,8 +401,7 @@ impl Indexer {
                     progress(step);
                 }
             };
-            let mut typing = self.typing()?;
-            typing.own = own;
+            let typing = self.typing_all()?;
             self.pass(
                 notes,
                 typing,
@@ -455,7 +431,6 @@ mod tests {
             unread: unread.iter().map(|id| (*id).to_owned()).collect(),
             stopped: false,
             written: Vec::new(),
-            learned: false,
         })
     }
 

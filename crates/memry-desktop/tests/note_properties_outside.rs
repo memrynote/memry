@@ -1,6 +1,6 @@
 //! An edit of a note's or a day's file made outside the app reaches its record (#3530 13k-4c),
-//! over a real session, tier, watcher and index task: the keys the edit set or dropped, measured
-//! against the index's last reading of the file, and no other.
+//! over a real session, tier, watcher and index task: the keys the edit set or dropped since the
+//! record last took the file (its baseline, in `data.db`), and no other.
 //!
 //! | Test                                                        | Rule                                  |
 //! | ----------------------------------------------------------- | ------------------------------------- |
@@ -10,8 +10,13 @@
 //! | an outside edit of a day's property reaches the chart       | the #3914 input                       |
 //! | an app edit is not mirrored again over a later pull         | the app's write mirrored it already   |
 //! | a broken frontmatter drops nothing from the record          | it says nothing of the values         |
-//! | an index from before the rows were filled mirrors nothing   | no last reading to measure against    |
-//! | a note whose rows were dropped keeps a pulled value         | the server's record wins held keys    |
+//! | an index rebuilt from nothing leaves the record             | the baseline is not the index's       |
+//! | an index that dropped a note's rows takes only its changes  | the baseline is not the index's       |
+//! | a note with no baseline is measured by the index's reading  | an older build's note                 |
+//! | a broken frontmatter then fixed reaches the record          | the baseline is the last good reading |
+//! | an app write after an outside edit does not hide it         | the edit is taken at fact time        |
+//! | a found folder's notes take their files' properties         | a found file fills its record         |
+//! | a day made outside takes no reserved journal key            | `RESERVED_JOURNAL_KEYS`               |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -213,7 +218,7 @@ fn a_broken_frontmatter_drops_nothing_from_the_record() {
 }
 
 #[test]
-fn an_index_from_before_the_rows_were_filled_mirrors_nothing() {
+fn an_index_rebuilt_from_nothing_leaves_the_record() {
     let mut f = opened(&[("Plan.md", PLAN)], "Plan.md");
     // Pulled, not in the file yet: the file's `Draft` is older.
     f.set("stage", "\"Review\"");
@@ -235,7 +240,7 @@ fn an_index_from_before_the_rows_were_filled_mirrors_nothing() {
 }
 
 #[test]
-fn a_note_whose_rows_were_dropped_keeps_a_pulled_value() {
+fn an_index_that_dropped_a_notes_rows_still_takes_only_what_the_file_changed() {
     let f = opened(&[("Plan.md", PLAN)], "Plan.md");
     // Pulled, not in the file yet: the file's `Draft` is older.
     f.set("stage", "\"Review\"");
@@ -252,6 +257,92 @@ fn a_note_whose_rows_were_dropped_keeps_a_pulled_value() {
         "Plan.md",
         "---\nstage: Draft\nrating: 6\nowner: Kaan\n---\n# Plan\n",
     );
-    let want = json!({ "stage": "Review", "rating": 5, "owner": "Kaan" });
+    let want = json!({ "stage": "Review", "rating": 6, "owner": "Kaan" });
     assert_eq!(f.record(), object(want));
+}
+
+#[test]
+fn a_broken_frontmatter_then_fixed_reaches_the_record() {
+    let f = opened(&[("Plan.md", PLAN)], "Plan.md");
+    f.set("stage", "\"Draft\"");
+    f.set("rating", "5");
+    // Half typed, as an editor autosaves it: an unclosed quote.
+    f.outside("Plan.md", "---\nstage: \"Do\nrating: 5\n---\n# Plan\n");
+    f.outside("Plan.md", "---\nstage: Done\nrating: 5\n---\n# Plan\n");
+    assert_eq!(f.record(), object(json!({ "stage": "Done", "rating": 5 })));
+}
+
+#[test]
+fn an_app_write_after_an_outside_edit_does_not_hide_it() {
+    let f = opened(&[("Plan.md", PLAN)], "Plan.md");
+    f.set("stage", "\"Draft\"");
+    f.set("rating", "5");
+    let open = f.e.session.current().unwrap();
+    f.e.write("Plan.md", "---\nstage: Done\nrating: 5\n---\n# Plan\n");
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    // Refused while the outside edit is not fed yet; the user tries again.
+    until("the app's edit landed", || {
+        let edit = object(json!({ "rating": 6 }));
+        f.notes.merge_properties(&open, &f.id, edit).is_ok()
+    });
+    let text = "---\nstage: Done\nrating: 6\n---\n# Plan\n";
+    assert_eq!(f.e.read("Plan.md"), text);
+    let search = open.search.clone();
+    until("the app's write read", || {
+        let stored = search.note_stats(&f.id).unwrap();
+        stored.and_then(|stored| stored.file_hash) == Some(content_hash(text))
+    });
+    assert_eq!(f.record(), object(json!({ "stage": "Done", "rating": 6 })));
+    drop((search, open));
+}
+
+#[test]
+fn a_found_folders_notes_take_their_files_properties() {
+    let f = opened(&[("Plan.md", PLAN)], "Plan.md");
+    assert_eq!(f.record(), object(json!({ "stage": "Draft", "rating": 5 })));
+}
+
+#[test]
+fn a_day_made_outside_takes_no_reserved_journal_key() {
+    let f = opened(&[("Plan.md", PLAN)], "Plan.md");
+    let day = "journal/2025-03-02.md";
+    f.e.write(
+        day,
+        "---\nid: j2025-03-02\ncreated: 2025-03-02T08:00:00Z\nmodified: 2025-03-02T09:00:00Z\nemoji: x\nmood: 2\n---\nA day\n",
+    );
+    let open = f.e.session.current().unwrap();
+    let day_properties = || {
+        let read = f
+            .notes
+            .journal_property_rows(&open, "2025-03-01", "2025-03-31");
+        let rows = read.unwrap().rows;
+        rows.into_iter()
+            .find(|row| row.date == "2025-03-02")
+            .map(|row| row.properties)
+            .unwrap_or_default()
+    };
+    until("the day's record holds its mood", || {
+        !day_properties().is_empty()
+    });
+    assert_eq!(day_properties(), object(json!({ "mood": 2 })));
+}
+
+#[test]
+fn a_note_with_no_baseline_is_measured_against_the_index_reading() {
+    let f = opened(&[("Plan.md", PLAN)], "Plan.md");
+    // Pulled, not in the file yet: the file's `Draft` is older.
+    f.set("stage", "\"Review\"");
+    // An older build kept no baseline.
+    rusqlite::Connection::open(f.e.vault.join(".memry/core/data.db"))
+        .unwrap()
+        .execute(
+            "DELETE FROM meta WHERE key LIKE 'note.file_properties:%'",
+            [],
+        )
+        .unwrap();
+    f.outside("Plan.md", "---\nstage: Draft\nrating: 6\n---\n# Plan\n");
+    assert_eq!(
+        f.record(),
+        object(json!({ "stage": "Review", "rating": 6 }))
+    );
 }

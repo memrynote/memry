@@ -47,12 +47,3 @@ pub fn with_device_key() -> Arc<dyn SecureStore> {
 pub fn without_device_key() -> Arc<dyn SecureStore> {
     Arc::new(MemoryStore::default())
 }
-
-/// Signs `store`'s device in to an account holding the vault key: it syncs.
-#[allow(dead_code, reason = "each test binary uses a part of it")]
-pub fn sign_in(store: &dyn SecureStore) {
-    store
-        .set(SecureStoreKey::RefreshToken, b"refresh".to_vec())
-        .unwrap();
-    store.set(SecureStoreKey::MasterKey, vec![9u8; 32]).unwrap();
-}

@@ -15,7 +15,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use memry_core::api::errors::StorageError;
-use memry_core::api::notes_write::NotesWriter;
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 use memry_core::domain::note_properties::retyped;
@@ -27,8 +26,7 @@ use memry_core::markdown::shared::markdown_class::{
 
 use memry_core::seams::secure_store::SecureStore;
 
-use super::learn::Learner;
-use super::{BATCH, BATCH_BYTES, Backfilled, IndexError, IndexProgress, outside};
+use super::{BATCH, BATCH_BYTES, Backfilled, IndexError, IndexProgress};
 use crate::notes::properties::{file_properties, read_definition_types};
 use crate::session::OpenVault;
 use crate::vault::note_file::{NoteFileError, read_note};
@@ -55,9 +53,6 @@ pub(super) struct Typing {
     pub retype: BTreeSet<String>,
     /// What the index records once the pass finished, when it changed.
     record: Option<BTreeMap<String, String>>,
-    /// The notes whose last change was the app's own write, which mirrored their records: an
-    /// outside edit's keys are not taken from them ([`outside`]).
-    pub own: BTreeSet<String>,
 }
 
 /// What a pass did, and what it leaves owed.
@@ -69,13 +64,10 @@ pub(super) struct Pass {
     pub stopped: bool,
     /// The notes whose rows it wrote.
     pub written: Vec<String>,
-    /// It learned a definition ([`super::learn`]): the rows holding it are owed its type.
-    pub learned: bool,
 }
 
 enum Read {
-    /// With whether its frontmatter read: one that did not drops nothing from the record.
-    File(MeasuredFile, bool),
+    File(MeasuredFile),
     /// Gone, or not text: nothing to measure.
     Skipped,
     /// In the large-file class: not measured, and its property rows go.
@@ -129,7 +121,17 @@ impl Indexer {
             all: before.is_none(),
             retype,
             record: (before.as_ref() != Some(&now)).then_some(now),
-            own: BTreeSet::new(),
+        })
+    }
+
+    /// [`Self::typing`] of a pass that reads every note.
+    pub(super) fn typing_all(&self) -> Result<Typing, IndexError> {
+        let types = self.types()?;
+        Ok(Typing {
+            record: Some(types.clone().into_iter().collect()),
+            types,
+            all: true,
+            retype: BTreeSet::new(),
         })
     }
 
@@ -192,7 +194,6 @@ impl Indexer {
             unread: Vec::new(),
             stopped: false,
             written: Vec::new(),
-            learned: false,
         };
         // Owed before the first write: a pass that ends early leaves it owed.
         *links |= total > 0;
@@ -203,16 +204,7 @@ impl Indexer {
             }
         };
         progress(IndexProgress { built: 0, total });
-        // An outside edit's keys reach the record ([`outside`]).
-        let writer = self
-            .vault
-            .notes_writer(self.store.clone())
-            .map_err(|error| StorageError::Failed {
-                what: format!("no device identity to write records under: {error}"),
-            });
-        let mirrors = |note_id: &str| !typing.all && !typing.own.contains(note_id);
-        let mut learner = Learner::new(self.root.clone(), self.vault.clone(), self.store.clone());
-        let mut batch: Vec<(MeasuredFile, bool)> = Vec::new();
+        let mut batch: Vec<MeasuredFile> = Vec::new();
         let mut bytes = 0;
         // Large notes: their property rows go with the unread ones'.
         let mut large = Vec::new();
@@ -222,14 +214,9 @@ impl Indexer {
                 return Ok(pass);
             }
             match self.read(&note, &typing.types) {
-                Read::File(file, read) => {
-                    if read {
-                        learner.learn(&file.properties, &typing.types);
-                        pass.learned = learner.learned;
-                    }
+                Read::File(file) => {
                     bytes += file.text.len();
-                    let mirror = read && mirrors(&file.note_id);
-                    batch.push((file, mirror));
+                    batch.push(file);
                 }
                 Read::Skipped => pass.done.skipped += 1,
                 Read::Large => {
@@ -239,13 +226,13 @@ impl Indexer {
                 Read::Failed => pass.unread.push(note.note_id),
             }
             if batch.len() >= BATCH || bytes >= BATCH_BYTES {
-                self.write(&mut pass, &writer, std::mem::take(&mut batch))?;
+                self.write(&mut pass, std::mem::take(&mut batch))?;
                 bytes = 0;
                 progress(built(&pass, total));
             }
         }
         if !batch.is_empty() {
-            self.write(&mut pass, &writer, batch)?;
+            self.write(&mut pass, batch)?;
         }
         pass.done.unread = pass.unread.len();
         large.extend(pass.unread.iter().cloned());
@@ -271,34 +258,7 @@ impl Indexer {
         Ok(pass)
     }
 
-    /// Stores the batch's rows, each `mirror`ed file's outside edit first: a note whose record
-    /// did not take it keeps its old rows, and is owed to the next pass.
-    fn write(
-        &self,
-        pass: &mut Pass,
-        writer: &Result<Arc<NotesWriter>, StorageError>,
-        batch: Vec<(MeasuredFile, bool)>,
-    ) -> Result<(), IndexError> {
-        let mut files = Vec::with_capacity(batch.len());
-        for (file, mirror) in batch {
-            let mirrored = || match writer {
-                Ok(writer) => {
-                    outside::mirror(&self.search, writer, &file.note_id, &file.properties)
-                }
-                Err(error) => Err(error.clone()),
-            };
-            if mirror && let Err(error) = mirrored() {
-                tracing::warn!(
-                    scope = "note_index",
-                    note_id = file.note_id,
-                    "an outside edit's properties did not reach the record, retried: {error}"
-                );
-                pass.unread.push(file.note_id);
-                continue;
-            }
-            files.push(file);
-        }
-        let batch = files;
+    fn write(&self, pass: &mut Pass, batch: Vec<MeasuredFile>) -> Result<(), IndexError> {
         let ids: Vec<String> = batch.iter().map(|file| file.note_id.clone()).collect();
         pass.done.indexed += self.search.index_note_files(batch)?;
         pass.written.extend(ids);
@@ -320,8 +280,7 @@ impl Indexer {
             }
         };
         match self.read(&note, &types) {
-            // An app write, which mirrored its record already.
-            Read::File(file, _) => Ok(self.search.index_note_files(vec![file])? > 0),
+            Read::File(file) => Ok(self.search.index_note_files(vec![file])? > 0),
             Read::Large | Read::Failed => {
                 self.search.forget_note_properties(vec![note.note_id])?;
                 Ok(false)
@@ -344,17 +303,12 @@ impl Indexer {
             {
                 large(note)
             }
-            Ok(Some(file)) => {
-                let properties = file_properties(&file, types);
-                let read = properties.is_some();
-                let file = MeasuredFile {
-                    note_id: note.note_id.clone(),
-                    properties: properties.unwrap_or_default(),
-                    file_hash: file.hash,
-                    text: file.raw,
-                };
-                Read::File(file, read)
-            }
+            Ok(Some(file)) => Read::File(MeasuredFile {
+                note_id: note.note_id.clone(),
+                properties: file_properties(&file, types).unwrap_or_default(),
+                file_hash: file.hash,
+                text: file.raw,
+            }),
             // Gone: its `Removed` fact, or the next scan's prune, drops the row.
             Ok(None) => Read::Skipped,
             Err(NoteFileError::TooLarge) => large(note),

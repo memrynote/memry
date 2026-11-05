@@ -317,13 +317,19 @@ impl NotesWriter {
         })
     }
 
-    /// The note's or journal day's file holds `values` and the desktop app has no earlier
-    /// reading of it: the record takes the keys it lacks ([`properties::fill_file`]). `false`
-    /// when no note or day has that id.
-    pub fn fill_file_properties(&self, id: &str, values: Object) -> Result<bool, StorageError> {
+    /// An edit outside the app, or a file the tier named, left the note's or journal day's
+    /// file holding the property values `after`; `indexed` is the index's reading of the file
+    /// it replaced. The record takes what the file changed since it last took it
+    /// ([`properties::taken`]). `false` when no note or day has that id.
+    pub fn file_properties_taken(
+        &self,
+        id: &str,
+        indexed: Option<Object>,
+        after: Object,
+    ) -> Result<bool, StorageError> {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            properties::fill_file(conn, id, values, &device_id, now_ms())
+            properties::taken(conn, id, indexed, after, &device_id, now_ms())
         })
     }
 
