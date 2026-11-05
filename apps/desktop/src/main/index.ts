@@ -128,6 +128,7 @@ import {
   migrateLegacyLogDir
 } from './lib/logger'
 import { applyMemrynoteIdentity, flipIdentityPin, getIdentityDecision } from './app-identity'
+import { parentProcessName, redactLaunchArgv } from './second-launch'
 import { probeSecretStoreIdentity } from './secrets/secret-storage'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
 import { serveMemryFile } from './lib/memry-file-protocol'
@@ -322,6 +323,29 @@ if (deviceId) {
   app.setPath('userData', deviceUserData)
 }
 
+const headlessCliArgs = getHeadlessCliArgs(process.argv)
+
+// Device-scoped E2E runs need two Electron instances side by side, so skip the
+// process-wide lock only for that test harness path.
+const allowMultiInstanceForDeviceTests =
+  process.env.NODE_ENV === 'test' && typeof process.env.MEMRY_DEVICE === 'string'
+const enforcesSingleInstance = !headlessCliArgs && !allowMultiInstanceForDeviceTests
+
+// The lock is keyed on userData, so it can only be taken once the identity above
+// has settled. Everything after it (login-shell PATH probe, crash reporter, log
+// migration, protocol and handler registration) is work a losing launch must not
+// do: a client that relaunches the binary in a loop used to pay for all of it on
+// every attempt. app.exit, not app.quit: before 'ready' there is nothing to shut
+// down, and the before-quit cleanup would run against an empty app.
+if (enforcesSingleInstance && !app.requestSingleInstanceLock()) {
+  // Which client keeps launching a second copy is only knowable from here.
+  createLogger('Main').info('Another instance holds the lock; exiting', {
+    argv: redactLaunchArgv(process.argv),
+    parent: parentProcessName(process.ppid)
+  })
+  app.exit(0)
+}
+
 // Existing installs logged into `@memry/desktop` (the raw package name);
 // move that history into the `memrynote` dir before workers spawn and this
 // launch's log volume starts landing there.
@@ -419,8 +443,6 @@ void startLoginShellPathAugmentation({ packaged: app.isPackaged }).then((applied
 // layer whether this device's key is the account's, so it can tell a stale
 // verifier (rebind) from a wrong key (route the user to recovery).
 setAccountKeyChecker(checkLocalKeyAgainstAccount)
-
-const headlessCliArgs = getHeadlessCliArgs(process.argv)
 
 let mainI18n: I18nInstance
 
@@ -1279,31 +1301,21 @@ function handleDeepLink(url: string): void {
   }
 }
 
-const allowMultiInstanceForDeviceTests =
-  process.env.NODE_ENV === 'test' && typeof process.env.MEMRY_DEVICE === 'string'
-
 // Windows/Linux: deep links arrive via second-instance event.
-// Device-scoped E2E runs need two Electron instances side by side, so skip the
-// process-wide lock only for that test harness path.
-if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
-  const gotTheLock = app.requestSingleInstanceLock()
-  if (!gotTheLock) {
-    app.quit()
-  } else {
-    app.on('second-instance', (_event, commandLine) => {
-      // A second launch (e.g. double-clicking the shortcut while the app is
-      // already running) must surface the existing window, not silently no-op.
-      // On Windows there is no Dock/'activate' fallback, so without this a hidden
-      // or minimized instance stays invisible and the app looks like it "won't open".
-      // The main window by reference: the first live window can be the sticky or
-      // Quick Capture, and a second launch used to show a hidden sticky instead.
-      showMainWindow()
-      const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
-      if (deepLinkUrl) {
-        handleDeepLink(deepLinkUrl)
-      }
-    })
-  }
+if (enforcesSingleInstance) {
+  app.on('second-instance', (_event, commandLine) => {
+    // A second launch (e.g. double-clicking the shortcut while the app is
+    // already running) must surface the existing window, not silently no-op.
+    // On Windows there is no Dock/'activate' fallback, so without this a hidden
+    // or minimized instance stays invisible and the app looks like it "won't open".
+    // The main window by reference: the first live window can be the sticky or
+    // Quick Capture, and a second launch used to show a hidden sticky instead.
+    showMainWindow()
+    const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
+    if (deepLinkUrl) {
+      handleDeepLink(deepLinkUrl)
+    }
+  })
 }
 
 // This method will be called when Electron has finished

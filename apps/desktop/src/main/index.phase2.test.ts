@@ -105,6 +105,7 @@ const setCertificateVerifyProcMock = vi.fn()
 const setPermissionRequestHandlerMock = vi.fn()
 const setPermissionCheckHandlerMock = vi.fn()
 const crashReporterStartMock = vi.fn()
+const startLoginShellPathAugmentationMock = vi.fn(() => Promise.resolve(false))
 const globalShortcutRegisterMock = vi.fn(() => true)
 const globalShortcutUnregisterMock = vi.fn()
 const globalShortcutUnregisterAllMock = vi.fn()
@@ -345,6 +346,11 @@ vi.mock('./app-navigation-command', () => ({
   sendAppNavigationCommand: sendAppNavigationCommandMock,
   sendAppNavigationKeyboardCommand: sendAppNavigationKeyboardCommandMock,
   sendAppNavigationSwipeCommand: sendAppNavigationSwipeCommandMock
+}))
+
+vi.mock('./agent/cli/login-shell-path', () => ({
+  startLoginShellPathAugmentation: startLoginShellPathAugmentationMock,
+  whenLoginShellPathApplied: vi.fn(() => Promise.resolve())
 }))
 
 vi.mock('./cli/headless', () => ({
@@ -666,6 +672,31 @@ describe('main index phase2 exports', () => {
     await importMainModule()
 
     expect(requestSingleInstanceLockMock).not.toHaveBeenCalled()
+  })
+
+  it('exits a launch that loses the single-instance lock before any startup work', async () => {
+    requestSingleInstanceLockMock.mockReturnValue(false)
+    const { app } = await import('electron')
+    // The real app.exit ends the process, so nothing after it runs. Throwing
+    // models that: whatever the module would have done next never happens.
+    vi.mocked(app.exit).mockImplementationOnce(() => {
+      throw new Error('process exited')
+    })
+    process.argv = ['/Applications/MemryNote', '/mock/bridge/agy-mcp-bridge.js', '--token=secret']
+
+    await expect(importMainModule()).rejects.toThrow('process exited')
+
+    expect(app.exit).toHaveBeenCalledWith(0)
+    expect(startLoginShellPathAugmentationMock).not.toHaveBeenCalled()
+    expect(crashReporterStartMock).not.toHaveBeenCalled()
+    expect(appOnMock).not.toHaveBeenCalledWith('second-instance', expect.anything())
+    const { createLogger } = await import('./lib/logger')
+    expect(createLogger('Main').info).toHaveBeenCalledWith(
+      'Another instance holds the lock; exiting',
+      expect.objectContaining({
+        argv: ['MemryNote', 'agy-mcp-bridge.js', '--token=<redacted>']
+      })
+    )
   })
 
   it('boots i18n from vault preferences and rebuilds the app menu', async () => {
