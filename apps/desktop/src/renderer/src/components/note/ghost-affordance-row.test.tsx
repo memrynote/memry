@@ -72,6 +72,15 @@ describe('GhostAffordanceRow - details menu', () => {
     expect(onAddCover).toHaveBeenCalledWith({ x: expect.any(Number), y: expect.any(Number) })
   })
 
+  it('keeps focus off the trigger when the cover picker opens, so the picker is not dismissed', async () => {
+    const user = userEvent.setup()
+    renderWithI18n(<GhostAffordanceRow {...defaultProps} onAddCover={vi.fn()} />)
+
+    await openMenu(user)
+    await user.click(screen.getByRole('menuitem', { name: 'Add cover' }))
+    expect(screen.getByRole('button', { name: 'Add details' })).not.toHaveFocus()
+  })
+
   it('opens the tag picker from the menu', async () => {
     const user = userEvent.setup()
     renderWithI18n(<GhostAffordanceRow {...defaultProps} />)
