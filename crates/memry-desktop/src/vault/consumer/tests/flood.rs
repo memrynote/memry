@@ -14,7 +14,7 @@ const WAIT: Duration = Duration::from_secs(60);
 
 pub(super) struct Running {
     _watcher: VaultWatcher,
-    pub(super) consumer: Consumer,
+    _consumer: Consumer,
     /// `Added` events the watcher reported.
     added: Arc<AtomicUsize>,
 }
@@ -51,7 +51,7 @@ pub(super) fn run(f: &Fixture, capacity: usize) -> Running {
         Consumer::start(applier, inbox, watcher.handle(), vec![], Box::new(|_| {})).unwrap();
     Running {
         _watcher: watcher,
-        consumer,
+        _consumer: consumer,
         added,
     }
 }

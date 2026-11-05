@@ -6,8 +6,43 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use super::flood::run;
 use super::*;
+use crate::vault::consumer::run::{Consumer, inbox};
+use crate::vault::watch::{EventSink, NewFiles, VaultWatcher};
+
+/// A consumer that hears only the watcher's `Rescanned`, which starts the walk: the walk
+/// alone offers the vault's files. A live watcher may report some new files first (an
+/// antivirus touching them on Windows), which then go alone, and the batches would not be the
+/// ones these tests count.
+struct Walking {
+    consumer: Consumer,
+    _watcher: VaultWatcher,
+}
+
+fn walk(f: &Fixture) -> Walking {
+    let (sink, inbox) = inbox(1 << 16);
+    let rescans: EventSink = Arc::new(move |event| {
+        if matches!(event, VaultEvent::Rescanned { .. }) {
+            sink(event);
+        }
+    });
+    let watcher = VaultWatcher::start(
+        f.root.clone(),
+        vec![],
+        f.vault.note_files(),
+        Arc::default(),
+        rescans,
+        NewFiles::Report,
+    )
+    .unwrap();
+    let applier = applier(&f.root, &f.vault, &f.store, &f.rows, f.identity.clone());
+    let consumer =
+        Consumer::start(applier, inbox, watcher.handle(), vec![], Box::new(|_| {})).unwrap();
+    Walking {
+        consumer,
+        _watcher: watcher,
+    }
+}
 
 /// Three batches and part of a fourth.
 const FILES: usize = 3 * 128 + 20;
@@ -53,12 +88,18 @@ fn the_next_batch_is_prepared_while_one_is_applied() {
         });
         seen.lock().unwrap().push(ahead);
     }));
-    let _running = run(&f, 1 << 16);
+    let _walking = walk(&f);
     let mut facts = Vec::new();
     f.collect_until(&mut facts, |_, seen| {
         seen.iter().any(|f| matches!(f, Applied::Indexed { .. }))
     });
-    assert_eq!(*overlapped.lock().unwrap(), [true; 4]);
+    assert_eq!(
+        *overlapped.lock().unwrap(),
+        [true; 4],
+        "{} batches prepared, {} files went alone",
+        f.identity.asked_new.load(Ordering::SeqCst),
+        f.adopted().len()
+    );
     let created = facts
         .iter()
         .filter(|f| {
@@ -90,11 +131,11 @@ fn a_close_waits_for_the_batch_being_prepared() {
     // Preparing takes long enough for the close to land in it.
     *f.identity.during_may_be_new.lock().unwrap() =
         Some(Arc::new(|| std::thread::sleep(Duration::from_millis(300))));
-    let mut running = run(&f, 1 << 16);
+    let mut walking = walk(&f);
     assert!(wait_for("the second batch", || {
         f.identity.asked_new.load(Ordering::SeqCst) >= 2
     }));
-    running.consumer.stop();
+    walking.consumer.stop();
     assert_eq!(Arc::strong_count(&f.identity), held_before);
 }
 
@@ -120,7 +161,7 @@ fn a_prepared_batch_is_applied_before_the_rest_of_the_walk() {
     }
     f.facts();
     *f.identity.batch.lock().unwrap() = Batch::Create;
-    let _running = run(&f, 1 << 16);
+    let _walking = walk(&f);
     let mut facts = Vec::new();
     f.collect_until(&mut facts, |_, seen| {
         seen.iter().any(|f| matches!(f, Applied::Indexed { .. }))
