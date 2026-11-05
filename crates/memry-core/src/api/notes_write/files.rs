@@ -15,6 +15,7 @@ use crate::domain::notes::identity::{
     self, Adopted, Crossing, FileNote, Moved, OwedPlace, Removed,
 };
 use crate::domain::notes::journal_day::{self, FileDay};
+use crate::domain::notes::new_files::{self, NewFileNote};
 use crate::domain::notes::{self, NewNote};
 use crate::domain::properties;
 use crate::domain::{folders, journal};
@@ -92,6 +93,22 @@ impl NotesWriter {
                     now_ms(),
                 ))
             })
+            .map_err(CrdtError::from)?
+    }
+
+    /// The id a note created by [`Self::adopt_new_files`] is to get, minted before its body is
+    /// authored for it ([`crate::api::external_feed::ExternalFeed::first_body`]).
+    pub fn new_note_id() -> String {
+        Self::new_id()
+    }
+
+    /// Notes for many files no row names, each with the body authored for its id, in one
+    /// transaction ([`new_files::adopt_new`]): `true` for each created, `false` for each to
+    /// be asked about alone through [`Self::adopt_file`].
+    pub fn adopt_new_files(&self, files: &[NewFileNote<'_>]) -> Result<Vec<bool>, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| Ok(new_files::adopt_new(conn, files, &device_id, now_ms())))
             .map_err(CrdtError::from)?
     }
 

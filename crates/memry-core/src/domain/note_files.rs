@@ -159,39 +159,43 @@ pub fn by_id(conn: &Connection, note_id: &str) -> Result<Option<NoteFile>, Stora
     .map_err(failed)
 }
 
-/// Inserts the row of `stat.note_id` or replaces its path, kind, size, hashes and
-/// time, keeping `local_only`. A path another note holds is refused: it is never
-/// taken over silently.
-pub fn upsert_stat(conn: &mut Connection, stat: &NoteFileStat) -> Result<(), StorageError> {
-    check_path(&stat.path)?;
+/// Inserts the row of each stat's note or replaces its path, kind, size, hashes and time,
+/// keeping `local_only`, all in one transaction or none. A path another note holds is
+/// refused: it is never taken over silently.
+pub fn upsert_stats(conn: &mut Connection, stats: &[NoteFileStat]) -> Result<(), StorageError> {
     let tx = conn.transaction().map_err(failed)?;
-    tx.execute(
-        "INSERT INTO note_files
-           (note_id, path, file_type, mime_type, file_size, content_hash, indexed_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-         ON CONFLICT(note_id) DO UPDATE SET
-           path = excluded.path, file_type = excluded.file_type,
-           mime_type = excluded.mime_type, file_size = excluded.file_size,
-           content_hash = excluded.content_hash, indexed_at = excluded.indexed_at",
-        params![
-            stat.note_id,
-            stat.path,
-            stat.file_type,
-            stat.mime_type,
-            stat.file_size,
-            stat.content_hash,
-            stat.indexed_at
-        ],
-    )
-    .map_err(|err| {
-        if is_constraint(&err) {
-            invalid(format!("path {:?} belongs to another note", stat.path))
-        } else {
-            failed(err)
-        }
-    })?;
-    write_file_hash(&tx, &stat.note_id, stat.file_hash.as_deref())?;
+    for stat in stats {
+        check_path(&stat.path)?;
+        tx.execute(
+            "INSERT INTO note_files
+               (note_id, path, file_type, mime_type, file_size, content_hash, indexed_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+             ON CONFLICT(note_id) DO UPDATE SET
+               path = excluded.path, file_type = excluded.file_type,
+               mime_type = excluded.mime_type, file_size = excluded.file_size,
+               content_hash = excluded.content_hash, indexed_at = excluded.indexed_at",
+            params![
+                stat.note_id,
+                stat.path,
+                stat.file_type,
+                stat.mime_type,
+                stat.file_size,
+                stat.content_hash,
+                stat.indexed_at
+            ],
+        )
+        .map_err(path_taken(&stat.path))?;
+        write_file_hash(&tx, &stat.note_id, stat.file_hash.as_deref())?;
+    }
     tx.commit().map_err(failed)
+}
+
+/// A constraint failure of a write at `path` is another note's row holding it.
+fn path_taken(path: &str) -> impl Fn(rusqlite::Error) -> StorageError + '_ {
+    move |err| match is_constraint(&err) {
+        true => invalid(format!("path {path:?} belongs to another note")),
+        false => failed(err),
+    }
 }
 
 fn write_file_hash(
@@ -239,7 +243,7 @@ pub fn set_file_hash(
     tx.commit().map_err(failed)
 }
 
-/// [`upsert_stat`] for a file read again and found to be the bytes its row names: the row's
+/// [`upsert_stats`] for a file read again and found to be the bytes its row names: the row's
 /// stamp moves to `stat.indexed_at` only while no body entry is stamped after it, since the
 /// read says nothing of the body ([`NoteFile::indexed_at`]). The row must exist.
 ///
@@ -270,13 +274,7 @@ pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), Storag
                 stat.indexed_at
             ],
         )
-        .map_err(|err| {
-            if is_constraint(&err) {
-                invalid(format!("path {:?} belongs to another note", stat.path))
-            } else {
-                failed(err)
-            }
-        })?;
+        .map_err(path_taken(&stat.path))?;
     if changed == 0 {
         return Err(not_found(&stat.note_id));
     }
