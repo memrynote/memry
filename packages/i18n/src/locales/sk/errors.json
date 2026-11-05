@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Táto poznámka sa nenašla. Možno bola odstránená.",
     "invalidFrontmatter": "Táto poznámka má neplatné metaúdaje a nemožno ju čítať.",
+    "invalidTitle": "Názov poznámky musí mať 1 až 200 znakov.",
     "duplicateId": "Poznámka s týmto ID už existuje.",
     "writeFailed": "Nepodarilo sa uložiť túto poznámku. Skontrolujte miesto na disku a oprávnenia.",
     "readFailed": "Nepodarilo sa prečítať túto poznámku. Súbor môže byť zamknutý alebo poškodený.",

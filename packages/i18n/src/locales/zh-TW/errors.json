@@ -19,6 +19,7 @@
   "note": {
     "notFound": "找不到此筆記。它可能已被刪除。",
     "invalidFrontmatter": "此筆記的中繼資料無效，無法讀取。",
+    "invalidTitle": "筆記標題長度須為 1 到 200 個字元。",
     "duplicateId": "具有此 ID 的筆記已存在。",
     "writeFailed": "無法儲存此筆記。請檢查磁碟空間和權限。",
     "readFailed": "無法讀取此筆記。檔案可能被鎖定或已損壞。",

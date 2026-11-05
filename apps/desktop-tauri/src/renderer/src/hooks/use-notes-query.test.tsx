@@ -485,6 +485,23 @@ describe('use-notes-query', () => {
     expect(queryClient.getQueryData(notesKeys.note('n1'))).toBeUndefined()
   })
 
+  it('rejects a refused rename with its reason, so the caller shows it (#4008)', async () => {
+    queryClient.setQueryData(notesKeys.note('n1'), note('n1', 'First'))
+    mocks.notesService.rename.mockResolvedValueOnce({
+      success: false,
+      error: 'A note title can be 1 to 200 characters long.',
+      note: null
+    })
+    const { result } = renderHook(() => useNoteMutations(), { wrapper })
+
+    await act(async () => {
+      await expect(
+        result.current.renameNote.mutateAsync({ id: 'n1', newTitle: 'x'.repeat(201) })
+      ).rejects.toThrow('A note title can be 1 to 200 characters long.')
+    })
+    expect(queryClient.getQueryData(notesKeys.note('n1'))).toEqual(note('n1', 'First'))
+  })
+
   it('keeps a note cached when its delete did not happen', async () => {
     queryClient.setQueryData(notesKeys.note('n1'), note('n1', 'First'))
     mocks.notesService.delete.mockResolvedValueOnce({ success: false, error: 'kept' })

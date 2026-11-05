@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Această notiță nu a putut fi găsită. Este posibil să fi fost ștearsă.",
     "invalidFrontmatter": "Această notiță are metadate nevalide și nu poate fi citită.",
+    "invalidTitle": "Titlul unei notițe trebuie să aibă între 1 și 200 de caractere.",
     "duplicateId": "Există deja o notiță cu acest ID.",
     "writeFailed": "Nu s-a putut salva această notiță. Verificați spațiul pe disc și permisiunile.",
     "readFailed": "Nu s-a putut citi această notiță. Fișierul poate fi blocat sau corupt.",
