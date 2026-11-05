@@ -420,16 +420,21 @@ async function throwCalendarApiFailure(response: Response, operation: string): P
   const raw = await response.text().catch(() => '')
   let apiStatus: string | undefined
   let apiMessage: string | undefined
+  let apiReason: string | undefined
   try {
-    const parsed: { error?: { status?: string; message?: string } } = JSON.parse(raw)
+    const parsed: {
+      error?: { status?: string; message?: string; errors?: Array<{ reason?: string }> }
+    } = JSON.parse(raw)
     apiStatus = parsed.error?.status
     apiMessage = parsed.error?.message
+    apiReason = parsed.error?.errors?.[0]?.reason
   } catch {
     // raw body may be empty or plain text
   }
   log.error(`Failed to ${operation}`, {
     status: response.status,
     apiStatus,
+    apiReason,
     apiMessage,
     body: raw.slice(0, 500)
   })
@@ -438,9 +443,11 @@ async function throwCalendarApiFailure(response: Response, operation: string): P
   ) as Error & {
     status?: number
     apiStatus?: string
+    apiReason?: string
   }
   error.status = response.status
   error.apiStatus = apiStatus
+  error.apiReason = apiReason
   throw error
 }
 

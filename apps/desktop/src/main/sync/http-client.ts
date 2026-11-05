@@ -147,6 +147,12 @@ export const syncFetch = async <T>(
     if (!response.ok) {
       throw new SyncServerError(`Server returned ${response.status}`, response.status)
     }
+    // A bodiless success (the 204 of PATCH and DELETE /calendar/channels/:id,
+    // #4020) has nothing to parse. Callers of such routes ignore the result.
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a bodiless success carries no value; only callers of routes that answer with no body reach here
+      return undefined as T
+    }
     throw new SyncServerError('Invalid response body', response.status)
   }
 

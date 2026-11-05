@@ -39,6 +39,7 @@ import {
   postToServer,
   getFromServer,
   deleteFromServer,
+  patchToServer,
   pushCrdtFullUpdate,
   pushCrdtSnapshot,
   pushCrdtSnapshotBatch,
@@ -280,6 +281,45 @@ describe('http-client', () => {
       // #when / #then
       await expect(syncFetch('GET', '/api/test')).rejects.toThrow(NetworkError)
       await expect(syncFetch('GET', '/api/test')).rejects.toThrow('errors:sync.serverUnreachable')
+    })
+
+    it('treats an ok response with no body as success (#4020)', async () => {
+      // #given the 204 that PATCH /calendar/channels/:id answers
+      mockFetch.mockImplementation(async () => new Response(null, { status: 204 }))
+
+      // #when / #then
+      await expect(
+        patchToServer('/calendar/channels/channel-1', { resourceId: 'resource-1' }, 'token-1')
+      ).resolves.toBeUndefined()
+      await expect(
+        deleteFromServer('/calendar/channels/channel-1', 'token-1')
+      ).resolves.toBeUndefined()
+    })
+
+    it('treats an ok response with content-length 0 as success (#4020)', async () => {
+      // #given
+      mockFetch.mockImplementation(
+        async () => new Response('', { status: 200, headers: { 'content-length': '0' } })
+      )
+
+      // #when / #then
+      await expect(syncFetch('PUT', '/api/thing', {}, 'token-1')).resolves.toBeUndefined()
+    })
+
+    it('still rejects an ok response whose body is not JSON', async () => {
+      // #given
+      mockFetch.mockImplementation(async () => new Response('<html>oops</html>', { status: 200 }))
+
+      // #when / #then
+      await expect(syncFetch('GET', '/api/thing')).rejects.toThrow('Invalid response body')
+    })
+
+    it('still rejects an error status with no body', async () => {
+      // #given
+      mockFetch.mockImplementation(async () => new Response(null, { status: 502 }))
+
+      // #when / #then
+      await expect(syncFetch('GET', '/api/thing')).rejects.toThrow('Server returned 502')
     })
 
     it('throws RateLimitError on 429 response', async () => {

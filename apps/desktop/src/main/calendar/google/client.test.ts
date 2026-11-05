@@ -161,6 +161,40 @@ describe('google calendar client — push channels (Task 7)', () => {
     })
   })
 
+  describe('watchCalendar push-unsupported calendars (#4020)', () => {
+    it('exposes the Google error reason so callers can tell a calendar that cannot push', async () => {
+      fetchMock.mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 400,
+              message: 'Push notifications are not supported by this resource.',
+              errors: [
+                {
+                  domain: 'global',
+                  reason: 'pushNotSupportedForRequestedResource',
+                  message: 'Push notifications are not supported by this resource.'
+                }
+              ]
+            }
+          }),
+          { status: 400 }
+        )
+      )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      await expect(
+        client.watchCalendar({
+          calendarId: 'holidays',
+          channelId: 'c1',
+          token: 't1',
+          webhookUrl: 'https://sync.memry.io/webhooks/google-calendar',
+          ttlSeconds: 3600
+        })
+      ).rejects.toMatchObject({ status: 400, apiReason: 'pushNotSupportedForRequestedResource' })
+    })
+  })
+
   describe('stopChannel', () => {
     it('POSTs channels.stop with {id, resourceId} and resolves on 204', async () => {
       fetchMock.mockImplementation(async (input, init) => {
