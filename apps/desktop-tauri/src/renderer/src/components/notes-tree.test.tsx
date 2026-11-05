@@ -251,6 +251,7 @@ const setupMocks = (
 describe('T521: NotesTree - folder tree display', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     setupMocks()
   })
 
@@ -628,10 +629,10 @@ describe('NotesTree - one folder subtree, view options', () => {
       getSidebarNotesFirst: vi.fn(() => Promise.resolve(true))
     }
     renderWithProviders(<NotesTree />)
-    await waitFor(() => expect(rowIds()).toEqual(['root', 'folder-P1', 'folder-Zeta']))
-    await user.click(screen.getByText('P1'))
-
-    expect(rowIds()).toEqual(['root', 'folder-P1', 'p1', 'folder-P1/Personal', 'folder-Zeta'])
+    // P1 is still open: the tree remembers it across the remount.
+    await waitFor(() =>
+      expect(rowIds()).toEqual(['root', 'folder-P1', 'p1', 'folder-P1/Personal', 'folder-Zeta'])
+    )
   })
 
   it('hides vault files but keeps every folder when files are off', async () => {

@@ -1,6 +1,6 @@
 import { act, createEvent, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { forwardRef } from 'react'
+import { forwardRef, useState } from 'react'
 
 import {
   TreeExpander,
@@ -237,6 +237,30 @@ describe('TreeProvider and tree primitives', () => {
 
     vi.advanceTimersByTime(500)
     expect(localStorage.getItem('tree-test')).toContain('root')
+  })
+
+  // The notes tree swaps this tree for the virtualized one once the vault lists 100 items, and the
+  // virtualized tree reads the expanded set from storage as it renders. A folder opened while the
+  // vault was still listing then closed again.
+  it('stores an expansion before a tree that replaces it reads the stored set', () => {
+    function Replacement() {
+      const [stored] = useState(() => localStorage.getItem('tree-swap'))
+      return <output>{stored}</output>
+    }
+    function Swap({ swapped }: { swapped: boolean }) {
+      if (swapped) return <Replacement />
+      return (
+        <TreeProvider persistKey="tree-swap">
+          <Controls />
+        </TreeProvider>
+      )
+    }
+    const { rerender } = render(<Swap swapped={false} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'expand root' }))
+    rerender(<Swap swapped />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('root')
   })
 
   it('handles keyboard navigation, drag/drop, icon menu, and icon inheritance', () => {
