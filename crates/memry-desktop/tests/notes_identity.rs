@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use flate2::read::GzDecoder;
+use memry_core::crdt::update_log::LOCAL_NAMESPACE_PREFIX;
 use memry_core::domain::note_positions;
 use memry_core::domain::notes::identity::VAULT_ORIGIN_META_KEY;
 use memry_core::markdown::convert::api::Converter;
@@ -227,6 +228,21 @@ fn row_id(e: &Env, path: &str) -> Option<String> {
 
 fn added(path: &'static str) -> impl Fn(&Applied) -> bool {
     move |fact| matches!(fact, Applied::Added { path: p, .. } if p == path)
+}
+
+fn removed(path: &'static str) -> impl Fn(&Applied) -> bool {
+    move |fact| matches!(fact, Applied::Removed { path: p, .. } if p == path)
+}
+
+/// Facts until a crossing move from `from` to `to` has made both its halves, in whichever order
+/// they come: a paired move removes `from`'s row before the new file is added, and a move whose
+/// halves the watcher sees apart can add the new file first (`ADD_GRACE`).
+fn crossed(e: &mut Env, from: &'static str, to: &'static str) -> Vec<Applied> {
+    let mut seen = e.facts_until(added(to));
+    if !seen.iter().any(removed(from)) {
+        seen.extend(e.facts_until(removed(from)));
+    }
+    seen
 }
 
 fn reopen(e: &mut Env) -> Vec<Applied> {
@@ -458,7 +474,7 @@ fn a_move_between_note_and_day_deletes_the_item_and_makes_a_new_one() {
         e.vault.join("Notes/2025-01-02.md"),
     )
     .unwrap();
-    e.facts_until(added("Notes/2025-01-02.md"));
+    crossed(&mut e, "journal/2025-01-02.md", "Notes/2025-01-02.md");
     let note = row_id(&e, "Notes/2025-01-02.md").unwrap();
     assert_ne!(note, id);
     assert_eq!(
@@ -472,6 +488,36 @@ fn a_move_between_note_and_day_deletes_the_item_and_makes_a_new_one() {
         false
     )));
     assert_eq!(e.body(&note), "A day to be, edited");
+    assert!(outbox(&e).contains(&("delete".to_owned(), "j2025-01-02".to_owned())));
+}
+
+/// The watcher can see a move's two halves apart: when its removal becomes known past
+/// `ADD_GRACE`, the new file is reported first, as a new file, and the removal after. Here the
+/// copy and then the delete make that schedule. A crossing seen so ends as the paired move does:
+/// the day deleted and pushed, the file a new note with the day's text.
+#[test]
+fn a_crossing_seen_as_a_new_file_then_a_removal_ends_as_the_move_does() {
+    let mut e = notes_env();
+    e.write("journal/2025-01-02.md", "A day to be\n");
+    e.open();
+    e.facts_until(added("journal/2025-01-02.md"));
+    e.facts_until(indexed);
+
+    fs::create_dir_all(e.vault.join("Notes")).unwrap();
+    fs::copy(
+        e.vault.join("journal/2025-01-02.md"),
+        e.vault.join("Notes/2025-01-02.md"),
+    )
+    .unwrap();
+    e.facts_until(added("Notes/2025-01-02.md"));
+    fs::remove_file(e.vault.join("journal/2025-01-02.md")).unwrap();
+    e.facts_until(removed("journal/2025-01-02.md"));
+    let note = row_id(&e, "Notes/2025-01-02.md").unwrap();
+    assert_eq!(
+        days(&e),
+        vec![("j2025-01-02".to_owned(), "2025-01-02".to_owned(), true)]
+    );
+    assert_eq!(e.body(&note), "A day to be");
     assert!(outbox(&e).contains(&("delete".to_owned(), "j2025-01-02".to_owned())));
 }
 
@@ -741,6 +787,140 @@ fn a_crash_between_the_create_and_the_row_seeds_the_same_note_once() {
     assert_eq!(e.rows(), vec![(id.clone(), "x.md".to_owned())]);
     assert_eq!(records(&e).len(), 1);
     assert_eq!(e.body(&id), "Recovered");
+}
+
+/// The open walk makes the new files notes together (13q-7). Notes a crash left without rows
+/// are among the files: each keeps its id, asked about alone, and the rest are created, once.
+#[test]
+fn a_walk_that_finds_notes_a_crash_left_without_rows_keeps_them_and_creates_the_rest() {
+    let mut e = notes_env();
+    e.open();
+    e.facts_until(indexed);
+    let writer = e
+        .core()
+        .notes_writer(device_key::with_device_key())
+        .unwrap();
+    let kept: Vec<String> = ["x", "y"]
+        .into_iter()
+        .map(|title| writer.create(title.to_owned(), None).unwrap())
+        .collect();
+    e.close();
+
+    for (path, text) in [
+        ("x.md", "Recovered x\n"),
+        ("y.md", "Recovered y\n"),
+        ("a.md", "Alpha\n"),
+        ("b.md", "Beta\n"),
+        ("Work/c.md", "Gamma\n"),
+    ] {
+        e.write(path, text);
+    }
+    e.drain();
+    e.open();
+    let facts = e.facts_until(indexed);
+    for (id, path) in kept.iter().zip(["x.md", "y.md"]) {
+        assert!(
+            facts.iter().any(|f| matches!(f,
+                Applied::Added { note_id, path: p, created: false, .. } if note_id == id && p == path)),
+            "{path}: {facts:?}"
+        );
+    }
+    for path in ["a.md", "b.md", "Work/c.md"] {
+        assert!(
+            facts
+                .iter()
+                .any(|f| matches!(f, Applied::Added { path: p, created: true, .. } if p == path)),
+            "{path}: {facts:?}"
+        );
+        assert!(row_holds(
+            &e,
+            &row_id(&e, path).unwrap(),
+            &fs::read_to_string(e.vault.join(path)).unwrap()
+        ));
+    }
+    assert_eq!(e.rows().len(), 5, "{:?}", e.rows());
+    assert_eq!(records(&e).len(), 5);
+    assert_eq!(e.body(&kept[0]), "Recovered x");
+    assert_eq!(e.body(&row_id(&e, "Work/c.md").unwrap()), "Gamma");
+    let queued = outbox(&e);
+    for (id, _) in e.rows() {
+        let upserts = queued
+            .iter()
+            .filter(|(op, item)| op == "upsert" && *item == id);
+        assert!(upserts.count() <= 1, "{id}: {queued:?}");
+    }
+
+    let facts = reopen(&mut e);
+    assert!(
+        !facts.iter().any(|f| matches!(f, Applied::Added { .. })),
+        "{facts:?}"
+    );
+    assert_eq!(records(&e).len(), 5);
+}
+
+/// A file with writing frontmatter, CriticMarkup and link references: a value in each of the
+/// body's side roots.
+const RICH: &str = "---\nwriting:\n  alternatives:\n    k3x9q2:\n      versions: [soguk, buz]\n---\n\
+                    Sabah <!--alt:k3x9q2-->ayaz<!--/alt:k3x9q2--> bir ruzgar.\n\n\
+                    One {++added++} and {--gone--} and {~~was~>is~~}.\n\n\
+                    See [the docs][ref].\n\n[ref]: https://example.com/docs\n";
+
+/// Every root of the note's stored document, block ids aside.
+fn stored_doc(e: &Env, id: &str) -> Value {
+    let doc_id = format!("{LOCAL_NAMESPACE_PREFIX}{id}");
+    let blobs = e
+        .core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            let mut statement = conn
+                .prepare("SELECT update_blob FROM yjs_updates WHERE doc_id = ?1 ORDER BY seq")
+                .unwrap();
+            Ok(statement
+                .query_map([doc_id], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<Vec<Vec<u8>>, _>>()
+                .unwrap())
+        })
+        .unwrap();
+    assert!(!blobs.is_empty(), "{id}: no body stored");
+    memry_test_kit::ydoc::doc_json(&blobs)
+}
+
+/// A file the open walk makes a note together with others gets the document it gets alone:
+/// every root, the side roots its writing frontmatter, CriticMarkup and link references fill
+/// included.
+#[test]
+fn a_file_made_a_note_together_gets_the_document_it_gets_alone() {
+    let mut alone = notes_env();
+    alone.write("Rich.md", RICH);
+    alone.open();
+    alone.facts_until(indexed);
+
+    let mut together = notes_env();
+    together.write("Rich.md", RICH);
+    for n in 0..4 {
+        together.write(&format!("n{n}.md"), &format!("Note {n}\n"));
+    }
+    together.open();
+    together.facts_until(indexed);
+
+    let doc = |e: &Env| stored_doc(e, &row_id(e, "Rich.md").unwrap());
+    let roots = doc(&together);
+    for root in [
+        "markdownSource",
+        "criticMarkupMarks",
+        "linkReferenceDefinitions",
+        "linkReferenceUsages",
+        "writingAlternatives",
+    ] {
+        assert!(
+            roots
+                .get(root)
+                .is_some_and(|v| v != &serde_json::json!([]) && v != &serde_json::json!({})),
+            "{root} is empty: {roots}"
+        );
+    }
+    assert_eq!(roots, doc(&alone));
 }
 
 /// A live note no row names, in the journal folder and titled with a day, claims that day's

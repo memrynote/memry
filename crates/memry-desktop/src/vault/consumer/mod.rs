@@ -8,6 +8,7 @@
 //! - `body`: a file's text fed into its note's body, for `apply`.
 //! - `converter`: the converter note bodies are read and written with, the vault's callouts.
 //! - `run`: the thread that applies facts in the watcher's order, the open walk and retries.
+//! - `walked`: the files the open walk finds, the new markdown files together.
 //!
 //! Invariants, each with a test in `tests/` here or in `tests/vault_consumer.rs`:
 //! - **A row's hash names a file whose text the note's document holds.** The consumer records
@@ -55,8 +56,10 @@
 //! - **Order.** Facts are applied one at a time in the order the watcher reported them. The
 //!   open walk runs after the session's first `Rescanned`, so the removals and moves found
 //!   while the app was closed are applied before it; a fact that arrives during or after the
-//!   walk, for a path it covered or not, is applied like any other. An [`Applied`] fact goes
-//!   out after its row is written, under the lane.
+//!   walk, for a path it covered or not, is applied like any other. The walk puts the markdown
+//!   files no row names aside and applies them together (`walked`): each ends as it would
+//!   alone, and what a fact applied meanwhile did to its path is read under the lane first. An
+//!   [`Applied`] fact goes out after its row is written, under the lane.
 
 mod activity;
 mod apply;
@@ -68,6 +71,7 @@ mod run;
 #[cfg(test)]
 pub(crate) mod tests;
 mod tier;
+mod walked;
 
 pub(crate) use converter::{converter_for, converter_of};
 pub use run::{FIRST_RETRY, MAX_RETRIES, QUEUE_CAPACITY};
