@@ -52,7 +52,7 @@ use crate::storage::repositories::sync_items;
 mod file;
 mod store;
 
-pub use file::taken;
+pub use file::{taken, taken_all};
 pub use store::read_values;
 use store::{failed, require, stored, write};
 

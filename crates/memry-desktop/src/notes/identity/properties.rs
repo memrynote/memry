@@ -27,6 +27,23 @@ pub(super) fn found(
     taken(writer, ctx, store, id, None, file)
 }
 
+/// [`found`] of many new files `(id, file)` at once: the definitions read once, the records
+/// written in one transaction.
+pub(super) fn found_all(
+    writer: &NotesWriter,
+    ctx: &IdentityCtx<'_>,
+    store: Arc<dyn SecureStore>,
+    files: &[(&str, &NoteFile)],
+) -> Result<(), IdentityError> {
+    let types = definition_types(ctx.root, ctx.vault, store);
+    let values = files
+        .iter()
+        .filter_map(|(id, file)| Some(((*id).to_owned(), file_values(file, &types)?)))
+        .collect();
+    writer.found_files_properties(values)?;
+    Ok(())
+}
+
 /// An edit outside the app replaced the note's file, whose hash was `previous`. Without a
 /// baseline the index's reading stands in, when it read that file's header.
 pub(super) fn edited(

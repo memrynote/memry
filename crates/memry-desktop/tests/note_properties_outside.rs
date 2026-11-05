@@ -298,8 +298,18 @@ fn an_app_write_after_an_outside_edit_does_not_hide_it() {
 
 #[test]
 fn a_found_folders_notes_take_their_files_properties() {
-    let f = opened(&[("Plan.md", PLAN)], "Plan.md");
-    assert_eq!(f.record(), object(json!({ "stage": "Draft", "rating": 5 })));
+    // Alone, and together: the open walk creates the notes of many new files at once.
+    let alone = opened(&[("Plan.md", PLAN)], "Plan.md");
+    assert_eq!(
+        alone.record(),
+        object(json!({ "stage": "Draft", "rating": 5 }))
+    );
+    let other = "---\nowner: Kaan\n---\n# Other\n";
+    let together = opened(&[("Plan.md", PLAN), ("Other.md", other)], "Plan.md");
+    assert_eq!(
+        together.record(),
+        object(json!({ "stage": "Draft", "rating": 5 }))
+    );
 }
 
 #[test]

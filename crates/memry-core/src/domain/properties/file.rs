@@ -40,19 +40,46 @@ pub fn taken(
     now_ms: i64,
 ) -> Result<bool, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let found = match baseline(&tx, id)?.or(indexed) {
+    let found = take_in(&tx, id, indexed, after, device_id, now_ms)?;
+    tx.commit().map_err(failed)?;
+    Ok(found)
+}
+
+/// [`taken`] of each found file `(id, after)`, in one transaction: the open walk names many
+/// new files together.
+pub fn taken_all(
+    conn: &Connection,
+    files: Vec<(String, Map<String, Value>)>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    for (id, after) in files {
+        take_in(&tx, &id, None, after, device_id, now_ms)?;
+    }
+    tx.commit().map_err(failed)
+}
+
+fn take_in(
+    tx: &Connection,
+    id: &str,
+    indexed: Option<Map<String, Value>>,
+    after: Map<String, Value>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let found = match baseline(tx, id)?.or(indexed) {
         Some(before) => {
             let (changed, removed) = delta(&before, &after);
-            edit_file(&tx, id, device_id, now_ms, |next| {
+            edit_file(tx, id, device_id, now_ms, |next| {
                 mirrored(next, changed, &removed);
             })?
         }
-        None => fill_file(&tx, id, after.clone(), device_id, now_ms)?,
+        None => fill_file(tx, id, after.clone(), device_id, now_ms)?,
     };
     if found {
-        record(&tx, id, &after)?;
+        record(tx, id, &after)?;
     }
-    tx.commit().map_err(failed)?;
     Ok(found)
 }
 

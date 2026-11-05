@@ -333,6 +333,14 @@ impl NotesWriter {
         })
     }
 
+    /// The tier named the new files `(id, values)` together: each record takes the values
+    /// it lacks ([`properties::taken_all`]), in one transaction.
+    pub fn found_files_properties(&self, files: Vec<(String, Object)>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| properties::taken_all(conn, files, &device_id, now_ms()))
+    }
+
     /// An in-app edit wrote these aliases into the note's or journal day's file: the record
     /// takes them ([`notes::take_file_aliases`]). `false` when no live note or day has that id.
     pub fn file_aliases(&self, id: &str, aliases: &[String]) -> Result<bool, StorageError> {

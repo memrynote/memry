@@ -8,10 +8,13 @@ use memry_core::domain::notes::identity::FileNote;
 use memry_core::domain::notes::new_files::NewFileNote;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 
-use super::{NotesIdentity, created_ms, electron_db_beside, is_large_file, place};
+use super::{
+    NotesIdentity, SCOPE, created_ms, electron_db_beside, is_large_file, place, properties,
+};
 use crate::vault::consumer::identity::{Candidate, IdentityCtx, IdentityError, NewFile};
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
+use crate::vault::note_file::NoteFile;
 
 /// Whether `adopt_or_create` would name `file` without a body to compare, unless a record
 /// matches it: markdown with its text read, not large-file class, not a journal day's path.
@@ -52,6 +55,7 @@ pub(super) fn adopt(
     identity.settle_owed(ctx.root, &writer, &journal, None);
     let electron_db_beside = electron_db_beside(ctx.root);
     let mut asked = Vec::new();
+    let mut texts = Vec::new();
     let mut notes = Vec::new();
     for (at, new) in files.iter().enumerate() {
         let file = &new.candidate;
@@ -73,12 +77,30 @@ pub(super) fn adopt(
             body: new.body,
         });
         asked.push(at);
+        texts.push(text);
     }
     let answers = writer
         .adopt_new_files(&notes)
         .map_err(|error| IdentityError::Other(error.to_string()))?;
-    for (at, answer) in asked.into_iter().zip(answers) {
-        created[at] = answer;
+    let made: Vec<(usize, &str, &NoteFile)> = asked
+        .into_iter()
+        .zip(texts)
+        .zip(answers)
+        .filter(|(_, answer)| *answer)
+        .map(|((at, text), _)| (at, files[at].id, text))
+        .collect();
+    let found: Vec<(&str, &NoteFile)> = made.iter().map(|(_, id, text)| (*id, *text)).collect();
+    // A record whose properties did not go in is asked about alone, which adopts it and
+    // fills them again.
+    if let Err(error) = properties::found_all(&writer, ctx, identity.store.clone(), &found) {
+        tracing::warn!(
+            scope = SCOPE,
+            "new notes' properties wait for their files alone: {error}"
+        );
+        return Ok(created);
+    }
+    for (at, _, _) in made {
+        created[at] = true;
     }
     Ok(created)
 }
