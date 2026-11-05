@@ -39,6 +39,7 @@ import {
   RENAME_UNFINISHED,
   renameTagWithProgress,
   toastTagRenamed,
+  toastTagsKept,
   toastUnfinishedRename
 } from '@/features/tag-fields/rename-toasts'
 import { useTags } from '@/hooks/use-tags'
@@ -113,6 +114,7 @@ export function TagManager() {
             count: result.affectedNotes ?? 0
           })
         )
+        toastTagsKept(result, deleteTarget.name, 'delete')
       } else {
         trackRendererError('tag_delete', result.error ?? 'delete failed')
         toast.error(result.error ?? t('tags.toasts.deleteFailed'))
@@ -136,6 +138,7 @@ export function TagManager() {
             count: result.affectedItems ?? 0
           })
         )
+        toastTagsKept(result, mergeSource, 'merge')
       } else {
         trackRendererError('tag_merge', result.error ?? 'merge failed')
         toast.error(result.error ?? t('tags.toasts.mergeFailed'))

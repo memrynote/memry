@@ -6,6 +6,7 @@ import {
   RENAME_UNFINISHED,
   renameTagWithProgress,
   toastTagRenamed,
+  toastTagsKept,
   toastUnfinishedRename
 } from '@/features/tag-fields/rename-toasts'
 import { IpcFailureError, extractErrorMessage, getIpcErrorCode } from '@/lib/ipc-error'
@@ -66,6 +67,7 @@ export function useTagScopeActions(tag: string | null, totalNotes: number, close
         throw new Error(result.error ?? tSettings('tags.toasts.deleteFailed'))
       }
       toast.success(tSettings('tags.toasts.deleted', { name: tag, count: totalNotes }))
+      toastTagsKept(result, tag, 'delete')
       closeTab()
     } catch (err) {
       log.error('Failed to delete tag', err)

@@ -191,8 +191,12 @@ describe('tags-service', () => {
   })
 
   it('deletes, merges and removes from a note through the commands in Electron’s envelope', async () => {
-    commands.tagsDelete.mockResolvedValue({ affectedNotes: 3 })
-    await expect(tagsService.deleteTag('new')).resolves.toEqual({ success: true, affectedNotes: 3 })
+    commands.tagsDelete.mockResolvedValue({ affectedNotes: 3, failedNoteIds: ['note-9'] })
+    await expect(tagsService.deleteTag('new')).resolves.toEqual({
+      success: true,
+      affectedNotes: 3,
+      failedNoteIds: ['note-9']
+    })
     expect(commands.tagsDelete).toHaveBeenCalledWith('new')
     commands.tagsMerge.mockResolvedValue({ affectedItems: 2 })
     const merge = { source: 'old', target: 'new' }

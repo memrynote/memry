@@ -2002,6 +2002,8 @@
       "renaming": "Menamakan semula #{oldName}: {done} / {total} nota",
       "renamedBodySkipped": "\"{newName}\" tidak boleh ditaip sebagai teg sebaris, jadi #{oldName} dalam teks nota kekal seperti ditulis",
       "renamedSomeFailed": "Tidak dapat mengemas kini {count, plural, other {# nota}}. Buka dan tambah teg itu semula",
+      "mergedSomeKept": "Tidak dapat mengemas kini {count, plural, other {# nota}}. Gabungkan #{tag} sekali lagi untuk selesai.",
+      "deletedSomeKept": "Tidak dapat mengemas kini {count, plural, other {# nota}}. Padam #{tag} sekali lagi untuk selesai.",
       "renameUnfinished": "Penamaan semula #{oldName} kepada #{newName} tidak selesai untuk {count, plural, other {# nota}}. Namakan semula #{oldName} kepada #{newName} sekali lagi untuk menyelesaikannya.",
       "renameUnfinishedMore": "{names} dan {count, plural, other {# lagi}}",
       "stopRename": "Hentikan penamaan semula ini",

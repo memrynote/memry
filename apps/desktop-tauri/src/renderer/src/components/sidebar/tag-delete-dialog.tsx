@@ -59,7 +59,8 @@ export function TagDeleteDialog({
           <AlertDialogDescription>
             {tPhaseF(
               'phaseF.componentsSidebarTagDeleteDialog.notesWithThisTagWonTBeDeletedJustUntagged'
-            )}
+            )}{' '}
+            {tPhaseF('tagFields.settings.delete.bodyTagsStay', { tag })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

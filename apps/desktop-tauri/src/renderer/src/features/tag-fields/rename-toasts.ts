@@ -15,6 +15,22 @@ const log = createLogger('Tags:Rename')
 /** How many of a stuck rename's notes its warning names. */
 const NAMED = 3
 
+/**
+ * Warns that a merge or delete left notes it could not write with the tag, which asking it
+ * again finishes; nothing when it wrote them all.
+ */
+export function toastTagsKept(
+  result: { failedNoteIds?: string[] },
+  tag: string,
+  action: 'merge' | 'delete'
+) {
+  const count = result.failedNoteIds?.length ?? 0
+  if (count === 0) return
+  const t = getI18n().getFixedT(null, 'settings')
+  const key = action === 'merge' ? 'tags.toasts.mergedSomeKept' : 'tags.toasts.deletedSomeKept'
+  toast.warning(t(key, { count, tag }), { duration: 10_000 })
+}
+
 /** The `code` a rename refused because another is left unfinished fails with. */
 export const RENAME_UNFINISHED = 'tag_rename_unfinished'
 

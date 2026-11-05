@@ -376,6 +376,7 @@ fn a_merge_through_the_command_is_announced_and_counted_under_the_target() {
     let handle = fixture.app.handle().clone();
     let merged = tauri::async_runtime::block_on(tags_merge(handle, input)).unwrap();
     assert_eq!(merged.affected_items, 1);
+    assert_eq!(merged.failed_note_ids, Vec::<String>::new());
     let text = fs::read_to_string(fixture.vault.join("Bare.md")).unwrap();
     assert!(text.contains("  - job\n"), "{text}");
     assert_eq!(
@@ -477,4 +478,35 @@ fn a_tag_change_refused_while_another_runs_says_so() {
             "Another tag change is still running. Try again when it finishes."
         )
     );
+}
+
+/// A note whose file cannot take the delete is answered in `failedNoteIds`, so the window can
+/// say it kept the tag.
+#[test]
+fn a_note_the_delete_cannot_write_is_answered() {
+    let fixture = opened();
+    let id = plan_id(&fixture);
+    let path = fixture.vault.join("Plan.md");
+    let broken = fs::read_to_string(&path)
+        .unwrap()
+        .replacen("---\n", "---\n: [\n", 1);
+    fs::write(&path, &broken).unwrap();
+    let open = fixture.app.state::<Session>().current().unwrap();
+    let deadline = Instant::now() + WAIT;
+    while open
+        .vault
+        .note_files()
+        .by_path("Plan.md")
+        .unwrap()
+        .unwrap()
+        .content_hash
+        != Some(content_hash(&broken))
+    {
+        assert!(Instant::now() < deadline, "the outside edit was not read");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let handle = fixture.app.handle().clone();
+    let deleted = tauri::async_runtime::block_on(tags_delete(handle, "work".into())).unwrap();
+    assert_eq!(deleted.failed_note_ids, [id]);
+    assert_eq!(fs::read_to_string(&path).unwrap(), broken);
 }

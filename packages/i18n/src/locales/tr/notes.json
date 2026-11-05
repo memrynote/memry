@@ -1899,6 +1899,8 @@
         "statNotes": "not metnini korur",
         "statValues": "değer özellik olarak kalır",
         "plainText": "Metninde #{tag} geçen notlar onu düz metin olarak korur.",
+        "alsoTasks": "#{tag} etiketi {tasks, plural, one {# görevden} other {# görevden}} de kaldırılır.",
+        "bodyTagsStay": "Not metnine yazılan #{tag} kalır, bu yüzden o notlar etiketin altında görünmeye devam eder.",
         "confirm": "Etiketi sil",
         "done": "#{tag} silindi."
       },

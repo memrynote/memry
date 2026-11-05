@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { toastTagsKept } from '../rename-toasts'
 import { tagsService } from '@/services/tags-service'
 import { useEditTagSchema } from '../use-tag-schemas'
 
@@ -285,6 +286,7 @@ export function DeleteTagDialog({
       const result = await tagsService.deleteTag(tag)
       if (!result.success) throw new Error(result.error ?? t('tagFields.settings.errors.deleteTag'))
       toast.success(t('tagFields.settings.delete.done', { tag }))
+      toastTagsKept(result, tag, 'delete')
       onOpenChange(false)
     } catch (err) {
       toast.error(extractErrorMessage(err, t('tagFields.settings.errors.deleteTag')))
@@ -337,8 +339,13 @@ export function DeleteTagDialog({
           <Stat value={impact.values} label={t('tagFields.settings.delete.statValues')} />
         </div>
       )}
+      {impact && impact.tasks > 0 && (
+        <p className="text-sm text-text-secondary">
+          {t('tagFields.settings.delete.alsoTasks', { tag, tasks: impact.tasks })}
+        </p>
+      )}
       <p className="text-sm text-text-secondary">
-        {t('tagFields.settings.delete.plainText', { tag })}
+        {t('tagFields.settings.delete.bodyTagsStay', { tag })}
       </p>
     </ImpactDialogShell>
   )

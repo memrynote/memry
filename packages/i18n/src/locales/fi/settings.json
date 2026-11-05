@@ -2002,6 +2002,8 @@
       "renaming": "Nimetään uudelleen #{oldName}: {done} / {total} muistiinpanoa",
       "renamedBodySkipped": "Nimeä ”{newName}” ei voi kirjoittaa tekstin sisäiseksi tunnisteeksi, joten #{oldName} muistiinpanojen tekstissä säilyy sellaisenaan",
       "renamedSomeFailed": "{count, plural, one {# muistiinpanoa} other {# muistiinpanoa}} ei voitu päivittää. Avaa {count, plural, one {se} other {ne}} ja lisää tunniste uudelleen",
+      "mergedSomeKept": "{count, plural, one {# muistiinpanoa} other {# muistiinpanoa}} ei voitu päivittää. Yhdistä #{tag} uudelleen viimeistelläksesi.",
+      "deletedSomeKept": "{count, plural, one {# muistiinpanoa} other {# muistiinpanoa}} ei voitu päivittää. Poista #{tag} uudelleen viimeistelläksesi.",
       "renameUnfinished": "Tunnisteen #{oldName} uudelleennimeäminen muotoon #{newName} jäi kesken {count, plural, one {# muistiinpanon} other {# muistiinpanon}} osalta. Nimeä #{oldName} uudelleen muotoon #{newName}, niin se valmistuu.",
       "renameUnfinishedMore": "{names} ja {count, plural, one {# muu} other {# muuta}}",
       "stopRename": "Lopeta tämä uudelleennimeäminen",

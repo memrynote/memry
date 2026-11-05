@@ -2002,6 +2002,8 @@
       "renaming": "#{oldName} wird umbenannt: {done} / {total} Notizen",
       "renamedBodySkipped": "„{newName}“ lässt sich nicht als Inline-Tag eingeben, daher bleibt #{oldName} im Notiztext unverändert",
       "renamedSomeFailed": "{count, plural, one {# Notiz} other {# Notizen}} konnten nicht aktualisiert werden. Öffne {count, plural, one {sie} other {sie}} und füge den Tag erneut hinzu",
+      "mergedSomeKept": "{count, plural, one {# Notiz konnte} other {# Notizen konnten}} nicht aktualisiert werden. Führe #{tag} erneut zusammen, um es abzuschließen.",
+      "deletedSomeKept": "{count, plural, one {# Notiz konnte} other {# Notizen konnten}} nicht aktualisiert werden. Lösche #{tag} erneut, um es abzuschließen.",
       "renameUnfinished": "Die Umbenennung von #{oldName} in #{newName} wurde bei {count, plural, one {# Notiz} other {# Notizen}} nicht abgeschlossen. Benenne #{oldName} erneut in #{newName} um, um sie abzuschließen.",
       "renameUnfinishedMore": "{names} und {count, plural, one {# weitere} other {# weitere}}",
       "stopRename": "Diese Umbenennung beenden",

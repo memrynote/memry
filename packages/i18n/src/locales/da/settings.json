@@ -2002,6 +2002,8 @@
       "renaming": "Omdøber #{oldName}: {done} / {total} noter",
       "renamedBodySkipped": "»{newName}« kan ikke skrives som et tag i teksten, så #{oldName} i notetekst står, som det er skrevet",
       "renamedSomeFailed": "Kunne ikke opdatere {count, plural, one {# note} other {# noter}}. Åbn {count, plural, one {den} other {dem}}, og tilføj tagget igen",
+      "mergedSomeKept": "Kunne ikke opdatere {count, plural, one {# note} other {# noter}}. Flet #{tag} igen for at gøre det færdigt.",
+      "deletedSomeKept": "Kunne ikke opdatere {count, plural, one {# note} other {# noter}}. Slet #{tag} igen for at gøre det færdigt.",
       "renameUnfinished": "Omdøbningen af #{oldName} til #{newName} blev ikke færdig for {count, plural, one {# note} other {# noter}}. Omdøb #{oldName} til #{newName} igen for at gøre den færdig.",
       "renameUnfinishedMore": "{names} og {count, plural, one {# mere} other {# mere}}",
       "stopRename": "Stop denne omdøbning",

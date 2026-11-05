@@ -1899,6 +1899,8 @@
         "statNotes": "nota mengekalkan teksnya",
         "statValues": "nilai kekal sebagai sifat",
         "plainText": "Nota yang menyebut #{tag} dalam teksnya mengekalkannya sebagai teks biasa.",
+        "alsoTasks": "#{tag} juga dibuang daripada {tasks, plural, other {# tugas}}.",
+        "bodyTagsStay": "#{tag} yang ditulis dalam teks nota kekal, jadi nota itu masih dipaparkan di bawah teg.",
         "confirm": "Padam teg",
         "done": "#{tag} dipadamkan."
       },

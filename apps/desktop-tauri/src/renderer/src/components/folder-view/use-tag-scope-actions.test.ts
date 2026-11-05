@@ -47,3 +47,25 @@ describe('useTagScopeActions rename', () => {
     expect(toasts.warning).not.toHaveBeenCalled()
   })
 })
+
+describe('useTagScopeActions delete', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    toasts.warning.mockClear()
+  })
+
+  it('says how many notes kept the tag when the delete could not write them all', async () => {
+    vi.spyOn(commands, 'tagsDelete').mockResolvedValue({
+      affectedNotes: 1,
+      failedNoteIds: ['n1', 'n2']
+    })
+    const closeTab = vi.fn()
+    const { result } = renderHook(() => useTagScopeActions('work', 3, closeTab))
+    await result.current.handleTagDeleteConfirm()
+    expect(toasts.warning).toHaveBeenCalledWith(
+      "Couldn't update 2 notes. Delete #work again to finish.",
+      { duration: 10_000 }
+    )
+    expect(closeTab).toHaveBeenCalled()
+  })
+})

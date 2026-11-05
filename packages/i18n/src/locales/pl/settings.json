@@ -2002,6 +2002,8 @@
       "renaming": "Zmiana nazwy #{oldName}: {done} / {total} notatek",
       "renamedBodySkipped": "„{newName}” nie może być wpisane jako tag w tekście, więc #{oldName} w treści notatek zostaje bez zmian",
       "renamedSomeFailed": "{count, plural, one {Nie udało się zaktualizować # notatki. Otwórz ją} few {Nie udało się zaktualizować # notatek. Otwórz je} many {Nie udało się zaktualizować # notatek. Otwórz je} other {Nie udało się zaktualizować # notatki. Otwórz ją}} i dodaj tag ponownie",
+      "mergedSomeKept": "Nie udało się zaktualizować {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Scal #{tag} ponownie, aby dokończyć.",
+      "deletedSomeKept": "Nie udało się zaktualizować {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Usuń #{tag} ponownie, aby dokończyć.",
       "renameUnfinished": "Zmiana nazwy #{oldName} na #{newName} nie została dokończona dla {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Zmień ponownie nazwę #{oldName} na #{newName}, aby ją dokończyć.",
       "renameUnfinishedMore": "{names} i {count, plural, one {# inna} few {# inne} many {# innych} other {# innej}}",
       "stopRename": "Zatrzymaj tę zmianę nazwy",

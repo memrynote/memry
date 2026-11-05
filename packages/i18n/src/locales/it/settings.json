@@ -2002,6 +2002,8 @@
       "renaming": "Rinomina di #{oldName}: {done} / {total} note",
       "renamedBodySkipped": "\"{newName}\" non può essere digitato come tag inline, quindi #{oldName} nel testo delle note resta com'è",
       "renamedSomeFailed": "Impossibile aggiornare {count, plural, one {# nota} other {# note}}. Aprile e aggiungi di nuovo il tag",
+      "mergedSomeKept": "Impossibile aggiornare {count, plural, one {# nota} other {# note}}. Unisci di nuovo #{tag} per completare.",
+      "deletedSomeKept": "Impossibile aggiornare {count, plural, one {# nota} other {# note}}. Elimina di nuovo #{tag} per completare.",
       "renameUnfinished": "La rinomina di #{oldName} in #{newName} non è terminata per {count, plural, one {# nota} other {# note}}. Rinomina di nuovo #{oldName} in #{newName} per completarla.",
       "renameUnfinishedMore": "{names} e {count, plural, one {# altra} other {# altre}}",
       "stopRename": "Interrompi questa rinomina",

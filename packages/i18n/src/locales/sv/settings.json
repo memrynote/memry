@@ -2002,6 +2002,8 @@
       "renaming": "Byter namn på #{oldName}: {done} / {total} anteckningar",
       "renamedBodySkipped": "”{newName}” kan inte skrivas som en inline-tagg, så #{oldName} i anteckningstexten förblir som den är skriven",
       "renamedSomeFailed": "Det gick inte att uppdatera {count, plural, one {# anteckning} other {# anteckningar}}. Öppna {count, plural, one {den} other {dem}} och lägg till taggen igen",
+      "mergedSomeKept": "Det gick inte att uppdatera {count, plural, one {# anteckning} other {# anteckningar}}. Slå ihop #{tag} igen för att slutföra.",
+      "deletedSomeKept": "Det gick inte att uppdatera {count, plural, one {# anteckning} other {# anteckningar}}. Ta bort #{tag} igen för att slutföra.",
       "renameUnfinished": "Namnbytet från #{oldName} till #{newName} slutfördes inte för {count, plural, one {# anteckning} other {# anteckningar}}. Byt namn från #{oldName} till #{newName} igen för att slutföra det.",
       "renameUnfinishedMore": "{names} och {count, plural, one {# till} other {# till}}",
       "stopRename": "Stoppa det här namnbytet",

@@ -31,10 +31,15 @@ import { subscribeToEvent } from './tauri-event'
  * arguments (`createCategory`, `renameCategory`, `deleteCategory`) are
  * deliberately overridden for ergonomic call sites.
  */
-type TagsService = Omit<TagsClientAPI, 'createCategory' | 'renameCategory' | 'deleteCategory'> & {
+type TagsService = Omit<
+  TagsClientAPI,
+  'createCategory' | 'renameCategory' | 'deleteCategory' | 'deleteTag' | 'mergeTag'
+> & {
   createCategory: (name: string) => Promise<CreateCategoryResponse>
   renameCategory: (id: string, name: string) => Promise<CategoryOperationResponse>
   deleteCategory: (id: string) => Promise<CategoryOperationResponse>
+  deleteTag: (tag: string) => Promise<DeleteTagResult>
+  mergeTag: (input: { source: string; target: string }) => Promise<MergeTagResult>
 }
 
 /** A failed write as Electron's tag handlers answer it: the error's message. */
@@ -45,6 +50,12 @@ function failure(error: unknown): { success: false; error?: string } {
 
 /** A rename's answer; a failed one keeps its command's `code`, which tells a refusal apart. */
 export type RenameTagResult = RenameTagResponse & { code?: string }
+
+/** A delete's answer, with the notes that keep the tag: deleting again finishes them. */
+export type DeleteTagResult = DeleteTagResponse & { failedNoteIds?: string[] }
+
+/** A merge's answer, with the notes that keep the source: merging again finishes them. */
+export type MergeTagResult = MergeTagResponse & { failedNoteIds?: string[] }
 
 /** Runs a write that answers `{ success }`, a rejection becoming `{ success: false }`. */
 async function settled(write: () => Promise<unknown>): Promise<TagOperationResponse> {
@@ -129,7 +140,7 @@ const ported = {
   },
 
   /** Takes the tag itself, not its children, off every note, journal day and task. */
-  deleteTag: async (tag: string): Promise<DeleteTagResponse> => {
+  deleteTag: async (tag: string): Promise<DeleteTagResult> => {
     try {
       return { success: true, ...(await commands.tagsDelete(tag)) }
     } catch (error) {
@@ -141,7 +152,7 @@ const ported = {
     settled(() => commands.tagsRemoveFromNote(input)),
 
   /** Merges the tag itself into `target` in every note, journal day and task. */
-  mergeTag: async (input: { source: string; target: string }): Promise<MergeTagResponse> => {
+  mergeTag: async (input: { source: string; target: string }): Promise<MergeTagResult> => {
     try {
       return { success: true, ...(await commands.tagsMerge(input)) }
     } catch (error) {

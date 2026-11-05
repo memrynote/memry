@@ -1899,6 +1899,8 @@
         "statNotes": "noter beholder deres tekst",
         "statValues": "værdier bliver som egenskaber",
         "plainText": "Noter, der nævner #{tag} i deres tekst, beholder det som almindelig tekst.",
+        "alsoTasks": "{tasks, plural, one {# opgave mister} other {# opgaver mister}} også #{tag}.",
+        "bodyTagsStay": "#{tag} skrevet i noternes tekst bliver stående, så de noter vises stadig under tagget.",
         "confirm": "Slet tag",
         "done": "Slettede #{tag}."
       },

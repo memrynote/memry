@@ -2002,6 +2002,8 @@
       "renaming": "#{oldName} hernoemen: {done} / {total} notities",
       "renamedBodySkipped": "“{newName}” kan niet als inline tag worden getypt, dus #{oldName} in de notitietekst blijft zoals geschreven",
       "renamedSomeFailed": "Kan {count, plural, one {# notitie} other {# notities}} niet bijwerken. Open {count, plural, one {die} other {ze}} en voeg de tag opnieuw toe",
+      "mergedSomeKept": "Kan {count, plural, one {# notitie} other {# notities}} niet bijwerken. Voeg #{tag} opnieuw samen om het af te ronden.",
+      "deletedSomeKept": "Kan {count, plural, one {# notitie} other {# notities}} niet bijwerken. Verwijder #{tag} opnieuw om het af te ronden.",
       "renameUnfinished": "Het hernoemen van #{oldName} naar #{newName} is voor {count, plural, one {# notitie} other {# notities}} niet afgerond. Hernoem #{oldName} opnieuw naar #{newName} om het af te ronden.",
       "renameUnfinishedMore": "{names} en {count, plural, one {# andere} other {# andere}}",
       "stopRename": "Deze hernoeming stoppen",

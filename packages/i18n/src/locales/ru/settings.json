@@ -2002,6 +2002,8 @@
       "renaming": "Переименование #{oldName}: {done} / {total} заметок",
       "renamedBodySkipped": "«{newName}» нельзя набрать как встроенный тег, поэтому #{oldName} в тексте заметок остаётся как есть",
       "renamedSomeFailed": "Не удалось обновить {count, plural, one {# заметку} few {# заметки} many {# заметок} other {# заметки}}. Откройте {count, plural, one {её} other {их}} и добавьте тег снова",
+      "mergedSomeKept": "Не удалось обновить {count, plural, one {# заметку} few {# заметки} many {# заметок} other {# заметки}}. Объедините #{tag} ещё раз, чтобы завершить.",
+      "deletedSomeKept": "Не удалось обновить {count, plural, one {# заметку} few {# заметки} many {# заметок} other {# заметки}}. Удалите #{tag} ещё раз, чтобы завершить.",
       "renameUnfinished": "Переименование #{oldName} в #{newName} не завершилось для {count, plural, one {# заметки} few {# заметок} many {# заметок} other {# заметки}}. Переименуйте #{oldName} в #{newName} ещё раз, чтобы завершить его.",
       "renameUnfinishedMore": "{names} и ещё {count, plural, one {#} few {#} many {#} other {#}}",
       "stopRename": "Остановить это переименование",

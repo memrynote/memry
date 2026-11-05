@@ -2002,6 +2002,8 @@
       "renaming": "משנה את השם של #{oldName}: {done} / {total} פתקים",
       "renamedBodySkipped": "את \"{newName}\" אי אפשר להקליד כתגית בתוך הטקסט, ולכן #{oldName} בטקסט הפתקים נשאר כפי שנכתב",
       "renamedSomeFailed": "לא ניתן לעדכן {count, plural, one {פתק אחד} other {# פתקים}}. כדאי לפתוח {count, plural, one {אותו} other {אותם}} ולהוסיף את התגית שוב",
+      "mergedSomeKept": "לא ניתן לעדכן {count, plural, one {פתק אחד} other {# פתקים}}. כדאי למזג שוב את #{tag} כדי לסיים.",
+      "deletedSomeKept": "לא ניתן לעדכן {count, plural, one {פתק אחד} other {# פתקים}}. כדאי למחוק שוב את #{tag} כדי לסיים.",
       "renameUnfinished": "שינוי השם של #{oldName} ל-#{newName} לא הושלם עבור {count, plural, one {פתק אחד} other {# פתקים}}. כדי להשלים אותו, יש לשנות שוב את השם של #{oldName} ל-#{newName}.",
       "renameUnfinishedMore": "{names} ועוד {count, plural, one {אחד} other {#}}",
       "stopRename": "עצירת שינוי השם הזה",

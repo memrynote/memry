@@ -2002,6 +2002,8 @@
       "renaming": "Перейменування #{oldName}: {done} / {total} нотаток",
       "renamedBodySkipped": "«{newName}» не можна ввести як вбудований тег, тому #{oldName} у тексті нотаток залишається без змін",
       "renamedSomeFailed": "Не вдалося оновити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}}. Відкрийте {count, plural, one {її} few {їх} many {їх} other {їх}} і додайте тег ще раз",
+      "mergedSomeKept": "Не вдалося оновити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}}. Об'єднайте #{tag} ще раз, щоб завершити.",
+      "deletedSomeKept": "Не вдалося оновити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}}. Видаліть #{tag} ще раз, щоб завершити.",
       "renameUnfinished": "Перейменування #{oldName} на #{newName} не завершилося для {count, plural, one {# нотатки} few {# нотаток} many {# нотаток} other {# нотатки}}. Перейменуйте #{oldName} на #{newName} ще раз, щоб завершити його.",
       "renameUnfinishedMore": "{names} і ще {count, plural, one {#} few {#} many {#} other {#}}",
       "stopRename": "Зупинити це перейменування",

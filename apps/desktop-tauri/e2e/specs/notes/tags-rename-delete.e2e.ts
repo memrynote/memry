@@ -2,7 +2,8 @@
 // 13j-4, #3530), after Electron's `tags-rename-delete.e2e.ts`. Rename: the dialog opens on the
 // tag's name, Save renames it in the note's header, body and record, the tag's tab closes, and the
 // sidebar lists the new name in place of the old. Delete: the dialog asks, the confirm takes the
-// tag off the note's header and record, the tag's tab closes, and the sidebar no longer lists it.
+// tag off the note's header and record, the tag's tab closes, and the sidebar no longer lists it;
+// a #tag written in a note's text stays there, so the sidebar still lists it for that note.
 import { createNote, getNote } from '../../harness/notes'
 import { expandTagsSection, openTagTab, unique, vaultOpen } from '../../harness/tags'
 import { test, expect } from '../../harness/test'
@@ -71,4 +72,32 @@ test('deletes a tag via overflow menu', async ({ page }) => {
   const note = await getNote(page, id)
   expect(note?.headerTags).toEqual([])
   expect(note?.tags).toEqual([])
+})
+
+test('a deleted tag written in a note body stays in the body and the sidebar', async ({ page }) => {
+  await vaultOpen(page)
+  const tag = `deletebody${unique()}`
+  const { id } = await createNote(page, {
+    title: `Tag Test ${tag}`,
+    content: `Note body #${tag}`,
+    tags: [tag]
+  })
+  await openTagTab(page, tag)
+
+  await page.locator('button[aria-label="Tag actions"]').click()
+  await page.getByRole('menuitem', { name: 'Delete tag' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog.getByText(`#${tag} written in note text stays`)).toBeVisible()
+  await dialog.getByRole('button', { name: 'Delete tag' }).click()
+
+  await expect(page.locator('[role="tab"]').filter({ hasText: tag })).toHaveCount(0, {
+    timeout: 10_000
+  })
+  const note = await getNote(page, id)
+  expect(note?.headerTags).toEqual([])
+  expect(note?.content).toContain(`#${tag}`)
+  await expandTagsSection(page)
+  await expect(page.getByRole('button', { name: tag, exact: true }).first()).toBeVisible({
+    timeout: 10_000
+  })
 })

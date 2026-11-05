@@ -657,6 +657,8 @@ export type DefinitionType = "text" | "number" | "checkbox" | "date" | "url" | "
 /**  `DeleteTagResponse` of a delete that ran: the notes and days that lost the tag. */
 export type DeleteTagView = {
 	affectedNotes: number,
+	/**  The notes and days that keep the tag: deleting again finishes them. */
+	failedNoteIds: string[],
 };
 
 /**  One shipped line (`DiagnosticLogLineSchema`). */
@@ -1025,6 +1027,8 @@ export type MergeTagInput = {
 /**  `MergeTagResponse` of a merge that ran: the notes, days and tasks that took the target. */
 export type MergeTagView = {
 	affectedItems: number,
+	/**  The notes and days that keep the source: merging again finishes them. */
+	failedNoteIds: string[],
 };
 
 export type Metrics = {

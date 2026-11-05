@@ -2002,6 +2002,8 @@
       "renaming": "Μετονομασία #{oldName}: {done} / {total} σημειώσεις",
       "renamedBodySkipped": "Το «{newName}» δεν μπορεί να πληκτρολογηθεί ως ετικέτα εντός κειμένου, οπότε το #{oldName} στο κείμενο των σημειώσεων μένει όπως γράφτηκε",
       "renamedSomeFailed": "Δεν ήταν δυνατή η ενημέρωση {count, plural, one {# σημείωσης} other {# σημειώσεων}}. Ανοίξτε {count, plural, one {την} other {τις}} και προσθέστε ξανά την ετικέτα",
+      "mergedSomeKept": "Δεν ήταν δυνατή η ενημέρωση {count, plural, one {# σημείωσης} other {# σημειώσεων}}. Συγχωνεύστε ξανά την #{tag} για να ολοκληρωθεί.",
+      "deletedSomeKept": "Δεν ήταν δυνατή η ενημέρωση {count, plural, one {# σημείωσης} other {# σημειώσεων}}. Διαγράψτε ξανά την #{tag} για να ολοκληρωθεί.",
       "renameUnfinished": "Η μετονομασία του #{oldName} σε #{newName} δεν ολοκληρώθηκε για {count, plural, one {# σημείωση} other {# σημειώσεις}}. Μετονομάστε ξανά το #{oldName} σε #{newName} για να ολοκληρωθεί.",
       "renameUnfinishedMore": "{names} και {count, plural, one {# ακόμη} other {# ακόμη}}",
       "stopRename": "Διακοπή αυτής της μετονομασίας",

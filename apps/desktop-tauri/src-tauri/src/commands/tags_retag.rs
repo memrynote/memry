@@ -42,6 +42,8 @@ pub struct RemoveTagFromNoteInput {
 #[serde(rename_all = "camelCase")]
 pub struct MergeTagView {
     pub affected_items: u32,
+    /// The notes and days that keep the source: merging again finishes them.
+    pub failed_note_ids: Vec<String>,
 }
 
 /// `DeleteTagResponse` of a delete that ran: the notes and days that lost the tag.
@@ -49,6 +51,8 @@ pub struct MergeTagView {
 #[serde(rename_all = "camelCase")]
 pub struct DeleteTagView {
     pub affected_notes: u32,
+    /// The notes and days that keep the tag: deleting again finishes them.
+    pub failed_note_ids: Vec<String>,
 }
 
 /// `tags:merge`: `source` merged into `target` in every note, day and task.
@@ -79,6 +83,7 @@ pub async fn tags_merge<R: Runtime>(
         track(&app, "tag_merged", "merged", &merged, items);
         Ok(MergeTagView {
             affected_items: items,
+            failed_note_ids: merged.failed_note_ids,
         })
     })
     .await
@@ -111,6 +116,7 @@ pub async fn tags_delete<R: Runtime>(
         track(&app, "tag_deleted", "deleted", &deleted, notes);
         Ok(DeleteTagView {
             affected_notes: notes,
+            failed_note_ids: deleted.failed_note_ids,
         })
     })
     .await

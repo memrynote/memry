@@ -2002,6 +2002,8 @@
       "renaming": "Renombrando #{oldName}: {done} / {total} notas",
       "renamedBodySkipped": "\"{newName}\" no se puede escribir como etiqueta en línea, así que #{oldName} en el texto de las notas se queda como estaba",
       "renamedSomeFailed": "No se {count, plural, one {pudo actualizar # nota} other {pudieron actualizar # notas}}. Ábrela y añade la etiqueta de nuevo",
+      "mergedSomeKept": "No se {count, plural, one {pudo actualizar # nota} other {pudieron actualizar # notas}}. Vuelve a combinar #{tag} para terminar.",
+      "deletedSomeKept": "No se {count, plural, one {pudo actualizar # nota} other {pudieron actualizar # notas}}. Vuelve a eliminar #{tag} para terminar.",
       "renameUnfinished": "El cambio de nombre de #{oldName} a #{newName} no terminó en {count, plural, one {# nota} other {# notas}}. Vuelve a renombrar #{oldName} a #{newName} para terminarlo.",
       "renameUnfinishedMore": "{names} y {count, plural, one {# más} other {# más}}",
       "stopRename": "Detener este cambio de nombre",

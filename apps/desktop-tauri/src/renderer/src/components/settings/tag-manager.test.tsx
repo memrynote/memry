@@ -338,6 +338,35 @@ describe('TagManager', () => {
     )
   })
 
+  it('says how many notes kept the tag when a delete or merge could not write them all', async () => {
+    mocks.deleteTag.mockResolvedValue({ success: true, affectedNotes: 2, failedNoteIds: ['n1'] })
+    mocks.mergeTag.mockResolvedValue({
+      success: true,
+      affectedItems: 1,
+      failedNoteIds: ['n1', 'n2']
+    })
+    render(<TagManager />)
+
+    fireEvent.click(screen.getAllByText('tags.actions.delete')[0])
+    fireEvent.click(screen.getAllByText('tags.actions.delete').at(-1)!)
+    await waitFor(() =>
+      expect(mocks.toastWarning).toHaveBeenCalledWith(
+        "Couldn't update 1 note. Delete #work again to finish.",
+        { duration: 10_000 }
+      )
+    )
+
+    fireEvent.click(screen.getAllByText('tags.actions.mergeInto')[0])
+    fireEvent.change(screen.getByLabelText('merge target'), { target: { value: 'home' } })
+    fireEvent.click(screen.getByText('tags.actions.merge'))
+    await waitFor(() =>
+      expect(mocks.toastWarning).toHaveBeenCalledWith(
+        "Couldn't update 2 notes. Merge #work again to finish.",
+        { duration: 10_000 }
+      )
+    )
+  })
+
   it('deletes, merges, and changes tag colors with success and error toasts', async () => {
     render(<TagManager />)
 
