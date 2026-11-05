@@ -5,10 +5,11 @@
 //! each typed by the definitions as the pass found them. A pass first reads again every note
 //! holding a name whose definition changed since the rows were typed (`retypeIndexedProperties`),
 //! or every note when the index never recorded the definitions (an index from before the rows
-//! were filled), and records them unless it was stopped. A note it could not read, or that is
-//! in the large-file class, loses its rows (Electron's `note.properties ?? {}`): none typed
-//! otherwise survives, and an unread note is owed to the next pass anyway. A pass whose
-//! definitions did not read reads nothing and is owed again.
+//! were filled), and records them unless it was stopped. A name it reads with no definition
+//! is given a learned type ([`super::learn`]), and the next pass retypes the rows holding it. A note it could
+//! not read, or that is in the large-file class, loses its rows (Electron's
+//! `note.properties ?? {}`): none typed otherwise survives, and an unread note is owed to the
+//! next pass anyway. A pass whose definitions did not read reads nothing and is owed again.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::PathBuf;
@@ -26,6 +27,7 @@ use memry_core::markdown::shared::markdown_class::{
 
 use memry_core::seams::secure_store::SecureStore;
 
+use super::learn::{Learner, order};
 use super::{BATCH, BATCH_BYTES, Backfilled, IndexError, IndexProgress};
 use crate::notes::properties::{file_properties, read_definition_types};
 use crate::session::OpenVault;
@@ -51,8 +53,24 @@ pub(super) struct Typing {
     pub all: bool,
     /// The notes holding a name whose definition changed since their rows were typed.
     pub retype: BTreeSet<String>,
+    /// The notes the pass reads only to retype them: no type is learned from them
+    /// ([`super::learn`]).
+    pub retype_only: BTreeSet<String>,
     /// What the index records once the pass finished, when it changed.
     record: Option<BTreeMap<String, String>>,
+}
+
+impl Typing {
+    /// Nothing owed, for a listing outside a pass.
+    fn none() -> Self {
+        Self {
+            types: HashMap::new(),
+            all: false,
+            retype: BTreeSet::new(),
+            retype_only: BTreeSet::new(),
+            record: None,
+        }
+    }
 }
 
 /// What a pass did, and what it leaves owed.
@@ -64,6 +82,8 @@ pub(super) struct Pass {
     pub stopped: bool,
     /// The notes whose rows it wrote.
     pub written: Vec<String>,
+    /// It learned a type ([`super::learn`]): the rows holding its name are owed it.
+    pub learned: bool,
 }
 
 enum Read {
@@ -120,6 +140,7 @@ impl Indexer {
             types,
             all: before.is_none(),
             retype,
+            retype_only: BTreeSet::new(),
             record: (before.as_ref() != Some(&now)).then_some(now),
         })
     }
@@ -132,6 +153,7 @@ impl Indexer {
             types,
             all: true,
             retype: BTreeSet::new(),
+            retype_only: BTreeSet::new(),
         })
     }
 
@@ -146,15 +168,23 @@ impl Indexer {
     }
 
     /// The notes a pass works: a scan's when one is owed, and the queued ones, which a scan
-    /// does not list when the file's bytes and its journal day did not change. Smallest file
-    /// first.
+    /// does not list when the file's bytes and its journal day did not change, then the ones
+    /// `typing` owes a retype, which it marks read only for that.
     pub(super) fn listed(
         &self,
         scan: bool,
         queued: &BTreeSet<String>,
+        typing: &mut Typing,
     ) -> Result<Vec<Unindexed>, IndexError> {
         let mut notes = if scan { self.scan(false)? } else { Vec::new() };
         let listed: BTreeSet<String> = notes.iter().map(|note| note.note_id.clone()).collect();
+        typing.retype_only = typing
+            .retype
+            .iter()
+            .filter(|id| !queued.contains(*id) && !listed.contains(*id))
+            .cloned()
+            .collect();
+        let queued: BTreeSet<String> = queued.union(&typing.retype).cloned().collect();
         let files = self.vault.note_files();
         for note_id in queued.difference(&listed) {
             if let Some(row) = files.by_id(note_id)?
@@ -167,7 +197,6 @@ impl Indexer {
                 });
             }
         }
-        notes.sort_by_key(|note| note.file_size);
         Ok(notes)
     }
 
@@ -178,13 +207,14 @@ impl Indexer {
     /// ends the pass between files and inside the search reindex.
     pub(super) fn pass(
         &self,
-        notes: Vec<Unindexed>,
+        mut notes: Vec<Unindexed>,
         typing: Typing,
         links: &mut bool,
         stop: &dyn Fn() -> bool,
         progress: &mut dyn FnMut(IndexProgress),
         announce: &dyn Fn(LinkChanges),
     ) -> Result<Pass, IndexError> {
+        order(&mut notes, &self.root);
         let total = notes.len();
         let mut pass = Pass {
             done: Backfilled {
@@ -194,6 +224,7 @@ impl Indexer {
             unread: Vec::new(),
             stopped: false,
             written: Vec::new(),
+            learned: false,
         };
         // Owed before the first write: a pass that ends early leaves it owed.
         *links |= total > 0;
@@ -204,35 +235,49 @@ impl Indexer {
             }
         };
         progress(IndexProgress { built: 0, total });
-        let mut batch: Vec<MeasuredFile> = Vec::new();
-        let mut bytes = 0;
+        let mut learner = Learner::new(self.root.clone(), self.vault.clone(), self.store.clone());
         // Large notes: their property rows go with the unread ones'.
         let mut large = Vec::new();
-        for note in notes {
-            if stop() {
-                pass.stopped = true;
-                return Ok(pass);
-            }
-            match self.read(&note, &typing.types) {
-                Read::File(file) => {
-                    bytes += file.text.len();
-                    batch.push(file);
+        // Learns what it read however the reads end: stopped, done, or a write failed.
+        let read = || -> Result<(), IndexError> {
+            let mut batch: Vec<MeasuredFile> = Vec::new();
+            let mut bytes = 0;
+            for note in notes {
+                if stop() {
+                    pass.stopped = true;
+                    return Ok(());
                 }
-                Read::Skipped => pass.done.skipped += 1,
-                Read::Large => {
-                    pass.done.skipped += 1;
-                    large.push(note.note_id);
+                match self.read(&note, &typing.types) {
+                    Read::File(file) => {
+                        if !typing.retype_only.contains(&file.note_id) {
+                            learner.read(&file.properties, &typing.types);
+                        }
+                        bytes += file.text.len();
+                        batch.push(file);
+                    }
+                    Read::Skipped => pass.done.skipped += 1,
+                    Read::Large => {
+                        pass.done.skipped += 1;
+                        large.push(note.note_id);
+                    }
+                    Read::Failed => pass.unread.push(note.note_id),
                 }
-                Read::Failed => pass.unread.push(note.note_id),
+                if batch.len() >= BATCH || bytes >= BATCH_BYTES {
+                    self.write(&mut pass, std::mem::take(&mut batch))?;
+                    bytes = 0;
+                    progress(built(&pass, total));
+                }
             }
-            if batch.len() >= BATCH || bytes >= BATCH_BYTES {
-                self.write(&mut pass, std::mem::take(&mut batch))?;
-                bytes = 0;
-                progress(built(&pass, total));
+            if !batch.is_empty() {
+                self.write(&mut pass, batch)?;
             }
-        }
-        if !batch.is_empty() {
-            self.write(&mut pass, batch)?;
+            Ok(())
+        };
+        let read = read();
+        pass.learned = learner.learn();
+        read?;
+        if pass.stopped {
+            return Ok(pass);
         }
         pass.done.unread = pass.unread.len();
         large.extend(pass.unread.iter().cloned());
@@ -266,10 +311,11 @@ impl Indexer {
     }
 
     /// The note's file measured into its row, outside a pass; `false` when it has no markdown
-    /// file, is in the large-file class or did not read.
+    /// file, is in the large-file class or did not read. It learns no definition: the write's
+    /// own fact queues the note for a pass, which does.
     pub(super) fn measure_now(&self, note_id: &str) -> Result<bool, IndexError> {
         let queued = BTreeSet::from([note_id.to_owned()]);
-        let Some(note) = self.listed(false, &queued)?.pop() else {
+        let Some(note) = self.listed(false, &queued, &mut Typing::none())?.pop() else {
             return Ok(false);
         };
         let types = match self.types() {

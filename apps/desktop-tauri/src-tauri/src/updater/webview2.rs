@@ -58,6 +58,11 @@ const CLIENT_KEYS: [(winreg::HKEY, &str); 3] = [
 /// How long the bootstrapper may take to download and install the runtime.
 const BOOTSTRAPPER_DEADLINE: Duration = Duration::from_secs(120);
 
+/// How long `OpenNotice::close` waits for the notice's thread to end. A bootstrapper that fails
+/// at once ends before the box is on screen, and the first message box of a process takes
+/// seconds to appear on a loaded machine (#3967); a box that appears after the wait stays up.
+const NOTICE_CLOSE_WAIT: Duration = Duration::from_secs(10);
+
 /// What `main` found before the Tauri runtime existed.
 static CHECK: OnceLock<Check> = OnceLock::new();
 
@@ -207,7 +212,8 @@ impl Notice {
 }
 
 impl OpenNotice {
-    /// Closes the box, which may not be on screen yet: asked again until its thread ends.
+    /// Closes the box, which may not be on screen yet: asked again until its thread ends, for up
+    /// to `NOTICE_CLOSE_WAIT`.
     fn close(self) -> Closed {
         /// `#32770` is the dialog class of a message box; the thread's IME windows are left alone.
         unsafe extern "system" fn post_close(window: HWND, found: LPARAM) -> BOOL {
@@ -226,7 +232,8 @@ impl OpenNotice {
         }
         let mut found = 0_usize;
         if let Some(thread_id) = self.thread_id {
-            for _ in 0..100 {
+            let until = Instant::now() + NOTICE_CLOSE_WAIT;
+            loop {
                 // SAFETY: the callback only reads each window's class and posts it a message.
                 let _ = unsafe {
                     EnumThreadWindows(thread_id, Some(post_close), LPARAM(&raw mut found as isize))
@@ -237,6 +244,9 @@ impl OpenNotice {
                     } else {
                         Closed::Dismissed
                     };
+                }
+                if Instant::now() >= until {
+                    break;
                 }
                 std::thread::sleep(Duration::from_millis(20));
             }
@@ -460,12 +470,11 @@ mod tests {
     }
 
     /// `close` counts only the message box it found on screen and closed, so a box that never
-    /// appeared fails this.
+    /// appeared fails this. It is asked at once, before the box is up, as after a bootstrapper
+    /// that fails to start: `close` waits for the box, not a fixed delay (#3967).
     #[test]
     fn the_installing_notice_closes_when_the_bootstrapper_ends() {
-        let open = machine().notice.show();
-        std::thread::sleep(Duration::from_millis(500));
-        assert_eq!(open.close(), Closed::OnScreen);
+        assert_eq!(machine().notice.show().close(), Closed::OnScreen);
     }
 
     /// Threads stand in for launches: a mutex belongs to the thread that took it.
