@@ -308,6 +308,19 @@ vi.mock('../src/generated/bindings', () => {
           failedNoteIds: result.failedNoteIds ?? [],
           bodySkipped: result.bodySkipped ?? false
         })),
+      tagsDelete: (tag: string) =>
+        answered(tags().deleteTag(tag), (result) => ({
+          affectedNotes: result.affectedNotes ?? 0,
+          failedNotes: result.failedNotes ?? [],
+          retryFinishes: result.retryFinishes ?? true
+        })),
+      tagsMerge: (input: unknown) =>
+        answered(tags().mergeTag(input), (result) => ({
+          affectedItems: result.affectedItems ?? 0,
+          failedNotes: result.failedNotes ?? [],
+          retryFinishes: result.retryFinishes ?? true
+        })),
+      tagsRemoveFromNote: (input: unknown) => answered(tags().removeTagFromNote(input), () => null),
       propertiesGet: (entityId: string) => properties().get(entityId),
       propertiesSet: (entityId: string, values: unknown, base: unknown) =>
         answered(properties().set(entityId, values, base), written),
@@ -366,6 +379,7 @@ vi.mock('../src/generated/bindings', () => {
       tagColorUpdatedEvent: event(() => api().onTagColorUpdated),
       tagCategoriesChangedEvent: event(() => api().onTagCategoriesChanged),
       tagRenamedEvent: event(() => api().onTagRenamed),
+      tagDeletedEvent: event(() => api().onTagDeleted),
       tagsProgressEvent: event(() => api().onTagsProgress),
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,

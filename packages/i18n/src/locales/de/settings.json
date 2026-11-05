@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "Tag löschen",
       "deleteDescription": "„{name}“ aus {count, plural, one {# Element} other {# Elementen}} entfernen? Das lässt sich nicht rückgängig machen.",
+      "deleteTasks": "Aufgaben mit #{tag} verlieren den Tag ebenfalls.",
       "mergeTitle": "Tag zusammenführen",
       "mergeDescription": "Alle Elemente mit dem Tag „{source}“ erhalten stattdessen das Ziel-Tag. Das Quell-Tag wird gelöscht.",
+      "mergeRetags": "Notizen, Tage und Aufgaben mit dem Tag „{source}“ erhalten stattdessen das Ziel-Tag.",
+      "mergeBodyTagsStay": "#{source} im Text von Notizen bleibt stehen, daher behalten diese Notizen den Tag.",
       "targetPlaceholder": "Ziel-Tag auswählen…",
       "colorTitle": "Farbe für „{name}“ ändern"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "#{oldName} wird umbenannt: {done} / {total} Notizen",
       "renamedBodySkipped": "„{newName}“ lässt sich nicht als Inline-Tag eingeben, daher bleibt #{oldName} im Notiztext unverändert",
       "renamedSomeFailed": "{count, plural, one {# Notiz} other {# Notizen}} konnten nicht aktualisiert werden. Öffne {count, plural, one {sie} other {sie}} und füge den Tag erneut hinzu",
+      "mergedSomeKept": "{count, plural, one {# Notiz konnte} other {# Notizen konnten}} nicht aktualisiert werden. Führe #{tag} erneut zusammen, um es abzuschließen.",
+      "deletedSomeKept": "{count, plural, one {# Notiz konnte} other {# Notizen konnten}} nicht aktualisiert werden. Lösche #{tag} erneut, um es abzuschließen.",
+      "mergedSomeStuck": "{count, plural, one {# Notiz konnte} other {# Notizen konnten}} nicht aktualisiert werden. Korrigiere die Notizen unten und führe #{tag} dann erneut zusammen.",
+      "deletedSomeStuck": "{count, plural, one {# Notiz konnte} other {# Notizen konnten}} nicht aktualisiert werden. Korrigiere die Notizen unten und lösche #{tag} dann erneut.",
       "renameUnfinished": "Die Umbenennung von #{oldName} in #{newName} wurde bei {count, plural, one {# Notiz} other {# Notizen}} nicht abgeschlossen. Benenne #{oldName} erneut in #{newName} um, um sie abzuschließen.",
       "renameUnfinishedMore": "{names} und {count, plural, one {# weitere} other {# weitere}}",
       "stopRename": "Diese Umbenennung beenden",

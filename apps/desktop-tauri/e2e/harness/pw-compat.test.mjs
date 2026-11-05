@@ -270,3 +270,20 @@ test('a driver without pointer events gets them ahead of its press, on what it p
     'mousedown outside'
   ])
 })
+
+test('a hover reaches its target when the real pointer moved over another element meanwhile', () => {
+  // Under Xvfb the X pointer rests over the window, and WebKit sends a trusted mouseover to whatever
+  // the page moves under it. That is not the driver hovering the target (#3967).
+  const { dom, pw } = page('<div id="parked"></div><div id="target"></div>')
+  const doc = dom.window.document
+  doc.elementFromPoint = () => doc.getElementById('target')
+  const overs = []
+  doc.addEventListener('mouseover', (event) => overs.push(event.target.id), true)
+
+  pw.watch()
+  const init = { bubbles: true, cancelable: true }
+  doc.getElementById('parked').dispatchEvent(new dom.window.MouseEvent('mouseover', init))
+  pw.fixupHover(10, 10)
+
+  assert.deepEqual(overs, ['parked', 'target'])
+})

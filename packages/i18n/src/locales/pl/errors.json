@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Nie udało się znaleźć tej notatki. Być może została usunięta.",
     "invalidFrontmatter": "Ta notatka zawiera nieprawidłowe metadane i nie można jej odczytać.",
+    "invalidTitle": "Tytuł notatki musi mieć od 1 do 200 znaków.",
     "duplicateId": "Notatka o tym identyfikatorze już istnieje.",
     "writeFailed": "Nie udało się zapisać tej notatki. Sprawdź miejsce na dysku i uprawnienia.",
     "readFailed": "Nie udało się odczytać tej notatki. Plik może być zablokowany lub uszkodzony.",

@@ -22,7 +22,7 @@ import type {
 } from '@memry/contracts/tag-schema-api'
 import type { RenameTagResponse } from '@memry/contracts/tags-api'
 import { commands, events } from '../../../generated/bindings'
-import type { UnfinishedRenameView } from '../../../generated/bindings'
+import type { KeptNoteView, UnfinishedRenameView } from '../../../generated/bindings'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 import { subscribeToEvent } from './tauri-event'
 
@@ -36,10 +36,15 @@ import { subscribeToEvent } from './tauri-event'
  * arguments (`createCategory`, `renameCategory`, `deleteCategory`) are
  * deliberately overridden for ergonomic call sites.
  */
-type TagsService = Omit<TagsClientAPI, 'createCategory' | 'renameCategory' | 'deleteCategory'> & {
+type TagsService = Omit<
+  TagsClientAPI,
+  'createCategory' | 'renameCategory' | 'deleteCategory' | 'deleteTag' | 'mergeTag'
+> & {
   createCategory: (name: string) => Promise<CreateCategoryResponse>
   renameCategory: (id: string, name: string) => Promise<CategoryOperationResponse>
   deleteCategory: (id: string) => Promise<CategoryOperationResponse>
+  deleteTag: (tag: string) => Promise<DeleteTagResult>
+  mergeTag: (input: { source: string; target: string }) => Promise<MergeTagResult>
 }
 
 /** A failed write as Electron's tag handlers answer it: the error's message. */
@@ -50,6 +55,26 @@ function failure(error: unknown): { success: false; error?: string } {
 
 /** A rename's answer; a failed one keeps its command's `code`, which tells a refusal apart. */
 export type RenameTagResult = RenameTagResponse & { code?: string }
+
+/**
+ * The notes a merge or delete could not write, and whether asking again can finish them all;
+ * a failed one keeps its command's `code`, which tells a refusal apart.
+ */
+export interface TagsKept {
+  failedNotes?: KeptNoteView[]
+  retryFinishes?: boolean
+  code?: string
+}
+
+export type DeleteTagResult = DeleteTagResponse & TagsKept
+
+export type MergeTagResult = MergeTagResponse & TagsKept
+
+/** {@link failure}, keeping the command's `code`. */
+function coded(error: unknown): { success: false; error?: string; code?: string } {
+  const code = commandErrorCode(error)
+  return { ...failure(error), ...(code ? { code } : {}) }
+}
 
 /** Runs a write that answers `{ success }`, a rejection becoming `{ success: false }`. */
 async function settled(write: () => Promise<unknown>): Promise<TagOperationResponse> {
@@ -131,8 +156,28 @@ const ported = {
     try {
       return { success: true, ...(await commands.tagsRename(input)) }
     } catch (error) {
-      const code = commandErrorCode(error)
-      return { ...failure(error), ...(code ? { code } : {}) }
+      return coded(error)
+    }
+  },
+
+  /** Takes the tag itself, not its children, off every note, journal day and task. */
+  deleteTag: async (tag: string): Promise<DeleteTagResult> => {
+    try {
+      return { success: true, ...(await commands.tagsDelete(tag)) }
+    } catch (error) {
+      return coded(error)
+    }
+  },
+
+  removeTagFromNote: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> =>
+    settled(() => commands.tagsRemoveFromNote(input)),
+
+  /** Merges the tag itself into `target` in every note, journal day and task. */
+  mergeTag: async (input: { source: string; target: string }): Promise<MergeTagResult> => {
+    try {
+      return { success: true, ...(await commands.tagsMerge(input)) }
+    } catch (error) {
+      return coded(error)
     }
   }
 }
@@ -158,24 +203,6 @@ export type PortedTagMethod = keyof typeof ported
 
 export const tagsService: TagsService = {
   ...ported,
-
-  /**
-   * Delete a tag from all notes.
-   */
-  deleteTag: (tag: string): Promise<DeleteTagResponse> => {
-    return window.api.tags.deleteTag(tag)
-  },
-
-  /**
-   * Remove tag from a specific note.
-   */
-  removeTagFromNote: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> => {
-    return window.api.tags.removeTagFromNote(input)
-  },
-
-  mergeTag: (input: { source: string; target: string }): Promise<MergeTagResponse> => {
-    return window.api.tags.mergeTag(input)
-  },
 
   /** One schema command; rejects with the refusal's message. A field rename is not ported yet. */
   editSchema: (command: TagSchemaCommand): Promise<TagSchemaCommandResult> =>
@@ -224,15 +251,15 @@ export function onTagColorUpdated(callback: (event: TagColorUpdatedEvent) => voi
 }
 
 /**
- * Subscribe to tag deleted events.
+ * Subscribe to tag deleted events: a tag deleted or merged into another.
  * @returns Unsubscribe function
  */
 export function onTagDeleted(callback: (event: TagDeletedEvent) => void): () => void {
-  return window.api.onTagDeleted(callback)
+  return subscribeToEvent(events.tagDeletedEvent, callback)
 }
 
 /**
- * Subscribe to tag notes changed events (pin/unpin; Rust sends no add/remove yet).
+ * Subscribe to tag notes changed events (pin, unpin, removed; Rust sends no add yet).
  * @returns Unsubscribe function
  */
 export function onTagNotesChanged(callback: (event: TagNotesChangedEvent) => void): () => void {
@@ -262,6 +289,7 @@ export type PortedTagEvent =
   | 'onPropertyDefinitionChanged'
   | 'onTagColorUpdated'
   | 'onTagCategoriesChanged'
+  | 'onTagDeleted'
   | 'onTagNotesChanged'
   | 'onTagRenamed'
 

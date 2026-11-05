@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "Tanggalin ang tag",
       "deleteDescription": "Alisin ang “{name}” sa {count, plural, one {# item} other {# item}}? Hindi na ito maibabalik.",
+      "deleteTasks": "Mawawala rin ang #{tag} sa mga gawaing may ganitong tag.",
       "mergeTitle": "Pagsamahin ang tag",
       "mergeDescription": "Ita-tag ulit gamit ang target na tag ang lahat ng item na may tag na “{source}”. Tatanggalin ang source na tag.",
+      "mergeRetags": "Ang mga tala, araw, at gawaing may tag na “{source}” ay bibigyan na lang ng target na tag.",
+      "mergeBodyTagsStay": "Mananatili ang #{source} na nakasulat sa teksto ng tala, kaya mananatili ito sa mga talang iyon.",
       "targetPlaceholder": "Piliin ang target na tag…",
       "colorTitle": "Baguhin ang kulay para sa “{name}”"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "Pinapalitan ang pangalan ng #{oldName}: {done} / {total} tala",
       "renamedBodySkipped": "Hindi maitatype bilang inline tag ang \"{newName}\", kaya nananatiling nakasulat ang #{oldName} sa teksto ng tala",
       "renamedSomeFailed": "Hindi ma-update ang {count, plural, one {# tala} other {# tala}}. Buksan {count, plural, one {ito} other {ang mga ito}} at idagdag ulit ang tag",
+      "mergedSomeKept": "Hindi ma-update ang {count, plural, one {# tala} other {# tala}}. Pagsamahin ulit ang #{tag} para matapos.",
+      "deletedSomeKept": "Hindi ma-update ang {count, plural, one {# tala} other {# tala}}. Burahin ulit ang #{tag} para matapos.",
+      "mergedSomeStuck": "Hindi ma-update ang {count, plural, one {# tala} other {# tala}}. Ayusin ang mga tala sa ibaba, saka pagsamahin ulit ang #{tag}.",
+      "deletedSomeStuck": "Hindi ma-update ang {count, plural, one {# tala} other {# tala}}. Ayusin ang mga tala sa ibaba, saka burahin ulit ang #{tag}.",
       "renameUnfinished": "Hindi natapos ang pagpapalit ng pangalan ng #{oldName} sa #{newName} para sa {count, plural, one {# tala} other {# tala}}. Palitan ulit ang pangalan ng #{oldName} sa #{newName} para matapos ito.",
       "renameUnfinishedMore": "{names} at {count, plural, one {# pa} other {# pa}}",
       "stopRename": "Ihinto ang pagpapalit ng pangalan na ito",

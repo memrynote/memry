@@ -98,13 +98,10 @@ function Controls() {
       <span data-testid="selected">{tree.selectedIds.join(',')}</span>
       <span data-testid="focused">{tree.focusedId ?? 'none'}</span>
       <span data-testid="root-icon">{tree.getEffectiveIcon('root') ?? 'none'}</span>
-      <button type="button" onClick={() => tree.expandAll()}>
-        expand all
-      </button>
-      <button type="button" onClick={() => tree.collapseAll()}>
+      <button type="button" onClick={() => tree.setNodesExpanded(['root', 'child-a'], false)}>
         collapse all
       </button>
-      <button type="button" onClick={() => tree.expandNodes(['root'])}>
+      <button type="button" onClick={() => tree.setNodesExpanded(['root'], true)}>
         expand root
       </button>
       <button type="button" onClick={() => tree.setNodeIcon('missing', 'Star')}>
@@ -114,8 +111,21 @@ function Controls() {
   )
 }
 
+type ExpandedTreeProps = Omit<
+  React.ComponentProps<typeof TreeProvider>,
+  'expandedIds' | 'onExpandedIdsChange'
+> & { initialExpandedIds?: string[] }
+
+const NO_IDS: string[] = []
+
+// The tree's caller owns the expanded set (NotesTree in the app).
+function ExpandedTree({ initialExpandedIds = NO_IDS, ...props }: ExpandedTreeProps) {
+  const [expandedIds, setExpandedIds] = useState(() => new Set(initialExpandedIds))
+  return <TreeProvider expandedIds={expandedIds} onExpandedIdsChange={setExpandedIds} {...props} />
+}
+
 function renderTree(
-  props: Partial<React.ComponentProps<typeof TreeProvider>> = {},
+  props: Partial<ExpandedTreeProps> = {},
   rootProps: Partial<React.ComponentProps<typeof TreeNodeTrigger>> = {}
 ) {
   const onSelectionChange = vi.fn()
@@ -123,9 +133,8 @@ function renderTree(
   const onIconChange = vi.fn()
 
   render(
-    <TreeProvider
-      defaultExpandedIds={['root']}
-      persistKey="tree-test"
+    <ExpandedTree
+      initialExpandedIds={['root']}
       multiSelect
       draggable
       onSelectionChange={onSelectionChange}
@@ -166,7 +175,7 @@ function renderTree(
           </TreeNodeContent>
         </TreeNode>
       </TreeView>
-    </TreeProvider>
+    </ExpandedTree>
   )
 
   return { onSelectionChange, onMove, onIconChange }
@@ -204,14 +213,13 @@ function dragOverAt(row: HTMLElement, clientY: number, transfer: unknown) {
 describe('TreeProvider and tree primitives', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    localStorage.clear()
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('selects, multi-selects, expands, collapses, and persists expanded ids', () => {
+  it('selects, multi-selects, expands, and collapses', () => {
     const { onSelectionChange } = renderTree()
 
     fireEvent.click(screen.getByText('Root'))
@@ -231,36 +239,9 @@ describe('TreeProvider and tree primitives', () => {
     fireEvent.click(screen.getByRole('button', { name: 'collapse all' }))
     expect(screen.queryByText('Child A')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'expand all' }))
+    fireEvent.click(screen.getByRole('button', { name: 'expand root' }))
     fireEvent.click(screen.getByText('Child A'))
     expect(screen.getByText('Grandchild')).toBeInTheDocument()
-
-    vi.advanceTimersByTime(500)
-    expect(localStorage.getItem('tree-test')).toContain('root')
-  })
-
-  // The notes tree swaps this tree for the virtualized one once the vault lists 100 items, and the
-  // virtualized tree reads the expanded set from storage as it renders. A folder opened while the
-  // vault was still listing then closed again.
-  it('stores an expansion before a tree that replaces it reads the stored set', () => {
-    function Replacement() {
-      const [stored] = useState(() => localStorage.getItem('tree-swap'))
-      return <output>{stored}</output>
-    }
-    function Swap({ swapped }: { swapped: boolean }) {
-      if (swapped) return <Replacement />
-      return (
-        <TreeProvider persistKey="tree-swap">
-          <Controls />
-        </TreeProvider>
-      )
-    }
-    const { rerender } = render(<Swap swapped={false} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'expand root' }))
-    rerender(<Swap swapped />)
-
-    expect(screen.getByRole('status')).toHaveTextContent('root')
   })
 
   it('handles keyboard navigation, drag/drop, icon menu, and icon inheritance', () => {
@@ -332,7 +313,7 @@ describe('TreeProvider and tree primitives', () => {
     // drop; both trees now share `resolveDropPosition`.
     const onMove = vi.fn()
     render(
-      <TreeProvider persistKey="tree-empty-folder" draggable onMove={onMove}>
+      <ExpandedTree draggable onMove={onMove}>
         <TreeView>
           <TreeNode nodeId="note">
             <TreeNodeTrigger>
@@ -345,7 +326,7 @@ describe('TreeProvider and tree primitives', () => {
             </TreeNodeTrigger>
           </TreeNode>
         </TreeView>
-      </TreeProvider>
+      </ExpandedTree>
     )
 
     const source = screen.getByText('Loose Note').closest('[data-tree-node-id]') as HTMLElement
@@ -376,7 +357,7 @@ describe('TreeProvider and tree primitives', () => {
     // dispatches reproduces exactly that: no render in between.
     const onMove = vi.fn()
     render(
-      <TreeProvider persistKey="tree-uncommitted-hover" draggable onMove={onMove}>
+      <ExpandedTree draggable onMove={onMove}>
         <TreeView>
           <TreeNode nodeId="note">
             <TreeNodeTrigger>
@@ -389,7 +370,7 @@ describe('TreeProvider and tree primitives', () => {
             </TreeNodeTrigger>
           </TreeNode>
         </TreeView>
-      </TreeProvider>
+      </ExpandedTree>
     )
 
     const source = screen.getByText('Loose Note').closest('[data-tree-node-id]') as HTMLElement
@@ -423,7 +404,7 @@ describe('TreeProvider and tree primitives', () => {
     // recover it — even if the row that started the drag was unmounted since.
     const onMove = vi.fn()
     render(
-      <TreeProvider persistKey="tree-recovered-id" draggable onMove={onMove}>
+      <ExpandedTree draggable onMove={onMove}>
         <TreeView>
           <TreeNode nodeId="folder-empty" acceptsDropInside>
             <TreeNodeTrigger>
@@ -431,7 +412,7 @@ describe('TreeProvider and tree primitives', () => {
             </TreeNodeTrigger>
           </TreeNode>
         </TreeView>
-      </TreeProvider>
+      </ExpandedTree>
     )
 
     const target = screen.getByText('Empty Folder').closest('[data-tree-node-id]') as HTMLElement
@@ -501,7 +482,7 @@ describe('TreeProvider and tree primitives', () => {
 describe('canvas drag payload', () => {
   function renderNode(canvasNoteId?: string) {
     render(
-      <TreeProvider persistKey="tree-canvas-test" draggable>
+      <ExpandedTree draggable>
         <TreeView>
           <TreeNode nodeId="note-1" canvasNoteId={canvasNoteId}>
             <TreeNodeTrigger>
@@ -509,7 +490,7 @@ describe('canvas drag payload', () => {
             </TreeNodeTrigger>
           </TreeNode>
         </TreeView>
-      </TreeProvider>
+      </ExpandedTree>
     )
     return screen.getByText('Note One').closest('[draggable]') as HTMLElement
   }

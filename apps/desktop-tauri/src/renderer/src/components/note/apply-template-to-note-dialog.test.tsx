@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { ApplyTemplateToNoteDialog } from './apply-template-to-note-dialog'
 
 const get = vi.fn()
@@ -49,5 +50,27 @@ describe('ApplyTemplateToNoteDialog', () => {
     await user.click(await screen.findByText('Replace content only'))
 
     expect(applyTemplate).toHaveBeenCalledWith({ noteId: 'n1', templateId: 'blank', mode: 'body' })
+  })
+
+  it('saves typing not saved yet before it reads the note and applies', async () => {
+    const order: string[] = []
+    registerPendingSave('note-page:n1', () => {
+      order.push('flush')
+    })
+    get.mockImplementation(async () => {
+      order.push('get')
+      return { id: 'n1', content: '' }
+    })
+    applyTemplate.mockImplementation(async () => {
+      order.push('apply')
+      return { success: true, note: { id: 'n1' } }
+    })
+    const user = userEvent.setup()
+
+    render(<ApplyTemplateToNoteDialog noteId="n1" isOpen onClose={vi.fn()} />)
+    await user.click(screen.getByText('Apply Template'))
+
+    expect(order).toEqual(['flush', 'get', 'apply'])
+    unregisterPendingSave('note-page:n1')
   })
 })

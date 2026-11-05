@@ -14,7 +14,6 @@ use std::sync::Arc;
 use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::error::NotesError;
-use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::tag_rename::{RenameJob, TagRenamed};
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::{OpenVault, Session};
@@ -30,6 +29,7 @@ use tauri::{AppHandle, Manager, Runtime, Wry};
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
 use super::notes::service;
+use super::tags_retag::written_landed;
 use crate::events::{
     NoteTagsChangedEvent, TagCategoriesChangedEvent, TagColorUpdatedEvent, TagNoteAction,
     TagNotesChangedEvent, TagRenamedEvent, TagsProgressEvent, broadcast,
@@ -311,11 +311,11 @@ fn set_pinned<R: Runtime>(
     app: &AppHandle<R>,
     note_id: String,
     tag: String,
-    action: TagNoteAction,
+    pinned: bool,
 ) -> Result<(), CommandError> {
-    let (pinned, key) = match action {
-        TagNoteAction::Pinned => (true, "errors:tag.pinNoteFailed"),
-        TagNoteAction::Unpinned => (false, "errors:tag.unpinNoteFailed"),
+    let (action, key) = match pinned {
+        true => (TagNoteAction::Pinned, "errors:tag.pinNoteFailed"),
+        false => (TagNoteAction::Unpinned, "errors:tag.unpinNoteFailed"),
     };
     hub(app)?
         .set_pinned(&note_id, &tag, pinned)
@@ -340,7 +340,7 @@ pub async fn tags_pin_note_to_tag<R: Runtime>(
     tag: String,
 ) -> Result<(), CommandError> {
     blocking("tags_pin_note_to_tag", move || {
-        set_pinned(&app, note_id, tag, TagNoteAction::Pinned)
+        set_pinned(&app, note_id, tag, true)
     })
     .await
 }
@@ -353,7 +353,7 @@ pub async fn tags_unpin_note_from_tag<R: Runtime>(
     tag: String,
 ) -> Result<(), CommandError> {
     blocking("tags_unpin_note_from_tag", move || {
-        set_pinned(&app, note_id, tag, TagNoteAction::Unpinned)
+        set_pinned(&app, note_id, tag, false)
     })
     .await
 }
@@ -431,8 +431,8 @@ fn rename<R: Runtime>(
     };
     let renamed = service(app)?
         .rename_tag(&open, &job, &mut progress)
-        .map_err(|error| rename_failed(app, &error))?;
-    measure(app, &renamed.written);
+        .map_err(|error| tag_change_failed(app, &error))?;
+    written_landed(app, &renamed.written);
     let view = RenameTagView {
         affected_notes: written_count(&renamed),
         failed_note_ids: renamed.failed_note_ids.clone(),
@@ -451,34 +451,6 @@ fn rename<R: Runtime>(
 
 fn written_count(renamed: &TagRenamed) -> u32 {
     u32::try_from(renamed.written.len()).unwrap_or(u32::MAX)
-}
-
-/// The files a rename wrote measured into their index rows; one left to a pass lags the list
-/// until the pass writes it, which sends [`NoteTagsChangedEvent`] again
-/// (`shell::journal_events::landed`).
-fn measure<R: Runtime>(app: &AppHandle<R>, written: &[String]) {
-    let Some(index) = app.try_state::<Arc<NoteIndex>>() else {
-        tracing::warn!(
-            scope = "TagsHandlers",
-            "no note index: the tag list lags the rename"
-        );
-        return;
-    };
-    for note_id in written {
-        match index.measure(note_id) {
-            Ok(true) => {}
-            Ok(false) => {
-                tracing::debug!(scope = "TagsHandlers", note_id, "measured by a later pass")
-            }
-            Err(error) => {
-                tracing::warn!(
-                    scope = "TagsHandlers",
-                    "the tag list lags the rename: {error}"
-                );
-                return;
-            }
-        }
-    }
 }
 
 /// A rename left with notes it could not write, and those notes.
@@ -538,7 +510,7 @@ pub async fn tags_rename_abandon<R: Runtime>(app: AppHandle<R>) -> Result<bool, 
         let open = open_vault(&app)?;
         let stopped = service(&app)?
             .abandon_tag_rename(&open)
-            .map_err(|error| rename_failed(&app, &error))?;
+            .map_err(|error| tag_change_failed(&app, &error))?;
         if stopped.as_ref().is_some_and(|stopped| stopped.renamed) {
             broadcast(&app, NoteTagsChangedEvent);
         }
@@ -549,9 +521,10 @@ pub async fn tags_rename_abandon<R: Runtime>(app: AppHandle<R>) -> Result<bool, 
 
 /// A rename running now is refused with Electron's words (`errors:tag.renameInProgress`), one
 /// recorded with notes left with what finishes it (`errors:tag.renameUnfinished`), another tag
-/// change running with `errors:tag.editInProgress`; any other failure carries the cause, as
-/// Electron's handler answers it. Public for `tests/tags_rename.rs`, which cannot hold the lock.
-pub fn rename_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> CommandError {
+/// change running with `errors:tag.editInProgress`, a merge into another spelling of its tag
+/// with `errors:tag.mergeSameTag`; any other failure carries the cause, as Electron's handler
+/// answers it. Public for `tests/tags_rename.rs`, which cannot hold the lock.
+pub fn tag_change_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> CommandError {
     let core = CommandError::from_core(error);
     let (key, from, to, left) = match error {
         NotesError::TagEditInProgress => {
@@ -564,6 +537,11 @@ pub fn rename_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> Comm
         }
         NotesError::TagRenameUnfinished { from, to, left } => {
             ("errors:tag.renameUnfinished", from, to, *left)
+        }
+        NotesError::TagMergeSameTag => {
+            let locale = app.state::<Arc<LocaleService>>().get();
+            let message = i18n::t(locale, "errors:tag.mergeSameTag", &Args::new());
+            return CommandError::new(core.kind, core.code, message);
         }
         _ => return core,
     };

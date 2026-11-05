@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Denne note kunne ikke findes. Den kan være blevet slettet.",
     "invalidFrontmatter": "Denne note har ugyldige metadata og kan ikke læses.",
+    "invalidTitle": "En notes titel skal være på 1 til 200 tegn.",
     "duplicateId": "Der findes allerede en note med dette id.",
     "writeFailed": "Kunne ikke gemme denne note. Tjek diskplads og tilladelser.",
     "readFailed": "Kunne ikke læse denne note. Filen kan være låst eller beskadiget.",

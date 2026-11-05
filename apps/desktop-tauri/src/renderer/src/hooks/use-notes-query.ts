@@ -36,6 +36,7 @@ import {
   onJournalEntryDeleted
 } from '@/services/journal-service'
 import { onVaultIndexProgress } from '@/services/vault-service'
+import { unwrapIpcResult } from '@/lib/ipc-error'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 import { tagsService } from '@/services/tags-service'
 
@@ -611,11 +612,13 @@ export function useNoteMutations() {
     }
   })
 
+  // A refused rename rejects with its reason: the title field and the sidebar's inline rename
+  // show a failure only from `catch`, so an envelope would snap the title back unexplained (#4008).
   const renameNote = useMutation({
-    mutationFn: ({ id, newTitle }: { id: string; newTitle: string }) =>
-      notesService.rename(id, newTitle),
+    mutationFn: async ({ id, newTitle }: { id: string; newTitle: string }) =>
+      unwrapIpcResult(await notesService.rename(id, newTitle), 'errors:note.renameFailed'),
     onSuccess: (result, variables) => {
-      if (result.success && result.note) {
+      if (result.note) {
         queryClient.setQueryData(notesKeys.note(variables.id), result.note)
         void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
       }

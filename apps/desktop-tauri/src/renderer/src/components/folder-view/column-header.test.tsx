@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useState } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ColumnHeader } from './column-header'
 import { SortableColumnHeader } from './sortable-column-header'
@@ -283,5 +284,68 @@ describe('ColumnHeader components', () => {
 
     fireEvent.click(screen.getByText('Plain'))
     expect(disabledHeader.column.toggleSorting).not.toHaveBeenCalled()
+  })
+
+  // WebView2 blurs the focused field when the app window is deactivated (#3919), and the column
+  // name field saved and closed on any blur, so alt-tab ended the rename (#3985).
+  describe.each([
+    ['ColumnHeader', ColumnHeader],
+    ['SortableColumnHeader', SortableColumnHeader]
+  ])('%s display-name edit', (_name, Header) => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    // The view config owns the display name, as `updateDisplayName` does in the app.
+    function ViewHeader({ onDisplayNameChange }: { onDisplayNameChange: typeof vi.fn }) {
+      const [displayName, setDisplayName] = useState('Status')
+      return (
+        <table>
+          <thead>
+            <tr>
+              <Header
+                header={createHeader({ columnId: 'status' })}
+                columnConfig={{ id: 'status', displayName, type: 'property' } as any}
+                onDisplayNameChange={(columnId: string, name: string) => {
+                  onDisplayNameChange(columnId, name)
+                  setDisplayName(name)
+                }}
+              />
+            </tr>
+          </thead>
+        </table>
+      )
+    }
+
+    it('saves the draft and stays open when the app window loses focus', () => {
+      const onDisplayNameChange = vi.fn()
+      render(<ViewHeader onDisplayNameChange={onDisplayNameChange} />)
+      fireEvent.doubleClick(screen.getByText('Status'))
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Stage' } })
+
+      const windowFocused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+      fireEvent.blur(screen.getByRole('textbox'))
+      expect(onDisplayNameChange).toHaveBeenCalledExactlyOnceWith('status', 'Stage')
+      expect(screen.getByRole('textbox')).toHaveValue('Stage')
+
+      // Back in the window, a blur inside the app closes the field; the name is already saved.
+      windowFocused.mockReturnValue(true)
+      fireEvent.blur(screen.getByRole('textbox'))
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      expect(screen.getByText('Stage')).toBeInTheDocument()
+      expect(onDisplayNameChange).toHaveBeenCalledOnce()
+    })
+
+    it('saves and closes on a blur inside the app', () => {
+      const onDisplayNameChange = vi.fn()
+      render(<ViewHeader onDisplayNameChange={onDisplayNameChange} />)
+      fireEvent.doubleClick(screen.getByText('Status'))
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Stage' } })
+
+      vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+      fireEvent.blur(screen.getByRole('textbox'))
+      expect(onDisplayNameChange).toHaveBeenCalledExactlyOnceWith('status', 'Stage')
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    })
   })
 })

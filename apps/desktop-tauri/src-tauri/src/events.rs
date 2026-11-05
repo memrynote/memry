@@ -278,15 +278,26 @@ pub struct TagCategoriesChangedEvent {
 pub enum TagNoteAction {
     Pinned,
     Unpinned,
+    Removed,
 }
 
-/// A note was pinned in a tag or unpinned from it (`tags:notes-changed`).
+/// A note was pinned in a tag, unpinned from it, or the tag was taken off it
+/// (`tags:notes-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
 pub struct TagNotesChangedEvent {
     pub tag: String,
     pub note_id: String,
     pub action: TagNoteAction,
+}
+
+/// A tag went from the vault, deleted or merged into another (`tags:deleted`): `affectedNotes`
+/// notes and days lost it.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct TagDeletedEvent {
+    pub tag: String,
+    pub affected_notes: u32,
 }
 
 /// A tag was renamed across the vault (`tags:renamed`): `affectedNotes` notes and days took the

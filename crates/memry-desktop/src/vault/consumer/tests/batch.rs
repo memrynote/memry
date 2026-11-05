@@ -1,6 +1,7 @@
 //! New files the open walk applies together (#3530 13q-7): what each file ends as when the
 //! identity creates their notes together, when the batch fails, when their rows cannot be
-//! written together, and when one is too large for a note.
+//! written together, when one is too large for a note, when one changes after it was read, and
+//! when the watcher applies one after it was read.
 
 use super::*;
 
@@ -118,4 +119,81 @@ fn a_large_file_goes_alone() {
     want.insert(2, ("big.md".to_owned(), Step::Done));
     assert_eq!(f.walk_together(&paths), want);
     assert_eq!(f.adopted(), ["big.md"]);
+}
+
+fn outbox_items(f: &Fixture) -> Vec<String> {
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            let mut statement = conn.prepare("SELECT item_id FROM outbox").unwrap();
+            Ok(statement
+                .query_map([], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<Vec<String>, _>>()
+                .unwrap())
+        })
+        .unwrap()
+}
+
+/// A file deleted after the batch read it, which no row names and so no fact reports, gets no
+/// note, no row and nothing queued for sync; the others are created together.
+#[test]
+fn a_file_deleted_after_the_batch_read_it_gets_no_note() {
+    let f = fixture();
+    batch_of(&f, Batch::Create);
+    let mut steps = f.walk_together_with(&PATHS, || {
+        std::fs::remove_file(f.root.join("b.md")).unwrap();
+    });
+    steps.retain(|(path, _)| path != "b.md");
+    let mut want = steps_done();
+    want.retain(|(path, _)| path != "b.md");
+    assert_eq!(steps, want);
+    assert!(f.row("b.md").is_none());
+    assert_eq!(note_count(&f), 2);
+    let notes: Vec<String> = ["a.md", "c.md"]
+        .iter()
+        .map(|rel| f.row(rel).expect("a row").note_id)
+        .collect();
+    let queued = outbox_items(&f);
+    assert!(
+        queued.iter().all(|item| notes.contains(item)),
+        "{queued:?} beyond {notes:?}"
+    );
+}
+
+/// A file edited after the batch read it goes alone, so its note takes the bytes the file has.
+#[test]
+fn a_file_edited_after_the_batch_read_it_goes_alone() {
+    let f = fixture();
+    batch_of(&f, Batch::Create);
+    let edited = "# b.md\n\nThe text of b.md, edited after the read.\n";
+    assert_eq!(
+        f.walk_together_with(&PATHS, || f.write("b.md", edited)),
+        steps_done()
+    );
+    assert_eq!(f.adopted(), ["b.md"]);
+    let row = f.row("b.md").expect("a row");
+    assert_eq!(f.body(&row.note_id), edited.trim_end());
+}
+
+/// A file the watcher reports and applies after the batch read it, as a live watcher may report
+/// a just-written file before the walk reaches it, goes alone: the walk finds the row the
+/// watcher wrote, and the file keeps that one note.
+#[test]
+fn a_file_the_watcher_applied_after_the_batch_read_it_keeps_one_note() {
+    let f = fixture();
+    batch_of(&f, Batch::Create);
+    let steps = f.walk_together_with(&PATHS, || assert_eq!(f.added("b.md"), Step::Done));
+    assert_eq!(steps, steps_done());
+    assert_eq!(f.adopted(), ["b.md"]);
+    assert_eq!(note_count(&f), 3);
+    let mut notes: Vec<String> = PATHS
+        .iter()
+        .map(|rel| f.row(rel).expect("a row").note_id)
+        .collect();
+    notes.sort();
+    notes.dedup();
+    assert_eq!(notes.len(), PATHS.len());
+    let row = f.row("b.md").expect("a row");
+    assert_eq!(f.body(&row.note_id), text("b.md").trim_end());
 }

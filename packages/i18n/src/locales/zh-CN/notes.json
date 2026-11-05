@@ -1899,6 +1899,8 @@
         "statNotes": "笔记保留其文本",
         "statValues": "值保留为属性",
         "plainText": "正文中提到 #{tag} 的笔记会将其保留为纯文本。",
+        "alsoTasks": "#{tag} 也会从{tasks, plural, other {# 个任务}}中移除。",
+        "bodyTagsStay": "笔记正文中写的 #{tag} 会保留，因此这些笔记仍会显示在该标签下。",
         "confirm": "删除标签",
         "done": "已删除 #{tag}。"
       },

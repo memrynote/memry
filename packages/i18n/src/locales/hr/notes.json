@@ -1899,6 +1899,8 @@
         "statNotes": "bilješke zadržavaju svoj tekst",
         "statValues": "vrijednosti ostaju kao svojstva",
         "plainText": "Bilješke koje spominju #{tag} u tekstu zadržavaju je kao običan tekst.",
+        "alsoTasks": "{tasks, plural, one {# zadatak također gubi} few {# zadatka također gube} other {# zadataka također gubi}} #{tag}.",
+        "bodyTagsStay": "#{tag} napisana u tekstu bilješki ostaje, pa se te bilješke i dalje prikazuju pod oznakom.",
         "confirm": "Izbriši oznaku",
         "done": "Izbrisano #{tag}."
       },

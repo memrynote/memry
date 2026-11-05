@@ -4,7 +4,6 @@ import {
   TREE_ROW_HEIGHT,
   countTreeItems,
   flattenTree,
-  getAllFolderIds,
   getParentFolderId,
   estimateTreeHeight,
   orderFolderEntries,
@@ -100,7 +99,7 @@ const buildSampleTree = (): {
 // ============================================================================
 
 describe('virtualized-tree-utils', () => {
-  describe('T197: countTreeItems, flattenTree, getAllFolderIds', () => {
+  describe('T197: countTreeItems, flattenTree', () => {
     it('counts folders and notes across the tree', () => {
       const { tree } = buildSampleTree()
       expect(countTreeItems(tree)).toBe(7)
@@ -166,15 +165,6 @@ describe('virtualized-tree-utils', () => {
         isExpanded: false,
         hasChildren: true
       })
-    })
-
-    it('collects all folder IDs in the tree', () => {
-      const { tree } = buildSampleTree()
-      expect(getAllFolderIds(tree)).toEqual([
-        'folder-Work',
-        'folder-Work/Project',
-        'folder-Personal'
-      ])
     })
   })
 

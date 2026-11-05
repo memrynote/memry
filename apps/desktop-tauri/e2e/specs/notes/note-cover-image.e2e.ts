@@ -9,11 +9,12 @@
 // Electron seeds the cover through `notes.uploadAttachment`, whose attachment writer is Step 14's
 // (#3531); here the attachment and the `cover:` line are written to disk, as a sync or another
 // app leaves them. Removing a cover writes the frontmatter through `notes.update({ frontmatter })`
-// (13q-2). The wash case is skipped until its ghost-chip click works (#3986).
+// (13q-2). The cover picker opens from the header's details menu, which the harness opens from
+// the keyboard (`openDetailsMenu`, #3986).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { openFromSidebar, vaultOpen } from '../../harness/notes'
+import { openDetailsMenu, openFromSidebar, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 import { invoke } from '../../harness/vault-commands'
@@ -92,8 +93,7 @@ test('a cover ref in the file paints resolved, and the file keeps the ref', asyn
   expect(onDisk).not.toContain(testVaultPath)
 })
 
-// Pending: the upload writes through `notes.uploadAttachment`, which Step 14 (#3531) ports; the
-// picker opens through the ghost chip click #3986 tracks.
+// Pending: the upload writes through `notes.uploadAttachment`, which Step 14 (#3531) ports.
 test.skip('an uploaded cover is stored as a note-relative attachment ref', async ({
   page,
   testVaultPath
@@ -105,8 +105,7 @@ test.skip('an uploaded cover is stored as a note-relative attachment ref', async
   await openFromSidebar(page, note)
   const noteFile = join(testVaultPath, note.path)
 
-  await page.getByTestId('note-metadata').hover()
-  await page.getByTestId('ghost-add-details').click()
+  await openDetailsMenu(page)
   await page.getByTestId('ghost-add-cover').click()
   const picker = page.getByTestId('cover-picker-dialog')
   await expect(picker).toBeVisible()
@@ -153,8 +152,7 @@ test('Remove cover takes the cover line out of the file', async ({ page, testVau
   expect(withoutCover).toContain('Cover body text')
 })
 
-// Skipped: the hovered metadata block covers `ghost-add-details` for the harness click (#3986).
-test.skip('picks a wash from the ghost chip and writes it as wash:<id>', async ({
+test('picks a wash from the ghost chip and writes it as wash:<id>', async ({
   page,
   testVaultPath
 }) => {
@@ -165,9 +163,7 @@ test.skip('picks a wash from the ghost chip and writes it as wash:<id>', async (
   await openFromSidebar(page, note)
   const noteFile = join(testVaultPath, note.path)
 
-  // The details menu takes pointer events only while the metadata block is hovered.
-  await page.getByTestId('note-metadata').hover()
-  await page.getByTestId('ghost-add-details').click()
+  await openDetailsMenu(page)
   await page.getByTestId('ghost-add-cover').click()
   const picker = page.getByTestId('cover-picker-dialog')
   await expect(picker).toBeVisible()
