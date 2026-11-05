@@ -112,6 +112,8 @@ mod note_mentions;
 mod note_properties_index;
 #[path = "note_properties_outside.rs"]
 mod note_properties_outside;
+#[path = "notes_aliases.rs"]
+mod notes_aliases;
 #[path = "notes_apply_template.rs"]
 mod notes_apply_template;
 #[path = "notes_create_template.rs"]

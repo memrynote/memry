@@ -1,7 +1,8 @@
 // The note header and local-only notes in the running app (Step 13n, #3530): a note opened from
 // the sidebar shows its title, its header tags and its counts, and the note menu's local-only
 // toggle keeps the note's changes off the sync queue until it is turned off, when the whole
-// note is queued. The title, icon and tag edits arrive with notes_update and rename (13f, 13g);
+// note is queued. Another name added from the note menu lands in the file's `aliases` and a
+// link by it resolves to the note (13q-1). The title, icon and tag edits arrive with notes_update and rename (13f, 13g);
 // the Electron `notes` spec's create, edit, link and delete cases move with those slices.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -112,4 +113,37 @@ test('local-only from the note menu keeps the note off the sync queue until it i
   await expect(page.getByText('Note will sync to cloud')).toBeVisible()
   expect(await queued(app, id)).toEqual(['upsert', 'crdt-update'])
   expect(await count()).toBe(0)
+})
+
+test('another name added from the note menu lands in the file and a link by it resolves', async ({
+  app,
+  page,
+  testVaultPath
+}) => {
+  const id = await noteId(app, page)
+  await openFromSidebar(page, id)
+
+  await chooseFromNoteMenu(page, 'Add another name\u2026')
+  const input = page.getByRole('textbox', { name: 'Another name for this note' })
+  await expect(input).toBeFocused()
+  await input.fill('Onboarding guide')
+  await input.press('Enter')
+  await expect(
+    page.getByRole('button', { name: 'Edit or remove the name Onboarding guide' })
+  ).toBeVisible()
+
+  const file = join(testVaultPath, PATH)
+  expect(
+    await pollUntil(
+      () => /aliases:\r?\n {2}- Onboarding guide\r?\n/.test(readFileSync(file, 'utf8')),
+      {
+        timeoutMs: 10_000
+      }
+    )
+  ).toBe(true)
+  const resolved = await page.evaluate(
+    (name) => window.__TAURI__.core.invoke('notes_resolve_by_title', { title: name }),
+    'onboarding guide'
+  )
+  expect((resolved as { id: string } | null)?.id).toBe(id)
 })
