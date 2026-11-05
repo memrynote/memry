@@ -21,6 +21,7 @@
   "note": {
     "notFound": "找不到此筆記。它可能已被刪除。",
     "invalidFrontmatter": "此筆記的中繼資料無效，無法讀取。",
+    "invalidTitle": "筆記標題長度須為 1 到 200 個字元。",
     "duplicateId": "具有此 ID 的筆記已存在。",
     "writeFailed": "無法儲存此筆記。請檢查磁碟空間和權限。",
     "readFailed": "無法讀取此筆記。檔案可能被鎖定或已損壞。",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "將 #{from} 重新命名為 #{to} 的作業仍在執行。請在完成後再試。",
+    "editInProgress": "另一項標籤變更仍在執行。請在完成後再試。",
     "renameUnfinished": "將 #{from} 重新命名為 #{to} 的作業有 {count, plural, other {# 則筆記}}未完成。再次將 #{from} 重新命名為 #{to} 即可完成。",
     "mergeSameTag": "來源標籤與目標標籤相同",
     "categoryNameRequired": "請輸入分類名稱",

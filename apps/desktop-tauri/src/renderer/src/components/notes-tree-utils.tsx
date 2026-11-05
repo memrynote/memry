@@ -89,9 +89,8 @@ export function getFoldersInParent(tree: TreeStructure, parentPath: string): str
  * Move a folder's expanded-state entries onto its new node id.
  *
  * Expansion is keyed by path, so a rename otherwise reads as "this folder was
- * never open" and snaps it — plus every folder open inside it — shut. Both the
- * plain and the virtualized tree persist this set, so the old ids would also
- * linger in storage forever.
+ * never open" and snaps it — plus every folder open inside it — shut. The set
+ * is persisted, so the old ids would also linger in storage forever.
  *
  * Returns the original set when nothing matched, so callers can skip a
  * pointless state update and its persistence write.

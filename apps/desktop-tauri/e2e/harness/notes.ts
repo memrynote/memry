@@ -128,6 +128,18 @@ export async function openFromSidebar(
   await expect(page.locator(NOTE_TITLE).first()).toHaveValue(note.title)
 }
 
+/**
+ * Opens the note header's "add details" menu. The chip takes pointer events only while the
+ * header is hovered (CSS `group-hover`), and a WebDriver pointer move in WKWebView sets no
+ * `:hover`, so the harness opens the menu from the keyboard; the chip is reachable by focus too.
+ */
+export async function openDetailsMenu(page: Page): Promise<void> {
+  const details = page.getByTestId('ghost-add-details')
+  await details.waitFor({ state: 'attached' })
+  await details.focus()
+  await page.keyboard.press('Enter')
+}
+
 /** Picks `label` in the open note's "More actions" menu. */
 export async function chooseFromNoteMenu(page: Page, label: string): Promise<void> {
   await page.getByRole('button', { name: 'More actions' }).click()

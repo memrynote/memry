@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Nie udało się znaleźć tej notatki. Być może została usunięta.",
     "invalidFrontmatter": "Ta notatka zawiera nieprawidłowe metadane i nie można jej odczytać.",
+    "invalidTitle": "Tytuł notatki musi mieć od 1 do 200 znaków.",
     "duplicateId": "Notatka o tym identyfikatorze już istnieje.",
     "writeFailed": "Nie udało się zapisać tej notatki. Sprawdź miejsce na dysku i uprawnienia.",
     "readFailed": "Nie udało się odczytać tej notatki. Plik może być zablokowany lub uszkodzony.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "Zmiana nazwy #{from} na #{to} wciąż trwa. Spróbuj ponownie, gdy się zakończy.",
+    "editInProgress": "Inna zmiana tagów wciąż trwa. Spróbuj ponownie, gdy się zakończy.",
     "renameUnfinished": "Zmiana nazwy #{from} na #{to} nie została dokończona dla {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Zmień ponownie nazwę #{from} na #{to}, aby ją dokończyć.",
     "mergeSameTag": "Tag źródłowy i docelowy są takie same",
     "categoryNameRequired": "Nazwa kategorii jest wymagana",

@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Catatan ini tidak dapat ditemukan. Catatan mungkin telah dihapus.",
     "invalidFrontmatter": "Catatan ini memiliki metadata yang tidak valid dan tidak dapat dibaca.",
+    "invalidTitle": "Judul catatan harus terdiri dari 1 hingga 200 karakter.",
     "duplicateId": "Catatan dengan ID ini sudah ada.",
     "writeFailed": "Gagal menyimpan catatan ini. Periksa ruang disk dan izin.",
     "readFailed": "Gagal membaca catatan ini. File mungkin terkunci atau rusak.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "Penggantian nama #{from} menjadi #{to} masih berjalan. Coba lagi setelah selesai.",
+    "editInProgress": "Perubahan tag lain masih berjalan. Coba lagi setelah selesai.",
     "renameUnfinished": "Penggantian nama #{from} menjadi #{to} belum selesai untuk {count, plural, other {# catatan}}. Ganti lagi nama #{from} menjadi #{to} untuk menyelesaikannya.",
     "mergeSameTag": "Tag sumber dan tag tujuan sama",
     "categoryNameRequired": "Nama kategori wajib diisi",

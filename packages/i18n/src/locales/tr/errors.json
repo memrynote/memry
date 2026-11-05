@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Bu not bulunamadı. Silinmiş olabilir.",
     "invalidFrontmatter": "Bu notta geçersiz meta veriler var ve okunamıyor.",
+    "invalidTitle": "Not başlığı 1 ile 200 karakter arasında olmalıdır.",
     "duplicateId": "Bu kimliğe sahip bir not zaten mevcut.",
     "writeFailed": "Bu not kaydedilemedi. Disk alanını ve izinleri kontrol edin.",
     "readFailed": "Bu not okunamadı. Dosya kilitli veya bozuk olabilir.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "#{from} etiketinin #{to} olarak yeniden adlandırılması sürüyor. Bitince tekrar deneyin.",
+    "editInProgress": "Başka bir etiket değişikliği sürüyor. Bitince tekrar deneyin.",
     "renameUnfinished": "#{from} etiketinin #{to} olarak yeniden adlandırılması {count, plural, one {# notta} other {# notta}} tamamlanmadı. Tamamlamak için #{from} etiketini yeniden #{to} olarak adlandırın.",
     "mergeSameTag": "Kaynak ve hedef etiketler aynı",
     "categoryNameRequired": "Kategori adı gerekli",

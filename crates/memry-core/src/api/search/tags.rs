@@ -7,6 +7,7 @@ use crate::domain::note_stats::{self, FileTags};
 use crate::domain::tag_admin;
 use crate::domain::tag_reads::{self, TagCount, TagNotes};
 use crate::domain::tag_rename::{self, Holder};
+use crate::domain::tag_retag;
 use crate::domain::tags::tag_key;
 
 use super::Search;
@@ -60,6 +61,16 @@ impl Search {
         let old = old.to_owned();
         self.data
             .read_blocking(move |data| tag_rename::holders(data, headers, &old))
+    }
+
+    /// The live notes and journal days a merge or delete of `tag` edits
+    /// ([`tag_retag::holders_of`]).
+    pub fn tag_holders(&self, tag: &str) -> Result<Vec<Holder>, StorageError> {
+        let files = self.index.read_blocking(note_stats::file_tags)?;
+        let headers = files.into_iter().map(|(id, file)| (id, file.header_tags));
+        let tag = tag.to_owned();
+        self.data
+            .read_blocking(move |data| tag_retag::holders_of(data, headers, &tag))
     }
 
     /// The colour each of `tags` was given, `None` for a tag with no definition. Looked up by

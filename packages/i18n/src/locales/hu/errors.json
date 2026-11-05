@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Ez a jegyzet nem található. Lehet, hogy törölték.",
     "invalidFrontmatter": "Ennek a jegyzetnek érvénytelen metaadatai vannak, ezért nem olvasható.",
+    "invalidTitle": "A jegyzet címének 1 és 200 karakter közötti hosszúságúnak kell lennie.",
     "duplicateId": "Ezzel az azonosítóval már létezik jegyzet.",
     "writeFailed": "Nem sikerült menteni a jegyzetet. Ellenőrizze a lemezterületet és az engedélyeket.",
     "readFailed": "Nem sikerült beolvasni ezt a jegyzetet. Lehet, hogy a fájl zárolva van vagy sérült.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "A(z) #{from} átnevezése erre: #{to} még folyamatban van. Próbálja újra, amikor befejeződött.",
+    "editInProgress": "Egy másik címkemódosítás még folyamatban van. Próbálja újra, amikor befejeződött.",
     "renameUnfinished": "A(z) #{from} átnevezése erre: #{to} {count, plural, one {# jegyzetnél} other {# jegyzetnél}} nem fejeződött be. Nevezze át újra a(z) #{from} címkét erre: #{to} a befejezéshez.",
     "mergeSameTag": "A forrás- és a célcímke azonos",
     "categoryNameRequired": "A kategória neve kötelező",

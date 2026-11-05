@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Không tìm thấy ghi chú này. Có thể nó đã bị xóa.",
     "invalidFrontmatter": "Ghi chú này có siêu dữ liệu không hợp lệ và không thể đọc được.",
+    "invalidTitle": "Tiêu đề ghi chú phải dài từ 1 đến 200 ký tự.",
     "duplicateId": "Đã có ghi chú với ID này.",
     "writeFailed": "Không thể lưu ghi chú này. Kiểm tra dung lượng ổ đĩa và quyền truy cập.",
     "readFailed": "Không thể đọc ghi chú này. Tệp có thể bị khóa hoặc bị hỏng.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "Việc đổi tên #{from} thành #{to} vẫn đang chạy. Hãy thử lại khi nó hoàn tất.",
+    "editInProgress": "Một thay đổi thẻ khác vẫn đang chạy. Hãy thử lại khi nó hoàn tất.",
     "renameUnfinished": "Việc đổi tên #{from} thành #{to} chưa hoàn tất với {count, plural, other {# ghi chú}}. Hãy đổi tên #{from} thành #{to} lần nữa để hoàn tất.",
     "mergeSameTag": "Thẻ nguồn và thẻ đích giống nhau",
     "categoryNameRequired": "Cần có tên danh mục",

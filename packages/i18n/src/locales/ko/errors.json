@@ -21,6 +21,7 @@
   "note": {
     "notFound": "이 노트를 찾을 수 없습니다. 삭제되었을 수 있습니다.",
     "invalidFrontmatter": "이 노트의 메타데이터가 잘못되어 읽을 수 없습니다.",
+    "invalidTitle": "노트 제목은 1~200자여야 합니다.",
     "duplicateId": "이 ID를 가진 노트가 이미 있습니다.",
     "writeFailed": "이 노트를 저장하지 못했습니다. 디스크 공간과 권한을 확인하세요.",
     "readFailed": "이 노트를 읽지 못했습니다. 파일이 잠겨 있거나 손상되었을 수 있습니다.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "#{from}을(를) #{to}(으)로 바꾸는 작업이 아직 진행 중입니다. 끝난 후 다시 시도하세요.",
+    "editInProgress": "다른 태그 변경 작업이 아직 진행 중입니다. 끝난 후 다시 시도하세요.",
     "renameUnfinished": "#{from}을(를) #{to}(으)로 바꾸는 작업이 {count, plural, other {노트 #개}}에서 끝나지 않았습니다. 마치려면 #{from}을(를) #{to}(으)로 다시 바꾸세요.",
     "mergeSameTag": "원본 태그와 대상 태그가 같습니다.",
     "categoryNameRequired": "카테고리 이름을 입력하세요.",

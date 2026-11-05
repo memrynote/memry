@@ -21,6 +21,7 @@
   "note": {
     "notFound": "未找到此笔记。它可能已被删除。",
     "invalidFrontmatter": "此笔记的元数据无效，无法读取。",
+    "invalidTitle": "笔记标题长度须为 1 到 200 个字符。",
     "duplicateId": "已存在具有此 ID 的笔记。",
     "writeFailed": "无法保存此笔记。请检查磁盘空间和权限。",
     "readFailed": "无法读取此笔记。文件可能被锁定或已损坏。",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "将 #{from} 重命名为 #{to} 的操作仍在进行。请在完成后重试。",
+    "editInProgress": "另一项标签更改仍在进行。请在完成后重试。",
     "renameUnfinished": "将 #{from} 重命名为 #{to} 的操作有 {count, plural, other {# 篇笔记}}未完成。再次将 #{from} 重命名为 #{to} 即可完成。",
     "mergeSameTag": "源标签与目标标签相同",
     "categoryNameRequired": "分类名称为必填",

@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Táto poznámka sa nenašla. Možno bola odstránená.",
     "invalidFrontmatter": "Táto poznámka má neplatné metaúdaje a nemožno ju čítať.",
+    "invalidTitle": "Názov poznámky musí mať 1 až 200 znakov.",
     "duplicateId": "Poznámka s týmto ID už existuje.",
     "writeFailed": "Nepodarilo sa uložiť túto poznámku. Skontrolujte miesto na disku a oprávnenia.",
     "readFailed": "Nepodarilo sa prečítať túto poznámku. Súbor môže byť zamknutý alebo poškodený.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "Premenovanie #{from} na #{to} ešte beží. Skúste to znova, keď skončí.",
+    "editInProgress": "Iná zmena značiek ešte beží. Skúste to znova, keď skončí.",
     "renameUnfinished": "Premenovanie #{from} na #{to} sa nedokončilo pri {count, plural, one {# poznámke} few {# poznámkach} other {# poznámkach}}. Premenujte #{from} na #{to} znova, aby sa dokončilo.",
     "mergeSameTag": "Zdrojová a cieľová značka sú rovnaké",
     "categoryNameRequired": "Názov kategórie je povinný",

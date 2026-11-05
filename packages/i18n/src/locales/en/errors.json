@@ -21,6 +21,7 @@
   "note": {
     "notFound": "This note could not be found. It may have been deleted.",
     "invalidFrontmatter": "This note has invalid metadata and cannot be read.",
+    "invalidTitle": "A note title must be 1 to 200 characters long.",
     "duplicateId": "A note with this ID already exists.",
     "writeFailed": "Failed to save this note. Check disk space and permissions.",
     "readFailed": "Failed to read this note. The file may be locked or corrupted.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "A rename of #{from} to #{to} is still running. Try again when it finishes.",
+    "editInProgress": "Another tag change is still running. Try again when it finishes.",
     "renameUnfinished": "Renaming #{from} to #{to} didn't finish for {count, plural, =1 {# note} other {# notes}}. Rename #{from} to #{to} again to finish it.",
     "mergeSameTag": "Source and target tags are the same",
     "categoryNameRequired": "Category name is required",

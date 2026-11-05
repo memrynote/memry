@@ -38,6 +38,7 @@ use memry_desktop::vault::folder_file;
 use serde_json::json;
 
 use crate::notes_folder_move::{note, opened_with};
+use crate::on_warning::{FOLDER_SYNC, logged};
 
 const NOW: Quiet = Quiet {
     window: Duration::ZERO,
@@ -108,13 +109,21 @@ fn a_deleted_folder_holding_another_file_is_kept() {
     fs::create_dir(e.vault.join("Pics/Sub")).unwrap();
     fs::write(e.vault.join("Pics/Sub/cat.png"), b"png").unwrap();
     delete_records(&e, "Pics");
-    let removed = notes
-        .prune_deleted_folders_checked(&open, "Pics", false, NOW, &mut |_| {})
-        .unwrap();
-    assert_eq!(removed, Vec::<String>::new());
+    let (removed, log) = logged(FOLDER_SYNC, || {
+        notes.prune_deleted_folders_checked(&open, "Pics", false, NOW, &mut |_| {})
+    });
+    assert_eq!(removed.unwrap(), Vec::<String>::new());
     assert!(e.vault.join("Pics/Sub/cat.png").exists());
+    assert_eq!(
+        log,
+        [
+            "INFO kept a folder deleted on another device, it still holds files file=Pics/Sub/cat.png"
+        ]
+    );
 }
 
+/// The 200 ms timeout stands in for the 60 s of `Quiet::default`; the 30 s window keeps the
+/// just-made folder changing until it runs out.
 #[test]
 fn a_deleted_folder_that_keeps_changing_is_kept_once_the_wait_ends() {
     let (e, notes) = opened();
@@ -125,11 +134,15 @@ fn a_deleted_folder_that_keeps_changing_is_kept_once_the_wait_ends() {
         window: Duration::from_secs(30),
         timeout: Duration::from_millis(200),
     };
-    let removed = notes
-        .prune_deleted_folders_checked(&open, "Busy", false, busy, &mut |_| {})
-        .unwrap();
-    assert_eq!(removed, Vec::<String>::new());
+    let (removed, log) = logged(FOLDER_SYNC, || {
+        notes.prune_deleted_folders_checked(&open, "Busy", false, busy, &mut |_| {})
+    });
+    assert_eq!(removed.unwrap(), Vec::<String>::new());
     assert!(e.vault.join("Busy").is_dir());
+    assert_eq!(
+        log,
+        ["WARN kept a folder deleted on another device, its files kept changing"]
+    );
 }
 
 const WITH_VIEWS: &str = "---\nicon: 'lucide:folder'\ntemplate: daily\nviews:\n  - id: v1\n    name: Table\ncustom: kept\n---\n\nNotes about the folder.\n";

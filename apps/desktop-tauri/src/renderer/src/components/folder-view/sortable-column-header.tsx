@@ -16,6 +16,7 @@ import { GripVertical, type AppIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { getColumnLabel } from '@/lib/contract-display-names'
 import { useT } from '@memry/i18n/renderer'
+import { isWindowBlur } from '@/lib/inline-rename-focus'
 
 interface SortableColumnHeaderProps {
   /** TanStack Table header object */
@@ -174,13 +175,17 @@ export function SortableColumnHeader({
     [displayName]
   )
 
-  const saveDisplayName = useCallback(() => {
+  const commitDisplayName = useCallback(() => {
     const trimmedValue = editValue.trim()
-    setIsEditing(false)
     if (trimmedValue && trimmedValue !== displayName && onDisplayNameChange) {
       onDisplayNameChange(columnId, trimmedValue)
     }
   }, [editValue, displayName, columnId, onDisplayNameChange])
+
+  const saveDisplayName = useCallback(() => {
+    commitDisplayName()
+    setIsEditing(false)
+  }, [commitDisplayName])
 
   const cancelEdit = useCallback(() => {
     setIsEditing(false)
@@ -200,9 +205,15 @@ export function SortableColumnHeader({
     [saveDisplayName, cancelEdit]
   )
 
-  const handleBlur = useCallback(() => {
-    saveDisplayName()
-  }, [saveDisplayName])
+  // The app window losing focus is not the user leaving the field (#3985): save the draft and
+  // keep it open.
+  const handleBlur = useCallback(
+    (event: React.FocusEvent<HTMLInputElement>) => {
+      if (isWindowBlur(event)) commitDisplayName()
+      else saveDisplayName()
+    },
+    [commitDisplayName, saveDisplayName]
+  )
 
   // ============================================================================
   // Render

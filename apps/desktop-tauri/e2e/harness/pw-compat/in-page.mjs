@@ -520,6 +520,7 @@ export function memryPwInstall(win) {
         )
       }
       seen[event.type] = true
+      if (event.type === 'mouseover') seen.overTarget = event.target
       if (event.type === 'mousedown' && event.defaultPrevented) seen.prevented = true
     }
     for (const type of [
@@ -592,11 +593,15 @@ export function memryPwInstall(win) {
 
   let hovered = null
 
-  /** Adds the enter and over events a driver left out of a pointer move. */
+  /**
+   * Adds the enter and over events a driver left out of a pointer move. Only an over on the target
+   * counts as the driver's: under Xvfb the parked X pointer gets trusted overs on whatever moves
+   * under it (#3967).
+   */
   function fixupHover(x, y) {
     seen.watching = false
     const el = doc.elementFromPoint(x, y)
-    if (!el || el === hovered || seen.mouseover) return false
+    if (!el || el === hovered || seen.overTarget === el) return false
     hovered = el
     const init = mouseInit(x, y, 0, 0, 0)
     if (typeof win.PointerEvent === 'function') {

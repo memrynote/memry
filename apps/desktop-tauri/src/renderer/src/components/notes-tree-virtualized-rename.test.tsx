@@ -8,8 +8,9 @@
  */
 
 import type React from 'react'
+import { useEffect, useState } from 'react'
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { I18nextProvider } from 'react-i18next'
@@ -367,16 +368,29 @@ describe('sidebar folder rename across the virtualization threshold', () => {
 })
 
 // A vault still listing crosses the threshold under the user: the plain tree is swapped for the
-// virtualized one, which reads the expanded folders from storage as it mounts.
+// virtualized one. 'Projects' and 'Alpha' plus `rootNotes` root notes make `rootNotes + 2` items,
+// so 97 root notes is one item short of the threshold (100) and 98 reaches it.
+const vaultOf = (rootNotes: number) => [
+  createNote('p1', 'Projects/Alpha.md'),
+  ...Array.from({ length: rootNotes }, (_, i) => createNote(`n${i}`, `Note ${i}.md`))
+]
+
 describe('an open folder across the virtualization threshold', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
   })
 
-  it('a folder opened in the plain tree is still open once the tree turns virtualized', async () => {
-    const client = new QueryClient()
-    const tree = () => (
+  const client = new QueryClient()
+  // Re-renders NotesTree whenever `grow` fires, with whatever `setupMocks` set last.
+  function Sidebar({ grow }: { grow: EventTarget }) {
+    const [, setRenders] = useState(0)
+    useEffect(() => {
+      const onGrow = () => setRenders((n) => n + 1)
+      grow.addEventListener('grow', onGrow)
+      return () => grow.removeEventListener('grow', onGrow)
+    }, [grow])
+    return (
       <I18nextProvider i18n={i18nEn}>
         <QueryClientProvider client={client}>
           <TooltipProvider>
@@ -387,18 +401,45 @@ describe('an open folder across the virtualization threshold', () => {
         </QueryClientProvider>
       </I18nextProvider>
     )
-    setupMocks(smallVault)
-    const { container, rerender } = render(tree())
-    const user = userEvent.setup()
-    await user.click(screen.getByText('Projects'))
-    expect(screen.getByText('Alpha')).toBeInTheDocument()
+  }
 
-    setupMocks(largeVault)
-    rerender(tree())
-
+  const expectVirtualizedWithProjectsOpen = (container: HTMLElement) => {
     // The virtualized tree is mounted: its rows sit in absolutely positioned wrappers.
     const folderRow = container.querySelector<HTMLElement>('[data-tree-node-id="folder-Projects"]')
     expect(folderRow?.style.position).toBe('absolute')
     expect(screen.getByText('Alpha')).toBeInTheDocument()
+  }
+
+  it('a folder opened in the plain tree is still open once the tree turns virtualized', async () => {
+    const grow = new EventTarget()
+    setupMocks(vaultOf(97))
+    const { container } = render(<Sidebar grow={grow} />)
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Projects'))
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+
+    setupMocks(vaultOf(98))
+    act(() => {
+      grow.dispatchEvent(new Event('grow'))
+    })
+
+    expectVirtualizedWithProjectsOpen(container)
+  })
+
+  // The open and the growth land in one React render, so the plain tree never commits the open.
+  it('a folder opened in the render that crosses the threshold is open in the virtualized tree', () => {
+    const grow = new EventTarget()
+    setupMocks(vaultOf(97))
+    const { container } = render(<Sidebar grow={grow} />)
+    const projects = screen.getByText('Projects')
+    // Fired from inside the click, the growth gets the click's priority and batches with the open.
+    projects.addEventListener('click', () => {
+      setupMocks(vaultOf(98))
+      grow.dispatchEvent(new Event('grow'))
+    })
+
+    fireEvent.click(projects)
+
+    expectVirtualizedWithProjectsOpen(container)
   })
 })

@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Hindi mahanap ang talang ito. Baka natanggal na ito.",
     "invalidFrontmatter": "May hindi wastong metadata ang talang ito kaya hindi ito mabasa.",
+    "invalidTitle": "Ang pamagat ng tala ay dapat may 1 hanggang 200 character.",
     "duplicateId": "Mayroon nang tala na may ganitong ID.",
     "writeFailed": "Hindi ma-save ang talang ito. Tingnan ang espasyo sa disk at ang mga pahintulot.",
     "readFailed": "Hindi mabasa ang talang ito. Baka naka-lock o sira ang file.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "Tumatakbo pa ang pagpapalit ng pangalan ng #{from} sa #{to}. Subukan ulit kapag natapos ito.",
+    "editInProgress": "Tumatakbo pa ang isa pang pagbabago sa tag. Subukan ulit kapag natapos ito.",
     "renameUnfinished": "Hindi natapos ang pagpapalit ng pangalan ng #{from} sa #{to} para sa {count, plural, one {# tala} other {# tala}}. Palitan ulit ang pangalan ng #{from} sa #{to} para matapos ito.",
     "mergeSameTag": "Pareho ang source at target na tag",
     "categoryNameRequired": "Kailangan ang pangalan ng kategorya",

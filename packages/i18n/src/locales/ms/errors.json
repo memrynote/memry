@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Nota ini tidak ditemui. Ia mungkin telah dipadamkan.",
     "invalidFrontmatter": "Nota ini mempunyai metadata tidak sah dan tidak boleh dibaca.",
+    "invalidTitle": "Tajuk nota mestilah antara 1 hingga 200 aksara.",
     "duplicateId": "Nota dengan ID ini sudah wujud.",
     "writeFailed": "Gagal menyimpan nota ini. Semak ruang cakera dan kebenaran.",
     "readFailed": "Gagal membaca nota ini. Fail mungkin dikunci atau rosak.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "Penamaan semula #{from} kepada #{to} masih berjalan. Cuba lagi apabila ia selesai.",
+    "editInProgress": "Perubahan teg lain masih berjalan. Cuba lagi apabila ia selesai.",
     "renameUnfinished": "Penamaan semula #{from} kepada #{to} tidak selesai untuk {count, plural, other {# nota}}. Namakan semula #{from} kepada #{to} sekali lagi untuk menyelesaikannya.",
     "mergeSameTag": "Teg sumber dan teg sasaran ialah teg yang sama",
     "categoryNameRequired": "Nama kategori diperlukan",

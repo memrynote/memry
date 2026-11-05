@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Tätä muistiinpanoa ei löytynyt. Se on ehkä poistettu.",
     "invalidFrontmatter": "Tässä muistiinpanossa on virheelliset metatiedot, eikä sitä voida lukea.",
+    "invalidTitle": "Muistiinpanon otsikon on oltava 1–200 merkkiä pitkä.",
     "duplicateId": "Tällä tunnuksella varustettu muistiinpano on jo olemassa.",
     "writeFailed": "Tämän muistiinpanon tallentaminen epäonnistui. Tarkista levytila ja käyttöoikeudet.",
     "readFailed": "Tämän muistiinpanon lukeminen epäonnistui. Tiedosto voi olla lukittu tai vioittunut.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "Tunnisteen #{from} uudelleennimeäminen muotoon #{to} on vielä käynnissä. Yritä uudelleen, kun se on valmis.",
+    "editInProgress": "Toinen tunnistemuutos on vielä käynnissä. Yritä uudelleen, kun se on valmis.",
     "renameUnfinished": "Tunnisteen #{from} uudelleennimeäminen muotoon #{to} jäi kesken {count, plural, one {# muistiinpanon} other {# muistiinpanon}} osalta. Nimeä #{from} uudelleen muotoon #{to}, niin se valmistuu.",
     "mergeSameTag": "Lähde- ja kohdetunniste ovat samat",
     "categoryNameRequired": "Kategorian nimi vaaditaan",

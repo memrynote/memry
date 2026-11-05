@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Ova bilješka nije pronađena. Možda je izbrisana.",
     "invalidFrontmatter": "Ova bilješka ima nevažeće metapodatke i ne može se pročitati.",
+    "invalidTitle": "Naslov bilješke mora imati od 1 do 200 znakova.",
     "duplicateId": "Bilješka s ovim ID-om već postoji.",
     "writeFailed": "Spremanje ove bilješke nije uspjelo. Provjerite prostor na disku i dopuštenja.",
     "readFailed": "Čitanje ove bilješke nije uspjelo. Datoteka je možda zaključana ili oštećena.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "Preimenovanje oznake #{from} u #{to} još je u tijeku. Pokušajte ponovno kad završi.",
+    "editInProgress": "Druga promjena oznaka još je u tijeku. Pokušajte ponovno kad završi.",
     "renameUnfinished": "Preimenovanje oznake #{from} u #{to} nije dovršeno za {count, plural, one {# bilješku} few {# bilješke} other {# bilješki}}. Ponovno preimenujte #{from} u #{to} da biste ga dovršili.",
     "mergeSameTag": "Izvorna i odredišna oznaka su iste",
     "categoryNameRequired": "Naziv kategorije je obavezan",

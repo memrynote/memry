@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Această notiță nu a putut fi găsită. Este posibil să fi fost ștearsă.",
     "invalidFrontmatter": "Această notiță are metadate nevalide și nu poate fi citită.",
+    "invalidTitle": "Titlul unei notițe trebuie să aibă între 1 și 200 de caractere.",
     "duplicateId": "Există deja o notiță cu acest ID.",
     "writeFailed": "Nu s-a putut salva această notiță. Verificați spațiul pe disc și permisiunile.",
     "readFailed": "Nu s-a putut citi această notiță. Fișierul poate fi blocat sau corupt.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "Redenumirea #{from} în #{to} încă rulează. Încearcă din nou când se termină.",
+    "editInProgress": "O altă modificare a etichetelor încă rulează. Încearcă din nou când se termină.",
     "renameUnfinished": "Redenumirea #{from} în #{to} nu s-a încheiat pentru {count, plural, one {# notiță} few {# notițe} other {# de notițe}}. Redenumește din nou #{from} în #{to} ca să o finalizezi.",
     "mergeSameTag": "Eticheta sursă și cea țintă sunt identice",
     "categoryNameRequired": "Numele categoriei este obligatoriu",

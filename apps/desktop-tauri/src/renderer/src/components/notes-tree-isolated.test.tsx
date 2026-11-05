@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { createRef, type ReactNode } from 'react'
+import { createRef, type ReactNode, type RefObject } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { NotesTree, type NotesTreeActions } from './notes-tree'
@@ -21,17 +21,8 @@ const mocks = vi.hoisted(() => ({
   actions: null as any,
   lastDeps: null as any,
   virtualized: false,
-  treeActions: {
-    collapseAll: vi.fn(),
-    expandAll: vi.fn(),
-    expandNode: vi.fn(),
-    expandNodes: vi.fn(),
-    setNodesExpanded: vi.fn()
-  },
   virtualActions: {
-    collapseAll: vi.fn(),
-    expandAll: vi.fn(),
-    expandNode: vi.fn()
+    revealNote: vi.fn()
   },
   scrollIntoView: vi.fn()
 }))
@@ -77,8 +68,18 @@ vi.mock('@/components/ui/context-menu', () => ({
 }))
 
 vi.mock('@/components/kibo-ui/tree', () => ({
-  TreeProvider: ({ children, selectedIds, draggable, onSelectionChange, onMove }: any) => (
+  TreeProvider: ({
+    children,
+    expandedIds,
+    selectedIds,
+    draggable,
+    onSelectionChange,
+    onMove
+  }: any) => (
     <div data-testid="tree-provider" data-draggable={String(draggable)}>
+      <span data-testid="expanded-ids">
+        {[...expandedIds].toSorted((a, b) => a.localeCompare(b)).join(',')}
+      </span>
       <span data-testid="selected-count">{selectedIds.length}</span>
       <button type="button" onClick={() => onSelectionChange(['root'])}>
         select root
@@ -137,11 +138,7 @@ vi.mock('@/components/note-tree-internal', () => ({
       </button>
     </span>
   ),
-  FolderRevealHandler: () => <span data-testid="folder-reveal" />,
-  TreeActionsExposer: ({ actionsRef }: any) => {
-    actionsRef.current = mocks.treeActions
-    return <span data-testid="tree-actions-exposer" />
-  }
+  FolderRevealHandler: () => <span data-testid="folder-reveal" />
 }))
 
 vi.mock('@/components/note-tree-dialogs', () => ({
@@ -194,6 +191,9 @@ vi.mock('@/components/virtualized-notes-tree', () => ({
     const note = mocks.data.notes[0]
     return (
       <div data-testid="virtual-tree" data-drag-disabled={String(props.isDragDisabled)}>
+        <span data-testid="expanded-ids">
+          {[...props.expandedIds].toSorted((a, b) => a.localeCompare(b)).join(',')}
+        </span>
         <button type="button" onClick={() => props.onSelectionChange(['root'])}>
           virtual select
         </button>
@@ -347,6 +347,30 @@ const createActions = (overrides: Record<string, unknown> = {}) => ({
   ...overrides
 })
 
+// NotesTree owns the expanded set and hands it to whichever tree is mounted.
+const expectOwnerDrivesExpansion = (ref: RefObject<NotesTreeActions | null>) => {
+  const expanded = () => screen.getByTestId('expanded-ids').textContent
+  act(() => {
+    ref.current?.collapseAll()
+  })
+  expect(expanded()).toBe('')
+  act(() => {
+    mocks.lastDeps.expandFolderPath('Work/Nested')
+  })
+  expect(expanded()).toBe('folder-Work,folder-Work/Nested')
+  act(() => {
+    ref.current?.collapseAll()
+  })
+  act(() => {
+    ref.current?.expandAll()
+  })
+  expect(expanded()).toBe('folder-Work,folder-Work/Nested')
+  act(() => {
+    mocks.lastDeps.renameFolderPath('Work', 'Job')
+  })
+  expect(expanded()).toBe('folder-Job,folder-Job/Nested')
+}
+
 describe('NotesTree isolated coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -354,6 +378,7 @@ describe('NotesTree isolated coverage', () => {
     mocks.actions = createActions()
     mocks.lastDeps = null
     mocks.virtualized = false
+    localStorage.clear()
     Element.prototype.scrollIntoView = mocks.scrollIntoView
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
       callback(0)
@@ -370,16 +395,10 @@ describe('NotesTree isolated coverage', () => {
 
     // Two folder rows (Work, Work/Nested) each carry the pair; the first is Work.
     fireEvent.click(screen.getAllByRole('button', { name: /tree.actions.expandSubfolders/ })[0])
-    expect(mocks.treeActions.setNodesExpanded).toHaveBeenLastCalledWith(
-      ['folder-Work', 'folder-Work/Nested'],
-      true
-    )
+    expect(screen.getByTestId('expanded-ids')).toHaveTextContent('folder-Work,folder-Work/Nested')
 
     fireEvent.click(screen.getAllByRole('button', { name: /tree.actions.collapseSubfolders/ })[1])
-    expect(mocks.treeActions.setNodesExpanded).toHaveBeenLastCalledWith(
-      ['folder-Work/Nested'],
-      false
-    )
+    expect(screen.getByTestId('expanded-ids').textContent).toBe('folder-Work')
   })
 
   // Reordering writes positions over every item in the folder, so the actions
@@ -454,17 +473,7 @@ describe('NotesTree isolated coverage', () => {
     expect(mocks.data.setFolderIcon).toHaveBeenCalledWith('Work', 'rocket')
     expect(mocks.actions.setIconPickerFolderPath).toHaveBeenCalledWith(null)
 
-    ref.current?.collapseAll()
-    ref.current?.expandAll()
-    expect(mocks.treeActions.collapseAll).toHaveBeenCalled()
-    expect(mocks.treeActions.expandNodes).toHaveBeenCalledWith([
-      'folder-Work',
-      'folder-Work/Nested'
-    ])
-
-    mocks.lastDeps.expandFolderPath('Work/Nested')
-    expect(mocks.treeActions.expandNode).toHaveBeenCalledWith('folder-Work')
-    expect(mocks.treeActions.expandNode).toHaveBeenCalledWith('folder-Work/Nested')
+    expectOwnerDrivesExpansion(ref)
 
     act(() => {
       window.dispatchEvent(new CustomEvent('reveal-in-sidebar', { detail: { entityId: 'root' } }))
@@ -609,12 +618,7 @@ describe('NotesTree isolated coverage', () => {
     expect(mocks.actions.handleClearFolderTemplate).toHaveBeenCalledWith('Work')
     expect(mocks.data.setFolderIcon).toHaveBeenCalledWith('Work', 'rocket')
 
-    ref.current?.collapseAll()
-    ref.current?.expandAll()
-    mocks.lastDeps.expandFolderPath('Work/Nested')
-    expect(mocks.virtualActions.collapseAll).toHaveBeenCalled()
-    expect(mocks.virtualActions.expandAll).toHaveBeenCalled()
-    expect(mocks.virtualActions.expandNode).toHaveBeenCalledWith('folder-Work/Nested')
+    expectOwnerDrivesExpansion(ref)
   })
 
   it('surfaces the truncation footer only when notes are missing from the page', () => {

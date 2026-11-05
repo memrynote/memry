@@ -188,21 +188,6 @@ export function flattenTree(tree: TreeStructure, expandedIds: Set<string>): Tree
 }
 
 /**
- * Get all folder IDs from a tree (for "expand all" functionality)
- */
-export function getAllFolderIds(tree: TreeStructure): string[] {
-  const ids: string[] = []
-
-  function collectFolderIds(folder: FolderNode): void {
-    ids.push(`folder-${folder.path}`)
-    folder.children.forEach(collectFolderIds)
-  }
-
-  tree.folders.forEach(collectFolderIds)
-  return ids
-}
-
-/**
  * Get the parent folder ID for a given item
  */
 export function getParentFolderId(item: TreeVirtualItem): string | null {

@@ -21,6 +21,7 @@
   "note": {
     "notFound": "Denne note kunne ikke findes. Den kan være blevet slettet.",
     "invalidFrontmatter": "Denne note har ugyldige metadata og kan ikke læses.",
+    "invalidTitle": "En notes titel skal være på 1 til 200 tegn.",
     "duplicateId": "Der findes allerede en note med dette id.",
     "writeFailed": "Kunne ikke gemme denne note. Tjek diskplads og tilladelser.",
     "readFailed": "Kunne ikke læse denne note. Filen kan være låst eller beskadiget.",
@@ -308,6 +309,7 @@
   },
   "tag": {
     "renameInProgress": "Omdøbningen af #{from} til #{to} kører stadig. Prøv igen, når den er færdig.",
+    "editInProgress": "En anden ændring af tags kører stadig. Prøv igen, når den er færdig.",
     "renameUnfinished": "Omdøbningen af #{from} til #{to} blev ikke færdig for {count, plural, one {# note} other {# noter}}. Omdøb #{from} til #{to} igen for at gøre den færdig.",
     "mergeSameTag": "Kilde- og måltag er det samme",
     "categoryNameRequired": "Kategorinavn er påkrævet",

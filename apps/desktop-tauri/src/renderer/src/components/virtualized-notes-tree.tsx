@@ -15,7 +15,9 @@ import {
   useState,
   useEffect,
   useLayoutEffect,
-  useImperativeHandle
+  useImperativeHandle,
+  type Dispatch,
+  type SetStateAction
 } from 'react'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import {
@@ -39,7 +41,6 @@ import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
   flattenTree,
-  getAllFolderIds,
   SIDEBAR_SECTION_HEADER_HEIGHT,
   TREE_ROW_HEIGHT,
   withPinnedIndex,
@@ -61,7 +62,6 @@ import {
   extractFolderFromPath,
   getDisplayName,
   getFileIcon,
-  remapExpandedFolderIds,
   setFoldersExpanded
 } from '@/components/notes-tree-utils'
 import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
@@ -100,12 +100,6 @@ type DragState = {
 }
 
 export interface VirtualizedTreeActions {
-  expandAll: () => void
-  collapseAll: () => void
-  expandNode: (nodeId: string) => void
-  expandNodes: (nodeIds: string[]) => void
-  /** Carry a folder's expanded state, and its open descendants', to a new id. */
-  renameNode: (oldNodeId: string, newNodeId: string) => void
   /**
    * Expand every folder on a note's path and scroll the row into view. The
    * plain tree gets this from `RevealHandler` + `scrollIntoView`; here the row
@@ -115,9 +109,10 @@ export interface VirtualizedTreeActions {
 }
 
 interface VirtualizedNotesTreeProps {
-  /** localStorage key for the expanded folders (see `sidebarTreeExpandedKey`) */
-  expandedKey?: string
-  /** Ref to expose expand/collapse actions to the parent */
+  /** The open folders. The caller owns them, so they outlive this tree. */
+  expandedIds: Set<string>
+  onExpandedIdsChange: Dispatch<SetStateAction<Set<string>>>
+  /** Ref to expose the reveal action to the parent */
   actionsRef?: React.RefObject<VirtualizedTreeActions | null>
   /** Tree structure with folders and notes */
   tree: TreeStructure
@@ -206,38 +201,6 @@ interface VirtualizedNotesTreeProps {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Storage key for expanded folders outside a vault workspace. Inside one the
- * tree gets its vault's own key.
- */
-const EXPANDED_FOLDERS_KEY = 'sidebar-tree-expanded'
-
-/**
- * Load expanded folder IDs from localStorage
- */
-function loadExpandedFolders(key: string): Set<string> {
-  try {
-    const stored = localStorage.getItem(key)
-    if (stored) {
-      return new Set(JSON.parse(stored))
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return new Set()
-}
-
-/**
- * Save expanded folder IDs to localStorage
- */
-function saveExpandedFolders(key: string, expandedIds: Set<string>): void {
-  try {
-    localStorage.setItem(key, JSON.stringify([...expandedIds]))
-  } catch {
-    // Ignore storage errors
-  }
-}
 
 /**
  * `expanded` plus every folder holding `notePath`, so a note nested several
@@ -1088,7 +1051,8 @@ export function VirtualizedNotesTree({
   fileDropFolder = null,
   className,
   scrollContainerRef,
-  expandedKey = EXPANDED_FOLDERS_KEY
+  expandedIds,
+  onExpandedIdsChange: setExpandedIds
 }: VirtualizedNotesTreeProps) {
   const { t } = useT('notes')
   // Same preference the non-virtualized tree honours through useNoteTreeActions'
@@ -1097,11 +1061,6 @@ export function VirtualizedNotesTree({
   const parentRef = useRef<HTMLDivElement>(null)
   const [scrollMargin, setScrollMargin] = useState(0)
   const usesExternalScroll = !!scrollContainerRef
-
-  // Expanded folders state (persisted to localStorage)
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
-    loadExpandedFolders(expandedKey)
-  )
 
   // Drag state
   const [dragState, setDragStateInternal] = useState<DragState>({
@@ -1130,11 +1089,6 @@ export function VirtualizedNotesTree({
 
   // Anchor for shift-click range selection
   const [anchorId, setAnchorId] = useState<string | null>(null)
-
-  // Persist expanded state changes
-  useEffect(() => {
-    saveExpandedFolders(expandedKey, expandedIds)
-  }, [expandedKey, expandedIds])
 
   // Flatten tree based on expanded state
   const flatItems = useMemo(() => {
@@ -1240,7 +1194,7 @@ export function VirtualizedNotesTree({
         requestAnimationFrame(() => virtualizer.scrollToIndex(index, { align: 'center' }))
       }
     },
-    [tree, expandedIds, virtualizer]
+    [tree, expandedIds, setExpandedIds, virtualizer]
   )
 
   /**
@@ -1271,57 +1225,41 @@ export function VirtualizedNotesTree({
     revealRow(renamingId, path)
   }, [renamingFolderPath, renamingNoteId, noteMap, revealRow])
 
-  // Expose expand/collapse actions to parent
+  // Expose the reveal action to the parent
   useImperativeHandle(
     actionsRef,
     () => ({
-      expandAll: () => {
-        setExpandedIds(new Set(getAllFolderIds(tree)))
-      },
-      collapseAll: () => {
-        setExpandedIds(new Set())
-      },
-      expandNode: (nodeId: string) => {
-        setExpandedIds((prev) => {
-          const next = new Set(prev)
-          next.add(nodeId)
-          return next
-        })
-      },
-      expandNodes: (nodeIds: string[]) => {
-        setExpandedIds(new Set(nodeIds))
-      },
-      renameNode: (oldNodeId: string, newNodeId: string) => {
-        setExpandedIds((prev) => remapExpandedFolderIds(prev, oldNodeId, newNodeId))
-      },
       revealNote: (noteId: string) => {
         const note = noteMap.get(noteId)
         if (!note) return
         revealRow(noteId, note.path)
       }
     }),
-    [tree, noteMap, revealRow]
+    [noteMap, revealRow]
   )
 
   // Toggle folder expand/collapse
-  const handleToggleExpand = useCallback((folderId: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(folderId)) {
-        next.delete(folderId)
-      } else {
-        next.add(folderId)
-      }
-      return next
-    })
-  }, [])
+  const handleToggleExpand = useCallback(
+    (folderId: string) => {
+      setExpandedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(folderId)) {
+          next.delete(folderId)
+        } else {
+          next.add(folderId)
+        }
+        return next
+      })
+    },
+    [setExpandedIds]
+  )
 
   const handleSetSubtreeExpanded = useCallback(
     (folderPath: string, expanded: boolean) => {
       const ids = collectFolderSubtreeIds(tree, folderPath)
       setExpandedIds((prev) => setFoldersExpanded(prev, ids, expanded))
     },
-    [tree]
+    [tree, setExpandedIds]
   )
 
   // Handle item selection with shift/cmd support

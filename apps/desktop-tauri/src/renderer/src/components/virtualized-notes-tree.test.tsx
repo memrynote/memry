@@ -1,5 +1,5 @@
 import type React from 'react'
-import { createRef } from 'react'
+import { createRef, useEffect, type Dispatch, type SetStateAction } from 'react'
 import { act, createEvent, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -10,6 +10,7 @@ import {
   type MoveOperation
 } from './virtualized-notes-tree'
 import type { TreeStructure } from '@/lib/virtualized-tree-utils'
+import { useSidebarTreeExpanded } from '@/hooks/use-sidebar-tree-expanded'
 import { isRevealed } from '@tests/utils/reveal'
 
 // The reveal action's label branches on platform. Pin macOS so these
@@ -244,8 +245,30 @@ const dragOverAt = (row: HTMLElement, clientY: number, dataTransfer: unknown) =>
   fireEvent(row, event)
 }
 
-const renderTree = (overrides: Partial<React.ComponentProps<typeof VirtualizedNotesTree>> = {}) => {
-  const props: React.ComponentProps<typeof VirtualizedNotesTree> = {
+type HarnessProps = Omit<
+  React.ComponentProps<typeof VirtualizedNotesTree>,
+  'expandedIds' | 'onExpandedIdsChange'
+>
+
+// NotesTree owns the expanded set in the app; the harness owns it the same way, under the
+// storage key a tree outside a vault workspace uses.
+let setExpandedIds: Dispatch<SetStateAction<Set<string>>> = () => {}
+function Harness(props: HarnessProps) {
+  const [expandedIds, onExpandedIdsChange] = useSidebarTreeExpanded('sidebar-tree-expanded')
+  useEffect(() => {
+    setExpandedIds = onExpandedIdsChange
+  }, [onExpandedIdsChange])
+  return (
+    <VirtualizedNotesTree
+      {...props}
+      expandedIds={expandedIds}
+      onExpandedIdsChange={onExpandedIdsChange}
+    />
+  )
+}
+
+const renderTree = (overrides: Partial<HarnessProps> = {}) => {
+  const props: HarnessProps = {
     tree,
     selectedIds: [],
     onSelectionChange: vi.fn(),
@@ -275,7 +298,7 @@ const renderTree = (overrides: Partial<React.ComponentProps<typeof VirtualizedNo
     ...overrides
   }
 
-  render(<VirtualizedNotesTree {...props} />)
+  render(<Harness {...props} />)
   return props
 }
 
@@ -406,10 +429,9 @@ describe('VirtualizedNotesTree', () => {
     expect(props.selectionActions.onMoveSelection).toHaveBeenCalledTimes(1)
   })
 
-  it('supports folder actions, imperative expansion, and bulk delete keyboard shortcuts', async () => {
+  it('supports folder actions, owner-driven expansion, and bulk delete keyboard shortcuts', async () => {
     const user = userEvent.setup()
-    const actionsRef = createRef<VirtualizedTreeActions | null>()
-    const props = renderTree({ selectedIds: ['note-work', 'note-root'], actionsRef })
+    const props = renderTree({ selectedIds: ['note-work', 'note-root'] })
 
     await user.click(screen.getByRole('button', { name: /open folder view/i }))
     expect(mocks.openTab).toHaveBeenCalledWith(
@@ -425,10 +447,10 @@ describe('VirtualizedNotesTree', () => {
     fireEvent.keyDown(screen.getByRole('tree'), { key: 'Delete' })
     expect(props.onBulkDelete).toHaveBeenCalledTimes(1)
 
-    act(() => actionsRef.current?.collapseAll())
+    act(() => setExpandedIds(new Set()))
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
 
-    act(() => actionsRef.current?.expandAll())
+    act(() => setExpandedIds(new Set(['folder-Work'])))
     expect(screen.getByText('Alpha')).toBeInTheDocument()
   })
 
@@ -436,7 +458,7 @@ describe('VirtualizedNotesTree', () => {
     const actionsRef = createRef<VirtualizedTreeActions | null>()
     renderTree({ actionsRef })
 
-    act(() => actionsRef.current?.collapseAll())
+    act(() => setExpandedIds(new Set()))
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
 
     act(() => actionsRef.current?.revealNote('note-work'))
@@ -872,7 +894,7 @@ describe('VirtualizedNotesTree', () => {
     })
   })
 
-  it('handles external scroll, imperative node expansion, ctrl selection, and folder drop edges', () => {
+  it('handles external scroll, owner-driven node expansion, ctrl selection, and folder drop edges', () => {
     const observed: Element[] = []
     class ResizeObserverStub {
       observe = vi.fn((element: Element) => {
@@ -900,10 +922,8 @@ describe('VirtualizedNotesTree', () => {
       toJSON: () => ({})
     })
 
-    const actionsRef = createRef<VirtualizedTreeActions | null>()
     const onMove = vi.fn<(operation: MoveOperation) => void>()
     const props = renderTree({
-      actionsRef,
       onMove,
       selectedIds: ['note-work'],
       scrollContainerRef: { current: externalScroll }
@@ -911,10 +931,10 @@ describe('VirtualizedNotesTree', () => {
 
     expect(observed.length).toBeGreaterThan(0)
 
-    act(() => actionsRef.current?.expandNodes([]))
+    act(() => setExpandedIds(new Set()))
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
 
-    act(() => actionsRef.current?.expandNode('folder-Work'))
+    act(() => setExpandedIds(new Set(['folder-Work'])))
     expect(screen.getByText('Alpha')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Root'), { ctrlKey: true })
