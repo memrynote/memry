@@ -4860,14 +4860,16 @@ del.bn-inline-content {
   }
 }
 
+/* Sideways only: the panel is anchored by its top edge, and a vertical shift here left it half
+   its height too high until the animation ended. */
 @keyframes outline-fade-in {
   from {
     opacity: 0;
-    transform: translateY(-50%) translateX(8px);
+    transform: translateX(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(-50%) translateX(0);
+    transform: none;
   }
 }
 
