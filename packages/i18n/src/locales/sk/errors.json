@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Premenovanie #{from} na #{to} ešte beží. Skúste to znova, keď skončí.",
+    "renameUnfinished": "Premenovanie #{from} na #{to} sa nedokončilo pri {count, plural, one {# poznámke} few {# poznámkach} other {# poznámkach}}. Premenujte #{from} na #{to} znova, aby sa dokončilo.",
     "mergeSameTag": "Zdrojová a cieľová značka sú rovnaké",
     "categoryNameRequired": "Názov kategórie je povinný",
     "pinNoteFailed": "Nepodarilo sa pripnúť poznámku",

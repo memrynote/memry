@@ -326,6 +326,15 @@ impl NotesWriter {
         })
     }
 
+    /// An in-app edit wrote this cover into the note's file, `None` for none: the record's
+    /// `cover` takes it ([`notes::take_file_cover`]). `false` when no live note has that id.
+    pub fn file_cover(&self, id: &str, cover: Option<Object>) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::take_file_cover(conn, id, cover, &device_id, now_ms())
+        })
+    }
+
     /// The note's file at `path` is gone ([`identity::removed`]).
     pub fn file_removed(&self, note_id: &str, path: &str) -> Result<Removed, StorageError> {
         let device_id = self.device_id.clone();

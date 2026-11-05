@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Le renommage de #{from} en #{to} est encore en cours. Réessayez une fois terminé.",
+    "renameUnfinished": "Le renommage de #{from} en #{to} n’est pas terminé pour {count, plural, one {# note} other {# notes}}. Renommez à nouveau #{from} en #{to} pour le terminer.",
     "mergeSameTag": "Le tag source et le tag cible sont identiques",
     "categoryNameRequired": "Le nom de la catégorie est obligatoire",
     "pinNoteFailed": "Impossible d'épingler la note",

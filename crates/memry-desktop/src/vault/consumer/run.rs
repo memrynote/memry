@@ -242,7 +242,7 @@ impl Run {
             _ => None,
         };
         let step = self.applier.apply(event);
-        self.after(step, path.as_deref());
+        self.settle(step, path.as_deref());
         if rescanned {
             self.resync.pass_ended(Instant::now());
             if self.walk_owed {
@@ -250,13 +250,6 @@ impl Run {
                 self.walk();
             }
         }
-    }
-
-    fn after(&mut self, step: Step, path: Option<&str>) {
-        self.settle(step, path);
-        // The lane is not fair: a flood of facts must not starve an app operation waiting
-        // for it.
-        std::thread::yield_now();
     }
 
     /// Schedules the retry a step asks for, or forgets the path's failures.
@@ -295,7 +288,6 @@ impl Run {
         for (path, step) in together.steps {
             self.settle(step, Some(&path));
         }
-        std::thread::yield_now();
         for file in together.alone {
             if self.stopped() {
                 return false;
@@ -304,7 +296,7 @@ impl Run {
             self.take_waiting();
             let path = file.path.clone();
             let step = self.applier.found_alone(file, scan);
-            self.after(step, Some(&path));
+            self.settle(step, Some(&path));
         }
         self.take_waiting();
         true
@@ -368,7 +360,7 @@ impl Run {
             };
             if meta.is_file() {
                 match self.applier.walked(&path, &meta, &mut scan) {
-                    Walked::Applied(step) => self.after(step, Some(&path)),
+                    Walked::Applied(step) => self.settle(step, Some(&path)),
                     Walked::New(file) => {
                         new_bytes += file.size;
                         new.push(file);

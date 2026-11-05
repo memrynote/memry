@@ -4,16 +4,18 @@
 // A `[[Ghost]]` used to look like a live link, and a click silently made a duplicate note. The
 // chip now carries `.wiki-link-broken`, painted from one `notes_resolve_titles` call per editor
 // mount, and a click opens a confirm dialog: Cancel creates nothing, Create makes the note.
+//
+// An unbroken chip looks the same before that call answers as after, so each source also holds a
+// link that stays dead. Its broken style proves an answer has painted before a chip is checked
+// for having none.
+import { NOTE_TITLE, openFromSidebar, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
-import { invoke, vaultStatus } from '../../harness/vault-commands'
-import { pollUntil } from '../../harness/wait'
-
-const NOTE_TITLE = 'textarea[aria-label="Note title"]'
-const NOTE_EDITOR = '[aria-label="Rich text editor"] [contenteditable="true"]'
+import { invoke } from '../../harness/vault-commands'
 
 interface NoteView {
   id: string
+  path: string
   title: string
 }
 
@@ -21,51 +23,26 @@ interface Seeded {
   source: NoteView
   realTarget: string
   ghostTarget: string
+  stillMissing: string
 }
 
 const stamp = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-async function ready(page: Page): Promise<void> {
-  expect(await pollUntil(async () => (await vaultStatus(page)).isOpen, { timeoutMs: 30_000 })).toBe(
-    true
-  )
-}
-
-/** One note holding a live link and a dead one, side by side. */
+/** One note holding a live link, a dead one, and one that stays dead, side by side. */
 async function seedMixedLinks(page: Page): Promise<Seeded> {
   const realTarget = `Live Target ${stamp()}`
   const ghostTarget = `Ghost Target ${stamp()}`
+  const stillMissing = `Still Missing ${stamp()}`
   await invoke(page, 'notes_create', { input: { title: realTarget, content: 'A target.\n' } })
   const source = await invoke<NoteView>(page, 'notes_create', {
     input: {
       title: `Broken Link Source ${stamp()}`,
-      content: `A live link [[${realTarget}]] and a dead one [[${ghostTarget}]].\n`
+      content:
+        `A live link [[${realTarget}]] and a dead one [[${ghostTarget}]].\n\n` +
+        `This one stays dead: [[${stillMissing}]].\n`
     }
   })
-  return { source, realTarget, ghostTarget }
-}
-
-/** Opens a vault-root note from the Collections tree, as a user does. */
-async function openFromSidebar(page: Page, note: NoteView): Promise<void> {
-  const header = page.locator('#section-header-collections')
-  await expect(header).toBeVisible({ timeout: 30_000 })
-  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
-  await expect(header).toHaveAttribute('aria-expanded', 'true')
-  // The section opens through a 100 ms transition inside an overflow-hidden box. The driver
-  // scrolls a row it clicks into view, which scrolls that box mid-transition; the box springs
-  // back when the transition ends and the click lands on the row above.
-  await expect
-    .poll(() =>
-      page
-        .locator('#section-content-collections > div')
-        .evaluate(
-          (box: HTMLElement) => box.clientHeight > 0 && box.scrollHeight <= box.clientHeight
-        )
-    )
-    .toBe(true)
-  await page.locator(`[data-tree-node-id="${note.id}"]`).click()
-  await expect(page.locator(NOTE_TITLE).first()).toHaveValue(note.title)
-  await expect(page.locator(NOTE_EDITOR).first()).toBeVisible()
+  return { source, realTarget, ghostTarget, stillMissing }
 }
 
 const chip = (page: Page, target: string) =>
@@ -89,7 +66,7 @@ const resolveByTitle = (page: Page, title: string) =>
   invoke<{ id: string; title: string } | null>(page, 'notes_resolve_by_title', { title })
 
 test('a dead link is styled broken and a live one is not', async ({ page }) => {
-  await ready(page)
+  await vaultOpen(page)
   const { source, realTarget, ghostTarget } = await seedMixedLinks(page)
   await openFromSidebar(page, source)
 
@@ -100,7 +77,7 @@ test('a dead link is styled broken and a live one is not', async ({ page }) => {
 })
 
 test('clicking a dead link opens the confirm dialog; Cancel creates nothing', async ({ page }) => {
-  await ready(page)
+  await vaultOpen(page)
   const { source, ghostTarget } = await seedMixedLinks(page)
   await openFromSidebar(page, source)
   await expect(brokenChip(page, ghostTarget)).toBeVisible({ timeout: 15_000 })
@@ -119,8 +96,8 @@ test('clicking a dead link opens the confirm dialog; Cancel creates nothing', as
 })
 
 test('Create makes the note, opens it, and the source restyles the link', async ({ page }) => {
-  await ready(page)
-  const { source, ghostTarget } = await seedMixedLinks(page)
+  await vaultOpen(page)
+  const { source, ghostTarget, stillMissing } = await seedMixedLinks(page)
   await openFromSidebar(page, source)
   await expect(brokenChip(page, ghostTarget)).toBeVisible({ timeout: 15_000 })
 
@@ -136,6 +113,34 @@ test('Create makes the note, opens it, and the source restyles the link', async 
   // Back on the source, the note-created event has re-resolved the batch and the link is no
   // longer styled broken, with no reload.
   await openFromSidebar(page, source)
+  await expect(brokenChip(page, stillMissing)).toBeVisible({ timeout: 15_000 })
   await expect(chip(page, ghostTarget)).toBeVisible()
-  await expect(brokenChip(page, ghostTarget)).toHaveCount(0, { timeout: 15_000 })
+  await expect(brokenChip(page, ghostTarget)).toHaveCount(0)
+})
+
+// A note's other name is a title a link may use (13q-1, #3952). The name is added through
+// `notes_edit_aliases`, as the note header's "Add another name" does; an outside `aliases:` edit
+// of the file does not reach the note's record yet.
+test('a link naming a note by another name is not styled broken', async ({ page }) => {
+  await vaultOpen(page)
+  const alias = `Other Name ${stamp()}`
+  const stillMissing = `Still Missing ${stamp()}`
+  const target = await invoke<NoteView>(page, 'notes_create', {
+    input: { title: `Aliased Target ${stamp()}`, content: 'A target.\n' }
+  })
+  const names = await invoke<{ aliases: string[] }>(page, 'notes_edit_aliases', {
+    input: { id: target.id, add: [alias], remove: [] }
+  })
+  expect(names.aliases).toEqual([alias])
+  const source = await invoke<NoteView>(page, 'notes_create', {
+    input: {
+      title: `Alias Link Source ${stamp()}`,
+      content: `By its other name [[${alias}]], and one that stays dead [[${stillMissing}]].\n`
+    }
+  })
+  await openFromSidebar(page, source)
+
+  await expect(brokenChip(page, stillMissing)).toBeVisible({ timeout: 15_000 })
+  await expect(chip(page, alias)).toBeVisible()
+  await expect(brokenChip(page, alias)).toHaveCount(0)
 })

@@ -220,11 +220,38 @@ describe('use-notes-query', () => {
         for (const handler of mocks.handlers.moved) handler({ id, oldPath, newPath })
       })
 
+    const reads = mocks.notesService.get.mock.calls.length
     await move('n2', 'notes/Other.md', 'Archive/Other.md')
     expect(result.current.note?.path).toBe('notes/First.md')
 
     await move('n1', 'notes/First.md', 'Archive/First.md')
     await waitFor(() => expect(result.current.note?.path).toBe('Archive/First.md'))
+    // The move patches the cached note: the editor's text is not read again.
+    expect(mocks.notesService.get).toHaveBeenCalledTimes(reads)
+  })
+
+  it('#3981: a read in flight when the note moves does not bring the old path back', async () => {
+    const { result } = renderHook(() => useNote('n1'), { wrapper })
+    await waitFor(() => expect(result.current.note?.path).toBe('notes/First.md'))
+
+    // An edit's refetch is reading the note when the folder rename lands.
+    let answerStale: (value: Note) => void = () => {}
+    mocks.notesService.get.mockImplementationOnce(
+      () => new Promise<Note>((resolve) => (answerStale = resolve))
+    )
+    mocks.notesService.get.mockResolvedValue({ ...note('n1', 'First'), path: 'Archive/First.md' })
+    await act(async () => {
+      mocks.handlers.updated[0]({ id: 'n1', changes: { content: 'changed' } })
+    })
+    await act(async () => {
+      for (const handler of mocks.handlers.moved) {
+        handler({ id: 'n1', oldPath: 'notes/First.md', newPath: 'Archive/First.md' })
+      }
+    })
+    await act(async () => answerStale(note('n1', 'First')))
+
+    await waitFor(() => expect(result.current.note?.path).toBe('Archive/First.md'))
+    expect(result.current.isFetching).toBe(false)
   })
 
   it('fetches note lists and invalidates them on create, rename, move, update, and delete events', async () => {

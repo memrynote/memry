@@ -11,40 +11,15 @@
 // picker is checked again after the menu has unmounted and handed focus back.
 //
 // Electron's canvas folder case waits for canvases, which Step 30 (#3547) ports.
+import { expandCollections, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
-import { invoke, vaultStatus } from '../../harness/vault-commands'
-import { pollUntil } from '../../harness/wait'
+import { invoke } from '../../harness/vault-commands'
 
 const PICKER = 'Emoji and icon picker' // notes:menus.emoji.aria
 
 /** Covers the Radix exit animation and the focus-restore tick that follows it. */
 const FOCUS_RESTORE_SETTLE_MS = 800
-
-async function ready(page: Page): Promise<void> {
-  expect(await pollUntil(async () => (await vaultStatus(page)).isOpen, { timeoutMs: 30_000 })).toBe(
-    true
-  )
-}
-
-async function expandCollections(page: Page): Promise<void> {
-  const header = page.locator('#section-header-collections')
-  await expect(header).toBeVisible({ timeout: 30_000 })
-  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
-  await expect(header).toHaveAttribute('aria-expanded', 'true')
-  // The section opens through a 100 ms transition inside an overflow-hidden box. The driver
-  // scrolls a row it clicks into view, which scrolls that box mid-transition; the box springs
-  // back when the transition ends and the click lands on the row above.
-  await expect
-    .poll(() =>
-      page
-        .locator('#section-content-collections > div')
-        .evaluate(
-          (box: HTMLElement) => box.clientHeight > 0 && box.scrollHeight <= box.clientHeight
-        )
-    )
-    .toBe(true)
-}
 
 /** Clicks the item, then moves the pointer over the fading menu, the first move zero-distance. */
 async function clickMenuItemAndMoveOn(page: Page, label: string): Promise<void> {
@@ -83,7 +58,7 @@ async function expectPickerToStayOpen(page: Page): Promise<void> {
 }
 
 test('the icon picker opened from a note row menu stays open', async ({ page }) => {
-  await ready(page)
+  await vaultOpen(page)
   const note = await invoke<{ id: string }>(page, 'notes_create', {
     input: { title: 'Context Menu Icon Note', content: 'seed' }
   })

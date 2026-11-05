@@ -44,9 +44,12 @@
 //!   never backwards, ending at the total once every file was read. The open's pass, the first
 //!   after the walk, reports the same way (Electron's `indexVault` on open, `0` of `0`
 //!   included): the renderer refreshes the notes list on it. A close or a failed write ends a
-//!   pass without the total, and the pass that pays the rest does not report. From the request
-//!   to its answer, [`NoteIndex::reindexing`] names its last step, for the vault status's
-//!   `isIndexing` (Electron's `reindex` sets it for as long).
+//!   pass without the total, and the pass that pays the rest does not report.
+//! - **Indexing, as the vault status says it** ([`NoteIndex::indexing`]): from the open to the
+//!   end of the pass that reports it (Electron's open-time build: a stopped or failed pass and
+//!   a close end it too), and from a reindex's request to its answer (Electron's `reindex`),
+//!   at the last step either reported. Each change goes to the shell as
+//!   [`IndexReport::Indexing`], which sends the status again.
 //!
 //! [`Search::reindex_until`]: memry_core::api::search::Search::reindex_until
 
@@ -64,7 +67,7 @@ use tokio::sync::broadcast::Receiver;
 
 pub use pass::Indexer;
 pub use progress::{IndexProgress, ProgressThrottle};
-pub use task::{TaskHandle, TaskInbox, task_channel};
+pub use task::{OpenBuild, TaskHandle, TaskInbox, task_channel};
 
 use crate::session::{OpenStage, Session};
 use crate::vault::consumer::{Applied, VaultTier};
@@ -122,30 +125,83 @@ enum Slot {
     Failed,
 }
 
-/// The reindexes asked for and not answered yet, and the last step one reported.
+/// What the index tells the shell, on the task's thread or a reindex's asker's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IndexReport {
+    /// A step of an open's pass: the renderer refreshes the notes list on it.
+    Progress(IndexProgress),
+    /// [`NoteIndex::indexing`] changed: the shell sends the vault status again.
+    Indexing,
+}
+
+type Report = Arc<dyn Fn(IndexReport) + Send + Sync>;
+
+/// What the vault status says the index is doing.
 #[derive(Default)]
-struct Reindexing {
+struct Indexing {
+    /// The open's build: from the open to the end of the pass that reports it.
+    building: bool,
+    /// Reindexes asked and not answered yet.
     asked: usize,
+    /// The last step either reported; `0` of `0` before the first.
     step: IndexProgress,
 }
 
+impl Indexing {
+    fn now(&self) -> Option<IndexProgress> {
+        (self.building || self.asked > 0).then_some(self.step)
+    }
+
+    /// Starts indexing: a step left from earlier work is not this work's.
+    fn start(&mut self) {
+        if self.now().is_none() {
+            self.step = IndexProgress::default();
+        }
+    }
+}
+
+/// Changes what [`NoteIndex::indexing`] says, then tells the shell, with the lock released.
+fn set_indexing(indexing: &Mutex<Indexing>, report: &Report, change: impl FnOnce(&mut Indexing)) {
+    change(&mut lock(indexing));
+    report(IndexReport::Indexing);
+}
+
 /// Counts a reindex as asked until it is answered, however it ends.
-struct Asked<'a>(&'a Mutex<Reindexing>);
+struct Asked<'a>(&'a NoteIndex);
 
 impl<'a> Asked<'a> {
-    fn new(reindexing: &'a Mutex<Reindexing>) -> Self {
-        let mut state = lock(reindexing);
-        if state.asked == 0 {
-            state.step = IndexProgress::default();
-        }
-        state.asked += 1;
-        Self(reindexing)
+    fn new(index: &'a NoteIndex) -> Self {
+        set_indexing(&index.indexing, &index.report, |state| {
+            state.start();
+            state.asked += 1;
+        });
+        Self(index)
     }
 }
 
 impl Drop for Asked<'_> {
     fn drop(&mut self) {
-        lock(self.0).asked -= 1;
+        set_indexing(&self.0.indexing, &self.0.report, |state| state.asked -= 1);
+    }
+}
+
+/// Ends the open's build however its task ends, a panic included: no "Indexing…" outlives the
+/// task. A task of an earlier open leaves the next open's build alone.
+struct BuildEnds<'a>(&'a NoteIndex, &'a TaskHandle);
+
+impl Drop for BuildEnds<'_> {
+    fn drop(&mut self) {
+        let BuildEnds(index, handle) = self;
+        // The slot stays locked across the change, so a next open cannot start its build in
+        // between; both locks are released before the shell hears of it.
+        let ended = {
+            let slot = lock(&index.slot);
+            let other = matches!(&*slot, Slot::Open { handle: open, .. } if !open.same(handle));
+            !other && std::mem::replace(&mut lock(&index.indexing).building, false)
+        };
+        if ended {
+            (index.report)(IndexReport::Indexing);
+        }
     }
 }
 
@@ -153,27 +209,28 @@ impl Drop for Asked<'_> {
 pub struct NoteIndex {
     tier: Arc<VaultTier>,
     slot: Mutex<Slot>,
-    reindexing: Arc<Mutex<Reindexing>>,
-    report: Box<dyn Fn(IndexProgress) + Send + Sync>,
+    indexing: Arc<Mutex<Indexing>>,
+    report: Report,
     links: Box<dyn Fn(LinkChanges) + Send + Sync>,
     landed: Box<dyn Fn(&str) + Send + Sync>,
 }
 
 impl NoteIndex {
-    /// `report` gets the progress of each open's pass, `links` the links each pass changed once
-    /// it committed them (`NoteLinksChangedEvent`), and `landed` each note [`Self::measure`] left
-    /// to a pass once a pass wrote its row, all on the task's thread.
+    /// `report` gets the progress of each open's pass and each change of [`Self::indexing`],
+    /// `links` the links each pass changed once it committed them (`NoteLinksChangedEvent`), and
+    /// `landed` each note [`Self::measure`] left to a pass once a pass wrote its row, all on the
+    /// task's thread (a reindex's request and answer on its asker's).
     pub fn new(
         tier: Arc<VaultTier>,
-        report: impl Fn(IndexProgress) + Send + Sync + 'static,
+        report: impl Fn(IndexReport) + Send + Sync + 'static,
         links: impl Fn(LinkChanges) + Send + Sync + 'static,
         landed: impl Fn(&str) + Send + Sync + 'static,
     ) -> Arc<Self> {
         Arc::new(Self {
             tier,
             slot: Mutex::new(Slot::Closed),
-            reindexing: Arc::default(),
-            report: Box::new(report),
+            indexing: Arc::default(),
+            report: Arc::new(report),
             links: Box::new(links),
             landed: Box::new(landed),
         })
@@ -191,6 +248,11 @@ impl NoteIndex {
                 let (handle, inbox) = task_channel();
                 let start = Some((index.tier.subscribe(), inbox));
                 *lock(&index.slot) = Slot::Open { handle, start };
+                // The session sends the open's status after its hooks: it reads this. A step
+                // left from the vault before is not this open's.
+                let mut indexing = lock(&index.indexing);
+                indexing.step = IndexProgress::default();
+                indexing.building = true;
                 Ok(())
             }),
         );
@@ -206,11 +268,12 @@ impl NoteIndex {
                 let Some((handle, (facts, inbox))) = started else {
                     return Err("the open subscribed no facts".into());
                 };
+                let _build = BuildEnds(&index, &handle);
                 let ended = Indexer::new(vault, index.tier.store()).run(
                     facts,
                     inbox,
                     cancel,
-                    &index.report,
+                    &|build| index.open_build(&handle, build),
                     &index.links,
                     &index.landed,
                 );
@@ -233,13 +296,15 @@ impl NoteIndex {
                 {
                     handle.stop();
                 }
+                // No vault is open, so there is no status to send again.
+                lock(&index.indexing).building = false;
             }),
         );
     }
 
     /// Measures every note of the open vault again, through its task, once the open walk ended
     /// and after the pass the task is in. Blocks; `progress` is called on the task's thread,
-    /// after [`Self::reindexing`] names the step.
+    /// after [`Self::indexing`] names the step.
     pub fn reindex(
         &self,
         mut progress: impl FnMut(IndexProgress) + Send + 'static,
@@ -249,10 +314,10 @@ impl NoteIndex {
             Slot::Failed => return Err(IndexError::NotRunning),
             Slot::Open { handle, .. } => handle.clone(),
         };
-        let _asked = Asked::new(&self.reindexing);
-        let reindexing = self.reindexing.clone();
+        let _asked = Asked::new(self);
+        let (indexing, report) = (self.indexing.clone(), self.report.clone());
         let answer = handle.reindex(Box::new(move |step| {
-            lock(&reindexing).step = step;
+            set_indexing(&indexing, &report, |state| state.step = step);
             progress(step);
         }));
         answer
@@ -260,10 +325,32 @@ impl NoteIndex {
             .unwrap_or_else(|| Err(self.gone()))
     }
 
-    /// While a reindex is asked and not answered, its last step (`0` of `0` before the first).
-    pub fn reindexing(&self) -> Option<IndexProgress> {
-        let state = lock(&self.reindexing);
-        (state.asked > 0).then_some(state.step)
+    /// While the open's build runs or a reindex is asked and not answered, the last step either
+    /// reported (`0` of `0` before the first).
+    pub fn indexing(&self) -> Option<IndexProgress> {
+        lock(&self.indexing).now()
+    }
+
+    /// The open's build as the task of `handle` tells it; a task of an earlier open is not heard.
+    fn open_build(&self, handle: &TaskHandle, build: OpenBuild) {
+        let current =
+            matches!(&*lock(&self.slot), Slot::Open { handle: open, .. } if open.same(handle));
+        if !current {
+            return;
+        }
+        match build {
+            OpenBuild::Owed => set_indexing(&self.indexing, &self.report, |state| {
+                state.start();
+                state.building = true;
+            }),
+            OpenBuild::Step(step) => {
+                set_indexing(&self.indexing, &self.report, |state| state.step = step);
+                (self.report)(IndexReport::Progress(step));
+            }
+            OpenBuild::Ended => {
+                set_indexing(&self.indexing, &self.report, |state| state.building = false);
+            }
+        }
     }
 
     /// Measures one note of the open vault now, through its task, once the open walk ended:

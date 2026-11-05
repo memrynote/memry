@@ -80,6 +80,8 @@ mod icons;
 mod import_copy;
 #[path = "indexer_facts.rs"]
 mod indexer_facts;
+#[path = "indexer_open_status.rs"]
+mod indexer_open_status;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
 #[path = "journal_calendar.rs"]
@@ -120,6 +122,8 @@ mod notes_folder_delete;
 mod notes_folder_move;
 #[path = "notes_folders.rs"]
 mod notes_folders;
+#[path = "notes_frontmatter.rs"]
+mod notes_frontmatter;
 #[path = "notes_identity.rs"]
 mod notes_identity;
 #[path = "notes_link_rewrite.rs"]

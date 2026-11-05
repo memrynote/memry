@@ -233,14 +233,20 @@ const ported = {
       return failure(error)
     }
   },
-  // `title` is `notes:rename`'s and `frontmatter` the property writer's (13k); an edit without
-  // them would drop what was asked. A failure answers as Electron's `registerCommand` does.
+  // `title` is `notes:rename`'s: Electron's update renames the record and leaves the file, and no
+  // caller sends one, so it stays refused. A failure answers as Electron's `registerCommand` does.
   update: async (input: NoteUpdateInput): Promise<NoteUpdateResponse> => {
     if (input.title !== undefined) throw new NotPortedError('notes.update({ title })')
-    if (input.frontmatter !== undefined) throw new NotPortedError('notes.update({ frontmatter })')
     try {
-      const { id, content, headerTags, emoji } = input
-      const { note, tagTemplate } = await commands.notesUpdate({ id, content, headerTags, emoji })
+      const { id, content, headerTags, emoji, frontmatter } = input
+      const { note, tagTemplate } = await commands.notesUpdate({
+        id,
+        content,
+        headerTags,
+        emoji,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- frontmatter values are the JSON the command carries as is
+        frontmatter: frontmatter as Record<string, Value> | undefined
+      })
       return tagTemplate
         ? { success: true, note: toNote(note), tagTemplate }
         : { success: true, note: toNote(note) }

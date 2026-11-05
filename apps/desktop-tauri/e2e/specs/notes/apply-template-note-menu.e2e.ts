@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { SELECTORS } from '../../harness/app-helpers'
+import { openFromSidebar } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 import { invoke, vaultStatus } from '../../harness/vault-commands'
@@ -31,17 +32,6 @@ async function ready(page: Page): Promise<void> {
   expect(await pollUntil(async () => (await vaultStatus(page)).isOpen, { timeoutMs: 30_000 })).toBe(
     true
   )
-}
-
-/** Opens the note from the Collections tree, as a user does. */
-async function openFromSidebar(page: Page, note: NoteView): Promise<void> {
-  const section = page.locator('#section-header-collections')
-  if ((await section.getAttribute('aria-expanded')) === 'false') await section.click()
-  const folder = page.locator('[data-tree-node-id="folder-notes"]')
-  const expand = folder.getByRole('button', { name: 'Expand folder' })
-  if (await expand.isVisible()) await expand.click()
-  await page.locator(`[data-tree-node-id="${note.id}"]`).click()
-  await expect(page.locator('textarea[aria-label="Note title"]').first()).toHaveValue(note.title)
 }
 
 test('the note menu applies a template: its body, icon, tag and property', async ({

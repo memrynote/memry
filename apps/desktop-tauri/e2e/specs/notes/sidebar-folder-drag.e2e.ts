@@ -9,6 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
+import { expandCollections } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 import { invoke, vaultStatus } from '../../harness/vault-commands'
@@ -32,8 +33,7 @@ async function ready(page: Page): Promise<void> {
  * may not show its toggle yet, so each folder is clicked open until it says it is.
  */
 async function expand(page: Page, folders: string[]): Promise<void> {
-  const section = page.locator('#section-header-collections')
-  if ((await section.getAttribute('aria-expanded')) === 'false') await section.click()
+  await expandCollections(page)
   for (const folder of folders) {
     const node = row(page, `folder-${folder}`)
     await expect(node).toBeVisible({ timeout: 30_000 })

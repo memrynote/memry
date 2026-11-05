@@ -213,6 +213,7 @@ interface IndexStep {
 
 interface IndexStatus {
   isOpen: boolean
+  path: string | null
   isIndexing: boolean
   indexBuilt?: number
   indexTotal?: number
@@ -237,17 +238,8 @@ const noteIds = async (page: Page): Promise<string[]> =>
     .map((note) => note.id)
     .toSorted()
 
-// Electron's T531 block held placeholders (no UI entry calls `vault:reindex`; `useVault().reindex`
-// has no caller). This drives `vault_reindex` as `vaultService.reindex` does and checks what the
-// renderer receives: the progress the notes list refreshes on, and the status the search
-// palette's indexing indicator reads.
-test('T531: a reindex reports progress to the total, and the indexing indicator clears', async ({
-  app,
-  page
-}) => {
-  await appReady(page)
-  const before = await noteIds(page)
-  expect(before.length).toBeGreaterThan(0)
+/** Records the index progress and the vault statuses the renderer receives from now on. */
+async function recordIndexEvents(page: Page): Promise<() => Promise<IndexEvents>> {
   await page.evaluate(() => {
     const target = window as unknown as EventWindow
     const seen: IndexEvents = { progress: [], statuses: [] }
@@ -258,7 +250,38 @@ test('T531: a reindex reports progress to the total, and the indexing indicator 
       listen('vault-status-changed-event', (e) => seen.statuses.push(e.payload as IndexStatus))
     ]).then(() => true)
   })
-  const events = () => page.evaluate(() => (window as unknown as EventWindow).__indexEvents)
+  return () => page.evaluate(() => (window as unknown as EventWindow).__indexEvents)
+}
+
+/** The open's build (the walk and the pass after it) ended: the status no longer says indexing. */
+async function openBuilt(page: Page): Promise<void> {
+  await appReady(page)
+  await expect
+    .poll(async () => (await invoke<IndexStatus>(page, 'vault_get_status')).isIndexing)
+    .toBe(false)
+}
+
+const measuredNotes = async (app: Parameters<typeof invokeTest>[0]): Promise<number> =>
+  (
+    await invokeTest<{ n: number }[]>(app, 'e2e_debug_index_query', {
+      sql: 'SELECT count(*) AS n FROM note_stats'
+    })
+  )[0]?.n ?? 0
+
+// Electron's T531 block held placeholders (no UI entry calls `vault:reindex`; `useVault().reindex`
+// has no caller). This drives `vault_reindex` as `vaultService.reindex` does and checks what the
+// renderer receives: the progress the notes list refreshes on, and the status the search
+// palette's indexing indicator reads.
+test('T531: a reindex reports progress to the total, and the indexing indicator clears', async ({
+  app,
+  page
+}) => {
+  await openBuilt(page)
+  const before = await noteIds(page)
+  expect(before.length).toBeGreaterThan(0)
+  const total = await measuredNotes(app)
+  expect(total).toBeGreaterThanOrEqual(before.length)
+  const events = await recordIndexEvents(page)
 
   await invoke(page, 'vault_reindex')
 
@@ -269,21 +292,20 @@ test('T531: a reindex reports progress to the total, and the indexing indicator 
   await expect.poll(async () => (await events()).statuses.at(-1)?.isIndexing).toBe(false)
   const { progress, statuses } = await events()
 
-  // The open's pass may report before the reindex, which runs after it: the reindex's steps
-  // start at its own `0`.
-  const run = progress.slice(progress.findLastIndex((step) => step.indexBuilt === 0))
-  const total = run[0]?.indexTotal ?? 0
-  const notes = await invokeTest<{ n: number }[]>(app, 'e2e_debug_index_query', {
-    sql: 'SELECT count(*) AS n FROM note_stats'
-  })
-  expect(total).toBe(notes[0]?.n)
-  expect(total).toBeGreaterThanOrEqual(before.length)
-  expect(run.at(-1)).toEqual({ indexBuilt: total, indexTotal: total })
-  expect(run.every((step, i) => i === 0 || step.indexBuilt > run[i - 1].indexBuilt)).toBe(true)
+  // The open's build ended before the recording, so every step is the reindex's: from 0 of the
+  // measured notes, strictly rising, to the total.
+  expect(progress[0]).toEqual({ indexBuilt: 0, indexTotal: total })
+  expect(progress.at(-1)).toEqual({ indexBuilt: total, indexTotal: total })
+  expect(progress.every((step, i) => i === 0 || step.indexBuilt > progress[i - 1].indexBuilt)).toBe(
+    true
+  )
 
-  // While it ran the status said so, with counts, and the last status cleared it.
+  // While it ran the status said so, without counts until its first step ("Indexing…"), then
+  // with them, and the last status cleared it.
   const indexing = statuses.filter((status) => status.isIndexing)
   expect(indexing.every((status) => status.isOpen)).toBe(true)
+  expect(indexing[0].indexBuilt).toBeUndefined()
+  expect(indexing[0].indexTotal).toBeUndefined()
   expect(indexing.at(-1)).toMatchObject({ indexBuilt: total, indexTotal: total })
   expect((await invoke<IndexStatus>(page, 'vault_get_status')).isIndexing).toBe(false)
 
@@ -293,6 +315,93 @@ test('T531: a reindex reports progress to the total, and the indexing indicator 
   await expect(page.locator('[cmdk-input]')).toBeVisible()
   await expect(page.getByText(/indexing/i)).toHaveCount(0)
   await page.keyboard.press('Escape')
+})
+
+// Electron's "T531: should update note cache after reindex" wrote a note outside the app and
+// asserted only that its file existed. Here the note it wrote is listed and measured.
+test('T531: a note written outside the app is listed and measured after a reindex', async ({
+  app,
+  page,
+  testVaultPath
+}) => {
+  await openBuilt(page)
+  const before = await measuredNotes(app)
+  writeFileSync(
+    join(testVaultPath, 'notes', 'external-note.md'),
+    '# External Note\n\nThis note was created externally for reindex testing.\n'
+  )
+  const listed = async () =>
+    (
+      await invoke<{ notes: { id: string; title: string }[] }>(page, 'notes_list', {
+        options: { limit: 10_000 }
+      })
+    ).notes.find((note) => note.title === 'external-note')
+  // The watcher lists it first; the reindex then counts it among the notes it measures.
+  await expect.poll(async () => (await listed()) !== undefined).toBe(true)
+  const events = await recordIndexEvents(page)
+
+  await invoke(page, 'vault_reindex')
+
+  await expect
+    .poll(async () => (await events()).progress.at(-1))
+    .toEqual({ indexBuilt: before + 1, indexTotal: before + 1 })
+  const id = (await listed())?.id as string
+  const words = async () =>
+    (
+      await invokeTest<{ words: number }[]>(app, 'e2e_debug_index_query', {
+        sql: `SELECT word_count AS words FROM note_stats WHERE note_id = '${id}'`
+      })
+    )[0]?.words
+  await expect.poll(async () => ((await words()) ?? 0) > 0).toBe(true)
+})
+
+// Electron sets `isIndexing` from the open to the end of its background build, with the walk's
+// counts once it has some: the search palette's indicator. The vault switched to holds notes the
+// open has not seen, so its walk creates them and its pass measures them.
+test('an open is indexing until its build ended, with counts only once its pass reported', async ({
+  page
+}) => {
+  const parent = tempParent()
+  const second = join(parent, 'Second')
+  mkdirSync(second)
+  const notes = 150
+  for (let i = 0; i < notes; i++) {
+    writeFileSync(join(second, `Note ${i}.md`), `# Note ${i}\n\nwords for note ${i}\n`)
+  }
+  try {
+    await openBuilt(page)
+    const events = await recordIndexEvents(page)
+
+    const switched = await invoke<SelectResponse>(page, 'vault_switch', { path: second })
+    expect(switched.success).toBe(true)
+    const done = (status: IndexStatus | undefined): boolean =>
+      status !== undefined &&
+      status.isOpen &&
+      !status.isIndexing &&
+      real(status.path as string) === real(second)
+    await expect.poll(async () => done((await events()).statuses.at(-1))).toBe(true)
+    const { progress, statuses } = await events()
+
+    // The new vault's statuses: indexing from the open, first without counts ("Indexing…"),
+    // then with the pass's, never `0` of `0`, and the last one cleared it.
+    const opened = statuses.filter(
+      (status) => status.isOpen && real(status.path as string) === real(second)
+    )
+    const indexing = opened.filter((status) => status.isIndexing)
+    expect(indexing.length).toBeGreaterThan(0)
+    expect(opened[0].isIndexing).toBe(true)
+    expect(indexing[0].indexTotal).toBeUndefined()
+    const counted = indexing.filter((status) => status.indexTotal !== undefined)
+    expect(counted.length).toBeGreaterThan(0)
+    expect(counted.every((status) => (status.indexTotal as number) >= notes)).toBe(true)
+    const last = progress.at(-1) as IndexStep
+    expect(last.indexBuilt).toBe(last.indexTotal)
+    expect(last.indexTotal).toBeGreaterThanOrEqual(notes)
+    expect((await invoke<IndexStatus>(page, 'vault_get_status')).isIndexing).toBe(false)
+  } finally {
+    await closeVault(page)
+    removeDir(parent)
+  }
 })
 
 test('a damaged vault config.json does not stop the list, and a vanished folder reads as missing', async ({

@@ -162,8 +162,9 @@ fn facts_that_arrive_during_the_open_walk_are_applied_before_it_ends() {
 
 /// An app write waiting for the lane gets it between two files the open walk applies alone
 /// (journal days, a batch's fallbacks, files no device key can seed): the walk holds the lane
-/// for one file at a time, as for any file it finds. Counted, not timed: the write waits for
-/// the file the walk holds the lane for, never for the ones after it.
+/// for one file at a time, as for any file it finds, and the lane serves the app first
+/// (`line::Line`). Counted, not timed: the facts go out under the lane, and the app's comes
+/// right after the file the walk held the lane for when the app asked.
 #[test]
 fn an_app_write_gets_the_lane_between_the_files_the_walk_applies_alone() {
     const FILES: usize = 24;
@@ -172,27 +173,38 @@ fn an_app_write_gets_the_lane_between_the_files_the_walk_applies_alone() {
         f.write(&format!("alone/n{n}.md"), &format!("there before {n}\n"));
     }
     let app_note = f.note();
-    let (rows, session, identity) = (f.rows.clone(), f.session(), f.identity.clone());
-    let served: Arc<Mutex<Option<usize>>> = Arc::default();
-    let seen = served.clone();
-    // Runs while the walk holds the lane for its first file: an app save asks for it.
+    let (rows, session) = (f.rows.clone(), f.session());
+    // Runs while the walk holds the lane for its first file: an app save asks for it, and the
+    // walk goes on once the save waits in line. The deadline ends the wait only when the lane
+    // keeps no line, which the assertion then reports.
     *f.identity.during_adopt.lock().unwrap() = Some(Box::new(move || {
+        let saving = rows.clone();
         std::thread::spawn(move || {
-            rows.reserve(session, &app_note, "app.md", Fixture::stat(1))
+            saving
+                .reserve(session, &app_note, "app.md", Fixture::stat(1))
                 .unwrap();
-            *seen.lock().unwrap() = Some(identity.adopted.lock().unwrap().len());
         });
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while rows.waiting() == 0 && Instant::now() < deadline {
+            std::thread::yield_now();
+        }
     }));
     let _running = run(&f, 1024);
     let mut facts = Vec::new();
+    let saved = |s: &[Applied]| {
+        s.iter()
+            .position(|f| matches!(f, Applied::Added { path, .. } if path == "app.md"))
+    };
     f.collect_until(&mut facts, |_, s| {
-        s.iter().any(|f| matches!(f, Applied::Indexed { .. }))
+        s.iter().any(|f| matches!(f, Applied::Indexed { .. })) && saved(s).is_some()
     });
-    f.collect_until(&mut facts, |_, _| served.lock().unwrap().is_some());
-    let adopted = served.lock().unwrap().expect("the app's write");
-    assert!(
-        adopted < FILES,
-        "the app's write waited for all {FILES} files the walk applied alone"
+    let walked_before = facts[..saved(&facts).unwrap()]
+        .iter()
+        .filter(|f| matches!(f, Applied::Added { path, .. } if path.starts_with("alone/")))
+        .count();
+    assert_eq!(
+        walked_before, 1,
+        "files the walk applied before the app's write: {facts:?}"
     );
     assert_eq!(f.adopted().len(), FILES);
 }

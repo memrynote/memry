@@ -19,12 +19,11 @@
 //!    `pinnedTags` (`TagHub::rename_in`, one outbox row, the holder struck off in the same
 //!    transaction). Before its file is written the plan records the file's hashes before and
 //!    after, and the record's lists (`TagHub::rename_start`): a rename stopped between the file
-//!    and the record finds the after text on resume and renames the record alone, and only as
-//!    it was then (an outside edit read meanwhile may have carried the renamed header into it,
-//!    which leaves nothing to do, or changed it otherwise, which leaves it as edited and
-//!    answered in `failed_note_ids`). Text that is neither changed since, by an edit outside:
-//!    whether the file took the rename cannot be told, so it is not written again, its record
-//!    is treated so, and it is answered in `failed_note_ids`. Each note's turn reads its
+//!    and the record finds the after text on resume and renames the record alone: what the
+//!    rename made of the lists it had, with what an edit read meanwhile changed (a note's
+//!    renamed header carried into it, a tag a day's header added). Text that is neither changed
+//!    since, by an edit outside: whether the file took the rename cannot be told, so it is not
+//!    written again, its record is treated so, and it is answered in `failed_note_ids`. Each note's turn reads its
 //!    holder and its begun edit afresh, so it acts on what the plan holds then.
 //!    The note event goes out as
 //!    [`ChangeSource::AppEdit`], so an open editor takes the new text. A note with no file to
@@ -36,8 +35,8 @@
 //! in `failed_note_ids`, as Electron answers a note it could not write. It stays in the plan and
 //! the rename stays recorded: the same rename asked again, or the next open, tries what is left
 //! with the plan it has, so nothing renamed is renamed again; another rename is refused until
-//! then. One rename runs at a time: one asked while one runs is refused, and a resume then
-//! stands aside for the run working through the same plan.
+//! then, or until it is stopped (`notes::tag_rename_unfinished`). One rename runs at a time: one
+//! asked while one runs is refused, and a resume waits for it, then finishes what it left.
 //!
 //! A case-only rename (`Work` to `work`) respells the files and records and leaves the
 //! `tag_definition` under its id: the two spellings are one tag (§13.7.7), and a definition under
@@ -47,6 +46,7 @@
 //! rename (the projection stamps a newly pinned spelling), where Electron kept the pin's time;
 //! a day's frontmatter `tags:` keep the old name.
 
+use std::cell::Cell;
 #[cfg(feature = "test-hooks")]
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, TryLockError};
@@ -55,11 +55,12 @@ use std::time::{Duration, Instant};
 use memry_core::api::auth::ensure_device_identity;
 use memry_core::api::errors::StorageError;
 use memry_core::api::tag_hub::TagHub;
+use memry_core::domain::body_tags::extract_markdown;
 use memry_core::domain::header_tags;
 use memry_core::domain::note_stats::header_tags as file_header_tags;
 use memry_core::domain::tag_body_rename::{is_inline_tag_name, rewrite_markdown};
 pub use memry_core::domain::tag_rename::RenameJob;
-use memry_core::domain::tag_rename::{Holder, HolderRenamed, Recorded, RenamePlan};
+use memry_core::domain::tag_rename::{Holder, Recorded, RenamePlan};
 use memry_core::domain::tags::{renamed_list, tag_key};
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, parse_markdown_note, serialize_updated_note,
@@ -82,7 +83,7 @@ const PROGRESS_EVERY: Duration = Duration::from_millis(100);
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TagRenamed {
     /// The notes and days whose file or record took the new name.
-    pub notes_written: u32,
+    pub written: Vec<String>,
     /// The notes and days that keep the old name.
     pub failed_note_ids: Vec<String>,
     /// The new name cannot be an inline `#tag`, so the bodies keep the old one.
@@ -105,8 +106,9 @@ enum InNote {
 
 impl NotesService {
     /// Renames `job.from` to `job.to` across the vault (see the module comment). `progress` is
-    /// told `(done, total)` as the notes go. A rename asked while one runs is refused
-    /// ([`NotesError::TagRenameInProgress`]), and so is another one recorded and not finished.
+    /// told `(done, total)` as the notes go. A rename running now is refused
+    /// ([`NotesError::TagRenameInProgress`]), and so is another one recorded with notes left
+    /// ([`NotesError::TagRenameUnfinished`]).
     pub fn rename_tag(
         &self,
         open: &OpenVault,
@@ -142,16 +144,19 @@ impl NotesService {
         let hub = self.tag_hub(open)?;
         let holders = open.search.tag_rename_holders(&job.from)?;
         if let Some(other) = hub.rename_begin(job, holders)? {
-            return Err(NotesError::TagRenameInProgress {
+            let left = recorded_plan(open)?.map_or(0, |plan| plan.holders.len());
+            return Err(NotesError::TagRenameUnfinished {
                 from: other.from,
                 to: other.to,
+                left,
             });
         }
         self.run_rename(open, &hub, progress, stop)
     }
 
-    /// Finishes the rename an earlier run recorded and did not finish, if any; `None` when
-    /// there is none, a rename runs, or `stop` ended it between two notes, leaving it recorded.
+    /// Finishes the rename an earlier run recorded and did not finish, if any, once a rename
+    /// running ends; `None` when there is none, or `stop` ended it between two notes, leaving it
+    /// recorded.
     /// A record that does not read (another layout) is dropped, and logged; a database that
     /// fails to answer is an error, and drops nothing. Nothing is read under the device's
     /// identity unless a rename is recorded.
@@ -160,10 +165,12 @@ impl NotesService {
         open: &OpenVault,
         stop: &dyn Fn() -> bool,
     ) -> Result<Option<TagRenamed>, NotesError> {
-        // A rename runs: it works through the same plan.
-        let Some(_running) = self.claim_rename() else {
+        // Waits: a rename refused holds the lock a moment, and one that ran may leave notes.
+        let _running = self.renaming.lock().unwrap_or_else(PoisonError::into_inner);
+        // A close while it waited: nothing is read or written for a vault closing.
+        if stop() {
             return Ok(None);
-        };
+        }
         match open.vault.tag_rename_recorded()? {
             None => return Ok(None),
             Some(Recorded::Unreadable(what)) => {
@@ -192,7 +199,7 @@ impl NotesService {
 
     /// The rename lock, `None` while a rename runs. A run that panicked left nothing it holds
     /// to the lock: the plan is in the database.
-    fn claim_rename(&self) -> Option<MutexGuard<'_, ()>> {
+    pub(super) fn claim_rename(&self) -> Option<MutexGuard<'_, ()>> {
         match self.renaming.try_lock() {
             Ok(running) => Some(running),
             Err(TryLockError::Poisoned(poisoned)) => Some(poisoned.into_inner()),
@@ -222,6 +229,10 @@ impl NotesService {
                 let Some(mut facts) = taken else {
                     return Ok(());
                 };
+                // A hook run inline with its token already cancelled returns before any read.
+                if cancel.is_cancelled() {
+                    return Ok(());
+                }
                 // Most opens have nothing to finish; a record that does not read is dropped below.
                 if matches!(open.vault.tag_rename_recorded(), Ok(None)) {
                     return Ok(());
@@ -244,7 +255,7 @@ impl NotesService {
         );
     }
 
-    fn tag_hub(&self, open: &OpenVault) -> Result<TagHub, NotesError> {
+    pub(super) fn tag_hub(&self, open: &OpenVault) -> Result<TagHub, NotesError> {
         ensure_device_identity(self.store.clone())?;
         Ok(open.vault.tag_hub(self.store.clone())?)
     }
@@ -275,7 +286,7 @@ impl NotesService {
                 return Err(NotesError::Closed);
             }
             match self.rename_one(&edit, hub, holder, from, to) {
-                InNote::Written => renamed.notes_written += 1,
+                InNote::Written => renamed.written.push(holder.id.clone()),
                 InNote::Unchanged => {}
                 InNote::Again => again.push(holder),
                 InNote::Failed | InNote::Unsure => renamed.failed_note_ids.push(holder.id.clone()),
@@ -297,7 +308,7 @@ impl NotesService {
         }
         for holder in again {
             match self.rename_one(&edit, hub, holder, from, to) {
-                InNote::Written => renamed.notes_written += 1,
+                InNote::Written => renamed.written.push(holder.id.clone()),
                 InNote::Unchanged => {}
                 InNote::Again | InNote::Failed | InNote::Unsure => {
                     renamed.failed_note_ids.push(holder.id.clone());
@@ -323,7 +334,9 @@ impl NotesService {
         to: &str,
     ) -> InNote {
         let id = holder.id.as_str();
-        let (mut record, mut unsure, mut began) = (HolderRenamed::Unchanged, false, false);
+        let (mut record, mut unsure, mut began) = (false, false, false);
+        // The renamed body's `#tags`, from the edit to the record's write after it.
+        let body_tags = Cell::new(None);
         let renamed = self.order.run(id, |turn| {
             let edited = edit.run_then(
                 turn,
@@ -349,12 +362,13 @@ impl NotesService {
                             what: "a test failed this edit".to_owned(),
                         }));
                     }
-                    let next = next_text(text, holder.day, from, to)?;
-                    if let Some(next) = &next {
-                        hub.rename_start(id, &before, &content_hash(next))?;
-                        began = true;
-                    }
-                    Ok(next)
+                    let Some((next, tags)) = next_text(text, holder.day, from, to)? else {
+                        return Ok(None);
+                    };
+                    hub.rename_start(id, &before, &content_hash(&next))?;
+                    began = true;
+                    body_tags.set(Some(tags));
+                    Ok(Some(next))
                 },
                 || {
                     #[cfg(feature = "test-hooks")]
@@ -362,7 +376,10 @@ impl NotesService {
                         return Err(NotesError::Closed);
                     }
                     record = hub.rename_in(id)?;
-                    Ok::<_, NotesError>(record == HolderRenamed::Renamed)
+                    if let Some(tags) = body_tags.take() {
+                        self.cache_body_tags(hub, id, &tags);
+                    }
+                    Ok::<_, NotesError>(record)
                 },
                 &mut || {
                     #[cfg(feature = "test-hooks")]
@@ -385,18 +402,14 @@ impl NotesService {
                     );
                     InNote::Unsure
                 }
-                Edited::Wrote { .. } | Edited::Unchanged if record == HolderRenamed::Left => {
-                    left(id)
-                }
                 Edited::Wrote { .. } => InNote::Written,
-                Edited::Unchanged if record == HolderRenamed::Renamed => InNote::Written,
+                Edited::Unchanged if record => InNote::Written,
                 Edited::Unchanged => InNote::Unchanged,
                 // No file holds the tags: the record is the note's only copy.
                 Edited::Kept(Kept::NoRow | Kept::NoFile | Kept::NotMarkdown) => {
                     match hub.rename_in(id)? {
-                        HolderRenamed::Renamed => InNote::Written,
-                        HolderRenamed::Unchanged => InNote::Unchanged,
-                        HolderRenamed::Left => left(id),
+                        true => InNote::Written,
+                        false => InNote::Unchanged,
                     }
                 }
                 Edited::Kept(kept) => {
@@ -432,25 +445,38 @@ impl NotesService {
     }
 }
 
+impl NotesService {
+    /// The renamed body's `#tags` cached ([`TagHub::cache_body_tags`]). The cache is derived:
+    /// one that fails is logged, and the vault's read back of the file writes it again.
+    fn cache_body_tags(&self, hub: &TagHub, id: &str, tags: &[String]) {
+        #[cfg(feature = "test-hooks")]
+        let failed = self.fail_rename_body_cache.swap(false, Ordering::Relaxed);
+        #[cfg(not(feature = "test-hooks"))]
+        let failed = false;
+        let cached = match failed {
+            true => Err(StorageError::Invalid {
+                what: "a test failed this cache write".to_owned(),
+            }),
+            false => hub.cache_body_tags(id, tags),
+        };
+        if let Err(error) = cached {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id = id,
+                "a renamed body's tags were not cached; the next read of its file caches them: {error}"
+            );
+        }
+    }
+}
+
 /// The recorded rename's plan; a row that does not read is an error here (the resume at open
 /// drops it).
-fn recorded_plan(open: &OpenVault) -> Result<Option<RenamePlan>, NotesError> {
+pub(super) fn recorded_plan(open: &OpenVault) -> Result<Option<RenamePlan>, NotesError> {
     match open.vault.tag_rename_recorded()? {
         None => Ok(None),
         Some(Recorded::Plan(plan)) => Ok(Some(plan)),
         Some(Recorded::Unreadable(what)) => Err(StorageError::Failed { what }.into()),
     }
-}
-
-/// A holder whose record changed since its file edit began, in a way the rename does not
-/// explain: left as it is.
-fn left(id: &str) -> InNote {
-    tracing::warn!(
-        scope = SCOPE,
-        note_id = id,
-        "a note's tags changed since a stopped tag rename began it; its record is left"
-    );
-    InNote::Unsure
 }
 
 /// Waits for the open walk's end (`Indexed`), `false` when `cancel` or the tier ends it first.
@@ -470,9 +496,15 @@ fn walked(facts: &mut Receiver<Applied>, cancel: &dyn Fn() -> bool) -> bool {
     }
 }
 
-/// The file's next text, `None` when it does not carry the tag: a note's header tags and the
-/// body's `#tags` renamed, every other key keeping its lines. A day's header is left.
-fn next_text(text: &str, day: bool, from: &str, to: &str) -> Result<Option<String>, NotesError> {
+/// The file's next text and its body's `#tags`, `None` when it does not carry the tag: a note's
+/// header tags and the body's `#tags` renamed, every other key keeping its lines. A day's header
+/// is left.
+fn next_text(
+    text: &str,
+    day: bool,
+    from: &str,
+    to: &str,
+) -> Result<Option<(String, Vec<String>)>, NotesError> {
     let parsed = parse_markdown_note(text)?;
     let frontmatter = match &parsed.frontmatter {
         YamlValue::Map(map) => (**map).clone(),
@@ -496,13 +528,9 @@ fn next_text(text: &str, day: bool, from: &str, to: &str) -> Result<Option<Strin
     }
     let content = body.unwrap_or_else(|| parsed.content.clone());
     let edited = change.is_some();
-    Ok(Some(serialize_updated_note(
-        parsed,
-        &frontmatter,
-        next,
-        &content,
-        edited,
-    )?))
+    let tags = extract_markdown(&content);
+    let text = serialize_updated_note(parsed, &frontmatter, next, &content, edited)?;
+    Ok(Some((text, tags)))
 }
 
 #[cfg(test)]
