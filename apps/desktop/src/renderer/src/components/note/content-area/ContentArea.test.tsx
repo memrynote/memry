@@ -8,6 +8,9 @@ import { serializeCriticMarkup } from '@memry/shared'
 import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
 import type * as AttachmentPickerDialogModule from './attachment-picker-dialog'
 
+type NoteEventHandler = (event: { id: string }) => void
+const noteEvents = vi.hoisted(() => new Set<(event: { id: string }) => void>())
+
 const contentAreaMocks = vi.hoisted(() => ({
   editor: null as any,
   blockNoteOptions: null as any,
@@ -251,7 +254,15 @@ vi.mock('next-themes', () => ({
 }))
 
 vi.mock('@/services/notes-service', () => ({
-  notesService: contentAreaMocks.notesService
+  notesService: contentAreaMocks.notesService,
+  onNoteMoved: (handler: NoteEventHandler) => {
+    noteEvents.add(handler)
+    return () => noteEvents.delete(handler)
+  },
+  onNoteRenamed: (handler: NoteEventHandler) => {
+    noteEvents.add(handler)
+    return () => noteEvents.delete(handler)
+  }
 }))
 
 vi.mock('@/features/tag-fields/use-tag-schemas', () => ({
@@ -1990,6 +2001,38 @@ describe('ContentArea', () => {
           subtext: 'Agenda and actions'
         })
       ])
+    )
+  })
+
+  it('#3981: a template inserted after the note moved takes its new path', async () => {
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(async () => expect(await templateRowTitles('meeting')).toEqual(['Meeting Notes']))
+    const insert = async (): Promise<void> => {
+      const [row] = await slashItems('meeting')
+      await act(async () => {
+        row.onItemClick()
+      })
+    }
+    await insert()
+    await waitFor(() =>
+      expect(contentAreaMocks.insertTemplateBlocks).toHaveBeenLastCalledWith(
+        expect.objectContaining({ notePath: 'Notes/My note.md' })
+      )
+    )
+
+    contentAreaMocks.notesService.get.mockResolvedValue({
+      id: 'note-1',
+      path: 'Archive/Deep/My note.md',
+      title: 'My note'
+    })
+    act(() => {
+      for (const handler of noteEvents) handler({ id: 'note-1' })
+    })
+    await insert()
+    await waitFor(() =>
+      expect(contentAreaMocks.insertTemplateBlocks).toHaveBeenLastCalledWith(
+        expect.objectContaining({ notePath: 'Archive/Deep/My note.md' })
+      )
     )
   })
 

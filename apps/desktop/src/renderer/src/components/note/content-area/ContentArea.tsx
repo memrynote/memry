@@ -51,7 +51,7 @@ import {
 } from '@memry/shared'
 import { cn } from '@/lib/utils'
 import { blockNoteShadCNComponents } from '@/lib/blocknote-shadcn-components'
-import { notesService } from '@/services/notes-service'
+import { notesService, onNoteMoved, onNoteRenamed } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { isLocalCrdtDocLive } from '@/sync/collaboration-status'
 import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
@@ -680,6 +680,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     async (): Promise<string | undefined> => (await fetchNote())?.path,
     [fetchNote]
   )
+  // A move or rename gives the note another path or title: the next lookup reads it again.
+  useEffect(() => {
+    const forget = (event: { id: string }): void => {
+      if (noteLookupRef.current?.noteId === event.id) noteLookupRef.current = null
+    }
+    const offs = [onNoteMoved(forget), onNoteRenamed(forget)]
+    return () => offs.forEach((off) => off())
+  }, [])
 
   // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   const resolveFileUrl = useRef(
