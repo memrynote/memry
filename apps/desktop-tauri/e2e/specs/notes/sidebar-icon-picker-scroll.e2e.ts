@@ -5,6 +5,11 @@
 // rows plus an overscan. The picker is a Radix Popover rendered inside its row, so a scroll that
 // pushed the row out of the virtual window unmounted the panel with it. The row whose picker is
 // open is now pinned into the virtual range, and Radix re-anchors the panel.
+//
+// Electron scrolled with the mouse wheel. Through WebView2's WebDriver a wheel reaches the page
+// as an event but scrolls nothing, not even a plain overflow box (checked on the Windows VM), so
+// the spec moves the sidebar's scroll offset as the wheel would. The virtualizer follows the same
+// scroll event either way.
 import type { Locator } from '../../harness/pw-compat/locator'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
@@ -51,49 +56,27 @@ async function expandCollections(page: Page): Promise<void> {
     .toBe(true)
 }
 
-const SCROLLER = 'data-e2e-sidebar-scroller'
-
-/** Marks every ancestor of `trigger` that can scroll vertically; returns how many. */
-function markScrollers(trigger: Locator): Promise<number> {
-  return trigger.evaluate((start: Element, attribute: string) => {
-    let marked = 0
+/** Scrolls the nearest scrolling ancestor of `trigger` by `top`; false when there is none. */
+function scrollSidebar(trigger: Locator, top: number): Promise<boolean> {
+  return trigger.evaluate((start: Element, by: number) => {
     for (let element = start.parentElement; element; element = element.parentElement) {
       const { overflowY } = getComputedStyle(element)
-      if (overflowY === 'auto' || overflowY === 'scroll') {
-        element.setAttribute(attribute, '')
-        marked += 1
+      const scrolls = overflowY === 'auto' || overflowY === 'scroll'
+      if (scrolls && element.scrollHeight > element.clientHeight) {
+        element.scrollBy({ top: by, behavior: 'instant' })
+        return true
       }
     }
-    return marked
-  }, SCROLLER)
+    return false
+  }, top)
 }
 
-/** The summed offset of the marked scrollers: it grows whichever of them the wheel scrolls. */
-const scrolled = (page: Page): Promise<number> =>
-  page.evaluate(
-    (attribute: string) =>
-      [...document.querySelectorAll(`[${attribute}]`)].reduce(
-        (sum, element) => sum + element.scrollTop,
-        0
-      ),
-    SCROLLER
-  )
-
-/** What a failed scroll leaves to read: each marked scroller, and what is under the wheel. */
-const scrollReport = (page: Page, x: number, y: number): Promise<unknown> =>
-  page.evaluate(
-    ({ attribute, px, py }: { attribute: string; px: number; py: number }) => ({
-      scrollers: [...document.querySelectorAll(`[${attribute}]`)].map((element) => ({
-        className: element.className.slice(0, 80),
-        scrollTop: element.scrollTop,
-        scrollHeight: element.scrollHeight,
-        clientHeight: element.clientHeight,
-        overflowY: getComputedStyle(element).overflowY
-      })),
-      underWheel: document.elementFromPoint(px, py)?.outerHTML.slice(0, 160) ?? null
-    }),
-    { attribute: SCROLLER, px: x, py: y }
-  )
+const mountedRows = (page: Page): Promise<string[]> =>
+  page
+    .locator('[data-tree-node-id]')
+    .evaluateAll((rows: Element[]) =>
+      rows.map((row) => row.getAttribute('data-tree-node-id') ?? '')
+    )
 
 test('the sidebar icon picker stays open when the virtualized tree scrolls under it', async ({
   page
@@ -115,29 +98,16 @@ test('the sidebar icon picker stays open when the virtualized tree scrolls under
 
   const picker = page.getByRole('dialog', { name: PICKER })
   await expect(picker).toBeVisible({ timeout: 10_000 })
-  expect(await markScrollers(trigger)).toBeGreaterThan(0)
-  const before = await scrolled(page)
+  const before = await mountedRows(page)
 
-  // Scroll over the sidebar, not over the panel: a stray trackpad nudge.
-  const box = await trigger.boundingBox()
-  expect(box).not.toBeNull()
-  const [x, y] = [box!.x + 5, box!.y + 5]
-  await page.mouse.move(x, y)
-  await page.mouse.wheel(0, 800)
-  // The wheel scrolls smoothly: wait until it has come to rest, past where it started.
-  let last = before
-  const rest = await pollUntil(
-    async () => {
-      const now = await scrolled(page)
-      const settled = now > before && now === last
-      last = now
-      return settled
-    },
-    { intervalMs: 250 }
-  )
-  if (!rest) {
-    throw new Error(`the sidebar did not scroll: ${JSON.stringify(await scrollReport(page, x, y))}`)
-  }
+  expect(await scrollSidebar(trigger, 800)).toBe(true)
+  // The virtualizer has moved its window once rows it had mounted are gone.
+  await expect
+    .poll(async () => {
+      const now = await mountedRows(page)
+      return before.some((id) => !now.includes(id))
+    })
+    .toBe(true)
 
   // The regression: the row left the virtual window and took the panel with it.
   await expect(picker).toBeVisible()
