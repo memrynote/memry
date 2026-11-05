@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "Slett tagg",
       "deleteDescription": "Vil du fjerne «{name}» fra {count, plural, one {# element} other {# elementer}}? Dette kan ikke angres.",
+      "deleteTasks": "Oppgaver med #{tag} mister den også.",
       "mergeTitle": "Slå sammen tagg",
       "mergeDescription": "Alle elementer som er tagget med «{source}», blir tagget på nytt med måltaggen. Kildetaggen blir slettet.",
+      "mergeRetags": "Notater, dager og oppgaver som er tagget med «{source}», får måltaggen i stedet.",
+      "mergeBodyTagsStay": "#{source} skrevet i notatteksten blir stående, så de notatene beholder den.",
       "targetPlaceholder": "Velg måltagg …",
       "colorTitle": "Endre farge for «{name}»"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "Gir #{oldName} nytt navn: {done} / {total} notater",
       "renamedBodySkipped": "«{newName}» kan ikke skrives som en innebygd tagg, så #{oldName} i notatteksten står som skrevet",
       "renamedSomeFailed": "Kunne ikke oppdatere {count, plural, one {# notat} other {# notater}}. Åpne {count, plural, one {det} other {dem}} og legg til taggen på nytt",
+      "mergedSomeKept": "Kunne ikke oppdatere {count, plural, one {# notat} other {# notater}}. Slå sammen #{tag} på nytt for å fullføre.",
+      "deletedSomeKept": "Kunne ikke oppdatere {count, plural, one {# notat} other {# notater}}. Slett #{tag} på nytt for å fullføre.",
+      "mergedSomeStuck": "Kunne ikke oppdatere {count, plural, one {# notat} other {# notater}}. Rett notatene nedenfor, og slå deretter sammen #{tag} på nytt.",
+      "deletedSomeStuck": "Kunne ikke oppdatere {count, plural, one {# notat} other {# notater}}. Rett notatene nedenfor, og slett deretter #{tag} på nytt.",
       "renameUnfinished": "Navnebyttet fra #{oldName} til #{newName} ble ikke fullført for {count, plural, one {# notat} other {# notater}}. Bytt navn fra #{oldName} til #{newName} på nytt for å fullføre det.",
       "renameUnfinishedMore": "{names} og {count, plural, one {# til} other {# til}}",
       "stopRename": "Stopp dette navnebyttet",

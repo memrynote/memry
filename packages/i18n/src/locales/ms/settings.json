@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "Padam teg",
       "deleteDescription": "Alih keluar “{name}” daripada {count, plural, other {# item}}? Tindakan ini tidak boleh dibuat asal.",
+      "deleteTasks": "Tugas yang bertanda #{tag} juga kehilangan teg itu.",
       "mergeTitle": "Gabungkan teg",
       "mergeDescription": "Semua item yang berteg “{source}” akan diteg semula dengan teg sasaran. Teg sumber akan dipadam.",
+      "mergeRetags": "Nota, hari dan tugas yang berteg “{source}” mendapat teg sasaran sebagai gantinya.",
+      "mergeBodyTagsStay": "#{source} yang ditulis dalam teks nota kekal, jadi nota itu masih menyimpannya.",
       "targetPlaceholder": "Pilih teg sasaran…",
       "colorTitle": "Tukar warna untuk “{name}”"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "Menamakan semula #{oldName}: {done} / {total} nota",
       "renamedBodySkipped": "\"{newName}\" tidak boleh ditaip sebagai teg sebaris, jadi #{oldName} dalam teks nota kekal seperti ditulis",
       "renamedSomeFailed": "Tidak dapat mengemas kini {count, plural, other {# nota}}. Buka dan tambah teg itu semula",
+      "mergedSomeKept": "Tidak dapat mengemas kini {count, plural, other {# nota}}. Gabungkan #{tag} sekali lagi untuk selesai.",
+      "deletedSomeKept": "Tidak dapat mengemas kini {count, plural, other {# nota}}. Padam #{tag} sekali lagi untuk selesai.",
+      "mergedSomeStuck": "Tidak dapat mengemas kini {count, plural, other {# nota}}. Betulkan nota di bawah, kemudian gabungkan #{tag} sekali lagi.",
+      "deletedSomeStuck": "Tidak dapat mengemas kini {count, plural, other {# nota}}. Betulkan nota di bawah, kemudian padam #{tag} sekali lagi.",
       "renameUnfinished": "Penamaan semula #{oldName} kepada #{newName} tidak selesai untuk {count, plural, other {# nota}}. Namakan semula #{oldName} kepada #{newName} sekali lagi untuk menyelesaikannya.",
       "renameUnfinishedMore": "{names} dan {count, plural, other {# lagi}}",
       "stopRename": "Hentikan penamaan semula ini",

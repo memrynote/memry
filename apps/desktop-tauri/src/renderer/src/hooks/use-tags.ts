@@ -4,7 +4,7 @@ import { fuzzySearch } from '@/lib/fuzzy-search'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { getI18n } from 'react-i18next'
 import { onTagsChanged } from '@/services/notes-service'
-import { onTagRenamed, tagsService } from '@/services/tags-service'
+import { onTagDeleted, onTagRenamed, tagsService } from '@/services/tags-service'
 
 const log = createLogger('Hook:Tags')
 
@@ -51,7 +51,7 @@ export function useTags() {
 
   useEffect(() => {
     const refetch = () => void fetchTags()
-    const unsubs = [onTagsChanged(refetch), onTagRenamed(refetch), window.api.onTagDeleted(refetch)]
+    const unsubs = [onTagsChanged(refetch), onTagRenamed(refetch), onTagDeleted(refetch)]
     return () => unsubs.forEach((unsub) => unsub())
   }, [fetchTags])
 
@@ -101,11 +101,11 @@ export function useTags() {
   )
 
   const mergeTag = useCallback(async (source: string, target: string) => {
-    return window.api.tags.mergeTag({ source, target })
+    return tagsService.mergeTag({ source, target })
   }, [])
 
   const deleteTag = useCallback(async (tag: string) => {
-    return window.api.tags.deleteTag(tag)
+    return tagsService.deleteTag(tag)
   }, [])
 
   const refetch = fetchTags

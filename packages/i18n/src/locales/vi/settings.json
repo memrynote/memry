@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "Xóa thẻ",
       "deleteDescription": "Gỡ “{name}” khỏi {count, plural, other {# mục}}? Không thể hoàn tác thao tác này.",
+      "deleteTasks": "Các công việc gắn #{tag} cũng mất thẻ này.",
       "mergeTitle": "Gộp thẻ",
       "mergeDescription": "Tất cả các mục được gắn thẻ “{source}” sẽ được gắn lại bằng thẻ đích. Thẻ nguồn sẽ bị xóa.",
+      "mergeRetags": "Các ghi chú, ngày và công việc gắn thẻ “{source}” sẽ nhận thẻ đích thay thế.",
+      "mergeBodyTagsStay": "#{source} viết trong nội dung ghi chú vẫn giữ nguyên, nên các ghi chú đó vẫn giữ thẻ này.",
       "targetPlaceholder": "Chọn thẻ đích…",
       "colorTitle": "Đổi màu cho “{name}”"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "Đang đổi tên #{oldName}: {done} / {total} ghi chú",
       "renamedBodySkipped": "\"{newName}\" không thể gõ làm thẻ nội tuyến, nên #{oldName} trong nội dung ghi chú được giữ nguyên như đã viết",
       "renamedSomeFailed": "Không thể cập nhật {count, plural, other {# ghi chú}}. Hãy mở và thêm lại thẻ",
+      "mergedSomeKept": "Không thể cập nhật {count, plural, other {# ghi chú}}. Hãy gộp #{tag} lại lần nữa để hoàn tất.",
+      "deletedSomeKept": "Không thể cập nhật {count, plural, other {# ghi chú}}. Hãy xóa #{tag} lại lần nữa để hoàn tất.",
+      "mergedSomeStuck": "Không thể cập nhật {count, plural, other {# ghi chú}}. Hãy sửa các ghi chú bên dưới, rồi gộp #{tag} lại lần nữa.",
+      "deletedSomeStuck": "Không thể cập nhật {count, plural, other {# ghi chú}}. Hãy sửa các ghi chú bên dưới, rồi xóa #{tag} lại lần nữa.",
       "renameUnfinished": "Việc đổi tên #{oldName} thành #{newName} chưa hoàn tất với {count, plural, other {# ghi chú}}. Hãy đổi tên #{oldName} thành #{newName} lần nữa để hoàn tất.",
       "renameUnfinishedMore": "{names} và {count, plural, other {# ghi chú khác}}",
       "stopRename": "Dừng đổi tên này",

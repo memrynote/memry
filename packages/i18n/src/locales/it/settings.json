@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "Elimina tag",
       "deleteDescription": "Rimuovere “{name}” da {count, plural, one {# elemento} other {# elementi}}? L'operazione non può essere annullata.",
+      "deleteTasks": "Anche le attività con #{tag} lo perdono.",
       "mergeTitle": "Unisci tag",
       "mergeDescription": "Tutti gli elementi con il tag “{source}” riceveranno il tag di destinazione. Il tag di origine verrà eliminato.",
+      "mergeRetags": "Note, giorni e attività con il tag “{source}” ricevono invece il tag di destinazione.",
+      "mergeBodyTagsStay": "#{source} scritto nel testo delle note resta, quindi quelle note lo mantengono.",
       "targetPlaceholder": "Seleziona il tag di destinazione…",
       "colorTitle": "Cambia colore di “{name}”"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "Rinomina di #{oldName}: {done} / {total} note",
       "renamedBodySkipped": "\"{newName}\" non può essere digitato come tag inline, quindi #{oldName} nel testo delle note resta com'è",
       "renamedSomeFailed": "Impossibile aggiornare {count, plural, one {# nota} other {# note}}. Aprile e aggiungi di nuovo il tag",
+      "mergedSomeKept": "Impossibile aggiornare {count, plural, one {# nota} other {# note}}. Unisci di nuovo #{tag} per completare.",
+      "deletedSomeKept": "Impossibile aggiornare {count, plural, one {# nota} other {# note}}. Elimina di nuovo #{tag} per completare.",
+      "mergedSomeStuck": "Impossibile aggiornare {count, plural, one {# nota} other {# note}}. Correggi le note qui sotto, poi unisci di nuovo #{tag}.",
+      "deletedSomeStuck": "Impossibile aggiornare {count, plural, one {# nota} other {# note}}. Correggi le note qui sotto, poi elimina di nuovo #{tag}.",
       "renameUnfinished": "La rinomina di #{oldName} in #{newName} non è terminata per {count, plural, one {# nota} other {# note}}. Rinomina di nuovo #{oldName} in #{newName} per completarla.",
       "renameUnfinishedMore": "{names} e {count, plural, one {# altra} other {# altre}}",
       "stopRename": "Interrompi questa rinomina",

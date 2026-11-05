@@ -1899,6 +1899,8 @@
         "statNotes": "note mantengono il testo",
         "statValues": "valori restano come proprietà",
         "plainText": "Le note che menzionano #{tag} nel testo lo mantengono come testo semplice.",
+        "alsoTasks": "#{tag} viene rimosso anche da {tasks, plural, one {# attività} other {# attività}}.",
+        "bodyTagsStay": "#{tag} scritto nel testo delle note resta, quindi quelle note compaiono ancora sotto il tag.",
         "confirm": "Elimina tag",
         "done": "#{tag} eliminato."
       },

@@ -13,7 +13,10 @@ const commands = vi.hoisted(() => ({
   tagsReorder: vi.fn(),
   tagsPinNoteToTag: vi.fn(),
   tagsUnpinNoteFromTag: vi.fn(),
-  tagsRename: vi.fn()
+  tagsRename: vi.fn(),
+  tagsDelete: vi.fn(),
+  tagsRemoveFromNote: vi.fn(),
+  tagsMerge: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -30,6 +33,7 @@ const events = vi.hoisted(() => {
     tagCategoriesChangedEvent: event('categories'),
     tagNotesChangedEvent: event('notes'),
     tagRenamedEvent: event('renamed'),
+    tagDeletedEvent: event('deleted'),
     tagsProgressEvent: event('progress')
   }
 })
@@ -186,17 +190,41 @@ describe('tags-service', () => {
     })
   })
 
-  it('forwards the methods later steps port to window.api.tags', async () => {
-    api.tags.deleteTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
-    api.tags.removeTagFromNote = vi.fn().mockResolvedValue({ success: true })
-    api.tags.mergeTag = vi.fn().mockResolvedValue({ success: true, affectedItems: 0 })
+  it('deletes, merges and removes from a note through the commands in Electron’s envelope', async () => {
+    const kept = {
+      affectedNotes: 3,
+      failedNotes: [{ id: 'n9', title: 'Plan' }],
+      retryFinishes: false
+    }
+    commands.tagsDelete.mockResolvedValue(kept)
+    await expect(tagsService.deleteTag('new')).resolves.toEqual({ success: true, ...kept })
+    expect(commands.tagsDelete).toHaveBeenCalledWith('new')
+    commands.tagsMerge.mockResolvedValue({ affectedItems: 2 })
+    const merge = { source: 'old', target: 'new' }
+    await expect(tagsService.mergeTag(merge)).resolves.toEqual({ success: true, affectedItems: 2 })
+    expect(commands.tagsMerge).toHaveBeenCalledWith(merge)
+    commands.tagsRemoveFromNote.mockResolvedValue(null)
+    const removal = { noteId: 'note-2', tag: 'focus' }
+    await expect(tagsService.removeTagFromNote(removal)).resolves.toEqual({ success: true })
+    expect(commands.tagsRemoveFromNote).toHaveBeenCalledWith(removal)
 
-    await tagsService.deleteTag('new')
-    expect(api.tags.deleteTag).toHaveBeenCalledWith('new')
-    await tagsService.removeTagFromNote({ noteId: 'note-2', tag: 'focus' })
-    expect(api.tags.removeTagFromNote).toHaveBeenCalledWith({ noteId: 'note-2', tag: 'focus' })
-    await tagsService.mergeTag({ source: 'old', target: 'new' })
-    expect(api.tags.mergeTag).toHaveBeenCalledWith({ source: 'old', target: 'new' })
+    const message = 'Source and target tags are the same'
+    commands.tagsMerge.mockRejectedValue({ kind: 'invalid', code: 'tag_merge_same_tag', message })
+    await expect(tagsService.mergeTag(merge)).resolves.toEqual({
+      success: false,
+      error: message,
+      code: 'tag_merge_same_tag'
+    })
+    commands.tagsDelete.mockRejectedValue({
+      kind: 'storage',
+      code: 'storage_failed',
+      message: 'disk'
+    })
+    await expect(tagsService.deleteTag('new')).resolves.toEqual({
+      success: false,
+      error: 'disk',
+      code: 'storage_failed'
+    })
   })
 
   it('hands the colour, category, tag notes and rename events from Rust on', async () => {
@@ -233,10 +261,12 @@ describe('tags-service', () => {
     await vi.waitFor(() => expect(listeners.size).toBe(0))
   })
 
-  it('registers the tag subscriptions not yet ported on window.api', () => {
-    const unsubscribe = vi.fn()
-    api.onTagDeleted = vi.fn(() => unsubscribe)
-
-    expect(onTagDeleted(vi.fn())).toBe(unsubscribe)
+  it('hands a deleted tag from Rust on', async () => {
+    const deleted = vi.fn()
+    const stop = onTagDeleted(deleted)
+    await vi.waitFor(() => expect(listeners.has('deleted')).toBe(true))
+    listeners.get('deleted')?.({ payload: { tag: 'work', affectedNotes: 2 } })
+    expect(deleted).toHaveBeenCalledWith({ tag: 'work', affectedNotes: 2 })
+    stop()
   })
 })

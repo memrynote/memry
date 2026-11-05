@@ -158,6 +158,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_rename_abandon::<Wry>,
             crate::commands::tags::tags_rename_unfinished::<Wry>,
             crate::commands::tags::tags_rename_category,
+            crate::commands::tags_retag::tags_delete::<Wry>,
+            crate::commands::tags_retag::tags_merge::<Wry>,
+            crate::commands::tags_retag::tags_remove_from_note::<Wry>,
             crate::commands::tags::tags_reorder,
             crate::commands::tags::tags_unpin_note_from_tag::<Wry>,
             crate::commands::tags::tags_update_color,
@@ -257,6 +260,7 @@ pub fn builder() -> Builder<Wry> {
             // tags
             crate::events::TagCategoriesChangedEvent,
             crate::events::TagColorUpdatedEvent,
+            crate::events::TagDeletedEvent,
             crate::events::TagNotesChangedEvent,
             crate::events::TagRenamedEvent,
             crate::events::TagsProgressEvent,

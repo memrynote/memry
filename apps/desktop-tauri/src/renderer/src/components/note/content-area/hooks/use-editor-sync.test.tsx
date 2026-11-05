@@ -576,6 +576,38 @@ describe('useEditorSync', () => {
     ])
   })
 
+  it('empties the editor when an outside edit empties the body, and not on an empty open', async () => {
+    const editor = createEditor([
+      { id: 'paragraph-1', type: 'paragraph', props: {}, content: ['Context'], children: [] }
+    ])
+
+    const { rerender } = renderHook(
+      ({ initialContent, externalContentRevision }) =>
+        useEditorSync({
+          editor,
+          initialContent,
+          contentType: 'markdown',
+          externalContentRevision
+        }),
+      { initialProps: { initialContent: '', externalContentRevision: 0 } }
+    )
+    await act(async () => {
+      await Promise.resolve()
+    })
+    // A note that opens empty already shows an empty editor: nothing is replaced.
+    expect(blockNoteMocks.removeAndInsertBlocks).not.toHaveBeenCalled()
+
+    rerender({ initialContent: '## Context', externalContentRevision: 1 })
+    await waitFor(() => expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalledTimes(1))
+
+    // The tag template's Undo empties the file; the open editor takes it, off the undo stack.
+    rerender({ initialContent: '', externalContentRevision: 2 })
+    await waitFor(() => expect(blockNoteMocks.removeAndInsertBlocks).toHaveBeenCalledTimes(2))
+    expect(editor.document).toEqual([{ type: 'paragraph' }])
+    const [tr] = blockNoteMocks.removeAndInsertBlocks.mock.calls[1]
+    expect(tr.setMeta).toHaveBeenCalledWith('addToHistory', false)
+  })
+
   it('leaves an external revision to the Y.Doc when collaboration is active', async () => {
     const editor = createEditor([
       { id: 'paragraph-1', type: 'paragraph', props: {}, content: ['Body'], children: [] }

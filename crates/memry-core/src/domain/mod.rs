@@ -66,6 +66,7 @@ pub mod tag_fields;
 pub mod tag_reads;
 pub mod tag_rename;
 pub mod tag_retag;
+pub mod tag_schema;
 pub mod tag_schema_refs;
 pub mod tags;
 pub mod task_activity;

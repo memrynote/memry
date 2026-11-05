@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "删除标签",
       "deleteDescription": "要从 {count, plural, other {# 项}}中移除“{name}”吗？此操作无法撤销。",
+      "deleteTasks": "带有 #{tag} 的任务也会失去该标签。",
       "mergeTitle": "合并标签",
       "mergeDescription": "所有带有“{source}”标签的条目将改为使用目标标签。源标签将被删除。",
+      "mergeRetags": "带有“{source}”标签的笔记、日记和任务将改为使用目标标签。",
+      "mergeBodyTagsStay": "笔记正文中写的 #{source} 会保留，因此这些笔记仍带有它。",
       "targetPlaceholder": "选择目标标签…",
       "colorTitle": "更改“{name}”的颜色"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "正在重命名 #{oldName}：{done} / {total} 篇笔记",
       "renamedBodySkipped": "“{newName}”无法作为行内标签输入，因此笔记文本中的 #{oldName} 保持原样",
       "renamedSomeFailed": "无法更新 {count, plural, other {# 篇笔记}}。请打开{count, plural, other {这些笔记}}并重新添加标签",
+      "mergedSomeKept": "无法更新 {count, plural, other {# 篇笔记}}。再次合并 #{tag} 即可完成。",
+      "deletedSomeKept": "无法更新 {count, plural, other {# 篇笔记}}。再次删除 #{tag} 即可完成。",
+      "mergedSomeStuck": "无法更新 {count, plural, other {# 篇笔记}}。请修复下面的笔记，然后再次合并 #{tag}。",
+      "deletedSomeStuck": "无法更新 {count, plural, other {# 篇笔记}}。请修复下面的笔记，然后再次删除 #{tag}。",
       "renameUnfinished": "将 #{oldName} 重命名为 #{newName} 的操作有 {count, plural, other {# 篇笔记}}未完成。再次将 #{oldName} 重命名为 #{newName} 即可完成。",
       "renameUnfinishedMore": "{names} 等{count, plural, other {另外 # 篇}}",
       "stopRename": "停止此次重命名",

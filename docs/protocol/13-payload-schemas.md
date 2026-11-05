@@ -373,7 +373,7 @@ optional record that reads a non-object as absent (`:33-37`). **Normative**:
 The Rust core projects it as `Field::opt_null("fields", Kind::Any)` with no
 column (`crates/memry-core/src/storage/repositories/projectors/tasks.rs:83`). It
 joins the map on every apply path and heals by chapter 06 §6.11
-(`crates/memry-core/src/domain/tasks/fields_apply.rs:50`), stamps a local edit
+(`crates/memry-core/src/sync/versioned_apply.rs:38`, `:73`), stamps a local edit
 (`crates/memry-core/src/domain/tasks/fields.rs:128`), pinned by
 `crates/memry-core/tests/task_field_values.rs`, and copies the map to a duplicate and to a next
 occurrence (`crates/memry-core/src/domain/tasks/create.rs:127`,
@@ -436,6 +436,10 @@ neither list is a wire constraint on the other.
 
 - **`colorAuthored` absent means "cannot tell" and the receiver honours the
   colour**; only a sender that knows the field can say `false` (`:348-350`).
+  A client that mints a definition on a palette colour MUST say `false`, or a
+  peer holding the tag takes the palette's colour over the one its user picked
+  (`apps/desktop/src/main/database/queries/tag-definitions.ts:82`,
+  `crates/memry-core/src/domain/tag_admin.rs:442-447`).
 - **`views`: `undefined` keeps the local value, `null` is an explicit clear**
   (`:355-356`). **A sender that holds no views omits the key** (desktop: a NULL
   column), and an explicit "no views" travels as `[]`
@@ -542,9 +546,16 @@ One versioned object holding the tag's fields, template, parent and preset
   Removing everything is a versioned empty value, never `null`.
 
 The Rust core projects it as `Field::opt_null("schema", Kind::Any)` with no
-column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:64`):
-a wholesale apply stores it verbatim, and a concurrent tag definition takes the
-remote payload (chapter 06 §6.8), which a desktop then heals.
+column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:64`).
+It runs §6.3.1's document gate on the rest of the definition, then joins
+`schema` by chapter 06 §6.11 on every apply path, the skip included, and heals
+(`crates/memry-core/src/sync/apply.rs:444-446`, `:492-503`,
+`crates/memry-core/src/sync/versioned_apply.rs:45`, `:73`). A schema edit
+stamps `t` one past the stored value's
+(`crates/memry-core/src/domain/tag_schema/edit.rs:97`,
+`crates/memry-core/src/sync/versioned.rs:177`). Builds before #4002 stored the
+schema verbatim and took the remote payload on a concurrent definition; they
+never edited it, and a desktop heals for them.
 
 #### 13.7.7.2 Reference rewrite
 

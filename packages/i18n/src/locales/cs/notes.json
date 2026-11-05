@@ -1899,6 +1899,8 @@
         "statNotes": "poznámky si ponechají text",
         "statValues": "hodnoty zůstanou jako vlastnosti",
         "plainText": "Poznámky, které #{tag} zmiňují v textu, si ho ponechají jako prostý text.",
+        "alsoTasks": "{tasks, plural, one {# úkol ztratí} few {# úkoly ztratí} many {# úkolu ztratí} other {# úkolů ztratí}} také štítek #{tag}.",
+        "bodyTagsStay": "#{tag} napsaný v textu poznámek zůstane, takže se tyto poznámky pod štítkem dál zobrazí.",
         "confirm": "Smazat štítek",
         "done": "Štítek #{tag} smazán."
       },
