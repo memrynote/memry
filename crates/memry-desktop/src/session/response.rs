@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{CreateOrOpenError, SessionError, SessionStatus, VaultOpened};
+use crate::notes::index::IndexProgress;
 use crate::registry::{StoredVault, VaultInfo};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -42,8 +43,27 @@ pub struct MovesRecovered {
     pub shown_folders: u32,
 }
 
+impl VaultStatus {
+    /// The status while a reindex runs ([`crate::notes::index::NoteIndex::reindexing`]): indexing,
+    /// at its last step, as Electron's `reindex` and `emitIndexProgress` set it.
+    pub fn with_indexing(mut self, step: Option<IndexProgress>) -> Self {
+        if let Some(IndexProgress { built, total }) = step.filter(|_| self.is_open) {
+            let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+            self.is_indexing = true;
+            self.index_progress = count(
+                (built.min(total) * 100 + total / 2)
+                    .checked_div(total)
+                    .unwrap_or(0),
+            );
+            self.index_built = Some(count(built));
+            self.index_total = Some(count(total));
+        }
+        self
+    }
+}
+
 impl From<SessionStatus> for VaultStatus {
-    /// Indexing is Step 13 (#3530)'s; until it reports, no vault is indexing.
+    /// Not indexing: [`VaultStatus::with_indexing`] adds a reindex that runs.
     fn from(status: SessionStatus) -> Self {
         Self {
             is_open: status.is_open,
@@ -196,6 +216,39 @@ mod tests {
         std::fs::write(&index, bytes).expect("damage");
         f.session.open(&vault, OpenSource::Select).expect("reopen");
         assert_eq!(reasons(drain(&rx)), vec!["corrupt"]);
+    }
+
+    #[test]
+    fn a_reindex_marks_an_open_vault_indexing_with_its_counts() {
+        let open = |is_open| SessionStatus {
+            is_open,
+            path: Some("/v".into()),
+            error: None,
+            moves_recovered: None,
+        };
+        let step = |built, total| Some(IndexProgress { built, total });
+        let status = VaultStatus::from(open(true)).with_indexing(step(2, 3));
+        assert!(status.is_indexing);
+        assert_eq!(
+            (
+                status.index_progress,
+                status.index_built,
+                status.index_total
+            ),
+            (67, Some(2), Some(3))
+        );
+        let first = VaultStatus::from(open(true)).with_indexing(step(0, 0));
+        assert!(first.is_indexing);
+        assert_eq!(first.index_progress, 0);
+        assert_eq!(
+            VaultStatus::from(open(true)).with_indexing(None),
+            VaultStatus::from(open(true))
+        );
+        assert!(
+            !VaultStatus::from(open(false))
+                .with_indexing(step(1, 3))
+                .is_indexing
+        );
     }
 
     #[test]

@@ -91,7 +91,10 @@ pub async fn vault_list(app: AppHandle<Wry>) -> Result<GetVaultsResponse, Comman
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_get_status(app: AppHandle<Wry>) -> Result<VaultStatus, CommandError> {
-    Ok(VaultStatus::from(session(&app).status()))
+    Ok(super::vault_index::vault_status(
+        &app,
+        session(&app).status(),
+    ))
 }
 
 /// Next to the current vault when one is registered, else `<documents>/Memry`.

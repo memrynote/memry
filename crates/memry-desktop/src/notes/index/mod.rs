@@ -39,7 +39,9 @@
 //!   never backwards, ending at the total once every file was read. The open's pass, the first
 //!   after the walk, reports the same way (Electron's `indexVault` on open, `0` of `0`
 //!   included): the renderer refreshes the notes list on it. A close or a failed write ends a
-//!   pass without the total, and the pass that pays the rest does not report.
+//!   pass without the total, and the pass that pays the rest does not report. From the request
+//!   to its answer, [`NoteIndex::reindexing`] names its last step, for the vault status's
+//!   `isIndexing` (Electron's `reindex` sets it for as long).
 //!
 //! [`Search::reindex_until`]: memry_core::api::search::Search::reindex_until
 
@@ -115,10 +117,38 @@ enum Slot {
     Failed,
 }
 
+/// The reindexes asked for and not answered yet, and the last step one reported.
+#[derive(Default)]
+struct Reindexing {
+    asked: usize,
+    step: IndexProgress,
+}
+
+/// Counts a reindex as asked until it is answered, however it ends.
+struct Asked<'a>(&'a Mutex<Reindexing>);
+
+impl<'a> Asked<'a> {
+    fn new(reindexing: &'a Mutex<Reindexing>) -> Self {
+        let mut state = lock(reindexing);
+        if state.asked == 0 {
+            state.step = IndexProgress::default();
+        }
+        state.asked += 1;
+        Self(reindexing)
+    }
+}
+
+impl Drop for Asked<'_> {
+    fn drop(&mut self) {
+        lock(self.0).asked -= 1;
+    }
+}
+
 /// The note index of whichever vault is open. The app holds one.
 pub struct NoteIndex {
     tier: Arc<VaultTier>,
     slot: Mutex<Slot>,
+    reindexing: Arc<Mutex<Reindexing>>,
     report: Box<dyn Fn(IndexProgress) + Send + Sync>,
     links: Box<dyn Fn(LinkChanges) + Send + Sync>,
     landed: Box<dyn Fn(&str) + Send + Sync>,
@@ -137,6 +167,7 @@ impl NoteIndex {
         Arc::new(Self {
             tier,
             slot: Mutex::new(Slot::Closed),
+            reindexing: Arc::default(),
             report: Box::new(report),
             links: Box::new(links),
             landed: Box::new(landed),
@@ -202,20 +233,32 @@ impl NoteIndex {
     }
 
     /// Measures every note of the open vault again, through its task, once the open walk ended
-    /// and after the pass the task is in. Blocks; `progress` is called on the task's thread.
+    /// and after the pass the task is in. Blocks; `progress` is called on the task's thread,
+    /// after [`Self::reindexing`] names the step.
     pub fn reindex(
         &self,
-        progress: impl FnMut(IndexProgress) + Send + 'static,
+        mut progress: impl FnMut(IndexProgress) + Send + 'static,
     ) -> Result<Backfilled, IndexError> {
         let handle = match &*lock(&self.slot) {
             Slot::Closed => return Err(IndexError::NotOpen),
             Slot::Failed => return Err(IndexError::NotRunning),
             Slot::Open { handle, .. } => handle.clone(),
         };
-        let answer = handle.reindex(Box::new(progress));
+        let _asked = Asked::new(&self.reindexing);
+        let reindexing = self.reindexing.clone();
+        let answer = handle.reindex(Box::new(move |step| {
+            lock(&reindexing).step = step;
+            progress(step);
+        }));
         answer
             .and_then(|answer| answer.recv().ok())
             .unwrap_or_else(|| Err(self.gone()))
+    }
+
+    /// While a reindex is asked and not answered, its last step (`0` of `0` before the first).
+    pub fn reindexing(&self) -> Option<IndexProgress> {
+        let state = lock(&self.reindexing);
+        (state.asked > 0).then_some(state.step)
     }
 
     /// Measures one note of the open vault now, through its task, once the open walk ended:
