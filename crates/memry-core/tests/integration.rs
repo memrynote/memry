@@ -58,6 +58,8 @@ mod body_edit_ops;
 mod body_edit_replace_text;
 #[path = "body_edit_restore.rs"]
 mod body_edit_restore;
+#[path = "calendar_external_relation.rs"]
+mod calendar_external_relation;
 #[path = "calendar_feeds.rs"]
 mod calendar_feeds;
 #[path = "calendar_ical_vectors.rs"]

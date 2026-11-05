@@ -142,6 +142,8 @@ mod notes_outside_after_reopen;
 mod notes_outside_tags;
 #[path = "notes_properties.rs"]
 mod notes_properties;
+#[path = "notes_resolve_refs.rs"]
+mod notes_resolve_refs;
 #[path = "notes_service.rs"]
 mod notes_service;
 #[path = "notes_tag_rename.rs"]

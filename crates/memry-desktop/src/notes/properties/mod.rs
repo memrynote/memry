@@ -18,15 +18,17 @@
 //! A template applied to a note (`notes:apply-template`, [`super::apply_template`]) fills values
 //! with the same edit and record mirror ([`mirror_properties`]) inside its own write of the
 //! body. What an edit makes of the frontmatter is [`edit`]. The note index reads the same values
-//! into `note_properties` ([`file_properties`]; `super::index`).
+//! into `note_properties` ([`file_properties`]; `super::index`). Relation chips
+//! (`properties:resolveRefs`) are [`resolve_refs`]'s.
 //!
 //! Not here: a type learned from a new value (Electron's `learnCanonicalPropertyType`, which
 //! gives an undeclared property a synced definition at the first type its notes are synced
 //! with; 13k-4c-2), the header status a status property takes from the note's tasks
-//! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m), relation
-//! chips (`properties:resolveRefs`) and the lock check (Step 14).
+//! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m) and the lock
+//! check (Step 14).
 
 pub mod edit;
+pub mod resolve_refs;
 
 use std::cell::RefCell;
 use std::collections::HashMap;

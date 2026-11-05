@@ -313,6 +313,7 @@ vi.mock('../src/generated/bindings', () => {
         answered(properties().merge(entityId, values), written),
       propertiesRename: (entityId: string, oldName: string, newName: string) =>
         answered(properties().rename(entityId, oldName, newName), () => null),
+      propertiesResolveRefs: (uris: string[]) => properties().resolveRefs(uris),
       updaterGetState: () => updater().getState(),
       updaterCheckForUpdates: () => updater().checkForUpdates(),
       updaterDownloadUpdate: () => updater().downloadUpdate(),
