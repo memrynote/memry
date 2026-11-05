@@ -92,14 +92,13 @@ fn types_and_values_match_electrons_index() {
             .find(|(n, _)| *n == name)
             .map(|(_, t)| (*t).to_owned())
     };
-    let got = indexed_properties(yaml.iter(), defined);
-    let want: Vec<IndexedProperty> = expected
+    let got: Vec<(String, String, Value)> = indexed_properties(yaml.iter(), defined)
         .into_iter()
-        .map(|(name, type_name, value)| IndexedProperty {
-            name: name.to_owned(),
-            type_name: type_name.to_owned(),
-            value,
-        })
+        .map(|property| (property.name, property.type_name, property.value))
+        .collect();
+    let want: Vec<(String, String, Value)> = expected
+        .into_iter()
+        .map(|(name, type_name, value)| (name.to_owned(), type_name.to_owned(), value))
         .collect();
     assert_eq!(got, want);
 }

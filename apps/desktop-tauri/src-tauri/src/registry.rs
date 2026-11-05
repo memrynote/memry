@@ -239,6 +239,7 @@ pub fn builder() -> Builder<Wry> {
             // updater
             crate::events::UpdaterStateChangedEvent,
             // notes
+            crate::events::FolderConfigUpdatedEvent,
             crate::events::NoteCreatedEvent,
             crate::events::NoteDeletedEvent,
             crate::events::NoteEventsDroppedEvent,

@@ -106,7 +106,25 @@ pub fn with_reporting_task(
     report: &(dyn Fn(IndexProgress) + Sync),
     test: impl FnOnce(&TaskHandle),
 ) {
-    let indexer = Indexer::new(open);
+    // A store of its own: the index reads the definitions' records under it, writing none.
+    with_task_under(
+        open,
+        facts,
+        crate::device_key::with_device_key(),
+        report,
+        test,
+    );
+}
+
+/// [`with_reporting_task`] whose task reads records under `store`.
+pub fn with_task_under(
+    open: &OpenVault,
+    facts: Receiver<Applied>,
+    store: Arc<dyn SecureStore>,
+    report: &(dyn Fn(IndexProgress) + Sync),
+    test: impl FnOnce(&TaskHandle),
+) {
+    let indexer = Indexer::new(open, store);
     let cancel = CancelToken::default();
     let (handle, inbox) = task_channel();
     std::thread::scope(|scope| {

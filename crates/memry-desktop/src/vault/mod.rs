@@ -15,6 +15,7 @@ pub mod config;
 pub mod consumer;
 pub mod covers;
 pub mod embeds;
+pub mod empty_folder;
 pub mod file_move;
 pub mod file_types;
 pub mod folder_file;

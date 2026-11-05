@@ -6,6 +6,7 @@ pub mod delete;
 pub mod error;
 pub mod folder_delete;
 pub mod folder_move;
+pub mod folder_sync;
 pub mod folders;
 pub mod frontmatter;
 pub mod icons;

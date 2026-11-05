@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
+use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::property_definitions::{
     DefinitionInput, DefinitionsError, EnsuredType, OptionInput, PropertyDefinitionView,
     PropertyDefinitions, StatusCategoryKey,
@@ -35,14 +36,20 @@ fn failed(error: &DefinitionsError) -> CommandError {
     CommandError::from_core(error)
 }
 
-/// Runs `work` on the open vault's definitions off the async runtime.
+/// Runs `work` on the open vault's definitions off the async runtime. The note index then
+/// checks its property rows' types: an edit, or a pull a read took into the file, may have
+/// changed a definition's type (`retypeIndexedProperties`).
 async fn on_definitions<T: Send + 'static>(
     app: AppHandle<Wry>,
     command: &'static str,
     work: impl FnOnce(&PropertyDefinitions) -> Result<T, DefinitionsError> + Send + 'static,
 ) -> Result<T, CommandError> {
     blocking(command, move || {
-        work(&definitions(&app)?).map_err(|error| failed(&error))
+        let done = work(&definitions(&app)?).map_err(|error| failed(&error));
+        if let Some(index) = app.try_state::<Arc<NoteIndex>>() {
+            index.retype();
+        }
+        done
     })
     .await
 }
