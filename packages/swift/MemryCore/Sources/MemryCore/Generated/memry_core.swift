@@ -9958,6 +9958,12 @@ public protocol TasksProtocol: AnyObject, Sendable {
     func deleteSavedFilter(id: String) throws 
     
     /**
+     * Seeds the Inbox when the vault has none, so a new task always has a
+     * project to land in. Returns whether it wrote one.
+     */
+    func ensureInbox() throws  -> Bool
+    
+    /**
      * `item_type` is `note`, `calendar_event` or `file`.
      */
     func linkToProject(id: String, itemType: String, itemId: String) throws 
@@ -10533,6 +10539,19 @@ open func deleteSavedFilter(id: String)throws   {try rustCallWithError(FfiConver
         FfiConverterString.lower(id),uniffiCallStatus
     )
 }
+}
+    
+    /**
+     * Seeds the Inbox when the vault has none, so a new task always has a
+     * project to land in. Returns whether it wrote one.
+     */
+open func ensureInbox()throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_ensure_inbox(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
 }
     
     /**
@@ -34999,6 +35018,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_delete_saved_filter() != 31953) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_ensure_inbox() != 60443) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_link_to_project() != 15728) {

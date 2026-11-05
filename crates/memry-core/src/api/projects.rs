@@ -120,6 +120,14 @@ impl From<saved_filters::SavedFilter> for SavedFilterItem {
 
 #[uniffi::export]
 impl Tasks {
+    /// Seeds the Inbox when the vault has none, so a new task always has a
+    /// project to land in. Returns whether it wrote one.
+    pub fn ensure_inbox(&self) -> Result<bool, StorageError> {
+        let device = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| projects::ensure_inbox(conn, &device, now_ms()))
+    }
+
     /// Creates a project and returns its id.
     pub fn create_project(&self, draft: ProjectDraft) -> Result<String, StorageError> {
         let device = self.device_id.clone();

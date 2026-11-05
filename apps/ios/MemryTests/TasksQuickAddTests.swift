@@ -58,7 +58,8 @@ struct TasksQuickAddTests {
         #expect(store.resolveProjectId(parsed: nil) == second)
         store.state.projectId = "gone"
         #expect(store.resolveProjectId(parsed: nil, preferred: "also-gone") != nil)
-        #expect([first, second].contains(store.resolveProjectId(parsed: nil) ?? ""))
+        // `load` seeded the Inbox, which comes before the first project.
+        #expect(store.resolveProjectId(parsed: nil) == "inbox")
     }
 
     // MARK: Submit

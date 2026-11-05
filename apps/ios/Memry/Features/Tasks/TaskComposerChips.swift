@@ -126,6 +126,9 @@ struct TaskComposerChips: View {
                 }
             }
             .pickerStyle(.inline)
+            // Desktop's picker footer (`ProjectCreateFooter`).
+            Button(TasksCopy.Projects.newProject, systemImage: "plus") { pickSheet(.newProject) }
+                .accessibilityIdentifier("tasks.composer.newProject")
         } label: {
             let project = store.project(values.projectId)
             TaskComposerChip(text: project?.name ?? TasksCopy.composerNoProject) {
@@ -233,7 +236,7 @@ struct TaskComposerChips: View {
 /// The sheets the composer opens on top of itself.
 struct TaskComposerSheet: View {
     enum Which: String, Identifiable {
-        case when, start, parent
+        case when, start, parent, newProject
 
         var id: String { rawValue }
     }
@@ -265,6 +268,11 @@ struct TaskComposerSheet: View {
                     draft.statusId = nil
                 }
             }
+        case .newProject:
+            ProjectEditorSheet(store: store, projectId: nil, onCreated: { id in
+                draft.projectId = id
+                draft.statusId = nil
+            })
         }
     }
 }

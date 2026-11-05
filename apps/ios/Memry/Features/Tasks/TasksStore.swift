@@ -135,7 +135,9 @@ final class TasksStore {
         let core = core
         do {
             let loaded = try await executor.run {
-                (
+                // A vault with no Inbox gets desktop's, so a new task has a project.
+                _ = try core.ensureInbox()
+                return (
                     try core.all(),
                     try core.projects(includeArchived: true),
                     try core.savedFilters(),

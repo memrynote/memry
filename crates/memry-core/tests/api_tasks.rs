@@ -9,6 +9,7 @@
 //! | a newer desktop's unknown fields survive a local edit     | D7, 13 §13.2      |
 //! | the view answers tabs, counts and done like desktop       | D4                |
 //! | projects, saved filters and settings round-trip           | D2, TP022, TP023  |
+//! | an empty vault gets desktop's Inbox, a synced one keeps its own | D2        |
 //! | quick add and date parsing cross the FFI                  | D1                |
 //! | undoing a delete brings the task and subtasks back        | TP051             |
 //! | a missing item and a refused write are typed errors       | TP092             |
@@ -352,6 +353,58 @@ fn projects_saved_filters_and_settings_round_trip() {
     let settings = tasks.set_default_view("next7".into()).unwrap();
     assert_eq!(settings.default_view, "next7");
     assert_eq!(tasks.task_settings().unwrap().default_sort_order, "manual");
+}
+
+#[test]
+fn an_empty_vault_gets_desktops_inbox_and_a_synced_one_keeps_its_own() {
+    let vault = vault();
+    let tasks = tasks(&vault);
+    assert!(tasks.ensure_inbox().unwrap());
+    assert!(!tasks.ensure_inbox().unwrap());
+
+    let listed = tasks.projects(false).unwrap();
+    assert_eq!(listed.len(), 1);
+    let inbox = &listed[0];
+    assert_eq!((inbox.id.as_str(), inbox.name.as_str()), ("inbox", "Inbox"));
+    assert!(inbox.is_inbox);
+    let status_ids: Vec<&str> = inbox.statuses.iter().map(|s| s.id.as_str()).collect();
+    assert_eq!(
+        status_ids,
+        ["inbox-todo", "inbox-in-progress", "inbox-done"]
+    );
+    tasks
+        .create(input("First", "inbox"))
+        .expect("a task lands in it");
+    let queued: i64 = vault_db(&vault)
+        .call_blocking(|conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT COUNT(*) FROM outbox WHERE item_type = 'project' AND item_id = 'inbox'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap())
+        })
+        .unwrap();
+    assert_eq!(queued, 1);
+
+    let synced = self::vault();
+    inbound(
+        &synced,
+        "project",
+        "inbox",
+        json!({"name": "Capture", "color": "#6366f1", "position": 0, "isInbox": true,
+               "statuses": [], "clock": {"desk": 2}}),
+    );
+    let synced_tasks = self::tasks(&synced);
+    assert!(!synced_tasks.ensure_inbox().unwrap());
+    let names: Vec<String> = synced_tasks
+        .projects(false)
+        .unwrap()
+        .into_iter()
+        .map(|p| p.name)
+        .collect();
+    assert_eq!(names, ["Capture"]);
 }
 
 #[test]
