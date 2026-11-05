@@ -21,6 +21,7 @@ import {
   createNote,
   getNote,
   newNote,
+  openDetailsMenu,
   openFromSidebar,
   vaultOpen
 } from '../../harness/notes'
@@ -189,12 +190,7 @@ test('adding a property while the section is collapsed opens it', async ({ page 
   await header.click()
   await expect(header).toHaveAttribute('aria-expanded', 'false')
 
-  // The header's "add details" row takes pointer events only while the header is hovered, which
-  // a WebDriver pointer move does not do in WKWebView, so its menu opens from the keyboard.
-  const details = page.getByTestId('ghost-add-details')
-  await details.waitFor({ state: 'attached' })
-  await details.focus()
-  await page.keyboard.press('Enter')
+  await openDetailsMenu(page)
   await page.getByRole('menuitem', { name: 'Add property' }).click()
   await page.getByRole('option', { name: 'Text' }).first().click()
 
