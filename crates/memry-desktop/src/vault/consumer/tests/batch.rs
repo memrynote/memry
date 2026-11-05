@@ -1,6 +1,7 @@
 //! New files the open walk applies together (#3530 13q-7): what each file ends as when the
 //! identity creates their notes together, when the batch fails, when their rows cannot be
-//! written together, when one is too large for a note, and when one changes after it was read.
+//! written together, when one is too large for a note, when one changes after it was read, and
+//! when the watcher applies one after it was read.
 
 use super::*;
 
@@ -173,4 +174,26 @@ fn a_file_edited_after_the_batch_read_it_goes_alone() {
     assert_eq!(f.adopted(), ["b.md"]);
     let row = f.row("b.md").expect("a row");
     assert_eq!(f.body(&row.note_id), edited.trim_end());
+}
+
+/// A file the watcher reports and applies after the batch read it, as a live watcher may report
+/// a just-written file before the walk reaches it, goes alone: the walk finds the row the
+/// watcher wrote, and the file keeps that one note.
+#[test]
+fn a_file_the_watcher_applied_after_the_batch_read_it_keeps_one_note() {
+    let f = fixture();
+    batch_of(&f, Batch::Create);
+    let steps = f.walk_together_with(&PATHS, || assert_eq!(f.added("b.md"), Step::Done));
+    assert_eq!(steps, steps_done());
+    assert_eq!(f.adopted(), ["b.md"]);
+    assert_eq!(note_count(&f), 3);
+    let mut notes: Vec<String> = PATHS
+        .iter()
+        .map(|rel| f.row(rel).expect("a row").note_id)
+        .collect();
+    notes.sort();
+    notes.dedup();
+    assert_eq!(notes.len(), PATHS.len());
+    let row = f.row("b.md").expect("a row");
+    assert_eq!(f.body(&row.note_id), text("b.md").trim_end());
 }
