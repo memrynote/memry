@@ -41,6 +41,7 @@ use crate::storage::{Db, open_index};
 
 #[cfg(feature = "markdown")]
 mod objects;
+#[cfg(feature = "markdown")]
 mod tags;
 
 /// One search result.

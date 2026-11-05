@@ -20,6 +20,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::{failed, next_clock};
+use crate::domain::tag_admin::DEFINITION_TYPE;
 use crate::domain::tasks::{self, Inbound};
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::storage::repositories::{Change, StoredPayload};
@@ -43,7 +44,7 @@ pub(crate) const TASK_FIELDS: VersionedKey = VersionedKey {
 
 /// `tag_definition.schema` (§13.7.7.1).
 pub(crate) const TAG_SCHEMA: VersionedKey = VersionedKey {
-    item_type: "tag_definition",
+    item_type: DEFINITION_TYPE,
     key: "schema",
     join: versioned::join_value,
 };
