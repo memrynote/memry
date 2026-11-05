@@ -5,6 +5,8 @@
 //! it with `--test`) gets a `[[test]]` target in Cargo.toml instead. `every_test_file_is_built`
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
+#[cfg(feature = "markdown")]
+mod editor_support;
 mod http_fakes;
 #[cfg(feature = "markdown")]
 mod note_identity_support;
@@ -184,6 +186,10 @@ mod domain_template_store;
 mod domain_templates;
 #[path = "dryoc_parity.rs"]
 mod dryoc_parity;
+#[path = "editor_open_apply.rs"]
+mod editor_open_apply;
+#[path = "editor_origin_fanout.rs"]
+mod editor_origin_fanout;
 #[path = "external_feed.rs"]
 mod external_feed;
 #[path = "field_merge_vectors.rs"]

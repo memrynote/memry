@@ -129,6 +129,17 @@ impl Vault {
         crate::api::external_feed::ExternalFeed::over(self.db.clone(), &store)
     }
 
+    /// The documents editor windows type into (desktop Step 14). Not part of the FFI
+    /// surface: iOS edits bodies through its own path. One per open vault.
+    #[cfg(feature = "markdown")]
+    #[doc(hidden)]
+    pub fn editor(
+        &self,
+        store: Arc<dyn SecureStore>,
+    ) -> Result<crate::api::editor::Editor, AuthError> {
+        crate::api::editor::Editor::over(self.db.clone(), &store)
+    }
+
     /// Records what this vault's core database was created over, once (desktop
     /// Step 13d): each open says whether Electron's `data.db` is beside it, and
     /// the first answer recorded stays. See
