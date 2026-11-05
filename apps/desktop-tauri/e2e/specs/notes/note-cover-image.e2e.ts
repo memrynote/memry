@@ -13,10 +13,10 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { openFromSidebar, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
-import { invoke, vaultStatus } from '../../harness/vault-commands'
-import { pollUntil } from '../../harness/wait'
+import { invoke } from '../../harness/vault-commands'
 
 const COVER_FILENAME = 'cover-photo.png'
 // A 1x1 PNG.
@@ -24,7 +24,6 @@ const PNG_BYTES = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
   'base64'
 )
-const NOTE_TITLE = 'textarea[aria-label="Note title"]'
 // The canonical form, or the one WebView2 serves a custom scheme from (`toWebviewUrl`).
 const PAINTED_URL = /^(memry-file:\/\/local\/|https:\/\/memry-file\.localhost\/local\/)/
 
@@ -33,34 +32,6 @@ interface NoteView {
   path: string
   title: string
   frontmatter: Record<string, unknown>
-}
-
-async function ready(page: Page): Promise<void> {
-  expect(await pollUntil(async () => (await vaultStatus(page)).isOpen, { timeoutMs: 30_000 })).toBe(
-    true
-  )
-}
-
-/** Opens a vault-root note from the Collections tree, as a user does. */
-async function openFromSidebar(page: Page, note: NoteView): Promise<void> {
-  const header = page.locator('#section-header-collections')
-  await expect(header).toBeVisible({ timeout: 30_000 })
-  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
-  await expect(header).toHaveAttribute('aria-expanded', 'true')
-  // The section opens through a 100 ms transition inside an overflow-hidden box. The driver
-  // scrolls a row it clicks into view, which scrolls that box mid-transition; the box springs
-  // back when the transition ends and the click lands on the row above.
-  await expect
-    .poll(() =>
-      page
-        .locator('#section-content-collections > div')
-        .evaluate(
-          (box: HTMLElement) => box.clientHeight > 0 && box.scrollHeight <= box.clientHeight
-        )
-    )
-    .toBe(true)
-  await page.locator(`[data-tree-node-id="${note.id}"]`).click()
-  await expect(page.locator(NOTE_TITLE).first()).toHaveValue(note.title)
 }
 
 /** Adds `key: value` to the file's frontmatter block, making one when it has none. */
@@ -97,7 +68,7 @@ test('a cover ref in the file paints resolved, and the file keeps the ref', asyn
   page,
   testVaultPath
 }) => {
-  await ready(page)
+  await vaultOpen(page)
   const { note, coverRef, noteFile } = await noteWithImageCover(page, testVaultPath)
   await openFromSidebar(page, note)
 
@@ -111,14 +82,58 @@ test('a cover ref in the file paints resolved, and the file keeps the ref', asyn
     .poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth))
     .toBe(1)
 
+  // An app write to the frontmatter rewrites the block the cover line is in; the ref keeps its
+  // bytes, and no painted URL or vault path reaches the file.
+  await invoke(page, 'properties_merge', { entityId: note.id, values: { Probe: 'x' } })
+  await expect.poll(() => readFileSync(noteFile, 'utf8'), { timeout: 20_000 }).toContain('Probe:')
   const onDisk = readFileSync(noteFile, 'utf8')
-  expect(onDisk).toContain(`cover: ${coverRef}`)
+  expect(onDisk.split(/\r?\n/)).toContain(`cover: ${coverRef}`)
   expect(onDisk).not.toContain('memry-file:')
   expect(onDisk).not.toContain(testVaultPath)
 })
 
+// Pending: the upload writes through `notes.uploadAttachment`, which Step 14 (#3531) ports; the
+// picker opens through the ghost chip click #3986 tracks.
+test.skip('an uploaded cover is stored as a note-relative attachment ref', async ({
+  page,
+  testVaultPath
+}) => {
+  await vaultOpen(page)
+  const note = await invoke<NoteView>(page, 'notes_create', {
+    input: { title: `Upload Cover Note ${Date.now()}`, content: 'Upload body text' }
+  })
+  await openFromSidebar(page, note)
+  const noteFile = join(testVaultPath, note.path)
+
+  await page.getByTestId('note-metadata').hover()
+  await page.getByTestId('ghost-add-details').click()
+  await page.getByTestId('ghost-add-cover').click()
+  const picker = page.getByTestId('cover-picker-dialog')
+  await expect(picker).toBeVisible()
+  // The file a user picks in the system dialog the upload tile opens.
+  await page.getByTestId('cover-picker-file-input').evaluate(
+    (input: HTMLInputElement, { name, base64 }: { name: string; base64: string }) => {
+      const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))
+      const files = new DataTransfer()
+      files.items.add(new File([bytes], name, { type: 'image/png' }))
+      input.files = files.files
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    },
+    { name: COVER_FILENAME, base64: PNG_BYTES.toString('base64') }
+  )
+  await expect(picker).toBeHidden()
+  await expect(page.getByTestId('note-cover')).toHaveAttribute('data-cover-kind', 'image')
+
+  await expect.poll(() => readFileSync(noteFile, 'utf8'), { timeout: 20_000 }).toMatch(/^cover: /m)
+  const coverRef = (readFileSync(noteFile, 'utf8').match(/^cover: (.*?)\r?$/m) ?? [])[1] ?? ''
+  expect(coverRef).toContain(`attachments/${note.id}/`)
+  // Neither a URL nor an absolute path.
+  expect(coverRef).not.toMatch(/^([a-zA-Z][a-zA-Z\d+\-.]*:|\/)/)
+  expect(readFileSync(noteFile, 'utf8')).not.toContain(testVaultPath)
+})
+
 test('Remove cover takes the cover line out of the file', async ({ page, testVaultPath }) => {
-  await ready(page)
+  await vaultOpen(page)
   const { note, coverRef, noteFile } = await noteWithImageCover(page, testVaultPath)
   await openFromSidebar(page, note)
 
@@ -143,7 +158,7 @@ test.skip('picks a wash from the ghost chip and writes it as wash:<id>', async (
   page,
   testVaultPath
 }) => {
-  await ready(page)
+  await vaultOpen(page)
   const note = await invoke<NoteView>(page, 'notes_create', {
     input: { title: `Wash Note ${Date.now()}`, content: 'Wash body text' }
   })

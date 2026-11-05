@@ -84,18 +84,38 @@ export async function newNote(
   )
 }
 
+/**
+ * Opens the Collections section and waits for its open transition to end. The section opens
+ * through a 100 ms transition inside an overflow-hidden box. The driver scrolls a row it clicks
+ * into view, which scrolls that box mid-transition; the box springs back when the transition
+ * ends and the click lands on the row above.
+ */
 export async function expandCollections(page: Page): Promise<void> {
   const header = page.locator('#section-header-collections')
   await expect(header).toBeVisible({ timeout: 30_000 })
   if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
   await expect(header).toHaveAttribute('aria-expanded', 'true')
+  // `getAnimations` flushes style first, so a transition the open just started is counted.
+  await expect
+    .poll(() =>
+      page
+        .locator('#section-content-collections')
+        .evaluate(
+          (section: HTMLElement) =>
+            section.getAnimations().length === 0 && section.getBoundingClientRect().height > 0
+        )
+    )
+    .toBe(true)
 }
 
 export const treeRow = (page: Page, nodeId: string) =>
   page.locator(`[data-tree-node-id="${nodeId}"]`)
 
 /** Opens the note from the Collections tree, each folder above it opened first. */
-export async function openFromSidebar(page: Page, note: NoteView): Promise<void> {
+export async function openFromSidebar(
+  page: Page,
+  note: Pick<NoteView, 'id' | 'path' | 'title'>
+): Promise<void> {
   await expandCollections(page)
   const folders = note.path.split('/').slice(0, -1)
   for (let depth = 1; depth <= folders.length; depth++) {
