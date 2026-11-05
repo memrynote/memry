@@ -61,7 +61,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isTagPopupOpen, setIsTagPopupOpen] = useState(false)
   const [isPropertyPopupOpen, setIsPropertyPopupOpen] = useState(false)
-  // A popup opened from the menu keeps focus; the menu must not pull it back on close.
+  // A popup or picker opened from the menu keeps focus; the menu must not pull it back on close.
   const popupPendingRef = useRef(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
@@ -136,7 +136,10 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
             <DropdownMenuItem
               onSelect={() => {
                 const rect = triggerRef.current?.getBoundingClientRect()
-                if (rect) onAddCover({ x: rect.left + rect.width / 2, y: rect.bottom })
+                if (!rect) return
+                // The picker closes when focus leaves it, so the menu keeps focus off the trigger.
+                popupPendingRef.current = true
+                onAddCover({ x: rect.left + rect.width / 2, y: rect.bottom })
               }}
               data-testid="ghost-add-cover"
             >

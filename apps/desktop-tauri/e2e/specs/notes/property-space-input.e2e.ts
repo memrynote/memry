@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { openNoteByHandle } from '../../harness/note-sync-helpers'
+import { openDetailsMenu } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 import { invoke, vaultStatus } from '../../harness/vault-commands'
@@ -28,15 +29,8 @@ async function openNewNote(page: Page, title: string): Promise<CreatedNote> {
   return note
 }
 
-/**
- * The header's "add details" row takes pointer events only while the header is hovered, which a
- * WebDriver pointer move does not do in WKWebView, so its menu opens from the keyboard.
- */
 async function openAddPropertyPopup(page: Page): Promise<void> {
-  const details = page.getByTestId('ghost-add-details')
-  await details.waitFor({ state: 'attached' })
-  await details.focus()
-  await page.keyboard.press('Enter')
+  await openDetailsMenu(page)
   await page.getByRole('menuitem', { name: 'Add property' }).click()
 }
 

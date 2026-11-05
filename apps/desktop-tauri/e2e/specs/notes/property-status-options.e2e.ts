@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { openNoteByHandle } from '../../harness/note-sync-helpers'
+import { openDetailsMenu } from '../../harness/notes'
 import type { Locator } from '../../harness/pw-compat/locator'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
@@ -39,17 +40,6 @@ function statusPicker(page: Page): Locator {
 
 function optionsNamed(picker: Locator, value: string): Locator {
   return picker.getByRole('option', { name: value, exact: true })
-}
-
-/**
- * The header's "add details" row takes pointer events only while the header is hovered, which a
- * WebDriver pointer move does not do in WKWebView, so its menu opens from the keyboard.
- */
-async function openDetailsMenu(page: Page): Promise<void> {
-  const details = page.getByTestId('ghost-add-details')
-  await details.waitFor({ state: 'attached' })
-  await details.focus()
-  await page.keyboard.press('Enter')
 }
 
 async function addStatusPropertyThroughUi(page: Page): Promise<Locator> {
