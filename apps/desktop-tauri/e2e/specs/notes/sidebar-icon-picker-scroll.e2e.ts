@@ -37,29 +37,62 @@ async function expandCollections(page: Page): Promise<void> {
   await expect(header).toBeVisible({ timeout: 30_000 })
   if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
   await expect(header).toHaveAttribute('aria-expanded', 'true')
+  // The section opens through a 100 ms transition inside an overflow-hidden box. The driver
+  // scrolls a row it clicks into view, which scrolls that box mid-transition; the box springs
+  // back when the transition ends and the click lands on the row above.
+  await expect
+    .poll(() =>
+      page
+        .locator('#section-content-collections > div')
+        .evaluate(
+          (box: HTMLElement) => box.clientHeight > 0 && box.scrollHeight <= box.clientHeight
+        )
+    )
+    .toBe(true)
 }
 
 const SCROLLER = 'data-e2e-sidebar-scroller'
 
-/** Marks the nearest scrolling ancestor of `trigger`, so its offset can be read after a scroll. */
-function markScroller(trigger: Locator): Promise<boolean> {
+/** Marks every ancestor of `trigger` that can scroll vertically; returns how many. */
+function markScrollers(trigger: Locator): Promise<number> {
   return trigger.evaluate((start: Element, attribute: string) => {
+    let marked = 0
     for (let element = start.parentElement; element; element = element.parentElement) {
       const { overflowY } = getComputedStyle(element)
-      const scrolls = overflowY === 'auto' || overflowY === 'scroll'
-      if (scrolls && element.scrollHeight > element.clientHeight) {
+      if (overflowY === 'auto' || overflowY === 'scroll') {
         element.setAttribute(attribute, '')
-        return true
+        marked += 1
       }
     }
-    return false
+    return marked
   }, SCROLLER)
 }
 
-const scrollTop = (page: Page): Promise<number> =>
+/** The summed offset of the marked scrollers: it grows whichever of them the wheel scrolls. */
+const scrolled = (page: Page): Promise<number> =>
   page.evaluate(
-    (attribute: string) => document.querySelector(`[${attribute}]`)?.scrollTop ?? -1,
+    (attribute: string) =>
+      [...document.querySelectorAll(`[${attribute}]`)].reduce(
+        (sum, element) => sum + element.scrollTop,
+        0
+      ),
     SCROLLER
+  )
+
+/** What a failed scroll leaves to read: each marked scroller, and what is under the wheel. */
+const scrollReport = (page: Page, x: number, y: number): Promise<unknown> =>
+  page.evaluate(
+    ({ attribute, px, py }: { attribute: string; px: number; py: number }) => ({
+      scrollers: [...document.querySelectorAll(`[${attribute}]`)].map((element) => ({
+        className: element.className.slice(0, 80),
+        scrollTop: element.scrollTop,
+        scrollHeight: element.scrollHeight,
+        clientHeight: element.clientHeight,
+        overflowY: getComputedStyle(element).overflowY
+      })),
+      underWheel: document.elementFromPoint(px, py)?.outerHTML.slice(0, 160) ?? null
+    }),
+    { attribute: SCROLLER, px: x, py: y }
   )
 
 test('the sidebar icon picker stays open when the virtualized tree scrolls under it', async ({
@@ -82,27 +115,29 @@ test('the sidebar icon picker stays open when the virtualized tree scrolls under
 
   const picker = page.getByRole('dialog', { name: PICKER })
   await expect(picker).toBeVisible({ timeout: 10_000 })
-  expect(await markScroller(trigger)).toBe(true)
-  const before = await scrollTop(page)
+  expect(await markScrollers(trigger)).toBeGreaterThan(0)
+  const before = await scrolled(page)
 
   // Scroll over the sidebar, not over the panel: a stray trackpad nudge.
   const box = await trigger.boundingBox()
   expect(box).not.toBeNull()
-  await page.mouse.move(box!.x + 5, box!.y + 5)
+  const [x, y] = [box!.x + 5, box!.y + 5]
+  await page.mouse.move(x, y)
   await page.mouse.wheel(0, 800)
   // The wheel scrolls smoothly: wait until it has come to rest, past where it started.
   let last = before
-  await expect
-    .poll(
-      async () => {
-        const now = await scrollTop(page)
-        const settled = now > before && now === last
-        last = now
-        return settled
-      },
-      { intervals: [250] }
-    )
-    .toBe(true)
+  const rest = await pollUntil(
+    async () => {
+      const now = await scrolled(page)
+      const settled = now > before && now === last
+      last = now
+      return settled
+    },
+    { intervalMs: 250 }
+  )
+  if (!rest) {
+    throw new Error(`the sidebar did not scroll: ${JSON.stringify(await scrollReport(page, x, y))}`)
+  }
 
   // The regression: the row left the virtual window and took the panel with it.
   await expect(picker).toBeVisible()

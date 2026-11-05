@@ -32,6 +32,18 @@ async function expandCollections(page: Page): Promise<void> {
   await expect(header).toBeVisible({ timeout: 30_000 })
   if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
   await expect(header).toHaveAttribute('aria-expanded', 'true')
+  // The section opens through a 100 ms transition inside an overflow-hidden box. The driver
+  // scrolls a row it clicks into view, which scrolls that box mid-transition; the box springs
+  // back when the transition ends and the click lands on the row above.
+  await expect
+    .poll(() =>
+      page
+        .locator('#section-content-collections > div')
+        .evaluate(
+          (box: HTMLElement) => box.clientHeight > 0 && box.scrollHeight <= box.clientHeight
+        )
+    )
+    .toBe(true)
 }
 
 /** Clicks the item, then moves the pointer over the fading menu, the first move zero-distance. */
