@@ -291,6 +291,15 @@ impl NotesWriter {
         })
     }
 
+    /// An in-app edit wrote these aliases into the note's or journal day's file: the record
+    /// takes them ([`notes::take_file_aliases`]). `false` when no live note or day has that id.
+    pub fn file_aliases(&self, id: &str, aliases: &[String]) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::take_file_aliases(conn, id, aliases, &device_id, now_ms())
+        })
+    }
+
     /// The note's file at `path` is gone ([`identity::removed`]).
     pub fn file_removed(&self, note_id: &str, path: &str) -> Result<Removed, StorageError> {
         let device_id = self.device_id.clone();

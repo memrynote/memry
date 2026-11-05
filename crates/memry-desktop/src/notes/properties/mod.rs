@@ -43,7 +43,7 @@ use super::property_definitions::PropertyDefinitions;
 use super::read::large_file_of;
 use super::service::NotesService;
 use crate::session::OpenVault;
-use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
+use crate::vault::app_edit::{AppEdit, Edited, Precondition};
 use crate::vault::consumer::ChangeSource;
 use crate::vault::file_types::FileType;
 use crate::vault::note_file::read_note;
@@ -222,16 +222,9 @@ impl NotesService {
             match done {
                 Edited::Wrote { .. } => Ok((names, after)),
                 Edited::Unchanged => Ok((names, held)),
-                Edited::Kept(Kept::NoRow | Kept::NoFile | Kept::NoBody) => {
-                    Err(NotesError::NotFound(note_id.to_owned()))
-                }
-                Edited::Kept(Kept::NotMarkdown) => Err(NotesError::NotMarkdown),
-                Edited::Kept(Kept::FrontmatterUnreadable | Kept::FrontmatterBroken) => {
-                    Err(NotesError::FrontmatterUnreadable)
-                }
                 Edited::Kept(kept) => {
                     tracing::info!(scope = SCOPE, note_id, ?kept, "a property edit was refused");
-                    Err(NotesError::EditKept(kept))
+                    Err(NotesError::kept(note_id, kept))
                 }
             }
         })

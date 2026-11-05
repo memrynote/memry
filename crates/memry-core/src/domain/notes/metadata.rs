@@ -183,3 +183,47 @@ pub fn set_aliases(
         now_ms,
     )
 }
+
+/// The aliases an in-app edit wrote into the file of the note or journal day `id` (desktop
+/// `notes:edit-aliases`), taken by its record whole: the file owns a note's names, as it owns
+/// its header tags (`file_tags`), and the edit changed this one key, so only it reaches the
+/// record (the rule `properties::mirror_file` keeps). A list the record already holds writes
+/// nothing. `false` when no live note or day has that id: a deleted one takes nothing, so its
+/// queued delete does not become an upsert.
+pub fn take_file_aliases(
+    conn: &Connection,
+    id: &str,
+    aliases: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    if let Some(date) = crate::domain::journal::date_of(conn, id)? {
+        if !crate::domain::journal::journal_exists(conn, id) {
+            return Ok(false);
+        }
+        crate::domain::journal_ops::metadata::set_live_aliases(
+            conn, &date, aliases, device_id, now_ms,
+        )?;
+        return Ok(true);
+    }
+    let live = sync_items::load(conn, ITEM_TYPE, id)?.is_some_and(|row| row.deleted_at.is_none());
+    if !live {
+        return Ok(false);
+    }
+    let (title, stored): (Option<String>, Option<String>) = conn
+        .query_row(
+            "SELECT title, aliases FROM notes WHERE id = ?1",
+            [id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(failed)?
+        .unwrap_or_default();
+    // A stored list that does not read is replaced: the file is the names' owner.
+    let current = super::names::parse_stored(stored).ok();
+    let next = super::names::normalize_aliases(&title.unwrap_or_default(), aliases);
+    if current.as_ref() != Some(&next) {
+        set_aliases(conn, id, &next, device_id, now_ms)?;
+    }
+    Ok(true)
+}

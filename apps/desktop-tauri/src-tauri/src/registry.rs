@@ -68,6 +68,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::folders::notes_set_folder_config::<Wry>,
             crate::commands::notes::notes_create::<Wry>,
             crate::commands::notes::notes_delete,
+            crate::commands::notes::notes_edit_aliases::<Wry>,
             crate::commands::notes::notes_exists,
             crate::commands::notes::notes_get,
             crate::commands::notes::notes_get_all_positions::<Wry>,
