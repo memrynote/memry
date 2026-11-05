@@ -229,7 +229,14 @@ impl NotesService {
                     Ok(false)
                 };
                 let held = Precondition::Held;
-                edit.run_then(turn, held, ChangeSource::LinkRewrite, text, landed, &mut || {})
+                edit.run_then(
+                    turn,
+                    held,
+                    ChangeSource::LinkRewrite,
+                    text,
+                    landed,
+                    &mut || {},
+                )
             });
             if found.skipped > 0 || found.frontmatter_kept {
                 tracing::warn!(
