@@ -107,7 +107,8 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// (Step 13f) over it, whose row facts become the note events. The note index follows the
 /// tier's facts in the background of every open, broadcasts the progress of each open's pass,
 /// the vault status whenever its indexing changes, and the links each pass committed, and is
-/// managed for `vault_reindex`. The pre-sync template
+/// managed for `vault_reindex`. A tag rename an earlier run did not finish is finished once each
+/// open's walk ends (Step 13j-4). The pre-sync template
 /// files import as the vault opens (Step 13l), into its activity log.
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
@@ -143,6 +144,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     memry_desktop::templates::legacy::register(session, store.inner().clone(), tier.activity());
     app.manage(tier.activity());
     let notes = NotesService::new(tier.clone(), store.inner().clone());
+    notes.register_resume(session);
     crate::shell::note_events::forward(app.clone(), tier.subscribe());
     crate::shell::journal_events::forward(app.clone(), tier.subscribe());
     app.manage(notes);

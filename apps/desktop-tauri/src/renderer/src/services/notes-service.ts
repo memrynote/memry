@@ -40,6 +40,8 @@ import type {
   WikiLinkTitleResolutions
 } from '@memry/rpc/notes'
 import type {
+  NoteAliasEdit,
+  NoteAliasEditResponse,
   NoteLinkMention,
   NoteLinkMentionResponse,
   NoteLinksChangedEvent,
@@ -182,9 +184,10 @@ function definitionInput(
 /**
  * The notes commands of Step 13f (the edit of 13f-3c included), the rename, move and manual
  * order of Step 13g, the link reads and the mention link of Step 13i, the property definitions of
- * Step 13k, the folder reads, create and settings of Step 13h and a template applied to a note
- * (13l) (`commands/notes.rs`, `commands/property_definitions.rs`, `commands/folders.rs`); every
- * other method still goes to `window.api.notes`.
+ * Step 13k, the folder reads, create and settings of Step 13h, a template applied to a note
+ * (13l), and a note's other names and the tag list of 13q (`commands/notes.rs`,
+ * `commands/property_definitions.rs`, `commands/folders.rs`, `commands/tags.rs`); every other
+ * method still goes to `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
@@ -334,6 +337,17 @@ const ported = {
   }: NoteLinkMention): Promise<NoteLinkMentionResponse> => ({
     linked: await commands.notesLinkMention(sourceId, targetId, ordinal)
   }),
+  // Rejects on failure, as Electron's `notes:edit-aliases` (`registerCommand`) does.
+  editAliases: (input: NoteAliasEdit): Promise<NoteAliasEditResponse> =>
+    commands.notesEditAliases(input),
+  // Electron's `notes:get-tags` is `tags:get-all-with-counts` (`getAllTagsWithCounts`) in
+  // another shape; one owner serves both.
+  getTags: async (): Promise<{ tag: string; color: string; count: number }[]> =>
+    (await commands.tagsGetAllWithCounts()).map(({ name, color, count }) => ({
+      tag: name,
+      color,
+      count
+    })),
   // The card's opening is read here from the body Rust sends, with the function Electron's main
   // ran on it; a card with a description gets no body.
   previewByTitle: async (title: string): Promise<WikiLinkPreview | null> => {
