@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -67,4 +68,47 @@ test('stopChild leaves alone the process that took an exited child pid', async (
   bystander.kill('SIGTERM')
   const [, signal] = await exited
   assert.equal(signal, 'SIGTERM')
+})
+
+// Windows sets an exiting process's exit code (what `isAlive` reads) before it closes the
+// process's handles, so the app `gracefulClose` saw exit can still hold its driver port. The
+// next app on that port then fails to bind and never answers (#3973). The stand-in app binds
+// the port as the driver does and exits with 3 when it is taken.
+test('a launch waits until the previous app released the driver port', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'memry-app-process-'))
+  const preload = join(dir, 'driver.cjs')
+  writeFileSync(
+    preload,
+    `const http = require('node:http')
+const server = http.createServer((_, res) => res.end(JSON.stringify({ value: { ready: true } })))
+server.once('error', () => process.exit(3))
+server.listen(Number(process.env.TAURI_WEBDRIVER_PORT), '127.0.0.1')
+`
+  )
+  const saved = { binary: process.env.MEMRY_E2E_BINARY, options: process.env.NODE_OPTIONS }
+  process.env.MEMRY_E2E_BINARY = process.execPath
+  process.env.NODE_OPTIONS = `--require ${JSON.stringify(preload)}`
+  const port = await freePort()
+  const previous = createServer()
+  await new Promise((resolve) => previous.listen(port, '127.0.0.1', resolve))
+  const launched = spawnApp(port)
+  t.after(async () => {
+    for (const [key, value] of [
+      ['MEMRY_E2E_BINARY', saved.binary],
+      ['NODE_OPTIONS', saved.options]
+    ]) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    previous.close()
+    const child = await launched.catch(() => undefined)
+    if (child) stopChild(child)
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  // Long enough for a launch that did not wait to start Node and fail its bind.
+  await new Promise((resolve) => setTimeout(resolve, 1_500))
+  await new Promise((resolve) => previous.close(resolve))
+  const child = await launched
+  assert.equal(child.exitCode, null)
 })
