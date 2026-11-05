@@ -43,14 +43,20 @@ pub(crate) fn replace(
             params![ids],
         )
         .map_err(failed)?;
+    let mut insert = index
+        .prepare_cached(
+            "INSERT INTO note_properties (note_id, name, value, type) VALUES (?1, ?2, ?3, ?4)",
+        )
+        .map_err(failed)?;
     for (note_id, properties) in notes {
         for property in *properties {
-            index
-                .execute(
-                    "INSERT INTO note_properties (note_id, name, value, type)
-                     VALUES (?1, ?2, ?3, ?4)",
-                    params![note_id, property.name, property.text, property.type_name],
-                )
+            insert
+                .execute(params![
+                    note_id,
+                    property.name,
+                    property.text,
+                    property.type_name
+                ])
                 .map_err(failed)?;
         }
     }

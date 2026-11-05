@@ -401,7 +401,7 @@ impl Indexer {
                     progress(step);
                 }
             };
-            let typing = self.typing_all();
+            let typing = self.typing_all()?;
             self.pass(
                 notes,
                 typing,

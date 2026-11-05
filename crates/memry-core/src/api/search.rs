@@ -276,6 +276,18 @@ impl Search {
             .read_blocking(move |index| note_properties::read(index, &note_id))
     }
 
+    /// Drops the `note_properties` rows of `note_ids`: notes the index could not read.
+    pub fn forget_note_properties(&self, note_ids: Vec<String>) -> Result<(), StorageError> {
+        if note_ids.is_empty() {
+            return Ok(());
+        }
+        self.index.call_blocking(move |index| {
+            note_ids
+                .iter()
+                .try_for_each(|note_id| note_properties::forget(index, note_id))
+        })
+    }
+
     /// The notes with a `note_properties` row of any of `names`.
     pub fn notes_holding_properties(
         &self,
