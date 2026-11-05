@@ -7,6 +7,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex, PoisonError};
 use std::time::Instant;
 
+#[cfg(windows)]
+use memry_desktop::shell::flush::BrowserPages;
 use memry_desktop::shell::web_crash::{CrashAction, MAX_RELOADS, ReloadBudget};
 use memry_desktop::telemetry::main_warning::Level;
 use tauri::plugin::TauriPlugin;
@@ -56,6 +58,9 @@ struct Recovery {
 }
 
 static RECOVERY: LazyLock<Mutex<Recovery>> = LazyLock::new(Mutex::default);
+/// The pages of each watched WebView2 browser process ([`watch_browser_exit`]).
+#[cfg(windows)]
+static BROWSER_PAGES: LazyLock<BrowserPages> = LazyLock::new(BrowserPages::default);
 static EPOCH: LazyLock<Instant> = LazyLock::new(Instant::now);
 
 /// Reports that a webview process ended for `reason` (`crash`, `unexpected`, `launch-failed`,
@@ -101,22 +106,14 @@ pub fn watch_browser_exit(app: &AppHandle<Wry>, label: &str, pid: u32) {
         INFINITE, OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject,
     };
 
-    /// The labels of the pages each watched browser process hosts.
-    static HOSTED: LazyLock<Mutex<HashMap<u32, HashSet<String>>>> = LazyLock::new(Mutex::default);
-    let hosted = || HOSTED.lock().unwrap_or_else(PoisonError::into_inner);
-    {
-        let mut hosted = hosted();
-        let watched = hosted.contains_key(&pid);
-        hosted.entry(pid).or_default().insert(label.to_owned());
-        if watched {
-            return;
-        }
+    if !BROWSER_PAGES.host(pid, label) {
+        return;
     }
     // SAFETY: plain Win32 call; the thread below closes the handle.
     let process = match unsafe { OpenProcess(PROCESS_SYNCHRONIZE, false, pid) } {
         Ok(process) => process,
         Err(error) => {
-            hosted().remove(&pid);
+            BROWSER_PAGES.ended(pid);
             tracing::warn!(
                 scope = "Shell",
                 "the WebView2 browser process {pid} is not watched: {error}"
@@ -137,12 +134,12 @@ pub fn watch_browser_exit(app: &AppHandle<Wry>, label: &str, pid: u32) {
                 let _ = CloseHandle(process);
             }
             tracing::warn!(scope = "Shell", "the WebView2 browser process {pid} ended");
-            for label in hosted().remove(&pid).unwrap_or_default() {
+            for label in BROWSER_PAGES.ended(pid) {
                 page_gone(&app, &label);
             }
         });
     if let Err(error) = spawned {
-        hosted().remove(&pid);
+        BROWSER_PAGES.ended(pid);
         // SAFETY: the handle opened above; the thread that would own it never started.
         let _ = unsafe { CloseHandle(HANDLE(raw as *mut _)) };
         tracing::warn!(
@@ -160,11 +157,13 @@ fn page_loaded(app: &AppHandle<Wry>, label: &str) {
 }
 
 /// Window `label` is gone: a later window of that label starts with a full budget and nothing to
-/// tell.
+/// tell, and its browser's exit no longer marks it gone.
 fn forget(label: &str) {
     let mut recovery = RECOVERY.lock().unwrap_or_else(PoisonError::into_inner);
     recovery.budgets.remove(label);
     recovery.reloaded.remove(label);
+    #[cfg(windows)]
+    BROWSER_PAGES.forget(label);
 }
 
 /// True once for a page that was reloaded after its web process died, so it can tell the user.
