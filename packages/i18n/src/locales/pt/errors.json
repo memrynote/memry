@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Esta nota não foi encontrada. Ela pode ter sido excluída.",
     "invalidFrontmatter": "Esta nota contém metadados inválidos e não pode ser lida.",
+    "invalidTitle": "O título de uma nota deve ter de 1 a 200 caracteres.",
     "duplicateId": "Já existe uma nota com este ID.",
     "writeFailed": "Não foi possível salvar esta nota. Verifique o espaço em disco e as permissões.",
     "readFailed": "Não foi possível ler esta nota. O arquivo pode estar bloqueado ou corrompido.",

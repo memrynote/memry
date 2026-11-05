@@ -21,6 +21,7 @@ const FIXED_MESSAGE_KEYS = new Map<string, string>([
  */
 const COMMAND_CODE_KEYS = new Map<string, string>([
   ['frontmatter_failed', 'errors:note.invalidFrontmatter'],
+  ['invalid_title', 'errors:note.invalidTitle'],
   ['note_body_not_pulled', 'errors:property.noteNotPulled'],
   ['note_edit_kept', 'errors:property.noteChanged'],
   ['note_not_representable', 'errors:property.setFailed'],

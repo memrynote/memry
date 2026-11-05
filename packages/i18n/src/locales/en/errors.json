@@ -19,6 +19,7 @@
   "note": {
     "notFound": "This note could not be found. It may have been deleted.",
     "invalidFrontmatter": "This note has invalid metadata and cannot be read.",
+    "invalidTitle": "A note title must be 1 to 200 characters long.",
     "duplicateId": "A note with this ID already exists.",
     "writeFailed": "Failed to save this note. Check disk space and permissions.",
     "readFailed": "Failed to read this note. The file may be locked or corrupted.",

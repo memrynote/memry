@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Dette notatet ble ikke funnet. Det kan ha blitt slettet.",
     "invalidFrontmatter": "Dette notatet har ugyldige metadata og kan ikke leses.",
+    "invalidTitle": "En notattittel må være på 1 til 200 tegn.",
     "duplicateId": "Et notat med denne ID-en finnes allerede.",
     "writeFailed": "Kunne ikke lagre dette notatet. Sjekk diskplass og tillatelser.",
     "readFailed": "Kunne ikke lese dette notatet. Filen kan være låst eller ødelagt.",

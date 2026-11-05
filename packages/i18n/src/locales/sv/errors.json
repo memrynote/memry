@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Det gick inte att hitta den här anteckningen. Den kan ha raderats.",
     "invalidFrontmatter": "Den här anteckningen har ogiltiga metadata och kan inte läsas.",
+    "invalidTitle": "En antecknings titel måste vara 1 till 200 tecken lång.",
     "duplicateId": "Det finns redan en anteckning med det här ID:t.",
     "writeFailed": "Det gick inte att spara anteckningen. Kontrollera diskutrymme och behörigheter.",
     "readFailed": "Det gick inte att läsa anteckningen. Filen kan vara låst eller skadad.",

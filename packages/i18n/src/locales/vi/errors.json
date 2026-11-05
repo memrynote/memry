@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Không tìm thấy ghi chú này. Có thể nó đã bị xóa.",
     "invalidFrontmatter": "Ghi chú này có siêu dữ liệu không hợp lệ và không thể đọc được.",
+    "invalidTitle": "Tiêu đề ghi chú phải dài từ 1 đến 200 ký tự.",
     "duplicateId": "Đã có ghi chú với ID này.",
     "writeFailed": "Không thể lưu ghi chú này. Kiểm tra dung lượng ổ đĩa và quyền truy cập.",
     "readFailed": "Không thể đọc ghi chú này. Tệp có thể bị khóa hoặc bị hỏng.",
