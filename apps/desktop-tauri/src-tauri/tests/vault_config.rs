@@ -80,6 +80,13 @@ fn a_journal_folder_change_is_refused_and_nothing_is_sent() {
         (&refused["kind"], &refused["code"]),
         (&json!("invalid"), &json!("config_change_not_ported"))
     );
+    assert!(
+        refused["message"]
+            .as_str()
+            .unwrap()
+            .starts_with("This version can't change the journal folder"),
+        "{refused}"
+    );
     assert_eq!(
         fs::read(mocked.vault.join(".memry/config.json")).unwrap(),
         before

@@ -319,21 +319,28 @@ pub async fn vault_update_config<R: Runtime>(
     Ok(settings)
 }
 
+/// The message of a refused change, which Settings shows as it puts the saved value back.
+const NOT_PORTED_KEY: &str = "errors:vault.configChangeNotPorted";
+
+fn localized<R: Runtime>(app: &AppHandle<R>, key: &str) -> String {
+    i18n::t(
+        app.state::<Arc<LocaleService>>().get(),
+        key,
+        &i18n::Args::new(),
+    )
+}
+
 fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> CommandError {
     match error {
         SettingsError::NotPorted(_) => CommandError::new(
             ErrorKind::Invalid,
             "config_change_not_ported",
-            error.to_string(),
+            localized(app, NOT_PORTED_KEY),
         ),
         SettingsError::Config(ConfigError::PermissionDenied) => CommandError::new(
             ErrorKind::Storage,
             "vault_config_permission_denied",
-            i18n::t(
-                app.state::<Arc<LocaleService>>().get(),
-                PERMISSION_DENIED_KEY,
-                &i18n::Args::new(),
-            ),
+            localized(app, PERMISSION_DENIED_KEY),
         ),
         SettingsError::Config(error) => {
             CommandError::new(ErrorKind::Storage, "vault_config_failed", error.to_string())

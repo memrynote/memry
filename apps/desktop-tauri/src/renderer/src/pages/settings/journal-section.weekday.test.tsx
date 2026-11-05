@@ -14,9 +14,10 @@ beforeAll(() => {
 const setWeekdayTemplate = vi.fn().mockResolvedValue(true)
 const updateConfig = vi.fn().mockResolvedValue(null)
 const vaultConfig = { journalFolder: 'journal', journalDateFormat: 'YYYY-MM-DD' }
+const toastError = vi.fn()
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() }
+  toast: { success: vi.fn(), error: (...args: unknown[]) => toastError(...args) }
 }))
 const journalSettings = {
   defaultTemplate: 'morning-pages' as string | null,
@@ -102,40 +103,78 @@ describe('Journal settings — date format help', () => {
   })
 })
 
-// Electron renames the day files and moves the folder on a change; until that ports
-// (#3530 13m-7b) both fields show the vault's settings and take no edit.
-describe('Journal settings — folder and date format', () => {
+describe('Journal settings — date format refused by a read-only lock (#2606)', () => {
+  const LOCK_TEXT = 'The owner made this note read-only.'
+
   beforeEach(() => {
-    updateConfig.mockClear()
-    vaultConfig.journalFolder = 'journal'
-    vaultConfig.journalDateFormat = 'YYYY-MM-DD'
+    updateConfig.mockReset().mockResolvedValue(null)
+    toastError.mockReset()
   })
 
-  it('shows both read-only and writes nothing', async () => {
+  it('shows the refusal and puts the saved format back', async () => {
+    updateConfig.mockResolvedValueOnce(LOCK_TEXT)
     const user = userEvent.setup()
     render(<JournalSettings />)
 
-    const format = screen.getByDisplayValue('YYYY-MM-DD')
-    const folder = screen.getByDisplayValue('journal')
-    expect(format).toHaveAttribute('readonly')
-    expect(folder).toHaveAttribute('readonly')
-    await user.type(format, ' dddd')
-    await user.type(folder, 'x')
+    const input = screen.getByDisplayValue('YYYY-MM-DD')
+    await user.clear(input)
+    await user.type(input, 'YYYY-MM-DD dddd')
     await user.tab()
 
-    expect(format).toHaveValue('YYYY-MM-DD')
-    expect(updateConfig).not.toHaveBeenCalled()
+    expect(updateConfig).toHaveBeenCalledWith({ journalDateFormat: 'YYYY-MM-DD dddd' })
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(LOCK_TEXT))
+    expect(input).toHaveValue('YYYY-MM-DD')
   })
 
-  it('follows a change of the vault settings', () => {
-    const { rerender } = render(<JournalSettings />)
-    vaultConfig.journalFolder = 'Diary'
-    vaultConfig.journalDateFormat = 'YYYY/MM-DD'
-    rerender(<JournalSettings />)
+  it('keeps the new format when the change goes through', async () => {
+    const user = userEvent.setup()
+    render(<JournalSettings />)
 
-    expect(screen.getByDisplayValue('Diary')).toBeInTheDocument()
+    const input = screen.getByDisplayValue('YYYY-MM-DD')
+    await user.clear(input)
+    await user.type(input, 'YYYY-MM-DD dddd')
+    await user.tab()
+
+    await waitFor(() =>
+      expect(updateConfig).toHaveBeenCalledWith({ journalDateFormat: 'YYYY-MM-DD dddd' })
+    )
+    expect(toastError).not.toHaveBeenCalled()
+    expect(input).toHaveValue('YYYY-MM-DD dddd')
+  })
+})
+
+// This build refuses a journal folder or date format change until the renames are ported
+// (#3530 13m-7b); Settings says so and keeps the saved value.
+describe('Journal settings — a change this build cannot make yet', () => {
+  const NOT_PORTED =
+    "This version can't change the journal folder, date format or excluded folders yet. Your saved setting is kept."
+
+  beforeEach(() => {
+    updateConfig.mockReset().mockResolvedValue(NOT_PORTED)
+    toastError.mockReset()
+  })
+
+  it('shows the refusal and puts the saved folder and format back', async () => {
+    const user = userEvent.setup()
+    render(<JournalSettings />)
+
+    const folder = screen.getByDisplayValue('journal')
+    await user.clear(folder)
+    await user.type(folder, 'Diary')
+    await user.tab()
+    expect(updateConfig).toHaveBeenCalledWith({ journalFolder: 'Diary' })
+    await waitFor(() => expect(folder).toHaveValue('journal'))
+
+    const format = screen.getByDisplayValue('YYYY-MM-DD')
+    await user.clear(format)
+    await user.type(format, 'DD-MM-YYYY')
+    await user.tab()
+    expect(updateConfig).toHaveBeenCalledWith({ journalDateFormat: 'DD-MM-YYYY' })
+    await waitFor(() => expect(format).toHaveValue('YYYY-MM-DD'))
+
+    expect(toastError.mock.calls).toEqual([[NOT_PORTED], [NOT_PORTED]])
     expect(screen.getByTestId('journal-preview-path').textContent).toMatch(
-      /^Diary\/\d{4}\/\d{2}-\d{2}\.md$/
+      /^journal\/\d{4}-\d{2}-\d{2}\.md$/
     )
   })
 })

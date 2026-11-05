@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Select,
   SelectContent,
@@ -60,11 +60,39 @@ export function JournalSettings() {
   // a collapsed row.
   const [perDayOverride, setPerDayOverride] = useState<boolean | null>(null)
 
-  // The folder and the date format show the vault's settings and take no edit yet: in Electron
-  // a change renames every day file and moves the journal folder, and that is not ported
-  // (#3530 13m-7b). The command refuses the change too.
-  const journalFolder = config?.journalFolder ?? ''
-  const journalDateFormat = config?.journalDateFormat ?? ''
+  const [journalFolder, setJournalFolder] = useState('')
+  const [journalDateFormat, setJournalDateFormat] = useState('')
+
+  // Sync editable copies whenever the persisted vault config loads or changes.
+  useEffect(() => {
+    if (!config) return
+    // oxlint-disable-next-line react/set-state-in-effect -- editable drafts resync from the persisted vault config, which loads asynchronously from main
+    setJournalFolder(config.journalFolder)
+    setJournalDateFormat(config.journalDateFormat)
+  }, [config])
+
+  // A refused change keeps the saved folder, so the field goes back to it. This build refuses
+  // every folder change until the journal folder move is ported (#3530 13m-7b).
+  const handleJournalFolderBlur = useCallback(async () => {
+    if (!config || journalFolder === config.journalFolder) return
+    const error = await updateConfig({ journalFolder })
+    if (error) {
+      toast.error(error)
+      setJournalFolder(config.journalFolder)
+    }
+  }, [config, journalFolder, updateConfig])
+
+  // A refused change (a locked journal entry, or in this build any format change until the
+  // renames are ported) keeps the saved format, so the field goes back to it rather than
+  // showing a format that is not in use.
+  const handleJournalDateFormatBlur = useCallback(async () => {
+    if (!config || journalDateFormat === config.journalDateFormat) return
+    const error = await updateConfig({ journalDateFormat })
+    if (error) {
+      toast.error(error)
+      setJournalDateFormat(config.journalDateFormat)
+    }
+  }, [config, journalDateFormat, updateConfig])
 
   // Local date, not UTC: near midnight a UTC date shows the wrong day (and weekday).
   const [today] = useState(() => new Date())
@@ -248,7 +276,8 @@ export function JournalSettings() {
         <SettingRow label={t('journal.folder.label')} description={t('journal.folder.description')}>
           <Input
             value={journalFolder}
-            readOnly
+            onChange={(e) => setJournalFolder(e.target.value)}
+            onBlur={() => void handleJournalFolderBlur()}
             placeholder={t('journal.folder.placeholder')}
             className="h-7 w-40 font-mono text-xs/4"
           />
@@ -289,7 +318,8 @@ export function JournalSettings() {
             </TooltipProvider>
             <Input
               value={journalDateFormat}
-              readOnly
+              onChange={(e) => setJournalDateFormat(e.target.value)}
+              onBlur={() => void handleJournalDateFormatBlur()}
               placeholder={t('journal.dateFormat.placeholder')}
               className="h-7 w-40 font-mono text-xs/4"
             />

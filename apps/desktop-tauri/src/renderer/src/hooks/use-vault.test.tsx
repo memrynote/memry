@@ -105,6 +105,25 @@ describe('useVault', () => {
     expect(result.current.config).toEqual({ journalFolder: 'Diary' })
   })
 
+  it('answers a refused config change with its message and keeps the saved config', async () => {
+    const api = vaultApi()
+    const message = "This version can't change the journal folder yet."
+    api.vault.updateConfig.mockRejectedValueOnce({
+      kind: 'invalid',
+      code: 'config_change_not_ported',
+      message
+    })
+    const { result } = renderHook(() => useVault())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    let refused: string | null = null
+    await act(async () => {
+      refused = await result.current.updateConfig({ journalFolder: 'Diary' })
+    })
+    expect(refused).toBe(message)
+    expect(result.current.config).toEqual({ journalFolder: 'Journal' })
+  })
+
   it('selects, switches, closes, updates config, reindexes, and clears error state', async () => {
     const api = vaultApi()
     const { result } = renderHook(() => useVault())
