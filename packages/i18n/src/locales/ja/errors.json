@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "#{from} から #{to} への名前変更がまだ実行中です。完了してからもう一度お試しください。",
+    "editInProgress": "別のタグの変更がまだ実行中です。完了してからもう一度お試しください。",
     "renameUnfinished": "#{from} から #{to} への名前変更が {count, plural, other {# 件のノート}}で完了しませんでした。もう一度 #{from} を #{to} に名前変更すると完了します。",
     "mergeSameTag": "結合元と結合先のタグが同じです",
     "categoryNameRequired": "カテゴリー名を入力してください",

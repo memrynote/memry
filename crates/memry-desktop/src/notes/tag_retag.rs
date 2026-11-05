@@ -14,8 +14,16 @@
 //! (`TagHub::merge_shared`, `TagHub::delete_shared`).
 //!
 //! Nothing is recorded: asked again, a merge or a delete finds what an earlier run left and
-//! converges. Each runs under the rename lock, so one asked while a rename runs is refused
-//! ([`NotesError::TagRenameInProgress`]).
+//! converges. A crash between a note's file and its record leaves the record with the tag its
+//! header no longer carries: the tag list reads the header, so this device stops counting the
+//! note under it while peers still do, until the merge or delete is asked again. Every header
+//! edit through [`AppEdit`] has that window; a rename covers it with its start marks
+//! (`super::tag_rename`), as running it twice is not safe.
+//!
+//! Each runs under the rename lock, so one asked while another tag change runs is refused
+//! ([`NotesError::TagRenameInProgress`], [`NotesError::TagEditInProgress`]), and so is one asked
+//! while a rename is recorded with notes left ([`NotesError::TagRenameUnfinished`]): the
+//! rename's resume reads those notes' files as it left them.
 //!
 //! Divergences from Electron, stated: a delete takes the tag off the tasks too (the core's
 //! delete, shared with iOS; the delete dialog counts the tasks among the items it takes the tag
@@ -35,7 +43,7 @@ use memry_core::markdown::frontmatter::{
 
 use super::error::{NotesError, SCOPE, kept_is_retryable};
 use super::service::NotesService;
-use super::tag_rename::{SETTLE, recorded_plan};
+use super::tag_rename::{SETTLE, recorded_plan, running_change};
 use crate::session::OpenVault;
 use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
 use crate::vault::consumer::ChangeSource;
@@ -77,6 +85,9 @@ impl NotesService {
         source: &str,
         target: &str,
     ) -> Result<TagRetagged, NotesError> {
+        if tag_key(source).is_empty() || tag_key(target).is_empty() {
+            return Err(blank());
+        }
         let target = merge_target(source, target).map_err(|_| NotesError::TagMergeSameTag)?;
         self.retag_everywhere(open, source, Some(target))
     }
@@ -162,24 +173,27 @@ impl NotesService {
         Ok(retagged)
     }
 
-    /// The rename lock for an edit of `tag`, refused while a rename runs.
+    /// The rename lock for an edit of `tag`, refused while another tag change runs or a rename
+    /// is recorded with notes left.
     fn retag_lock(
         &self,
         open: &OpenVault,
         tag: &str,
     ) -> Result<std::sync::MutexGuard<'_, ()>, NotesError> {
         if tag_key(tag).is_empty() {
-            return Err(StorageError::Invalid {
-                what: "a tag needs a name".to_owned(),
-            }
-            .into());
+            return Err(blank());
         }
-        self.claim_rename().ok_or_else(|| {
-            let running = recorded_plan(open).ok().flatten();
-            let (from, to) =
-                running.map_or_else(Default::default, |plan| (plan.job.from, plan.job.to));
-            NotesError::TagRenameInProgress { from, to }
-        })
+        let Some(running) = self.claim_rename() else {
+            return Err(running_change(open)?);
+        };
+        if let Some(plan) = recorded_plan(open)? {
+            return Err(NotesError::TagRenameUnfinished {
+                from: plan.job.from,
+                to: plan.job.to,
+                left: plan.holders.len(),
+            });
+        }
+        Ok(running)
     }
 
     /// `source` merged into `target`, or deleted, in one holder's file, then its record, in its
@@ -238,6 +252,13 @@ impl NotesService {
             InNote::Failed(error)
         })
     }
+}
+
+fn blank() -> NotesError {
+    StorageError::Invalid {
+        what: "a tag needs a name".to_owned(),
+    }
+    .into()
 }
 
 /// `text` with its frontmatter `tags:` made what `header` makes of them (left when it makes

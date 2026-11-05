@@ -131,11 +131,7 @@ impl NotesService {
             .into());
         }
         let Some(_running) = self.claim_rename() else {
-            let running = recorded_plan(open)?.map_or_else(|| job.clone(), |plan| plan.job);
-            return Err(NotesError::TagRenameInProgress {
-                from: running.from,
-                to: running.to,
-            });
+            return Err(running_change(open)?);
         };
         let hub = self.tag_hub(open)?;
         let holders = open.search.tag_rename_holders(&job.from)?;
@@ -467,6 +463,19 @@ impl NotesService {
 
 /// The recorded rename's plan; a row that does not read is an error here (the resume at open
 /// drops it).
+/// What a tag change refused while the rename lock is held is told runs: the rename recorded
+/// ([`NotesError::TagRenameInProgress`]), else a merge, delete or removal
+/// ([`NotesError::TagEditInProgress`]).
+pub(super) fn running_change(open: &OpenVault) -> Result<NotesError, NotesError> {
+    Ok(match recorded_plan(open)? {
+        Some(plan) => NotesError::TagRenameInProgress {
+            from: plan.job.from,
+            to: plan.job.to,
+        },
+        None => NotesError::TagEditInProgress,
+    })
+}
+
 pub(super) fn recorded_plan(open: &OpenVault) -> Result<Option<RenamePlan>, NotesError> {
     match open.vault.tag_rename_recorded()? {
         None => Ok(None),
