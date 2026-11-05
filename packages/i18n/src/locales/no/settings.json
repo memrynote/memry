@@ -1994,6 +1994,7 @@
       "deleteTasks": "Oppgaver med #{tag} mister den også.",
       "mergeTitle": "Slå sammen tagg",
       "mergeDescription": "Alle elementer som er tagget med «{source}», blir tagget på nytt med måltaggen. Kildetaggen blir slettet.",
+      "mergeRetags": "Notater, dager og oppgaver som er tagget med «{source}», får måltaggen i stedet.",
       "mergeBodyTagsStay": "#{source} skrevet i notatteksten blir stående, så de notatene beholder den.",
       "targetPlaceholder": "Velg måltagg …",
       "colorTitle": "Endre farge for «{name}»"

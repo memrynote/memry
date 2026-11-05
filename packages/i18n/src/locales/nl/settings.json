@@ -1994,6 +1994,7 @@
       "deleteTasks": "Taken met #{tag} verliezen de tag ook.",
       "mergeTitle": "Tag samenvoegen",
       "mergeDescription": "Alle items die zijn getagd met “{source}” worden opnieuw getagd met de doeltag. De brontag wordt verwijderd.",
+      "mergeRetags": "Notities, dagen en taken die zijn getagd met “{source}” krijgen in plaats daarvan de doeltag.",
       "mergeBodyTagsStay": "#{source} in de tekst van notities blijft staan, dus die notities houden de tag.",
       "targetPlaceholder": "Doeltag selecteren…",
       "colorTitle": "Kleur wijzigen voor “{name}”"

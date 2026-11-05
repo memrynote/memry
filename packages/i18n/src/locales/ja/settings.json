@@ -1994,6 +1994,7 @@
       "deleteTasks": "#{tag} が付いたタスクからも外れます。",
       "mergeTitle": "タグを統合",
       "mergeDescription": "「{source}」が付いたすべての項目に、統合先のタグが付け直されます。統合元のタグは削除されます。",
+      "mergeRetags": "「{source}」が付いたノート、日付、タスクには、代わりに統合先のタグが付きます。",
       "mergeBodyTagsStay": "ノートの本文に書かれた #{source} は残るため、それらのノートには引き続き付いたままです。",
       "targetPlaceholder": "統合先のタグを選択…",
       "colorTitle": "「{name}」の色を変更"

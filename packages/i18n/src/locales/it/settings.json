@@ -1994,6 +1994,7 @@
       "deleteTasks": "Anche le attività con #{tag} lo perdono.",
       "mergeTitle": "Unisci tag",
       "mergeDescription": "Tutti gli elementi con il tag “{source}” riceveranno il tag di destinazione. Il tag di origine verrà eliminato.",
+      "mergeRetags": "Note, giorni e attività con il tag “{source}” ricevono invece il tag di destinazione.",
       "mergeBodyTagsStay": "#{source} scritto nel testo delle note resta, quindi quelle note lo mantengono.",
       "targetPlaceholder": "Seleziona il tag di destinazione…",
       "colorTitle": "Cambia colore di “{name}”"

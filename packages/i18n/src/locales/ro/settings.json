@@ -1994,6 +1994,7 @@
       "deleteTasks": "Sarcinile cu #{tag} o pierd și ele.",
       "mergeTitle": "Combinați eticheta",
       "mergeDescription": "Toate elementele etichetate cu „{source}” vor primi eticheta țintă. Eticheta sursă va fi ștearsă.",
+      "mergeRetags": "Notițele, zilele și sarcinile etichetate cu „{source}” primesc în schimb eticheta țintă.",
       "mergeBodyTagsStay": "#{source} scrisă în textul notițelor rămâne, așa că acele notițe o păstrează.",
       "targetPlaceholder": "Selectează eticheta țintă…",
       "colorTitle": "Schimbați culoarea pentru „{name}”"

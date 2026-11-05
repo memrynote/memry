@@ -1994,6 +1994,7 @@
       "deleteTasks": "Myös tehtävät, joilla on tunniste #{tag}, menettävät sen.",
       "mergeTitle": "Yhdistä tunniste",
       "mergeDescription": "Kaikki kohteet, joilla on tunniste ”{source}”, merkitään valitsemallasi tunnisteella. Alkuperäinen tunniste poistetaan.",
+      "mergeRetags": "Muistiinpanot, päivät ja tehtävät, joilla on tunniste ”{source}”, saavat sen sijaan kohdetunnisteen.",
       "mergeBodyTagsStay": "Muistiinpanojen tekstiin kirjoitettu #{source} säilyy, joten ne muistiinpanot pitävät sen.",
       "targetPlaceholder": "Valitse tunniste, johon yhdistetään…",
       "colorTitle": "Vaihda tunnisteen ”{name}” väri"

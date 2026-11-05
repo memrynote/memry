@@ -1994,6 +1994,7 @@
       "deleteTasks": "帶有 #{tag} 的任務也會失去此標籤。",
       "mergeTitle": "合併標籤",
       "mergeDescription": "所有標有「{source}」的項目都會改為目標標籤。來源標籤將會被刪除。",
+      "mergeRetags": "標有「{source}」的筆記、日記和任務都會改為目標標籤。",
       "mergeBodyTagsStay": "筆記內文中寫的 #{source} 會保留，因此這些筆記仍帶有它。",
       "targetPlaceholder": "選擇目標標籤…",
       "colorTitle": "變更「{name}」的顏色"

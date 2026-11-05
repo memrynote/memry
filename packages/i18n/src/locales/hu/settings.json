@@ -1994,6 +1994,7 @@
       "deleteTasks": "A(z) #{tag} címkéjű feladatokról is lekerül.",
       "mergeTitle": "Címke egyesítése",
       "mergeDescription": "A(z) „{source}” címkével ellátott összes elem a célcímkét kapja meg. A forráscímke törlődik.",
+      "mergeRetags": "A(z) „{source}” címkéjű jegyzetek, napok és feladatok helyette a célcímkét kapják.",
       "mergeBodyTagsStay": "A jegyzetek szövegébe írt #{source} megmarad, így ezek a jegyzetek megtartják.",
       "targetPlaceholder": "Célcímke kiválasztása…",
       "colorTitle": "Szín módosítása: „{name}”"

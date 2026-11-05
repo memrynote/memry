@@ -290,4 +290,12 @@ fn removing_a_tag_from_a_note_edits_that_note_alone() {
     assert!(notes.remove_tag_from_note(&open, &day, "job").unwrap());
     assert!(record(&e, &day, "tags").is_empty());
     assert!(!notes.remove_tag_from_note(&open, &plan, "job").unwrap());
+    let blank = notes.remove_tag_from_note(&open, " ", "job");
+    assert!(
+        matches!(
+            blank,
+            Err(NotesError::Storage(StorageError::Invalid { .. }))
+        ),
+        "{blank:?}"
+    );
 }

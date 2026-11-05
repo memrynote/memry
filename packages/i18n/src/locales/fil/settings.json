@@ -1994,6 +1994,7 @@
       "deleteTasks": "Mawawala rin ang #{tag} sa mga gawaing may ganitong tag.",
       "mergeTitle": "Pagsamahin ang tag",
       "mergeDescription": "Ita-tag ulit gamit ang target na tag ang lahat ng item na may tag na “{source}”. Tatanggalin ang source na tag.",
+      "mergeRetags": "Ang mga tala, araw, at gawaing may tag na “{source}” ay bibigyan na lang ng target na tag.",
       "mergeBodyTagsStay": "Mananatili ang #{source} na nakasulat sa teksto ng tala, kaya mananatili ito sa mga talang iyon.",
       "targetPlaceholder": "Piliin ang target na tag…",
       "colorTitle": "Baguhin ang kulay para sa “{name}”"

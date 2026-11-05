@@ -67,9 +67,8 @@ pub struct KeptNote {
     pub id: String,
     /// Its file's name, else its id.
     pub title: String,
-    /// Asking again can finish it: its file changed during the edit, or its body has not
-    /// arrived from sync yet. Otherwise the file needs fixing first (frontmatter that does not
-    /// read, a value that cannot be written back, a failure).
+    /// Asking again can finish it; `false` only when its file needs fixing first: frontmatter
+    /// that does not read, or a value that cannot be written back.
     pub retry_finishes: bool,
 }
 
@@ -118,6 +117,12 @@ impl NotesService {
         id: &str,
         tag: &str,
     ) -> Result<bool, NotesError> {
+        if id.trim().is_empty() {
+            return Err(StorageError::Invalid {
+                what: "a note needs an id".to_owned(),
+            }
+            .into());
+        }
         let _running = self.retag_lock(open, tag)?;
         let holders = open.search.tag_holders(tag)?;
         let Some(holder) = holders.iter().find(|holder| holder.id == id) else {
@@ -273,9 +278,11 @@ impl NotesService {
 
 /// The holder `id` an edit left as `outcome` said, named.
 fn kept_note(open: &OpenVault, id: String, outcome: &InNote) -> KeptNote {
-    let retry_finishes = matches!(
+    let retry_finishes = !matches!(
         outcome,
-        InNote::Kept(kept) if kept_is_retryable(kept) || *kept == Kept::BodyNotPulled
+        InNote::Kept(
+            Kept::FrontmatterUnreadable | Kept::FrontmatterBroken | Kept::NotRepresentable
+        )
     );
     let title = holder_title(open, &id).unwrap_or_else(|error| {
         tracing::warn!(scope = SCOPE, note_id = %id, "a kept note's name did not read: {error}");

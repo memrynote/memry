@@ -400,6 +400,10 @@ describe('TagManager', () => {
     expect(screen.getByText(/tags\.dialogs\.deleteTasks/)).toBeInTheDocument()
     expect(screen.getByText(/tagFields\.settings\.delete\.bodyTagsStay/)).toBeInTheDocument()
     fireEvent.click(screen.getAllByText('tags.actions.mergeInto')[0])
+    // What a merge does on Tauri: notes, days and tasks; never Electron's "source tag will be
+    // deleted", which a body #tag makes false.
+    expect(screen.getByText(/tags\.dialogs\.mergeRetags/)).toBeInTheDocument()
+    expect(screen.queryByText(/tags\.dialogs\.mergeDescription/)).not.toBeInTheDocument()
     expect(screen.getByText(/tags\.dialogs\.mergeBodyTagsStay/)).toBeInTheDocument()
   })
 

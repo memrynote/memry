@@ -1994,6 +1994,7 @@
       "deleteTasks": "#{tag}이(가) 붙은 작업에서도 제거됩니다.",
       "mergeTitle": "태그 병합",
       "mergeDescription": "“{source}” 태그가 지정된 모든 항목에 대상 태그가 대신 지정됩니다. 원본 태그는 삭제됩니다.",
+      "mergeRetags": "“{source}” 태그가 지정된 노트, 날짜, 작업에는 대신 대상 태그가 지정됩니다.",
       "mergeBodyTagsStay": "노트 본문에 쓴 #{source}은(는) 그대로 남으므로 해당 노트는 이 태그를 유지합니다.",
       "targetPlaceholder": "대상 태그 선택…",
       "colorTitle": "“{name}” 색상 변경"

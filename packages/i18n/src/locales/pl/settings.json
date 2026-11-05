@@ -1994,6 +1994,7 @@
       "deleteTasks": "Zadania z tagiem #{tag} również go stracą.",
       "mergeTitle": "Scal tag",
       "mergeDescription": "Wszystkie elementy oznaczone tagiem „{source}” zostaną oznaczone tagiem docelowym. Tag źródłowy zostanie usunięty.",
+      "mergeRetags": "Notatki, dni i zadania oznaczone tagiem „{source}” otrzymają zamiast niego tag docelowy.",
       "mergeBodyTagsStay": "#{source} wpisany w treści notatek zostaje, więc te notatki go zachowają.",
       "targetPlaceholder": "Wybierz tag docelowy…",
       "colorTitle": "Zmień kolor dla „{name}”"

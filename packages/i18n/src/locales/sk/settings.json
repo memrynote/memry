@@ -1994,6 +1994,7 @@
       "deleteTasks": "Úlohy so značkou #{tag} o ňu prídu tiež.",
       "mergeTitle": "Zlúčiť značku",
       "mergeDescription": "Všetky položky so značkou „{source}“ dostanú cieľovú značku. Zdrojová značka bude odstránená.",
+      "mergeRetags": "Poznámky, dni a úlohy so značkou „{source}“ dostanú namiesto nej cieľovú značku.",
       "mergeBodyTagsStay": "#{source} napísaná v texte poznámok zostane, takže si ju tieto poznámky ponechajú.",
       "targetPlaceholder": "Vyberte cieľovú značku…",
       "colorTitle": "Zmeniť farbu pre „{name}“"

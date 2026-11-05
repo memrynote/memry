@@ -1994,6 +1994,7 @@
       "deleteTasks": "Opgaver med #{tag} mister det også.",
       "mergeTitle": "Flet tag",
       "mergeDescription": "Alle elementer, der er tagget med »{source}«, bliver tagget med måltagget i stedet. Kildetagget slettes.",
+      "mergeRetags": "Noter, dage og opgaver, der er tagget med »{source}«, får måltagget i stedet.",
       "mergeBodyTagsStay": "#{source} skrevet i noternes tekst bliver stående, så de noter beholder det.",
       "targetPlaceholder": "Vælg måltag…",
       "colorTitle": "Skift farve for »{name}«"

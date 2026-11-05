@@ -1994,6 +1994,7 @@
       "deleteTasks": "带有 #{tag} 的任务也会失去该标签。",
       "mergeTitle": "合并标签",
       "mergeDescription": "所有带有“{source}”标签的条目将改为使用目标标签。源标签将被删除。",
+      "mergeRetags": "带有“{source}”标签的笔记、日记和任务将改为使用目标标签。",
       "mergeBodyTagsStay": "笔记正文中写的 #{source} 会保留，因此这些笔记仍带有它。",
       "targetPlaceholder": "选择目标标签…",
       "colorTitle": "更改“{name}”的颜色"

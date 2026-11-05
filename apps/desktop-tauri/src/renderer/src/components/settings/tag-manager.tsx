@@ -320,7 +320,7 @@ export function TagManager() {
           <DialogHeader>
             <DialogTitle>{t('tags.dialogs.mergeTitle')}</DialogTitle>
             <DialogDescription>
-              {t('tags.dialogs.mergeDescription', { source: mergeSource ?? '' })}{' '}
+              {t('tags.dialogs.mergeRetags', { source: mergeSource ?? '' })}{' '}
               {t('tags.dialogs.mergeBodyTagsStay', { source: mergeSource ?? '' })}
             </DialogDescription>
           </DialogHeader>

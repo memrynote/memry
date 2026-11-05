@@ -1994,6 +1994,7 @@
       "deleteTasks": "#{tag} etiketli görevler de bu etiketi kaybeder.",
       "mergeTitle": "Etiketi birleştir",
       "mergeDescription": "“{source}” etiketli tüm öğeler hedef etiketle yeniden etiketlenecek. Kaynak etiket silinecek.",
+      "mergeRetags": "“{source}” etiketli notlar, günler ve görevler bunun yerine hedef etiketi alır.",
       "mergeBodyTagsStay": "Not metnine yazılan #{source} kalır, bu yüzden o notlar onu korur.",
       "targetPlaceholder": "Hedef etiketi seçin…",
       "colorTitle": "“{name}” için rengi değiştir"

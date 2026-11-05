@@ -1994,6 +1994,7 @@
       "deleteTasks": "Tasks tagged #{tag} lose it too.",
       "mergeTitle": "Merge tag",
       "mergeDescription": "All items tagged with \"{source}\" will be re-tagged with the target tag. The source tag will be deleted.",
+      "mergeRetags": "Notes, days and tasks tagged \"{source}\" get the target tag instead.",
       "mergeBodyTagsStay": "#{source} written in note text stays, so those notes keep it.",
       "targetPlaceholder": "Select target tag...",
       "colorTitle": "Change color for \"{name}\""

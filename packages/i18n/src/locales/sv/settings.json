@@ -1994,6 +1994,7 @@
       "deleteTasks": "Uppgifter med #{tag} förlorar den också.",
       "mergeTitle": "Sammanfoga tagg",
       "mergeDescription": "Alla objekt som är taggade med ”{source}” får måltaggen i stället. Källtaggen raderas.",
+      "mergeRetags": "Anteckningar, dagar och uppgifter som är taggade med ”{source}” får måltaggen i stället.",
       "mergeBodyTagsStay": "#{source} skriven i anteckningarnas text står kvar, så de anteckningarna behåller den.",
       "targetPlaceholder": "Välj måltagg…",
       "colorTitle": "Ändra färg för ”{name}”"

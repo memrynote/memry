@@ -1994,6 +1994,7 @@
       "deleteTasks": "Zadaci s oznakom #{tag} također je gube.",
       "mergeTitle": "Spoji oznaku",
       "mergeDescription": "Sve stavke označene oznakom „{source}” dobit će ciljnu oznaku. Izvorna oznaka bit će izbrisana.",
+      "mergeRetags": "Bilješke, dani i zadaci označeni oznakom „{source}” umjesto nje dobivaju ciljnu oznaku.",
       "mergeBodyTagsStay": "#{source} napisana u tekstu bilješki ostaje, pa je te bilješke zadržavaju.",
       "targetPlaceholder": "Odaberite ciljnu oznaku…",
       "colorTitle": "Promijeni boju oznake „{name}”"

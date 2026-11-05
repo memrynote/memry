@@ -1994,6 +1994,7 @@
       "deleteTasks": "Tugas yang bertanda #{tag} juga kehilangan teg itu.",
       "mergeTitle": "Gabungkan teg",
       "mergeDescription": "Semua item yang berteg “{source}” akan diteg semula dengan teg sasaran. Teg sumber akan dipadam.",
+      "mergeRetags": "Nota, hari dan tugas yang berteg “{source}” mendapat teg sasaran sebagai gantinya.",
       "mergeBodyTagsStay": "#{source} yang ditulis dalam teks nota kekal, jadi nota itu masih menyimpannya.",
       "targetPlaceholder": "Pilih teg sasaran…",
       "colorTitle": "Tukar warna untuk “{name}”"

@@ -1994,6 +1994,7 @@
       "deleteTasks": "Các công việc gắn #{tag} cũng mất thẻ này.",
       "mergeTitle": "Gộp thẻ",
       "mergeDescription": "Tất cả các mục được gắn thẻ “{source}” sẽ được gắn lại bằng thẻ đích. Thẻ nguồn sẽ bị xóa.",
+      "mergeRetags": "Các ghi chú, ngày và công việc gắn thẻ “{source}” sẽ nhận thẻ đích thay thế.",
       "mergeBodyTagsStay": "#{source} viết trong nội dung ghi chú vẫn giữ nguyên, nên các ghi chú đó vẫn giữ thẻ này.",
       "targetPlaceholder": "Chọn thẻ đích…",
       "colorTitle": "Đổi màu cho “{name}”"

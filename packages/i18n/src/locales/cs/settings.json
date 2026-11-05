@@ -1994,6 +1994,7 @@
       "deleteTasks": "Úkoly se štítkem #{tag} o něj přijdou také.",
       "mergeTitle": "Sloučit štítek",
       "mergeDescription": "Všechny položky označené štítkem „{source}“ dostanou cílový štítek. Zdrojový štítek bude smazán.",
+      "mergeRetags": "Poznámky, dny a úkoly se štítkem „{source}“ dostanou místo něj cílový štítek.",
       "mergeBodyTagsStay": "#{source} napsaný v textu poznámek zůstane, takže si ho tyto poznámky ponechají.",
       "targetPlaceholder": "Vyberte cílový štítek…",
       "colorTitle": "Změnit barvu štítku „{name}“"

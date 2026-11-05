@@ -1994,6 +1994,7 @@
       "deleteTasks": "Tugas yang bertag #{tag} juga kehilangan tag itu.",
       "mergeTitle": "Gabungkan tag",
       "mergeDescription": "Semua item yang diberi tag “{source}” akan diberi tag ulang dengan tag target. Tag sumber akan dihapus.",
+      "mergeRetags": "Catatan, hari, dan tugas yang diberi tag “{source}” mendapat tag target sebagai gantinya.",
       "mergeBodyTagsStay": "#{source} yang tertulis di teks catatan tetap ada, jadi catatan itu tetap memilikinya.",
       "targetPlaceholder": "Pilih tag target…",
       "colorTitle": "Ubah warna untuk “{name}”"

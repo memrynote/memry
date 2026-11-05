@@ -1994,6 +1994,7 @@
       "deleteTasks": "As tarefas com #{tag} também a perdem.",
       "mergeTitle": "Mesclar tag",
       "mergeDescription": "Todos os itens com a tag “{source}” passarão a ter a tag de destino. A tag de origem será excluída.",
+      "mergeRetags": "Notas, dias e tarefas com a tag “{source}” recebem a tag de destino no lugar dela.",
       "mergeBodyTagsStay": "#{source} escrita no texto das notas permanece, então essas notas a mantêm.",
       "targetPlaceholder": "Selecione a tag de destino…",
       "colorTitle": "Alterar cor de “{name}”"
