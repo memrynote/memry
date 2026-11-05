@@ -169,6 +169,11 @@ vi.mock('@/components/note/template-selector', () => ({
 // Import the mocked module
 import { useNotesList, useNoteFoldersQuery, useNoteMutations } from '@/hooks/use-notes-query'
 
+// The tree saves expanded folders to storage on every change, so each test starts from none.
+beforeEach(() => {
+  localStorage.clear()
+})
+
 // ============================================================================
 // Test Data
 // ============================================================================
@@ -574,7 +579,6 @@ describe('NotesTree - one folder subtree, view options', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
     setupMocks(deepNotes, deepFolders)
   })
 
@@ -628,10 +632,10 @@ describe('NotesTree - one folder subtree, view options', () => {
       getSidebarNotesFirst: vi.fn(() => Promise.resolve(true))
     }
     renderWithProviders(<NotesTree />)
-    await waitFor(() => expect(rowIds()).toEqual(['root', 'folder-P1', 'folder-Zeta']))
-    await user.click(screen.getByText('P1'))
-
-    expect(rowIds()).toEqual(['root', 'folder-P1', 'p1', 'folder-P1/Personal', 'folder-Zeta'])
+    // P1 is still open: the tree remembers it across the remount.
+    await waitFor(() =>
+      expect(rowIds()).toEqual(['root', 'folder-P1', 'p1', 'folder-P1/Personal', 'folder-Zeta'])
+    )
   })
 
   it('hides vault files but keeps every folder when files are off', async () => {
@@ -964,7 +968,6 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     vi.clearAllMocks()
     // The tree persists expanded folders on a 500 ms debounce; a slow earlier test
     // leaves Projects expanded here, so the click under test would collapse it.
-    localStorage.clear()
     capturedActionsRef = createRef<NotesTreeActions | null>()
 
     createNoteMock = vi.fn().mockResolvedValue({

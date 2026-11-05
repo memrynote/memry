@@ -60,6 +60,10 @@ pub struct NotesService {
     /// ([`Self::fail_next_rename_edit`]).
     #[cfg(feature = "test-hooks")]
     pub(crate) fail_rename_edit: AtomicBool,
+    /// Test hook: the next tag rename's next body-tag cache write fails
+    /// ([`Self::fail_next_rename_body_cache`]).
+    #[cfg(feature = "test-hooks")]
+    pub(crate) fail_rename_body_cache: AtomicBool,
     /// Test hook: the next moved note's refs edit fails its feed (`AppEdit::fail_next_feed`).
     #[cfg(feature = "test-hooks")]
     pub(crate) fail_next_ref_feed: AtomicBool,
@@ -96,6 +100,8 @@ impl NotesService {
             crash_after_rename_write: AtomicBool::new(false),
             #[cfg(feature = "test-hooks")]
             fail_rename_edit: AtomicBool::new(false),
+            #[cfg(feature = "test-hooks")]
+            fail_rename_body_cache: AtomicBool::new(false),
             #[cfg(feature = "test-hooks")]
             fail_next_ref_feed: AtomicBool::new(false),
             #[cfg(feature = "test-hooks")]
@@ -137,11 +143,25 @@ impl NotesService {
         self.crash_after_rename_write.store(true, Ordering::Relaxed);
     }
 
+    /// Holds the tag rename lock, as a rename running (or a refused one, a moment) holds it.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn hold_tag_rename(&self) -> std::sync::MutexGuard<'_, ()> {
+        self.renaming.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
     /// The next tag rename's next file edit fails, as a note it cannot write does.
     #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn fail_next_rename_edit(&self) {
         self.fail_rename_edit.store(true, Ordering::Relaxed);
+    }
+
+    /// The next tag rename's next body-tag cache write fails.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn fail_next_rename_body_cache(&self) {
+        self.fail_rename_body_cache.store(true, Ordering::Relaxed);
     }
 
     /// The edit a note's or a day's save runs through.

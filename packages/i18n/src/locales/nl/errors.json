@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Het hernoemen van #{from} naar #{to} loopt nog. Probeer het opnieuw als het klaar is.",
+    "renameUnfinished": "Het hernoemen van #{from} naar #{to} is voor {count, plural, one {# notitie} other {# notities}} niet afgerond. Hernoem #{from} opnieuw naar #{to} om het af te ronden.",
     "mergeSameTag": "De bron- en doeltag zijn hetzelfde",
     "categoryNameRequired": "Categorienaam is vereist",
     "pinNoteFailed": "Kan de notitie niet vastzetten",

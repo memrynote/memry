@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Tunnisteen #{from} uudelleennimeäminen muotoon #{to} on vielä käynnissä. Yritä uudelleen, kun se on valmis.",
+    "renameUnfinished": "Tunnisteen #{from} uudelleennimeäminen muotoon #{to} jäi kesken {count, plural, one {# muistiinpanon} other {# muistiinpanon}} osalta. Nimeä #{from} uudelleen muotoon #{to}, niin se valmistuu.",
     "mergeSameTag": "Lähde- ja kohdetunniste ovat samat",
     "categoryNameRequired": "Kategorian nimi vaaditaan",
     "pinNoteFailed": "Muistiinpanon kiinnittäminen epäonnistui",

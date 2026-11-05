@@ -26,11 +26,11 @@ use tauri::{AppHandle, Manager, Wry};
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::commands::error::{CommandError, ErrorKind};
-use crate::commands::vault_index::{send_indexing_status, vault_status};
+use crate::commands::vault_index::{send_indexing_status, send_status};
 use crate::events::{
     CrdtWriteBackFailedEvent, NoteLinksChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
     VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
-    VaultStatusChangedEvent, WriteBackFailureReason, broadcast,
+    WriteBackFailureReason, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -324,7 +324,7 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
             match event {
                 SessionEvent::StatusChanged(status) => {
                     let is_open = status.is_open;
-                    broadcast(&app, VaultStatusChangedEvent(vault_status(&app, status)));
+                    send_status(&app, status);
                     crate::windows::main_window::on_vault_status(&app, is_open);
                     // The keyboard rebinds belong to the vault, so the menu follows it.
                     crate::menu::apply(&app, false);
