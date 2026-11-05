@@ -144,7 +144,7 @@ impl Owed {
         self.due = Some(self.due.map_or(soon, |due| due.min(soon)));
     }
 
-    /// A definition was learned: the rows holding its name are owed its type.
+    /// A type was learned: the rows holding its name are owed it.
     fn learned(&mut self) {
         self.retype = true;
         self.arm();

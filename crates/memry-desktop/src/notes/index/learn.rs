@@ -21,17 +21,18 @@
 //! nothing); and a pulled note's values, which reach its file with Step 17 and are read then.
 
 use std::collections::{BTreeMap, HashMap};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use memry_core::api::vault::Vault;
-use memry_core::domain::journal::valid_date;
 use memry_core::domain::note_stats::Unindexed;
 use memry_core::domain::property_values::{IndexedProperty, PROJECT_PROPERTY_KEY};
 use memry_core::seams::secure_store::SecureStore;
 use serde_json::Value;
 
 use crate::notes::property_definitions::{DefinitionType, PropertyDefinitions};
+use crate::vault::config::read_vault_config;
+use crate::vault::journal_format::JournalDays;
 
 /// One pass's learning.
 pub(super) struct Learner {
@@ -103,13 +104,46 @@ fn learnable(
     serde_json::from_value(Value::String(property.type_name.clone())).ok()
 }
 
-/// The order a pass reads `notes` in: every note before every journal day (`j<date>`), each by
-/// path.
-pub(super) fn order(notes: &mut [Unindexed]) {
-    let day = |note: &Unindexed| {
-        note.note_id
-            .strip_prefix('j')
-            .is_some_and(|date| valid_date(date).is_ok())
-    };
-    notes.sort_by(|a, b| (day(a), &a.path).cmp(&(day(b), &b.path)));
+/// The order a pass reads `notes` in: every note before every journal day (a file the vault's
+/// journal config names a day, whatever id it holds), each by path.
+pub(super) fn order(notes: &mut [Unindexed], root: &Path) {
+    let config = read_vault_config(root);
+    let days = JournalDays::new(&config.journal_folder, &config.journal_date_format);
+    notes.sort_by_cached_key(|note| (days.day_of(&note.path).is_some(), note.path.clone()));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn note(note_id: &str, path: &str) -> Unindexed {
+        Unindexed {
+            note_id: note_id.into(),
+            path: path.into(),
+            file_size: Some(1),
+        }
+    }
+
+    /// A day is a day by its path: one an older build gave a note id comes after the notes.
+    #[test]
+    fn notes_come_before_days_each_by_path() {
+        let root = tempfile::tempdir().unwrap();
+        let mut notes = vec![
+            note("j2026-11-05", "journal/2026-11-05.md"),
+            note("legacy12345a", "journal/2026-11-04.md"),
+            note("plan", "notes/plan.md"),
+            note("about", "about.md"),
+        ];
+        order(&mut notes, root.path());
+        let paths: Vec<&str> = notes.iter().map(|note| note.path.as_str()).collect();
+        assert_eq!(
+            paths,
+            [
+                "about.md",
+                "notes/plan.md",
+                "journal/2026-11-04.md",
+                "journal/2026-11-05.md"
+            ]
+        );
+    }
 }

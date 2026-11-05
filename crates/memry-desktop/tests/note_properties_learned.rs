@@ -10,6 +10,7 @@
 //! | a day's title follows the type a note's title learned     | a note before a day (13q-9 diff)       |
 //! | a defined name keeps its definition                       | only a name with none is learned       |
 //! | a deleted definition stays deleted through a retype       | a retype learns nothing                |
+//! | a note read only to retype it teaches nothing             | a retype learns nothing                |
 //! | learning over a definition that landed meanwhile keeps it | the file and the records win           |
 //! | a name this build cannot read the definition of stays     | a newer build's definition is kept     |
 
@@ -195,6 +196,57 @@ fn a_deleted_definition_stays_deleted_through_a_retype() {
     });
     f.undefined("rating");
     assert_eq!(f.row_type("Plan.md", "rating").as_deref(), Some("number"));
+}
+
+/// An index an older build typed, which learned nothing (or a learned map lost): a definition
+/// of `mood`, which only the day holds, retypes only the day, and its `title: '2026-11-05'` is
+/// not learned as a date, though no type is learned for `title` yet.
+#[test]
+fn a_note_read_only_to_retype_it_teaches_nothing() {
+    let f = opened(&[
+        (
+            "notes/plan.md",
+            "---\ntitle: Q3 Roadmap\n---\n# Q3 Roadmap, the longer file\n",
+        ),
+        (
+            "journal/2026-11-05.md",
+            "---\ntitle: '2026-11-05'\nmood: 3\n---\n",
+        ),
+    ]);
+    until("the names learned", || {
+        f.typed_with()
+            .is_some_and(|typed| typed.contains_key("title") && typed.contains_key("mood"))
+    });
+    let data = rusqlite::Connection::open(f.e.vault.join(".memry/core/data.db")).unwrap();
+    data.execute(
+        "DELETE FROM meta WHERE key = 'property_definitions.learned'",
+        [],
+    )
+    .unwrap();
+    let search = f.e.session.current().unwrap().search;
+    let mut older = f.typed_with().unwrap();
+    older.remove("title");
+    older.remove("mood");
+    search.set_properties_typed_with(older).unwrap();
+    let input = DefinitionInput {
+        name: "mood".into(),
+        type_name: Some(DefinitionType::Text),
+        options: None,
+        default_value: None,
+        color: None,
+    };
+    f.service().create(input).unwrap();
+    f.index.retype();
+    until("the day retyped", || {
+        f.row_type("journal/2026-11-05.md", "mood").as_deref() == Some("text")
+            && f.typed_with()
+                .is_some_and(|typed| typed.contains_key("mood"))
+    });
+    let open = f.e.session.current().unwrap();
+    let records = open.vault.property_definition_records(f.store.clone());
+    let learned = records.unwrap().learned().unwrap();
+    assert!(!learned.contains_key("title"), "learned {learned:?}");
+    f.undefined("title");
 }
 
 /// A definition that landed after the pass read the definitions (the user's, or a pull's) is

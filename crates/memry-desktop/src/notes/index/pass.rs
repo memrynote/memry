@@ -6,7 +6,7 @@
 //! holding a name whose definition changed since the rows were typed (`retypeIndexedProperties`),
 //! or every note when the index never recorded the definitions (an index from before the rows
 //! were filled), and records them unless it was stopped. A name it reads with no definition
-//! gets one ([`super::learn`]), and the next pass retypes the rows holding it. A note it could
+//! is given a learned type ([`super::learn`]), and the next pass retypes the rows holding it. A note it could
 //! not read, or that is in the large-file class, loses its rows (Electron's
 //! `note.properties ?? {}`): none typed otherwise survives, and an unread note is owed to the
 //! next pass anyway. A pass whose definitions did not read reads nothing and is owed again.
@@ -82,7 +82,7 @@ pub(super) struct Pass {
     pub stopped: bool,
     /// The notes whose rows it wrote.
     pub written: Vec<String>,
-    /// It learned a definition ([`super::learn`]): the rows holding it are owed its type.
+    /// It learned a type ([`super::learn`]): the rows holding its name are owed it.
     pub learned: bool,
 }
 
@@ -214,7 +214,7 @@ impl Indexer {
         progress: &mut dyn FnMut(IndexProgress),
         announce: &dyn Fn(LinkChanges),
     ) -> Result<Pass, IndexError> {
-        order(&mut notes);
+        order(&mut notes, &self.root);
         let total = notes.len();
         let mut pass = Pass {
             done: Backfilled {
@@ -236,41 +236,49 @@ impl Indexer {
         };
         progress(IndexProgress { built: 0, total });
         let mut learner = Learner::new(self.root.clone(), self.vault.clone(), self.store.clone());
-        let mut batch: Vec<MeasuredFile> = Vec::new();
-        let mut bytes = 0;
         // Large notes: their property rows go with the unread ones'.
         let mut large = Vec::new();
-        for note in notes {
-            if stop() {
-                pass.stopped = true;
-                pass.learned = learner.learn();
-                return Ok(pass);
-            }
-            match self.read(&note, &typing.types) {
-                Read::File(file) => {
-                    if !typing.retype_only.contains(&file.note_id) {
-                        learner.read(&file.properties, &typing.types);
+        // Learns what it read however the reads end: stopped, done, or a write failed.
+        let read = || -> Result<(), IndexError> {
+            let mut batch: Vec<MeasuredFile> = Vec::new();
+            let mut bytes = 0;
+            for note in notes {
+                if stop() {
+                    pass.stopped = true;
+                    return Ok(());
+                }
+                match self.read(&note, &typing.types) {
+                    Read::File(file) => {
+                        if !typing.retype_only.contains(&file.note_id) {
+                            learner.read(&file.properties, &typing.types);
+                        }
+                        bytes += file.text.len();
+                        batch.push(file);
                     }
-                    bytes += file.text.len();
-                    batch.push(file);
+                    Read::Skipped => pass.done.skipped += 1,
+                    Read::Large => {
+                        pass.done.skipped += 1;
+                        large.push(note.note_id);
+                    }
+                    Read::Failed => pass.unread.push(note.note_id),
                 }
-                Read::Skipped => pass.done.skipped += 1,
-                Read::Large => {
-                    pass.done.skipped += 1;
-                    large.push(note.note_id);
+                if batch.len() >= BATCH || bytes >= BATCH_BYTES {
+                    self.write(&mut pass, std::mem::take(&mut batch))?;
+                    bytes = 0;
+                    progress(built(&pass, total));
                 }
-                Read::Failed => pass.unread.push(note.note_id),
             }
-            if batch.len() >= BATCH || bytes >= BATCH_BYTES {
-                self.write(&mut pass, std::mem::take(&mut batch))?;
-                bytes = 0;
-                progress(built(&pass, total));
+            if !batch.is_empty() {
+                self.write(&mut pass, batch)?;
             }
-        }
-        if !batch.is_empty() {
-            self.write(&mut pass, batch)?;
-        }
+            Ok(())
+        };
+        let read = read();
         pass.learned = learner.learn();
+        read?;
+        if pass.stopped {
+            return Ok(pass);
+        }
         pass.done.unread = pass.unread.len();
         large.extend(pass.unread.iter().cloned());
         self.search.forget_note_properties(large)?;

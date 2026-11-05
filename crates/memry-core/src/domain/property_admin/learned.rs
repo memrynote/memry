@@ -22,9 +22,10 @@ use crate::domain::notes::failed;
 /// The `meta` key of the learned types.
 const LEARNED: &str = "property_definitions.learned";
 
-/// Each learned type by name, but for a name with a record.
+/// Each learned type by name, but for a name with a record. A stored value this build cannot
+/// read (a newer build's shape) holds none it reads.
 pub fn learned(conn: &Connection) -> Result<BTreeMap<String, String>, StorageError> {
-    let mut types = stored(conn)?;
+    let mut types = stored(conn)?.unwrap_or_default();
     let recorded = recorded(conn)?;
     types.retain(|name, _| !recorded.contains_key(name));
     Ok(types)
@@ -32,10 +33,13 @@ pub fn learned(conn: &Connection) -> Result<BTreeMap<String, String>, StorageErr
 
 /// Learns each of `wanted` (name to type) that has no record, no learned type and a type a
 /// definition holds (no `relation`, which none holds, and no `project`, which its name decides),
-/// in one write. `true` when it learned one.
+/// in one write. `true` when it learned one. Fails, writing nothing, over a stored value this
+/// build cannot read, which a write would replace.
 pub fn learn(conn: &Connection, wanted: &BTreeMap<String, String>) -> Result<bool, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let mut types = stored(&tx)?;
+    let mut types = stored(&tx)?.ok_or_else(|| StorageError::Failed {
+        what: format!("the learned property types ({LEARNED}) do not read; kept as they are"),
+    })?;
     let recorded = recorded(&tx)?;
     let mut learned = false;
     for (name, type_name) in wanted {
@@ -61,17 +65,18 @@ pub fn learn(conn: &Connection, wanted: &BTreeMap<String, String>) -> Result<boo
     Ok(learned)
 }
 
-fn stored(conn: &Connection) -> Result<BTreeMap<String, String>, StorageError> {
+/// The stored types; `None` when the value does not read.
+fn stored(conn: &Connection) -> Result<Option<BTreeMap<String, String>>, StorageError> {
     let raw: Option<String> = conn
         .query_row("SELECT value FROM meta WHERE key = ?1", [LEARNED], |row| {
             row.get(0)
         })
         .optional()
         .map_err(failed)?;
-    // A value that does not read learned nothing: each name is learned again at its next read.
-    Ok(raw
-        .and_then(|raw| serde_json::from_str(&raw).ok())
-        .unwrap_or_default())
+    Ok(match raw {
+        Some(raw) => serde_json::from_str(&raw).ok(),
+        None => Some(BTreeMap::new()),
+    })
 }
 
 /// Every name with a record, a deleted one included.
@@ -144,5 +149,31 @@ mod tests {
             Ok(())
         })
         .expect("learned");
+    }
+
+    /// A value a newer build wrote in a shape this one cannot read is kept: nothing is learned
+    /// over it.
+    #[test]
+    fn a_stored_value_that_does_not_read_is_not_replaced() {
+        let dir = temp_dir("props-learned-unread");
+        let db = open_data(&dir.path().join("data.db")).expect("open");
+        db.call_blocking(|c| {
+            let newer = r#"[{"name":"rating","type":"number"}]"#;
+            c.execute(
+                "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+                params![LEARNED, newer],
+            )
+            .map_err(failed)?;
+            assert!(learned(c)?.is_empty());
+            assert!(learn(c, &types(&[("site", "url")])).is_err());
+            let held: String = c
+                .query_row("SELECT value FROM meta WHERE key = ?1", [LEARNED], |row| {
+                    row.get(0)
+                })
+                .map_err(failed)?;
+            assert_eq!(held, newer);
+            Ok(())
+        })
+        .expect("kept");
     }
 }
