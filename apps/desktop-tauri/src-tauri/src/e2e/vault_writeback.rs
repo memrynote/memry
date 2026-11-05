@@ -7,10 +7,10 @@
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
-use memry_desktop::e2e::E2eGate;
 use memry_desktop::e2e::vault as e2e_vault;
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::{OpenVault, Session};
+use memry_desktop::vault::config::read_vault_config_strict;
 use memry_desktop::vault::consumer::VaultTier;
 use memry_desktop::vault::hash::content_hash;
 use serde::Serialize;
@@ -75,6 +75,30 @@ pub struct E2eNoteFile {
     pub note_id: String,
     pub path: String,
     pub content_hash: Option<String>,
+}
+
+/// The open vault's root and the `defaultNoteFolder` a create without a folder reads now, or why
+/// the config could not be read (a create then falls back to the vault root).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct E2eVaultConfig {
+    pub root: String,
+    pub default_note_folder: Option<String>,
+    pub read_error: Option<String>,
+}
+
+#[tauri::command]
+pub fn e2e_vault_config(app: AppHandle<Wry>) -> Result<E2eVaultConfig, CommandError> {
+    let root = open(&app)?.path;
+    let read = read_vault_config_strict(&root);
+    Ok(E2eVaultConfig {
+        root: root.display().to_string(),
+        default_note_folder: read
+            .as_ref()
+            .ok()
+            .map(|config| config.default_note_folder.clone()),
+        read_error: read.err(),
+    })
 }
 
 /// The rows of the open vault.

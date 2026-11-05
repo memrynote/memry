@@ -13,6 +13,8 @@ pub(super) enum Msg {
     Error(notify::Error),
     /// A consumer could not apply what was reported for this vault-relative path.
     Forget(String),
+    /// The file at this vault-relative path is another note's now.
+    Rehome(String),
 }
 
 /// What a rescan does with a file no row names.
@@ -52,6 +54,20 @@ impl WatchHandle {
         }
     }
 
+    /// The file at `rel` is another note's now (a move that changed what it is): what was
+    /// reported for it is dropped, so the next look, at the next debounce, reads its row. A
+    /// full queue resyncs instead, which forgets everything reported. Dropped once the watcher
+    /// stopped.
+    pub fn rehome(&self, rel: String) {
+        if let Err(TrySendError::Full(_)) = self.tx.try_send(Msg::Rehome(rel)) {
+            tracing::warn!(
+                scope = "vault_watch",
+                "a moved file's new note was not told; resyncing"
+            );
+            self.resync();
+        }
+    }
+
     /// The consumer dropped events: everything reported is forgotten and a rescan with
     /// changes compares the disk with the rows, which hold what was applied.
     pub fn resync(&self) {
@@ -82,5 +98,24 @@ impl Gate {
 
     pub(super) fn close(&self) {
         self.0.store(false, Ordering::SeqCst);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc::sync_channel;
+
+    /// A rehome the full queue cannot take resyncs: the reported entry still names the deleted
+    /// note, and nothing else would drop it before the next open.
+    #[test]
+    fn a_rehome_the_queue_cannot_take_resyncs() {
+        let (tx, _rx) = sync_channel(1);
+        let resync = Arc::new(AtomicBool::new(false));
+        let handle = WatchHandle::new(tx, resync.clone());
+        handle.rehome("a.md".to_owned());
+        assert!(!resync.load(Ordering::Relaxed));
+        handle.rehome("b.md".to_owned());
+        assert!(resync.load(Ordering::Relaxed));
     }
 }

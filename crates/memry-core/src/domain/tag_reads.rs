@@ -10,13 +10,16 @@
 //!   [`FileTags`]), the only place a file the open adopted carries them: the identity gives its
 //!   record none.
 //!
-//! When the index measured the bytes on disk now (its row's hash is the file's,
+//! A journal day's record owns its tags (#3931): the day file's `tags:` are the author's text,
+//! which an outside edit brings into the record (`notes::file_tags`), so a day carries its
+//! record's tags and its body's, never its header's.
+//!
+//! For a note, when the index measured the bytes on disk now (its row's hash is the file's,
 //! `note_file_hashes`), the file's header tags stand for the header and the record's are left
-//! out: an edit outside the app reaches the file and the index, never the record, so a tag
-//! removed there would otherwise keep counting. Until the index catches up with a change, the
-//! record's tags, the body's and the header's last measure are joined, since an app edit
-//! writes the record first. The record itself still keeps a tag removed outside the app, so
-//! peers keep it (#3825: the feed's job, not a read's).
+//! out: an edit outside the app reaches the record only once the vault tier fed it
+//! (`notes::file_tags`, #3825), and a tag removed there must not count meanwhile. Until the
+//! index catches up with a change, the record's tags, the body's and the header's last measure
+//! are joined, since an app edit writes the record first.
 //!
 //! Only a note or journal day with a file row is counted or listed, as Electron's index holds
 //! files only and the note list lists only those. A task counts with its own tags. Each item
@@ -69,28 +72,32 @@ struct Gathered {
     note: TaggedNote,
     /// The index's row measured the bytes on disk now.
     current: bool,
+    /// A journal day, whose record owns its tags.
+    day: bool,
     /// The record's tags in its order, with when each was pinned.
     record: Vec<(String, Option<i64>)>,
     body: Vec<String>,
 }
 
 impl Gathered {
-    /// The note with one spelling per tag, and the pin of each: the file's header tags then the
-    /// body's when the index is current, else the record's, the body's and the header's.
+    /// The note with one spelling per tag, and the pin of each: a day's record tags then its
+    /// body's; a note's file header tags then the body's when the index is current, else the
+    /// record's, the body's and the header's.
     fn into_tagged(self, header: &[String]) -> WithPins {
         let Self {
             mut note,
             current,
+            day,
             record,
             body,
         } = self;
         let header = header.iter().map(String::as_str);
         let body = body.iter().map(String::as_str);
-        let ordered: Vec<&str> = if current {
-            header.chain(body).collect()
-        } else {
-            let record = record.iter().map(|(tag, _)| tag.as_str());
-            record.chain(body).chain(header).collect()
+        let kept = record.iter().map(|(tag, _)| tag.as_str());
+        let ordered: Vec<&str> = match (day, current) {
+            (true, _) => kept.chain(body).collect(),
+            (false, true) => header.chain(body).collect(),
+            (false, false) => kept.chain(body).chain(header).collect(),
         };
         let mut pins = Vec::new();
         for tag in ordered {
@@ -125,7 +132,7 @@ fn filed(
         .prepare(&format!(
             "SELECT f.note_id, f.path, COALESCE(n.title, j.date), n.emoji,
                     COALESCE(n.created_at, j.created_at), COALESCE(n.modified_at, j.modified_at),
-                    h.file_hash
+                    h.file_hash, j.id IS NOT NULL
                FROM note_files f
                LEFT JOIN notes n ON n.id = f.note_id AND n.deleted_at IS NULL
                LEFT JOIN journal_entries j ON j.id = f.note_id AND j.deleted_at IS NULL
@@ -146,12 +153,16 @@ fn filed(
                 word_count: 0,
                 pinned_at: None,
             };
-            Ok((note, row.get::<_, Option<String>>(6)?))
+            Ok((
+                note,
+                row.get::<_, Option<String>>(6)?,
+                row.get::<_, bool>(7)?,
+            ))
         })
         .map_err(failed)?;
     let mut gathered = BTreeMap::new();
     for row in rows {
-        let (mut note, on_disk) = row.map_err(failed)?;
+        let (mut note, on_disk, day) = row.map_err(failed)?;
         let file = files.get(&note.id);
         note.word_count = file.map_or(0, |file| file.word_count);
         let measured = file.and_then(|file| file.file_hash.as_deref());
@@ -159,6 +170,7 @@ fn filed(
         let entry = Gathered {
             note,
             current,
+            day,
             record: Vec::new(),
             body: Vec::new(),
         };

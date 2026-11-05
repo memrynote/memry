@@ -253,6 +253,7 @@ impl VaultTier {
         let ctx = IdentityCtx {
             root: &vault.path,
             vault: &vault.vault,
+            search: &vault.search,
         };
         // Before the identity settles what it owes, and before the watcher: the file an app
         // move left at its new path is the note's again, never a new file.
@@ -320,6 +321,7 @@ impl VaultTier {
         let applier = Applier {
             root: vault.path.clone(),
             vault: vault.vault.clone(),
+            search: vault.search.clone(),
             rows: self.rows.clone(),
             session,
             identity,
@@ -327,6 +329,8 @@ impl VaultTier {
             settings: vault.vault.app_settings(self.store.clone()).ok(),
             activity: self.activity.clone(),
             own_files: self.own_files.clone(),
+            watch: Some(watcher.handle()),
+            untaken: Mutex::default(),
         };
         let after_walk: AfterWalk = {
             let writeback = writeback.clone();

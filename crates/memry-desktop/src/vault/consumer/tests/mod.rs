@@ -22,7 +22,9 @@ use memry_core::storage::OpenOptions;
 use tokio::sync::broadcast;
 
 use super::apply::{Applier, Step};
-use super::identity::{Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal};
+use super::identity::{
+    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
+};
 use super::rows::{RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
 use crate::vault::activity::ScanActivity;
@@ -82,6 +84,9 @@ pub(super) struct Recorder {
     pub(super) row_at_delete: Mutex<Vec<bool>>,
     /// The row's path when `on_renamed` ran.
     pub(super) row_at_rename: Mutex<Vec<String>>,
+    /// `(note_id, previous)` of every `on_changed`.
+    pub(super) changed: Mutex<Vec<(String, String)>>,
+    pub(super) changed_fails: AtomicBool,
 }
 
 impl NoteIdentity for Recorder {
@@ -131,11 +136,28 @@ impl NoteIdentity for Recorder {
         note_id: &str,
         _: &str,
         _: &str,
-    ) -> Result<(), IdentityError> {
+    ) -> Result<Rename, IdentityError> {
         let row = ctx.vault.note_files().by_id(note_id)?.expect("the row");
         self.row_at_rename.lock().unwrap().push(row.path);
         if self.rename_fails.load(Ordering::SeqCst) {
             return Err(IdentityError::Other("the record did not move".into()));
+        }
+        Ok(Rename::Followed)
+    }
+
+    fn on_changed(
+        &self,
+        _: &IdentityCtx<'_>,
+        note_id: &str,
+        previous: &str,
+        _: &crate::vault::note_file::NoteFile,
+    ) -> Result<(), IdentityError> {
+        self.changed
+            .lock()
+            .unwrap()
+            .push((note_id.to_owned(), previous.to_owned()));
+        if self.changed_fails.load(Ordering::SeqCst) {
+            return Err(IdentityError::Other("the record did not take it".into()));
         }
         Ok(())
     }
@@ -175,6 +197,8 @@ pub(super) fn fixture() -> Fixture {
         adopted: Mutex::default(),
         row_at_delete: Mutex::default(),
         row_at_rename: Mutex::default(),
+        changed: Mutex::default(),
+        changed_fails: AtomicBool::new(false),
     });
     let applier = applier(&root, &vault, &store, &rows, identity.clone());
     Fixture {
@@ -339,6 +363,7 @@ pub(super) fn applier(
     Applier {
         root: root.to_owned(),
         vault: vault.clone(),
+        search: vault.search().unwrap(),
         rows: rows.clone(),
         identity,
         feed: vault.external_feed(store.clone()).ok(),
@@ -346,6 +371,8 @@ pub(super) fn applier(
         session: rows.session_for(vault).unwrap(),
         activity: crate::vault::activity::ActivityLog::new(),
         own_files: Arc::default(),
+        watch: None,
+        untaken: Mutex::default(),
     }
 }
 
@@ -360,6 +387,7 @@ mod flood;
 mod hash_rule;
 mod lane;
 mod late_close;
+mod outside_edit;
 #[cfg(windows)]
 mod replace_race;
 mod slow_watch_stop;

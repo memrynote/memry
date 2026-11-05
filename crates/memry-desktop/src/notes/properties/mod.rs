@@ -20,13 +20,11 @@
 //! body. What an edit makes of the frontmatter is [`edit`]. The note index reads the same values
 //! into `note_properties` ([`file_properties`]; `super::index`).
 //!
-//! A property with no definition is typed by its value, every time. Electron's
-//! `ensurePropertyDefinition` also keeps the first type the index saw for it, but only in the
-//! index's copy of the definitions, which every reload (each open, each definition edit) clears
-//! before `retypeIndexedProperties` types those rows by their values again; the file and the
-//! records never hold it. Not here: the header status a status property takes from the note's
-//! tasks (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m),
-//! relation chips (`properties:resolveRefs`) and the lock check (Step 14).
+//! Not here: a type learned from a new value (Electron's `learnCanonicalPropertyType`, which
+//! gives an undeclared property a synced definition at the first type its notes are synced
+//! with; 13k-4c), the header status a status property takes from the note's tasks
+//! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m), relation
+//! chips (`properties:resolveRefs`) and the lock check (Step 14).
 
 pub mod edit;
 
@@ -258,31 +256,34 @@ pub fn definition_types(
     vault: &Vault,
     store: Arc<dyn SecureStore>,
 ) -> HashMap<String, String> {
-    let listed = vault
+    read_definition_types(path, vault, store).unwrap_or_else(|error| {
+        tracing::warn!(
+            scope = SCOPE,
+            "property types are inferred from their values: the definitions did not read: {error}"
+        );
+        HashMap::new()
+    })
+}
+
+/// [`definition_types`], or why they did not read.
+pub fn read_definition_types(
+    path: &Path,
+    vault: &Vault,
+    store: Arc<dyn SecureStore>,
+) -> Result<HashMap<String, String>, String> {
+    let records = vault
         .property_definition_records(store)
-        .map_err(|error| error.to_string())
-        .and_then(|records| {
-            PropertyDefinitions::new(path.to_owned(), records)
-                .list()
-                .map_err(|error| error.to_string())
-        });
-    match listed {
-        Ok(definitions) => definitions
-            .into_iter()
-            .filter_map(|definition| {
-                let type_name = serde_json::to_value(definition.type_name).ok()?;
-                Some((definition.name, type_name.as_str()?.to_owned()))
-            })
-            .collect(),
-        Err(error) => {
-            tracing::warn!(
-                scope = SCOPE,
-                "property types are inferred from their values: the definitions did not \
-                 read: {error}"
-            );
-            HashMap::new()
-        }
-    }
+        .map_err(|error| error.to_string())?;
+    let definitions = PropertyDefinitions::new(path.to_owned(), records)
+        .list()
+        .map_err(|error| error.to_string())?;
+    Ok(definitions
+        .into_iter()
+        .filter_map(|definition| {
+            let type_name = serde_json::to_value(definition.type_name).ok()?;
+            Some((definition.name, type_name.as_str()?.to_owned()))
+        })
+        .collect())
 }
 
 /// The user properties the file's frontmatter holds, read as the index reads them; `None` for a

@@ -1,5 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { Picker } from './index'
 
@@ -102,6 +103,15 @@ describe('PickerList', () => {
     const list = screen.getByRole('listbox')
     expect(list.className).toContain('overflow-y-auto')
     expect(list.className).toContain('min-h-0')
+  })
+
+  it('never scrolls sideways', () => {
+    // A separator bleeds into the list's padding (`-mx-1`), which made the list 4px wider than
+    // its box. GTK's overlay scrollbar then took clicks along the list's bottom 21px, so on Linux
+    // the note menu's last row, Delete note, could not be clicked.
+    renderPicker()
+
+    expect(screen.getByRole('listbox').className).toContain('overflow-x-hidden')
   })
 })
 
@@ -258,5 +268,75 @@ describe('Picker.List filterByLabel', () => {
     await userEvent.type(search, 'zzz')
     expect(screen.queryAllByRole('option')).toHaveLength(0)
     expect(empty().parentElement!.children).toHaveLength(1)
+  })
+})
+
+describe('PickerContent focus on close', () => {
+  it('leaves focus where a row moved it, though no focus event said so', async () => {
+    // Chromium (WebView2) sends no focus events while its window is inactive, and Radix learns
+    // from `focusin` that focus left the popover. A row that focuses something else (the note
+    // menu's Rename focuses the title) must keep it rather than lose it to the trigger.
+    function Menu(): React.JSX.Element {
+      const [open, setOpen] = useState(true)
+      return (
+        <>
+          <input aria-label="Title" />
+          <Picker
+            open={open}
+            onOpenChange={setOpen}
+            value={null}
+            closeOnSelect={false}
+            onValueChange={() => {
+              const block = (event: Event): void => event.stopImmediatePropagation()
+              window.addEventListener('focusin', block, true)
+              window.addEventListener('focusout', block, true)
+              screen.getByLabelText('Title').focus()
+              window.removeEventListener('focusin', block, true)
+              window.removeEventListener('focusout', block, true)
+              setOpen(false)
+            }}
+          >
+            <Picker.Trigger>More</Picker.Trigger>
+            <Picker.Content data-testid="content">
+              <Picker.List>
+                <Picker.Item value="rename" label="Rename" />
+              </Picker.List>
+            </Picker.Content>
+          </Picker>
+        </>
+      )
+    }
+    render(<Menu />)
+
+    fireEvent.click(screen.getByRole('option', { name: 'Rename' }))
+    await waitFor(() => expect(screen.queryByTestId('content')).toBeNull())
+    // Radix gives focus back on a timer after the content unmounts.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)))
+
+    expect(screen.getByLabelText('Title')).toHaveFocus()
+  })
+
+  it('gives focus back to the trigger when a row left it in the popover', async () => {
+    function Menu(): React.JSX.Element {
+      const [open, setOpen] = useState(true)
+      return (
+        <Picker open={open} onOpenChange={setOpen} value={null} onValueChange={() => {}}>
+          <Picker.Trigger>More</Picker.Trigger>
+          <Picker.Content data-testid="content">
+            <Picker.List>
+              <Picker.Item value="find" label="Find" />
+            </Picker.List>
+          </Picker.Content>
+        </Picker>
+      )
+    }
+    render(<Menu />)
+
+    screen.getByRole('option', { name: 'Find' }).focus()
+    fireEvent.click(screen.getByRole('option', { name: 'Find' }))
+    await waitFor(() => expect(screen.queryByTestId('content')).toBeNull())
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)))
+
+    expect(document.querySelector('[data-slot="picker-trigger"]')).toHaveFocus()
   })
 })

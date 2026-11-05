@@ -14,6 +14,7 @@ use memry_core::domain::note_files::NoteFileStat;
 use memry_core::domain::note_stats::{MeasuredFile, measure};
 use memry_core::domain::notes::identity;
 use memry_core::domain::property_values::IndexedProperty;
+use memry_core::storage::migrations::{INDEX_MIGRATIONS, latest_version};
 
 const TEXT: &str = "---\ntags: [a]\n---\nsome words here\n- [ ] a task {task:t1}\n";
 
@@ -219,7 +220,10 @@ fn a_newer_index_is_set_aside_and_rebuilt() {
     index_all(&search);
     drop((search, vault));
     index_db(dir.path())
-        .execute_batch("PRAGMA user_version = 4")
+        .execute_batch(&format!(
+            "PRAGMA user_version = {}",
+            latest_version(INDEX_MIGRATIONS) + 1
+        ))
         .expect("a newer build wrote this");
 
     let vault = open_vault(dir.path());
@@ -256,7 +260,7 @@ fn a_version_2_index_migrates_in_place_to_note_stats() {
     let version: u32 = index_db(dir.path())
         .query_row("PRAGMA user_version", [], |row| row.get(0))
         .expect("version");
-    assert_eq!(version, 3);
+    assert_eq!(version, latest_version(INDEX_MIGRATIONS));
     assert_eq!(listed(&search, false), ["small", "mid", "big"]);
     index_all(&search);
     assert!(listed(&search, false).is_empty());
