@@ -98,7 +98,10 @@ export function showStickyWindow(draftId?: string | null): void {
 
   loadRendererRoute(window.webContents, 'sticky')
 
-  window.once('ready-to-show', () => {
+  // Not 'ready-to-show': on Windows a hidden transparent window never paints,
+  // so that event waits until something else forces a frame and the shortcut
+  // seems to do nothing.
+  window.webContents.once('did-finish-load', () => {
     window.show()
     window.focus()
   })
