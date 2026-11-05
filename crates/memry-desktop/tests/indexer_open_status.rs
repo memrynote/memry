@@ -17,6 +17,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use index_support::{seeded, until};
 use memry_desktop::notes::index::{IndexProgress, IndexReport, NoteIndex};
+use memry_desktop::session::OpenSource;
 use memry_desktop::session::response::VaultStatus;
 
 const NOTES: usize = 30;
@@ -62,11 +63,13 @@ impl Shell {
         if matches!(report, IndexReport::Progress(_)) && self.panic.swap(false, Ordering::SeqCst) {
             panic!("a bug in the index task");
         }
-        if let IndexReport::Progress(step) = report
-            && let Some((tell, wait)) = self.hold.lock().unwrap().take()
-        {
-            tell.send(step).unwrap();
-            wait.recv().unwrap();
+        if let IndexReport::Progress(step) = report {
+            // Taken first: the hold's lock is not kept while the pass waits.
+            let held = self.hold.lock().unwrap().take();
+            if let Some((tell, wait)) = held {
+                tell.send(step).unwrap();
+                wait.recv().unwrap();
+            }
         }
     }
 
@@ -176,6 +179,38 @@ fn an_index_task_that_panics_leaves_no_indexing() {
     });
     assert_eq!(shell.heard().last(), Some(&Heard::Indexing(None)));
     e.close();
+}
+
+/// A close gives up on a task that overran its deadline, and the next open starts its own build.
+/// When the old task ends at last, the new build stays on.
+#[test]
+fn an_earlier_opens_task_that_ends_late_leaves_the_next_builds_indexing() {
+    let (mut e, _store, _) = seeded(NOTES);
+    let shell = Arc::new(Shell::default());
+    let index = shell.index(&e);
+    let (first, release_old) = shell.hold();
+    e.open();
+    let old = Arc::downgrade(&e.core());
+    first.recv().unwrap();
+
+    // The old task is held inside its first step, past the close's deadline.
+    e.close();
+    let other = e._dir.path().join("other");
+    std::fs::create_dir_all(&other).unwrap();
+    let (next, release_new) = shell.hold();
+    e.session.open(&other, OpenSource::Select).unwrap();
+    next.recv().unwrap();
+    assert!(index.indexing().is_some());
+
+    release_old.send(()).unwrap();
+    until("the old task ended", || old.strong_count() == 0);
+    assert!(
+        index.indexing().is_some(),
+        "the old task's end left the new open's build on"
+    );
+    release_new.send(()).unwrap();
+    until("the new open's pass ended", || index.indexing().is_none());
+    e.session.close();
 }
 
 #[test]

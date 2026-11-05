@@ -192,9 +192,14 @@ struct BuildEnds<'a>(&'a NoteIndex, &'a TaskHandle);
 impl Drop for BuildEnds<'_> {
     fn drop(&mut self) {
         let BuildEnds(index, handle) = self;
-        let other =
-            matches!(&*lock(&index.slot), Slot::Open { handle: open, .. } if !open.same(handle));
-        if !other && std::mem::replace(&mut lock(&index.indexing).building, false) {
+        // The slot stays locked across the change, so a next open cannot start its build in
+        // between; both locks are released before the shell hears of it.
+        let ended = {
+            let slot = lock(&index.slot);
+            let other = matches!(&*slot, Slot::Open { handle: open, .. } if !open.same(handle));
+            !other && std::mem::replace(&mut lock(&index.indexing).building, false)
+        };
+        if ended {
             (index.report)(IndexReport::Indexing);
         }
     }

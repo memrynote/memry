@@ -9,7 +9,7 @@ import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
 import type * as AttachmentPickerDialogModule from './attachment-picker-dialog'
 
 type NoteEventHandler = (event: { id: string }) => void
-const noteEvents = vi.hoisted(() => new Set<(event: { id: string }) => void>())
+const noteEvents = vi.hoisted(() => new Set<NoteEventHandler>())
 
 const contentAreaMocks = vi.hoisted(() => ({
   editor: null as any,

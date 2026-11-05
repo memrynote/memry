@@ -222,6 +222,10 @@ impl NotesService {
                 let Some(mut facts) = taken else {
                     return Ok(());
                 };
+                // A hook run inline with its token already cancelled returns before any read.
+                if cancel.is_cancelled() {
+                    return Ok(());
+                }
                 // Most opens have nothing to finish; a record that does not read is dropped below.
                 if matches!(open.vault.tag_rename_recorded(), Ok(None)) {
                     return Ok(());

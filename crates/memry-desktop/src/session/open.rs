@@ -1,5 +1,6 @@
 //! The open sequence, in the stage order of `vault/index.ts:613-968`.
 
+use std::panic::AssertUnwindSafe;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -283,8 +284,13 @@ impl Session {
                     tracing::error!(task = %name, %error, "could not start a background task");
                     let stopped = CancelToken::default();
                     stopped.cancel();
-                    if let Err(error) = hook(view, &stopped) {
-                        tracing::error!(task = %name, %error, "background open hook failed");
+                    // On the opener's thread: a panic in the hook must not take the open with it.
+                    match std::panic::catch_unwind(AssertUnwindSafe(|| hook(view, &stopped))) {
+                        Ok(Ok(())) => {}
+                        Ok(Err(error)) => {
+                            tracing::error!(task = %name, %error, "background open hook failed");
+                        }
+                        Err(_) => tracing::error!(task = %name, "background open hook panicked"),
                     }
                 }
             }
