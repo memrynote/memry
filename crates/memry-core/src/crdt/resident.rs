@@ -26,12 +26,24 @@ use super::errors::CrdtError;
 use super::lifecycle::{DocumentLifecycle, DocumentState, LifecycleConfig};
 use super::registry::Document;
 
-/// Electron keeps up to 32 documents no editor holds (`DEFAULT_INACTIVE_DOC_LIMIT`,
-/// `crdt-provider.ts:76`); the lifecycle bounds every resident document by it.
+/// The residency budget. Not Electron's: it kept up to 32 documents no window
+/// held, with no timer (`DEFAULT_INACTIVE_DOC_LIMIT`, `crdt-provider.ts:76`,
+/// `:2275-2287`). Here the lifecycle's bound of 32 counts held documents too (a
+/// held one is never evicted, so the bound yields past 32 rather than take it),
+/// and an unheld document leaves after 30 s. Coming back to a note later replays
+/// its log, a local SQLite read and a `yrs` apply, instead of costing memory.
 pub const EDITOR_LIFECYCLE: LifecycleConfig = LifecycleConfig {
     max_open: 32,
     grace_ms: 30_000,
 };
+
+/// A document a holder took.
+pub struct Held {
+    pub document: Arc<Document>,
+    /// The holder did not hold it before this call, so undoing the call
+    /// releases it; otherwise the earlier hold stays.
+    pub added: bool,
+}
 
 /// The documents in memory and their holders.
 pub struct Resident {
@@ -50,21 +62,25 @@ impl Resident {
     }
 
     /// `holder` takes `doc_id`, loading it through `load` when it is not in
-    /// memory. `None`: the log does not replay, and `holder` holds nothing.
+    /// memory. `None`: the log does not replay, and `holder` holds nothing new.
     pub fn hold(
         &mut self,
         doc_id: &str,
         holder: &str,
         now_ms: i64,
         load: impl FnOnce() -> Result<Arc<Document>, CrdtError>,
-    ) -> Result<Option<Arc<Document>>, CrdtError> {
+    ) -> Result<Option<Held>, CrdtError> {
         if self
             .holders
             .get(doc_id)
             .is_some_and(|set| set.contains(holder))
         {
             let state = self.lifecycle.state(doc_id);
-            return self.settle(doc_id, state, now_ms, load);
+            let document = self.settle(doc_id, state, now_ms, load)?;
+            return Ok(document.map(|document| Held {
+                document,
+                added: false,
+            }));
         }
         let document = self.request(doc_id, now_ms, load);
         if let Ok(Some(_)) = document {
@@ -76,7 +92,10 @@ impl Resident {
         } else {
             self.lifecycle.release(doc_id, now_ms);
         }
-        document
+        Ok(document?.map(|document| Held {
+            document,
+            added: true,
+        }))
     }
 
     /// `doc_id` for one operation, without a holder: a document nobody holds
@@ -202,12 +221,44 @@ mod tests {
     }
 
     #[test]
+    fn a_second_hold_by_the_same_holder_adds_nothing() {
+        let mut resident = Resident::new(EDITOR_LIFECYCLE);
+        let first = resident.hold("n1", "main", 0, loader("n1")).unwrap();
+        assert!(first.unwrap().added);
+        let again = resident.hold("n1", "main", 1, || unreachable!()).unwrap();
+        assert!(!again.unwrap().added);
+    }
+
+    #[test]
+    fn past_the_bound_the_oldest_unheld_document_goes_and_a_held_one_stays() {
+        let mut resident = Resident::new(EDITOR_LIFECYCLE);
+        resident.hold("held", "main", 0, loader("held")).unwrap();
+        let ids: Vec<String> = (0..40).map(|n| format!("n{n}")).collect();
+        for (n, id) in ids.iter().enumerate() {
+            resident.borrow(id, 1 + n as i64, loader(id)).unwrap();
+        }
+
+        assert!(
+            resident.peek("held").is_some(),
+            "a held document is never evicted"
+        );
+        assert!(
+            resident.peek("n0").is_none(),
+            "the least recently touched went"
+        );
+        assert!(resident.peek("n39").is_some());
+        let loaded = ids.iter().filter(|id| resident.peek(id).is_some()).count();
+        assert_eq!(loaded + 1, EDITOR_LIFECYCLE.max_open);
+    }
+
+    #[test]
     fn an_invalidated_document_reloads_for_its_holder() {
         let mut resident = Resident::new(EDITOR_LIFECYCLE);
         let first = resident
             .hold("n1", "main", 0, loader("n1"))
             .unwrap()
-            .unwrap();
+            .unwrap()
+            .document;
         resident.invalidate("n1");
         let reloaded = resident.borrow("n1", 1, loader("n1")).unwrap().unwrap();
         assert!(!Arc::ptr_eq(&first, &reloaded));

@@ -186,6 +186,8 @@ mod domain_template_store;
 mod domain_templates;
 #[path = "dryoc_parity.rs"]
 mod dryoc_parity;
+#[path = "editor_concurrency.rs"]
+mod editor_concurrency;
 #[path = "editor_open_apply.rs"]
 mod editor_open_apply;
 #[path = "editor_origin_fanout.rs"]

@@ -13,19 +13,31 @@
 //! **Durable before acknowledged** (FR-030, data-model §A.2): the update row and
 //! its outbox row commit in one transaction, and [`Applied`] and the fan-out
 //! exist only after that commit. The update is applied to the resident document
-//! inside the transaction, before the commit, so an update `yrs` refuses rolls
-//! both rows back; a commit that fails drops the resident document, and the next
-//! access replays it from the log. The bytes are stored exactly as received
-//! (chapter 12 §12.5.0), and a local-only note gets its log row and no outbox
-//! row ([`outbox::enqueue`] decides that).
+//! first, so an update `yrs` refuses writes nothing, and one that changes
+//! nothing (a resend, a sync-step-2 diff with nothing new) is neither stored,
+//! queued nor fanned out, as Electron's `Y.applyUpdate` fires no update for it.
+//! When the rows or the commit then fail, the resident document is dropped and
+//! the next access replays it from the log. The bytes are stored exactly as
+//! received (chapter 12 §12.5.0), and a local-only note gets its log row and no
+//! outbox row ([`outbox::enqueue`] decides that).
+//!
+//! **Every `yrs` transaction on a resident document runs under the resident
+//! lock**, reads included ([`Editor::with_document`]). `yrs` does not wait for a
+//! busy document, it refuses (`DocumentBusy`): a read outside the lock made a
+//! concurrent edit fail, and the window's later edits, which depend on it, then
+//! waited forever in the document's pending set. Holding the lock through the
+//! commit also keeps a reader from seeing an edit whose commit then fails.
 //!
 //! The host has no threads and no clock of its own: the shell calls
 //! [`Editor::sweep`] on its timer. Every method blocks on the vault's writer
 //! connection; the shell runs them in `spawn_blocking`. Locks are taken in one
 //! order, the resident set and then the writer, and no lock is held while a
-//! listener runs.
+//! listener runs. A listener that panics is caught and reported on stderr, so
+//! the caller still gets its answer for a durable edit and the other listeners
+//! still run.
 
 use std::collections::HashMap;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use rusqlite::Connection;
@@ -57,6 +69,17 @@ pub enum Origin {
     External,
     /// Written by the app itself (seed, repair, restore).
     System,
+}
+
+impl Origin {
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Local(_) => "local",
+            Self::Remote => "remote",
+            Self::External => "external",
+            Self::System => "system",
+        }
+    }
 }
 
 /// What a window receives when it opens a document.
@@ -152,17 +175,18 @@ impl Editor {
             if body_owner(conn, note_id)?.is_none() {
                 return Err(not_found(note_id));
             }
-            let document = resident
+            let held = resident
                 .hold(note_id, holder, now, || self.load(conn, note_id))?
                 .ok_or_else(|| unreadable(note_id))?;
+            let document = &held.document;
             let opened = (|| {
                 Ok(Opened {
                     state: document.encode_state()?,
                     state_vector: document.state_vector()?,
-                    needs_seed: body_is_empty(&document)? && !body_debt::is_owed(conn, note_id)?,
+                    needs_seed: body_is_empty(document)? && !body_debt::is_owed(conn, note_id)?,
                 })
             })();
-            if opened.is_err() {
+            if opened.is_err() && held.added {
                 resident.release(note_id, holder, now);
             }
             opened
@@ -171,13 +195,14 @@ impl Editor {
 
     /// Stores `update`, a window's edit, queues it for the other devices,
     /// applies it to the resident document and hands it to the listeners as
-    /// [`Origin::Local`] of `holder`. See the module doc for the order.
+    /// [`Origin::Local`] of `holder`. `None`: the update changed nothing, and
+    /// nothing was stored or sent. See the module doc for the order.
     pub fn apply_update(
         &self,
         note_id: &str,
         update: &[u8],
         holder: &str,
-    ) -> Result<Applied, EditorError> {
+    ) -> Result<Option<Applied>, EditorError> {
         let now = now_ms();
         let applied = {
             let mut resident = self.resident();
@@ -186,24 +211,32 @@ impl Editor {
                 let document = resident
                     .borrow(note_id, now, || self.load(conn, note_id))?
                     .ok_or_else(|| unreadable(note_id))?;
-                let tx = conn.transaction().map_err(storage)?;
-                let seq = update_log::append_local_update_in(&tx, note_id, update, now)?;
-                let change = outbox::Change::crdt_update(owner.item_type, note_id, update.to_vec());
-                let outbox_id = outbox::enqueue(&tx, &change, now)?;
-                // Durable origin: the rows above hold these bytes, so the
+                // Durable origin: the rows below hold these bytes, so the
                 // document's own sink must not report them a second time.
-                if let Err(error) = document.apply_durable_update(update) {
-                    resident.invalidate(note_id);
-                    return Err(error.into());
+                let changed = document
+                    .apply_durable_update_changed(update)
+                    .inspect_err(|_| resident.invalidate(note_id))?;
+                if !changed {
+                    return Ok(None);
                 }
-                if let Err(error) = tx.commit() {
+                let stored = (|| {
+                    let tx = conn.transaction().map_err(storage)?;
+                    let seq = update_log::append_local_update_in(&tx, note_id, update, now)?;
+                    let change =
+                        outbox::Change::crdt_update(owner.item_type, note_id, update.to_vec());
+                    let outbox_id = outbox::enqueue(&tx, &change, now)?;
+                    tx.commit().map_err(storage)?;
+                    Ok(Applied { seq, outbox_id })
+                })();
+                if stored.is_err() {
                     resident.invalidate(note_id);
-                    return Err(storage(error));
                 }
-                Ok(Applied { seq, outbox_id })
+                stored.map(Some)
             })?
         };
-        self.fan_out(note_id, update, &Origin::Local(holder.to_owned()));
+        if applied.is_some() {
+            self.fan_out(note_id, update, &Origin::Local(holder.to_owned()));
+        }
         Ok(applied)
     }
 
@@ -229,7 +262,7 @@ impl Editor {
 
     /// The document's state vector, for the sync-step handshake.
     pub fn state_vector(&self, note_id: &str) -> Result<Vec<u8>, EditorError> {
-        Ok(self.borrowed(note_id)?.state_vector()?)
+        self.with_document(note_id, Document::state_vector)
     }
 
     /// What the document holds beyond `state_vector`: a window's sync step 1.
@@ -239,9 +272,9 @@ impl Editor {
                 doc_id: note_id.to_owned(),
                 what: err.to_string(),
             })?;
-        Ok(self
-            .borrowed(note_id)?
-            .read(|txn| txn.encode_diff_v1(&theirs))?)
+        self.with_document(note_id, |document| {
+            document.read(|txn| txn.encode_diff_v1(&theirs))
+        })
     }
 
     /// `holder` closes `note_id`. False when it did not hold it.
@@ -307,17 +340,29 @@ impl Editor {
             .map(|list| list.iter().map(|(_, f)| Arc::clone(f)).collect())
             .unwrap_or_default();
         for listener in listeners {
-            listener(update, origin);
+            if catch_unwind(AssertUnwindSafe(|| listener(update, origin))).is_err() {
+                eprintln!(
+                    "memry editor: a listener of {note_id} panicked on a {} update",
+                    origin.kind()
+                );
+            }
         }
     }
 
-    fn borrowed(&self, note_id: &str) -> Result<Arc<Document>, EditorError> {
+    /// Runs `read` on `note_id`'s document with the resident lock held, so no
+    /// edit can find the document busy (see the module doc).
+    fn with_document<T>(
+        &self,
+        note_id: &str,
+        read: impl FnOnce(&Document) -> Result<T, CrdtError>,
+    ) -> Result<T, EditorError> {
         let now = now_ms();
         let mut resident = self.resident();
         self.on_writer(|conn| {
-            resident
+            let document = resident
                 .borrow(note_id, now, || self.load(conn, note_id))?
-                .ok_or_else(|| unreadable(note_id))
+                .ok_or_else(|| unreadable(note_id))?;
+            Ok(read(&document)?)
         })
     }
 

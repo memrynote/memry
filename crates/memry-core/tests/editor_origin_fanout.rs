@@ -6,8 +6,9 @@
 
 use std::sync::{Arc, Mutex};
 
-use memry_core::api::editor::Origin;
-use memry_core::crdt::update_log;
+use memry_core::api::editor::{EditorError, Origin};
+use memry_core::api::errors::StorageError;
+use memry_core::crdt::{CrdtError, update_log};
 
 use crate::editor_support::{Fixture, Replica, fixture, local_blobs};
 
@@ -115,4 +116,69 @@ fn an_unsubscribed_listener_and_another_documents_listener_hear_nothing() {
 
     assert_eq!(*gone.lock().unwrap(), 0);
     assert!(theirs.lock().unwrap().is_empty());
+}
+
+#[test]
+fn a_commit_that_fails_leaves_no_row_no_listener_and_no_edit_in_memory() {
+    let f = fixture();
+    let note = f.note();
+    let main = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
+    let heard = listen(&f, &note);
+    // A deferred foreign key fails the commit, after both rows were written.
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute_batch(
+                "PRAGMA foreign_keys = ON;
+                 CREATE TEMP TABLE parent (id INTEGER PRIMARY KEY);
+                 CREATE TEMP TABLE child (p INTEGER REFERENCES parent (id)
+                   DEFERRABLE INITIALLY DEFERRED);
+                 CREATE TEMP TRIGGER fail_commit AFTER INSERT ON main.yjs_updates
+                 BEGIN INSERT INTO child VALUES (42); END;",
+            )
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })
+        })
+        .expect("arm the failing commit");
+
+    let refused = f
+        .editor
+        .apply_update(&note, &main.type_text("lost at commit"), "main");
+
+    assert!(matches!(
+        refused,
+        Err(EditorError::Crdt(CrdtError::Storage { .. }))
+    ));
+    assert!(heard.lock().unwrap().is_empty());
+    assert!(f.local_blobs(&note).is_empty());
+    assert_eq!(f.queued(&note), 0);
+    let side = Replica::from_state(2, &f.editor.open(&note, "side").expect("side").state);
+    assert_eq!(
+        side.text(),
+        "",
+        "the resident document let the edit go with its rows"
+    );
+}
+
+#[test]
+fn a_listener_that_panics_takes_neither_the_answer_nor_the_other_listeners_down() {
+    let f = fixture();
+    let note = f.note();
+    let main = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
+    f.editor
+        .subscribe(&note, |_, _| panic!("a broken listener"));
+    let heard = listen(&f, &note);
+
+    let applied = f.editor.apply_update(&note, &main.type_text("x"), "main");
+
+    assert!(
+        matches!(applied, Ok(Some(_))),
+        "the durable edit is answered"
+    );
+    assert_eq!(
+        heard.lock().unwrap().len(),
+        1,
+        "the next listener still ran"
+    );
 }

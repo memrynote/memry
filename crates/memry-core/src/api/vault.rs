@@ -67,6 +67,9 @@ pub struct Vault {
     /// demand: the index is a cache of the vault (data-model §A.5) and a
     /// vault that is never searched must not pay for it at open.
     directory: String,
+    /// The one editor host of this vault, made on the first [`Vault::editor`].
+    #[cfg(feature = "markdown")]
+    editor: std::sync::OnceLock<Arc<crate::api::editor::Editor>>,
 }
 
 impl Vault {
@@ -80,7 +83,13 @@ impl Vault {
     pub fn open_with(directory: String, options: OpenOptions) -> Result<Self, StorageError> {
         let db = open_data_with(&PathBuf::from(&directory).join("data.db"), options)?;
         let id = db.call_blocking(crate::storage::vault_identity::resolve)?;
-        Ok(Self { id, db, directory })
+        Ok(Self {
+            id,
+            db,
+            directory,
+            #[cfg(feature = "markdown")]
+            editor: std::sync::OnceLock::new(),
+        })
     }
 
     /// [`Vault::search`] that also says why `index.db` was rebuilt (`None` when the file
@@ -129,15 +138,21 @@ impl Vault {
         crate::api::external_feed::ExternalFeed::over(self.db.clone(), &store)
     }
 
-    /// The documents editor windows type into (desktop Step 14). Not part of the FFI
-    /// surface: iOS edits bodies through its own path. One per open vault.
+    /// The documents editor windows type into (desktop Step 14): one host per open vault,
+    /// shared by every caller, so an edit reaches every window and core writer of the vault.
+    /// `store` gives the device identity on the first call. Not part of the FFI surface:
+    /// iOS edits bodies through its own path.
     #[cfg(feature = "markdown")]
     #[doc(hidden)]
     pub fn editor(
         &self,
         store: Arc<dyn SecureStore>,
-    ) -> Result<crate::api::editor::Editor, AuthError> {
-        crate::api::editor::Editor::over(self.db.clone(), &store)
+    ) -> Result<Arc<crate::api::editor::Editor>, AuthError> {
+        if let Some(editor) = self.editor.get() {
+            return Ok(Arc::clone(editor));
+        }
+        let built = Arc::new(crate::api::editor::Editor::over(self.db.clone(), &store)?);
+        Ok(Arc::clone(self.editor.get_or_init(|| built)))
     }
 
     /// Records what this vault's core database was created over, once (desktop
@@ -287,6 +302,8 @@ impl Vault {
             id: vault_id,
             db,
             directory,
+            #[cfg(feature = "markdown")]
+            editor: std::sync::OnceLock::new(),
         })
     }
 

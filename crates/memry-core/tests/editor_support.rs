@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use memry_core::api::editor::Editor;
+use memry_core::api::journal::Journal;
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
@@ -13,8 +14,8 @@ use rusqlite::params;
 use yrs::updates::decoder::Decode as _;
 use yrs::updates::encoder::Encode as _;
 use yrs::{
-    Doc, GetString as _, Map as _, MapRef, ReadTxn as _, StateVector, Transact as _, Update,
-    XmlFragment as _, XmlFragmentRef, XmlTextPrelim,
+    Doc, GetString as _, Map as _, MapRef, ReadTxn as _, StateVector, Text as _, Transact as _,
+    Update, XmlFragment as _, XmlFragmentRef, XmlTextPrelim,
 };
 
 use crate::http_fakes::FakeSecureStore;
@@ -22,8 +23,10 @@ use crate::http_fakes::FakeSecureStore;
 pub struct Fixture {
     pub dir: tempfile::TempDir,
     pub vault: Vault,
-    pub editor: Editor,
+    pub editor: Arc<Editor>,
     pub writer: Arc<NotesWriter>,
+    pub journal: Arc<Journal>,
+    pub store: Arc<FakeSecureStore>,
 }
 
 pub fn fixture() -> Fixture {
@@ -43,12 +46,15 @@ pub fn open_at(dir: tempfile::TempDir) -> Fixture {
         .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
         .expect("plant the signing key");
     let editor = vault.editor(store.clone()).expect("an editor");
-    let writer = vault.notes_writer(store).expect("a writer");
+    let writer = vault.notes_writer(store.clone()).expect("a writer");
+    let journal = vault.journal(store.clone()).expect("a journal");
     Fixture {
         dir,
         vault,
         editor,
         writer,
+        journal,
+        store,
     }
 }
 
@@ -74,6 +80,25 @@ impl Fixture {
             "SELECT COUNT(*) FROM outbox WHERE item_id = ?1 AND op = 'crdt-update'",
             note_id,
         )
+    }
+
+    /// The item types of `note_id`'s `crdt-update` outbox rows.
+    pub fn queued_types(&self, note_id: &str) -> Vec<String> {
+        self.vault
+            .db_handle()
+            .read_blocking(|conn| {
+                let mut statement = conn
+                    .prepare(
+                        "SELECT item_type FROM outbox WHERE item_id = ?1 AND op = 'crdt-update'",
+                    )
+                    .expect("prepare");
+                Ok(statement
+                    .query_map(params![note_id], |row| row.get(0))
+                    .expect("query")
+                    .collect::<Result<_, _>>()
+                    .expect("rows"))
+            })
+            .expect("read")
     }
 
     fn query(&self, sql: &str, note_id: &str) -> i64 {
@@ -143,6 +168,25 @@ impl Replica {
         self.edit(|txn| {
             self.foreign.insert(txn, key, value);
         })
+    }
+
+    /// Deletes the first `len` characters of the body's first text.
+    pub fn delete_first(&self, len: u32) -> Vec<u8> {
+        self.edit(|txn| {
+            let text = self
+                .body
+                .get(txn, 0)
+                .and_then(|node| node.into_xml_text())
+                .expect("a text node");
+            text.remove_range(txn, 0, len);
+        })
+    }
+
+    /// The whole state, as a renderer's sync step 2 sends it.
+    pub fn full_state(&self) -> Vec<u8> {
+        self.doc
+            .transact()
+            .encode_state_as_update_v1(&StateVector::default())
     }
 
     pub fn text(&self) -> String {

@@ -10,6 +10,7 @@ use memry_core::crdt::CrdtError;
 use memry_core::crdt::update_log;
 use memry_core::domain::note_files::NoteFileStat;
 use memry_core::sync::body_debt;
+use std::sync::Arc;
 
 use crate::editor_support::{Replica, fixture};
 
@@ -22,11 +23,16 @@ fn an_edit_is_stored_as_sent_and_replays_after_a_relaunch() {
 
     let first = window.type_text("hello ");
     let second = window.type_text("world");
-    let a = f.editor.apply_update(&note, &first, "main").expect("first");
+    let a = f
+        .editor
+        .apply_update(&note, &first, "main")
+        .expect("first")
+        .expect("changed");
     let b = f
         .editor
         .apply_update(&note, &second, "main")
-        .expect("second");
+        .expect("second")
+        .expect("changed");
 
     assert_eq!((a.seq, b.seq), (1, 2));
     assert!(a.outbox_id.is_some() && b.outbox_id.is_some());
@@ -128,7 +134,8 @@ fn a_local_only_note_logs_the_edit_and_queues_nothing() {
     let applied = f
         .editor
         .apply_update(&note, &window.type_text("private"), "main")
-        .expect("apply");
+        .expect("apply")
+        .expect("changed");
 
     assert_eq!(applied.outbox_id, None);
     assert_eq!(f.local_blobs(&note).len(), 1);
@@ -244,4 +251,88 @@ fn a_state_diff_carries_exactly_what_a_window_lacks() {
         f.editor.state_vector(&note).expect("sv"),
         main.state_vector()
     );
+}
+
+#[test]
+fn an_update_that_changes_nothing_is_neither_stored_nor_queued() {
+    let f = fixture();
+    let note = f.note();
+    let window = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
+    let typed = window.type_text("hello");
+    f.editor
+        .apply_update(&note, &typed, "main")
+        .expect("typed")
+        .expect("changed");
+    let erased = window.delete_first(2);
+    f.editor
+        .apply_update(&note, &erased, "main")
+        .expect("erased")
+        .expect("changed");
+
+    assert_eq!(
+        f.editor.apply_update(&note, &typed, "main"),
+        Ok(None),
+        "a resend"
+    );
+    assert_eq!(
+        f.editor.apply_update(&note, &erased, "main"),
+        Ok(None),
+        "a resent delete"
+    );
+    assert_eq!(
+        f.editor.apply_update(&note, &window.full_state(), "main"),
+        Ok(None),
+        "a sync-step-2 diff of a window that holds nothing new"
+    );
+    assert_eq!(f.local_blobs(&note), vec![typed, erased]);
+    assert_eq!(f.queued(&note), 2);
+}
+
+#[test]
+fn a_journal_day_body_is_queued_under_the_journal_item_type() {
+    let f = fixture();
+    f.journal
+        .set_tags("2026-04-16".to_owned(), vec!["day".to_owned()])
+        .expect("a day record");
+    let day = f
+        .journal
+        .entry_id("2026-04-16".to_owned())
+        .expect("read")
+        .expect("the day exists");
+    let window = Replica::from_state(1, &f.editor.open(&day, "main").expect("open").state);
+
+    f.editor
+        .apply_update(&day, &window.type_text("today"), "main")
+        .expect("apply")
+        .expect("changed");
+
+    assert_eq!(f.queued_types(&day), vec!["journal".to_owned()]);
+}
+
+#[test]
+fn the_vault_has_one_editor_and_an_evicted_note_replays_on_reopen() {
+    let f = fixture();
+    assert!(Arc::ptr_eq(
+        &f.editor,
+        &f.vault.editor(f.store.clone()).expect("again")
+    ));
+    let first = f.note();
+    let window = Replica::from_state(1, &f.editor.open(&first, "main").expect("open").state);
+    f.editor
+        .apply_update(&first, &window.set_foreign("kept", "yes"), "main")
+        .expect("apply");
+    f.editor
+        .apply_update(&first, &window.type_text("body"), "main")
+        .expect("apply");
+    f.editor.release(&first, "main");
+
+    for _ in 0..40 {
+        let other = f.note();
+        f.editor.open(&other, "main").expect("open another");
+        f.editor.release(&other, "main");
+    }
+
+    let reopened = Replica::from_state(2, &f.editor.open(&first, "main").expect("reopen").state);
+    assert_eq!(reopened.text(), "body");
+    assert_eq!(reopened.foreign("kept").as_deref(), Some("yes"));
 }
