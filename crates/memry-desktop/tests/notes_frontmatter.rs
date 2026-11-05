@@ -2,8 +2,8 @@
 //! over a real session, tier, watcher and index: the cover and its framing, and the full-width
 //! toggle. They ride the editor save's write (`ChangeSource::Save`), as a header tag edit does.
 //! Only the named keys' lines change, a `null` one goes, the record follows (the property keys
-//! the edit touched, the 13k-3 rule, and the cover a push carries), and the keys Memry writes
-//! through their own edits are refused.
+//! the edit touched, the 13k-3 rule, and the cover a push carries) with one queued push, and the
+//! keys Memry writes through their own edits are refused, each naming its owner.
 
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::update::NoteUpdateInput;
@@ -39,6 +39,33 @@ fn payload(e: &Env, id: &str) -> Map<String, Value> {
     serde_json::from_str(&raw).unwrap()
 }
 
+/// The record pushes queued for `id` since the last [`clear_outbox`].
+fn upserts(e: &Env, id: &str) -> i64 {
+    let id = id.to_owned();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT COUNT(*) FROM outbox WHERE op = 'upsert' AND item_id = ?1",
+                    [id],
+                    |row| row.get(0),
+                )
+                .unwrap())
+        })
+        .unwrap()
+}
+
+fn clear_outbox(e: &Env) {
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute("DELETE FROM outbox", []).unwrap();
+            Ok(())
+        })
+        .unwrap();
+}
+
 #[test]
 fn a_framing_edit_writes_only_its_keys_and_the_records_cover_follows() {
     let (mut e, notes, _) = opened(&[("Plan.md", NOTE)]);
@@ -54,6 +81,7 @@ fn a_framing_edit_writes_only_its_keys_and_the_records_cover_follows() {
     };
     let before = properties(&e);
     e.drain();
+    clear_outbox(&e);
 
     notes
         .update(
@@ -74,6 +102,7 @@ coverFocus: 30\ncoverZoom: 1.5\n---\nThe body.\n";
         stored["cover"],
         json!({ "ref": "shelf.png", "focus": 30, "focusX": 50, "zoom": 1.5, "height": 200 })
     );
+    assert_eq!(upserts(&e, &id), 1, "one push for the edit");
     assert_eq!(properties(&e), before, "cover keys are no properties");
 
     // The same keys again: nothing to write.
@@ -122,6 +151,7 @@ fn the_full_width_toggle_is_a_plain_key_the_record_carries() {
         .unwrap()
         .properties;
     expected.insert("fullWidth".to_owned(), json!(true));
+    clear_outbox(&e);
 
     notes
         .update(&open, update(&id, json!({ "fullWidth": true })))
@@ -135,6 +165,7 @@ fn the_full_width_toggle_is_a_plain_key_the_record_carries() {
         listed.properties, expected,
         "only the edited key reaches the record"
     );
+    assert_eq!(upserts(&e, &id), 1, "one push for the toggle");
     assert!(
         payload(&e, &id).get("cover").is_none(),
         "an unchanged cover writes no field"
@@ -153,12 +184,20 @@ fn a_key_written_by_its_own_edit_is_refused_and_the_file_kept() {
     let (e, notes, _) = opened(&[("Plan.md", NOTE)]);
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
-    for key in ["tags", "aliases", "properties"] {
+    let owners = [
+        ("tags", "headerTags"),
+        ("aliases", "notes_edit_aliases"),
+        ("properties", "properties_*"),
+        ("writing", "the note's editor"),
+    ];
+    for (key, owner) in owners {
         let refused = notes.update(&open, update(&id, json!({ key: ["y"] })));
         assert!(
-            matches!(&refused, Err(NotesError::ManagedKey(named)) if named == key),
+            matches!(&refused, Err(NotesError::ManagedKey { key: named, .. }) if *named == key),
             "{key}: {refused:?}"
         );
+        let message = refused.unwrap_err().to_string();
+        assert!(message.contains(owner), "{key} names its owner: {message}");
     }
     assert_eq!(e.read("Plan.md"), NOTE);
 }

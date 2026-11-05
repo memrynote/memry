@@ -34,9 +34,12 @@ pub enum NotesError {
     InvalidTitle,
     #[error("a note takes at most 50 tags of at most 50 characters each")]
     InvalidTags,
-    /// A `notes:update` named a frontmatter key Memry writes through its own edit.
-    #[error("the frontmatter key `{0}` is written by its own edit")]
-    ManagedKey(String),
+    /// A `notes:update` named a frontmatter key Memry writes through its own edit, `owner`.
+    #[error("the frontmatter key `{key}` is written through {owner}, not notes_update")]
+    ManagedKey {
+        key: &'static str,
+        owner: &'static str,
+    },
     /// `NoteAliasEditSchema`: more names than a note holds, or a name too long to be one.
     #[error("an edit takes at most 32 other names of at most 200 characters each")]
     InvalidAliases,
@@ -259,7 +262,7 @@ impl CoreError for NotesError {
             Self::InvalidTitle => (FailureKind::Invalid, "invalid_title"),
             Self::InvalidTags => (FailureKind::Invalid, "invalid_tags"),
             Self::InvalidAliases => (FailureKind::Invalid, "invalid_aliases"),
-            Self::ManagedKey(_) => (FailureKind::Invalid, "frontmatter_key_managed"),
+            Self::ManagedKey { .. } => (FailureKind::Invalid, "frontmatter_key_managed"),
             Self::InvalidFolder => (FailureKind::Invalid, "invalid_folder"),
             Self::MovePending(BeginError::Unreadable(_)) => {
                 (FailureKind::Invalid, "note_move_unreadable")

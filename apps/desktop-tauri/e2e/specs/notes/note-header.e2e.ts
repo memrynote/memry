@@ -142,11 +142,19 @@ test('another name added from the note menu lands in the file and a link by it r
       }
     )
   ).toBe(true)
-  const resolved = await page.evaluate(
-    (name) => window.__TAURI__.core.invoke('notes_resolve_by_title', { title: name }),
-    'onboarding guide'
+  // The file is written before the record and the link index take the name, so wait for the
+  // index to answer rather than read it once.
+  const resolved = await pollUntil(
+    async () => {
+      const link = (await page.evaluate(
+        (name) => window.__TAURI__.core.invoke('notes_resolve_by_title', { title: name }),
+        'onboarding guide'
+      )) as { id: string } | null
+      return link ?? undefined
+    },
+    { timeoutMs: 10_000 }
   )
-  expect((resolved as { id: string } | null)?.id).toBe(id)
+  expect(resolved?.id).toBe(id)
 })
 
 test('the full-width toggle writes its key into the note file', async ({

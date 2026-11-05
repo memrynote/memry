@@ -9,8 +9,8 @@
 //!    written only when [`header_tags::compare`] reports a change, so an unchanged list keeps
 //!    the file's spelling, and every other key keeps its lines (`serialize_updated_note`);
 //! 2. the named frontmatter keys: each set, a `null` one removed, every other key keeping its
-//!    lines; the keys Memry manages (`tags`, `aliases`, the nested `properties` envelope) are
-//!    refused, since each has its own edit;
+//!    lines; the keys Memry manages (`tags`, `aliases`, the nested `properties` envelope, the
+//!    document's `writing`) are refused, since each has its own edit;
 //! 3. the new body, or the body read when the update has none;
 //! 4. once the file holds them, the record's icon, its tags when the header changed, the
 //!    property keys the frontmatter edit set or dropped (`file_delta`, the 13k-3 rule: every
@@ -80,9 +80,15 @@ pub struct NoteUpdateInput {
     pub frontmatter: Option<Map<String, Value>>,
 }
 
-/// The frontmatter keys an update may not name: each has its own edit (header tags,
-/// `notes:edit-aliases`, the property writer).
-const MANAGED_KEYS: [&str; 3] = ["tags", "aliases", "properties"];
+/// The frontmatter keys an update may not name, each with the edit that owns it. `writing` is
+/// the note document's: a frontmatter-only save feeds no body, so the document would disagree
+/// with its file and refuse every later held edit.
+const MANAGED_KEYS: [(&str, &str); 4] = [
+    ("tags", "headerTags"),
+    ("aliases", "notes_edit_aliases"),
+    ("properties", "properties_*"),
+    ("writing", "the note's editor"),
+];
 
 /// `HeaderTagEditSchema`.
 #[derive(Debug, Clone, Default, Deserialize, specta::Type)]
@@ -198,17 +204,23 @@ impl NotesService {
             emoji: input.emoji,
             frontmatter: input.frontmatter,
         };
-        if let Some(key) = edit
+        let managed = edit
             .frontmatter
             .iter()
             .flat_map(Map::keys)
-            .find(|key| MANAGED_KEYS.contains(&key.as_str()))
-        {
-            return Err(NotesError::ManagedKey(key.clone()));
+            .find_map(|key| MANAGED_KEYS.iter().find(|(managed, _)| managed == key));
+        if let Some(&(key, owner)) = managed {
+            return Err(NotesError::ManagedKey { key, owner });
         }
-        let (tags_changed, added) = self
-            .order
-            .run(&edit.id, |turn| self.update_now(open, &edit, turn, between))?;
+        // The property types a frontmatter edit's record mirror stores values with, read before
+        // the note's turn as the property writer reads them.
+        let types = match edit.frontmatter.is_some() {
+            true => self.definition_types(open),
+            false => HashMap::new(),
+        };
+        let (tags_changed, added) = self.order.run(&edit.id, |turn| {
+            self.update_now(open, &edit, &types, turn, between)
+        })?;
         // `addedInOrder`: the added tags in the order the caller asked for them.
         let added = match edit.header_tags.as_ref().filter(|e| !e.add.is_empty()) {
             None => added,
@@ -235,6 +247,7 @@ impl NotesService {
         &self,
         open: &OpenVault,
         edit: &Edit,
+        types: &HashMap<String, String>,
         turn: &NoteTurn<'_>,
         between: &mut dyn FnMut(),
     ) -> Result<(bool, Vec<String>), NotesError> {
@@ -243,11 +256,6 @@ impl NotesService {
         let with_fields = match edit.header_tags.is_some() || edit.content.is_some() {
             true => open.vault.tags_with_fields()?,
             false => HashSet::new(),
-        };
-        // The property types a frontmatter edit's record mirror stores values with.
-        let types = match edit.frontmatter.is_some() {
-            true => self.definition_types(open),
-            false => HashMap::new(),
         };
         let app_edit = self.save_edit(open)?;
         // What the text decided, for the record once the file holds it.
@@ -262,7 +270,7 @@ impl NotesService {
                     .note_files()
                     .listed_by_id(id)?
                     .ok_or_else(|| NotesError::NotFound(id.to_owned()))?;
-                let (output, plan) = next_text(text, edit, &with_fields, &types, listed.emoji)?;
+                let (output, plan) = next_text(text, edit, &with_fields, types, listed.emoji)?;
                 *planned.borrow_mut() = Some(plan);
                 Ok(Some(output))
             },
