@@ -1,0 +1,85 @@
+# DIAG #3973 (throwaway branch, never merged): loop app launches on windows-x64 and capture stalls.
+name: Diag 3973
+
+on:
+  push:
+    branches:
+      - 'diag/3973-**'
+
+permissions:
+  contents: read
+
+jobs:
+  loop:
+    name: Loop ${{ matrix.n }}
+    runs-on: windows-2022
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2, 3]
+    env:
+      VITE_MEMRY_DEV_API_PROXY: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/marketing/**
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+          targets: x86_64-pc-windows-msvc
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        continue-on-error: true
+        with:
+          workspaces: crates
+          key: windows-2022-e2e-x86_64-pc-windows-msvc
+          save-if: false
+      - name: Debuggers
+        run: ls "/c/Program Files (x86)/Windows Kits/10/Debuggers/x64/" | head -20 || echo "no debuggers"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter "@memry/desktop-tauri..."
+      - name: Build (e2e)
+        env:
+          VITE_MEMRY_E2E: '1'
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json --target x86_64-pc-windows-msvc
+      - name: Loop
+        timeout-minutes: 60
+        env:
+          MEMRY_E2E_BINARY: ${{ github.workspace }}\crates\target\x86_64-pc-windows-msvc\debug\Memrynote.exe
+          MEMRY_DIAG_SCRIPT: ${{ github.workspace }}\apps\desktop-tauri\e2e\diag\diag-3973.ps1
+          MEMRY_DIAG_OUT: ${{ github.workspace }}\apps\desktop-tauri\test-results\e2e\app-output
+          MEMRY_E2E_WORKERS: '6'
+          MEMRY_DIAG_ITERATIONS: '45'
+        run: pnpm --filter @memry/desktop-tauri exec wdio run e2e/wdio.diag.conf.ts || true
+      - name: Summary
+        if: always()
+        run: |
+          cd apps/desktop-tauri/test-results/e2e/app-output || exit 0
+          grep -l "renderer unresponsive" *.log || true
+          ls diag-* 2>/dev/null || true
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diag-3973-${{ matrix.n }}
+          path: apps/desktop-tauri/test-results/e2e
+          if-no-files-found: ignore
+          retention-days: 3

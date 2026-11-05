@@ -67,6 +67,13 @@ pub fn arm(app: &AppHandle<Wry>, mode: StartupMode) {
             let Some(origin) = guard.0 else { continue };
             if guard.1.poll(elapsed_ms(origin)) {
                 tracing::warn!(scope = "Window", "main window renderer unresponsive");
+                diag_capture("unresponsive");
+                let later = for_watch.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(Duration::from_secs(20)).await;
+                    let _ = later;
+                    diag_capture("unresponsive-20s");
+                });
             }
         }
     });
@@ -146,4 +153,33 @@ pub fn heartbeat(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) {
             "main window renderer responsive again"
         );
     }
+}
+
+/// DIAG #3973 (throwaway branch): stacks of this process and its WebView2 processes.
+pub fn diag_capture(tag: &str) {
+    let Ok(script) = std::env::var("MEMRY_DIAG_SCRIPT") else {
+        return;
+    };
+    let out = std::env::var("MEMRY_DIAG_OUT").unwrap_or_else(|_| ".".to_owned());
+    let pid = std::process::id();
+    let tag = tag.to_owned();
+    std::thread::spawn(move || {
+        tracing::warn!(scope = "Diag", "capture start pid={pid} tag={tag}");
+        let status = std::process::Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                &script,
+                "-AppPid",
+                &pid.to_string(),
+                "-Out",
+                &out,
+                "-Tag",
+                &tag,
+            ])
+            .status();
+        tracing::warn!(scope = "Diag", "capture done pid={pid} tag={tag} {status:?}");
+    });
 }
