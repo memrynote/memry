@@ -188,8 +188,14 @@ fn a_folder_delete_the_app_cannot_make_is_refused() {
     ));
     assert!(matches!(refused(".memry"), NotesError::InvalidFolder));
     // Another spelling of `Work`: a case-blind disk would trash `Work`, whose rows name `Work/`.
+    // These legs prove the spelling guard only on a case-insensitive volume (macOS, Windows),
+    // and the NFD leg only on a normalization-blind one (macOS): elsewhere the other spelling
+    // is simply not there, and the refusal comes from the existence check before it.
     assert!(matches!(refused("work"), NotesError::FolderNotFound));
     assert!(matches!(refused("Work/sub"), NotesError::FolderNotFound));
+    fs::create_dir(e.vault.join("Caf\u{e9}")).unwrap();
+    assert!(matches!(refused("Cafe\u{301}"), NotesError::FolderNotFound));
+    assert!(e.vault.join("Caf\u{e9}").exists());
     #[cfg(unix)]
     {
         std::os::unix::fs::symlink(e.vault.join("Work"), e.vault.join("Link")).unwrap();

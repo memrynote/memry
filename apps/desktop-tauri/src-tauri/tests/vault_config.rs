@@ -1,0 +1,116 @@
+//! The vault settings through the IPC a renderer calls, on a mock app over a real vault (#3530
+//! 13m-7a): the contract's field names, a write every window hears as `vault:config-changed`,
+//! and a change that is not ported refused by its code with nothing written or sent.
+
+mod support;
+
+use std::fs;
+use std::sync::{Arc, Mutex};
+
+use memry_tauri::events::VaultConfigChangedEvent;
+use serde_json::{Value, json};
+use support::Mocked;
+use tauri::Listener;
+use tauri::test::MockRuntime;
+use tauri_specta::Event;
+use tauri_specta::{ErrorHandlingMode, collect_commands};
+
+/// A vault whose config names its journal folder, and every config event its app sends.
+fn opened() -> (Mocked, Arc<Mutex<Vec<Value>>>) {
+    // As `registry::builder` lists them, with its error handling.
+    let commands = tauri_specta::Builder::<MockRuntime>::new()
+        .error_handling(ErrorHandlingMode::Throw)
+        .commands(collect_commands![
+            memry_tauri::commands::vault::vault_get_config::<MockRuntime>,
+            memry_tauri::commands::vault::vault_update_config::<MockRuntime>,
+        ]);
+    let mocked = Mocked::open(
+        &[(
+            ".memry/config.json",
+            r#"{"journalFolder":"/Daily/","preferences":{"theme":"dark"}}"#,
+        )],
+        commands,
+    );
+    let heard: Arc<Mutex<Vec<Value>>> = Arc::default();
+    let sink = heard.clone();
+    mocked
+        .webview
+        .listen_any(VaultConfigChangedEvent::NAME, move |event| {
+            sink.lock()
+                .unwrap()
+                .push(serde_json::from_str(event.payload()).unwrap());
+        });
+    (mocked, heard)
+}
+
+#[test]
+fn a_write_answers_the_settings_and_every_window_hears_them() {
+    let (mocked, heard) = opened();
+    let read = mocked.invoke("vault_get_config", json!({})).unwrap();
+    assert_eq!(read["journalFolder"], "Daily");
+
+    let written = mocked
+        .invoke(
+            "vault_update_config",
+            json!({ "config": { "journalShowInSidebar": true, "defaultNoteFolder": "inbox" } }),
+        )
+        .unwrap();
+    let mut expected = read.clone();
+    expected["journalShowInSidebar"] = json!(true);
+    expected["defaultNoteFolder"] = json!("inbox");
+    assert_eq!(written, expected);
+    assert_eq!(*heard.lock().unwrap(), [expected]);
+    let file: Value =
+        serde_json::from_slice(&fs::read(mocked.vault.join(".memry/config.json")).unwrap())
+            .unwrap();
+    assert_eq!(file["preferences"], json!({ "theme": "dark" }));
+}
+
+#[test]
+fn a_journal_folder_change_is_refused_and_nothing_is_sent() {
+    let (mocked, heard) = opened();
+    let before = fs::read(mocked.vault.join(".memry/config.json")).unwrap();
+    let refused = mocked
+        .invoke(
+            "vault_update_config",
+            json!({ "config": { "journalFolder": "Diary", "journalShowInSidebar": true } }),
+        )
+        .unwrap_err();
+    assert_eq!(
+        (&refused["kind"], &refused["code"]),
+        (&json!("invalid"), &json!("config_change_not_ported"))
+    );
+    assert!(
+        refused["message"]
+            .as_str()
+            .unwrap()
+            .starts_with("This version can't change the journal folder"),
+        "{refused}"
+    );
+    assert_eq!(
+        fs::read(mocked.vault.join(".memry/config.json")).unwrap(),
+        before
+    );
+    assert!(heard.lock().unwrap().is_empty());
+}
+
+/// With no vault open a read answers Electron's fallback, which has no exclude patterns, and a
+/// write is refused.
+#[test]
+fn with_no_vault_open_a_read_answers_the_fallback_and_a_write_is_refused() {
+    let (mocked, heard) = opened();
+    mocked.session().close();
+    let read = mocked.invoke("vault_get_config", json!({})).unwrap();
+    assert_eq!(
+        (&read["excludePatterns"], &read["journalFolder"]),
+        (&json!([]), &json!("journal"))
+    );
+    let refused = mocked
+        .invoke(
+            "vault_update_config",
+            json!({ "config": { "journalShowInSidebar": true } }),
+        )
+        .unwrap_err();
+    assert_eq!(refused["code"], "no_vault_open");
+    assert!(heard.lock().unwrap().is_empty());
+}

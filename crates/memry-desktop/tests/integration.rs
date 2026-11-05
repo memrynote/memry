@@ -64,6 +64,8 @@ mod embeds;
 mod file_open;
 #[path = "folder_file.rs"]
 mod folder_file;
+#[path = "folder_prune.rs"]
+mod folder_prune;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
 #[path = "home_covers.rs"]
@@ -194,6 +196,8 @@ mod vault_init;
 mod vault_pairing;
 #[path = "vault_paths.rs"]
 mod vault_paths;
+#[path = "vault_settings.rs"]
+mod vault_settings;
 #[path = "vault_walk.rs"]
 mod vault_walk;
 #[path = "vault_watch.rs"]

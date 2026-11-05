@@ -71,14 +71,20 @@ export function JournalSettings() {
     setJournalDateFormat(config.journalDateFormat)
   }, [config])
 
-  const handleJournalFolderBlur = useCallback(() => {
-    if (config && journalFolder !== config.journalFolder) {
-      void updateConfig({ journalFolder })
+  // A refused change keeps the saved folder, so the field goes back to it. This build refuses
+  // every folder change until the journal folder move is ported (#3530 13m-7b).
+  const handleJournalFolderBlur = useCallback(async () => {
+    if (!config || journalFolder === config.journalFolder) return
+    const error = await updateConfig({ journalFolder })
+    if (error) {
+      toast.error(error)
+      setJournalFolder(config.journalFolder)
     }
   }, [config, journalFolder, updateConfig])
 
-  // A refused change (a locked journal entry) keeps the saved format, so the
-  // field goes back to it rather than showing a format that is not in use.
+  // A refused change (a locked journal entry, or in this build any format change until the
+  // renames are ported) keeps the saved format, so the field goes back to it rather than
+  // showing a format that is not in use.
   const handleJournalDateFormatBlur = useCallback(async () => {
     if (!config || journalDateFormat === config.journalDateFormat) return
     const error = await updateConfig({ journalDateFormat })
@@ -271,7 +277,7 @@ export function JournalSettings() {
           <Input
             value={journalFolder}
             onChange={(e) => setJournalFolder(e.target.value)}
-            onBlur={handleJournalFolderBlur}
+            onBlur={() => void handleJournalFolderBlur()}
             placeholder={t('journal.folder.placeholder')}
             className="h-7 w-40 font-mono text-xs/4"
           />

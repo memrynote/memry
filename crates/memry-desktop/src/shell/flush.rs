@@ -99,6 +99,42 @@ impl FlushTable {
     }
 }
 
+/// The app pages each webview browser process hosts, so that the process's exit marks exactly
+/// those pages gone. A destroyed window is forgotten; otherwise its label would be marked gone
+/// when the browser ends, long after the window closed.
+#[derive(Default)]
+pub struct BrowserPages {
+    hosted: Mutex<HashMap<u32, HashSet<String>>>,
+}
+
+impl BrowserPages {
+    /// Records that browser process `pid` hosts page `label`. True the first time `pid` is seen,
+    /// when nothing watches its exit yet.
+    pub fn host(&self, pid: u32, label: &str) -> bool {
+        let mut hosted = self.lock();
+        let first = !hosted.contains_key(&pid);
+        hosted.entry(pid).or_default().insert(label.to_owned());
+        first
+    }
+
+    /// Window `label` was destroyed. A browser left with no page stays recorded, since its exit
+    /// is still watched.
+    pub fn forget(&self, label: &str) {
+        for pages in self.lock().values_mut() {
+            pages.remove(label);
+        }
+    }
+
+    /// Browser process `pid` ended, or its exit cannot be watched: the pages it still hosted.
+    pub fn ended(&self, pid: u32) -> HashSet<String> {
+        self.lock().remove(&pid).unwrap_or_default()
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<u32, HashSet<String>>> {
+        self.hosted.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
 /// How long to wait for a window: the per-window ceiling, clamped to what the deadline leaves.
 pub fn wait_for(remaining: Duration) -> Duration {
     FLUSH_WINDOW_TIMEOUT.min(remaining)
@@ -167,6 +203,32 @@ mod tests {
         assert!(table.begin("sticky").is_some());
         table.page_loaded("main");
         assert!(table.begin("main").is_some());
+    }
+
+    #[test]
+    fn a_browser_that_ends_releases_the_pages_it_hosts() {
+        let pages = BrowserPages::default();
+        assert!(pages.host(7, "main"));
+        assert!(!pages.host(7, "e2e-1"));
+        assert!(pages.host(9, "sticky"));
+        let ended = pages.ended(7);
+        assert_eq!(
+            ended,
+            HashSet::from(["main".to_owned(), "e2e-1".to_owned()])
+        );
+        // A browser seen again after its exit is watched again.
+        assert!(pages.host(7, "main"));
+    }
+
+    #[test]
+    fn a_destroyed_window_is_not_released_when_its_browser_ends() {
+        let pages = BrowserPages::default();
+        pages.host(7, "main");
+        pages.host(7, "e2e-1");
+        pages.forget("e2e-1");
+        // Its exit is still watched: the browser hosts `main`.
+        assert!(!pages.host(7, "main"));
+        assert_eq!(pages.ended(7), HashSet::from(["main".to_owned()]));
     }
 
     #[test]

@@ -7,6 +7,7 @@ use memry_desktop::notes::index::{IndexProgress, LinkChanges};
 use memry_desktop::notes::view::NoteListItemView;
 use memry_desktop::session::response::VaultStatus;
 use memry_desktop::updater::state::AppUpdateState;
+use memry_desktop::vault::config::VaultConfig;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
@@ -292,6 +293,18 @@ pub struct TagNotesChangedEvent {
 /// refetches.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct NoteTagsChangedEvent;
+
+/// The open vault's settings changed (`vault:config-changed`), with the settings after it: an
+/// in-app write, from any window, as Electron's `updateConfig` broadcasts it.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct VaultConfigChangedEvent(pub VaultConfig);
+
+/// A folder's settings or its record changed, or the folder left the vault, by sync
+/// (`notes:folder-config-updated`): the folder `path` names, vault-relative.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct FolderConfigUpdatedEvent {
+    pub path: String,
+}
 
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

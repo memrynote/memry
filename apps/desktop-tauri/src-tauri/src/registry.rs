@@ -183,6 +183,7 @@ pub fn builder() -> Builder<Wry> {
             // vault
             crate::commands::vault::vault_close,
             crate::commands::vault::vault_create,
+            crate::commands::vault::vault_get_config::<Wry>,
             crate::commands::vault::vault_get_default_parent,
             crate::commands::vault::vault_get_status,
             crate::commands::vault::vault_list,
@@ -192,6 +193,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault::vault_set_default,
             crate::commands::vault::vault_set_icon,
             crate::commands::vault::vault_switch,
+            crate::commands::vault::vault_update_config::<Wry>,
             // vault activity
             crate::commands::vault_activity::vault_activity_clear,
             crate::commands::vault_activity::vault_activity_list,
@@ -238,6 +240,7 @@ pub fn builder() -> Builder<Wry> {
             // updater
             crate::events::UpdaterStateChangedEvent,
             // notes
+            crate::events::FolderConfigUpdatedEvent,
             crate::events::NoteCreatedEvent,
             crate::events::NoteDeletedEvent,
             crate::events::NoteEventsDroppedEvent,
@@ -252,6 +255,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::TagNotesChangedEvent,
             // vault
             crate::events::VaultActivityChangedEvent,
+            crate::events::VaultConfigChangedEvent,
             crate::events::VaultErrorEvent,
             crate::events::VaultIndexProgressEvent,
             crate::events::VaultIndexRecoveredEvent,

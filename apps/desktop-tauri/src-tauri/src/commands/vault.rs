@@ -15,11 +15,19 @@ use memry_desktop::session::response::{
     SelectVaultResponse, VaultStatus, create_response, open_response,
 };
 use memry_desktop::session::{OpenSource, Session};
-use tauri::{AppHandle, Manager, Wry};
+use memry_desktop::vault::config::settings::{
+    SettingsError, update_vault_settings, vault_settings,
+};
+use memry_desktop::vault::config::{
+    ConfigError, PERMISSION_DENIED_KEY, VaultConfig, VaultConfigPatch,
+};
+use tauri::{AppHandle, Manager, Runtime, Wry};
 use tauri_plugin_opener::OpenerExt;
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind, log_failure};
+use super::notes::open_vault;
+use crate::events::{VaultConfigChangedEvent, broadcast};
 use crate::shell::dialogs;
 use crate::shell::vault_boot::{RepairPrompt, asker};
 use memry_desktop::paths::AppPaths;
@@ -278,4 +286,64 @@ fn icon_error(error: IconError) -> CommandError {
         }
     };
     CommandError::new(kind, code, error.to_string())
+}
+
+/// `vault:get-config`: the open vault's settings, or Electron's fallback with none open.
+#[tauri::command]
+#[specta::specta]
+pub async fn vault_get_config<R: Runtime>(app: AppHandle<R>) -> Result<VaultConfig, CommandError> {
+    let root = app.state::<Session>().current().map(|open| open.path);
+    blocking("vault_get_config", move || {
+        Ok(vault_settings(root.as_deref()))
+    })
+    .await
+}
+
+/// `vault:update-config`: writes the fields `config` names and answers the settings after it,
+/// which every window hears as [`VaultConfigChangedEvent`]. A change that is not ported yet is
+/// refused as `config_change_not_ported` (`vault::config::settings`).
+#[tauri::command]
+#[specta::specta]
+pub async fn vault_update_config<R: Runtime>(
+    app: AppHandle<R>,
+    config: VaultConfigPatch,
+) -> Result<VaultConfig, CommandError> {
+    let open = open_vault(&app)?;
+    let settings = blocking("vault_update_config", move || {
+        Ok(update_vault_settings(&open.path, config))
+    })
+    .await?
+    .map_err(|error| settings_failed(&app, error))
+    .inspect_err(|error| log_failure("vault_update_config", error))?;
+    broadcast(&app, VaultConfigChangedEvent(settings.clone()));
+    Ok(settings)
+}
+
+/// The message of a refused change, which Settings shows as it puts the saved value back.
+const NOT_PORTED_KEY: &str = "errors:vault.configChangeNotPorted";
+
+fn localized<R: Runtime>(app: &AppHandle<R>, key: &str) -> String {
+    i18n::t(
+        app.state::<Arc<LocaleService>>().get(),
+        key,
+        &i18n::Args::new(),
+    )
+}
+
+fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> CommandError {
+    match error {
+        SettingsError::NotPorted(_) => CommandError::new(
+            ErrorKind::Invalid,
+            "config_change_not_ported",
+            localized(app, NOT_PORTED_KEY),
+        ),
+        SettingsError::Config(ConfigError::PermissionDenied) => CommandError::new(
+            ErrorKind::Storage,
+            "vault_config_permission_denied",
+            localized(app, PERMISSION_DENIED_KEY),
+        ),
+        SettingsError::Config(error) => {
+            CommandError::new(ErrorKind::Storage, "vault_config_failed", error.to_string())
+        }
+    }
 }

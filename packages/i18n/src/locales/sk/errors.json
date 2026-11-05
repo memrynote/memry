@@ -13,7 +13,8 @@
     "invalidPath": "Vybraná cesta nie je platné umiestnenie trezora.",
     "permissionDenied": "Prístup zamietnutý. Skontrolujte, či máte prístup do tohto priečinka.",
     "alreadyExists": "Na tomto mieste už trezor existuje.",
-    "corrupted": "Tento trezor sa zdá byť poškodený. Skúste ho obnoviť zo zálohy."
+    "corrupted": "Tento trezor sa zdá byť poškodený. Skúste ho obnoviť zo zálohy.",
+    "configChangeNotPorted": "Táto verzia zatiaľ nemôže zmeniť priečinok denníka, formát dátumu ani vylúčené priečinky. Uložené nastavenie zostáva."
   },
   "note": {
     "notFound": "Táto poznámka sa nenašla. Možno bola odstránená.",

@@ -28,6 +28,7 @@ function vaultApi() {
       remove: ReturnType<typeof vi.fn>
     }
     onVaultStatusChanged: ReturnType<typeof vi.fn>
+    onVaultConfigChanged: ReturnType<typeof vi.fn>
     onVaultIndexProgress: ReturnType<typeof vi.fn>
     onVaultError: ReturnType<typeof vi.fn>
     onVaultIndexRecovered: ReturnType<typeof vi.fn>
@@ -79,6 +80,11 @@ describe('useVault', () => {
       errorHandler = handler
       return () => {}
     })
+    let configHandler: (config: { journalFolder: string }) => void = () => {}
+    api.onVaultConfigChanged.mockImplementation((handler) => {
+      configHandler = handler
+      return () => {}
+    })
 
     const { result } = renderHook(() => useVault())
 
@@ -93,6 +99,29 @@ describe('useVault', () => {
 
     act(() => errorHandler('index failed'))
     expect(result.current.error).toBe('index failed')
+
+    // Another window's save.
+    act(() => configHandler({ journalFolder: 'Diary' }))
+    expect(result.current.config).toEqual({ journalFolder: 'Diary' })
+  })
+
+  it('answers a refused config change with its message and keeps the saved config', async () => {
+    const api = vaultApi()
+    const message = "This version can't change the journal folder yet."
+    api.vault.updateConfig.mockRejectedValueOnce({
+      kind: 'invalid',
+      code: 'config_change_not_ported',
+      message
+    })
+    const { result } = renderHook(() => useVault())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    let refused: string | null = null
+    await act(async () => {
+      refused = await result.current.updateConfig({ journalFolder: 'Diary' })
+    })
+    expect(refused).toBe(message)
+    expect(result.current.config).toEqual({ journalFolder: 'Journal' })
   })
 
   it('selects, switches, closes, updates config, reindexes, and clears error state', async () => {

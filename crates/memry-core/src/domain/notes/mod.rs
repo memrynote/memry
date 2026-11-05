@@ -65,6 +65,8 @@ pub mod local_only;
 mod metadata;
 pub mod names;
 #[cfg(feature = "markdown")]
+pub mod new_files;
+#[cfg(feature = "markdown")]
 pub mod removal;
 
 pub use attachments::*;
