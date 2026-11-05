@@ -11,6 +11,9 @@
 //! An app operation names the vault session it started in ([`RowSession`]): one that
 //! finishes after its vault closed, or after another vault opened, writes nothing.
 //!
+//! The lane is first come, first served ([`super::line`]): the consumer lets it go between two facts
+//! or two files and asks again at once, and an app operation already waiting gets it first.
+//!
 //! Lock order: the lane, then the core's database writer (`call_blocking`). Never take the
 //! lane from inside `call_blocking`, and never while holding a lock that a caller waiting on
 //! the lane may hold. No `note_files` row is written anywhere else
@@ -28,6 +31,7 @@ use memry_core::domain::note_files::{NoteFile as Row, NoteFileStat};
 use memry_core::domain::notes::app_move::{AppMoved, BeginError};
 use tokio::sync::broadcast;
 
+use super::line::{Line, Turn};
 use super::{Applied, ChangeSource, MoveKind};
 use crate::vault::file_types::{FileType, extension, mime_of_extension};
 use crate::vault::path_key::{PathCollision, PathIndex};
@@ -74,6 +78,7 @@ struct RowState {
 
 pub struct RowOwner {
     state: Mutex<Option<RowState>>,
+    line: Line,
     applied: broadcast::Sender<Applied>,
     sessions: AtomicU64,
 }
@@ -82,6 +87,7 @@ impl RowOwner {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
             state: Mutex::new(None),
+            line: Line::default(),
             applied: broadcast::channel(APPLIED_CAPACITY).0,
             sessions: AtomicU64::new(0),
         })
@@ -133,12 +139,14 @@ impl RowOwner {
     }
 
     pub(super) fn lane(&self) -> Result<Lane<'_>, RowError> {
+        let turn = self.line.wait();
         let guard = self.lock();
         if guard.is_none() {
             return Err(RowError::Closed);
         }
         Ok(Lane {
             guard,
+            _turn: turn,
             applied: &self.applied,
         })
     }
@@ -231,6 +239,8 @@ impl RowOwner {
 /// The lane, held: one event's or one app operation's worth of row writes.
 pub(crate) struct Lane<'a> {
     guard: MutexGuard<'a, Option<RowState>>,
+    /// Dropped after `guard`: the next in line takes the rows once they are free.
+    _turn: Turn<'a>,
     applied: &'a broadcast::Sender<Applied>,
 }
 

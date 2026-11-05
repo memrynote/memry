@@ -162,8 +162,9 @@ fn facts_that_arrive_during_the_open_walk_are_applied_before_it_ends() {
 
 /// An app write waiting for the lane gets it between two files the open walk applies alone
 /// (journal days, a batch's fallbacks, files no device key can seed): the walk holds the lane
-/// for one file at a time, as for any file it finds. Counted, not timed: the write waits for
-/// the file the walk holds the lane for, never for the ones after it.
+/// for one file at a time, as for any file it finds, and the lane serves the app first
+/// (`rows::Line`). Counted, not timed: the write waits for the file the walk holds the lane
+/// for, never for the ones after it.
 #[test]
 fn an_app_write_gets_the_lane_between_the_files_the_walk_applies_alone() {
     const FILES: usize = 24;
@@ -175,13 +176,17 @@ fn an_app_write_gets_the_lane_between_the_files_the_walk_applies_alone() {
     let (rows, session, identity) = (f.rows.clone(), f.session(), f.identity.clone());
     let served: Arc<Mutex<Option<usize>>> = Arc::default();
     let seen = served.clone();
-    // Runs while the walk holds the lane for its first file: an app save asks for it.
+    // Runs while the walk holds the lane for its first file: an app save asks for it, and the
+    // walk goes on once the save's thread runs, so the save is in line before the next file.
     *f.identity.during_adopt.lock().unwrap() = Some(Box::new(move || {
+        let (asking, asked) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
+            asking.send(()).unwrap();
             rows.reserve(session, &app_note, "app.md", Fixture::stat(1))
                 .unwrap();
             *seen.lock().unwrap() = Some(identity.adopted.lock().unwrap().len());
         });
+        asked.recv().unwrap();
     }));
     let _running = run(&f, 1024);
     let mut facts = Vec::new();
