@@ -106,6 +106,7 @@ const mocks = vi.hoisted(() => ({
   renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
   droppedHandler: null as (() => void) | null,
   notesGet: vi.fn(),
+  getFile: vi.fn(),
   findInPageEnabled: undefined as boolean | undefined,
   findInPage: {
     isOpen: true,
@@ -268,7 +269,7 @@ vi.mock('@/services/notes-service', async (importOriginal) => {
       revealInFinder: mocks.revealInFinder,
       openExternal: mocks.openExternal,
       // #800 getFile probe (note.tsx): null → treated as a real markdown note.
-      getFile: vi.fn(async () => null),
+      getFile: mocks.getFile,
       get: mocks.notesGet,
       resolveByTitle: mocks.resolveByTitle
     },
@@ -1005,6 +1006,7 @@ describe('NotePage', () => {
     })
     mocks.setLocalOnly.mockResolvedValue({ success: true })
     mocks.notesUpdate.mockResolvedValue({ success: true })
+    mocks.getFile.mockReset().mockResolvedValue(null)
     mocks.pickerOnValueChange = null
     mocks.onMarkdownChange = null
     mocks.propertyOnBlocked = null
@@ -1103,6 +1105,23 @@ describe('NotePage', () => {
     act(() => field.blur())
     expect(field).toHaveAttribute('data-fresh', 'false')
     expect(field).toHaveAttribute('placeholder', 'editor.title.untitled')
+  })
+
+  it('focuses the title of a just-created note whose file probe answers after the note', async () => {
+    let answerProbe!: (file: null) => void
+    mocks.getFile.mockReturnValue(new Promise<null>((resolve) => (answerProbe = resolve)))
+    markNewNoteTitlePending('note-1')
+    renderWithProviders(<NotePage noteId="note-1" />)
+    // Frames pass with the note loaded and the page still waiting on the probe.
+    for (let frame = 0; frame < 3; frame++) {
+      await act(() => new Promise((resolve) => requestAnimationFrame(resolve)))
+    }
+    expect(screen.queryByRole('textbox', { name: 'Note title field' })).toBeNull()
+
+    await act(async () => answerProbe(null))
+    const field = await screen.findByRole('textbox', { name: 'Note title field' })
+    await waitFor(() => expect(field).toHaveFocus())
+    expect(isNewNoteTitlePending('note-1')).toBe(false)
   })
 
   it('refuses a blank title instead of letting the rename contract reject it', async () => {

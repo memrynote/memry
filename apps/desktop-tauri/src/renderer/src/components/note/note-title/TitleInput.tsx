@@ -1,4 +1,12 @@
-import { type KeyboardEvent, useRef, useEffect, useCallback, useState, type RefObject } from 'react'
+import {
+  type FocusEvent,
+  type KeyboardEvent,
+  useRef,
+  useEffect,
+  useCallback,
+  useState,
+  type RefObject
+} from 'react'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -72,7 +80,7 @@ export function TitleInput({
     // The actual save happens on blur
   }, [])
 
-  const handleBlur = useCallback(() => {
+  const commit = useCallback(() => {
     // Only trigger onChange if value actually changed
     if (fresh) {
       if (draftValue?.trim()) onChange(draftValue)
@@ -83,19 +91,41 @@ export function TitleInput({
     setDraftValue(null)
   }, [draftValue, value, onChange, fresh, onFreshEnd])
 
-  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter saves and blurs
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      textareaRef.current?.blur()
-    }
-    // Escape reverts and blurs
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      setDraftValue(null)
-      textareaRef.current?.blur()
-    }
-  }, [])
+  // Enter commits before it blurs, as the blur of a window without focus is ignored below.
+  const committedByEnter = useRef(false)
+
+  const handleBlur = useCallback(
+    (e: FocusEvent<HTMLTextAreaElement>) => {
+      if (committedByEnter.current) return
+      // Switching to another window is not leaving the field. Chromium (WebView2 on
+      // Windows) blurs the focused field, with nothing to focus next, when the window is
+      // deactivated and focuses it again on return; WebKit (macOS, Linux) fires no
+      // `focusout` there.
+      if (e.relatedTarget === null && !e.currentTarget.ownerDocument.hasFocus()) return
+      commit()
+    },
+    [commit]
+  )
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      // Enter saves and blurs
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        commit()
+        committedByEnter.current = true
+        textareaRef.current?.blur()
+        committedByEnter.current = false
+      }
+      // Escape reverts and blurs
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setDraftValue(null)
+        textareaRef.current?.blur()
+      }
+    },
+    [commit]
+  )
 
   return (
     <textarea
