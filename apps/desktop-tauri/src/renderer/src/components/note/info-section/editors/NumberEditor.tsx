@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { isWindowBlur } from '@/lib/inline-rename-focus'
 
 interface NumberEditorProps {
   value: number | null
@@ -35,12 +36,16 @@ export function NumberEditor({
     setDraftValue(e.target.value)
   }, [])
 
-  const handleBlur = useCallback(() => {
-    const num = inputValue ? parseFloat(inputValue) : null
-    onChange(num !== null && !isNaN(num) ? num : null)
-    setDraftValue(null)
-    onBlur?.()
-  }, [inputValue, onChange, onBlur])
+  const handleBlur = useCallback(
+    (e: React.FocusEvent<HTMLInputElement>) => {
+      if (isWindowBlur(e)) return
+      const num = inputValue ? parseFloat(inputValue) : null
+      onChange(num !== null && !isNaN(num) ? num : null)
+      setDraftValue(null)
+      onBlur?.()
+    },
+    [inputValue, onChange, onBlur]
+  )
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {

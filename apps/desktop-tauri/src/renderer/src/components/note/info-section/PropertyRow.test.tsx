@@ -295,6 +295,27 @@ describe('PropertyRow', () => {
     expect(onDelete).toHaveBeenCalled()
   })
 
+  // WebView2 blurs the focused field when the window is deactivated (#3919, #3967).
+  it('keeps the name field open when the app window loses focus', () => {
+    const onNameChange = vi.fn()
+    render(
+      <PropertyRow property={property()} onValueChange={vi.fn()} onNameChange={onNameChange} />
+    )
+    fireEvent.click(screen.getByText('Title'))
+    fireEvent.change(screen.getByLabelText('properties.editName'), { target: { value: 'Renamed' } })
+
+    const windowFocused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    fireEvent.blur(screen.getByLabelText('properties.editName'))
+    expect(screen.getByLabelText('properties.editName')).toHaveValue('Renamed')
+    expect(onNameChange).not.toHaveBeenCalled()
+
+    windowFocused.mockReturnValue(true)
+    fireEvent.blur(screen.getByLabelText('properties.editName'))
+    expect(onNameChange).toHaveBeenCalledWith('Renamed')
+    expect(screen.queryByLabelText('properties.editName')).not.toBeInTheDocument()
+    windowFocused.mockRestore()
+  })
+
   it('shows no delete button on a disabled row, as on a locked note (#2606)', () => {
     const onDelete = vi.fn()
 

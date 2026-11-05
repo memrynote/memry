@@ -105,6 +105,29 @@ describe('note info property editors', () => {
   })
   afterEach(() => vi.restoreAllMocks())
 
+  // The same window blur ended a property value edit before the user typed (#3967): the row
+  // closes the editor on its `onBlur`, and the field left the DOM.
+  it.each([
+    ['text', (onBlur: () => void) => <TextEditor value="" onChange={vi.fn()} onBlur={onBlur} />],
+    [
+      'number',
+      (onBlur: () => void) => <NumberEditor value={null} onChange={vi.fn()} onBlur={onBlur} />
+    ],
+    ['url', (onBlur: () => void) => <UrlEditor value="" onChange={vi.fn()} onBlur={onBlur} />]
+  ])('the %s value editor stays open when the app window loses focus', (kind, editor) => {
+    const onBlur = vi.fn()
+    render(editor(onBlur))
+    const field = screen.getByRole(kind === 'number' ? 'spinbutton' : 'textbox')
+
+    const windowFocused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    fireEvent.blur(field)
+    expect(onBlur).not.toHaveBeenCalled()
+
+    windowFocused.mockReturnValue(true)
+    fireEvent.blur(field)
+    expect(onBlur).toHaveBeenCalledOnce()
+  })
+
   // WebView2 blurs the focused field when the window is deactivated (#3919). An empty option
   // field closes on blur, so another window opening used to close it before the user typed.
   it.each([
