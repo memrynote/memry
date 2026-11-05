@@ -712,7 +712,9 @@ document to its vault `.md` file and re-indexes it for search.
   pass armed while another converts waits for it, because one that started early would read
   the row from before the first pass's write, take that write for an outside edit and feed
   it back into the doc over what the user typed since. The quit flush waits for running
-  passes too. One worker serves every pass and
+  passes too. That flush converts on main unless the worker is already up, because a worker
+  starting cold would spend the shutdown budget, and a quit that runs out of it loses the
+  edit. A note deleted while its pass converts is not written back. One worker serves every pass and
   every seed of a note from its file, and exits after 3 minutes
   idle. A job the worker cannot finish (a crash, a refused spawn, no answer in 2 minutes)
   converts on main instead, as every job did before, and after three worker failures the

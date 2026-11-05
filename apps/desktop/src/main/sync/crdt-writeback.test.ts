@@ -335,6 +335,23 @@ describe('crdt writeback', () => {
     expect(hasPendingWriteback('note-1')).toBe(false)
   })
 
+  it('does not write back a note deleted while its pass converts', async () => {
+    let finish: (markdown: string) => void = () => {}
+    mocks.yDocToMarkdown.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (finish = resolve))
+    )
+    scheduleWriteback('note-1', makeDoc(), 'local')
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #when the note is deleted mid-conversion
+    cancelWriteback('note-1')
+    finish('typed before the delete')
+    await vi.advanceTimersByTimeAsync(0)
+
+    // #then the pass leaves the deleted file deleted
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+  })
+
   it('waits for a running pass when the app quits', async () => {
     let finish: (markdown: string) => void = () => {}
     mocks.yDocToMarkdown.mockImplementationOnce(

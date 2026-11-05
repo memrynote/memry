@@ -118,6 +118,13 @@ const lastWritebackCost = new Map<string, WritebackCost>()
 const pendingTimers = new Map<string, PendingWriteback>()
 /** The pass running, or queued behind a running one, for each note. */
 const runningPasses = new Map<string, Promise<void>>()
+/**
+ * Bumped by `cancelWriteback`. A pass that was already converting when its
+ * note was deleted sees the change and does not write the file back.
+ */
+const cancelGenerations = new Map<string, number>()
+/** True while a flush runs before a quit or a vault close. */
+let flushing = false
 /** Notes whose last pass failed and whose user has been told so. */
 const failingWritebacks = new Set<string>()
 const ignoredWrites = new Map<string, number>()
@@ -418,6 +425,7 @@ export function cancelWriteback(noteId: string): void {
     clearTimeout(pending.timer)
     pendingTimers.delete(noteId)
   }
+  cancelGenerations.set(noteId, (cancelGenerations.get(noteId) ?? 0) + 1)
   lastWritebackCost.delete(noteId)
   lastWrittenHash.delete(noteId)
   debugState.delete(noteId)
@@ -492,12 +500,22 @@ export function resetWritebackState(): void {
   ignoredWrites.clear()
   resetNetworkUpdateState()
   lastWrittenHash.clear()
+  cancelGenerations.clear()
   debugState.clear()
   failingWritebacks.clear()
   ignoredWritesSweptAt = 0
 }
 
 export async function flushPendingWritebacks(): Promise<void> {
+  flushing = true
+  try {
+    await flushAll()
+  } finally {
+    flushing = false
+  }
+}
+
+async function flushAll(): Promise<void> {
   const pending = Array.from(pendingTimers.entries())
   pendingTimers.clear()
   for (const [, { timer }] of pending) clearTimeout(timer)
@@ -552,7 +570,8 @@ async function performWriteback(
   // was before the converter became lazy: past this line nothing awaits until
   // the serialization itself. The conversion runs on the write-back worker,
   // off the main thread (converter-worker-bridge.ts).
-  const convert = await readyWritebackConverter()
+  const convert = await readyWritebackConverter({ mainUnlessReady: flushing })
+  const generation = cancelGenerations.get(noteId)
   // A doc with no note row is never turned into a note. Its record may not
   // have arrived yet, or it may be a tombstone this device has not pulled (a
   // packed body applied before the first record pull), and both look the
@@ -580,6 +599,11 @@ async function performWriteback(
     const raw = await readVaultFile(getVaultRoot(), cached.path)
     return raw === null ? null : splitFrontmatterBlock(raw).body
   })
+  if (cancelGenerations.get(noteId) !== generation) {
+    updateDebugState(noteId, { pending: false })
+    log.debug('Write-back dropped: the note was cancelled while it converted', { noteId })
+    return
+  }
   if (conversion.kind === 'unrepresentable') {
     const unrepresentable = conversion.nodes
     updateDebugState(noteId, {

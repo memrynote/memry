@@ -209,4 +209,35 @@ describe('converter worker bridge', () => {
     expect(fragment.length).toBe(1)
     expect(fragment.toJSON()).toBe('<blockgroup></blockgroup>')
   })
+  it('converts on main during a flush rather than start a worker', async () => {
+    const doc = await seededDoc()
+    const expected = await convertOnMain(doc, async () => AUTHOR_FILE)
+    const spawn = vi.fn()
+    mocks.spawn = spawn
+    const { readyWritebackConverter } = await import('./converter-worker-bridge')
+
+    const convert = await readyWritebackConverter({ mainUnlessReady: true })
+
+    expect(await convert(doc, NOTE_PATH, async () => AUTHOR_FILE)).toEqual(expected)
+    expect(spawn).not.toHaveBeenCalled()
+  })
+
+  it('does not seed on main over a note that filled before the worker died', async () => {
+    // #given a worker that dies on the seed, after a remote body landed
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    mocks.spawn = (thread) => {
+      thread.postMessage = (message: unknown) => {
+        if ((message as { type: string }).type !== 'job') return
+        fragment.insert(0, [new Y.XmlElement('blockGroup')])
+        thread.emit('exit', 1)
+      }
+      queueMicrotask(() => thread.emit('message', { type: 'ready' }))
+    }
+    const { seedFragment } = await import('./converter-worker-bridge')
+
+    // #then the fallback leaves the remote body alone
+    expect(await seedFragment(AUTHOR_FILE, fragment, NOTE_PATH, undefined)).toBe(false)
+    expect(fragment.toJSON()).toBe('<blockgroup></blockgroup>')
+  })
 })

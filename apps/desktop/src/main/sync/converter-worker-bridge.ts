@@ -56,6 +56,8 @@ export type ConvertWriteback = (
 
 interface WorkerHandle {
   thread: Worker
+  /** Set once the worker posted `ready`. */
+  isReady: boolean
   ready: Promise<void>
   markReady: () => void
   failReady: (error: Error) => void
@@ -81,9 +83,15 @@ const pending = new Map<number, PendingJob>()
  * Awaited before the pass reads its note row, so that row is as fresh as the
  * conversion itself: the load (seconds on a cold start) happens first, as it
  * did on main.
+ *
+ * `mainUnlessReady` is for the flush that runs before a quit or a vault close:
+ * a worker that is not already up would spend the shutdown budget starting,
+ * and a quit that runs out of it loses the edit (`shutdown-sequence.ts`).
  */
-export async function readyWritebackConverter(): Promise<ConvertWriteback> {
-  const handle = await readyWorker()
+export async function readyWritebackConverter(
+  options: { mainUnlessReady?: boolean } = {}
+): Promise<ConvertWriteback> {
+  const handle = options.mainUnlessReady && !current?.isReady ? null : await readyWorker()
   if (handle) {
     return (doc, notePath, readFileBody) =>
       runJob(handle, { kind: 'writeback', notePath }, doc, readFileBody).catch(
@@ -127,6 +135,10 @@ export async function seedFragment(
       return true
     } catch (error) {
       log.warn('Seed failed on the worker, seeding on main', { notePath, error })
+      if (fragment.length > 0) {
+        log.info('Seed dropped: the note filled while it was seeding', { notePath })
+        return false
+      }
     }
   }
   const { markdownToYFragment } = await loadBlockNoteConverter()
@@ -169,9 +181,11 @@ function startWorker(): WorkerHandle | null {
     onWorkerGone(handle, new Error(`not ready in ${WORKER_TIMEOUT_MS} ms`))
   }, WORKER_TIMEOUT_MS)
   readyTimer.unref?.()
-  const handle: WorkerHandle = { thread, ready, markReady, failReady, readyTimer }
+  const handle: WorkerHandle = { thread, isReady: false, ready, markReady, failReady, readyTimer }
   thread.on('message', (message: FromConverterWorker) => onWorkerMessage(handle, message))
   thread.on('error', (error: unknown) => onWorkerGone(handle, error))
+  // A message that cannot be deserialized would otherwise leave its job to time out.
+  thread.on('messageerror', (error: unknown) => onWorkerGone(handle, error))
   thread.on('exit', (code) => {
     onWorkerGone(handle, new Error(`worker exited with code ${code}`))
   })
@@ -228,6 +242,7 @@ function onWorkerMessage(handle: WorkerHandle, message: FromConverterWorker): vo
   switch (message.type) {
     case 'ready':
       clearTimeout(handle.readyTimer)
+      handle.isReady = true
       handle.markReady()
       if (pending.size === 0) armIdleExit()
       return
