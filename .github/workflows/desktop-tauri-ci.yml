@@ -454,9 +454,12 @@ jobs:
         run: |
           specs="pnpm --filter @memry/desktop-tauri test:e2e${SHARD:+ $SHARD}"
           if [ "${{ matrix.shard }}" != 2 ]; then specs="$specs && pnpm --filter @memry/desktop-tauri test:e2e:multi"; fi
+          # -noreset: by default Xvfb resets when its last client disconnects and closes every
+          # client still in connection setup. An app connecting then panics in GTK init with exit
+          # 101; each wdio run hit this when `onPrepare` killed its probe app (#3947).
           dbus-run-session -- bash -c "
             echo '' | gnome-keyring-daemon --unlock --components=secrets >/dev/null
-            xvfb-run -a -s '-screen 0 1920x1080x24' bash -c '$specs'
+            xvfb-run -a -s '-screen 0 1920x1080x24 -noreset' bash -c '$specs'
           "
 
       - name: Purge leaked e2e keychain items

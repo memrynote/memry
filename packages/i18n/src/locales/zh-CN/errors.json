@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "将 #{from} 重命名为 #{to} 的操作仍在进行。请在完成后重试。",
+    "editInProgress": "另一项标签更改仍在进行。请在完成后重试。",
     "renameUnfinished": "将 #{from} 重命名为 #{to} 的操作有 {count, plural, other {# 篇笔记}}未完成。再次将 #{from} 重命名为 #{to} 即可完成。",
     "mergeSameTag": "源标签与目标标签相同",
     "categoryNameRequired": "分类名称为必填",

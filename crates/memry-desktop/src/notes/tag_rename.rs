@@ -56,26 +56,22 @@ use memry_core::api::auth::ensure_device_identity;
 use memry_core::api::errors::StorageError;
 use memry_core::api::tag_hub::TagHub;
 use memry_core::domain::body_tags::extract_markdown;
-use memry_core::domain::header_tags;
-use memry_core::domain::note_stats::header_tags as file_header_tags;
 use memry_core::domain::tag_body_rename::{is_inline_tag_name, rewrite_markdown};
 pub use memry_core::domain::tag_rename::RenameJob;
 use memry_core::domain::tag_rename::{Holder, Recorded, RenamePlan};
 use memry_core::domain::tags::{renamed_list, tag_key};
-use memry_core::markdown::frontmatter::{
-    YamlMap, YamlValue, parse_markdown_note, serialize_updated_note,
-};
 use tokio::sync::broadcast::{Receiver, error::TryRecvError};
 
 use super::error::{NotesError, SCOPE, kept_is_retryable};
 use super::service::NotesService;
+use super::tag_retag::tags_edited;
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
 use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::hash::content_hash;
 
 /// How long a kept note waits for the write-back before its second try.
-const SETTLE: Duration = Duration::from_secs(2);
+pub(super) const SETTLE: Duration = Duration::from_secs(2);
 /// How often the progress is told, at most (`PROGRESS_INTERVAL_MS`).
 const PROGRESS_EVERY: Duration = Duration::from_millis(100);
 
@@ -135,11 +131,7 @@ impl NotesService {
             .into());
         }
         let Some(_running) = self.claim_rename() else {
-            let running = recorded_plan(open)?.map_or_else(|| job.clone(), |plan| plan.job);
-            return Err(NotesError::TagRenameInProgress {
-                from: running.from,
-                to: running.to,
-            });
+            return Err(running_change(open)?);
         };
         let hub = self.tag_hub(open)?;
         let holders = open.search.tag_rename_holders(&job.from)?;
@@ -471,6 +463,19 @@ impl NotesService {
 
 /// The recorded rename's plan; a row that does not read is an error here (the resume at open
 /// drops it).
+/// What a tag change refused while the rename lock is held is told runs: the rename recorded
+/// ([`NotesError::TagRenameInProgress`]), else a merge, delete or removal
+/// ([`NotesError::TagEditInProgress`]).
+pub(super) fn running_change(open: &OpenVault) -> Result<NotesError, NotesError> {
+    Ok(match recorded_plan(open)? {
+        Some(plan) => NotesError::TagRenameInProgress {
+            from: plan.job.from,
+            to: plan.job.to,
+        },
+        None => NotesError::TagEditInProgress,
+    })
+}
+
 pub(super) fn recorded_plan(open: &OpenVault) -> Result<Option<RenamePlan>, NotesError> {
     match open.vault.tag_rename_recorded()? {
         None => Ok(None),
@@ -505,32 +510,9 @@ fn next_text(
     from: &str,
     to: &str,
 ) -> Result<Option<(String, Vec<String>)>, NotesError> {
-    let parsed = parse_markdown_note(text)?;
-    let frontmatter = match &parsed.frontmatter {
-        YamlValue::Map(map) => (**map).clone(),
-        _ => YamlMap::new(),
-    };
-    let before = file_header_tags(&frontmatter);
-    let change = match day {
-        true => None,
-        false => {
-            let after = renamed_list(&before, from, to);
-            header_tags::compare(&before, &after).map(|change| (after, change))
-        }
-    };
-    let body = rewrite_markdown(&parsed.content, from, to);
-    if change.is_none() && body.is_none() {
-        return Ok(None);
-    }
-    let mut next = frontmatter.clone();
-    if let Some((after, change)) = &change {
-        header_tags::set_tags(&mut next, after, Some(change));
-    }
-    let content = body.unwrap_or_else(|| parsed.content.clone());
-    let edited = change.is_some();
-    let tags = extract_markdown(&content);
-    let text = serialize_updated_note(parsed, &frontmatter, next, &content, edited)?;
-    Ok(Some((text, tags)))
+    let header = |before: &[String]| (!day).then(|| renamed_list(before, from, to));
+    let edited = tags_edited(text, header, |content| rewrite_markdown(content, from, to))?;
+    Ok(edited.map(|(text, body)| (text, extract_markdown(&body))))
 }
 
 #[cfg(test)]

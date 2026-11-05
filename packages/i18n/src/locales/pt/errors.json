@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "A renomeação de #{from} para #{to} ainda está em andamento. Tente novamente quando terminar.",
+    "editInProgress": "Outra alteração de tags ainda está em andamento. Tente novamente quando terminar.",
     "renameUnfinished": "A renomeação de #{from} para #{to} não terminou em {count, plural, one {# nota} other {# notas}}. Renomeie #{from} para #{to} novamente para concluí-la.",
     "mergeSameTag": "A tag de origem e a de destino são a mesma",
     "categoryNameRequired": "O nome da categoria é obrigatório",
