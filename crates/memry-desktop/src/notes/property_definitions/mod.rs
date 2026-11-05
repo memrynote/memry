@@ -19,10 +19,12 @@
 //! fails after the file was written, the error reaches the caller and the next edit of the
 //! name writes the record again. A date's calendar flag lives only in this device's file.
 //!
-//! Not yet ported: re-typing the indexed note values when a definition changes type
-//! (`retypeIndexedProperties`), which waits for the note property index.
+//! The note index types its rows by these definitions and retypes them when one changes type
+//! (`retypeIndexedProperties`). A property it reads with no definition is typed by the type it
+//! was first read with, learned on this device alone ([`learned`]; `notes::index`).
 
 mod kind;
+mod learned;
 mod record;
 mod settle;
 mod view;

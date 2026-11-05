@@ -13,7 +13,13 @@
 //!   turn into another link (a `|`, `]` or `#` in it) is left, and the log says so.
 //! - **How**: through [`AppEdit`] with [`Precondition::Held`], in each source's own write turn:
 //!   its document, then its file, then its row, then a note event the renderer takes as an
-//!   outside edit (`ChangeSource::LinkRewrite`), so an open editor shows the new link.
+//!   outside edit (`ChangeSource::LinkRewrite`), so an open editor shows the new link. A link in a
+//!   frontmatter value is a property value: the record takes it once the file holds it, in the
+//!   same turn, and the file's baseline moves with it (`NotesWriter::file_properties`), as for
+//!   every app edit of a file's properties. The file's row and the record are two writes, as a
+//!   template apply's are: a crash between them leaves the record and the baseline on the old
+//!   link, which no replay mends (the file holds the new one), until an edit of the file
+//!   outside the app takes the value from the file over a pulled one.
 //!
 //! The rename already happened, so nothing here fails it: a source that cannot be read, holds
 //! an outside edit not fed yet, or whose document is ahead of its file, keeps its links, and
@@ -41,6 +47,7 @@
 //! here: the journal page's own event for a rewritten day (Step 13m), and the lock check
 //! (Step 14).
 
+use std::cell::RefCell;
 #[cfg(feature = "test-hooks")]
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -53,6 +60,7 @@ use memry_core::markdown::schema::blocks::note_refs::{
 
 use super::error::{NotesError, SCOPE};
 use super::moves::Named;
+use super::properties::{EditedValues, mirror_properties, text_values};
 use super::service::NotesService;
 use super::view::RefsKept;
 use crate::session::OpenVault;
@@ -190,18 +198,38 @@ impl NotesService {
                 .flatten()
                 .any(|target| target.id != note_id))
         };
+        let types = self.definition_types(open);
+        let writer = match open.vault.notes_writer(self.store.clone()) {
+            Ok(writer) => writer,
+            Err(error) => {
+                return tracing::warn!(
+                    scope = SCOPE,
+                    note_id,
+                    "the links to a renamed note were not repaired: {error}"
+                );
+            }
+        };
         for source in sources {
             let mut found = FileRewrite::default();
+            let values: RefCell<Option<EditedValues>> = RefCell::new(None);
             let rewritten = self.order.run(&source, |turn| {
-                edit.run(
-                    turn,
-                    Precondition::Held,
-                    ChangeSource::LinkRewrite,
-                    |text| {
-                        found = rewrite_file(text, note_id, from, to, claimed)?;
-                        Ok::<_, NotesError>(found.text.take())
-                    },
-                )
+                let text = |text: &str| {
+                    found = rewrite_file(text, note_id, from, to, claimed)?;
+                    let next = found.text.take();
+                    *values.borrow_mut() = next.as_deref().and_then(|next| {
+                        let before = text_values(text, &types)?;
+                        Some((before, text_values(next, &types)?))
+                    });
+                    Ok::<_, NotesError>(next)
+                };
+                let landed = || {
+                    if let Some(values) = values.take().filter(|(before, after)| before != after) {
+                        mirror_properties(&writer, &source, values)?;
+                    }
+                    Ok(false)
+                };
+                let held = Precondition::Held;
+                edit.run_then(turn, held, ChangeSource::LinkRewrite, text, landed, &mut || {})
             });
             if found.skipped > 0 || found.frontmatter_kept {
                 tracing::warn!(

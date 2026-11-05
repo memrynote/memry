@@ -520,10 +520,11 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
       if (event.date === currentDateRef.current) {
         if (isExternal) {
+          // Edits not saved yet (or in a save in flight) are the user's newest; they reached no
+          // file, so nothing else holds them. Their save writes over the outside edit, which the
+          // core keeps as a version (`app_edit.rs`), as a note's save does.
+          if (pendingContentRef.current !== null || pendingTagsRef.current !== null) return
           queryClient.setQueryData(journalKeys.entry(event.date), event.entry)
-          setIsDirty(false)
-          pendingContentRef.current = null
-          pendingTagsRef.current = null
           setExternalUpdateCount((c) => c + 1)
         } else if (!isDirtyRef.current) {
           queryClient.setQueryData(journalKeys.entry(event.date), event.entry)

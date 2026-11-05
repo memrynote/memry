@@ -110,6 +110,8 @@ mod note_links_changed;
 mod note_mentions;
 #[path = "note_properties_index.rs"]
 mod note_properties_index;
+#[path = "note_properties_learned.rs"]
+mod note_properties_learned;
 #[path = "note_properties_outside.rs"]
 mod note_properties_outside;
 #[path = "notes_aliases.rs"]
