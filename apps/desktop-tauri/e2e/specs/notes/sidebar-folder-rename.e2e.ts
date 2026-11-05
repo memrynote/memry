@@ -7,6 +7,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { expandCollections } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 import { invoke, vaultStatus } from '../../harness/vault-commands'
@@ -21,13 +22,6 @@ async function ready(page: Page): Promise<void> {
   expect(await pollUntil(async () => (await vaultStatus(page)).isOpen, { timeoutMs: 30_000 })).toBe(
     true
   )
-}
-
-async function expandCollections(page: Page): Promise<void> {
-  const header = page.locator('#section-header-collections')
-  await expect(header).toBeVisible({ timeout: 30_000 })
-  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
-  await expect(header).toHaveAttribute('aria-expanded', 'true')
 }
 
 /**

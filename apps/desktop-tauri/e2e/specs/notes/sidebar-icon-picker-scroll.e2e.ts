@@ -11,20 +11,13 @@
 // the spec moves the sidebar's scroll offset as the wheel would. The virtualizer follows the same
 // scroll event either way.
 import type { Locator } from '../../harness/pw-compat/locator'
+import { expandCollections, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
-import { vaultStatus } from '../../harness/vault-commands'
-import { pollUntil } from '../../harness/wait'
 
 const PICKER = 'Emoji and icon picker' // notes:menus.emoji.aria
 // The virtualized tree takes over at 100 items (VIRTUALIZATION_THRESHOLD).
 const SEEDED_NOTES = 130
-
-async function ready(page: Page): Promise<void> {
-  expect(await pollUntil(async () => (await vaultStatus(page)).isOpen, { timeoutMs: 30_000 })).toBe(
-    true
-  )
-}
 
 /** Creates the notes one after another through `notes_create`, as the renderer does. */
 async function seedNotes(page: Page, count: number): Promise<void> {
@@ -35,25 +28,6 @@ async function seedNotes(page: Page, count: number): Promise<void> {
       })
     }
   }, count)
-}
-
-async function expandCollections(page: Page): Promise<void> {
-  const header = page.locator('#section-header-collections')
-  await expect(header).toBeVisible({ timeout: 30_000 })
-  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
-  await expect(header).toHaveAttribute('aria-expanded', 'true')
-  // The section opens through a 100 ms transition inside an overflow-hidden box. The driver
-  // scrolls a row it clicks into view, which scrolls that box mid-transition; the box springs
-  // back when the transition ends and the click lands on the row above.
-  await expect
-    .poll(() =>
-      page
-        .locator('#section-content-collections > div')
-        .evaluate(
-          (box: HTMLElement) => box.clientHeight > 0 && box.scrollHeight <= box.clientHeight
-        )
-    )
-    .toBe(true)
 }
 
 /** Scrolls the nearest scrolling ancestor of `trigger` by `top`; false when there is none. */
@@ -81,8 +55,7 @@ const mountedRows = (page: Page): Promise<string[]> =>
 test('the sidebar icon picker stays open when the virtualized tree scrolls under it', async ({
   page
 }) => {
-  test.slow()
-  await ready(page)
+  await vaultOpen(page)
   await seedNotes(page, SEEDED_NOTES)
   await expandCollections(page)
   // The virtualized tree nests a row's treeitem under its positioned wrapper; the plain tree puts

@@ -3,17 +3,16 @@
 // properties (`notes_get`, `properties_get`), saves through `templates_create`, and the template
 // applied to a fresh note gives it the source note's body and tags. Each test runs on its own
 // vault, so nothing is cleaned up between them.
+import { NOTE_TITLE, openFromSidebar, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { normalizeBodyText } from '../../harness/note-sync-helpers'
 import { test, expect } from '../../harness/test'
-import { invoke, vaultStatus } from '../../harness/vault-commands'
-import { pollUntil } from '../../harness/wait'
+import { invoke } from '../../harness/vault-commands'
 
 const NOTE_BODY = '# Retro agenda\n\nWhat went well, what to change, owners for next week.'
 const NOTE_TAG = 'e2e-save-as-template'
 const PROPERTY_NAME = 'Stage'
 const PROPERTY_VALUE = 'Draft'
-const NOTE_TITLE = 'textarea[aria-label="Note title"]'
 
 interface NoteView {
   id: string
@@ -33,34 +32,6 @@ interface Template {
 
 const stamp = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-async function ready(page: Page): Promise<void> {
-  expect(await pollUntil(async () => (await vaultStatus(page)).isOpen, { timeoutMs: 30_000 })).toBe(
-    true
-  )
-}
-
-/** Opens a vault-root note from the Collections tree, as a user does. */
-async function openFromSidebar(page: Page, note: NoteView): Promise<void> {
-  const header = page.locator('#section-header-collections')
-  await expect(header).toBeVisible({ timeout: 30_000 })
-  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click()
-  await expect(header).toHaveAttribute('aria-expanded', 'true')
-  // The section opens through a 100 ms transition inside an overflow-hidden box. The driver
-  // scrolls a row it clicks into view, which scrolls that box mid-transition; the box springs
-  // back when the transition ends and the click lands on the row above.
-  await expect
-    .poll(() =>
-      page
-        .locator('#section-content-collections > div')
-        .evaluate(
-          (box: HTMLElement) => box.clientHeight > 0 && box.scrollHeight <= box.clientHeight
-        )
-    )
-    .toBe(true)
-  await page.locator(`[data-tree-node-id="${note.id}"]`).click()
-  await expect(page.locator(NOTE_TITLE).first()).toHaveValue(note.title)
-}
-
 async function templateNamed(page: Page, name: string): Promise<{ id: string } | undefined> {
   const listed = await invoke<Array<{ id: string; name: string }>>(page, 'templates_list')
   return listed.find((candidate) => candidate.name === name)
@@ -69,7 +40,7 @@ async function templateNamed(page: Page, name: string): Promise<{ id: string } |
 test('saves a note as a template from the note menu and applies it to a fresh note', async ({
   page
 }) => {
-  await ready(page)
+  await vaultOpen(page)
   const noteTitle = `Save As Template Source ${stamp()}`
   const templateName = `Saved Template ${stamp()}`
 

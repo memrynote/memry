@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { invokeTest } from '../../harness/invoke-test'
+import { openFromSidebar } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 import { vaultStatus } from '../../harness/vault-commands'
@@ -40,17 +41,6 @@ async function noteId(app: App, page: Page): Promise<string> {
   return (row as NoteFile).noteId
 }
 
-/** Opens the note from the Collections tree, as a user does. */
-async function openFromSidebar(page: Page, id: string): Promise<void> {
-  const section = page.locator('#section-header-collections')
-  if ((await section.getAttribute('aria-expanded')) === 'false') await section.click()
-  const folder = page.locator('[data-tree-node-id="folder-notes"]')
-  const expand = folder.getByRole('button', { name: 'Expand folder' })
-  if (await expand.isVisible()) await expand.click()
-  await page.locator(`[data-tree-node-id="${id}"]`).click()
-  await expect(page.locator('textarea[aria-label="Note title"]').first()).toHaveValue(TITLE)
-}
-
 /** The ops queued for the note, oldest first. */
 async function queued(app: App, id: string): Promise<string[]> {
   const rows = await invokeTest<{ op: string }[]>(app, 'e2e_debug_query', {
@@ -66,7 +56,7 @@ async function chooseFromNoteMenu(page: Page, label: string): Promise<void> {
 
 test('a note opened from the sidebar shows its title, tags and counts', async ({ app, page }) => {
   const id = await noteId(app, page)
-  await openFromSidebar(page, id)
+  await openFromSidebar(page, { id, path: PATH, title: TITLE })
 
   const tags = page.getByRole('list', { name: 'Tags', exact: true }).first()
   await expect(tags).toContainText('tutorial')
@@ -88,7 +78,7 @@ test('local-only from the note menu keeps the note off the sync queue until it i
   testVaultPath
 }) => {
   const id = await noteId(app, page)
-  await openFromSidebar(page, id)
+  await openFromSidebar(page, { id, path: PATH, title: TITLE })
   // The adopted note waits for its first push.
   expect(await queued(app, id)).not.toEqual([])
 
@@ -121,7 +111,7 @@ test('another name added from the note menu lands in the file and a link by it r
   testVaultPath
 }) => {
   const id = await noteId(app, page)
-  await openFromSidebar(page, id)
+  await openFromSidebar(page, { id, path: PATH, title: TITLE })
 
   await chooseFromNoteMenu(page, 'Add another name\u2026')
   const input = page.getByRole('textbox', { name: 'Another name for this note' })
