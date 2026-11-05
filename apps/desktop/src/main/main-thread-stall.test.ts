@@ -2,24 +2,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MAX_STALL_REPORTS, STALL_TICK_MS, startMainThreadStallMonitor } from './main-thread-stall'
 
-const { scopedLogger, powerListeners, powerMonitor, latestLaunchPhaseMock } = vi.hoisted(() => {
-  const listeners = new Map<string, Set<() => void>>()
-  return {
-    scopedLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    powerListeners: listeners,
-    powerMonitor: {
-      on: (event: string, listener: () => void): void => {
-        const set = listeners.get(event) ?? new Set<() => void>()
-        set.add(listener)
-        listeners.set(event, set)
+const { scopedLogger, powerListeners, powerMonitor, latestLaunchPhaseMock, activity } = vi.hoisted(
+  () => {
+    const listeners = new Map<string, Set<() => void>>()
+    return {
+      scopedLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      powerListeners: listeners,
+      powerMonitor: {
+        on: (event: string, listener: () => void): void => {
+          const set = listeners.get(event) ?? new Set<() => void>()
+          set.add(listener)
+          listeners.set(event, set)
+        },
+        removeListener: (event: string, listener: () => void): void => {
+          listeners.get(event)?.delete(listener)
+        }
       },
-      removeListener: (event: string, listener: () => void): void => {
-        listeners.get(event)?.delete(listener)
-      }
-    },
-    latestLaunchPhaseMock: vi.fn<() => string | null>(() => null)
+      latestLaunchPhaseMock: vi.fn<() => string | null>(() => null),
+      activity: [] as Array<{ name: string; startedAt: number }>
+    }
   }
-})
+)
 
 const emitPower = (event: 'suspend' | 'resume'): void => {
   for (const listener of powerListeners.get(event) ?? []) listener()
@@ -33,6 +36,10 @@ vi.mock('electron', () => ({ powerMonitor }))
 
 vi.mock('./launch-timeline', () => ({
   latestLaunchPhase: latestLaunchPhaseMock
+}))
+
+vi.mock('./main-activity', () => ({
+  recentMainActivity: () => activity
 }))
 
 const START = new Date('2026-09-30T10:00:00.000Z').getTime()
@@ -53,6 +60,7 @@ describe('main thread stall monitor', () => {
     vi.setSystemTime(START)
     scopedLogger.warn.mockClear()
     latestLaunchPhaseMock.mockReturnValue(null)
+    activity.length = 0
   })
 
   afterEach(() => {
@@ -77,8 +85,34 @@ describe('main thread stall monitor', () => {
     expect(scopedLogger.warn).toHaveBeenCalledWith('main thread stalled', {
       durationMs: 7_000,
       phase: 'vault_open_start',
-      count: 1
+      count: 1,
+      suspects: []
     })
+  })
+
+  it('names the work started last before the loop blocked, relative to its last free moment', () => {
+    stop = startMainThreadStallMonitor()
+    vi.advanceTimersByTime(STALL_TICK_MS)
+    const freeAt = Date.now()
+    activity.push(
+      { name: 'ipc:notes:list', startedAt: freeAt - 40_000 },
+      { name: 'reconcile:embedding', startedAt: freeAt - 900 },
+      { name: 'ipc:notes:get', startedAt: freeAt - 300 },
+      { name: 'projection:search:note.upserted', startedAt: freeAt + 20 }
+    )
+
+    blockLoopFor(9_000)
+
+    expect(scopedLogger.warn).toHaveBeenCalledWith(
+      'main thread stalled',
+      expect.objectContaining({
+        suspects: [
+          'reconcile:embedding@-900ms',
+          'ipc:notes:get@-300ms',
+          'projection:search:note.upserted@20ms'
+        ]
+      })
+    )
   })
 
   it('names the stall "startup" before the first launch phase', () => {

@@ -27,6 +27,7 @@ import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { trackMainError } from '../../telemetry/diagnostics'
 import { createValidatedHandler } from '../validate'
 import { installIpcChannelLabels } from './ipc-channel-labels'
+import { recentMainActivity } from '../../main-activity'
 
 const mockTrackMainError = vi.mocked(trackMainError)
 // Captured before the install replaces the property, so the pass-through is
@@ -54,14 +55,28 @@ describe('installIpcChannelLabels', () => {
     expect(mockTrackMainError).toHaveBeenCalledWith('ipc', 'tasks:create', expect.anything())
   })
 
-  it('#then registration still reaches the real ipcMain.handle', () => {
+  it('#then registration still reaches the real ipcMain.handle and invokes the handler', async () => {
     installIpcChannelLabels()
     const listener = createValidatedHandler(TitleSchema, async (input) => input)
 
     ipcMain.handle('notes:list', listener)
 
     expect(realHandle).toHaveBeenCalledTimes(1)
-    expect(realHandle).toHaveBeenCalledWith('notes:list', listener)
+    expect(realHandle).toHaveBeenCalledWith('notes:list', expect.any(Function))
+    const registered = realHandle.mock.calls[0][1]
+    await expect(registered(invokeEvent, { title: 'a' })).resolves.toEqual({ title: 'a' })
+  })
+
+  it('#given an invocation #then the channel is recorded as main-process activity', async () => {
+    installIpcChannelLabels()
+    ipcMain.handle(
+      'notes:get',
+      createValidatedHandler(TitleSchema, async (input) => input)
+    )
+
+    await realHandle.mock.calls[0][1](invokeEvent, { title: 'a' })
+
+    expect(recentMainActivity().at(-1)?.name).toBe('ipc:notes:get')
   })
 
   it('#given a second install #then handle is not wrapped twice', () => {
