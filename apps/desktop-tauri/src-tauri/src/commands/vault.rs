@@ -300,8 +300,9 @@ pub async fn vault_get_config<R: Runtime>(app: AppHandle<R>) -> Result<VaultConf
 }
 
 /// `vault:update-config`: writes the fields `config` names and answers the settings after it,
-/// which every window hears as [`VaultConfigChangedEvent`]. A change that is not ported yet is
-/// refused as `config_change_not_ported` (`vault::config::settings`).
+/// which every window hears as [`VaultConfigChangedEvent`], in the order the writes land. A
+/// change that is not ported yet is refused as `config_change_not_ported`
+/// (`vault::config::settings`).
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_update_config<R: Runtime>(
@@ -309,14 +310,15 @@ pub async fn vault_update_config<R: Runtime>(
     config: VaultConfigPatch,
 ) -> Result<VaultConfig, CommandError> {
     let open = open_vault(&app)?;
-    let settings = blocking("vault_update_config", move || {
-        Ok(update_vault_settings(&open.path, config))
+    let announcer = app.clone();
+    blocking("vault_update_config", move || {
+        Ok(update_vault_settings(&open.path, config, |settings| {
+            broadcast(&announcer, VaultConfigChangedEvent(settings.clone()));
+        }))
     })
     .await?
     .map_err(|error| settings_failed(&app, error))
-    .inspect_err(|error| log_failure("vault_update_config", error))?;
-    broadcast(&app, VaultConfigChangedEvent(settings.clone()));
-    Ok(settings)
+    .inspect_err(|error| log_failure("vault_update_config", error))
 }
 
 /// The message of a refused change, which Settings shows as it puts the saved value back.

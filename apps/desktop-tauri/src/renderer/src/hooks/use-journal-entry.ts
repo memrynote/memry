@@ -552,12 +552,22 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     })
 
     // A missed event may have changed the open day: refetched unless it holds unsaved text,
-    // which its save keeps, as for `modified`.
+    // which its save keeps, as for `modified`. New text reaches the editor as an outside edit's
+    // does; the same text leaves the editor (and its cursor) as it is.
     const unsubscribeDropped = onJournalEventsDropped(() => {
       const open = currentDateRef.current
-      if (open && !isDirtyRef.current) {
-        void queryClient.invalidateQueries({ queryKey: journalKeys.entry(open) })
-      }
+      if (!open || isDirtyRef.current) return
+      const queryKey = journalKeys.entry(open)
+      const shown = queryClient.getQueryData<JournalEntry | null>(queryKey)?.content ?? null
+      queryClient
+        .fetchQuery({ queryKey, queryFn: () => journalService.getEntry(open), staleTime: 0 })
+        .then((fetched) => {
+          if (currentDateRef.current !== open || isDirtyRef.current) return
+          if ((fetched?.content ?? null) !== shown) setExternalUpdateCount((c) => c + 1)
+        })
+        .catch((err: unknown) => {
+          log.warn(`Failed to refetch ${open} after dropped journal events:`, err)
+        })
     })
 
     return () => {

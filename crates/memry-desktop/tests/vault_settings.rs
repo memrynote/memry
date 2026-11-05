@@ -5,6 +5,9 @@
 
 use std::fs;
 use std::path::Path;
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
+use std::time::Duration;
 
 use memry_desktop::vault::config::settings::{
     SettingsError, update_vault_settings, vault_settings,
@@ -68,7 +71,7 @@ fn an_update_writes_the_fields_it_names_and_keeps_the_rest_of_the_file() {
         attachments_folder: Some("files".to_owned()),
         ..VaultConfigPatch::default()
     };
-    let settings = update_vault_settings(dir.path(), patch).unwrap();
+    let settings = update_vault_settings(dir.path(), patch, |_| {}).unwrap();
     assert_eq!(settings.default_note_folder, "inbox");
     assert!(settings.journal_show_in_sidebar);
     assert_eq!(settings.attachments_folder, "files");
@@ -117,7 +120,7 @@ fn a_change_of_the_journal_folder_the_format_or_the_excludes_is_refused() {
             journal_show_in_sidebar: Some(true),
             ..patch
         };
-        match update_vault_settings(dir.path(), patch) {
+        match update_vault_settings(dir.path(), patch, |_| panic!("{key} announced")) {
             Err(SettingsError::NotPorted(refused)) => assert_eq!(refused, key),
             other => panic!("{key}: {other:?}"),
         }
@@ -131,7 +134,7 @@ fn a_change_of_the_journal_folder_the_format_or_the_excludes_is_refused() {
         journal_show_in_sidebar: Some(true),
         ..VaultConfigPatch::default()
     };
-    let settings = update_vault_settings(dir.path(), same).unwrap();
+    let settings = update_vault_settings(dir.path(), same, |_| {}).unwrap();
     assert!(settings.journal_show_in_sidebar);
     assert_eq!(stored(dir.path())["journalFolder"], "/diary/");
 }
@@ -163,4 +166,76 @@ fn an_update_reads_the_contracts_shape() {
             "journalShowInSidebar"
         ]
     );
+}
+
+/// A patch left empty once the unchanged journal fields are taken out changes nothing: the
+/// file is not rewritten and no window hears of it.
+#[test]
+fn a_patch_of_only_current_values_writes_and_announces_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::create_dir_all(dir.path().join(".memry")).unwrap();
+    let raw = br#"{"journalFolder":"/diary/"}"#;
+    fs::write(config_path(dir.path()), raw).unwrap();
+    let patch = VaultConfigPatch {
+        journal_folder: Some("diary/".to_owned()),
+        ..VaultConfigPatch::default()
+    };
+    let settings =
+        update_vault_settings(dir.path(), patch, |_| panic!("an empty patch announced")).unwrap();
+    assert_eq!(settings.journal_folder, "diary");
+    assert_eq!(fs::read(config_path(dir.path())).unwrap(), raw);
+}
+
+/// Two windows saving at once: each window hears the settings in the order the writes land, so
+/// the last announcement is what the file holds (Electron runs them one at a time on its main
+/// thread). A is held inside its announcement while B tries to write.
+#[test]
+fn overlapping_writes_announce_in_the_order_they_land() {
+    let dir = vault_with(json!({}));
+    let announced: Arc<Mutex<Vec<VaultConfig>>> = Arc::default();
+    let (a_announcing, a_is_announcing) = mpsc::channel();
+    let (b_finished, b_has_finished) = mpsc::channel::<()>();
+
+    let a = thread::spawn({
+        let root = dir.path().to_owned();
+        let announced = announced.clone();
+        move || {
+            let patch = VaultConfigPatch {
+                journal_show_in_sidebar: Some(true),
+                ..VaultConfigPatch::default()
+            };
+            update_vault_settings(&root, patch, |settings| {
+                a_announcing.send(()).unwrap();
+                // timing-bound: B gets this long to overtake A's announcement. Held off by the
+                // settings lock it cannot, and the wait runs out.
+                let _ = b_has_finished.recv_timeout(Duration::from_millis(300));
+                announced.lock().unwrap().push(settings.clone());
+            })
+            .unwrap();
+        }
+    });
+    a_is_announcing.recv().unwrap();
+    let b = thread::spawn({
+        let root = dir.path().to_owned();
+        let announced = announced.clone();
+        move || {
+            let patch = VaultConfigPatch {
+                default_note_folder: Some("inbox".to_owned()),
+                ..VaultConfigPatch::default()
+            };
+            update_vault_settings(&root, patch, |settings| {
+                announced.lock().unwrap().push(settings.clone());
+            })
+            .unwrap();
+            let _ = b_finished.send(());
+        }
+    });
+    a.join().unwrap();
+    b.join().unwrap();
+
+    let announced = announced.lock().unwrap();
+    assert_eq!(announced.len(), 2);
+    assert_eq!(announced[0].default_note_folder, "");
+    assert_eq!(announced[1], vault_settings(Some(dir.path())));
+    assert!(announced[1].journal_show_in_sidebar);
 }

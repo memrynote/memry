@@ -114,3 +114,22 @@ fn with_no_vault_open_a_read_answers_the_fallback_and_a_write_is_refused() {
     assert_eq!(refused["code"], "no_vault_open");
     assert!(heard.lock().unwrap().is_empty());
 }
+
+/// The journal folder again, in another spelling, is no change: nothing is written or sent.
+#[test]
+fn the_current_journal_folder_again_writes_and_sends_nothing() {
+    let (mocked, heard) = opened();
+    let before = fs::read(mocked.vault.join(".memry/config.json")).unwrap();
+    let answer = mocked
+        .invoke(
+            "vault_update_config",
+            json!({ "config": { "journalFolder": "Daily/" } }),
+        )
+        .unwrap();
+    assert_eq!(answer["journalFolder"], "Daily");
+    assert_eq!(
+        fs::read(mocked.vault.join(".memry/config.json")).unwrap(),
+        before
+    );
+    assert!(heard.lock().unwrap().is_empty());
+}

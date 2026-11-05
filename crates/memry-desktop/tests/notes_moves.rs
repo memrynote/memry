@@ -582,7 +582,7 @@ fn a_moved_note_s_relative_refs_follow_it() {
     assert_ne!(after, before);
     assert_eq!(e.read("archive/Plan.md"), after);
     let edited = e.drain().into_iter().any(|fact| {
-        matches!(&fact, Applied::Changed { note_id, path, source: ChangeSource::AppEdit, .. }
+        matches!(&fact, Applied::Changed { note_id, path, source: ChangeSource::LinkRewrite, .. }
             if *note_id == made.id && path == "archive/Plan.md")
     });
     assert!(edited, "no app edit of the moved note");

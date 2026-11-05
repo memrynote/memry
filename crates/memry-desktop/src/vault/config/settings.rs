@@ -13,9 +13,14 @@
 //! again is no change and passes.
 
 use std::path::Path;
+use std::sync::{Mutex, PoisonError};
 
 use super::{ConfigError, VaultConfig, VaultConfigPatch, read_vault_config, write_vault_config};
 use crate::vault::journal_format::{normalize_journal_date_format, normalize_journal_folder};
+
+/// One update at a time, from its first read to its announcement, as Electron's main thread
+/// runs them: two windows saving at once are heard in the order their writes land.
+static UPDATES: Mutex<()> = Mutex::new(());
 
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
@@ -35,7 +40,10 @@ pub fn vault_settings(root: Option<&Path>) -> VaultConfig {
             ..VaultConfig::default()
         };
     };
-    let config = read_vault_config(root);
+    normalized(read_vault_config(root))
+}
+
+fn normalized(config: VaultConfig) -> VaultConfig {
     VaultConfig {
         journal_folder: normalize_journal_folder(&config.journal_folder),
         journal_date_format: normalize_journal_date_format(&config.journal_date_format),
@@ -43,12 +51,15 @@ pub fn vault_settings(root: Option<&Path>) -> VaultConfig {
     }
 }
 
-/// `updateConfig`: writes `patch` (its journal fields normalized) and answers the settings
-/// after it. A field the patch gives its current value is left as stored.
+/// `updateConfig`: writes `patch` (its journal fields normalized), hands the settings after it
+/// to `announce` and answers them. A field the patch gives its current value is left as stored;
+/// a patch with nothing else writes and announces nothing.
 pub fn update_vault_settings(
     root: &Path,
     mut patch: VaultConfigPatch,
+    announce: impl FnOnce(&VaultConfig),
 ) -> Result<VaultConfig, SettingsError> {
+    let _one_at_a_time = UPDATES.lock().unwrap_or_else(PoisonError::into_inner);
     let current = vault_settings(Some(root));
     let folder = patch
         .journal_folder
@@ -65,8 +76,12 @@ pub fn update_vault_settings(
         patch.exclude_patterns.take(),
         &current.exclude_patterns,
     )?;
-    write_vault_config(root, &patch)?;
-    Ok(vault_settings(Some(root)))
+    if patch == VaultConfigPatch::default() {
+        return Ok(current);
+    }
+    let settings = normalized(write_vault_config(root, &patch)?);
+    announce(&settings);
+    Ok(settings)
 }
 
 fn refuse_change<T: PartialEq>(

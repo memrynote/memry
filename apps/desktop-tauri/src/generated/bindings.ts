@@ -363,8 +363,9 @@ export const commands = {
 	vaultSwitch: (path: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_switch", { path }),
 	/**
 	 *  `vault:update-config`: writes the fields `config` names and answers the settings after it,
-	 *  which every window hears as [`VaultConfigChangedEvent`]. A change that is not ported yet is
-	 *  refused as `config_change_not_ported` (`vault::config::settings`).
+	 *  which every window hears as [`VaultConfigChangedEvent`], in the order the writes land. A
+	 *  change that is not ported yet is refused as `config_change_not_ported`
+	 *  (`vault::config::settings`).
 	 */
 	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
 	/**  Drops every retained entry, on disk too. */

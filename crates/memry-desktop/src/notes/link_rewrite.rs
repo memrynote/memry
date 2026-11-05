@@ -13,7 +13,7 @@
 //!   turn into another link (a `|`, `]` or `#` in it) is left, and the log says so.
 //! - **How**: through [`AppEdit`] with [`Precondition::Held`], in each source's own write turn:
 //!   its document, then its file, then its row, then a note event the renderer takes as an
-//!   outside edit (`ChangeSource::AppEdit`), so an open editor shows the new link.
+//!   outside edit (`ChangeSource::LinkRewrite`), so an open editor shows the new link.
 //!
 //! The rename already happened, so nothing here fails it: a source that cannot be read, holds
 //! an outside edit not fed yet, or whose document is ahead of its file, keeps its links, and
@@ -106,7 +106,7 @@ impl NotesService {
                     edit.fail_next_feed();
                 }
                 self.order.run(note_id, |turn| {
-                    edit.run(turn, held, ChangeSource::AppEdit, |text| {
+                    edit.run(turn, held, ChangeSource::LinkRewrite, |text| {
                         Ok::<_, NotesError>(rewrite_note_refs_for_move(
                             text, &from.path, &to.path, options,
                         ))
@@ -193,10 +193,15 @@ impl NotesService {
         for source in sources {
             let mut found = FileRewrite::default();
             let rewritten = self.order.run(&source, |turn| {
-                edit.run(turn, Precondition::Held, ChangeSource::AppEdit, |text| {
-                    found = rewrite_file(text, note_id, from, to, claimed)?;
-                    Ok::<_, NotesError>(found.text.take())
-                })
+                edit.run(
+                    turn,
+                    Precondition::Held,
+                    ChangeSource::LinkRewrite,
+                    |text| {
+                        found = rewrite_file(text, note_id, from, to, claimed)?;
+                        Ok::<_, NotesError>(found.text.take())
+                    },
+                )
             });
             if found.skipped > 0 || found.frontmatter_kept {
                 tracing::warn!(

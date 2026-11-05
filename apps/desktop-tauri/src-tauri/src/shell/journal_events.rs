@@ -5,10 +5,13 @@
 //! `journal:entryDeleted`. A path is a day's when the vault's journal config names one for it
 //! (`extractJournalDate`).
 //!
-//! Only the watcher's facts send: the app's own saves send their events from their commands
-//! (`commands/journal.rs`), and an `external` update drops what an open editor has not saved,
-//! so the app's writes must never look like one. What the open walk found sends nothing, as for
-//! notes (`note_events`).
+//! Only the watcher's facts send, and the app's rewrite of a day's links to a renamed or moved
+//! note (`ChangeSource::LinkRewrite`), an `entryUpdated` as Electron's `landSourceRewrite` sends
+//! it, so the open day shows the new links. The app's own saves send their events from their
+//! commands (`commands/journal.rs`), and an `external` update drops what an open editor has not
+//! saved, so the app's writes must never look like one; nor do its other edits for the user
+//! (a template, a property), for which Electron sends no journal event. What the open walk
+//! found sends nothing, as for notes (`note_events`).
 //!
 //! A forwarder that fell behind sends one [`JournalEventsDroppedEvent`], on which the renderer
 //! refetches what it shows of the journal.
@@ -71,7 +74,7 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
         Applied::Changed {
             note_id,
             path,
-            source: ChangeSource::Watcher,
+            source: ChangeSource::Watcher | ChangeSource::LinkRewrite,
             ..
         } => (note_id, path, Change::Edited),
         Applied::Removed {

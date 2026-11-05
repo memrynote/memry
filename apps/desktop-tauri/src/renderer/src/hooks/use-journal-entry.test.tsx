@@ -355,6 +355,38 @@ describe('useJournalEntry dedicated hook', () => {
     expect(queryClient.getQueryData(['journal', 'entries', '2026-05-10'])).toBeNull()
   })
 
+  it('shows a dropped-event refetch of the open day in its editor when the text changed', async () => {
+    let dropped: (() => void) | null = null
+    const api = window.api as unknown as Record<string, ReturnType<typeof vi.fn>>
+    api.onJournalEventsDropped.mockImplementation((cb) => {
+      dropped = cb
+      return vi.fn()
+    })
+    const getEntry = window.api.journal.getEntry as ReturnType<typeof vi.fn>
+    const shown = createMockJournalEntry({ date: '2026-05-10', content: 'shown' })
+    getEntry.mockResolvedValue(shown)
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    const before = result.current.externalUpdateCount
+    const reads = () => getEntry.mock.calls.filter(([date]) => date === '2026-05-10').length
+
+    // Nothing changed: the editor keeps its cursor.
+    act(() => {
+      dropped?.()
+    })
+    await waitFor(() => expect(reads()).toBe(2))
+    expect(result.current.externalUpdateCount).toBe(before)
+
+    getEntry.mockResolvedValue(
+      createMockJournalEntry({ date: '2026-05-10', content: 'changed while missed' })
+    )
+    act(() => {
+      dropped?.()
+    })
+    await waitFor(() => expect(result.current.externalUpdateCount).toBe(before + 1))
+    expect(result.current.entry?.content).toBe('changed while missed')
+  })
+
   it('refetches the open day on dropped journal events, unless it holds unsaved text', async () => {
     let dropped: (() => void) | null = null
     const api = window.api as unknown as Record<string, ReturnType<typeof vi.fn>>
