@@ -259,6 +259,8 @@ describe('reminders service', () => {
 
     window = new MockBrowserWindow()
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
+    const { setMainWindow } = await import('../main-window')
+    setMainWindow(window)
   })
 
   afterEach(() => {
@@ -501,50 +503,32 @@ describe('reminders service', () => {
     })
   })
 
-  it('routes a notification click past a destroyed window to the first live one', () => {
+  it('routes a notification click to the app window, not another window listed before it', () => {
     seedNoteCache('note-1', 'Focus Note')
     seedReminder({
-      id: 'rem-destroyed',
+      id: 'rem-click',
       targetType: 'note',
       targetId: 'note-1',
       remindAt: '2000-01-01T00:00:00.000Z',
       status: reminderStatus.PENDING
     })
 
-    // getAllWindows() can still list a destroyed short-lived window (splash,
-    // quick capture, print/export). Real Electron throws 'Object has been
-    // destroyed' on any access to one, so taking windows[0] blindly kills the
-    // click handler and focuses nothing.
-    const destroyed = {
-      isDestroyed: () => true,
-      isMinimized(): never {
-        throw new Error('Object has been destroyed')
-      },
-      focus(): never {
-        throw new Error('Object has been destroyed')
-      },
-      get webContents(): never {
-        throw new Error('Object has been destroyed')
-      }
-    }
+    const sticky = new MockBrowserWindow()
     remindersService.startReminderScheduler()
     remindersService.stopReminderScheduler()
 
     const notification = notificationInstances[0]
     expect(notification).toBeDefined()
 
-    // The window dies between the banner being shown and the user clicking it.
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
-      destroyed as unknown as ElectronBrowserWindow,
-      window
-    ])
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([sticky, window])
 
-    expect(() => notification?.emit('click')).not.toThrow()
+    notification?.emit('click')
+    expect(sticky.webContents.send).not.toHaveBeenCalled()
     expect(window.focus).toHaveBeenCalled()
     expect(window.webContents.send).toHaveBeenCalledWith(
       ReminderChannels.events.CLICKED,
       expect.objectContaining({
-        reminder: expect.objectContaining({ id: 'rem-destroyed' })
+        reminder: expect.objectContaining({ id: 'rem-click' })
       })
     )
   })

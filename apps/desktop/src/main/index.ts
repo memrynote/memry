@@ -49,6 +49,7 @@ import {
   isTrayActive,
   showMainWindow
 } from './tray'
+import { getMainWindow, setMainWindow } from './main-window'
 import { autoOpenLastVault, closeVault, getLaunchVaultPath, isVaultSwitchInProgress } from './vault'
 import { loadEnvironmentConfig } from './env-config'
 import {
@@ -782,6 +783,7 @@ function createWindow(): void {
       webSecurity: true
     }
   })
+  setMainWindow(mainWindow)
   // Applied again after the window is shown: Windows can ignore maximize on a
   // still-hidden window, which is how a window closed while maximized used to
   // come back small. `applyStartupWindowMode` is idempotent.
@@ -820,7 +822,7 @@ function createWindow(): void {
 
   // Registered after the bounds flush so geometry is still persisted on a close
   // that the tray intercepts.
-  initTray({ getMainWindow: () => mainWindow })
+  initTray({ getMainWindow })
   mainWindow.on('close', (event) => handleMainWindowClose(event, mainWindow))
 
   const unsubscribeVaultStatus = onVaultStatusChanged((status) => {
@@ -1222,7 +1224,7 @@ function handleDeepLink(url: string): void {
       dimensions: { target }
     })
 
-    const mainWindow = BrowserWindow.getAllWindows()[0]
+    const mainWindow = getMainWindow()
     if (!mainWindow) return
 
     if (parsed.hostname === 'open') {
@@ -1253,28 +1255,21 @@ function handleDeepLink(url: string): void {
     }
 
     if (parsed.hostname === 'pair') {
-      // getMainI18n() throws until bootI18n() has run. That is only reachable when
-      // the sole window is the pre-boot install splash or the startup-error window,
-      // but it must not abort the handler: the restore/focus below has to run for
-      // every memry:// url, as it did before this dialog was localized.
-      try {
-        const i18n = getMainI18n()
-        const t = i18n.getFixedT(null, 'system')
-        void dialog
-          .showMessageBox(mainWindow, {
-            type: 'question',
-            buttons: [t('dialog.pair.buttonPair'), i18n.t('common:button.cancel')],
-            defaultId: 0,
-            cancelId: 1,
-            title: t('dialog.pair.title'),
-            message: t('dialog.pair.message')
-          })
-          .then(({ response }) => {
-            if (response === 0) openPairingWindow()
-          })
-      } catch (error) {
-        deepLinkLog.error('pair prompt skipped; i18n not ready:', error)
-      }
+      // The main window is created after bootI18n(), so getMainI18n() is ready here.
+      const i18n = getMainI18n()
+      const t = i18n.getFixedT(null, 'system')
+      void dialog
+        .showMessageBox(mainWindow, {
+          type: 'question',
+          buttons: [t('dialog.pair.buttonPair'), i18n.t('common:button.cancel')],
+          defaultId: 0,
+          cancelId: 1,
+          title: t('dialog.pair.title'),
+          message: t('dialog.pair.message')
+        })
+        .then(({ response }) => {
+          if (response === 0) openPairingWindow()
+        })
     }
 
     if (mainWindow.isMinimized()) mainWindow.restore()
@@ -1541,9 +1536,7 @@ const appReady = app.whenReady().then(async () => {
   })
 
   ipcMain.on('quick-capture:open-settings', (_event, section?: string) => {
-    const mainWindow = BrowserWindow.getAllWindows().find(
-      (win) => win !== quickCaptureWindow && !win.isDestroyed()
-    )
+    const mainWindow = getMainWindow()
 
     if (mainWindow) {
       if (mainWindow.isMinimized()) {

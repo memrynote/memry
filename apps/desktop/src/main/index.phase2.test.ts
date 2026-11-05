@@ -1617,6 +1617,33 @@ describe('main index phase2 exports', () => {
     expect(mainWindow.focus).toHaveBeenCalled()
   })
 
+  it('routes a deep link to the main window, not a sticky listed before it', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    const module = await importMainModule()
+    await flushReadyWork()
+    module.registerOAuthState('oauth-state')
+
+    const mainWindow = browserWindows[0]
+    const sticky = createBrowserWindowMock()
+    BrowserWindowMock.getAllWindows.mockImplementation(() => [sticky, mainWindow])
+
+    const openUrlHandler = appOnMock.mock.calls.find(([event]) => event === 'open-url')?.[1] as (
+      event: { preventDefault: () => void },
+      url: string
+    ) => void
+    openUrlHandler(
+      { preventDefault: vi.fn() },
+      'memry://oauth/callback?code=auth-code&state=oauth-state'
+    )
+
+    expect(sticky.webContents.send).not.toHaveBeenCalled()
+    expect(mainWindow.webContents.send).toHaveBeenCalledWith('auth:oauth-callback', {
+      code: 'auth-code',
+      state: 'oauth-state'
+    })
+  })
+
   it('handles OAuth deep links for registered states', async () => {
     whenReadyMock.mockResolvedValue(undefined)
 

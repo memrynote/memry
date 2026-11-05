@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { BrowserWindow } from 'electron'
 import { StickyChannels } from '@memry/contracts/sticky-api'
+import { setMainWindow } from '../main-window'
 
 type Handler = (...args: unknown[]) => void
 
@@ -173,12 +175,17 @@ describe('sticky window', () => {
   })
 
   it('reveals the app window for a send target, then tucks the sticky', () => {
+    // Quick Capture, listed before the app window.
+    const quickCapture = electron.makeWindow()
     const mainWindow = electron.makeWindow()
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fake covers every member sticky-window touches
+    setMainWindow(mainWindow as unknown as BrowserWindow)
     mainWindow.isMinimized.mockReturnValueOnce(true)
     mainWindow.isVisible.mockReturnValueOnce(false)
 
     showStickyWindow(null)
     openStickyTargetInMainWindow({ kind: 'task', targetId: 'task-1' })
+    expect(quickCapture.webContents.send).not.toHaveBeenCalled()
     expect(mainWindow.restore).toHaveBeenCalled()
     expect(mainWindow.show).toHaveBeenCalled()
     expect(mainWindow.webContents.send).toHaveBeenCalledWith(
