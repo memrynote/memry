@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::{IndexProgress, Indexer, TaskHandle, task_channel};
 use memry_desktop::session::OpenVault;
 use memry_desktop::session::projection::CancelToken;
@@ -41,6 +42,56 @@ pub fn note_text(i: usize) -> String {
 
 pub fn path_of(i: usize) -> String {
     format!("f{}/Note {i}.md", i % 10)
+}
+
+/// A fully written note of about 2 KB, shaped like the `pnpm seed1k` vault's (Electron's
+/// `seed-data/bulk-notes.ts`): frontmatter with tags and user properties, headings,
+/// paragraphs, a list, a callout, a table, a code block, numbered and task lists, wiki links
+/// and inline tags.
+pub fn written_note_text(i: usize) -> String {
+    let topic = ["design", "engineering", "research", "ops", "writing"][i % 5];
+    let mut text = format!(
+        "---\ntags:\n  - {topic}\n  - area{}\nstatus: active\npriority: low\nowner: Marta\nrating: {}\n---\n",
+        i % 12,
+        i % 5
+    );
+    text.push_str(&format!(
+        "This is the working set of notes on {topic} item {i}. Nothing here is final yet.\n\n\
+         ## Context\n\n\
+         Kept a review checklist alongside this so the claim is checkable rather than \
+         remembered. Left a note for the review so the next pass does not start from scratch. \
+         It held up under a second read, which is more than the previous version managed.\n\n\
+         - Prefer the boring option until there is a measurement that argues otherwise\n\
+         - The sidebar animates a property that forces a repaint\n\
+         - Produce an annotated screenshot set before the next review\n\
+         - Revisit after two weeks of real use, not after one afternoon\n\n\
+         ## Audit\n\n\
+         The part worth remembering is that the surface is fine at the default size and \
+         breaks at the largest one. Measured the count before and after; the difference was \
+         large enough to keep the change.\n\n\
+         > [!info]\n> The numbers here come from a single machine. Treat them as directional.\n\n\
+         | Item | Owner | State |\n| --- | --- | --- |\n\
+         | a spec | a fresh pair of eyes | review |\n\
+         | a token table | the accessibility check | done |\n\
+         | a screenshot set | the accessibility check | active |\n\n\
+         ### Reference\n\n\
+         ```css\n:root {{\n  --space-1: 4px;\n  --space-2: 8px;\n  --radius-card: 10px;\n}}\n```\n\n\
+         ## Open questions\n\n\
+         1. Does this still hold up in the right-to-left layout?\n\
+         2. Which of these tokens is actually used more than once?\n\
+         3. Is the restraint here reading as calm or as unfinished?\n\n\
+         ## Next\n\n\
+         - [x] Produce a spec before the next review\n\
+         - [ ] Write down the assumption instead of re-deriving it every time\n\
+         - [ ] Check with a fresh pair of eyes before changing the default\n\n\
+         ## Links\n\n\
+         - [[Note {}]]\n- [[Note {}]]\n- https://example.com/reference\n\n\
+         #{topic} #area{}\n",
+        (i + 1) % 1000,
+        (i + 7) % 1000,
+        i % 12
+    ));
+    text
 }
 
 /// A vault of `count` notes with their records and rows, as a closed app leaves it.
@@ -79,6 +130,16 @@ pub fn seeded(count: usize) -> (Env, Arc<dyn SecureStore>, Vec<(String, String)>
     }
     e.close();
     (e, store, notes)
+}
+
+/// A vault of `count` files the app has never seen, `text(i)` at [`path_of`]`(i)`, its files
+/// named by the notes identity.
+pub fn fresh(count: usize, text: fn(usize) -> String) -> Env {
+    let e = env(|store| Some(NotesIdentity::new(store)));
+    for i in 0..count {
+        e.write(&path_of(i), &text(i));
+    }
+    e
 }
 
 pub fn until(what: &str, mut done: impl FnMut() -> bool) {

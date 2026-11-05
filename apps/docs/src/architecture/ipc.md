@@ -145,3 +145,29 @@ Two main-process handshakes need an _answer_ from one specific window rather tha
 **Scope every reply to its request.** `mainToRendererInvoke` gives each call its own response channel (`main:invoke:response:<uuid>`); the flush handshake shares one `app:flush-done` channel and carries the request id in the payload. Both then also compare `event.sender` against the window that was asked. Without the sender check a renderer could answer on another window's behalf — for the flush that means a window gets torn down with unsaved edits still in flight. A reply from an unexpected sender is dropped, never treated as a settled answer.
 
 **Never leave a listener behind, and never scale listener count with window count.** Node warns (`MaxListenersExceededWarning`) past ten listeners on a single channel, so the flush keeps one shared `app:flush-done` listener plus a map of pending request ids: it attaches when the first flush starts and detaches when the last one settles, whether that was a reply or the 2 s timeout. A per-call listener is fine on a per-request channel, but it has to be released on every exit path — `mainToRendererInvoke` drops its listener on reply, on timeout, and as soon as the target `webContents` is destroyed, so a window closed mid-call resolves `null` right away instead of parking a listener for the rest of the timeout.
+
+## Tauri app
+
+The Tauri app (`apps/desktop-tauri`) has no preload and no Zod check at the boundary. The renderer calls generated functions, `commands.*` in `src/generated/bindings.ts`, and each one invokes a `#[tauri::command]` in `src-tauri/src/commands/<domain>.rs`. A command parses its arguments, calls one service method in `crates/memry-desktop` and maps the error. `pnpm ipc:generate` writes the bindings from the Rust types, and `pnpm ipc:check` fails when they are stale. [Desktop on Tauri](/contribute/desktop-tauri#add-a-command) shows how to add a command.
+
+A command name is the Electron channel name with `:` and `-` turned into `_` and camelCase into snake_case: `notes:set-local-only` is `notes_set_local_only`, and `journal:getEntry` is `journal_get_entry`. The renderer's services (`src/renderer/src/services/notes-service.ts`, `journal-service.ts`, `tags-service.ts` and the others) keep the Electron method names and shapes, so components did not change. A call no step has ported yet still goes to `window.api`, which rejects it with `NotPortedError`.
+
+A failed command throws `CommandError { kind, code, message }`. `extractErrorMessage` reads it, and `lib/ipc-error.ts` maps known codes to translated text, for example `note_too_large_to_sync` and `note_edit_kept`.
+
+### Notes, folders and journal
+
+The notes domain is split by module: `notes.rs`, `folders.rs`, `journal.rs`, `properties.rs`, `property_definitions.rs`, `tags.rs`, `templates.rs`, `custom_icons.rs`, `unsplash.rs`, `vault_index.rs` and `vault_files.rs`. What the services do is in [Notes and Folders (Tauri)](/architecture/notes-and-folders).
+
+An event carries ids and small hints, and the renderer refetches what it shows. The note events (`NoteCreatedEvent`, `NoteUpdatedEvent`, `NoteDeletedEvent`, `NoteRenamedEvent`, `NoteMovedEvent`) have one sender, `src-tauri/src/shell/note_events.rs`. It turns the vault tier's row facts into events, so a note the app created and a file that appeared in Finder go out the same way. The fact's change source decides the event's `source`:
+
+| Change source | Cause                                                                        | Event                                                                                                            |
+| ------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `Save`        | The editor's save                                                            | `NoteUpdatedEvent`, source `internal`                                                                            |
+| `AppEdit`     | An edit the app makes outside the editor (a link rewrite, a template apply)  | `NoteUpdatedEvent`, source `external`, so an open editor shows it                                                |
+| `Watcher`     | A change made outside the app                                                | Sent, source `external`                                                                                          |
+| `App`         | The app created, removed or renamed the file, or the write-back wrote a body | Create, delete and rename go out with source `internal`. A body write (`Changed`) sends nothing.                 |
+| `Walk`        | What the open walk found                                                     | None. The index pass after the walk sends `VaultIndexProgressEvent`, and the renderer refetches its lists on it. |
+
+When the forwarder falls behind, it sends one `NoteEventsDroppedEvent` in place of the facts it missed, and the renderer refetches its note lists, its tags and every note it shows. Electron has no such event, because it sends every event.
+
+Journal events follow the same rules in `shell/journal_events.rs`, but only for changes made outside the app. The app's own day saves send `JournalEntryUpdatedEvent` from their command, because an `external` update drops what an open editor has not saved. `JournalEventsDroppedEvent` is the journal's dropped-events signal.

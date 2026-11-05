@@ -165,6 +165,16 @@ impl Vault {
         crate::api::tag_hub::TagHub::over(self.db.clone(), &store)
     }
 
+    /// The tag rename in progress ([`crate::domain::tag_rename::read`], desktop Step 13j); a
+    /// read, so no identity. Not part of the FFI surface: the Rust desktop shell is its only
+    /// caller.
+    #[doc(hidden)]
+    pub fn tag_rename_recorded(
+        &self,
+    ) -> Result<Option<crate::domain::tag_rename::Recorded>, StorageError> {
+        self.db.read_blocking(crate::domain::tag_rename::read)
+    }
+
     /// The tag hub's categories with their tag counts (desktop Step 13j); a read, so no
     /// identity. Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[doc(hidden)]

@@ -78,7 +78,8 @@ use memry_core::seams::secure_store::SecureStore;
 use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::converter_of;
 use crate::vault::consumer::identity::{
-    Adoption, Candidate, Crossed, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
+    Adoption, Candidate, Crossed, IdentityCtx, IdentityError, NewFile, NoteIdentity, Removal,
+    Rename,
 };
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
@@ -86,6 +87,7 @@ use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
 
 mod file;
+mod new_files;
 mod properties;
 mod tags;
 
@@ -417,6 +419,18 @@ impl NoteIdentity for NotesIdentity {
             properties::found(&writer, ctx, self.store.clone(), id, text)?;
         }
         Ok(self.adoption(adopted, ctx.root))
+    }
+
+    fn may_be_new(&self, ctx: &IdentityCtx<'_>, files: &[Candidate<'_>]) -> Vec<bool> {
+        new_files::may_be_new(self, ctx, files)
+    }
+
+    fn adopt_new_files(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        files: &[NewFile<'_>],
+    ) -> Result<Vec<bool>, IdentityError> {
+        new_files::adopt(self, ctx, files)
     }
 
     fn on_removed(

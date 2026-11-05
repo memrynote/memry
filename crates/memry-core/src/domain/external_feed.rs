@@ -361,13 +361,16 @@ fn author(
     Ok(FeedOutcome::Fed)
 }
 
-/// The body a new note gets from its file's text, authored without the database.
+/// The body a new note gets from its file's text, authored without the database. Only
+/// [`first_body`] makes one, so the note it was authored for and its client id are the ones
+/// the transaction that stores it checks ([`super::notes::new_files::adopt_new`]).
 pub struct FirstBody {
+    /// The id of the note the updates were authored for.
+    pub(crate) note_id: String,
     /// The Yjs client id the updates were authored under: this device's for a document it
-    /// never purged ([`epoch::client_id`] at epoch 0), which the transaction that stores them
-    /// checks.
-    pub client_id: u64,
-    pub updates: Vec<Vec<u8>>,
+    /// never purged ([`epoch::client_id`] at epoch 0).
+    pub(crate) client_id: u64,
+    pub(crate) updates: Vec<Vec<u8>>,
 }
 
 /// What [`seed_body_if_empty`] writes into the empty document of a note this device just
@@ -410,7 +413,11 @@ pub fn first_body(
     updates
         .iter()
         .all(|update| rides_as_one_update(update))
-        .then_some(FirstBody { client_id, updates })
+        .then(|| FirstBody {
+            note_id: input.note_id.to_owned(),
+            client_id,
+            updates,
+        })
 }
 
 /// A sink that keeps every update a write authors, for the caller to store.

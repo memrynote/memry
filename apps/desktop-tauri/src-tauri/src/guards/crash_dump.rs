@@ -7,8 +7,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{ChildStdin, Command, Stdio};
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::{Duration, SystemTime};
 
 use crash_handler::{CrashEventResult, CrashHandler, make_crash_event};
@@ -34,37 +34,58 @@ static MONITOR_STDIN: OnceLock<ChildStdin> = OnceLock::new();
 
 struct Monitor {
     dir: PathBuf,
+    /// The dump being written. minidumper's write error carries no path, so a failed write
+    /// removes its partial file through this.
+    writing: Mutex<Option<PathBuf>>,
 }
 
 impl ServerHandler for Monitor {
+    /// The dump is written under a partial name; `on_minidump_created` names it `.dmp` once whole.
     fn create_minidump_file(&self) -> Result<(fs::File, PathBuf), std::io::Error> {
         fs::create_dir_all(&self.dir)?;
-        let path = crash_dumps::new_path(&self.dir);
-        Ok((fs::File::create(&path)?, path))
+        let path = crash_dumps::new_partial_path(&self.dir);
+        let file = fs::File::create(&path)?;
+        *self.writing.lock().unwrap_or_else(PoisonError::into_inner) = Some(path.clone());
+        Ok((file, path))
     }
 
     fn on_minidump_created(&self, result: Result<MinidumpBinary, minidumper::Error>) -> LoopAction {
-        match result {
-            Ok(dump) => eprintln!("crash monitor: wrote {}", dump.path.display()),
-            Err(error) => eprintln!("crash monitor: could not write a minidump: {error}"),
+        let writing = self
+            .writing
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+        let dump = match result {
+            Ok(dump) => dump,
+            Err(error) => {
+                eprintln!("crash monitor: could not write a minidump: {error}");
+                if let Some(partial) = writing
+                    && let Err(error) = fs::remove_file(&partial)
+                {
+                    eprintln!(
+                        "crash monitor: could not remove {}: {error}",
+                        partial.display()
+                    );
+                }
+                return LoopAction::Continue;
+            }
+        };
+        drop(dump.file);
+        match crash_dumps::complete(&dump.path) {
+            Ok(path) => eprintln!("crash monitor: wrote {}", path.display()),
+            Err(error) => eprintln!(
+                "crash monitor: could not name {} a dump: {error}",
+                dump.path.display()
+            ),
         }
         LoopAction::Continue
     }
 
     fn on_message(&self, _kind: u32, _buffer: Vec<u8>) {}
-
-    /// The app is gone, crashed or not: the monitor has nothing left to serve.
-    fn on_client_disconnected(&self, num_clients: usize) -> LoopAction {
-        if num_clients == 0 {
-            LoopAction::Exit
-        } else {
-            LoopAction::Continue
-        }
-    }
 }
 
 /// `main` calls this first. When the process was started as the monitor it serves dump requests
-/// until the app disconnects, and returns the exit code; otherwise it returns `None`.
+/// until the app is gone, and returns the exit code; otherwise it returns `None`.
 pub fn monitor_entry() -> Option<i32> {
     let mut args = std::env::args().skip(1);
     if args.next().as_deref() != Some(MONITOR_SWITCH) {
@@ -81,17 +102,21 @@ pub fn monitor_entry() -> Option<i32> {
             return Some(1);
         }
     };
-    // A client disconnect ends the monitor only after the app connected. An app that ends before
-    // that (a quit or a kill during the boot) is seen through stdin instead. A dump in progress is
-    // still finished: `Server::run` reads the flag only between events, never while it writes a
-    // dump, so stdin closing mid-dump (on macOS the client stops waiting for the ack after 5 s)
-    // ends the monitor only once the dump is written.
+    // The app holds stdin open for its whole life, so stdin closing is the one sign the app is
+    // gone, however it ended. A client disconnect is not: a connect attempt that fails halfway (on
+    // macOS, before the Mach service the server registers after the socket file) also connects
+    // and leaves. A dump in progress is still finished: `Server::run` reads the flag only between
+    // events, never while it writes a dump, so stdin closing mid-dump (on macOS the client stops
+    // waiting for the ack after 5 s) ends the monitor only once the dump is written.
     static APP_GONE: AtomicBool = AtomicBool::new(false);
     std::thread::spawn(|| {
         let _ = std::io::copy(&mut std::io::stdin(), &mut std::io::sink());
         APP_GONE.store(true, Ordering::Relaxed);
     });
-    let handler = Box::new(Monitor { dir: dir.into() });
+    let handler = Box::new(Monitor {
+        dir: dir.into(),
+        writing: Mutex::default(),
+    });
     match server.run(handler, &APP_GONE, Some(STALE_TIMEOUT)) {
         Ok(()) => Some(0),
         Err(error) => {
@@ -205,7 +230,7 @@ fn attach(socket: &Path) {
         if client.ping().is_err() {
             tracing::warn!(
                 scope = "CrashDump",
-                "the crash monitor is gone; crashes leave no dump"
+                "lost the crash monitor (it ended, or dropped this app after a minute without a ping); crashes leave no dump"
             );
             return;
         }
@@ -224,4 +249,31 @@ pub fn simulate_crash() -> bool {
     #[cfg(any(windows, target_os = "macos"))]
     let _ = handler.simulate_exception(None);
     std::process::abort()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failed_write_leaves_no_partial_dump() {
+        let tmp = tempfile::tempdir().expect("temp dir");
+        let dir = tmp.path().join("crash-dumps");
+        let monitor = Monitor {
+            dir: dir.clone(),
+            writing: Mutex::default(),
+        };
+        let (_file, partial) = monitor
+            .create_minidump_file()
+            .expect("create the dump file");
+        assert!(partial.exists());
+
+        monitor.on_minidump_created(Err(minidumper::Error::ProtocolError("write failed")));
+
+        assert_eq!(
+            fs::read_dir(&dir).expect("list").count(),
+            0,
+            "left {partial:?}"
+        );
+    }
 }

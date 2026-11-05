@@ -92,8 +92,6 @@ mod journal_rename;
 mod journal_service;
 #[path = "journal_update.rs"]
 mod journal_update;
-#[path = "logging.rs"]
-mod logging;
 #[path = "logship.rs"]
 mod logship;
 #[path = "move_dir.rs"]
@@ -142,6 +140,8 @@ mod notes_outside_tags;
 mod notes_properties;
 #[path = "notes_service.rs"]
 mod notes_service;
+#[path = "notes_tag_rename.rs"]
+mod notes_tag_rename;
 #[path = "notes_tag_template.rs"]
 mod notes_tag_template;
 #[path = "notes_update.rs"]
