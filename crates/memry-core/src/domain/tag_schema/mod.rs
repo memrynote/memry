@@ -226,3 +226,7 @@ mod tests;
 #[cfg(test)]
 #[path = "save_tests.rs"]
 mod save_tests;
+
+#[cfg(test)]
+#[path = "sync_tests.rs"]
+mod sync_tests;

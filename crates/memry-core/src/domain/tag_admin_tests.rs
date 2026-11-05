@@ -135,6 +135,28 @@ fn delete_removes_it_everywhere_and_colour_icon_create_a_definition() {
     .expect("defs");
 }
 
+/// A palette colour is no one's choice: a peer that already holds the tag keeps its own colour
+/// only when the definition says so (`getOrCreateTag`, `tag-definition-handler.ts`).
+#[test]
+fn a_definition_created_on_the_default_colour_says_the_colour_is_not_authored() {
+    let (db, _d) = vault("tags-default-colour");
+    db.call_blocking(|c| {
+        set_icon(c, "ideas", Some("💡"), "phone", NOW + 1)?;
+        let def = live_definition(c, "ideas")?.expect("ideas");
+        assert_eq!(def["color"], json!(default_color("ideas")));
+        assert_eq!(def["colorAuthored"], json!(false));
+
+        set_color(c, "work", "sage", "phone", NOW + 2)?;
+        assert_eq!(
+            live_definition(c, "work")?.expect("work")["colorAuthored"],
+            json!(true),
+            "a colour the user picked on create is authored"
+        );
+        Ok(())
+    })
+    .expect("defs");
+}
+
 #[test]
 fn unicode_variants_count_as_one_tag_and_their_definitions_converge() {
     let dir = temp_dir("tags-unicode-defs");
