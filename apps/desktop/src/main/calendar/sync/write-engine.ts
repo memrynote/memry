@@ -11,6 +11,8 @@ import {
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
 } from '../../sync/local-mutations'
+import { createLogger } from '../../lib/logger'
+import { shouldEmitThrottled } from '../../telemetry/throttle'
 import { recordExternalTaskUpdate } from '../../tasks/activity-log'
 import { publishProjectionEvent } from '../../projections'
 import { CALENDAR_EVENT_SYNCABLE_FIELDS } from '../field-merge-calendar'
@@ -18,7 +20,8 @@ import { emitCalendarChanged, emitCalendarProjectionChanged } from '../change-ev
 import {
   mapGoogleEventToCalendarEventChanges,
   mapGoogleEventToReminderAt,
-  mapGoogleEventToTaskSchedule
+  mapGoogleEventToTaskSchedule,
+  taskScheduleProblem
 } from '../google/mappers'
 import { loadSourceAsGoogleEvent, pushEventWithConflictRetry } from '../google/push-conflict-retry'
 import {
@@ -67,6 +70,10 @@ export function assertProviderWritable(providerId: string): void {
   if (!providerCapabilities(providerId).supportsWrite) throw new ProviderReadOnlyError(providerId)
 }
 
+const log = createLogger('Calendar:WriteEngine')
+
+const UNSCHEDULABLE_TASK_WARN_MS = 24 * 60 * 60 * 1000
+
 function getNow(): string {
   return new Date().toISOString()
 }
@@ -97,7 +104,25 @@ export function shouldSourceBeOnCalendar(db: DataDb, target: CalendarSyncTarget)
 
     case 'task': {
       const row = db.select().from(tasks).where(eq(tasks.id, target.sourceId)).get()
-      return Boolean(row && !row.archivedAt && !row.completedAt && row.dueDate)
+      if (!row || row.archivedAt || row.completedAt || !row.dueDate) return false
+      // A schedule that cannot become an event is skipped, not pushed: Google
+      // answers it with a 400 that no retry can fix, and every local change
+      // would send it again.
+      const problem = taskScheduleProblem(row)
+      if (problem) {
+        if (
+          shouldEmitThrottled(`calendar:unschedulable_task:${row.id}`, UNSCHEDULABLE_TASK_WARN_MS)
+        ) {
+          log.warn('Skipping calendar push for a task whose schedule is not a valid event', {
+            taskId: row.id,
+            problem,
+            dueDate: row.dueDate,
+            dueTime: row.dueTime
+          })
+        }
+        return false
+      }
+      return true
     }
 
     case 'reminder': {

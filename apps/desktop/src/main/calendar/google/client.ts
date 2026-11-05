@@ -416,7 +416,11 @@ async function refreshAccessToken(accountId: string): Promise<string> {
   return promise
 }
 
-async function throwCalendarApiFailure(response: Response, operation: string): Promise<never> {
+async function throwCalendarApiFailure(
+  response: Response,
+  operation: string,
+  requestContext?: Record<string, unknown>
+): Promise<never> {
   const raw = await response.text().catch(() => '')
   let apiStatus: string | undefined
   let apiMessage: string | undefined
@@ -436,7 +440,8 @@ async function throwCalendarApiFailure(response: Response, operation: string): P
     apiStatus,
     apiReason,
     apiMessage,
-    body: raw.slice(0, 500)
+    body: raw.slice(0, 500),
+    ...requestContext
   })
   const error = new Error(
     userMessageForCalendarApiError({ status: response.status, apiStatus })
@@ -666,7 +671,15 @@ export function createGoogleCalendarClient(
       })
 
       if (!response.ok) {
-        await throwCalendarApiFailure(response, 'upsert Google calendar event')
+        // A 400 is Google refusing the values we sent, and its message does not
+        // say which. start/end carry no title or description.
+        await throwCalendarApiFailure(
+          response,
+          'upsert Google calendar event',
+          response.status === 400
+            ? { requestStart: payload.start, requestEnd: payload.end }
+            : undefined
+        )
       }
 
       return mapRemoteEvent(input.calendarId, GoogleEventSchema.parse(await response.json()))

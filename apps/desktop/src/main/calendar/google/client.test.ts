@@ -1003,6 +1003,77 @@ describe('google calendar client — push channels (Task 7)', () => {
       expect(bodies[1]).not.toHaveProperty('colorId')
     })
 
+    it('#given Google answers an upsert with 400 #when it fails #then logs only the request start/end and throws the rejected-item message', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: { code: 400, message: 'Invalid start time.', status: 'INVALID_ARGUMENT' }
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      await expect(
+        client.upsertEvent({
+          calendarId: 'primary',
+          eventId: null,
+          event: {
+            sourceType: 'task',
+            sourceId: 'task-1',
+            title: 'Private title',
+            description: 'Private description',
+            location: null,
+            startAt: '2026-05-10T10:00:00.000Z',
+            endAt: null,
+            isAllDay: false,
+            timezone: 'UTC',
+            recurrence: null
+          }
+        })
+      ).rejects.toMatchObject({ message: 'googleCalendar.requestRejected', status: 400 })
+
+      const errorCall = loggerMock.error.mock.calls.find(
+        ([message]) => message === 'Failed to upsert Google calendar event'
+      )
+      expect(errorCall?.[1]).toMatchObject({
+        status: 400,
+        apiMessage: 'Invalid start time.',
+        requestStart: { dateTime: '2026-05-10T10:00:00.000Z', timeZone: 'UTC' },
+        requestEnd: { dateTime: '2026-05-10T10:00:00.000Z', timeZone: 'UTC' }
+      })
+      expect(JSON.stringify(errorCall)).not.toContain('Private')
+    })
+
+    it('#given a non-400 upsert failure #when it fails #then the request start/end is not logged', async () => {
+      fetchMock.mockResolvedValueOnce(new Response('nope', { status: 500 }))
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      await expect(
+        client.upsertEvent({
+          calendarId: 'primary',
+          eventId: null,
+          event: {
+            sourceType: 'task',
+            sourceId: 'task-1',
+            title: 'T',
+            description: null,
+            location: null,
+            startAt: '2026-05-10T10:00:00.000Z',
+            endAt: null,
+            isAllDay: false,
+            timezone: 'UTC',
+            recurrence: null
+          }
+        })
+      ).rejects.toMatchObject({ status: 500 })
+
+      const errorCall = loggerMock.error.mock.calls.find(
+        ([message]) => message === 'Failed to upsert Google calendar event'
+      )
+      expect(errorCall?.[1]).not.toHaveProperty('requestStart')
+    })
+
     it('covers delete tolerances and watch expiration fallback', async () => {
       fetchMock
         .mockResolvedValueOnce(new Response(null, { status: 404 }))

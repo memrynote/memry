@@ -128,7 +128,8 @@
     "misconfigured": "Google Calendar is not configured correctly. Please contact support if this keeps happening.",
     "scopeMissing": "We couldn't access your Google Calendar because Calendar permission wasn't granted. Please try again and make sure the Calendar checkbox stays ticked on the Google consent screen.",
     "accessDenied": "Google Calendar access was declined. You can connect again whenever you are ready.",
-    "temporarilyUnavailable": "Google Calendar is temporarily unavailable. Please try again shortly."
+    "temporarilyUnavailable": "Google Calendar is temporarily unavailable. Please try again shortly.",
+    "requestRejected": "Google rejected this item. Check its date and time, then try again."
   },
   "agent": {
     "runtimeStarting": "Agent runtime is starting. Try again.",

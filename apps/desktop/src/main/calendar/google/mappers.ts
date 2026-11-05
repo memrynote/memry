@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util'
+import { isCalendarDate } from '@memry/contracts/calendar-date'
 import type {
   CalendarExternalEvent,
   NewCalendarExternalEvent
@@ -63,6 +64,29 @@ function toTimeZoneDateParts(
     hour: get('hour'),
     minute: get('minute')
   }
+}
+
+const TASK_DUE_TIME = /^(\d{1,2}):(\d{2})(?::\d{2})?$/
+
+/**
+ * Why a task's stored schedule cannot become a calendar event, or null when it
+ * can. Sync, the Rust core, and inbox filing store `dueDate`/`dueTime` as
+ * unchecked strings, and the conversions below turn a bad one into a payload
+ * Google rejects: a day the calendar lacks goes out as an all-day `date`
+ * verbatim, a year past 9999 becomes a `+010000-...` dateTime, and a year under
+ * 100 is read as 19xx by `new Date`.
+ */
+export function taskScheduleProblem(
+  row: Pick<typeof tasks.$inferSelect, 'dueDate' | 'dueTime'>
+): string | null {
+  if (!row.dueDate) return 'no due date'
+  if (!isCalendarDate(row.dueDate)) return 'dueDate is not a real calendar date'
+  if (!row.dueTime) return null
+  const time = TASK_DUE_TIME.exec(row.dueTime)
+  if (!time || Number(time[1]) > 23 || Number(time[2]) > 59) {
+    return 'dueTime is not a valid time of day'
+  }
+  return null
 }
 
 function toLocalDateTime(dateStr: string, timeStr: string | null): string {
@@ -173,8 +197,9 @@ export function mapCalendarEventToGoogleInput(
 export function mapTaskToGoogleInput(
   row: typeof tasks.$inferSelect
 ): GoogleCalendarUpsertEventInput {
-  if (!row.dueDate) {
-    throw new Error(`Task ${row.id} is not scheduled on the calendar`)
+  const problem = taskScheduleProblem(row)
+  if (problem || !row.dueDate) {
+    throw new Error(`Task ${row.id} cannot be a calendar event: ${problem ?? 'no due date'}`)
   }
 
   const isAllDay = !row.dueTime

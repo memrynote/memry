@@ -4,7 +4,8 @@ import {
   mapGoogleEventToCalendarEventChanges,
   mapGoogleEventToExternalEventRecord,
   mapGoogleEventToTaskSchedule,
-  mapTaskToGoogleInput
+  mapTaskToGoogleInput,
+  taskScheduleProblem
 } from './mappers'
 import { eventToICalendar, icalToRemoteEvent } from '../ical/ical-write'
 import type { tasks } from '@memry/db-schema/schema/tasks'
@@ -334,5 +335,49 @@ describe('all-day task push → CalDAV → pull keeps the due date', () => {
     })
 
     expect(schedule).toEqual({ dueDate: '2026-06-11', dueTime: null })
+  })
+})
+
+describe('task schedules that cannot become a Google event', () => {
+  function scheduled(dueDate: string | null, dueTime: string | null): typeof tasks.$inferSelect {
+    return {
+      id: 'task-1',
+      title: 'Task',
+      description: null,
+      dueDate,
+      dueTime
+    } as typeof tasks.$inferSelect
+  }
+
+  it.each([
+    ['a day the calendar lacks', '2026-02-30', null],
+    ['a day the calendar lacks, timed', '2026-02-30', '09:30'],
+    ['a year past 9999', '10000-01-01', '09:30'],
+    ['a year under 100', '0026-05-10', '09:30'],
+    ['year zero, all-day', '0000-01-01', null],
+    ['an unpadded date', '2026-5-10', null],
+    ['a date with a time part', '2026-05-10T09:00', null],
+    ['an hour past 23', '2026-05-10', '24:00'],
+    ['a minute past 59', '2026-05-10', '12:60'],
+    ['a 12-hour time', '2026-05-10', '9:30 PM'],
+    ['a time without a colon', '2026-05-10', '0930']
+  ])('refuses %s instead of building a payload', (_label, dueDate, dueTime) => {
+    expect(taskScheduleProblem(scheduled(dueDate, dueTime))).not.toBeNull()
+    expect(() => mapTaskToGoogleInput(scheduled(dueDate, dueTime))).toThrow(
+      /cannot be a calendar event/
+    )
+  })
+
+  it.each([
+    ['all-day', '2026-05-10', null],
+    ['all-day with an empty time', '2026-05-10', ''],
+    ['HH:mm', '2026-05-10', '09:30'],
+    ['H:mm', '2026-05-10', '9:30'],
+    ['HH:mm:ss', '2026-05-10', '09:30:00'],
+    ['midnight', '2026-05-10', '00:00'],
+    ['the last minute of the day', '2026-05-10', '23:59']
+  ])('keeps pushing %s tasks', (_label, dueDate, dueTime) => {
+    expect(taskScheduleProblem(scheduled(dueDate, dueTime))).toBeNull()
+    expect(() => mapTaskToGoogleInput(scheduled(dueDate, dueTime))).not.toThrow()
   })
 })
