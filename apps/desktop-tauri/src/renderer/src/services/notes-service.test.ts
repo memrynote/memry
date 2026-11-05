@@ -58,6 +58,7 @@ const events = vi.hoisted(() => {
     noteRenamedEvent: event('renamed'),
     noteMovedEvent: event('moved'),
     noteTagsChangedEvent: event('tags'),
+    folderConfigUpdatedEvent: event('folderConfig'),
     noteEventsDroppedEvent: event('dropped')
   }
 })
@@ -859,16 +860,23 @@ describe('notes-service', () => {
     await vi.waitFor(() => expect(listeners.has('moved')).toBe(false))
   })
 
-  it('registers the note event subscriptions not yet ported on window.api', () => {
+  it('hands on a folder that sync changed or removed', async () => {
+    const updated = vi.fn()
+    const stop = onFolderConfigUpdated(updated)
+    await vi.waitFor(() => expect(listeners.has('folderConfig')).toBe(true))
+    listeners.get('folderConfig')?.({ payload: { path: 'Work/Plans' } })
+    expect(updated).toHaveBeenCalledWith({ path: 'Work/Plans' })
+    stop()
+    await vi.waitFor(() => expect(listeners.has('folderConfig')).toBe(false))
+  })
+
+  it('registers the note event subscription not yet ported on window.api', () => {
     const unsubscribe = vi.fn()
     api.onNoteExternalChange = vi.fn(() => unsubscribe)
-    api.onFolderConfigUpdated = vi.fn(() => unsubscribe)
     const handler = vi.fn()
 
     expect(onNoteExternalChange(handler)).toBe(unsubscribe)
     expect(api.onNoteExternalChange).toHaveBeenCalledWith(handler)
-    expect(onFolderConfigUpdated(handler)).toBe(unsubscribe)
-    expect(api.onFolderConfigUpdated).toHaveBeenCalledWith(handler)
   })
 
   describe('position operations', () => {

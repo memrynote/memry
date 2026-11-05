@@ -46,8 +46,13 @@ impl NoteFiles {
     }
 
     pub fn upsert_stat(&self, stat: NoteFileStat) -> Result<(), StorageError> {
+        self.upsert_stats(std::slice::from_ref(&stat))
+    }
+
+    /// [`note_files::upsert_stats`]: every row or none, in one transaction.
+    pub fn upsert_stats(&self, stats: &[NoteFileStat]) -> Result<(), StorageError> {
         self.db
-            .call_blocking(move |conn| note_files::upsert_stat(conn, &stat))
+            .call_blocking(move |conn| note_files::upsert_stats(conn, stats))
     }
 
     /// [`note_files::refresh_stat`].

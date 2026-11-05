@@ -394,6 +394,7 @@ export const events = {
 	crdtWriteBackFailedEvent: makeEvent<CrdtWriteBackFailedEvent, CrdtWriteBackFailedEvent>("crdt-write-back-failed-event"),
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
+	folderConfigUpdatedEvent: makeEvent<FolderConfigUpdatedEvent, FolderConfigUpdatedEvent>("folder-config-updated-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
@@ -740,6 +741,14 @@ export type FolderConfigInput = {
 	template?: string | null,
 	/**  `z.boolean().optional().default(true)`. */
 	inherit?: boolean | null,
+};
+
+/**
+ *  A folder's settings or its record changed, or the folder left the vault, by sync
+ *  (`notes:folder-config-updated`): the folder `path` names, vault-relative.
+ */
+export type FolderConfigUpdatedEvent = {
+	path: string,
 };
 
 /**  A folder's settings as the renderer reads them (`FolderConfig` of `@memry/rpc/notes`). */
