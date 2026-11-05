@@ -23,6 +23,7 @@
 //! opt-in `disable_recursion_limit`; nothing here calls it.)
 
 mod preferences;
+pub mod settings;
 mod vault_config;
 
 use std::fs::File;

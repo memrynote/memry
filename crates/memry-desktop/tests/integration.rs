@@ -192,6 +192,8 @@ mod vault_init;
 mod vault_pairing;
 #[path = "vault_paths.rs"]
 mod vault_paths;
+#[path = "vault_settings.rs"]
+mod vault_settings;
 #[path = "vault_walk.rs"]
 mod vault_walk;
 #[path = "vault_watch.rs"]

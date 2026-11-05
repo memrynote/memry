@@ -134,14 +134,9 @@ export function useVault() {
   useEffect(() => {
     const loadInitialState = async () => {
       try {
-        // The vault config belongs to a later port (Step 09, #3526); until then its failure
-        // must not hide the status of a vault that is open.
         const [vaultStatus, vaultConfig] = await Promise.all([
           vaultService.getStatus(),
-          vaultService.getConfig().catch((err: unknown) => {
-            log.warn('Vault config unavailable', err)
-            return null
-          })
+          vaultService.getConfig()
         ])
         applyStatus(vaultStatus)
         setConfig(vaultConfig)

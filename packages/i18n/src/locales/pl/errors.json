@@ -13,7 +13,8 @@
     "invalidPath": "Wybrana ścieżka nie jest prawidłową lokalizacją sejfu.",
     "permissionDenied": "Brak uprawnień. Sprawdź, czy masz dostęp do tego folderu.",
     "alreadyExists": "W tej lokalizacji już istnieje sejf.",
-    "corrupted": "Wygląda na to, że ten sejf jest uszkodzony. Spróbuj przywrócić go z kopii zapasowej."
+    "corrupted": "Wygląda na to, że ten sejf jest uszkodzony. Spróbuj przywrócić go z kopii zapasowej.",
+    "configChangeNotPorted": "Ta wersja nie może jeszcze zmienić folderu dziennika, formatu daty ani wykluczonych folderów. Zapisane ustawienie zostaje zachowane."
   },
   "note": {
     "notFound": "Nie udało się znaleźć tej notatki. Być może została usunięta.",

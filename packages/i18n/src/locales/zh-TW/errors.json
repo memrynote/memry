@@ -13,7 +13,8 @@
     "invalidPath": "所選路徑不是有效的儲存庫位置。",
     "permissionDenied": "權限遭拒。請確認你有權存取此資料夾。",
     "alreadyExists": "此位置已有儲存庫。",
-    "corrupted": "此儲存庫似乎已損壞。請嘗試從備份還原。"
+    "corrupted": "此儲存庫似乎已損壞。請嘗試從備份還原。",
+    "configChangeNotPorted": "此版本暫時無法變更日誌資料夾、日期格式或排除的資料夾。你儲存的設定維持不變。"
   },
   "note": {
     "notFound": "找不到此筆記。它可能已被刪除。",
