@@ -136,8 +136,8 @@ Step 14 (#3531) edits notes, these commands drive the write-back
   another machine needs no file access.
 - `e2e_app_terminate` sends `[NSApp terminate:]`, what Cmd-Q and the Dock's Quit send (macOS
   only). `e2e_request_quit` and `e2e_send_session_end` cover the other ways to quit.
-  `e2e_quit_after_browser_exit` (Windows) ends the WebView2 browser process and quits with the
-  main thread held, so WebView2 cannot report the death before the flush gives up.
+  `e2e_flush_after_browser_exit` (Windows) ends the WebView2 browser process, asks its page to
+  flush with the main thread held, so WebView2 cannot report the death first, then quits.
 
 ## Control file
 

@@ -80,23 +80,22 @@ for (const hidden of [false, true]) {
 
 // WebView2 reports its browser's death on the main thread, and on a loaded arm64 runner it had
 // not reported it 2.2 s into a sign-out, so the quit's flush waited its timeout on a dead page
-// (#3940). Here the main thread is held through the flush, so the report cannot come at all.
-test('a quit does not wait on a page whose browser process ended unreported', async ({ app }) => {
+// (#3940). Here the page is asked to flush while the main thread is held, so the report cannot
+// come at all; the app then quits.
+test('a flush does not wait on a page whose browser process ended unreported', async ({ app }) => {
   test.skip(process.platform !== 'win32', 'WebView2 is Windows-only')
 
-  await sendTest(app, 'e2e_quit_after_browser_exit')
+  await sendTest(app, 'e2e_flush_after_browser_exit')
 
   expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 10_000, intervalMs: 50 })).toBe(true)
   const log = readMainLog(app.dirs.logDir)
-  // DIAGNOSTIC #3940, removed before merge.
-  console.log(`DIAG3940\n${log.slice(Math.max(0, log.indexOf('e2e: ended the WebView2') - 4000))}`)
   expect(log).toContain('e2e: ended the WebView2 browser process')
-  expect(log).toContain('cleanup complete')
   // The flush gave up because the page was gone, not because it ran out of time.
   expect(log).toMatch(
     /window main has no page process|page of window main lost its process before its flush/
   )
   expect(log).not.toContain('flush of window main timed out')
+  expect(log).toContain('cleanup complete')
 })
 
 // A Linux logout quits the session manager and the display server with it, and Xlib's IO error
