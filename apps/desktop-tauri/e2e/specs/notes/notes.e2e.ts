@@ -1,14 +1,19 @@
 // Notes made, edited and saved in the running app (Step 13f, #3530), ported from Electron's
 // `notes.e2e.ts`. Electron's cases that asserted nothing (`expect(true)`: wiki links, backlinks,
 // search, delete and undo) are not ported: the delete is `note-menu-actions.e2e.ts`, and the
-// links have their own specs. Its reorder cases called `notes.reorder` and read the positions
-// back through the API, which the Rust tests of `notes_reorder` own. What is left, made to
+// links have their own specs. Its move to another folder through the API is not ported either:
+// `note-menu-actions.e2e.ts` moves a note from the note menu and checks the file on disk. Its
+// reorder cases called `notes.reorder` and read the positions back through the API, which
+// `crates/memry-core/tests/domain_note_positions.rs` owns. No test runs two reorders at once;
+// each reorder writes in one transaction (`domain::note_positions::reorder`). What is left, made to
 // assert: a new note named and written from the UI reaches its file, an outside edit reaches the
 // open note, and the properties section keeps its collapse across a reload.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { isAlive } from '../../harness/app-process'
 import { SHORTCUTS } from '../../harness/app-helpers'
+import { sendTest } from '../../harness/invoke-test'
 import {
   NOTE_EDITOR,
   NOTE_TITLE,
@@ -67,6 +72,29 @@ test('Cmd-N makes a note whose typed title names its file and whose typed body i
     await pollUntil(() => existsSync(file) && readFileSync(file, 'utf8').includes('Milk and bread'))
   ).toBe(true)
   await expect.poll(async () => (await getNote(page, id))?.content.trim()).toBe('Milk and bread')
+})
+
+// The field keeps a title it has not left while the window is in the background (WebView2 blurs
+// it then, WebKit does not), so the quit has to save it.
+test('a title typed and never left names the note once the app quits', async ({
+  app,
+  page,
+  testVaultPath
+}) => {
+  await vaultOpen(page)
+  const note = await createNote(page, { title: `Quit Title ${stamp()}`, folder: 'notes' })
+  await openFromSidebar(page, note)
+  const name = `Renamed At Quit ${stamp()}`
+  const title = page.locator(NOTE_TITLE).first()
+  await title.click()
+  await title.fill(name)
+  await expect(title).toBeFocused()
+
+  await sendTest(app, 'e2e_request_quit')
+  expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })).toBe(true)
+
+  expect(existsSync(join(testVaultPath, 'notes', `${name}.md`))).toBe(true)
+  expect(existsSync(join(testVaultPath, note.path))).toBe(false)
 })
 
 test('an edit made outside the app reaches the open note', async ({ page, testVaultPath }) => {
@@ -149,6 +177,7 @@ test("a journal day's properties section stays collapsed across a reload", async
 
   const header = propertiesHeader(page)
   await expect(header).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('#properties-content')).toBeVisible()
   await header.click()
   await expect(header).toHaveAttribute('aria-expanded', 'false')
   await expect(page.locator('#properties-content')).toHaveCount(0)

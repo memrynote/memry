@@ -4,16 +4,18 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useId,
   useState,
   type RefObject
 } from 'react'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
 interface TitleInputProps {
   value: string
   placeholder?: string
-  onChange: (value: string) => void
+  onChange: (value: string) => void | Promise<void>
   autoFocus?: boolean
   disabled?: boolean
   /** Optional external ref to the underlying textarea (e.g. to focus from a menu) */
@@ -80,16 +82,36 @@ export function TitleInput({
     // The actual save happens on blur
   }, [])
 
-  const commit = useCallback(() => {
+  // A draft outlives a window deactivation (see `handleBlur`), so it is still unsaved when the
+  // app quits, the tab closes or another note replaces this one: the quit flush and the unmount
+  // commit it, as the editor's pending text is saved.
+  const pendingDraft = useRef<(() => void | Promise<void>) | null>(null)
+
+  const commit = useCallback((): void | Promise<void> => {
+    pendingDraft.current = null
+    let saved: void | Promise<void> = undefined
     // Only trigger onChange if value actually changed
     if (fresh) {
-      if (draftValue?.trim()) onChange(draftValue)
+      if (draftValue?.trim()) saved = onChange(draftValue)
       onFreshEnd?.()
     } else if (draftValue !== null && draftValue !== value) {
-      onChange(draftValue)
+      saved = onChange(draftValue)
     }
     setDraftValue(null)
+    return saved
   }, [draftValue, value, onChange, fresh, onFreshEnd])
+
+  useEffect(() => {
+    pendingDraft.current = draftValue === null ? null : commit
+  }, [draftValue, commit])
+  const saveKey = `note-title:${useId()}`
+  useEffect(() => {
+    registerPendingSave(saveKey, () => pendingDraft.current?.())
+    return () => {
+      void pendingDraft.current?.()
+      unregisterPendingSave(saveKey)
+    }
+  }, [saveKey])
 
   // Enter commits before it blurs, as the blur of a window without focus is ignored below.
   const committedByEnter = useRef(false)
@@ -102,7 +124,7 @@ export function TitleInput({
       // deactivated and focuses it again on return; WebKit (macOS, Linux) fires no
       // `focusout` there.
       if (e.relatedTarget === null && !e.currentTarget.ownerDocument.hasFocus()) return
-      commit()
+      void commit()
     },
     [commit]
   )
@@ -112,7 +134,7 @@ export function TitleInput({
       // Enter saves and blurs
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
-        commit()
+        void commit()
         committedByEnter.current = true
         textareaRef.current?.blur()
         committedByEnter.current = false

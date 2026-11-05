@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
+import { flushAllPendingSaves } from '@/lib/save-registry'
 import { NoteTitle } from './NoteTitle'
 
 let i18nEn: I18nInstance
@@ -257,6 +258,56 @@ describe('NoteTitle - fresh note', () => {
     expect(onFreshEnd).not.toHaveBeenCalled()
     expect(textarea).toHaveValue('Groc')
     expect(textarea).toHaveAttribute('placeholder', 'New note')
+  })
+
+  // A draft kept through a window deactivation (above) is still the user's title: the app's quit
+  // flushes it like an editor's unsaved text, and closing the tab or switching notes commits it.
+  it('renames to a draft kept through a deactivation when the app flushes its saves on quit', async () => {
+    const user = userEvent.setup()
+    let renamed = false
+    const onTitleChange = vi.fn(async () => {
+      await Promise.resolve()
+      renamed = true
+    })
+    renderWithI18n(<NoteTitle {...freshProps} onTitleChange={onTitleChange} />)
+    const textarea = screen.getByRole('textbox', { name: /note title/i })
+    await user.type(textarea, 'Groc')
+    vi.mocked(document.hasFocus).mockReturnValue(false)
+    fireEvent.blur(textarea)
+
+    await act(() => flushAllPendingSaves())
+
+    expect(onTitleChange).toHaveBeenCalledWith('Groc')
+    expect(renamed).toBe(true)
+  })
+
+  it('renames to a draft kept through a deactivation when the field goes away', async () => {
+    const user = userEvent.setup()
+    const onTitleChange = vi.fn()
+    const { unmount } = renderWithI18n(<NoteTitle {...freshProps} onTitleChange={onTitleChange} />)
+    const textarea = screen.getByRole('textbox', { name: /note title/i })
+    await user.type(textarea, 'Groc')
+    vi.mocked(document.hasFocus).mockReturnValue(false)
+    fireEvent.blur(textarea)
+
+    unmount()
+
+    expect(onTitleChange).toHaveBeenCalledTimes(1)
+    expect(onTitleChange).toHaveBeenCalledWith('Groc')
+  })
+
+  it('renames nothing on a flush or an unmount with no draft', async () => {
+    const onTitleChange = vi.fn()
+    const onFreshEnd = vi.fn()
+    const { unmount } = renderWithI18n(
+      <NoteTitle {...freshProps} onTitleChange={onTitleChange} onFreshEnd={onFreshEnd} />
+    )
+
+    await act(() => flushAllPendingSaves())
+    unmount()
+
+    expect(onTitleChange).not.toHaveBeenCalled()
+    expect(onFreshEnd).not.toHaveBeenCalled()
   })
 
   it('renames on Enter while the app window has no focus', async () => {
