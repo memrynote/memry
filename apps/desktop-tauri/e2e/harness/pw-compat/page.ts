@@ -1,12 +1,17 @@
+import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
+import { SCRIPT_TIMEOUT_MS } from '../budgets'
 import { HarnessError } from '../errors'
 import { sleep } from '../wait'
 import { type MouseButton, PageCore, type PwBrowser } from './driver'
 import { keyToCodepoint } from './keys'
 import { Locator } from './locator'
 import { type ByRoleOptions, type TextOptions, rootSpec } from './selector-spec'
+
+/** How long one probe of a reload waits for its answer. */
+const RELOAD_PROBE_MS = 2_000
 
 class Keyboard {
   constructor(private readonly core: PageCore) {}
@@ -132,8 +137,33 @@ export class Page {
     return sleep(ms)
   }
 
+  /**
+   * Reloads the page and resolves once the new document has loaded. The driver's refresh
+   * returns as soon as `location.reload()` ran, and a script sent while the old document unloads
+   * gets no answer until the script timeout, so the wait probes with a short one.
+   */
   async reload(): Promise<void> {
+    const mark = randomUUID()
+    await this.core.browser.execute('window.__memryPwDocument = arguments[0]', mark)
     await this.core.browser.refresh()
+    await this.core.browser.setTimeout({ script: RELOAD_PROBE_MS })
+    try {
+      const deadline = Date.now() + this.core.timeoutMs
+      for (;;) {
+        const loaded = await this.core.browser
+          .execute(
+            "return window.__memryPwDocument !== arguments[0] && document.readyState === 'complete'",
+            mark
+          )
+          .catch(() => false)
+        if (loaded === true) return
+        if (Date.now() >= deadline)
+          throw new HarnessError(`reload: no new document within ${this.core.timeoutMs} ms`)
+        await sleep(100)
+      }
+    } finally {
+      await this.core.browser.setTimeout({ script: SCRIPT_TIMEOUT_MS })
+    }
   }
 
   /**
