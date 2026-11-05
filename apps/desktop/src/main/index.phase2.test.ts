@@ -140,6 +140,7 @@ function createBrowserWindowMock() {
     }),
     show: vi.fn(),
     focus: vi.fn(),
+    setSkipTaskbar: vi.fn(),
     loadURL: vi.fn(async () => undefined),
     loadFile: vi.fn(async () => undefined),
     isDestroyed: vi.fn(() => false),
@@ -1594,6 +1595,26 @@ describe('main index phase2 exports', () => {
     expect(existing.show).toHaveBeenCalled()
     expect(existing.restore).toHaveBeenCalled()
     expect(existing.focus).toHaveBeenCalled()
+  })
+
+  it('surfaces the main window, not a hidden sticky listed before it, on a second launch', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const mainWindow = browserWindows[0]
+    const hiddenSticky = createBrowserWindowMock()
+    hiddenSticky.isVisible.mockReturnValue(false)
+    BrowserWindowMock.getAllWindows.mockImplementation(() => [hiddenSticky, mainWindow])
+
+    const secondInstanceHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'second-instance'
+    )?.[1] as (event: unknown, commandLine: string[]) => void
+    secondInstanceHandler({}, [])
+
+    expect(hiddenSticky.show).not.toHaveBeenCalled()
+    expect(mainWindow.focus).toHaveBeenCalled()
   })
 
   it('handles OAuth deep links for registered states', async () => {

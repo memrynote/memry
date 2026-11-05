@@ -1300,18 +1300,9 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
       // already running) must surface the existing window, not silently no-op.
       // On Windows there is no Dock/'activate' fallback, so without this a hidden
       // or minimized instance stays invisible and the app looks like it "won't open".
-      if (isTrayActive()) {
-        // Hidden to the tray rather than closed, so it needs the same restore
-        // the tray icon performs, including leaving skipTaskbar behind.
-        showMainWindow()
-      } else {
-        const existing = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
-        if (existing) {
-          if (!existing.isVisible()) existing.show()
-          if (existing.isMinimized()) existing.restore()
-          existing.focus()
-        }
-      }
+      // The main window by reference: the first live window can be the sticky or
+      // Quick Capture, and a second launch used to show a hidden sticky instead.
+      showMainWindow()
       const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
       if (deepLinkUrl) {
         handleDeepLink(deepLinkUrl)
