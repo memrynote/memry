@@ -60,7 +60,7 @@ jsdom, y-leveldb, yjs, libsodium-wrappers-sumo, @huggingface/transformers,
 pure JS but unbundleable: its entry selects the main/renderer/node
 implementation through runtime `require()` branches, and bundling hoists all
 three — including an unconditional `require('electron')` that crashes
-worker_threads (the sync, image-processing, and voice-transcription workers)
+worker_threads (the sync, image-processing, voice-transcription, and converter workers)
 in packaged builds. The exact set is asserted by
 `apps/desktop/src/main/runtime-dependencies.test.ts` and re-verified against
 the packaged app by `apps/desktop/scripts/check-packaged-runtime-deps.js`;
