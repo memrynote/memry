@@ -3972,6 +3972,8 @@ name = "memry-test-kit"
 version = "0.1.0"
 dependencies = [
  "proptest",
+ "serde_json",
+ "yrs",
 ]
 
 [[package]]

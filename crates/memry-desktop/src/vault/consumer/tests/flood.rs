@@ -159,3 +159,40 @@ fn facts_that_arrive_during_the_open_walk_are_applied_before_it_ends() {
         .position(|f| matches!(f, Applied::Indexed { .. }));
     assert!(live < indexed && live.is_some(), "{seen:?}");
 }
+
+/// An app write waiting for the lane gets it between two files the open walk applies alone
+/// (journal days, a batch's fallbacks, files no device key can seed): the walk holds the lane
+/// for one file at a time, as for any file it finds. Counted, not timed: the write waits for
+/// the file the walk holds the lane for, never for the ones after it.
+#[test]
+fn an_app_write_gets_the_lane_between_the_files_the_walk_applies_alone() {
+    const FILES: usize = 24;
+    let mut f = fixture();
+    for n in 0..FILES {
+        f.write(&format!("alone/n{n}.md"), &format!("there before {n}\n"));
+    }
+    let app_note = f.note();
+    let (rows, session, identity) = (f.rows.clone(), f.session(), f.identity.clone());
+    let served: Arc<Mutex<Option<usize>>> = Arc::default();
+    let seen = served.clone();
+    // Runs while the walk holds the lane for its first file: an app save asks for it.
+    *f.identity.during_adopt.lock().unwrap() = Some(Box::new(move || {
+        std::thread::spawn(move || {
+            rows.reserve(session, &app_note, "app.md", Fixture::stat(1))
+                .unwrap();
+            *seen.lock().unwrap() = Some(identity.adopted.lock().unwrap().len());
+        });
+    }));
+    let _running = run(&f, 1024);
+    let mut facts = Vec::new();
+    f.collect_until(&mut facts, |_, s| {
+        s.iter().any(|f| matches!(f, Applied::Indexed { .. }))
+    });
+    f.collect_until(&mut facts, |_, _| served.lock().unwrap().is_some());
+    let adopted = served.lock().unwrap().expect("the app's write");
+    assert!(
+        adopted < FILES,
+        "the app's write waited for all {FILES} files the walk applied alone"
+    );
+    assert_eq!(f.adopted().len(), FILES);
+}
