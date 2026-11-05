@@ -52,19 +52,10 @@ impl ServerHandler for Monitor {
     }
 
     fn on_message(&self, _kind: u32, _buffer: Vec<u8>) {}
-
-    /// The app is gone, crashed or not: the monitor has nothing left to serve.
-    fn on_client_disconnected(&self, num_clients: usize) -> LoopAction {
-        if num_clients == 0 {
-            LoopAction::Exit
-        } else {
-            LoopAction::Continue
-        }
-    }
 }
 
 /// `main` calls this first. When the process was started as the monitor it serves dump requests
-/// until the app disconnects, and returns the exit code; otherwise it returns `None`.
+/// until the app is gone, and returns the exit code; otherwise it returns `None`.
 pub fn monitor_entry() -> Option<i32> {
     let mut args = std::env::args().skip(1);
     if args.next().as_deref() != Some(MONITOR_SWITCH) {
@@ -81,11 +72,12 @@ pub fn monitor_entry() -> Option<i32> {
             return Some(1);
         }
     };
-    // A client disconnect ends the monitor only after the app connected. An app that ends before
-    // that (a quit or a kill during the boot) is seen through stdin instead. A dump in progress is
-    // still finished: `Server::run` reads the flag only between events, never while it writes a
-    // dump, so stdin closing mid-dump (on macOS the client stops waiting for the ack after 5 s)
-    // ends the monitor only once the dump is written.
+    // The app holds stdin open for its whole life, so stdin closing is the one sign the app is
+    // gone, however it ended. A client disconnect is not: a connect attempt that fails halfway (on
+    // macOS, before the Mach service the server registers after the socket file) also connects
+    // and leaves. A dump in progress is still finished: `Server::run` reads the flag only between
+    // events, never while it writes a dump, so stdin closing mid-dump (on macOS the client stops
+    // waiting for the ack after 5 s) ends the monitor only once the dump is written.
     static APP_GONE: AtomicBool = AtomicBool::new(false);
     std::thread::spawn(|| {
         let _ = std::io::copy(&mut std::io::stdin(), &mut std::io::sink());
