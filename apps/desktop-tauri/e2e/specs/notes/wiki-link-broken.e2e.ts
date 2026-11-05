@@ -73,6 +73,18 @@ const chip = (page: Page, target: string) =>
 const brokenChip = (page: Page, target: string) =>
   page.locator(`.wiki-link-broken[data-target="${target}"]`)
 
+/**
+ * Clicks a chip on its first line. A long chip wraps onto a second line on Windows, and the
+ * centre of its box then falls between the two lines, on the paragraph.
+ */
+async function clickChip(page: Page, target: string): Promise<void> {
+  const point = await chip(page, target).evaluate((element: HTMLElement) => {
+    const line = element.getClientRects()[0]
+    return { x: line.x + line.width / 2, y: line.y + line.height / 2 }
+  })
+  await page.mouse.click(point.x, point.y)
+}
+
 const resolveByTitle = (page: Page, title: string) =>
   invoke<{ id: string; title: string } | null>(page, 'notes_resolve_by_title', { title })
 
@@ -93,7 +105,7 @@ test('clicking a dead link opens the confirm dialog; Cancel creates nothing', as
   await openFromSidebar(page, source)
   await expect(brokenChip(page, ghostTarget)).toBeVisible({ timeout: 15_000 })
 
-  await chip(page, ghostTarget).click()
+  await clickChip(page, ghostTarget)
   const dialog = page.getByRole('alertdialog')
   await expect(dialog).toBeVisible()
   await expect(dialog).toContainText(ghostTarget)
@@ -112,7 +124,7 @@ test('Create makes the note, opens it, and the source restyles the link', async 
   await openFromSidebar(page, source)
   await expect(brokenChip(page, ghostTarget)).toBeVisible({ timeout: 15_000 })
 
-  await chip(page, ghostTarget).click()
+  await clickChip(page, ghostTarget)
   const dialog = page.getByRole('alertdialog')
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'Create' }).click()
