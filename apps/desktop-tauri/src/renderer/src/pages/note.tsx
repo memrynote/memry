@@ -306,7 +306,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isDeleted, setIsDeleted] = useState(false)
   const dialog = useDialogState<NoteDialog>()
-  const outsideEdit = useReplacedOutsideEdit(() => dialog.show('versionHistory'))
+  const outsideEdit = useReplacedOutsideEdit(noteId, () => dialog.show('versionHistory'))
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
   const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)

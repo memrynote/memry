@@ -11,7 +11,10 @@ import type { NoteUpdateResponse } from '@memry/contracts/notes-api'
  * the watcher reports an outside edit leaves the editor no event to hold; the
  * save's answer says so instead (`keptOutsideEdit`).
  */
-export function useReplacedOutsideEdit(showVersionHistory: () => void): {
+export function useReplacedOutsideEdit(
+  noteId: string | undefined,
+  showVersionHistory: () => void
+): {
   /** The outside edit's body that unsaved typing kept out of the editor. */
   held: (noteId: string, content: string) => void
   /** The typing's save answered: tells the user when it replaced a different outside body. */
@@ -25,19 +28,25 @@ export function useReplacedOutsideEdit(showVersionHistory: () => void): {
     showRef.current = showVersionHistory
     tRef.current = t
   })
+  // An edit held for the note the page showed before is not this note's.
+  useLayoutEffect(() => {
+    if (heldRef.current?.noteId !== noteId) heldRef.current = null
+  }, [noteId])
 
   return useMemo(
     () => ({
-      held: (noteId, content) => {
-        heldRef.current = { noteId, content }
+      held: (id, content) => {
+        heldRef.current = { noteId: id, content }
       },
-      saved: (noteId, content, result) => {
+      saved: (id, content, result) => {
+        // A failed save replaced nothing; the held edit waits for the save that lands.
+        if (!result.success) return
         const held = heldRef.current
         heldRef.current = null
-        if (!result.success) return
-        const replaced = held?.noteId === noteId && held.content !== content
+        const replaced = held?.noteId === id && held.content !== content
         if (!replaced && !result.keptOutsideEdit) return
         toast(tRef.current('page.toast.outsideEditReplaced'), {
+          duration: 10_000,
           action: {
             label: tRef.current('page.toast.showVersions'),
             onClick: () => showRef.current()

@@ -1707,6 +1707,8 @@ describe('NotePage', () => {
       ]
       expect(message).toBe('page.toast.outsideEditReplaced')
       expect(options.action.label).toBe('page.toast.showVersions')
+      // Long enough to reach for while the eyes are on the typing, as other action toasts.
+      expect(options).toMatchObject({ duration: 10_000 })
       act(() => options.action.onClick())
       expect(screen.getByText('Version Test Note')).toBeInTheDocument()
 
@@ -1714,6 +1716,45 @@ describe('NotePage', () => {
       act(() => mocks.onMarkdownChange?.('Typed again'))
       await saveLands()
       expect(toast).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps the held outside edit past a failed save, for the save that lands', async () => {
+      vi.useFakeTimers()
+      mocks.updateNote.mockResolvedValueOnce({ success: false, error: 'disk full' })
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      act(() => mocks.onMarkdownChange?.('Typed, not saved'))
+      outsideEdit('Written by an agent')
+      await saveLands()
+      expect(toast).not.toHaveBeenCalled()
+
+      act(() => mocks.onMarkdownChange?.('Typed, saved this time'))
+      await saveLands()
+      expect(toast).toHaveBeenCalledTimes(1)
+    })
+
+    it('forgets a held outside edit when the page moves to another note', async () => {
+      vi.useFakeTimers()
+      const view = renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      act(() => mocks.onMarkdownChange?.('Typed, not saved'))
+      outsideEdit('Written by an agent')
+
+      view.rerender(<NotePage noteId="note-2" />)
+      view.rerender(<NotePage noteId="note-1" />)
+      act(() => mocks.onMarkdownChange?.('Typed on coming back'))
+      await saveLands()
+
+      expect(mocks.updateNote).toHaveBeenCalledWith({
+        id: 'note-1',
+        content: 'Typed on coming back'
+      })
+      expect(toast).not.toHaveBeenCalled()
     })
 
     it('tells the user when a flush lands the typing', async () => {

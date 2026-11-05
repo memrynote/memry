@@ -355,7 +355,9 @@ impl AppEdit {
                 None
             }
             Precondition::Save(own) => {
-                outside = !row_names_file && !own.is(note_id, &file.hash);
+                // A row with no hash names no file the document took, so none was replaced.
+                outside =
+                    row.content_hash.is_some() && !row_names_file && !own.is(note_id, &file.hash);
                 if let Some(previous) = row.content_hash.as_deref().filter(|_| outside) {
                     self.take_outside(note_id, previous, &file)
                         .map_err(AppEditError::from)?;

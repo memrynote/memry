@@ -602,8 +602,10 @@ fn a_save_over_a_file_the_document_never_took_keeps_that_file_first() {
     let id = id_at(&e, "Plan.md");
     // The row names no text the document holds, as for an outside edit not fed yet.
     e.core().note_files().set_hash(&id, None).unwrap();
-    notes.update(&open, save(&id, "The user's save\n")).unwrap();
+    let saved = notes.update(&open, save(&id, "The user's save\n")).unwrap();
     assert_eq!(e.versions(&id), [PLAN], "the file's text was lost");
+    // A row with no hash is no outside edit: nothing changed the file.
+    assert!(!saved.kept_outside_edit);
     assert_eq!(e.body(&id), "The user's save");
 }
 
