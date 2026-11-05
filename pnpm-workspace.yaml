@@ -48,7 +48,7 @@ overrides:
   'minimatch@<4': 3.1.5
   'minimatch@>=5 <6': 5.1.9
   'minimatch@>=9 <10': 9.0.9
-  'minimatch@>=10': 10.2.5
+  'minimatch@>=10': 11.0.1
   undici: '>=7.28.0 <8'
   flatted: '>=3.4.2'
   lodash: '>=4.18.1'
