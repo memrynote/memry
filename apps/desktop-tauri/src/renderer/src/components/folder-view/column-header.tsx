@@ -14,6 +14,7 @@ import { GripVertical } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { getColumnLabel } from '@/lib/contract-display-names'
 import { useT } from '@memry/i18n/renderer'
+import { isWindowBlur } from '@/lib/inline-rename-focus'
 
 // ============================================================================
 // Types
@@ -180,17 +181,24 @@ export function ColumnHeader({
   )
 
   /**
-   * Save the edited display name
+   * Save the edited display name, keeping the field open
    */
-  const saveDisplayName = useCallback(() => {
+  const commitDisplayName = useCallback(() => {
     const trimmedValue = editValue.trim()
-    setIsEditing(false)
 
     // Only save if value changed and is not empty
     if (trimmedValue && trimmedValue !== displayName && onDisplayNameChange) {
       onDisplayNameChange(columnId, trimmedValue)
     }
   }, [editValue, displayName, columnId, onDisplayNameChange])
+
+  /**
+   * Save the edited display name and leave edit mode
+   */
+  const saveDisplayName = useCallback(() => {
+    commitDisplayName()
+    setIsEditing(false)
+  }, [commitDisplayName])
 
   /**
    * Cancel editing and revert
@@ -217,11 +225,16 @@ export function ColumnHeader({
   )
 
   /**
-   * Handle blur on edit input - save changes
+   * Handle blur on edit input - save changes. The app window losing focus is
+   * not the user leaving the field (#3985): save the draft and keep it open.
    */
-  const handleBlur = useCallback(() => {
-    saveDisplayName()
-  }, [saveDisplayName])
+  const handleBlur = useCallback(
+    (event: React.FocusEvent<HTMLInputElement>) => {
+      if (isWindowBlur(event)) commitDisplayName()
+      else saveDisplayName()
+    },
+    [commitDisplayName, saveDisplayName]
+  )
 
   // ============================================================================
   // Render
