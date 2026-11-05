@@ -1899,6 +1899,8 @@
         "statNotes": "poznámky si ponechajú text",
         "statValues": "hodnoty zostanú ako vlastnosti",
         "plainText": "Poznámky, ktoré spomínajú #{tag} vo svojom texte, ju ponechajú ako obyčajný text.",
+        "alsoTasks": "{tasks, plural, one {# úloha tiež stratí} few {# úlohy tiež stratia} other {# úloh tiež stratí}} #{tag}.",
+        "bodyTagsStay": "#{tag} napísaná v texte poznámok zostane, takže tieto poznámky sa pod značkou zobrazujú ďalej.",
         "confirm": "Odstrániť značku",
         "done": "Značka #{tag} odstránená."
       },

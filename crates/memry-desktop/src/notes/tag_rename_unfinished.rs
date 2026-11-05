@@ -41,6 +41,15 @@ pub struct UnfinishedNote {
     pub title: String,
 }
 
+/// The name a note or day the tag edits left goes by in a warning: its file's name, else its id.
+pub(super) fn holder_title(open: &OpenVault, id: &str) -> Result<String, NotesError> {
+    let named = open.vault.note_files().by_id(id)?.and_then(|row| {
+        let stem = Path::new(&row.path).file_stem()?;
+        Some(stem.to_string_lossy().into_owned())
+    });
+    Ok(named.unwrap_or_else(|| id.to_owned()))
+}
+
 impl NotesService {
     /// The recorded rename, the number of notes it has left and the first of them; `None` when
     /// none is recorded, or while one runs (a running rename is not stuck).
@@ -54,15 +63,10 @@ impl NotesService {
         let Some(plan) = recorded_plan(open)? else {
             return Ok(None);
         };
-        let files = open.vault.note_files();
         let mut notes = Vec::with_capacity(NAMED);
         for holder in plan.holders.iter().take(NAMED) {
-            let named = files.by_id(&holder.id)?.and_then(|row| {
-                let stem = Path::new(&row.path).file_stem()?;
-                Some(stem.to_string_lossy().into_owned())
-            });
             notes.push(UnfinishedNote {
-                title: named.unwrap_or_else(|| holder.id.clone()),
+                title: holder_title(open, &holder.id)?,
                 id: holder.id.clone(),
             });
         }

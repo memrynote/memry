@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "Видалити тег",
       "deleteDescription": "Видалити «{name}» з {count, plural, one {# елемента} few {# елементів} many {# елементів} other {# елемента}}? Цю дію неможливо скасувати.",
+      "deleteTasks": "Завдання з тегом #{tag} теж його втратять.",
       "mergeTitle": "Об’єднати тег",
       "mergeDescription": "Усі елементи з тегом «{source}» отримають цільовий тег. Вихідний тег буде видалено.",
+      "mergeRetags": "Нотатки, дні та завдання з тегом «{source}» отримають замість нього цільовий тег.",
+      "mergeBodyTagsStay": "#{source} у тексті нотаток залишається, тож ці нотатки його збережуть.",
       "targetPlaceholder": "Виберіть цільовий тег…",
       "colorTitle": "Змінити колір тегу «{name}»"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "Перейменування #{oldName}: {done} / {total} нотаток",
       "renamedBodySkipped": "«{newName}» не можна ввести як вбудований тег, тому #{oldName} у тексті нотаток залишається без змін",
       "renamedSomeFailed": "Не вдалося оновити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}}. Відкрийте {count, plural, one {її} few {їх} many {їх} other {їх}} і додайте тег ще раз",
+      "mergedSomeKept": "Не вдалося оновити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}}. Об'єднайте #{tag} ще раз, щоб завершити.",
+      "deletedSomeKept": "Не вдалося оновити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}}. Видаліть #{tag} ще раз, щоб завершити.",
+      "mergedSomeStuck": "Не вдалося оновити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}}. Виправте нотатки нижче, а потім знову об'єднайте #{tag}.",
+      "deletedSomeStuck": "Не вдалося оновити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}}. Виправте нотатки нижче, а потім знову видаліть #{tag}.",
       "renameUnfinished": "Перейменування #{oldName} на #{newName} не завершилося для {count, plural, one {# нотатки} few {# нотаток} many {# нотаток} other {# нотатки}}. Перейменуйте #{oldName} на #{newName} ще раз, щоб завершити його.",
       "renameUnfinishedMore": "{names} і ще {count, plural, one {#} few {#} many {#} other {#}}",
       "stopRename": "Зупинити це перейменування",

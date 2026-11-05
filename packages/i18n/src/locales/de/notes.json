@@ -1899,6 +1899,8 @@
         "statNotes": "Notizen behalten ihren Text",
         "statValues": "Werte bleiben als Eigenschaften",
         "plainText": "Notizen, die #{tag} in ihrem Text erwähnen, behalten es als normalen Text.",
+        "alsoTasks": "{tasks, plural, one {# Aufgabe verliert} other {# Aufgaben verlieren}} #{tag} ebenfalls.",
+        "bodyTagsStay": "#{tag} im Text von Notizen bleibt stehen, daher erscheinen diese Notizen weiterhin unter dem Tag.",
         "confirm": "Tag löschen",
         "done": "#{tag} gelöscht."
       },

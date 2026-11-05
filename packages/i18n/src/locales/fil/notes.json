@@ -1899,6 +1899,8 @@
         "statNotes": "nananatili ang teksto ng mga tala",
         "statValues": "nananatili ang mga value bilang property",
         "plainText": "Ang mga talang bumabanggit ng #{tag} sa teksto nila ay itinatago ito bilang karaniwang teksto.",
+        "alsoTasks": "Mawawala rin ang #{tag} sa {tasks, plural, one {# gawain} other {# gawain}}.",
+        "bodyTagsStay": "Mananatili ang #{tag} na nakasulat sa teksto ng tala, kaya lalabas pa rin ang mga talang iyon sa ilalim ng tag.",
         "confirm": "Tanggalin ang tag",
         "done": "Natanggal ang #{tag}."
       },

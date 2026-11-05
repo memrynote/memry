@@ -1899,6 +1899,8 @@
         "statNotes": "muistiinpanot säilyttävät tekstinsä",
         "statValues": "arvot säilyvät ominaisuuksina",
         "plainText": "Muistiinpanot, jotka mainitsevat #{tag} tekstissään, säilyttävät sen tavallisena tekstinä.",
+        "alsoTasks": "{tasks, plural, one {# tehtävä menettää} other {# tehtävää menettää}} myös tunnisteen #{tag}.",
+        "bodyTagsStay": "Muistiinpanojen tekstiin kirjoitettu #{tag} säilyy, joten ne muistiinpanot näkyvät yhä tunnisteen alla.",
         "confirm": "Poista tunniste",
         "done": "Poistettu #{tag}."
       },

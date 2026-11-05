@@ -1899,6 +1899,8 @@
         "statNotes": "ghi chú giữ nguyên văn bản",
         "statValues": "giá trị được giữ lại dưới dạng thuộc tính",
         "plainText": "Các ghi chú nhắc đến #{tag} trong văn bản sẽ giữ nó dưới dạng văn bản thuần.",
+        "alsoTasks": "#{tag} cũng bị gỡ khỏi {tasks, plural, other {# công việc}}.",
+        "bodyTagsStay": "#{tag} viết trong nội dung ghi chú vẫn giữ nguyên, nên các ghi chú đó vẫn hiện dưới thẻ.",
         "confirm": "Xóa thẻ",
         "done": "Đã xóa #{tag}."
       },

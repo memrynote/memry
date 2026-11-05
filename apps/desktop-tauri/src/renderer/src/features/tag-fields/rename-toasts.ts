@@ -4,6 +4,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import {
   type RenameTagResult,
+  type TagsKept,
   onTagsProgress,
   stopTagRename,
   tagsService,
@@ -12,8 +13,52 @@ import {
 
 const log = createLogger('Tags:Rename')
 
-/** How many of a stuck rename's notes its warning names. */
+/** How many notes a warning of notes a tag change left names. */
 const NAMED = 3
+
+/**
+ * Warns that a merge or delete left notes it could not write with the tag, naming the first of
+ * them: asking again finishes them, or their files need fixing first. `false`, and nothing
+ * shown, when it wrote them all, so its caller shows its success instead.
+ */
+export function toastTagsKept(result: TagsKept, tag: string, action: 'merge' | 'delete'): boolean {
+  const notes = result.failedNotes ?? []
+  if (notes.length === 0) return false
+  const t = getI18n().getFixedT(null, 'settings')
+  const retry = result.retryFinishes ?? true
+  const key =
+    action === 'merge'
+      ? retry
+        ? 'tags.toasts.mergedSomeKept'
+        : 'tags.toasts.mergedSomeStuck'
+      : retry
+        ? 'tags.toasts.deletedSomeKept'
+        : 'tags.toasts.deletedSomeStuck'
+  toast.warning(t(key, { count: notes.length, tag }), {
+    description: named(notes, notes.length),
+    duration: 10_000
+  })
+  return true
+}
+
+/**
+ * A refused or failed tag change's message; one refused because a rename is left unfinished
+ * shows that rename's warning, with its way out, instead.
+ */
+export async function toastTagChangeFailed(message: string, code: string | undefined) {
+  if (code !== RENAME_UNFINISHED || !(await toastUnfinishedRename())) toast.error(message)
+}
+
+/** The first {@link NAMED} of `count` notes, by title, and how many more there are. */
+function named(notes: readonly { title: string }[], count: number): string {
+  const t = getI18n().getFixedT(null, 'settings')
+  const names = notes
+    .slice(0, NAMED)
+    .map((note) => note.title)
+    .join(', ')
+  const rest = count - Math.min(notes.length, NAMED)
+  return rest > 0 ? t('tags.toasts.renameUnfinishedMore', { names, count: rest }) : names
+}
 
 /** The `code` a rename refused because another is left unfinished fails with. */
 export const RENAME_UNFINISHED = 'tag_rename_unfinished'
@@ -45,13 +90,8 @@ export async function toastUnfinishedRename(): Promise<boolean> {
   if (!left) return false
   const t = getI18n().getFixedT(null, 'settings')
   const { oldName, newName, notes } = left
-  const names = notes
-    .slice(0, NAMED)
-    .map((note) => note.title)
-    .join(', ')
-  const rest = left.left - Math.min(notes.length, NAMED)
   toast.warning(t('tags.toasts.renameUnfinished', { oldName, newName, count: left.left }), {
-    description: rest > 0 ? t('tags.toasts.renameUnfinishedMore', { names, count: rest }) : names,
+    description: named(notes, left.left),
     duration: 10_000,
     action: {
       label: t('tags.toasts.stopRename'),

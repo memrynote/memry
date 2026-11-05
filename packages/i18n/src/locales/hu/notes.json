@@ -1899,6 +1899,8 @@
         "statNotes": "jegyzet megtartja a szövegét",
         "statValues": "érték tulajdonságként megmarad",
         "plainText": "Azok a jegyzetek, amelyek a szövegükben megemlítik a(z) #{tag} címkét, egyszerű szövegként megtartják.",
+        "alsoTasks": "{tasks, plural, one {# feladatról} other {# feladatról}} is lekerül a(z) #{tag}.",
+        "bodyTagsStay": "A jegyzetek szövegébe írt #{tag} megmarad, így ezek a jegyzetek továbbra is a címke alatt jelennek meg.",
         "confirm": "Címke törlése",
         "done": "A(z) #{tag} törölve."
       },

@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "Excluir tag",
       "deleteDescription": "Remover “{name}” de {count, plural, one {# item} other {# itens}}? Isso não pode ser desfeito.",
+      "deleteTasks": "As tarefas com #{tag} também a perdem.",
       "mergeTitle": "Mesclar tag",
       "mergeDescription": "Todos os itens com a tag “{source}” passarão a ter a tag de destino. A tag de origem será excluída.",
+      "mergeRetags": "Notas, dias e tarefas com a tag “{source}” recebem a tag de destino no lugar dela.",
+      "mergeBodyTagsStay": "#{source} escrita no texto das notas permanece, então essas notas a mantêm.",
       "targetPlaceholder": "Selecione a tag de destino…",
       "colorTitle": "Alterar cor de “{name}”"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "Renomeando #{oldName}: {done} / {total} notas",
       "renamedBodySkipped": "\"{newName}\" não pode ser digitada como tag inline, então #{oldName} no texto das notas permanece como está",
       "renamedSomeFailed": "Não foi possível atualizar {count, plural, one {# nota} other {# notas}}. Abra {count, plural, one {a nota} other {as notas}} e adicione a tag novamente",
+      "mergedSomeKept": "Não foi possível atualizar {count, plural, one {# nota} other {# notas}}. Mescle #{tag} novamente para concluir.",
+      "deletedSomeKept": "Não foi possível atualizar {count, plural, one {# nota} other {# notas}}. Exclua #{tag} novamente para concluir.",
+      "mergedSomeStuck": "Não foi possível atualizar {count, plural, one {# nota} other {# notas}}. Corrija as notas abaixo e depois mescle #{tag} novamente.",
+      "deletedSomeStuck": "Não foi possível atualizar {count, plural, one {# nota} other {# notas}}. Corrija as notas abaixo e depois exclua #{tag} novamente.",
       "renameUnfinished": "A renomeação de #{oldName} para #{newName} não terminou em {count, plural, one {# nota} other {# notas}}. Renomeie #{oldName} para #{newName} novamente para concluí-la.",
       "renameUnfinishedMore": "{names} e mais {count, plural, one {#} other {#}}",
       "stopRename": "Parar esta renomeação",

@@ -38,7 +38,9 @@ import { toast } from 'sonner'
 import {
   RENAME_UNFINISHED,
   renameTagWithProgress,
+  toastTagChangeFailed,
   toastTagRenamed,
+  toastTagsKept,
   toastUnfinishedRename
 } from '@/features/tag-fields/rename-toasts'
 import { useTags } from '@/hooks/use-tags'
@@ -55,6 +57,7 @@ import { useT } from '@memry/i18n/renderer'
 export function TagManager() {
   const { t } = useT('settings')
   const { t: tCommon } = useT('common')
+  const { t: tNotes } = useT('notes')
   const { tags, isLoading, error, mergeTag, deleteTag } = useTags()
   const [search, setSearch] = useState('')
   const [editingTag, setEditingTag] = useState<string | null>(null)
@@ -107,15 +110,17 @@ export function TagManager() {
     try {
       const result = await deleteTag(deleteTarget.name)
       if (result.success) {
-        toast.success(
-          t('tags.toasts.deleted', {
-            name: deleteTarget.name,
-            count: result.affectedNotes ?? 0
-          })
-        )
+        if (!toastTagsKept(result, deleteTarget.name, 'delete')) {
+          toast.success(
+            t('tags.toasts.deleted', {
+              name: deleteTarget.name,
+              count: result.affectedNotes ?? 0
+            })
+          )
+        }
       } else {
         trackRendererError('tag_delete', result.error ?? 'delete failed')
-        toast.error(result.error ?? t('tags.toasts.deleteFailed'))
+        await toastTagChangeFailed(result.error ?? t('tags.toasts.deleteFailed'), result.code)
       }
     } catch (err) {
       trackRendererError('tag_delete', err)
@@ -129,16 +134,18 @@ export function TagManager() {
     try {
       const result = await mergeTag(mergeSource, mergeTarget)
       if (result.success) {
-        toast.success(
-          t('tags.toasts.merged', {
-            source: mergeSource,
-            target: mergeTarget,
-            count: result.affectedItems ?? 0
-          })
-        )
+        if (!toastTagsKept(result, mergeSource, 'merge')) {
+          toast.success(
+            t('tags.toasts.merged', {
+              source: mergeSource,
+              target: mergeTarget,
+              count: result.affectedItems ?? 0
+            })
+          )
+        }
       } else {
         trackRendererError('tag_merge', result.error ?? 'merge failed')
-        toast.error(result.error ?? t('tags.toasts.mergeFailed'))
+        await toastTagChangeFailed(result.error ?? t('tags.toasts.mergeFailed'), result.code)
       }
     } catch (err) {
       trackRendererError('tag_merge', err)
@@ -291,7 +298,9 @@ export function TagManager() {
               {t('tags.dialogs.deleteDescription', {
                 name: deleteTarget?.name ?? '',
                 count: deleteTarget?.count ?? 0
-              })}
+              })}{' '}
+              {t('tags.dialogs.deleteTasks', { tag: deleteTarget?.name ?? '' })}{' '}
+              {tNotes('tagFields.settings.delete.bodyTagsStay', { tag: deleteTarget?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -311,7 +320,8 @@ export function TagManager() {
           <DialogHeader>
             <DialogTitle>{t('tags.dialogs.mergeTitle')}</DialogTitle>
             <DialogDescription>
-              {t('tags.dialogs.mergeDescription', { source: mergeSource ?? '' })}
+              {t('tags.dialogs.mergeRetags', { source: mergeSource ?? '' })}{' '}
+              {t('tags.dialogs.mergeBodyTagsStay', { source: mergeSource ?? '' })}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-3">
