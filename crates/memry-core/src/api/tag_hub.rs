@@ -11,6 +11,7 @@ use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
 use crate::domain::tag_admin;
 use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
+use crate::domain::tag_rename::{self, Holder, RenameJob, RenamePlan};
 use crate::domain::tags;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
@@ -47,6 +48,47 @@ impl TagHub {
         self.db.call_blocking(|conn| {
             tags::set_pinned(conn, id, tag, pinned, &self.device_id, now_ms())
         })
+    }
+
+    /// Records `job` as the rename in progress with its plan, or answers the other one recorded
+    /// ([`tag_rename::begin`]).
+    pub fn rename_begin(
+        &self,
+        job: &RenameJob,
+        holders: Vec<Holder>,
+    ) -> Result<Option<RenameJob>, StorageError> {
+        self.db
+            .call_blocking(|conn| tag_rename::begin(conn, job, holders))
+    }
+
+    /// The rename in progress and what it has left ([`tag_rename::recorded`]).
+    pub fn rename_recorded(&self) -> Result<Option<RenamePlan>, StorageError> {
+        self.db.read_blocking(tag_rename::recorded)
+    }
+
+    pub fn rename_finish(&self) -> Result<(), StorageError> {
+        self.db.call_blocking(|conn| tag_rename::finish(conn))
+    }
+
+    /// What the recorded rename has left of its tasks, definitions and schema references
+    /// ([`tag_rename::rename_shared`]).
+    pub fn rename_shared(&self) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| tag_rename::rename_shared(conn, &self.device_id, now_ms()))
+    }
+
+    /// The recorded rename in the record of the holder `id`, struck off the plan
+    /// ([`tag_rename::rename_holder`]); `false` when the record did not change.
+    pub fn rename_in(&self, id: &str) -> Result<bool, StorageError> {
+        self.db
+            .call_blocking(|conn| tag_rename::rename_holder(conn, id, &self.device_id, now_ms()))
+    }
+
+    /// The holder `id` struck off the recorded rename, keeping the old name
+    /// ([`tag_rename::skip_holder`]).
+    pub fn rename_skip(&self, id: &str) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| tag_rename::skip_holder(conn, id))
     }
 
     pub fn create_category(&self, name: &str) -> Result<TagCategory, StorageError> {

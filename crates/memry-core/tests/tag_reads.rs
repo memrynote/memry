@@ -9,7 +9,7 @@
 //! | the tag-fold vectors group spellings                       | §13.7.7 tag identity, `tagIs`/`tagKey`   |
 //! | used by count, then authored unused by name                | `getAllTagsWithCounts`, `isAuthored`     |
 //! | a tag's notes: pinned first, then sorted, descendants      | `findNotesWithTagInfo`                   |
-//! | a current file's header stands for the record's tags       | an outside edit reaches the file only    |
+//! | a current file's header stands for a note record's tags   | an outside edit reaches the file only    |
 
 #![cfg(feature = "markdown")]
 
@@ -490,10 +490,10 @@ fn a_missing_index_row_still_lists_the_records_tags() {
     );
 }
 
-/// An edit outside the app reaches the file and the index, never the record: once the index
-/// measured the bytes on disk now, the file's header stands for the record's tags, so a tag
-/// removed there stops counting. A note or day the index has not caught up with keeps the
-/// record's.
+/// An edit outside the app reaches a note's file and the index, never its record: once the
+/// index measured the bytes on disk now, the file's header stands for the record's tags, so a
+/// tag removed there stops counting. A note the index has not caught up with keeps the
+/// record's. A day's record owns its tags whatever its header says (#3931).
 #[test]
 fn a_current_files_header_stands_for_the_records_tags() {
     let (_dir, vault, search) = open();
@@ -504,14 +504,24 @@ fn a_current_files_header_stands_for_the_records_tags() {
     record_at(&vault, "note", "plan", payload, false, 5);
     filed_as(&vault, "plan", "Plan.md", Some("hash-plan"));
     measured(&search, "plan", "---\ntags: [keep]\n---\nBody\n");
+    // A day's record owns its tags (#3931): its file's header is the author's text and never
+    // stands for them, measured or not; the body's `#tags` still count.
     let day = json!({"date": "2026-01-05", "tags": ["gone"], "clock": {"peer": 1}});
     record(&vault, "journal", "day", day, false);
+    body(&vault, "day", &["inline"]);
     filed_as(&vault, "day", "journal/2026-01-05.md", Some("hash-day"));
-    measured(&search, "day", "Nothing\n");
+    measured(&search, "day", "---\ntags: [header]\n---\n#inline\n");
 
-    assert_eq!(counted(&search), vec![pair("keep", 1)]);
+    let all = vec![pair("gone", 1), pair("inline", 1), pair("keep", 1)];
+    assert_eq!(counted(&search), all);
     let gone = search.tagged_notes("gone", false, NoteSort::Title, true);
-    assert!(gone.expect("tagged").notes.is_empty());
+    assert_eq!(ids(&gone.expect("tagged").notes), ["day"]);
+    let header = vec!["header".to_owned()];
+    let day = search.note_tags("day", header, Some("hash-day".to_owned()));
+    assert_eq!(
+        day.expect("day"),
+        Some(vec!["gone".into(), "inline".into()])
+    );
     let keep = search
         .tagged_notes("KEEP", false, NoteSort::Title, true)
         .expect("tagged")
@@ -526,5 +536,6 @@ fn a_current_files_header_stands_for_the_records_tags() {
     // The bytes changed again and the index has not measured them yet.
     filed_as(&vault, "plan", "Plan.md", Some("hash-newer"));
     filed_as(&vault, "day", "journal/2026-01-05.md", None);
-    assert_eq!(counted(&search), vec![pair("gone", 2), pair("Keep", 1)]);
+    let all = vec![pair("gone", 2), pair("inline", 1), pair("Keep", 1)];
+    assert_eq!(counted(&search), all);
 }
