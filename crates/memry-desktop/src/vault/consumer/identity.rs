@@ -198,7 +198,8 @@ pub trait NoteIdentity: Send + Sync {
     /// An edit outside the app replaced the note's file, and its document took the file's text
     /// (`file`); `previous` is the hash of the file it replaced, which the row named. Gives the
     /// record what the file's frontmatter says of it (#3825). Never called for bytes the app
-    /// wrote. An `Err` retries the fact, and the document answers the same text `Unchanged`,
+    /// wrote. Called too when an editor save replaces such a file before the consumer fed it
+    /// (`AppEdit`, `Precondition::Save`): the document then takes the save's text. An `Err` retries the fact, and the document answers the same text `Unchanged`,
     /// so an implementation is idempotent.
     fn on_changed(
         &self,

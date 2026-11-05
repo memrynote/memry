@@ -72,9 +72,8 @@ owner: Kaan\n---\nThe body.\n";
     assert_eq!(set.removed, ["score"]);
     let stored = json!({ "due": "2026-10-07", "stage": "Done", "owner": "Kaan" });
     assert_eq!(Value::Object(set.properties), stored);
-    // The record takes the keys the edit set; the adopted note's record held none of the file's
-    // values (the index fill is 13k-4), and `due` was not edited.
-    assert_eq!(synced(&e, &id), json!({ "stage": "Done", "owner": "Kaan" }));
+    // The record took the found file's values, then the keys the edit set and dropped.
+    assert_eq!(synced(&e, &id), stored);
     assert_eq!(e.body(&id), "The body.");
     assert_eq!(row_hash(&e, &id), Some(content_hash(expected)));
     // Told as an edit for the user; the watcher reported nothing back.
@@ -187,7 +186,7 @@ fn a_file_the_note_has_not_taken_is_refused_and_left_as_it_is() {
         Err(NotesError::EditKept(Kept::FileChanged))
     ));
     assert_eq!(e.read("Plan.md"), NOTE);
-    assert_eq!(synced(&e, &id)["stage"], json!(null));
+    assert_eq!(synced(&e, &id)["stage"], json!("Draft"));
 }
 
 #[test]

@@ -228,7 +228,7 @@ fn distinct_nodes<'a>(values: impl Iterator<Item = &'a YamlValue>) -> usize {
 
 /// `deserializeValue` of the index's text by the type: a number that is not one reads as
 /// `null`, a list type takes a lone value as a one-item list.
-fn indexed_value(text: String, type_name: &str) -> Value {
+pub fn indexed_value(text: String, type_name: &str) -> Value {
     match type_name {
         "number" => number(js_number(&text)),
         "checkbox" => Value::Bool(text == "true"),
