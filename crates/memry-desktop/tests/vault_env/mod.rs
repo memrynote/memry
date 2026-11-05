@@ -14,7 +14,7 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::identity::{
-    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal,
+    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
 };
 use memry_desktop::vault::consumer::{Applied, VaultTier};
 use tokio::sync::broadcast::Receiver;
@@ -86,8 +86,8 @@ impl NoteIdentity for Creates {
         _: &str,
         _: &str,
         _: &str,
-    ) -> Result<(), IdentityError> {
-        Ok(())
+    ) -> Result<Rename, IdentityError> {
+        Ok(Rename::Followed)
     }
 }
 

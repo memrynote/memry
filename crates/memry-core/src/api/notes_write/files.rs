@@ -9,8 +9,11 @@ use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::notes::app_move::{self, AppMoved, BeginError, FolderRecorded, Recorded};
+use crate::domain::notes::file_tags;
 use crate::domain::notes::folder_delete::{self, FolderDeleteRecorded};
-use crate::domain::notes::identity::{self, Adopted, FileNote, Moved, OwedPlace, Removed};
+use crate::domain::notes::identity::{
+    self, Adopted, Crossing, FileNote, Moved, OwedPlace, Removed,
+};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::domain::notes::{self, NewNote};
 use crate::domain::properties;
@@ -129,6 +132,28 @@ impl NotesWriter {
     pub fn journal_date(&self, id: &str) -> Result<Option<String>, StorageError> {
         self.db
             .read_blocking(move |conn| journal::date_of(conn, id))
+    }
+
+    /// An edit outside the app gave the file of the note or day `id` the header tags `after`;
+    /// `indexed` is the index's measure of the file it replaced, when it measured that file
+    /// ([`file_tags::taken`]).
+    pub fn file_tags_edited(
+        &self,
+        id: &str,
+        indexed: Option<&[String]>,
+        after: &[String],
+    ) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            file_tags::taken(conn, id, indexed, after, &device_id, now_ms())
+        })
+    }
+
+    /// The file of the note or day `id` says `tags`, as this device found or wrote it
+    /// ([`file_tags::seen`]).
+    pub fn file_tags_seen(&self, id: &str, tags: &[String]) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(move |conn| file_tags::seen(conn, id, tags))
     }
 
     /// The note's file moved ([`identity::renamed`]).
@@ -280,5 +305,27 @@ impl NotesWriter {
         let device_id = self.device_id.clone();
         self.db
             .call_blocking(move |conn| identity::removed(conn, note_id, path, &device_id, now_ms()))
+    }
+
+    /// The note's or day's file moved to where it is the other kind ([`identity::crossed`]).
+    pub fn file_crossed(
+        &self,
+        note_id: &str,
+        to: Crossing<'_>,
+        converter: Option<&Converter>,
+        embeds: Option<&dyn EmbedResolver>,
+    ) -> Result<Removed, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            Ok(identity::crossed(
+                conn,
+                converter,
+                embeds,
+                note_id,
+                &to,
+                &device_id,
+                now_ms(),
+            ))
+        })?
     }
 }

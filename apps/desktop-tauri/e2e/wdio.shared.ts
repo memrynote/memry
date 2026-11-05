@@ -1,13 +1,20 @@
 import { type ChildProcess } from 'node:child_process'
 import { browser } from '@wdio/globals'
-import { existsSync } from 'node:fs'
+import { existsSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import E2eJunitReporter from './harness/junit-reporter'
 import { removeDir } from './harness/remove-dir'
-import { binaryPath, driverReady, freePort, spawnApp, stopChild } from './harness/app-process'
+import {
+  APP_OUTPUT_DIR,
+  binaryPath,
+  driverReady,
+  freePort,
+  spawnApp,
+  stopChild
+} from './harness/app-process'
 import { EXPECT_TIMEOUT_MS, IS_CI, TEST_TIMEOUT_MS } from './harness/budgets'
 import { purgeAllCreatedDevices, startRun } from './harness/registry'
 import { verifyE2eBinary } from './harness/verify-binary'
@@ -85,6 +92,7 @@ export const sharedConfig = {
   reporters: ['spec', [E2eJunitReporter, { outputDir: join(packageRoot, 'test-results/e2e') }]],
   async onPrepare(): Promise<void> {
     startRun()
+    rmSync(APP_OUTPUT_DIR, { recursive: true, force: true })
     const binary = binaryPath()
     if (!existsSync(binary)) {
       throw new Error(

@@ -159,6 +159,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         name: "note_stats",
         sql: include_str!("migrations/index/0003_note_stats.sql"),
     },
+    Migration {
+        version: 4,
+        name: "note_stats_header_read",
+        sql: include_str!("migrations/index/0004_note_stats_header_read.sql"),
+    },
 ];
 
 /// The version a fully migrated database sits at. Zero for an empty list.

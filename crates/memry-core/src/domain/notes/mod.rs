@@ -53,6 +53,8 @@ pub mod app_move;
 mod attachments;
 mod duplicate;
 #[cfg(feature = "markdown")]
+pub mod file_tags;
+#[cfg(feature = "markdown")]
 pub mod folder_delete;
 #[cfg(feature = "markdown")]
 pub mod identity;
@@ -62,6 +64,8 @@ pub mod link_rewrite;
 pub mod local_only;
 mod metadata;
 pub mod names;
+#[cfg(feature = "markdown")]
+pub mod removal;
 
 pub use attachments::*;
 pub use duplicate::duplicate;
