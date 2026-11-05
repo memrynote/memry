@@ -13,11 +13,17 @@ use super::error::{NotesError, SCOPE};
 use super::service::NotesService;
 use super::tag_rename::recorded_plan;
 use crate::session::OpenVault;
+use crate::vault::hash::content_hash;
+use crate::vault::note_file::read_note;
 
-/// A recorded rename and the notes it has left.
+/// How many of the notes it left an unfinished rename names.
+const NAMED: usize = 3;
+
+/// A recorded rename, how many notes it has left, and the first [`NAMED`] of them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnfinishedRename {
     pub job: RenameJob,
+    pub left: usize,
     pub notes: Vec<UnfinishedNote>,
 }
 
@@ -29,8 +35,8 @@ pub struct UnfinishedNote {
 }
 
 impl NotesService {
-    /// The recorded rename and the notes it has left; `None` when none is recorded, or while
-    /// one runs (a running rename is not stuck).
+    /// The recorded rename, the number of notes it has left and the first of them; `None` when
+    /// none is recorded, or while one runs (a running rename is not stuck).
     pub fn unfinished_tag_rename(
         &self,
         open: &OpenVault,
@@ -42,39 +48,68 @@ impl NotesService {
             return Ok(None);
         };
         let files = open.vault.note_files();
-        let mut notes = Vec::with_capacity(plan.holders.len());
-        for holder in plan.holders {
+        let mut notes = Vec::with_capacity(NAMED);
+        for holder in plan.holders.iter().take(NAMED) {
             let named = files.by_id(&holder.id)?.and_then(|row| {
                 let stem = Path::new(&row.path).file_stem()?;
                 Some(stem.to_string_lossy().into_owned())
             });
             notes.push(UnfinishedNote {
                 title: named.unwrap_or_else(|| holder.id.clone()),
-                id: holder.id,
+                id: holder.id.clone(),
             });
         }
         Ok(Some(UnfinishedRename {
+            left: plan.holders.len(),
             job: plan.job,
             notes,
         }))
     }
 
-    /// Stops the recorded rename, and answers it; `None` when none is recorded. One running is
+    /// Stops the recorded rename, and answers it; `None` when none is recorded. A note whose
+    /// file took the rename and whose record did not yet (a run stopped between the two) has its
+    /// record renamed first, so it keeps no name its file no longer holds. One running is
     /// refused ([`NotesError::TagRenameInProgress`]).
     pub fn abandon_tag_rename(&self, open: &OpenVault) -> Result<Option<RenameJob>, NotesError> {
+        // Nothing to stop, though the lock is held a moment (a refused rename, a query).
+        let Some(recorded) = recorded_plan(open)? else {
+            return Ok(None);
+        };
         let Some(_running) = self.claim_rename() else {
-            let running = recorded_plan(open)?.map(|plan| plan.job);
-            let (from, to) = running.map_or_else(Default::default, |job| (job.from, job.to));
-            return Err(NotesError::TagRenameInProgress { from, to });
+            return Err(NotesError::TagRenameInProgress {
+                from: recorded.job.from,
+                to: recorded.job.to,
+            });
         };
         let Some(plan) = recorded_plan(open)? else {
             return Ok(None);
         };
-        let left: Vec<&str> = plan
-            .holders
-            .iter()
-            .map(|holder| holder.id.as_str())
-            .collect();
+        let hub = self.tag_hub(open)?;
+        let mut left = Vec::new();
+        for holder in &plan.holders {
+            let id = holder.id.as_str();
+            let Some(begun) = hub.rename_started(id)? else {
+                left.push(id);
+                continue;
+            };
+            let written = self.order.run(id, |_turn| {
+                let Some(row) = open.vault.note_files().by_id(id)? else {
+                    return Ok(false);
+                };
+                let Some(file) = read_note(&open.path, &row.path)? else {
+                    return Ok(false);
+                };
+                let text = file.raw.strip_prefix('\u{feff}').unwrap_or(&file.raw);
+                if content_hash(text) != begun.after {
+                    return Ok(false);
+                }
+                hub.rename_in(id)?;
+                Ok::<_, NotesError>(true)
+            })?;
+            if !written {
+                left.push(id);
+            }
+        }
         tracing::warn!(
             scope = SCOPE,
             from = plan.job.from,
@@ -82,7 +117,7 @@ impl NotesService {
             ?left,
             "a tag rename was stopped; the notes it could not write keep the old name"
         );
-        self.tag_hub(open)?.rename_finish()?;
+        hub.rename_finish()?;
         Ok(Some(plan.job))
     }
 }

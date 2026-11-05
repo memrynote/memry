@@ -3,11 +3,12 @@ import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
 import { foldTag } from '@memry/shared/tag-fold'
 import {
+  RENAME_UNFINISHED,
   renameTagWithProgress,
   toastTagRenamed,
   toastUnfinishedRename
 } from '@/features/tag-fields/rename-toasts'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { IpcFailureError, extractErrorMessage, getIpcErrorCode } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { onTagDeleted, onTagRenamed, tagsService } from '@/services/tags-service'
 
@@ -38,14 +39,18 @@ export function useTagScopeActions(tag: string | null, totalNotes: number, close
       try {
         const result = await renameTagWithProgress(tag, newName)
         if (!result.success) {
-          throw new Error(result.error ?? tSettings('tags.toasts.renameFailed'))
+          throw new IpcFailureError(
+            result.error ?? tSettings('tags.toasts.renameFailed'),
+            result.code
+          )
         }
         toastTagRenamed(result, tag, newName)
         closeTab()
       } catch (err) {
         log.error('Failed to rename tag', err)
         const message = extractErrorMessage(err, tSettings('tags.toasts.renameFailed'))
-        if (!(await toastUnfinishedRename())) toast.error(message)
+        const stuck = getIpcErrorCode(err) === RENAME_UNFINISHED
+        if (!stuck || !(await toastUnfinishedRename())) toast.error(message)
         throw err instanceof Error ? err : new Error(message)
       }
     },

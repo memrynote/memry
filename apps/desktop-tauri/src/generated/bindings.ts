@@ -1710,6 +1710,8 @@ export type UnfinishedNoteView = {
 export type UnfinishedRenameView = {
 	oldName: string,
 	newName: string,
+	/**  How many notes it left; `notes` names the first of them. */
+	left: number,
 	notes: UnfinishedNoteView[],
 };
 

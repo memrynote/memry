@@ -430,7 +430,7 @@ fn an_unwritten_file_edit_is_forgotten_and_its_holder_stays_listed() {
 #[test]
 fn a_begun_holders_record_keeps_what_an_edit_changed_since_the_edit_began() {
     let (db, _d) = vault("tags-rename-begun");
-    let ids = ["s1", "s2", "s3", "s4", "s5"];
+    let ids = ["s1", "s2", "s3", "s4", "s5", "s6"];
     for id in ids {
         let payload = format!(r#"{{"title":"{id}","tags":["a","x"],"clock":{{"desk":1}}}}"#);
         seed(&db, "note", id, &payload);
@@ -449,11 +449,15 @@ fn a_begun_holders_record_keeps_what_an_edit_changed_since_the_edit_began() {
         set(c, "s3", &["a/b", "x", "y"])?;
         set(c, "s4", &["a", "x", "y"])?;
         set(c, "s5", &["a"])?;
+        // Pinned since: the pin follows its tag to the new name.
+        tags::set_pinned(c, "s6", "a", true, "desk", NOW + 1)?;
         let renamed: Vec<bool> = ids
             .iter()
             .map(|id| rename_holder(c, id, "phone", NOW + 2))
             .collect::<Result<_, _>>()?;
-        assert_eq!(renamed, [true, false, false, true, true]);
+        assert_eq!(renamed, [true, false, false, true, true, true]);
+        let pins = tags::lists(c, "s6")?.expect("live").1;
+        assert_eq!(pins, Some(vec!["a/b".to_owned()]));
         assert!(
             recorded(c)?
                 .expect("plan")
@@ -471,4 +475,31 @@ fn a_begun_holders_record_keeps_what_an_edit_changed_since_the_edit_began() {
     assert_eq!(tags_of(&db, "note", "s3"), ["a/b", "x", "y"]);
     assert_eq!(tags_of(&db, "note", "s4"), ["a/b", "x", "y"]);
     assert_eq!(tags_of(&db, "note", "s5"), ["a/b"]);
+}
+
+/// A merge into a name the holder holds (`a` to `b` of `[a, b]`), its file edit begun and its
+/// record changed since (`a` gone with the renamed header, `x` added): the record keeps `b`,
+/// which a still-held tag stands for, and the added tag.
+#[test]
+fn a_begun_holder_merged_into_a_name_it_holds_keeps_that_name() {
+    let (db, _d) = vault("tags-rename-begun-merge");
+    for id in ["m1", "m2"] {
+        let payload = format!(r#"{{"title":"{id}","tags":["a","b"],"clock":{{"desk":1}}}}"#);
+        seed(&db, "note", id, &payload);
+    }
+    db.call_blocking(|c| {
+        let listed = holders(c, Vec::new(), "a")?;
+        begin(c, &job("a", "b"), listed)?;
+        for id in ["m1", "m2"] {
+            start_holder(c, id, "b", "a")?;
+        }
+        let list = vec!["b".to_owned(), "x".to_owned()];
+        tags::set(c, "note", "m1", &list, "desk", NOW + 1)?;
+        assert!(!rename_holder(c, "m1", "phone", NOW + 2)?);
+        assert!(rename_holder(c, "m2", "phone", NOW + 2)?);
+        Ok(())
+    })
+    .expect("merge");
+    assert_eq!(tags_of(&db, "note", "m1"), ["b", "x"]);
+    assert_eq!(tags_of(&db, "note", "m2"), ["b"]);
 }

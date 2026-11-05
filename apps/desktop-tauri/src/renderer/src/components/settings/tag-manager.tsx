@@ -36,6 +36,7 @@ import {
 import { Search, MoreHorizontal, Pencil, Merge, Trash2, Palette, Tag } from '@/lib/icons'
 import { toast } from 'sonner'
 import {
+  RENAME_UNFINISHED,
   renameTagWithProgress,
   toastTagRenamed,
   toastUnfinishedRename
@@ -86,7 +87,7 @@ export function TagManager() {
         toastTagRenamed(result, editingTag, newName)
       } else {
         trackRendererError('tag_rename', result.error ?? 'rename failed')
-        if (!(await toastUnfinishedRename())) {
+        if (result.code !== RENAME_UNFINISHED || !(await toastUnfinishedRename())) {
           toast.error(result.error ?? t('tags.toasts.renameFailed'))
         }
       }

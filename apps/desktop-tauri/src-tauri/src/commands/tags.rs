@@ -5,13 +5,16 @@
 //! [`TagCategoriesChangedEvent`] for a category or a drag, [`TagNotesChangedEvent`] for a pin.
 //!
 //! A rename is the one that writes the note files, through `NotesService::rename_tag`: it sends
-//! [`TagsProgressEvent`] as the notes go, then [`TagRenamedEvent`] and [`NoteTagsChangedEvent`].
+//! [`TagsProgressEvent`] as the notes go, then [`TagRenamedEvent`] and [`NoteTagsChangedEvent`],
+//! once the note index measured the files it wrote, as a day's save is
+//! (`shell::journal_events::measure`): the tag list's refetch on the event reads their headers.
 
 use std::sync::Arc;
 
 use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::error::NotesError;
+use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::tag_rename::{RenameJob, TagRenamed};
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::{OpenVault, Session};
@@ -134,7 +137,7 @@ pub fn announce<R: Runtime>(app: &AppHandle<R>, written: Written) {
                 TagRenamedEvent {
                     old_name,
                     new_name,
-                    affected_notes: renamed.notes_written,
+                    affected_notes: written_count(&renamed),
                 },
             );
             broadcast(app, NoteTagsChangedEvent);
@@ -144,7 +147,7 @@ pub fn announce<R: Runtime>(app: &AppHandle<R>, written: Written) {
                 let failed = !renamed.failed_note_ids.is_empty();
                 event.result = Some(if failed { "failed" } else { "success" }.to_owned());
                 event.metrics = Some(Metrics {
-                    item_count: Some(f64::from(renamed.notes_written)),
+                    item_count: Some(f64::from(written_count(&renamed))),
                     ..Metrics::default()
                 });
                 telemetry.track_main_event(event);
@@ -429,8 +432,9 @@ fn rename<R: Runtime>(
     let renamed = service(app)?
         .rename_tag(&open, &job, &mut progress)
         .map_err(|error| rename_failed(app, &error))?;
+    measure(app, &renamed.written);
     let view = RenameTagView {
-        affected_notes: renamed.notes_written,
+        affected_notes: written_count(&renamed),
         failed_note_ids: renamed.failed_note_ids.clone(),
         body_skipped: renamed.body_skipped,
     };
@@ -445,12 +449,45 @@ fn rename<R: Runtime>(
     Ok(view)
 }
 
+fn written_count(renamed: &TagRenamed) -> u32 {
+    u32::try_from(renamed.written.len()).unwrap_or(u32::MAX)
+}
+
+/// The files a rename wrote measured into their index rows; one left to a pass lags the list
+/// until the pass writes it, logged.
+fn measure<R: Runtime>(app: &AppHandle<R>, written: &[String]) {
+    let Some(index) = app.try_state::<Arc<NoteIndex>>() else {
+        tracing::warn!(
+            scope = "TagsHandlers",
+            "no note index: the tag list lags the rename"
+        );
+        return;
+    };
+    for note_id in written {
+        match index.measure(note_id) {
+            Ok(true) => {}
+            Ok(false) => {
+                tracing::debug!(scope = "TagsHandlers", note_id, "measured by a later pass")
+            }
+            Err(error) => {
+                tracing::warn!(
+                    scope = "TagsHandlers",
+                    "the tag list lags the rename: {error}"
+                );
+                return;
+            }
+        }
+    }
+}
+
 /// A rename left with notes it could not write, and those notes.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UnfinishedRenameView {
     pub old_name: String,
     pub new_name: String,
+    /// How many notes it left; `notes` names the first of them.
+    pub left: u32,
     pub notes: Vec<UnfinishedNoteView>,
 }
 
@@ -476,6 +513,7 @@ pub async fn tags_rename_unfinished<R: Runtime>(
         Ok(left.map(|left| UnfinishedRenameView {
             old_name: left.job.from,
             new_name: left.job.to,
+            left: u32::try_from(left.left).unwrap_or(u32::MAX),
             notes: left
                 .notes
                 .into_iter()

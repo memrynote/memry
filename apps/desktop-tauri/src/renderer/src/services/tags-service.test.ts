@@ -179,7 +179,11 @@ describe('tags-service', () => {
       code: 'tag_rename_in_progress',
       message
     })
-    await expect(tagsService.renameTag(input)).resolves.toEqual({ success: false, error: message })
+    await expect(tagsService.renameTag(input)).resolves.toEqual({
+      success: false,
+      error: message,
+      code: 'tag_rename_in_progress'
+    })
   })
 
   it('forwards the methods later steps port to window.api.tags', async () => {

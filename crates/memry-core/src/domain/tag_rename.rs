@@ -108,18 +108,24 @@ pub struct Started {
     pinned: Option<Vec<String>>,
 }
 
+fn holds(list: &[String], tag: &str) -> bool {
+    list.iter().any(|held| tags::same_tag(held, tag))
+}
+
 /// A begun holder's list: what the rename made of `begun`, less what an edit since removed and
 /// plus what it added (`now`), so an edit read into the record meanwhile keeps its change,
 /// whether it came in the old name's terms (a day's header, which keeps the old name) or the
 /// new (a note's renamed header).
 fn since_begun(begun: &[String], now: &[String], from: &str, to: &str) -> Vec<String> {
-    let holds = |list: &[String], tag: &str| list.iter().any(|held| tags::same_tag(held, tag));
-    let removed: Vec<String> = begun
-        .iter()
-        .filter(|tag| !holds(now, tag))
-        .cloned()
+    let (removed, stayed): (Vec<String>, Vec<String>) =
+        begun.iter().cloned().partition(|tag| !holds(now, tag));
+    // A name a tag still held renames to stays, though a removed one renames to it too (a
+    // merge into a name in use: `a` to `b` of `[a, b]`, `a` removed since).
+    let still = tags::renamed_list(&stayed, from, to);
+    let gone: Vec<String> = tags::renamed_list(&removed, from, to)
+        .into_iter()
+        .filter(|tag| !holds(&still, tag))
         .collect();
-    let gone = tags::renamed_list(&removed, from, to);
     let kept = tags::renamed_list(begun, from, to)
         .into_iter()
         .filter(|tag| !holds(&gone, tag));
@@ -419,7 +425,17 @@ pub fn rename_holder(
                     (Some(was), Some(now)) => {
                         Some(tags::spelled_in(since_begun(was, now, from, to), &next))
                     }
-                    (_, now) => now.map(<[String]>::to_vec),
+                    // Pinned since the edit began: a pin follows its tag to the new name.
+                    (None, Some(now)) => Some(tags::spelled_in(
+                        now.iter()
+                            .map(|pin| match renamed_tag(pin, from, to) {
+                                Some(renamed) if !holds(&next, pin) => renamed,
+                                _ => pin.clone(),
+                            })
+                            .collect(),
+                        &next,
+                    )),
+                    (_, None) => None,
                 };
                 (next, pins)
             },

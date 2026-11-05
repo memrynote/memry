@@ -2003,7 +2003,7 @@
       "renamedBodySkipped": "“{newName}”无法作为行内标签输入，因此笔记文本中的 #{oldName} 保持原样",
       "renamedSomeFailed": "无法更新 {count, plural, other {# 篇笔记}}。请打开{count, plural, other {这些笔记}}并重新添加标签",
       "renameUnfinished": "将 #{oldName} 重命名为 #{newName} 的操作有 {count, plural, other {# 篇笔记}}未完成。再次将 #{oldName} 重命名为 #{newName} 即可完成。",
-      "renameUnfinishedMore": "{names} 等 {count, plural, other {另外 # 篇}}",
+      "renameUnfinishedMore": "{names} 等{count, plural, other {另外 # 篇}}",
       "stopRename": "停止此次重命名",
       "renameStopped": "已停止将 #{oldName} 重命名为 #{newName}。无法更新的笔记保留 #{oldName}。",
       "stopRenameFailed": "无法停止重命名",

@@ -137,6 +137,13 @@ impl NotesService {
         self.crash_after_rename_write.store(true, Ordering::Relaxed);
     }
 
+    /// Holds the tag rename lock, as a rename running (or a refused one, a moment) holds it.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn hold_tag_rename(&self) -> std::sync::MutexGuard<'_, ()> {
+        self.renaming.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
     /// The next tag rename's next file edit fails, as a note it cannot write does.
     #[cfg(feature = "test-hooks")]
     #[doc(hidden)]

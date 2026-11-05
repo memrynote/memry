@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 
 import { commands } from '../../../../generated/bindings'
@@ -140,6 +140,8 @@ vi.mock('@/components/ui/select', () => ({
 }))
 
 describe('TagManager', () => {
+  afterEach(() => vi.restoreAllMocks())
+
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.tagsState = {
@@ -252,7 +254,8 @@ describe('TagManager', () => {
     const left = {
       oldName: 'work',
       newName: 'work/later',
-      notes: ['Plan', 'Ideas', 'Log', 'Draft'].map((title, at) => ({ id: `n${at}`, title }))
+      left: 7,
+      notes: ['Plan', 'Ideas', 'Log'].map((title, at) => ({ id: `n${at}`, title }))
     }
     vi.spyOn(commands, 'tagsRenameUnfinished').mockResolvedValueOnce(left)
     const stop = vi.spyOn(commands, 'tagsRenameAbandon').mockResolvedValueOnce(true)
@@ -268,9 +271,9 @@ describe('TagManager', () => {
 
     await waitFor(() =>
       expect(mocks.toastWarning).toHaveBeenCalledWith(
-        "Renaming #work to #work/later didn't finish for 4 notes. Rename #work to #work/later again to finish it.",
+        "Renaming #work to #work/later didn't finish for 7 notes. Rename #work to #work/later again to finish it.",
         expect.objectContaining({
-          description: 'Plan, Ideas, Log and 1 more',
+          description: 'Plan, Ideas, Log and 4 more',
           action: expect.objectContaining({ label: 'Stop this rename' })
         })
       )
@@ -286,9 +289,10 @@ describe('TagManager', () => {
   })
 
   it('shows the rename left unfinished in place of the refusal it causes', async () => {
-    const left = { oldName: 'old', newName: 'new', notes: [{ id: 'n1', title: 'Plan' }] }
+    const left = { oldName: 'old', newName: 'new', left: 1, notes: [{ id: 'n1', title: 'Plan' }] }
     vi.spyOn(commands, 'tagsRenameUnfinished').mockResolvedValueOnce(left)
-    mocks.renameTag.mockResolvedValueOnce({ success: false, error: 'refused' })
+    const refused = { kind: 'invalid', code: 'tag_rename_unfinished', message: 'refused' }
+    vi.spyOn(commands, 'tagsRename').mockRejectedValueOnce(refused)
     render(<TagManager />)
     fireEvent.click(screen.getAllByText('tags.actions.rename')[0])
     const input = screen.getByDisplayValue('work')
@@ -302,6 +306,36 @@ describe('TagManager', () => {
       )
     )
     expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
+  it('shows a failure of its own as itself while a rename is left unfinished', async () => {
+    const left = { oldName: 'old', newName: 'new', left: 1, notes: [{ id: 'n1', title: 'Plan' }] }
+    vi.spyOn(commands, 'tagsRenameUnfinished').mockResolvedValue(left)
+    const failed = { kind: 'storage', code: 'io', message: 'disk full' }
+    vi.spyOn(commands, 'tagsRename').mockRejectedValueOnce(failed)
+    render(<TagManager />)
+    fireEvent.click(screen.getAllByText('tags.actions.rename')[0])
+    const input = screen.getByDisplayValue('work')
+    fireEvent.change(input, { target: { value: 'home' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('disk full'))
+    expect(mocks.toastWarning).not.toHaveBeenCalled()
+  })
+
+  it('does not ask to rename again for notes the rename left with none recorded', async () => {
+    mocks.renameTag.mockResolvedValueOnce({ success: true, failedNoteIds: ['n1', 'n2'] })
+    render(<TagManager />)
+    fireEvent.click(screen.getAllByText('tags.actions.rename')[0])
+    const input = screen.getByDisplayValue('work')
+    fireEvent.change(input, { target: { value: 'work/later' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() =>
+      expect(mocks.toastWarning).toHaveBeenCalledWith(
+        "Couldn't update 2 notes. Open them and add the tag again"
+      )
+    )
   })
 
   it('deletes, merges, and changes tag colors with success and error toasts', async () => {

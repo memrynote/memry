@@ -1,9 +1,9 @@
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
-import type { RenameTagResponse } from '@memry/contracts/tags-api'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import {
+  type RenameTagResult,
   onTagsProgress,
   stopTagRename,
   tagsService,
@@ -15,16 +15,19 @@ const log = createLogger('Tags:Rename')
 /** How many of a stuck rename's notes its warning names. */
 const NAMED = 3
 
-export function toastTagRenamed(result: RenameTagResponse, oldName: string, newName: string) {
+/** The `code` a rename refused because another is left unfinished fails with. */
+export const RENAME_UNFINISHED = 'tag_rename_unfinished'
+
+export function toastTagRenamed(result: RenameTagResult, oldName: string, newName: string) {
   const t = getI18n().getFixedT(null, 'settings')
   toast.success(t('tags.toasts.renamed', { oldName, newName }))
   if (result.bodySkipped) toast.warning(t('tags.toasts.renamedBodySkipped', { oldName, newName }))
   const failed = result.failedNoteIds?.length ?? 0
-  // The rename stays recorded for the notes it could not write.
+  // The rename stays recorded for the notes it could not write. With none recorded (the notes
+  // it left were struck off), asking it again would rename the renamed notes once more.
   if (failed > 0) {
     void toastUnfinishedRename().then((shown) => {
-      if (!shown)
-        toast.warning(t('tags.toasts.renameUnfinished', { oldName, newName, count: failed }))
+      if (!shown) toast.warning(t('tags.toasts.renamedSomeFailed', { count: failed }))
     })
   }
 }
@@ -46,8 +49,8 @@ export async function toastUnfinishedRename(): Promise<boolean> {
     .slice(0, NAMED)
     .map((note) => note.title)
     .join(', ')
-  const rest = notes.length - NAMED
-  toast.warning(t('tags.toasts.renameUnfinished', { oldName, newName, count: notes.length }), {
+  const rest = left.left - Math.min(notes.length, NAMED)
+  toast.warning(t('tags.toasts.renameUnfinished', { oldName, newName, count: left.left }), {
     description: rest > 0 ? t('tags.toasts.renameUnfinishedMore', { names, count: rest }) : names,
     duration: 10_000,
     action: {
@@ -72,7 +75,7 @@ async function stopRename(oldName: string, newName: string) {
 export async function renameTagWithProgress(
   oldName: string,
   newName: string
-): Promise<RenameTagResponse> {
+): Promise<RenameTagResult> {
   const t = getI18n().getFixedT(null, 'settings')
   const runId = crypto.randomUUID()
   const off = onTagsProgress((event) => {

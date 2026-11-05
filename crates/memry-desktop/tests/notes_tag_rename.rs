@@ -197,7 +197,7 @@ fn a_rename_writes_each_file_and_record_once_and_merges_into_a_name_in_use() {
         })
         .unwrap();
     assert_eq!(renamed.failed_note_ids, Vec::<String>::new());
-    assert_eq!(renamed.notes_written, 4);
+    assert_eq!(renamed.written.len(), 4);
     assert!(!renamed.body_skipped);
     assert_eq!(told.last(), Some(&(4, 4)));
 
@@ -258,7 +258,7 @@ fn a_rename_writes_each_file_and_record_once_and_merges_into_a_name_in_use() {
     // A second run finds nothing to do.
     clear_outbox(&e);
     let again = notes.rename_tag(&open, &job("job", "career"), &mut |_, _| {});
-    assert_eq!(again.unwrap().notes_written, 0);
+    assert_eq!(again.unwrap().written.len(), 0);
     assert_eq!(e.read("Plan.md"), plan_text);
     assert_eq!(
         upserts(&e, &plan) + upserts(&e, &merge) + upserts(&e, &day),
@@ -277,7 +277,7 @@ fn a_case_only_rename_keeps_the_definition_and_a_spaced_name_leaves_the_bodies()
     let open = e.session.current().unwrap();
 
     let renamed = notes.rename_tag(&open, &job("Work", "work"), &mut |_, _| {});
-    assert_eq!(renamed.unwrap().notes_written, 1);
+    assert_eq!(renamed.unwrap().written.len(), 1);
     let text = e.read("Work.md");
     assert!(
         text.contains("  - work\n") && text.contains("Deep #work today"),
@@ -424,7 +424,7 @@ fn a_note_the_rename_could_not_write_is_tried_again_by_the_same_rename_alone() {
     let first = notes
         .rename_tag(&open, &job("a", "a/b"), &mut |_, _| {})
         .unwrap();
-    assert_eq!(first.notes_written, 1);
+    assert_eq!(first.written.len(), 1);
     let [failed] = &first.failed_note_ids[..] else {
         panic!("{first:?}")
     };
@@ -446,7 +446,7 @@ fn a_note_the_rename_could_not_write_is_tried_again_by_the_same_rename_alone() {
         .rename_tag(&open, &job("a", "a/b"), &mut |_, _| {})
         .unwrap();
     assert_eq!(
-        (again.notes_written, again.failed_note_ids),
+        (again.written.len(), again.failed_note_ids),
         (1, Vec::new())
     );
     assert!(plan(&e).is_none());
@@ -528,7 +528,7 @@ fn an_outside_edit_during_the_rename_is_kept() {
     notes.before_next_rename_lands(Box::new(move || std::fs::write(file, outside).unwrap()));
     let open = e.session.current().unwrap();
     let renamed = notes.rename_tag(&open, &job("job", "career"), &mut |_, _| {});
-    assert_eq!(renamed.unwrap().notes_written, 0);
+    assert_eq!(renamed.unwrap().written.len(), 0);
     e.facts_until(|f| {
         matches!(f, Applied::Changed { note_id, source: ChangeSource::Watcher, .. } if *note_id == id)
     });
@@ -568,7 +568,7 @@ fn a_rename_asked_while_it_runs_is_refused_and_renames_nothing_twice() {
         matches!(&inner, Err(NotesError::TagRenameInProgress { from, to }) if from == "a" && to == "a/b"),
         "{inner:?}"
     );
-    assert_eq!(renamed.notes_written, 3);
+    assert_eq!(renamed.written.len(), 3);
     for id in &ids {
         let text = e.read(&path_of(&e, id));
         assert!(
@@ -737,6 +737,7 @@ fn a_rename_left_unfinished_names_its_notes_and_can_be_stopped() {
     let written = ids.iter().find(|id| *id != failed).unwrap();
 
     let unfinished = notes.unfinished_tag_rename(&open).unwrap().expect("left");
+    assert_eq!(unfinished.left, 1);
     assert_eq!(
         (unfinished.job.from.as_str(), unfinished.job.to.as_str()),
         ("a", "a/b")
@@ -757,7 +758,7 @@ fn a_rename_left_unfinished_names_its_notes_and_can_be_stopped() {
     assert!(e.read(&path_of(&e, failed)).contains("#a "));
     assert_eq!(record(&e, written, "tags"), ["a/b"]);
     let other = notes.rename_tag(&open, &job("a/b", "c"), &mut |_, _| {});
-    assert_eq!(other.unwrap().notes_written, 1);
+    assert_eq!(other.unwrap().written.len(), 1);
 }
 
 /// A crash after a day's body took the rename, then an outside edit adding a tag to its header,
@@ -869,8 +870,143 @@ fn a_resume_asked_while_a_rename_runs_waits_and_finishes_what_it_left() {
     let resumed = resume.expect("asked").join().unwrap().unwrap();
     let resumed = resumed.expect("it ran once the rename ended");
     assert_eq!(
-        (resumed.notes_written, resumed.failed_note_ids),
+        (resumed.written.len(), resumed.failed_note_ids),
         (1, Vec::new())
     );
     assert!(plan(&e).is_none());
+}
+
+/// A merge into a name the note holds (`a` to `b` of `[a, b]`) stopped after the file, then an
+/// outside edit adding `x` to the header: the record keeps `b` and takes `x`.
+#[test]
+fn a_merge_stopped_after_the_file_then_edited_outside_keeps_the_merged_name() {
+    let (e, notes, _) = opened();
+    let id = note(&notes, &e, "One", "#a one", &["a", "b"]);
+    let path = path_of(&e, &id);
+    let open = e.session.current().unwrap();
+    notes.crash_after_next_rename_write();
+    let crashed = notes.rename_tag(&open, &job("a", "b"), &mut |_, _| {});
+    assert!(matches!(crashed, Err(NotesError::Closed)), "{crashed:?}");
+    let text = e.read(&path);
+    assert!(
+        text.contains("  - b\n") && !text.contains("  - a\n"),
+        "{text}"
+    );
+    e.write(&path, &text.replace("  - b\n", "  - b\n  - x\n"));
+    until("the record took the outside edit", || {
+        record(&e, &id, "tags") == ["b", "x"]
+    });
+
+    notes
+        .rename_tag(&open, &job("a", "b"), &mut |_, _| {})
+        .unwrap();
+    assert_eq!(record(&e, &id, "tags"), ["b", "x"]);
+    assert!(plan(&e).is_none());
+}
+
+/// A rename stopped after a note's file and before its record, then stopped by the user: the
+/// note's record takes the name its file holds, and the note it did not reach keeps the old.
+#[test]
+fn stopping_a_rename_renames_the_record_of_a_file_it_wrote() {
+    let (e, notes, _) = opened();
+    let ids = [
+        note(&notes, &e, "One", "#a one", &["a"]),
+        note(&notes, &e, "Two", "#a two", &["a"]),
+    ];
+    let open = e.session.current().unwrap();
+    notes.crash_after_next_rename_write();
+    let crashed = notes.rename_tag(&open, &job("a", "a/b"), &mut |_, _| {});
+    assert!(matches!(crashed, Err(NotesError::Closed)), "{crashed:?}");
+    let written = ids
+        .iter()
+        .find(|id| e.read(&path_of(&e, id)).contains("#a/b"))
+        .expect("one file written");
+    let other = ids.iter().find(|id| *id != written).unwrap();
+    assert_eq!(record(&e, written, "tags"), ["a"]);
+
+    assert!(notes.abandon_tag_rename(&open).unwrap().is_some());
+    assert_eq!(record(&e, written, "tags"), ["a/b"]);
+    assert_eq!(record(&e, other, "tags"), ["a"]);
+    let left = e.read(&path_of(&e, other));
+    assert!(!left.contains("#a/b") && left.contains("  - a\n"), "{left}");
+    assert!(plan(&e).is_none());
+}
+
+/// Stopping while the lock is held a moment (a refused rename, a query): with nothing recorded
+/// there is nothing to stop; with a rename recorded it is refused as running.
+#[test]
+fn stopping_with_nothing_recorded_is_nothing_while_the_lock_is_held() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    {
+        let _held = notes.hold_tag_rename();
+        assert!(matches!(notes.abandon_tag_rename(&open), Ok(None)));
+    }
+    note(&notes, &e, "One", "#a one", &["a"]);
+    notes.crash_after_next_rename_write();
+    let crashed = notes.rename_tag(&open, &job("a", "a/b"), &mut |_, _| {});
+    assert!(matches!(crashed, Err(NotesError::Closed)), "{crashed:?}");
+    let _held = notes.hold_tag_rename();
+    let refused = notes.abandon_tag_rename(&open);
+    assert!(
+        matches!(&refused, Err(NotesError::TagRenameInProgress { from, .. }) if from == "a"),
+        "{refused:?}"
+    );
+}
+
+/// A resume that waited for the lock through a close writes nothing to the closing vault: the
+/// recorded rename's shared part (a definition moved to the new name) is left to the next open.
+#[test]
+fn a_resume_stopped_while_it_waited_writes_nothing() {
+    let (e, notes, store) = opened();
+    note(&notes, &e, "One", "#a one", &["a"]);
+    let hub = hub(&e, &store);
+    hub.set_color("a", "#ff0000").unwrap();
+    let open = e.session.current().unwrap();
+    let holders = open.search.tag_rename_holders("a").unwrap();
+    assert_eq!(hub.rename_begin(&job("a", "a/b"), holders).unwrap(), None);
+
+    let held = notes.hold_tag_rename();
+    let resume = {
+        let (notes, open) = (notes.clone(), open.clone());
+        std::thread::spawn(move || notes.resume_tag_rename(&open, &|| true))
+    };
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    drop(held);
+    let resumed = resume.join().unwrap();
+    assert!(matches!(resumed, Ok(None)), "{resumed:?}");
+    let colors = open
+        .search
+        .tag_colors(vec!["a".into(), "a/b".into()])
+        .unwrap();
+    assert_eq!(colors, [Some("#ff0000".to_owned()), None]);
+}
+
+/// The tag list read as soon as the rename answers (the renderer's refetch on its event) counts
+/// a body's `#tag` under the new name alone, before the vault reads the renamed file back.
+#[test]
+fn the_tag_list_read_when_the_rename_answers_counts_a_bodys_new_name_alone() {
+    let (e, notes, _) = opened();
+    let id = note(&notes, &e, "Two", "body #a/c two", &[]);
+    let open = e.session.current().unwrap();
+    let counts = || {
+        let mut counts: Vec<(String, u32)> = open
+            .search
+            .tag_counts()
+            .unwrap()
+            .into_iter()
+            .map(|tag| (tag.name, tag.count))
+            .collect();
+        counts.sort();
+        counts
+    };
+    until("the bodies are read", || {
+        counts() == [("a/c".to_owned(), 1)]
+    });
+    measured(&e, &id);
+
+    notes
+        .rename_tag(&open, &job("a", "b"), &mut |_, _| {})
+        .unwrap();
+    assert_eq!(counts(), [("b/c".to_owned(), 1)]);
 }

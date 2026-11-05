@@ -13,6 +13,7 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::identity::NotesIdentity;
+use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore, Store, StoreFactory};
@@ -67,6 +68,8 @@ fn opened() -> Fixture {
     let tier = VaultTier::new(store.clone());
     tier.set_identity(NotesIdentity::new(store.clone()));
     tier.register(&session);
+    let index = NoteIndex::new(tier.clone(), |_| {}, |_| {}, |_| {});
+    index.register(&session);
     let mut facts = tier.subscribe();
     session.open(&vault, OpenSource::Select).unwrap();
     let deadline = Instant::now() + WAIT;
@@ -85,6 +88,7 @@ fn opened() -> Fixture {
 
     let app = mock_app();
     app.manage(session);
+    app.manage(index);
     app.manage(store.clone());
     app.manage(notes);
     app.manage(Arc::new(LocaleService::new("en")));
@@ -199,6 +203,7 @@ fn another_rename_left_unfinished_is_refused_with_what_finishes_it_until_it_is_s
         (left.old_name.as_str(), left.new_name.as_str()),
         ("old", "new")
     );
+    assert_eq!(left.left, 1);
     let named: Vec<(&str, &str)> = left
         .notes
         .iter()
@@ -212,4 +217,39 @@ fn another_rename_left_unfinished_is_refused_with_what_finishes_it_until_it_is_s
     assert!(tauri::async_runtime::block_on(tags_rename_abandon(handle())).unwrap());
     assert!(!tauri::async_runtime::block_on(tags_rename_abandon(handle())).unwrap());
     assert_eq!(fixture.rename("work", "job").unwrap().affected_notes, 1);
+}
+
+/// The tag list read when the rename answers (the renderer's refetch on its events, through
+/// `tags_get_all_with_counts`) counts the note under the new name alone: its header's last
+/// measure is of the renamed file.
+#[test]
+fn the_tag_list_read_when_the_rename_answers_counts_the_new_name_alone() {
+    let fixture = opened();
+    let counts = || {
+        let open = fixture.app.state::<Session>().current().unwrap();
+        memry_desktop::tags::all_with_counts(&open)
+            .unwrap()
+            .into_iter()
+            .map(|tag| (tag.name, tag.count))
+            .collect::<Vec<_>>()
+    };
+    let deadline = Instant::now() + WAIT;
+    while counts() != [("work".to_owned(), 1)] || !measured(&fixture) {
+        assert!(
+            Instant::now() < deadline,
+            "the note was not read: {:?}",
+            counts()
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    fixture.rename("work", "job").unwrap();
+    assert_eq!(counts(), [("job".to_owned(), 1)]);
+}
+
+/// Whether the index measured the bytes the note's row names.
+fn measured(fixture: &Fixture) -> bool {
+    let open = fixture.app.state::<Session>().current().unwrap();
+    let row = open.vault.note_files().by_path("Plan.md").unwrap().unwrap();
+    let stats = open.search.note_stats(&row.note_id).unwrap();
+    row.content_hash.is_some() && stats.and_then(|s| s.file_hash) == row.content_hash
 }

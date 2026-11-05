@@ -2003,7 +2003,7 @@
       "renamedBodySkipped": "「{newName}」無法作為行內標籤輸入，因此筆記文字中的 #{oldName} 維持原樣",
       "renamedSomeFailed": "無法更新 {count, plural, other {# 則筆記}}。請開啟{count, plural, other {這些筆記}}並重新加入標籤",
       "renameUnfinished": "將 #{oldName} 重新命名為 #{newName} 的作業有 {count, plural, other {# 則筆記}}未完成。再次將 #{oldName} 重新命名為 #{newName} 即可完成。",
-      "renameUnfinishedMore": "{names} 等 {count, plural, other {另外 # 則}}",
+      "renameUnfinishedMore": "{names} 等{count, plural, other {另外 # 則}}",
       "stopRename": "停止這次重新命名",
       "renameStopped": "已停止將 #{oldName} 重新命名為 #{newName}。無法更新的筆記保留 #{oldName}。",
       "stopRenameFailed": "無法停止重新命名",

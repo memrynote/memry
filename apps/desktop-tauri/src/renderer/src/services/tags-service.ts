@@ -3,7 +3,6 @@ import type {
   GetAllWithCountsResponse,
   MergeTagResponse,
   TagOperationResponse,
-  RenameTagResponse,
   DeleteTagResponse,
   TagRenamedEvent,
   TagColorUpdatedEvent,
@@ -16,9 +15,10 @@ import type {
   TagsClientAPI
 } from '../../../preload/index.d'
 import type { TagsProgressEvent } from '@memry/contracts/tag-schema-api'
+import type { RenameTagResponse } from '@memry/contracts/tags-api'
 import { commands, events } from '../../../generated/bindings'
 import type { UnfinishedRenameView } from '../../../generated/bindings'
-import { extractErrorMessage } from '../lib/ipc-error'
+import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 import { subscribeToEvent } from './tauri-event'
 
 /**
@@ -42,6 +42,9 @@ function failure(error: unknown): { success: false; error?: string } {
   const message = extractErrorMessage(error, '')
   return message ? { success: false, error: message } : { success: false }
 }
+
+/** A rename's answer; a failed one keeps its command's `code`, which tells a refusal apart. */
+export type RenameTagResult = RenameTagResponse & { code?: string }
 
 /** Runs a write that answers `{ success }`, a rejection becoming `{ success: false }`. */
 async function settled(write: () => Promise<unknown>): Promise<TagOperationResponse> {
@@ -116,11 +119,12 @@ const ported = {
     oldName: string
     newName: string
     runId?: string
-  }): Promise<RenameTagResponse> => {
+  }): Promise<RenameTagResult> => {
     try {
       return { success: true, ...(await commands.tagsRename(input)) }
     } catch (error) {
-      return failure(error)
+      const code = commandErrorCode(error)
+      return { ...failure(error), ...(code ? { code } : {}) }
     }
   }
 }
