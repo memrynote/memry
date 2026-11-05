@@ -107,7 +107,7 @@ impl NotesService {
         update: DayUpdate,
     ) -> Result<DayUpdated, NotesError> {
         let journal = open.vault.journal(self.store.clone())?;
-        let Some(existing) = entry(open, &journal, date)? else {
+        if entry(open, &journal, date)?.is_none() {
             // A live record with no file (made on another device) keeps its own fields and text
             // through the create; the update then goes over them as a save.
             let held = journal.stamp(date)?.is_some();
@@ -120,27 +120,26 @@ impl NotesService {
             let made = self.create_day_now(open, date, day, &mut || Ok(()))?;
             // A held text the user's differs from is kept as a version by that save.
             let entry = match held {
-                true => self.save_day(open, &journal, date, &made.tags, update)?,
+                true => self.save_day(open, &journal, date, update)?,
                 false => made,
             };
             return Ok(DayUpdated {
                 entry,
                 created: true,
             });
-        };
+        }
         Ok(DayUpdated {
-            entry: self.save_day(open, &journal, date, &existing.tags, update)?,
+            entry: self.save_day(open, &journal, date, update)?,
             created: false,
         })
     }
 
-    /// The update of a day whose file is there; `current` are the record's tags.
+    /// The update of a day whose file is there.
     fn save_day(
         &self,
         open: &OpenVault,
         journal: &Journal,
         date: &str,
-        current: &[String],
         update: DayUpdate,
     ) -> Result<JournalEntryView, NotesError> {
         let unheld = || NotesError::DayTextUnwritable("the file is not the day's yet".to_owned());
@@ -148,10 +147,15 @@ impl NotesService {
         if stamp.path.is_none() {
             return Err(unheld());
         }
-        let tags = next_tags(open, current, &update)?;
-        let tags_changed = header_tags::compare(current, &tags).is_some();
+        // Against the record's tags as the save lands: a save over an outside edit not fed
+        // yet has just taken that edit's tags (`AppEdit`).
         let mirror_tags = || -> Result<(), NotesError> {
-            if tags_changed {
+            let current = journal
+                .stamp(date)?
+                .map(|stamp| stamp.tags)
+                .unwrap_or_default();
+            let tags = next_tags(open, &current, &update)?;
+            if header_tags::compare(&current, &tags).is_some() {
                 journal.set_live_tags(date, &tags)?;
             }
             Ok(())

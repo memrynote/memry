@@ -16,6 +16,7 @@
 //! | a broken frontmatter then fixed reaches the record          | the baseline is the last good reading |
 //! | an app write after an outside edit does not hide it         | the edit is taken at fact time        |
 //! | a save over an outside edit not fed yet does not hide it    | the save takes the edit first         |
+//! | a save the feed does not take is not an outside edit later  | the run's own bytes carry the record  |
 //! | a found folder's notes take their files' properties         | a found file fills its record         |
 //! | a day made outside takes no reserved journal key            | `RESERVED_JOURNAL_KEYS`               |
 
@@ -30,7 +31,7 @@ use std::sync::Arc;
 
 use index_support::until;
 use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::journal::update::DayUpdate;
+use memry_desktop::journal::update::{DayUpdate, InlineTags};
 use memry_desktop::notes::apply_template::{ApplyTemplateInput, TemplateMode};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
@@ -376,19 +377,26 @@ fn a_save_over_an_outside_edit_not_fed_yet_does_not_hide_it() {
     assert_eq!(f.record(), object(json!({ "stage": "Done", "rating": 5 })));
 
     let day = "journal/2025-03-01.md";
-    f.e.write(day, "---\nmood: 3\n---\nA day\n");
+    f.e.write(day, "---\ntags: [a]\nmood: 3\n---\nA day\n");
     let read = || {
         f.notes
             .journal_property_rows(&open, "2025-03-01", "2025-03-31")
             .unwrap()
     };
-    until("the day's record", || !read().rows.is_empty());
-    f.e.write(day, "---\nmood: 4\n---\nA day\n");
+    until("the day's record and row", || {
+        !read().rows.is_empty() && f.e.rows().iter().any(|(_, path)| path == day)
+    });
+    f.e.write(day, "---\ntags: [a, b]\nmood: 4\n---\nA day\n");
+    // An inline tag typed in the same save goes over the outside edit's tags, not the record's
+    // from before it.
     let update = DayUpdate {
         date: "2025-03-01".into(),
         content: Some("Typed.".into()),
         tags: None,
-        inline_tags: None,
+        inline_tags: Some(InlineTags {
+            add: vec!["c".into()],
+            remove: Vec::new(),
+        }),
         properties: None,
     };
     f.notes.update_day(&open, update).unwrap();
@@ -397,5 +405,36 @@ fn a_save_over_an_outside_edit_not_fed_yet_does_not_hide_it() {
         .first()
         .and_then(|row| row.properties.get("mood").cloned());
     assert_eq!(mood, Some(json!(4)));
+    let journal = open.vault.journal(f.store.clone()).unwrap();
+    let tags = journal.stamp("2025-03-01").unwrap().unwrap().tags;
+    assert_eq!(tags, ["a", "b", "c"]);
+    drop(open);
+}
+
+/// A save of a block over the feed's size leaves the document and the row on the file before
+/// it; the next save finds the run's own bytes there, which carry the record already, and must
+/// not give it the file's tags back over a pulled change.
+#[test]
+fn a_save_the_feed_does_not_take_is_not_an_outside_edit_later() {
+    let f = opened(&[("Plan.md", "---\ntags: [a]\n---\n# Plan\n")], "Plan.md");
+    let open = f.e.session.current().unwrap();
+    let save = |body: String| {
+        let input = NoteUpdateInput {
+            id: f.id.clone(),
+            content: Some(body),
+            ..NoteUpdateInput::default()
+        };
+        f.notes.update(&open, input).unwrap();
+    };
+    let block = "x".repeat(140 * 1024);
+    save(format!("# Plan\n\n{block}\n"));
+    let writer = f.e.core().notes_writer(f.store.clone()).unwrap();
+    writer
+        .set_tags(f.id.clone(), vec!["a".into(), "pulled".into()])
+        .unwrap();
+    save(format!("# Plan\n\n{block}\nTyped.\n"));
+    let files = f.e.core().note_files();
+    let tags = files.listed_by_id(&f.id).unwrap().unwrap().tags;
+    assert_eq!(tags, ["a", "pulled"]);
     drop(open);
 }

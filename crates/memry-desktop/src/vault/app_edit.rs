@@ -33,10 +33,12 @@
 //!   document's (own-write record, row) only if the row named it. Only a frontmatter that does
 //!   not parse, a missing row, file or note, a file that is not markdown, and an edit that
 //!   lands during the write ([`Kept::FileChanged`]) keep the file. A file its row does not name
-//!   is an outside edit the consumer has not fed yet, and this save's bytes, the run's own, will
-//!   never reach the consumer as one: what its frontmatter says (tags, property values) reaches
-//!   the record first, through the identity's [`NoteIdentity::on_changed`], as the consumer
-//!   would have told it. The save's own record mirror then goes over that.
+//!   and whose bytes are not the run's own is an outside edit the consumer has not fed yet.
+//!   This save's bytes, the run's own, will never reach the consumer as one, so what that
+//!   file's frontmatter says (tags, property values) reaches the record first, through the
+//!   identity's [`NoteIdentity::on_changed`], as the consumer would have told it. The save's own
+//!   record mirror then goes over that. A row behind the run's own bytes (a save the feed did
+//!   not take) is no outside edit: those bytes carry the record already.
 //!
 //! A frontmatter that does not parse, in the file or in the edit's text, is kept as it is
 //! (#3750). The caller's closure gets the file's text without a byte order mark and returns the
@@ -346,7 +348,8 @@ impl AppEdit {
                 None
             }
             Precondition::Save(own) => {
-                if let Some(previous) = row.content_hash.as_deref().filter(|_| !row_names_file) {
+                let outside = !row_names_file && !own.is(note_id, &file.hash);
+                if let Some(previous) = row.content_hash.as_deref().filter(|_| outside) {
                     self.take_outside(note_id, previous, &file)
                         .map_err(AppEditError::from)?;
                 }
