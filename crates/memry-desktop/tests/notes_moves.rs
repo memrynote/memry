@@ -528,8 +528,9 @@ fn a_file_that_cannot_move_leaves_no_record_of_the_move() {
     );
 }
 
-/// A note moved into a journal day's path is not that day; the record stays and is owed the
-/// move (Step 13m), and only the row follows the file.
+/// A note the app moves into a journal day's path is not that day yet: the record stays and is
+/// owed the move, and only the row follows the file; the next open's walk makes the file the day
+/// (Step 13m-6, `vault_app_move_open`).
 #[test]
 fn a_move_into_a_days_path_leaves_the_record_owed() {
     let (e, notes, store) = opened();

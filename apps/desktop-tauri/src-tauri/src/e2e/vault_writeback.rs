@@ -7,7 +7,6 @@
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
-use memry_desktop::e2e::E2eGate;
 use memry_desktop::e2e::vault as e2e_vault;
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::{OpenVault, Session};

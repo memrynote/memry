@@ -18,7 +18,8 @@
 //!    record of step 2 ([`Lane::move_by_app`]): the title given and the new folder, the new
 //!    path, and the slot carried (a rename) or the new folder's first (a move). A move that
 //!    changes what the file is (a note into a journal day's path) leaves the record as it was,
-//!    title included, owed the move, as the watcher's move does (Step 13m);
+//!    title included, owed the move, which the next open's walk makes (Step 13m-6: the record
+//!    deleted and the file made anew, as the watcher's move does);
 //! 4. [`Applied::Renamed`], under the lane, for whatever follows the rows (the note index, the
 //!    shell's note events): [`MoveKind::Renamed`] for a rename, [`MoveKind::Moved`] for a
 //!    move. A rename whose file keeps its name (a title its name already says) sends it with

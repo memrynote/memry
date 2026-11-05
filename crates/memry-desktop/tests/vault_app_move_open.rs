@@ -190,10 +190,11 @@ fn a_recorded_move_that_changes_only_case_is_finished_when_the_vault_opens() {
     assert_eq!(record(&e, &id), None);
 }
 
-/// A note moved into a journal day's path is not that day: the record keeps its title and is
-/// owed the move (Step 13m), and only the row follows the file.
+/// A note moved into a journal day's path is that day once the move is finished: the open
+/// finishes the move with the record owed it, and its walk makes the file the day, deleting the
+/// note (Step 13m-6, `renameKeepsJournalDate`).
 #[test]
-fn a_recorded_move_into_a_days_path_leaves_the_record_owed() {
+fn a_recorded_move_into_a_days_path_makes_the_day_at_the_open() {
     let (mut e, store) = opened();
     let id = markdown_note(&mut e, "work/2025-01-14.md");
     begin(
@@ -205,16 +206,17 @@ fn a_recorded_move_into_a_days_path_leaves_the_record_owed() {
         "Jan 14",
     );
 
-    reopen(&mut e, true, |e| {
+    reopen(&mut e, false, |e| {
         fs::create_dir_all(e.vault.join("journal")).unwrap();
         rename(e, "work/2025-01-14.md", "journal/2025-01-14.md");
     });
 
-    assert_eq!(row(&e, &id).as_deref(), Some("journal/2025-01-14.md"));
-    assert_eq!(title(&e, &id), "2025-01-14");
-    let owed = writer(&e, &store).owed_places().unwrap();
-    let owed: Vec<_> = owed.iter().map(|owed| owed.note_id.as_str()).collect();
-    assert_eq!(owed, [id.as_str()]);
+    assert_eq!(row(&e, &id), None);
+    assert_eq!(
+        row(&e, "j2025-01-14").as_deref(),
+        Some("journal/2025-01-14.md")
+    );
+    assert!(writer(&e, &store).owed_places().unwrap().is_empty());
     assert_eq!(record(&e, &id), None);
 }
 

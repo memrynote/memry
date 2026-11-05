@@ -239,6 +239,11 @@ impl Reconciler {
         }
     }
 
+    /// The file at `rel` is another note's now: what was reported for it named the old one.
+    pub fn rehome(&mut self, rel: &str) {
+        self.reported.remove(rel);
+    }
+
     /// The root itself was touched: if it is gone the vault is away.
     pub fn check_reachable(&mut self) {
         if !is_vault_reachable(&self.root) {

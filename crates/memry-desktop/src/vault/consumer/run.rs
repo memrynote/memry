@@ -1,5 +1,7 @@
 //! The consumer's thread: takes the watcher's facts from a bounded queue and applies them one
-//! at a time, runs the open walk after the session's first `Rescanned` and then the open's
+//! at a time, runs the open walk after the session's first `Rescanned` (the owed moves that
+//! changed what their file is first, [`super::identity::NoteIdentity::settle_crossings`]) and
+//! then the open's
 //! `after_walk` (the write-back's reconcile), and asks the watcher to report again a path
 //! whose fact could not be applied.
 //!
@@ -270,6 +272,7 @@ impl Run {
     /// a close stops tells nothing, and so does one in a vault the identity leaves as it is (an
     /// Electron vault not imported yet).
     fn walk(&mut self) {
+        self.applier.settle_crossings();
         let root = self.applier.root.clone();
         let walk = walk_vault_with(&root, &self.exclude, Limits::DEFAULT);
         let complete = walk.truncated.is_none() && walk.too_deep == 0;
