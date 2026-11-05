@@ -6,6 +6,7 @@ import { useTemplates } from '@/hooks/use-templates'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
 import { notesService } from '@/services/notes-service'
+import { flushAllPendingSaves } from '@/lib/save-registry'
 
 interface ApplyTemplateToNoteDialogProps {
   noteId: string | null
@@ -55,6 +56,8 @@ function ApplyTemplateToNoteDialogActive({
         onClose()
         return
       }
+      // Typing not saved yet is the body the template meets, and is not saved over it after.
+      await flushAllPendingSaves()
       const note = await notesService.get(noteId)
       const hasContent = !!note?.content?.trim()
       if (hasContent) {

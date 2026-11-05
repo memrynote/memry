@@ -628,6 +628,11 @@ export function NotePage({ noteId }: NotePageProps) {
     liveNoteIdRef.current = noteId
 
     registerPendingSave(registryKey, async () => {
+      // The debounced save would write the same typing again, over whatever lands after this.
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
+      }
       const pending = pendingMarkdownRef.current
       if (pending !== null) {
         pendingMarkdownRef.current = null
@@ -939,24 +944,32 @@ export function NotePage({ noteId }: NotePageProps) {
       }
 
       // Debounce save (fixed 1000ms)
-      saveTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          isSavingRef.current = true
-          try {
-            await updateNote.mutateAsync({ id: noteId, content: markdown })
-            lastSavedContent.current = markdown
-            setEventContentOverride(null)
-            pendingMarkdownRef.current = null
-            if (isLocalGraphOpen) {
-              void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
+      const armSave = (): void => {
+        saveTimeoutRef.current = setTimeout(() => {
+          saveTimeoutRef.current = null
+          void (async () => {
+            isSavingRef.current = true
+            try {
+              await updateNote.mutateAsync({ id: noteId, content: markdown })
+              lastSavedContent.current = markdown
+              setEventContentOverride(null)
+              // Typing that came in while this save ran is still unsaved.
+              if (pendingMarkdownRef.current === markdown) pendingMarkdownRef.current = null
+              if (isLocalGraphOpen) {
+                void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
+              }
+            } catch (err) {
+              log.error('Failed to save note, trying again:', err)
+              // Unless newer typing has its own save, or the note's lifecycle has flushed.
+              const unsaved = pendingMarkdownRef.current === markdown
+              if (unsaved && !saveTimeoutRef.current && liveNoteIdRef.current === noteId) armSave()
+            } finally {
+              isSavingRef.current = false
             }
-          } catch (err) {
-            log.error('Failed to save note:', err)
-          } finally {
-            isSavingRef.current = false
-          }
-        })()
-      }, 1000)
+          })()
+        }, 1000)
+      }
+      armSave()
     },
     [noteId, note, isDeleted, t, updateNote, isLocalGraphOpen, queryClient]
   )

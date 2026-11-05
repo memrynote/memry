@@ -1676,6 +1676,69 @@ describe('NotePage', () => {
     )
   })
 
+  it('keeps newer typing pending when an older save finishes, so an outside edit still waits', async () => {
+    let finish: (result: unknown) => void = () => undefined
+    mocks.updateNote.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        })
+    )
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    act(() => mocks.onMarkdownChange?.('First typing'))
+    await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledTimes(1), { timeout: 3000 })
+    act(() => mocks.onMarkdownChange?.('Newer typing'))
+    await act(async () => finish({ success: true }))
+    act(() => {
+      mocks.updatedHandler?.({
+        id: 'note-1',
+        source: 'external',
+        changes: { content: 'Edited outside' }
+      })
+    })
+
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    await waitFor(
+      () =>
+        expect(mocks.updateNote).toHaveBeenLastCalledWith({
+          id: 'note-1',
+          content: 'Newer typing'
+        }),
+      { timeout: 3000 }
+    )
+  })
+
+  it('tries a failed save again a second later', async () => {
+    mocks.updateNote.mockRejectedValueOnce(new Error('disk busy, try again'))
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    act(() => mocks.onMarkdownChange?.('Typed once'))
+
+    await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledTimes(2), { timeout: 4000 })
+    expect(mocks.updateNote).toHaveBeenLastCalledWith({ id: 'note-1', content: 'Typed once' })
+  })
+
+  it('a registry flush saves the typing once and stops its timer', async () => {
+    vi.useFakeTimers()
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByTestId('editor-content')
+
+    act(() => mocks.onMarkdownChange?.('Flushed typing'))
+    const flush = mocks.registerPendingSave.mock.calls[0]?.[1] as () => Promise<void>
+    await act(async () => {
+      await flush()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(1500)
+    })
+
+    expect(mocks.updateNote).toHaveBeenCalledTimes(1)
+    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Flushed typing' })
+  })
+
   // The other direction: a local edit round-tripping through the save path must
   // not look like an external update. `handleMarkdownChange` stamps
   // `lastSavedContent`, so the echoed event is dropped — no revision bump, no
