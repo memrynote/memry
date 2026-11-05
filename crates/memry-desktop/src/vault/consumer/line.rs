@@ -9,6 +9,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Condvar, Mutex, PoisonError};
 
+/// The lane's line: `next` is the ticket the next taker draws, `serving` the one whose turn
+/// it is, and `served` wakes the takers waiting when it moves on.
 #[derive(Default)]
 pub(super) struct Line {
     next: AtomicU64,
@@ -28,6 +30,13 @@ impl Line {
                 .unwrap_or_else(PoisonError::into_inner);
         }
         Turn(self)
+    }
+
+    /// The takers waiting behind the one whose turn it is.
+    #[cfg(test)]
+    pub(super) fn waiting(&self) -> u64 {
+        let serving = *self.serving.lock().unwrap_or_else(PoisonError::into_inner);
+        self.next.load(Ordering::SeqCst).saturating_sub(serving + 1)
     }
 }
 

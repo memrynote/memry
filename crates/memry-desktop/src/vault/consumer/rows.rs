@@ -151,6 +151,12 @@ impl RowOwner {
         })
     }
 
+    /// The takers waiting for the lane behind its holder.
+    #[cfg(test)]
+    pub(crate) fn waiting(&self) -> u64 {
+        self.line.waiting()
+    }
+
     pub(crate) fn lane_of(&self, session: RowSession) -> Result<Lane<'_>, RowError> {
         let lane = self.lane()?;
         if lane.state().session != session {
