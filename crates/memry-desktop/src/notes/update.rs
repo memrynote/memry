@@ -169,6 +169,9 @@ pub struct Updated {
     pub tags_changed: bool,
     /// What a header tag the edit added did with its template ([`super::tag_template`]).
     pub tag_template: Option<TagTemplateOutcome>,
+    /// The save's body went over an outside edit the watcher had not fed yet, kept as a version
+    /// first. The editor never had that edit's event, so only this tells it.
+    pub kept_outside_edit: bool,
 }
 
 /// An update, checked.
@@ -218,7 +221,7 @@ impl NotesService {
             true => self.definition_types(open),
             false => HashMap::new(),
         };
-        let (tags_changed, added) = self.order.run(&edit.id, |turn| {
+        let (tags_changed, added, kept_outside_edit) = self.order.run(&edit.id, |turn| {
             self.update_now(open, &edit, &types, turn, between)
         })?;
         // `addedInOrder`: the added tags in the order the caller asked for them.
@@ -240,6 +243,7 @@ impl NotesService {
             note,
             tags_changed,
             tag_template,
+            kept_outside_edit,
         })
     }
 
@@ -250,7 +254,7 @@ impl NotesService {
         types: &HashMap<String, String>,
         turn: &NoteTurn<'_>,
         between: &mut dyn FnMut(),
-    ) -> Result<(bool, Vec<String>), NotesError> {
+    ) -> Result<(bool, Vec<String>, bool), NotesError> {
         let id = edit.id.as_str();
         let writer = open.vault.notes_writer(self.store.clone())?;
         let with_fields = match edit.header_tags.is_some() || edit.content.is_some() {
@@ -302,10 +306,18 @@ impl NotesService {
             between,
         )?;
         let plan = planned.into_inner();
-        match edited {
-            Edited::Wrote { .. } | Edited::Unchanged => {
-                Ok(plan.map_or((false, Vec::new()), |plan| (plan.tags_changed, plan.added)))
+        let kept_outside = matches!(
+            edited,
+            Edited::Wrote {
+                kept_outside: true,
+                ..
             }
+        );
+        match edited {
+            Edited::Wrote { .. } | Edited::Unchanged => Ok(plan
+                .map_or((false, Vec::new(), kept_outside), |plan| {
+                    (plan.tags_changed, plan.added, kept_outside)
+                })),
             Edited::Kept(kept) => {
                 tracing::info!(scope = SCOPE, note_id = id, ?kept, "a save was refused");
                 Err(NotesError::EditKept(kept))

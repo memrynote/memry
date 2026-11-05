@@ -70,7 +70,9 @@
       "openExternalFailed": "Muistiinpanon avaaminen epäonnistui",
       "moved": "Muistiinpano siirretty",
       "moveFailed": "Muistiinpanon siirtäminen epäonnistui",
-      "deleteFailed": "Muistiinpanon poistaminen epäonnistui"
+      "deleteFailed": "Muistiinpanon poistaminen epäonnistui",
+      "outsideEditReplaced": "Kirjoituksesi korvasi ulkopuolisen muutoksen. Se on tallessa versiohistoriassa.",
+      "showVersions": "Näytä versiot"
     },
     "deleteDialogTitle": "{count, plural, one {Poista muistiinpano} other {Poista # muistiinpanoa}}",
     "itemsCount": "{count, plural, one {# kohde} other {# kohdetta}}",

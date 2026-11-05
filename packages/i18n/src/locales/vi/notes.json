@@ -70,7 +70,9 @@
       "openExternalFailed": "Không thể mở ghi chú",
       "moved": "Đã di chuyển ghi chú",
       "moveFailed": "Không thể di chuyển ghi chú",
-      "deleteFailed": "Không thể xóa ghi chú"
+      "deleteFailed": "Không thể xóa ghi chú",
+      "outsideEditReplaced": "Nội dung bạn gõ đã thay thế một thay đổi từ bên ngoài. Thay đổi đó được lưu trong lịch sử phiên bản.",
+      "showVersions": "Hiện các phiên bản"
     },
     "deleteDialogTitle": "{count, plural, other {Xóa # ghi chú}}",
     "itemsCount": "{count, plural, other {# mục}}",

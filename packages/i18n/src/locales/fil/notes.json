@@ -70,7 +70,9 @@
       "openExternalFailed": "Hindi mabuksan ang tala",
       "moved": "Nailipat ang tala",
       "moveFailed": "Hindi mailipat ang tala",
-      "deleteFailed": "Hindi matanggal ang tala"
+      "deleteFailed": "Hindi matanggal ang tala",
+      "outsideEditReplaced": "Napalitan ng iyong pag-type ang isang pagbabago mula sa labas. Naka-save ito sa kasaysayan ng bersyon.",
+      "showVersions": "Ipakita ang mga bersyon"
     },
     "deleteDialogTitle": "{count, plural, one {Tanggalin ang tala} other {Tanggalin ang # tala}}",
     "itemsCount": "{count, plural, one {# item} other {# item}}",

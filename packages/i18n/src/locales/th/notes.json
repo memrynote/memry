@@ -70,7 +70,9 @@
       "openExternalFailed": "เปิดโน้ตไม่สำเร็จ",
       "moved": "ย้ายโน้ตแล้ว",
       "moveFailed": "ย้ายโน้ตไม่สำเร็จ",
-      "deleteFailed": "ลบโน้ตไม่สำเร็จ"
+      "deleteFailed": "ลบโน้ตไม่สำเร็จ",
+      "outsideEditReplaced": "สิ่งที่คุณพิมพ์แทนที่การเปลี่ยนแปลงจากภายนอก การเปลี่ยนแปลงนั้นบันทึกไว้ในประวัติเวอร์ชันแล้ว",
+      "showVersions": "แสดงเวอร์ชัน"
     },
     "deleteDialogTitle": "{count, plural, other {ลบโน้ต # รายการ}}",
     "itemsCount": "{count, plural, other {# รายการ}}",

@@ -176,6 +176,7 @@ import { FIND_REQUEST_KEY, readFindRequest } from '@/lib/find-request'
 import { ReadwiseMenuGroup } from '@/components/note/readwise-menu-group'
 import { ReadwiseReimportDialog } from '@/components/note/readwise-reimport-dialog'
 import { useNoteCommands, type NoteCommandId, type NoteDialog } from './note/use-note-commands'
+import { useReplacedOutsideEdit } from './note/use-replaced-outside-edit'
 import { useDialogState } from '@/hooks/use-dialog-state'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
@@ -305,6 +306,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [headings, setHeadings] = useState<HeadingItem[]>([])
   const [isDeleted, setIsDeleted] = useState(false)
   const dialog = useDialogState<NoteDialog>()
+  const outsideEdit = useReplacedOutsideEdit(() => dialog.show('versionHistory'))
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
   const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
@@ -631,7 +633,8 @@ export function NotePage({ noteId }: NotePageProps) {
       const pending = pendingMarkdownRef.current
       if (pending !== null) {
         pendingMarkdownRef.current = null
-        await updateNoteRef.current({ id: noteId, content: pending })
+        const result = await updateNoteRef.current({ id: noteId, content: pending })
+        outsideEdit.saved(noteId, pending, result)
       }
     })
 
@@ -650,7 +653,7 @@ export function NotePage({ noteId }: NotePageProps) {
       unregisterPendingSave(registryKey)
       liveNoteIdRef.current = null
     }
-  }, [noteId])
+  }, [noteId, outsideEdit])
 
   // Listen for note deletion events
   useEffect(() => {
@@ -712,7 +715,10 @@ export function NotePage({ noteId }: NotePageProps) {
 
     const takeContent = (content: string) => {
       // Typing not saved yet is the user's newest text; its save follows.
-      if (pendingMarkdownRef.current !== null) return
+      if (pendingMarkdownRef.current !== null) {
+        outsideEdit.held(noteId, content)
+        return
+      }
       lastSavedContent.current = content
       setEventContentOverride({ noteId, content })
       setExternalUpdateCount((c) => c + 1)
@@ -742,7 +748,7 @@ export function NotePage({ noteId }: NotePageProps) {
       unsubUpdated()
       unsubDropped()
     }
-  }, [noteId])
+  }, [noteId, outsideEdit])
 
   // ============================================================================
   // Tags - Convert between string[] and Tag[]
@@ -943,8 +949,9 @@ export function NotePage({ noteId }: NotePageProps) {
         void (async () => {
           isSavingRef.current = true
           try {
-            await updateNote.mutateAsync({ id: noteId, content: markdown })
+            const result = await updateNote.mutateAsync({ id: noteId, content: markdown })
             lastSavedContent.current = markdown
+            outsideEdit.saved(noteId, markdown, result)
             setEventContentOverride(null)
             pendingMarkdownRef.current = null
             if (isLocalGraphOpen) {
@@ -958,7 +965,7 @@ export function NotePage({ noteId }: NotePageProps) {
         })()
       }, 1000)
     },
-    [noteId, note, isDeleted, t, updateNote, isLocalGraphOpen, queryClient]
+    [noteId, note, isDeleted, t, updateNote, isLocalGraphOpen, queryClient, outsideEdit]
   )
 
   const handleContentChange = useCallback((_blocks: Block[]) => {

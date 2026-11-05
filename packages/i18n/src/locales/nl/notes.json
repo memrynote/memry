@@ -70,7 +70,9 @@
       "openExternalFailed": "Kan notitie niet openen",
       "moved": "Notitie verplaatst",
       "moveFailed": "Kan notitie niet verplaatsen",
-      "deleteFailed": "Kan notitie niet verwijderen"
+      "deleteFailed": "Kan notitie niet verwijderen",
+      "outsideEditReplaced": "Je typwerk heeft een wijziging van buitenaf vervangen. Die staat in de versiegeschiedenis.",
+      "showVersions": "Versies tonen"
     },
     "deleteDialogTitle": "{count, plural, one {Notitie verwijderen} other {# notities verwijderen}}",
     "itemsCount": "{count, plural, one {# item} other {# items}}",

@@ -70,7 +70,9 @@
       "openExternalFailed": "Not açılamadı",
       "moved": "Not taşındı",
       "moveFailed": "Not taşınamadı",
-      "deleteFailed": "Not silinemedi"
+      "deleteFailed": "Not silinemedi",
+      "outsideEditReplaced": "Yazdıkların dışarıdan yapılan bir değişikliğin yerini aldı. Değişiklik sürüm geçmişinde saklanıyor.",
+      "showVersions": "Sürümleri göster"
     },
     "deleteDialogTitle": "{count, plural, one {Notu sil} other {# notu sil}}",
     "itemsCount": "{count, plural, one {# öğe} other {# öğe}}",

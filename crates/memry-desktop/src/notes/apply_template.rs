@@ -239,6 +239,7 @@ impl NotesService {
             note,
             tags_changed,
             tag_template: None,
+            kept_outside_edit: false,
         })
     }
 }

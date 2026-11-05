@@ -1268,6 +1268,8 @@ export type NoteUpdatedEvent = {
 export type NoteUpdatedView = {
 	note: NoteView,
 	tagTemplate?: TagTemplateOutcome | null,
+	/**  The save went over an outside edit the editor never had an event for, kept as a version. */
+	keptOutsideEdit: boolean,
 };
 
 /**  `Note`. */

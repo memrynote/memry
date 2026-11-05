@@ -70,7 +70,9 @@
       "openExternalFailed": "Nu s-a putut deschide notița",
       "moved": "Notiță mutată",
       "moveFailed": "Nu s-a putut muta notița",
-      "deleteFailed": "Nu s-a putut șterge notița"
+      "deleteFailed": "Nu s-a putut șterge notița",
+      "outsideEditReplaced": "Ce ai tastat a înlocuit o modificare din exterior. Este salvată în istoricul versiunilor.",
+      "showVersions": "Afișează versiunile"
     },
     "deleteDialogTitle": "{count, plural, one {Ștergeți notița} few {Ștergeți # notițe} other {Ștergeți # de notițe}}",
     "itemsCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",

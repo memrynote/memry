@@ -185,7 +185,13 @@ impl OwnFiles {
 pub enum Edited {
     /// The file holds the new text. `held`: the document took it too, and the row says so;
     /// otherwise the watcher brings the file to the document as an outside edit.
-    Wrote { hash: String, held: bool },
+    /// `kept_outside`: a save's body went over an outside edit not fed yet, kept as a version
+    /// first; the editor had no event for it.
+    Wrote {
+        hash: String,
+        held: bool,
+        kept_outside: bool,
+    },
     /// The closure changed nothing.
     Unchanged,
     /// The file was kept as it is.
@@ -329,6 +335,7 @@ impl AppEdit {
         };
         let read_body = split_frontmatter_block(read).body;
         let row_names_file = row.content_hash.as_deref() == Some(file.hash.as_str());
+        let mut outside = false;
         let own = match precondition {
             Precondition::Held | Precondition::HeldAt(_) | Precondition::Replace => {
                 if row.content_hash.is_none() {
@@ -348,7 +355,7 @@ impl AppEdit {
                 None
             }
             Precondition::Save(own) => {
-                let outside = !row_names_file && !own.is(note_id, &file.hash);
+                outside = !row_names_file && !own.is(note_id, &file.hash);
                 if let Some(previous) = row.content_hash.as_deref().filter(|_| outside) {
                     self.take_outside(note_id, previous, &file)
                         .map_err(AppEditError::from)?;
@@ -443,7 +450,11 @@ impl AppEdit {
         }
         landed()?;
         if !takes {
-            return Ok(Edited::Wrote { hash, held: false });
+            return Ok(Edited::Wrote {
+                hash,
+                held: false,
+                kept_outside: outside && keeps,
+            });
         }
         lane.publish(Applied::Changed {
             note_id: note_id.to_owned(),
@@ -451,7 +462,11 @@ impl AppEdit {
             content_hash: Some(hash.clone()),
             source,
         });
-        Ok(Edited::Wrote { hash, held: true })
+        Ok(Edited::Wrote {
+            hash,
+            held: true,
+            kept_outside: outside && keeps,
+        })
     }
 
     /// The record takes what an outside edit not fed yet, the file `file` that replaced the

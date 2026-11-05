@@ -137,11 +137,11 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('sonner', () => ({
-  toast: {
+  toast: Object.assign(vi.fn(), {
     success: vi.fn(),
     error: vi.fn(),
     info: vi.fn()
-  }
+  })
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -1674,6 +1674,94 @@ describe('NotePage', () => {
         }),
       { timeout: 3000 }
     )
+  })
+
+  describe('typing saved over an outside edit', () => {
+    const outsideEdit = (content: string) =>
+      act(() => {
+        mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content } })
+      })
+    const saveLands = async () => {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+    }
+
+    it('tells the user once, with a way into version history', async () => {
+      vi.useFakeTimers()
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      act(() => mocks.onMarkdownChange?.('Typed, not saved'))
+      outsideEdit('Written by an agent')
+      expect(toast).not.toHaveBeenCalled()
+      await saveLands()
+
+      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed, not saved' })
+      expect(toast).toHaveBeenCalledTimes(1)
+      const [message, options] = vi.mocked(toast).mock.calls[0] as [
+        string,
+        { action: { label: string; onClick: () => void } }
+      ]
+      expect(message).toBe('page.toast.outsideEditReplaced')
+      expect(options.action.label).toBe('page.toast.showVersions')
+      act(() => options.action.onClick())
+      expect(screen.getByText('Version Test Note')).toBeInTheDocument()
+
+      // The next save replaces nothing from outside.
+      act(() => mocks.onMarkdownChange?.('Typed again'))
+      await saveLands()
+      expect(toast).toHaveBeenCalledTimes(1)
+    })
+
+    it('tells the user when a flush lands the typing', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+      act(() => mocks.onMarkdownChange?.('Typed, not saved'))
+      outsideEdit('Written by an agent')
+      const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+      await act(async () => {
+        await flush()
+      })
+
+      expect(toast).toHaveBeenCalledTimes(1)
+    })
+
+    it('tells the user when the save went over an outside edit the editor had no event for', async () => {
+      vi.useFakeTimers()
+      mocks.updateNote.mockResolvedValue({ success: true, keptOutsideEdit: true })
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      act(() => mocks.onMarkdownChange?.('Typed, not saved'))
+      await saveLands()
+
+      expect(toast).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(toast).mock.calls[0]?.[0]).toBe('page.toast.outsideEditReplaced')
+    })
+
+    it('stays quiet when the outside text is what the typing saves, or no save follows', async () => {
+      vi.useFakeTimers()
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      act(() => mocks.onMarkdownChange?.('Same text'))
+      outsideEdit('Same text')
+      await saveLands()
+      outsideEdit('Edited on disk')
+      act(() => mocks.onMarkdownChange?.('Typed after it'))
+      await saveLands()
+
+      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed after it' })
+      expect(toast).not.toHaveBeenCalled()
+    })
   })
 
   // The other direction: a local edit round-tripping through the save path must

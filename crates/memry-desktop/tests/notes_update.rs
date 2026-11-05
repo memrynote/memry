@@ -423,6 +423,38 @@ fn a_save_over_an_outside_edit_the_watcher_fed_keeps_that_edit() {
     );
 }
 
+/// The editor learns of an outside edit the watcher fed from its event; of one the save reached
+/// first, only from the save that replaced it.
+#[test]
+fn a_save_says_when_it_replaced_an_outside_edit_not_fed_yet() {
+    let (mut e, notes) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    // The run's first save keeps the file it found, which the editor showed.
+    let first = notes.update(&open, save(&id, "The user's save\n")).unwrap();
+    assert!(!first.kept_outside_edit);
+    // No wait for the watcher: the save lands on a file its row does not name.
+    std::fs::write(e.vault.join("Plan.md"), OUTSIDE).unwrap();
+    let over = notes.update(&open, save(&id, "Typed over it\n")).unwrap();
+    assert!(over.kept_outside_edit);
+    assert!(e.versions(&id).iter().any(|v| v == OUTSIDE));
+    let next = notes.update(&open, save(&id, "Typed again\n")).unwrap();
+    assert!(!next.kept_outside_edit, "a save over the run's own file");
+
+    quiet_facts(&mut e);
+    std::fs::write(
+        e.vault.join("Plan.md"),
+        OUTSIDE.replace("another", "a third"),
+    )
+    .unwrap();
+    fed_by_watcher(&mut e);
+    let fed = notes.update(&open, save(&id, "Typed after it\n")).unwrap();
+    assert!(
+        !fed.kept_outside_edit,
+        "the editor had the fed edit's event"
+    );
+}
+
 #[test]
 fn a_tag_edit_while_the_document_is_ahead_leaves_the_document() {
     let (e, notes, store) = opened_with_store(&[("Plan.md", PLAN)]);

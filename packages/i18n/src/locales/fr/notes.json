@@ -70,7 +70,9 @@
       "openExternalFailed": "Impossible d'ouvrir la note",
       "moved": "Note déplacée",
       "moveFailed": "Impossible de déplacer la note",
-      "deleteFailed": "Impossible de supprimer la note"
+      "deleteFailed": "Impossible de supprimer la note",
+      "outsideEditReplaced": "Votre saisie a remplacé une modification externe. Elle est enregistrée dans l’historique des versions.",
+      "showVersions": "Voir les versions"
     },
     "deleteDialogTitle": "{count, plural, one {Supprimer la note} other {Supprimer # notes}}",
     "itemsCount": "{count, plural, one {# élément} many {# éléments} other {# éléments}}",

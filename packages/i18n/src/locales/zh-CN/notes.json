@@ -70,7 +70,9 @@
       "openExternalFailed": "无法打开笔记",
       "moved": "笔记已移动",
       "moveFailed": "无法移动笔记",
-      "deleteFailed": "无法删除笔记"
+      "deleteFailed": "无法删除笔记",
+      "outsideEditReplaced": "你的输入替换了一处外部更改。该更改已保存在版本历史中。",
+      "showVersions": "查看版本"
     },
     "deleteDialogTitle": "{count, plural, other {删除 # 篇笔记}}",
     "itemsCount": "{count, plural, other {# 项}}",
