@@ -15,14 +15,13 @@
 //!   (`buildNotePushPayload` reads the index). Every other key keeps the record's value: a value
 //!   a pull brought in is not in the file yet (13k-4), and the file's stale one must not go back.
 //!
-//! A template applied to a note (`notes:apply-template`, [`super::apply_template`]) fills values
-//! with the same edit and record mirror ([`mirror_properties`]) inside its own write of the
-//! body. What an edit makes of the frontmatter is [`edit`]. The note index reads the same values
-//! into `note_properties` ([`file_properties`]; `super::index`).
+//! A template applied to a note (`notes:apply-template`, [`super::apply_template`]) and a link
+//! rewrite in a frontmatter value (`super::link_rewrite`) mirror with [`mirror_properties`]
+//! inside their own write. What an edit makes of the frontmatter is [`edit`]. The note index
+//! reads the same values into `note_properties` ([`file_properties`]) and gives a name with no
+//! definition the type it reads first (`learnCanonicalPropertyType`; `super::index`).
 //!
-//! Not here: a type learned from a new value (Electron's `learnCanonicalPropertyType`, which
-//! gives an undeclared property a synced definition at the first type its notes are synced
-//! with; 13k-4c-2), the header status a status property takes from the note's tasks
+//! Not here: the header status a status property takes from the note's tasks
 //! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m), relation
 //! chips (`properties:resolveRefs`) and the lock check (Step 14).
 
@@ -286,7 +285,11 @@ pub fn file_properties(
     file: &NoteFile,
     types: &HashMap<String, String>,
 ) -> Option<Vec<IndexedProperty>> {
-    match file.parse().ok()?.frontmatter {
+    text_properties(&file.raw, types)
+}
+
+fn text_properties(text: &str, types: &HashMap<String, String>) -> Option<Vec<IndexedProperty>> {
+    match parse_markdown_note(text).ok()?.frontmatter {
         YamlValue::Map(map) => Some(indexed(&user_properties(&map), types)),
         _ => None,
     }
@@ -297,7 +300,15 @@ pub(crate) fn file_values(
     file: &NoteFile,
     types: &HashMap<String, String>,
 ) -> Option<Map<String, Value>> {
-    file_properties(file, types).map(|properties| stored(&properties))
+    text_values(&file.raw, types)
+}
+
+/// [`file_values`] of a file's text.
+pub(crate) fn text_values(
+    text: &str,
+    types: &HashMap<String, String>,
+) -> Option<Map<String, Value>> {
+    text_properties(text, types).map(|properties| stored(&properties))
 }
 
 /// A frontmatter edit's property values as the record stores them: what the file held, and what

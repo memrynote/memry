@@ -19,8 +19,9 @@
 //! fails after the file was written, the error reaches the caller and the next edit of the
 //! name writes the record again. A date's calendar flag lives only in this device's file.
 //!
-//! Not yet ported: re-typing the indexed note values when a definition changes type
-//! (`retypeIndexedProperties`), which waits for the note property index.
+//! The note index types its rows by these definitions and retypes them when one changes type
+//! (`retypeIndexedProperties`), and gives a property it reads with no definition one
+//! ([`PropertyDefinitions::learn`]; `notes::index`).
 
 mod kind;
 mod record;
@@ -268,7 +269,13 @@ impl PropertyDefinitions {
             let edit = match next {
                 Next::Put(definition) => {
                     let renamed: Renamed<'_> = renamed.zip(before.as_ref());
-                    Edit::Put(record_of(name, &definition, prior, renamed))
+                    Edit::Put(record_of(
+                        name,
+                        &definition,
+                        prior,
+                        before.as_ref(),
+                        renamed,
+                    ))
                 }
                 Next::Remove => Edit::Remove,
                 Next::Keep => Edit::Keep,
@@ -363,6 +370,39 @@ impl PropertyDefinitions {
         } else {
             Ok(None)
         }
+    }
+
+    /// `learnCanonicalPropertyType`: a property with no definition takes one of `wanted`, the
+    /// type its value was first read with. A definition there already is left as it is, but
+    /// for `project`, whose type is always its own. `true` when it wrote one.
+    /// A name this build cannot read the definition of (an entry of the file it does not
+    /// parse, a record of a type it does not know) has one too.
+    pub fn learn(&self, name: &str, wanted: DefinitionType) -> Result<bool, DefinitionsError> {
+        let unread = self
+            .file()
+            .is_some_and(|file| file.unparsed_names().any(|held| held == name))
+            || self
+                .records
+                .list()?
+                .iter()
+                .any(|stored| stored.record.name == name);
+        if unread && wanted != DefinitionType::Project {
+            return Ok(false);
+        }
+        self.change(name, |existing| {
+            let kept = existing.as_ref().is_some_and(|existing| {
+                wanted != DefinitionType::Project || type_of(&existing.kind) == wanted
+            });
+            if kept {
+                return Ok((Next::Keep, false));
+            }
+            let definition = PropertyDefinition {
+                kind: kind_of(wanted, None, None),
+                default_value: existing.as_ref().and_then(|e| e.default_value.clone()),
+                color: existing.and_then(|existing| existing.color),
+            };
+            Ok((Next::Put(definition), true))
+        })
     }
 
     /// `notes:ensure-property-definition`: a name that already has the type is left alone;

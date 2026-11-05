@@ -144,6 +144,12 @@ impl Owed {
         self.due = Some(self.due.map_or(soon, |due| due.min(soon)));
     }
 
+    /// A definition was learned: the rows holding its name are owed its type.
+    fn learned(&mut self) {
+        self.retype = true;
+        self.arm();
+    }
+
     fn owe_scan(&mut self) {
         self.scan = true;
         self.arm();
@@ -166,6 +172,11 @@ impl Owed {
 
     /// What a pass over the queued `ids` (and a scan, `scan`) leaves owed.
     fn settle(&mut self, ids: BTreeSet<String>, scan: bool, outcome: &Result<Pass, IndexError>) {
+        if let Ok(pass) = outcome
+            && pass.learned
+        {
+            self.learned();
+        }
         match outcome {
             Ok(pass) if pass.stopped => {
                 self.queue.extend(ids);
@@ -452,6 +463,7 @@ mod tests {
             unread: unread.iter().map(|id| (*id).to_owned()).collect(),
             stopped: false,
             written: Vec::new(),
+            learned: false,
         })
     }
 

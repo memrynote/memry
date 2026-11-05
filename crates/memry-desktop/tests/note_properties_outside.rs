@@ -17,6 +17,7 @@
 //! | an app write after an outside edit does not hide it         | the edit is taken at fact time        |
 //! | a save over an outside edit not fed yet does not hide it    | the save takes the edit first         |
 //! | a save the feed does not take is not an outside edit later  | the run's own bytes carry the record  |
+//! | a link rewrite in a frontmatter value reaches the record    | the rewrite mirrors it in its turn    |
 //! | a found folder's notes take their files' properties         | a found file fills its record         |
 //! | a day made outside takes no reserved journal key            | `RESERVED_JOURNAL_KEYS`               |
 
@@ -35,6 +36,7 @@ use memry_desktop::journal::update::{DayUpdate, InlineTags};
 use memry_desktop::notes::apply_template::{ApplyTemplateInput, TemplateMode};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::NoteUpdateInput;
 use memry_desktop::templates::{TemplateCreateInput, Templates};
@@ -436,5 +438,32 @@ fn a_save_the_feed_does_not_take_is_not_an_outside_edit_later() {
     let files = f.e.core().note_files();
     let tags = files.listed_by_id(&f.id).unwrap().unwrap().tags;
     assert_eq!(tags, ["a", "pulled"]);
+    drop(open);
+}
+
+/// A rename rewrites `[[Plan]]` in another note's frontmatter value: the record takes it, and
+/// the baseline moves with it, so an outside edit of another key leaves a pulled value.
+#[test]
+fn a_link_rewrite_in_a_frontmatter_value_reaches_the_record() {
+    let ideas = "---\nrelated: \"[[Plan]]\"\nrating: 5\n---\nSee [[Plan]].\n";
+    let f = opened(&[("Plan.md", PLAN), ("Ideas.md", ideas)], "Ideas.md");
+    let open = f.e.session.current().unwrap();
+    let rows = f.e.rows();
+    let (plan, _) = rows.iter().find(|(_, p)| p == "Plan.md").unwrap();
+    let links = NoteLinks::new(&open);
+    until("the links indexed", || {
+        !links.get(plan).unwrap().incoming.is_empty()
+    });
+    f.notes.rename(&open, plan, "Roadmap").unwrap();
+    assert!(f.e.read("Ideas.md").contains("related: \"[[Roadmap]]\""));
+    assert_eq!(f.record()["related"], json!("[[Roadmap]]"));
+
+    f.set("related", "\"[[Pulled]]\"");
+    let edited = "---\nrelated: \"[[Roadmap]]\"\nrating: 6\n---\nSee [[Roadmap]].\n";
+    f.outside("Ideas.md", edited);
+    until("the outside rating taken", || {
+        f.record()["rating"] == json!(6)
+    });
+    assert_eq!(f.record()["related"], json!("[[Pulled]]"));
     drop(open);
 }
