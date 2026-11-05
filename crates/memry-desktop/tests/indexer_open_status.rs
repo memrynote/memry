@@ -11,6 +11,7 @@ use crate::index_support;
 #[allow(unused_imports)]
 use crate::vault_env;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -33,6 +34,8 @@ struct Shell {
     heard: Mutex<Vec<Heard>>,
     /// Set: the first step of the open's pass goes here, and the pass waits for the reply.
     hold: Mutex<Option<(Sender<IndexProgress>, Receiver<()>)>>,
+    /// Set: the next step panics, as a bug in the task would.
+    panic: AtomicBool,
 }
 
 impl Shell {
@@ -56,6 +59,9 @@ impl Shell {
             IndexReport::Indexing => Heard::Indexing(indexing),
         };
         self.heard.lock().unwrap().push(heard);
+        if matches!(report, IndexReport::Progress(_)) && self.panic.swap(false, Ordering::SeqCst) {
+            panic!("a bug in the index task");
+        }
         if let IndexReport::Progress(step) = report
             && let Some((tell, wait)) = self.hold.lock().unwrap().take()
         {
@@ -155,6 +161,20 @@ fn a_close_inside_the_opens_pass_ends_its_indexing() {
     e.open();
     assert!(index.indexing().is_some());
     until("the open's pass ended", || index.indexing().is_none());
+    e.close();
+}
+
+#[test]
+fn an_index_task_that_panics_leaves_no_indexing() {
+    let (mut e, _store, _) = seeded(NOTES);
+    let shell = Arc::new(Shell::default());
+    let index = shell.index(&e);
+    shell.panic.store(true, Ordering::SeqCst);
+    e.open();
+    until("the task's end cleared the open's build", || {
+        index.indexing().is_none()
+    });
+    assert_eq!(shell.heard().last(), Some(&Heard::Indexing(None)));
     e.close();
 }
 

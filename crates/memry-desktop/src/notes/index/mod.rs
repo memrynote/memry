@@ -185,6 +185,21 @@ impl Drop for Asked<'_> {
     }
 }
 
+/// Ends the open's build however its task ends, a panic included: no "Indexing…" outlives the
+/// task. A task of an earlier open leaves the next open's build alone.
+struct BuildEnds<'a>(&'a NoteIndex, &'a TaskHandle);
+
+impl Drop for BuildEnds<'_> {
+    fn drop(&mut self) {
+        let BuildEnds(index, handle) = self;
+        let other =
+            matches!(&*lock(&index.slot), Slot::Open { handle: open, .. } if !open.same(handle));
+        if !other && std::mem::replace(&mut lock(&index.indexing).building, false) {
+            (index.report)(IndexReport::Indexing);
+        }
+    }
+}
+
 /// The note index of whichever vault is open. The app holds one.
 pub struct NoteIndex {
     tier: Arc<VaultTier>,
@@ -228,9 +243,10 @@ impl NoteIndex {
                 let (handle, inbox) = task_channel();
                 let start = Some((index.tier.subscribe(), inbox));
                 *lock(&index.slot) = Slot::Open { handle, start };
-                // The session sends the open's status after its hooks: it reads this.
+                // The session sends the open's status after its hooks: it reads this. A step
+                // left from the vault before is not this open's.
                 let mut indexing = lock(&index.indexing);
-                indexing.start();
+                indexing.step = IndexProgress::default();
                 indexing.building = true;
                 Ok(())
             }),
@@ -247,6 +263,7 @@ impl NoteIndex {
                 let Some((handle, (facts, inbox))) = started else {
                     return Err("the open subscribed no facts".into());
                 };
+                let _build = BuildEnds(&index, &handle);
                 let ended = Indexer::new(vault, index.tier.store()).run(
                     facts,
                     inbox,
@@ -259,10 +276,6 @@ impl NoteIndex {
                     let mut slot = lock(&index.slot);
                     if matches!(&*slot, Slot::Open { handle: open, .. } if open.same(&handle)) {
                         *slot = Slot::Failed;
-                        drop(slot);
-                        set_indexing(&index.indexing, &index.report, |state| {
-                            state.building = false;
-                        });
                     }
                 }
                 ended

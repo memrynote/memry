@@ -11,7 +11,7 @@ use memry_core::storage::OpenOptions;
 use memry_core::storage::recovery_prune::prune_settled;
 use uuid::Uuid;
 
-use super::projection::{DEFAULT_QUEUE_LIMIT, ProjectionRuntime};
+use super::projection::{CancelToken, DEFAULT_QUEUE_LIMIT, ProjectionRuntime};
 use super::response::MovesRecovered;
 use super::{
     Open, OpenSource, OpenStage, OpenVault, Session, SessionError, SessionEvent, SessionStatus,
@@ -262,23 +262,30 @@ impl Session {
     }
 
     /// The background tasks: spawned, never awaited, cancelled and joined by close. A task
-    /// that cannot be spawned is logged; the vault stays open without it.
+    /// that cannot be spawned is logged and runs here once with a cancelled token, so it lets go
+    /// of what its open hook set up (the note index's build); the vault stays open without it.
     fn spawn_background_hooks(&self, view: &OpenVault, runtime: &ProjectionRuntime) {
         let hooks = lock(&self.inner.hooks).background.clone();
         let mut handles = Vec::new();
         for (name, hook) in hooks {
-            let (view, cancel, task) = (view.clone(), runtime.cancel_token(), name.clone());
+            let (task_view, cancel, task) = (view.clone(), runtime.cancel_token(), name.clone());
+            let task_hook = hook.clone();
             let spawned = std::thread::Builder::new()
                 .name(format!("open-{name}"))
                 .spawn(move || {
-                    if let Err(error) = hook(&view, &cancel) {
+                    if let Err(error) = task_hook(&task_view, &cancel) {
                         tracing::error!(task = %task, %error, "background open hook failed");
                     }
                 });
             match spawned {
                 Ok(handle) => handles.push((name, handle)),
                 Err(error) => {
-                    tracing::error!(task = %name, %error, "could not start a background task")
+                    tracing::error!(task = %name, %error, "could not start a background task");
+                    let stopped = CancelToken::default();
+                    stopped.cancel();
+                    if let Err(error) = hook(view, &stopped) {
+                        tracing::error!(task = %name, %error, "background open hook failed");
+                    }
                 }
             }
         }

@@ -325,20 +325,26 @@ test('T531: a note written outside the app is listed and measured after a reinde
   testVaultPath
 }) => {
   await openBuilt(page)
+  const before = await measuredNotes(app)
   writeFileSync(
     join(testVaultPath, 'notes', 'external-note.md'),
     '# External Note\n\nThis note was created externally for reindex testing.\n'
   )
-
-  await invoke(page, 'vault_reindex')
-
   const listed = async () =>
     (
       await invoke<{ notes: { id: string; title: string }[] }>(page, 'notes_list', {
         options: { limit: 10_000 }
       })
     ).notes.find((note) => note.title === 'external-note')
+  // The watcher lists it first; the reindex then counts it among the notes it measures.
   await expect.poll(async () => (await listed()) !== undefined).toBe(true)
+  const events = await recordIndexEvents(page)
+
+  await invoke(page, 'vault_reindex')
+
+  await expect
+    .poll(async () => (await events()).progress.at(-1))
+    .toEqual({ indexBuilt: before + 1, indexTotal: before + 1 })
   const id = (await listed())?.id as string
   const words = async () =>
     (

@@ -3,7 +3,7 @@
 //! status says indexing while it runs, as during an open's build, through [`vault_status`] and
 //! the index's report ([`send_indexing_status`]).
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_desktop::notes::index::{IndexError, IndexProgress, NoteIndex};
 use memry_desktop::session::response::VaultStatus;
@@ -44,10 +44,25 @@ pub fn vault_status(app: &AppHandle<Wry>, status: SessionStatus) -> VaultStatus 
     VaultStatus::from(status).with_indexing(indexing(app))
 }
 
+/// Every status send reads the index and broadcasts under this lock. The session's forwarder,
+/// the index task and a reindex's asker send from their own threads: without it, one that read
+/// "indexing" could broadcast after one that read it cleared, and the window keeps the stale one.
+static SENDING: Mutex<()> = Mutex::new(());
+
+/// The session's `StatusChanged`, with what the index does.
+pub fn send_status(app: &AppHandle<Wry>, status: SessionStatus) {
+    let _sending = SENDING.lock().unwrap_or_else(PoisonError::into_inner);
+    broadcast(app, VaultStatusChangedEvent(vault_status(app, status)));
+}
+
 /// The note index's [`IndexReport::Indexing`](memry_desktop::notes::index::IndexReport): the
 /// vault status again, unless no vault is open or the app quits ([`VaultStatus::resend`]).
 pub fn send_indexing_status(app: &AppHandle<Wry>) {
-    if let Some(status) = VaultStatus::resend(&app.state::<Session>(), indexing(app)) {
+    let Some(session) = app.try_state::<Session>() else {
+        return;
+    };
+    let _sending = SENDING.lock().unwrap_or_else(PoisonError::into_inner);
+    if let Some(status) = VaultStatus::resend(&session, indexing(app)) {
         broadcast(app, VaultStatusChangedEvent(status));
     }
 }
