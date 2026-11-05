@@ -53,6 +53,7 @@ e2e_commands! {
         e2e_note_body,
         e2e_note_edit,
         e2e_note_schedule,
+        e2e_vault_config,
         e2e_vault_note_files,
         e2e_vault_read_file,
         e2e_vault_write_outside
