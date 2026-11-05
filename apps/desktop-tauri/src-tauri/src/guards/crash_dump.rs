@@ -37,16 +37,28 @@ struct Monitor {
 }
 
 impl ServerHandler for Monitor {
+    /// The dump is written under a partial name; `on_minidump_created` names it `.dmp` once whole.
     fn create_minidump_file(&self) -> Result<(fs::File, PathBuf), std::io::Error> {
         fs::create_dir_all(&self.dir)?;
-        let path = crash_dumps::new_path(&self.dir);
+        let path = crash_dumps::new_partial_path(&self.dir);
         Ok((fs::File::create(&path)?, path))
     }
 
     fn on_minidump_created(&self, result: Result<MinidumpBinary, minidumper::Error>) -> LoopAction {
-        match result {
-            Ok(dump) => eprintln!("crash monitor: wrote {}", dump.path.display()),
-            Err(error) => eprintln!("crash monitor: could not write a minidump: {error}"),
+        let dump = match result {
+            Ok(dump) => dump,
+            Err(error) => {
+                eprintln!("crash monitor: could not write a minidump: {error}");
+                return LoopAction::Continue;
+            }
+        };
+        drop(dump.file);
+        match crash_dumps::complete(&dump.path) {
+            Ok(path) => eprintln!("crash monitor: wrote {}", path.display()),
+            Err(error) => eprintln!(
+                "crash monitor: could not name {} a dump: {error}",
+                dump.path.display()
+            ),
         }
         LoopAction::Continue
     }
