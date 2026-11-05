@@ -108,14 +108,47 @@ pub struct Started {
     pinned: Option<Vec<String>>,
 }
 
-/// What [`rename_holder`] did to the record.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HolderRenamed {
-    Renamed,
-    Unchanged,
-    /// Its file edit was begun, and its record changed since in a way the rename does not
-    /// explain (an outside edit read into it): it is left, and the holder struck off.
-    Left,
+fn holds(list: &[String], tag: &str) -> bool {
+    list.iter().any(|held| tags::same_tag(held, tag))
+}
+
+/// A begun holder's list: what the rename made of `begun`, less what an edit since removed and
+/// plus what it added (`now`), so an edit read into the record meanwhile keeps its change,
+/// whether it came in the old name's terms (a day's header, which keeps the old name) or the
+/// new (a note's renamed header).
+fn since_begun(begun: &[String], now: &[String], from: &str, to: &str) -> Vec<String> {
+    let (removed, stayed): (Vec<String>, Vec<String>) =
+        begun.iter().cloned().partition(|tag| !holds(now, tag));
+    // A name a tag still held renames to stays, though a removed one renames to it too (a
+    // merge into a name in use: `a` to `b` of `[a, b]`, `a` removed since).
+    let still = tags::renamed_list(&stayed, from, to);
+    let gone: Vec<String> = tags::renamed_list(&removed, from, to)
+        .into_iter()
+        .filter(|tag| !holds(&still, tag))
+        .collect();
+    let kept = tags::renamed_list(begun, from, to)
+        .into_iter()
+        .filter(|tag| !holds(&gone, tag));
+    let added = now.iter().filter(|tag| !holds(begun, tag)).cloned();
+    let next = tags::dedupe(kept.chain(added));
+    // In the record's order, a tag it holds under the old name where the renamed one stands.
+    let mut ordered: Vec<String> = Vec::with_capacity(next.len());
+    for tag in now {
+        let renamed = renamed_tag(tag, from, to);
+        for name in std::iter::once(tag).chain(renamed.as_ref()) {
+            if let Some(held) = next.iter().find(|held| tags::same_tag(held, name))
+                && !holds(&ordered, held)
+            {
+                ordered.push(held.clone());
+            }
+        }
+    }
+    let rest: Vec<String> = next
+        .into_iter()
+        .filter(|tag| !holds(&ordered, tag))
+        .collect();
+    ordered.extend(rest);
+    ordered
 }
 
 fn pairs(conn: &Connection, old: &str, new: &str) -> Result<Vec<(String, String)>, StorageError> {
@@ -365,46 +398,57 @@ pub fn started(conn: &Connection, id: &str) -> Result<Option<Started>, StorageEr
 
 /// The recorded rename in the record of the holder `id` ([`tags::rename`]), and the holder
 /// struck off, in one transaction. A holder the plan no longer lists is left alone: its record
-/// took the new name already. With its file edit begun ([`start_holder`]), the record is
-/// renamed only as it was then; one already renamed so is unchanged, and any other is left
-/// ([`HolderRenamed::Left`]).
+/// took the new name already. With its file edit begun ([`start_holder`]), the record takes
+/// what the rename made of its lists then, with what an edit changed since ([`since_begun`]).
 pub fn rename_holder(
     conn: &Connection,
     id: &str,
     device_id: &str,
     now_ms: i64,
-) -> Result<HolderRenamed, StorageError> {
+) -> Result<bool, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
     let Some(job) = stored(&tx)? else {
-        return Ok(HolderRenamed::Unchanged);
+        return Ok(false);
     };
     if !listed(&tx, id)? {
-        return Ok(HolderRenamed::Unchanged);
+        return Ok(false);
     }
     let (from, to) = (job.from.as_str(), job.to.trim());
-    let renamed = match (started(&tx, id)?, tags::lists(&tx, id)?) {
-        (Some(begun), Some((now_tags, now_pins)))
-            if (now_tags.as_slice(), now_pins.as_deref())
-                != (begun.tags.as_slice(), begun.pinned.as_deref()) =>
-        {
-            match (now_tags, now_pins)
-                == tags::renamed_lists(&begun.tags, begun.pinned.as_deref(), from, to)
-            {
-                true => HolderRenamed::Unchanged,
-                false => HolderRenamed::Left,
-            }
-        }
-        _ => match tags::rename(&tx, id, from, to, device_id, now_ms)? {
-            true => HolderRenamed::Renamed,
-            false => HolderRenamed::Unchanged,
-        },
+    let wrote = match started(&tx, id)? {
+        None => tags::rename(&tx, id, from, to, device_id, now_ms)?,
+        Some(begun) => tags::rename_with(
+            &tx,
+            id,
+            |now_tags, now_pins| {
+                let next = since_begun(&begun.tags, now_tags, from, to);
+                let pins = match (begun.pinned.as_deref(), now_pins) {
+                    (Some(was), Some(now)) => {
+                        Some(tags::spelled_in(since_begun(was, now, from, to), &next))
+                    }
+                    // Pinned since the edit began: a pin follows its tag to the new name.
+                    (None, Some(now)) => Some(tags::spelled_in(
+                        now.iter()
+                            .map(|pin| match renamed_tag(pin, from, to) {
+                                Some(renamed) if !holds(&next, pin) => renamed,
+                                _ => pin.clone(),
+                            })
+                            .collect(),
+                        &next,
+                    )),
+                    (_, None) => None,
+                };
+                (next, pins)
+            },
+            device_id,
+            now_ms,
+        )?,
     };
     for prefix in [HOLDER, STARTED] {
         tx.execute("DELETE FROM meta WHERE key = ?1", [format!("{prefix}{id}")])
             .map_err(failed)?;
     }
     tx.commit().map_err(failed)?;
-    Ok(renamed)
+    Ok(wrote)
 }
 
 /// Forgets the file edit begun on the holder `id`, which did not write its file: the holder stays
