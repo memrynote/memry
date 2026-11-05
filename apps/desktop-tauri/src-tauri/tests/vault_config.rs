@@ -25,10 +25,13 @@ fn opened() -> (Mocked, Arc<Mutex<Vec<Value>>>) {
             memry_tauri::commands::vault::vault_update_config::<MockRuntime>,
         ]);
     let mocked = Mocked::open(
-        &[(
-            ".memry/config.json",
-            r#"{"journalFolder":"/Daily/","preferences":{"theme":"dark"}}"#,
-        )],
+        &[
+            (
+                ".memry/config.json",
+                r#"{"journalFolder":"/Daily/","preferences":{"theme":"dark"}}"#,
+            ),
+            ("Daily/2025-01-02.md", "A day.\n"),
+        ],
         commands,
     );
     let heard: Arc<Mutex<Vec<Value>>> = Arc::default();
@@ -132,4 +135,23 @@ fn the_current_journal_folder_again_writes_and_sends_nothing() {
         before
     );
     assert!(heard.lock().unwrap().is_empty());
+}
+
+/// A new date format renames the day files to it before it is saved, and every window hears it.
+#[test]
+fn a_date_format_change_renames_the_days_and_sends_the_new_format() {
+    let (mocked, heard) = opened();
+    let answer = mocked
+        .invoke(
+            "vault_update_config",
+            json!({ "config": { "journalDateFormat": "YYYY-MM-DD dddd" } }),
+        )
+        .unwrap();
+    assert_eq!(answer["journalDateFormat"], "YYYY-MM-DD dddd");
+    assert_eq!(*heard.lock().unwrap(), [answer]);
+    assert!(!mocked.vault.join("Daily/2025-01-02.md").exists());
+    assert_eq!(
+        fs::read_to_string(mocked.vault.join("Daily/2025-01-02 Thursday.md")).unwrap(),
+        "A day.\n"
+    );
 }

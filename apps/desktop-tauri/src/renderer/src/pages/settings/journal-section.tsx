@@ -82,9 +82,8 @@ export function JournalSettings() {
     }
   }, [config, journalFolder, updateConfig])
 
-  // A refused change (a locked journal entry, or in this build any format change until the
-  // renames are ported) keeps the saved format, so the field goes back to it rather than
-  // showing a format that is not in use.
+  // A refused change (a locked journal entry) keeps the saved format, so the
+  // field goes back to it rather than showing a format that is not in use.
   const handleJournalDateFormatBlur = useCallback(async () => {
     if (!config || journalDateFormat === config.journalDateFormat) return
     const error = await updateConfig({ journalDateFormat })

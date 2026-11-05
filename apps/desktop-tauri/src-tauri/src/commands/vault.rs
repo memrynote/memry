@@ -21,6 +21,8 @@ use memry_desktop::vault::config::settings::{
 use memry_desktop::vault::config::{
     ConfigError, PERMISSION_DENIED_KEY, VaultConfig, VaultConfigPatch,
 };
+use memry_desktop::vault::consumer::VaultTier;
+use memry_desktop::vault::journal_rename::JournalVault;
 use tauri::{AppHandle, Manager, Runtime, Wry};
 use tauri_plugin_opener::OpenerExt;
 
@@ -302,10 +304,10 @@ pub async fn vault_get_config<R: Runtime>(app: AppHandle<R>) -> Result<VaultConf
     .await
 }
 
-/// `vault:update-config`: writes the fields `config` names and answers the settings after it,
-/// which every window hears as [`VaultConfigChangedEvent`], in the order the writes land. A
-/// change that is not ported yet is refused as `config_change_not_ported`
-/// (`vault::config::settings`).
+/// `vault:update-config`: writes the fields `config` names, a new date format with the day
+/// files renamed to it first, and answers the settings after it, which every window hears as
+/// [`VaultConfigChangedEvent`], in the order the writes land. A change that is not ported yet
+/// is refused as `config_change_not_ported` (`vault::config::settings`).
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_update_config<R: Runtime>(
@@ -313,9 +315,18 @@ pub async fn vault_update_config<R: Runtime>(
     config: VaultConfigPatch,
 ) -> Result<VaultConfig, CommandError> {
     let open = open_vault(&app)?;
+    let tier = app
+        .try_state::<Arc<VaultTier>>()
+        .map(|tier| tier.inner().clone())
+        .ok_or_else(|| CommandError::new(ErrorKind::Internal, "no_vault_tier", "no vault tier"))?;
     let announcer = app.clone();
     blocking("vault_update_config", move || {
-        Ok(update_vault_settings(&open.path, config, |settings| {
+        let at = JournalVault {
+            root: &open.path,
+            vault: &open.vault,
+            tier: &tier,
+        };
+        Ok(update_vault_settings(at, config, |settings| {
             broadcast(&announcer, VaultConfigChangedEvent(settings.clone()));
         }))
     })
