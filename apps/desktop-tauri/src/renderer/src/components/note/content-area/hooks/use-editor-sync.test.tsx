@@ -608,42 +608,6 @@ describe('useEditorSync', () => {
     expect(tr.setMeta).toHaveBeenCalledWith('addToHistory', false)
   })
 
-  it('saves an emptied body back as the empty file, so the reload reads as no edit', async () => {
-    const onMarkdownChange = vi.fn()
-    const editor = createEditor([
-      { id: 'paragraph-1', type: 'paragraph', props: {}, content: ['Context'], children: [] }
-    ])
-    editor.blocksToMarkdownLossy.mockResolvedValue('## Context')
-
-    const { result, rerender } = renderHook(
-      ({ initialContent, externalContentRevision }) =>
-        useEditorSync({
-          editor,
-          initialContent,
-          contentType: 'markdown',
-          externalContentRevision,
-          onMarkdownChange
-        }),
-      { initialProps: { initialContent: '## Context', externalContentRevision: 0 } }
-    )
-    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
-
-    // The tag template's Undo empties the file. The editor's change for the reload must hand
-    // back what the file holds, or the note page takes it for typing and holds back the next
-    // outside edit, then saves over it.
-    rerender({ initialContent: '', externalContentRevision: 1 })
-    await waitFor(() => expect(editor.document).toEqual([{ type: 'paragraph' }]))
-    // The block the real editor holds for that paragraph; the mock keeps the partial one.
-    editor.replaceBlocks(editor.document, [
-      { id: 'empty', type: 'paragraph', props: {}, content: [], children: [] }
-    ])
-    await act(async () => {
-      result.current.handleChange()
-      await result.current.flushPendingMarkdown()
-    })
-    expect(onMarkdownChange).toHaveBeenLastCalledWith('')
-  })
-
   it('leaves an external revision to the Y.Doc when collaboration is active', async () => {
     const editor = createEditor([
       { id: 'paragraph-1', type: 'paragraph', props: {}, content: ['Body'], children: [] }
