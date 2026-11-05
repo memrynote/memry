@@ -197,8 +197,16 @@ pub fn take_file_aliases(
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
-    if let Some(date) = crate::domain::journal::date_of(conn, id)? {
-        if !crate::domain::journal::journal_exists(conn, id) {
+    let day: Option<(String, bool)> = conn
+        .query_row(
+            "SELECT date, deleted_at IS NULL FROM journal_entries WHERE id = ?1",
+            [id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(failed)?;
+    if let Some((date, live)) = day {
+        if !live {
             return Ok(false);
         }
         crate::domain::journal_ops::metadata::set_live_aliases(

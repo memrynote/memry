@@ -1,7 +1,8 @@
 //! A note's other names edited in the app (`notes:edit-aliases`, #3530 13q-1) over a real
 //! session, tier, watcher and index: the `aliases` key is the only line written, and only when
 //! the list changes; the record follows, so a link by the new name resolves; a journal day takes
-//! the same edit; a file the note has not taken is refused and left as it is.
+//! the same edit; a file the note has not taken is refused and left as it is. A change queues one
+//! push, a no-op none, and a local-only note none.
 
 use memry_desktop::journal::write::NewDay;
 use memry_desktop::notes::aliases::NoteAliasEditInput;
@@ -34,6 +35,64 @@ fn record(e: &Env, id: &str) -> Vec<String> {
         .unwrap()
         .unwrap()
         .aliases
+}
+
+/// The record pushes queued for `id`.
+fn upserts(e: &Env, id: &str) -> i64 {
+    let id = id.to_owned();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT COUNT(*) FROM outbox WHERE op = 'upsert' AND item_id = ?1",
+                    [id],
+                    |row| row.get(0),
+                )
+                .unwrap())
+        })
+        .unwrap()
+}
+
+fn clear_outbox(e: &Env) {
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute("DELETE FROM outbox", []).unwrap();
+            Ok(())
+        })
+        .unwrap();
+}
+
+#[test]
+fn an_edit_queues_one_push_a_no_op_none_and_a_local_only_note_none() {
+    let (e, notes, _) = opened(&[("Plan.md", NOTE)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+
+    clear_outbox(&e);
+    notes
+        .edit_aliases(&open, &edit(&id, &["Other"], &[]))
+        .unwrap();
+    assert_eq!(upserts(&e, &id), 1);
+
+    clear_outbox(&e);
+    notes
+        .edit_aliases(&open, &edit(&id, &["other"], &[]))
+        .unwrap();
+    assert_eq!(
+        upserts(&e, &id),
+        0,
+        "a list the record holds queues nothing"
+    );
+
+    e.core().note_files().set_local_only(&id, true).unwrap();
+    clear_outbox(&e);
+    notes
+        .edit_aliases(&open, &edit(&id, &["Third"], &[]))
+        .unwrap();
+    assert!(e.read("Plan.md").contains("  - Third\n"));
+    assert_eq!(upserts(&e, &id), 0, "a local-only note stays off the queue");
 }
 
 #[test]
