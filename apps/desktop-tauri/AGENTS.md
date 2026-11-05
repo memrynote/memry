@@ -52,6 +52,7 @@ WebdriverIO drives a built app. `pnpm build:e2e` builds it (cargo feature `e2e`,
 - Per-instance state travels in `<temp>/memry-e2e/control-<port>.json` (`harness/tauri-lifecycle.ts`, `memry_desktop::e2e::control`). The webview profile is isolated per instance, so two instances need macOS 14 or later.
 - No main-process eval, for specs and for `agent-app.mjs eval` (which runs in the renderer only). A spec calls a named `e2e_*` command through `invokeTest(app, name, args)`. A domain step adds its commands under `src-tauri/src/e2e/<domain>.rs` and one line in `e2e/commands.rs`, and updates `e2e/HOOKS.md`. `pnpm check:test-hooks` fails while an Electron hook has no mapped command.
 - A native dialog is never opened by a spec. The dialog queue is in `e2e/HOOKS.md` (`e2e_dialog_queue_push`, `MEMRY_TEST_DIALOG_RESULT`). `fresh()` registers `testVaultPath` as the current vault of the app's `memry-config.json` (`harness/seed-registry.mjs`), and `invoke(page, 'vault_*')` in `harness/vault-commands.ts` calls the vault commands as the renderer does.
+- On Linux, give the run one Xvfb started with `-noreset` (`xvfb-run -a -s '-screen 0 1920x1080x24 -noreset'`, as CI does). Without it, Xvfb resets each time its last app is killed, and an app connecting at that moment exits 101 with `Failed to initialize gtk backend!` (#3947).
 - Specs never leave keychain items: `e2e-` device ids are purged on completion, `pnpm keychain:purge-e2e` sweeps leaks.
 
 ## Live app verification
