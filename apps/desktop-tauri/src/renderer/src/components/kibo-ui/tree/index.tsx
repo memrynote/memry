@@ -30,6 +30,9 @@ import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-
 import { MEMRY_NOTE_DRAG_MIME, setTabDragData } from '@/lib/drag-mime'
 import type { OpenTargetTab } from '@/hooks/use-open-target'
 import { useT } from '@memry/i18n/renderer'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:Tree')
 
 type NodeInfo = {
   nodeId: string
@@ -219,8 +222,8 @@ export const TreeProvider = ({
     if (!persistKey) return
     try {
       localStorage.setItem(persistKey, JSON.stringify(Array.from(expandedIds)))
-    } catch {
-      // Ignore storage errors
+    } catch (error) {
+      log.warn('could not save the expanded folders', { key: persistKey, error })
     }
   }, [expandedIds, persistKey])
 

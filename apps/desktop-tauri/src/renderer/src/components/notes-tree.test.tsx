@@ -169,6 +169,11 @@ vi.mock('@/components/note/template-selector', () => ({
 // Import the mocked module
 import { useNotesList, useNoteFoldersQuery, useNoteMutations } from '@/hooks/use-notes-query'
 
+// The tree saves expanded folders to storage on every change, so each test starts from none.
+beforeEach(() => {
+  localStorage.clear()
+})
+
 // ============================================================================
 // Test Data
 // ============================================================================
@@ -251,7 +256,6 @@ const setupMocks = (
 describe('T521: NotesTree - folder tree display', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
     setupMocks()
   })
 
@@ -575,7 +579,6 @@ describe('NotesTree - one folder subtree, view options', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
     setupMocks(deepNotes, deepFolders)
   })
 
@@ -965,7 +968,6 @@ describe('T523: NotesTree - context-aware note/folder creation', () => {
     vi.clearAllMocks()
     // The tree persists expanded folders on a 500 ms debounce; a slow earlier test
     // leaves Projects expanded here, so the click under test would collapse it.
-    localStorage.clear()
     capturedActionsRef = createRef<NotesTreeActions | null>()
 
     createNoteMock = vi.fn().mockResolvedValue({
