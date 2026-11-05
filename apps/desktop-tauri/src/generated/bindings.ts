@@ -389,7 +389,8 @@ export const commands = {
 	 *  `vault:update-config`: writes the fields `config` names, a new date format with the day
 	 *  files renamed to it first, and answers the settings after it, which every window hears as
 	 *  [`VaultConfigChangedEvent`], in the order the writes land. A change that is not ported yet
-	 *  is refused as `config_change_not_ported` (`vault::config::settings`).
+	 *  is refused as `config_change_not_ported`, and a format not every day can take as
+	 *  `journal_format_incomplete` or `journal_days_not_renamed` (`vault::config::settings`).
 	 */
 	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
 	/**  Drops every retained entry, on disk too. */

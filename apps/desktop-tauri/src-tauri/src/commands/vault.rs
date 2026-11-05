@@ -22,7 +22,6 @@ use memry_desktop::vault::config::{
     ConfigError, PERMISSION_DENIED_KEY, VaultConfig, VaultConfigPatch,
 };
 use memry_desktop::vault::consumer::VaultTier;
-use memry_desktop::vault::journal_rename::JournalVault;
 use tauri::{AppHandle, Manager, Runtime, Wry};
 use tauri_plugin_opener::OpenerExt;
 
@@ -307,7 +306,8 @@ pub async fn vault_get_config<R: Runtime>(app: AppHandle<R>) -> Result<VaultConf
 /// `vault:update-config`: writes the fields `config` names, a new date format with the day
 /// files renamed to it first, and answers the settings after it, which every window hears as
 /// [`VaultConfigChangedEvent`], in the order the writes land. A change that is not ported yet
-/// is refused as `config_change_not_ported` (`vault::config::settings`).
+/// is refused as `config_change_not_ported`, and a format not every day can take as
+/// `journal_format_incomplete` or `journal_days_not_renamed` (`vault::config::settings`).
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_update_config<R: Runtime>(
@@ -317,33 +317,35 @@ pub async fn vault_update_config<R: Runtime>(
     let open = open_vault(&app)?;
     let tier = app
         .try_state::<Arc<VaultTier>>()
-        .map(|tier| tier.inner().clone())
-        .ok_or_else(|| CommandError::new(ErrorKind::Internal, "no_vault_tier", "no vault tier"))?;
+        .map(|tier| tier.inner().clone());
     let announcer = app.clone();
     blocking("vault_update_config", move || {
-        let at = JournalVault {
-            root: &open.path,
-            vault: &open.vault,
-            tier: &tier,
-        };
-        Ok(update_vault_settings(at, config, |settings| {
-            broadcast(&announcer, VaultConfigChangedEvent(settings.clone()));
-        }))
+        let days = tier.as_deref().map(|tier| (&open.vault, tier));
+        Ok(update_vault_settings(
+            &open.path,
+            days,
+            config,
+            |settings| {
+                broadcast(&announcer, VaultConfigChangedEvent(settings.clone()));
+            },
+        ))
     })
     .await?
     .map_err(|error| settings_failed(&app, error))
     .inspect_err(|error| log_failure("vault_update_config", error))
 }
 
-/// The message of a refused change, which Settings shows as it puts the saved value back.
+/// The messages of refused changes, which Settings shows as it puts the saved value back.
 const NOT_PORTED_KEY: &str = "errors:vault.configChangeNotPorted";
+const FORMAT_INCOMPLETE_KEY: &str = "errors:vault.journalFormatIncomplete";
+const DAYS_NOT_RENAMED_KEY: &str = "errors:vault.journalDaysNotRenamed";
 
 fn localized<R: Runtime>(app: &AppHandle<R>, key: &str) -> String {
-    i18n::t(
-        app.state::<Arc<LocaleService>>().get(),
-        key,
-        &i18n::Args::new(),
-    )
+    localized_with(app, key, &i18n::Args::new())
+}
+
+fn localized_with<R: Runtime>(app: &AppHandle<R>, key: &str, args: &i18n::Args) -> String {
+    i18n::t(app.state::<Arc<LocaleService>>().get(), key, args)
 }
 
 fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> CommandError {
@@ -353,6 +355,26 @@ fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> Comm
             "config_change_not_ported",
             localized(app, NOT_PORTED_KEY),
         ),
+        SettingsError::IncompleteFormat => CommandError::new(
+            ErrorKind::Invalid,
+            "journal_format_incomplete",
+            localized(app, FORMAT_INCOMPLETE_KEY),
+        ),
+        SettingsError::DaysNotRenamed { left } => {
+            let count = i64::try_from(left).unwrap_or(i64::MAX);
+            let args = i18n::Args::from([("count".to_owned(), i18n::Arg::from(count))]);
+            CommandError::new(
+                ErrorKind::Storage,
+                "journal_days_not_renamed",
+                localized_with(app, DAYS_NOT_RENAMED_KEY, &args),
+            )
+        }
+        SettingsError::JournalUnlisted(error) => {
+            CommandError::new(ErrorKind::Storage, "journal_unlisted", error.to_string())
+        }
+        SettingsError::NoTier => {
+            CommandError::new(ErrorKind::Internal, "no_vault_tier", "no vault tier")
+        }
         SettingsError::Config(ConfigError::PermissionDenied) => CommandError::new(
             ErrorKind::Storage,
             "vault_config_permission_denied",

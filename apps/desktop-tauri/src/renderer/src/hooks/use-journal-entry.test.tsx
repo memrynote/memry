@@ -18,6 +18,7 @@ import {
   createVaultWorkspaceLifecycle,
   type VaultWorkspaceLifecycle
 } from '@/lib/vault-workspace-lifecycle'
+import type { JournalEntry } from '../../../preload/index.d'
 import { useJournalEntry } from './use-journal-entry'
 
 const templates = vi.hoisted(() => ({ get: vi.fn() }))
@@ -385,6 +386,76 @@ describe('useJournalEntry dedicated hook', () => {
     })
     await waitFor(() => expect(result.current.externalUpdateCount).toBe(before + 1))
     expect(result.current.entry?.content).toBe('changed while missed')
+  })
+
+  it('keeps a save that lands while a dropped-event refetch is in flight', async () => {
+    let dropped: (() => void) | null = null
+    const api = window.api as unknown as Record<string, ReturnType<typeof vi.fn>>
+    api.onJournalEventsDropped.mockImplementation((cb) => {
+      dropped = cb
+      return vi.fn()
+    })
+    const getEntry = window.api.journal.getEntry as ReturnType<typeof vi.fn>
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    let answer: (entry: JournalEntry) => void = () => {}
+    getEntry.mockReturnValueOnce(
+      new Promise<JournalEntry>((resolve) => {
+        answer = resolve
+      })
+    )
+    act(() => {
+      dropped?.()
+    })
+    const before = result.current.externalUpdateCount
+
+    act(() => {
+      result.current.updateContent('typed and saved')
+    })
+    await act(async () => {
+      await result.current.saveNow()
+    })
+    // The read began before the save, so it holds the text from before it.
+    await act(async () => {
+      answer(createMockJournalEntry({ date: '2026-05-10', content: 'Existing' }))
+      await Promise.resolve()
+    })
+
+    const cached = queryClient.getQueryData<JournalEntry>(['journal', 'entries', '2026-05-10'])
+    expect(cached?.content).toBe('typed and saved')
+    expect(result.current.externalUpdateCount).toBe(before)
+  })
+
+  it('keeps typing not yet rendered when a dropped-event refetch lands', async () => {
+    let dropped: (() => void) | null = null
+    const api = window.api as unknown as Record<string, ReturnType<typeof vi.fn>>
+    api.onJournalEventsDropped.mockImplementation((cb) => {
+      dropped = cb
+      return vi.fn()
+    })
+    const getEntry = window.api.journal.getEntry as ReturnType<typeof vi.fn>
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    let answer: (entry: JournalEntry) => void = () => {}
+    getEntry.mockReturnValueOnce(
+      new Promise<JournalEntry>((resolve) => {
+        answer = resolve
+      })
+    )
+    act(() => {
+      dropped?.()
+    })
+    const before = result.current.externalUpdateCount
+
+    // The keystroke and the read's answer land before React renders the keystroke.
+    await act(async () => {
+      result.current.updateContent('typed')
+      answer(createMockJournalEntry({ date: '2026-05-10', content: 'changed outside' }))
+      for (let i = 0; i < 10; i++) await Promise.resolve()
+    })
+
+    expect(result.current.externalUpdateCount).toBe(before)
+    expect(result.current.isDirty).toBe(true)
   })
 
   it('refetches the open day on dropped journal events, unless it holds unsaved text', async () => {

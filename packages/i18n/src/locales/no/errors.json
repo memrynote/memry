@@ -14,7 +14,9 @@
     "permissionDenied": "Tillatelse nektet. Sjekk at du har tilgang til denne mappen.",
     "alreadyExists": "Det finnes allerede et hvelv på dette stedet.",
     "corrupted": "Dette hvelvet ser ut til å være ødelagt. Prøv å gjenopprette fra en sikkerhetskopi.",
-    "configChangeNotPorted": "Denne versjonen kan ikke endre dagbokmappen, datoformatet eller ekskluderte mapper ennå. Den lagrede innstillingen beholdes."
+    "configChangeNotPorted": "Denne versjonen kan ikke endre dagbokmappen, datoformatet eller ekskluderte mapper ennå. Den lagrede innstillingen beholdes.",
+    "journalFormatIncomplete": "Dette datoformatet kan ikke gi navn til hver dag, så det ble ikke lagret. Ta med år, måned og dag.",
+    "journalDaysNotRenamed": "Datoformatet ble ikke endret fordi noen dagbokdager ikke kunne gis nytt navn etter det ({count}). En fil har kanskje allerede en dags nye navn."
   },
   "note": {
     "notFound": "Dette notatet ble ikke funnet. Det kan ha blitt slettet.",

@@ -14,7 +14,9 @@
     "permissionDenied": "Permission denied. Check that you have access to this folder.",
     "alreadyExists": "A vault already exists at this location.",
     "corrupted": "This vault appears to be corrupted. Try restoring from a backup.",
-    "configChangeNotPorted": "This version can't change the journal folder, date format or excluded folders yet. Your saved setting is kept."
+    "configChangeNotPorted": "This version can't change the journal folder, date format or excluded folders yet. Your saved setting is kept.",
+    "journalFormatIncomplete": "This date format can't name every day, so it wasn't saved. Include the year, month and day.",
+    "journalDaysNotRenamed": "The date format wasn't changed because some journal days couldn't be renamed to it ({count}). A file may already have a day's new name."
   },
   "note": {
     "notFound": "This note could not be found. It may have been deleted.",

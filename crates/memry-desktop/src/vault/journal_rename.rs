@@ -27,13 +27,21 @@
 //! no link to it (a symbolic link, or a second hard link a rename would leave behind). A format
 //! that cannot name every date renames nothing.
 //!
-//! Each file and its row move as one step under the rows' lane, the file first: when the row
-//! cannot move, the file goes back. The consumer and the write-back take the same lane, so they
-//! see the file and its row at the old path or both at the new one. The lane is held for one
-//! rename and its retries on a transient error ([`FileMove::run`]), and for a second one when
-//! the file goes back. A crash between the file and its row leaves the file at
-//! the new path and the row at the old, which the next open's rescan pairs as a move of that
-//! note.
+//! Each file and its row move as one step under the rows' lane. The consumer and the write-back
+//! take the same lane, so they see the file and its row at the old path or both at the new one.
+//! The lane is held for one rename and its retries on a transient error ([`FileMove::run`]),
+//! and for a second one when the first step is taken back.
+//!
+//! The order keeps a day a day through a crash. The config names the old format until the pass
+//! is done, and the next open's rescan pairs a file and a row that disagree as a move to where
+//! the file is: a day only while that name is one the saved format reads as its date. So a
+//! file never sits at its new name while its row is at the old. The pass moves the row first
+//! and the file after, the row put back when a try of the file's move fails, so the row names
+//! the new path only while a try runs ([`FileMove::run_each`]); the revert of a format that
+//! was not saved moves the file first, back to its old name, and the row after, the file sent
+//! forward again when the row cannot move. Moved the other way, a crash would leave the file
+//! at a name the old format does not read, and the next open would take the day for a note
+//! that moved out of the journal: its record deleted, the delete synced.
 //!
 //! The watcher keeps running, and a move the app makes is never a delete to it. Before each try
 //! of a move the pass tells the own-write record that the old name goes
@@ -227,7 +235,8 @@ pub fn rename_journals_for_format_change(
     };
     let mut skipped = plan.skipped;
     for rename in plan.renames {
-        match move_one(at, (&rows, session), &journal, (&rename.from, &rename.to)) {
+        let names = (rename.from.as_str(), rename.to.as_str());
+        match move_one(at, (&rows, session), &journal, names, First::Row) {
             Ok(Moved::Done) => {
                 journal.remove_empty(&at.tier.echo(), folders_of(&rename.from));
                 result.moved.push(rename);
@@ -257,7 +266,7 @@ pub fn rename_journals_for_format_change(
 }
 
 /// Takes back the renames of a format change whose new format was not saved, newest first,
-/// file then row as the forward pass moved them, so every journal file matches the format it
+/// file then row (the module's doc), so every journal file matches the format it
 /// is read with again. Returns the renames that did not go back, in the order given: each file
 /// is logged and left at its new name, with its row.
 pub fn revert_journal_renames(
@@ -282,7 +291,8 @@ pub fn revert_journal_renames(
     };
     let mut left = Vec::new();
     for rename in moved.iter().rev() {
-        match move_one(at, (&rows, session), &journal, (&rename.to, &rename.from)) {
+        let names = (rename.to.as_str(), rename.from.as_str());
+        match move_one(at, (&rows, session), &journal, names, First::File) {
             Ok(Moved::Done) => {
                 journal.remove_empty(&at.tier.echo(), folders_of(&rename.to));
                 continue;
@@ -320,13 +330,24 @@ enum MoveError {
     Row(RowError),
 }
 
-/// Moves one file and its row under the lane; `from` and `to` are relative to the journal
-/// folder.
+/// Which of a file and its row moves first: whichever leaves the file at its name in the saved
+/// format while the two disagree (the module's doc).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum First {
+    /// The rename pass: the file stays at its old name until its row is at the new.
+    Row,
+    /// The revert: the file is back at its old name before its row follows.
+    File,
+}
+
+/// Moves one file and its row under the lane, `first` first; `from` and `to` are relative to
+/// the journal folder.
 fn move_one(
     at: JournalVault<'_>,
     (rows, session): (&RowOwner, RowSession),
     journal: &Journal,
     (from, to): (&str, &str),
+    first: First,
 ) -> Result<Moved, MoveError> {
     let (Some(source), Some(target)) = (journal.path(from), journal.path(to)) else {
         return Err(MoveError::Outside);
@@ -358,40 +379,65 @@ fn move_one(
         source_rel: &from_path,
         case_only,
     };
-    if let Err(error) = forward.run(&echo) {
+    // The row names the new path only while a try runs, as the record that the old name goes
+    // is up: a delete by another program while the move waits finds the note at its old path.
+    let mut row_refused = None;
+    let moved = match row.as_ref().filter(|_| first == First::Row) {
+        Some(row) => forward.run_each(&echo, |rename| {
+            if let Err(error) = lane.rename(&row.note_id, &to_path) {
+                let failed = io::Error::other(error.to_string());
+                row_refused = Some(error);
+                return Err(failed);
+            }
+            rename().inspect_err(|_| {
+                if let Err(back) = lane.rename(&row.note_id, &from_path) {
+                    // The row stays at the new name and the file at the old, a day the next
+                    // open's rescan pairs back.
+                    tracing::error!(scope = SCOPE, "a journal row could not go back: {back}");
+                }
+            })
+        }),
+        None => forward.run(&echo),
+    };
+    if let Err(error) = moved {
         journal.remove_empty(&echo, folders_of(to).take(created));
+        if let Some(refused) = row_refused {
+            return Err(MoveError::Rows(refused));
+        }
         let error = io::Error::from(error);
         return match error.kind() {
             io::ErrorKind::AlreadyExists => Ok(Moved::TargetTaken),
             _ => Err(MoveError::File(error)),
         };
     }
-    if let Some(row) = row {
-        if let Err(error) = lane.rename(&row.note_id, &to_path) {
-            // File and row must agree, or the moved file is taken for a new note and the row
-            // stranded.
-            let back = FileMove {
-                source: &target,
-                target: &source,
-                source_rel: &to_path,
-                case_only,
-            };
-            match back.run(&echo) {
-                Ok(()) => journal.remove_empty(&echo, folders_of(to).take(created)),
-                // The file stays at its new name and the row at its old. The old name's record
-                // is withdrawn below: a watcher that has not looked at the old name yet sees an
-                // outside move and pairs the two by the file's bytes, a rename. After tries to
-                // move back that took over half a second it has usually taken the old name's
-                // going for the app's and pairs nothing: the file reaches the identity as a new
-                // one, and the next open's rescan finds the row's file gone. The text survives;
-                // the note's id may not.
-                Err(back) => {
-                    tracing::error!(scope = SCOPE, "a journal file could not go back: {back}");
-                }
+    if let Some(row) = row.as_ref().filter(|_| first == First::File)
+        && let Err(error) = lane.rename(&row.note_id, &to_path)
+    {
+        // File and row must agree, or the moved file is taken for a new note and the row
+        // stranded.
+        let back = FileMove {
+            source: &target,
+            target: &source,
+            source_rel: &to_path,
+            case_only,
+        };
+        match back.run(&echo) {
+            Ok(()) => journal.remove_empty(&echo, folders_of(to).take(created)),
+            // The file stays at its new name and the row at its old. The old name's record
+            // is withdrawn below: a watcher that has not looked at the old name yet sees an
+            // outside move and pairs the two by the file's bytes, a rename. After tries to
+            // move back that took over half a second it has usually taken the old name's
+            // going for the app's and pairs nothing: the file reaches the identity as a new
+            // one, and the next open's rescan finds the row's file gone. The text survives;
+            // the note's id may not.
+            Err(back) => {
+                tracing::error!(scope = SCOPE, "a journal file could not go back: {back}");
             }
-            echo.cancel_removal(&from_path);
-            return Err(MoveError::Row(error));
         }
+        echo.cancel_removal(&from_path);
+        return Err(MoveError::Row(error));
+    }
+    if let Some(row) = row {
         lane.publish(Applied::Renamed {
             note_id: row.note_id,
             old_path: from_path.clone(),

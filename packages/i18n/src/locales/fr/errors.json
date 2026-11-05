@@ -14,7 +14,9 @@
     "permissionDenied": "Autorisation refusée. Vérifiez que vous avez accès à ce dossier.",
     "alreadyExists": "Un coffre existe déjà à cet emplacement.",
     "corrupted": "Ce coffre semble corrompu. Essayez de le restaurer à partir d'une sauvegarde.",
-    "configChangeNotPorted": "Cette version ne peut pas encore modifier le dossier du journal, le format de la date ni les dossiers exclus. Votre réglage enregistré est conservé."
+    "configChangeNotPorted": "Cette version ne peut pas encore modifier le dossier du journal, le format de la date ni les dossiers exclus. Votre réglage enregistré est conservé.",
+    "journalFormatIncomplete": "Ce format de date ne peut pas nommer chaque jour, il n’a donc pas été enregistré. Indiquez l’année, le mois et le jour.",
+    "journalDaysNotRenamed": "Le format de date n’a pas été modifié, car certains jours du journal n’ont pas pu être renommés selon ce format ({count}). Un fichier porte peut-être déjà le nouveau nom d’un jour."
   },
   "note": {
     "notFound": "Cette note est introuvable. Elle a peut-être été supprimée.",

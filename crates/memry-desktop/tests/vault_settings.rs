@@ -19,7 +19,6 @@ use memry_desktop::vault::config::settings::{
 };
 use memry_desktop::vault::config::{VaultConfig, VaultConfigPatch, config_path};
 use memry_desktop::vault::consumer::Applied;
-use memry_desktop::vault::journal_rename::JournalVault;
 use serde_json::{Value, json};
 use vault_env::{Env, QUIET, env, indexed};
 
@@ -47,12 +46,7 @@ fn update(
     announce: impl FnOnce(&VaultConfig),
 ) -> Result<VaultConfig, SettingsError> {
     let core = e.core();
-    let at = JournalVault {
-        root: &e.vault,
-        vault: &core,
-        tier: &e.tier,
-    };
-    update_vault_settings(at, patch, announce)
+    update_vault_settings(&e.vault, Some((&core, &e.tier)), patch, announce)
 }
 
 fn stored(vault: &Path) -> Value {
@@ -344,4 +338,154 @@ fn a_format_the_config_does_not_take_puts_the_days_back() {
         e.rows(),
         vec![("j2025-01-02".to_owned(), "journal/2025-01-02.md".to_owned())]
     );
+}
+
+/// What a crash in the middle of a date format change leaves: a day whose row took its name in
+/// the new format while the file and the saved config are still in the old one. The next open
+/// pairs the two as a move to a name the saved format reads as that day, so the day keeps its
+/// id and record, and a change run again renames it.
+#[test]
+fn a_crash_mid_format_change_keeps_each_day_on_the_next_open() {
+    let mut e = opened(
+        json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD dddd" }),
+        &[("journal/2025-01-02 Thursday.md", "A day\n")],
+    );
+    let renamed = "journal/2025-01-02 Thursday.md";
+    assert_eq!(
+        e.rows(),
+        vec![("j2025-01-02".to_owned(), renamed.to_owned())]
+    );
+    e.close();
+    let daily = json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD" });
+    fs::write(config_path(&e.vault), serde_json::to_vec(&daily).unwrap()).unwrap();
+    fs::rename(e.vault.join(renamed), e.vault.join("journal/2025-01-02.md")).unwrap();
+    e.drain();
+
+    e.open();
+    let facts = e.facts_until(indexed);
+    std::thread::sleep(QUIET);
+    let facts = [facts, e.drain()].concat();
+
+    assert!(
+        !facts
+            .iter()
+            .any(|f| matches!(f, Applied::Added { .. } | Applied::Removed { .. })),
+        "{facts:?}"
+    );
+    assert_eq!(
+        e.rows(),
+        vec![("j2025-01-02".to_owned(), "journal/2025-01-02.md".to_owned())]
+    );
+    update(&e, format("YYYY-MM-DD dddd"), |_| {}).unwrap();
+    assert_eq!(
+        e.rows(),
+        vec![("j2025-01-02".to_owned(), renamed.to_owned())]
+    );
+}
+
+/// A day that cannot take its name in the new format, here because a note holds it, refuses the
+/// format: saved, it would leave that day a note under it. The days already renamed go back.
+#[test]
+fn a_format_a_day_cannot_take_is_refused_and_every_day_keeps_its_name() {
+    let mut e = opened(
+        json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD" }),
+        &[
+            ("journal/2025-01-02.md", "A day\n"),
+            ("journal/2025-01-03.md", "Another day\n"),
+            ("journal/2025-01-03 Friday.md", "A note\n"),
+        ],
+    );
+    let rows = e.rows();
+
+    let refused = update(&e, format("YYYY-MM-DD dddd"), |_| panic!("announced"));
+
+    assert!(
+        matches!(refused, Err(SettingsError::DaysNotRenamed { left: 1 })),
+        "{refused:?}"
+    );
+    assert_eq!(stored(&e.vault)["journalDateFormat"], "YYYY-MM-DD");
+    assert!(e.vault.join("journal/2025-01-02.md").exists());
+    assert!(!e.vault.join("journal/2025-01-02 Thursday.md").exists());
+    std::thread::sleep(QUIET);
+    e.drain();
+    assert_eq!(e.rows(), rows);
+}
+
+/// A format that cannot name every date renames no day and is not saved.
+#[test]
+fn a_format_that_cannot_name_every_date_is_refused() {
+    let e = opened(
+        json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD" }),
+        &[("journal/2025-01-02.md", "A day\n")],
+    );
+    let refused = update(&e, format("YYYY-MM"), |_| panic!("announced"));
+    assert!(
+        matches!(refused, Err(SettingsError::IncompleteFormat)),
+        "{refused:?}"
+    );
+    assert_eq!(stored(&e.vault)["journalDateFormat"], "YYYY-MM-DD");
+    assert!(e.vault.join("journal/2025-01-02.md").exists());
+}
+
+/// A config that cannot be read names no format or folder to rename from: the update is
+/// refused before any day moves, not run from the defaults standing in for it.
+#[test]
+fn an_unreadable_config_moves_no_day() {
+    let mut e = opened(
+        json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD" }),
+        &[("journal/2025-01-02.md", "A day\n")],
+    );
+    fs::write(config_path(&e.vault), b"{ not json").unwrap();
+    e.drain();
+
+    let refused = update(&e, format("YYYY-MM-DD dddd"), |_| panic!("announced"));
+
+    assert!(
+        matches!(refused, Err(SettingsError::Config(_))),
+        "{refused:?}"
+    );
+    assert!(
+        !e.drain()
+            .iter()
+            .any(|f| matches!(f, Applied::Renamed { .. })),
+        "a day moved"
+    );
+    assert!(e.vault.join("journal/2025-01-02.md").exists());
+}
+
+/// A journal folder that cannot be listed renames nothing, and the format is not saved.
+#[cfg(unix)]
+#[test]
+fn a_journal_folder_that_cannot_be_listed_refuses_the_format() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let e = opened(
+        json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD" }),
+        &[("journal/2025-01-02.md", "A day\n")],
+    );
+    let journal = e.vault.join("journal");
+    fs::set_permissions(&journal, fs::Permissions::from_mode(0o000)).unwrap();
+    let refused = update(&e, format("YYYY-MM-DD dddd"), |_| panic!("announced"));
+    fs::set_permissions(&journal, fs::Permissions::from_mode(0o755)).unwrap();
+
+    assert!(
+        matches!(refused, Err(SettingsError::JournalUnlisted(_))),
+        "{refused:?}"
+    );
+    assert_eq!(stored(&e.vault)["journalDateFormat"], "YYYY-MM-DD");
+}
+
+/// A vault whose tier did not start still takes every change but a date format, which needs it
+/// to move the days.
+#[test]
+fn without_a_tier_only_a_format_change_is_refused() {
+    let e = opened(json!({ "journalDateFormat": "YYYY-MM-DD" }), &[]);
+    let sidebar = VaultConfigPatch {
+        journal_show_in_sidebar: Some(true),
+        ..VaultConfigPatch::default()
+    };
+    let settings = update_vault_settings(&e.vault, None, sidebar, |_| {}).unwrap();
+    assert!(settings.journal_show_in_sidebar);
+    let refused = update_vault_settings(&e.vault, None, format("YYYY-MM-DD dddd"), |_| {});
+    assert!(matches!(refused, Err(SettingsError::NoTier)), "{refused:?}");
 }

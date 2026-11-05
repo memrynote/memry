@@ -14,7 +14,9 @@
     "permissionDenied": "Tilladelse nægtet. Tjek, at du har adgang til denne mappe.",
     "alreadyExists": "Der findes allerede en boks på dette sted.",
     "corrupted": "Denne boks ser ud til at være beskadiget. Prøv at gendanne fra en sikkerhedskopi.",
-    "configChangeNotPorted": "Denne version kan endnu ikke ændre dagbogsmappen, datoformatet eller udelukkede mapper. Din gemte indstilling bevares."
+    "configChangeNotPorted": "Denne version kan endnu ikke ændre dagbogsmappen, datoformatet eller udelukkede mapper. Din gemte indstilling bevares.",
+    "journalFormatIncomplete": "Dette datoformat kan ikke navngive hver dag, så det blev ikke gemt. Medtag år, måned og dag.",
+    "journalDaysNotRenamed": "Datoformatet blev ikke ændret, fordi nogle dagbogsdage ikke kunne omdøbes til det ({count}). En fil har måske allerede en dags nye navn."
   },
   "note": {
     "notFound": "Denne note kunne ikke findes. Den kan være blevet slettet.",

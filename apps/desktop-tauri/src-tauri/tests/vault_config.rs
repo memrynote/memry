@@ -155,3 +155,37 @@ fn a_date_format_change_renames_the_days_and_sends_the_new_format() {
         "A day.\n"
     );
 }
+
+/// A day that cannot take the new format's name refuses the format with the count Settings
+/// shows, the day keeps its name, and nothing is sent.
+#[test]
+fn a_format_a_day_cannot_take_is_refused_with_the_count() {
+    let (mocked, heard) = opened();
+    fs::write(
+        mocked.vault.join("Daily/2025-01-02 Thursday.md"),
+        "A note.\n",
+    )
+    .unwrap();
+    let refused = mocked
+        .invoke(
+            "vault_update_config",
+            json!({ "config": { "journalDateFormat": "YYYY-MM-DD dddd" } }),
+        )
+        .unwrap_err();
+    assert_eq!(
+        (&refused["kind"], &refused["code"]),
+        (&json!("storage"), &json!("journal_days_not_renamed"))
+    );
+    assert!(
+        refused["message"]
+            .as_str()
+            .unwrap()
+            .contains("renamed to it (1)."),
+        "{refused}"
+    );
+    assert_eq!(
+        fs::read_to_string(mocked.vault.join("Daily/2025-01-02.md")).unwrap(),
+        "A day.\n"
+    );
+    assert!(heard.lock().unwrap().is_empty());
+}

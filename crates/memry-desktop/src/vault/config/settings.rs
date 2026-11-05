@@ -11,17 +11,32 @@
 //! that then cannot be written puts the files back. The rename keeps the watcher running, as
 //! the pass says why; Electron stops it instead.
 //!
+//! Stricter than Electron, a format is saved only when every day takes it, since a day left at
+//! its old name is a note under the new format, deleted as a day by its next move. A format
+//! that cannot name every date, a journal folder that cannot be listed, or a day that could not
+//! be renamed (its new name taken, or the move failed) refuses the change, the renamed days put
+//! back; Electron logs these and saves. So does a config that cannot be read, whose format and
+//! folder the update would otherwise take from the defaults.
+//!
 //! Not here yet (Step 13m-7b): a change of the journal folder or the exclude patterns, each of
 //! which comes with its own work in Electron (the folder followed, the watcher restarted). Such a
 //! change is refused ([`SettingsError::NotPorted`]); the same value again is no change and passes.
 
+use std::io;
 use std::path::Path;
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
-use super::{ConfigError, VaultConfig, VaultConfigPatch, read_vault_config, write_vault_config};
+use memry_core::api::vault::Vault;
+
+use super::{
+    ConfigError, VaultConfig, VaultConfigPatch, read_vault_config, read_vault_config_strict,
+    unreadable, write_vault_config,
+};
+use crate::vault::consumer::VaultTier;
 use crate::vault::journal_format::{normalize_journal_date_format, normalize_journal_folder};
 use crate::vault::journal_rename::{
-    JournalRename, JournalVault, rename_journals_for_format_change, revert_journal_renames,
+    JournalRename, JournalVault, is_complete_journal_format, rename_journals_for_format_change,
+    revert_journal_renames,
 };
 
 const SCOPE: &str = "vault_settings";
@@ -35,6 +50,17 @@ pub enum SettingsError {
     /// The field, by its `config.json` key, changes and that is not ported yet.
     #[error("changing {0} is not available in this build yet")]
     NotPorted(&'static str),
+    /// The new date format cannot name every date, so no day could keep its name in it.
+    #[error("the date format cannot name every date")]
+    IncompleteFormat,
+    #[error("the journal folder could not be listed: {0}")]
+    JournalUnlisted(io::Error),
+    /// `left` days could not take their names in the new format; the others went back.
+    #[error("{left} journal days could not be renamed to the new date format")]
+    DaysNotRenamed { left: usize },
+    /// A date format change in a vault whose tier did not start, through which the days move.
+    #[error("the vault's tier is not running")]
+    NoTier,
     #[error(transparent)]
     Config(#[from] ConfigError),
 }
@@ -59,17 +85,19 @@ fn normalized(config: VaultConfig) -> VaultConfig {
     }
 }
 
-/// `updateConfig` in the open vault `at`: renames the day files for a new date format, writes
-/// `patch` (its journal fields normalized), hands the settings after it to `announce` and
-/// answers them. A field the patch gives its current value is left as stored; a patch with
-/// nothing else writes and announces nothing.
+/// `updateConfig` in the vault at `root`: renames the day files for a new date format through
+/// the open vault's core and tier (`days`), writes `patch` (its journal fields normalized),
+/// hands the settings after it to `announce` and answers them. A field the patch gives its
+/// current value is left as stored; a patch with nothing else writes and announces nothing.
 pub fn update_vault_settings(
-    at: JournalVault<'_>,
+    root: &Path,
+    days: Option<(&Arc<Vault>, &VaultTier)>,
     mut patch: VaultConfigPatch,
     announce: impl FnOnce(&VaultConfig),
 ) -> Result<VaultConfig, SettingsError> {
     let _one_at_a_time = UPDATES.lock().unwrap_or_else(PoisonError::into_inner);
-    let current = vault_settings(Some(at.root));
+    let current =
+        normalized(read_vault_config_strict(root).map_err(|message| unreadable(root, message))?);
     let folder = patch
         .journal_folder
         .take()
@@ -88,18 +116,17 @@ pub fn update_vault_settings(
     if patch == VaultConfigPatch::default() {
         return Ok(current);
     }
-    let moved = match &patch.journal_date_format {
-        Some(format) => renamed_for(at, &current, format),
-        None => Vec::new(),
+    let renamed = match &patch.journal_date_format {
+        Some(format) => {
+            let (vault, tier) = days.ok_or(SettingsError::NoTier)?;
+            let at = JournalVault { root, vault, tier };
+            Some((at, renamed_for(at, &current, format)?))
+        }
+        None => None,
     };
-    let written = write_vault_config(at.root, &patch).inspect_err(|_| {
-        let left = revert_journal_renames(at, &current.journal_folder, &moved);
-        if !left.is_empty() {
-            tracing::error!(
-                scope = SCOPE,
-                left = left.len(),
-                "day files kept the names of a date format that was not saved"
-            );
+    let written = write_vault_config(root, &patch).inspect_err(|_| {
+        if let Some((at, moved)) = &renamed {
+            put_back(*at, &current, moved);
         }
     })?;
     let settings = normalized(written);
@@ -107,24 +134,41 @@ pub fn update_vault_settings(
     Ok(settings)
 }
 
-/// The day files moved to their names in `format`. A journal folder that could not be listed
-/// moves none, and the format is saved all the same, as Electron logs the failure and goes on.
-fn renamed_for(at: JournalVault<'_>, current: &VaultConfig, format: &str) -> Vec<JournalRename> {
+/// The day files moved to their names in `format`, every one of them, or the change refused
+/// with the moved ones put back (the module's doc).
+fn renamed_for(
+    at: JournalVault<'_>,
+    current: &VaultConfig,
+    format: &str,
+) -> Result<Vec<JournalRename>, SettingsError> {
+    if !is_complete_journal_format(format) {
+        return Err(SettingsError::IncompleteFormat);
+    }
     let renamed = rename_journals_for_format_change(
         at,
         &current.journal_folder,
         &current.journal_date_format,
         format,
-    );
-    match renamed {
-        Ok(result) => result.moved,
-        Err(error) => {
-            tracing::error!(
-                scope = SCOPE,
-                "the day files were not renamed for the new date format: {error}"
-            );
-            Vec::new()
-        }
+    )
+    .map_err(SettingsError::JournalUnlisted)?;
+    let left = renamed.skipped + renamed.failed;
+    if left > 0 {
+        put_back(at, current, &renamed.moved);
+        return Err(SettingsError::DaysNotRenamed { left });
+    }
+    Ok(renamed.moved)
+}
+
+/// Takes back the renames of a format that is not saved, so each day file is named in the
+/// format it is read with.
+fn put_back(at: JournalVault<'_>, current: &VaultConfig, moved: &[JournalRename]) {
+    let left = revert_journal_renames(at, &current.journal_folder, moved);
+    if !left.is_empty() {
+        tracing::error!(
+            scope = SCOPE,
+            left = left.len(),
+            "day files kept the names of a date format that was not saved"
+        );
     }
 }
 

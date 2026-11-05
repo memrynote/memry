@@ -14,7 +14,9 @@
     "permissionDenied": "Behörighet nekad. Kontrollera att du har åtkomst till den här mappen.",
     "alreadyExists": "Det finns redan ett valv på den här platsen.",
     "corrupted": "Det här valvet verkar vara skadat. Försök att återställa från en säkerhetskopia.",
-    "configChangeNotPorted": "Den här versionen kan ännu inte ändra dagboksmappen, datumformatet eller exkluderade mappar. Din sparade inställning behålls."
+    "configChangeNotPorted": "Den här versionen kan ännu inte ändra dagboksmappen, datumformatet eller exkluderade mappar. Din sparade inställning behålls.",
+    "journalFormatIncomplete": "Det här datumformatet kan inte namnge varje dag, så det sparades inte. Ta med år, månad och dag.",
+    "journalDaysNotRenamed": "Datumformatet ändrades inte eftersom vissa dagboksdagar inte kunde byta namn till det ({count}). En fil har kanske redan en dags nya namn."
   },
   "note": {
     "notFound": "Det gick inte att hitta den här anteckningen. Den kan ha raderats.",
