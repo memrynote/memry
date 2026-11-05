@@ -7,8 +7,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{ChildStdin, Command, Stdio};
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::{Duration, SystemTime};
 
 use crash_handler::{CrashEventResult, CrashHandler, make_crash_event};
@@ -34,6 +34,9 @@ static MONITOR_STDIN: OnceLock<ChildStdin> = OnceLock::new();
 
 struct Monitor {
     dir: PathBuf,
+    /// The dump being written. minidumper's write error carries no path, so a failed write
+    /// removes its partial file through this.
+    writing: Mutex<Option<PathBuf>>,
 }
 
 impl ServerHandler for Monitor {
@@ -41,14 +44,29 @@ impl ServerHandler for Monitor {
     fn create_minidump_file(&self) -> Result<(fs::File, PathBuf), std::io::Error> {
         fs::create_dir_all(&self.dir)?;
         let path = crash_dumps::new_partial_path(&self.dir);
-        Ok((fs::File::create(&path)?, path))
+        let file = fs::File::create(&path)?;
+        *self.writing.lock().unwrap_or_else(PoisonError::into_inner) = Some(path.clone());
+        Ok((file, path))
     }
 
     fn on_minidump_created(&self, result: Result<MinidumpBinary, minidumper::Error>) -> LoopAction {
+        let writing = self
+            .writing
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
         let dump = match result {
             Ok(dump) => dump,
             Err(error) => {
                 eprintln!("crash monitor: could not write a minidump: {error}");
+                if let Some(partial) = writing
+                    && let Err(error) = fs::remove_file(&partial)
+                {
+                    eprintln!(
+                        "crash monitor: could not remove {}: {error}",
+                        partial.display()
+                    );
+                }
                 return LoopAction::Continue;
             }
         };
@@ -95,7 +113,10 @@ pub fn monitor_entry() -> Option<i32> {
         let _ = std::io::copy(&mut std::io::stdin(), &mut std::io::sink());
         APP_GONE.store(true, Ordering::Relaxed);
     });
-    let handler = Box::new(Monitor { dir: dir.into() });
+    let handler = Box::new(Monitor {
+        dir: dir.into(),
+        writing: Mutex::default(),
+    });
     match server.run(handler, &APP_GONE, Some(STALE_TIMEOUT)) {
         Ok(()) => Some(0),
         Err(error) => {
@@ -209,7 +230,7 @@ fn attach(socket: &Path) {
         if client.ping().is_err() {
             tracing::warn!(
                 scope = "CrashDump",
-                "the crash monitor is gone; crashes leave no dump"
+                "lost the crash monitor (it ended, or dropped this app after a minute without a ping); crashes leave no dump"
             );
             return;
         }
@@ -228,4 +249,31 @@ pub fn simulate_crash() -> bool {
     #[cfg(any(windows, target_os = "macos"))]
     let _ = handler.simulate_exception(None);
     std::process::abort()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failed_write_leaves_no_partial_dump() {
+        let tmp = tempfile::tempdir().expect("temp dir");
+        let dir = tmp.path().join("crash-dumps");
+        let monitor = Monitor {
+            dir: dir.clone(),
+            writing: Mutex::default(),
+        };
+        let (_file, partial) = monitor
+            .create_minidump_file()
+            .expect("create the dump file");
+        assert!(partial.exists());
+
+        monitor.on_minidump_created(Err(minidumper::Error::ProtocolError("write failed")));
+
+        assert_eq!(
+            fs::read_dir(&dir).expect("list").count(),
+            0,
+            "left {partial:?}"
+        );
+    }
 }
