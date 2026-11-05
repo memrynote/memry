@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::SecureStoreError;
@@ -92,7 +92,15 @@ pub(super) struct Recorder {
     pub(super) changed_fails: AtomicBool,
     /// What `adopt_new_files` does; [`Batch::Off`] leaves every new file to `adopt_or_create`.
     pub(super) batch: Mutex<Batch>,
+    /// How many `may_be_new` calls began: one per batch prepared.
+    pub(super) asked_new: AtomicUsize,
+    /// Runs inside every `may_be_new`, after it is counted.
+    pub(super) during_may_be_new: Mutex<Option<Hook>>,
+    /// Runs inside every `adopt_new_files`.
+    pub(super) during_adopt_new: Mutex<Option<Hook>>,
 }
+
+pub(super) type Hook = Arc<dyn Fn() + Send + Sync>;
 
 /// How [`Recorder`] answers for new files applied together.
 #[derive(Clone, Default)]
@@ -135,6 +143,11 @@ impl NoteIdentity for Recorder {
     }
 
     fn may_be_new(&self, _: &IdentityCtx<'_>, files: &[Candidate<'_>]) -> Vec<bool> {
+        self.asked_new.fetch_add(1, Ordering::SeqCst);
+        let during = self.during_may_be_new.lock().unwrap().clone();
+        if let Some(during) = during {
+            during();
+        }
         let together = !matches!(*self.batch.lock().unwrap(), Batch::Off);
         vec![together; files.len()]
     }
@@ -144,6 +157,10 @@ impl NoteIdentity for Recorder {
         ctx: &IdentityCtx<'_>,
         files: &[NewFile<'_>],
     ) -> Result<Vec<bool>, IdentityError> {
+        let during = self.during_adopt_new.lock().unwrap().clone();
+        if let Some(during) = during {
+            during();
+        }
         let batch = self.batch.lock().unwrap().clone();
         if matches!(batch, Batch::Fail) {
             return Err(IdentityError::Other("the batch failed".into()));
@@ -271,6 +288,9 @@ pub(super) fn fixture() -> Fixture {
         changed: Mutex::default(),
         changed_fails: AtomicBool::new(false),
         batch: Mutex::default(),
+        asked_new: AtomicUsize::new(0),
+        during_may_be_new: Mutex::default(),
+        during_adopt_new: Mutex::default(),
     });
     let applier = applier(&root, &vault, &store, &rows, identity.clone());
     Fixture {
@@ -314,7 +334,10 @@ impl Fixture {
         match self.applier.walked(rel, &meta, scan) {
             Walked::Applied(step) => step,
             Walked::New(file) => {
-                let mut together = self.applier.found_together(vec![file], scan);
+                let batch = self
+                    .applier
+                    .prepare_together(vec![file], &AtomicBool::new(false));
+                let mut together = self.applier.found_together(batch, scan);
                 match together.alone.pop() {
                     Some(file) => self.applier.found_alone(file, scan),
                     None => together.steps.remove(0).1,
@@ -326,6 +349,16 @@ impl Fixture {
     /// The open walk's steps for the new files `rels`, applied together as the walk applies
     /// what it put aside, the files sent back each alone.
     pub(super) fn walk_together(&self, rels: &[&str]) -> Vec<(String, Step)> {
+        self.walk_together_with(rels, || {})
+    }
+
+    /// [`Self::walk_together`], with `meanwhile` run after the files were prepared and before
+    /// they are applied, where the run applies facts.
+    pub(super) fn walk_together_with(
+        &self,
+        rels: &[&str],
+        meanwhile: impl FnOnce(),
+    ) -> Vec<(String, Step)> {
         let mut scan = ScanActivity::default();
         let found = rels
             .iter()
@@ -337,7 +370,11 @@ impl Fixture {
                 }
             })
             .collect();
-        let together = self.applier.found_together(found, &mut scan);
+        let batch = self
+            .applier
+            .prepare_together(found, &AtomicBool::new(false));
+        meanwhile();
+        let together = self.applier.found_together(batch, &mut scan);
         let mut steps = together.steps;
         for file in together.alone {
             let path = file.path.clone();
@@ -499,6 +536,7 @@ mod hash_rule;
 mod lane;
 mod late_close;
 mod outside_edit;
+mod pipeline;
 #[cfg(windows)]
 mod replace_race;
 mod slow_watch_stop;

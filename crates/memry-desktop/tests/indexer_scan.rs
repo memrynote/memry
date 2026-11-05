@@ -345,10 +345,17 @@ fn first_open(text: fn(usize) -> String) -> Measured {
     measured
 }
 
-/// The #3530 budgets, in a release build: `cargo test --release ... -- --ignored`. Tier 0 of a
-/// first open (fully written notes, as `pnpm seed1k` writes them, and the short ones of the
-/// other tests) and of an open whose rows name every file, and the sidebar's `notes_list`.
-/// Every first open's rows name the file's text (`first_open`).
+/// The #3530 budgets, p50 of [`RUNS`] runs. Tier 0 of a first open (fully written notes, as
+/// `pnpm seed1k` writes them, at most 800 ms, and the short ones of the other tests) and of an
+/// open whose rows name every file, at most 400 ms, and the sidebar's `notes_list`, at most
+/// 15 ms. Every first open's rows name the file's text (`first_open`). The files were just
+/// written, so the page cache is warm. The budgets were measured with release optimizations
+/// and no LTO, from `crates/`:
+///
+/// `cargo test -p memry-desktop --test integration --profile perf --config
+/// 'profile.perf.inherits="release"' --config profile.perf.lto=false --config
+/// profile.perf.codegen-units=16 -- --ignored --exact
+/// indexer_scan::the_open_walk_and_the_sidebar_list_meet_their_budgets --nocapture`
 #[test]
 #[ignore = "a release-build measurement"]
 fn the_open_walk_and_the_sidebar_list_meet_their_budgets() {
@@ -364,9 +371,7 @@ fn the_open_walk_and_the_sidebar_list_meet_their_budgets() {
         lists.push(measured.notes_list);
         e.close();
     }
-    // Printed, not asserted: the converter's cost per written note keeps a first open of them
-    // over the budget until #3530 13q-7b cuts it.
-    summary("tier 0, first open, written notes", &written);
+    let written = summary("tier 0, first open, written notes", &written);
     let short = summary("tier 0, first open, short notes", &short);
     let known = summary("tier 0, rows name every file", &known);
     let list = summary("notes_list", &lists);
@@ -374,6 +379,11 @@ fn the_open_walk_and_the_sidebar_list_meet_their_budgets() {
         // timing-bound: the #3530 budget, asserted only by this ignored release-build run.
         assert!(tier0 < Duration::from_millis(400), "{what}: {tier0:?}");
     }
+    // timing-bound: a first open of written notes is measured against its own budget, not the
+    // 400 ms one (#3530, Kaan's call): each note costs a conversion and about 12 KB of writes.
+    // Measured p50 0.51 to 0.60 s on an Apple M5 Pro at load 10 to 17 (13q-7b and 13q-7c, the
+    // profile above).
+    assert!(written < Duration::from_millis(800), "written: {written:?}");
     // timing-bound: the #3530 budget, asserted only by this ignored release-build run.
     assert!(list < Duration::from_millis(15), "{list:?}");
 }
