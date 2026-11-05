@@ -19,7 +19,7 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::read;
 use memry_desktop::session::OpenVault;
 use memry_desktop::tags::schema::view::{
-    FieldType, NewFieldSpec, PresetKey, PresetState, RelationView, TagSchemaCommand,
+    FieldType, NewFieldSpec, PresetKey, PresetState, RelationView, TagSchemaCommand, TemplateChoice,
 };
 use memry_desktop::tags::schema::{SchemaError, Schemas};
 use memry_desktop::templates::Templates;
@@ -277,6 +277,78 @@ fn an_edit_is_refused_in_the_ui_language_and_writes_nothing() {
         .map(|f| f.name.as_str())
         .collect();
     assert_eq!(names, ["Role"], "a refused edit leaves the schema");
+    e.close();
+}
+
+#[test]
+fn an_input_the_schema_cannot_hold_is_refused_and_the_tag_stays_editable() {
+    let (mut e, open, store) = opened();
+    let schemas = schemas(&open, &store);
+    let boss = |target: Option<String>, inverse: Option<String>| NewFieldSpec {
+        relation: Some(RelationView {
+            target,
+            many: false,
+            inverse,
+        }),
+        ..field("Boss", FieldType::Relation)
+    };
+    schemas
+        .run(TagSchemaCommand::AddField {
+            tag: "person".to_owned(),
+            field: boss(Some("person".to_owned()), None),
+            index: None,
+        })
+        .unwrap();
+    let relation =
+        |target: Option<String>, inverse: Option<String>| TagSchemaCommand::SetRelation {
+            tag: "person".to_owned(),
+            name: "Boss".to_owned(),
+            relation: RelationView {
+                target,
+                many: false,
+                inverse,
+            },
+        };
+    // A label over 100 characters once saved a schema no build reads: the tag locked.
+    let long_label = Some(format!("  {}  ", "x".repeat(101)));
+    refused(schemas.run(relation(None, long_label.clone())));
+    refused(schemas.run(TagSchemaCommand::AddField {
+        tag: "person".to_owned(),
+        field: NewFieldSpec {
+            name: "Mentor".to_owned(),
+            ..boss(None, long_label)
+        },
+        index: None,
+    }));
+    refused(schemas.run(relation(Some("  ".to_owned()), None)));
+    refused(schemas.run(relation(Some("t".repeat(51)), None)));
+    refused(schemas.run(TagSchemaCommand::SetTemplate {
+        tag: "person".to_owned(),
+        template: Some(TemplateChoice {
+            id: String::new(),
+            autofill: true,
+        }),
+    }));
+
+    // A label at the limit, padded, is trimmed and kept.
+    let ran = schemas
+        .run(relation(None, Some(format!(" {} ", "x".repeat(100)))))
+        .unwrap();
+    let person = &ran.result.snapshot.tags["person"];
+    assert!(person.editable);
+    let inverse = person.own_fields[0]
+        .relation
+        .as_ref()
+        .unwrap()
+        .inverse
+        .as_deref();
+    assert_eq!(inverse.map(str::len), Some(100));
+    schemas
+        .run(TagSchemaCommand::RemoveField {
+            tag: "person".to_owned(),
+            name: "Boss".to_owned(),
+        })
+        .unwrap();
     e.close();
 }
 

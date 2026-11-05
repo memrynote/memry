@@ -112,6 +112,7 @@ export function RelationFieldCard({
           id={inverseId}
           value={inverse}
           onChange={(event) => setInverse(event.target.value)}
+          maxLength={100}
           placeholder={tagDisplayName(tagName)}
           className="h-8"
         />

@@ -4,10 +4,15 @@
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::tag_schema::edit::canonical_field_name;
-use memry_core::domain::tag_schema::{self, NewField, SaveError, SchemaEdit, SchemaEditError};
+use memry_core::domain::tag_schema::{
+    self, NewField, Relation, SaveError, SchemaEdit, SchemaEditError,
+};
 use memry_core::domain::tags::tag_key;
 
-use super::view::{FieldType, NewFieldSpec, TagSchemaCommand, TagSchemaCommandResultView};
+use super::view::{
+    FieldType, NewFieldSpec, RelationView, TagSchemaCommand, TagSchemaCommandResultView,
+    TemplateChoice,
+};
 use super::{SchemaError, Schemas};
 use crate::i18n::{self, Arg, Args};
 use crate::notes::property_definitions::{DefinitionInput, DefinitionType, OptionInput};
@@ -73,6 +78,11 @@ impl Schemas {
             SchemaEditError::UnreadableSchema => {
                 self.refused("tag_schema_unreadable", &key("unreadableSchema"), &[])
             }
+            // Only input the boundary did not check gets here; Electron's zod errors are English.
+            SchemaEditError::Unwritable => StorageError::Invalid {
+                what: "the tag schema this edit makes could not be read back".to_owned(),
+            }
+            .into(),
         }
     }
 
@@ -101,7 +111,7 @@ impl Schemas {
                 &tag_name(&name)?,
                 &SchemaEdit::SetRelation {
                     name: field_name(&field)?,
-                    relation: Some(relation.relation()),
+                    relation: Some(relation_config(&relation)?),
                 },
             )?,
             TagSchemaCommand::RemoveField {
@@ -130,7 +140,7 @@ impl Schemas {
             } => self.save(
                 &tag_name(&name)?,
                 &SchemaEdit::SetTemplate {
-                    template: template.map(|t| (t.id, t.autofill)),
+                    template: template.map(template_choice).transpose()?,
                 },
             )?,
             TagSchemaCommand::SetExtends { tag: name, parent } => {
@@ -244,7 +254,7 @@ impl Schemas {
                     &[],
                 ));
             }
-            (FieldType::Relation, Some(relation)) => Some(relation.relation()),
+            (FieldType::Relation, Some(relation)) => Some(relation_config(relation)?),
             _ => None,
         };
         let name = self.field_name_for(&field_name(&spec.name)?)?;
@@ -281,6 +291,34 @@ fn tag_name(tag: &str) -> Result<String, SchemaError> {
         .into());
     }
     Ok(tag.to_owned())
+}
+
+/// `RelationConfigSchema`: a target, when set, is a `TagName`; the inverse label is trimmed and at
+/// most 100 characters.
+fn relation_config(view: &RelationView) -> Result<Relation, SchemaError> {
+    let inverse = view.inverse.as_deref().map(str::trim);
+    if inverse.is_some_and(|label| length(label) > 100) {
+        return Err(StorageError::Invalid {
+            what: "a relation label must be at most 100 characters".to_owned(),
+        }
+        .into());
+    }
+    Ok(Relation {
+        target: view.target.as_deref().map(tag_name).transpose()?,
+        many: view.many,
+        inverse: inverse.map(str::to_owned),
+    })
+}
+
+/// `template` of `set-template` (`{ id: z.string().min(1), autofill }`).
+fn template_choice(choice: TemplateChoice) -> Result<(String, bool), SchemaError> {
+    if choice.id.is_empty() {
+        return Err(StorageError::Invalid {
+            what: "a template id must not be empty".to_owned(),
+        }
+        .into());
+    }
+    Ok((choice.id, choice.autofill))
 }
 
 /// `FieldName` (`z.string().trim().min(1).max(200)`).

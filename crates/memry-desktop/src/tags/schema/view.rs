@@ -27,18 +27,6 @@ impl From<&Relation> for RelationView {
     }
 }
 
-impl RelationView {
-    /// `RelationConfigSchema`: the target and inverse trimmed, as zod's `.trim()` hands them
-    /// over.
-    pub(super) fn relation(&self) -> Relation {
-        Relation {
-            target: self.target.as_deref().map(|t| t.trim().to_owned()),
-            many: self.many,
-            inverse: self.inverse.as_deref().map(|i| i.trim().to_owned()),
-        }
-    }
-}
-
 /// `SelectOption`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub struct SelectOptionView {
