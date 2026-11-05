@@ -1,14 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { createRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { InlineQuickFile } from './inline-quick-file'
 import { LinkPreview } from './inbox-detail/link-preview'
-import {
-  FolderRevealHandler,
-  RevealHandler,
-  TreeActionsExposer,
-  TreeFolderIcon
-} from './note-tree-internal'
+import { FolderRevealHandler, RevealHandler, TreeFolderIcon } from './note-tree-internal'
 import { QuickFileDropdown, getFilteredFolders } from './quick-file-dropdown'
 import { TabBarAction } from './tabs/tab-bar-action'
 import { TabContextMenu } from './tabs/tab-context-menu'
@@ -22,10 +17,7 @@ const mocks = vi.hoisted(() => ({
   closeTabsToRight: vi.fn(),
   dispatch: vi.fn(),
   dragMonitor: null as null | Record<string, (event?: any) => void>,
-  expandAll: vi.fn(),
   expandNode: vi.fn(),
-  expandNodes: vi.fn(),
-  collapseAll: vi.fn(),
   setActiveTab: vi.fn(),
   toggleExpanded: vi.fn()
 }))
@@ -53,10 +45,7 @@ vi.mock('@/components/kibo-ui/tree', () => ({
   useTree: () => ({
     expandedIds: new Set(['folder-work']),
     toggleExpanded: mocks.toggleExpanded,
-    expandNode: mocks.expandNode,
-    expandNodes: mocks.expandNodes,
-    expandAll: mocks.expandAll,
-    collapseAll: mocks.collapseAll
+    expandNode: mocks.expandNode
   })
 }))
 
@@ -294,7 +283,7 @@ describe('cold renderer component smoke coverage', () => {
     expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.com/article')
   })
 
-  it('bridges note tree icon, reveal, folder reveal, and action exposer helpers', async () => {
+  it('bridges note tree icon, reveal, and folder reveal helpers', async () => {
     vi.useFakeTimers()
     render(<TreeFolderIcon nodeId="folder-work" hasChildren />)
     fireEvent.click(screen.getByRole('button', { name: /folder true true/ }))
@@ -340,24 +329,6 @@ describe('cold renderer component smoke coverage', () => {
     )
     void act(() => vi.advanceTimersByTime(100))
     expect(target.scrollIntoView).toHaveBeenCalled()
-
-    const ref = createRef<{
-      collapseAll: () => void
-      expandAll: () => void
-      expandNode: (id: string) => void
-      expandNodes: (ids: string[]) => void
-    }>()
-    const exposer = render(<TreeActionsExposer actionsRef={ref} />)
-    ref.current?.collapseAll()
-    ref.current?.expandAll()
-    ref.current?.expandNode('folder-home')
-    ref.current?.expandNodes(['folder-a'])
-    expect(mocks.collapseAll).toHaveBeenCalled()
-    expect(mocks.expandAll).toHaveBeenCalled()
-    expect(mocks.expandNode).toHaveBeenCalledWith('folder-home')
-    expect(mocks.expandNodes).toHaveBeenCalledWith(['folder-a'])
-    exposer.unmount()
-    expect(ref.current).toBeNull()
   })
 
   it('covers action button, context menu actions, and drag provider dispatches', async () => {
