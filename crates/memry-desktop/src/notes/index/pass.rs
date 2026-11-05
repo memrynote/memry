@@ -27,7 +27,7 @@ use memry_core::markdown::shared::markdown_class::{
 
 use memry_core::seams::secure_store::SecureStore;
 
-use super::learn::Learner;
+use super::learn::{Learner, order};
 use super::{BATCH, BATCH_BYTES, Backfilled, IndexError, IndexProgress};
 use crate::notes::properties::{file_properties, read_definition_types};
 use crate::session::OpenVault;
@@ -53,8 +53,24 @@ pub(super) struct Typing {
     pub all: bool,
     /// The notes holding a name whose definition changed since their rows were typed.
     pub retype: BTreeSet<String>,
+    /// The notes the pass reads only to retype them: no type is learned from them
+    /// ([`super::learn`]).
+    pub retype_only: BTreeSet<String>,
     /// What the index records once the pass finished, when it changed.
     record: Option<BTreeMap<String, String>>,
+}
+
+impl Typing {
+    /// Nothing owed, for a listing outside a pass.
+    fn none() -> Self {
+        Self {
+            types: HashMap::new(),
+            all: false,
+            retype: BTreeSet::new(),
+            retype_only: BTreeSet::new(),
+            record: None,
+        }
+    }
 }
 
 /// What a pass did, and what it leaves owed.
@@ -124,6 +140,7 @@ impl Indexer {
             types,
             all: before.is_none(),
             retype,
+            retype_only: BTreeSet::new(),
             record: (before.as_ref() != Some(&now)).then_some(now),
         })
     }
@@ -136,6 +153,7 @@ impl Indexer {
             types,
             all: true,
             retype: BTreeSet::new(),
+            retype_only: BTreeSet::new(),
         })
     }
 
@@ -150,15 +168,23 @@ impl Indexer {
     }
 
     /// The notes a pass works: a scan's when one is owed, and the queued ones, which a scan
-    /// does not list when the file's bytes and its journal day did not change. Smallest file
-    /// first.
+    /// does not list when the file's bytes and its journal day did not change, then the ones
+    /// `typing` owes a retype, which it marks read only for that.
     pub(super) fn listed(
         &self,
         scan: bool,
         queued: &BTreeSet<String>,
+        typing: &mut Typing,
     ) -> Result<Vec<Unindexed>, IndexError> {
         let mut notes = if scan { self.scan(false)? } else { Vec::new() };
         let listed: BTreeSet<String> = notes.iter().map(|note| note.note_id.clone()).collect();
+        typing.retype_only = typing
+            .retype
+            .iter()
+            .filter(|id| !queued.contains(*id) && !listed.contains(*id))
+            .cloned()
+            .collect();
+        let queued: BTreeSet<String> = queued.union(&typing.retype).cloned().collect();
         let files = self.vault.note_files();
         for note_id in queued.difference(&listed) {
             if let Some(row) = files.by_id(note_id)?
@@ -171,7 +197,6 @@ impl Indexer {
                 });
             }
         }
-        notes.sort_by_key(|note| note.file_size);
         Ok(notes)
     }
 
@@ -182,13 +207,14 @@ impl Indexer {
     /// ends the pass between files and inside the search reindex.
     pub(super) fn pass(
         &self,
-        notes: Vec<Unindexed>,
+        mut notes: Vec<Unindexed>,
         typing: Typing,
         links: &mut bool,
         stop: &dyn Fn() -> bool,
         progress: &mut dyn FnMut(IndexProgress),
         announce: &dyn Fn(LinkChanges),
     ) -> Result<Pass, IndexError> {
+        order(&mut notes);
         let total = notes.len();
         let mut pass = Pass {
             done: Backfilled {
@@ -222,7 +248,9 @@ impl Indexer {
             }
             match self.read(&note, &typing.types) {
                 Read::File(file) => {
-                    learner.read(&note.path, &file.properties, &typing.types);
+                    if !typing.retype_only.contains(&file.note_id) {
+                        learner.read(&file.properties, &typing.types);
+                    }
                     bytes += file.text.len();
                     batch.push(file);
                 }
@@ -279,7 +307,7 @@ impl Indexer {
     /// own fact queues the note for a pass, which does.
     pub(super) fn measure_now(&self, note_id: &str) -> Result<bool, IndexError> {
         let queued = BTreeSet::from([note_id.to_owned()]);
-        let Some(note) = self.listed(false, &queued)?.pop() else {
+        let Some(note) = self.listed(false, &queued, &mut Typing::none())?.pop() else {
             return Ok(false);
         };
         let types = match self.types() {

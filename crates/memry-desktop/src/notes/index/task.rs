@@ -377,12 +377,11 @@ impl Indexer {
                 report(step);
             }
         };
-        let outcome = self.typing().and_then(|typing| {
+        let outcome = self.typing().and_then(|mut typing| {
             let notes = if typing.all {
                 self.scan(true)?
             } else {
-                let queued: BTreeSet<String> = ids.union(&typing.retype).cloned().collect();
-                self.listed(scan, &queued)?
+                self.listed(scan, &ids, &mut typing)?
             };
             self.pass(
                 notes,

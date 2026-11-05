@@ -243,8 +243,9 @@ impl NotesService {
     }
 }
 
-/// Each defined property's type, by name: `properties.md`, then the records. Without them (the
-/// file or the records unreadable) every type is inferred from its value.
+/// Each property's type, by name: `properties.md`, then the records, then the types this device
+/// learned ([`PropertyDefinitions::types`]). Without them (the file or the records unreadable)
+/// every type is inferred from its value.
 pub fn definition_types(
     path: &Path,
     vault: &Vault,
@@ -268,16 +269,9 @@ pub fn read_definition_types(
     let records = vault
         .property_definition_records(store)
         .map_err(|error| error.to_string())?;
-    let definitions = PropertyDefinitions::new(path.to_owned(), records)
-        .list()
-        .map_err(|error| error.to_string())?;
-    Ok(definitions
-        .into_iter()
-        .filter_map(|definition| {
-            let type_name = serde_json::to_value(definition.type_name).ok()?;
-            Some((definition.name, type_name.as_str()?.to_owned()))
-        })
-        .collect())
+    PropertyDefinitions::new(path.to_owned(), records)
+        .types()
+        .map_err(|error| error.to_string())
 }
 
 /// The user properties the file's frontmatter holds, read as the index reads them; `None` for a

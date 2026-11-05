@@ -16,7 +16,10 @@
 //!   outside edit (`ChangeSource::AppEdit`), so an open editor shows the new link. A link in a
 //!   frontmatter value is a property value: the record takes it once the file holds it, in the
 //!   same turn, and the file's baseline moves with it (`NotesWriter::file_properties`), as for
-//!   every app edit of a file's properties.
+//!   every app edit of a file's properties. The file's row and the record are two writes, as a
+//!   template apply's are: a crash between them leaves the record and the baseline on the old
+//!   link, which no replay mends (the file holds the new one), until an edit of the file
+//!   outside the app takes the value from the file over a pulled one.
 //!
 //! The rename already happened, so nothing here fails it: a source that cannot be read, holds
 //! an outside edit not fed yet, or whose document is ahead of its file, keeps its links, and

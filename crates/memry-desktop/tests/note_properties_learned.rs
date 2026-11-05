@@ -1,15 +1,17 @@
-//! A property the note index reads with no definition gets one of the type it was first read
-//! with (#3530 13k-4c-2, Electron's `learnCanonicalPropertyType`), over a real session, tier,
-//! watcher and index task.
+//! A property the note index reads with no definition types every later read by the type it was
+//! first read with (#3530 13k-4c-2, Electron's `learnCanonicalPropertyType`), over a real
+//! session, tier, watcher and index task. The learned type is this device's alone, as
+//! Electron's unsynced row is: not a definition, so neither `properties.md`, nor a synced
+//! record, nor the definitions list holds it.
 //!
-//! | Test                                                      | Rule                                  |
-//! | --------------------------------------------------------- | ------------------------------------- |
-//! | a read learns a type once, and later values follow it     | the first type seen is a definition   |
-//! | a day's title follows the type a note's title learned     | the 13q-9 journal `title` diff        |
-//! | a defined name keeps its definition, `project` its type   | only a missing definition is learned  |
-//! | learning over a definition that landed meanwhile keeps it | `!existing` in the service's turn     |
-//! | a `project` learned over another type keeps its options   | `options: existing?.options`          |
-//! | a name this build cannot read the definition of stays     | a newer build's definition is kept    |
+//! | Test                                                      | Rule                                   |
+//! | --------------------------------------------------------- | -------------------------------------- |
+//! | a read learns a type once, and later values follow it     | the first type read types the rest     |
+//! | a day's title follows the type a note's title learned     | a note before a day (13q-9 diff)       |
+//! | a defined name keeps its definition                       | only a name with none is learned       |
+//! | a deleted definition stays deleted through a retype       | a retype learns nothing                |
+//! | learning over a definition that landed meanwhile keeps it | the file and the records win           |
+//! | a name this build cannot read the definition of stays     | a newer build's definition is kept     |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -18,6 +20,7 @@ use crate::index_support;
 #[allow(unused_imports)]
 use crate::vault_env;
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use index_support::until;
@@ -25,13 +28,14 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::property_definitions::{
-    DefinitionType, PropertyDefinitionView, PropertyDefinitions,
+    DefinitionInput, DefinitionType, PropertyDefinitionView, PropertyDefinitions,
 };
 use vault_env::{Env, env, indexed};
 
 struct Fixture {
     e: Env,
     store: Arc<dyn SecureStore>,
+    index: Arc<NoteIndex>,
 }
 
 /// A vault holding `files`, opened with its index running, every file read once.
@@ -49,18 +53,19 @@ fn opened(files: &[(&str, &str)]) -> Fixture {
     index.register(&e.session);
     e.open();
     e.facts_until(indexed);
-    let f = Fixture { e, store };
+    let f = Fixture { e, store, index };
     until("every file read", || index_support::all_indexed(&f.e));
     f
 }
 
 impl Fixture {
-    fn definitions(&self) -> Vec<PropertyDefinitionView> {
+    fn service(&self) -> PropertyDefinitions {
         let open = self.e.session.current().unwrap();
-        PropertyDefinitions::open(&open, self.store.clone())
-            .unwrap()
-            .list()
-            .unwrap()
+        PropertyDefinitions::open(&open, self.store.clone()).unwrap()
+    }
+
+    fn definitions(&self) -> Vec<PropertyDefinitionView> {
+        self.service().list().unwrap()
     }
 
     fn definition(&self, name: &str) -> Option<PropertyDefinitionView> {
@@ -77,81 +82,119 @@ impl Fixture {
             .map(|row| row.type_name)
     }
 
+    /// The definitions the index last typed its rows with.
+    fn typed_with(&self) -> Option<BTreeMap<String, String>> {
+        let search = self.e.session.current().unwrap().search;
+        search.properties_typed_with().unwrap()
+    }
+
     fn properties_file(&self) -> Option<String> {
         std::fs::read_to_string(self.e.vault.join(".memry/properties.md")).ok()
     }
+
+    /// No definition of `name` anywhere a user or another device sees one.
+    fn undefined(&self, name: &str) {
+        assert!(self.definition(name).is_none(), "{name} listed");
+        let file = self.properties_file().unwrap_or_default();
+        assert!(
+            !file.contains(&format!("{name}:")),
+            "{name} in the file:\n{file}"
+        );
+        let open = self.e.session.current().unwrap();
+        let records = open.vault.property_definition_records(self.store.clone());
+        let listed = records.unwrap().list().unwrap();
+        assert!(
+            listed.iter().all(|stored| stored.record.name != name),
+            "{name} recorded"
+        );
+    }
 }
 
-/// The first file by path learns `rating`, and `Second.md`, read in the same pass by the
+/// The first file read learns `rating`, and `Second.md`, read in the same pass by the
 /// definitions as the pass found them, is retyped by the next.
 #[test]
 fn a_read_learns_a_type_once_and_later_values_follow_it() {
     let f = opened(&[
         ("First.md", "---\nrating: 5\n---\n"),
-        (
-            "Second.md",
-            "---\nrating: high\n---\n# Second, the longer file\n",
-        ),
+        ("Second.md", "---\nrating: high\n---\n"),
     ]);
-    until("the first type seen is a definition", || {
-        f.definition("rating")
-            .is_some_and(|d| d.type_name == DefinitionType::Number && !d.created_at.is_empty())
-    });
     until("the note read in the same pass retyped", || {
         f.row_type("Second.md", "rating").as_deref() == Some("number")
     });
-
-    let file = f.properties_file();
-    assert!(file.as_deref().is_some_and(|file| file.contains("rating")));
     f.e.write("Later.md", "---\nrating: soon\n---\n");
     until("the later note read", || {
         f.row_type("Later.md", "rating").as_deref() == Some("number")
     });
-    assert_eq!(f.properties_file(), file);
-    assert_eq!(f.definitions().len(), 1);
+    f.undefined("rating");
+    assert_eq!(f.properties_file(), None);
 }
 
-/// A note's `title` is a property (Electron's `RESERVED_FRONTMATTER_KEYS` holds no `title`). The
-/// day is the smaller file and is read first, but the note is first by path, as Electron's open
-/// walk reaches it: the day's `title: '2026-11-05'` reads as text, not a date.
+/// A note's `title` is a property (Electron's `RESERVED_FRONTMATTER_KEYS` holds no `title`). A
+/// day's file is the smaller and its folder sorts first, but a day is read after every note: the
+/// day's `title: '2026-11-05'` reads as text, not a date.
 #[test]
 fn a_days_title_follows_the_type_a_notes_title_learned() {
     let f = opened(&[
         (
-            "Plan.md",
+            "notes/plan.md",
             "---\ntitle: Q3 Roadmap\n---\n# Q3 Roadmap, the longer file\n",
         ),
         ("journal/2026-11-05.md", "---\ntitle: '2026-11-05'\n---\n"),
     ]);
-    until("the title learned", || {
-        f.definition("title")
-            .is_some_and(|d| d.type_name == DefinitionType::Text)
-    });
-    until("the day's title typed by it", || {
+    until("the day's title typed as the note's", || {
         f.row_type("journal/2026-11-05.md", "title").as_deref() == Some("text")
     });
+    assert_eq!(
+        f.row_type("notes/plan.md", "title").as_deref(),
+        Some("text")
+    );
+    f.undefined("title");
 }
 
-const DEFINITIONS: &str = "---\nproperties:\n  stage:\n    type: select\n    options:\n      - value: Draft\n        color: sky\n  project:\n    type: text\n    color: red\n    options:\n      - value: Alpha\n        color: teal\n---\n";
+const DEFINITIONS: &str = "---\nproperties:\n  stage:\n    type: select\n    options:\n      - value: Draft\n        color: sky\n  project:\n    type: text\n    color: red\n---\n";
 
 #[test]
-fn a_defined_name_keeps_its_definition_and_project_takes_its_own_type() {
+fn a_defined_name_keeps_its_definition() {
     let note = "---\nstage: Done\nproject: [Memry]\nlinks: [\"memry://note/abc\"]\nsite: https://example.com\n---\n";
     let f = opened(&[(".memry/properties.md", DEFINITIONS), ("Plan.md", note)]);
     until("the new property learned", || {
-        f.definition("site").is_some()
+        f.typed_with()
+            .is_some_and(|typed| typed.contains_key("site"))
     });
-    let stage = f.definition("stage").unwrap();
-    assert_eq!(stage.type_name, DefinitionType::Select);
-    assert!(stage.options.unwrap().contains("Draft"));
-    until("project retyped", || {
-        f.definition("project")
-            .is_some_and(|d| d.type_name == DefinitionType::Project)
+    assert_eq!(f.row_type("Plan.md", "site").as_deref(), Some("url"));
+    assert_eq!(f.row_type("Plan.md", "project").as_deref(), Some("project"));
+    assert_eq!(f.row_type("Plan.md", "links").as_deref(), Some("relation"));
+    assert_eq!(f.properties_file().as_deref(), Some(DEFINITIONS));
+    let names: Vec<String> = f.definitions().into_iter().map(|d| d.name).collect();
+    assert_eq!(names, ["project", "stage"]);
+}
+
+/// A definition the user deleted while notes hold the name stays deleted: the retype its delete
+/// asks for reads those notes again and learns nothing from them (Electron's
+/// `retypeIndexedProperties` learns nothing).
+#[test]
+fn a_deleted_definition_stays_deleted_through_a_retype() {
+    let f = opened(&[("Plan.md", "---\nrating: 5\n---\n")]);
+    let input = DefinitionInput {
+        name: "rating".into(),
+        type_name: Some(DefinitionType::Text),
+        options: None,
+        default_value: None,
+        color: None,
+    };
+    f.service().create(input).unwrap();
+    f.index.retype();
+    until("the rows typed by the definition", || {
+        f.row_type("Plan.md", "rating").as_deref() == Some("text")
     });
-    let project = f.definition("project").unwrap();
-    assert_eq!(project.color.as_deref(), Some("red"));
-    assert_eq!(f.definition("site").unwrap().type_name, DefinitionType::Url);
-    assert!(f.definition("links").is_none());
+    f.service().delete("rating").unwrap();
+    f.index.retype();
+    until("the retype after the delete", || {
+        f.typed_with()
+            .is_some_and(|typed| !typed.contains_key("rating"))
+    });
+    f.undefined("rating");
+    assert_eq!(f.row_type("Plan.md", "rating").as_deref(), Some("number"));
 }
 
 /// A definition that landed after the pass read the definitions (the user's, or a pull's) is
@@ -161,29 +204,29 @@ fn learning_over_a_definition_that_landed_meanwhile_keeps_it() {
     let f = crate::property_definitions::fixture();
     f.set_file(DEFINITIONS);
     let file = f.file();
-    assert!(!f.definitions.learn("stage", DefinitionType::Text).unwrap());
-    assert_eq!(f.file(), file);
-    assert!(f.definitions.learn("site", DefinitionType::Url).unwrap());
-    assert!(!f.definitions.learn("site", DefinitionType::Text).unwrap());
-    assert!(f.record("site").is_some());
-}
-
-/// The options a `project` held as another type stay on its record, as Electron's learner
-/// passes `existing?.options`: the file's `project` holds none to keep them in.
-#[test]
-fn a_project_learned_over_another_type_keeps_its_options() {
-    let f = crate::property_definitions::fixture();
-    f.set_file(DEFINITIONS);
+    let wanted = |pairs: &[(&str, DefinitionType)]| {
+        pairs
+            .iter()
+            .map(|(name, wanted)| ((*name).to_owned(), *wanted))
+            .collect::<BTreeMap<_, _>>()
+    };
+    let learned = f.definitions.learn(wanted(&[
+        ("stage", DefinitionType::Text),
+        ("site", DefinitionType::Url),
+    ]));
+    assert!(learned.unwrap());
     assert!(
-        f.definitions
-            .learn("project", DefinitionType::Project)
+        !f.definitions
+            .learn(wanted(&[("site", DefinitionType::Text)]))
             .unwrap()
     );
-    let record = f.record("project").unwrap();
-    assert_eq!(record.type_name, "project");
-    assert_eq!(record.color.as_deref(), Some("red"));
-    let options = record.options.unwrap_or_default();
-    assert!(options.contains("Alpha"), "{options}");
+    assert_eq!(f.file(), file);
+    assert!(f.record("site").is_none());
+    let learned = f.records.learned().unwrap();
+    assert_eq!(learned, BTreeMap::from([("site".into(), "url".into())]));
+    let types = f.definitions.types().unwrap();
+    assert_eq!(types.get("stage").map(String::as_str), Some("select"));
+    assert_eq!(types.get("site").map(String::as_str), Some("url"));
 }
 
 /// A definition of a type a newer build added is a definition: no type is learned over it.
@@ -192,11 +235,9 @@ fn a_name_this_build_cannot_read_the_definition_of_stays() {
     let f = crate::property_definitions::fixture();
     f.set_file("---\nproperties:\n  score:\n    type: formula\n    expression: rating * 2\n---\n");
     let file = f.file();
-    assert!(
-        !f.definitions
-            .learn("score", DefinitionType::Number)
-            .unwrap()
-    );
+    let wanted = BTreeMap::from([("score".to_owned(), DefinitionType::Number)]);
+    assert!(!f.definitions.learn(wanted).unwrap());
     assert_eq!(f.file(), file);
-    assert!(f.record("score").is_none());
+    assert!(f.records.learned().unwrap().is_empty());
+    assert!(!f.definitions.types().unwrap().contains_key("score"));
 }
