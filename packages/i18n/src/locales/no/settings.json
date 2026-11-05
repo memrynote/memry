@@ -2002,6 +2002,7 @@
       "renaming": "Gir #{oldName} nytt navn: {done} / {total} notater",
       "renamedBodySkipped": "«{newName}» kan ikke skrives som en innebygd tagg, så #{oldName} i notatteksten står som skrevet",
       "renamedSomeFailed": "Kunne ikke oppdatere {count, plural, one {# notat} other {# notater}}. Åpne {count, plural, one {det} other {dem}} og legg til taggen på nytt",
+      "renameUnfinished": "Navnebyttet fra #{oldName} til #{newName} ble ikke fullført for {count, plural, one {# notat} other {# notater}}. Bytt navn fra #{oldName} til #{newName} på nytt for å fullføre det.",
       "deleteFailed": "Kunne ikke slette taggen",
       "deleted": "Slettet «{name}» fra {count, plural, one {# element} other {# elementer}}",
       "mergeFailed": "Kunne ikke slå sammen taggene",

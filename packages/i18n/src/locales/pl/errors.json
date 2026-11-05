@@ -305,6 +305,7 @@
   },
   "tag": {
     "renameInProgress": "Zmiana nazwy #{from} na #{to} wciąż trwa. Spróbuj ponownie, gdy się zakończy.",
+    "renameUnfinished": "Zmiana nazwy #{from} na #{to} nie została dokończona dla {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Zmień ponownie nazwę #{from} na #{to}, aby ją dokończyć.",
     "mergeSameTag": "Tag źródłowy i docelowy są takie same",
     "categoryNameRequired": "Nazwa kategorii jest wymagana",
     "pinNoteFailed": "Nie udało się przypiąć notatki",

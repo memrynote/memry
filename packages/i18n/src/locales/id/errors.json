@@ -305,6 +305,7 @@
   },
   "tag": {
     "renameInProgress": "Penggantian nama #{from} menjadi #{to} masih berjalan. Coba lagi setelah selesai.",
+    "renameUnfinished": "Penggantian nama #{from} menjadi #{to} belum selesai untuk {count, plural, other {# catatan}}. Ganti lagi nama #{from} menjadi #{to} untuk menyelesaikannya.",
     "mergeSameTag": "Tag sumber dan tag tujuan sama",
     "categoryNameRequired": "Nama kategori wajib diisi",
     "pinNoteFailed": "Gagal menyematkan catatan",

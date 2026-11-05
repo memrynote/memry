@@ -2002,6 +2002,7 @@
       "renaming": "#{oldName} wird umbenannt: {done} / {total} Notizen",
       "renamedBodySkipped": "„{newName}“ lässt sich nicht als Inline-Tag eingeben, daher bleibt #{oldName} im Notiztext unverändert",
       "renamedSomeFailed": "{count, plural, one {# Notiz} other {# Notizen}} konnten nicht aktualisiert werden. Öffne {count, plural, one {sie} other {sie}} und füge den Tag erneut hinzu",
+      "renameUnfinished": "Die Umbenennung von #{oldName} in #{newName} wurde bei {count, plural, one {# Notiz} other {# Notizen}} nicht abgeschlossen. Benenne #{oldName} erneut in #{newName} um, um sie abzuschließen.",
       "deleteFailed": "Tag konnte nicht gelöscht werden",
       "deleted": "„{name}“ aus {count, plural, one {# Element} other {# Elementen}} entfernt",
       "mergeFailed": "Tags konnten nicht zusammengeführt werden",

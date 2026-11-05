@@ -305,6 +305,7 @@
   },
   "tag": {
     "renameInProgress": "#{from} etiketinin #{to} olarak yeniden adlandırılması sürüyor. Bitince tekrar deneyin.",
+    "renameUnfinished": "#{from} etiketinin #{to} olarak yeniden adlandırılması {count, plural, one {# notta} other {# notta}} tamamlanmadı. Tamamlamak için #{from} etiketini yeniden #{to} olarak adlandırın.",
     "mergeSameTag": "Kaynak ve hedef etiketler aynı",
     "categoryNameRequired": "Kategori adı gerekli",
     "pinNoteFailed": "Not sabitlenemedi",

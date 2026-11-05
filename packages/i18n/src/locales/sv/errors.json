@@ -305,6 +305,7 @@
   },
   "tag": {
     "renameInProgress": "Ett namnbyte från #{from} till #{to} pågår fortfarande. Försök igen när det är klart.",
+    "renameUnfinished": "Namnbytet från #{from} till #{to} slutfördes inte för {count, plural, one {# anteckning} other {# anteckningar}}. Byt namn från #{from} till #{to} igen för att slutföra det.",
     "mergeSameTag": "Käll- och måltaggen är samma",
     "categoryNameRequired": "Kategorinamn krävs",
     "pinNoteFailed": "Det gick inte att fästa anteckningen",

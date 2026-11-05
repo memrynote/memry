@@ -2002,6 +2002,7 @@
       "renaming": "Premenúva sa #{oldName}: {done} / {total} poznámok",
       "renamedBodySkipped": "„{newName}“ sa nedá zapísať ako vložená značka, preto #{oldName} v texte poznámky zostáva tak, ako je",
       "renamedSomeFailed": "Nepodarilo sa aktualizovať {count, plural, one {# poznámku} few {# poznámky} other {# poznámok}}. Otvorte {count, plural, one {ju} other {ich}} a pridajte značku znova",
+      "renameUnfinished": "Premenovanie #{oldName} na #{newName} sa nedokončilo pri {count, plural, one {# poznámke} few {# poznámkach} other {# poznámkach}}. Premenujte #{oldName} na #{newName} znova, aby sa dokončilo.",
       "deleteFailed": "Nepodarilo sa odstrániť značku",
       "deleted": "Značka „{name}“ odstránená z {count, plural, one {# položky} few {# položiek} other {# položiek}}",
       "mergeFailed": "Nepodarilo sa zlúčiť značky",

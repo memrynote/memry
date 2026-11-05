@@ -2002,6 +2002,7 @@
       "renaming": "جارٍ إعادة تسمية #{oldName}: {done} / {total} ملاحظة",
       "renamedBodySkipped": "لا يمكن كتابة \"{newName}\" كوسم مضمّن، لذا يبقى #{oldName} في نص الملاحظة كما كُتب",
       "renamedSomeFailed": "تعذّر تحديث {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}. افتحها وأضف الوسم مرة أخرى",
+      "renameUnfinished": "لم تكتمل إعادة تسمية #{oldName} إلى #{newName} في {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}. أعد تسمية #{oldName} إلى #{newName} مرة أخرى لإكمالها.",
       "deleteFailed": "تعذّر حذف الوسم",
       "deleted": "تم حذف «{name}» من {count, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
       "mergeFailed": "تعذّر دمج الوسوم",

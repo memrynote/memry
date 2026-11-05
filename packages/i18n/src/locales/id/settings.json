@@ -2002,6 +2002,7 @@
       "renaming": "Mengganti nama #{oldName}: {done} / {total} catatan",
       "renamedBodySkipped": "\"{newName}\" tidak dapat diketik sebagai tag sebaris, jadi #{oldName} di teks catatan tetap seperti tertulis",
       "renamedSomeFailed": "Tidak dapat memperbarui {count, plural, other {# catatan}}. Buka dan tambahkan tag lagi",
+      "renameUnfinished": "Penggantian nama #{oldName} menjadi #{newName} belum selesai untuk {count, plural, other {# catatan}}. Ganti lagi nama #{oldName} menjadi #{newName} untuk menyelesaikannya.",
       "deleteFailed": "Gagal menghapus tag",
       "deleted": "“{name}” dihapus dari {count, plural, other {# item}}",
       "mergeFailed": "Gagal menggabungkan tag",

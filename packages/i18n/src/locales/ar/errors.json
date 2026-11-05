@@ -305,6 +305,7 @@
   },
   "tag": {
     "renameInProgress": "لا تزال إعادة تسمية #{from} إلى #{to} قيد التشغيل. حاول مرة أخرى عند انتهائها.",
+    "renameUnfinished": "لم تكتمل إعادة تسمية #{from} إلى #{to} في {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}. أعد تسمية #{from} إلى #{to} مرة أخرى لإكمالها.",
     "mergeSameTag": "الوسم المصدر والوسم الهدف متطابقان",
     "categoryNameRequired": "اسم الفئة مطلوب",
     "pinNoteFailed": "تعذّر تثبيت الملاحظة",

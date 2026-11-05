@@ -305,6 +305,7 @@
   },
   "tag": {
     "renameInProgress": "שינוי השם של #{from} ל-#{to} עדיין מתבצע. כדאי לנסות שוב כשיסתיים.",
+    "renameUnfinished": "שינוי השם של #{from} ל-#{to} לא הושלם עבור {count, plural, one {פתק אחד} other {# פתקים}}. כדי להשלים אותו, יש לשנות שוב את השם של #{from} ל-#{to}.",
     "mergeSameTag": "תגית המקור ותגית היעד זהות",
     "categoryNameRequired": "נדרש שם לקטגוריה",
     "pinNoteFailed": "הצמדת הפתק נכשלה",

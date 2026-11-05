@@ -2002,6 +2002,7 @@
       "renaming": "Pinapalitan ang pangalan ng #{oldName}: {done} / {total} tala",
       "renamedBodySkipped": "Hindi maitatype bilang inline tag ang \"{newName}\", kaya nananatiling nakasulat ang #{oldName} sa teksto ng tala",
       "renamedSomeFailed": "Hindi ma-update ang {count, plural, one {# tala} other {# tala}}. Buksan {count, plural, one {ito} other {ang mga ito}} at idagdag ulit ang tag",
+      "renameUnfinished": "Hindi natapos ang pagpapalit ng pangalan ng #{oldName} sa #{newName} para sa {count, plural, one {# tala} other {# tala}}. Palitan ulit ang pangalan ng #{oldName} sa #{newName} para matapos ito.",
       "deleteFailed": "Hindi matanggal ang tag",
       "deleted": "Tinanggal ang “{name}” mula sa {count, plural, one {# item} other {# item}}",
       "mergeFailed": "Hindi mapagsama ang mga tag",

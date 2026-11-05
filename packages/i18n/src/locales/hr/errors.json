@@ -305,6 +305,7 @@
   },
   "tag": {
     "renameInProgress": "Preimenovanje oznake #{from} u #{to} još je u tijeku. Pokušajte ponovno kad završi.",
+    "renameUnfinished": "Preimenovanje oznake #{from} u #{to} nije dovršeno za {count, plural, one {# bilješku} few {# bilješke} other {# bilješki}}. Ponovno preimenujte #{from} u #{to} da biste ga dovršili.",
     "mergeSameTag": "Izvorna i odredišna oznaka su iste",
     "categoryNameRequired": "Naziv kategorije je obavezan",
     "pinNoteFailed": "Prikvačivanje bilješke nije uspjelo",

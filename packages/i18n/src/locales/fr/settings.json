@@ -2002,6 +2002,7 @@
       "renaming": "Renommage de #{oldName} : {done} / {total} notes",
       "renamedBodySkipped": "« {newName} » ne peut pas être saisi comme tag en ligne, donc #{oldName} reste tel quel dans le texte des notes",
       "renamedSomeFailed": "Impossible de mettre à jour {count, plural, one {# note} other {# notes}}. {count, plural, one {Ouvrez-la} other {Ouvrez-les}} et ajoutez à nouveau le tag",
+      "renameUnfinished": "Le renommage de #{oldName} en #{newName} n’est pas terminé pour {count, plural, one {# note} other {# notes}}. Renommez à nouveau #{oldName} en #{newName} pour le terminer.",
       "deleteFailed": "Impossible de supprimer le tag",
       "deleted": "Tag « {name} » retiré de {count, plural, one {# élément} other {# éléments}}",
       "mergeFailed": "Impossible de fusionner les tags",

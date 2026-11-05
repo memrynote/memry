@@ -305,6 +305,7 @@
   },
   "tag": {
     "renameInProgress": "#{from}을(를) #{to}(으)로 바꾸는 작업이 아직 진행 중입니다. 끝난 후 다시 시도하세요.",
+    "renameUnfinished": "#{from}을(를) #{to}(으)로 바꾸는 작업이 {count, plural, other {노트 #개}}에서 끝나지 않았습니다. 마치려면 #{from}을(를) #{to}(으)로 다시 바꾸세요.",
     "mergeSameTag": "원본 태그와 대상 태그가 같습니다.",
     "categoryNameRequired": "카테고리 이름을 입력하세요.",
     "pinNoteFailed": "노트를 고정하지 못했습니다.",

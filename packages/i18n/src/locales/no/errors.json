@@ -305,6 +305,7 @@
   },
   "tag": {
     "renameInProgress": "Et navnebytte fra #{from} til #{to} pågår fortsatt. Prøv igjen når det er ferdig.",
+    "renameUnfinished": "Navnebyttet fra #{from} til #{to} ble ikke fullført for {count, plural, one {# notat} other {# notater}}. Bytt navn fra #{from} til #{to} på nytt for å fullføre det.",
     "mergeSameTag": "Kilde- og måltaggen er den samme",
     "categoryNameRequired": "Kategorinavn er påkrevd",
     "pinNoteFailed": "Kunne ikke feste notatet",

@@ -2002,6 +2002,7 @@
       "renaming": "Đang đổi tên #{oldName}: {done} / {total} ghi chú",
       "renamedBodySkipped": "\"{newName}\" không thể gõ làm thẻ nội tuyến, nên #{oldName} trong nội dung ghi chú được giữ nguyên như đã viết",
       "renamedSomeFailed": "Không thể cập nhật {count, plural, other {# ghi chú}}. Hãy mở và thêm lại thẻ",
+      "renameUnfinished": "Việc đổi tên #{oldName} thành #{newName} chưa hoàn tất với {count, plural, other {# ghi chú}}. Hãy đổi tên #{oldName} thành #{newName} lần nữa để hoàn tất.",
       "deleteFailed": "Không thể xóa thẻ",
       "deleted": "Đã xóa “{name}” khỏi {count, plural, other {# mục}}",
       "mergeFailed": "Không thể gộp các thẻ",

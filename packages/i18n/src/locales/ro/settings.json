@@ -2002,6 +2002,7 @@
       "renaming": "Se redenumește #{oldName}: {done} / {total} notițe",
       "renamedBodySkipped": "„{newName}” nu poate fi scris ca etichetă în text, deci #{oldName} din textul notițelor rămâne cum a fost scris",
       "renamedSomeFailed": "{count, plural, one {# notiță nu a putut fi actualizată. Deschide-o și adaugă din nou eticheta} few {# notițe nu au putut fi actualizate. Deschide-le și adaugă din nou eticheta} other {# de notițe nu au putut fi actualizate. Deschide-le și adaugă din nou eticheta}}",
+      "renameUnfinished": "Redenumirea #{oldName} în #{newName} nu s-a încheiat pentru {count, plural, one {# notiță} few {# notițe} other {# de notițe}}. Redenumește din nou #{oldName} în #{newName} ca să o finalizezi.",
       "deleteFailed": "Nu s-a putut șterge eticheta",
       "deleted": "S-a șters „{name}” din {count, plural, one {# element} few {# elemente} other {# de elemente}}",
       "mergeFailed": "Nu s-au putut combina etichetele",

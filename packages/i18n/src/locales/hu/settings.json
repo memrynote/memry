@@ -2002,6 +2002,7 @@
       "renaming": "#{oldName} átnevezése: {done} / {total} jegyzet",
       "renamedBodySkipped": "A(z) „{newName}” nem írható be beágyazott címkeként, ezért a jegyzetszövegben a #{oldName} változatlan marad",
       "renamedSomeFailed": "{count, plural, one {# jegyzetet} other {# jegyzetet}} nem sikerült frissíteni. Nyissa meg, és adja hozzá újra a címkét",
+      "renameUnfinished": "A(z) #{oldName} átnevezése erre: #{newName} {count, plural, one {# jegyzetnél} other {# jegyzetnél}} nem fejeződött be. Nevezze át újra a(z) #{oldName} címkét erre: #{newName} a befejezéshez.",
       "deleteFailed": "Nem sikerült törölni a címkét",
       "deleted": "„{name}” törölve {count, plural, one {# elemről} other {# elemről}}",
       "mergeFailed": "Nem sikerült egyesíteni a címkéket",

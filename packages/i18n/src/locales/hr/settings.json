@@ -2002,6 +2002,7 @@
       "renaming": "Preimenovanje #{oldName}: {done} / {total} bilješki",
       "renamedBodySkipped": "„{newName}” nije moguće upisati kao oznaku u tekstu pa #{oldName} u tekstu bilješke ostaje kako je napisano",
       "renamedSomeFailed": "Nije moguće ažurirati: {count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}. Otvorite ih i ponovno dodajte oznaku",
+      "renameUnfinished": "Preimenovanje oznake #{oldName} u #{newName} nije dovršeno za {count, plural, one {# bilješku} few {# bilješke} other {# bilješki}}. Ponovno preimenujte #{oldName} u #{newName} da biste ga dovršili.",
       "deleteFailed": "Brisanje oznake nije uspjelo",
       "deleted": "Oznaka „{name}” izbrisana iz {count, plural, one {# stavke} few {# stavke} other {# stavki}}",
       "mergeFailed": "Spajanje oznaka nije uspjelo",

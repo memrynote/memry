@@ -2002,6 +2002,7 @@
       "renaming": "Rinomina di #{oldName}: {done} / {total} note",
       "renamedBodySkipped": "\"{newName}\" non può essere digitato come tag inline, quindi #{oldName} nel testo delle note resta com'è",
       "renamedSomeFailed": "Impossibile aggiornare {count, plural, one {# nota} other {# note}}. Aprile e aggiungi di nuovo il tag",
+      "renameUnfinished": "La rinomina di #{oldName} in #{newName} non è terminata per {count, plural, one {# nota} other {# note}}. Rinomina di nuovo #{oldName} in #{newName} per completarla.",
       "deleteFailed": "Impossibile eliminare il tag",
       "deleted": "Tag “{name}” rimosso da {count, plural, one {# elemento} other {# elementi}}",
       "mergeFailed": "Impossibile unire i tag",

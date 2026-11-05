@@ -305,6 +305,7 @@
   },
   "tag": {
     "renameInProgress": "Redenumirea #{from} în #{to} încă rulează. Încearcă din nou când se termină.",
+    "renameUnfinished": "Redenumirea #{from} în #{to} nu s-a încheiat pentru {count, plural, one {# notiță} few {# notițe} other {# de notițe}}. Redenumește din nou #{from} în #{to} ca să o finalizezi.",
     "mergeSameTag": "Eticheta sursă și cea țintă sunt identice",
     "categoryNameRequired": "Numele categoriei este obligatoriu",
     "pinNoteFailed": "Nu s-a putut fixa notița",
