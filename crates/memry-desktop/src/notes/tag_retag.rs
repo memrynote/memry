@@ -27,7 +27,8 @@ use memry_core::domain::header_tags;
 use memry_core::domain::note_stats::header_tags as file_header_tags;
 use memry_core::domain::tag_rename::Holder;
 use memry_core::domain::tag_retag::{merge_target, retagged_list};
-use memry_core::domain::tags::tag_key;
+/// The name a merged tag goes by in `tags:deleted`, as Electron's `tagKey`.
+pub use memry_core::domain::tags::tag_key;
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, parse_markdown_note, serialize_updated_note,
 };

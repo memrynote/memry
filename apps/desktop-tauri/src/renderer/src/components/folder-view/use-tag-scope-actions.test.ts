@@ -19,9 +19,6 @@ vi.mock('sonner', () => ({
 const left = { oldName: 'old', newName: 'new', left: 1, notes: [{ id: 'n1', title: 'Plan' }] }
 
 async function renameRefusedWith(code: string, message: string): Promise<void> {
-  // The tag-deleted event is still Electron's (`window.api`) until delete is ported.
-  const api = window.api as unknown as { onTagDeleted: () => () => void }
-  api.onTagDeleted = () => () => {}
   vi.spyOn(commands, 'tagsRenameUnfinished').mockResolvedValue(left)
   vi.spyOn(commands, 'tagsRename').mockRejectedValueOnce({ kind: 'invalid', code, message })
   const { result } = renderHook(() => useTagScopeActions('work', 1, vi.fn()))

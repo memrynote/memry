@@ -126,6 +126,27 @@ const ported = {
       const code = commandErrorCode(error)
       return { ...failure(error), ...(code ? { code } : {}) }
     }
+  },
+
+  /** Takes the tag itself, not its children, off every note, journal day and task. */
+  deleteTag: async (tag: string): Promise<DeleteTagResponse> => {
+    try {
+      return { success: true, ...(await commands.tagsDelete(tag)) }
+    } catch (error) {
+      return failure(error)
+    }
+  },
+
+  removeTagFromNote: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> =>
+    settled(() => commands.tagsRemoveFromNote(input)),
+
+  /** Merges the tag itself into `target` in every note, journal day and task. */
+  mergeTag: async (input: { source: string; target: string }): Promise<MergeTagResponse> => {
+    try {
+      return { success: true, ...(await commands.tagsMerge(input)) }
+    } catch (error) {
+      return failure(error)
+    }
   }
 }
 
@@ -150,24 +171,6 @@ export type PortedTagMethod = keyof typeof ported
 
 export const tagsService: TagsService = {
   ...ported,
-
-  /**
-   * Delete a tag from all notes.
-   */
-  deleteTag: (tag: string): Promise<DeleteTagResponse> => {
-    return window.api.tags.deleteTag(tag)
-  },
-
-  /**
-   * Remove tag from a specific note.
-   */
-  removeTagFromNote: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> => {
-    return window.api.tags.removeTagFromNote(input)
-  },
-
-  mergeTag: (input: { source: string; target: string }): Promise<MergeTagResponse> => {
-    return window.api.tags.mergeTag(input)
-  },
 
   getSchemaSnapshot: () => window.api.tags.getSchemaSnapshot(),
 
@@ -214,15 +217,15 @@ export function onTagColorUpdated(callback: (event: TagColorUpdatedEvent) => voi
 }
 
 /**
- * Subscribe to tag deleted events.
+ * Subscribe to tag deleted events: a tag deleted or merged into another.
  * @returns Unsubscribe function
  */
 export function onTagDeleted(callback: (event: TagDeletedEvent) => void): () => void {
-  return window.api.onTagDeleted(callback)
+  return subscribeToEvent(events.tagDeletedEvent, callback)
 }
 
 /**
- * Subscribe to tag notes changed events (pin/unpin; Rust sends no add/remove yet).
+ * Subscribe to tag notes changed events (pin, unpin, removed; Rust sends no add yet).
  * @returns Unsubscribe function
  */
 export function onTagNotesChanged(callback: (event: TagNotesChangedEvent) => void): () => void {
@@ -241,6 +244,7 @@ export function onTagCategoriesChanged(callback: () => void): () => void {
 export type PortedTagEvent =
   | 'onTagColorUpdated'
   | 'onTagCategoriesChanged'
+  | 'onTagDeleted'
   | 'onTagNotesChanged'
   | 'onTagRenamed'
 

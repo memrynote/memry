@@ -36,7 +36,7 @@ use crate::events::{
 };
 
 /// The open vault, or the localized "no vault is open".
-fn open_vault<R: Runtime>(app: &AppHandle<R>) -> Result<OpenVault, CommandError> {
+pub(super) fn open_vault<R: Runtime>(app: &AppHandle<R>) -> Result<OpenVault, CommandError> {
     app.state::<Session>().current().ok_or_else(|| {
         let locale = app.state::<Arc<LocaleService>>().get();
         CommandError::new(
@@ -315,7 +315,7 @@ fn set_pinned<R: Runtime>(
 ) -> Result<(), CommandError> {
     let (pinned, key) = match action {
         TagNoteAction::Pinned => (true, "errors:tag.pinNoteFailed"),
-        TagNoteAction::Unpinned => (false, "errors:tag.unpinNoteFailed"),
+        TagNoteAction::Unpinned | TagNoteAction::Removed => (false, "errors:tag.unpinNoteFailed"),
     };
     hub(app)?
         .set_pinned(&note_id, &tag, pinned)
@@ -456,7 +456,7 @@ fn written_count(renamed: &TagRenamed) -> u32 {
 /// The files a rename wrote measured into their index rows; one left to a pass lags the list
 /// until the pass writes it, which sends [`NoteTagsChangedEvent`] again
 /// (`shell::journal_events::landed`).
-fn measure<R: Runtime>(app: &AppHandle<R>, written: &[String]) {
+pub(super) fn measure<R: Runtime>(app: &AppHandle<R>, written: &[String]) {
     let Some(index) = app.try_state::<Arc<NoteIndex>>() else {
         tracing::warn!(
             scope = "TagsHandlers",
@@ -548,9 +548,10 @@ pub async fn tags_rename_abandon<R: Runtime>(app: AppHandle<R>) -> Result<bool, 
 }
 
 /// A rename running now is refused with Electron's words (`errors:tag.renameInProgress`), one
-/// recorded with notes left with what finishes it (`errors:tag.renameUnfinished`); any other
-/// failure carries the cause, as Electron's handler answers it.
-fn rename_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> CommandError {
+/// recorded with notes left with what finishes it (`errors:tag.renameUnfinished`), a merge into
+/// another spelling of its tag with `errors:tag.mergeSameTag`; any other failure carries the
+/// cause, as Electron's handler answers it.
+pub(super) fn rename_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> CommandError {
     let core = CommandError::from_core(error);
     let (key, from, to, left) = match error {
         NotesError::TagRenameInProgress { from, to } => {
@@ -558,6 +559,11 @@ fn rename_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> CommandE
         }
         NotesError::TagRenameUnfinished { from, to, left } => {
             ("errors:tag.renameUnfinished", from, to, *left)
+        }
+        NotesError::TagMergeSameTag => {
+            let locale = app.state::<Arc<LocaleService>>().get();
+            let message = i18n::t(locale, "errors:tag.mergeSameTag", &Args::new());
+            return CommandError::new(core.kind, core.code, message);
         }
         _ => return core,
     };
