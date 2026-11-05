@@ -229,6 +229,21 @@ fn added(path: &'static str) -> impl Fn(&Applied) -> bool {
     move |fact| matches!(fact, Applied::Added { path: p, .. } if p == path)
 }
 
+fn removed(path: &'static str) -> impl Fn(&Applied) -> bool {
+    move |fact| matches!(fact, Applied::Removed { path: p, .. } if p == path)
+}
+
+/// Facts until a crossing move from `from` to `to` has made both its halves, in whichever order
+/// they come: a paired move removes `from`'s row before the new file is added, and a move whose
+/// halves the watcher sees apart can add the new file first (`ADD_GRACE`).
+fn crossed(e: &mut Env, from: &'static str, to: &'static str) -> Vec<Applied> {
+    let mut seen = e.facts_until(added(to));
+    if !seen.iter().any(removed(from)) {
+        seen.extend(e.facts_until(removed(from)));
+    }
+    seen
+}
+
 fn reopen(e: &mut Env) -> Vec<Applied> {
     e.close();
     e.drain();
@@ -458,7 +473,7 @@ fn a_move_between_note_and_day_deletes_the_item_and_makes_a_new_one() {
         e.vault.join("Notes/2025-01-02.md"),
     )
     .unwrap();
-    e.facts_until(added("Notes/2025-01-02.md"));
+    crossed(&mut e, "journal/2025-01-02.md", "Notes/2025-01-02.md");
     let note = row_id(&e, "Notes/2025-01-02.md").unwrap();
     assert_ne!(note, id);
     assert_eq!(
@@ -472,6 +487,36 @@ fn a_move_between_note_and_day_deletes_the_item_and_makes_a_new_one() {
         false
     )));
     assert_eq!(e.body(&note), "A day to be, edited");
+    assert!(outbox(&e).contains(&("delete".to_owned(), "j2025-01-02".to_owned())));
+}
+
+/// The watcher can see a move's two halves apart: when its removal becomes known past
+/// `ADD_GRACE`, the new file is reported first, as a new file, and the removal after. Here the
+/// copy and then the delete make that schedule. A crossing seen so ends as the paired move does:
+/// the day deleted and pushed, the file a new note with the day's text.
+#[test]
+fn a_crossing_seen_as_a_new_file_then_a_removal_ends_as_the_move_does() {
+    let mut e = notes_env();
+    e.write("journal/2025-01-02.md", "A day to be\n");
+    e.open();
+    e.facts_until(added("journal/2025-01-02.md"));
+    e.facts_until(indexed);
+
+    fs::create_dir_all(e.vault.join("Notes")).unwrap();
+    fs::copy(
+        e.vault.join("journal/2025-01-02.md"),
+        e.vault.join("Notes/2025-01-02.md"),
+    )
+    .unwrap();
+    e.facts_until(added("Notes/2025-01-02.md"));
+    fs::remove_file(e.vault.join("journal/2025-01-02.md")).unwrap();
+    e.facts_until(removed("journal/2025-01-02.md"));
+    let note = row_id(&e, "Notes/2025-01-02.md").unwrap();
+    assert_eq!(
+        days(&e),
+        vec![("j2025-01-02".to_owned(), "2025-01-02".to_owned(), true)]
+    );
+    assert_eq!(e.body(&note), "A day to be");
     assert!(outbox(&e).contains(&("delete".to_owned(), "j2025-01-02".to_owned())));
 }
 
