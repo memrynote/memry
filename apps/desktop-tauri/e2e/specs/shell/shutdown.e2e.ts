@@ -27,12 +27,27 @@ test('the renderer answers a flush request for its own window', async ({ app }) 
   expect(await invokeTest<boolean>(app, 'e2e_request_flush', { label: 'main' })).toBe(true)
 })
 
-test('a flush request nobody answers times out instead of hanging', async ({ app }) => {
+test('a flush request to a window that does not listen returns instead of hanging', async ({
+  app
+}) => {
   const startedAt = Date.now()
   expect(await invokeTest<boolean>(app, 'e2e_request_flush', { label: 'no-such-window' })).toBe(
     false
   )
   expect(Date.now() - startedAt).toBeLessThan(4_000)
+})
+
+// A page that is still loading (at a launch, after a reload) holds no edits and cannot answer
+// yet: the flush request it missed held the quit for the whole flush timeout (#3967).
+test('a quit while the page loads does not wait for its flush', async ({ app }) => {
+  await invokeTest(app, 'e2e_quit_on_page_start')
+  await app.executor.execute('setTimeout(() => location.reload(), 0)')
+  expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })).toBe(true)
+  const log = readMainLog(app.dirs.logDir)
+  expect(log).toContain('quitting as the main page starts')
+  expect(log).toContain('cleanup complete')
+  expect(log).not.toContain('flush of window main timed out')
+  expect(log).toContain('the page of window main does not listen for flushes; its flush is skipped')
 })
 
 test('a clean quit exits promptly and leaves no crash marker', async ({ app }) => {

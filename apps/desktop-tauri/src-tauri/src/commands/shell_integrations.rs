@@ -25,6 +25,17 @@ pub fn flush_done(
     Ok(())
 }
 
+/// The calling window's page subscribed to flush requests: from now on a quit or a close asks it.
+#[tauri::command]
+#[specta::specta]
+pub fn flush_ready(
+    flush: State<'_, FlushService>,
+    window: WebviewWindow<Wry>,
+) -> Result<(), CommandError> {
+    flush.page_listening(window.label());
+    Ok(())
+}
+
 /// Whether notifications may show. macOS answers `prompt` until the user was asked; the first
 /// notification asks.
 #[tauri::command]

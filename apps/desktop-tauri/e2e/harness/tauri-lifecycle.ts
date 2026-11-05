@@ -219,15 +219,23 @@ async function start(
   assertControlApplied(info, base.control)
   const app: TauriApp = { ...base, executor, pid: info.pid, exited }
   if (base.startupFails) return app
-  // The window is hidden until the renderer mounts; a spec starts from the shown app.
+  // The window is hidden until the renderer mounts; a spec starts from the shown app whose page
+  // answers flushes, which it does a moment after the first paint.
   const shown = await pollUntil(
     async () => {
-      const windows = await invokeTest<{ label: string; visible: boolean }[]>(app, 'e2e_windows')
-      return windows.some((window) => window.label === 'main' && window.visible) || undefined
+      const windows = await invokeTest<
+        { label: string; visible: boolean; answersFlush: boolean }[]
+      >(app, 'e2e_windows')
+      return (
+        windows.some(
+          (window) => window.label === 'main' && window.visible && window.answersFlush
+        ) || undefined
+      )
     },
     { timeoutMs: READY_MS, intervalMs: 100 }
   )
-  if (!shown) throw new HarnessError('the main window was not shown')
+  if (!shown)
+    throw new HarnessError('the main window was not shown, or its page never answered flushes')
   if (!base.keepWindowRect) await setWindowSize(app)
   return app
 }

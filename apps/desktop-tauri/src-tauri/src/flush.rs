@@ -16,12 +16,12 @@ pub struct FlushService {
 impl FlushService {
     /// Asks the window labelled `label` to flush and waits for its reply, for at most the
     /// per-window ceiling or what `deadline` leaves. False on a timeout, and at once when the
-    /// window's page has no process to answer.
+    /// window's page does not listen: it is still loading, or it lost its process.
     pub async fn request(&self, app: &AppHandle<Wry>, label: &str, deadline: Deadline) -> bool {
         let Some(ticket) = self.table.begin(label) else {
-            tracing::warn!(
+            tracing::info!(
                 scope = "Shutdown",
-                "window {label} has no page process; its flush is skipped"
+                "the page of window {label} does not listen for flushes; its flush is skipped"
             );
             return false;
         };
@@ -54,14 +54,18 @@ impl FlushService {
         self.table.complete(from, request_id)
     }
 
-    /// The page of window `label` lost its process: the waits on it end now.
+    /// The page of window `label` lost its process or its document: the waits on it end now.
     pub fn page_gone(&self, label: &str) -> usize {
         self.table.page_gone(label)
     }
 
-    /// The page of window `label` (re)loaded and can answer again.
-    pub fn page_loaded(&self, label: &str) {
-        self.table.page_loaded(label);
+    /// The page of window `label` subscribed to flush requests (`flush_ready`).
+    pub fn page_listening(&self, label: &str) {
+        self.table.page_listening(label);
+    }
+
+    pub fn is_listening(&self, label: &str) -> bool {
+        self.table.is_listening(label)
     }
 }
 
