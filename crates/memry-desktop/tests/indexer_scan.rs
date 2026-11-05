@@ -381,8 +381,8 @@ fn the_open_walk_and_the_sidebar_list_meet_their_budgets() {
     }
     // timing-bound: a first open of written notes is measured against its own budget, not the
     // 400 ms one (#3530, Kaan's call): each note costs a conversion and about 12 KB of writes.
-    // Measured p50 0.51 to 0.60 s on an Apple M5 Pro at load 10 to 17 (13q-7b and 13q-7c, the
-    // profile above).
+    // Measured p50 0.51 to 0.60 s on an Apple M5 Pro at load 13 (13q-7b and 13q-7c, the profile
+    // above).
     assert!(written < Duration::from_millis(800), "written: {written:?}");
     // timing-bound: the #3530 budget, asserted only by this ignored release-build run.
     assert!(list < Duration::from_millis(15), "{list:?}");

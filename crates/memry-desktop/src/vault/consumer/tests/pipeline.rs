@@ -11,9 +11,8 @@ use crate::vault::consumer::run::{Consumer, inbox};
 use crate::vault::watch::{EventSink, NewFiles, VaultWatcher};
 
 /// A consumer that hears only the watcher's `Rescanned`, which starts the walk: the walk
-/// alone offers the vault's files. A live watcher may report some new files first (an
-/// antivirus touching them on Windows), which then go alone, and the batches would not be the
-/// ones these tests count.
+/// alone offers the vault's files. A live watcher may report just-written files first, which
+/// then go alone, and the batches would not be the ones these tests count.
 struct Walking {
     consumer: Consumer,
     _watcher: VaultWatcher,
