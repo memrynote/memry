@@ -168,6 +168,11 @@ export async function discoverGoogleCalendarSources(
       isPrimary: remote.isPrimary,
       isSelected: existing ? existing.isSelected : remote.isPrimary,
       isMemryManaged: existing?.isMemryManaged ?? false,
+      // Compat: builds before the purge cleared the cursor archived a
+      // disconnected calendar with its cursor still set, and that row also
+      // reaches this device over sync. Its events were purged, so reviving it
+      // must pull it in full.
+      syncCursor: existing?.archivedAt ? null : existing?.syncCursor,
       // Google still lists it, so it is not gone. A stale archivedAt here is
       // the tombstone a previous disconnect left behind, and leaving it set
       // would hide the calendar from the picker on reconnect.
@@ -652,9 +657,23 @@ export async function syncGoogleCalendarNow(
       selectedOnly: true
     }).filter((source) => !source.isMemryManaged)
 
+    // One calendar failing must not stop the rest: a single bad event used to
+    // leave every calendar after it unsynced for days (#3889). The failure is
+    // already on that source's row; the first one is rethrown after the pass
+    // so the runner still logs and reports it.
+    let firstError: Error | null = null
     for (const source of sources) {
       const sourceDeps = deps.client && source.accountId === defaultAccountId ? deps : {}
-      await syncGoogleCalendarSource(db, source.id, sourceDeps)
+      try {
+        await syncGoogleCalendarSource(db, source.id, sourceDeps)
+      } catch (error) {
+        log.warn('Google calendar sync failed; continuing with the other calendars', {
+          sourceId: source.id,
+          error
+        })
+        firstError ??= error instanceof Error ? error : new Error(String(error))
+      }
     }
+    if (firstError !== null) throw firstError
   })
 }
