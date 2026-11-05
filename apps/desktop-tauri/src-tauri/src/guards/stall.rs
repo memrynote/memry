@@ -91,7 +91,7 @@ fn watch(app: &AppHandle<Wry>, detector: &Arc<Mutex<StallDetector>>, origin: Ins
                 report.count
             );
             if phase == "window_shown" {
-                crate::windows::reveal::diag_capture("main-stall");
+                crate::windows::reveal::diag_capture(app, "main-stall");
             }
         }
     }

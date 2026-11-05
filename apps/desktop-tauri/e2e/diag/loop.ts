@@ -51,7 +51,7 @@ export function loop(name: string): void {
           await gracefulClose({ executor, pid: oldPid })
           const bind = await canBind(port)
           console.log(
-            `DIAG exit-race ${name}#${i} port=${port} alive=${isAlive(oldPid)} bind=${bind}` +
+            `DIAG exit-race ${name}#${i} port=${port} old=${oldPid} alive=${isAlive(oldPid)} bind=${bind}` +
               (bind === 'free' ? '' : ` owners=[${portOwners(port)}]`)
           )
         }

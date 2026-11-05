@@ -66,8 +66,8 @@ jobs:
           MEMRY_E2E_BINARY: ${{ github.workspace }}\crates\target\x86_64-pc-windows-msvc\debug\Memrynote.exe
           MEMRY_DIAG_SCRIPT: ${{ github.workspace }}\apps\desktop-tauri\e2e\diag\diag-3973.ps1
           MEMRY_DIAG_OUT: ${{ github.workspace }}\apps\desktop-tauri\test-results\e2e\app-output
-          MEMRY_E2E_WORKERS: '6'
-          MEMRY_DIAG_ITERATIONS: '45'
+          MEMRY_E2E_WORKERS: '8'
+          MEMRY_DIAG_ITERATIONS: '50'
         run: pnpm --filter @memry/desktop-tauri exec wdio run e2e/wdio.diag.conf.ts || true
       - name: Summary
         if: always()

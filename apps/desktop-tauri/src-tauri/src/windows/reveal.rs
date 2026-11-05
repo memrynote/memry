@@ -28,6 +28,8 @@ pub struct Reveal {
     shown: AtomicBool,
     mode: Mutex<StartupMode>,
     heartbeat: Mutex<(Option<Instant>, HeartbeatMonitor)>,
+    diag_last_beat: Mutex<Option<Instant>>,
+    diag_captured: AtomicBool,
 }
 
 fn state(app: &AppHandle<Wry>) -> Arc<Reveal> {
@@ -65,15 +67,31 @@ pub fn arm(app: &AppHandle<Wry>, mode: StartupMode) {
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner);
             let Some(origin) = guard.0 else { continue };
-            if guard.1.poll(elapsed_ms(origin)) {
-                tracing::warn!(scope = "Window", "main window renderer unresponsive");
-                diag_capture("unresponsive");
+            let gap = reveal
+                .diag_last_beat
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .map(|at| at.elapsed());
+            if gap.is_some_and(|gap| gap > Duration::from_millis(3500))
+                && !reveal.diag_captured.swap(true, Ordering::SeqCst)
+            {
+                tracing::warn!(scope = "Diag", "no beat for {gap:?}");
+                diag_capture(&for_watch, "gap");
                 let later = for_watch.clone();
                 tauri::async_runtime::spawn(async move {
-                    tokio::time::sleep(Duration::from_secs(20)).await;
-                    let _ = later;
-                    diag_capture("unresponsive-20s");
+                    tokio::time::sleep(Duration::from_secs(25)).await;
+                    let beat_gap = state(&later)
+                        .diag_last_beat
+                        .lock()
+                        .unwrap_or_else(PoisonError::into_inner)
+                        .map(|at| at.elapsed());
+                    if beat_gap.is_some_and(|gap| gap > Duration::from_secs(20)) {
+                        diag_capture(&later, "gap-25s");
+                    }
                 });
+            }
+            if guard.1.poll(elapsed_ms(origin)) {
+                tracing::warn!(scope = "Window", "main window renderer unresponsive");
             }
         }
     });
@@ -146,6 +164,10 @@ pub fn heartbeat(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) {
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
     let origin = *guard.0.get_or_insert_with(Instant::now);
+    *reveal
+        .diag_last_beat
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner) = Some(Instant::now());
     if let Some(duration_ms) = guard.1.beat(elapsed_ms(origin)) {
         tracing::warn!(
             scope = "Window",
@@ -156,7 +178,12 @@ pub fn heartbeat(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) {
 }
 
 /// DIAG #3973 (throwaway branch): stacks of this process and its WebView2 processes.
-pub fn diag_capture(tag: &str) {
+pub fn diag_capture(app: &AppHandle<Wry>, tag: &str) {
+    let data_dir = app
+        .state::<memry_desktop::paths::AppPaths>()
+        .data_dir
+        .display()
+        .to_string();
     let Ok(script) = std::env::var("MEMRY_DIAG_SCRIPT") else {
         return;
     };
@@ -178,6 +205,8 @@ pub fn diag_capture(tag: &str) {
                 &out,
                 "-Tag",
                 &tag,
+                "-Match",
+                &data_dir,
             ])
             .status();
         tracing::warn!(scope = "Diag", "capture done pid={pid} tag={tag} {status:?}");
