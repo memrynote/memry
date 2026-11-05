@@ -46,7 +46,8 @@
 //!   turns the watcher's later `Added` for that path into a change of that note.
 //! - **A note's row goes only after its record, and moves only after it.** A removal deletes
 //!   the row once the identity answered [`identity::Removal::Deleted`]; a move moves it once
-//!   `on_renamed` answered `Ok`.
+//!   `on_renamed` answered `Ok`, or removes it when the move changed what the file is
+//!   ([`identity::Rename::Crossed`]), and the file is then a new one.
 //! - **The cost is the work there is.** An identity that adopts nothing
 //!   ([`identity::NoteIdentity::adopts`]) has no file without a row read: not by the open
 //!   walk, not by a watcher's rescan. A queue overflow keeps what was queued and costs one

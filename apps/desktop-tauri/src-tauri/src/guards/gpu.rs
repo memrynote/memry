@@ -125,6 +125,8 @@ pub fn record_reveal_fallback(app: &AppHandle<Wry>) {
 /// Subscribes to an app webview's process failures: every one is reported, a browser or
 /// renderer process that ended releases the flush waits on the page, a renderer that ended is
 /// recovered, and a GPU process that crashed, ended unexpectedly or failed to launch is recorded.
+/// The browser process is also watched directly ([`super::process_gone::watch_browser_exit`]),
+/// because `ProcessFailed` can come seconds late.
 #[cfg(windows)]
 pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>) {
     use webview2_com::Microsoft::Web::WebView2::Win32::{
@@ -154,6 +156,14 @@ pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>
                 );
                 return;
             };
+            let mut pid = 0_u32;
+            match core.BrowserProcessId(&mut pid) {
+                Ok(()) => super::process_gone::watch_browser_exit(&app, page.label(), pid),
+                Err(error) => tracing::warn!(
+                    scope = "Shell",
+                    "no WebView2 browser process id; its exit is heard late: {error}"
+                ),
+            }
             let handler = ProcessFailedEventHandler::create(Box::new(move |_, args| {
                 let Some(args) = args else { return Ok(()) };
                 let mut kind = Default::default();

@@ -82,6 +82,11 @@ struct Open {
 }
 
 impl VaultTier {
+    /// The store holding the device key the tier writes under.
+    pub fn store(&self) -> Arc<dyn SecureStore> {
+        self.store.clone()
+    }
+
     pub fn new(store: Arc<dyn SecureStore>) -> Arc<Self> {
         Arc::new(Self {
             store,
@@ -324,6 +329,7 @@ impl VaultTier {
             settings: vault.vault.app_settings(self.store.clone()).ok(),
             activity: self.activity.clone(),
             own_files: self.own_files.clone(),
+            watch: Some(watcher.handle()),
             untaken: Mutex::default(),
         };
         let after_walk: AfterWalk = {

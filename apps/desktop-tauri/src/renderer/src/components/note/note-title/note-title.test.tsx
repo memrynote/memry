@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
@@ -16,6 +16,15 @@ beforeAll(async () => {
 
 const renderWithI18n = (ui: React.ReactElement, i18n = i18nEn) =>
   render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>)
+
+// jsdom reports a window without focus once nothing in it is focused; the app's window has focus
+// unless a test says otherwise.
+beforeEach(() => {
+  vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+})
+afterEach(() => {
+  vi.mocked(document.hasFocus).mockRestore()
+})
 
 describe('NoteTitle - title editing', () => {
   const defaultProps = {
@@ -227,6 +236,41 @@ describe('NoteTitle - fresh note', () => {
 
     expect(onTitleChange).toHaveBeenCalledWith('Groceries')
     expect(onFreshEnd).toHaveBeenCalledTimes(1)
+  })
+
+  it('stays fresh, keeping what was typed, when the app window loses focus', async () => {
+    // Chromium (WebView2 on Windows) blurs the focused field when the window is deactivated and
+    // focuses it again on return; WebKit fires no `focusout` there.
+    const user = userEvent.setup()
+    const onTitleChange = vi.fn()
+    const onFreshEnd = vi.fn()
+    renderWithI18n(
+      <NoteTitle {...freshProps} onTitleChange={onTitleChange} onFreshEnd={onFreshEnd} />
+    )
+    const textarea = screen.getByRole('textbox', { name: /note title/i })
+    await user.type(textarea, 'Groc')
+
+    vi.mocked(document.hasFocus).mockReturnValue(false)
+    fireEvent.blur(textarea)
+
+    expect(onTitleChange).not.toHaveBeenCalled()
+    expect(onFreshEnd).not.toHaveBeenCalled()
+    expect(textarea).toHaveValue('Groc')
+    expect(textarea).toHaveAttribute('placeholder', 'New note')
+  })
+
+  it('renames on Enter while the app window has no focus', async () => {
+    const user = userEvent.setup()
+    const onTitleChange = vi.fn()
+    renderWithI18n(<NoteTitle {...freshProps} onTitleChange={onTitleChange} />)
+    const textarea = screen.getByRole('textbox', { name: /note title/i })
+    await user.type(textarea, 'Groceries')
+
+    vi.mocked(document.hasFocus).mockReturnValue(false)
+    await user.keyboard('{Enter}')
+
+    expect(onTitleChange).toHaveBeenCalledTimes(1)
+    expect(onTitleChange).toHaveBeenCalledWith('Groceries')
   })
 
   it('keeps the created name when blurred with nothing typed', async () => {

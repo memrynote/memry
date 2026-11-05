@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
-import { mkdirSync, rmSync } from 'node:fs'
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -9,6 +9,16 @@ import { HarnessError } from './errors.ts'
 import { pollUntil } from './wait.ts'
 
 const crateTarget = fileURLToPath(new URL('../../../../crates/target/debug', import.meta.url))
+
+/**
+ * Each launch's stderr, uploaded with the e2e results. The app logs there too, and it is the only
+ * place a panic before logging starts (GTK that cannot open its display) leaves its text.
+ */
+export const APP_OUTPUT_DIR = fileURLToPath(
+  new URL('../../test-results/e2e/app-output', import.meta.url)
+)
+
+const OUTPUT_TAIL_BYTES = 4_000
 
 /** The executable names the `tauri.<os>.conf.json` overlays set as `mainBinaryName`. */
 const BINARY_NAMES: Partial<Record<NodeJS.Platform, string>> = {
@@ -81,6 +91,10 @@ export async function spawnApp(port: number): Promise<ChildProcess> {
     freshEnchantDirs.add(enchantDir)
   }
   mkdirSync(enchantDir, { recursive: true })
+  mkdirSync(APP_OUTPUT_DIR, { recursive: true })
+  const output = join(APP_OUTPUT_DIR, `app-${port}-${Date.now()}.log`)
+  // A file, not a pipe: it keeps what the app wrote after this process stopped reading.
+  const fd = openSync(output, 'a')
   const child = spawn(binaryPath(), [], {
     env: {
       ...process.env,
@@ -88,12 +102,18 @@ export async function spawnApp(port: number): Promise<ChildProcess> {
       TAURI_WEBDRIVER_PORT: String(port),
       ENCHANT_CONFIG_DIR: enchantDir
     },
-    stdio: 'ignore'
+    stdio: ['ignore', fd, fd]
   })
+  closeSync(fd)
   spawned.add(child)
   child.once('exit', () => spawned.delete(child))
   child.once('error', () => spawned.delete(child))
-  await waitForDriver(port, child)
+  try {
+    await waitForDriver(port, child)
+  } catch (error) {
+    const text = readFileSync(output, 'utf8').slice(-OUTPUT_TAIL_BYTES).trimEnd()
+    throw new HarnessError(`${(error as Error).message}; its output (${output}):\n${text}`)
+  }
   return child
 }
 

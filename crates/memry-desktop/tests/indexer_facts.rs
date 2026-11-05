@@ -38,6 +38,7 @@ fn stale_row(id: &str, text: &str) -> MeasuredFile {
         note_id: id.to_owned(),
         file_hash: content_hash(text),
         text: "stale".to_owned(),
+        properties: Vec::new(),
     }
 }
 
@@ -110,6 +111,7 @@ fn facts_keep_the_rows_current_and_lost_facts_run_a_scan() {
         note_id: "ghost".into(),
         file_hash: "h".into(),
         text: "gone".into(),
+        properties: Vec::new(),
     };
     open.search.index_note_files(vec![ghost]).unwrap();
     let (sender, receiver) = broadcast::channel(1);
@@ -374,25 +376,23 @@ fn an_edit_beside_a_file_that_never_reads_is_not_held_by_its_backoff() {
 }
 
 /// A day's row takes the day its record says. Its file moved to another day's path while the
-/// app was closed is owed that move (13m part 2 ports what Electron does with it), and the
-/// path's day is never stored for it: the open's scan, which no fact asked for, measures the
-/// row again with no day.
+/// app was closed is that day now (`renameKeepsJournalDate`): the open's scan drops the old
+/// day's row and measures the new day's with its date.
 #[test]
-fn a_day_moved_to_another_days_path_keeps_no_day_in_the_index() {
+fn a_day_moved_to_another_days_path_is_that_day_in_the_index() {
     let mut e = env(|store| Some(NotesIdentity::new(store)));
     e.write("journal/2026-01-05.md", "A day\n");
     e.open();
     e.facts_until(indexed);
-    let id = "j2026-01-05";
-    let open = e.session.current().unwrap();
-    let day = |open: &memry_desktop::session::OpenVault| {
-        open.search.note_stats(id).unwrap().and_then(|row| row.date)
+    let day = |open: &memry_desktop::session::OpenVault, id: &str| {
+        open.search.note_stats(id).unwrap().map(|row| row.date)
     };
+    let open = e.session.current().unwrap();
     let (sender, receiver) = broadcast::channel(16);
     with_task(&open, receiver, |_| {
         sender.send(Applied::Indexed { complete: true }).unwrap();
         until("the day's row", || {
-            day(&open).as_deref() == Some("2026-01-05")
+            day(&open, "j2026-01-05") == Some(Some("2026-01-05".to_owned()))
         });
     });
     drop(open);
@@ -404,20 +404,18 @@ fn a_day_moved_to_another_days_path_keeps_no_day_in_the_index() {
     )
     .unwrap();
     e.open();
-    until("the open moved the row", || {
+    until("the open made the new day", || {
         e.rows()
             .iter()
-            .any(|(row, at)| row == id && at == "journal/2026-01-06.md")
+            .any(|(row, at)| row == "j2026-01-06" && at == "journal/2026-01-06.md")
     });
     let open = e.session.current().unwrap();
     let (sender, receiver) = broadcast::channel(16);
     with_task(&open, receiver, |_| {
         sender.send(Applied::Indexed { complete: true }).unwrap();
-        until("the day dropped from the row", || {
-            open.search
-                .note_stats(id)
-                .unwrap()
-                .is_some_and(|row| row.date.is_none())
+        until("the new day's row, and none of the old", || {
+            day(&open, "j2026-01-06") == Some(Some("2026-01-06".to_owned()))
+                && day(&open, "j2026-01-05").is_none()
         });
     });
     drop(open);

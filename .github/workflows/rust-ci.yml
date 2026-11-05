@@ -249,6 +249,12 @@ jobs:
         if: matrix.part != 'tests' && runner.os == 'Windows'
         run: cargo clippy --workspace --exclude memry-cli --all-targets -- -D warnings
 
+      # The e2e build (cargo feature `e2e`) is compiled only by Desktop Tauri CI, which does not
+      # lint it; an unused import sat in its test commands unseen (#3933).
+      - name: Clippy (memry-tauri, e2e feature)
+        if: matrix.part != 'tests' && matrix.os != 'macos-15-intel'
+        run: cargo clippy -p memry-tauri --features e2e --all-targets -- -D warnings
+
       # One nextest run over the three crates, with the markdown feature on for memry-core (memry-desktop
       # already turns it on, so the unified build is the same one). nextest skips doctests.
       - name: Install cargo-nextest

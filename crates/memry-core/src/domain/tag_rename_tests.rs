@@ -1,0 +1,400 @@
+use serde_json::json;
+
+use super::*;
+use crate::domain::tag_admin::current_tags;
+use crate::storage::repositories::{InboundRecord, sync_items};
+use crate::storage::{Db, open_data, test_support::temp_dir};
+
+const NOW: i64 = 1_760_000_000_000;
+
+fn seed(db: &Db, item_type: &str, id: &str, payload: &str) {
+    db.call_blocking(|conn| {
+        sync_items::apply_remote(
+            conn,
+            &InboundRecord {
+                item_type: item_type.into(),
+                item_id: id.into(),
+                payload_json: payload.into(),
+                server_cursor: Some(1),
+                signer_device_id: Some("desk".into()),
+                updated_at: NOW,
+                deleted_at: None,
+            },
+            NOW,
+        )?;
+        Ok(())
+    })
+    .expect("seed");
+}
+
+fn vault(label: &str) -> (Db, crate::storage::test_support::TempDir) {
+    let dir = temp_dir(label);
+    let db = open_data(&dir.path().join("data.db")).expect("open");
+    let note = |id: &str, tags: &str| {
+        seed(
+            &db,
+            "note",
+            id,
+            &format!(r#"{{"title":"{id}","tags":{tags},"clock":{{"desk":1}}}}"#),
+        );
+    };
+    note("n1", r#"["Job","job/Lead","ideas"]"#);
+    note("n2", r#"["work","career/lead"]"#);
+    seed(
+        &db,
+        "journal",
+        "j1",
+        r#"{"date":"2026-09-24","tags":["job"],"clock":{"desk":1}}"#,
+    );
+    seed(
+        &db,
+        "task",
+        "t1",
+        r#"{"title":"t","tags":["job/lead"],"clock":{"desk":1}}"#,
+    );
+    for (name, color) in [
+        ("job", "#ff0000"),
+        ("job/lead", "amber"),
+        ("career/lead", "teal"),
+    ] {
+        seed(
+            &db,
+            "tag_definition",
+            name,
+            &format!(r#"{{"name":"{name}","color":"{color}","clock":{{"desk":1}}}}"#),
+        );
+    }
+    (db, dir)
+}
+
+fn tags_of(db: &Db, item_type: &str, id: &str) -> Vec<String> {
+    db.call_blocking(|conn| current_tags(conn, item_type, id))
+        .expect("tags")
+}
+
+#[test]
+fn rename_carries_children_and_merges_into_existing_names() {
+    let (db, _d) = vault("tags-rename");
+    let count = db
+        .call_blocking(|c| rename(c, "job", "career", "phone", NOW + 1))
+        .expect("rename");
+    assert_eq!(count, 3);
+    assert_eq!(
+        tags_of(&db, "note", "n1"),
+        vec!["career", "career/Lead", "ideas"]
+    );
+    assert_eq!(tags_of(&db, "journal", "j1"), vec!["career"]);
+    assert_eq!(tags_of(&db, "task", "t1"), vec!["career/Lead"]);
+    db.call_blocking(|c| {
+        assert!(live_definition(c, "job")?.is_none());
+        assert!(live_definition(c, "job/lead")?.is_none());
+        assert_eq!(
+            live_definition(c, "career")?.expect("career")["color"],
+            json!("#ff0000")
+        );
+        assert_eq!(
+            live_definition(c, "career/lead")?.expect("career/lead")["color"],
+            json!("teal")
+        );
+        Ok(())
+    })
+    .expect("defs");
+}
+
+#[test]
+fn rename_keeps_a_child_suffix_whose_fold_changes_length() {
+    let (db, _d) = vault("tags-rename-unicode");
+    seed(
+        &db,
+        "note",
+        "n3",
+        r#"{"title":"n3","tags":["İş/Plan","ünal"],"clock":{"desk":1}}"#,
+    );
+    db.call_blocking(|c| rename(c, "iş", "work", "phone", NOW + 1))
+        .expect("rename");
+    assert_eq!(tags_of(&db, "note", "n3"), vec!["work/Plan", "ünal"]);
+    db.call_blocking(|c| rename(c, "ÜNAL", "Name", "phone", NOW + 2))
+        .expect("rename");
+    assert_eq!(tags_of(&db, "note", "n3"), vec!["work/Plan", "Name"]);
+}
+
+#[test]
+fn rename_rewrites_body_tags_whole_tags_only() {
+    let (db, _d) = vault("tags-rename-body");
+    db.call_blocking(|c| {
+        let markdown = "Met #job and #Job/lead, not #jobs.\n\n`#job`";
+        assert!(
+            crate::domain::body_write::append_markdown(c, "n2", markdown, "desk", NOW).map_err(
+                |e| StorageError::Failed {
+                    what: e.to_string()
+                }
+            )?
+        );
+        rename(c, "job", "career", "phone", NOW + 1)?;
+        let blocks = crate::domain::reads::note_blocks(c, "n2")
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?
+            .expect("body");
+        assert_eq!(
+            body_tags::extract(&blocks),
+            vec!["career", "career/lead", "jobs"]
+        );
+        let code = blocks
+            .iter()
+            .flat_map(|b| &b.inline)
+            .find(|r| r.marks.iter().any(|m| m == "code"));
+        assert_eq!(code.map(|r| r.text.as_str()), Some("#job"));
+        Ok(())
+    })
+    .expect("body");
+}
+
+#[test]
+fn rename_refreshes_cached_body_tags_without_reindex() {
+    let (db, _d) = vault("tags-rename-body-cache");
+    db.call_blocking(|c| {
+        let to_storage = |e: crate::crdt::errors::CrdtError| StorageError::Failed {
+            what: e.to_string(),
+        };
+        assert!(
+            crate::domain::body_write::append_markdown(c, "n2", "Met #job.", "desk", NOW)
+                .map_err(to_storage)?
+        );
+        let blocks = crate::domain::reads::note_blocks(c, "n2")
+            .map_err(to_storage)?
+            .expect("body");
+        body_tags::write(c, "n2", &body_tags::extract(&blocks))?;
+        rename(c, "job", "career", "phone", NOW + 1)?;
+        let cached: Vec<String> = c
+            .prepare("SELECT tag FROM note_body_tags WHERE note_id = 'n2'")
+            .map_err(failed)?
+            .query_map([], |row| row.get(0))
+            .map_err(failed)?
+            .collect::<Result<_, _>>()
+            .map_err(failed)?;
+        assert_eq!(cached, vec!["career"]);
+        Ok(())
+    })
+    .expect("cache");
+}
+
+fn job(from: &str, to: &str) -> RenameJob {
+    RenameJob {
+        from: from.into(),
+        to: to.into(),
+        run_id: "run".into(),
+    }
+}
+
+fn upserts(db: &Db, id: &str) -> i64 {
+    let id = id.to_owned();
+    db.call_blocking(move |c| {
+        c.query_row(
+            "SELECT COUNT(*) FROM outbox WHERE op = 'upsert' AND item_id = ?1",
+            [id],
+            |row| row.get(0),
+        )
+        .map_err(failed)
+    })
+    .expect("outbox")
+}
+
+/// Desktop's parts: the shared one leaves notes and days to their files, an item's rename
+/// carries its pins in the list's spelling with one outbox row, and a second run of either
+/// writes nothing.
+#[test]
+fn the_desktop_parts_rename_once_and_leave_notes_to_their_files() {
+    let (db, _d) = vault("tags-rename-parts");
+    seed(
+        &db,
+        "note",
+        "n4",
+        r#"{"title":"n4","tags":["job","Career"],"pinnedTags":["job"],"clock":{"desk":1}}"#,
+    );
+    db.call_blocking(|c| {
+        begin(c, &job("job", "career"), Vec::new())?;
+        rename_shared(c, "phone", NOW + 1)?;
+        rename_shared(c, "phone", NOW + 2)
+    })
+    .expect("shared");
+    assert_eq!(tags_of(&db, "task", "t1"), vec!["career/Lead"]);
+    assert_eq!(tags_of(&db, "note", "n1"), vec!["Job", "job/Lead", "ideas"]);
+    assert_eq!(upserts(&db, "t1"), 1);
+    db.call_blocking(|c| {
+        assert!(live_definition(c, "job")?.is_none());
+        assert!(live_definition(c, "career")?.is_some());
+        Ok(())
+    })
+    .expect("defs");
+
+    let renamed = db
+        .call_blocking(|c| {
+            let first = tags::rename(c, "n4", "job", "career", "phone", NOW + 3)?;
+            let again = tags::rename(c, "n4", "job", "career", "phone", NOW + 4)?;
+            let gone = tags::rename(c, "none", "job", "career", "phone", NOW + 4)?;
+            Ok((first, again, gone))
+        })
+        .expect("item");
+    assert_eq!(renamed, (true, false, false));
+    assert_eq!(tags_of(&db, "note", "n4"), vec!["career"]);
+    assert_eq!(upserts(&db, "n4"), 1);
+    let pins: String = db
+        .call_blocking(|c| {
+            c.query_row(
+                "SELECT json_extract(payload, '$.pinnedTags') FROM sync_items \
+                 WHERE item_id = 'n4'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(failed)
+        })
+        .expect("pins");
+    assert_eq!(pins, r#"["career"]"#);
+}
+
+#[test]
+fn holders_are_the_live_notes_and_days_that_carry_the_tag_or_a_child() {
+    let (db, _d) = vault("tags-rename-holders");
+    // A day's header is its author's text: `j2` carries `job` there only.
+    seed(
+        &db,
+        "journal",
+        "j2",
+        r#"{"date":"2026-09-25","tags":["ideas"],"clock":{"desk":1}}"#,
+    );
+    let headers = [
+        ("n2".to_owned(), vec!["JOB/x".to_owned()]),
+        ("gone".to_owned(), vec!["job".to_owned()]),
+        ("j2".to_owned(), vec!["job".to_owned()]),
+    ];
+    let holders = db
+        .call_blocking(move |c| holders(c, headers, "Job"))
+        .expect("holders");
+    let note = |id: &str| Holder {
+        id: id.into(),
+        day: false,
+    };
+    let day = Holder {
+        id: "j1".into(),
+        day: true,
+    };
+    assert_eq!(holders, vec![day, note("n1"), note("n2")]);
+}
+
+#[test]
+fn a_recorded_rename_refuses_another_until_it_is_finished() {
+    let (db, _d) = vault("tags-rename-job");
+    let job = |from: &str, run: &str| RenameJob {
+        from: from.into(),
+        to: "career".into(),
+        run_id: run.into(),
+    };
+    db.call_blocking(move |c| {
+        assert_eq!(begin(c, &job("job", "r1"), Vec::new())?, None);
+        assert_eq!(begin(c, &job("job", "r2"), Vec::new())?, None);
+        assert_eq!(recorded(c)?.map(|plan| plan.job), Some(job("job", "r2")));
+        let other = begin(c, &job("work", "r3"), Vec::new())?;
+        assert_eq!(other, Some(job("job", "r2")));
+        finish(c)?;
+        assert_eq!(recorded(c)?, None);
+        c.execute("INSERT INTO meta (key, value) VALUES (?1, 'x')", [JOB])
+            .map_err(failed)?;
+        assert!(recorded(c).is_err());
+        Ok(())
+    })
+    .expect("job");
+}
+
+#[test]
+fn rename_to_a_name_not_writable_inline_keeps_body_tags() {
+    let (db, _d) = vault("tags-rename-body-skip");
+    db.call_blocking(|c| {
+        assert!(
+            crate::domain::body_write::append_markdown(c, "n2", "Met #job.", "desk", NOW).map_err(
+                |e| StorageError::Failed {
+                    what: e.to_string()
+                }
+            )?
+        );
+        rename(c, "job", "my job", "phone", NOW + 1)?;
+        let blocks = crate::domain::reads::note_blocks(c, "n2")
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?
+            .expect("body");
+        assert_eq!(body_tags::extract(&blocks), vec!["job"]);
+        Ok(())
+    })
+    .expect("body");
+}
+
+/// A new name under the old one (`a` to `a/b`) renames each item once, however often the
+/// rename runs: one stopped after part of it and resumed, its shared part stopped before a pair
+/// was struck off, and the parts run again over every item it listed, never make `a/b/b` of
+/// what became `a/b`. An `a/b` the vault held before is renamed as a child, once.
+#[test]
+fn a_rename_under_the_old_name_lands_once_however_often_it_runs() {
+    let (db, _d) = vault("tags-rename-under");
+    let seeds = [
+        ("note", "n5", r#"["a"]"#),
+        ("note", "n6", r#"["a/b"]"#),
+        ("task", "t5", r#"["a"]"#),
+    ];
+    for (item_type, id, tags) in seeds {
+        let payload = format!(r#"{{"title":"{id}","tags":{tags},"clock":{{"desk":1}}}}"#);
+        seed(&db, item_type, id, &payload);
+    }
+    let listed = db
+        .call_blocking(|c| {
+            let listed = holders(c, Vec::new(), "a")?;
+            assert_eq!(begin(c, &job("a", "a/b"), listed.clone())?, None);
+            let plan = recorded(c)?.expect("plan");
+            rename_shared(c, "phone", NOW + 1)?;
+            // Stopped after the last pair ran and before it was struck off.
+            let last = plan.pairs.last().cloned().expect("a pair");
+            let mut stopped = recorded(c)?.expect("plan");
+            stopped.pairs = vec![last];
+            save(c, &stopped)?;
+            assert!(rename_holder(c, "n5", "phone", NOW + 2)?);
+            Ok(listed)
+        })
+        .expect("first part");
+    let ids: Vec<&str> = listed.iter().map(|holder| holder.id.as_str()).collect();
+    assert_eq!(ids, ["n5", "n6"]);
+
+    db.call_blocking(move |c| {
+        // The next open: what is left, then every part again over all it listed.
+        rename_shared(c, "phone", NOW + 3)?;
+        for holder in recorded(c)?.expect("plan").holders {
+            assert!(rename_holder(c, &holder.id, "phone", NOW + 4)?);
+        }
+        rename_shared(c, "phone", NOW + 5)?;
+        for holder in &listed {
+            assert!(!rename_holder(c, &holder.id, "phone", NOW + 6)?);
+        }
+        finish(c)
+    })
+    .expect("resume");
+    assert_eq!(tags_of(&db, "note", "n5"), vec!["a/b"]);
+    assert_eq!(tags_of(&db, "note", "n6"), vec!["a/b/b"]);
+    assert_eq!(tags_of(&db, "task", "t5"), vec!["a/b"]);
+    assert_eq!(upserts(&db, "n5"), 1);
+}
+
+/// A holder the rename could not write is struck off and keeps the old name.
+#[test]
+fn a_skipped_holder_is_struck_off_and_keeps_the_old_name() {
+    let (db, _d) = vault("tags-rename-skip");
+    db.call_blocking(|c| {
+        let listed = holders(c, Vec::new(), "job")?;
+        begin(c, &job("job", "career"), listed)?;
+        skip_holder(c, "n1")?;
+        let left = recorded(c)?.expect("plan").holders;
+        assert!(left.iter().all(|holder| holder.id != "n1"));
+        assert!(!rename_holder(c, "n1", "phone", NOW + 1)?);
+        Ok(())
+    })
+    .expect("skip");
+    assert_eq!(tags_of(&db, "note", "n1"), vec!["Job", "job/Lead", "ideas"]);
+}

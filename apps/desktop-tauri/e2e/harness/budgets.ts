@@ -6,4 +6,6 @@ export const TEST_TIMEOUT_MS = isCi ? 180_000 : 60_000
 /** `expect` polling and every action's actionability wait. */
 export const EXPECT_TIMEOUT_MS = isCi ? 60_000 : 20_000
 export const GRACEFUL_CLOSE_MS = 8_000
+/** The WebDriver script timeout a launched app's session runs with. */
+export const SCRIPT_TIMEOUT_MS = 60_000
 export const IS_CI = isCi

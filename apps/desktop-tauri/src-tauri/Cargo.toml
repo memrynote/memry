@@ -50,7 +50,7 @@ url = "2"
 dunce = "1.0.5"
 # The telemetry flush, marker and heartbeat timers run on Tauri's tokio runtime; `signal` is
 # SIGINT and SIGTERM.
-tokio = { workspace = true, features = ["time", "signal", "sync"] }
+tokio = { workspace = true, features = ["rt", "time", "signal", "sync"] }
 tracing = { workspace = true }
 velopack = { workspace = true }
 # `updater/velopack_backend.rs` names the error type of the `ureq` velopack pulls in, and the
