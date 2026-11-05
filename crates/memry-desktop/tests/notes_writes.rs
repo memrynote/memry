@@ -417,13 +417,29 @@ fn record_properties(e: &Env, id: &str) -> Option<String> {
 
 #[test]
 fn a_file_that_appears_before_the_create_writes_stays_and_becomes_its_own_note() {
+    appears_before_the_create_writes(false);
+}
+
+/// The watcher looks at the file while the create still holds its name: what it saw then names
+/// the note the create takes back (merge-queue run 42092395379).
+#[test]
+fn a_file_the_watcher_sees_while_the_create_holds_its_name_becomes_its_own_note() {
+    appears_before_the_create_writes(true);
+}
+
+fn appears_before_the_create_writes(watcher_looks_first: bool) {
     let (mut e, notes) = opened();
     let open = e.session.current().unwrap();
     // The very bytes the create would write: the own-write record must not take them for its.
     let failed = notes.create_checked(
         &open,
         plan(),
-        &mut || e.write("work/Plan.md", PLAN_FILE),
+        &mut || {
+            e.write("work/Plan.md", PLAN_FILE);
+            if watcher_looks_first {
+                std::thread::sleep(vault_env::QUIET);
+            }
+        },
         &mut || Ok(()),
     );
     assert!(

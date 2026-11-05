@@ -192,6 +192,7 @@ impl NotesService {
             echo.cancel_write(&rel);
             undo_record(&writer, &id);
             remove_row(&mut lane, &id);
+            self.tier.not_written(session, &rel);
             return Err(match error {
                 NoteFileError::AlreadyExists => NotesError::NameConflict,
                 error => error.into(),
