@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Tumatakbo pa ang pagpapalit ng pangalan ng #{from} sa #{to}. Subukan ulit kapag natapos ito.",
+    "renameUnfinished": "Hindi natapos ang pagpapalit ng pangalan ng #{from} sa #{to} para sa {count, plural, one {# tala} other {# tala}}. Palitan ulit ang pangalan ng #{from} sa #{to} para matapos ito.",
     "mergeSameTag": "Pareho ang source at target na tag",
     "categoryNameRequired": "Kailangan ang pangalan ng kategorya",
     "pinNoteFailed": "Hindi ma-pin ang tala",

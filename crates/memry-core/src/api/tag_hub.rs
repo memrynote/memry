@@ -9,9 +9,11 @@ use std::sync::Arc;
 use crate::api::errors::{AuthError, StorageError};
 use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
+use crate::domain::body_tags;
+use crate::domain::notes::failed;
 use crate::domain::tag_admin;
 use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
-use crate::domain::tag_rename::{self, Holder, HolderRenamed, RenameJob, Started};
+use crate::domain::tag_rename::{self, Holder, RenameJob, Started};
 use crate::domain::tags;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
@@ -73,10 +75,22 @@ impl TagHub {
     }
 
     /// The recorded rename in the record of the holder `id`, struck off the plan
-    /// ([`tag_rename::rename_holder`]).
-    pub fn rename_in(&self, id: &str) -> Result<HolderRenamed, StorageError> {
+    /// ([`tag_rename::rename_holder`]); `false` when the record did not change.
+    pub fn rename_in(&self, id: &str) -> Result<bool, StorageError> {
         self.db
             .call_blocking(|conn| tag_rename::rename_holder(conn, id, &self.device_id, now_ms()))
+    }
+
+    /// The `#tags` the body of `id` carries now, cached ([`body_tags::write`]): a rename that
+    /// wrote the file says them before the vault reads the file back, so the tag list read when
+    /// the rename answers counts the new name alone. The read back writes the same.
+    pub fn cache_body_tags(&self, id: &str, tags: &[String]) -> Result<(), StorageError> {
+        self.db.call_blocking(|conn| {
+            // One write: a cache half cleared drops tags the body has.
+            let tx = conn.unchecked_transaction().map_err(failed)?;
+            body_tags::write(&tx, id, tags)?;
+            tx.commit().map_err(failed)
+        })
     }
 
     /// Whether the recorded rename still lists the holder `id` ([`tag_rename::listed`]).

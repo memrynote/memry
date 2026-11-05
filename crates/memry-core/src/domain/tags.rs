@@ -222,6 +222,23 @@ pub fn rename(
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
+    rename_with(
+        conn,
+        item_id,
+        |tags, pins| renamed_lists(tags, pins, old, new),
+        device_id,
+        now_ms,
+    )
+}
+
+/// [`rename`] with the lists `next` makes of the item's `tags` and `pinnedTags`.
+pub fn rename_with(
+    conn: &Connection,
+    item_id: &str,
+    next: impl FnOnce(&[String], Option<&[String]>) -> (Vec<String>, Option<Vec<String>>),
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
     let item_type = match live_type(conn, item_id) {
         Ok(item_type) => item_type,
         Err(StorageError::NotFound { .. }) => return Ok(false),
@@ -234,7 +251,7 @@ pub fn rename(
         true => Some(read_tags(object, "pinnedTags", item_type, item_id)?),
         false => None,
     };
-    let (next, next_pins) = renamed_lists(&tags, pins.as_deref(), old, new);
+    let (next, next_pins) = next(&tags, pins.as_deref());
     let pinned = next_pins.filter(|next_pins| Some(next_pins) != pins.as_ref());
     if next == tags && pinned.is_none() {
         return Ok(false);
@@ -254,13 +271,16 @@ pub fn renamed_lists(
     new: &str,
 ) -> (Vec<String>, Option<Vec<String>>) {
     let next = renamed_list(tags, old, new);
-    let pins = pins.map(|pins| {
-        dedupe(renamed_list(pins, old, new).into_iter().map(|pin| {
-            let kept = next.iter().find(|tag| same_tag(tag, &pin));
-            kept.cloned().unwrap_or(pin)
-        }))
-    });
+    let pins = pins.map(|pins| spelled_in(renamed_list(pins, old, new), &next));
     (next, pins)
+}
+
+/// `pins` each in the spelling `tags` holds it in, deduped.
+pub fn spelled_in(pins: Vec<String>, tags: &[String]) -> Vec<String> {
+    dedupe(pins.into_iter().map(|pin| {
+        let kept = tags.iter().find(|tag| same_tag(tag, &pin));
+        kept.cloned().unwrap_or(pin)
+    }))
 }
 
 /// The live note or journal day's `tags` and `pinnedTags` (`None` without the key), `None`
