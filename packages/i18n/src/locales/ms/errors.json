@@ -16,7 +16,8 @@
     "corrupted": "Bilik kebal ini nampaknya telah rosak. Cuba pulihkan daripada sandaran.",
     "configChangeNotPorted": "Versi ini belum boleh menukar folder jurnal, format tarikh atau folder yang dikecualikan. Tetapan tersimpan anda dikekalkan.",
     "journalFormatIncomplete": "Format tarikh ini tidak dapat menamakan setiap hari, jadi ia tidak disimpan. Sertakan tahun, bulan dan hari.",
-    "journalDaysNotRenamed": "Format tarikh tidak ditukar kerana beberapa hari jurnal tidak dapat dinamakan semula mengikutnya ({count}). Mungkin sesuatu fail sudah mempunyai nama baharu sesuatu hari."
+    "journalDaysNotRenamed": "Format tarikh tidak ditukar kerana beberapa hari jurnal tidak dapat dinamakan semula mengikutnya ({count}). Mungkin sesuatu fail sudah mempunyai nama baharu sesuatu hari.",
+    "journalUnlisted": "Folder jurnal tidak dapat dibaca, jadi format tarikh tidak ditukar. Pastikan anda mempunyai akses kepadanya."
   },
   "note": {
     "notFound": "Nota ini tidak ditemui. Ia mungkin telah dipadamkan.",

@@ -55,6 +55,7 @@ use crate::notes::error::NotesError;
 use crate::notes::frontmatter::is_reserved_key;
 use crate::notes::service::NotesService;
 use crate::session::OpenVault;
+use crate::vault::config::settings::day_names;
 use crate::vault::consumer::rows::{Lane, RowStat};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
@@ -104,6 +105,8 @@ impl NotesService {
         day: NewDay,
         after_file: &mut dyn FnMut() -> Result<(), NotesError>,
     ) -> Result<JournalEntryView, NotesError> {
+        // The file is named in the format a change in progress saves (`vault::config::settings`).
+        let _format = day_names();
         let root = open.path.as_path();
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;

@@ -55,7 +55,6 @@
 //! it, again. Electron stops its watcher for the pass instead. The refusal when a lock covers a file
 //! is Step 14's (#3531).
 
-use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -66,41 +65,20 @@ use memry_core::api::vault::Vault;
 use super::consumer::rows::{RowError, RowOwner, RowSession};
 use super::consumer::{Applied, MoveKind, VaultTier};
 use super::file_move::FileMove;
-use super::journal_format::{
-    JournalDate, JournalFormat, normalize_journal_date_format, normalize_journal_folder,
-};
+use super::journal_format::{normalize_journal_date_format, normalize_journal_folder};
 use super::paths::{resolve_vault_file, safe_join};
 use super::watch::EchoGuard;
 use crate::shell::file_open::Resolution;
 use crate::web::extract::utils::js;
 
+mod plan;
+
+pub use plan::{
+    JournalRename, JournalRenamePlan, JournalRenameSkip, SkipReason, is_complete_journal_format,
+    plan_journal_renames,
+};
+
 const SCOPE: &str = "journal_rename";
-
-/// One file to move, relative to the journal folder with `/` separators.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct JournalRename {
-    pub from: String,
-    pub to: String,
-    pub date: JournalDate,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SkipReason {
-    TargetExists,
-    Unrepresentable,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct JournalRenameSkip {
-    pub file: String,
-    pub reason: SkipReason,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct JournalRenamePlan {
-    pub renames: Vec<JournalRename>,
-    pub skipped: Vec<JournalRenameSkip>,
-}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct JournalRenameResult {
@@ -119,74 +97,6 @@ pub struct JournalVault<'a> {
     pub tier: &'a VaultTier,
 }
 
-/// Two-digit month and day, distinct from each other and across both dates, so a format
-/// missing the year, the month or the day cannot name them both.
-const PROBE_DATES: [&str; 2] = ["2026-11-28", "2031-12-31"];
-
-/// True when every date renders to a name that parses back to the same date.
-pub fn is_complete_journal_format(format: &str) -> bool {
-    let format = JournalFormat::new(format);
-    PROBE_DATES.iter().all(|iso| {
-        let date = JournalDate::from_iso(iso).expect("a probe date");
-        format.parse(&format.render(date)) == Some(date)
-    })
-}
-
-/// The renames of the files of the journal folder (`/`-separated paths relative to it) from
-/// `old_format` to `new_format`. Names are compared case-insensitively: on the default macOS
-/// and Windows volumes two names differing only in case are one file.
-pub fn plan_journal_renames(
-    files: &[String],
-    old_format: &str,
-    new_format: &str,
-) -> JournalRenamePlan {
-    let (old, new) = (
-        JournalFormat::new(old_format),
-        JournalFormat::new(new_format),
-    );
-    let present: HashSet<String> = files.iter().map(|name| js::to_lower(name)).collect();
-    let mut claimed = HashSet::new();
-    let mut plan = JournalRenamePlan::default();
-    // Electron sorts by UTF-16 units. Two names of one format differ only where their
-    // tokens' ASCII is, where byte order is the same.
-    let mut sorted: Vec<&String> = files.iter().collect();
-    sorted.sort();
-    for name in sorted {
-        let Some(stem) = name.strip_suffix(".md") else {
-            continue;
-        };
-        let Some(date) = old.parse(stem) else {
-            continue;
-        };
-        let stem = new.render(date);
-        let target = format!("{stem}.md");
-        if target == *name {
-            continue;
-        }
-        let skip = |reason| JournalRenameSkip {
-            file: name.clone(),
-            reason,
-        };
-        if new.parse(&stem) != Some(date) {
-            plan.skipped.push(skip(SkipReason::Unrepresentable));
-            continue;
-        }
-        let key = js::to_lower(&target);
-        let case_only = key == js::to_lower(name);
-        if (present.contains(&key) && !case_only) || claimed.contains(&key) {
-            plan.skipped.push(skip(SkipReason::TargetExists));
-            continue;
-        }
-        claimed.insert(key);
-        plan.renames.push(JournalRename {
-            from: name.clone(),
-            to: target,
-            date,
-        });
-    }
-    plan
-}
-
 /// Renames the journal files of `journal_folder` from `old_format` to `new_format`, both taken
 /// in their canonical form. An error only when the journal folder could not be listed; a file
 /// that could not move is counted in `failed` and the pass goes on.
@@ -195,6 +105,25 @@ pub fn rename_journals_for_format_change(
     journal_folder: &str,
     old_format: &str,
     new_format: &str,
+) -> io::Result<JournalRenameResult> {
+    rename_journals_for_format_change_checked(
+        at,
+        journal_folder,
+        old_format,
+        new_format,
+        &mut || {},
+    )
+}
+
+/// [`rename_journals_for_format_change`] with a hook that runs between the two steps of each
+/// move, where a crash would stop it, so a test can see what a crash there leaves.
+#[doc(hidden)]
+pub fn rename_journals_for_format_change_checked(
+    at: JournalVault<'_>,
+    journal_folder: &str,
+    old_format: &str,
+    new_format: &str,
+    between: &mut dyn FnMut(),
 ) -> io::Result<JournalRenameResult> {
     let mut result = JournalRenameResult::default();
     let folder = normalize_journal_folder(journal_folder);
@@ -236,7 +165,13 @@ pub fn rename_journals_for_format_change(
     let mut skipped = plan.skipped;
     for rename in plan.renames {
         let names = (rename.from.as_str(), rename.to.as_str());
-        match move_one(at, (&rows, session), &journal, names, First::Row) {
+        match move_one(
+            at,
+            (&rows, session),
+            &journal,
+            names,
+            (First::Row, &mut *between),
+        ) {
             Ok(Moved::Done) => {
                 journal.remove_empty(&at.tier.echo(), folders_of(&rename.from));
                 result.moved.push(rename);
@@ -292,7 +227,13 @@ pub fn revert_journal_renames(
     let mut left = Vec::new();
     for rename in moved.iter().rev() {
         let names = (rename.to.as_str(), rename.from.as_str());
-        match move_one(at, (&rows, session), &journal, names, First::File) {
+        match move_one(
+            at,
+            (&rows, session),
+            &journal,
+            names,
+            (First::File, &mut || {}),
+        ) {
             Ok(Moved::Done) => {
                 journal.remove_empty(&at.tier.echo(), folders_of(&rename.to));
                 continue;
@@ -340,14 +281,14 @@ enum First {
     File,
 }
 
-/// Moves one file and its row under the lane, `first` first; `from` and `to` are relative to
-/// the journal folder.
+/// Moves one file and its row under the lane, `first` first and `between` run after it; `from`
+/// and `to` are relative to the journal folder.
 fn move_one(
     at: JournalVault<'_>,
     (rows, session): (&RowOwner, RowSession),
     journal: &Journal,
     (from, to): (&str, &str),
-    first: First,
+    (first, between): (First, &mut dyn FnMut()),
 ) -> Result<Moved, MoveError> {
     let (Some(source), Some(target)) = (journal.path(from), journal.path(to)) else {
         return Err(MoveError::Outside);
@@ -389,6 +330,7 @@ fn move_one(
                 row_refused = Some(error);
                 return Err(failed);
             }
+            between();
             rename().inspect_err(|_| {
                 if let Err(back) = lane.rename(&row.note_id, &from_path) {
                     // The row stays at the new name and the file at the old, a day the next
@@ -411,7 +353,10 @@ fn move_one(
         };
     }
     if let Some(row) = row.as_ref().filter(|_| first == First::File)
-        && let Err(error) = lane.rename(&row.note_id, &to_path)
+        && let Err(error) = {
+            between();
+            lane.rename(&row.note_id, &to_path)
+        }
     {
         // File and row must agree, or the moved file is taken for a new note and the row
         // stranded.

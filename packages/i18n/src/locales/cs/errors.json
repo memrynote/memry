@@ -16,7 +16,8 @@
     "corrupted": "Tento trezor je zřejmě poškozený. Zkuste ho obnovit ze zálohy.",
     "configChangeNotPorted": "Tato verze zatím nemůže změnit složku deníku, formát data ani vyloučené složky. Uložené nastavení zůstává.",
     "journalFormatIncomplete": "Tento formát data neumí pojmenovat každý den, proto nebyl uložen. Uveďte rok, měsíc a den.",
-    "journalDaysNotRenamed": "Formát data se nezměnil, protože některé dny deníku se na něj nepodařilo přejmenovat ({count}). Nový název dne možná už má jiný soubor."
+    "journalDaysNotRenamed": "Formát data se nezměnil, protože některé dny deníku se na něj nepodařilo přejmenovat ({count}). Nový název dne možná už má jiný soubor.",
+    "journalUnlisted": "Složku deníku se nepodařilo přečíst, proto se formát data nezměnil. Ověřte, že k ní máte přístup."
   },
   "note": {
     "notFound": "Tato poznámka nebyla nalezena. Možná byla smazána.",

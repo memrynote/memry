@@ -24,7 +24,7 @@
 
 use std::io;
 use std::path::Path;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError, RwLock, RwLockReadGuard};
 
 use memry_core::api::vault::Vault;
 
@@ -35,8 +35,8 @@ use super::{
 use crate::vault::consumer::VaultTier;
 use crate::vault::journal_format::{normalize_journal_date_format, normalize_journal_folder};
 use crate::vault::journal_rename::{
-    JournalRename, JournalVault, is_complete_journal_format, rename_journals_for_format_change,
-    revert_journal_renames,
+    JournalRename, JournalVault, is_complete_journal_format,
+    rename_journals_for_format_change_checked, revert_journal_renames,
 };
 
 const SCOPE: &str = "vault_settings";
@@ -44,6 +44,18 @@ const SCOPE: &str = "vault_settings";
 /// One update at a time, from its first read to its announcement, as Electron's main thread
 /// runs them: two windows saving at once are heard in the order their writes land.
 static UPDATES: Mutex<()> = Mutex::new(());
+
+/// The date format a new day file is named in. A format change holds it alone from its
+/// renames to its save; a day create holds it shared from naming its file to writing it
+/// ([`day_names`]). A day made during the renames would otherwise take the old format's name
+/// after the folder was listed, and stay a note under the new format.
+static DAY_NAMES: RwLock<()> = RwLock::new(());
+
+/// Held by a day create while it names and writes its file (`journal::write`). Lock order:
+/// this, then the rows' lane.
+pub(crate) fn day_names() -> RwLockReadGuard<'static, ()> {
+    DAY_NAMES.read().unwrap_or_else(PoisonError::into_inner)
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
@@ -92,8 +104,21 @@ fn normalized(config: VaultConfig) -> VaultConfig {
 pub fn update_vault_settings(
     root: &Path,
     days: Option<(&Arc<Vault>, &VaultTier)>,
+    patch: VaultConfigPatch,
+    announce: impl FnOnce(&VaultConfig),
+) -> Result<VaultConfig, SettingsError> {
+    update_vault_settings_checked(root, days, patch, announce, &mut || {})
+}
+
+/// [`update_vault_settings`] with a hook between the two steps of each day's rename
+/// (`rename_journals_for_format_change_checked`), so a test can act there.
+#[doc(hidden)]
+pub fn update_vault_settings_checked(
+    root: &Path,
+    days: Option<(&Arc<Vault>, &VaultTier)>,
     mut patch: VaultConfigPatch,
     announce: impl FnOnce(&VaultConfig),
+    between: &mut dyn FnMut(),
 ) -> Result<VaultConfig, SettingsError> {
     let _one_at_a_time = UPDATES.lock().unwrap_or_else(PoisonError::into_inner);
     let current =
@@ -116,11 +141,15 @@ pub fn update_vault_settings(
     if patch == VaultConfigPatch::default() {
         return Ok(current);
     }
+    let _no_day_made = patch
+        .journal_date_format
+        .is_some()
+        .then(|| DAY_NAMES.write().unwrap_or_else(PoisonError::into_inner));
     let renamed = match &patch.journal_date_format {
         Some(format) => {
             let (vault, tier) = days.ok_or(SettingsError::NoTier)?;
             let at = JournalVault { root, vault, tier };
-            Some((at, renamed_for(at, &current, format)?))
+            Some((at, renamed_for(at, &current, format, between)?))
         }
         None => None,
     };
@@ -140,15 +169,17 @@ fn renamed_for(
     at: JournalVault<'_>,
     current: &VaultConfig,
     format: &str,
+    between: &mut dyn FnMut(),
 ) -> Result<Vec<JournalRename>, SettingsError> {
     if !is_complete_journal_format(format) {
         return Err(SettingsError::IncompleteFormat);
     }
-    let renamed = rename_journals_for_format_change(
+    let renamed = rename_journals_for_format_change_checked(
         at,
         &current.journal_folder,
         &current.journal_date_format,
         format,
+        between,
     )
     .map_err(SettingsError::JournalUnlisted)?;
     let left = renamed.skipped + renamed.failed;

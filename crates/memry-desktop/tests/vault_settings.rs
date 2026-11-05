@@ -10,12 +10,15 @@ use crate::vault_env;
 
 use std::fs;
 use std::path::Path;
-use std::sync::{Mutex, mpsc};
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::Duration;
 
+use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::journal::write::NewDay;
 use memry_desktop::notes::identity::NotesIdentity;
+use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::config::settings::{
-    SettingsError, update_vault_settings, vault_settings,
+    SettingsError, update_vault_settings, update_vault_settings_checked, vault_settings,
 };
 use memry_desktop::vault::config::{VaultConfig, VaultConfigPatch, config_path};
 use memry_desktop::vault::consumer::Applied;
@@ -25,7 +28,16 @@ use vault_env::{Env, QUIET, env, indexed};
 /// An open vault, its journal days made by the app's identity, whose config is `config` and
 /// which holds `files`.
 fn opened(config: Value, files: &[(&str, &str)]) -> Env {
-    let mut e = env(|store| Some(NotesIdentity::new(store)));
+    opened_keeping(config, files).0
+}
+
+/// [`opened`], with the store a `NotesService` of it needs.
+fn opened_keeping(config: Value, files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
+    let mut kept: Option<Arc<dyn SecureStore>> = None;
+    let mut e = env(|store| {
+        kept = Some(store.clone());
+        Some(NotesIdentity::new(store))
+    });
     fs::create_dir_all(e.vault.join(".memry")).unwrap();
     fs::write(
         config_path(&e.vault),
@@ -37,7 +49,7 @@ fn opened(config: Value, files: &[(&str, &str)]) -> Env {
     }
     e.open();
     e.facts_until(indexed);
-    e
+    (e, kept.expect("the store"))
 }
 
 fn update(
@@ -488,4 +500,88 @@ fn without_a_tier_only_a_format_change_is_refused() {
     assert!(settings.journal_show_in_sidebar);
     let refused = update_vault_settings(&e.vault, None, format("YYYY-MM-DD dddd"), |_| {});
     assert!(matches!(refused, Err(SettingsError::NoTier)), "{refused:?}");
+}
+
+/// Each day's row takes its new name before its file does, so a crash between the two leaves
+/// the file at the name the saved (old) format reads and the row at the new one, the state
+/// `a_crash_mid_format_change_keeps_each_day_on_the_next_open` reopens as the day. Moved the
+/// other way, the file would sit at a name the old format does not read, and the next open
+/// would delete the day.
+#[test]
+fn between_a_days_two_moves_its_file_keeps_the_saved_formats_name() {
+    let e = opened(
+        json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD" }),
+        &[("journal/2025-01-02.md", "A day\n")],
+    );
+    let core = e.core();
+    let mut seen = Vec::new();
+    update_vault_settings_checked(
+        &e.vault,
+        Some((&core, &e.tier)),
+        format("YYYY-MM-DD dddd"),
+        |_| {},
+        &mut || {
+            seen.push((
+                e.vault.join("journal/2025-01-02.md").exists(),
+                e.vault.join("journal/2025-01-02 Thursday.md").exists(),
+                e.rows(),
+            ));
+        },
+    )
+    .unwrap();
+
+    let row = (
+        "j2025-01-02".to_owned(),
+        "journal/2025-01-02 Thursday.md".to_owned(),
+    );
+    assert_eq!(seen, [(true, false, vec![row.clone()])]);
+    assert_eq!(e.rows(), [row]);
+}
+
+/// A day made while a format change renames the days waits for it and is named in the new
+/// format: named in the old one after the folder was listed, it would be a note once the new
+/// format is saved, deleted as a day by its next move.
+#[test]
+fn a_day_made_during_a_format_change_takes_the_new_formats_name() {
+    let (e, store) = opened_keeping(
+        json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD" }),
+        &[
+            ("journal/2025-01-02.md", "A day\n"),
+            ("journal/2025-01-03.md", "Another day\n"),
+        ],
+    );
+    let notes = NotesService::new(e.tier.clone(), store);
+    let open = e.session.current().unwrap();
+    let core = e.core();
+    let made = std::thread::scope(|scope| {
+        let mut maker = None;
+        update_vault_settings_checked(
+            &e.vault,
+            Some((&core, &e.tier)),
+            format("YYYY-MM-DD dddd"),
+            |_| {},
+            &mut || {
+                if maker.is_some() {
+                    return;
+                }
+                let new_day = NewDay {
+                    date: "2025-01-06".to_owned(),
+                    content: "Typed during the change".to_owned(),
+                    ..NewDay::default()
+                };
+                let (notes, open) = (&notes, &open);
+                maker = Some(scope.spawn(move || notes.create_day(open, new_day)));
+                // timing-bound: the create gets this long to queue for the rows' lane, which
+                // the pass lets go of before its next day. Held off by the format change, it
+                // waits whatever the time.
+                std::thread::sleep(Duration::from_millis(300));
+            },
+        )
+        .unwrap();
+        maker.unwrap().join().unwrap()
+    });
+
+    made.unwrap();
+    assert!(e.vault.join("journal/2025-01-06 Monday.md").exists());
+    assert!(!e.vault.join("journal/2025-01-06.md").exists());
 }

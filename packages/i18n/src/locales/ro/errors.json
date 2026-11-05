@@ -16,7 +16,8 @@
     "corrupted": "Acest seif pare a fi corupt. Încercați să restaurați dintr-o copie de rezervă.",
     "configChangeNotPorted": "Această versiune nu poate încă schimba dosarul de jurnal, formatul datei sau dosarele excluse. Setarea salvată este păstrată.",
     "journalFormatIncomplete": "Acest format de dată nu poate numi fiecare zi, așa că nu a fost salvat. Include anul, luna și ziua.",
-    "journalDaysNotRenamed": "Formatul datei nu a fost schimbat, deoarece unele zile din jurnal nu au putut fi redenumite după el ({count}). Poate că un fișier are deja noul nume al unei zile."
+    "journalDaysNotRenamed": "Formatul datei nu a fost schimbat, deoarece unele zile din jurnal nu au putut fi redenumite după el ({count}). Poate că un fișier are deja noul nume al unei zile.",
+    "journalUnlisted": "Dosarul de jurnal nu a putut fi citit, așa că formatul datei nu a fost schimbat. Verifică dacă ai acces la el."
   },
   "note": {
     "notFound": "Această notiță nu a putut fi găsită. Este posibil să fi fost ștearsă.",

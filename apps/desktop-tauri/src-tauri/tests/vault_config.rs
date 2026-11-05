@@ -189,3 +189,34 @@ fn a_format_a_day_cannot_take_is_refused_with_the_count() {
     );
     assert!(heard.lock().unwrap().is_empty());
 }
+
+/// A journal folder that cannot be listed refuses the format with a message Settings can show,
+/// not the system error's text.
+#[cfg(unix)]
+#[test]
+fn a_journal_folder_that_cannot_be_listed_is_refused_in_words() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let (mocked, heard) = opened();
+    let daily = mocked.vault.join("Daily");
+    fs::set_permissions(&daily, fs::Permissions::from_mode(0o000)).unwrap();
+    let refused = mocked.invoke(
+        "vault_update_config",
+        json!({ "config": { "journalDateFormat": "YYYY-MM-DD dddd" } }),
+    );
+    fs::set_permissions(&daily, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let refused = refused.unwrap_err();
+    assert_eq!(
+        (&refused["kind"], &refused["code"]),
+        (&json!("storage"), &json!("journal_unlisted"))
+    );
+    assert!(
+        refused["message"]
+            .as_str()
+            .unwrap()
+            .starts_with("The journal folder couldn't be read"),
+        "{refused}"
+    );
+    assert!(heard.lock().unwrap().is_empty());
+}

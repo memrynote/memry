@@ -307,7 +307,8 @@ pub async fn vault_get_config<R: Runtime>(app: AppHandle<R>) -> Result<VaultConf
 /// files renamed to it first, and answers the settings after it, which every window hears as
 /// [`VaultConfigChangedEvent`], in the order the writes land. A change that is not ported yet
 /// is refused as `config_change_not_ported`, and a format not every day can take as
-/// `journal_format_incomplete` or `journal_days_not_renamed` (`vault::config::settings`).
+/// `journal_format_incomplete`, `journal_unlisted` or `journal_days_not_renamed`
+/// (`vault::config::settings`).
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_update_config<R: Runtime>(
@@ -339,6 +340,7 @@ pub async fn vault_update_config<R: Runtime>(
 const NOT_PORTED_KEY: &str = "errors:vault.configChangeNotPorted";
 const FORMAT_INCOMPLETE_KEY: &str = "errors:vault.journalFormatIncomplete";
 const DAYS_NOT_RENAMED_KEY: &str = "errors:vault.journalDaysNotRenamed";
+const UNLISTED_KEY: &str = "errors:vault.journalUnlisted";
 
 fn localized<R: Runtime>(app: &AppHandle<R>, key: &str) -> String {
     localized_with(app, key, &i18n::Args::new())
@@ -370,7 +372,15 @@ fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> Comm
             )
         }
         SettingsError::JournalUnlisted(error) => {
-            CommandError::new(ErrorKind::Storage, "journal_unlisted", error.to_string())
+            tracing::warn!(
+                scope = "vault_config",
+                "the journal folder was not listed: {error}"
+            );
+            CommandError::new(
+                ErrorKind::Storage,
+                "journal_unlisted",
+                localized(app, UNLISTED_KEY),
+            )
         }
         SettingsError::NoTier => {
             CommandError::new(ErrorKind::Internal, "no_vault_tier", "no vault tier")
