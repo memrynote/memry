@@ -19,7 +19,7 @@ pnpm dev:tauri
 
 The command opens a window titled MemryNote that loads the renderer from the Vite dev server on port 5173. The device profiles `pnpm dev:tauri:a`, `:b` and `:c` run separate profiles side by side, each with its own data and log directory. Plain `pnpm dev:tauri` hashes the checkout path into its profile, so two checkouts do not share state.
 
-The backend is not ported yet, so a call to `window.api` rejects with `NotPortedError`. The renderer shows its error state until a domain step ports the call.
+The backend is ported one domain at a time. A call no domain step has ported yet goes to `window.api`, which rejects it with `NotPortedError`, and the renderer shows its error state for that call.
 
 ## Build it
 
@@ -64,6 +64,18 @@ The renderer calls `vault_list`, `vault_select`, `vault_create`, `vault_switch`,
 
 To look at a running e2e build's data, start it with `node apps/desktop-tauri/scripts/agent-app.mjs start`, then run `agent-app.mjs query "SELECT count(*) AS n FROM sync_items"` (or `index-query` for `index.db`). Only one read statement is accepted.
 
+## Notes, folders and journal
+
+The note, folder, journal, template, tag and property services are in `crates/memry-desktop/src/notes/`, `journal/`, `templates/` and `tags/`. [Notes and Folders (Tauri)](/architecture/notes-and-folders) explains the order each operation writes in and the differences from Electron. Every operation that changes an existing note's text goes through the app-edit seam, `memry_desktop::vault::app_edit`, never a direct file write.
+
+Their tests run on a real vault in a temp dir with the real databases, one file per area (`notes_moves`, `notes_folder_move`, `journal_update`, `templates` and more):
+
+```bash
+cd crates && cargo test -p memry-desktop --test notes_service
+```
+
+The e2e specs are in `apps/desktop-tauri/e2e/specs/notes/`. Run one with `pnpm --filter @memry/desktop-tauri test:e2e -- --spec <path>` after `pnpm --filter @memry/desktop-tauri build:e2e`.
+
 ## Two renderers
 
 Until the cutover deletes the Electron app, `apps/desktop-tauri/src/renderer` is a copy of `apps/desktop/src/renderer`. A critical renderer fix lands in both in the same PR. The rest of the rules are in `apps/desktop-tauri/AGENTS.md`.
@@ -76,7 +88,7 @@ The Tauri process speaks the `errors`, `menu`, `system` and `notes` namespaces o
 
 **Vault config and init.** `memry_desktop::vault::config` owns `<vault>/.memry/config.json`: every write is one locked read-modify-write through `fs_atomic`, a read is capped (4 MiB, serde_json's 128-level recursion limit, no pipes, no links out of the vault). `vault::init::init_vault` runs on open only when `.memry` does not exist (`initVault`), and the open counts the vault's `.md` files into the registry's `noteCount`.
 
-**Vault watcher.** `memry_desktop::vault::watch` turns OS file events into `VaultEvent` facts (`Added`, `Changed`, `Removed`, `Renamed`, `Unsupported`, `Unreadable`, `Unreachable`/`Reachable`, `Rescanned`, `WatchFailed`) by comparing the disk with `note_files` and with what it already reported. It writes no row and no file. `VaultTier::register` starts it at `OpenStage::Watcher` and joins it on close; today the sink only logs event kinds, and the consumers (index update, the write-back's ingest of an outside edit with the CRDT feed) are Step 12e and Step 13. A writer tells `VaultTier::echo()` (`EchoGuard`) the path and hash it is about to write, so its own write is dropped; the record absorbs only that exact content. One `notify` watcher feeds a bounded channel; a full channel, or more than 100000 debounced paths, becomes one full rescan. A removal is reported only after a 500 ms rename window, with the vault reachable and the file and its iCloud placeholder absent; a rescan that finds more than 20 files and more than 25 % of the rows missing, or whose walk was cut short, reports none. A removed note whose content hash appears at another path is one `Renamed`; a note with no stored hash never pairs. Hidden names, the root `attachments` folder and excluded folders are ignored.
+**Vault watcher.** `memry_desktop::vault::watch` turns OS file events into `VaultEvent` facts (`Added`, `Changed`, `Removed`, `Renamed`, `Unsupported`, `Unreadable`, `Unreachable`/`Reachable`, `Rescanned`, `WatchFailed`) by comparing the disk with `note_files` and with what it already reported. It writes no row and no file. `VaultTier::register` starts it at `OpenStage::Watcher` and joins it on close. The consumer (`vault::consumer`) applies its facts to the `note_files` rows and the note documents, and the note index and the shell's note events follow the consumer's row facts ([Vault Files (Tauri)](/architecture/vault-files)). A writer tells `VaultTier::echo()` (`EchoGuard`) the path and hash it is about to write, so its own write is dropped; the record absorbs only that exact content. One `notify` watcher feeds a bounded channel; a full channel, or more than 100000 debounced paths, becomes one full rescan. A removal is reported only after a 500 ms rename window, with the vault reachable and the file and its iCloud placeholder absent; a rescan that finds more than 20 files and more than 25 % of the rows missing, or whose walk was cut short, reports none. A removed note whose content hash appears at another path is one `Renamed`; a note with no stored hash never pairs. Hidden names, the root `attachments` folder and excluded folders are ignored.
 
 **Settings.** `memry_desktop::settings::SettingsService` is the shell's one door to a vault's `AppSettings` (core owns the groups, the local and synced split and the clocks). A write also mirrors the portable `general` and `editor` fields into `<vault>/.memry/config.json` `preferences` (`vault::config`, the one owner of that file: read tolerantly, unknown keys and key order kept, a file it cannot parse is never replaced; the vault icon and the journal/exclude settings go through it too) and refreshes the startup cache in `memry-config.json` (`startupTheme`, `startupColorTheme`, `zoomFactor`, read only while no vault is open). Opening a vault seeds its settings from stored preferences once, while every portable value is still the default. The commands are generic over the group (`settings_get_group`, `settings_set_group`, `settings_get_local`, `settings_set_local`, `settings_reset_keyboard`); `lib/settings-api.ts` in the renderer gives each old `window.api.settings` function its name back. A write emits `SettingsChangedEvent { key, fields }` (names only) and one `setting_changed` per field. Synced fields need a device identity: `seams::secure_store::DeviceIdentityStore` keeps the device signing key in the OS keychain and moves the key that builds before Step 15 (#3532) kept in `<profile>/device-key`, never minting a new one over it. A locked keychain with no such file answers `Locked`, so nothing is minted; only a Linux system with no Secret Service at all keeps the key in that file (mode 0600) until a keychain appears.
 
