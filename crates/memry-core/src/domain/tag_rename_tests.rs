@@ -369,10 +369,7 @@ fn a_rename_under_the_old_name_lands_once_however_often_it_runs() {
             let mut stopped = stored(c)?.expect("job");
             stopped.pairs = vec![last];
             save(c, &stopped)?;
-            assert_eq!(
-                rename_holder(c, "n5", "phone", NOW + 2)?,
-                HolderRenamed::Renamed
-            );
+            assert!(rename_holder(c, "n5", "phone", NOW + 2)?);
             Ok(listed)
         })
         .expect("first part");
@@ -383,13 +380,11 @@ fn a_rename_under_the_old_name_lands_once_however_often_it_runs() {
         // The next open: what is left, then every part again over all it listed.
         rename_shared(c, "phone", NOW + 3)?;
         for holder in recorded(c)?.expect("plan").holders {
-            let renamed = rename_holder(c, &holder.id, "phone", NOW + 4)?;
-            assert_eq!(renamed, HolderRenamed::Renamed);
+            assert!(rename_holder(c, &holder.id, "phone", NOW + 4)?);
         }
         rename_shared(c, "phone", NOW + 5)?;
         for holder in &listed {
-            let renamed = rename_holder(c, &holder.id, "phone", NOW + 6)?;
-            assert_eq!(renamed, HolderRenamed::Unchanged);
+            assert!(!rename_holder(c, &holder.id, "phone", NOW + 6)?);
         }
         finish(c)
     })
@@ -420,10 +415,7 @@ fn an_unwritten_file_edit_is_forgotten_and_its_holder_stays_listed() {
         assert_eq!(started(c, "n1")?, None);
         assert_eq!(recorded(c)?.expect("plan").holders, listed);
 
-        assert_eq!(
-            rename_holder(c, "n1", "phone", NOW + 1)?,
-            HolderRenamed::Renamed
-        );
+        assert!(rename_holder(c, "n1", "phone", NOW + 1)?);
         start_holder(c, "n1", "b", "a")?;
         assert_eq!(started(c, "n1")?, None, "n1 is no longer listed");
         Ok(())
@@ -431,13 +423,14 @@ fn an_unwritten_file_edit_is_forgotten_and_its_holder_stays_listed() {
     .expect("unstart");
 }
 
-/// With its file edit begun, a holder's record is renamed only as it was then: one the outside
-/// edit of its renamed file carried the new name into is unchanged, and one an outside edit
-/// changed otherwise is left, as edited, and struck off.
+/// With its file edit begun, a holder's record takes what the rename made of its lists then,
+/// with what an edit changed since: untouched, it is renamed; carried the new name by its
+/// renamed header (a note), it is unchanged; changed in the old name's terms (a day's header,
+/// which keeps the old name), it is renamed and keeps the change, a tag added or removed.
 #[test]
-fn a_begun_holders_record_is_renamed_only_as_it_was_when_the_edit_began() {
+fn a_begun_holders_record_keeps_what_an_edit_changed_since_the_edit_began() {
     let (db, _d) = vault("tags-rename-begun");
-    let ids = ["s1", "s2", "s3"];
+    let ids = ["s1", "s2", "s3", "s4", "s5"];
     for id in ids {
         let payload = format!(r#"{{"title":"{id}","tags":["a","x"],"clock":{{"desk":1}}}}"#);
         seed(&db, "note", id, &payload);
@@ -445,7 +438,7 @@ fn a_begun_holders_record_is_renamed_only_as_it_was_when_the_edit_began() {
     db.call_blocking(|c| {
         let listed = holders(c, Vec::new(), "a")?;
         begin(c, &job("a", "a/b"), listed)?;
-        for id in ["s1", "s2", "s3"] {
+        for id in ids {
             start_holder(c, id, "b", "a")?;
         }
         let set = |c: &Connection, id: &str, list: &[&str]| {
@@ -454,12 +447,13 @@ fn a_begun_holders_record_is_renamed_only_as_it_was_when_the_edit_began() {
         };
         set(c, "s2", &["a/b", "x"])?;
         set(c, "s3", &["a/b", "x", "y"])?;
-        let renamed: Vec<HolderRenamed> = ["s1", "s2", "s3"]
+        set(c, "s4", &["a", "x", "y"])?;
+        set(c, "s5", &["a"])?;
+        let renamed: Vec<bool> = ids
             .iter()
             .map(|id| rename_holder(c, id, "phone", NOW + 2))
             .collect::<Result<_, _>>()?;
-        use HolderRenamed::{Left, Renamed, Unchanged};
-        assert_eq!(renamed, [Renamed, Unchanged, Left]);
+        assert_eq!(renamed, [true, false, false, true, true]);
         assert!(
             recorded(c)?
                 .expect("plan")
@@ -475,4 +469,6 @@ fn a_begun_holders_record_is_renamed_only_as_it_was_when_the_edit_began() {
     .expect("begun");
     assert_eq!(tags_of(&db, "note", "s1"), ["a/b", "x"]);
     assert_eq!(tags_of(&db, "note", "s3"), ["a/b", "x", "y"]);
+    assert_eq!(tags_of(&db, "note", "s4"), ["a/b", "x", "y"]);
+    assert_eq!(tags_of(&db, "note", "s5"), ["a/b"]);
 }

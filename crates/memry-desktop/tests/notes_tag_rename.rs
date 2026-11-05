@@ -20,6 +20,7 @@ use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput};
 use memry_desktop::vault::activity::ActivityFilter;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use vault_env::{Env, QUIET, env, indexed};
@@ -757,4 +758,119 @@ fn a_rename_left_unfinished_names_its_notes_and_can_be_stopped() {
     assert_eq!(record(&e, written, "tags"), ["a/b"]);
     let other = notes.rename_tag(&open, &job("a/b", "c"), &mut |_, _| {});
     assert_eq!(other.unwrap().notes_written, 1);
+}
+
+/// A crash after a day's body took the rename, then an outside edit adding a tag to its header,
+/// which keeps the old name: the record took the change in the old name's terms, and the rename
+/// gives it the new name and keeps the added tag.
+#[test]
+fn an_outside_header_edit_of_a_day_after_a_crash_keeps_its_tag_and_takes_the_new_name() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    let day = NewDay {
+        date: "2025-04-03".into(),
+        content: "Walked #a".into(),
+        tags: vec!["a".into()],
+        ..NewDay::default()
+    };
+    let day = notes.create_day(&open, day).unwrap().id;
+    measured(&e, &day);
+    let path = path_of(&e, &day);
+    notes.crash_after_next_rename_write();
+    let crashed = notes.rename_tag(&open, &job("a", "a/b"), &mut |_, _| {});
+    assert!(matches!(crashed, Err(NotesError::Closed)), "{crashed:?}");
+    let text = e.read(&path);
+    assert!(
+        text.contains("Walked #a/b") && text.contains("  - a\n"),
+        "{text}"
+    );
+    e.write(&path, &text.replace("  - a\n", "  - a\n  - x\n"));
+    until("the record took the outside edit", || {
+        record(&e, &day, "tags") == ["a", "x"]
+    });
+
+    let renamed = notes
+        .rename_tag(&open, &job("a", "a/b"), &mut |_, _| {})
+        .unwrap();
+    assert_eq!(renamed.failed_note_ids, std::slice::from_ref(&day));
+    assert_eq!(record(&e, &day, "tags"), ["a/b", "x"]);
+    assert!(plan(&e).is_none());
+}
+
+/// Each note's turn reads whether the plan still lists its note: one struck off since the run
+/// read the plan (its record and file renamed meanwhile) is not renamed again, so `a` to `a/b`
+/// never makes `a/b/b` of it.
+#[test]
+fn a_note_struck_off_since_the_run_read_the_plan_is_not_renamed_again() {
+    let (e, notes, store) = opened();
+    for (title, text) in [("One", "#a one"), ("Two", "#a two")] {
+        note(&notes, &e, title, text, &["a"]);
+    }
+    let open = e.session.current().unwrap();
+    let hub = hub(&e, &store);
+    let mut done_meanwhile = Vec::new();
+    notes
+        .rename_tag(&open, &job("a", "a/b"), &mut |done, _| {
+            if done != 1 || !done_meanwhile.is_empty() {
+                return;
+            }
+            for holder in plan(&e).expect("recorded").holders {
+                assert!(hub.rename_in(&holder.id).unwrap());
+                let renamed = NoteUpdateInput {
+                    id: holder.id.clone(),
+                    content: Some(e.body(&holder.id).replace("#a ", "#a/b ")),
+                    header_tags: Some(HeaderTagEditInput {
+                        add: Some(vec!["a/b".into()]),
+                        remove: Some(vec!["a".into()]),
+                        ..HeaderTagEditInput::default()
+                    }),
+                    ..NoteUpdateInput::default()
+                };
+                notes.update(&open, renamed).unwrap();
+                done_meanwhile.push(holder.id);
+            }
+        })
+        .unwrap();
+    let [id] = &done_meanwhile[..] else {
+        panic!("{done_meanwhile:?}")
+    };
+    let text = e.read(&path_of(&e, id));
+    assert!(
+        text.contains("  - a/b\n") && text.contains("#a/b ") && !text.contains("a/b/b"),
+        "{text}"
+    );
+    assert_eq!(record(&e, id, "tags"), ["a/b"]);
+}
+
+/// A resume asked while a rename runs waits for it, then finishes what it left (a refused
+/// rename holds the lock a moment too: a resume standing aside then would leave the rename
+/// for the next open, refusing every other until then).
+#[test]
+fn a_resume_asked_while_a_rename_runs_waits_and_finishes_what_it_left() {
+    let (e, notes, _) = opened();
+    for (title, text) in [("One", "#a one"), ("Two", "#a two")] {
+        note(&notes, &e, title, text, &["a"]);
+    }
+    let open = e.session.current().unwrap();
+    notes.fail_next_rename_edit();
+    let mut resume = None;
+    let first = notes
+        .rename_tag(&open, &job("a", "a/b"), &mut |done, _| {
+            if done == 1 && resume.is_none() {
+                let (notes, open) = (notes.clone(), open.clone());
+                resume = Some(std::thread::spawn(move || {
+                    notes.resume_tag_rename(&open, &|| false)
+                }));
+                std::thread::sleep(std::time::Duration::from_millis(200));
+            }
+        })
+        .unwrap();
+    assert_eq!(first.failed_note_ids.len(), 1, "{first:?}");
+    let resumed = resume.expect("asked").join().unwrap().unwrap();
+    let resumed = resumed.expect("it ran once the rename ended");
+    assert_eq!(
+        (resumed.notes_written, resumed.failed_note_ids),
+        (1, Vec::new())
+    );
+    assert!(plan(&e).is_none());
 }
