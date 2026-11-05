@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use crate::api::errors::AuthError;
+use crate::api::errors::{AuthError, StorageError};
 use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
 use crate::domain::tag_schema::{self, SaveError, SchemaEdit, Stamped};
@@ -24,6 +24,12 @@ impl TagSchemas {
             db: tasks.db,
             device_id: tasks.device_id,
         })
+    }
+
+    /// Hides the tag hub's ready-made tags on this device ([`tag_schema::dismiss_preset_offer`]).
+    pub fn dismiss_preset_offer(&self) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| tag_schema::dismiss_preset_offer(conn))
     }
 
     /// Applies `edit` to `tag`'s schema and writes it ([`tag_schema::save`]).

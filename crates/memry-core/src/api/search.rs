@@ -40,6 +40,7 @@ use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
 
 #[cfg(feature = "markdown")]
+mod objects;
 mod tags;
 
 /// One search result.

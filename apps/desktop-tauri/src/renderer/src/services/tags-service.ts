@@ -14,7 +14,12 @@ import type {
   CreateCategoryResponse,
   TagsClientAPI
 } from '../../../preload/index.d'
-import type { TagsProgressEvent } from '@memry/contracts/tag-schema-api'
+import type {
+  TagSchemaCommand,
+  TagSchemaCommandResult,
+  TagSchemaSnapshot,
+  TagsProgressEvent
+} from '@memry/contracts/tag-schema-api'
 import type { RenameTagResponse } from '@memry/contracts/tags-api'
 import { commands, events } from '../../../generated/bindings'
 import type { UnfinishedRenameView } from '../../../generated/bindings'
@@ -114,6 +119,9 @@ const ported = {
   unpinNoteFromTag: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> =>
     settled(() => commands.tagsUnpinNoteFromTag(input.noteId, input.tag)),
 
+  /** Every tag's resolved schema, the notes that are objects, and the ready-made tags. */
+  getSchemaSnapshot: (): Promise<TagSchemaSnapshot> => commands.tagsGetSchemaSnapshot(),
+
   /** Renames the tag and its children in every note's file and record; `runId` names its progress. */
   renameTag: async (input: {
     oldName: string
@@ -169,9 +177,11 @@ export const tagsService: TagsService = {
     return window.api.tags.mergeTag(input)
   },
 
-  getSchemaSnapshot: () => window.api.tags.getSchemaSnapshot(),
-
-  editSchema: (command) => window.api.tags.editSchema(command),
+  /** One schema command; rejects with the refusal's message. A field rename is not ported yet. */
+  editSchema: (command: TagSchemaCommand): Promise<TagSchemaCommandResult> =>
+    command.kind === 'rename-field'
+      ? window.api.tags.editSchema(command)
+      : commands.tagsEditSchema(command),
 
   previewImpact: (query) => window.api.tags.previewImpact(query),
 
@@ -230,6 +240,16 @@ export function onTagNotesChanged(callback: (event: TagNotesChangedEvent) => voi
 }
 
 /**
+ * Subscribe to the property definitions a tag field or a ready-made tag created.
+ * @returns Unsubscribe function
+ */
+export function onPropertyDefinitionChanged(
+  callback: (event: { name: string }) => void
+): () => void {
+  return subscribeToEvent(events.propertyDefinitionChangedEvent, callback)
+}
+
+/**
  * Subscribe to tag category changed events (create/rename/delete/reorder).
  * @returns Unsubscribe function
  */
@@ -239,6 +259,7 @@ export function onTagCategoriesChanged(callback: () => void): () => void {
 
 /** The subscriptions above that Rust events serve; `window.api` is typed without them. */
 export type PortedTagEvent =
+  | 'onPropertyDefinitionChanged'
   | 'onTagColorUpdated'
   | 'onTagCategoriesChanged'
   | 'onTagNotesChanged'

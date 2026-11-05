@@ -9,6 +9,7 @@
 //! ([`memry_core::api::tag_hub`]). This module checks the input at the boundary and shapes the
 //! answers.
 
+pub mod schema;
 pub mod view;
 
 use std::sync::Arc;

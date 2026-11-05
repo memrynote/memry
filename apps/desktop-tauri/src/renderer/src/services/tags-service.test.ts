@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
 
 const commands = vi.hoisted(() => ({
+  tagsGetSchemaSnapshot: vi.fn(),
+  tagsEditSchema: vi.fn(),
   tagsGetAllWithCounts: vi.fn(),
   tagsGetNotesByTag: vi.fn(),
   tagsUpdateColor: vi.fn(),
@@ -26,6 +28,7 @@ const events = vi.hoisted(() => {
     }
   })
   return {
+    propertyDefinitionChangedEvent: event('definitions'),
     tagColorUpdatedEvent: event('color'),
     tagCategoriesChangedEvent: event('categories'),
     tagNotesChangedEvent: event('notes'),
@@ -38,6 +41,7 @@ vi.mock('../../../generated/bindings', () => ({ commands, events }))
 
 import {
   tagsService,
+  onPropertyDefinitionChanged,
   onTagRenamed,
   onTagColorUpdated,
   onTagCategoriesChanged,
@@ -147,6 +151,33 @@ describe('tags-service', () => {
       message: 'disk'
     })
     await expect(tagsService.listCategories()).resolves.toEqual({ success: false, error: 'disk' })
+  })
+
+  it('reads and edits tag schemas through the commands, a field rename still on window.api', async () => {
+    const snapshot = { tags: {}, objects: {}, presets: [], presetStripDismissed: false }
+    commands.tagsGetSchemaSnapshot.mockResolvedValue(snapshot)
+    expect(await tagsService.getSchemaSnapshot()).toBe(snapshot)
+
+    const command = { kind: 'remove-field' as const, tag: 'person', name: 'Role' }
+    commands.tagsEditSchema.mockResolvedValue({ snapshot })
+    expect(await tagsService.editSchema(command)).toEqual({ snapshot })
+    expect(commands.tagsEditSchema).toHaveBeenCalledWith(command)
+    commands.tagsEditSchema.mockRejectedValue({ kind: 'Invalid', code: 'x', message: 'refused' })
+    await expect(tagsService.editSchema(command)).rejects.toMatchObject({ message: 'refused' })
+
+    const rename = { kind: 'rename-field' as const, from: 'Role', to: 'Title', runId: 'r1' }
+    api.tags.editSchema = vi.fn().mockResolvedValue({ snapshot })
+    await tagsService.editSchema(rename)
+    expect(api.tags.editSchema).toHaveBeenCalledWith(rename)
+    expect(commands.tagsEditSchema).toHaveBeenCalledTimes(2)
+
+    const changed = vi.fn()
+    const stop = onPropertyDefinitionChanged(changed)
+    await vi.waitFor(() => expect(listeners.has('definitions')).toBe(true))
+    listeners.get('definitions')?.({ payload: { name: 'Role' } })
+    expect(changed).toHaveBeenCalledWith({ name: 'Role' })
+    stop()
+    await vi.waitFor(() => expect(listeners.has('definitions')).toBe(false))
   })
 
   it('pins and unpins through the commands, a failure answering its message', async () => {

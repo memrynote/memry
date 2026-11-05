@@ -7,7 +7,7 @@ import type {
   TagSchemaCommandResult,
   TagSchemaSnapshot
 } from '@memry/contracts/tag-schema-api'
-import { tagsService } from '@/services/tags-service'
+import { onPropertyDefinitionChanged, tagsService } from '@/services/tags-service'
 import { onTagsChanged } from '@/services/notes-service'
 
 export const tagSchemaQueryKey = ['tags', 'schema-snapshot'] as const
@@ -28,7 +28,7 @@ function subscribeInvalidation(queryClient: QueryClient): () => void {
       }, INVALIDATE_DEBOUNCE_MS)
     }
     const offTags = onTagsChanged(invalidate)
-    const offDefinitions = window.api.onPropertyDefinitionChanged(invalidate)
+    const offDefinitions = onPropertyDefinitionChanged(invalidate)
     unsubscribe = () => {
       clearTimeout(timer)
       offTags()

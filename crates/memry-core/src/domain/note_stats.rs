@@ -387,6 +387,24 @@ pub fn file_tags(index: &Connection) -> Result<HashMap<String, FileTags>, Storag
     Ok(out)
 }
 
+/// The header tags of every row that is not a journal day, by note id, in the file's order.
+pub fn undated_header_tags(index: &Connection) -> Result<Vec<(String, Vec<String>)>, StorageError> {
+    let mut statement = index
+        .prepare("SELECT note_id, header_tags FROM note_stats WHERE date IS NULL ORDER BY note_id")
+        .map_err(failed)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(failed)?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (note_id, header_tags) = row.map_err(failed)?;
+        out.push((note_id, strings(&header_tags)?));
+    }
+    Ok(out)
+}
+
 /// Every live markdown note with a file whose row is missing, names other bytes than the
 /// file's last read (`note_files.file_hash`), or another journal day than its record says now
 /// ([`journal_day::file_date`]): a day whose move became owed, or was applied, since its row

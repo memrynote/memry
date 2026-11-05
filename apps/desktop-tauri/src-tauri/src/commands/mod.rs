@@ -18,6 +18,7 @@ pub mod shell;
 pub mod shell_integrations;
 pub mod shortcuts;
 pub mod spell;
+pub mod tag_schema;
 pub mod tags;
 pub mod telemetry;
 pub mod templates;
