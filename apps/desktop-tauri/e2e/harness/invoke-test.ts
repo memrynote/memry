@@ -35,13 +35,15 @@ const MARK_SCRIPT = `
 `
 
 // Sends only from the marked document: WebDriver resends a call that the death interrupted, and
-// the resent copy lands in the next document, which has no mark. The call goes out in a later task,
-// after this script's result: issued inside the script, it raced the result to the shell, and a
-// death that won left the driver waiting out the script timeout (#3967).
+// the resent copy lands in the next document, which has no mark. An async script, because the
+// page pushes its result to the driver when it calls `done`. A sync script's result is only stored
+// in the page, and the driver polls for it every 50 ms: a death before that read left the driver
+// waiting out the script timeout (#3967). The call goes out in a later task, after the result.
 const SEND_SCRIPT = `
-  const [mark, name, args] = arguments;
-  if (window.__memryE2eSendTarget !== mark) return;
+  const [mark, name, args, done] = arguments;
+  if (window.__memryE2eSendTarget !== mark) return done(null);
   delete window.__memryE2eSendTarget;
+  done(null);
   setTimeout(() => window.__TAURI__.core.invoke(name, args));
 `
 
@@ -87,5 +89,5 @@ export async function sendTest(
   checkName(name, 'sendTest')
   const mark = randomUUID()
   await app.executor.execute(MARK_SCRIPT, mark)
-  await app.executor.execute(SEND_SCRIPT, mark, name, args).catch(() => undefined)
+  await app.executor.executeAsync(SEND_SCRIPT, mark, name, args).catch(() => undefined)
 }
