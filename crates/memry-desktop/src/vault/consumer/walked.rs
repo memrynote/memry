@@ -4,7 +4,7 @@
 //! at a time each costs a markdown conversion on the consumer's thread and three commits
 //! (record, body, row). Together, the files are read and their bodies authored on several
 //! threads, the identity creates their notes with those bodies in one transaction, and their
-//! rows go in one more.
+//! rows go in one more. The run prepares the next batch while it applies one.
 //!
 //! What a file ends as is what [`Applier::found`] makes of it alone: the same note, a body
 //! that is the same feed of the same text, and a row with the same hashes, stamped after the
@@ -17,6 +17,7 @@
 
 use std::collections::HashSet;
 use std::num::NonZero;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::notes_write::NotesWriter;
@@ -48,6 +49,14 @@ pub(super) struct Found {
     pub(super) path: String,
     pub(super) size: u64,
     modified_ms: i64,
+}
+
+/// Files the walk put aside, as [`Applier::prepare_together`] left them.
+pub(super) enum Batch {
+    /// Read, with the bodies of those the identity may take for new notes.
+    Prepared(Vec<Prepared>),
+    /// Not prepared: each goes alone.
+    Alone(Vec<Found>),
 }
 
 /// What [`Applier::found_together`] did: the steps of the files it applied, and the files the
@@ -109,15 +118,27 @@ impl Applier {
         Walked::Applied(step)
     }
 
-    /// Applies the new notes of the files the walk put aside together, and answers the rest
-    /// for the walk to apply alone ([`Self::found_alone`]), each with its own hold of the lane:
-    /// an app operation waiting for the lane gets it between two of them. The files are read
-    /// and their bodies authored before the lane is taken, and the lane is held only for the
-    /// two transactions and the facts.
-    pub(super) fn found_together(&self, found: Vec<Found>, scan: &mut ScanActivity) -> Together {
-        let prepared = match &self.feed {
-            Some(feed) if found.len() > 1 && self.identity.adopts() => self.prepare(feed, found),
-            _ => {
+    /// Reads the files the walk put aside and authors the body of each the identity may take
+    /// for a new note, without the lane: the run does it on its own thread while it applies the
+    /// batch before ([`super::run`]). Files the identity cannot take together go alone, and a
+    /// close (`stop`) leaves the rest unconverted; the run drops a batch a close stopped.
+    pub(super) fn prepare_together(&self, found: Vec<Found>, stop: &AtomicBool) -> Batch {
+        match &self.feed {
+            Some(feed) if found.len() > 1 && self.identity.adopts() => {
+                Batch::Prepared(self.prepare(feed, found, stop))
+            }
+            _ => Batch::Alone(found),
+        }
+    }
+
+    /// Applies the new notes of a prepared batch together, and answers the rest for the walk to
+    /// apply alone ([`Self::found_alone`]), each with its own hold of the lane: an app
+    /// operation waiting for the lane gets it between two of them. The lane is held only for
+    /// the two transactions and the facts.
+    pub(super) fn found_together(&self, batch: Batch, scan: &mut ScanActivity) -> Together {
+        let prepared = match batch {
+            Batch::Prepared(prepared) => prepared,
+            Batch::Alone(found) => {
                 return Together {
                     steps: Vec::new(),
                     alone: found,
@@ -156,8 +177,9 @@ impl Applier {
         )
     }
 
-    /// Reads the files and authors the body of each the identity may take for a new note.
-    fn prepare(&self, feed: &ExternalFeed, found: Vec<Found>) -> Vec<Prepared> {
+    /// Reads the files and authors the body of each the identity may take for a new note; none
+    /// once `stop` is set.
+    fn prepare(&self, feed: &ExternalFeed, found: Vec<Found>, stop: &AtomicBool) -> Vec<Prepared> {
         // A file that does not read goes alone, which reads it again and reports why. One whose
         // size alone makes it large-file class is not a new note's and goes alone unread, so a
         // batch holds at most the large-file size (1 MiB) per file.
@@ -166,7 +188,7 @@ impl Applier {
             let large = usize::try_from(file.size).map_or(true, |size| {
                 classify_markdown_stat(size, thresholds).is_some()
             });
-            (!large)
+            (!large && !stop.load(Ordering::Relaxed))
                 .then(|| read_note(&self.root, &file.path).ok().flatten())
                 .flatten()
         });
@@ -190,7 +212,7 @@ impl Applier {
             .collect();
         let bodies: Vec<Option<(String, FirstBody)>> =
             in_parallel(&asked, |&(found, file, may_be_new)| {
-                let file = file.filter(|_| may_be_new)?;
+                let file = file.filter(|_| may_be_new && !stop.load(Ordering::Relaxed))?;
                 let id = NotesWriter::new_note_id();
                 let split = file.split();
                 let embeds = Resolved::of_markdown(&self.root, &files, split.body, &found.path);
@@ -319,7 +341,7 @@ impl Applier {
 
 /// A file put aside, read, with the id and body its new note is to get when the identity may
 /// take it for one.
-struct Prepared {
+pub(super) struct Prepared {
     found: Found,
     read: Option<NoteFile>,
     body: Option<(String, FirstBody)>,
