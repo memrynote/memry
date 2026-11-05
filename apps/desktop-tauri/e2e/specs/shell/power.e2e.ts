@@ -93,7 +93,8 @@ test('a flush does not wait on a page whose browser process ended unreported', a
   expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 10_000, intervalMs: 50 })).toBe(true)
   const log = readMainLog(app.dirs.logDir)
   expect(log).toMatch(/e2e: ended the WebView2 browser process \d+: Ok\(\(\)\), exited: true/)
-  // The probe's own outcome: the later quit logs "no page process" too, whatever the probe did.
+  // The probe's own outcome: the later quit logs "does not listen for flushes" too, whatever the
+  // probe did.
   expect(log).toContain('the flush after the browser exit gave up before its timeout')
   expect(log).not.toContain('flush of window main timed out')
   expect(log).toContain('cleanup complete')

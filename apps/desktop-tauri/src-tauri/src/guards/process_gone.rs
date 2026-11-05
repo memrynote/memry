@@ -21,9 +21,9 @@ use crate::windows::registry::is_app_label;
 use crate::windows::startup_error;
 
 /// Watches the page of every app window, wherever the window is built: a webview process that
-/// ends releases the flush waits on the page and recovers it, and a page that finishes loading
-/// answers flushes again. The only process-failure subscription on Windows and Linux; macOS
-/// reports through the builder hook [`on_web_content_process_terminate`].
+/// ends releases the flush waits on the page and recovers it, and a new document stops the
+/// flushes until it listens (`flush_ready`). The only process-failure subscription on Windows and
+/// Linux; macOS reports through the builder hook [`on_web_content_process_terminate`].
 pub fn plugin() -> TauriPlugin<Wry> {
     tauri::plugin::Builder::new("memry-page-watch")
         .on_webview_ready(|webview| {
@@ -33,18 +33,18 @@ pub fn plugin() -> TauriPlugin<Wry> {
             }
         })
         .on_page_load(|webview, payload| {
-            if matches!(payload.event(), PageLoadEvent::Finished) && is_app_label(webview.label()) {
-                page_loaded(webview.app_handle(), webview.label());
+            if matches!(payload.event(), PageLoadEvent::Started) && is_app_label(webview.label()) {
+                document_replaced(webview.app_handle(), webview.label());
             }
         })
-        .on_event(|_, event| {
+        .on_event(|app, event| {
             if let RunEvent::WindowEvent {
                 label,
                 event: WindowEvent::Destroyed,
                 ..
             } = event
             {
-                forget(label);
+                forget(app, label);
             }
         })
         .build()
@@ -149,16 +149,28 @@ pub fn watch_browser_exit(app: &AppHandle<Wry>, label: &str, pid: u32) {
     }
 }
 
-/// The page of window `label` finished loading, so it answers flush requests again.
-fn page_loaded(app: &AppHandle<Wry>, label: &str) {
+/// A new document replaced the page of window `label` (a reload, a recovery). The old one cannot
+/// answer any more, and the new one answers once it subscribed, which a quit while it loads must
+/// not wait for: it holds no edits yet.
+fn document_replaced(app: &AppHandle<Wry>, label: &str) {
     if let Some(flush) = app.try_state::<FlushService>() {
-        flush.page_loaded(label);
+        let released = flush.page_gone(label);
+        if released > 0 {
+            tracing::warn!(
+                scope = "Shell",
+                "the page of window {label} was replaced; {released} flush waits released"
+            );
+        }
     }
 }
 
 /// Window `label` is gone: a later window of that label starts with a full budget and nothing to
-/// tell, and its browser's exit no longer marks it gone.
-fn forget(label: &str) {
+/// tell, is not asked to flush until its page listens, and its browser's exit no longer marks it
+/// gone.
+fn forget(app: &AppHandle<Wry>, label: &str) {
+    if let Some(flush) = app.try_state::<FlushService>() {
+        flush.page_gone(label);
+    }
     let mut recovery = RECOVERY.lock().unwrap_or_else(PoisonError::into_inner);
     recovery.budgets.remove(label);
     recovery.reloaded.remove(label);

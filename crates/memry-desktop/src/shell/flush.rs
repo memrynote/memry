@@ -3,10 +3,12 @@
 //! id that was issued, so a stale or foreign reply cannot release a wait
 //! (`apps/desktop/src/main/index.ts:2064-2145`).
 //!
-//! A window whose page lost its process can never answer: the OS ends the webview's processes at
-//! a session end while the app is still flushing. The table then releases the waits on that
-//! window at once and refuses new ones until the page loads again, instead of letting each one
-//! run to its timeout.
+//! A window is asked only while its page listens: from the page's own report that it subscribed
+//! until its document is replaced or its process dies. A page that is still loading holds no edits
+//! and would miss the request, so a quit during a launch or a reload waited the whole timeout for
+//! it (#3967). A page that loses its process can never answer either: the OS ends the webview's
+//! processes at a session end while the app is still flushing. The table then releases the waits
+//! on that window at once instead of letting each one run to its timeout.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, PoisonError};
@@ -26,8 +28,8 @@ pub struct FlushTable {
 struct TableState {
     /// Request id to the asked window's label and the waiter.
     pending: HashMap<String, (String, oneshot::Sender<()>)>,
-    /// Windows whose page has no process.
-    gone: HashSet<String>,
+    /// Windows whose page subscribed to flush requests.
+    listening: HashSet<String>,
 }
 
 /// An issued request: send `id` to the window, then wait on `reply`. `reply` fails when the
@@ -38,11 +40,11 @@ pub struct FlushTicket {
 }
 
 impl FlushTable {
-    /// Registers a request to the window labelled `label`. `None` when that window's page has no
-    /// process, so nobody could answer.
+    /// Registers a request to the window labelled `label`. `None` when that window's page does not
+    /// listen, so nobody could answer.
     pub fn begin(&self, label: &str) -> Option<FlushTicket> {
         let mut state = self.lock();
-        if state.gone.contains(label) {
+        if !state.listening.contains(label) {
             return None;
         }
         let id = uuid::Uuid::new_v4().to_string();
@@ -70,20 +72,26 @@ impl FlushTable {
         self.lock().pending.remove(id);
     }
 
-    /// The page of window `label` lost its process: every wait on it ends now, and requests are
-    /// refused until [`FlushTable::page_loaded`]. Returns how many waits it ended.
+    /// The page of window `label` lost its process or its document: every wait on it ends now,
+    /// and requests are refused until [`FlushTable::page_listening`]. Returns how many waits it
+    /// ended.
     pub fn page_gone(&self, label: &str) -> usize {
         let mut state = self.lock();
-        state.gone.insert(label.to_owned());
+        state.listening.remove(label);
         let before = state.pending.len();
         // Dropping a sender fails its receiver, which is what ends the wait.
         state.pending.retain(|_, (asked, _)| asked != label);
         before - state.pending.len()
     }
 
-    /// The page of window `label` loaded (again) and can answer.
-    pub fn page_loaded(&self, label: &str) {
-        self.lock().gone.remove(label);
+    /// The page of window `label` subscribed to flush requests and can answer.
+    pub fn page_listening(&self, label: &str) {
+        self.lock().listening.insert(label.to_owned());
+    }
+
+    /// Whether a request to window `label` would be sent.
+    pub fn is_listening(&self, label: &str) -> bool {
+        self.lock().listening.contains(label)
     }
 
     pub fn len(&self) -> usize {
@@ -144,9 +152,18 @@ pub fn wait_for(remaining: Duration) -> Duration {
 mod tests {
     use super::*;
 
+    /// A table whose `labels` pages listen.
+    fn listening(labels: &[&str]) -> FlushTable {
+        let table = FlushTable::default();
+        for label in labels {
+            table.page_listening(label);
+        }
+        table
+    }
+
     #[tokio::test]
     async fn a_reply_from_the_asked_window_releases_the_wait() {
-        let table = FlushTable::default();
+        let table = listening(&["main"]);
         let ticket = table.begin("main").unwrap();
         assert!(table.complete("main", &ticket.id));
         assert!(ticket.reply.await.is_ok());
@@ -155,7 +172,7 @@ mod tests {
 
     #[test]
     fn a_reply_from_another_window_or_with_a_wrong_id_is_ignored() {
-        let table = FlushTable::default();
+        let table = listening(&["main", "sticky"]);
         let ticket = table.begin("main").unwrap();
         assert!(!table.complete("sticky", &ticket.id));
         assert!(!table.complete("main", "not-an-id"));
@@ -164,7 +181,7 @@ mod tests {
 
     #[test]
     fn a_reply_settles_a_request_once() {
-        let table = FlushTable::default();
+        let table = listening(&["main"]);
         let ticket = table.begin("main").unwrap();
         assert!(table.complete("main", &ticket.id));
         assert!(!table.complete("main", &ticket.id));
@@ -172,7 +189,7 @@ mod tests {
 
     #[test]
     fn a_cancelled_request_cannot_be_answered() {
-        let table = FlushTable::default();
+        let table = listening(&["main"]);
         let ticket = table.begin("main").unwrap();
         table.cancel(&ticket.id);
         assert!(!table.complete("main", &ticket.id));
@@ -181,7 +198,7 @@ mod tests {
     #[test]
     fn a_page_that_loses_its_process_ends_the_waits_on_it_at_once() {
         use tokio::sync::oneshot::error::TryRecvError;
-        let table = FlushTable::default();
+        let table = listening(&["main", "sticky"]);
         let mut first = table.begin("main").unwrap();
         let mut second = table.begin("main").unwrap();
         let mut other = table.begin("sticky").unwrap();
@@ -196,12 +213,23 @@ mod tests {
     }
 
     #[test]
-    fn a_page_without_a_process_is_not_asked_until_it_loads_again() {
+    fn a_page_is_not_asked_before_it_listens() {
+        // A launch or a reload: the page is loading and has not subscribed yet.
         let table = FlushTable::default();
+        assert!(table.begin("main").is_none());
+        assert!(table.is_empty());
+        table.page_listening("main");
+        assert!(table.begin("main").is_some());
+    }
+
+    #[test]
+    fn a_gone_page_is_not_asked_until_its_next_document_listens() {
+        let table = listening(&["main", "sticky"]);
         table.page_gone("main");
+        assert!(!table.is_listening("main"));
         assert!(table.begin("main").is_none());
         assert!(table.begin("sticky").is_some());
-        table.page_loaded("main");
+        table.page_listening("main");
         assert!(table.begin("main").is_some());
     }
 

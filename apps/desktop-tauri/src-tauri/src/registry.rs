@@ -42,6 +42,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::badge_set,
             // flush
             crate::commands::shell_integrations::flush_done,
+            crate::commands::shell_integrations::flush_ready,
             // journal
             crate::commands::journal::journal_create_entry::<Wry>,
             crate::commands::journal::journal_delete_entry::<Wry>,

@@ -43,6 +43,8 @@ export const commands = {
 	 *  asked, with the id that was issued.
 	 */
 	flushDone: (requestId: string) => __TAURI_INVOKE<null>("flush_done", { requestId }),
+	/**  The calling window's page subscribed to flush requests: from now on a quit or a close asks it. */
+	flushReady: () => __TAURI_INVOKE<null>("flush_ready"),
 	/**  The day made on its first write; a day that has a file is answered as it is. */
 	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
 	/**  `success` is whether the day had an entry to delete. */
