@@ -333,8 +333,8 @@ pub async fn notes_exists(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn notes_list(
-    app: AppHandle<Wry>,
+pub async fn notes_list<R: Runtime>(
+    app: AppHandle<R>,
     options: NoteListOptions,
 ) -> Result<NoteListPageView, CommandError> {
     blocking("notes_list", move || {

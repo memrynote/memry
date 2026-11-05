@@ -21,11 +21,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
-use index_support::{all_indexed, note_text, seeded, until};
+use index_support::{all_indexed, fresh, note_text, seeded, until, written_note_text};
 use memry_core::domain::note_stats::measure;
 use memry_desktop::notes::index::{
     Backfilled, IndexError, IndexProgress, NoteIndex, PROGRESS_INTERVAL,
 };
+use memry_desktop::notes::read;
+use memry_desktop::notes::view::{NoteListOptions, NoteListPageView};
 use memry_desktop::vault::hash::content_hash;
 use rusqlite::trace::TraceEventCodes;
 use vault_env::{Env, indexed};
@@ -36,7 +38,6 @@ static STATEMENTS: AtomicUsize = AtomicUsize::new(0);
 
 struct Measured {
     tier0: Duration,
-    tier1: Duration,
     notes_list: Duration,
 }
 
@@ -81,8 +82,15 @@ fn assert_reported(steps: &Steps, total: usize) {
     assert!(gaps.iter().all(|gap| *gap >= throttled), "{gaps:?}");
 }
 
-/// Opens the seeded vault with the index and times the open walk (tier 0), the backfill
-/// (tier 1) and the sidebar list.
+/// What the sidebar asks `notes_list` for (`use-note-tree-data.ts`): every note, tree fields.
+fn sidebar_list(e: &Env) -> NoteListPageView {
+    let options: NoteListOptions =
+        serde_json::from_value(serde_json::json!({ "limit": 10_000, "fields": "tree" })).unwrap();
+    read::list(&e.session.current().unwrap(), &options).unwrap()
+}
+
+/// Opens the vault with the index and times the open walk (tier 0), the backfill (tier 1) and
+/// the sidebar's `notes_list`.
 fn open_and_measure(
     e: &mut Env,
     report: impl Fn(IndexProgress) + Send + Sync + 'static,
@@ -97,9 +105,9 @@ fn open_and_measure(
     until("every note measured", || all_indexed(e));
     let tier1 = started.elapsed();
     let listed_at = Instant::now();
-    let listed = e.core().notes().list().unwrap();
+    let listed = sidebar_list(e);
     let notes_list = listed_at.elapsed();
-    assert_eq!(listed.len(), NOTES);
+    assert_eq!(listed.notes.len(), NOTES);
     println!(
         "{NOTES} notes: tier 0 {tier0:?}, tier 1 {tier1:?}, notes_list {notes_list:?} ({} build)",
         if cfg!(debug_assertions) {
@@ -108,11 +116,7 @@ fn open_and_measure(
             "release"
         }
     );
-    let measured = Measured {
-        tier0,
-        tier1,
-        notes_list,
-    };
+    let measured = Measured { tier0, notes_list };
     (index, measured)
 }
 
@@ -294,24 +298,68 @@ fn a_close_ends_a_reindex_and_the_vault_opens_again() {
     e.close();
 }
 
-/// The #3530 budgets, in a release build: `cargo test --release ... -- --ignored`.
+/// Runs of each open the budget test takes, alternating, so warm caches and drift favour none:
+/// a budget is claimed on an idle machine's n >= 20, min, p50 and max.
+const RUNS: usize = 20;
+
+/// Prints `times`' p50, p99 and range, and answers the p50.
+fn summary(what: &str, times: &[Duration]) -> Duration {
+    let mut sorted = times.to_vec();
+    sorted.sort();
+    let at = |q: usize| sorted[(sorted.len() * q / 100).min(sorted.len() - 1)];
+    let (p50, p99) = (at(50), at(99));
+    let (min, max) = (sorted[0], sorted[sorted.len() - 1]);
+    println!(
+        "{what}: p50 {p50:?}, p99 {p99:?}, range {min:?}..{max:?}, n {}",
+        times.len()
+    );
+    p50
+}
+
+/// A first open of a vault the app has never seen: every file becomes a note whose body is
+/// the file's text, and its row says so.
+fn first_open(text: fn(usize) -> String) -> Measured {
+    let mut e = fresh(NOTES, text);
+    let (_, measured) = open_and_measure(&mut e, |_| {});
+    let files = e.core().note_files();
+    for (id, path) in e.rows() {
+        let row = files.by_path(&path).unwrap().unwrap();
+        assert!(
+            row.content_hash.is_some(),
+            "{path}: the body is not the file's"
+        );
+        assert_eq!(row.note_id, id);
+    }
+    e.close();
+    measured
+}
+
+/// The #3530 budgets, in a release build: `cargo test --release ... -- --ignored`. Tier 0 of a
+/// first open (fully written notes, as `pnpm seed1k` writes them, and the short ones of the
+/// other tests) and of an open whose rows name every file, and the sidebar's `notes_list`.
 #[test]
 #[ignore = "a release-build measurement"]
 fn the_open_walk_and_the_sidebar_list_meet_their_budgets() {
-    let (mut e, _store, _) = seeded(NOTES);
-    let (_, measured) = open_and_measure(&mut e, |_| {});
+    let (mut written, mut short, mut known, mut lists) = (vec![], vec![], vec![], vec![]);
+    for _ in 0..RUNS {
+        let measured = first_open(written_note_text);
+        written.push(measured.tier0);
+        lists.push(measured.notes_list);
+        short.push(first_open(note_text).tier0);
+        let (mut e, _store, _) = seeded(NOTES);
+        let (_, measured) = open_and_measure(&mut e, |_| {});
+        known.push(measured.tier0);
+        lists.push(measured.notes_list);
+        e.close();
+    }
+    let written = summary("tier 0, first open, written notes", &written);
+    let short = summary("tier 0, first open, short notes", &short);
+    let known = summary("tier 0, rows name every file", &known);
+    let list = summary("notes_list", &lists);
+    for (what, tier0) in [("written", written), ("short", short), ("known", known)] {
+        // timing-bound: the #3530 budget, asserted only by this ignored release-build run.
+        assert!(tier0 < Duration::from_millis(400), "{what}: {tier0:?}");
+    }
     // timing-bound: the #3530 budget, asserted only by this ignored release-build run.
-    assert!(
-        measured.tier0 < Duration::from_millis(400),
-        "{:?}",
-        measured.tier0
-    );
-    // timing-bound: the #3530 budget, asserted only by this ignored release-build run.
-    assert!(
-        measured.notes_list < Duration::from_millis(15),
-        "{:?}",
-        measured.notes_list
-    );
-    println!("tier 1 took {:?}", measured.tier1);
-    e.close();
+    assert!(list < Duration::from_millis(15), "{list:?}");
 }

@@ -25,6 +25,7 @@ use tauri::test::{
 };
 use tauri::webview::InvokeRequest;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tokio::sync::broadcast::error::TryRecvError;
 
 #[cfg(windows)]
 const LOCAL_ORIGIN: &str = "http://tauri.localhost";
@@ -103,7 +104,13 @@ impl Mocked {
         let mut facts = tier.subscribe();
         session.open(&vault, OpenSource::Select).unwrap();
         let deadline = Instant::now() + WAIT;
-        while !matches!(facts.try_recv(), Ok(Applied::Indexed { .. })) {
+        loop {
+            match facts.try_recv() {
+                Ok(Applied::Indexed { .. }) => break,
+                Ok(_) | Err(TryRecvError::Lagged(_)) => continue,
+                Err(TryRecvError::Empty) => {}
+                Err(TryRecvError::Closed) => panic!("the tier closed before the open walk ended"),
+            }
             assert!(Instant::now() < deadline, "the open walk did not end");
             std::thread::sleep(Duration::from_millis(20));
         }
