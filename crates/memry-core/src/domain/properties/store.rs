@@ -14,7 +14,7 @@ use crate::sync::outbox;
 use super::PROPERTIED_TYPES;
 
 /// Merges the new value map into the payload and publishes the item, in one
-/// transaction (FR-030, data-model §A.2).
+/// transaction (FR-030, data-model §A.2), or in the caller's.
 pub(super) fn write(
     conn: &Connection,
     item_type: &str,
@@ -43,9 +43,17 @@ pub(super) fn write(
         changes.push(("content", Change::Set(Value::Null)));
     }
 
+    let publish = |tx: &Connection| {
+        sync_items::apply_local_edit_in(tx, item_type, item_id, &changes, now_ms)?;
+        outbox::enqueue(tx, &outbox::Change::upsert(item_type, item_id), now_ms).map(drop)
+    };
+    // Inside a caller's transaction (a file mirror and its baseline), as part of it.
+    if !conn.is_autocommit() {
+        publish(conn)?;
+        return Ok(values);
+    }
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    sync_items::apply_local_edit_in(&tx, item_type, item_id, &changes, now_ms)?;
-    outbox::enqueue(&tx, &outbox::Change::upsert(item_type, item_id), now_ms)?;
+    publish(&tx)?;
     tx.commit().map_err(failed)?;
     Ok(values)
 }

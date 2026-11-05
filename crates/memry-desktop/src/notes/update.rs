@@ -13,7 +13,7 @@
 //!    document's `writing`) are refused, since each has its own edit;
 //! 3. the new body, or the body read when the update has none;
 //! 4. once the file holds them, the record's icon, its tags when the header changed, the
-//!    property keys the frontmatter edit set or dropped (`file_delta`, the 13k-3 rule: every
+//!    property keys the frontmatter edit set or dropped (`edited_values`, the 13k-3 rule: every
 //!    other key keeps the record's value) and its `cover` when the file's cover changed (one
 //!    outbox row each), so a refused write leaves the record as the file says; the note event
 //!    ([`ChangeSource::Save`]) reads them.
@@ -45,7 +45,7 @@ use serde_json::{Map, Value};
 
 use super::error::{NotesError, SCOPE};
 use super::frontmatter::cover_fields;
-use super::properties::{file_delta, mirror_properties};
+use super::properties::{EditedValues, edited_values, mirror_properties};
 use super::read;
 use super::service::NotesService;
 use super::tag_template::TagTemplateOutcome;
@@ -285,8 +285,8 @@ impl NotesService {
                 if let Some(tags) = &plan.tags {
                     writer.set_tags(id.to_owned(), tags.clone())?;
                 }
-                if let Some(delta) = &plan.properties {
-                    mirror_properties(&writer, id, delta.clone())?;
+                if let Some(values) = &plan.properties {
+                    mirror_properties(&writer, id, values.clone())?;
                 }
                 if let Some(cover) = &plan.cover
                     && !writer.file_cover(id, cover.clone())?
@@ -320,8 +320,8 @@ struct Plan {
     emoji: Option<Option<String>>,
     /// The new header tags, when the list changed.
     tags: Option<Vec<String>>,
-    /// The property keys the frontmatter edit set and dropped, when it touched any.
-    properties: Option<(Map<String, Value>, Vec<String>)>,
+    /// The file's property values before and after, when the frontmatter edit changed any.
+    properties: Option<EditedValues>,
     /// The file's cover as a push carries it, `None` for none, when it changed.
     cover: Option<Option<Map<String, Value>>>,
     /// The header tags or the body's `#tags` changed (`notes:tags-changed`).
@@ -384,8 +384,8 @@ fn next_text(
         .clone()
         .unwrap_or_else(|| parsed.content.clone());
     let properties = keys_changed
-        .then(|| file_delta(&frontmatter, &patched, types))
-        .filter(|(changed, removed)| !changed.is_empty() || !removed.is_empty());
+        .then(|| edited_values(&frontmatter, &patched, types))
+        .filter(|(before, after)| before != after);
     let cover = keys_changed
         .then(|| {
             let held = cover_sync(&cover_fields(&frontmatter));

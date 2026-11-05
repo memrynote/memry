@@ -32,7 +32,13 @@
 //!   no version, so a document ahead of its file keeps its text; the file then counts as the
 //!   document's (own-write record, row) only if the row named it. Only a frontmatter that does
 //!   not parse, a missing row, file or note, a file that is not markdown, and an edit that
-//!   lands during the write ([`Kept::FileChanged`]) keep the file.
+//!   lands during the write ([`Kept::FileChanged`]) keep the file. A file its row does not name
+//!   and whose bytes are not the run's own is an outside edit the consumer has not fed yet.
+//!   This save's bytes, the run's own, will never reach the consumer as one, so what that
+//!   file's frontmatter says (tags, property values) reaches the record first, through the
+//!   identity's [`NoteIdentity::on_changed`], as the consumer would have told it. The save's own
+//!   record mirror then goes over that. A row behind the run's own bytes (a save the feed did
+//!   not take) is no outside edit: those bytes carry the record already.
 //!
 //! A frontmatter that does not parse, in the file or in the edit's text, is kept as it is
 //! (#3750). The caller's closure gets the file's text without a byte order mark and returns the
@@ -78,6 +84,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use memry_core::api::errors::{AuthError, StorageError};
 use memry_core::api::external_feed::ExternalFeed;
+use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::errors::CrdtError;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome, same_text};
@@ -87,12 +94,13 @@ use memry_core::markdown::frontmatter::{YamlValue, parse_markdown_note, split_fr
 use memry_core::markdown::shared::writing_tools::writing_of_yaml;
 use memry_core::seams::secure_store::SecureStore;
 
+use super::consumer::identity::{IdentityCtx, IdentityError, NoteIdentity};
 use super::consumer::rows::{RowError, RowOwner, RowSession, RowStat, now_ms};
 use super::consumer::{Applied, ChangeSource, VaultTier, converter_for};
 use super::embeds::Resolved;
 use super::file_types::FileType;
 use super::hash::content_hash;
-use super::note_file::{NoteFileError, read_note, write_note_over_checked};
+use super::note_file::{NoteFile, NoteFileError, read_note, write_note_over_checked};
 use super::watch::EchoGuard;
 use crate::notes::write_order::NoteTurn;
 use crate::session::OpenVault;
@@ -233,6 +241,8 @@ pub enum AppEditError {
 pub struct AppEdit {
     root: PathBuf,
     vault: Arc<Vault>,
+    search: Arc<Search>,
+    identity: Arc<dyn NoteIdentity>,
     rows: Arc<RowOwner>,
     session: RowSession,
     echo: Arc<EchoGuard>,
@@ -253,6 +263,8 @@ impl AppEdit {
         Ok(Self {
             root: open.path.clone(),
             vault: open.vault.clone(),
+            search: open.search.clone(),
+            identity: tier.identity(),
             session,
             echo: tier.echo(),
             feed: open.vault.external_feed(store.clone())?,
@@ -335,7 +347,14 @@ impl AppEdit {
                 }
                 None
             }
-            Precondition::Save(own) => Some(own),
+            Precondition::Save(own) => {
+                let outside = !row_names_file && !own.is(note_id, &file.hash);
+                if let Some(previous) = row.content_hash.as_deref().filter(|_| outside) {
+                    self.take_outside(note_id, previous, &file)
+                        .map_err(AppEditError::from)?;
+                }
+                Some(own)
+            }
         };
         let text = edit(read)?.map(|next| match bom {
             true => format!("{BOM}{}", bare(&next)),
@@ -433,6 +452,27 @@ impl AppEdit {
             source,
         });
         Ok(Edited::Wrote { hash, held: true })
+    }
+
+    /// The record takes what an outside edit not fed yet, the file `file` that replaced the
+    /// one hashed `previous`, says of it (see the module comment).
+    fn take_outside(
+        &self,
+        note_id: &str,
+        previous: &str,
+        file: &NoteFile,
+    ) -> Result<(), StorageError> {
+        let ctx = IdentityCtx {
+            root: &self.root,
+            vault: &self.vault,
+            search: &self.search,
+        };
+        self.identity
+            .on_changed(&ctx, note_id, previous, file)
+            .map_err(|error| match error {
+                IdentityError::Storage(error) => error,
+                IdentityError::Other(what) => StorageError::Failed { what },
+            })
     }
 
     /// Why the document is not the file's text `read`, or `None` when it is.

@@ -23,7 +23,7 @@
 //!
 //! Not here: a type learned from a new value (Electron's `learnCanonicalPropertyType`, which
 //! gives an undeclared property a synced definition at the first type its notes are synced
-//! with; 13k-4c), the header status a status property takes from the note's tasks
+//! with; 13k-4c-2), the header status a status property takes from the note's tasks
 //! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m) and the lock
 //! check (Step 14).
 
@@ -111,6 +111,7 @@ impl NotesService {
             return Ok(views(&values, &types));
         }
         Ok(file_properties(&file, &types)
+            .unwrap_or_default()
             .into_iter()
             .map(view)
             .collect())
@@ -218,7 +219,7 @@ impl NotesService {
                 || {
                     let values = values.borrow();
                     if let Some((held, after)) = values.as_ref() {
-                        mirror_properties(&writer, note_id, delta(held, after))?;
+                        mirror_properties(&writer, note_id, (held.clone(), after.clone()))?;
                     }
                     Ok(false)
                 },
@@ -280,26 +281,40 @@ pub fn read_definition_types(
         .collect())
 }
 
-/// The user properties the file's frontmatter holds, read as the index reads them; none for a
-/// frontmatter that does not parse or is not a mapping (`parseNote` reads none).
-pub fn file_properties(file: &NoteFile, types: &HashMap<String, String>) -> Vec<IndexedProperty> {
-    match file.parse().map(|parsed| parsed.frontmatter) {
-        Ok(YamlValue::Map(map)) => indexed(&user_properties(&map), types),
-        _ => Vec::new(),
+/// The user properties the file's frontmatter holds, read as the index reads them; `None` for a
+/// frontmatter that does not parse or is not a mapping, which `parseNote` reads as none (a file
+/// with no frontmatter reads as an empty mapping).
+pub fn file_properties(
+    file: &NoteFile,
+    types: &HashMap<String, String>,
+) -> Option<Vec<IndexedProperty>> {
+    match file.parse().ok()?.frontmatter {
+        YamlValue::Map(map) => Some(indexed(&user_properties(&map), types)),
+        _ => None,
     }
 }
 
+/// [`file_properties`] as the record stores them.
+pub(crate) fn file_values(
+    file: &NoteFile,
+    types: &HashMap<String, String>,
+) -> Option<Map<String, Value>> {
+    file_properties(file, types).map(|properties| stored(&properties))
+}
+
+/// A frontmatter edit's property values as the record stores them: what the file held, and what
+/// it holds.
+pub(crate) type EditedValues = (Map<String, Value>, Map<String, Value>);
+
 /// Gives the record the keys a file edit set and dropped, under the lane once the file holds
-/// the edit ([`NotesWriter::file_properties`]); writes nothing for an edit of no property.
+/// the edit ([`NotesWriter::file_properties`], which keeps every other key and moves the file's
+/// baseline).
 pub(super) fn mirror_properties(
     writer: &NotesWriter,
     note_id: &str,
-    (changed, removed): (Map<String, Value>, Vec<String>),
+    (before, after): EditedValues,
 ) -> Result<(), NotesError> {
-    if changed.is_empty() && removed.is_empty() {
-        return Ok(());
-    }
-    if !writer.file_properties(note_id, changed, removed)? {
+    if !writer.file_properties(note_id, before, after)? {
         tracing::warn!(
             scope = SCOPE,
             note_id,
@@ -320,38 +335,19 @@ fn stored(properties: &[IndexedProperty]) -> Map<String, Value> {
         .collect()
 }
 
-/// What the record takes from a frontmatter edit from `read` to `next`, under the lane once the
-/// file holds it: [`delta`] of their property values as stored, for
-/// `NotesWriter::file_properties`. For a writer already inside the note's turn (a journal
-/// save), which cannot take [`NotesService::set_properties`]' turn.
-pub(crate) fn file_delta(
+/// The property values, as stored, of a frontmatter edit from `read` to `next`, for
+/// `NotesWriter::file_properties` under the lane once the file holds it. For a writer already
+/// inside the note's turn (a journal save), which cannot take [`NotesService::set_properties`]'
+/// turn.
+pub(crate) fn edited_values(
     read: &YamlMap,
     next: &YamlMap,
     types: &HashMap<String, String>,
-) -> (Map<String, Value>, Vec<String>) {
-    let held = stored(&indexed(&user_properties(read), types));
-    let after = stored(&indexed(&user_properties(next), types));
-    delta(&held, &after)
-}
-
-/// The keys an edit set (new or with another value) and the keys it dropped, from the values
-/// the file held to the values it holds. Only these reach the record: see
-/// [`memry_core::domain::properties::mirror_file`] for why the rest must not.
-fn delta(
-    before: &Map<String, Value>,
-    after: &Map<String, Value>,
-) -> (Map<String, Value>, Vec<String>) {
-    let changed = after
-        .iter()
-        .filter(|(name, value)| before.get(*name) != Some(value))
-        .map(|(name, value)| (name.clone(), value.clone()))
-        .collect();
-    let removed = before
-        .keys()
-        .filter(|name| !after.contains_key(*name))
-        .cloned()
-        .collect();
-    (changed, removed)
+) -> EditedValues {
+    (
+        stored(&indexed(&user_properties(read), types)),
+        stored(&indexed(&user_properties(next), types)),
+    )
 }
 
 fn views(values: &YamlMap, types: &HashMap<String, String>) -> Vec<PropertyValueView> {

@@ -305,7 +305,7 @@ impl Indexer {
             }
             Ok(Some(file)) => Read::File(MeasuredFile {
                 note_id: note.note_id.clone(),
-                properties: file_properties(&file, types),
+                properties: file_properties(&file, types).unwrap_or_default(),
                 file_hash: file.hash,
                 text: file.raw,
             }),
