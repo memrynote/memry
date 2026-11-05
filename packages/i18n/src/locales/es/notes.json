@@ -1901,6 +1901,8 @@
         "statNotes": "notas conservan su texto",
         "statValues": "valores se quedan como propiedades",
         "plainText": "Las notas que mencionan #{tag} en su texto lo conservan como texto sin formato.",
+        "alsoTasks": "{tasks, plural, one {# tarea también pierde} other {# tareas también pierden}} #{tag}.",
+        "bodyTagsStay": "#{tag} escrita en el texto de las notas se queda, así que esas notas siguen apareciendo bajo la etiqueta.",
         "confirm": "Eliminar etiqueta",
         "done": "Se eliminó #{tag}."
       },

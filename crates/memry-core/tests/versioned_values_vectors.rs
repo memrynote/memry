@@ -286,10 +286,10 @@ fn versioned_values_match_the_committed_vectors() {
     }
 }
 
-/// The production map functions (`memry_core::sync::versioned`) against the
-/// same vectors: what the task apply and the field edit run.
+/// The production functions (`memry_core::sync::versioned`) against the same
+/// vectors: what the task and tag definition applies and the two edits run.
 #[test]
-fn the_production_map_functions_match_the_committed_vectors() {
+fn the_production_functions_match_the_committed_vectors() {
     use memry_core::sync::versioned;
 
     let file = vector_file("versioned-values");
@@ -304,8 +304,13 @@ fn the_production_map_functions_match_the_committed_vectors() {
                 expected["sign"],
                 "{name}"
             ),
-            "join-map" => {
-                let joined = versioned::join_map(field("local"), field("remote"));
+            kind @ ("join-value" | "join-map") => {
+                let join = if kind == "join-value" {
+                    versioned::join_value
+                } else {
+                    versioned::join_map
+                };
+                let joined = join(field("local"), field("remote"));
                 assert_eq!(
                     joined.value.as_ref(),
                     expected.get("value"),
@@ -328,6 +333,14 @@ fn the_production_map_functions_match_the_committed_vectors() {
                     object(&input["patch"], name),
                     input["clockTotal"].as_u64().expect("a clock total")
                 ),
+                expected["value"],
+                "{name}"
+            ),
+            "stamp-value" => assert_eq!(
+                Json::Object(versioned::stamp_value(
+                    field("previous"),
+                    object(&input["edited"], name)
+                )),
                 expected["value"],
                 "{name}"
             ),

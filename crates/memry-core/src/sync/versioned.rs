@@ -1,13 +1,13 @@
-//! Chapter 06 §6.11: a versioned map, `task.fields`.
+//! Chapter 06 §6.11: the two versioned keys, the map `task.fields` and the
+//! value `tag_definition.schema`.
 //!
-//! Each entry carries its own Lamport version `t` inside the value and merges
-//! by it, independently of the document clock, so a stale echo from an older
-//! peer cannot resurrect a value. Twin of `packages/shared/src/versioned.ts`
-//! (`joinVersionedMap`, `stampVersionedMap`, `plainVersionedMap`), pinned by
-//! the `versioned-values` vectors.
-//!
-//! `tag_definition.schema` is the other versioned key; this core stores it
-//! verbatim and never edits it, so only the map half is here.
+//! Each entry, and the schema as a whole, carries its own Lamport version `t`
+//! inside the value and merges by it, independently of the document clock, so
+//! a stale echo from an older peer cannot resurrect a value. Twin of
+//! `packages/shared/src/versioned.ts` (`joinVersionedValue`,
+//! `joinVersionedMap`, `stampVersionedValue`, `stampVersionedMapPatch`,
+//! `plainVersionedMap`), pinned by the `versioned-values` vectors. The apply
+//! paths run the joins through [`super::versioned_apply`].
 
 use std::cmp::Ordering;
 
@@ -55,7 +55,7 @@ fn entry_value(entry: Option<&Value>) -> Value {
         .unwrap_or(Value::Null)
 }
 
-/// The join of a local and a remote map, and what it means for each side.
+/// The join of a local and a remote value or map, and what it means for each side.
 #[derive(Debug, PartialEq)]
 pub struct Joined {
     /// `None` when neither side holds a map.
@@ -65,6 +65,40 @@ pub struct Joined {
     pub remote_behind: bool,
     /// The join differs from the local map.
     pub local_changed: bool,
+}
+
+/// The winner of a local and a remote versioned value. A remote `null` is no
+/// information; a remote that is absent or not an object is absent, and leaves
+/// the remote behind a local value (`versioned.ts:110-120`).
+pub fn join_value(local: Option<&Value>, remote: Option<&Value>) -> Joined {
+    let mine = local.filter(|value| value.is_object()).cloned();
+    if remote.is_some_and(Value::is_null) {
+        return Joined {
+            value: mine,
+            remote_behind: false,
+            local_changed: false,
+        };
+    }
+    let Some(theirs) = remote.filter(|value| value.is_object()) else {
+        return Joined {
+            remote_behind: mine.is_some(),
+            value: mine,
+            local_changed: false,
+        };
+    };
+    let order = mine.as_ref().map(|mine| compare(mine, theirs));
+    match order {
+        Some(Ordering::Greater | Ordering::Equal) => Joined {
+            value: mine,
+            remote_behind: order == Some(Ordering::Greater),
+            local_changed: false,
+        },
+        Some(Ordering::Less) | None => Joined {
+            value: Some(theirs.clone()),
+            remote_behind: false,
+            local_changed: true,
+        },
+    }
 }
 
 /// Per field name, the winner of the two entries; an entry on one side only
@@ -135,6 +169,24 @@ pub fn stamp_map(stored: Option<&Value>, patch: &Map<String, Value>, clock_total
         next.insert(name.clone(), Value::Object(entry));
     }
     Value::Object(next)
+}
+
+/// A local edit of a versioned value: `t` one past the previous value's, with
+/// no clock floor (§6.11.3). An edit that changes nothing returns `previous`
+/// itself (`stampVersionedValue`).
+pub fn stamp_value(previous: Option<&Value>, edited: &Map<String, Value>) -> Map<String, Value> {
+    let version = previous.map_or(0, version_of);
+    let mut content = edited.clone();
+    content.shift_remove("t");
+    if let Some((value, before)) = previous.and_then(|value| Some((value, value.as_object()?))) {
+        let mut unchanged = content.clone();
+        unchanged.insert("t".to_owned(), json!(version));
+        if canonical_json(&Value::Object(unchanged)) == canonical_json(value) {
+            return before.clone();
+        }
+    }
+    content.insert("t".to_owned(), json!(version + 1));
+    content
 }
 
 /// The values a map holds, removals dropped (`plainVersionedMap`).

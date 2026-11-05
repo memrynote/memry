@@ -1901,6 +1901,8 @@
         "statNotes": "notes gardent leur texte",
         "statValues": "valeurs restent comme propriétés",
         "plainText": "Les notes qui mentionnent #{tag} dans leur texte le gardent comme texte brut.",
+        "alsoTasks": "{tasks, plural, one {# tâche perd} other {# tâches perdent}} aussi #{tag}.",
+        "bodyTagsStay": "#{tag} écrit dans le texte des notes reste, ces notes apparaissent donc toujours sous le tag.",
         "confirm": "Supprimer le tag",
         "done": "#{tag} supprimé."
       },

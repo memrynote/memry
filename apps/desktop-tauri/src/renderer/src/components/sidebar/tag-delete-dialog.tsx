@@ -29,6 +29,7 @@ export function TagDeleteDialog({
   onConfirm
 }: TagDeleteDialogProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
+  const { t: tSettings } = useT('settings')
   const [, deleteAction, isPending] = useActionState<null, void>(async () => {
     try {
       await onConfirm()
@@ -59,7 +60,9 @@ export function TagDeleteDialog({
           <AlertDialogDescription>
             {tPhaseF(
               'phaseF.componentsSidebarTagDeleteDialog.notesWithThisTagWonTBeDeletedJustUntagged'
-            )}
+            )}{' '}
+            {tSettings('tags.dialogs.deleteTasks', { tag })}{' '}
+            {tPhaseF('tagFields.settings.delete.bodyTagsStay', { tag })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

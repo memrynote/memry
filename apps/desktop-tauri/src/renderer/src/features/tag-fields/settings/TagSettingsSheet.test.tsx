@@ -273,8 +273,12 @@ describe('TagSettingsSheet delete tag', () => {
     expect(within(dialog).getByText('notes keep their text')).toBeInTheDocument()
     expect(within(dialog).getByText('14')).toBeInTheDocument()
     expect(within(dialog).getByText('values stay as properties')).toBeInTheDocument()
+    // The delete takes the tag off tasks too, and leaves the #tags written in note text.
+    expect(within(dialog).getByText('2 tasks lose #person too.')).toBeInTheDocument()
     expect(
-      within(dialog).getByText('Notes that mention #person in their text keep it as plain text.')
+      within(dialog).getByText(
+        '#person written in note text stays, so those notes still show under the tag.'
+      )
     ).toBeInTheDocument()
   })
 
@@ -315,6 +319,7 @@ describe('TagSettingsSheet delete tag', () => {
       )
     ).toBeInTheDocument()
     expect(within(dialog).queryByText('notes keep their text')).not.toBeInTheDocument()
+    expect(within(dialog).queryByText(/lose #company too/)).not.toBeInTheDocument()
   })
 
   it('cannot be confirmed before the impact is known', async () => {
@@ -349,6 +354,29 @@ describe('TagSettingsSheet delete tag', () => {
     await waitFor(() => expect(tagsApi.deleteTag).toHaveBeenCalledWith('person'))
     await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Deleted #person.'))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('says how many notes kept the tag when the delete could not write them all', async () => {
+    tagsApi.deleteTag.mockResolvedValue({
+      success: true,
+      affectedNotes: 8,
+      failedNotes: [{ id: 'n1', title: 'Ada' }],
+      retryFinishes: false
+    })
+    const user = userEvent.setup()
+    renderSheet()
+
+    const dialog = await openDeleteDialog(user)
+    await within(dialog).findByText(/will be removed from 9 notes/)
+    await user.click(within(dialog).getByRole('button', { name: 'Delete tag' }))
+
+    await waitFor(() =>
+      expect(toastMock.warning).toHaveBeenCalledWith(
+        "Couldn't update 1 note. Fix the notes below, then delete #person again.",
+        { description: 'Ada', duration: 10_000 }
+      )
+    )
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('keeps the dialog open and says why when the delete is refused', async () => {

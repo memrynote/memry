@@ -172,6 +172,29 @@ impl Vault {
         crate::api::tag_hub::TagHub::over(self.db.clone(), &store)
     }
 
+    /// The desktop's tag schema edits, written under this device's identity (desktop Step 13j).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn tag_schemas(
+        &self,
+        store: Arc<dyn SecureStore>,
+    ) -> Result<crate::api::tag_schemas::TagSchemas, AuthError> {
+        crate::api::tag_schemas::TagSchemas::over(self.db.clone(), &store)
+    }
+
+    /// Every live tag definition with its stored schema ([`crate::domain::tag_schema::definitions`],
+    /// desktop Step 13j); a read, so no identity. Not part of the FFI surface.
+    #[doc(hidden)]
+    pub fn tag_schema_definitions(
+        &self,
+    ) -> Result<
+        std::collections::BTreeMap<String, crate::domain::tag_schema::DefinitionInput>,
+        StorageError,
+    > {
+        self.db
+            .read_blocking(crate::domain::tag_schema::definitions)
+    }
+
     /// The tag rename in progress ([`crate::domain::tag_rename::read`], desktop Step 13j); a
     /// read, so no identity. Not part of the FFI surface: the Rust desktop shell is its only
     /// caller.

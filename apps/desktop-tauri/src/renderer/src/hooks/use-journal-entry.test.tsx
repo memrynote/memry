@@ -327,15 +327,12 @@ describe('useJournalEntry dedicated hook', () => {
     })
     expect(queryClient.getQueryData(['journal', 'entries', '2026-05-10'])).toEqual(createdEntry)
 
-    act(() => {
-      result.current.updateContent('local dirty')
-    })
     const externalEntry = createMockJournalEntry({ date: '2026-05-10', content: 'external edit' })
     act(() => {
       updated?.({ date: '2026-05-10', entry: externalEntry, source: 'external' })
     })
     expect(result.current.externalUpdateCount).toBe(1)
-    expect(result.current.isDirty).toBe(false)
+    expect(queryClient.getQueryData(['journal', 'entries', '2026-05-10'])).toEqual(externalEntry)
 
     const localEntry = createMockJournalEntry({ date: '2026-05-10', content: 'local clean edit' })
     act(() => {
@@ -353,6 +350,68 @@ describe('useJournalEntry dedicated hook', () => {
       external?.({ date: '2026-05-10', type: 'deleted' })
     })
     expect(queryClient.getQueryData(['journal', 'entries', '2026-05-10'])).toBeNull()
+  })
+
+  // Typing not saved yet never reached the file, so nothing else holds it. Its save writes over
+  // the outside edit, which the core keeps as a version, as a note's save does (#3530).
+  it('keeps unsaved typing and a save in flight over an outside edit, and saves them', async () => {
+    let updated: ((event: any) => void) | null = null
+    ;(window.api.onJournalEntryUpdated as ReturnType<typeof vi.fn>).mockImplementation((cb) => {
+      updated = cb
+      return vi.fn()
+    })
+    const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+    const key = ['journal', 'entries', '2026-05-10']
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    const shown = queryClient.getQueryData(key)
+    const outside = createMockJournalEntry({ date: '2026-05-10', content: 'outside edit' })
+    const outsideEdit = () => {
+      act(() => {
+        updated?.({ date: '2026-05-10', entry: outside, source: 'external' })
+      })
+    }
+
+    act(() => {
+      result.current.updateContent('typed, not saved')
+    })
+    outsideEdit()
+    expect(result.current.externalUpdateCount).toBe(0)
+    expect(queryClient.getQueryData(key)).toEqual(shown)
+    expect(result.current.isDirty).toBe(true)
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync()
+    })
+    expect(updateEntry).toHaveBeenLastCalledWith({
+      date: '2026-05-10',
+      content: 'typed, not saved'
+    })
+    await waitFor(() => expect(result.current.isDirty).toBe(false))
+
+    let finishTagSave: () => void = () => {}
+    updateEntry.mockImplementationOnce(
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+      (input: { date: string }) =>
+        new Promise((resolve) => {
+          finishTagSave = () =>
+            resolve(createMockJournalEntry({ date: input.date, tags: ['kept'] }))
+        })
+    )
+    act(() => {
+      result.current.updateTags(['kept'])
+    })
+    await waitFor(() =>
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: '2026-05-10', tags: ['kept'] })
+    )
+    outsideEdit()
+    expect(result.current.externalUpdateCount).toBe(0)
+    await act(async () => finishTagSave())
+    await waitFor(() => expect(result.current.isDirty).toBe(false))
+
+    // Nothing unsaved: the outside edit reloads the day.
+    outsideEdit()
+    expect(result.current.externalUpdateCount).toBe(1)
+    expect(queryClient.getQueryData(key)).toEqual(outside)
   })
 
   it('refetches the open day on dropped journal events, unless it holds unsaved text', async () => {
@@ -384,6 +443,27 @@ describe('useJournalEntry dedicated hook', () => {
     })
     expect(getEntry).not.toHaveBeenCalled()
     expect(result.current.isDirty).toBe(true)
+  })
+
+  it('reads back the tags a tag delete took off the open day before its next tag edit', async () => {
+    let external: ((event: unknown) => void) | null = null
+    const api = window.api as unknown as Record<string, ReturnType<typeof vi.fn>>
+    api.onJournalExternalChange.mockImplementation((cb) => {
+      external = cb
+      return vi.fn()
+    })
+    const getEntry = window.api.journal.getEntry as ReturnType<typeof vi.fn>
+    getEntry.mockResolvedValue(createMockJournalEntry({ date: '2026-05-10', tags: ['x'] }))
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.entry?.tags).toEqual(['x']))
+
+    // The delete changed the day's record alone (#3931) and told the day so: the page reads
+    // the record back, so adding a tag next sends `[y]`, not `[x, y]`.
+    getEntry.mockResolvedValue(createMockJournalEntry({ date: '2026-05-10', tags: [] }))
+    act(() => {
+      external?.({ date: '2026-05-10', type: 'modified' })
+    })
+    await waitFor(() => expect(result.current.entry?.tags).toEqual([]))
   })
 
   describe('leaving the vault', () => {

@@ -1901,6 +1901,8 @@
         "statNotes": "notater beholder teksten sin",
         "statValues": "verdier blir værende som egenskaper",
         "plainText": "Notater som nevner #{tag} i teksten, beholder den som ren tekst.",
+        "alsoTasks": "{tasks, plural, one {# oppgave mister} other {# oppgaver mister}} også #{tag}.",
+        "bodyTagsStay": "#{tag} skrevet i notatteksten blir stående, så de notatene vises fortsatt under taggen.",
         "confirm": "Slett tagg",
         "done": "Slettet #{tag}."
       },

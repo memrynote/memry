@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 
 use super::Applied;
 use super::apply::{Applier, Step};
-use super::walked::{Found, Walked};
+use super::walked::{Batch, Found, Walked};
 use crate::vault::activity::ScanActivity;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::walk::{Limits, walk_vault_with};
@@ -41,7 +41,8 @@ pub const FIRST_RETRY: Duration = Duration::from_secs(1);
 /// its notes this many to a transaction.
 const FOUND_TOGETHER: usize = 128;
 /// The bytes of the files the walk puts aside before it applies them, at most about: they are
-/// read together.
+/// read together. With the batch being prepared while the one before it is applied, a walk
+/// holds at most two batches.
 const FOUND_TOGETHER_BYTES: u64 = 16 * 1024 * 1024;
 /// How long the loop waits for a fact before it looks at the clock.
 const IDLE: Duration = Duration::from_millis(250);
@@ -88,7 +89,7 @@ impl Consumer {
         let mut run = Run {
             filter: WatchFilter::new(exclude.clone()),
             exclude,
-            applier,
+            applier: Arc::new(applier),
             inbox,
             watch,
             stop: stop.clone(),
@@ -125,7 +126,8 @@ impl Drop for Consumer {
 }
 
 struct Run {
-    applier: Applier,
+    /// Shared with the thread that prepares the open walk's next batch ([`Preparing`]).
+    applier: Arc<Applier>,
     inbox: Inbox,
     watch: WatchHandle,
     filter: WatchFilter,
@@ -262,15 +264,27 @@ impl Run {
         }
     }
 
-    /// Applies the new markdown files the walk put aside, together
-    /// ([`Applier::found_together`]) and empties `new`, then applies the facts that arrived
-    /// meanwhile, then each file sent back alone as the walk applies a file. `false` when a
-    /// close stopped it.
-    fn found_together(&mut self, new: &mut Vec<Found>, scan: &mut ScanActivity) -> bool {
-        if new.is_empty() {
+    /// Starts preparing the new markdown files the walk put aside (`new`, which it empties) on
+    /// their own thread, then applies the batch prepared before them, if any: its new notes
+    /// together ([`Applier::found_together`]), the facts that arrived meanwhile, then each
+    /// file sent back alone as the walk applies a file. So the next batch's reads and
+    /// conversions run while this one's transactions do, and at most two batches are in
+    /// flight. `false` when a close stopped it.
+    fn found_together(
+        &mut self,
+        new: &mut Vec<Found>,
+        preparing: &mut Option<Preparing>,
+        scan: &mut ScanActivity,
+    ) -> bool {
+        let next = (!new.is_empty()).then(|| Preparing::start(&self.applier, new, &self.stop));
+        let Some(previous) = std::mem::replace(preparing, next) else {
             return true;
+        };
+        let batch = previous.join();
+        if self.stopped() {
+            return false;
         }
-        let together = self.applier.found_together(std::mem::take(new), scan);
+        let together = self.applier.found_together(batch, scan);
         for (path, step) in together.steps {
             self.settle(step, Some(&path));
         }
@@ -331,7 +345,7 @@ impl Run {
             .files
             .into_iter()
             .partition(|path| file_type_of_extension(&extension(path)) == Some(FileType::Markdown));
-        let (mut new, mut new_bytes) = (Vec::new(), 0);
+        let (mut new, mut new_bytes, mut preparing) = (Vec::new(), 0, None);
         for path in others.into_iter().chain(notes) {
             if self.stopped() {
                 return;
@@ -346,12 +360,23 @@ impl Run {
             };
             if meta.is_file() {
                 match self.applier.walked(&path, &meta, &mut scan) {
-                    Walked::Applied(step) => self.settle(step, Some(&path)),
+                    Walked::Applied(step) => {
+                        self.settle(step, Some(&path));
+                        // A batch prepared while the walk went on through known files is
+                        // applied now, not when the next batch fills, which in a vault of
+                        // mostly known files may be the walk's end. Among new files the walk
+                        // fills the next batch first, so the two overlap.
+                        if preparing.as_ref().is_some_and(Preparing::is_finished)
+                            && !self.found_together(&mut Vec::new(), &mut preparing, &mut scan)
+                        {
+                            return;
+                        }
+                    }
                     Walked::New(file) => {
                         new_bytes += file.size;
                         new.push(file);
                         let full = new.len() == FOUND_TOGETHER || new_bytes >= FOUND_TOGETHER_BYTES;
-                        if full && !self.found_together(&mut new, &mut scan) {
+                        if full && !self.found_together(&mut new, &mut preparing, &mut scan) {
                             return;
                         }
                         if new.is_empty() {
@@ -361,8 +386,11 @@ impl Run {
                 }
             }
         }
-        if !self.found_together(&mut new, &mut scan) {
-            return;
+        // The last batch put aside, then the one being prepared.
+        while !new.is_empty() || preparing.is_some() {
+            if !self.found_together(&mut new, &mut preparing, &mut scan) {
+                return;
+            }
         }
         self.applier.report_scan(&scan);
         if let Ok(lane) = self.applier.rows.lane_of(self.applier.session) {
@@ -372,6 +400,76 @@ impl Run {
         }
         if let Some(after_walk) = self.after_walk.take() {
             after_walk(&|| self.stopped());
+        }
+    }
+}
+
+/// A batch of the open walk's new files being prepared on its own thread
+/// ([`Applier::prepare_together`]), or prepared already on the consumer's when no thread could
+/// be started. Dropped unjoined, when a close stops the walk, it waits for that thread, which a
+/// close stops between files: nothing outlives the consumer.
+enum Preparing {
+    Thread(Joined),
+    Ready(Batch),
+}
+
+/// The preparing thread, joined when dropped.
+struct Joined(Option<JoinHandle<Batch>>);
+
+impl Preparing {
+    fn start(applier: &Arc<Applier>, new: &mut Vec<Found>, stop: &Arc<AtomicBool>) -> Self {
+        let found = std::mem::take(new);
+        // The files go to the thread once it runs, so a thread that cannot start leaves them.
+        let (send, receive) = std::sync::mpsc::channel::<Vec<Found>>();
+        let (preparer, stopped) = (applier.clone(), stop.clone());
+        let spawned = std::thread::Builder::new()
+            .name("vault-prepare".into())
+            .spawn(move || {
+                let found = receive.recv().unwrap_or_default();
+                preparer.prepare_together(found, &stopped)
+            });
+        match spawned {
+            Ok(thread) => {
+                // The thread holds the receiver until it has the files: this send is taken.
+                let _ = send.send(found);
+                Self::Thread(Joined(Some(thread)))
+            }
+            Err(error) => {
+                tracing::warn!(
+                    scope = "vault_consumer",
+                    "new files are prepared on the consumer's thread: no thread started: {error}"
+                );
+                Self::Ready(applier.prepare_together(found, stop))
+            }
+        }
+    }
+
+    fn is_finished(&self) -> bool {
+        match self {
+            Self::Thread(Joined(Some(thread))) => thread.is_finished(),
+            Self::Thread(Joined(None)) | Self::Ready(_) => true,
+        }
+    }
+
+    fn join(self) -> Batch {
+        match self {
+            Self::Ready(batch) => batch,
+            Self::Thread(mut joined) => joined
+                .0
+                .take()
+                .expect("joined once")
+                .join()
+                .unwrap_or_else(|panic| std::panic::resume_unwind(panic)),
+        }
+    }
+}
+
+impl Drop for Joined {
+    fn drop(&mut self) {
+        if let Some(thread) = self.0.take()
+            && thread.join().is_err()
+        {
+            tracing::error!(scope = "vault_consumer", "preparing new files panicked");
         }
     }
 }

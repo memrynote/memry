@@ -1901,6 +1901,8 @@
         "statNotes": "catatan mempertahankan teksnya",
         "statValues": "nilai tetap sebagai properti",
         "plainText": "Catatan yang menyebut #{tag} di teksnya tetap menyimpannya sebagai teks biasa.",
+        "alsoTasks": "#{tag} juga dihapus dari {tasks, plural, other {# tugas}}.",
+        "bodyTagsStay": "#{tag} yang tertulis di teks catatan tetap ada, jadi catatan itu masih muncul di bawah tag.",
         "confirm": "Hapus tag",
         "done": "#{tag} dihapus."
       },

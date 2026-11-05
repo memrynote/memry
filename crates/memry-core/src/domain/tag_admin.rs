@@ -440,7 +440,10 @@ pub(crate) fn upsert_definition_in(
         })?;
     map.insert("name".into(), json!(id));
     if !map.get("color").is_some_and(Value::is_string) {
+        // The palette's colour, not a person's: a peer holding the tag keeps its own colour
+        // (desktop `getOrCreateTag`). A colour the changes set says otherwise below.
         map.insert("color".into(), json!(default_color(&id)));
+        map.insert("colorAuthored".into(), json!(false));
     }
     for (key, change) in changes {
         match change {

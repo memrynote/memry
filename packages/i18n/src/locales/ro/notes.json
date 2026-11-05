@@ -1901,6 +1901,8 @@
         "statNotes": "notițe își păstrează textul",
         "statValues": "valori rămân ca proprietăți",
         "plainText": "Notițele care menționează #{tag} în text îl păstrează ca text simplu.",
+        "alsoTasks": "#{tag} este eliminată și din {tasks, plural, one {# sarcină} few {# sarcini} other {# de sarcini}}.",
+        "bodyTagsStay": "#{tag} scrisă în textul notițelor rămâne, așa că acele notițe apar în continuare sub etichetă.",
         "confirm": "Șterge eticheta",
         "done": "#{tag} a fost șters."
       },

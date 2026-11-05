@@ -1901,6 +1901,8 @@
         "statNotes": "노트의 텍스트는 유지됨",
         "statValues": "값은 속성으로 유지됨",
         "plainText": "텍스트에 #{tag}을(를) 언급한 노트에서는 일반 텍스트로 남습니다.",
+        "alsoTasks": "{tasks, plural, other {작업 #개}}에서도 #{tag}이(가) 제거됩니다.",
+        "bodyTagsStay": "노트 본문에 쓴 #{tag}은(는) 그대로 남으므로 해당 노트는 계속 이 태그 아래에 표시됩니다.",
         "confirm": "태그 삭제",
         "done": "#{tag}을(를) 삭제했습니다."
       },

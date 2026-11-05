@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Tätä muistiinpanoa ei löytynyt. Se on ehkä poistettu.",
     "invalidFrontmatter": "Tässä muistiinpanossa on virheelliset metatiedot, eikä sitä voida lukea.",
+    "invalidTitle": "Muistiinpanon otsikon on oltava 1–200 merkkiä pitkä.",
     "duplicateId": "Tällä tunnuksella varustettu muistiinpano on jo olemassa.",
     "writeFailed": "Tämän muistiinpanon tallentaminen epäonnistui. Tarkista levytila ja käyttöoikeudet.",
     "readFailed": "Tämän muistiinpanon lukeminen epäonnistui. Tiedosto voi olla lukittu tai vioittunut.",

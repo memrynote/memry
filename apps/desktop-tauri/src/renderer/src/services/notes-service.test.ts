@@ -723,6 +723,21 @@ describe('notes-service', () => {
     })
   })
 
+  it('names the title limit when a rename is refused for the length of the title (#4008)', async () => {
+    commands.notesRename.mockRejectedValue({
+      kind: 'invalid',
+      code: 'invalid_title',
+      message: 'the title is empty or longer than 200 characters'
+    })
+    const result = await notesService.rename('note-1', 'x'.repeat(201))
+    expect(result).toEqual({
+      success: false,
+      error: getI18n().t('errors:note.invalidTitle'),
+      note: null
+    })
+    expect(result.error).toContain('200')
+  })
+
   it("moves through its command, a failure in Electron's shape", async () => {
     const view = {
       id: 'note-1',

@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "Poistetaanko tunniste?",
       "deleteDescription": "Poistetaanko tunniste ”{name}” {count, plural, one {# kohteesta} other {# kohteesta}}? Tätä ei voi kumota.",
+      "deleteTasks": "Myös tehtävät, joilla on tunniste #{tag}, menettävät sen.",
       "mergeTitle": "Yhdistä tunniste",
       "mergeDescription": "Kaikki kohteet, joilla on tunniste ”{source}”, merkitään valitsemallasi tunnisteella. Alkuperäinen tunniste poistetaan.",
+      "mergeRetags": "Muistiinpanot, päivät ja tehtävät, joilla on tunniste ”{source}”, saavat sen sijaan kohdetunnisteen.",
+      "mergeBodyTagsStay": "Muistiinpanojen tekstiin kirjoitettu #{source} säilyy, joten ne muistiinpanot pitävät sen.",
       "targetPlaceholder": "Valitse tunniste, johon yhdistetään…",
       "colorTitle": "Vaihda tunnisteen ”{name}” väri"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "Nimetään uudelleen #{oldName}: {done} / {total} muistiinpanoa",
       "renamedBodySkipped": "Nimeä ”{newName}” ei voi kirjoittaa tekstin sisäiseksi tunnisteeksi, joten #{oldName} muistiinpanojen tekstissä säilyy sellaisenaan",
       "renamedSomeFailed": "{count, plural, one {# muistiinpanoa} other {# muistiinpanoa}} ei voitu päivittää. Avaa {count, plural, one {se} other {ne}} ja lisää tunniste uudelleen",
+      "mergedSomeKept": "{count, plural, one {# muistiinpanoa} other {# muistiinpanoa}} ei voitu päivittää. Yhdistä #{tag} uudelleen viimeistelläksesi.",
+      "deletedSomeKept": "{count, plural, one {# muistiinpanoa} other {# muistiinpanoa}} ei voitu päivittää. Poista #{tag} uudelleen viimeistelläksesi.",
+      "mergedSomeStuck": "{count, plural, one {# muistiinpanoa} other {# muistiinpanoa}} ei voitu päivittää. Korjaa alla olevat muistiinpanot ja yhdistä sitten #{tag} uudelleen.",
+      "deletedSomeStuck": "{count, plural, one {# muistiinpanoa} other {# muistiinpanoa}} ei voitu päivittää. Korjaa alla olevat muistiinpanot ja poista sitten #{tag} uudelleen.",
       "renameUnfinished": "Tunnisteen #{oldName} uudelleennimeäminen muotoon #{newName} jäi kesken {count, plural, one {# muistiinpanon} other {# muistiinpanon}} osalta. Nimeä #{oldName} uudelleen muotoon #{newName}, niin se valmistuu.",
       "renameUnfinishedMore": "{names} ja {count, plural, one {# muu} other {# muuta}}",
       "stopRename": "Lopeta tämä uudelleennimeäminen",

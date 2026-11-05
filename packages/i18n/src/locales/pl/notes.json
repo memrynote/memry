@@ -1901,6 +1901,8 @@
         "statNotes": "notatki zachowują tekst",
         "statValues": "wartości zostają jako właściwości",
         "plainText": "Notatki wspominające #{tag} w tekście zachowają go jako zwykły tekst.",
+        "alsoTasks": "{tasks, plural, one {# zadanie też traci} few {# zadania też tracą} many {# zadań też traci} other {# zadania też traci}} #{tag}.",
+        "bodyTagsStay": "#{tag} wpisany w treści notatek zostaje, więc te notatki nadal są widoczne pod tagiem.",
         "confirm": "Usuń tag",
         "done": "Usunięto #{tag}."
       },

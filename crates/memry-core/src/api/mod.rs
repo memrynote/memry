@@ -39,6 +39,7 @@ pub mod search;
 pub mod settings;
 pub mod sync;
 pub mod tag_hub;
+pub mod tag_schemas;
 pub mod task_conformance;
 pub mod task_extras;
 pub mod task_fields;

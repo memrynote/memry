@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Deze notitie kon niet worden gevonden. Mogelijk is deze verwijderd.",
     "invalidFrontmatter": "Deze notitie bevat ongeldige metagegevens en kan niet worden gelezen.",
+    "invalidTitle": "Een notitietitel moet 1 tot 200 tekens lang zijn.",
     "duplicateId": "Er bestaat al een notitie met deze ID.",
     "writeFailed": "Kan deze notitie niet opslaan. Controleer schijfruimte en machtigingen.",
     "readFailed": "Kan deze notitie niet lezen. Het bestand is mogelijk vergrendeld of beschadigd.",

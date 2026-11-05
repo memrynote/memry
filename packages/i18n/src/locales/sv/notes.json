@@ -1901,6 +1901,8 @@
         "statNotes": "anteckningar behåller sin text",
         "statValues": "värden finns kvar som egenskaper",
         "plainText": "Anteckningar som nämner #{tag} i sin text behåller den som vanlig text.",
+        "alsoTasks": "{tasks, plural, one {# uppgift förlorar} other {# uppgifter förlorar}} också #{tag}.",
+        "bodyTagsStay": "#{tag} skriven i anteckningarnas text står kvar, så de anteckningarna visas fortfarande under taggen.",
         "confirm": "Radera tagg",
         "done": "Raderade #{tag}."
       },

@@ -1901,6 +1901,8 @@
         "statNotes": "筆記保留其文字",
         "statValues": "值會保留為屬性",
         "plainText": "文字中提到 #{tag} 的筆記會將它保留為純文字。",
+        "alsoTasks": "#{tag} 也會從{tasks, plural, other {# 項任務}}中移除。",
+        "bodyTagsStay": "筆記內文中寫的 #{tag} 會保留，因此這些筆記仍會顯示在此標籤下。",
         "confirm": "刪除標籤",
         "done": "已刪除 #{tag}。"
       },

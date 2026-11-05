@@ -331,6 +331,12 @@ export const commands = {
 	 */
 	tagsRenameUnfinished: () => __TAURI_INVOKE<UnfinishedRenameView | null>("tags_rename_unfinished"),
 	tagsRenameCategory: (id: string, name: string) => __TAURI_INVOKE<null>("tags_rename_category", { id, name }),
+	/**  `tags:delete`: the tag taken off every note, day and task, and its definition deleted. */
+	tagsDelete: (tag: string) => __TAURI_INVOKE<DeleteTagView>("tags_delete", { tag }),
+	/**  `tags:merge`: `source` merged into `target` in every note, day and task. */
+	tagsMerge: (input: MergeTagInput) => __TAURI_INVOKE<MergeTagView>("tags_merge", { input }),
+	/**  `tags:remove-from-note`: the tag taken off one note or day. */
+	tagsRemoveFromNote: (input: RemoveTagFromNoteInput) => __TAURI_INVOKE<null>("tags_remove_from_note", { input }),
 	/**  A drag in the tag hub: tag assignments and category order, all or nothing. */
 	tagsReorder: (input: ReorderInput) => __TAURI_INVOKE<null>("tags_reorder", { input }),
 	tagsUnpinNoteFromTag: (noteId: string, tag: string) => __TAURI_INVOKE<null>("tags_unpin_note_from_tag", { noteId, tag }),
@@ -450,6 +456,7 @@ export const events = {
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
 	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
+	tagDeletedEvent: makeEvent<TagDeletedEvent, TagDeletedEvent>("tag-deleted-event"),
 	tagNotesChangedEvent: makeEvent<TagNotesChangedEvent, TagNotesChangedEvent>("tag-notes-changed-event"),
 	tagRenamedEvent: makeEvent<TagRenamedEvent, TagRenamedEvent>("tag-renamed-event"),
 	tagsProgressEvent: makeEvent<TagsProgressEvent, TagsProgressEvent>("tags-progress-event"),
@@ -651,6 +658,15 @@ export type DefinitionInput = {
  *  (`PROPERTY_TYPE_ENUM`), which is system-managed.
  */
 export type DefinitionType = "text" | "number" | "checkbox" | "date" | "url" | "status" | "select" | "multiselect" | "project";
+
+/**  `DeleteTagResponse` of a delete that ran: the notes and days that lost the tag. */
+export type DeleteTagView = {
+	affectedNotes: number,
+	/**  The notes and days that keep the tag. */
+	failedNotes: KeptNoteView[],
+	/**  Deleting again can finish every one of them; else some need their file fixed first. */
+	retryFinishes: boolean,
+};
 
 /**  One shipped line (`DiagnosticLogLineSchema`). */
 export type DiagnosticLine = {
@@ -966,6 +982,12 @@ export type JournalUpdateInput = {
 	properties?: { [key in string]: Value } | null,
 };
 
+/**  A note or day a merge or delete could not write, named by its file's name. */
+export type KeptNoteView = {
+	id: string,
+	title: string,
+};
+
 /**  `NoteLargeFileInfo`. */
 export type LargeFileInfo = {
 	reason: LargeFileReasonView,
@@ -1007,6 +1029,21 @@ export type LogLevel = "error" | "warn" | "info" | "verbose" | "debug";
  */
 export type MenuCommandInvokedEvent = {
 	command: string,
+};
+
+/**  `MergeTagSchema`. */
+export type MergeTagInput = {
+	source: string,
+	target: string,
+};
+
+/**  `MergeTagResponse` of a merge that ran: the notes, days and tasks that took the target. */
+export type MergeTagView = {
+	affectedItems: number,
+	/**  The notes and days that keep the source. */
+	failedNotes: KeptNoteView[],
+	/**  Merging again can finish every one of them; else some need their file fixed first. */
+	retryFinishes: boolean,
 };
 
 export type Metrics = {
@@ -1383,6 +1420,12 @@ export type RefsKept = "changing" | "unreadable";
 /**  `RelationKind`. */
 export type RelationKind = "note" | "task" | "event" | "external-event" | "canvas" | "journal";
 
+/**  `RemoveTagFromNoteSchema`. */
+export type RemoveTagFromNoteInput = {
+	noteId: string,
+	tag: string,
+};
+
 /**  `RenameTagSchema`. */
 export type RenameTagInput = {
 	oldName: string,
@@ -1551,8 +1594,17 @@ export type TagColorUpdatedEvent = {
 	color: string,
 };
 
+/**
+ *  A tag went from the vault, deleted or merged into another (`tags:deleted`): `affectedNotes`
+ *  notes and days lost it.
+ */
+export type TagDeletedEvent = {
+	tag: string,
+	affectedNotes: number,
+};
+
 /**  What happened to a note in a tag, for [`TagNotesChangedEvent`]. */
-export type TagNoteAction = "pinned" | "unpinned";
+export type TagNoteAction = "pinned" | "unpinned" | "removed";
 
 /**  `TagNoteItem`. */
 export type TagNoteItemView = {
@@ -1568,7 +1620,10 @@ export type TagNoteItemView = {
 	emoji: string | null,
 };
 
-/**  A note was pinned in a tag or unpinned from it (`tags:notes-changed`). */
+/**
+ *  A note was pinned in a tag, unpinned from it, or the tag was taken off it
+ *  (`tags:notes-changed`).
+ */
 export type TagNotesChangedEvent = {
 	tag: string,
 	noteId: string,

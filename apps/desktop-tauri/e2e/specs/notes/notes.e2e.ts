@@ -75,6 +75,24 @@ test('Cmd-N makes a note whose typed title names its file and whose typed body i
   await expect.poll(async () => (await getNote(page, id))?.content.trim()).toBe('Milk and bread')
 })
 
+// A refused rename used to snap the title back with no message (#4008): the command answered
+// `invalid_title` and the page showed only thrown failures.
+test('a title over 200 characters is refused with the limit named', async ({ page }) => {
+  await vaultOpen(page)
+  await page.keyboard.press(SHORTCUTS.newNote)
+  const title = page.locator(NOTE_TITLE).first()
+  await expect(title).toBeFocused()
+  const { id } = await newNote(page, [], (note) => note.title === 'New note')
+
+  await title.fill('x'.repeat(201))
+  await title.press('Enter')
+
+  await expect(page.locator('[data-sonner-toast][data-type="error"]').first()).toContainText(
+    'A note title must be 1 to 200 characters long.'
+  )
+  expect((await getNote(page, id))?.title).toBe('New note')
+})
+
 // The field keeps a title it has not left while the window is in the background (WebView2 blurs
 // it then, WebKit does not), so the quit, the tab's close and a note switch have to save it.
 async function typeTitleAndStay(page: Page, view: NoteView): Promise<string> {

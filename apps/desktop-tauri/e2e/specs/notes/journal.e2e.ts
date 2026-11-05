@@ -5,7 +5,8 @@
 // calendar and heatmap cases, which asserted nothing. The calendar (13m-4) lists the day files
 // of the vault with their previews and counts, and drops a deleted day. The charts (13m-4b)
 // read the saved days' property values, and the day panel its day's tasks. An edit of the day's
-// file outside the app (13m-5) reaches the open day; the app's own saves never reach it as one.
+// file outside the app (13m-5) reaches the open day, unless the day holds typing not saved yet,
+// which stays and is saved; the app's own saves never reach it as one.
 // A tag added to the file's frontmatter outside the app joins the day's tags on its record (#3825).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -252,6 +253,72 @@ test('an edit of the open day file outside the app shows in the day', async ({
     readFileSync(file, 'utf8').replace('Written in the app.', 'Rewritten outside.')
   )
   await expect(page.locator('.bn-editor').first()).toContainText('Rewritten outside.')
+})
+
+// Typing not saved yet reached no file, so nothing else holds it (#3530): an outside edit of the
+// day's file leaves it in the day, and its save writes over that edit, which the core keeps as a
+// version (`journal_update::a_save_over_an_outside_edit_keeps_that_edit_as_a_version`).
+test('typing not saved yet stays in the day over an outside edit, and is saved', async ({
+  page,
+  testVaultPath
+}) => {
+  await openJournal(page)
+  const date = await today(page)
+  const file = join(testVaultPath, 'journal', `${date}.md`)
+  await typeInDay(page, 'Written in the app.')
+  await pollUntil(
+    async () => ((await entry(page, date))?.content.includes('in the app') ? true : undefined),
+    { timeoutMs: 20_000 }
+  )
+  await page.evaluate(() => {
+    const seen: string[] = []
+    const target = window as unknown as {
+      __outsideEdits: string[]
+      __TAURI__: {
+        event: {
+          listen(
+            name: string,
+            cb: (e: { payload: { source?: string; entry: { content: string } } }) => void
+          ): Promise<unknown>
+        }
+      }
+    }
+    target.__outsideEdits = seen
+    return target.__TAURI__.event
+      .listen('journal-entry-updated-event', (event) => {
+        if (event.payload.source === 'external') seen.push(event.payload.entry.content)
+      })
+      .then(() => true)
+  })
+
+  await typeInDay(page, ' Kept typing')
+  // Past the editor's 150 ms debounce: the page holds the typing as unsaved.
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  writeFileSync(
+    file,
+    readFileSync(file, 'utf8').replace('Written in the app.', 'Rewritten outside.')
+  )
+  // Each key restarts the 1 s save delay, so the outside edit reaches the page while the typing
+  // is still unsaved.
+  const reached = await pollUntil(
+    async () => {
+      await typeInDay(page, '.')
+      const seen = await page.evaluate(
+        () => (window as unknown as { __outsideEdits: string[] }).__outsideEdits
+      )
+      return seen.some((content) => content.includes('Rewritten outside.')) ? true : undefined
+    },
+    { timeoutMs: 20_000, intervalMs: 200 }
+  )
+  expect(reached).toBe(true)
+
+  const saved = await pollUntil(
+    async () => ((await entry(page, date))?.content.includes('Kept typing') ? true : undefined),
+    { timeoutMs: 20_000 }
+  )
+  expect(saved).toBe(true)
+  await expect(page.locator('.bn-editor').first()).toContainText('Written in the app. Kept typing.')
+  expect(readFileSync(file, 'utf8')).toContain('Written in the app. Kept typing.')
 })
 
 test('a tag added to the day file outside the app joins the day tags on its record', async ({

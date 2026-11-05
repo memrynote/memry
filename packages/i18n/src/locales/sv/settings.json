@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "Radera tagg",
       "deleteDescription": "Ta bort ”{name}” från {count, plural, one {# objekt} other {# objekt}}? Det går inte att ångra.",
+      "deleteTasks": "Uppgifter med #{tag} förlorar den också.",
       "mergeTitle": "Sammanfoga tagg",
       "mergeDescription": "Alla objekt som är taggade med ”{source}” får måltaggen i stället. Källtaggen raderas.",
+      "mergeRetags": "Anteckningar, dagar och uppgifter som är taggade med ”{source}” får måltaggen i stället.",
+      "mergeBodyTagsStay": "#{source} skriven i anteckningarnas text står kvar, så de anteckningarna behåller den.",
       "targetPlaceholder": "Välj måltagg…",
       "colorTitle": "Ändra färg för ”{name}”"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "Byter namn på #{oldName}: {done} / {total} anteckningar",
       "renamedBodySkipped": "”{newName}” kan inte skrivas som en inline-tagg, så #{oldName} i anteckningstexten förblir som den är skriven",
       "renamedSomeFailed": "Det gick inte att uppdatera {count, plural, one {# anteckning} other {# anteckningar}}. Öppna {count, plural, one {den} other {dem}} och lägg till taggen igen",
+      "mergedSomeKept": "Det gick inte att uppdatera {count, plural, one {# anteckning} other {# anteckningar}}. Slå ihop #{tag} igen för att slutföra.",
+      "deletedSomeKept": "Det gick inte att uppdatera {count, plural, one {# anteckning} other {# anteckningar}}. Ta bort #{tag} igen för att slutföra.",
+      "mergedSomeStuck": "Det gick inte att uppdatera {count, plural, one {# anteckning} other {# anteckningar}}. Rätta anteckningarna nedan och slå sedan ihop #{tag} igen.",
+      "deletedSomeStuck": "Det gick inte att uppdatera {count, plural, one {# anteckning} other {# anteckningar}}. Rätta anteckningarna nedan och ta sedan bort #{tag} igen.",
       "renameUnfinished": "Namnbytet från #{oldName} till #{newName} slutfördes inte för {count, plural, one {# anteckning} other {# anteckningar}}. Byt namn från #{oldName} till #{newName} igen för att slutföra det.",
       "renameUnfinishedMore": "{names} och {count, plural, one {# till} other {# till}}",
       "stopRename": "Stoppa det här namnbytet",

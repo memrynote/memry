@@ -1991,8 +1991,11 @@
     "dialogs": {
       "deleteTitle": "حذف الوسم",
       "deleteDescription": "هل تريد إزالة «{name}» من {count, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصرًا} other {# عنصر}}؟ لا يمكن التراجع عن هذا الإجراء.",
+      "deleteTasks": "تفقد المهام الموسومة بـ #{tag} الوسم أيضًا.",
       "mergeTitle": "دمج الوسم",
       "mergeDescription": "سيُعاد وسم كل العناصر الموسومة بالوسم «{source}» بالوسم المستهدف، وسيُحذف الوسم المصدر.",
+      "mergeRetags": "تحصل الملاحظات والأيام والمهام الموسومة بالوسم «{source}» على الوسم المستهدف بدلًا منه.",
+      "mergeBodyTagsStay": "يبقى #{source} المكتوب في نص الملاحظات، لذا تحتفظ به تلك الملاحظات.",
       "targetPlaceholder": "اختيار الوسم المستهدف…",
       "colorTitle": "تغيير لون «{name}»"
     },
@@ -2002,6 +2005,10 @@
       "renaming": "جارٍ إعادة تسمية #{oldName}: {done} / {total} ملاحظة",
       "renamedBodySkipped": "لا يمكن كتابة \"{newName}\" كوسم مضمّن، لذا يبقى #{oldName} في نص الملاحظة كما كُتب",
       "renamedSomeFailed": "تعذّر تحديث {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}. افتحها وأضف الوسم مرة أخرى",
+      "mergedSomeKept": "تعذّر تحديث {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}. ادمج #{tag} مرة أخرى للإنهاء.",
+      "deletedSomeKept": "تعذّر تحديث {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}. احذف #{tag} مرة أخرى للإنهاء.",
+      "mergedSomeStuck": "تعذّر تحديث {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}. أصلح الملاحظات أدناه، ثم ادمج #{tag} مرة أخرى.",
+      "deletedSomeStuck": "تعذّر تحديث {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}. أصلح الملاحظات أدناه، ثم احذف #{tag} مرة أخرى.",
       "renameUnfinished": "لم تكتمل إعادة تسمية #{oldName} إلى #{newName} في {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}. أعد تسمية #{oldName} إلى #{newName} مرة أخرى لإكمالها.",
       "renameUnfinishedMore": "{names} و{count, plural, zero {# أخرى} one {واحدة أخرى} two {اثنتان أخريان} few {# أخرى} many {# أخرى} other {# أخرى}}",
       "stopRename": "إيقاف إعادة التسمية هذه",

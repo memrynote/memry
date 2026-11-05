@@ -1901,6 +1901,8 @@
         "statNotes": "notities behouden hun tekst",
         "statValues": "waarden blijven als eigenschappen",
         "plainText": "Notities die #{tag} in hun tekst noemen, behouden het als gewone tekst.",
+        "alsoTasks": "{tasks, plural, one {# taak verliest} other {# taken verliezen}} #{tag} ook.",
+        "bodyTagsStay": "#{tag} in de tekst van notities blijft staan, dus die notities verschijnen nog onder de tag.",
         "confirm": "Tag verwijderen",
         "done": "#{tag} verwijderd."
       },
