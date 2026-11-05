@@ -134,6 +134,8 @@ mod domain_note_folder_move;
 mod domain_note_identity;
 #[path = "domain_note_identity_moves.rs"]
 mod domain_note_identity_moves;
+#[path = "domain_note_new_files.rs"]
+mod domain_note_new_files;
 #[path = "domain_note_positions.rs"]
 mod domain_note_positions;
 #[path = "domain_note_tasks.rs"]
