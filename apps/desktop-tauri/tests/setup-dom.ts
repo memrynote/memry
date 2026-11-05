@@ -295,6 +295,8 @@ vi.mock('../src/generated/bindings', () => {
         answered(tags().renameCategory({ id, name }), () => null),
       tagsDeleteCategory: (id: string) => answered(tags().deleteCategory({ id }), () => null),
       tagsReorder: (input: unknown) => answered(tags().reorder(input), () => null),
+      tagsRenameUnfinished: async () => null,
+      tagsRenameAbandon: async () => false,
       tagsRename: (input: unknown) =>
         answered(tags().renameTag(input), (result) => ({
           affectedNotes: result.affectedNotes ?? 0,

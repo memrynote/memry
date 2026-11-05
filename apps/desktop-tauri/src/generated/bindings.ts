@@ -308,6 +308,16 @@ export const commands = {
 	tagsPinNoteToTag: (noteId: string, tag: string) => __TAURI_INVOKE<null>("tags_pin_note_to_tag", { noteId, tag }),
 	/**  `tags:rename`: the tag and its children across the vault, merged into a name in use. */
 	tagsRename: (input: RenameTagInput) => __TAURI_INVOKE<RenameTagView>("tags_rename", { input }),
+	/**
+	 *  Stops the rename left unfinished: the notes it wrote keep the new name, the ones it left the
+	 *  old, and other renames run again. `false` when none was recorded.
+	 */
+	tagsRenameAbandon: () => __TAURI_INVOKE<boolean>("tags_rename_abandon"),
+	/**
+	 *  The rename left with notes it could not write, if any; none while one runs. Tauri only:
+	 *  Electron forgets the notes it could not write.
+	 */
+	tagsRenameUnfinished: () => __TAURI_INVOKE<UnfinishedRenameView | null>("tags_rename_unfinished"),
 	tagsRenameCategory: (id: string, name: string) => __TAURI_INVOKE<null>("tags_rename_category", { id, name }),
 	/**  A drag in the tag hub: tag assignments and category order, all or nothing. */
 	tagsReorder: (input: ReorderInput) => __TAURI_INVOKE<null>("tags_reorder", { input }),
@@ -1658,6 +1668,19 @@ export type UndoStatus = "restored" | "stale";
 export type UndoTagTemplateInput = {
 	noteId: string,
 	undoToken: string,
+};
+
+/**  A note a rename left, named by its file's name. */
+export type UnfinishedNoteView = {
+	id: string,
+	title: string,
+};
+
+/**  A rename left with notes it could not write, and those notes. */
+export type UnfinishedRenameView = {
+	oldName: string,
+	newName: string,
+	notes: UnfinishedNoteView[],
 };
 
 /**  `UnlinkedMention`. `contexts[i]` is the mention `notes:link-mention` takes as `ordinal` `i`. */

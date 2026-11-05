@@ -17,6 +17,7 @@ import type {
 } from '../../../preload/index.d'
 import type { TagsProgressEvent } from '@memry/contracts/tag-schema-api'
 import { commands, events } from '../../../generated/bindings'
+import type { UnfinishedRenameView } from '../../../generated/bindings'
 import { extractErrorMessage } from '../lib/ipc-error'
 import { subscribeToEvent } from './tauri-event'
 
@@ -122,6 +123,22 @@ const ported = {
       return failure(error)
     }
   }
+}
+
+/**
+ * The rename left with notes it could not write, if any; none while one runs. Tauri only:
+ * Electron forgets the notes it could not write.
+ */
+export function unfinishedTagRename(): Promise<UnfinishedRenameView | null> {
+  return commands.tagsRenameUnfinished()
+}
+
+/**
+ * Stops the rename left unfinished: the notes it wrote keep the new name, the ones it left the
+ * old. `false` when none was left; rejects while a rename runs.
+ */
+export function stopTagRename(): Promise<boolean> {
+  return commands.tagsRenameAbandon()
 }
 
 /** The tag methods served from Rust; `window.api.tags` is typed without them. */

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 
+import { commands } from '../../../../generated/bindings'
 import { TagManager } from './tag-manager'
 
 const mocks = vi.hoisted(() => ({
@@ -247,8 +248,18 @@ describe('TagManager', () => {
     })
   })
 
-  it('says how to finish a rename that left notes it could not write', async () => {
-    mocks.renameTag.mockResolvedValueOnce({ success: true, failedNoteIds: ['n1', 'n2'] })
+  it('names the notes a rename left and offers to stop it', async () => {
+    const left = {
+      oldName: 'work',
+      newName: 'work/later',
+      notes: ['Plan', 'Ideas', 'Log', 'Draft'].map((title, at) => ({ id: `n${at}`, title }))
+    }
+    vi.spyOn(commands, 'tagsRenameUnfinished').mockResolvedValueOnce(left)
+    const stop = vi.spyOn(commands, 'tagsRenameAbandon').mockResolvedValueOnce(true)
+    mocks.renameTag.mockResolvedValueOnce({
+      success: true,
+      failedNoteIds: ['n0', 'n1', 'n2', 'n3']
+    })
     render(<TagManager />)
     fireEvent.click(screen.getAllByText('tags.actions.rename')[0])
     const input = screen.getByDisplayValue('work')
@@ -257,9 +268,40 @@ describe('TagManager', () => {
 
     await waitFor(() =>
       expect(mocks.toastWarning).toHaveBeenCalledWith(
-        "Renaming #work to #work/later didn't finish for 2 notes. Rename #work to #work/later again to finish it."
+        "Renaming #work to #work/later didn't finish for 4 notes. Rename #work to #work/later again to finish it.",
+        expect.objectContaining({
+          description: 'Plan, Ideas, Log and 1 more',
+          action: expect.objectContaining({ label: 'Stop this rename' })
+        })
       )
     )
+    const [, options] = mocks.toastWarning.mock.calls.at(-1)!
+    options.action.onClick()
+    await waitFor(() =>
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        "Stopped renaming #work to #work/later. Notes it couldn't update keep #work."
+      )
+    )
+    expect(stop).toHaveBeenCalledOnce()
+  })
+
+  it('shows the rename left unfinished in place of the refusal it causes', async () => {
+    const left = { oldName: 'old', newName: 'new', notes: [{ id: 'n1', title: 'Plan' }] }
+    vi.spyOn(commands, 'tagsRenameUnfinished').mockResolvedValueOnce(left)
+    mocks.renameTag.mockResolvedValueOnce({ success: false, error: 'refused' })
+    render(<TagManager />)
+    fireEvent.click(screen.getAllByText('tags.actions.rename')[0])
+    const input = screen.getByDisplayValue('work')
+    fireEvent.change(input, { target: { value: 'home' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() =>
+      expect(mocks.toastWarning).toHaveBeenCalledWith(
+        "Renaming #old to #new didn't finish for 1 note. Rename #old to #new again to finish it.",
+        expect.objectContaining({ description: 'Plan' })
+      )
+    )
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('deletes, merges, and changes tag colors with success and error toasts', async () => {

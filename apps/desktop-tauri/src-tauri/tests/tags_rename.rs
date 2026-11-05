@@ -1,7 +1,7 @@
 //! `tags_rename` through its command on a mock app over a real vault (#3530 13j-4): the note's
 //! file takes the new name, and the renderer hears the progress, then `tags:renamed` and
 //! `notes:tags-changed`; another rename recorded with notes left is refused with what finishes
-//! it, and sends nothing.
+//! it, and sends nothing, until that one is stopped.
 
 use std::fs;
 use std::sync::{Arc, Mutex};
@@ -19,7 +19,9 @@ use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore, Stor
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
 use memry_tauri::commands::error::CommandError;
-use memry_tauri::commands::tags::{RenameTagInput, RenameTagView, tags_rename};
+use memry_tauri::commands::tags::{
+    RenameTagInput, RenameTagView, tags_rename, tags_rename_abandon, tags_rename_unfinished,
+};
 use memry_tauri::events::{NoteTagsChangedEvent, TagRenamedEvent, TagsProgressEvent};
 use tauri::test::{MockRuntime, mock_app};
 use tauri::{App, Listener, Manager};
@@ -162,7 +164,7 @@ fn a_rename_through_the_command_writes_the_file_and_is_announced_after_its_progr
 }
 
 #[test]
-fn another_rename_left_unfinished_is_refused_with_what_finishes_it() {
+fn another_rename_left_unfinished_is_refused_with_what_finishes_it_until_it_is_stopped() {
     let fixture = opened();
     let store: Arc<dyn SecureStore> = fixture.store.clone();
     let open = fixture.app.state::<Session>().current().unwrap();
@@ -189,4 +191,25 @@ fn another_rename_left_unfinished_is_refused_with_what_finishes_it() {
     assert!(fixture.heard().is_empty(), "a refused rename sends nothing");
     let text = fs::read_to_string(fixture.vault.join("Plan.md")).unwrap();
     assert!(text.contains("  - work\n"), "{text}");
+
+    let handle = || fixture.app.handle().clone();
+    let left = tauri::async_runtime::block_on(tags_rename_unfinished(handle())).unwrap();
+    let left = left.expect("left unfinished");
+    assert_eq!(
+        (left.old_name.as_str(), left.new_name.as_str()),
+        ("old", "new")
+    );
+    let named: Vec<(&str, &str)> = left
+        .notes
+        .iter()
+        .map(|n| (n.id.as_str(), n.title.as_str()))
+        .collect();
+    assert_eq!(
+        named,
+        [("left", "left")],
+        "a holder with no file is named by its id"
+    );
+    assert!(tauri::async_runtime::block_on(tags_rename_abandon(handle())).unwrap());
+    assert!(!tauri::async_runtime::block_on(tags_rename_abandon(handle())).unwrap());
+    assert_eq!(fixture.rename("work", "job").unwrap().affected_notes, 1);
 }

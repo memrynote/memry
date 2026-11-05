@@ -702,3 +702,59 @@ fn a_rename_the_database_cannot_read_now_stays_recorded() {
     assert!(matches!(dropped, Ok(None)), "{dropped:?}");
     assert!(e.core().tag_rename_recorded().unwrap().is_none());
 }
+
+/// A rename left with a note it could not write names that note, and stopping it clears the
+/// record: the note it wrote keeps the new name, the one it left the old, and another rename
+/// runs. A running rename is neither reported as left nor stopped.
+#[test]
+fn a_rename_left_unfinished_names_its_notes_and_can_be_stopped() {
+    let (e, notes, _) = opened();
+    let ids = [
+        note(&notes, &e, "One", "#a one", &["a"]),
+        note(&notes, &e, "Two", "#a two", &["a"]),
+    ];
+    let open = e.session.current().unwrap();
+    notes.fail_next_rename_edit();
+    let mut during = None;
+    let first = notes
+        .rename_tag(&open, &job("a", "a/b"), &mut |done, _| {
+            if done == 1 && during.is_none() {
+                let left = notes.unfinished_tag_rename(&open);
+                during = Some((left, notes.abandon_tag_rename(&open)));
+            }
+        })
+        .unwrap();
+    let (left, stopped) = during.expect("asked while it ran");
+    assert!(matches!(left, Ok(None)), "{left:?}");
+    assert!(
+        matches!(&stopped, Err(NotesError::TagRenameInProgress { from, .. }) if from == "a"),
+        "{stopped:?}"
+    );
+    let [failed] = &first.failed_note_ids[..] else {
+        panic!("{first:?}")
+    };
+    let written = ids.iter().find(|id| *id != failed).unwrap();
+
+    let unfinished = notes.unfinished_tag_rename(&open).unwrap().expect("left");
+    assert_eq!(
+        (unfinished.job.from.as_str(), unfinished.job.to.as_str()),
+        ("a", "a/b")
+    );
+    let named: Vec<(&str, &str)> = unfinished
+        .notes
+        .iter()
+        .map(|note| (note.id.as_str(), note.title.as_str()))
+        .collect();
+    let title = if failed == &ids[0] { "One" } else { "Two" };
+    assert_eq!(named, [(failed.as_str(), title)]);
+
+    let stopped = notes.abandon_tag_rename(&open).unwrap();
+    assert_eq!(stopped.map(|job| job.to), Some("a/b".to_owned()));
+    assert!(plan(&e).is_none());
+    assert!(notes.unfinished_tag_rename(&open).unwrap().is_none());
+    assert_eq!(record(&e, failed, "tags"), ["a"]);
+    assert!(e.read(&path_of(&e, failed)).contains("#a "));
+    assert_eq!(record(&e, written, "tags"), ["a/b"]);
+    let other = notes.rename_tag(&open, &job("a/b", "c"), &mut |_, _| {});
+    assert_eq!(other.unwrap().notes_written, 1);
+}

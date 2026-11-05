@@ -153,6 +153,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_list_categories,
             crate::commands::tags::tags_pin_note_to_tag::<Wry>,
             crate::commands::tags::tags_rename::<Wry>,
+            crate::commands::tags::tags_rename_abandon::<Wry>,
+            crate::commands::tags::tags_rename_unfinished::<Wry>,
             crate::commands::tags::tags_rename_category,
             crate::commands::tags::tags_reorder,
             crate::commands::tags::tags_unpin_note_from_tag::<Wry>,

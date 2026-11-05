@@ -445,6 +445,65 @@ fn rename<R: Runtime>(
     Ok(view)
 }
 
+/// A rename left with notes it could not write, and those notes.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct UnfinishedRenameView {
+    pub old_name: String,
+    pub new_name: String,
+    pub notes: Vec<UnfinishedNoteView>,
+}
+
+/// A note a rename left, named by its file's name.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct UnfinishedNoteView {
+    pub id: String,
+    pub title: String,
+}
+
+/// The rename left with notes it could not write, if any; none while one runs. Tauri only:
+/// Electron forgets the notes it could not write.
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_rename_unfinished<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Option<UnfinishedRenameView>, CommandError> {
+    blocking("tags_rename_unfinished", move || {
+        let open = open_vault(&app)?;
+        let left = service(&app)?
+            .unfinished_tag_rename(&open)
+            .map_err(|error| CommandError::from_core(&error))?;
+        Ok(left.map(|left| UnfinishedRenameView {
+            old_name: left.job.from,
+            new_name: left.job.to,
+            notes: left
+                .notes
+                .into_iter()
+                .map(|note| UnfinishedNoteView {
+                    id: note.id,
+                    title: note.title,
+                })
+                .collect(),
+        }))
+    })
+    .await
+}
+
+/// Stops the rename left unfinished: the notes it wrote keep the new name, the ones it left the
+/// old, and other renames run again. `false` when none was recorded.
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_rename_abandon<R: Runtime>(app: AppHandle<R>) -> Result<bool, CommandError> {
+    blocking("tags_rename_abandon", move || {
+        let open = open_vault(&app)?;
+        let stopped = service(&app)?
+            .abandon_tag_rename(&open)
+            .map_err(|error| rename_failed(&app, &error))?;
+        Ok(stopped.is_some())
+    })
+    .await
+}
+
 /// A rename running now is refused with Electron's words (`errors:tag.renameInProgress`), one
 /// recorded with notes left with what finishes it (`errors:tag.renameUnfinished`); any other
 /// failure carries the cause, as Electron's handler answers it.

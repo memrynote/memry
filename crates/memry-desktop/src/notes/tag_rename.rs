@@ -36,7 +36,7 @@
 //! in `failed_note_ids`, as Electron answers a note it could not write. It stays in the plan and
 //! the rename stays recorded: the same rename asked again, or the next open, tries what is left
 //! with the plan it has, so nothing renamed is renamed again; another rename is refused until
-//! then. One rename runs at a time: one asked while one runs is refused, and a resume then
+//! then, or until it is stopped (`notes::tag_rename_unfinished`). One rename runs at a time: one asked while one runs is refused, and a resume then
 //! stands aside for the run working through the same plan.
 //!
 //! A case-only rename (`Work` to `work`) respells the files and records and leaves the
@@ -195,7 +195,7 @@ impl NotesService {
 
     /// The rename lock, `None` while a rename runs. A run that panicked left nothing it holds
     /// to the lock: the plan is in the database.
-    fn claim_rename(&self) -> Option<MutexGuard<'_, ()>> {
+    pub(super) fn claim_rename(&self) -> Option<MutexGuard<'_, ()>> {
         match self.renaming.try_lock() {
             Ok(running) => Some(running),
             Err(TryLockError::Poisoned(poisoned)) => Some(poisoned.into_inner()),
@@ -247,7 +247,7 @@ impl NotesService {
         );
     }
 
-    fn tag_hub(&self, open: &OpenVault) -> Result<TagHub, NotesError> {
+    pub(super) fn tag_hub(&self, open: &OpenVault) -> Result<TagHub, NotesError> {
         ensure_device_identity(self.store.clone())?;
         Ok(open.vault.tag_hub(self.store.clone())?)
     }
@@ -437,7 +437,7 @@ impl NotesService {
 
 /// The recorded rename's plan; a row that does not read is an error here (the resume at open
 /// drops it).
-fn recorded_plan(open: &OpenVault) -> Result<Option<RenamePlan>, NotesError> {
+pub(super) fn recorded_plan(open: &OpenVault) -> Result<Option<RenamePlan>, NotesError> {
     match open.vault.tag_rename_recorded()? {
         None => Ok(None),
         Some(Recorded::Plan(plan)) => Ok(Some(plan)),
