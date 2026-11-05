@@ -133,6 +133,7 @@ vi.mock('../vault/frontmatter', () => ({
   generateContentHash: (content: unknown) => `hash:${String(content)}`
 }))
 vi.mock('./blocknote-converter', () => ({
+  setVaultEmbedResolver: () => {},
   markdownToYFragment: async (content: string, fragment: Y.XmlFragment) => {
     fragment.insert(0, [new Y.XmlText(content)])
     return true

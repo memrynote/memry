@@ -700,6 +700,24 @@ document to its vault `.md` file and re-indexes it for search.
   landed in the meantime. A note that is genuinely gone from the map — closed and not
   reopened, or LRU-evicted — still has its pending pass written from the captured doc, so
   no edit is dropped.
+- **The conversion runs off the main thread** — turning the doc into its file body loads
+  BlockNote and jsdom on first use and walks the whole document. On the main thread the
+  first edit after launch blocked the event loop for 12 s and more on Windows after a
+  reboot, and the window went "Not Responding" mid-typing. The converter worker
+  (`converter-worker`, bridged by `converter-worker-bridge.ts`) runs the same
+  `convertForWriteback` against a copy of the doc built from its state update, and calls
+  back to main for the two things that need the vault: the note's current file body and
+  embed lookups. The pass awaits the worker's ready signal before it reads the note row, so
+  the load no longer sits between the row and the write. A note runs one pass at a time: a
+  pass armed while another converts waits for it, because one that started early would read
+  the row from before the first pass's write, take that write for an outside edit and feed
+  it back into the doc over what the user typed since. The quit flush waits for running
+  passes too. One worker serves every pass and
+  every seed of a note from its file, and exits after 3 minutes
+  idle. A job the worker cannot finish (a crash, a refused spawn, no answer in 2 minutes)
+  converts on main instead, as every job did before, and after three worker failures the
+  session stops trying it (`worker_disabled`). Custom callout types reach the worker with
+  each job, because the parser reads them from a per-process registry.
 - **Per-vault bookkeeping** — write-back tracks self-written files and recent inbound
   network updates in short-TTL maps. Entries are evicted in an amortized pass (at most one
   sweep per TTL window) rather than scanned on every watcher event, and
@@ -1666,13 +1684,21 @@ the canvas's own `.excalidraw` file, and the note holds one
 `<img>` like `bookmark`; a whiteboard with no `canvasId` writes nothing rather than a marker
 that would re-open as a plain image.
 
-Main is also the parser. A note's Y.Doc is seeded from its vault file in the main process
+Main is also the parser. A note's Y.Doc is seeded from its vault file by the main process
 (`crdt-provider.ts`), and the renderer does not parse markdown when a Yjs fragment is
 present — so the `<!-- file:… -->`, `![embed](…)`, `![bookmark](…)` and
 `![whiteboard](memry://canvas/…)` marker lines are recognised there, using the same rules
 the renderer uses on its own save path. Markers
 inside a code fence are the author's text and stay text; the fence tracker follows
 CommonMark, so a longer fence quoting a shorter one is not mistaken for a closing one.
+
+The parse itself runs on the converter worker, not on main's event loop, because the first
+one of a launch loads BlockNote and jsdom: an unseeded note opened after a reboot froze the
+window for seconds. The worker seeds a copy of the doc and returns only what the seed
+added, as an update main applies over the same state, so the source record and the marks
+the seed replaces are replaced on the live doc too. A fragment that filled while the worker
+parsed (a remote body, another open) keeps what it has, and the seed is dropped rather than
+put in beside it.
 
 A YouTube embed is claimed from any whole `![alt](url)` line whose URL is a YouTube video,
 not only Memry's own `![embed](…)`. Obsidian embeds a video from an image line with any alt
