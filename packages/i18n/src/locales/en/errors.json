@@ -13,7 +13,8 @@
     "invalidPath": "The selected path is not a valid vault location.",
     "permissionDenied": "Permission denied. Check that you have access to this folder.",
     "alreadyExists": "A vault already exists at this location.",
-    "corrupted": "This vault appears to be corrupted. Try restoring from a backup."
+    "corrupted": "This vault appears to be corrupted. Try restoring from a backup.",
+    "configChangeNotPorted": "This version can't change the journal folder, date format or excluded folders yet. Your saved setting is kept."
   },
   "note": {
     "notFound": "This note could not be found. It may have been deleted.",

@@ -13,7 +13,8 @@
     "invalidPath": "Calea selectată nu este o locație validă pentru seif.",
     "permissionDenied": "Permisiune refuzată. Verificați dacă aveți acces la acest dosar.",
     "alreadyExists": "Există deja un seif în această locație.",
-    "corrupted": "Acest seif pare a fi corupt. Încercați să restaurați dintr-o copie de rezervă."
+    "corrupted": "Acest seif pare a fi corupt. Încercați să restaurați dintr-o copie de rezervă.",
+    "configChangeNotPorted": "Această versiune nu poate încă schimba dosarul de jurnal, formatul datei sau dosarele excluse. Setarea salvată este păstrată."
   },
   "note": {
     "notFound": "Această notiță nu a putut fi găsită. Este posibil să fi fost ștearsă.",

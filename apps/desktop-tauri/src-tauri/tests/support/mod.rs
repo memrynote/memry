@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 use memry_core::api::errors::SecureStoreError;
 use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::service::NotesService;
@@ -120,6 +121,7 @@ impl Mocked {
             .build(mock_context(noop_assets()))
             .unwrap();
         app.manage(session);
+        app.manage(Arc::new(LocaleService::new("en")));
         app.manage(index);
         app.manage(NotesService::new(tier.clone(), store));
         let _ = handle.set(app.handle().clone());

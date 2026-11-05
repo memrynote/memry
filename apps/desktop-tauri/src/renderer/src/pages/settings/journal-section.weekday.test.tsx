@@ -143,6 +143,42 @@ describe('Journal settings — date format refused by a read-only lock (#2606)',
   })
 })
 
+// This build refuses a journal folder or date format change until the renames are ported
+// (#3530 13m-7b); Settings says so and keeps the saved value.
+describe('Journal settings — a change this build cannot make yet', () => {
+  const NOT_PORTED =
+    "This version can't change the journal folder, date format or excluded folders yet. Your saved setting is kept."
+
+  beforeEach(() => {
+    updateConfig.mockReset().mockResolvedValue(NOT_PORTED)
+    toastError.mockReset()
+  })
+
+  it('shows the refusal and puts the saved folder and format back', async () => {
+    const user = userEvent.setup()
+    render(<JournalSettings />)
+
+    const folder = screen.getByDisplayValue('journal')
+    await user.clear(folder)
+    await user.type(folder, 'Diary')
+    await user.tab()
+    expect(updateConfig).toHaveBeenCalledWith({ journalFolder: 'Diary' })
+    await waitFor(() => expect(folder).toHaveValue('journal'))
+
+    const format = screen.getByDisplayValue('YYYY-MM-DD')
+    await user.clear(format)
+    await user.type(format, 'DD-MM-YYYY')
+    await user.tab()
+    expect(updateConfig).toHaveBeenCalledWith({ journalDateFormat: 'DD-MM-YYYY' })
+    await waitFor(() => expect(format).toHaveValue('YYYY-MM-DD'))
+
+    expect(toastError.mock.calls).toEqual([[NOT_PORTED], [NOT_PORTED]])
+    expect(screen.getByTestId('journal-preview-path').textContent).toMatch(
+      /^journal\/\d{4}-\d{2}-\d{2}\.md$/
+    )
+  })
+})
+
 describe('Journal settings — per-day templates', () => {
   beforeEach(() => {
     setWeekdayTemplate.mockClear()

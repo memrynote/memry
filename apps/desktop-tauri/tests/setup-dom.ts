@@ -127,6 +127,9 @@ vi.mock('../src/generated/bindings', () => {
       vaultReveal: () => vault().reveal(),
       vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon),
       vaultReindex: () => vault().reindex(),
+      vaultGetConfig: () => vault().getConfig(),
+      vaultUpdateConfig: (config: Parameters<typeof window.api.vault.updateConfig>[0]) =>
+        vault().updateConfig(config),
       // Component tests answer in Electron's envelope; a command answers with the note, or
       // rejects.
       journalGetEntry: (date: string) => journal().getEntry(date),
@@ -318,6 +321,7 @@ vi.mock('../src/generated/bindings', () => {
     events: {
       vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged),
       vaultListChangedEvent: event(() => window.api.onVaultListChanged),
+      vaultConfigChangedEvent: event(() => window.api.onVaultConfigChanged),
       vaultErrorEvent: event(
         () => window.api.onVaultError,
         (message) => ({ message })

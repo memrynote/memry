@@ -13,7 +13,8 @@
     "invalidPath": "La ruta seleccionada no es una ubicación válida para una bóveda.",
     "permissionDenied": "Permiso denegado. Comprueba que tienes acceso a esta carpeta.",
     "alreadyExists": "Ya existe una bóveda en esta ubicación.",
-    "corrupted": "Esta bóveda parece estar dañada. Prueba a restaurarla desde una copia de seguridad."
+    "corrupted": "Esta bóveda parece estar dañada. Prueba a restaurarla desde una copia de seguridad.",
+    "configChangeNotPorted": "Esta versión aún no puede cambiar la carpeta del diario, el formato de fecha ni las carpetas excluidas. Se mantiene tu ajuste guardado."
   },
   "note": {
     "notFound": "No se pudo encontrar esta nota. Es posible que se haya eliminado.",

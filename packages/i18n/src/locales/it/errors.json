@@ -13,7 +13,8 @@
     "invalidPath": "Il percorso selezionato non è una posizione valida per un vault.",
     "permissionDenied": "Autorizzazione negata. Verifica di avere accesso a questa cartella.",
     "alreadyExists": "Esiste già un vault in questa posizione.",
-    "corrupted": "Questo vault sembra danneggiato. Prova a ripristinarlo da un backup."
+    "corrupted": "Questo vault sembra danneggiato. Prova a ripristinarlo da un backup.",
+    "configChangeNotPorted": "Questa versione non può ancora modificare la cartella diario, il formato data o le cartelle escluse. L'impostazione salvata viene mantenuta."
   },
   "note": {
     "notFound": "Impossibile trovare questa nota. Potrebbe essere stata eliminata.",
