@@ -415,37 +415,6 @@ fn a_schema_it_cannot_read_is_not_edited() {
 }
 
 #[test]
-fn an_edit_whose_result_this_build_could_not_read_back_is_refused() {
-    let current = employee();
-    let long_label = "x".repeat(101);
-    assert_eq!(
-        applied(
-            Some(&current),
-            SchemaEdit::SetRelation {
-                name: "Team".into(),
-                relation: Some(Relation {
-                    target: None,
-                    many: false,
-                    inverse: Some(long_label),
-                }),
-            },
-            "employee",
-        ),
-        Err(SchemaEditError::Unwritable)
-    );
-    assert_eq!(
-        applied(
-            Some(&current),
-            SchemaEdit::SetTemplate {
-                template: Some((String::new(), true)),
-            },
-            "employee",
-        ),
-        Err(SchemaEditError::Unwritable)
-    );
-}
-
-#[test]
 fn a_rename_works_in_place_and_a_resumed_one_drops_the_old_entry() {
     let rename = |from: &str, to: &str, resuming| SchemaEdit::RenameField {
         from: from.into(),

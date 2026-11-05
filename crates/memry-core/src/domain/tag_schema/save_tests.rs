@@ -1,5 +1,6 @@
 //! [`super::save`] against a real `data.db`: the edit lands in the definition's payload and its
-//! outbox row, a no-op writes nothing, and a schema this build cannot read is left.
+//! outbox row, a no-op writes nothing, a schema this build cannot read is left, and none is
+//! written.
 
 use serde_json::{Value, json};
 
@@ -147,5 +148,39 @@ fn a_saved_edit_refuses_a_schema_it_cannot_read_and_leaves_it() {
         Err(SaveError::Edit(SchemaEditError::UnreadableSchema))
     ));
     assert_eq!(stored_schema(&db, "Person"), json!({"t": 4, "fields": 7}));
+    assert_eq!(pending(&db, "Person"), 0);
+}
+
+/// A schema this build could not read back would resolve read-only on every device it syncs to.
+#[test]
+fn a_saved_edit_writes_no_schema_it_could_not_read_back() {
+    let (db, _dir) = seeded(
+        "tag-schema-unwritable",
+        r#"{"name":"Person","color":"sky","clock":{"desk":1},"schema":{"t":2,"fields":[{"name":"Boss"}]}}"#,
+    );
+    let long_label = SchemaEdit::SetRelation {
+        name: "Boss".into(),
+        relation: Some(Relation {
+            target: None,
+            many: false,
+            inverse: Some("x".repeat(101)),
+        }),
+    };
+    let empty_template = SchemaEdit::SetTemplate {
+        template: Some((String::new(), true)),
+    };
+    for edit in [long_label, empty_template] {
+        let refused = db
+            .call_blocking(move |conn| Ok(save(conn, "person", &edit, "me", NOW)))
+            .expect("call");
+        assert!(matches!(
+            refused,
+            Err(SaveError::Edit(SchemaEditError::Unwritable))
+        ));
+    }
+    assert_eq!(
+        stored_schema(&db, "Person"),
+        json!({"t": 2, "fields": [{"name": "Boss"}]})
+    );
     assert_eq!(pending(&db, "Person"), 0);
 }
