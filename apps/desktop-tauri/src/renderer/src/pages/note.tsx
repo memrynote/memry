@@ -711,6 +711,8 @@ export function NotePage({ noteId }: NotePageProps) {
     }
 
     const takeContent = (content: string) => {
+      // Typing not saved yet is the user's newest text; its save follows.
+      if (pendingMarkdownRef.current !== null) return
       lastSavedContent.current = content
       setEventContentOverride({ noteId, content })
       setExternalUpdateCount((c) => c + 1)
@@ -728,8 +730,6 @@ export function NotePage({ noteId }: NotePageProps) {
         .get(noteId)
         .then((fresh) => {
           if (!fresh || fresh.contentOmitted || fresh.content === shown) return
-          // Typing not saved yet is the user's newest text; its save follows.
-          if (pendingMarkdownRef.current !== null) return
           // A save that finished during the read wrote newer text than the read saw.
           const saved = lastSavedContent.current
           if (saved !== shown && saved !== fresh.content) return

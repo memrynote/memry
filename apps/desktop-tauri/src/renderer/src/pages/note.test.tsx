@@ -1655,6 +1655,27 @@ describe('NotePage', () => {
     expect(mocks.contentAreaMounts).toBe(1)
   })
 
+  it('leaves typing not saved yet in the editor when an outside edit arrives, an emptied body too', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    act(() => mocks.onMarkdownChange?.('Typed, not saved'))
+    act(() => {
+      mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content: '' } })
+    })
+
+    // The typing is the user's newest text, and its save follows.
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    await waitFor(
+      () =>
+        expect(mocks.updateNote).toHaveBeenCalledWith({
+          id: 'note-1',
+          content: 'Typed, not saved'
+        }),
+      { timeout: 3000 }
+    )
+  })
+
   // The other direction: a local edit round-tripping through the save path must
   // not look like an external update. `handleMarkdownChange` stamps
   // `lastSavedContent`, so the echoed event is dropped — no revision bump, no
