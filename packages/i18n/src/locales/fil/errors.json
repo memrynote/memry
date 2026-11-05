@@ -13,7 +13,8 @@
     "invalidPath": "Hindi wastong lokasyon ng vault ang napiling path.",
     "permissionDenied": "Tinanggihan ang pahintulot. Tingnan kung mayroon kang access sa folder na ito.",
     "alreadyExists": "Mayroon nang vault sa lokasyong ito.",
-    "corrupted": "Mukhang sira ang vault na ito. Subukang ibalik mula sa isang backup."
+    "corrupted": "Mukhang sira ang vault na ito. Subukang ibalik mula sa isang backup.",
+    "configChangeNotPorted": "Hindi pa kayang baguhin ng bersyong ito ang folder ng talaarawan, format ng petsa, o mga hindi isinamang folder. Nananatili ang naka-save mong setting."
   },
   "note": {
     "notFound": "Hindi mahanap ang talang ito. Baka natanggal na ito.",

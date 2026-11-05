@@ -13,7 +13,8 @@
     "invalidPath": "Der ausgewählte Pfad ist kein gültiger Tresorspeicherort.",
     "permissionDenied": "Zugriff verweigert. Prüfe, ob du Zugriff auf diesen Ordner hast.",
     "alreadyExists": "An diesem Speicherort ist bereits ein Tresor vorhanden.",
-    "corrupted": "Dieser Tresor scheint beschädigt zu sein. Versuche, ihn aus einem Backup wiederherzustellen."
+    "corrupted": "Dieser Tresor scheint beschädigt zu sein. Versuche, ihn aus einem Backup wiederherzustellen.",
+    "configChangeNotPorted": "Diese Version kann den Journal-Ordner, das Datumsformat oder ausgeschlossene Ordner noch nicht ändern. Deine gespeicherte Einstellung bleibt erhalten."
   },
   "note": {
     "notFound": "Diese Notiz konnte nicht gefunden werden. Möglicherweise wurde sie gelöscht.",

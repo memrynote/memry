@@ -13,7 +13,8 @@
     "invalidPath": "Đường dẫn được chọn không phải là vị trí kho hợp lệ.",
     "permissionDenied": "Không có quyền truy cập. Kiểm tra xem bạn có quyền truy cập vào thư mục này không.",
     "alreadyExists": "Kho đã tồn tại ở vị trí này.",
-    "corrupted": "Kho này có vẻ bị hỏng. Thử khôi phục từ bản sao lưu."
+    "corrupted": "Kho này có vẻ bị hỏng. Thử khôi phục từ bản sao lưu.",
+    "configChangeNotPorted": "Phiên bản này chưa thể thay đổi thư mục nhật ký, định dạng ngày hoặc các thư mục bị loại trừ. Cài đặt đã lưu của bạn được giữ nguyên."
   },
   "note": {
     "notFound": "Không tìm thấy ghi chú này. Có thể nó đã bị xóa.",

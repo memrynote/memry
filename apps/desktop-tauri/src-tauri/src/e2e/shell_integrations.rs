@@ -277,11 +277,25 @@ pub async fn e2e_flush_after_browser_exit(app: AppHandle<Wry>) -> Result<(), Com
                     .enable_time()
                     .build()?;
                 let flush = asker.state::<FlushService>();
+                let started = std::time::Instant::now();
                 runtime.block_on(flush.request(
                     &asker,
                     "main",
                     Deadline::after(FLUSH_WINDOW_TIMEOUT),
                 ));
+                let elapsed = started.elapsed();
+                // `request` is false both for a dead page and for a timeout; only the time tells
+                // them apart.
+                tracing::info!(
+                    scope = "e2e",
+                    "the flush after the browser exit gave up {} its timeout, in {} ms",
+                    if elapsed < FLUSH_WINDOW_TIMEOUT {
+                        "before"
+                    } else {
+                        "at"
+                    },
+                    elapsed.as_millis()
+                );
                 std::io::Result::Ok(())
             });
             if !matches!(asked.join(), Ok(Ok(()))) {
@@ -307,7 +321,7 @@ pub async fn e2e_flush_after_browser_exit(app: AppHandle<Wry>) -> Result<(), Com
 /// Ends process `pid` and waits until it has exited.
 #[cfg(windows)]
 fn end_process(pid: u32) {
-    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0};
     use windows::Win32::System::Threading::{
         OpenProcess, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE, TerminateProcess, WaitForSingleObject,
     };
@@ -317,11 +331,11 @@ fn end_process(pid: u32) {
         match OpenProcess(PROCESS_TERMINATE | PROCESS_SYNCHRONIZE, false, pid) {
             Ok(process) => {
                 let ended = TerminateProcess(process, 1);
-                WaitForSingleObject(process, 5_000);
+                let exited = WaitForSingleObject(process, 5_000) == WAIT_OBJECT_0;
                 let _ = CloseHandle(process);
                 tracing::info!(
                     scope = "Power",
-                    "e2e: ended the WebView2 browser process {pid}: {ended:?}"
+                    "e2e: ended the WebView2 browser process {pid}: {ended:?}, exited: {exited}"
                 );
             }
             Err(error) => tracing::warn!(

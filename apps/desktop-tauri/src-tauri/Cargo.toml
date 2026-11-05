@@ -21,8 +21,15 @@ name = "export-bindings"
 path = "src/bin/export_bindings.rs"
 
 [features]
-# The WDIO driver plugins and the `e2e_*` test commands. Never part of a release build.
-e2e = ["dep:tauri-plugin-wdio-webdriver", "dep:tauri-plugin-wdio", "dep:arboard", "memry-desktop/e2e"]
+# The WDIO driver plugins and the `e2e_*` test commands. Never part of a release build. `tokio/rt`
+# is the runtime of the flush probe `e2e_flush_after_browser_exit`.
+e2e = [
+  "dep:tauri-plugin-wdio-webdriver",
+  "dep:tauri-plugin-wdio",
+  "dep:arboard",
+  "memry-desktop/e2e",
+  "tokio/rt",
+]
 
 [build-dependencies]
 tauri-build = { version = "2.7", features = [] }
@@ -50,7 +57,7 @@ url = "2"
 dunce = "1.0.5"
 # The telemetry flush, marker and heartbeat timers run on Tauri's tokio runtime; `signal` is
 # SIGINT and SIGTERM.
-tokio = { workspace = true, features = ["rt", "time", "signal", "sync"] }
+tokio = { workspace = true, features = ["time", "signal", "sync"] }
 tracing = { workspace = true }
 velopack = { workspace = true }
 # `updater/velopack_backend.rs` names the error type of the `ureq` velopack pulls in, and the

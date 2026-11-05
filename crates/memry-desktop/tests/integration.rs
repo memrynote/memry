@@ -92,8 +92,6 @@ mod journal_rename;
 mod journal_service;
 #[path = "journal_update.rs"]
 mod journal_update;
-#[path = "logging.rs"]
-mod logging;
 #[path = "logship.rs"]
 mod logship;
 #[path = "move_dir.rs"]
@@ -110,6 +108,8 @@ mod note_links_changed;
 mod note_mentions;
 #[path = "note_properties_index.rs"]
 mod note_properties_index;
+#[path = "notes_aliases.rs"]
+mod notes_aliases;
 #[path = "notes_apply_template.rs"]
 mod notes_apply_template;
 #[path = "notes_create_template.rs"]
@@ -194,6 +194,8 @@ mod vault_init;
 mod vault_pairing;
 #[path = "vault_paths.rs"]
 mod vault_paths;
+#[path = "vault_settings.rs"]
+mod vault_settings;
 #[path = "vault_walk.rs"]
 mod vault_walk;
 #[path = "vault_watch.rs"]

@@ -34,6 +34,9 @@ pub enum NotesError {
     InvalidTitle,
     #[error("a note takes at most 50 tags of at most 50 characters each")]
     InvalidTags,
+    /// `NoteAliasEditSchema`: more names than a note holds, or a name too long to be one.
+    #[error("an edit takes at most 32 other names of at most 200 characters each")]
+    InvalidAliases,
     /// A move's folder is not one the vault's notes can be in: not a plain path of the vault,
     /// one the vault ignores (a dot folder, the root `attachments` folder, an exclude pattern),
     /// or a folder reached through a link.
@@ -121,6 +124,19 @@ pub enum NotesError {
     FolderFile(FolderFileError),
     #[error("{0}")]
     Io(#[from] std::io::Error),
+}
+
+impl NotesError {
+    /// An app edit of a note's frontmatter the seam kept (`Edited::Kept`), as the property and
+    /// alias writers answer it: nothing was written.
+    pub(crate) fn kept(note_id: &str, kept: Kept) -> Self {
+        match kept {
+            Kept::NoRow | Kept::NoFile | Kept::NoBody => Self::NotFound(note_id.to_owned()),
+            Kept::NotMarkdown => Self::NotMarkdown,
+            Kept::FrontmatterUnreadable | Kept::FrontmatterBroken => Self::FrontmatterUnreadable,
+            kept => Self::EditKept(kept),
+        }
+    }
 }
 
 /// Whether trying the edit again can succeed: the file or the document catches up on its own.
@@ -247,6 +263,7 @@ impl CoreError for NotesError {
             }
             Self::InvalidTitle => (FailureKind::Invalid, "invalid_title"),
             Self::InvalidTags => (FailureKind::Invalid, "invalid_tags"),
+            Self::InvalidAliases => (FailureKind::Invalid, "invalid_aliases"),
             Self::InvalidFolder => (FailureKind::Invalid, "invalid_folder"),
             Self::MovePending(BeginError::Unreadable(_)) => {
                 (FailureKind::Invalid, "note_move_unreadable")

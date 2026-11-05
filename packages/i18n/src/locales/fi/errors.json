@@ -13,7 +13,8 @@
     "invalidPath": "Valittu polku ei ole kelvollinen holvin sijainti.",
     "permissionDenied": "Lupa evätty. Tarkista, että sinulla on pääsy tähän kansioon.",
     "alreadyExists": "Tässä paikassa on jo holvi.",
-    "corrupted": "Tämä holvi näyttää olevan vioittunut. Yritä palauttaa varmuuskopiosta."
+    "corrupted": "Tämä holvi näyttää olevan vioittunut. Yritä palauttaa varmuuskopiosta.",
+    "configChangeNotPorted": "Tämä versio ei vielä voi muuttaa päiväkirjakansiota, päivämäärämuotoa tai pois jätettyjä kansioita. Tallennettu asetus säilyy."
   },
   "note": {
     "notFound": "Tätä muistiinpanoa ei löytynyt. Se on ehkä poistettu.",

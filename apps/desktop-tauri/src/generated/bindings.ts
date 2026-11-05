@@ -112,6 +112,12 @@ export const commands = {
 	 *  user before it deletes again with `permanent` (#3813).
 	 */
 	notesDelete: (id: string, permanent: boolean | null) => __TAURI_INVOKE<null>("notes_delete", { id, permanent }),
+	/**
+	 *  `notes:edit-aliases`: names removed, then names added, in the note's or journal day's file
+	 *  and its record. Answers the names the file holds now; the `notes:updated` comes from the
+	 *  file's row fact.
+	 */
+	notesEditAliases: (input: NoteAliasEditInput) => __TAURI_INVOKE<NoteAliasesView>("notes_edit_aliases", { input }),
 	/**  `notes:exists`: a `.md` path, or a title a link would resolve. */
 	notesExists: (titleOrPath: string) => __TAURI_INVOKE<boolean>("notes_exists", { titleOrPath }),
 	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
@@ -361,6 +367,8 @@ export const commands = {
 	updaterSkipVersion: (version: string) => __TAURI_INVOKE<AppUpdateState>("updater_skip_version", { version }),
 	vaultClose: () => __TAURI_INVOKE<null>("vault_close"),
 	vaultCreate: (parentPath: string, name: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_create", { parentPath, name }),
+	/**  `vault:get-config`: the open vault's settings, or Electron's fallback with none open. */
+	vaultGetConfig: () => __TAURI_INVOKE<VaultConfig>("vault_get_config"),
 	/**  Next to the current vault when one is registered, else `<documents>/Memry`. */
 	vaultGetDefaultParent: () => __TAURI_INVOKE<string>("vault_get_default_parent"),
 	vaultGetStatus: () => __TAURI_INVOKE<VaultStatus>("vault_get_status"),
@@ -371,6 +379,12 @@ export const commands = {
 	vaultSetDefault: (path: string) => __TAURI_INVOKE<null>("vault_set_default", { path }),
 	vaultSetIcon: (path: string, icon: string | null) => __TAURI_INVOKE<null>("vault_set_icon", { path, icon }),
 	vaultSwitch: (path: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_switch", { path }),
+	/**
+	 *  `vault:update-config`: writes the fields `config` names and answers the settings after it,
+	 *  which every window hears as [`VaultConfigChangedEvent`]. A change that is not ported yet is
+	 *  refused as `config_change_not_ported` (`vault::config::settings`).
+	 */
+	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
 	/**  Drops every retained entry, on disk too. */
 	vaultActivityClear: () => __TAURI_INVOKE<null>("vault_activity_clear"),
 	/**  The retained entries, newest first. */
@@ -379,7 +393,10 @@ export const commands = {
 	vaultActivityReveal: () => __TAURI_INVOKE<boolean>("vault_activity_reveal"),
 	/**  Keeps entries for `days` (7, 30 or 90). */
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
-	/**  Measures every note of the open vault again; resolves once the last progress went out. */
+	/**
+	 *  Measures every note of the open vault again; resolves once the last progress went out.
+	 *  Each step and the answer also send the vault status, which says whether it is indexing.
+	 */
 	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
 	/**
 	 *  What each `![[target]]` image embed of `refs` resolves to in the open vault: relative to the
@@ -435,6 +452,7 @@ export const events = {
 	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
 	updaterStateChangedEvent: makeEvent<UpdaterStateChangedEvent, UpdaterStateChangedEvent>("updater-state-changed-event"),
 	vaultActivityChangedEvent: makeEvent<VaultActivityChangedEvent, VaultActivityChangedEvent>("vault-activity-changed-event"),
+	vaultConfigChangedEvent: makeEvent<VaultConfigChangedEvent, VaultConfigChangedEvent>("vault-config-changed-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
 	vaultIndexProgressEvent: makeEvent<VaultIndexProgressEvent, VaultIndexProgressEvent>("vault-index-progress-event"),
 	vaultIndexRecoveredEvent: makeEvent<VaultIndexRecoveredEvent, VaultIndexRecoveredEvent>("vault-index-recovered-event"),
@@ -1053,6 +1071,18 @@ export type MovesRecovered = {
 	 *  `(incomplete move)` folders: nothing was undone, the notes are only in sight again.
 	 */
 	shownFolders: number,
+};
+
+/**  `NoteAliasEditSchema`: names to remove, then names to add. */
+export type NoteAliasEditInput = {
+	id: string,
+	add: string[],
+	remove: string[],
+};
+
+/**  `NoteAliasEditResponse`: the note's other names as its file holds them now. */
+export type NoteAliasesView = {
+	aliases: string[],
 };
 
 /**
@@ -1782,6 +1812,35 @@ export type VaultActivityList = {
 
 /**  `VAULT_ACTIVITY_SOURCES`. */
 export type VaultActivitySource = "watcher" | "scan" | "import" | "drop" | "sync";
+
+/**  The vault settings, in the `VaultConfig` shape of `packages/contracts/src/vault-api.ts`. */
+export type VaultConfig = {
+	excludePatterns: string[],
+	defaultNoteFolder: string,
+	journalFolder: string,
+	journalDateFormat: string,
+	attachmentsFolder: string,
+	journalShowInSidebar: boolean,
+};
+
+/**
+ *  The open vault's settings changed (`vault:config-changed`), with the settings after it: an
+ *  in-app write, from any window, as Electron's `updateConfig` broadcasts it.
+ */
+export type VaultConfigChangedEvent = VaultConfig;
+
+/**
+ *  The fields a write changes (`UpdateVaultConfigSchema`). `None` leaves the stored value,
+ *  whatever it is.
+ */
+export type VaultConfigPatch = {
+	excludePatterns?: string[] | null,
+	defaultNoteFolder?: string | null,
+	journalFolder?: string | null,
+	journalDateFormat?: string | null,
+	attachmentsFolder?: string | null,
+	journalShowInSidebar?: boolean | null,
+};
 
 /**  A vault operation failed (`vault:error`). */
 export type VaultErrorEvent = {

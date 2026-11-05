@@ -16,8 +16,10 @@
 // (`memry_desktop::e2e::control`). The real profile and vaults are never opened, and `stop`
 // removes the dirs and the device's keychain items.
 //
-// Options for `start`: MEMRY_AGENT_VAULT_TEMPLATE=<vault dir> opens a copy of that vault,
-// MEMRY_AGENT_FIRST_RUN=1 opens no vault so the first-run setup shows, MEMRY_AGENT_SCALE=2
+// The default sandbox vault also gets the portal examples of `agent-vault-portals.mjs`.
+//
+// Options for `start`: MEMRY_AGENT_VAULT_TEMPLATE=<vault dir> opens a copy of that vault
+// (without the portal examples), MEMRY_AGENT_FIRST_RUN=1 opens no vault so the first-run setup shows, MEMRY_AGENT_SCALE=2
 // renders at 2x (Windows and Linux), MEMRY_AGENT_BINARY=<path> replaces the debug build, and
 // TAURI_WEBDRIVER_PORT=<port> replaces 9222.
 import { spawn, spawnSync } from 'node:child_process'
@@ -37,6 +39,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { purgeKeychainForDevice } from '../e2e/harness/keychain-cleanup.mjs'
 import { seedVaultRegistry } from '../e2e/harness/seed-registry.mjs'
+import { PORTAL_EXAMPLES_EXPRESSION } from './agent-vault-portals.mjs'
 import { evaluateInPage, INVOKE_SCRIPT } from './lib/page-scripts.mjs'
 import { createClient } from './lib/webdriver-client.mjs'
 
@@ -261,6 +264,14 @@ export async function start(/** @type {Context} */ ctx) {
       )
     }
     writeFileSync(stateFile(ctx), JSON.stringify({ ...base, pid, sessionId }, null, 2))
+    // A portal names its source by note id and the app assigns ids, so the examples are created
+    // through the app once its vault opened. E2E specs open the fixture directly and never see
+    // them.
+    if (!firstRun && !ctx.env.MEMRY_AGENT_VAULT_TEMPLATE) {
+      const seeded = await evaluateInPage(client, sessionId, PORTAL_EXAMPLES_EXPRESSION)
+      if (!seeded?.ok) throw new Error(`Portal examples failed: ${seeded?.error}`)
+      ctx.out(String(seeded.value))
+    }
   } catch (error) {
     await stop(ctx)
     ctx.err(error instanceof Error ? error.message : String(error))

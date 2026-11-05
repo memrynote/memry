@@ -11,14 +11,26 @@ pub const DIR_NAME: &str = "crash-dumps";
 pub const KEEP_NEWEST: usize = 20;
 pub const MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 const EXTENSION: &str = "dmp";
+const PARTIAL_EXTENSION: &str = "part";
 
 pub fn dir(data_dir: &Path) -> PathBuf {
     data_dir.join(DIR_NAME)
 }
 
-/// A new, unique dump path in `dir` (`<uuid>.dmp`).
-pub fn new_path(dir: &Path) -> PathBuf {
-    dir.join(format!("{}.{EXTENSION}", uuid::Uuid::new_v4()))
+/// A new, unique path in `dir` for a dump being written (`<uuid>.dmp.part`). `complete` gives it
+/// its `.dmp` name once it is written, so a `.dmp` file is always a whole dump.
+pub fn new_partial_path(dir: &Path) -> PathBuf {
+    dir.join(format!(
+        "{}.{EXTENSION}.{PARTIAL_EXTENSION}",
+        uuid::Uuid::new_v4()
+    ))
+}
+
+/// Renames a written dump from its `new_partial_path` name to its `.dmp` name.
+pub fn complete(partial: &Path) -> io::Result<PathBuf> {
+    let path = partial.with_extension("");
+    fs::rename(partial, &path)?;
+    Ok(path)
 }
 
 /// Deletes the dumps beyond the newest `keep` and the ones older than `max_age`. Returns how many
@@ -88,10 +100,16 @@ mod tests {
     }
 
     #[test]
-    fn dump_names_are_unique_dmp_files() {
-        let dir = Path::new("/x");
-        let (a, b) = (new_path(dir), new_path(dir));
+    fn a_dump_is_a_dmp_file_only_once_it_is_complete() {
+        let tmp = tempfile::tempdir().expect("tmp");
+        let (a, b) = (new_partial_path(tmp.path()), new_partial_path(tmp.path()));
         assert_ne!(a, b);
-        assert_eq!(a.extension().and_then(|e| e.to_str()), Some("dmp"));
+        fs::write(&a, "written").expect("write");
+        assert_ne!(a.extension().and_then(|e| e.to_str()), Some("dmp"));
+
+        let done = complete(&a).expect("complete");
+        assert_eq!(done.extension().and_then(|e| e.to_str()), Some("dmp"));
+        assert_eq!(fs::read_to_string(&done).expect("read"), "written");
+        assert!(!a.exists());
     }
 }

@@ -37,34 +37,37 @@ struct Monitor {
 }
 
 impl ServerHandler for Monitor {
+    /// The dump is written under a partial name; `on_minidump_created` names it `.dmp` once whole.
     fn create_minidump_file(&self) -> Result<(fs::File, PathBuf), std::io::Error> {
         fs::create_dir_all(&self.dir)?;
-        let path = crash_dumps::new_path(&self.dir);
+        let path = crash_dumps::new_partial_path(&self.dir);
         Ok((fs::File::create(&path)?, path))
     }
 
     fn on_minidump_created(&self, result: Result<MinidumpBinary, minidumper::Error>) -> LoopAction {
-        match result {
-            Ok(dump) => eprintln!("crash monitor: wrote {}", dump.path.display()),
-            Err(error) => eprintln!("crash monitor: could not write a minidump: {error}"),
+        let dump = match result {
+            Ok(dump) => dump,
+            Err(error) => {
+                eprintln!("crash monitor: could not write a minidump: {error}");
+                return LoopAction::Continue;
+            }
+        };
+        drop(dump.file);
+        match crash_dumps::complete(&dump.path) {
+            Ok(path) => eprintln!("crash monitor: wrote {}", path.display()),
+            Err(error) => eprintln!(
+                "crash monitor: could not name {} a dump: {error}",
+                dump.path.display()
+            ),
         }
         LoopAction::Continue
     }
 
     fn on_message(&self, _kind: u32, _buffer: Vec<u8>) {}
-
-    /// The app is gone, crashed or not: the monitor has nothing left to serve.
-    fn on_client_disconnected(&self, num_clients: usize) -> LoopAction {
-        if num_clients == 0 {
-            LoopAction::Exit
-        } else {
-            LoopAction::Continue
-        }
-    }
 }
 
 /// `main` calls this first. When the process was started as the monitor it serves dump requests
-/// until the app disconnects, and returns the exit code; otherwise it returns `None`.
+/// until the app is gone, and returns the exit code; otherwise it returns `None`.
 pub fn monitor_entry() -> Option<i32> {
     let mut args = std::env::args().skip(1);
     if args.next().as_deref() != Some(MONITOR_SWITCH) {
@@ -81,11 +84,12 @@ pub fn monitor_entry() -> Option<i32> {
             return Some(1);
         }
     };
-    // A client disconnect ends the monitor only after the app connected. An app that ends before
-    // that (a quit or a kill during the boot) is seen through stdin instead. A dump in progress is
-    // still finished: `Server::run` reads the flag only between events, never while it writes a
-    // dump, so stdin closing mid-dump (on macOS the client stops waiting for the ack after 5 s)
-    // ends the monitor only once the dump is written.
+    // The app holds stdin open for its whole life, so stdin closing is the one sign the app is
+    // gone, however it ended. A client disconnect is not: a connect attempt that fails halfway (on
+    // macOS, before the Mach service the server registers after the socket file) also connects
+    // and leaves. A dump in progress is still finished: `Server::run` reads the flag only between
+    // events, never while it writes a dump, so stdin closing mid-dump (on macOS the client stops
+    // waiting for the ack after 5 s) ends the monitor only once the dump is written.
     static APP_GONE: AtomicBool = AtomicBool::new(false);
     std::thread::spawn(|| {
         let _ = std::io::copy(&mut std::io::stdin(), &mut std::io::sink());

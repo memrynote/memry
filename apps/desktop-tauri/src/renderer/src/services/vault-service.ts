@@ -138,14 +138,14 @@ export const vaultService: VaultClientAPI = {
    * Get current vault configuration.
    */
   getConfig: (): Promise<VaultConfig> => {
-    return window.api.vault.getConfig()
+    return commands.vaultGetConfig()
   },
 
   /**
    * Update vault configuration.
    */
   updateConfig: (config: Partial<VaultConfig>): Promise<VaultConfig> => {
-    return window.api.vault.updateConfig(config)
+    return commands.vaultUpdateConfig(config)
   },
 
   /**
@@ -260,11 +260,11 @@ export function onVaultError(callback: (error: string) => void): () => void {
 }
 
 /**
- * Subscribe to config changes of the open vault. Step 09 (#3526) ports the vault config.
+ * Subscribe to config changes of the open vault: an in-app write from any window.
  * Returns unsubscribe function.
  */
 export function onVaultConfigChanged(callback: (config: VaultConfig) => void): () => void {
-  return window.api.onVaultConfigChanged(callback)
+  return subscribe(events.vaultConfigChangedEvent, callback)
 }
 
 /**

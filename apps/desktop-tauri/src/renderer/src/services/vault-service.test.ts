@@ -12,7 +12,9 @@ const mocks = vi.hoisted(() => ({
     vaultRemove: vi.fn(),
     vaultReveal: vi.fn(),
     vaultSetIcon: vi.fn(),
-    vaultReindex: vi.fn()
+    vaultReindex: vi.fn(),
+    vaultGetConfig: vi.fn(),
+    vaultUpdateConfig: vi.fn()
   },
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
   unlisten: vi.fn()
@@ -32,12 +34,14 @@ vi.mock('../../../generated/bindings', () => {
       vaultListChangedEvent: event('list'),
       vaultErrorEvent: event('error'),
       vaultIndexRecoveredEvent: event('recovered'),
-      vaultIndexProgressEvent: event('progress')
+      vaultIndexProgressEvent: event('progress'),
+      vaultConfigChangedEvent: event('config')
     }
   }
 })
 
 import {
+  onVaultConfigChanged,
   onVaultError,
   onVaultIndexProgress,
   onVaultIndexRecovered,
@@ -141,6 +145,24 @@ describe('vault-service over the vault commands', () => {
     expect(mocks.commands.vaultSetIcon).toHaveBeenCalledWith('/v/a', 'icon:Book')
   })
 
+  it('reads and writes the vault config through its commands', async () => {
+    const config = {
+      excludePatterns: ['.git'],
+      defaultNoteFolder: '',
+      journalFolder: 'journal',
+      journalDateFormat: 'YYYY-MM-DD',
+      attachmentsFolder: 'attachments',
+      journalShowInSidebar: false
+    }
+    mocks.commands.vaultGetConfig.mockResolvedValue(config)
+    mocks.commands.vaultUpdateConfig.mockResolvedValue({ ...config, journalShowInSidebar: true })
+    expect(await vaultService.getConfig()).toEqual(config)
+    expect(
+      (await vaultService.updateConfig({ journalShowInSidebar: true })).journalShowInSidebar
+    ).toBe(true)
+    expect(mocks.commands.vaultUpdateConfig).toHaveBeenCalledWith({ journalShowInSidebar: true })
+  })
+
   it('reveals the open vault, and nothing when none is open', async () => {
     mocks.commands.vaultGetStatus.mockResolvedValue({ ...wireStatus, isOpen: false, path: null })
     await vaultService.reveal()
@@ -188,6 +210,14 @@ describe('vault-service events', () => {
     mocks.listeners.get('status')?.({ payload: wireStatus })
     expect(callback).toHaveBeenCalledTimes(2)
     await vi.waitFor(() => expect(mocks.unlisten).toHaveBeenCalled())
+  })
+
+  it('hands a config change to its subscriber', async () => {
+    const onConfig = vi.fn()
+    onVaultConfigChanged(onConfig)
+    await vi.waitFor(() => expect(mocks.listeners.has('config')).toBe(true))
+    mocks.listeners.get('config')?.({ payload: { journalFolder: 'Diary' } })
+    expect(onConfig).toHaveBeenCalledWith({ journalFolder: 'Diary' })
   })
 
   it('maps the error and list events, and the index recovery reason', async () => {

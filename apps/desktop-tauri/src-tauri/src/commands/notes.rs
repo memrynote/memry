@@ -13,13 +13,15 @@
 //! from their row facts, as every note event does.
 //! A note's edit (`notes:update`, #3530 13f-3c) goes through `memry_desktop::notes::update`, a
 //! template applied to it (`notes:apply-template`, 13l-4) through
-//! `memry_desktop::notes::apply_template`.
+//! `memry_desktop::notes::apply_template`, its other names (`notes:edit-aliases`, 13q-1) through
+//! `memry_desktop::notes::aliases`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
+use memry_desktop::notes::aliases::{NoteAliasEditInput, NoteAliasesView};
 use memry_desktop::notes::apply_template::ApplyTemplateInput;
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
@@ -487,6 +489,25 @@ pub async fn notes_link_mention<R: Runtime>(
         let open = open_vault(&app)?;
         service(&app)?
             .link_mention(&open, &source_id, &target_id, ordinal as usize)
+            .map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// `notes:edit-aliases`: names removed, then names added, in the note's or journal day's file
+/// and its record. Answers the names the file holds now; the `notes:updated` comes from the
+/// file's row fact.
+// Generic over the runtime so a test drives it through the IPC (`tests/note_frontmatter.rs`).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_edit_aliases<R: Runtime>(
+    app: AppHandle<R>,
+    input: NoteAliasEditInput,
+) -> Result<NoteAliasesView, CommandError> {
+    blocking("notes_edit_aliases", move || {
+        let open = open_vault(&app)?;
+        service(&app)?
+            .edit_aliases(&open, &input)
             .map_err(|error| failed(&error))
     })
     .await

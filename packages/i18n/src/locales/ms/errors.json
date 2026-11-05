@@ -13,7 +13,8 @@
     "invalidPath": "Laluan yang dipilih bukan lokasi bilik kebal yang sah.",
     "permissionDenied": "Kebenaran ditolak. Semak sama ada anda mempunyai akses kepada folder ini.",
     "alreadyExists": "Bilik kebal sudah wujud di lokasi ini.",
-    "corrupted": "Bilik kebal ini nampaknya telah rosak. Cuba pulihkan daripada sandaran."
+    "corrupted": "Bilik kebal ini nampaknya telah rosak. Cuba pulihkan daripada sandaran.",
+    "configChangeNotPorted": "Versi ini belum boleh menukar folder jurnal, format tarikh atau folder yang dikecualikan. Tetapan tersimpan anda dikekalkan."
   },
   "note": {
     "notFound": "Nota ini tidak ditemui. Ia mungkin telah dipadamkan.",

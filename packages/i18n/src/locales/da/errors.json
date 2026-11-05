@@ -13,7 +13,8 @@
     "invalidPath": "Den valgte sti er ikke en gyldig boksplacering.",
     "permissionDenied": "Tilladelse nægtet. Tjek, at du har adgang til denne mappe.",
     "alreadyExists": "Der findes allerede en boks på dette sted.",
-    "corrupted": "Denne boks ser ud til at være beskadiget. Prøv at gendanne fra en sikkerhedskopi."
+    "corrupted": "Denne boks ser ud til at være beskadiget. Prøv at gendanne fra en sikkerhedskopi.",
+    "configChangeNotPorted": "Denne version kan endnu ikke ændre dagbogsmappen, datoformatet eller udelukkede mapper. Din gemte indstilling bevares."
   },
   "note": {
     "notFound": "Denne note kunne ikke findes. Den kan være blevet slettet.",
