@@ -44,8 +44,7 @@
 //! rename (the projection stamps a newly pinned spelling), where Electron kept the pin's time;
 //! a day's frontmatter `tags:` keep the old name.
 
-#[cfg(feature = "test-hooks")]
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -102,8 +101,9 @@ enum InNote {
 
 impl NotesService {
     /// Renames `job.from` to `job.to` across the vault (see the module comment). `progress` is
-    /// told `(done, total)` as the notes go. Another rename recorded and not finished is
-    /// refused ([`NotesError::TagRenameInProgress`]).
+    /// told `(done, total)` as the notes go. A rename running now is refused
+    /// ([`NotesError::TagRenameInProgress`]), and so is another one recorded with notes left
+    /// ([`NotesError::TagRenameUnfinished`]).
     pub fn rename_tag(
         &self,
         open: &OpenVault,
@@ -130,11 +130,22 @@ impl NotesService {
             .into());
         }
         let hub = self.tag_hub(open)?;
+        let Some(_running) = Running::claim(&self.renaming) else {
+            let running = hub
+                .rename_recorded()?
+                .map_or_else(|| job.clone(), |plan| plan.job);
+            return Err(NotesError::TagRenameInProgress {
+                from: running.from,
+                to: running.to,
+            });
+        };
         let holders = open.search.tag_rename_holders(&job.from)?;
         if let Some(other) = hub.rename_begin(job, holders)? {
-            return Err(NotesError::TagRenameInProgress {
+            let left = hub.rename_recorded()?.map_or(0, |plan| plan.holders.len());
+            return Err(NotesError::TagRenameUnfinished {
                 from: other.from,
                 to: other.to,
+                left,
             });
         }
         self.run_rename(open, &hub, progress, stop)
@@ -149,6 +160,10 @@ impl NotesService {
         stop: &dyn Fn() -> bool,
     ) -> Result<Option<TagRenamed>, NotesError> {
         let hub = self.tag_hub(open)?;
+        // A rename asked meanwhile runs the same plan.
+        let Some(_running) = Running::claim(&self.renaming) else {
+            return Ok(None);
+        };
         match hub.rename_recorded() {
             Ok(Some(_)) => {}
             Ok(None) => return Ok(None),
@@ -398,6 +413,21 @@ impl NotesService {
             );
             InNote::Failed
         })
+    }
+}
+
+/// This service running a rename, until dropped.
+struct Running<'a>(&'a AtomicBool);
+
+impl<'a> Running<'a> {
+    fn claim(flag: &'a AtomicBool) -> Option<Self> {
+        (!flag.swap(true, Ordering::SeqCst)).then_some(Self(flag))
+    }
+}
+
+impl Drop for Running<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
     }
 }
 

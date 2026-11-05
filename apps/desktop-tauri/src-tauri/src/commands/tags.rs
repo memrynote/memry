@@ -3,11 +3,16 @@
 //! file. After a write they send what Electron's handler sends: [`TagColorUpdatedEvent`] and
 //! [`NoteTagsChangedEvent`] for a colour, [`NoteTagsChangedEvent`] for an icon,
 //! [`TagCategoriesChangedEvent`] for a category or a drag, [`TagNotesChangedEvent`] for a pin.
+//!
+//! A rename is the one that writes the note files, through `NotesService::rename_tag`: it sends
+//! [`TagsProgressEvent`] as the notes go, then [`TagRenamedEvent`] and [`NoteTagsChangedEvent`].
 
 use std::sync::Arc;
 
-use memry_desktop::i18n::{self, Args};
+use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
+use memry_desktop::notes::error::NotesError;
+use memry_desktop::notes::tag_rename::{RenameJob, TagRenamed};
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::tags::view::{
@@ -15,13 +20,16 @@ use memry_desktop::tags::view::{
 };
 use memry_desktop::tags::{self, Hub, TagsError};
 use memry_desktop::telemetry::Service;
+use memry_desktop::telemetry::events::Metrics;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
+use super::notes::service;
 use crate::events::{
     NoteTagsChangedEvent, TagCategoriesChangedEvent, TagColorUpdatedEvent, TagNoteAction,
-    TagNotesChangedEvent, broadcast,
+    TagNotesChangedEvent, TagRenamedEvent, TagsProgressEvent, broadcast,
 };
 
 /// The open vault, or the localized "no vault is open".
@@ -65,6 +73,11 @@ pub enum Written {
         tag: String,
         note_id: String,
         action: TagNoteAction,
+    },
+    Renamed {
+        old_name: String,
+        new_name: String,
+        renamed: TagRenamed,
     },
 }
 
@@ -111,6 +124,32 @@ pub fn announce<R: Runtime>(app: &AppHandle<R>, written: Written) {
                 action,
             },
         ),
+        Written::Renamed {
+            old_name,
+            new_name,
+            renamed,
+        } => {
+            broadcast(
+                app,
+                TagRenamedEvent {
+                    old_name,
+                    new_name,
+                    affected_notes: renamed.notes_written,
+                },
+            );
+            broadcast(app, NoteTagsChangedEvent);
+            if let Some(telemetry) = app.try_state::<Arc<Service>>() {
+                let mut event = Service::event("tag_renamed", "tags", "renamed");
+                event.object_type = Some("tag".to_owned());
+                let failed = !renamed.failed_note_ids.is_empty();
+                event.result = Some(if failed { "failed" } else { "success" }.to_owned());
+                event.metrics = Some(Metrics {
+                    item_count: Some(f64::from(renamed.notes_written)),
+                    ..Metrics::default()
+                });
+                telemetry.track_main_event(event);
+            }
+        }
     }
 }
 
@@ -314,4 +353,120 @@ pub async fn tags_unpin_note_from_tag<R: Runtime>(
         set_pinned(&app, note_id, tag, TagNoteAction::Unpinned)
     })
     .await
+}
+
+/// `RenameTagSchema`.
+#[derive(Debug, Clone, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameTagInput {
+    pub old_name: String,
+    pub new_name: String,
+    /// Names the run in its [`TagsProgressEvent`]s; one is made up when absent.
+    #[serde(default)]
+    #[specta(optional)]
+    pub run_id: Option<String>,
+}
+
+/// `RenameTagResponse` of a rename that ran.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameTagView {
+    pub affected_notes: u32,
+    /// The notes and days that keep the old name.
+    pub failed_note_ids: Vec<String>,
+    /// The new name cannot be an inline `#tag`, so the bodies keep the old one.
+    pub body_skipped: bool,
+}
+
+/// `tags:rename`: the tag and its children across the vault, merged into a name in use.
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_rename<R: Runtime>(
+    app: AppHandle<R>,
+    input: RenameTagInput,
+) -> Result<RenameTagView, CommandError> {
+    blocking("tags_rename", move || rename(&app, input)).await
+}
+
+fn rename<R: Runtime>(
+    app: &AppHandle<R>,
+    input: RenameTagInput,
+) -> Result<RenameTagView, CommandError> {
+    let units = |text: &str| text.encode_utf16().count();
+    let run_id = input
+        .run_id
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    if units(&input.old_name) == 0
+        || !(1..=50).contains(&units(&input.new_name))
+        || !(1..=100).contains(&units(&run_id))
+    {
+        return Err(CommandError::new(
+            ErrorKind::Invalid,
+            "invalid",
+            "a tag rename takes an old name, a new one of at most 50 characters and a run id of \
+             at most 100",
+        ));
+    }
+    let open = open_vault(app)?;
+    let job = RenameJob {
+        from: input.old_name,
+        to: input.new_name,
+        run_id,
+    };
+    let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+    let mut progress = |done: usize, total: usize| {
+        let run_id = job.run_id.clone();
+        let (done, total) = (count(done), count(total));
+        broadcast(
+            app,
+            TagsProgressEvent {
+                run_id,
+                done,
+                total,
+            },
+        );
+    };
+    let renamed = service(app)?
+        .rename_tag(&open, &job, &mut progress)
+        .map_err(|error| rename_failed(app, &error))?;
+    let view = RenameTagView {
+        affected_notes: renamed.notes_written,
+        failed_note_ids: renamed.failed_note_ids.clone(),
+        body_skipped: renamed.body_skipped,
+    };
+    announce(
+        app,
+        Written::Renamed {
+            old_name: job.from,
+            new_name: job.to,
+            renamed,
+        },
+    );
+    Ok(view)
+}
+
+/// A rename running now is refused with Electron's words (`errors:tag.renameInProgress`), one
+/// recorded with notes left with what finishes it (`errors:tag.renameUnfinished`); any other
+/// failure carries the cause, as Electron's handler answers it.
+fn rename_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> CommandError {
+    let core = CommandError::from_core(error);
+    let (key, from, to, left) = match error {
+        NotesError::TagRenameInProgress { from, to } => {
+            ("errors:tag.renameInProgress", from, to, 0)
+        }
+        NotesError::TagRenameUnfinished { from, to, left } => {
+            ("errors:tag.renameUnfinished", from, to, *left)
+        }
+        _ => return core,
+    };
+    let locale = app.state::<Arc<LocaleService>>().get();
+    let args = Args::from([
+        ("from".to_owned(), Arg::from(from.as_str())),
+        ("to".to_owned(), Arg::from(to.as_str())),
+        (
+            "count".to_owned(),
+            Arg::from(i64::try_from(left).unwrap_or(i64::MAX)),
+        ),
+    ]);
+    CommandError::new(core.kind, core.code, i18n::t(locale, key, &args))
 }

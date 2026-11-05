@@ -295,6 +295,12 @@ vi.mock('../src/generated/bindings', () => {
         answered(tags().renameCategory({ id, name }), () => null),
       tagsDeleteCategory: (id: string) => answered(tags().deleteCategory({ id }), () => null),
       tagsReorder: (input: unknown) => answered(tags().reorder(input), () => null),
+      tagsRename: (input: unknown) =>
+        answered(tags().renameTag(input), (result) => ({
+          affectedNotes: result.affectedNotes ?? 0,
+          failedNoteIds: result.failedNoteIds ?? [],
+          bodySkipped: result.bodySkipped ?? false
+        })),
       propertiesGet: (entityId: string) => properties().get(entityId),
       propertiesSet: (entityId: string, values: unknown, base: unknown) =>
         answered(properties().set(entityId, values, base), written),
@@ -349,6 +355,8 @@ vi.mock('../src/generated/bindings', () => {
       noteTagsChangedEvent: event(() => api().onTagsChanged),
       tagColorUpdatedEvent: event(() => api().onTagColorUpdated),
       tagCategoriesChangedEvent: event(() => api().onTagCategoriesChanged),
+      tagRenamedEvent: event(() => api().onTagRenamed),
+      tagsProgressEvent: event(() => api().onTagsProgress),
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })

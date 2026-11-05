@@ -15,8 +15,9 @@
 //! watcher never reports it back as an outside edit or an outside delete.
 
 use std::path::Path;
+use std::sync::atomic::AtomicBool;
 #[cfg(feature = "test-hooks")]
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_core::api::journal::Journal;
@@ -48,6 +49,8 @@ pub struct NotesService {
     pub(crate) day_file_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
     /// Test hook: runs once inside the next tag rename's edit of a file, after its new text is
     /// written aside and before it lands ([`Self::before_next_rename_lands`]).
+    /// A tag rename runs now (`notes::tag_rename`).
+    pub(crate) renaming: AtomicBool,
     #[cfg(feature = "test-hooks")]
     pub(crate) rename_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
     /// Test hook: the next tag rename stops after a note's file is written and before its
@@ -87,6 +90,7 @@ impl NotesService {
             own_files,
             undos: Undos::default(),
             day_file_lands: Mutex::new(None),
+            renaming: AtomicBool::new(false),
             #[cfg(feature = "test-hooks")]
             rename_lands: Mutex::new(None),
             #[cfg(feature = "test-hooks")]

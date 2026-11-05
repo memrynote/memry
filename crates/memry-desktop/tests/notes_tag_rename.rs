@@ -404,8 +404,9 @@ fn a_crash_between_a_file_and_its_record_never_renames_the_file_twice() {
 }
 
 /// A note the rename could not write stays in its plan and keeps the rename recorded, refusing
-/// another; asking the same rename again tries that note alone, so `a` to `a/b` renames the
-/// others no second time.
+/// another as unfinished with the notes it has left (a rename running is refused as running);
+/// asking the same rename again tries that note alone, so `a` to `a/b` renames the others no
+/// second time.
 #[test]
 fn a_note_the_rename_could_not_write_is_tried_again_by_the_same_rename_alone() {
     let (e, notes, store) = opened();
@@ -415,9 +416,24 @@ fn a_note_the_rename_could_not_write_is_tried_again_by_the_same_rename_alone() {
     ];
     let open = e.session.current().unwrap();
     notes.fail_next_rename_edit();
+    let during = Arc::new(Mutex::new(None));
+    let (asked, service, vault) = (during.clone(), notes.clone(), open.clone());
+    notes.before_next_rename_lands(Box::new(move || {
+        let other = service.rename_tag(&vault, &job("x", "y"), &mut |_, _| {});
+        *asked.lock().unwrap() = Some(other);
+    }));
     let first = notes
         .rename_tag(&open, &job("a", "a/b"), &mut |_, _| {})
         .unwrap();
+    let during = during
+        .lock()
+        .unwrap()
+        .take()
+        .expect("asked during the rename");
+    assert!(
+        matches!(&during, Err(NotesError::TagRenameInProgress { from, to }) if from == "a" && to == "a/b"),
+        "{during:?}"
+    );
     assert_eq!(first.notes_written, 1);
     let [failed] = &first.failed_note_ids[..] else {
         panic!("{first:?}")
@@ -432,7 +448,10 @@ fn a_note_the_rename_could_not_write_is_tried_again_by_the_same_rename_alone() {
     assert_eq!(left, [failed.as_str()]);
     let other = notes.rename_tag(&open, &job("x", "y"), &mut |_, _| {});
     assert!(
-        matches!(other, Err(NotesError::TagRenameInProgress { .. })),
+        matches!(
+            &other,
+            Err(NotesError::TagRenameUnfinished { from, to, left: 1 }) if from == "a" && to == "a/b"
+        ),
         "{other:?}"
     );
 

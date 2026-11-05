@@ -12,7 +12,8 @@ const commands = vi.hoisted(() => ({
   tagsDeleteCategory: vi.fn(),
   tagsReorder: vi.fn(),
   tagsPinNoteToTag: vi.fn(),
-  tagsUnpinNoteFromTag: vi.fn()
+  tagsUnpinNoteFromTag: vi.fn(),
+  tagsRename: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -27,7 +28,9 @@ const events = vi.hoisted(() => {
   return {
     tagColorUpdatedEvent: event('color'),
     tagCategoriesChangedEvent: event('categories'),
-    tagNotesChangedEvent: event('notes')
+    tagNotesChangedEvent: event('notes'),
+    tagRenamedEvent: event('renamed'),
+    tagsProgressEvent: event('progress')
   }
 })
 
@@ -39,7 +42,8 @@ import {
   onTagColorUpdated,
   onTagCategoriesChanged,
   onTagDeleted,
-  onTagNotesChanged
+  onTagNotesChanged,
+  onTagsProgress
 } from './tags-service'
 
 describe('tags-service', () => {
@@ -162,14 +166,27 @@ describe('tags-service', () => {
     expect(commands.tagsUnpinNoteFromTag).toHaveBeenCalledWith('note-2', 'focus')
   })
 
+  it('renames through the command in Electron’s envelope, a refusal answering its words', async () => {
+    const view = { affectedNotes: 2, failedNoteIds: ['note-9'], bodySkipped: true }
+    commands.tagsRename.mockResolvedValue(view)
+    const input = { oldName: 'work', newName: 'job', runId: 'run-1' }
+    await expect(tagsService.renameTag(input)).resolves.toEqual({ success: true, ...view })
+    expect(commands.tagsRename).toHaveBeenCalledWith(input)
+
+    const message = 'A rename of #old to #new is still running. Try again when it finishes.'
+    commands.tagsRename.mockRejectedValue({
+      kind: 'invalid',
+      code: 'tag_rename_in_progress',
+      message
+    })
+    await expect(tagsService.renameTag(input)).resolves.toEqual({ success: false, error: message })
+  })
+
   it('forwards the methods later steps port to window.api.tags', async () => {
-    api.tags.renameTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
     api.tags.deleteTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
     api.tags.removeTagFromNote = vi.fn().mockResolvedValue({ success: true })
     api.tags.mergeTag = vi.fn().mockResolvedValue({ success: true, affectedItems: 0 })
 
-    await tagsService.renameTag({ oldName: 'old', newName: 'new' })
-    expect(api.tags.renameTag).toHaveBeenCalledWith({ oldName: 'old', newName: 'new' })
     await tagsService.deleteTag('new')
     expect(api.tags.deleteTag).toHaveBeenCalledWith('new')
     await tagsService.removeTagFromNote({ noteId: 'note-2', tag: 'focus' })
@@ -178,16 +195,26 @@ describe('tags-service', () => {
     expect(api.tags.mergeTag).toHaveBeenCalledWith({ source: 'old', target: 'new' })
   })
 
-  it('hands the colour, category and tag notes events from Rust on', async () => {
+  it('hands the colour, category, tag notes and rename events from Rust on', async () => {
     const color = vi.fn()
     const categories = vi.fn()
     const notes = vi.fn()
+    const renamed = vi.fn()
+    const progress = vi.fn()
     const stops = [
       onTagColorUpdated(color),
       onTagCategoriesChanged(categories),
-      onTagNotesChanged(notes)
+      onTagNotesChanged(notes),
+      onTagRenamed(renamed),
+      onTagsProgress(progress)
     ]
-    await vi.waitFor(() => expect(listeners.size).toBe(3))
+    await vi.waitFor(() => expect(listeners.size).toBe(5))
+
+    const rename = { oldName: 'work', newName: 'job', affectedNotes: 2 }
+    listeners.get('renamed')?.({ payload: rename })
+    listeners.get('progress')?.({ payload: { runId: 'run-1', done: 1, total: 2 } })
+    expect(renamed).toHaveBeenCalledWith(rename)
+    expect(progress).toHaveBeenCalledWith({ runId: 'run-1', done: 1, total: 2 })
 
     listeners.get('color')?.({ payload: { tag: 'work', color: 'teal' } })
     listeners.get('categories')?.({ payload: { categoryId: null } })
@@ -204,10 +231,8 @@ describe('tags-service', () => {
 
   it('registers the tag subscriptions not yet ported on window.api', () => {
     const unsubscribe = vi.fn()
-    api.onTagRenamed = vi.fn(() => unsubscribe)
     api.onTagDeleted = vi.fn(() => unsubscribe)
 
-    expect(onTagRenamed(vi.fn())).toBe(unsubscribe)
     expect(onTagDeleted(vi.fn())).toBe(unsubscribe)
   })
 })

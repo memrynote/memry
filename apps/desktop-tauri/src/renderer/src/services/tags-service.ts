@@ -15,6 +15,7 @@ import type {
   CreateCategoryResponse,
   TagsClientAPI
 } from '../../../preload/index.d'
+import type { TagsProgressEvent } from '@memry/contracts/tag-schema-api'
 import { commands, events } from '../../../generated/bindings'
 import { extractErrorMessage } from '../lib/ipc-error'
 import { subscribeToEvent } from './tauri-event'
@@ -107,7 +108,20 @@ const ported = {
     settled(() => commands.tagsPinNoteToTag(input.noteId, input.tag)),
 
   unpinNoteFromTag: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> =>
-    settled(() => commands.tagsUnpinNoteFromTag(input.noteId, input.tag))
+    settled(() => commands.tagsUnpinNoteFromTag(input.noteId, input.tag)),
+
+  /** Renames the tag and its children in every note's file and record; `runId` names its progress. */
+  renameTag: async (input: {
+    oldName: string
+    newName: string
+    runId?: string
+  }): Promise<RenameTagResponse> => {
+    try {
+      return { success: true, ...(await commands.tagsRename(input)) }
+    } catch (error) {
+      return failure(error)
+    }
+  }
 }
 
 /** The tag methods served from Rust; `window.api.tags` is typed without them. */
@@ -115,17 +129,6 @@ export type PortedTagMethod = keyof typeof ported
 
 export const tagsService: TagsService = {
   ...ported,
-
-  /**
-   * Rename a tag across all notes.
-   */
-  renameTag: (input: {
-    oldName: string
-    newName: string
-    runId?: string
-  }): Promise<RenameTagResponse> => {
-    return window.api.tags.renameTag(input)
-  },
 
   /**
    * Delete a tag from all notes.
@@ -169,7 +172,16 @@ export const tagsService: TagsService = {
  * @returns Unsubscribe function
  */
 export function onTagRenamed(callback: (event: TagRenamedEvent) => void): () => void {
-  return window.api.onTagRenamed(callback)
+  return subscribeToEvent(events.tagRenamedEvent, callback)
+}
+
+/**
+ * Subscribe to a tag rename's progress. A field rename's progress still comes through
+ * `window.api.onTagsProgress` until its command is ported.
+ * @returns Unsubscribe function
+ */
+export function onTagsProgress(callback: (event: TagsProgressEvent) => void): () => void {
+  return subscribeToEvent(events.tagsProgressEvent, callback)
 }
 
 /**
@@ -205,7 +217,11 @@ export function onTagCategoriesChanged(callback: () => void): () => void {
 }
 
 /** The subscriptions above that Rust events serve; `window.api` is typed without them. */
-export type PortedTagEvent = 'onTagColorUpdated' | 'onTagCategoriesChanged' | 'onTagNotesChanged'
+export type PortedTagEvent =
+  | 'onTagColorUpdated'
+  | 'onTagCategoriesChanged'
+  | 'onTagNotesChanged'
+  | 'onTagRenamed'
 
 // ============================================================================
 // Type Re-exports

@@ -306,6 +306,8 @@ export const commands = {
 	tagsListCategories: () => __TAURI_INVOKE<TagCategoryView[]>("tags_list_categories"),
 	/**  Only a tag the note's record carries can be pinned (`memry_core::domain::tags::set_pinned`). */
 	tagsPinNoteToTag: (noteId: string, tag: string) => __TAURI_INVOKE<null>("tags_pin_note_to_tag", { noteId, tag }),
+	/**  `tags:rename`: the tag and its children across the vault, merged into a name in use. */
+	tagsRename: (input: RenameTagInput) => __TAURI_INVOKE<RenameTagView>("tags_rename", { input }),
 	tagsRenameCategory: (id: string, name: string) => __TAURI_INVOKE<null>("tags_rename_category", { id, name }),
 	/**  A drag in the tag hub: tag assignments and category order, all or nothing. */
 	tagsReorder: (input: ReorderInput) => __TAURI_INVOKE<null>("tags_reorder", { input }),
@@ -415,6 +417,8 @@ export const events = {
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
 	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
 	tagNotesChangedEvent: makeEvent<TagNotesChangedEvent, TagNotesChangedEvent>("tag-notes-changed-event"),
+	tagRenamedEvent: makeEvent<TagRenamedEvent, TagRenamedEvent>("tag-renamed-event"),
+	tagsProgressEvent: makeEvent<TagsProgressEvent, TagsProgressEvent>("tags-progress-event"),
 	templateCreatedEvent: makeEvent<TemplateCreatedEvent, TemplateCreatedEvent>("template-created-event"),
 	templateDeletedEvent: makeEvent<TemplateDeletedEvent, TemplateDeletedEvent>("template-deleted-event"),
 	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
@@ -1317,6 +1321,23 @@ export type PropertyValueView = {
  */
 export type RefsKept = "changing" | "unreadable";
 
+/**  `RenameTagSchema`. */
+export type RenameTagInput = {
+	oldName: string,
+	newName: string,
+	/**  Names the run in its [`TagsProgressEvent`]s; one is made up when absent. */
+	runId?: string | null,
+};
+
+/**  `RenameTagResponse` of a rename that ran. */
+export type RenameTagView = {
+	affectedNotes: number,
+	/**  The notes and days that keep the old name. */
+	failedNoteIds: string[],
+	/**  The new name cannot be an inline `#tag`, so the bodies keep the old one. */
+	bodySkipped: boolean,
+};
+
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {
 	tags?: TagAssignmentInput[] | null,
@@ -1471,6 +1492,16 @@ export type TagNotesChangedEvent = {
 	action: TagNoteAction,
 };
 
+/**
+ *  A tag was renamed across the vault (`tags:renamed`): `affectedNotes` notes and days took the
+ *  new name.
+ */
+export type TagRenamedEvent = {
+	oldName: string,
+	newName: string,
+	affectedNotes: number,
+};
+
 /**  `GetNotesByTagSchema.sortBy`. */
 export type TagSortBy = "modified" | "created" | "title";
 
@@ -1485,6 +1516,16 @@ export type TagWithCountView = {
 	icon: string | null,
 	categoryId: string | null,
 	sortOrder: number,
+};
+
+/**
+ *  How far a tag rename got (`tags:progress`): `done` of `total` notes, for the run the
+ *  renderer named.
+ */
+export type TagsProgressEvent = {
+	runId: string,
+	done: number,
+	total: number,
 };
 
 export type TelemetryEvent = {

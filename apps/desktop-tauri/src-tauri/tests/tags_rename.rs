@@ -1,0 +1,192 @@
+//! `tags_rename` through its command on a mock app over a real vault (#3530 13j-4): the note's
+//! file takes the new name, and the renderer hears the progress, then `tags:renamed` and
+//! `notes:tags-changed`; another rename recorded with notes left is refused with what finishes
+//! it, and sends nothing.
+
+use std::fs;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+use memry_core::crypto::sodium;
+use memry_core::domain::tag_rename::{Holder, RenameJob};
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::locale::LocaleService;
+use memry_desktop::notes::create::NewNoteFile;
+use memry_desktop::notes::identity::NotesIdentity;
+use memry_desktop::notes::service::NotesService;
+use memry_desktop::registry::{AppConfig, VaultRegistry};
+use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore, Store, StoreFactory};
+use memry_desktop::session::{OpenSource, Session};
+use memry_desktop::vault::consumer::{Applied, VaultTier};
+use memry_tauri::commands::error::CommandError;
+use memry_tauri::commands::tags::{RenameTagInput, RenameTagView, tags_rename};
+use memry_tauri::events::{NoteTagsChangedEvent, TagRenamedEvent, TagsProgressEvent};
+use tauri::test::{MockRuntime, mock_app};
+use tauri::{App, Listener, Manager};
+use tauri_specta::Event;
+
+const WAIT: Duration = Duration::from_secs(25);
+
+struct Keychain(Store);
+
+impl StoreFactory for Keychain {
+    fn build(&self) -> keyring_core::Result<Store> {
+        Ok(self.0.clone())
+    }
+}
+
+struct Fixture {
+    _dir: tempfile::TempDir,
+    vault: std::path::PathBuf,
+    app: App<MockRuntime>,
+    store: Arc<DeviceIdentityStore>,
+    heard: Arc<Mutex<Vec<(&'static str, String)>>>,
+}
+
+/// An open vault holding one note tagged `work`, with the tag events heard in order.
+fn opened() -> Fixture {
+    let dir = tempfile::tempdir().unwrap();
+    let vault = dir.path().join("vault");
+    fs::create_dir_all(&vault).unwrap();
+    fs::create_dir_all(dir.path().join("app")).unwrap();
+    let keychain = Keychain(keyring_core::mock::Store::new().unwrap());
+    let keyring = Arc::new(KeyringStore::with_factory(keychain, None, WAIT));
+    let store = Arc::new(DeviceIdentityStore::with_probe(
+        &keyring,
+        dir.path(),
+        || false,
+    ));
+    let (_, secret) = sodium::sign_seed_keypair(&[7u8; 32]).unwrap();
+    store
+        .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
+        .unwrap();
+    let config = AppConfig::load(dir.path().join("app/memry-config.json"));
+    let session = Session::new(VaultRegistry::new(Arc::new(config)));
+    let tier = VaultTier::new(store.clone());
+    tier.set_identity(NotesIdentity::new(store.clone()));
+    tier.register(&session);
+    let mut facts = tier.subscribe();
+    session.open(&vault, OpenSource::Select).unwrap();
+    let deadline = Instant::now() + WAIT;
+    while !matches!(facts.try_recv(), Ok(Applied::Indexed { .. })) {
+        assert!(Instant::now() < deadline, "the open walk did not end");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let notes = NotesService::new(tier, store.clone());
+    let new = NewNoteFile {
+        title: "Plan".into(),
+        content: "About #work".into(),
+        tags: vec!["work".into()],
+        ..NewNoteFile::default()
+    };
+    notes.create(&session.current().unwrap(), new).unwrap();
+
+    let app = mock_app();
+    app.manage(session);
+    app.manage(store.clone());
+    app.manage(notes);
+    app.manage(Arc::new(LocaleService::new("en")));
+    let heard = Arc::new(Mutex::new(Vec::new()));
+    for name in [
+        TagsProgressEvent::NAME,
+        TagRenamedEvent::NAME,
+        NoteTagsChangedEvent::NAME,
+    ] {
+        let sink = Arc::clone(&heard);
+        app.listen_any(name, move |event| {
+            sink.lock()
+                .unwrap()
+                .push((name, event.payload().to_owned()));
+        });
+    }
+    Fixture {
+        _dir: dir,
+        vault,
+        app,
+        store,
+        heard,
+    }
+}
+
+impl Fixture {
+    fn rename(&self, old: &str, new: &str) -> Result<RenameTagView, CommandError> {
+        let input = RenameTagInput {
+            old_name: old.into(),
+            new_name: new.into(),
+            run_id: Some("r1".into()),
+        };
+        tauri::async_runtime::block_on(tags_rename(self.app.handle().clone(), input))
+    }
+
+    fn heard(&self) -> Vec<(&'static str, String)> {
+        std::mem::take(&mut *self.heard.lock().unwrap())
+    }
+}
+
+#[test]
+fn a_rename_through_the_command_writes_the_file_and_is_announced_after_its_progress() {
+    let fixture = opened();
+    let renamed = fixture.rename("work", "job").unwrap();
+    assert_eq!(
+        (
+            renamed.affected_notes,
+            renamed.failed_note_ids,
+            renamed.body_skipped
+        ),
+        (1, Vec::new(), false)
+    );
+    let text = fs::read_to_string(fixture.vault.join("Plan.md")).unwrap();
+    assert!(
+        text.contains("  - job\n") && text.contains("About #job"),
+        "{text}"
+    );
+    assert_eq!(
+        fixture.heard(),
+        [
+            (
+                TagsProgressEvent::NAME,
+                r#"{"runId":"r1","done":1,"total":1}"#.to_owned()
+            ),
+            (
+                TagRenamedEvent::NAME,
+                r#"{"oldName":"work","newName":"job","affectedNotes":1}"#.to_owned()
+            ),
+            (NoteTagsChangedEvent::NAME, "null".to_owned()),
+        ]
+    );
+
+    let long = "x".repeat(51);
+    let refused = fixture.rename("job", &long).unwrap_err();
+    assert_eq!(refused.code, "invalid");
+    assert!(fixture.heard().is_empty());
+}
+
+#[test]
+fn another_rename_left_unfinished_is_refused_with_what_finishes_it() {
+    let fixture = opened();
+    let store: Arc<dyn SecureStore> = fixture.store.clone();
+    let open = fixture.app.state::<Session>().current().unwrap();
+    let recorded = RenameJob {
+        from: "old".into(),
+        to: "new".into(),
+        run_id: "earlier".into(),
+    };
+    let hub = open.vault.tag_hub(store).unwrap();
+    let left = vec![Holder {
+        id: "left".into(),
+        day: false,
+    }];
+    assert_eq!(hub.rename_begin(&recorded, left).unwrap(), None);
+
+    let refused = fixture.rename("work", "job").unwrap_err();
+    assert_eq!(
+        (refused.code.as_str(), refused.message.as_str()),
+        (
+            "tag_rename_unfinished",
+            "Renaming #old to #new didn't finish for 1 note. Rename #old to #new again to finish it."
+        )
+    );
+    assert!(fixture.heard().is_empty(), "a refused rename sends nothing");
+    let text = fs::read_to_string(fixture.vault.join("Plan.md")).unwrap();
+    assert!(text.contains("  - work\n"), "{text}");
+}

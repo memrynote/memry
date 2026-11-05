@@ -104,9 +104,17 @@ pub enum NotesError {
     FolderMoveIncomplete,
     #[error("template not found: {0}")]
     TemplateNotFound(String),
-    /// Another tag rename was recorded and is not finished; the next open finishes it.
+    /// A tag rename is running now.
     #[error("a rename of \"{from}\" to \"{to}\" is still running")]
     TagRenameInProgress { from: String, to: String },
+    /// Another tag rename is recorded with `left` notes it could not write; asking it again
+    /// finishes it.
+    #[error("renaming \"{from}\" to \"{to}\" did not finish for {left} notes")]
+    TagRenameUnfinished {
+        from: String,
+        to: String,
+        left: usize,
+    },
     /// A folder's `.folder.md` cannot be read, so it is not written over, or cannot be
     /// written.
     #[error(transparent)]
@@ -272,6 +280,7 @@ impl CoreError for NotesError {
             Self::PropertyExists(_) => (FailureKind::PropertyWrite, "property_exists"),
             Self::TemplateNotFound(_) => (FailureKind::NotFound, "template_not_found"),
             Self::TagRenameInProgress { .. } => (FailureKind::Invalid, "tag_rename_in_progress"),
+            Self::TagRenameUnfinished { .. } => (FailureKind::Invalid, "tag_rename_unfinished"),
             Self::Outside => (FailureKind::Invalid, "outside_vault"),
             Self::Unopenable(Unopenable::HardLinked) => (FailureKind::Invalid, "note_hard_linked"),
             Self::Unopenable(Unopenable::NotRegular) => (FailureKind::Invalid, "note_not_regular"),

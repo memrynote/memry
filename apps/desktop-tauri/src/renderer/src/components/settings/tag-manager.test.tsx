@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   mergeTag: vi.fn(),
   deleteTag: vi.fn(),
   toastSuccess: vi.fn(),
+  toastWarning: vi.fn(),
   toastError: vi.fn(),
   toastLoading: vi.fn()
 }))
@@ -30,6 +31,7 @@ vi.mock('@memry/i18n/renderer', () => ({
 vi.mock('sonner', () => ({
   toast: {
     success: mocks.toastSuccess,
+    warning: mocks.toastWarning,
     error: mocks.toastError,
     loading: mocks.toastLoading,
     dismiss: vi.fn()
@@ -243,6 +245,21 @@ describe('TagManager', () => {
     await waitFor(() => {
       expect(mocks.toastError).toHaveBeenCalledWith('duplicate')
     })
+  })
+
+  it('says how to finish a rename that left notes it could not write', async () => {
+    mocks.renameTag.mockResolvedValueOnce({ success: true, failedNoteIds: ['n1', 'n2'] })
+    render(<TagManager />)
+    fireEvent.click(screen.getAllByText('tags.actions.rename')[0])
+    const input = screen.getByDisplayValue('work')
+    fireEvent.change(input, { target: { value: 'work/later' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() =>
+      expect(mocks.toastWarning).toHaveBeenCalledWith(
+        "Renaming #work to #work/later didn't finish for 2 notes. Rename #work to #work/later again to finish it."
+      )
+    )
   })
 
   it('deletes, merges, and changes tag colors with success and error toasts', async () => {
