@@ -278,12 +278,11 @@ pub fn event_target_window() -> Option<HWND> {
 
 /// Plays a sign-out the way Windows does: `WM_QUERYENDSESSION` to the main window and, once it
 /// has answered, `WM_ENDSESSION(TRUE)` to `main` or to tao's event target. With `kill_browser`,
-/// the WebView2 browser process with that id is ended between the two, as it ends itself on its
-/// own `WM_ENDSESSION` at a real sign-out. Returns at once: the messages go from a thread.
+/// the WebView2 browser process with that id is ended, and has exited, between the two, as it ends
+/// itself on its own `WM_ENDSESSION` at a real sign-out. Returns at once: the messages go from a
+/// thread.
 #[cfg(feature = "e2e")]
 pub fn post_sign_out(main: HWND, event_target: bool, kill_browser: Option<u32>) -> bool {
-    use windows::Win32::Foundation::CloseHandle;
-    use windows::Win32::System::Threading::{OpenProcess, PROCESS_TERMINATE, TerminateProcess};
     use windows::Win32::UI::WindowsAndMessaging::{ENDSESSION_LOGOFF, SendMessageW};
 
     let target = if event_target {
@@ -295,8 +294,7 @@ pub fn post_sign_out(main: HWND, event_target: bool, kill_browser: Option<u32>) 
     let (main, target) = (main.0 as isize, target.0 as isize);
     std::thread::spawn(move || {
         let logoff = Some(LPARAM(ENDSESSION_LOGOFF as isize));
-        // SAFETY: the windows belong to this process and live as long as it; the process handle
-        // is closed after use.
+        // SAFETY: the windows belong to this process and live as long as it.
         unsafe {
             let answer = SendMessageW(
                 HWND(main as *mut _),
@@ -310,20 +308,7 @@ pub fn post_sign_out(main: HWND, event_target: bool, kill_browser: Option<u32>) 
                 answer.0
             );
             if let Some(pid) = kill_browser {
-                match OpenProcess(PROCESS_TERMINATE, false, pid) {
-                    Ok(process) => {
-                        let ended = TerminateProcess(process, 1);
-                        let _ = CloseHandle(process);
-                        tracing::info!(
-                            scope = "Power",
-                            "e2e: ended the WebView2 browser process {pid}: {ended:?}"
-                        );
-                    }
-                    Err(error) => tracing::warn!(
-                        scope = "Power",
-                        "e2e: could not open the WebView2 browser process {pid}: {error}"
-                    ),
-                }
+                end_process(pid);
             }
             SendMessageW(
                 HWND(target as *mut _),
@@ -334,6 +319,36 @@ pub fn post_sign_out(main: HWND, event_target: bool, kill_browser: Option<u32>) 
         }
     });
     true
+}
+
+/// Ends process `pid` and waits until it has exited. `TerminateProcess` only starts the end: a
+/// browser still being torn down holds its page's flush until its handle signals, which took 3 s
+/// on a loaded runner (#3967).
+#[cfg(feature = "e2e")]
+pub fn end_process(pid: u32) {
+    use windows::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0};
+    use windows::Win32::System::Threading::{
+        OpenProcess, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE, TerminateProcess, WaitForSingleObject,
+    };
+
+    // SAFETY: plain Win32 calls; the handle is closed after use.
+    unsafe {
+        match OpenProcess(PROCESS_TERMINATE | PROCESS_SYNCHRONIZE, false, pid) {
+            Ok(process) => {
+                let ended = TerminateProcess(process, 1);
+                let exited = WaitForSingleObject(process, 5_000) == WAIT_OBJECT_0;
+                let _ = CloseHandle(process);
+                tracing::info!(
+                    scope = "Power",
+                    "e2e: ended the WebView2 browser process {pid}: {ended:?}, exited: {exited}"
+                );
+            }
+            Err(error) => tracing::warn!(
+                scope = "Power",
+                "e2e: could not open the WebView2 browser process {pid}: {error}"
+            ),
+        }
+    }
 }
 
 /// Puts the app ahead of its webview in the session-end order, then subclasses the main window

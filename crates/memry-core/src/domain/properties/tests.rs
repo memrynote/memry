@@ -3,6 +3,8 @@ use crate::storage::repositories::{InboundRecord, sync_items};
 use crate::storage::{Db, open_data, test_support::temp_dir};
 use serde_json::json;
 
+mod file;
+
 const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-b";
 
@@ -356,17 +358,24 @@ fn a_file_mirror_takes_only_the_keys_the_edit_changed_a_retype_included() {
     db.call_blocking(|conn| {
         // Nothing the record does not already hold: nothing queued.
         let same = object(json!({ "effort": 3 }));
-        assert!(mirror_file(conn, "note-1", same, &[], DEVICE, NOW + 1)?);
-        assert_eq!(queued(conn), 0);
-
-        // The edit retyped `effort`, dropped `area` and added `due`, which goes last.
-        let changed = object(json!({ "due": "2026-10-07", "effort": "three" }));
-        let removed = ["area".to_owned()];
         assert!(mirror_file(
             conn,
             "note-1",
-            changed,
-            &removed,
+            &Map::new(),
+            same,
+            DEVICE,
+            NOW + 1
+        )?);
+        assert_eq!(queued(conn), 0);
+
+        // The edit retyped `effort`, dropped `area` and added `due`, which goes last.
+        let before = object(json!({ "area": "Work", "effort": 3 }));
+        let after = object(json!({ "effort": "three", "due": "2026-10-07" }));
+        assert!(mirror_file(
+            conn,
+            "note-1",
+            &before,
+            after,
             DEVICE,
             NOW + 2
         )?);
@@ -380,14 +389,21 @@ fn a_file_mirror_takes_only_the_keys_the_edit_changed_a_retype_included() {
 
         // A journal day's record takes its file's edit too.
         let day = object(json!({ "mood": "good" }));
-        assert!(mirror_file(conn, "day-1", day, &[], DEVICE, NOW + 3)?);
+        assert!(mirror_file(
+            conn,
+            "day-1",
+            &Map::new(),
+            day,
+            DEVICE,
+            NOW + 3
+        )?);
         assert_eq!(values(conn, "journal", "day-1")?["mood"], json!("good"));
 
         assert!(!mirror_file(
             conn,
             "nobody",
+            &Map::new(),
             Map::new(),
-            &[],
             DEVICE,
             NOW + 4
         )?);
@@ -408,7 +424,14 @@ fn a_file_mirror_keeps_a_pulled_value_the_file_does_not_hold_yet() {
     db.call_blocking(|conn| {
         // The user edits `effort` on this device; the file's stale `stage` is not sent back.
         let changed = object(json!({ "effort": 4 }));
-        assert!(mirror_file(conn, "note-1", changed, &[], DEVICE, NOW + 1)?);
+        assert!(mirror_file(
+            conn,
+            "note-1",
+            &Map::new(),
+            changed,
+            DEVICE,
+            NOW + 1
+        )?);
         assert_eq!(
             pushed(conn)["properties"],
             json!({ "stage": "Done", "effort": 4 })
@@ -442,7 +465,14 @@ fn a_file_mirror_of_a_journal_day_pushes_no_create_text() {
     );
     db.call_blocking(|conn| {
         let day = object(json!({ "mood": "good" }));
-        assert!(mirror_file(conn, "day-1", day, &[], DEVICE, NOW + 1)?);
+        assert!(mirror_file(
+            conn,
+            "day-1",
+            &Map::new(),
+            day,
+            DEVICE,
+            NOW + 1
+        )?);
         let raw = sync_items::push_payload(conn, "journal", "day-1")?.expect("payload");
         let pushed: Value = serde_json::from_str(&raw).expect("json");
         assert_eq!(pushed["content"], Value::Null, "{pushed}");
@@ -472,7 +502,7 @@ fn a_file_mirror_of_a_deleted_note_or_day_writes_nothing() {
         for id in ["note-1", "j2026-10-07"] {
             let changed = object(json!({ "mood": "good" }));
             assert!(
-                !mirror_file(conn, id, changed, &[], DEVICE, NOW + 2)?,
+                !mirror_file(conn, id, &Map::new(), changed, DEVICE, NOW + 2)?,
                 "{id}"
             );
             assert_eq!(ops(conn, id), ["delete"], "{id}: the delete stays queued");

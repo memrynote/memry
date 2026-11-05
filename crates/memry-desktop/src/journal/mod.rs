@@ -36,6 +36,7 @@ use memry_core::domain::journal::valid_date;
 use memry_core::domain::journal_ops::reads::DayStamp;
 use memry_core::domain::journal_rules::{count_words, utf16_len};
 use memry_core::domain::notes::names::normalize_aliases;
+use memry_core::domain::properties::RESERVED_DAY_KEYS;
 use memry_core::markdown::frontmatter::{gray_matter_data, split_frontmatter_block};
 use memry_core::markdown::shared::markdown_class::MarkdownClassThresholds;
 use memry_core::storage::repositories::instants::to_iso8601;
@@ -51,16 +52,11 @@ use crate::vault::paths::open_vault_file;
 
 const SCOPE: &str = "journal";
 
-/// Frontmatter keys that are not a day's properties (`RESERVED_JOURNAL_KEYS`, `vault/journal.ts`).
-const RESERVED_KEYS: [&str; 7] = [
-    "id",
-    "date",
-    "created",
-    "modified",
-    "tags",
-    "properties",
-    "emoji",
-];
+/// A frontmatter key that is not a day's property (`RESERVED_JOURNAL_KEYS`, `vault/journal.ts`):
+/// the core's [`RESERVED_DAY_KEYS`], and `tags` and `properties`, which no file's property is.
+fn is_reserved_day_key(name: &str) -> bool {
+    RESERVED_DAY_KEYS.contains(&name) || matches!(name, "tags" | "properties")
+}
 
 /// `JournalEntry` (`packages/contracts/src/journal-api.ts`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
@@ -191,7 +187,7 @@ fn properties_of(frontmatter: &Map<String, Value>) -> Map<String, Value> {
         }
     }
     for (name, value) in frontmatter {
-        if !RESERVED_KEYS.contains(&name.as_str()) {
+        if !is_reserved_day_key(name) {
             out.insert(name.clone(), value.clone());
         }
     }

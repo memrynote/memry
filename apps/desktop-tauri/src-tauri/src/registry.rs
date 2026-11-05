@@ -113,6 +113,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::properties::properties_get::<Wry>,
             crate::commands::properties::properties_merge::<Wry>,
             crate::commands::properties::properties_rename::<Wry>,
+            crate::commands::properties::properties_resolve_refs::<Wry>,
             crate::commands::properties::properties_set::<Wry>,
             // shortcut
             crate::commands::shortcuts::shortcut_register_global_capture,

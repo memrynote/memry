@@ -302,19 +302,43 @@ impl NotesWriter {
         self.db.call_blocking(|conn| identity::owed_places(conn))
     }
 
-    /// An edit of the note's or journal day's file set `changed` and dropped `removed`: the
-    /// record takes those keys and keeps every other ([`properties::mirror_file`]). `false` when
-    /// no note or day has that id.
+    /// An app edit took the note's or journal day's file from the property values `before` to
+    /// `after`: the record takes the keys it set and dropped and keeps every other
+    /// ([`properties::mirror_file`]). `false` when no note or day has that id.
     pub fn file_properties(
         &self,
         id: &str,
-        changed: Object,
-        removed: Vec<String>,
+        before: Object,
+        after: Object,
     ) -> Result<bool, StorageError> {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            properties::mirror_file(conn, id, changed, &removed, &device_id, now_ms())
+            properties::mirror_file(conn, id, &before, after, &device_id, now_ms())
         })
+    }
+
+    /// An edit outside the app, or a file the tier named, left the note's or journal day's
+    /// file holding the property values `after`; `indexed` is the index's reading of the file
+    /// it replaced. The record takes what the file changed since it last took it
+    /// ([`properties::taken`]). `false` when no note or day has that id.
+    pub fn file_properties_taken(
+        &self,
+        id: &str,
+        indexed: Option<Object>,
+        after: Object,
+    ) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            properties::taken(conn, id, indexed, after, &device_id, now_ms())
+        })
+    }
+
+    /// The tier named the new files `(id, values)` together: each record takes the values
+    /// it lacks ([`properties::taken_all`]), in one transaction.
+    pub fn found_files_properties(&self, files: Vec<(String, Object)>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| properties::taken_all(conn, files, &device_id, now_ms()))
     }
 
     /// An in-app edit wrote these aliases into the note's or journal day's file: the record

@@ -49,7 +49,7 @@ use memry_core::markdown::frontmatter::{
 use memry_core::markdown::shared::writing_tools::merge_writing_yaml;
 use serde_json::{Map, Value};
 
-use super::{JournalEntryView, RESERVED_KEYS, SCOPE, day_path, entry, view_of};
+use super::{JournalEntryView, SCOPE, day_path, entry, is_reserved_day_key, view_of};
 use crate::notes::create::{Seed, remove_file, remove_row};
 use crate::notes::error::NotesError;
 use crate::notes::frontmatter::is_reserved_key;
@@ -142,9 +142,8 @@ impl NotesService {
             }
         };
         let mut properties = day.properties;
-        properties.retain(|name, value| {
-            !RESERVED_KEYS.contains(&name.as_str()) && !is_reserved_key(name, value)
-        });
+        properties
+            .retain(|name, value| !is_reserved_day_key(name) && !is_reserved_key(name, value));
         let opened = journal.open_with(date, &day.tags, &properties)?;
         let take_back_record = || {
             if opened.opened {
