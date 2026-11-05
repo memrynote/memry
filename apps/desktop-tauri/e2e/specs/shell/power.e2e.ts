@@ -73,6 +73,9 @@ for (const hidden of [false, true]) {
     expect(Date.now() - startedAt).toBeLessThan(5_000)
     expect(readFileSync(join(app.dirs.appDataDir, 'e2e-held-edit.txt'), 'utf8')).toBe(edit)
     const log = readMainLog(app.dirs.logDir)
+    // The webview has ended by WM_ENDSESSION. Ended means exited: a terminated browser still being
+    // torn down holds the page's flush until its handle signals (3 s on a loaded runner).
+    expect(log).toMatch(/e2e: ended the WebView2 browser process \d+: Ok\(\(\)\), exited: true/)
     expect(log).toContain('cleanup complete')
     expect(log).not.toContain('flush of window main timed out')
   })
