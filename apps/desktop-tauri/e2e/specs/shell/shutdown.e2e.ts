@@ -41,7 +41,11 @@ test('a flush request to a window that does not listen returns instead of hangin
 // yet: the flush request it missed held the quit for the whole flush timeout (#3967).
 test('a quit while the page loads does not wait for its flush', async ({ app }) => {
   await invokeTest(app, 'e2e_quit_on_page_start')
-  await app.executor.execute('setTimeout(() => location.reload(), 0)')
+  // An async script: its result reaches the driver before the reload, which a sync script's
+  // polled result does not (#3967).
+  await app.executor.executeAsync(
+    'const done = arguments[arguments.length - 1]; done(null); setTimeout(() => location.reload())'
+  )
   expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })).toBe(true)
   const log = readMainLog(app.dirs.logDir)
   expect(log).toContain('quitting as the main page starts')

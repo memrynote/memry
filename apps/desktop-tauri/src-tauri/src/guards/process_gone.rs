@@ -37,14 +37,14 @@ pub fn plugin() -> TauriPlugin<Wry> {
                 document_replaced(webview.app_handle(), webview.label());
             }
         })
-        .on_event(|_, event| {
+        .on_event(|app, event| {
             if let RunEvent::WindowEvent {
                 label,
                 event: WindowEvent::Destroyed,
                 ..
             } = event
             {
-                forget(label);
+                forget(app, label);
             }
         })
         .build()
@@ -165,8 +165,12 @@ fn document_replaced(app: &AppHandle<Wry>, label: &str) {
 }
 
 /// Window `label` is gone: a later window of that label starts with a full budget and nothing to
-/// tell, and its browser's exit no longer marks it gone.
-fn forget(label: &str) {
+/// tell, is not asked to flush until its page listens, and its browser's exit no longer marks it
+/// gone.
+fn forget(app: &AppHandle<Wry>, label: &str) {
+    if let Some(flush) = app.try_state::<FlushService>() {
+        flush.page_gone(label);
+    }
     let mut recovery = RECOVERY.lock().unwrap_or_else(PoisonError::into_inner);
     recovery.budgets.remove(label);
     recovery.reloaded.remove(label);
