@@ -751,7 +751,12 @@ fn a_rename_left_unfinished_names_its_notes_and_can_be_stopped() {
     assert_eq!(named, [(failed.as_str(), title)]);
 
     let stopped = notes.abandon_tag_rename(&open).unwrap();
-    assert_eq!(stopped.map(|job| job.to), Some("a/b".to_owned()));
+    let stopped = stopped.expect("stopped");
+    assert_eq!(stopped.job.to, "a/b");
+    assert!(
+        !stopped.renamed,
+        "no record took the new name as it stopped"
+    );
     assert!(plan(&e).is_none());
     assert!(notes.unfinished_tag_rename(&open).unwrap().is_none());
     assert_eq!(record(&e, failed, "tags"), ["a"]);
@@ -924,7 +929,8 @@ fn stopping_a_rename_renames_the_record_of_a_file_it_wrote() {
     let other = ids.iter().find(|id| *id != written).unwrap();
     assert_eq!(record(&e, written, "tags"), ["a"]);
 
-    assert!(notes.abandon_tag_rename(&open).unwrap().is_some());
+    let stopped = notes.abandon_tag_rename(&open).unwrap().expect("stopped");
+    assert!(stopped.renamed);
     assert_eq!(record(&e, written, "tags"), ["a/b"]);
     assert_eq!(record(&e, other, "tags"), ["a"]);
     let left = e.read(&path_of(&e, other));
@@ -1009,4 +1015,24 @@ fn the_tag_list_read_when_the_rename_answers_counts_a_bodys_new_name_alone() {
         .rename_tag(&open, &job("a", "b"), &mut |_, _| {})
         .unwrap();
     assert_eq!(counts(), [("b/c".to_owned(), 1)]);
+}
+
+/// A body-tag cache write that fails after the note's file and record took the new name leaves
+/// the note renamed and counted as written: the cache is derived, and the read back of the file
+/// writes it again.
+#[test]
+fn a_body_tag_cache_write_that_fails_leaves_the_note_renamed() {
+    let (e, notes, _) = opened();
+    let id = note(&notes, &e, "One", "#a one", &["a"]);
+    let open = e.session.current().unwrap();
+    notes.fail_next_rename_body_cache();
+    let renamed = notes
+        .rename_tag(&open, &job("a", "b"), &mut |_, _| {})
+        .unwrap();
+    assert_eq!(
+        (renamed.written, renamed.failed_note_ids),
+        (vec![id.clone()], vec![])
+    );
+    assert_eq!(record(&e, &id, "tags"), ["b"]);
+    assert!(e.read(&path_of(&e, &id)).contains("#b one"));
 }

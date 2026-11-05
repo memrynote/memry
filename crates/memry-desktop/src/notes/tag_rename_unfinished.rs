@@ -27,6 +27,13 @@ pub struct UnfinishedRename {
     pub notes: Vec<UnfinishedNote>,
 }
 
+/// A rename stopped: its job, and whether a note's record took the new name as it stopped.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoppedRename {
+    pub job: RenameJob,
+    pub renamed: bool,
+}
+
 /// A note a rename left, named by its file's name (its id when it has no file).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnfinishedNote {
@@ -70,7 +77,10 @@ impl NotesService {
     /// file took the rename and whose record did not yet (a run stopped between the two) has its
     /// record renamed first, so it keeps no name its file no longer holds. One running is
     /// refused ([`NotesError::TagRenameInProgress`]).
-    pub fn abandon_tag_rename(&self, open: &OpenVault) -> Result<Option<RenameJob>, NotesError> {
+    pub fn abandon_tag_rename(
+        &self,
+        open: &OpenVault,
+    ) -> Result<Option<StoppedRename>, NotesError> {
         // Nothing to stop, though the lock is held a moment (a refused rename, a query).
         let Some(recorded) = recorded_plan(open)? else {
             return Ok(None);
@@ -85,7 +95,7 @@ impl NotesService {
             return Ok(None);
         };
         let hub = self.tag_hub(open)?;
-        let mut left = Vec::new();
+        let (mut left, mut renamed) = (Vec::new(), false);
         for holder in &plan.holders {
             let id = holder.id.as_str();
             let Some(begun) = hub.rename_started(id)? else {
@@ -94,20 +104,20 @@ impl NotesService {
             };
             let written = self.order.run(id, |_turn| {
                 let Some(row) = open.vault.note_files().by_id(id)? else {
-                    return Ok(false);
+                    return Ok(None);
                 };
                 let Some(file) = read_note(&open.path, &row.path)? else {
-                    return Ok(false);
+                    return Ok(None);
                 };
                 let text = file.raw.strip_prefix('\u{feff}').unwrap_or(&file.raw);
                 if content_hash(text) != begun.after {
-                    return Ok(false);
+                    return Ok(None);
                 }
-                hub.rename_in(id)?;
-                Ok::<_, NotesError>(true)
+                Ok::<_, NotesError>(Some(hub.rename_in(id)?))
             })?;
-            if !written {
-                left.push(id);
+            match written {
+                Some(changed) => renamed |= changed,
+                None => left.push(id),
             }
         }
         tracing::warn!(
@@ -118,6 +128,9 @@ impl NotesService {
             "a tag rename was stopped; the notes it could not write keep the old name"
         );
         hub.rename_finish()?;
-        Ok(Some(plan.job))
+        Ok(Some(StoppedRename {
+            job: plan.job,
+            renamed,
+        }))
     }
 }

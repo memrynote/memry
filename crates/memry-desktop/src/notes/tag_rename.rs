@@ -373,7 +373,7 @@ impl NotesService {
                     }
                     record = hub.rename_in(id)?;
                     if let Some(tags) = body_tags.take() {
-                        hub.cache_body_tags(id, &tags)?;
+                        self.cache_body_tags(hub, id, &tags);
                     }
                     Ok::<_, NotesError>(record)
                 },
@@ -438,6 +438,30 @@ impl NotesService {
             );
             InNote::Failed
         })
+    }
+}
+
+impl NotesService {
+    /// The renamed body's `#tags` cached ([`TagHub::cache_body_tags`]). The cache is derived:
+    /// one that fails is logged, and the vault's read back of the file writes it again.
+    fn cache_body_tags(&self, hub: &TagHub, id: &str, tags: &[String]) {
+        #[cfg(feature = "test-hooks")]
+        let failed = self.fail_rename_body_cache.swap(false, Ordering::Relaxed);
+        #[cfg(not(feature = "test-hooks"))]
+        let failed = false;
+        let cached = match failed {
+            true => Err(StorageError::Invalid {
+                what: "a test failed this cache write".to_owned(),
+            }),
+            false => hub.cache_body_tags(id, tags),
+        };
+        if let Err(error) = cached {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id = id,
+                "a renamed body's tags were not cached; the next read of its file caches them: {error}"
+            );
+        }
     }
 }
 

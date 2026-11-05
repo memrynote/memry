@@ -454,7 +454,8 @@ fn written_count(renamed: &TagRenamed) -> u32 {
 }
 
 /// The files a rename wrote measured into their index rows; one left to a pass lags the list
-/// until the pass writes it, logged.
+/// until the pass writes it, which sends [`NoteTagsChangedEvent`] again
+/// (`shell::journal_events::landed`).
 fn measure<R: Runtime>(app: &AppHandle<R>, written: &[String]) {
     let Some(index) = app.try_state::<Arc<NoteIndex>>() else {
         tracing::warn!(
@@ -528,7 +529,8 @@ pub async fn tags_rename_unfinished<R: Runtime>(
 }
 
 /// Stops the rename left unfinished: the notes it wrote keep the new name, the ones it left the
-/// old, and other renames run again. `false` when none was recorded.
+/// old, and other renames run again. `false` when none was recorded. A record it renamed sends
+/// [`NoteTagsChangedEvent`].
 #[tauri::command]
 #[specta::specta]
 pub async fn tags_rename_abandon<R: Runtime>(app: AppHandle<R>) -> Result<bool, CommandError> {
@@ -537,6 +539,9 @@ pub async fn tags_rename_abandon<R: Runtime>(app: AppHandle<R>) -> Result<bool, 
         let stopped = service(&app)?
             .abandon_tag_rename(&open)
             .map_err(|error| rename_failed(&app, &error))?;
+        if stopped.as_ref().is_some_and(|stopped| stopped.renamed) {
+            broadcast(&app, NoteTagsChangedEvent);
+        }
         Ok(stopped.is_some())
     })
     .await

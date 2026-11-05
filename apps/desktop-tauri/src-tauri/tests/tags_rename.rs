@@ -19,11 +19,13 @@ use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore, Store, StoreFactory};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
+use memry_desktop::vault::hash::content_hash;
 use memry_tauri::commands::error::CommandError;
 use memry_tauri::commands::tags::{
     RenameTagInput, RenameTagView, tags_rename, tags_rename_abandon, tags_rename_unfinished,
 };
 use memry_tauri::events::{NoteTagsChangedEvent, TagRenamedEvent, TagsProgressEvent};
+use memry_tauri::shell::journal_events;
 use tauri::test::{MockRuntime, mock_app};
 use tauri::{App, Listener, Manager};
 use tauri_specta::Event;
@@ -215,8 +217,67 @@ fn another_rename_left_unfinished_is_refused_with_what_finishes_it_until_it_is_s
         "a holder with no file is named by its id"
     );
     assert!(tauri::async_runtime::block_on(tags_rename_abandon(handle())).unwrap());
+    assert!(
+        fixture.heard().is_empty(),
+        "a stop that renamed no record sends nothing"
+    );
     assert!(!tauri::async_runtime::block_on(tags_rename_abandon(handle())).unwrap());
     assert_eq!(fixture.rename("work", "job").unwrap().affected_notes, 1);
+}
+
+/// Stopping a rename that wrote a note's file and not yet its record renames the record, and
+/// tells the windows the tags changed. The stopped run's mark says the file's bytes now are the
+/// ones it wrote.
+#[test]
+fn a_stop_that_renames_a_record_is_announced() {
+    let fixture = opened();
+    let store: Arc<dyn SecureStore> = fixture.store.clone();
+    let open = fixture.app.state::<Session>().current().unwrap();
+    let id = plan_id(&fixture);
+    let hub = open.vault.tag_hub(store).unwrap();
+    let job = RenameJob {
+        from: "work".into(),
+        to: "job".into(),
+        run_id: "earlier".into(),
+    };
+    let holders = vec![Holder {
+        id: id.clone(),
+        day: false,
+    }];
+    assert_eq!(hub.rename_begin(&job, holders).unwrap(), None);
+    let text = fs::read_to_string(fixture.vault.join("Plan.md")).unwrap();
+    hub.rename_start(&id, "before", &content_hash(&text))
+        .unwrap();
+
+    let handle = fixture.app.handle().clone();
+    assert!(tauri::async_runtime::block_on(tags_rename_abandon(handle)).unwrap());
+    let heard: Vec<&str> = fixture.heard().into_iter().map(|(name, _)| name).collect();
+    assert_eq!(heard, [NoteTagsChangedEvent::NAME]);
+}
+
+/// A note the rename's measure left to a pass tells the windows the tags changed once the pass
+/// writes its row, as the note index calls `landed` then.
+#[test]
+fn a_renamed_note_left_to_a_pass_is_announced_when_its_row_lands() {
+    let fixture = opened();
+    let deadline = Instant::now() + WAIT;
+    while !measured(&fixture) {
+        assert!(Instant::now() < deadline, "the note was not measured");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    journal_events::landed(fixture.app.handle(), &plan_id(&fixture));
+    let heard: Vec<&str> = fixture.heard().into_iter().map(|(name, _)| name).collect();
+    assert_eq!(heard, [NoteTagsChangedEvent::NAME]);
+}
+
+fn plan_id(fixture: &Fixture) -> String {
+    let open = fixture.app.state::<Session>().current().unwrap();
+    open.vault
+        .note_files()
+        .by_path("Plan.md")
+        .unwrap()
+        .unwrap()
+        .note_id
 }
 
 /// The tag list read when the rename answers (the renderer's refetch on its events, through

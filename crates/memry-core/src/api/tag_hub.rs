@@ -10,6 +10,7 @@ use crate::api::errors::{AuthError, StorageError};
 use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
 use crate::domain::body_tags;
+use crate::domain::notes::failed;
 use crate::domain::tag_admin;
 use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
 use crate::domain::tag_rename::{self, Holder, RenameJob, Started};
@@ -84,8 +85,12 @@ impl TagHub {
     /// wrote the file says them before the vault reads the file back, so the tag list read when
     /// the rename answers counts the new name alone. The read back writes the same.
     pub fn cache_body_tags(&self, id: &str, tags: &[String]) -> Result<(), StorageError> {
-        self.db
-            .call_blocking(|conn| body_tags::write(conn, id, tags))
+        self.db.call_blocking(|conn| {
+            // One write: a cache half cleared drops tags the body has.
+            let tx = conn.unchecked_transaction().map_err(failed)?;
+            body_tags::write(&tx, id, tags)?;
+            tx.commit().map_err(failed)
+        })
     }
 
     /// Whether the recorded rename still lists the holder `id` ([`tag_rename::listed`]).

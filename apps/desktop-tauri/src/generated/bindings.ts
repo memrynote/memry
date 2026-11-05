@@ -316,7 +316,8 @@ export const commands = {
 	tagsRename: (input: RenameTagInput) => __TAURI_INVOKE<RenameTagView>("tags_rename", { input }),
 	/**
 	 *  Stops the rename left unfinished: the notes it wrote keep the new name, the ones it left the
-	 *  old, and other renames run again. `false` when none was recorded.
+	 *  old, and other renames run again. `false` when none was recorded. A record it renamed sends
+	 *  [`NoteTagsChangedEvent`].
 	 */
 	tagsRenameAbandon: () => __TAURI_INVOKE<boolean>("tags_rename_abandon"),
 	/**
