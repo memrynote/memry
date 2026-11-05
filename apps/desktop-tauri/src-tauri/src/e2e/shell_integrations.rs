@@ -270,7 +270,7 @@ pub async fn e2e_flush_after_browser_exit(app: AppHandle<Wry>) -> Result<(), Com
         let pid = browser_process_id(&window).await?;
         let handle = app.clone();
         app.run_on_main_thread(move || {
-            end_process(pid);
+            crate::power::end_process(pid);
             let asker = handle.clone();
             let asked = std::thread::spawn(move || {
                 let runtime = tokio::runtime::Builder::new_current_thread()
@@ -315,34 +315,6 @@ pub async fn e2e_flush_after_browser_exit(app: AppHandle<Wry>) -> Result<(), Com
             "e2e_windows_only",
             "WebView2 exists on Windows only",
         ))
-    }
-}
-
-/// Ends process `pid` and waits until it has exited.
-#[cfg(windows)]
-fn end_process(pid: u32) {
-    use windows::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0};
-    use windows::Win32::System::Threading::{
-        OpenProcess, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE, TerminateProcess, WaitForSingleObject,
-    };
-
-    // SAFETY: plain Win32 calls; the handle is closed after use.
-    unsafe {
-        match OpenProcess(PROCESS_TERMINATE | PROCESS_SYNCHRONIZE, false, pid) {
-            Ok(process) => {
-                let ended = TerminateProcess(process, 1);
-                let exited = WaitForSingleObject(process, 5_000) == WAIT_OBJECT_0;
-                let _ = CloseHandle(process);
-                tracing::info!(
-                    scope = "Power",
-                    "e2e: ended the WebView2 browser process {pid}: {ended:?}, exited: {exited}"
-                );
-            }
-            Err(error) => tracing::warn!(
-                scope = "Power",
-                "e2e: could not open the WebView2 browser process {pid}: {error}"
-            ),
-        }
     }
 }
 
