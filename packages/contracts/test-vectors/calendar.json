@@ -4131,7 +4131,7 @@
           "isPrimary": false,
           "isSelected": false,
           "isMemryManaged": false,
-          "syncCursor": "CPj1",
+          "syncCursor": null,
           "syncStatus": "ok",
           "lastSyncedAt": "2026-09-24T08:00:00.000Z",
           "lastError": null,

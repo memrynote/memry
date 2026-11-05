@@ -1095,6 +1095,7 @@ function buildWrites(): Row {
             { id: 'src-sel', remoteId: 'selection@group.calendar.google.com' }
           ),
           isSelected: false,
+          syncCursor: null,
           modifiedAt: NOW,
           clock: increment({ desktop: 1 }, DEVICE)
         },
