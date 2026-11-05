@@ -92,8 +92,6 @@ mod journal_rename;
 mod journal_service;
 #[path = "journal_update.rs"]
 mod journal_update;
-#[path = "logging.rs"]
-mod logging;
 #[path = "logship.rs"]
 mod logship;
 #[path = "move_dir.rs"]
