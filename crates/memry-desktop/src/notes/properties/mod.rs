@@ -20,9 +20,10 @@
 //! body. What an edit makes of the frontmatter is [`edit`]. The note index reads the same values
 //! into `note_properties` ([`file_properties`]; `super::index`).
 //!
-//! Not here: a type learned from a new value (Electron's `learnCanonicalPropertyType`, which
-//! gives an undeclared property a synced definition at the first type its notes are synced
-//! with; 13k-4c), the header status a status property takes from the note's tasks
+//! A property the index reads with no definition gets one (Electron's
+//! `learnCanonicalPropertyType`; `super::index`).
+//!
+//! Not here: the header status a status property takes from the note's tasks
 //! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m), relation
 //! chips (`properties:resolveRefs`) and the lock check (Step 14).
 

@@ -327,16 +327,7 @@ pub fn mirror_file(
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
-    for item_type in PROPERTIED_TYPES {
-        let Some(payload) = stored(conn, item_type, item_id)? else {
-            continue;
-        };
-        if sync_items::load(conn, item_type, item_id)?.is_some_and(|row| row.deleted_at.is_some()) {
-            // A deleted note or day takes no edit: its queued delete must not become an upsert.
-            return Ok(false);
-        }
-        let current = read_values(payload.object(), item_type, item_id)?;
-        let mut next = current.clone();
+    edit_file(conn, item_id, device_id, now_ms, |next| {
         for name in removed {
             // `shift_remove` keeps the other keys' order, which is the property order.
             next.shift_remove(name);
@@ -349,6 +340,47 @@ pub fn mirror_file(
                 }
             }
         }
+    })
+}
+
+/// Gives a note's or a journal day's record the values of a file the desktop app holds no
+/// earlier reading of, so no edit of it can be told apart: each key the record lacks is set,
+/// last, and a key it holds keeps the record's value. That value may be one a sync pull
+/// brought in that the file does not hold yet, and the server's record wins it. `Ok(false)` as
+/// [`mirror_file`].
+pub fn fill_file(
+    conn: &Connection,
+    item_id: &str,
+    values: Map<String, Value>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    edit_file(conn, item_id, device_id, now_ms, |next| {
+        for (name, value) in values {
+            next.entry(name).or_insert(value);
+        }
+    })
+}
+
+/// The record's values changed by `edit`, written when they changed.
+fn edit_file(
+    conn: &Connection,
+    item_id: &str,
+    device_id: &str,
+    now_ms: i64,
+    edit: impl FnOnce(&mut Map<String, Value>),
+) -> Result<bool, StorageError> {
+    for item_type in PROPERTIED_TYPES {
+        let Some(payload) = stored(conn, item_type, item_id)? else {
+            continue;
+        };
+        if sync_items::load(conn, item_type, item_id)?.is_some_and(|row| row.deleted_at.is_some()) {
+            // A deleted note or day takes no edit: its queued delete must not become an upsert.
+            return Ok(false);
+        }
+        let current = read_values(payload.object(), item_type, item_id)?;
+        let mut next = current.clone();
+        edit(&mut next);
         // A map compares without its order, which is the property order here.
         if current != next || !current.keys().eq(next.keys()) {
             write(conn, item_type, item_id, &payload, next, device_id, now_ms)?;

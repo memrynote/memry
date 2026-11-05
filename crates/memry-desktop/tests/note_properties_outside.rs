@@ -11,6 +11,7 @@
 //! | an app edit is not mirrored again over a later pull         | the app's write mirrored it already   |
 //! | a broken frontmatter drops nothing from the record          | it says nothing of the values         |
 //! | an index from before the rows were filled mirrors nothing   | no last reading to measure against    |
+//! | a note whose rows were dropped keeps a pulled value         | the server's record wins held keys    |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -38,6 +39,7 @@ struct Fixture {
     e: Env,
     store: Arc<dyn SecureStore>,
     notes: Arc<NotesService>,
+    index: Arc<NoteIndex>,
     id: String,
 }
 
@@ -67,6 +69,7 @@ fn opened(files: &[(&str, &str)], path: &str) -> Fixture {
         e,
         store,
         notes,
+        index,
         id,
     };
     until("every file read", || index_support::all_indexed(&f.e));
@@ -229,4 +232,26 @@ fn an_index_from_before_the_rows_were_filled_mirrors_nothing() {
     });
     assert_eq!(f.record().get("stage"), Some(&json!("Review")));
     f.e.close();
+}
+
+#[test]
+fn a_note_whose_rows_were_dropped_keeps_a_pulled_value() {
+    let f = opened(&[("Plan.md", PLAN)], "Plan.md");
+    // Pulled, not in the file yet: the file's `Draft` is older.
+    f.set("stage", "\"Review\"");
+    f.set("rating", "5");
+    // Linked: the index refuses to read it and drops its rows.
+    let link = f.e._dir.path().join("linked.md");
+    std::fs::hard_link(f.e.vault.join("Plan.md"), &link).unwrap();
+    assert_eq!(f.index.reindex(|_| {}).unwrap().unread, 1);
+    let search = f.e.session.current().unwrap().search;
+    assert!(search.note_properties(&f.id).unwrap().is_empty());
+    std::fs::remove_file(&link).unwrap();
+
+    f.outside(
+        "Plan.md",
+        "---\nstage: Draft\nrating: 6\nowner: Kaan\n---\n# Plan\n",
+    );
+    let want = json!({ "stage": "Review", "rating": 5, "owner": "Kaan" });
+    assert_eq!(f.record(), object(want));
 }

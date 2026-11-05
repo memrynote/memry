@@ -27,6 +27,7 @@ use memry_core::markdown::shared::markdown_class::{
 
 use memry_core::seams::secure_store::SecureStore;
 
+use super::learn::Learner;
 use super::{BATCH, BATCH_BYTES, Backfilled, IndexError, IndexProgress, outside};
 use crate::notes::properties::{file_properties, read_definition_types};
 use crate::session::OpenVault;
@@ -68,6 +69,8 @@ pub(super) struct Pass {
     pub stopped: bool,
     /// The notes whose rows it wrote.
     pub written: Vec<String>,
+    /// It learned a definition ([`super::learn`]): the rows holding it are owed its type.
+    pub learned: bool,
 }
 
 enum Read {
@@ -189,6 +192,7 @@ impl Indexer {
             unread: Vec::new(),
             stopped: false,
             written: Vec::new(),
+            learned: false,
         };
         // Owed before the first write: a pass that ends early leaves it owed.
         *links |= total > 0;
@@ -207,6 +211,7 @@ impl Indexer {
                 what: format!("no device identity to write records under: {error}"),
             });
         let mirrors = |note_id: &str| !typing.all && !typing.own.contains(note_id);
+        let mut learner = Learner::new(self.root.clone(), self.vault.clone(), self.store.clone());
         let mut batch: Vec<(MeasuredFile, bool)> = Vec::new();
         let mut bytes = 0;
         // Large notes: their property rows go with the unread ones'.
@@ -218,6 +223,10 @@ impl Indexer {
             }
             match self.read(&note, &typing.types) {
                 Read::File(file, read) => {
+                    if read {
+                        learner.learn(&file.properties, &typing.types);
+                        pass.learned = learner.learned;
+                    }
                     bytes += file.text.len();
                     let mirror = read && mirrors(&file.note_id);
                     batch.push((file, mirror));

@@ -418,6 +418,27 @@ fn a_file_mirror_keeps_a_pulled_value_the_file_does_not_hold_yet() {
     .expect("mirror");
 }
 
+#[test]
+fn a_file_with_no_earlier_reading_only_fills_the_keys_the_record_lacks() {
+    // The record holds a pulled `stage` the file does not hold yet; the file's `stage` is older.
+    let pulled = concat!(
+        r#"{"title":"t","properties":{"stage":"Done","effort":3},"#,
+        r#""clock":{"device-a":2}}"#,
+    );
+    let (db, _dir) = open("props-fill", pulled);
+    db.call_blocking(|conn| {
+        let file = object(json!({ "stage": "Draft", "effort": 3, "owner": "Kaan" }));
+        assert!(fill_file(conn, "note-1", file, DEVICE, NOW + 1)?);
+        assert_eq!(
+            pushed(conn)["properties"],
+            json!({ "stage": "Done", "effort": 3, "owner": "Kaan" })
+        );
+        assert!(!fill_file(conn, "note-2", Map::new(), DEVICE, NOW + 2)?);
+        Ok(())
+    })
+    .expect("fill");
+}
+
 fn ops(conn: &Connection, item_id: &str) -> Vec<String> {
     let mut statement = conn
         .prepare("SELECT op FROM outbox WHERE item_id = ?1 ORDER BY rowid")

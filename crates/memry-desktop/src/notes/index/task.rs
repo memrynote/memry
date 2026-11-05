@@ -156,6 +156,12 @@ impl Owed {
 
     /// What a pass over the queued `ids` (and a scan, `scan`) leaves owed.
     fn settle(&mut self, ids: BTreeSet<String>, scan: bool, outcome: &Result<Pass, IndexError>) {
+        if let Ok(pass) = outcome
+            && pass.learned
+        {
+            self.retype = true;
+            self.arm();
+        }
         match outcome {
             Ok(pass) if pass.stopped => {
                 self.queue.extend(ids);
@@ -449,6 +455,7 @@ mod tests {
             unread: unread.iter().map(|id| (*id).to_owned()).collect(),
             stopped: false,
             written: Vec::new(),
+            learned: false,
         })
     }
 

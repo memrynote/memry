@@ -293,6 +293,16 @@ impl NotesWriter {
         })
     }
 
+    /// The note's or journal day's file holds `values` and the desktop app has no earlier
+    /// reading of it: the record takes the keys it lacks ([`properties::fill_file`]). `false`
+    /// when no note or day has that id.
+    pub fn fill_file_properties(&self, id: &str, values: Object) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            properties::fill_file(conn, id, values, &device_id, now_ms())
+        })
+    }
+
     /// The note's file at `path` is gone ([`identity::removed`]).
     pub fn file_removed(&self, note_id: &str, path: &str) -> Result<Removed, StorageError> {
         let device_id = self.device_id.clone();
