@@ -1,7 +1,8 @@
 // Tags with fields in the running app (Step 13j-3, #3530), ported from Electron's
 // `tags-with-fields.e2e.ts`: the tag hub's ready-made tags write a tag's fields, its related
-// tags and its template, and the strip stays dismissed over a restart. The relation picker,
-// Linked here and the field rename of Electron's first test wait for 13j-3c and 13j-3d.
+// tags and its template, the strip stays dismissed over a restart, and a template a header tag
+// brings can be undone and brought back. The relation picker, Linked here and the field rename
+// of Electron's first test wait for 13j-3c and 13j-3d.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -88,10 +89,7 @@ test('a ready-made tag brings its related tags, and Not now holds over a restart
   await expect(page.locator(STRIP)).toHaveCount(0)
 })
 
-// Pending: the undo empties the file, but the open editor keeps the template. Without a CRDT
-// doc (`syncCrdt.openDoc` is not ported) an outside edit reloads the editor from the body, and
-// `use-editor-sync.ts` replaces nothing when that body is empty.
-test.skip('a template added again after Undo reaches the open editor', async ({
+test('a template added again after Undo reaches the open editor', async ({
   page,
   testVaultPath
 }) => {

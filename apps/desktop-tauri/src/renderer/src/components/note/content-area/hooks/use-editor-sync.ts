@@ -606,6 +606,9 @@ export function useEditorSync({
           // already shows an empty editor.
           if (isExternalReload && initialContent !== undefined) {
             replaceInitialBlocksWithoutHistory(editor, [{ type: 'paragraph' }])
+            // The empty paragraph serializes to blank lines; the reload's change must save
+            // back the empty file, or the note page takes it for typing.
+            if (contentType === 'markdown') markdownSourceRef.current = ''
           }
           loadedSuccessfully = true
         }
