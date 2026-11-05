@@ -61,6 +61,12 @@ fn is_relation(value: &YamlValue) -> bool {
 
 /// `parseRelationUri` succeeds: `memry://<kind>/<id>`, a journal's id a `YYYY-MM-DD` day.
 fn is_relation_uri(text: &str) -> bool {
+    parse_relation_uri(text).is_some()
+}
+
+/// `parseRelationUri` (`contracts/relation-uri.ts`): the kind and id of a `memry://<kind>/<id>`
+/// relation value, the id in `[A-Za-z0-9_-]+` and a journal's a `YYYY-MM-DD` day.
+pub fn parse_relation_uri(text: &str) -> Option<(&str, &str)> {
     const KINDS: [&str; 6] = [
         "note",
         "task",
@@ -69,18 +75,13 @@ fn is_relation_uri(text: &str) -> bool {
         "canvas",
         "journal",
     ];
-    let Some((kind, id)) = text
-        .strip_prefix("memry://")
-        .and_then(|rest| rest.split_once('/'))
-    else {
-        return false;
-    };
+    let (kind, id) = text.strip_prefix("memry://")?.split_once('/')?;
     let id_ok = !id.is_empty()
         && id
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-');
     let day_ok = kind != "journal" || shaped(id, "dddd-dd-dd");
-    KINDS.contains(&kind) && id_ok && day_ok
+    (KINDS.contains(&kind) && id_ok && day_ok).then_some((kind, id))
 }
 
 /// Whether `text` has the shape `pattern` gives, `d` standing for an ASCII digit.

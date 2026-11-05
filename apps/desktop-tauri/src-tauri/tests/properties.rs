@@ -1,7 +1,7 @@
 //! The `properties_*` commands through the IPC a renderer calls, on a mock app over a real vault,
 //! vault tier and note index (#3530 13k-3): the argument names the generated bindings send, a
-//! merge and a rename landing in the note's file, and a refused edit reaching the renderer by
-//! its code.
+//! merge and a rename landing in the note's file, a refused edit reaching the renderer by its
+//! code, and relation refs resolved for their chips (13q-2).
 
 mod support;
 
@@ -19,7 +19,7 @@ struct Fixture {
 }
 
 /// A vault holding `Plan.md`, opened with its first walk done, and a webview whose IPC routes
-/// the four property commands.
+/// the property commands.
 fn opened() -> Fixture {
     // As `registry::builder` lists them, with its error handling.
     let commands = tauri_specta::Builder::new()
@@ -28,6 +28,7 @@ fn opened() -> Fixture {
             memry_tauri::commands::properties::properties_get::<tauri::test::MockRuntime>,
             memry_tauri::commands::properties::properties_merge::<tauri::test::MockRuntime>,
             memry_tauri::commands::properties::properties_rename::<tauri::test::MockRuntime>,
+            memry_tauri::commands::properties::properties_resolve_refs::<tauri::test::MockRuntime>,
             memry_tauri::commands::properties::properties_set::<tauri::test::MockRuntime>,
         ]);
     let mocked = Mocked::open(&[("Plan.md", NOTE)], commands);
@@ -131,4 +132,23 @@ fn an_edit_the_seam_keeps_reaches_the_renderer_as_note_edit_kept() {
         "{error}"
     );
     assert_eq!(f.file(), NOTE);
+}
+
+#[test]
+fn relation_refs_through_the_ipc_answer_one_to_one() {
+    let f = opened();
+    let note = format!("memry://note/{}", f.id);
+    let resolved = f.invoke(
+        "properties_resolve_refs",
+        json!({ "uris": [note, "not a ref"] }),
+    );
+    assert_eq!(
+        resolved,
+        Ok(json!([
+            { "uri": note, "targetType": "note", "targetId": f.id, "title": "Plan",
+              "exists": true },
+            { "uri": "not a ref", "targetType": "note", "targetId": "", "title": "",
+              "exists": false },
+        ]))
+    );
 }

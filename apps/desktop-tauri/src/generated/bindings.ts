@@ -225,6 +225,11 @@ export const commands = {
 	/**  `properties:rename`, on this note only. */
 	propertiesRename: (entityId: string, oldName: string, newName: string) => __TAURI_INVOKE<null>("properties_rename", { entityId, oldName, newName }),
 	/**
+	 *  `properties:resolveRefs`: relation values resolved for their chips, one to one and in order;
+	 *  a malformed or missing ref answers `exists: false`.
+	 */
+	propertiesResolveRefs: (uris: string[]) => __TAURI_INVOKE<ResolvedRelationRefView[]>("properties_resolve_refs", { uris }),
+	/**
 	 *  `properties:set`: `properties` is the panel's whole record and `base` the record it was
 	 *  shown; only the user's changes between the two are written.
 	 */
@@ -1358,10 +1363,34 @@ export type PropertyValueView = {
  */
 export type RefsKept = "changing" | "unreadable";
 
+/**  `RelationKind`. */
+export type RelationKind = "note" | "task" | "event" | "external-event" | "canvas" | "journal";
+
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {
 	tags?: TagAssignmentInput[] | null,
 	categories?: CategoryOrderInput[] | null,
+};
+
+/**  `ResolvedRelationRef`: a relation value and what its chip shows. */
+export type ResolvedRelationRefView = {
+	uri: string,
+	targetType: RelationKind,
+	targetId: string,
+	title: string,
+	exists: boolean,
+	/**  Note targets that are not markdown. */
+	fileType?: string,
+	/**  Note targets with an icon; chips show it instead of the kind icon. */
+	emoji?: string,
+	/**  Task targets in a project; scopes the tasks list when a chip navigates. */
+	projectId?: string,
+	/**  Event targets: the calendar moves its range to it before it focuses the event. */
+	startAt?: string,
+	/**  Event targets: the calendar item to focus. */
+	calendarItemId?: string,
+	/**  Journal targets: the day, which is also the target id. */
+	date?: string,
 };
 
 export type SandboxInfo = {

@@ -15,6 +15,7 @@ use crate::domain::notes::failed;
 use super::colors::{display_hex, event_color_from_id};
 use super::locale_compare;
 use super::projection::provider_supports_write;
+use super::providers::bindings;
 
 /// Every live source (`includeArchived` false), accounts first, then by title.
 pub fn sources(conn: &Connection) -> Result<Vec<CalendarSourceRecord>, StorageError> {
@@ -131,6 +132,69 @@ pub fn event(conn: &Connection, id: &str) -> Result<Option<CalendarEventRecord>,
     };
     record.binding = live_binding(conn, "event", id)?;
     Ok(Some(record))
+}
+
+/// An imported event as a relation chip shows it (`resolveRefs`, `ipc/relation-handlers.ts`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExternalRelation {
+    pub title: String,
+    pub start_at: String,
+    /// The calendar item a chip focuses: the mirror, or once promotion archived it, the native
+    /// event its live binding names (`promotedEventId`), else still the mirror.
+    pub calendar_item_id: String,
+}
+
+/// [`ExternalRelation`] of a synced mirror, archived ones included: promotion archives the
+/// mirror it copied, and the link still names that event. The device-local mirror is not read,
+/// as desktop's resolver reads only `calendar_external_events`.
+pub fn external_relation(
+    conn: &Connection,
+    id: &str,
+) -> Result<Option<ExternalRelation>, StorageError> {
+    type Row = (
+        String,
+        String,
+        Option<String>,
+        String,
+        Option<String>,
+        Option<String>,
+    );
+    let row: Option<Row> = conn
+        .query_row(
+            "SELECT e.title, e.start_at, e.archived_at, e.remote_event_id, s.provider, s.remote_id
+               FROM calendar_external_events e
+               LEFT JOIN calendar_sources s ON s.id = e.source_id
+              WHERE e.id = ?1 AND e.deleted_at IS NULL",
+            [id],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(failed)?;
+    let Some((title, start_at, archived_at, remote_event_id, provider, calendar)) = row else {
+        return Ok(None);
+    };
+    let promoted = match (archived_at, provider, calendar) {
+        (Some(_), Some(provider), Some(calendar)) => {
+            bindings::by_remote(conn, &provider, &calendar, &remote_event_id)?
+                .filter(|target| target.source_type == "event")
+                .map(|target| target.source_id)
+        }
+        _ => None,
+    };
+    Ok(Some(ExternalRelation {
+        title,
+        start_at,
+        calendar_item_id: promoted.unwrap_or_else(|| id.to_owned()),
+    }))
 }
 
 /// `getExternalEventDetails`; also reads the device-local mirror.

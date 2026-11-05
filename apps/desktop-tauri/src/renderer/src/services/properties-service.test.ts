@@ -3,7 +3,8 @@ import { createRendererI18n } from '@memry/i18n/renderer'
 
 const commands = vi.hoisted(() => ({
   propertiesRename: vi.fn(),
-  propertiesMerge: vi.fn()
+  propertiesMerge: vi.fn(),
+  propertiesResolveRefs: vi.fn()
 }))
 
 vi.mock('../../../generated/bindings', () => ({ commands }))
@@ -36,5 +37,18 @@ describe('propertiesService', () => {
       success: false,
       error: 'This note changed while its properties were being saved. Try again.'
     })
+  })
+
+  it('resolves relation refs through its command', async () => {
+    const chip = {
+      uri: 'memry://task/t1',
+      targetType: 'task' as const,
+      targetId: 't1',
+      title: 'Call the bank',
+      exists: true
+    }
+    commands.propertiesResolveRefs.mockResolvedValueOnce([chip])
+    await expect(propertiesService.resolveRefs(['memry://task/t1'])).resolves.toEqual([chip])
+    expect(commands.propertiesResolveRefs).toHaveBeenCalledWith(['memry://task/t1'])
   })
 })
