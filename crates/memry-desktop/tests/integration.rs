@@ -80,6 +80,8 @@ mod icons;
 mod import_copy;
 #[path = "indexer_facts.rs"]
 mod indexer_facts;
+#[path = "indexer_open_status.rs"]
+mod indexer_open_status;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
 #[path = "journal_calendar.rs"]
