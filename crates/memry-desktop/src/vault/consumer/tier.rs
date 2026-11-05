@@ -21,7 +21,7 @@ use crate::vault::app_move::finish_interrupted;
 use crate::vault::config::read_vault_config;
 #[cfg(test)]
 use crate::vault::watch::HoldFn;
-use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
+use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher, WatchHandle};
 use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed, reconcile};
 
 pub struct VaultTier {
@@ -77,6 +77,8 @@ struct Open {
     /// the next.
     echo: Arc<EchoGuard>,
     writeback: Arc<WriteBack>,
+    /// What the app asks of this open's watcher; dropped once the watcher stopped.
+    watch: WatchHandle,
     /// Taken by the first stop; a second stop finds them gone.
     tasks: Mutex<Option<(VaultWatcher, Consumer)>>,
 }
@@ -149,6 +151,18 @@ impl VaultTier {
                 note_id,
                 "no vault is open: the file is written on the next open"
             ),
+        }
+    }
+
+    /// A create reserved `rel` for its note, found a file there that it did not write, and took
+    /// the reservation back. The watcher may have looked at the file meanwhile: under the row it
+    /// saw a change of the reserved note, which no row names now, and under the own-write record
+    /// the create's bytes. Either way it would not report the file again, so it forgets what it
+    /// saw and looks once more, and the file becomes a note of its own. Nothing when `session`
+    /// is not the open one.
+    pub(crate) fn not_written(&self, session: RowSession, rel: &str) {
+        if let Some(open) = self.current().filter(|open| open.session == session) {
+            open.watch.rehome(rel.to_owned());
         }
     }
 
@@ -343,6 +357,7 @@ impl VaultTier {
             session,
             echo,
             writeback,
+            watch: watcher.handle(),
             tasks: Mutex::new(Some((watcher, consumer))),
         })
     }
