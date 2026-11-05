@@ -28,6 +28,7 @@ pub mod read;
 pub mod service;
 pub mod tag_rename;
 pub mod tag_rename_unfinished;
+pub mod tag_retag;
 pub mod tag_template;
 pub mod unsplash;
 pub mod update;

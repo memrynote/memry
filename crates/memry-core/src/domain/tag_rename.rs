@@ -497,16 +497,29 @@ pub fn holders(
     headers: impl IntoIterator<Item = (String, Vec<String>)>,
     old: &str,
 ) -> Result<Vec<Holder>, StorageError> {
-    let under = |tag: &str| renamed_tag(tag, old, old).is_some();
+    let bodies = body_tags::carriers(conn)?;
+    holders_where(conn, headers, bodies, |tag| {
+        renamed_tag(tag, old, old).is_some()
+    })
+}
+
+/// The live notes and journal days whose record's tags, `bodies`' `#tags` or a note's header
+/// (`headers`) carry a tag `wanted` takes, by id; a day's header never counts (#3931).
+pub(crate) fn holders_where(
+    conn: &Connection,
+    headers: impl IntoIterator<Item = (String, Vec<String>)>,
+    bodies: Vec<(String, String, String)>,
+    wanted: impl Fn(&str) -> bool,
+) -> Result<Vec<Holder>, StorageError> {
     let carried: BTreeSet<String> = carriers(conn, None)?
         .into_iter()
-        .chain(body_tags::carriers(conn)?)
-        .filter(|(item_type, _, tag)| item_type != "task" && under(tag))
+        .chain(bodies)
+        .filter(|(item_type, _, tag)| item_type != "task" && wanted(tag))
         .map(|(_, id, _)| id)
         .collect();
     let headed: BTreeSet<String> = headers
         .into_iter()
-        .filter(|(_, tags)| tags.iter().any(|tag| under(tag)))
+        .filter(|(_, tags)| tags.iter().any(|tag| wanted(tag)))
         .map(|(id, _)| id)
         .collect();
     let mut statement = conn
