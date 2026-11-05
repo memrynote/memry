@@ -119,12 +119,9 @@ export const propertiesService = {
   },
 
   /**
-   * Resolve relation property URIs (memry://<kind>/<id>) to display data.
-   * Preserves the input array's order and length; never throws.
-   * @param uris - Relation URIs to resolve
-   * @returns Resolved refs, 1:1 with the input array
+   * Resolve relation property URIs (memry://<kind>/<id>) to display data, 1:1 and in order. A
+   * malformed or missing ref is `exists: false`; only a failed read rejects.
    */
-  resolveRefs: (uris: string[]): Promise<ResolvedRelationRef[]> => {
-    return window.api.properties.resolveRefs(uris)
-  }
+  resolveRefs: (uris: string[]): Promise<ResolvedRelationRef[]> =>
+    commands.propertiesResolveRefs(uris)
 }

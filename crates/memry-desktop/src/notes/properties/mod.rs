@@ -19,13 +19,15 @@
 //! rewrite in a frontmatter value (`super::link_rewrite`) mirror with [`mirror_properties`]
 //! inside their own write. What an edit makes of the frontmatter is [`edit`]. The note index
 //! reads the same values into `note_properties` ([`file_properties`]) and gives a name with no
-//! definition the type it reads first (`learnCanonicalPropertyType`; `super::index`).
+//! definition the type it reads first (`learnCanonicalPropertyType`; `super::index`). Relation
+//! chips (`properties:resolveRefs`) are [`resolve_refs`]'s.
 //!
 //! Not here: the header status a status property takes from the note's tasks
-//! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m), relation
-//! chips (`properties:resolveRefs`) and the lock check (Step 14).
+//! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m) and the lock
+//! check (Step 14).
 
 pub mod edit;
+pub mod resolve_refs;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
