@@ -67,15 +67,6 @@ impl VaultCalendar {
         self.db
             .call_blocking(move |conn| f(conn, &device, now_ms()))
     }
-
-    /// An imported event a relation names (`resolveRefs`, `ipc/relation-handlers.ts`).
-    pub fn external_relation(
-        &self,
-        id: String,
-    ) -> Result<Option<reads::ExternalRelation>, StorageError> {
-        self.db
-            .read_blocking(move |conn| reads::external_relation(conn, &id))
-    }
 }
 
 fn now_ms() -> i64 {

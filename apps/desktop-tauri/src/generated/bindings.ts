@@ -226,7 +226,7 @@ export const commands = {
 	propertiesRename: (entityId: string, oldName: string, newName: string) => __TAURI_INVOKE<null>("properties_rename", { entityId, oldName, newName }),
 	/**
 	 *  `properties:resolveRefs`: relation values resolved for their chips, one to one and in order;
-	 *  a malformed or missing ref answers `exists: false`.
+	 *  a malformed, missing or unreadable ref answers `exists: false`.
 	 */
 	propertiesResolveRefs: (uris: string[]) => __TAURI_INVOKE<ResolvedRelationRefView[]>("properties_resolve_refs", { uris }),
 	/**

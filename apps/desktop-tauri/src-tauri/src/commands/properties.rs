@@ -79,7 +79,7 @@ pub async fn properties_rename<R: Runtime>(
 }
 
 /// `properties:resolveRefs`: relation values resolved for their chips, one to one and in order;
-/// a malformed or missing ref answers `exists: false`.
+/// a malformed, missing or unreadable ref answers `exists: false`.
 #[tauri::command]
 #[specta::specta]
 pub async fn properties_resolve_refs<R: Runtime>(
@@ -87,9 +87,7 @@ pub async fn properties_resolve_refs<R: Runtime>(
     uris: Vec<String>,
 ) -> Result<Vec<ResolvedRelationRefView>, CommandError> {
     blocking("properties_resolve_refs", move || {
-        service(&app)?
-            .resolve_refs(&open_vault(&app)?, &uris)
-            .map_err(|error| CommandError::from_core(&error))
+        Ok(service(&app)?.resolve_refs(&open_vault(&app)?, &uris))
     })
     .await
 }

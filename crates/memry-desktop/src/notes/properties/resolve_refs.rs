@@ -1,10 +1,11 @@
 //! Relation chips (`properties:resolveRefs`, `ipc/relation-handlers.ts`; #3530 13q-2): each
 //! `memry://<kind>/<id>` value a relation property holds, resolved to what its chip shows.
 //!
-//! The answer keeps the input's order and length. A malformed value or a missing target is
-//! `exists: false`, never an error, so one bad ref cannot blank the property row; only a failed
-//! read fails the call. Each kind is read through its owner's read, one per ref: a note's
-//! listed record, a task, an event, an imported event (archived ones included, and through a
+//! The answer keeps the input's order and length. A malformed value, a missing target and a
+//! target whose read fails are each `exists: false` (the last two logged), never an error, so one
+//! bad ref cannot blank the property row. Each kind is read through its owner's read, one per
+//! ref, and none needs this device's identity ([`RelationTargets`]): a note's listed record, a
+//! task, an event, an imported event (synced or subscribed, archived ones included, and through a
 //! promotion to the native event), a canvas that is not deleted, and a journal day that has a
 //! file (desktop reads the note index, which holds only days with one).
 
@@ -12,10 +13,12 @@ use std::path::Path;
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use memry_core::api::errors::StorageError;
+use memry_core::api::relation_targets::RelationTargets;
 use memry_core::domain::property_values::parse_relation_uri;
 use serde::Serialize;
 
-use super::super::error::{NotesError, SCOPE};
+use super::super::error::SCOPE;
 use super::super::service::NotesService;
 use crate::session::OpenVault;
 
@@ -94,94 +97,108 @@ impl ResolvedRelationRefView {
 
 impl NotesService {
     /// `resolveRefs`: `uris` resolved one to one, in order.
-    pub fn resolve_refs(
-        &self,
-        open: &OpenVault,
-        uris: &[String],
-    ) -> Result<Vec<ResolvedRelationRefView>, NotesError> {
-        uris.iter().map(|uri| self.resolve_ref(open, uri)).collect()
+    pub fn resolve_refs(&self, open: &OpenVault, uris: &[String]) -> Vec<ResolvedRelationRefView> {
+        let targets = open.vault.relation_targets();
+        uris.iter()
+            .map(|uri| resolve_ref(open, &targets, uri))
+            .collect()
     }
+}
 
-    fn resolve_ref(
-        &self,
-        open: &OpenVault,
-        uri: &str,
-    ) -> Result<ResolvedRelationRefView, NotesError> {
-        let Some((kind, id)) = parse_relation_uri(uri) else {
-            tracing::warn!(scope = SCOPE, uri, "malformed relation URI");
-            return Ok(ResolvedRelationRefView::missing(
-                uri,
-                RelationKind::Note,
-                "",
-            ));
+fn resolve_ref(open: &OpenVault, targets: &RelationTargets, uri: &str) -> ResolvedRelationRefView {
+    let parsed = parse_relation_uri(uri).and_then(|(kind, id)| {
+        let kind = match kind {
+            "note" => RelationKind::Note,
+            "task" => RelationKind::Task,
+            "event" => RelationKind::Event,
+            "external-event" => RelationKind::ExternalEvent,
+            "canvas" => RelationKind::Canvas,
+            "journal" => RelationKind::Journal,
+            _ => return None,
         };
-        let vault = &open.vault;
-        let store = || self.store.clone();
-        let view = match kind {
-            "note" => match vault.note_files().listed_by_id(id)? {
-                None => ResolvedRelationRefView::missing(uri, RelationKind::Note, id),
-                Some(note) => ResolvedRelationRefView {
-                    file_type: (note.file_type != "markdown").then_some(note.file_type),
-                    emoji: note.emoji.filter(|emoji| !emoji.is_empty()),
-                    ..ResolvedRelationRefView::found(uri, RelationKind::Note, id, note.title)
-                },
+        Some((kind, id))
+    });
+    let Some((kind, id)) = parsed else {
+        // The value is the user's frontmatter text, so only its shape is logged.
+        let memry_scheme = uri.starts_with("memry://");
+        tracing::warn!(
+            scope = SCOPE,
+            len = uri.len(),
+            memry_scheme,
+            "malformed relation URI"
+        );
+        return ResolvedRelationRefView::missing(uri, RelationKind::Note, "");
+    };
+    read_ref(open, targets, uri, kind, id).unwrap_or_else(|error| {
+        tracing::warn!(scope = SCOPE, kind = ?kind, id, %error, "relation target read failed");
+        ResolvedRelationRefView::missing(uri, kind, id)
+    })
+}
+
+fn read_ref(
+    open: &OpenVault,
+    targets: &RelationTargets,
+    uri: &str,
+    kind: RelationKind,
+    id: &str,
+) -> Result<ResolvedRelationRefView, StorageError> {
+    let missing = || ResolvedRelationRefView::missing(uri, kind, id);
+    let found = |title| ResolvedRelationRefView::found(uri, kind, id, title);
+    Ok(match kind {
+        RelationKind::Note => match open.vault.note_files().listed_by_id(id)? {
+            None => missing(),
+            Some(note) => ResolvedRelationRefView {
+                file_type: (note.file_type != "markdown").then_some(note.file_type),
+                emoji: note.emoji.filter(|emoji| !emoji.is_empty()),
+                ..found(note.title)
             },
-            "task" => match vault.tasks(store())?.get(id.to_owned())? {
-                None => ResolvedRelationRefView::missing(uri, RelationKind::Task, id),
-                Some(task) => ResolvedRelationRefView {
-                    project_id: Some(task.project_id).filter(|project| !project.is_empty()),
-                    ..ResolvedRelationRefView::found(uri, RelationKind::Task, id, task.title)
-                },
+        },
+        RelationKind::Task => match targets.task(id)? {
+            None => missing(),
+            Some(task) => ResolvedRelationRefView {
+                project_id: Some(task.project_id).filter(|project| !project.is_empty()),
+                ..found(task.title)
             },
-            "event" => match vault.calendar(store())?.event(id.to_owned())? {
-                None => ResolvedRelationRefView::missing(uri, RelationKind::Event, id),
+        },
+        RelationKind::Event => match targets.event(id)? {
+            None => missing(),
+            Some(event) => ResolvedRelationRefView {
+                start_at: Some(event.start_at),
+                calendar_item_id: Some(id.to_owned()),
+                ..found(event.title)
+            },
+        },
+        RelationKind::ExternalEvent => {
+            let event = match external_row_id(id) {
+                Some(row_id) => targets.external_event(&row_id)?,
+                None => None,
+            };
+            match event {
+                None => missing(),
                 Some(event) => ResolvedRelationRefView {
                     start_at: Some(event.start_at),
-                    calendar_item_id: Some(id.to_owned()),
-                    ..ResolvedRelationRefView::found(uri, RelationKind::Event, id, event.title)
+                    calendar_item_id: Some(event.calendar_item_id),
+                    ..found(event.title)
                 },
-            },
-            "external-event" => {
-                let kind = RelationKind::ExternalEvent;
-                let relation = match external_row_id(id) {
-                    Some(row_id) => vault.calendar(store())?.external_relation(row_id)?,
-                    None => None,
-                };
-                match relation {
-                    None => ResolvedRelationRefView::missing(uri, kind, id),
-                    Some(event) => ResolvedRelationRefView {
-                        start_at: Some(event.start_at),
-                        calendar_item_id: Some(event.calendar_item_id),
-                        ..ResolvedRelationRefView::found(uri, kind, id, event.title)
-                    },
+            }
+        }
+        RelationKind::Canvas => match targets.canvas(id)? {
+            None => missing(),
+            Some(canvas) => found(canvas.title.unwrap_or_default()),
+        },
+        RelationKind::Journal => match targets.day(id)?.and_then(|day| day.path) {
+            None => missing(),
+            // The day's title is its file's name; the date when that is empty.
+            Some(path) => {
+                let stem = Path::new(&path).file_stem().and_then(|stem| stem.to_str());
+                let title = stem.filter(|stem| !stem.is_empty()).unwrap_or(id);
+                ResolvedRelationRefView {
+                    date: Some(id.to_owned()),
+                    ..found(title.to_owned())
                 }
             }
-            "canvas" => match vault.canvases(store())?.canvas(id.to_owned())? {
-                None => ResolvedRelationRefView::missing(uri, RelationKind::Canvas, id),
-                Some(canvas) => {
-                    let title = canvas.title.unwrap_or_default();
-                    ResolvedRelationRefView::found(uri, RelationKind::Canvas, id, title)
-                }
-            },
-            _ => {
-                let kind = RelationKind::Journal;
-                let path = vault.journal(store())?.stamp(id)?.and_then(|day| day.path);
-                match path {
-                    None => ResolvedRelationRefView::missing(uri, kind, id),
-                    // The day's title is its file's name; the date when that is empty.
-                    Some(path) => {
-                        let stem = Path::new(&path).file_stem().and_then(|stem| stem.to_str());
-                        let title = stem.filter(|stem| !stem.is_empty()).unwrap_or(id);
-                        ResolvedRelationRefView {
-                            date: Some(id.to_owned()),
-                            ..ResolvedRelationRefView::found(uri, kind, id, title.to_owned())
-                        }
-                    }
-                }
-            }
-        };
-        Ok(view)
-    }
+        },
+    })
 }
 
 /// `decodeExternalEventRelationId`: the mirror row id a relation id names, in unpadded

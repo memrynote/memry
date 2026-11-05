@@ -1,11 +1,14 @@
 //! Relation chips (`properties:resolveRefs`, #3530 13q-2) over a real session, tier and index:
 //! each kind's target resolved through its owner's read, the answer one to one with the input,
-//! and a malformed value or a missing target `exists: false` rather than an error.
+//! and a malformed value, a missing target or one that cannot be read `exists: false` rather
+//! than an error. No read needs this device's identity.
 //! The imported event and its promotion are `memry-core`'s `calendar_external_relation` test.
 
 use memry_core::api::calendar_records::CalendarEventDraft;
+use memry_core::api::errors::StorageError;
 use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks_write::NewTaskInput;
+use memry_core::seams::secure_store::SecureStoreKey;
 use memry_desktop::notes::properties::resolve_refs::ResolvedRelationRefView;
 use memry_desktop::notes::update::NoteUpdateInput;
 use serde_json::{Value, json};
@@ -101,7 +104,7 @@ fn each_kind_resolves_through_its_owner_and_a_bad_ref_is_missing() {
         "memry://journal/2026-3-5".to_owned(),
     ]
     .into();
-    let resolved = notes.resolve_refs(&open, &uris).unwrap();
+    let resolved = notes.resolve_refs(&open, &uris);
     assert_eq!(
         as_json(&resolved),
         json!([
@@ -128,5 +131,51 @@ fn each_kind_resolves_through_its_owner_and_a_bad_ref_is_missing() {
             { "uri": uris[10], "targetType": "note", "targetId": "", "title": "", "exists": false },
         ])
     );
-    assert!(notes.resolve_refs(&open, &[]).unwrap().is_empty());
+    assert!(notes.resolve_refs(&open, &[]).is_empty());
+}
+
+/// One target that cannot be read (a canvas whose payload is not JSON) is `exists: false` and
+/// the refs beside it still resolve, with the device signing key gone, as a locked keychain
+/// leaves it.
+#[test]
+fn a_ref_that_cannot_be_read_is_missing_and_no_read_needs_the_device_identity() {
+    let (e, notes, store) = opened(&[("Plan.md", "The plan.\n")]);
+    let open = e.session.current().unwrap();
+    let note = id_at(&e, "Plan.md");
+    let board = open
+        .vault
+        .canvases(store.clone())
+        .unwrap()
+        .create(Some("Board".into()), None, None)
+        .unwrap();
+    open.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute(
+                "INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at)
+                 VALUES ('canvas', 'c-bad', 'not json', 'present', 0)",
+                [],
+            )
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })
+        })
+        .unwrap();
+    store.delete(SecureStoreKey::DeviceSigningKey).unwrap();
+
+    let uris = vec![
+        "memry://canvas/c-bad".to_owned(),
+        format!("memry://note/{note}"),
+        format!("memry://canvas/{}", board.id),
+        "memry://task/t-none".to_owned(),
+    ];
+    let resolved = notes.resolve_refs(&open, &uris);
+    let shown: Vec<(bool, &str)> = resolved
+        .iter()
+        .map(|view| (view.exists, view.title.as_str()))
+        .collect();
+    assert_eq!(
+        shown,
+        [(false, ""), (true, "Plan"), (true, "Board"), (false, "")]
+    );
 }

@@ -144,57 +144,46 @@ pub struct ExternalRelation {
     pub calendar_item_id: String,
 }
 
-/// [`ExternalRelation`] of a synced mirror, archived ones included: promotion archives the
-/// mirror it copied, and the link still names that event. The device-local mirror is not read,
-/// as desktop's resolver reads only `calendar_external_events`.
+/// [`ExternalRelation`] of an imported event: the mirror [`external_event`] reads, the synced
+/// one (archived ones included: promotion archives the mirror it copied, and the link still
+/// names that event) or this device's subscribed-calendar mirror (`calendar_local_events`, which
+/// desktop keeps in `calendar_external_events`).
 pub fn external_relation(
     conn: &Connection,
     id: &str,
 ) -> Result<Option<ExternalRelation>, StorageError> {
-    type Row = (
-        String,
-        String,
-        Option<String>,
-        String,
-        Option<String>,
-        Option<String>,
-    );
-    let row: Option<Row> = conn
+    let Some(event) = external_event(conn, id)? else {
+        return Ok(None);
+    };
+    Ok(Some(ExternalRelation {
+        title: event.title,
+        start_at: event.start_at,
+        calendar_item_id: promoted_event(conn, id)?.unwrap_or_else(|| id.to_owned()),
+    }))
+}
+
+/// `promotedEventId`: the native event the live binding of an archived synced mirror names. A
+/// subscribed-calendar mirror is never promoted (its feed is read-only).
+fn promoted_event(conn: &Connection, id: &str) -> Result<Option<String>, StorageError> {
+    let remote: Option<(String, String, String)> = conn
         .query_row(
-            "SELECT e.title, e.start_at, e.archived_at, e.remote_event_id, s.provider, s.remote_id
+            "SELECT s.provider, s.remote_id, e.remote_event_id
                FROM calendar_external_events e
-               LEFT JOIN calendar_sources s ON s.id = e.source_id
-              WHERE e.id = ?1 AND e.deleted_at IS NULL",
+               JOIN calendar_sources s ON s.id = e.source_id
+              WHERE e.id = ?1 AND e.deleted_at IS NULL AND e.archived_at IS NOT NULL",
             [id],
-            |row| {
-                Ok((
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                    row.get(5)?,
-                ))
-            },
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .optional()
         .map_err(failed)?;
-    let Some((title, start_at, archived_at, remote_event_id, provider, calendar)) = row else {
+    let Some((provider, calendar, remote_event_id)) = remote else {
         return Ok(None);
     };
-    let promoted = match (archived_at, provider, calendar) {
-        (Some(_), Some(provider), Some(calendar)) => {
-            bindings::by_remote(conn, &provider, &calendar, &remote_event_id)?
-                .filter(|target| target.source_type == "event")
-                .map(|target| target.source_id)
-        }
-        _ => None,
-    };
-    Ok(Some(ExternalRelation {
-        title,
-        start_at,
-        calendar_item_id: promoted.unwrap_or_else(|| id.to_owned()),
-    }))
+    Ok(
+        bindings::by_remote(conn, &provider, &calendar, &remote_event_id)?
+            .filter(|target| target.source_type == "event")
+            .map(|target| target.source_id),
+    )
 }
 
 /// `getExternalEventDetails`; also reads the device-local mirror.

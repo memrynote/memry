@@ -1,7 +1,13 @@
 //! An imported event a relation chip names (`resolveRefs`, `ipc/relation-handlers.ts`; #3530
 //! 13q-2) against real SQLite: the mirror's title and start, the mirror as the item to focus,
-//! and once promotion archived it, the native event its binding names.
+//! and once promotion archived it, the native event its binding names. A subscribed calendar's
+//! event, which this device mirrors outside the synced table, resolves as its own item.
 
+use std::collections::HashMap;
+
+use memry_core::api::calendar_records::CalendarZone;
+use memry_core::domain::calendar_items::ical::{IcalZones, parse_feed};
+use memry_core::domain::calendar_items::ics::{self, Validators};
 use memry_core::domain::calendar_items::reads::{ExternalRelation, external_relation};
 use memry_core::domain::calendar_items::write;
 use memry_core::storage::repositories::sync_items::InboundRecord;
@@ -60,8 +66,9 @@ fn seeded() -> Db {
     db
 }
 
-fn read(db: &Db, id: &'static str) -> Option<ExternalRelation> {
-    db.read_blocking(move |conn| external_relation(conn, id))
+fn read(db: &Db, id: &str) -> Option<ExternalRelation> {
+    let id = id.to_owned();
+    db.read_blocking(move |conn| external_relation(conn, &id))
         .unwrap()
 }
 
@@ -85,4 +92,51 @@ fn a_mirror_is_its_own_item_until_promotion_names_the_native_event() {
     let relation = read(&db, "ext-1").expect("an archived mirror still resolves");
     assert_eq!(relation.title, "Design review");
     assert_eq!(relation.calendar_item_id, promoted);
+}
+
+#[test]
+fn a_subscribed_calendars_event_is_its_own_item() {
+    let db = open();
+    let zones = IcalZones {
+        named: HashMap::new(),
+        local: CalendarZone {
+            identifier: "UTC".into(),
+            base_offset_ms: 0,
+            transitions: vec![],
+        },
+    };
+    let feed = "BEGIN:VCALENDAR\r\nX-WR-CALNAME:Holidays\r\nBEGIN:VEVENT\r\nUID:a\r\n\
+                SUMMARY:Spring day\r\nDTSTART:20260920T090000Z\r\nDTEND:20260920T100000Z\r\n\
+                END:VEVENT\r\nEND:VCALENDAR\r\n";
+    let events = parse_feed(feed, ics::window(NOW), &zones).expect("feed");
+    let url = ics::normalize_url("webcal://example.com/holidays.ics").expect("url");
+    db.call_blocking(move |conn| {
+        ics::subscribe(
+            conn,
+            &url,
+            None,
+            &events,
+            &Validators::default(),
+            "desk",
+            NOW,
+        )
+    })
+    .expect("subscribe");
+    let id: String = db
+        .read_blocking(|conn| {
+            conn.query_row("SELECT id FROM calendar_local_events", [], |row| row.get(0))
+                .map_err(|e| memry_core::api::errors::StorageError::Failed {
+                    what: e.to_string(),
+                })
+        })
+        .expect("the feed's one event");
+
+    assert_eq!(
+        read(&db, &id),
+        Some(ExternalRelation {
+            title: "Spring day".into(),
+            start_at: "2026-09-20T09:00:00.000Z".into(),
+            calendar_item_id: id.clone(),
+        })
+    );
 }

@@ -32,12 +32,14 @@ test('a relation shows its live target by title and a missing one as deleted', a
     input: { title: `Relation source ${stamp}`, content: 'Links out.' }
   })
   const file = join(testVaultPath, source.path)
-  const related = `related:\n  - memry://note/${target.id}\n  - memry://note/n-gone\n`
-  const text = readFileSync(file, 'utf8')
-  writeFileSync(
-    file,
-    text.startsWith('---\n') ? `---\n${related}${text.slice(4)}` : `---\n${related}---\n${text}`
-  )
+  const related = ['related:', `  - memry://note/${target.id}`, '  - memry://note/n-gone']
+  // Split on either line ending, so a CRLF file gains no second frontmatter block.
+  const lines = readFileSync(file, 'utf8').split(/\r?\n/)
+  const withRelated =
+    lines[0] === '---'
+      ? ['---', ...related, ...lines.slice(1)]
+      : ['---', ...related, '---', ...lines]
+  writeFileSync(file, withRelated.join('\n'))
   await expect
     .poll(
       async () =>
@@ -46,6 +48,7 @@ test('a relation shows its live target by title and a missing one as deleted', a
     .toEqual([`memry://note/${target.id}`, 'memry://note/n-gone'])
 
   await openNoteByHandle(page, { id: source.id, title: source.title })
+  await expect(page.getByTestId('relation-chip')).toHaveCount(1)
   await expect(page.getByTestId('relation-chip')).toContainText(target.title)
-  await expect(page.getByTestId('relation-chip-deleted')).toBeVisible()
+  await expect(page.getByTestId('relation-chip-deleted')).toHaveCount(1)
 })
