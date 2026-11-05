@@ -3,6 +3,7 @@ import { ExternalLink } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import { openLink } from '@/lib/external-link-guard'
+import { isWindowBlur } from '@/lib/inline-rename-focus'
 
 interface UrlEditorProps {
   value: string
@@ -63,18 +64,26 @@ export function UrlEditor({
     setIsValid(valid)
   }, [])
 
-  const handleBlur = useCallback(() => {
-    const valid = isValidUrl(localValue)
-    setIsValid(valid)
-    if (!valid) {
-      setLocalValue(value)
-      setIsValid(true)
+  const handleBlur = useCallback(
+    (e: React.FocusEvent<HTMLInputElement>) => {
+      // The window lost focus, not the field: save a valid draft and keep it open (#3967).
+      if (isWindowBlur(e)) {
+        if (isValidUrl(localValue)) onChange(localValue)
+        return
+      }
+      const valid = isValidUrl(localValue)
+      setIsValid(valid)
+      if (!valid) {
+        setLocalValue(value)
+        setIsValid(true)
+        onBlur?.()
+        return
+      }
+      onChange(localValue)
       onBlur?.()
-      return
-    }
-    onChange(localValue)
-    onBlur?.()
-  }, [localValue, onChange, onBlur, value])
+    },
+    [localValue, onChange, onBlur, value]
+  )
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

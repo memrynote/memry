@@ -109,16 +109,22 @@ pub fn serialize_canonical<T: ReadTxn>(
     fragment: &str,
     prepare: Option<&mut dyn FnMut(&Doc)>,
 ) -> Option<String> {
-    // y-prosemirror deletes any element it cannot build. This port never does,
-    // but the read still happens on a copy so the writing tools can edit it.
-    let snapshot = detach(txn)?;
-    if let Some(prepare) = prepare {
-        prepare(&snapshot);
-    }
-    let blocks = {
-        let frag = snapshot.get_or_insert_xml_fragment(fragment);
-        let snap_txn = snapshot.transact();
-        y_fragment_to_blocks(&snap_txn, &frag)?
+    // y-prosemirror deletes any element it cannot build. This port never does, so
+    // only the writing tools, which edit what they read, need a copy; every other
+    // read takes the fragment as it is (the read walks text by chunk, so the copy's
+    // UTF-16 offsets change nothing it sees).
+    let live = txn.get_xml_fragment(fragment).filter(|_| prepare.is_none());
+    let blocks = match live {
+        Some(frag) => y_fragment_to_blocks(txn, &frag)?,
+        None => {
+            let snapshot = detach(txn)?;
+            if let Some(prepare) = prepare {
+                prepare(&snapshot);
+            }
+            let frag = snapshot.get_or_insert_xml_fragment(fragment);
+            let snap_txn = snapshot.transact();
+            y_fragment_to_blocks(&snap_txn, &frag)?
+        }
     };
     if blocks.is_empty() {
         // `''` is a real body, but only when the fragment is empty too: a

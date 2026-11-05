@@ -44,6 +44,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
 import { useCalendarProperties } from '@/hooks/use-calendar-properties'
 import { getEventBaseColor } from '@/lib/event-type-colors'
+import { isWindowBlur } from '@/lib/inline-rename-focus'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 export const PROPERTY_TYPE_ICONS: Record<string, AppIcon> = {
@@ -514,7 +515,9 @@ export function PropertyRow({
             type="text"
             value={editedName}
             onChange={(e) => setEditedName(e.target.value)}
-            onBlur={handleEndNameEdit}
+            onBlur={(e) => {
+              if (!isWindowBlur(e)) handleEndNameEdit()
+            }}
             onKeyDown={handleNameKeyDown}
             className={cn(
               compact ? 'w-[72px] shrink-0' : 'w-28 shrink-0',

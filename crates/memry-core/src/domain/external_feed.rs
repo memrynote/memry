@@ -406,7 +406,8 @@ pub fn first_body(
         unless_changed_from: None,
         embeds: input.embeds,
     };
-    if converter.replace_body(&document, markdown, options) != ReplaceOutcome::Replaced {
+    // The document is this call's alone and is dropped unless the body replaced it.
+    if converter.replace_unshared_body(&document, markdown, options) != ReplaceOutcome::Replaced {
         return None;
     }
     let updates = std::mem::take(&mut *authored.lock().unwrap_or_else(PoisonError::into_inner));
@@ -514,7 +515,9 @@ pub fn same_text(body: &str, file: &str) -> bool {
 /// Whether the server takes this update as one: it caps the packed length
 /// (header, compressed frame, AEAD tag), not the markdown or the raw update.
 fn rides_as_one_update(update: &[u8]) -> bool {
-    crdt_envelope::packed_len(update) <= MAX_UPDATE_BYTES
+    // The bound needs no compression, and an update under it rides whatever it packs to.
+    crdt_envelope::max_packed_len(update.len()) <= MAX_UPDATE_BYTES
+        || crdt_envelope::packed_len(update) <= MAX_UPDATE_BYTES
 }
 
 fn storage_failed(error: rusqlite::Error) -> CrdtError {
