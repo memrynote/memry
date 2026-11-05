@@ -66,7 +66,7 @@ To look at a running e2e build's data, start it with `node apps/desktop-tauri/sc
 
 ## Notes, folders and journal
 
-The note, folder, journal, template, tag and property services are in `crates/memry-desktop/src/notes/`, `journal/`, `templates/` and `tags/`. [Notes and Folders (Tauri)](/architecture/notes-and-folders) explains the order each operation writes in and the differences from Electron. Every operation that changes an existing note's text goes through the app-edit seam, `memry_desktop::vault::app_edit`, never a direct file write.
+The note, folder, journal, template, tag and property services are in `crates/memry-desktop/src/notes/`, `journal/`, `templates/` and `tags/`. [Notes and Folders (Tauri)](/architecture/notes-and-folders) explains the order each operation writes in and the differences from Electron. Every edit the app makes to an existing note's text, other than the write-back's, goes through the app-edit seam, `memry_desktop::vault::app_edit`, never a direct file write.
 
 Their tests run on a real vault in a temp dir with the real databases, one file per area (`notes_moves`, `notes_folder_move`, `journal_update`, `templates` and more):
 
@@ -74,7 +74,7 @@ Their tests run on a real vault in a temp dir with the real databases, one file 
 cd crates && cargo test -p memry-desktop --test notes_service
 ```
 
-The e2e specs are in `apps/desktop-tauri/e2e/specs/notes/`. Run one with `pnpm --filter @memry/desktop-tauri test:e2e -- --spec <path>` after `pnpm --filter @memry/desktop-tauri build:e2e`.
+The e2e specs are in `apps/desktop-tauri/e2e/specs/notes/`. Run one with `pnpm --filter @memry/desktop-tauri test:e2e --spec e2e/specs/notes/<file>.e2e.ts` after `pnpm --filter @memry/desktop-tauri build:e2e`.
 
 ## Two renderers
 

@@ -150,7 +150,7 @@ Two main-process handshakes need an _answer_ from one specific window rather tha
 
 The Tauri app (`apps/desktop-tauri`) has no preload and no Zod check at the boundary. The renderer calls generated functions, `commands.*` in `src/generated/bindings.ts`, and each one invokes a `#[tauri::command]` in `src-tauri/src/commands/<domain>.rs`. A command parses its arguments, calls one service method in `crates/memry-desktop` and maps the error. `pnpm ipc:generate` writes the bindings from the Rust types, and `pnpm ipc:check` fails when they are stale. [Desktop on Tauri](/contribute/desktop-tauri#add-a-command) shows how to add a command.
 
-A command name is the Electron channel name with `:` and `-` turned into `_`: `notes:set-local-only` is `notes_set_local_only`. The renderer's services (`src/renderer/src/services/notes-service.ts`, `journal-service.ts`, `tags-service.ts` and the others) keep the Electron method names and shapes, so components did not change. A call no step has ported yet still goes to `window.api`, which rejects it with `NotPortedError`.
+A command name is the Electron channel name with `:` and `-` turned into `_` and camelCase into snake_case: `notes:set-local-only` is `notes_set_local_only`, and `journal:getEntry` is `journal_get_entry`. The renderer's services (`src/renderer/src/services/notes-service.ts`, `journal-service.ts`, `tags-service.ts` and the others) keep the Electron method names and shapes, so components did not change. A call no step has ported yet still goes to `window.api`, which rejects it with `NotPortedError`.
 
 A failed command throws `CommandError { kind, code, message }`. `extractErrorMessage` reads it, and `lib/ipc-error.ts` maps known codes to translated text, for example `note_too_large_to_sync` and `note_edit_kept`.
 
@@ -160,13 +160,13 @@ The notes domain is split by module: `notes.rs`, `folders.rs`, `journal.rs`, `pr
 
 An event carries ids and small hints, and the renderer refetches what it shows. The note events (`NoteCreatedEvent`, `NoteUpdatedEvent`, `NoteDeletedEvent`, `NoteRenamedEvent`, `NoteMovedEvent`) have one sender, `src-tauri/src/shell/note_events.rs`. It turns the vault tier's row facts into events, so a note the app created and a file that appeared in Finder go out the same way. The fact's change source decides the event's `source`:
 
-| Change source | Cause                                                                       | Event                                                                                                            |
-| ------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `Save`        | The editor's save                                                           | `NoteUpdatedEvent`, source `internal`                                                                            |
-| `AppEdit`     | An edit the app makes outside the editor (a link rewrite, a template apply) | `NoteUpdatedEvent`, source `external`, so an open editor shows it                                                |
-| `Watcher`     | A change made outside the app                                               | Sent, source `external`                                                                                          |
-| `App`         | The write-back writing a body to its file                                   | None                                                                                                             |
-| `Walk`        | What the open walk found                                                    | None. The index pass after the walk sends `VaultIndexProgressEvent`, and the renderer refetches its lists on it. |
+| Change source | Cause                                                                        | Event                                                                                                            |
+| ------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `Save`        | The editor's save                                                            | `NoteUpdatedEvent`, source `internal`                                                                            |
+| `AppEdit`     | An edit the app makes outside the editor (a link rewrite, a template apply)  | `NoteUpdatedEvent`, source `external`, so an open editor shows it                                                |
+| `Watcher`     | A change made outside the app                                                | Sent, source `external`                                                                                          |
+| `App`         | The app created, removed or renamed the file, or the write-back wrote a body | Create, delete and rename go out with source `internal`. A body write (`Changed`) sends nothing.                 |
+| `Walk`        | What the open walk found                                                     | None. The index pass after the walk sends `VaultIndexProgressEvent`, and the renderer refetches its lists on it. |
 
 When the forwarder falls behind, it sends one `NoteEventsDroppedEvent` in place of the facts it missed, and the renderer refetches its note lists, its tags and every note it shows. Electron has no such event, because it sends every event.
 

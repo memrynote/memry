@@ -51,7 +51,7 @@ When a file changes outside the app, the consumer feeds the new text to the note
 - the file is ahead of the document, or the note's server body has not been downloaded;
 - writing the document would lose content, such as a block a newer build wrote.
 
-A journal day's file is written by the same rules. The one frontmatter key a pass sets is the day's `date`, in place, and it never writes the day's tags (`vault/writeback/journal.rs`).
+A journal day's file is written by the same rules. The one frontmatter key a pass sets is the day's `date`, in place, and it never writes the day's tags (`vault/writeback/journal.rs`). The exception is a change to the writing-tools data, which rewrites the whole block (a version is kept first).
 
 A pass that would write the same bytes writes nothing, so the file's modification time does not change. Before a write replaces bytes the app did not write, the old file is kept as a version.
 

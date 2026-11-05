@@ -127,7 +127,7 @@ Pick a template and confirm with **Apply Template**. The <kbd>⋯</kbd> menu als
 
 `{{title}}` resolves to the note's current title. If the note is open in the editor, the update shows up live.
 
-If the note's file was changed outside memrynote and that change has not loaded yet, applying is refused and the note stays as it was. Apply the template again once the change has loaded.
+If the note's file was changed outside memrynote and that change has not loaded yet, or your latest typing has not been saved to the file yet, applying is refused and the note stays as it was. Wait a moment and apply again.
 
 ## A Folder's Default Template
 
