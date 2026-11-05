@@ -110,6 +110,8 @@ mod note_links_changed;
 mod note_mentions;
 #[path = "note_properties_index.rs"]
 mod note_properties_index;
+#[path = "notes_aliases.rs"]
+mod notes_aliases;
 #[path = "notes_apply_template.rs"]
 mod notes_apply_template;
 #[path = "notes_create_template.rs"]
