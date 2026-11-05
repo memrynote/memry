@@ -40,7 +40,7 @@ use serde_json::{Map, Value};
 use super::error::{NotesError, SCOPE};
 use super::frontmatter::{is_reserved_key, user_properties};
 use super::properties::edit::{PropertyEdit, edited};
-use super::properties::{file_delta, mirror_properties};
+use super::properties::{EditedValues, edited_values, mirror_properties};
 use super::read;
 use super::service::NotesService;
 use super::update::{Updated, tag_keys};
@@ -72,9 +72,9 @@ pub struct Applied {
     pub text: String,
     /// The header tags, when the apply changed them.
     pub header_tags: Option<Vec<String>>,
-    /// The keys the record's property values take and drop once the file holds the text, as
-    /// stored by the definitions' types.
-    pub properties: (Map<String, Value>, Vec<String>),
+    /// The file's property values before and after, as stored by the definitions' types: the
+    /// record takes the keys they differ in once the file holds the text.
+    pub properties: EditedValues,
     /// The header or the body's `#tags` changed (`notes:tags-changed`).
     pub tags_changed: bool,
 }
@@ -139,8 +139,8 @@ pub fn applied(
         };
         next = edited(&next, &fill)?;
     }
-    let properties = file_delta(&reading, &next, types);
-    let edited = change.is_some() || !properties.0.is_empty() || !properties.1.is_empty();
+    let properties = edited_values(&reading, &next, types);
+    let edited = change.is_some() || properties.0 != properties.1;
     if edited && !matches!(parsed.frontmatter, YamlValue::Map(_)) {
         // A top level that is a list or a scalar is the author's; no key goes into it.
         return Err(NotesError::FrontmatterNotAMap);

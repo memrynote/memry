@@ -302,18 +302,18 @@ impl NotesWriter {
         self.db.call_blocking(|conn| identity::owed_places(conn))
     }
 
-    /// An edit of the note's or journal day's file set `changed` and dropped `removed`: the
-    /// record takes those keys and keeps every other ([`properties::mirror_file`]). `false` when
-    /// no note or day has that id.
+    /// An app edit took the note's or journal day's file from the property values `before` to
+    /// `after`: the record takes the keys it set and dropped and keeps every other
+    /// ([`properties::mirror_file`]). `false` when no note or day has that id.
     pub fn file_properties(
         &self,
         id: &str,
-        changed: Object,
-        removed: Vec<String>,
+        before: Object,
+        after: Object,
     ) -> Result<bool, StorageError> {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            properties::mirror_file(conn, id, changed, &removed, &device_id, now_ms())
+            properties::mirror_file(conn, id, &before, after, &device_id, now_ms())
         })
     }
 

@@ -52,6 +52,8 @@ use crate::storage::repositories::sync_items;
 mod file;
 mod store;
 
+use file::file_changes;
+pub(crate) use file::forget as forget_file_baseline;
 pub use file::{taken, taken_all};
 pub use store::read_values;
 use store::{failed, require, stored, write};
@@ -317,25 +319,29 @@ fn reordered(values: &Map<String, Value>, ordered: &[String]) -> Map<String, Val
 /// copy: a value a sync pull brought in is in the record and not in the file yet, so taking the
 /// file's whole map would send the stale file value back over it.
 ///
-/// A value whose type the edit changed is taken rather than refused as [`set`] refuses it: the
-/// file already holds it, and a refusal would leave the record and the file apart for good. An
-/// edit that leaves the record as it was writes nothing. The file's baseline moves with the
-/// edit ([`taken`]). `Ok(false)` when no live note or day has that id.
+/// `before` and `after` are the file's values as the record stores them, read before and after
+/// the edit. A value whose type the edit changed is taken rather than refused as [`set`] refuses
+/// it: the file already holds it, and a refusal would leave the record and the file apart for
+/// good. An edit that leaves the record as it was writes nothing. `after` becomes the file's
+/// baseline ([`taken`]), and a day takes none of the [`RESERVED_DAY_KEYS`]. `Ok(false)` when no
+/// live note or day has that id.
 pub fn mirror_file(
     conn: &Connection,
     item_id: &str,
-    changed: Map<String, Value>,
-    removed: &[String],
+    before: &Map<String, Value>,
+    after: Map<String, Value>,
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let baseline = (changed.clone(), removed.to_vec());
+    let before = file::own(&tx, item_id, before.clone())?;
+    let after = file::own(&tx, item_id, after)?;
+    let (changed, removed) = file_changes(&before, &after);
     let found = edit_file(&tx, item_id, device_id, now_ms, |next| {
-        mirrored(next, changed, removed);
+        mirrored(next, changed, &removed);
     })?;
     if found {
-        file::moved(&tx, item_id, &baseline.0, &baseline.1)?;
+        file::record(&tx, item_id, &after)?;
     }
     tx.commit().map_err(failed)?;
     Ok(found)
@@ -382,8 +388,7 @@ fn fill_file(
     })
 }
 
-/// The record's values changed by `edit`, written when they changed. A day takes none of the
-/// [`RESERVED_DAY_KEYS`] it does not hold already.
+/// The record's values changed by `edit`, written when they changed.
 fn edit_file(
     conn: &Connection,
     item_id: &str,
@@ -402,11 +407,6 @@ fn edit_file(
         let current = read_values(payload.object(), item_type, item_id)?;
         let mut next = current.clone();
         edit(&mut next);
-        if item_type == "journal" {
-            next.retain(|name, _| {
-                current.contains_key(name) || !RESERVED_DAY_KEYS.contains(&name.as_str())
-            });
-        }
         // A map compares without its order, which is the property order here.
         if current != next || !current.keys().eq(next.keys()) {
             write(conn, item_type, item_id, &payload, next, device_id, now_ms)?;

@@ -15,6 +15,7 @@
 //! | a note with no baseline is measured by the index's reading  | an older build's note                 |
 //! | a broken frontmatter then fixed reaches the record          | the baseline is the last good reading |
 //! | an app write after an outside edit does not hide it         | the edit is taken at fact time        |
+//! | a save over an outside edit not fed yet does not hide it    | the save takes the edit first         |
 //! | a found folder's notes take their files' properties         | a found file fills its record         |
 //! | a day made outside takes no reserved journal key            | `RESERVED_JOURNAL_KEYS`               |
 
@@ -29,10 +30,12 @@ use std::sync::Arc;
 
 use index_support::until;
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::journal::update::DayUpdate;
 use memry_desktop::notes::apply_template::{ApplyTemplateInput, TemplateMode};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::update::NoteUpdateInput;
 use memry_desktop::templates::{TemplateCreateInput, Templates};
 use memry_desktop::vault::hash::content_hash;
 use serde_json::{Map, Value, json};
@@ -355,4 +358,44 @@ fn a_note_with_no_baseline_is_measured_against_the_index_reading() {
         f.record(),
         object(json!({ "stage": "Review", "rating": 6 }))
     );
+}
+
+/// The editor's save replaces whatever is there, the outside edit's frontmatter kept.
+#[test]
+fn a_save_over_an_outside_edit_not_fed_yet_does_not_hide_it() {
+    let f = opened(&[("Plan.md", PLAN)], "Plan.md");
+    let open = f.e.session.current().unwrap();
+    f.e.write("Plan.md", "---\nstage: Done\nrating: 5\n---\n# Plan\n");
+    let save = NoteUpdateInput {
+        id: f.id.clone(),
+        content: Some("# Plan\n\nTyped.".into()),
+        ..NoteUpdateInput::default()
+    };
+    f.notes.update(&open, save).unwrap();
+    assert!(f.e.read("Plan.md").contains("stage: Done"));
+    assert_eq!(f.record(), object(json!({ "stage": "Done", "rating": 5 })));
+
+    let day = "journal/2025-03-01.md";
+    f.e.write(day, "---\nmood: 3\n---\nA day\n");
+    let read = || {
+        f.notes
+            .journal_property_rows(&open, "2025-03-01", "2025-03-31")
+            .unwrap()
+    };
+    until("the day's record", || !read().rows.is_empty());
+    f.e.write(day, "---\nmood: 4\n---\nA day\n");
+    let update = DayUpdate {
+        date: "2025-03-01".into(),
+        content: Some("Typed.".into()),
+        tags: None,
+        inline_tags: None,
+        properties: None,
+    };
+    f.notes.update_day(&open, update).unwrap();
+    let mood = read()
+        .rows
+        .first()
+        .and_then(|row| row.properties.get("mood").cloned());
+    assert_eq!(mood, Some(json!(4)));
+    drop(open);
 }

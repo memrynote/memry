@@ -6,11 +6,12 @@
 //! The values the record last took from the file are the item's **baseline**, kept on this
 //! device only, in `meta` (`note.file_properties:<id>`, a JSON object of the values as the
 //! record stores them; an older build ignores the key, so no migration). It is written by each
-//! take, and moved by each app edit's mirror ([`super::mirror_file`]) by the keys the edit set
-//! and dropped. A frontmatter that does not parse never reaches here, so a half-typed value
-//! leaves the baseline as it was. It holds no file hash: a body the write-back writes into the
-//! file changes its hash and none of its values, and the values alone decide what an edit
-//! changed.
+//! take, and by each app edit's mirror ([`super::mirror_file`]) as the values the edit left in
+//! the file. A day's keeps none of the [`super::RESERVED_DAY_KEYS`], which are not a day's
+//! property values: neither its record nor its baseline takes them. A frontmatter that does
+//! not parse never reaches here, so a half-typed value leaves the baseline as it was. It holds
+//! no file hash: a body the write-back writes into the file changes its hash and none of its
+//! values, and the values alone decide what an edit changed.
 //!
 //! An item with no baseline (one found or made by an older build) falls back to the index's
 //! reading of the replaced file, when the caller has one. With neither, the record takes only
@@ -23,7 +24,7 @@ use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
 
-use super::{edit_file, failed, fill_file, mirrored};
+use super::{RESERVED_DAY_KEYS, edit_file, failed, fill_file, mirrored, stored};
 
 /// The `meta` key prefix of an item's baseline.
 const BASELINE: &str = "note.file_properties:";
@@ -68,9 +69,11 @@ fn take_in(
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
+    let after = own(tx, id, after)?;
+    let indexed = indexed.map(|indexed| own(tx, id, indexed)).transpose()?;
     let found = match baseline(tx, id)?.or(indexed) {
         Some(before) => {
-            let (changed, removed) = delta(&before, &after);
+            let (changed, removed) = file_changes(&before, &after);
             edit_file(tx, id, device_id, now_ms, |next| {
                 mirrored(next, changed, &removed);
             })?
@@ -83,23 +86,21 @@ fn take_in(
     Ok(found)
 }
 
-/// An app edit set `changed` and dropped `removed` in the item's file: its baseline, when it has
-/// one, moves with them.
-pub(super) fn moved(
+/// `values` without the keys that are not the item's property values: a day's
+/// [`RESERVED_DAY_KEYS`].
+pub(super) fn own(
     conn: &Connection,
     id: &str,
-    changed: &Map<String, Value>,
-    removed: &[String],
-) -> Result<(), StorageError> {
-    let Some(mut values) = baseline(conn, id)? else {
-        return Ok(());
-    };
-    mirrored(&mut values, changed.clone(), removed);
-    record(conn, id, &values)
+    mut values: Map<String, Value>,
+) -> Result<Map<String, Value>, StorageError> {
+    if stored(conn, "journal", id)?.is_some() {
+        values.retain(|name, _| !RESERVED_DAY_KEYS.contains(&name.as_str()));
+    }
+    Ok(values)
 }
 
 /// The keys `after` set (new, or with another value) and the keys it dropped, from `before`.
-fn delta(
+pub(super) fn file_changes(
     before: &Map<String, Value>,
     after: &Map<String, Value>,
 ) -> (Map<String, Value>, Vec<String>) {
@@ -129,7 +130,21 @@ fn baseline(conn: &Connection, id: &str) -> Result<Option<Map<String, Value>>, S
     Ok(raw.and_then(|raw| serde_json::from_str(&raw).ok()))
 }
 
-fn record(conn: &Connection, id: &str, values: &Map<String, Value>) -> Result<(), StorageError> {
+/// The item's file is gone from this device: its baseline goes with its row.
+pub(crate) fn forget(conn: &Connection, id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![format!("{BASELINE}{id}")],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+pub(super) fn record(
+    conn: &Connection,
+    id: &str,
+    values: &Map<String, Value>,
+) -> Result<(), StorageError> {
     let value = serde_json::to_string(values).map_err(|error| StorageError::Failed {
         what: format!("a file's property values will not serialise: {error}"),
     })?;
