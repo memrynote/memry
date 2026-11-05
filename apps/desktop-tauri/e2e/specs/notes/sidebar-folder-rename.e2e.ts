@@ -111,8 +111,13 @@ test('#3958: the open note follows its folder rename in the breadcrumb', async (
     input: { title: 'Inside', folder: 'Work', content: 'filler' }
   })
 
-  const expand = folderRow(page, 'Work').getByRole('button', { name: 'Expand folder' })
-  if (await expand.isVisible()) await expand.click()
+  // The chevron renders only once the tree lists the folder's new note. Waiting for it, rather
+  // than checking once, keeps the click from racing that refresh (#3981).
+  const chevron = folderRow(page, 'Work').getByRole('button', {
+    name: /^(Expand|Collapse) folder$/
+  })
+  await expect(chevron).toBeVisible({ timeout: 30_000 })
+  if ((await chevron.getAttribute('aria-label')) === 'Expand folder') await chevron.click()
   await page.locator(`[data-tree-node-id="${inside.id}"]`).click()
   await expect(page.locator('textarea[aria-label="Note title"]').first()).toHaveValue('Inside')
   const crumbs = page.getByRole('navigation', { name: 'Note location' })
