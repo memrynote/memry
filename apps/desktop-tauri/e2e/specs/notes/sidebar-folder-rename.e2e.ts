@@ -103,6 +103,29 @@ test('the rename field stays open and focused, and the folder moves with its not
   expect(note?.path).toBe('Studio/Inside.md')
 })
 
+test('#3958: the open note follows its folder rename in the breadcrumb', async ({ page }) => {
+  await ready(page)
+  await expandCollections(page)
+  await createFolder(page, 'Work')
+  const inside = await invoke<NoteView>(page, 'notes_create', {
+    input: { title: 'Inside', folder: 'Work', content: 'filler' }
+  })
+
+  const expand = folderRow(page, 'Work').getByRole('button', { name: 'Expand folder' })
+  if (await expand.isVisible()) await expand.click()
+  await page.locator(`[data-tree-node-id="${inside.id}"]`).click()
+  await expect(page.locator('textarea[aria-label="Note title"]').first()).toHaveValue('Inside')
+  const crumbs = page.getByRole('navigation', { name: 'Note location' })
+  await expect(crumbs).toContainText('Work')
+
+  await openRename(page, 'Work')
+  await commitRename(page, 'Studio')
+  await expect(folderRow(page, 'Studio')).toBeVisible({ timeout: 15_000 })
+
+  await expect(crumbs).toContainText('Studio')
+  await expect(crumbs).not.toContainText('Work')
+})
+
 test('the rename field stays open past the virtualization threshold', async ({
   page,
   testVaultPath
