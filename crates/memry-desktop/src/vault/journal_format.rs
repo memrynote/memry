@@ -326,6 +326,11 @@ impl JournalDays {
         self.source.0 == folder && self.source.1 == format
     }
 
+    /// The journal folder, normalized; `""` is the vault root, which holds no day.
+    pub fn folder(&self) -> &str {
+        &self.folder
+    }
+
     /// The day `path` names (`YYYY-MM-DD`): a `.md` file under the journal folder whose path
     /// below it, without `.md`, parses in the format. No journal folder configured, the vault
     /// root, means no day.

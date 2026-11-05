@@ -282,8 +282,8 @@ fn row_at(mocked: &Mocked, path: &str) -> String {
 }
 
 /// Moves `Note.md`, made outside the app, to `daily/2025-03-12.md` once the day's record holds
-/// `journal/2025-03-12.md` and the config names `daily`: the note stays the note there until
-/// 13m-6 settles such moves. Heard from then on.
+/// `journal/2025-03-12.md` and the config names `daily`: the note stays the note there, owed,
+/// since the day is here already (`crossed`). Heard from then on.
 fn note_moved_to_a_days_path(mocked: &Mocked) -> Arc<Heard> {
     mocked
         .invoke(

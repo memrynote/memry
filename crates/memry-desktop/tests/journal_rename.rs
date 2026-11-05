@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::domain::note_positions;
 use memry_desktop::vault::consumer::identity::{
-    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal,
+    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
 };
 use memry_desktop::vault::consumer::rows::RowStat;
 use memry_desktop::vault::consumer::{Applied, MoveKind};
@@ -177,8 +177,8 @@ impl NoteIdentity for OnRemoved {
         _: &str,
         _: &str,
         _: &str,
-    ) -> Result<(), IdentityError> {
-        Ok(())
+    ) -> Result<Rename, IdentityError> {
+        Ok(Rename::Followed)
     }
 }
 

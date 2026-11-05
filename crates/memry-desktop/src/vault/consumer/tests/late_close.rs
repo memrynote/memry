@@ -39,8 +39,8 @@ impl NoteIdentity for MakesNotes {
         _: &str,
         _: &str,
         _: &str,
-    ) -> Result<(), IdentityError> {
-        Ok(())
+    ) -> Result<Rename, IdentityError> {
+        Ok(Rename::Followed)
     }
 }
 
