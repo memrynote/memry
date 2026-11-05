@@ -1,7 +1,8 @@
 //! The note frontmatter commands that replace `window.api` calls (#3530 13q) through the IPC a
 //! renderer calls, on a mock app over a real vault, vault tier and note index:
-//! `notes_edit_aliases` (13q-1) with the argument names the generated bindings send, the file
-//! and the answer, and a refused edit reaching the renderer by its code.
+//! `notes_edit_aliases` (13q-1) and `notes_update` with `frontmatter` (13q-2), with the argument
+//! names the generated bindings send, the file and the answer, and a refused edit reaching the
+//! renderer by its code.
 
 mod support;
 
@@ -26,6 +27,7 @@ fn opened() -> Fixture {
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
         .commands(collect_commands![
             memry_tauri::commands::notes::notes_edit_aliases::<tauri::test::MockRuntime>,
+            memry_tauri::commands::notes::notes_update::<tauri::test::MockRuntime>,
         ]);
     let mocked = Mocked::open(&[("Plan.md", NOTE)], commands);
     let id = mocked
@@ -85,4 +87,24 @@ fn an_alias_edit_the_seam_keeps_reaches_the_renderer_as_note_edit_kept() {
     );
     assert_eq!(edited.unwrap_err()["code"], "note_edit_kept");
     assert_eq!(f.file(), NOTE);
+}
+
+#[test]
+fn a_frontmatter_update_through_the_ipc_writes_only_its_keys() {
+    let f = opened();
+    let updated = f.invoke(
+        "notes_update",
+        json!({ "input": { "id": f.id, "frontmatter": { "fullWidth": true, "stage": null } } }),
+    );
+    assert_eq!(updated.unwrap()["note"]["id"], json!(f.id));
+    assert_eq!(
+        f.file(),
+        "---\ntags: [x]\naliases: [AI]\nfullWidth: true\n---\nThe body.\n"
+    );
+
+    let managed = f.invoke(
+        "notes_update",
+        json!({ "input": { "id": f.id, "frontmatter": { "aliases": ["B"] } } }),
+    );
+    assert_eq!(managed.unwrap_err()["code"], "frontmatter_key_managed");
 }

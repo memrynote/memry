@@ -1244,7 +1244,8 @@ export function NotePage({ noteId }: NotePageProps) {
     async (value: boolean) => {
       if (!noteId || isDeleted) return
       try {
-        await notesService.update({ id: noteId, frontmatter: { fullWidth: value } })
+        const result = await notesService.update({ id: noteId, frontmatter: { fullWidth: value } })
+        if (!result.success) throw new Error(result.error)
         refetchNote()
       } catch (err) {
         toast.error(extractErrorMessage(err, t('page.toast.toggleFullWidthFailed')))

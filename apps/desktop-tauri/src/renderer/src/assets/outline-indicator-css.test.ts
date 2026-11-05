@@ -30,4 +30,14 @@ describe('outline info panel motion in base.css', () => {
   it('drops the entrance animation under reduced motion (#2779)', () => {
     expect(reducedMotionDeclarationsFor('.outline-indicator')).toContain('animation: none')
   })
+
+  it('slides the panel in sideways only, so it ends where it started (#3530)', () => {
+    // The info panel is anchored by its top edge. A vertical shift in the entrance animation
+    // moved it up by half its height until the animation ended, then it jumped back: a pointer
+    // that had opened it mid-animation was left on its edge and the panel closed under it.
+    const css = readFileSync(BASE_CSS, 'utf8')
+    const keyframes = /@keyframes outline-fade-in \{((?:[^{}]*\{[^{}]*\})*)[^{}]*\}/.exec(css)?.[1]
+    expect(keyframes).toBeDefined()
+    expect(keyframes).not.toMatch(/translateY|translate3d|\btranslate\s*:/)
+  })
 })
