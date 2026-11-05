@@ -42,13 +42,8 @@ import { InitialSyncProgress } from '@/components/sync/initial-sync-progress'
 import { useSyncOptional } from '@/contexts/sync-context'
 import { useVaultScope } from '@/contexts/vault-scope'
 import { sidebarTreeExpandedKey } from '@/lib/sidebar-tree-expanded-key'
-import {
-  TreeFolderIcon,
-  RevealHandler,
-  FolderRevealHandler,
-  TreeActionsExposer,
-  type TreeActionsHandle
-} from '@/components/note-tree-internal'
+import { useSidebarTreeExpanded } from '@/hooks/use-sidebar-tree-expanded'
+import { TreeFolderIcon, RevealHandler, FolderRevealHandler } from '@/components/note-tree-internal'
 import {
   extractFolderFromPath,
   getDisplayName,
@@ -57,6 +52,8 @@ import {
   collectAllFolderIds,
   collectFolderSubtreeIds,
   isVaultFile,
+  remapExpandedFolderIds,
+  setFoldersExpanded,
   type FolderNode
 } from '@/components/notes-tree-utils'
 import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
@@ -136,8 +133,11 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   const fileActions = useFileActionLabels()
   const data = useNoteTreeData()
   const vaultScope = useVaultScope()
-  // Resolved once, before TreeProvider reads it: the workspace never changes vault.
+  // Resolved once: the workspace never changes vault.
   const [expandedKey] = useState(() => sidebarTreeExpandedKey(vaultScope))
+  // One set for both trees, so a folder opened in the plain tree is still open when the vault
+  // crosses the virtualization threshold, even in the render that opened it.
+  const [expandedIds, setExpandedIds] = useSidebarTreeExpanded(expandedKey)
   // Optional on purpose: canvas embeds and unit tests mount the tree without a
   // SyncProvider, and "no provider" must read as "no initial sync running".
   const initialSyncInProgress = useSyncOptional()?.state.initialSyncProgress != null
@@ -155,7 +155,6 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   }, [storedSelectedIds, showFiles, noteMap])
 
   const treeContainerRef = useRef<HTMLDivElement>(null)
-  const treeActionsRef = useRef<TreeActionsHandle | null>(null)
   const virtualTreeActionsRef = useRef<VirtualizedTreeActions | null>(null)
   const isTreeFocusedRef = useRef(false)
 
@@ -180,26 +179,30 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     }
   }, [])
 
-  const expandFolderPath = useCallback((folderPath: string) => {
-    if (!folderPath) return
-    const parts = folderPath.split('/')
-    let current = ''
-    for (const part of parts) {
-      current = current ? `${current}/${part}` : part
-      const nodeId = `folder-${current}`
-      treeActionsRef.current?.expandNode(nodeId)
-      virtualTreeActionsRef.current?.expandNode(nodeId)
-    }
-  }, [])
+  const expandFolderPath = useCallback(
+    (folderPath: string) => {
+      if (!folderPath) return
+      const nodeIds: string[] = []
+      let current = ''
+      for (const part of folderPath.split('/')) {
+        current = current ? `${current}/${part}` : part
+        nodeIds.push(`folder-${current}`)
+      }
+      setExpandedIds((prev) => setFoldersExpanded(prev, nodeIds, true))
+    },
+    [setExpandedIds]
+  )
 
   // Expansion is keyed by folder path, so a folder that moves would otherwise
   // come back collapsed — along with everything open inside it.
-  const renameFolderPath = useCallback((oldPath: string, newPath: string) => {
-    const oldNodeId = `folder-${oldPath}`
-    const newNodeId = `folder-${newPath}`
-    treeActionsRef.current?.renameNode(oldNodeId, newNodeId)
-    virtualTreeActionsRef.current?.renameNode(oldNodeId, newNodeId)
-  }, [])
+  const renameFolderPath = useCallback(
+    (oldPath: string, newPath: string) => {
+      setExpandedIds((prev) =>
+        remapExpandedFolderIds(prev, `folder-${oldPath}`, `folder-${newPath}`)
+      )
+    },
+    [setExpandedIds]
+  )
 
   const actions = useNoteTreeActions({
     noteMap: data.noteMap,
@@ -230,15 +233,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   )
 
   const handleCollapseAll = useCallback(() => {
-    treeActionsRef.current?.collapseAll()
-    virtualTreeActionsRef.current?.collapseAll()
-  }, [])
+    setExpandedIds(new Set())
+  }, [setExpandedIds])
 
   const handleExpandAll = useCallback(() => {
-    const allIds = collectAllFolderIds(data.tree)
-    treeActionsRef.current?.expandNodes(allIds)
-    virtualTreeActionsRef.current?.expandAll()
-  }, [data.tree])
+    setExpandedIds(new Set(collectAllFolderIds(data.tree)))
+  }, [data.tree, setExpandedIds])
 
   // One folder and everything below it, from its context menu or Alt+click.
   const getSubtreeIds = useCallback(
@@ -247,9 +247,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   )
   const setSubtreeExpanded = useCallback(
     (folderPath: string, expanded: boolean) => {
-      treeActionsRef.current?.setNodesExpanded(getSubtreeIds(folderPath), expanded)
+      setExpandedIds((prev) => setFoldersExpanded(prev, getSubtreeIds(folderPath), expanded))
     },
-    [getSubtreeIds]
+    [getSubtreeIds, setExpandedIds]
   )
 
   useImperativeHandle(
@@ -723,7 +723,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     >
       {useVirtualizedTree ? (
         <VirtualizedNotesTree
-          expandedKey={expandedKey}
+          expandedIds={expandedIds}
+          onExpandedIdsChange={setExpandedIds}
           actionsRef={virtualTreeActionsRef}
           tree={data.tree}
           selectedIds={selectedIds}
@@ -771,7 +772,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         />
       ) : (
         <TreeProvider
-          persistKey={expandedKey}
+          expandedIds={expandedIds}
+          onExpandedIdsChange={setExpandedIds}
           selectedIds={selectedIds}
           onSelectionChange={handleSelectionChange}
           draggable={!actions.renamingNoteId && !actions.renamingFolderPath && !actions.isMoving}
@@ -780,7 +782,6 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           multiSelect={true}
           indent={26}
         >
-          <TreeActionsExposer actionsRef={treeActionsRef} />
           <RevealHandler
             pendingRevealNoteId={pendingRevealNoteId}
             noteMap={data.noteMap}

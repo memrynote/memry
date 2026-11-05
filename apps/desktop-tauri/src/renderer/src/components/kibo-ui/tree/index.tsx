@@ -5,9 +5,11 @@ import { AnimatePresence, LazyMotion, domAnimation, m } from 'motion/react'
 import {
   type ComponentProps,
   createContext,
+  type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type RefObject,
+  type SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -24,15 +26,12 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { IconPicker, getIconByName } from '@/components/icon-picker'
-import { remapExpandedFolderIds, setFoldersExpanded } from '@/components/notes-tree-utils'
+import { setFoldersExpanded } from '@/components/notes-tree-utils'
 import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
 import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
 import { MEMRY_NOTE_DRAG_MIME, setTabDragData } from '@/lib/drag-mime'
 import type { OpenTargetTab } from '@/hooks/use-open-target'
 import { useT } from '@memry/i18n/renderer'
-import { createLogger } from '@/lib/logger'
-
-const log = createLogger('Component:Tree')
 
 type NodeInfo = {
   nodeId: string
@@ -85,12 +84,8 @@ type TreeContextType = {
   getNodeInfo: (nodeId: string) => NodeInfo | undefined
   expandNode: (nodeId: string) => void
   collapseNode: (nodeId: string) => void
-  expandAll: () => void
-  expandNodes: (nodeIds: string[]) => void
   /** Open or close every listed node, leaving the rest of the tree alone. */
   setNodesExpanded: (nodeIds: string[], expanded: boolean) => void
-  collapseAll: () => void
-  renameNode: (oldNodeId: string, newNodeId: string) => void
   setDragState: (state: Partial<DragState>) => void
   /** Live drag state, readable synchronously from a `drop` handler. */
   dragStateRef: RefObject<DragState>
@@ -144,13 +139,13 @@ const useTreeNode = () => {
   return context
 }
 
-const EMPTY_IDS: string[] = []
 const EMPTY_PATH: boolean[] = []
 
 export type TreeProviderProps = {
   children: ReactNode
-  defaultExpandedIds?: string[]
-  persistKey?: string
+  /** The open nodes. The caller owns them, so they outlive this tree. */
+  expandedIds: Set<string>
+  onExpandedIdsChange: Dispatch<SetStateAction<Set<string>>>
   showLines?: boolean
   showIcons?: boolean
   selectable?: boolean
@@ -167,8 +162,8 @@ export type TreeProviderProps = {
 
 export const TreeProvider = ({
   children,
-  defaultExpandedIds = EMPTY_IDS,
-  persistKey,
+  expandedIds,
+  onExpandedIdsChange: setExpandedIds,
   showLines = true,
   showIcons = true,
   selectable = true,
@@ -182,20 +177,6 @@ export const TreeProvider = ({
   animateExpand = true,
   className
 }: TreeProviderProps) => {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
-    if (persistKey) {
-      try {
-        const stored = localStorage.getItem(persistKey)
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          if (Array.isArray(parsed)) return new Set(parsed)
-        }
-      } catch {
-        // Fall through to default
-      }
-    }
-    return new Set(defaultExpandedIds)
-  })
   const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>(selectedIds ?? [])
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [anchorId, setAnchorId] = useState<string | null>(null) // For shift+click range selection
@@ -215,17 +196,6 @@ export const TreeProvider = ({
   const nodeOrderRef = useRef<string[]>([])
   // İkon state'i için re-render tetiklemek için
   const [, setIconVersion] = useState(0)
-
-  // Persist expandedIds to localStorage on every change. The notes tree swaps this tree for the
-  // virtualized one, which reads the key as it renders, so a write still pending then is lost.
-  useEffect(() => {
-    if (!persistKey) return
-    try {
-      localStorage.setItem(persistKey, JSON.stringify(Array.from(expandedIds)))
-    } catch (error) {
-      log.warn('could not save the expanded folders', { key: persistKey, error })
-    }
-  }, [expandedIds, persistKey])
 
   const isControlled = selectedIds !== undefined && onSelectionChange !== undefined
   const currentSelectedIds = isControlled ? selectedIds : internalSelectedIds
@@ -361,59 +331,49 @@ export const TreeProvider = ({
     return visibleNodes
   }, [])
 
-  const expandNode = useCallback((nodeId: string) => {
-    setExpandedIds((prev) => {
-      const newSet = new Set(prev)
-      newSet.add(nodeId)
-      return newSet
-    })
-  }, [])
-
-  const collapseNode = useCallback((nodeId: string) => {
-    setExpandedIds((prev) => {
-      const newSet = new Set(prev)
-      newSet.delete(nodeId)
-      return newSet
-    })
-  }, [])
-
-  const expandAll = useCallback(() => {
-    const allFolderIds = new Set<string>()
-    for (const [id, info] of nodesRef.current.entries()) {
-      if (info.hasChildren) allFolderIds.add(id)
-    }
-    setExpandedIds(allFolderIds)
-  }, [])
-
-  const expandNodes = useCallback((nodeIds: string[]) => {
-    setExpandedIds(new Set(nodeIds))
-  }, [])
-
-  const setNodesExpanded = useCallback((nodeIds: string[], expanded: boolean) => {
-    setExpandedIds((prev) => setFoldersExpanded(prev, nodeIds, expanded))
-  }, [])
-
-  const collapseAll = useCallback(() => {
-    setExpandedIds(new Set())
-  }, [])
-
-  // A renamed node keeps whatever it had open: itself and anything expanded
-  // beneath it, since expansion is keyed by the path that just changed.
-  const renameNode = useCallback((oldNodeId: string, newNodeId: string) => {
-    setExpandedIds((prev) => remapExpandedFolderIds(prev, oldNodeId, newNodeId))
-  }, [])
-
-  const toggleExpanded = useCallback((nodeId: string) => {
-    setExpandedIds((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(nodeId)) {
-        newSet.delete(nodeId)
-      } else {
+  const expandNode = useCallback(
+    (nodeId: string) => {
+      setExpandedIds((prev) => {
+        const newSet = new Set(prev)
         newSet.add(nodeId)
-      }
-      return newSet
-    })
-  }, [])
+        return newSet
+      })
+    },
+    [setExpandedIds]
+  )
+
+  const collapseNode = useCallback(
+    (nodeId: string) => {
+      setExpandedIds((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(nodeId)
+        return newSet
+      })
+    },
+    [setExpandedIds]
+  )
+
+  const setNodesExpanded = useCallback(
+    (nodeIds: string[], expanded: boolean) => {
+      setExpandedIds((prev) => setFoldersExpanded(prev, nodeIds, expanded))
+    },
+    [setExpandedIds]
+  )
+
+  const toggleExpanded = useCallback(
+    (nodeId: string) => {
+      setExpandedIds((prev) => {
+        const newSet = new Set(prev)
+        if (newSet.has(nodeId)) {
+          newSet.delete(nodeId)
+        } else {
+          newSet.add(nodeId)
+        }
+        return newSet
+      })
+    },
+    [setExpandedIds]
+  )
 
   const handleSelection = useCallback(
     (nodeId: string, ctrlKey = false, shiftKey = false) => {
@@ -484,11 +444,7 @@ export const TreeProvider = ({
     getNodeInfo,
     expandNode,
     collapseNode,
-    expandAll,
-    expandNodes,
     setNodesExpanded,
-    collapseAll,
-    renameNode,
     setDragState,
     dragStateRef,
     handleDrop,

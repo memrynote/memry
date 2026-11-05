@@ -20,7 +20,8 @@ use serde_json::{Value, json};
 use crate::api::errors::StorageError;
 use crate::domain::notes::{self, edit_in, failed, iso, object, tombstone_local};
 use crate::domain::recreate::write_over_tombstone;
-use crate::domain::{body_tags, tag_schema_refs, tags, tasks};
+use crate::domain::tag_retag::{delete_shared, merge_shared, merge_target, retagged_list};
+use crate::domain::{body_tags, tags, tasks};
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -348,28 +349,8 @@ pub(crate) fn rewrite_of(
     items.dedup();
     for (item_type, item_id) in &items {
         let current = current_tags(conn, item_type, item_id)?;
-        let mut next: Vec<String> = Vec::with_capacity(current.len() + 1);
-        for tag in current {
-            if tags::same_tag(&tag, source) {
-                if let Some(target) = target
-                    && !next.iter().any(|t| tags::same_tag(t, target))
-                {
-                    next.push(target.to_owned());
-                }
-            } else if !target.is_some_and(|t| {
-                tags::same_tag(&tag, t) && next.iter().any(|n| tags::same_tag(n, t))
-            }) {
-                next.push(tag);
-            }
-        }
-        write_tags(
-            conn,
-            item_type,
-            item_id,
-            &tags::dedupe(next),
-            device_id,
-            now_ms,
-        )?;
+        let next = retagged_list(&current, source, target);
+        write_tags(conn, item_type, item_id, &next, device_id, now_ms)?;
     }
     Ok(items)
 }
@@ -489,8 +470,9 @@ pub(crate) fn refuse(what: &str) -> StorageError {
     }
 }
 
-/// Merges `source` into `target` (desktop `tags:merge`). Returns the number of
-/// items rewritten.
+/// Merges `source` into `target` (desktop `tags:merge`) in every note, journal day and task:
+/// the records of the notes and days, then [`merge_shared`]. Returns the number of items
+/// rewritten.
 pub fn merge(
     conn: &Connection,
     source: &str,
@@ -498,28 +480,27 @@ pub fn merge(
     device_id: &str,
     now_ms: i64,
 ) -> Result<u32, StorageError> {
-    let target = target.trim();
-    if target.is_empty() || tags::same_tag(source.trim(), target) {
-        return Err(refuse("merge needs two different tags"));
-    }
-    let count = item_count(rewrite(conn, source, Some(target), device_id, now_ms)?.len());
-    delete_definitions(conn, source, device_id, now_ms)?;
-    upsert_definition(conn, target, None, Vec::new(), device_id, now_ms)?;
-    tag_schema_refs::rewrite_definitions(conn, source, Some(target), device_id, now_ms)?;
-    Ok(count)
+    let target = merge_target(source, target)?;
+    let docs = rewrite_of(conn, &DOCUMENTS, source, Some(target), device_id, now_ms)?;
+    let tasks = merge_shared(conn, source, target, device_id, now_ms)?;
+    Ok(item_count(docs.len()).saturating_add(tasks))
 }
 
-/// Removes a tag from every item and deletes its definition.
+/// Removes a tag from every item and deletes its definition: the records of the notes and
+/// days, then [`delete_shared`].
 pub fn delete(
     conn: &Connection,
     tag: &str,
     device_id: &str,
     now_ms: i64,
 ) -> Result<u32, StorageError> {
-    let count = item_count(rewrite(conn, tag, None, device_id, now_ms)?.len());
-    delete_definitions(conn, tag, device_id, now_ms)?;
-    Ok(count)
+    let docs = rewrite_of(conn, &DOCUMENTS, tag, None, device_id, now_ms)?;
+    let tasks = delete_shared(conn, tag, device_id, now_ms)?;
+    Ok(item_count(docs.len()).saturating_add(tasks))
 }
+
+/// The item types whose tags a file holds too on desktop.
+const DOCUMENTS: [&str; 2] = ["note", "journal"];
 
 /// A colour picked by a person (`colorAuthored: true`).
 pub fn set_color(

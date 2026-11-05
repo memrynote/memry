@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Die Umbenennung von #{from} in #{to} läuft noch. Versuche es erneut, wenn sie fertig ist.",
+    "editInProgress": "Eine andere Tag-Änderung läuft noch. Versuche es erneut, wenn sie fertig ist.",
     "renameUnfinished": "Die Umbenennung von #{from} in #{to} wurde bei {count, plural, one {# Notiz} other {# Notizen}} nicht abgeschlossen. Benenne #{from} erneut in #{to} um, um sie abzuschließen.",
     "mergeSameTag": "Quell- und Ziel-Tag sind identisch",
     "categoryNameRequired": "Ein Kategoriename ist erforderlich",

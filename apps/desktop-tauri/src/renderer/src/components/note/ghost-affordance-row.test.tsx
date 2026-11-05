@@ -7,13 +7,16 @@
  * through separately or a note can pick up a second, non-linking `project 2`.
  */
 
+import { useState } from 'react'
 import { describe, it, expect, vi, beforeAll } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { GhostAffordanceRow } from './ghost-affordance-row'
+import type { CoverPickerAnchor } from './cover-picker-dialog'
 
 let i18nEn: I18nInstance
 
@@ -70,6 +73,42 @@ describe('GhostAffordanceRow - details menu', () => {
     await openMenu(user)
     await user.click(screen.getByRole('menuitem', { name: 'Add cover' }))
     expect(onAddCover).toHaveBeenCalledWith({ x: expect.any(Number), y: expect.any(Number) })
+  })
+
+  // The cover picker is a non-modal popover that closes when focus leaves it, so the menu that
+  // opened it must not hand focus back to its trigger on close (#3986).
+  it('leaves the cover picker it opens open, with focus off the trigger', async () => {
+    function WithPicker() {
+      const [anchor, setAnchor] = useState<CoverPickerAnchor | null>(null)
+      return (
+        <>
+          <GhostAffordanceRow {...defaultProps} onAddCover={setAnchor} />
+          <Popover
+            open={anchor !== null}
+            onOpenChange={(open) => !open && setAnchor(null)}
+            modal={false}
+          >
+            <PopoverAnchor asChild>
+              <div />
+            </PopoverAnchor>
+            <PopoverContent onOpenAutoFocus={(event) => event.preventDefault()}>
+              <input aria-label="Search covers" />
+            </PopoverContent>
+          </Popover>
+        </>
+      )
+    }
+    const user = userEvent.setup()
+    renderWithI18n(<WithPicker />)
+
+    await openMenu(user)
+    await user.click(screen.getByRole('menuitem', { name: 'Add cover' }))
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+    // The menu hands focus back a task after it closes.
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(screen.getByRole('button', { name: 'Add details' })).not.toHaveFocus()
+    expect(screen.getByRole('textbox', { name: 'Search covers' })).toBeInTheDocument()
   })
 
   it('opens the tag picker from the menu', async () => {

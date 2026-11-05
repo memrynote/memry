@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Việc đổi tên #{from} thành #{to} vẫn đang chạy. Hãy thử lại khi nó hoàn tất.",
+    "editInProgress": "Một thay đổi thẻ khác vẫn đang chạy. Hãy thử lại khi nó hoàn tất.",
     "renameUnfinished": "Việc đổi tên #{from} thành #{to} chưa hoàn tất với {count, plural, other {# ghi chú}}. Hãy đổi tên #{from} thành #{to} lần nữa để hoàn tất.",
     "mergeSameTag": "Thẻ nguồn và thẻ đích giống nhau",
     "categoryNameRequired": "Cần có tên danh mục",
