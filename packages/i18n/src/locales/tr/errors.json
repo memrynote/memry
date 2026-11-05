@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Bu not bulunamadı. Silinmiş olabilir.",
     "invalidFrontmatter": "Bu notta geçersiz meta veriler var ve okunamıyor.",
+    "invalidTitle": "Not başlığı 1 ile 200 karakter arasında olmalıdır.",
     "duplicateId": "Bu kimliğe sahip bir not zaten mevcut.",
     "writeFailed": "Bu not kaydedilemedi. Disk alanını ve izinleri kontrol edin.",
     "readFailed": "Bu not okunamadı. Dosya kilitli veya bozuk olabilir.",

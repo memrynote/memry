@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Catatan ini tidak dapat ditemukan. Catatan mungkin telah dihapus.",
     "invalidFrontmatter": "Catatan ini memiliki metadata yang tidak valid dan tidak dapat dibaca.",
+    "invalidTitle": "Judul catatan harus terdiri dari 1 hingga 200 karakter.",
     "duplicateId": "Catatan dengan ID ini sudah ada.",
     "writeFailed": "Gagal menyimpan catatan ini. Periksa ruang disk dan izin.",
     "readFailed": "Gagal membaca catatan ini. File mungkin terkunci atau rusak.",

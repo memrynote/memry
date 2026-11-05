@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Ez a jegyzet nem található. Lehet, hogy törölték.",
     "invalidFrontmatter": "Ennek a jegyzetnek érvénytelen metaadatai vannak, ezért nem olvasható.",
+    "invalidTitle": "A jegyzet címének 1 és 200 karakter közötti hosszúságúnak kell lennie.",
     "duplicateId": "Ezzel az azonosítóval már létezik jegyzet.",
     "writeFailed": "Nem sikerült menteni a jegyzetet. Ellenőrizze a lemezterületet és az engedélyeket.",
     "readFailed": "Nem sikerült beolvasni ezt a jegyzetet. Lehet, hogy a fájl zárolva van vagy sérült.",

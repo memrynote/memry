@@ -19,6 +19,7 @@
   "note": {
     "notFound": "Nota ini tidak ditemui. Ia mungkin telah dipadamkan.",
     "invalidFrontmatter": "Nota ini mempunyai metadata tidak sah dan tidak boleh dibaca.",
+    "invalidTitle": "Tajuk nota mestilah antara 1 hingga 200 aksara.",
     "duplicateId": "Nota dengan ID ini sudah wujud.",
     "writeFailed": "Gagal menyimpan nota ini. Semak ruang cakera dan kebenaran.",
     "readFailed": "Gagal membaca nota ini. Fail mungkin dikunci atau rosak.",
