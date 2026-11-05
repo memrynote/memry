@@ -847,8 +847,11 @@ clock, and a push at that clock is refused. A task's heal names no changed
 field, so it ticks no field clock (`packages/sync-client/src/task-sync.ts:87-88`).
 
 - A merge that returns `'conflict'` already re-queues the merged row at the union
-  clock (§6.5.2 P3), so it enqueues nothing more. A tag definition merge always
-  returns it.
+  clock (§6.5.2 P3), so it enqueues nothing more. A desktop tag definition merge
+  always returns it. The Rust core's concurrent tag definition merge re-queues
+  nothing and returns an apply, so it heals when the join leaves the remote
+  behind (`crates/memry-core/src/sync/apply.rs:475-486`,
+  `crates/memry-core/src/sync/versioned_apply.rs:102-107`).
 - A skip, an insert and a remote `null` never heal, and `'conflict'` is never
   used as a heal signal, because it shows the user a conflict count.
 - An echo of a client's own push joins to an identical value and heals nothing,
@@ -875,7 +878,7 @@ the two keys, and has no migration newer than 0073 to apply.
 The Rust core implements §6.11.2 to §6.11.4 for both keys: the joins and
 stamps (`crates/memry-core/src/sync/versioned.rs:73`, `:107`, `:155`, `:177`),
 and one apply step that joins either key after its type's apply and heals
-(`crates/memry-core/src/sync/versioned_apply.rs:38`, `:45`, `:73`), run by the
+(`crates/memry-core/src/sync/versioned_apply.rs:39`, `:46`, `:74`), run by the
 task apply and by the tag definition apply
 (`crates/memry-core/src/sync/apply.rs:444-446`). It edits
 `tag_definition.schema` since #4002, so a core that joins the schema is the

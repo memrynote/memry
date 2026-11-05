@@ -8,7 +8,7 @@ use serde_json::{Map, Value, json};
 
 use super::resolve::fold;
 use super::{Relation, ResolvedTag};
-use crate::domain::tag_fields::is_reserved;
+use crate::domain::tag_fields::{is_reserved, readable};
 use crate::domain::tag_schema_refs::rewrite_schema_reference;
 use crate::domain::tags::tag_key;
 use crate::sync::field_merge::canonical_json;
@@ -77,12 +77,27 @@ pub enum SchemaEdit {
 /// `SchemaEditError`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SchemaEditError {
-    ReservedName { name: String },
-    DuplicateField { name: String, defined_by: String },
-    UnknownField { name: String },
-    InheritedField { name: String, defined_by: String },
-    Cycle { parent: String },
+    ReservedName {
+        name: String,
+    },
+    DuplicateField {
+        name: String,
+        defined_by: String,
+    },
+    UnknownField {
+        name: String,
+    },
+    InheritedField {
+        name: String,
+        defined_by: String,
+    },
+    Cycle {
+        parent: String,
+    },
     UnreadableSchema,
+    /// The result is a schema this build could not read back (`TagSchemaWire`): saved, it would
+    /// lock the tag read-only on every device.
+    Unwritable,
 }
 
 /// What an edit leaves stored.
@@ -143,13 +158,13 @@ pub fn apply(
     };
 
     if let SchemaEdit::RewriteReference { from, to } = edit {
-        return Ok(match rewrite_schema_reference(&base, from, to.as_deref()) {
-            Some(next) => Stamped {
+        return match rewrite_schema_reference(&base, from, to.as_deref()) {
+            Some(next) => written(Stamped {
                 next,
                 changed: true,
-            },
-            None => unchanged(),
-        });
+            }),
+            None => Ok(unchanged()),
+        };
     }
 
     let mut fields: Vec<Value> = base
@@ -305,7 +320,17 @@ pub fn apply(
     if current.is_none() && canonical(&body) == canonical(&base) {
         return Ok(unchanged());
     }
-    Ok(stamp(current, body))
+    written(stamp(current, body))
+}
+
+/// Refuses a result this build could not read back, so no edit stores a schema that resolves
+/// read-only.
+fn written(stamped: Stamped) -> Result<Stamped, SchemaEditError> {
+    if readable(&stamped.next) {
+        Ok(stamped)
+    } else {
+        Err(SchemaEditError::Unwritable)
+    }
 }
 
 fn template_value(template: Option<&(String, bool)>) -> Value {

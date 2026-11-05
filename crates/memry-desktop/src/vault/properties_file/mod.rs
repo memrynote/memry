@@ -165,6 +165,15 @@ pub fn update<R>(
     vault: &Path,
     change: impl FnOnce(&mut Definitions) -> R,
 ) -> Result<R, PropertiesFileError> {
+    update_file(vault, |file| change(&mut file.definitions))
+}
+
+/// [`update`], with the whole file in view: the entries this build cannot read are a name's
+/// definition too ([`PropertiesFile::unparsed_names`]).
+pub fn update_file<R>(
+    vault: &Path,
+    change: impl FnOnce(&mut PropertiesFile) -> R,
+) -> Result<R, PropertiesFileError> {
     let _guard = WRITE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let raw = load(vault)?;
     let mut file = match &raw {
@@ -172,7 +181,7 @@ pub fn update<R>(
         Some(raw) => parsed(vault, raw)?,
     };
     let before = file.definitions.clone();
-    let result = change(&mut file.definitions);
+    let result = change(&mut file);
     if file.definitions == before && !file.healed() {
         return Ok(result);
     }

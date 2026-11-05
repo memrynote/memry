@@ -373,7 +373,7 @@ optional record that reads a non-object as absent (`:33-37`). **Normative**:
 The Rust core projects it as `Field::opt_null("fields", Kind::Any)` with no
 column (`crates/memry-core/src/storage/repositories/projectors/tasks.rs:83`). It
 joins the map on every apply path and heals by chapter 06 §6.11
-(`crates/memry-core/src/sync/versioned_apply.rs:38`, `:73`), stamps a local edit
+(`crates/memry-core/src/sync/versioned_apply.rs:39`, `:74`), stamps a local edit
 (`crates/memry-core/src/domain/tasks/fields.rs:128`), pinned by
 `crates/memry-core/tests/task_field_values.rs`, and copies the map to a duplicate and to a next
 occurrence (`crates/memry-core/src/domain/tasks/create.rs:127`,
@@ -550,7 +550,7 @@ column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:64`).
 It runs §6.3.1's document gate on the rest of the definition, then joins
 `schema` by chapter 06 §6.11 on every apply path, the skip included, and heals
 (`crates/memry-core/src/sync/apply.rs:444-446`, `:492-503`,
-`crates/memry-core/src/sync/versioned_apply.rs:45`, `:73`). A schema edit
+`crates/memry-core/src/sync/versioned_apply.rs:46`, `:74`). A schema edit
 stamps `t` one past the stored value's
 (`crates/memry-core/src/domain/tag_schema/edit.rs:97`,
 `crates/memry-core/src/sync/versioned.rs:177`). Builds before #4002 stored the

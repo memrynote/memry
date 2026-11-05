@@ -320,6 +320,14 @@ pub struct TagsProgressEvent {
     pub total: u32,
 }
 
+/// A property definition was created for a tag field (`properties:definition-changed`). The
+/// renderer refetches the tag schemas.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertyDefinitionChangedEvent {
+    pub name: String,
+}
+
 /// Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer
 /// refetches.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
