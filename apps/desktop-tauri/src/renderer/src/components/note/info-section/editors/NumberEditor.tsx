@@ -38,9 +38,10 @@ export function NumberEditor({
 
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
-      if (isWindowBlur(e)) return
       const num = inputValue ? parseFloat(inputValue) : null
       onChange(num !== null && !isNaN(num) ? num : null)
+      // The window lost focus, not the field: keep it open with the typed text (#3967).
+      if (isWindowBlur(e)) return
       setDraftValue(null)
       onBlur?.()
     },

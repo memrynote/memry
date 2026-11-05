@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PropertyRow } from './PropertyRow'
 import type { Property } from './types'
 import type * as EditorsModule from './editors'
@@ -260,6 +260,7 @@ describe('PropertyRow', () => {
     mocks.addStatusOption.mockResolvedValue({ success: true })
     mocks.removePropertyOption.mockResolvedValue({ success: true })
   })
+  afterEach(() => vi.restoreAllMocks())
 
   it('displays values, edits text and names, deletes custom rows, and shows drag handle', async () => {
     const onValueChange = vi.fn()
@@ -313,7 +314,6 @@ describe('PropertyRow', () => {
     fireEvent.blur(screen.getByLabelText('properties.editName'))
     expect(onNameChange).toHaveBeenCalledWith('Renamed')
     expect(screen.queryByLabelText('properties.editName')).not.toBeInTheDocument()
-    windowFocused.mockRestore()
   })
 
   it('shows no delete button on a disabled row, as on a locked note (#2606)', () => {

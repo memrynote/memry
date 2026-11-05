@@ -40,9 +40,9 @@ export function TextEditor({
 
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
-      if (isWindowBlur(e)) return
       onChange(localValue)
-      onBlur?.()
+      // The window lost focus, not the field: keep it open (#3967).
+      if (!isWindowBlur(e)) onBlur?.()
     },
     [localValue, onChange, onBlur]
   )

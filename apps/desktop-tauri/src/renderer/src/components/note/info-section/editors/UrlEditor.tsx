@@ -66,7 +66,11 @@ export function UrlEditor({
 
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
-      if (isWindowBlur(e)) return
+      // The window lost focus, not the field: save a valid draft and keep it open (#3967).
+      if (isWindowBlur(e)) {
+        if (isValidUrl(localValue)) onChange(localValue)
+        return
+      }
       const valid = isValidUrl(localValue)
       setIsValid(valid)
       if (!valid) {

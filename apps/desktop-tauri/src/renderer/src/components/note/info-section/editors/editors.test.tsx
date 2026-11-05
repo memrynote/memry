@@ -106,26 +106,68 @@ describe('note info property editors', () => {
   afterEach(() => vi.restoreAllMocks())
 
   // The same window blur ended a property value edit before the user typed (#3967): the row
-  // closes the editor on its `onBlur`, and the field left the DOM.
+  // closes the editor on its `onBlur`, and the field left the DOM. The draft is still saved, so
+  // quitting from the taskbar after an alt-tab keeps it.
   it.each([
-    ['text', (onBlur: () => void) => <TextEditor value="" onChange={vi.fn()} onBlur={onBlur} />],
+    [
+      'text',
+      (onChange: (value: unknown) => void, onBlur: () => void) => (
+        <TextEditor value="" onChange={onChange} onBlur={onBlur} />
+      ),
+      'textbox',
+      'movie series',
+      'movie series'
+    ],
     [
       'number',
-      (onBlur: () => void) => <NumberEditor value={null} onChange={vi.fn()} onBlur={onBlur} />
+      (onChange: (value: unknown) => void, onBlur: () => void) => (
+        <NumberEditor value={null} onChange={onChange} onBlur={onBlur} />
+      ),
+      'spinbutton',
+      '4.5',
+      4.5
     ],
-    ['url', (onBlur: () => void) => <UrlEditor value="" onChange={vi.fn()} onBlur={onBlur} />]
-  ])('the %s value editor stays open when the app window loses focus', (kind, editor) => {
+    [
+      'url',
+      (onChange: (value: unknown) => void, onBlur: () => void) => (
+        <UrlEditor value="" onChange={onChange} onBlur={onBlur} />
+      ),
+      'textbox',
+      'memrynote.com',
+      'memrynote.com'
+    ]
+  ])(
+    'the %s value editor saves its draft and stays open when the app window loses focus',
+    (_kind, editor, role, typed, saved) => {
+      const onChange = vi.fn()
+      const onBlur = vi.fn()
+      render(editor(onChange, onBlur))
+      fireEvent.change(screen.getByRole(role), { target: { value: typed } })
+
+      const windowFocused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+      fireEvent.blur(screen.getByRole(role))
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(saved)
+      expect(onBlur).not.toHaveBeenCalled()
+      expect(screen.getByRole(role)).toHaveValue(saved)
+
+      windowFocused.mockReturnValue(true)
+      fireEvent.blur(screen.getByRole(role))
+      expect(onChange.mock.calls).toEqual([[saved], [saved]])
+      expect(onBlur).toHaveBeenCalledOnce()
+    }
+  )
+
+  it('keeps an invalid url draft unsaved and open when the app window loses focus', () => {
+    const onChange = vi.fn()
     const onBlur = vi.fn()
-    render(editor(onBlur))
-    const field = screen.getByRole(kind === 'number' ? 'spinbutton' : 'textbox')
+    render(<UrlEditor value="https://memrynote.com" onChange={onChange} onBlur={onBlur} />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'not-a-url' } })
 
-    const windowFocused = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
-    fireEvent.blur(field)
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    fireEvent.blur(screen.getByRole('textbox'))
+    expect(onChange).not.toHaveBeenCalled()
     expect(onBlur).not.toHaveBeenCalled()
-
-    windowFocused.mockReturnValue(true)
-    fireEvent.blur(field)
-    expect(onBlur).toHaveBeenCalledOnce()
+    expect(screen.getByRole('textbox')).toHaveValue('not-a-url')
   })
 
   // WebView2 blurs the focused field when the window is deactivated (#3919). An empty option
