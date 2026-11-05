@@ -228,6 +228,16 @@ test('the install script is self-contained', () => {
   )
 })
 
+test('a target with nothing on its point names the point and the window size', () => {
+  const { dom, pw } = page('<button id="b">Go</button>')
+  dom.window.document.elementFromPoint = () => null
+
+  const state = pw.target({ steps: [{ kind: 'css', selector: '#b' }] }, false)
+
+  assert.equal(state.hit, false)
+  assert.match(state.cover, /^nothing at \(.+\) in \d+x\d+$/)
+})
+
 // ---- click fixup ------------------------------------------------------------------------------
 
 test('a driver without pointer events gets them ahead of its press, on what it pressed', () => {

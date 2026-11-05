@@ -16,7 +16,7 @@ export interface NoteTitleProps {
   emoji: string | null
   title: string
   placeholder?: string
-  onTitleChange: (title: string) => void
+  onTitleChange: (title: string) => void | Promise<void>
   autoFocus?: boolean
   disabled?: boolean
   /** Optional external ref to the title textarea (e.g. to focus from the menu) */

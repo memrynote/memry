@@ -1959,7 +1959,7 @@ export function NotePage({ noteId }: NotePageProps) {
             noteId={note.id}
             emoji={note.emoji ?? null}
             title={note.title}
-            onTitleChange={(...args) => void handleTitleChange(...args)}
+            onTitleChange={handleTitleChange}
             onIconChange={(icon) => void handleIconChange(icon)}
             placeholder={isFreshTitle ? NEW_NOTE_TITLE : t('editor.title.untitled')}
             inputRef={titleInputRef}

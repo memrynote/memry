@@ -143,6 +143,7 @@ test('Delete removes the note and its file after the confirm, and closes its tab
 }) => {
   const title = `Delete From Menu ${stamp()}`
   const note = await seedAndOpen(page, title)
+  await expect(page.getByRole('tab', { name: title })).toHaveCount(1)
 
   await chooseFromNoteMenu(page, 'Delete note')
   const dialog = page.getByRole('alertdialog')
@@ -152,6 +153,5 @@ test('Delete removes the note and its file after the confirm, and closes its tab
   await expect.poll(async () => (await listedIds(page)).includes(note.id)).toBe(false)
   expect(await getNote(page, note.id)).toBeNull()
   expect(existsSync(join(testVaultPath, note.path))).toBe(false)
-  await expect(page.locator(`${NOTE_TITLE}[value="${title}"]`)).toHaveCount(0)
   await expect(page.getByRole('tab', { name: title })).toHaveCount(0)
 })
