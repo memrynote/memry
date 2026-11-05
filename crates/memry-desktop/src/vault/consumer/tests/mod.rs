@@ -349,6 +349,16 @@ impl Fixture {
     /// The open walk's steps for the new files `rels`, applied together as the walk applies
     /// what it put aside, the files sent back each alone.
     pub(super) fn walk_together(&self, rels: &[&str]) -> Vec<(String, Step)> {
+        self.walk_together_with(rels, || {})
+    }
+
+    /// [`Self::walk_together`], with `meanwhile` run after the files were prepared and before
+    /// they are applied, where the run applies facts.
+    pub(super) fn walk_together_with(
+        &self,
+        rels: &[&str],
+        meanwhile: impl FnOnce(),
+    ) -> Vec<(String, Step)> {
         let mut scan = ScanActivity::default();
         let found = rels
             .iter()
@@ -363,6 +373,7 @@ impl Fixture {
         let batch = self
             .applier
             .prepare_together(found, &AtomicBool::new(false));
+        meanwhile();
         let together = self.applier.found_together(batch, &mut scan);
         let mut steps = together.steps;
         for file in together.alone {

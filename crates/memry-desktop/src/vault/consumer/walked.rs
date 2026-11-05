@@ -17,6 +17,7 @@
 
 use std::collections::HashSet;
 use std::num::NonZero;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use memry_core::api::external_feed::ExternalFeed;
@@ -152,7 +153,7 @@ impl Applier {
         if !with_body.is_empty() {
             match self.rows.lane_of(self.session) {
                 Ok(mut lane) => {
-                    let (new, back) = new_files(&lane, with_body);
+                    let (new, back) = new_files(&self.root, &lane, with_body);
                     alone.extend(back);
                     alone.extend(self.create(&mut lane, new, scan, &mut steps));
                 }
@@ -348,6 +349,12 @@ pub(super) struct Prepared {
 }
 
 impl Found {
+    /// The file has the size and modification time the walk saw.
+    fn unchanged(&self, root: &Path) -> bool {
+        std::fs::symlink_metadata(root.join(&self.path))
+            .is_ok_and(|meta| meta.len() == self.size && modified_ms(&meta) == self.modified_ms)
+    }
+
     fn candidate<'a>(&'a self, file: Option<&'a NoteFile>) -> Candidate<'a> {
         Candidate {
             path: &self.path,
@@ -360,12 +367,16 @@ impl Found {
 }
 
 /// The files with a body to create that no row names under any spelling, nor another of these
-/// files, while the lane is held; the rest go alone.
-fn new_files(lane: &Lane<'_>, prepared: Vec<Prepared>) -> (Vec<Prepared>, Vec<Found>) {
+/// files, and that are still as the walk found them, while the lane is held; the rest go alone.
+/// The run applies facts between a batch's read and this check, and a file deleted, renamed or
+/// edited meanwhile, which no row names, gets no fact of its own: its note would hold bytes the
+/// vault no longer has.
+fn new_files(root: &Path, lane: &Lane<'_>, prepared: Vec<Prepared>) -> (Vec<Prepared>, Vec<Found>) {
     let mut keys = HashSet::new();
     let (new, alone): (Vec<Prepared>, Vec<Prepared>) = prepared.into_iter().partition(|prepared| {
         let path = &prepared.found.path;
         prepared.body.is_some()
+            && prepared.found.unchanged(root)
             && matches!(lane.row_at(path), Ok(None))
             && lane.check_free(path).is_ok()
             && keys.insert(folded_key(path))

@@ -1,6 +1,7 @@
 //! The open walk prepares its next batch of new files while it applies one (#3530 13q-7):
-//! the two overlap, every file still ends as it does alone, and a close waits for the batch
-//! being prepared, so no thread outlives the consumer.
+//! the two overlap, one batch is prepared at a time, a prepared batch is applied as soon as it
+//! is ready rather than when the next one fills, every file still ends as it does alone, and a
+//! close waits for the batch being prepared, so no thread outlives the consumer.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
@@ -79,8 +80,8 @@ fn the_next_batch_is_prepared_while_one_is_applied() {
     }
 }
 
-/// A close while batches are prepared returns once their threads ended: none holds the vault
-/// after the consumer stopped.
+/// A close while a batch is being prepared returns once its thread ended: none holds the
+/// vault after the consumer stopped.
 #[test]
 fn a_close_waits_for_the_batch_being_prepared() {
     let f = fixture();
@@ -95,4 +96,46 @@ fn a_close_waits_for_the_batch_being_prepared() {
     }));
     running.consumer.stop();
     assert_eq!(Arc::strong_count(&f.identity), held_before);
+}
+
+/// A full batch followed by known files edited while the app was closed: the batch's notes
+/// come once it is prepared, not after every edit the rest of the walk applies.
+#[test]
+fn a_prepared_batch_is_applied_before_the_rest_of_the_walk() {
+    const EDITED: usize = 300;
+    let mut f = fixture();
+    for n in 0..EDITED {
+        let rel = format!("b/k{n:03}.md");
+        f.write(&rel, &format!("kept {n}\n"));
+        f.walked(&rel);
+    }
+    for n in 0..EDITED {
+        f.write(
+            &format!("b/k{n:03}.md"),
+            &format!("kept {n} edited while closed\n"),
+        );
+    }
+    for n in 0..128 {
+        f.write(&format!("a/n{n:03}.md"), &format!("Note {n} text.\n"));
+    }
+    f.facts();
+    *f.identity.batch.lock().unwrap() = Batch::Create;
+    let _running = run(&f, 1 << 16);
+    let mut facts = Vec::new();
+    f.collect_until(&mut facts, |_, seen| {
+        seen.iter().any(|f| matches!(f, Applied::Indexed { .. }))
+    });
+    let edit = |f: &Applied| matches!(f, Applied::Changed { path, .. } if path.starts_with("b/"));
+    let first_new = facts
+        .iter()
+        .position(
+            |f| matches!(f, Applied::Added { path, created: true, .. } if path.starts_with("a/")),
+        )
+        .expect("a new note");
+    let edits_before = facts[..first_new].iter().filter(|f| edit(f)).count();
+    assert_eq!(facts.iter().filter(|f| edit(f)).count(), EDITED);
+    assert!(
+        edits_before < EDITED,
+        "the prepared batch waited for all {EDITED} edits"
+    );
 }

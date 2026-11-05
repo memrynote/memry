@@ -360,7 +360,18 @@ impl Run {
             };
             if meta.is_file() {
                 match self.applier.walked(&path, &meta, &mut scan) {
-                    Walked::Applied(step) => self.settle(step, Some(&path)),
+                    Walked::Applied(step) => {
+                        self.settle(step, Some(&path));
+                        // A batch prepared while the walk went on through known files is
+                        // applied now, not when the next batch fills, which in a vault of
+                        // mostly known files may be the walk's end. Among new files the walk
+                        // fills the next batch first, so the two overlap.
+                        if preparing.as_ref().is_some_and(Preparing::is_finished)
+                            && !self.found_together(&mut Vec::new(), &mut preparing, &mut scan)
+                        {
+                            return;
+                        }
+                    }
                     Walked::New(file) => {
                         new_bytes += file.size;
                         new.push(file);
@@ -394,27 +405,66 @@ impl Run {
 }
 
 /// A batch of the open walk's new files being prepared on its own thread
-/// ([`Applier::prepare_together`]). Dropped unjoined, when a close stops the walk, it waits for
-/// that thread, which a close stops between files: nothing outlives the consumer.
-struct Preparing(Option<JoinHandle<Batch>>);
+/// ([`Applier::prepare_together`]), or prepared already on the consumer's when no thread could
+/// be started. Dropped unjoined, when a close stops the walk, it waits for that thread, which a
+/// close stops between files: nothing outlives the consumer.
+enum Preparing {
+    Thread(Joined),
+    Ready(Batch),
+}
+
+/// The preparing thread, joined when dropped.
+struct Joined(Option<JoinHandle<Batch>>);
 
 impl Preparing {
     fn start(applier: &Arc<Applier>, new: &mut Vec<Found>, stop: &Arc<AtomicBool>) -> Self {
-        let (applier, stop, found) = (applier.clone(), stop.clone(), std::mem::take(new));
-        Self(Some(std::thread::spawn(move || {
-            applier.prepare_together(found, &stop)
-        })))
+        let found = std::mem::take(new);
+        // The files go to the thread once it runs, so a thread that cannot start leaves them.
+        let (send, receive) = std::sync::mpsc::channel::<Vec<Found>>();
+        let (preparer, stopped) = (applier.clone(), stop.clone());
+        let spawned = std::thread::Builder::new()
+            .name("vault-prepare".into())
+            .spawn(move || {
+                let found = receive.recv().unwrap_or_default();
+                preparer.prepare_together(found, &stopped)
+            });
+        match spawned {
+            Ok(thread) => {
+                // The thread holds the receiver until it has the files: this send is taken.
+                let _ = send.send(found);
+                Self::Thread(Joined(Some(thread)))
+            }
+            Err(error) => {
+                tracing::warn!(
+                    scope = "vault_consumer",
+                    "new files are prepared on the consumer's thread: no thread started: {error}"
+                );
+                Self::Ready(applier.prepare_together(found, stop))
+            }
+        }
     }
 
-    fn join(mut self) -> Batch {
-        let thread = self.0.take().expect("joined once");
-        thread
-            .join()
-            .unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+    fn is_finished(&self) -> bool {
+        match self {
+            Self::Thread(Joined(Some(thread))) => thread.is_finished(),
+            Self::Thread(Joined(None)) | Self::Ready(_) => true,
+        }
+    }
+
+    fn join(self) -> Batch {
+        match self {
+            Self::Ready(batch) => batch,
+            Self::Thread(mut joined) => joined
+                .0
+                .take()
+                .expect("joined once")
+                .join()
+                .unwrap_or_else(|panic| std::panic::resume_unwind(panic)),
+        }
     }
 }
 
-impl Drop for Preparing {
+impl Drop for Joined {
     fn drop(&mut self) {
         if let Some(thread) = self.0.take()
             && thread.join().is_err()
