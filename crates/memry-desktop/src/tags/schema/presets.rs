@@ -135,6 +135,20 @@ impl Schemas {
     ) -> Result<String, SchemaError> {
         let spec = catalog::spec(preset);
         let key = explicit.map_or_else(|| self.localized_name(spec), tag_key);
+        if adding.is_empty() {
+            // Only a tag's stored schema can refuse the merge, so the tag and every target the
+            // step adds are checked before anything is written.
+            let mut keys = self.missing_targets(spec, &self.resolved()?, &mut vec![preset]);
+            keys.push(key.clone());
+            let merge = SchemaEdit::MergePreset {
+                fields: Vec::new(),
+                template: None,
+                preset: preset.as_str().to_owned(),
+            };
+            for key in &keys {
+                self.plan(key, &merge)?;
+            }
+        }
         adding.push(preset);
 
         let mut fields = Vec::new();

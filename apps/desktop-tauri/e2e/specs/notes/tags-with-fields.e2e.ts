@@ -123,7 +123,18 @@ test('a template added again after Undo reaches the open editor', async ({
   await expect.poll(file).toContain('Context')
   await expect(editor).toContainText('Context')
 
-  // The editor's write-back after the fill keeps the template.
-  await page.waitForTimeout(2500)
-  expect(file()).toContain('Context')
+  // The editor's write-back after the fill keeps the template: the file settles, past the
+  // note page's 1 s save, still holding it.
+  let last = file()
+  let since = Date.now()
+  await expect
+    .poll(
+      () => {
+        const now = file()
+        if (now !== last) [last, since] = [now, Date.now()]
+        return Date.now() - since >= 1_500 && now.includes('Context')
+      },
+      { timeout: 15_000 }
+    )
+    .toBe(true)
 })

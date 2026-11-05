@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use index_support::{all_indexed, until, with_task};
 use memry_core::seams::secure_store::SecureStore;
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::error::{CoreError, FailureKind};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::read;
@@ -398,6 +399,80 @@ fn a_field_takes_the_spelling_and_type_of_a_property_already_defined() {
     assert_eq!(
         first.relation.as_ref().unwrap().target.as_deref(),
         Some("book")
+    );
+    e.close();
+}
+
+#[test]
+fn a_field_leaves_a_definition_a_newer_build_wrote() {
+    let (mut e, open, store) = opened();
+    let newer = "---\nproperties:\n  Role:\n    type: rating\n    stars: 5\n---\n";
+    e.write(".memry/properties.md", newer);
+    let ran = schemas(&open, &store)
+        .run(TagSchemaCommand::AddField {
+            tag: "person".to_owned(),
+            field: field("Role", FieldType::Text),
+            index: None,
+        })
+        .unwrap();
+    assert!(ran.effects.definitions.is_empty(), "Role has a definition");
+    assert_eq!(e.read(".memry/properties.md"), newer);
+    assert_eq!(
+        ran.result.snapshot.tags["person"].own_fields[0].name,
+        "Role"
+    );
+    e.close();
+}
+
+/// `person` as a newer build left it: a schema this build reads as read-only.
+fn newer_person(open: &OpenVault) {
+    open.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            sync_items::apply_remote(
+                conn,
+                &InboundRecord {
+                    item_type: "tag_definition".into(),
+                    item_id: "person".into(),
+                    payload_json: r#"{"name":"person","color":"sky","clock":{"desk":1},"schema":{"t":4,"fields":7}}"#.into(),
+                    server_cursor: Some(1),
+                    signer_device_id: Some("desk".into()),
+                    updated_at: 1,
+                    deleted_at: None,
+                },
+                1,
+            )?;
+            Ok(())
+        })
+        .unwrap();
+}
+
+#[test]
+fn a_ready_made_tag_a_newer_schema_refuses_writes_nothing() {
+    let (mut e, open, store) = opened();
+    newer_person(&open);
+    let schemas = schemas(&open, &store);
+    let templates = Templates::open(&open, store.clone()).unwrap();
+    let before = (
+        schemas.snapshot().unwrap().tags,
+        templates.list().unwrap().len(),
+    );
+
+    // `person` itself, and `meeting`, which adds `person` as its attendees' target.
+    for preset in [PresetKey::Person, PresetKey::Meeting] {
+        let (code, _) = refused(schemas.run(TagSchemaCommand::AddPreset { preset, tag: None }));
+        assert_eq!(code, "tag_schema_unreadable");
+    }
+    assert_eq!(
+        (
+            schemas.snapshot().unwrap().tags,
+            templates.list().unwrap().len()
+        ),
+        before
+    );
+    assert!(
+        !e.vault.join(".memry/properties.md").exists(),
+        "no definition written"
     );
     e.close();
 }
