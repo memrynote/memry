@@ -47,7 +47,7 @@ export function loop(name: string): void {
         } catch {
           oldPid = listenerPid(port)
         }
-        if (oldPid !== undefined && i % 2 === 0) {
+        if (oldPid !== undefined && i % 10 === 0) {
           await gracefulClose({ executor, pid: oldPid })
           const bind = await canBind(port)
           console.log(
@@ -58,7 +58,7 @@ export function loop(name: string): void {
         const started = Date.now()
         try {
           const app = await fresh(executor, {
-            extraEnv: i % 3 === 0 ? {} : { MEMRY_FORCE_VAULT_PICKER: '1' }
+            extraEnv: { MEMRY_FORCE_VAULT_PICKER: '1' }
           })
           console.log(`DIAG ok ${name}#${i} pid=${app.pid} ms=${Date.now() - started}`)
         } catch (error) {
