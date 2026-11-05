@@ -5,6 +5,7 @@ import { useT } from '@memry/i18n/renderer'
 import { useNoteMutations } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { flushAllPendingSaves } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { buildFieldGroups, isFilledValue } from './build-field-groups'
 import { resolveTag, useTagSchemas } from './use-tag-schemas'
@@ -45,6 +46,8 @@ export function useHeaderTags({
   const undoTemplate = useCallback(
     async (id: string, undoToken: string) => {
       try {
+        // Typing not saved yet goes first: the undo then sees it and keeps the body.
+        await flushAllPendingSaves()
         const result = await notesService.undoTagTemplate({ noteId: id, undoToken })
         if (result.status === 'stale') toast(t('tagFields.toast.templateChanged'))
       } catch (err) {

@@ -2,7 +2,7 @@
 
 import { foldTag } from '@memry/shared/tag-fold'
 import { useCallback, useEffect, useRef } from 'react'
-import { removeAndInsertBlocks, type Block } from '@blocknote/core'
+import { removeAndInsertBlocks, type Block, type PartialBlock } from '@blocknote/core'
 import { ySyncPluginKey, yUndoPluginKey } from 'y-prosemirror'
 import type * as Y from 'yjs'
 import {
@@ -95,7 +95,7 @@ function promoteSyncedWikiLinks(editor: any): void {
   })
 }
 
-function replaceInitialBlocksWithoutHistory(editor: any, blocks: Block[]): void {
+function replaceInitialBlocksWithoutHistory(editor: any, blocks: PartialBlock[]): void {
   if (typeof editor.transact !== 'function') {
     editor.replaceBlocks(editor.document, blocks)
     return
@@ -601,6 +601,12 @@ export function useEditorSync({
           hydrateLinkMentionFavicons(editor)
           loadedSuccessfully = true
         } else {
+          // An outside edit that emptied the body (a tag template's Undo, a file
+          // cleared on disk) empties the editor too. A note that opens empty
+          // already shows an empty editor.
+          if (isExternalReload && initialContent !== undefined) {
+            replaceInitialBlocksWithoutHistory(editor, [{ type: 'paragraph' }])
+          }
           loadedSuccessfully = true
         }
       } finally {
