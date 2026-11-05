@@ -17,15 +17,16 @@ Clicking any row opens that template in its own editor tab and closes Settings, 
 
 ## Built-in Templates
 
-memrynote ships with starter templates for common patterns:
+memrynote ships with eight starter templates:
 
-- Daily Reflection
-- Weekly Review
+- Blank Note
 - Meeting Notes
 - Project Brief
-- Standup
-- Decision Log
-- Reading Notes
+- Daily Standup
+- Morning Pages
+- Daily Reflection
+- Gratitude Journal
+- Weekly Review
 
 Built-ins are **read-only**. Opening one shows it in the editor with every field locked and a **Duplicate & Edit** button in the top right — that makes an editable copy and opens it in a new tab.
 
@@ -100,6 +101,8 @@ A journal template can carry a [view](/user-guide/notes/editing#views), so every
 
 When creating a note, the create dialog has a template picker. Choose a template; the note is seeded with its content. Variables resolve at that moment.
 
+A folder and a tag can each bring a template too. See [A folder's default template](#a-folder-s-default-template) and the templates of [tags with fields](/user-guide/notes/tags-with-fields#templates). A template you pick in the dialog wins over both.
+
 The new note also takes the template's icon, so notes made from the same template share an icon and are easy to tell apart in the sidebar and in lists. Give a Meeting Note template one icon and a General Note template another, and every note you create shows which kind it is at a glance. Change the note's icon at any time — that only affects the note, not the template. A template with no icon leaves the note without one.
 
 ## Applying a Template to an Existing Note
@@ -123,6 +126,14 @@ Pick a template and confirm with **Apply Template**. The <kbd>⋯</kbd> menu als
 **Replace content & add template details** also gives the note the template's icon, but only when the note has no icon of its own — an icon you already set is never overwritten. **Replace content only** leaves the icon alone.
 
 `{{title}}` resolves to the note's current title. If the note is open in the editor, the update shows up live.
+
+If the note's file was changed outside memrynote and that change has not loaded yet, or your latest typing has not been saved to the file yet, applying is refused and the note stays as it was. Wait a moment and apply again.
+
+## A Folder's Default Template
+
+A folder can give every new note made in it a starting template. Right-click the folder in the sidebar and choose **Set Default Template**, then pick a template. The menu item shows the template's name once one is set. **Clear Default Template** removes it.
+
+A subfolder without a default template of its own uses the nearest parent folder's. The setting is stored in the folder's `.folder.md` file inside your vault. Sync carries a folder's icon but not its default template, so set the template on each device.
 
 ## Inserting a Template at the Cursor
 

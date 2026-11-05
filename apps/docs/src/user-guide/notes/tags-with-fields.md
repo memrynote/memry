@@ -125,8 +125,9 @@ inline tag, or by accepting a suggested tag.
 
 ### Deleting a tag
 
-**Delete tag** removes the tag from every note's tags row and removes its fields and template.
-Values stay on the notes as properties, and a `#tag` written in the text stays as plain text.
+**Delete tag** is not available in this version of the desktop app. It shows an error and leaves
+the tag, its fields, its template and its notes as they are. To take a tag off one note, remove it
+from that note's tags row.
 
 ## On a note
 
@@ -172,15 +173,8 @@ a run covers them all.
 
 ## Renaming a tag
 
-Renaming a tag with fields works like any [tag rename](/user-guide/notes/properties-tags#renaming-or-deleting-tags):
-
-- It renames the tag in every note's tags row, in `#tags` written in note and journal text, and
-  on tasks.
-- Child tags follow: `person` to `people` turns `person/vip` into `people/vip`, with their
-  colours, icons, views and fields.
-- If the new name already exists, the two tags merge. The existing tag keeps its colour and
-  fields.
-- Tags that extend the renamed tag, and relation fields that point at it, follow the new name.
+Renaming a tag, with fields or without, is not available in this version of the desktop app. The
+rename shows an error and changes nothing: every note, task and field keeps the old name.
 
 Renaming a **field** is different: it changes the frontmatter key in each note, as described in
 [Fields](#fields).
