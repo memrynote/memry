@@ -13,7 +13,7 @@ import { join } from 'node:path'
 
 import { isAlive } from '../../harness/app-process'
 import { SHORTCUTS } from '../../harness/app-helpers'
-import { sendTest } from '../../harness/invoke-test'
+import { invokeTest, sendTest } from '../../harness/invoke-test'
 import {
   NOTE_EDITOR,
   NOTE_TITLE,
@@ -75,7 +75,22 @@ test('Cmd-N makes a note whose typed title names its file and whose typed body i
 })
 
 // The field keeps a title it has not left while the window is in the background (WebView2 blurs
-// it then, WebKit does not), so the quit has to save it.
+// it then, WebKit does not), so the quit, the tab's close and a note switch have to save it.
+async function typeTitleAndStay(page: Page, view: NoteView): Promise<string> {
+  await openFromSidebar(page, view)
+  const name = `Renamed ${stamp()}`
+  const title = page.locator(NOTE_TITLE).first()
+  await title.click()
+  await title.fill(name)
+  await expect(title).toBeFocused()
+  return name
+}
+
+const renamedOnDisk = (vault: string, view: NoteView, name: string): Promise<boolean> =>
+  pollUntil(
+    () => existsSync(join(vault, 'notes', `${name}.md`)) && !existsSync(join(vault, view.path))
+  )
+
 test('a title typed and never left names the note once the app quits', async ({
   app,
   page,
@@ -83,18 +98,42 @@ test('a title typed and never left names the note once the app quits', async ({
 }) => {
   await vaultOpen(page)
   const note = await createNote(page, { title: `Quit Title ${stamp()}`, folder: 'notes' })
-  await openFromSidebar(page, note)
-  const name = `Renamed At Quit ${stamp()}`
-  const title = page.locator(NOTE_TITLE).first()
-  await title.click()
-  await title.fill(name)
-  await expect(title).toBeFocused()
+  const name = await typeTitleAndStay(page, note)
 
   await sendTest(app, 'e2e_request_quit')
   expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })).toBe(true)
 
   expect(existsSync(join(testVaultPath, 'notes', `${name}.md`))).toBe(true)
   expect(existsSync(join(testVaultPath, note.path))).toBe(false)
+})
+
+test('a title typed and never left names the note once its tab closes', async ({
+  app,
+  page,
+  testVaultPath
+}) => {
+  await vaultOpen(page)
+  const note = await createNote(page, { title: `Close Title ${stamp()}`, folder: 'notes' })
+  const name = await typeTitleAndStay(page, note)
+
+  // The menu item Cmd-W runs, which takes no focus from the field.
+  await invokeTest(app, 'e2e_menu_activate', { id: 'tabs.closeTab' })
+
+  expect(await renamedOnDisk(testVaultPath, note, name)).toBe(true)
+})
+
+test('a title typed and never left names the note once another note opens', async ({
+  page,
+  testVaultPath
+}) => {
+  await vaultOpen(page)
+  const note = await createNote(page, { title: `Switch Title ${stamp()}`, folder: 'notes' })
+  const other = await createNote(page, { title: `Switch Other ${stamp()}`, folder: 'notes' })
+  const name = await typeTitleAndStay(page, note)
+
+  await openFromSidebar(page, other)
+
+  expect(await renamedOnDisk(testVaultPath, note, name)).toBe(true)
 })
 
 test('an edit made outside the app reaches the open note', async ({ page, testVaultPath }) => {

@@ -83,32 +83,43 @@ export function TitleInput({
   }, [])
 
   // A draft outlives a window deactivation (see `handleBlur`), so it is still unsaved when the
-  // app quits, the tab closes or another note replaces this one: the quit flush and the unmount
-  // commit it, as the editor's pending text is saved.
-  const pendingDraft = useRef<(() => void | Promise<void>) | null>(null)
+  // app quits, the tab closes or another note replaces this one. A flush (the quit's, or an
+  // agent's edit proposal's) saves it and leaves the edit going; the unmount ends it.
+  const pendingDraft = useRef<{ flush: () => void | Promise<void>; commit: () => void } | null>(
+    null
+  )
+  // The draft a flush saved, which the commit ending the edit does not rename to again.
+  const flushedDraft = useRef<string | null>(null)
 
-  const commit = useCallback((): void | Promise<void> => {
+  const commit = useCallback((): void => {
     pendingDraft.current = null
-    let saved: void | Promise<void> = undefined
+    const draft = draftValue === flushedDraft.current ? null : draftValue
+    flushedDraft.current = null
     // Only trigger onChange if value actually changed
     if (fresh) {
-      if (draftValue?.trim()) saved = onChange(draftValue)
+      if (draft?.trim()) void onChange(draft)
       onFreshEnd?.()
-    } else if (draftValue !== null && draftValue !== value) {
-      saved = onChange(draftValue)
+    } else if (draft !== null && draft !== value) {
+      void onChange(draft)
     }
     setDraftValue(null)
-    return saved
   }, [draftValue, value, onChange, fresh, onFreshEnd])
 
+  const flush = useCallback((): void | Promise<void> => {
+    if (draftValue === null || draftValue === flushedDraft.current) return undefined
+    if (fresh ? !draftValue.trim() : draftValue === value) return undefined
+    flushedDraft.current = draftValue
+    return onChange(draftValue)
+  }, [draftValue, value, fresh, onChange])
+
   useEffect(() => {
-    pendingDraft.current = draftValue === null ? null : commit
-  }, [draftValue, commit])
+    pendingDraft.current = draftValue === null ? null : { flush, commit }
+  }, [draftValue, flush, commit])
   const saveKey = `note-title:${useId()}`
   useEffect(() => {
-    registerPendingSave(saveKey, () => pendingDraft.current?.())
+    registerPendingSave(saveKey, () => pendingDraft.current?.flush())
     return () => {
-      void pendingDraft.current?.()
+      pendingDraft.current?.commit()
       unregisterPendingSave(saveKey)
     }
   }, [saveKey])
@@ -124,7 +135,7 @@ export function TitleInput({
       // deactivated and focuses it again on return; WebKit (macOS, Linux) fires no
       // `focusout` there.
       if (e.relatedTarget === null && !e.currentTarget.ownerDocument.hasFocus()) return
-      void commit()
+      commit()
     },
     [commit]
   )
@@ -134,7 +145,7 @@ export function TitleInput({
       // Enter saves and blurs
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
-        void commit()
+        commit()
         committedByEnter.current = true
         textareaRef.current?.blur()
         committedByEnter.current = false

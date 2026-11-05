@@ -310,6 +310,69 @@ describe('NoteTitle - fresh note', () => {
     expect(onFreshEnd).not.toHaveBeenCalled()
   })
 
+  // Not only the quit flushes: an agent's edit proposal does too, while the user may still be
+  // typing the title. The flush saves what is typed and leaves the edit going.
+  it('a flush while the title is being typed renames once and leaves the text and focus', async () => {
+    const user = userEvent.setup()
+    const onTitleChange = vi.fn()
+    renderWithI18n(<NoteTitle emoji={null} title="Old" onTitleChange={onTitleChange} />)
+    const textarea = screen.getByRole('textbox', { name: /note title/i })
+    await user.type(textarea, ' Groc')
+
+    await act(() => flushAllPendingSaves())
+    await act(() => flushAllPendingSaves())
+
+    expect(onTitleChange).toHaveBeenCalledTimes(1)
+    expect(onTitleChange).toHaveBeenCalledWith('Old Groc')
+    expect(textarea).toHaveValue('Old Groc')
+    expect(textarea).toHaveFocus()
+
+    await user.type(textarea, 'eries')
+    await user.tab()
+
+    expect(onTitleChange).toHaveBeenCalledTimes(2)
+    expect(onTitleChange).toHaveBeenLastCalledWith('Old Groceries')
+  })
+
+  it('a flush of a fresh title keeps it fresh, and leaving it renames no second time', async () => {
+    const user = userEvent.setup()
+    const onTitleChange = vi.fn()
+    const onFreshEnd = vi.fn()
+    renderWithI18n(
+      <NoteTitle {...freshProps} onTitleChange={onTitleChange} onFreshEnd={onFreshEnd} />
+    )
+    const textarea = screen.getByRole('textbox', { name: /note title/i })
+    await user.type(textarea, 'Groceries')
+
+    await act(() => flushAllPendingSaves())
+
+    expect(onTitleChange).toHaveBeenCalledWith('Groceries')
+    expect(onFreshEnd).not.toHaveBeenCalled()
+    expect(textarea).toHaveValue('Groceries')
+
+    await user.tab()
+
+    expect(onTitleChange).toHaveBeenCalledTimes(1)
+    expect(onFreshEnd).toHaveBeenCalledTimes(1)
+  })
+
+  it('renames once when Enter commits and the field goes away at once', async () => {
+    const user = userEvent.setup()
+    const onTitleChange = vi.fn()
+    const { unmount } = renderWithI18n(<NoteTitle {...freshProps} onTitleChange={onTitleChange} />)
+    const textarea = screen.getByRole('textbox', { name: /note title/i })
+    await user.type(textarea, 'Groceries')
+
+    // Enter and the unmount in one task: no render runs between them to clear the draft.
+    act(() => {
+      fireEvent.keyDown(textarea, { key: 'Enter' })
+      unmount()
+    })
+
+    expect(onTitleChange).toHaveBeenCalledTimes(1)
+    expect(onTitleChange).toHaveBeenCalledWith('Groceries')
+  })
+
   it('renames on Enter while the app window has no focus', async () => {
     const user = userEvent.setup()
     const onTitleChange = vi.fn()
