@@ -178,7 +178,7 @@ impl Schemas {
     }
 
     /// Refuses `edit` before anything is written, as `planSchemaEdit` does.
-    fn plan(&self, tag: &str, edit: &SchemaEdit) -> Result<(), SchemaError> {
+    pub(super) fn plan(&self, tag: &str, edit: &SchemaEdit) -> Result<(), SchemaError> {
         let resolved = self.resolved()?;
         let key = tag_key(tag);
         let definitions = self.open.vault.tag_schema_definitions()?;
@@ -208,7 +208,8 @@ impl Schemas {
         Ok(canonical_field_name(typed, known.iter().map(String::as_str)).0)
     }
 
-    /// `ensureFieldDefinition`: a name with no definition gets one of the field's type.
+    /// `ensureFieldDefinition`: a name with no definition gets one of the field's type, decided
+    /// by the definitions' owner in its turn.
     pub(super) fn ensure_definition(
         &self,
         name: &str,
@@ -220,21 +221,19 @@ impl Schemas {
         let Some(wanted) = definition_type(type_name) else {
             return Ok(());
         };
-        if self.definitions.list()?.iter().any(|d| d.name == name) {
-            return Ok(());
-        }
-        if show_on_calendar && wanted == DefinitionType::Date {
-            self.definitions.set_show_on_calendar(name, true)?;
-        } else {
-            self.definitions.create(DefinitionInput {
+        let created = self.definitions.create_if_absent(
+            DefinitionInput {
                 name: name.to_owned(),
                 type_name: Some(wanted),
                 options: (!options.is_empty()).then_some(options),
                 default_value: None,
                 color: None,
-            })?;
+            },
+            show_on_calendar,
+        )?;
+        if created {
+            effects.definitions.push(name.to_owned());
         }
-        effects.definitions.push(name.to_owned());
         Ok(())
     }
 
