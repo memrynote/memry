@@ -255,6 +255,69 @@ async fn browser_process_id(window: &tauri::WebviewWindow<Wry>) -> Result<u32, C
         .map_err(|error| invalid("e2e_webview", error))
 }
 
+/// Ends the WebView2 browser process and asks its page to flush while the main thread is held,
+/// then quits. WebView2 raises `ProcessFailed` on the main thread, so it cannot report the death
+/// meanwhile, as it had not 2.2 s after the browser ended on a loaded arm64 runner (#3940); the
+/// flush must still not wait its timeout on the dead page. The flush runs on a runtime of its own:
+/// the app's runtime workers can be blocked on the held main thread too, and then no timer fires.
+/// The page dies before the reply: send it with `sendTest`.
+#[tauri::command]
+pub async fn e2e_flush_after_browser_exit(app: AppHandle<Wry>) -> Result<(), CommandError> {
+    #[cfg(windows)]
+    {
+        let window = crate::windows::registry::WindowRegistry::main_window(&app)
+            .ok_or_else(|| invalid("e2e_no_main_window", "no main window"))?;
+        let pid = browser_process_id(&window).await?;
+        let handle = app.clone();
+        app.run_on_main_thread(move || {
+            crate::power::end_process(pid);
+            let asker = handle.clone();
+            let asked = std::thread::spawn(move || {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_time()
+                    .build()?;
+                let flush = asker.state::<FlushService>();
+                let started = std::time::Instant::now();
+                runtime.block_on(flush.request(
+                    &asker,
+                    "main",
+                    Deadline::after(FLUSH_WINDOW_TIMEOUT),
+                ));
+                let elapsed = started.elapsed();
+                // `request` is false both for a dead page and for a timeout; only the time tells
+                // them apart.
+                tracing::info!(
+                    scope = "e2e",
+                    "the flush after the browser exit gave up {} its timeout, in {} ms",
+                    if elapsed < FLUSH_WINDOW_TIMEOUT {
+                        "before"
+                    } else {
+                        "at"
+                    },
+                    elapsed.as_millis()
+                );
+                std::io::Result::Ok(())
+            });
+            if !matches!(asked.join(), Ok(Ok(()))) {
+                tracing::warn!(
+                    scope = "e2e",
+                    "the flush after the browser exit did not run"
+                );
+            }
+            handle.exit(0);
+        })
+        .map_err(|error| invalid("e2e_main_thread", error))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+        Err(invalid(
+            "e2e_windows_only",
+            "WebView2 exists on Windows only",
+        ))
+    }
+}
+
 /// Writes `text` to `e2e-held-edit.txt` in the app data folder, durably. The e2e page's held edit
 /// (`window.__memryE2eHoldEdit`) calls this only when the save registry is flushed, as a note
 /// page's unsaved markdown reaches main only then.

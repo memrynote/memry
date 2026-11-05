@@ -16,6 +16,7 @@ use std::path::Path;
 use memry_core::api::errors::StorageError;
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
+use memry_core::domain::external_feed::FirstBody;
 
 use crate::vault::file_types::FileType;
 use crate::vault::note_file::NoteFile;
@@ -29,6 +30,7 @@ pub struct IdentityCtx<'a> {
 }
 
 /// A file no row names.
+#[derive(Clone, Copy)]
 pub struct Candidate<'a> {
     /// Vault-relative, `/`-separated.
     pub path: &'a str,
@@ -38,6 +40,15 @@ pub struct Candidate<'a> {
     /// Markdown only: the text the consumer read, and its hash. The body the consumer seeds is
     /// this text, so the record and the seed describe the same file.
     pub file: Option<&'a NoteFile>,
+}
+
+/// A markdown file no row names, its text read, with the id its new note is to get and the body
+/// its text gives that note, authored before the note exists.
+#[derive(Clone, Copy)]
+pub struct NewFile<'a> {
+    pub candidate: Candidate<'a>,
+    pub id: &'a str,
+    pub body: &'a FirstBody,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -128,6 +139,28 @@ pub trait NoteIdentity: Send + Sync {
         file: &Candidate<'_>,
     ) -> Result<Adoption, IdentityError>;
 
+    /// For each of many markdown files no row names, their text read: whether it may become a
+    /// new note with no record to match, so the consumer may author its body before the note
+    /// exists and hand it to [`Self::adopt_new_files`]. A hint only, which saves authoring a
+    /// body for a file that is not a new note (a journal day, a large file); `false` sends
+    /// the file to [`Self::adopt_or_create`] alone.
+    fn may_be_new(&self, _ctx: &IdentityCtx<'_>, files: &[Candidate<'_>]) -> Vec<bool> {
+        vec![false; files.len()]
+    }
+
+    /// The notes of many new files at once, the open's first adoptions: for each, `true` when
+    /// its note was created with the id and body given, all in one transaction that holds
+    /// every such note's record and body; `false` to ask [`Self::adopt_or_create`] about that
+    /// file alone. Answers what [`Self::adopt_or_create`] would for each file it creates
+    /// ([`Adoption::Created`]) and never names a file another way. An `Err` created nothing.
+    fn adopt_new_files(
+        &self,
+        _ctx: &IdentityCtx<'_>,
+        files: &[NewFile<'_>],
+    ) -> Result<Vec<bool>, IdentityError> {
+        Ok(vec![false; files.len()])
+    }
+
     /// The watcher reported the note's file removed (it passed the rename window and the
     /// mass-removal guard). Delete the record first: the consumer removes the row only after
     /// [`Removal::Deleted`], so a local-only note's flag is still there to read. Idempotent: a
@@ -165,7 +198,8 @@ pub trait NoteIdentity: Send + Sync {
     /// An edit outside the app replaced the note's file, and its document took the file's text
     /// (`file`); `previous` is the hash of the file it replaced, which the row named. Gives the
     /// record what the file's frontmatter says of it (#3825). Never called for bytes the app
-    /// wrote. An `Err` retries the fact, and the document answers the same text `Unchanged`,
+    /// wrote. Called too when an editor save replaces such a file before the consumer fed it
+    /// (`AppEdit`, `Precondition::Save`): the document then takes the save's text. An `Err` retries the fact, and the document answers the same text `Unchanged`,
     /// so an implementation is idempotent.
     fn on_changed(
         &self,

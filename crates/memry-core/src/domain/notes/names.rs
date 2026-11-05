@@ -48,6 +48,22 @@ pub fn normalize_aliases(title: &str, aliases: &[String]) -> Vec<String> {
     out
 }
 
+/// `applyAliasDelta`: the names in `remove` dropped from `current` by [`name_key`], then `add`
+/// appended, the list normalized against `title` ([`normalize_aliases`]).
+pub fn apply_alias_delta(
+    title: &str,
+    current: &[String],
+    add: &[String],
+    remove: &[String],
+) -> Vec<String> {
+    let removed: HashSet<String> = remove.iter().filter_map(|name| name_key(name)).collect();
+    let kept = current
+        .iter()
+        .filter(|alias| name_key(alias).is_none_or(|key| !removed.contains(&key)));
+    let next: Vec<String> = kept.chain(add).cloned().collect();
+    normalize_aliases(title, &next)
+}
+
 /// A stored `aliases` column: a JSON string array, NULL for none.
 pub fn parse_stored(raw: Option<String>) -> Result<Vec<String>, serde_json::Error> {
     raw.map_or(Ok(Vec::new()), |raw| serde_json::from_str(&raw))
@@ -66,6 +82,18 @@ mod tests {
     #[test]
     fn js_trim_strips_bom_and_keeps_next_line() {
         assert_eq!(js_trim("\u{FEFF} a \u{0085}"), "a \u{0085}");
+    }
+
+    #[test]
+    fn an_alias_delta_removes_by_name_key_then_adds_normalized() {
+        let names = |list: &[&str]| list.iter().map(|n| (*n).to_owned()).collect::<Vec<_>>();
+        let next = apply_alias_delta(
+            "Plan",
+            &names(&["AI", "Old  one", "Keep"]),
+            &names(&[" A.I. ", "plan", "keep"]),
+            &names(&["ai", "old one"]),
+        );
+        assert_eq!(next, names(&["Keep", "A.I."]));
     }
 
     #[test]

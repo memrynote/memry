@@ -13,7 +13,8 @@
     "invalidPath": "Het geselecteerde pad is geen geldige kluislocatie.",
     "permissionDenied": "Toestemming geweigerd. Controleer of je toegang hebt tot deze map.",
     "alreadyExists": "Er bestaat al een kluis op deze locatie.",
-    "corrupted": "Deze kluis lijkt beschadigd te zijn. Probeer te herstellen vanaf een back-up."
+    "corrupted": "Deze kluis lijkt beschadigd te zijn. Probeer te herstellen vanaf een back-up.",
+    "configChangeNotPorted": "Deze versie kan de dagboekmap, de datumnotatie of uitgesloten mappen nog niet wijzigen. Je opgeslagen instelling blijft behouden."
   },
   "note": {
     "notFound": "Deze notitie kon niet worden gevonden. Mogelijk is deze verwijderd.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Het hernoemen van #{from} naar #{to} loopt nog. Probeer het opnieuw als het klaar is.",
+    "renameUnfinished": "Het hernoemen van #{from} naar #{to} is voor {count, plural, one {# notitie} other {# notities}} niet afgerond. Hernoem #{from} opnieuw naar #{to} om het af te ronden.",
     "mergeSameTag": "De bron- en doeltag zijn hetzelfde",
     "categoryNameRequired": "Categorienaam is vereist",
     "pinNoteFailed": "Kan de notitie niet vastzetten",

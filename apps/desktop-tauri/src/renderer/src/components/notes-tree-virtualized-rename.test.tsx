@@ -365,3 +365,40 @@ describe('sidebar folder rename across the virtualization threshold', () => {
     await waitFor(() => expect(mocks.renameFolder).toHaveBeenCalledWith('Projects', 'Renamed'))
   })
 })
+
+// A vault still listing crosses the threshold under the user: the plain tree is swapped for the
+// virtualized one, which reads the expanded folders from storage as it mounts.
+describe('an open folder across the virtualization threshold', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
+
+  it('a folder opened in the plain tree is still open once the tree turns virtualized', async () => {
+    const client = new QueryClient()
+    const tree = () => (
+      <I18nextProvider i18n={i18nEn}>
+        <QueryClientProvider client={client}>
+          <TooltipProvider>
+            <SelectedFolderProvider>
+              <NotesTree />
+            </SelectedFolderProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </I18nextProvider>
+    )
+    setupMocks(smallVault)
+    const { container, rerender } = render(tree())
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Projects'))
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+
+    setupMocks(largeVault)
+    rerender(tree())
+
+    // The virtualized tree is mounted: its rows sit in absolutely positioned wrappers.
+    const folderRow = container.querySelector<HTMLElement>('[data-tree-node-id="folder-Projects"]')
+    expect(folderRow?.style.position).toBe('absolute')
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+  })
+})

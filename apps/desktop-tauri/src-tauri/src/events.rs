@@ -289,6 +289,26 @@ pub struct TagNotesChangedEvent {
     pub action: TagNoteAction,
 }
 
+/// A tag was renamed across the vault (`tags:renamed`): `affectedNotes` notes and days took the
+/// new name.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct TagRenamedEvent {
+    pub old_name: String,
+    pub new_name: String,
+    pub affected_notes: u32,
+}
+
+/// How far a tag rename got (`tags:progress`): `done` of `total` notes, for the run the
+/// renderer named.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct TagsProgressEvent {
+    pub run_id: String,
+    pub done: u32,
+    pub total: u32,
+}
+
 /// Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer
 /// refetches.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
@@ -298,6 +318,13 @@ pub struct NoteTagsChangedEvent;
 /// in-app write, from any window, as Electron's `updateConfig` broadcasts it.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultConfigChangedEvent(pub VaultConfig);
+
+/// A folder's settings or its record changed, or the folder left the vault, by sync
+/// (`notes:folder-config-updated`): the folder `path` names, vault-relative.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct FolderConfigUpdatedEvent {
+    pub path: String,
+}
 
 /// The registry list or a vault's icon changed (`vault:list-changed`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

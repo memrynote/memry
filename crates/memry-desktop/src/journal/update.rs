@@ -22,7 +22,7 @@
 //! - the record, once the file holds the edit (the seam's `landed`, under the lane and before
 //!   the fact; a refused write leaves it, and a day deleted meanwhile stays deleted): its tags
 //!   when they changed (the file's `tags:` are the author's bytes, never written: decision on
-//!   #3530), and the property keys the file edit set or dropped (`file_delta`, as the property
+//!   #3530), and the property keys the file edit set or dropped (`edited_values`, as the property
 //!   panel's writer mirrors them). Every other key keeps the record's value: one a pull brought
 //!   in is not in the file yet (13k-4). A tags-only update writes the record alone.
 //!
@@ -42,6 +42,7 @@ use std::sync::PoisonError;
 
 use memry_core::domain::header_tags::{self, EditSource, Existing, HeaderTagEdit, Update};
 use memry_core::domain::journal::valid_date;
+use memry_core::domain::properties::RESERVED_DAY_KEYS;
 use memry_core::markdown::frontmatter::{
     Eol, ParsedMarkdownNote, YamlMap, YamlValue, json_to_yaml, parse_markdown_note,
     serialize_parsed_markdown_note, serialize_updated_note,
@@ -50,10 +51,10 @@ use memry_core::markdown::shared::markdown_class::MarkdownClassThresholds;
 use serde_json::{Map, Value};
 
 use super::write::{NewDay, answer, order_key};
-use super::{JournalEntryView, RESERVED_KEYS, SCOPE, entry};
+use super::{JournalEntryView, SCOPE, entry, is_reserved_day_key};
 use crate::notes::error::NotesError;
 use crate::notes::frontmatter::{is_reserved_yaml, user_properties};
-use crate::notes::properties::file_delta;
+use crate::notes::properties::{EditedValues, edited_values};
 use crate::notes::service::NotesService;
 use crate::session::OpenVault;
 use crate::vault::app_edit::{Edited, Kept, Precondition};
@@ -106,7 +107,7 @@ impl NotesService {
         update: DayUpdate,
     ) -> Result<DayUpdated, NotesError> {
         let journal = open.vault.journal(self.store.clone())?;
-        let Some(existing) = entry(open, &journal, date)? else {
+        if entry(open, &journal, date)?.is_none() {
             // A live record with no file (made on another device) keeps its own fields and text
             // through the create; the update then goes over them as a save.
             let held = journal.stamp(date)?.is_some();
@@ -119,27 +120,26 @@ impl NotesService {
             let made = self.create_day_now(open, date, day, &mut || Ok(()))?;
             // A held text the user's differs from is kept as a version by that save.
             let entry = match held {
-                true => self.save_day(open, &journal, date, &made.tags, update)?,
+                true => self.save_day(open, &journal, date, update)?,
                 false => made,
             };
             return Ok(DayUpdated {
                 entry,
                 created: true,
             });
-        };
+        }
         Ok(DayUpdated {
-            entry: self.save_day(open, &journal, date, &existing.tags, update)?,
+            entry: self.save_day(open, &journal, date, update)?,
             created: false,
         })
     }
 
-    /// The update of a day whose file is there; `current` are the record's tags.
+    /// The update of a day whose file is there.
     fn save_day(
         &self,
         open: &OpenVault,
         journal: &Journal,
         date: &str,
-        current: &[String],
         update: DayUpdate,
     ) -> Result<JournalEntryView, NotesError> {
         let unheld = || NotesError::DayTextUnwritable("the file is not the day's yet".to_owned());
@@ -147,10 +147,15 @@ impl NotesService {
         if stamp.path.is_none() {
             return Err(unheld());
         }
-        let tags = next_tags(open, current, &update)?;
-        let tags_changed = header_tags::compare(current, &tags).is_some();
+        // Against the record's tags as the save lands: a save over an outside edit not fed
+        // yet has just taken that edit's tags (`AppEdit`).
         let mirror_tags = || -> Result<(), NotesError> {
-            if tags_changed {
+            let current = journal
+                .stamp(date)?
+                .map(|stamp| stamp.tags)
+                .unwrap_or_default();
+            let tags = next_tags(open, &current, &update)?;
+            if header_tags::compare(&current, &tags).is_some() {
                 journal.set_live_tags(date, &tags)?;
             }
             Ok(())
@@ -177,8 +182,8 @@ impl NotesService {
         // it. Not `set_properties`: it takes the day's turn, which this save holds.
         let landed = || -> Result<bool, NotesError> {
             mirror_tags()?;
-            if let Some((changed, removed)) = change.mirrored.take()
-                && !writer.file_properties(&stamp.id, changed, removed)?
+            if let Some((before, after)) = change.mirrored.take()
+                && !writer.file_properties(&stamp.id, before, after)?
             {
                 tracing::warn!(
                     scope = SCOPE,
@@ -245,18 +250,15 @@ fn next_tags(
     Ok(header_tags::next(&existing, &update, &with_fields))
 }
 
-/// The property keys an edit set, and the ones it dropped.
-type Delta = (Map<String, Value>, Vec<String>);
-
 /// The file text an update makes.
 struct FileChange<'a> {
     date: &'a str,
     content: Option<&'a str>,
     /// The given properties, and each defined property's type.
     properties: Option<&'a (YamlMap, HashMap<String, String>)>,
-    /// What the record takes once the file holds the text ([`file_delta`]), set by [`Self::text`]
-    /// when it changes the properties.
-    mirrored: RefCell<Option<Delta>>,
+    /// What the record takes once the file holds the text ([`edited_values`]), set by
+    /// [`Self::text`] when it changes the properties.
+    mirrored: RefCell<Option<EditedValues>>,
 }
 
 impl FileChange<'_> {
@@ -328,7 +330,7 @@ impl FileChange<'_> {
         let mut next = YamlMap::new();
         for (name, value) in reading.iter() {
             let stays = name != "properties"
-                && (RESERVED_KEYS.contains(&name) || is_reserved_yaml(name, value));
+                && (is_reserved_day_key(name) || is_reserved_yaml(name, value));
             if stays {
                 next.insert(name.to_owned(), value.clone());
             }
@@ -337,13 +339,13 @@ impl FileChange<'_> {
             next.insert(name.to_owned(), value.clone());
         }
         set_date(&mut next, self.date);
-        let (mut changed, mut removed) = file_delta(&reading, &next, types);
-        changed.retain(|name, _| !RESERVED_KEYS.contains(&name.as_str()));
-        removed.retain(|name| !RESERVED_KEYS.contains(&name.as_str()));
-        if changed.is_empty() && removed.is_empty() {
+        let (mut before, mut after) = edited_values(&reading, &next, types);
+        before.retain(|name, _| !RESERVED_DAY_KEYS.contains(&name.as_str()));
+        after.retain(|name, _| !RESERVED_DAY_KEYS.contains(&name.as_str()));
+        if before == after {
             return Ok(None);
         }
-        *self.mirrored.borrow_mut() = Some((changed, removed));
+        *self.mirrored.borrow_mut() = Some((before, after));
         Ok(Some((reading, next)))
     }
 }

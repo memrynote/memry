@@ -13,7 +13,8 @@
     "invalidPath": "Wybrana ścieżka nie jest prawidłową lokalizacją sejfu.",
     "permissionDenied": "Brak uprawnień. Sprawdź, czy masz dostęp do tego folderu.",
     "alreadyExists": "W tej lokalizacji już istnieje sejf.",
-    "corrupted": "Wygląda na to, że ten sejf jest uszkodzony. Spróbuj przywrócić go z kopii zapasowej."
+    "corrupted": "Wygląda na to, że ten sejf jest uszkodzony. Spróbuj przywrócić go z kopii zapasowej.",
+    "configChangeNotPorted": "Ta wersja nie może jeszcze zmienić folderu dziennika, formatu daty ani wykluczonych folderów. Zapisane ustawienie zostaje zachowane."
   },
   "note": {
     "notFound": "Nie udało się znaleźć tej notatki. Być może została usunięta.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Zmiana nazwy #{from} na #{to} wciąż trwa. Spróbuj ponownie, gdy się zakończy.",
+    "renameUnfinished": "Zmiana nazwy #{from} na #{to} nie została dokończona dla {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Zmień ponownie nazwę #{from} na #{to}, aby ją dokończyć.",
     "mergeSameTag": "Tag źródłowy i docelowy są takie same",
     "categoryNameRequired": "Nazwa kategorii jest wymagana",
     "pinNoteFailed": "Nie udało się przypiąć notatki",

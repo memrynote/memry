@@ -13,7 +13,8 @@
     "invalidPath": "O caminho selecionado não é um local válido para um cofre.",
     "permissionDenied": "Permissão negada. Verifique se você tem acesso a esta pasta.",
     "alreadyExists": "Já existe um cofre neste local.",
-    "corrupted": "Este cofre parece estar corrompido. Tente restaurar a partir de um backup."
+    "corrupted": "Este cofre parece estar corrompido. Tente restaurar a partir de um backup.",
+    "configChangeNotPorted": "Esta versão ainda não pode alterar a pasta do diário, o formato de data ou as pastas excluídas. Sua configuração salva é mantida."
   },
   "note": {
     "notFound": "Esta nota não foi encontrada. Ela pode ter sido excluída.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "A renomeação de #{from} para #{to} ainda está em andamento. Tente novamente quando terminar.",
+    "renameUnfinished": "A renomeação de #{from} para #{to} não terminou em {count, plural, one {# nota} other {# notas}}. Renomeie #{from} para #{to} novamente para concluí-la.",
     "mergeSameTag": "A tag de origem e a de destino são a mesma",
     "categoryNameRequired": "O nome da categoria é obrigatório",
     "pinNoteFailed": "Não foi possível fixar a nota",

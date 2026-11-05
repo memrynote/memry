@@ -13,7 +13,8 @@
     "invalidPath": "A kiválasztott útvonal nem használható a széf helyeként.",
     "permissionDenied": "Engedély megtagadva. Ellenőrizze, hogy hozzáfér-e ehhez a mappához.",
     "alreadyExists": "Ezen a helyen már létezik széf.",
-    "corrupted": "Úgy tűnik, ez a széf sérült. Próbálja meg visszaállítani egy biztonsági másolatból."
+    "corrupted": "Úgy tűnik, ez a széf sérült. Próbálja meg visszaállítani egy biztonsági másolatból.",
+    "configChangeNotPorted": "Ez a verzió még nem tudja módosítani a naplómappát, a dátumformátumot vagy a kizárt mappákat. A mentett beállítás megmarad."
   },
   "note": {
     "notFound": "Ez a jegyzet nem található. Lehet, hogy törölték.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "A(z) #{from} átnevezése erre: #{to} még folyamatban van. Próbálja újra, amikor befejeződött.",
+    "renameUnfinished": "A(z) #{from} átnevezése erre: #{to} {count, plural, one {# jegyzetnél} other {# jegyzetnél}} nem fejeződött be. Nevezze át újra a(z) #{from} címkét erre: #{to} a befejezéshez.",
     "mergeSameTag": "A forrás- és a célcímke azonos",
     "categoryNameRequired": "A kategória neve kötelező",
     "pinNoteFailed": "Nem sikerült kitűzni a jegyzetet",

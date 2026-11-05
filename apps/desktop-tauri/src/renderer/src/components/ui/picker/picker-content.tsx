@@ -31,7 +31,7 @@ function ownsArrowKeys(target: EventTarget | null): boolean {
 export const PickerContent = React.forwardRef<
   React.ComponentRef<typeof PopoverContent>,
   PickerContentProps
->(({ width, className, children, onKeyDown, ...props }, ref) => {
+>(({ width, className, children, onKeyDown, onCloseAutoFocus, ...props }, ref) => {
   const { contentId } = usePickerContext()
   const widthClass =
     width === 'auto'
@@ -70,6 +70,16 @@ export const PickerContent = React.forwardRef<
     rows[next]?.focus()
   }
 
+  // Radix gives focus back to the trigger on close unless it saw focus leave the popover, which
+  // it learns from `focusin`. Chromium (WebView2) sends no focus events while its window is
+  // inactive, so a row that focused something else (the note menu's Rename focuses the title)
+  // would lose it to the trigger. Focus still on an element, not the body, stays there.
+  const handleCloseAutoFocus = (event: Event): void => {
+    onCloseAutoFocus?.(event)
+    const active = document.activeElement
+    if (active instanceof HTMLElement && active !== document.body) event.preventDefault()
+  }
+
   return (
     <PopoverContent
       ref={ref}
@@ -88,6 +98,7 @@ export const PickerContent = React.forwardRef<
       style={typeof width === 'number' ? { width: `${width}px` } : undefined}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={handleKeyDown}
+      onCloseAutoFocus={handleCloseAutoFocus}
       {...props}
     >
       <div className="flex flex-col min-h-0 text-[13px] leading-4 [font-synthesis:none]">

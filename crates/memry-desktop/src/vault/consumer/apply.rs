@@ -20,7 +20,6 @@ use crate::vault::activity::{ActivityLog, ScanActivity, failure_key};
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
-use crate::vault::watch::reconcile::modified_ms;
 use crate::vault::watch::{VaultEvent, WatchHandle};
 
 mod crossing;
@@ -95,39 +94,6 @@ impl Applier {
         }
     }
 
-    /// A file the open walk found. Goes through the same handler as a watcher's `Added`. A
-    /// row whose size is the file's and that was written after the file's last modification
-    /// is not read again, as the rescan does: reading every file costs a vault-sized read. A
-    /// markdown row is, unless both its hashes name the same bytes: one without a content hash
-    /// (its text never reached the note), and one whose file hash is missing or names other
-    /// bytes (a row an older build wrote, or one salvaged), which the read mends. What the
-    /// activity log is told goes into `scan`.
-    pub(super) fn walked(
-        &self,
-        path: &str,
-        meta: &std::fs::Metadata,
-        scan: &mut ScanActivity,
-    ) -> Step {
-        let Some(file_type) = file_type_of_extension(&extension(path)) else {
-            return Step::Done;
-        };
-        let Ok(mut lane) = self.rows.lane_of(self.session) else {
-            return Step::Done;
-        };
-        let modified = modified_ms(meta);
-        if let Ok(Some(row)) = lane.row_at(path) {
-            scan.known += 1;
-            if row.file_size == i64::try_from(meta.len()).ok()
-                && modified <= row.indexed_at
-                && (file_type != FileType::Markdown
-                    || (row.content_hash.is_some() && row.file_hash == row.content_hash))
-            {
-                return Step::Done;
-            }
-        }
-        self.found(&mut lane, path, file_type, meta.len(), modified, Some(scan))
-    }
-
     pub(super) fn ctx(&self) -> IdentityCtx<'_> {
         IdentityCtx {
             root: &self.root,
@@ -174,7 +140,7 @@ impl Applier {
 
     /// A file at `path`. A row there makes it a change of that row's note; otherwise the
     /// identity names its note. `scan` is the open walk's, `None` for a watcher's fact.
-    fn found(
+    pub(super) fn found(
         &self,
         lane: &mut Lane<'_>,
         path: &str,

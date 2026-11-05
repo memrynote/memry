@@ -218,3 +218,43 @@ fn a_field_merged_type_is_refused_rather_than_document_clocked() {
     })
     .expect("task");
 }
+
+/// A day an Electron create or a template seeded holds its text in `content`, which an Electron
+/// pull writes over the day file's body when it is not null (`journal.ts`): a tag edit sends it
+/// as null (§13.7.2), as the day's other updates do.
+#[test]
+fn a_tag_edit_of_a_journal_day_pushes_no_create_text() {
+    let dir = temp_dir("tags-day-content");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        let seed = |id: &str, date: &str| -> Result<(), StorageError> {
+            let record = InboundRecord {
+                item_type: "journal".to_owned(),
+                item_id: id.to_owned(),
+                payload_json: format!(
+                    r#"{{"date":"{date}","content":"TEMPLATE TEXT\n","tags":["job"],{}"#,
+                    r#""pinnedTags":["job"],"clock":{"device-a":1}}"#
+                ),
+                server_cursor: Some(7),
+                signer_device_id: Some("device-a".to_owned()),
+                updated_at: NOW,
+                deleted_at: None,
+            };
+            sync_items::apply_remote(conn, &record, NOW)?;
+            Ok(())
+        };
+        let pushed = |id: &str| -> Result<Value, StorageError> {
+            let raw = sync_items::push_payload(conn, "journal", id)?.expect("a payload");
+            let pushed: Value = serde_json::from_str(&raw).expect("valid JSON");
+            Ok(pushed["content"].clone())
+        };
+        seed("day-1", "2026-10-07")?;
+        seed("day-2", "2026-10-08")?;
+        assert!(rename(conn, "day-1", "job", "career", DEVICE, NOW + 1)?);
+        assert_eq!(pushed("day-1")?, Value::Null, "a rename");
+        assert!(set_pinned(conn, "day-2", "job", false, DEVICE, NOW + 1)?);
+        assert_eq!(pushed("day-2")?, Value::Null, "an unpin");
+        Ok(())
+    })
+    .expect("day");
+}

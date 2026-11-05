@@ -11,6 +11,9 @@
 //! An app operation names the vault session it started in ([`RowSession`]): one that
 //! finishes after its vault closed, or after another vault opened, writes nothing.
 //!
+//! The lane is first come, first served ([`super::line`]): the consumer lets it go between two facts
+//! or two files and asks again at once, and an app operation already waiting gets it first.
+//!
 //! Lock order: the lane, then the core's database writer (`call_blocking`). Never take the
 //! lane from inside `call_blocking`, and never while holding a lock that a caller waiting on
 //! the lane may hold. No `note_files` row is written anywhere else
@@ -28,6 +31,7 @@ use memry_core::domain::note_files::{NoteFile as Row, NoteFileStat};
 use memry_core::domain::notes::app_move::{AppMoved, BeginError};
 use tokio::sync::broadcast;
 
+use super::line::{Line, Turn};
 use super::{Applied, ChangeSource, MoveKind};
 use crate::vault::file_types::{FileType, extension, mime_of_extension};
 use crate::vault::path_key::{PathCollision, PathIndex};
@@ -74,6 +78,7 @@ struct RowState {
 
 pub struct RowOwner {
     state: Mutex<Option<RowState>>,
+    line: Line,
     applied: broadcast::Sender<Applied>,
     sessions: AtomicU64,
 }
@@ -82,6 +87,7 @@ impl RowOwner {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
             state: Mutex::new(None),
+            line: Line::default(),
             applied: broadcast::channel(APPLIED_CAPACITY).0,
             sessions: AtomicU64::new(0),
         })
@@ -133,14 +139,22 @@ impl RowOwner {
     }
 
     pub(super) fn lane(&self) -> Result<Lane<'_>, RowError> {
+        let turn = self.line.wait();
         let guard = self.lock();
         if guard.is_none() {
             return Err(RowError::Closed);
         }
         Ok(Lane {
             guard,
+            _turn: turn,
             applied: &self.applied,
         })
+    }
+
+    /// The takers waiting for the lane behind its holder.
+    #[cfg(test)]
+    pub(crate) fn waiting(&self) -> u64 {
+        self.line.waiting()
     }
 
     pub(crate) fn lane_of(&self, session: RowSession) -> Result<Lane<'_>, RowError> {
@@ -231,6 +245,8 @@ impl RowOwner {
 /// The lane, held: one event's or one app operation's worth of row writes.
 pub(crate) struct Lane<'a> {
     guard: MutexGuard<'a, Option<RowState>>,
+    /// Dropped after `guard`: the next in line takes the rows once they are free.
+    _turn: Turn<'a>,
     applied: &'a broadcast::Sender<Applied>,
 }
 
@@ -305,17 +321,28 @@ impl Lane<'_> {
     ) -> Result<(), RowError> {
         let state = self.state_mut();
         state.index.check(note_id, path)?;
-        state.files.upsert_stat(NoteFileStat {
-            note_id: note_id.to_owned(),
-            path: path.to_owned(),
-            file_type: stat.file_type.as_str().to_owned(),
-            mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
-            file_size: i64::try_from(stat.size).ok(),
-            content_hash: stat.content_hash,
-            file_hash: stat.file_hash,
-            indexed_at: at,
-        })?;
+        state
+            .files
+            .upsert_stat(file_stat(note_id, path, stat, at))?;
         state.index.insert(note_id, path);
+        Ok(())
+    }
+
+    /// [`Lane::put`] of many notes' rows at once, all or none, in one transaction: the new
+    /// notes the consumer created together. The caller hands in paths no two of which a
+    /// volume folds together.
+    pub(crate) fn put_all(&mut self, rows: Vec<(String, String, RowStat)>) -> Result<(), RowError> {
+        let at = now_ms();
+        let state = self.state_mut();
+        let mut stats = Vec::with_capacity(rows.len());
+        for (note_id, path, stat) in rows {
+            state.index.check(&note_id, &path)?;
+            stats.push(file_stat(&note_id, &path, stat, at));
+        }
+        state.files.upsert_stats(&stats)?;
+        for stat in &stats {
+            state.index.insert(&stat.note_id, &stat.path);
+        }
         Ok(())
     }
 
@@ -330,16 +357,9 @@ impl Lane<'_> {
     ) -> Result<(), RowError> {
         let state = self.state_mut();
         state.index.check(note_id, path)?;
-        state.files.refresh_stat(NoteFileStat {
-            note_id: note_id.to_owned(),
-            path: path.to_owned(),
-            file_type: stat.file_type.as_str().to_owned(),
-            mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
-            file_size: i64::try_from(stat.size).ok(),
-            content_hash: stat.content_hash,
-            file_hash: stat.file_hash,
-            indexed_at: now_ms(),
-        })?;
+        state
+            .files
+            .refresh_stat(file_stat(note_id, path, stat, now_ms()))?;
         state.index.insert(note_id, path);
         Ok(())
     }
@@ -486,6 +506,20 @@ impl Lane<'_> {
     pub(crate) fn publish(&self, fact: Applied) {
         // No subscriber is not an error: the facts are for whoever listens.
         let _ = self.applied.send(fact);
+    }
+}
+
+/// The row of `note_id` at `path` as `stat` describes its file, stamped `at`.
+fn file_stat(note_id: &str, path: &str, stat: RowStat, at: i64) -> NoteFileStat {
+    NoteFileStat {
+        note_id: note_id.to_owned(),
+        path: path.to_owned(),
+        file_type: stat.file_type.as_str().to_owned(),
+        mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
+        file_size: i64::try_from(stat.size).ok(),
+        content_hash: stat.content_hash,
+        file_hash: stat.file_hash,
+        indexed_at: at,
     }
 }
 

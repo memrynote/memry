@@ -328,14 +328,6 @@ export function NotePage({ noteId }: NotePageProps) {
     setFreshTitleNoteId(noteId)
   }
   const isFreshTitle = !!noteId && freshTitleNoteId === noteId
-  const hasNote = !!note
-  useEffect(() => {
-    if (!isFreshTitle || !hasNote || !noteId) return undefined
-    clearNewNoteTitlePending(noteId)
-    // Deferred past the tab switch and the editor mount, which focus on their own.
-    const frame = requestAnimationFrame(() => titleInputRef.current?.focus())
-    return () => cancelAnimationFrame(frame)
-  }, [isFreshTitle, hasNote, noteId])
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
   const [eventContentOverride, setEventContentOverride] = useState<{
     noteId: string
@@ -357,6 +349,16 @@ export function NotePage({ noteId }: NotePageProps) {
     status: 'note'
   })
   const fileProbeStatus = fileProbe.id === noteId ? fileProbe.status : 'pending'
+  // The title renders once the note is loaded and the probe said it is a note,
+  // whichever answers last.
+  const isTitleShown = !!note && fileProbeStatus === 'note'
+  useEffect(() => {
+    if (!isFreshTitle || !isTitleShown || !noteId) return undefined
+    clearNewNoteTitlePending(noteId)
+    // Deferred past the tab switch and the editor mount, which focus on their own.
+    const frame = requestAnimationFrame(() => titleInputRef.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [isFreshTitle, isTitleShown, noteId])
   useEffect(() => {
     if (!noteId) return undefined
     let cancelled = false
@@ -1242,7 +1244,8 @@ export function NotePage({ noteId }: NotePageProps) {
     async (value: boolean) => {
       if (!noteId || isDeleted) return
       try {
-        await notesService.update({ id: noteId, frontmatter: { fullWidth: value } })
+        const result = await notesService.update({ id: noteId, frontmatter: { fullWidth: value } })
+        if (!result.success) throw new Error(result.error)
         refetchNote()
       } catch (err) {
         toast.error(extractErrorMessage(err, t('page.toast.toggleFullWidthFailed')))
@@ -1957,7 +1960,7 @@ export function NotePage({ noteId }: NotePageProps) {
             noteId={note.id}
             emoji={note.emoji ?? null}
             title={note.title}
-            onTitleChange={(...args) => void handleTitleChange(...args)}
+            onTitleChange={handleTitleChange}
             onIconChange={(icon) => void handleIconChange(icon)}
             placeholder={isFreshTitle ? NEW_NOTE_TITLE : t('editor.title.untitled')}
             inputRef={titleInputRef}

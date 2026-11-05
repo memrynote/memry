@@ -13,7 +13,8 @@
     "invalidPath": "Le chemin sélectionné n'est pas un emplacement de coffre valide.",
     "permissionDenied": "Autorisation refusée. Vérifiez que vous avez accès à ce dossier.",
     "alreadyExists": "Un coffre existe déjà à cet emplacement.",
-    "corrupted": "Ce coffre semble corrompu. Essayez de le restaurer à partir d'une sauvegarde."
+    "corrupted": "Ce coffre semble corrompu. Essayez de le restaurer à partir d'une sauvegarde.",
+    "configChangeNotPorted": "Cette version ne peut pas encore modifier le dossier du journal, le format de la date ni les dossiers exclus. Votre réglage enregistré est conservé."
   },
   "note": {
     "notFound": "Cette note est introuvable. Elle a peut-être été supprimée.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Le renommage de #{from} en #{to} est encore en cours. Réessayez une fois terminé.",
+    "renameUnfinished": "Le renommage de #{from} en #{to} n’est pas terminé pour {count, plural, one {# note} other {# notes}}. Renommez à nouveau #{from} en #{to} pour le terminer.",
     "mergeSameTag": "Le tag source et le tag cible sont identiques",
     "categoryNameRequired": "Le nom de la catégorie est obligatoire",
     "pinNoteFailed": "Impossible d'épingler la note",

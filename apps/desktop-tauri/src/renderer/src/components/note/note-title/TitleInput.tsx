@@ -1,11 +1,21 @@
-import { type KeyboardEvent, useRef, useEffect, useCallback, useState, type RefObject } from 'react'
+import {
+  type FocusEvent,
+  type KeyboardEvent,
+  useRef,
+  useEffect,
+  useCallback,
+  useId,
+  useState,
+  type RefObject
+} from 'react'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
 interface TitleInputProps {
   value: string
   placeholder?: string
-  onChange: (value: string) => void
+  onChange: (value: string) => void | Promise<void>
   autoFocus?: boolean
   disabled?: boolean
   /** Optional external ref to the underlying textarea (e.g. to focus from a menu) */
@@ -72,30 +82,83 @@ export function TitleInput({
     // The actual save happens on blur
   }, [])
 
-  const handleBlur = useCallback(() => {
+  // A draft outlives a window deactivation (see `handleBlur`), so it is still unsaved when the
+  // app quits, the tab closes or another note replaces this one. A flush (the quit's, or an
+  // agent's edit proposal's) saves it and leaves the edit going; the unmount ends it.
+  const pendingDraft = useRef<{ flush: () => void | Promise<void>; commit: () => void } | null>(
+    null
+  )
+  // The draft a flush saved, which the commit ending the edit does not rename to again.
+  const flushedDraft = useRef<string | null>(null)
+
+  const commit = useCallback((): void => {
+    pendingDraft.current = null
+    const draft = draftValue === flushedDraft.current ? null : draftValue
+    flushedDraft.current = null
     // Only trigger onChange if value actually changed
     if (fresh) {
-      if (draftValue?.trim()) onChange(draftValue)
+      if (draft?.trim()) void onChange(draft)
       onFreshEnd?.()
-    } else if (draftValue !== null && draftValue !== value) {
-      onChange(draftValue)
+    } else if (draft !== null && draft !== value) {
+      void onChange(draft)
     }
     setDraftValue(null)
   }, [draftValue, value, onChange, fresh, onFreshEnd])
 
-  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter saves and blurs
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      textareaRef.current?.blur()
+  const flush = useCallback((): void | Promise<void> => {
+    if (draftValue === null || draftValue === flushedDraft.current) return undefined
+    if (fresh ? !draftValue.trim() : draftValue === value) return undefined
+    flushedDraft.current = draftValue
+    return onChange(draftValue)
+  }, [draftValue, value, fresh, onChange])
+
+  useEffect(() => {
+    pendingDraft.current = draftValue === null ? null : { flush, commit }
+  }, [draftValue, flush, commit])
+  const saveKey = `note-title:${useId()}`
+  useEffect(() => {
+    registerPendingSave(saveKey, () => pendingDraft.current?.flush())
+    return () => {
+      pendingDraft.current?.commit()
+      unregisterPendingSave(saveKey)
     }
-    // Escape reverts and blurs
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      setDraftValue(null)
-      textareaRef.current?.blur()
-    }
-  }, [])
+  }, [saveKey])
+
+  // Enter commits before it blurs, as the blur of a window without focus is ignored below.
+  const committedByEnter = useRef(false)
+
+  const handleBlur = useCallback(
+    (e: FocusEvent<HTMLTextAreaElement>) => {
+      if (committedByEnter.current) return
+      // Switching to another window is not leaving the field. Chromium (WebView2 on
+      // Windows) blurs the focused field, with nothing to focus next, when the window is
+      // deactivated and focuses it again on return; WebKit (macOS, Linux) fires no
+      // `focusout` there.
+      if (e.relatedTarget === null && !e.currentTarget.ownerDocument.hasFocus()) return
+      commit()
+    },
+    [commit]
+  )
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      // Enter saves and blurs
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        commit()
+        committedByEnter.current = true
+        textareaRef.current?.blur()
+        committedByEnter.current = false
+      }
+      // Escape reverts and blurs
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setDraftValue(null)
+        textareaRef.current?.blur()
+      }
+    },
+    [commit]
+  )
 
   return (
     <textarea

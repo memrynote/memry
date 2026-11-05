@@ -58,6 +58,8 @@ mod body_edit_ops;
 mod body_edit_replace_text;
 #[path = "body_edit_restore.rs"]
 mod body_edit_restore;
+#[path = "calendar_external_relation.rs"]
+mod calendar_external_relation;
 #[path = "calendar_feeds.rs"]
 mod calendar_feeds;
 #[path = "calendar_ical_vectors.rs"]
@@ -106,6 +108,10 @@ mod domain_bookmarks;
 mod domain_calendar_sync;
 #[path = "domain_custom_icons.rs"]
 mod domain_custom_icons;
+#[path = "domain_file_aliases.rs"]
+mod domain_file_aliases;
+#[path = "domain_file_cover.rs"]
+mod domain_file_cover;
 #[path = "domain_file_tags.rs"]
 mod domain_file_tags;
 #[path = "domain_folders.rs"]
@@ -134,6 +140,8 @@ mod domain_note_folder_move;
 mod domain_note_identity;
 #[path = "domain_note_identity_moves.rs"]
 mod domain_note_identity_moves;
+#[path = "domain_note_new_files.rs"]
+mod domain_note_new_files;
 #[path = "domain_note_positions.rs"]
 mod domain_note_positions;
 #[path = "domain_note_tasks.rs"]

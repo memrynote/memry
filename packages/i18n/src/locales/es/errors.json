@@ -13,7 +13,8 @@
     "invalidPath": "La ruta seleccionada no es una ubicación válida para una bóveda.",
     "permissionDenied": "Permiso denegado. Comprueba que tienes acceso a esta carpeta.",
     "alreadyExists": "Ya existe una bóveda en esta ubicación.",
-    "corrupted": "Esta bóveda parece estar dañada. Prueba a restaurarla desde una copia de seguridad."
+    "corrupted": "Esta bóveda parece estar dañada. Prueba a restaurarla desde una copia de seguridad.",
+    "configChangeNotPorted": "Esta versión aún no puede cambiar la carpeta del diario, el formato de fecha ni las carpetas excluidas. Se mantiene tu ajuste guardado."
   },
   "note": {
     "notFound": "No se pudo encontrar esta nota. Es posible que se haya eliminado.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Aún se está renombrando #{from} a #{to}. Inténtalo de nuevo cuando termine.",
+    "renameUnfinished": "El cambio de nombre de #{from} a #{to} no terminó en {count, plural, one {# nota} other {# notas}}. Vuelve a renombrar #{from} a #{to} para terminarlo.",
     "mergeSameTag": "La etiqueta de origen y la de destino son la misma",
     "categoryNameRequired": "El nombre de la categoría es obligatorio",
     "pinNoteFailed": "No se pudo fijar la nota",

@@ -35,7 +35,7 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::events::{
     JournalEntryCreatedEvent, JournalEntryDeletedEvent, JournalEntryUpdatedEvent,
     JournalEventsDroppedEvent, JournalExternalChange, JournalExternalChangeEvent, NoteEventSource,
-    broadcast,
+    NoteTagsChangedEvent, broadcast,
 };
 
 const SCOPE: &str = "journal";
@@ -165,23 +165,24 @@ fn read<R: Runtime>(app: &AppHandle<R>, open: &OpenVault, date: &str) -> Option<
 }
 
 /// A note [`NoteIndex::measure`] left to a pass has its row now: a day's reads are refetched
-/// (`journal:externalChange`), its date the one the index stored with the row.
+/// (`journal:externalChange`), its date the one the index stored with the row. Any other note
+/// is one a tag rename wrote (`commands/tags.rs`), whose header the tag list counts now
+/// ([`NoteTagsChangedEvent`]).
 pub fn landed<R: Runtime>(app: &AppHandle<R>, note_id: &str) {
     let Some(open) = app.state::<Session>().current() else {
         return;
     };
     match open.search.note_stats(note_id) {
-        Ok(Some(row)) => {
-            if let Some(date) = row.date {
-                broadcast(
-                    app,
-                    JournalExternalChangeEvent {
-                        date,
-                        kind: JournalExternalChange::Modified,
-                    },
-                );
-            }
-        }
+        Ok(Some(row)) => match row.date {
+            Some(date) => broadcast(
+                app,
+                JournalExternalChangeEvent {
+                    date,
+                    kind: JournalExternalChange::Modified,
+                },
+            ),
+            None => broadcast(app, NoteTagsChangedEvent),
+        },
         Ok(None) => {}
         Err(error) => tracing::warn!(
             scope = SCOPE,

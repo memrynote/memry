@@ -59,11 +59,11 @@ WebdriverIO drives a built app. `pnpm build:e2e` builds it (cargo feature `e2e`,
 Verify a change in the running app when it touches what a user sees or does: UI, startup, windows, anything a spec cannot show. A passing test is not that proof. The sandbox never opens a real profile or vault.
 
 1. `pnpm --filter @memry/desktop-tauri build:e2e` after each code change (a build without the `e2e` feature cannot be driven).
-2. `node apps/desktop-tauri/scripts/agent-app.mjs start` prints the pid, the WebDriver URL, the vault path and the log path. It copies the test vault into a temp dir and runs as device `e2e-agent-<uuid>`.
+2. `node apps/desktop-tauri/scripts/agent-app.mjs start` prints the pid, the WebDriver URL, the vault path and the log path. It copies the test vault into a temp dir, adds the portal examples of `scripts/agent-vault-portals.mjs` through the app, and runs as device `e2e-agent-<uuid>`.
 3. Drive the app with the `webdriver-memry` MCP server (`.pi/mcp.json`): `browser_snapshot`, `browser_click`, `browser_type`, `browser_take_screenshot`, `browser_evaluate`. `agent-app.mjs eval "<javascript>"` and `shot <file.png>` do the same from a shell. Read a screenshot before you call a visual change done.
 4. `node apps/desktop-tauri/scripts/agent-app.mjs stop` removes the temp dirs, the control file and the device's keychain items.
 
-Options for `start`: `MEMRY_AGENT_VAULT_TEMPLATE=<dir>` opens a copy of another vault, `MEMRY_AGENT_FIRST_RUN=1` opens no vault, `MEMRY_AGENT_SCALE=2` renders at 2x on Windows and Linux, `MEMRY_AGENT_BINARY=<path>` replaces the debug build, `TAURI_WEBDRIVER_PORT=<port>` replaces 9222. One instance at a time. `agent-app.mjs query "<sql>"` and `index-query "<sql>"` run one read-only statement against the open vault's `data.db` or `index.db` and print the rows as JSON; a write exits 1 with `read-only`. `start` registers the vault copy as the current vault.
+Options for `start`: `MEMRY_AGENT_VAULT_TEMPLATE=<dir>` opens a copy of another vault without the portal examples, `MEMRY_AGENT_FIRST_RUN=1` opens no vault, `MEMRY_AGENT_SCALE=2` renders at 2x on Windows and Linux, `MEMRY_AGENT_BINARY=<path>` replaces the debug build, `TAURI_WEBDRIVER_PORT=<port>` replaces 9222. One instance at a time. `agent-app.mjs query "<sql>"` and `index-query "<sql>"` run one read-only statement against the open vault's `data.db` or `index.db` and print the rows as JSON; a write exits 1 with `read-only`. `start` registers the vault copy as the current vault.
 
 Report what you exercised and what you observed, not that it works.
 

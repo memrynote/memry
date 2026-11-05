@@ -202,7 +202,7 @@ pub fn give_row_hashes(db: &Db, id: &str, path: &str, content: Option<&str>, fil
         file_hash: file.map(str::to_owned),
         indexed_at: NOW,
     };
-    run(db, |conn| note_files::upsert_stat(conn, &stat));
+    run(db, |conn| note_files::upsert_stats(conn, &[stat]));
 }
 
 pub fn set_meta(db: &Db, key: &str, value: &str) {

@@ -15,6 +15,7 @@ import type { Note, NoteListItem, NoteListResponse } from '@memry/rpc/notes'
 
 type NoteEvent = { id: string; changes?: { content?: unknown } }
 type EmptyHandler = () => void
+type MovedHandler = (event?: { id: string; oldPath: string; newPath: string }) => void
 type NoteHandler = (event: NoteEvent) => void
 
 const mocks = vi.hoisted(() => ({
@@ -40,7 +41,7 @@ const mocks = vi.hoisted(() => ({
     updated: [] as NoteHandler[],
     deleted: [] as NoteHandler[],
     renamed: [] as NoteHandler[],
-    moved: [] as EmptyHandler[],
+    moved: [] as MovedHandler[],
     external: [] as NoteHandler[],
     tagsChanged: [] as EmptyHandler[],
     folderConfigUpdated: [] as EmptyHandler[],
@@ -68,7 +69,7 @@ vi.mock('@/services/notes-service', () => ({
     mocks.handlers.renamed.push(callback)
     return vi.fn()
   },
-  onNoteMoved: (callback: EmptyHandler) => {
+  onNoteMoved: (callback: MovedHandler) => {
     mocks.handlers.moved.push(callback)
     return vi.fn()
   },
@@ -196,6 +197,51 @@ describe('use-notes-query', () => {
       mocks.handlers.deleted[0]({ id: 'n1' })
     })
     expect(queryClient.getQueryData(notesKeys.note('n1'))).toBeUndefined()
+  })
+
+  it('#3958: the open note takes its new path when it moves, and ignores other notes moving', async () => {
+    const { result } = renderHook(() => useNote('n1'), { wrapper })
+    await waitFor(() => expect(result.current.note?.path).toBe('notes/First.md'))
+
+    // What the folder rename leaves on disk: the read answers the new path.
+    mocks.notesService.get.mockResolvedValue({ ...note('n1', 'First'), path: 'Archive/First.md' })
+    const move = (id: string, oldPath: string, newPath: string) =>
+      act(async () => {
+        for (const handler of mocks.handlers.moved) handler({ id, oldPath, newPath })
+      })
+
+    const reads = mocks.notesService.get.mock.calls.length
+    await move('n2', 'notes/Other.md', 'Archive/Other.md')
+    expect(result.current.note?.path).toBe('notes/First.md')
+
+    await move('n1', 'notes/First.md', 'Archive/First.md')
+    await waitFor(() => expect(result.current.note?.path).toBe('Archive/First.md'))
+    // The move patches the cached note: the editor's text is not read again.
+    expect(mocks.notesService.get).toHaveBeenCalledTimes(reads)
+  })
+
+  it('#3981: a read in flight when the note moves does not bring the old path back', async () => {
+    const { result } = renderHook(() => useNote('n1'), { wrapper })
+    await waitFor(() => expect(result.current.note?.path).toBe('notes/First.md'))
+
+    // An edit's refetch is reading the note when the folder rename lands.
+    let answerStale: (value: Note) => void = () => {}
+    mocks.notesService.get.mockImplementationOnce(
+      () => new Promise<Note>((resolve) => (answerStale = resolve))
+    )
+    mocks.notesService.get.mockResolvedValue({ ...note('n1', 'First'), path: 'Archive/First.md' })
+    await act(async () => {
+      mocks.handlers.updated[0]({ id: 'n1', changes: { content: 'changed' } })
+    })
+    await act(async () => {
+      for (const handler of mocks.handlers.moved) {
+        handler({ id: 'n1', oldPath: 'notes/First.md', newPath: 'Archive/First.md' })
+      }
+    })
+    await act(async () => answerStale(note('n1', 'First')))
+
+    await waitFor(() => expect(result.current.note?.path).toBe('Archive/First.md'))
+    expect(result.current.isFetching).toBe(false)
   })
 
   it('fetches note lists and invalidates them on create, rename, move, update, and delete events', async () => {

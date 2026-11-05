@@ -104,6 +104,13 @@ impl Vault {
         crate::api::note_files::NoteFiles::over(self.db.clone())
     }
 
+    /// The records relation chips name, read without a device identity (desktop Step 13q).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn relation_targets(&self) -> crate::api::relation_targets::RelationTargets {
+        crate::api::relation_targets::RelationTargets::over(self.db.clone())
+    }
+
     /// The sidebar's manual order, for the desktop vault tier's own file moves (Step 12).
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[doc(hidden)]
@@ -163,6 +170,16 @@ impl Vault {
         store: Arc<dyn SecureStore>,
     ) -> Result<crate::api::tag_hub::TagHub, AuthError> {
         crate::api::tag_hub::TagHub::over(self.db.clone(), &store)
+    }
+
+    /// The tag rename in progress ([`crate::domain::tag_rename::read`], desktop Step 13j); a
+    /// read, so no identity. Not part of the FFI surface: the Rust desktop shell is its only
+    /// caller.
+    #[doc(hidden)]
+    pub fn tag_rename_recorded(
+        &self,
+    ) -> Result<Option<crate::domain::tag_rename::Recorded>, StorageError> {
+        self.db.read_blocking(crate::domain::tag_rename::read)
     }
 
     /// The tag hub's categories with their tag counts (desktop Step 13j); a read, so no

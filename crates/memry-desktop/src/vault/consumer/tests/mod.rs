@@ -15,6 +15,8 @@ use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
 use memry_core::crypto::sodium;
 use memry_core::domain::external_feed::FeedInput;
+use memry_core::domain::notes::identity::FileNote;
+use memry_core::domain::notes::new_files::NewFileNote;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -23,9 +25,10 @@ use tokio::sync::broadcast;
 
 use super::apply::{Applier, Step};
 use super::identity::{
-    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
+    Adoption, Candidate, IdentityCtx, IdentityError, NewFile, NoteIdentity, Removal, Rename,
 };
 use super::rows::{RowOwner, RowSession, RowStat};
+use super::walked::Walked;
 use super::{Applied, ChangeSource};
 use crate::vault::activity::ScanActivity;
 use crate::vault::file_types::FileType;
@@ -87,6 +90,22 @@ pub(super) struct Recorder {
     /// `(note_id, previous)` of every `on_changed`.
     pub(super) changed: Mutex<Vec<(String, String)>>,
     pub(super) changed_fails: AtomicBool,
+    /// What `adopt_new_files` does; [`Batch::Off`] leaves every new file to `adopt_or_create`.
+    pub(super) batch: Mutex<Batch>,
+}
+
+/// How [`Recorder`] answers for new files applied together.
+#[derive(Clone, Default)]
+pub(super) enum Batch {
+    #[default]
+    Off,
+    /// Creates every file's note with its body, in one transaction.
+    Create,
+    /// Answers an error.
+    Fail,
+    /// Creates them, then gives another note a row at this path, so their rows cannot be
+    /// written together.
+    CreateThenTake(String),
 }
 
 impl NoteIdentity for Recorder {
@@ -113,6 +132,58 @@ impl NoteIdentity for Recorder {
         Ok(Adoption::Created(
             self.writer.create(file.path.into(), None)?,
         ))
+    }
+
+    fn may_be_new(&self, _: &IdentityCtx<'_>, files: &[Candidate<'_>]) -> Vec<bool> {
+        let together = !matches!(*self.batch.lock().unwrap(), Batch::Off);
+        vec![together; files.len()]
+    }
+
+    fn adopt_new_files(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        files: &[NewFile<'_>],
+    ) -> Result<Vec<bool>, IdentityError> {
+        let batch = self.batch.lock().unwrap().clone();
+        if matches!(batch, Batch::Fail) {
+            return Err(IdentityError::Other("the batch failed".into()));
+        }
+        let notes: Vec<NewFileNote<'_>> = files
+            .iter()
+            .map(|new| NewFileNote {
+                file: FileNote {
+                    path: new.candidate.path,
+                    title: new.candidate.path.trim_end_matches(".md"),
+                    folder_path: None,
+                    body: new.candidate.file.expect("read").split().body,
+                    created_ms: new.candidate.modified_ms,
+                    modified_ms: new.candidate.modified_ms,
+                    electron_db_beside: false,
+                },
+                id: new.id,
+                body: new.body,
+            })
+            .collect();
+        let created = self
+            .writer
+            .adopt_new_files(&notes)
+            .map_err(|error| IdentityError::Other(error.to_string()))?;
+        if let Batch::CreateThenTake(path) = batch {
+            let other = self.writer.create("Other".into(), None)?;
+            ctx.vault
+                .note_files()
+                .upsert_stat(memry_core::domain::note_files::NoteFileStat {
+                    note_id: other,
+                    path,
+                    file_type: "markdown".into(),
+                    mime_type: None,
+                    file_size: Some(1),
+                    content_hash: None,
+                    file_hash: None,
+                    indexed_at: 0,
+                })?;
+        }
+        Ok(created)
     }
 
     fn on_removed(
@@ -199,6 +270,7 @@ pub(super) fn fixture() -> Fixture {
         row_at_rename: Mutex::default(),
         changed: Mutex::default(),
         changed_fails: AtomicBool::new(false),
+        batch: Mutex::default(),
     });
     let applier = applier(&root, &vault, &store, &rows, identity.clone());
     Fixture {
@@ -232,9 +304,47 @@ impl Fixture {
     }
 
     pub(super) fn walked(&self, rel: &str) -> Step {
+        self.walk_one(rel, &mut ScanActivity::default())
+    }
+
+    /// The open walk's step for the one file `rel`: a new markdown file it puts aside is
+    /// applied as the walk's end applies what it put aside.
+    pub(super) fn walk_one(&self, rel: &str, scan: &mut ScanActivity) -> Step {
         let meta = std::fs::symlink_metadata(self.root.join(rel)).unwrap();
-        self.applier
-            .walked(rel, &meta, &mut ScanActivity::default())
+        match self.applier.walked(rel, &meta, scan) {
+            Walked::Applied(step) => step,
+            Walked::New(file) => {
+                let mut together = self.applier.found_together(vec![file], scan);
+                match together.alone.pop() {
+                    Some(file) => self.applier.found_alone(file, scan),
+                    None => together.steps.remove(0).1,
+                }
+            }
+        }
+    }
+
+    /// The open walk's steps for the new files `rels`, applied together as the walk applies
+    /// what it put aside, the files sent back each alone.
+    pub(super) fn walk_together(&self, rels: &[&str]) -> Vec<(String, Step)> {
+        let mut scan = ScanActivity::default();
+        let found = rels
+            .iter()
+            .map(|rel| {
+                let meta = std::fs::symlink_metadata(self.root.join(rel)).unwrap();
+                match self.applier.walked(rel, &meta, &mut scan) {
+                    Walked::New(file) => file,
+                    Walked::Applied(_) => panic!("{rel} is not a new file"),
+                }
+            })
+            .collect();
+        let together = self.applier.found_together(found, &mut scan);
+        let mut steps = together.steps;
+        for file in together.alone {
+            let path = file.path.clone();
+            steps.push((path, self.applier.found_alone(file, &mut scan)));
+        }
+        steps.sort_by(|a, b| a.0.cmp(&b.0));
+        steps
     }
 
     pub(super) fn changed(&self, note_id: &str, rel: &str) -> Step {
@@ -381,6 +491,7 @@ pub(super) fn only_note(f: &Fixture, rel: &str) -> String {
 }
 
 mod activity;
+mod batch;
 mod embeds;
 mod facts;
 mod flood;

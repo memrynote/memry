@@ -56,6 +56,9 @@
 //! - An outside edit of the file a row named gives the record the file's frontmatter `tags`
 //!   (#3825, [`tags`]): a note's record takes the file's list, a journal day's what the edit
 //!   changed in it, so the tags only a day's record holds stay.
+//! - The file's frontmatter property values reach the record ([`properties`]): a found file's
+//!   fill the keys its record lacks, and an outside edit gives it what the edit changed since
+//!   the record last took the file.
 //!
 //! Every answer is the core's; a failure is the consumer's to log and retry
 //! ([`crate::vault::consumer::MAX_RETRIES`]), and the next open asks again.
@@ -75,7 +78,8 @@ use memry_core::seams::secure_store::SecureStore;
 use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::converter_of;
 use crate::vault::consumer::identity::{
-    Adoption, Candidate, Crossed, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
+    Adoption, Candidate, Crossed, IdentityCtx, IdentityError, NewFile, NoteIdentity, Removal,
+    Rename,
 };
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
@@ -83,6 +87,8 @@ use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
 
 mod file;
+mod new_files;
+mod properties;
 mod tags;
 
 use file::created_ms;
@@ -409,7 +415,22 @@ impl NoteIdentity for NotesIdentity {
             }
         };
         let adopted = adopted.map_err(|error| IdentityError::Other(error.to_string()))?;
+        if let Adopted::Created(id) | Adopted::Existing(id) = &adopted {
+            properties::found(&writer, ctx, self.store.clone(), id, text)?;
+        }
         Ok(self.adoption(adopted, ctx.root))
+    }
+
+    fn may_be_new(&self, ctx: &IdentityCtx<'_>, files: &[Candidate<'_>]) -> Vec<bool> {
+        new_files::may_be_new(self, ctx, files)
+    }
+
+    fn adopt_new_files(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        files: &[NewFile<'_>],
+    ) -> Result<Vec<bool>, IdentityError> {
+        new_files::adopt(self, ctx, files)
     }
 
     fn on_removed(
@@ -434,7 +455,8 @@ impl NoteIdentity for NotesIdentity {
         })
     }
 
-    /// The file's frontmatter `tags` reach the record ([`tags::edited`]).
+    /// The file's frontmatter `tags` and property values reach the record ([`tags::edited`],
+    /// [`properties::edited`]).
     fn on_changed(
         &self,
         ctx: &IdentityCtx<'_>,
@@ -442,7 +464,9 @@ impl NoteIdentity for NotesIdentity {
         previous: &str,
         file: &NoteFile,
     ) -> Result<(), IdentityError> {
-        tags::edited(&*self.writer(ctx)?, ctx.search, note_id, previous, file)
+        let writer = self.writer(ctx)?;
+        tags::edited(&writer, ctx.search, note_id, previous, file)?;
+        properties::edited(&writer, ctx, self.store.clone(), note_id, previous, file)
     }
 
     /// A move that keeps what the file is reaches the record (`renameKeepsJournalDate`). One

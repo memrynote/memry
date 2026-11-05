@@ -19,6 +19,8 @@ const commands = vi.hoisted(() => ({
   notesResolveWikiTarget: vi.fn(),
   notesGetUnlinkedMentions: vi.fn(),
   notesLinkMention: vi.fn(),
+  notesEditAliases: vi.fn(),
+  tagsGetAllWithCounts: vi.fn(),
   notesPreviewByTitle: vi.fn(),
   notesSetLocalOnly: vi.fn(),
   notesGetLocalOnlyCount: vi.fn(),
@@ -58,6 +60,7 @@ const events = vi.hoisted(() => {
     noteRenamedEvent: event('renamed'),
     noteMovedEvent: event('moved'),
     noteTagsChangedEvent: event('tags'),
+    folderConfigUpdatedEvent: event('folderConfig'),
     noteEventsDroppedEvent: event('dropped')
   }
 })
@@ -257,6 +260,31 @@ describe('notes-service', () => {
       message: 'gone'
     })
     expect(api.notes.linkMention).not.toHaveBeenCalled()
+  })
+
+  it("edits a note's other names through its command, rejecting a failure", async () => {
+    api.notes.editAliases = vi.fn()
+    commands.notesEditAliases.mockResolvedValueOnce({ aliases: ['AGI'] })
+
+    const input = { id: 'note-1', add: ['AGI'], remove: ['AI'] }
+    expect(await notesService.editAliases(input)).toEqual({ aliases: ['AGI'] })
+    expect(commands.notesEditAliases).toHaveBeenCalledWith(input)
+    commands.notesEditAliases.mockRejectedValueOnce({ kind: 'propertyWrite', code: 'kept' })
+    await expect(notesService.editAliases(input)).rejects.toEqual({
+      kind: 'propertyWrite',
+      code: 'kept'
+    })
+    expect(api.notes.editAliases).not.toHaveBeenCalled()
+  })
+
+  it("reads the tag list from the tags command, in Electron's notes:get-tags shape", async () => {
+    api.notes.getTags = vi.fn()
+    commands.tagsGetAllWithCounts.mockResolvedValue([
+      { name: 'work', count: 3, color: 'blue', icon: null, categoryId: 'c1', sortOrder: 2 }
+    ])
+
+    expect(await notesService.getTags()).toEqual([{ tag: 'work', color: 'blue', count: 3 }])
+    expect(api.notes.getTags).not.toHaveBeenCalled()
   })
 
   it('creates and deletes through the commands, rejecting what it cannot create yet', async () => {
@@ -613,13 +641,22 @@ describe('notes-service', () => {
     })
   })
 
-  it('refuses the edits later steps port rather than drop them', async () => {
+  it('hands named frontmatter keys, a removal as null, to its command', async () => {
+    const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
+    commands.notesUpdate.mockResolvedValue({ note: view })
+    const frontmatter = { coverFocus: 30, coverCredit: null }
+    await expect(notesService.update({ id: 'note-1', frontmatter })).resolves.toMatchObject({
+      success: true
+    })
+    expect(commands.notesUpdate).toHaveBeenCalledWith({ id: 'note-1', frontmatter })
+    expect(api.notes.update).not.toHaveBeenCalled()
+  })
+
+  // Electron's update renames the record and leaves the file; `notes:rename` owns a title.
+  it('refuses a title, which no caller sends', async () => {
     await expect(notesService.update({ id: 'note-1', title: 'Renamed' })).rejects.toThrow(
       'notes.update({ title }) is not ported'
     )
-    await expect(
-      notesService.update({ id: 'note-1', frontmatter: { fullWidth: true } })
-    ).rejects.toThrow('notes.update({ frontmatter }) is not ported')
     expect(commands.notesUpdate).not.toHaveBeenCalled()
     expect(api.notes.update).not.toHaveBeenCalled()
   })
@@ -859,16 +896,23 @@ describe('notes-service', () => {
     await vi.waitFor(() => expect(listeners.has('moved')).toBe(false))
   })
 
-  it('registers the note event subscriptions not yet ported on window.api', () => {
+  it('hands on a folder that sync changed or removed', async () => {
+    const updated = vi.fn()
+    const stop = onFolderConfigUpdated(updated)
+    await vi.waitFor(() => expect(listeners.has('folderConfig')).toBe(true))
+    listeners.get('folderConfig')?.({ payload: { path: 'Work/Plans' } })
+    expect(updated).toHaveBeenCalledWith({ path: 'Work/Plans' })
+    stop()
+    await vi.waitFor(() => expect(listeners.has('folderConfig')).toBe(false))
+  })
+
+  it('registers the note event subscription not yet ported on window.api', () => {
     const unsubscribe = vi.fn()
     api.onNoteExternalChange = vi.fn(() => unsubscribe)
-    api.onFolderConfigUpdated = vi.fn(() => unsubscribe)
     const handler = vi.fn()
 
     expect(onNoteExternalChange(handler)).toBe(unsubscribe)
     expect(api.onNoteExternalChange).toHaveBeenCalledWith(handler)
-    expect(onFolderConfigUpdated(handler)).toBe(unsubscribe)
-    expect(api.onFolderConfigUpdated).toHaveBeenCalledWith(handler)
   })
 
   describe('position operations', () => {

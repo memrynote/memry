@@ -68,6 +68,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::folders::notes_set_folder_config::<Wry>,
             crate::commands::notes::notes_create::<Wry>,
             crate::commands::notes::notes_delete,
+            crate::commands::notes::notes_edit_aliases::<Wry>,
             crate::commands::notes::notes_exists,
             crate::commands::notes::notes_get,
             crate::commands::notes::notes_get_all_positions::<Wry>,
@@ -77,7 +78,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_get_local_only_count,
             crate::commands::notes::notes_get_unlinked_mentions,
             crate::commands::notes::notes_link_mention::<Wry>,
-            crate::commands::notes::notes_list,
+            crate::commands::notes::notes_list::<Wry>,
             crate::commands::notes::notes_open_external,
             crate::commands::notes::notes_preview_by_title,
             crate::commands::notes::notes_move::<Wry>,
@@ -112,6 +113,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::properties::properties_get::<Wry>,
             crate::commands::properties::properties_merge::<Wry>,
             crate::commands::properties::properties_rename::<Wry>,
+            crate::commands::properties::properties_resolve_refs::<Wry>,
             crate::commands::properties::properties_set::<Wry>,
             // shortcut
             crate::commands::shortcuts::shortcut_register_global_capture,
@@ -152,6 +154,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_get_notes_by_tag,
             crate::commands::tags::tags_list_categories,
             crate::commands::tags::tags_pin_note_to_tag::<Wry>,
+            crate::commands::tags::tags_rename::<Wry>,
+            crate::commands::tags::tags_rename_abandon::<Wry>,
+            crate::commands::tags::tags_rename_unfinished::<Wry>,
             crate::commands::tags::tags_rename_category,
             crate::commands::tags::tags_reorder,
             crate::commands::tags::tags_unpin_note_from_tag::<Wry>,
@@ -240,6 +245,7 @@ pub fn builder() -> Builder<Wry> {
             // updater
             crate::events::UpdaterStateChangedEvent,
             // notes
+            crate::events::FolderConfigUpdatedEvent,
             crate::events::NoteCreatedEvent,
             crate::events::NoteDeletedEvent,
             crate::events::NoteEventsDroppedEvent,
@@ -252,6 +258,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::TagCategoriesChangedEvent,
             crate::events::TagColorUpdatedEvent,
             crate::events::TagNotesChangedEvent,
+            crate::events::TagRenamedEvent,
+            crate::events::TagsProgressEvent,
             // vault
             crate::events::VaultActivityChangedEvent,
             crate::events::VaultConfigChangedEvent,

@@ -1,9 +1,12 @@
 //! What the vault commands hand the renderer: `VaultStatus` and `SelectVaultResponse` of
 //! `packages/contracts/src/vault-api.ts`.
 
+use std::sync::atomic::Ordering;
+
 use serde::{Deserialize, Serialize};
 
-use super::{CreateOrOpenError, SessionError, SessionStatus, VaultOpened};
+use super::{CreateOrOpenError, Session, SessionError, SessionStatus, VaultOpened};
+use crate::notes::index::IndexProgress;
 use crate::registry::{StoredVault, VaultInfo};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -42,8 +45,44 @@ pub struct MovesRecovered {
     pub shown_folders: u32,
 }
 
+impl VaultStatus {
+    /// The status while the index works ([`crate::notes::index::NoteIndex::indexing`]):
+    /// indexing, at its last step, as Electron's open-time build, `reindex` and
+    /// `emitIndexProgress` set it. Electron sets counts only from a step with files, so `0` of
+    /// `0` (nothing reported yet) reads "Indexing…" without them.
+    pub fn with_indexing(mut self, step: Option<IndexProgress>) -> Self {
+        if let Some(IndexProgress { built, total }) = step.filter(|_| self.is_open) {
+            let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+            self.is_indexing = true;
+            self.index_progress = count(
+                (built.min(total) * 100 + total / 2)
+                    .checked_div(total)
+                    .unwrap_or(0),
+            );
+            if total > 0 {
+                self.index_built = Some(count(built));
+                self.index_total = Some(count(total));
+            }
+        }
+        self
+    }
+
+    /// The status to send again when what the note index does changed: none while no vault is
+    /// open, whose statuses are the session's own, or once the app quits (no status reaches the
+    /// window after [`Session::begin_shutdown`], as for the session's own).
+    pub fn resend(session: &Session, indexing: Option<IndexProgress>) -> Option<Self> {
+        if session.inner.shutdown.load(Ordering::SeqCst) {
+            return None;
+        }
+        let status = session.status();
+        status
+            .is_open
+            .then(|| Self::from(status).with_indexing(indexing))
+    }
+}
+
 impl From<SessionStatus> for VaultStatus {
-    /// Indexing is Step 13 (#3530)'s; until it reports, no vault is indexing.
+    /// Not indexing: [`VaultStatus::with_indexing`] adds what the index does.
     fn from(status: SessionStatus) -> Self {
         Self {
             is_open: status.is_open,
@@ -196,6 +235,45 @@ mod tests {
         std::fs::write(&index, bytes).expect("damage");
         f.session.open(&vault, OpenSource::Select).expect("reopen");
         assert_eq!(reasons(drain(&rx)), vec!["corrupt"]);
+    }
+
+    #[test]
+    fn the_index_marks_an_open_vault_indexing_with_counts_once_a_step_has_files() {
+        let open = |is_open| SessionStatus {
+            is_open,
+            path: Some("/v".into()),
+            error: None,
+            moves_recovered: None,
+        };
+        let step = |built, total| Some(IndexProgress { built, total });
+        let status = VaultStatus::from(open(true)).with_indexing(step(2, 3));
+        assert!(status.is_indexing);
+        assert_eq!(
+            (
+                status.index_progress,
+                status.index_built,
+                status.index_total
+            ),
+            (67, Some(2), Some(3))
+        );
+        // Before the first step, "Indexing…" (Electron's `indexingUnknown`), not `0 / 0`.
+        let first = VaultStatus::from(open(true)).with_indexing(step(0, 0));
+        assert!(first.is_indexing);
+        assert_eq!(
+            (first.index_progress, first.index_built, first.index_total),
+            (0, None, None)
+        );
+        let start = VaultStatus::from(open(true)).with_indexing(step(0, 3));
+        assert_eq!((start.index_built, start.index_total), (Some(0), Some(3)));
+        assert_eq!(
+            VaultStatus::from(open(true)).with_indexing(None),
+            VaultStatus::from(open(true))
+        );
+        assert!(
+            !VaultStatus::from(open(false))
+                .with_indexing(step(1, 3))
+                .is_indexing
+        );
     }
 
     #[test]

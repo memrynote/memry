@@ -13,7 +13,8 @@
     "invalidPath": "Calea selectată nu este o locație validă pentru seif.",
     "permissionDenied": "Permisiune refuzată. Verificați dacă aveți acces la acest dosar.",
     "alreadyExists": "Există deja un seif în această locație.",
-    "corrupted": "Acest seif pare a fi corupt. Încercați să restaurați dintr-o copie de rezervă."
+    "corrupted": "Acest seif pare a fi corupt. Încercați să restaurați dintr-o copie de rezervă.",
+    "configChangeNotPorted": "Această versiune nu poate încă schimba dosarul de jurnal, formatul datei sau dosarele excluse. Setarea salvată este păstrată."
   },
   "note": {
     "notFound": "Această notiță nu a putut fi găsită. Este posibil să fi fost ștearsă.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Redenumirea #{from} în #{to} încă rulează. Încearcă din nou când se termină.",
+    "renameUnfinished": "Redenumirea #{from} în #{to} nu s-a încheiat pentru {count, plural, one {# notiță} few {# notițe} other {# de notițe}}. Redenumește din nou #{from} în #{to} ca să o finalizezi.",
     "mergeSameTag": "Eticheta sursă și cea țintă sunt identice",
     "categoryNameRequired": "Numele categoriei este obligatoriu",
     "pinNoteFailed": "Nu s-a putut fixa notița",

@@ -21,6 +21,18 @@ use crate::vault::consumer::Applied;
 use crate::vault::watch::VaultEvent;
 
 pub type Progress = Box<dyn FnMut(IndexProgress) + Send>;
+
+/// The open's build, as the task tells it. Owed from the open, and again at the walk's end, to
+/// the end of the pass that reports it (stopped or failed included), or until a reindex took
+/// it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpenBuild {
+    /// Owed again: the walk ended after a pass had taken it.
+    Owed,
+    /// A step of the pass that reports it.
+    Step(IndexProgress),
+    Ended,
+}
 pub type Answer = reply::Receiver<Result<Backfilled, IndexError>>;
 type Reply = reply::Sender<Result<Backfilled, IndexError>>;
 pub type Measured = reply::Receiver<Result<bool, IndexError>>;
@@ -34,6 +46,8 @@ enum Command {
         note_id: String,
         answer: reply::Sender<Result<bool, IndexError>>,
     },
+    /// The definitions may have changed: a pass checks the rows' types.
+    Retype,
     Stop,
 }
 
@@ -74,6 +88,12 @@ impl TaskHandle {
             .map(|()| receiver)
     }
 
+    /// Asks for a pass that reads again the notes whose property rows the definitions typed
+    /// otherwise; a task that already ended needs none.
+    pub fn retype(&self) {
+        let _ = self.0.send(Command::Retype);
+    }
+
     pub(super) fn same(&self, other: &TaskHandle) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
     }
@@ -103,6 +123,8 @@ struct Owed {
     scan: bool,
     /// The core search reindex (links, body tags, full text).
     links: bool,
+    /// A pass, for the property rows' types alone.
+    retype: bool,
     walk: Walk,
     /// The open's pass progress (`indexVault` on open) goes out with the next pass: the
     /// renderer refreshes the notes list on it.
@@ -138,7 +160,7 @@ impl Owed {
 
     /// When the owed work is due; `None` while nothing is owed or the walk has not ended.
     fn next(&self) -> Option<Instant> {
-        let owed = self.scan || self.links || !self.queue.is_empty();
+        let owed = self.scan || self.links || self.retype || !self.queue.is_empty();
         (self.walked() && owed).then(|| self.due.unwrap_or_else(Instant::now))
     }
 
@@ -190,15 +212,15 @@ impl Owed {
 
 impl Indexer {
     /// The task: facts and requests in, passes out, until the handle stops it or `cancel` is
-    /// seen. Errs only when it could not start. `report` gets the open's pass progress,
-    /// `announce` the links each pass changed, once committed, and `landed` each note a
+    /// seen. Errs only when it could not start. `report` gets the open's build (owed at the
+    /// start), `announce` the links each pass changed, once committed, and `landed` each note a
     /// measure request left to a pass, once a pass wrote its row.
     pub fn run(
         &self,
         facts: Receiver<Applied>,
         inbox: TaskInbox,
         cancel: &CancelToken,
-        report: &dyn Fn(IndexProgress),
+        report: &dyn Fn(OpenBuild),
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
     ) -> Result<(), String> {
@@ -215,7 +237,7 @@ impl Indexer {
         mut facts: Receiver<Applied>,
         inbox: TaskInbox,
         cancel: &CancelToken,
-        report: &dyn Fn(IndexProgress),
+        report: &dyn Fn(OpenBuild),
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
     ) {
@@ -229,10 +251,12 @@ impl Indexer {
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
         while !cancel.is_cancelled() {
-            if owed.walked() {
+            if owed.walked() && !waiting.is_empty() {
+                // A reindex reports through its own callback, which refreshes the list.
+                if std::mem::take(&mut owed.report) {
+                    report(OpenBuild::Ended);
+                }
                 for (progress, answer) in waiting.drain(..) {
-                    // It reports through its own callback, which refreshes the list.
-                    owed.report = false;
                     // The asker may have gone; the work is done either way.
                     let _ =
                         answer.send(self.reindex(&mut owed, progress, cancel, announce, landed));
@@ -254,10 +278,14 @@ impl Indexer {
                             owed.awaited.insert(note_id);
                         }
                     }
+                    Some(Command::Retype) => {
+                        owed.retype = true;
+                        owed.arm();
+                    }
                     Some(Command::Stop) | None => return,
                 },
                 fact = facts.recv() => match fact {
-                    Ok(fact) => self.take(&mut owed, fact),
+                    Ok(fact) => self.take(&mut owed, fact, report),
                     Err(RecvError::Lagged(missed)) => {
                         tracing::warn!(scope = "note_index", missed, "facts were lost: scanning");
                         owed.end_walk();
@@ -265,14 +293,19 @@ impl Indexer {
                     Err(RecvError::Closed) => return,
                 },
                 () = tokio::time::sleep_until(wake), if next.is_some() => {
-                    let report = std::mem::take(&mut owed.report).then_some(report);
-                    self.work(&mut owed, cancel, report, announce, landed);
+                    let carried = std::mem::take(&mut owed.report);
+                    let step = |step| report(OpenBuild::Step(step));
+                    let steps = carried.then_some(&step as &dyn Fn(IndexProgress));
+                    self.work(&mut owed, cancel, steps, announce, landed);
+                    if carried {
+                        report(OpenBuild::Ended);
+                    }
                 }
             }
         }
     }
 
-    fn take(&self, owed: &mut Owed, fact: Applied) {
+    fn take(&self, owed: &mut Owed, fact: Applied, report: &dyn Fn(OpenBuild)) {
         match fact {
             Applied::Added { note_id, .. }
             | Applied::Changed { note_id, .. }
@@ -290,7 +323,9 @@ impl Indexer {
             // The walk's end owes the open's report, even when a pass before it (a failed
             // watcher's, or a lag's) took it: the walk's pass is what fills the list.
             Applied::Indexed { .. } => {
-                owed.report = true;
+                if !std::mem::replace(&mut owed.report, true) {
+                    report(OpenBuild::Owed);
+                }
                 owed.end_walk();
             }
             Applied::Vault(VaultEvent::Rescanned { .. }) => {
@@ -320,6 +355,7 @@ impl Indexer {
     ) {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
+        owed.retype = false;
         owed.due = None;
         let stop = || cancel.is_cancelled();
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
@@ -330,9 +366,22 @@ impl Indexer {
                 report(step);
             }
         };
-        let outcome = self
-            .listed(scan, &ids)
-            .and_then(|notes| self.pass(notes, &mut owed.links, &stop, &mut progress, announce));
+        let outcome = self.typing().and_then(|typing| {
+            let notes = if typing.all {
+                self.scan(true)?
+            } else {
+                let queued: BTreeSet<String> = ids.union(&typing.retype).cloned().collect();
+                self.listed(scan, &queued)?
+            };
+            self.pass(
+                notes,
+                typing,
+                &mut owed.links,
+                &stop,
+                &mut progress,
+                announce,
+            )
+        });
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);
     }
@@ -364,6 +413,7 @@ impl Indexer {
     ) -> Result<Backfilled, IndexError> {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
+        owed.retype = false;
         let stop = || cancel.is_cancelled();
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         let outcome = self.scan(true).map_err(IndexError::from).and_then(|notes| {
@@ -372,7 +422,15 @@ impl Indexer {
                     progress(step);
                 }
             };
-            self.pass(notes, &mut owed.links, &stop, &mut progress, announce)
+            let typing = self.typing_all()?;
+            self.pass(
+                notes,
+                typing,
+                &mut owed.links,
+                &stop,
+                &mut progress,
+                announce,
+            )
         });
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);

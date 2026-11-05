@@ -111,6 +111,39 @@ pub fn set_cover(
     edit(conn, ITEM_TYPE, note_id, changes, device_id, now_ms)
 }
 
+/// The cover an in-app edit wrote into the note's file, as its push carries it (desktop
+/// `noteCoverFromFrontmatter`, §13.7.1.1), taken by the record's `cover` field. `None` is a
+/// cover the edit removed: written as `null`, with the legacy `coverImage` as [`set_cover`]
+/// writes it, only while the record holds one, so a note whose cover never reached the record
+/// does not erase a peer's (desktop's `noteCoverForPush` sends `null` only for a cover it held).
+/// A cover the record already holds writes nothing. `false` when no live note has that id.
+pub fn take_file_cover(
+    conn: &Connection,
+    note_id: &str,
+    cover: Option<serde_json::Map<String, Value>>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let live =
+        sync_items::load(conn, ITEM_TYPE, note_id)?.is_some_and(|row| row.deleted_at.is_none());
+    if !live {
+        return Ok(false);
+    }
+    let payload = crate::domain::note_meta::note_payload(conn, note_id)?.unwrap_or_default();
+    let held = |key: &str| payload.get(key).filter(|value| !value.is_null());
+    let changes = match cover {
+        Some(cover) if held("cover") == Some(&Value::Object(cover.clone())) => return Ok(true),
+        Some(cover) => vec![("cover", Change::Set(Value::Object(cover)))],
+        None if held("cover").is_none() && held("coverImage").is_none() => return Ok(true),
+        None => vec![
+            ("cover", Change::Set(Value::Null)),
+            ("coverImage", Change::Set(Value::Null)),
+        ],
+    };
+    edit(conn, ITEM_TYPE, note_id, changes, device_id, now_ms)?;
+    Ok(true)
+}
+
 /// Replaces a note's tags (N705).
 ///
 /// **`tags` is a field of the note payload (§13.7.1), not a property.** The
@@ -182,4 +215,56 @@ pub fn set_aliases(
         device_id,
         now_ms,
     )
+}
+
+/// The aliases an in-app edit wrote into the file of the note or journal day `id` (desktop
+/// `notes:edit-aliases`), taken by its record whole: the file owns a note's names, as it owns
+/// its header tags (`file_tags`), and the edit changed this one key, so only it reaches the
+/// record (the rule `properties::mirror_file` keeps). A list the record already holds writes
+/// nothing. `false` when no live note or day has that id: a deleted one takes nothing, so its
+/// queued delete does not become an upsert.
+pub fn take_file_aliases(
+    conn: &Connection,
+    id: &str,
+    aliases: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let day: Option<(String, bool)> = conn
+        .query_row(
+            "SELECT date, deleted_at IS NULL FROM journal_entries WHERE id = ?1",
+            [id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(failed)?;
+    if let Some((date, live)) = day {
+        if !live {
+            return Ok(false);
+        }
+        crate::domain::journal_ops::metadata::set_live_aliases(
+            conn, &date, aliases, device_id, now_ms,
+        )?;
+        return Ok(true);
+    }
+    let live = sync_items::load(conn, ITEM_TYPE, id)?.is_some_and(|row| row.deleted_at.is_none());
+    if !live {
+        return Ok(false);
+    }
+    let (title, stored): (Option<String>, Option<String>) = conn
+        .query_row(
+            "SELECT title, aliases FROM notes WHERE id = ?1",
+            [id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(failed)?
+        .unwrap_or_default();
+    // A stored list that does not read is replaced: the file is the names' owner.
+    let current = super::names::parse_stored(stored).ok();
+    let next = super::names::normalize_aliases(&title.unwrap_or_default(), aliases);
+    if current.as_ref() != Some(&next) {
+        set_aliases(conn, id, &next, device_id, now_ms)?;
+    }
+    Ok(true)
 }

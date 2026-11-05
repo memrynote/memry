@@ -1,20 +1,33 @@
 //! One pass of the index: which notes, read and measured in bounded batches, then the core
 //! search reindex.
+//!
+//! A note's property values are read with its text and stored with its row (`note_properties`),
+//! each typed by the definitions as the pass found them. A pass first reads again every note
+//! holding a name whose definition changed since the rows were typed (`retypeIndexedProperties`),
+//! or every note when the index never recorded the definitions (an index from before the rows
+//! were filled), and records them unless it was stopped. A note it could not read, or that is
+//! in the large-file class, loses its rows (Electron's `note.properties ?? {}`): none typed
+//! otherwise survives, and an unread note is owed to the next pass anyway. A pass whose
+//! definitions did not read reads nothing and is owed again.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use memry_core::api::errors::StorageError;
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
+use memry_core::domain::note_properties::retyped;
 use memry_core::domain::note_stats::{MeasuredFile, Unindexed};
 use memry_core::domain::search::LinkChanges;
 use memry_core::markdown::shared::markdown_class::{
     MarkdownClassThresholds, classify_markdown_content, classify_markdown_stat,
 };
 
+use memry_core::seams::secure_store::SecureStore;
+
 use super::{BATCH, BATCH_BYTES, Backfilled, IndexError, IndexProgress};
+use crate::notes::properties::{file_properties, read_definition_types};
 use crate::session::OpenVault;
 use crate::vault::note_file::{NoteFileError, read_note};
 
@@ -27,6 +40,19 @@ pub struct Indexer {
     root: PathBuf,
     pub(super) vault: Arc<Vault>,
     pub(super) search: Arc<Search>,
+    /// Holds the device key the definitions' records are read under.
+    store: Arc<dyn SecureStore>,
+}
+
+/// The definitions a pass types the property values it reads with, and the notes it owes them.
+pub(super) struct Typing {
+    types: HashMap<String, String>,
+    /// Every note is read: the index never recorded the definitions.
+    pub all: bool,
+    /// The notes holding a name whose definition changed since their rows were typed.
+    pub retype: BTreeSet<String>,
+    /// What the index records once the pass finished, when it changed.
+    record: Option<BTreeMap<String, String>>,
 }
 
 /// What a pass did, and what it leaves owed.
@@ -42,19 +68,71 @@ pub(super) struct Pass {
 
 enum Read {
     File(MeasuredFile),
-    /// Gone, or in the large-file class: nothing to measure.
+    /// Gone, or not text: nothing to measure.
     Skipped,
-    /// Owed to the next pass.
+    /// In the large-file class: not measured, and its property rows go.
+    Large,
+    /// Owed to the next pass; its property rows go.
     Failed,
 }
 
 impl Indexer {
-    pub fn new(vault: &OpenVault) -> Self {
+    pub fn new(vault: &OpenVault, store: Arc<dyn SecureStore>) -> Self {
         Self {
             root: vault.path.clone(),
             vault: vault.vault.clone(),
             search: vault.search.clone(),
+            store,
         }
+    }
+
+    /// The definitions' types. Their failure fails the pass, which is owed again: no row is
+    /// typed without them.
+    fn types(&self) -> Result<HashMap<String, String>, IndexError> {
+        read_definition_types(&self.root, &self.vault, self.store.clone()).map_err(|error| {
+            IndexError::Storage(StorageError::Failed {
+                what: format!("the property definitions did not read: {error}"),
+            })
+        })
+    }
+
+    /// The definitions as they are, and the notes whose rows were typed with others.
+    pub(super) fn typing(&self) -> Result<Typing, IndexError> {
+        let types = self.types()?;
+        let now: BTreeMap<String, String> = types.clone().into_iter().collect();
+        let before = self.search.properties_typed_with()?;
+        let retype = match &before {
+            Some(before) => {
+                let names = retyped(before, &now);
+                if names.is_empty() {
+                    BTreeSet::new()
+                } else {
+                    tracing::info!(scope = "note_index", ?names, "definitions changed type");
+                    self.search
+                        .notes_holding_properties(names)?
+                        .into_iter()
+                        .collect()
+                }
+            }
+            None => BTreeSet::new(),
+        };
+        Ok(Typing {
+            types,
+            all: before.is_none(),
+            retype,
+            record: (before.as_ref() != Some(&now)).then_some(now),
+        })
+    }
+
+    /// [`Self::typing`] of a pass that reads every note.
+    pub(super) fn typing_all(&self) -> Result<Typing, IndexError> {
+        let types = self.types()?;
+        Ok(Typing {
+            record: Some(types.clone().into_iter().collect()),
+            types,
+            all: true,
+            retype: BTreeSet::new(),
+        })
     }
 
     /// Drops the rows of notes that lost their markdown file while no fact said so, then
@@ -101,6 +179,7 @@ impl Indexer {
     pub(super) fn pass(
         &self,
         notes: Vec<Unindexed>,
+        typing: Typing,
         links: &mut bool,
         stop: &dyn Fn() -> bool,
         progress: &mut dyn FnMut(IndexProgress),
@@ -127,17 +206,23 @@ impl Indexer {
         progress(IndexProgress { built: 0, total });
         let mut batch: Vec<MeasuredFile> = Vec::new();
         let mut bytes = 0;
+        // Large notes: their property rows go with the unread ones'.
+        let mut large = Vec::new();
         for note in notes {
             if stop() {
                 pass.stopped = true;
                 return Ok(pass);
             }
-            match self.read(&note) {
+            match self.read(&note, &typing.types) {
                 Read::File(file) => {
                     bytes += file.text.len();
                     batch.push(file);
                 }
                 Read::Skipped => pass.done.skipped += 1,
+                Read::Large => {
+                    pass.done.skipped += 1;
+                    large.push(note.note_id);
+                }
                 Read::Failed => pass.unread.push(note.note_id),
             }
             if batch.len() >= BATCH || bytes >= BATCH_BYTES {
@@ -150,6 +235,8 @@ impl Indexer {
             self.write(&mut pass, batch)?;
         }
         pass.done.unread = pass.unread.len();
+        large.extend(pass.unread.iter().cloned());
+        self.search.forget_note_properties(large)?;
         progress(built(&pass, total));
         if *links {
             match self.search.reindex_until(stop)? {
@@ -161,6 +248,12 @@ impl Indexer {
                 }
                 None => pass.stopped = true,
             }
+        }
+        // Every note it read is typed with them, and an unread one holds no rows.
+        if !pass.stopped
+            && let Some(record) = typing.record
+        {
+            self.search.set_properties_typed_with(record)?;
         }
         Ok(pass)
     }
@@ -179,13 +272,24 @@ impl Indexer {
         let Some(note) = self.listed(false, &queued)?.pop() else {
             return Ok(false);
         };
-        match self.read(&note) {
+        let types = match self.types() {
+            Ok(types) => types,
+            Err(error) => {
+                tracing::warn!(scope = "note_index", note_id, "left to a pass: {error}");
+                return Ok(false);
+            }
+        };
+        match self.read(&note, &types) {
             Read::File(file) => Ok(self.search.index_note_files(vec![file])? > 0),
-            Read::Skipped | Read::Failed => Ok(false),
+            Read::Large | Read::Failed => {
+                self.search.forget_note_properties(vec![note.note_id])?;
+                Ok(false)
+            }
+            Read::Skipped => Ok(false),
         }
     }
 
-    fn read(&self, note: &Unindexed) -> Read {
+    fn read(&self, note: &Unindexed, types: &HashMap<String, String>) -> Read {
         let size = note.file_size.unwrap_or_default().max(0) as usize;
         if classify_markdown_stat(size, MarkdownClassThresholds::default()).is_some() {
             return large(note);
@@ -201,6 +305,7 @@ impl Indexer {
             }
             Ok(Some(file)) => Read::File(MeasuredFile {
                 note_id: note.note_id.clone(),
+                properties: file_properties(&file, types).unwrap_or_default(),
                 file_hash: file.hash,
                 text: file.raw,
             }),
@@ -234,5 +339,5 @@ fn large(note: &Unindexed) -> Read {
         note_id = note.note_id,
         "large file: not measured"
     );
-    Read::Skipped
+    Read::Large
 }

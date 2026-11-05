@@ -88,7 +88,7 @@ use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::epoch;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
-use crate::crdt::registry::UpdateSink;
+use crate::crdt::registry::{DocumentRegistry, UpdateSink, client_id_from_device_id};
 use crate::domain::body_write::append_in;
 use crate::domain::notes::journal_day::body_owner;
 use crate::domain::{note_snapshots, owed_file_body};
@@ -271,16 +271,7 @@ fn author(
         return Ok(FeedOutcome::Owed);
     }
 
-    let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
-    let sink: UpdateSink = {
-        let authored = Arc::clone(&authored);
-        Arc::new(move |_, bytes: &[u8]| {
-            authored
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .push(bytes.to_vec());
-        })
-    };
+    let (sink, authored) = collecting_sink();
     let document = epoch::open_for_write(&tx, device_id, note_id, sink)?;
     let empty = body_is_empty(&document)?;
     let seed = write == Write::SeedIfEmpty;
@@ -370,6 +361,78 @@ fn author(
     Ok(FeedOutcome::Fed)
 }
 
+/// The body a new note gets from its file's text, authored without the database. Only
+/// [`first_body`] makes one, so the note it was authored for and its client id are the ones
+/// the transaction that stores it checks ([`super::notes::new_files::adopt_new`]).
+pub struct FirstBody {
+    /// The id of the note the updates were authored for.
+    pub(crate) note_id: String,
+    /// The Yjs client id the updates were authored under: this device's for a document it
+    /// never purged ([`epoch::client_id`] at epoch 0).
+    pub(crate) client_id: u64,
+    pub(crate) updates: Vec<Vec<u8>>,
+}
+
+/// What [`seed_body_if_empty`] writes into the empty document of a note this device just
+/// created, authored off the writer connection: a caller converts many files at once and
+/// creates their notes with these bodies in one transaction
+/// ([`super::notes::new_files::adopt_new`]). `input.note_id` is the id the note will get.
+/// `None` when the seed would not answer [`FeedOutcome::Fed`] (large-file class, not
+/// convertible, or past the update cap): the note is then created and seeded alone, which
+/// records why.
+pub fn first_body(
+    converter: &Converter,
+    input: FeedInput<'_>,
+    device_id: &str,
+) -> Option<FirstBody> {
+    let markdown = input
+        .markdown
+        .strip_prefix('\u{feff}')
+        .unwrap_or(input.markdown);
+    if classify_markdown_content(markdown, MarkdownClassThresholds::default())
+        .large_file
+        .is_some()
+    {
+        return None;
+    }
+    let client_id = client_id_from_device_id(device_id);
+    let (sink, authored) = collecting_sink();
+    let document = DocumentRegistry::with_client_id(client_id, sink)
+        .get_or_open(input.note_id)
+        .ok()?;
+    let options = ReplaceOptions {
+        note_path: input.note_path,
+        writing: input.writing,
+        unless_changed_from: None,
+        embeds: input.embeds,
+    };
+    // The document is this call's alone and is dropped unless the body replaced it.
+    if converter.replace_unshared_body(&document, markdown, options) != ReplaceOutcome::Replaced {
+        return None;
+    }
+    let updates = std::mem::take(&mut *authored.lock().unwrap_or_else(PoisonError::into_inner));
+    updates
+        .iter()
+        .all(|update| rides_as_one_update(update))
+        .then(|| FirstBody {
+            note_id: input.note_id.to_owned(),
+            client_id,
+            updates,
+        })
+}
+
+/// A sink that keeps every update a write authors, for the caller to store.
+fn collecting_sink() -> (UpdateSink, Arc<Mutex<Vec<Vec<u8>>>>) {
+    let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
+    let kept = Arc::clone(&authored);
+    let sink: UpdateSink = Arc::new(move |_, bytes: &[u8]| {
+        kept.lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push(bytes.to_vec());
+    });
+    (sink, authored)
+}
+
 /// No update can carry the file's text: the file owes its body, as a refused
 /// feed's does ([`refuse`]).
 fn too_large(
@@ -452,7 +515,9 @@ pub fn same_text(body: &str, file: &str) -> bool {
 /// Whether the server takes this update as one: it caps the packed length
 /// (header, compressed frame, AEAD tag), not the markdown or the raw update.
 fn rides_as_one_update(update: &[u8]) -> bool {
-    crdt_envelope::packed_len(update) <= MAX_UPDATE_BYTES
+    // The bound needs no compression, and an update under it rides whatever it packs to.
+    crdt_envelope::max_packed_len(update.len()) <= MAX_UPDATE_BYTES
+        || crdt_envelope::packed_len(update) <= MAX_UPDATE_BYTES
 }
 
 fn storage_failed(error: rusqlite::Error) -> CrdtError {

@@ -64,6 +64,8 @@ mod embeds;
 mod file_open;
 #[path = "folder_file.rs"]
 mod folder_file;
+#[path = "folder_prune.rs"]
+mod folder_prune;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
 #[path = "home_covers.rs"]
@@ -78,6 +80,8 @@ mod icons;
 mod import_copy;
 #[path = "indexer_facts.rs"]
 mod indexer_facts;
+#[path = "indexer_open_status.rs"]
+mod indexer_open_status;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
 #[path = "journal_calendar.rs"]
@@ -90,8 +94,6 @@ mod journal_rename;
 mod journal_service;
 #[path = "journal_update.rs"]
 mod journal_update;
-#[path = "logging.rs"]
-mod logging;
 #[path = "logship.rs"]
 mod logship;
 #[path = "move_dir.rs"]
@@ -106,6 +108,12 @@ mod note_links;
 mod note_links_changed;
 #[path = "note_mentions.rs"]
 mod note_mentions;
+#[path = "note_properties_index.rs"]
+mod note_properties_index;
+#[path = "note_properties_outside.rs"]
+mod note_properties_outside;
+#[path = "notes_aliases.rs"]
+mod notes_aliases;
 #[path = "notes_apply_template.rs"]
 mod notes_apply_template;
 #[path = "notes_create_template.rs"]
@@ -116,6 +124,8 @@ mod notes_folder_delete;
 mod notes_folder_move;
 #[path = "notes_folders.rs"]
 mod notes_folders;
+#[path = "notes_frontmatter.rs"]
+mod notes_frontmatter;
 #[path = "notes_identity.rs"]
 mod notes_identity;
 #[path = "notes_link_rewrite.rs"]
@@ -132,8 +142,12 @@ mod notes_outside_after_reopen;
 mod notes_outside_tags;
 #[path = "notes_properties.rs"]
 mod notes_properties;
+#[path = "notes_resolve_refs.rs"]
+mod notes_resolve_refs;
 #[path = "notes_service.rs"]
 mod notes_service;
+#[path = "notes_tag_rename.rs"]
+mod notes_tag_rename;
 #[path = "notes_tag_template.rs"]
 mod notes_tag_template;
 #[path = "notes_update.rs"]

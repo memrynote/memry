@@ -13,7 +13,8 @@
     "invalidPath": "Valittu polku ei ole kelvollinen holvin sijainti.",
     "permissionDenied": "Lupa evätty. Tarkista, että sinulla on pääsy tähän kansioon.",
     "alreadyExists": "Tässä paikassa on jo holvi.",
-    "corrupted": "Tämä holvi näyttää olevan vioittunut. Yritä palauttaa varmuuskopiosta."
+    "corrupted": "Tämä holvi näyttää olevan vioittunut. Yritä palauttaa varmuuskopiosta.",
+    "configChangeNotPorted": "Tämä versio ei vielä voi muuttaa päiväkirjakansiota, päivämäärämuotoa tai pois jätettyjä kansioita. Tallennettu asetus säilyy."
   },
   "note": {
     "notFound": "Tätä muistiinpanoa ei löytynyt. Se on ehkä poistettu.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Tunnisteen #{from} uudelleennimeäminen muotoon #{to} on vielä käynnissä. Yritä uudelleen, kun se on valmis.",
+    "renameUnfinished": "Tunnisteen #{from} uudelleennimeäminen muotoon #{to} jäi kesken {count, plural, one {# muistiinpanon} other {# muistiinpanon}} osalta. Nimeä #{from} uudelleen muotoon #{to}, niin se valmistuu.",
     "mergeSameTag": "Lähde- ja kohdetunniste ovat samat",
     "categoryNameRequired": "Kategorian nimi vaaditaan",
     "pinNoteFailed": "Muistiinpanon kiinnittäminen epäonnistui",

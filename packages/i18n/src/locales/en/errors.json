@@ -306,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "A rename of #{from} to #{to} is still running. Try again when it finishes.",
+    "renameUnfinished": "Renaming #{from} to #{to} didn't finish for {count, plural, =1 {# note} other {# notes}}. Rename #{from} to #{to} again to finish it.",
     "mergeSameTag": "Source and target tags are the same",
     "categoryNameRequired": "Category name is required",
     "pinNoteFailed": "Failed to pin note",

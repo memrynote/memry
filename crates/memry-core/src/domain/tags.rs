@@ -43,6 +43,7 @@ use rusqlite::Connection;
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::domain::tag_body_rename::renamed_tag;
 use crate::storage::repositories::instants;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -207,6 +208,111 @@ pub fn set(
     )
 }
 
+/// Renames `old` and every `old/…` child in the `tags` and `pinnedTags` of the live note or
+/// journal day `item_id` (a tag rename, one item at a time on desktop, whose files hold the
+/// tags too), a name that lands on one the list holds collapsing into the first spelling: one
+/// transaction and one outbox row, or nothing written when neither list changes or the item
+/// is not live. `pinnedTags` is written only when the key is there (see [`remove`]). Returns
+/// whether it wrote.
+pub fn rename(
+    conn: &Connection,
+    item_id: &str,
+    old: &str,
+    new: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    rename_with(
+        conn,
+        item_id,
+        |tags, pins| renamed_lists(tags, pins, old, new),
+        device_id,
+        now_ms,
+    )
+}
+
+/// [`rename`] with the lists `next` makes of the item's `tags` and `pinnedTags`.
+pub fn rename_with(
+    conn: &Connection,
+    item_id: &str,
+    next: impl FnOnce(&[String], Option<&[String]>) -> (Vec<String>, Option<Vec<String>>),
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let item_type = match live_type(conn, item_id) {
+        Ok(item_type) => item_type,
+        Err(StorageError::NotFound { .. }) => return Ok(false),
+        Err(error) => return Err(error),
+    };
+    let payload = require(conn, item_type, item_id)?;
+    let object = payload.object();
+    let tags = read_tags(object, "tags", item_type, item_id)?;
+    let pins = match object.contains_key("pinnedTags") {
+        true => Some(read_tags(object, "pinnedTags", item_type, item_id)?),
+        false => None,
+    };
+    let (next, next_pins) = next(&tags, pins.as_deref());
+    let pinned = next_pins.filter(|next_pins| Some(next_pins) != pins.as_ref());
+    if next == tags && pinned.is_none() {
+        return Ok(false);
+    }
+    write(
+        conn, item_type, item_id, &payload, next, pinned, device_id, now_ms,
+    )?;
+    Ok(true)
+}
+
+/// The lists [`rename`] makes of `tags` and `pins`: each pin in the spelling the renamed list
+/// holds it in, which the projection matches a pin by.
+pub fn renamed_lists(
+    tags: &[String],
+    pins: Option<&[String]>,
+    old: &str,
+    new: &str,
+) -> (Vec<String>, Option<Vec<String>>) {
+    let next = renamed_list(tags, old, new);
+    let pins = pins.map(|pins| spelled_in(renamed_list(pins, old, new), &next));
+    (next, pins)
+}
+
+/// `pins` each in the spelling `tags` holds it in, deduped.
+pub fn spelled_in(pins: Vec<String>, tags: &[String]) -> Vec<String> {
+    dedupe(pins.into_iter().map(|pin| {
+        let kept = tags.iter().find(|tag| same_tag(tag, &pin));
+        kept.cloned().unwrap_or(pin)
+    }))
+}
+
+/// The live note or journal day's `tags` and `pinnedTags` (`None` without the key), `None`
+/// when it is not live.
+#[allow(clippy::type_complexity)]
+pub fn lists(
+    conn: &Connection,
+    item_id: &str,
+) -> Result<Option<(Vec<String>, Option<Vec<String>>)>, StorageError> {
+    let item_type = match live_type(conn, item_id) {
+        Ok(item_type) => item_type,
+        Err(StorageError::NotFound { .. }) => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let payload = require(conn, item_type, item_id)?;
+    let object = payload.object();
+    let tags = read_tags(object, "tags", item_type, item_id)?;
+    let pins = match object.contains_key("pinnedTags") {
+        true => Some(read_tags(object, "pinnedTags", item_type, item_id)?),
+        false => None,
+    };
+    Ok(Some((tags, pins)))
+}
+
+/// `tags` with `old` and its children renamed to `new`, deduped first spelling first.
+pub fn renamed_list(tags: &[String], old: &str, new: &str) -> Vec<String> {
+    dedupe(
+        tags.iter()
+            .map(|tag| renamed_tag(tag, old, new).unwrap_or_else(|| tag.clone())),
+    )
+}
+
 /// Keyed payload changes for [`sync_items::apply_local_edit_in`].
 pub type PayloadChanges = Vec<(&'static str, Change)>;
 
@@ -296,15 +402,37 @@ pub fn set_pinned(
         }
     }
     let ticked = clock::increment(&document_clock(object, item_type, item_id)?, device_id);
-    let changes = [
+    let changes = vec![
         ("pinnedTags", Change::set(pins)),
         ("clock", Change::set(clock_value(&ticked))),
     ];
-    let tx = conn.unchecked_transaction().map_err(failed)?;
-    sync_items::apply_local_edit_in(&tx, item_type, item_id, &changes, now_ms)?;
-    outbox::enqueue(&tx, &outbox::Change::upsert(item_type, item_id), now_ms)?;
-    tx.commit().map_err(failed)?;
+    publish(conn, item_type, item_id, changes, now_ms)?;
     Ok(true)
+}
+
+/// Writes `changes` to the item and queues it, in one transaction, the caller's when it holds
+/// one. A journal day sends no `content`: only its create carries text (§13.7.2), and an
+/// Electron pull writes a non-null one over the day file's body.
+fn publish(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    mut changes: PayloadChanges,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    if item_type == "journal" {
+        changes.push(("content", Change::Set(Value::Null)));
+    }
+    let write = |tx: &Connection| {
+        sync_items::apply_local_edit_in(tx, item_type, item_id, &changes, now_ms)?;
+        outbox::enqueue(tx, &outbox::Change::upsert(item_type, item_id), now_ms).map(drop)
+    };
+    if !conn.is_autocommit() {
+        return write(conn);
+    }
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    write(&tx)?;
+    tx.commit().map_err(failed)
 }
 
 /// Merges the new arrays into the payload and publishes the item, in one
@@ -340,11 +468,7 @@ fn write(
     if let Some(pinned) = pinned {
         changes.push(("pinnedTags", Change::set(pinned)));
     }
-
-    let tx = conn.unchecked_transaction().map_err(failed)?;
-    sync_items::apply_local_edit_in(&tx, item_type, item_id, &changes, now_ms)?;
-    outbox::enqueue(&tx, &outbox::Change::upsert(item_type, item_id), now_ms)?;
-    tx.commit().map_err(failed)?;
+    publish(conn, item_type, item_id, changes, now_ms)?;
     Ok(tags)
 }
 

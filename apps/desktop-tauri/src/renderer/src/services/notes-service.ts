@@ -40,6 +40,8 @@ import type {
   WikiLinkTitleResolutions
 } from '@memry/rpc/notes'
 import type {
+  NoteAliasEdit,
+  NoteAliasEditResponse,
   NoteLinkMention,
   NoteLinkMentionResponse,
   NoteLinksChangedEvent,
@@ -54,6 +56,7 @@ import {
   events,
   type DefinitionInput,
   type FileView,
+  type FolderConfigUpdatedEvent,
   type NoteListItemView,
   type NoteView,
   type PropertyDefinitionView,
@@ -181,9 +184,10 @@ function definitionInput(
 /**
  * The notes commands of Step 13f (the edit of 13f-3c included), the rename, move and manual
  * order of Step 13g, the link reads and the mention link of Step 13i, the property definitions of
- * Step 13k, the folder reads, create and settings of Step 13h and a template applied to a note
- * (13l) (`commands/notes.rs`, `commands/property_definitions.rs`, `commands/folders.rs`); every
- * other method still goes to `window.api.notes`.
+ * Step 13k, the folder reads, create and settings of Step 13h, a template applied to a note
+ * (13l), and a note's other names and the tag list of 13q (`commands/notes.rs`,
+ * `commands/property_definitions.rs`, `commands/folders.rs`, `commands/tags.rs`); every other
+ * method still goes to `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
@@ -229,14 +233,20 @@ const ported = {
       return failure(error)
     }
   },
-  // `title` is `notes:rename`'s and `frontmatter` the property writer's (13k); an edit without
-  // them would drop what was asked. A failure answers as Electron's `registerCommand` does.
+  // `title` is `notes:rename`'s: Electron's update renames the record and leaves the file, and no
+  // caller sends one, so it stays refused. A failure answers as Electron's `registerCommand` does.
   update: async (input: NoteUpdateInput): Promise<NoteUpdateResponse> => {
     if (input.title !== undefined) throw new NotPortedError('notes.update({ title })')
-    if (input.frontmatter !== undefined) throw new NotPortedError('notes.update({ frontmatter })')
     try {
-      const { id, content, headerTags, emoji } = input
-      const { note, tagTemplate } = await commands.notesUpdate({ id, content, headerTags, emoji })
+      const { id, content, headerTags, emoji, frontmatter } = input
+      const { note, tagTemplate } = await commands.notesUpdate({
+        id,
+        content,
+        headerTags,
+        emoji,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- frontmatter values are the JSON the command carries as is
+        frontmatter: frontmatter as Record<string, Value> | undefined
+      })
       return tagTemplate
         ? { success: true, note: toNote(note), tagTemplate }
         : { success: true, note: toNote(note) }
@@ -333,6 +343,17 @@ const ported = {
   }: NoteLinkMention): Promise<NoteLinkMentionResponse> => ({
     linked: await commands.notesLinkMention(sourceId, targetId, ordinal)
   }),
+  // Rejects on failure, as Electron's `notes:edit-aliases` (`registerCommand`) does.
+  editAliases: (input: NoteAliasEdit): Promise<NoteAliasEditResponse> =>
+    commands.notesEditAliases(input),
+  // Electron's `notes:get-tags` is `tags:get-all-with-counts` (`getAllTagsWithCounts`) in
+  // another shape; one owner serves both.
+  getTags: async (): Promise<{ tag: string; color: string; count: number }[]> =>
+    (await commands.tagsGetAllWithCounts()).map(({ name, color, count }) => ({
+      tag: name,
+      color,
+      count
+    })),
   // The card's opening is read here from the body Rust sends, with the function Electron's main
   // ran on it; a card with a description gets no body.
   previewByTitle: async (title: string): Promise<WikiLinkPreview | null> => {
@@ -544,6 +565,9 @@ export function onTagsChanged(callback: () => void): () => void {
   return subscribeToEvent(events.noteTagsChangedEvent, () => callback())
 }
 
-export function onFolderConfigUpdated(callback: (event: { path: string }) => void): () => void {
-  return window.api.onFolderConfigUpdated(callback)
+/** Sync changed a folder's settings or removed the folder (`shell/folder_sync.rs`). */
+export function onFolderConfigUpdated(
+  callback: (event: FolderConfigUpdatedEvent) => void
+): () => void {
+  return subscribeToEvent(events.folderConfigUpdatedEvent, callback)
 }

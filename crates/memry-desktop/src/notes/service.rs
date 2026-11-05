@@ -43,9 +43,27 @@ pub struct NotesService {
     pub(crate) own_files: Arc<OwnFiles>,
     /// The tag templates' fills that can still be taken back ([`super::tag_template`]).
     pub(crate) undos: Undos,
+    /// Held while a tag rename runs (`notes::tag_rename`): one at a time.
+    pub(crate) renaming: Mutex<()>,
     /// Test hook: runs once inside the next journal save, after the day's new file is written
     /// aside and before it lands ([`Self::before_next_day_file_lands`]).
     pub(crate) day_file_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
+    /// Test hook: runs once inside the next tag rename's edit of a file, after its new text is
+    /// written aside and before it lands ([`Self::before_next_rename_lands`]).
+    #[cfg(feature = "test-hooks")]
+    pub(crate) rename_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
+    /// Test hook: the next tag rename stops after a note's file is written and before its
+    /// record is ([`Self::crash_after_next_rename_write`]).
+    #[cfg(feature = "test-hooks")]
+    pub(crate) crash_after_rename_write: AtomicBool,
+    /// Test hook: the next tag rename's next file edit fails
+    /// ([`Self::fail_next_rename_edit`]).
+    #[cfg(feature = "test-hooks")]
+    pub(crate) fail_rename_edit: AtomicBool,
+    /// Test hook: the next tag rename's next body-tag cache write fails
+    /// ([`Self::fail_next_rename_body_cache`]).
+    #[cfg(feature = "test-hooks")]
+    pub(crate) fail_rename_body_cache: AtomicBool,
     /// Test hook: the next moved note's refs edit fails its feed (`AppEdit::fail_next_feed`).
     #[cfg(feature = "test-hooks")]
     pub(crate) fail_next_ref_feed: AtomicBool,
@@ -74,7 +92,16 @@ impl NotesService {
             trash,
             own_files,
             undos: Undos::default(),
+            renaming: Mutex::new(()),
             day_file_lands: Mutex::new(None),
+            #[cfg(feature = "test-hooks")]
+            rename_lands: Mutex::new(None),
+            #[cfg(feature = "test-hooks")]
+            crash_after_rename_write: AtomicBool::new(false),
+            #[cfg(feature = "test-hooks")]
+            fail_rename_edit: AtomicBool::new(false),
+            #[cfg(feature = "test-hooks")]
+            fail_rename_body_cache: AtomicBool::new(false),
             #[cfg(feature = "test-hooks")]
             fail_next_ref_feed: AtomicBool::new(false),
             #[cfg(feature = "test-hooks")]
@@ -95,6 +122,46 @@ impl NotesService {
             .day_file_lands
             .lock()
             .unwrap_or_else(PoisonError::into_inner) = Some(hook);
+    }
+
+    /// Test hook: `hook` runs inside the next tag rename's edit of a file, between the write of
+    /// its new text aside and its rename over the file, as an outside edit can.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn before_next_rename_lands(&self, hook: Box<dyn FnOnce() + Send>) {
+        *self
+            .rename_lands
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(hook);
+    }
+
+    /// The next tag rename stops as a crash would, after a note's file is written and before
+    /// its record takes the new name.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn crash_after_next_rename_write(&self) {
+        self.crash_after_rename_write.store(true, Ordering::Relaxed);
+    }
+
+    /// Holds the tag rename lock, as a rename running (or a refused one, a moment) holds it.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn hold_tag_rename(&self) -> std::sync::MutexGuard<'_, ()> {
+        self.renaming.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// The next tag rename's next file edit fails, as a note it cannot write does.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn fail_next_rename_edit(&self) {
+        self.fail_rename_edit.store(true, Ordering::Relaxed);
+    }
+
+    /// The next tag rename's next body-tag cache write fails.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn fail_next_rename_body_cache(&self) {
+        self.fail_rename_body_cache.store(true, Ordering::Relaxed);
     }
 
     /// The edit a note's or a day's save runs through.

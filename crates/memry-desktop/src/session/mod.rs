@@ -296,7 +296,7 @@ impl Session {
     }
 
     /// A background task of the open vault (the index build). Spawned after the open and never
-    /// awaited; close cancels the token it is given and joins the thread.
+    /// awaited; close cancels its token and joins it. See [`BackgroundHook`]: it may run inline.
     pub fn on_background(&self, name: &str, hook: BackgroundHook) {
         lock(&self.inner.hooks)
             .background

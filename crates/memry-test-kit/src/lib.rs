@@ -15,6 +15,11 @@
 //!    run (`rust-ci.yml`); `nightly-proptest.yml` sets a random one and replays it
 //!    from the issue it opens. A test never sets a seed itself, so one value
 //!    reproduces a red run.
+//!
+//! [`ydoc::doc_json`] reads a Yjs document as JSON, for tests that compare two
+//! documents built two ways.
+
+pub mod ydoc;
 
 use proptest::test_runner::Config as ProptestConfig;
 

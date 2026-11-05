@@ -8,7 +8,6 @@
 use super::{NotesWriter, now_ms};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
-use crate::domain::journal;
 use crate::domain::notes::app_move::{self, AppMoved, BeginError, FolderRecorded, Recorded};
 use crate::domain::notes::file_tags;
 use crate::domain::notes::folder_delete::{self, FolderDeleteRecorded};
@@ -16,8 +15,10 @@ use crate::domain::notes::identity::{
     self, Adopted, Crossing, FileNote, Moved, OwedPlace, Removed,
 };
 use crate::domain::notes::journal_day::{self, FileDay};
+use crate::domain::notes::new_files::{self, NewFileNote};
 use crate::domain::notes::{self, NewNote};
 use crate::domain::properties;
+use crate::domain::{folders, journal};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::storage::repositories::schema::Object;
@@ -92,6 +93,22 @@ impl NotesWriter {
                     now_ms(),
                 ))
             })
+            .map_err(CrdtError::from)?
+    }
+
+    /// The id a note created by [`Self::adopt_new_files`] is to get, minted before its body is
+    /// authored for it ([`crate::api::external_feed::ExternalFeed::first_body`]).
+    pub fn new_note_id() -> String {
+        Self::new_id()
+    }
+
+    /// Notes for many files no row names, each with the body authored for its id, in one
+    /// transaction ([`new_files::adopt_new`]): `true` for each created, `false` for each to
+    /// be asked about alone through [`Self::adopt_file`].
+    pub fn adopt_new_files(&self, files: &[NewFileNote<'_>]) -> Result<Vec<bool>, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| Ok(new_files::adopt_new(conn, files, &device_id, now_ms())))
             .map_err(CrdtError::from)?
     }
 
@@ -215,6 +232,13 @@ impl NotesWriter {
         self.db.read_blocking(folder_delete::pending)
     }
 
+    /// Whether the folder at `path` was deleted here or on another device
+    /// ([`folders::deleted`]).
+    pub fn folder_deleted(&self, path: &str) -> Result<bool, StorageError> {
+        self.db
+            .read_blocking(move |conn| folders::deleted(conn, path))
+    }
+
     /// Forgets the record of the folder's delete ([`folder_delete::abandon`]).
     pub fn abandon_folder_delete(&self, path: &str) -> Result<bool, StorageError> {
         self.db
@@ -278,18 +302,60 @@ impl NotesWriter {
         self.db.call_blocking(|conn| identity::owed_places(conn))
     }
 
-    /// An edit of the note's or journal day's file set `changed` and dropped `removed`: the
-    /// record takes those keys and keeps every other ([`properties::mirror_file`]). `false` when
-    /// no note or day has that id.
+    /// An app edit took the note's or journal day's file from the property values `before` to
+    /// `after`: the record takes the keys it set and dropped and keeps every other
+    /// ([`properties::mirror_file`]). `false` when no note or day has that id.
     pub fn file_properties(
         &self,
         id: &str,
-        changed: Object,
-        removed: Vec<String>,
+        before: Object,
+        after: Object,
     ) -> Result<bool, StorageError> {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            properties::mirror_file(conn, id, changed, &removed, &device_id, now_ms())
+            properties::mirror_file(conn, id, &before, after, &device_id, now_ms())
+        })
+    }
+
+    /// An edit outside the app, or a file the tier named, left the note's or journal day's
+    /// file holding the property values `after`; `indexed` is the index's reading of the file
+    /// it replaced. The record takes what the file changed since it last took it
+    /// ([`properties::taken`]). `false` when no note or day has that id.
+    pub fn file_properties_taken(
+        &self,
+        id: &str,
+        indexed: Option<Object>,
+        after: Object,
+    ) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            properties::taken(conn, id, indexed, after, &device_id, now_ms())
+        })
+    }
+
+    /// The tier named the new files `(id, values)` together: each record takes the values
+    /// it lacks ([`properties::taken_all`]), in one transaction.
+    pub fn found_files_properties(&self, files: Vec<(String, Object)>) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| properties::taken_all(conn, files, &device_id, now_ms()))
+    }
+
+    /// An in-app edit wrote these aliases into the note's or journal day's file: the record
+    /// takes them ([`notes::take_file_aliases`]). `false` when no live note or day has that id.
+    pub fn file_aliases(&self, id: &str, aliases: &[String]) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::take_file_aliases(conn, id, aliases, &device_id, now_ms())
+        })
+    }
+
+    /// An in-app edit wrote this cover into the note's file, `None` for none: the record's
+    /// `cover` takes it ([`notes::take_file_cover`]). `false` when no live note has that id.
+    pub fn file_cover(&self, id: &str, cover: Option<Object>) -> Result<bool, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            notes::take_file_cover(conn, id, cover, &device_id, now_ms())
         })
     }
 

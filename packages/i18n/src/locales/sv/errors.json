@@ -13,7 +13,8 @@
     "invalidPath": "Den valda sökvägen är inte en giltig valvplats.",
     "permissionDenied": "Behörighet nekad. Kontrollera att du har åtkomst till den här mappen.",
     "alreadyExists": "Det finns redan ett valv på den här platsen.",
-    "corrupted": "Det här valvet verkar vara skadat. Försök att återställa från en säkerhetskopia."
+    "corrupted": "Det här valvet verkar vara skadat. Försök att återställa från en säkerhetskopia.",
+    "configChangeNotPorted": "Den här versionen kan ännu inte ändra dagboksmappen, datumformatet eller exkluderade mappar. Din sparade inställning behålls."
   },
   "note": {
     "notFound": "Det gick inte att hitta den här anteckningen. Den kan ha raderats.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Ett namnbyte från #{from} till #{to} pågår fortfarande. Försök igen när det är klart.",
+    "renameUnfinished": "Namnbytet från #{from} till #{to} slutfördes inte för {count, plural, one {# anteckning} other {# anteckningar}}. Byt namn från #{from} till #{to} igen för att slutföra det.",
     "mergeSameTag": "Käll- och måltaggen är samma",
     "categoryNameRequired": "Kategorinamn krävs",
     "pinNoteFailed": "Det gick inte att fästa anteckningen",

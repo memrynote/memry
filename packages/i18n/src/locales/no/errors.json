@@ -13,7 +13,8 @@
     "invalidPath": "Den valgte banen er ikke en gyldig hvelvplassering.",
     "permissionDenied": "Tillatelse nektet. Sjekk at du har tilgang til denne mappen.",
     "alreadyExists": "Det finnes allerede et hvelv på dette stedet.",
-    "corrupted": "Dette hvelvet ser ut til å være ødelagt. Prøv å gjenopprette fra en sikkerhetskopi."
+    "corrupted": "Dette hvelvet ser ut til å være ødelagt. Prøv å gjenopprette fra en sikkerhetskopi.",
+    "configChangeNotPorted": "Denne versjonen kan ikke endre dagbokmappen, datoformatet eller ekskluderte mapper ennå. Den lagrede innstillingen beholdes."
   },
   "note": {
     "notFound": "Dette notatet ble ikke funnet. Det kan ha blitt slettet.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "Et navnebytte fra #{from} til #{to} pågår fortsatt. Prøv igjen når det er ferdig.",
+    "renameUnfinished": "Navnebyttet fra #{from} til #{to} ble ikke fullført for {count, plural, one {# notat} other {# notater}}. Bytt navn fra #{from} til #{to} på nytt for å fullføre det.",
     "mergeSameTag": "Kilde- og måltaggen er den samme",
     "categoryNameRequired": "Kategorinavn er påkrevd",
     "pinNoteFailed": "Kunne ikke feste notatet",

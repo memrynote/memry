@@ -3,7 +3,6 @@ import type {
   GetAllWithCountsResponse,
   MergeTagResponse,
   TagOperationResponse,
-  RenameTagResponse,
   DeleteTagResponse,
   TagRenamedEvent,
   TagColorUpdatedEvent,
@@ -15,8 +14,11 @@ import type {
   CreateCategoryResponse,
   TagsClientAPI
 } from '../../../preload/index.d'
+import type { TagsProgressEvent } from '@memry/contracts/tag-schema-api'
+import type { RenameTagResponse } from '@memry/contracts/tags-api'
 import { commands, events } from '../../../generated/bindings'
-import { extractErrorMessage } from '../lib/ipc-error'
+import type { UnfinishedRenameView } from '../../../generated/bindings'
+import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 import { subscribeToEvent } from './tauri-event'
 
 /**
@@ -40,6 +42,9 @@ function failure(error: unknown): { success: false; error?: string } {
   const message = extractErrorMessage(error, '')
   return message ? { success: false, error: message } : { success: false }
 }
+
+/** A rename's answer; a failed one keeps its command's `code`, which tells a refusal apart. */
+export type RenameTagResult = RenameTagResponse & { code?: string }
 
 /** Runs a write that answers `{ success }`, a rejection becoming `{ success: false }`. */
 async function settled(write: () => Promise<unknown>): Promise<TagOperationResponse> {
@@ -107,7 +112,37 @@ const ported = {
     settled(() => commands.tagsPinNoteToTag(input.noteId, input.tag)),
 
   unpinNoteFromTag: (input: { noteId: string; tag: string }): Promise<TagOperationResponse> =>
-    settled(() => commands.tagsUnpinNoteFromTag(input.noteId, input.tag))
+    settled(() => commands.tagsUnpinNoteFromTag(input.noteId, input.tag)),
+
+  /** Renames the tag and its children in every note's file and record; `runId` names its progress. */
+  renameTag: async (input: {
+    oldName: string
+    newName: string
+    runId?: string
+  }): Promise<RenameTagResult> => {
+    try {
+      return { success: true, ...(await commands.tagsRename(input)) }
+    } catch (error) {
+      const code = commandErrorCode(error)
+      return { ...failure(error), ...(code ? { code } : {}) }
+    }
+  }
+}
+
+/**
+ * The rename left with notes it could not write, if any; none while one runs. Tauri only:
+ * Electron forgets the notes it could not write.
+ */
+export function unfinishedTagRename(): Promise<UnfinishedRenameView | null> {
+  return commands.tagsRenameUnfinished()
+}
+
+/**
+ * Stops the rename left unfinished: the notes it wrote keep the new name, the ones it left the
+ * old. `false` when none was left; rejects while a rename runs.
+ */
+export function stopTagRename(): Promise<boolean> {
+  return commands.tagsRenameAbandon()
 }
 
 /** The tag methods served from Rust; `window.api.tags` is typed without them. */
@@ -115,17 +150,6 @@ export type PortedTagMethod = keyof typeof ported
 
 export const tagsService: TagsService = {
   ...ported,
-
-  /**
-   * Rename a tag across all notes.
-   */
-  renameTag: (input: {
-    oldName: string
-    newName: string
-    runId?: string
-  }): Promise<RenameTagResponse> => {
-    return window.api.tags.renameTag(input)
-  },
 
   /**
    * Delete a tag from all notes.
@@ -169,7 +193,16 @@ export const tagsService: TagsService = {
  * @returns Unsubscribe function
  */
 export function onTagRenamed(callback: (event: TagRenamedEvent) => void): () => void {
-  return window.api.onTagRenamed(callback)
+  return subscribeToEvent(events.tagRenamedEvent, callback)
+}
+
+/**
+ * Subscribe to a tag rename's progress. A field rename's progress still comes through
+ * `window.api.onTagsProgress` until its command is ported.
+ * @returns Unsubscribe function
+ */
+export function onTagsProgress(callback: (event: TagsProgressEvent) => void): () => void {
+  return subscribeToEvent(events.tagsProgressEvent, callback)
 }
 
 /**
@@ -205,7 +238,11 @@ export function onTagCategoriesChanged(callback: () => void): () => void {
 }
 
 /** The subscriptions above that Rust events serve; `window.api` is typed without them. */
-export type PortedTagEvent = 'onTagColorUpdated' | 'onTagCategoriesChanged' | 'onTagNotesChanged'
+export type PortedTagEvent =
+  | 'onTagColorUpdated'
+  | 'onTagCategoriesChanged'
+  | 'onTagNotesChanged'
+  | 'onTagRenamed'
 
 // ============================================================================
 // Type Re-exports

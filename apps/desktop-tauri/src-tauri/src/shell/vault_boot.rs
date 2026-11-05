@@ -9,14 +9,14 @@ use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::launch_timeline::LaunchPhase;
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::notes::index::{IndexReport, NoteIndex};
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::paths::AppPaths;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::OpenStage;
 use memry_desktop::session::prompt::{self, Asker, RecoveryPrompt};
-use memry_desktop::session::response::{VaultStatus, index_recovery_reason};
+use memry_desktop::session::response::index_recovery_reason;
 use memry_desktop::session::{OpenSource, Session, SessionEvent, StartupOutcome};
 use memry_desktop::settings::SettingsService;
 use memry_desktop::telemetry::service::Service;
@@ -26,10 +26,11 @@ use tauri::{AppHandle, Manager, Wry};
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::commands::error::{CommandError, ErrorKind};
+use crate::commands::vault_index::{send_indexing_status, send_status};
 use crate::events::{
     CrdtWriteBackFailedEvent, NoteLinksChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
     VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
-    VaultStatusChangedEvent, WriteBackFailureReason, broadcast,
+    WriteBackFailureReason, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -104,8 +105,10 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// with the notes identity (Step 13d) naming the note of each file. The tier is managed so the
 /// app's own file operations reach its own-write record and its row lane, and the notes service
 /// (Step 13f) over it, whose row facts become the note events. The note index follows the
-/// tier's facts in the background of every open, broadcasts the progress of each open's pass
-/// and the links each pass committed, and is managed for `vault_reindex`. The pre-sync template
+/// tier's facts in the background of every open, broadcasts the progress of each open's pass,
+/// the vault status whenever its indexing changes, and the links each pass committed, and is
+/// managed for `vault_reindex`. A tag rename an earlier run did not finish is finished once each
+/// open's walk ends (Step 13j-4). The pre-sync template
 /// files import as the vault opens (Step 13l), into its activity log.
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
@@ -124,7 +127,12 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     let lander = app.clone();
     let index = NoteIndex::new(
         tier.clone(),
-        move |step| broadcast(&reporter, VaultIndexProgressEvent::from(step)),
+        move |report| match report {
+            IndexReport::Progress(step) => {
+                broadcast(&reporter, VaultIndexProgressEvent::from(step));
+            }
+            IndexReport::Indexing => send_indexing_status(&reporter),
+        },
         move |links| broadcast(&announcer, NoteLinksChangedEvent::from(links)),
         move |note_id| crate::shell::journal_events::landed(&lander, note_id),
     );
@@ -136,6 +144,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     memry_desktop::templates::legacy::register(session, store.inner().clone(), tier.activity());
     app.manage(tier.activity());
     let notes = NotesService::new(tier.clone(), store.inner().clone());
+    notes.register_resume(session);
     crate::shell::note_events::forward(app.clone(), tier.subscribe());
     crate::shell::journal_events::forward(app.clone(), tier.subscribe());
     app.manage(notes);
@@ -315,7 +324,7 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
             match event {
                 SessionEvent::StatusChanged(status) => {
                     let is_open = status.is_open;
-                    broadcast(&app, VaultStatusChangedEvent(VaultStatus::from(status)));
+                    send_status(&app, status);
                     crate::windows::main_window::on_vault_status(&app, is_open);
                     // The keyboard rebinds belong to the vault, so the menu follows it.
                     crate::menu::apply(&app, false);

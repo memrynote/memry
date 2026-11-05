@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
 import { closeSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs'
-import { createServer } from 'node:net'
+import { connect, createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -12,7 +12,9 @@ const crateTarget = fileURLToPath(new URL('../../../../crates/target/debug', imp
 
 /**
  * Each launch's stderr, uploaded with the e2e results. The app logs there too, and it is the only
- * place a panic before logging starts (GTK that cannot open its display) leaves its text.
+ * place a panic before logging starts (GTK that cannot open its display) leaves its text. No run
+ * clears it: CI uploads the single-app and the two-device runs from it together, and each file
+ * name carries its port and launch time.
  */
 export const APP_OUTPUT_DIR = fileURLToPath(
   new URL('../../test-results/e2e/app-output', import.meta.url)
@@ -43,6 +45,31 @@ export function freePort(): Promise<number> {
       server.close(() => resolve(typeof address === 'object' && address ? address.port : 0))
     })
   })
+}
+
+/** True while a socket listens on `port`: a connection is accepted even by an exiting process. */
+function listening(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = connect({ port, host: '127.0.0.1' })
+    socket.once('connect', () => {
+      socket.destroy()
+      resolve(true)
+    })
+    socket.once('error', () => resolve(false))
+  })
+}
+
+/**
+ * Waits until nothing listens on `port`. Windows sets an exiting process's exit code, which
+ * `isAlive` reads, before it closes the process's handles, so the app `gracefulClose` saw exit
+ * can still hold its driver port; an app started then fails to bind it and never answers (#3973).
+ */
+async function waitForPortRelease(port: number): Promise<void> {
+  const free = await pollUntil(async () => !(await listening(port)), {
+    timeoutMs: 30_000,
+    intervalMs: 100
+  })
+  if (!free) throw new HarnessError(`port ${port} is still held 30 s after its app exited`)
 }
 
 export async function driverReady(port: number): Promise<boolean> {
@@ -92,6 +119,7 @@ export async function spawnApp(port: number): Promise<ChildProcess> {
   }
   mkdirSync(enchantDir, { recursive: true })
   mkdirSync(APP_OUTPUT_DIR, { recursive: true })
+  await waitForPortRelease(port)
   const output = join(APP_OUTPUT_DIR, `app-${port}-${Date.now()}.log`)
   // A file, not a pipe: it keeps what the app wrote after this process stopped reading.
   const fd = openSync(output, 'a')

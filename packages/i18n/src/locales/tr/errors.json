@@ -13,7 +13,8 @@
     "invalidPath": "Seçilen yol geçerli bir kasa konumu değil.",
     "permissionDenied": "İzin reddedildi. Bu klasöre erişiminizin olup olmadığını kontrol edin.",
     "alreadyExists": "Bu konumda zaten bir kasa mevcut.",
-    "corrupted": "Bu kasa bozulmuş gibi görünüyor. Yedekten geri yüklemeyi deneyin."
+    "corrupted": "Bu kasa bozulmuş gibi görünüyor. Yedekten geri yüklemeyi deneyin.",
+    "configChangeNotPorted": "Bu sürüm henüz günlük klasörünü, tarih biçimini veya hariç tutulan klasörleri değiştiremez. Kayıtlı ayarınız korunur."
   },
   "note": {
     "notFound": "Bu not bulunamadı. Silinmiş olabilir.",
@@ -305,6 +306,7 @@
   },
   "tag": {
     "renameInProgress": "#{from} etiketinin #{to} olarak yeniden adlandırılması sürüyor. Bitince tekrar deneyin.",
+    "renameUnfinished": "#{from} etiketinin #{to} olarak yeniden adlandırılması {count, plural, one {# notta} other {# notta}} tamamlanmadı. Tamamlamak için #{from} etiketini yeniden #{to} olarak adlandırın.",
     "mergeSameTag": "Kaynak ve hedef etiketler aynı",
     "categoryNameRequired": "Kategori adı gerekli",
     "pinNoteFailed": "Not sabitlenemedi",

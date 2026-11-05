@@ -5,7 +5,9 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
-description = "Shared helpers for tests of untrusted-input handling. Dev-dependency only."
+description = "Shared helpers for tests of untrusted-input handling and CRDT documents. Dev-dependency only."
 
 [dependencies]
 proptest = "1"
+serde_json = { workspace = true }
+yrs = { workspace = true }

@@ -30,6 +30,9 @@ import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-
 import { MEMRY_NOTE_DRAG_MIME, setTabDragData } from '@/lib/drag-mime'
 import type { OpenTargetTab } from '@/hooks/use-open-target'
 import { useT } from '@memry/i18n/renderer'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:Tree')
 
 type NodeInfo = {
   nodeId: string
@@ -213,31 +216,15 @@ export const TreeProvider = ({
   // İkon state'i için re-render tetiklemek için
   const [, setIconVersion] = useState(0)
 
-  // Persist expandedIds to localStorage (debounced)
+  // Persist expandedIds to localStorage on every change. The notes tree swaps this tree for the
+  // virtualized one, which reads the key as it renders, so a write still pending then is lost.
   useEffect(() => {
-    if (!persistKey) return undefined
-    const timer = setTimeout(() => {
-      try {
-        localStorage.setItem(persistKey, JSON.stringify(Array.from(expandedIds)))
-      } catch {
-        // Ignore storage errors
-      }
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [expandedIds, persistKey])
-
-  // Sync save on app close (catches the debounce window)
-  useEffect(() => {
-    if (!persistKey) return undefined
-    const handleBeforeUnload = () => {
-      try {
-        localStorage.setItem(persistKey, JSON.stringify(Array.from(expandedIds)))
-      } catch {
-        // Ignore storage errors
-      }
+    if (!persistKey) return
+    try {
+      localStorage.setItem(persistKey, JSON.stringify(Array.from(expandedIds)))
+    } catch (error) {
+      log.warn('could not save the expanded folders', { key: persistKey, error })
     }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [expandedIds, persistKey])
 
   const isControlled = selectedIds !== undefined && onSelectionChange !== undefined

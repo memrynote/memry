@@ -112,6 +112,12 @@ export const commands = {
 	 *  user before it deletes again with `permanent` (#3813).
 	 */
 	notesDelete: (id: string, permanent: boolean | null) => __TAURI_INVOKE<null>("notes_delete", { id, permanent }),
+	/**
+	 *  `notes:edit-aliases`: names removed, then names added, in the note's or journal day's file
+	 *  and its record. Answers the names the file holds now; the `notes:updated` comes from the
+	 *  file's row fact.
+	 */
+	notesEditAliases: (input: NoteAliasEditInput) => __TAURI_INVOKE<NoteAliasesView>("notes_edit_aliases", { input }),
 	/**  `notes:exists`: a `.md` path, or a title a link would resolve. */
 	notesExists: (titleOrPath: string) => __TAURI_INVOKE<boolean>("notes_exists", { titleOrPath }),
 	notesGet: (id: string) => __TAURI_INVOKE<NoteView | null>("notes_get", { id }),
@@ -219,6 +225,11 @@ export const commands = {
 	/**  `properties:rename`, on this note only. */
 	propertiesRename: (entityId: string, oldName: string, newName: string) => __TAURI_INVOKE<null>("properties_rename", { entityId, oldName, newName }),
 	/**
+	 *  `properties:resolveRefs`: relation values resolved for their chips, one to one and in order;
+	 *  a malformed, missing or unreadable ref answers `exists: false`.
+	 */
+	propertiesResolveRefs: (uris: string[]) => __TAURI_INVOKE<ResolvedRelationRefView[]>("properties_resolve_refs", { uris }),
+	/**
 	 *  `properties:set`: `properties` is the panel's whole record and `base` the record it was
 	 *  shown; only the user's changes between the two are written.
 	 */
@@ -306,6 +317,19 @@ export const commands = {
 	tagsListCategories: () => __TAURI_INVOKE<TagCategoryView[]>("tags_list_categories"),
 	/**  Only a tag the note's record carries can be pinned (`memry_core::domain::tags::set_pinned`). */
 	tagsPinNoteToTag: (noteId: string, tag: string) => __TAURI_INVOKE<null>("tags_pin_note_to_tag", { noteId, tag }),
+	/**  `tags:rename`: the tag and its children across the vault, merged into a name in use. */
+	tagsRename: (input: RenameTagInput) => __TAURI_INVOKE<RenameTagView>("tags_rename", { input }),
+	/**
+	 *  Stops the rename left unfinished: the notes it wrote keep the new name, the ones it left the
+	 *  old, and other renames run again. `false` when none was recorded. A record it renamed sends
+	 *  [`NoteTagsChangedEvent`].
+	 */
+	tagsRenameAbandon: () => __TAURI_INVOKE<boolean>("tags_rename_abandon"),
+	/**
+	 *  The rename left with notes it could not write, if any; none while one runs. Tauri only:
+	 *  Electron forgets the notes it could not write.
+	 */
+	tagsRenameUnfinished: () => __TAURI_INVOKE<UnfinishedRenameView | null>("tags_rename_unfinished"),
 	tagsRenameCategory: (id: string, name: string) => __TAURI_INVOKE<null>("tags_rename_category", { id, name }),
 	/**  A drag in the tag hub: tag assignments and category order, all or nothing. */
 	tagsReorder: (input: ReorderInput) => __TAURI_INVOKE<null>("tags_reorder", { input }),
@@ -376,7 +400,10 @@ export const commands = {
 	vaultActivityReveal: () => __TAURI_INVOKE<boolean>("vault_activity_reveal"),
 	/**  Keeps entries for `days` (7, 30 or 90). */
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
-	/**  Measures every note of the open vault again; resolves once the last progress went out. */
+	/**
+	 *  Measures every note of the open vault again; resolves once the last progress went out.
+	 *  The index sends the vault status, indexing, from the request to the answer.
+	 */
 	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
 	/**
 	 *  What each `![[target]]` image embed of `refs` resolves to in the open vault: relative to the
@@ -403,6 +430,7 @@ export const events = {
 	crdtWriteBackFailedEvent: makeEvent<CrdtWriteBackFailedEvent, CrdtWriteBackFailedEvent>("crdt-write-back-failed-event"),
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
+	folderConfigUpdatedEvent: makeEvent<FolderConfigUpdatedEvent, FolderConfigUpdatedEvent>("folder-config-updated-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
@@ -424,6 +452,8 @@ export const events = {
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
 	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
 	tagNotesChangedEvent: makeEvent<TagNotesChangedEvent, TagNotesChangedEvent>("tag-notes-changed-event"),
+	tagRenamedEvent: makeEvent<TagRenamedEvent, TagRenamedEvent>("tag-renamed-event"),
+	tagsProgressEvent: makeEvent<TagsProgressEvent, TagsProgressEvent>("tags-progress-event"),
 	templateCreatedEvent: makeEvent<TemplateCreatedEvent, TemplateCreatedEvent>("template-created-event"),
 	templateDeletedEvent: makeEvent<TemplateDeletedEvent, TemplateDeletedEvent>("template-deleted-event"),
 	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
@@ -752,6 +782,14 @@ export type FolderConfigInput = {
 	inherit?: boolean | null,
 };
 
+/**
+ *  A folder's settings or its record changed, or the folder left the vault, by sync
+ *  (`notes:folder-config-updated`): the folder `path` names, vault-relative.
+ */
+export type FolderConfigUpdatedEvent = {
+	path: string,
+};
+
 /**  A folder's settings as the renderer reads them (`FolderConfig` of `@memry/rpc/notes`). */
 export type FolderConfigView = {
 	icon?: string | null,
@@ -1042,6 +1080,18 @@ export type MovesRecovered = {
 	shownFolders: number,
 };
 
+/**  `NoteAliasEditSchema`: names to remove, then names to add. */
+export type NoteAliasEditInput = {
+	id: string,
+	add: string[],
+	remove: string[],
+};
+
+/**  `NoteAliasEditResponse`: the note's other names as its file holds them now. */
+export type NoteAliasesView = {
+	aliases: string[],
+};
+
 /**
  *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
  *  refuses until then.
@@ -1197,6 +1247,8 @@ export type NoteUpdateInput = {
 	headerTags?: HeaderTagEditInput | null,
 	/**  Absent leaves the icon; `null` clears it. */
 	emoji?: string | null,
+	/**  Frontmatter keys to set, a `null` one removed; the rest keep their lines. */
+	frontmatter?: { [key in string]: Value } | null,
 };
 
 /**
@@ -1327,10 +1379,51 @@ export type PropertyValueView = {
  */
 export type RefsKept = "changing" | "unreadable";
 
+/**  `RelationKind`. */
+export type RelationKind = "note" | "task" | "event" | "external-event" | "canvas" | "journal";
+
+/**  `RenameTagSchema`. */
+export type RenameTagInput = {
+	oldName: string,
+	newName: string,
+	/**  Names the run in its [`TagsProgressEvent`]s; one is made up when absent. */
+	runId?: string | null,
+};
+
+/**  `RenameTagResponse` of a rename that ran. */
+export type RenameTagView = {
+	affectedNotes: number,
+	/**  The notes and days that keep the old name. */
+	failedNoteIds: string[],
+	/**  The new name cannot be an inline `#tag`, so the bodies keep the old one. */
+	bodySkipped: boolean,
+};
+
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {
 	tags?: TagAssignmentInput[] | null,
 	categories?: CategoryOrderInput[] | null,
+};
+
+/**  `ResolvedRelationRef`: a relation value and what its chip shows. */
+export type ResolvedRelationRefView = {
+	uri: string,
+	targetType: RelationKind,
+	targetId: string,
+	title: string,
+	exists: boolean,
+	/**  Note targets that are not markdown. */
+	fileType?: string,
+	/**  Note targets with an icon; chips show it instead of the kind icon. */
+	emoji?: string,
+	/**  Task targets in a project; scopes the tasks list when a chip navigates. */
+	projectId?: string,
+	/**  Event targets: the calendar moves its range to it before it focuses the event. */
+	startAt?: string,
+	/**  Event targets: the calendar item to focus. */
+	calendarItemId?: string,
+	/**  Journal targets: the day, which is also the target id. */
+	date?: string,
 };
 
 export type SandboxInfo = {
@@ -1481,6 +1574,16 @@ export type TagNotesChangedEvent = {
 	action: TagNoteAction,
 };
 
+/**
+ *  A tag was renamed across the vault (`tags:renamed`): `affectedNotes` notes and days took the
+ *  new name.
+ */
+export type TagRenamedEvent = {
+	oldName: string,
+	newName: string,
+	affectedNotes: number,
+};
+
 /**  `GetNotesByTagSchema.sortBy`. */
 export type TagSortBy = "modified" | "created" | "title";
 
@@ -1495,6 +1598,16 @@ export type TagWithCountView = {
 	icon: string | null,
 	categoryId: string | null,
 	sortOrder: number,
+};
+
+/**
+ *  How far a tag rename got (`tags:progress`): `done` of `total` notes, for the run the
+ *  renderer named.
+ */
+export type TagsProgressEvent = {
+	runId: string,
+	done: number,
+	total: number,
 };
 
 export type TelemetryEvent = {
@@ -1618,6 +1731,21 @@ export type UndoStatus = "restored" | "stale";
 export type UndoTagTemplateInput = {
 	noteId: string,
 	undoToken: string,
+};
+
+/**  A note a rename left, named by its file's name. */
+export type UnfinishedNoteView = {
+	id: string,
+	title: string,
+};
+
+/**  A rename left with notes it could not write, and those notes. */
+export type UnfinishedRenameView = {
+	oldName: string,
+	newName: string,
+	/**  How many notes it left; `notes` names the first of them. */
+	left: number,
+	notes: UnfinishedNoteView[],
 };
 
 /**  `UnlinkedMention`. `contexts[i]` is the mention `notes:link-mention` takes as `ordinal` `i`. */

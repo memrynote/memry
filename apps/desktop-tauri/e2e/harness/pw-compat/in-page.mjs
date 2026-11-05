@@ -365,6 +365,12 @@ export function memryPwInstall(win) {
     return { count: 1, value: value === undefined ? null : value }
   }
 
+  function coverOf(el) {
+    const slot = el.closest('[data-slot]')?.getAttribute('data-slot')
+    const cls = typeof el.className === 'string' ? el.className.slice(0, 80) : ''
+    return `<${el.tagName.toLowerCase()} class="${cls}">${slot ? ` in [data-slot=${slot}]` : ''}`
+  }
+
   /**
    * The state an action waits for. `scroll` brings the element into view first. `hit` is true
    * when the element is what sits at the centre of its box, which rules out an overlay.
@@ -378,11 +384,18 @@ export function memryPwInstall(win) {
     const cx = box.x + box.width / 2
     const cy = box.y + box.height / 2
     const top = doc.elementFromPoint(cx, cy)
+    const hit = !!top && (top === el || el.contains(top))
     return {
       count: 1,
       visible: isVisible(el),
       enabled: !isDisabled(el),
-      hit: !!top && (top === el || el.contains(top)),
+      hit,
+      // What a failed wait names as the cover: the element on top, or the point off the page.
+      cover: hit
+        ? undefined
+        : top
+          ? coverOf(top)
+          : `nothing at (${cx}, ${cy}) in ${win.innerWidth}x${win.innerHeight}`,
       box,
       x: cx,
       y: cy

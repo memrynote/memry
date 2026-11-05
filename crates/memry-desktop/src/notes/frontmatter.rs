@@ -8,7 +8,11 @@ use std::cell::Cell;
 use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::property_values::expands_within_alias_budget;
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml};
-use memry_core::markdown::shared::cover_image::{COVER_FRONTMATTER_KEY, is_cover_key_value};
+use memry_core::markdown::shared::cover_image::{
+    COVER_CREDIT_FRONTMATTER_KEY, COVER_CREDIT_URL_FRONTMATTER_KEY, COVER_FOCUS_FRONTMATTER_KEY,
+    COVER_FOCUS_X_FRONTMATTER_KEY, COVER_FRONTMATTER_KEY, COVER_HEIGHT_FRONTMATTER_KEY,
+    COVER_ZOOM_FRONTMATTER_KEY, is_cover_key_value,
+};
 use memry_core::markdown::shared::writing_tools::{
     WRITING_FRONTMATTER_KEY, is_writing_frontmatter_value,
 };
@@ -120,6 +124,54 @@ pub fn file_fields(yaml: &YamlValue) -> FileFields {
     }
 }
 
+/// `extractAliases` of the frontmatter `parseNote` reads, before it is normalized: a lone value
+/// as a one-item list (`stringifyScalar`), and each item of a list that is a string or a number
+/// as its text, any other as `""`, which `normalize_aliases` drops. A list's items are read
+/// without converting them, so nested aliases under one cost nothing.
+pub fn aliases(frontmatter: &YamlMap) -> Vec<String> {
+    match frontmatter.get("aliases") {
+        None => Vec::new(),
+        Some(YamlValue::Seq(items)) => items
+            .iter()
+            .map(|item| match item {
+                YamlValue::String(text) => text.clone(),
+                YamlValue::Number(x) => number(*x).to_string(),
+                _ => String::new(),
+            })
+            .collect(),
+        Some(value) => {
+            let value = match expands_within_alias_budget(value) {
+                true => to_json(value),
+                false => Value::Null,
+            };
+            match truthy(&value) {
+                true => vec![scalar_text(&value)],
+                false => Vec::new(),
+            }
+        }
+    }
+}
+
+/// The cover keys of a frontmatter as JSON, for `cover_image::cover_sync`: only the seven keys,
+/// and only a scalar under one, since a collection is never a cover value.
+pub fn cover_fields(frontmatter: &YamlMap) -> Map<String, Value> {
+    [
+        COVER_FRONTMATTER_KEY,
+        COVER_FOCUS_FRONTMATTER_KEY,
+        COVER_FOCUS_X_FRONTMATTER_KEY,
+        COVER_ZOOM_FRONTMATTER_KEY,
+        COVER_HEIGHT_FRONTMATTER_KEY,
+        COVER_CREDIT_FRONTMATTER_KEY,
+        COVER_CREDIT_URL_FRONTMATTER_KEY,
+    ]
+    .into_iter()
+    .filter_map(|key| match frontmatter.get(key)? {
+        YamlValue::Seq(_) | YamlValue::Map(_) => None,
+        value => Some((key.to_owned(), to_json(value))),
+    })
+    .collect()
+}
+
 fn truthy(value: &Value) -> bool {
     match value {
         Value::Null | Value::Bool(false) => false,
@@ -208,6 +260,20 @@ mod tests {
         assert_eq!(f.frontmatter["tags"], json!(["one"]));
         let f = fields("---\ntags: 0\naliases: false\n---\n");
         assert!(f.header_tags.is_empty() && f.aliases.is_empty());
+    }
+
+    #[test]
+    fn aliases_read_as_extract_aliases_reads_them() {
+        let map = |raw: &str| match parse_markdown_note(raw).unwrap().frontmatter {
+            YamlValue::Map(map) => (*map).clone(),
+            other => panic!("{other:?}"),
+        };
+        let list = map("---\naliases: [AI, 3, true, 2025-01-01, ~, [x]]\n---\n");
+        assert_eq!(aliases(&list), ["AI", "3", "", "", "", ""]);
+        assert_eq!(aliases(&map("---\naliases: Solo\n---\n")), ["Solo"]);
+        assert_eq!(aliases(&map("---\naliases: 7\n---\n")), ["7"]);
+        assert!(aliases(&map("---\naliases: false\n---\n")).is_empty());
+        assert!(aliases(&map("---\ntitle: x\n---\n")).is_empty());
     }
 
     #[test]

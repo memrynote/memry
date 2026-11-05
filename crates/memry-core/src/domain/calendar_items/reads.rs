@@ -15,6 +15,7 @@ use crate::domain::notes::failed;
 use super::colors::{display_hex, event_color_from_id};
 use super::locale_compare;
 use super::projection::provider_supports_write;
+use super::providers::bindings;
 
 /// Every live source (`includeArchived` false), accounts first, then by title.
 pub fn sources(conn: &Connection) -> Result<Vec<CalendarSourceRecord>, StorageError> {
@@ -131,6 +132,58 @@ pub fn event(conn: &Connection, id: &str) -> Result<Option<CalendarEventRecord>,
     };
     record.binding = live_binding(conn, "event", id)?;
     Ok(Some(record))
+}
+
+/// An imported event as a relation chip shows it (`resolveRefs`, `ipc/relation-handlers.ts`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExternalRelation {
+    pub title: String,
+    pub start_at: String,
+    /// The calendar item a chip focuses: the mirror, or once promotion archived it, the native
+    /// event its live binding names (`promotedEventId`), else still the mirror.
+    pub calendar_item_id: String,
+}
+
+/// [`ExternalRelation`] of an imported event: the mirror [`external_event`] reads, the synced
+/// one (archived ones included: promotion archives the mirror it copied, and the link still
+/// names that event) or this device's subscribed-calendar mirror (`calendar_local_events`, which
+/// desktop keeps in `calendar_external_events`).
+pub fn external_relation(
+    conn: &Connection,
+    id: &str,
+) -> Result<Option<ExternalRelation>, StorageError> {
+    let Some(event) = external_event(conn, id)? else {
+        return Ok(None);
+    };
+    Ok(Some(ExternalRelation {
+        title: event.title,
+        start_at: event.start_at,
+        calendar_item_id: promoted_event(conn, id)?.unwrap_or_else(|| id.to_owned()),
+    }))
+}
+
+/// `promotedEventId`: the native event the live binding of an archived synced mirror names. A
+/// subscribed-calendar mirror is never promoted (its feed is read-only).
+fn promoted_event(conn: &Connection, id: &str) -> Result<Option<String>, StorageError> {
+    let remote: Option<(String, String, String)> = conn
+        .query_row(
+            "SELECT s.provider, s.remote_id, e.remote_event_id
+               FROM calendar_external_events e
+               JOIN calendar_sources s ON s.id = e.source_id
+              WHERE e.id = ?1 AND e.deleted_at IS NULL AND e.archived_at IS NOT NULL",
+            [id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()
+        .map_err(failed)?;
+    let Some((provider, calendar, remote_event_id)) = remote else {
+        return Ok(None);
+    };
+    Ok(
+        bindings::by_remote(conn, &provider, &calendar, &remote_event_id)?
+            .filter(|target| target.source_type == "event")
+            .map(|target| target.source_id),
+    )
 }
 
 /// `getExternalEventDetails`; also reads the device-local mirror.

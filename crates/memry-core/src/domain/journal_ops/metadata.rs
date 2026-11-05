@@ -97,7 +97,31 @@ pub fn set_aliases(
     now_ms: i64,
 ) -> Result<Vec<String>, StorageError> {
     let next = names::normalize_aliases(date, aliases);
-    write_day(conn, date, !next.is_empty(), device_id, now_ms, |object| {
+    write_aliases(conn, date, !next.is_empty(), next, device_id, now_ms)
+}
+
+/// [`set_aliases`] for a live day only: a day that is absent or deleted stays so. For a mirror
+/// of a write the day's file already holds (`notes::take_file_aliases`).
+pub fn set_live_aliases(
+    conn: &Connection,
+    date: &str,
+    aliases: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Vec<String>, StorageError> {
+    let next = names::normalize_aliases(date, aliases);
+    write_aliases(conn, date, false, next, device_id, now_ms)
+}
+
+fn write_aliases(
+    conn: &Connection,
+    date: &str,
+    creates: bool,
+    next: Vec<String>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Vec<String>, StorageError> {
+    write_day(conn, date, creates, device_id, now_ms, |object| {
         let stored: Option<Vec<String>> = object
             .get("aliases")
             .and_then(|value| serde_json::from_value(value.clone()).ok());

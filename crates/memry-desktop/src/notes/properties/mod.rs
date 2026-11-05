@@ -17,22 +17,32 @@
 //!
 //! A template applied to a note (`notes:apply-template`, [`super::apply_template`]) fills values
 //! with the same edit and record mirror ([`mirror_properties`]) inside its own write of the
-//! body. What an edit makes of the frontmatter is [`edit`]. Not here: the header status a status
-//! property takes from the note's tasks (`fillHeaderStatus`, Step 21), the `note_properties`
-//! index and a type learned from a new value (13k-4), the journal page's own event for a day
-//! (Step 13m), relation chips (`properties:resolveRefs`) and the lock check (Step 14).
+//! body. What an edit makes of the frontmatter is [`edit`]. The note index reads the same values
+//! into `note_properties` ([`file_properties`]; `super::index`). Relation chips
+//! (`properties:resolveRefs`) are [`resolve_refs`]'s.
+//!
+//! Not here: a type learned from a new value (Electron's `learnCanonicalPropertyType`, which
+//! gives an undeclared property a synced definition at the first type its notes are synced
+//! with; 13k-4c-2), the header status a status property takes from the note's tasks
+//! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m) and the lock
+//! check (Step 14).
 
 pub mod edit;
+pub mod resolve_refs;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::path::Path;
+use std::sync::Arc;
 
 use memry_core::api::notes_write::NotesWriter;
+use memry_core::api::vault::Vault;
 use memry_core::domain::property_values::{IndexedProperty, indexed_properties};
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, deep_strict_equal, json_to_yaml, parse_markdown_note,
     serialize_updated_note,
 };
+use memry_core::seams::secure_store::SecureStore;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
@@ -43,10 +53,10 @@ use super::property_definitions::PropertyDefinitions;
 use super::read::large_file_of;
 use super::service::NotesService;
 use crate::session::OpenVault;
-use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
+use crate::vault::app_edit::{AppEdit, Edited, Precondition};
 use crate::vault::consumer::ChangeSource;
 use crate::vault::file_types::FileType;
-use crate::vault::note_file::read_note;
+use crate::vault::note_file::{NoteFile, read_note};
 
 /// `PropertyValue` of `properties-api.ts`.
 #[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
@@ -100,13 +110,11 @@ impl NotesService {
                 });
             return Ok(views(&values, &types));
         }
-        let Ok(parsed) = file.parse() else {
-            return Ok(Vec::new());
-        };
-        match &parsed.frontmatter {
-            YamlValue::Map(map) => Ok(views(&user_properties(map), &types)),
-            _ => Ok(Vec::new()),
-        }
+        Ok(file_properties(&file, &types)
+            .unwrap_or_default()
+            .into_iter()
+            .map(view)
+            .collect())
     }
 
     /// `properties:set`: the user's changes from `base`, the record they were shown, to
@@ -211,7 +219,7 @@ impl NotesService {
                 || {
                     let values = values.borrow();
                     if let Some((held, after)) = values.as_ref() {
-                        mirror_properties(&writer, note_id, delta(held, after))?;
+                        mirror_properties(&writer, note_id, (held.clone(), after.clone()))?;
                     }
                     Ok(false)
                 },
@@ -222,64 +230,91 @@ impl NotesService {
             match done {
                 Edited::Wrote { .. } => Ok((names, after)),
                 Edited::Unchanged => Ok((names, held)),
-                Edited::Kept(Kept::NoRow | Kept::NoFile | Kept::NoBody) => {
-                    Err(NotesError::NotFound(note_id.to_owned()))
-                }
-                Edited::Kept(Kept::NotMarkdown) => Err(NotesError::NotMarkdown),
-                Edited::Kept(Kept::FrontmatterUnreadable | Kept::FrontmatterBroken) => {
-                    Err(NotesError::FrontmatterUnreadable)
-                }
                 Edited::Kept(kept) => {
                     tracing::info!(scope = SCOPE, note_id, ?kept, "a property edit was refused");
-                    Err(NotesError::EditKept(kept))
+                    Err(NotesError::kept(note_id, kept))
                 }
             }
         })
     }
 
-    /// Each defined property's type, by name: `properties.md`, then the records. Without them
-    /// (the file or the records unreadable) every type is inferred from its value.
+    /// Each defined property's type, by name ([`definition_types`]).
     pub(crate) fn definition_types(&self, open: &OpenVault) -> HashMap<String, String> {
-        let listed = open
-            .vault
-            .property_definition_records(self.store.clone())
-            .map_err(|error| error.to_string())
-            .and_then(|records| {
-                PropertyDefinitions::new(open.path.clone(), records)
-                    .list()
-                    .map_err(|error| error.to_string())
-            });
-        match listed {
-            Ok(definitions) => definitions
-                .into_iter()
-                .filter_map(|definition| {
-                    let type_name = serde_json::to_value(definition.type_name).ok()?;
-                    Some((definition.name, type_name.as_str()?.to_owned()))
-                })
-                .collect(),
-            Err(error) => {
-                tracing::warn!(
-                    scope = SCOPE,
-                    "property types are inferred from their values: the definitions did not \
-                     read: {error}"
-                );
-                HashMap::new()
-            }
-        }
+        definition_types(&open.path, &open.vault, self.store.clone())
     }
 }
 
+/// Each defined property's type, by name: `properties.md`, then the records. Without them (the
+/// file or the records unreadable) every type is inferred from its value.
+pub fn definition_types(
+    path: &Path,
+    vault: &Vault,
+    store: Arc<dyn SecureStore>,
+) -> HashMap<String, String> {
+    read_definition_types(path, vault, store).unwrap_or_else(|error| {
+        tracing::warn!(
+            scope = SCOPE,
+            "property types are inferred from their values: the definitions did not read: {error}"
+        );
+        HashMap::new()
+    })
+}
+
+/// [`definition_types`], or why they did not read.
+pub fn read_definition_types(
+    path: &Path,
+    vault: &Vault,
+    store: Arc<dyn SecureStore>,
+) -> Result<HashMap<String, String>, String> {
+    let records = vault
+        .property_definition_records(store)
+        .map_err(|error| error.to_string())?;
+    let definitions = PropertyDefinitions::new(path.to_owned(), records)
+        .list()
+        .map_err(|error| error.to_string())?;
+    Ok(definitions
+        .into_iter()
+        .filter_map(|definition| {
+            let type_name = serde_json::to_value(definition.type_name).ok()?;
+            Some((definition.name, type_name.as_str()?.to_owned()))
+        })
+        .collect())
+}
+
+/// The user properties the file's frontmatter holds, read as the index reads them; `None` for a
+/// frontmatter that does not parse or is not a mapping, which `parseNote` reads as none (a file
+/// with no frontmatter reads as an empty mapping).
+pub fn file_properties(
+    file: &NoteFile,
+    types: &HashMap<String, String>,
+) -> Option<Vec<IndexedProperty>> {
+    match file.parse().ok()?.frontmatter {
+        YamlValue::Map(map) => Some(indexed(&user_properties(&map), types)),
+        _ => None,
+    }
+}
+
+/// [`file_properties`] as the record stores them.
+pub(crate) fn file_values(
+    file: &NoteFile,
+    types: &HashMap<String, String>,
+) -> Option<Map<String, Value>> {
+    file_properties(file, types).map(|properties| stored(&properties))
+}
+
+/// A frontmatter edit's property values as the record stores them: what the file held, and what
+/// it holds.
+pub(crate) type EditedValues = (Map<String, Value>, Map<String, Value>);
+
 /// Gives the record the keys a file edit set and dropped, under the lane once the file holds
-/// the edit ([`NotesWriter::file_properties`]); writes nothing for an edit of no property.
+/// the edit ([`NotesWriter::file_properties`], which keeps every other key and moves the file's
+/// baseline).
 pub(super) fn mirror_properties(
     writer: &NotesWriter,
     note_id: &str,
-    (changed, removed): (Map<String, Value>, Vec<String>),
+    (before, after): EditedValues,
 ) -> Result<(), NotesError> {
-    if changed.is_empty() && removed.is_empty() {
-        return Ok(());
-    }
-    if !writer.file_properties(note_id, changed, removed)? {
+    if !writer.file_properties(note_id, before, after)? {
         tracing::warn!(
             scope = SCOPE,
             note_id,
@@ -300,47 +335,29 @@ fn stored(properties: &[IndexedProperty]) -> Map<String, Value> {
         .collect()
 }
 
-/// What the record takes from a frontmatter edit from `read` to `next`, under the lane once the
-/// file holds it: [`delta`] of their property values as stored, for
-/// `NotesWriter::file_properties`. For a writer already inside the note's turn (a journal
-/// save), which cannot take [`NotesService::set_properties`]' turn.
-pub(crate) fn file_delta(
+/// The property values, as stored, of a frontmatter edit from `read` to `next`, for
+/// `NotesWriter::file_properties` under the lane once the file holds it. For a writer already
+/// inside the note's turn (a journal save), which cannot take [`NotesService::set_properties`]'
+/// turn.
+pub(crate) fn edited_values(
     read: &YamlMap,
     next: &YamlMap,
     types: &HashMap<String, String>,
-) -> (Map<String, Value>, Vec<String>) {
-    let held = stored(&indexed(&user_properties(read), types));
-    let after = stored(&indexed(&user_properties(next), types));
-    delta(&held, &after)
-}
-
-/// The keys an edit set (new or with another value) and the keys it dropped, from the values
-/// the file held to the values it holds. Only these reach the record: see
-/// [`memry_core::domain::properties::mirror_file`] for why the rest must not.
-fn delta(
-    before: &Map<String, Value>,
-    after: &Map<String, Value>,
-) -> (Map<String, Value>, Vec<String>) {
-    let changed = after
-        .iter()
-        .filter(|(name, value)| before.get(*name) != Some(value))
-        .map(|(name, value)| (name.clone(), value.clone()))
-        .collect();
-    let removed = before
-        .keys()
-        .filter(|name| !after.contains_key(*name))
-        .cloned()
-        .collect();
-    (changed, removed)
+) -> EditedValues {
+    (
+        stored(&indexed(&user_properties(read), types)),
+        stored(&indexed(&user_properties(next), types)),
+    )
 }
 
 fn views(values: &YamlMap, types: &HashMap<String, String>) -> Vec<PropertyValueView> {
-    indexed(values, types)
-        .into_iter()
-        .map(|p| PropertyValueView {
-            name: p.name,
-            value: p.value,
-            type_name: p.type_name,
-        })
-        .collect()
+    indexed(values, types).into_iter().map(view).collect()
+}
+
+fn view(property: IndexedProperty) -> PropertyValueView {
+    PropertyValueView {
+        name: property.name,
+        value: property.value,
+        type_name: property.type_name,
+    }
 }

@@ -7,6 +7,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex, PoisonError};
 use std::time::Instant;
 
+#[cfg(windows)]
+use memry_desktop::shell::flush::BrowserPages;
 use memry_desktop::shell::web_crash::{CrashAction, MAX_RELOADS, ReloadBudget};
 use memry_desktop::telemetry::main_warning::Level;
 use tauri::plugin::TauriPlugin;
@@ -56,6 +58,9 @@ struct Recovery {
 }
 
 static RECOVERY: LazyLock<Mutex<Recovery>> = LazyLock::new(Mutex::default);
+/// The pages of each watched WebView2 browser process ([`watch_browser_exit`]).
+#[cfg(windows)]
+static BROWSER_PAGES: LazyLock<BrowserPages> = LazyLock::new(BrowserPages::default);
 static EPOCH: LazyLock<Instant> = LazyLock::new(Instant::now);
 
 /// Reports that a webview process ended for `reason` (`crash`, `unexpected`, `launch-failed`,
@@ -88,6 +93,62 @@ pub fn page_gone(app: &AppHandle<Wry>, label: &str) {
     }
 }
 
+/// Releases the flush waits on the pages of the WebView2 browser process `pid` the moment it ends.
+/// `ProcessFailed` reports the same death, but WebView2 raises it on the main thread, with no bound
+/// on how late: on a loaded arm64 runner it had not come 2.2 s after the browser ended at a
+/// sign-out, and the quit's flush waited its full 2 s on a page that was gone (#3940). A thread
+/// blocked on the process handle hears the exit itself. One thread per browser process, which
+/// every app window of the profile shares.
+#[cfg(windows)]
+pub fn watch_browser_exit(app: &AppHandle<Wry>, label: &str, pid: u32) {
+    use windows::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows::Win32::System::Threading::{
+        INFINITE, OpenProcess, PROCESS_SYNCHRONIZE, WaitForSingleObject,
+    };
+
+    if !BROWSER_PAGES.host(pid, label) {
+        return;
+    }
+    // SAFETY: plain Win32 call; the thread below closes the handle.
+    let process = match unsafe { OpenProcess(PROCESS_SYNCHRONIZE, false, pid) } {
+        Ok(process) => process,
+        Err(error) => {
+            BROWSER_PAGES.ended(pid);
+            tracing::warn!(
+                scope = "Shell",
+                "the WebView2 browser process {pid} is not watched: {error}"
+            );
+            return;
+        }
+    };
+    // A `HANDLE` is not `Send`; the thread owns it from here.
+    let raw = process.0 as isize;
+    let app = app.clone();
+    let spawned = std::thread::Builder::new()
+        .name("webview2-browser-exit".into())
+        .spawn(move || {
+            let process = HANDLE(raw as *mut _);
+            // SAFETY: the handle opened above, waited on and closed only here.
+            unsafe {
+                WaitForSingleObject(process, INFINITE);
+                let _ = CloseHandle(process);
+            }
+            tracing::warn!(scope = "Shell", "the WebView2 browser process {pid} ended");
+            for label in BROWSER_PAGES.ended(pid) {
+                page_gone(&app, &label);
+            }
+        });
+    if let Err(error) = spawned {
+        BROWSER_PAGES.ended(pid);
+        // SAFETY: the handle opened above; the thread that would own it never started.
+        let _ = unsafe { CloseHandle(HANDLE(raw as *mut _)) };
+        tracing::warn!(
+            scope = "Shell",
+            "the WebView2 browser process {pid} is not watched: {error}"
+        );
+    }
+}
+
 /// The page of window `label` finished loading, so it answers flush requests again.
 fn page_loaded(app: &AppHandle<Wry>, label: &str) {
     if let Some(flush) = app.try_state::<FlushService>() {
@@ -96,11 +157,13 @@ fn page_loaded(app: &AppHandle<Wry>, label: &str) {
 }
 
 /// Window `label` is gone: a later window of that label starts with a full budget and nothing to
-/// tell.
+/// tell, and its browser's exit no longer marks it gone.
 fn forget(label: &str) {
     let mut recovery = RECOVERY.lock().unwrap_or_else(PoisonError::into_inner);
     recovery.budgets.remove(label);
     recovery.reloaded.remove(label);
+    #[cfg(windows)]
+    BROWSER_PAGES.forget(label);
 }
 
 /// True once for a page that was reloaded after its web process died, so it can tell the user.
