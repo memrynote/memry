@@ -40,6 +40,9 @@ pub const FIRST_RETRY: Duration = Duration::from_secs(1);
 /// New markdown files the open walk applies together at most: a vault's first open creates
 /// its notes this many to a transaction.
 const FOUND_TOGETHER: usize = 128;
+/// The bytes of the files the walk puts aside before it applies them, at most about: they are
+/// read together.
+const FOUND_TOGETHER_BYTES: u64 = 16 * 1024 * 1024;
 /// How long the loop waits for a fact before it looks at the clock.
 const IDLE: Duration = Duration::from_millis(250);
 /// The wait before a resync whose previous pass overflowed again; it doubles up to the cap.
@@ -267,16 +270,30 @@ impl Run {
     }
 
     /// Applies the new markdown files the walk put aside, together
-    /// ([`Applier::found_together`]), and empties `new`; then the facts that arrived meanwhile.
-    fn found_together(&mut self, new: &mut Vec<Found>, scan: &mut ScanActivity) {
+    /// ([`Applier::found_together`]) and empties `new`, then applies the facts that arrived
+    /// meanwhile, then each file sent back alone as the walk applies a file. `false` when a
+    /// close stopped it.
+    fn found_together(&mut self, new: &mut Vec<Found>, scan: &mut ScanActivity) -> bool {
         if new.is_empty() {
-            return;
+            return true;
         }
-        for (path, step) in self.applier.found_together(std::mem::take(new), scan) {
+        let together = self.applier.found_together(std::mem::take(new), scan);
+        for (path, step) in together.steps {
             self.settle(step, Some(&path));
         }
         std::thread::yield_now();
+        for file in together.alone {
+            if self.stopped() {
+                return false;
+            }
+            self.note_overflow();
+            self.take_waiting();
+            let path = file.path.clone();
+            let step = self.applier.found_alone(file, scan);
+            self.after(step, Some(&path));
+        }
         self.take_waiting();
+        true
     }
 
     /// Applies the facts waiting in the inbox.
@@ -322,7 +339,7 @@ impl Run {
             .files
             .into_iter()
             .partition(|path| file_type_of_extension(&extension(path)) == Some(FileType::Markdown));
-        let mut new = Vec::new();
+        let (mut new, mut new_bytes) = (Vec::new(), 0);
         for path in others.into_iter().chain(notes) {
             if self.stopped() {
                 return;
@@ -339,15 +356,22 @@ impl Run {
                 match self.applier.walked(&path, &meta, &mut scan) {
                     Walked::Applied(step) => self.after(step, Some(&path)),
                     Walked::New(file) => {
+                        new_bytes += file.size;
                         new.push(file);
-                        if new.len() == FOUND_TOGETHER {
-                            self.found_together(&mut new, &mut scan);
+                        let full = new.len() == FOUND_TOGETHER || new_bytes >= FOUND_TOGETHER_BYTES;
+                        if full && !self.found_together(&mut new, &mut scan) {
+                            return;
+                        }
+                        if new.is_empty() {
+                            new_bytes = 0;
                         }
                     }
                 }
             }
         }
-        self.found_together(&mut new, &mut scan);
+        if !self.found_together(&mut new, &mut scan) {
+            return;
+        }
         self.applier.report_scan(&scan);
         if let Ok(lane) = self.applier.rows.lane_of(self.applier.session) {
             lane.publish(Applied::Indexed {

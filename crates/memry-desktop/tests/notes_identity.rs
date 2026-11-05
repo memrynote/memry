@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use flate2::read::GzDecoder;
+use memry_core::crdt::update_log::LOCAL_NAMESPACE_PREFIX;
 use memry_core::domain::note_positions;
 use memry_core::domain::notes::identity::VAULT_ORIGIN_META_KEY;
 use memry_core::markdown::convert::api::Converter;
@@ -810,6 +811,71 @@ fn a_walk_that_finds_notes_a_crash_left_without_rows_keeps_them_and_creates_the_
         "{facts:?}"
     );
     assert_eq!(records(&e).len(), 5);
+}
+
+/// A file with writing frontmatter, CriticMarkup and link references: a value in each of the
+/// body's side roots.
+const RICH: &str = "---\nwriting:\n  alternatives:\n    k3x9q2:\n      versions: [soguk, buz]\n---\n\
+                    Sabah <!--alt:k3x9q2-->ayaz<!--/alt:k3x9q2--> bir ruzgar.\n\n\
+                    One {++added++} and {--gone--} and {~~was~>is~~}.\n\n\
+                    See [the docs][ref].\n\n[ref]: https://example.com/docs\n";
+
+/// Every root of the note's stored document, block ids aside.
+fn stored_doc(e: &Env, id: &str) -> Value {
+    let doc_id = format!("{LOCAL_NAMESPACE_PREFIX}{id}");
+    let blobs = e
+        .core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            let mut statement = conn
+                .prepare("SELECT update_blob FROM yjs_updates WHERE doc_id = ?1 ORDER BY seq")
+                .unwrap();
+            Ok(statement
+                .query_map([doc_id], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<Vec<Vec<u8>>, _>>()
+                .unwrap())
+        })
+        .unwrap();
+    assert!(!blobs.is_empty(), "{id}: no body stored");
+    memry_test_kit::ydoc::doc_json(&blobs)
+}
+
+/// A file the open walk makes a note together with others gets the document it gets alone:
+/// every root, the side roots its writing frontmatter, CriticMarkup and link references fill
+/// included.
+#[test]
+fn a_file_made_a_note_together_gets_the_document_it_gets_alone() {
+    let mut alone = notes_env();
+    alone.write("Rich.md", RICH);
+    alone.open();
+    alone.facts_until(indexed);
+
+    let mut together = notes_env();
+    together.write("Rich.md", RICH);
+    for n in 0..4 {
+        together.write(&format!("n{n}.md"), &format!("Note {n}\n"));
+    }
+    together.open();
+    together.facts_until(indexed);
+
+    let doc = |e: &Env| stored_doc(e, &row_id(e, "Rich.md").unwrap());
+    let roots = doc(&together);
+    for root in [
+        "markdownSource",
+        "criticMarkupMarks",
+        "linkReferenceDefinitions",
+        "linkReferenceUsages",
+        "writingAlternatives",
+    ] {
+        assert!(
+            roots
+                .get(root)
+                .is_some_and(|v| v != &serde_json::json!([]) && v != &serde_json::json!({})),
+            "{root} is empty: {roots}"
+        );
+    }
+    assert_eq!(roots, doc(&alone));
 }
 
 /// A live note no row names, in the journal folder and titled with a day, claims that day's

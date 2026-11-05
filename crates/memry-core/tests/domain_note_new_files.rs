@@ -8,27 +8,39 @@
 #[allow(unused_imports)]
 use crate::note_identity_support;
 
-use std::sync::Arc;
-
-use memry_core::crdt::BODY_FRAGMENT;
-use memry_core::crdt::registry::DocumentRegistry;
 use memry_core::crdt::update_log::LOCAL_NAMESPACE_PREFIX;
 use memry_core::domain::external_feed::{self, FeedInput, FeedOutcome, FirstBody};
 use memry_core::domain::notes::identity::{self, Adopted, FileNote};
 use memry_core::domain::notes::new_files::{NewFileNote, adopt_new};
 use memry_core::markdown::convert::api::Converter;
+use memry_core::markdown::frontmatter::parse_markdown_note;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
+use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of_yaml};
 use memry_core::storage::Db;
 use note_identity_support::{
     DEVICE, NOW, clear_outbox, create, file, note_count, outbox, payload, pulled, run,
 };
 use rusqlite::params;
 use serde_json::{Value, json};
-use yrs::types::ToJson as _;
-use yrs::{Any, Doc, Transact as _, Update, updates::decoder::Decode as _};
 
 const PLAN: &str = "# Plan\n\nShip the **first** open.\n\n- [ ] measure\n- [x] batch\n";
 const LOG: &str = "Some words and [[Plan]].\n";
+/// Writing alternatives with their frontmatter, CriticMarkup and link references: a body with
+/// a value in each side root.
+const RICH_PATH: &str = "Rich.md";
+const RICH_FRONTMATTER: &str =
+    "---\nwriting:\n  alternatives:\n    k3x9q2:\n      versions: [soguk, buz]\n---\n";
+const RICH: &str = "Sabah <!--alt:k3x9q2-->ayaz<!--/alt:k3x9q2--> bir ruzgar.\n\n\
+                    One {++added++} and {--gone--} and {~~was~>is~~}.\n\n\
+                    See [the docs][ref].\n\n[ref]: https://example.com/docs\n";
+
+/// The writing frontmatter the file at `path` declares: only [`RICH_PATH`] has one.
+fn writing(path: &str) -> Option<WritingFrontmatter> {
+    (path == RICH_PATH).then(|| {
+        let parsed = parse_markdown_note(RICH_FRONTMATTER).expect("frontmatter");
+        writing_of_yaml(&parsed.frontmatter)
+    })
+}
 
 fn converter() -> Converter {
     Converter::new(CalloutTypes::new(Vec::new()))
@@ -39,7 +51,7 @@ fn input<'a>(id: &'a str, file: &FileNote<'a>) -> FeedInput<'a> {
         note_id: id,
         markdown: file.body,
         note_path: Some(file.path),
-        writing: None,
+        writing: writing(file.path),
         frontmatter: None,
         embeds: None,
     }
@@ -54,11 +66,9 @@ fn adopt_together(db: &Db, files: &[NewFileNote<'_>]) -> Vec<bool> {
     run(db, |conn| Ok(adopt_new(conn, files, DEVICE, NOW))).expect("an answer")
 }
 
-/// What the note's stored body log builds, as the converter reads it: its blocks, each block
-/// id aside (a conversion gives each block a random one), and the recorded markdown source.
-/// Two conversions of one text under one client id differ in nothing else; their bytes do,
-/// in those ids and in the order of the source record's keys.
-fn stored_body(db: &Db, id: &str) -> (Vec<Value>, Any) {
+/// Every root of the note's stored document as JSON, block ids aside
+/// ([`memry_test_kit::ydoc::doc_json`]).
+fn stored_doc(db: &Db, id: &str) -> Value {
     let doc_id = format!("{LOCAL_NAMESPACE_PREFIX}{id}");
     let blobs: Vec<Vec<u8>> = run(db, move |conn| {
         let mut statement = conn
@@ -72,33 +82,7 @@ fn stored_body(db: &Db, id: &str) -> (Vec<Value>, Any) {
         Ok(blobs)
     });
     assert!(!blobs.is_empty(), "{id}: no body stored");
-    let document = DocumentRegistry::new(DEVICE, Arc::new(|_, _: &[u8]| {}))
-        .get_or_open(id)
-        .expect("a document");
-    for blob in &blobs {
-        document.apply_durable_update(blob).expect("an update");
-    }
-    let mut blocks = converter()
-        .blocks(&document, BODY_FRAGMENT)
-        .expect("blocks");
-    blocks.iter_mut().for_each(without_ids);
-    let doc = Doc::new();
-    let state = document.encode_state().expect("a state");
-    doc.transact_mut()
-        .apply_update(Update::decode_v1(&state).expect("decode"))
-        .expect("apply");
-    let source = doc.get_or_insert_map("markdownSource");
-    let source = source.to_json(&doc.transact());
-    (blocks, source)
-}
-
-fn without_ids(block: &mut Value) {
-    if let Some(block) = block.as_object_mut() {
-        block.remove("id");
-        if let Some(Value::Array(children)) = block.get_mut("children") {
-            children.iter_mut().for_each(without_ids);
-        }
-    }
+    memry_test_kit::ydoc::doc_json(&blobs)
 }
 
 fn count_updates(db: &Db) -> i64 {
@@ -126,9 +110,17 @@ fn seed(db: &Db, id: &str, file: &FileNote<'_>) -> FeedOutcome {
 
 #[test]
 fn new_files_get_the_notes_and_bodies_the_one_file_path_gives_them() {
-    let (plan, log) = (file("Work/Plan.md", PLAN), file("Log.md", LOG));
+    let (plan, log, rich) = (
+        file("Work/Plan.md", PLAN),
+        file("Log.md", LOG),
+        file(RICH_PATH, RICH),
+    );
     let together = note_identity_support::open("together");
-    let bodies = [body("n1", &plan, DEVICE), body("n2", &log, DEVICE)];
+    let bodies = [
+        body("n1", &plan, DEVICE),
+        body("n2", &log, DEVICE),
+        body("n3", &rich, DEVICE),
+    ];
     let files = [
         NewFileNote {
             file: plan,
@@ -140,11 +132,32 @@ fn new_files_get_the_notes_and_bodies_the_one_file_path_gives_them() {
             id: "n2",
             body: &bodies[1],
         },
+        NewFileNote {
+            file: rich,
+            id: "n3",
+            body: &bodies[2],
+        },
     ];
-    assert_eq!(adopt_together(&together, &files), [true, true]);
+    assert_eq!(adopt_together(&together, &files), [true, true, true]);
+    // Each side root holds something, so the comparison below covers it.
+    let roots = stored_doc(&together, "n3");
+    for root in [
+        "markdownSource",
+        "criticMarkupMarks",
+        "linkReferenceDefinitions",
+        "linkReferenceUsages",
+        "writingAlternatives",
+    ] {
+        assert!(
+            roots
+                .get(root)
+                .is_some_and(|v| v != &json!([]) && v != &json!({})),
+            "{root} is empty: {roots}"
+        );
+    }
 
     let alone = note_identity_support::open("alone");
-    for (file, id) in [(plan, "n1"), (log, "n2")] {
+    for (file, id) in [(plan, "n1"), (log, "n2"), (rich, "n3")] {
         assert_eq!(
             note_identity_support::adopt(&alone, file, id),
             Adopted::Created(id.to_owned())
@@ -154,7 +167,7 @@ fn new_files_get_the_notes_and_bodies_the_one_file_path_gives_them() {
 
     let queued = |db: &Db| outbox(db);
     assert_eq!(queued(&together), queued(&alone));
-    for (file, id) in [(plan, "n1"), (log, "n2")] {
+    for (file, id) in [(plan, "n1"), (log, "n2"), (rich, "n3")] {
         let (mut a, mut b) = (payload(&together, id), payload(&alone, id));
         // The clock and the stamps each write takes; everything else is the same.
         for p in [&mut a, &mut b] {
@@ -162,7 +175,7 @@ fn new_files_get_the_notes_and_bodies_the_one_file_path_gives_them() {
         }
         assert_eq!(a, b, "{id}");
         assert_eq!(a["title"], json!(file.title));
-        assert_eq!(stored_body(&together, id), stored_body(&alone, id), "{id}");
+        assert_eq!(stored_doc(&together, id), stored_doc(&alone, id), "{id}");
         assert_eq!(seed(&together, id, &file), FeedOutcome::Unchanged, "{id}");
     }
 }

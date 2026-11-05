@@ -10,7 +10,8 @@
 //! that is the same feed of the same text, and a row with the same hashes, stamped after the
 //! body's commit. Only a markdown file no row names, read whole, that the identity takes for
 //! a new note goes this way; every other file put aside, and each one the identity answers
-//! `false` for, goes through [`Applier::found`]. A crash between the two transactions leaves
+//! `false` for, goes back to the walk, which applies it through [`Applier::found`] with its
+//! own hold of the lane, as any file it finds. A crash between the two transactions leaves
 //! notes without rows whose bodies are their files' text, which the next open adopts by
 //! folder and title, as it does after a crash between a create and its seed.
 
@@ -20,6 +21,9 @@ use std::num::NonZero;
 use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::external_feed::{FeedInput, FirstBody};
+use memry_core::markdown::shared::markdown_class::{
+    MarkdownClassThresholds, classify_markdown_stat,
+};
 
 use super::apply::{Applier, Step};
 use super::body::writing_of;
@@ -41,9 +45,16 @@ const THREADS: usize = 8;
 
 /// A markdown file no row names, as the walk found it.
 pub(super) struct Found {
-    path: String,
-    size: u64,
+    pub(super) path: String,
+    pub(super) size: u64,
     modified_ms: i64,
+}
+
+/// What [`Applier::found_together`] did: the steps of the files it applied, and the files the
+/// walk applies alone.
+pub(super) struct Together {
+    pub(super) steps: Vec<(String, Step)>,
+    pub(super) alone: Vec<Found>,
 }
 
 /// What the open walk did with a file.
@@ -98,51 +109,66 @@ impl Applier {
         Walked::Applied(step)
     }
 
-    /// Applies the files the walk put aside: the new notes together, then every other file
-    /// alone, in order. Each path's step, for the retries. The files are read and their bodies
-    /// authored before the lane is taken, so an app operation does not wait for that.
-    pub(super) fn found_together(
-        &self,
-        found: Vec<Found>,
-        scan: &mut ScanActivity,
-    ) -> Vec<(String, Step)> {
+    /// Applies the new notes of the files the walk put aside together, and answers the rest
+    /// for the walk to apply alone ([`Self::found_alone`]), each with its own hold of the lane:
+    /// an app operation waiting for the lane gets it between two of them. The files are read
+    /// and their bodies authored before the lane is taken, and the lane is held only for the
+    /// two transactions and the facts.
+    pub(super) fn found_together(&self, found: Vec<Found>, scan: &mut ScanActivity) -> Together {
         let prepared = match &self.feed {
             Some(feed) if found.len() > 1 && self.identity.adopts() => self.prepare(feed, found),
-            _ => found.into_iter().map(Prepared::alone).collect(),
+            _ => {
+                return Together {
+                    steps: Vec::new(),
+                    alone: found,
+                };
+            }
         };
-        let Ok(mut lane) = self.rows.lane_of(self.session) else {
-            return prepared
-                .into_iter()
-                .map(|p| (p.found.path, Step::Done))
-                .collect();
-        };
+        let (with_body, without): (Vec<Prepared>, Vec<Prepared>) =
+            prepared.into_iter().partition(|p| p.body.is_some());
+        let mut alone: Vec<Found> = without.into_iter().map(|p| p.found).collect();
         let mut steps = Vec::new();
-        let (new, mut alone) = new_files(&lane, prepared);
-        alone.extend(self.create(&mut lane, new, scan, &mut steps));
-        for file in alone {
-            let Found {
-                path,
-                size,
-                modified_ms,
-            } = file;
-            let step = self.found(
-                &mut lane,
-                &path,
-                FileType::Markdown,
-                size,
-                modified_ms,
-                Some(scan),
-            );
-            steps.push((path, step));
+        if !with_body.is_empty() {
+            match self.rows.lane_of(self.session) {
+                Ok(mut lane) => {
+                    let (new, back) = new_files(&lane, with_body);
+                    alone.extend(back);
+                    alone.extend(self.create(&mut lane, new, scan, &mut steps));
+                }
+                Err(_) => alone.extend(with_body.into_iter().map(|p| p.found)),
+            }
         }
-        steps
+        Together { steps, alone }
+    }
+
+    /// A file the walk put aside, applied alone as [`Self::walked`] applies a file.
+    pub(super) fn found_alone(&self, file: Found, scan: &mut ScanActivity) -> Step {
+        let Ok(mut lane) = self.rows.lane_of(self.session) else {
+            return Step::Done;
+        };
+        self.found(
+            &mut lane,
+            &file.path,
+            FileType::Markdown,
+            file.size,
+            file.modified_ms,
+            Some(scan),
+        )
     }
 
     /// Reads the files and authors the body of each the identity may take for a new note.
     fn prepare(&self, feed: &ExternalFeed, found: Vec<Found>) -> Vec<Prepared> {
-        // A file that does not read goes alone, which reads it again and reports why.
+        // A file that does not read goes alone, which reads it again and reports why. One whose
+        // size alone makes it large-file class is not a new note's and goes alone unread, so a
+        // batch holds at most the large-file size (1 MiB) per file.
+        let thresholds = MarkdownClassThresholds::default();
         let read: Vec<Option<NoteFile>> = in_parallel(&found, |file| {
-            read_note(&self.root, &file.path).ok().flatten()
+            let large = usize::try_from(file.size).map_or(true, |size| {
+                classify_markdown_stat(size, thresholds).is_some()
+            });
+            (!large)
+                .then(|| read_note(&self.root, &file.path).ok().flatten())
+                .flatten()
         });
         for (file, _) in found.iter().zip(&read).filter(|(_, read)| read.is_some()) {
             self.activity
@@ -239,6 +265,14 @@ impl Applier {
 
     /// The rows of the notes `made`, in one transaction, then their facts. Rows that are not
     /// recorded are retried: the file is offered again and adopts its note, which no row names.
+    ///
+    /// The rows are stamped when they are written, after the body's commit, as the one-file
+    /// path stamps them: the write-back takes a body entry stamped after its row for an edit
+    /// its file has not had (`note_files::behind_bodies`), and the search index's watermark
+    /// needs stamps in the order they are written. Stamped before the read, a row would fall
+    /// behind its own first body, and the write-back would write that body over an edit the
+    /// file took after the read. That edit reaches the note as the one-file path's does: the
+    /// watcher reports the file, which is not the bytes its row names.
     fn record(
         &self,
         lane: &mut Lane<'_>,
@@ -289,16 +323,6 @@ struct Prepared {
     found: Found,
     read: Option<NoteFile>,
     body: Option<(String, FirstBody)>,
-}
-
-impl Prepared {
-    fn alone(found: Found) -> Self {
-        Self {
-            found,
-            read: None,
-            body: None,
-        }
-    }
 }
 
 impl Found {

@@ -106,14 +106,13 @@ impl Mocked {
         session.open(&vault, OpenSource::Select).unwrap();
         let deadline = Instant::now() + WAIT;
         loop {
+            assert!(Instant::now() < deadline, "the open walk did not end");
             match facts.try_recv() {
                 Ok(Applied::Indexed { .. }) => break,
                 Ok(_) | Err(TryRecvError::Lagged(_)) => continue,
-                Err(TryRecvError::Empty) => {}
+                Err(TryRecvError::Empty) => std::thread::sleep(Duration::from_millis(20)),
                 Err(TryRecvError::Closed) => panic!("the tier closed before the open walk ended"),
             }
-            assert!(Instant::now() < deadline, "the open walk did not end");
-            std::thread::sleep(Duration::from_millis(20));
         }
 
         let app = mock_builder()
