@@ -697,7 +697,11 @@ describe('google calendar client — push channels (Task 7)', () => {
       const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       await expect(
         client.listEvents({ calendarId: 'primary', syncCursor: 'stale-cursor' })
-      ).resolves.toEqual({ events: [], nextSyncCursor: null })
+      ).resolves.toEqual({ events: [], nextSyncCursor: null, cursorGone: true })
+      expect(loggerMock.info).toHaveBeenCalledWith(
+        expect.stringContaining('410'),
+        expect.objectContaining({ calendarId: 'primary', page: 0 })
+      )
       await expect(
         client.getEvent({ calendarId: 'primary', eventId: 'event-2' })
       ).resolves.toMatchObject({
@@ -849,8 +853,31 @@ describe('google calendar client — push channels (Task 7)', () => {
       const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       await expect(
         client.listEvents({ calendarId: 'primary', syncCursor: 'stale-cursor' })
-      ).resolves.toEqual({ events: [], nextSyncCursor: null })
+      ).resolves.toEqual({ events: [], nextSyncCursor: null, cursorGone: true })
       expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('reports a last page without nextSyncToken as no cursor, not as a gone one', async () => {
+      fetchMock.mockImplementationOnce(
+        async () =>
+          new Response(
+            JSON.stringify({
+              items: [{ id: 'delta-1', start: { dateTime: '2026-05-05T09:00:00.000Z' } }]
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+      )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      const result = await client.listEvents({ calendarId: 'primary', syncCursor: 'cursor-1' })
+
+      expect(result.nextSyncCursor).toBeNull()
+      expect(result.cursorGone).toBeUndefined()
+      expect(result.events.map((event) => event.id)).toEqual(['delta-1'])
+      expect(loggerMock.info).toHaveBeenCalledWith(
+        expect.stringContaining('no nextSyncToken'),
+        expect.objectContaining({ calendarId: 'primary', incremental: true })
+      )
     })
 
     it('sends PATCH headers and optional rich event fields on update', async () => {

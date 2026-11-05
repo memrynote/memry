@@ -1,4 +1,8 @@
-import type { NewCalendarExternalEvent } from '@memry/db-schema/schema/calendar-external-events'
+import { isDeepStrictEqual } from 'node:util'
+import type {
+  CalendarExternalEvent,
+  NewCalendarExternalEvent
+} from '@memry/db-schema/schema/calendar-external-events'
 import type {
   calendarEvents,
   CalendarAttendee,
@@ -261,6 +265,39 @@ export function mapGoogleEventToExternalEventRecord(
     createdAt: now,
     modifiedAt: now
   }
+}
+
+const EXTERNAL_EVENT_BOOKKEEPING_KEYS = new Set<string>([
+  'id',
+  'clock',
+  'syncedAt',
+  'createdAt',
+  'modifiedAt'
+])
+
+/**
+ * JSON round trip, the way the row's JSON columns are stored: an optional
+ * property set to `undefined` is dropped and a missing value reads as null.
+ */
+function storedForm(value: unknown): unknown {
+  return JSON.parse(JSON.stringify(value ?? null))
+}
+
+/**
+ * Whether the stored row already holds everything `record` would write. The
+ * clock, sync stamp, and created/modified times are bookkeeping, not content,
+ * so a re-import of an event Google did not change compares equal.
+ */
+export function externalEventMatchesRecord(
+  existing: CalendarExternalEvent,
+  record: NewCalendarExternalEvent
+): boolean {
+  const incoming: Record<string, unknown> = record
+  return Object.entries(existing).every(
+    ([key, stored]) =>
+      EXTERNAL_EVENT_BOOKKEEPING_KEYS.has(key) ||
+      isDeepStrictEqual(storedForm(stored), storedForm(incoming[key]))
+  )
 }
 
 export function mapGoogleEventToCalendarEventChanges(

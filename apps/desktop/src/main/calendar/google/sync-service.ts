@@ -16,7 +16,13 @@ import { resolveTargetGoogleAccountId } from './account-routing'
 import { isGoogleAccountDisconnected } from './disconnected-accounts'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { createGoogleCalendarClient } from './client'
-import { mapGoogleEventToExternalEventRecord } from './mappers'
+import { externalEventMatchesRecord, mapGoogleEventToExternalEventRecord } from './mappers'
+import {
+  afterCursorRefused,
+  afterFullListing,
+  afterIncrementalPass,
+  isIncrementalSuspended
+} from './incremental-sync-state'
 import {
   getCalendarExternalEventById,
   upsertCalendarExternalEvent
@@ -476,6 +482,44 @@ function rereadSyncableSource(
   return current
 }
 
+/**
+ * Google refused the stored sync token, or ended an incremental pass without a
+ * new one. Drop the token and pull the calendar in full, which is what Google
+ * documents for a 410. `reason` picks the log: a 410 is routine protocol, a
+ * missing token on a delta is not.
+ */
+async function restartAfterRefusedCursor(
+  db: DataDb,
+  current: typeof calendarSources.$inferSelect,
+  reason: 'gone' | 'no-token',
+  deps: { client?: Pick<GoogleCalendarClient, 'listEvents'> },
+  now: string
+): Promise<void> {
+  const { metadata, unsupported } = afterCursorRefused(current.metadata, now)
+  const sourceId = current.id
+  if (reason === 'no-token') {
+    log.warn('Google returned no nextSyncToken for an incremental pass; re-syncing from scratch', {
+      sourceId
+    })
+  } else if (unsupported) {
+    log.info(
+      'Google refused a sync token it had just issued; this calendar cannot sync incrementally, pulling it in full for now',
+      { sourceId }
+    )
+  } else {
+    log.info('Google expired the sync token; re-syncing from scratch', { sourceId })
+  }
+  const freshSource = upsertCalendarSource(db, {
+    ...current,
+    syncCursor: null,
+    syncStatus: 'pending',
+    metadata,
+    modifiedAt: now
+  })
+  markSyncedTableMutation('calendar_source', freshSource.id, true)
+  return await syncGoogleCalendarSource(db, sourceId, deps)
+}
+
 async function syncGoogleCalendarSourceInner(
   db: DataDb,
   sourceId: string,
@@ -490,31 +534,26 @@ async function syncGoogleCalendarSourceInner(
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tests inject a partial client (Pick of the methods this path calls); production passes the full client
   const client = getGoogleClient(db, deps as { client?: GoogleCalendarClient }, clientAccountId)
   const now = getNow()
-  const isInitialSync = !source.syncCursor
+  const incrementalSuspended = isIncrementalSuspended(source.metadata, now)
+  const syncCursor = incrementalSuspended ? null : source.syncCursor
+  const isInitialSync = !syncCursor
 
-  // Defensive: current client returns { events: [], nextSyncCursor: null } on 410 (handled
-  // below via the cursor-invalidation branch); future client variants may throw — keep as insurance.
+  // Defensive: current client returns { events: [], nextSyncCursor: null, cursorGone: true } on
+  // 410 (handled below via the refused-cursor branch); future client variants may throw — keep as
+  // insurance.
   let result: Awaited<ReturnType<GoogleCalendarClient['listEvents']>>
   try {
     result = await client.listEvents({
       calendarId: source.remoteId,
-      syncCursor: source.syncCursor ?? null,
+      syncCursor,
       timeMin: isInitialSync ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() : null,
       timeMax: isInitialSync ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() : null
     })
   } catch (error) {
-    if (isGoneError(error) && source.syncCursor) {
+    if (isGoneError(error) && syncCursor) {
       const current = rereadSyncableSource(db, source)
       if (!current) return
-      log.warn('Google returned 410 for source; clearing cursor and re-syncing', { sourceId })
-      const freshSource = upsertCalendarSource(db, {
-        ...current,
-        syncCursor: null,
-        syncStatus: 'pending',
-        modifiedAt: now
-      })
-      markSyncedTableMutation('calendar_source', freshSource.id, true)
-      return await syncGoogleCalendarSource(db, sourceId, deps)
+      return await restartAfterRefusedCursor(db, current, 'gone', deps, now)
     }
     throw error
   }
@@ -525,16 +564,14 @@ async function syncGoogleCalendarSourceInner(
     return
   }
 
-  if (!result.nextSyncCursor && source.syncCursor) {
-    log.warn('sync cursor invalidated for source, re-syncing from scratch', { sourceId })
-    const freshSource = upsertCalendarSource(db, {
-      ...current,
-      syncCursor: null,
-      syncStatus: 'pending',
-      modifiedAt: now
-    })
-    markSyncedTableMutation('calendar_source', freshSource.id, true)
-    return await syncGoogleCalendarSource(db, sourceId, deps)
+  if (!result.nextSyncCursor && syncCursor) {
+    return await restartAfterRefusedCursor(
+      db,
+      current,
+      result.cursorGone ? 'gone' : 'no-token',
+      deps,
+      now
+    )
   }
 
   const importDeviceId = getCurrentDeviceId(db)
@@ -561,15 +598,20 @@ async function syncGoogleCalendarSourceInner(
 
     if (remoteEvent.status === 'cancelled') {
       if (!existing) continue
-      upsertCalendarExternalEvent(db, {
-        ...record,
-        clock: existing.clock,
-        archivedAt: now
-      })
+      // A tombstone keeps the instant it was archived, so a full listing that
+      // lists the cancelled event again changes nothing.
+      const archived = { ...record, clock: existing.clock, archivedAt: existing.archivedAt ?? now }
+      if (externalEventMatchesRecord(existing, archived)) continue
+      upsertCalendarExternalEvent(db, archived)
       markSyncedTableMutation('calendar_external_event', record.id, true)
       emitCalendarChanged({ entityType: 'calendar_external_event', id: record.id })
       continue
     }
+
+    // A full listing returns every event in the window. An event Google did not
+    // change, and that is still live here, is not a local change: pushing it
+    // again hands every device the whole calendar on every pass (#4018).
+    if (existing && externalEventMatchesRecord(existing, record)) continue
 
     upsertCalendarExternalEvent(db, {
       ...record,
@@ -598,7 +640,12 @@ async function syncGoogleCalendarSourceInner(
   if (!latest) return
   const updatedSource = upsertCalendarSource(db, {
     ...latest,
-    syncCursor: result.nextSyncCursor,
+    syncCursor: incrementalSuspended ? null : result.nextSyncCursor,
+    metadata: incrementalSuspended
+      ? latest.metadata
+      : isInitialSync
+        ? afterFullListing(latest.metadata, Boolean(result.nextSyncCursor))
+        : afterIncrementalPass(latest.metadata),
     syncStatus: 'ok',
     lastSyncedAt: now,
     lastError: null,

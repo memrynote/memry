@@ -535,6 +535,7 @@ export function createGoogleCalendarClient(
     async listEvents(input): Promise<{
       events: GoogleCalendarRemoteEvent[]
       nextSyncCursor: string | null
+      cursorGone?: boolean
     }> {
       const syncToken = input.syncCursor ?? undefined
       const baseQuery: Record<string, string | undefined | null> = syncToken
@@ -567,10 +568,14 @@ export function createGoogleCalendarClient(
         })
 
         // A 410 anywhere in the traversal invalidates the whole run — the pages already
-        // collected came from a token Google has since expired. Drop them and report a null
-        // cursor so the caller re-syncs from scratch, exactly as on a first-page 410.
+        // collected came from a token Google has since expired. Drop them and report the
+        // cursor as gone so the caller re-syncs from scratch, exactly as on a first-page 410.
         if (response.status === 410) {
-          return { events: [], nextSyncCursor: null }
+          log.info('Google refused the sync token (410 Gone)', {
+            calendarId: input.calendarId,
+            page
+          })
+          return { events: [], nextSyncCursor: null, cursorGone: true }
         }
 
         if (!response.ok) {
@@ -606,6 +611,12 @@ export function createGoogleCalendarClient(
         }
 
         if (!parsed.nextPageToken) {
+          if (!parsed.nextSyncToken) {
+            log.info('Google returned no nextSyncToken on the last page', {
+              calendarId: input.calendarId,
+              incremental: Boolean(syncToken)
+            })
+          }
           return { events, nextSyncCursor: parsed.nextSyncToken ?? null }
         }
         pageToken = parsed.nextPageToken
