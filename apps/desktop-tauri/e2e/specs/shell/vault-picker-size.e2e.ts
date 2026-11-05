@@ -49,12 +49,19 @@ test.describe('picker', () => {
       .toBe('grown')
 
     await invoke(page, 'vault_close')
+    // The app asks for 900x720 again. A side that does not fit is the OS's clamp, which depends on
+    // where the grown window sits (900x686 at launch, 900x684 after the shrink on a 1024x768
+    // runner), so it is held to at most the picker size rather than to the launch reading.
+    const shrunk = (actual: number, wanted: number, available: number): boolean =>
+      available >= wanted + 100 ? actual === wanted : actual <= wanted
     await expect
       .poll(async () => {
         const { width, height } = await mainWindow(app)
-        return [width, height]
+        return shrunk(width, 900, avail[0]) && shrunk(height, 720, avail[1])
+          ? 'shrunk'
+          : `${width}x${height} on ${avail}`
       })
-      .toEqual([picker.width, picker.height])
+      .toBe('shrunk')
   })
 
   // The window is frameless on Windows: without its own buttons the picker can't be closed or

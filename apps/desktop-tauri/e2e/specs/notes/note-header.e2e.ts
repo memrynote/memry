@@ -2,7 +2,8 @@
 // the sidebar shows its title, its header tags and its counts, and the note menu's local-only
 // toggle keeps the note's changes off the sync queue until it is turned off, when the whole
 // note is queued. Another name added from the note menu lands in the file's `aliases` and a
-// link by it resolves to the note (13q-1). The title, icon and tag edits arrive with notes_update and rename (13f, 13g);
+// link by it resolves to the note (13q-1), and the full-width toggle writes its key (13q-2).
+// The title, icon and tag edits arrive with notes_update and rename (13f, 13g);
 // the Electron `notes` spec's create, edit, link and delete cases move with those slices.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -131,9 +132,34 @@ test('another name added from the note menu lands in the file and a link by it r
       }
     )
   ).toBe(true)
-  const resolved = await page.evaluate(
-    (name) => window.__TAURI__.core.invoke('notes_resolve_by_title', { title: name }),
-    'onboarding guide'
+  // The file is written before the record and the link index take the name, so wait for the
+  // index to answer rather than read it once.
+  const resolved = await pollUntil(
+    async () => {
+      const link = (await page.evaluate(
+        (name) => window.__TAURI__.core.invoke('notes_resolve_by_title', { title: name }),
+        'onboarding guide'
+      )) as { id: string } | null
+      return link ?? undefined
+    },
+    { timeoutMs: 10_000 }
   )
-  expect((resolved as { id: string } | null)?.id).toBe(id)
+  expect(resolved?.id).toBe(id)
+})
+
+test('the full-width toggle writes its key into the note file', async ({
+  app,
+  page,
+  testVaultPath
+}) => {
+  const id = await noteId(app, page)
+  await openFromSidebar(page, id)
+
+  await chooseFromNoteMenu(page, 'Full width')
+  const file = join(testVaultPath, PATH)
+  expect(
+    await pollUntil(() => /\r?\nfullWidth: true\r?\n/.test(readFileSync(file, 'utf8')), {
+      timeoutMs: 10_000
+    })
+  ).toBe(true)
 })

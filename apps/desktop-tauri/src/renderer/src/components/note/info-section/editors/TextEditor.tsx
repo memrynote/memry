@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { isWindowBlur } from '@/lib/inline-rename-focus'
 
 interface TextEditorProps {
   value: string
@@ -37,10 +38,14 @@ export function TextEditor({
     setLocalValue(e.target.value)
   }, [])
 
-  const handleBlur = useCallback(() => {
-    onChange(localValue)
-    onBlur?.()
-  }, [localValue, onChange, onBlur])
+  const handleBlur = useCallback(
+    (e: React.FocusEvent<HTMLInputElement>) => {
+      onChange(localValue)
+      // The window lost focus, not the field: keep it open (#3967).
+      if (!isWindowBlur(e)) onBlur?.()
+    },
+    [localValue, onChange, onBlur]
+  )
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

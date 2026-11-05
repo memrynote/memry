@@ -35,7 +35,8 @@ pub struct NewFileNote<'a> {
 
 /// Creates a note for each file, with its body, in one transaction; `true` for each one
 /// created, `false` for each to be asked about alone (the module header). An error writes
-/// nothing.
+/// nothing. The transaction holds the writer for the whole batch, so the caller bounds the
+/// batch.
 pub fn adopt_new(
     conn: &Connection,
     files: &[NewFileNote<'_>],
@@ -54,9 +55,13 @@ pub fn adopt_new(
             }
             alone = mints == Some(false);
         }
-        // The body's updates carry the client id they were authored under; one this device
-        // would not author this document under now is not stored.
-        if alone || epoch::client_id(&tx, device_id, new.id)? != new.body.client_id {
+        // A body authored for another note is not this one's; and its updates carry the
+        // client id they were authored under, so one this device would not author this
+        // document under now is not stored.
+        if alone
+            || new.body.note_id != new.id
+            || epoch::client_id(&tx, device_id, new.id)? != new.body.client_id
+        {
             created.push(false);
             continue;
         }

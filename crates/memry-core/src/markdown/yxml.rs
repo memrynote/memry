@@ -7,8 +7,9 @@
 //! The parent is then built from what is left, so one unbuildable child can
 //! take the whole branch with it, e.g. a `tableRow` that ends up childless.
 //! This function reads and never deletes: [`ReadFragment::removed`] counts
-//! what the TypeScript repair would have deleted, and the caller reads from a
-//! detached copy of the document (`blocknote-converter.ts:365-380`). What the
+//! what the TypeScript repair would have deleted, so the caller can read the
+//! live fragment where the TypeScript reads a detached copy
+//! (`blocknote-converter.ts:365-380`). What the
 //! read drops inside the elements it keeps (a run under an unknown mark, an
 //! attribute the schema does not declare) is counted in [`ReadFragment::lost`],
 //! so the two together say whether the document holds the whole fragment.

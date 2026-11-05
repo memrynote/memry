@@ -361,13 +361,16 @@ fn author(
     Ok(FeedOutcome::Fed)
 }
 
-/// The body a new note gets from its file's text, authored without the database.
+/// The body a new note gets from its file's text, authored without the database. Only
+/// [`first_body`] makes one, so the note it was authored for and its client id are the ones
+/// the transaction that stores it checks ([`super::notes::new_files::adopt_new`]).
 pub struct FirstBody {
+    /// The id of the note the updates were authored for.
+    pub(crate) note_id: String,
     /// The Yjs client id the updates were authored under: this device's for a document it
-    /// never purged ([`epoch::client_id`] at epoch 0), which the transaction that stores them
-    /// checks.
-    pub client_id: u64,
-    pub updates: Vec<Vec<u8>>,
+    /// never purged ([`epoch::client_id`] at epoch 0).
+    pub(crate) client_id: u64,
+    pub(crate) updates: Vec<Vec<u8>>,
 }
 
 /// What [`seed_body_if_empty`] writes into the empty document of a note this device just
@@ -403,14 +406,19 @@ pub fn first_body(
         unless_changed_from: None,
         embeds: input.embeds,
     };
-    if converter.replace_body(&document, markdown, options) != ReplaceOutcome::Replaced {
+    // The document is this call's alone and is dropped unless the body replaced it.
+    if converter.replace_unshared_body(&document, markdown, options) != ReplaceOutcome::Replaced {
         return None;
     }
     let updates = std::mem::take(&mut *authored.lock().unwrap_or_else(PoisonError::into_inner));
     updates
         .iter()
         .all(|update| rides_as_one_update(update))
-        .then_some(FirstBody { client_id, updates })
+        .then(|| FirstBody {
+            note_id: input.note_id.to_owned(),
+            client_id,
+            updates,
+        })
 }
 
 /// A sink that keeps every update a write authors, for the caller to store.
@@ -507,7 +515,9 @@ pub fn same_text(body: &str, file: &str) -> bool {
 /// Whether the server takes this update as one: it caps the packed length
 /// (header, compressed frame, AEAD tag), not the markdown or the raw update.
 fn rides_as_one_update(update: &[u8]) -> bool {
-    crdt_envelope::packed_len(update) <= MAX_UPDATE_BYTES
+    // The bound needs no compression, and an update under it rides whatever it packs to.
+    crdt_envelope::max_packed_len(update.len()) <= MAX_UPDATE_BYTES
+        || crdt_envelope::packed_len(update) <= MAX_UPDATE_BYTES
 }
 
 fn storage_failed(error: rusqlite::Error) -> CrdtError {

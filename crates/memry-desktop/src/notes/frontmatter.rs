@@ -8,7 +8,11 @@ use std::cell::Cell;
 use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::property_values::expands_within_alias_budget;
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml};
-use memry_core::markdown::shared::cover_image::{COVER_FRONTMATTER_KEY, is_cover_key_value};
+use memry_core::markdown::shared::cover_image::{
+    COVER_CREDIT_FRONTMATTER_KEY, COVER_CREDIT_URL_FRONTMATTER_KEY, COVER_FOCUS_FRONTMATTER_KEY,
+    COVER_FOCUS_X_FRONTMATTER_KEY, COVER_FRONTMATTER_KEY, COVER_HEIGHT_FRONTMATTER_KEY,
+    COVER_ZOOM_FRONTMATTER_KEY, is_cover_key_value,
+};
 use memry_core::markdown::shared::writing_tools::{
     WRITING_FRONTMATTER_KEY, is_writing_frontmatter_value,
 };
@@ -146,6 +150,26 @@ pub fn aliases(frontmatter: &YamlMap) -> Vec<String> {
             }
         }
     }
+}
+
+/// The cover keys of a frontmatter as JSON, for `cover_image::cover_sync`: only the seven keys,
+/// and only a scalar under one, since a collection is never a cover value.
+pub fn cover_fields(frontmatter: &YamlMap) -> Map<String, Value> {
+    [
+        COVER_FRONTMATTER_KEY,
+        COVER_FOCUS_FRONTMATTER_KEY,
+        COVER_FOCUS_X_FRONTMATTER_KEY,
+        COVER_ZOOM_FRONTMATTER_KEY,
+        COVER_HEIGHT_FRONTMATTER_KEY,
+        COVER_CREDIT_FRONTMATTER_KEY,
+        COVER_CREDIT_URL_FRONTMATTER_KEY,
+    ]
+    .into_iter()
+    .filter_map(|key| match frontmatter.get(key)? {
+        YamlValue::Seq(_) | YamlValue::Map(_) => None,
+        value => Some((key.to_owned(), to_json(value))),
+    })
+    .collect()
 }
 
 fn truthy(value: &Value) -> bool {

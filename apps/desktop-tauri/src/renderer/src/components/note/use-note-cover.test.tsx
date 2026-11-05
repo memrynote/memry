@@ -199,6 +199,22 @@ describe('useNoteCover', () => {
     expect(onSaved).not.toHaveBeenCalled()
   })
 
+  it('reports a refused framing edit through its toast and keeps the note as it was', async () => {
+    // A refusal resolves `{ success: false }`, the shape Electron's `notes:update` answers with.
+    mocks.update.mockResolvedValue({
+      success: false,
+      error: 'This note changed on disk',
+      note: null
+    })
+    const { result, onSaved } = renderUseNoteCover()
+
+    await act(() => result.current.setCoverFraming({ focusY: 30 }))
+
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+    expect(mocks.toastError.mock.calls[0][0]).toBe('This note changed on disk')
+    expect(onSaved).not.toHaveBeenCalled()
+  })
+
   it('does nothing at all without a note id', async () => {
     const { result, onSaved } = renderUseNoteCover(null)
 

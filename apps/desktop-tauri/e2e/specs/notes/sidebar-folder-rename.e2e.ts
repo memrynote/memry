@@ -97,6 +97,34 @@ test('the rename field stays open and focused, and the folder moves with its not
   expect(note?.path).toBe('Studio/Inside.md')
 })
 
+test('#3958: the open note follows its folder rename in the breadcrumb', async ({ page }) => {
+  await ready(page)
+  await expandCollections(page)
+  await createFolder(page, 'Work')
+  const inside = await invoke<NoteView>(page, 'notes_create', {
+    input: { title: 'Inside', folder: 'Work', content: 'filler' }
+  })
+
+  // The chevron renders only once the tree lists the folder's new note. Waiting for it, rather
+  // than checking once, keeps the click from racing that refresh (#3981).
+  const chevron = folderRow(page, 'Work').getByRole('button', {
+    name: /^(Expand|Collapse) folder$/
+  })
+  await expect(chevron).toBeVisible({ timeout: 30_000 })
+  if ((await chevron.getAttribute('aria-label')) === 'Expand folder') await chevron.click()
+  await page.locator(`[data-tree-node-id="${inside.id}"]`).click()
+  await expect(page.locator('textarea[aria-label="Note title"]').first()).toHaveValue('Inside')
+  const crumbs = page.getByRole('navigation', { name: 'Note location' })
+  await expect(crumbs).toContainText('Work')
+
+  await openRename(page, 'Work')
+  await commitRename(page, 'Studio')
+  await expect(folderRow(page, 'Studio')).toBeVisible({ timeout: 15_000 })
+
+  await expect(crumbs).toContainText('Studio')
+  await expect(crumbs).not.toContainText('Work')
+})
+
 test('the rename field stays open past the virtualization threshold', async ({
   page,
   testVaultPath

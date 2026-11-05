@@ -43,6 +43,10 @@ shows and opens as a tag on iPhone too.
 
 ### Renaming or Deleting Tags
 
+In this version of the desktop app, renaming, merging and deleting a tag show an error and change
+nothing. Recoloring a tag works. The rest of this section describes a rename and a delete as the
+previous desktop app runs them.
+
 Manage tags globally from [Settings → Tags](/user-guide/settings#tags), or open a tag's own
 page and use its header menu to rename, recolor, or delete it directly. Renames apply across
 every note instantly.

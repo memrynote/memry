@@ -8,8 +8,8 @@
 //
 // Electron seeds the cover through `notes.uploadAttachment`, whose attachment writer is Step 14's
 // (#3531); here the attachment and the `cover:` line are written to disk, as a sync or another
-// app leaves them. Removing a cover and picking a wash write the frontmatter through
-// `notes.update({ frontmatter })`, which slice 13q-2 ports; those cases are pending until then.
+// app leaves them. Removing a cover writes the frontmatter through `notes.update({ frontmatter })`
+// (13q-2). The wash case is skipped until its ghost-chip click works (#3986).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -92,8 +92,8 @@ test('a cover ref in the file paints resolved, and the file keeps the ref', asyn
   expect(onDisk).not.toContain(testVaultPath)
 })
 
-// Pending: the upload writes through `notes.uploadAttachment`, which Step 14 (#3531) ports, and
-// the cover through `notes.update({ frontmatter })` (slice 13q-2, #3530).
+// Pending: the upload writes through `notes.uploadAttachment`, which Step 14 (#3531) ports; the
+// picker opens through the ghost chip click #3986 tracks.
 test.skip('an uploaded cover is stored as a note-relative attachment ref', async ({
   page,
   testVaultPath
@@ -132,8 +132,7 @@ test.skip('an uploaded cover is stored as a note-relative attachment ref', async
   expect(readFileSync(noteFile, 'utf8')).not.toContain(testVaultPath)
 })
 
-// Pending: "Remove cover" writes through `notes.update({ frontmatter })` (slice 13q-2, #3530).
-test.skip('Remove cover takes the cover line out of the file', async ({ page, testVaultPath }) => {
+test('Remove cover takes the cover line out of the file', async ({ page, testVaultPath }) => {
   await vaultOpen(page)
   const { note, coverRef, noteFile } = await noteWithImageCover(page, testVaultPath)
   await openFromSidebar(page, note)
@@ -154,7 +153,7 @@ test.skip('Remove cover takes the cover line out of the file', async ({ page, te
   expect(withoutCover).toContain('Cover body text')
 })
 
-// Pending: a picked wash writes through `notes.update({ frontmatter })` (slice 13q-2, #3530).
+// Skipped: the hovered metadata block covers `ghost-add-details` for the harness click (#3986).
 test.skip('picks a wash from the ghost chip and writes it as wash:<id>', async ({
   page,
   testVaultPath

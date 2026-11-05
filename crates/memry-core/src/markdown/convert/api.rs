@@ -3,7 +3,8 @@
 //! [`ReplaceOutcome::Failed`]) instead of panicking across the API, the
 //! fail-closed answer of the TypeScript's `null`: the caller keeps the file.
 //!
-//! Serialization reads a detached copy of the document, never the live one.
+//! Serialization reads the live fragment and never writes it; only the writing
+//! tools' `prepare`, which edits what it reads, gets a detached copy.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
@@ -266,6 +267,19 @@ impl Converter {
         if rehearsal != ReplaceOutcome::Replaced {
             return rehearsal;
         }
+        self.replace_unshared_body(doc, markdown, options)
+    }
+
+    /// [`Self::replace_body`] without the rehearsal, for a document nothing else holds: one a
+    /// caller authors a new note's first body in and drops unless the answer is `Replaced`.
+    /// The write runs once, on `doc` itself, so anything but `Replaced` may leave `doc` half
+    /// written.
+    pub(crate) fn replace_unshared_body(
+        &self,
+        doc: &Document,
+        markdown: &str,
+        options: ReplaceOptions,
+    ) -> ReplaceOutcome {
         let outcome = doc.write(|txn| {
             catch_unwind(AssertUnwindSafe(|| {
                 apply::replace_doc_body(

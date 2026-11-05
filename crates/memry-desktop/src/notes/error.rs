@@ -34,6 +34,12 @@ pub enum NotesError {
     InvalidTitle,
     #[error("a note takes at most 50 tags of at most 50 characters each")]
     InvalidTags,
+    /// A `notes:update` named a frontmatter key Memry writes through its own edit, `owner`.
+    #[error("the frontmatter key `{key}` is written through {owner}, not notes_update")]
+    ManagedKey {
+        key: &'static str,
+        owner: &'static str,
+    },
     /// `NoteAliasEditSchema`: more names than a note holds, or a name too long to be one.
     #[error("an edit takes at most 32 other names of at most 200 characters each")]
     InvalidAliases,
@@ -107,6 +113,9 @@ pub enum NotesError {
     FolderMoveIncomplete,
     #[error("template not found: {0}")]
     TemplateNotFound(String),
+    /// Another tag rename was recorded and is not finished; the next open finishes it.
+    #[error("a rename of \"{from}\" to \"{to}\" is still running")]
+    TagRenameInProgress { from: String, to: String },
     /// A folder's `.folder.md` cannot be read, so it is not written over, or cannot be
     /// written.
     #[error(transparent)]
@@ -129,7 +138,7 @@ impl NotesError {
 }
 
 /// Whether trying the edit again can succeed: the file or the document catches up on its own.
-fn kept_is_retryable(kept: &Kept) -> bool {
+pub(crate) fn kept_is_retryable(kept: &Kept) -> bool {
     matches!(
         kept,
         Kept::FileChanged | Kept::NotRead | Kept::BodyAhead | Kept::FileAhead
@@ -253,6 +262,7 @@ impl CoreError for NotesError {
             Self::InvalidTitle => (FailureKind::Invalid, "invalid_title"),
             Self::InvalidTags => (FailureKind::Invalid, "invalid_tags"),
             Self::InvalidAliases => (FailureKind::Invalid, "invalid_aliases"),
+            Self::ManagedKey { .. } => (FailureKind::Invalid, "frontmatter_key_managed"),
             Self::InvalidFolder => (FailureKind::Invalid, "invalid_folder"),
             Self::MovePending(BeginError::Unreadable(_)) => {
                 (FailureKind::Invalid, "note_move_unreadable")
@@ -285,6 +295,7 @@ impl CoreError for NotesError {
             Self::PropertyNotFound(_) => (FailureKind::NotFound, "property_not_found"),
             Self::PropertyExists(_) => (FailureKind::PropertyWrite, "property_exists"),
             Self::TemplateNotFound(_) => (FailureKind::NotFound, "template_not_found"),
+            Self::TagRenameInProgress { .. } => (FailureKind::Invalid, "tag_rename_in_progress"),
             Self::Outside => (FailureKind::Invalid, "outside_vault"),
             Self::Unopenable(Unopenable::HardLinked) => (FailureKind::Invalid, "note_hard_linked"),
             Self::Unopenable(Unopenable::NotRegular) => (FailureKind::Invalid, "note_not_regular"),

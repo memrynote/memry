@@ -305,17 +305,28 @@ impl Lane<'_> {
     ) -> Result<(), RowError> {
         let state = self.state_mut();
         state.index.check(note_id, path)?;
-        state.files.upsert_stat(NoteFileStat {
-            note_id: note_id.to_owned(),
-            path: path.to_owned(),
-            file_type: stat.file_type.as_str().to_owned(),
-            mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
-            file_size: i64::try_from(stat.size).ok(),
-            content_hash: stat.content_hash,
-            file_hash: stat.file_hash,
-            indexed_at: at,
-        })?;
+        state
+            .files
+            .upsert_stat(file_stat(note_id, path, stat, at))?;
         state.index.insert(note_id, path);
+        Ok(())
+    }
+
+    /// [`Lane::put`] of many notes' rows at once, all or none, in one transaction: the new
+    /// notes the consumer created together. The caller hands in paths no two of which a
+    /// volume folds together.
+    pub(crate) fn put_all(&mut self, rows: Vec<(String, String, RowStat)>) -> Result<(), RowError> {
+        let at = now_ms();
+        let state = self.state_mut();
+        let mut stats = Vec::with_capacity(rows.len());
+        for (note_id, path, stat) in rows {
+            state.index.check(&note_id, &path)?;
+            stats.push(file_stat(&note_id, &path, stat, at));
+        }
+        state.files.upsert_stats(&stats)?;
+        for stat in &stats {
+            state.index.insert(&stat.note_id, &stat.path);
+        }
         Ok(())
     }
 
@@ -330,16 +341,9 @@ impl Lane<'_> {
     ) -> Result<(), RowError> {
         let state = self.state_mut();
         state.index.check(note_id, path)?;
-        state.files.refresh_stat(NoteFileStat {
-            note_id: note_id.to_owned(),
-            path: path.to_owned(),
-            file_type: stat.file_type.as_str().to_owned(),
-            mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
-            file_size: i64::try_from(stat.size).ok(),
-            content_hash: stat.content_hash,
-            file_hash: stat.file_hash,
-            indexed_at: now_ms(),
-        })?;
+        state
+            .files
+            .refresh_stat(file_stat(note_id, path, stat, now_ms()))?;
         state.index.insert(note_id, path);
         Ok(())
     }
@@ -486,6 +490,20 @@ impl Lane<'_> {
     pub(crate) fn publish(&self, fact: Applied) {
         // No subscriber is not an error: the facts are for whoever listens.
         let _ = self.applied.send(fact);
+    }
+}
+
+/// The row of `note_id` at `path` as `stat` describes its file, stamped `at`.
+fn file_stat(note_id: &str, path: &str, stat: RowStat, at: i64) -> NoteFileStat {
+    NoteFileStat {
+        note_id: note_id.to_owned(),
+        path: path.to_owned(),
+        file_type: stat.file_type.as_str().to_owned(),
+        mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
+        file_size: i64::try_from(stat.size).ok(),
+        content_hash: stat.content_hash,
+        file_hash: stat.file_hash,
+        indexed_at: at,
     }
 }
 
