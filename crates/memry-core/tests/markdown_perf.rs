@@ -6,9 +6,11 @@
 //!
 //! Budgets, release build on an Apple M1: `doc_to_markdown` of the 49 KB note at
 //! most 60 ms p95, of a 2 KB note at most 3 ms p95, `prepare_seed` of the 49 KB
-//! note at most 80 ms p95. The test prints p50 and p95 and only reports a miss;
-//! `MEMRY_PERF_ENFORCE=1` turns a miss into a failure, and `MEMRY_PERF_FACTOR`
-//! scales the budgets (Windows and Linux runs may take twice as long).
+//! note at most 80 ms p95, `first_body` of a 2 KB note (what a vault's first open
+//! pays per new note, #3530) at most 3 ms p95. The test prints p50 and p95 and
+//! only reports a miss; `MEMRY_PERF_ENFORCE=1` turns a miss into a failure, and
+//! `MEMRY_PERF_FACTOR` scales the budgets (Windows and Linux runs may take twice
+//! as long).
 
 #![cfg(feature = "markdown")]
 
@@ -16,6 +18,7 @@ mod support;
 
 use std::time::{Duration, Instant};
 
+use memry_core::domain::external_feed::{FeedInput, first_body};
 use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::restore::SerializeOptions;
 use support::doc_case::{FRAGMENT, build_document, converter_for, files_of};
@@ -117,6 +120,18 @@ fn markdown_perf_budget() {
             .expect("prepare");
     });
     report("prepare_seed 49 KB", times, 80.0);
+    let times = measure(200, || {
+        let input = FeedInput {
+            note_id: "0123456789abcdef0123456789abcdef",
+            markdown: &small,
+            note_path: Some("Folder/Note.md"),
+            writing: None,
+            frontmatter: None,
+            embeds: Some(&NoEmbeds),
+        };
+        first_body(&converter, input, "device-a").expect("a body");
+    });
+    report("first_body 2 KB", times, 3.0);
     if std::env::var("MEMRY_PERF_ENFORCE").is_ok_and(|v| v == "1") {
         assert!(failures.is_empty(), "{}", failures.join("\n"));
     } else if !failures.is_empty() {
