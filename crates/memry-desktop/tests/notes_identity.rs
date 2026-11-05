@@ -743,6 +743,75 @@ fn a_crash_between_the_create_and_the_row_seeds_the_same_note_once() {
     assert_eq!(e.body(&id), "Recovered");
 }
 
+/// The open walk makes the new files notes together (13q-7). Notes a crash left without rows
+/// are among the files: each keeps its id, asked about alone, and the rest are created, once.
+#[test]
+fn a_walk_that_finds_notes_a_crash_left_without_rows_keeps_them_and_creates_the_rest() {
+    let mut e = notes_env();
+    e.open();
+    e.facts_until(indexed);
+    let writer = e
+        .core()
+        .notes_writer(device_key::with_device_key())
+        .unwrap();
+    let kept: Vec<String> = ["x", "y"]
+        .into_iter()
+        .map(|title| writer.create(title.to_owned(), None).unwrap())
+        .collect();
+    e.close();
+
+    for (path, text) in [
+        ("x.md", "Recovered x\n"),
+        ("y.md", "Recovered y\n"),
+        ("a.md", "Alpha\n"),
+        ("b.md", "Beta\n"),
+        ("Work/c.md", "Gamma\n"),
+    ] {
+        e.write(path, text);
+    }
+    e.drain();
+    e.open();
+    let facts = e.facts_until(indexed);
+    for (id, path) in kept.iter().zip(["x.md", "y.md"]) {
+        assert!(
+            facts.iter().any(|f| matches!(f,
+                Applied::Added { note_id, path: p, created: false, .. } if note_id == id && p == path)),
+            "{path}: {facts:?}"
+        );
+    }
+    for path in ["a.md", "b.md", "Work/c.md"] {
+        assert!(
+            facts
+                .iter()
+                .any(|f| matches!(f, Applied::Added { path: p, created: true, .. } if p == path)),
+            "{path}: {facts:?}"
+        );
+        assert!(row_holds(
+            &e,
+            &row_id(&e, path).unwrap(),
+            &fs::read_to_string(e.vault.join(path)).unwrap()
+        ));
+    }
+    assert_eq!(e.rows().len(), 5, "{:?}", e.rows());
+    assert_eq!(records(&e).len(), 5);
+    assert_eq!(e.body(&kept[0]), "Recovered x");
+    assert_eq!(e.body(&row_id(&e, "Work/c.md").unwrap()), "Gamma");
+    let queued = outbox(&e);
+    for (id, _) in e.rows() {
+        let upserts = queued
+            .iter()
+            .filter(|(op, item)| op == "upsert" && *item == id);
+        assert!(upserts.count() <= 1, "{id}: {queued:?}");
+    }
+
+    let facts = reopen(&mut e);
+    assert!(
+        !facts.iter().any(|f| matches!(f, Applied::Added { .. })),
+        "{facts:?}"
+    );
+    assert_eq!(records(&e).len(), 5);
+}
+
 /// A live note no row names, in the journal folder and titled with a day, claims that day's
 /// file (`claimed`, `vault/watcher.ts`): the file is the note, and no day is minted for it. The
 /// core decides it in the day's transaction, reading the note's body with the converter the

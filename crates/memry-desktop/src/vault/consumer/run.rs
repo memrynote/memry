@@ -24,6 +24,7 @@ use std::time::{Duration, Instant};
 
 use super::Applied;
 use super::apply::{Applier, Step};
+use super::walked::{Found, Walked};
 use crate::vault::activity::ScanActivity;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::walk::{Limits, walk_vault_with};
@@ -36,6 +37,9 @@ pub const QUEUE_CAPACITY: usize = 65_536;
 pub const MAX_RETRIES: u32 = 5;
 /// The first retry's delay; each next one doubles it.
 pub const FIRST_RETRY: Duration = Duration::from_secs(1);
+/// New markdown files the open walk applies together at most: a vault's first open creates
+/// its notes this many to a transaction.
+const FOUND_TOGETHER: usize = 128;
 /// How long the loop waits for a fact before it looks at the clock.
 const IDLE: Duration = Duration::from_millis(250);
 /// The wait before a resync whose previous pass overflowed again; it doubles up to the cap.
@@ -244,6 +248,14 @@ impl Run {
     }
 
     fn after(&mut self, step: Step, path: Option<&str>) {
+        self.settle(step, path);
+        // The lane is not fair: a flood of facts must not starve an app operation waiting
+        // for it.
+        std::thread::yield_now();
+    }
+
+    /// Schedules the retry a step asks for, or forgets the path's failures.
+    fn settle(&mut self, step: Step, path: Option<&str>) {
         match step {
             Step::Retry(path) => self.retries.schedule(path, Instant::now()),
             Step::Done => {
@@ -252,9 +264,26 @@ impl Run {
                 }
             }
         }
-        // The lane is not fair: a flood of facts must not starve an app operation waiting
-        // for it.
+    }
+
+    /// Applies the new markdown files the walk put aside, together
+    /// ([`Applier::found_together`]), and empties `new`; then the facts that arrived meanwhile.
+    fn found_together(&mut self, new: &mut Vec<Found>, scan: &mut ScanActivity) {
+        if new.is_empty() {
+            return;
+        }
+        for (path, step) in self.applier.found_together(std::mem::take(new), scan) {
+            self.settle(step, Some(&path));
+        }
         std::thread::yield_now();
+        self.take_waiting();
+    }
+
+    /// Applies the facts waiting in the inbox.
+    fn take_waiting(&mut self) {
+        while let Ok(event) = self.inbox.rx.try_recv() {
+            self.take(event);
+        }
     }
 
     /// Offers every file of the vault, as a watcher `Added` would: the start rescan reports
@@ -265,7 +294,8 @@ impl Run {
     /// Every other file comes before the notes, so a note's seed never depends on the order
     /// of the walk: a `![[photo.png]]` resolves through the image rows, and a note seeded
     /// before its image got its row would keep the embed as written, a file the hash rule
-    /// never feeds again.
+    /// never feeds again. The markdown files no row names are applied [`FOUND_TOGETHER`] at a
+    /// time ([`Applier::found_together`]): a vault the app has never seen is all such files.
     ///
     /// A walk that ends tells the activity log what it found (`indexVault`'s scan activity):
     /// the files that got a new note, the ones whose read failed and the unsupported ones. One
@@ -292,14 +322,13 @@ impl Run {
             .files
             .into_iter()
             .partition(|path| file_type_of_extension(&extension(path)) == Some(FileType::Markdown));
+        let mut new = Vec::new();
         for path in others.into_iter().chain(notes) {
             if self.stopped() {
                 return;
             }
             self.note_overflow();
-            while let Ok(event) = self.inbox.rx.try_recv() {
-                self.take(event);
-            }
+            self.take_waiting();
             if !self.filter.takes_file(&path) {
                 continue;
             }
@@ -307,10 +336,18 @@ impl Run {
                 continue;
             };
             if meta.is_file() {
-                let step = self.applier.walked(&path, &meta, &mut scan);
-                self.after(step, Some(&path));
+                match self.applier.walked(&path, &meta, &mut scan) {
+                    Walked::Applied(step) => self.after(step, Some(&path)),
+                    Walked::New(file) => {
+                        new.push(file);
+                        if new.len() == FOUND_TOGETHER {
+                            self.found_together(&mut new, &mut scan);
+                        }
+                    }
+                }
             }
         }
+        self.found_together(&mut new, &mut scan);
         self.applier.report_scan(&scan);
         if let Ok(lane) = self.applier.rows.lane_of(self.applier.session) {
             lane.publish(Applied::Indexed {

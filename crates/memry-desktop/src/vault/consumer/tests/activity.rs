@@ -125,8 +125,7 @@ fn the_walk_is_told_of_the_reads_that_failed() {
     let _held = (lock(&f, "known.md"), lock(&f, "new.md"));
     let mut scan = ScanActivity::default();
     for rel in ["known.md", "latin1.md", "new.md"] {
-        let meta = std::fs::symlink_metadata(f.root.join(rel)).unwrap();
-        f.applier.walked(rel, &meta, &mut scan);
+        f.walk_one(rel, &mut scan);
     }
     let failed: Vec<_> = scan
         .failed

@@ -26,6 +26,7 @@ use super::identity::{
     Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
 };
 use super::rows::{RowOwner, RowSession, RowStat};
+use super::walked::Walked;
 use super::{Applied, ChangeSource};
 use crate::vault::activity::ScanActivity;
 use crate::vault::file_types::FileType;
@@ -232,9 +233,17 @@ impl Fixture {
     }
 
     pub(super) fn walked(&self, rel: &str) -> Step {
+        self.walk_one(rel, &mut ScanActivity::default())
+    }
+
+    /// The open walk's step for the one file `rel`: a new markdown file it puts aside is
+    /// applied as the walk's end applies what it put aside.
+    pub(super) fn walk_one(&self, rel: &str, scan: &mut ScanActivity) -> Step {
         let meta = std::fs::symlink_metadata(self.root.join(rel)).unwrap();
-        self.applier
-            .walked(rel, &meta, &mut ScanActivity::default())
+        match self.applier.walked(rel, &meta, scan) {
+            Walked::Applied(step) => step,
+            Walked::New(file) => self.applier.found_together(vec![file], scan).remove(0).1,
+        }
     }
 
     pub(super) fn changed(&self, note_id: &str, rel: &str) -> Step {
