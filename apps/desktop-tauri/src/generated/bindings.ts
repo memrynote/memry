@@ -377,7 +377,7 @@ export const commands = {
 	vaultActivitySetRetention: (days: number) => __TAURI_INVOKE<null>("vault_activity_set_retention", { days }),
 	/**
 	 *  Measures every note of the open vault again; resolves once the last progress went out.
-	 *  Each step and the answer also send the vault status, which says whether it is indexing.
+	 *  The index sends the vault status, indexing, from the request to the answer.
 	 */
 	vaultReindex: () => __TAURI_INVOKE<null>("vault_reindex"),
 	/**

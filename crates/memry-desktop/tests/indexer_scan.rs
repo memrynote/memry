@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 use index_support::{all_indexed, note_text, seeded, until};
 use memry_core::domain::note_stats::measure;
 use memry_desktop::notes::index::{
-    Backfilled, IndexError, IndexProgress, NoteIndex, PROGRESS_INTERVAL,
+    Backfilled, IndexError, IndexProgress, IndexReport, NoteIndex, PROGRESS_INTERVAL,
 };
 use memry_desktop::vault::hash::content_hash;
 use rusqlite::trace::TraceEventCodes;
@@ -85,9 +85,14 @@ fn assert_reported(steps: &Steps, total: usize) {
 /// (tier 1) and the sidebar list.
 fn open_and_measure(
     e: &mut Env,
-    report: impl Fn(IndexProgress) + Send + Sync + 'static,
+    report_step: impl Fn(IndexProgress) + Send + Sync + 'static,
 ) -> (Arc<NoteIndex>, Measured) {
-    let index = NoteIndex::new(e.tier.clone(), report, |_| {}, |_| {});
+    let progress = move |report| {
+        if let IndexReport::Progress(step) = report {
+            report_step(step);
+        }
+    };
+    let index = NoteIndex::new(e.tier.clone(), progress, |_| {}, |_| {});
     index.register(&e.session);
     e.drain();
     let started = Instant::now();
@@ -177,9 +182,9 @@ fn a_generated_vault_is_measured_once_per_note_and_its_passes_report_to_the_tota
 
     let steps = Steps::default();
     count_index_statements(&e, true);
-    assert_eq!(index.reindexing(), None);
+    assert_eq!(index.indexing(), None);
     let done = index.reindex(recorder(&steps)).unwrap();
-    assert_eq!(index.reindexing(), None, "answered, so no longer indexing");
+    assert_eq!(index.indexing(), None, "answered, so no longer indexing");
     let statements = count_index_statements(&e, false);
     assert_eq!(
         done,
@@ -230,7 +235,7 @@ fn close_inside_a_reindex(
     let reindex = std::thread::spawn(move || {
         asked.reindex(move |step| {
             if at(step) {
-                let _ = started.send((step, watched.reindexing()));
+                let _ = started.send((step, watched.indexing()));
                 // Progress runs on the task's thread: the task waits here until the close began.
                 until("the close to begin", || session.current().is_none());
             }
@@ -242,7 +247,7 @@ fn close_inside_a_reindex(
     e.close();
     let result = reindex.join().unwrap();
     assert!(matches!(result, Err(IndexError::NotOpen)), "{result:?}");
-    assert_eq!(index.reindexing(), None);
+    assert_eq!(index.indexing(), None);
     assert!(matches!(index.reindex(|_| {}), Err(IndexError::NotOpen)));
 }
 

@@ -21,6 +21,18 @@ use crate::vault::consumer::Applied;
 use crate::vault::watch::VaultEvent;
 
 pub type Progress = Box<dyn FnMut(IndexProgress) + Send>;
+
+/// The open's build, as the task tells it. Owed from the open, and again at the walk's end, to
+/// the end of the pass that reports it (stopped or failed included), or until a reindex took
+/// it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpenBuild {
+    /// Owed again: the walk ended after a pass had taken it.
+    Owed,
+    /// A step of the pass that reports it.
+    Step(IndexProgress),
+    Ended,
+}
 pub type Answer = reply::Receiver<Result<Backfilled, IndexError>>;
 type Reply = reply::Sender<Result<Backfilled, IndexError>>;
 pub type Measured = reply::Receiver<Result<bool, IndexError>>;
@@ -200,15 +212,15 @@ impl Owed {
 
 impl Indexer {
     /// The task: facts and requests in, passes out, until the handle stops it or `cancel` is
-    /// seen. Errs only when it could not start. `report` gets the open's pass progress,
-    /// `announce` the links each pass changed, once committed, and `landed` each note a
+    /// seen. Errs only when it could not start. `report` gets the open's build (owed at the
+    /// start), `announce` the links each pass changed, once committed, and `landed` each note a
     /// measure request left to a pass, once a pass wrote its row.
     pub fn run(
         &self,
         facts: Receiver<Applied>,
         inbox: TaskInbox,
         cancel: &CancelToken,
-        report: &dyn Fn(IndexProgress),
+        report: &dyn Fn(OpenBuild),
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
     ) -> Result<(), String> {
@@ -225,7 +237,7 @@ impl Indexer {
         mut facts: Receiver<Applied>,
         inbox: TaskInbox,
         cancel: &CancelToken,
-        report: &dyn Fn(IndexProgress),
+        report: &dyn Fn(OpenBuild),
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
     ) {
@@ -239,10 +251,12 @@ impl Indexer {
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
         while !cancel.is_cancelled() {
-            if owed.walked() {
+            if owed.walked() && !waiting.is_empty() {
+                // A reindex reports through its own callback, which refreshes the list.
+                if std::mem::take(&mut owed.report) {
+                    report(OpenBuild::Ended);
+                }
                 for (progress, answer) in waiting.drain(..) {
-                    // It reports through its own callback, which refreshes the list.
-                    owed.report = false;
                     // The asker may have gone; the work is done either way.
                     let _ =
                         answer.send(self.reindex(&mut owed, progress, cancel, announce, landed));
@@ -271,7 +285,7 @@ impl Indexer {
                     Some(Command::Stop) | None => return,
                 },
                 fact = facts.recv() => match fact {
-                    Ok(fact) => self.take(&mut owed, fact),
+                    Ok(fact) => self.take(&mut owed, fact, report),
                     Err(RecvError::Lagged(missed)) => {
                         tracing::warn!(scope = "note_index", missed, "facts were lost: scanning");
                         owed.end_walk();
@@ -279,14 +293,19 @@ impl Indexer {
                     Err(RecvError::Closed) => return,
                 },
                 () = tokio::time::sleep_until(wake), if next.is_some() => {
-                    let report = std::mem::take(&mut owed.report).then_some(report);
-                    self.work(&mut owed, cancel, report, announce, landed);
+                    let carried = std::mem::take(&mut owed.report);
+                    let step = |step| report(OpenBuild::Step(step));
+                    let steps = carried.then_some(&step as &dyn Fn(IndexProgress));
+                    self.work(&mut owed, cancel, steps, announce, landed);
+                    if carried {
+                        report(OpenBuild::Ended);
+                    }
                 }
             }
         }
     }
 
-    fn take(&self, owed: &mut Owed, fact: Applied) {
+    fn take(&self, owed: &mut Owed, fact: Applied, report: &dyn Fn(OpenBuild)) {
         match fact {
             Applied::Added { note_id, .. }
             | Applied::Changed { note_id, .. }
@@ -304,7 +323,9 @@ impl Indexer {
             // The walk's end owes the open's report, even when a pass before it (a failed
             // watcher's, or a lag's) took it: the walk's pass is what fills the list.
             Applied::Indexed { .. } => {
-                owed.report = true;
+                if !std::mem::replace(&mut owed.report, true) {
+                    report(OpenBuild::Owed);
+                }
                 owed.end_walk();
             }
             Applied::Vault(VaultEvent::Rescanned { .. }) => {

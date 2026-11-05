@@ -9,7 +9,7 @@ use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::launch_timeline::LaunchPhase;
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::notes::index::{IndexReport, NoteIndex};
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::paths::AppPaths;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
@@ -26,7 +26,7 @@ use tauri::{AppHandle, Manager, Wry};
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::commands::error::{CommandError, ErrorKind};
-use crate::commands::vault_index::vault_status;
+use crate::commands::vault_index::{send_indexing_status, vault_status};
 use crate::events::{
     CrdtWriteBackFailedEvent, NoteLinksChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
     VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
@@ -105,8 +105,9 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// with the notes identity (Step 13d) naming the note of each file. The tier is managed so the
 /// app's own file operations reach its own-write record and its row lane, and the notes service
 /// (Step 13f) over it, whose row facts become the note events. The note index follows the
-/// tier's facts in the background of every open, broadcasts the progress of each open's pass
-/// and the links each pass committed, and is managed for `vault_reindex`. The pre-sync template
+/// tier's facts in the background of every open, broadcasts the progress of each open's pass,
+/// the vault status whenever its indexing changes, and the links each pass committed, and is
+/// managed for `vault_reindex`. The pre-sync template
 /// files import as the vault opens (Step 13l), into its activity log.
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
@@ -125,7 +126,12 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     let lander = app.clone();
     let index = NoteIndex::new(
         tier.clone(),
-        move |step| broadcast(&reporter, VaultIndexProgressEvent::from(step)),
+        move |report| match report {
+            IndexReport::Progress(step) => {
+                broadcast(&reporter, VaultIndexProgressEvent::from(step));
+            }
+            IndexReport::Indexing => send_indexing_status(&reporter),
+        },
         move |links| broadcast(&announcer, NoteLinksChangedEvent::from(links)),
         move |note_id| crate::shell::journal_events::landed(&lander, note_id),
     );
