@@ -13,6 +13,7 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::write::NewDay;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::tag_retag::KeptNote;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 
 /// A note `Plan` with the tag, its child and a body `#tag`, a note `Both` holding the target
@@ -60,7 +61,7 @@ fn a_merge_writes_each_header_and_record_once_and_leaves_children_and_bodies() {
     let open = e.session.current().unwrap();
 
     let merged = notes.merge_tag(&open, "job", "work").unwrap();
-    assert_eq!(merged.failed_note_ids, Vec::<String>::new());
+    assert_eq!(merged.failed, Vec::new());
     let mut written = merged.written.clone();
     written.sort();
     let mut expected = vec![plan.clone(), both.clone(), day.clone(), found.clone()];
@@ -259,7 +260,13 @@ fn a_note_the_delete_cannot_write_keeps_the_tag_and_is_answered() {
     let open = e.session.current().unwrap();
 
     let deleted = notes.delete_tag(&open, "job").unwrap();
-    assert_eq!(deleted.failed_note_ids, std::slice::from_ref(&both));
+    // Frontmatter that does not read: asking again cannot finish it until the file is fixed.
+    let kept = KeptNote {
+        id: both.clone(),
+        title: "Both".into(),
+        retry_finishes: false,
+    };
+    assert_eq!(deleted.failed, [kept]);
     assert!(deleted.written.contains(&plan));
     assert_eq!(e.read("Both.md"), broken);
     assert!(record(&e, &both, "tags").contains(&"job".to_owned()));

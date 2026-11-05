@@ -338,12 +338,19 @@ describe('TagManager', () => {
     )
   })
 
-  it('says how many notes kept the tag when a delete or merge could not write them all', async () => {
-    mocks.deleteTag.mockResolvedValue({ success: true, affectedNotes: 2, failedNoteIds: ['n1'] })
+  it('names the notes a delete or merge kept, by whether asking again finishes them', async () => {
+    const notes = ['Plan', 'Ideas', 'Log', 'Todo'].map((title, n) => ({ id: `n${n}`, title }))
+    mocks.deleteTag.mockResolvedValue({
+      success: true,
+      affectedNotes: 2,
+      failedNotes: notes.slice(0, 1),
+      retryFinishes: true
+    })
     mocks.mergeTag.mockResolvedValue({
       success: true,
       affectedItems: 1,
-      failedNoteIds: ['n1', 'n2']
+      failedNotes: notes,
+      retryFinishes: false
     })
     render(<TagManager />)
 
@@ -352,7 +359,7 @@ describe('TagManager', () => {
     await waitFor(() =>
       expect(mocks.toastWarning).toHaveBeenCalledWith(
         "Couldn't update 1 note. Delete #work again to finish.",
-        { duration: 10_000 }
+        { description: 'Plan', duration: 10_000 }
       )
     )
 
@@ -361,10 +368,39 @@ describe('TagManager', () => {
     fireEvent.click(screen.getByText('tags.actions.merge'))
     await waitFor(() =>
       expect(mocks.toastWarning).toHaveBeenCalledWith(
-        "Couldn't update 2 notes. Merge #work again to finish.",
-        { duration: 10_000 }
+        "Couldn't update 4 notes. Fix the notes below, then merge #work again.",
+        { description: 'Plan, Ideas, Log and 1 more', duration: 10_000 }
       )
     )
+    // A change that left notes is not shown as done.
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+  })
+
+  it('shows the rename left unfinished in place of a delete or merge it refused', async () => {
+    const left = { oldName: 'old', newName: 'new', left: 1, notes: [{ id: 'n1', title: 'Plan' }] }
+    vi.spyOn(commands, 'tagsRenameUnfinished').mockResolvedValue(left)
+    const refused = { success: false, error: 'refused', code: 'tag_rename_unfinished' }
+    mocks.deleteTag.mockResolvedValue(refused)
+    render(<TagManager />)
+
+    fireEvent.click(screen.getAllByText('tags.actions.delete')[0])
+    fireEvent.click(screen.getAllByText('tags.actions.delete').at(-1)!)
+    await waitFor(() =>
+      expect(mocks.toastWarning).toHaveBeenCalledWith(
+        "Renaming #old to #new didn't finish for 1 note. Rename #old to #new again to finish it.",
+        expect.objectContaining({ description: 'Plan' })
+      )
+    )
+    expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
+  it('says a delete takes the tag off tasks and leaves body #tags, and a merge leaves them', () => {
+    render(<TagManager />)
+    fireEvent.click(screen.getAllByText('tags.actions.delete')[0])
+    expect(screen.getByText(/tags\.dialogs\.deleteTasks/)).toBeInTheDocument()
+    expect(screen.getByText(/tagFields\.settings\.delete\.bodyTagsStay/)).toBeInTheDocument()
+    fireEvent.click(screen.getAllByText('tags.actions.mergeInto')[0])
+    expect(screen.getByText(/tags\.dialogs\.mergeBodyTagsStay/)).toBeInTheDocument()
   })
 
   it('deletes, merges, and changes tag colors with success and error toasts', async () => {

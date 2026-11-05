@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "태그 삭제",
       "deleteDescription": "{count, plural, other {항목 #개}}에서 “{name}” 태그를 제거하시겠습니까? 되돌릴 수 없습니다.",
+      "deleteTasks": "#{tag}이(가) 붙은 작업에서도 제거됩니다.",
       "mergeTitle": "태그 병합",
       "mergeDescription": "“{source}” 태그가 지정된 모든 항목에 대상 태그가 대신 지정됩니다. 원본 태그는 삭제됩니다.",
+      "mergeBodyTagsStay": "노트 본문에 쓴 #{source}은(는) 그대로 남으므로 해당 노트는 이 태그를 유지합니다.",
       "targetPlaceholder": "대상 태그 선택…",
       "colorTitle": "“{name}” 색상 변경"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "{count, plural, other {노트 #개}}를 업데이트하지 못했습니다. 해당 노트를 열고 태그를 다시 추가하세요",
       "mergedSomeKept": "{count, plural, other {노트 #개}}를 업데이트하지 못했습니다. 마치려면 #{tag}을(를) 다시 병합하세요.",
       "deletedSomeKept": "{count, plural, other {노트 #개}}를 업데이트하지 못했습니다. 마치려면 #{tag}을(를) 다시 삭제하세요.",
+      "mergedSomeStuck": "{count, plural, other {노트 #개}}를 업데이트하지 못했습니다. 아래 노트를 고친 다음 #{tag}을(를) 다시 병합하세요.",
+      "deletedSomeStuck": "{count, plural, other {노트 #개}}를 업데이트하지 못했습니다. 아래 노트를 고친 다음 #{tag}을(를) 다시 삭제하세요.",
       "renameUnfinished": "#{oldName}을(를) #{newName}(으)로 바꾸는 작업이 {count, plural, other {노트 #개}}에서 끝나지 않았습니다. 마치려면 #{oldName}을(를) #{newName}(으)로 다시 바꾸세요.",
       "renameUnfinishedMore": "{names} 외 {count, plural, other {#개}}",
       "stopRename": "이 이름 변경 중지",

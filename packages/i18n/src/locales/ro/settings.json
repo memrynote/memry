@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Ștergeți eticheta?",
       "deleteDescription": "Eliminați „{name}” din {count, plural, one {# element} few {# elemente} other {# de elemente}}? Acțiunea nu poate fi anulată.",
+      "deleteTasks": "Sarcinile cu #{tag} o pierd și ele.",
       "mergeTitle": "Combinați eticheta",
       "mergeDescription": "Toate elementele etichetate cu „{source}” vor primi eticheta țintă. Eticheta sursă va fi ștearsă.",
+      "mergeBodyTagsStay": "#{source} scrisă în textul notițelor rămâne, așa că acele notițe o păstrează.",
       "targetPlaceholder": "Selectează eticheta țintă…",
       "colorTitle": "Schimbați culoarea pentru „{name}”"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "{count, plural, one {# notiță nu a putut fi actualizată. Deschide-o și adaugă din nou eticheta} few {# notițe nu au putut fi actualizate. Deschide-le și adaugă din nou eticheta} other {# de notițe nu au putut fi actualizate. Deschide-le și adaugă din nou eticheta}}",
       "mergedSomeKept": "{count, plural, one {# notiță nu a putut fi actualizată} few {# notițe nu au putut fi actualizate} other {# de notițe nu au putut fi actualizate}}. Combină din nou #{tag} pentru a termina.",
       "deletedSomeKept": "{count, plural, one {# notiță nu a putut fi actualizată} few {# notițe nu au putut fi actualizate} other {# de notițe nu au putut fi actualizate}}. Șterge din nou #{tag} pentru a termina.",
+      "mergedSomeStuck": "{count, plural, one {# notiță nu a putut fi actualizată} few {# notițe nu au putut fi actualizate} other {# de notițe nu au putut fi actualizate}}. Corectează notițele de mai jos, apoi combină din nou #{tag}.",
+      "deletedSomeStuck": "{count, plural, one {# notiță nu a putut fi actualizată} few {# notițe nu au putut fi actualizate} other {# de notițe nu au putut fi actualizate}}. Corectează notițele de mai jos, apoi șterge din nou #{tag}.",
       "renameUnfinished": "Redenumirea #{oldName} în #{newName} nu s-a încheiat pentru {count, plural, one {# notiță} few {# notițe} other {# de notițe}}. Redenumește din nou #{oldName} în #{newName} ca să o finalizezi.",
       "renameUnfinishedMore": "{names} și încă {count, plural, one {#} few {#} other {#}}",
       "stopRename": "Oprește această redenumire",

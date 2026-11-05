@@ -357,7 +357,12 @@ describe('TagSettingsSheet delete tag', () => {
   })
 
   it('says how many notes kept the tag when the delete could not write them all', async () => {
-    tagsApi.deleteTag.mockResolvedValue({ success: true, affectedNotes: 8, failedNoteIds: ['n1'] })
+    tagsApi.deleteTag.mockResolvedValue({
+      success: true,
+      affectedNotes: 8,
+      failedNotes: [{ id: 'n1', title: 'Ada' }],
+      retryFinishes: false
+    })
     const user = userEvent.setup()
     renderSheet()
 
@@ -367,10 +372,11 @@ describe('TagSettingsSheet delete tag', () => {
 
     await waitFor(() =>
       expect(toastMock.warning).toHaveBeenCalledWith(
-        "Couldn't update 1 note. Delete #person again to finish.",
-        { duration: 10_000 }
+        "Couldn't update 1 note. Fix the notes below, then delete #person again.",
+        { description: 'Ada', duration: 10_000 }
       )
     )
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('keeps the dialog open and says why when the delete is refused', async () => {

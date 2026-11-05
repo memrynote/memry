@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use memry_core::crypto::sodium;
 use memry_core::domain::tag_rename::{Holder, RenameJob};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::journal::write::NewDay;
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
@@ -25,14 +26,15 @@ use memry_desktop::vault::consumer::{Applied, VaultTier};
 use memry_desktop::vault::hash::content_hash;
 use memry_tauri::commands::error::CommandError;
 use memry_tauri::commands::tags::{
-    RenameTagInput, RenameTagView, rename_failed, tags_rename, tags_rename_abandon,
+    RenameTagInput, RenameTagView, tag_change_failed, tags_rename, tags_rename_abandon,
     tags_rename_unfinished,
 };
 use memry_tauri::commands::tags_retag::{
     MergeTagInput, RemoveTagFromNoteInput, tags_delete, tags_merge, tags_remove_from_note,
 };
 use memry_tauri::events::{
-    NoteTagsChangedEvent, TagDeletedEvent, TagNotesChangedEvent, TagRenamedEvent, TagsProgressEvent,
+    JournalExternalChangeEvent, NoteTagsChangedEvent, TagDeletedEvent, TagNotesChangedEvent,
+    TagRenamedEvent, TagsProgressEvent,
 };
 use memry_tauri::shell::journal_events;
 use tauri::test::{MockRuntime, mock_app};
@@ -110,6 +112,7 @@ fn opened() -> Fixture {
         TagDeletedEvent::NAME,
         TagNotesChangedEvent::NAME,
         NoteTagsChangedEvent::NAME,
+        JournalExternalChangeEvent::NAME,
     ] {
         let sink = Arc::clone(&heard);
         app.listen_any(name, move |event| {
@@ -376,7 +379,7 @@ fn a_merge_through_the_command_is_announced_and_counted_under_the_target() {
     let handle = fixture.app.handle().clone();
     let merged = tauri::async_runtime::block_on(tags_merge(handle, input)).unwrap();
     assert_eq!(merged.affected_items, 1);
-    assert_eq!(merged.failed_note_ids, Vec::<String>::new());
+    assert!(merged.failed_notes.is_empty());
     let text = fs::read_to_string(fixture.vault.join("Bare.md")).unwrap();
     assert!(text.contains("  - job\n"), "{text}");
     assert_eq!(
@@ -470,7 +473,7 @@ fn a_removal_from_a_note_through_the_command_is_announced() {
 #[test]
 fn a_tag_change_refused_while_another_runs_says_so() {
     let fixture = opened();
-    let refused = rename_failed(fixture.app.handle(), &NotesError::TagEditInProgress);
+    let refused = tag_change_failed(fixture.app.handle(), &NotesError::TagEditInProgress);
     assert_eq!(
         (refused.code.as_str(), refused.message.as_str()),
         (
@@ -507,6 +510,69 @@ fn a_note_the_delete_cannot_write_is_answered() {
     }
     let handle = fixture.app.handle().clone();
     let deleted = tauri::async_runtime::block_on(tags_delete(handle, "work".into())).unwrap();
-    assert_eq!(deleted.failed_note_ids, [id]);
+    let kept: Vec<(String, String)> = deleted
+        .failed_notes
+        .into_iter()
+        .map(|note| (note.id, note.title))
+        .collect();
+    assert_eq!(kept, [(id, "Plan".to_owned())]);
+    assert!(
+        !deleted.retry_finishes,
+        "broken frontmatter needs fixing first"
+    );
     assert_eq!(fs::read_to_string(&path).unwrap(), broken);
+}
+
+/// A journal day tagged `work`, its counts measured, the events heard so far dropped.
+fn day(fixture: &Fixture) -> String {
+    let notes = fixture.app.state::<Arc<NotesService>>();
+    let open = fixture.app.state::<Session>().current().unwrap();
+    let new = NewDay {
+        date: "2025-04-01".into(),
+        content: "Walked".into(),
+        tags: vec!["work".into()],
+        ..NewDay::default()
+    };
+    let id = notes.create_day(&open, new).unwrap().id;
+    let deadline = Instant::now() + WAIT;
+    while open
+        .search
+        .note_stats(&id)
+        .unwrap()
+        .and_then(|row| row.date)
+        .is_none()
+    {
+        assert!(Instant::now() < deadline, "the day was not measured");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    fixture.heard();
+    id
+}
+
+fn day_changed(fixture: &Fixture) -> bool {
+    let changed = r#"{"date":"2025-04-01","type":"modified"}"#;
+    fixture
+        .heard()
+        .iter()
+        .any(|(name, payload)| *name == JournalExternalChangeEvent::NAME && payload == changed)
+}
+
+/// A delete, a merge or a rename changes a day's record alone, so the open day hears its
+/// change: a page still holding the old tags would write them back on its next tag edit.
+#[test]
+fn a_day_a_tag_change_wrote_is_told_its_change() {
+    let fixture = opened();
+    day(&fixture);
+    fixture.rename("work", "job").unwrap();
+    assert!(day_changed(&fixture), "rename");
+    let input = MergeTagInput {
+        source: "job".into(),
+        target: "career".into(),
+    };
+    let handle = fixture.app.handle().clone();
+    tauri::async_runtime::block_on(tags_merge(handle, input)).unwrap();
+    assert!(day_changed(&fixture), "merge");
+    let handle = fixture.app.handle().clone();
+    tauri::async_runtime::block_on(tags_delete(handle, "career".into())).unwrap();
+    assert!(day_changed(&fixture), "delete");
 }

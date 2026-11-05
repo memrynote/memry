@@ -14,8 +14,8 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { extractErrorMessage } from '@/lib/ipc-error'
-import { toastTagsKept } from '../rename-toasts'
+import { IpcFailureError, extractErrorMessage, getIpcErrorCode } from '@/lib/ipc-error'
+import { toastTagChangeFailed, toastTagsKept } from '../rename-toasts'
 import { tagsService } from '@/services/tags-service'
 import { useEditTagSchema } from '../use-tag-schemas'
 
@@ -284,12 +284,17 @@ export function DeleteTagDialog({
     setBusy(true)
     try {
       const result = await tagsService.deleteTag(tag)
-      if (!result.success) throw new Error(result.error ?? t('tagFields.settings.errors.deleteTag'))
-      toast.success(t('tagFields.settings.delete.done', { tag }))
-      toastTagsKept(result, tag, 'delete')
+      if (!result.success) {
+        const message = result.error ?? t('tagFields.settings.errors.deleteTag')
+        throw new IpcFailureError(message, result.code)
+      }
+      if (!toastTagsKept(result, tag, 'delete')) {
+        toast.success(t('tagFields.settings.delete.done', { tag }))
+      }
       onOpenChange(false)
     } catch (err) {
-      toast.error(extractErrorMessage(err, t('tagFields.settings.errors.deleteTag')))
+      const message = extractErrorMessage(err, t('tagFields.settings.errors.deleteTag'))
+      await toastTagChangeFailed(message, getIpcErrorCode(err))
     } finally {
       setBusy(false)
     }

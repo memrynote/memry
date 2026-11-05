@@ -17,7 +17,7 @@ import type {
 import type { TagsProgressEvent } from '@memry/contracts/tag-schema-api'
 import type { RenameTagResponse } from '@memry/contracts/tags-api'
 import { commands, events } from '../../../generated/bindings'
-import type { UnfinishedRenameView } from '../../../generated/bindings'
+import type { KeptNoteView, UnfinishedRenameView } from '../../../generated/bindings'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 import { subscribeToEvent } from './tauri-event'
 
@@ -51,11 +51,25 @@ function failure(error: unknown): { success: false; error?: string } {
 /** A rename's answer; a failed one keeps its command's `code`, which tells a refusal apart. */
 export type RenameTagResult = RenameTagResponse & { code?: string }
 
-/** A delete's answer, with the notes that keep the tag: deleting again finishes them. */
-export type DeleteTagResult = DeleteTagResponse & { failedNoteIds?: string[] }
+/**
+ * The notes a merge or delete could not write, and whether asking again can finish them all;
+ * a failed one keeps its command's `code`, which tells a refusal apart.
+ */
+export interface TagsKept {
+  failedNotes?: KeptNoteView[]
+  retryFinishes?: boolean
+  code?: string
+}
 
-/** A merge's answer, with the notes that keep the source: merging again finishes them. */
-export type MergeTagResult = MergeTagResponse & { failedNoteIds?: string[] }
+export type DeleteTagResult = DeleteTagResponse & TagsKept
+
+export type MergeTagResult = MergeTagResponse & TagsKept
+
+/** {@link failure}, keeping the command's `code`. */
+function coded(error: unknown): { success: false; error?: string; code?: string } {
+  const code = commandErrorCode(error)
+  return { ...failure(error), ...(code ? { code } : {}) }
+}
 
 /** Runs a write that answers `{ success }`, a rejection becoming `{ success: false }`. */
 async function settled(write: () => Promise<unknown>): Promise<TagOperationResponse> {
@@ -134,8 +148,7 @@ const ported = {
     try {
       return { success: true, ...(await commands.tagsRename(input)) }
     } catch (error) {
-      const code = commandErrorCode(error)
-      return { ...failure(error), ...(code ? { code } : {}) }
+      return coded(error)
     }
   },
 
@@ -144,7 +157,7 @@ const ported = {
     try {
       return { success: true, ...(await commands.tagsDelete(tag)) }
     } catch (error) {
-      return failure(error)
+      return coded(error)
     }
   },
 
@@ -156,7 +169,7 @@ const ported = {
     try {
       return { success: true, ...(await commands.tagsMerge(input)) }
     } catch (error) {
-      return failure(error)
+      return coded(error)
     }
   }
 }

@@ -5,6 +5,7 @@ import { foldTag } from '@memry/shared/tag-fold'
 import {
   RENAME_UNFINISHED,
   renameTagWithProgress,
+  toastTagChangeFailed,
   toastTagRenamed,
   toastTagsKept,
   toastUnfinishedRename
@@ -64,14 +65,19 @@ export function useTagScopeActions(tag: string | null, totalNotes: number, close
     try {
       const result = await tagsService.deleteTag(tag)
       if (!result.success) {
-        throw new Error(result.error ?? tSettings('tags.toasts.deleteFailed'))
+        throw new IpcFailureError(
+          result.error ?? tSettings('tags.toasts.deleteFailed'),
+          result.code
+        )
       }
-      toast.success(tSettings('tags.toasts.deleted', { name: tag, count: totalNotes }))
-      toastTagsKept(result, tag, 'delete')
+      if (!toastTagsKept(result, tag, 'delete')) {
+        toast.success(tSettings('tags.toasts.deleted', { name: tag, count: totalNotes }))
+      }
       closeTab()
     } catch (err) {
       log.error('Failed to delete tag', err)
-      toast.error(extractErrorMessage(err, tSettings('tags.toasts.deleteFailed')))
+      const message = extractErrorMessage(err, tSettings('tags.toasts.deleteFailed'))
+      await toastTagChangeFailed(message, getIpcErrorCode(err))
     }
   }, [tag, totalNotes, closeTab])
 

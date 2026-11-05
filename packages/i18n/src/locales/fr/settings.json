@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Supprimer le tag",
       "deleteDescription": "Retirer le tag « {name} » de {count, plural, one {# élément} other {# éléments}} ? Cette action est irréversible.",
+      "deleteTasks": "Les tâches qui portent #{tag} le perdent aussi.",
       "mergeTitle": "Fusionner le tag",
       "mergeDescription": "Tous les éléments avec le tag « {source} » recevront le tag cible. Le tag source sera supprimé.",
+      "mergeBodyTagsStay": "#{source} écrit dans le texte des notes reste, ces notes le gardent donc.",
       "targetPlaceholder": "Sélectionner le tag cible…",
       "colorTitle": "Modifier la couleur de « {name} »"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "Impossible de mettre à jour {count, plural, one {# note} other {# notes}}. {count, plural, one {Ouvrez-la} other {Ouvrez-les}} et ajoutez à nouveau le tag",
       "mergedSomeKept": "Impossible de mettre à jour {count, plural, one {# note} other {# notes}}. Fusionnez à nouveau #{tag} pour terminer.",
       "deletedSomeKept": "Impossible de mettre à jour {count, plural, one {# note} other {# notes}}. Supprimez à nouveau #{tag} pour terminer.",
+      "mergedSomeStuck": "Impossible de mettre à jour {count, plural, one {# note} other {# notes}}. Corrigez les notes ci-dessous, puis fusionnez à nouveau #{tag}.",
+      "deletedSomeStuck": "Impossible de mettre à jour {count, plural, one {# note} other {# notes}}. Corrigez les notes ci-dessous, puis supprimez à nouveau #{tag}.",
       "renameUnfinished": "Le renommage de #{oldName} en #{newName} n’est pas terminé pour {count, plural, one {# note} other {# notes}}. Renommez à nouveau #{oldName} en #{newName} pour le terminer.",
       "renameUnfinishedMore": "{names} et {count, plural, one {# autre} other {# autres}}",
       "stopRename": "Arrêter ce renommage",

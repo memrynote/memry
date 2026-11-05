@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Удалить тег",
       "deleteDescription": "Убрать тег «{name}» из {count, plural, one {# элемента} few {# элементов} many {# элементов} other {# элемента}}? Это действие нельзя отменить.",
+      "deleteTasks": "Задачи с тегом #{tag} тоже его потеряют.",
       "mergeTitle": "Объединить тег",
       "mergeDescription": "Все элементы с тегом «{source}» получат целевой тег. Исходный тег будет удалён.",
+      "mergeBodyTagsStay": "#{source} в тексте заметок остаётся, поэтому эти заметки его сохранят.",
       "targetPlaceholder": "Выберите целевой тег…",
       "colorTitle": "Изменить цвет для «{name}»"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "Не удалось обновить {count, plural, one {# заметку} few {# заметки} many {# заметок} other {# заметки}}. Откройте {count, plural, one {её} other {их}} и добавьте тег снова",
       "mergedSomeKept": "Не удалось обновить {count, plural, one {# заметку} few {# заметки} many {# заметок} other {# заметки}}. Объедините #{tag} ещё раз, чтобы завершить.",
       "deletedSomeKept": "Не удалось обновить {count, plural, one {# заметку} few {# заметки} many {# заметок} other {# заметки}}. Удалите #{tag} ещё раз, чтобы завершить.",
+      "mergedSomeStuck": "Не удалось обновить {count, plural, one {# заметку} few {# заметки} many {# заметок} other {# заметки}}. Исправьте заметки ниже, затем снова объедините #{tag}.",
+      "deletedSomeStuck": "Не удалось обновить {count, plural, one {# заметку} few {# заметки} many {# заметок} other {# заметки}}. Исправьте заметки ниже, затем снова удалите #{tag}.",
       "renameUnfinished": "Переименование #{oldName} в #{newName} не завершилось для {count, plural, one {# заметки} few {# заметок} many {# заметок} other {# заметки}}. Переименуйте #{oldName} в #{newName} ещё раз, чтобы завершить его.",
       "renameUnfinishedMore": "{names} и ещё {count, plural, one {#} few {#} many {#} other {#}}",
       "stopRename": "Остановить это переименование",

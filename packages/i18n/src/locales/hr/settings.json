@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Izbriši oznaku",
       "deleteDescription": "Ukloniti oznaku „{name}” iz {count, plural, one {# stavke} few {# stavke} other {# stavki}}? Ovo se ne može poništiti.",
+      "deleteTasks": "Zadaci s oznakom #{tag} također je gube.",
       "mergeTitle": "Spoji oznaku",
       "mergeDescription": "Sve stavke označene oznakom „{source}” dobit će ciljnu oznaku. Izvorna oznaka bit će izbrisana.",
+      "mergeBodyTagsStay": "#{source} napisana u tekstu bilješki ostaje, pa je te bilješke zadržavaju.",
       "targetPlaceholder": "Odaberite ciljnu oznaku…",
       "colorTitle": "Promijeni boju oznake „{name}”"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "Nije moguće ažurirati: {count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}. Otvorite ih i ponovno dodajte oznaku",
       "mergedSomeKept": "Nije moguće ažurirati: {count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}. Ponovno spojite #{tag} da biste završili.",
       "deletedSomeKept": "Nije moguće ažurirati: {count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}. Ponovno izbrišite #{tag} da biste završili.",
+      "mergedSomeStuck": "Nije moguće ažurirati: {count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}. Popravite bilješke u nastavku, a zatim ponovno spojite #{tag}.",
+      "deletedSomeStuck": "Nije moguće ažurirati: {count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}. Popravite bilješke u nastavku, a zatim ponovno izbrišite #{tag}.",
       "renameUnfinished": "Preimenovanje oznake #{oldName} u #{newName} nije dovršeno za {count, plural, one {# bilješku} few {# bilješke} other {# bilješki}}. Ponovno preimenujte #{oldName} u #{newName} da biste ga dovršili.",
       "renameUnfinishedMore": "{names} i još {count, plural, one {#} few {#} other {#}}",
       "stopRename": "Zaustavi ovo preimenovanje",

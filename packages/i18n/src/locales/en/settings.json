@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Delete tag",
       "deleteDescription": "Remove \"{name}\" from {count, plural, one {# item} other {# items}}? This cannot be undone.",
+      "deleteTasks": "Tasks tagged #{tag} lose it too.",
       "mergeTitle": "Merge tag",
       "mergeDescription": "All items tagged with \"{source}\" will be re-tagged with the target tag. The source tag will be deleted.",
+      "mergeBodyTagsStay": "#{source} written in note text stays, so those notes keep it.",
       "targetPlaceholder": "Select target tag...",
       "colorTitle": "Change color for \"{name}\""
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "Couldn't update {count, plural, one {# note} other {# notes}}. Open {count, plural, one {it} other {them}} and add the tag again",
       "mergedSomeKept": "Couldn't update {count, plural, one {# note} other {# notes}}. Merge #{tag} again to finish.",
       "deletedSomeKept": "Couldn't update {count, plural, one {# note} other {# notes}}. Delete #{tag} again to finish.",
+      "mergedSomeStuck": "Couldn't update {count, plural, one {# note} other {# notes}}. Fix the notes below, then merge #{tag} again.",
+      "deletedSomeStuck": "Couldn't update {count, plural, one {# note} other {# notes}}. Fix the notes below, then delete #{tag} again.",
       "renameUnfinished": "Renaming #{oldName} to #{newName} didn't finish for {count, plural, one {# note} other {# notes}}. Rename #{oldName} to #{newName} again to finish it.",
       "renameUnfinishedMore": "{names} and {count, plural, one {# more} other {# more}}",
       "stopRename": "Stop this rename",

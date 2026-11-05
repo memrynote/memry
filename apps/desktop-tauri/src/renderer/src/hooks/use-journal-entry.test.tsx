@@ -386,6 +386,27 @@ describe('useJournalEntry dedicated hook', () => {
     expect(result.current.isDirty).toBe(true)
   })
 
+  it('reads back the tags a tag delete took off the open day before its next tag edit', async () => {
+    let external: ((event: unknown) => void) | null = null
+    const api = window.api as unknown as Record<string, ReturnType<typeof vi.fn>>
+    api.onJournalExternalChange.mockImplementation((cb) => {
+      external = cb
+      return vi.fn()
+    })
+    const getEntry = window.api.journal.getEntry as ReturnType<typeof vi.fn>
+    getEntry.mockResolvedValue(createMockJournalEntry({ date: '2026-05-10', tags: ['x'] }))
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.entry?.tags).toEqual(['x']))
+
+    // The delete changed the day's record alone (#3931) and told the day so: the page reads
+    // the record back, so adding a tag next sends `[y]`, not `[x, y]`.
+    getEntry.mockResolvedValue(createMockJournalEntry({ date: '2026-05-10', tags: [] }))
+    act(() => {
+      external?.({ date: '2026-05-10', type: 'modified' })
+    })
+    await waitFor(() => expect(result.current.entry?.tags).toEqual([]))
+  })
+
   describe('leaving the vault', () => {
     const VAULT_A = '/vaults/a'
     const VAULT_B = '/vaults/b'

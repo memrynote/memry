@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Odstrániť značku",
       "deleteDescription": "Odstrániť „{name}“ z {count, plural, one {# položky} few {# položiek} other {# položiek}}? Túto akciu nemožno vrátiť späť.",
+      "deleteTasks": "Úlohy so značkou #{tag} o ňu prídu tiež.",
       "mergeTitle": "Zlúčiť značku",
       "mergeDescription": "Všetky položky so značkou „{source}“ dostanú cieľovú značku. Zdrojová značka bude odstránená.",
+      "mergeBodyTagsStay": "#{source} napísaná v texte poznámok zostane, takže si ju tieto poznámky ponechajú.",
       "targetPlaceholder": "Vyberte cieľovú značku…",
       "colorTitle": "Zmeniť farbu pre „{name}“"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "Nepodarilo sa aktualizovať {count, plural, one {# poznámku} few {# poznámky} other {# poznámok}}. Otvorte {count, plural, one {ju} other {ich}} a pridajte značku znova",
       "mergedSomeKept": "Nepodarilo sa aktualizovať {count, plural, one {# poznámku} few {# poznámky} other {# poznámok}}. Dokončite to ďalším zlúčením #{tag}.",
       "deletedSomeKept": "Nepodarilo sa aktualizovať {count, plural, one {# poznámku} few {# poznámky} other {# poznámok}}. Dokončite to ďalším odstránením #{tag}.",
+      "mergedSomeStuck": "Nepodarilo sa aktualizovať {count, plural, one {# poznámku} few {# poznámky} other {# poznámok}}. Opravte poznámky nižšie a potom #{tag} znova zlúčte.",
+      "deletedSomeStuck": "Nepodarilo sa aktualizovať {count, plural, one {# poznámku} few {# poznámky} other {# poznámok}}. Opravte poznámky nižšie a potom #{tag} znova odstráňte.",
       "renameUnfinished": "Premenovanie #{oldName} na #{newName} sa nedokončilo pri {count, plural, one {# poznámke} few {# poznámkach} other {# poznámkach}}. Premenujte #{oldName} na #{newName} znova, aby sa dokončilo.",
       "renameUnfinishedMore": "{names} a {count, plural, one {# ďalšia} few {# ďalšie} other {# ďalších}}",
       "stopRename": "Zastaviť toto premenovanie",

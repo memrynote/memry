@@ -309,12 +309,14 @@ vi.mock('../src/generated/bindings', () => {
       tagsDelete: (tag: string) =>
         answered(tags().deleteTag(tag), (result) => ({
           affectedNotes: result.affectedNotes ?? 0,
-          failedNoteIds: result.failedNoteIds ?? []
+          failedNotes: result.failedNotes ?? [],
+          retryFinishes: result.retryFinishes ?? true
         })),
       tagsMerge: (input: unknown) =>
         answered(tags().mergeTag(input), (result) => ({
           affectedItems: result.affectedItems ?? 0,
-          failedNoteIds: result.failedNoteIds ?? []
+          failedNotes: result.failedNotes ?? [],
+          retryFinishes: result.retryFinishes ?? true
         })),
       tagsRemoveFromNote: (input: unknown) => answered(tags().removeTagFromNote(input), () => null),
       propertiesGet: (entityId: string) => properties().get(entityId),

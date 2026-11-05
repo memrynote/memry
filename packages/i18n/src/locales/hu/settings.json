@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Címke törlése",
       "deleteDescription": "Eltávolítja a(z) „{name}” címkét {count, plural, one {# elemről} other {# elemről}}? Ez a művelet nem vonható vissza.",
+      "deleteTasks": "A(z) #{tag} címkéjű feladatokról is lekerül.",
       "mergeTitle": "Címke egyesítése",
       "mergeDescription": "A(z) „{source}” címkével ellátott összes elem a célcímkét kapja meg. A forráscímke törlődik.",
+      "mergeBodyTagsStay": "A jegyzetek szövegébe írt #{source} megmarad, így ezek a jegyzetek megtartják.",
       "targetPlaceholder": "Célcímke kiválasztása…",
       "colorTitle": "Szín módosítása: „{name}”"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "{count, plural, one {# jegyzetet} other {# jegyzetet}} nem sikerült frissíteni. Nyissa meg, és adja hozzá újra a címkét",
       "mergedSomeKept": "{count, plural, one {# jegyzetet} other {# jegyzetet}} nem sikerült frissíteni. A befejezéshez egyesítse újra a(z) #{tag} címkét.",
       "deletedSomeKept": "{count, plural, one {# jegyzetet} other {# jegyzetet}} nem sikerült frissíteni. A befejezéshez törölje újra a(z) #{tag} címkét.",
+      "mergedSomeStuck": "{count, plural, one {# jegyzetet} other {# jegyzetet}} nem sikerült frissíteni. Javítsa ki az alábbi jegyzeteket, majd egyesítse újra a(z) #{tag} címkét.",
+      "deletedSomeStuck": "{count, plural, one {# jegyzetet} other {# jegyzetet}} nem sikerült frissíteni. Javítsa ki az alábbi jegyzeteket, majd törölje újra a(z) #{tag} címkét.",
       "renameUnfinished": "A(z) #{oldName} átnevezése erre: #{newName} {count, plural, one {# jegyzetnél} other {# jegyzetnél}} nem fejeződött be. Nevezze át újra a(z) #{oldName} címkét erre: #{newName} a befejezéshez.",
       "renameUnfinishedMore": "{names} és még {count, plural, one {#} other {#}}",
       "stopRename": "Átnevezés leállítása",

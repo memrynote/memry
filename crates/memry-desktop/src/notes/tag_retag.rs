@@ -9,9 +9,10 @@
 //! and `pinnedTags` (`TagHub::retag_in`, one outbox row). A day's file is the author's (#3931):
 //! its record alone. A note with no file to edit has its record alone. A note the seam keeps is
 //! tried once more after the write-back ran what it had scheduled; one still kept keeps the tag
-//! in its file and its record and is answered in `failed_note_ids` (Electron logs a header
-//! write-back that failed and goes on). Then the tasks and the definitions
-//! (`TagHub::merge_shared`, `TagHub::delete_shared`).
+//! in its file and its record and is answered in `failed`, named, with whether asking again can
+//! finish it (Electron logs a header write-back that failed and goes on). The tasks and the
+//! definitions (`TagHub::merge_shared`, `TagHub::delete_shared`) go first, before any file: a
+//! failure there leaves every file as it was, so no file written goes unannounced.
 //!
 //! Nothing is recorded: asked again, a merge or a delete finds what an earlier run left and
 //! converges. A crash between a note's file and its record leaves the record with the tag its
@@ -44,6 +45,7 @@ use memry_core::markdown::frontmatter::{
 use super::error::{NotesError, SCOPE, kept_is_retryable};
 use super::service::NotesService;
 use super::tag_rename::{SETTLE, recorded_plan, running_change};
+use super::tag_rename_unfinished::holder_title;
 use crate::session::OpenVault;
 use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
 use crate::vault::consumer::ChangeSource;
@@ -54,9 +56,21 @@ pub struct TagRetagged {
     /// The notes and days whose file or record changed.
     pub written: Vec<String>,
     /// The notes and days that keep the tag: their file could not take the edit.
-    pub failed_note_ids: Vec<String>,
+    pub failed: Vec<KeptNote>,
     /// The tasks retagged.
     pub tasks: u32,
+}
+
+/// A note or day that keeps the tag a merge or delete took off the others.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeptNote {
+    pub id: String,
+    /// Its file's name, else its id.
+    pub title: String,
+    /// Asking again can finish it: its file changed during the edit, or its body has not
+    /// arrived from sync yet. Otherwise the file needs fixing first (frontmatter that does not
+    /// read, a value that cannot be written back, a failure).
+    pub retry_finishes: bool,
 }
 
 /// One holder's edit.
@@ -137,14 +151,21 @@ impl NotesService {
             AppEdit::new(&self.tier, &self.store, open)?,
             self.tag_hub(open)?,
         );
-        let mut retagged = TagRetagged::default();
+        let holders = open.search.tag_holders(source)?;
+        let mut retagged = TagRetagged {
+            tasks: match target {
+                Some(target) => hub.merge_shared(source, target)?,
+                None => hub.delete_shared(source)?,
+            },
+            ..TagRetagged::default()
+        };
         let mut again = Vec::new();
-        for holder in open.search.tag_holders(source)? {
+        for holder in holders {
             match self.retag_one(&edit, &hub, &holder, source, target) {
                 InNote::Written => retagged.written.push(holder.id),
                 InNote::Unchanged => {}
                 outcome if outcome.again() => again.push(holder),
-                InNote::Kept(_) | InNote::Failed(_) => retagged.failed_note_ids.push(holder.id),
+                outcome => retagged.failed.push(kept_note(open, holder.id, &outcome)),
             }
         }
         if !again.is_empty() {
@@ -156,17 +177,13 @@ impl NotesService {
             match self.retag_one(&edit, &hub, &holder, source, target) {
                 InNote::Written => retagged.written.push(holder.id),
                 InNote::Unchanged => {}
-                InNote::Kept(_) | InNote::Failed(_) => retagged.failed_note_ids.push(holder.id),
+                outcome => retagged.failed.push(kept_note(open, holder.id, &outcome)),
             }
         }
-        retagged.tasks = match target {
-            Some(target) => hub.merge_shared(source, target)?,
-            None => hub.delete_shared(source)?,
-        };
-        if !retagged.failed_note_ids.is_empty() {
+        if !retagged.failed.is_empty() {
             tracing::warn!(
                 scope = SCOPE,
-                failed = ?retagged.failed_note_ids,
+                failed = ?retagged.failed,
                 "a tag merge or delete left notes it could not write with the tag"
             );
         }
@@ -251,6 +268,23 @@ impl NotesService {
             );
             InNote::Failed(error)
         })
+    }
+}
+
+/// The holder `id` an edit left as `outcome` said, named.
+fn kept_note(open: &OpenVault, id: String, outcome: &InNote) -> KeptNote {
+    let retry_finishes = matches!(
+        outcome,
+        InNote::Kept(kept) if kept_is_retryable(kept) || *kept == Kept::BodyNotPulled
+    );
+    let title = holder_title(open, &id).unwrap_or_else(|error| {
+        tracing::warn!(scope = SCOPE, note_id = %id, "a kept note's name did not read: {error}");
+        id.clone()
+    });
+    KeptNote {
+        id,
+        title,
+        retry_finishes,
     }
 }
 

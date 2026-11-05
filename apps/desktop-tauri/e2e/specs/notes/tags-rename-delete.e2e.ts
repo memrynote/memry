@@ -7,6 +7,7 @@
 import { createNote, getNote } from '../../harness/notes'
 import { expandTagsSection, openTagTab, unique, vaultOpen } from '../../harness/tags'
 import { test, expect } from '../../harness/test'
+import type { Page } from '../../harness/pw-compat/page'
 
 test('renames a tag via overflow menu', async ({ page }) => {
   await vaultOpen(page)
@@ -74,6 +75,15 @@ test('deletes a tag via overflow menu', async ({ page }) => {
   expect(note?.tags).toEqual([])
 })
 
+/** The note count the sidebar draws beside `tag`, as the refetch on the events left it. */
+const sidebarCount = (page: Page, tag: string) =>
+  page.evaluate((name) => {
+    const button = [...document.querySelectorAll('button')].find(
+      (candidate) => candidate.textContent?.trim() === name
+    )
+    return button?.parentElement?.querySelector('.tabular-nums')?.textContent?.trim() ?? null
+  }, tag)
+
 test('a deleted tag written in a note body stays in the body and the sidebar', async ({ page }) => {
   await vaultOpen(page)
   const tag = `deletebody${unique()}`
@@ -82,12 +92,21 @@ test('a deleted tag written in a note body stays in the body and the sidebar', a
     content: `Note body #${tag}`,
     tags: [tag]
   })
+  // A second note carries it in its header alone: the sidebar's count drops from 2 to 1 only
+  // once it reads the list again.
+  await createNote(page, { title: `Header Only ${tag}`, content: 'Plain', tags: [tag] })
   await openTagTab(page, tag)
+  await expect.poll(() => sidebarCount(page, tag), { timeout: 10_000 }).toBe('2')
 
   await page.locator('button[aria-label="Tag actions"]').click()
   await page.getByRole('menuitem', { name: 'Delete tag' }).click()
   const dialog = page.getByRole('alertdialog')
-  await expect(dialog.getByText(`#${tag} written in note text stays`)).toBeVisible()
+  await expect(
+    dialog.getByText(`Tasks tagged #${tag} lose it too.`, { exact: false })
+  ).toBeVisible()
+  await expect(
+    dialog.getByText(`#${tag} written in note text stays`, { exact: false })
+  ).toBeVisible()
   await dialog.getByRole('button', { name: 'Delete tag' }).click()
 
   await expect(page.locator('[role="tab"]').filter({ hasText: tag })).toHaveCount(0, {
@@ -97,7 +116,5 @@ test('a deleted tag written in a note body stays in the body and the sidebar', a
   expect(note?.headerTags).toEqual([])
   expect(note?.content).toContain(`#${tag}`)
   await expandTagsSection(page)
-  await expect(page.getByRole('button', { name: tag, exact: true }).first()).toBeVisible({
-    timeout: 10_000
-  })
+  await expect.poll(() => sidebarCount(page, tag), { timeout: 10_000 }).toBe('1')
 })

@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "מחיקת תגית",
       "deleteDescription": "להסיר את \"{name}\" {count, plural, one {מפריט אחד} other {מ-# פריטים}}? אי אפשר לבטל את הפעולה.",
+      "deleteTasks": "גם משימות עם #{tag} יאבדו אותה.",
       "mergeTitle": "מיזוג תגית",
       "mergeDescription": "כל הפריטים שמתויגים ב-\"{source}\" יתויגו מחדש בתגית היעד. תגית המקור תימחק.",
+      "mergeBodyTagsStay": "#{source} שכתובה בטקסט של פתקים נשארת, ולכן הפתקים האלה שומרים עליה.",
       "targetPlaceholder": "בחירת תגית יעד…",
       "colorTitle": "שינוי הצבע של \"{name}\""
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "לא ניתן לעדכן {count, plural, one {פתק אחד} other {# פתקים}}. כדאי לפתוח {count, plural, one {אותו} other {אותם}} ולהוסיף את התגית שוב",
       "mergedSomeKept": "לא ניתן לעדכן {count, plural, one {פתק אחד} other {# פתקים}}. כדאי למזג שוב את #{tag} כדי לסיים.",
       "deletedSomeKept": "לא ניתן לעדכן {count, plural, one {פתק אחד} other {# פתקים}}. כדאי למחוק שוב את #{tag} כדי לסיים.",
+      "mergedSomeStuck": "לא ניתן לעדכן {count, plural, one {פתק אחד} other {# פתקים}}. כדאי לתקן את הפתקים שלמטה ואז למזג שוב את #{tag}.",
+      "deletedSomeStuck": "לא ניתן לעדכן {count, plural, one {פתק אחד} other {# פתקים}}. כדאי לתקן את הפתקים שלמטה ואז למחוק שוב את #{tag}.",
       "renameUnfinished": "שינוי השם של #{oldName} ל-#{newName} לא הושלם עבור {count, plural, one {פתק אחד} other {# פתקים}}. כדי להשלים אותו, יש לשנות שוב את השם של #{oldName} ל-#{newName}.",
       "renameUnfinishedMore": "{names} ועוד {count, plural, one {אחד} other {#}}",
       "stopRename": "עצירת שינוי השם הזה",

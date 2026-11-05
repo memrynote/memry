@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "タグの削除",
       "deleteDescription": "{count, plural, other {# 件の項目}}から「{name}」を削除しますか？この操作は元に戻せません。",
+      "deleteTasks": "#{tag} が付いたタスクからも外れます。",
       "mergeTitle": "タグを統合",
       "mergeDescription": "「{source}」が付いたすべての項目に、統合先のタグが付け直されます。統合元のタグは削除されます。",
+      "mergeBodyTagsStay": "ノートの本文に書かれた #{source} は残るため、それらのノートには引き続き付いたままです。",
       "targetPlaceholder": "統合先のタグを選択…",
       "colorTitle": "「{name}」の色を変更"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "{count, plural, other {# 件のノート}}を更新できませんでした。開いて、もう一度タグを追加してください",
       "mergedSomeKept": "{count, plural, other {# 件のノート}}を更新できませんでした。完了するには、#{tag} をもう一度結合してください。",
       "deletedSomeKept": "{count, plural, other {# 件のノート}}を更新できませんでした。完了するには、#{tag} をもう一度削除してください。",
+      "mergedSomeStuck": "{count, plural, other {# 件のノート}}を更新できませんでした。下のノートを修正してから、#{tag} をもう一度結合してください。",
+      "deletedSomeStuck": "{count, plural, other {# 件のノート}}を更新できませんでした。下のノートを修正してから、#{tag} をもう一度削除してください。",
       "renameUnfinished": "#{oldName} から #{newName} への名前変更が {count, plural, other {# 件のノート}}で完了しませんでした。もう一度 #{oldName} を #{newName} に名前変更すると完了します。",
       "renameUnfinishedMore": "{names} ほか {count, plural, other {# 件}}",
       "stopRename": "この名前変更を中止",

@@ -662,8 +662,10 @@ export type DefinitionType = "text" | "number" | "checkbox" | "date" | "url" | "
 /**  `DeleteTagResponse` of a delete that ran: the notes and days that lost the tag. */
 export type DeleteTagView = {
 	affectedNotes: number,
-	/**  The notes and days that keep the tag: deleting again finishes them. */
-	failedNoteIds: string[],
+	/**  The notes and days that keep the tag. */
+	failedNotes: KeptNoteView[],
+	/**  Deleting again can finish every one of them; else some need their file fixed first. */
+	retryFinishes: boolean,
 };
 
 /**  One shipped line (`DiagnosticLogLineSchema`). */
@@ -980,6 +982,12 @@ export type JournalUpdateInput = {
 	properties?: { [key in string]: Value } | null,
 };
 
+/**  A note or day a merge or delete could not write, named by its file's name. */
+export type KeptNoteView = {
+	id: string,
+	title: string,
+};
+
 /**  `NoteLargeFileInfo`. */
 export type LargeFileInfo = {
 	reason: LargeFileReasonView,
@@ -1032,8 +1040,10 @@ export type MergeTagInput = {
 /**  `MergeTagResponse` of a merge that ran: the notes, days and tasks that took the target. */
 export type MergeTagView = {
 	affectedItems: number,
-	/**  The notes and days that keep the source: merging again finishes them. */
-	failedNoteIds: string[],
+	/**  The notes and days that keep the source. */
+	failedNotes: KeptNoteView[],
+	/**  Merging again can finish every one of them; else some need their file fixed first. */
+	retryFinishes: boolean,
 };
 
 export type Metrics = {

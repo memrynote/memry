@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Slet tag",
       "deleteDescription": "Vil du fjerne »{name}« fra {count, plural, one {# element} other {# elementer}}? Det kan ikke fortrydes.",
+      "deleteTasks": "Opgaver med #{tag} mister det også.",
       "mergeTitle": "Flet tag",
       "mergeDescription": "Alle elementer, der er tagget med »{source}«, bliver tagget med måltagget i stedet. Kildetagget slettes.",
+      "mergeBodyTagsStay": "#{source} skrevet i noternes tekst bliver stående, så de noter beholder det.",
       "targetPlaceholder": "Vælg måltag…",
       "colorTitle": "Skift farve for »{name}«"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "Kunne ikke opdatere {count, plural, one {# note} other {# noter}}. Åbn {count, plural, one {den} other {dem}}, og tilføj tagget igen",
       "mergedSomeKept": "Kunne ikke opdatere {count, plural, one {# note} other {# noter}}. Flet #{tag} igen for at gøre det færdigt.",
       "deletedSomeKept": "Kunne ikke opdatere {count, plural, one {# note} other {# noter}}. Slet #{tag} igen for at gøre det færdigt.",
+      "mergedSomeStuck": "Kunne ikke opdatere {count, plural, one {# note} other {# noter}}. Ret noterne nedenfor, og flet derefter #{tag} igen.",
+      "deletedSomeStuck": "Kunne ikke opdatere {count, plural, one {# note} other {# noter}}. Ret noterne nedenfor, og slet derefter #{tag} igen.",
       "renameUnfinished": "Omdøbningen af #{oldName} til #{newName} blev ikke færdig for {count, plural, one {# note} other {# noter}}. Omdøb #{oldName} til #{newName} igen for at gøre den færdig.",
       "renameUnfinishedMore": "{names} og {count, plural, one {# mere} other {# mere}}",
       "stopRename": "Stop denne omdøbning",

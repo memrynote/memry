@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Eliminar etiqueta",
       "deleteDescription": "¿Quitar «{name}» de {count, plural, one {# elemento} other {# elementos}}? Esto no se puede deshacer.",
+      "deleteTasks": "Las tareas con #{tag} también la pierden.",
       "mergeTitle": "Fusionar etiqueta",
       "mergeDescription": "Todos los elementos etiquetados con «{source}» se volverán a etiquetar con la etiqueta de destino. La etiqueta de origen se eliminará.",
+      "mergeBodyTagsStay": "#{source} escrita en el texto de las notas se queda, así que esas notas la conservan.",
       "targetPlaceholder": "Seleccionar etiqueta de destino…",
       "colorTitle": "Cambiar el color de «{name}»"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "No se {count, plural, one {pudo actualizar # nota} other {pudieron actualizar # notas}}. Ábrela y añade la etiqueta de nuevo",
       "mergedSomeKept": "No se {count, plural, one {pudo actualizar # nota} other {pudieron actualizar # notas}}. Vuelve a combinar #{tag} para terminar.",
       "deletedSomeKept": "No se {count, plural, one {pudo actualizar # nota} other {pudieron actualizar # notas}}. Vuelve a eliminar #{tag} para terminar.",
+      "mergedSomeStuck": "No se {count, plural, one {pudo actualizar # nota} other {pudieron actualizar # notas}}. Corrige las notas de abajo y vuelve a combinar #{tag}.",
+      "deletedSomeStuck": "No se {count, plural, one {pudo actualizar # nota} other {pudieron actualizar # notas}}. Corrige las notas de abajo y vuelve a eliminar #{tag}.",
       "renameUnfinished": "El cambio de nombre de #{oldName} a #{newName} no terminó en {count, plural, one {# nota} other {# notas}}. Vuelve a renombrar #{oldName} a #{newName} para terminarlo.",
       "renameUnfinishedMore": "{names} y {count, plural, one {# más} other {# más}}",
       "stopRename": "Detener este cambio de nombre",

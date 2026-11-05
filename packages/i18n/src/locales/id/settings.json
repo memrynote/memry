@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Hapus tag",
       "deleteDescription": "Hapus “{name}” dari {count, plural, other {# item}}? Tindakan ini tidak dapat dibatalkan.",
+      "deleteTasks": "Tugas yang bertag #{tag} juga kehilangan tag itu.",
       "mergeTitle": "Gabungkan tag",
       "mergeDescription": "Semua item yang diberi tag “{source}” akan diberi tag ulang dengan tag target. Tag sumber akan dihapus.",
+      "mergeBodyTagsStay": "#{source} yang tertulis di teks catatan tetap ada, jadi catatan itu tetap memilikinya.",
       "targetPlaceholder": "Pilih tag target…",
       "colorTitle": "Ubah warna untuk “{name}”"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "Tidak dapat memperbarui {count, plural, other {# catatan}}. Buka dan tambahkan tag lagi",
       "mergedSomeKept": "Tidak dapat memperbarui {count, plural, other {# catatan}}. Gabungkan #{tag} lagi untuk menyelesaikannya.",
       "deletedSomeKept": "Tidak dapat memperbarui {count, plural, other {# catatan}}. Hapus #{tag} lagi untuk menyelesaikannya.",
+      "mergedSomeStuck": "Tidak dapat memperbarui {count, plural, other {# catatan}}. Perbaiki catatan di bawah, lalu gabungkan #{tag} lagi.",
+      "deletedSomeStuck": "Tidak dapat memperbarui {count, plural, other {# catatan}}. Perbaiki catatan di bawah, lalu hapus #{tag} lagi.",
       "renameUnfinished": "Penggantian nama #{oldName} menjadi #{newName} belum selesai untuk {count, plural, other {# catatan}}. Ganti lagi nama #{oldName} menjadi #{newName} untuk menyelesaikannya.",
       "renameUnfinishedMore": "{names} dan {count, plural, other {# lainnya}}",
       "stopRename": "Hentikan penggantian nama ini",

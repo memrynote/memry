@@ -191,12 +191,13 @@ describe('tags-service', () => {
   })
 
   it('deletes, merges and removes from a note through the commands in Electron’s envelope', async () => {
-    commands.tagsDelete.mockResolvedValue({ affectedNotes: 3, failedNoteIds: ['note-9'] })
-    await expect(tagsService.deleteTag('new')).resolves.toEqual({
-      success: true,
+    const kept = {
       affectedNotes: 3,
-      failedNoteIds: ['note-9']
-    })
+      failedNotes: [{ id: 'n9', title: 'Plan' }],
+      retryFinishes: false
+    }
+    commands.tagsDelete.mockResolvedValue(kept)
+    await expect(tagsService.deleteTag('new')).resolves.toEqual({ success: true, ...kept })
     expect(commands.tagsDelete).toHaveBeenCalledWith('new')
     commands.tagsMerge.mockResolvedValue({ affectedItems: 2 })
     const merge = { source: 'old', target: 'new' }
@@ -209,13 +210,21 @@ describe('tags-service', () => {
 
     const message = 'Source and target tags are the same'
     commands.tagsMerge.mockRejectedValue({ kind: 'invalid', code: 'tag_merge_same_tag', message })
-    await expect(tagsService.mergeTag(merge)).resolves.toEqual({ success: false, error: message })
+    await expect(tagsService.mergeTag(merge)).resolves.toEqual({
+      success: false,
+      error: message,
+      code: 'tag_merge_same_tag'
+    })
     commands.tagsDelete.mockRejectedValue({
       kind: 'storage',
       code: 'storage_failed',
       message: 'disk'
     })
-    await expect(tagsService.deleteTag('new')).resolves.toEqual({ success: false, error: 'disk' })
+    await expect(tagsService.deleteTag('new')).resolves.toEqual({
+      success: false,
+      error: 'disk',
+      code: 'storage_failed'
+    })
   })
 
   it('hands the colour, category, tag notes and rename events from Rust on', async () => {

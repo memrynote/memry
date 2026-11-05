@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Smazat štítek",
       "deleteDescription": "Odebrat štítek „{name}“ z {count, plural, one {# položky} few {# položek} other {# položek}}? Tuto akci nelze vrátit zpět.",
+      "deleteTasks": "Úkoly se štítkem #{tag} o něj přijdou také.",
       "mergeTitle": "Sloučit štítek",
       "mergeDescription": "Všechny položky označené štítkem „{source}“ dostanou cílový štítek. Zdrojový štítek bude smazán.",
+      "mergeBodyTagsStay": "#{source} napsaný v textu poznámek zůstane, takže si ho tyto poznámky ponechají.",
       "targetPlaceholder": "Vyberte cílový štítek…",
       "colorTitle": "Změnit barvu štítku „{name}“"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "Nepodařilo se aktualizovat {count, plural, one {# poznámku} few {# poznámky} many {# poznámky} other {# poznámek}}. Otevřete {count, plural, one {ji} few {je} many {je} other {je}} a přidejte štítek znovu",
       "mergedSomeKept": "Nepodařilo se aktualizovat {count, plural, one {# poznámku} few {# poznámky} many {# poznámky} other {# poznámek}}. Dokončete to dalším sloučením #{tag}.",
       "deletedSomeKept": "Nepodařilo se aktualizovat {count, plural, one {# poznámku} few {# poznámky} many {# poznámky} other {# poznámek}}. Dokončete to dalším smazáním #{tag}.",
+      "mergedSomeStuck": "Nepodařilo se aktualizovat {count, plural, one {# poznámku} few {# poznámky} many {# poznámky} other {# poznámek}}. Opravte níže uvedené poznámky a pak #{tag} sloučte znovu.",
+      "deletedSomeStuck": "Nepodařilo se aktualizovat {count, plural, one {# poznámku} few {# poznámky} many {# poznámky} other {# poznámek}}. Opravte níže uvedené poznámky a pak #{tag} smažte znovu.",
       "renameUnfinished": "Přejmenování #{oldName} na #{newName} se nedokončilo u {count, plural, one {# poznámky} few {# poznámek} many {# poznámky} other {# poznámek}}. Dokončíte ho, když #{oldName} znovu přejmenujete na #{newName}.",
       "renameUnfinishedMore": "{names} a {count, plural, one {# další} few {# další} many {# dalších} other {# dalších}}",
       "stopRename": "Zastavit toto přejmenování",

@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "ลบแท็ก",
       "deleteDescription": "นำ “{name}” ออกจาก {count, plural, other {# รายการ}} หรือไม่? การกระทำนี้เลิกทำไม่ได้",
+      "deleteTasks": "งานที่มีแท็ก #{tag} จะเสียแท็กนี้ไปด้วย",
       "mergeTitle": "รวมแท็ก",
       "mergeDescription": "รายการทั้งหมดที่ติดแท็ก “{source}” จะเปลี่ยนไปใช้แท็กเป้าหมาย และระบบจะลบแท็กต้นทาง",
+      "mergeBodyTagsStay": "#{source} ที่เขียนในเนื้อหาโน้ตยังคงอยู่ โน้ตเหล่านั้นจึงยังมีแท็กนี้",
       "targetPlaceholder": "เลือกแท็กเป้าหมาย…",
       "colorTitle": "เปลี่ยนสีของ “{name}”"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "อัปเดตโน้ต {count, plural, other {# รายการ}} ไม่สำเร็จ เปิดโน้ตเหล่านั้นแล้วเพิ่มแท็กอีกครั้ง",
       "mergedSomeKept": "อัปเดตโน้ต {count, plural, other {# รายการ}} ไม่สำเร็จ รวม #{tag} อีกครั้งเพื่อให้เสร็จ",
       "deletedSomeKept": "อัปเดตโน้ต {count, plural, other {# รายการ}} ไม่สำเร็จ ลบ #{tag} อีกครั้งเพื่อให้เสร็จ",
+      "mergedSomeStuck": "อัปเดตโน้ต {count, plural, other {# รายการ}} ไม่สำเร็จ แก้ไขโน้ตด้านล่าง แล้วรวม #{tag} อีกครั้ง",
+      "deletedSomeStuck": "อัปเดตโน้ต {count, plural, other {# รายการ}} ไม่สำเร็จ แก้ไขโน้ตด้านล่าง แล้วลบ #{tag} อีกครั้ง",
       "renameUnfinished": "การเปลี่ยนชื่อ #{oldName} เป็น #{newName} ยังไม่เสร็จสำหรับโน้ต {count, plural, other {# รายการ}} เปลี่ยนชื่อ #{oldName} เป็น #{newName} อีกครั้งเพื่อให้เสร็จ",
       "renameUnfinishedMore": "{names} และอีก {count, plural, other {# รายการ}}",
       "stopRename": "หยุดการเปลี่ยนชื่อนี้",

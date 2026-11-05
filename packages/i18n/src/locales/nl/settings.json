@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Tag verwijderen",
       "deleteDescription": "“{name}” verwijderen uit {count, plural, one {# item} other {# items}}? Dit kan niet ongedaan worden gemaakt.",
+      "deleteTasks": "Taken met #{tag} verliezen de tag ook.",
       "mergeTitle": "Tag samenvoegen",
       "mergeDescription": "Alle items die zijn getagd met “{source}” worden opnieuw getagd met de doeltag. De brontag wordt verwijderd.",
+      "mergeBodyTagsStay": "#{source} in de tekst van notities blijft staan, dus die notities houden de tag.",
       "targetPlaceholder": "Doeltag selecteren…",
       "colorTitle": "Kleur wijzigen voor “{name}”"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "Kan {count, plural, one {# notitie} other {# notities}} niet bijwerken. Open {count, plural, one {die} other {ze}} en voeg de tag opnieuw toe",
       "mergedSomeKept": "Kan {count, plural, one {# notitie} other {# notities}} niet bijwerken. Voeg #{tag} opnieuw samen om het af te ronden.",
       "deletedSomeKept": "Kan {count, plural, one {# notitie} other {# notities}} niet bijwerken. Verwijder #{tag} opnieuw om het af te ronden.",
+      "mergedSomeStuck": "Kan {count, plural, one {# notitie} other {# notities}} niet bijwerken. Herstel de notities hieronder en voeg #{tag} daarna opnieuw samen.",
+      "deletedSomeStuck": "Kan {count, plural, one {# notitie} other {# notities}} niet bijwerken. Herstel de notities hieronder en verwijder #{tag} daarna opnieuw.",
       "renameUnfinished": "Het hernoemen van #{oldName} naar #{newName} is voor {count, plural, one {# notitie} other {# notities}} niet afgerond. Hernoem #{oldName} opnieuw naar #{newName} om het af te ronden.",
       "renameUnfinishedMore": "{names} en {count, plural, one {# andere} other {# andere}}",
       "stopRename": "Deze hernoeming stoppen",

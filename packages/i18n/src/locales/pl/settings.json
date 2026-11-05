@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Usuń tag",
       "deleteDescription": "Usunąć „{name}” z {count, plural, one {# elementu} few {# elementów} many {# elementów} other {# elementu}}? Tej operacji nie można cofnąć.",
+      "deleteTasks": "Zadania z tagiem #{tag} również go stracą.",
       "mergeTitle": "Scal tag",
       "mergeDescription": "Wszystkie elementy oznaczone tagiem „{source}” zostaną oznaczone tagiem docelowym. Tag źródłowy zostanie usunięty.",
+      "mergeBodyTagsStay": "#{source} wpisany w treści notatek zostaje, więc te notatki go zachowają.",
       "targetPlaceholder": "Wybierz tag docelowy…",
       "colorTitle": "Zmień kolor dla „{name}”"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "{count, plural, one {Nie udało się zaktualizować # notatki. Otwórz ją} few {Nie udało się zaktualizować # notatek. Otwórz je} many {Nie udało się zaktualizować # notatek. Otwórz je} other {Nie udało się zaktualizować # notatki. Otwórz ją}} i dodaj tag ponownie",
       "mergedSomeKept": "Nie udało się zaktualizować {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Scal #{tag} ponownie, aby dokończyć.",
       "deletedSomeKept": "Nie udało się zaktualizować {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Usuń #{tag} ponownie, aby dokończyć.",
+      "mergedSomeStuck": "Nie udało się zaktualizować {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Popraw poniższe notatki, a potem ponownie scal #{tag}.",
+      "deletedSomeStuck": "Nie udało się zaktualizować {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Popraw poniższe notatki, a potem ponownie usuń #{tag}.",
       "renameUnfinished": "Zmiana nazwy #{oldName} na #{newName} nie została dokończona dla {count, plural, one {# notatki} few {# notatek} many {# notatek} other {# notatki}}. Zmień ponownie nazwę #{oldName} na #{newName}, aby ją dokończyć.",
       "renameUnfinishedMore": "{names} i {count, plural, one {# inna} few {# inne} many {# innych} other {# innej}}",
       "stopRename": "Zatrzymaj tę zmianę nazwy",

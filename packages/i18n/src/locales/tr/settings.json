@@ -1991,8 +1991,10 @@
     "dialogs": {
       "deleteTitle": "Etiketi sil",
       "deleteDescription": "“{name}” etiketi {count, plural, one {# öğeden} other {# öğeden}} kaldırılsın mı? Bu işlem geri alınamaz.",
+      "deleteTasks": "#{tag} etiketli görevler de bu etiketi kaybeder.",
       "mergeTitle": "Etiketi birleştir",
       "mergeDescription": "“{source}” etiketli tüm öğeler hedef etiketle yeniden etiketlenecek. Kaynak etiket silinecek.",
+      "mergeBodyTagsStay": "Not metnine yazılan #{source} kalır, bu yüzden o notlar onu korur.",
       "targetPlaceholder": "Hedef etiketi seçin…",
       "colorTitle": "“{name}” için rengi değiştir"
     },
@@ -2004,6 +2006,8 @@
       "renamedSomeFailed": "{count, plural, one {# not} other {# not}} güncellenemedi. Açıp etiketi yeniden ekleyin",
       "mergedSomeKept": "{count, plural, one {# not} other {# not}} güncellenemedi. Bitirmek için #{tag} etiketini yeniden birleştirin.",
       "deletedSomeKept": "{count, plural, one {# not} other {# not}} güncellenemedi. Bitirmek için #{tag} etiketini yeniden silin.",
+      "mergedSomeStuck": "{count, plural, one {# not} other {# not}} güncellenemedi. Aşağıdaki notları düzeltin, ardından #{tag} etiketini yeniden birleştirin.",
+      "deletedSomeStuck": "{count, plural, one {# not} other {# not}} güncellenemedi. Aşağıdaki notları düzeltin, ardından #{tag} etiketini yeniden silin.",
       "renameUnfinished": "#{oldName} etiketinin #{newName} olarak yeniden adlandırılması {count, plural, one {# notta} other {# notta}} tamamlanmadı. Tamamlamak için #{oldName} etiketini yeniden #{newName} olarak adlandırın.",
       "renameUnfinishedMore": "{names} ve {count, plural, one {# tane daha} other {# tane daha}}",
       "stopRename": "Bu yeniden adlandırmayı durdur",
