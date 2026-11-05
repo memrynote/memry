@@ -35,12 +35,14 @@ const MARK_SCRIPT = `
 `
 
 // Sends only from the marked document: WebDriver resends a call that the death interrupted, and
-// the resent copy lands in the next document, which has no mark.
+// the resent copy lands in the next document, which has no mark. The call goes out in a later task,
+// after this script's result: issued inside the script, it raced the result to the shell, and a
+// death that won left the driver waiting out the script timeout (#3967).
 const SEND_SCRIPT = `
   const [mark, name, args] = arguments;
   if (window.__memryE2eSendTarget !== mark) return;
   delete window.__memryE2eSendTarget;
-  window.__TAURI__.core.invoke(name, args);
+  setTimeout(() => window.__TAURI__.core.invoke(name, args));
 `
 
 // These end the page or the app, which can beat the driver's read of the reply.
@@ -74,8 +76,8 @@ export async function invokeTest<T = unknown>(
 
 /**
  * Sends an `e2e_<verb>_<noun>` command that ends the page or the app, so its reply never returns.
- * The driver reads a script's result after the script ran, so the death can interrupt the send
- * call itself; its outcome says nothing. The spec asserts the death's effect instead.
+ * The send call returns once the command is queued in the page; the spec asserts the death's
+ * effect.
  */
 export async function sendTest(
   app: { executor: Executor },
