@@ -77,8 +77,13 @@ fn fold(name: &str) -> String {
     name.trim().to_lowercase()
 }
 
+/// `isReservedFieldName`: a frontmatter key that is never a field.
+pub(crate) fn is_reserved(name: &str) -> bool {
+    RESERVED.contains(&fold(name).as_str())
+}
+
 /// `TagSchemaWire.safeParse`: the shape a field list is read from.
-fn readable(schema: &Map<String, Value>) -> bool {
+pub(crate) fn readable(schema: &Map<String, Value>) -> bool {
     let nullable_str = |v: Option<&Value>| v.is_none_or(|v| v.is_null() || v.is_string());
     let t_ok = schema
         .get("t")
@@ -157,7 +162,7 @@ fn own_fields(def: Option<&Def>) -> Vec<Field> {
             continue;
         };
         let folded = fold(name);
-        if name.is_empty() || RESERVED.contains(&folded.as_str()) || !seen.insert(folded) {
+        if name.is_empty() || is_reserved(&folded) || !seen.insert(folded) {
             continue;
         }
         let relation = field.get("relation").and_then(Value::as_object).map(|r| {
