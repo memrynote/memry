@@ -124,6 +124,8 @@ mod notes_folder_delete;
 mod notes_folder_move;
 #[path = "notes_folders.rs"]
 mod notes_folders;
+#[path = "notes_frontmatter.rs"]
+mod notes_frontmatter;
 #[path = "notes_identity.rs"]
 mod notes_identity;
 #[path = "notes_link_rewrite.rs"]

@@ -641,13 +641,22 @@ describe('notes-service', () => {
     })
   })
 
-  it('refuses the edits later steps port rather than drop them', async () => {
+  it('hands named frontmatter keys, a removal as null, to its command', async () => {
+    const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
+    commands.notesUpdate.mockResolvedValue({ note: view })
+    const frontmatter = { coverFocus: 30, coverCredit: null }
+    await expect(notesService.update({ id: 'note-1', frontmatter })).resolves.toMatchObject({
+      success: true
+    })
+    expect(commands.notesUpdate).toHaveBeenCalledWith({ id: 'note-1', frontmatter })
+    expect(api.notes.update).not.toHaveBeenCalled()
+  })
+
+  // Electron's update renames the record and leaves the file; `notes:rename` owns a title.
+  it('refuses a title, which no caller sends', async () => {
     await expect(notesService.update({ id: 'note-1', title: 'Renamed' })).rejects.toThrow(
       'notes.update({ title }) is not ported'
     )
-    await expect(
-      notesService.update({ id: 'note-1', frontmatter: { fullWidth: true } })
-    ).rejects.toThrow('notes.update({ frontmatter }) is not ported')
     expect(commands.notesUpdate).not.toHaveBeenCalled()
     expect(api.notes.update).not.toHaveBeenCalled()
   })
