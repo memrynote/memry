@@ -33,7 +33,9 @@ impl OpenStage {
 
 pub type OpenHook = Arc<dyn Fn(&OpenVault) -> Result<(), String> + Send + Sync>;
 /// Runs on its own thread, never awaited by the open. It must watch the token and return
-/// promptly once it is cancelled: close cancels it and joins the thread.
+/// promptly once it is cancelled: close cancels it and joins the thread. When no thread can be
+/// started it runs inline on the opener's thread with the token already cancelled, and must then
+/// return at once, having let go of what its open hook set up.
 pub type BackgroundHook = Arc<dyn Fn(&OpenVault, &CancelToken) -> Result<(), String> + Send + Sync>;
 pub type CloseHook = Arc<dyn Fn(&OpenVault) + Send + Sync>;
 

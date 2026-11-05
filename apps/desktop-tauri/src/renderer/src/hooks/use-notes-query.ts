@@ -202,9 +202,14 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
     // A folder rename or move sends no rename event for the notes inside it, only this one.
     const unsubMoved = onNoteMoved((event) => {
       if (event.id !== id) return
-      queryClient.setQueryData<Note | null>(notesKeys.note(id), (cached) =>
+      const key = notesKeys.note(id)
+      queryClient.setQueryData<Note | null>(key, (cached) =>
         cached ? { ...cached, path: event.newPath } : cached
       )
+      // A read in flight began before the move and would answer the old path: read again.
+      if (queryClient.isFetching({ queryKey: key }) > 0) {
+        void queryClient.invalidateQueries({ queryKey: key })
+      }
     })
 
     const unsubDeleted = onNoteDeleted((event) => {
