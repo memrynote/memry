@@ -51,6 +51,10 @@ createServer((req, res) => {
         return setTimeout(() => process.exit(0), 50)
       }
       const { script } = JSON.parse(body)
+      if (script.includes('seedPortalExamples')) {
+        writeFileSync(join(control.appDataDir, 'portals.txt'), 'seeded')
+        return reply(res, { ok: true, value: 'Created 6 portal example notes' })
+      }
       if (script.includes('return (\\ndocument.title\\n)')) return reply(res, { ok: true, value: 'MemryNote' })
       if (script.includes('return (\\n1 + 1\\n)')) return reply(res, { ok: true, value: 2 })
       if (script.includes('return (\\nconst a')) {
@@ -143,6 +147,9 @@ describe('agent-app', () => {
 
     const state = JSON.parse(readFileSync(join(tmp, 'memry-agent-app-tauri.json'), 'utf8'))
     assert.equal(state.deviceId, control.device)
+    // The default vault gets the portal examples once it opened.
+    assert.ok(existsSync(join(control.appDataDir, 'portals.txt')))
+    assert.ok(lines.out.includes('Created 6 portal example notes'))
 
     lines.out.length = 0
     assert.equal(await main(['stop'], ctx), 0)
@@ -171,6 +178,16 @@ describe('agent-app', () => {
     assert.equal(await main(['start'], ctx), 0)
     const control = JSON.parse(readFileSync(join(tmp, 'memry-e2e', `control-${port}.json`), 'utf8'))
     assert.equal(control.testVaultPath, null)
+    assert.equal(existsSync(join(control.appDataDir, 'portals.txt')), false)
+  })
+
+  it('a vault template gets no portal examples', async () => {
+    const template = mkdtempSync(join(root, 'Template-'))
+    const { ctx, tmp, port } = await makeContext({ MEMRY_AGENT_VAULT_TEMPLATE: template })
+    running = ctx
+    assert.equal(await main(['start'], ctx), 0)
+    const control = JSON.parse(readFileSync(join(tmp, 'memry-e2e', `control-${port}.json`), 'utf8'))
+    assert.equal(existsSync(join(control.appDataDir, 'portals.txt')), false)
   })
 
   it('names the build command when the binary is missing', async () => {
