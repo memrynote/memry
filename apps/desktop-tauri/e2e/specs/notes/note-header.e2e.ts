@@ -153,7 +153,7 @@ test('the full-width toggle writes its key into the note file', async ({
   testVaultPath
 }) => {
   const id = await noteId(app, page)
-  await openFromSidebar(page, id)
+  await openFromSidebar(page, { id, path: PATH, title: TITLE })
 
   await chooseFromNoteMenu(page, 'Full width')
   const file = join(testVaultPath, PATH)
