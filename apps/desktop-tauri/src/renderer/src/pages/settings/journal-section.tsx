@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useMemo, useState } from 'react'
 import {
   Select,
   SelectContent,
@@ -60,33 +60,11 @@ export function JournalSettings() {
   // a collapsed row.
   const [perDayOverride, setPerDayOverride] = useState<boolean | null>(null)
 
-  const [journalFolder, setJournalFolder] = useState('')
-  const [journalDateFormat, setJournalDateFormat] = useState('')
-
-  // Sync editable copies whenever the persisted vault config loads or changes.
-  useEffect(() => {
-    if (!config) return
-    // oxlint-disable-next-line react/set-state-in-effect -- editable drafts resync from the persisted vault config, which loads asynchronously from main
-    setJournalFolder(config.journalFolder)
-    setJournalDateFormat(config.journalDateFormat)
-  }, [config])
-
-  const handleJournalFolderBlur = useCallback(() => {
-    if (config && journalFolder !== config.journalFolder) {
-      void updateConfig({ journalFolder })
-    }
-  }, [config, journalFolder, updateConfig])
-
-  // A refused change (a locked journal entry) keeps the saved format, so the
-  // field goes back to it rather than showing a format that is not in use.
-  const handleJournalDateFormatBlur = useCallback(async () => {
-    if (!config || journalDateFormat === config.journalDateFormat) return
-    const error = await updateConfig({ journalDateFormat })
-    if (error) {
-      toast.error(error)
-      setJournalDateFormat(config.journalDateFormat)
-    }
-  }, [config, journalDateFormat, updateConfig])
+  // The folder and the date format show the vault's settings and take no edit yet: in Electron
+  // a change renames every day file and moves the journal folder, and that is not ported
+  // (#3530 13m-7b). The command refuses the change too.
+  const journalFolder = config?.journalFolder ?? ''
+  const journalDateFormat = config?.journalDateFormat ?? ''
 
   // Local date, not UTC: near midnight a UTC date shows the wrong day (and weekday).
   const [today] = useState(() => new Date())
@@ -270,8 +248,7 @@ export function JournalSettings() {
         <SettingRow label={t('journal.folder.label')} description={t('journal.folder.description')}>
           <Input
             value={journalFolder}
-            onChange={(e) => setJournalFolder(e.target.value)}
-            onBlur={handleJournalFolderBlur}
+            readOnly
             placeholder={t('journal.folder.placeholder')}
             className="h-7 w-40 font-mono text-xs/4"
           />
@@ -312,8 +289,7 @@ export function JournalSettings() {
             </TooltipProvider>
             <Input
               value={journalDateFormat}
-              onChange={(e) => setJournalDateFormat(e.target.value)}
-              onBlur={() => void handleJournalDateFormatBlur()}
+              readOnly
               placeholder={t('journal.dateFormat.placeholder')}
               className="h-7 w-40 font-mono text-xs/4"
             />

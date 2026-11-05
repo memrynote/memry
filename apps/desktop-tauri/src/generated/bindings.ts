@@ -349,6 +349,8 @@ export const commands = {
 	updaterSkipVersion: (version: string) => __TAURI_INVOKE<AppUpdateState>("updater_skip_version", { version }),
 	vaultClose: () => __TAURI_INVOKE<null>("vault_close"),
 	vaultCreate: (parentPath: string, name: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_create", { parentPath, name }),
+	/**  `vault:get-config`: the open vault's settings, or Electron's fallback with none open. */
+	vaultGetConfig: () => __TAURI_INVOKE<VaultConfig>("vault_get_config"),
 	/**  Next to the current vault when one is registered, else `<documents>/Memry`. */
 	vaultGetDefaultParent: () => __TAURI_INVOKE<string>("vault_get_default_parent"),
 	vaultGetStatus: () => __TAURI_INVOKE<VaultStatus>("vault_get_status"),
@@ -359,6 +361,12 @@ export const commands = {
 	vaultSetDefault: (path: string) => __TAURI_INVOKE<null>("vault_set_default", { path }),
 	vaultSetIcon: (path: string, icon: string | null) => __TAURI_INVOKE<null>("vault_set_icon", { path, icon }),
 	vaultSwitch: (path: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_switch", { path }),
+	/**
+	 *  `vault:update-config`: writes the fields `config` names and answers the settings after it,
+	 *  which every window hears as [`VaultConfigChangedEvent`]. A change that is not ported yet is
+	 *  refused as `config_change_not_ported` (`vault::config::settings`).
+	 */
+	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
 	/**  Drops every retained entry, on disk too. */
 	vaultActivityClear: () => __TAURI_INVOKE<null>("vault_activity_clear"),
 	/**  The retained entries, newest first. */
@@ -420,6 +428,7 @@ export const events = {
 	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
 	updaterStateChangedEvent: makeEvent<UpdaterStateChangedEvent, UpdaterStateChangedEvent>("updater-state-changed-event"),
 	vaultActivityChangedEvent: makeEvent<VaultActivityChangedEvent, VaultActivityChangedEvent>("vault-activity-changed-event"),
+	vaultConfigChangedEvent: makeEvent<VaultConfigChangedEvent, VaultConfigChangedEvent>("vault-config-changed-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
 	vaultIndexProgressEvent: makeEvent<VaultIndexProgressEvent, VaultIndexProgressEvent>("vault-index-progress-event"),
 	vaultIndexRecoveredEvent: makeEvent<VaultIndexRecoveredEvent, VaultIndexRecoveredEvent>("vault-index-recovered-event"),
@@ -1709,6 +1718,35 @@ export type VaultActivityList = {
 
 /**  `VAULT_ACTIVITY_SOURCES`. */
 export type VaultActivitySource = "watcher" | "scan" | "import" | "drop" | "sync";
+
+/**  The vault settings, in the `VaultConfig` shape of `packages/contracts/src/vault-api.ts`. */
+export type VaultConfig = {
+	excludePatterns: string[],
+	defaultNoteFolder: string,
+	journalFolder: string,
+	journalDateFormat: string,
+	attachmentsFolder: string,
+	journalShowInSidebar: boolean,
+};
+
+/**
+ *  The open vault's settings changed (`vault:config-changed`), with the settings after it: an
+ *  in-app write, from any window, as Electron's `updateConfig` broadcasts it.
+ */
+export type VaultConfigChangedEvent = VaultConfig;
+
+/**
+ *  The fields a write changes (`UpdateVaultConfigSchema`). `None` leaves the stored value,
+ *  whatever it is.
+ */
+export type VaultConfigPatch = {
+	excludePatterns?: string[] | null,
+	defaultNoteFolder?: string | null,
+	journalFolder?: string | null,
+	journalDateFormat?: string | null,
+	attachmentsFolder?: string | null,
+	journalShowInSidebar?: boolean | null,
+};
 
 /**  A vault operation failed (`vault:error`). */
 export type VaultErrorEvent = {

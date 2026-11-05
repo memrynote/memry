@@ -14,10 +14,9 @@ beforeAll(() => {
 const setWeekdayTemplate = vi.fn().mockResolvedValue(true)
 const updateConfig = vi.fn().mockResolvedValue(null)
 const vaultConfig = { journalFolder: 'journal', journalDateFormat: 'YYYY-MM-DD' }
-const toastError = vi.fn()
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: (...args: unknown[]) => toastError(...args) }
+  toast: { success: vi.fn(), error: vi.fn() }
 }))
 const journalSettings = {
   defaultTemplate: 'morning-pages' as string | null,
@@ -103,43 +102,41 @@ describe('Journal settings — date format help', () => {
   })
 })
 
-describe('Journal settings — date format refused by a read-only lock (#2606)', () => {
-  const LOCK_TEXT = 'The owner made this note read-only.'
-
+// Electron renames the day files and moves the folder on a change; until that ports
+// (#3530 13m-7b) both fields show the vault's settings and take no edit.
+describe('Journal settings — folder and date format', () => {
   beforeEach(() => {
-    updateConfig.mockReset().mockResolvedValue(null)
-    toastError.mockReset()
+    updateConfig.mockClear()
+    vaultConfig.journalFolder = 'journal'
+    vaultConfig.journalDateFormat = 'YYYY-MM-DD'
   })
 
-  it('shows the refusal and puts the saved format back', async () => {
-    updateConfig.mockResolvedValueOnce(LOCK_TEXT)
+  it('shows both read-only and writes nothing', async () => {
     const user = userEvent.setup()
     render(<JournalSettings />)
 
-    const input = screen.getByDisplayValue('YYYY-MM-DD')
-    await user.clear(input)
-    await user.type(input, 'YYYY-MM-DD dddd')
+    const format = screen.getByDisplayValue('YYYY-MM-DD')
+    const folder = screen.getByDisplayValue('journal')
+    expect(format).toHaveAttribute('readonly')
+    expect(folder).toHaveAttribute('readonly')
+    await user.type(format, ' dddd')
+    await user.type(folder, 'x')
     await user.tab()
 
-    expect(updateConfig).toHaveBeenCalledWith({ journalDateFormat: 'YYYY-MM-DD dddd' })
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith(LOCK_TEXT))
-    expect(input).toHaveValue('YYYY-MM-DD')
+    expect(format).toHaveValue('YYYY-MM-DD')
+    expect(updateConfig).not.toHaveBeenCalled()
   })
 
-  it('keeps the new format when the change goes through', async () => {
-    const user = userEvent.setup()
-    render(<JournalSettings />)
+  it('follows a change of the vault settings', () => {
+    const { rerender } = render(<JournalSettings />)
+    vaultConfig.journalFolder = 'Diary'
+    vaultConfig.journalDateFormat = 'YYYY/MM-DD'
+    rerender(<JournalSettings />)
 
-    const input = screen.getByDisplayValue('YYYY-MM-DD')
-    await user.clear(input)
-    await user.type(input, 'YYYY-MM-DD dddd')
-    await user.tab()
-
-    await waitFor(() =>
-      expect(updateConfig).toHaveBeenCalledWith({ journalDateFormat: 'YYYY-MM-DD dddd' })
+    expect(screen.getByDisplayValue('Diary')).toBeInTheDocument()
+    expect(screen.getByTestId('journal-preview-path').textContent).toMatch(
+      /^Diary\/\d{4}\/\d{2}-\d{2}\.md$/
     )
-    expect(toastError).not.toHaveBeenCalled()
-    expect(input).toHaveValue('YYYY-MM-DD dddd')
   })
 })
 

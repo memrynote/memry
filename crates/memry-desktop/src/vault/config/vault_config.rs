@@ -16,7 +16,9 @@ use serde_json::{Map, Value};
 use super::{ConfigError, Stamp, config_path, open_config, read_object, update};
 use crate::vault::layout::DEFAULT_EXCLUDE_PATTERNS;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// The vault settings, in the `VaultConfig` shape of `packages/contracts/src/vault-api.ts`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct VaultConfig {
     pub exclude_patterns: Vec<String>,
     pub default_note_folder: String,
@@ -100,14 +102,22 @@ impl VaultConfig {
     }
 }
 
-/// The fields a write changes. `None` leaves the stored value, whatever it is.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// The fields a write changes (`UpdateVaultConfigSchema`). `None` leaves the stored value,
+/// whatever it is.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase", default)]
 pub struct VaultConfigPatch {
+    #[specta(optional)]
     pub exclude_patterns: Option<Vec<String>>,
+    #[specta(optional)]
     pub default_note_folder: Option<String>,
+    #[specta(optional)]
     pub journal_folder: Option<String>,
+    #[specta(optional)]
     pub journal_date_format: Option<String>,
+    #[specta(optional)]
     pub attachments_folder: Option<String>,
+    #[specta(optional)]
     pub journal_show_in_sidebar: Option<bool>,
 }
 
