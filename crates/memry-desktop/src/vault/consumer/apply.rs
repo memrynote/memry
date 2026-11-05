@@ -13,15 +13,17 @@ use memry_core::domain::app_settings::AppSettings;
 
 use super::activity::report_unread;
 use super::body::{Body, Write};
-use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
+use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal, Rename};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource, MAX_RETRIES, MoveKind};
 use crate::vault::activity::{ActivityLog, ScanActivity, failure_key};
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
-use crate::vault::watch::VaultEvent;
 use crate::vault::watch::reconcile::modified_ms;
+use crate::vault::watch::{VaultEvent, WatchHandle};
+
+mod crossing;
 
 const SCOPE: &str = "vault_consumer";
 
@@ -48,6 +50,8 @@ pub(super) struct Applier {
     pub(super) settings: Option<AppSettings>,
     pub(super) activity: Arc<ActivityLog>,
     pub(super) own_files: Arc<OwnFiles>,
+    /// `None` in a test that runs no watcher.
+    pub(super) watch: Option<WatchHandle>,
     /// By note id, how many times in a row an outside edit did not reach its record.
     pub(super) untaken: Mutex<HashMap<String, u32>>,
 }
@@ -81,10 +85,7 @@ impl Applier {
                 old_path,
                 new_path,
                 ..
-            } => {
-                self.renamed(&mut lane, &note_id, &old_path, &new_path);
-                Step::Done
-            }
+            } => self.renamed(&mut lane, &note_id, &old_path, &new_path),
             other => {
                 log_watch(&other);
                 self.report(&other);
@@ -443,44 +444,52 @@ impl Applier {
         self.report_removed(path);
     }
 
-    fn renamed(&self, lane: &mut Lane<'_>, note_id: &str, old_path: &str, new_path: &str) {
+    fn renamed(&self, lane: &mut Lane<'_>, note_id: &str, old_path: &str, new_path: &str) -> Step {
         match lane.files().by_id(note_id) {
-            Ok(Some(row)) if row.path == new_path => return,
+            Ok(Some(row)) if row.path == new_path => return Step::Done,
             Ok(Some(_)) => {}
-            Ok(None) => return,
+            Ok(None) => return Step::Done,
             Err(error) => {
-                return tracing::error!(
+                tracing::error!(
                     scope = SCOPE,
                     note_id,
                     "note_files could not be read: {error}"
                 );
+                return Step::Done;
             }
         }
         if let Err(collision) = lane.check(note_id, new_path) {
-            return tracing::warn!(
+            tracing::warn!(
                 scope = SCOPE,
                 note_id,
                 "a moved file's row was not moved: {collision}"
             );
+            return Step::Done;
         }
         // The record first: on a failure both stay at the old path, and the next open's
         // rescan reports the move again.
-        if let Err(error) = self
+        match self
             .identity
             .on_renamed(&self.ctx(), note_id, old_path, new_path)
         {
-            return tracing::error!(
-                scope = SCOPE,
-                note_id,
-                "a moved file's note was not updated: {error}"
-            );
+            Ok(Rename::Followed) => {}
+            Ok(Rename::Crossed) => return self.recreate(lane, note_id, old_path, new_path),
+            Err(error) => {
+                tracing::error!(
+                    scope = SCOPE,
+                    note_id,
+                    "a moved file's note was not updated: {error}"
+                );
+                return Step::Done;
+            }
         }
         if let Err(error) = lane.rename(note_id, new_path) {
-            return tracing::error!(
+            tracing::error!(
                 scope = SCOPE,
                 note_id,
                 "a moved file's row was not moved: {error}"
             );
+            return Step::Done;
         }
         lane.publish(Applied::Renamed {
             note_id: note_id.to_owned(),
@@ -489,6 +498,7 @@ impl Applier {
             kind: MoveKind::Renamed,
         });
         self.report_renamed(old_path, new_path);
+        Step::Done
     }
 
     /// The markdown file at `path`, read once; `Ok(None)` for every other kind. A markdown file

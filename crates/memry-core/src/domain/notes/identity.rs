@@ -44,7 +44,7 @@
 //! tombstone off the server. Asked again for a note already deleted (a crash
 //! before the row went), it deletes nothing more and queues nothing. A tombstone
 //! deletes the note on every device, so the removal deletes it only on the
-//! row's evidence that nothing but the file goes ([`removal_deletes`]): the row
+//! row's evidence that nothing but the file goes ([`removed`]): the row
 //! knows the bytes on disk, which a move of the file pairs on, so the removal is
 //! not a move; the document holds those bytes; no edit came after the row's
 //! stamp, so the file had every edit; and no body is owed a pull. Otherwise the
@@ -63,21 +63,23 @@
 //! removed day file deletes its day on the same evidence as a note's
 //! ([`removed`]). A day's move within its day changes no record ([`renamed`]):
 //! a day's path is never synced; a move that changes what the file is (a note
-//! into a day, a day out of it, or to another day) is owed by the tier.
+//! into a day, a day out of it, or to another day) deletes the record for the
+//! tier to make the file anew ([`crossed`]).
 
 use std::sync::Arc;
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::Value;
 
-use super::{ITEM_TYPE, NewNote, create_dated_in, edit_in, failed, iso, tombstone_local};
+pub use super::removal::{Crossing, crossed, removed};
+use super::{ITEM_TYPE, NewNote, create_dated_in, edit_in, failed, iso};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
 use crate::crdt::registry::UpdateSink;
 use crate::crdt::{BODY_FRAGMENT, epoch};
 use crate::domain::external_feed::same_text;
-use crate::domain::{journal, note_files, note_positions, owed_file_body};
+use crate::domain::note_positions;
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::markdown::convert::restore::SerializeOptions;
@@ -151,7 +153,7 @@ pub enum Removed {
     /// The note or day is deleted (now, or before).
     Deleted,
     /// The record stays: the row cannot tell this removal from a move, or the
-    /// note holds what its file did not ([`removal_deletes`]).
+    /// note holds what its file did not ([`removed`]).
     Undecided,
 }
 
@@ -520,7 +522,7 @@ pub(super) fn folder_of(path: &str) -> &str {
 }
 
 /// A live note's title and folder.
-fn live_place(
+pub(super) fn live_place(
     conn: &Connection,
     note_id: &str,
 ) -> Result<Option<(String, Option<String>)>, StorageError> {
@@ -530,70 +532,5 @@ fn live_place(
         |row| Ok((row.get(0)?, row.get(1)?)),
     )
     .optional()
-    .map_err(failed)
-}
-
-/// The file at `path` of a note or a journal day is gone: the record is deleted
-/// and its manual order dropped, in one transaction (a day as Electron's
-/// `enqueueJournalDelete`). One deleted before is answered `Deleted` again with
-/// nothing written; one the removal may not delete ([`removal_deletes`]) keeps
-/// its record.
-pub fn removed(
-    conn: &Connection,
-    note_id: &str,
-    path: &str,
-    device_id: &str,
-    now_ms: i64,
-) -> Result<Removed, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
-    let live = if live_place(&tx, note_id)?.is_some() {
-        Some(ITEM_TYPE)
-    } else if live_day(&tx, note_id)? {
-        Some(journal::ITEM_TYPE)
-    } else {
-        None
-    };
-    if let Some(item_type) = live {
-        if !removal_deletes(&tx, note_id)? {
-            return Ok(Removed::Undecided);
-        }
-        tombstone_local(&tx, item_type, note_id, device_id, now_ms)?;
-        outbox::enqueue(&tx, &outbox::Change::delete(item_type, note_id), now_ms)?;
-    }
-    note_positions::remove(&tx, path)?;
-    settle_place(&tx, note_id)?;
-    tx.commit().map_err(failed)?;
-    Ok(Removed::Deleted)
-}
-
-/// Whether the removal of the note's file may delete the note: its row says the
-/// file held the whole note.
-///
-/// - The row knows the bytes on disk (`file_hash`): the tier pairs a move of the
-///   file on them, so the removal is not a move.
-/// - The document holds those bytes: the row's `content_hash` is the same, and
-///   no file body is owed ([`owed_file_body`]). A body the file never had
-///   (synced, kept, refused) would go with the note.
-/// - No edit came after the row's stamp ([`note_files::behind_body`]): an edit
-///   in the app, or a pulled one, whose write-back failed or has not run.
-/// - No body is owed a pull ([`body_debt`]): the server holds text no file had.
-fn removal_deletes(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
-    let Some(row) = note_files::by_id(conn, note_id)? else {
-        return Ok(false);
-    };
-    let holds_the_file = row.file_hash.is_some() && row.content_hash == row.file_hash;
-    Ok(holds_the_file
-        && !owed_file_body::owes(conn, note_id)?
-        && !note_files::behind_body(conn, note_id)?
-        && !body_debt::is_owed(conn, note_id)?)
-}
-
-/// Whether `id` is a live journal day's record.
-fn live_day(conn: &Connection, id: &str) -> Result<bool, StorageError> {
-    conn.query_row(
-        "SELECT EXISTS (SELECT 1 FROM journal_entries WHERE id = ?1 AND deleted_at IS NULL)",
-        params![id],
-        |row| row.get(0),
-    )
     .map_err(failed)
 }

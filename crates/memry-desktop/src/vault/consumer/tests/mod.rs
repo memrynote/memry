@@ -22,7 +22,9 @@ use memry_core::storage::OpenOptions;
 use tokio::sync::broadcast;
 
 use super::apply::{Applier, Step};
-use super::identity::{Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal};
+use super::identity::{
+    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
+};
 use super::rows::{RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
 use crate::vault::activity::ScanActivity;
@@ -134,13 +136,13 @@ impl NoteIdentity for Recorder {
         note_id: &str,
         _: &str,
         _: &str,
-    ) -> Result<(), IdentityError> {
+    ) -> Result<Rename, IdentityError> {
         let row = ctx.vault.note_files().by_id(note_id)?.expect("the row");
         self.row_at_rename.lock().unwrap().push(row.path);
         if self.rename_fails.load(Ordering::SeqCst) {
             return Err(IdentityError::Other("the record did not move".into()));
         }
-        Ok(())
+        Ok(Rename::Followed)
     }
 
     fn on_changed(
@@ -369,6 +371,7 @@ pub(super) fn applier(
         session: rows.session_for(vault).unwrap(),
         activity: crate::vault::activity::ActivityLog::new(),
         own_files: Arc::default(),
+        watch: None,
         untaken: Mutex::default(),
     }
 }
