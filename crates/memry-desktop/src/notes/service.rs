@@ -43,6 +43,8 @@ pub struct NotesService {
     pub(crate) own_files: Arc<OwnFiles>,
     /// The tag templates' fills that can still be taken back ([`super::tag_template`]).
     pub(crate) undos: Undos,
+    /// Held while a tag rename runs (`notes::tag_rename`): one at a time.
+    pub(crate) renaming: Mutex<()>,
     /// Test hook: runs once inside the next journal save, after the day's new file is written
     /// aside and before it lands ([`Self::before_next_day_file_lands`]).
     pub(crate) day_file_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
@@ -86,6 +88,7 @@ impl NotesService {
             trash,
             own_files,
             undos: Undos::default(),
+            renaming: Mutex::new(()),
             day_file_lands: Mutex::new(None),
             #[cfg(feature = "test-hooks")]
             rename_lands: Mutex::new(None),

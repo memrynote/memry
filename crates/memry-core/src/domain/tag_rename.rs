@@ -22,8 +22,12 @@
 //!
 //! A holder's file and its record are two writes: a run stopped after the file and before
 //! [`rename_holder`] leaves the holder listed, and writing its file again would rename it twice.
-//! So the file edit is recorded first ([`start_holder`]: the file's hashes before and after),
-//! and a resume that finds the after text renames the record alone.
+//! So the file edit is recorded first ([`start_holder`]: the file's hashes before and after,
+//! and the record's lists), and a resume that finds the after text renames the record alone.
+//!
+//! The job is one `meta` row; each listed holder and each begun file edit is a row of its own
+//! (keyed by the note id), so a holder's start and strike-off write one small row however many
+//! holders the rename has.
 
 use std::collections::BTreeSet;
 
@@ -40,8 +44,13 @@ use crate::domain::tag_body_rename::renamed_tag;
 use crate::domain::{body_tags, tag_body_rename, tag_schema_refs, tags};
 
 /// The `meta` key of the rename in progress (desktop's `tags.renameJob` setting); an older
-/// build ignores it.
+/// build ignores it, and the rows below.
 const JOB: &str = "tags.rename_job";
+/// The key prefix of a holder not renamed yet (`tags.rename_holder:<id>`, `note` or
+/// `journal`).
+const HOLDER: &str = "tags.rename_holder:";
+/// The key prefix of a holder's file edit begun (`tags.rename_started:<id>`, a [`Started`]).
+const STARTED: &str = "tags.rename_started:";
 
 /// A rename asked for.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -61,30 +70,52 @@ pub struct Holder {
 
 /// The rename in progress and what it has left: the name pairs of its shared part (children
 /// first) and the holders whose record has not taken the new name.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RenamePlan {
-    #[serde(flatten)]
     pub job: RenameJob,
-    /// Required, so a row without a plan reads as an error, never as nothing left to do.
     pairs: Vec<(String, String)>,
     pub holders: Vec<Holder>,
-    /// The holder whose file was being written when the rename stopped, if any.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub started: Option<Started>,
+}
+
+/// The job row. Every field is required and no other is taken, so a row of another layout
+/// (one without a plan, or with its holders inline) does not read, never as nothing left to do.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct Job {
+    from: String,
+    to: String,
+    run_id: String,
+    pairs: Vec<(String, String)>,
+}
+
+/// What the job row holds.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Recorded {
+    Plan(RenamePlan),
+    /// A row that does not read, with why; only clearing it ([`finish`]) helps.
+    Unreadable(String),
 }
 
 /// A holder's file edit begun and not yet struck off: the hashes of the file's text before and
 /// after it, so a resume that finds the after text knows the file took the rename already, and
-/// its record's lists then, which its record is renamed from: an outside edit read meanwhile
-/// may have carried the file's renamed header into the record (#3825).
+/// its record's lists then: an outside edit read meanwhile may have carried the file's renamed
+/// header into the record (#3825), or changed it otherwise.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Started {
-    pub id: String,
     pub before: String,
     pub after: String,
     tags: Vec<String>,
     pinned: Option<Vec<String>>,
+}
+
+/// What [`rename_holder`] did to the record.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HolderRenamed {
+    Renamed,
+    Unchanged,
+    /// Its file edit was begun, and its record changed since in a way the rename does not
+    /// explain (an outside edit read into it): it is left, and the holder struck off.
+    Left,
 }
 
 fn pairs(conn: &Connection, old: &str, new: &str) -> Result<Vec<(String, String)>, StorageError> {
@@ -157,60 +188,146 @@ pub fn begin(
         return Err(refuse("a tag name cannot be empty"));
     }
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let plan = match recorded(&tx)? {
-        Some(plan) if plan.job.from != job.from || plan.job.to != job.to => {
-            return Ok(Some(plan.job));
+    match stored(&tx)? {
+        Some(other) if other.from != job.from || other.to != job.to => {
+            return Ok(Some(RenameJob {
+                from: other.from,
+                to: other.to,
+                run_id: other.run_id,
+            }));
         }
-        Some(plan) => RenamePlan {
-            job: job.clone(),
-            ..plan
-        },
-        None => RenamePlan {
-            job: job.clone(),
-            pairs: pairs(&tx, &job.from, job.to.trim())?,
-            holders,
-            started: None,
-        },
-    };
-    save(&tx, &plan)?;
+        Some(same) => save(
+            &tx,
+            &Job {
+                run_id: job.run_id.clone(),
+                ..same
+            },
+        )?,
+        None => {
+            let pairs = pairs(&tx, &job.from, job.to.trim())?;
+            save(
+                &tx,
+                &Job {
+                    from: job.from.clone(),
+                    to: job.to.clone(),
+                    run_id: job.run_id.clone(),
+                    pairs,
+                },
+            )?;
+            for holder in holders {
+                let kind = if holder.day { "journal" } else { "note" };
+                put(&tx, &format!("{HOLDER}{}", holder.id), kind)?;
+            }
+        }
+    }
     tx.commit().map_err(failed)?;
     Ok(None)
 }
 
-fn save(conn: &Connection, plan: &RenamePlan) -> Result<(), StorageError> {
-    let value = serde_json::to_string(plan).map_err(|error| StorageError::Failed {
-        what: format!("a tag rename will not serialise: {error}"),
-    })?;
+fn put(conn: &Connection, key: &str, value: &str) -> Result<(), StorageError> {
     conn.execute(
         "INSERT INTO meta (key, value) VALUES (?1, ?2)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        params![JOB, value],
+        params![key, value],
     )
     .map_err(failed)?;
     Ok(())
 }
 
-/// The rename in progress. A value that does not read is an error, which [`finish`] clears.
-pub fn recorded(conn: &Connection) -> Result<Option<RenamePlan>, StorageError> {
-    let raw: Option<String> = conn
-        .query_row("SELECT value FROM meta WHERE key = ?1", [JOB], |row| {
-            row.get(0)
-        })
-        .optional()
-        .map_err(failed)?;
-    raw.map(|raw| {
-        serde_json::from_str(&raw).map_err(|error| StorageError::Failed {
-            what: format!("the recorded tag rename does not read: {error}"),
-        })
+fn get(conn: &Connection, key: &str) -> Result<Option<String>, StorageError> {
+    conn.query_row("SELECT value FROM meta WHERE key = ?1", [key], |row| {
+        row.get(0)
     })
-    .transpose()
+    .optional()
+    .map_err(failed)
 }
 
-/// No rename is in progress.
-pub fn finish(conn: &Connection) -> Result<(), StorageError> {
-    conn.execute("DELETE FROM meta WHERE key = ?1", [JOB])
+fn save(conn: &Connection, job: &Job) -> Result<(), StorageError> {
+    let value = serde_json::to_string(job).map_err(|error| StorageError::Failed {
+        what: format!("a tag rename will not serialise: {error}"),
+    })?;
+    put(conn, JOB, &value)
+}
+
+/// The job row; one that does not read is an error.
+fn stored(conn: &Connection) -> Result<Option<Job>, StorageError> {
+    match read_job(conn)? {
+        None => Ok(None),
+        Some(Ok(job)) => Ok(Some(job)),
+        Some(Err(what)) => Err(StorageError::Failed { what }),
+    }
+}
+
+fn read_job(conn: &Connection) -> Result<Option<Result<Job, String>>, StorageError> {
+    Ok(get(conn, JOB)?.map(|raw| {
+        serde_json::from_str(&raw)
+            .map_err(|error| format!("the recorded tag rename does not read: {error}"))
+    }))
+}
+
+/// The rename in progress, or why its row does not read. A database that fails to answer is
+/// an error, never [`Recorded::Unreadable`].
+pub fn read(conn: &Connection) -> Result<Option<Recorded>, StorageError> {
+    let job = match read_job(conn)? {
+        None => return Ok(None),
+        Some(Err(what)) => return Ok(Some(Recorded::Unreadable(what))),
+        Some(Ok(job)) => job,
+    };
+    let mut statement = conn
+        .prepare(
+            "SELECT substr(key, ?3), value FROM meta WHERE key >= ?1 AND key < ?2 ORDER BY key",
+        )
         .map_err(failed)?;
-    Ok(())
+    let rows = statement
+        .query_map(
+            params![HOLDER, after_prefix(HOLDER), HOLDER.len() as i64 + 1],
+            |row| {
+                Ok(Holder {
+                    id: row.get(0)?,
+                    day: row.get::<_, String>(1)? == "journal",
+                })
+            },
+        )
+        .map_err(failed)?;
+    let holders = rows.collect::<Result<_, _>>().map_err(failed)?;
+    Ok(Some(Recorded::Plan(RenamePlan {
+        job: RenameJob {
+            from: job.from,
+            to: job.to,
+            run_id: job.run_id,
+        },
+        pairs: job.pairs,
+        holders,
+    })))
+}
+
+/// The first key after every key under `prefix`, which ends in `:`.
+fn after_prefix(prefix: &str) -> String {
+    format!("{};", &prefix[..prefix.len() - 1])
+}
+
+/// The rename in progress. A row that does not read is an error, which [`finish`] clears.
+pub fn recorded(conn: &Connection) -> Result<Option<RenamePlan>, StorageError> {
+    match read(conn)? {
+        None => Ok(None),
+        Some(Recorded::Plan(plan)) => Ok(Some(plan)),
+        Some(Recorded::Unreadable(what)) => Err(StorageError::Failed { what }),
+    }
+}
+
+/// No rename is in progress: its job, holders and begun edits are cleared.
+pub fn finish(conn: &Connection) -> Result<(), StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    tx.execute("DELETE FROM meta WHERE key = ?1", [JOB])
+        .map_err(failed)?;
+    for prefix in [HOLDER, STARTED] {
+        tx.execute(
+            "DELETE FROM meta WHERE key >= ?1 AND key < ?2",
+            params![prefix, after_prefix(prefix)],
+        )
+        .map_err(failed)?;
+    }
+    tx.commit().map_err(failed)
 }
 
 /// The part of the recorded rename that no file holds, for desktop: the tasks' tags, the
@@ -218,64 +335,92 @@ pub fn finish(conn: &Connection) -> Result<(), StorageError> {
 /// twice (stopped before it was struck off) finds nothing the second time: its old name is
 /// matched whole, and the pairs under it ran before it.
 pub fn rename_shared(conn: &Connection, device_id: &str, now_ms: i64) -> Result<(), StorageError> {
-    while let Some(mut plan) = recorded(conn)?
-        && let Some((from, to)) = plan.pairs.first().cloned()
+    while let Some(mut job) = stored(conn)?
+        && let Some((from, to)) = job.pairs.first().cloned()
     {
         rewrite_of(conn, &["task"], &from, Some(&to), device_id, now_ms)?;
         move_definition(conn, &from, &to, device_id, now_ms)?;
         tag_schema_refs::rewrite_definitions(conn, &from, Some(&to), device_id, now_ms)?;
-        plan.pairs.remove(0);
-        save(conn, &plan)?;
+        job.pairs.remove(0);
+        save(conn, &job)?;
     }
     Ok(())
 }
 
+/// Whether the recorded rename still lists the holder `id`.
+pub fn listed(conn: &Connection, id: &str) -> Result<bool, StorageError> {
+    Ok(get(conn, &format!("{HOLDER}{id}"))?.is_some())
+}
+
+/// The file edit begun on the holder `id` ([`start_holder`]), if any.
+pub fn started(conn: &Connection, id: &str) -> Result<Option<Started>, StorageError> {
+    get(conn, &format!("{STARTED}{id}"))?
+        .map(|raw| {
+            serde_json::from_str(&raw).map_err(|error| StorageError::Failed {
+                what: format!("a begun tag rename edit does not read: {error}"),
+            })
+        })
+        .transpose()
+}
+
 /// The recorded rename in the record of the holder `id` ([`tags::rename`]), and the holder
-/// struck off, in one transaction; `false` when the record did not change. A holder the plan
-/// no longer lists is left alone: its record took the new name already.
+/// struck off, in one transaction. A holder the plan no longer lists is left alone: its record
+/// took the new name already. With its file edit begun ([`start_holder`]), the record is
+/// renamed only as it was then; one already renamed so is unchanged, and any other is left
+/// ([`HolderRenamed::Left`]).
 pub fn rename_holder(
     conn: &Connection,
     id: &str,
     device_id: &str,
     now_ms: i64,
-) -> Result<bool, StorageError> {
+) -> Result<HolderRenamed, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let Some(mut plan) = recorded(&tx)? else {
-        return Ok(false);
+    let Some(job) = stored(&tx)? else {
+        return Ok(HolderRenamed::Unchanged);
     };
-    let Some(at) = plan.holders.iter().position(|holder| holder.id == id) else {
-        return Ok(false);
+    if !listed(&tx, id)? {
+        return Ok(HolderRenamed::Unchanged);
+    }
+    let (from, to) = (job.from.as_str(), job.to.trim());
+    let renamed = match (started(&tx, id)?, tags::lists(&tx, id)?) {
+        (Some(begun), Some((now_tags, now_pins)))
+            if (now_tags.as_slice(), now_pins.as_deref())
+                != (begun.tags.as_slice(), begun.pinned.as_deref()) =>
+        {
+            match (now_tags, now_pins)
+                == tags::renamed_lists(&begun.tags, begun.pinned.as_deref(), from, to)
+            {
+                true => HolderRenamed::Unchanged,
+                false => HolderRenamed::Left,
+            }
+        }
+        _ => match tags::rename(&tx, id, from, to, device_id, now_ms)? {
+            true => HolderRenamed::Renamed,
+            false => HolderRenamed::Unchanged,
+        },
     };
-    let (from, to) = (&plan.job.from, plan.job.to.trim());
-    let before = plan.started.as_ref().filter(|started| started.id == id);
-    let before = before.map(|started| (&started.tags[..], started.pinned.as_deref()));
-    let wrote = tags::rename_from(&tx, id, before, from, to, device_id, now_ms)?;
-    plan.holders.remove(at);
-    plan.started = None;
-    save(&tx, &plan)?;
+    for prefix in [HOLDER, STARTED] {
+        tx.execute("DELETE FROM meta WHERE key = ?1", [format!("{prefix}{id}")])
+            .map_err(failed)?;
+    }
     tx.commit().map_err(failed)?;
-    Ok(wrote)
+    Ok(renamed)
 }
 
 /// Forgets the file edit begun on the holder `id`, which did not write its file: the holder stays
 /// listed, to be tried again.
 pub fn unstart_holder(conn: &Connection, id: &str) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
-    if let Some(mut plan) = recorded(&tx)?
-        && plan
-            .started
-            .as_ref()
-            .is_some_and(|started| started.id == id)
-    {
-        plan.started = None;
-        save(&tx, &plan)?;
-    }
-    tx.commit().map_err(failed)
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        [format!("{STARTED}{id}")],
+    )
+    .map_err(failed)?;
+    Ok(())
 }
 
 /// Records that the holder `id`'s file is about to go from the text hashed `before` to the one
 /// hashed `after`, with its record's lists now, until [`rename_holder`] strikes it off or
-/// [`unstart_holder`] forgets it.
+/// [`unstart_holder`] forgets it. A holder the plan no longer lists records nothing.
 pub fn start_holder(
     conn: &Connection,
     id: &str,
@@ -283,16 +428,18 @@ pub fn start_holder(
     after: &str,
 ) -> Result<(), StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    if let Some(mut plan) = recorded(&tx)? {
+    if listed(&tx, id)? {
         let (tags, pinned) = tags::lists(&tx, id)?.unwrap_or_default();
-        plan.started = Some(Started {
-            id: id.to_owned(),
+        let begun = Started {
             before: before.to_owned(),
             after: after.to_owned(),
             tags,
             pinned,
-        });
-        save(&tx, &plan)?;
+        };
+        let value = serde_json::to_string(&begun).map_err(|error| StorageError::Failed {
+            what: format!("a begun tag rename edit will not serialise: {error}"),
+        })?;
+        put(&tx, &format!("{STARTED}{id}"), &value)?;
     }
     tx.commit().map_err(failed)
 }
