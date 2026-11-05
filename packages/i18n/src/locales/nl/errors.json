@@ -14,7 +14,10 @@
     "permissionDenied": "Toestemming geweigerd. Controleer of je toegang hebt tot deze map.",
     "alreadyExists": "Er bestaat al een kluis op deze locatie.",
     "corrupted": "Deze kluis lijkt beschadigd te zijn. Probeer te herstellen vanaf een back-up.",
-    "configChangeNotPorted": "Deze versie kan de dagboekmap, de datumnotatie of uitgesloten mappen nog niet wijzigen. Je opgeslagen instelling blijft behouden."
+    "configChangeNotPorted": "Deze versie kan de dagboekmap, de datumnotatie of uitgesloten mappen nog niet wijzigen. Je opgeslagen instelling blijft behouden.",
+    "journalFormatIncomplete": "Deze datumnotatie kan niet elke dag een naam geven en is daarom niet opgeslagen. Neem het jaar, de maand en de dag op.",
+    "journalDaysNotRenamed": "De datumnotatie is niet gewijzigd, omdat sommige dagboekdagen er niet naar hernoemd konden worden ({count}). Misschien heeft een bestand al de nieuwe naam van een dag.",
+    "journalUnlisted": "De dagboekmap kon niet worden gelezen, dus de datumnotatie is niet gewijzigd. Controleer of je er toegang toe hebt."
   },
   "note": {
     "notFound": "Deze notitie kon niet worden gevonden. Mogelijk is deze verwijderd.",

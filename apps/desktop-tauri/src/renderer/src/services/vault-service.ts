@@ -90,9 +90,9 @@ function toStatus(wire: Awaited<ReturnType<typeof commands.vaultGetStatus>>): Va
 }
 
 /**
- * Vault service for the renderer. The picker, the registry and the lifecycle go to the Rust
- * `vault_*` commands; config, embeds, the sandbox and the account calls stay on
- * `window.api.vault` until Steps 09, 12, 19 and 32 port them.
+ * Vault service for the renderer. The picker, the registry, the lifecycle and the config go
+ * to the Rust `vault_*` commands; embeds, the sandbox and the account calls stay on
+ * `window.api.vault` until Steps 12, 19 and 32 port them.
  */
 export const vaultService: VaultClientAPI = {
   /**

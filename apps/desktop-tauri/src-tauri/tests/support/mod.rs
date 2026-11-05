@@ -123,6 +123,7 @@ impl Mocked {
         app.manage(Arc::new(LocaleService::new("en")));
         app.manage(index);
         app.manage(NotesService::new(tier.clone(), store));
+        app.manage(tier.clone());
         let _ = handle.set(app.handle().clone());
         journal_events::forward(app.handle().clone(), tier.subscribe());
         let webview = WebviewWindowBuilder::new(&app, "main", WebviewUrl::default())

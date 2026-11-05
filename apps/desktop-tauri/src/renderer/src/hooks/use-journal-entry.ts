@@ -552,13 +552,34 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
     })
 
-    // A missed event may have changed the open day: refetched unless it holds unsaved text,
-    // which its save keeps, as for `modified`.
+    // A missed event may have changed the open day: read again unless it holds unsaved text,
+    // which its save keeps, as for `modified`. Checked again when the read lands, since a
+    // keystroke (before its render) or a save may have come meanwhile, and the read is dropped
+    // if anything set the day since it began: a save's or an event's answer is newer than it.
+    // New text reaches the editor as an outside edit's does; the same text leaves the editor
+    // (and its cursor) as it is.
     const unsubscribeDropped = onJournalEventsDropped(() => {
       const open = currentDateRef.current
-      if (open && !isDirtyRef.current) {
-        void queryClient.invalidateQueries({ queryKey: journalKeys.entry(open) })
-      }
+      if (!open || isDirtyRef.current) return
+      const queryKey = journalKeys.entry(open)
+      const asked = queryClient.getQueryState(queryKey)?.dataUpdateCount
+      journalService
+        .getEntry(open)
+        .then((fetched) => {
+          const holdsText =
+            isDirtyRef.current ||
+            pendingContentRef.current !== null ||
+            pendingTagsRef.current !== null ||
+            isSavingRef.current
+          if (currentDateRef.current !== open || holdsText) return
+          if (queryClient.getQueryState(queryKey)?.dataUpdateCount !== asked) return
+          const shown = queryClient.getQueryData<JournalEntry | null>(queryKey)?.content ?? null
+          queryClient.setQueryData(queryKey, fetched)
+          if ((fetched?.content ?? null) !== shown) setExternalUpdateCount((c) => c + 1)
+        })
+        .catch((err: unknown) => {
+          log.warn(`Failed to refetch ${open} after dropped journal events:`, err)
+        })
     })
 
     return () => {

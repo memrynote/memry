@@ -131,7 +131,9 @@ impl EchoGuard {
     /// watcher, ending records in [`Self::seen_file`] and [`Self::seen_folder`], sees the path
     /// before both or after both. A failed `remove` puts back the record it replaced (an own
     /// write the file still holds), or none. The lock is held for the one call, so `remove` is a
-    /// single file system call, never a wait.
+    /// single file system call, and for a journal rename that row's write before it and after a
+    /// failed try (`FileMove::run_each`): never a wait on anything that takes this lock. Lock
+    /// order: the rows' lane, then this, then the core's database writer.
     pub fn removing<T>(&self, path: &str, remove: impl FnOnce() -> io::Result<T>) -> io::Result<T> {
         let mut state = self.lock();
         let before = state.by_path.get(path).cloned();

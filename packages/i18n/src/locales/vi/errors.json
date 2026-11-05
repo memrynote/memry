@@ -14,7 +14,10 @@
     "permissionDenied": "Không có quyền truy cập. Kiểm tra xem bạn có quyền truy cập vào thư mục này không.",
     "alreadyExists": "Kho đã tồn tại ở vị trí này.",
     "corrupted": "Kho này có vẻ bị hỏng. Thử khôi phục từ bản sao lưu.",
-    "configChangeNotPorted": "Phiên bản này chưa thể thay đổi thư mục nhật ký, định dạng ngày hoặc các thư mục bị loại trừ. Cài đặt đã lưu của bạn được giữ nguyên."
+    "configChangeNotPorted": "Phiên bản này chưa thể thay đổi thư mục nhật ký, định dạng ngày hoặc các thư mục bị loại trừ. Cài đặt đã lưu của bạn được giữ nguyên.",
+    "journalFormatIncomplete": "Định dạng ngày này không thể đặt tên cho mọi ngày nên chưa được lưu. Hãy thêm năm, tháng và ngày.",
+    "journalDaysNotRenamed": "Định dạng ngày không được thay đổi vì một số ngày nhật ký không thể đổi tên theo định dạng này ({count}). Có thể một tệp đã mang tên mới của một ngày.",
+    "journalUnlisted": "Không thể đọc thư mục nhật ký nên định dạng ngày không được thay đổi. Hãy kiểm tra bạn có quyền truy cập thư mục đó."
   },
   "note": {
     "notFound": "Không tìm thấy ghi chú này. Có thể nó đã bị xóa.",

@@ -14,7 +14,10 @@
     "permissionDenied": "Lupa evätty. Tarkista, että sinulla on pääsy tähän kansioon.",
     "alreadyExists": "Tässä paikassa on jo holvi.",
     "corrupted": "Tämä holvi näyttää olevan vioittunut. Yritä palauttaa varmuuskopiosta.",
-    "configChangeNotPorted": "Tämä versio ei vielä voi muuttaa päiväkirjakansiota, päivämäärämuotoa tai pois jätettyjä kansioita. Tallennettu asetus säilyy."
+    "configChangeNotPorted": "Tämä versio ei vielä voi muuttaa päiväkirjakansiota, päivämäärämuotoa tai pois jätettyjä kansioita. Tallennettu asetus säilyy.",
+    "journalFormatIncomplete": "Tämä päivämäärämuoto ei pysty nimeämään jokaista päivää, joten sitä ei tallennettu. Sisällytä vuosi, kuukausi ja päivä.",
+    "journalDaysNotRenamed": "Päivämäärämuotoa ei muutettu, koska joitakin päiväkirjan päiviä ei voitu nimetä uudelleen sen mukaan ({count}). Jollakin tiedostolla voi jo olla päivän uusi nimi.",
+    "journalUnlisted": "Päiväkirjakansiota ei voitu lukea, joten päivämäärämuotoa ei muutettu. Tarkista, että sinulla on siihen käyttöoikeus."
   },
   "note": {
     "notFound": "Tätä muistiinpanoa ei löytynyt. Se on ehkä poistettu.",

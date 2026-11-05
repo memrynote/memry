@@ -177,7 +177,7 @@ fn a_linked_mention_reaches_the_file_the_note_and_the_row_and_comes_back_as_no_o
             note_id: source.clone(),
             path: "Standup.md".to_owned(),
             content_hash: Some(hash),
-            source: ChangeSource::AppEdit,
+            source: ChangeSource::LinkRewrite,
         }],
         "the app's write, and no outside edit"
     );
