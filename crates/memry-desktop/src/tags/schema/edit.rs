@@ -281,7 +281,7 @@ impl Schemas {
 }
 
 /// `TagName` (`z.string().trim().min(1).max(50)`).
-fn tag_name(tag: &str) -> Result<String, SchemaError> {
+pub(super) fn tag_name(tag: &str) -> Result<String, SchemaError> {
     let tag = tag.trim();
     if tag.is_empty() || length(tag) > 50 {
         return Err(StorageError::Invalid {
@@ -321,7 +321,7 @@ fn template_choice(choice: TemplateChoice) -> Result<(String, bool), SchemaError
 }
 
 /// `FieldName` (`z.string().trim().min(1).max(200)`).
-fn field_name(name: &str) -> Result<String, SchemaError> {
+pub(super) fn field_name(name: &str) -> Result<String, SchemaError> {
     let name = name.trim();
     if name.is_empty() || length(name) > 200 {
         return Err(StorageError::Invalid {
@@ -332,7 +332,8 @@ fn field_name(name: &str) -> Result<String, SchemaError> {
     Ok(name.to_owned())
 }
 
-fn length(text: &str) -> usize {
+/// A JavaScript string's length: its UTF-16 code units.
+pub(super) fn length(text: &str) -> usize {
     text.encode_utf16().count()
 }
 

@@ -342,6 +342,8 @@ mod sync_realtime_run;
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
 mod tag_fold_vectors;
+#[path = "tag_objects.rs"]
+mod tag_objects;
 #[path = "tag_pins.rs"]
 mod tag_pins;
 #[path = "tag_reads.rs"]
@@ -368,6 +370,10 @@ mod tombstone_purge;
 mod unknown_fields;
 #[path = "unlinked_mentions.rs"]
 mod unlinked_mentions;
+#[path = "vault_locks.rs"]
+mod vault_locks;
+#[path = "vault_locks_schema.rs"]
+mod vault_locks_schema;
 #[path = "vectors.rs"]
 mod vectors;
 #[path = "versioned_keys_carry.rs"]

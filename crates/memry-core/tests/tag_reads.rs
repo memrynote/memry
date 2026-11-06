@@ -31,7 +31,7 @@ use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use serde_json::{Value, json};
 use support::vector_file;
 
-fn open() -> (tempfile::TempDir, Vault, Arc<Search>) {
+pub(crate) fn open() -> (tempfile::TempDir, Vault, Arc<Search>) {
     let dir = tempfile::Builder::new()
         .prefix("memry-tag-reads-")
         .tempdir()
@@ -42,7 +42,7 @@ fn open() -> (tempfile::TempDir, Vault, Arc<Search>) {
 }
 
 /// Applies a record as a pull would.
-fn record(vault: &Vault, item_type: &str, id: &str, payload: Value, deleted: bool) {
+pub(crate) fn record(vault: &Vault, item_type: &str, id: &str, payload: Value, deleted: bool) {
     record_at(vault, item_type, id, payload, deleted, 1);
 }
 
@@ -70,7 +70,7 @@ fn record_at(vault: &Vault, item_type: &str, id: &str, payload: Value, deleted: 
         .expect("apply");
 }
 
-fn note(vault: &Vault, id: &str, title: &str, tags: &[&str], modified: &str) {
+pub(crate) fn note(vault: &Vault, id: &str, title: &str, tags: &[&str], modified: &str) {
     let payload = json!({
         "title": title, "tags": tags, "clock": {"peer": 1},
         "createdAt": "2026-01-01T00:00:00.000Z", "modifiedAt": modified,
@@ -79,7 +79,7 @@ fn note(vault: &Vault, id: &str, title: &str, tags: &[&str], modified: &str) {
 }
 
 /// The file row the vault tier writes for a note's file, whose bytes it does not know.
-fn filed(vault: &Vault, id: &str, path: &str) {
+pub(crate) fn filed(vault: &Vault, id: &str, path: &str) {
     filed_as(vault, id, path, None);
 }
 
@@ -102,7 +102,7 @@ fn filed_as(vault: &Vault, id: &str, path: &str, file_hash: Option<&str>) {
 }
 
 /// The note index's measure of the file `text`.
-fn measured(search: &Search, id: &str, text: &str) {
+pub(crate) fn measured(search: &Search, id: &str, text: &str) {
     search
         .index_note_files(vec![MeasuredFile {
             note_id: id.to_owned(),

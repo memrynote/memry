@@ -16,6 +16,8 @@ mod yaml_load;
 #[doc(hidden)]
 pub use edit::equal_visits;
 pub use edit::{deep_strict_equal, edit_frontmatter_block, serialize_updated_note};
+/// JavaScript's `String#trim`, which a desktop input check needs to match zod's `.trim()`.
+pub use js::js_trim;
 pub use json::{json_to_yaml, yaml_to_json};
 pub use note::{
     Eol, ParsedMarkdownNote, gray_matter_data, gray_matter_parts, parse_markdown_note,

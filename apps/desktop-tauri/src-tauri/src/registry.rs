@@ -93,6 +93,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_resolve_wiki_target,
             crate::commands::notes::notes_reveal_in_finder,
             crate::commands::notes::notes_set_local_only,
+            // notes: large files
+            crate::commands::large_file::notes_large_file_close,
+            crate::commands::large_file::notes_large_file_open,
+            crate::commands::large_file::notes_large_file_read_lines,
+            crate::commands::large_file::notes_large_file_search,
             // notes: property definitions
             crate::commands::property_definitions::notes_add_property_option,
             crate::commands::property_definitions::notes_add_status_option,
@@ -150,7 +155,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_take_crash_reload,
             // tags
             crate::commands::tag_schema::tags_edit_schema,
+            crate::commands::tag_schema::tags_get_linked_here,
             crate::commands::tag_schema::tags_get_schema_snapshot,
+            crate::commands::tag_schema::tags_preview_impact,
             crate::commands::tag_schema::tags_search_objects,
             crate::commands::tags::tags_create_category,
             crate::commands::tags::tags_delete_category,

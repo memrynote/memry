@@ -1,16 +1,21 @@
-//! Tags with fields (`tags:get-schema-snapshot` and `tags:edit-schema` of
+//! Tags with fields (`tags:get-schema-snapshot`, `tags:edit-schema` and `tags:preview-impact` of
 //! `ipc/tag-schema-handlers.ts`), each one call of `memry_desktop::tags::schema`. A schema edit
 //! writes the `tag_definition` record, and for a new field or a ready-made tag the property
 //! definitions and a template; never a note file. After an edit it sends what Electron sends:
 //! [`PropertyDefinitionChangedEvent`] per definition it created, [`TemplateCreatedEvent`] per
-//! template, then [`NoteTagsChangedEvent`] when a schema may have changed. The object search
-//! (`ipc/tag-object-handlers.ts`) reads the same resolved tags and writes nothing.
+//! template, then [`NoteTagsChangedEvent`] when a schema may have changed. The object search and
+//! Linked here (`ipc/tag-object-handlers.ts`) read the same resolved tags, typed by the
+//! definitions as stored (a pulled one is not settled into the file first), and write no record
+//! or vault file.
 
 use std::sync::Arc;
 
 use memry_desktop::locale::LocaleService;
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
-use memry_desktop::tags::schema::objects::{SearchObjectsInput, SearchObjectsView};
+use memry_desktop::tags::schema::impact::{ImpactQuery, ImpactView};
+use memry_desktop::tags::schema::objects::{
+    GetLinkedHereInput, LinkedHereView, SearchObjectsInput, SearchObjectsView,
+};
 use memry_desktop::tags::schema::view::{
     TagSchemaCommand, TagSchemaCommandResultView, TagSchemaSnapshotView,
 };
@@ -77,6 +82,21 @@ pub async fn tags_edit_schema(
     .await
 }
 
+/// What a schema change would reach, counted for its dialog. It writes no record.
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_preview_impact(
+    app: AppHandle<Wry>,
+    query: ImpactQuery,
+) -> Result<ImpactView, CommandError> {
+    blocking("tags_preview_impact", move || {
+        schemas(&app)?
+            .preview_impact(query)
+            .map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
 /// The objects whose title matches the query, of one tag and the tags extending it or of every
 /// tag with fields.
 #[tauri::command]
@@ -88,6 +108,21 @@ pub async fn tags_search_objects(
     blocking("tags_search_objects", move || {
         schemas(&app)?
             .search_objects(&input)
+            .map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
+/// What points at a note: relation fields, task fields and wiki links, grouped.
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_get_linked_here(
+    app: AppHandle<Wry>,
+    input: GetLinkedHereInput,
+) -> Result<LinkedHereView, CommandError> {
+    blocking("tags_get_linked_here", move || {
+        schemas(&app)?
+            .linked_here(&input)
             .map_err(|error| CommandError::from_core(&error))
     })
     .await

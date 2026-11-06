@@ -32,6 +32,45 @@ fn listen(f: &Fixture, note: &str) -> Heard {
     heard
 }
 
+/// A deferred foreign key fails the next commit that writes a body row, after
+/// its rows were written.
+fn arm_failing_commit(f: &Fixture) {
+    run(
+        f,
+        "PRAGMA foreign_keys = ON;
+         CREATE TEMP TABLE parent (id INTEGER PRIMARY KEY);
+         CREATE TEMP TABLE child (p INTEGER REFERENCES parent (id)
+           DEFERRABLE INITIALLY DEFERRED);
+         CREATE TEMP TRIGGER fail_commit AFTER INSERT ON main.yjs_updates
+         BEGIN INSERT INTO child VALUES (42); END;",
+    );
+}
+
+fn run(f: &Fixture, sql: &str) {
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute_batch(sql).map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })
+        })
+        .expect(sql);
+}
+
+/// A merged server row, committed through the vault's database.
+fn run_server_row(f: &Fixture, note: &str, update: &[u8]) {
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            update_log::append_server_update(conn, note, 1, update, 1).map_err(|e| {
+                StorageError::Failed {
+                    what: e.to_string(),
+                }
+            })
+        })
+        .expect("a merged server row");
+}
+
 #[test]
 fn a_window_edit_reaches_the_other_window_after_its_commit_as_sent() {
     let f = fixture();
@@ -74,24 +113,50 @@ fn a_merged_server_update_reaches_the_open_document_and_its_listeners_as_remote(
     let main = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
     let heard = listen(&f, &note);
     let peer = Replica::new(9).type_text("from a peer");
-    f.vault
-        .db_handle()
-        .call_blocking(|conn| {
-            update_log::append_server_update(conn, &note, 1, &peer, 1).map_err(|e| {
-                StorageError::Failed {
-                    what: e.to_string(),
-                }
-            })
-        })
-        .expect("a merged server row");
+    run_server_row(&f, &note, &peer);
+    run_server_row(&f, &note, &peer);
 
     let heard = heard.lock().unwrap().clone();
-    assert_eq!(heard.len(), 1, "one notice, after the commit");
+    assert_eq!(
+        heard.len(),
+        1,
+        "one notice, after the commit; a redelivery adds nothing"
+    );
     assert_eq!(heard[0].1, Origin::Remote);
     main.apply(&heard[0].0);
     assert_eq!(main.text(), "from a peer");
     let side = Replica::from_state(2, &f.editor.open(&note, "side").expect("side").state);
     assert_eq!(side.text(), "from a peer", "the resident document took it");
+}
+
+#[test]
+fn a_held_document_dropped_after_a_failed_commit_still_hears_the_next_merge() {
+    let f = fixture();
+    let note = f.note();
+    let main = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
+    arm_failing_commit(&f);
+    let refused = f
+        .editor
+        .apply_update(&note, &main.type_text("lost"), "main");
+    assert!(
+        refused.is_err(),
+        "the resident copy is dropped with the edit"
+    );
+    run(&f, "DROP TRIGGER temp.fail_commit");
+    let heard = listen(&f, &note);
+    let peer = Replica::new(9).type_text("from a peer");
+
+    run_server_row(&f, &note, &peer);
+
+    let heard = heard.lock().unwrap().clone();
+    assert_eq!(
+        heard.len(),
+        1,
+        "the windows of a held document hear the merge"
+    );
+    let side = Replica::new(2);
+    side.apply(&heard[0].0);
+    assert_eq!(side.text(), "from a peer");
 }
 
 #[test]
@@ -123,23 +188,7 @@ fn a_commit_that_fails_leaves_no_row_no_listener_and_no_edit_in_memory() {
     let note = f.note();
     let main = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
     let heard = listen(&f, &note);
-    // A deferred foreign key fails the commit, after both rows were written.
-    f.vault
-        .db_handle()
-        .call_blocking(|conn| {
-            conn.execute_batch(
-                "PRAGMA foreign_keys = ON;
-                 CREATE TEMP TABLE parent (id INTEGER PRIMARY KEY);
-                 CREATE TEMP TABLE child (p INTEGER REFERENCES parent (id)
-                   DEFERRABLE INITIALLY DEFERRED);
-                 CREATE TEMP TRIGGER fail_commit AFTER INSERT ON main.yjs_updates
-                 BEGIN INSERT INTO child VALUES (42); END;",
-            )
-            .map_err(|e| StorageError::Failed {
-                what: e.to_string(),
-            })
-        })
-        .expect("arm the failing commit");
+    arm_failing_commit(&f);
 
     let refused = f
         .editor

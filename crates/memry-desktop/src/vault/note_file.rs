@@ -91,6 +91,11 @@ fn read_bytes(vault: &Path, rel: &str) -> Result<Option<Vec<u8>>, NoteFileError>
     let Some(file) = open_note_file(vault, rel)? else {
         return Ok(None);
     };
+    // A file already past the cap is refused before a byte is read: finding out by reading held
+    // the cap's 256 MiB at every read of a large file's note (its properties at each open).
+    if file.metadata()?.len() > MAX_NOTE_BYTES {
+        return Err(NoteFileError::TooLarge);
+    }
     // One byte past the cap tells a file that grew after the open from one at the cap.
     let mut bytes = Vec::new();
     file.take(MAX_NOTE_BYTES + 1).read_to_end(&mut bytes)?;
