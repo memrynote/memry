@@ -2380,6 +2380,12 @@ export type VaultStatus = {
 	error: string | null,
 	/**  What the open's sweep of interrupted folder moves did, while that vault is open. */
 	movesRecovered?: MovesRecovered | null,
+	/**
+	 *  Higher is newer. The window receives statuses as events and as `vault_get_status`
+	 *  answers, which travel apart, so it keeps the one with the higher revision. The shell sets
+	 *  it; [`From<SessionStatus>`] leaves it at 0.
+	 */
+	revision: number,
 };
 
 /**
