@@ -109,8 +109,8 @@ See [[Roadmap]], [[Roadmap#Goals|the goals]] and [[Other]].\n\nAlso [[work/Roadm
     assert_eq!(
         seen,
         [
-            ("Ideas.md".to_owned(), ChangeSource::AppEdit),
-            ("work/Roadmap.md".to_owned(), ChangeSource::AppEdit),
+            ("Ideas.md".to_owned(), ChangeSource::LinkRewrite),
+            ("work/Roadmap.md".to_owned(), ChangeSource::LinkRewrite),
         ]
     );
 

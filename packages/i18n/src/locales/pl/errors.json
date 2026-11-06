@@ -14,7 +14,10 @@
     "permissionDenied": "Brak uprawnień. Sprawdź, czy masz dostęp do tego folderu.",
     "alreadyExists": "W tej lokalizacji już istnieje sejf.",
     "corrupted": "Wygląda na to, że ten sejf jest uszkodzony. Spróbuj przywrócić go z kopii zapasowej.",
-    "configChangeNotPorted": "Ta wersja nie może jeszcze zmienić folderu dziennika, formatu daty ani wykluczonych folderów. Zapisane ustawienie zostaje zachowane."
+    "configChangeNotPorted": "Ta wersja nie może jeszcze zmienić folderu dziennika, formatu daty ani wykluczonych folderów. Zapisane ustawienie zostaje zachowane.",
+    "journalFormatIncomplete": "Ten format daty nie może nazwać każdego dnia, więc nie został zapisany. Uwzględnij rok, miesiąc i dzień.",
+    "journalDaysNotRenamed": "Format daty nie został zmieniony, ponieważ nie udało się zmienić nazw niektórych dni dziennika ({count}). Być może jakiś plik ma już nową nazwę dnia.",
+    "journalUnlisted": "Nie udało się odczytać folderu dziennika, więc format daty nie został zmieniony. Sprawdź, czy masz do niego dostęp."
   },
   "note": {
     "notFound": "Nie udało się znaleźć tej notatki. Być może została usunięta.",

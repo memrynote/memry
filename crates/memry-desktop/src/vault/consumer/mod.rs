@@ -95,11 +95,14 @@ pub enum ChangeSource {
     Walk,
     /// The app wrote, created or removed the file.
     App,
-    /// The app edited the file's text for the user, outside the editor (`vault::app_edit`: the
-    /// links to a renamed note, a moved note's embeds, a linked mention, a template's apply).
-    /// The renderer takes it as it takes an outside edit, as Electron's `landSourceRewrite`
-    /// sends it.
+    /// The app edited the file's text for the user, outside the editor (`vault::app_edit`: a
+    /// template's apply, a tag's template, a property). The renderer takes it as it takes an
+    /// outside edit of a note.
     AppEdit,
+    /// The app rewrote the file's links for the user (`vault::app_edit`: the links to a renamed
+    /// note, a moved note's embeds, a linked mention), as Electron's `landSourceRewrite`, which
+    /// sends it as an outside edit of a note and of a journal day both.
+    LinkRewrite,
     /// The user's save in the editor (`notes:update`, `vault::app_edit`'s `Save`): its body,
     /// its header tags or its icon. Electron sends it as an `internal` `notes:updated`.
     Save,

@@ -14,7 +14,10 @@
     "permissionDenied": "Autorizzazione negata. Verifica di avere accesso a questa cartella.",
     "alreadyExists": "Esiste già un vault in questa posizione.",
     "corrupted": "Questo vault sembra danneggiato. Prova a ripristinarlo da un backup.",
-    "configChangeNotPorted": "Questa versione non può ancora modificare la cartella diario, il formato data o le cartelle escluse. L'impostazione salvata viene mantenuta."
+    "configChangeNotPorted": "Questa versione non può ancora modificare la cartella diario, il formato data o le cartelle escluse. L'impostazione salvata viene mantenuta.",
+    "journalFormatIncomplete": "Questo formato data non può dare un nome a ogni giorno, quindi non è stato salvato. Includi anno, mese e giorno.",
+    "journalDaysNotRenamed": "Il formato data non è stato modificato perché non è stato possibile rinominare alcuni giorni del diario ({count}). Forse un file ha già il nuovo nome di un giorno.",
+    "journalUnlisted": "Non è stato possibile leggere la cartella diario, quindi il formato data non è stato modificato. Verifica di avervi accesso."
   },
   "note": {
     "notFound": "Impossibile trovare questa nota. Potrebbe essere stata eliminata.",

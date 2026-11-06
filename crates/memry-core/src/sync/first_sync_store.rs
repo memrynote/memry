@@ -102,7 +102,7 @@ pub fn read_meta(conn: &Connection, key: &str) -> Result<Option<String>, Storage
     .map_err(sqlite_failed)
 }
 
-pub(super) fn write_meta(conn: &Connection, key: &str, value: &str) -> Result<(), StorageError> {
+pub(crate) fn write_meta(conn: &Connection, key: &str, value: &str) -> Result<(), StorageError> {
     conn.execute(
         "INSERT INTO meta (key, value) VALUES (?1, ?2)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",

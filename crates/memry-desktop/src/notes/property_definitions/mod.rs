@@ -234,16 +234,18 @@ impl PropertyDefinitions {
         name: &str,
         decide: impl FnMut(Option<PropertyDefinition>) -> Result<(Next, T), DefinitionsError>,
     ) -> Result<T, DefinitionsError> {
-        self.change_renaming(name, None, decide)
+        let mut decide = decide;
+        self.change_renaming(name, None, |current, _| decide(current))
     }
 
     /// [`Self::change`] of an edit that renames the option `renamed` (its old value), which
-    /// keeps its record entry.
+    /// keeps its record entry. `decide` also hears whether the name has a definition this build
+    /// cannot read: a file entry it leaves unparsed, or a record of any shape.
     fn change_renaming<T>(
         &self,
         name: &str,
         renamed: Option<&str>,
-        mut decide: impl FnMut(Option<PropertyDefinition>) -> Result<(Next, T), DefinitionsError>,
+        mut decide: impl FnMut(Option<PropertyDefinition>, bool) -> Result<(Next, T), DefinitionsError>,
     ) -> Result<T, DefinitionsError> {
         let name = named(name)?;
         let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
@@ -252,12 +254,14 @@ impl PropertyDefinitions {
             let pulled = snapshot.pulled();
             let prior = snapshot.record(name);
             let mut before = None;
-            let (next, out) = properties_file::update(&self.vault, |definitions| {
+            let (next, out) = properties_file::update_file(&self.vault, |file| {
+                let held = prior.is_some() || file.unparsed_names().any(|held| held == name);
+                let definitions = &mut file.definitions;
                 settle_into(definitions, &pulled);
                 let synced = prior.and_then(definition_of);
                 let current = definitions.get(name).cloned().or(synced);
                 before = current.as_ref().map(|current| current.kind.clone());
-                let (next, out) = decide(current)?;
+                let (next, out) = decide(current, held)?;
                 match &next {
                     Next::Put(definition) => {
                         definitions.insert(name.to_owned(), definition.clone());
@@ -340,6 +344,33 @@ impl PropertyDefinitions {
             Ok((Next::Put(definition), ()))
         })?;
         self.view(&input.name)
+    }
+
+    /// `ensureFieldDefinition`: a definition of `input`'s type (a date shown on the calendar when
+    /// `show_on_calendar`) for a name with none, decided in the edit's turn. A name a newer
+    /// build defined, in the file or a record, has one. `true` when it created one.
+    pub fn create_if_absent(
+        &self,
+        input: DefinitionInput,
+        show_on_calendar: bool,
+    ) -> Result<bool, DefinitionsError> {
+        let wanted = editable(input.type_name)?
+            .ok_or(DefinitionsError::Invalid("a new property needs a type"))?;
+        let kind = match kind_of(wanted, input.options, None) {
+            PropertyKind::Date { .. } => PropertyKind::Date { show_on_calendar },
+            kind => kind,
+        };
+        self.change_renaming(&input.name, None, |existing, held| {
+            if existing.is_some() || held {
+                return Ok((Next::Keep, false));
+            }
+            let definition = PropertyDefinition {
+                kind: kind.clone(),
+                default_value: filled(input.default_value.clone()),
+                color: filled(input.color.clone()),
+            };
+            Ok((Next::Put(definition), true))
+        })
     }
 
     /// `notes:update-property-definition`. `None` when there is no definition of the name.
@@ -465,7 +496,7 @@ impl PropertyDefinitions {
         renamed: Option<&str>,
         mut change: impl FnMut(&mut Vec<SelectOption>),
     ) -> Result<(), DefinitionsError> {
-        self.change_renaming(name, renamed, |existing| {
+        self.change_renaming(name, renamed, |existing, _| {
             let mut definition =
                 existing.ok_or_else(|| DefinitionsError::NotFound(name.to_owned()))?;
             each_list(&mut definition.kind, &mut change);

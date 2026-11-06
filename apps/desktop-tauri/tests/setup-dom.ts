@@ -283,6 +283,8 @@ vi.mock('../src/generated/bindings', () => {
         return null
       },
       notesGetFolderTemplate: (folderPath: string) => notes().getFolderTemplate(folderPath),
+      tagsGetSchemaSnapshot: () => tags().getSchemaSnapshot(),
+      tagsEditSchema: (command: unknown) => tags().editSchema(command),
       tagsGetAllWithCounts: async () =>
         ((await tags().getAllWithCounts()) as { tags: unknown[] }).tags,
       tagsGetNotesByTag: (input: unknown) => tags().getNotesByTag(input),
@@ -371,6 +373,7 @@ vi.mock('../src/generated/bindings', () => {
       noteMovedEvent: event(() => api().onNoteMoved),
       // No Electron channel: Electron sends every note event.
       noteEventsDroppedEvent: { listen: async () => () => undefined },
+      propertyDefinitionChangedEvent: event(() => api().onPropertyDefinitionChanged),
       noteLinksChangedEvent: event(() => api().onLinksChanged),
       noteTagsChangedEvent: event(() => api().onTagsChanged),
       tagColorUpdatedEvent: event(() => api().onTagColorUpdated),

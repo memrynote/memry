@@ -154,6 +154,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_reveal_path,
             crate::commands::shell::shell_take_crash_reload,
             // tags
+            crate::commands::tag_schema::tags_edit_schema,
+            crate::commands::tag_schema::tags_get_schema_snapshot,
             crate::commands::tags::tags_create_category,
             crate::commands::tags::tags_delete_category,
             crate::commands::tags::tags_get_all_with_counts,
@@ -263,6 +265,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::NoteRenamedEvent,
             crate::events::NoteTagsChangedEvent,
             crate::events::NoteUpdatedEvent,
+            crate::events::PropertyDefinitionChangedEvent,
             // tags
             crate::events::TagCategoriesChangedEvent,
             crate::events::TagColorUpdatedEvent,

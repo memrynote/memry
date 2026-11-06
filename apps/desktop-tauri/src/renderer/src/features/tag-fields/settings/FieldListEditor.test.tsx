@@ -470,6 +470,26 @@ describe('FieldListEditor relation settings', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
+  it('takes at most 100 characters for the inverse label, the most a schema holds', async () => {
+    const user = userEvent.setup()
+    renderEditor()
+
+    await openFieldMenu(user, 'Employer', 'Relation settings')
+    const dialog = await screen.findByRole('dialog')
+    const inverse = within(dialog).getByRole('textbox')
+    await user.clear(inverse)
+    await user.type(inverse, 'x'.repeat(105))
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() =>
+      expect(tagsApi.editSchema).toHaveBeenCalledWith(
+        expect.objectContaining({
+          relation: { target: 'company', many: false, inverse: 'x'.repeat(100) }
+        })
+      )
+    )
+  })
+
   it('repoints the relation to another tag from the picker', async () => {
     const user = userEvent.setup()
     renderEditor()

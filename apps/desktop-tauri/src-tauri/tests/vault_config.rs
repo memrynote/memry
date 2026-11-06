@@ -25,10 +25,13 @@ fn opened() -> (Mocked, Arc<Mutex<Vec<Value>>>) {
             memry_tauri::commands::vault::vault_update_config::<MockRuntime>,
         ]);
     let mocked = Mocked::open(
-        &[(
-            ".memry/config.json",
-            r#"{"journalFolder":"/Daily/","preferences":{"theme":"dark"}}"#,
-        )],
+        &[
+            (
+                ".memry/config.json",
+                r#"{"journalFolder":"/Daily/","preferences":{"theme":"dark"}}"#,
+            ),
+            ("Daily/2025-01-02.md", "A day.\n"),
+        ],
         commands,
     );
     let heard: Arc<Mutex<Vec<Value>>> = Arc::default();
@@ -112,5 +115,108 @@ fn with_no_vault_open_a_read_answers_the_fallback_and_a_write_is_refused() {
         )
         .unwrap_err();
     assert_eq!(refused["code"], "no_vault_open");
+    assert!(heard.lock().unwrap().is_empty());
+}
+
+/// The journal folder again, in another spelling, is no change: nothing is written or sent.
+#[test]
+fn the_current_journal_folder_again_writes_and_sends_nothing() {
+    let (mocked, heard) = opened();
+    let before = fs::read(mocked.vault.join(".memry/config.json")).unwrap();
+    let answer = mocked
+        .invoke(
+            "vault_update_config",
+            json!({ "config": { "journalFolder": "Daily/" } }),
+        )
+        .unwrap();
+    assert_eq!(answer["journalFolder"], "Daily");
+    assert_eq!(
+        fs::read(mocked.vault.join(".memry/config.json")).unwrap(),
+        before
+    );
+    assert!(heard.lock().unwrap().is_empty());
+}
+
+/// A new date format renames the day files to it before it is saved, and every window hears it.
+#[test]
+fn a_date_format_change_renames_the_days_and_sends_the_new_format() {
+    let (mocked, heard) = opened();
+    let answer = mocked
+        .invoke(
+            "vault_update_config",
+            json!({ "config": { "journalDateFormat": "YYYY-MM-DD dddd" } }),
+        )
+        .unwrap();
+    assert_eq!(answer["journalDateFormat"], "YYYY-MM-DD dddd");
+    assert_eq!(*heard.lock().unwrap(), [answer]);
+    assert!(!mocked.vault.join("Daily/2025-01-02.md").exists());
+    assert_eq!(
+        fs::read_to_string(mocked.vault.join("Daily/2025-01-02 Thursday.md")).unwrap(),
+        "A day.\n"
+    );
+}
+
+/// A day that cannot take the new format's name refuses the format with the count Settings
+/// shows, the day keeps its name, and nothing is sent.
+#[test]
+fn a_format_a_day_cannot_take_is_refused_with_the_count() {
+    let (mocked, heard) = opened();
+    fs::write(
+        mocked.vault.join("Daily/2025-01-02 Thursday.md"),
+        "A note.\n",
+    )
+    .unwrap();
+    let refused = mocked
+        .invoke(
+            "vault_update_config",
+            json!({ "config": { "journalDateFormat": "YYYY-MM-DD dddd" } }),
+        )
+        .unwrap_err();
+    assert_eq!(
+        (&refused["kind"], &refused["code"]),
+        (&json!("storage"), &json!("journal_days_not_renamed"))
+    );
+    assert!(
+        refused["message"]
+            .as_str()
+            .unwrap()
+            .contains("renamed to it (1)."),
+        "{refused}"
+    );
+    assert_eq!(
+        fs::read_to_string(mocked.vault.join("Daily/2025-01-02.md")).unwrap(),
+        "A day.\n"
+    );
+    assert!(heard.lock().unwrap().is_empty());
+}
+
+/// A journal folder that cannot be listed refuses the format with a message Settings can show,
+/// not the system error's text.
+#[cfg(unix)]
+#[test]
+fn a_journal_folder_that_cannot_be_listed_is_refused_in_words() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let (mocked, heard) = opened();
+    let daily = mocked.vault.join("Daily");
+    fs::set_permissions(&daily, fs::Permissions::from_mode(0o000)).unwrap();
+    let refused = mocked.invoke(
+        "vault_update_config",
+        json!({ "config": { "journalDateFormat": "YYYY-MM-DD dddd" } }),
+    );
+    fs::set_permissions(&daily, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let refused = refused.unwrap_err();
+    assert_eq!(
+        (&refused["kind"], &refused["code"]),
+        (&json!("storage"), &json!("journal_unlisted"))
+    );
+    assert!(
+        refused["message"]
+            .as_str()
+            .unwrap()
+            .starts_with("The journal folder couldn't be read"),
+        "{refused}"
+    );
     assert!(heard.lock().unwrap().is_empty());
 }

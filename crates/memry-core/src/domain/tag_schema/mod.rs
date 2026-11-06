@@ -20,6 +20,7 @@ use serde_json::{Map, Value};
 use crate::api::errors::StorageError;
 use crate::domain::tag_admin;
 use crate::domain::tag_fields::readable;
+use crate::sync::first_sync_store::{read_meta, write_meta};
 
 pub use edit::{NewField, SchemaEdit, SchemaEditError, Stamped};
 pub use resolve::{descendants_of, primary_object_tag, resolve};
@@ -170,6 +171,20 @@ pub fn resolved(
     types: &dyn Fn(&str) -> Option<PropertyInfo>,
 ) -> Result<BTreeMap<String, ResolvedTag>, StorageError> {
     Ok(resolve(&definitions(conn)?, types))
+}
+
+/// The local `data.db` setting that hides the tag hub's ready-made tags
+/// (`PRESET_OFFER_DISMISSED_SETTING`). Device-local: kept in `meta`, never synced.
+const OFFER_DISMISSED: &str = "tagFields.presetOfferDismissed";
+
+/// Whether this device dismissed the ready-made tags (`presetStripDismissed`).
+pub fn preset_offer_dismissed(conn: &Connection) -> Result<bool, StorageError> {
+    Ok(read_meta(conn, OFFER_DISMISSED)?.as_deref() == Some("1"))
+}
+
+/// `dismissPresetOffer`.
+pub fn dismiss_preset_offer(conn: &Connection) -> Result<(), StorageError> {
+    write_meta(conn, OFFER_DISMISSED, "1")
 }
 
 /// Why [`save`] wrote nothing.
