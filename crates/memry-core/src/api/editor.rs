@@ -135,7 +135,9 @@ pub enum Notice<'a> {
     /// An update the document took, and where it came from.
     Update(&'a [u8], &'a Origin),
     /// The document's body was purged (a delete applied): a window drops its
-    /// copy and opens the document again.
+    /// copy and opens the document again. Its edits are refused
+    /// ([`EditorError::Purged`]), and while every holder is stale no update
+    /// of the new document is sent, until one opens it.
     Purged,
 }
 
@@ -243,6 +245,15 @@ impl Editor {
                 let document = resident
                     .borrow(note_id, now, || self.load(conn, note_id, &mut repaired))?
                     .ok_or_else(|| unreadable(note_id))?;
+                // A purge that committed while this edit waited for the writer,
+                // before its observer fenced the holders: the edit is of the
+                // deleted body (chapter 07 §7.15).
+                if document.client_id() != epoch::client_id(conn, &self.device_id, note_id)? {
+                    resident.purge(note_id);
+                    return Err(EditorError::Purged {
+                        note_id: note_id.to_owned(),
+                    });
+                }
                 // Durable origin: the rows below hold these bytes, so the
                 // document's own sink must not report them a second time.
                 let changed = document

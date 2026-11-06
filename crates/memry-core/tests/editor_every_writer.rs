@@ -5,7 +5,8 @@
 
 #![cfg(feature = "markdown")]
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
+use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -255,6 +256,11 @@ async fn a_journal_day_deleted_and_written_again_while_open_hands_the_windows_th
         "the windows drop the deleted document"
     );
     assert_eq!(write_day(&f, "new day", "blk2"), day, "the same id");
+    assert_eq!(
+        *heard.lock().unwrap(),
+        vec![Heard::Purged],
+        "no update of the new day reaches windows that hold the deleted one"
+    );
     let (rows, queued) = (f.local_blobs(&day).len(), f.queued(&day));
     assert!(
         matches!(
@@ -372,4 +378,42 @@ fn a_committed_row_the_open_document_cannot_take_unloads_it() {
         ),
         "the next opener replays the committed log, not the copy that fell behind it"
     );
+}
+
+#[test]
+fn a_window_edit_that_waited_on_a_purge_is_refused_and_writes_nothing() {
+    let f = fixture();
+    let day = write_day(&f, "old day", "blk1");
+    let main = Replica::from_state(1, &f.editor.open(&day, "main").expect("open").state);
+    main.type_text(" typed");
+    let queued = f.queued(&day);
+    let (holding, held) = mpsc::channel();
+    let (db, id) = (f.vault.db_handle(), day.clone());
+    let purge = std::thread::spawn(move || {
+        db.call_blocking(|conn| {
+            let tx = conn.unchecked_transaction().expect("begin");
+            update_log::purge_in(&tx, &id).expect("purge");
+            tx.commit().expect("commit");
+            holding.send(()).expect("signal");
+            // The writer stays held while the window's edit waits for it, so
+            // the edit gets it before the purge's observer fences the holders.
+            std::thread::sleep(Duration::from_millis(300));
+            Ok::<_, StorageError>(())
+        })
+        .expect("the purge");
+    });
+    held.recv().expect("the purge holds the writer");
+
+    let refused = f.editor.apply_update(&day, &main.full_state(), "main");
+    purge.join().expect("the purge thread");
+
+    assert!(
+        matches!(refused, Err(EditorError::Purged { .. })),
+        "{refused:?}"
+    );
+    assert!(
+        f.local_blobs(&day).is_empty(),
+        "the deleted body is not stored"
+    );
+    assert_eq!(f.queued(&day), queued, "nor queued for the other devices");
 }

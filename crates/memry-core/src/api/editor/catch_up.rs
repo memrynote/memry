@@ -74,6 +74,13 @@ impl Editor {
             }
             None => rows,
         };
+        // Every window holds the deleted copy: a new document's rows would mix
+        // into it. They take the new document when they open it again.
+        let took = if resident.all_stale(id) {
+            Vec::new()
+        } else {
+            took
+        };
         drop(resident);
         for row in &took {
             self.fan_out(id, Notice::Update(row, &write.origin));

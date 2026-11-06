@@ -19,6 +19,11 @@
 //! A note names the rows written, by key, not their bytes, and says nothing
 //! about the commit: the closure may have rolled them back. The observer reads
 //! those rows from the committed log.
+//!
+//! Gap: [`super::update_log::fold_local`] deletes local rows and writes the
+//! local snapshot without a note. It has no production caller yet; the first
+//! one notes the snapshot (a `LogRow::LocalSnapshot`), or a document in memory
+//! misses rows the fold removed before they were read back.
 
 use std::cell::{Cell, RefCell};
 

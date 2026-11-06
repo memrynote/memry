@@ -175,6 +175,16 @@ impl Resident {
             .is_some_and(|set| set.contains(holder))
     }
 
+    /// Whether `doc_id` is held, and every holder's copy is of a document since
+    /// purged: no window takes an update of it until one opens it again.
+    pub fn all_stale(&self, doc_id: &str) -> bool {
+        self.holders.get(doc_id).is_some_and(|holders| {
+            self.stale
+                .get(doc_id)
+                .is_some_and(|stale| holders.is_subset(stale))
+        })
+    }
+
     /// `holder` received the document as it is now, or let it go.
     pub fn reopened(&mut self, doc_id: &str, holder: &str) {
         if let Some(set) = self.stale.get_mut(doc_id) {
