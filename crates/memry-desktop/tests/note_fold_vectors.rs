@@ -8,11 +8,27 @@
 //! `unicode-segmentation` with the UAX #29 rules, so the segments differ while their text is
 //! the same; they only drive the word slide between levels, so a CJK case checks that they
 //! rebuild the paragraph and that each sentence starts on a segment.
+//!
+//! An English note with runs of the scripts ICU splits by dictionary (Han, Thai, Lao) counts
+//! more words here, the divergence `crates/AGENTS.md` records as accepted: such a case holds its
+//! word counts to that bound, checks its segments the CJK way and everything else exactly.
 
 use memry_desktop::fold::engine::{assemble, local_brief, prepare};
 use memry_desktop::fold::text::is_cjk;
 use memry_desktop::fold::tokens::Zone;
 use serde_json::{Value, json};
+
+use crate::note_fold_text_vectors::{Dictionary, dictionary};
+
+/// How a case's segments and word counts compare with Electron's.
+#[derive(Clone, Copy, PartialEq)]
+enum Segments {
+    Equal,
+    /// Chinese, Japanese or Korean: words are characters, segments differ.
+    Cjk,
+    /// Dictionary-script runs in a text counted by words: more words here.
+    Dictionary,
+}
 
 fn vectors() -> Value {
     let path = concat!(
@@ -22,12 +38,24 @@ fn vectors() -> Value {
     serde_json::from_str(&std::fs::read_to_string(path).expect("note-fold.json")).expect("json")
 }
 
-fn actual(markdown: &str) -> (Value, bool) {
+fn actual(markdown: &str) -> (Value, Segments) {
     let prepared = prepare(markdown, Zone::Utc);
     let layers = assemble("note", &prepared, |chunk| {
         local_brief(chunk, &prepared.language)
     });
-    let cjk = is_cjk(&prepared.language);
+    let kind = if is_cjk(&prepared.language) {
+        Segments::Cjk
+    } else if let Some(found) = dictionary(markdown) {
+        assert_eq!(
+            found,
+            Dictionary::PerCharacter,
+            "a Katakana run in an English doc"
+        );
+        Segments::Dictionary
+    } else {
+        Segments::Equal
+    };
+    let cjk = kind != Segments::Equal;
     let layers = serde_json::to_value(&layers).expect("layers");
     let sections: Vec<Value> = layers["sections"]
         .as_array()
@@ -68,7 +96,7 @@ fn actual(markdown: &str) -> (Value, bool) {
         "wordsByLevel": layers["wordsByLevel"],
         "sections": sections,
     });
-    (value, cjk)
+    (value, kind)
 }
 
 fn segments_rebuild(paragraph: &Value) {
@@ -119,16 +147,26 @@ fn the_local_fold_reproduces_every_vector() {
     assert_eq!(file["levels"], json!(["full", "brief"]));
     assert_eq!(file["timeZone"], "UTC");
     let cases = file["cases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 40);
-    let mut failed = Vec::new();
+    assert_eq!(cases.len(), 48);
+    let (mut failed, mut bounded) = (Vec::new(), 0);
     for case in cases {
         let name = case["name"].as_str().expect("name");
-        let (got, cjk) = actual(case["markdown"].as_str().expect("markdown"));
-        let want = if cjk {
-            strip_cjk_segments(&case["expected"])
-        } else {
+        let (mut got, kind) = actual(case["markdown"].as_str().expect("markdown"));
+        let want = if kind == Segments::Equal {
             case["expected"].clone()
+        } else {
+            strip_cjk_segments(&case["expected"])
         };
+        if kind == Segments::Dictionary {
+            for pointer in ["/totalWords", "/wordsByLevel/full", "/wordsByLevel/brief"] {
+                let (here, icu) = (got.pointer(pointer), want.pointer(pointer));
+                let (here, icu) = (here.and_then(Value::as_u64), icu.and_then(Value::as_u64));
+                assert!(here >= icu, "{name}{pointer}: {here:?} < {icu:?}");
+                *got.pointer_mut(pointer).expect("count") =
+                    want.pointer(pointer).expect("count").clone();
+            }
+            bounded += 1;
+        }
         if got != want {
             failed.push(format!(
                 "{name}:\n  want {}\n  got  {}",
@@ -137,6 +175,7 @@ fn the_local_fold_reproduces_every_vector() {
             ));
         }
     }
+    assert_eq!(bounded, 1, "en-mixed-scripts is held to the word bound");
     assert!(
         failed.is_empty(),
         "{} cases differ:\n{}",
@@ -146,7 +185,7 @@ fn the_local_fold_reproduces_every_vector() {
 }
 
 #[test]
-fn the_vectors_cover_english_turkish_and_japanese_and_both_sides_of_the_threshold() {
+fn the_vectors_cover_every_written_language_and_both_sides_of_the_threshold() {
     let file = vectors();
     let cases = file["cases"].as_array().expect("cases");
     for written in ["en", "tr", "ja"] {
@@ -158,5 +197,13 @@ fn the_vectors_cover_english_turkish_and_japanese_and_both_sides_of_the_threshol
         };
         assert!(of(true) >= 8, "{written}: too few folding notes");
         assert!(of(false) >= 1, "{written}: no note under the threshold");
+    }
+    for written in ["zh", "ko"] {
+        assert!(
+            cases
+                .iter()
+                .any(|c| c["written"] == written && c["expected"]["foldable"] == true),
+            "{written}: no folding note"
+        );
     }
 }

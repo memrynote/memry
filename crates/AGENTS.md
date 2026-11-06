@@ -38,6 +38,13 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 - Known divergence from domino (Turndown's parser, ported on html5ever 0.40, which follows the current HTML spec): `<select>` with non-option content (domino drops the elements and keeps their text) and a stray `</p>` or `</br>` inside `<svg>` (domino inserts `<p>` or `<br>` inside the svg, html5ever leaves it first). The generic pipeline does not reach either (`select` is an exact selector and linkedom writes no stray end tags), so the vectors and the fuzz inputs avoid both. Accepted as known differences (Kaan, 2026-10-26); the repro is on #3543, and removing them needs a port of domino's parser.
 - Known approximations: `BilibiliExtractor.transcriptCache` (a process-wide map that only saves a refetch) is not ported; subtitle tracks that tie on every sort key compare by code point where JS uses `localeCompare`; the YouTube transcript-panel opener needs `MutationObserver`, which the Node DOM lacks, and yields nothing.
 
+### Note fold
+
+`memry-desktop/src/fold` (Step 14h, #3531) ports Electron's local fold (`apps/desktop/src/main/note-fold/`) and is tested against `packages/contracts/test-vectors/note-fold-text.json` and `note-fold.json`, which `apps/desktop/scripts/note-fold-oracle/` generates by running that engine in Node.
+
+- Regenerate with `pnpm --filter @memry/desktop vectors:note-fold`; `vectors:note-fold:check` runs in CI. Each file records the `process.versions.icu` and `unicode` it was written under, and the check fails first on a different ICU: regenerate, then fix `fold/tokens.rs` `long_date` (ICU's date strings, written by hand) and `fold/text.rs` until the Rust tests pass.
+- Known divergence: word counts of the scripts ICU splits with a dictionary. `unicode-segmentation` (UAX #29) has no dictionary, so in a note that does not read as Chinese, Japanese or Korean, a Han, Hiragana, Thai, Lao, Khmer or Myanmar run counts one word per character (more than Electron) and a Katakana run one word (at most Electron's). For those notes the fold threshold, chunk split and Brief word window can land differently from Electron. Accepted (Kaan, 2026-11-06) over adding ICU4X `icu_segmenter`; `note_fold_text_vectors.rs` holds each such case to its bound, so a change in either direction fails.
+
 ## Untrusted-input tests
 
 A parser, decoder or converter of persisted or peer data (markdown, YAML, JSON, HTML, CRDT updates, sync payloads, vault files) ships with the guards below, built from `memry-test-kit` (`crates/memry-test-kit`, a dev-dependency). Do not copy a helper into a test file; extend the kit.

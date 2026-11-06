@@ -79,16 +79,19 @@ fn source_tokens(text: &str, sentences: &[String]) -> (Vec<String>, Vec<u32>) {
     let mut cursor = 0;
     let mut token = 0;
     for s in sentences {
-        let offset = text[cursor..]
-            .find(s.as_str())
-            .map_or(cursor, |at| cursor + at);
+        let found = text[cursor..].find(s.as_str()).map(|at| cursor + at);
+        let offset = found.unwrap_or(cursor);
         step(offset - cursor + s.len());
         while token + 1 < src.len() && src[token].offset < offset {
             step(1);
             token += 1;
         }
         starts.push(token as u32);
-        cursor = offset + s.len();
+        // A sentence that is not in the text (never, as both come from it) moves nothing: past
+        // its length the cursor could leave the text or split a character.
+        if found.is_some() {
+            cursor = offset + s.len();
+        }
     }
     (src.iter().map(|s| s.text.to_owned()).collect(), starts)
 }

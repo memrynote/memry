@@ -5,8 +5,11 @@
 //!
 //! Dates format as `Intl.DateTimeFormat(language, { dateStyle: 'long', timeStyle: 'short' })`
 //! does for the tags [`super::text::detect_language`] answers ([`long_date`]),
-//! in the local time zone. `new Date` reads the ECMAScript date-time format here; the other
-//! strings V8 also parses read as no date.
+//! in the local time zone. `new Date` reads the ECMAScript date-time format here, with V8's
+//! limits: a day up to 31 rolls into the next month and `T24:00` is the next midnight. The
+//! other strings V8 also parses (free-form dates, six-digit years) read as no date. A note
+//! with no letters detects as `und`, which Electron formats in the device's locale; here it is
+//! English, an accepted divergence reachable only by a foldable note with no letters.
 
 use std::sync::LazyLock;
 
@@ -104,10 +107,17 @@ enum Instant {
     Local(NaiveDateTime),
 }
 
+/// V8's ISO reading: month 1-12, a day of 1-31 counted from the month's first (so the 31st
+/// of April is May 1), and 24:00:00.000 as the next day's midnight.
 fn parse_instant(iso: &str) -> Option<Instant> {
     let c = ISO.captures(iso)?;
     let num = |i: usize, default: u32| c.get(i).map_or(Some(default), |m| m.as_str().parse().ok());
-    let date = NaiveDate::from_ymd_opt(c[1].parse().ok()?, num(2, 1)?, num(3, 1)?)?;
+    let (month, day) = (num(2, 1)?, num(3, 1)?);
+    if !(1..=31).contains(&day) {
+        return None;
+    }
+    let date = NaiveDate::from_ymd_opt(c[1].parse().ok()?, month, 1)?
+        .checked_add_signed(TimeDelta::days(i64::from(day) - 1))?;
     let Some(hour) = c.get(4) else {
         return Some(Instant::Utc(date.and_hms_opt(0, 0, 0)?));
     };
@@ -116,8 +126,12 @@ fn parse_instant(iso: &str) -> Option<Instant> {
             .parse()
             .ok()
     })?;
-    let time =
-        date.and_hms_milli_opt(hour.as_str().parse().ok()?, num(5, 0)?, num(6, 0)?, millis)?;
+    let (hour, minute, second) = (hour.as_str().parse::<u32>().ok()?, num(5, 0)?, num(6, 0)?);
+    let time = if hour == 24 && minute == 0 && second == 0 && millis == 0 {
+        date.succ_opt()?.and_hms_opt(0, 0, 0)?
+    } else {
+        date.and_hms_milli_opt(hour, minute, second, millis)?
+    };
     match c.get(8).map(|m| m.as_str()) {
         None => Some(Instant::Local(time)),
         Some("Z") => Some(Instant::Utc(time)),
@@ -201,7 +215,13 @@ const AR_MONTHS: [&str; 12] = [
 
 /// `dateStyle: 'long'`, plus `timeStyle: 'short'` when `time` is given, as ICU 78 writes them.
 pub fn long_date(date: NaiveDate, time: Option<(u32, u32)>, language: &str) -> String {
-    let (y, m, d) = (date.year(), date.month(), date.day());
+    let (m, d) = (date.month(), date.day());
+    // The era year, as ICU writes it: year 0 is 1 (BC).
+    let y = if date.year() > 0 {
+        date.year()
+    } else {
+        1 - date.year()
+    };
     let month = (m - 1) as usize;
     let h12 = |h: u32| if h.is_multiple_of(12) { 12 } else { h % 12 };
     match language {
@@ -262,6 +282,9 @@ fn decode_uri_component(s: &str) -> Option<String> {
     while i < bytes.len() {
         if bytes[i] == b'%' {
             let hex = s.get(i + 1..i + 3)?;
+            if !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+                return None;
+            }
             out.push(u8::from_str_radix(hex, 16).ok()?);
             i += 3;
         } else {

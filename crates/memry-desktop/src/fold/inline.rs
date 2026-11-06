@@ -13,14 +13,16 @@ use super::text::step;
 /// The text, and for each of its bytes the byte in the original Markdown it came from.
 struct Tracked {
     text: String,
-    pos: Vec<usize>,
+    /// The Markdown byte each byte of `text` came from; `u32` halves the memory of a `usize`
+    /// per byte, and a note's Markdown is far below 4 GiB.
+    pos: Vec<u32>,
 }
 
 impl Tracked {
     fn new(md: &str) -> Self {
         Self {
             text: md.to_owned(),
-            pos: (0..md.len()).collect(),
+            pos: (0..md.len()).map(|i| i as u32).collect(),
         }
     }
 
@@ -245,7 +247,13 @@ pub fn sentences_to_markdown(md: &str, plain: &str, sentences: &[String]) -> Vec
     }
     let cuts: Vec<usize> = starts
         .iter()
-        .map(|&a| if a == 0 { 0 } else { tracked.pos[a - 1] + 1 })
+        .map(|&a| {
+            if a == 0 {
+                0
+            } else {
+                tracked.pos[a - 1] as usize + 1
+            }
+        })
         .collect();
     sentences
         .iter()
