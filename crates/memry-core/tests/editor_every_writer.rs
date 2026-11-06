@@ -192,7 +192,7 @@ fn a_write_that_rolls_back_reaches_no_window() {
     assert_eq!(side.text(), "");
 }
 
-fn http(transport: Arc<FakeTransport>) -> Arc<HttpClient> {
+pub(crate) fn http(transport: Arc<FakeTransport>) -> Arc<HttpClient> {
     Arc::new(HttpClient::new(
         transport,
         "https://sync.example",
@@ -312,7 +312,7 @@ async fn a_day_whose_log_did_not_replay_opens_once_a_delete_purged_it_and_it_was
 }
 
 /// The server's body, opened as stored: the envelope is chapter 04's concern.
-struct PassThrough;
+pub(crate) struct PassThrough;
 
 impl CrdtCipher for PassThrough {
     fn open(&self, update: &PackedUpdate<'_>) -> Result<Vec<u8>, EnvelopeError> {
