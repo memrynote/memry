@@ -2,10 +2,12 @@
 //! paths to `registry.rs`.
 
 pub mod app;
+pub mod attachments;
 pub mod custom_icons;
 pub mod diagnostics;
 pub mod drop_stage;
 pub mod error;
+pub mod fold;
 pub mod folders;
 pub mod journal;
 pub mod large_file;

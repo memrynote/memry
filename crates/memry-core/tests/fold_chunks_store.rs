@@ -79,16 +79,27 @@ fn a_second_write_replaces_the_row_and_its_age() {
 fn a_forgotten_chunk_is_a_miss_and_its_neighbours_stay() {
     let dir = scratch();
     let (_vault, search) = open(dir.path());
-    let (gone, kept) = (key("c1", "en", "local"), key("c2", "en", "local"));
+    let gone = key("c1", "en", "local");
+    // Another chunk, the same chunk in another language, and the same chunk by another model.
+    let kept = [
+        key("c2", "en", "local"),
+        key("c1", "tr", "local"),
+        key("c1", "en", "m"),
+    ];
     search.put_fold_chunk(&gone, "x", 10).expect("write");
-    search.put_fold_chunk(&kept, "y", 10).expect("write");
+    for other in &kept {
+        search.put_fold_chunk(other, "y", 10).expect("write");
+    }
 
     search.forget_fold_chunk(&gone).expect("forget");
     assert_eq!(search.fold_chunk(&gone).expect("read"), None);
-    assert_eq!(
-        search.fold_chunk(&kept).expect("read").as_deref(),
-        Some("y")
-    );
+    for other in &kept {
+        assert_eq!(
+            search.fold_chunk(other).expect("read").as_deref(),
+            Some("y"),
+            "{other:?}"
+        );
+    }
 }
 
 #[test]

@@ -43,6 +43,8 @@ pub fn builder() -> Builder<Wry> {
             // flush
             crate::commands::shell_integrations::flush_done,
             crate::commands::shell_integrations::flush_ready,
+            // fold
+            crate::commands::fold::fold_run::<Wry>,
             // journal
             crate::commands::journal::journal_create_entry::<Wry>,
             crate::commands::journal::journal_delete_entry::<Wry>,
@@ -58,7 +60,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
             crate::commands::locale::locale_set,
-            // notes
+            // notes (`notes_upload_attachment` is a binary command)
             crate::commands::folders::notes_create_folder::<Wry>,
             crate::commands::folders::notes_delete_folder::<Wry>,
             crate::commands::folders::notes_get_folder_config::<Wry>,

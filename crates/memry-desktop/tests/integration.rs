@@ -44,6 +44,8 @@ mod article_standardize;
 mod article_temml;
 #[path = "article_vectors.rs"]
 mod article_vectors;
+#[path = "attachments.rs"]
+mod attachments;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
 #[path = "command_failure.rs"]
@@ -110,6 +112,8 @@ mod logship;
 mod move_dir;
 #[path = "move_journal.rs"]
 mod move_journal;
+#[path = "note_fold_service.rs"]
+mod note_fold_service;
 #[path = "note_fold_text_vectors.rs"]
 mod note_fold_text_vectors;
 #[path = "note_fold_vectors.rs"]
