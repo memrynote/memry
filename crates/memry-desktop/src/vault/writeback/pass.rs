@@ -19,7 +19,9 @@ use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
-use crate::vault::note_file::{NoteFileError, read_note, write_note_over_checked};
+use crate::vault::note_file::{
+    NoteFileError, is_large_text, read_note, record_large_file, write_note_over_checked,
+};
 use crate::vault::watch::EchoGuard;
 
 const BOM: char = '\u{feff}';
@@ -234,6 +236,9 @@ impl Pass {
             // `Unchanged` and records the hash; until then the file only waits.
             return Outcome::Failed(format!("the file was written, its row was not: {error}"));
         }
+        // A body grown past the class (typed, merged) makes the note a large file: the
+        // editor stops taking edits, as Electron's write-back degrades the note.
+        record_large_file(lane.files(), note_id, is_large_text(&output));
         lane.publish(Applied::Changed {
             note_id: note_id.to_owned(),
             path: row.path,

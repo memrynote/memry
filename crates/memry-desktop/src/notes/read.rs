@@ -27,6 +27,7 @@ use crate::shell::file_open::Resolution;
 use crate::telemetry::main_warning::Level;
 use crate::telemetry::service::Service;
 use crate::vault::file_types::FileType;
+use crate::vault::note_file::record_large_file;
 use crate::vault::paths::{open_vault_file, resolve_vault_file};
 
 /// `NoteListSchema`'s `limit` bounds and default.
@@ -41,7 +42,7 @@ pub fn get(
     telemetry: Option<&Service>,
 ) -> Result<Option<NoteView>, NotesError> {
     match open.vault.note_files().listed_by_id(note_id)? {
-        Some(listed) => note_of(open, listed, telemetry),
+        Some(listed) => Ok(recorded(open, note_of(open, listed, telemetry)?)),
         None => Ok(None),
     }
 }
@@ -53,9 +54,19 @@ pub fn get_by_path(
     telemetry: Option<&Service>,
 ) -> Result<Option<NoteView>, NotesError> {
     match open.vault.note_files().listed_by_path(path)? {
-        Some(listed) => note_of(open, listed, telemetry),
+        Some(listed) => Ok(recorded(open, note_of(open, listed, telemetry)?)),
         None => Ok(None),
     }
+}
+
+/// `view`, its file's class recorded: the renderer opens the note's editor right after this
+/// read, and the editor decides from the record whether it takes edits.
+fn recorded(open: &OpenVault, view: Option<NoteView>) -> Option<NoteView> {
+    if let Some(view) = &view {
+        let large = view.size_class == SizeClass::LargeFile;
+        record_large_file(&open.vault.note_files(), &view.id, large);
+    }
+    view
 }
 
 /// `noteExists`: a `.md` path names a live note's file, anything else is a link target

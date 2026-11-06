@@ -10,6 +10,7 @@ use crate::vault_env;
 use std::path::Path;
 use std::sync::Arc;
 
+use memry_core::api::editor::{Editor, ReadOnly};
 use memry_core::domain::note_files::NoteFileStat;
 use memry_core::markdown::shared::markdown_class::{NOTE_MAX_BLOCK_BYTES, NOTE_MAX_BYTES};
 use memry_core::seams::secure_store::SecureStore;
@@ -112,6 +113,24 @@ fn a_note_reads_its_text_and_fields_from_its_file() {
         read::get_by_path(&open, "work/Gone.md", None).unwrap(),
         None
     );
+}
+
+/// A read of a note's file records the class it found (#3531 14c-2): the renderer opens the
+/// note's editor right after it, and the editor takes edits by that record.
+#[test]
+fn a_note_read_records_its_files_size_class_for_the_editor() {
+    let (_e, open, store) = opened();
+    let id = id_of(&open, "Loose.md");
+    let files = open.vault.note_files();
+    // What an earlier read of a file that has since shrunk left.
+    files.record_large_file(&id, true).unwrap();
+    let editor = open.vault.editor(store).unwrap();
+    let read_only = |editor: &Editor| editor.open(&id, "main").unwrap().read_only;
+    assert_eq!(read_only(&editor), Some(ReadOnly::LargeFile));
+
+    read::get(&open, &id, None).unwrap().expect("the note");
+    assert!(!files.is_large_file(&id).unwrap());
+    assert_eq!(read_only(&editor), None);
 }
 
 #[test]

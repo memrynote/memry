@@ -140,6 +140,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "vault_locks",
         sql: include_str!("migrations/data/0020_vault_locks.sql"),
     },
+    Migration {
+        version: 21,
+        name: "note_large_files",
+        sql: include_str!("migrations/data/0021_note_large_files.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -276,6 +281,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
         })
 }
 
+#[cfg(test)]
+mod note_large_files_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

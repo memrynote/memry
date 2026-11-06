@@ -3,7 +3,7 @@
 //! existing database at version 19 gains them with its rows kept.
 
 use memry_core::api::vault::Vault;
-use memry_core::storage::migrations::{DATA_MIGRATIONS, run, user_version};
+use memry_core::storage::migrations::{DATA_MIGRATIONS, latest_version, run, user_version};
 use rusqlite::Connection;
 
 fn scratch() -> tempfile::TempDir {
@@ -107,7 +107,10 @@ fn a_version_19_database_gains_the_lock_tables_and_keeps_its_rows() {
     drop(Vault::open("v".to_owned(), dir.path().display().to_string()).expect("open"));
 
     let conn = Connection::open(&path).expect("a reader");
-    assert_eq!(user_version(&conn).expect("version"), 20);
+    assert_eq!(
+        user_version(&conn).expect("version"),
+        latest_version(DATA_MIGRATIONS)
+    );
     let kept: (String, String) = conn
         .query_row(
             "SELECT (SELECT title FROM notes WHERE id = 'n1'),

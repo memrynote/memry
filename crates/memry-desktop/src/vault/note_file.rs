@@ -13,9 +13,13 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use memry_core::api::note_files::NoteFiles;
 use memry_core::markdown::frontmatter::{
     FrontmatterSplit, ParsedMarkdownNote, YamlError, YamlMap, parse_markdown_note,
     serialize_parsed_markdown_note, split_frontmatter_block, write_markdown_note,
+};
+use memry_core::markdown::shared::markdown_class::{
+    MarkdownClassThresholds, classify_markdown_content, classify_markdown_stat,
 };
 
 use super::fs_atomic::{self, WriteError};
@@ -70,6 +74,38 @@ impl NoteFile {
 
     pub fn parse(&self) -> Result<ParsedMarkdownNote, YamlError> {
         parse_markdown_note(&self.raw)
+    }
+}
+
+/// Whether `raw`, a note file's whole text, is large-file class: the app shows it in the
+/// large-file viewer, and the editor opens its document read-only. The size settles it before
+/// the blocks are measured, as the note's view does (`notes::read`).
+pub fn is_large_text(raw: &str) -> bool {
+    let thresholds = MarkdownClassThresholds::default();
+    classify_markdown_stat(raw.len(), thresholds).is_some()
+        || classify_markdown_content(raw, thresholds)
+            .large_file
+            .is_some()
+}
+
+/// Whether a note file of `bytes` is large-file class by its size alone.
+pub fn is_large_size(bytes: u64) -> bool {
+    usize::try_from(bytes).map_or(true, |bytes| {
+        classify_markdown_stat(bytes, MarkdownClassThresholds::default()).is_some()
+    })
+}
+
+/// Records the class a read or write of `note_id`'s file just measured, which the editor opens
+/// the note by ([`NoteFiles::record_large_file`]). Every code that reads or writes a note file
+/// records it. A failure is logged, and the file's next read records the class again.
+pub fn record_large_file(files: &NoteFiles, note_id: &str, large: bool) {
+    if let Err(error) = files.record_large_file(note_id, large) {
+        tracing::error!(
+            scope = "note_file",
+            note_id,
+            large,
+            "the size class of a note's file was not recorded: {error}"
+        );
     }
 }
 

@@ -220,3 +220,23 @@ fn a_file_with_mixed_line_ends_is_not_rewritten_until_its_body_changes() {
     assert_wrote(&mut f, &outcome, "n.md");
     assert_eq!(f.versions(&id), vec![text.to_owned()]);
 }
+
+/// A body grown past the large-file class (typed, merged) is written, and the note becomes a
+/// large file the editor takes no edit of (#3531 14c-2); written small again, it is a note.
+#[test]
+fn a_body_written_past_the_class_makes_the_note_a_large_file_and_back() {
+    use memry_core::markdown::shared::markdown_class::NOTE_MAX_BLOCK_BYTES;
+    let mut f = fixture();
+    let id = f.adopt("n.md", "first words\n");
+    let large = |f: &Fixture| f.vault.note_files().is_large_file(&id).unwrap();
+
+    f.edit_in_app(&id, &"x".repeat(NOTE_MAX_BLOCK_BYTES + 1));
+    let outcome = f.run(&id);
+    assert_wrote(&mut f, &outcome, "n.md");
+    assert!(large(&f));
+
+    f.edit_in_app(&id, "small again");
+    let outcome = f.run(&id);
+    assert_wrote(&mut f, &outcome, "n.md");
+    assert!(!large(&f));
+}
