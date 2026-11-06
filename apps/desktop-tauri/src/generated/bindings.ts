@@ -83,6 +83,11 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**
+	 *  Renames the file a block's `url` names in the note's attachments folder to `new_name`, keeping
+	 *  its prefix and extension, and answers the block's new `url` and `name`.
+	 */
+	notesAttachmentRename: (noteId: string, url: string, newName: string) => __TAURI_INVOKE<RenamedAttachment>("notes_attachment_rename", { noteId, url, newName }),
 	/**  Cancels a chunked upload; its part file is deleted. */
 	notesUploadAttachmentAbort: (id: string) => __TAURI_INVOKE<null>("notes_upload_attachment_abort", { id }),
 	/**
@@ -1751,6 +1756,16 @@ export type RenameTagView = {
 	failedNoteIds: string[],
 	/**  The new name cannot be an inline `#tag`, so the bodies keep the old one. */
 	bodySkipped: boolean,
+};
+
+/**  `AttachmentRenameResult` of `@memry/rpc/notes`. */
+export type RenamedAttachment = {
+	/**  The new name on disk, `k3f9x2-invoice.pdf`. */
+	storedFilename: string,
+	/**  The block's new `url`, relative to the note's file. */
+	url: string,
+	/**  The block's new `name`: what was typed, with the extension when it was left off. */
+	name: string,
 };
 
 /**  `tags:reorder`'s payload. */
