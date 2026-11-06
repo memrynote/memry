@@ -6,6 +6,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use memry_desktop::editor::{EditorHost, HostEvent};
+use memry_desktop::large_file::LargeFiles;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::launch_timeline::LaunchPhase;
 use memry_desktop::locale::LocaleService;
@@ -174,6 +175,13 @@ fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
     app.manage(host);
 }
 
+/// The large-file viewer's sessions, every one closed with the vault (Step 14g).
+fn register_large_files(app: &AppHandle<Wry>, session: &Session) {
+    let files = LargeFiles::new();
+    files.register(session);
+    app.manage(files);
+}
+
 /// `flush-writebacks`: no edit scheduled for a note's file waits out the quit.
 /// `flush-activity-log`: the buffered activity entries reach the file.
 fn register_flushes(app: &AppHandle<Wry>, tier: &Arc<VaultTier>) {
@@ -264,6 +272,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     register_settings_hook(app, &session);
     register_vault_watcher(app, &session);
     register_editor_host(app, &session);
+    register_large_files(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's
     // listeners; the renderer reads `status()` once after it subscribes.
     forward_events(app.clone(), session.subscribe());

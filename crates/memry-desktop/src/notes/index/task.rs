@@ -121,8 +121,9 @@ enum Walk {
 struct Owed {
     queue: BTreeSet<String>,
     scan: bool,
-    /// The core search reindex (links, body tags, full text).
-    links: bool,
+    /// The core search reindex (links, body tags, full text), with the relation values written
+    /// since the last announce, which go out with the links it changes.
+    links: Option<LinkChanges>,
     /// A pass, for the property rows' types alone.
     retype: bool,
     walk: Walk,
@@ -166,7 +167,7 @@ impl Owed {
 
     /// When the owed work is due; `None` while nothing is owed or the walk has not ended.
     fn next(&self) -> Option<Instant> {
-        let owed = self.scan || self.links || self.retype || !self.queue.is_empty();
+        let owed = self.scan || self.links.is_some() || self.retype || !self.queue.is_empty();
         (self.walked() && owed).then(|| self.due.unwrap_or_else(Instant::now))
     }
 
@@ -182,12 +183,12 @@ impl Owed {
                 self.queue.extend(ids);
                 self.scan |= scan;
             }
-            Ok(pass) if pass.unread.is_empty() && !self.links => self.failures = 0,
+            Ok(pass) if pass.unread.is_empty() && self.links.is_none() => self.failures = 0,
             Ok(pass) => {
                 tracing::warn!(
                     scope = "note_index",
                     unread = pass.unread.len(),
-                    links_owed = self.links,
+                    links_owed = self.links.is_some(),
                     "the pass did not finish: retrying"
                 );
                 self.retry(pass.unread.iter().cloned().collect());
@@ -256,7 +257,7 @@ impl Indexer {
         // Owed at every open: a pass that wrote rows may have ended before its search reindex.
         // The open's report too: a watcher that failed before any walk still refreshes the list.
         let mut owed = Owed {
-            links: true,
+            links: Some(LinkChanges::default()),
             report: true,
             ..Owed::default()
         };
@@ -403,9 +404,9 @@ impl Indexer {
         if !owed.walked() {
             return Ok(false);
         }
-        owed.links = true;
         owed.arm();
-        let measured = self.measure_now(&note_id);
+        let refs = owed.links.get_or_insert_default();
+        let measured = self.measure_now(&note_id, refs);
         if !matches!(measured, Ok(true)) {
             owed.queue.insert(note_id);
         }

@@ -9,9 +9,10 @@
  * ceiling.
  */
 
+import { Channel } from '@tauri-apps/api/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createLogger } from '@/lib/logger'
-import type { LargeFileIndexEvent } from '@memry/contracts/notes-api'
+import { commands, type LargeFileEvent } from '../../../generated/bindings'
 
 const log = createLogger('LargeFileSession')
 
@@ -20,7 +21,7 @@ const log = createLogger('LargeFileSession')
  * a few of those.
  *
  * A ceiling, not the page size: the main process ends a page early once it has
- * filled `LARGE_FILE_PAGE_BYTES` (`main/vault/large-file-index.ts`), so a file
+ * filled `PAGE_BYTES` (`memry-desktop/src/large_file/index.rs`), so a file
  * of 18 KB lines pages ~15 lines at a time and an ordinary log pages 200. Page
  * identity therefore cannot be `line / LARGE_FILE_PAGE_LINES` — pages are kept
  * as a sorted, non-overlapping run and looked up by the line they cover.
@@ -106,17 +107,17 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
 
   useEffect(() => {
     let cancelled = false
-    // Events can arrive before `largeFileOpen` resolves — a small file can be
-    // scanned faster than the open round trip completes — and the session id
-    // only exists once it does. Hold them rather than drop them.
-    const buffered: LargeFileIndexEvent[] = []
+    // Events can arrive before the open resolves — a small file can be scanned
+    // faster than the open round trip completes — and the session id only exists
+    // once it does. Hold them rather than drop them.
+    const buffered: LargeFileEvent[] = []
 
     pagesRef.current = []
     inFlightRef.current = null
     rangeRef.current = null
     sessionIdRef.current = null
 
-    const apply = (event: LargeFileIndexEvent): void => {
+    const apply = (event: LargeFileEvent): void => {
       if (event.sessionId !== sessionIdRef.current) return
       if (event.status === 'scanning') {
         setState({
@@ -144,7 +145,9 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
       setState({ status: 'error' })
     }
 
-    const unsubscribe = window.api.onLargeFileIndex((event) => {
+    // This open's own channel: the scan reports to it alone, and the main
+    // process lets it go when the session closes.
+    const onEvent = new Channel<LargeFileEvent>((event) => {
       if (cancelled) return
       if (sessionIdRef.current === null) {
         buffered.push(event)
@@ -155,10 +158,10 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
 
     void (async () => {
       try {
-        const opened = await window.api.notes.largeFileOpen(noteId)
+        const opened = await commands.notesLargeFileOpen(noteId, onEvent)
         if (cancelled) {
           if (opened.status === 'indexing' || opened.status === 'ready') {
-            void window.api.notes.largeFileClose(opened.sessionId)
+            void commands.notesLargeFileClose(opened.sessionId)
           }
           return
         }
@@ -191,13 +194,12 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
 
     return () => {
       cancelled = true
-      unsubscribe()
       const openSessionId = sessionIdRef.current
       sessionIdRef.current = null
       // Cleared here rather than at the top of the effect: a session id that
       // outlives its session would have the search hook query a closed one.
       setSessionId(null)
-      if (openSessionId) void window.api.notes.largeFileClose(openSessionId)
+      if (openSessionId) void commands.notesLargeFileClose(openSessionId)
     }
     // `noteId` is in the deps for correctness, but the viewer keys this hook by
     // it, so in practice only `generation` (a reopen) re-runs the effect.
@@ -232,8 +234,8 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
 
     const requested = cursor
     inFlightRef.current = requested
-    void window.api.notes
-      .largeFileReadLines({
+    void commands
+      .notesLargeFileReadLines({
         sessionId: activeSessionId,
         startLine: requested,
         count: LARGE_FILE_PAGE_LINES

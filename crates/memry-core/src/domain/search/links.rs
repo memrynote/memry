@@ -14,7 +14,9 @@
 //! a changed title, alias or path could move.
 //!
 //! A pass reports what it changed ([`LinkChanges`]): desktop tells the renderer once the pass
-//! committed, so a links panel refetches what the pass wrote rather than what it replaced.
+//! committed, so a links panel refetches what the pass wrote rather than what it replaced. The
+//! relation values the note index writes report theirs the same way
+//! ([`crate::domain::tag_objects::linked_here::relation_changes`]).
 
 use std::collections::BTreeSet;
 
@@ -29,7 +31,8 @@ use crate::domain::wiki_target::{self, WikiNames};
 use super::failed;
 
 /// The links one search reindex changed (`NoteLinksChangedEvent`): the notes and days whose
-/// `note_links` rows changed, and every note or day that gained or lost a link to it.
+/// `note_links` rows changed, and every note or day that gained or lost a link to it. A note
+/// whose relation values gained or lost a note is a source too, that note a target.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LinkChanges {
     pub sources: BTreeSet<String>,
@@ -39,6 +42,12 @@ pub struct LinkChanges {
 impl LinkChanges {
     pub fn is_empty(&self) -> bool {
         self.sources.is_empty() && self.targets.is_empty()
+    }
+
+    /// Joins `other`'s changes into these.
+    pub fn extend(&mut self, other: LinkChanges) {
+        self.sources.extend(other.sources);
+        self.targets.extend(other.targets);
     }
 
     /// `id`'s rows went from `before` to `after` ([`rows`]). A row is a spelling and the id it

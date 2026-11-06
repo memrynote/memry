@@ -91,6 +91,7 @@ impl CoreError for EditorHostError {
             Self::Editor(EditorError::Unreadable { .. }) => {
                 (FailureKind::Crdt, "document_unreadable")
             }
+            Self::Editor(EditorError::Purged { .. }) => (FailureKind::Crdt, "document_purged"),
             Self::Editor(EditorError::Crdt(error)) => error.kind_and_code(),
         }
     }

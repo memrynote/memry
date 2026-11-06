@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { LinkedHereGroup } from '@memry/contracts/tag-objects-api'
 import { tagsService } from '@/services/tags-service'
-import { onNoteUpdated, onTagsChanged } from '@/services/notes-service'
+import { onNoteLinksChanged, onNoteUpdated, onTagsChanged } from '@/services/notes-service'
 import { onTaskUpdated } from '@/services/tasks-service'
 
 export const linkedHereKey = (noteId: string, limit: number) =>
@@ -28,7 +28,16 @@ export function useLinkedHere(
         void queryClient.invalidateQueries({ queryKey: ['tags', 'linked-here', noteId] })
       }, INVALIDATE_DELAY_MS)
     }
-    const offs = [onNoteUpdated(invalidate), onTagsChanged(invalidate), onTaskUpdated(invalidate)]
+    const offs = [
+      onNoteUpdated(invalidate),
+      onTagsChanged(invalidate),
+      onTaskUpdated(invalidate),
+      // A note's update comes before the index pass that writes its links and relation values;
+      // this comes once they are committed.
+      onNoteLinksChanged(({ targetIds }) => {
+        if (targetIds.includes(noteId)) invalidate()
+      })
+    ]
     return () => {
       if (timer) clearTimeout(timer)
       offs.forEach((off) => off())

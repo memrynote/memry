@@ -31,6 +31,8 @@ use crate::domain::note_properties;
 use crate::domain::notes::failed;
 use crate::domain::notes::journal_day;
 use crate::domain::property_values::IndexedProperty;
+use crate::domain::search::LinkChanges;
+use crate::domain::tag_objects::linked_here;
 use crate::domain::tags;
 use crate::markdown::frontmatter::js::{iso_string, js_trim, number_to_string};
 use crate::markdown::frontmatter::{YamlMap, YamlValue, gray_matter_data, split_frontmatter_block};
@@ -214,13 +216,14 @@ fn stringify_truthy(value: &YamlValue) -> Option<String> {
     }
 }
 
-/// Stores each row, in one transaction. Returns the rows written. Measured before, so the
-/// index writer is held only for the inserts.
+/// Stores each row, in one transaction. Returns what the rows change in Linked here
+/// ([`linked_here::relation_changes`]). Measured before, so the index writer is held only for
+/// the inserts.
 pub fn write(
     index: &Connection,
     rows: &[NoteStatsRow],
     now_ms: i64,
-) -> Result<usize, StorageError> {
+) -> Result<LinkChanges, StorageError> {
     let transaction = index.unchecked_transaction().map_err(failed)?;
     for row in rows {
         let stats = &row.stats;
@@ -255,9 +258,10 @@ pub fn write(
         .iter()
         .map(|row| (row.note_id.as_str(), row.properties.as_slice()))
         .collect();
+    let changes = linked_here::relation_changes(&transaction, &properties)?;
     note_properties::replace(&transaction, &properties)?;
     transaction.commit().map_err(failed)?;
-    Ok(rows.len())
+    Ok(changes)
 }
 
 /// Drops the rows of notes that have no markdown file row any more: a note deleted, or its

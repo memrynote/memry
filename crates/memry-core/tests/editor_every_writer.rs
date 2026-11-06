@@ -5,7 +5,11 @@
 
 #![cfg(feature = "markdown")]
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
+use std::time::Duration;
+
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
 
 use memry_core::api::editor::{EditorError, Notice, Origin};
 use memry_core::api::errors::StorageError;
@@ -16,6 +20,7 @@ use memry_core::markdown::convert::api::Converter;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
+use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate};
 use memry_core::sync::pull::{PullLoop, RecordCipher};
 use serde_json::json;
 
@@ -187,6 +192,14 @@ fn a_write_that_rolls_back_reaches_no_window() {
     assert_eq!(side.text(), "");
 }
 
+fn http(transport: Arc<FakeTransport>) -> Arc<HttpClient> {
+    Arc::new(HttpClient::new(
+        transport,
+        "https://sync.example",
+        ClientIdentity::new("desktop", "1.2.3").expect("an identity"),
+    ))
+}
+
 /// A delete that opens no payload: the cipher is never asked (§5.12).
 struct NeverOpens;
 
@@ -215,13 +228,8 @@ async fn pull_the_delete(f: &Fixture, day: &str, typed: bool) {
         response(200, &changes.to_string()),
         response(200, &json!({ "items": items }).to_string()),
     ]);
-    let http = HttpClient::new(
-        transport,
-        "https://sync.example",
-        ClientIdentity::new("desktop", "1.2.3").expect("an identity"),
-    );
     PullLoop::new(
-        Arc::new(http),
+        http(transport),
         f.vault.db_handle(),
         Declaration::subscribed(),
         Arc::new(NeverOpens),
@@ -248,12 +256,32 @@ async fn a_journal_day_deleted_and_written_again_while_open_hands_the_windows_th
         "the windows drop the deleted document"
     );
     assert_eq!(write_day(&f, "new day", "blk2"), day, "the same id");
+    assert_eq!(
+        *heard.lock().unwrap(),
+        vec![Heard::Purged],
+        "no update of the new day reaches windows that hold the deleted one"
+    );
+    let (rows, queued) = (f.local_blobs(&day).len(), f.queued(&day));
+    assert!(
+        matches!(
+            f.editor.apply_update(&day, &main.full_state(), "main"),
+            Err(EditorError::Purged { .. })
+        ),
+        "the window's copy of the deleted day is refused until it reopens"
+    );
+    assert_eq!((f.local_blobs(&day).len(), f.queued(&day)), (rows, queued));
     let reopened = Replica::from_state(2, &f.editor.open(&day, "main").expect("reopen").state);
     assert!(reopened.text().contains("new day"));
     assert!(
         !reopened.text().contains("old day"),
         "the purged document is gone: {}",
         reopened.text()
+    );
+    assert!(
+        f.editor
+            .apply_update(&day, &reopened.type_text(" again"), "main")
+            .is_ok(),
+        "a reopened window edits again"
     );
 }
 
@@ -281,4 +309,111 @@ async fn a_day_whose_log_did_not_replay_opens_once_a_delete_purged_it_and_it_was
 
     let reopened = Replica::from_state(1, &f.editor.open(&day, "main").expect("reopen").state);
     assert!(reopened.text().contains("new day"));
+}
+
+/// The server's body, opened as stored: the envelope is chapter 04's concern.
+struct PassThrough;
+
+impl CrdtCipher for PassThrough {
+    fn open(&self, update: &PackedUpdate<'_>) -> Result<Vec<u8>, EnvelopeError> {
+        Ok(update.packed.to_vec())
+    }
+}
+
+#[tokio::test]
+async fn a_pulled_baseline_snapshot_reaches_the_open_document_as_remote() {
+    let f = fixture();
+    let note = f.note();
+    let main = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
+    let heard = listen(&f, &note);
+    let peer = Replica::new(9);
+    peer.type_text("a peer's snapshot");
+    let snapshot = json!({
+        "snapshot": BASE64.encode(peer.full_state()), "sequenceNum": 3,
+        "signerDeviceId": "device-b", "revision": "r1",
+    });
+    let transport = FakeTransport::new(vec![
+        response(200, &snapshot.to_string()),
+        response(200, &json!({ "updates": [], "hasMore": false }).to_string()),
+    ]);
+    let pull = BodyPull::new(
+        http(transport),
+        f.vault.db_handle(),
+        Declaration::subscribed(),
+        Arc::new(PassThrough),
+    );
+
+    assert_eq!(
+        pull.pull_document(&note).await.expect("the pull").baselines,
+        1
+    );
+
+    let (update, origin) = one_update(&heard);
+    assert_eq!(origin, Origin::Remote);
+    main.apply(&update);
+    assert!(main.text().contains("a peer's snapshot"));
+}
+
+#[test]
+fn a_committed_row_the_open_document_cannot_take_unloads_it() {
+    let f = fixture();
+    let note = f.note();
+    f.editor.open(&note, "main").expect("open");
+
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            update_log::append_server_update(conn, &note, 1, &[0xff; 4], 1).map_err(|error| {
+                StorageError::Failed {
+                    what: error.to_string(),
+                }
+            })
+        })
+        .expect("bytes no build decodes");
+
+    assert!(
+        matches!(
+            f.editor.open(&note, "side"),
+            Err(EditorError::Unreadable { .. })
+        ),
+        "the next opener replays the committed log, not the copy that fell behind it"
+    );
+}
+
+#[test]
+fn a_window_edit_that_waited_on_a_purge_is_refused_and_writes_nothing() {
+    let f = fixture();
+    let day = write_day(&f, "old day", "blk1");
+    let main = Replica::from_state(1, &f.editor.open(&day, "main").expect("open").state);
+    main.type_text(" typed");
+    let queued = f.queued(&day);
+    let (holding, held) = mpsc::channel();
+    let (db, id) = (f.vault.db_handle(), day.clone());
+    let purge = std::thread::spawn(move || {
+        db.call_blocking(|conn| {
+            let tx = conn.unchecked_transaction().expect("begin");
+            update_log::purge_in(&tx, &id).expect("purge");
+            tx.commit().expect("commit");
+            holding.send(()).expect("signal");
+            // The writer stays held while the window's edit waits for it, so
+            // the edit gets it before the purge's observer fences the holders.
+            std::thread::sleep(Duration::from_millis(300));
+            Ok::<_, StorageError>(())
+        })
+        .expect("the purge");
+    });
+    held.recv().expect("the purge holds the writer");
+
+    let refused = f.editor.apply_update(&day, &main.full_state(), "main");
+    purge.join().expect("the purge thread");
+
+    assert!(
+        matches!(refused, Err(EditorError::Purged { .. })),
+        "{refused:?}"
+    );
+    assert!(
+        f.local_blobs(&day).is_empty(),
+        "the deleted body is not stored"
+    );
+    assert_eq!(f.queued(&day), queued, "nor queued for the other devices");
 }

@@ -33,7 +33,7 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 
-use super::body_writes::{self, Wrote};
+use super::body_writes::{self, LogRow, Wrote};
 use super::errors::CrdtError;
 
 /// The prefix that separates the local sequence space from the server's.
@@ -145,7 +145,7 @@ pub fn append_server_update(
         ],
     )
     .map_err(failed("append a server update"))?;
-    body_writes::noted(doc_id, Wrote::Server);
+    body_writes::noted(doc_id, Wrote::Row(LogRow::Server(sequence_num)));
     Ok(())
 }
 
@@ -197,7 +197,7 @@ pub fn append_local_update_in(
         params![row_id, next, update_blob, created_at],
     )
     .map_err(failed("append a local update"))?;
-    body_writes::noted(doc_id, Wrote::Local);
+    body_writes::noted(doc_id, Wrote::Row(LogRow::Local(next)));
     Ok(next)
 }
 
@@ -303,7 +303,7 @@ pub fn put_server_snapshot(
         ],
     )
     .map_err(failed("store a server snapshot"))?;
-    body_writes::noted(doc_id, Wrote::Server);
+    body_writes::noted(doc_id, Wrote::Row(LogRow::ServerSnapshot));
     Ok(())
 }
 
