@@ -13,6 +13,12 @@
 //! - **Rename** (`properties:rename`): the key goes, its file value comes back under the new
 //!   name at the end. Electron writes the index's copy of the value instead, which turns a YAML
 //!   date into a quoted string; this keeps the date.
+//! - **RenameField** (the vault-wide field rename, `{ [from]: null, [to]: value }` merged): the
+//!   file's value of `from` takes `to` in `from`'s place; the block edit writes the new key last,
+//!   as Electron's `editFrontmatterBlock` does. A note without `from` is left; one with
+//!   another key that folds to `to` (`toLowerCase`) is refused with
+//!   [`NotesError::PropertyExists`] and keeps both. Every key counts there, not only the user
+//!   properties: Electron's merge wrote the value over a `cover` the note had.
 
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml};
 use serde_json::{Map, Value};
@@ -29,6 +35,10 @@ pub enum PropertyEdit {
     },
     Merge(Map<String, Value>),
     Rename {
+        from: String,
+        to: String,
+    },
+    RenameField {
         from: String,
         to: String,
     },
@@ -84,6 +94,26 @@ pub fn edited(frontmatter: &YamlMap, edit: &PropertyEdit) -> Result<YamlMap, Not
             next.remove(from);
             next.insert(to.clone(), value);
             Ok(next)
+        }
+        PropertyEdit::RenameField { from, to } => {
+            let Some(value) = user_properties(frontmatter).get(from).cloned() else {
+                return Ok(next);
+            };
+            let target = to.to_lowercase();
+            let taken = next
+                .iter()
+                .any(|(name, _)| name != from.as_str() && name.to_lowercase() == target);
+            if taken || is_reserved_yaml(to, &value) {
+                return Err(NotesError::PropertyExists(to.clone()));
+            }
+            let mut renamed = YamlMap::new();
+            for (name, held) in next.iter() {
+                match name == from.as_str() {
+                    true => renamed.insert(to.clone(), value.clone()),
+                    false => renamed.insert(name.to_owned(), held.clone()),
+                }
+            }
+            Ok(renamed)
         }
     }
 }
@@ -200,6 +230,39 @@ mod tests {
         let patch = object(json!({ "z": "end", "missing": null }));
         let next = edited(&file, &PropertyEdit::Merge(patch)).unwrap();
         assert_eq!(keys(&next), ["a", "b", "c", "z"]);
+    }
+
+    #[test]
+    fn a_field_rename_takes_the_old_keys_place_and_leaves_a_note_holding_the_new_name() {
+        let file = map("tags: [t]\nRole: PM\nPhone: 2026-10-07\nEmail: e");
+        let rename = |file: &YamlMap, from: &str, to: &str| {
+            edited(
+                file,
+                &PropertyEdit::RenameField {
+                    from: from.into(),
+                    to: to.into(),
+                },
+            )
+        };
+        let next = rename(&file, "Phone", "Mobile").unwrap();
+        assert_eq!(keys(&next), ["tags", "Role", "Mobile", "Email"]);
+        assert!(matches!(next.get("Mobile"), Some(YamlValue::Date(_))));
+        let next = rename(&file, "Phone", "phone").unwrap();
+        assert_eq!(keys(&next), ["tags", "Role", "phone", "Email"]);
+        assert_eq!(rename(&file, "Fax", "Mobile").unwrap(), file);
+        for (yaml, to) in [
+            ("Phone: 1\nmobile: 2", "Mobile"),
+            ("Phone: 1\ncover: wash:sage", "Cover"),
+            ("Phone: 1", "tags"),
+        ] {
+            assert!(
+                matches!(
+                    rename(&map(yaml), "Phone", to),
+                    Err(NotesError::PropertyExists(_))
+                ),
+                "{yaml} to {to}"
+            );
+        }
     }
 
     #[test]

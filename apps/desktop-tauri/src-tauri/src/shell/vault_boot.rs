@@ -30,9 +30,9 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::commands::vault_index::{send_indexing_status, send_status};
 use crate::events::{
-    CrdtWriteBackFailedEvent, NoteLinksChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
-    VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
-    WriteBackFailureReason, broadcast,
+    CrdtWriteBackFailedEvent, NoteLinksChangedEvent, NoteTagsChangedEvent,
+    VaultActivityChangedEvent, VaultErrorEvent, VaultIndexProgressEvent, VaultIndexRecoveredEvent,
+    VaultListChangedEvent, WriteBackFailureReason, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -109,8 +109,8 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// (Step 13f) over it, whose row facts become the note events. The note index follows the
 /// tier's facts in the background of every open, broadcasts the progress of each open's pass,
 /// the vault status whenever its indexing changes, and the links each pass committed, and is
-/// managed for `vault_reindex`. A tag rename an earlier run did not finish is finished once each
-/// open's walk ends (Step 13j-4). The pre-sync template
+/// managed for `vault_reindex`. A tag rename or a field rename an earlier run did not finish is
+/// finished once each open's walk ends (Step 13j-4, 13j-3d). The pre-sync template
 /// files import as the vault opens (Step 13l), into its activity log. The note fold starts with
 /// every open and stops with every close (Step 14h).
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
@@ -151,6 +151,12 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     let fold = FoldService::new(notes.clone());
     fold.register(session);
     app.manage(fold);
+    let schemas_changed = app.clone();
+    memry_desktop::tags::schema::rename::register_resume(
+        &notes,
+        session,
+        Arc::new(move || broadcast(&schemas_changed, NoteTagsChangedEvent)),
+    );
     crate::shell::note_events::forward(app.clone(), tier.subscribe());
     crate::shell::journal_events::forward(app.clone(), tier.subscribe());
     app.manage(notes);

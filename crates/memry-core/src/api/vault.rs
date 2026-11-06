@@ -242,6 +242,16 @@ impl Vault {
             .read_blocking(crate::domain::tag_schema::preset_offer_dismissed)
     }
 
+    /// The field rename in progress ([`crate::domain::tag_schema::rename::recorded`], desktop
+    /// Step 13j); a read, so no identity. Not part of the FFI surface.
+    #[doc(hidden)]
+    pub fn field_rename_recorded(
+        &self,
+    ) -> Result<Option<crate::domain::tag_schema::rename::RecordedRename>, StorageError> {
+        self.db
+            .read_blocking(crate::domain::tag_schema::rename::recorded)
+    }
+
     /// The tag rename in progress ([`crate::domain::tag_rename::read`], desktop Step 13j); a
     /// read, so no identity. Not part of the FFI surface: the Rust desktop shell is its only
     /// caller.

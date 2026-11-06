@@ -1890,7 +1890,8 @@
         "confirm": "Hernoemen",
         "taken": "Deze tag heeft al {name}.",
         "done": "{from} hernoemd naar {to} in {count, plural, one {# item} other {# items}}.",
-        "skipped": "{from} hernoemd naar {to} in {count, plural, one {# item} other {# items}}. {locked, plural, =0 {} one {# vergrendelde notitie wordt voltooid zodra die is ontgrendeld.} other {# vergrendelde notities worden voltooid zodra ze zijn ontgrendeld.}} {existing, plural, =0 {} one {# notitie had {to} al en behoudt beide.} other {# notities hadden {to} al en behouden beide.}}"
+        "skipped": "{from} hernoemd naar {to} in {count, plural, one {# item} other {# items}}. {locked, plural, =0 {} one {# vergrendelde notitie wordt voltooid zodra die is ontgrendeld.} other {# vergrendelde notities worden voltooid zodra ze zijn ontgrendeld.}} {existing, plural, =0 {} one {# notitie had {to} al en behoudt beide.} other {# notities hadden {to} al en behouden beide.}}",
+        "kept": "{from} hernoemd naar {to} in {count, plural, one {# item} other {# items}}. {kept, plural, =0 {} one {# notitie is tijdens het hernoemen gewijzigd en houdt {from} tot de kluis weer wordt geopend.} other {# notities zijn tijdens het hernoemen gewijzigd en houden {from} tot de kluis weer wordt geopend.}} {existing, plural, =0 {} one {# notitie had {to} al en behoudt beide.} other {# notities hadden {to} al en behouden beide.}}"
       },
       "delete": {
         "button": "Tag verwijderen",

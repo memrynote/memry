@@ -196,6 +196,8 @@ mod seams_transport;
 mod settings_service;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
+#[path = "tag_field_rename.rs"]
+mod tag_field_rename;
 #[path = "tag_impact.rs"]
 mod tag_impact;
 #[path = "tag_objects.rs"]

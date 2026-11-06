@@ -1890,7 +1890,8 @@
         "confirm": "Palitan ang pangalan",
         "taken": "May {name} na ang tag na ito.",
         "done": "Napalitan ang pangalan ng {from} ng {to} sa {count, plural, one {# item} other {# item}}.",
-        "skipped": "Napalitan ang pangalan ng {from} ng {to} sa {count, plural, one {# item} other {# item}}. {locked, plural, =0 {} one {Matatapos ang # naka-lock na tala kapag na-unlock ito.} other {Matatapos ang # naka-lock na tala kapag na-unlock ang mga ito.}} {existing, plural, =0 {} one {# tala ang may {to} na at itinatago ang dalawa.} other {# tala ang may {to} na at itinatago ang dalawa.}}"
+        "skipped": "Napalitan ang pangalan ng {from} ng {to} sa {count, plural, one {# item} other {# item}}. {locked, plural, =0 {} one {Matatapos ang # naka-lock na tala kapag na-unlock ito.} other {Matatapos ang # naka-lock na tala kapag na-unlock ang mga ito.}} {existing, plural, =0 {} one {# tala ang may {to} na at itinatago ang dalawa.} other {# tala ang may {to} na at itinatago ang dalawa.}}",
+        "kept": "Napalitan ang pangalan ng {from} ng {to} sa {count, plural, one {# item} other {# item}}. {kept, plural, =0 {} one {Nagbago ang # tala habang pinapalitan ang pangalan at mananatili ang {from} hanggang mabuksan muli ang vault.} other {Nagbago ang # tala habang pinapalitan ang pangalan at mananatili ang {from} hanggang mabuksan muli ang vault.}} {existing, plural, =0 {} one {# tala ang may {to} na at itinatago ang dalawa.} other {# tala ang may {to} na at itinatago ang dalawa.}}"
       },
       "delete": {
         "button": "Tanggalin ang tag",

@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Această versiune nu poate încă schimba dosarul de jurnal, formatul datei sau dosarele excluse. Setarea salvată este păstrată.",
     "journalFormatIncomplete": "Acest format de dată nu poate numi fiecare zi, așa că nu a fost salvat. Include anul, luna și ziua.",
     "journalDaysNotRenamed": "Formatul datei nu a fost schimbat, deoarece unele zile din jurnal nu au putut fi redenumite după el ({count}). Poate că un fișier are deja noul nume al unei zile.",
-    "journalUnlisted": "Dosarul de jurnal nu a putut fi citit, așa că formatul datei nu a fost schimbat. Verifică dacă ai acces la el."
+    "journalUnlisted": "Dosarul de jurnal nu a putut fi citit, așa că formatul datei nu a fost schimbat. Verifică dacă ai acces la el.",
+    "settingsUnreadable": "Folderele nu pot fi mutate cât timp fișierul de setări al seifului (.memry/config.json) nu poate fi citit. Repară fișierul, apoi încearcă din nou."
   },
   "note": {
     "notFound": "Această notiță nu a putut fi găsită. Este posibil să fi fost ștearsă.",
@@ -385,6 +386,7 @@
     "cycle": "#{parent} își preia deja câmpurile de la această etichetă",
     "unreadableSchema": "O versiune mai nouă a Memry a modificat această etichetă. Actualizează Memry pentru a o edita",
     "relationTargetRequired": "Alege spre ce etichetă trimite această relație",
-    "renameRunning": "O altă redenumire de câmp încă se finalizează ({from} în {to}). Încearcă din nou când se termină."
+    "renameRunning": "O altă redenumire de câmp încă se finalizează ({from} în {to}). Încearcă din nou când se termină.",
+    "renameTaskUnreadable": "Redenumirea câmpului {from} în {to} nu poate continua: această versiune Memry nu poate citi aceste sarcini: {tasks}. Actualizează Memry, apoi încearcă din nou."
   }
 }

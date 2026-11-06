@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Denne version kan endnu ikke ændre dagbogsmappen, datoformatet eller udelukkede mapper. Din gemte indstilling bevares.",
     "journalFormatIncomplete": "Dette datoformat kan ikke navngive hver dag, så det blev ikke gemt. Medtag år, måned og dag.",
     "journalDaysNotRenamed": "Datoformatet blev ikke ændret, fordi nogle dagbogsdage ikke kunne omdøbes til det ({count}). En fil har måske allerede en dags nye navn.",
-    "journalUnlisted": "Dagbogsmappen kunne ikke læses, så datoformatet blev ikke ændret. Kontrollér, at du har adgang til den."
+    "journalUnlisted": "Dagbogsmappen kunne ikke læses, så datoformatet blev ikke ændret. Kontrollér, at du har adgang til den.",
+    "settingsUnreadable": "Mapper kan ikke flyttes, mens boksens indstillingsfil (.memry/config.json) ikke kan læses. Ret filen, og prøv igen."
   },
   "note": {
     "notFound": "Denne note kunne ikke findes. Den kan være blevet slettet.",
@@ -385,6 +386,7 @@
     "cycle": "#{parent} henter allerede sine felter fra dette tag",
     "unreadableSchema": "En nyere version af Memry har ændret dette tag. Opdatér Memry for at redigere det",
     "relationTargetRequired": "Vælg, hvilket tag denne relation peger på",
-    "renameRunning": "En anden omdøbning af felt er stadig ved at blive færdig ({from} til {to}). Prøv igen, når den er færdig."
+    "renameRunning": "En anden omdøbning af felt er stadig ved at blive færdig ({from} til {to}). Prøv igen, når den er færdig.",
+    "renameTaskUnreadable": "Omdøbningen af feltet {from} til {to} kan ikke fortsætte: denne version af Memry kan ikke læse disse opgaver: {tasks}. Opdater Memry, og prøv igen."
   }
 }
