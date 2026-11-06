@@ -484,8 +484,20 @@ const ported = {
 /** The note methods served from Rust; `window.api.notes` is typed without them. */
 export type PortedNoteMethod = keyof typeof ported
 
-export const notesService: NotesClientAPI = createWindowApiForwarder<
-  NotesClientAPI,
+/**
+ * The large-file viewer's calls: `commands.notesLargeFile*` serve them with a `Channel` per call
+ * (`hooks/use-large-file-session.ts`), so neither `window.api.notes` nor this service has them.
+ */
+export type PortedLargeFileMethod =
+  | 'largeFileOpen'
+  | 'largeFileReadLines'
+  | 'largeFileSearch'
+  | 'largeFileClose'
+
+type NotesServiceApi = Omit<NotesClientAPI, PortedLargeFileMethod>
+
+export const notesService: NotesServiceApi = createWindowApiForwarder<
+  NotesServiceApi,
   PortedNoteMethod
 >(() => window.api.notes, ported)
 

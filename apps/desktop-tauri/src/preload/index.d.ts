@@ -2,7 +2,11 @@ import type { GeneratedRpcApi } from '@memry/rpc'
 import type { MovesRecovered } from '../generated/bindings'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
-import type { PortedNoteEvent, PortedNoteMethod } from '../renderer/src/services/notes-service'
+import type {
+  PortedLargeFileMethod,
+  PortedNoteEvent,
+  PortedNoteMethod
+} from '../renderer/src/services/notes-service'
 import type { PortedTagEvent, PortedTagMethod } from '../renderer/src/services/tags-service'
 import type {
   PortedJournalEvent,
@@ -1946,15 +1950,30 @@ interface CallJournalServiceInstead {
 
 type PortedJournalEventMarkers = { readonly [K in PortedJournalEvent]: CallJournalServiceInstead }
 
+/**
+ * The large-file viewer's calls and progress events, served by `commands.notesLargeFile*` with a
+ * `Channel` per call (Step 14g), refused the same way.
+ */
+interface CallLargeFileCommandsInstead {
+  readonly 'use commands.notesLargeFile* from generated/bindings': never
+}
+
+type PortedLargeFileEvent = 'onLargeFileIndex' | 'onLargeFileSearchProgress'
+
+type PortedLargeFileEventMarkers = {
+  readonly [K in PortedLargeFileEvent]: CallLargeFileCommandsInstead
+}
+
 interface API
   extends
-    Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent | PortedTagEvent>,
+    Omit<GeneratedRpcApi, 'notes' | PortedNoteEvent | PortedTagEvent | PortedLargeFileEvent>,
     PortedNoteEventMarkers,
+    PortedLargeFileEventMarkers,
     PortedTagEventMarkers,
     PortedJournalEventMarkers {
-  notes: Omit<NotesClientAPI, PortedNoteMethod> & {
+  notes: Omit<NotesClientAPI, PortedNoteMethod | PortedLargeFileMethod> & {
     readonly [K in PortedNoteMethod]: CallNotesServiceInstead
-  }
+  } & { readonly [K in PortedLargeFileMethod]: CallLargeFileCommandsInstead }
   vault: VaultClientAPI
   properties: PropertiesClientAPI
   savedFilters: SavedFiltersClientAPI
