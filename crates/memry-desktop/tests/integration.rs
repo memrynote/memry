@@ -186,6 +186,8 @@ mod sync_host_clients;
 mod tag_field_rename;
 #[path = "tag_impact.rs"]
 mod tag_impact;
+#[path = "tag_objects.rs"]
+mod tag_objects;
 #[path = "tag_schema.rs"]
 mod tag_schema;
 #[path = "tags.rs"]

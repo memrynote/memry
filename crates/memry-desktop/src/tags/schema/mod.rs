@@ -8,11 +8,13 @@
 //! records). A schema edit writes the `tag_definition` record only, never a note file; a new
 //! field's definition and a preset's template are written through their own owners first.
 //! What a change would reach is [`impact`]'s. `rename-field`, the one command that writes note
-//! files and tasks, is [`rename`]'s.
+//! files and tasks, is [`rename`]'s. The object search reads the same resolved tags
+//! ([`objects`]).
 
 mod catalog;
 mod edit;
 pub mod impact;
+pub mod objects;
 mod presets;
 pub mod rename;
 pub mod view;
@@ -23,6 +25,7 @@ use std::sync::Arc;
 use memry_core::api::errors::{AuthError, StorageError};
 use memry_core::api::tag_hub::TagHub;
 use memry_core::api::tag_schemas::TagSchemas;
+use memry_core::api::tasks::Tasks;
 use memry_core::domain::tag_schema::{self, PropertyInfo, ResolvedTag};
 
 use crate::error::{CoreError, FailureKind};
@@ -67,6 +70,7 @@ pub struct Schemas {
     open: OpenVault,
     schemas: TagSchemas,
     hub: TagHub,
+    tasks: Arc<Tasks>,
     definitions: PropertyDefinitions,
     templates: Templates,
     /// The note writer a field rename goes through, which holds its lock.
@@ -85,6 +89,7 @@ impl Schemas {
         Ok(Self {
             schemas: open.vault.tag_schemas(store.clone())?,
             hub: open.vault.tag_hub(store.clone())?,
+            tasks: open.vault.tasks(store.clone())?,
             definitions: PropertyDefinitions::open(open, store.clone())?,
             templates: Templates::open(open, store)?,
             open: open.clone(),

@@ -5,12 +5,14 @@
 //! events the tier sends) and task, telling its [`TagsProgressEvent`]s as it goes. After an edit
 //! it sends what Electron sends: [`PropertyDefinitionChangedEvent`] per definition it created or
 //! renamed, [`TemplateCreatedEvent`] per template, then [`NoteTagsChangedEvent`] when a schema may
-//! have changed.
+//! have changed. The object search (`ipc/tag-object-handlers.ts`) reads the same resolved tags and
+//! writes nothing.
 
 use std::sync::Arc;
 
 use memry_desktop::locale::LocaleService;
 use memry_desktop::tags::schema::impact::{ImpactQuery, ImpactView};
+use memry_desktop::tags::schema::objects::{SearchObjectsInput, SearchObjectsView};
 use memry_desktop::tags::schema::view::{
     TagSchemaCommand, TagSchemaCommandResultView, TagSchemaSnapshotView,
 };
@@ -90,7 +92,7 @@ pub async fn tags_edit_schema(
     .await
 }
 
-/// What a schema change would reach, counted for its dialog. Read only.
+/// What a schema change would reach, counted for its dialog. It writes no record.
 #[tauri::command]
 #[specta::specta]
 pub async fn tags_preview_impact(
@@ -100,6 +102,22 @@ pub async fn tags_preview_impact(
     blocking("tags_preview_impact", move || {
         schemas(&app)?
             .preview_impact(query)
+            .map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
+/// The objects whose title matches the query, of one tag and the tags extending it or of every
+/// tag with fields.
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_search_objects(
+    app: AppHandle<Wry>,
+    input: SearchObjectsInput,
+) -> Result<SearchObjectsView, CommandError> {
+    blocking("tags_search_objects", move || {
+        schemas(&app)?
+            .search_objects(&input)
             .map_err(|error| CommandError::from_core(&error))
     })
     .await

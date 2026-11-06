@@ -11,7 +11,8 @@
 //! 5. each note and journal day the index lists as holding the key, through the property writer
 //!    ([`NotesService::rename_field_in_note`]: its turn, the app-edit seam with `Held`, the
 //!    record's properties and their baseline in the same lane);
-//! 6. each task holding a value under the key, in one task write ([`Tasks::rename_field`]).
+//! 6. each task holding a value under the key, in one task write ([`Tasks::rename_field`]); a
+//!    task whose payload does not read refuses the run before step 2.
 //!
 //! Every step finds what an earlier run did and leaves it, so a run stopped anywhere (a quit, a
 //! crash) is run again with `resuming` by the next open ([`register_resume`]) and comes to the
@@ -24,6 +25,7 @@
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, TryLockError};
 use std::time::{Duration, Instant};
 
+use memry_core::api::errors::StorageError;
 pub use memry_core::domain::tag_schema::rename::FieldRenameJob;
 use memry_core::domain::tag_schema::rename::RecordedRename;
 use memry_core::domain::tasks::FieldRenamed;
@@ -108,8 +110,9 @@ impl Schemas {
                 .plan_field_rename(&job.from, &job.to)
                 .map_err(|error| self.saved(error))?;
         }
+        let tasks = self.carriers(&job.from)?;
         self.schemas.begin_field_rename(&job)?;
-        self.run_job(&job, resuming, progress, stop)
+        self.run_job(&job, &tasks, resuming, progress, stop)
     }
 
     /// Finishes the rename an earlier run recorded (`resumeFieldRename`); `None` when there is
@@ -125,7 +128,9 @@ impl Schemas {
             return Ok(None);
         };
         tracing::info!(scope = SCOPE, "resuming a recorded field rename");
-        self.run_job(&job, true, &mut |_, _, _| {}, stop).map(Some)
+        let tasks = self.carriers(&job.from)?;
+        self.run_job(&job, &tasks, true, &mut |_, _, _| {}, stop)
+            .map(Some)
     }
 
     /// The recorded job; one that does not read is dropped, and logged.
@@ -141,6 +146,28 @@ impl Schemas {
         }
     }
 
+    /// The live tasks holding a value under `from`. A task whose payload does not read refuses
+    /// the run before it writes anything: whether it holds the field cannot be told.
+    fn carriers(&self, from: &str) -> Result<Vec<String>, SchemaError> {
+        let read = self.tasks.field_holders()?;
+        if !read.unreadable.is_empty() {
+            tracing::warn!(scope = SCOPE, tasks = ?read.unreadable, "tasks that do not read");
+            return Err(StorageError::Failed {
+                what: format!(
+                    "{} tasks could not be read, so the field rename did not run",
+                    read.unreadable.len()
+                ),
+            }
+            .into());
+        }
+        Ok(read
+            .holders
+            .into_iter()
+            .filter(|task| task.fields.iter().any(|name| name == from))
+            .map(|task| task.id)
+            .collect())
+    }
+
     fn running(&self, job: &FieldRenameJob) -> SchemaError {
         self.refused(
             "tag_field_rename_running",
@@ -153,6 +180,7 @@ impl Schemas {
     fn run_job(
         &self,
         job: &FieldRenameJob,
+        tasks: &[String],
         resuming: bool,
         progress: Progress<'_>,
         stop: &dyn Fn() -> bool,
@@ -172,14 +200,6 @@ impl Schemas {
             .open
             .search
             .notes_holding_properties(vec![from.to_owned()])?;
-        let tasks: Vec<String> = self
-            .open
-            .search
-            .task_field_holders()?
-            .into_iter()
-            .filter(|task| task.fields.iter().any(|name| name == from))
-            .map(|task| task.id)
-            .collect();
         let total = notes.len() + tasks.len();
         let (mut done, mut told) = (0, None::<Instant>);
         let mut tick = |progress: &mut dyn FnMut(&str, usize, usize)| {
@@ -212,10 +232,9 @@ impl Schemas {
                 InNote::Failed => {}
             }
         }
-        let writer = self.open.vault.tasks(self.notes.store.clone())?;
-        for id in &tasks {
+        for id in tasks {
             stopped()?;
-            match writer.rename_field(id, from, to)? {
+            match self.tasks.rename_field(id, from, to)? {
                 FieldRenamed::Renamed { .. } => view.tasks += 1,
                 FieldRenamed::Existing => view.skipped_existing += 1,
                 FieldRenamed::Unchanged => {}
@@ -273,7 +292,7 @@ fn checked(job: FieldRenameJob) -> Result<FieldRenameJob, SchemaError> {
     let (from, to) = (field_name(&job.from)?, field_name(&job.to)?);
     let run_id = job.run_id.encode_utf16().count();
     if from == to || !(1..=100).contains(&run_id) {
-        return Err(memry_core::api::errors::StorageError::Invalid {
+        return Err(StorageError::Invalid {
             what: "a field rename takes two different names and a run id of 1 to 100 characters"
                 .to_owned(),
         }

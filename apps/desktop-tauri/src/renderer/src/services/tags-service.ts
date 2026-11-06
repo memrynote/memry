@@ -23,6 +23,7 @@ import type {
   TagsProgressEvent
 } from '@memry/contracts/tag-schema-api'
 import type { RenameTagResponse } from '@memry/contracts/tags-api'
+import type { SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
 import { commands, events } from '../../../generated/bindings'
 import type { KeptNoteView, UnfinishedRenameView } from '../../../generated/bindings'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
@@ -151,6 +152,12 @@ const ported = {
 
   /** What a schema change would reach, counted for its dialog. */
   previewImpact: (query: ImpactQuery): Promise<ImpactResult> => commands.tagsPreviewImpact(query),
+  /** The objects whose title matches, for the `@` menu and the relation picker. */
+  searchObjects: (input: {
+    query: string
+    tag?: string
+    limit?: number
+  }): Promise<SearchObjectsResponse> => commands.tagsSearchObjects(input),
 
   /** One schema command; rejects with the refusal's message. A field rename tells its progress. */
   editSchema: (command: TagSchemaCommand): Promise<TagSchemaCommandResult> =>
@@ -216,8 +223,6 @@ export const tagsService: TagsService = {
   getFillStatus: () => window.api.tags.getFillStatus(),
 
   fillFields: (input) => window.api.tags.fillFields(input),
-
-  searchObjects: (input) => window.api.tags.searchObjects(input),
 
   getLinkedHere: (input) => window.api.tags.getLinkedHere(input)
 }

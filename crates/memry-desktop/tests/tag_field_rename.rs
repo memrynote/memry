@@ -344,6 +344,35 @@ fn a_rename_onto_a_field_the_tag_lists_is_refused_and_writes_nothing() {
     assert!(same.is_err(), "{same:?}");
 }
 
+/// A task whose payload does not read may hold the field or not: the rename does not start.
+#[test]
+fn a_task_that_does_not_read_refuses_the_rename_before_any_write() {
+    let vault = opened(&[("Ahmet.md", AHMET)]);
+    let task = task_with_phone(&vault, "444", None);
+    vault
+        .e
+        .core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute(
+                "UPDATE sync_items SET payload = '[1]' WHERE item_type = 'task' AND item_id = ?1",
+                [task],
+            )
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    let schema = schema_fields(&vault);
+    let refused = rename(&vault, "Phone", "Mobile");
+    assert!(
+        matches!(&refused, Err(SchemaError::Storage(_))),
+        "{refused:?}"
+    );
+    assert_eq!(vault.e.read("Ahmet.md"), AHMET);
+    assert_eq!(schema_fields(&vault), schema);
+    assert!(!vault.job());
+}
+
 #[test]
 fn a_note_still_kept_holds_the_job_until_the_rename_runs_again() {
     let vault = opened(&[("Ahmet.md", AHMET), ("Elif.md", ELIF)]);

@@ -43,9 +43,6 @@ use crate::storage::{Db, open_index};
 mod objects;
 #[cfg(feature = "markdown")]
 mod tags;
-mod task_fields;
-
-pub use task_fields::TaskFieldHolder;
 
 /// One search result.
 ///
