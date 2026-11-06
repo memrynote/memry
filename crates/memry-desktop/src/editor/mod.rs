@@ -92,7 +92,7 @@ impl CoreError for EditorHostError {
                 (FailureKind::Crdt, "document_unreadable")
             }
             Self::Editor(EditorError::Purged { .. }) => (FailureKind::Crdt, "document_purged"),
-            Self::Editor(EditorError::Locked { .. }) => (FailureKind::Invalid, "note_locked"),
+            Self::Editor(EditorError::Locked { .. }) => (FailureKind::Locked, "note_locked"),
             Self::Editor(EditorError::LargeFile { .. }) => {
                 (FailureKind::Invalid, "note_large_file")
             }

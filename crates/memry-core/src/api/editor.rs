@@ -143,8 +143,10 @@ pub enum EditorError {
     /// the app restarts; its text stays readable, and nothing was removed.
     #[error("the body of {note_id} cannot be replayed")]
     Unreadable { note_id: String },
-    /// The note is locked: the edit was refused before anything was written.
-    #[error("{note_id} is locked")]
+    /// The note is locked: the edit was refused before anything was written. The text is
+    /// Electron's `VAULT_LOCKED_NOTE_MESSAGE` (`packages/contracts/src/vault-locks-api.ts`):
+    /// agents relay it verbatim and the renderer shows it localized.
+    #[error("The owner made this note read-only.")]
     Locked { note_id: String },
     /// The note's file is large-file class: the edit was refused before
     /// anything was written.
