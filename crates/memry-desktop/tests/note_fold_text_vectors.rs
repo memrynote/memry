@@ -1,5 +1,5 @@
 //! The fold's text helpers reproduce `packages/contracts/test-vectors/note-fold-text.json`,
-//! which Electron's fold engine generates (`packages/contracts/scripts/vectors/note-fold-text.ts`):
+//! which Electron's fold engine generates (`apps/desktop/scripts/note-fold-oracle/`):
 //! the language a text reads as, its sentences, word and token counts and whether it folds,
 //! and every date and link pill as the text a reader sees, in each language tag the engine
 //! answers.

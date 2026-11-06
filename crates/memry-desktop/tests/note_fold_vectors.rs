@@ -1,5 +1,5 @@
 //! The local fold reproduces `packages/contracts/test-vectors/note-fold.json`, which the
-//! Electron fold engine generates (`packages/contracts/scripts/vectors/note-fold.ts`): the
+//! Electron fold engine generates (`apps/desktop/scripts/note-fold-oracle/`): the
 //! detected language, the text after inline tokens, sections, chunk hashes, skipped blocks,
 //! sentences and their Markdown, the Brief pick and the word counts of Full and Brief.
 //!
