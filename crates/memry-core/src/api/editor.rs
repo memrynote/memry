@@ -468,6 +468,13 @@ impl Editor {
     /// handed back in `repaired` for the listeners. It runs under the writer
     /// right after the replay, so its clock follows every committed update of
     /// this device. Nothing else authors through a resident document.
+    ///
+    /// A locked note is repaired too, as Electron repairs it
+    /// (`crdt-provider.ts:933-940`): block ids are not the owner's text. Electron
+    /// keeps its repair on the device (its update listener attaches after it);
+    /// this one is queued, on purpose (#3531 14e-2): two devices repairing apart
+    /// mint two ids for one block, and only the queued repair lets them settle on
+    /// one, which a peer takes as it takes any remote edit of a locked note.
     fn load(
         &self,
         conn: &Connection,

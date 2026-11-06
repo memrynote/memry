@@ -141,9 +141,10 @@ impl NotesService {
             "a moved note's relative refs were not re-pointed"
         );
         Some(match kept {
-            Kept::FrontmatterUnreadable | Kept::FrontmatterBroken | Kept::NotRepresentable => {
-                RefsKept::Unreadable
-            }
+            Kept::FrontmatterUnreadable
+            | Kept::FrontmatterBroken
+            | Kept::NotRepresentable
+            | Kept::Locked => RefsKept::Unreadable,
             Kept::NoRow
             | Kept::NotMarkdown
             | Kept::NoFile

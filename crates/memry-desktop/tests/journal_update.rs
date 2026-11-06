@@ -778,3 +778,33 @@ fn a_day_the_app_wrote_in_another_vault_is_not_its_own() {
         .unwrap();
     assert_eq!(e.versions(ID), [NEW_FILE]);
 }
+
+/// Electron `assertNoteWritable` on a day (Step 14e-2): the save is refused as `note_locked`,
+/// not as a day the app cannot write, and nothing changes.
+#[test]
+fn a_save_of_a_locked_day_is_refused_as_note_locked_and_changes_nothing() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    e.core()
+        .locks()
+        .set(memry_core::domain::vault_locks::TargetKind::Note, ID, true)
+        .unwrap();
+    let before = queued(&e).len();
+
+    let refused = notes
+        .update_day(
+            &open,
+            DayUpdate {
+                content: Some("Evening pages.".into()),
+                ..update(DAY)
+            },
+        )
+        .unwrap_err();
+
+    let failure = memry_desktop::error::map_core(&refused);
+    assert_eq!(failure.code, "note_locked");
+    assert_eq!(failure.message, "The owner made this note read-only.");
+    assert_eq!(e.read(DAY_FILE), NEW_FILE);
+    assert_eq!(queued(&e).len(), before);
+}

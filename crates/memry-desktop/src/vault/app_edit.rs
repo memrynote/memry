@@ -74,8 +74,9 @@
 //!   file read.
 //!
 //! A write that fails for another reason (a disk error) after the feed took the text leaves
-//! the document ahead of its file, which the next open's reconcile writes. Not here: the lock
-//! check (Step 14), and a rewritten journal day's own event (Step 13m).
+//! the document ahead of its file, which the next open's reconcile writes. A locked note (Step
+//! 14e) is [`Kept::Locked`] before anything is read, and again when the feed refuses it (a lock
+//! taken meanwhile), before the file is written. Not here: a rewritten journal day's own event.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -226,6 +227,8 @@ pub enum Kept {
     NotRepresentable,
     /// No live note or journal day by that id.
     NoBody,
+    /// The note, or a folder above its file, is locked (Electron `assertNoteWritable`).
+    Locked,
 }
 
 /// How an edit failed. Every failure but [`AppEditError::File`] after the feed left the file,
@@ -324,6 +327,10 @@ impl AppEdit {
         let Some(row) = lane.files().by_id(note_id).map_err(AppEditError::from)? else {
             return Ok(Edited::Kept(Kept::NoRow));
         };
+        let locked = self.vault.locks().is_note_locked(note_id, Some(&row.path));
+        if locked.map_err(AppEditError::from)? {
+            return Ok(Edited::Kept(Kept::Locked));
+        }
         if row.file_type != FileType::Markdown.as_str() {
             return Ok(Edited::Kept(Kept::NotMarkdown));
         }
@@ -408,11 +415,10 @@ impl AppEdit {
         }
         let takes = match body_moved {
             true => {
-                let fed = self.feed_text(note_id, &row.path, next, &edited.frontmatter, read_body);
-                let Some(takes) = fed else {
-                    return Ok(Edited::Kept(Kept::NoBody));
-                };
-                takes
+                match self.feed_text(note_id, &row.path, next, &edited.frontmatter, read_body) {
+                    Ok(takes) => takes,
+                    Err(kept) => return Ok(Edited::Kept(kept)),
+                }
             }
             // The document holds what the row names; the file is its text only if that is it.
             false => row_names_file,
@@ -523,7 +529,7 @@ impl AppEdit {
     }
 
     /// Feeds the new text's body over `read`, the body read: whether the document now holds
-    /// it, or `None` when there is no such note.
+    /// it, or why the file is kept (no such note, or a lock taken since the read).
     fn feed_text(
         &self,
         note_id: &str,
@@ -531,7 +537,7 @@ impl AppEdit {
         text: &str,
         frontmatter: &YamlValue,
         read: &str,
-    ) -> Option<bool> {
+    ) -> Result<bool, Kept> {
         let split = split_frontmatter_block(text);
         let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), split.body, path);
         let input = FeedInput {
@@ -550,8 +556,9 @@ impl AppEdit {
             false => self.feed.feed_app_edit(&self.converter, input, read),
         };
         match fed {
-            Ok(FeedOutcome::Fed | FeedOutcome::Unchanged) => Some(true),
-            Ok(FeedOutcome::NoNote) => None,
+            Ok(FeedOutcome::Fed | FeedOutcome::Unchanged) => Ok(true),
+            Ok(FeedOutcome::NoNote) => Err(Kept::NoBody),
+            Err(CrdtError::Locked { .. }) => Err(Kept::Locked),
             Ok(outcome) => {
                 tracing::warn!(
                     scope = SCOPE,
@@ -559,7 +566,7 @@ impl AppEdit {
                     outcome = ?outcome,
                     "an edited file's text did not reach its note; the watcher brings it in"
                 );
-                Some(false)
+                Ok(false)
             }
             Err(error) => {
                 tracing::error!(
@@ -568,7 +575,7 @@ impl AppEdit {
                     "an edited file's text did not reach its note; the watcher feeds it again: \
                      {error}"
                 );
-                Some(false)
+                Ok(false)
             }
         }
     }

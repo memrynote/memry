@@ -228,6 +228,8 @@ mod vault_config;
 mod vault_consumer;
 #[path = "vault_init.rs"]
 mod vault_init;
+#[path = "vault_locks_app_edit.rs"]
+mod vault_locks_app_edit;
 #[path = "vault_pairing.rs"]
 mod vault_pairing;
 #[path = "vault_paths.rs"]

@@ -210,7 +210,10 @@ impl NotesService {
             edit.run_then(turn, save, ChangeSource::App, text, landed, &mut between)
         })?;
         if let Edited::Kept(kept) = edited {
-            return Err(NotesError::DayTextUnwritable(kept_reason(&kept).to_owned()));
+            return Err(match kept {
+                Kept::Locked => NotesError::EditKept(kept),
+                kept => NotesError::DayTextUnwritable(kept_reason(&kept).to_owned()),
+            });
         }
         answer(open, journal, date)
     }
@@ -384,5 +387,6 @@ fn kept_reason(kept: &Kept) -> &'static str {
         Kept::FrontmatterUnreadable | Kept::FrontmatterBroken => {
             "the day's frontmatter does not parse"
         }
+        Kept::Locked => "the day is locked",
     }
 }

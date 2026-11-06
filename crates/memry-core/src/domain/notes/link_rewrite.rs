@@ -26,8 +26,9 @@
 //! ([`body_write`]), so the update is logged and queued for the other devices
 //! and a concurrent edit to the same paragraph survives the merge.
 //!
-//! The rename already committed, so a source that fails is reported on
-//! stderr and skipped: repairing nine links of ten beats failing a rename.
+//! A locked source is left as it is. The rename already committed, so a
+//! source that fails is reported on stderr and skipped: repairing nine links
+//! of ten beats failing a rename.
 //!
 //! **Desktop rewrites the text of a source's file instead** (`rewrite_file`, the body through
 //! [`rewrite_text`]), as `rewriteInboundWikiLinks` does: the vault file is the note there, and
@@ -211,6 +212,10 @@ fn rewrite_source(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), CrdtError> {
+    // A locked source keeps its links, as Electron's `landSourceRewrite` leaves it.
+    if body_write::is_locked(conn, id)? {
+        return Ok(());
+    }
     let plan = update_log::load_plan(conn, id)?;
     let may_link = plan.blobs().iter().any(|blob| {
         let text = String::from_utf8_lossy(blob).to_lowercase();

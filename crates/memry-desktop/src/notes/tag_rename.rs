@@ -416,9 +416,15 @@ impl NotesService {
                         ?kept,
                         "a tag rename left a note"
                     );
-                    match kept_is_retryable(&kept) {
-                        true => InNote::Again,
-                        false => InNote::Failed,
+                    match kept {
+                        // A locked note keeps the old tag (Electron `keepLockedNoteTags`): struck
+                        // off the plan, its record left.
+                        Kept::Locked => {
+                            hub.rename_in(id)?;
+                            InNote::Unchanged
+                        }
+                        kept if kept_is_retryable(&kept) => InNote::Again,
+                        _ => InNote::Failed,
                     }
                 }
             })

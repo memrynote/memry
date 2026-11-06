@@ -168,7 +168,8 @@ impl NotesService {
         for holder in holders {
             match self.retag_one(&edit, &hub, &holder, source, target) {
                 InNote::Written => retagged.written.push(holder.id),
-                InNote::Unchanged => {}
+                // A locked note keeps the tag, as Electron's `keepLockedNoteTags`.
+                InNote::Unchanged | InNote::Kept(Kept::Locked) => {}
                 outcome if outcome.again() => again.push(holder),
                 outcome => retagged.failed.push(kept_note(open, holder.id, &outcome)),
             }

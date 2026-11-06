@@ -331,3 +331,31 @@ fn a_rename_keeps_a_link_cards_display_attributes() {
     assert_eq!(attr("cover").as_deref(), Some("true"));
     assert_eq!(attr("preview").as_deref(), Some("true"));
 }
+
+/// Electron's `landSourceRewrite` leaves a locked source alone (Step 14e-2).
+#[cfg(feature = "markdown")]
+#[test]
+fn a_locked_source_keeps_its_links_through_a_rename_and_an_open_one_follows() {
+    use memry_core::domain::vault_locks::TargetKind;
+
+    let f = fixture("locked");
+    let plan = f.note("Plan", None);
+    let locked = f.linking(&[("Plan", "")]);
+    let open = f.linking(&[("Plan", "")]);
+    f.vault
+        .locks()
+        .set(TargetKind::Note, &locked, true)
+        .expect("lock");
+
+    f.writer
+        .rename(plan, "Roadmap".to_string())
+        .expect("rename");
+
+    assert_eq!(f.targets(&locked), ["Plan"]);
+    assert_eq!(
+        f.queued_body_updates(&locked),
+        0,
+        "nothing written or queued"
+    );
+    assert_eq!(f.targets(&open), ["Roadmap"]);
+}

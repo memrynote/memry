@@ -177,6 +177,8 @@ fn kept_message(kept: &Kept) -> &'static str {
             "the note holds content its markdown file cannot, so the edit was not made"
         }
         Kept::NotMarkdown => "only a markdown note can be edited",
+        // Electron's `VAULT_LOCKED_NOTE_MESSAGE`, as `CrdtError::Locked` says it.
+        Kept::Locked => "The owner made this note read-only.",
         _ => "the note's file is not there, so the edit was not made",
     }
 }
@@ -307,6 +309,7 @@ impl CoreError for NotesError {
                 (FailureKind::PropertyWrite, "note_edit_kept")
             }
             Self::EditKept(Kept::BodyNotPulled) => (FailureKind::Invalid, "note_body_not_pulled"),
+            Self::EditKept(Kept::Locked) => (FailureKind::Locked, "note_locked"),
             Self::EditKept(Kept::NotRepresentable) => {
                 (FailureKind::Invalid, "note_not_representable")
             }
@@ -394,6 +397,7 @@ mod tests {
             Kept::BodyNotPulled,
             Kept::NotRepresentable,
             Kept::NoBody,
+            Kept::Locked,
         ];
         for kept in all {
             let variant = format!("{kept:?}");
