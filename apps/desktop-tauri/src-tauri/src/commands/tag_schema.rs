@@ -5,14 +5,17 @@
 //! events the tier sends) and task, telling its [`TagsProgressEvent`]s as it goes. After an edit
 //! it sends what Electron sends: [`PropertyDefinitionChangedEvent`] per definition it created or
 //! renamed, [`TemplateCreatedEvent`] per template, then [`NoteTagsChangedEvent`] when a schema may
-//! have changed. The object search (`ipc/tag-object-handlers.ts`) reads the same resolved tags and
-//! writes nothing.
+//! have changed. The object search and Linked here (`ipc/tag-object-handlers.ts`) read the same
+//! resolved tags, typed by the definitions as stored (a pulled one is not settled into the file
+//! first), and write no record or vault file.
 
 use std::sync::Arc;
 
 use memry_desktop::locale::LocaleService;
 use memry_desktop::tags::schema::impact::{ImpactQuery, ImpactView};
-use memry_desktop::tags::schema::objects::{SearchObjectsInput, SearchObjectsView};
+use memry_desktop::tags::schema::objects::{
+    GetLinkedHereInput, LinkedHereView, SearchObjectsInput, SearchObjectsView,
+};
 use memry_desktop::tags::schema::view::{
     TagSchemaCommand, TagSchemaCommandResultView, TagSchemaSnapshotView,
 };
@@ -118,6 +121,21 @@ pub async fn tags_search_objects(
     blocking("tags_search_objects", move || {
         schemas(&app)?
             .search_objects(&input)
+            .map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
+/// What points at a note: relation fields, task fields and wiki links, grouped.
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_get_linked_here(
+    app: AppHandle<Wry>,
+    input: GetLinkedHereInput,
+) -> Result<LinkedHereView, CommandError> {
+    blocking("tags_get_linked_here", move || {
+        schemas(&app)?
+            .linked_here(&input)
             .map_err(|error| CommandError::from_core(&error))
     })
     .await

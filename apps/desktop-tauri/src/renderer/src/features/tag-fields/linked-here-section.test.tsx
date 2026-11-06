@@ -17,6 +17,7 @@ const api = window.api as unknown as {
   onNoteUpdated: Fn
   onTagsChanged: Fn
   onTaskUpdated: Fn
+  onLinksChanged: Fn
   onPropertyDefinitionChanged: Fn
 }
 
@@ -64,6 +65,7 @@ beforeEach(() => {
   api.onNoteUpdated = vi.fn().mockReturnValue(() => {})
   api.onTagsChanged = vi.fn().mockReturnValue(() => {})
   api.onTaskUpdated = vi.fn().mockReturnValue(() => {})
+  api.onLinksChanged = vi.fn().mockReturnValue(() => {})
   api.onPropertyDefinitionChanged = vi.fn().mockReturnValue(() => {})
   api.tags.getSchemaSnapshot = vi.fn().mockResolvedValue(snapshot)
 })
@@ -309,6 +311,25 @@ describe('LinkedHereSection', () => {
     expect(await screen.findByText('Note 9')).toBeInTheDocument()
     expect(screen.queryByText('Note 1')).not.toBeInTheDocument()
     expect(api.tags.getLinkedHere.mock.calls.length).toBeGreaterThan(before)
+  })
+
+  it('reloads once the index committed a link or relation to the note, not another', async () => {
+    mockGroups([{ kind: 'mentions', total: 1, items: [note(1)] }])
+    renderWithClient(<LinkedHereSection noteId="person-1" />)
+    expect(await screen.findByText('Note 1')).toBeInTheDocument()
+    await waitFor(() => expect(api.onLinksChanged).toHaveBeenCalled())
+    const emit = (targetIds: string[]): void =>
+      api.onLinksChanged.mock.calls.forEach(([cb]) =>
+        (cb as (event: unknown) => void)({ sourceIds: ['n9'], targetIds })
+      )
+
+    mockGroups([{ kind: 'mentions', total: 1, items: [note(9)] }])
+    act(() => emit(['someone-else']))
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(api.tags.getLinkedHere).not.toHaveBeenCalled()
+
+    act(() => emit(['person-1']))
+    expect(await screen.findByText('Note 9')).toBeInTheDocument()
   })
 
   it('unsubscribes from note, tag and task events when it unmounts', async () => {

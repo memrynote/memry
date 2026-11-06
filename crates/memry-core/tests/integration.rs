@@ -340,6 +340,8 @@ mod sync_realtime_run;
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
 mod tag_fold_vectors;
+#[path = "tag_objects.rs"]
+mod tag_objects;
 #[path = "tag_pins.rs"]
 mod tag_pins;
 #[path = "tag_reads.rs"]
