@@ -154,6 +154,7 @@ pub fn builder() -> Builder<Wry> {
             // tags
             crate::commands::tag_schema::tags_edit_schema,
             crate::commands::tag_schema::tags_get_schema_snapshot,
+            crate::commands::tag_schema::tags_search_objects,
             crate::commands::tags::tags_create_category,
             crate::commands::tags::tags_delete_category,
             crate::commands::tags::tags_get_all_with_counts,
