@@ -103,7 +103,7 @@ pub(crate) fn outbox(e: &Env, id: &str) -> Vec<String> {
         .unwrap()
 }
 
-fn try_day(notes: &NotesService, e: &Env, date: &str) -> Result<(), NotesError> {
+pub(crate) fn try_day(notes: &NotesService, e: &Env, date: &str) -> Result<(), NotesError> {
     let open = e.session.current().unwrap();
     let day = NewDay {
         date: date.to_owned(),
@@ -113,7 +113,7 @@ fn try_day(notes: &NotesService, e: &Env, date: &str) -> Result<(), NotesError> 
     notes.create_day(&open, day).map(drop)
 }
 
-fn make_day(notes: &NotesService, e: &Env, date: &str) {
+pub(crate) fn make_day(notes: &NotesService, e: &Env, date: &str) {
     try_day(notes, e, date).unwrap();
 }
 

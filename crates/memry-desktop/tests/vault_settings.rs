@@ -1,7 +1,8 @@
 //! The vault settings through `vault:get-config` and `vault:update-config`'s owner
 //! (`vault::config::settings`), on a real `config.json` of an open vault: Electron's
 //! `getConfig` and `updateConfig`. A date format change renames the day files first and keeps
-//! each day; the changes not ported yet (Step 13m-7b) are refused and leave the file as it was.
+//! each day (a folder change: `journal_change`); the change not ported yet (Step 13m-7b-3) is
+//! refused and leaves the file as it was.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -22,12 +23,13 @@ use memry_desktop::vault::config::settings::{
 };
 use memry_desktop::vault::config::{VaultConfig, VaultConfigPatch, config_path};
 use memry_desktop::vault::consumer::Applied;
+use memry_desktop::vault::journal_rename::ChangeStep;
 use serde_json::{Value, json};
 use vault_env::{Env, QUIET, env, indexed};
 
 /// An open vault, its journal days made by the app's identity, whose config is `config` and
 /// which holds `files`.
-fn opened(config: Value, files: &[(&str, &str)]) -> Env {
+pub(crate) fn opened(config: Value, files: &[(&str, &str)]) -> Env {
     opened_keeping(config, files).0
 }
 
@@ -52,7 +54,7 @@ pub(crate) fn opened_keeping(config: Value, files: &[(&str, &str)]) -> (Env, Arc
     (e, kept.expect("the store"))
 }
 
-fn update(
+pub(crate) fn update(
     e: &Env,
     patch: VaultConfigPatch,
     announce: impl FnOnce(&VaultConfig),
@@ -130,10 +132,10 @@ fn an_update_writes_the_fields_it_names_and_keeps_the_rest_of_the_file() {
     assert_eq!(file["defaultNoteFolder"], "inbox");
 }
 
-/// A change the tier cannot follow yet is refused whole, and the file is left as it was; the
-/// current value again (in any spelling that normalizes to it) is no change.
+/// A change the tier cannot follow yet (the exclude patterns) is refused whole, and the file is
+/// left as it was; the current value again (in any spelling that normalizes to it) is no change.
 #[test]
-fn a_change_of_the_journal_folder_or_the_excludes_is_refused() {
+fn a_change_of_the_excludes_is_refused() {
     let e = opened(
         json!({
             "journalFolder": "/diary/",
@@ -143,34 +145,18 @@ fn a_change_of_the_journal_folder_or_the_excludes_is_refused() {
         &[],
     );
     let before = fs::read(config_path(&e.vault)).unwrap();
-    let refused = [
-        (
-            "journalFolder",
-            VaultConfigPatch {
-                journal_folder: Some("Diary".to_owned()),
-                ..Default::default()
-            },
-        ),
-        (
-            "excludePatterns",
-            VaultConfigPatch {
-                exclude_patterns: Some(vec![]),
-                ..Default::default()
-            },
-        ),
-    ];
-    for (key, patch) in refused {
-        let patch = VaultConfigPatch {
-            journal_show_in_sidebar: Some(true),
-            journal_date_format: Some("DD-MM-YYYY".to_owned()),
-            ..patch
-        };
-        match update(&e, patch, |_| panic!("{key} announced")) {
-            Err(SettingsError::NotPorted(refused)) => assert_eq!(refused, key),
-            other => panic!("{key}: {other:?}"),
-        }
-        assert_eq!(fs::read(config_path(&e.vault)).unwrap(), before, "{key}");
+    let patch = VaultConfigPatch {
+        exclude_patterns: Some(vec![]),
+        journal_show_in_sidebar: Some(true),
+        journal_folder: Some("Diary".to_owned()),
+        journal_date_format: Some("DD-MM-YYYY".to_owned()),
+        ..Default::default()
+    };
+    match update(&e, patch, |_| panic!("announced")) {
+        Err(SettingsError::NotPorted(refused)) => assert_eq!(refused, "excludePatterns"),
+        other => panic!("{other:?}"),
     }
+    assert_eq!(fs::read(config_path(&e.vault)).unwrap(), before);
 
     let same = VaultConfigPatch {
         journal_folder: Some("diary/".to_owned()),
@@ -520,7 +506,10 @@ fn between_a_days_two_moves_its_file_keeps_the_saved_formats_name() {
         Some((&core, &e.tier)),
         format("YYYY-MM-DD dddd"),
         |_| {},
-        &mut || {
+        &mut |step| {
+            if step != ChangeStep::Between {
+                return;
+            }
             seen.push((
                 e.vault.join("journal/2025-01-02.md").exists(),
                 e.vault.join("journal/2025-01-02 Thursday.md").exists(),
@@ -560,8 +549,8 @@ fn a_day_made_during_a_format_change_takes_the_new_formats_name() {
             Some((&core, &e.tier)),
             format("YYYY-MM-DD dddd"),
             |_| {},
-            &mut || {
-                if maker.is_some() {
+            &mut |step| {
+                if maker.is_some() || step != ChangeStep::Between {
                     return;
                 }
                 let new_day = NewDay {
