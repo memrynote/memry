@@ -10,7 +10,8 @@
 //! 4. the body seeded from the file, the row's hashes, then the `Added` fact.
 //!
 //! Refused while the vault settings cannot be read (`vault_settings_unreadable`): they say where
-//! the day goes.
+//! the day goes. A create or a delete whose file a lock covers is refused before anything is
+//! written (`note_locked`, `folder_locked`; Electron's file guard on the day's path).
 //!
 //! A day that has a file already, by its row or at its path, is never written over: the create
 //! answers it as a read does. Where the file's text comes from:
@@ -53,6 +54,7 @@ use memry_core::markdown::shared::writing_tools::merge_writing_yaml;
 use serde_json::{Map, Value};
 
 use super::{JournalEntryView, SCOPE, day_path, entry, is_reserved_day_key, view_of};
+use crate::locks::Locks;
 use crate::notes::create::{Seed, remove_file, remove_row};
 use crate::notes::error::NotesError;
 use crate::notes::frontmatter::is_reserved_key;
@@ -156,6 +158,8 @@ impl NotesService {
                 rel
             }
         };
+        // Electron's file guard on the day's file: one in a locked folder is not written.
+        Locks::of(open).refuse_path(&rel)?;
         let mut properties = day.properties;
         properties
             .retain(|name, value| !is_reserved_day_key(name) && !is_reserved_key(name, value));
@@ -305,6 +309,15 @@ impl NotesService {
             Some(stamp) => lane.files().by_id(&stamp.id)?,
             None => None,
         };
+        // Electron's file guard on the day's file: a locked day, or one in a locked folder, keeps
+        // it, and so does a file there that no row names.
+        let rel = match &row {
+            Some(row) => Some(row.path.clone()),
+            None => day_path(&open.path, date).ok(),
+        };
+        if let Some(rel) = rel {
+            Locks::of(open).refuse_path(&rel)?;
+        }
         let trashed = match &row {
             // Electron unlinks a day's file for good; one holding text the day never took goes
             // to the trash first.

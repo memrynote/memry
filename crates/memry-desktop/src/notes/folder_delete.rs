@@ -28,9 +28,9 @@
 //! it (`folder_holds_journal`), a folder inside it (`folder_in_journal`), any folder while the
 //! settings that say where the journal is cannot be read (`vault_settings_unreadable`), and a
 //! folder holding a row no note delete can tombstone (the core's `begin`): days are not notes
-//! this delete takes. Not here yet: the
-//! locked-folder check (Step 14) and the confirmed permanent delete 13f offers a note the trash
-//! refuses (#3813).
+//! this delete takes, and a folder that is locked, sits in a locked folder or holds a lock
+//! (`folder_locked`, `assertFolderTreeWritable`). Not here yet: the confirmed permanent delete
+//! 13f offers a note the trash refuses (#3813).
 
 use std::fs;
 use std::io::ErrorKind;
@@ -41,6 +41,7 @@ use super::folder_move::within;
 use super::folders::{tree_filter, vault_folder};
 use super::moves::plain_folders;
 use super::service::NotesService;
+use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
 use crate::vault::config::read_vault_config_strict;
@@ -63,6 +64,8 @@ impl NotesService {
     ) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let folder = vault_folder(root, path)?;
+        // Nothing locked goes with the folder.
+        Locks::of(open).refuse_folder_tree(&folder)?;
         check(root, &folder)?;
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;

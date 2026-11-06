@@ -50,7 +50,9 @@
 //! case-sensitive one makes no second spelling for those disks to receive (Electron records
 //! the spelling given; `create_folder` refuses one).
 //!
-//! Not here yet: the locked-folder check (Step 14).
+//! A locked note, or a note in a locked folder, is neither renamed nor moved, and no note moves
+//! into a locked folder (`assertNoteWritable`, `assertFolderWritable`): refused before anything
+//! is written ([`Locks`]).
 
 use std::fs;
 use std::io::{self, ErrorKind};
@@ -65,6 +67,7 @@ use super::folders::sibling_named;
 use super::read;
 use super::service::NotesService;
 use super::view::{MovedNoteView, NoteView};
+use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::shell::file_open::{Resolution, is_plain_relative};
 use crate::vault::app_move::{NoteFileMove, on_disk};
@@ -177,11 +180,17 @@ impl NotesService {
             .listed_by_id(note_id)?
             .ok_or_else(not_found)?;
         let old = listed.path;
+        let locks = Locks::of(open);
+        locks.refuse_note(note_id, &old)?;
         let row = lane.files().by_id(note_id)?.ok_or_else(not_found)?;
         let (old_folder, name) = old.rsplit_once('/').unwrap_or(("", &old));
         let (folder, name) = match to {
             MoveTo::Title(title) => (old_folder.to_owned(), name_for(name, title)),
-            MoveTo::Folder(folder) => (plain_folder(folder)?, name.to_owned()),
+            MoveTo::Folder(folder) => {
+                let folder = plain_folder(folder)?;
+                locks.refuse_folder(&folder)?;
+                (folder, name.to_owned())
+            }
         };
         let title = match to {
             MoveTo::Title(title) => Some(title),

@@ -31,6 +31,7 @@ use memry_core::domain::folders::valid_path;
 use super::error::{NotesError, SCOPE};
 use super::moves::plain_folder;
 use super::service::NotesService;
+use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::shell::file_open::Resolution;
 use crate::vault::config::read_vault_config;
@@ -308,10 +309,11 @@ impl NotesService {
     /// icon (Electron's create cleared it); one made outside the app gives its record its
     /// file's icon. A folder the tree hides (a dot folder, attachments, canvases, an excluded
     /// one) is refused, as a move into one is, and so is a spelling that differs from a
-    /// sibling's in case only.
+    /// sibling's in case only, and so is one inside a locked folder.
     pub fn create_folder(&self, open: &OpenVault, folder: &str) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let folder = vault_folder(root, folder)?;
+        Locks::of(open).refuse_parent_folder(&folder)?;
         if folder.is_empty()
             || folder.split('/').any(|segment| segment.starts_with('.'))
             || !tree_filter(root)(&folder)

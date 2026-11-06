@@ -34,6 +34,8 @@
 //! under what the caller gave, as `createNote` merges `applyTemplate`'s, and the merged note is
 //! what the steps write.
 //!
+//! A note whose file would land in a locked folder is refused before step 2.
+//!
 //! Not here yet, though Electron's create does it: the note's date reminders (Step 21).
 
 use std::path::Path;
@@ -51,6 +53,7 @@ use super::frontmatter::{FileFields, file_fields, is_reserved_key, new_file_fron
 use super::read;
 use super::service::NotesService;
 use super::view::{NoteView, SizeClass};
+use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::shell::file_open::Resolution;
 use crate::templates::{TemplateView, Templates};
@@ -163,6 +166,9 @@ impl NotesService {
         let mut lane = rows.lane_of(session)?;
         let rel = free_path(&lane, root, &note)?;
         let folder = rel.rsplit_once('/').map(|(folder, _)| folder);
+        // The folder the file lands in, the default note folder too (`assertFolderWritable` and
+        // Electron's file guard on the new path).
+        Locks::of(open).refuse_folder(folder.unwrap_or(""))?;
         let frontmatter = new_file_frontmatter(&note.tags, &note.properties);
         let output = write_markdown_note(&frontmatter, &note.content)?;
         let hash = content_hash(&output);
