@@ -7,9 +7,10 @@
 //! (`../attachments/<noteId>/<file>` for `notes/Plan.md`), the only form that resolves on another
 //! device; a note without a known path gets the absolute `memry-file:` URL, as Electron does.
 //!
-//! The note id and the file name come from the renderer and are untrusted. The id must have the
-//! shape ids are minted in, `[A-Za-z0-9_-]+` ([`is_note_id`]), and not be a name Windows reads as
-//! a device ([`is_reserved_device_name`]); the stored name is always `<prefix>-...`, so it is never a
+//! The note id and the file name come from the renderer and are untrusted. The id is a folder
+//! name, so it must be one that every platform creates as written ([`is_note_id`]): a
+//! hand-written frontmatter id with a space is fine, a separator, a control character, a
+//! character Windows refuses or a device name is not. The stored name is always `<prefix>-...`, so it is never a
 //! device name, and it keeps only an allowed extension. The attachments folder and the note's
 //! folder must resolve inside the vault, so a link or a junction to elsewhere is refused before
 //! anything is created through it, and again right before the file takes its name.
@@ -112,14 +113,22 @@ pub fn extension(file_name: &str) -> &str {
     }
 }
 
-/// Whether `note_id` has the shape note ids are minted in: a nanoid, 12 of `0-9a-z`, or
-/// `j<YYYY-MM-DD>` for a journal day. Nothing in it is a separator, a control character or a
-/// character Windows refuses.
+/// The longest note id taken as a folder name, in bytes; every common file system takes 255.
+pub const MAX_NOTE_ID_BYTES: usize = 200;
+
+/// Whether `note_id` names one folder that every platform creates as written. Minted ids (a
+/// nanoid, 12 of `0-9a-z`, `j<YYYY-MM-DD>`) always do; a frontmatter id a person wrote may hold
+/// spaces or any letter. Refused: empty or over [`MAX_NOTE_ID_BYTES`], a control character, a
+/// separator, a character Windows refuses (`<>:"|?*`), a trailing `.` or space (Windows drops
+/// them, and they make `.` and `..`), and a device name.
 pub fn is_note_id(note_id: &str) -> bool {
     !note_id.is_empty()
-        && note_id
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+        && note_id.len() <= MAX_NOTE_ID_BYTES
+        && !note_id
+            .chars()
+            .any(|c| c.is_control() || "/\\<>:\"|?*".contains(c))
+        && !note_id.ends_with(['.', ' '])
+        && !is_reserved_device_name(note_id)
 }
 
 /// Characters that reorder or hide text where a name is shown (`evil\u{202E}fdp.png` shows as
@@ -292,11 +301,13 @@ pub fn save(
     file_name: &str,
     bytes: &[u8],
 ) -> Result<SavedAttachment, AttachmentError> {
-    save_checked(vault, note_id, note_path, file_name, bytes, &mut || {})
+    save_with(vault, note_id, note_path, file_name, bytes, &mut || {})
 }
 
-/// [`save`] with `before_recheck` run right before the last check of the note's folder, the one
-/// in the same step as the file taking its name. Only for the test that swaps a link in there.
+/// Test hook: [`save`] with `before_recheck` run right before the last check of the note's
+/// folder, the one in the same step as the file taking its name, so a test can swap a link in
+/// there.
+#[cfg(feature = "test-hooks")]
 #[doc(hidden)]
 pub fn save_checked(
     vault: &Path,
@@ -306,7 +317,18 @@ pub fn save_checked(
     bytes: &[u8],
     before_recheck: &mut dyn FnMut(),
 ) -> Result<SavedAttachment, AttachmentError> {
-    if !is_note_id(note_id) || is_reserved_device_name(note_id) {
+    save_with(vault, note_id, note_path, file_name, bytes, before_recheck)
+}
+
+fn save_with(
+    vault: &Path,
+    note_id: &str,
+    note_path: Option<&str>,
+    file_name: &str,
+    bytes: &[u8],
+    before_recheck: &mut dyn FnMut(),
+) -> Result<SavedAttachment, AttachmentError> {
+    if !is_note_id(note_id) {
         return Err(AttachmentError::InvalidNote);
     }
     let ext = extension(file_name);

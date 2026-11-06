@@ -8,7 +8,7 @@
 //! | names, extensions, types, sizes and refs match Electron        | `attachments.ts:150-290`          |
 //! | an upload lands in the note's folder, referenced from its file | `saveAttachment`, #1488           |
 //! | an oversized or refused file writes nothing                    | 100 MiB cap, allowed set          |
-//! | a note id not of the minted shape writes nothing               | stricter than Electron            |
+//! | a note id that is no folder name everywhere writes nothing     | stricter than Electron            |
 //! | a file over the single-body limit is refused on its size       | 16 MiB until 14f-2's chunks       |
 //! | an attacker's file name stays one name inside the folder       | `generateUniqueFilename`          |
 //! | a link out of the vault is refused before a write through it   | `resolve_under_root`              |
@@ -23,9 +23,9 @@ use std::fs;
 use std::path::Path;
 
 use memry_desktop::attachments::{
-    self, AttachmentError, AttachmentKind, MAX_FILE_SIZE, MAX_STORED_NAME_BYTES, MAX_UPLOAD_BODY,
-    check_upload_size, extension, format_size, is_allowed_extension, kind_of, mime_type,
-    relative_ref, save, stored_name,
+    self, AttachmentError, AttachmentKind, MAX_FILE_SIZE, MAX_NOTE_ID_BYTES, MAX_STORED_NAME_BYTES,
+    MAX_UPLOAD_BODY, check_upload_size, extension, format_size, is_allowed_extension, kind_of,
+    mime_type, relative_ref, save, stored_name,
 };
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::read;
@@ -206,24 +206,42 @@ fn an_oversized_or_refused_file_writes_nothing() {
 }
 
 #[test]
-fn a_note_id_not_of_the_minted_shape_writes_nothing() {
+fn a_note_id_that_is_not_one_folder_name_everywhere_writes_nothing() {
     let dir = vault();
     let root = dir.path().join("vault");
     fs::create_dir(&root).unwrap();
+    let long = "x".repeat(MAX_NOTE_ID_BYTES + 1);
     for note_id in [
+        // Empty, or longer than a folder name may be.
         "",
-        ".",
-        "..",
+        long.as_str(),
+        // A separator, a root or a drive.
         "../x",
         "a/b",
         "a\\b",
-        "C:x",
-        "x:y",
         "/abs",
         "\\\\srv\\share",
+        // A character Windows refuses, a colon included (a drive or a stream).
+        "C:x",
+        "x:y",
+        "a*b",
+        "a?b",
+        "a|b",
+        "a<b",
+        "a>b",
+        "a\"b",
+        // A control character, C0, DEL or C1.
+        "a\0b",
+        "a\nb",
+        "a\tb",
+        "a\u{7f}b",
+        "a\u{85}b",
+        // A trailing dot or space, which Windows drops; `.` and `..` among them.
+        ".",
+        "..",
         "x.",
         "x ",
-        "a\0b",
+        // A device name, in any case, with an extension, a trailing space or a superscript.
         "CON",
         "con",
         "NUL.txt",
@@ -231,19 +249,11 @@ fn a_note_id_not_of_the_minted_shape_writes_nothing() {
         "LPT9.md",
         "COM0",
         "lpt0",
-        "a\nb",
-        "a\tb",
-        "a*b",
-        "a?b",
-        "a|b",
-        "a<b",
-        "a\"b",
         "CON .x",
         "COM\u{b9}",
+        "lpt\u{b3}",
         "CONIN$",
-        "a.b",
-        "\u{e9}t\u{e9}",
-        "a\u{202e}b",
+        "conout$.log",
     ] {
         assert!(
             matches!(
@@ -256,12 +266,33 @@ fn a_note_id_not_of_the_minted_shape_writes_nothing() {
     assert_eq!(names(dir.path()), ["vault"]);
     assert_eq!(names(&root), Vec::<String>::new());
 
-    // Every shape ids are minted in is taken.
-    for note_id in ["k3f9x2abcd12", "j2026-01-01", "V1StGXR8_Z5jdHi6B-myT"] {
+    // Minted ids and the ids a person writes in frontmatter are taken as written.
+    let at_limit = "y".repeat(MAX_NOTE_ID_BYTES);
+    for note_id in [
+        "k3f9x2abcd12",
+        "j2026-01-01",
+        "V1StGXR8_Z5jdHi6B-myT",
+        "My Meeting Notes",
+        " leading space",
+        ".hidden",
+        "a.b",
+        "\u{e9}t\u{e9} 2026",
+        "\u{65e5}\u{8a18}",
+        "CONSOLE",
+        "COM10",
+        at_limit.as_str(),
+    ] {
+        let saved = save(&root, note_id, Some("Note.md"), "a.png", b"x")
+            .unwrap_or_else(|error| panic!("{note_id:?}: {error}"));
+        assert_eq!(
+            saved.disk_path.parent().unwrap(),
+            root.join("attachments").join(note_id)
+        );
         assert!(
-            save(&root, note_id, None, "a.png", b"x").is_ok(),
+            saved.path.starts_with(&format!("attachments/{note_id}/")),
             "{note_id:?}"
         );
+        assert!(saved.disk_path.is_file(), "{note_id:?}");
     }
 }
 

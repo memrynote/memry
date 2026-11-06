@@ -98,15 +98,46 @@ pub fn is_plain_segment(name: &str) -> bool {
 }
 
 const RESERVED_DEVICE_NAMES: &[&str] = &[
-    "CON", "PRN", "AUX", "NUL", "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
-    "COM8", "COM9", "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "COM0",
+    "COM1",
+    "COM2",
+    "COM3",
+    "COM4",
+    "COM5",
+    "COM6",
+    "COM7",
+    "COM8",
+    "COM9",
+    "COM\u{b9}",
+    "COM\u{b2}",
+    "COM\u{b3}",
+    "LPT0",
+    "LPT1",
+    "LPT2",
+    "LPT3",
+    "LPT4",
+    "LPT5",
+    "LPT6",
+    "LPT7",
+    "LPT8",
+    "LPT9",
+    "LPT\u{b9}",
+    "LPT\u{b2}",
+    "LPT\u{b3}",
+    "CONIN$",
+    "CONOUT$",
 ];
 
-/// Whether Windows opens `name` as a device instead of a file: its stem (up to the first `.`) is
-/// `CON`, `NUL`, `COM1` and the like, in any case. Checked on every platform, so a name that
-/// arrives as data means the same file everywhere.
+/// Whether Windows opens `name` as a device instead of a file: its stem (up to the first `.`,
+/// trailing spaces dropped as Windows drops them) is `CON`, `NUL`, `COM1`, `COM¹`, `CONIN$` and
+/// the like, in any case. Checked on every platform, so a name that arrives as data means the
+/// same file everywhere.
 pub fn is_reserved_device_name(name: &str) -> bool {
-    let stem = name.split('.').next().unwrap_or(name);
+    let stem = name.split('.').next().unwrap_or(name).trim_end_matches(' ');
     RESERVED_DEVICE_NAMES.contains(&stem.to_ascii_uppercase().as_str())
 }
 
