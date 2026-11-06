@@ -50,17 +50,33 @@ function withZone<T>(tz: string, run: () => T): T {
   }
 }
 
+/** The ICU the oracle ran on: `Intl.Segmenter` and `Intl.DateTimeFormat` answer from it. */
+const ICU = { icu: process.versions.icu ?? 'none', unicode: process.versions.unicode ?? 'none' }
+
 function render(file: VectorFile): string {
   const document = {
     meta: {
       spec: 'tauri-v2-3531-note-fold',
       oracle: `apps/desktop/scripts/note-fold-oracle (Electron fold engine run in place: ${file.source})`,
-      note: file.note
+      note: file.note,
+      ...ICU
     },
     timeZone: NOTE_FOLD_ZONE,
     ...withZone(NOTE_FOLD_ZONE, file.build)
   }
   return `${JSON.stringify(document, null, 2)}\n`
+}
+
+/** The ICU and Unicode versions a committed file names in its `meta`. */
+function writtenBy(committed: string): { icu: string; unicode: string } {
+  const parsed: unknown = JSON.parse(committed)
+  const meta =
+    typeof parsed === 'object' && parsed !== null && 'meta' in parsed ? parsed.meta : null
+  if (typeof meta !== 'object' || meta === null) return { icu: 'none', unicode: 'none' }
+  return {
+    icu: 'icu' in meta ? String(meta.icu) : 'none',
+    unicode: 'unicode' in meta ? String(meta.unicode) : 'none'
+  }
 }
 
 function main(): void {
@@ -79,6 +95,14 @@ function main(): void {
       committed = readFileSync(path, 'utf8')
     } catch {
       drifted.push(`${file.path}: missing`)
+      continue
+    }
+    const written = writtenBy(committed)
+    if (written.icu !== ICU.icu || written.unicode !== ICU.unicode) {
+      drifted.push(
+        `${file.path}: written by ICU ${written.icu} (Unicode ${written.unicode}), this Node runs ICU ${ICU.icu} (Unicode ${ICU.unicode}). ` +
+          'Regenerate, then check the Rust port against the new file: `long_date` in crates/memry-desktop/src/fold/tokens.rs writes the ICU date strings by hand.'
+      )
       continue
     }
     if (committed !== fresh) drifted.push(`${file.path}: regenerates differently`)

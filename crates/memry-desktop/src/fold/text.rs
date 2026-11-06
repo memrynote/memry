@@ -1,9 +1,11 @@
 //! Language, sentences and words of a note (`engine.ts` `detectLanguage`, `splitSentences`,
 //! `countWords`, `estimateTokens`, `isFoldable`). Electron segments with `Intl.Segmenter`;
-//! here the UAX #29 boundaries of `unicode-segmentation` stand in, which agree on the
-//! sentences and on the word count of the vectors (`tests/note_fold_text_vectors.rs`), but for
-//! a Han run in a text read as neither Chinese, Japanese nor Korean: ICU splits it with its
-//! dictionary, UAX #29 into single ideographs, so such a text counts more words here.
+//! here the UAX #29 boundaries of `unicode-segmentation` stand in. They agree on the sentences
+//! and, for the scripts that space their words, on the word count
+//! (`tests/note_fold_text_vectors.rs`). The scripts ICU splits with a dictionary do not agree
+//! in a text read as neither Chinese, Japanese nor Korean: a Han, Hiragana, Thai, Lao, Khmer or
+//! Myanmar run is one word per character here and dictionary words in Electron (more words
+//! here), and a Katakana run is one word here where the dictionary may split it (fewer).
 
 use std::sync::LazyLock;
 
@@ -20,6 +22,14 @@ pub const CJK_MIN_UNITS: u32 = FOLD_MIN_WORDS * 2;
 static LETTER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\p{L}$").expect("letter"));
 static PUNCTUATION_OR_SYMBOL: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[\p{P}\p{S}]$").expect("punctuation"));
+/// The characters that make a word segment a word in ICU: a letter, number or kana of UAX #29,
+/// or a letter of a script ICU segments with a dictionary (Alphabetic).
+static WORD_CHAR: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"[\p{WB=ALetter}\p{WB=Hebrew_Letter}\p{WB=Numeric}\p{WB=Katakana}\p{Alphabetic}]")
+        .expect("word char")
+});
+static EXTEND_NUM_LET: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\p{WB=ExtendNumLet}").expect("extend num let"));
 
 pub fn sha256(text: &str) -> String {
     hex::encode(Sha256::digest(text.as_bytes()))
@@ -85,7 +95,7 @@ pub struct Segment<'a> {
     pub text: &'a str,
     /// Byte offset in the segmented text.
     pub offset: usize,
-    /// Holds a letter or a digit (`isWordLike`).
+    /// A word to ICU (`isWordLike`): see [`is_word_like`].
     pub word_like: bool,
 }
 
@@ -94,9 +104,15 @@ pub fn word_segments(text: &str) -> Vec<Segment<'_>> {
         .map(|(offset, segment)| Segment {
             text: segment,
             offset,
-            word_like: segment.chars().any(char::is_alphanumeric),
+            word_like: is_word_like(segment),
         })
         .collect()
+}
+
+/// ICU's word status for a UAX #29 segment: it holds a letter, number or kana, or it is a run
+/// of two or more connectors (`___`; one `_` is not a word). `²` and `½` are not words.
+fn is_word_like(segment: &str) -> bool {
+    WORD_CHAR.is_match(segment) || EXTEND_NUM_LET.find_iter(segment).nth(1).is_some()
 }
 
 /// Words for Latin-like scripts; characters that are neither space, punctuation nor symbol
