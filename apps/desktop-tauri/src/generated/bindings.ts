@@ -96,9 +96,7 @@ export const commands = {
 	notesGetFolders: () => __TAURI_INVOKE<FolderView[]>("notes_get_folders"),
 	/**
 	 *  `notes:rename-folder`: the folder at `old_path` to `new_path`, a rename in place or a drag
-	 *  to another parent, its notes with it (`notes::folder_move`). A journal setting that follows
-	 *  the folder is heard by every window as [`VaultConfigChangedEvent`], as Electron's
-	 *  `followJournalFolder` broadcasts it.
+	 *  to another parent, its notes with it (`notes::folder_move`).
 	 */
 	notesRenameFolder: (oldPath: string, newPath: string) => __TAURI_INVOKE<null>("notes_rename_folder", { oldPath, newPath }),
 	/**  `notes:reveal-folder-in-finder`: the folder itself, selected in its parent. */

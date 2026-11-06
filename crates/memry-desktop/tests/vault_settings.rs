@@ -32,7 +32,7 @@ fn opened(config: Value, files: &[(&str, &str)]) -> Env {
 }
 
 /// [`opened`], with the store a `NotesService` of it needs.
-pub(crate) fn opened_keeping(config: Value, files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
+fn opened_keeping(config: Value, files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
     let mut e = env(|store| {
         kept = Some(store.clone());
@@ -61,7 +61,7 @@ fn update(
     update_vault_settings(&e.vault, Some((&core, &e.tier)), patch, announce)
 }
 
-pub(crate) fn stored(vault: &Path) -> Value {
+fn stored(vault: &Path) -> Value {
     serde_json::from_slice(&fs::read(config_path(vault)).unwrap()).unwrap()
 }
 

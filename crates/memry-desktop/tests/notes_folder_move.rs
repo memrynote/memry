@@ -11,7 +11,9 @@
 //! | a folder whose notes cannot follow goes back                      | one step, as a note's move            |
 //! | a move the disk refuses halfway rolls back and records nothing    | `move_dir`'s rollback                 |
 //! | a rename that changes only case respells the folder               | the folder's own spelling is free     |
-//! | a folder rename the app cannot make is refused                    | #2531, no replace, hidden             |
+//! | a folder rename the app cannot make is refused                    | #2531, no replace, journal, hidden    |
+//! | a folder holding the journal is refused however the setting spells it | read as the days are             |
+//! | no folder moves while the settings cannot be read                 | the journal unknown                   |
 //! | a note with an unsettled move holds its folder back               | one move per note                     |
 //! | the path links to the folder's notes follow it                    | `rewriteInboundWikiLinks`             |
 //! | a folder move a crash cut short finishes on the next open         | the folder's record, one transaction  |
@@ -45,7 +47,7 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::{NotesService, Trash};
 use memry_desktop::vault::activity::ActivityFilter;
-use memry_desktop::vault::config::{VaultConfigPatch, write_vault_config};
+use memry_desktop::vault::config::{VaultConfigPatch, config_path, write_vault_config};
 use memry_desktop::vault::consumer::{Applied, ChangeSource, MoveKind};
 use memry_desktop::vault::layout::DEFAULT_EXCLUDE_PATTERNS;
 use memry_desktop::vault::move_dir::{Step, simulated_hold};
@@ -279,21 +281,14 @@ fn a_folder_rename_carries_its_notes_records_and_order() {
     // watcher looks meanwhile and takes no file for removed.
     let mut seen = None;
     notes
-        .rename_folder_checked(
-            &open,
-            "Work",
-            "Projects",
-            |_| {},
-            &mut |_| Ok(()),
-            &mut || {
-                seen = Some((
-                    e.vault.join("Projects/Sub/Deep.md").exists(),
-                    pending(&e, &store),
-                ));
-                std::thread::sleep(MID_MOVE);
-                Ok(())
-            },
-        )
+        .rename_folder_checked(&open, "Work", "Projects", &mut |_| Ok(()), &mut || {
+            seen = Some((
+                e.vault.join("Projects/Sub/Deep.md").exists(),
+                pending(&e, &store),
+            ));
+            std::thread::sleep(MID_MOVE);
+            Ok(())
+        })
         .unwrap();
     assert_eq!(seen, Some((true, 3)));
 
@@ -370,14 +365,7 @@ fn a_folder_held_open_moves_entry_by_entry_its_subfolder_with_it() {
         _ => Ok(()),
     };
     notes
-        .rename_folder_checked(
-            &open,
-            "Work",
-            "Archive/Work",
-            |_| {},
-            &mut held,
-            &mut || Ok(()),
-        )
+        .rename_folder_checked(&open, "Work", "Archive/Work", &mut held, &mut || Ok(()))
         .unwrap();
 
     assert!(!e.vault.join("Work").exists());
@@ -408,14 +396,10 @@ fn a_folder_whose_notes_cannot_follow_goes_back() {
     } = work();
     let open = e.session.current().unwrap();
     let before = rows(&e);
-    let failed = notes.rename_folder_checked(
-        &open,
-        "Work",
-        "Projects",
-        |_| {},
-        &mut |_| Ok(()),
-        &mut || Err(NotesError::Io(io::Error::other("injected"))),
-    );
+    let failed =
+        notes.rename_folder_checked(&open, "Work", "Projects", &mut |_| Ok(()), &mut || {
+            Err(NotesError::Io(io::Error::other("injected")))
+        });
     assert!(matches!(failed, Err(NotesError::Io(_))), "{failed:?}");
     assert!(e.vault.join("Work/Sub/Deep.md").exists());
     assert!(!e.vault.join("Projects").exists());
@@ -454,9 +438,7 @@ fn a_move_the_disk_refuses_halfway_rolls_back_and_records_nothing() {
         _ => Ok(()),
     };
     let failed =
-        notes.rename_folder_checked(&open, "Work", "Projects", |_| {}, &mut refused, &mut || {
-            Ok(())
-        });
+        notes.rename_folder_checked(&open, "Work", "Projects", &mut refused, &mut || Ok(()));
     assert!(matches!(failed, Err(NotesError::Io(_))), "{failed:?}");
     assert!(e.vault.join("Work/Plan.md").exists());
     assert!(e.vault.join("Work/Doc.pdf").exists());
@@ -472,7 +454,7 @@ fn a_rename_that_changes_only_case_respells_the_folder() {
     let open = e.session.current().unwrap();
     let plan = notes.create(&open, note("Plan", "work")).unwrap().id;
     e.drain();
-    notes.rename_folder(&open, "work", "Work", |_| {}).unwrap();
+    notes.rename_folder(&open, "work", "Work").unwrap();
     let names: Vec<String> = fs::read_dir(&e.vault)
         .unwrap()
         .map(|entry| entry.unwrap().file_name().into_string().unwrap())
@@ -491,7 +473,7 @@ fn a_folder_rename_the_app_cannot_make_is_refused() {
     let Work { e, notes, .. } = work();
     let open = e.session.current().unwrap();
     notes.create_folder(&open, "Taken").unwrap();
-    let refused = |old: &str, new: &str| notes.rename_folder(&open, old, new, |_| {}).unwrap_err();
+    let refused = |old: &str, new: &str| notes.rename_folder(&open, old, new).unwrap_err();
     assert!(matches!(
         refused("Gone", "Else"),
         NotesError::FolderNotFound
@@ -515,6 +497,52 @@ fn a_folder_rename_the_app_cannot_make_is_refused() {
         refused("Work", "Missing/Work"),
         NotesError::FolderNotFound
     ));
+    assert!(matches!(
+        refused("journal", "Diary"),
+        NotesError::FolderHoldsJournal
+    ));
+    assert!(e.vault.join("Work/Plan.md").exists());
+}
+
+/// The journal setting is read as the days are, so a folder holding the journal is refused
+/// however the setting spells it.
+#[test]
+fn a_folder_holding_the_journal_is_refused_however_the_setting_spells_it() {
+    let Work { e, notes, .. } = work();
+    let open = e.session.current().unwrap();
+    fs::create_dir_all(e.vault.join("Personal/journal")).unwrap();
+    for stored in [
+        "Personal/journal",
+        "/Personal/journal/",
+        "Personal\\journal",
+    ] {
+        let config = serde_json::json!({ "journalFolder": stored }).to_string();
+        fs::write(config_path(&e.vault), config).unwrap();
+        let refused = notes.rename_folder(&open, "Personal", "Private");
+        assert!(
+            matches!(refused, Err(NotesError::FolderHoldsJournal)),
+            "{stored}: {refused:?}"
+        );
+        assert!(e.vault.join("Personal/journal").exists(), "{stored}");
+    }
+}
+
+/// Settings that cannot be read do not say where the journal is (here `Diary`, which their
+/// defaults would not name), so no folder moves.
+#[test]
+fn no_folder_moves_while_the_settings_cannot_be_read() {
+    let Work { e, notes, .. } = work();
+    let open = e.session.current().unwrap();
+    fs::create_dir_all(e.vault.join("Diary")).unwrap();
+    fs::write(config_path(&e.vault), r#"{"journalFolder":"Diary""#).unwrap();
+    for (from, to) in [("Diary", "Old"), ("Work", "Projects")] {
+        let refused = notes.rename_folder(&open, from, to);
+        assert!(
+            matches!(refused, Err(NotesError::SettingsUnreadable(_))),
+            "{from}: {refused:?}"
+        );
+        assert!(e.vault.join(from).exists(), "{from}");
+    }
     assert!(e.vault.join("Work/Plan.md").exists());
 }
 
@@ -539,7 +567,7 @@ fn a_note_with_an_unsettled_move_holds_its_folder_back() {
         .unwrap()
         .begin_app_move(&plan, moved)
         .unwrap();
-    let refused = notes.rename_folder(&open, "Work", "Projects", |_| {});
+    let refused = notes.rename_folder(&open, "Work", "Projects");
     assert!(
         matches!(refused, Err(NotesError::MovePending(BeginError::Unsettled))),
         "{refused:?}"
@@ -562,9 +590,7 @@ fn the_path_links_to_the_folders_notes_follow_it() {
     });
     e.drain();
 
-    notes
-        .rename_folder(&open, "Work", "Projects", |_| {})
-        .unwrap();
+    notes.rename_folder(&open, "Work", "Projects").unwrap();
     assert_eq!(e.read("Ideas.md"), "See [[Projects/Plan]] and [[Plan]].\n");
 }
 
@@ -666,7 +692,7 @@ fn a_folder_move_a_crash_cut_short_before_the_disk_is_forgotten() {
 fn a_folder_move_into_an_ignored_or_linked_folder_is_refused() {
     let Work { e, notes, .. } = work();
     let open = e.session.current().unwrap();
-    let refused = |old: &str, new: &str| notes.rename_folder(&open, old, new, |_| {}).unwrap_err();
+    let refused = |old: &str, new: &str| notes.rename_folder(&open, old, new).unwrap_err();
     // Below the root, where the tree's own filter (first segment only) does not hide it.
     fs::create_dir(e.vault.join("Other")).unwrap();
     assert!(matches!(
@@ -732,9 +758,7 @@ fn after_a_refused_move_an_outside_delete_is_reported() {
         _ => Ok(()),
     };
     let failed =
-        notes.rename_folder_checked(&open, "Work", "Projects", |_| {}, &mut refused, &mut || {
-            Ok(())
-        });
+        notes.rename_folder_checked(&open, "Work", "Projects", &mut refused, &mut || Ok(()));
     assert!(matches!(failed, Err(NotesError::Io(_))), "{failed:?}");
     e.drain();
 
@@ -751,7 +775,7 @@ fn after_a_refused_move_an_outside_delete_is_reported() {
 fn a_case_only_rename_that_respells_a_parent_is_refused() {
     let Work { e, notes, .. } = work();
     let open = e.session.current().unwrap();
-    let refused = notes.rename_folder(&open, "Work/Sub", "work/sub", |_| {});
+    let refused = notes.rename_folder(&open, "Work/Sub", "work/sub");
     assert!(
         matches!(refused, Err(NotesError::InvalidFolder)),
         "{refused:?}"
@@ -780,7 +804,7 @@ fn a_folder_move_that_puts_a_note_under_an_ignored_path_is_refused() {
     let open = e.session.current().unwrap();
     notes.create(&open, note("Cached", "Old/cache")).unwrap();
     fs::create_dir(e.vault.join("Lib")).unwrap();
-    let refused = notes.rename_folder(&open, "Old", "Lib/vendor", |_| {});
+    let refused = notes.rename_folder(&open, "Old", "Lib/vendor");
     assert!(
         matches!(refused, Err(NotesError::InvalidFolder)),
         "{refused:?}"
@@ -799,7 +823,6 @@ fn a_move_that_panics_leaves_no_record_of_the_folders_going() {
             &open,
             "Work",
             "Projects",
-            |_| {},
             &mut |_| panic!("injected"),
             &mut || Ok(()),
         )

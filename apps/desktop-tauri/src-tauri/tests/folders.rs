@@ -1,10 +1,8 @@
 //! The folder commands through the IPC a renderer calls, on a mock app over a real vault and
 //! vault tier (#3530 13h-1b, 13h-2): the argument names the generated bindings send, a created
 //! folder, its settings and its rename read back, and a refusal reaching the renderer by its
-//! code. A pulled folder (#3906) reaches the vault and goes out as `FolderConfigUpdatedEvent`, and
-//! a journal setting that follows a folder move as `VaultConfigChangedEvent` (#3530 13m-7b-2).
+//! code. A pulled folder (#3906) reaches the vault and goes out as `FolderConfigUpdatedEvent`.
 
-use memry_desktop::locale::LocaleService;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -15,12 +13,13 @@ use memry_core::api::errors::SecureStoreError;
 use memry_core::crypto::sodium;
 use memry_core::domain::folders;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
-use memry_tauri::events::{FolderConfigUpdatedEvent, VaultConfigChangedEvent};
+use memry_tauri::events::FolderConfigUpdatedEvent;
 use memry_tauri::shell::folder_sync;
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody, InvokeResponseBody};
@@ -193,37 +192,6 @@ fn a_folder_created_and_set_through_the_ipc_reads_back() {
     // The refusal only: a delete that went through would use the OS trash of the machine.
     let missing = f.invoke("notes_delete_folder", json!({ "path": "Work/Plans" }));
     assert_eq!(missing.unwrap_err()["code"], "folder_not_found");
-}
-
-/// A folder that holds the journal takes the journal setting along, which every window hears as
-/// `vault:config-changed` (Electron's `followJournalFolder`).
-#[test]
-fn a_folder_holding_the_journal_sends_the_setting_that_followed_it() {
-    let f = opened();
-    fs::write(
-        f.vault.join(".memry/config.json"),
-        r#"{"journalFolder":"Personal/journal"}"#,
-    )
-    .unwrap();
-    fs::create_dir_all(f.vault.join("Personal/journal")).unwrap();
-    let heard: Arc<Mutex<Vec<Value>>> = Arc::default();
-    let sink = heard.clone();
-    f.webview
-        .listen_any(VaultConfigChangedEvent::NAME, move |event| {
-            sink.lock()
-                .unwrap()
-                .push(serde_json::from_str(event.payload()).unwrap());
-        });
-
-    let renamed = f.invoke(
-        "notes_rename_folder",
-        json!({ "oldPath": "Personal", "newPath": "Private" }),
-    );
-
-    assert_eq!(renamed, Ok(Value::Null));
-    let heard = heard.lock().unwrap();
-    assert_eq!(heard.len(), 1, "{heard:?}");
-    assert_eq!(heard[0]["journalFolder"], "Private/journal");
 }
 
 /// Settings that cannot be read refuse every folder move, in words that name the file.

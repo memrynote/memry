@@ -175,30 +175,7 @@ pub fn move_dir_checked(
     to: &Path,
     hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
 ) -> io::Result<()> {
-    moved_synced(vault, (from, to), true, hook)
-}
-
-/// [`move_dir_checked`] by the plain rename alone: a folder Windows holds is refused as it is,
-/// never moved entry by entry, so the move happens whole or not at all. The journal folder
-/// moves so (`notes::folder_move`): a rollback that left a day in `(incomplete move)` would
-/// leave it at a path no journal setting reads, and the next open would delete it as a day.
-#[doc(hidden)]
-pub fn move_dir_whole_checked(
-    vault: &Path,
-    from: &Path,
-    to: &Path,
-    hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
-) -> io::Result<()> {
-    moved_synced(vault, (from, to), false, hook)
-}
-
-fn moved_synced(
-    vault: &Path,
-    (from, to): (&Path, &Path),
-    entry_wise: bool,
-    hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
-) -> io::Result<()> {
-    move_tree(vault, from, to, entry_wise, hook)?;
+    move_tree(vault, from, to, hook)?;
     let (to, from) = (to.parent(), from.parent());
     to.into_iter().for_each(sync_dir);
     from.filter(|from| Some(*from) != to)
@@ -211,7 +188,6 @@ fn move_tree(
     vault: &Path,
     from: &Path,
     to: &Path,
-    entry_wise: bool,
     hook: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
 ) -> io::Result<()> {
     let source = fs::symlink_metadata(from)?;
@@ -242,7 +218,7 @@ fn move_tree(
         Ok(()) => return Ok(()),
         Err(error) => error,
     };
-    if !entry_wise || !is_hold(&refused) || source.file_type().is_symlink() {
+    if !is_hold(&refused) || source.file_type().is_symlink() {
         return Err(refused);
     }
     let id = uuid::Uuid::new_v4().simple().to_string()[..ID_LEN].to_owned();
