@@ -557,7 +557,18 @@ const ported = {
   },
   // Rejects on failure, as Electron's `notes:attachment-rename` handler does.
   renameAttachment: (noteId: string, url: string, newName: string) =>
-    commands.notesAttachmentRename(noteId, url, newName)
+    commands.notesAttachmentRename(noteId, url, newName),
+  // These two reject on failure, as Electron's handlers do.
+  listVaultAttachments: () => commands.notesListVaultAttachments(),
+  insertExistingAttachment: (noteId: string, ownerNoteId: string, filename: string) =>
+    commands.notesInsertExistingAttachment(noteId, ownerNoteId, filename),
+  // Answers why nothing was saved, as Electron's `notes:download-attachment-from-url` does.
+  downloadAttachmentFromUrl: async (noteId: string, url: string) => {
+    const response = await commands.notesDownloadAttachmentFromUrl(noteId, url)
+    return response.status === 'saved'
+      ? { ok: true as const, ref: response.ref }
+      : { ok: false as const, reason: response.reason }
+  }
 } satisfies Partial<NotesClientAPI>
 
 /** The note methods served from Rust; `window.api.notes` is typed without them. */

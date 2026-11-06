@@ -43,7 +43,8 @@ const commands = vi.hoisted(() => ({
   notesSetFolderConfig: vi.fn(),
   notesGetFolderTemplate: vi.fn(),
   notesUploadAttachmentBegin: vi.fn(),
-  notesUploadAttachmentAbort: vi.fn()
+  notesUploadAttachmentAbort: vi.fn(),
+  notesDownloadAttachmentFromUrl: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -875,6 +876,27 @@ describe('notes-service', () => {
     const [, bytes, meta] = invokeBinary.mock.calls[0]
     expect(bytes).toHaveLength(0)
     expect(meta).toEqual({ noteId: 'note-1', fileName: 'clip.mp4', size: 16 * 1024 * 1024 + 1 })
+  })
+
+  it('answers a linked image download in the contract shape, a failure with its reason', async () => {
+    commands.notesDownloadAttachmentFromUrl.mockResolvedValueOnce({
+      status: 'saved',
+      ref: '../attachments/note-1/x-photo.jpg'
+    })
+    await expect(
+      notesService.downloadAttachmentFromUrl('note-1', 'https://x.test/photo.jpg')
+    ).resolves.toEqual({ ok: true, ref: '../attachments/note-1/x-photo.jpg' })
+    expect(commands.notesDownloadAttachmentFromUrl).toHaveBeenCalledWith(
+      'note-1',
+      'https://x.test/photo.jpg'
+    )
+    commands.notesDownloadAttachmentFromUrl.mockResolvedValueOnce({
+      status: 'failed',
+      reason: 'not-an-image'
+    })
+    await expect(
+      notesService.downloadAttachmentFromUrl('note-1', 'https://x.test/page')
+    ).resolves.toEqual({ ok: false, reason: 'not-an-image' })
   })
 
   describe('a file over the single-body limit', () => {

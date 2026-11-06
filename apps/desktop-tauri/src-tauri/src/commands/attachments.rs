@@ -36,7 +36,7 @@ struct UploadMeta {
 }
 
 /// The command's answer to `error`; `command` names it in the log of a disk failure.
-fn attachment_error<R: Runtime>(
+pub(super) fn attachment_error<R: Runtime>(
     app: &AppHandle<R>,
     command: &str,
     error: &AttachmentError,
@@ -77,7 +77,8 @@ fn attachment_error<R: Runtime>(
         | AttachmentError::OutsideVault
         | AttachmentError::NotOwned
         | AttachmentError::BadName
-        | AttachmentError::NoFreeName => CommandError::new(
+        | AttachmentError::NoFreeName
+        | AttachmentError::BadReference => CommandError::new(
             ErrorKind::Invalid,
             "attachment_invalid_path",
             error.to_string(),

@@ -65,6 +65,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::locale::locale_set,
             // notes (`notes_upload_attachment` and `notes_upload_attachment_chunk` are binary
             // commands)
+            crate::commands::attachment_sources::notes_download_attachment_from_url::<Wry>,
+            crate::commands::attachment_sources::notes_insert_existing_attachment::<Wry>,
+            crate::commands::attachment_sources::notes_list_vault_attachments::<Wry>,
             crate::commands::attachments::notes_attachment_rename::<Wry>,
             crate::commands::attachments::notes_upload_attachment_abort::<Wry>,
             crate::commands::attachments::notes_upload_attachment_begin::<Wry>,
@@ -120,6 +123,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::property_definitions::notes_set_calendar_property_visibility,
             crate::commands::property_definitions::notes_update_option_color,
             crate::commands::property_definitions::notes_update_property_definition,
+            crate::commands::unsplash::notes_download_unsplash_photo,
             // notification
             crate::commands::shell_integrations::notification_permission,
             crate::commands::shell_integrations::notification_show,

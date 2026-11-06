@@ -18,7 +18,9 @@ use std::time::Duration;
 
 use serde::Serialize;
 
-use super::{AttachmentError, extension, fit_name, relative_ref, resolve, writable_note};
+use super::{
+    AttachmentError, extension, fit_name, is_plain_segment, relative_ref, resolve, writable_note,
+};
 use crate::session::OpenVault;
 use crate::shell::file_open::file_identity;
 use crate::shell::local_scheme::{STORED_PREFIX_LEN, attachment_parts, has_stored_prefix};
@@ -167,14 +169,6 @@ fn entry_name(folder: &Path, target: &Path, named: &str) -> Result<String, Attac
     found
         .filter(|name| is_plain_segment(name))
         .ok_or(AttachmentError::FileNotFound)
-}
-
-/// `isPlainSegment`, and no trailing dot or space, which Windows drops.
-fn is_plain_segment(name: &str) -> bool {
-    !name.is_empty()
-        && !name.contains(['/', '\\'])
-        && !matches!(name, "." | "..")
-        && !name.ends_with(['.', ' '])
 }
 
 /// `buildRenamedFilename`: the current prefix and extension around the typed name, an extension
