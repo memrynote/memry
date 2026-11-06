@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "Questo formato data non può dare un nome a ogni giorno, quindi non è stato salvato. Includi anno, mese e giorno.",
     "journalDaysNotRenamed": "Il formato data non è stato modificato perché non è stato possibile rinominare alcuni giorni del diario ({count}). Forse un file ha già il nuovo nome di un giorno.",
     "journalUnlisted": "Non è stato possibile leggere la cartella diario, quindi il formato data non è stato modificato. Verifica di avervi accesso.",
-    "settingsUnreadable": "Non è possibile spostare le cartelle finché il file delle impostazioni del vault (.memry/config.json) non è leggibile. Correggi il file e riprova."
+    "settingsUnreadable": "Non è possibile spostare le cartelle finché il file delle impostazioni del vault (.memry/config.json) non è leggibile. Correggi il file e riprova.",
+    "settingsUnreadableDelete": "Non è possibile eliminare le cartelle finché il file delle impostazioni del vault (.memry/config.json) non è leggibile. Correggi il file e riprova.",
+    "settingsUnreadableJournalDay": "Non è possibile creare giorni del diario finché il file delle impostazioni del vault (.memry/config.json) non è leggibile. Correggi il file e riprova."
   },
   "note": {
     "notFound": "Impossibile trovare questa nota. Potrebbe essere stata eliminata.",

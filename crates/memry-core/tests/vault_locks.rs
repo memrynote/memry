@@ -149,6 +149,29 @@ fn a_folder_lock_covers_the_files_under_it_and_nothing_beside_it() {
     );
 }
 
+/// This build never writes an empty folder target, but a synced row may carry
+/// one (Electron reads `folder:` as the vault root): it covers every file.
+#[test]
+fn a_folder_row_with_an_empty_target_covers_the_whole_vault() {
+    let f = fixture();
+    let note = f.note();
+    f.file(&note, "top.md");
+    sql(&f)
+        .execute(
+            "INSERT INTO vault_locks (id, target_kind, target, locked, created_at, updated_at)
+             VALUES ('folder:', 'folder', '', 1, 1, 1)",
+            [],
+        )
+        .expect("a root row from elsewhere");
+    let locks = f.vault.locks();
+
+    assert_eq!(locks.is_note_locked(&note, None), Ok(true));
+    assert_eq!(
+        locks.folder_covering("Deep/down/a.md"),
+        Ok(Some(String::new()))
+    );
+}
+
 #[test]
 fn a_journal_day_locks_by_its_id() {
     let f = fixture();

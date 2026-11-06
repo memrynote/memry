@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "This date format can't name every day, so it wasn't saved. Include the year, month and day.",
     "journalDaysNotRenamed": "The date format wasn't changed because some journal days couldn't be renamed to it ({count}). A file may already have a day's new name.",
     "journalUnlisted": "The journal folder couldn't be read, so the date format wasn't changed. Check that you have access to it.",
-    "settingsUnreadable": "Folders can't be moved while the vault settings file (.memry/config.json) can't be read. Fix that file, then try again."
+    "settingsUnreadable": "Folders can't be moved while the vault settings file (.memry/config.json) can't be read. Fix that file, then try again.",
+    "settingsUnreadableDelete": "Folders can't be deleted while the vault settings file (.memry/config.json) can't be read. Fix that file, then try again.",
+    "settingsUnreadableJournalDay": "Journal days can't be created while the vault settings file (.memry/config.json) can't be read. Fix that file, then try again."
   },
   "note": {
     "notFound": "This note could not be found. It may have been deleted.",

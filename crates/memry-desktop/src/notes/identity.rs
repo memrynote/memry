@@ -59,6 +59,8 @@
 //! - The file's frontmatter property values reach the record ([`properties`]): a found file's
 //!   fill the keys its record lacks, and an outside edit gives it what the edit changed since
 //!   the record last took the file.
+//! - The old and new path of an app move the core still records are that move's note's: no
+//!   removal, pairing or new note there until the open that finishes the move ([`moving`]).
 //!
 //! Every answer is the core's; a failure is the consumer's to log and retry
 //! ([`crate::vault::consumer::MAX_RETRIES`]), and the next open asks again.
@@ -87,6 +89,7 @@ use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
 
 mod file;
+mod moving;
 mod new_files;
 mod properties;
 mod tags;
@@ -357,6 +360,14 @@ impl NoteIdentity for NotesIdentity {
             return Ok(Adoption::Defer);
         };
         let writer = self.writer(ctx)?;
+        if moving::is_moving_to(&writer, file.path)? {
+            tracing::info!(
+                scope = SCOPE,
+                "a file at the new path of an unfinished app move waits for the open that \
+                 finishes it"
+            );
+            return Ok(Adoption::Defer);
+        }
         self.settle_owed(ctx.root, &writer, &journal, None);
         let split = split_frontmatter_block(&text.raw);
         let body = split.body;
@@ -439,7 +450,13 @@ impl NoteIdentity for NotesIdentity {
         note_id: &str,
         path: &str,
     ) -> Result<Removal, IdentityError> {
-        Ok(match self.writer(ctx)?.file_removed(note_id, path)? {
+        let writer = self.writer(ctx)?;
+        if moving::is_moving_from(&writer, note_id, path)? {
+            // Not `Kept`, which drops the row's hash: row and hash stay as they are, so the
+            // finished move carries them and the file's later edits and removal reach the note.
+            return Err(moving::waits());
+        }
+        Ok(match writer.file_removed(note_id, path)? {
             Removed::Deleted => Removal::Deleted,
             // A file that is truly gone leaves a note the user deleted outside the app: told in
             // the Step 14 notice (TODO at `Notice::ElectronNotImported`).
@@ -483,6 +500,9 @@ impl NoteIdentity for NotesIdentity {
         new_path: &str,
     ) -> Result<Rename, IdentityError> {
         let writer = self.writer(ctx)?;
+        if moving::is_moving_from(&writer, note_id, old_path)? {
+            return Err(moving::waits());
+        }
         let Some(journal) = self.journal(ctx.root) else {
             tracing::info!(
                 scope = SCOPE,

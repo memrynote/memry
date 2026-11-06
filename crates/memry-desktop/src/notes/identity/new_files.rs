@@ -9,12 +9,13 @@ use memry_core::domain::notes::new_files::NewFileNote;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 
 use super::{
-    NotesIdentity, SCOPE, created_ms, electron_db_beside, is_large_file, place, properties,
+    NotesIdentity, SCOPE, created_ms, electron_db_beside, is_large_file, moving, place, properties,
 };
 use crate::vault::consumer::identity::{Candidate, IdentityCtx, IdentityError, NewFile};
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
+use crate::vault::path_key::folded_key;
 
 /// Whether `adopt_or_create` would name `file` without a body to compare, unless a record
 /// matches it: markdown with its text read, not large-file class, not a journal day's path.
@@ -53,13 +54,16 @@ pub(super) fn adopt(
     };
     let writer = identity.writer(ctx)?;
     identity.settle_owed(ctx.root, &writer, &journal, None);
+    // Asked about alone, where it waits (`moving`).
+    let moving_to = moving::moving_to(&writer)?;
     let electron_db_beside = electron_db_beside(ctx.root);
     let mut asked = Vec::new();
     let mut texts = Vec::new();
     let mut notes = Vec::new();
     for (at, new) in files.iter().enumerate() {
         let file = &new.candidate;
-        let Some(text) = file.file.filter(|_| may_be_a_new_note(&journal, file)) else {
+        let asks = may_be_a_new_note(&journal, file) && !moving_to.contains(&folded_key(file.path));
+        let Some(text) = file.file.filter(|_| asks) else {
             continue;
         };
         let (folder_path, title) = place(file.path);
