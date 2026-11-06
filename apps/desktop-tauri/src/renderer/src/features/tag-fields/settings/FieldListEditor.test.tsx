@@ -371,6 +371,31 @@ describe('FieldListEditor rename', () => {
     expect(toastMock.success).not.toHaveBeenCalled()
   })
 
+  it('warns that notes changed during the rename keep the old name until the vault opens again', async () => {
+    tagsApi.editSchema.mockResolvedValue({
+      snapshot: emptySnapshot,
+      rename: { notes: 3, tasks: 1, skippedLocked: 0, skippedExisting: 1, kept: 1 }
+    })
+    const user = userEvent.setup()
+    renderEditor()
+
+    await openFieldMenu(user, 'Role', 'Rename…')
+    const dialog = await screen.findByRole('dialog')
+    const input = within(dialog).getByRole('textbox', { name: 'New name' })
+    await user.clear(input)
+    await user.type(input, 'Job title')
+    await user.click(within(dialog).getByRole('button', { name: 'Rename' }))
+
+    await waitFor(() => expect(toastMock.warning).toHaveBeenCalledTimes(1))
+    const message = toastMock.warning.mock.calls[0][0] as string
+    expect(message).toContain('Renamed Role to Job title in 4 items.')
+    expect(message).toContain(
+      '1 note changed during the rename and keeps Role until the vault opens again.'
+    )
+    expect(message).toContain('1 note already had Job title and keeps both.')
+    expect(message).not.toContain('locked')
+  })
+
   it('shows live progress for the run and locks the dialog until it finishes', async () => {
     let finish: (value: unknown) => void = () => {}
     tagsApi.editSchema.mockReturnValue(new Promise((resolve) => (finish = resolve)))

@@ -18,6 +18,7 @@ use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::error::{CoreError, FailureKind};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::read;
+use memry_desktop::notes::service::NotesService;
 use memry_desktop::session::OpenVault;
 use memry_desktop::tags::schema::view::{
     FieldType, NewFieldSpec, PresetKey, PresetState, RelationView, TagSchemaCommand, TemplateChoice,
@@ -50,8 +51,9 @@ fn opened() -> (Env, OpenVault, Arc<dyn SecureStore>) {
     (e, open, kept.expect("the store"))
 }
 
-fn schemas(open: &OpenVault, store: &Arc<dyn SecureStore>) -> Schemas {
-    Schemas::open(open, store.clone(), "en").expect("schemas")
+fn schemas(e: &Env, open: &OpenVault, store: &Arc<dyn SecureStore>) -> Schemas {
+    let notes = NotesService::new(e.tier.clone(), store.clone());
+    Schemas::open(open, &notes, "en").expect("schemas")
 }
 
 fn field(name: &str, type_name: FieldType) -> NewFieldSpec {
@@ -66,7 +68,7 @@ fn field(name: &str, type_name: FieldType) -> NewFieldSpec {
 #[test]
 fn a_vault_with_no_schemas_offers_every_ready_made_tag_in_the_ui_language() {
     let (mut e, open, store) = opened();
-    let snapshot = schemas(&open, &store).snapshot().unwrap();
+    let snapshot = schemas(&e, &open, &store).snapshot().unwrap();
     assert!(snapshot.tags.is_empty() && snapshot.objects.is_empty());
     assert!(!snapshot.preset_strip_dismissed);
     let offers: Vec<(&str, &str, PresetState, Vec<&str>)> = snapshot
@@ -115,7 +117,12 @@ fn a_vault_with_no_schemas_offers_every_ready_made_tag_in_the_ui_language() {
     assert_eq!(person.template_sections, ["Context", "Notes"]);
     assert_eq!(person.icon.as_deref(), Some("icon:UserIcon"));
 
-    let tr = Schemas::open(&open, store.clone(), "tr").unwrap();
+    let tr = Schemas::open(
+        &open,
+        &NotesService::new(e.tier.clone(), store.clone()),
+        "tr",
+    )
+    .unwrap();
     assert_eq!(tr.snapshot().unwrap().presets[0].name, "kişi");
     e.close();
 }
@@ -123,12 +130,15 @@ fn a_vault_with_no_schemas_offers_every_ready_made_tag_in_the_ui_language() {
 #[test]
 fn adding_a_preset_writes_its_fields_definitions_template_and_appearance_and_makes_objects() {
     let (mut e, open, store) = opened();
-    let schemas = schemas(&open, &store);
+    let schemas = schemas(&e, &open, &store);
     let ran = schemas
-        .run(TagSchemaCommand::AddPreset {
-            preset: PresetKey::Person,
-            tag: None,
-        })
+        .run(
+            TagSchemaCommand::AddPreset {
+                preset: PresetKey::Person,
+                tag: None,
+            },
+            &mut |_, _, _| {},
+        )
         .unwrap();
     assert_eq!(ran.result.tag.as_deref(), Some("person"));
     assert!(ran.tags_changed);
@@ -213,10 +223,13 @@ fn adding_a_preset_writes_its_fields_definitions_template_and_appearance_and_mak
     assert_eq!(snapshot.presets[0].existing_tag.as_ref().unwrap().usage, 1);
 
     let again = schemas
-        .run(TagSchemaCommand::AddPreset {
-            preset: PresetKey::Person,
-            tag: None,
-        })
+        .run(
+            TagSchemaCommand::AddPreset {
+                preset: PresetKey::Person,
+                tag: None,
+            },
+            &mut |_, _, _| {},
+        )
         .unwrap();
     assert!(
         again.effects.templates.is_empty(),
@@ -237,37 +250,42 @@ fn refused(result: Result<memry_desktop::tags::schema::Ran, SchemaError>) -> (St
 #[test]
 fn an_edit_is_refused_in_the_ui_language_and_writes_nothing() {
     let (mut e, open, store) = opened();
-    let schemas = schemas(&open, &store);
+    let schemas = schemas(&e, &open, &store);
     let add = |name: &str, type_name| TagSchemaCommand::AddField {
         tag: "person".to_owned(),
         field: field(name, type_name),
         index: None,
     };
-    schemas.run(add("Role", FieldType::Text)).unwrap();
+    schemas
+        .run(add("Role", FieldType::Text), &mut |_, _, _| {})
+        .unwrap();
 
     assert_eq!(
-        refused(schemas.run(add("tags", FieldType::Text))),
+        refused(schemas.run(add("tags", FieldType::Text), &mut |_, _, _| {})),
         (
             "tag_field_reserved_name".to_owned(),
             "\"tags\" is reserved and cannot be a field name".to_owned()
         )
     );
     assert_eq!(
-        refused(schemas.run(add("ROLE", FieldType::Text))).0,
+        refused(schemas.run(add("ROLE", FieldType::Text), &mut |_, _, _| {})).0,
         "tag_field_duplicate"
     );
     assert_eq!(
-        refused(schemas.run(add("Boss", FieldType::Relation))),
+        refused(schemas.run(add("Boss", FieldType::Relation), &mut |_, _, _| {})),
         (
             "tag_field_relation_target_required".to_owned(),
             "Choose which tag this relation points to".to_owned()
         )
     );
     assert_eq!(
-        refused(schemas.run(TagSchemaCommand::SetExtends {
-            tag: "person".to_owned(),
-            parent: Some(" Person ".to_owned()),
-        }))
+        refused(schemas.run(
+            TagSchemaCommand::SetExtends {
+                tag: "person".to_owned(),
+                parent: Some(" Person ".to_owned()),
+            },
+            &mut |_, _, _| {}
+        ))
         .0,
         "tag_schema_cycle"
     );
@@ -284,7 +302,7 @@ fn an_edit_is_refused_in_the_ui_language_and_writes_nothing() {
 #[test]
 fn an_input_the_schema_cannot_hold_is_refused_and_the_tag_stays_editable() {
     let (mut e, open, store) = opened();
-    let schemas = schemas(&open, &store);
+    let schemas = schemas(&e, &open, &store);
     let boss = |target: Option<String>, inverse: Option<String>| NewFieldSpec {
         relation: Some(RelationView {
             target,
@@ -294,11 +312,14 @@ fn an_input_the_schema_cannot_hold_is_refused_and_the_tag_stays_editable() {
         ..field("Boss", FieldType::Relation)
     };
     schemas
-        .run(TagSchemaCommand::AddField {
-            tag: "person".to_owned(),
-            field: boss(Some("person".to_owned()), None),
-            index: None,
-        })
+        .run(
+            TagSchemaCommand::AddField {
+                tag: "person".to_owned(),
+                field: boss(Some("person".to_owned()), None),
+                index: None,
+            },
+            &mut |_, _, _| {},
+        )
         .unwrap();
     let relation =
         |target: Option<String>, inverse: Option<String>| TagSchemaCommand::SetRelation {
@@ -312,28 +333,37 @@ fn an_input_the_schema_cannot_hold_is_refused_and_the_tag_stays_editable() {
         };
     // A label over 100 characters once saved a schema no build reads: the tag locked.
     let long_label = Some(format!("  {}  ", "x".repeat(101)));
-    refused(schemas.run(relation(None, long_label.clone())));
-    refused(schemas.run(TagSchemaCommand::AddField {
-        tag: "person".to_owned(),
-        field: NewFieldSpec {
-            name: "Mentor".to_owned(),
-            ..boss(None, long_label)
+    refused(schemas.run(relation(None, long_label.clone()), &mut |_, _, _| {}));
+    refused(schemas.run(
+        TagSchemaCommand::AddField {
+            tag: "person".to_owned(),
+            field: NewFieldSpec {
+                name: "Mentor".to_owned(),
+                ..boss(None, long_label)
+            },
+            index: None,
         },
-        index: None,
-    }));
-    refused(schemas.run(relation(Some("  ".to_owned()), None)));
-    refused(schemas.run(relation(Some("t".repeat(51)), None)));
-    refused(schemas.run(TagSchemaCommand::SetTemplate {
-        tag: "person".to_owned(),
-        template: Some(TemplateChoice {
-            id: String::new(),
-            autofill: true,
-        }),
-    }));
+        &mut |_, _, _| {},
+    ));
+    refused(schemas.run(relation(Some("  ".to_owned()), None), &mut |_, _, _| {}));
+    refused(schemas.run(relation(Some("t".repeat(51)), None), &mut |_, _, _| {}));
+    refused(schemas.run(
+        TagSchemaCommand::SetTemplate {
+            tag: "person".to_owned(),
+            template: Some(TemplateChoice {
+                id: String::new(),
+                autofill: true,
+            }),
+        },
+        &mut |_, _, _| {},
+    ));
 
     // A label at the limit, padded, is trimmed and kept.
     let ran = schemas
-        .run(relation(None, Some(format!(" {} ", "x".repeat(100)))))
+        .run(
+            relation(None, Some(format!(" {} ", "x".repeat(100)))),
+            &mut |_, _, _| {},
+        )
         .unwrap();
     let person = &ran.result.snapshot.tags["person"];
     assert!(person.editable);
@@ -345,10 +375,13 @@ fn an_input_the_schema_cannot_hold_is_refused_and_the_tag_stays_editable() {
         .as_deref();
     assert_eq!(inverse.map(str::len), Some(100));
     schemas
-        .run(TagSchemaCommand::RemoveField {
-            tag: "person".to_owned(),
-            name: "Boss".to_owned(),
-        })
+        .run(
+            TagSchemaCommand::RemoveField {
+                tag: "person".to_owned(),
+                name: "Boss".to_owned(),
+            },
+            &mut |_, _, _| {},
+        )
         .unwrap();
     e.close();
 }
@@ -356,23 +389,29 @@ fn an_input_the_schema_cannot_hold_is_refused_and_the_tag_stays_editable() {
 #[test]
 fn a_field_takes_the_spelling_and_type_of_a_property_already_defined() {
     let (mut e, open, store) = opened();
-    let schemas = schemas(&open, &store);
+    let schemas = schemas(&e, &open, &store);
     schemas
-        .run(TagSchemaCommand::AddField {
-            tag: "book".to_owned(),
-            field: NewFieldSpec {
-                options: Some(Vec::new()),
-                ..field("Shelf", FieldType::Select)
+        .run(
+            TagSchemaCommand::AddField {
+                tag: "book".to_owned(),
+                field: NewFieldSpec {
+                    options: Some(Vec::new()),
+                    ..field("Shelf", FieldType::Select)
+                },
+                index: None,
             },
-            index: None,
-        })
+            &mut |_, _, _| {},
+        )
         .unwrap();
     let ran = schemas
-        .run(TagSchemaCommand::AddField {
-            tag: "album".to_owned(),
-            field: field(" shelf ", FieldType::Number),
-            index: None,
-        })
+        .run(
+            TagSchemaCommand::AddField {
+                tag: "album".to_owned(),
+                field: field(" shelf ", FieldType::Number),
+                index: None,
+            },
+            &mut |_, _, _| {},
+        )
         .unwrap();
     assert!(ran.effects.definitions.is_empty(), "the definition exists");
     let shelf = &ran.result.snapshot.tags["album"].own_fields[0];
@@ -382,18 +421,21 @@ fn a_field_takes_the_spelling_and_type_of_a_property_already_defined() {
     );
 
     let relation = schemas
-        .run(TagSchemaCommand::AddField {
-            tag: "album".to_owned(),
-            field: NewFieldSpec {
-                relation: Some(RelationView {
-                    target: Some(" Book ".to_owned()),
-                    many: true,
-                    inverse: None,
-                }),
-                ..field("Pairs", FieldType::Relation)
+        .run(
+            TagSchemaCommand::AddField {
+                tag: "album".to_owned(),
+                field: NewFieldSpec {
+                    relation: Some(RelationView {
+                        target: Some(" Book ".to_owned()),
+                        many: true,
+                        inverse: None,
+                    }),
+                    ..field("Pairs", FieldType::Relation)
+                },
+                index: Some(0),
             },
-            index: Some(0),
-        })
+            &mut |_, _, _| {},
+        )
         .unwrap();
     let first = &relation.result.snapshot.tags["album"].own_fields[0];
     assert_eq!(
@@ -408,12 +450,15 @@ fn a_field_leaves_a_definition_a_newer_build_wrote() {
     let (mut e, open, store) = opened();
     let newer = "---\nproperties:\n  Role:\n    type: rating\n    stars: 5\n---\n";
     e.write(".memry/properties.md", newer);
-    let ran = schemas(&open, &store)
-        .run(TagSchemaCommand::AddField {
-            tag: "person".to_owned(),
-            field: field("Role", FieldType::Text),
-            index: None,
-        })
+    let ran = schemas(&e, &open, &store)
+        .run(
+            TagSchemaCommand::AddField {
+                tag: "person".to_owned(),
+                field: field("Role", FieldType::Text),
+                index: None,
+            },
+            &mut |_, _, _| {},
+        )
         .unwrap();
     assert!(ran.effects.definitions.is_empty(), "Role has a definition");
     assert_eq!(e.read(".memry/properties.md"), newer);
@@ -451,7 +496,7 @@ fn newer_person(open: &OpenVault) {
 fn a_ready_made_tag_a_newer_schema_refuses_writes_nothing() {
     let (mut e, open, store) = opened();
     newer_person(&open);
-    let schemas = schemas(&open, &store);
+    let schemas = schemas(&e, &open, &store);
     let templates = Templates::open(&open, store.clone()).unwrap();
     let before = (
         schemas.snapshot().unwrap().tags,
@@ -460,7 +505,10 @@ fn a_ready_made_tag_a_newer_schema_refuses_writes_nothing() {
 
     // `person` itself, and `meeting`, which adds `person` as its attendees' target.
     for preset in [PresetKey::Person, PresetKey::Meeting] {
-        let (code, _) = refused(schemas.run(TagSchemaCommand::AddPreset { preset, tag: None }));
+        let (code, _) = refused(schemas.run(
+            TagSchemaCommand::AddPreset { preset, tag: None },
+            &mut |_, _, _| {},
+        ));
         assert_eq!(code, "tag_schema_unreadable");
     }
     assert_eq!(
@@ -480,12 +528,12 @@ fn a_ready_made_tag_a_newer_schema_refuses_writes_nothing() {
 #[test]
 fn dismissing_the_ready_made_tags_is_kept() {
     let (mut e, open, store) = opened();
-    let ran = schemas(&open, &store)
-        .run(TagSchemaCommand::DismissPresetOffer)
+    let ran = schemas(&e, &open, &store)
+        .run(TagSchemaCommand::DismissPresetOffer, &mut |_, _, _| {})
         .unwrap();
     assert!(ran.result.snapshot.preset_strip_dismissed);
     assert!(
-        schemas(&open, &store)
+        schemas(&e, &open, &store)
             .snapshot()
             .unwrap()
             .preset_strip_dismissed

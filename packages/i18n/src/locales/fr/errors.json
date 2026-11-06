@@ -386,6 +386,7 @@
     "cycle": "#{parent} reprend déjà ses champs de ce tag",
     "unreadableSchema": "Une version plus récente de Memry a modifié ce tag. Mettez Memry à jour pour le modifier",
     "relationTargetRequired": "Choisissez le tag vers lequel pointe cette relation",
-    "renameRunning": "Un autre renommage de champ est encore en cours ({from} en {to}). Réessayez une fois terminé."
+    "renameRunning": "Un autre renommage de champ est encore en cours ({from} en {to}). Réessayez une fois terminé.",
+    "renameTaskUnreadable": "Le renommage du champ {from} en {to} ne peut pas continuer : cette version de Memry ne peut pas lire ces tâches : {tasks}. Mettez Memry à jour, puis réessayez."
   }
 }

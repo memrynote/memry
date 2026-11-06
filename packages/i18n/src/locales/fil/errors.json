@@ -386,6 +386,7 @@
     "cycle": "Kinukuha na ng #{parent} ang mga field nito mula sa tag na ito",
     "unreadableSchema": "Binago ng mas bagong bersyon ng Memry ang tag na ito. I-update ang Memry para ma-edit ito",
     "relationTargetRequired": "Piliin kung aling tag ang tinuturo ng relation na ito",
-    "renameRunning": "Tinatapos pa ang isa pang pagpapalit ng pangalan ng field ({from} sa {to}). Subukan ulit kapag tapos na ito."
+    "renameRunning": "Tinatapos pa ang isa pang pagpapalit ng pangalan ng field ({from} sa {to}). Subukan ulit kapag tapos na ito.",
+    "renameTaskUnreadable": "Hindi maituloy ang pagpapalit ng pangalan ng field mula {from} sa {to}: hindi mabasa ng bersyong ito ng Memry ang mga gawaing ito: {tasks}. I-update ang Memry, saka subukan ulit."
   }
 }

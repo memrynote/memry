@@ -66,10 +66,40 @@ impl Tasks {
     }
 }
 
-/// Desktop's reads, not on the FFI surface: iOS edits no tag schema.
+/// Desktop's reads and its vault-wide field rename, not on the FFI surface: iOS edits no tag
+/// schema.
 impl Tasks {
     /// Every live task's tags and filled fields ([`task_records::field_holders`]).
     pub fn field_holders(&self) -> Result<FieldHolders, StorageError> {
         self.db.read_blocking(task_records::field_holders)
+    }
+
+    /// Renames one task's field `from` to `to` ([`tasks::rename_field`]), with an audit row for
+    /// each key, best effort as every task write's.
+    pub fn rename_field(
+        &self,
+        id: &str,
+        from: &str,
+        to: &str,
+    ) -> Result<tasks::FieldRenamed, StorageError> {
+        self.db.call_blocking(|conn| {
+            let now = now_ms();
+            let renamed = tasks::rename_field(conn, id, from, to, &self.device_id, now)?;
+            if let tasks::FieldRenamed::Renamed { value } = &renamed {
+                for (name, old, new) in [(from, value, &Value::Null), (to, &Value::Null, value)] {
+                    let field = format!("fields.{name}");
+                    let _ = task_activity::record_field_change(
+                        conn,
+                        id,
+                        &field,
+                        old,
+                        new,
+                        &self.device_id,
+                        now,
+                    );
+                }
+            }
+            Ok(renamed)
+        })
     }
 }

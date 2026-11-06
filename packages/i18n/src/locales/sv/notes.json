@@ -1890,7 +1890,8 @@
         "confirm": "Byt namn",
         "taken": "Den här taggen har redan {name}.",
         "done": "Bytte namn på {from} till {to} i {count, plural, one {# objekt} other {# objekt}}.",
-        "skipped": "Bytte namn på {from} till {to} i {count, plural, one {# objekt} other {# objekt}}. {locked, plural, =0 {} one {# låst anteckning slutförs när den låses upp.} other {# låsta anteckningar slutförs när de låses upp.}} {existing, plural, =0 {} one {# anteckning hade redan {to} och behåller båda.} other {# anteckningar hade redan {to} och behåller båda.}}"
+        "skipped": "Bytte namn på {from} till {to} i {count, plural, one {# objekt} other {# objekt}}. {locked, plural, =0 {} one {# låst anteckning slutförs när den låses upp.} other {# låsta anteckningar slutförs när de låses upp.}} {existing, plural, =0 {} one {# anteckning hade redan {to} och behåller båda.} other {# anteckningar hade redan {to} och behåller båda.}}",
+        "kept": "Bytte namn på {from} till {to} i {count, plural, one {# objekt} other {# objekt}}. {kept, plural, =0 {} one {# anteckning ändrades under namnbytet och behåller {from} tills valvet öppnas igen.} other {# anteckningar ändrades under namnbytet och behåller {from} tills valvet öppnas igen.}} {existing, plural, =0 {} one {# anteckning hade redan {to} och behåller båda.} other {# anteckningar hade redan {to} och behåller båda.}}"
       },
       "delete": {
         "button": "Radera tagg",

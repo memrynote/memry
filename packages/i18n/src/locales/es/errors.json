@@ -386,6 +386,7 @@
     "cycle": "#{parent} ya toma sus campos de esta etiqueta",
     "unreadableSchema": "Una versión más reciente de Memry cambió esta etiqueta. Actualiza Memry para editarla",
     "relationTargetRequired": "Elige a qué etiqueta apunta esta relación",
-    "renameRunning": "Otro cambio de nombre de campo aún está terminando ({from} a {to}). Inténtalo de nuevo cuando acabe."
+    "renameRunning": "Otro cambio de nombre de campo aún está terminando ({from} a {to}). Inténtalo de nuevo cuando acabe.",
+    "renameTaskUnreadable": "El cambio de nombre del campo {from} a {to} no puede seguir: esta versión de Memry no puede leer estas tareas: {tasks}. Actualiza Memry e inténtalo de nuevo."
   }
 }

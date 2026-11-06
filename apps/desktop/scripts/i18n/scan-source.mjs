@@ -19,7 +19,10 @@ const DEFAULT_SCAN_PATHS = [
   'packages/domain-tasks/src',
   // The Tauri shell's native copy (menus, dialogs, the startup-error window), named by full
   // `ns:key` string literals.
-  'apps/desktop-tauri/src-tauri/src'
+  'apps/desktop-tauri/src-tauri/src',
+  // The Rust tag schemas' refusals, named the same way (the rest of the crate's literals include
+  // test strings such as "settings:false").
+  'crates/memry-desktop/src/tags'
 ]
 const USER_FACING_ATTRIBUTES = new Set(['aria-label', 'title', 'placeholder', 'alt'])
 const USER_FACING_PROPS = new Set(['label', 'description', 'emptyText', 'tooltip', 'message'])
@@ -56,7 +59,8 @@ function isSourceFile(filePath) {
   return /\.(tsx?|jsx?|rs)$/.test(filePath)
 }
 
-const RUST_KEY_LITERAL_RE = /"([a-z]+):([\w.-]+)"/g
+// A literal ending in `.` is a prefix a macro completes (`concat!("notes:tagFields.presets.", ..)`).
+const RUST_KEY_LITERAL_RE = /"([a-z]+):([\w-]+(?:\.[\w-]+)*)"/g
 
 /** A Rust file: every `"ns:key"` literal of a known namespace is a key it uses. */
 function scanRustFile(filePath, { workspaceRoot, namespaces, englishKeys }) {

@@ -1890,7 +1890,8 @@
         "confirm": "Đổi tên",
         "taken": "Thẻ này đã có {name}.",
         "done": "Đã đổi tên {from} thành {to} trong {count, plural, other {# mục}}.",
-        "skipped": "Đã đổi tên {from} thành {to} trong {count, plural, other {# mục}}. {locked, plural, =0 {} other {# ghi chú bị khóa sẽ hoàn tất khi được mở khóa.}} {existing, plural, =0 {} other {# ghi chú đã có {to} và giữ cả hai.}}"
+        "skipped": "Đã đổi tên {from} thành {to} trong {count, plural, other {# mục}}. {locked, plural, =0 {} other {# ghi chú bị khóa sẽ hoàn tất khi được mở khóa.}} {existing, plural, =0 {} other {# ghi chú đã có {to} và giữ cả hai.}}",
+        "kept": "Đã đổi tên {from} thành {to} trong {count, plural, other {# mục}}. {kept, plural, =0 {} other {# ghi chú đã thay đổi trong lúc đổi tên và giữ {from} cho đến khi kho được mở lại.}} {existing, plural, =0 {} other {# ghi chú đã có {to} và giữ cả hai.}}"
       },
       "delete": {
         "button": "Xóa thẻ",

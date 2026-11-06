@@ -1890,7 +1890,8 @@
         "confirm": "Premenovať",
         "taken": "Táto značka už má {name}.",
         "done": "{from} premenované na {to} v {count, plural, one {# položke} few {# položkách} other {# položkách}}.",
-        "skipped": "{from} premenované na {to} v {count, plural, one {# položke} few {# položkách} other {# položkách}}. {locked, plural, =0 {} one {# zamknutá poznámka sa dokončí po odomknutí.} few {# zamknuté poznámky sa dokončia po odomknutí.} other {# zamknutých poznámok sa dokončí po odomknutí.}} {existing, plural, =0 {} one {# poznámka už mala {to} a ponechá si obe.} few {# poznámky už mali {to} a ponechajú si obe.} other {# poznámok už malo {to} a ponechá si obe.}}"
+        "skipped": "{from} premenované na {to} v {count, plural, one {# položke} few {# položkách} other {# položkách}}. {locked, plural, =0 {} one {# zamknutá poznámka sa dokončí po odomknutí.} few {# zamknuté poznámky sa dokončia po odomknutí.} other {# zamknutých poznámok sa dokončí po odomknutí.}} {existing, plural, =0 {} one {# poznámka už mala {to} a ponechá si obe.} few {# poznámky už mali {to} a ponechajú si obe.} other {# poznámok už malo {to} a ponechá si obe.}}",
+        "kept": "{from} premenované na {to} v {count, plural, one {# položke} few {# položkách} other {# položkách}}. {kept, plural, =0 {} one {# poznámka sa počas premenovania zmenila a ponechá si {from}, kým sa trezor znova neotvorí.} few {# poznámky sa počas premenovania zmenili a ponechajú si {from}, kým sa trezor znova neotvorí.} other {# poznámok sa počas premenovania zmenilo a ponechá si {from}, kým sa trezor znova neotvorí.}} {existing, plural, =0 {} one {# poznámka už mala {to} a ponechá si obe.} few {# poznámky už mali {to} a ponechajú si obe.} other {# poznámok už malo {to} a ponechá si obe.}}"
       },
       "delete": {
         "button": "Odstrániť značku",

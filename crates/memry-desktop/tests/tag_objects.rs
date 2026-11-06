@@ -23,6 +23,7 @@ use memry_desktop::error::{CoreError, FailureKind};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::property_definitions::PropertyDefinitions;
+use memry_desktop::notes::service::NotesService;
 use memry_desktop::tags::schema::Schemas;
 use memry_desktop::tags::schema::objects::{
     GetLinkedHereInput, LinkedHereGroupView, SearchObjectsInput,
@@ -84,11 +85,14 @@ impl Fixture {
 
     fn schemas(&self) -> Schemas {
         let open = self.e.session.current().expect("open");
-        Schemas::open(&open, self.store.clone(), "en").expect("schemas")
+        let notes = NotesService::new(self.e.tier.clone(), self.store.clone());
+        Schemas::open(&open, &notes, "en").expect("schemas")
     }
 
     fn run(&self, command: TagSchemaCommand) {
-        self.schemas().run(command).expect("the schema edit");
+        self.schemas()
+            .run(command, &mut |_, _, _| {})
+            .expect("the schema edit");
     }
 
     fn field(&self, tag: &str, name: &str, relation: Option<&str>) {

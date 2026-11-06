@@ -386,6 +386,7 @@
     "cycle": "#{parent} 已從此標籤繼承欄位",
     "unreadableSchema": "較新版本的 Memry 變更了此標籤。請更新 Memry 後再編輯",
     "relationTargetRequired": "請選擇此關聯指向哪個標籤",
-    "renameRunning": "另一個欄位重新命名（{from} 改為 {to}）仍在完成中。完成後請再試一次。"
+    "renameRunning": "另一個欄位重新命名（{from} 改為 {to}）仍在完成中。完成後請再試一次。",
+    "renameTaskUnreadable": "欄位重新命名（{from} 改為 {to}）無法繼續：此版本的 Memry 無法讀取以下任務：{tasks}。請更新 Memry 後再試一次。"
   }
 }
