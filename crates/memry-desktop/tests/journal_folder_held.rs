@@ -102,14 +102,16 @@ fn a_journal_change_another_build_recorded_holds_the_moved_days() {
     settles(&mut e, &notes, &note, "Diary");
 }
 
-/// P4, P5: moved to `Diary ` (a trailing space, which a folder the records name cannot end in),
-/// the days are held there. Renamed to a folder they can live in, the setting follows.
+/// P4, P5: moved to `canvases` (the folder the tree keeps for canvases, which the days cannot
+/// live in), the days are held there. Renamed to a folder they can live in, the setting follows.
+/// Each platform can make this folder; `Diary ` (a trailing space) is refused too, but Windows
+/// drops the space in the rename.
 #[test]
 fn a_folder_the_days_cannot_live_in_holds_them_until_renamed() {
     let (mut e, notes, _, note) = journal();
-    moved_outside(&mut e, "journal", "Diary ");
-    held_through_reopens(&mut e, &notes, "Diary ");
-    moved_outside(&mut e, "Diary ", "Diary");
+    moved_outside(&mut e, "journal", "canvases");
+    held_through_reopens(&mut e, &notes, "canvases");
+    moved_outside(&mut e, "canvases", "Diary");
     assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
     settles(&mut e, &notes, &note, "Diary");
 }
