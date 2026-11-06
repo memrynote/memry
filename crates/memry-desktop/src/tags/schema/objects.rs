@@ -4,13 +4,16 @@
 //! this checks the input as Electron's zod schemas do and shapes the answer.
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::tag_objects::{LinkedGroup, LinkedNote, LinkedTask, ObjectMatch};
+use memry_core::domain::tag_objects::{LinkedGroup, LinkedNote, LinkedTask, ObjectMatch, Resolved};
+use memry_core::markdown::frontmatter::js_trim;
 use serde::{Deserialize, Serialize};
 
+use super::edit::length;
 use super::{SchemaError, Schemas};
 
 /// `SearchObjectsSchema`.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchObjectsInput {
     pub query: String,
     /// Only objects of this tag and the tags that extend it (a relation's target).
@@ -136,10 +139,6 @@ pub enum LinkedHereGroupView {
     },
 }
 
-fn views<T, V: From<T>>(items: Vec<T>) -> Vec<V> {
-    items.into_iter().map(V::from).collect()
-}
-
 impl From<LinkedGroup> for LinkedHereGroupView {
     fn from(group: LinkedGroup) -> Self {
         match group {
@@ -155,7 +154,7 @@ impl From<LinkedGroup> for LinkedHereGroupView {
                 field,
                 label,
                 total,
-                items: views(items),
+                items: items.into_iter().map(Into::into).collect(),
                 filter,
             },
             LinkedGroup::TaskField {
@@ -168,12 +167,12 @@ impl From<LinkedGroup> for LinkedHereGroupView {
                 tag,
                 field,
                 total,
-                items: views(items),
+                items: items.into_iter().map(Into::into).collect(),
                 filter,
             },
             LinkedGroup::Mentions { total, items } => Self::Mentions {
                 total,
-                items: views(items),
+                items: items.into_iter().map(Into::into).collect(),
             },
         }
     }
@@ -201,25 +200,31 @@ fn bounded(value: Option<u32>, default: u32, max: u32, what: &str) -> Result<usi
 }
 
 impl Schemas {
+    /// The resolved tags as the definitions stand, no pulled definition settled into the file:
+    /// a keystroke never waits on a definition edit nor writes `properties.md`.
+    fn read_resolved(&self) -> Result<Resolved, SchemaError> {
+        self.resolved_by(self.definitions.read()?)
+    }
+
     /// `tags:search-objects`.
     pub fn search_objects(
         &self,
         input: &SearchObjectsInput,
     ) -> Result<SearchObjectsView, SchemaError> {
-        if input.query.encode_utf16().count() > 200 {
+        if length(&input.query) > 200 {
             return Err(invalid("a search must be at most 200 characters"));
         }
-        let tag = input.tag.as_deref().map(str::trim);
-        if tag.is_some_and(|tag| tag.is_empty() || tag.encode_utf16().count() > 100) {
+        let tag = input.tag.as_deref().map(js_trim);
+        if tag.is_some_and(|tag| tag.is_empty() || length(tag) > 100) {
             return Err(invalid("a tag name must be 1 to 100 characters"));
         }
         let limit = bounded(input.limit, 12, 50, "a search limit")?;
         let matches =
             self.open
                 .search
-                .search_objects(&self.resolved()?, &input.query, tag, limit)?;
+                .search_objects(&self.read_resolved()?, &input.query, tag, limit)?;
         Ok(SearchObjectsView {
-            matches: views(matches),
+            matches: matches.into_iter().map(Into::into).collect(),
             complete: true,
         })
     }
@@ -238,9 +243,9 @@ impl Schemas {
         let groups = self
             .open
             .search
-            .linked_here(&self.resolved()?, &input.note_id, limit)?;
+            .linked_here(&self.read_resolved()?, &input.note_id, limit)?;
         Ok(LinkedHereView {
-            groups: views(groups),
+            groups: groups.into_iter().map(Into::into).collect(),
         })
     }
 }

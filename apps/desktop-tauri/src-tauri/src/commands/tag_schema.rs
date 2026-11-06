@@ -4,7 +4,9 @@
 //! definitions and a template; never a note file. After an edit it sends what Electron sends:
 //! [`PropertyDefinitionChangedEvent`] per definition it created, [`TemplateCreatedEvent`] per
 //! template, then [`NoteTagsChangedEvent`] when a schema may have changed. The object search and
-//! Linked here (`ipc/tag-object-handlers.ts`) read the same resolved tags and write nothing.
+//! Linked here (`ipc/tag-object-handlers.ts`) read the same resolved tags, typed by the
+//! definitions as stored (a pulled one is not settled into the file first), and write no record
+//! or vault file.
 
 use std::sync::Arc;
 

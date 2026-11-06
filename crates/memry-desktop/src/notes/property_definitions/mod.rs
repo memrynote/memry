@@ -160,6 +160,12 @@ impl PropertyDefinitions {
                 "pulled definitions are not in the file yet: {error}"
             );
         }
+        self.read()
+    }
+
+    /// Every definition as the two stores hold them now, without settling a pull into the file
+    /// first: a read that never waits on an edit's turn or writes the file (the object search).
+    pub fn read(&self) -> Result<Vec<PropertyDefinitionView>, DefinitionsError> {
         let records = self.records.list()?;
         let mut views: Vec<PropertyDefinitionView> = Vec::new();
         let file = self.file();

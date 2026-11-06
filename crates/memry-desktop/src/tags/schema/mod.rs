@@ -27,7 +27,9 @@ use memry_core::seams::secure_store::SecureStore;
 
 use crate::error::{CoreError, FailureKind};
 use crate::i18n::{self, Args};
-use crate::notes::property_definitions::{DefinitionType, DefinitionsError, PropertyDefinitions};
+use crate::notes::property_definitions::{
+    DefinitionType, DefinitionsError, PropertyDefinitionView, PropertyDefinitions,
+};
 use crate::session::OpenVault;
 use crate::templates::Templates;
 pub use edit::{Effects, Ran};
@@ -87,12 +89,10 @@ impl Schemas {
         i18n::t(&self.locale, key, &Args::new())
     }
 
-    /// Each defined property's type, options and calendar flag, by name.
-    fn types(&self) -> Result<HashMap<String, PropertyInfo>, SchemaError> {
+    /// Each of `definitions`' type, options and calendar flag, by name.
+    fn types(&self, definitions: Vec<PropertyDefinitionView>) -> HashMap<String, PropertyInfo> {
         let calendar = self.definitions.calendar_names();
-        Ok(self
-            .definitions
-            .list()?
+        definitions
             .into_iter()
             .map(|definition| {
                 let type_name = definition.type_name;
@@ -111,12 +111,21 @@ impl Schemas {
                 };
                 (definition.name, info)
             })
-            .collect())
+            .collect()
     }
 
-    /// The resolved tags, typed by the vault's property definitions (`loadResolvedTags`).
+    /// The resolved tags, typed by the vault's property definitions (`loadResolvedTags`), a
+    /// pulled definition settled into the file first.
     fn resolved(&self) -> Result<BTreeMap<String, ResolvedTag>, SchemaError> {
-        let types = self.types()?;
+        self.resolved_by(self.definitions.list()?)
+    }
+
+    /// [`Self::resolved`] typed by `definitions`.
+    fn resolved_by(
+        &self,
+        definitions: Vec<PropertyDefinitionView>,
+    ) -> Result<BTreeMap<String, ResolvedTag>, SchemaError> {
+        let types = self.types(definitions);
         let definitions = self.open.vault.tag_schema_definitions()?;
         Ok(tag_schema::resolve(&definitions, &|name| {
             types.get(name).cloned()
