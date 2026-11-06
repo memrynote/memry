@@ -61,6 +61,13 @@
   flex-grow: 1;
 }
 
+/* BlockNote draws the empty-block placeholder as an ::after after the text box, so
+   a box that fills the row would push it to the far end. An empty box has no
+   lines to align and stays collapsed. */
+.bn-editor .bn-inline-content:has(> .ProseMirror-trailingBreak:only-child) {
+  flex-grow: 0;
+}
+
 :root .bn-editor [data-content-type='table'] th {
   text-align: start;
 }

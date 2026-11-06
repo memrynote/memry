@@ -30,6 +30,7 @@ describe('editor RTL mirror', () => {
     const css = strip(readFileSync(join(ASSETS, 'editor-rtl.css'), 'utf8'))
     expect(css).toMatch(/\.bn-editor \.bn-inline-content,[^{]*\{[^}]*unicode-bidi: plaintext/)
     expect(css).toMatch(/\.bn-editor \.bn-inline-content \{[^}]*flex-grow: 1/)
+    expect(css).toMatch(/:has\(> \.ProseMirror-trailingBreak:only-child\) \{[^}]*flex-grow: 0/)
     expect(css).toMatch(
       /\[data-content-type='codeBlock'\] \.bn-inline-content \{[^}]*unicode-bidi: normal/
     )
