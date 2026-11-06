@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "El cambio no se guardó porque algunos días del diario no se pudieron mover allí ({count}). Puede que un archivo ya tenga el nuevo nombre de un día.",
     "journalUnlisted": "No se pudo leer la carpeta del diario, así que el cambio no se guardó. Comprueba que tienes acceso a ella.",
     "journalChangeWaits": "Un cambio anterior de la carpeta del diario o del formato de fecha no terminó. Vuelve a abrir la bóveda para terminarlo y luego inténtalo de nuevo.",
+    "journalChangeUnrecorded": "No se pudo preparar el cambio del diario, así que no se movió ningún día y se mantiene tu ajuste guardado. Inténtalo de nuevo.",
     "settingsUnreadable": "No se pueden mover carpetas mientras no se pueda leer el archivo de ajustes de la bóveda (.memry/config.json). Corrige ese archivo y vuelve a intentarlo.",
     "settingsUnreadableDelete": "No se pueden eliminar carpetas mientras no se pueda leer el archivo de ajustes de la bóveda (.memry/config.json). Corrige ese archivo y vuelve a intentarlo.",
     "settingsUnreadableJournalDay": "No se pueden crear días del diario mientras no se pueda leer el archivo de ajustes de la bóveda (.memry/config.json). Corrige ese archivo y vuelve a intentarlo."

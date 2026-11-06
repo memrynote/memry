@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Hindi na-save ang pagbabago dahil hindi mailipat doon ang ilang araw ng talaarawan ({count}). Maaaring may file nang may bagong pangalan ng isang araw.",
     "journalUnlisted": "Hindi mabasa ang folder ng talaarawan, kaya hindi na-save ang pagbabago. Tiyaking may access ka rito.",
     "journalChangeWaits": "Hindi natapos ang naunang pagbabago sa folder ng journal o sa format ng petsa. Buksan muli ang vault para matapos ito, saka subukang muli.",
+    "journalChangeUnrecorded": "Hindi maihanda ang pagbabago sa journal, kaya walang araw ng journal na nailipat at nananatili ang naka-save mong setting. Subukan muli.",
     "settingsUnreadable": "Hindi maililipat ang mga folder habang hindi mabasa ang settings file ng vault (.memry/config.json). Ayusin ang file na iyon, pagkatapos ay subukang muli.",
     "settingsUnreadableDelete": "Hindi mabubura ang mga folder habang hindi mabasa ang settings file ng vault (.memry/config.json). Ayusin ang file na iyon, pagkatapos ay subukang muli.",
     "settingsUnreadableJournalDay": "Hindi makakagawa ng mga araw sa journal habang hindi mabasa ang settings file ng vault (.memry/config.json). Ayusin ang file na iyon, pagkatapos ay subukang muli."

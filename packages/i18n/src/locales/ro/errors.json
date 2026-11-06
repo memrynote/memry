@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Modificarea nu a fost salvată, deoarece unele zile din jurnal nu au putut fi mutate acolo ({count}). Poate că un fișier are deja noul nume al unei zile.",
     "journalUnlisted": "Dosarul de jurnal nu a putut fi citit, așa că modificarea nu a fost salvată. Verifică dacă ai acces la el.",
     "journalChangeWaits": "O modificare anterioară a dosarului jurnalului sau a formatului datei nu s-a încheiat. Redeschide seiful ca să se încheie, apoi încearcă din nou.",
+    "journalChangeUnrecorded": "Modificarea jurnalului nu a putut fi pregătită, așa că nicio zi din jurnal nu a fost mutată, iar setarea salvată se păstrează. Încearcă din nou.",
     "settingsUnreadable": "Folderele nu pot fi mutate cât timp fișierul de setări al seifului (.memry/config.json) nu poate fi citit. Repară fișierul, apoi încearcă din nou.",
     "settingsUnreadableDelete": "Folderele nu pot fi șterse cât timp fișierul de setări al seifului (.memry/config.json) nu poate fi citit. Repară fișierul, apoi încearcă din nou.",
     "settingsUnreadableJournalDay": "Zilele de jurnal nu pot fi create cât timp fișierul de setări al seifului (.memry/config.json) nu poate fi citit. Repară fișierul, apoi încearcă din nou."

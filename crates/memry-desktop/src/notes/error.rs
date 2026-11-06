@@ -102,8 +102,9 @@ pub enum NotesError {
     /// folder move or delete, or a day create, would act on the defaults instead.
     #[error("the vault settings file cannot be read: {0}")]
     SettingsUnreadable(String),
-    /// A journal setting change a crash cut short still has days at its new folder, which is,
-    /// holds or is inside the folder to move (`vault::journal_rename::finish_journal_change`).
+    /// A journal setting change a crash cut short still has days to put back, and the folder to
+    /// move or delete is, holds or is inside one of its folders
+    /// (`vault::journal_rename::finish_journal_change`).
     #[error("an earlier journal setting change did not finish; reopen the vault to finish it")]
     JournalChangeWaits,
     /// The folder to delete is inside the journal folder (a year folder of a nested date

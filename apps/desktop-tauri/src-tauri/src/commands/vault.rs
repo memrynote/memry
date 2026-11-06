@@ -308,8 +308,8 @@ pub async fn vault_get_config<R: Runtime>(app: AppHandle<R>) -> Result<VaultConf
 /// hears as [`VaultConfigChangedEvent`], in the order the writes land. A change that is not
 /// ported yet is refused as `config_change_not_ported`, and a setting not every day can take as
 /// `journal_format_incomplete`, `journal_folder_invalid`, `journal_folder_respelled`,
-/// `journal_unlisted`, `journal_days_not_renamed` or `journal_change_waits`
-/// (`vault::config::settings`).
+/// `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits` or
+/// `journal_change_unrecorded` (`vault::config::settings`).
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_update_config<R: Runtime>(
@@ -343,6 +343,7 @@ const FORMAT_INCOMPLETE_KEY: &str = "errors:vault.journalFormatIncomplete";
 const FOLDER_INVALID_KEY: &str = "errors:vault.journalFolderInvalid";
 const FOLDER_RESPELLED_KEY: &str = "errors:vault.journalFolderRespelled";
 pub(crate) const CHANGE_WAITS_KEY: &str = "errors:vault.journalChangeWaits";
+const UNRECORDED_KEY: &str = "errors:vault.journalChangeUnrecorded";
 const DAYS_NOT_RENAMED_KEY: &str = "errors:vault.journalDaysNotRenamed";
 const UNLISTED_KEY: &str = "errors:vault.journalUnlisted";
 
@@ -382,7 +383,15 @@ fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> Comm
             localized(app, CHANGE_WAITS_KEY),
         ),
         SettingsError::Unrecorded(why) => {
-            CommandError::new(ErrorKind::Storage, "journal_change_unrecorded", why)
+            tracing::warn!(
+                scope = "vault_config",
+                "the journal setting change was not recorded: {why}"
+            );
+            CommandError::new(
+                ErrorKind::Storage,
+                "journal_change_unrecorded",
+                localized(app, UNRECORDED_KEY),
+            )
         }
         SettingsError::DaysNotRenamed { left } => {
             let count = i64::try_from(left).unwrap_or(i64::MAX);

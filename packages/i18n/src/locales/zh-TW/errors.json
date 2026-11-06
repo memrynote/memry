@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "變更未儲存，因為部分日誌日期無法移到那裡（{count}）。可能已有檔案使用了某一天的新名稱。",
     "journalUnlisted": "無法讀取日誌資料夾，因此變更未儲存。請確認你有權存取該資料夾。",
     "journalChangeWaits": "先前對日誌資料夾或日期格式的變更尚未完成。請重新開啟保險庫以完成變更，然後再試一次。",
+    "journalChangeUnrecorded": "無法準備日記變更，因此沒有移動任何日記日期，已儲存的設定保持不變。請再試一次。",
     "settingsUnreadable": "無法讀取儲存庫設定檔（.memry/config.json）時，無法移動資料夾。請修正該檔案後再試一次。",
     "settingsUnreadableDelete": "無法讀取儲存庫設定檔（.memry/config.json）時，無法刪除資料夾。請修正該檔案後再試一次。",
     "settingsUnreadableJournalDay": "無法讀取儲存庫設定檔（.memry/config.json）時，無法建立日記日期。請修正該檔案後再試一次。"

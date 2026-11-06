@@ -10,6 +10,8 @@
 //! | a journal folder change killed at any step keeps every day        | recorded first, finished at open      |
 //! | a journal format change killed at any step keeps every day        | the same, a note's row back           |
 //! | a day cut off between its two steps keeps an outside edit         | the row back before the walk          |
+//! | a journal change killed at any step keeps an edit made while the  | the rows back before the settings are |
+//! | settings could not be read                                        | read                                  |
 //! | a refused journal change killed on its way back keeps every day   | the same record                       |
 //! | a journal change cut short leaves no day where the setting is not | P2: a third folder after it           |
 //! | a journal change cut short waits for readable settings            | the record waits, a day create ends it |
@@ -46,7 +48,7 @@ const DAY2: &str = "j2025-01-03";
 struct Killed;
 
 /// A vault with two days and a dated note in `journal/`.
-fn two_days() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>, String) {
+pub(crate) fn two_days() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>, String) {
     let (mut e, store) = opened_keeping(
         daily("journal"),
         &[
@@ -68,7 +70,11 @@ fn format(to: &str) -> VaultConfigPatch {
 
 /// Runs the change `patch`, stopped at its step `kill_at` (from 1) as a crash stops it: nothing
 /// after it runs. Answers how many steps ran and whether it was stopped.
-fn change_killed(e: &Env, patch: VaultConfigPatch, kill_at: Option<usize>) -> (usize, bool) {
+pub(crate) fn change_killed(
+    e: &Env,
+    patch: VaultConfigPatch,
+    kill_at: Option<usize>,
+) -> (usize, bool) {
     let core = e.core();
     let mut at = 0;
     let result = catch_unwind(AssertUnwindSafe(|| {
@@ -93,7 +99,7 @@ fn record(e: &Env, store: &Arc<dyn SecureStore>) -> Option<JournalChangeRecorded
 
 /// The end every test here reaches: each day at the path the saved setting gives it, through a
 /// day made later and three opens, the note kept, nothing deleted and no record left.
-fn settled(e: &mut Env, notes: &NotesService, store: &Arc<dyn SecureStore>, note: &str) {
+pub(crate) fn settled(e: &mut Env, notes: &NotesService, store: &Arc<dyn SecureStore>, note: &str) {
     reopen(e);
     assert_eq!(record(e, store), None);
     let saved = stored(&e.vault);
@@ -115,7 +121,7 @@ fn settled(e: &mut Env, notes: &NotesService, store: &Arc<dyn SecureStore>, note
 }
 
 /// Reopens after a kill: the open puts back or forgets, and makes and removes no note.
-fn reopened(e: &mut Env) {
+pub(crate) fn reopened(e: &mut Env) {
     e.close();
     e.drain();
     e.open();
@@ -151,6 +157,63 @@ fn a_journal_folder_change_killed_at_any_step_keeps_every_day() {
 #[test]
 fn a_journal_format_change_killed_at_any_step_keeps_every_day() {
     killed_at_every_step(&format("YYYY/YYYY-MM-DD dddd"));
+}
+
+/// Each step of a folder change and of a format change killed, then every journal file edited
+/// while the app is closed and the settings unreadable at the next open: the record waits for
+/// readable settings, but the open first takes back each row whose file never moved, so the walk
+/// pairs every edited file with its record. Left to the walk, a day or the dated note cut off
+/// between its two steps would be removed, its delete synced, and its file made a new note.
+#[test]
+fn a_journal_folder_change_killed_at_any_step_keeps_an_edit_made_while_unreadable() {
+    killed_and_edited_while_unreadable(&folder("Diary"));
+}
+
+#[test]
+fn a_journal_format_change_killed_at_any_step_keeps_an_edit_made_while_unreadable() {
+    killed_and_edited_while_unreadable(&format("YYYY/YYYY-MM-DD dddd"));
+}
+
+fn killed_and_edited_while_unreadable(patch: &VaultConfigPatch) {
+    let (e, ..) = two_days();
+    let (steps, _) = change_killed(&e, patch.clone(), None);
+    drop(e);
+    for kill_at in 1..=steps {
+        let (mut e, notes, store, note) = two_days();
+        let (_, killed) = change_killed(&e, patch.clone(), Some(kill_at));
+        assert!(killed, "step {kill_at} of {steps}");
+        e.close();
+        edit_every_file(&e.vault);
+        let config: Value = stored(&e.vault);
+        fs::write(config_path(&e.vault), "{").unwrap();
+        reopened(&mut e);
+        quiet(&mut e);
+        fs::write(config_path(&e.vault), config.to_string()).unwrap();
+        settled(&mut e, &notes, &store, &note);
+        let rows = e.rows();
+        for id in [DAY, DAY2, &note] {
+            let (_, at) = rows.iter().find(|(row, _)| row == id).unwrap();
+            assert!(e.read(at).ends_with(EDIT), "step {kill_at}: {id} at {at}");
+        }
+    }
+}
+
+const EDIT: &str = "Edited outside.\n";
+
+/// Adds a line to every file of the vault outside its hidden folders.
+fn edit_every_file(dir: &std::path::Path) {
+    for entry in fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.file_name().unwrap().to_string_lossy().starts_with('.') {
+            continue;
+        }
+        if path.is_dir() {
+            edit_every_file(&path);
+        } else {
+            let text = fs::read_to_string(&path).unwrap();
+            fs::write(&path, format!("{text}{EDIT}")).unwrap();
+        }
+    }
 }
 
 /// Stopped between a day's two steps (its row in the new folder, its file still in the old),

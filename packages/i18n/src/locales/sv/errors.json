@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Ändringen sparades inte eftersom vissa dagboksdagar inte kunde flyttas dit ({count}). En fil har kanske redan en dags nya namn.",
     "journalUnlisted": "Dagboksmappen kunde inte läsas, så ändringen sparades inte. Kontrollera att du har åtkomst till den.",
     "journalChangeWaits": "En tidigare ändring av journalmappen eller datumformatet slutfördes inte. Öppna valvet igen för att slutföra den och försök sedan igen.",
+    "journalChangeUnrecorded": "Journaländringen kunde inte förberedas, så ingen journaldag flyttades och din sparade inställning behålls. Försök igen.",
     "settingsUnreadable": "Mappar kan inte flyttas medan valvets inställningsfil (.memry/config.json) inte kan läsas. Rätta filen och försök igen.",
     "settingsUnreadableDelete": "Mappar kan inte tas bort medan valvets inställningsfil (.memry/config.json) inte kan läsas. Rätta filen och försök igen.",
     "settingsUnreadableJournalDay": "Journaldagar kan inte skapas medan valvets inställningsfil (.memry/config.json) inte kan läsas. Rätta filen och försök igen."

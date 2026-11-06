@@ -10,13 +10,18 @@
 //! (`consumer::tier`), and first in a day create, a folder move and a settings update, for a
 //! record an open could not finish.
 //!
-//! When the saved setting already names the change's new place, the save landed and the record
-//! goes. Otherwise each day whose row is at its path in the new place goes back to its path in
-//! the old one, file first and row after, as a refused change's days go back; a day whose row
-//! moved and whose file did not (a crash between its two steps) takes only its row back. The
-//! folders the change made go once empty, then the record. Settings that cannot be read, or a
-//! day that cannot go back, leave the record for the next try, logged; its days stay at their
-//! new paths meanwhile, and no folder move takes them (`notes::folder_move`).
+//! First, before the settings are read, a row at its path in the new place whose file is still at
+//! its path in the old one (a crash between a day's two steps) goes back to its file. That state
+//! exists only before the save, since the save comes after every move, so it needs no setting;
+//! left to an open that cannot read the settings, its walk would pair the file with no row and
+//! delete the day. Then, when the saved setting already names the change's new place, the save
+//! landed and the record goes. Otherwise each day whose row and file are at its path in the new
+//! place goes back to its path in the old one, file first and row after, as a refused change's
+//! days go back. The folders the change made go once empty, then the record. Settings that
+//! cannot be read, or a day that cannot go back, leave the record for the next try, logged; its
+//! days stay at their new paths meanwhile, and no folder move or delete takes a folder that is,
+//! holds or is inside either of the change's folders ([`JournalChangeWaits::holds`]), since
+//! either would leave a day outside the journal the change settles to.
 
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::notes::journal_change::{JournalChangeRecorded, PendingJournalChange};
@@ -30,11 +35,27 @@ use crate::vault::consumer::{Applied, MoveKind};
 use crate::vault::journal_format::{
     JournalDays, normalize_journal_date_format, normalize_journal_folder,
 };
+use crate::vault::path_key::folded_key;
 
-/// A journal setting change whose days still wait at their new paths, in `folder`.
+/// A journal setting change whose days still wait at their new paths, in `to`, to go back to
+/// `from`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct JournalChangeWaits {
-    pub(crate) folder: String,
+    from: String,
+    to: String,
+}
+
+impl JournalChangeWaits {
+    /// Whether `folder` is, holds or is inside either folder of the change, in any case.
+    pub(crate) fn holds(&self, folder: &str) -> bool {
+        let at_or_below = |inner: &str, outer: &str| {
+            let (inner, outer) = (folded_key(inner), folded_key(outer));
+            inner == outer || inner.starts_with(&format!("{outer}/"))
+        };
+        [&self.from, &self.to]
+            .into_iter()
+            .any(|journal| at_or_below(journal, folder) || at_or_below(folder, journal))
+    }
 }
 
 /// Forgets the record of `change`, logged when it cannot: the next open finds the setting saved
@@ -97,7 +118,8 @@ pub(crate) fn finish_journal_change(
                 "a journal setting change a crash cut short waits for the next open: {why}"
             );
             Some(JournalChangeWaits {
-                folder: change.to.folder,
+                from: change.from.folder,
+                to: change.to.folder,
             })
         }
     }
@@ -108,8 +130,12 @@ fn settle(
     writer: &NotesWriter,
     change: &PendingJournalChange,
 ) -> Result<&'static str, String> {
+    let rows_left = put_days_back(at, writer, change, Back::RowsOnly)?;
     let config = read_vault_config_strict(at.root)
         .map_err(|why| format!("the settings cannot be read: {why}"))?;
+    if rows_left > 0 {
+        return Err(format!("{rows_left} journal days could not go back"));
+    }
     let saved = (
         normalize_journal_folder(&config.journal_folder),
         normalize_journal_date_format(&config.journal_date_format),
@@ -123,7 +149,7 @@ fn settle(
     if saved == (change.to.folder.clone(), change.to.format.clone()) {
         return forget("forgot the record of a journal setting change that was saved");
     }
-    let left = put_days_back(at, writer, change)?;
+    let left = put_days_back(at, writer, change, Back::All)?;
     if left > 0 {
         return Err(format!("{left} journal days could not go back"));
     }
@@ -131,15 +157,25 @@ fn settle(
     forget("put back the days of a journal setting change a crash cut short")
 }
 
-/// Moves each day the change moved back to its path in the old place, and each row it moved
-/// without its file (a note's, too: a format change renames every file its old format reads)
-/// back to that file. A note whose file is at the new place stays: renamed by the change or
-/// there before it, it is a note under either setting. Answers how many could not go back,
-/// each logged.
+/// What [`put_days_back`] takes back.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Back {
+    /// Only the rows that moved without their files, which needs no setting (the module's doc).
+    RowsOnly,
+    /// Those, and each day whose file moved with its row.
+    All,
+}
+
+/// Moves each row the change moved without its file (a note's, too: a format change renames
+/// every file its old format reads) back to that file, and with [`Back::All`] each day the
+/// change moved back to its path in the old place. A note whose file is at the new place stays:
+/// renamed by the change or there before it, it is a note under either setting. Answers how many
+/// could not go back, each logged.
 fn put_days_back(
     at: JournalVault<'_>,
     writer: &NotesWriter,
     change: &PendingJournalChange,
+    back_what: Back,
 ) -> Result<usize, String> {
     let failed = |error: &dyn std::fmt::Display| error.to_string();
     let to = JournalDays::new(&change.to.folder, &change.to.format);
@@ -168,6 +204,9 @@ fn put_days_back(
         };
         let places = (below(&out_of, &path), below(&into, &back));
         let went = if on_disk(&out_of, places.0) {
+            if back_what == Back::RowsOnly {
+                continue;
+            }
             let day = writer.journal_date(&note_id).map_err(|e| failed(&e))?;
             if day.as_deref() != Some(&*date) {
                 continue;

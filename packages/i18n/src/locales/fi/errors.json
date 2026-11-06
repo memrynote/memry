@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Muutosta ei tallennettu, koska joitakin päiväkirjan päiviä ei voitu siirtää sinne ({count}). Jollakin tiedostolla voi jo olla päivän uusi nimi.",
     "journalUnlisted": "Päiväkirjakansiota ei voitu lukea, joten muutosta ei tallennettu. Tarkista, että sinulla on siihen käyttöoikeus.",
     "journalChangeWaits": "Aiempi päiväkirjakansion tai päivämäärämuodon muutos jäi kesken. Avaa holvi uudelleen, jotta se valmistuu, ja yritä sitten uudelleen.",
+    "journalChangeUnrecorded": "Päiväkirjan muutosta ei voitu valmistella, joten yhtään päivää ei siirretty ja tallennettu asetus säilyy. Yritä uudelleen.",
     "settingsUnreadable": "Kansioita ei voi siirtää, kun holvin asetustiedostoa (.memry/config.json) ei voi lukea. Korjaa tiedosto ja yritä uudelleen.",
     "settingsUnreadableDelete": "Kansioita ei voi poistaa, kun holvin asetustiedostoa (.memry/config.json) ei voi lukea. Korjaa tiedosto ja yritä uudelleen.",
     "settingsUnreadableJournalDay": "Päiväkirjan päiviä ei voi luoda, kun holvin asetustiedostoa (.memry/config.json) ei voi lukea. Korjaa tiedosto ja yritä uudelleen."

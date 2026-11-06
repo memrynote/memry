@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Změna se neuložila, protože některé dny deníku se tam nepodařilo přesunout ({count}). Nový název dne možná už má jiný soubor.",
     "journalUnlisted": "Složku deníku se nepodařilo přečíst, proto se změna neuložila. Ověřte, že k ní máte přístup.",
     "journalChangeWaits": "Dřívější změna složky deníku nebo formátu data nebyla dokončena. Otevřete trezor znovu, aby se dokončila, a pak to zkuste znovu.",
+    "journalChangeUnrecorded": "Změnu deníku se nepodařilo připravit, takže se žádný den deníku nepřesunul a uložené nastavení zůstává. Zkuste to znovu.",
     "settingsUnreadable": "Složky nelze přesouvat, dokud nelze přečíst soubor nastavení trezoru (.memry/config.json). Opravte tento soubor a zkuste to znovu.",
     "settingsUnreadableDelete": "Složky nelze mazat, dokud nelze přečíst soubor nastavení trezoru (.memry/config.json). Opravte tento soubor a zkuste to znovu.",
     "settingsUnreadableJournalDay": "Dny deníku nelze vytvářet, dokud nelze přečíst soubor nastavení trezoru (.memry/config.json). Opravte tento soubor a zkuste to znovu."

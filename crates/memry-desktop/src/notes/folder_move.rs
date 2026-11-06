@@ -157,19 +157,13 @@ impl NotesService {
         // Before the lane: the settings' locks come first (`settings`'s lock order).
         let settings = JournalFollow::hold();
         // The days of a journal setting change a crash cut short go back first; while they
-        // wait at its new folder, no move takes them (`vault::journal_rename`).
+        // wait, no move takes either of its folders (`vault::journal_rename`).
         let at = JournalVault {
             root,
             vault: &open.vault,
             tier: &self.tier,
         };
-        let at_or_below = |inner: &str, outer: &str| {
-            let (inner, outer) = (folded_key(inner), folded_key(outer));
-            inner == outer || inner.starts_with(&format!("{outer}/"))
-        };
-        if let Some(waits) = finish_journal_change(at, &settings)
-            && (at_or_below(&waits.folder, &from) || at_or_below(&from, &waits.folder))
-        {
+        if finish_journal_change(at, &settings).is_some_and(|waits| waits.holds(&from)) {
             return Err(NotesError::JournalChangeWaits);
         }
         // Settings that cannot be read do not say where the journal is, so no folder moves:
