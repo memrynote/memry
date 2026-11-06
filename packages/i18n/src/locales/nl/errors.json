@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "Deze datumnotatie kan niet elke dag een naam geven en is daarom niet opgeslagen. Neem het jaar, de maand en de dag op.",
     "journalDaysNotRenamed": "De datumnotatie is niet gewijzigd, omdat sommige dagboekdagen er niet naar hernoemd konden worden ({count}). Misschien heeft een bestand al de nieuwe naam van een dag.",
     "journalUnlisted": "De dagboekmap kon niet worden gelezen, dus de datumnotatie is niet gewijzigd. Controleer of je er toegang toe hebt.",
-    "settingsUnreadable": "Mappen kunnen niet worden verplaatst zolang het instellingenbestand van de kluis (.memry/config.json) niet leesbaar is. Herstel dat bestand en probeer het opnieuw."
+    "settingsUnreadable": "Mappen kunnen niet worden verplaatst zolang het instellingenbestand van de kluis (.memry/config.json) niet leesbaar is. Herstel dat bestand en probeer het opnieuw.",
+    "settingsUnreadableDelete": "Mappen kunnen niet worden verwijderd zolang het instellingenbestand van de kluis (.memry/config.json) niet leesbaar is. Herstel dat bestand en probeer het opnieuw.",
+    "settingsUnreadableJournalDay": "Dagboekdagen kunnen niet worden gemaakt zolang het instellingenbestand van de kluis (.memry/config.json) niet leesbaar is. Herstel dat bestand en probeer het opnieuw."
   },
   "note": {
     "notFound": "Deze notitie kon niet worden gevonden. Mogelijk is deze verwijderd.",

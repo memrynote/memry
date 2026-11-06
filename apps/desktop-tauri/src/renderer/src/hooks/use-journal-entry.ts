@@ -273,6 +273,16 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       } catch (err) {
         trackRendererError('journal_template_seed_failed', err)
         log.error('Failed to seed journal entry from template:', err)
+        // A refused create (main says why, settings it cannot read among them) shows as the
+        // day's save error; the next visit to the day tries the template again.
+        if (!cancelled && currentDateRef.current === date) {
+          setSaveError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'journal')('phaseI.errors.failedToSaveJournalEntry')
+            )
+          )
+        }
       } finally {
         templateSeedInFlightRef.current = null
         if (!cancelled) {

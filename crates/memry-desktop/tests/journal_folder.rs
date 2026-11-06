@@ -45,9 +45,9 @@ use vault_env::{Env, QUIET, indexed};
 
 use crate::vault_settings::{opened_keeping, stored};
 
-const DAY: &str = "j2025-01-02";
+pub(crate) const DAY: &str = "j2025-01-02";
 
-fn daily(folder: &str) -> Value {
+pub(crate) fn daily(folder: &str) -> Value {
     json!({
         "journalFolder": folder,
         "journalDateFormat": "YYYY-MM-DD",
@@ -55,31 +55,31 @@ fn daily(folder: &str) -> Value {
     })
 }
 
-fn row(id: &str, path: &str) -> (String, String) {
+pub(crate) fn row(id: &str, path: &str) -> (String, String) {
     (id.to_owned(), path.to_owned())
 }
 
-fn journal_vault(config: Value, files: &[(&str, &str)]) -> (Env, Arc<NotesService>) {
+pub(crate) fn journal_vault(config: Value, files: &[(&str, &str)]) -> (Env, Arc<NotesService>) {
     let (e, store) = opened_keeping(config, files);
     let notes = NotesService::new(e.tier.clone(), store);
     (e, notes)
 }
 
-fn crossed(facts: &[Applied]) -> bool {
+pub(crate) fn crossed(facts: &[Applied]) -> bool {
     facts
         .iter()
         .any(|f| matches!(f, Applied::Added { .. } | Applied::Removed { .. }))
 }
 
 /// The facts once the watcher is quiet: it made and removed no note.
-fn quiet(e: &mut Env) {
+pub(crate) fn quiet(e: &mut Env) {
     std::thread::sleep(QUIET);
     let facts = e.drain();
     assert!(!crossed(&facts), "{facts:?}");
 }
 
 /// Closes and opens the vault again: the open made and removed no note.
-fn reopen(e: &mut Env) {
+pub(crate) fn reopen(e: &mut Env) {
     e.close();
     e.drain();
     e.open();
@@ -89,7 +89,7 @@ fn reopen(e: &mut Env) {
 }
 
 /// The sync operations queued for the record `id`: a `delete` reaches every device.
-fn outbox(e: &Env, id: &str) -> Vec<String> {
+pub(crate) fn outbox(e: &Env, id: &str) -> Vec<String> {
     let id = id.to_owned();
     e.core()
         .db_handle()
@@ -118,7 +118,7 @@ fn make_day(notes: &NotesService, e: &Env, date: &str) {
 }
 
 /// A note whose title is a date, in the journal folder: a note at a day's path.
-fn dated_note(notes: &NotesService, e: &mut Env) -> String {
+pub(crate) fn dated_note(notes: &NotesService, e: &mut Env) -> String {
     let open = e.session.current().unwrap();
     let note = NewNoteFile {
         title: "2025-01-05".into(),
@@ -296,7 +296,7 @@ fn a_journal_folder_whose_notes_cannot_follow_goes_back() {
 
 /// What every path here must end in: the journal days and the dated note in `folder`, which the
 /// setting names, through a day made later and two more opens, and no record deleted.
-fn settles(e: &mut Env, notes: &NotesService, note: &str, folder: &str) {
+pub(crate) fn settles(e: &mut Env, notes: &NotesService, note: &str, folder: &str) {
     reopen(e);
     assert_eq!(stored(&e.vault)["journalFolder"], folder);
     make_day(notes, e, "2025-01-06");
@@ -443,7 +443,12 @@ fn a_journal_folder_stored_unnormalized_takes_the_setting_along() {
 
 /// The state a crash after the journal folder moved on disk leaves, before its notes followed:
 /// the folder's and each note's record, the folder at `Diary`, the setting at `config`.
-fn crashed_after_disk(e: &mut Env, store: &Arc<dyn SecureStore>, note: &str, config: &str) {
+pub(crate) fn crashed_after_disk(
+    e: &mut Env,
+    store: &Arc<dyn SecureStore>,
+    note: &str,
+    config: &str,
+) {
     let writer = e.core().notes_writer(store.clone()).unwrap();
     let moved = |old_path, new_path| AppMoved {
         old_path,

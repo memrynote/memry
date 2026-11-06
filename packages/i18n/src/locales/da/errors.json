@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "Dette datoformat kan ikke navngive hver dag, så det blev ikke gemt. Medtag år, måned og dag.",
     "journalDaysNotRenamed": "Datoformatet blev ikke ændret, fordi nogle dagbogsdage ikke kunne omdøbes til det ({count}). En fil har måske allerede en dags nye navn.",
     "journalUnlisted": "Dagbogsmappen kunne ikke læses, så datoformatet blev ikke ændret. Kontrollér, at du har adgang til den.",
-    "settingsUnreadable": "Mapper kan ikke flyttes, mens boksens indstillingsfil (.memry/config.json) ikke kan læses. Ret filen, og prøv igen."
+    "settingsUnreadable": "Mapper kan ikke flyttes, mens boksens indstillingsfil (.memry/config.json) ikke kan læses. Ret filen, og prøv igen.",
+    "settingsUnreadableDelete": "Mapper kan ikke slettes, mens boksens indstillingsfil (.memry/config.json) ikke kan læses. Ret filen, og prøv igen.",
+    "settingsUnreadableJournalDay": "Journaldage kan ikke oprettes, mens boksens indstillingsfil (.memry/config.json) ikke kan læses. Ret filen, og prøv igen."
   },
   "note": {
     "notFound": "Denne note kunne ikke findes. Den kan være blevet slettet.",

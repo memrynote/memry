@@ -106,6 +106,35 @@ describe('useJournalEntry dedicated hook', () => {
     await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
   })
 
+  it("shows a template seed the create refuses as the day's save error", async () => {
+    ;(window.api.journal.getEntry as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+    ;(window.api.settings.getJournalSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
+      defaultTemplate: 'daily',
+      showSchedule: true,
+      showTasks: true,
+      showAIConnections: true,
+      showStatsFooter: false
+    })
+    templates.get.mockResolvedValue({
+      id: 'daily',
+      name: 'Daily',
+      isBuiltIn: false,
+      tags: [],
+      properties: [],
+      content: '# {{title}}',
+      createdAt: '2026-05-01T00:00:00.000Z',
+      modifiedAt: '2026-05-01T00:00:00.000Z'
+    })
+    const refusal = "Journal days can't be created while the vault settings file can't be read."
+    ;(window.api.journal.createEntry as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error(refusal)
+    )
+
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+
+    await waitFor(() => expect(result.current.saveError).toBe(refusal))
+  })
+
   it('seeds {{random-line:Title}} with a line from the named note', async () => {
     ;(window.api.journal.getEntry as ReturnType<typeof vi.fn>).mockResolvedValue(null)
     ;(window.api.settings.getJournalSettings as ReturnType<typeof vi.fn>).mockResolvedValue({

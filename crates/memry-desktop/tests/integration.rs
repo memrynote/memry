@@ -90,6 +90,8 @@ mod indexer_scan;
 mod journal_calendar;
 #[path = "journal_folder.rs"]
 mod journal_folder;
+#[path = "journal_folder_claim.rs"]
+mod journal_folder_claim;
 #[path = "journal_format_vectors.rs"]
 mod journal_format_vectors;
 #[path = "journal_rename.rs"]

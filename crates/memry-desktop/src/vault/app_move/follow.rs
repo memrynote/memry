@@ -92,14 +92,25 @@ pub(super) fn moved_on_disk(
         return Ok(true);
     }
     let mut carried = false;
-    for (_, recorded) in notes {
+    for (note_id, recorded) in notes {
         let Recorded::Move(pending) = recorded else {
             continue;
         };
         if !carries(folder, pending) {
             continue;
         }
-        if !listed(root, &pending.new_path)? || listed(root, &pending.old_path)? {
+        if !listed(root, &pending.new_path)? {
+            return Ok(false);
+        }
+        if listed(root, &pending.old_path)? {
+            // Told at each open that meets it: a file made at the old path of a note the move
+            // carried leaves the move unfinished, and a journal setting it owes unfollowed.
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "a file is back at the old path of a note a folder move carried; the folder's \
+                 move is not finished, and its notes settle one by one"
+            );
             return Ok(false);
         }
         carried = true;

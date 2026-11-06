@@ -105,6 +105,7 @@ fn opened() -> Fixture {
             memry_tauri::commands::folders::notes_get_folders::<MockRuntime>,
             memry_tauri::commands::folders::notes_rename_folder::<MockRuntime>,
             memry_tauri::commands::folders::notes_set_folder_config::<MockRuntime>,
+            memry_tauri::commands::journal::journal_create_entry::<MockRuntime>,
         ]);
     let app = mock_builder()
         .invoke_handler(commands.invoke_handler())
@@ -226,7 +227,8 @@ fn a_folder_holding_the_journal_sends_the_setting_that_followed_it() {
     assert_eq!(heard[0]["journalFolder"], "Private/journal");
 }
 
-/// Settings that cannot be read refuse every folder move and delete, in words that name the file.
+/// Settings that cannot be read refuse every folder move and delete, and a day create, each in
+/// words that name what was refused and the file to fix.
 #[test]
 fn a_folder_move_with_unreadable_settings_says_which_file_to_fix() {
     let f = opened();
@@ -239,15 +241,21 @@ fn a_folder_move_with_unreadable_settings_says_which_file_to_fix() {
         json!({ "oldPath": "Work", "newPath": "Play" }),
     );
     let deleted = f.invoke("notes_delete_folder", json!({ "path": "Work" }));
+    let day = f.invoke(
+        "journal_create_entry",
+        json!({ "input": { "date": "2025-01-06" } }),
+    );
 
-    for refused in [moved.unwrap_err(), deleted.unwrap_err()] {
+    let refusals = [
+        (moved.unwrap_err(), "moved"),
+        (deleted.unwrap_err(), "deleted"),
+        (day.unwrap_err(), "Journal days"),
+    ];
+    for (refused, says) in refusals {
         assert_eq!(refused["code"], "vault_settings_unreadable");
-        assert!(
-            refused["message"]
-                .as_str()
-                .is_some_and(|message| message.contains(".memry/config.json")),
-            "{refused}"
-        );
+        let message = refused["message"].as_str().unwrap_or_default();
+        assert!(message.contains(".memry/config.json"), "{refused}");
+        assert!(message.contains(says), "{refused}");
     }
     assert!(f.vault.join("Work").exists());
 }

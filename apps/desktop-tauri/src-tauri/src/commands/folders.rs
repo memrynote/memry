@@ -62,16 +62,26 @@ pub async fn notes_rename_folder<R: Runtime>(
         };
         service(&app)?
             .rename_folder(&open_vault(&app)?, &old_path, &new_path, announce)
-            .map_err(|error| settings_or_failed(&app, &error))
+            .map_err(|error| settings_or_failed(&app, &error, Refused::FolderMove))
     })
     .await
 }
 
+/// What settings that cannot be read refused, for the words that say so.
+#[derive(Clone, Copy)]
+pub(crate) enum Refused {
+    FolderMove,
+    FolderDelete,
+    JournalDay,
+}
+
 /// A folder move, folder delete or day create refused for settings that cannot be read says so
-/// in words, as Settings says its refusals: the raw message names no file to fix.
+/// in words naming what was refused, as Settings says its refusals: the raw message names no
+/// file to fix.
 pub(crate) fn settings_or_failed<R: Runtime>(
     app: &AppHandle<R>,
     error: &NotesError,
+    refused: Refused,
 ) -> CommandError {
     match error {
         NotesError::SettingsUnreadable(why) => {
@@ -79,11 +89,16 @@ pub(crate) fn settings_or_failed<R: Runtime>(
                 scope = "folders",
                 "a folder change or day create waits for the settings: {why}"
             );
+            let key = match refused {
+                Refused::FolderMove => "errors:vault.settingsUnreadable",
+                Refused::FolderDelete => "errors:vault.settingsUnreadableDelete",
+                Refused::JournalDay => "errors:vault.settingsUnreadableJournalDay",
+            };
             let locale = app.state::<Arc<LocaleService>>().get();
             CommandError::new(
                 ErrorKind::Invalid,
                 "vault_settings_unreadable",
-                i18n::t(locale, "errors:vault.settingsUnreadable", &Args::new()),
+                i18n::t(locale, key, &Args::new()),
             )
         }
         _ => failed(error),
@@ -101,7 +116,7 @@ pub async fn notes_delete_folder<R: Runtime>(
     blocking("notes_delete_folder", move || {
         service(&app)?
             .delete_folder(&open_vault(&app)?, &path)
-            .map_err(|error| settings_or_failed(&app, &error))
+            .map_err(|error| settings_or_failed(&app, &error, Refused::FolderDelete))
     })
     .await
 }
