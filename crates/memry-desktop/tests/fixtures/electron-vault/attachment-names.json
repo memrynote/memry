@@ -1,0 +1,359 @@
+{
+  "maxFileSize": 104857600,
+  "unique": [
+    {
+      "name": "my-image.png",
+      "stored": "my-image.png"
+    },
+    {
+      "name": "file.png",
+      "stored": "file.png"
+    },
+    {
+      "name": "file.pdf",
+      "stored": "file.pdf"
+    },
+    {
+      "name": "file<name>.png",
+      "stored": "filename.png"
+    },
+    {
+      "name": "Pasted Graphic (1).png",
+      "stored": "Pasted-Graphic-1.png"
+    },
+    {
+      "name": "a  b\tc.png",
+      "stored": "a-b-c.png"
+    },
+    {
+      "name": "{braces}.pdf",
+      "stored": "braces.pdf"
+    },
+    {
+      "name": "(1).png",
+      "stored": "1.png"
+    },
+    {
+      "name": "---.png",
+      "stored": "file.png"
+    },
+    {
+      "name": "-lead-trail-.png",
+      "stored": "lead-trail.png"
+    },
+    {
+      "name": "Photo.PNG",
+      "stored": "Photo.PNG"
+    },
+    {
+      "name": "x..png",
+      "stored": "x..png"
+    },
+    {
+      "name": "..png",
+      "stored": "untitled.png"
+    },
+    {
+      "name": "a.tar.md",
+      "stored": "a.tar.md"
+    },
+    {
+      "name": ".hidden.md",
+      "stored": "hidden.md"
+    },
+    {
+      "name": "CON.png",
+      "stored": "CON.png"
+    },
+    {
+      "name": "nul.txt",
+      "stored": "nul.txt"
+    },
+    {
+      "name": "COM1.pdf",
+      "stored": "COM1.pdf"
+    },
+    {
+      "name": "Résumé – final.docx",
+      "stored": "Résumé-–-final.docx"
+    },
+    {
+      "name": "日本語のファイル.pdf",
+      "stored": "日本語のファイル.pdf"
+    },
+    {
+      "name": "a:b*c?d\"e|f.png",
+      "stored": "abcdef.png"
+    },
+    {
+      "name": "[link]#^.md",
+      "stored": "link.md"
+    },
+    {
+      "name": "   spaced   .png",
+      "stored": "spaced.png"
+    },
+    {
+      "name": "trailing dots....pdf",
+      "stored": "trailing-dots....pdf"
+    },
+    {
+      "name": "tab nbsp　ideo.png",
+      "stored": "tab-nbsp-ideo.png"
+    },
+    {
+      "name": "clip.mov",
+      "stored": "clip.mov"
+    },
+    {
+      "name": "../../escape.png",
+      "stored": "escape.png"
+    },
+    {
+      "name": "/etc/passwd.md",
+      "stored": "passwd.md"
+    },
+    {
+      "name": "trailing. .pdf",
+      "stored": "trailing..pdf"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "file.png",
+      "ext": "png",
+      "allowed": true,
+      "mime": "image/png",
+      "type": "image"
+    },
+    {
+      "name": "file.PNG",
+      "ext": "png",
+      "allowed": true,
+      "mime": "image/png",
+      "type": "image"
+    },
+    {
+      "name": "file.tar.gz",
+      "ext": "gz",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": "noext",
+      "ext": "",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": ".png",
+      "ext": "",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": "..png",
+      "ext": "png",
+      "allowed": true,
+      "mime": "image/png",
+      "type": "image"
+    },
+    {
+      "name": "a.",
+      "ext": "",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": "..",
+      "ext": "",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": "x..png",
+      "ext": "png",
+      "allowed": true,
+      "mime": "image/png",
+      "type": "image"
+    },
+    {
+      "name": ".hidden.MD",
+      "ext": "md",
+      "allowed": true,
+      "mime": "text/markdown",
+      "type": "file"
+    },
+    {
+      "name": "report.HTM",
+      "ext": "htm",
+      "allowed": true,
+      "mime": "text/html",
+      "type": "file"
+    },
+    {
+      "name": "report.xhtml",
+      "ext": "xhtml",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": "clip.mp4",
+      "ext": "mp4",
+      "allowed": true,
+      "mime": "video/mp4",
+      "type": "file"
+    },
+    {
+      "name": "clip.webm",
+      "ext": "webm",
+      "allowed": true,
+      "mime": "video/webm",
+      "type": "file"
+    },
+    {
+      "name": "clip.MOV",
+      "ext": "mov",
+      "allowed": true,
+      "mime": "video/quicktime",
+      "type": "file"
+    },
+    {
+      "name": "clip.avi",
+      "ext": "avi",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": "clip.mkv",
+      "ext": "mkv",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": "file.exe",
+      "ext": "exe",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": "file.sh",
+      "ext": "sh",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": "file.js",
+      "ext": "js",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    },
+    {
+      "name": "file.svg",
+      "ext": "svg",
+      "allowed": true,
+      "mime": "image/svg+xml",
+      "type": "image"
+    },
+    {
+      "name": "file.docx",
+      "ext": "docx",
+      "allowed": true,
+      "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "type": "file"
+    },
+    {
+      "name": "file.xlsx",
+      "ext": "xlsx",
+      "allowed": true,
+      "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "type": "file"
+    },
+    {
+      "name": "file.unknown",
+      "ext": "unknown",
+      "allowed": false,
+      "mime": "application/octet-stream",
+      "type": "file"
+    }
+  ],
+  "sizes": [
+    {
+      "bytes": 0,
+      "text": "0 B"
+    },
+    {
+      "bytes": 500,
+      "text": "500 B"
+    },
+    {
+      "bytes": 1023,
+      "text": "1023 B"
+    },
+    {
+      "bytes": 1024,
+      "text": "1.0 KB"
+    },
+    {
+      "bytes": 1536,
+      "text": "1.5 KB"
+    },
+    {
+      "bytes": 1048575,
+      "text": "1024.0 KB"
+    },
+    {
+      "bytes": 1048576,
+      "text": "1.0 MB"
+    },
+    {
+      "bytes": 5767168,
+      "text": "5.5 MB"
+    },
+    {
+      "bytes": 104857600,
+      "text": "100.0 MB"
+    },
+    {
+      "bytes": 104857601,
+      "text": "100.0 MB"
+    }
+  ],
+  "refs": [
+    {
+      "notePath": "notes/Meeting.md",
+      "ref": "../attachments/note123/abc123-x.png"
+    },
+    {
+      "notePath": "Plan.md",
+      "ref": "attachments/note123/abc123-x.png"
+    },
+    {
+      "notePath": "notes/work/q3/Review.md",
+      "ref": "../../../attachments/note123/abc123-x.png"
+    },
+    {
+      "notePath": "attachments/note123/inner.md",
+      "ref": "abc123-x.png"
+    },
+    {
+      "notePath": "attachments/other/inner.md",
+      "ref": "../note123/abc123-x.png"
+    },
+    {
+      "notePath": "journal/2026-01-01.md",
+      "ref": "../attachments/note123/abc123-x.png"
+    }
+  ]
+}

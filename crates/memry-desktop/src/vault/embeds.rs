@@ -125,7 +125,7 @@ fn encode(url: &str) -> String {
 }
 
 /// `toMemryFileUrl`.
-fn memry_file_url(abs: &Path, windows: bool) -> String {
+pub(crate) fn memry_file_url(abs: &Path, windows: bool) -> String {
     let path = abs.to_string_lossy();
     if windows {
         format!("memry-file://local/{}", path.replace('\\', "/"))

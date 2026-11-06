@@ -44,6 +44,8 @@ mod article_standardize;
 mod article_temml;
 #[path = "article_vectors.rs"]
 mod article_vectors;
+#[path = "attachments.rs"]
+mod attachments;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
 #[path = "command_failure.rs"]

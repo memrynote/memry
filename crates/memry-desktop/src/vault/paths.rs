@@ -67,7 +67,7 @@ pub fn open_vault_file(vault: &Path, rel: &str) -> Result<Option<File>, OpenErro
 
 /// `\s` of a JavaScript regular expression and `String.prototype.trim`: the Unicode white
 /// space set plus the byte order mark, and not U+0085, which Rust counts as white space.
-fn is_js_space(c: char) -> bool {
+pub(crate) fn is_js_space(c: char) -> bool {
     matches!(
         c,
         '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'
