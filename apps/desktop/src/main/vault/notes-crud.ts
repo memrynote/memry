@@ -18,6 +18,7 @@ import {
   serializeUpdatedNote,
   extractTags,
   writePropertiesToRoot,
+  generateContentHash,
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
@@ -514,9 +515,16 @@ export async function getNoteById(id: string): Promise<Note | null> {
   //
   // Skipped while a writeback is queued or mid-write: the file is then a stale
   // copy of the live doc, and reconciling from it would revert a task the user
-  // just ticked in the app. Fire and forget otherwise — the note must render
-  // immediately, and the task events that follow refresh the affected rows.
-  if (!hasPendingWriteback(id)) {
+  // just ticked in the app.
+  //
+  // Skipped too when the bytes match the cache's hash: the app wrote or indexed
+  // them itself, so nothing was edited outside it. Such a file's checkbox trails
+  // a task completed away from this note (Tasks view, a synced peer, the CLI),
+  // and reconciling from it reopened the done task on every open.
+  //
+  // Fire and forget otherwise — the note must render immediately, and the task
+  // events that follow refresh the affected rows.
+  if (!hasPendingWriteback(id) && generateContentHash(fileContent) !== cached.contentHash) {
     // Loaded on first use: the tasks domain reaches back into note writes
     // (header status sync), so a static import here is a cycle.
     void import('../tasks/reconcile-markdown-tasks')
