@@ -580,15 +580,21 @@ fn a_missing_journal_folder_renames_nothing() {
     assert_eq!(e.read("2026-09-26.md"), "a note at the root\n");
 }
 
-/// `C:` is a drive on Windows: joined to the vault it would name a folder outside it.
+/// `C:` is a drive on Windows: joined to the vault it would name a folder outside it, so the
+/// pass refuses it, as it refuses any journal folder it cannot list, and renames nothing. An
+/// empty answer would read as a pass with no day to move, and the setting would be saved over
+/// days left at paths it does not read.
 #[cfg(windows)]
 #[test]
 fn a_journal_folder_that_names_a_drive_renames_nothing() {
     let e = opened(&[("2026-09-25.md", "entry\n")]);
 
     for folder in ["C:", "C:/journal"] {
-        let result = rename(&e, folder, DAILY, WEEKDAY);
-        assert_eq!(result, JournalRenameResult::default(), "{folder}");
+        let place = |format| JournalPlace { folder, format };
+        let refused = at(&e, |vault| {
+            move_journal_days(vault, place(DAILY), place(WEEKDAY))
+        });
+        assert!(refused.is_err(), "{folder}: {refused:?}");
     }
     assert_eq!(tree(&e), ["2026-09-25.md"]);
 }
