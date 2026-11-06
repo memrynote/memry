@@ -29,6 +29,12 @@ allowBuilds:
 
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:
+  # Radix keeps its layer and focus stacks in module-level state. Two copies of
+  # these packages in one bundle (a Dialog on 1.3.x next to a Popover on 1.1.x)
+  # cannot see each other: a non-modal Popover inside a modal Dialog inherits
+  # `pointer-events: none` from <body> and its clicks fall through.
+  '@radix-ui/react-dismissable-layer': 1.1.11
+  '@radix-ui/react-focus-scope': 1.1.7
   tar: '>=7.5.21'
   proxy-addr: '>=2.0.8'
   tinypool: '>=2.1.2'
