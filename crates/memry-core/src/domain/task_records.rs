@@ -20,6 +20,7 @@ use crate::domain::notes::failed;
 use crate::domain::projects::{self, StatusType};
 use crate::domain::task_filter::{FilterTask, Priority};
 use crate::domain::task_views::{self, ViewTask};
+use crate::sync::versioned;
 
 /// One task, every field the shell shows.
 #[derive(Debug, Clone, PartialEq)]
@@ -132,6 +133,62 @@ pub fn all(conn: &Connection) -> Result<Vec<TaskRecord>, StorageError> {
         tasks.push(record(&id, &payload, &status_types)?);
     }
     Ok(tasks)
+}
+
+/// A live task's tags as stored, and the names of its fields that hold a value: a value removed
+/// holds none (`plainVersionedMap`). What a tag schema change reaches on tasks.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TaskFieldHolder {
+    pub id: String,
+    pub tags: Vec<String>,
+    pub fields: Vec<String>,
+}
+
+/// [`field_holders`]' answer.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FieldHolders {
+    pub holders: Vec<TaskFieldHolder>,
+    /// Live tasks whose payload is not a JSON object: in neither count, for the caller to report.
+    pub unreadable: Vec<String>,
+}
+
+/// Every live task's tags and filled fields, live as [`all`] reads it.
+pub fn field_holders(conn: &Connection) -> Result<FieldHolders, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT s.item_id, s.payload
+               FROM sync_items s
+               JOIN tasks t ON t.id = s.item_id
+              WHERE s.item_type = 'task'
+                AND s.deleted_at IS NULL
+                AND t.deleted_at IS NULL
+                AND s.payload IS NOT NULL
+              ORDER BY t.position, t.id",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(failed)?;
+    let mut out = FieldHolders::default();
+    for row in rows {
+        let (id, payload) = row.map_err(failed)?;
+        let Ok(Value::Object(object)) = serde_json::from_str::<Value>(&payload) else {
+            out.unreadable.push(id);
+            continue;
+        };
+        let fields = versioned::plain(object.get("fields"))
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect();
+        out.holders.push(TaskFieldHolder {
+            tags: strings(&object, "tags"),
+            fields,
+            id,
+        });
+    }
+    Ok(out)
 }
 
 /// One live task, or `None`. Reads that one row and its own project's
