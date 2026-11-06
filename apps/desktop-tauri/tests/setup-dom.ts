@@ -104,6 +104,10 @@ vi.mock('../src/generated/bindings', () => {
     await result
     return null
   }
+  // Electron delivered statuses in order on one pipe; Rust orders its statuses by revision.
+  // Each status a test hands over is the newest so far, in the order it arrives.
+  let revision = 0
+  const revised = (status: unknown) => ({ ...(status as object), revision: ++revision })
   const event = (
     subscribe: () => (handler: (payload: unknown) => void) => () => void,
     wrap = (p: unknown) => p
@@ -120,7 +124,7 @@ vi.mock('../src/generated/bindings', () => {
       vaultCreate: (parent: string, name: string) => vault().create(parent, name),
       vaultGetDefaultParent: () => vault().getDefaultParent(),
       vaultList: () => vault().getAll(),
-      vaultGetStatus: () => vault().getStatus(),
+      vaultGetStatus: () => vault().getStatus().then(revised),
       vaultClose: () => vault().close(),
       vaultSwitch: (path: string) => vault().switch(path),
       vaultRemove: (path: string) => vault().remove(path),
@@ -346,7 +350,7 @@ vi.mock('../src/generated/bindings', () => {
       shellShowContextMenu: (items: unknown[]) => Promise.resolve(win().showContextMenu(items))
     },
     events: {
-      vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged),
+      vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged, revised),
       vaultListChangedEvent: event(() => window.api.onVaultListChanged),
       vaultConfigChangedEvent: event(() => window.api.onVaultConfigChanged),
       vaultErrorEvent: event(

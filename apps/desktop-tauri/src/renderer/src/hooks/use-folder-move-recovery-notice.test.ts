@@ -23,9 +23,12 @@ vi.mock('../../../generated/bindings', () => ({
 
 import { useFolderMoveRecoveryNotice } from './use-folder-move-recovery-notice'
 
-/** `vault_get_status` as the Rust command sends it. */
+let sent = 0
+
+/** `vault_get_status` as the Rust command sends it, each newer than the last. */
 function wireStatus(movesRecovered: Record<string, unknown> | null): Record<string, unknown> {
   return {
+    revision: ++sent,
     isOpen: true,
     path: '/v/a',
     isIndexing: false,

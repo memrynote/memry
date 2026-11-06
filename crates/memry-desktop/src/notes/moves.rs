@@ -50,7 +50,9 @@
 //! case-sensitive one makes no second spelling for those disks to receive (Electron records
 //! the spelling given; `create_folder` refuses one).
 //!
-//! Not here yet: the locked-folder check (Step 14).
+//! A locked note, or a note in a locked folder, is neither renamed nor moved, and no note moves
+//! into a locked folder (`assertNoteWritable`, `assertFolderWritable`): refused before anything
+//! is written ([`Locks`]).
 
 use std::fs;
 use std::io::{self, ErrorKind};
@@ -65,6 +67,7 @@ use super::folders::sibling_named;
 use super::read;
 use super::service::NotesService;
 use super::view::{MovedNoteView, NoteView};
+use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::shell::file_open::{Resolution, is_plain_relative};
 use crate::vault::app_move::{NoteFileMove, on_disk};
@@ -177,6 +180,8 @@ impl NotesService {
             .listed_by_id(note_id)?
             .ok_or_else(not_found)?;
         let old = listed.path;
+        let locks = Locks::of(open);
+        locks.refuse_note(note_id, &old)?;
         let row = lane.files().by_id(note_id)?.ok_or_else(not_found)?;
         let (old_folder, name) = old.rsplit_once('/').unwrap_or(("", &old));
         let (folder, name) = match to {
@@ -188,6 +193,11 @@ impl NotesService {
             MoveTo::Folder(_) => None,
         };
         let new = free_target(&lane, root, note_id, &old, &folder, &name)?;
+        if let MoveTo::Folder(_) = to {
+            // The folder as the disk spells it, the one the file lands in: `ARCHIVE` names a
+            // locked `Archive` ([`folder_on_disk`]).
+            locks.refuse_folder(new.rsplit_once('/').map_or("", |(folder, _)| folder))?;
+        }
         let ctx = IdentityCtx {
             root,
             vault: &open.vault,
@@ -357,6 +367,18 @@ fn free_target(
     Err(NotesError::NameConflict)
 }
 
+/// `folder` as the disk spells it ([`folder_on_disk`]), or as given when the disk cannot say:
+/// what a lock check compares, since the operation lands on the disk's spelling.
+pub(super) fn disk_spelling(root: &Path, folder: &str) -> String {
+    if folder.is_empty() {
+        return String::new();
+    }
+    match folder_on_disk(root, folder) {
+        Ok(Some(spelled)) => spelled,
+        _ => folder.to_owned(),
+    }
+}
+
 /// Whether each segment of `folder` that is there is a plain folder ([`folder_on_disk`]).
 pub(super) fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
     Ok(folder_on_disk(root, folder)?.is_some())
@@ -368,7 +390,7 @@ pub(super) fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
 /// folder over. A segment its parent holds in another case or Unicode form takes that spelling
 /// on every volume ([`sibling_named`], the rule `create_folder` refuses a second spelling by);
 /// the segments not there yet stay as given.
-fn folder_on_disk(root: &Path, folder: &str) -> io::Result<Option<String>> {
+pub(super) fn folder_on_disk(root: &Path, folder: &str) -> io::Result<Option<String>> {
     let mut path = root.to_path_buf();
     let mut spelled = Vec::new();
     let mut segments = folder.split('/');

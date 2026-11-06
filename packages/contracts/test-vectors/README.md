@@ -53,6 +53,7 @@ one-class change reviewable.
 | `bip39-unlock.json`                      |                                    9 | `../scripts/vectors/bip39-unlock.ts`                                                           | `../src/__tests__/bip39-unlock.test.ts`                                              |
 | `record-envelope.json`                   |                                   14 | `../scripts/vectors/record-envelope.ts`                                                        | `../src/__tests__/record-envelope.test.ts` + the desktop parity suite                |
 | `crdt-update.json`                       |                                    8 | `../scripts/vectors/crdt-update.ts`                                                            | `../src/__tests__/crdt-update.test.ts` + the desktop parity suite                    |
+| `crdt-compact.json`                      |                                    8 | `../scripts/vectors/crdt-compact.ts`                                                           | Rust `crdt_compact.rs`                                                               |
 | `cbor-canonical.json`                    |                                   14 | `../scripts/vectors/cbor-canonical.ts`                                                         | `../src/__tests__/cbor-canonical.test.ts` + the desktop parity suite                 |
 | `compression.json`                       |                                    9 | `../scripts/vectors/compression.ts`                                                            | `../src/__tests__/compression.test.ts`                                               |
 | `field-merge.json`                       |                                   32 | `../scripts/vectors/field-merge.ts`                                                            | `../src/__tests__/field-merge.test.ts`                                               |
@@ -100,7 +101,7 @@ one-class change reviewable.
 | `markdown-convert/blocks.json`           |                                  844 | same                                                                                           | same + Rust `markdown_doc_vectors.rs`                                                |
 | `markdown-convert/serialize-doc.json`    |                                  537 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | `markdown-convert/replace-body.json`     |                                   44 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
-| **Total**                                | **32271 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+| **Total**                                | **32279 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
 
 ### `markdown-convert/`
 
