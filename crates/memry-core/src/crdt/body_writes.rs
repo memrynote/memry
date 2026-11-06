@@ -16,12 +16,17 @@
 //!   only), and hands them to the observer after the closure returned and the
 //!   writer was released.
 //!
-//! A note says a document was written, not that the write committed: the
-//! closure may have rolled it back. The observer reads the committed log.
+//! A note names the rows written, by key, not their bytes, and says nothing
+//! about the commit: the closure may have rolled them back. The observer reads
+//! those rows from the committed log.
 
 use std::cell::{Cell, RefCell};
 
 /// Where an update came from, for the windows it reaches.
+///
+/// A non-local origin is best effort: an update another writer committed in
+/// between can reach the windows under the first writer's origin. Windows
+/// treat every non-local origin alike.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Origin {
     /// A window's edit; the holder is the window that sent it, which the shell
@@ -51,8 +56,21 @@ impl Origin {
 pub struct BodyWrite {
     pub doc_id: String,
     pub origin: Origin,
+    /// The rows written, in order.
+    pub rows: Vec<LogRow>,
     /// The write purged the document's log (a delete applied, chapter 07 §7.15).
     pub purged: bool,
+}
+
+/// A row of a document's body log, by its key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogRow {
+    /// A local update, by its sequence.
+    Local(i64),
+    /// A server update, by the server's sequence.
+    Server(i64),
+    /// The server snapshot.
+    ServerSnapshot,
 }
 
 /// Told what each write closure on a database handle wrote.
@@ -64,8 +82,7 @@ pub trait BodyObserver: Send + Sync {
 
 /// What [`super::update_log`] wrote.
 pub(crate) enum Wrote {
-    Local,
-    Server,
+    Row(LogRow),
     Purge,
 }
 
@@ -80,23 +97,27 @@ pub(crate) fn noted(doc_id: &str, wrote: Wrote) {
         let Some(writes) = recorded else {
             return;
         };
-        let purged = matches!(wrote, Wrote::Purge);
-        // Consecutive writes of one document are one entry; an observer that
-        // sees a document twice finds nothing new the second time.
-        if let Some(last) = writes.last_mut().filter(|last| last.doc_id == doc_id) {
-            last.purged |= purged;
-            return;
+        // Consecutive writes of one document are one entry.
+        if writes.last().is_none_or(|last| last.doc_id != doc_id) {
+            let origin = match wrote {
+                Wrote::Row(LogRow::Server(_) | LogRow::ServerSnapshot) => Origin::Remote,
+                Wrote::Row(LogRow::Local(_)) if EXTERNAL.get() => Origin::External,
+                Wrote::Row(LogRow::Local(_)) | Wrote::Purge => Origin::System,
+            };
+            writes.push(BodyWrite {
+                doc_id: doc_id.to_owned(),
+                origin,
+                rows: Vec::new(),
+                purged: false,
+            });
         }
-        let origin = match wrote {
-            Wrote::Server => Origin::Remote,
-            Wrote::Local if EXTERNAL.get() => Origin::External,
-            Wrote::Local | Wrote::Purge => Origin::System,
+        let Some(last) = writes.last_mut() else {
+            return;
         };
-        writes.push(BodyWrite {
-            doc_id: doc_id.to_owned(),
-            origin,
-            purged,
-        });
+        match wrote {
+            Wrote::Row(row) => last.rows.push(row),
+            Wrote::Purge => last.purged = true,
+        }
     });
 }
 

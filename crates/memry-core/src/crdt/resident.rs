@@ -50,6 +50,8 @@ pub struct Resident {
     lifecycle: DocumentLifecycle,
     docs: HashMap<String, Arc<Document>>,
     holders: BTreeMap<String, BTreeSet<String>>,
+    /// Holders whose copy is of a document since purged; see [`Resident::purge`].
+    stale: BTreeMap<String, BTreeSet<String>>,
 }
 
 impl Resident {
@@ -58,6 +60,7 @@ impl Resident {
             lifecycle: DocumentLifecycle::new(config),
             docs: HashMap::new(),
             holders: BTreeMap::new(),
+            stale: BTreeMap::new(),
         }
     }
 
@@ -127,6 +130,7 @@ impl Resident {
         if set.is_empty() {
             self.holders.remove(doc_id);
         }
+        self.reopened(doc_id, holder);
         self.lifecycle.release(doc_id, now_ms);
         true
     }
@@ -150,11 +154,35 @@ impl Resident {
         self.docs.remove(doc_id);
     }
 
-    /// The document's log was purged: the loaded copy goes, and a log that
-    /// failed to replay is replayed again on the next request.
+    /// The document's log was purged: the loaded copy goes, a log that failed
+    /// to replay is replayed again on the next request, and every holder is
+    /// stale until it opens the document again. A stale holder's copy is of
+    /// the deleted document, and an edit of it would bring the deleted body
+    /// back (chapter 07 §7.15).
     pub fn purge(&mut self, doc_id: &str) {
         self.docs.remove(doc_id);
         self.lifecycle.forgive(doc_id);
+        if let Some(holders) = self.holders.get(doc_id) {
+            let stale = self.stale.entry(doc_id.to_owned()).or_default();
+            stale.extend(holders.iter().cloned());
+        }
+    }
+
+    /// Whether `holder`'s copy of `doc_id` is of a document since purged.
+    pub fn is_stale(&self, doc_id: &str, holder: &str) -> bool {
+        self.stale
+            .get(doc_id)
+            .is_some_and(|set| set.contains(holder))
+    }
+
+    /// `holder` received the document as it is now, or let it go.
+    pub fn reopened(&mut self, doc_id: &str, holder: &str) {
+        if let Some(set) = self.stale.get_mut(doc_id) {
+            set.remove(holder);
+            if set.is_empty() {
+                self.stale.remove(doc_id);
+            }
+        }
     }
 
     /// Unloads every unheld document whose grace period has passed.

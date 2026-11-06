@@ -13,12 +13,14 @@
 //! a sync merge, a delete's purge, an outside edit fed from the file, a note or
 //! journal command. The editor observes its vault's database
 //! ([`crate::crdt::body_writes`]); after any write closure that wrote a resident
-//! document's log, it replays the committed log on a reader, applies what the
-//! resident document lacks and hands that to the listeners with the writer's
-//! [`Origin`]. A write that rolled back adds nothing. A log that moved to a new
-//! epoch was purged: the document goes and the listeners hear
-//! [`Notice::Purged`] ([`Editor::purge`]). The editor's own writes run untold:
-//! it fans them out itself, and it holds the resident set while it writes.
+//! or held document's log, it reads the rows that closure wrote back from the
+//! committed log by key, applies them and hands each that added something to
+//! the listeners with the writer's [`Origin`] (`catch_up.rs`). A write that
+//! rolled back adds nothing. A log that moved to a new epoch was purged: the
+//! document goes, its holders are stale until they open it again, and the
+//! listeners hear [`Notice::Purged`] ([`Editor::purge`]). The editor's own
+//! writes run untold: it fans them out itself, and it holds the resident set
+//! while it writes.
 //!
 //! **Durable before acknowledged** (FR-030, data-model §A.2): the update row and
 //! its outbox row commit in one transaction, and [`Applied`] and the fan-out
@@ -49,7 +51,10 @@
 //! order, the resident set and then the writer, and no lock is held while a
 //! listener runs. A listener that panics is caught and reported on stderr, so
 //! the caller still gets its answer for a durable edit and the other listeners
-//! still run.
+//! still run. Listeners run on the caller's thread: [`Editor::apply_update`]'s,
+//! any core writer's after its writer is released, and [`Editor::open`]'s,
+//! [`Editor::state_vector`]'s and [`Editor::state_diff`]'s when a load repaired
+//! the document. A shell never holds a lock a listener takes across these.
 
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -61,7 +66,6 @@ use yrs::{ReadTxn as _, StateVector};
 
 use crate::api::errors::{AuthError, StorageError};
 use crate::api::tasks_write::now_ms;
-use crate::crdt::body_writes::{BodyObserver, BodyWrite};
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
 use crate::crdt::registry::{Document, UpdateSink};
@@ -77,6 +81,8 @@ use crate::storage::Db;
 use crate::sync::{body_debt, outbox};
 
 pub use crate::crdt::body_writes::Origin;
+
+mod catch_up;
 
 /// What a window receives when it opens a document.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,6 +115,10 @@ pub enum EditorError {
     /// the app restarts; its text stays readable, and nothing was removed.
     #[error("the body of {note_id} cannot be replayed")]
     Unreadable { note_id: String },
+    /// The window's copy is of a document since purged (a delete applied): it
+    /// opens the document again before it edits. Nothing was written.
+    #[error("{note_id} was deleted since this window opened it")]
+    Purged { note_id: String },
     #[error(transparent)]
     Crdt(#[from] CrdtError),
 }
@@ -195,8 +205,12 @@ impl Editor {
                     needs_seed: body_is_empty(document)? && !body_debt::is_owed(conn, note_id)?,
                 })
             })();
-            if opened.is_err() && held.added {
-                resident.release(note_id, holder, now);
+            match &opened {
+                Ok(_) => resident.reopened(note_id, holder),
+                Err(_) if held.added => {
+                    resident.release(note_id, holder, now);
+                }
+                Err(_) => {}
             }
             opened
         });
@@ -219,6 +233,11 @@ impl Editor {
         let mut repaired = None;
         let applied = {
             let mut resident = self.resident();
+            if resident.is_stale(note_id, holder) {
+                return Err(EditorError::Purged {
+                    note_id: note_id.to_owned(),
+                });
+            }
             self.on_writer(|conn| {
                 let owner = body_owner(conn, note_id)?.ok_or_else(|| not_found(note_id))?;
                 let document = resident
@@ -259,54 +278,12 @@ impl Editor {
     /// `note_id`'s body was purged (a delete applied, chapter 07 §7.15): the
     /// resident copy goes, a log that did not replay may be tried again, and
     /// the listeners hear [`Notice::Purged`]. A day deleted and written again is
-    /// a new document under the old id, which the next open replays.
+    /// a new document under the old id, which the next open replays. Until a
+    /// holder opens it again, [`Editor::apply_update`] refuses its edits
+    /// ([`EditorError::Purged`]): they are edits of the deleted body.
     pub fn purge(&self, note_id: &str) {
         self.resident().purge(note_id);
         self.fan_out(note_id, Notice::Purged);
-    }
-
-    /// Brings `write`'s resident document up to the committed log after another
-    /// writer's closure: what the log holds beyond the document is applied and
-    /// handed to the listeners with the writer's origin.
-    fn catch_up(&self, write: &BodyWrite) -> Result<(), EditorError> {
-        let id = write.doc_id.as_str();
-        if self.resident().peek(id).is_none() {
-            // Not in memory: it replays the log when it loads, and a purged one
-            // whose log did not replay may try again.
-            if write.purged {
-                self.resident().purge(id);
-            }
-            return Ok(());
-        }
-        // The committed log, on a reader: the write may have rolled back.
-        let log = self.db.read_blocking(|conn| {
-            Ok(epoch::open_for_write(
-                conn,
-                &self.device_id,
-                id,
-                Arc::new(|_, _| {}),
-            ))
-        })??;
-        let mut resident = self.resident();
-        let Some(document) = resident.peek(id) else {
-            return Ok(());
-        };
-        if document.client_id() != log.client_id() {
-            // The log moved to a new epoch: the document was purged.
-            drop(resident);
-            self.purge(id);
-            return Ok(());
-        }
-        let theirs = document.read(|txn| txn.state_vector())?;
-        let missing = log.read(|txn| txn.encode_diff_v1(&theirs))?;
-        let changed = document
-            .apply_durable_update_changed(&missing)
-            .inspect_err(|_| resident.invalidate(id))?;
-        drop(resident);
-        if changed {
-            self.fan_out(id, Notice::Update(&missing, &write.origin));
-        }
-        Ok(())
     }
 
     /// The document's state vector, for the sync-step handshake.
@@ -433,23 +410,29 @@ impl Editor {
         note_id: &str,
         repaired: &mut Option<Vec<u8>>,
     ) -> Result<Arc<Document>, CrdtError> {
-        let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::default();
+        // One-shot: taken after the repair, so a later authored write would
+        // be reported, never collected and silently left unstored.
+        let authored: Arc<Mutex<Option<Vec<Vec<u8>>>>> = Arc::new(Mutex::new(Some(Vec::new())));
         let sink: UpdateSink = {
             let authored = Arc::clone(&authored);
-            Arc::new(move |_, bytes: &[u8]| {
-                authored
-                    .lock()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .push(bytes.to_vec());
+            Arc::new(move |doc_id, bytes: &[u8]| {
+                let mut authored = authored.lock().unwrap_or_else(PoisonError::into_inner);
+                match authored.as_mut() {
+                    Some(updates) => updates.push(bytes.to_vec()),
+                    None => {
+                        debug_assert!(false, "a resident document authored past its load");
+                        eprintln!("memry editor: {doc_id} authored past its load; not stored");
+                    }
+                }
             })
         };
         let document = epoch::open_for_write(conn, &self.device_id, note_id, sink)?;
         Converter::new(CalloutTypes::default()).repair_empty_block_ids(&document, BODY_FRAGMENT);
-        let Some(update) = authored
+        let taken = authored
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
-            .pop()
-        else {
+            .take();
+        let Some(update) = taken.and_then(|mut updates| updates.pop()) else {
             return Ok(document);
         };
         let owner = body_owner(conn, note_id)?.ok_or_else(|| CrdtError::Storage {
@@ -500,19 +483,6 @@ fn not_found(note_id: &str) -> EditorError {
 fn unreadable(note_id: &str) -> EditorError {
     EditorError::Unreadable {
         note_id: note_id.to_owned(),
-    }
-}
-
-impl BodyObserver for Editor {
-    fn bodies_written(&self, writes: &[BodyWrite]) {
-        for write in writes {
-            if let Err(error) = self.catch_up(write) {
-                eprintln!(
-                    "memry editor: {} did not take a committed write: {error}",
-                    write.doc_id
-                );
-            }
-        }
     }
 }
 
