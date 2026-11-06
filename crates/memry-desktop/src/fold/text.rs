@@ -7,6 +7,7 @@
 //! Myanmar run is one word per character here and dictionary words in Electron (more words
 //! here), and a Katakana run is one word here where the dictionary may split it (fewer).
 
+use std::cell::Cell;
 use std::sync::LazyLock;
 
 use crate::web::extract::utils::js::{is_js_whitespace, trim as js_trim};
@@ -30,6 +31,21 @@ static WORD_CHAR: LazyLock<Regex> = LazyLock::new(|| {
 });
 static EXTEND_NUM_LET: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\p{WB=ExtendNumLet}").expect("extend num let"));
+
+thread_local! {
+    static STEPS: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Characters and bytes the hand-written scans of the fold visited on this thread, for tests
+/// that bound its work by steps rather than by the clock.
+#[doc(hidden)]
+pub fn steps() -> usize {
+    STEPS.with(Cell::get)
+}
+
+pub(super) fn step(n: usize) {
+    STEPS.with(|steps| steps.set(steps.get() + n));
+}
 
 pub fn sha256(text: &str) -> String {
     hex::encode(Sha256::digest(text.as_bytes()))
