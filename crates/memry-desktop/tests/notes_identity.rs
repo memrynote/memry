@@ -1432,9 +1432,13 @@ fn a_note_moved_onto_a_deleted_days_path_keeps_the_note() {
     e.facts_until(indexed);
     let meeting = row_id(&e, "Meeting.md").unwrap();
     fs::remove_file(e.vault.join("journal/2025-01-02.md")).unwrap();
-    until("the day is deleted", || {
-        days(&e) == vec![("j2025-01-02".to_owned(), "2025-01-02".to_owned(), true)]
-    });
+    // The removal's fact, not the deleted record: the record goes before the row, and a row
+    // still at the day's path would satisfy the wait for the note's row below.
+    e.facts_until(removed("journal/2025-01-02.md"));
+    assert_eq!(
+        days(&e),
+        vec![("j2025-01-02".to_owned(), "2025-01-02".to_owned(), true)]
+    );
 
     fs::rename(
         e.vault.join("Meeting.md"),
