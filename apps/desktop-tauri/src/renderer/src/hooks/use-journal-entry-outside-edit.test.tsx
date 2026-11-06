@@ -147,7 +147,14 @@ describe('useJournalEntry: outside edits of the open day', () => {
       initialProps: { date }
     })
     await waitFor(() => expect(hook.result.current.loadedForDate).toBe(date))
+    await settle()
     return hook
+  }
+
+  const openDay = async (hook: Awaited<ReturnType<typeof mount>>, date: string) => {
+    hook.rerender({ date })
+    await waitFor(() => expect(hook.result.current.loadedForDate).toBe(date))
+    await settle()
   }
 
   const startSave = async (
@@ -362,6 +369,105 @@ describe('useJournalEntry: outside edits of the open day', () => {
     })
   })
 
+  // The page opens a cached day on the cache's text. An outside edit made while it showed
+  // another day sent it no event: `useJournalChangeEvents` only marks that day's query stale.
+  describe('a day the page opens from its cache', () => {
+    it('takes an outside edit made to the prefetched next day', async () => {
+      const hook = await mount()
+      outsideEdit('Edited outside.', NEXT)
+      await settle()
+
+      await openDay(hook, NEXT)
+
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Edited outside.')
+    })
+
+    it('takes an outside edit made to the next day while the last day still runs its save', async () => {
+      const hook = await mount()
+      outsideEdit('Edited outside.', NEXT)
+      await settle()
+      holdNextSave()
+      await startSave(hook.result, 'Typed.')
+
+      await openDay(hook, NEXT)
+
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Edited outside.')
+    })
+
+    it('takes a change that sent no event, once the page comes back after its cache went stale', async () => {
+      const hook = await mount()
+      await openDay(hook, NEXT)
+      files[DAY] = 'Changed quietly.'
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(31_000)
+      })
+
+      await openDay(hook, DAY)
+
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Changed quietly.')
+    })
+
+    it('takes an outside edit made after the page left during its save', async () => {
+      const hook = await mount()
+      const save = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      await openDay(hook, NEXT)
+      outsideEdit('Edited outside.')
+      await settle()
+      await save.finish('Typed.')
+
+      await openDay(hook, DAY)
+
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Edited outside.')
+    })
+
+    // The editor reopens on the cache, which the save's reply has not reached yet.
+    it("takes its own save's text when the page came back to the day during that save", async () => {
+      const hook = await mount()
+      const save = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      await openDay(hook, NEXT)
+      await openDay(hook, DAY)
+      expect(hook.result.current.entry?.content).toBe('Existing')
+      const before = hook.result.current.externalUpdateCount
+
+      await save.finish('Typed.')
+
+      expect(hook.result.current.externalUpdateCount).toBe(before + 1)
+      expect(hook.result.current.entry?.content).toBe('Typed.')
+    })
+
+    // A sidebar note opened in the same tab unmounts the page mid-save, and the day opened
+    // again at once: the old page saves the typing made during its save after the new one
+    // opened the day on older text. That save's event is not an outside one.
+    it('takes the typing an unmounted page saved after this page opened the day', async () => {
+      const first = await mount()
+      const save = holdNextSave()
+      await startSave(first.result, 'First.')
+      act(() => {
+        first.result.current.updateContent('First. Second.')
+      })
+      first.unmount()
+      const second = await mount()
+      expect(second.result.current.entry?.content).toBe('Existing')
+
+      await save.finish()
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'First. Second.' })
+      emit('onJournalEntryUpdated', {
+        date: DAY,
+        entry: createMockJournalEntry({ date: DAY, content: 'First. Second.' })
+      })
+      await settle()
+
+      expect(second.result.current.externalUpdateCount).toBe(1)
+      expect(second.result.current.entry?.content).toBe('First. Second.')
+    })
+  })
+
   describe('a day the page comes back to', () => {
     // The editor's teardown reports its last edit after the page left the day, which saves it
     // there (#1900). The page came back before the other day loaded: its editor reopened on
@@ -412,6 +518,57 @@ describe('useJournalEntry: outside edits of the open day', () => {
 
       expect(result.current.externalUpdateCount).toBe(1)
       expect(result.current.entry?.content).toBe('Newer outside.')
+    })
+  })
+
+  describe('a dropped-events signal, read twice', () => {
+    // The app-level listener refetches the day too. Its answer renders before the page's own
+    // read lands, which still compares with the editor's text, not with that refetch.
+    it('hands the missed edit over when the app-level refetch renders first', async () => {
+      const { result } = await mount()
+      const answers: Array<() => void> = []
+      getEntry.mockImplementation(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+        (date: string) =>
+          new Promise<JournalEntry>((resolve) => {
+            answers.push(() => resolve(createMockJournalEntry({ date, content: files[date] })))
+          })
+      )
+      files[DAY] = 'Missed outside.'
+      emit('onJournalEventsDropped')
+      await settle()
+      expect(answers).toHaveLength(2)
+
+      const [appRefetch, ownRead] = answers
+      await act(async () => {
+        appRefetch()
+        await vi.advanceTimersByTimeAsync(50)
+      })
+      expect(result.current.entry?.content).toBe('Missed outside.')
+      expect(result.current.externalUpdateCount).toBe(0)
+      await act(async () => {
+        ownRead()
+        await vi.advanceTimersByTimeAsync(50)
+      })
+
+      expect(result.current.externalUpdateCount).toBe(1)
+    })
+  })
+
+  describe('a forced reload', () => {
+    // A version restore reloads the day and remounts its editor on the answer.
+    it('is the text later reads compare with', async () => {
+      const { result } = await mount()
+      files[DAY] = 'Restored.'
+      await act(async () => {
+        await result.current.forceReload()
+      })
+      expect(result.current.entry?.content).toBe('Restored.')
+
+      emit('onJournalEventsDropped')
+      await settle()
+
+      expect(result.current.externalUpdateCount).toBe(0)
     })
   })
 
