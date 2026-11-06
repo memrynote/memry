@@ -144,7 +144,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     );
     index.register(session);
     app.manage(index);
-    register_flushes(app, &tier);
+    register_flushes(app, &tier, session);
     forward_writeback_failures(app.clone(), tier.subscribe_failures());
     forward_activity_changes(app.clone(), tier.activity().subscribe());
     memry_desktop::templates::legacy::register(session, store.inner().clone(), tier.activity());
@@ -202,9 +202,9 @@ fn register_uploads(app: &AppHandle<Wry>, session: &Session) {
     app.manage(uploads);
 }
 
-/// `flush-writebacks`: no edit scheduled for a note's file waits out the quit.
-/// `flush-activity-log`: the buffered activity entries reach the file.
-fn register_flushes(app: &AppHandle<Wry>, tier: &Arc<VaultTier>) {
+/// The vault's quit steps (`VaultTier::quit_steps`): `flush-writebacks`, `flush-activity-log`
+/// and `close-snapshots`.
+fn register_flushes(app: &AppHandle<Wry>, tier: &Arc<VaultTier>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(shutdown) = app.try_state::<ShutdownService>() else {
         tracing::error!(
@@ -213,10 +213,7 @@ fn register_flushes(app: &AppHandle<Wry>, tier: &Arc<VaultTier>) {
         );
         return;
     };
-    for (step, run) in [
-        ("flush-writebacks", tier.flush_step()),
-        ("flush-activity-log", tier.activity().flush_step()),
-    ] {
+    for (step, run) in tier.quit_steps(session) {
         if let Err(error) = shutdown.register(step, run) {
             tracing::error!(scope = "vault_writeback", "{error}");
         }

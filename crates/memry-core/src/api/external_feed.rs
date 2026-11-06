@@ -73,6 +73,30 @@ impl ExternalFeed {
         )
     }
 
+    /// [`Self::feed_app_edit`] of a restored version (desktop Step 14d): the editor windows
+    /// hear it as the app's own write ([`body_writes::Origin::System`]), not as an outside
+    /// edit, so a rule for outside edits (typing wins over them) leaves a restore alone.
+    pub fn feed_restore(
+        &self,
+        converter: &Converter,
+        input: FeedInput<'_>,
+        read: &str,
+    ) -> Result<FeedOutcome, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                Ok(external_feed::feed_app_edit(
+                    conn,
+                    converter,
+                    input,
+                    read,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(CrdtError::from)?
+    }
+
     /// Gives the note the file's text when its body is empty, and leaves a body
     /// it has alone ([`FeedOutcome::BodyPresent`]).
     pub fn seed_body_if_empty(

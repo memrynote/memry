@@ -304,6 +304,8 @@ mod note_link_display;
 mod note_meta;
 #[path = "note_refs_move.rs"]
 mod note_refs_move;
+#[path = "note_snapshots.rs"]
+mod note_snapshots;
 #[path = "note_stats_store.rs"]
 mod note_stats_store;
 #[path = "note_stats_vectors.rs"]

@@ -252,6 +252,17 @@ export const commands = {
 	 *  failed write saves nothing.
 	 */
 	notesDownloadUnsplashPhoto: (noteId: string, photo: UnsplashPhoto) => __TAURI_INVOKE<UnsplashDownloadResponse>("notes_download_unsplash_photo", { noteId, photo }),
+	/**  `notes:delete-version`: a version that is not there is no failure, as in Electron. */
+	notesDeleteVersion: (snapshotId: string) => __TAURI_INVOKE<null>("notes_delete_version", { snapshotId }),
+	/**  `notes:get-version`: the version and the file it restores to; `null` for none. */
+	notesGetVersion: (snapshotId: string) => __TAURI_INVOKE<VersionDetailView | null>("notes_get_version", { snapshotId }),
+	/**  `notes:get-versions`: newest first, at most 50. */
+	notesGetVersions: (noteId: string) => __TAURI_INVOKE<VersionView[]>("notes_get_versions", { noteId }),
+	/**
+	 *  `notes:restore-version`: the note's body becomes the version's, the text it replaced kept as
+	 *  the newest version. Answers the note as it reads now; `null` for a journal day.
+	 */
+	notesRestoreVersion: (snapshotId: string) => __TAURI_INVOKE<NoteView | null>("notes_restore_version", { snapshotId }),
 	/**
 	 *  Whether notifications may show. macOS answers `prompt` until the user was asked; the first
 	 *  notification asks.
@@ -2470,6 +2481,34 @@ export type VaultStatus = {
  *  it subscribes, because events before that are not replayed.
  */
 export type VaultStatusChangedEvent = VaultStatus;
+
+/**
+ *  `SnapshotDetail`: the version and what a restore puts in the note, which the panel previews:
+ *  the version's body ([`restore_body`]). Electron sent the whole file, whose frontmatter its
+ *  restore wrote too; this restore keeps the note's.
+ */
+export type VersionDetailView = {
+	id: string,
+	noteId: string,
+	title: string,
+	wordCount: number,
+	reason: string,
+	createdAt: string,
+	fileContent: string,
+};
+
+/**
+ *  `SnapshotListItem`. `reason` is the stored column, which the renderer reads as
+ *  `SnapshotReason`.
+ */
+export type VersionView = {
+	id: string,
+	noteId: string,
+	title: string,
+	wordCount: number,
+	reason: string,
+	createdAt: string,
+};
 
 /**  `WikiLinkPreview`, with the body in place of `bodyText`. */
 export type WikiLinkPreviewView = {

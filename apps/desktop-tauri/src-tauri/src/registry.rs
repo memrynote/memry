@@ -124,6 +124,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::property_definitions::notes_update_option_color,
             crate::commands::property_definitions::notes_update_property_definition,
             crate::commands::unsplash::notes_download_unsplash_photo,
+            // notes: versions
+            crate::commands::notes_versions::notes_delete_version,
+            crate::commands::notes_versions::notes_get_version,
+            crate::commands::notes_versions::notes_get_versions,
+            crate::commands::notes_versions::notes_restore_version,
             // notification
             crate::commands::shell_integrations::notification_permission,
             crate::commands::shell_integrations::notification_show,

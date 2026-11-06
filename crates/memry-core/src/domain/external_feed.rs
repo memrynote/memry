@@ -352,7 +352,7 @@ fn author(
             ),
             body: &previous.markdown,
             title: &owner.title,
-            reason: note_snapshots::SIGNIFICANT,
+            reason: note_snapshots::Reason::Significant,
         };
         note_snapshots::keep(&tx, version, now_ms)?;
     }

@@ -154,6 +154,8 @@ mod note_properties_index;
 mod note_properties_learned;
 #[path = "note_properties_outside.rs"]
 mod note_properties_outside;
+#[path = "note_versions.rs"]
+mod note_versions;
 #[path = "notes_aliases.rs"]
 mod notes_aliases;
 #[path = "notes_apply_template.rs"]
