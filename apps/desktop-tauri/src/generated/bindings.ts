@@ -78,6 +78,13 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**  Cancels a chunked upload; its part file is deleted. */
+	notesUploadAttachmentAbort: (id: string) => __TAURI_INVOKE<null>("notes_upload_attachment_abort", { id }),
+	/**
+	 *  Starts a chunked upload of a file of `size` bytes to the note, for the calling page. Refused
+	 *  on the size, the type or the note id before any byte is sent. Returns the upload's id.
+	 */
+	notesUploadAttachmentBegin: (noteId: string, fileName: string, size: number) => __TAURI_INVOKE<string>("notes_upload_attachment_begin", { noteId, fileName, size }),
 	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
