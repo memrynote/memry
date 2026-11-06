@@ -15,6 +15,7 @@ use index_support::{all_indexed, until, with_task};
 use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::error::{CoreError, FailureKind};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::session::OpenVault;
 use memry_desktop::tags::schema::Schemas;
@@ -105,8 +106,9 @@ fn define(schemas: &Schemas, template: &str) {
     }
 }
 
-/// Tasks as Electron's fixture has them: a filled `Role`, none, one cleared since, and one on
-/// a tag outside `person`.
+/// Tasks as Electron's fixture has them: a filled `Role` (tagged `Person`, as a task keeps the
+/// spelling it was given), none, one cleared since, and one on a tag outside `person`; and a
+/// deleted one that counts nowhere.
 fn tasks(open: &OpenVault, store: &Arc<dyn SecureStore>) {
     let tasks = open.vault.tasks(store.clone()).unwrap();
     let project = tasks
@@ -149,11 +151,13 @@ fn tasks(open: &OpenVault, store: &Arc<dyn SecureStore>) {
         }
         id
     };
-    task("filled", "person", Some("Lead"));
+    task("filled", "Person", Some("Lead"));
     task("empty", "person", None);
     let cleared = task("cleared", "employee", Some("Ex"));
     tasks.set_field_value(cleared, "Role".into(), None).unwrap();
     task("other", "company", Some("Buyer"));
+    let deleted = task("deleted", "person", Some("Gone"));
+    tasks.delete(deleted, false).unwrap();
 }
 
 #[test]
@@ -267,15 +271,26 @@ fn a_schema_change_counts_the_objects_values_and_tasks_it_reaches() {
 }
 
 #[test]
-fn a_query_without_a_tag_or_a_field_name_is_refused() {
+fn a_query_without_a_tag_or_a_field_name_or_with_one_too_long_is_refused() {
     let (mut e, open, store) = opened();
     let schemas = Schemas::open(&open, store.clone(), "en").unwrap();
-    let blank = schemas.preview_impact(ImpactQuery::RemoveField {
-        tag: "person".into(),
-        name: "  ".into(),
-    });
-    assert!(blank.is_err(), "{blank:?}");
-    let blank = schemas.preview_impact(ImpactQuery::BecomeObjects { tag: String::new() });
-    assert!(blank.is_err(), "{blank:?}");
+    let (tag, field) = ("t".repeat(51), "f".repeat(201));
+    for query in [
+        ImpactQuery::RemoveField {
+            tag: "person".into(),
+            name: "  ".into(),
+        },
+        ImpactQuery::BecomeObjects { tag: String::new() },
+        ImpactQuery::DeleteTag { tag },
+        ImpactQuery::RenameField { name: field },
+        ImpactQuery::SetExtends {
+            tag: "person".into(),
+            parent: Some(" ".into()),
+        },
+    ] {
+        let refused = schemas.preview_impact(query.clone());
+        let kind = refused.as_ref().map_err(|error| error.kind_and_code().0);
+        assert_eq!(kind.err(), Some(FailureKind::Invalid), "{query:?}: {refused:?}");
+    }
     e.close();
 }

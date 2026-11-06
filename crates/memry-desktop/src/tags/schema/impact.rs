@@ -1,5 +1,7 @@
 //! `tags:preview-impact` (`tags/schema/impact.ts`): what a schema change would reach, counted
-//! before its dialog asks. Read only.
+//! before its dialog asks. It writes no record and no outbox row; reading the property
+//! definitions first takes pulled definitions into `properties.md`, as the snapshot's read
+//! does (`PropertyDefinitions::list`).
 //!
 //! A tag's objects are the markdown notes, not journal days, whose file header carries the tag
 //! in any spelling (`headerObjectNoteIds`); a tag's members are the tag and the tags that extend
@@ -8,7 +10,7 @@
 
 use std::collections::HashSet;
 
-use memry_core::api::search::TaskFieldHolder;
+use memry_core::domain::task_records::TaskFieldHolder;
 use memry_core::domain::tag_schema::{ResolvedTag, descendants_of};
 use memry_core::domain::tags::tag_key;
 use serde::{Deserialize, Serialize};
@@ -74,9 +76,7 @@ impl Schemas {
                 let notes = self.objects_of(&tags)?;
                 let filled_notes = self.holders(&name)?.intersection(&notes).count();
                 let tasks: Vec<TaskFieldHolder> = self
-                    .open
-                    .search
-                    .task_field_holders()?
+                    .task_holders()?
                     .into_iter()
                     .filter(|task| carries(task, &tags))
                     .collect();
@@ -89,7 +89,7 @@ impl Schemas {
             }
             ImpactQuery::RenameField { name } => {
                 let name = field_name(&name)?;
-                let tasks = self.open.search.task_field_holders()?;
+                let tasks = self.task_holders()?;
                 ImpactView::RenameField {
                     notes: count(self.holders(&name)?.len()),
                     tasks: count(tasks.iter().filter(|task| holds(task, &name)).count()),
@@ -116,7 +116,7 @@ impl Schemas {
                     Some(template) => self.templates.get(&template.id)?.map(|t| t.name),
                     None => None,
                 };
-                let tasks = self.open.search.task_field_holders()?;
+                let tasks = self.task_holders()?;
                 ImpactView::DeleteTag {
                     notes: count(notes.len()),
                     tasks: count(tasks.iter().filter(|task| carries(task, &tags)).count()),
@@ -173,6 +173,20 @@ impl Schemas {
             .filter(|(_, header)| header.iter().any(|tag| tags.contains(&tag_key(tag))))
             .map(|(id, _)| id)
             .collect())
+    }
+
+    /// Every live task's tags and filled fields; a task whose payload does not read is in no
+    /// count, and named in a warning.
+    fn task_holders(&self) -> Result<Vec<TaskFieldHolder>, SchemaError> {
+        let read = self.tasks.field_holders()?;
+        if !read.unreadable.is_empty() {
+            tracing::warn!(
+                scope = "TagSchema",
+                tasks = ?read.unreadable,
+                "tasks whose payload does not read are left out of a tag schema change's counts"
+            );
+        }
+        Ok(read.holders)
     }
 
     /// The notes the index read a value named `name` from.

@@ -22,6 +22,7 @@ use std::sync::Arc;
 use memry_core::api::errors::{AuthError, StorageError};
 use memry_core::api::tag_hub::TagHub;
 use memry_core::api::tag_schemas::TagSchemas;
+use memry_core::api::tasks::Tasks;
 use memry_core::domain::tag_schema::{self, PropertyInfo, ResolvedTag};
 use memry_core::seams::secure_store::SecureStore;
 
@@ -62,6 +63,7 @@ pub struct Schemas {
     open: OpenVault,
     schemas: TagSchemas,
     hub: TagHub,
+    tasks: Arc<Tasks>,
     definitions: PropertyDefinitions,
     templates: Templates,
     locale: String,
@@ -76,6 +78,7 @@ impl Schemas {
         Ok(Self {
             schemas: open.vault.tag_schemas(store.clone())?,
             hub: open.vault.tag_hub(store.clone())?,
+            tasks: open.vault.tasks(store.clone())?,
             definitions: PropertyDefinitions::open(open, store.clone())?,
             templates: Templates::open(open, store)?,
             open: open.clone(),
