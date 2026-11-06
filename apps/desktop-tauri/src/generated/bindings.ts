@@ -436,9 +436,9 @@ export const commands = {
 	vaultSwitch: (path: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_switch", { path }),
 	/**
 	 *  `vault:update-config`: writes the fields `config` names, a new date format or journal folder
-	 *  with the day files moved to it first, and answers the settings after it, which every window
-	 *  hears as [`VaultConfigChangedEvent`], in the order the writes land. A change that is not
-	 *  ported yet is refused as `config_change_not_ported`, and a setting not every day can take as
+	 *  with the day files moved to it first, new exclude patterns with the watcher restarted on them,
+	 *  and answers the settings after it, which every window hears as [`VaultConfigChangedEvent`], in
+	 *  the order the writes land. A setting not every day can take is refused as
 	 *  `journal_format_incomplete`, `journal_folder_invalid`, `journal_folder_respelled`,
 	 *  `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits` or
 	 *  `journal_change_unrecorded` (`vault::config::settings`).

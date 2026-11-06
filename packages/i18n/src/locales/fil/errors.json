@@ -14,7 +14,6 @@
     "permissionDenied": "Tinanggihan ang pahintulot. Tingnan kung mayroon kang access sa folder na ito.",
     "alreadyExists": "Mayroon nang vault sa lokasyong ito.",
     "corrupted": "Mukhang sira ang vault na ito. Subukang ibalik mula sa isang backup.",
-    "configChangeNotPorted": "Hindi pa kayang baguhin ng bersyong ito ang folder ng talaarawan, format ng petsa, o mga hindi isinamang folder. Nananatili ang naka-save mong setting.",
     "journalFormatIncomplete": "Hindi kayang pangalanan ng format ng petsang ito ang bawat araw, kaya hindi ito na-save. Isama ang taon, buwan at araw.",
     "journalFolderInvalid": "Hindi maaaring ilagay ang talaarawan sa folder na ito, kaya hindi na-save ang pagbabago. Pumili ng nakikitang folder na hindi naka-exclude at hindi link.",
     "journalFolderRespelled": "Sa malaki at maliit na titik lang nagkakaiba ang pangalan ng folder ng journal, kaya hindi na-save ang pagbabago. Palitan na lang ang pangalan ng folder sa sidebar.",

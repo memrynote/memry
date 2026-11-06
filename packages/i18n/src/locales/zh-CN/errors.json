@@ -14,7 +14,6 @@
     "permissionDenied": "权限被拒绝。请检查你是否有权限访问此文件夹。",
     "alreadyExists": "此位置已存在仓库。",
     "corrupted": "此仓库似乎已损坏。请尝试从备份恢复。",
-    "configChangeNotPorted": "此版本暂时无法更改日记文件夹、日期格式或排除的文件夹。你保存的设置保持不变。",
     "journalFormatIncomplete": "此日期格式无法为每一天命名，因此未保存。请包含年、月和日。",
     "journalFolderInvalid": "日记无法存放在此文件夹中，因此更改未保存。请选择一个可见、未被排除且不是链接的文件夹。",
     "journalFolderRespelled": "日记文件夹名称仅大小写不同，因此未保存更改。请改为在侧边栏中重命名该文件夹。",

@@ -14,7 +14,6 @@
     "permissionDenied": "權限遭拒。請確認你有權存取此資料夾。",
     "alreadyExists": "此位置已有儲存庫。",
     "corrupted": "此儲存庫似乎已損壞。請嘗試從備份還原。",
-    "configChangeNotPorted": "此版本暫時無法變更日誌資料夾、日期格式或排除的資料夾。你儲存的設定維持不變。",
     "journalFormatIncomplete": "此日期格式無法為每一天命名，因此未儲存。請包含年、月和日。",
     "journalFolderInvalid": "日誌無法存放在此資料夾中，因此變更未儲存。請選擇一個可見、未被排除且不是連結的資料夾。",
     "journalFolderRespelled": "日誌資料夾名稱僅大小寫不同，因此未儲存變更。請改為在側邊欄中重新命名該資料夾。",

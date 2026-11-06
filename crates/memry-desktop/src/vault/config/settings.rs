@@ -37,9 +37,14 @@
 //! The journal folder moved in the app with a folder that holds it takes the setting along
 //! ([`JournalFollow`], `notes::folder_move`), as Electron's `followJournalFolderMove` does.
 //!
-//! Not here yet (Step 13m-7b-3): a change of the exclude patterns, which comes with its own work
-//! in Electron (the watcher restarted). Such a change is refused ([`SettingsError::NotPorted`]);
-//! the same value again is no change and passes.
+//! New exclude patterns are saved, then the open vault's watcher and consumer restart on them
+//! (`VaultTier::rewatch`), as Electron's `updateConfig` restarts its watcher. Electron then
+//! rebuilds its derived index, which drops a newly excluded note from its lists and keeps its
+//! record (`note_metadata`), so no delete syncs, and takes a file that stops matching back under
+//! that record's id. Here the note's row stays, so it stays listed and keeps its id; the
+//! restart's walk takes an outside edit made while its file was excluded. The save is the only
+//! durable step: an open after a crash reads the saved patterns, and its rescan reports no row
+//! whose file is on disk as removed.
 
 use std::io;
 use std::path::Path;
@@ -86,9 +91,6 @@ pub(crate) fn day_names() -> RwLockReadGuard<'static, ()> {
 
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
-    /// The field, by its `config.json` key, changes and that is not ported yet.
-    #[error("changing {0} is not available in this build yet")]
-    NotPorted(&'static str),
     /// The new date format cannot name every date, so no day could keep its name in it.
     #[error("the date format cannot name every date")]
     IncompleteFormat,
@@ -140,9 +142,9 @@ fn normalized(config: VaultConfig) -> VaultConfig {
 
 /// `updateConfig` in the vault at `root`: moves the day files for a new date format or journal
 /// folder through the open vault's core and tier (`days`), writes `patch` (its journal fields
-/// normalized), hands the settings after it to `announce` and answers them. A field the patch
-/// gives its current value is left as stored; a patch with nothing else writes and announces
-/// nothing.
+/// normalized), restarts the tier's watcher on new exclude patterns, hands the settings after it
+/// to `announce` and answers them. A field the patch gives its current value is left as stored;
+/// a patch with nothing else writes and announces nothing.
 pub fn update_vault_settings(
     root: &Path,
     days: Option<(&Arc<Vault>, &VaultTier)>,
@@ -172,11 +174,10 @@ pub fn update_vault_settings_checked(
         .take()
         .map(|f| normalize_journal_folder(&f))
         .filter(|folder| *folder != current.journal_folder);
-    refuse_change(
-        "excludePatterns",
-        patch.exclude_patterns.take(),
-        &current.exclude_patterns,
-    )?;
+    patch.exclude_patterns = patch
+        .exclude_patterns
+        .take()
+        .filter(|patterns| *patterns != current.exclude_patterns);
     patch.journal_date_format = patch
         .journal_date_format
         .take()
@@ -209,6 +210,16 @@ pub fn update_vault_settings_checked(
     step(ChangeStep::Saved);
     if let Some(moved) = &moved {
         forget_change(&moved.writer, &moved.change);
+    }
+    if let Some((vault, tier)) = days.filter(|_| patch.exclude_patterns.is_some()) {
+        // Saved either way: the next open starts the watcher on the saved patterns.
+        if let Err(error) = tier.rewatch(vault, &mut || step(ChangeStep::Unwatched)) {
+            tracing::error!(
+                scope = SCOPE,
+                "the watcher did not restart on the new exclude patterns; the vault is not \
+                 watched until it opens again: {error}"
+            );
+        }
     }
     let settings = normalized(written);
     announce(&settings);
@@ -361,16 +372,5 @@ impl JournalFollow {
             ..VaultConfigPatch::default()
         };
         write_vault_config(root, &patch).map(normalized)
-    }
-}
-
-fn refuse_change<T: PartialEq>(
-    key: &'static str,
-    wanted: Option<T>,
-    current: &T,
-) -> Result<(), SettingsError> {
-    match wanted {
-        Some(value) if value != *current => Err(SettingsError::NotPorted(key)),
-        _ => Ok(()),
     }
 }

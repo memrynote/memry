@@ -14,7 +14,6 @@
     "permissionDenied": "Không có quyền truy cập. Kiểm tra xem bạn có quyền truy cập vào thư mục này không.",
     "alreadyExists": "Kho đã tồn tại ở vị trí này.",
     "corrupted": "Kho này có vẻ bị hỏng. Thử khôi phục từ bản sao lưu.",
-    "configChangeNotPorted": "Phiên bản này chưa thể thay đổi thư mục nhật ký, định dạng ngày hoặc các thư mục bị loại trừ. Cài đặt đã lưu của bạn được giữ nguyên.",
     "journalFormatIncomplete": "Định dạng ngày này không thể đặt tên cho mọi ngày nên chưa được lưu. Hãy thêm năm, tháng và ngày.",
     "journalFolderInvalid": "Không thể đặt nhật ký trong thư mục này nên thay đổi không được lưu. Hãy chọn một thư mục hiển thị, không bị loại trừ và không phải liên kết.",
     "journalFolderRespelled": "Tên thư mục nhật ký chỉ khác về chữ hoa và chữ thường nên thay đổi chưa được lưu. Thay vào đó, hãy đổi tên thư mục ở thanh bên.",

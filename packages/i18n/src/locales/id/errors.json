@@ -14,7 +14,6 @@
     "permissionDenied": "Izin ditolak. Periksa apakah Anda memiliki akses ke folder ini.",
     "alreadyExists": "Brankas sudah ada di lokasi ini.",
     "corrupted": "Brankas ini tampaknya rusak. Coba pulihkan dari cadangan.",
-    "configChangeNotPorted": "Versi ini belum dapat mengubah folder jurnal, format tanggal, atau folder yang dikecualikan. Pengaturan tersimpan Anda tetap dipertahankan.",
     "journalFormatIncomplete": "Format tanggal ini tidak dapat menamai setiap hari, jadi tidak disimpan. Sertakan tahun, bulan, dan hari.",
     "journalFolderInvalid": "Jurnal tidak dapat disimpan di folder ini, jadi perubahan tidak disimpan. Pilih folder yang terlihat, tidak dikecualikan, dan bukan tautan.",
     "journalFolderRespelled": "Nama folder jurnal hanya berbeda pada huruf besar dan kecil, jadi perubahan tidak disimpan. Ganti nama folder di bilah samping saja.",

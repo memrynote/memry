@@ -14,7 +14,6 @@
     "permissionDenied": "Prístup zamietnutý. Skontrolujte, či máte prístup do tohto priečinka.",
     "alreadyExists": "Na tomto mieste už trezor existuje.",
     "corrupted": "Tento trezor sa zdá byť poškodený. Skúste ho obnoviť zo zálohy.",
-    "configChangeNotPorted": "Táto verzia zatiaľ nemôže zmeniť priečinok denníka, formát dátumu ani vylúčené priečinky. Uložené nastavenie zostáva.",
     "journalFormatIncomplete": "Tento formát dátumu nedokáže pomenovať každý deň, preto nebol uložený. Uveďte rok, mesiac a deň.",
     "journalFolderInvalid": "Denník nemôže byť v tomto priečinku, preto sa zmena neuložila. Vyberte viditeľný priečinok, ktorý nie je vylúčený ani nie je odkazom.",
     "journalFolderRespelled": "Názov priečinka denníka sa líši iba veľkosťou písmen, preto sa zmena neuložila. Namiesto toho premenujte priečinok na bočnom paneli.",

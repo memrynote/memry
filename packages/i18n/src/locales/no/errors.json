@@ -14,7 +14,6 @@
     "permissionDenied": "Tillatelse nektet. Sjekk at du har tilgang til denne mappen.",
     "alreadyExists": "Det finnes allerede et hvelv på dette stedet.",
     "corrupted": "Dette hvelvet ser ut til å være ødelagt. Prøv å gjenopprette fra en sikkerhetskopi.",
-    "configChangeNotPorted": "Denne versjonen kan ikke endre dagbokmappen, datoformatet eller ekskluderte mapper ennå. Den lagrede innstillingen beholdes.",
     "journalFormatIncomplete": "Dette datoformatet kan ikke gi navn til hver dag, så det ble ikke lagret. Ta med år, måned og dag.",
     "journalFolderInvalid": "Dagboken kan ikke ligge i denne mappen, så endringen ble ikke lagret. Velg en synlig mappe som ikke er utelatt og ikke er en lenke.",
     "journalFolderRespelled": "Navnet på journalmappen skiller seg bare i store og små bokstaver, så endringen ble ikke lagret. Gi heller mappen nytt navn i sidepanelet.",

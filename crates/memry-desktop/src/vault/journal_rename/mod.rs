@@ -125,6 +125,9 @@ pub enum ChangeStep {
     Moved,
     /// The new setting is saved, before its record is forgotten.
     Saved,
+    /// New exclude patterns are saved and the open vault's watcher stopped, before it starts on
+    /// them (`settings`).
+    Unwatched,
 }
 
 /// A journal's days: its vault-relative folder and its date format.

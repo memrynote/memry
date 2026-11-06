@@ -14,7 +14,6 @@
     "permissionDenied": "Brak uprawnień. Sprawdź, czy masz dostęp do tego folderu.",
     "alreadyExists": "W tej lokalizacji już istnieje sejf.",
     "corrupted": "Wygląda na to, że ten sejf jest uszkodzony. Spróbuj przywrócić go z kopii zapasowej.",
-    "configChangeNotPorted": "Ta wersja nie może jeszcze zmienić folderu dziennika, formatu daty ani wykluczonych folderów. Zapisane ustawienie zostaje zachowane.",
     "journalFormatIncomplete": "Ten format daty nie może nazwać każdego dnia, więc nie został zapisany. Uwzględnij rok, miesiąc i dzień.",
     "journalFolderInvalid": "Dziennik nie może znajdować się w tym folderze, więc zmiana nie została zapisana. Wybierz widoczny folder, który nie jest wykluczony ani nie jest dowiązaniem.",
     "journalFolderRespelled": "Nazwa folderu dziennika różni się tylko wielkością liter, więc zmiana nie została zapisana. Zamiast tego zmień nazwę folderu na pasku bocznym.",

@@ -1,5 +1,6 @@
 //! Hangs the watcher, the consumer and the write-back on the session: all start at
-//! `OpenStage::Watcher` of every open and stop, joined, when the vault closes. The rows' lane
+//! `OpenStage::Watcher` of every open and stop, joined, when the vault closes. New exclude
+//! patterns restart the watcher and the consumer alone ([`VaultTier::rewatch`]). The rows' lane
 //! lives across sessions (the app holds it), and is open only while a vault is.
 
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -73,12 +74,14 @@ pub(crate) enum Hold {
 /// and must leave that vault's write-back, rows and own-write record alone.
 struct Open {
     /// The vault this open belongs to: a close hook stops the open only if it is its vault's.
-    vault: Arc<Vault>,
+    view: OpenVault,
     session: RowSession,
     /// The own-write record of this open; a record made in one vault never hides a change in
     /// the next.
     echo: Arc<EchoGuard>,
     writeback: Arc<WriteBack>,
+    /// The write-back's pass, for the reconcile that ends each walk.
+    pass: Arc<Pass>,
     /// What the app asks of this open's watcher; dropped once the watcher stopped.
     watch: WatchHandle,
     /// Taken by the first stop; a second stop finds them gone.
@@ -240,7 +243,7 @@ impl VaultTier {
         self.hold(Hold::SlotRead);
         let Some(open) = self
             .current()
-            .filter(|open| of.is_none_or(|vault| Arc::ptr_eq(&open.vault, vault)))
+            .filter(|open| of.is_none_or(|vault| Arc::ptr_eq(&open.view.vault, vault)))
         else {
             return;
         };
@@ -272,13 +275,63 @@ impl VaultTier {
             })
     }
 
+    /// Restarts the watcher and the consumer of `vault`'s open on the exclude patterns saved now
+    /// (`updateConfig`'s watcher restart), so a folder a pattern now drops is no longer read and
+    /// one it no longer drops is. The new watcher's start rescan and the consumer's walk read the
+    /// vault again under them; a row whose file a pattern drops stays, since the rescan asks the
+    /// disk before it reports a file the walk skipped as missing. The rows' session, the
+    /// own-write record and the write-back keep running, so the app's writes go on meanwhile.
+    /// Nothing when `vault` is not the open one, or its watcher never started (the next open
+    /// reads the patterns). `unwatched` runs between the stop and the start.
+    pub(crate) fn rewatch(
+        &self,
+        vault: &Arc<Vault>,
+        unwatched: &mut dyn FnMut(),
+    ) -> Result<(), String> {
+        let Some(open) = self
+            .current()
+            .filter(|open| Arc::ptr_eq(&open.view.vault, vault))
+        else {
+            return Ok(());
+        };
+        let tasks = open.tasks.lock().unwrap_or_else(|e| e.into_inner()).take();
+        let Some((watcher, mut consumer)) = tasks else {
+            // A close stopping it.
+            return Ok(());
+        };
+        watcher.stop_and_drop();
+        consumer.stop();
+        unwatched();
+        // The reconcile again: a stop during the open walk took the open's.
+        let after_walk = after_walk(&open.pass, &open.writeback);
+        let tasks = self.watch(&open.view, open.session, &open.echo, after_walk)?;
+        let rewatched = Arc::new(Open {
+            view: open.view.clone(),
+            session: open.session,
+            echo: open.echo.clone(),
+            writeback: open.writeback.clone(),
+            pass: open.pass.clone(),
+            watch: tasks.0.handle(),
+            tasks: Mutex::new(Some(tasks)),
+        });
+        let mut slot = self.slot();
+        match slot.as_ref() {
+            Some(held) if Arc::ptr_eq(held, &open) => *slot = Some(rewatched),
+            // A close or another open took the slot meanwhile; the new tasks stop as they drop.
+            _ => {
+                drop(slot);
+                drop(rewatched);
+            }
+        }
+        Ok(())
+    }
+
     fn start_in(
         &self,
         vault: &OpenVault,
         session: RowSession,
         echo: Arc<EchoGuard>,
     ) -> Result<Open, String> {
-        let exclude = read_vault_config(&vault.path).exclude_patterns;
         let identity = self.identity();
         let ctx = IdentityCtx {
             root: &vault.path,
@@ -316,6 +369,41 @@ impl VaultTier {
             );
         }
         identity.opened(&ctx);
+        // Before the watcher: the write-back runs only what is scheduled, and nothing can be
+        // until the open is in the slot.
+        let pass = Arc::new(Pass::new(
+            vault.path.clone(),
+            vault.vault.clone(),
+            self.rows.clone(),
+            session,
+            echo.clone(),
+            vault.vault.app_settings(self.store.clone()).ok(),
+        ));
+        let writeback = WriteBack::start(pass.clone(), self.failures.clone())
+            .map(Arc::new)
+            .map_err(|error| error.to_string())?;
+        let tasks = self.watch(vault, session, &echo, after_walk(&pass, &writeback))?;
+        Ok(Open {
+            view: vault.clone(),
+            session,
+            echo,
+            writeback,
+            pass,
+            watch: tasks.0.handle(),
+            tasks: Mutex::new(Some(tasks)),
+        })
+    }
+
+    /// The watcher and the consumer of an open, on the exclude patterns saved now.
+    fn watch(
+        &self,
+        vault: &OpenVault,
+        session: RowSession,
+        echo: &Arc<EchoGuard>,
+        after_walk: AfterWalk,
+    ) -> Result<(VaultWatcher, Consumer), String> {
+        let exclude = read_vault_config(&vault.path).exclude_patterns;
+        let identity = self.identity();
         let new_files = if identity.adopts() {
             NewFiles::Report
         } else {
@@ -347,17 +435,6 @@ impl VaultTier {
                 );
             })
             .ok();
-        let pass = Arc::new(Pass::new(
-            vault.path.clone(),
-            vault.vault.clone(),
-            self.rows.clone(),
-            session,
-            echo.clone(),
-            vault.vault.app_settings(self.store.clone()).ok(),
-        ));
-        let writeback = WriteBack::start(pass.clone(), self.failures.clone())
-            .map(Arc::new)
-            .map_err(|error| error.to_string())?;
         let applier = Applier {
             root: vault.path.clone(),
             vault: vault.vault.clone(),
@@ -372,20 +449,9 @@ impl VaultTier {
             watch: Some(watcher.handle()),
             untaken: Mutex::default(),
         };
-        let after_walk: AfterWalk = {
-            let writeback = writeback.clone();
-            Box::new(move |stopped| reconcile(&pass, &writeback, stopped))
-        };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude, after_walk)
             .map_err(|error| error.to_string())?;
-        Ok(Open {
-            vault: vault.vault.clone(),
-            session,
-            echo,
-            writeback,
-            watch: watcher.handle(),
-            tasks: Mutex::new(Some((watcher, consumer))),
-        })
+        Ok((watcher, consumer))
     }
 
     /// Runs `then` once, the next time a stop or a start reaches `at`.
@@ -441,6 +507,12 @@ impl VaultTier {
             }),
         );
     }
+}
+
+/// The write-back's reconcile, once a walk ended.
+fn after_walk(pass: &Arc<Pass>, writeback: &Arc<WriteBack>) -> AfterWalk {
+    let (pass, writeback) = (pass.clone(), writeback.clone());
+    Box::new(move |stopped| reconcile(&pass, &writeback, stopped))
 }
 
 fn lock<T>(slot: &Mutex<T>) -> MutexGuard<'_, T> {

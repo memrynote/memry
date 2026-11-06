@@ -14,7 +14,6 @@
     "permissionDenied": "Kebenaran ditolak. Semak sama ada anda mempunyai akses kepada folder ini.",
     "alreadyExists": "Bilik kebal sudah wujud di lokasi ini.",
     "corrupted": "Bilik kebal ini nampaknya telah rosak. Cuba pulihkan daripada sandaran.",
-    "configChangeNotPorted": "Versi ini belum boleh menukar folder jurnal, format tarikh atau folder yang dikecualikan. Tetapan tersimpan anda dikekalkan.",
     "journalFormatIncomplete": "Format tarikh ini tidak dapat menamakan setiap hari, jadi ia tidak disimpan. Sertakan tahun, bulan dan hari.",
     "journalFolderInvalid": "Jurnal tidak boleh disimpan dalam folder ini, jadi perubahan tidak disimpan. Pilih folder yang kelihatan, tidak dikecualikan dan bukan pautan.",
     "journalFolderRespelled": "Nama folder jurnal hanya berbeza pada huruf besar dan kecil, jadi perubahan tidak disimpan. Sebaliknya, namakan semula folder di bar sisi.",

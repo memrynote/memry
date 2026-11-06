@@ -14,7 +14,6 @@
     "permissionDenied": "Zugriff verweigert. Prüfe, ob du Zugriff auf diesen Ordner hast.",
     "alreadyExists": "An diesem Speicherort ist bereits ein Tresor vorhanden.",
     "corrupted": "Dieser Tresor scheint beschädigt zu sein. Versuche, ihn aus einem Backup wiederherzustellen.",
-    "configChangeNotPorted": "Diese Version kann den Journal-Ordner, das Datumsformat oder ausgeschlossene Ordner noch nicht ändern. Deine gespeicherte Einstellung bleibt erhalten.",
     "journalFormatIncomplete": "Dieses Datumsformat kann nicht jeden Tag benennen und wurde daher nicht gespeichert. Gib Jahr, Monat und Tag an.",
     "journalFolderInvalid": "Das Journal kann nicht in diesem Ordner liegen, daher wurde die Änderung nicht gespeichert. Wähle einen sichtbaren Ordner, der nicht ausgeschlossen und keine Verknüpfung ist.",
     "journalFolderRespelled": "Der Name des Journal-Ordners unterscheidet sich nur in der Groß- und Kleinschreibung, daher wurde die Änderung nicht gespeichert. Benenne den Ordner stattdessen in der Seitenleiste um.",

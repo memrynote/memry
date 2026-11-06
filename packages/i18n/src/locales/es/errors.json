@@ -14,7 +14,6 @@
     "permissionDenied": "Permiso denegado. Comprueba que tienes acceso a esta carpeta.",
     "alreadyExists": "Ya existe una bóveda en esta ubicación.",
     "corrupted": "Esta bóveda parece estar dañada. Prueba a restaurarla desde una copia de seguridad.",
-    "configChangeNotPorted": "Esta versión aún no puede cambiar la carpeta del diario, el formato de fecha ni las carpetas excluidas. Se mantiene tu ajuste guardado.",
     "journalFormatIncomplete": "Este formato de fecha no puede nombrar todos los días, así que no se guardó. Incluye el año, el mes y el día.",
     "journalFolderInvalid": "El diario no puede estar en esta carpeta, así que el cambio no se guardó. Elige una carpeta visible que no esté excluida ni sea un enlace.",
     "journalFolderRespelled": "El nombre de la carpeta del diario solo cambia en mayúsculas y minúsculas, así que el cambio no se guardó. Cambia el nombre de la carpeta en la barra lateral.",
