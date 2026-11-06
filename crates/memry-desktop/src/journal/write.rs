@@ -9,6 +9,9 @@
 //!    to the own-write record first, never replacing a file that appeared meanwhile;
 //! 4. the body seeded from the file, the row's hashes, then the `Added` fact.
 //!
+//! Refused while the vault settings cannot be read (`vault_settings_unreadable`): they say where
+//! the day goes.
+//!
 //! A day that has a file already, by its row or at its path, is never written over: the create
 //! answers it as a read does. Where the file's text comes from:
 //! - a new day: the caller's, which seeds the empty body;
@@ -55,6 +58,8 @@ use crate::notes::error::NotesError;
 use crate::notes::frontmatter::is_reserved_key;
 use crate::notes::service::NotesService;
 use crate::session::OpenVault;
+use crate::vault::app_move::follow_interrupted;
+use crate::vault::config::read_vault_config_strict;
 use crate::vault::config::settings::day_names;
 use crate::vault::consumer::rows::{Lane, RowStat};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
@@ -105,9 +110,16 @@ impl NotesService {
         day: NewDay,
         after_file: &mut dyn FnMut() -> Result<(), NotesError>,
     ) -> Result<JournalEntryView, NotesError> {
+        let root = open.path.as_path();
+        // Before the settings' locks and the lane: a journal folder an unfinished folder move
+        // carried takes its setting along first, so the day is named where the other days are
+        // (`vault::app_move::follow_interrupted`). Settings that cannot be read do not say where
+        // the journal is: a day named under their defaults would sit where the real setting does
+        // not read it, and its next move would delete it as a day.
+        follow_interrupted(root, &*open.vault.notes_writer(self.store.clone())?);
+        read_vault_config_strict(root).map_err(NotesError::SettingsUnreadable)?;
         // The file is named in the format a change in progress saves (`vault::config::settings`).
         let _format = day_names();
-        let root = open.path.as_path();
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;
         let journal = open.vault.journal(self.store.clone())?;

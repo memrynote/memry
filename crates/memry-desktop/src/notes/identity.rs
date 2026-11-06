@@ -59,6 +59,8 @@
 //! - The file's frontmatter property values reach the record ([`properties`]): a found file's
 //!   fill the keys its record lacks, and an outside edit gives it what the edit changed since
 //!   the record last took the file.
+//! - A file at the new path of an app move the core still records is that move's note's, and
+//!   waits for the open that finishes the move ([`moving`]).
 //!
 //! Every answer is the core's; a failure is the consumer's to log and retry
 //! ([`crate::vault::consumer::MAX_RETRIES`]), and the next open asks again.
@@ -87,6 +89,7 @@ use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
 
 mod file;
+mod moving;
 mod new_files;
 mod properties;
 mod tags;
@@ -357,6 +360,14 @@ impl NoteIdentity for NotesIdentity {
             return Ok(Adoption::Defer);
         };
         let writer = self.writer(ctx)?;
+        if moving::is_moving_to(&writer, file.path)? {
+            tracing::info!(
+                scope = SCOPE,
+                "a file at the new path of an unfinished app move waits for the open that \
+                 finishes it"
+            );
+            return Ok(Adoption::Defer);
+        }
         self.settle_owed(ctx.root, &writer, &journal, None);
         let split = split_frontmatter_block(&text.raw);
         let body = split.body;

@@ -8,12 +8,14 @@ use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::folders::{self, FolderConfigInput, FolderView};
+use memry_desktop::vault::config::VaultConfig;
 use memry_desktop::vault::folder_file::FolderConfigView;
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
 use super::notes::{failed, open_vault, service};
+use crate::events::{VaultConfigChangedEvent, broadcast};
 use crate::shell::external;
 
 /// `notes:get-folders`: every folder the notes tree lists, with its icon.
@@ -44,7 +46,9 @@ pub async fn notes_create_folder<R: Runtime>(
 }
 
 /// `notes:rename-folder`: the folder at `old_path` to `new_path`, a rename in place or a drag
-/// to another parent, its notes with it (`notes::folder_move`).
+/// to another parent, its notes with it (`notes::folder_move`). A journal setting that follows
+/// the folder is heard by every window as [`VaultConfigChangedEvent`], as Electron's
+/// `followJournalFolder` broadcasts it.
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_rename_folder<R: Runtime>(
@@ -53,21 +57,27 @@ pub async fn notes_rename_folder<R: Runtime>(
     new_path: String,
 ) -> Result<(), CommandError> {
     blocking("notes_rename_folder", move || {
+        let announce = |settings: &VaultConfig| {
+            broadcast(&app, VaultConfigChangedEvent(settings.clone()));
+        };
         service(&app)?
-            .rename_folder(&open_vault(&app)?, &old_path, &new_path)
-            .map_err(|error| rename_failed(&app, &error))
+            .rename_folder(&open_vault(&app)?, &old_path, &new_path, announce)
+            .map_err(|error| settings_or_failed(&app, &error))
     })
     .await
 }
 
-/// A move refused for settings that cannot be read says so in words: the raw message names no
-/// file to fix.
-fn rename_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> CommandError {
+/// A folder move, folder delete or day create refused for settings that cannot be read says so
+/// in words, as Settings says its refusals: the raw message names no file to fix.
+pub(crate) fn settings_or_failed<R: Runtime>(
+    app: &AppHandle<R>,
+    error: &NotesError,
+) -> CommandError {
     match error {
         NotesError::SettingsUnreadable(why) => {
             tracing::warn!(
                 scope = "folders",
-                "a folder move waits for the settings: {why}"
+                "a folder change or day create waits for the settings: {why}"
             );
             let locale = app.state::<Arc<LocaleService>>().get();
             CommandError::new(
@@ -91,7 +101,7 @@ pub async fn notes_delete_folder<R: Runtime>(
     blocking("notes_delete_folder", move || {
         service(&app)?
             .delete_folder(&open_vault(&app)?, &path)
-            .map_err(|error| failed(&error))
+            .map_err(|error| settings_or_failed(&app, &error))
     })
     .await
 }
