@@ -456,8 +456,10 @@ describe('useJournalEntry dedicated hook', () => {
   })
 
   // Typing not saved yet never reached the file, so nothing else holds it. Its save writes over
-  // the outside edit, which the core keeps as a version, as a note's save does (#3530).
-  it('keeps unsaved typing and a save in flight over an outside edit, and saves them', async () => {
+  // the outside edit, which the core keeps as a version, as a note's save does (#3530). A tags
+  // save never writes the text, so an outside edit that came during it stays in the file and
+  // reaches the day once the save ends (#3967).
+  it('keeps unsaved typing over an outside edit and saves it, and takes one a tags save ran over', async () => {
     let updated: ((event: any) => void) | null = null
     ;(window.api.onJournalEntryUpdated as ReturnType<typeof vi.fn>).mockImplementation((cb) => {
       updated = cb
@@ -508,12 +510,15 @@ describe('useJournalEntry dedicated hook', () => {
     )
     outsideEdit()
     expect(result.current.externalUpdateCount).toBe(0)
+    ;(window.api.journal.getEntry as ReturnType<typeof vi.fn>).mockResolvedValue(outside)
     await act(async () => finishTagSave())
-    await waitFor(() => expect(result.current.isDirty).toBe(false))
+    await waitFor(() => expect(result.current.externalUpdateCount).toBe(1))
+    expect(queryClient.getQueryData(key)).toEqual(outside)
+    expect(result.current.isDirty).toBe(false)
 
     // Nothing unsaved: the outside edit reloads the day.
     outsideEdit()
-    expect(result.current.externalUpdateCount).toBe(1)
+    expect(result.current.externalUpdateCount).toBe(2)
     expect(queryClient.getQueryData(key)).toEqual(outside)
   })
 
