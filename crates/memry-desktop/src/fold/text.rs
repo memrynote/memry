@@ -5,6 +5,7 @@
 //! a Han run in a text read as neither Chinese, Japanese nor Korean: ICU splits it with its
 //! dictionary, UAX #29 into single ideographs, so such a text counts more words here.
 
+use std::cell::Cell;
 use std::sync::LazyLock;
 
 use crate::web::extract::utils::js::{is_js_whitespace, trim as js_trim};
@@ -20,6 +21,21 @@ pub const CJK_MIN_UNITS: u32 = FOLD_MIN_WORDS * 2;
 static LETTER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\p{L}$").expect("letter"));
 static PUNCTUATION_OR_SYMBOL: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[\p{P}\p{S}]$").expect("punctuation"));
+
+thread_local! {
+    static STEPS: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Characters and bytes the hand-written scans of the fold visited on this thread, for tests
+/// that bound its work by steps rather than by the clock.
+#[doc(hidden)]
+pub fn steps() -> usize {
+    STEPS.with(Cell::get)
+}
+
+pub(super) fn step(n: usize) {
+    STEPS.with(|steps| steps.set(steps.get() + n));
+}
 
 pub fn sha256(text: &str) -> String {
     hex::encode(Sha256::digest(text.as_bytes()))
