@@ -1,18 +1,17 @@
 //! `FoldService` (Electron's `fold-service.ts` and `note-fold/index.ts`, the local levels):
-//! folds the open vault's notes and journal days, keeps each chunk's Brief in `index.db`'s
-//! `note_fold_chunks` under the writer `local`, and records the last run. It starts with every
-//! vault open (`note-fold-start`, which drops rows past the retention window) and lets go of
-//! the vault when it closes (`note-fold-stop`).
+//! folds the open vault's notes and journal days and records the last run. It binds to every
+//! vault open (`note-fold-start`) and lets go of the vault when it closes (`note-fold-stop`).
+//!
+//! The Brief is picked again on every run and never cached, as in Electron, where
+//! `note_fold_chunks` holds only what a model wrote. Picking it costs about 1 ms per 10,000
+//! words, less than a cache read, and a fold that wrote a row would wait behind a reindex
+//! holding `index.db`'s writer.
 
 use std::sync::{Arc, Mutex};
 
-use memry_core::api::search::Search;
-use memry_core::domain::fold_chunks::ChunkKey;
-use memry_core::domain::related_items::date_from_journal_id;
 use serde::{Deserialize, Serialize};
 
 use super::engine::{assemble, local_brief, prepare};
-use super::sections::ParsedChunk;
 use super::tokens::Zone;
 use super::{FoldLayers, FoldLevel};
 use crate::journal;
@@ -20,12 +19,6 @@ use crate::notes::error::NotesError;
 use crate::notes::read;
 use crate::notes::service::NotesService;
 use crate::session::{OpenStage, OpenVault, Session, lock};
-use crate::telemetry::time::now_ms;
-
-/// The writer of the Brief the app picks from the note's own sentences.
-pub const LOCAL_MODEL_ID: &str = "local";
-/// Rows older than this are dropped when a vault opens; a chunk still wanted is written again.
-pub const CHUNK_RETENTION_MS: i64 = 90 * 24 * 60 * 60 * 1000;
 
 const SCOPE: &str = "NoteFold";
 
@@ -38,17 +31,6 @@ pub struct FoldRunState {
     pub ok: bool,
     /// Why it failed; null when it did not.
     pub error: Option<String>,
-}
-
-/// A `local` row's payload: the Brief pick of each paragraph of the chunk, in order.
-#[derive(Serialize, Deserialize)]
-struct LocalChunk {
-    paragraphs: Vec<LocalParagraph>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct LocalParagraph {
-    brief: Vec<u32>,
 }
 
 pub struct FoldService {
@@ -81,16 +63,10 @@ impl FoldService {
         session.on_close("note-fold-stop", Arc::new(move |_| service.stop()));
     }
 
-    /// Binds the service to `vault` and drops its old rows. A failed prune is logged: the
-    /// rows stay until the next open.
+    /// Binds the service to `vault`.
     pub fn start(&self, vault: &OpenVault) {
         *lock(&self.last_run) = None;
         *lock(&self.open) = Some(vault.clone());
-        let cutoff = now_ms() as i64 - CHUNK_RETENTION_MS;
-        match vault.search.prune_fold_chunks(cutoff) {
-            Ok(removed) => tracing::debug!(scope = SCOPE, removed, "pruned old fold chunks"),
-            Err(error) => tracing::warn!(scope = SCOPE, "pruning fold chunks failed: {error}"),
-        }
     }
 
     /// Lets go of the vault, so its databases close with it.
@@ -126,7 +102,7 @@ impl FoldService {
         let prepared = prepare(&source, Zone::Local);
         let language = prepared.language.clone();
         Ok(assemble(note_id, &prepared, |chunk| {
-            cached_brief(&open.search, chunk, &language)
+            local_brief(chunk, &language)
         }))
     }
 
@@ -135,70 +111,11 @@ impl FoldService {
         if let Some(note) = read::get(open, note_id, None)? {
             return Ok(Some(note.content));
         }
-        let Some(date) = date_from_journal_id(note_id) else {
+        let writer = open.vault.notes_writer(self.notes.store.clone())?;
+        let Some(date) = writer.journal_date(note_id)? else {
             return Ok(None);
         };
         let days = self.notes.journal(open)?;
-        Ok(journal::entry(open, &days, date)?.map(|entry| entry.content))
+        Ok(journal::entry(open, &days, &date)?.map(|entry| entry.content))
     }
-}
-
-/// The chunk's Brief from its `local` row, written when missing. A row that does not fit the
-/// chunk is replaced. The cache is derived: a failed read or write is logged and the Brief is
-/// picked again from the sentences.
-fn cached_brief(search: &Search, chunk: &ParsedChunk, language: &str) -> Vec<Vec<u32>> {
-    let key = ChunkKey {
-        chunk_hash: chunk.hash.clone(),
-        language: language.to_owned(),
-        model_id: LOCAL_MODEL_ID.to_owned(),
-    };
-    match search.fold_chunk(&key) {
-        Ok(Some(payload)) => {
-            if let Some(brief) = fitting(&payload, chunk) {
-                return brief;
-            }
-            tracing::warn!(
-                scope = SCOPE,
-                chunk_hash = key.chunk_hash,
-                "dropping an unreadable fold row"
-            );
-            if let Err(error) = search.forget_fold_chunk(&key) {
-                tracing::warn!(scope = SCOPE, "dropping a fold row failed: {error}");
-            }
-        }
-        Ok(None) => {}
-        Err(error) => tracing::warn!(scope = SCOPE, "reading a fold row failed: {error}"),
-    }
-    let brief = local_brief(chunk, language);
-    let payload = LocalChunk {
-        paragraphs: brief
-            .iter()
-            .map(|picks| LocalParagraph {
-                brief: picks.clone(),
-            })
-            .collect(),
-    };
-    let written = serde_json::to_string(&payload)
-        .map_err(|error| error.to_string())
-        .and_then(|json| {
-            search
-                .put_fold_chunk(&key, &json, now_ms() as i64)
-                .map_err(|error| error.to_string())
-        });
-    if let Err(error) = written {
-        tracing::warn!(scope = SCOPE, "writing a fold row failed: {error}");
-    }
-    brief
-}
-
-/// The row's picks when they fit the chunk: one entry per paragraph, every index a sentence.
-fn fitting(payload: &str, chunk: &ParsedChunk) -> Option<Vec<Vec<u32>>> {
-    let row: LocalChunk = serde_json::from_str(payload).ok()?;
-    let fits = row.paragraphs.len() == chunk.paragraphs.len()
-        && row
-            .paragraphs
-            .iter()
-            .zip(&chunk.paragraphs)
-            .all(|(row, p)| row.brief.iter().all(|&i| (i as usize) < p.sentences.len()));
-    fits.then(|| row.paragraphs.into_iter().map(|p| p.brief).collect())
 }

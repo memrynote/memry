@@ -1,9 +1,9 @@
 //! `index.db`'s `note_fold_chunks`: the note fold cache (Electron's `note-fold/fold-cache.ts`).
 //!
-//! A row holds what was written for one fold chunk, keyed by the chunk's content hash, the
-//! note language and the writer (`model_id`, `local` for the Brief picked from the note's own
-//! sentences). The payload is JSON the caller validates on read; a row that does not validate
-//! is deleted and written again. Derived: a missing row costs a recomputation, never data.
+//! A row holds what a model wrote for one fold chunk, keyed by the chunk's content hash, the
+//! note language and the model (`model_id`). The Brief picked from the note's own sentences
+//! is never kept: it costs less to pick again than to read. The payload is JSON the caller
+//! validates on read; a row that does not validate is deleted and written again. Derived: a missing row costs a recomputation, never data.
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 
