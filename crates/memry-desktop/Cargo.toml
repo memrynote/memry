@@ -42,6 +42,10 @@ unicode-normalization = "0.1.25"
 html5ever = "0.40.1"
 markup5ever = "0.40.0"
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
+# The large-file viewer's scans (`large_file/`): newlines with memchr, an ASCII case-folding
+# literal search with aho-corasick.
+memchr = "2.8"
+aho-corasick = "1.1"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "json", "http2", "stream", "system-proxy"] }
 
 # The OS credential stores behind `seams::secure_store`: keyring-core 1.x with the platform store
@@ -179,8 +183,16 @@ name = "keyring_live"
 path = "tests/keyring_live.rs"
 
 [[test]]
+name = "large_file_memory"
+path = "tests/large_file_memory.rs"
+
+[[test]]
 name = "logging"
 path = "tests/logging.rs"
+
+[[test]]
+name = "note_file_memory"
+path = "tests/note_file_memory.rs"
 
 [[test]]
 name = "obsidian_copy"

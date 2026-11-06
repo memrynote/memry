@@ -3841,6 +3841,7 @@ version = "0.0.0"
 dependencies = [
  "aes",
  "aes-gcm",
+ "aho-corasick",
  "apple-native-keyring-store",
  "async-trait",
  "axum",
@@ -3861,6 +3862,7 @@ dependencies = [
  "libc",
  "markup5ever 0.40.0",
  "md-5",
+ "memchr",
  "memry-core",
  "memry-desktop",
  "memry-test-kit",

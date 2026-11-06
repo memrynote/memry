@@ -2,12 +2,17 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  LargeFileIndexEvent,
-  LargeFileLinesResult,
+  LargeFileEvent as LargeFileIndexEvent,
+  LargeFileLines as LargeFileLinesResult,
   LargeFileOpenResult,
-  LargeFileSearchProgressEvent,
+  LargeFileSearchProgress as LargeFileSearchProgressEvent,
   LargeFileSearchResult
-} from '@memry/contracts/notes-api'
+} from '../../../../generated/bindings'
+
+/** What the hooks hand the commands: a channel whose handler the test calls. */
+interface TestChannel<T> {
+  onmessage: (message: T) => void
+}
 
 const mocks = vi.hoisted(() => ({
   /** How many rows the virtualizer is pretending fit on screen. */
@@ -21,8 +26,10 @@ const mocks = vi.hoisted(() => ({
   openExternal: vi.fn(),
   revealInFinder: vi.fn(),
   toastError: vi.fn(),
-  indexListeners: [] as Array<(event: LargeFileIndexEvent) => void>,
-  searchListeners: [] as Array<(event: LargeFileSearchProgressEvent) => void>,
+  /** The channel of every open, in call order: the scan reports on each. */
+  indexChannels: [] as Array<{ onmessage: (event: never) => void }>,
+  /** The channel of every search, in call order. */
+  searchChannels: [] as Array<{ onmessage: (event: never) => void }>,
   scrollToIndex: vi.fn(),
   measureElement: vi.fn(),
   measure: vi.fn(),
@@ -30,6 +37,30 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('sonner', () => ({ toast: { error: mocks.toastError, success: vi.fn() } }))
+
+vi.mock('@tauri-apps/api/core', () => ({
+  Channel: class {
+    constructor(readonly onmessage: (message: unknown) => void) {}
+  }
+}))
+
+vi.mock('../../../../generated/bindings', () => ({
+  commands: {
+    notesLargeFileOpen: (noteId: string, channel: TestChannel<LargeFileIndexEvent>) => {
+      mocks.indexChannels.push(channel)
+      return mocks.open(noteId)
+    },
+    notesLargeFileReadLines: (input: unknown) => mocks.readLines(input),
+    notesLargeFileSearch: (input: unknown, channel: TestChannel<LargeFileSearchProgressEvent>) => {
+      mocks.searchChannels.push(channel)
+      return mocks.search(input)
+    },
+    notesLargeFileClose: (sessionId: string) => mocks.close(sessionId),
+    notesOpenExternal: (id: string) => mocks.openExternal(id),
+    notesRevealInFinder: (id: string) => mocks.revealInFinder(id)
+  },
+  events: {}
+}))
 
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: ({ count }: { count: number }) => {
@@ -80,7 +111,9 @@ function resizePane(width: number): void {
 
 function emitIndex(event: LargeFileIndexEvent): void {
   act(() => {
-    for (const listener of Array.from(mocks.indexListeners)) listener(event)
+    for (const channel of Array.from(mocks.indexChannels)) {
+      ;(channel as TestChannel<LargeFileIndexEvent>).onmessage(event)
+    }
   })
 }
 
@@ -98,7 +131,9 @@ async function scrollTo(firstRow: number, lineCount: number): Promise<void> {
 
 function emitSearchProgress(event: LargeFileSearchProgressEvent): void {
   act(() => {
-    for (const listener of Array.from(mocks.searchListeners)) listener(event)
+    for (const channel of Array.from(mocks.searchChannels)) {
+      ;(channel as TestChannel<LargeFileSearchProgressEvent>).onmessage(event)
+    }
   })
 }
 
@@ -152,8 +187,8 @@ describe('LargeFileViewer', () => {
   beforeEach(() => {
     mocks.visibleRows = 40
     mocks.firstRow = 0
-    mocks.indexListeners = []
-    mocks.searchListeners = []
+    mocks.indexChannels = []
+    mocks.searchChannels = []
     mocks.resizeObservers = []
     globalThis.ResizeObserver = TestResizeObserver
     mocks.scrollToIndex.mockReset()
@@ -172,29 +207,6 @@ describe('LargeFileViewer', () => {
     mocks.openExternal.mockReset().mockResolvedValue(undefined)
     mocks.revealInFinder.mockReset().mockResolvedValue(undefined)
     mocks.toastError.mockReset()
-
-    const api = window.api as unknown as Record<string, unknown>
-    api.notes = {
-      ...(api.notes as Record<string, unknown> | undefined),
-      largeFileOpen: mocks.open,
-      largeFileReadLines: mocks.readLines,
-      largeFileSearch: mocks.search,
-      largeFileClose: mocks.close,
-      openExternal: mocks.openExternal,
-      revealInFinder: mocks.revealInFinder
-    }
-    api.onLargeFileIndex = (listener: (event: LargeFileIndexEvent) => void) => {
-      mocks.indexListeners.push(listener)
-      return () => {
-        mocks.indexListeners = mocks.indexListeners.filter((l) => l !== listener)
-      }
-    }
-    api.onLargeFileSearchProgress = (listener: (event: LargeFileSearchProgressEvent) => void) => {
-      mocks.searchListeners.push(listener)
-      return () => {
-        mocks.searchListeners = mocks.searchListeners.filter((l) => l !== listener)
-      }
-    }
   })
 
   it('carries the read-only, not-synced badge the whole time it is open', async () => {

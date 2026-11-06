@@ -366,6 +366,10 @@ mod tombstone_purge;
 mod unknown_fields;
 #[path = "unlinked_mentions.rs"]
 mod unlinked_mentions;
+#[path = "vault_locks.rs"]
+mod vault_locks;
+#[path = "vault_locks_schema.rs"]
+mod vault_locks_schema;
 #[path = "vectors.rs"]
 mod vectors;
 #[path = "versioned_keys_carry.rs"]

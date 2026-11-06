@@ -10,6 +10,7 @@ pub mod fold;
 pub mod http;
 pub mod i18n;
 pub mod journal;
+pub mod large_file;
 pub mod launch_env;
 pub mod launch_timeline;
 pub mod locale;
