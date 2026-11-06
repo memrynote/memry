@@ -1,43 +1,23 @@
 /**
- * Class: note-fold-text (`note-fold-text.json`).
- *
- * The text helpers of desktop's fold engine, imported for real
- * (`apps/desktop/src/main/note-fold/`): `engine.ts` `detectLanguage`, `splitSentences`,
- * `countWords`, `estimateTokens` and `isFoldable`, and `engine-tokens.ts`
- * `expandInlineTokens` and `withoutInlineTokens`. The token cases cover every language tag
- * `detectLanguage` answers, with dates written as `Intl.DateTimeFormat` writes them in
- * `timeZone`. A token's date is an ECMAScript date-time string, as every writer emits; the
- * other strings V8's `Date.parse` accepts are implementation-defined and stay out. The Rust
- * port (`crates/memry-desktop/src/fold/{text,tokens}.rs`) reproduces every case
- * (`crates/memry-desktop/tests/note_fold_text_vectors.rs`).
+ * `note-fold-text.json`: the text helpers of the fold engine, `engine.ts`
+ * `detectLanguage`, `splitSentences`, `countWords`, `estimateTokens` and
+ * `isFoldable`, and `engine-tokens.ts` `expandInlineTokens` and
+ * `withoutInlineTokens`. The token cases cover every language tag
+ * `detectLanguage` answers. A token's date is an ECMAScript date-time string, as
+ * every writer emits; the other strings V8's `Date.parse` accepts are
+ * implementation-defined and stay out. Checked by
+ * `crates/memry-desktop/tests/note_fold_text_vectors.rs`.
  */
-// Namespace imports: desktop's sources are CommonJS to Node, and the ESM loader cannot see
-// their named exports statically.
-import * as engineModule from '../../../../apps/desktop/src/main/note-fold/engine.ts'
-import * as tokensModule from '../../../../apps/desktop/src/main/note-fold/engine-tokens.ts'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
 
-import { meta } from './shared'
-
-type Engine = typeof engineModule
-type Tokens = typeof tokensModule
-
-const engine: Engine = (engineModule as Engine & { default?: Engine }).default ?? engineModule
-const tokens: Tokens = (tokensModule as Tokens & { default?: Tokens }).default ?? tokensModule
-
-export const NOTE_FOLD_ZONE = 'UTC'
-
-/** Runs `run` with dates formatting in `tz`, so the file is the same on every machine. */
-export function withZone<T>(tz: string, run: () => T): T {
-  const previous = process.env.TZ
-  process.env.TZ = tz
-  try {
-    return run()
-  } finally {
-    if (previous === undefined) delete process.env.TZ
-    else process.env.TZ = previous
-  }
-}
+import {
+  countWords,
+  detectLanguage,
+  estimateTokens,
+  isFoldable,
+  splitSentences
+} from '../../src/main/note-fold/engine'
+import { expandInlineTokens, withoutInlineTokens } from '../../src/main/note-fold/engine-tokens'
 
 const words = (n: number, word = 'note'): string => Array.from({ length: n }, () => word).join(' ')
 
@@ -131,23 +111,18 @@ const TOKEN_CASES: readonly [string, string, string][] = [
   ['a token across a line break is not one', '((date:\nabc))', 'en']
 ]
 
-export function buildNoteFoldText(): Record<string, unknown> {
-  return withZone(NOTE_FOLD_ZONE, () => ({
-    meta: meta({
-      source: 'apps/desktop/src/main/note-fold/{engine,engine-tokens}.ts',
-      note: 'The fold text helpers: language, sentences, words and the inline tokens. Dates format in timeZone.'
-    }),
-    timeZone: NOTE_FOLD_ZONE,
+export function buildText(): Record<string, unknown> {
+  return {
     text: TEXT_CASES.map(([name, input, language]) => ({
       name,
       input,
       language,
       expected: {
-        detected: engine.detectLanguage(input),
-        sentences: engine.splitSentences(input, language),
-        words: engine.countWords(input, language),
-        tokens: engine.estimateTokens(input, language),
-        foldable: engine.isFoldable(input, language)
+        detected: detectLanguage(input),
+        sentences: splitSentences(input, language),
+        words: countWords(input, language),
+        tokens: estimateTokens(input, language),
+        foldable: isFoldable(input, language)
       }
     })),
     tokens: TOKEN_CASES.map(([name, input, language]) => ({
@@ -155,9 +130,9 @@ export function buildNoteFoldText(): Record<string, unknown> {
       input,
       language,
       expected: {
-        expanded: tokens.expandInlineTokens(input, language),
-        blanked: tokens.withoutInlineTokens(input)
+        expanded: expandInlineTokens(input, language),
+        blanked: withoutInlineTokens(input)
       }
     }))
-  }))
+  }
 }
