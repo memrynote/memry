@@ -11,6 +11,8 @@
 //! | uploads in flight are capped                                       | `MAX_UPLOADS`                  |
 //! | what a crash left is deleted at the next open                     | the open sweep                 |
 //! | an uploads folder linked out of the vault is neither used nor swept | `inside_vault`, the sweep's check |
+//! | a link swapped in before the move is refused, and nothing is left  | the recheck in the move        |
+//! | the move never replaces a file at its target                        | `rename_no_replace`            |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -26,6 +28,7 @@ use memry_desktop::attachments::{
 };
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::read;
+use memry_desktop::session::OpenVault;
 use vault_env::{Env, env, indexed};
 
 /// Bytes no two parts share, so a part written twice or out of place shows.
@@ -175,7 +178,7 @@ fn a_cancel_a_closed_page_and_a_closed_vault_leave_nothing() {
 
     uploads.abort(&cancelled);
     assert_eq!(parts(&e).len(), 3);
-    uploads.release_owner("note-window-1");
+    uploads.release_owner("note-window-1").finish();
     assert_eq!(parts(&e), vec![format!("{other}.part")]);
     e.close();
     assert_eq!(parts(&e), Vec::<String>::new());
@@ -252,4 +255,82 @@ fn an_uploads_folder_linked_out_of_the_vault_is_neither_used_nor_swept() {
     e.close();
     e.open();
     assert_eq!(names(&outside), vec!["keep.part".to_owned()]);
+}
+
+/// Begins an upload of `bytes` and sends every part but the last; returns the id and the last
+/// part's offset.
+fn all_but_last(uploads: &Uploads, open: &OpenVault, note: &str, bytes: &[u8]) -> (String, u64) {
+    let id = uploads
+        .begin(open, "main", note, "a.pdf", bytes.len() as u64)
+        .unwrap();
+    let last = (bytes.len() - 1) / CHUNK_BYTES * CHUNK_BYTES;
+    for (index, part) in bytes[..last].chunks(CHUNK_BYTES).enumerate() {
+        let offset = (index * CHUNK_BYTES) as u64;
+        assert!(
+            uploads
+                .write_chunk(open, &id, offset, part)
+                .unwrap()
+                .is_none()
+        );
+    }
+    (id, last as u64)
+}
+
+/// The folder checks pass, then the note's folder is moved out of the vault and a link to it
+/// takes its place before the part file takes its name: the recheck in the move refuses it,
+/// nothing lands outside, and the part file is gone.
+#[cfg(unix)]
+#[test]
+fn a_link_swapped_in_before_the_move_is_refused_and_nothing_is_left() {
+    use std::os::unix::fs::symlink;
+
+    let (e, uploads, note) = open_vault();
+    let open = e.session.current().unwrap();
+    let bytes = pattern(CHUNK_BYTES + 5);
+    let (id, last) = all_but_last(&uploads, &open, &note, &bytes);
+    let folder = attachments_of(&e, &note);
+    let outside = e.vault.parent().unwrap().join("outside");
+    let mut swapped = false;
+    let outcome =
+        uploads.write_chunk_checked(&open, &id, last, &bytes[last as usize..], &mut |_| {
+            if !swapped {
+                fs::rename(&folder, &outside).unwrap();
+                symlink(&outside, &folder).unwrap();
+                swapped = true;
+            }
+        });
+    assert!(swapped);
+    // The recheck's refusal, as the one-body upload reports it (`attachments.rs`).
+    assert!(
+        matches!(&outcome, Err(AttachmentError::Write(error)) if error.source.to_string().contains("not a folder")),
+        "{outcome:?}"
+    );
+    assert_eq!(names(&outside), Vec::<String>::new());
+    assert_eq!(parts(&e), Vec::<String>::new());
+}
+
+/// A file appears at the chosen name right before the move: it keeps its bytes, and the upload
+/// lands under another name.
+#[test]
+fn the_move_never_replaces_a_file_at_its_target() {
+    let (e, uploads, note) = open_vault();
+    let open = e.session.current().unwrap();
+    let bytes = pattern(CHUNK_BYTES + 5);
+    let (id, last) = all_but_last(&uploads, &open, &note, &bytes);
+    let mut planted = None;
+    let saved = uploads
+        .write_chunk_checked(&open, &id, last, &bytes[last as usize..], &mut |target| {
+            if planted.is_none() {
+                fs::write(target, b"theirs").unwrap();
+                planted = Some(target.to_path_buf());
+            }
+        })
+        .unwrap()
+        .expect("the last part");
+    let planted = planted.unwrap();
+    assert_eq!(fs::read(&planted).unwrap(), b"theirs");
+    assert_ne!(saved.disk_path, planted);
+    assert!(fs::read(&saved.disk_path).unwrap() == bytes);
+    assert_eq!(names(&attachments_of(&e, &note)).len(), 2);
+    assert_eq!(parts(&e), Vec::<String>::new());
 }

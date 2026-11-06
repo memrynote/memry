@@ -154,13 +154,40 @@ impl Uploads {
         offset: u64,
         bytes: &[u8],
     ) -> Result<Option<SavedAttachment>, AttachmentError> {
+        self.write_chunk_with(open, id, offset, bytes, &mut |_| {})
+    }
+
+    /// Test hook: [`Self::write_chunk`] with `before_recheck` run with the target right before
+    /// the last check of the note's folder, the one in the same step as the move, so a test can
+    /// swap a link in there or put a file at the target.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn write_chunk_checked(
+        &self,
+        open: &OpenVault,
+        id: &str,
+        offset: u64,
+        bytes: &[u8],
+        before_recheck: &mut dyn FnMut(&Path),
+    ) -> Result<Option<SavedAttachment>, AttachmentError> {
+        self.write_chunk_with(open, id, offset, bytes, before_recheck)
+    }
+
+    fn write_chunk_with(
+        &self,
+        open: &OpenVault,
+        id: &str,
+        offset: u64,
+        bytes: &[u8],
+        before_recheck: &mut dyn FnMut(&Path),
+    ) -> Result<Option<SavedAttachment>, AttachmentError> {
         let upload = lock(&self.open)
             .get(id)
             .map(|entry| Arc::clone(&entry.upload))
             .ok_or(AttachmentError::UploadGone)?;
         let mut upload = lock(&upload);
         let outcome = match append(&mut upload, offset, bytes) {
-            Ok(true) => commit(&mut upload, open).map(Some),
+            Ok(true) => commit(&mut upload, open, before_recheck).map(Some),
             other => other.map(|_| None),
         };
         if !matches!(outcome, Ok(None)) {
@@ -177,19 +204,31 @@ impl Uploads {
         end(entry);
     }
 
-    /// Ends the uploads of page `owner`: it reloaded, or its window closed.
-    pub fn release_owner(&self, owner: &str) {
-        let ended: Vec<Entry> = lock(&self.open)
-            .extract_if(|_, entry| entry.owner == owner)
-            .map(|(_, entry)| entry)
-            .collect();
-        ended.into_iter().for_each(|entry| end(Some(entry)));
+    /// Ends the uploads of page `owner`: it reloaded, or its window closed. They are out of the
+    /// map when this returns, so a new page of that label starts clean; their part files go in
+    /// [`Ended::finish`], which waits for a part being written and belongs off the main thread.
+    pub fn release_owner(&self, owner: &str) -> Ended {
+        Ended(
+            lock(&self.open)
+                .extract_if(|_, entry| entry.owner == owner)
+                .map(|(_, entry)| entry)
+                .collect(),
+        )
     }
 
     /// Ends every upload: the vault closes.
     pub fn abort_all(&self) {
-        let ended: Vec<Entry> = lock(&self.open).drain().map(|(_, entry)| entry).collect();
-        ended.into_iter().for_each(|entry| end(Some(entry)));
+        Ended(lock(&self.open).drain().map(|(_, entry)| entry).collect()).finish();
+    }
+}
+
+/// Uploads taken out of the map whose part files are still to be deleted.
+#[must_use = "the part files stay until `finish` runs"]
+pub struct Ended(Vec<Entry>);
+
+impl Ended {
+    pub fn finish(self) {
+        self.0.into_iter().for_each(|entry| end(Some(entry)));
     }
 }
 
@@ -215,14 +254,16 @@ fn append(upload: &mut Upload, offset: u64, bytes: &[u8]) -> Result<bool, Attach
 
 /// Moves the complete part file into the note's attachments folder, referenced from the note's
 /// file as it is now.
-fn commit(upload: &mut Upload, open: &OpenVault) -> Result<SavedAttachment, AttachmentError> {
+fn commit(
+    upload: &mut Upload,
+    open: &OpenVault,
+    before_recheck: &mut dyn FnMut(&Path),
+) -> Result<SavedAttachment, AttachmentError> {
     let file = upload.file.take().ok_or(AttachmentError::UploadGone)?;
     file.sync_all()?;
     drop(file);
-    // A vault that closed ended its uploads, so this is the one the upload began in.
-    if open.path != upload.vault {
-        return Err(AttachmentError::UploadGone);
-    }
+    // A closing vault ends its uploads under their locks, so this is the one the upload began in.
+    debug_assert_eq!(open.path, upload.vault);
     let row = open.vault.note_files().by_id(&upload.note_id)?;
     let temp = upload.temp.clone();
     store(
@@ -231,7 +272,7 @@ fn commit(upload: &mut Upload, open: &OpenVault) -> Result<SavedAttachment, Atta
         row.as_ref().map(|row| row.path.as_str()),
         &upload.file_name,
         usize::try_from(upload.written).unwrap_or(usize::MAX),
-        &mut || {},
+        before_recheck,
         &mut |target, recheck| move_into(&temp, target, recheck),
     )
 }

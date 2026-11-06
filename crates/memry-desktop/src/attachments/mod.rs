@@ -37,7 +37,7 @@ use crate::vault::paths::{is_js_space, sanitize_filename};
 
 mod upload;
 
-pub use upload::{CHUNK_BYTES, MAX_UPLOADS, Uploads};
+pub use upload::{CHUNK_BYTES, Ended, MAX_UPLOADS, Uploads};
 
 const SCOPE: &str = "attachments";
 
@@ -313,12 +313,12 @@ pub fn save(
     file_name: &str,
     bytes: &[u8],
 ) -> Result<SavedAttachment, AttachmentError> {
-    save_with(vault, note_id, note_path, file_name, bytes, &mut || {})
+    save_with(vault, note_id, note_path, file_name, bytes, &mut |_| {})
 }
 
-/// Test hook: [`save`] with `before_recheck` run right before the last check of the note's
-/// folder, the one in the same step as the file taking its name, so a test can swap a link in
-/// there.
+/// Test hook: [`save`] with `before_recheck` run with the target right before the last check of
+/// the note's folder, the one in the same step as the file taking its name, so a test can swap a
+/// link in there or put a file at the target.
 #[cfg(feature = "test-hooks")]
 #[doc(hidden)]
 pub fn save_checked(
@@ -327,7 +327,7 @@ pub fn save_checked(
     note_path: Option<&str>,
     file_name: &str,
     bytes: &[u8],
-    before_recheck: &mut dyn FnMut(),
+    before_recheck: &mut dyn FnMut(&Path),
 ) -> Result<SavedAttachment, AttachmentError> {
     save_with(vault, note_id, note_path, file_name, bytes, before_recheck)
 }
@@ -338,7 +338,7 @@ fn save_with(
     note_path: Option<&str>,
     file_name: &str,
     bytes: &[u8],
-    before_recheck: &mut dyn FnMut(),
+    before_recheck: &mut dyn FnMut(&Path),
 ) -> Result<SavedAttachment, AttachmentError> {
     let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
     let mut write = |target: &Path, recheck: BeforeCommit<'_>| {
@@ -383,7 +383,7 @@ fn store(
     note_path: Option<&str>,
     file_name: &str,
     size: usize,
-    before_recheck: &mut dyn FnMut(),
+    before_recheck: &mut dyn FnMut(&Path),
     place: &mut dyn FnMut(&Path, BeforeCommit<'_>) -> Result<(), WriteError>,
 ) -> Result<SavedAttachment, AttachmentError> {
     check(note_id, file_name, size)?;
@@ -397,14 +397,15 @@ fn store(
     let mut attempt = 0;
     let stored = loop {
         let stored = stored_name(&random_prefix(), file_name);
+        let target = folder.join(&stored);
         let mut recheck = || {
-            before_recheck();
+            before_recheck(&target);
             inside_vault(vault, &folder_rel).map_err(|error| match error {
                 AttachmentError::Io(error) => error,
                 other => io::Error::other(other.to_string()),
             })
         };
-        match place(&folder.join(&stored), &mut recheck) {
+        match place(&target, &mut recheck) {
             Ok(()) => break stored,
             Err(error) if error.already_exists() && attempt + 1 < NAME_ATTEMPTS => attempt += 1,
             Err(error) => return Err(error.into()),

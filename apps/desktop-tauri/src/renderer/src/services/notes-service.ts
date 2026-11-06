@@ -191,7 +191,8 @@ async function uploadInParts(noteId: string, file: SlicedFile): Promise<SavedAtt
       )
       if (saved) return saved
     }
-    throw new Error('The upload ended before its last part')
+    // The file shrank after it was picked: Rust still waits for bytes, so the upload failed.
+    throw new Error(getI18n().getFixedT(null, 'errors')('attachment.writeFailed'))
   } catch (error) {
     // The page that began it ends it too when it reloads or closes; this is the failed send.
     await commands.notesUploadAttachmentAbort(id).catch((abortError: unknown) => {

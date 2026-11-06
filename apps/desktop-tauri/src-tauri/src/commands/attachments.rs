@@ -160,9 +160,11 @@ pub async fn notes_upload_attachment_abort<R: Runtime>(
     .await
 }
 
-/// The page of window `label` reloaded or closed: its uploads end with nothing.
+/// The page of window `label` reloaded or closed: its uploads end with nothing. Called on the main
+/// thread, so the part files, which wait for a part being written, go on a blocking thread.
 pub fn release_page<R: Runtime>(app: &AppHandle<R>, label: &str) {
     if let Some(uploads) = app.try_state::<Arc<Uploads>>() {
-        uploads.release_owner(label);
+        let ended = uploads.release_owner(label);
+        tauri::async_runtime::spawn_blocking(move || ended.finish());
     }
 }

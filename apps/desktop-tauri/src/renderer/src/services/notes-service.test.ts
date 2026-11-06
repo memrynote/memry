@@ -942,6 +942,21 @@ describe('notes-service', () => {
       expect(commands.notesUploadAttachmentAbort).toHaveBeenCalledWith('up2')
     })
 
+    it('a file that ends before Rust has every byte fails and cancels the upload', async () => {
+      commands.notesUploadAttachmentBegin.mockResolvedValueOnce('up3')
+      commands.notesUploadAttachmentAbort.mockResolvedValueOnce(null)
+      invokeBinary.mockResolvedValue(null)
+      const { file } = bigFile()
+      await expect(notesService.uploadAttachment('note-1', file)).resolves.toEqual({
+        success: false,
+        error: getI18n().getFixedT(null, 'errors')('attachment.writeFailed')
+      })
+      expect(getI18n().getFixedT(null, 'errors')('attachment.writeFailed')).toBe(
+        'Failed to save the attachment. Check disk space.'
+      )
+      expect(commands.notesUploadAttachmentAbort).toHaveBeenCalledWith('up3')
+    })
+
     it('over the attachment cap, is refused before a part is read', async () => {
       commands.notesUploadAttachmentBegin.mockRejectedValueOnce({
         kind: 'invalid',
