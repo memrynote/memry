@@ -8,6 +8,9 @@ pub const MEMRY_DIR: &str = ".memry";
 pub const MOVES_DIR: &str = "moves";
 /// Custom icons, `<id>.<ext>` inside [`MEMRY_DIR`].
 pub const ICONS_DIR: &str = "icons";
+/// Chunked attachment uploads in flight, `<id>.part` inside [`MEMRY_DIR`]. Only this app writes
+/// here, and nothing in it outlives the vault's open: each open deletes what a crash left.
+pub const UPLOADS_DIR: &str = "uploads";
 /// Home board covers, `<boardId>/<file>` inside [`MEMRY_DIR`].
 pub const HOME_COVERS_DIR: &str = "home-covers";
 /// The app's attachment storage. Only the vault root's folder of this name is the app's: a

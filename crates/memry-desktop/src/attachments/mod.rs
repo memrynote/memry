@@ -31,9 +31,13 @@ use serde::Serialize;
 use crate::session::OpenVault;
 use crate::shell::file_open::{Resolution, is_reserved_device_name, resolve_under_root};
 use crate::vault::embeds::memry_file_url;
-use crate::vault::fs_atomic::{RETRY_DELAYS_MS, WriteError, atomic_create_checked};
+use crate::vault::fs_atomic::{BeforeCommit, RETRY_DELAYS_MS, WriteError, atomic_create_checked};
 use crate::vault::layout::ATTACHMENTS_DIR;
 use crate::vault::paths::{is_js_space, sanitize_filename};
+
+mod upload;
+
+pub use upload::{CHUNK_BYTES, Ended, MAX_UPLOADS, Uploads};
 
 const SCOPE: &str = "attachments";
 
@@ -51,8 +55,8 @@ const HTML_EXTENSIONS: [&str; 2] = ["html", "htm"];
 /// The longest stored name, in bytes; every common file system takes 255.
 pub const MAX_STORED_NAME_BYTES: usize = 200;
 
-/// The largest file one raw request body carries. Larger files wait for the chunked upload of
-/// 14f-2 (#3531), which sends 8 MiB parts; until then they are refused with this limit.
+/// The largest file one raw request body carries. A larger file, up to [`MAX_FILE_SIZE`], comes
+/// in [`CHUNK_BYTES`] parts through [`Uploads`].
 pub const MAX_UPLOAD_BODY: usize = 16 * 1024 * 1024;
 
 /// Attempts at a free name before the write gives up; one random prefix in 36^6 collides.
@@ -76,6 +80,14 @@ pub enum AttachmentError {
     Write(#[from] WriteError),
     #[error(transparent)]
     Storage(#[from] StorageError),
+    /// No chunked upload of that id: never begun, finished, cancelled, or its page or vault went.
+    #[error("no such upload")]
+    UploadGone,
+    /// A chunk that does not continue the upload, runs past its size or is over [`CHUNK_BYTES`].
+    #[error("the chunk does not continue the upload")]
+    BadChunk,
+    #[error("too many uploads at once")]
+    TooManyUploads,
 }
 
 /// `image` or `file`; a video stays `file`, which older clients read as a file block (#2190).
@@ -301,12 +313,12 @@ pub fn save(
     file_name: &str,
     bytes: &[u8],
 ) -> Result<SavedAttachment, AttachmentError> {
-    save_with(vault, note_id, note_path, file_name, bytes, &mut || {})
+    save_with(vault, note_id, note_path, file_name, bytes, &mut |_| {})
 }
 
-/// Test hook: [`save`] with `before_recheck` run right before the last check of the note's
-/// folder, the one in the same step as the file taking its name, so a test can swap a link in
-/// there.
+/// Test hook: [`save`] with `before_recheck` run with the target right before the last check of
+/// the note's folder, the one in the same step as the file taking its name, so a test can swap a
+/// link in there or put a file at the target.
 #[cfg(feature = "test-hooks")]
 #[doc(hidden)]
 pub fn save_checked(
@@ -315,7 +327,7 @@ pub fn save_checked(
     note_path: Option<&str>,
     file_name: &str,
     bytes: &[u8],
-    before_recheck: &mut dyn FnMut(),
+    before_recheck: &mut dyn FnMut(&Path),
 ) -> Result<SavedAttachment, AttachmentError> {
     save_with(vault, note_id, note_path, file_name, bytes, before_recheck)
 }
@@ -326,8 +338,25 @@ fn save_with(
     note_path: Option<&str>,
     file_name: &str,
     bytes: &[u8],
-    before_recheck: &mut dyn FnMut(),
+    before_recheck: &mut dyn FnMut(&Path),
 ) -> Result<SavedAttachment, AttachmentError> {
+    let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
+    let mut write = |target: &Path, recheck: BeforeCommit<'_>| {
+        atomic_create_checked(target, bytes, &delays, recheck)
+    };
+    store(
+        vault,
+        note_id,
+        note_path,
+        file_name,
+        bytes.len(),
+        before_recheck,
+        &mut write,
+    )
+}
+
+/// The refusals of a note id, a type or a size, before anything is written.
+fn check(note_id: &str, file_name: &str, size: usize) -> Result<(), AttachmentError> {
     if !is_note_id(note_id) {
         return Err(AttachmentError::InvalidNote);
     }
@@ -335,12 +364,29 @@ fn save_with(
     if !is_allowed_extension(ext) {
         return Err(AttachmentError::UnsupportedType(ext.to_ascii_lowercase()));
     }
-    if bytes.len() > MAX_FILE_SIZE {
+    if size > MAX_FILE_SIZE {
         return Err(AttachmentError::TooLarge {
-            size: bytes.len(),
+            size,
             limit: MAX_FILE_SIZE,
         });
     }
+    Ok(())
+}
+
+/// Places a file of `size` bytes in the note's attachments folder under a fresh stored name:
+/// `place` creates it at the target it is given, never replacing a file, and calls the recheck
+/// right before the file takes its name. The bytes come from memory ([`save`]) or from a
+/// finished chunked upload ([`Uploads`]).
+fn store(
+    vault: &Path,
+    note_id: &str,
+    note_path: Option<&str>,
+    file_name: &str,
+    size: usize,
+    before_recheck: &mut dyn FnMut(&Path),
+    place: &mut dyn FnMut(&Path, BeforeCommit<'_>) -> Result<(), WriteError>,
+) -> Result<SavedAttachment, AttachmentError> {
+    check(note_id, file_name, size)?;
     // One level at a time, each checked before the next is made through it.
     create_dir(&vault.join(ATTACHMENTS_DIR))?;
     inside_vault(vault, ATTACHMENTS_DIR)?;
@@ -348,18 +394,18 @@ fn save_with(
     let folder = vault.join(ATTACHMENTS_DIR).join(note_id);
     create_dir(&folder)?;
     inside_vault(vault, &folder_rel)?;
-    let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
     let mut attempt = 0;
     let stored = loop {
         let stored = stored_name(&random_prefix(), file_name);
+        let target = folder.join(&stored);
         let mut recheck = || {
-            before_recheck();
+            before_recheck(&target);
             inside_vault(vault, &folder_rel).map_err(|error| match error {
                 AttachmentError::Io(error) => error,
                 other => io::Error::other(other.to_string()),
             })
         };
-        match atomic_create_checked(&folder.join(&stored), bytes, &delays, &mut recheck) {
+        match place(&target, &mut recheck) {
             Ok(()) => break stored,
             Err(error) if error.already_exists() && attempt + 1 < NAME_ATTEMPTS => attempt += 1,
             Err(error) => return Err(error.into()),
@@ -381,7 +427,7 @@ fn save_with(
     Ok(SavedAttachment {
         path,
         name: file_name.to_owned(),
-        size: bytes.len(),
+        size,
         mime_type: mime_type(file_name),
         kind: kind_of(file_name),
         disk_path,

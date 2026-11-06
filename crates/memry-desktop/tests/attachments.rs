@@ -410,7 +410,7 @@ fn a_link_swapped_in_before_the_file_takes_its_name_is_refused() {
     let folder = root.join("attachments/n1");
     fs::create_dir_all(&folder).unwrap();
     let mut swapped = false;
-    let outcome = attachments::save_checked(&root, "n1", None, "a.png", b"x", &mut || {
+    let outcome = attachments::save_checked(&root, "n1", None, "a.png", b"x", &mut |_| {
         if !swapped {
             fs::rename(&folder, &outside).unwrap();
             symlink(&outside, &folder).unwrap();

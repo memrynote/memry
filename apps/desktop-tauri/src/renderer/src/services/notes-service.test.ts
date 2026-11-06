@@ -41,7 +41,9 @@ const commands = vi.hoisted(() => ({
   notesDeleteFolder: vi.fn(),
   notesGetFolderConfig: vi.fn(),
   notesSetFolderConfig: vi.fn(),
-  notesGetFolderTemplate: vi.fn()
+  notesGetFolderTemplate: vi.fn(),
+  notesUploadAttachmentBegin: vi.fn(),
+  notesUploadAttachmentAbort: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -873,6 +875,103 @@ describe('notes-service', () => {
     const [, bytes, meta] = invokeBinary.mock.calls[0]
     expect(bytes).toHaveLength(0)
     expect(meta).toEqual({ noteId: 'note-1', fileName: 'clip.mp4', size: 16 * 1024 * 1024 + 1 })
+  })
+
+  describe('a file over the single-body limit', () => {
+    const MIB = 1024 * 1024
+    const saved = {
+      path: '../attachments/note-1/abc123-clip.mp4',
+      name: 'clip.mp4',
+      size: 16 * MIB + 5,
+      mimeType: 'video/mp4',
+      type: 'file'
+    }
+    /** A `File` over the limit whose parts are read only through `slice`. */
+    function bigFile(size = 16 * MIB + 5) {
+      const arrayBuffer = vi.fn()
+      const slice = vi.fn((start: number, end: number) => ({
+        arrayBuffer: async () => new Uint8Array(Math.min(end, size) - start).fill(start / MIB)
+      }))
+      return { file: { name: 'clip.mp4', size, arrayBuffer, slice }, arrayBuffer, slice }
+    }
+
+    it('goes in 8 MiB parts, in order, and the last part answers the saved file', async () => {
+      commands.notesUploadAttachmentBegin.mockResolvedValueOnce('up1')
+      invokeBinary.mockResolvedValueOnce(null).mockResolvedValueOnce(null)
+      invokeBinary.mockResolvedValueOnce(saved)
+      const { file, arrayBuffer } = bigFile()
+      await expect(notesService.uploadAttachment('note-1', file)).resolves.toEqual({
+        success: true,
+        ...saved
+      })
+      expect(commands.notesUploadAttachmentBegin).toHaveBeenCalledWith(
+        'note-1',
+        'clip.mp4',
+        16 * MIB + 5
+      )
+      // Never the whole file in memory: one part per call.
+      expect(arrayBuffer).not.toHaveBeenCalled()
+      const sent = invokeBinary.mock.calls.map(([command, bytes, meta]) => [
+        command,
+        bytes.length,
+        bytes[0],
+        meta
+      ])
+      expect(sent).toEqual([
+        ['notes_upload_attachment_chunk', 8 * MIB, 0, { id: 'up1', offset: 0 }],
+        ['notes_upload_attachment_chunk', 8 * MIB, 8, { id: 'up1', offset: 8 * MIB }],
+        ['notes_upload_attachment_chunk', 5, 16, { id: 'up1', offset: 16 * MIB }]
+      ])
+      expect(commands.notesUploadAttachmentAbort).not.toHaveBeenCalled()
+    })
+
+    it('a part that fails cancels the upload and answers why', async () => {
+      commands.notesUploadAttachmentBegin.mockResolvedValueOnce('up2')
+      commands.notesUploadAttachmentAbort.mockResolvedValueOnce(null)
+      invokeBinary.mockResolvedValueOnce(null).mockRejectedValueOnce({
+        kind: 'storage',
+        code: 'attachment_write_failed',
+        message: 'Failed to write attachment'
+      })
+      const { file } = bigFile()
+      await expect(notesService.uploadAttachment('note-1', file)).resolves.toEqual({
+        success: false,
+        error: 'Failed to write attachment'
+      })
+      expect(invokeBinary).toHaveBeenCalledTimes(2)
+      expect(commands.notesUploadAttachmentAbort).toHaveBeenCalledWith('up2')
+    })
+
+    it('a file that ends before Rust has every byte fails and cancels the upload', async () => {
+      commands.notesUploadAttachmentBegin.mockResolvedValueOnce('up3')
+      commands.notesUploadAttachmentAbort.mockResolvedValueOnce(null)
+      invokeBinary.mockResolvedValue(null)
+      const { file } = bigFile()
+      await expect(notesService.uploadAttachment('note-1', file)).resolves.toEqual({
+        success: false,
+        error: getI18n().getFixedT(null, 'errors')('attachment.writeFailed')
+      })
+      expect(getI18n().getFixedT(null, 'errors')('attachment.writeFailed')).toBe(
+        'Failed to save the attachment. Check disk space.'
+      )
+      expect(commands.notesUploadAttachmentAbort).toHaveBeenCalledWith('up3')
+    })
+
+    it('over the attachment cap, is refused before a part is read', async () => {
+      commands.notesUploadAttachmentBegin.mockRejectedValueOnce({
+        kind: 'invalid',
+        code: 'attachment_too_large',
+        message: 'File too large: 120.0 MB exceeds 100.0 MB limit'
+      })
+      const { file, slice } = bigFile(120 * MIB)
+      await expect(notesService.uploadAttachment('note-1', file)).resolves.toEqual({
+        success: false,
+        error: 'File too large: 120.0 MB exceeds 100.0 MB limit'
+      })
+      expect(slice).not.toHaveBeenCalled()
+      expect(invokeBinary).not.toHaveBeenCalled()
+      expect(commands.notesUploadAttachmentAbort).not.toHaveBeenCalled()
+    })
   })
 
   it('forwards export and version helpers', async () => {
