@@ -15,6 +15,7 @@ use tauri::{AppHandle, Manager, Runtime, Wry};
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
 use super::notes::{failed, open_vault, service};
+use super::vault::CHANGE_WAITS_KEY;
 use crate::events::{VaultConfigChangedEvent, broadcast};
 use crate::shell::external;
 
@@ -77,7 +78,7 @@ pub(crate) enum Refused {
 
 /// A folder move, folder delete or day create refused for settings that cannot be read says so
 /// in words naming what was refused, as Settings says its refusals: the raw message names no
-/// file to fix.
+/// file to fix. A folder move refused while a journal setting change waits says what to do.
 pub(crate) fn settings_or_failed<R: Runtime>(
     app: &AppHandle<R>,
     error: &NotesError,
@@ -99,6 +100,14 @@ pub(crate) fn settings_or_failed<R: Runtime>(
                 ErrorKind::Invalid,
                 "vault_settings_unreadable",
                 i18n::t(locale, key, &Args::new()),
+            )
+        }
+        NotesError::JournalChangeWaits => {
+            let locale = app.state::<Arc<LocaleService>>().get();
+            CommandError::new(
+                ErrorKind::Invalid,
+                "journal_change_waits",
+                i18n::t(locale, CHANGE_WAITS_KEY, &Args::new()),
             )
         }
         _ => failed(error),

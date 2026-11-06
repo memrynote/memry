@@ -19,6 +19,8 @@ use crate::vault::activity::ActivityLog;
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::app_move::{finish_interrupted, follow_interrupted};
 use crate::vault::config::read_vault_config;
+use crate::vault::config::settings::JournalFollow;
+use crate::vault::journal_rename::{JournalVault, finish_journal_change};
 #[cfg(test)]
 use crate::vault::watch::HoldFn;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher, WatchHandle};
@@ -290,7 +292,15 @@ impl VaultTier {
             .notes_writer(self.store.clone())
             .map_err(|error| error.to_string())
             .and_then(|writer| {
-                // Before the lane (`settings`'s lock order).
+                // Before the lane (`settings`'s lock order). A journal setting change a crash
+                // cut short puts its days back first: the folder moves settle under the setting
+                // it leaves saved.
+                let at = JournalVault {
+                    root: &vault.path,
+                    vault: &vault.vault,
+                    tier: self,
+                };
+                finish_journal_change(at, &JournalFollow::hold());
                 follow_interrupted(&vault.path, &writer);
                 let mut lane = self
                     .rows
