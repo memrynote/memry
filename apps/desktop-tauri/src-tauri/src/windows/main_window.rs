@@ -95,6 +95,38 @@ pub fn create_main(
     Ok(window)
 }
 
+/// A second app window over the same page and startup state as the main one, for the e2e specs
+/// that need two windows of one app (`e2e_create_secondary_window`). `label` is a
+/// [`super::registry::WindowKind::TestSecondary`] label.
+#[cfg(feature = "e2e")]
+pub fn create_test_secondary(
+    app: &AppHandle<Wry>,
+    label: &str,
+) -> tauri::Result<WebviewWindow<Wry>> {
+    let state = crate::shell::services::startup_state(app);
+    let origins = navigation_guard::app_origins(app);
+    let off_app = navigation_guard::OffApp::default();
+    let builder = WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
+        .title("MemryNote")
+        .inner_size(1200.0, 900.0)
+        .position(40.0, 40.0)
+        .use_https_scheme(true)
+        .disable_drag_drop_handler()
+        .on_navigation(navigation_guard::on_navigation(
+            app.clone(),
+            off_app.clone(),
+        ))
+        .on_new_window(navigation_guard::on_new_window(app.clone(), off_app))
+        .initialization_script(scripts::app_page_only(&origins, &startup::script(&state)))
+        .initialization_script(scripts::app_page_only(
+            &origins,
+            &scripts::init_script(shell_globals(app)),
+        ));
+    let window = webview_profile(builder, app).build()?;
+    navigation_guard::install(app, &window);
+    Ok(window)
+}
+
 fn shell_globals(app: &AppHandle<Wry>) -> ShellGlobals {
     let (loopback_origin, loopback_token) =
         crate::shell::loopback::address(app).unwrap_or_default();

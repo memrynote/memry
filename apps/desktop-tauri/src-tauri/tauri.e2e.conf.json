@@ -7,8 +7,18 @@
         "main",
         {
           "identifier": "e2e",
-          "windows": ["main"],
+          "windows": ["main", "e2e-*"],
           "permissions": ["wdio:default", "wdio-webdriver:default"]
+        },
+        {
+          "identifier": "e2e-secondary",
+          "description": "The main window's permissions for the second windows of e2e specs",
+          "windows": ["e2e-*"],
+          "permissions": [
+            "core:default",
+            "core:window:allow-start-dragging",
+            "core:window:allow-toggle-maximize"
+          ]
         }
       ]
     }
