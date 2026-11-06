@@ -18,7 +18,7 @@ import { restart } from '../../harness/tauri-lifecycle'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 import { vaultStatus } from '../../harness/vault-commands'
-import { pollUntil } from '../../harness/wait'
+import { pollUntil, sleep } from '../../harness/wait'
 
 interface Entry {
   id: string
@@ -243,8 +243,11 @@ test('an edit of the open day file outside the app shows in the day', async ({
   const file = join(testVaultPath, 'journal', `${date}.md`)
   await typeInDay(page, 'Written in the app.')
   expect(await pollUntil(async () => existsSync(file), { timeoutMs: 20_000 })).toBe(true)
+  // The whole typed text: a save of part of it leaves the rest as typing not saved yet, which
+  // stays in the day over the outside edit below.
   await pollUntil(
-    async () => ((await entry(page, date))?.content.includes('in the app') ? true : undefined),
+    async () =>
+      (await entry(page, date))?.content.includes('Written in the app.') ? true : undefined,
     { timeoutMs: 20_000 }
   )
 
@@ -253,6 +256,33 @@ test('an edit of the open day file outside the app shows in the day', async ({
     readFileSync(file, 'utf8').replace('Written in the app.', 'Rewritten outside.')
   )
   await expect(page.locator('.bn-editor').first()).toContainText('Rewritten outside.')
+})
+
+// The editor reports the text an outside edit hands it, which is not typing (#3967): held as
+// typing, it kept the next outside edit out of the day, and its save went over that edit.
+test('a second outside edit right after the first shows in the day and stays in its file', async ({
+  page,
+  testVaultPath
+}) => {
+  await openJournal(page)
+  const date = await today(page)
+  const file = join(testVaultPath, 'journal', `${date}.md`)
+  await typeInDay(page, 'Written in the app.')
+  await pollUntil(
+    async () =>
+      (await entry(page, date))?.content.includes('Written in the app.') ? true : undefined,
+    { timeoutMs: 20_000 }
+  )
+
+  writeFileSync(file, readFileSync(file, 'utf8').replace('Written in the app.', 'First outside.'))
+  await expect(page.locator('.bn-editor').first()).toContainText('First outside.')
+  writeFileSync(file, readFileSync(file, 'utf8').replace('First outside.', 'Second outside.'))
+  await expect(page.locator('.bn-editor').first()).toContainText('Second outside.')
+
+  // Past the editor's 150 ms debounce and the 1 s save delay: nothing saved the first text back.
+  await sleep(1_500)
+  expect(readFileSync(file, 'utf8')).toContain('Second outside.')
+  expect((await entry(page, date))?.content).toBe('Second outside.')
 })
 
 // Typing not saved yet reached no file, so nothing else holds it (#3530): an outside edit of the
