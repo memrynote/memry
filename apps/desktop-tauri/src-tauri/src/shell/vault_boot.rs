@@ -165,8 +165,9 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     app.manage(tier);
 }
 
-/// Serves each open vault's documents to the editor windows (`commands::editor`), and tells the
-/// windows when a vault's editor goes and when the next one serves.
+/// Serves each open vault's documents to the editor windows (`commands::editor`), tells the
+/// windows when a vault's editor goes and when the next one serves, and has the vault tier write
+/// the file of each note a window edited.
 fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -177,11 +178,23 @@ fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
         return;
     };
     let notifier = app.clone();
+    // Managed by `register_vault_watcher`, which runs before this one.
+    let tier = app
+        .try_state::<Arc<VaultTier>>()
+        .map(|tier| tier.inner().clone());
     let host = EditorHost::new(store.inner().clone(), move |event| match event {
         HostEvent::Reset => broadcast(&notifier, CrdtProviderResetEvent),
         HostEvent::Ready { vault_path } => {
             broadcast(&notifier, CrdtProviderReadyEvent { vault_path });
         }
+        HostEvent::Edited { note_id } => match &tier {
+            Some(tier) => tier.schedule(&note_id),
+            None => tracing::error!(
+                scope = "editor",
+                note_id,
+                "no vault tier: the edit reaches the file on the next open"
+            ),
+        },
     });
     host.register(session);
     app.manage(host);

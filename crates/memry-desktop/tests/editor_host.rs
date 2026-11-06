@@ -523,3 +523,37 @@ fn an_edit_of_a_large_file_note_is_refused_as_note_large_file_and_reaches_no_win
     );
     assert!(side_frames.lock().unwrap().is_empty());
 }
+
+#[test]
+fn only_a_stored_window_edit_asks_for_its_file_to_be_written() {
+    let env = env();
+    let note = env.note();
+    let (main, _) = env.open(&note, "main");
+    let edited = || {
+        env.events
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|event| matches!(event, HostEvent::Edited { .. }))
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
+    let update = main.type_text("typed");
+    env.host.apply_update(&note, &update, "main").unwrap();
+    assert_eq!(
+        edited(),
+        vec![HostEvent::Edited {
+            note_id: note.clone()
+        }]
+    );
+
+    env.host.apply_update(&note, &update, "main").unwrap();
+    assert_eq!(edited().len(), 1, "an update the body has changes nothing");
+
+    let core = env.session.current().unwrap().vault;
+    core.locks().set(TargetKind::Note, &note, true).unwrap();
+    let refused = env.host.apply_update(&note, &main.type_text("x"), "main");
+    assert!(refused.is_err());
+    assert_eq!(edited().len(), 1, "a refused edit writes no file");
+}

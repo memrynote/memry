@@ -9,7 +9,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use memry_desktop::editor::{Deliver, EditorHost, Subscriber};
+use memry_desktop::editor::{Deliver, EditorHost, Subscriber, read_only_name};
 use serde::{Deserialize, Serialize};
 use tauri::ipc::{Channel, InvokeResponseBody, Request, Response};
 use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
@@ -34,6 +34,8 @@ struct OpenedHeader {
     /// The body is empty and owes no server body: the window may seed it from the file.
     needs_seed: bool,
     state_length: usize,
+    /// Why the window must not edit it ([`read_only_name`]), or null.
+    read_only: Option<&'static str>,
 }
 
 /// The header of `crdt_sync_step_1`'s answer; the diff then the state vector follow it.
@@ -86,6 +88,7 @@ pub async fn crdt_open_doc<R: Runtime>(
     let header = OpenedHeader {
         needs_seed: opened.needs_seed,
         state_length: opened.state.len(),
+        read_only: opened.read_only.map(read_only_name),
     };
     binary::framed(&header, &[&opened.state, &opened.state_vector])
 }

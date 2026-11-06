@@ -11,7 +11,7 @@ mod host;
 
 use std::sync::Arc;
 
-use memry_core::api::editor::{EditorError, Notice, Origin};
+use memry_core::api::editor::{EditorError, Notice, Origin, ReadOnly};
 use memry_core::api::errors::AuthError;
 
 pub use host::{EditorHealth, EditorHost, HostEvent};
@@ -46,6 +46,14 @@ pub fn frame(notice: Notice<'_>) -> Vec<u8> {
 
 /// The frame of a purged document (a delete applied).
 pub const PURGED: u8 = 4;
+
+/// Why a window must not edit a document, as the open's answer names it to the renderer.
+pub fn read_only_name(reason: ReadOnly) -> &'static str {
+    match reason {
+        ReadOnly::Locked => "locked",
+        ReadOnly::LargeFile => "large-file",
+    }
+}
 
 /// 0: another window's edit, 1: merged from the server, 2: an edit of the file outside the
 /// app, 3: written by the app itself (a command, a repair, a restore).

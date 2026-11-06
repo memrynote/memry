@@ -32,13 +32,17 @@ use crate::session::{OpenStage, OpenVault, Session, canonical, lock};
 const SWEEP_EVERY: Duration = Duration::from_secs(15);
 const SWEEP_TICK: Duration = Duration::from_millis(100);
 
-/// The editor's lifecycle, for the windows (`crdt:provider-reset`, `crdt:provider-ready`).
+/// The editor's lifecycle, for the windows (`crdt:provider-reset`, `crdt:provider-ready`), and
+/// the window edits the note file must follow.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostEvent {
     /// The vault closed: every window's binding is dead. Windows wait for `Ready` to reopen.
     Reset,
     /// The vault at `vault_path` serves `open` again.
     Ready { vault_path: String },
+    /// A window's edit of `note_id` is stored: its file is written from the body once the note
+    /// is quiet (`VaultTier::schedule`, Electron's `scheduleWriteback` for an IPC origin).
+    Edited { note_id: String },
 }
 
 /// `crdt:get-health`.
@@ -196,7 +200,15 @@ impl EditorHost {
     ) -> Result<(), EditorHostError> {
         let live = self.live()?;
         live.require_open(note_id, window_label)?;
-        live.editor.apply_update(note_id, update, window_label)?;
+        if live
+            .editor
+            .apply_update(note_id, update, window_label)?
+            .is_some()
+        {
+            (self.notify)(HostEvent::Edited {
+                note_id: note_id.to_owned(),
+            });
+        }
         Ok(())
     }
 

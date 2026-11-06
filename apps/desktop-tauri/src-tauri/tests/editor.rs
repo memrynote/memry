@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::SecureStoreError;
 use memry_core::crypto::sodium;
+use memry_core::domain::vault_locks::TargetKind;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::editor::EditorHost;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
@@ -59,6 +60,7 @@ impl SecureStore for MemoryStore {
 
 struct Fixture {
     _dir: tempfile::TempDir,
+    core: Arc<memry_core::api::vault::Vault>,
     vault: String,
     note: String,
     main: WebviewWindow<MockRuntime>,
@@ -80,9 +82,8 @@ fn opened() -> Fixture {
     let host = EditorHost::new(store.clone(), |_| {});
     host.register(&session);
     let open = session.open(&vault, OpenSource::Select).unwrap();
-    let note = open
-        .vault
-        .vault
+    let core = Arc::clone(&open.vault.vault);
+    let note = core
         .notes_writer(store)
         .unwrap()
         .create("A note".into(), None)
@@ -114,6 +115,7 @@ fn opened() -> Fixture {
     std::mem::forget(app);
     Fixture {
         _dir: dir,
+        core,
         vault: vault.to_string_lossy().into_owned(),
         note,
         main,
@@ -210,6 +212,7 @@ fn a_window_opens_edits_and_another_catches_up_through_the_ipc() {
     let f = opened();
     let (header, main) = f.open_doc(&f.main);
     assert_eq!(header["needsSeed"], true, "a new note's body is empty");
+    assert_eq!(header["readOnly"], Value::Null);
 
     let typed = type_text(&main, "typed in main");
     assert_eq!(json(f.apply(&f.main, typed.clone()).unwrap()), Value::Null);
@@ -262,4 +265,23 @@ fn a_closed_editor_takes_no_more_edits_and_the_health_is_persistent() {
         json(health.unwrap()),
         json!({ "persistent": true, "inMemorySessions": 0 })
     );
+}
+
+#[test]
+fn a_locked_or_large_file_note_opens_read_only_by_its_reason() {
+    let f = opened();
+    f.core
+        .note_files()
+        .record_large_file(&f.note, true)
+        .unwrap();
+    let (header, _) = f.open_doc(&f.main);
+    assert_eq!(header["readOnly"], "large-file");
+
+    f.core
+        .note_files()
+        .record_large_file(&f.note, false)
+        .unwrap();
+    f.core.locks().set(TargetKind::Note, &f.note, true).unwrap();
+    let (header, _) = f.open_doc(&f.main);
+    assert_eq!(header["readOnly"], "locked");
 }
