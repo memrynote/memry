@@ -14,6 +14,7 @@ use crate::domain::notes::folder_delete::{self, FolderDeleteRecorded};
 use crate::domain::notes::identity::{
     self, Adopted, Crossing, FileNote, Moved, OwedPlace, Removed,
 };
+use crate::domain::notes::journal_change::{self, JournalChangeRecorded, PendingJournalChange};
 use crate::domain::notes::journal_day::{self, FileDay};
 use crate::domain::notes::new_files::{self, NewFileNote};
 use crate::domain::notes::{self, NewNote};
@@ -256,6 +257,29 @@ impl NotesWriter {
     pub fn abandon_folder_move(&self, from: &str, to: &str) -> Result<bool, StorageError> {
         self.db
             .call_blocking(move |conn| app_move::abandon_folder(conn, from, to))
+    }
+
+    /// Records a journal setting change before its first day moves
+    /// ([`journal_change::begin`]).
+    pub fn begin_journal_change(&self, change: &PendingJournalChange) -> Result<(), BeginError> {
+        let change = change.clone();
+        self.db
+            .call_blocking(move |conn| Ok(journal_change::begin(conn, &change)))?
+    }
+
+    /// The record of a journal setting change never forgotten ([`journal_change::pending`]).
+    pub fn pending_journal_change(&self) -> Result<Option<JournalChangeRecorded>, StorageError> {
+        self.db.read_blocking(journal_change::pending)
+    }
+
+    /// Forgets the record of `change` ([`journal_change::abandon`]).
+    pub fn abandon_journal_change(
+        &self,
+        change: &PendingJournalChange,
+    ) -> Result<bool, StorageError> {
+        let change = change.clone();
+        self.db
+            .call_blocking(move |conn| journal_change::abandon(conn, &change))
     }
 
     /// The folder `from` moved to `to` with its notes: records, rows, folder records and

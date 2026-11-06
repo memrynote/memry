@@ -13,6 +13,7 @@ import {
 import { VaultScopeProvider } from '@/contexts/vault-scope'
 import { flushAllPendingSaves } from '@/lib/save-registry'
 import { setCachedVaultStatus } from '@/lib/vault-status-cache'
+import { beginVaultSwitch, endVaultSwitch } from '@/lib/vault-switch-state'
 import {
   VaultWorkspaceLifecycleContext,
   createVaultWorkspaceLifecycle,
@@ -196,10 +197,12 @@ describe('useJournalEntry dedicated hook', () => {
       result.current.updateContent('Pending old date')
     })
     rerender({ date: '2026-05-11' })
-    expect(window.api.journal.updateEntry).toHaveBeenCalledWith({
-      date: '2026-05-10',
-      content: 'Pending old date'
-    })
+    await waitFor(() =>
+      expect(window.api.journal.updateEntry).toHaveBeenCalledWith({
+        date: '2026-05-10',
+        content: 'Pending old date'
+      })
+    )
 
     await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-11'))
     ;(window.api.journal.updateEntry as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
@@ -415,12 +418,14 @@ describe('useJournalEntry dedicated hook', () => {
     await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
     const before = result.current.externalUpdateCount
     const reads = () => getEntry.mock.calls.filter(([date]) => date === '2026-05-10').length
+    // The load, and the read once the editor opened.
+    await waitFor(() => expect(reads()).toBe(2))
 
     // Nothing changed: the editor keeps its cursor.
     act(() => {
       dropped?.()
     })
-    await waitFor(() => expect(reads()).toBe(2))
+    await waitFor(() => expect(reads()).toBe(3))
     expect(result.current.externalUpdateCount).toBe(before)
 
     getEntry.mockResolvedValue(
@@ -504,8 +509,10 @@ describe('useJournalEntry dedicated hook', () => {
   })
 
   // Typing not saved yet never reached the file, so nothing else holds it. Its save writes over
-  // the outside edit, which the core keeps as a version, as a note's save does (#3530).
-  it('keeps unsaved typing and a save in flight over an outside edit, and saves them', async () => {
+  // the outside edit, which the core keeps as a version, as a note's save does (#3530). A tags
+  // save never writes the text, so an outside edit that came during it stays in the file and
+  // reaches the day once the save ends (#3967).
+  it('keeps unsaved typing over an outside edit and saves it, and takes one a tags save ran over', async () => {
     let updated: ((event: any) => void) | null = null
     ;(window.api.onJournalEntryUpdated as ReturnType<typeof vi.fn>).mockImplementation((cb) => {
       updated = cb
@@ -556,12 +563,15 @@ describe('useJournalEntry dedicated hook', () => {
     )
     outsideEdit()
     expect(result.current.externalUpdateCount).toBe(0)
+    ;(window.api.journal.getEntry as ReturnType<typeof vi.fn>).mockResolvedValue(outside)
     await act(async () => finishTagSave())
-    await waitFor(() => expect(result.current.isDirty).toBe(false))
+    await waitFor(() => expect(result.current.externalUpdateCount).toBe(1))
+    expect(queryClient.getQueryData(key)).toEqual(outside)
+    expect(result.current.isDirty).toBe(false)
 
     // Nothing unsaved: the outside edit reloads the day.
     outsideEdit()
-    expect(result.current.externalUpdateCount).toBe(1)
+    expect(result.current.externalUpdateCount).toBe(2)
     expect(queryClient.getQueryData(key)).toEqual(outside)
   })
 
@@ -615,6 +625,143 @@ describe('useJournalEntry dedicated hook', () => {
       external?.({ date: '2026-05-10', type: 'modified' })
     })
     await waitFor(() => expect(result.current.entry?.tags).toEqual([]))
+  })
+
+  // A sidebar note opened in the same tab, or a tab switch, unmounts the page (#3967).
+  it('saves typing made during a save when the page unmounts before that save ends', async () => {
+    const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+    const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    let finishFirstSave: () => void = () => {}
+    updateEntry.mockImplementationOnce(
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+      (input: { date: string; content?: string }) =>
+        new Promise((resolve) => {
+          finishFirstSave = () =>
+            resolve(createMockJournalEntry({ date: input.date, content: input.content ?? '' }))
+        })
+    )
+    act(() => {
+      result.current.updateContent('First')
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+    act(() => {
+      result.current.updateContent('First and second')
+    })
+
+    unmount()
+    await act(async () => {
+      finishFirstSave()
+      await vi.runOnlyPendingTimersAsync()
+    })
+
+    expect(updateEntry).toHaveBeenCalledTimes(2)
+    expect(updateEntry).toHaveBeenLastCalledWith({
+      date: '2026-05-10',
+      content: 'First and second'
+    })
+  })
+
+  // A quit right after the unmount flushes the registry, which waits for the save the page
+  // left behind (#3967).
+  it('makes a quit right after the page unmounts wait for the typing it saves', async () => {
+    const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+    const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    const finishSaves: Array<() => void> = []
+    const holdSave = (input: { date: string; content?: string }) =>
+      new Promise((resolve) => {
+        finishSaves.push(() =>
+          resolve(createMockJournalEntry({ date: input.date, content: input.content ?? '' }))
+        )
+      })
+    // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+    updateEntry.mockImplementationOnce(holdSave).mockImplementationOnce(holdSave)
+    act(() => {
+      result.current.updateContent('First')
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+    act(() => {
+      result.current.updateContent('First and second')
+    })
+    unmount()
+
+    let quitDone = false
+    const quit = flushAllPendingSaves().then(() => {
+      quitDone = true
+      return undefined
+    })
+    const drain = async (): Promise<void> => {
+      await act(async () => {
+        for (let i = 0; i < 20; i++) await Promise.resolve()
+      })
+    }
+    await drain()
+    expect(quitDone).toBe(false)
+
+    finishSaves[0]()
+    await drain()
+    expect(updateEntry).toHaveBeenLastCalledWith({
+      date: '2026-05-10',
+      content: 'First and second'
+    })
+    expect(quitDone).toBe(false)
+
+    finishSaves[1]()
+    await drain()
+    expect(quitDone).toBe(true)
+    await quit
+  })
+
+  it('keeps a quit saving the day opened again after the page that left it ends its save', async () => {
+    const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+    const first = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(first.result.current.loadedForDate).toBe('2026-05-10'))
+    let finishFirstSave: () => void = () => {}
+    updateEntry.mockImplementationOnce(
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+      (input: { date: string; content?: string }) =>
+        new Promise((resolve) => {
+          finishFirstSave = () =>
+            resolve(createMockJournalEntry({ date: input.date, content: input.content ?? '' }))
+        })
+    )
+    act(() => {
+      first.result.current.updateContent('First')
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+    act(() => {
+      first.result.current.updateContent('First and second')
+    })
+    first.unmount()
+    const second = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(second.result.current.loadedForDate).toBe('2026-05-10'))
+    await act(async () => {
+      finishFirstSave()
+      for (let i = 0; i < 20; i++) await Promise.resolve()
+    })
+    expect(updateEntry).toHaveBeenLastCalledWith({
+      date: '2026-05-10',
+      content: 'First and second'
+    })
+
+    act(() => {
+      second.result.current.updateContent('Typed on the day opened again')
+    })
+    await act(async () => {
+      await flushAllPendingSaves()
+    })
+
+    expect(updateEntry).toHaveBeenLastCalledWith({
+      date: '2026-05-10',
+      content: 'Typed on the day opened again'
+    })
   })
 
   describe('leaving the vault', () => {
@@ -704,6 +851,91 @@ describe('useJournalEntry dedicated hook', () => {
       })
 
       expect(updateEntry).toHaveBeenCalledWith({ date: '2026-05-10', content: 'Closing the tab' })
+    })
+
+    // The page unmounted during a save and waits for it before saving the typing made during
+    // it. A switch that ends in that wait leaves the next vault open (#3967).
+    it('does not save typing left by an unmount once another vault opened during its wait', async () => {
+      const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+      const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), {
+        wrapper: vaultWrapper
+      })
+      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+      let finishFirstSave: () => void = () => {}
+      updateEntry.mockClear()
+      updateEntry.mockImplementationOnce(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+        (input: { date: string; content?: string }) =>
+          new Promise((resolve) => {
+            finishFirstSave = () =>
+              resolve(createMockJournalEntry({ date: input.date, content: input.content ?? '' }))
+          })
+      )
+      act(() => {
+        result.current.updateContent('Typed in vault A')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      act(() => {
+        result.current.updateContent('Typed in vault A, and more')
+      })
+      unmount()
+
+      openVault(VAULT_B)
+      await act(async () => {
+        finishFirstSave()
+        await vi.runOnlyPendingTimersAsync()
+      })
+
+      expect(updateEntry).toHaveBeenCalledTimes(1)
+      expect(logWarn).toHaveBeenCalledWith(expect.stringContaining('2026-05-10'))
+    })
+
+    // The switch names its target, then flushes the registry while this vault is still open.
+    it('saves typing left by an unmount into its vault when a switch flushes during its wait', async () => {
+      const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+      const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), {
+        wrapper: vaultWrapper
+      })
+      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+      let finishFirstSave: () => void = () => {}
+      updateEntry.mockClear()
+      updateEntry.mockImplementationOnce(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+        (input: { date: string; content?: string }) =>
+          new Promise((resolve) => {
+            finishFirstSave = () =>
+              resolve(createMockJournalEntry({ date: input.date, content: input.content ?? '' }))
+          })
+      )
+      act(() => {
+        result.current.updateContent('Typed in vault A')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      act(() => {
+        result.current.updateContent('Typed in vault A, and more')
+      })
+      unmount()
+
+      try {
+        beginVaultSwitch({ path: VAULT_B, name: 'b' }, null)
+        await act(async () => {
+          const flushed = flushAllPendingSaves()
+          finishFirstSave()
+          await flushed
+        })
+      } finally {
+        endVaultSwitch(false)
+      }
+
+      expect(updateEntry).toHaveBeenCalledTimes(2)
+      expect(updateEntry).toHaveBeenLastCalledWith({
+        date: '2026-05-10',
+        content: 'Typed in vault A, and more'
+      })
     })
 
     // The switch flushes the registry before main closes the vault. A save

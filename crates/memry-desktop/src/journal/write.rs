@@ -60,12 +60,13 @@ use crate::notes::service::NotesService;
 use crate::session::OpenVault;
 use crate::vault::app_move::follow_interrupted;
 use crate::vault::config::read_vault_config_strict;
-use crate::vault::config::settings::day_names;
+use crate::vault::config::settings::{JournalFollow, day_names};
 use crate::vault::consumer::rows::{Lane, RowStat};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
+use crate::vault::journal_rename::{JournalVault, finish_journal_change};
 use crate::vault::note_file::{NoteFileError, large_file_class, record_large_file, write_new_text};
 use crate::vault::paths::open_vault_file;
 
@@ -111,11 +112,18 @@ impl NotesService {
         after_file: &mut dyn FnMut() -> Result<(), NotesError>,
     ) -> Result<JournalEntryView, NotesError> {
         let root = open.path.as_path();
-        // Before the settings' locks and the lane: a journal folder an unfinished folder move
-        // carried takes its setting along first, so the day is named where the other days are
+        // Before the settings' locks and the lane: the days of a journal setting change a crash
+        // cut short go back (`vault::journal_rename`), and a journal folder an unfinished folder
+        // move carried takes its setting along, so the day is named where the other days are
         // (`vault::app_move::follow_interrupted`). Settings that cannot be read do not say where
         // the journal is: a day named under their defaults would sit where the real setting does
         // not read it, and its next move would delete it as a day.
+        let at = JournalVault {
+            root,
+            vault: &open.vault,
+            tier: &self.tier,
+        };
+        finish_journal_change(at, &JournalFollow::hold());
         follow_interrupted(root, &*open.vault.notes_writer(self.store.clone())?);
         read_vault_config_strict(root).map_err(NotesError::SettingsUnreadable)?;
         // The file is named in the format a change in progress saves (`vault::config::settings`).

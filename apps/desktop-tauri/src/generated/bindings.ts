@@ -435,12 +435,13 @@ export const commands = {
 	vaultSetIcon: (path: string, icon: string | null) => __TAURI_INVOKE<null>("vault_set_icon", { path, icon }),
 	vaultSwitch: (path: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_switch", { path }),
 	/**
-	 *  `vault:update-config`: writes the fields `config` names, a new date format with the day
-	 *  files renamed to it first, and answers the settings after it, which every window hears as
-	 *  [`VaultConfigChangedEvent`], in the order the writes land. A change that is not ported yet
-	 *  is refused as `config_change_not_ported`, and a format not every day can take as
-	 *  `journal_format_incomplete`, `journal_unlisted` or `journal_days_not_renamed`
-	 *  (`vault::config::settings`).
+	 *  `vault:update-config`: writes the fields `config` names, a new date format or journal folder
+	 *  with the day files moved to it first, and answers the settings after it, which every window
+	 *  hears as [`VaultConfigChangedEvent`], in the order the writes land. A change that is not
+	 *  ported yet is refused as `config_change_not_ported`, and a setting not every day can take as
+	 *  `journal_format_incomplete`, `journal_folder_invalid`, `journal_folder_respelled`,
+	 *  `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits` or
+	 *  `journal_change_unrecorded` (`vault::config::settings`).
 	 */
 	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
 	/**  Drops every retained entry, on disk too. */
@@ -2391,6 +2392,12 @@ export type VaultStatus = {
 	error: string | null,
 	/**  What the open's sweep of interrupted folder moves did, while that vault is open. */
 	movesRecovered?: MovesRecovered | null,
+	/**
+	 *  Higher is newer. The window receives statuses as events and as `vault_get_status`
+	 *  answers, which travel apart, so it keeps the one with the higher revision. The shell sets
+	 *  it; [`From<SessionStatus>`] leaves it at 0.
+	 */
+	revision: number,
 };
 
 /**

@@ -70,7 +70,8 @@ const wireStatus = {
   indexProgress: 0,
   indexBuilt: null,
   indexTotal: null,
-  error: null
+  error: null,
+  revision: 1
 }
 
 beforeEach(() => {
@@ -260,5 +261,44 @@ describe('vault-service events', () => {
       mocks.listeners.get('progress')?.({ payload: { indexBuilt, indexTotal } })
     }
     expect(onProgress.mock.calls.map(([percent]) => percent)).toEqual([0, 33, 100, 100])
+  })
+
+  // Answers and events travel apart (#3967, T531): a status read mid-reindex can land after the
+  // event that ended the reindex. Revisions keep rising across these tests, as in one window.
+  it('keeps the newest status when an answer read before an event lands after it', async () => {
+    let answer: (status: unknown) => void = () => undefined
+    mocks.commands.vaultGetStatus.mockReturnValue(new Promise((resolve) => (answer = resolve)))
+    const callback = vi.fn()
+    onVaultStatusChanged(callback)
+    await vi.waitFor(() => expect(mocks.commands.vaultGetStatus).toHaveBeenCalled())
+
+    mocks.listeners.get('status')?.({ payload: { ...wireStatus, revision: 12 } })
+    answer({ ...wireStatus, isIndexing: true, indexProgress: 50, revision: 11 })
+    await vi.waitFor(() => expect(callback).toHaveBeenCalledTimes(2))
+    expect(callback.mock.calls.map(([status]) => status.isIndexing)).toEqual([false, false])
+
+    mocks.commands.vaultGetStatus.mockResolvedValue({
+      ...wireStatus,
+      isIndexing: true,
+      revision: 10
+    })
+    expect((await vaultService.getStatus()).isIndexing).toBe(false)
+  })
+
+  it('takes a newer answer over an older event', async () => {
+    const callback = vi.fn()
+    onVaultStatusChanged(callback)
+    await vi.waitFor(() => expect(mocks.listeners.has('status')).toBe(true))
+    mocks.commands.vaultGetStatus.mockResolvedValue({
+      ...wireStatus,
+      isIndexing: true,
+      revision: 21
+    })
+    expect((await vaultService.getStatus()).isIndexing).toBe(true)
+
+    mocks.listeners.get('status')?.({ payload: { ...wireStatus, revision: 20 } })
+    expect(callback).toHaveBeenLastCalledWith(expect.objectContaining({ isIndexing: true }))
+    mocks.listeners.get('status')?.({ payload: { ...wireStatus, revision: 22 } })
+    expect(callback).toHaveBeenLastCalledWith(expect.objectContaining({ isIndexing: false }))
   })
 })
