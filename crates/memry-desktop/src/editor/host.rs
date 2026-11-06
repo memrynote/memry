@@ -10,14 +10,6 @@
 //! so a keychain that is locked while the vault opens fails the calls made while it stays
 //! locked, with its own error, and not the rest of the session.
 //!
-//! **One restore per outside edit.** A window whose typing was on its way when an outside edit
-//! replaced the body puts its body back over it ([`EditorHost::apply_over_outside_edit`]). Two
-//! windows doing so would leave two copies, and a restore after another window typed into the
-//! outside edit would delete that typing. So the document records, from each outside edit's
-//! frame, the windows that stored an edit since: only a window that alone did, or none did, may
-//! restore, once. Any other restore is refused (`outside_edit_restored`) and its text kept as a
-//! version; the window takes its restore back.
-//!
 //! **Lock order.** Core calls a listener on the thread of any write of the document, after the
 //! writer was released and with none of its locks held, and the listener takes only the
 //! subscriber map. The map is a leaf: it is held around map changes and core's subscribe or
@@ -34,10 +26,10 @@ use memry_core::api::vault::Vault;
 use memry_core::seams::secure_store::SecureStore;
 
 use super::compaction::{COMPACT_EVERY, compact_due};
+use super::typing::Barriers;
 use super::{Deliver, EditorHostError, Subscriber, frame};
 use crate::session::projection::CancelToken;
 use crate::session::{OpenStage, OpenVault, Session, canonical, lock};
-use crate::vault::consumer::converter_for;
 
 /// How often unheld documents past their grace period are unloaded.
 const SWEEP_EVERY: Duration = Duration::from_secs(15);
@@ -54,11 +46,6 @@ pub enum HostEvent {
     /// A window's edit of `note_id` is stored: its file is written from the body once the note
     /// is quiet (`VaultTier::schedule`, Electron's `scheduleWriteback` for an IPC origin).
     Edited { note_id: String },
-    /// A window puts back typing over an outside edit the document took before that typing
-    /// reached it ([`EditorHost::apply_over_outside_edit`]): the note's file, which holds the
-    /// outside edit, is kept as a version (`VaultTier::keep_outside_edit`) before the typing is
-    /// stored and its write scheduled.
-    OutsideEditKept { note_id: String },
 }
 
 /// `crdt:get-health`.
@@ -73,9 +60,6 @@ pub struct EditorHealth {
 struct Doc {
     listener: ListenerId,
     subscribers: Vec<Subscriber>,
-    /// Since the last outside edit, the windows that stored an edit; `None` once a restore was
-    /// taken, or no outside edit came, or another writer wrote since.
-    restorable: Option<Vec<String>>,
 }
 
 type Docs = Mutex<HashMap<String, Doc>>;
@@ -90,7 +74,6 @@ struct Served {
 
 /// The open vault's editor for one call.
 struct Live {
-    vault: Arc<Vault>,
     editor: Arc<Editor>,
     path: PathBuf,
     docs: Arc<Docs>,
@@ -100,6 +83,7 @@ pub struct EditorHost {
     store: Arc<dyn SecureStore>,
     notify: Box<dyn Fn(HostEvent) + Send + Sync>,
     served: Mutex<Option<Served>>,
+    pub(super) barriers: Barriers,
 }
 
 impl EditorHost {
@@ -111,6 +95,7 @@ impl EditorHost {
             store,
             notify: Box::new(notify),
             served: Mutex::new(None),
+            barriers: Barriers::default(),
         })
     }
 
@@ -219,14 +204,13 @@ impl EditorHost {
     }
 
     /// A window's edit: stored, queued and sent to the other windows. Refused unless the window
-    /// opened the document in this vault. Answers the document's state vector after it: the
-    /// window holds every update stored before its edit once it holds that.
+    /// opened the document in this vault.
     pub fn apply_update(
         &self,
         note_id: &str,
         update: &[u8],
         window_label: &str,
-    ) -> Result<Vec<u8>, EditorHostError> {
+    ) -> Result<(), EditorHostError> {
         let live = self.live()?;
         live.require_open(note_id, window_label)?;
         if live
@@ -238,42 +222,7 @@ impl EditorHost {
                 note_id: note_id.to_owned(),
             });
         }
-        Ok(live.editor.state_vector(note_id)?)
-    }
-
-    /// [`Self::apply_update`] of typing the window put back over an outside edit. Once it is
-    /// stored, [`HostEvent::OutsideEditKept`] is told before [`HostEvent::Edited`]. A restore
-    /// the document does not owe the window (module doc) is refused, and its text kept as a
-    /// version.
-    pub fn apply_over_outside_edit(
-        &self,
-        note_id: &str,
-        update: &[u8],
-        window_label: &str,
-    ) -> Result<Vec<u8>, EditorHostError> {
-        let live = self.live()?;
-        live.require_open(note_id, window_label)?;
-        let Some(owed) = live.take_restore(note_id, window_label) else {
-            live.keep_refused(&self.store, note_id, update);
-            return Err(EditorHostError::OutsideEditRestored {
-                note_id: note_id.to_owned(),
-            });
-        };
-        let applied = match live.editor.apply_update(note_id, update, window_label) {
-            Ok(applied) => applied,
-            Err(error) => {
-                live.give_back_restore(note_id, owed);
-                return Err(error.into());
-            }
-        };
-        if applied.is_some() {
-            let note_id = note_id.to_owned();
-            (self.notify)(HostEvent::OutsideEditKept {
-                note_id: note_id.clone(),
-            });
-            (self.notify)(HostEvent::Edited { note_id });
-        }
-        Ok(live.editor.state_vector(note_id)?)
+        Ok(())
     }
 
     /// Sync step 1: what the document holds beyond the window's `state_vector`, and the
@@ -338,11 +287,21 @@ impl EditorHost {
             .editor(Arc::clone(&self.store))
             .map_err(EditorHostError::Identity)?;
         Ok(Live {
-            vault,
             editor,
             path: served.path,
             docs: served.docs,
         })
+    }
+
+    /// The windows that have `note_id` open in the vault served now.
+    pub(super) fn subscribers(&self, note_id: &str) -> Vec<Subscriber> {
+        let Some(docs) = lock(&self.served).as_ref().map(|s| Arc::clone(&s.docs)) else {
+            return Vec::new();
+        };
+        lock(&docs)
+            .get(note_id)
+            .map(|doc| doc.subscribers.clone())
+            .unwrap_or_default()
     }
 
     fn serves(&self, view: &OpenVault) -> bool {
@@ -371,7 +330,6 @@ impl Live {
                 entry.insert(Doc {
                     listener,
                     subscribers: Vec::new(),
-                    restorable: None,
                 })
             }
         };
@@ -404,47 +362,6 @@ impl Live {
             Err(EditorHostError::NotOpen {
                 note_id: note_id.to_owned(),
             })
-        }
-    }
-
-    /// Takes the restore the document owes `window_label`: the windows that stored an edit since
-    /// the outside edit, or `None` when it owes none.
-    fn take_restore(&self, note_id: &str, window_label: &str) -> Option<Vec<String>> {
-        let mut docs = lock(&self.docs);
-        let doc = docs.get_mut(note_id)?;
-        let owed = doc
-            .restorable
-            .as_ref()
-            .is_some_and(|stored| stored.iter().all(|label| label == window_label));
-        if owed { doc.restorable.take() } else { None }
-    }
-
-    /// A taken restore was not stored: the window may send it again.
-    fn give_back_restore(&self, note_id: &str, owed: Vec<String>) {
-        if let Some(doc) = lock(&self.docs).get_mut(note_id) {
-            doc.restorable.get_or_insert(owed);
-        }
-    }
-
-    /// Keeps the body a refused restore would have made as a version, so no typing in it is lost.
-    fn keep_refused(&self, store: &Arc<dyn SecureStore>, note_id: &str, update: &[u8]) {
-        let settings = self.vault.app_settings(Arc::clone(store)).ok();
-        let converter = converter_for(settings.as_ref());
-        match self
-            .vault
-            .write_back()
-            .keep_refused_edit(&converter, note_id, update)
-        {
-            Ok(_) => tracing::warn!(
-                scope = "editor",
-                note_id,
-                "a second restore over one outside edit was refused and kept as a version"
-            ),
-            Err(error) => tracing::error!(
-                scope = "editor",
-                note_id,
-                "a refused restore was not kept as a version: {error}"
-            ),
         }
     }
 
@@ -488,18 +405,8 @@ fn fan_out(
             _ => None,
         };
         let targets: Vec<Deliver> = lock(&docs)
-            .get_mut(&note_id)
+            .get(&note_id)
             .map(|doc| {
-                doc.restorable = match notice {
-                    Notice::Update(_, Origin::External) => Some(Vec::new()),
-                    Notice::Update(_, Origin::Local(holder)) => {
-                        doc.restorable.take().map(|mut stored| {
-                            stored.push(holder.clone());
-                            stored
-                        })
-                    }
-                    _ => None,
-                };
                 doc.subscribers
                     .iter()
                     .filter(|s| Some(s.window_label.as_str()) != sender)

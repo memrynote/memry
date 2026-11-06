@@ -167,8 +167,9 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
 }
 
 /// Serves each open vault's documents to the editor windows (`commands::editor`), tells the
-/// windows when a vault's editor goes and when the next one serves, and has the vault tier write
-/// the file of each note a window edited.
+/// windows when a vault's editor goes and when the next one serves, has the vault tier write
+/// the file of each note a window edited, and has it ask the windows for their typing before an
+/// outside edit of their note applies.
 fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -196,12 +197,11 @@ fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
                 "no vault tier: the edit reaches the file on the next open"
             ),
         },
-        HostEvent::OutsideEditKept { note_id } => match &tier {
-            Some(tier) => tier.keep_outside_edit(&note_id),
-            None => tracing::error!(scope = "editor", note_id, "no vault tier: nothing kept"),
-        },
     });
     host.register(session);
+    if let Some(tier) = app.try_state::<Arc<VaultTier>>() {
+        tier.set_editor_host(&host);
+    }
     app.manage(host);
 }
 

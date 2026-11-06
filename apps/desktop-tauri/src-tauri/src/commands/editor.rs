@@ -2,10 +2,10 @@
 //! `memry_desktop::editor::EditorHost`. Updates and states are raw bytes: `crdt_open_doc` and
 //! `crdt_sync_step_1` answer with a framed `Response` ([`binary::framed`]), `crdt_apply_update`
 //! and `crdt_sync_step_2` take the update as the raw body with `{ noteId }` in the metadata
-//! header and answer the document's state vector after it, raw, so the four are binary commands
-//! (`binary.rs`). The calling window's label is the
+//! header, so the four are binary commands (`binary.rs`). The calling window's label is the
 //! holder, and the document's updates reach the window on the `Channel` it opened it with, as
-//! [`memry_desktop::editor::frame`]s. `crdt_close_doc` and `crdt_get_health` are typed commands.
+//! [`memry_desktop::editor::frame`]s. `crdt_close_doc`, `crdt_typing_sent`
+//! and `crdt_get_health` are typed commands.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -50,9 +50,6 @@ struct StepOneHeader {
 #[serde(rename_all = "camelCase")]
 struct NoteMeta {
     note_id: String,
-    /// The window puts back typing over an outside edit (`EditorHost::apply_over_outside_edit`).
-    #[serde(default)]
-    over_outside_edit: bool,
 }
 
 fn host<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<EditorHost>, CommandError> {
@@ -97,15 +94,13 @@ pub async fn crdt_open_doc<R: Runtime>(
     binary::framed(&header, &[&opened.state, &opened.state_vector])
 }
 
-/// A window's edit (the raw body): stored, queued for sync and sent to the other windows. The
-/// answer is the document's state vector: the window holds every update stored before its edit
-/// once its channel brought it that far.
+/// A window's edit (the raw body): stored, queued for sync and sent to the other windows.
 #[tauri::command]
 pub async fn crdt_apply_update<R: Runtime>(
     app: AppHandle<R>,
     window: WebviewWindow<R>,
     request: Request<'_>,
-) -> Result<Response, CommandError> {
+) -> Result<(), CommandError> {
     apply("crdt_apply_update", &app, &window, &request).await
 }
 
@@ -115,7 +110,7 @@ pub async fn crdt_sync_step_2<R: Runtime>(
     app: AppHandle<R>,
     window: WebviewWindow<R>,
     request: Request<'_>,
-) -> Result<Response, CommandError> {
+) -> Result<(), CommandError> {
     apply("crdt_sync_step_2", &app, &window, &request).await
 }
 
@@ -124,20 +119,16 @@ async fn apply<R: Runtime>(
     app: &AppHandle<R>,
     window: &WebviewWindow<R>,
     request: &Request<'_>,
-) -> Result<Response, CommandError> {
+) -> Result<(), CommandError> {
     let meta: NoteMeta = binary::meta(request)?;
     let update = binary::raw_body(request)?.to_vec();
     let host = host(app)?;
     let label = window.label().to_owned();
     blocking(command, move || {
-        let applied = match meta.over_outside_edit {
-            true => host.apply_over_outside_edit(&meta.note_id, &update, &label),
-            false => host.apply_update(&meta.note_id, &update, &label),
-        };
-        applied.map_err(|error| CommandError::from_core(&error))
+        host.apply_update(&meta.note_id, &update, &label)
+            .map_err(|error| CommandError::from_core(&error))
     })
     .await
-    .map(Response::new)
 }
 
 /// Sync step 1: the window's state vector is the raw body; the answer is what the document
@@ -180,6 +171,21 @@ pub async fn crdt_close_doc<R: Runtime>(
         Ok(())
     })
     .await
+}
+
+/// The calling window sent its typing for the typing barrier `barrier` and holds new typing
+/// until the barrier's release frame (`memry_desktop::editor::BARRIER`).
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_typing_sent<R: Runtime>(
+    app: AppHandle<R>,
+    window: WebviewWindow<R>,
+    barrier: u32,
+) -> Result<(), CommandError> {
+    // After a vault closed no outside edit waits.
+    let Ok(host) = host(&app) else { return Ok(()) };
+    host.typing_sent(window.label(), barrier);
+    Ok(())
 }
 
 #[tauri::command]

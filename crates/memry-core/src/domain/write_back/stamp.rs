@@ -1,12 +1,9 @@
-//! The text of a note's body as its log held it at another point: at the row's mark
-//! ([`crate::domain::note_files::stamped_mark`]), or with an update the editor did not store.
+//! Whether the text of a note's body changed since its row was stamped, read from the body log
+//! as it stood at the row's mark ([`crate::domain::note_files::stamped_mark`]).
 
-use std::collections::HashSet;
 use std::sync::Arc;
 
 use rusqlite::Connection;
-use yrs::branch::{Branch, BranchID};
-use yrs::{ID, ReadTxn, XmlFragment as _, XmlOut};
 
 use super::LogMark;
 use crate::crdt::BODY_FRAGMENT;
@@ -20,77 +17,24 @@ const READER: &str = "memry-core-stamp-reader";
 
 /// Whether the body's text, as markdown, differs from the text it had when the note's row was
 /// stamped: the body moved after the stamp and holds a change its file does not. A body that
-/// moved without changing its text (a link made a chip of, an edit undone) did not. `true`
-/// when the row has no mark of its stamp, or a fold since took the entries before it.
+/// moved without changing its text (a link made a chip of, an edit undone) did not. `None`
+/// when the log cannot say: the row has no mark of its stamp (an older build stamped it), or a
+/// fold since took the entries before it.
 pub fn text_moved_since_stamp(
     conn: &Connection,
     converter: &Converter,
     note_id: &str,
-) -> Result<bool, CrdtError> {
+) -> Result<Option<bool>, CrdtError> {
     let Some(mark) = note_files::stamped_mark(conn, note_id)? else {
-        return Ok(true);
+        return Ok(None);
     };
     let plan = update_log::load_plan(conn, note_id)?;
     let Some(then) = before(&plan, mark) else {
-        return Ok(true);
+        return Ok(None);
     };
-    Ok(text(converter, note_id, &then)? != text(converter, note_id, &plan.blobs())?)
-}
-
-/// The markdown of the blocks `update` puts at the top of the body over every stored entry: the
-/// body a window put back over an outside edit, which the editor refused, without the blocks
-/// another writer left beside it.
-pub fn text_put_back(
-    conn: &Connection,
-    converter: &Converter,
-    note_id: &str,
-    update: &[u8],
-) -> Result<String, CrdtError> {
-    let plan = update_log::load_plan(conn, note_id)?;
-    let document = opened(note_id, &plan.blobs())?;
-    let stored = document.read(|txn| top_level(txn).into_iter().collect::<HashSet<_>>())?;
-    document.apply_durable_update(update)?;
-    document.write(|txn| {
-        let Some(fragment) = txn.get_xml_fragment(BODY_FRAGMENT) else {
-            return;
-        };
-        let theirs: Vec<u32> = (0..fragment.len(txn))
-            .filter(|index| {
-                fragment
-                    .get(txn, *index)
-                    .and_then(|node| node_id(&node))
-                    .is_some_and(|id| stored.contains(&id))
-            })
-            .collect();
-        for index in theirs.into_iter().rev() {
-            fragment.remove_range(txn, index, 1);
-        }
-    })?;
-    Ok(markdown(converter, &document))
-}
-
-/// The ids of the body's top-level nodes.
-fn top_level<T: ReadTxn>(txn: &T) -> Vec<ID> {
-    txn.get_xml_fragment(BODY_FRAGMENT)
-        .map(|fragment| {
-            fragment
-                .children(txn)
-                .filter_map(|node| node_id(&node))
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-fn node_id(node: &XmlOut) -> Option<ID> {
-    let branch: &Branch = match node {
-        XmlOut::Element(element) => element.as_ref(),
-        XmlOut::Text(text) => text.as_ref(),
-        XmlOut::Fragment(fragment) => fragment.as_ref(),
-    };
-    match branch.id() {
-        BranchID::Nested(id) => Some(id),
-        BranchID::Root(_) => None,
-    }
+    Ok(Some(
+        text(converter, note_id, &then)? != text(converter, note_id, &plan.blobs())?,
+    ))
 }
 
 /// The blobs of `plan` stored before `mark`; `None` when a snapshot folded entries at or past it.

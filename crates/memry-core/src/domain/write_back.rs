@@ -32,7 +32,7 @@ use crate::sync::body_debt;
 
 mod stamp;
 
-pub use stamp::{text_moved_since_stamp, text_put_back};
+pub use stamp::text_moved_since_stamp;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BodyRead {

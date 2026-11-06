@@ -11,7 +11,9 @@ use super::rows::{Lane, RowStat};
 use super::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
+use crate::vault::hash::content_hash;
 use crate::vault::note_file::NoteFile;
+use crate::vault::writeback::output_over;
 
 const SCOPE: &str = "vault_consumer";
 
@@ -89,7 +91,7 @@ impl Applier {
             .map_err(|error| retry("met no body to compare", &error))?;
         if !ahead
             || self.own_files.writer(note_id, &file.hash).is_some()
-            || !self.text_moved(note_id)
+            || !self.text_moved(note_id, path, previous, file)
         {
             return Ok(mark);
         }
@@ -128,18 +130,30 @@ impl Applier {
     }
 
     /// Whether the body's text changed since the row's stamp: a body that moved without changing
-    /// it (a link the editor made a chip of, an edit undone) holds no typing, and the outside edit
-    /// is fed. A change of the file's frontmatter does not count; a body that cannot be compared
-    /// does.
-    fn text_moved(&self, note_id: &str) -> bool {
+    /// it (a link the editor made a chip of, an edit undone, a fold) holds no typing, and the
+    /// outside edit is fed. A change of the file's frontmatter does not count, except for a row
+    /// with no mark, compared through the file; a body that cannot be compared does.
+    fn text_moved(&self, note_id: &str, path: &str, previous: &str, file: &NoteFile) -> bool {
         let converter = converter_for(self.settings.as_ref());
-        self.vault
+        let moved = self
+            .vault
             .write_back()
-            .text_moved_since_stamp(&converter, note_id)
-            .unwrap_or_else(|error| {
+            .text_moved_since_stamp(&converter, note_id);
+        match moved {
+            Ok(Some(moved)) => moved,
+            // No mark to read the log at (a row an older build stamped, or a fold took it): the
+            // body holds no typing when, written over the outside file, it makes the file the
+            // row named.
+            Ok(None) => {
+                let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
+                !output_over(made, note_id, path, file)
+                    .is_ok_and(|output| content_hash(&output) == previous)
+            }
+            Err(error) => {
                 tracing::warn!(scope = SCOPE, note_id, "the body was not compared: {error}");
                 true
-            })
+            }
+        }
     }
 
     /// Seeds or replaces the note's body with the file's text.

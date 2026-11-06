@@ -1,6 +1,5 @@
 import * as Y from 'yjs'
 import { Channel } from '@tauri-apps/api/core'
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { Observable } from 'lib0/observable'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
@@ -9,6 +8,7 @@ import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { commandErrorCode } from '@/lib/ipc-error'
 import { decodeChunk, decodeFramedHeader, invokeBinary, readBinary } from '@/lib/ipc-binary'
 import { subscribeToEvent } from '@/services/tauri-event'
+import { typingHoldOf } from './typing-hold'
 import { commands, events } from '../../../generated/bindings'
 
 const log = createLogger('YjsIpcProvider')
@@ -28,8 +28,22 @@ interface OpenedHeader {
 
 /** The channel frame of a purged document: the window drops later updates until it reopens. */
 const PURGED_FRAME = 4
+/**
+ * The host asks for this window's typing before it applies an outside edit of the note
+ * (`editor/typing.rs`): the byte, then the barrier's id (u32, little endian).
+ */
+const BARRIER_FRAME = 5
+/**
+ * The host chose without feeding an outside edit (the typing won): new typing may go. The byte,
+ * then the id of the barrier it ends.
+ */
+const RELEASE_FRAME = 6
 /** The origin byte of an update the core took from the note's file (`editor::frame`). */
 const EXTERNAL_ORIGIN = 2
+/** The host waits this long for the window's answer (`BARRIER_WAIT`). */
+const BARRIER_WAIT_MS = 1500
+/** A hold no release ends is let go after this long. */
+const HOLD_MS = 2000
 
 /** An empty Yjs update: no structs, no deletions. */
 const EMPTY_UPDATE_BYTES = 2
@@ -121,19 +135,6 @@ export class YjsIpcProvider extends Observable<string> {
   private outgoing: Uint8Array[] = []
   /** The run sending `outgoing`, while one is. */
   private sending: Promise<void> | null = null
-  /**
-   * The typing put back over an outside edit is not sent yet: its request asks the host to keep
-   * the file that edit wrote as a version.
-   */
-  private overOutsideEdit = false
-  /** The blocks the latest put-back inserted, until the host took them or refused them. */
-  private putBack: Array<Y.XmlElement | Y.XmlText> = []
-  /**
-   * The host's state vector after this window's latest stored edit, until the channel brought
-   * this doc that far: an outside edit stored before the edit may still be on its way, its frame
-   * slower than the answer.
-   */
-  private awaitedState: Map<number, number> | null = null
   /** Sends in a row that failed; a stored edit resets it. */
   private sendFailures = 0
   /** Flushes waiting to hear that edits keep failing. */
@@ -231,6 +232,7 @@ export class YjsIpcProvider extends Observable<string> {
     this.readyCleanup?.()
     this.readyCleanup = null
     this.channel = null
+    typingHoldOf(this.doc).release()
 
     // The typing still queued goes to the host before the close, which would refuse it, and the
     // close goes after an open in flight, which would otherwise bind the window again.
@@ -279,8 +281,6 @@ export class YjsIpcProvider extends Observable<string> {
     this.purged = true
     this.synced = false
     this.outgoing = []
-    this.putBack = []
-    this.awaitedState = null
     this.setReadOnly('purged')
     this.emit('status', [{ status: 'disconnected' }])
     log.info('Document purged under the editor; updates dropped until it reopens', {
@@ -350,7 +350,6 @@ export class YjsIpcProvider extends Observable<string> {
       this.setReadOnly(this.purged ? 'purged' : (header.readOnly ?? null))
       if (this.destroyed) return { needsSeed: false, stateVector: new Uint8Array() }
       Y.applyUpdate(this.doc, body.subarray(0, header.stateLength), 'ipc-provider')
-      this.checkAwaited()
       return { needsSeed: header.needsSeed, stateVector: body.subarray(header.stateLength) }
     } catch (err) {
       log.error('Failed to open doc', { noteId: this.noteId, error: err })
@@ -362,15 +361,9 @@ export class YjsIpcProvider extends Observable<string> {
   private async finishHandshake(hostStateVector: Uint8Array): Promise<void> {
     if (this.destroyed) return
     const localDiff = Y.encodeStateAsUpdate(this.doc, hostStateVector)
-    // Typing put back over an outside edit while unbound goes in this diff, and its flag with it.
-    const overOutsideEdit = this.overOutsideEdit
-    this.overOutsideEdit = false
     if (localDiff.byteLength > EMPTY_UPDATE_BYTES && this.readOnlyReason === null) {
-      const sent = await this.send('crdt_sync_step_2', localDiff, overOutsideEdit)
-      if (sent !== 'done') {
+      if ((await this.send('crdt_sync_step_2', localDiff)) === 'failed') {
         this.outgoing.unshift(localDiff)
-        if (sent === 'failed') this.overOutsideEdit ||= overOutsideEdit
-        else this.takeBackPutBack()
         void this.sendQueued()
       }
     }
@@ -381,7 +374,7 @@ export class YjsIpcProvider extends Observable<string> {
     log.debug('Sync handshake complete', { noteId: this.noteId })
   }
 
-  /** One channel frame: `[origin][update]`, or the purge byte alone. */
+  /** One channel frame: `[origin][update]`, the purge byte alone, or a barrier's frame. */
   private receive(channel: Channel<ArrayBuffer>, data: ArrayBuffer): void {
     if (channel !== this.channel) return
     const frame = decodeChunk(data)
@@ -392,74 +385,41 @@ export class YjsIpcProvider extends Observable<string> {
     // A purged binding waits for a new mount. A stale one hears nothing on its channel: the
     // host that served it dropped it, and another vault's host never had it.
     if (this.purged || frame.byteLength < 2) return
+    if (frame[0] === BARRIER_FRAME || frame[0] === RELEASE_FRAME) {
+      const barrier = new DataView(frame.buffer, frame.byteOffset + 1, 4).getUint32(0, true)
+      if (frame[0] === BARRIER_FRAME) void this.answerBarrier(channel, barrier)
+      else typingHoldOf(this.doc).release(barrier)
+      return
+    }
+    // The outside edit a hold waits for: typing from now on lands in the blocks it makes, and
+    // the editor's own changes in answer to it (a link it makes a chip of) must apply.
+    if (frame[0] === EXTERNAL_ORIGIN) typingHoldOf(this.doc).release()
     // Every origin, another window's, the server's, a file edit or the app's, applies as
     // 'remote', so this provider sends none of them back.
-    const update = frame.subarray(1)
-    const typingOnItsWay =
-      this.outgoing.length > 0 || this.sending !== null || this.awaitedState !== null
-    if (frame[0] === EXTERNAL_ORIGIN && typingOnItsWay) this.keepTypingOver(update)
-    else Y.applyUpdate(this.doc, update, 'remote')
-    this.checkAwaited()
-  }
-
-  /** The host answered a stored edit with its state vector: wait for what this doc lacks of it. */
-  private awaitState(answer: Uint8Array): void {
-    if (answer.byteLength === 0) return
-    this.awaitedState = Y.decodeStateVector(answer)
-    this.checkAwaited()
-  }
-
-  private checkAwaited(): void {
-    const awaited = this.awaitedState
-    if (awaited === null) return
-    for (const [client, clock] of awaited) {
-      if (Y.getState(this.doc.store, client) < clock) return
-    }
-    this.awaitedState = null
+    Y.applyUpdate(this.doc, frame.subarray(1), 'remote')
   }
 
   /**
-   * An outside edit the core took before typing still on its way to it. The feed replaced the
-   * body's blocks, so the typing, made in blocks the update deletes, would vanish once it lands.
-   * The typing wins, as typing the file does not have yet wins in the core (#4030): the body is
-   * put back as this window had it, and the host keeps the outside file as a version.
+   * The host applies an outside edit of the note once this window sent its typing: a composition
+   * in progress ends first (it is never cut), then new typing is held, the queued typing goes,
+   * and the host hears the answer. The hold lasts until the edit's frame applies, or the release
+   * frame that follows it: typing made before the frame would land in blocks the edit deleted.
+   * A composition that outlasts the host's wait is left alone, and the host does not wait for
+   * it.
    */
-  private keepTypingOver(update: Uint8Array): void {
-    const fragment = this.doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    // A body holds elements and text only; a hook is no node of the editor's schema.
-    const typed = fragment
-      .toArray()
-      .filter((node): node is Y.XmlElement | Y.XmlText => !(node instanceof Y.XmlHook))
-      .map((node) => node.clone())
-    Y.applyUpdate(this.doc, update, 'remote')
-    this.overOutsideEdit = true
-    this.putBack = typed
-    this.doc.transact(() => {
-      fragment.delete(0, fragment.length)
-      fragment.insert(0, typed)
+  private async answerBarrier(channel: Channel<ArrayBuffer>, barrier: number): Promise<void> {
+    const hold = typingHoldOf(this.doc)
+    if (!(await hold.whenNotComposing(BARRIER_WAIT_MS)) || channel !== this.channel) return
+    hold.hold(barrier, HOLD_MS)
+    await this.flush().catch((err: unknown) => {
+      log.error('An outside edit applies over edits the host did not store', {
+        noteId: this.noteId,
+        error: err
+      })
     })
-  }
-
-  /**
-   * The host refused the put-back: another window's put-back or typing answered the outside edit
-   * first, and the host kept this window's text as a version. The blocks it inserted go, in an
-   * edit sent with the refused one, so the host holds no second copy and this doc matches it.
-   */
-  private takeBackPutBack(): void {
-    const ours = new Set<Y.XmlElement | Y.XmlText>(this.putBack)
-    this.putBack = []
-    const fragment = this.doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    this.doc.transact(() => {
-      const nodes = fragment.toArray()
-      for (let index = nodes.length - 1; index >= 0; index -= 1) {
-        const node = nodes[index]
-        if ((node instanceof Y.XmlElement || node instanceof Y.XmlText) && ours.has(node)) {
-          fragment.delete(index, 1)
-        }
-      }
-    })
-    log.warn('The host kept typing put back over an outside edit as a version', {
-      noteId: this.noteId
+    if (channel !== this.channel) return
+    await commands.crdtTypingSent(barrier).catch((err: unknown) => {
+      log.debug('The host stopped waiting for this window', { noteId: this.noteId, error: err })
     })
   }
 
@@ -485,19 +445,9 @@ export class YjsIpcProvider extends Observable<string> {
         const batch = this.outgoing
         this.outgoing = []
         const update = batch.length === 1 ? batch[0] : Y.mergeUpdates(batch)
-        const overOutsideEdit = this.overOutsideEdit
-        this.overOutsideEdit = false
-        const sent = await this.send('crdt_apply_update', update, overOutsideEdit)
-        if (sent === 'restored') {
-          // Sent again unflagged, merged with the edit that takes the put-back out.
-          this.outgoing.unshift(update)
-          this.takeBackPutBack()
-          continue
-        }
-        if (sent === 'done') continue
+        if ((await this.send('crdt_apply_update', update)) === 'done') continue
         const failures = (this.sendFailures += 1)
         this.outgoing.unshift(update)
-        this.overOutsideEdit ||= overOutsideEdit
         if (failures === FAILURES_BEFORE_NOTICE) {
           this.tellEditsUnsaved()
           for (const failed of this.failureWaiters) failed()
@@ -530,27 +480,18 @@ export class YjsIpcProvider extends Observable<string> {
 
   /**
    * Sends one update. A refusal changes the binding's state and is `done`: the update is not sent
-   * again. A refused put-back is `restored`: the caller takes it back and sends the update again.
-   * Any other failure is `failed`, and the caller sends it again.
+   * again. Any other failure is `failed`, and the caller sends it again.
    */
   private async send(
     command: 'crdt_apply_update' | 'crdt_sync_step_2',
-    update: Uint8Array,
-    overOutsideEdit = false
-  ): Promise<'done' | 'restored' | 'failed'> {
+    update: Uint8Array
+  ): Promise<'done' | 'failed'> {
     try {
-      const meta = overOutsideEdit
-        ? { noteId: this.noteId, overOutsideEdit }
-        : { noteId: this.noteId }
-      const answer = decodeChunk(await invokeBinary(command, update, meta))
+      await invokeBinary(command, update, { noteId: this.noteId })
       this.sendFailures = 0
-      if (overOutsideEdit) this.putBack = []
-      this.awaitState(answer)
       return 'done'
     } catch (err) {
       switch (commandErrorCode(err)) {
-        case 'outside_edit_restored':
-          return 'restored'
         case 'note_locked':
           this.outgoing = []
           this.setReadOnly('locked')

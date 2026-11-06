@@ -10,6 +10,11 @@ export const commands = {
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
 	/**
+	 *  The calling window sent its typing for the typing barrier `barrier` and holds new typing
+	 *  until the barrier's release frame (`memry_desktop::editor::BARRIER`).
+	 */
+	crdtTypingSent: (barrier: number) => __TAURI_INVOKE<null>("crdt_typing_sent", { barrier }),
+	/**
 	 *  Downloads the image behind `url` once and adds it like an upload, named `name` or after the
 	 *  link.
 	 */

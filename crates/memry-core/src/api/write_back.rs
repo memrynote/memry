@@ -50,31 +50,10 @@ impl WriteBackReader {
         &self,
         converter: &Converter,
         note_id: &str,
-    ) -> Result<bool, CrdtError> {
+    ) -> Result<Option<bool>, CrdtError> {
         self.db
             .call_blocking(move |conn| {
                 Ok(write_back::text_moved_since_stamp(conn, converter, note_id))
-            })
-            .map_err(CrdtError::from)?
-    }
-
-    /// Keeps, as a version of the note, the body a window put back over an outside edit and the
-    /// editor refused ([`write_back::text_put_back`]). True when a row was written.
-    pub fn keep_refused_edit(
-        &self,
-        converter: &Converter,
-        note_id: &str,
-        update: &[u8],
-    ) -> Result<bool, CrdtError> {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX));
-        self.db
-            .call_blocking(move |conn| {
-                Ok((|| {
-                    let text = write_back::text_put_back(conn, converter, note_id, update)?;
-                    Ok(write_back::keep_replaced(conn, note_id, &text, &text, now)?)
-                })())
             })
             .map_err(CrdtError::from)?
     }

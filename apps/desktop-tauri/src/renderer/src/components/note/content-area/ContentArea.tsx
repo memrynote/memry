@@ -53,6 +53,7 @@ import { cn } from '@/lib/utils'
 import { blockNoteShadCNComponents } from '@/lib/blocknote-shadcn-components'
 import { notesService, onNoteMoved, onNoteRenamed } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
+import { typingHoldOf } from '@/sync/typing-hold'
 import { isLocalCrdtDocLive } from '@/sync/collaboration-status'
 import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
 import { useLinkMentionHover } from '@/hooks/use-link-mention-hover'
@@ -116,6 +117,7 @@ import { Plugin } from 'prosemirror-state'
 import { isMac } from '@/lib/shortcut-catalog'
 import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
+import { createTypingHoldPlugin } from './typing-hold-plugin'
 import { createBlockDirectionPlugin } from './block-direction-plugin'
 import { createAnchorVisibilityPlugin } from './portal/anchor-visibility-plugin'
 import { createPortalTrailingParagraphPlugin } from './portal/portal-trailing-paragraph-plugin'
@@ -878,6 +880,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => registerEditorPlugin(editor, createAnchorVisibilityPlugin()), [editor])
   useEffect(() => registerEditorPlugin(editor, createBlockDirectionPlugin()), [editor])
   useEffect(() => registerEditorPlugin(editor, createPortalTrailingParagraphPlugin()), [editor])
+  // While the host applies an outside edit of the note, typing waits for the edit's frame.
+  useEffect(
+    () =>
+      yjsDoc
+        ? registerEditorPlugin(editor, createTypingHoldPlugin(typingHoldOf(yjsDoc)))
+        : undefined,
+    [editor, yjsDoc]
+  )
 
   const footnoteHover = useFootnotes(editor)
 

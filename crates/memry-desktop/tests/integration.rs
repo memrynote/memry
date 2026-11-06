@@ -238,6 +238,8 @@ mod telemetry_flush;
 mod templates;
 #[path = "templates_legacy.rs"]
 mod templates_legacy;
+#[path = "typing_barrier.rs"]
+mod typing_barrier;
 #[path = "unsplash.rs"]
 mod unsplash;
 #[path = "untrusted_scheme_input.rs"]

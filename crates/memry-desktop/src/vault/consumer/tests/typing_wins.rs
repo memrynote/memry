@@ -174,3 +174,39 @@ fn a_body_back_at_its_files_text_takes_an_outside_edit_of_the_frontmatter_too() 
     assert_eq!(f.body(&id), "edited outside");
     assert!(!kept_outside(&f.facts()));
 }
+
+/// A row an older build stamped has no mark: the body is compared through the file instead, so
+/// a body back at the file's text (or one a fold moved) takes the outside edit, and typing still
+/// wins.
+#[test]
+fn a_row_with_no_mark_compares_the_body_through_the_file() {
+    let forget_marks = |f: &Fixture| {
+        f.vault
+            .db_handle()
+            .call_blocking(|conn| {
+                conn.execute("DELETE FROM note_file_marks", [])
+                    .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                        what: error.to_string(),
+                    })
+            })
+            .unwrap();
+    };
+    let mut f = fixture();
+    let (id, _) = note(&f);
+    type_in_app(&f, &id, "typed in the app");
+    type_in_app(&f, &id, "first words");
+    forget_marks(&f);
+    f.facts();
+    f.write("n.md", OUTSIDE);
+    assert_eq!(f.changed(&id, "n.md"), Step::Done);
+    assert_eq!(f.body(&id), "edited outside");
+
+    let mut f = fixture();
+    let (id, pass) = note(&f);
+    type_in_app(&f, &id, "typed in the app");
+    forget_marks(&f);
+    f.facts();
+    f.write("n.md", OUTSIDE);
+    assert_eq!(f.changed(&id, "n.md"), Step::Done);
+    assert_typing_won(&mut f, &id, &pass);
+}

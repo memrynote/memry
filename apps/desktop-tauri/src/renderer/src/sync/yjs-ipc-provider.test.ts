@@ -4,9 +4,8 @@ import * as Y from 'yjs'
 /**
  * A fake editor host behind the `crdt_*` commands, as `commands/editor.rs` answers them: the
  * open is framed (header length, JSON header, state, state vector) and binds the channel it was
- * given; an edit is the raw body with `{ noteId }` in the metadata, answered with the document's
- * state vector. `refuse` makes the next edits fail with a `CommandError` code, `refuseFlagged`
- * every edit put back over an outside edit.
+ * given; an edit is the raw body with `{ noteId }` in the metadata. `refuse` makes the next edits
+ * fail with a `CommandError` code.
  */
 interface TestChannel {
   onmessage: (data: ArrayBuffer) => void
@@ -21,7 +20,6 @@ const host = vi.hoisted(() => ({
   needsSeed: false,
   readOnly: null as string | null,
   refuse: null as string | null,
-  refuseFlagged: null as string | null,
   /** How many more edits `refuse` refuses; null refuses every one. */
   refuseTimes: null as number | null,
   /** Edits wait on this before they land, so a test can hold one in flight. */
@@ -77,17 +75,9 @@ vi.mock('@tauri-apps/api/core', async () => {
         // oxlint-disable-next-line typescript/only-throw-error -- Tauri rejects a command with its serialized `CommandError`, a plain object
         throw { kind: 'invalid', code: host.refuse, message: host.refuse }
       }
-      if (host.refuseFlagged && (meta as Record<string, unknown>).overOutsideEdit) {
-        // oxlint-disable-next-line typescript/only-throw-error -- as above
-        throw { kind: 'crdt', code: host.refuseFlagged, message: host.refuseFlagged }
-      }
       Yjs.applyUpdate(host.doc, update, 'window')
       host.calls.push('apply')
-      const stateVector = Yjs.encodeStateVector(host.doc)
-      return stateVector.buffer.slice(
-        stateVector.byteOffset,
-        stateVector.byteOffset + stateVector.byteLength
-      )
+      return new ArrayBuffer(0)
     })
   }
 })
@@ -98,6 +88,10 @@ vi.mock('../../../generated/bindings', () => ({
       host.calls.push('close')
       await host.closeGate
       host.closes.push(noteId)
+      return null
+    },
+    crdtTypingSent: async (barrier: number) => {
+      host.calls.push(`typing-sent ${barrier}`)
       return null
     }
   },
@@ -124,8 +118,8 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
 }))
 
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { flushAllPendingSaves, hasPendingSaves } from '@/lib/save-registry'
+import { typingHoldOf } from './typing-hold'
 import { DocNeedsSeedError, YjsIpcProvider } from './yjs-ipc-provider'
 
 const NOTE = 'note-1'
@@ -176,7 +170,6 @@ beforeEach(() => {
   host.needsSeed = false
   host.readOnly = null
   host.refuse = null
-  host.refuseFlagged = null
   host.refuseTimes = null
   host.gate = null
   host.openGate = null
@@ -278,156 +271,111 @@ describe('YjsIpcProvider updates', () => {
   })
 })
 
-describe('YjsIpcProvider outside edits', () => {
-  const EXTERNAL = 2
-  const paragraph = (value: string): Y.XmlElement => {
-    const element = new Y.XmlElement('paragraph')
-    element.insert(0, [new Y.XmlText(value)])
-    return element
-  }
-  const body = (doc: Y.Doc): string => doc.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()
-
-  /** The core replaced the body with a file edited outside the app, as the feed does. */
-  function outsideEditFrame(value: string, origin = EXTERNAL): ArrayBuffer {
-    const before = Y.encodeStateVector(host.doc)
-    const fragment = host.doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    host.doc.transact(() => {
-      fragment.delete(0, fragment.length)
-      fragment.insert(0, [paragraph(value)])
-    })
-    const update = Y.encodeStateAsUpdate(host.doc, before)
-    const bytes = new Uint8Array(update.length + 1)
-    bytes[0] = origin
-    bytes.set(update, 1)
+describe('YjsIpcProvider typing barrier', () => {
+  const BARRIER = 5
+  const RELEASE = 6
+  /** A barrier's frame, as `editor/typing.rs` sends it. */
+  function barrierFrame(kind: number, barrier: number): ArrayBuffer {
+    const bytes = new Uint8Array(5)
+    bytes[0] = kind
+    new DataView(bytes.buffer).setUint32(1, barrier, true)
     return bytes.buffer
   }
+  const answered = (): string[] => host.calls.filter((call) => call.startsWith('typing-sent'))
 
-  async function withBody() {
-    host.doc = new Y.Doc()
-    host.doc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [paragraph('first words')])
-    const opened = await connected()
-    const typeInBody = (value: string): void => {
-      const words = opened.doc.getXmlFragment(CRDT_FRAGMENT_NAME).get(0) as Y.XmlElement
-      ;(words.get(0) as Y.XmlText).insert(11, value)
-    }
-    return { ...opened, typeInBody }
-  }
-
-  it('keeps typing still on its way to the host over an outside edit the host took first', async () => {
-    const { doc, typeInBody } = await withBody()
+  it('sends its queued typing at a barrier, then holds new typing and answers', async () => {
+    const { doc } = await connected()
     const release = holdEdits()
-    typeInBody(' typed')
-    lastChannel().onmessage(outsideEditFrame('edited outside'))
+    type(doc, ' typed')
+    await settle()
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await settle()
+    expect(typingHoldOf(doc).held).toBe(true)
+    expect(answered()).toEqual([])
+
     release()
     await settle()
-
-    expect(body(doc)).toContain('first words typed')
-    expect(body(doc)).not.toContain('edited outside')
-    expect(body(host.doc)).toBe(body(doc))
-    // The host keeps the file the outside edit wrote as a version, once.
-    const flagged = host.sent.filter(
-      (sent) => (sent.meta as Record<string, unknown>).overOutsideEdit
-    )
-    expect(flagged).toHaveLength(1)
-
-    typeInBody('!')
-    await settle()
-    expect(host.sent.at(-1)?.meta).toEqual({ noteId: NOTE })
+    expect(host.calls).toEqual(['open', 'apply', 'typing-sent 7'])
+    expect(text(host.doc)).toBe('stored typed')
   })
 
-  it('keeps typing whose answer came back before the frame of an outside edit stored before it', async () => {
-    const { doc, typeInBody } = await withBody()
-    // The host took the outside edit; its frame, larger than the answer, travels slower.
-    const outside = outsideEditFrame('edited outside')
-    typeInBody(' typed')
-    await settle()
-    lastChannel().onmessage(outside)
+  it('lets typing go at the release of its barrier, and not at an earlier one', async () => {
+    const { doc } = await connected()
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
     await settle()
 
-    expect(body(doc)).toContain('first words typed')
-    expect(body(host.doc)).toBe(body(doc))
-    const flagged = host.sent.filter(
-      (sent) => (sent.meta as Record<string, unknown>).overOutsideEdit
-    )
-    expect(flagged).toHaveLength(1)
+    lastChannel().onmessage(barrierFrame(RELEASE, 6))
+    expect(typingHoldOf(doc).held).toBe(true)
+    lastChannel().onmessage(barrierFrame(RELEASE, 7))
+    expect(typingHoldOf(doc).held).toBe(false)
   })
 
-  it('takes its typing back when the host already took another window put back', async () => {
-    const { doc, typeInBody } = await withBody()
-    const release = holdEdits()
-    typeInBody(' typed')
-    lastChannel().onmessage(outsideEditFrame('edited outside'))
-    lastChannel().onmessage(outsideEditFrame('typed in the other window', 0))
-    host.refuseFlagged = 'outside_edit_restored'
-    release()
-    await settle(90)
-
-    expect(body(doc)).toBe(body(host.doc))
-    expect(body(doc)).toContain('typed in the other window')
-    expect(body(doc)).not.toContain('first words typed')
-  })
-
-  it('sends the typing put back over an outside edit with its flag after a rebind', async () => {
-    const { doc, typeInBody } = await withBody()
-    const release = holdEdits()
-    typeInBody(' typed')
-    lastChannel().onmessage(outsideEditFrame('edited outside'))
-    host.refuse = 'document_not_open'
-    host.refuseTimes = 1
-    release()
-    await settle(90)
-
-    const steps = host.sent.filter((sent) => sent.command === 'crdt_sync_step_2')
-    expect(steps.map((sent) => sent.meta)).toEqual([{ noteId: NOTE, overOutsideEdit: true }])
-    expect(body(host.doc)).toBe(body(doc))
-    expect(body(doc)).toContain('first words typed')
-    typeInBody('!')
+  it("lets typing go as the outside edit's frame applies, so the editor may answer it", async () => {
+    const { doc } = await connected()
+    const hold = typingHoldOf(doc)
+    let heldAsItApplied: boolean | null = null
+    doc.on('update', () => (heldAsItApplied ??= hold.held))
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
     await settle()
-    expect(host.sent.at(-1)?.meta).toEqual({ noteId: NOTE })
+
+    lastChannel().onmessage(otherWindowFrame(' from side', 0))
+    expect(hold.held).toBe(true)
+    heldAsItApplied = null
+    lastChannel().onmessage(otherWindowFrame(' from disk', 2))
+    expect(heldAsItApplied).toBe(false)
   })
 
-  it('asks again to keep the outside edit when the typing put back over it failed to store', async () => {
+  it('lets typing go by itself when no release comes', async () => {
     vi.useFakeTimers()
-    const { typeInBody } = await withBody()
-    const release = holdEdits()
-    typeInBody(' typed')
-    lastChannel().onmessage(outsideEditFrame('edited outside'))
-    host.refuse = 'storage_failed'
-    host.refuseTimes = 2
-    release()
-    await vi.advanceTimersByTimeAsync(10_000)
-
-    expect(body(host.doc)).toContain('first words typed')
-    const last = host.sent.at(-1)?.meta as Record<string, unknown>
-    expect(last.overOutsideEdit).toBe(true)
+    const { doc } = await connected()
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await vi.advanceTimersByTimeAsync(1999)
+    expect(typingHoldOf(doc).held).toBe(true)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(typingHoldOf(doc).held).toBe(false)
   })
 
-  it('takes a write of the app its own, a version restore, while typing is on its way', async () => {
-    const SYSTEM = 3
-    const { doc, typeInBody } = await withBody()
-    const release = holdEdits()
-    typeInBody(' typed')
-    lastChannel().onmessage(outsideEditFrame('a version restored', SYSTEM))
-    release()
-    await settle()
+  it('answers a barrier that arrives mid-composition once the composition ended', async () => {
+    vi.useFakeTimers()
+    const { doc } = await connected()
+    const hold = typingHoldOf(doc)
+    hold.compositionStarted()
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(hold.held).toBe(false)
+    expect(answered()).toEqual([])
 
-    expect(body(doc)).toContain('a version restored')
-    expect(body(host.doc)).toBe(body(doc))
-    expect(host.sent.map((sent) => sent.meta)).toEqual([{ noteId: NOTE }])
+    // ProseMirror commits the composition's last text 20 ms after it ended.
+    hold.compositionEnded()
+    await vi.advanceTimersByTimeAsync(20)
+    type(doc, ' composed')
+    await vi.advanceTimersByTimeAsync(100)
+    expect(hold.held).toBe(true)
+    expect(host.calls).toEqual(['open', 'apply', 'typing-sent 7'])
   })
 
-  it('takes an outside edit when no typing is on its way', async () => {
-    const { doc, typeInBody } = await withBody()
-    typeInBody(' typed')
-    await settle()
-    lastChannel().onmessage(outsideEditFrame('edited outside'))
-    await settle()
+  it("leaves a composition that outlasts the host's wait alone", async () => {
+    vi.useFakeTimers()
+    const { doc } = await connected()
+    const hold = typingHoldOf(doc)
+    hold.compositionStarted()
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await vi.advanceTimersByTimeAsync(1500)
+    hold.compositionEnded()
+    await vi.advanceTimersByTimeAsync(100)
 
-    expect(body(doc)).toBe(body(host.doc))
-    expect(body(doc)).toContain('edited outside')
-    expect(
-      host.sent.every((sent) => sent.meta !== null && !('overOutsideEdit' in (sent.meta as object)))
-    ).toBe(true)
+    expect(hold.held).toBe(false)
+    expect(answered()).toEqual([])
+  })
+
+  it('stops holding once the note closes', async () => {
+    const { doc, provider } = await connected()
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await settle()
+    expect(typingHoldOf(doc).held).toBe(true)
+
+    provider.destroy()
+    expect(typingHoldOf(doc).held).toBe(false)
   })
 })
 
@@ -584,6 +532,21 @@ describe('YjsIpcProvider failed edits', () => {
     await vi.advanceTimersByTimeAsync(10_000)
     expect(text(host.doc)).toBe('stored x')
     await expect(provider.flush()).resolves.toBeUndefined()
+  })
+
+  it('fails a later flush at once while edits keep failing, with no wait for the host', async () => {
+    vi.useFakeTimers()
+    const { doc, provider } = await connected()
+    host.refuse = 'storage_failed'
+    type(doc, ' x')
+    await vi.advanceTimersByTimeAsync(30_000)
+
+    const outcome = provider.flush().then(
+      () => 'flushed',
+      () => 'failed'
+    )
+    await settle()
+    expect(await Promise.race([outcome, Promise.resolve('waiting')])).toBe('failed')
   })
 
   it('gives up on a failing edit once the note is closed, and still closes it', async () => {

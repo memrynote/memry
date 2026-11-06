@@ -2,8 +2,7 @@
 //! `OpenStage::Watcher` of every open and stop, joined, when the vault closes. The rows' lane
 //! lives across sessions (the app holds it), and is open only while a vault is.
 
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::time::Duration;
 
 use memry_core::api::vault::Vault;
@@ -14,6 +13,7 @@ use super::apply::Applier;
 use super::identity::{DeferIdentity, IdentityCtx, NoteIdentity};
 use super::rows::{RowOwner, RowSession};
 use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
+use crate::editor::EditorHost;
 use crate::editor::versions::close_step;
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
@@ -23,7 +23,6 @@ use crate::vault::app_move::{finish_interrupted, follow_interrupted};
 use crate::vault::config::read_vault_config;
 use crate::vault::config::settings::JournalFollow;
 use crate::vault::journal_rename::{JournalVault, finish_journal_change};
-use crate::vault::note_file::read_note;
 #[cfg(test)]
 use crate::vault::watch::HoldFn;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher, WatchHandle};
@@ -50,6 +49,9 @@ pub struct VaultTier {
     /// consumer, which reports the watcher's read of those bytes as their writer's. Cleared as
     /// a vault opens: a day's id is the same in every vault.
     own_files: Arc<OwnFiles>,
+    /// The editor the windows type in, which holds their typing while an outside edit of a
+    /// note they have open is applied; unset in a test that serves no windows.
+    editor: Mutex<Weak<EditorHost>>,
     /// Where a test holds a stop or a start, each run once: [`VaultTier::hold_at`].
     #[cfg(test)]
     holds: Mutex<Vec<(Hold, HoldFn)>>,
@@ -77,7 +79,6 @@ pub(crate) enum Hold {
 struct Open {
     /// The vault this open belongs to: a close hook stops the open only if it is its vault's.
     vault: Arc<Vault>,
-    root: PathBuf,
     session: RowSession,
     /// The own-write record of this open; a record made in one vault never hides a change in
     /// the next.
@@ -105,6 +106,7 @@ impl VaultTier {
             open: Mutex::new(None),
             echo: Mutex::new(None),
             own_files: Arc::default(),
+            editor: Mutex::new(Weak::new()),
             #[cfg(test)]
             holds: Mutex::default(),
         })
@@ -174,37 +176,6 @@ impl VaultTier {
         }
     }
 
-    /// A window puts back typing over an outside edit the note's document took before that
-    /// typing reached it (`HostEvent::OutsideEditKept`): the note's file, which holds the outside
-    /// edit, is kept as a version, under the rows' lane so no write-back replaces it meanwhile.
-    /// The typing's write is scheduled once it is stored, and tells the pages when it replaces
-    /// that file (`Outcome::Wrote::replaced_outside`).
-    pub fn keep_outside_edit(&self, note_id: &str) {
-        let Some(open) = self.current() else {
-            return tracing::warn!(scope = "vault_writeback", note_id, "no vault is open");
-        };
-        let kept = (|| {
-            let lane = self.rows.lane_of(open.session).map_err(|e| e.to_string())?;
-            let row = lane.files().by_id(note_id).map_err(|e| e.to_string())?;
-            let row = row.ok_or("the note has no file")?;
-            let file = read_note(&open.root, &row.path).map_err(|e| e.to_string())?;
-            let file = file.ok_or("the note's file is gone")?;
-            let body = file.split().body;
-            open.vault
-                .write_back()
-                .keep_replaced(note_id, &file.raw, body)
-                .map_err(|e| e.to_string())?;
-            Ok::<(), String>(())
-        })();
-        if let Err(error) = kept {
-            tracing::error!(
-                scope = "vault_writeback",
-                note_id,
-                "the outside edit under typing put back was not kept: {error}"
-            );
-        }
-    }
-
     /// A create reserved `rel` for its note, found a file there that it did not write, and took
     /// the reservation back. The watcher may have looked at the file meanwhile: under the row it
     /// saw a change of the reserved note, which no row names now, and under the own-write record
@@ -263,6 +234,12 @@ impl VaultTier {
     /// notes identity, `crate::notes::identity`).
     pub fn set_identity(&self, identity: Arc<dyn NoteIdentity>) {
         *self.identity.lock().unwrap_or_else(|e| e.into_inner()) = identity;
+    }
+
+    /// The editor whose windows hold their typing while an outside edit of their note applies
+    /// (`crate::editor::typing`), from the next open on.
+    pub fn set_editor_host(&self, editor: &Arc<EditorHost>) {
+        *self.editor.lock().unwrap_or_else(|e| e.into_inner()) = Arc::downgrade(editor);
     }
 
     /// The identity set last, which the app's own file moves ask too.
@@ -416,6 +393,11 @@ impl VaultTier {
             settings: vault.vault.app_settings(self.store.clone()).ok(),
             activity: self.activity.clone(),
             own_files: self.own_files.clone(),
+            editor: self
+                .editor
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone(),
             watch: Some(watcher.handle()),
             untaken: Mutex::default(),
             writeback: Some(writeback.clone()),
@@ -428,7 +410,6 @@ impl VaultTier {
             .map_err(|error| error.to_string())?;
         Ok(Open {
             vault: vault.vault.clone(),
-            root: vault.path.clone(),
             session,
             echo,
             writeback,

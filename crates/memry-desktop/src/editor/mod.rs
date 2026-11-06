@@ -9,6 +9,7 @@
 
 mod compaction;
 mod host;
+mod typing;
 pub mod versions;
 
 use std::sync::Arc;
@@ -18,6 +19,7 @@ use memry_core::api::errors::AuthError;
 
 pub use compaction::compact_due;
 pub use host::{EditorHealth, EditorHost, HostEvent};
+pub use typing::{BARRIER, BARRIER_WAIT, RELEASE, TypingHold};
 
 use crate::error::{CoreError, FailureKind};
 
@@ -33,8 +35,9 @@ pub struct Subscriber {
 
 /// One channel message. An update is its origin byte ([`origin_byte`]), then the bytes as they
 /// were committed. The renderer applies every origin, 0 to 3, as `'remote'`, so its provider
-/// sends none of them back; the byte only says where the update came from. A purge is the byte [`PURGED`] alone: the window drops its copy and opens the
-/// document again.
+/// sends none of them back; the byte only says where the update came from. A purge is the byte
+/// [`PURGED`] alone: the window drops its copy and opens the document again. The typing
+/// barrier's frames ([`BARRIER`], [`RELEASE`]) are the only others.
 pub fn frame(notice: Notice<'_>) -> Vec<u8> {
     match notice {
         Notice::Update(update, origin) => {
@@ -83,11 +86,6 @@ pub enum EditorHostError {
     /// vaults). Electron drops these updates (`applyIpcUpdate`).
     #[error("{note_id} is not open in this window")]
     NotOpen { note_id: String },
-    /// The window put its typing back over an outside edit another window's restore or typing
-    /// already answered: taking it would copy or delete typing. Its text was kept as a version,
-    /// and the window takes its restore back.
-    #[error("the outside edit of {note_id} was already answered")]
-    OutsideEditRestored { note_id: String },
     /// The editor needs the device identity, which the secure store did not give (a locked
     /// keychain). The next call tries again.
     #[error(transparent)]
@@ -102,7 +100,6 @@ impl CoreError for EditorHostError {
             Self::NotServing => (FailureKind::Locked, "editor_not_serving"),
             Self::OtherVault => (FailureKind::Invalid, "editor_other_vault"),
             Self::NotOpen { .. } => (FailureKind::Invalid, "document_not_open"),
-            Self::OutsideEditRestored { .. } => (FailureKind::Crdt, "outside_edit_restored"),
             Self::Identity(error) => error.kind_and_code(),
             Self::Editor(EditorError::NotFound { .. }) => (FailureKind::NotFound, "note_not_found"),
             Self::Editor(EditorError::Unreadable { .. }) => {

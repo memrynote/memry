@@ -518,6 +518,7 @@ pub(super) fn applier(
         session: rows.session_for(vault).unwrap(),
         activity: crate::vault::activity::ActivityLog::new(),
         own_files: Arc::default(),
+        editor: std::sync::Weak::new(),
         watch: None,
         untaken: Mutex::default(),
         writeback: None,
