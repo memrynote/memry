@@ -127,7 +127,6 @@ mod schedule;
 mod tests;
 
 pub use deleted::Leftover;
-pub(crate) use pass::output_over;
 pub use pass::{Keep, Outcome, Pass};
 pub(crate) use reconcile::reconcile;
 pub use schedule::{COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, WriteBack, WriteBackFailed};

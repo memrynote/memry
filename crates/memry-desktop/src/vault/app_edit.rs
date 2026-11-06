@@ -91,6 +91,7 @@ use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::errors::CrdtError;
 use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome, same_text};
+use memry_core::domain::note_files::StampMark;
 use memry_core::domain::write_back::{BodyRead, LogMark};
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::{YamlValue, parse_markdown_note, split_frontmatter_block};
@@ -415,7 +416,10 @@ impl AppEdit {
             };
             // A body left as read keeps the row's stamp, so a document ahead of the file stays
             // ahead for the write-back.
-            let at = if body_moved { now_ms() } else { row.indexed_at };
+            let at = match body_moved {
+                true => (now_ms(), StampMark::Now),
+                false => (row.indexed_at, StampMark::Kept),
+            };
             lane.put_as_of(note_id, &row.path, stat, at)
                 .map_err(AppEditError::from)?;
         }

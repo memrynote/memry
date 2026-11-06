@@ -2,6 +2,7 @@
 //! with, and what that came to. Split from `apply`, whose invariants it keeps.
 
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::domain::note_files::StampMark;
 use memry_core::domain::write_back::LogMark;
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of_yaml};
 
@@ -10,9 +11,7 @@ use super::rows::{Lane, RowStat};
 use super::{Applied, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
-use crate::vault::hash::content_hash;
 use crate::vault::note_file::NoteFile;
-use crate::vault::writeback::output_over;
 
 const SCOPE: &str = "vault_consumer";
 
@@ -88,7 +87,7 @@ impl Applier {
             .map_err(|error| retry("met no body to compare", &error))?;
         if !ahead
             || self.own_files.writer(note_id, &file.hash).is_some()
-            || self.makes_file(note_id, path, previous, file)
+            || !self.text_moved(note_id)
         {
             return Ok(mark);
         }
@@ -105,7 +104,7 @@ impl Applier {
             content_hash: Some(file.hash.clone()),
             file_hash: Some(file.hash.clone()),
         };
-        lane.put_as_of(note_id, path, stat, stamp)
+        lane.put_as_of(note_id, path, stat, (stamp, StampMark::Kept))
             .map_err(|error| retry("kept its row", &error))?;
         if let Some(writeback) = &self.writeback {
             writeback.schedule(note_id);
@@ -122,12 +121,19 @@ impl Applier {
         Err(Step::Done)
     }
 
-    /// Whether the body, written over `file` as a pass writes it, makes the file the row named
-    /// (`previous`): a body that moved after the row's stamp without changing its text (a link
-    /// the editor made a chip of) holds no typing, and the outside edit is fed.
-    fn makes_file(&self, note_id: &str, path: &str, previous: &str, file: &NoteFile) -> bool {
-        let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
-        output_over(made, note_id, path, file).is_ok_and(|output| content_hash(&output) == previous)
+    /// Whether the body's text changed since the row's stamp: a body that moved without changing
+    /// it (a link the editor made a chip of, an edit undone) holds no typing, and the outside edit
+    /// is fed. A change of the file's frontmatter does not count; a body that cannot be compared
+    /// does.
+    fn text_moved(&self, note_id: &str) -> bool {
+        let converter = converter_for(self.settings.as_ref());
+        self.vault
+            .write_back()
+            .text_moved_since_stamp(&converter, note_id)
+            .unwrap_or_else(|error| {
+                tracing::warn!(scope = SCOPE, note_id, "the body was not compared: {error}");
+                true
+            })
     }
 
     /// Seeds or replaces the note's body with the file's text.

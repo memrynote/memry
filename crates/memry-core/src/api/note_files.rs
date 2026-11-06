@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::api::errors::StorageError;
 use crate::domain::inbox::queries::FiledVoice;
-use crate::domain::note_files::{self, NoteFile, NoteFileStat};
+use crate::domain::note_files::{self, NoteFile, NoteFileStat, StampMark};
 use crate::domain::note_list::{self, ListedNote, NoteListPage, NoteListQuery};
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
 use crate::domain::owed_file_body;
@@ -53,6 +53,13 @@ impl NoteFiles {
     pub fn upsert_stats(&self, stats: &[NoteFileStat]) -> Result<(), StorageError> {
         self.db
             .call_blocking(move |conn| note_files::upsert_stats(conn, stats))
+    }
+
+    /// [`note_files::upsert_stats_as`] of one row.
+    pub fn upsert_stat_as(&self, stat: NoteFileStat, mark: StampMark) -> Result<(), StorageError> {
+        self.db.call_blocking(move |conn| {
+            note_files::upsert_stats_as(conn, std::slice::from_ref(&stat), mark)
+        })
     }
 
     /// [`note_files::refresh_stat`].

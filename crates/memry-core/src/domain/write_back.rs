@@ -30,6 +30,10 @@ use crate::markdown::convert::note_body::NoteBody;
 use crate::markdown::convert::restore::SerializeOptions;
 use crate::sync::body_debt;
 
+mod stamp;
+
+pub use stamp::{text_moved_since_stamp, text_put_back};
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum BodyRead {
     /// What the file gets: the body and its `writing` frontmatter.
@@ -94,8 +98,8 @@ pub fn body_for_file(
 /// so two equal marks mean the document took no edit in between.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LogMark {
-    server: i64,
-    local: i64,
+    pub(crate) server: i64,
+    pub(crate) local: i64,
 }
 
 /// The note's [`LogMark`] now: taken before its body is compared, it makes a feed that finds

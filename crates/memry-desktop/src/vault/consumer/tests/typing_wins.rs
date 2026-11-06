@@ -151,3 +151,18 @@ fn a_body_that_moved_back_to_its_files_text_takes_an_outside_edit() {
     assert_eq!(f.body(&id), "edited outside");
     assert!(!kept_outside(&f.facts()));
 }
+
+/// The same, with the outside edit changing the file's frontmatter too: only the body's text
+/// counts, so the outside edit is fed.
+#[test]
+fn a_body_back_at_its_files_text_takes_an_outside_edit_of_the_frontmatter_too() {
+    let mut f = fixture();
+    let (id, _) = note(&f);
+    type_in_app(&f, &id, "typed in the app");
+    type_in_app(&f, &id, "first words");
+    f.facts();
+    f.write("n.md", "---\nstatus: done\n---\nedited outside\n");
+    assert_eq!(f.changed(&id, "n.md"), Step::Done);
+    assert_eq!(f.body(&id), "edited outside");
+    assert!(!kept_outside(&f.facts()));
+}
