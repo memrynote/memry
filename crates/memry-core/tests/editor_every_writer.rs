@@ -15,7 +15,7 @@ use memry_core::api::editor::{EditorError, Notice, Origin};
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::update_log;
-use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome};
 use memry_core::markdown::convert::api::Converter;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
@@ -149,6 +149,43 @@ fn an_outside_edit_fed_from_the_file_reaches_the_windows_as_external() {
     assert_eq!(origin, Origin::External);
     main.apply(&update);
     assert!(main.text().contains("edited in another app"));
+}
+
+/// The app's own edit of a note's file (a save, a version restore, a tag rename) is no outside
+/// edit: its windows hear a system write, so typing still on its way to the host does not win
+/// over it and no page says an outside change was replaced.
+#[test]
+fn an_app_edit_of_the_file_reaches_the_windows_as_a_system_write() {
+    let f = fixture();
+    let note = f.note();
+    assert_eq!(feed(&f, &note, "the file before", false), FeedOutcome::Fed);
+    let main = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
+    let heard = listen(&f, &note);
+
+    let read = AppRead {
+        file_body: "the file before",
+        compared_at: None,
+    };
+    let input = FeedInput {
+        note_id: &note,
+        markdown: "a version restored",
+        note_path: None,
+        writing: None,
+        frontmatter: None,
+        embeds: None,
+    };
+    let fed = f
+        .vault
+        .external_feed(f.store.clone())
+        .expect("a feed")
+        .feed_app_edit(&Converter::new(Default::default()), input, read)
+        .expect("the feed runs");
+    assert_eq!(fed, FeedOutcome::Fed);
+
+    let (update, origin) = one_update(&heard);
+    assert_eq!(origin, Origin::System);
+    main.apply(&update);
+    assert!(main.text().contains("a version restored"));
 }
 
 #[test]

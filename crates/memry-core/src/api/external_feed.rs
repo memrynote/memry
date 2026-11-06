@@ -82,20 +82,28 @@ impl ExternalFeed {
     }
 
     /// The app's own write of a note's body, after it read `read`. See
-    /// [`external_feed::feed_app_edit`].
+    /// [`external_feed::feed_app_edit`]. The editor host's windows hear it as a system write,
+    /// not an outside edit: a save, a version restore or a rename the app made is not one that
+    /// typing on its way to the host wins over.
     pub fn feed_app_edit(
         &self,
         converter: &Converter,
         input: FeedInput<'_>,
         read: AppRead<'_>,
     ) -> Result<FeedOutcome, CrdtError> {
-        self.run(
-            |conn, converter, input, device_id, now_ms| {
-                external_feed::feed_app_edit(conn, converter, input, read, device_id, now_ms)
-            },
-            converter,
-            input,
-        )
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                Ok(external_feed::feed_app_edit(
+                    conn,
+                    converter,
+                    input,
+                    read,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(CrdtError::from)?
     }
 
     /// Gives the note the file's text when its body is empty, and leaves a body
@@ -129,7 +137,7 @@ impl ExternalFeed {
         let device_id = self.device_id.clone();
         self.db
             .call_blocking(move |conn| {
-                // The editor host's windows hear the body as an outside edit.
+                // The editor host's windows hear the file's text as an outside edit.
                 Ok(body_writes::as_external(|| {
                     step(conn, converter, input, &device_id, now_ms())
                 }))

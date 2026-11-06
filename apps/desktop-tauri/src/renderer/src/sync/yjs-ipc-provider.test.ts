@@ -277,7 +277,7 @@ describe('YjsIpcProvider outside edits', () => {
   const body = (doc: Y.Doc): string => doc.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()
 
   /** The core replaced the body with a file edited outside the app, as the feed does. */
-  function outsideEditFrame(value: string): ArrayBuffer {
+  function outsideEditFrame(value: string, origin = EXTERNAL): ArrayBuffer {
     const before = Y.encodeStateVector(host.doc)
     const fragment = host.doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     host.doc.transact(() => {
@@ -286,7 +286,7 @@ describe('YjsIpcProvider outside edits', () => {
     })
     const update = Y.encodeStateAsUpdate(host.doc, before)
     const bytes = new Uint8Array(update.length + 1)
-    bytes[0] = EXTERNAL
+    bytes[0] = origin
     bytes.set(update, 1)
     return bytes.buffer
   }
@@ -338,6 +338,20 @@ describe('YjsIpcProvider outside edits', () => {
     expect(body(host.doc)).toContain('first words typed')
     const last = host.sent.at(-1)?.meta as Record<string, unknown>
     expect(last.overOutsideEdit).toBe(true)
+  })
+
+  it('takes a write of the app its own, a version restore, while typing is on its way', async () => {
+    const SYSTEM = 3
+    const { doc, typeInBody } = await withBody()
+    const release = holdEdits()
+    typeInBody(' typed')
+    lastChannel().onmessage(outsideEditFrame('a version restored', SYSTEM))
+    release()
+    await settle()
+
+    expect(body(doc)).toContain('a version restored')
+    expect(body(host.doc)).toBe(body(doc))
+    expect(host.sent.map((sent) => sent.meta)).toEqual([{ noteId: NOTE }])
   })
 
   it('takes an outside edit when no typing is on its way', async () => {
