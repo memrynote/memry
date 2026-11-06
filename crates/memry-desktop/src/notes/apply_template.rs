@@ -222,7 +222,7 @@ impl NotesService {
             )?;
             let tags_changed = planned.into_inner().is_some_and(|plan| plan.tags_changed);
             match edited {
-                Edited::Wrote { .. } | Edited::Unchanged => Ok(tags_changed),
+                Edited::Wrote { .. } | Edited::Unchanged { .. } => Ok(tags_changed),
                 Edited::Kept(kept) => {
                     tracing::info!(
                         scope = SCOPE,
@@ -240,6 +240,7 @@ impl NotesService {
             tags_changed,
             tag_template: None,
             kept_outside_edit: false,
+            saved_content: None,
         })
     }
 }

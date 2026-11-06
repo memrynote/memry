@@ -261,7 +261,7 @@ impl NotesService {
             let names = held.keys().cloned().collect();
             match done {
                 Edited::Wrote { .. } => Ok((names, after)),
-                Edited::Unchanged => Ok((names, held)),
+                Edited::Unchanged { .. } => Ok((names, held)),
                 Edited::Kept(kept) => {
                     tracing::info!(scope = SCOPE, note_id, ?kept, "a property edit was refused");
                     Err(NotesError::kept(note_id, kept))

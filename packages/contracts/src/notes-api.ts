@@ -605,6 +605,11 @@ export interface NoteUpdateResponse {
   tagTemplate?: NoteTagTemplateOutcome
   /** The save went over an outside edit the editor had no event for, kept as a version. */
   keptOutsideEdit?: boolean
+  /**
+   * The body the save left in the file, as the note's event reads it. `note` is read after the
+   * save and can hold a later edit (a tag's template, an outside edit).
+   */
+  savedContent?: string
 }
 
 export interface UndoTagTemplateResponse {

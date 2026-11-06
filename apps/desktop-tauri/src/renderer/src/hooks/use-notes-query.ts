@@ -93,6 +93,11 @@ export interface NoteListInput {
 export interface UseNoteOptions {
   /** Whether to enable the query (default: true) */
   enabled?: boolean
+  /**
+   * Read the note again on every mount and note switch, even from a fresh cache: an open
+   * editor needs the file as it is now, not as it was when the cache was filled.
+   */
+  readOnMount?: boolean
 }
 
 export interface UseNoteResult {
@@ -104,6 +109,8 @@ export interface UseNoteResult {
   isFetching: boolean
   /** Error if query failed */
   error: Error | null
+  /** A read of this note finished since the hook mounted or switched to it. */
+  isFetchedAfterMount: boolean
   /** Refetch the note */
   refetch: () => void
 }
@@ -172,14 +179,15 @@ const EMPTY_LINKS: NoteLinksResponse = { outgoing: [], incoming: [] }
  * Shows cached data immediately, refreshes in background if stale.
  */
 export function useNote(id: string | null, options: UseNoteOptions = {}): UseNoteResult {
-  const { enabled = true } = options
+  const { enabled = true, readOnMount = false } = options
   const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: notesKeys.note(id!),
     queryFn: () => notesService.get(id!),
     enabled: enabled && !!id,
-    staleTime: NOTE_STALE_TIME,
+    // `refetchOnMount: 'always'` would miss a note switch, which reads only a stale cache.
+    staleTime: readOnMount ? 0 : NOTE_STALE_TIME,
     gcTime: NOTE_GC_TIME
   })
 
@@ -246,6 +254,7 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
+    isFetchedAfterMount: query.isFetchedAfterMount,
     refetch: (...args) => void query.refetch(...args)
   }
 }

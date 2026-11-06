@@ -255,8 +255,8 @@ impl NotesService {
             )?;
             Ok(match edited {
                 Edited::Wrote { .. } => InNote::Written,
-                Edited::Unchanged if changed => InNote::Written,
-                Edited::Unchanged => InNote::Unchanged,
+                Edited::Unchanged { .. } if changed => InNote::Written,
+                Edited::Unchanged { .. } => InNote::Unchanged,
                 // No file holds the tags: the record is the note's only copy.
                 Edited::Kept(Kept::NoRow | Kept::NoFile | Kept::NotMarkdown) => record(hub)?,
                 Edited::Kept(kept) => {

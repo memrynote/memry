@@ -1470,6 +1470,8 @@ export type NoteUpdatedView = {
 	tagTemplate?: TagTemplateOutcome | null,
 	/**  The save went over an outside edit the editor never had an event for, kept as a version. */
 	keptOutsideEdit: boolean,
+	/**  The body the save left in the file; `note` is read after it and can hold a later edit. */
+	savedContent?: string | null,
 };
 
 /**  `Note`. */
