@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Zmiana nie została zapisana, ponieważ nie udało się tam przenieść niektórych dni dziennika ({count}). Być może jakiś plik ma już nową nazwę dnia.",
     "journalUnlisted": "Nie udało się odczytać folderu dziennika, więc zmiana nie została zapisana. Sprawdź, czy masz do niego dostęp.",
     "journalChangeWaits": "Wcześniejsza zmiana folderu dziennika lub formatu daty nie została dokończona. Otwórz sejf ponownie, aby ją dokończyć, a potem spróbuj jeszcze raz.",
+    "journalMovesWait": "Przenoszenie notatki lub folderu nie zostało dokończone. Otwórz sejf ponownie, aby je dokończyć, a potem jeszcze raz zmień ustawienie dziennika.",
     "journalChangeUnrecorded": "Nie udało się przygotować zmiany dziennika, więc żaden dzień nie został przeniesiony, a zapisane ustawienie pozostaje bez zmian. Spróbuj ponownie.",
     "settingsUnreadable": "Nie można przenosić folderów, dopóki nie da się odczytać pliku ustawień sejfu (.memry/config.json). Napraw ten plik i spróbuj ponownie.",
     "settingsUnreadableDelete": "Nie można usuwać folderów, dopóki nie da się odczytać pliku ustawień sejfu (.memry/config.json). Napraw ten plik i spróbuj ponownie.",

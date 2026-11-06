@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Endringen ble ikke lagret fordi noen dagbokdager ikke kunne flyttes dit ({count}). En fil har kanskje allerede en dags nye navn.",
     "journalUnlisted": "Dagbokmappen kunne ikke leses, så endringen ble ikke lagret. Kontroller at du har tilgang til den.",
     "journalChangeWaits": "En tidligere endring av journalmappen eller datoformatet ble ikke fullført. Åpne hvelvet på nytt for å fullføre den, og prøv deretter igjen.",
+    "journalMovesWait": "En flytting av et notat eller en mappe ble ikke fullført. Åpne hvelvet på nytt for å fullføre den, og endre deretter journalinnstillingen igjen.",
     "journalChangeUnrecorded": "Journalendringen kunne ikke forberedes, så ingen journaldag ble flyttet, og den lagrede innstillingen beholdes. Prøv igjen.",
     "settingsUnreadable": "Mapper kan ikke flyttes mens hvelvets innstillingsfil (.memry/config.json) ikke kan leses. Rett filen, og prøv igjen.",
     "settingsUnreadableDelete": "Mapper kan ikke slettes mens hvelvets innstillingsfil (.memry/config.json) ikke kan leses. Rett filen, og prøv igjen.",

@@ -28,11 +28,12 @@
 //! The change is recorded before the first day moves and forgotten once the setting is saved
 //! or every day went back (`journal_rename::finish_journal_change`): a crash between leaves the
 //! record, and the next open puts the days back. A change an open could not finish is finished
-//! first by the next update, which records no other change while it waits. Nor while a folder
-//! or note move a crash cut short waits for an open that can finish it (`vault::app_move`): the
-//! journal folder it carried may be on disk where the saved setting is not yet, so the days
-//! would not be listed, and the open after the save would settle their moves under the new
-//! setting, as crossings that delete them.
+//! first by the next update, which records no other change while it waits. Nor while a note
+//! move waits for an open that can finish it (`vault::app_move`), a folder move's notes
+//! included ([`SettingsError::MovesWait`]): a day's file may be on disk where the saved setting
+//! does not read it yet, so the day would not be listed, and the open after the save would
+//! settle its move under the new setting, as a crossing that deletes it. A folder move records
+//! a move for each note it carries, so one that carries no note waits on nothing here.
 //!
 //! The journal folder moved in the app with a folder that holds it takes the setting along
 //! ([`JournalFollow`], `notes::folder_move`), as Electron's `followJournalFolderMove` does.
@@ -104,10 +105,12 @@ pub enum SettingsError {
     #[error("{left} journal days could not be moved to the new journal setting")]
     DaysNotRenamed { left: usize },
     /// An earlier change's days still wait to go back (`journal_rename::finish_journal_change`),
-    /// another version of the app recorded a change this one cannot finish, or a folder or note
-    /// move a crash cut short waits (the module's doc).
+    /// or another version of the app recorded a change this one cannot finish.
     #[error("an earlier journal setting change did not finish")]
     ChangeWaits,
+    /// A note move waits for an open that can finish it (the module's doc).
+    #[error("a note move did not finish")]
+    MovesWait,
     /// The change could not be recorded before its first move, so nothing moved.
     #[error("the journal setting change could not be recorded: {0}")]
     Unrecorded(String),
@@ -285,11 +288,10 @@ fn moved_for<'a>(
         .notes_writer(at.tier.store())
         .map_err(|error| unrecorded(&error))?;
     let moves_wait = writer
-        .pending_folder_moves()
-        .and_then(|folders| Ok(!folders.is_empty() || !writer.pending_app_moves()?.is_empty()))
+        .pending_app_moves()
         .map_err(|error| unrecorded(&error))?;
-    if moves_wait {
-        return Err(SettingsError::ChangeWaits);
+    if !moves_wait.is_empty() {
+        return Err(SettingsError::MovesWait);
     }
     let setting = |folder: &str, format: &str| JournalSetting {
         folder: folder.to_owned(),

@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Zmena sa neuložila, pretože niektoré dni denníka sa tam nepodarilo presunúť ({count}). Nový názov dňa možno už má iný súbor.",
     "journalUnlisted": "Priečinok denníka sa nepodarilo prečítať, preto sa zmena neuložila. Overte, či k nemu máte prístup.",
     "journalChangeWaits": "Predchádzajúca zmena priečinka denníka alebo formátu dátumu sa nedokončila. Znova otvorte trezor, aby sa dokončila, a potom to skúste znova.",
+    "journalMovesWait": "Presun poznámky alebo priečinka sa nedokončil. Znova otvorte trezor, aby sa dokončil, a potom znova zmeňte nastavenie denníka.",
     "journalChangeUnrecorded": "Zmenu denníka sa nepodarilo pripraviť, takže sa žiadny deň denníka nepresunul a uložené nastavenie zostáva. Skúste to znova.",
     "settingsUnreadable": "Priečinky nemožno presúvať, kým sa nedá prečítať súbor nastavení trezoru (.memry/config.json). Opravte tento súbor a skúste to znova.",
     "settingsUnreadableDelete": "Priečinky nemožno odstraňovať, kým sa nedá prečítať súbor nastavení trezoru (.memry/config.json). Opravte tento súbor a skúste to znova.",
