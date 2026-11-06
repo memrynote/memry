@@ -62,6 +62,8 @@ mod e2e;
 mod embeds;
 #[path = "file_open.rs"]
 mod file_open;
+#[path = "fold_untrusted.rs"]
+mod fold_untrusted;
 #[path = "folder_file.rs"]
 mod folder_file;
 #[path = "folder_prune.rs"]
@@ -108,6 +110,8 @@ mod move_dir;
 mod move_journal;
 #[path = "note_fold_text_vectors.rs"]
 mod note_fold_text_vectors;
+#[path = "note_fold_vectors.rs"]
+mod note_fold_vectors;
 #[path = "note_link_mention.rs"]
 mod note_link_mention;
 #[path = "note_links.rs"]
@@ -190,6 +194,8 @@ mod seams_transport;
 mod settings_service;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
+#[path = "tag_field_rename.rs"]
+mod tag_field_rename;
 #[path = "tag_impact.rs"]
 mod tag_impact;
 #[path = "tag_objects.rs"]

@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Cette version ne peut pas encore modifier le dossier du journal, le format de la date ni les dossiers exclus. Votre réglage enregistré est conservé.",
     "journalFormatIncomplete": "Ce format de date ne peut pas nommer chaque jour, il n’a donc pas été enregistré. Indiquez l’année, le mois et le jour.",
     "journalDaysNotRenamed": "Le format de date n’a pas été modifié, car certains jours du journal n’ont pas pu être renommés selon ce format ({count}). Un fichier porte peut-être déjà le nouveau nom d’un jour.",
-    "journalUnlisted": "Le dossier du journal n’a pas pu être lu, le format de la date n’a donc pas été modifié. Vérifiez que vous y avez accès."
+    "journalUnlisted": "Le dossier du journal n’a pas pu être lu, le format de la date n’a donc pas été modifié. Vérifiez que vous y avez accès.",
+    "settingsUnreadable": "Impossible de déplacer des dossiers tant que le fichier de réglages du coffre (.memry/config.json) est illisible. Corrigez ce fichier, puis réessayez."
   },
   "note": {
     "notFound": "Cette note est introuvable. Elle a peut-être été supprimée.",
@@ -385,6 +386,7 @@
     "cycle": "#{parent} reprend déjà ses champs de ce tag",
     "unreadableSchema": "Une version plus récente de Memry a modifié ce tag. Mettez Memry à jour pour le modifier",
     "relationTargetRequired": "Choisissez le tag vers lequel pointe cette relation",
-    "renameRunning": "Un autre renommage de champ est encore en cours ({from} en {to}). Réessayez une fois terminé."
+    "renameRunning": "Un autre renommage de champ est encore en cours ({from} en {to}). Réessayez une fois terminé.",
+    "renameTaskUnreadable": "Le renommage du champ {from} en {to} ne peut pas continuer : cette version de Memry ne peut pas lire ces tâches : {tasks}. Mettez Memry à jour, puis réessayez."
   }
 }

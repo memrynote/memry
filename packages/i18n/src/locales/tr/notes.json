@@ -1890,7 +1890,8 @@
         "confirm": "Yeniden adlandır",
         "taken": "Bu etiket zaten {name} alanına sahip.",
         "done": "{from}, {count, plural, one {# öğede} other {# öğede}} {to} olarak yeniden adlandırıldı.",
-        "skipped": "{from}, {count} öğede {to} olarak yeniden adlandırıldı. {locked, plural, =0 {} other {Kilitli # not, kilidi açılınca tamamlanır.}} {existing, plural, =0 {} other {# notta zaten {to} vardı; ikisi de korunur.}}"
+        "skipped": "{from}, {count} öğede {to} olarak yeniden adlandırıldı. {locked, plural, =0 {} other {Kilitli # not, kilidi açılınca tamamlanır.}} {existing, plural, =0 {} other {# notta zaten {to} vardı; ikisi de korunur.}}",
+        "kept": "{from}, {count} öğede {to} olarak yeniden adlandırıldı. {kept, plural, =0 {} other {# not yeniden adlandırma sırasında değişti; kasa yeniden açılana kadar {from} adını korur.}} {existing, plural, =0 {} other {# notta zaten {to} vardı; ikisi de korunur.}}"
       },
       "delete": {
         "button": "Etiketi sil",

@@ -10,6 +10,7 @@
 //! [`crate::domain::tag_fields`] is the narrower read iOS draws a note's fields from.
 
 pub mod edit;
+pub mod rename;
 mod resolve;
 
 use std::collections::BTreeMap;

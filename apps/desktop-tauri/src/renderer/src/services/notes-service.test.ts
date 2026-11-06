@@ -631,6 +631,13 @@ describe('notes-service', () => {
     expect(result).toMatchObject({ success: true, keptOutsideEdit: true })
   })
 
+  it('hands on the body the save wrote, which the note read after it may not hold', async () => {
+    const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
+    commands.notesUpdate.mockResolvedValue({ note: view, savedContent: '' })
+    const result = await notesService.update({ id: 'note-1', content: '' })
+    expect(result).toMatchObject({ success: true, savedContent: '' })
+  })
+
   it("hands on a tag's template outcome and undoes it through its command", async () => {
     const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
     const tagTemplate = { kind: 'applied' as const, tag: 'meeting', undoToken: 'tok' }

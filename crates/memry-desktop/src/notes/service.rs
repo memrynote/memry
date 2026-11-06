@@ -45,6 +45,8 @@ pub struct NotesService {
     pub(crate) undos: Undos,
     /// Held while a tag rename runs (`notes::tag_rename`): one at a time.
     pub(crate) renaming: Mutex<()>,
+    /// Held while a field rename runs (`tags::schema::rename`): one at a time.
+    pub(crate) field_renaming: Mutex<()>,
     /// Test hook: runs once inside the next journal save, after the day's new file is written
     /// aside and before it lands ([`Self::before_next_day_file_lands`]).
     pub(crate) day_file_lands: Mutex<Option<Box<dyn FnOnce() + Send>>>,
@@ -64,6 +66,10 @@ pub struct NotesService {
     /// ([`Self::fail_next_rename_body_cache`]).
     #[cfg(feature = "test-hooks")]
     pub(crate) fail_rename_body_cache: AtomicBool,
+    /// Test hook: the field rename keeps this note every time, as for an edit its file has and
+    /// its document has not read yet ([`Self::keep_in_field_rename`]).
+    #[cfg(feature = "test-hooks")]
+    pub(crate) field_rename_keeps: Mutex<Option<String>>,
     /// Test hook: the next moved note's refs edit fails its feed (`AppEdit::fail_next_feed`).
     #[cfg(feature = "test-hooks")]
     pub(crate) fail_next_ref_feed: AtomicBool,
@@ -93,6 +99,7 @@ impl NotesService {
             own_files,
             undos: Undos::default(),
             renaming: Mutex::new(()),
+            field_renaming: Mutex::new(()),
             day_file_lands: Mutex::new(None),
             #[cfg(feature = "test-hooks")]
             rename_lands: Mutex::new(None),
@@ -102,6 +109,8 @@ impl NotesService {
             fail_rename_edit: AtomicBool::new(false),
             #[cfg(feature = "test-hooks")]
             fail_rename_body_cache: AtomicBool::new(false),
+            #[cfg(feature = "test-hooks")]
+            field_rename_keeps: Mutex::new(None),
             #[cfg(feature = "test-hooks")]
             fail_next_ref_feed: AtomicBool::new(false),
             #[cfg(feature = "test-hooks")]
@@ -162,6 +171,17 @@ impl NotesService {
     #[doc(hidden)]
     pub fn fail_next_rename_body_cache(&self) {
         self.fail_rename_body_cache.store(true, Ordering::Relaxed);
+    }
+
+    /// The field rename keeps `note_id` (`None`: none) on every try, as Electron's keeps a locked
+    /// note.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn keep_in_field_rename(&self, note_id: Option<&str>) {
+        *self
+            .field_rename_keeps
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = note_id.map(str::to_owned);
     }
 
     /// The edit a note's or a day's save runs through.

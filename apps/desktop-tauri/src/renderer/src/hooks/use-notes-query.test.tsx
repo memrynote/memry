@@ -209,6 +209,30 @@ describe('use-notes-query', () => {
     expect(queryClient.getQueryData(notesKeys.note('n1'))).toBeUndefined()
   })
 
+  // A page opened again from a fresh cache, or switched to a cached note, reads the file again:
+  // an outside edit made while no page had the note open sends it no event (#3967).
+  it('reads a cached note again on mount and on a switch to it, when asked to', async () => {
+    queryClient.setQueryData(notesKeys.note('n1'), note('n1', 'Cached'))
+    queryClient.setQueryData(notesKeys.note('n2'), note('n2', 'Cached'))
+    mocks.notesService.get.mockImplementation(async (id: string) => note(id, 'On disk'))
+    const { result, rerender } = renderHook(({ id, readOnMount }) => useNote(id, { readOnMount }), {
+      wrapper,
+      initialProps: { id: 'n1', readOnMount: true }
+    })
+    expect(result.current.note?.title).toBe('Cached')
+    await waitFor(() => expect(result.current.note?.title).toBe('On disk'))
+    expect(result.current.isFetchedAfterMount).toBe(true)
+
+    rerender({ id: 'n2', readOnMount: true })
+    expect(result.current.isFetchedAfterMount).toBe(false)
+    await waitFor(() => expect(result.current.note?.title).toBe('On disk'))
+
+    // Other readers keep the cache's freshness.
+    queryClient.setQueryData(notesKeys.note('n3'), note('n3', 'Cached'))
+    rerender({ id: 'n3', readOnMount: false })
+    expect(mocks.notesService.get).not.toHaveBeenCalledWith('n3')
+  })
+
   it('#3958: the open note takes its new path when it moves, and ignores other notes moving', async () => {
     const { result } = renderHook(() => useNote('n1'), { wrapper })
     await waitFor(() => expect(result.current.note?.path).toBe('notes/First.md'))

@@ -12,6 +12,8 @@
 //! | a move the disk refuses halfway rolls back and records nothing    | `move_dir`'s rollback                 |
 //! | a rename that changes only case respells the folder               | the folder's own spelling is free     |
 //! | a folder rename the app cannot make is refused                    | #2531, no replace, journal, hidden    |
+//! | a folder holding the journal is refused however the setting spells it | read as the days are             |
+//! | no folder moves while the settings cannot be read                 | the journal unknown                   |
 //! | a note with an unsettled move holds its folder back               | one move per note                     |
 //! | the path links to the folder's notes follow it                    | `rewriteInboundWikiLinks`             |
 //! | a folder move a crash cut short finishes on the next open         | the folder's record, one transaction  |
@@ -45,7 +47,7 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::notes::service::{NotesService, Trash};
 use memry_desktop::vault::activity::ActivityFilter;
-use memry_desktop::vault::config::{VaultConfigPatch, write_vault_config};
+use memry_desktop::vault::config::{VaultConfigPatch, config_path, write_vault_config};
 use memry_desktop::vault::consumer::{Applied, ChangeSource, MoveKind};
 use memry_desktop::vault::layout::DEFAULT_EXCLUDE_PATTERNS;
 use memry_desktop::vault::move_dir::{Step, simulated_hold};
@@ -499,6 +501,48 @@ fn a_folder_rename_the_app_cannot_make_is_refused() {
         refused("journal", "Diary"),
         NotesError::FolderHoldsJournal
     ));
+    assert!(e.vault.join("Work/Plan.md").exists());
+}
+
+/// The journal setting is read as the days are, so a folder holding the journal is refused
+/// however the setting spells it.
+#[test]
+fn a_folder_holding_the_journal_is_refused_however_the_setting_spells_it() {
+    let Work { e, notes, .. } = work();
+    let open = e.session.current().unwrap();
+    fs::create_dir_all(e.vault.join("Personal/journal")).unwrap();
+    for stored in [
+        "Personal/journal",
+        "/Personal/journal/",
+        "Personal\\journal",
+    ] {
+        let config = serde_json::json!({ "journalFolder": stored }).to_string();
+        fs::write(config_path(&e.vault), config).unwrap();
+        let refused = notes.rename_folder(&open, "Personal", "Private");
+        assert!(
+            matches!(refused, Err(NotesError::FolderHoldsJournal)),
+            "{stored}: {refused:?}"
+        );
+        assert!(e.vault.join("Personal/journal").exists(), "{stored}");
+    }
+}
+
+/// Settings that cannot be read do not say where the journal is (here `Diary`, which their
+/// defaults would not name), so no folder moves.
+#[test]
+fn no_folder_moves_while_the_settings_cannot_be_read() {
+    let Work { e, notes, .. } = work();
+    let open = e.session.current().unwrap();
+    fs::create_dir_all(e.vault.join("Diary")).unwrap();
+    fs::write(config_path(&e.vault), r#"{"journalFolder":"Diary""#).unwrap();
+    for (from, to) in [("Diary", "Old"), ("Work", "Projects")] {
+        let refused = notes.rename_folder(&open, from, to);
+        assert!(
+            matches!(refused, Err(NotesError::SettingsUnreadable(_))),
+            "{from}: {refused:?}"
+        );
+        assert!(e.vault.join(from).exists(), "{from}");
+    }
     assert!(e.vault.join("Work/Plan.md").exists());
 }
 

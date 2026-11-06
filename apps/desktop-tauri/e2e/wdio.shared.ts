@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import E2eJunitReporter from './harness/junit-reporter'
 import { removeDir } from './harness/remove-dir'
 import { binaryPath, driverReady, freePort, spawnApp, stopChild } from './harness/app-process'
+import { parkPointer } from './harness/park-pointer'
 import { EXPECT_TIMEOUT_MS, IS_CI, TEST_TIMEOUT_MS } from './harness/budgets'
 import { purgeAllCreatedDevices, startRun } from './harness/registry'
 import { verifyE2eBinary } from './harness/verify-binary'
@@ -92,6 +93,7 @@ export const sharedConfig = {
       )
     }
     await verifyE2eBinary(binary)
+    parkPointer()
   },
   async onWorkerStart(cid: string, caps: unknown): Promise<void> {
     await startWorkerApps(cid, caps)

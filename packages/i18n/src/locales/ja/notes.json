@@ -1890,7 +1890,8 @@
         "confirm": "名前を変更",
         "taken": "このタグにはすでに {name} があります。",
         "done": "{count, plural, other {# 件}}の項目で {from} を {to} に名前変更しました。",
-        "skipped": "{count, plural, other {# 件}}の項目で {from} を {to} に名前変更しました。{locked, plural, =0 {} other {ロックされた # 件のノートは、ロック解除時に完了します。}}{existing, plural, =0 {} other {# 件のノートはすでに {to} があったため、両方を保持します。}}"
+        "skipped": "{count, plural, other {# 件}}の項目で {from} を {to} に名前変更しました。{locked, plural, =0 {} other {ロックされた # 件のノートは、ロック解除時に完了します。}}{existing, plural, =0 {} other {# 件のノートはすでに {to} があったため、両方を保持します。}}",
+        "kept": "{count, plural, other {# 件}}の項目で {from} を {to} に名前変更しました。{kept, plural, =0 {} other {名前変更中に # 件のノートが変更されたため、保管庫を次に開くまで {from} のままです。}}{existing, plural, =0 {} other {# 件のノートはすでに {to} があったため、両方を保持します。}}"
       },
       "delete": {
         "button": "タグを削除",

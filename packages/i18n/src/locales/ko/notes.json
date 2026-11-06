@@ -1890,7 +1890,8 @@
         "confirm": "이름 바꾸기",
         "taken": "이 태그에는 이미 {name}이(가) 있습니다.",
         "done": "{count, plural, other {항목 #개}}에서 {from}을(를) {to}(으)로 바꿨습니다.",
-        "skipped": "{count, plural, other {항목 #개}}에서 {from}을(를) {to}(으)로 바꿨습니다. {locked, plural, =0 {} other {잠긴 노트 #개는 잠금을 해제하면 마무리됩니다.}} {existing, plural, =0 {} other {노트 #개에는 이미 {to}이(가) 있어 둘 다 유지합니다.}}"
+        "skipped": "{count, plural, other {항목 #개}}에서 {from}을(를) {to}(으)로 바꿨습니다. {locked, plural, =0 {} other {잠긴 노트 #개는 잠금을 해제하면 마무리됩니다.}} {existing, plural, =0 {} other {노트 #개에는 이미 {to}이(가) 있어 둘 다 유지합니다.}}",
+        "kept": "{count, plural, other {항목 #개}}에서 {from}을(를) {to}(으)로 바꿨습니다. {kept, plural, =0 {} other {이름을 바꾸는 동안 노트 #개가 변경되어 보관함을 다시 열 때까지 {from}을(를) 유지합니다.}} {existing, plural, =0 {} other {노트 #개에는 이미 {to}이(가) 있어 둘 다 유지합니다.}}"
       },
       "delete": {
         "button": "태그 삭제",

@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Esta versión aún no puede cambiar la carpeta del diario, el formato de fecha ni las carpetas excluidas. Se mantiene tu ajuste guardado.",
     "journalFormatIncomplete": "Este formato de fecha no puede nombrar todos los días, así que no se guardó. Incluye el año, el mes y el día.",
     "journalDaysNotRenamed": "El formato de fecha no cambió porque algunos días del diario no se pudieron renombrar a él ({count}). Puede que un archivo ya tenga el nuevo nombre de un día.",
-    "journalUnlisted": "No se pudo leer la carpeta del diario, así que el formato de fecha no cambió. Comprueba que tienes acceso a ella."
+    "journalUnlisted": "No se pudo leer la carpeta del diario, así que el formato de fecha no cambió. Comprueba que tienes acceso a ella.",
+    "settingsUnreadable": "No se pueden mover carpetas mientras no se pueda leer el archivo de ajustes de la bóveda (.memry/config.json). Corrige ese archivo y vuelve a intentarlo."
   },
   "note": {
     "notFound": "No se pudo encontrar esta nota. Es posible que se haya eliminado.",
@@ -385,6 +386,7 @@
     "cycle": "#{parent} ya toma sus campos de esta etiqueta",
     "unreadableSchema": "Una versión más reciente de Memry cambió esta etiqueta. Actualiza Memry para editarla",
     "relationTargetRequired": "Elige a qué etiqueta apunta esta relación",
-    "renameRunning": "Otro cambio de nombre de campo aún está terminando ({from} a {to}). Inténtalo de nuevo cuando acabe."
+    "renameRunning": "Otro cambio de nombre de campo aún está terminando ({from} a {to}). Inténtalo de nuevo cuando acabe.",
+    "renameTaskUnreadable": "El cambio de nombre del campo {from} a {to} no puede seguir: esta versión de Memry no puede leer estas tareas: {tasks}. Actualiza Memry e inténtalo de nuevo."
   }
 }

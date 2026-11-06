@@ -1890,7 +1890,8 @@
         "confirm": "Renombrar",
         "taken": "Esta etiqueta ya tiene {name}.",
         "done": "Se renombró {from} a {to} en {count, plural, one {# elemento} other {# elementos}}.",
-        "skipped": "Se renombró {from} a {to} en {count, plural, one {# elemento} other {# elementos}}. {locked, plural, =0 {} one {# nota bloqueada termina cuando se desbloquea.} other {# notas bloqueadas terminan cuando se desbloquean.}} {existing, plural, =0 {} one {# nota ya tenía {to} y conserva ambos.} other {# notas ya tenían {to} y conservan ambos.}}"
+        "skipped": "Se renombró {from} a {to} en {count, plural, one {# elemento} other {# elementos}}. {locked, plural, =0 {} one {# nota bloqueada termina cuando se desbloquea.} other {# notas bloqueadas terminan cuando se desbloquean.}} {existing, plural, =0 {} one {# nota ya tenía {to} y conserva ambos.} other {# notas ya tenían {to} y conservan ambos.}}",
+        "kept": "Se renombró {from} a {to} en {count, plural, one {# elemento} other {# elementos}}. {kept, plural, =0 {} one {# nota cambió durante el cambio de nombre y conserva {from} hasta que se vuelva a abrir la bóveda.} other {# notas cambiaron durante el cambio de nombre y conservan {from} hasta que se vuelva a abrir la bóveda.}} {existing, plural, =0 {} one {# nota ya tenía {to} y conserva ambos.} other {# notas ya tenían {to} y conservan ambos.}}"
       },
       "delete": {
         "button": "Eliminar etiqueta",

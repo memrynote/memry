@@ -1890,7 +1890,8 @@
         "confirm": "Preimenuj",
         "taken": "Ova oznaka već ima {name}.",
         "done": "Preimenovano {from} u {to} u: {count, plural, one {# stavci} few {# stavke} other {# stavki}}.",
-        "skipped": "Preimenovano {from} u {to} u: {count, plural, one {# stavci} few {# stavke} other {# stavki}}. {locked, plural, =0 {} one {# zaključana bilješka dovršava se nakon otključavanja.} few {# zaključane bilješke dovršavaju se nakon otključavanja.} other {# zaključanih bilješki dovršava se nakon otključavanja.}} {existing, plural, =0 {} one {# bilješka već je imala {to} i zadržava oba.} few {# bilješke već su imale {to} i zadržavaju oba.} other {# bilješki već je imalo {to} i zadržava oba.}}"
+        "skipped": "Preimenovano {from} u {to} u: {count, plural, one {# stavci} few {# stavke} other {# stavki}}. {locked, plural, =0 {} one {# zaključana bilješka dovršava se nakon otključavanja.} few {# zaključane bilješke dovršavaju se nakon otključavanja.} other {# zaključanih bilješki dovršava se nakon otključavanja.}} {existing, plural, =0 {} one {# bilješka već je imala {to} i zadržava oba.} few {# bilješke već su imale {to} i zadržavaju oba.} other {# bilješki već je imalo {to} i zadržava oba.}}",
+        "kept": "Preimenovano {from} u {to} u: {count, plural, one {# stavci} few {# stavke} other {# stavki}}. {kept, plural, =0 {} one {# bilješka promijenila se tijekom preimenovanja i zadržava {from} dok se trezor ponovno ne otvori.} few {# bilješke promijenile su se tijekom preimenovanja i zadržavaju {from} dok se trezor ponovno ne otvori.} other {# bilješki promijenilo se tijekom preimenovanja i zadržava {from} dok se trezor ponovno ne otvori.}} {existing, plural, =0 {} one {# bilješka već je imala {to} i zadržava oba.} few {# bilješke već su imale {to} i zadržavaju oba.} other {# bilješki već je imalo {to} i zadržava oba.}}"
       },
       "delete": {
         "button": "Izbriši oznaku",

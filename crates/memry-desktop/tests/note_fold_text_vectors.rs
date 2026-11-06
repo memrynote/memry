@@ -18,14 +18,14 @@ use serde_json::{Value, json};
 
 /// Where UAX #29 and ICU's dictionary part ways on a count.
 #[derive(Debug, PartialEq)]
-enum Dictionary {
+pub(crate) enum Dictionary {
     /// One word per character here: never fewer than ICU's.
     PerCharacter,
     /// One word per run here: never more than ICU's.
     PerRun,
 }
 
-fn dictionary(input: &str) -> Option<Dictionary> {
+pub(crate) fn dictionary(input: &str) -> Option<Dictionary> {
     let per_character = |c: char| {
         matches!(u32::from(c),
             0x3040..=0x309f // Hiragana
