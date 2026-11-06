@@ -43,7 +43,11 @@ const commands = vi.hoisted(() => ({
   notesSetFolderConfig: vi.fn(),
   notesGetFolderTemplate: vi.fn(),
   notesUploadAttachmentBegin: vi.fn(),
-  notesUploadAttachmentAbort: vi.fn()
+  notesUploadAttachmentAbort: vi.fn(),
+  notesGetVersions: vi.fn(),
+  notesGetVersion: vi.fn(),
+  notesRestoreVersion: vi.fn(),
+  notesDeleteVersion: vi.fn()
 }))
 
 // Each Rust event's last listener, for a test to send a payload through.
@@ -708,6 +712,59 @@ describe('notes-service', () => {
     expect(commands.notesApplyTemplate).not.toHaveBeenCalled()
   })
 
+  it("reads, restores and deletes versions through their commands, a failure in Electron's shape", async () => {
+    const version = {
+      id: 'v-1',
+      noteId: 'note-1',
+      title: 'Plan',
+      wordCount: 3,
+      reason: 'close',
+      createdAt: '2026-11-06T10:00:00.000Z'
+    }
+    commands.notesGetVersions.mockResolvedValue([version])
+    commands.notesGetVersion.mockResolvedValueOnce({ ...version, fileContent: 'text\n' })
+    await expect(notesService.getVersions('note-1')).resolves.toEqual([version])
+    await expect(notesService.getVersion('v-1')).resolves.toEqual({
+      ...version,
+      fileContent: 'text\n'
+    })
+    commands.notesGetVersion.mockResolvedValueOnce(null)
+    await expect(notesService.getVersion('gone')).resolves.toBeNull()
+
+    const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
+    commands.notesRestoreVersion.mockResolvedValueOnce(view).mockResolvedValueOnce(null)
+    await expect(notesService.restoreVersion('v-1')).resolves.toEqual({
+      success: true,
+      note: { ...view, created: new Date(CREATED), modified: new Date(MODIFIED) }
+    })
+    expect(commands.notesRestoreVersion).toHaveBeenCalledWith('v-1')
+    // A journal day is no note.
+    await expect(notesService.restoreVersion('v-2')).resolves.toEqual({ success: true, note: null })
+    commands.notesRestoreVersion.mockRejectedValue({
+      kind: 'Locked',
+      code: 'note_locked',
+      message: 'The owner made this note read-only.'
+    })
+    await expect(notesService.restoreVersion('v-1')).resolves.toEqual({
+      success: false,
+      error: 'The owner made this note read-only.',
+      note: null
+    })
+
+    commands.notesDeleteVersion.mockResolvedValueOnce(null)
+    await expect(notesService.deleteVersion('v-1')).resolves.toEqual({ success: true })
+    expect(commands.notesDeleteVersion).toHaveBeenCalledWith('v-1')
+    commands.notesDeleteVersion.mockRejectedValue({
+      kind: 'Storage',
+      code: 'failed',
+      message: 'disk'
+    })
+    await expect(notesService.deleteVersion('v-1')).resolves.toEqual({
+      success: false,
+      error: 'disk'
+    })
+  })
+
   it("renames through its command, a failure in Electron's shape", async () => {
     const view = {
       id: 'note-1',
@@ -974,19 +1031,11 @@ describe('notes-service', () => {
     })
   })
 
-  it('forwards export and version helpers', async () => {
+  it('forwards the export helpers', async () => {
     api.notes.exportPdf = vi.fn().mockResolvedValue({ success: true })
-    api.notes.getVersions = vi.fn().mockResolvedValue([])
-    api.notes.restoreVersion = vi.fn().mockResolvedValue({ success: true })
 
     await notesService.exportPdf({ noteId: 'note-1', includeMetadata: true })
     expect(api.notes.exportPdf).toHaveBeenCalledWith({ noteId: 'note-1', includeMetadata: true })
-
-    await notesService.getVersions('note-1')
-    expect(api.notes.getVersions).toHaveBeenCalledWith('note-1')
-
-    await notesService.restoreVersion('snapshot-1')
-    expect(api.notes.restoreVersion).toHaveBeenCalledWith('snapshot-1')
   })
 
   it('hands the note and tag-list events from Rust on in the renderer shape', async () => {

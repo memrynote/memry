@@ -449,3 +449,41 @@ fn a_local_note_delete_carries_its_body_vector() {
     })
     .expect("check");
 }
+
+/// A compaction folds the edit's row into the local snapshot: its time still
+/// tells (Step 14i).
+#[tokio::test]
+async fn an_edit_made_after_the_delete_and_then_compacted_is_kept() {
+    let db = scratch_db("compacted");
+    db.call_blocking(|conn| {
+        for n in 0..20 {
+            type_on_the_day(
+                conn,
+                &format!("Paragraph {n} written after the delete"),
+                DELETED_AT + 5_000 + n,
+            );
+        }
+        conn.execute("DELETE FROM outbox", []).expect("ack");
+        assert!(
+            memry_core::crdt::compact::fold_compacted(conn, DAY)
+                .expect("the fold")
+                .is_some()
+        );
+        assert!(
+            update_log::updates_after(conn, update_log::Namespace::Local, DAY, 0)
+                .expect("rows")
+                .is_empty()
+        );
+        Ok(())
+    })
+    .expect("seed");
+
+    deliver_the_delete(&db, json!({"device-desktop": 5, DEVICE: 1})).await;
+
+    db.call_blocking(|conn| {
+        assert_eq!(inbox(conn).0.len(), 1);
+        assert!(day_is_deleted(conn));
+        Ok(())
+    })
+    .expect("check");
+}

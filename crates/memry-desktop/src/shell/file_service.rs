@@ -268,7 +268,7 @@ fn list_attachment_folder(root: &Path, note: &str) -> Vec<String> {
 }
 
 /// A renamed attachment found again in its note's folder: the relative path of the one match.
-fn heal(root: &Path, rel: &str) -> Option<String> {
+pub(crate) fn heal(root: &Path, rel: &str) -> Option<String> {
     let (note, file) = attachment_parts(rel)?;
     let names = list_attachment_folder(root, note);
     find_heal_candidate(names.iter().map(String::as_str), file)

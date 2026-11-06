@@ -18,7 +18,8 @@
 //! Three differences from Electron: the stored name keeps at most [`MAX_STORED_NAME_BYTES`]
 //! bytes (a long CJK name failed the write there) and no control, bidi or zero-width character,
 //! the note id is checked, and the errors are the localized ones of
-//! `errors:attachment.*`. Lock refusals are Step 14e-3's, the sync of the new file Step 18's.
+//! `errors:attachment.*`. A locked note refuses every write through [`writable_note`]; the sync
+//! of the new file is Step 18's.
 
 use std::fs;
 use std::io;
@@ -35,8 +36,14 @@ use crate::vault::fs_atomic::{BeforeCommit, RETRY_DELAYS_MS, WriteError, atomic_
 use crate::vault::layout::ATTACHMENTS_DIR;
 use crate::vault::paths::{is_js_space, sanitize_filename};
 
+mod rename;
+mod resolve;
 mod upload;
 
+#[cfg(feature = "test-hooks")]
+pub use rename::rename_checked;
+pub use rename::{RenamedAttachment, rename};
+pub use resolve::{ResolvedAttachment, resolve};
 pub use upload::{CHUNK_BYTES, Ended, MAX_UPLOADS, Uploads};
 
 const SCOPE: &str = "attachments";
@@ -88,6 +95,29 @@ pub enum AttachmentError {
     BadChunk,
     #[error("too many uploads at once")]
     TooManyUploads,
+    /// The note is locked, by its own lock or a locked folder above its file. Electron's
+    /// `VAULT_LOCKED_NOTE_MESSAGE`.
+    #[error("The owner made this note read-only.")]
+    Locked,
+    /// The vault has no row for the note the action names.
+    #[error("Note not found: {0}")]
+    NoteNotFound(String),
+    /// An `http:`, `data:` or absolute path: not a file of the vault.
+    #[error("Attachment url is not a vault-relative path")]
+    NotVaultRelative,
+    /// The url climbs out of the vault, or resolves out of it through a link.
+    #[error("Attachment path is outside the vault")]
+    OutsideVault,
+    #[error("Attachment file not found on disk")]
+    FileNotFound,
+    /// Only a file of the note's own `attachments/<noteId>/` folder is renamed.
+    #[error("Attachment is not stored in this note\u{2019}s attachments folder")]
+    NotOwned,
+    /// A rename to an empty name, or to one over [`rename::MAX_NAME_CHARS`].
+    #[error("New attachment name is empty or too long")]
+    BadName,
+    #[error("Could not find a free attachment filename")]
+    NoFreeName,
 }
 
 /// `image` or `file`; a video stays `file`, which older clients read as a file block (#2190).
@@ -237,16 +267,38 @@ fn random_prefix() -> String {
         .collect()
 }
 
-/// `generateUniqueFilename` with a given prefix: `<prefix>-<name><.ext>`. The name is
-/// `sanitizeFilename`'s, with white space, parentheses and braces turned into `-` (they end a
-/// markdown link or a file block marker), bidi and zero-width characters, control characters too (Windows refuses them, and NUL
-/// ends a path everywhere; Electron kept them and failed the write), runs of `-` collapsed, one `-` trimmed from each end,
-/// `file` when nothing is left. The extension keeps its case. The name is cut at a character
-/// boundary so the whole stays within [`MAX_STORED_NAME_BYTES`].
+/// `generateUniqueFilename` with a given prefix: `<prefix>-<name><.ext>`, the name
+/// [`stored_stem`]'s. The extension keeps its case.
 pub fn stored_name(prefix: &str, file_name: &str) -> String {
     let base = base_name(file_name);
     let ext = extension(base);
     let stem = &base[..base.len() - ext.len() - usize::from(!ext.is_empty())];
+    fit_name(&format!("{prefix}-"), stem, ext)
+}
+
+/// `<lead><stem><.ext>` with the stem [`stored_stem`]'s, cut at a character boundary so the
+/// whole stays within [`MAX_STORED_NAME_BYTES`].
+fn fit_name(lead: &str, stem: &str, ext: &str) -> String {
+    let name = stored_stem(stem);
+    let dot_ext = if ext.is_empty() {
+        String::new()
+    } else {
+        format!(".{ext}")
+    };
+    let budget = MAX_STORED_NAME_BYTES.saturating_sub(lead.len() + dot_ext.len());
+    let mut end = name.len().min(budget);
+    while !name.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{lead}{}{dot_ext}", &name[..end])
+}
+
+/// The middle of a stored name: `sanitizeFilename`'s, with white space, parentheses and braces
+/// turned into `-` (they end a markdown link or a file block marker), bidi and zero-width
+/// characters, control characters too (Windows refuses them, and NUL ends a path everywhere;
+/// Electron kept them and failed the write), runs of `-` collapsed, one `-` trimmed from each
+/// end, `file` when nothing is left.
+fn stored_stem(stem: &str) -> String {
     let mut dashed = String::new();
     for c in sanitize_filename(stem).chars() {
         let c = if is_js_space(c) || c.is_control() || is_invisible_format(c) || "(){}".contains(c)
@@ -260,21 +312,8 @@ pub fn stored_name(prefix: &str, file_name: &str) -> String {
         }
     }
     let trimmed = dashed.strip_prefix('-').unwrap_or(&dashed);
-    let mut name = trimmed.strip_suffix('-').unwrap_or(trimmed);
-    if name.is_empty() {
-        name = "file";
-    }
-    let dot_ext = if ext.is_empty() {
-        String::new()
-    } else {
-        format!(".{ext}")
-    };
-    let budget = MAX_STORED_NAME_BYTES.saturating_sub(prefix.len() + 1 + dot_ext.len());
-    let mut end = name.len().min(budget);
-    while !name.is_char_boundary(end) {
-        end -= 1;
-    }
-    format!("{prefix}-{}{dot_ext}", &name[..end])
+    let name = trimmed.strip_suffix('-').unwrap_or(trimmed);
+    if name.is_empty() { "file" } else { name }.to_owned()
 }
 
 /// `path.posix.relative(dirname(note_path), target)`: how a note at `note_path` names `target`,
@@ -434,6 +473,24 @@ fn store(
     })
 }
 
+/// The note's path in the open vault once a lock is ruled out: Electron's
+/// `isNoteLocked(noteId, notePath)` at the top of `saveAttachment` (`attachments.ts:427`), and
+/// `assertNoteWritable` in `deleteAttachment` and `renameAttachment`. `attachments/<noteId>/`
+/// sits outside the note's folder, so a folder lock reaches it only through the note's path.
+/// `None` when the vault has no row for the note. Every write to a note's attachments asks here
+/// first.
+pub fn writable_note(open: &OpenVault, note_id: &str) -> Result<Option<String>, AttachmentError> {
+    let path = open.vault.note_files().by_id(note_id)?.map(|row| row.path);
+    if open
+        .vault
+        .locks()
+        .is_note_locked(note_id, path.as_deref())?
+    {
+        return Err(AttachmentError::Locked);
+    }
+    Ok(path)
+}
+
 /// `notes:upload-attachment`: [`save`] for a note of the open vault, referenced from its file.
 /// A note the vault has no row for gets the absolute URL, as in Electron.
 pub fn upload(
@@ -442,12 +499,6 @@ pub fn upload(
     file_name: &str,
     bytes: &[u8],
 ) -> Result<SavedAttachment, AttachmentError> {
-    let row = open.vault.note_files().by_id(note_id)?;
-    save(
-        &open.path,
-        note_id,
-        row.as_ref().map(|row| row.path.as_str()),
-        file_name,
-        bytes,
-    )
+    let note_path = writable_note(open, note_id)?;
+    save(&open.path, note_id, note_path.as_deref(), file_name, bytes)
 }

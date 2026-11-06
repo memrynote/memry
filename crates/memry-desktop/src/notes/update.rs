@@ -449,7 +449,7 @@ fn next_text(
 }
 
 /// A body's `#tags`, by tag fold.
-pub(super) fn tag_keys(body: &str) -> HashSet<String> {
+pub(crate) fn tag_keys(body: &str) -> HashSet<String> {
     body_tags::extract_markdown(body)
         .iter()
         .map(|tag| fold(tag))

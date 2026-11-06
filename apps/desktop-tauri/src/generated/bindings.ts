@@ -83,6 +83,11 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**
+	 *  Renames the file a block's `url` names in the note's attachments folder to `new_name`, keeping
+	 *  its prefix and extension, and answers the block's new `url` and `name`.
+	 */
+	notesAttachmentRename: (noteId: string, url: string, newName: string) => __TAURI_INVOKE<RenamedAttachment>("notes_attachment_rename", { noteId, url, newName }),
 	/**  Cancels a chunked upload; its part file is deleted. */
 	notesUploadAttachmentAbort: (id: string) => __TAURI_INVOKE<null>("notes_upload_attachment_abort", { id }),
 	/**
@@ -232,6 +237,17 @@ export const commands = {
 	notesUpdateOptionColor: (propertyName: string, optionValue: string, newColor: string) => __TAURI_INVOKE<null>("notes_update_option_color", { propertyName, optionValue, newColor }),
 	/**  `notes:update-property-definition`: `null` when there is no definition of the name. */
 	notesUpdatePropertyDefinition: (input: DefinitionInput) => __TAURI_INVOKE<PropertyDefinitionView | null>("notes_update_property_definition", { input }),
+	/**  `notes:delete-version`: a version that is not there is no failure, as in Electron. */
+	notesDeleteVersion: (snapshotId: string) => __TAURI_INVOKE<null>("notes_delete_version", { snapshotId }),
+	/**  `notes:get-version`: the version and the file it restores to; `null` for none. */
+	notesGetVersion: (snapshotId: string) => __TAURI_INVOKE<VersionDetailView | null>("notes_get_version", { snapshotId }),
+	/**  `notes:get-versions`: newest first, at most 50. */
+	notesGetVersions: (noteId: string) => __TAURI_INVOKE<VersionView[]>("notes_get_versions", { noteId }),
+	/**
+	 *  `notes:restore-version`: the note's body becomes the version's, the text it replaced kept as
+	 *  the newest version. Answers the note as it reads now; `null` for a journal day.
+	 */
+	notesRestoreVersion: (snapshotId: string) => __TAURI_INVOKE<NoteView | null>("notes_restore_version", { snapshotId }),
 	/**
 	 *  Whether notifications may show. macOS answers `prompt` until the user was asked; the first
 	 *  notification asks.
@@ -1755,6 +1771,16 @@ export type RenameTagView = {
 	bodySkipped: boolean,
 };
 
+/**  `AttachmentRenameResult` of `@memry/rpc/notes`. */
+export type RenamedAttachment = {
+	/**  The new name on disk, `k3f9x2-invoice.pdf`. */
+	storedFilename: string,
+	/**  The block's new `url`, relative to the note's file. */
+	url: string,
+	/**  The block's new `name`: what was typed, with the extension when it was left off. */
+	name: string,
+};
+
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {
 	tags?: TagAssignmentInput[] | null,
@@ -2395,6 +2421,34 @@ export type VaultStatus = {
  *  it subscribes, because events before that are not replayed.
  */
 export type VaultStatusChangedEvent = VaultStatus;
+
+/**
+ *  `SnapshotDetail`: the version and what a restore puts in the note, which the panel previews:
+ *  the version's body ([`restore_body`]). Electron sent the whole file, whose frontmatter its
+ *  restore wrote too; this restore keeps the note's.
+ */
+export type VersionDetailView = {
+	id: string,
+	noteId: string,
+	title: string,
+	wordCount: number,
+	reason: string,
+	createdAt: string,
+	fileContent: string,
+};
+
+/**
+ *  `SnapshotListItem`. `reason` is the stored column, which the renderer reads as
+ *  `SnapshotReason`.
+ */
+export type VersionView = {
+	id: string,
+	noteId: string,
+	title: string,
+	wordCount: number,
+	reason: string,
+	createdAt: string,
+};
 
 /**  `WikiLinkPreview`, with the body in place of `bodyText`. */
 export type WikiLinkPreviewView = {
