@@ -622,6 +622,43 @@ describe('useJournalEntry dedicated hook', () => {
     await waitFor(() => expect(result.current.entry?.tags).toEqual([]))
   })
 
+  // A sidebar note opened in the same tab, or a tab switch, unmounts the page (#3967).
+  it('saves typing made during a save when the page unmounts before that save ends', async () => {
+    const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+    const { result, unmount } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    let finishFirstSave: () => void = () => {}
+    updateEntry.mockImplementationOnce(
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+      (input: { date: string; content?: string }) =>
+        new Promise((resolve) => {
+          finishFirstSave = () =>
+            resolve(createMockJournalEntry({ date: input.date, content: input.content ?? '' }))
+        })
+    )
+    act(() => {
+      result.current.updateContent('First')
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000)
+    })
+    act(() => {
+      result.current.updateContent('First and second')
+    })
+
+    unmount()
+    await act(async () => {
+      finishFirstSave()
+      await vi.runOnlyPendingTimersAsync()
+    })
+
+    expect(updateEntry).toHaveBeenCalledTimes(2)
+    expect(updateEntry).toHaveBeenLastCalledWith({
+      date: '2026-05-10',
+      content: 'First and second'
+    })
+  })
+
   describe('leaving the vault', () => {
     const VAULT_A = '/vaults/a'
     const VAULT_B = '/vaults/b'

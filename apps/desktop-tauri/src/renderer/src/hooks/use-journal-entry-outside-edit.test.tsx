@@ -14,6 +14,7 @@ import {
   setupHookTestEnvironment
 } from '@tests/utils/hook-test-wrapper'
 import type { JournalEntry } from '../../../preload/index.d'
+import { useJournalChangeEvents } from './use-journal-change-events'
 import { useJournalEntry } from './use-journal-entry'
 
 vi.mock('@/services/templates-service', () => ({ getTemplate: vi.fn() }))
@@ -28,63 +29,131 @@ vi.mock('@/lib/logger', () => ({
 }))
 
 const DAY = '2026-05-10'
-const KEY = ['journal', 'entries', DAY]
+const NEXT = '2026-05-11'
 
-type Listener = (event: unknown) => void
+type Listener = (event?: unknown) => void
+const EVENTS = ['onJournalEntryCreated', 'onJournalEntryUpdated', 'onJournalEventsDropped'] as const
+type EventName = (typeof EVENTS)[number]
+
+/** The page's hook under the app-level journal listener, as `App.tsx` mounts both. */
+function useJournalPage(date: string) {
+  useJournalChangeEvents()
+  return useJournalEntry(date)
+}
 
 describe('useJournalEntry: outside edits of the open day', () => {
   let queryClient: QueryClient
-  let updated: Listener = () => {}
-  let dropped: () => void = () => {}
+  let listeners: Record<EventName, Listener[]>
   let getEntry: ReturnType<typeof vi.fn>
   let updateEntry: ReturnType<typeof vi.fn>
-  /** The day's file, as a read answers it. */
-  let file: string
+  /** Each day's file, as a read answers it. */
+  let files: Record<string, string>
 
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 
-  const outsideEdit = (content: string): void => {
-    file = content
+  const emit = (name: EventName, event?: unknown): void => {
     act(() => {
-      updated({
-        date: DAY,
-        entry: createMockJournalEntry({ date: DAY, content }),
-        source: 'external'
-      })
+      for (const listener of listeners[name]) listener(event)
+    })
+  }
+
+  const settle = async (): Promise<void> => {
+    await act(async () => {
+      for (let i = 0; i < 20; i++) await Promise.resolve()
+    })
+  }
+
+  const outsideEdit = (content: string, date = DAY): void => {
+    files[date] = content
+    emit('onJournalEntryUpdated', {
+      date,
+      entry: createMockJournalEntry({ date, content }),
+      source: 'external'
     })
   }
 
   /** The next save waits for `finish`, which answers with the text the save wrote. */
   const holdNextSave = (): { finish: (answer?: string) => Promise<void> } => {
     let resolve: (entry: JournalEntry) => void = () => {}
-    let sent = ''
+    let input: { date: string; content?: string } = { date: DAY }
     updateEntry.mockImplementationOnce(
       // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
-      (input: { date: string; content?: string }) =>
+      (given: { date: string; content?: string }) =>
         new Promise<JournalEntry>((done) => {
-          sent = input.content ?? file
+          input = given
           resolve = done
         })
     )
     return {
       finish: async (answer) => {
+        const content = answer ?? input.content ?? files[input.date]
         await act(async () => {
-          resolve(createMockJournalEntry({ date: DAY, content: answer ?? sent }))
-          for (let i = 0; i < 10; i++) await Promise.resolve()
+          resolve(createMockJournalEntry({ date: input.date, content }))
+          for (let i = 0; i < 20; i++) await Promise.resolve()
         })
       }
     }
   }
 
-  const mount = async () => {
-    const hook = renderHook(() => useJournalEntry(DAY), { wrapper })
-    await waitFor(() => expect(hook.result.current.loadedForDate).toBe(DAY))
-    return hook.result
+  /** The next read of `date` waits for the returned function, which answers what the file says. */
+  const holdNextRead = (date = DAY): (() => Promise<void>) => {
+    let answer: () => void = () => {}
+    getEntry.mockImplementationOnce(
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+      () =>
+        new Promise<JournalEntry>((resolve) => {
+          const content = files[date]
+          answer = () => resolve(createMockJournalEntry({ date, content }))
+        })
+    )
+    return async () => {
+      answer()
+      await settle()
+    }
   }
 
-  const startSave = async (result: Awaited<ReturnType<typeof mount>>, content: string) => {
+  /** Every read waits until `release`, which answers each with `content`. */
+  const holdReads = (): { release: (content: string) => Promise<void> } => {
+    const waiting: Array<(entry: JournalEntry) => void> = []
+    const reads: Array<string> = []
+    getEntry.mockImplementation(
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+      (date: string) =>
+        new Promise<JournalEntry>((resolve) => {
+          reads.push(date)
+          waiting.push(resolve)
+        })
+    )
+    return {
+      release: async (content) => {
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+        getEntry.mockImplementation(readFile)
+        waiting.forEach((resolve, i) =>
+          resolve(createMockJournalEntry({ date: reads[i], content }))
+        )
+        await settle()
+      }
+    }
+  }
+
+  const readFile = async (date: string): Promise<JournalEntry> =>
+    createMockJournalEntry({ date, content: files[date] })
+
+  const mount = async (date = DAY) => {
+    const hook = renderHook((props: { date: string }) => useJournalPage(props.date), {
+      wrapper,
+      initialProps: { date }
+    })
+    await waitFor(() => expect(hook.result.current.loadedForDate).toBe(date))
+    return hook
+  }
+
+  const startSave = async (
+    result: Awaited<ReturnType<typeof mount>>['result'],
+    content: string
+  ): Promise<void> => {
     act(() => {
       result.current.updateContent(content)
     })
@@ -98,24 +167,25 @@ describe('useJournalEntry: outside edits of the open day', () => {
     vi.useFakeTimers()
     queryClient = createTestQueryClient()
     setupHookTestEnvironment()
-    file = 'Existing'
+    files = { [DAY]: 'Existing', [NEXT]: 'Next day' }
+    listeners = { onJournalEntryCreated: [], onJournalEntryUpdated: [], onJournalEventsDropped: [] }
     const api = window.api as unknown as Record<string, ReturnType<typeof vi.fn>>
-    api.onJournalEntryUpdated.mockImplementation((cb: Listener) => {
-      updated = cb
-      return vi.fn()
-    })
-    api.onJournalEventsDropped.mockImplementation((cb: () => void) => {
-      dropped = cb
-      return vi.fn()
-    })
+    for (const name of EVENTS) {
+      api[name].mockImplementation((cb: Listener) => {
+        listeners[name].push(cb)
+        return vi.fn()
+      })
+    }
     getEntry = window.api.journal.getEntry as ReturnType<typeof vi.fn>
     // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
-    getEntry.mockImplementation(async () => createMockJournalEntry({ date: DAY, content: file }))
+    getEntry.mockImplementation(readFile)
     updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
     // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
     updateEntry.mockImplementation((input: { date: string; content?: string }) => {
-      if (input.content !== undefined) file = input.content
-      return Promise.resolve(createMockJournalEntry({ date: input.date, content: file }))
+      if (input.content !== undefined) files[input.date] = input.content
+      return Promise.resolve(
+        createMockJournalEntry({ date: input.date, content: files[input.date] })
+      )
     })
   })
 
@@ -128,10 +198,9 @@ describe('useJournalEntry: outside edits of the open day', () => {
 
   describe('an outside edit that came while a save ran', () => {
     it('reaches the editor once the save ends, when it landed after the save wrote', async () => {
-      const result = await mount()
+      const { result } = await mount()
       const save = holdNextSave()
       await startSave(result, 'Typed in the app.')
-      file = 'Typed in the app.'
       outsideEdit('Rewritten outside.')
       expect(result.current.externalUpdateCount).toBe(0)
 
@@ -140,54 +209,41 @@ describe('useJournalEntry: outside edits of the open day', () => {
       await save.finish('Rewritten outside.')
 
       await waitFor(() => expect(result.current.externalUpdateCount).toBe(1))
-      expect(queryClient.getQueryData<JournalEntry>(KEY)?.content).toBe('Rewritten outside.')
+      expect(result.current.entry?.content).toBe('Rewritten outside.')
+      expect(result.current.isDirty).toBe(false)
+      // The reloaded editor reports the text it was handed: nothing to save.
+      act(() => {
+        result.current.updateContent('Rewritten outside.')
+      })
       expect(result.current.isDirty).toBe(false)
     })
 
     // Rust sends the save's own event before its reply, but Tauri does not order the two.
     it('reaches the editor when the save own event lands after its reply', async () => {
-      let created: Listener = () => {}
-      const api = window.api as unknown as Record<string, ReturnType<typeof vi.fn>>
-      api.onJournalEntryCreated.mockImplementation((cb: Listener) => {
-        created = cb
-        return vi.fn()
-      })
-      const result = await mount()
+      const { result } = await mount()
       const save = holdNextSave()
       await startSave(result, 'Typed in the app.')
       outsideEdit('Rewritten outside.')
-      let answerRead: () => void = () => {}
-      getEntry.mockImplementationOnce(
-        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
-        () =>
-          new Promise<JournalEntry>((resolve) => {
-            answerRead = () => resolve(createMockJournalEntry({ date: DAY, content: file }))
-          })
-      )
+      const answerRead = holdNextRead()
 
       await save.finish('Typed in the app.')
-      act(() => {
-        created({
-          date: DAY,
-          entry: createMockJournalEntry({ date: DAY, content: 'Typed in the app.' })
-        })
+      emit('onJournalEntryCreated', {
+        date: DAY,
+        entry: createMockJournalEntry({ date: DAY, content: 'Typed in the app.' })
       })
-      await act(async () => {
-        answerRead()
-        for (let i = 0; i < 10; i++) await Promise.resolve()
-      })
+      await answerRead()
 
-      expect(result.current.externalUpdateCount).toBe(1)
-      expect(queryClient.getQueryData<JournalEntry>(KEY)?.content).toBe('Rewritten outside.')
+      await waitFor(() => expect(result.current.externalUpdateCount).toBe(1))
+      expect(result.current.entry?.content).toBe('Rewritten outside.')
     })
 
     it('leaves the editor as it is when the save wrote over it', async () => {
-      const result = await mount()
+      const { result } = await mount()
       const save = holdNextSave()
       await startSave(result, 'Typed in the app.')
       outsideEdit('Rewritten outside.')
       // The save landed after the outside edit: the file holds the typing.
-      file = 'Typed in the app.'
+      files[DAY] = 'Typed in the app.'
 
       await save.finish()
       await act(async () => {
@@ -195,11 +251,11 @@ describe('useJournalEntry: outside edits of the open day', () => {
       })
 
       expect(result.current.externalUpdateCount).toBe(0)
-      expect(queryClient.getQueryData<JournalEntry>(KEY)?.content).toBe('Typed in the app.')
+      expect(result.current.entry?.content).toBe('Typed in the app.')
     })
 
     it('stays out of the editor when typing came during the save, which is saved over it', async () => {
-      const result = await mount()
+      const { result } = await mount()
       const save = holdNextSave()
       await startSave(result, 'Typed in the app.')
       outsideEdit('Rewritten outside.')
@@ -219,57 +275,155 @@ describe('useJournalEntry: outside edits of the open day', () => {
       })
     })
 
-    it('reaches the day the page moved to while the last day ran its save', async () => {
-      const NEXT = '2026-05-11'
-      const hook = renderHook(({ date }) => useJournalEntry(date), {
-        wrapper,
-        initialProps: { date: DAY }
-      })
-      await waitFor(() => expect(hook.result.current.loadedForDate).toBe(DAY))
+    // A tags save never writes the text: its reply is the day as read after it.
+    it('reaches the editor after a tags save whose reply already holds it', async () => {
+      const { result } = await mount()
       const save = holdNextSave()
-      await startSave(hook.result, 'Typed in the app.')
-      hook.rerender({ date: NEXT })
-      await waitFor(() => expect(hook.result.current.loadedForDate).toBe(NEXT))
-      getEntry.mockResolvedValue(createMockJournalEntry({ date: NEXT, content: 'Next outside.' }))
       act(() => {
-        updated({
-          date: NEXT,
-          entry: createMockJournalEntry({ date: NEXT, content: 'Next outside.' }),
-          source: 'external'
-        })
+        result.current.updateTags(['kept'])
       })
+      await waitFor(() =>
+        expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, tags: ['kept'] })
+      )
+      outsideEdit('Rewritten outside.')
 
-      await save.finish()
+      await save.finish('Rewritten outside.')
 
-      await waitFor(() => expect(hook.result.current.externalUpdateCount).toBe(1))
-      expect(hook.result.current.entry?.content).toBe('Next outside.')
+      await waitFor(() => expect(result.current.externalUpdateCount).toBe(1))
+      expect(result.current.entry?.content).toBe('Rewritten outside.')
     })
 
     it('is read again after the save when only a dropped-events signal told of it', async () => {
-      const result = await mount()
+      const { result } = await mount()
       const save = holdNextSave()
       await startSave(result, 'Typed in the app.')
-      file = 'Rewritten outside.'
-      act(() => {
-        dropped()
-      })
+      files[DAY] = 'Rewritten outside.'
+      emit('onJournalEventsDropped')
 
       await save.finish('Typed in the app.')
 
       await waitFor(() => expect(result.current.externalUpdateCount).toBe(1))
-      expect(queryClient.getQueryData<JournalEntry>(KEY)?.content).toBe('Rewritten outside.')
+      expect(result.current.entry?.content).toBe('Rewritten outside.')
+    })
+
+    // The app-level listener reads the day into the cache on the event, ahead of the editor.
+    it('reaches the day the page moved to while the last day ran its save', async () => {
+      const hook = await mount()
+      const save = holdNextSave()
+      await startSave(hook.result, 'Typed in the app.')
+      hook.rerender({ date: NEXT })
+      await waitFor(() => expect(hook.result.current.loadedForDate).toBe(NEXT))
+      outsideEdit('Next outside.', NEXT)
+      await settle()
+      // The edit is the new day's, which no save holds: it reaches the editor at once.
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+
+      await save.finish()
+      await settle()
+
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Next outside.')
+    })
+
+    it('reaches the day the page moved to on a dropped-events signal during that save', async () => {
+      const hook = await mount()
+      const save = holdNextSave()
+      await startSave(hook.result, 'Typed in the app.')
+      hook.rerender({ date: NEXT })
+      await waitFor(() => expect(hook.result.current.loadedForDate).toBe(NEXT))
+      files[NEXT] = 'Next outside.'
+      emit('onJournalEventsDropped')
+      await settle()
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+
+      await save.finish()
+      await settle()
+
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Next outside.')
+    })
+
+    it('leaves a newer outside edit in the editor when the read after the save lands late', async () => {
+      const { result } = await mount()
+      const save = holdNextSave()
+      await startSave(result, 'Typed in the app.')
+      outsideEdit('First outside.')
+      const answerRead = holdNextRead()
+      await save.finish()
+      outsideEdit('Second outside.')
+      expect(result.current.externalUpdateCount).toBe(1)
+
+      // The read began before the second edit and answers the first.
+      files[DAY] = 'First outside.'
+      await answerRead()
+
+      expect(result.current.externalUpdateCount).toBe(1)
+      expect(result.current.entry?.content).toBe('Second outside.')
+    })
+  })
+
+  describe('a day the page comes back to', () => {
+    // The editor's teardown reports its last edit after the page left the day, which saves it
+    // there (#1900). The page came back before the other day loaded: its editor reopened on
+    // that save's text, not on the text it reported before leaving.
+    it('compares a read with the text its editor reopened on', async () => {
+      const hook = await mount()
+      act(() => {
+        hook.result.current.updateContent('Typed before leaving.')
+      })
+      const reportLate = hook.result.current.updateContent
+      holdReads()
+      hook.rerender({ date: '2026-06-01' })
+      await settle()
+      act(() => {
+        reportLate('Typed before leaving, and late.')
+      })
+      await settle()
+      hook.rerender({ date: DAY })
+      await waitFor(() => expect(hook.result.current.loadedForDate).toBe(DAY))
+      expect(hook.result.current.entry?.content).toBe('Typed before leaving, and late.')
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+      getEntry.mockImplementation(readFile)
+
+      // An outside edit, missed, puts back the text from before the late report.
+      files[DAY] = 'Typed before leaving.'
+      emit('onJournalEventsDropped')
+      await settle()
+
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Typed before leaving.')
+    })
+  })
+
+  describe('a dropped-events signal', () => {
+    it('keeps the newest of two reads when the older one answers last', async () => {
+      const { result } = await mount()
+      const first = holdReads()
+      emit('onJournalEventsDropped')
+      await settle()
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+      getEntry.mockImplementation(readFile)
+      files[DAY] = 'Newer outside.'
+      emit('onJournalEventsDropped')
+      await settle()
+      expect(result.current.externalUpdateCount).toBe(1)
+
+      await first.release('Older outside.')
+
+      expect(result.current.externalUpdateCount).toBe(1)
+      expect(result.current.entry?.content).toBe('Newer outside.')
     })
   })
 
   describe("the editor's report of the text it was handed", () => {
     it('is not typing: the next outside edit reaches the editor, and nothing saves over it', async () => {
-      const result = await mount()
-      outsideEdit('First outside.')
+      const { result } = await mount()
+      outsideEdit('First outside.\r\nSecond line.')
       expect(result.current.externalUpdateCount).toBe(1)
 
       // The reloaded editor reports its text back, spelled as the editor writes it.
       act(() => {
-        result.current.updateContent('First outside.\n')
+        result.current.updateContent('First outside.\nSecond line.\n')
       })
       expect(result.current.isDirty).toBe(false)
       outsideEdit('Second outside.')
@@ -278,13 +432,13 @@ describe('useJournalEntry: outside edits of the open day', () => {
       })
 
       expect(result.current.externalUpdateCount).toBe(2)
-      expect(queryClient.getQueryData<JournalEntry>(KEY)?.content).toBe('Second outside.')
+      expect(result.current.entry?.content).toBe('Second outside.')
       expect(updateEntry).not.toHaveBeenCalled()
-      expect(file).toBe('Second outside.')
+      expect(files[DAY]).toBe('Second outside.')
     })
 
     it('is typing when it takes back text not saved yet', async () => {
-      const result = await mount()
+      const { result } = await mount()
       act(() => {
         result.current.updateContent('Existing and a typo')
         result.current.updateContent('Existing')
