@@ -595,6 +595,21 @@ fn a_tag_edit_of_a_marked_file_with_no_frontmatter_keeps_one_mark() {
     assert!(file.ends_with("---\nFirst text\n"), "{file:?}");
 }
 
+/// The body a save reports is the one the note's read (and its event) gives: a marked file with
+/// no frontmatter keeps the mark in its body (#3967).
+#[test]
+fn a_save_of_a_marked_file_with_no_frontmatter_reports_the_body_as_read() {
+    let (e, notes) = opened(&[("Plan.md", "\u{feff}First text\n")]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let updated = notes.update(&open, save(&id, "Typed text\n")).unwrap();
+    assert_eq!(e.read("Plan.md"), "\u{feff}Typed text\n");
+    assert_eq!(
+        updated.saved_content.as_deref(),
+        Some(updated.note.content.as_str())
+    );
+}
+
 #[test]
 fn a_save_over_a_file_the_document_never_took_keeps_that_file_first() {
     let (e, notes) = opened(&[("Plan.md", PLAN)]);

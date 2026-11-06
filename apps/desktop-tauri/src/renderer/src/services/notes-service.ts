@@ -239,7 +239,7 @@ const ported = {
     if (input.title !== undefined) throw new NotPortedError('notes.update({ title })')
     try {
       const { id, content, headerTags, emoji, frontmatter } = input
-      const { note, tagTemplate, keptOutsideEdit } = await commands.notesUpdate({
+      const { note, tagTemplate, keptOutsideEdit, savedContent } = await commands.notesUpdate({
         id,
         content,
         headerTags,
@@ -251,7 +251,8 @@ const ported = {
         success: true,
         note: toNote(note),
         ...(tagTemplate && { tagTemplate }),
-        ...(keptOutsideEdit && { keptOutsideEdit })
+        ...(keptOutsideEdit && { keptOutsideEdit }),
+        ...(savedContent !== undefined && { savedContent })
       }
     } catch (error) {
       return { ...failure(error), note: null }
