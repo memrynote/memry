@@ -36,7 +36,24 @@ function record(page: Page): Promise<unknown> {
     }
     sample()
     setInterval(sample, 10)
-    for (const type of ['mousedown', 'click']) {
+    const describe = (n: Element) =>
+      `<${n.tagName.toLowerCase()} testid=${n.getAttribute('data-testid') ?? ''} role=${n.getAttribute('role') ?? ''} class="${String(n.className).slice(0, 50)}"> ${rect(n)} "${(n.textContent ?? '').slice(0, 40)}"`
+    new MutationObserver((records) => {
+      for (const r of records) {
+        for (const n of r.addedNodes) if (n instanceof Element) log(`+ ${describe(n)}`)
+        for (const n of r.removedNodes) if (n instanceof Element) log(`- ${describe(n)}`)
+        if (r.type === 'attributes' && r.target instanceof Element && r.attributeName === 'class')
+          log(`class ${describe(r.target)}`)
+      }
+    }).observe(document.body, { childList: true, subtree: true })
+    document.addEventListener(
+      'scroll',
+      (e) => log(`scroll ${e.target instanceof Element ? describe(e.target) : 'document'}`),
+      true
+    )
+    window.addEventListener('resize', () => log(`resize ${innerWidth}x${innerHeight}`))
+    document.addEventListener('focusin', (e) => log(`focusin ${describe(e.target as Element)}`))
+    for (const type of ['mousedown', 'mouseup', 'click', 'pointerdown']) {
       window.addEventListener(
         type,
         (e) => {
@@ -57,10 +74,17 @@ async function dump(page: Page, label: string): Promise<void> {
   const diag = await page
     .evaluate(() => (window as unknown as { __diag?: string[] }).__diag ?? [])
     .catch(() => ['(page gone)'])
-  console.log(`DIAG3967 ${label}\n${diag.map((line) => `DIAG3967   ${line}`).join('\n')}`)
+  const shifts = new Set(
+    diag.filter((line) => line.includes('btn=1')).map((line) => line.replace(/^\d+ /, ''))
+  ).size
+  const full = label.includes('FAILED') || shifts > 3
+  const lines = full ? diag : diag.filter((line) => /win=|mouse|click|resize/.test(line))
+  console.log(
+    `DIAG3967 ${label} shifts=${shifts}\n${lines.map((line) => `DIAG3967   ${line}`).join('\n')}`
+  )
 }
 
-for (let round = 1; round <= 12; round += 1) {
+for (let round = 1; round <= 30; round += 1) {
   test(`diag round ${round}: an offline check from Settings, then the auto-check switch`, async ({
     app,
     page
