@@ -332,7 +332,8 @@ pub(super) fn field_name(name: &str) -> Result<String, SchemaError> {
     Ok(name.to_owned())
 }
 
-fn length(text: &str) -> usize {
+/// A JavaScript string's length: its UTF-16 code units.
+pub(super) fn length(text: &str) -> usize {
     text.encode_utf16().count()
 }
 

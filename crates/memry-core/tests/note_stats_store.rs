@@ -87,7 +87,8 @@ fn index_all(search: &Search) {
     let files = ["big", "small", "mid"]
         .map(|id| measured(id, &format!("h-{id}")))
         .to_vec();
-    assert_eq!(search.index_note_files(files).expect("write"), 3);
+    let refs = search.index_note_files(files).expect("write");
+    assert!(refs.is_empty(), "no relation value moved: {refs:?}");
 }
 
 fn index_db(dir: &Path) -> rusqlite::Connection {

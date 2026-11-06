@@ -9,6 +9,7 @@
 //! | a lost or unreadable mirror row keeps the server's record | the same rule                         |
 //! | a pulled definition reaches the file                      | `applyRemoteUpsert`, calendar flag kept |
 //! | a pulled delete leaves the file                           | `applyRemoteDelete`                   |
+//! | a read leaves a pull for the next list                    | the object search never writes a file |
 //! | a server delete of a name never held here leaves the file | the same, with no payload stored      |
 //! | a record written here apart from the file lets it win     | reload's union, `mergeDatabaseDefinitions` |
 //! | a hand edit of the file wins over an unchanged record     | #2896: a local file edit still wins   |
@@ -168,6 +169,25 @@ fn a_pulled_definition_reaches_the_file_and_keeps_the_calendar_flag() {
     let queued = f.queued();
     f.definitions.list().unwrap();
     assert_eq!(f.queued(), queued);
+}
+
+#[test]
+fn a_read_leaves_a_pull_for_the_next_list() {
+    let f = fixture();
+    stage(&f);
+    let before = f.file();
+    pull(
+        &f,
+        "Area",
+        json!({ "type": "text", "options": "[]" }),
+        false,
+    );
+
+    let read = f.definitions.read().unwrap();
+    assert!(read.iter().any(|d| d.name == "Area"), "its record shows it");
+    assert_eq!(f.file(), before, "a read writes no file");
+    f.definitions.list().unwrap();
+    assert_ne!(f.file(), before, "the list takes the pull into the file");
 }
 
 #[test]
