@@ -495,3 +495,27 @@ fn an_edit_of_a_locked_note_is_refused_as_note_locked_and_reaches_no_window() {
     );
     assert!(side_frames.lock().unwrap().is_empty());
 }
+
+/// Electron has no refusal text for a large file: its renderer never mounts an editor for one.
+/// The code is what the renderer swaps to the viewer on (#3531 14c-2).
+#[test]
+fn an_edit_of_a_large_file_note_is_refused_as_note_large_file_and_reaches_no_window() {
+    let env = env();
+    let note = env.note();
+    let (main, _) = env.open(&note, "main");
+    let (_side, side_frames) = env.open(&note, "side");
+    let core = env.session.current().unwrap().vault;
+    core.note_files().record_large_file(&note, true).unwrap();
+
+    let refused = env
+        .host
+        .apply_update(&note, &main.type_text("typed"), "main")
+        .unwrap_err();
+
+    let failure = map_core(&refused);
+    assert_eq!(
+        (failure.kind, failure.code),
+        (FailureKind::Invalid, "note_large_file")
+    );
+    assert!(side_frames.lock().unwrap().is_empty());
+}
