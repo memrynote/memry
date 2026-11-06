@@ -1,7 +1,7 @@
 //! The vault settings through the IPC a renderer calls, on a mock app over a real vault (#3530
 //! 13m-7a, 13m-7b): the contract's field names, a write every window hears as
-//! `vault:config-changed`, the journal days moved with a new format or folder, and a change
-//! that is not ported refused by its code with nothing written or sent.
+//! `vault:config-changed`, the journal days moved with a new format or folder, new exclude
+//! patterns saved with every note kept, and a refused change with nothing written or sent.
 
 mod support;
 
@@ -131,25 +131,30 @@ fn a_journal_folder_the_days_cannot_live_in_is_refused_in_words() {
     assert!(heard.lock().unwrap().is_empty());
 }
 
+/// New exclude patterns are saved and sent, and the note in the folder they now drop keeps its
+/// row: the watcher restarts on them, and nothing is deleted.
 #[test]
-fn an_exclude_change_is_refused_and_nothing_is_sent() {
+fn an_exclude_change_is_saved_sent_and_keeps_the_notes() {
     let (mocked, heard) = opened();
-    let before = fs::read(mocked.vault.join(".memry/config.json")).unwrap();
-    let refused = mocked
+    let answer = mocked
         .invoke(
             "vault_update_config",
-            json!({ "config": { "excludePatterns": [], "journalShowInSidebar": true } }),
+            json!({ "config": { "excludePatterns": ["Daily"] } }),
         )
-        .unwrap_err();
-    assert_eq!(
-        (&refused["kind"], &refused["code"]),
-        (&json!("invalid"), &json!("config_change_not_ported"))
-    );
-    assert_eq!(
-        fs::read(mocked.vault.join(".memry/config.json")).unwrap(),
-        before
-    );
-    assert!(heard.lock().unwrap().is_empty());
+        .unwrap();
+    assert_eq!(answer["excludePatterns"], json!(["Daily"]));
+    assert_eq!(*heard.lock().unwrap(), [answer]);
+    let file: Value =
+        serde_json::from_slice(&fs::read(mocked.vault.join(".memry/config.json")).unwrap())
+            .unwrap();
+    assert_eq!(file["excludePatterns"], json!(["Daily"]));
+    let open = mocked.session().current().unwrap();
+    let row = open
+        .vault
+        .note_files()
+        .by_path("Daily/2025-01-02.md")
+        .unwrap();
+    assert!(row.is_some());
 }
 
 /// With no vault open a read answers Electron's fallback, which has no exclude patterns, and a
@@ -324,7 +329,7 @@ fn a_command_that_follows_the_journal_folder_first_is_heard() {
         ),
         (
             "vault_update_config",
-            json!({ "config": { "excludePatterns": [] } }),
+            json!({ "config": { "journalFolder": "canvases" } }),
             "Diary",
         ),
         (

@@ -34,6 +34,7 @@ use crate::vault::activity::ScanActivity;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
 use crate::vault::watch::VaultEvent;
+use crate::vault::watch::filter::WatchFilter;
 
 /// A device signing key held in memory: the device identity without the OS keychain.
 #[derive(Default)]
@@ -519,6 +520,7 @@ pub(super) fn applier(
         activity: crate::vault::activity::ActivityLog::new(),
         own_files: Arc::default(),
         watch: None,
+        filter: WatchFilter::new(Vec::new()),
         untaken: Mutex::default(),
     }
 }
@@ -540,4 +542,5 @@ mod outside_edit;
 mod pipeline;
 #[cfg(windows)]
 mod replace_race;
+mod rewatch;
 mod slow_watch_stop;

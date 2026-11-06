@@ -42,9 +42,24 @@
 //! The journal folder moved in the app with a folder that holds it takes the setting along
 //! ([`JournalFollow`], `notes::folder_move`), as Electron's `followJournalFolderMove` does.
 //!
-//! Not here yet (Step 13m-7b-3): a change of the exclude patterns, which comes with its own work
-//! in Electron (the watcher restarted). Such a change is refused ([`SettingsError::NotPorted`]);
-//! the same value again is no change and passes.
+//! New exclude patterns are saved, then the open vault's watcher and consumer restart on them
+//! (`VaultTier::rewatch`), as Electron's `updateConfig` restarts its watcher. Electron then
+//! rebuilds its derived index, which drops a newly excluded note from its lists and keeps its
+//! record (`note_metadata`), so no delete syncs, and takes a file that stops matching back under
+//! that record's id. Here the note's row stays, so it stays listed and keeps its id, whatever
+//! happens to its file while the patterns cover it: the rescan reports no removal there, so a
+//! file renamed or deleted outside leaves its record behind, as Electron's does, and syncs no
+//! delete. A file moved out of a covered place that a rescan finds (an open, an overflow, the
+//! restart) pairs with that record like any move and keeps its id, unless the move changes what
+//! the file is (a day to a note): it never crosses, the file is new and the record stays. One
+//! the watcher sees arrive is a new note, as in Electron, since the watcher never saw it leave;
+//! the record it left stays while the pattern covers it. Once the pattern is dropped, the
+//! restart's walk reads the file again: an outside edit made meanwhile replaces the note's body
+//! (an app edit made meanwhile is kept as a version; Step 13m-7b-3b makes a covered note
+//! read-only), a rename pairs as a move, and a file that is gone is a removal then, the record a
+//! live move out left included (its text lives on under the new note). The save is the only durable step: an open after a crash reads the
+//! saved patterns. A watcher that cannot start on them is reported
+//! ([`SettingsError::Unwatched`]); the save stands, and the next change or open starts it.
 
 use std::io;
 use std::path::Path;
@@ -93,9 +108,6 @@ pub(crate) fn day_names() -> RwLockReadGuard<'static, ()> {
 
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
-    /// The field, by its `config.json` key, changes and that is not ported yet.
-    #[error("changing {0} is not available in this build yet")]
-    NotPorted(&'static str),
     /// The new date format cannot name every date, so no day could keep its name in it.
     #[error("the date format cannot name every date")]
     IncompleteFormat,
@@ -128,6 +140,10 @@ pub enum SettingsError {
     /// The change could not be recorded before its first move, so nothing moved.
     #[error("the journal setting change could not be recorded: {0}")]
     Unrecorded(String),
+    /// New exclude patterns are saved and announced, and the open vault's watcher could not
+    /// start on them: outside edits are not read until a later change or open starts it.
+    #[error("the vault's watcher did not restart: {0}")]
+    Unwatched(String),
     /// A journal setting change in a vault whose tier did not start, through which the days move.
     #[error("the vault's tier is not running")]
     NoTier,
@@ -157,9 +173,9 @@ fn normalized(config: VaultConfig) -> VaultConfig {
 
 /// `updateConfig` in the vault at `root`: moves the day files for a new date format or journal
 /// folder through the open vault's core and tier (`days`), writes `patch` (its journal fields
-/// normalized), hands the settings after it to `announce` and answers them. A field the patch
-/// gives its current value is left as stored; a patch with nothing else writes and announces
-/// nothing.
+/// normalized), restarts the tier's watcher on new exclude patterns, hands the settings after it
+/// to `announce` and answers them. A field the patch gives its current value is left as stored;
+/// a patch with nothing else writes and announces nothing.
 pub fn update_vault_settings(
     root: &Path,
     days: Option<(&Arc<Vault>, &VaultTier)>,
@@ -203,11 +219,10 @@ pub fn update_vault_settings_checked(
         .take()
         .map(|f| normalize_journal_folder(&f))
         .filter(|folder| *folder != current.journal_folder);
-    refuse_change(
-        "excludePatterns",
-        patch.exclude_patterns.take(),
-        &current.exclude_patterns,
-    )?;
+    patch.exclude_patterns = patch
+        .exclude_patterns
+        .take()
+        .filter(|patterns| *patterns != current.exclude_patterns);
     patch.journal_date_format = patch
         .journal_date_format
         .take()
@@ -244,9 +259,25 @@ pub fn update_vault_settings_checked(
     if let Some(moved) = &moved {
         forget_change(&moved.writer, &moved.change);
     }
+    let unwatched = days
+        .filter(|_| patch.exclude_patterns.is_some())
+        .and_then(|(vault, tier)| {
+            tier.rewatch(vault, &mut || step(ChangeStep::Unwatched))
+                .err()
+        });
     let settings = normalized(written);
     announce(&settings);
-    Ok(settings)
+    match unwatched {
+        // Saved and announced either way; the next change or open starts the watcher again.
+        Some(error) => {
+            tracing::error!(
+                scope = SCOPE,
+                "the watcher did not restart on the new exclude patterns: {error}"
+            );
+            Err(SettingsError::Unwatched(error))
+        }
+        None => Ok(settings),
+    }
 }
 
 /// The settings as stored, read strictly: one that cannot be read names no folder or format
@@ -397,16 +428,5 @@ impl JournalFollow {
             ..VaultConfigPatch::default()
         };
         write_vault_config(root, &patch).map(normalized)
-    }
-}
-
-fn refuse_change<T: PartialEq>(
-    key: &'static str,
-    wanted: Option<T>,
-    current: &T,
-) -> Result<(), SettingsError> {
-    match wanted {
-        Some(value) if value != *current => Err(SettingsError::NotPorted(key)),
-        _ => Ok(()),
     }
 }

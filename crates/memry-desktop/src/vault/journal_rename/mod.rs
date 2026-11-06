@@ -126,6 +126,9 @@ pub enum ChangeStep {
     Moved,
     /// The new setting is saved, before its record is forgotten.
     Saved,
+    /// New exclude patterns are saved and the open vault's watcher stopped, before it starts on
+    /// them (`settings`).
+    Unwatched,
 }
 
 /// Why no day moved.
