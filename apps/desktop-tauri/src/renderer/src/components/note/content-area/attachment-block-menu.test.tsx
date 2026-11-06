@@ -8,6 +8,7 @@ import { useRef, useState } from 'react'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as Bindings from '../../../../../generated/bindings'
 import type { AttachmentResolveResult } from '@memry/contracts/notes-api'
 import { NoteFileUrlProvider } from './note-file-url-context'
 import {
@@ -45,6 +46,15 @@ const mocks = vi.hoisted(() => ({
   clipboardWriteText: vi.fn()
 }))
 
+// The rename reaches Rust through the generated command; the other actions are not ported yet.
+vi.mock('../../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return {
+    ...actual,
+    commands: { ...actual.commands, notesAttachmentRename: mocks.renameAttachment }
+  }
+})
+
 function renderWithProvider(ui: React.ReactNode) {
   return render(
     <NoteFileUrlProvider resolveFileUrl={async (url) => url} noteId={NOTE_ID}>
@@ -69,8 +79,7 @@ beforeEach(() => {
     ...(api.notes as Record<string, unknown> | undefined),
     resolveAttachment: mocks.resolveAttachment,
     revealAttachmentInFinder: mocks.revealAttachmentInFinder,
-    openAttachmentExternal: mocks.openAttachmentExternal,
-    renameAttachment: mocks.renameAttachment
+    openAttachmentExternal: mocks.openAttachmentExternal
   }
   Object.defineProperty(navigator, 'clipboard', {
     value: { writeText: mocks.clipboardWriteText },

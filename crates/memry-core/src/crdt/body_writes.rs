@@ -20,10 +20,11 @@
 //! about the commit: the closure may have rolled them back. The observer reads
 //! those rows from the committed log.
 //!
-//! Gap: [`super::update_log::fold_local`] deletes local rows and writes the
-//! local snapshot without a note. It has no production caller yet; the first
-//! one notes the snapshot (a `LogRow::LocalSnapshot`), or a document in memory
-//! misses rows the fold removed before they were read back.
+//! A local fold ([`super::update_log::fold_local_in`]) deletes local rows and
+//! notes the snapshot it wrote ([`LogRow::LocalSnapshot`]), which holds them. A
+//! row an earlier closure noted can be folded away before its observer reads it
+//! back; the observer then reads the local snapshot that holds it
+//! (`api::editor::catch_up`).
 
 use std::cell::{Cell, RefCell};
 
@@ -76,6 +77,8 @@ pub enum LogRow {
     Server(i64),
     /// The server snapshot.
     ServerSnapshot,
+    /// The local snapshot a fold wrote ([`super::compact`]).
+    LocalSnapshot,
 }
 
 /// Told what each write closure on a database handle wrote.
@@ -107,7 +110,9 @@ pub(crate) fn noted(doc_id: &str, wrote: Wrote) {
             let origin = match wrote {
                 Wrote::Row(LogRow::Server(_) | LogRow::ServerSnapshot) => Origin::Remote,
                 Wrote::Row(LogRow::Local(_)) if EXTERNAL.get() => Origin::External,
-                Wrote::Row(LogRow::Local(_)) | Wrote::Purge => Origin::System,
+                Wrote::Row(LogRow::Local(_) | LogRow::LocalSnapshot) | Wrote::Purge => {
+                    Origin::System
+                }
             };
             writes.push(BodyWrite {
                 doc_id: doc_id.to_owned(),

@@ -775,6 +775,10 @@ edited document's log does not grow unboundedly:
 | local compaction                | encoded size over 1 MiB, no editor open, 60 s check interval       | `apps/desktop/src/main/sync/crdt-provider.ts:81`, `:2196-2219`                                                                                                                                        |
 | oversized incremental           | the snapshot is the compaction point                               | `apps/desktop/src/main/sync/runtime.ts:567-588`                                                                                                                                                       |
 
+The Rust core's local compaction (chapter 12 §12.5.4) is not a snapshot push:
+it folds only this device's local namespace and calls no endpoint
+(`crates/memry-core/src/crdt/compact.rs`).
+
 ### 7.13.4 What the platform-free engine does today, and #2187
 
 **The platform-free engine pushes no snapshots at all**

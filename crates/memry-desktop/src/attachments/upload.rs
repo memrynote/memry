@@ -20,7 +20,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
-use super::{AttachmentError, SavedAttachment, check, create_dir, inside_vault, store};
+use super::{
+    AttachmentError, SavedAttachment, check, create_dir, inside_vault, store, writable_note,
+};
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::file_open::{Resolution, resolve_under_root};
 use crate::vault::fs_atomic::{
@@ -100,7 +102,8 @@ impl Uploads {
     }
 
     /// Starts the upload of a file of `size` bytes to a note of the open vault, for page
-    /// `owner`. A refused note id, type or size creates nothing. Returns the upload's id.
+    /// `owner`. A refused note id, type or size, or a locked note, creates nothing. Returns the
+    /// upload's id.
     pub fn begin(
         &self,
         open: &OpenVault,
@@ -114,6 +117,7 @@ impl Uploads {
             file_name,
             usize::try_from(size).unwrap_or(usize::MAX),
         )?;
+        writable_note(open, note_id)?;
         let mut uploads = lock(&self.open);
         if uploads.len() >= MAX_UPLOADS {
             return Err(AttachmentError::TooManyUploads);
@@ -253,7 +257,7 @@ fn append(upload: &mut Upload, offset: u64, bytes: &[u8]) -> Result<bool, Attach
 }
 
 /// Moves the complete part file into the note's attachments folder, referenced from the note's
-/// file as it is now.
+/// file as it is now. A note locked since the upload began refuses it.
 fn commit(
     upload: &mut Upload,
     open: &OpenVault,
@@ -264,12 +268,12 @@ fn commit(
     drop(file);
     // A closing vault ends its uploads under their locks, so this is the one the upload began in.
     debug_assert_eq!(open.path, upload.vault);
-    let row = open.vault.note_files().by_id(&upload.note_id)?;
+    let note_path = writable_note(open, &upload.note_id)?;
     let temp = upload.temp.clone();
     store(
         &upload.vault,
         &upload.note_id,
-        row.as_ref().map(|row| row.path.as_str()),
+        note_path.as_deref(),
         &upload.file_name,
         usize::try_from(upload.written).unwrap_or(usize::MAX),
         before_recheck,

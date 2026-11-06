@@ -17,7 +17,7 @@ use url::Url;
 pub const MAX_URL_LEN: usize = 16 * 1024;
 
 /// The `{6-char nanoid}-` prefix every stored attachment name carries.
-const STORED_PREFIX_LEN: usize = 7;
+pub(crate) const STORED_PREFIX_LEN: usize = 7;
 
 /// A `memry-file` or `memry-html` URL as it reaches a handler or the navigation guard: the
 /// canonical `memry-file://local/<path>` form (the stored one, and what WebKit loads), what a
@@ -84,7 +84,7 @@ pub fn resolve_local_scheme_path(raw: &str, scheme: LocalScheme, windows: bool) 
 
 /// `decodeURIComponent` throws on a `%` without two hex digits; `percent_decode_str` would keep it
 /// literally, which names a different file than the one the writer meant.
-fn escapes_are_well_formed(encoded: &str) -> bool {
+pub(crate) fn escapes_are_well_formed(encoded: &str) -> bool {
     let bytes = encoded.as_bytes();
     bytes.iter().enumerate().all(|(i, b)| {
         *b != b'%'
@@ -204,7 +204,7 @@ pub fn remap_cross_device(requested: &str) -> Option<String> {
 }
 
 /// Whether a stored attachment name carries the `{6 lowercase alphanumerics}-` prefix.
-fn has_stored_prefix(name: &str) -> bool {
+pub(crate) fn has_stored_prefix(name: &str) -> bool {
     let bytes = name.as_bytes();
     bytes.len() >= STORED_PREFIX_LEN
         && bytes[..6]

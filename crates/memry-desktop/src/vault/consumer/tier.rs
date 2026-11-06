@@ -13,6 +13,7 @@ use super::apply::Applier;
 use super::identity::{DeferIdentity, IdentityCtx, NoteIdentity};
 use super::rows::{RowOwner, RowSession};
 use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
+use crate::editor::versions::close_step;
 use crate::journal::folder_follow::follow_moved_journal;
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
@@ -195,6 +196,17 @@ impl VaultTier {
             .is_none_or(|open| open.writeback.flush(timeout))
     }
 
+    /// The quit steps of the vault the shell registers, by step name: `flush-writebacks`
+    /// ([`Self::flush_step`]), `flush-activity-log` and `close-snapshots`
+    /// (`editor::versions::close_step`).
+    pub fn quit_steps(self: &Arc<Self>, session: &Session) -> [(&'static str, StepFn); 3] {
+        [
+            ("flush-writebacks", self.flush_step()),
+            ("flush-activity-log", self.activity().flush_step()),
+            ("close-snapshots", close_step(session.clone())),
+        ]
+    }
+
     /// The `flush-writebacks` shutdown step: the scheduled write-backs run within
     /// [`writeback_flush_timeout`] of what is left, so the steps behind keep their share. Passes
     /// still left then run in the vault close (`close-vault`), bounded only by the sequence
@@ -356,6 +368,7 @@ impl VaultTier {
             session,
             echo.clone(),
             vault.vault.app_settings(self.store.clone()).ok(),
+            self.own_files.clone(),
         ));
         let writeback = WriteBack::start(pass.clone(), self.failures.clone())
             .map(Arc::new)

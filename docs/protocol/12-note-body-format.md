@@ -658,8 +658,59 @@ write-back drops those three roots for every device, and any future root is
 dropped unconditionally.** There is no test for `compactYDoc`. Tracked as
 **#2181**. **This chapter states the rule of §12.5; `compactYDoc` violates it.**
 
+Since #2181, `compactYDoc` refuses (answers null) when any root is not a typed
+`XmlFragment`, `Map`, `Array` or `Text`
+(`packages/sync-client/src/crdt-compact-utils.ts:18-43`), so it no longer drops
+a root. It still copies: the output is new items under the fresh document's
+client id. Electron stores that output beside the updates it replaces and
+merges them (`apps/desktop/src/main/sync/crdt-provider.ts:2346-2347`, y-leveldb's
+`flushDocument` merges every stored update), so the reloaded document holds every
+block twice (a body of 2 paragraphs reloads with 4), and a peer's edit made
+against the old items lands where nothing shows it (§12.5.0.1). **A port MUST
+NOT compact by copying roots;** §12.5.4 is the rule the Rust core follows.
+
 **Disposition of Q12.5: answered (seven roots, not eight; every root MUST
 survive, including unnamed ones).**
+
+### 12.5.4 Local compaction
+
+**Normative for a client that keeps the two-namespace log of chapter 07 §7.4
+(the Rust core, `crates/memry-core/src/crdt/compact.rs`).** A local compaction
+folds a document's local namespace (its local snapshot and local updates) into
+one local snapshot, and changes nothing else:
+
+1. **The snapshot is the full-state encode of the log's replay** (§12.5.1),
+   applied in chapter 07's load order: server snapshot, server updates, local
+   snapshot, local updates. It holds the same items the log held, every root
+   included whatever its type, so no root is refused and no edit made against
+   the old state is lost.
+2. **The read, the encode and the fold are one transaction**, and the fold point
+   is the highest local sequence read inside it
+   (`crates/memry-core/src/crdt/update_log.rs` `fold_local_in`). A row committed
+   before the transaction is in the snapshot; one committed after it is above
+   the fold point and stays.
+3. **It refuses, writing nothing,** when there is no local update, when the
+   replay holds an update still waiting on one the log lacks (the encode would
+   carry it; the refusal is conservative), or when the snapshot is not smaller
+   than the local rows it replaces.
+4. **The snapshot carries the newest stamp it replaces** (`compacted_at` = the
+   largest `created_at` of the folded rows and of the earlier local snapshot),
+   so a reader comparing stamps (write-back's behind check, the search
+   watermark, the delete-keep rule of chapter 05 §5.8) sees the body as it was.
+5. **The server namespace and the outbox are not touched.** A queued update
+   keeps its own bytes and is sent as queued; a server row is pruned only by a
+   pushed snapshot (chapter 07 §7.13).
+
+Desktop on Tauri compacts, on a 60 s timer, each document the editor has loaded
+whose local log holds 512 KiB or more: the local rows it found at load plus every
+local, outside or app update since, never bytes merged from the server
+(`crates/memry-core/src/api/editor/compaction.rs`). An open window does not stop
+it. Electron's rule differs: 512 KiB of updates only triggers a size check, which
+compacts when the encoded document passes 1 MiB with no window open and otherwise
+flushes the store (`apps/desktop/src/main/sync/crdt-provider.ts:2229-2245`). The
+`crdt-compact.json` vector class pins rules 1 and 3; its snapshots compare as
+the document they encode, because yjs and `yrs` write a delete set's clients in
+different orders.
 
 ## 12.6 Block grammar
 

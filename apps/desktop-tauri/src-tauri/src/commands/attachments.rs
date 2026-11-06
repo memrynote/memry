@@ -7,11 +7,15 @@
 //! `notes_upload_attachment_abort`. A page that reloads or closes ends its uploads
 //! ([`release_page`]). A refused or failed upload rejects with the localized
 //! `errors:attachment.*` message; the renderer's service answers it as Electron's
-//! `{ success: false, error }`.
+//! `{ success: false, error }`. `notes_attachment_rename` renames a block's file
+//! (`notes:attachment-rename`) and rejects as Electron's handler does. A locked note refuses each
+//! of them with `note_locked`.
 
 use std::sync::Arc;
 
-use memry_desktop::attachments::{self, AttachmentError, SavedAttachment, Uploads};
+use memry_desktop::attachments::{
+    self, AttachmentError, RenamedAttachment, SavedAttachment, Uploads,
+};
 use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
 use serde::Deserialize;
@@ -31,7 +35,7 @@ struct UploadMeta {
     size: usize,
 }
 
-fn upload_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> CommandError {
+fn attachment_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> CommandError {
     let locale = app.state::<Arc<LocaleService>>().get();
     let t = |key: &str, args: &Args| i18n::t(locale, key, args);
     match error {
@@ -55,6 +59,24 @@ fn upload_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> Comm
             CommandError::new(ErrorKind::Invalid, "attachment_invalid_note", message)
         }
         AttachmentError::Storage(storage) => CommandError::from_core(storage),
+        // Electron's English texts, which `ipc-error.ts` and the rename dialog show as they are.
+        AttachmentError::Locked => {
+            CommandError::new(ErrorKind::Locked, "note_locked", error.to_string())
+        }
+        AttachmentError::NoteNotFound(_) | AttachmentError::FileNotFound => CommandError::new(
+            ErrorKind::NotFound,
+            "attachment_not_found",
+            error.to_string(),
+        ),
+        AttachmentError::NotVaultRelative
+        | AttachmentError::OutsideVault
+        | AttachmentError::NotOwned
+        | AttachmentError::BadName
+        | AttachmentError::NoFreeName => CommandError::new(
+            ErrorKind::Invalid,
+            "attachment_invalid_path",
+            error.to_string(),
+        ),
         AttachmentError::UploadGone
         | AttachmentError::BadChunk
         | AttachmentError::TooManyUploads => {
@@ -83,14 +105,14 @@ pub async fn notes_upload_attachment<R: Runtime>(
     let body = binary::raw_body(&request)?;
     // On the declared size, so a file over the limit never crosses IPC.
     if let Err(error) = attachments::check_upload_size(meta.size, body.len()) {
-        let error = upload_error(&app, &error);
+        let error = attachment_error(&app, &error);
         log_failure("notes_upload_attachment", &error);
         return Err(error);
     }
     let body = body.to_vec();
     blocking("notes_upload_attachment", move || {
         attachments::upload(&open_vault(&app)?, &meta.note_id, &meta.file_name, &body)
-            .map_err(|error| upload_error(&app, &error))
+            .map_err(|error| attachment_error(&app, &error))
     })
     .await
 }
@@ -117,7 +139,7 @@ pub async fn notes_upload_attachment_begin<R: Runtime>(
     blocking("notes_upload_attachment_begin", move || {
         uploads(&app)?
             .begin(&open_vault(&app)?, &owner, &note_id, &file_name, size)
-            .map_err(|error| upload_error(&app, &error))
+            .map_err(|error| attachment_error(&app, &error))
     })
     .await
 }
@@ -141,7 +163,7 @@ pub async fn notes_upload_attachment_chunk<R: Runtime>(
     blocking("notes_upload_attachment_chunk", move || {
         uploads(&app)?
             .write_chunk(&open_vault(&app)?, &meta.id, meta.offset, &body)
-            .map_err(|error| upload_error(&app, &error))
+            .map_err(|error| attachment_error(&app, &error))
     })
     .await
 }
@@ -156,6 +178,23 @@ pub async fn notes_upload_attachment_abort<R: Runtime>(
     blocking("notes_upload_attachment_abort", move || {
         uploads(&app)?.abort(&id);
         Ok(())
+    })
+    .await
+}
+
+/// Renames the file a block's `url` names in the note's attachments folder to `new_name`, keeping
+/// its prefix and extension, and answers the block's new `url` and `name`.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_attachment_rename<R: Runtime>(
+    app: AppHandle<R>,
+    note_id: String,
+    url: String,
+    new_name: String,
+) -> Result<RenamedAttachment, CommandError> {
+    blocking("notes_attachment_rename", move || {
+        attachments::rename(&open_vault(&app)?, &note_id, &url, &new_name)
+            .map_err(|error| attachment_error(&app, &error))
     })
     .await
 }

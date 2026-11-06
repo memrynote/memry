@@ -7,13 +7,16 @@
 //! window that sent it, as a [`frame`]. A window that is gone lets go of everything it held
 //! ([`EditorHost::forget_window`], Electron's `forgetWindow`).
 
+mod compaction;
 mod host;
+pub mod versions;
 
 use std::sync::Arc;
 
 use memry_core::api::editor::{EditorError, Notice, Origin};
 use memry_core::api::errors::AuthError;
 
+pub use compaction::compact_due;
 pub use host::{EditorHealth, EditorHost, HostEvent};
 
 use crate::error::{CoreError, FailureKind};
