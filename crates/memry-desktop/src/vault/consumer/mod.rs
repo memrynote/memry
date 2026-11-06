@@ -116,7 +116,7 @@ pub enum MoveKind {
     Renamed,
     /// The app moved the note to another folder (`notes:moved`).
     Moved,
-    /// A journal date format change renamed the day's file. Electron's
+    /// A journal date format or folder change moved the day's file. Electron's
     /// `journal-format-migration` sends no note event for it, and nor does this app.
     JournalFormat,
 }

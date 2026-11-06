@@ -16,8 +16,9 @@
     "corrupted": "Úgy tűnik, ez a széf sérült. Próbálja meg visszaállítani egy biztonsági másolatból.",
     "configChangeNotPorted": "Ez a verzió még nem tudja módosítani a naplómappát, a dátumformátumot vagy a kizárt mappákat. A mentett beállítás megmarad.",
     "journalFormatIncomplete": "Ez a dátumformátum nem tud minden napot elnevezni, ezért nem lett mentve. Adja meg az évet, a hónapot és a napot.",
-    "journalDaysNotRenamed": "A dátumformátum nem változott, mert néhány naplónapot nem sikerült átnevezni rá ({count}). Lehet, hogy egy fájlnak már megvan egy nap új neve.",
-    "journalUnlisted": "A naplómappát nem sikerült beolvasni, ezért a dátumformátum nem változott. Ellenőrizze, hogy van-e hozzáférése."
+    "journalFolderInvalid": "A napló nem lehet ebben a mappában, ezért a módosítás nem lett mentve. Válasszon egy látható mappát, amely nincs kizárva, és nem hivatkozás.",
+    "journalDaysNotRenamed": "A módosítás nem lett mentve, mert néhány naplónapot nem sikerült oda áthelyezni ({count}). Lehet, hogy egy fájlnak már megvan egy nap új neve.",
+    "journalUnlisted": "A naplómappát nem sikerült beolvasni, ezért a módosítás nem lett mentve. Ellenőrizze, hogy van-e hozzáférése."
   },
   "note": {
     "notFound": "Ez a jegyzet nem található. Lehet, hogy törölték.",

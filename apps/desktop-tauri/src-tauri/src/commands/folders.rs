@@ -3,12 +3,14 @@
 //! (`tests/folders.rs`); the reveal goes through the shell, which runs on `Wry` only.
 
 use memry_desktop::notes::folders::{self, FolderConfigInput, FolderView};
+use memry_desktop::vault::config::VaultConfig;
 use memry_desktop::vault::folder_file::FolderConfigView;
 use tauri::{AppHandle, Runtime, Wry};
 
 use super::blocking;
 use super::error::CommandError;
 use super::notes::{failed, open_vault, service};
+use crate::events::{VaultConfigChangedEvent, broadcast};
 use crate::shell::external;
 
 /// `notes:get-folders`: every folder the notes tree lists, with its icon.
@@ -39,7 +41,9 @@ pub async fn notes_create_folder<R: Runtime>(
 }
 
 /// `notes:rename-folder`: the folder at `old_path` to `new_path`, a rename in place or a drag
-/// to another parent, its notes with it (`notes::folder_move`).
+/// to another parent, its notes with it (`notes::folder_move`). A journal setting that follows
+/// the folder is heard by every window as [`VaultConfigChangedEvent`], as Electron's
+/// `followJournalFolder` broadcasts it.
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_rename_folder<R: Runtime>(
@@ -48,8 +52,11 @@ pub async fn notes_rename_folder<R: Runtime>(
     new_path: String,
 ) -> Result<(), CommandError> {
     blocking("notes_rename_folder", move || {
+        let announce = |settings: &VaultConfig| {
+            broadcast(&app, VaultConfigChangedEvent(settings.clone()));
+        };
         service(&app)?
-            .rename_folder(&open_vault(&app)?, &old_path, &new_path)
+            .rename_folder(&open_vault(&app)?, &old_path, &new_path, announce)
             .map_err(|error| failed(&error))
     })
     .await

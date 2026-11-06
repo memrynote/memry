@@ -16,8 +16,9 @@
     "corrupted": "Bu kasa bozulmuş gibi görünüyor. Yedekten geri yüklemeyi deneyin.",
     "configChangeNotPorted": "Bu sürüm henüz günlük klasörünü, tarih biçimini veya hariç tutulan klasörleri değiştiremez. Kayıtlı ayarınız korunur.",
     "journalFormatIncomplete": "Bu tarih biçimi her güne ad veremediği için kaydedilmedi. Yılı, ayı ve günü ekleyin.",
-    "journalDaysNotRenamed": "Bazı günlük günleri bu biçime yeniden adlandırılamadığı için tarih biçimi değiştirilmedi ({count}). Bir dosya bir günün yeni adını zaten taşıyor olabilir.",
-    "journalUnlisted": "Günlük klasörü okunamadığı için tarih biçimi değiştirilmedi. Klasöre erişiminiz olduğunu kontrol edin."
+    "journalFolderInvalid": "Günlük bu klasörde tutulamadığı için değişiklik kaydedilmedi. Hariç tutulmamış ve bağlantı olmayan görünür bir klasör seçin.",
+    "journalDaysNotRenamed": "Bazı günlük günleri oraya taşınamadığı için değişiklik kaydedilmedi ({count}). Bir dosya bir günün yeni adını zaten taşıyor olabilir.",
+    "journalUnlisted": "Günlük klasörü okunamadığı için değişiklik kaydedilmedi. Klasöre erişiminiz olduğunu kontrol edin."
   },
   "note": {
     "notFound": "Bu not bulunamadı. Silinmiş olabilir.",

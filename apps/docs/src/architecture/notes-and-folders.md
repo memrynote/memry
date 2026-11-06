@@ -110,7 +110,7 @@ A folder is a directory of the vault. Its settings (icon, default template, `inh
 
 The icon is also mirrored into the synced `folder_config` record, so an empty folder reaches other devices (`notes/folders.rs`). The record wins over the file for every read.
 
-- **Rename and move** (`notes/folder_move.rs`). Every note in the folder moves as one note's move does, in one step under the rows' lane. The move is recorded first, then the folder moves on disk (whole, or entry by entry where Windows holds a file open, #2206), then every record, row, `folder_config` record and sidebar slot follows in one transaction. Path-form links (`[[Old/Note]]`) are rewritten afterwards. Moving the journal folder, or a folder holding it, is refused.
+- **Rename and move** (`notes/folder_move.rs`). Every note in the folder moves as one note's move does, in one step under the rows' lane. The move is recorded first, then the folder moves on disk (whole, or entry by entry where Windows holds a file open, #2206), then every record, row, `folder_config` record and sidebar slot follows in one transaction. Path-form links (`[[Old/Note]]`) are rewritten afterwards. Moving the journal folder, or a folder holding it, takes the journal setting along, so every day stays a day (see [Journal days](#journal-days)).
 - **Delete** (`notes/folder_delete.rs`). The folder goes to the OS trash whole, with every file in it. Its notes are tombstoned and their rows, `folder_config` records and sidebar order removed in one transaction. Electron removes the folder for good. Deleting the journal folder, a folder holding it, or a folder inside it is refused.
 - **Another device's changes** (`notes/folder_sync.rs`). A pulled `folder_config` writes its icon into the folder's `.folder.md`, and makes the folder when it is not here. A pulled folder delete, or the last note of a deleted folder going, removes the folder once nothing worth keeping is left in it (`vault/empty_folder.rs`). Nothing calls these yet. The sync engine (Step 17, #3534) will call them through `memry_tauri::shell::folder_sync`.
 
@@ -123,6 +123,9 @@ A day is a core journal record with the id `j<YYYY-MM-DD>` and a vault file at t
 - A day's tags live on its record. They are never written back to the day's file: the file's `tags:` are the author's bytes.
 - The write-back writes a day's body as it writes a note's. The one frontmatter key it sets is `date` (`vault/writeback/journal.rs`), except when the writing-tools data changes, which rewrites the whole block (a version is kept first).
 - The calendar, heatmap and charts read the live journal records (`journal/calendar.rs`, `journal/property_rows.rs`), so a deleted day never shows, whatever file is on disk.
+- A day stays a day only while its file is in the configured journal folder, at a name the date format reads. When a file and the setting disagree, the day's next move deletes it as a day and makes a note, on every device. So the setting and the files always change together:
+  - **Settings > Journal folder** moves the days into the new folder before it saves the folder (`vault/config/settings.rs`, `vault/journal_rename/`). Only the days move; other files stay in the old folder. Each day's row moves before its file, so a crash leaves a day the next open pairs back under the saved folder. The change is refused, and every day put back, when a day cannot move (its new path is taken, or another program holds the file), or when the folder is one the days cannot live in: the vault root, a hidden, excluded or linked folder, or a respelling in case only. Electron saves the folder and moves nothing.
+  - **Moving the journal folder in the sidebar**, or a folder holding it, saves the followed folder once the folder is on disk and before the records follow (`notes/folder_move.rs`), as Electron's `followJournalFolderMove` does. The journal folder moves only whole: when Windows holds a file in it, the move is refused instead of going entry by entry.
 - When the whole journal folder is renamed outside the app, each day it carried is held, so no day turns into a note (`journal/folder_follow.rs`). The vault config keeps the old folder name, and the held days stay held.
 
 ## Local-only notes
@@ -177,6 +180,7 @@ These differences are decided and accepted. Each is stated in the code the item 
 - **A `.folder.md` with text keeps its folder.** When another device deletes a folder, a `.folder.md` holding text or keys no build models keeps the folder on this device. Electron removes any `.folder.md` (`vault/empty_folder.rs`). This takes effect once the sync engine calls the prune (Step 17).
 - **A server delete with no payload removes a property definition.** A pulled delete of a `property_definition` this device never held carries no payload. It still removes the name from `.memry/properties.md` (`memry_core::domain::property_admin::mirror`).
 - **Journal tags are never written back to a day's file.** They live on the day's record (`journal/mod.rs`).
+- **A journal folder change moves the days.** Settings > Journal folder moves the day files into the new folder, and refuses the folder when a day cannot move. Electron saves the folder, moves nothing, and reads the days left behind as notes (`vault/config/settings.rs`).
 
 Other differences the code states:
 

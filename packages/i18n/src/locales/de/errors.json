@@ -16,8 +16,9 @@
     "corrupted": "Dieser Tresor scheint beschädigt zu sein. Versuche, ihn aus einem Backup wiederherzustellen.",
     "configChangeNotPorted": "Diese Version kann den Journal-Ordner, das Datumsformat oder ausgeschlossene Ordner noch nicht ändern. Deine gespeicherte Einstellung bleibt erhalten.",
     "journalFormatIncomplete": "Dieses Datumsformat kann nicht jeden Tag benennen und wurde daher nicht gespeichert. Gib Jahr, Monat und Tag an.",
-    "journalDaysNotRenamed": "Das Datumsformat wurde nicht geändert, weil einige Journaltage nicht darauf umbenannt werden konnten ({count}). Möglicherweise trägt eine Datei bereits den neuen Namen eines Tages.",
-    "journalUnlisted": "Der Journal-Ordner konnte nicht gelesen werden, daher wurde das Datumsformat nicht geändert. Prüfe, ob du Zugriff darauf hast."
+    "journalFolderInvalid": "Das Journal kann nicht in diesem Ordner liegen, daher wurde die Änderung nicht gespeichert. Wähle einen sichtbaren Ordner, der nicht ausgeschlossen und keine Verknüpfung ist.",
+    "journalDaysNotRenamed": "Die Änderung wurde nicht gespeichert, weil einige Journaltage nicht dorthin verschoben werden konnten ({count}). Möglicherweise trägt eine Datei bereits den neuen Namen eines Tages.",
+    "journalUnlisted": "Der Journal-Ordner konnte nicht gelesen werden, daher wurde die Änderung nicht gespeichert. Prüfe, ob du Zugriff darauf hast."
   },
   "note": {
     "notFound": "Diese Notiz konnte nicht gefunden werden. Möglicherweise wurde sie gelöscht.",

@@ -95,9 +95,8 @@ pub enum NotesError {
     /// manager moved it first (#2531).
     #[error("the folder is not there anymore")]
     FolderNotFound,
-    /// The journal folder is, or is inside, the folder to move. Its setting would have to
-    /// follow it, which this version does not do yet.
-    #[error("the folder holds the journal folder, which cannot be moved yet")]
+    /// The journal folder is, or is inside, the folder to delete.
+    #[error("the folder holds the journal folder")]
     FolderHoldsJournal,
     /// The folder to delete is inside the journal folder (a year folder of a nested date
     /// format): it holds days, which a note delete does not take.

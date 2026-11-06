@@ -16,8 +16,9 @@
     "corrupted": "Este cofre parece estar corrompido. Tente restaurar a partir de um backup.",
     "configChangeNotPorted": "Esta versão ainda não pode alterar a pasta do diário, o formato de data ou as pastas excluídas. Sua configuração salva é mantida.",
     "journalFormatIncomplete": "Este formato de data não consegue nomear todos os dias, então não foi salvo. Inclua o ano, o mês e o dia.",
-    "journalDaysNotRenamed": "O formato de data não foi alterado porque alguns dias do diário não puderam ser renomeados para ele ({count}). Talvez um arquivo já tenha o novo nome de um dia.",
-    "journalUnlisted": "Não foi possível ler a pasta do diário, então o formato de data não foi alterado. Verifique se você tem acesso a ela."
+    "journalFolderInvalid": "O diário não pode ficar nesta pasta, então a alteração não foi salva. Escolha uma pasta visível que não esteja excluída nem seja um link.",
+    "journalDaysNotRenamed": "A alteração não foi salva porque alguns dias do diário não puderam ser movidos para lá ({count}). Talvez um arquivo já tenha o novo nome de um dia.",
+    "journalUnlisted": "Não foi possível ler a pasta do diário, então a alteração não foi salva. Verifique se você tem acesso a ela."
   },
   "note": {
     "notFound": "Esta nota não foi encontrada. Ela pode ter sido excluída.",

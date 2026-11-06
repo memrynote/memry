@@ -16,8 +16,9 @@
     "corrupted": "Čini se da je ovaj trezor oštećen. Pokušajte vratiti iz sigurnosne kopije.",
     "configChangeNotPorted": "Ova verzija još ne može promijeniti mapu dnevnika, format datuma ni izuzete mape. Spremljena postavka ostaje.",
     "journalFormatIncomplete": "Ovaj format datuma ne može imenovati svaki dan pa nije spremljen. Uključite godinu, mjesec i dan.",
-    "journalDaysNotRenamed": "Format datuma nije promijenjen jer neke dane dnevnika nije bilo moguće preimenovati prema njemu ({count}). Možda neka datoteka već ima novi naziv dana.",
-    "journalUnlisted": "Mapu dnevnika nije bilo moguće pročitati pa format datuma nije promijenjen. Provjerite imate li pristup njoj."
+    "journalFolderInvalid": "Dnevnik ne može biti u ovoj mapi pa promjena nije spremljena. Odaberite vidljivu mapu koja nije izuzeta i nije poveznica.",
+    "journalDaysNotRenamed": "Promjena nije spremljena jer neke dane dnevnika nije bilo moguće premjestiti onamo ({count}). Možda neka datoteka već ima novi naziv dana.",
+    "journalUnlisted": "Mapu dnevnika nije bilo moguće pročitati pa promjena nije spremljena. Provjerite imate li pristup njoj."
   },
   "note": {
     "notFound": "Ova bilješka nije pronađena. Možda je izbrisana.",

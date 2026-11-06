@@ -96,7 +96,9 @@ export const commands = {
 	notesGetFolders: () => __TAURI_INVOKE<FolderView[]>("notes_get_folders"),
 	/**
 	 *  `notes:rename-folder`: the folder at `old_path` to `new_path`, a rename in place or a drag
-	 *  to another parent, its notes with it (`notes::folder_move`).
+	 *  to another parent, its notes with it (`notes::folder_move`). A journal setting that follows
+	 *  the folder is heard by every window as [`VaultConfigChangedEvent`], as Electron's
+	 *  `followJournalFolder` broadcasts it.
 	 */
 	notesRenameFolder: (oldPath: string, newPath: string) => __TAURI_INVOKE<null>("notes_rename_folder", { oldPath, newPath }),
 	/**  `notes:reveal-folder-in-finder`: the folder itself, selected in its parent. */
@@ -394,12 +396,12 @@ export const commands = {
 	vaultSetIcon: (path: string, icon: string | null) => __TAURI_INVOKE<null>("vault_set_icon", { path, icon }),
 	vaultSwitch: (path: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_switch", { path }),
 	/**
-	 *  `vault:update-config`: writes the fields `config` names, a new date format with the day
-	 *  files renamed to it first, and answers the settings after it, which every window hears as
-	 *  [`VaultConfigChangedEvent`], in the order the writes land. A change that is not ported yet
-	 *  is refused as `config_change_not_ported`, and a format not every day can take as
-	 *  `journal_format_incomplete`, `journal_unlisted` or `journal_days_not_renamed`
-	 *  (`vault::config::settings`).
+	 *  `vault:update-config`: writes the fields `config` names, a new date format or journal folder
+	 *  with the day files moved to it first, and answers the settings after it, which every window
+	 *  hears as [`VaultConfigChangedEvent`], in the order the writes land. A change that is not
+	 *  ported yet is refused as `config_change_not_ported`, and a setting not every day can take as
+	 *  `journal_format_incomplete`, `journal_folder_invalid`, `journal_unlisted` or
+	 *  `journal_days_not_renamed` (`vault::config::settings`).
 	 */
 	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
 	/**  Drops every retained entry, on disk too. */

@@ -16,8 +16,9 @@
     "corrupted": "Tämä holvi näyttää olevan vioittunut. Yritä palauttaa varmuuskopiosta.",
     "configChangeNotPorted": "Tämä versio ei vielä voi muuttaa päiväkirjakansiota, päivämäärämuotoa tai pois jätettyjä kansioita. Tallennettu asetus säilyy.",
     "journalFormatIncomplete": "Tämä päivämäärämuoto ei pysty nimeämään jokaista päivää, joten sitä ei tallennettu. Sisällytä vuosi, kuukausi ja päivä.",
-    "journalDaysNotRenamed": "Päivämäärämuotoa ei muutettu, koska joitakin päiväkirjan päiviä ei voitu nimetä uudelleen sen mukaan ({count}). Jollakin tiedostolla voi jo olla päivän uusi nimi.",
-    "journalUnlisted": "Päiväkirjakansiota ei voitu lukea, joten päivämäärämuotoa ei muutettu. Tarkista, että sinulla on siihen käyttöoikeus."
+    "journalFolderInvalid": "Päiväkirjaa ei voi pitää tässä kansiossa, joten muutosta ei tallennettu. Valitse näkyvä kansio, jota ei ole jätetty pois ja joka ei ole linkki.",
+    "journalDaysNotRenamed": "Muutosta ei tallennettu, koska joitakin päiväkirjan päiviä ei voitu siirtää sinne ({count}). Jollakin tiedostolla voi jo olla päivän uusi nimi.",
+    "journalUnlisted": "Päiväkirjakansiota ei voitu lukea, joten muutosta ei tallennettu. Tarkista, että sinulla on siihen käyttöoikeus."
   },
   "note": {
     "notFound": "Tätä muistiinpanoa ei löytynyt. Se on ehkä poistettu.",

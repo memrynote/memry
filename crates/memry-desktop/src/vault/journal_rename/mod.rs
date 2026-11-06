@@ -1,5 +1,9 @@
 //! Renames the journal files when the journal date format changes, after
-//! `apps/desktop/src/main/vault/journal-format-migration.ts`.
+//! `apps/desktop/src/main/vault/journal-format-migration.ts`, and moves them into the new
+//! folder when the journal folder changes (`settings`; Electron moves nothing then). A folder
+//! change moves only the days, the files the old format reads as dates, and takes the new
+//! folder's files for taken names; the rest of what follows holds for both, with "name" read
+//! as the path in the new folder.
 //!
 //! A format may carry folders (`YYYY/MMMM/YYYY-MM-DD`), so a rename can move a file between
 //! folders of the journal folder: `2025-01-14.md` becomes `2025/January/2025-01-14.md` and back.
@@ -75,17 +79,20 @@ mod plan;
 
 pub use plan::{
     JournalRename, JournalRenamePlan, JournalRenameSkip, SkipReason, is_complete_journal_format,
-    plan_journal_renames,
+    plan_journal_moves, plan_journal_renames,
 };
 
 const SCOPE: &str = "journal_rename";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct JournalRenameResult {
-    /// The renames that landed, file and row both; [`revert_journal_renames`] takes them back.
+    /// The renames that landed, file and row both; [`revert_journal_moves`] takes them back.
     pub moved: Vec<JournalRename>,
     pub skipped: usize,
     pub failed: usize,
+    /// The folders the pass made for a new journal folder, deepest first, which go again with
+    /// the days when the move is taken back.
+    pub made: Vec<String>,
 }
 
 /// The open vault a pass works in: its folder, its core, and the tier whose rows' lane and
@@ -97,42 +104,45 @@ pub struct JournalVault<'a> {
     pub tier: &'a VaultTier,
 }
 
-/// Renames the journal files of `journal_folder` from `old_format` to `new_format`, both taken
-/// in their canonical form. An error only when the journal folder could not be listed; a file
-/// that could not move is counted in `failed` and the pass goes on.
-pub fn rename_journals_for_format_change(
-    at: JournalVault<'_>,
-    journal_folder: &str,
-    old_format: &str,
-    new_format: &str,
-) -> io::Result<JournalRenameResult> {
-    rename_journals_for_format_change_checked(
-        at,
-        journal_folder,
-        old_format,
-        new_format,
-        &mut || {},
-    )
+/// A journal's days: its vault-relative folder and its date format.
+#[derive(Debug, Clone, Copy)]
+pub struct JournalPlace<'a> {
+    pub folder: &'a str,
+    pub format: &'a str,
 }
 
-/// [`rename_journals_for_format_change`] with a hook that runs between the two steps of each
-/// move, where a crash would stop it, so a test can see what a crash there leaves.
-#[doc(hidden)]
-pub fn rename_journals_for_format_change_checked(
+/// Moves the journal days of `from` to their names in `to`, both taken in their canonical
+/// form: a date format change renames them in their folder, a journal folder change moves them
+/// into the new one (`settings::update_vault_settings`). An error only when a journal folder
+/// could not be listed; a file that could not move is counted in `failed` and the pass goes on.
+pub fn move_journal_days(
     at: JournalVault<'_>,
-    journal_folder: &str,
-    old_format: &str,
-    new_format: &str,
+    from: JournalPlace<'_>,
+    to: JournalPlace<'_>,
+) -> io::Result<JournalRenameResult> {
+    move_journal_days_checked(at, from, to, &mut || {})
+}
+
+/// [`move_journal_days`] with a hook that runs between the two steps of each move, where a
+/// crash would stop it, so a test can see what a crash there leaves.
+#[doc(hidden)]
+pub fn move_journal_days_checked(
+    at: JournalVault<'_>,
+    from: JournalPlace<'_>,
+    to: JournalPlace<'_>,
     between: &mut dyn FnMut(),
 ) -> io::Result<JournalRenameResult> {
     let mut result = JournalRenameResult::default();
-    let folder = normalize_journal_folder(journal_folder);
-    if folder.is_empty() {
+    let (source, target) = (
+        normalize_journal_folder(from.folder),
+        normalize_journal_folder(to.folder),
+    );
+    if source.is_empty() || target.is_empty() {
         return Ok(result);
     }
     let (old_format, new_format) = (
-        normalize_journal_date_format(old_format),
-        normalize_journal_date_format(new_format),
+        normalize_journal_date_format(from.format),
+        normalize_journal_date_format(to.format),
     );
     if !is_complete_journal_format(&new_format) {
         tracing::warn!(
@@ -141,13 +151,20 @@ pub fn rename_journals_for_format_change_checked(
         );
         return Ok(result);
     }
-    let Some(journal) = Journal::of(at.root, folder) else {
+    let (Some(source), Some(target)) = (Journal::of(at.root, source), Journal::of(at.root, target))
+    else {
         return Ok(result);
     };
-    let Some(files) = list_files(&journal.dir)? else {
+    let Some(files) = list_files(&source.dir)? else {
         return Ok(result);
     };
-    let plan = plan_journal_renames(&files, &old_format, &new_format);
+    let plan = if source.folder == target.folder {
+        plan_journal_renames(&files, &old_format, &new_format)
+    } else {
+        result.made = target.missing(at.root);
+        let present = list_files(&target.dir)?.unwrap_or_default();
+        plan_journal_moves(&files, &present, &old_format, &new_format)
+    };
     result.skipped = plan.skipped.len();
     if plan.renames.is_empty() {
         log_skipped(&plan.skipped);
@@ -168,12 +185,12 @@ pub fn rename_journals_for_format_change_checked(
         match move_one(
             at,
             (&rows, session),
-            &journal,
+            (&source, &target),
             names,
             (First::Row, &mut *between),
         ) {
             Ok(Moved::Done) => {
-                journal.remove_empty(&at.tier.echo(), folders_of(&rename.from));
+                source.remove_empty(&at.tier.echo(), folders_of(&rename.from));
                 result.moved.push(rename);
             }
             Ok(Moved::TargetTaken) => {
@@ -194,26 +211,31 @@ pub fn rename_journals_for_format_change_checked(
         renamed = result.moved.len(),
         skipped = result.skipped,
         failed = result.failed,
-        "journal files renamed for the new date format"
+        "journal files moved to their names in the new journal setting"
     );
     log_skipped(&skipped);
+    if result.moved.is_empty() {
+        remove_made(at, &result.made);
+    }
     Ok(result)
 }
 
-/// Takes back the renames of a format change whose new format was not saved, newest first,
-/// file then row (the module's doc), so every journal file matches the format it
-/// is read with again. Returns the renames that did not go back, in the order given: each file
-/// is logged and left at its new name, with its row.
-pub fn revert_journal_renames(
+/// Takes back the moves of a pass from the journal folder `from` to `to` whose setting was not
+/// saved, newest first, file then row (the module's doc), so every journal file matches the
+/// setting it is read with again. Returns the moves that did not go back, in the order given:
+/// each file is logged and left at its new name, with its row.
+pub fn revert_journal_moves(
     at: JournalVault<'_>,
-    journal_folder: &str,
-    moved: &[JournalRename],
+    (from, to): (&str, &str),
+    pass: &JournalRenameResult,
 ) -> Vec<JournalRename> {
-    let folder = normalize_journal_folder(journal_folder);
-    if folder.is_empty() || moved.is_empty() {
+    let moved = &pass.moved;
+    let (source, target) = (normalize_journal_folder(from), normalize_journal_folder(to));
+    if source.is_empty() || target.is_empty() || moved.is_empty() {
         return moved.to_vec();
     }
-    let Some(journal) = Journal::of(at.root, folder) else {
+    let (Some(source), Some(target)) = (Journal::of(at.root, source), Journal::of(at.root, target))
+    else {
         return moved.to_vec();
     };
     let rows = at.tier.rows();
@@ -230,12 +252,12 @@ pub fn revert_journal_renames(
         match move_one(
             at,
             (&rows, session),
-            &journal,
+            (&target, &source),
             names,
             (First::File, &mut || {}),
         ) {
             Ok(Moved::Done) => {
-                journal.remove_empty(&at.tier.echo(), folders_of(&rename.to));
+                target.remove_empty(&at.tier.echo(), folders_of(&rename.to));
                 continue;
             }
             Ok(Moved::TargetTaken) => tracing::error!(
@@ -249,7 +271,24 @@ pub fn revert_journal_renames(
         left.push(rename.clone());
     }
     left.reverse();
+    if left.is_empty() {
+        remove_made(at, &pass.made);
+    }
     left
+}
+
+/// Removes the folders a pass made for a new journal folder, deepest first, while each is
+/// empty, the watcher told first ([`Journal::remove_empty`]).
+fn remove_made(at: JournalVault<'_>, made: &[String]) {
+    let echo = at.tier.echo();
+    for folder in made {
+        let Some(path) = safe_join(at.root, &[folder]) else {
+            return;
+        };
+        if echo.removing(folder, || fs::remove_dir(path)).is_err() {
+            return;
+        }
+    }
 }
 
 enum Moved {
@@ -282,25 +321,25 @@ enum First {
 }
 
 /// Moves one file and its row under the lane, `first` first and `between` run after it; `from`
-/// and `to` are relative to the journal folder.
+/// is relative to the journal folder `out_of`, `to` to `into` (the same one for a format).
 fn move_one(
     at: JournalVault<'_>,
     (rows, session): (&RowOwner, RowSession),
-    journal: &Journal,
+    (out_of, into): (&Journal, &Journal),
     (from, to): (&str, &str),
     (first, between): (First, &mut dyn FnMut()),
 ) -> Result<Moved, MoveError> {
-    let (Some(source), Some(target)) = (journal.path(from), journal.path(to)) else {
+    let (Some(source), Some(target)) = (out_of.path(from), into.path(to)) else {
         return Err(MoveError::Outside);
     };
-    let (from_path, to_path) = (journal.rel(from), journal.rel(to));
+    let (from_path, to_path) = (out_of.rel(from), into.rel(to));
     // A name that is there is the move's to refuse; a free one must not lead out of the vault.
     if fs::symlink_metadata(&target).is_err()
         && resolve_vault_file(at.root, &to_path).map_err(MoveError::File)? == Resolution::Outside
     {
         return Err(MoveError::Outside);
     }
-    let case_only = js::to_lower(from) == js::to_lower(to);
+    let case_only = js::to_lower(&from_path) == js::to_lower(&to_path);
     let mut lane = rows.lane_of(session)?;
     let row = lane.row_at(&from_path).map_err(RowError::from)?;
     let target_free = match &row {
@@ -312,7 +351,7 @@ fn move_one(
     }
     let echo = at.tier.echo();
     let created = folders_of(to)
-        .take_while(|folder| journal.path(folder).is_some_and(|path| !exists(&path)))
+        .take_while(|folder| into.path(folder).is_some_and(|path| !exists(&path)))
         .count();
     let forward = FileMove {
         source: &source,
@@ -342,7 +381,7 @@ fn move_one(
         None => forward.run(&echo),
     };
     if let Err(error) = moved {
-        journal.remove_empty(&echo, folders_of(to).take(created));
+        into.remove_empty(&echo, folders_of(to).take(created));
         if let Some(refused) = row_refused {
             return Err(MoveError::Rows(refused));
         }
@@ -367,7 +406,7 @@ fn move_one(
             case_only,
         };
         match back.run(&echo) {
-            Ok(()) => journal.remove_empty(&echo, folders_of(to).take(created)),
+            Ok(()) => into.remove_empty(&echo, folders_of(to).take(created)),
             // The file stays at its new name and the row at its old. The old name's record
             // is withdrawn below: a watcher that has not looked at the old name yet sees an
             // outside move and pairs the two by the file's bytes, a rename. After tries to
@@ -455,6 +494,14 @@ impl Journal {
             return None;
         };
         Some(Self { dir, folder })
+    }
+
+    /// The journal folder and the folders that hold it that are not there, deepest first.
+    fn missing(&self, root: &Path) -> Vec<String> {
+        std::iter::successors(Some(self.folder.as_str()), |folder| parent_of(folder))
+            .take_while(|folder| safe_join(root, &[folder]).is_some_and(|path| !exists(&path)))
+            .map(str::to_owned)
+            .collect()
     }
 
     /// A `/`-separated path relative to the journal folder, on disk; `None` when it leads out.
