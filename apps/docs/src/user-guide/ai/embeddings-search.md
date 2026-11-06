@@ -19,11 +19,13 @@ A query like "setting up authentication" can surface a note titled "OAuth flow" 
 
 1. Open [Settings → AI](/user-guide/settings#ai)
 2. Toggle **Enable**
-3. Under Embedding Model, click **Download** to pull the model
+3. Under Embedding Model, click **Download & Load Model** to pull the model
 4. Wait for the status to say **Loaded**
 5. Click **Rebuild Index** to embed every existing note (one-time per model)
 
 The first index build can take a few minutes for large vaults — progress is shown.
+
+Memry unloads the model from memory about 30 seconds after the last embedding. The files stay on disk, so the status then reads **Downloaded**, and **Load Model** reads them from disk without downloading anything again.
 
 ## The Model
 

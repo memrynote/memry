@@ -467,9 +467,9 @@ quick-capture voice capture.
 
 ### Embedding Model
 
-- Status: loaded, loading, or not downloaded
+- Status: not downloaded, downloaded, loading, or loaded. The model unloads from memory a short while after the last embedding, so a downloaded model reads **Downloaded** until it is used again
 - Dimensions and current embedding count
-- **Download / Load** button
+- **Download & Load Model** button before the first download, **Load Model** once the model is on disk
 - **Rebuild Index** — re-embed all notes; shows progress
 
 ### AI Inline
