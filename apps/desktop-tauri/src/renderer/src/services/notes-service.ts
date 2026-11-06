@@ -2,6 +2,7 @@ import type {
   ApplyTemplateInput,
   AttachmentInfo,
   AttachmentResult,
+  AttachmentUploadFile,
   CreatePropertyDefinitionInput,
   CreatePropertyDefinitionResponse,
   DeleteAttachmentResponse,
@@ -64,6 +65,7 @@ import {
   type UndoTagTemplateInput,
   type Value
 } from '../../../generated/bindings'
+import { invokeBinary } from '../lib/ipc-binary'
 import { askPermanentDelete } from '../lib/permanent-delete-question'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 import { createLogger } from '../lib/logger'
@@ -154,6 +156,17 @@ function failure(error: unknown): { success: false; error?: string } {
   return message ? { success: false, error: message } : { success: false }
 }
 
+/**
+ * The largest file one upload body carries (`memry_desktop::attachments::MAX_UPLOAD_BODY`); the
+ * chunked upload of 14f-2 (#3531) lifts it to the 100 MiB attachment cap.
+ */
+const MAX_UPLOAD_BODY = 16 * 1024 * 1024
+
+/** What `notes_upload_attachment` answers (`memry_desktop::attachments::SavedAttachment`). */
+type SavedAttachment = Required<
+  Pick<AttachmentResult, 'path' | 'name' | 'size' | 'mimeType' | 'type'>
+>
+
 /** `stringifyDefaultValue` of Electron's `ipc/notes-handlers.ts`; none keeps the stored one. */
 function defaultValueText(value: unknown): string | undefined {
   if (value === null || value === undefined) return undefined
@@ -185,9 +198,10 @@ function definitionInput(
  * The notes commands of Step 13f (the edit of 13f-3c included), the rename, move and manual
  * order of Step 13g, the link reads and the mention link of Step 13i, the property definitions of
  * Step 13k, the folder reads, create and settings of Step 13h, a template applied to a note
- * (13l), and a note's other names and the tag list of 13q (`commands/notes.rs`,
- * `commands/property_definitions.rs`, `commands/folders.rs`, `commands/tags.rs`); every other
- * method still goes to `window.api.notes`.
+ * (13l), a note's other names and the tag list of 13q, and the attachment upload of 14f-1
+ * (`commands/notes.rs`, `commands/property_definitions.rs`, `commands/folders.rs`,
+ * `commands/tags.rs`, `commands/attachments.rs`); every other method still goes to
+ * `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
@@ -482,7 +496,24 @@ const ported = {
     }
   },
   getFolderTemplate: (folderPath: string): Promise<string | null> =>
-    commands.notesGetFolderTemplate(folderPath)
+    commands.notesGetFolderTemplate(folderPath),
+  // The bytes travel as the raw request body, with the file's size in the meta. A file over
+  // `MAX_UPLOAD_BODY` is never read: an empty body goes, and Rust refuses it on the size with its
+  // localized message. A refused or failed save answers as Electron's `saveAttachment` envelope.
+  uploadAttachment: async (
+    noteId: string,
+    file: AttachmentUploadFile & { size?: number }
+  ): Promise<AttachmentResult> => {
+    try {
+      const over = file.size !== undefined && file.size > MAX_UPLOAD_BODY
+      const bytes = over ? new Uint8Array() : new Uint8Array(await file.arrayBuffer())
+      const meta = { noteId, fileName: file.name, size: file.size ?? bytes.length }
+      const saved = await invokeBinary<SavedAttachment>('notes_upload_attachment', bytes, meta)
+      return { success: true, ...saved }
+    } catch (error) {
+      return failure(error)
+    }
+  }
 } satisfies Partial<NotesClientAPI>
 
 /** The note methods served from Rust; `window.api.notes` is typed without them. */

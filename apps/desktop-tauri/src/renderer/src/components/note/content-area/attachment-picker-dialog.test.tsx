@@ -28,19 +28,16 @@ vi.mock('@memry/i18n/renderer', () => ({
 const toastError = vi.fn()
 vi.mock('sonner', () => ({ toast: { error: (...args: unknown[]) => toastError(...args) } }))
 
-const listVaultAttachments = vi.fn()
-const insertExistingAttachment = vi.fn()
-const uploadAttachment = vi.fn()
+const { listVaultAttachments, insertExistingAttachment, uploadAttachment } = vi.hoisted(() => ({
+  listVaultAttachments: vi.fn(),
+  insertExistingAttachment: vi.fn(),
+  uploadAttachment: vi.fn()
+}))
 
-function setupApi(): void {
-  const api = window.api as unknown as Record<string, Record<string, unknown> | undefined>
-  api.notes = {
-    ...api.notes,
-    listVaultAttachments,
-    insertExistingAttachment,
-    uploadAttachment
-  }
-}
+// The dialog's whole reach into main is these three methods of the notes service.
+vi.mock('@/services/notes-service', () => ({
+  notesService: { listVaultAttachments, insertExistingAttachment, uploadAttachment }
+}))
 
 // cmdk keeps the highlighted row in view; jsdom has no scroller.
 Element.prototype.scrollIntoView = vi.fn()
@@ -78,7 +75,6 @@ function renderDialog(
   onInsert = vi.fn(),
   defaultPdfDisplay?: 'embed' | 'link'
 ): { onInsert: ReturnType<typeof vi.fn> } {
-  setupApi()
   render(
     <AttachmentPickerDialog
       open

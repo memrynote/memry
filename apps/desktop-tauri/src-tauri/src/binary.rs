@@ -21,6 +21,7 @@ pub const COMMANDS: &[&str] = &[
     "crdt_sync_step_2",
     "custom_icons_add",
     "drop_stage_chunk",
+    "notes_upload_attachment",
 ];
 
 /// The handler of the binary commands. Domain steps add `tauri::generate_handler!` entries.
@@ -31,7 +32,8 @@ pub fn handler<R: Runtime>() -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'stat
         crate::commands::editor::crdt_sync_step_1,
         crate::commands::editor::crdt_sync_step_2,
         crate::commands::custom_icons::custom_icons_add,
-        crate::commands::drop_stage::drop_stage_chunk
+        crate::commands::drop_stage::drop_stage_chunk,
+        crate::commands::attachments::notes_upload_attachment
     ]
 }
 
