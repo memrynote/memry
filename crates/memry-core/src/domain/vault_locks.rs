@@ -12,6 +12,10 @@
 //! The rows carry no clock and get no outbox row yet: the `vault_lock`
 //! projector and handler (Step 16, #3533) add both, so these rows are the
 //! records that sync then carries.
+//!
+//! Beside them, the device-local rows the desktop lock guard keeps, never synced:
+//! each locked markdown note's [`Baseline`] and each locked file's [`FileMode`]
+//! (`vault_lock_baselines`, `vault_lock_file_modes`, Electron's `store.ts`).
 
 use rusqlite::{Connection, OptionalExtension, params};
 
@@ -190,6 +194,146 @@ pub fn is_note_locked(
         let path = normalize_folder_path(&path);
         folders.iter().any(|folder| is_under(&path, folder))
     }))
+}
+
+/// A locked markdown note's text as the app last wrote or accepted it: what an
+/// outside edit of its file is reverted to. Device-local, never synced.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Baseline {
+    pub content: String,
+    /// The shell's hash of `content`, which it compares a changed file against.
+    pub content_hash: String,
+    /// Epoch milliseconds.
+    pub updated_at: i64,
+}
+
+/// The permission bits a file had before a lock made it read-only, and the
+/// file they belong to (`None`: not known yet). Device-local, never synced.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileMode {
+    pub mode: u32,
+    pub identity: Option<String>,
+}
+
+/// `note_id`'s baseline, if it has one.
+pub fn baseline(conn: &Connection, note_id: &str) -> Result<Option<Baseline>, StorageError> {
+    conn.query_row(
+        "SELECT content, content_hash, updated_at FROM vault_lock_baselines WHERE note_id = ?1",
+        params![note_id],
+        |row| {
+            Ok(Baseline {
+                content: row.get(0)?,
+                content_hash: row.get(1)?,
+                updated_at: row.get(2)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(failed)
+}
+
+/// Makes `content` the note's baseline, replacing any it had.
+pub fn write_baseline(
+    conn: &Connection,
+    note_id: &str,
+    content: &str,
+    content_hash: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "INSERT INTO vault_lock_baselines (note_id, content_hash, content, updated_at)
+         VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT (note_id) DO UPDATE SET
+           content_hash = excluded.content_hash, content = excluded.content,
+           updated_at = excluded.updated_at",
+        params![note_id, content_hash, content, now_ms],
+    )
+    .map(drop)
+    .map_err(failed)
+}
+
+/// Drops the note's baseline: its lock is gone, or the note is.
+pub fn delete_baseline(conn: &Connection, note_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM vault_lock_baselines WHERE note_id = ?1",
+        params![note_id],
+    )
+    .map(drop)
+    .map_err(failed)
+}
+
+/// Every note that has a baseline.
+pub fn baseline_note_ids(conn: &Connection) -> Result<Vec<String>, StorageError> {
+    let mut statement = conn
+        .prepare_cached("SELECT note_id FROM vault_lock_baselines ORDER BY rowid")
+        .map_err(failed)?;
+    statement
+        .query_map([], |row| row.get(0))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
+}
+
+/// The recorded mode of the file at vault-relative `path`.
+pub fn file_mode(conn: &Connection, path: &str) -> Result<Option<FileMode>, StorageError> {
+    conn.query_row(
+        "SELECT mode, identity FROM vault_lock_file_modes WHERE path = ?1",
+        params![path],
+        |row| {
+            Ok(FileMode {
+                mode: row.get(0)?,
+                identity: row.get(1)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(failed)
+}
+
+/// Records `mode` and `identity` for the file at `path`, replacing any record.
+pub fn record_file_mode(
+    conn: &Connection,
+    path: &str,
+    mode: u32,
+    identity: Option<&str>,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "INSERT INTO vault_lock_file_modes (path, mode, identity) VALUES (?1, ?2, ?3)
+         ON CONFLICT (path) DO UPDATE SET mode = excluded.mode, identity = excluded.identity",
+        params![path, mode, identity],
+    )
+    .map(drop)
+    .map_err(failed)
+}
+
+/// Drops the record of the file at `path`: no lock covers it any more.
+pub fn forget_file_mode(conn: &Connection, path: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM vault_lock_file_modes WHERE path = ?1",
+        params![path],
+    )
+    .map(drop)
+    .map_err(failed)
+}
+
+/// Every recorded file, by vault-relative path.
+pub fn file_modes(conn: &Connection) -> Result<Vec<(String, FileMode)>, StorageError> {
+    let mut statement = conn
+        .prepare_cached("SELECT path, mode, identity FROM vault_lock_file_modes ORDER BY path")
+        .map_err(failed)?;
+    statement
+        .query_map([], |row| {
+            Ok((
+                row.get(0)?,
+                FileMode {
+                    mode: row.get(1)?,
+                    identity: row.get(2)?,
+                },
+            ))
+        })
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
 }
 
 fn locked_folders(conn: &Connection) -> Result<Vec<String>, StorageError> {

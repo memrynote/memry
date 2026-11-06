@@ -378,6 +378,8 @@ mod unlinked_mentions;
 mod vault_locks;
 #[path = "vault_locks_schema.rs"]
 mod vault_locks_schema;
+#[path = "vault_locks_writers.rs"]
+mod vault_locks_writers;
 #[path = "vectors.rs"]
 mod vectors;
 #[path = "versioned_keys_carry.rs"]

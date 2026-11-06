@@ -44,6 +44,8 @@ mod article_standardize;
 mod article_temml;
 #[path = "article_vectors.rs"]
 mod article_vectors;
+#[path = "attachment_uploads.rs"]
+mod attachment_uploads;
 #[path = "attachments.rs"]
 mod attachments;
 #[path = "byte_preservation.rs"]
@@ -232,6 +234,8 @@ mod vault_config;
 mod vault_consumer;
 #[path = "vault_init.rs"]
 mod vault_init;
+#[path = "vault_locks_app_edit.rs"]
+mod vault_locks_app_edit;
 #[path = "vault_pairing.rs"]
 mod vault_pairing;
 #[path = "vault_paths.rs"]

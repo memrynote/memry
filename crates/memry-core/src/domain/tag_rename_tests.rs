@@ -150,6 +150,49 @@ fn rename_rewrites_body_tags_whole_tags_only() {
     .expect("body");
 }
 
+/// Electron keeps a locked note's tags (`keepLockedNoteTags`, Step 14e-2): its
+/// body is never written by a rename.
+#[cfg(feature = "markdown")]
+#[test]
+fn rename_leaves_a_locked_notes_body_alone() {
+    let (db, _d) = vault("tags-rename-body-locked");
+    db.call_blocking(|c| {
+        crate::domain::body_write::append_markdown(c, "n2", "Met #job.", "desk", NOW).map_err(
+            |e| StorageError::Failed {
+                what: e.to_string(),
+            },
+        )?;
+        let logged = || -> Result<i64, StorageError> {
+            c.query_row(
+                "SELECT COUNT(*) FROM yjs_updates WHERE doc_id = 'n2'",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })
+        };
+        let before = logged()?;
+        crate::domain::vault_locks::set(
+            c,
+            crate::domain::vault_locks::TargetKind::Note,
+            "n2",
+            true,
+            NOW,
+        )?;
+        rename(c, "job", "career", "phone", NOW + 1)?;
+        let blocks = crate::domain::reads::note_blocks(c, "n2")
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?
+            .expect("body");
+        assert_eq!(body_tags::extract(&blocks), vec!["job"]);
+        assert_eq!(logged()?, before, "no update row");
+        Ok(())
+    })
+    .expect("body");
+}
+
 #[test]
 fn rename_refreshes_cached_body_tags_without_reindex() {
     let (db, _d) = vault("tags-rename-body-cache");
@@ -393,6 +436,30 @@ fn a_rename_under_the_old_name_lands_once_however_often_it_runs() {
     assert_eq!(tags_of(&db, "note", "n6"), vec!["a/b/b"]);
     assert_eq!(tags_of(&db, "task", "t5"), vec!["a/b"]);
     assert_eq!(upserts(&db, "n5"), 1);
+}
+
+/// A locked holder is struck off with its record kept (Electron `keepLockedNoteTags`), unless
+/// its file edit began: then the record takes the name its written file holds (14e-2 review).
+#[cfg(feature = "markdown")]
+#[test]
+fn a_locked_holder_keeps_its_record_unless_its_file_edit_began() {
+    use crate::domain::vault_locks::{TargetKind, set};
+    let (db, _d) = vault("tags-rename-locked-holder");
+    db.call_blocking(|c| {
+        let plan = holders(c, Vec::new(), "job")?;
+        begin(c, &job("job", "career"), plan)?;
+        set(c, TargetKind::Note, "n1", true, NOW)?;
+        set(c, TargetKind::Note, "j1", true, NOW)?;
+        start_holder(c, "j1", "b", "a")?;
+        assert!(!rename_holder(c, "n1", "phone", NOW + 1)?);
+        assert!(rename_holder(c, "j1", "phone", NOW + 1)?);
+        assert!(!listed(c, "n1")? && !listed(c, "j1")?, "both struck off");
+        Ok(())
+    })
+    .expect("rename");
+    assert_eq!(tags_of(&db, "note", "n1"), ["Job", "job/Lead", "ideas"]);
+    assert_eq!(tags_of(&db, "journal", "j1"), ["career"]);
+    assert_eq!(upserts(&db, "n1"), 0);
 }
 
 /// A file edit begun and not written is forgotten for that holder only, which stays listed; a

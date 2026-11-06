@@ -203,6 +203,10 @@ fn rewrite_source(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), CrdtError> {
+    // A locked note keeps its tags, as Electron's `keepLockedNoteTags` keeps them.
+    if body_write::is_locked(conn, id)? {
+        return Ok(());
+    }
     let plan = update_log::load_plan(conn, id)?;
     let may_hold = plan
         .blobs()

@@ -35,7 +35,7 @@ use memry_core::api::tag_hub::TagHub;
 use memry_core::domain::header_tags;
 use memry_core::domain::note_stats::header_tags as file_header_tags;
 use memry_core::domain::tag_rename::Holder;
-use memry_core::domain::tag_retag::{merge_target, retagged_list};
+use memry_core::domain::tag_retag::{Retag, merge_target, retagged_list};
 /// The name a merged tag goes by in `tags:deleted`, as Electron's `tagKey`.
 pub use memry_core::domain::tags::tag_key;
 use memry_core::markdown::frontmatter::{
@@ -168,7 +168,8 @@ impl NotesService {
         for holder in holders {
             match self.retag_one(&edit, &hub, &holder, source, target) {
                 InNote::Written => retagged.written.push(holder.id),
-                InNote::Unchanged => {}
+                // A locked note keeps the tag, as Electron's `keepLockedNoteTags`.
+                InNote::Unchanged | InNote::Kept(Kept::Locked) => {}
                 outcome if outcome.again() => again.push(holder),
                 outcome => retagged.failed.push(kept_note(open, holder.id, &outcome)),
             }
@@ -230,8 +231,9 @@ impl NotesService {
     ) -> InNote {
         let id = holder.id.as_str();
         let record = |hub: &TagHub| match hub.retag_in(id, source, target)? {
-            true => Ok::<_, NotesError>(InNote::Written),
-            false => Ok(InNote::Unchanged),
+            Retag::Wrote => Ok::<_, NotesError>(InNote::Written),
+            Retag::Unchanged => Ok(InNote::Unchanged),
+            Retag::Locked => Ok(InNote::Kept(Kept::Locked)),
         };
         let retagged = self.order.run(id, |turn| {
             // A day's file is its author's: its record owns its tags (#3931).
@@ -248,7 +250,7 @@ impl NotesService {
                     Ok(tags_edited(text, next, |_| None)?.map(|(text, _)| text))
                 },
                 || {
-                    changed = hub.retag_in(id, source, target)?;
+                    changed = hub.retag_in(id, source, target)? == Retag::Wrote;
                     Ok::<_, NotesError>(changed)
                 },
                 &mut || {},

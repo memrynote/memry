@@ -33,7 +33,8 @@ use crate::domain::notes::ITEM_TYPE;
 use crate::domain::reads;
 use crate::sync::outbox;
 
-/// Applies one block edit to a note's body.
+/// Applies one block edit to a note's body. A locked note refuses it
+/// ([`CrdtError::Locked`]), as do [`append_snapshot`] and [`append_markdown`].
 ///
 /// - Returns: `Ok(false)` when this vault holds no live note by that id, which
 ///   is an answer and not a failure — the same `nil`-versus-error distinction
@@ -49,6 +50,7 @@ pub fn edit_block(
     if !reads::note_exists(conn, note_id) {
         return Ok(false);
     }
+    refuse_locked(conn, note_id)?;
 
     let Some(update) = author(conn, note_id, edit, device_id)? else {
         // A write that authored nothing: setting an attribute to the value it
@@ -98,6 +100,7 @@ pub fn append_snapshot(
     if !reads::note_exists(conn, note_id) {
         return Ok(false);
     }
+    refuse_locked(conn, note_id)?;
     let Some(update) = author_with(conn, note_id, device_id, |document| {
         body_edit::append_snapshot(document, snapshot)
     })?
@@ -123,6 +126,7 @@ pub fn append_markdown(
     if !reads::note_exists(conn, note_id) {
         return Ok(false);
     }
+    refuse_locked(conn, note_id)?;
     let Some(update) = author_with(conn, note_id, device_id, |document| {
         document.write(|txn| markdown_seed::append_markdown_in(txn, markdown).map(|_| ()))?
     })?
@@ -193,6 +197,33 @@ pub(crate) fn append_in(
     let change = outbox::Change::crdt_update(item_type, doc_id, update.to_vec());
     outbox::enqueue(tx, &change, now_ms)?;
     Ok(())
+}
+
+/// Refuses a write made on this device to a locked note or journal day
+/// (Electron `assertNoteWritable`), on the connection the write runs on, so a
+/// lock committed first refuses it. Sync applies, the seed of an empty body and
+/// the block-id repair never ask: a lock stops this device's edits only.
+pub(crate) fn refuse_locked(conn: &Connection, doc_id: &str) -> Result<(), CrdtError> {
+    match is_locked(conn, doc_id)? {
+        #[cfg(feature = "markdown")]
+        true => Err(CrdtError::Locked {
+            note_id: doc_id.to_owned(),
+        }),
+        _ => Ok(()),
+    }
+}
+
+/// Whether the note or journal day `doc_id` is locked, by its own lock or a
+/// folder's ([`crate::domain::vault_locks::is_note_locked`]). The locks are
+/// desktop's: without `markdown` (the iOS build) nothing is.
+pub(crate) fn is_locked(conn: &Connection, doc_id: &str) -> Result<bool, StorageError> {
+    #[cfg(feature = "markdown")]
+    return crate::domain::vault_locks::is_note_locked(conn, doc_id, None);
+    #[cfg(not(feature = "markdown"))]
+    {
+        let _ = (conn, doc_id);
+        Ok(false)
+    }
 }
 
 fn storage_failed(error: rusqlite::Error) -> CrdtError {

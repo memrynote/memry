@@ -41,7 +41,8 @@ pub struct EditDayOutcome {
 ///
 /// The id is resolved through [`journal::entry_for`]: an existing record's id
 /// wins over `j<date>`, even a tombstoned one, which is revived under its own
-/// id (D5). Creation and the update row commit in one transaction.
+/// id (D5). Creation and the update row commit in one transaction. A locked
+/// day refuses it ([`CrdtError::Locked`]), as [`edit_entry`] does.
 pub fn edit_day(
     conn: &Connection,
     date: &str,
@@ -53,6 +54,7 @@ pub fn edit_day(
         Some((id, _)) => id,
         None => journal::document_id_for(date)?,
     };
+    body_write::refuse_locked(conn, &id)?;
 
     let Some(update) = body_write::author(conn, &id, edit, device_id)? else {
         return Ok(EditDayOutcome {
@@ -99,6 +101,7 @@ pub fn edit_entry(
     if !journal::journal_exists(conn, id) {
         return Ok(false);
     }
+    body_write::refuse_locked(conn, id)?;
     let Some(update) = body_write::author(conn, id, edit, device_id)? else {
         return Ok(true);
     };
