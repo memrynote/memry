@@ -31,7 +31,9 @@ export const AppChannels = {
   },
   send: {
     /** Renderer -> main: caption-button symbol color for the Windows title bar overlay. */
-    TITLE_BAR_SYMBOL_COLOR: 'app:title-bar-symbol-color'
+    TITLE_BAR_SYMBOL_COLOR: 'app:title-bar-symbol-color',
+    /** Renderer -> main: interface zoom factor, so the overlay height tracks the zoomed title row. */
+    TITLE_BAR_ZOOM_FACTOR: 'app:title-bar-zoom-factor'
   }
 } as const
 
