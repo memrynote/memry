@@ -200,6 +200,10 @@ jobs:
       - name: Check markdown-convert vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:markdown-convert:check
 
+      # The note fold vectors come from the Electron fold engine the same way.
+      - name: Check note fold vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:note-fold:check
+
       # oxlint, type-aware, over the whole repo. Rules with a backlog are warnings held
       # by the ratchet in scripts/lint-baseline.json; new violations show as annotations.
       # --ignore-scripts skipped the extension's postinstall, and its tsconfig extends the

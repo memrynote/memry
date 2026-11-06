@@ -30,6 +30,11 @@ url = "2"
 percent-encoding = "2"
 # Content types of served attachments (the `mime-types` table of the Electron app).
 mime_guess = "2"
+# The note fold's sentences and words (`Intl.Segmenter` in Electron), UAX #29.
+unicode-segmentation = "1.13.3"
+# The note fold formats inline dates in the local time zone, as `Intl.DateTimeFormat` does;
+# already built for `trash`.
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
 # Turndown parses its input with domino, a spec-conformant HTML parser: the one place html5ever
