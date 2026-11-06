@@ -14,6 +14,7 @@ use memry_core::markdown::frontmatter::{
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
 
 use super::journal::{Dated, dated_block, set_date};
+use crate::locks::Locks;
 use crate::vault::consumer::rows::{RowOwner, RowSession, RowStat, now_ms};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
@@ -215,7 +216,12 @@ impl Pass {
             }
         };
         self.echo.will_write(&row.path, &hash);
-        match write_note_over_checked(&self.root, &row.path, &output, &file.hash, between) {
+        // A locked note's document takes only another device's edits (the core refuses local
+        // ones), so its write-back goes through the lock, and its text becomes the baseline.
+        let written = Locks::new(&self.root, &self.vault).write_through(&row.path, &output, || {
+            write_note_over_checked(&self.root, &row.path, &output, &file.hash, between)
+        });
+        match written {
             Ok(()) => {}
             Err(NoteFileError::ChangedUnderWrite) => return Outcome::Kept(Keep::FileChanged),
             Err(error) => return Outcome::Failed(format!("the file was not written: {error}")),

@@ -60,13 +60,14 @@ use super::{
     unreadable, write_vault_config,
 };
 use crate::journal::folder_follow::{Follow, follow_moved_journal};
+use crate::locks::Refused;
 use crate::notes::folders::holds_journal_days;
 use crate::vault::consumer::VaultTier;
 use crate::vault::journal_format::{normalize_journal_date_format, normalize_journal_folder};
 use crate::vault::journal_rename::{
-    ChangeStep, JournalPlace, JournalRenameResult, JournalVault, finish_journal_change,
-    forget_change, is_complete_journal_format, missing_folders, move_journal_days_checked,
-    revert_journal_moves_checked,
+    ChangeStep, JournalPlace, JournalRenameResult, JournalVault, RenameError,
+    finish_journal_change, forget_change, is_complete_journal_format, missing_folders,
+    move_journal_days_checked, revert_journal_moves_checked,
 };
 use crate::vault::path_key::folded_key;
 use crate::vault::paths::safe_join;
@@ -106,6 +107,10 @@ pub enum SettingsError {
     RespelledJournalFolder,
     #[error("the journal folder could not be listed: {0}")]
     JournalUnlisted(io::Error),
+    /// A lock covers a day the change would move, or the path it would take: nothing moved
+    /// (`journal_rename::RenameError::Locked`).
+    #[error("{}", Refused::Note.message())]
+    Locked,
     /// `left` days could not take their paths in the new setting; the others went back.
     #[error("{left} journal days could not be moved to the new journal setting")]
     DaysNotRenamed { left: usize },
@@ -344,7 +349,10 @@ fn moved_for<'a>(
         Err(error) => {
             // Refused before its first move.
             forget_change(&writer, &change);
-            return Err(SettingsError::JournalUnlisted(error));
+            return Err(match error {
+                RenameError::Unlisted(error) => SettingsError::JournalUnlisted(error),
+                RenameError::Locked => SettingsError::Locked,
+            });
         }
     };
     let left = pass.skipped + pass.failed;

@@ -25,6 +25,10 @@ pub struct VaultStatus {
     /// What the open's sweep of interrupted folder moves did, while that vault is open.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub moves_recovered: Option<MovesRecovered>,
+    /// Higher is newer. The window receives statuses as events and as `vault_get_status`
+    /// answers, which travel apart, so it keeps the one with the higher revision. The shell sets
+    /// it; [`From<SessionStatus>`] leaves it at 0.
+    pub revision: u32,
 }
 
 /// What the open's sweep of interrupted folder moves did ([`crate::vault::move_journal`]), for
@@ -93,6 +97,7 @@ impl From<SessionStatus> for VaultStatus {
             index_total: None,
             error: status.error,
             moves_recovered: status.moves_recovered,
+            revision: 0,
         }
     }
 }

@@ -290,6 +290,8 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let config = app.state::<Arc<AppConfig>>().inner().clone();
     let session = Session::new(VaultRegistry::new(config));
     register_settings_hook(app, &session);
+    // Locked files read-only on disk at each open, before the watcher starts (Step 14e-2b).
+    memry_desktop::locks::register(&session);
     register_vault_watcher(app, &session);
     register_editor_host(app, &session);
     register_large_files(app, &session);

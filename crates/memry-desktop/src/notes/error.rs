@@ -6,6 +6,7 @@ use memry_core::domain::notes::app_move::BeginError;
 use memry_core::markdown::frontmatter::YamlError;
 
 use crate::error::{CoreError, FailureKind};
+use crate::locks::Refused;
 use crate::shell::file_open::OpenError;
 use crate::vault::app_edit::{AppEditError, Kept};
 use crate::vault::app_move::MoveError;
@@ -87,6 +88,9 @@ pub enum NotesError {
     /// which. The variant is logged where the edit is refused, never shown.
     #[error("{}", kept_message(.0))]
     EditKept(Kept),
+    /// The note or folder is locked: the operation was refused before anything was written.
+    #[error("{}", .0.message())]
+    Locked(Refused),
     #[error("the note has no property `{0}`")]
     PropertyNotFound(String),
     #[error("the note already has a property `{0}`")]
@@ -189,7 +193,7 @@ fn kept_message(kept: &Kept) -> &'static str {
         }
         Kept::NotMarkdown => "only a markdown note can be edited",
         // Electron's `VAULT_LOCKED_NOTE_MESSAGE`, as `CrdtError::Locked` says it.
-        Kept::Locked => "The owner made this note read-only.",
+        Kept::Locked => Refused::Note.message(),
         _ => "the note's file is not there, so the edit was not made",
     }
 }
@@ -320,7 +324,10 @@ impl CoreError for NotesError {
                 (FailureKind::PropertyWrite, "note_edit_kept")
             }
             Self::EditKept(Kept::BodyNotPulled) => (FailureKind::Invalid, "note_body_not_pulled"),
-            Self::EditKept(Kept::Locked) => (FailureKind::Locked, "note_locked"),
+            Self::EditKept(Kept::Locked) | Self::Locked(Refused::Note) => {
+                (FailureKind::Locked, "note_locked")
+            }
+            Self::Locked(Refused::Folder) => (FailureKind::Locked, "folder_locked"),
             Self::EditKept(Kept::NotRepresentable) => {
                 (FailureKind::Invalid, "note_not_representable")
             }

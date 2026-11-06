@@ -45,8 +45,10 @@
 //!
 //! Refused: a folder that is not there (`folder_not_found`, #2531's stale sidebar), a target that
 //! exists under any spelling but the folder's own (`name_conflict`), and one inside the folder, one
-//! the tree hides, the vault ignores, a link leads to, or no record can name (`invalid_folder`).
-//! Not here yet: the locked-folder check (Step 14), the shortcuts and Readwise targets that name
+//! the tree hides, the vault ignores, a link leads to, or no record can name (`invalid_folder`),
+//! a folder that is locked, sits in a locked folder or holds a lock, and a target inside a locked
+//! folder (`folder_locked`, `assertFolderTreeWritable`, `assertParentFolderWritable`).
+//! Not here yet: the shortcuts and Readwise targets that name
 //! the folder (`followFolderRenameInShortcuts`, `followFolderRenameInReadwise`), which have no
 //! Tauri port yet.
 
@@ -60,11 +62,12 @@ use memry_core::domain::notes::link_rewrite::LinkNames;
 
 use super::error::{NotesError, SCOPE};
 use super::folders::{respells_a_sibling, tree_filter, vault_folder};
-use super::moves::{Named, identity_failed, plain_folders};
+use super::moves::{Named, disk_spelling, identity_failed, plain_folders};
 use super::owed_moves::keeps_kind_followed;
 use super::service::NotesService;
 use crate::journal::folder_follow::follow_moved_journal;
 use crate::journal::folder_follow::followed_journal_folder;
+use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
 use crate::vault::config::settings::JournalFollow;
@@ -152,6 +155,11 @@ impl NotesService {
     ) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let (from, to) = (vault_folder(root, old)?, vault_folder(root, new)?);
+        // Nothing locked moves with the folder, and nothing moves into a locked one.
+        // Each as the disk spells it: `ARCHIVE` names a locked `Archive`.
+        let locks = Locks::of(open);
+        locks.refuse_folder_tree(&disk_spelling(root, &from))?;
+        locks.refuse_parent_folder(&disk_spelling(root, &to))?;
         if from == to {
             return Ok(());
         }

@@ -102,10 +102,7 @@ pub async fn vault_list(app: AppHandle<Wry>) -> Result<GetVaultsResponse, Comman
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_get_status(app: AppHandle<Wry>) -> Result<VaultStatus, CommandError> {
-    Ok(super::vault_index::vault_status(
-        &app,
-        session(&app).status(),
-    ))
+    Ok(super::vault_index::current_status(&app, &session(&app)))
 }
 
 /// Next to the current vault when one is registered, else `<documents>/Memry`.
@@ -431,6 +428,10 @@ fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> Comm
                 "journal_unlisted",
                 localized(app, UNLISTED_KEY),
             )
+        }
+        // Electron's `noteLockedError`, which the renderer maps to its localized message.
+        SettingsError::Locked => {
+            CommandError::new(ErrorKind::Locked, "note_locked", error.to_string())
         }
         SettingsError::NoTier => {
             CommandError::new(ErrorKind::Internal, "no_vault_tier", "no vault tier")

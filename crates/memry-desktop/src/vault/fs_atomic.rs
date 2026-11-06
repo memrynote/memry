@@ -29,8 +29,8 @@
 //! `MOVEFILE_WRITE_THROUGH` move, a replace relies on the file's own `sync_all`.
 //!
 //! Cloud-sync clients and antivirus scanners lock files for a moment, so a sharing violation
-//! is retried after 50, 150 and 450 ms and then tried once more. The Step 14 lock guard calls
-//! in here, before and after the write.
+//! is retried after 50, 150 and 450 ms and then tried once more. The lock guard (`locks`) wraps
+//! the writers that call in here, not this module.
 
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
