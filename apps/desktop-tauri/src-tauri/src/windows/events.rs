@@ -78,7 +78,10 @@ pub fn dispatch(window: &Window<Wry>, event: &WindowEvent) {
                 }
             }
         }
-        WindowEvent::Destroyed => crate::shutdown::on_window_destroyed(app, window.label()),
+        WindowEvent::Destroyed => {
+            crate::commands::editor::forget_window(app, window.label());
+            crate::shutdown::on_window_destroyed(app, window.label());
+        }
         WindowEvent::CloseRequested { api, .. } => {
             if is_main && let Some(persister) = app.try_state::<Arc<BoundsPersister>>() {
                 persister.flush(app);

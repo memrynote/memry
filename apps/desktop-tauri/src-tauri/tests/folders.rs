@@ -1,7 +1,8 @@
 //! The folder commands through the IPC a renderer calls, on a mock app over a real vault and
 //! vault tier (#3530 13h-1b, 13h-2): the argument names the generated bindings send, a created
 //! folder, its settings and its rename read back, and a refusal reaching the renderer by its
-//! code. A pulled folder (#3906) reaches the vault and goes out as `FolderConfigUpdatedEvent`.
+//! code. A pulled folder (#3906) reaches the vault and goes out as `FolderConfigUpdatedEvent`, and
+//! a journal setting that follows a folder move as `VaultConfigChangedEvent` (#3530 13m-7b-2).
 
 use std::collections::HashMap;
 use std::fs;
@@ -19,7 +20,7 @@ use memry_desktop::notes::service::NotesService;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
-use memry_tauri::events::FolderConfigUpdatedEvent;
+use memry_tauri::events::{FolderConfigUpdatedEvent, VaultConfigChangedEvent};
 use memry_tauri::shell::folder_sync;
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody, InvokeResponseBody};
@@ -104,6 +105,8 @@ fn opened() -> Fixture {
             memry_tauri::commands::folders::notes_get_folders::<MockRuntime>,
             memry_tauri::commands::folders::notes_rename_folder::<MockRuntime>,
             memry_tauri::commands::folders::notes_set_folder_config::<MockRuntime>,
+            memry_tauri::commands::journal::journal_create_entry::<MockRuntime>,
+            memry_tauri::commands::journal::journal_update_entry::<MockRuntime>,
         ]);
     let app = mock_builder()
         .invoke_handler(commands.invoke_handler())
@@ -194,7 +197,39 @@ fn a_folder_created_and_set_through_the_ipc_reads_back() {
     assert_eq!(missing.unwrap_err()["code"], "folder_not_found");
 }
 
-/// Settings that cannot be read refuse every folder move, in words that name the file.
+/// A folder that holds the journal takes the journal setting along, which every window hears as
+/// `vault:config-changed` (Electron's `followJournalFolder`).
+#[test]
+fn a_folder_holding_the_journal_sends_the_setting_that_followed_it() {
+    let f = opened();
+    fs::write(
+        f.vault.join(".memry/config.json"),
+        r#"{"journalFolder":"Personal/journal"}"#,
+    )
+    .unwrap();
+    fs::create_dir_all(f.vault.join("Personal/journal")).unwrap();
+    let heard: Arc<Mutex<Vec<Value>>> = Arc::default();
+    let sink = heard.clone();
+    f.webview
+        .listen_any(VaultConfigChangedEvent::NAME, move |event| {
+            sink.lock()
+                .unwrap()
+                .push(serde_json::from_str(event.payload()).unwrap());
+        });
+
+    let renamed = f.invoke(
+        "notes_rename_folder",
+        json!({ "oldPath": "Personal", "newPath": "Private" }),
+    );
+
+    assert_eq!(renamed, Ok(Value::Null));
+    let heard = heard.lock().unwrap();
+    assert_eq!(heard.len(), 1, "{heard:?}");
+    assert_eq!(heard[0]["journalFolder"], "Private/journal");
+}
+
+/// Settings that cannot be read refuse every folder move and delete, and a day create, each in
+/// words that name what was refused and the file to fix.
 #[test]
 fn a_folder_move_with_unreadable_settings_says_which_file_to_fix() {
     let f = opened();
@@ -202,20 +237,33 @@ fn a_folder_move_with_unreadable_settings_says_which_file_to_fix() {
         .unwrap();
     fs::write(f.vault.join(".memry/config.json"), "{").unwrap();
 
-    let refused = f
-        .invoke(
-            "notes_rename_folder",
-            json!({ "oldPath": "Work", "newPath": "Play" }),
-        )
-        .unwrap_err();
-
-    assert_eq!(refused["code"], "vault_settings_unreadable");
-    assert!(
-        refused["message"]
-            .as_str()
-            .is_some_and(|message| message.contains(".memry/config.json")),
-        "{refused}"
+    let moved = f.invoke(
+        "notes_rename_folder",
+        json!({ "oldPath": "Work", "newPath": "Play" }),
     );
+    let deleted = f.invoke("notes_delete_folder", json!({ "path": "Work" }));
+    let day = f.invoke(
+        "journal_create_entry",
+        json!({ "input": { "date": "2025-01-06" } }),
+    );
+    // Typing into a day that has no file makes it through the update.
+    let typed = f.invoke(
+        "journal_update_entry",
+        json!({ "input": { "date": "2025-01-07", "content": "Typed" } }),
+    );
+
+    let refusals = [
+        (moved.unwrap_err(), "moved"),
+        (deleted.unwrap_err(), "deleted"),
+        (day.unwrap_err(), "Journal days"),
+        (typed.unwrap_err(), "Journal days"),
+    ];
+    for (refused, says) in refusals {
+        assert_eq!(refused["code"], "vault_settings_unreadable");
+        let message = refused["message"].as_str().unwrap_or_default();
+        assert!(message.contains(".memry/config.json"), "{refused}");
+        assert!(message.contains(says), "{refused}");
+    }
     assert!(f.vault.join("Work").exists());
 }
 

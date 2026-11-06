@@ -22,6 +22,9 @@ pub fn builder() -> Builder<Wry> {
         .commands(collect_commands![
             // app
             crate::commands::app::app_info,
+            // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
+            crate::commands::editor::crdt_close_doc::<Wry>,
+            crate::commands::editor::crdt_get_health::<Wry>,
             // custom icons (`custom_icons_add` is a binary command)
             crate::commands::custom_icons::custom_icons_add_from_url,
             crate::commands::custom_icons::custom_icons_delete,
@@ -237,6 +240,8 @@ pub fn builder() -> Builder<Wry> {
             // app
             crate::events::AppNavigationRequestedEvent,
             // crdt
+            crate::events::CrdtProviderReadyEvent,
+            crate::events::CrdtProviderResetEvent,
             crate::events::CrdtWriteBackFailedEvent,
             // custom icons
             crate::events::CustomIconsUpdatedEvent,

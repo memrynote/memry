@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "Định dạng ngày này không thể đặt tên cho mọi ngày nên chưa được lưu. Hãy thêm năm, tháng và ngày.",
     "journalDaysNotRenamed": "Định dạng ngày không được thay đổi vì một số ngày nhật ký không thể đổi tên theo định dạng này ({count}). Có thể một tệp đã mang tên mới của một ngày.",
     "journalUnlisted": "Không thể đọc thư mục nhật ký nên định dạng ngày không được thay đổi. Hãy kiểm tra bạn có quyền truy cập thư mục đó.",
-    "settingsUnreadable": "Không thể di chuyển thư mục khi chưa đọc được tệp cài đặt kho (.memry/config.json). Hãy sửa tệp đó rồi thử lại."
+    "settingsUnreadable": "Không thể di chuyển thư mục khi chưa đọc được tệp cài đặt kho (.memry/config.json). Hãy sửa tệp đó rồi thử lại.",
+    "settingsUnreadableDelete": "Không thể xóa thư mục khi chưa đọc được tệp cài đặt kho (.memry/config.json). Hãy sửa tệp đó rồi thử lại.",
+    "settingsUnreadableJournalDay": "Không thể tạo ngày nhật ký khi chưa đọc được tệp cài đặt kho (.memry/config.json). Hãy sửa tệp đó rồi thử lại."
   },
   "note": {
     "notFound": "Không tìm thấy ghi chú này. Có thể nó đã bị xóa.",

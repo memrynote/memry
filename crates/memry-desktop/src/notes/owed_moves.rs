@@ -7,7 +7,7 @@
 use std::path::Path;
 
 use memry_core::api::notes_write::NotesWriter;
-use memry_core::domain::notes::identity::{Crossing, Removed};
+use memry_core::domain::notes::identity::{Crossing, Moved, Removed};
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 
 use super::identity::{NotesIdentity, electron_db_beside, is_large_file, place};
@@ -26,6 +26,49 @@ pub(super) fn keeps_kind(
     path: &str,
 ) -> Result<bool, IdentityError> {
     Ok(writer.journal_date(id)? == journal.day_of(path))
+}
+
+/// Whether the record `id` moved from `old` to `new` with the journal folder, the setting
+/// following it from `days.0` to `days.1`, is what it was: [`keeps_kind`] under the new
+/// setting, or its path a day of the same date (or of none) under each setting. A note a date
+/// names in the journal folder stays the note it was, as Electron's `renameKeepsJournalDate`
+/// keeps it; crossed, the note would be deleted and the delete synced.
+pub(crate) fn keeps_kind_followed(
+    days: &(JournalDays, JournalDays),
+    writer: &NotesWriter,
+    id: &str,
+    (old, new): (&str, &str),
+) -> Result<bool, IdentityError> {
+    Ok(keeps_kind(&days.1, writer, id, new)? || days.0.day_of(old) == days.1.day_of(new))
+}
+
+/// The owed moves of the files a move of the journal folder carried (`(id, old, new)`), settled
+/// by [`keeps_kind_followed`] once the setting followed: an open that could not read the
+/// settings paired the moved files as moves owed while the days were unknown (`on_renamed`).
+/// Crossed under the followed setting alone, a note a date names would be deleted.
+pub(crate) fn settle_followed(
+    days: &(JournalDays, JournalDays),
+    writer: &NotesWriter,
+    carried: &[(&str, &str, &str)],
+) -> Result<(), IdentityError> {
+    for owed in writer.owed_places()? {
+        let Some(&(id, old, new)) = carried.iter().find(|(id, old, new)| {
+            *id == owed.note_id && *old == owed.from_path && *new == owed.path
+        }) else {
+            continue;
+        };
+        if keeps_kind_followed(days, writer, id, (old, new))? {
+            let (folder_path, title) = place(new);
+            let moved = Moved {
+                old_path: new,
+                new_path: new,
+                title,
+                folder_path,
+            };
+            writer.file_moved(id, moved)?;
+        }
+    }
+    Ok(())
 }
 
 /// Whether the move of the day `id` from `from` to `to` is the journal folder moving whole

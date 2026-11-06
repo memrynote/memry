@@ -68,6 +68,13 @@ impl WatchHandle {
         }
     }
 
+    /// What the OS asks when it lost events (`need_rescan`): a rescan compares the disk with
+    /// what was reported. Dropped once the watcher stopped or its queue is full.
+    #[cfg(feature = "test-hooks")]
+    pub(crate) fn rescan(&self) {
+        let _ = self.tx.try_send(Msg::Rescan);
+    }
+
     /// The consumer dropped events: everything reported is forgotten and a rescan with
     /// changes compares the disk with the rows, which hold what was applied.
     pub fn resync(&self) {

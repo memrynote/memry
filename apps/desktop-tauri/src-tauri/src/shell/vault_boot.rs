@@ -6,6 +6,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use memry_desktop::attachments::Uploads;
+use memry_desktop::editor::{EditorHost, HostEvent};
 use memry_desktop::fold::service::FoldService;
 use memry_desktop::large_file::LargeFiles;
 use memry_desktop::launch_env::LaunchEnv;
@@ -31,9 +32,10 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::commands::vault_index::{send_indexing_status, send_status};
 use crate::events::{
-    CrdtWriteBackFailedEvent, NoteLinksChangedEvent, NoteTagsChangedEvent,
-    VaultActivityChangedEvent, VaultErrorEvent, VaultIndexProgressEvent, VaultIndexRecoveredEvent,
-    VaultListChangedEvent, WriteBackFailureReason, broadcast,
+    CrdtProviderReadyEvent, CrdtProviderResetEvent, CrdtWriteBackFailedEvent,
+    NoteLinksChangedEvent, NoteTagsChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
+    VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
+    WriteBackFailureReason, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -164,6 +166,28 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     app.manage(tier);
 }
 
+/// Serves each open vault's documents to the editor windows (`commands::editor`), and tells the
+/// windows when a vault's editor goes and when the next one serves.
+fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
+    // Managed by the `Handlers` stage, which runs before this one.
+    let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
+        tracing::error!(
+            scope = "editor",
+            "no device identity store: vaults open without their editor"
+        );
+        return;
+    };
+    let notifier = app.clone();
+    let host = EditorHost::new(store.inner().clone(), move |event| match event {
+        HostEvent::Reset => broadcast(&notifier, CrdtProviderResetEvent),
+        HostEvent::Ready { vault_path } => {
+            broadcast(&notifier, CrdtProviderReadyEvent { vault_path });
+        }
+    });
+    host.register(session);
+    app.manage(host);
+}
+
 /// The large-file viewer's sessions, every one closed with the vault (Step 14g).
 fn register_large_files(app: &AppHandle<Wry>, session: &Session) {
     let files = LargeFiles::new();
@@ -267,6 +291,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let session = Session::new(VaultRegistry::new(config));
     register_settings_hook(app, &session);
     register_vault_watcher(app, &session);
+    register_editor_host(app, &session);
     register_large_files(app, &session);
     register_uploads(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's

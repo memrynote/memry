@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "Format tarikh ini tidak dapat menamakan setiap hari, jadi ia tidak disimpan. Sertakan tahun, bulan dan hari.",
     "journalDaysNotRenamed": "Format tarikh tidak ditukar kerana beberapa hari jurnal tidak dapat dinamakan semula mengikutnya ({count}). Mungkin sesuatu fail sudah mempunyai nama baharu sesuatu hari.",
     "journalUnlisted": "Folder jurnal tidak dapat dibaca, jadi format tarikh tidak ditukar. Pastikan anda mempunyai akses kepadanya.",
-    "settingsUnreadable": "Folder tidak boleh dialihkan selagi fail tetapan bilik kebal (.memry/config.json) tidak boleh dibaca. Betulkan fail itu, kemudian cuba lagi."
+    "settingsUnreadable": "Folder tidak boleh dialihkan selagi fail tetapan bilik kebal (.memry/config.json) tidak boleh dibaca. Betulkan fail itu, kemudian cuba lagi.",
+    "settingsUnreadableDelete": "Folder tidak boleh dipadamkan selagi fail tetapan bilik kebal (.memry/config.json) tidak boleh dibaca. Betulkan fail itu, kemudian cuba lagi.",
+    "settingsUnreadableJournalDay": "Hari jurnal tidak boleh dicipta selagi fail tetapan bilik kebal (.memry/config.json) tidak boleh dibaca. Betulkan fail itu, kemudian cuba lagi."
   },
   "note": {
     "notFound": "Nota ini tidak ditemui. Ia mungkin telah dipadamkan.",

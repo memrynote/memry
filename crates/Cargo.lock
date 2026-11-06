@@ -3968,6 +3968,7 @@ dependencies = [
  "windows",
  "windows-core",
  "winreg",
+ "yrs",
  "zbus",
 ]
 

@@ -25,9 +25,10 @@
 //! Refused: a folder that is not there under exactly that spelling (`folder_not_found`, a stale
 //! sidebar; a case-blind disk answers `work` for `Work`, whose rows this delete would miss), one
 //! the tree hides or a link leads to (`invalid_folder`), the journal folder or a folder holding
-//! it (`folder_holds_journal`), a folder inside it (`folder_in_journal`), and a folder holding a
-//! row no note delete can tombstone (the core's `begin`): days are not notes this delete takes.
-//! Not here yet: the
+//! it (`folder_holds_journal`), a folder inside it (`folder_in_journal`), any folder while the
+//! settings that say where the journal is cannot be read (`vault_settings_unreadable`), and a
+//! folder holding a row no note delete can tombstone (the core's `begin`): days are not notes
+//! this delete takes. Not here yet: the
 //! locked-folder check (Step 14) and the confirmed permanent delete 13f offers a note the trash
 //! refuses (#3813).
 
@@ -42,8 +43,9 @@ use super::moves::plain_folders;
 use super::service::NotesService;
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
-use crate::vault::config::read_vault_config;
+use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::{Applied, ChangeSource};
+use crate::vault::journal_format::normalize_journal_folder;
 
 impl NotesService {
     pub fn delete_folder(&self, open: &OpenVault, path: &str) -> Result<(), NotesError> {
@@ -117,7 +119,11 @@ fn check(root: &Path, folder: &str) -> Result<(), NotesError> {
     if folder.is_empty() {
         return Err(NotesError::InvalidFolder);
     }
-    let journal = read_vault_config(root).journal_folder;
+    // Settings that cannot be read do not say where the journal is: their defaults would let
+    // the journal folder go unless it is named `journal`. Read as the days are:
+    // `/Personal/journal/` is `Personal/journal`.
+    let config = read_vault_config_strict(root).map_err(NotesError::SettingsUnreadable)?;
+    let journal = normalize_journal_folder(&config.journal_folder);
     if !journal.is_empty() && within(&journal, folder) {
         return Err(NotesError::FolderHoldsJournal);
     }

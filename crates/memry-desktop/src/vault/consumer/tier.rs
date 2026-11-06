@@ -17,7 +17,7 @@ use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
 use crate::vault::app_edit::OwnFiles;
-use crate::vault::app_move::finish_interrupted;
+use crate::vault::app_move::{finish_interrupted, follow_interrupted};
 use crate::vault::config::read_vault_config;
 #[cfg(test)]
 use crate::vault::watch::HoldFn;
@@ -115,6 +115,20 @@ impl VaultTier {
     /// What the app wrote for each note this run ([`OwnFiles`]).
     pub fn own_files(&self) -> Arc<OwnFiles> {
         self.own_files.clone()
+    }
+
+    /// The open vault's watcher looks at the disk again, as when the OS lost events
+    /// (`forget = false`) or the consumer dropped them (`forget = true`, which forgets what was
+    /// reported), so a test can put the watcher's rescans on any state it builds.
+    #[cfg(feature = "test-hooks")]
+    #[doc(hidden)]
+    pub fn rescan_watcher(&self, forget: bool) {
+        if let Some(open) = self.current() {
+            match forget {
+                true => open.watch.resync(),
+                false => open.watch.rescan(),
+            }
+        }
     }
 
     fn current(&self) -> Option<Arc<Open>> {
@@ -276,6 +290,8 @@ impl VaultTier {
             .notes_writer(self.store.clone())
             .map_err(|error| error.to_string())
             .and_then(|writer| {
+                // Before the lane (`settings`'s lock order).
+                follow_interrupted(&vault.path, &writer);
                 let mut lane = self
                     .rows
                     .lane_of(session)
