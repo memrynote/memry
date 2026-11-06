@@ -188,6 +188,8 @@ mod domain_templates;
 mod dryoc_parity;
 #[path = "editor_concurrency.rs"]
 mod editor_concurrency;
+#[path = "editor_locked_refuses.rs"]
+mod editor_locked_refuses;
 #[path = "editor_open_apply.rs"]
 mod editor_open_apply;
 #[path = "editor_origin_fanout.rs"]

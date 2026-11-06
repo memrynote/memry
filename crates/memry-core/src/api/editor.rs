@@ -53,6 +53,7 @@ use crate::crdt::resident::{EDITOR_LIFECYCLE, Resident};
 use crate::crdt::{epoch, update_log};
 use crate::crypto::keys;
 use crate::domain::notes::journal_day::body_owner;
+use crate::domain::vault_locks;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
 use crate::sync::{body_debt, outbox};
@@ -93,6 +94,15 @@ pub struct Opened {
     /// the note's file. A note owed its server body is never seeded here: a seed
     /// shares no Yjs items with that body, and the merge would hold both (#2536).
     pub needs_seed: bool,
+    /// Why the window must not edit it, when it must not.
+    pub read_only: Option<ReadOnly>,
+}
+
+/// Why a document opens read-only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReadOnly {
+    /// The note, or a folder above its file, is locked ([`crate::domain::vault_locks`]).
+    Locked,
 }
 
 /// A stored edit.
@@ -113,6 +123,9 @@ pub enum EditorError {
     /// the app restarts; its text stays readable, and nothing was removed.
     #[error("the body of {note_id} cannot be replayed")]
     Unreadable { note_id: String },
+    /// The note is locked: the edit was refused before anything was written.
+    #[error("{note_id} is locked")]
+    Locked { note_id: String },
     #[error(transparent)]
     Crdt(#[from] CrdtError),
 }
@@ -184,6 +197,8 @@ impl Editor {
                     state: document.encode_state()?,
                     state_vector: document.state_vector()?,
                     needs_seed: body_is_empty(document)? && !body_debt::is_owed(conn, note_id)?,
+                    read_only: vault_locks::is_note_locked(conn, note_id, None)?
+                        .then_some(ReadOnly::Locked),
                 })
             })();
             if opened.is_err() && held.added {
@@ -196,7 +211,9 @@ impl Editor {
     /// Stores `update`, a window's edit, queues it for the other devices,
     /// applies it to the resident document and hands it to the listeners as
     /// [`Origin::Local`] of `holder`. `None`: the update changed nothing, and
-    /// nothing was stored or sent. See the module doc for the order.
+    /// nothing was stored or sent. A locked note refuses it
+    /// ([`EditorError::Locked`]) before anything is written or applied. See the
+    /// module doc for the order.
     pub fn apply_update(
         &self,
         note_id: &str,
@@ -208,6 +225,11 @@ impl Editor {
             let mut resident = self.resident();
             self.on_writer(|conn| {
                 let owner = body_owner(conn, note_id)?.ok_or_else(|| not_found(note_id))?;
+                if vault_locks::is_note_locked(conn, note_id, None)? {
+                    return Err(EditorError::Locked {
+                        note_id: note_id.to_owned(),
+                    });
+                }
                 let document = resident
                     .borrow(note_id, now, || self.load(conn, note_id))?
                     .ok_or_else(|| unreadable(note_id))?;
