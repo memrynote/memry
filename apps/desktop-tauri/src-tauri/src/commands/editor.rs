@@ -12,7 +12,7 @@ use std::sync::Arc;
 use memry_desktop::editor::{Deliver, EditorHost, Subscriber};
 use serde::{Deserialize, Serialize};
 use tauri::ipc::{Channel, InvokeResponseBody, Request, Response};
-use tauri::{AppHandle, Manager, Runtime, WebviewWindow, Wry};
+use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
@@ -154,9 +154,9 @@ pub async fn crdt_sync_step_1<R: Runtime>(
 /// The calling window closed its editor of `note_id`.
 #[tauri::command]
 #[specta::specta]
-pub async fn crdt_close_doc(
-    app: AppHandle<Wry>,
-    window: WebviewWindow<Wry>,
+pub async fn crdt_close_doc<R: Runtime>(
+    app: AppHandle<R>,
+    window: WebviewWindow<R>,
     note_id: String,
 ) -> Result<(), CommandError> {
     // After a vault closed there is nothing left to release.
@@ -171,7 +171,7 @@ pub async fn crdt_close_doc(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn crdt_get_health(app: AppHandle<Wry>) -> Result<CrdtHealth, CommandError> {
+pub async fn crdt_get_health<R: Runtime>(app: AppHandle<R>) -> Result<CrdtHealth, CommandError> {
     let Ok(host) = host(&app) else {
         return Ok(CrdtHealth {
             persistent: true,
