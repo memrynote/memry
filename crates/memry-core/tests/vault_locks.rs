@@ -5,7 +5,7 @@
 #![cfg(feature = "markdown")]
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::vault_locks::{LockState, SetOutcome, TargetKind};
+use memry_core::domain::vault_locks::{FileMode, LockState, SetOutcome, TargetKind};
 use rusqlite::{Connection, params};
 
 use crate::editor_support::{Fixture, fixture};
@@ -261,5 +261,74 @@ fn rows_this_build_cannot_act_on_lock_nothing_and_a_tombstone_locks_again_as_new
         count(&f, "SELECT COUNT(*) FROM vault_locks WHERE id = 'tag:Tags'"),
         1,
         "a newer build's row is kept"
+    );
+}
+
+#[test]
+fn a_baseline_is_replaced_whole_and_outlives_a_relaunch_until_dropped() {
+    let f = fixture();
+    let locks = f.vault.locks();
+    assert_eq!(locks.baseline("n1"), Ok(None));
+    locks.write_baseline("n1", "first", "h1").expect("write");
+    locks.write_baseline("n2", "other", "h2").expect("write");
+    locks.write_baseline("n1", "second", "h3").expect("replace");
+
+    let f = f.relaunch();
+    let locks = f.vault.locks();
+    let kept = locks.baseline("n1").unwrap().expect("kept");
+    assert_eq!(
+        (kept.content.as_str(), kept.content_hash.as_str()),
+        ("second", "h3")
+    );
+    assert!(kept.updated_at > 1_000_000_000_000, "epoch milliseconds");
+    assert_eq!(
+        locks.baseline_note_ids(),
+        Ok(vec!["n1".to_owned(), "n2".to_owned()])
+    );
+
+    locks.delete_baseline("n1").expect("drop");
+    assert_eq!(locks.baseline("n1"), Ok(None));
+    assert_eq!(locks.baseline_note_ids(), Ok(vec!["n2".to_owned()]));
+}
+
+#[test]
+fn a_file_mode_record_is_replaced_whole_and_outlives_a_relaunch_until_forgotten() {
+    let f = fixture();
+    let locks = f.vault.locks();
+    assert_eq!(locks.file_mode("a.md"), Ok(None));
+    locks.record_file_mode("a.md", 0o644, None).expect("record");
+    locks
+        .record_file_mode("b/c.png", 0o600, Some("1:2"))
+        .expect("record");
+    locks
+        .record_file_mode("a.md", 0o640, Some("3:4"))
+        .expect("replace");
+
+    let f = f.relaunch();
+    let locks = f.vault.locks();
+    let a = FileMode {
+        mode: 0o640,
+        identity: Some("3:4".to_owned()),
+    };
+    assert_eq!(locks.file_mode("a.md"), Ok(Some(a.clone())));
+    let c = FileMode {
+        mode: 0o600,
+        identity: Some("1:2".to_owned()),
+    };
+    assert_eq!(
+        locks.file_modes(),
+        Ok(vec![
+            ("a.md".to_owned(), a),
+            ("b/c.png".to_owned(), c.clone())
+        ])
+    );
+
+    locks.forget_file_mode("a.md").expect("forget");
+    assert_eq!(locks.file_mode("a.md"), Ok(None));
+    assert_eq!(locks.file_modes(), Ok(vec![("b/c.png".to_owned(), c)]));
+    assert_eq!(
+        count(&f, "SELECT COUNT(*) FROM outbox"),
+        0,
+        "device-local: neither table is queued"
     );
 }

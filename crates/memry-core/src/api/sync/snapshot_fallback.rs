@@ -121,6 +121,11 @@ fn crdt_class(error: CrdtError, doing: &str) -> Result<SnapshotFallbackOutcome, 
         CrdtError::Undecodable { .. } | CrdtError::NotApplicable { .. } => {
             Ok(SnapshotFallbackOutcome::Parked(format!("{doing}: {error}")))
         }
+        // A sync step never asks a lock, so this does not reach here.
+        #[cfg(feature = "markdown")]
+        CrdtError::Locked { .. } => {
+            Ok(SnapshotFallbackOutcome::Parked(format!("{doing}: {error}")))
+        }
         CrdtError::DocumentBusy { .. } => Ok(SnapshotFallbackOutcome::Transient(format!(
             "{doing}: {error}"
         ))),

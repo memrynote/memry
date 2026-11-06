@@ -149,6 +149,7 @@ impl CoreError for CrdtError {
             Self::DocumentBusy { .. } => (FailureKind::Crdt, "document_busy"),
             Self::Undecodable { .. } => (FailureKind::Crdt, "undecodable_update"),
             Self::NotApplicable { .. } => (FailureKind::Crdt, "update_not_applicable"),
+            Self::Locked { .. } => (FailureKind::Locked, "note_locked"),
             Self::Storage { source } => source.kind_and_code(),
         }
     }
