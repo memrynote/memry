@@ -43,7 +43,7 @@ pub fn resolve(
     url: &str,
 ) -> Result<ResolvedAttachment, AttachmentError> {
     let rel = if url.starts_with(MEMRY_FILE_PREFIX) {
-        legacy_rel(vault, url)?
+        legacy_rel(vault, url, cfg!(windows))?
     } else if has_scheme(url) || url.starts_with(['/', '\\']) {
         // `http:`, `data:`, an absolute path: a note may well show a remote image, but it is
         // not a file of the vault.
@@ -82,10 +82,13 @@ pub fn resolve(
 
 /// The vault-relative path of a `memry-file:` url: its path when it is in this vault, else the
 /// `attachments/...` tail of a path written on another device (`remapCrossDeviceAttachmentPath`).
-fn legacy_rel(vault: &Path, url: &str) -> Result<String, AttachmentError> {
-    let windows = cfg!(windows);
-    let requested = resolve_local_scheme_path(url, LocalScheme::File, windows)
-        .ok_or(AttachmentError::OutsideVault)?;
+/// A path a Mac wrote has no drive, which is no absolute path on Windows; only its tail is used.
+fn legacy_rel(vault: &Path, url: &str, windows: bool) -> Result<String, AttachmentError> {
+    let Some(requested) = resolve_local_scheme_path(url, LocalScheme::File, windows) else {
+        return resolve_local_scheme_path(url, LocalScheme::File, false)
+            .and_then(|written| remap_cross_device(&written))
+            .ok_or(AttachmentError::OutsideVault);
+    };
     let root = normalize_absolute(&vault.to_string_lossy(), windows)
         .ok_or(AttachmentError::OutsideVault)?;
     match locate(&requested, std::slice::from_ref(&root), windows) {
@@ -150,6 +153,16 @@ mod tests {
         assert_eq!(join_within_vault("notes", "../../x.pdf"), None);
         assert_eq!(join_within_vault("", "../x.pdf"), None);
         assert_eq!(join_within_vault("notes", ".."), None);
+    }
+
+    #[test]
+    fn a_windows_vault_takes_the_tail_of_a_url_a_mac_wrote() {
+        let url = "memry-file://local/Users/else/Vault/attachments/n1/k3f9x2-a.pdf";
+        let vault = Path::new("C:\\Users\\me\\Vault");
+        assert_eq!(
+            legacy_rel(vault, url, true).unwrap(),
+            "attachments/n1/k3f9x2-a.pdf"
+        );
     }
 
     #[test]
