@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as Bindings from '../../../../../generated/bindings'
 import {
   createFileBlock,
   createFileBlockContent,
@@ -15,7 +16,17 @@ const mocks = vi.hoisted(() => {
   const emptyProgress = (): Record<string, { progress: number; status: string }> => ({})
   return {
     syncState: { uploadProgress: emptyProgress(), downloadProgress: emptyProgress() },
-    pdfPageCount: 2
+    pdfPageCount: 2,
+    renameAttachment: vi.fn()
+  }
+})
+
+// The rename reaches Rust through the generated command.
+vi.mock('../../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return {
+    ...actual,
+    commands: { ...actual.commands, notesAttachmentRename: mocks.renameAttachment }
   }
 })
 
@@ -673,13 +684,13 @@ describe('FileBlock rename (#1714)', () => {
         absolutePath: '/vault/attachments/note1/abc123-manual.txt',
         storedFilename: 'abc123-manual.txt',
         exists: true
-      }),
-      renameAttachment: vi.fn().mockResolvedValue({
-        storedFilename: 'abc123-invoice.txt',
-        url: '../attachments/note1/abc123-invoice.txt',
-        name: 'invoice.txt'
       })
     }
+    mocks.renameAttachment.mockResolvedValue({
+      storedFilename: 'abc123-invoice.txt',
+      url: '../attachments/note1/abc123-invoice.txt',
+      name: 'invoice.txt'
+    })
 
     const updateBlock = vi.fn()
     const block = {

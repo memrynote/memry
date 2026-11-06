@@ -44,6 +44,10 @@ mod article_standardize;
 mod article_temml;
 #[path = "article_vectors.rs"]
 mod article_vectors;
+#[path = "attachment_locks.rs"]
+mod attachment_locks;
+#[path = "attachment_rename.rs"]
+mod attachment_rename;
 #[path = "attachment_uploads.rs"]
 mod attachment_uploads;
 #[path = "attachments.rs"]

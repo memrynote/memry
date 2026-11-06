@@ -554,7 +554,10 @@ const ported = {
     } catch (error) {
       return failure(error)
     }
-  }
+  },
+  // Rejects on failure, as Electron's `notes:attachment-rename` handler does.
+  renameAttachment: (noteId: string, url: string, newName: string) =>
+    commands.notesAttachmentRename(noteId, url, newName)
 } satisfies Partial<NotesClientAPI>
 
 /** The note methods served from Rust; `window.api.notes` is typed without them. */

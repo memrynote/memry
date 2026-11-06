@@ -65,6 +65,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::locale::locale_set,
             // notes (`notes_upload_attachment` and `notes_upload_attachment_chunk` are binary
             // commands)
+            crate::commands::attachments::notes_attachment_rename::<Wry>,
             crate::commands::attachments::notes_upload_attachment_abort::<Wry>,
             crate::commands::attachments::notes_upload_attachment_begin::<Wry>,
             crate::commands::folders::notes_create_folder::<Wry>,
