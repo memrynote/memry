@@ -51,7 +51,8 @@
 //! (`Editor::load`).
 //!
 //! The host has no threads and no clock of its own: the shell calls
-//! [`Editor::sweep`] on its timer. Every method blocks on the vault's writer
+//! [`Editor::sweep`] on its timer, and [`Editor::compact`] for each document
+//! [`Editor::compaction_due`] names (`compaction.rs`). Every method blocks on the vault's writer
 //! connection; the shell runs them in `spawn_blocking`. Locks are taken in one
 //! order, the resident set and then the writer, and no lock is held while a
 //! listener runs. A listener that panics is caught and reported on stderr, so
@@ -62,7 +63,6 @@
 //! the document. A shell never holds a lock a listener takes across these.
 
 use std::collections::HashMap;
-use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
 use rusqlite::Connection;
@@ -87,8 +87,15 @@ use crate::storage::Db;
 use crate::sync::{body_debt, outbox};
 
 pub use crate::crdt::body_writes::Origin;
+pub use crate::crdt::compact::Folded;
+pub use compaction::COMPACTION_GROWTH_BYTES;
+pub use listeners::{Listener, ListenerId, Notice};
+
+use listeners::Listeners;
 
 mod catch_up;
+mod compaction;
+mod listeners;
 
 /// What a window receives when it opens a document.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -167,36 +174,13 @@ impl From<StorageError> for EditorError {
     }
 }
 
-/// What a document's listener hears, after the commit.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Notice<'a> {
-    /// An update the document took, and where it came from.
-    Update(&'a [u8], &'a Origin),
-    /// The document's body was purged (a delete applied): a window drops its
-    /// copy and opens the document again. Its edits are refused
-    /// ([`EditorError::Purged`]), and while every holder is stale no update
-    /// of the new document is sent, until one opens it.
-    Purged,
-}
-
-/// Called with each [`Notice`] of a document.
-pub type Listener = Arc<dyn Fn(Notice<'_>) + Send + Sync>;
-
-/// Names a listener for [`Editor::unsubscribe`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ListenerId(u64);
-
-#[derive(Default)]
-struct Listeners {
-    next: u64,
-    by_doc: HashMap<String, Vec<(ListenerId, Listener)>>,
-}
-
 pub struct Editor {
     db: Db,
     device_id: String,
     resident: Mutex<Resident>,
     listeners: Mutex<Listeners>,
+    /// Bytes each document's log took since its last compaction.
+    grown: Mutex<HashMap<String, usize>>,
     /// The writer's read-only state, read once: it holds for the connection's
     /// life.
     read_only: OnceLock<bool>,
@@ -222,6 +206,7 @@ impl Editor {
             device_id: keys::local_device_id_hex(public)?,
             resident: Mutex::new(Resident::new(EDITOR_LIFECYCLE)),
             listeners: Mutex::new(Listeners::default()),
+            grown: Mutex::default(),
             read_only: OnceLock::new(),
         })
     }
@@ -411,54 +396,6 @@ impl Editor {
         self.resident().held_ids()
     }
 
-    /// Calls `listener` with every [`Notice`] of `note_id`, after its commit.
-    pub fn subscribe(
-        &self,
-        note_id: &str,
-        listener: impl Fn(Notice<'_>) + Send + Sync + 'static,
-    ) -> ListenerId {
-        let mut listeners = self.listeners();
-        listeners.next += 1;
-        let id = ListenerId(listeners.next);
-        listeners
-            .by_doc
-            .entry(note_id.to_owned())
-            .or_default()
-            .push((id, Arc::new(listener)));
-        id
-    }
-
-    /// Stops a listener. False when it was not subscribed.
-    pub fn unsubscribe(&self, id: ListenerId) -> bool {
-        let mut listeners = self.listeners();
-        let mut found = false;
-        listeners.by_doc.retain(|_, list| {
-            let before = list.len();
-            list.retain(|(each, _)| *each != id);
-            found |= list.len() != before;
-            !list.is_empty()
-        });
-        found
-    }
-
-    fn fan_out(&self, note_id: &str, notice: Notice<'_>) {
-        let listeners: Vec<Listener> = self
-            .listeners()
-            .by_doc
-            .get(note_id)
-            .map(|list| list.iter().map(|(_, f)| Arc::clone(f)).collect())
-            .unwrap_or_default();
-        for listener in listeners {
-            if catch_unwind(AssertUnwindSafe(|| listener(notice))).is_err() {
-                let what = match notice {
-                    Notice::Update(_, origin) => origin.kind(),
-                    Notice::Purged => "purge",
-                };
-                eprintln!("memry editor: a listener of {note_id} panicked on a {what} notice");
-            }
-        }
-    }
-
     /// Runs `read` on `note_id`'s document with the resident lock held, so no
     /// edit can find the document busy (see the module doc).
     fn with_document<T>(
@@ -555,12 +492,6 @@ impl Editor {
 
     fn resident(&self) -> MutexGuard<'_, Resident> {
         self.resident.lock().unwrap_or_else(PoisonError::into_inner)
-    }
-
-    fn listeners(&self) -> MutexGuard<'_, Listeners> {
-        self.listeners
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
     }
 }
 

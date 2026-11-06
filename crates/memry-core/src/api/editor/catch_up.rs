@@ -91,6 +91,10 @@ impl Editor {
 
 /// The epoch client id of `doc_id` and the committed bytes of `rows`, read in
 /// one transaction so both are of one commit.
+///
+/// A row a fold took after its writer committed it ([`crate::crdt::compact`],
+/// or a pushed snapshot's prune) is read from the snapshot that holds it, once.
+/// A row that rolled back is above every fold point and reads nothing.
 fn committed(
     conn: &Connection,
     device_id: &str,
@@ -100,12 +104,18 @@ fn committed(
     let tx = conn.unchecked_transaction().map_err(failed)?;
     let client_id = epoch::client_id(&tx, device_id, doc_id)?;
     let mut blobs = Vec::new();
+    let mut folded = Vec::new();
     for row in rows {
         let blob = match *row {
-            LogRow::Local(seq) => update(&tx, Namespace::Local, doc_id, seq)?,
-            LogRow::Server(seq) => update(&tx, Namespace::Server, doc_id, seq)?,
+            LogRow::Local(seq) => update_or_fold(&tx, Namespace::Local, doc_id, seq, &mut folded)?,
+            LogRow::Server(seq) => {
+                update_or_fold(&tx, Namespace::Server, doc_id, seq, &mut folded)?
+            }
             LogRow::ServerSnapshot => {
                 update_log::snapshot(&tx, Namespace::Server, doc_id)?.map(|row| row.snapshot)
+            }
+            LogRow::LocalSnapshot => {
+                update_log::snapshot(&tx, Namespace::Local, doc_id)?.map(|row| row.snapshot)
             }
         };
         blobs.extend(blob);
@@ -113,19 +123,31 @@ fn committed(
     Ok((client_id, blobs))
 }
 
-fn update(
+/// Row `seq` of `namespace`, or the namespace's snapshot when it folded the
+/// row and `folded` does not name it yet.
+fn update_or_fold(
     conn: &Connection,
     namespace: Namespace,
     doc_id: &str,
     seq: i64,
+    folded: &mut Vec<Namespace>,
 ) -> Result<Option<Vec<u8>>, CrdtError> {
-    conn.query_row(
-        "SELECT update_blob FROM yjs_updates WHERE doc_id = ?1 AND seq = ?2",
-        params![namespace.row_id(doc_id), seq],
-        |row| row.get(0),
-    )
-    .optional()
-    .map_err(failed)
+    let row = conn
+        .query_row(
+            "SELECT update_blob FROM yjs_updates WHERE doc_id = ?1 AND seq = ?2",
+            params![namespace.row_id(doc_id), seq],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    if row.is_some() || folded.contains(&namespace) {
+        return Ok(row);
+    }
+    let snapshot = update_log::snapshot(conn, namespace, doc_id)?.filter(|row| row.last_seq >= seq);
+    if snapshot.is_some() {
+        folded.push(namespace);
+    }
+    Ok(snapshot.map(|row| row.snapshot))
 }
 
 fn failed(error: rusqlite::Error) -> CrdtError {

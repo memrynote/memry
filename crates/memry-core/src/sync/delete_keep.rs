@@ -153,9 +153,15 @@ pub(crate) fn keep(
         local_clock: row.clock.and_then(|text| serde_json::from_str(&text).ok()),
         tombstone_clock: tombstone.cloned(),
         deleted_at: Some(deleted_at),
+        // A local fold keeps the newest stamp of the rows it took
+        // (`crdt::compact`), so the snapshot's stamp counts as an edit's.
         last_local_body_at: tx
             .query_row(
-                "SELECT MAX(created_at) FROM yjs_updates WHERE doc_id = ?1",
+                "SELECT MAX(at) FROM (
+                   SELECT MAX(created_at) AS at FROM yjs_updates WHERE doc_id = ?1
+                   UNION ALL
+                   SELECT compacted_at FROM yjs_snapshots WHERE doc_id = ?1
+                 )",
                 params![format!("{LOCAL_NAMESPACE_PREFIX}{item_id}")],
                 |r| r.get(0),
             )
