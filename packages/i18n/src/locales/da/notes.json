@@ -1890,7 +1890,8 @@
         "confirm": "Omdøb",
         "taken": "Dette tag har allerede {name}.",
         "done": "Omdøbte {from} til {to} i {count, plural, one {# element} other {# elementer}}.",
-        "skipped": "Omdøbte {from} til {to} i {count, plural, one {# element} other {# elementer}}. {locked, plural, =0 {} one {# låst note afsluttes, når den låses op.} other {# låste noter afsluttes, når de låses op.}} {existing, plural, =0 {} one {# note havde allerede {to} og beholder begge.} other {# noter havde allerede {to} og beholder begge.}}"
+        "skipped": "Omdøbte {from} til {to} i {count, plural, one {# element} other {# elementer}}. {locked, plural, =0 {} one {# låst note afsluttes, når den låses op.} other {# låste noter afsluttes, når de låses op.}} {existing, plural, =0 {} one {# note havde allerede {to} og beholder begge.} other {# noter havde allerede {to} og beholder begge.}}",
+        "kept": "Omdøbte {from} til {to} i {count, plural, one {# element} other {# elementer}}. {kept, plural, =0 {} one {# note blev ændret under omdøbningen og beholder {from}, indtil boksen åbnes igen.} other {# noter blev ændret under omdøbningen og beholder {from}, indtil boksen åbnes igen.}} {existing, plural, =0 {} one {# note havde allerede {to} og beholder begge.} other {# noter havde allerede {to} og beholder begge.}}"
       },
       "delete": {
         "button": "Slet tag",

@@ -123,7 +123,7 @@ impl NotesService {
             });
         let kept = match rewritten {
             // A write the document did not take is the watcher's to bring in.
-            Ok(Edited::Wrote { .. } | Edited::Unchanged) => return None,
+            Ok(Edited::Wrote { .. } | Edited::Unchanged { .. }) => return None,
             Ok(Edited::Kept(kept)) => kept,
             Err(error) => {
                 tracing::warn!(
@@ -250,7 +250,7 @@ impl NotesService {
                 );
             }
             match rewritten {
-                Ok(Edited::Wrote { held: true, .. } | Edited::Unchanged) => {}
+                Ok(Edited::Wrote { held: true, .. } | Edited::Unchanged { .. }) => {}
                 Ok(outcome) => tracing::warn!(
                     scope = SCOPE,
                     note_id,

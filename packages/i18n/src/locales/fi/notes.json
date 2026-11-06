@@ -1890,7 +1890,8 @@
         "confirm": "Nimeä uudelleen",
         "taken": "Tällä tunnisteella on jo {name}.",
         "done": "Nimettiin {from} uudelleen nimellä {to} {count, plural, one {# kohteessa} other {# kohteessa}}.",
-        "skipped": "Nimettiin {from} uudelleen nimellä {to} {count, plural, one {# kohteessa} other {# kohteessa}}. {locked, plural, =0 {} one {# lukittu muistiinpano valmistuu, kun sen lukitus avataan.} other {# lukittua muistiinpanoa valmistuu, kun niiden lukitus avataan.}} {existing, plural, =0 {} one {# muistiinpanossa oli jo {to}, ja se säilyttää molemmat.} other {# muistiinpanossa oli jo {to}, ja ne säilyttävät molemmat.}}"
+        "skipped": "Nimettiin {from} uudelleen nimellä {to} {count, plural, one {# kohteessa} other {# kohteessa}}. {locked, plural, =0 {} one {# lukittu muistiinpano valmistuu, kun sen lukitus avataan.} other {# lukittua muistiinpanoa valmistuu, kun niiden lukitus avataan.}} {existing, plural, =0 {} one {# muistiinpanossa oli jo {to}, ja se säilyttää molemmat.} other {# muistiinpanossa oli jo {to}, ja ne säilyttävät molemmat.}}",
+        "kept": "Nimettiin {from} uudelleen nimellä {to} {count, plural, one {# kohteessa} other {# kohteessa}}. {kept, plural, =0 {} one {# muistiinpano muuttui uudelleennimeämisen aikana ja säilyttää nimen {from}, kunnes holvi avataan uudelleen.} other {# muistiinpanoa muuttui uudelleennimeämisen aikana ja säilyttää nimen {from}, kunnes holvi avataan uudelleen.}} {existing, plural, =0 {} one {# muistiinpanossa oli jo {to}, ja se säilyttää molemmat.} other {# muistiinpanossa oli jo {to}, ja ne säilyttävät molemmat.}}"
       },
       "delete": {
         "button": "Poista tunniste",

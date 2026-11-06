@@ -119,7 +119,7 @@ impl NotesService {
                 &mut || {},
             )?;
             match done {
-                Edited::Wrote { .. } | Edited::Unchanged => {
+                Edited::Wrote { .. } | Edited::Unchanged { .. } => {
                     let (aliases, _) = names.into_inner().unwrap_or_default();
                     Ok(NoteAliasesView { aliases })
                 }

@@ -1890,7 +1890,8 @@
         "confirm": "Namakan semula",
         "taken": "Teg ini sudah mempunyai {name}.",
         "done": "{from} dinamakan semula kepada {to} dalam {count, plural, other {# item}}.",
-        "skipped": "{from} dinamakan semula kepada {to} dalam {count, plural, other {# item}}. {locked, plural, =0 {} other {# nota berkunci selesai apabila dibuka kuncinya.}} {existing, plural, =0 {} other {# nota sudah mempunyai {to} dan mengekalkan kedua-duanya.}}"
+        "skipped": "{from} dinamakan semula kepada {to} dalam {count, plural, other {# item}}. {locked, plural, =0 {} other {# nota berkunci selesai apabila dibuka kuncinya.}} {existing, plural, =0 {} other {# nota sudah mempunyai {to} dan mengekalkan kedua-duanya.}}",
+        "kept": "{from} dinamakan semula kepada {to} dalam {count, plural, other {# item}}. {kept, plural, =0 {} other {# nota berubah semasa penamaan semula dan mengekalkan {from} sehingga peti besi dibuka semula.}} {existing, plural, =0 {} other {# nota sudah mempunyai {to} dan mengekalkan kedua-duanya.}}"
       },
       "delete": {
         "button": "Padam teg",

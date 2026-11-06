@@ -76,6 +76,16 @@ pub struct SetPropertiesView {
     pub removed: Vec<String>,
 }
 
+/// What the field rename did to one note.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FieldInNote {
+    Renamed,
+    /// Its file holds no value under the old name.
+    Unchanged,
+    /// Another key of its file folds to the new name: both are kept (`skippedExisting`).
+    Existing,
+}
+
 impl NotesService {
     /// The note's property values, in its frontmatter's order; none for no note, a file that is
     /// gone or not markdown, or a frontmatter that does not parse (`parseNote` reads none).
@@ -171,6 +181,29 @@ impl NotesService {
         Ok(())
     }
 
+    /// The vault-wide field rename on one note or day ([`PropertyEdit::RenameField`]). A note the
+    /// seam keeps is an error, [`NotesError::EditKept`] when trying again can pass.
+    pub fn rename_field_in_note(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        from: &str,
+        to: &str,
+    ) -> Result<FieldInNote, NotesError> {
+        let edit = PropertyEdit::RenameField {
+            from: from.to_owned(),
+            to: to.to_owned(),
+        };
+        match self.edit_properties(open, note_id, &edit) {
+            Ok((held, after)) if held.iter().any(|n| n == from) && !after.contains_key(from) => {
+                Ok(FieldInNote::Renamed)
+            }
+            Ok(_) => Ok(FieldInNote::Unchanged),
+            Err(NotesError::PropertyExists(_)) => Ok(FieldInNote::Existing),
+            Err(error) => Err(error),
+        }
+    }
+
     /// Runs `edit` on the note's file (see the module comment): the property names the file
     /// held, and the values it holds now, as stored.
     fn edit_properties(
@@ -228,7 +261,7 @@ impl NotesService {
             let names = held.keys().cloned().collect();
             match done {
                 Edited::Wrote { .. } => Ok((names, after)),
-                Edited::Unchanged => Ok((names, held)),
+                Edited::Unchanged { .. } => Ok((names, held)),
                 Edited::Kept(kept) => {
                     tracing::info!(scope = SCOPE, note_id, ?kept, "a property edit was refused");
                     Err(NotesError::kept(note_id, kept))

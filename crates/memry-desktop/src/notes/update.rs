@@ -37,7 +37,7 @@ use memry_core::domain::note_stats::header_tags as file_header_tags;
 use memry_core::domain::tags::{fold, tag_key};
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, deep_strict_equal, json_to_yaml, parse_markdown_note,
-    serialize_updated_note,
+    serialize_updated_note, split_frontmatter_block,
 };
 use memry_core::markdown::shared::cover_image::cover_sync;
 use serde::{Deserialize, Deserializer};
@@ -172,6 +172,18 @@ pub struct Updated {
     /// The save's body went over an outside edit the watcher had not fed yet, kept as a version
     /// first. The editor never had that edit's event, so only this tells it.
     pub kept_outside_edit: bool,
+    /// The body this save left in the file, as the note's event reads it. `note` is read again
+    /// after the save's turn ends, so it can hold a later edit (a tag's template, an outside
+    /// edit); the editor compares events with this instead (#3967). `None` when no save ran.
+    pub saved_content: Option<String>,
+}
+
+/// What a save in the note's turn came to.
+struct Saved {
+    tags_changed: bool,
+    added: Vec<String>,
+    kept_outside: bool,
+    body: String,
 }
 
 /// An update, checked.
@@ -221,9 +233,15 @@ impl NotesService {
             true => self.definition_types(open),
             false => HashMap::new(),
         };
-        let (tags_changed, added, kept_outside_edit) = self.order.run(&edit.id, |turn| {
+        let saved = self.order.run(&edit.id, |turn| {
             self.update_now(open, &edit, &types, turn, between)
         })?;
+        let Saved {
+            tags_changed,
+            added,
+            kept_outside: kept_outside_edit,
+            body,
+        } = saved;
         // `addedInOrder`: the added tags in the order the caller asked for them.
         let added = match edit.header_tags.as_ref().filter(|e| !e.add.is_empty()) {
             None => added,
@@ -240,6 +258,7 @@ impl NotesService {
         let note = read::get(open, &edit.id, None)?
             .ok_or_else(|| NotesError::NotFound(edit.id.clone()))?;
         Ok(Updated {
+            saved_content: Some(body),
             note,
             tags_changed,
             tag_template,
@@ -254,7 +273,7 @@ impl NotesService {
         types: &HashMap<String, String>,
         turn: &NoteTurn<'_>,
         between: &mut dyn FnMut(),
-    ) -> Result<(bool, Vec<String>, bool), NotesError> {
+    ) -> Result<Saved, NotesError> {
         let id = edit.id.as_str();
         let writer = open.vault.notes_writer(self.store.clone())?;
         let with_fields = match edit.header_tags.is_some() || edit.content.is_some() {
@@ -306,23 +325,32 @@ impl NotesService {
             between,
         )?;
         let plan = planned.into_inner();
-        let kept_outside = matches!(
-            edited,
+        let (kept_outside, file) = match edited {
             Edited::Wrote {
-                kept_outside: true,
-                ..
-            }
-        );
-        match edited {
-            Edited::Wrote { .. } | Edited::Unchanged => Ok(plan
-                .map_or((false, Vec::new(), kept_outside), |plan| {
-                    (plan.tags_changed, plan.added, kept_outside)
-                })),
+                kept_outside, text, ..
+            } => (kept_outside, text),
+            Edited::Unchanged { text } => (false, text),
             Edited::Kept(kept) => {
                 tracing::info!(scope = SCOPE, note_id = id, ?kept, "a save was refused");
-                Err(NotesError::EditKept(kept))
+                return Err(NotesError::EditKept(kept));
             }
-        }
+        };
+        // The body as the note's read gives it: a file with no frontmatter keeps its mark there.
+        let body = split_frontmatter_block(&file).body.to_owned();
+        Ok(match plan {
+            Some(plan) => Saved {
+                tags_changed: plan.tags_changed,
+                added: plan.added,
+                kept_outside,
+                body,
+            },
+            None => Saved {
+                tags_changed: false,
+                added: Vec::new(),
+                kept_outside,
+                body,
+            },
+        })
     }
 }
 

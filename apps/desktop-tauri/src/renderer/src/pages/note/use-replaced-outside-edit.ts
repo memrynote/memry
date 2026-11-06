@@ -17,8 +17,11 @@ export function useReplacedOutsideEdit(
 ): {
   /** The outside edit's body that unsaved typing kept out of the editor. */
   held: (noteId: string, content: string) => void
-  /** The typing's save answered: tells the user when it replaced a different outside body. */
-  saved: (noteId: string, content: string, result: NoteUpdateResponse) => void
+  /**
+   * The typing's save answered: tells the user when it replaced a different outside body, and
+   * answers whether it did.
+   */
+  saved: (noteId: string, content: string, result: NoteUpdateResponse) => boolean
 } {
   const { t } = useT('notes')
   const heldRef = useRef<{ noteId: string; content: string } | null>(null)
@@ -40,11 +43,11 @@ export function useReplacedOutsideEdit(
       },
       saved: (id, content, result) => {
         // A failed save replaced nothing; the held edit waits for the save that lands.
-        if (!result.success) return
+        if (!result.success) return false
         const held = heldRef.current
         heldRef.current = null
         const replaced = held?.noteId === id && held.content !== content
-        if (!replaced && !result.keptOutsideEdit) return
+        if (!replaced && !result.keptOutsideEdit) return false
         toast(tRef.current('page.toast.outsideEditReplaced'), {
           duration: 10_000,
           action: {
@@ -52,6 +55,7 @@ export function useReplacedOutsideEdit(
             onClick: () => showRef.current()
           }
         })
+        return true
       }
     }),
     []

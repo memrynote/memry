@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { buildDoc } from './doc'
 import { buildText } from './text'
 
 export const NOTE_FOLD_ZONE = 'UTC'
@@ -36,6 +37,12 @@ const FILES: VectorFile[] = [
     source: 'src/main/note-fold/{engine,engine-tokens}.ts',
     note: 'The fold text helpers: language, sentences, words and the inline tokens. Dates format in timeZone.',
     build: buildText
+  },
+  {
+    path: 'note-fold.json',
+    source: 'src/main/note-fold/{engine,engine-inline,engine-morph,engine-tokens,segmenter}.ts',
+    note: 'The local fold of a note: what fold-service.ts get answers with no model lines. Inline date tokens format in timeZone.',
+    build: buildDoc
   }
 ]
 

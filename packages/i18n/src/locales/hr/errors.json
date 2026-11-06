@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Ova verzija još ne može promijeniti mapu dnevnika, format datuma ni izuzete mape. Spremljena postavka ostaje.",
     "journalFormatIncomplete": "Ovaj format datuma ne može imenovati svaki dan pa nije spremljen. Uključite godinu, mjesec i dan.",
     "journalDaysNotRenamed": "Format datuma nije promijenjen jer neke dane dnevnika nije bilo moguće preimenovati prema njemu ({count}). Možda neka datoteka već ima novi naziv dana.",
-    "journalUnlisted": "Mapu dnevnika nije bilo moguće pročitati pa format datuma nije promijenjen. Provjerite imate li pristup njoj."
+    "journalUnlisted": "Mapu dnevnika nije bilo moguće pročitati pa format datuma nije promijenjen. Provjerite imate li pristup njoj.",
+    "settingsUnreadable": "Mape se ne mogu premjestiti dok se datoteka postavki trezora (.memry/config.json) ne može pročitati. Popravite tu datoteku pa pokušajte ponovno."
   },
   "note": {
     "notFound": "Ova bilješka nije pronađena. Možda je izbrisana.",
@@ -385,6 +386,7 @@
     "cycle": "#{parent} već preuzima svoja polja iz ove oznake",
     "unreadableSchema": "Novija verzija Memryja promijenila je ovu oznaku. Ažurirajte Memry da biste je uređivali",
     "relationTargetRequired": "Odaberite na koju oznaku ova relacija upućuje",
-    "renameRunning": "Još jedno preimenovanje polja se privodi kraju ({from} u {to}). Pokušajte ponovno kad završi."
+    "renameRunning": "Još jedno preimenovanje polja se privodi kraju ({from} u {to}). Pokušajte ponovno kad završi.",
+    "renameTaskUnreadable": "Preimenovanje polja {from} u {to} ne može se nastaviti: ova verzija Memryja ne može pročitati ove zadatke: {tasks}. Ažurirajte Memry pa pokušajte ponovno."
   }
 }

@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Tämä versio ei vielä voi muuttaa päiväkirjakansiota, päivämäärämuotoa tai pois jätettyjä kansioita. Tallennettu asetus säilyy.",
     "journalFormatIncomplete": "Tämä päivämäärämuoto ei pysty nimeämään jokaista päivää, joten sitä ei tallennettu. Sisällytä vuosi, kuukausi ja päivä.",
     "journalDaysNotRenamed": "Päivämäärämuotoa ei muutettu, koska joitakin päiväkirjan päiviä ei voitu nimetä uudelleen sen mukaan ({count}). Jollakin tiedostolla voi jo olla päivän uusi nimi.",
-    "journalUnlisted": "Päiväkirjakansiota ei voitu lukea, joten päivämäärämuotoa ei muutettu. Tarkista, että sinulla on siihen käyttöoikeus."
+    "journalUnlisted": "Päiväkirjakansiota ei voitu lukea, joten päivämäärämuotoa ei muutettu. Tarkista, että sinulla on siihen käyttöoikeus.",
+    "settingsUnreadable": "Kansioita ei voi siirtää, kun holvin asetustiedostoa (.memry/config.json) ei voi lukea. Korjaa tiedosto ja yritä uudelleen."
   },
   "note": {
     "notFound": "Tätä muistiinpanoa ei löytynyt. Se on ehkä poistettu.",
@@ -385,6 +386,7 @@
     "cycle": "Tunniste #{parent} perii jo kenttänsä tältä tunnisteelta",
     "unreadableSchema": "Memryn uudempi versio muutti tätä tunnistetta. Päivitä Memry muokataksesi sitä",
     "relationTargetRequired": "Valitse, mihin tunnisteeseen tämä relaatio viittaa",
-    "renameRunning": "Toisen kentän uudelleennimeäminen on vielä kesken ({from} → {to}). Yritä uudelleen, kun se on valmis."
+    "renameRunning": "Toisen kentän uudelleennimeäminen on vielä kesken ({from} → {to}). Yritä uudelleen, kun se on valmis.",
+    "renameTaskUnreadable": "Kentän uudelleennimeäminen {from} → {to} ei voi jatkua: tämä Memryn versio ei pysty lukemaan näitä tehtäviä: {tasks}. Päivitä Memry ja yritä uudelleen."
   }
 }

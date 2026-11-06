@@ -141,7 +141,8 @@ fn held_edit_lands_in_the_document_the_file_and_the_row_with_one_byte_order_mark
         Edited::Wrote {
             hash: content_hash(&text),
             held: true,
-            kept_outside: false
+            kept_outside: false,
+            text: text.clone()
         }
     );
     assert_eq!(e.read("Ideas.md"), text);
@@ -170,7 +171,12 @@ fn held_edit_lands_in_the_document_the_file_and_the_row_with_one_byte_order_mark
     let none = run(&edit, &ideas, Precondition::Held, ChangeSource::App, |_| {
         None
     });
-    assert_eq!(none, Edited::Unchanged);
+    assert_eq!(
+        none,
+        Edited::Unchanged {
+            text: format!("{BOM}---\nkeep: 'as is'\n---\nSee [[Plan]] and less.\n")
+        }
+    );
 }
 
 #[test]
@@ -193,7 +199,8 @@ fn a_text_the_document_does_not_take_is_written_and_brought_in_by_the_watcher() 
         Edited::Wrote {
             hash: content_hash(&big),
             held: false,
-            kept_outside: false
+            kept_outside: false,
+            text: big.clone()
         }
     );
     assert_eq!(e.read("Big.md"), big);
@@ -236,7 +243,8 @@ fn a_save_whose_feed_fails_is_written_and_brought_in_by_the_watcher() {
         Edited::Wrote {
             hash: content_hash(saved),
             held: false,
-            kept_outside: false
+            kept_outside: false,
+            text: saved.to_owned()
         }
     );
     assert_eq!(e.read("Plan.md"), saved);

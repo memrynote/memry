@@ -1890,7 +1890,8 @@
         "confirm": "Gi nytt navn",
         "taken": "Denne taggen har allerede {name}.",
         "done": "Endret {from} til {to} i {count, plural, one {# element} other {# elementer}}.",
-        "skipped": "Endret {from} til {to} i {count, plural, one {# element} other {# elementer}}. {locked, plural, =0 {} one {# låst notat fullføres når det låses opp.} other {# låste notater fullføres når de låses opp.}} {existing, plural, =0 {} one {# notat hadde allerede {to} og beholder begge.} other {# notater hadde allerede {to} og beholder begge.}}"
+        "skipped": "Endret {from} til {to} i {count, plural, one {# element} other {# elementer}}. {locked, plural, =0 {} one {# låst notat fullføres når det låses opp.} other {# låste notater fullføres når de låses opp.}} {existing, plural, =0 {} one {# notat hadde allerede {to} og beholder begge.} other {# notater hadde allerede {to} og beholder begge.}}",
+        "kept": "Endret {from} til {to} i {count, plural, one {# element} other {# elementer}}. {kept, plural, =0 {} one {# notat ble endret under omdøpingen og beholder {from} til hvelvet åpnes igjen.} other {# notater ble endret under omdøpingen og beholder {from} til hvelvet åpnes igjen.}} {existing, plural, =0 {} one {# notat hadde allerede {to} og beholder begge.} other {# notater hadde allerede {to} og beholder begge.}}"
       },
       "delete": {
         "button": "Slett tagg",

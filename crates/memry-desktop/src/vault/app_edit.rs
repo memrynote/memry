@@ -186,14 +186,16 @@ pub enum Edited {
     /// The file holds the new text. `held`: the document took it too, and the row says so;
     /// otherwise the watcher brings the file to the document as an outside edit.
     /// `kept_outside`: a save's body went over an outside edit not fed yet, kept as a version
-    /// first; the editor had no event for it.
+    /// first; the editor had no event for it. `text`: the file as written, byte order mark
+    /// included.
     Wrote {
         hash: String,
         held: bool,
         kept_outside: bool,
+        text: String,
     },
-    /// The closure changed nothing.
-    Unchanged,
+    /// The closure changed nothing; `text` is the file as read.
+    Unchanged { text: String },
     /// The file was kept as it is.
     Kept(Kept),
 }
@@ -381,7 +383,7 @@ impl AppEdit {
                     source,
                 });
             }
-            return Ok(Edited::Unchanged);
+            return Ok(Edited::Unchanged { text: file.raw });
         };
         let next = bare(&text);
         let Ok(edited) = parse_markdown_note(next) else {
@@ -456,6 +458,7 @@ impl AppEdit {
                 hash,
                 held: false,
                 kept_outside: outside && keeps,
+                text,
             });
         }
         lane.publish(Applied::Changed {
@@ -468,6 +471,7 @@ impl AppEdit {
             hash,
             held: true,
             kept_outside: outside && keeps,
+            text,
         })
     }
 

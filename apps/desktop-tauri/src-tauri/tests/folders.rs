@@ -13,6 +13,7 @@ use memry_core::api::errors::SecureStoreError;
 use memry_core::crypto::sodium;
 use memry_core::domain::folders;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
@@ -110,6 +111,7 @@ fn opened() -> Fixture {
         .unwrap();
     app.manage(session);
     app.manage(NotesService::new(tier, store));
+    app.manage(Arc::new(LocaleService::new("en")));
     let webview = WebviewWindowBuilder::new(&app, "main", WebviewUrl::default())
         .build()
         .unwrap();
@@ -190,6 +192,31 @@ fn a_folder_created_and_set_through_the_ipc_reads_back() {
     // The refusal only: a delete that went through would use the OS trash of the machine.
     let missing = f.invoke("notes_delete_folder", json!({ "path": "Work/Plans" }));
     assert_eq!(missing.unwrap_err()["code"], "folder_not_found");
+}
+
+/// Settings that cannot be read refuse every folder move, in words that name the file.
+#[test]
+fn a_folder_move_with_unreadable_settings_says_which_file_to_fix() {
+    let f = opened();
+    f.invoke("notes_create_folder", json!({ "path": "Work" }))
+        .unwrap();
+    fs::write(f.vault.join(".memry/config.json"), "{").unwrap();
+
+    let refused = f
+        .invoke(
+            "notes_rename_folder",
+            json!({ "oldPath": "Work", "newPath": "Play" }),
+        )
+        .unwrap_err();
+
+    assert_eq!(refused["code"], "vault_settings_unreadable");
+    assert!(
+        refused["message"]
+            .as_str()
+            .is_some_and(|message| message.contains(".memry/config.json")),
+        "{refused}"
+    );
+    assert!(f.vault.join("Work").exists());
 }
 
 #[test]

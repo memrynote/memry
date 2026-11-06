@@ -33,7 +33,8 @@
 //! exists under any spelling but the folder's own (`name_conflict`), one inside the folder, one the
 //! tree hides, the vault ignores, a link leads to, or no record can name (`invalid_folder`), and
 //! moving the journal folder or a folder holding it (`folder_holds_journal`): its setting would
-//! have to follow, which waits for the settings port. Not here yet: the locked-folder check (Step
+//! have to follow, which waits for 13m-7b-2b. Every move is refused while the settings cannot be
+//! read (`vault_settings_unreadable`), since they say where the journal is. Not here yet: the locked-folder check (Step
 //! 14), the shortcuts and Readwise targets that name the folder (`followFolderRenameInShortcuts`,
 //! `followFolderRenameInReadwise`), which have no Tauri port yet.
 
@@ -51,11 +52,12 @@ use super::moves::{Named, identity_failed, plain_folders};
 use super::service::NotesService;
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
-use crate::vault::config::read_vault_config;
+use crate::vault::config::{read_vault_config, read_vault_config_strict};
 use crate::vault::consumer::identity::IdentityCtx;
 use crate::vault::consumer::rows::Lane;
 use crate::vault::consumer::{Applied, MoveKind};
 use crate::vault::file_types::FileType;
+use crate::vault::journal_format::normalize_journal_folder;
 use crate::vault::move_dir::{self, IncompleteRollback, Step};
 use crate::vault::move_journal::STAGING_PREFIX;
 use crate::vault::path_key::folded_key;
@@ -397,9 +399,13 @@ fn check(root: &Path, from: &str, to: &str) -> Result<(), NotesError> {
     if from.is_empty() || to.is_empty() {
         return Err(NotesError::InvalidFolder);
     }
-    let config = read_vault_config(root);
-    // Before the tree's filter, which hides the journal folder unless the sidebar shows it.
-    if !config.journal_folder.is_empty() && within(&config.journal_folder, from) {
+    // Settings that cannot be read do not say where the journal is: their defaults would let the
+    // journal folder move unless it is named `journal`.
+    let config = read_vault_config_strict(root).map_err(NotesError::SettingsUnreadable)?;
+    // Before the tree's filter, which hides the journal folder unless the sidebar shows it. The
+    // setting is read as the days are: `/Personal/journal/` is `Personal/journal`.
+    let journal = normalize_journal_folder(&config.journal_folder);
+    if !journal.is_empty() && within(&journal, from) {
         return Err(NotesError::FolderHoldsJournal);
     }
     let shown = tree_filter(root);
