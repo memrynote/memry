@@ -67,7 +67,7 @@ use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
 use crate::vault::journal_rename::{JournalVault, finish_journal_change};
-use crate::vault::note_file::{NoteFileError, write_new_text};
+use crate::vault::note_file::{NoteFileError, large_file_class, record_large_file, write_new_text};
 use crate::vault::paths::open_vault_file;
 
 /// What `journal:createEntry` is asked to make (`CreateEntryInputSchema`).
@@ -256,6 +256,10 @@ impl NotesService {
         if let Err(error) = lane.put(&opened.id, &rel, stat) {
             return take_back(&mut lane, error.into());
         }
+        // The watcher skips this write's echo, so no read of it records the class. A day's id
+        // repeats, so a note-class file records too.
+        let large = large_file_class(&output).is_some();
+        record_large_file(lane.files(), &opened.id, large);
         // The tags the new file says: what an outside edit of it is read against (#3825).
         let seen = open
             .vault

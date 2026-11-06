@@ -23,9 +23,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::external_feed::{FeedInput, FirstBody};
-use memry_core::markdown::shared::markdown_class::{
-    MarkdownClassThresholds, classify_markdown_stat,
-};
 
 use super::apply::{Applier, Step};
 use super::body::writing_of;
@@ -36,7 +33,9 @@ use super::{Applied, ChangeSource};
 use crate::vault::activity::{ScanActivity, failure_key};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
-use crate::vault::note_file::{NoteFile, read_note};
+use crate::vault::note_file::{
+    NoteFile, large_by_size, large_file_class, read_note, record_large_file,
+};
 use crate::vault::path_key::folded_key;
 use crate::vault::watch::reconcile::modified_ms;
 
@@ -184,11 +183,8 @@ impl Applier {
         // A file that does not read goes alone, which reads it again and reports why. One whose
         // size alone makes it large-file class is not a new note's and goes alone unread, so a
         // batch holds at most the large-file size (1 MiB) per file.
-        let thresholds = MarkdownClassThresholds::default();
         let read: Vec<Option<NoteFile>> = in_parallel(&found, |file| {
-            let large = usize::try_from(file.size).map_or(true, |size| {
-                classify_markdown_stat(size, thresholds).is_some()
-            });
+            let large = large_by_size(file.size).is_some();
             (!large && !stop.load(Ordering::Relaxed))
                 .then(|| read_note(&self.root, &file.path).ok().flatten())
                 .flatten()
@@ -328,6 +324,15 @@ impl Applier {
             let (Some((id, _)), path) = (prepared.body, prepared.found.path) else {
                 continue;
             };
+            // The body says nothing of the frontmatter, which can make the file large alone.
+            // A new id has no class yet, so only a large file is recorded.
+            if prepared
+                .read
+                .as_ref()
+                .is_some_and(|read| large_file_class(&read.raw).is_some())
+            {
+                record_large_file(lane.files(), &id, true);
+            }
             lane.publish(Applied::Added {
                 note_id: id,
                 path: path.clone(),

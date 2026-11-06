@@ -100,7 +100,10 @@ use super::consumer::{Applied, ChangeSource, VaultTier, converter_for};
 use super::embeds::Resolved;
 use super::file_types::FileType;
 use super::hash::content_hash;
-use super::note_file::{NoteFile, NoteFileError, read_note, write_note_over_checked};
+use super::note_file::{
+    NoteFile, NoteFileError, large_file_class, read_note, record_large_file,
+    write_note_over_checked,
+};
 use super::watch::EchoGuard;
 use crate::notes::write_order::NoteTurn;
 use crate::session::OpenVault;
@@ -433,6 +436,8 @@ impl AppEdit {
                 error => Err(AppEditError::from(error).into()),
             };
         }
+        // The watcher may skip this write's echo, so no read of it would record the class.
+        record_large_file(lane.files(), note_id, large_file_class(&text).is_some());
         if let Some(own) = own {
             match body_moved {
                 true => own.wrote(note_id, &hash, source),

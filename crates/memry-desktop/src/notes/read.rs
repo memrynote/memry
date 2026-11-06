@@ -11,8 +11,7 @@ use memry_core::domain::note_list::{ListedNote, NoteListQuery};
 use memry_core::domain::note_stats::word_count;
 use memry_core::markdown::frontmatter::{gray_matter_data, split_frontmatter_block};
 use memry_core::markdown::shared::markdown_class::{
-    LargeFileReason, MarkdownClassThresholds, MarkdownClassification, classify_markdown_content,
-    classify_markdown_stat,
+    LargeFileReason, MarkdownClassification, NOTE_MAX_BYTES,
 };
 
 use super::error::{NotesError, SCOPE};
@@ -27,6 +26,7 @@ use crate::shell::file_open::Resolution;
 use crate::telemetry::main_warning::Level;
 use crate::telemetry::service::Service;
 use crate::vault::file_types::FileType;
+use crate::vault::note_file::{large_by_size, large_file_class, record_large_file};
 use crate::vault::paths::{open_vault_file, resolve_vault_file};
 
 /// `NoteListSchema`'s `limit` bounds and default.
@@ -41,7 +41,7 @@ pub fn get(
     telemetry: Option<&Service>,
 ) -> Result<Option<NoteView>, NotesError> {
     match open.vault.note_files().listed_by_id(note_id)? {
-        Some(listed) => note_of(open, listed, telemetry),
+        Some(listed) => Ok(recorded(open, note_of(open, listed, telemetry)?)),
         None => Ok(None),
     }
 }
@@ -53,9 +53,19 @@ pub fn get_by_path(
     telemetry: Option<&Service>,
 ) -> Result<Option<NoteView>, NotesError> {
     match open.vault.note_files().listed_by_path(path)? {
-        Some(listed) => note_of(open, listed, telemetry),
+        Some(listed) => Ok(recorded(open, note_of(open, listed, telemetry)?)),
         None => Ok(None),
     }
+}
+
+/// `view`, its file's class recorded: the renderer opens the note's editor right after this
+/// read, and the editor decides from the record whether it takes edits.
+fn recorded(open: &OpenVault, view: Option<NoteView>) -> Option<NoteView> {
+    if let Some(view) = &view {
+        let large = view.size_class == SizeClass::LargeFile;
+        record_large_file(&open.vault.note_files(), &view.id, large);
+    }
+    view
 }
 
 /// `noteExists`: a `.md` path names a live note's file, anything else is a link target
@@ -163,7 +173,6 @@ fn note_of(
     listed: ListedNote,
     telemetry: Option<&Service>,
 ) -> Result<Option<NoteView>, NotesError> {
-    let thresholds = MarkdownClassThresholds::default();
     let file = match open_vault_file(&open.path, &listed.path) {
         Ok(Some(file)) => file,
         Ok(None) => {
@@ -187,19 +196,18 @@ fn note_of(
         }
         Err(error) => return Err(error.into()),
     };
-    let size = usize::try_from(file.metadata()?.len()).unwrap_or(usize::MAX);
-    if let Some(class) = classify_markdown_stat(size, thresholds) {
-        return Ok(Some(large_note(listed, class, false)));
+    let size = file.metadata()?.len();
+    if let Some(class) = large_by_size(size) {
+        return Ok(Some(large_note(listed, large_file_info(&class, false))));
     }
-    let mut bytes = Vec::with_capacity(size);
+    let mut bytes = Vec::with_capacity(usize::try_from(size).unwrap_or_default());
     // Bounded: a file that grew since its size was read is cut at the class ceiling, and one
     // past it is a large file.
-    file.take(thresholds.max_file_bytes as u64 + 1)
+    file.take(NOTE_MAX_BYTES as u64 + 1)
         .read_to_end(&mut bytes)?;
     let raw = String::from_utf8_lossy(&bytes);
-    let class = classify_markdown_content(&raw, thresholds);
-    if class.large_file.is_some() {
-        return Ok(Some(large_note(listed, class, true)));
+    if let Some(info) = large_file_of(&raw) {
+        return Ok(Some(large_note(listed, info)));
     }
     // A block that does not parse costs the note no body: its fields read as none (`parseNote`).
     let split = split_frontmatter_block(&raw);
@@ -259,15 +267,8 @@ fn note_of(
 /// How a read of the markdown file `raw` classifies it: `None` for a note, else the large
 /// file's info, as [`get`] answers it.
 pub(super) fn large_file_of(raw: &str) -> Option<LargeFileInfo> {
-    let thresholds = MarkdownClassThresholds::default();
-    if let Some(class) = classify_markdown_stat(raw.len(), thresholds) {
-        return Some(large_file_info(&class, false));
-    }
-    let class = classify_markdown_content(raw, thresholds);
-    class
-        .large_file
-        .is_some()
-        .then(|| large_file_info(&class, true))
+    // Past the byte ceiling the size settles it, and no block is measured.
+    large_file_class(raw).map(|class| large_file_info(&class, raw.len() <= NOTE_MAX_BYTES))
 }
 
 /// `read`: the file's blocks were read, not only its size.
@@ -285,7 +286,7 @@ fn large_file_info(class: &MarkdownClassification, read: bool) -> LargeFileInfo 
 }
 
 /// `largeFileNote`: the note without its text, which the editor never mounts.
-fn large_note(listed: ListedNote, class: MarkdownClassification, read: bool) -> NoteView {
+fn large_note(listed: ListedNote, large_file: LargeFileInfo) -> NoteView {
     let (created, modified) = dates(&listed);
     NoteView {
         id: listed.id,
@@ -304,7 +305,7 @@ fn large_note(listed: ListedNote, class: MarkdownClassification, read: bool) -> 
         emoji: listed.emoji,
         local_only: listed.local_only,
         size_class: SizeClass::LargeFile,
-        large_file: Some(large_file_info(&class, read)),
+        large_file: Some(large_file),
         content_omitted: true,
     }
 }

@@ -19,7 +19,10 @@ use super::{Applied, ChangeSource, MAX_RETRIES, MoveKind};
 use crate::vault::activity::{ActivityLog, ScanActivity, failure_key};
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
-use crate::vault::note_file::{NoteFile, NoteFileError, hash_file, read_note};
+use crate::vault::note_file::{
+    NoteFile, NoteFileError, hash_file, large_by_size, large_file_class, read_note,
+    record_large_file,
+};
 use crate::vault::watch::{VaultEvent, WatchHandle};
 
 mod crossing;
@@ -196,6 +199,10 @@ impl Applier {
                 return Step::Retry(path.to_owned());
             }
         };
+        if let Some(file) = &file {
+            let large = large_file_class(&file.raw).is_some();
+            record_large_file(lane.files(), &note_id, large);
+        }
         // Seeded on `Existing` too: a crash between a create and its seed leaves an empty
         // body, and a body that is there is left alone; one that is already the file's text
         // answers `Unchanged`, so the row records the file's hash, which a move of the file is
@@ -262,6 +269,10 @@ impl Applier {
                 Err(Unread::Missing) => return Step::Retry(path.to_owned()),
                 Err(Unread::Failed { file_hash, failure }) => {
                     report_unread(scan, path, failure);
+                    // Too large to read whole (past the read cap) is large by its size.
+                    if large_by_size(size).is_some() {
+                        record_large_file(lane.files(), note_id, true);
+                    }
                     record_file_hash(
                         lane,
                         note_id,
@@ -271,6 +282,8 @@ impl Applier {
                     return Step::Retry(path.to_owned());
                 }
             };
+            // Before the feed: whatever it does with the text, the file is what it is.
+            record_large_file(lane.files(), note_id, large_file_class(&file.raw).is_some());
             let write = match row.content_hash.as_deref() {
                 // Read back as recorded: the row's time moves on, so the walk does not read it
                 // again, unless the body moved since (a pass a crash cut short): then the note

@@ -33,6 +33,11 @@
 //! received (chapter 12 §12.5.0), and a local-only note gets its log row and no
 //! outbox row ([`outbox::enqueue`] decides that).
 //!
+//! **A read-only note takes no window edit.** [`Opened::read_only`] says why: its
+//! file is large-file class as its last read measured it (the app shows it in
+//! the large-file viewer), or it is locked. [`Editor::apply_update`] checks on the
+//! writer and refuses before the update is applied, stored, queued or fanned out.
+//!
 //! **Every `yrs` transaction on a resident document runs under the resident
 //! lock**, reads included ([`Editor::with_document`]). `yrs` does not wait for a
 //! busy document, it refuses (`DocumentBusy`): a read outside the lock made a
@@ -74,7 +79,7 @@ use crate::crdt::{BODY_FRAGMENT, epoch, update_log};
 use crate::crypto::keys;
 use crate::domain::body_write::append_in;
 use crate::domain::notes::journal_day::body_owner;
-use crate::domain::vault_locks;
+use crate::domain::{note_files, vault_locks};
 use crate::markdown::convert::api::Converter;
 use crate::markdown::schema::callout_types::CalloutTypes;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -103,6 +108,10 @@ pub struct Opened {
 /// Why a document opens read-only.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReadOnly {
+    /// The note's file is large-file class, as the last read of it measured
+    /// ([`crate::domain::note_files::is_large_file`]): the app shows it in the
+    /// large-file viewer, and its document takes no edit.
+    LargeFile,
     /// The note, or a folder above its file, is locked ([`crate::domain::vault_locks`]).
     Locked,
 }
@@ -139,6 +148,11 @@ pub enum EditorError {
     /// agents relay it verbatim and the renderer shows it localized.
     #[error("The owner made this note read-only.")]
     Locked { note_id: String },
+    /// The note's file is large-file class: the edit was refused before
+    /// anything was written. Electron has no text for it (its renderer never
+    /// mounts an editor on a large file); this one is shown to the user.
+    #[error("This note is too large to edit. It opens read-only.")]
+    LargeFile { note_id: String },
     /// The window's copy is of a document since purged (a delete applied): it
     /// opens the document again before it edits. Nothing was written.
     #[error("{note_id} was deleted since this window opened it")]
@@ -229,12 +243,15 @@ impl Editor {
                 .ok_or_else(|| unreadable(note_id))?;
             let document = &held.document;
             let opened = (|| {
+                let read_only = read_only(conn, note_id)?;
                 Ok(Opened {
                     state: document.encode_state()?,
                     state_vector: document.state_vector()?,
-                    needs_seed: body_is_empty(document)? && !body_debt::is_owed(conn, note_id)?,
-                    read_only: vault_locks::is_note_locked(conn, note_id, None)?
-                        .then_some(ReadOnly::Locked),
+                    // A large file's text never seeds a document (`external_feed`).
+                    needs_seed: read_only != Some(ReadOnly::LargeFile)
+                        && body_is_empty(document)?
+                        && !body_debt::is_owed(conn, note_id)?,
+                    read_only,
                 })
             })();
             match &opened {
@@ -254,9 +271,9 @@ impl Editor {
     /// Stores `update`, a window's edit, queues it for the other devices,
     /// applies it to the resident document and hands it to the listeners as
     /// [`Origin::Local`] of `holder`. `None`: the update changed nothing, and
-    /// nothing was stored or sent. A locked note refuses it
-    /// ([`EditorError::Locked`]) before anything is written or applied. See the
-    /// module doc for the order.
+    /// nothing was stored or sent. A note that opens read-only refuses it
+    /// ([`EditorError::LargeFile`], [`EditorError::Locked`]) before anything is
+    /// written or applied. See the module doc for the order.
     pub fn apply_update(
         &self,
         note_id: &str,
@@ -274,9 +291,11 @@ impl Editor {
             }
             self.on_writer(|conn| {
                 let owner = body_owner(conn, note_id)?.ok_or_else(|| not_found(note_id))?;
-                if vault_locks::is_note_locked(conn, note_id, None)? {
-                    return Err(EditorError::Locked {
-                        note_id: note_id.to_owned(),
+                if let Some(why) = read_only(conn, note_id)? {
+                    let note_id = note_id.to_owned();
+                    return Err(match why {
+                        ReadOnly::LargeFile => EditorError::LargeFile { note_id },
+                        ReadOnly::Locked => EditorError::Locked { note_id },
                     });
                 }
                 let document = resident
@@ -536,6 +555,16 @@ impl Editor {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
     }
+}
+
+/// Why `note_id` opens read-only, if it does. Read on the writer, in the
+/// caller's turn: a class or a lock committed while an edit waited for the
+/// writer refuses that edit.
+fn read_only(conn: &Connection, note_id: &str) -> Result<Option<ReadOnly>, StorageError> {
+    if note_files::is_large_file(conn, note_id)? {
+        return Ok(Some(ReadOnly::LargeFile));
+    }
+    Ok(vault_locks::is_note_locked(conn, note_id, None)?.then_some(ReadOnly::Locked))
 }
 
 fn not_found(note_id: &str) -> EditorError {

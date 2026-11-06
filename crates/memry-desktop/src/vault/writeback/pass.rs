@@ -19,7 +19,9 @@ use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
-use crate::vault::note_file::{NoteFileError, read_note, write_note_over_checked};
+use crate::vault::note_file::{
+    NoteFileError, large_file_class, read_note, record_large_file, write_note_over_checked,
+};
 use crate::vault::watch::EchoGuard;
 
 const BOM: char = '\u{feff}';
@@ -218,6 +220,10 @@ impl Pass {
             Err(NoteFileError::ChangedUnderWrite) => return Outcome::Kept(Keep::FileChanged),
             Err(error) => return Outcome::Failed(format!("the file was not written: {error}")),
         }
+        // A body grown past the class (typed, merged) makes the note a large file: the editor
+        // stops taking edits, as Electron's write-back degrades the note. Recorded before the
+        // row, so a row write that fails leaves no large file the editor still takes edits of.
+        record_large_file(lane.files(), note_id, large_file_class(&output).is_some());
         self.last_written
             .lock()
             .unwrap_or_else(|e| e.into_inner())
