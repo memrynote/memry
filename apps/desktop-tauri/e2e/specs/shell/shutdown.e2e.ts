@@ -20,6 +20,21 @@ interface SessionMarker {
 const EXPIRED_WAIT =
   /timed out|ran out of|overran|cut short|did not stop before the deadline|backstop reached/
 
+// The quit budget cut off the step `e2e_trigger_shutdown_overrun` hangs, and named it.
+const OVERRUN = 'cleanup ran out of budget in Some("stop-sync-runtime")'
+
+// A forced exit (`std::process::exit(1)`) ends with 1, a clean quit with 0.
+const FORCED_EXIT = 1
+
+// The app's exit code, or 'alive' 15 s on: the 10 s hard backstop plus 5 s for the OS to end and
+// reap the process. Only a quit that nothing forced out is still running then.
+function exitCode(app: { exited: Promise<number | null> }): Promise<number | null | 'alive'> {
+  return Promise.race([
+    app.exited,
+    new Promise<'alive'>((resolve) => setTimeout(() => resolve('alive'), 15_000))
+  ])
+}
+
 async function quitAndMeasure(app: { executor: never; pid: number }): Promise<number> {
   await sendTest(app, 'e2e_request_quit')
   const startedAt = Date.now()
@@ -77,11 +92,18 @@ test('a clean quit waits on no timeout and leaves no crash marker', async ({ app
   expect(quit).not.toMatch(EXPIRED_WAIT)
 })
 
-test('a hung step is forced out within 10.5 s and named for the next launch', async ({ app }) => {
-  const { appDataDir } = await appInfo(app)
+// The app promises that the 8 s quit budget cuts off a hung step and names it, and that a forced
+// exit follows after at most 1.5 s of last-chance flushes, or the 10 s hard backstop's. The log
+// line, the marker and the exit code show that. A wall-clock bound on the exit measured the
+// runner as well: 10.7 s on linux-x64, with the forced exit logged 9.998 s into the quit (#3967).
+test('a hung step is cut off by the quit budget, forced out and named for the next launch', async ({
+  app
+}) => {
+  const { appDataDir, logDir } = await appInfo(app)
   await invokeTest(app, 'e2e_trigger_shutdown_overrun', { step: 'stop-sync-runtime' })
-  const elapsed = await quitAndMeasure(app as never)
-  expect(elapsed).toBeLessThan(10_500)
+  await sendTest(app, 'e2e_request_quit')
+  expect(await exitCode(app)).toBe(FORCED_EXIT)
+  expect(readMainLog(logDir)).toContain(OVERRUN)
 
   const marker = JSON.parse(readFileSync(markerPath(appDataDir), 'utf8')) as SessionMarker
   expect(marker.shutdownFailure).toBe('timeout')
@@ -106,20 +128,18 @@ test('a Log Out quit event is accepted, and the app quits through the sequence',
   expect(log).toContain('accepting the quit macOS asked for')
 })
 
-// A Log Out that a hung step holds up still goes through: the quit is never refused, and the
-// forced exit ends the process within the budget.
-test('a Log Out quit event with a hung step is forced out within 10.5 s, never refused', async ({
-  app
-}) => {
+// A Log Out that a hung step holds up still goes through: the quit is never refused, the budget
+// cuts off the step, and the forced exit ends the process.
+test('a Log Out quit event with a hung step is forced out, never refused', async ({ app }) => {
   test.skip(process.platform !== 'darwin', 'Apple events are macOS-only')
   const { appDataDir, logDir } = await appInfo(app)
   await invokeTest(app, 'e2e_trigger_shutdown_overrun', { step: 'stop-sync-runtime' })
-  const startedAt = Date.now()
   expect(sendQuitEvent(app.pid, 'rlgo')).toBe('errn 0')
-  expect(await pollUntil(() => !isAlive(app.pid), { timeoutMs: 15_000, intervalMs: 50 })).toBe(true)
-  expect(Date.now() - startedAt).toBeLessThan(10_500)
+  expect(await exitCode(app)).toBe(FORCED_EXIT)
+  const log = readMainLog(logDir)
   // The event reached `applicationShouldTerminate:`, which started the sequence that overran.
-  expect(readMainLog(logDir)).toContain('macOS asked the app to terminate (quit reason rlgo)')
+  expect(log).toContain('macOS asked the app to terminate (quit reason rlgo)')
+  expect(log).toContain(OVERRUN)
 
   const marker = JSON.parse(readFileSync(markerPath(appDataDir), 'utf8')) as SessionMarker
   expect(marker.shutdownFailure).toBe('timeout')
