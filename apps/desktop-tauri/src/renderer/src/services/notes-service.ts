@@ -585,6 +585,14 @@ export function onNoteEventsDropped(callback: () => void): () => void {
   return subscribeToEvent(events.noteEventsDroppedEvent, () => callback())
 }
 
+/**
+ * The core kept an outside edit of the note's file as a version, under typing the file did not
+ * have yet (`notes:outside-edit-kept`, `shell/note_events.rs`). Not an Electron channel.
+ */
+export function onNoteOutsideEditKept(callback: (event: { id: string }) => void): () => void {
+  return subscribeToEvent(events.noteOutsideEditKeptEvent, callback)
+}
+
 /** The subscriptions below that Rust events serve; `window.api` is typed without them. */
 export type PortedNoteEvent =
   | 'onNoteCreated'

@@ -20,9 +20,14 @@ const host = vi.hoisted(() => ({
   needsSeed: false,
   readOnly: null as string | null,
   refuse: null as string | null,
+  /** How many more edits `refuse` refuses; null refuses every one. */
+  refuseTimes: null as number | null,
   /** Edits wait on this before they land, so a test can hold one in flight. */
   gate: null as Promise<void> | null,
+  openGate: null as Promise<void> | null,
   closeGate: null as Promise<void> | null,
+  /** What reached the host, in order: `open` when an open is answered, `close` when one is sent. */
+  calls: [] as string[],
   resetListeners: new Set<(event: { payload: null }) => void>(),
   readyListeners: new Set<(event: { payload: { vaultPath: string } }) => void>()
 }))
@@ -52,6 +57,8 @@ vi.mock('@tauri-apps/api/core', async () => {
         const input = args as Record<string, unknown>
         host.opens.push(input)
         host.channels.push(input.onUpdate as TestChannel)
+        await host.openGate
+        host.calls.push('open')
         const state = Yjs.encodeStateAsUpdate(host.doc)
         return frame(
           { needsSeed: host.needsSeed, stateLength: state.length, readOnly: host.readOnly },
@@ -63,11 +70,13 @@ vi.mock('@tauri-apps/api/core', async () => {
       const meta = JSON.parse(options?.headers['x-memry-meta'] ?? 'null') as unknown
       const update = args as Uint8Array
       host.sent.push({ command, update, meta })
-      if (host.refuse) {
+      if (host.refuse && host.refuseTimes !== 0) {
+        if (host.refuseTimes !== null) host.refuseTimes -= 1
         // oxlint-disable-next-line typescript/only-throw-error -- Tauri rejects a command with its serialized `CommandError`, a plain object
         throw { kind: 'invalid', code: host.refuse, message: host.refuse }
       }
       Yjs.applyUpdate(host.doc, update, 'window')
+      host.calls.push('apply')
       return null
     })
   }
@@ -76,6 +85,7 @@ vi.mock('@tauri-apps/api/core', async () => {
 vi.mock('../../../generated/bindings', () => ({
   commands: {
     crdtCloseDoc: async (noteId: string) => {
+      host.calls.push('close')
       await host.closeGate
       host.closes.push(noteId)
       return null
@@ -97,10 +107,15 @@ vi.mock('../../../generated/bindings', () => ({
   }
 }))
 
+const toast = vi.hoisted(() => ({ error: vi.fn() }))
+vi.mock('sonner', () => ({ toast }))
+
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
 }))
 
+import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { flushAllPendingSaves, hasPendingSaves } from '@/lib/save-registry'
 import { DocNeedsSeedError, YjsIpcProvider } from './yjs-ipc-provider'
 
 const NOTE = 'note-1'
@@ -151,15 +166,26 @@ beforeEach(() => {
   host.needsSeed = false
   host.readOnly = null
   host.refuse = null
+  host.refuseTimes = null
   host.gate = null
+  host.openGate = null
   host.closeGate = null
+  host.calls = []
   host.resetListeners.clear()
   host.readyListeners.clear()
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.clearAllMocks()
 })
+
+/** Holds every edit the host gets until the returned function lets them land. */
+function holdEdits(): () => void {
+  let open!: () => void
+  host.gate = new Promise((resolve) => (open = resolve))
+  return open
+}
 
 describe('YjsIpcProvider.connect', () => {
   it('opens the note on a channel, takes its state and sends nothing it already has', async () => {
@@ -241,6 +267,94 @@ describe('YjsIpcProvider updates', () => {
   })
 })
 
+describe('YjsIpcProvider outside edits', () => {
+  const EXTERNAL = 2
+  const paragraph = (value: string): Y.XmlElement => {
+    const element = new Y.XmlElement('paragraph')
+    element.insert(0, [new Y.XmlText(value)])
+    return element
+  }
+  const body = (doc: Y.Doc): string => doc.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()
+
+  /** The core replaced the body with a file edited outside the app, as the feed does. */
+  function outsideEditFrame(value: string): ArrayBuffer {
+    const before = Y.encodeStateVector(host.doc)
+    const fragment = host.doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    host.doc.transact(() => {
+      fragment.delete(0, fragment.length)
+      fragment.insert(0, [paragraph(value)])
+    })
+    const update = Y.encodeStateAsUpdate(host.doc, before)
+    const bytes = new Uint8Array(update.length + 1)
+    bytes[0] = EXTERNAL
+    bytes.set(update, 1)
+    return bytes.buffer
+  }
+
+  async function withBody() {
+    host.doc = new Y.Doc()
+    host.doc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [paragraph('first words')])
+    const opened = await connected()
+    const typeInBody = (value: string): void => {
+      const words = opened.doc.getXmlFragment(CRDT_FRAGMENT_NAME).get(0) as Y.XmlElement
+      ;(words.get(0) as Y.XmlText).insert(11, value)
+    }
+    return { ...opened, typeInBody }
+  }
+
+  it('keeps typing still on its way to the host over an outside edit the host took first', async () => {
+    const { doc, typeInBody } = await withBody()
+    const release = holdEdits()
+    typeInBody(' typed')
+    lastChannel().onmessage(outsideEditFrame('edited outside'))
+    release()
+    await settle()
+
+    expect(body(doc)).toContain('first words typed')
+    expect(body(doc)).not.toContain('edited outside')
+    expect(body(host.doc)).toBe(body(doc))
+    // The host keeps the file the outside edit wrote as a version, once.
+    const flagged = host.sent.filter(
+      (sent) => (sent.meta as Record<string, unknown>).overOutsideEdit
+    )
+    expect(flagged).toHaveLength(1)
+
+    typeInBody('!')
+    await settle()
+    expect(host.sent.at(-1)?.meta).toEqual({ noteId: NOTE })
+  })
+
+  it('asks again to keep the outside edit when the typing put back over it failed to store', async () => {
+    vi.useFakeTimers()
+    const { typeInBody } = await withBody()
+    const release = holdEdits()
+    typeInBody(' typed')
+    lastChannel().onmessage(outsideEditFrame('edited outside'))
+    host.refuse = 'storage_failed'
+    host.refuseTimes = 2
+    release()
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(body(host.doc)).toContain('first words typed')
+    const last = host.sent.at(-1)?.meta as Record<string, unknown>
+    expect(last.overOutsideEdit).toBe(true)
+  })
+
+  it('takes an outside edit when no typing is on its way', async () => {
+    const { doc, typeInBody } = await withBody()
+    typeInBody(' typed')
+    await settle()
+    lastChannel().onmessage(outsideEditFrame('edited outside'))
+    await settle()
+
+    expect(body(doc)).toBe(body(host.doc))
+    expect(body(doc)).toContain('edited outside')
+    expect(
+      host.sent.every((sent) => sent.meta !== null && !('overOutsideEdit' in (sent.meta as object)))
+    ).toBe(true)
+  })
+})
+
 describe('YjsIpcProvider read-only', () => {
   it('opens a locked note read-only and sends none of its edits', async () => {
     host.readOnly = 'locked'
@@ -292,8 +406,19 @@ describe('YjsIpcProvider purge', () => {
     expect(host.opens).toHaveLength(1)
   })
 
+  it('turns the editor read-only on a purge, so no keystroke is dropped unseen', async () => {
+    const { provider } = await connected()
+    const heard: unknown[] = []
+    provider.on('read-only', (value: unknown) => heard.push(value))
+
+    lastChannel().onmessage(new Uint8Array([4]).buffer)
+
+    expect(provider.readOnly).toBe('purged')
+    expect(heard).toEqual(['purged'])
+  })
+
   it('stops sending once the host answers document_purged', async () => {
-    const { doc } = await connected()
+    const { doc, provider } = await connected()
     host.refuse = 'document_purged'
     type(doc, ' one')
     await settle()
@@ -301,8 +426,70 @@ describe('YjsIpcProvider purge', () => {
     await settle()
 
     expect(host.sent).toHaveLength(1)
+    expect(provider.readOnly).toBe('purged')
     lastChannel().onmessage(otherWindowFrame(' later'))
     expect(text(doc)).toBe('stored one two')
+  })
+})
+
+describe('YjsIpcProvider failed edits', () => {
+  it('sends again an edit the host failed to store, and what was typed after it', async () => {
+    vi.useFakeTimers()
+    const { doc } = await connected()
+    host.refuse = 'storage_failed'
+    host.refuseTimes = 1
+
+    type(doc, ' x')
+    await settle()
+    type(doc, ' y')
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(text(host.doc)).toBe('stored x y')
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('sends again a sync step 2 the host failed to store', async () => {
+    vi.useFakeTimers()
+    host.refuse = 'storage_failed'
+    host.refuseTimes = 1
+    const doc = new Y.Doc()
+    type(doc, 'offline ')
+    await new YjsIpcProvider({ noteId: NOTE, doc }).connect()
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(text(host.doc)).toBe(text(doc))
+  })
+
+  it('tells the user once when edits keep failing, and still sends them when the host recovers', async () => {
+    vi.useFakeTimers()
+    const { doc } = await connected()
+    host.refuse = 'storage_failed'
+
+    type(doc, ' x')
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalledWith(
+      "Your latest edits to this note couldn't be saved",
+      expect.objectContaining({ description: expect.any(String) })
+    )
+
+    host.refuse = null
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(text(host.doc)).toBe('stored x')
+    expect(toast.error).toHaveBeenCalledTimes(1)
+  })
+
+  it('gives up on a failing edit once the note is closed, and still closes it', async () => {
+    vi.useFakeTimers()
+    const { doc, provider } = await connected()
+    host.refuse = 'storage_failed'
+    type(doc, ' x')
+    provider.destroy()
+
+    await vi.advanceTimersByTimeAsync(30_000)
+
+    expect(host.closes).toEqual([NOTE])
+    expect(toast.error).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -382,6 +569,79 @@ describe('YjsIpcProvider teardown', () => {
     await connecting
     expect(host.closes).toEqual([NOTE])
     expect(host.opens).toHaveLength(2)
+  })
+
+  it('sends the typing queued behind an edit in flight before it closes the note', async () => {
+    const { doc, provider } = await connected()
+    const land = holdEdits()
+    type(doc, ' a')
+    await settle()
+    type(doc, ' b')
+    provider.destroy()
+    land()
+    await settle(60)
+
+    expect(text(host.doc)).toBe('stored a b')
+    expect(host.calls).toEqual(['open', 'apply', 'apply', 'close'])
+  })
+
+  it('is flushed by a flush of every pending save, as a quit or a template apply runs', async () => {
+    const { doc } = await connected()
+    const land = holdEdits()
+    type(doc, ' a')
+    await settle()
+    type(doc, ' b')
+    let flushed = false
+    const flushing = flushAllPendingSaves().then(() => (flushed = true))
+    await settle()
+    expect(flushed).toBe(false)
+
+    land()
+    await flushing
+    expect(text(host.doc)).toBe('stored a b')
+  })
+
+  it('leaves the pending saves once its close landed', async () => {
+    const { provider } = await connected()
+    expect(hasPendingSaves()).toBe(true)
+    const flush = vi.spyOn(provider, 'flush')
+    provider.destroy()
+    await settle()
+    const teardownFlushes = flush.mock.calls.length
+
+    await flushAllPendingSaves()
+    expect(flush).toHaveBeenCalledTimes(teardownFlushes)
+  })
+
+  it('never opens once destroyed while it waited on an earlier close', async () => {
+    const { provider } = await connected()
+    let landed!: () => void
+    host.closeGate = new Promise((resolve) => (landed = resolve))
+    provider.destroy()
+    const next = new YjsIpcProvider({ noteId: NOTE, doc: new Y.Doc() })
+    void next.connect()
+    await settle()
+    next.destroy()
+    landed()
+    await settle(60)
+
+    expect(host.opens).toHaveLength(1)
+    expect(host.closes).toEqual([NOTE])
+  })
+
+  it('closes a note destroyed while its open is in flight only after the open lands', async () => {
+    let answer!: () => void
+    host.openGate = new Promise((resolve) => (answer = resolve))
+    const provider = new YjsIpcProvider({ noteId: NOTE, doc: new Y.Doc() })
+    const connecting = provider.connect()
+    await settle()
+    provider.destroy()
+    await settle()
+    answer()
+    await connecting
+    await settle(60)
+
+    expect(host.calls).toEqual(['open', 'close'])
   })
 
   it('stops listening and sending once destroyed', async () => {

@@ -903,7 +903,7 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.blockNoteOptions.collaboration.fragment).toBe(fragment)
   })
 
-  it.each(['locked', 'large-file'])(
+  it.each(['locked', 'large-file', 'purged'])(
     'takes no edits of a note the host opened read-only (%s)',
     (readOnly) => {
       const doc = new Y.Doc()

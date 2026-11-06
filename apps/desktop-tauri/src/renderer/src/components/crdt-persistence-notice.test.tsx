@@ -33,9 +33,19 @@ describe('CrdtPersistenceNotice', () => {
     expect(toastFn).not.toHaveBeenCalled()
   })
 
-  // A read-only core database does not heal on the next launch, so the first one says so.
-  it('surfaces the notice on the first launch whose edits are not stored', async () => {
-    getHealth.mockResolvedValue({ persistent: false, inMemorySessions: 1 })
+  // One degraded launch is usually a store that quarantined itself and will be
+  // fine next time; saying anything then is noise.
+  it('stays quiet below the consecutive-session threshold', async () => {
+    getHealth.mockResolvedValue({ persistent: false, inMemorySessions: 2 })
+
+    render(<CrdtPersistenceNotice />)
+
+    await waitFor(() => expect(getHealth).toHaveBeenCalled())
+    expect(toastFn).not.toHaveBeenCalled()
+  })
+
+  it('surfaces the notice once the device has degraded for three launches', async () => {
+    getHealth.mockResolvedValue({ persistent: false, inMemorySessions: 3 })
 
     render(<CrdtPersistenceNotice />)
 

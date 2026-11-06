@@ -76,6 +76,8 @@
   "crdt": {
     "persistenceDegradedTitle": "V tomto zařízení se neukládá historie úprav",
     "persistenceDegradedBody": "Vaše poznámky jsou v bezpečí – jsou uložené v trezoru jako obyčejné soubory a normálně se otevírají i ukládají. Jen místní historie úprav a stav slučování v tomto zařízení běží v paměti, takže při každém spuštění aplikace memrynote začínají od nuly.",
+    "editsNotSavedTitle": "Vaše poslední úpravy této poznámky se nepodařilo uložit",
+    "editsNotSavedBody": "memrynote to zkouší znovu, dokud je poznámka otevřená. Pokud ji zavřete, nejdřív si zkopírujte, co jste napsali.",
     "writebackFailedTitle": "Soubor poznámky na disku se nepodařilo aktualizovat",
     "writebackFailedTitleNamed": "„{title}“ se na disku nepodařilo aktualizovat",
     "writebackFailedTitleMany": "Soubory poznámek na disku se nepodařilo aktualizovat: {count}",

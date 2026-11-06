@@ -76,6 +76,8 @@
   "crdt": {
     "persistenceDegradedTitle": "De bewerkingsgeschiedenis wordt niet bewaard op dit apparaat",
     "persistenceDegradedBody": "Je notities zijn veilig – ze staan als gewone bestanden in je kluis, en openen en opslaan werkt gewoon. Alleen de lokale bewerkingsgeschiedenis en samenvoegstatus van dit apparaat worden in het geheugen bijgehouden, dus die beginnen elke keer dat memrynote opent opnieuw.",
+    "editsNotSavedTitle": "Je laatste wijzigingen in deze notitie konden niet worden opgeslagen",
+    "editsNotSavedBody": "memrynote blijft het proberen zolang de notitie open is. Sluit je hem, kopieer dan eerst wat je hebt getypt.",
     "writebackFailedTitle": "Het bestand van een notitie op de schijf kon niet worden bijgewerkt",
     "writebackFailedTitleNamed": "“{title}” kon niet worden bijgewerkt op de schijf",
     "writebackFailedTitleMany": "De bestanden van {count} notities op de schijf konden niet worden bijgewerkt",

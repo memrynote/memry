@@ -76,6 +76,8 @@
   "crdt": {
     "persistenceDegradedTitle": "このデバイスでは編集履歴が保持されていません",
     "persistenceDegradedBody": "ノートは安全です。保管庫にプレーンファイルとして保存されており、通常どおり開いて保存できます。このデバイスのローカルの編集履歴とマージ状態だけがメモリー上で動作しているため、memrynote を開くたびにリセットされます。",
+    "editsNotSavedTitle": "このノートへの最新の編集を保存できませんでした",
+    "editsNotSavedBody": "ノートを開いている間、memrynote は保存を再試行し続けます。閉じる場合は、先に入力した内容をコピーしてください。",
     "writebackFailedTitle": "ディスク上のノートファイルを更新できませんでした",
     "writebackFailedTitleNamed": "ディスク上の「{title}」を更新できませんでした",
     "writebackFailedTitleMany": "ディスク上の{count}件のノートファイルを更新できませんでした",

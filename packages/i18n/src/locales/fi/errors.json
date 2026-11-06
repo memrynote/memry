@@ -76,6 +76,8 @@
   "crdt": {
     "persistenceDegradedTitle": "Muokkaushistoriaa ei säilytetä tällä laitteella",
     "persistenceDegradedBody": "Muistiinpanosi ovat turvassa – ne ovat holvissasi tavallisina tiedostoina, ja ne avautuvat ja tallentuvat edelleen normaalisti. Vain tämän laitteen paikallista muokkaushistoriaa ja yhdistämistilaa pidetään muistissa, joten ne alkavat alusta aina, kun memrynote avataan.",
+    "editsNotSavedTitle": "Viimeisimpiä muutoksiasi tähän muistiinpanoon ei voitu tallentaa",
+    "editsNotSavedBody": "memrynote yrittää uudelleen niin kauan kuin muistiinpano on auki. Jos suljet sen, kopioi ensin kirjoittamasi teksti.",
     "writebackFailedTitle": "Muistiinpanon tiedostoa levyllä ei voitu päivittää",
     "writebackFailedTitleNamed": "Kohdetta ”{title}” ei voitu päivittää levylle",
     "writebackFailedTitleMany": "Muistiinpanojen tiedostoja levyllä ei voitu päivittää: {count}",

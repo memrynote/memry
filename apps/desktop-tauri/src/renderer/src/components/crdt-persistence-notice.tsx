@@ -7,6 +7,15 @@ import { commands } from '../../../generated/bindings'
 const log = createLogger('CrdtPersistenceNotice')
 
 /**
+ * Consecutive in-memory launches before the notice is worth interrupting for.
+ *
+ * Not 1: a single degraded launch is usually a store that quarantined itself
+ * and will be healthy next time, and saying anything then would be noise. Three
+ * is a machine that is not recovering on its own.
+ */
+const DEGRADED_SESSION_THRESHOLD = 3
+
+/**
  * Tell the user, calmly and once per launch, when this device has stopped
  * keeping CRDT state on disk.
  *
@@ -32,12 +41,10 @@ export function CrdtPersistenceNotice(): null {
     let cancelled = false
     void (async () => {
       try {
-        // Electron waited for three degraded launches, because its store usually quarantined
-        // itself and healed on the next one. Here edits run in memory only while the core
-        // database is read-only, which no relaunch heals, so the first such launch says so.
         const health = await commands.crdtGetHealth()
         if (cancelled) return
         if (health.persistent) return
+        if (health.inMemorySessions < DEGRADED_SESSION_THRESHOLD) return
 
         toast(t('crdt.persistenceDegradedTitle'), {
           description: t('crdt.persistenceDegradedBody'),

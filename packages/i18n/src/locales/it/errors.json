@@ -76,6 +76,8 @@
   "crdt": {
     "persistenceDegradedTitle": "La cronologia delle modifiche non viene conservata su questo dispositivo",
     "persistenceDegradedBody": "Le tue note sono al sicuro: si trovano nel tuo vault come semplici file e si aprono e si salvano normalmente. Solo la cronologia locale delle modifiche e lo stato di unione di questo dispositivo vengono tenuti in memoria temporanea, quindi ripartono da zero a ogni apertura di memrynote.",
+    "editsNotSavedTitle": "Non è stato possibile salvare le tue ultime modifiche a questa nota",
+    "editsNotSavedBody": "memrynote continua a riprovare finché la nota resta aperta. Se la chiudi, copia prima ciò che hai scritto.",
     "writebackFailedTitle": "Non è stato possibile aggiornare il file di una nota sul disco",
     "writebackFailedTitleNamed": "Non è stato possibile aggiornare “{title}” sul disco",
     "writebackFailedTitleMany": "Non è stato possibile aggiornare i file di {count} note sul disco",
