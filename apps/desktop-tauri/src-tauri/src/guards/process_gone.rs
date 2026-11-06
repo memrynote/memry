@@ -84,6 +84,7 @@ pub fn report(app: &AppHandle<Wry>, reason: &str) {
 /// now instead of at their timeout: at a sign-out the OS ends these processes while the quit
 /// sequence is still asking.
 pub fn page_gone(app: &AppHandle<Wry>, label: &str) {
+    crate::commands::editor::forget_window(app, label);
     if let Some(flush) = app.try_state::<FlushService>() {
         let released = flush.page_gone(label);
         tracing::warn!(
@@ -153,6 +154,7 @@ pub fn watch_browser_exit(app: &AppHandle<Wry>, label: &str, pid: u32) {
 /// answer any more, and the new one answers once it subscribed, which a quit while it loads must
 /// not wait for: it holds no edits yet.
 fn document_replaced(app: &AppHandle<Wry>, label: &str) {
+    crate::commands::editor::forget_window(app, label);
     if let Some(flush) = app.try_state::<FlushService>() {
         let released = flush.page_gone(label);
         if released > 0 {

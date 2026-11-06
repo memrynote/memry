@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
+use memry_desktop::editor::{EditorHost, HostEvent};
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::launch_timeline::LaunchPhase;
 use memry_desktop::locale::LocaleService;
@@ -28,9 +29,9 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::commands::vault_index::{send_indexing_status, send_status};
 use crate::events::{
-    CrdtWriteBackFailedEvent, NoteLinksChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
-    VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
-    WriteBackFailureReason, broadcast,
+    CrdtProviderReadyEvent, CrdtProviderResetEvent, CrdtWriteBackFailedEvent,
+    NoteLinksChangedEvent, VaultActivityChangedEvent, VaultErrorEvent, VaultIndexProgressEvent,
+    VaultIndexRecoveredEvent, VaultListChangedEvent, WriteBackFailureReason, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -151,6 +152,28 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     app.manage(tier);
 }
 
+/// Serves each open vault's documents to the editor windows (`commands::editor`), and tells the
+/// windows when a vault's editor goes and when the next one serves.
+fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
+    // Managed by the `Handlers` stage, which runs before this one.
+    let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
+        tracing::error!(
+            scope = "editor",
+            "no device identity store: vaults open without their editor"
+        );
+        return;
+    };
+    let notifier = app.clone();
+    let host = EditorHost::new(store.inner().clone(), move |event| match event {
+        HostEvent::Reset => broadcast(&notifier, CrdtProviderResetEvent),
+        HostEvent::Ready { vault_path } => {
+            broadcast(&notifier, CrdtProviderReadyEvent { vault_path });
+        }
+    });
+    host.register(session);
+    app.manage(host);
+}
+
 /// `flush-writebacks`: no edit scheduled for a note's file waits out the quit.
 /// `flush-activity-log`: the buffered activity entries reach the file.
 fn register_flushes(app: &AppHandle<Wry>, tier: &Arc<VaultTier>) {
@@ -240,6 +263,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let session = Session::new(VaultRegistry::new(config));
     register_settings_hook(app, &session);
     register_vault_watcher(app, &session);
+    register_editor_host(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's
     // listeners; the renderer reads `status()` once after it subscribes.
     forward_events(app.clone(), session.subscribe());

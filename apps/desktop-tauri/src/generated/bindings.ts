@@ -6,6 +6,9 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 /** Commands */
 export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	/**  The calling window closed its editor of `note_id`. */
+	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
+	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
 	/**
 	 *  Downloads the image behind `url` once and adds it like an upload, named `name` or after the
 	 *  link.
@@ -441,6 +444,8 @@ export const commands = {
 /** Events */
 export const events = {
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
+	crdtProviderReadyEvent: makeEvent<CrdtProviderReadyEvent, CrdtProviderReadyEvent>("crdt-provider-ready-event"),
+	crdtProviderResetEvent: makeEvent<CrdtProviderResetEvent, CrdtProviderResetEvent>("crdt-provider-reset-event"),
 	crdtWriteBackFailedEvent: makeEvent<CrdtWriteBackFailedEvent, CrdtWriteBackFailedEvent>("crdt-write-back-failed-event"),
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
@@ -593,6 +598,29 @@ export type ContextMenuItem = {
 	disabled?: boolean | null,
 	type?: ItemKind | null,
 };
+
+/**
+ *  Whether this install's edits reach disk (`crdt:get-health`). Pulled by the renderer: the
+ *  verdict lands while the window loads, before anything listens.
+ */
+export type CrdtHealth = {
+	persistent: boolean,
+	inMemorySessions: number,
+};
+
+/**
+ *  The vault at `vault_path` serves `crdt_open_doc` again (`crdt:provider-ready`): a window whose
+ *  binding went stale reopens its note and redoes the handshake.
+ */
+export type CrdtProviderReadyEvent = {
+	vaultPath: string,
+};
+
+/**
+ *  The vault closed, so every window's editor is bound to a document nothing serves
+ *  (`crdt:provider-reset`). Not the moment to reopen: wait for [`CrdtProviderReadyEvent`].
+ */
+export type CrdtProviderResetEvent = null;
 
 /**
  *  A note's file could not be updated from its body (`sync:write-back-failed`), once per run
