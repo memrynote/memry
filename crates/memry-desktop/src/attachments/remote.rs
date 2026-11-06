@@ -134,8 +134,8 @@ fn extension_for_type(content_type: &str) -> Option<&'static str> {
 }
 
 /// `filenameFor`: the URL's last path segment, decoded, without its extension, every run of
-/// characters outside `[A-Za-z0-9_-]` as one `-` (a `-` itself is kept), `-` trimmed from both ends, at most 64
-/// characters, `linked-image` when nothing is left; then `.<extension>`.
+/// characters outside `[A-Za-z0-9_-]` as one `-` (a `-` itself is kept), `-` trimmed from both
+/// ends, at most 64 characters, `linked-image` when nothing is left; then `.<extension>`.
 pub fn image_file_name(url: &Url, extension: &str) -> String {
     let last = url.path().rsplit('/').next().unwrap_or("");
     let decoded = percent_decode_str(last)

@@ -88,7 +88,8 @@ test('Link saves the image at a URL into the note, and a link to a page writes n
   testVaultPath
 }) => {
   const server: Server = createServer((request, response) => {
-    if (request.url === '/photos/cover.png') {
+    // A request may name its target in absolute form.
+    if (new URL(request.url ?? '/', 'http://127.0.0.1').pathname === '/photos/cover.png') {
       response.writeHead(200, { 'content-type': 'image/png' })
       response.end(PNG_BYTES)
     } else {
