@@ -15,6 +15,7 @@ use memry_core::markdown::frontmatter::{
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
 
 use super::journal::{Dated, dated_block, set_date};
+use crate::vault::app_edit::OwnFiles;
 use crate::vault::consumer::rows::{RowOwner, RowSession, RowStat, now_ms};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
@@ -31,9 +32,10 @@ const BOM: char = '\u{feff}';
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Outcome {
     /// The file now holds the body. `version_kept` when the replaced file was kept first.
-    /// `replaced_outside` when the write replaced bytes this session did not write (an outside
-    /// edit, a file of an earlier session), which a version holds: the signal to tell the
-    /// user. `version_kept` alone is also true for the app's own write of ten words or more.
+    /// `replaced_outside` when the write replaced an outside edit the consumer read
+    /// ([`OwnFiles`]), which a version holds: the signal to tell the user. `version_kept` alone
+    /// is also true for the app's own write of ten words or more, and for a file of an earlier
+    /// run.
     Wrote {
         hash: String,
         version_kept: bool,
@@ -84,6 +86,8 @@ pub struct Pass {
     pub(crate) settings: Option<AppSettings>,
     /// The hash of the bytes this session's write-back last wrote, per note.
     last_written: Mutex<HashMap<String, String>>,
+    /// What the app's other writers wrote this run, and the outside edits the consumer read.
+    own_files: Arc<OwnFiles>,
 }
 
 impl Pass {
@@ -94,6 +98,7 @@ impl Pass {
         session: RowSession,
         echo: Arc<EchoGuard>,
         settings: Option<AppSettings>,
+        own_files: Arc<OwnFiles>,
     ) -> Self {
         Self {
             root,
@@ -103,6 +108,7 @@ impl Pass {
             echo,
             settings,
             last_written: Mutex::default(),
+            own_files,
         }
     }
 
@@ -260,11 +266,12 @@ impl Pass {
     }
 
     /// Keeps the file a write replaces when the write changes bytes the document does not hold
-    /// ([`replaces_unheld_bytes`]) and the file is not what this session last wrote for the
-    /// note, or, when it is, when the body moves by ten words or more
+    /// ([`replaces_unheld_bytes`]) and the file is not what this run wrote last for the note
+    /// (this write-back, or another writer of the app: [`OwnFiles`]), or, when it is, when the
+    /// body moves by ten words or more
     /// ([`note_snapshots::is_significant`], Electron's `keepVersionBeforeWriteback`). Answers
-    /// whether a version was written, and whether the replaced bytes were not this session's
-    /// (then a version holds them, newly kept or kept before). An error stops the write: the
+    /// whether a version was written, and whether the replaced bytes are an outside edit the
+    /// consumer read (then a version holds them, newly kept or kept before). An error stops the write: the
     /// replaced file is the only copy of those bytes.
     fn keep_replaced(
         &self,
@@ -281,13 +288,15 @@ impl Pass {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .get(note_id)
-            .is_some_and(|last| last == hash);
+            .is_some_and(|last| last == hash)
+            || self.own_files.writer(note_id, hash).is_some();
         let body = split_frontmatter_block(raw).body;
         if ours && !note_snapshots::is_significant(body, split_frontmatter_block(output).body) {
             return Ok((false, false));
         }
         let kept = self.vault.write_back().keep_replaced(note_id, raw, body);
-        Ok((kept.map_err(|error| error.to_string())?, !ours))
+        let outside = !ours && self.own_files.is_outside(note_id, hash);
+        Ok((kept.map_err(|error| error.to_string())?, outside))
     }
 }
 

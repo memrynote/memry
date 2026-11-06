@@ -30,7 +30,7 @@ use crate::notes::service::NotesService;
 use crate::notes::update::tag_keys;
 use crate::notes::view::NoteView;
 use crate::session::{OpenVault, Session};
-use crate::shell::shutdown::StepFn;
+use crate::shell::shutdown::{StepFn, close_versions_timeout};
 use crate::vault::app_edit::{Edited, Precondition};
 use crate::vault::consumer::ChangeSource;
 use crate::vault::file_types::FileType;
@@ -165,9 +165,11 @@ pub fn restore_body(content: &str) -> &str {
 }
 
 /// The `close-snapshots` quit step: [`keep_close_versions`] for the open vault, within what is
-/// left of the quit. Best effort, as Electron's `createCloseSnapshots`: a failure or a timeout
-/// is logged and the step succeeds, since a failed step ends the sequence before the steps
-/// behind it (the sync runtime's stop and final push).
+/// left of the quit, at most [`close_versions_timeout`] of it. Best effort, as Electron's
+/// `createCloseSnapshots`: a failure or a timeout is logged and the step succeeds, since a
+/// failed step ends the sequence before the steps behind it (the sync runtime's stop and final
+/// push), and the timeout leaves them the rest. The versions a timeout cuts short go on being
+/// kept beside them.
 pub fn close_step(session: Session) -> StepFn {
     Arc::new(move |_, deadline| {
         let session = session.clone();
@@ -177,7 +179,8 @@ pub fn close_step(session: Session) -> StepFn {
                     .current()
                     .map_or(0, |open| keep_close_versions(&open))
             });
-            match tokio::time::timeout(deadline.remaining(), keep).await {
+            let timeout = close_versions_timeout(deadline.remaining());
+            match tokio::time::timeout(timeout, keep).await {
                 Ok(Ok(_)) => {}
                 Ok(Err(error)) => {
                     tracing::error!(scope = SCOPE, "the close versions failed: {error}");

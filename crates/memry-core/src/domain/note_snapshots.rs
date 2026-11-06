@@ -3,13 +3,17 @@
 //!
 //! [`keep`] is the one writer, with Electron's rules (`note-snapshots.ts:26-28`):
 //! - a version whose content this note already holds is not kept twice
-//!   (`snapshotExistsWithHash`); the version that holds it is moved up to now instead, so a
-//!   text seen again is not the next one pruned (Electron left it where it was, and pruned the
-//!   only copy of a text that came back);
+//!   (`snapshotExistsWithHash`); the version that holds it is moved up to the newest instead,
+//!   so a text seen again is not the next one pruned (Electron left it where it was, and
+//!   pruned the only copy of a text that came back);
 //! - an [`Reason::Auto`] or [`Reason::Timer`] version needs 5 minutes since the note's last
 //!   one;
-//! - every kept version prunes the note to its newest 50, never the one just kept (a clock
-//!   behind the note's versions would date it oldest).
+//! - every kept version prunes the note to its newest 50, never the one just kept.
+//!
+//! A version is dated now, or the note's newest date when that is later ([`dated`]): on a
+//! clock behind the note's versions, the one just kept is still the newest (a tie goes to the
+//! row written last), and the oldest go first (Electron dated it oldest, and its next prune
+//! took it).
 //!
 //! The callers decide when a replaced body is worth a version: bytes the app did not write
 //! (an outside edit, a peer's merge the file never held) always are, and the app's own
@@ -94,16 +98,19 @@ pub struct Kept {
 }
 
 /// Keeps `version` unless the note already has one with the same content (which is moved up
-/// to `now_ms` instead, never back), or it is an automatic or timer version less than
+/// to the newest instead, 1 ms past it on a clock behind), or it is an automatic or timer version less than
 /// [`MIN_INTERVAL_MS`] after the note's last one. True when a row was written.
 pub fn keep(conn: &Connection, version: Version<'_>, now_ms: i64) -> Result<bool, StorageError> {
     let hash = content_hash(version.content);
-    let now = iso(now_ms)?;
     let held = conn
         .execute(
             "UPDATE note_snapshots SET created_at = MAX(created_at, ?3)
              WHERE note_id = ?1 AND content_hash = ?2",
-            params![version.note_id, hash, now],
+            params![
+                version.note_id,
+                hash,
+                dated(conn, version.note_id, now_ms, 1)?
+            ],
         )
         .map_err(failed)?;
     if held > 0 {
@@ -199,15 +206,21 @@ fn latest_ms(conn: &Connection, note_id: &str) -> Result<Option<i64>, StorageErr
     Ok(latest.as_deref().and_then(instants::to_epoch_ms))
 }
 
-fn iso(now_ms: i64) -> Result<String, StorageError> {
-    instants::to_iso8601(now_ms).ok_or_else(|| StorageError::Failed {
-        what: format!("{now_ms} is not a representable instant"),
+/// The date of a version kept now: `now_ms`, or `past` ms after the note's newest version
+/// when that is later (a clock behind). A new row takes `past` 0: dates that tie order by the
+/// row written last. A row moved up takes 1, as it was written before the newest.
+fn dated(conn: &Connection, note_id: &str, now_ms: i64, past: i64) -> Result<String, StorageError> {
+    let at = match latest_ms(conn, note_id)? {
+        Some(latest) => now_ms.max(latest + past),
+        None => now_ms,
+    };
+    instants::to_iso8601(at).ok_or_else(|| StorageError::Failed {
+        what: format!("{at} is not a representable instant"),
     })
 }
 
-/// Writes the row, then prunes the note to its newest [`MAX_PER_NOTE`] (`pruneOldSnapshots`):
-/// the new row and the newest others. Versions kept in one millisecond order by when they were
-/// written.
+/// Writes the row, [`dated`], then prunes the note to its newest [`MAX_PER_NOTE`]
+/// (`pruneOldSnapshots`): the new row and the newest others.
 fn insert(
     conn: &Connection,
     version: &Version<'_>,
@@ -227,7 +240,7 @@ fn insert(
             i64::try_from(word_count(version.body)).unwrap_or(i64::MAX),
             hash,
             version.reason.as_str(),
-            iso(now_ms)?,
+            dated(conn, version.note_id, now_ms, 0)?,
         ],
     )
     .map_err(failed)?;

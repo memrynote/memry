@@ -6,6 +6,7 @@
 //! open note.
 
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use memry_core::api::editor::{Notice, Origin};
 use memry_core::domain::vault_locks::TargetKind;
@@ -262,17 +263,18 @@ impl ShutdownEffects for Quit {
 }
 
 /// The vault's quit steps as the shell registers them (`VaultTier::quit_steps`), and a
-/// `stop-sync-runtime` that says whether it ran; what the quit came to.
-async fn quit(e: &Env) -> (Arc<Quit>, bool) {
+/// `stop-sync-runtime` that says what was left of the quit when it ran (`None`: it never ran);
+/// what the quit came to.
+async fn quit(e: &Env, reason: ShutdownReason) -> (Arc<Quit>, Option<Duration>) {
     let core = Arc::new(ShutdownCore::default());
     for (name, step) in e.tier.quit_steps(&e.session) {
         core.registry.register(name, step).unwrap();
     }
-    let stopped = Arc::new(Mutex::new(false));
+    let stopped = Arc::new(Mutex::new(None));
     let stop_sync: StepFn = {
         let stopped = stopped.clone();
-        Arc::new(move |_, _| {
-            *stopped.lock().unwrap() = true;
+        Arc::new(move |_, deadline| {
+            *stopped.lock().unwrap() = Some(deadline.remaining());
             Box::pin(async { Ok(()) })
         })
     };
@@ -281,7 +283,7 @@ async fn quit(e: &Env) -> (Arc<Quit>, bool) {
         .unwrap();
     let quit = Arc::new(Quit::default());
     let effects: Arc<dyn ShutdownEffects> = quit.clone();
-    core.run(ShutdownReason::Quit, &effects).await;
+    core.run(reason, &effects).await;
     let stopped = *stopped.lock().unwrap();
     (quit, stopped)
 }
@@ -292,8 +294,8 @@ async fn quit(e: &Env) -> (Arc<Quit>, bool) {
 async fn the_quit_reads_no_keychain_for_close_versions_and_runs_every_step() {
     let (e, _notes, _) = opened(&[("Plan.md", PLAN)]);
     let id = id_at(&e, "Plan.md");
-    let (quit, stopped) = quit(&e).await;
-    assert!(stopped, "stop-sync-runtime never ran");
+    let (quit, stopped) = quit(&e, ShutdownReason::Quit).await;
+    assert!(stopped.is_some(), "stop-sync-runtime never ran");
     assert_eq!(*quit.exits.lock().unwrap(), ["exit_clean"]);
     assert_eq!(*quit.failures.lock().unwrap(), Vec::<Option<String>>::new());
     let open = e.session.current().unwrap();
@@ -311,8 +313,8 @@ async fn the_quit_keeps_a_close_version_of_the_open_note() {
     let id = id_at(&e, "Plan.md");
     let open = e.session.current().unwrap();
     open.vault.editor(store).unwrap().open(&id, "main").unwrap();
-    let (quit, stopped) = quit(&e).await;
-    assert!(stopped);
+    let (quit, stopped) = quit(&e, ShutdownReason::Quit).await;
+    assert!(stopped.is_some());
     assert_eq!(*quit.exits.lock().unwrap(), ["exit_clean"]);
     assert_eq!(files(&e, &id), [PLAN]);
 }
@@ -387,6 +389,37 @@ fn restoring_the_oldest_of_fifty_versions_keeps_what_it_replaced() {
     let kept = files(&e, &id);
     assert_eq!(kept.len(), 50);
     assert_eq!(kept[0], PLAN, "the replaced text is the newest version");
+}
+
+/// A close step stuck on a busy database takes its share of the quit, not all of it: the
+/// steps behind it (the sync runtime's stop and its final push) still run, in a session end's
+/// short budget too.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_slow_close_step_leaves_the_steps_behind_it_their_time() {
+    let (e, _notes, store) = opened(&[("Plan.md", PLAN)]);
+    let id = id_at(&e, "Plan.md");
+    let open = e.session.current().unwrap();
+    open.vault.editor(store).unwrap().open(&id, "main").unwrap();
+    let (held, release) = std::sync::mpsc::channel::<()>();
+    let db = open.vault.db_handle();
+    let holder = std::thread::spawn(move || {
+        db.call_blocking(move |_| {
+            held.send(()).unwrap();
+            std::thread::sleep(Duration::from_secs(5));
+            Ok(())
+        })
+        .unwrap();
+    });
+    release.recv().unwrap();
+
+    let (quit, stopped) = quit(&e, ShutdownReason::SessionEnd).await;
+    let left = stopped.expect("stop-sync-runtime never ran");
+    assert!(
+        left >= Duration::from_secs(1),
+        "stop-sync-runtime had {left:?}"
+    );
+    assert_eq!(*quit.exits.lock().unwrap(), ["exit_clean"]);
+    holder.join().unwrap();
 }
 
 /// Only a markdown note's file is kept at quit.

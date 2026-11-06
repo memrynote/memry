@@ -232,9 +232,9 @@ fn a_text_seen_again_moves_its_version_up_so_it_is_not_the_next_pruned() {
         "the only copy of A was pruned"
     );
     assert!(!kept.contains(&"text 1".to_owned()));
-    // A clock behind never moves it back.
+    // A clock behind never moves it back: seen again, it is the newest.
     keep("A", T0).unwrap();
-    assert_eq!(rows(&f, &note)[1], "A");
+    assert_eq!(rows(&f, &note)[0], "A");
 }
 
 #[test]
@@ -249,25 +249,19 @@ fn the_version_just_kept_is_never_pruned_even_when_the_clock_is_behind() {
     let behind = T0 - 24 * 60 * MINUTE;
     let kept = note_snapshots::keep(&conn, version(&note, "behind", Reason::Close), behind);
     assert_eq!(kept, Ok(true));
-    let kept = rows(&f, &note);
-    assert_eq!(kept.len(), 50);
-    assert!(
-        kept.contains(&"behind".to_owned()),
-        "the version just kept was pruned"
-    );
-    assert!(!kept.contains(&"text 0".to_owned()) && kept.contains(&"text 1".to_owned()));
-
-    // A restore point too; the one kept before it is now the oldest, and goes.
+    // A restore point, then one more, on a clock further behind: each is the newest, and the
+    // oldest of the others go, never one kept on the clock behind.
     note_snapshots::keep_always(
         &conn,
         version(&note, "point", Reason::Significant),
         behind - 1,
     )
     .unwrap();
+    let later = note_snapshots::keep(&conn, version(&note, "later", Reason::Close), behind - 2);
+    assert_eq!(later, Ok(true));
+
     let kept = rows(&f, &note);
     assert_eq!(kept.len(), 50);
-    assert!(
-        kept.contains(&"point".to_owned()),
-        "the restore point was pruned"
-    );
+    assert_eq!(kept[..3], ["later", "point", "behind"], "{kept:?}");
+    assert!(!kept.contains(&"text 2".to_owned()) && kept.contains(&"text 3".to_owned()));
 }

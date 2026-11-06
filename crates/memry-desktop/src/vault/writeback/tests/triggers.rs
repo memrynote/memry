@@ -158,13 +158,15 @@ fn a_replaced_file_the_app_did_not_write_is_kept_as_a_version() {
 }
 
 /// Its own last write is kept too when the body moves by ten words or more (Electron's
-/// `keepVersionBeforeWriteback`), and not for less; only bytes it did not write count as an
-/// outside text replaced, which the user is told of.
+/// `keepVersionBeforeWriteback`), and not for less; only an outside edit the consumer read
+/// counts as an outside text replaced, which the user is told of.
 #[test]
 fn the_apps_own_last_write_is_kept_when_ten_words_move() {
     let mut f = fixture();
     let text = "written outside the app\n";
     let id = f.adopt("n.md", text);
+    // As the consumer read it from the watcher.
+    f.own_files.read_outside(&id, Some(&content_hash(text)));
     f.edit_in_app(&id, "typed in the app");
     let first = f.run(&id);
     assert!(
@@ -212,6 +214,66 @@ fn the_apps_own_last_write_is_kept_when_ten_words_move() {
         "{large:?}"
     );
     assert_eq!(f.versions(&id), vec![text.to_owned(), small]);
+}
+
+/// A file another writer of the app wrote this run (a restore, a save) is the app's own: the
+/// write-back over it keeps no version for a few words, and is no outside text replaced.
+#[test]
+fn a_file_another_writer_of_the_app_wrote_is_no_outside_text() {
+    let mut f = fixture();
+    let restored = "restored by the app\n";
+    let id = f.adopt("n.md", restored);
+    f.own_files
+        .wrote(&id, &content_hash(restored), ChangeSource::Save);
+    f.edit_in_app(&id, "restored by the app, typed");
+    let outcome = f.run(&id);
+    assert!(
+        matches!(
+            outcome,
+            Outcome::Wrote {
+                version_kept: false,
+                replaced_outside: false,
+                ..
+            }
+        ),
+        "{outcome:?}"
+    );
+    assert_eq!(f.versions(&id), Vec::<String>::new());
+}
+
+/// After a restart, the file the write-back wrote in the earlier run is kept before the first
+/// write over it, and is no outside text replaced.
+#[test]
+fn a_file_the_app_wrote_in_an_earlier_run_is_no_outside_text() {
+    let mut f = fixture();
+    let id = f.adopt("n.md", "first words\n");
+    f.edit_in_app(&id, "typed in the app");
+    let first = f.run(&id);
+    let written = assert_wrote(&mut f, &first, "n.md");
+
+    f.pass = Pass::new(
+        f.root.clone(),
+        f.vault.clone(),
+        f.rows.clone(),
+        f.rows.session_for(&f.vault).unwrap(),
+        f.echo.clone(),
+        None,
+        Arc::default(),
+    );
+    f.edit_in_app(&id, "typed in the app again");
+    let outcome = f.run(&id);
+    assert!(
+        matches!(
+            outcome,
+            Outcome::Wrote {
+                version_kept: true,
+                replaced_outside: false,
+                ..
+            }
+        ),
+        "{outcome:?}"
+    );
+    assert!(f.versions(&id).contains(&written));
 }
 
 /// A `writing:` key that is the author's own is their property: it stays, and the row says

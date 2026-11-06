@@ -113,3 +113,28 @@ fn a_record_that_never_takes_the_edit_lets_the_row_move_on() {
         }]
     ));
 }
+
+/// The write-back tells an outside text replaced only for the outside edit the consumer read
+/// last, never for bytes the app wrote.
+#[test]
+fn an_outside_edit_read_is_recorded_for_the_write_back_and_an_own_write_is_not() {
+    let f = fixture();
+    f.write("a.md", "first\n");
+    f.added("a.md");
+    let id = only_note(&f, "a.md");
+    let own = &f.applier.own_files;
+    assert!(
+        !own.is_outside(&id, &content_hash("first\n")),
+        "the adopt's"
+    );
+
+    f.write("a.md", "edited outside\n");
+    assert_eq!(f.changed(&id, "a.md"), Step::Done);
+    assert!(own.is_outside(&id, &content_hash("edited outside\n")));
+
+    let saved = "saved\n";
+    f.write("a.md", saved);
+    own.wrote(&id, &content_hash(saved), ChangeSource::Save);
+    assert_eq!(f.changed(&id, "a.md"), Step::Done);
+    assert!(!own.is_outside(&id, &content_hash(saved)));
+}
