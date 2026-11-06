@@ -5,8 +5,8 @@
 //! - the app's own writes of a body (`Changed` by the app): Electron's write-back is `sync`,
 //!   which the renderer ignores. The user's save (`Changed` by [`ChangeSource::Save`]) sends an
 //!   `internal` `notes:updated`, as Electron's `updateNote` does; an edit the app makes for the
-//!   user outside the editor (`ChangeSource::AppEdit`, the links to a renamed note) goes out as
-//!   an outside edit does;
+//!   user outside the editor (`ChangeSource::AppEdit`, a template's apply, and
+//!   `ChangeSource::LinkRewrite`, the links to a renamed note) goes out as an outside edit does;
 //! - what the open walk found (`ChangeSource::Walk`): Electron's open-time index sends no note
 //!   events either, and the index pass after the walk reports progress, on which the renderer
 //!   refetches its lists (`use-notes-query.ts`). A first open of a large vault would otherwise
@@ -164,7 +164,11 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
         }),
         Applied::Changed {
             note_id,
-            source: source @ (ChangeSource::Watcher | ChangeSource::AppEdit | ChangeSource::Save),
+            source:
+                source @ (ChangeSource::Watcher
+                | ChangeSource::AppEdit
+                | ChangeSource::LinkRewrite
+                | ChangeSource::Save),
             ..
         } => Some(Outgoing::Updated {
             note_id,
@@ -204,9 +208,10 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
 fn source_of(source: ChangeSource) -> NoteEventSource {
     match source {
         ChangeSource::App | ChangeSource::Save => NoteEventSource::Internal,
-        ChangeSource::Watcher | ChangeSource::Walk | ChangeSource::AppEdit => {
-            NoteEventSource::External
-        }
+        ChangeSource::Watcher
+        | ChangeSource::Walk
+        | ChangeSource::AppEdit
+        | ChangeSource::LinkRewrite => NoteEventSource::External,
     }
 }
 
@@ -289,13 +294,15 @@ mod tests {
         // The app's own write-back is `sync` in Electron, which the renderer ignores; its edit
         // for the user (a renamed note's links) is `external`, as `landSourceRewrite` sends it.
         assert_eq!(outgoing(changed(ChangeSource::App)), None);
-        assert_eq!(
-            outgoing(changed(ChangeSource::AppEdit)),
-            Some(Outgoing::Updated {
-                note_id: "n".into(),
-                source: NoteEventSource::External,
-            })
-        );
+        for source in [ChangeSource::AppEdit, ChangeSource::LinkRewrite] {
+            assert_eq!(
+                outgoing(changed(source)),
+                Some(Outgoing::Updated {
+                    note_id: "n".into(),
+                    source: NoteEventSource::External,
+                })
+            );
+        }
         // The open walk's notes reach the lists through the index's progress instead.
         assert_eq!(outgoing(added(ChangeSource::Walk)), None);
         assert_eq!(outgoing(changed(ChangeSource::Walk)), None);

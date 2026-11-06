@@ -143,8 +143,8 @@ describe('Journal settings — date format refused by a read-only lock (#2606)',
   })
 })
 
-// This build refuses a journal folder or date format change until the renames are ported
-// (#3530 13m-7b); Settings says so and keeps the saved value.
+// A refused change says so and keeps the saved value: this build refuses a journal folder
+// change until the folder move is ported (#3530 13m-7b), and a lock refuses a format change.
 describe('Journal settings — a change this build cannot make yet', () => {
   const NOT_PORTED =
     "This version can't change the journal folder, date format or excluded folders yet. Your saved setting is kept."

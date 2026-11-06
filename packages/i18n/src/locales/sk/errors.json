@@ -14,7 +14,10 @@
     "permissionDenied": "Prístup zamietnutý. Skontrolujte, či máte prístup do tohto priečinka.",
     "alreadyExists": "Na tomto mieste už trezor existuje.",
     "corrupted": "Tento trezor sa zdá byť poškodený. Skúste ho obnoviť zo zálohy.",
-    "configChangeNotPorted": "Táto verzia zatiaľ nemôže zmeniť priečinok denníka, formát dátumu ani vylúčené priečinky. Uložené nastavenie zostáva."
+    "configChangeNotPorted": "Táto verzia zatiaľ nemôže zmeniť priečinok denníka, formát dátumu ani vylúčené priečinky. Uložené nastavenie zostáva.",
+    "journalFormatIncomplete": "Tento formát dátumu nedokáže pomenovať každý deň, preto nebol uložený. Uveďte rok, mesiac a deň.",
+    "journalDaysNotRenamed": "Formát dátumu sa nezmenil, pretože niektoré dni denníka sa nepodarilo premenovať podľa neho ({count}). Nový názov dňa možno už má iný súbor.",
+    "journalUnlisted": "Priečinok denníka sa nepodarilo prečítať, preto sa formát dátumu nezmenil. Overte, či k nemu máte prístup."
   },
   "note": {
     "notFound": "Táto poznámka sa nenašla. Možno bola odstránená.",

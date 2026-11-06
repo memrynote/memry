@@ -37,13 +37,27 @@ impl FileMove<'_> {
     /// exclusive rename, which take a plain rename). A folder that cannot be synced is logged
     /// ([`sync_dir`]).
     pub(crate) fn run(&self, echo: &EchoGuard) -> Result<(), FileMoveError> {
+        self.run_each(echo, |rename| rename())
+    }
+
+    /// [`Self::run`] with each try made inside `each`, which runs the move it is handed once.
+    /// What must hold only while the file moves is set up before it and taken down after a
+    /// try that failed: the row a journal rename moves first (`vault::journal_rename`), which
+    /// must not name the new path while the move waits to try again.
+    pub(crate) fn run_each(
+        &self,
+        echo: &EchoGuard,
+        mut each: impl FnMut(&mut dyn FnMut() -> io::Result<()>) -> io::Result<()>,
+    ) -> Result<(), FileMoveError> {
         if let Some(parent) = self.target.parent() {
             create_folders(parent).map_err(FileMoveError::Folder)?;
         }
         let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
-        let attempt = |rename: fn(&Path, &Path) -> io::Result<()>| {
+        let mut attempt = |rename: fn(&Path, &Path) -> io::Result<()>| {
             with_transient_retry(&delays, || {
-                echo.removing(self.source_rel, || rename(self.source, self.target))
+                echo.removing(self.source_rel, || {
+                    each(&mut || rename(self.source, self.target))
+                })
             })
         };
         let moved = match attempt(rename_no_replace) {

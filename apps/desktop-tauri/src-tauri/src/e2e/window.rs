@@ -19,6 +19,8 @@ pub struct E2eWindow {
     pub width: f64,
     pub height: f64,
     pub title: String,
+    /// The page subscribed to flush requests, so a quit or a close asks it.
+    pub answers_flush: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -56,6 +58,9 @@ pub fn e2e_windows<R: Runtime>(app: AppHandle<R>) -> Result<Vec<E2eWindow>, Comm
             width: size.width,
             height: size.height,
             title: window.title().map_err(failure)?,
+            answers_flush: app
+                .try_state::<crate::flush::FlushService>()
+                .is_some_and(|flush| flush.is_listening(&label)),
             label,
         });
     }

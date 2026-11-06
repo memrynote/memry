@@ -1,7 +1,11 @@
 use memry_desktop::e2e::control;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::paths::{AppPaths, DEVICE_VAR};
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use serde::Serialize;
+use tauri::plugin::TauriPlugin;
+use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 use crate::commands::error::{CommandError, ErrorKind};
@@ -38,6 +42,32 @@ pub fn e2e_app_info<R: Runtime>(app: AppHandle<R>) -> Result<E2eAppInfo, Command
 #[tauri::command]
 pub fn e2e_request_quit<R: Runtime>(app: AppHandle<R>) {
     app.exit(0);
+}
+
+/// Set by [`e2e_quit_on_page_start`], taken by the next page start of the main window.
+static QUIT_ON_PAGE_START: AtomicBool = AtomicBool::new(false);
+
+/// Quits the app the moment the main window's next document commits, before its scripts run: a
+/// quit while the page loads, as at a launch or a reload, with no timing left to chance.
+#[tauri::command]
+pub fn e2e_quit_on_page_start() {
+    QUIT_ON_PAGE_START.store(true, Ordering::SeqCst);
+}
+
+/// Watches page starts for [`e2e_quit_on_page_start`]. The exit is posted to the event loop, so
+/// the app's own page-start handlers run first.
+pub fn quit_on_page_start_plugin<R: Runtime>() -> TauriPlugin<R> {
+    tauri::plugin::Builder::new("memry-e2e-quit-on-page-start")
+        .on_page_load(|webview, payload| {
+            if matches!(payload.event(), PageLoadEvent::Started)
+                && webview.label() == "main"
+                && QUIT_ON_PAGE_START.swap(false, Ordering::SeqCst)
+            {
+                tracing::info!(scope = "e2e", "quitting as the main page starts");
+                webview.app_handle().exit(0);
+            }
+        })
+        .build()
 }
 
 /// Emits a Tauri event to every window; the replacement for `webContents.send` in specs.

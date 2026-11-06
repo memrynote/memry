@@ -13,7 +13,7 @@
 //!   turn into another link (a `|`, `]` or `#` in it) is left, and the log says so.
 //! - **How**: through [`AppEdit`] with [`Precondition::Held`], in each source's own write turn:
 //!   its document, then its file, then its row, then a note event the renderer takes as an
-//!   outside edit (`ChangeSource::AppEdit`), so an open editor shows the new link. A link in a
+//!   outside edit (`ChangeSource::LinkRewrite`), so an open editor shows the new link. A link in a
 //!   frontmatter value is a property value: the record takes it once the file holds it, in the
 //!   same turn, and the file's baseline moves with it (`NotesWriter::file_properties`), as for
 //!   every app edit of a file's properties. The file's row and the record are two writes, as a
@@ -114,7 +114,7 @@ impl NotesService {
                     edit.fail_next_feed();
                 }
                 self.order.run(note_id, |turn| {
-                    edit.run(turn, held, ChangeSource::AppEdit, |text| {
+                    edit.run(turn, held, ChangeSource::LinkRewrite, |text| {
                         Ok::<_, NotesError>(rewrite_note_refs_for_move(
                             text, &from.path, &to.path, options,
                         ))
@@ -229,7 +229,14 @@ impl NotesService {
                     Ok(false)
                 };
                 let held = Precondition::Held;
-                edit.run_then(turn, held, ChangeSource::AppEdit, text, landed, &mut || {})
+                edit.run_then(
+                    turn,
+                    held,
+                    ChangeSource::LinkRewrite,
+                    text,
+                    landed,
+                    &mut || {},
+                )
             });
             if found.skipped > 0 || found.frontmatter_kept {
                 tracing::warn!(

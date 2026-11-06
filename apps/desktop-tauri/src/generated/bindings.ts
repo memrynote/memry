@@ -43,6 +43,8 @@ export const commands = {
 	 *  asked, with the id that was issued.
 	 */
 	flushDone: (requestId: string) => __TAURI_INVOKE<null>("flush_done", { requestId }),
+	/**  The calling window's page subscribed to flush requests: from now on a quit or a close asks it. */
+	flushReady: () => __TAURI_INVOKE<null>("flush_ready"),
 	/**  The day made on its first write; a day that has a file is answered as it is. */
 	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
 	/**  `success` is whether the day had an entry to delete. */
@@ -401,9 +403,12 @@ export const commands = {
 	vaultSetIcon: (path: string, icon: string | null) => __TAURI_INVOKE<null>("vault_set_icon", { path, icon }),
 	vaultSwitch: (path: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_switch", { path }),
 	/**
-	 *  `vault:update-config`: writes the fields `config` names and answers the settings after it,
-	 *  which every window hears as [`VaultConfigChangedEvent`]. A change that is not ported yet is
-	 *  refused as `config_change_not_ported` (`vault::config::settings`).
+	 *  `vault:update-config`: writes the fields `config` names, a new date format with the day
+	 *  files renamed to it first, and answers the settings after it, which every window hears as
+	 *  [`VaultConfigChangedEvent`], in the order the writes land. A change that is not ported yet
+	 *  is refused as `config_change_not_ported`, and a format not every day can take as
+	 *  `journal_format_incomplete`, `journal_unlisted` or `journal_days_not_renamed`
+	 *  (`vault::config::settings`).
 	 */
 	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
 	/**  Drops every retained entry, on disk too. */

@@ -14,7 +14,10 @@
     "permissionDenied": "Tinanggihan ang pahintulot. Tingnan kung mayroon kang access sa folder na ito.",
     "alreadyExists": "Mayroon nang vault sa lokasyong ito.",
     "corrupted": "Mukhang sira ang vault na ito. Subukang ibalik mula sa isang backup.",
-    "configChangeNotPorted": "Hindi pa kayang baguhin ng bersyong ito ang folder ng talaarawan, format ng petsa, o mga hindi isinamang folder. Nananatili ang naka-save mong setting."
+    "configChangeNotPorted": "Hindi pa kayang baguhin ng bersyong ito ang folder ng talaarawan, format ng petsa, o mga hindi isinamang folder. Nananatili ang naka-save mong setting.",
+    "journalFormatIncomplete": "Hindi kayang pangalanan ng format ng petsang ito ang bawat araw, kaya hindi ito na-save. Isama ang taon, buwan at araw.",
+    "journalDaysNotRenamed": "Hindi binago ang format ng petsa dahil hindi napalitan ang pangalan ng ilang araw ng talaarawan ayon dito ({count}). Maaaring may file nang may bagong pangalan ng isang araw.",
+    "journalUnlisted": "Hindi mabasa ang folder ng talaarawan, kaya hindi binago ang format ng petsa. Tiyaking may access ka rito."
   },
   "note": {
     "notFound": "Hindi mahanap ang talang ito. Baka natanggal na ito.",

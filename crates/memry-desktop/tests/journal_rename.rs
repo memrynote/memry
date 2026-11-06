@@ -518,30 +518,39 @@ fn a_reverted_pass_puts_files_rows_and_order_slots_back() {
     settled(&mut e);
 }
 
-/// A crash after a file moved and before its row followed leaves the file at the new name and
-/// the row at the old one. The next open pairs the two as a move: the note keeps its id, and the
-/// file is neither a new note nor the old one removed.
+/// A crash after a row moved and before its file followed leaves the row at the new name and
+/// the file at the old one. The next open pairs the two as a move back to the file's name, and
+/// the pass run again renames it. Whether the day stays a day through that move is the
+/// identity's rule, proven on the app's own identity in
+/// `vault_settings::a_crash_mid_format_change_keeps_each_day_on_the_next_open`.
 #[test]
-fn a_crash_between_a_file_and_its_row_is_paired_on_the_next_open() {
-    let mut e = opened(&[("2026-09-25.md", "entry for 2026-09-25\n")]);
-    let id = id_at(&e, "journal/2026-09-25.md");
+fn a_crash_between_a_row_and_its_file_is_paired_on_the_next_open() {
+    let mut e = opened(&[("2026-09-25 Friday.md", "entry for 2026-09-25\n")]);
+    let id = id_at(&e, "journal/2026-09-25 Friday.md");
     e.close();
-    let to = "journal/2026-09-25 Friday.md";
-    fs::rename(e.vault.join("journal/2026-09-25.md"), e.vault.join(to)).unwrap();
+    let from = "journal/2026-09-25.md";
+    fs::rename(
+        e.vault.join("journal/2026-09-25 Friday.md"),
+        e.vault.join(from),
+    )
+    .unwrap();
     e.drain();
 
     e.open();
     e.facts_until(indexed);
 
-    assert_eq!(id_at(&e, to), id);
+    assert_eq!(id_at(&e, from), id);
     assert_eq!(e.rows().len(), 1);
     settled(&mut e);
-    // The pass run again finds the entry already renamed.
     assert_eq!(
         rename(&e, "journal", DAILY, WEEKDAY),
-        JournalRenameResult::default()
+        result(
+            vec![moved("2026-09-25.md", "2026-09-25 Friday.md", "2026-09-25")],
+            0
+        )
     );
     assert_eq!(tree(&e), ["2026-09-25 Friday.md"]);
+    assert_eq!(id_at(&e, "journal/2026-09-25 Friday.md"), id);
 }
 
 /// The vault root is never a journal folder, so its files keep their names.

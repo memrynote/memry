@@ -8,6 +8,7 @@ use std::fs;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use memry_desktop::notes::links::NoteLinks;
 use memry_desktop::session::Session;
 use memry_tauri::events::{
     JournalEntryCreatedEvent, JournalEntryDeletedEvent, JournalEntryUpdatedEvent,
@@ -34,6 +35,7 @@ fn opened() -> Mocked {
             memry_tauri::commands::journal::journal_get_streak::<MockRuntime>,
             memry_tauri::commands::journal::journal_get_year_stats::<MockRuntime>,
             memry_tauri::commands::journal::journal_update_entry::<MockRuntime>,
+            memry_tauri::commands::notes::notes_rename::<MockRuntime>,
         ]);
     let mocked = Mocked::open(
         &[("journal/2025-03-03.md", "---\ntags: [walk]\n---\nA walk.\n")],
@@ -338,4 +340,61 @@ fn a_note_removed_from_a_days_path_deletes_no_day() {
     fs::remove_file(mocked.vault.join("daily/2025-03-12.md")).unwrap();
     settle(&mocked);
     assert_eq!(*heard.lock().unwrap(), Vec::new());
+}
+
+/// The first event heard that `matches`, once it is.
+fn heard_where(heard: &Heard, matches: impl Fn(&str, &Value) -> bool) -> Value {
+    let deadline = Instant::now() + WAIT;
+    loop {
+        let found = heard
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|(name, payload, _)| matches(name, payload))
+            .map(|(_, payload, _)| payload.clone());
+        if let Some(payload) = found {
+            return payload;
+        }
+        assert!(Instant::now() < deadline, "no such journal event");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+/// A day's links to a renamed note follow it, and the open day hears it as an outside edit,
+/// as Electron's `landSourceRewrite` sends `journal:entryUpdated` (#3530 13m-7b).
+#[test]
+fn a_days_links_to_a_renamed_note_reach_it_as_an_outside_edit() {
+    let mocked = opened();
+    let heard = hear(&mocked);
+    fs::write(mocked.vault.join("Walk.md"), "A walk note.\n").unwrap();
+    fs::write(
+        mocked.vault.join("journal/2025-03-05.md"),
+        "Went on a [[Walk]].\n",
+    )
+    .unwrap();
+    let walk = row_at(&mocked, "Walk.md");
+    let links = NoteLinks::new(&mocked.session().current().unwrap());
+    let deadline = Instant::now() + WAIT;
+    while links.get(&walk).unwrap().incoming.is_empty() {
+        assert!(Instant::now() < deadline, "the day's link was not indexed");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+
+    mocked
+        .invoke("notes_rename", json!({ "id": walk, "newTitle": "Run" }))
+        .unwrap();
+    assert_eq!(
+        fs::read_to_string(mocked.vault.join("journal/2025-03-05.md")).unwrap(),
+        "Went on a [[Run]].\n"
+    );
+    let payload = heard_where(&heard, |name, payload| {
+        name == JournalEntryUpdatedEvent::NAME
+            && payload["entry"]["content"]
+                .as_str()
+                .is_some_and(|content| content.contains("[[Run]]"))
+    });
+    assert_eq!(
+        (&payload["date"], &payload["source"]),
+        (&json!("2025-03-05"), &json!("external"))
+    );
 }

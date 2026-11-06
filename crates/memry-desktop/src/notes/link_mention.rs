@@ -10,7 +10,7 @@
 //! vectors pin. The new file is the frontmatter block, byte for byte, then the new body.
 //!
 //! The edit runs through the app-edit seam ([`AppEdit`] with [`Precondition::Held`], in the
-//! source's write turn, as [`ChangeSource::AppEdit`]): only a file the note's document holds is
+//! source's write turn, as [`ChangeSource::LinkRewrite`]): only a file the note's document holds is
 //! rewritten, the document takes the new body without keeping the old one as a version, and
 //! the shell sends `notes:updated` with `source: external`, as `landSourceRewrite` does, so an
 //! editor showing the source reloads; the note index relinks the source, on which the panels
@@ -55,11 +55,18 @@ impl NotesService {
         }
         let edit = AppEdit::new(&self.tier, &self.store, open)?;
         let edited = self.order.run(source_id, |turn| {
-            edit.run(turn, Precondition::Held, ChangeSource::AppEdit, |text| {
-                let split = split_frontmatter_block(text);
-                let body = link_unlinked_mention(split.body, &names, ordinal, &names[0]);
-                Ok::<_, NotesError>(body.map(|body| format!("{}{body}", split.block.unwrap_or(""))))
-            })
+            edit.run(
+                turn,
+                Precondition::Held,
+                ChangeSource::LinkRewrite,
+                |text| {
+                    let split = split_frontmatter_block(text);
+                    let body = link_unlinked_mention(split.body, &names, ordinal, &names[0]);
+                    Ok::<_, NotesError>(
+                        body.map(|body| format!("{}{body}", split.block.unwrap_or(""))),
+                    )
+                },
+            )
         })?;
         match edited {
             Edited::Wrote { held, .. } => {

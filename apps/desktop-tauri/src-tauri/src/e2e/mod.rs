@@ -48,6 +48,7 @@ pub fn install<R: Runtime>(builder: Builder<R>, gate: E2eGate) -> Builder<R> {
     builder
         .plugin(tauri_plugin_wdio::init())
         .plugin(tauri_plugin_wdio_webdriver::init())
+        .plugin(app::quit_on_page_start_plugin())
 }
 
 /// A context menu under test: records the items and answers from the queued selection. `None`

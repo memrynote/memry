@@ -14,9 +14,10 @@
 //! The lane is first come, first served ([`super::line`]): the consumer lets it go between two facts
 //! or two files and asks again at once, and an app operation already waiting gets it first.
 //!
-//! Lock order: the lane, then the core's database writer (`call_blocking`). Never take the
-//! lane from inside `call_blocking`, and never while holding a lock that a caller waiting on
-//! the lane may hold. No `note_files` row is written anywhere else
+//! Lock order: the lane, then the watcher's own-write record (`EchoGuard::removing`, inside
+//! which a journal rename writes its row), then the core's database writer (`call_blocking`).
+//! Never take the lane from inside `call_blocking`, and never while holding a lock that a
+//! caller waiting on the lane may hold. No `note_files` row is written anywhere else
 //! (`tests::note_files_is_written_only_through_the_lane`).
 
 use std::sync::atomic::{AtomicU64, Ordering};
