@@ -13,6 +13,8 @@ pub mod canvas;
 pub mod conformance;
 pub mod content_admin;
 pub mod crypto;
+#[cfg(feature = "markdown")]
+pub mod editor;
 pub mod errors;
 #[cfg(feature = "markdown")]
 pub mod external_feed;

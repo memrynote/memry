@@ -188,6 +188,8 @@ mod seams_transport;
 mod settings_service;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
+#[path = "tag_objects.rs"]
+mod tag_objects;
 #[path = "tag_schema.rs"]
 mod tag_schema;
 #[path = "tags.rs"]
