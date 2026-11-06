@@ -6,7 +6,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use memry_core::api::editor::{EditorError, Origin};
+use memry_core::api::editor::{EditorError, Notice, Origin};
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::{CrdtError, update_log};
 
@@ -21,11 +21,13 @@ fn listen(f: &Fixture, note: &str) -> Heard {
     let sink = Arc::clone(&heard);
     let dir = f.dir.path().to_owned();
     let id = note.to_owned();
-    f.editor.subscribe(note, move |bytes, origin| {
-        let committed = local_blobs(&dir, &id).len();
-        sink.lock()
-            .unwrap()
-            .push((bytes.to_vec(), origin.clone(), committed));
+    f.editor.subscribe(note, move |notice| {
+        if let Notice::Update(bytes, origin) = notice {
+            let committed = local_blobs(&dir, &id).len();
+            sink.lock()
+                .unwrap()
+                .push((bytes.to_vec(), origin.clone(), committed));
+        }
     });
     heard
 }
@@ -66,31 +68,28 @@ fn a_refused_update_reaches_no_listener() {
 }
 
 #[test]
-fn bytes_committed_elsewhere_reach_the_open_document_and_its_listeners() {
+fn a_merged_server_update_reaches_the_open_document_and_its_listeners_as_remote() {
     let f = fixture();
     let note = f.note();
-    f.editor.open(&note, "main").expect("open");
+    let main = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
     let heard = listen(&f, &note);
     let peer = Replica::new(9).type_text("from a peer");
     f.vault
         .db_handle()
         .call_blocking(|conn| {
             update_log::append_server_update(conn, &note, 1, &peer, 1).map_err(|e| {
-                memry_core::api::errors::StorageError::Failed {
+                StorageError::Failed {
                     what: e.to_string(),
                 }
             })
         })
         .expect("a merged server row");
 
-    f.editor
-        .absorb(&note, &peer, Origin::Remote)
-        .expect("absorb");
-
-    assert_eq!(
-        heard.lock().unwrap().clone(),
-        vec![(peer.clone(), Origin::Remote, 0)]
-    );
+    let heard = heard.lock().unwrap().clone();
+    assert_eq!(heard.len(), 1, "one notice, after the commit");
+    assert_eq!(heard[0].1, Origin::Remote);
+    main.apply(&heard[0].0);
+    assert_eq!(main.text(), "from a peer");
     let side = Replica::from_state(2, &f.editor.open(&note, "side").expect("side").state);
     assert_eq!(side.text(), "from a peer", "the resident document took it");
 }
@@ -106,7 +105,7 @@ fn an_unsubscribed_listener_and_another_documents_listener_hear_nothing() {
     let count = Arc::clone(&gone);
     let id = f
         .editor
-        .subscribe(&note, move |_, _| *count.lock().unwrap() += 1);
+        .subscribe(&note, move |_| *count.lock().unwrap() += 1);
     assert!(f.editor.unsubscribe(id));
     assert!(!f.editor.unsubscribe(id));
 
@@ -166,8 +165,7 @@ fn a_listener_that_panics_takes_neither_the_answer_nor_the_other_listeners_down(
     let f = fixture();
     let note = f.note();
     let main = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
-    f.editor
-        .subscribe(&note, |_, _| panic!("a broken listener"));
+    f.editor.subscribe(&note, |_| panic!("a broken listener"));
     let heard = listen(&f, &note);
 
     let applied = f.editor.apply_update(&note, &main.type_text("x"), "main");

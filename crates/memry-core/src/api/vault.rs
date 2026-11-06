@@ -152,7 +152,12 @@ impl Vault {
             return Ok(Arc::clone(editor));
         }
         let built = Arc::new(crate::api::editor::Editor::over(self.db.clone(), &store)?);
-        Ok(Arc::clone(self.editor.get_or_init(|| built)))
+        Ok(Arc::clone(self.editor.get_or_init(|| {
+            // Every other writer of a body log reaches the editor's documents.
+            let observer: Arc<dyn crate::crdt::body_writes::BodyObserver> = built.clone();
+            self.db.observe(Arc::downgrade(&observer));
+            built
+        })))
     }
 
     /// Records what this vault's core database was created over, once (desktop

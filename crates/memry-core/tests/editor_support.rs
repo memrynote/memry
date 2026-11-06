@@ -15,7 +15,7 @@ use yrs::updates::decoder::Decode as _;
 use yrs::updates::encoder::Encode as _;
 use yrs::{
     Doc, GetString as _, Map as _, MapRef, ReadTxn as _, StateVector, Text as _, Transact as _,
-    Update, XmlFragment as _, XmlFragmentRef, XmlTextPrelim,
+    Update, XmlElementPrelim, XmlFragment as _, XmlFragmentRef, XmlTextPrelim,
 };
 
 use crate::http_fakes::FakeSecureStore;
@@ -160,6 +160,18 @@ impl Replica {
         self.edit(|txn| {
             let end = self.body.len(txn);
             self.body.insert(txn, end, XmlTextPrelim::new(text));
+        })
+    }
+
+    /// Appends a paragraph block with no id, as an old build wrote one.
+    pub fn block_without_id(&self, text: &str) -> Vec<u8> {
+        self.edit(|txn| {
+            let group = self
+                .body
+                .push_back(txn, XmlElementPrelim::empty("blockGroup"));
+            let block = group.push_back(txn, XmlElementPrelim::empty("blockContainer"));
+            let paragraph = block.push_back(txn, XmlElementPrelim::empty("paragraph"));
+            paragraph.push_back(txn, XmlTextPrelim::new(text));
         })
     }
 
