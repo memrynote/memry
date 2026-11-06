@@ -9,10 +9,11 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::api::editor::Editor;
 use memry_core::api::errors::SecureStoreError;
+use memry_core::domain::vault_locks::TargetKind;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::seams::secure_store::SecureStoreKey;
 use memry_desktop::editor::{EditorHost, EditorHostError, HostEvent, Subscriber};
-use memry_desktop::error::map_core;
+use memry_desktop::error::{FailureKind, map_core};
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use yrs::updates::decoder::Decode as _;
@@ -467,4 +468,30 @@ fn the_last_dead_channel_takes_the_documents_listener_with_it() {
         .unwrap();
 
     assert_eq!(frames.lock().unwrap().len(), 1, "one listener, one frame");
+}
+
+#[test]
+fn an_edit_of_a_locked_note_is_refused_as_note_locked_and_reaches_no_window() {
+    let env = env();
+    let note = env.note();
+    let (main, _) = env.open(&note, "main");
+    let (_side, side_frames) = env.open(&note, "side");
+    let core = env.session.current().unwrap().vault;
+    core.locks().set(TargetKind::Note, &note, true).unwrap();
+
+    let refused = env
+        .host
+        .apply_update(&note, &main.type_text("typed"), "main")
+        .unwrap_err();
+
+    let failure = map_core(&refused);
+    assert_eq!(
+        (failure.kind, failure.code),
+        (FailureKind::Locked, "note_locked")
+    );
+    assert_eq!(
+        failure.message, "The owner made this note read-only.",
+        "Electron's fixed text, which the renderer localizes"
+    );
+    assert!(side_frames.lock().unwrap().is_empty());
 }
