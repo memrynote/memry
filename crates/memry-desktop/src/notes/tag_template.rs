@@ -226,7 +226,7 @@ impl NotesService {
         })?;
         Ok(match edited {
             Edited::Wrote { .. } => UndoStatus::Restored,
-            Edited::Unchanged | Edited::Kept(_) => UndoStatus::Stale,
+            Edited::Unchanged { .. } | Edited::Kept(_) => UndoStatus::Stale,
         })
     }
 }

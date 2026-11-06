@@ -1890,7 +1890,8 @@
         "confirm": "重新命名",
         "taken": "這個標籤已有 {name}。",
         "done": "已在 {count, plural, other {# 個項目}}中將 {from} 重新命名為 {to}。",
-        "skipped": "已在 {count, plural, other {# 個項目}}中將 {from} 重新命名為 {to}。{locked, plural, =0 {} other {# 則已鎖定的筆記將在解鎖後完成。}}{existing, plural, =0 {} other {# 則筆記原本就有 {to},將兩者並存。}}"
+        "skipped": "已在 {count, plural, other {# 個項目}}中將 {from} 重新命名為 {to}。{locked, plural, =0 {} other {# 則已鎖定的筆記將在解鎖後完成。}}{existing, plural, =0 {} other {# 則筆記原本就有 {to},將兩者並存。}}",
+        "kept": "已在 {count, plural, other {# 個項目}}中將 {from} 重新命名為 {to}。{kept, plural, =0 {} other {# 則筆記在重新命名期間有所變更,將保留 {from},直到下次開啟保險庫。}}{existing, plural, =0 {} other {# 則筆記原本就有 {to},將兩者並存。}}"
       },
       "delete": {
         "button": "刪除標籤",

@@ -21,6 +21,7 @@ fn ran(tags_changed: bool, definitions: &[&str], templates: &[&str]) -> Ran {
                 preset_strip_dismissed: false,
             },
             tag: None,
+            rename: None,
         },
         tags_changed,
         effects: Effects {

@@ -1890,7 +1890,8 @@
         "confirm": "Renomear",
         "taken": "Esta tag já tem {name}.",
         "done": "{from} renomeado para {to} em {count, plural, one {# item} other {# itens}}.",
-        "skipped": "{from} renomeado para {to} em {count, plural, one {# item} other {# itens}}. {locked, plural, =0 {} one {# nota bloqueada será concluída quando for desbloqueada.} other {# notas bloqueadas serão concluídas quando forem desbloqueadas.}} {existing, plural, =0 {} one {# nota já tinha {to} e mantém ambos.} other {# notas já tinham {to} e mantêm ambos.}}"
+        "skipped": "{from} renomeado para {to} em {count, plural, one {# item} other {# itens}}. {locked, plural, =0 {} one {# nota bloqueada será concluída quando for desbloqueada.} other {# notas bloqueadas serão concluídas quando forem desbloqueadas.}} {existing, plural, =0 {} one {# nota já tinha {to} e mantém ambos.} other {# notas já tinham {to} e mantêm ambos.}}",
+        "kept": "{from} renomeado para {to} em {count, plural, one {# item} other {# itens}}. {kept, plural, =0 {} one {# nota mudou durante a renomeação e mantém {from} até o cofre ser aberto novamente.} other {# notas mudaram durante a renomeação e mantêm {from} até o cofre ser aberto novamente.}} {existing, plural, =0 {} one {# nota já tinha {to} e mantém ambos.} other {# notas já tinham {to} e mantêm ambos.}}"
       },
       "delete": {
         "button": "Excluir tag",

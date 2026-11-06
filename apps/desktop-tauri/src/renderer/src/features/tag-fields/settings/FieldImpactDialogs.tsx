@@ -16,7 +16,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { IpcFailureError, extractErrorMessage, getIpcErrorCode } from '@/lib/ipc-error'
 import { toastTagChangeFailed, toastTagsKept } from '../rename-toasts'
-import { tagsService } from '@/services/tags-service'
+import { onTagsProgress, tagsService } from '@/services/tags-service'
 import { useEditTagSchema } from '../use-tag-schemas'
 
 function useImpact<K extends ImpactResult['kind']>(
@@ -147,7 +147,7 @@ export function RenameFieldDialog({
 
   useEffect(() => {
     if (!runId) return undefined
-    return window.api.onTagsProgress((event) => {
+    return onTagsProgress((event) => {
       if (event.runId !== runId) return
       setProgress({ runId, done: event.done, total: event.total })
     })
@@ -177,14 +177,17 @@ export function RenameFieldDialog({
       const result = await editSchema({ kind: 'rename-field', from: field, to: trimmed, runId: id })
       const locked = result.rename?.skippedLocked ?? 0
       const existing = result.rename?.skippedExisting ?? 0
+      const kept = result.rename?.kept ?? 0
       const values = {
         from: field,
         to: trimmed,
         count: (result.rename?.notes ?? 0) + (result.rename?.tasks ?? 0),
         locked,
-        existing
+        existing,
+        kept
       }
-      if (locked + existing > 0) toast.warning(t('tagFields.settings.rename.skipped', values))
+      if (kept > 0) toast.warning(t('tagFields.settings.rename.kept', values))
+      else if (locked + existing > 0) toast.warning(t('tagFields.settings.rename.skipped', values))
       else toast.success(t('tagFields.settings.rename.done', values))
       setProgress(null)
       onOpenChange(false)

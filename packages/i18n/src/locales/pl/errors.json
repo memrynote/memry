@@ -386,6 +386,7 @@
     "cycle": "#{parent} już przejmuje pola z tego tagu",
     "unreadableSchema": "Nowsza wersja Memry zmieniła ten tag. Zaktualizuj Memry, aby go edytować",
     "relationTargetRequired": "Wybierz, na jaki tag wskazuje ta relacja",
-    "renameRunning": "Inna zmiana nazwy pola wciąż się kończy ({from} na {to}). Spróbuj ponownie, gdy się zakończy."
+    "renameRunning": "Inna zmiana nazwy pola wciąż się kończy ({from} na {to}). Spróbuj ponownie, gdy się zakończy.",
+    "renameTaskUnreadable": "Zmiana nazwy pola {from} na {to} nie może być kontynuowana: ta wersja Memry nie potrafi odczytać tych zadań: {tasks}. Zaktualizuj Memry i spróbuj ponownie."
   }
 }

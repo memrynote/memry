@@ -595,6 +595,48 @@ fn a_tag_edit_of_a_marked_file_with_no_frontmatter_keeps_one_mark() {
     assert!(file.ends_with("---\nFirst text\n"), "{file:?}");
 }
 
+/// The body a save reports is the one the note's read (and its event) gives: a marked file with
+/// no frontmatter keeps the mark in its body (#3967).
+#[test]
+fn a_save_of_a_marked_file_with_no_frontmatter_reports_the_body_as_read() {
+    let (e, notes) = opened(&[("Plan.md", "\u{feff}First text\n")]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let updated = notes.update(&open, save(&id, "Typed text\n")).unwrap();
+    assert_eq!(e.read("Plan.md"), "\u{feff}Typed text\n");
+    assert_eq!(
+        updated.saved_content.as_deref(),
+        Some(updated.note.content.as_str())
+    );
+}
+
+/// The two texts a guess at where the seam puts the mark back got wrong: a save that changes
+/// nothing on a marked file, and typing that starts with a mark on a file without one.
+#[test]
+fn a_save_reports_the_mark_where_the_file_has_it() {
+    let (e, notes) = opened(&[
+        ("Marked.md", "\u{feff}First text\n"),
+        ("Plain.md", "Plain\n"),
+    ]);
+    let open = e.session.current().unwrap();
+    let (marked, plain) = (id_at(&e, "Marked.md"), id_at(&e, "Plain.md"));
+
+    let same = notes.update(&open, save(&marked, "First text\n")).unwrap();
+    assert_eq!(e.read("Marked.md"), "\u{feff}First text\n");
+    assert_eq!(
+        same.saved_content.as_deref(),
+        Some(same.note.content.as_str())
+    );
+
+    let typed = notes
+        .update(&open, save(&plain, "\u{feff}Typed\n"))
+        .unwrap();
+    assert_eq!(
+        typed.saved_content.as_deref(),
+        Some(typed.note.content.as_str())
+    );
+}
+
 #[test]
 fn a_save_over_a_file_the_document_never_took_keeps_that_file_first() {
     let (e, notes) = opened(&[("Plan.md", PLAN)]);

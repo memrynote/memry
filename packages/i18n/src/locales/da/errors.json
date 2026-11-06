@@ -386,6 +386,7 @@
     "cycle": "#{parent} henter allerede sine felter fra dette tag",
     "unreadableSchema": "En nyere version af Memry har ændret dette tag. Opdatér Memry for at redigere det",
     "relationTargetRequired": "Vælg, hvilket tag denne relation peger på",
-    "renameRunning": "En anden omdøbning af felt er stadig ved at blive færdig ({from} til {to}). Prøv igen, når den er færdig."
+    "renameRunning": "En anden omdøbning af felt er stadig ved at blive færdig ({from} til {to}). Prøv igen, når den er færdig.",
+    "renameTaskUnreadable": "Omdøbningen af feltet {from} til {to} kan ikke fortsætte: denne version af Memry kan ikke læse disse opgaver: {tasks}. Opdater Memry, og prøv igen."
   }
 }

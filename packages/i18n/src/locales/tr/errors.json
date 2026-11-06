@@ -386,6 +386,7 @@
     "cycle": "#{parent} alanlarını zaten bu etiketten alıyor",
     "unreadableSchema": "Bu etiketi Memry'nin daha yeni bir sürümü değiştirdi. Düzenlemek için Memry'yi güncelleyin",
     "relationTargetRequired": "Bu ilişkinin hangi etikete bağlanacağını seçin",
-    "renameRunning": "Başka bir alan yeniden adlandırması hâlâ sürüyor ({from} → {to}). Bitince yeniden dene."
+    "renameRunning": "Başka bir alan yeniden adlandırması hâlâ sürüyor ({from} → {to}). Bitince yeniden dene.",
+    "renameTaskUnreadable": "{from} → {to} alan yeniden adlandırması sürdürülemiyor: Memry'nin bu sürümü şu görevleri okuyamıyor: {tasks}. Memry'yi güncelleyip yeniden dene."
   }
 }

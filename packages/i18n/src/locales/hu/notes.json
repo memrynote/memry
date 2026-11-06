@@ -1890,7 +1890,8 @@
         "confirm": "Átnevezés",
         "taken": "Ennek a címkének már van {name} mezője.",
         "done": "{from} átnevezve erre: {to}, {count, plural, one {# elemben} other {# elemben}}.",
-        "skipped": "{from} átnevezve erre: {to}, {count, plural, one {# elemben} other {# elemben}}. {locked, plural, =0 {} one {# zárolt jegyzet a feloldásakor fejeződik be.} other {# zárolt jegyzet a feloldásakor fejeződik be.}} {existing, plural, =0 {} one {# jegyzetnek már volt {to} mezője, ezért mindkettőt megtartja.} other {# jegyzetnek már volt {to} mezője, ezért mindkettőt megtartják.}}"
+        "skipped": "{from} átnevezve erre: {to}, {count, plural, one {# elemben} other {# elemben}}. {locked, plural, =0 {} one {# zárolt jegyzet a feloldásakor fejeződik be.} other {# zárolt jegyzet a feloldásakor fejeződik be.}} {existing, plural, =0 {} one {# jegyzetnek már volt {to} mezője, ezért mindkettőt megtartja.} other {# jegyzetnek már volt {to} mezője, ezért mindkettőt megtartják.}}",
+        "kept": "{from} átnevezve erre: {to}, {count, plural, one {# elemben} other {# elemben}}. {kept, plural, =0 {} one {# jegyzet megváltozott az átnevezés közben, és megtartja ezt: {from}, amíg a széf újra meg nem nyílik.} other {# jegyzet megváltozott az átnevezés közben, és megtartja ezt: {from}, amíg a széf újra meg nem nyílik.}} {existing, plural, =0 {} one {# jegyzetnek már volt {to} mezője, ezért mindkettőt megtartja.} other {# jegyzetnek már volt {to} mezője, ezért mindkettőt megtartják.}}"
       },
       "delete": {
         "button": "Címke törlése",

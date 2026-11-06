@@ -80,7 +80,7 @@ impl NotesService {
                 }
                 Ok(true)
             }
-            Edited::Unchanged => Ok(false),
+            Edited::Unchanged { .. } => Ok(false),
             Edited::Kept(Kept::NoRow) => Err(NotesError::NotFound(source_id.to_owned())),
             Edited::Kept(kept) => {
                 tracing::info!(

@@ -386,6 +386,7 @@
     "cycle": "#{parent} はすでにこのタグからフィールドを引き継いでいます",
     "unreadableSchema": "新しいバージョンの Memry がこのタグを変更しました。編集するには Memry をアップデートしてください",
     "relationTargetRequired": "このリレーションが指すタグを選んでください",
-    "renameRunning": "別のフィールド名変更（{from} から {to}）がまだ完了していません。完了してからもう一度お試しください。"
+    "renameRunning": "別のフィールド名変更（{from} から {to}）がまだ完了していません。完了してからもう一度お試しください。",
+    "renameTaskUnreadable": "フィールド名の変更（{from} から {to}）を続けられません。このバージョンの Memry では次のタスクを読み込めません: {tasks}。Memry を更新してからもう一度お試しください。"
   }
 }

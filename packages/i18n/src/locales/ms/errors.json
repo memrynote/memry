@@ -386,6 +386,7 @@
     "cycle": "#{parent} sudah mengambil medannya daripada teg ini",
     "unreadableSchema": "Versi Memry yang lebih baharu telah mengubah teg ini. Kemas kini Memry untuk mengeditnya",
     "relationTargetRequired": "Pilih teg yang ditunjuk oleh hubungan ini",
-    "renameRunning": "Penamaan semula medan lain masih diselesaikan ({from} kepada {to}). Cuba lagi sebaik ia selesai."
+    "renameRunning": "Penamaan semula medan lain masih diselesaikan ({from} kepada {to}). Cuba lagi sebaik ia selesai.",
+    "renameTaskUnreadable": "Penamaan semula medan {from} kepada {to} tidak dapat diteruskan: versi Memry ini tidak dapat membaca tugasan ini: {tasks}. Kemas kini Memry, kemudian cuba lagi."
   }
 }

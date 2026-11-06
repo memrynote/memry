@@ -386,6 +386,7 @@
     "cycle": "#{parent} už preberá polia z tejto značky",
     "unreadableSchema": "Novšia verzia Memry zmenila túto značku. Ak ju chcete upraviť, aktualizujte Memry",
     "relationTargetRequired": "Vyberte, na ktorú značku táto relácia odkazuje",
-    "renameRunning": "Ďalšie premenovanie poľa ešte dobieha ({from} na {to}). Skúste to znova, keď skončí."
+    "renameRunning": "Ďalšie premenovanie poľa ešte dobieha ({from} na {to}). Skúste to znova, keď skončí.",
+    "renameTaskUnreadable": "Premenovanie poľa {from} na {to} nemôže pokračovať: táto verzia Memry nedokáže prečítať tieto úlohy: {tasks}. Aktualizujte Memry a skúste to znova."
   }
 }

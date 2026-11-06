@@ -804,6 +804,20 @@ export type FieldOptionInput = {
 	color: string,
 };
 
+/**  `FieldRenameResult`. */
+export type FieldRenameView = {
+	notes: number,
+	tasks: number,
+	skippedLocked: number,
+	/**  Notes and tasks that already had a value under the new name, left as they were. */
+	skippedExisting: number,
+	/**
+	 *  Notes that changed while the rename ran and keep the old name until the next open
+	 *  finishes them. Tauri only.
+	 */
+	kept: number,
+};
+
 /**
  *  `FieldType`: every property type but `project`, which is also every type a new field may get
  *  (`NEW_FIELD_TYPES`).
@@ -1458,6 +1472,8 @@ export type NoteUpdatedView = {
 	tagTemplate?: TagTemplateOutcome | null,
 	/**  The save went over an outside edit the editor never had an event for, kept as a version. */
 	keptOutsideEdit: boolean,
+	/**  The body the save left in the file; `note` is read after it and can hold a later edit. */
+	savedContent?: string | null,
 };
 
 /**  `Note`. */
@@ -1899,14 +1915,15 @@ export type TagRenamedEvent = {
 	affectedNotes: number,
 };
 
-/**  `TagSchemaCommand`. `rename-field` is 13j-3d's. */
-export type TagSchemaCommand = { kind: "add-field"; tag: string; field: NewFieldSpec; index?: number | null } | { kind: "set-relation"; tag: string; name: string; relation: RelationView } | { kind: "remove-field"; tag: string; name: string } | { kind: "move-field"; tag: string; name: string; toIndex: number } | { kind: "set-template"; tag: string; template: TemplateChoice | null } | { kind: "set-extends"; tag: string; parent: string | null } | { kind: "add-preset"; preset: PresetKey; tag?: string | null } | { kind: "dismiss-preset-offer" };
+/**  `TagSchemaCommand`. */
+export type TagSchemaCommand = { kind: "add-field"; tag: string; field: NewFieldSpec; index?: number | null } | { kind: "set-relation"; tag: string; name: string; relation: RelationView } | { kind: "remove-field"; tag: string; name: string } | { kind: "move-field"; tag: string; name: string; toIndex: number } | { kind: "set-template"; tag: string; template: TemplateChoice | null } | { kind: "set-extends"; tag: string; parent: string | null } | { kind: "add-preset"; preset: PresetKey; tag?: string | null } | { kind: "rename-field"; from: string; to: string; runId: string } | { kind: "dismiss-preset-offer" };
 
 /**  `TagSchemaCommandResult`. */
 export type TagSchemaCommandResultView = {
 	snapshot: TagSchemaSnapshotView,
 	/**  The tag `add-preset` wrote. */
 	tag?: string,
+	rename?: FieldRenameView,
 };
 
 /**  `TagSchemaSnapshot`. */

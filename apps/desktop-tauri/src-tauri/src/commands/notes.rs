@@ -166,6 +166,10 @@ pub struct NoteUpdatedView {
     pub tag_template: Option<TagTemplateOutcome>,
     /// The save went over an outside edit the editor never had an event for, kept as a version.
     pub kept_outside_edit: bool,
+    /// The body the save left in the file; `note` is read after it and can hold a later edit.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub saved_content: Option<String>,
 }
 
 /// `notes:update`: an editor save of the note's body, an edit of its header tags, its icon.
@@ -190,6 +194,7 @@ pub async fn notes_update<R: Runtime>(
             note: updated.note,
             tag_template: updated.tag_template,
             kept_outside_edit: updated.kept_outside_edit,
+            saved_content: updated.saved_content,
         })
     })
     .await

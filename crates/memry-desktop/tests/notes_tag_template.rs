@@ -10,6 +10,7 @@
 //! | the first added tag with a template wins, in the caller's order   | `addedInOrder`                        |
 //! | typing the file does not hold yet is never written over           | the app-edit seam, `Held`             |
 //! | an undo after the body changed, or spent, or another token: stale | the hash of the filled body           |
+//! | the reply says the body its save wrote, not the template after it | the editor's baseline (#3967)         |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -170,6 +171,35 @@ fn an_autofill_tag_fills_an_empty_body_and_the_undo_empties_it() {
     assert_eq!(e.body(&id), "");
     // Spent.
     assert_eq!(undo(&e, &notes, &id, &undo_token), UndoStatus::Stale);
+}
+
+/// The note is read again after the save's turn ends, so the reply's note can hold what landed
+/// after the save: here the template the tag brought. The editor compares later events with what
+/// its save wrote, and that is `saved_content` (#3967).
+#[test]
+fn the_reply_says_the_body_its_save_wrote_not_the_template_after_it() {
+    let (e, notes) = opened(&[("Sync.md", "---\nkeep: 'as is'\n---\nOld text\n")]);
+    schemas(&e);
+    let id = id_at(&e, "Sync.md");
+    let open = e.session.current().unwrap();
+    let input = NoteUpdateInput {
+        id: id.clone(),
+        content: Some(String::new()),
+        header_tags: Some(HeaderTagEditInput {
+            add: Some(vec!["Meeting".to_owned()]),
+            ..HeaderTagEditInput::default()
+        }),
+        ..NoteUpdateInput::default()
+    };
+
+    let updated = notes.update(&open, input).unwrap();
+
+    assert!(
+        updated.note.content.starts_with("## Attendees"),
+        "{}",
+        updated.note.content
+    );
+    assert_eq!(updated.saved_content.as_deref(), Some(""));
 }
 
 #[test]
