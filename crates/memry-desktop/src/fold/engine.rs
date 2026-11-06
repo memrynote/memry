@@ -1,5 +1,5 @@
 //! The local fold (`engine.ts`): a note's Markdown to the snapshot the renderer shows. Pure;
-//! the fold service owns the cache and the reads.
+//! [`super::service`] owns the reads.
 
 use crate::web::extract::utils::js::is_js_whitespace;
 

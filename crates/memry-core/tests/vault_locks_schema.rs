@@ -124,4 +124,22 @@ fn a_version_19_database_gains_the_lock_tables_and_keeps_its_rows() {
         locks, 0,
         "nothing is locked until the owner locks something"
     );
+
+    // A crash between the migration's commit and its `user_version` write runs
+    // it again on the next launch (§A.0): it must succeed and keep the rows.
+    conn.execute(
+        "INSERT INTO vault_locks (id, target_kind, target, locked, created_at, updated_at)
+         VALUES ('note:n1', 'note', 'n1', 1, 1, 1)",
+        [],
+    )
+    .expect("a lock");
+    let again = DATA_MIGRATIONS
+        .iter()
+        .find(|migration| migration.name == "vault_locks")
+        .expect("the lock migration");
+    conn.execute_batch(again.sql).expect("idempotent");
+    let locks: i64 = conn
+        .query_row("SELECT COUNT(*) FROM vault_locks", [], |row| row.get(0))
+        .expect("count");
+    assert_eq!(locks, 1, "the re-run keeps the rows");
 }
