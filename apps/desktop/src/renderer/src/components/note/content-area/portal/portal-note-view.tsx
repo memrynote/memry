@@ -40,6 +40,7 @@ import { PortalStateCard, type PortalCardStatus } from './portal-state-card'
 import { PortalToolbar } from './portal-toolbar'
 import { usePortalSourceNote } from './use-portal-source-note'
 import { PortalWindow } from './portal-window'
+import { moveBlockToDrop, type PortalDropOutside } from './portal-window-drag-out'
 import type { PortalWindowResolution } from './use-portal-window-plugin'
 import { usePortalInlineMarks, usePortalWindowState } from './use-portal-window-view'
 
@@ -140,6 +141,15 @@ export function PortalNoteView({
   const applyPlan = useCallback(
     (plan: PortalPlan) => commitPortalPlan(handleRef.current, plan).then(reportFailure),
     [reportFailure]
+  )
+
+  // A block handle dragged out of the window moves this portal, never the source block.
+  const moveOnDropOutside = useCallback(
+    (drop: PortalDropOutside) => {
+      const view = editor.prosemirrorView
+      if (view && editor.isEditable) moveBlockToDrop(view, blockId, drop)
+    },
+    [editor, blockId]
   )
 
   const inlineHandlers = useRef<PortalInlineHandlers | null>(null)
@@ -255,6 +265,7 @@ export function PortalNoteView({
               editable={false}
               onResolve={setResolution}
               onPlan={applyPlan}
+              onDropOutside={moveOnDropOutside}
             />
           </div>
         ) : null}
@@ -318,6 +329,7 @@ export function PortalNoteView({
             editable={!locked && editor.isEditable}
             onResolve={setResolution}
             onPlan={applyPlan}
+            onDropOutside={moveOnDropOutside}
           />
         </PortalRemoveFromContext>
       ) : null}
