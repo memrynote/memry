@@ -128,15 +128,7 @@ impl Search {
             .into_iter()
             .filter(|(_, note)| note.date.is_none())
             .collect();
-        let headers = self.index.read_blocking(|index| {
-            tag_objects::measured(index, sources.keys().map(String::as_str))
-        })?;
-        let headers = headers
-            .into_iter()
-            .map(|(id, measured)| (id, measured.header_tags))
-            .collect();
-        let mut groups =
-            linked_here::relation_groups(note_id, &refs, &sources, &headers, resolved, limit);
+        let mut groups = linked_here::relation_groups(note_id, &refs, &sources, resolved, limit);
 
         let tasks = self
             .data
@@ -156,17 +148,17 @@ impl Search {
     }
 
     /// The live notes and journal days among `ids`, a day titled by its date, with the snippet
-    /// the note index measured when `snippets`.
+    /// and header tags the note index measured when `measured`.
     fn summaries<'a>(
         &self,
         ids: impl Iterator<Item = &'a str>,
-        snippets: bool,
+        measured: bool,
     ) -> Result<HashMap<String, Summary>, StorageError> {
         let ids: Vec<&str> = ids.collect();
         let live = self
             .data
             .read_blocking(|data| live_items(data, ids.iter().copied()))?;
-        let mut measured = if snippets {
+        let mut measured = if measured {
             self.index.read_blocking(|index| {
                 tag_objects::measured(index, live.keys().map(String::as_str))
             })?
@@ -180,13 +172,17 @@ impl Search {
                     Item::Note { title, stamp } => (title, None, stamp),
                     Item::Journal { date, stamp } => (date.clone(), Some(date), stamp),
                 };
-                let snippet = measured.remove(&id).and_then(|m| m.snippet);
+                let (snippet, header_tags) = measured
+                    .remove(&id)
+                    .map(|m| (m.snippet, m.header_tags))
+                    .unwrap_or_default();
                 let summary = Summary {
                     id: id.clone(),
                     title,
                     date,
                     modified: iso_string(stamp),
                     snippet,
+                    header_tags,
                 };
                 (id, summary)
             })

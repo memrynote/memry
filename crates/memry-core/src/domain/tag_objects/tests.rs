@@ -182,24 +182,27 @@ fn task_field_groups_list_open_tasks_first_then_by_due_date_and_skip_other_value
 #[test]
 fn a_relation_group_is_labelled_by_its_inverse_else_the_tag_else_the_field() {
     let resolved = tags();
-    let note = |id: &str, modified: &str| Summary {
+    let note = |id: &str, modified: &str, header: &[&str]| Summary {
         id: id.to_owned(),
         title: id.to_owned(),
         date: None,
         modified: modified.to_owned(),
         snippet: None,
+        header_tags: header.iter().map(|tag| (*tag).to_owned()).collect(),
     };
     let sources = HashMap::from([
-        ("ada".to_owned(), note("ada", "2026-01-01T00:00:00.000Z")),
-        ("bob".to_owned(), note("bob", "2026-02-01T00:00:00.000Z")),
+        (
+            "ada".to_owned(),
+            note("ada", "2026-01-01T00:00:00.000Z", &["Employee"]),
+        ),
+        (
+            "bob".to_owned(),
+            note("bob", "2026-02-01T00:00:00.000Z", &["person"]),
+        ),
         (
             "loose".to_owned(),
-            note("loose", "2026-01-01T00:00:00.000Z"),
+            note("loose", "2026-01-01T00:00:00.000Z", &[]),
         ),
-    ]);
-    let headers = HashMap::from([
-        ("ada".to_owned(), vec!["Employee".to_owned()]),
-        ("bob".to_owned(), vec!["person".to_owned()]),
     ]);
     let refs = [
         ("ada".to_owned(), "Company".to_owned()),
@@ -207,7 +210,7 @@ fn a_relation_group_is_labelled_by_its_inverse_else_the_tag_else_the_field() {
         ("bob".to_owned(), "Company".to_owned()),
         ("ghost".to_owned(), "Company".to_owned()),
     ];
-    let groups = linked_here::relation_groups("acme", &refs, &sources, &headers, &resolved, 5);
+    let groups = linked_here::relation_groups("acme", &refs, &sources, &resolved, 5);
     let shown: Vec<(&str, &str, Vec<&str>)> = groups
         .iter()
         .map(|group| match group {

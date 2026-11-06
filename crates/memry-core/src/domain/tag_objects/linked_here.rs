@@ -2,14 +2,16 @@
 //! links it, grouped by the field and the tag that defines it; each task whose field links it,
 //! grouped the same way; and the notes and journal days whose body wiki-links it.
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 use rusqlite::{Connection, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::domain::journal_ops::links::id_list;
 use crate::domain::notes::failed;
-use crate::domain::property_values::indexed_value;
+use crate::domain::property_values::{IndexedProperty, indexed_value};
+use crate::domain::search::LinkChanges;
 use crate::domain::tags::tag_key;
 use crate::sync::versioned;
 
@@ -71,6 +73,8 @@ pub struct Summary {
     /// ISO time.
     pub modified: String,
     pub snippet: Option<String>,
+    /// Its file's header tags, in their order.
+    pub header_tags: Vec<String>,
 }
 
 impl Summary {
@@ -167,13 +171,59 @@ pub fn incoming_refs(
     Ok(refs)
 }
 
+/// What writing `notes`' property rows changes in Linked here: each note whose relation values
+/// gain or lose a note, and those notes. Read before the rows are replaced, in their
+/// transaction, so the renderer is told once they are committed (`NoteLinksChangedEvent`).
+pub(crate) fn relation_changes(
+    index: &Connection,
+    notes: &[(&str, &[IndexedProperty])],
+) -> Result<LinkChanges, StorageError> {
+    let mut statement = index
+        .prepare(
+            "SELECT note_id, value, type FROM note_properties \
+             WHERE note_id IN (SELECT value FROM json_each(?1)) AND value LIKE '%memry://note/%'",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![id_list(notes.iter().map(|(id, _)| *id))?], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })
+        .map_err(failed)?;
+    let mut before: HashMap<String, BTreeSet<String>> = HashMap::new();
+    for row in rows {
+        let (id, text, type_name) = row.map_err(failed)?;
+        let value = indexed_value(text, &type_name);
+        let refs = note_refs(&value).into_iter().map(str::to_owned);
+        before.entry(id).or_default().extend(refs);
+    }
+    let mut changes = LinkChanges::default();
+    for (id, properties) in notes {
+        let after: BTreeSet<String> = properties
+            .iter()
+            .flat_map(|property| note_refs(&property.value))
+            .map(str::to_owned)
+            .collect();
+        let before = before.remove(*id).unwrap_or_default();
+        if before != after {
+            changes.sources.insert((*id).to_owned());
+            changes
+                .targets
+                .extend(before.symmetric_difference(&after).cloned());
+        }
+    }
+    Ok(changes)
+}
+
 /// The relation groups (`kind: 'relation'`): `refs` from [`incoming_refs`], `sources` the live
 /// notes among them that are not journal days, `headers` their files' header tags.
 pub fn relation_groups(
     note_id: &str,
     refs: &[(String, String)],
     sources: &HashMap<String, Summary>,
-    headers: &HashMap<String, Vec<String>>,
     resolved: &Resolved,
     limit: usize,
 ) -> Vec<LinkedGroup> {
@@ -182,8 +232,8 @@ pub fn relation_groups(
         let Some(note) = sources.get(source) else {
             continue;
         };
-        let header = headers.get(source).map(Vec::as_slice).unwrap_or_default();
-        let (tag, label) = field_owner(header, field, resolved, true).unwrap_or_default();
+        let (tag, label) =
+            field_owner(&note.header_tags, field, resolved, true).unwrap_or_default();
         match groups.iter_mut().find(|(t, f, ..)| *t == tag && f == field) {
             Some((.., notes)) => notes.push(note),
             None => {
@@ -240,10 +290,18 @@ pub fn tasks_mentioning(data: &Connection, note_id: &str) -> Result<Vec<TaskRow>
             eprintln!("memry-core: task {id} payload will not read; left out of Linked here");
             continue;
         };
+        let tags = match tags.map(|tags| serde_json::from_str(&tags)) {
+            Some(Ok(tags)) => tags,
+            Some(Err(error)) => {
+                eprintln!(
+                    "memry-core: task {id} tags will not read ({error}); no tag owns its fields"
+                );
+                Vec::new()
+            }
+            None => Vec::new(),
+        };
         tasks.push(TaskRow {
-            tags: tags
-                .and_then(|tags| serde_json::from_str(&tags).ok())
-                .unwrap_or_default(),
+            tags,
             fields: versioned::plain(payload.get("fields")),
             id,
             title,

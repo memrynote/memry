@@ -1,7 +1,8 @@
 //! Object reads for tags with fields (#3530 13j-3c) over a real session, tier, watcher and
 //! index task, the oracle being Electron's `tags/objects.test.ts`: the object search with its
 //! locale folding and root-tag groups, and what Linked here lists for a note (relation fields,
-//! task fields, wiki links), each group by the tag that defines its field.
+//! task fields, wiki links), each group by the tag that defines its field. Neither read settles
+//! a pulled property definition into `properties.md`: a keystroke writes no file.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -16,15 +17,19 @@ use index_support::until;
 use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::seams::secure_store::SecureStore;
+use memry_core::storage::repositories::sync_items::InboundRecord;
+use memry_core::sync::apply::apply_inbound;
 use memry_desktop::error::{CoreError, FailureKind};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::notes::property_definitions::PropertyDefinitions;
 use memry_desktop::tags::schema::Schemas;
 use memry_desktop::tags::schema::objects::{
     GetLinkedHereInput, LinkedHereGroupView, SearchObjectsInput,
 };
 use memry_desktop::tags::schema::view::{FieldType, NewFieldSpec, RelationView, TagSchemaCommand};
 use memry_desktop::vault::hash::content_hash;
+use memry_desktop::vault::properties_file::properties_path;
 use serde_json::{Value, json};
 use vault_env::{Env, env, indexed};
 
@@ -202,6 +207,7 @@ fn linked_here_lists_relation_fields_task_fields_and_wiki_links() {
         ("Acme.md", "---\ntags: [company]\n---\nAcme\n"),
         ("Ahmet.md", "---\ntags: [person]\n---\n"),
         ("journal/2026-01-02.md", "Met [[Acme]] today\n"),
+        ("journal/2026-01-03.md", "Quiet day\n"),
     ]);
     f.people();
     f.field("followup", "Waiting on", Some("company"));
@@ -215,6 +221,11 @@ fn linked_here_lists_relation_fields_task_fields_and_wiki_links() {
     f.outside(
         "Acme.md",
         &format!("---\ntags: [company]\nSelf: {company}\n---\nAcme [[Acme]]\n"),
+    );
+    // A journal day is no relation source, whatever its header holds.
+    f.outside(
+        "journal/2026-01-03.md",
+        &format!("---\ntags: [person]\nCompany: {company}\n---\nQuiet day\n"),
     );
 
     let open = f.e.session.current().unwrap();
@@ -254,6 +265,11 @@ fn linked_here_lists_relation_fields_task_fields_and_wiki_links() {
     };
     let ping = task("Ping Acme");
     let stale = task("Stale");
+    let archived = task("Archived");
+    tasks
+        .set_field_value(archived.clone(), "Waiting on".into(), Some(company.clone()))
+        .unwrap();
+    tasks.bulk_archive(vec![archived]).unwrap();
     tasks
         .set_field_value(ping.clone(), "Waiting on".into(), Some(company.clone()))
         .unwrap();
@@ -298,7 +314,8 @@ fn linked_here_lists_relation_fields_task_fields_and_wiki_links() {
                 "items": [{"noteId": day, "title": "2026-01-02", "date": "2026-01-02", "snippet": "Met Acme today"}],
             },
         ]),
-        "the self link, the self property and the cleared task field are left out"
+        "the self link, the self property, the day's property, the cleared task field and the \
+         archived task are left out"
     );
 
     f.run(TagSchemaCommand::SetRelation {
@@ -317,6 +334,36 @@ fn linked_here_lists_relation_fields_task_fields_and_wiki_links() {
         "the inverse labels the group"
     );
     assert!(f.linked_here(&ahmet).is_empty());
+    f.e.close();
+}
+
+#[test]
+fn object_reads_leave_a_pulled_definition_out_of_the_file() {
+    let mut f = opened(&[("Acme.md", "---\ntags: [company]\n---\nAcme\n")]);
+    f.people();
+    let file = || std::fs::read_to_string(properties_path(&f.e.vault)).ok();
+    let before = file();
+    let record = InboundRecord {
+        item_type: "property_definition".into(),
+        item_id: "Area".into(),
+        payload_json: json!({"name": "Area", "type": "text", "clock": {"peer": 1}}).to_string(),
+        server_cursor: Some(1),
+        signer_device_id: Some("peer".into()),
+        updated_at: 1,
+        deleted_at: None,
+    };
+    let open = f.e.session.current().unwrap();
+    open.vault
+        .db_handle()
+        .call_blocking(move |c| apply_inbound(c, &record, 1))
+        .unwrap();
+
+    f.search("acme", None);
+    f.linked_here(&f.id_at("Acme.md"));
+    assert_eq!(file(), before, "an object read writes no file");
+    let definitions = PropertyDefinitions::open(&open, f.store.clone()).unwrap();
+    definitions.list().unwrap();
+    assert_ne!(file(), before, "the pull was staged for the next list");
     f.e.close();
 }
 
