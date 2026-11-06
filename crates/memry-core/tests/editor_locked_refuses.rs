@@ -34,7 +34,7 @@ fn a_locked_note_opens_read_only_and_refuses_an_edit_before_anything_is_written(
     let heard = Arc::new(Mutex::new(0));
     let count = Arc::clone(&heard);
     f.editor
-        .subscribe(&note, move |_, _| *count.lock().unwrap() += 1);
+        .subscribe(&note, move |_| *count.lock().unwrap() += 1);
 
     let refused = window.type_text(" after");
     assert_eq!(

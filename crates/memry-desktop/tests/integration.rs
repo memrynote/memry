@@ -94,12 +94,20 @@ mod journal_rename;
 mod journal_service;
 #[path = "journal_update.rs"]
 mod journal_update;
+#[path = "large_file_index.rs"]
+mod large_file_index;
+#[path = "large_file_search.rs"]
+mod large_file_search;
+#[path = "large_file_sessions.rs"]
+mod large_file_sessions;
 #[path = "logship.rs"]
 mod logship;
 #[path = "move_dir.rs"]
 mod move_dir;
 #[path = "move_journal.rs"]
 mod move_journal;
+#[path = "note_fold_text_vectors.rs"]
+mod note_fold_text_vectors;
 #[path = "note_link_mention.rs"]
 mod note_link_mention;
 #[path = "note_links.rs"]
@@ -182,6 +190,10 @@ mod seams_transport;
 mod settings_service;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
+#[path = "tag_impact.rs"]
+mod tag_impact;
+#[path = "tag_objects.rs"]
+mod tag_objects;
 #[path = "tag_schema.rs"]
 mod tag_schema;
 #[path = "tags.rs"]

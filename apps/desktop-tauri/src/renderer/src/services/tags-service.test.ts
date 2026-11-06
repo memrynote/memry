@@ -4,6 +4,9 @@ import { createMockApi } from '@tests/setup-dom'
 const commands = vi.hoisted(() => ({
   tagsGetSchemaSnapshot: vi.fn(),
   tagsEditSchema: vi.fn(),
+  tagsPreviewImpact: vi.fn(),
+  tagsSearchObjects: vi.fn(),
+  tagsGetLinkedHere: vi.fn(),
   tagsGetAllWithCounts: vi.fn(),
   tagsGetNotesByTag: vi.fn(),
   tagsUpdateColor: vi.fn(),
@@ -157,7 +160,7 @@ describe('tags-service', () => {
     await expect(tagsService.listCategories()).resolves.toEqual({ success: false, error: 'disk' })
   })
 
-  it('reads and edits tag schemas through the commands, a field rename still on window.api', async () => {
+  it('reads, edits and previews tag schemas through the commands, a field rename still on window.api', async () => {
     const snapshot = { tags: {}, objects: {}, presets: [], presetStripDismissed: false }
     commands.tagsGetSchemaSnapshot.mockResolvedValue(snapshot)
     expect(await tagsService.getSchemaSnapshot()).toBe(snapshot)
@@ -175,6 +178,19 @@ describe('tags-service', () => {
     expect(api.tags.editSchema).toHaveBeenCalledWith(rename)
     expect(commands.tagsEditSchema).toHaveBeenCalledTimes(2)
 
+    const query = { kind: 'delete-tag' as const, tag: 'person' }
+    const impact = {
+      kind: 'delete-tag',
+      notes: 3,
+      tasks: 0,
+      values: 2,
+      fields: 2,
+      templateName: null
+    }
+    commands.tagsPreviewImpact.mockResolvedValue(impact)
+    expect(await tagsService.previewImpact(query)).toBe(impact)
+    expect(commands.tagsPreviewImpact).toHaveBeenCalledWith(query)
+
     const changed = vi.fn()
     const stop = onPropertyDefinitionChanged(changed)
     await vi.waitFor(() => expect(listeners.has('definitions')).toBe(true))
@@ -182,6 +198,27 @@ describe('tags-service', () => {
     expect(changed).toHaveBeenCalledWith({ name: 'Role' })
     stop()
     await vi.waitFor(() => expect(listeners.has('definitions')).toBe(false))
+  })
+
+  it('searches objects and reads Linked here through the commands, never window.api', async () => {
+    api.tags.searchObjects = vi.fn()
+    api.tags.getLinkedHere = vi.fn()
+    const matches = { matches: [], complete: true }
+    commands.tagsSearchObjects.mockResolvedValue(matches)
+    const input = { query: 'ada', tag: 'person', limit: 8 }
+    expect(await tagsService.searchObjects(input)).toBe(matches)
+    expect(commands.tagsSearchObjects).toHaveBeenCalledWith(input)
+
+    const linked = { groups: [{ kind: 'mentions', total: 0, items: [] }] }
+    commands.tagsGetLinkedHere.mockResolvedValue(linked)
+    expect(await tagsService.getLinkedHere({ noteId: 'n1', limitPerGroup: 2 })).toBe(linked)
+    expect(commands.tagsGetLinkedHere).toHaveBeenCalledWith({ noteId: 'n1', limitPerGroup: 2 })
+    commands.tagsGetLinkedHere.mockRejectedValue({ kind: 'Invalid', code: 'x', message: 'bad' })
+    await expect(tagsService.getLinkedHere({ noteId: '' })).rejects.toMatchObject({
+      message: 'bad'
+    })
+    expect(api.tags.searchObjects).not.toHaveBeenCalled()
+    expect(api.tags.getLinkedHere).not.toHaveBeenCalled()
   })
 
   it('pins and unpins through the commands, a failure answering its message', async () => {

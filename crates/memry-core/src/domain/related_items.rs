@@ -213,7 +213,7 @@ fn resolve_note(conn: &Connection, id: &str) -> Result<LinkState, StorageError> 
 }
 
 /// Desktop's `dateFromJournalId`: `/^j\d{4}-\d{2}-\d{2}$/`, ASCII digits.
-fn date_from_journal_id(id: &str) -> Option<&str> {
+pub fn date_from_journal_id(id: &str) -> Option<&str> {
     let date = id.strip_prefix('j')?;
     let shaped = date.len() == 10
         && date.bytes().enumerate().all(|(index, byte)| match index {

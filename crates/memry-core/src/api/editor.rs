@@ -7,8 +7,20 @@
 //! here as a Yjs update, and [`Editor::apply_update`] stores it, queues it for
 //! the other devices and applies it to the resident document, then hands it to
 //! every listener of that document with its [`Origin`], so the other windows
-//! catch up. Writers that commit body bytes elsewhere (a sync merge, a fed
-//! outside edit) pass them to [`Editor::absorb`] after their commit.
+//! catch up.
+//!
+//! **Every other writer of the body log reaches the resident documents** (14c-1):
+//! a sync merge, a delete's purge, an outside edit fed from the file, a note or
+//! journal command. The editor observes its vault's database
+//! ([`crate::crdt::body_writes`]); after any write closure that wrote a resident
+//! or held document's log, it reads the rows that closure wrote back from the
+//! committed log by key, applies them and hands each that added something to
+//! the listeners with the writer's [`Origin`] (`catch_up.rs`). A write that
+//! rolled back adds nothing. A log that moved to a new epoch was purged: the
+//! document goes, its holders are stale until they open it again, and the
+//! listeners hear [`Notice::Purged`] ([`Editor::purge`]). The editor's own
+//! writes run untold: it fans them out itself, and it holds the resident set
+//! while it writes.
 //!
 //! **Durable before acknowledged** (FR-030, data-model §A.2): the update row and
 //! its outbox row commit in one transaction, and [`Applied`] and the fan-out
@@ -28,13 +40,21 @@
 //! waited forever in the document's pending set. Holding the lock through the
 //! commit also keeps a reader from seeing an edit whose commit then fails.
 //!
+//! A resident document authors one write of its own, under the writer right
+//! after its replay, so it holds every committed update: the repair of blocks
+//! without an id (`repairEmptyBlockIds`), stored with its outbox row
+//! (`Editor::load`).
+//!
 //! The host has no threads and no clock of its own: the shell calls
 //! [`Editor::sweep`] on its timer. Every method blocks on the vault's writer
 //! connection; the shell runs them in `spawn_blocking`. Locks are taken in one
 //! order, the resident set and then the writer, and no lock is held while a
 //! listener runs. A listener that panics is caught and reported on stderr, so
 //! the caller still gets its answer for a durable edit and the other listeners
-//! still run.
+//! still run. Listeners run on the caller's thread: [`Editor::apply_update`]'s,
+//! any core writer's after its writer is released, and [`Editor::open`]'s,
+//! [`Editor::state_vector`]'s and [`Editor::state_diff`]'s when a load repaired
+//! the document. A shell never holds a lock a listener takes across these.
 
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -48,40 +68,22 @@ use crate::api::errors::{AuthError, StorageError};
 use crate::api::tasks_write::now_ms;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
-use crate::crdt::registry::Document;
+use crate::crdt::registry::{Document, UpdateSink};
 use crate::crdt::resident::{EDITOR_LIFECYCLE, Resident};
-use crate::crdt::{epoch, update_log};
+use crate::crdt::{BODY_FRAGMENT, epoch, update_log};
 use crate::crypto::keys;
+use crate::domain::body_write::append_in;
 use crate::domain::notes::journal_day::body_owner;
 use crate::domain::vault_locks;
+use crate::markdown::convert::api::Converter;
+use crate::markdown::schema::callout_types::CalloutTypes;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
 use crate::sync::{body_debt, outbox};
 
-/// Where an update came from, for the windows it reaches.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Origin {
-    /// A window's edit; the holder is the window that sent it, which the shell
-    /// does not send it back to.
-    Local(String),
-    /// Merged from the server.
-    Remote,
-    /// An edit made to the vault file outside the app.
-    External,
-    /// Written by the app itself (seed, repair, restore).
-    System,
-}
+pub use crate::crdt::body_writes::Origin;
 
-impl Origin {
-    fn kind(&self) -> &'static str {
-        match self {
-            Self::Local(_) => "local",
-            Self::Remote => "remote",
-            Self::External => "external",
-            Self::System => "system",
-        }
-    }
-}
+mod catch_up;
 
 /// What a window receives when it opens a document.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -126,6 +128,10 @@ pub enum EditorError {
     /// The note is locked: the edit was refused before anything was written.
     #[error("{note_id} is locked")]
     Locked { note_id: String },
+    /// The window's copy is of a document since purged (a delete applied): it
+    /// opens the document again before it edits. Nothing was written.
+    #[error("{note_id} was deleted since this window opened it")]
+    Purged { note_id: String },
     #[error(transparent)]
     Crdt(#[from] CrdtError),
 }
@@ -136,8 +142,20 @@ impl From<StorageError> for EditorError {
     }
 }
 
-/// Called with each update a document took, after its commit.
-pub type Listener = Arc<dyn Fn(&[u8], &Origin) + Send + Sync>;
+/// What a document's listener hears, after the commit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Notice<'a> {
+    /// An update the document took, and where it came from.
+    Update(&'a [u8], &'a Origin),
+    /// The document's body was purged (a delete applied): a window drops its
+    /// copy and opens the document again. Its edits are refused
+    /// ([`EditorError::Purged`]), and while every holder is stale no update
+    /// of the new document is sent, until one opens it.
+    Purged,
+}
+
+/// Called with each [`Notice`] of a document.
+pub type Listener = Arc<dyn Fn(Notice<'_>) + Send + Sync>;
 
 /// Names a listener for [`Editor::unsubscribe`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -183,13 +201,16 @@ impl Editor {
     /// document once however often it opens it.
     pub fn open(&self, note_id: &str, holder: &str) -> Result<Opened, EditorError> {
         let now = now_ms();
+        let mut repaired = None;
         let mut resident = self.resident();
-        self.on_writer(|conn| {
+        let opened = self.on_writer(|conn| {
             if body_owner(conn, note_id)?.is_none() {
                 return Err(not_found(note_id));
             }
             let held = resident
-                .hold(note_id, holder, now, || self.load(conn, note_id))?
+                .hold(note_id, holder, now, || {
+                    self.load(conn, note_id, &mut repaired)
+                })?
                 .ok_or_else(|| unreadable(note_id))?;
             let document = &held.document;
             let opened = (|| {
@@ -201,11 +222,18 @@ impl Editor {
                         .then_some(ReadOnly::Locked),
                 })
             })();
-            if opened.is_err() && held.added {
-                resident.release(note_id, holder, now);
+            match &opened {
+                Ok(_) => resident.reopened(note_id, holder),
+                Err(_) if held.added => {
+                    resident.release(note_id, holder, now);
+                }
+                Err(_) => {}
             }
             opened
-        })
+        });
+        drop(resident);
+        self.tell_repair(note_id, repaired);
+        opened
     }
 
     /// Stores `update`, a window's edit, queues it for the other devices,
@@ -221,8 +249,14 @@ impl Editor {
         holder: &str,
     ) -> Result<Option<Applied>, EditorError> {
         let now = now_ms();
+        let mut repaired = None;
         let applied = {
             let mut resident = self.resident();
+            if resident.is_stale(note_id, holder) {
+                return Err(EditorError::Purged {
+                    note_id: note_id.to_owned(),
+                });
+            }
             self.on_writer(|conn| {
                 let owner = body_owner(conn, note_id)?.ok_or_else(|| not_found(note_id))?;
                 if vault_locks::is_note_locked(conn, note_id, None)? {
@@ -231,8 +265,17 @@ impl Editor {
                     });
                 }
                 let document = resident
-                    .borrow(note_id, now, || self.load(conn, note_id))?
+                    .borrow(note_id, now, || self.load(conn, note_id, &mut repaired))?
                     .ok_or_else(|| unreadable(note_id))?;
+                // A purge that committed while this edit waited for the writer,
+                // before its observer fenced the holders: the edit is of the
+                // deleted body (chapter 07 §7.15).
+                if document.client_id() != epoch::client_id(conn, &self.device_id, note_id)? {
+                    resident.purge(note_id);
+                    return Err(EditorError::Purged {
+                        note_id: note_id.to_owned(),
+                    });
+                }
                 // Durable origin: the rows below hold these bytes, so the
                 // document's own sink must not report them a second time.
                 let changed = document
@@ -254,32 +297,26 @@ impl Editor {
                     resident.invalidate(note_id);
                 }
                 stored.map(Some)
-            })?
+            })
         };
+        self.tell_repair(note_id, repaired);
+        let applied = applied?;
         if applied.is_some() {
-            self.fan_out(note_id, update, &Origin::Local(holder.to_owned()));
+            let origin = Origin::Local(holder.to_owned());
+            self.fan_out(note_id, Notice::Update(update, &origin));
         }
         Ok(applied)
     }
 
-    /// Bytes another writer already committed to `note_id`'s log: applied to
-    /// the resident document, when there is one, and handed to the listeners.
-    /// A document not in memory takes them from the log when it loads. Call it
-    /// after the commit, with the writer connection released: it takes the
-    /// resident set, and [`Editor::apply_update`] holds that while it waits for
-    /// the writer.
-    pub fn absorb(&self, note_id: &str, update: &[u8], origin: Origin) -> Result<(), EditorError> {
-        {
-            let mut resident = self.resident();
-            if let Some(document) = resident.peek(note_id)
-                && let Err(error) = document.apply_durable_update(update)
-            {
-                resident.invalidate(note_id);
-                return Err(error.into());
-            }
-        }
-        self.fan_out(note_id, update, &origin);
-        Ok(())
+    /// `note_id`'s body was purged (a delete applied, chapter 07 §7.15): the
+    /// resident copy goes, a log that did not replay may be tried again, and
+    /// the listeners hear [`Notice::Purged`]. A day deleted and written again is
+    /// a new document under the old id, which the next open replays. Until a
+    /// holder opens it again, [`Editor::apply_update`] refuses its edits
+    /// ([`EditorError::Purged`]): they are edits of the deleted body.
+    pub fn purge(&self, note_id: &str) {
+        self.resident().purge(note_id);
+        self.fan_out(note_id, Notice::Purged);
     }
 
     /// The document's state vector, for the sync-step handshake.
@@ -324,11 +361,11 @@ impl Editor {
         self.resident().held_ids()
     }
 
-    /// Calls `listener` with every update `note_id` takes, after its commit.
+    /// Calls `listener` with every [`Notice`] of `note_id`, after its commit.
     pub fn subscribe(
         &self,
         note_id: &str,
-        listener: impl Fn(&[u8], &Origin) + Send + Sync + 'static,
+        listener: impl Fn(Notice<'_>) + Send + Sync + 'static,
     ) -> ListenerId {
         let mut listeners = self.listeners();
         listeners.next += 1;
@@ -354,7 +391,7 @@ impl Editor {
         found
     }
 
-    fn fan_out(&self, note_id: &str, update: &[u8], origin: &Origin) {
+    fn fan_out(&self, note_id: &str, notice: Notice<'_>) {
         let listeners: Vec<Listener> = self
             .listeners()
             .by_doc
@@ -362,11 +399,12 @@ impl Editor {
             .map(|list| list.iter().map(|(_, f)| Arc::clone(f)).collect())
             .unwrap_or_default();
         for listener in listeners {
-            if catch_unwind(AssertUnwindSafe(|| listener(update, origin))).is_err() {
-                eprintln!(
-                    "memry editor: a listener of {note_id} panicked on a {} update",
-                    origin.kind()
-                );
+            if catch_unwind(AssertUnwindSafe(|| listener(notice))).is_err() {
+                let what = match notice {
+                    Notice::Update(_, origin) => origin.kind(),
+                    Notice::Purged => "purge",
+                };
+                eprintln!("memry editor: a listener of {note_id} panicked on a {what} notice");
             }
         }
     }
@@ -379,29 +417,83 @@ impl Editor {
         read: impl FnOnce(&Document) -> Result<T, CrdtError>,
     ) -> Result<T, EditorError> {
         let now = now_ms();
+        let mut repaired = None;
         let mut resident = self.resident();
         let document = self.on_writer(|conn| {
             resident
-                .borrow(note_id, now, || self.load(conn, note_id))?
+                .borrow(note_id, now, || self.load(conn, note_id, &mut repaired))?
                 .ok_or_else(|| unreadable(note_id))
-        })?;
+        });
         // The writer is free again; the resident lock is still held.
-        let read = read(&document)?;
+        let read = document.and_then(|document| Ok(read(&document)?));
         drop(resident);
-        Ok(read)
+        self.tell_repair(note_id, repaired);
+        read
     }
 
-    /// `note_id` replayed from its log. Nothing authors through a resident
-    /// document: every byte it takes is already in the log, so its sink is empty.
-    fn load(&self, conn: &Connection, note_id: &str) -> Result<Arc<Document>, CrdtError> {
-        epoch::open_for_write(conn, &self.device_id, note_id, Arc::new(|_, _| {}))
+    /// `note_id` replayed from its log, its blocks without an id repaired
+    /// (`repairEmptyBlockIds`: the editor crashes on mount without one). The
+    /// repair is stored with its outbox row before the document is kept, and
+    /// handed back in `repaired` for the listeners. It runs under the writer
+    /// right after the replay, so its clock follows every committed update of
+    /// this device. Nothing else authors through a resident document.
+    fn load(
+        &self,
+        conn: &Connection,
+        note_id: &str,
+        repaired: &mut Option<Vec<u8>>,
+    ) -> Result<Arc<Document>, CrdtError> {
+        // One-shot: taken after the repair, so a later authored write would
+        // be reported, never collected and silently left unstored.
+        let authored: Arc<Mutex<Option<Vec<Vec<u8>>>>> = Arc::new(Mutex::new(Some(Vec::new())));
+        let sink: UpdateSink = {
+            let authored = Arc::clone(&authored);
+            Arc::new(move |doc_id, bytes: &[u8]| {
+                let mut authored = authored.lock().unwrap_or_else(PoisonError::into_inner);
+                match authored.as_mut() {
+                    Some(updates) => updates.push(bytes.to_vec()),
+                    None => {
+                        debug_assert!(false, "a resident document authored past its load");
+                        eprintln!("memry editor: {doc_id} authored past its load; not stored");
+                    }
+                }
+            })
+        };
+        let document = epoch::open_for_write(conn, &self.device_id, note_id, sink)?;
+        Converter::new(CalloutTypes::default()).repair_empty_block_ids(&document, BODY_FRAGMENT);
+        let taken = authored
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+        let Some(update) = taken.and_then(|mut updates| updates.pop()) else {
+            return Ok(document);
+        };
+        let owner = body_owner(conn, note_id)?.ok_or_else(|| CrdtError::Storage {
+            source: StorageError::Failed {
+                what: format!("no live note or journal day {note_id} to repair"),
+            },
+        })?;
+        let tx = conn.unchecked_transaction().map_err(storage_crdt)?;
+        append_in(&tx, owner.item_type, note_id, &update, now_ms())?;
+        tx.commit().map_err(storage_crdt)?;
+        *repaired = Some(update);
+        Ok(document)
     }
 
+    /// Hands a repair made while loading `note_id` to its listeners.
+    fn tell_repair(&self, note_id: &str, repaired: Option<Vec<u8>>) {
+        if let Some(update) = repaired {
+            self.fan_out(note_id, Notice::Update(&update, &Origin::System));
+        }
+    }
+
+    /// The writer, untold: the editor fans its own writes out, and it holds
+    /// the resident set here, which hearing of a write takes.
     fn on_writer<T>(
         &self,
         f: impl FnOnce(&mut Connection) -> Result<T, EditorError>,
     ) -> Result<T, EditorError> {
-        self.db.call_blocking(|conn| Ok(f(conn)))?
+        self.db.call_blocking_untold(|conn| Ok(f(conn)))?
     }
 
     fn resident(&self) -> MutexGuard<'_, Resident> {
@@ -427,9 +519,13 @@ fn unreadable(note_id: &str) -> EditorError {
     }
 }
 
-fn storage(error: rusqlite::Error) -> EditorError {
+fn storage_crdt(error: rusqlite::Error) -> CrdtError {
     StorageError::Failed {
         what: error.to_string(),
     }
     .into()
+}
+
+fn storage(error: rusqlite::Error) -> EditorError {
+    storage_crdt(error).into()
 }

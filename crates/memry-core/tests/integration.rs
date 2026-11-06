@@ -188,6 +188,8 @@ mod domain_templates;
 mod dryoc_parity;
 #[path = "editor_concurrency.rs"]
 mod editor_concurrency;
+#[path = "editor_every_writer.rs"]
+mod editor_every_writer;
 #[path = "editor_locked_refuses.rs"]
 mod editor_locked_refuses;
 #[path = "editor_open_apply.rs"]
@@ -198,6 +200,8 @@ mod editor_origin_fanout;
 mod external_feed;
 #[path = "field_merge_vectors.rs"]
 mod field_merge_vectors;
+#[path = "fold_chunks_store.rs"]
+mod fold_chunks_store;
 #[path = "header_tags.rs"]
 mod header_tags;
 #[path = "header_tags_untrusted.rs"]
@@ -340,6 +344,8 @@ mod sync_realtime_run;
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
 mod tag_fold_vectors;
+#[path = "tag_objects.rs"]
+mod tag_objects;
 #[path = "tag_pins.rs"]
 mod tag_pins;
 #[path = "tag_reads.rs"]

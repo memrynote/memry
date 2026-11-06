@@ -202,14 +202,15 @@ impl Indexer {
 
     /// Reads and measures `notes` in batches of at most [`BATCH`] files and [`BATCH_BYTES`],
     /// then brings the search index up to date when `links` is owed, and hands `announce` the
-    /// links it changed once they are committed. `progress` gets `built`
+    /// links it changed once they are committed, with the relation values `links` holds: those
+    /// written since the last announce, this pass's and [`Self::measure_now`]'s. `progress` gets `built`
     /// of `total` first, after each batch and at the end, and none once `stop` is set; `stop`
     /// ends the pass between files and inside the search reindex.
     pub(super) fn pass(
         &self,
         mut notes: Vec<Unindexed>,
         typing: Typing,
-        links: &mut bool,
+        links: &mut Option<LinkChanges>,
         stop: &dyn Fn() -> bool,
         progress: &mut dyn FnMut(IndexProgress),
         announce: &dyn Fn(LinkChanges),
@@ -227,7 +228,9 @@ impl Indexer {
             learned: false,
         };
         // Owed before the first write: a pass that ends early leaves it owed.
-        *links |= total > 0;
+        if total > 0 {
+            links.get_or_insert_default();
+        }
         // No step once the vault is closing, the total included (`indexVault` after a cancel).
         let mut progress = |step| {
             if !stop() {
@@ -263,13 +266,13 @@ impl Indexer {
                     Read::Failed => pass.unread.push(note.note_id),
                 }
                 if batch.len() >= BATCH || bytes >= BATCH_BYTES {
-                    self.write(&mut pass, std::mem::take(&mut batch))?;
+                    self.write(&mut pass, links, std::mem::take(&mut batch))?;
                     bytes = 0;
                     progress(built(&pass, total));
                 }
             }
             if !batch.is_empty() {
-                self.write(&mut pass, batch)?;
+                self.write(&mut pass, links, batch)?;
             }
             Ok(())
         };
@@ -283,10 +286,10 @@ impl Indexer {
         large.extend(pass.unread.iter().cloned());
         self.search.forget_note_properties(large)?;
         progress(built(&pass, total));
-        if *links {
+        if links.is_some() {
             match self.search.reindex_until(stop)? {
-                Some(changed) => {
-                    *links = false;
+                Some(mut changed) => {
+                    changed.extend(links.take().unwrap_or_default());
                     if !changed.is_empty() {
                         announce(changed);
                     }
@@ -303,17 +306,29 @@ impl Indexer {
         Ok(pass)
     }
 
-    fn write(&self, pass: &mut Pass, batch: Vec<MeasuredFile>) -> Result<(), IndexError> {
+    fn write(
+        &self,
+        pass: &mut Pass,
+        links: &mut Option<LinkChanges>,
+        batch: Vec<MeasuredFile>,
+    ) -> Result<(), IndexError> {
         let ids: Vec<String> = batch.iter().map(|file| file.note_id.clone()).collect();
-        pass.done.indexed += self.search.index_note_files(batch)?;
+        let refs = self.search.index_note_files(batch)?;
+        links.get_or_insert_default().extend(refs);
+        pass.done.indexed += ids.len();
         pass.written.extend(ids);
         Ok(())
     }
 
     /// The note's file measured into its row, outside a pass; `false` when it has no markdown
     /// file, is in the large-file class or did not read. It learns no definition: the write's
-    /// own fact queues the note for a pass, which does.
-    pub(super) fn measure_now(&self, note_id: &str) -> Result<bool, IndexError> {
+    /// own fact queues the note for a pass, which does. The relation values it wrote join
+    /// `refs`, which the next pass announces with its links.
+    pub(super) fn measure_now(
+        &self,
+        note_id: &str,
+        refs: &mut LinkChanges,
+    ) -> Result<bool, IndexError> {
         let queued = BTreeSet::from([note_id.to_owned()]);
         let Some(note) = self.listed(false, &queued, &mut Typing::none())?.pop() else {
             return Ok(false);
@@ -326,7 +341,10 @@ impl Indexer {
             }
         };
         match self.read(&note, &types) {
-            Read::File(file) => Ok(self.search.index_note_files(vec![file])? > 0),
+            Read::File(file) => {
+                refs.extend(self.search.index_note_files(vec![file])?);
+                Ok(true)
+            }
             Read::Large | Read::Failed => {
                 self.search.forget_note_properties(vec![note.note_id])?;
                 Ok(false)

@@ -212,9 +212,13 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   }
 
   return (
+    // A definite height, so the rows' own box is what scrolls. Inside the note page, which
+    // grows with its content, `h-full` resolved to the rows' whole height: the virtualizer then
+    // saw every row as on screen and mounted all of them (110 000 rows of a 2 GB file held the
+    // webview at 4 GB).
     <div
       data-testid="large-file-viewer"
-      className={cn('relative flex h-full min-h-[60vh] flex-col', className)}
+      className={cn('relative flex h-[80vh] min-h-[60vh] flex-col', className)}
     >
       {canFind && (
         <FindBar

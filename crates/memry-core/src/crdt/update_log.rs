@@ -26,12 +26,14 @@
 //!   and callers cannot pass one.
 //!
 //! Nothing here decodes an update. The blobs are opaque bytes to this module;
-//! [`super::registry`] is the only place that knows what they mean.
+//! [`super::registry`] is the only place that knows what they mean. Every write
+//! is [`body_writes::noted`], so the desktop editor host hears of it.
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 
+use super::body_writes::{self, LogRow, Wrote};
 use super::errors::CrdtError;
 
 /// The prefix that separates the local sequence space from the server's.
@@ -143,6 +145,7 @@ pub fn append_server_update(
         ],
     )
     .map_err(failed("append a server update"))?;
+    body_writes::noted(doc_id, Wrote::Row(LogRow::Server(sequence_num)));
     Ok(())
 }
 
@@ -194,6 +197,7 @@ pub fn append_local_update_in(
         params![row_id, next, update_blob, created_at],
     )
     .map_err(failed("append a local update"))?;
+    body_writes::noted(doc_id, Wrote::Row(LogRow::Local(next)));
     Ok(next)
 }
 
@@ -299,6 +303,7 @@ pub fn put_server_snapshot(
         ],
     )
     .map_err(failed("store a server snapshot"))?;
+    body_writes::noted(doc_id, Wrote::Row(LogRow::ServerSnapshot));
     Ok(())
 }
 
@@ -422,6 +427,7 @@ pub fn purge_in(conn: &Connection, doc_id: &str) -> Result<usize, CrdtError> {
         params![doc_id],
     )
     .map_err(failed("reset the body cursor"))?;
+    body_writes::noted(doc_id, Wrote::Purge);
     Ok(removed)
 }
 

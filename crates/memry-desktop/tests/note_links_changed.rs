@@ -8,6 +8,8 @@
 //! - A link to a note that does not exist yet, then the note: the link resolves to it, and the
 //!   new note is announced as a target.
 //! - An edit that changes no link announces nothing.
+//! - A relation value an outside edit adds, then removes: announced with the note it links once
+//!   its property rows read back, so Linked here on that note refetches what the edit wrote.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -22,6 +24,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use index_support::until;
+use memry_core::api::search::Search;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::{LinkChanges, NoteIndex};
 use memry_desktop::notes::links::NoteLinks;
@@ -145,6 +148,82 @@ fn the_links_an_edit_changed_are_announced_once_they_read_back() {
     assert!(changes.targets.contains(&ghost), "{changes:?}");
     assert_eq!(seen[&ghost], ["Early"]);
     drop(links);
+    *reader.lock().unwrap() = None;
+    e.close();
+}
+
+#[test]
+fn a_relation_value_an_edit_changed_is_announced_once_it_reads_back() {
+    let mut e = env(|s| Some(NotesIdentity::new(s)));
+    e.write("Acme.md", "# Acme\n");
+    e.write("Ahmet.md", "---\ntags: [person]\n---\nAhmet\n");
+    let reader: Arc<Mutex<Option<Arc<Search>>>> = Arc::default();
+    let (tell, heard) = mpsc::channel::<Announced>();
+    let tell = Mutex::new(tell);
+    let slot = reader.clone();
+    let index = NoteIndex::new(
+        e.tier.clone(),
+        |_| {},
+        move |changes: LinkChanges| {
+            // Each source's property values naming a target, as Linked here reads them.
+            let seen = slot.lock().unwrap().as_ref().map(|search| {
+                changes
+                    .targets
+                    .iter()
+                    .map(|id| {
+                        let uri = format!("memry://note/{id}");
+                        let naming = changes
+                            .sources
+                            .iter()
+                            .filter(|source| {
+                                let rows = search.note_properties(source).unwrap();
+                                rows.iter().any(|row| {
+                                    row.text.as_deref().is_some_and(|t| t.contains(&uri))
+                                })
+                            })
+                            .cloned()
+                            .collect();
+                        (id.clone(), naming)
+                    })
+                    .collect()
+            });
+            let _ = tell
+                .lock()
+                .unwrap()
+                .send((changes, seen.unwrap_or_default()));
+        },
+        |_| {},
+    );
+    index.register(&e.session);
+    e.open();
+    e.facts_until(indexed);
+    let id_at = |path: &str| -> String {
+        e.rows()
+            .into_iter()
+            .find(|(_, p)| p == path)
+            .unwrap_or_else(|| panic!("no row at {path}"))
+            .0
+    };
+    let (acme, ahmet) = (id_at("Acme.md"), id_at("Ahmet.md"));
+    let search = e.session.current().unwrap().search;
+    until("the open's files measured", || {
+        search.note_stats(&ahmet).unwrap().is_some()
+    });
+    *reader.lock().unwrap() = Some(search);
+
+    let linked = format!("---\ntags: [person]\nCompany: [\"memry://note/{acme}\"]\n---\nAhmet\n");
+    e.write("Ahmet.md", &linked);
+    let ((changes, seen), _) = announced_for(&heard, &ahmet);
+    assert!(changes.targets.contains(&acme), "{changes:?}");
+    assert_eq!(seen[&acme], std::slice::from_ref(&ahmet));
+
+    e.write("Ahmet.md", "---\ntags: [person]\n---\nAhmet again\n");
+    let ((changes, seen), _) = announced_for(&heard, &ahmet);
+    assert!(changes.targets.contains(&acme), "{changes:?}");
+    assert!(
+        seen[&acme].is_empty(),
+        "the value is gone when it is announced"
+    );
     *reader.lock().unwrap() = None;
     e.close();
 }

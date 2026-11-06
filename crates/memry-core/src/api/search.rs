@@ -39,6 +39,9 @@ use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
 
+// Desktop folds notes; iOS links none of it.
+#[cfg(feature = "markdown")]
+mod fold;
 #[cfg(feature = "markdown")]
 mod objects;
 #[cfg(feature = "markdown")]
@@ -242,8 +245,9 @@ impl Search {
 impl Search {
     /// Measures each file on the caller's thread, then stores the rows in one transaction:
     /// the index writer is not held while a large file is measured. Each row takes the
-    /// journal day of its record ([`journal_day::file_date`]).
-    pub fn index_note_files(&self, files: Vec<MeasuredFile>) -> Result<usize, StorageError> {
+    /// journal day of its record ([`journal_day::file_date`]). Returns the notes whose relation
+    /// values gained or lost a note, and those notes ([`note_stats::write`]).
+    pub fn index_note_files(&self, files: Vec<MeasuredFile>) -> Result<LinkChanges, StorageError> {
         let ids: Vec<String> = files.iter().map(|file| file.note_id.clone()).collect();
         let dates = self.data.read_blocking(move |data| {
             ids.iter()
