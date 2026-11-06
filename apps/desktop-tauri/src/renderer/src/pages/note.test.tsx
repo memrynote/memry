@@ -1827,10 +1827,11 @@ describe('NotePage', () => {
       )
     })
     const saveStarted = async () => {
-      renderWithProviders(<NotePage noteId="note-1" />)
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
       expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
       act(() => mocks.onMarkdownChange?.('Typed'))
       await waitFor(() => expect(mocks.updateNote).toHaveBeenCalled(), { timeout: 3000 })
+      return page
     }
     const event = (content: string) =>
       act(() => {
@@ -2012,7 +2013,127 @@ describe('NotePage', () => {
       expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
     })
 
-    it("reads nothing for the save's own echo, and tells nothing for the save before", async () => {
+    it('takes an outside revert to the text from before the save', async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Original body' })
+      await saveStarted()
+
+      event('Typed')
+      event('Original body')
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+
+      await waitFor(() =>
+        expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+      )
+      expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Original body')
+      expect(toast).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      ['with', true],
+      ['without', false]
+    ])(
+      'keeps the newer save as the baseline when the older one answers last, %s an outside event',
+      async (_, withOutside) => {
+        let finishFlush: (result: unknown) => void = () => undefined
+        mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed more' })
+        await saveStarted()
+        act(() => mocks.onMarkdownChange?.('Typed more'))
+        mocks.updateNote.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishFlush = resolve
+            })
+        )
+        const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+        let flushed: Promise<void> = Promise.resolve()
+        act(() => {
+          flushed = flush()
+        })
+        if (withOutside) event('Edited outside')
+        await act(async () => {
+          finishFlush({ success: true, savedContent: 'Typed more' })
+          await flushed
+        })
+        await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+        await act(async () => undefined)
+        mocks.updateNote.mockClear()
+
+        // Typing back to the older text is a change: the file holds the newer one.
+        act(() => mocks.onMarkdownChange?.('Typed'))
+        await waitFor(
+          () => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed' }),
+          { timeout: 3000 }
+        )
+      }
+    )
+
+    it("hands another note's read on mount to its editor while this note's save runs", async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed' })
+      const page = await saveStarted()
+
+      // A wiki link opens a note from the cache; its read on mount finds an outside edit.
+      mocks.noteState.note = { ...note, id: 'note-2', title: 'Two', content: 'Cached two' }
+      mocks.noteState.isFetchedAfterMount = false
+      page.rerender(<NotePage noteId="note-2" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Cached two')
+      mocks.noteState.note = { ...note, id: 'note-2', title: 'Two', content: 'Edited two' }
+      mocks.noteState.isFetchedAfterMount = true
+      page.rerender(<NotePage noteId="note-2" />)
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await act(async () => undefined)
+
+      expect(toast).not.toHaveBeenCalled()
+      expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Edited two')
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+      // The other note's reply left this note's baseline alone.
+      act(() => mocks.onMarkdownChange?.('Typed'))
+      await waitFor(
+        () => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-2', content: 'Typed' }),
+        { timeout: 3000 }
+      )
+    })
+
+    it('keeps the saves of a note the page left apart from the next note', async () => {
+      mocks.notesGet.mockImplementation(async (id: string) => ({
+        id,
+        content: id === 'note-1' ? 'Typed' : 'Two typed'
+      }))
+      const page = await saveStarted()
+      event('Edited outside')
+
+      mocks.noteState.note = { ...note, id: 'note-2', title: 'Two', content: 'Cached two' }
+      page.rerender(<NotePage noteId="note-2" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Cached two')
+      let finishTwo: (result: unknown) => void = () => undefined
+      mocks.updateNote.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishTwo = resolve
+          })
+      )
+      act(() => mocks.onMarkdownChange?.('Two typed'))
+      await waitFor(
+        () => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-2', content: 'Two typed' }),
+        { timeout: 3000 }
+      )
+
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      act(() => {
+        mocks.updatedHandler?.({
+          id: 'note-2',
+          source: 'internal',
+          changes: { content: 'Two typed' }
+        })
+      })
+      await act(async () => finishTwo({ success: true, savedContent: 'Two typed' }))
+      await act(async () => undefined)
+
+      expect(mocks.notesGet).not.toHaveBeenCalled()
+      expect(toast).not.toHaveBeenCalled()
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    })
+
+    it("reads nothing for the save's own echo, and reads but tells nothing for the echo of the save before", async () => {
       mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed' })
       await saveStarted()
 
@@ -2032,8 +2153,8 @@ describe('NotePage', () => {
       await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledTimes(2), { timeout: 3000 })
       event('Typed')
       await act(async () => finishSave({ success: true, savedContent: 'Typed more' }))
+      await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
 
-      expect(mocks.notesGet).not.toHaveBeenCalled()
       expect(toast).not.toHaveBeenCalled()
       expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
     })
