@@ -5,6 +5,7 @@
 // whole-markdown saves, which would also reach the other window by a reload.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import * as Y from 'yjs'
 
 import { SELECTORS } from '../../harness/app-helpers'
 import { invokeTest } from '../../harness/invoke-test'
@@ -50,6 +51,20 @@ async function pageReady(page: Page): Promise<void> {
     { timeoutMs: 30_000 }
   )
   expect(ready).toBe(true)
+}
+
+/** The global Tauri API with the channel the bridge test listens on. */
+interface TauriWindow {
+  __TAURI__: {
+    core: {
+      invoke: (
+        command: string,
+        args?: unknown,
+        options?: { headers: Record<string, string> }
+      ) => Promise<unknown>
+      Channel: new (onmessage?: (message: ArrayBuffer) => void) => object
+    }
+  }
 }
 
 const invoked = (page: Page): Promise<string[]> =>
@@ -98,4 +113,81 @@ test('typing in one window reaches the other window, both ways, and the file', a
 
   const file = join(testVaultPath, note.path)
   await expect.poll(() => readFileSync(file, 'utf8')).toContain('Shared body typed in B and in A')
+})
+
+const LATENCY_SAMPLES = 200
+
+/** The `p`th percentile of `values`, nearest rank. */
+function percentile(values: number[], p: number): number {
+  const sorted = values.toSorted((a, b) => a - b)
+  return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)]
+}
+
+// The bridge budget of the 14b-2 plan: a 200-byte update from `crdt_apply_update` in one window
+// to the other window's channel, p50 under 1 ms and p99 under 5 ms. Both pages stamp with
+// `performance.timeOrigin + performance.now()`, one clock for every page of the machine. The
+// numbers are printed, not asserted: a loaded runner stretches any wall-clock bound (see
+// scripts/check-test-timing.mjs).
+test('the bridge carries an update to the other window, timed', async ({ app, page }) => {
+  const windows = app.executor as unknown as WindowSwitcher
+  await vaultOpen(page)
+  const note = await createNote(page, {
+    title: `Bridge ${Date.now().toString(36)}`,
+    content: 'Timed',
+    folder: 'notes'
+  })
+  const doc = new Y.Doc()
+  const updates: number[][] = []
+  for (let i = 0; i < LATENCY_SAMPLES; i += 1) {
+    const before = Y.encodeStateVector(doc)
+    doc.getText('bridge-latency').insert(0, `${i}`.padEnd(180, '.'))
+    updates.push([...Y.encodeStateAsUpdate(doc, before)])
+  }
+  const sizes = updates.map((update) => update.length)
+
+  const second = await invokeTest<string>(app, 'e2e_create_secondary_window')
+  await windows.switchToWindow(second)
+  await pageReady(page)
+  await page.evaluate(async (noteId: string) => {
+    const target = window as unknown as { __memryArrivals: number[] }
+    const tauri = (window as unknown as TauriWindow).__TAURI__.core
+    target.__memryArrivals = []
+    const channel = new tauri.Channel(() => {
+      target.__memryArrivals.push(performance.timeOrigin + performance.now())
+    })
+    await tauri.invoke('crdt_open_doc', { noteId, onUpdate: channel })
+  }, note.id)
+
+  await windows.switchToWindow('main')
+  const stamped = await page.evaluate(
+    async ({ noteId, frames }: { noteId: string; frames: number[][] }) => {
+      const tauri = (window as unknown as TauriWindow).__TAURI__.core
+      await tauri.invoke('crdt_open_doc', { noteId, onUpdate: new tauri.Channel() })
+      const headers = { 'x-memry-meta': JSON.stringify({ noteId }) }
+      const stamps: Array<{ sent: number; stored: number }> = []
+      for (const frame of frames) {
+        const at = performance.timeOrigin + performance.now()
+        await tauri.invoke('crdt_apply_update', new Uint8Array(frame), { headers })
+        stamps.push({ sent: at, stored: performance.timeOrigin + performance.now() })
+        await new Promise((resolve) => setTimeout(resolve, 5))
+      }
+      return stamps
+    },
+    { noteId: note.id, frames: updates }
+  )
+
+  await windows.switchToWindow(second)
+  const arrivals = () =>
+    page.evaluate(() => (window as unknown as { __memryArrivals: number[] }).__memryArrivals)
+  await expect.poll(async () => (await arrivals()).length).toBe(LATENCY_SAMPLES)
+  const latencies = (await arrivals()).map((at, i) => at - stamped[i].sent)
+  const roundTrips = stamped.map(({ sent, stored }) => stored - sent)
+  const summary = (values: number[]): string =>
+    `p50 ${percentile(values, 50).toFixed(3)} ms, p99 ${percentile(values, 99).toFixed(3)} ms, ` +
+    `max ${Math.max(...values).toFixed(3)} ms`
+  console.log(
+    `bridge latency over ${LATENCY_SAMPLES} updates of ${Math.min(...sizes)}-${Math.max(...sizes)} ` +
+      `bytes: to the other window ${summary(latencies)}; the sender's round trip ` +
+      summary(roundTrips)
+  )
 })

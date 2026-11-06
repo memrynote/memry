@@ -33,12 +33,10 @@ test('an outside edit that empties the body empties the open editor', async ({
   await expect(editor).not.toContainText('Written before the outside edit')
 })
 
-// An outside edit made while the typing before it waits for its write-back (#3531 14b-2): the
-// file wins, as in Electron (`feedExternalEditToCrdt` replaces the body). The editor and the file
-// show the outside text, and the core keeps the body it replaced, typing included, as a version.
-// The typing is durable in the document before the outside write, and the write-back waits for
-// the note to be quiet, then keeps a file it has not read.
-test('an outside edit replaces typing not yet written, which is kept as a version', async ({
+// Typing the file does not have yet wins over an outside edit (#4030), the editor bound to the
+// core's document included (#3531 14b-2): the core keeps the outside file as a version, the
+// write-back writes the typing over it, and a toast says so once, with a way into version history.
+test('typing not yet written wins over an outside edit, says so and opens version history', async ({
   app,
   page,
   testVaultPath
@@ -58,16 +56,20 @@ test('an outside edit replaces typing not yet written, which is kept as a versio
   await page.keyboard.insertText(' typed')
   const file = join(testVaultPath, note.path)
   const frontmatter = readFileSync(file, 'utf8').match(/^---\n[\s\S]*?\n---\n/)?.[0] ?? ''
-  writeFileSync(file, `${frontmatter}Written by an agent\n`)
+  const outside = `${frontmatter}Written by an agent\n`
+  writeFileSync(file, outside)
 
-  await expect(editor).toContainText('Written by an agent')
-  await expect(editor).not.toContainText(' typed')
-  const versions = () =>
-    invokeTest<{ content: string }[]>(app, 'e2e_debug_query', {
-      sql: `SELECT content FROM note_snapshots WHERE note_id = '${note.id}'`
-    })
-  await expect
-    .poll(async () => (await versions()).some((version) => version.content.includes(' typed')))
-    .toBe(true)
-  expect(readFileSync(file, 'utf8')).not.toContain(' typed')
+  const toast = page.locator(
+    '[data-sonner-toast]:has-text("An outside change was replaced by your typing")'
+  )
+  await expect(toast).toBeVisible()
+  await expect(editor).toContainText(' typed')
+  await expect(editor).not.toContainText('Written by an agent')
+  await expect.poll(() => readFileSync(file, 'utf8')).toContain(' typed')
+  const versions = await invokeTest<{ content: string }[]>(app, 'e2e_debug_query', {
+    sql: `SELECT content FROM note_snapshots WHERE note_id = '${note.id}'`
+  })
+  expect(versions.map((version) => version.content)).toContain(outside)
+  await toast.getByRole('button', { name: 'Show versions' }).click()
+  await expect(page.getByRole('dialog', { name: 'Version History' })).toBeVisible()
 })
