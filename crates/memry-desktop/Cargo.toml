@@ -186,6 +186,10 @@ name = "logging"
 path = "tests/logging.rs"
 
 [[test]]
+name = "note_file_memory"
+path = "tests/note_file_memory.rs"
+
+[[test]]
 name = "obsidian_copy"
 path = "tests/obsidian_copy.rs"
 
