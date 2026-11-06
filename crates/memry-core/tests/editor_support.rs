@@ -69,6 +69,13 @@ impl Fixture {
         open_at(dir)
     }
 
+    /// [`Fixture::relaunch`] with `between` run on the closed vault's directory.
+    pub fn relaunch_with(self, between: impl FnOnce(&Path)) -> Fixture {
+        let Fixture { dir, .. } = self;
+        between(dir.path());
+        open_at(dir)
+    }
+
     /// The bytes of every local update row of `note_id`, oldest first.
     pub fn local_blobs(&self, note_id: &str) -> Vec<Vec<u8>> {
         local_blobs(self.dir.path(), note_id)

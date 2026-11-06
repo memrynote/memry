@@ -104,6 +104,14 @@ pub struct Applied {
     pub outbox_id: Option<i64>,
 }
 
+/// Whether the documents' edits reach disk.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Health {
+    /// False when the vault's database opened read-only: an edit then lives
+    /// only in memory.
+    pub persistent: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum EditorError {
     /// No live note or journal day has this id. Nothing was written.
@@ -290,6 +298,16 @@ impl Editor {
     /// Unloads the documents nobody has held for the grace period; returns them.
     pub fn sweep(&self, now_ms: i64) -> Vec<String> {
         self.resident().sweep(now_ms)
+    }
+
+    /// Whether the edits this host takes are stored (`crdt:get-health`).
+    pub fn health(&self) -> Result<Health, EditorError> {
+        self.on_writer(|conn| {
+            let read_only = conn.is_readonly(rusqlite::MAIN_DB).map_err(storage)?;
+            Ok(Health {
+                persistent: !read_only,
+            })
+        })
     }
 
     /// Whether any holder has `note_id` open.

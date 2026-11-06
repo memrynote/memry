@@ -423,3 +423,29 @@ fn an_open_that_fails_keeps_the_hold_the_holder_already_had() {
     assert!(failed.is_err(), "the owed-body read failed");
     assert!(f.editor.is_open(&note), "the earlier open still holds it");
 }
+
+#[test]
+fn the_health_says_whether_edits_reach_disk() {
+    let f = fixture();
+    assert!(f.editor.health().expect("health").persistent);
+
+    let f = f.relaunch_with(|dir| {
+        let data = dir.join("data.db");
+        let mut permissions = std::fs::metadata(&data).expect("data.db").permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&data, permissions).expect("write-protect data.db");
+    });
+
+    assert!(
+        !f.editor.health().expect("health").persistent,
+        "a write-protected database opens read-only"
+    );
+    let data = f.dir.path().join("data.db");
+    let mut permissions = std::fs::metadata(&data).expect("data.db").permissions();
+    #[allow(
+        clippy::permissions_set_readonly_false,
+        reason = "undoes the test's own write protection so the scratch directory can go"
+    )]
+    permissions.set_readonly(false);
+    std::fs::set_permissions(&data, permissions).expect("unprotect data.db");
+}

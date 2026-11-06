@@ -58,6 +58,8 @@ mod custom_icons;
 mod debug_query;
 #[path = "e2e.rs"]
 mod e2e;
+#[path = "editor_host.rs"]
+mod editor_host;
 #[path = "embeds.rs"]
 mod embeds;
 #[path = "file_open.rs"]

@@ -4,6 +4,7 @@
 pub mod command_failure;
 pub mod config;
 pub mod e2e;
+pub mod editor;
 pub mod electron_import;
 pub mod error;
 pub mod http;
