@@ -28,6 +28,20 @@ pub(super) fn keeps_kind(
     Ok(writer.journal_date(id)? == journal.day_of(path))
 }
 
+/// Whether the record `id` moved from `old` to `new` with the journal folder, the setting
+/// following it from `days.0` to `days.1`, is what it was: [`keeps_kind`] under the new
+/// setting, or its path a day of the same date (or of none) under each setting. A note a date
+/// names in the journal folder stays the note it was, as Electron's `renameKeepsJournalDate`
+/// keeps it; crossed, the note would be deleted and the delete synced.
+pub(crate) fn keeps_kind_followed(
+    days: &(JournalDays, JournalDays),
+    writer: &NotesWriter,
+    id: &str,
+    (old, new): (&str, &str),
+) -> Result<bool, IdentityError> {
+    Ok(keeps_kind(&days.1, writer, id, new)? || days.0.day_of(old) == days.1.day_of(new))
+}
+
 /// Whether the move of the day `id` from `from` to `to` is the journal folder moving whole
 /// ([`journal_folder_moved`]). Crossed, every day would be deleted and the delete synced; it is
 /// owed instead, until the config follows the folder and the move keeps what the file is.

@@ -71,8 +71,8 @@ export function JournalSettings() {
     setJournalDateFormat(config.journalDateFormat)
   }, [config])
 
-  // A refused change (a folder the days cannot live in or move into) keeps the saved folder,
-  // so the field goes back to it, as the date format's does. Electron saves every folder.
+  // A refused change keeps the saved folder, so the field goes back to it. This build refuses
+  // every folder change until the journal folder move is ported (#3530 13m-7b).
   const handleJournalFolderBlur = useCallback(async () => {
     if (!config || journalFolder === config.journalFolder) return
     const error = await updateConfig({ journalFolder })

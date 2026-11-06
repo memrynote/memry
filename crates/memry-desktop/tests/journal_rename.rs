@@ -24,8 +24,8 @@ use memry_desktop::vault::consumer::{Applied, MoveKind};
 use memry_desktop::vault::file_types::FileType;
 use memry_desktop::vault::journal_format::JournalDate;
 use memry_desktop::vault::journal_rename::{
-    JournalPlace, JournalRename, JournalRenameResult, JournalVault, move_journal_days,
-    revert_journal_moves,
+    JournalRename, JournalRenameResult, JournalVault, rename_journals_for_format_change,
+    revert_journal_renames,
 };
 use vault_env::{Creates, Env, QUIET, creates, env, indexed};
 
@@ -96,25 +96,13 @@ fn at<T>(e: &Env, run: impl FnOnce(JournalVault<'_>) -> T) -> T {
 
 fn rename(e: &Env, folder: &str, old: &str, new: &str) -> JournalRenameResult {
     at(e, |vault| {
-        let (from, to) = (
-            JournalPlace {
-                folder,
-                format: old,
-            },
-            JournalPlace {
-                folder,
-                format: new,
-            },
-        );
-        move_journal_days(vault, from, to).unwrap()
+        rename_journals_for_format_change(vault, folder, old, new).unwrap()
     })
 }
 
 /// The renames that did not go back.
-fn revert(e: &Env, pass: &JournalRenameResult) -> Vec<JournalRename> {
-    at(e, |vault| {
-        revert_journal_moves(vault, ("journal", "journal"), pass)
-    })
+fn revert(e: &Env, moved: &[JournalRename]) -> Vec<JournalRename> {
+    at(e, |vault| revert_journal_renames(vault, "journal", moved))
 }
 
 fn moved(from: &str, to: &str, date: &str) -> JournalRename {
@@ -130,7 +118,6 @@ fn result(moved: Vec<JournalRename>, skipped: usize) -> JournalRenameResult {
         moved,
         skipped,
         failed: 0,
-        made: Vec::new(),
     }
 }
 
@@ -521,7 +508,7 @@ fn a_reverted_pass_puts_files_rows_and_order_slots_back() {
     let pass = rename(&e, "journal", DAILY, NESTED);
     assert_eq!(pass.moved.len(), 2);
 
-    let left = revert(&e, &pass);
+    let left = revert(&e, &pass.moved);
 
     assert_eq!(left, []);
     assert_eq!(tree(&e), ["2025-01-14.md", "2025-01-15.md"]);
@@ -651,7 +638,7 @@ fn a_revert_leaves_an_entry_whose_old_name_is_taken_and_returns_it() {
     e.write("journal/2025-01-14.md", "a new note\n");
     e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "journal/2025-01-14.md"));
 
-    let left = revert(&e, &pass);
+    let left = revert(&e, &pass.moved);
 
     let deep = "2025/January/2025-01-14.md";
     assert_eq!(left, [moved("2025-01-14.md", deep, "2025-01-14")]);
@@ -729,7 +716,6 @@ fn a_new_name_through_a_linked_folder_out_of_the_vault_is_not_taken() {
             moved: vec![],
             skipped: 0,
             failed: 1,
-            made: vec![],
         }
     );
     assert_eq!(e.read("journal/2025-01-14.md"), "entry\n");
@@ -758,7 +744,6 @@ fn a_move_that_fails_leaves_no_folder_behind() {
             moved: vec![],
             skipped: 0,
             failed: 1,
-            made: vec![],
         }
     );
     assert_eq!(tree(&e), ["2025-01-14.md", "2025/", "ideas.md"]);
@@ -842,11 +827,11 @@ fn a_move_that_fails_leaves_a_later_delete_to_the_watcher() {
 
 /// A file no rename can move until dropped.
 #[cfg(target_os = "macos")]
-pub(crate) struct Pinned(std::ffi::CString);
+struct Pinned(std::ffi::CString);
 
 #[cfg(target_os = "macos")]
 impl Pinned {
-    pub(crate) fn new(path: &Path) -> Self {
+    fn new(path: &Path) -> Self {
         let path = std::ffi::CString::new(path.to_str().unwrap()).unwrap();
         // SAFETY: a NUL-terminated path that outlives the call.
         assert_eq!(
@@ -867,11 +852,11 @@ impl Drop for Pinned {
 
 /// The handle is held only to be closed when dropped.
 #[cfg(windows)]
-pub(crate) struct Pinned(#[expect(dead_code, reason = "held open until dropped")] fs::File);
+struct Pinned(#[expect(dead_code, reason = "held open until dropped")] fs::File);
 
 #[cfg(windows)]
 impl Pinned {
-    pub(crate) fn new(path: &Path) -> Self {
+    fn new(path: &Path) -> Self {
         use std::os::windows::fs::OpenOptionsExt;
         // FILE_SHARE_READ only: a rename needs delete sharing.
         Self(

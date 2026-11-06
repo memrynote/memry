@@ -1,6 +1,5 @@
-//! The plan of a date format change's renames (`journal-format-migration.ts`), and of a journal
-//! folder change's moves: which journal file takes which name, and which are skipped. Pure; the
-//! pass in the parent module moves them.
+//! The plan of a date format change's renames (`journal-format-migration.ts`): which journal
+//! file takes which name, and which are skipped. Pure; the pass in the parent module moves them.
 
 use std::collections::HashSet;
 
@@ -54,32 +53,11 @@ pub fn plan_journal_renames(
     old_format: &str,
     new_format: &str,
 ) -> JournalRenamePlan {
-    plan(files, (files, true), old_format, new_format)
-}
-
-/// The moves of the days of one journal folder (`files`, relative to it) into another, whose
-/// files are `present` (relative to it), from `old_format` to `new_format`: each day moves,
-/// its name unchanged when the format is.
-pub fn plan_journal_moves(
-    files: &[String],
-    present: &[String],
-    old_format: &str,
-    new_format: &str,
-) -> JournalRenamePlan {
-    plan(files, (present, false), old_format, new_format)
-}
-
-fn plan(
-    files: &[String],
-    (present, same_folder): (&[String], bool),
-    old_format: &str,
-    new_format: &str,
-) -> JournalRenamePlan {
     let (old, new) = (
         JournalFormat::new(old_format),
         JournalFormat::new(new_format),
     );
-    let present: HashSet<String> = present.iter().map(|name| js::to_lower(name)).collect();
+    let present: HashSet<String> = files.iter().map(|name| js::to_lower(name)).collect();
     let mut claimed = HashSet::new();
     let mut plan = JournalRenamePlan::default();
     // Electron sorts by UTF-16 units. Two names of one format differ only where their
@@ -95,7 +73,7 @@ fn plan(
         };
         let stem = new.render(date);
         let target = format!("{stem}.md");
-        if same_folder && target == *name {
+        if target == *name {
             continue;
         }
         let skip = |reason| JournalRenameSkip {
@@ -107,7 +85,7 @@ fn plan(
             continue;
         }
         let key = js::to_lower(&target);
-        let case_only = same_folder && key == js::to_lower(name);
+        let case_only = key == js::to_lower(name);
         if (present.contains(&key) && !case_only) || claimed.contains(&key) {
             plan.skipped.push(skip(SkipReason::TargetExists));
             continue;

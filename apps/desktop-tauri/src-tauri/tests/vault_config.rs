@@ -1,7 +1,6 @@
 //! The vault settings through the IPC a renderer calls, on a mock app over a real vault (#3530
-//! 13m-7a, 13m-7b): the contract's field names, a write every window hears as
-//! `vault:config-changed`, the journal days moved with a new format or folder, and a change
-//! that is not ported refused by its code with nothing written or sent.
+//! 13m-7a): the contract's field names, a write every window hears as `vault:config-changed`,
+//! and a change that is not ported refused by its code with nothing written or sent.
 
 mod support;
 
@@ -70,63 +69,26 @@ fn a_write_answers_the_settings_and_every_window_hears_them() {
     assert_eq!(file["preferences"], json!({ "theme": "dark" }));
 }
 
-/// A new journal folder moves the days into it before it is saved, and every window hears it.
 #[test]
-fn a_journal_folder_change_moves_the_days_and_sends_the_new_folder() {
-    let (mocked, heard) = opened();
-    let answer = mocked
-        .invoke(
-            "vault_update_config",
-            json!({ "config": { "journalFolder": "Diary" } }),
-        )
-        .unwrap();
-    assert_eq!(answer["journalFolder"], "Diary");
-    assert_eq!(*heard.lock().unwrap(), [answer]);
-    assert!(!mocked.vault.join("Daily/2025-01-02.md").exists());
-    assert_eq!(
-        fs::read_to_string(mocked.vault.join("Diary/2025-01-02.md")).unwrap(),
-        "A day.\n"
-    );
-}
-
-/// A folder the days cannot live in is refused in words Settings shows, and nothing is sent.
-#[test]
-fn a_journal_folder_the_days_cannot_live_in_is_refused_in_words() {
-    let (mocked, heard) = opened();
-    let refused = mocked
-        .invoke(
-            "vault_update_config",
-            json!({ "config": { "journalFolder": ".hidden" } }),
-        )
-        .unwrap_err();
-    assert_eq!(
-        (&refused["kind"], &refused["code"]),
-        (&json!("invalid"), &json!("journal_folder_invalid"))
-    );
-    assert!(
-        refused["message"]
-            .as_str()
-            .unwrap()
-            .starts_with("The journal can't be kept in this folder"),
-        "{refused}"
-    );
-    assert!(mocked.vault.join("Daily/2025-01-02.md").exists());
-    assert!(heard.lock().unwrap().is_empty());
-}
-
-#[test]
-fn an_exclude_change_is_refused_and_nothing_is_sent() {
+fn a_journal_folder_change_is_refused_and_nothing_is_sent() {
     let (mocked, heard) = opened();
     let before = fs::read(mocked.vault.join(".memry/config.json")).unwrap();
     let refused = mocked
         .invoke(
             "vault_update_config",
-            json!({ "config": { "excludePatterns": [], "journalShowInSidebar": true } }),
+            json!({ "config": { "journalFolder": "Diary", "journalShowInSidebar": true } }),
         )
         .unwrap_err();
     assert_eq!(
         (&refused["kind"], &refused["code"]),
         (&json!("invalid"), &json!("config_change_not_ported"))
+    );
+    assert!(
+        refused["message"]
+            .as_str()
+            .unwrap()
+            .starts_with("This version can't change the journal folder"),
+        "{refused}"
     );
     assert_eq!(
         fs::read(mocked.vault.join(".memry/config.json")).unwrap(),
@@ -218,7 +180,7 @@ fn a_format_a_day_cannot_take_is_refused_with_the_count() {
         refused["message"]
             .as_str()
             .unwrap()
-            .contains("moved to it (1)."),
+            .contains("renamed to it (1)."),
         "{refused}"
     );
     assert_eq!(

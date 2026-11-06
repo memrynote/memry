@@ -1,24 +1,20 @@
-//! The journal folder changed in Settings or moved in the app (Step 13m-7b-2, #3530), on an
-//! open vault whose days the app's own identity (`NotesIdentity`) names. A day is a day only
-//! while its path is in the configured folder and format, so each change moves the days and the
-//! setting together, and whatever a crash leaves between the two still pairs as the day.
+//! The journal folder moved in the app (Step 13m-7b-2, #3530), on an open vault whose days the
+//! app's own identity (`NotesIdentity`) names. A day is a day only while its path is in the
+//! configured folder and format, so the move takes the setting along, the setting always
+//! follows the folder on disk, and whatever a crash leaves pairs as the day. No record is
+//! deleted, so no delete syncs.
 //!
 //! | Test                                                              | Rule                                  |
 //! | ----------------------------------------------------------------- | ------------------------------------- |
-//! | a journal folder change moves the days and keeps them             | `updateConfig`, days moved here       |
-//! | a folder and format change together move each day once            | one pass                              |
-//! | a crash mid folder change keeps each day on the next open         | row first, under the saved folder     |
-//! | between a day's two moves its file keeps the saved folder         | the order, pinned                     |
-//! | a day made during a folder change lands in the new folder         | `DAY_NAMES`                           |
-//! | a folder a day cannot move into is refused and every day stays    | every day or none                     |
-//! | a folder the config does not take puts the days back              | its new folder goes too               |
-//! | a day held open refuses the folder and the others come back       | #3957, Windows holds                  |
-//! | a folder the days cannot live in is refused                       | root, hidden, excluded, links, case   |
 //! | moving the journal folder takes the setting along                 | `followJournalFolderMove`             |
 //! | moving a folder that holds the journal takes the setting along    | `followJournalFolderMove`             |
+//! | a note a date names moves with the journal folder as a note       | `renameKeepsJournalDate`              |
 //! | a journal folder held open is not moved entry by entry            | #3957, whole or not at all            |
 //! | a journal folder whose notes cannot follow goes back              | the setting goes back first           |
-//! | a journal folder move a crash cut short keeps its days            | before and after the setting's save   |
+//! | a journal folder whose setting cannot go back stays moved         | the setting follows the disk          |
+//! | a journal folder that cannot go back keeps the followed setting   | the setting follows the disk          |
+//! | the journal folder does not move while the settings are unread    | no follow, no move                    |
+//! | a journal folder move a crash cut short keeps its days            | the open follows, before the lane     |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -28,20 +24,19 @@ use crate::vault_env;
 use std::fs;
 use std::io;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use memry_core::domain::notes::app_move::AppMoved;
 use memry_desktop::journal::write::NewDay;
+use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::service::NotesService;
-use memry_desktop::vault::config::settings::{SettingsError, update_vault_settings_checked};
-use memry_desktop::vault::config::{VaultConfig, VaultConfigPatch, config_path};
+use memry_desktop::vault::config::{VaultConfig, config_path};
 use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::move_dir::{Step, simulated_hold};
 use serde_json::{Value, json};
 use vault_env::{Env, QUIET, indexed};
 
-use crate::vault_settings::{opened, opened_keeping, stored, update};
+use crate::vault_settings::{opened_keeping, stored};
 
 const DAY: &str = "j2025-01-02";
 
@@ -53,27 +48,52 @@ fn daily(folder: &str) -> Value {
     })
 }
 
-fn folder(to: &str) -> VaultConfigPatch {
-    VaultConfigPatch {
-        journal_folder: Some(to.to_owned()),
-        ..VaultConfigPatch::default()
-    }
-}
-
 fn row(id: &str, path: &str) -> (String, String) {
     (id.to_owned(), path.to_owned())
+}
+
+fn journal_vault(config: Value, files: &[(&str, &str)]) -> (Env, Arc<NotesService>) {
+    let (e, store) = opened_keeping(config, files);
+    let notes = NotesService::new(e.tier.clone(), store);
+    (e, notes)
+}
+
+fn crossed(facts: &[Applied]) -> bool {
+    facts
+        .iter()
+        .any(|f| matches!(f, Applied::Added { .. } | Applied::Removed { .. }))
 }
 
 /// The facts once the watcher is quiet: it made and removed no note.
 fn quiet(e: &mut Env) {
     std::thread::sleep(QUIET);
     let facts = e.drain();
-    assert!(
-        !facts
-            .iter()
-            .any(|f| matches!(f, Applied::Added { .. } | Applied::Removed { .. })),
-        "{facts:?}"
-    );
+    assert!(!crossed(&facts), "{facts:?}");
+}
+
+/// Closes and opens the vault again: the open made and removed no note.
+fn reopen(e: &mut Env) {
+    e.close();
+    e.drain();
+    e.open();
+    let facts = e.facts_until(indexed);
+    assert!(!crossed(&facts), "{facts:?}");
+    quiet(e);
+}
+
+/// The sync operations queued for the record `id`: a `delete` reaches every device.
+fn outbox(e: &Env, id: &str) -> Vec<String> {
+    let id = id.to_owned();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            let mut stmt = conn
+                .prepare("SELECT op FROM outbox WHERE item_id = ?1")
+                .unwrap();
+            let ops = stmt.query_map([id], |r| r.get::<_, String>(0)).unwrap();
+            Ok(ops.map(Result::unwrap).collect::<Vec<_>>())
+        })
+        .unwrap()
 }
 
 fn make_day(notes: &NotesService, e: &Env, date: &str) {
@@ -86,277 +106,19 @@ fn make_day(notes: &NotesService, e: &Env, date: &str) {
     notes.create_day(&open, day).unwrap();
 }
 
-#[test]
-fn a_journal_folder_change_moves_the_days_and_keeps_them() {
-    let (mut e, store) = opened_keeping(
-        daily("journal"),
-        &[
-            ("journal/2025-01-02.md", "A day\n"),
-            ("journal/Ideas.md", "A note\n"),
-        ],
-    );
-    let ideas = e.rows()[1].0.clone();
-    let heard = Mutex::new(None);
-    let settings = update(&e, folder("Diary"), |settings| {
-        *heard.lock().unwrap() = Some(settings.clone());
-    })
-    .unwrap();
-
-    assert_eq!(settings.journal_folder, "Diary");
-    assert_eq!(heard.into_inner().unwrap(), Some(settings));
-    assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
-    assert_eq!(e.read("Diary/2025-01-02.md"), "A day\n");
-    assert!(!e.vault.join("journal/2025-01-02.md").exists());
-    assert_eq!(e.read("journal/Ideas.md"), "A note\n");
-    quiet(&mut e);
-    assert_eq!(
-        e.rows(),
-        [
-            row(DAY, "Diary/2025-01-02.md"),
-            row(&ideas, "journal/Ideas.md")
-        ]
-    );
-    make_day(&NotesService::new(e.tier.clone(), store), &e, "2025-01-06");
-    assert!(e.vault.join("Diary/2025-01-06.md").exists());
-}
-
-#[test]
-fn a_folder_and_format_change_together_move_each_day_once() {
-    let mut e = opened(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
-    let patch = VaultConfigPatch {
-        journal_date_format: Some("YYYY/YYYY-MM-DD dddd".to_owned()),
-        ..folder("Archive/Diary")
+/// A note whose title is a date, in the journal folder: a note at a day's path.
+fn dated_note(notes: &NotesService, e: &mut Env) -> String {
+    let open = e.session.current().unwrap();
+    let note = NewNoteFile {
+        title: "2025-01-05".into(),
+        content: "A note\n".into(),
+        folder: Some("journal".into()),
+        ..Default::default()
     };
-    update(&e, patch, |_| {}).unwrap();
-
-    let moved = "Archive/Diary/2025/2025-01-02 Thursday.md";
-    assert_eq!(e.read(moved), "A day\n");
-    quiet(&mut e);
-    assert_eq!(e.rows(), [row(DAY, moved)]);
-}
-
-/// What a crash in the middle of a folder change leaves: a day whose row took its path in the
-/// new folder while the file and the saved config are still in the old one. The next open pairs
-/// the two as a move to a path the saved folder reads as that day, so the day keeps its id and
-/// record, and the change run again moves it. Left the other way (the file in the new folder,
-/// the row and the config in the old), the next open would cross the day out of the journal.
-#[test]
-fn a_crash_mid_folder_change_keeps_each_day_on_the_next_open() {
-    let mut e = opened(daily("Diary"), &[("Diary/2025-01-02.md", "A day\n")]);
-    assert_eq!(e.rows(), [row(DAY, "Diary/2025-01-02.md")]);
-    e.close();
-    fs::write(config_path(&e.vault), daily("journal").to_string()).unwrap();
-    fs::create_dir(e.vault.join("journal")).unwrap();
-    fs::rename(
-        e.vault.join("Diary/2025-01-02.md"),
-        e.vault.join("journal/2025-01-02.md"),
-    )
-    .unwrap();
+    let id = notes.create(&open, note).unwrap().id;
+    std::thread::sleep(QUIET);
     e.drain();
-
-    e.open();
-    let facts = e.facts_until(indexed);
-    assert!(
-        !facts
-            .iter()
-            .any(|f| matches!(f, Applied::Added { .. } | Applied::Removed { .. })),
-        "{facts:?}"
-    );
-    quiet(&mut e);
-    assert_eq!(e.rows(), [row(DAY, "journal/2025-01-02.md")]);
-    update(&e, folder("Diary"), |_| {}).unwrap();
-    assert_eq!(e.rows(), [row(DAY, "Diary/2025-01-02.md")]);
-}
-
-/// Each day's row takes its new path before its file does, the state the crash test above
-/// reopens as the day.
-#[test]
-fn between_a_days_two_moves_its_file_keeps_the_saved_folder() {
-    let e = opened(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
-    let core = e.core();
-    let mut seen = Vec::new();
-    update_vault_settings_checked(
-        &e.vault,
-        Some((&core, &e.tier)),
-        folder("Diary"),
-        |_| {},
-        &mut || {
-            seen.push((
-                e.vault.join("journal/2025-01-02.md").exists(),
-                e.vault.join("Diary/2025-01-02.md").exists(),
-                e.rows(),
-            ));
-        },
-    )
-    .unwrap();
-
-    let moved = row(DAY, "Diary/2025-01-02.md");
-    assert_eq!(seen, [(true, false, vec![moved.clone()])]);
-    assert_eq!(e.rows(), [moved]);
-}
-
-/// A day made while a folder change moves the days waits for it and lands in the new folder:
-/// made in the old one after it was listed, it would be a note once the new folder is saved.
-#[test]
-fn a_day_made_during_a_folder_change_lands_in_the_new_folder() {
-    let (e, store) = opened_keeping(
-        daily("journal"),
-        &[
-            ("journal/2025-01-02.md", "A day\n"),
-            ("journal/2025-01-03.md", "Another day\n"),
-        ],
-    );
-    let notes = NotesService::new(e.tier.clone(), store);
-    let core = e.core();
-    std::thread::scope(|scope| {
-        let mut maker = None;
-        update_vault_settings_checked(
-            &e.vault,
-            Some((&core, &e.tier)),
-            folder("Diary"),
-            |_| {},
-            &mut || {
-                if maker.is_none() {
-                    let (notes, e) = (&notes, &e);
-                    maker = Some(scope.spawn(move || make_day(notes, e, "2025-01-06")));
-                    // timing-bound: the create gets this long to queue for the rows' lane, which
-                    // the pass lets go of before its next day. Held off by the folder change, it
-                    // waits whatever the time.
-                    std::thread::sleep(Duration::from_millis(300));
-                }
-            },
-        )
-        .unwrap();
-        maker.unwrap().join().unwrap();
-    });
-
-    assert!(e.vault.join("Diary/2025-01-06.md").exists());
-    assert!(!e.vault.join("journal/2025-01-06.md").exists());
-}
-
-/// A day whose path in the new folder is taken (a note holds it) refuses the folder: saved, it
-/// would leave that day behind at a path no setting reads. The days already moved come back.
-#[test]
-fn a_folder_a_day_cannot_move_into_is_refused_and_every_day_stays() {
-    let mut e = opened(
-        daily("journal"),
-        &[
-            ("journal/2025-01-02.md", "A day\n"),
-            ("journal/2025-01-03.md", "Another day\n"),
-            ("Diary/2025-01-03.md", "A note\n"),
-        ],
-    );
-    let rows = e.rows();
-
-    let refused = update(&e, folder("Diary"), |_| panic!("announced"));
-
-    assert!(
-        matches!(refused, Err(SettingsError::DaysNotRenamed { left: 1 })),
-        "{refused:?}"
-    );
-    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
-    assert!(e.vault.join("journal/2025-01-02.md").exists());
-    assert!(!e.vault.join("Diary/2025-01-02.md").exists());
-    assert_eq!(e.read("Diary/2025-01-03.md"), "A note\n");
-    quiet(&mut e);
-    assert_eq!(e.rows(), rows);
-}
-
-/// A folder the config could not save puts the days back, and the folders the move made for
-/// them go again.
-#[cfg(unix)]
-#[test]
-fn a_folder_the_config_does_not_take_puts_the_days_back() {
-    use std::os::unix::fs::PermissionsExt as _;
-
-    let mut e = opened(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
-    let memry = e.vault.join(".memry");
-    fs::set_permissions(&memry, fs::Permissions::from_mode(0o555)).unwrap();
-    let refused = update(&e, folder("Archive/Diary"), |_| panic!("announced"));
-    fs::set_permissions(&memry, fs::Permissions::from_mode(0o755)).unwrap();
-
-    assert!(
-        matches!(refused, Err(SettingsError::Config(_))),
-        "{refused:?}"
-    );
-    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
-    assert!(e.vault.join("journal/2025-01-02.md").exists());
-    assert!(!e.vault.join("Archive").exists());
-    quiet(&mut e);
-    assert_eq!(e.rows(), [row(DAY, "journal/2025-01-02.md")]);
-}
-
-/// A day another program holds (Windows: open without delete sharing, #3957; macOS: the
-/// immutable flag) cannot move, so the folder is refused, the day moved before it comes back,
-/// and the new folder goes again: every day is where the saved folder reads it.
-#[cfg(any(target_os = "macos", windows))]
-#[test]
-fn a_day_held_open_refuses_the_folder_and_the_others_come_back() {
-    let mut e = opened(
-        daily("journal"),
-        &[
-            ("journal/2025-01-02.md", "A day\n"),
-            ("journal/2025-01-03.md", "A held day\n"),
-        ],
-    );
-    let rows = e.rows();
-    let pinned = crate::journal_rename::Pinned::new(&e.vault.join("journal/2025-01-03.md"));
-    let refused = update(&e, folder("Diary"), |_| panic!("announced"));
-    drop(pinned);
-
-    assert!(
-        matches!(refused, Err(SettingsError::DaysNotRenamed { left: 1 })),
-        "{refused:?}"
-    );
-    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
-    assert!(e.vault.join("journal/2025-01-02.md").exists());
-    assert!(!e.vault.join("Diary").exists());
-    quiet(&mut e);
-    assert_eq!(e.rows(), rows);
-}
-
-/// A folder the next open would not find the days in under their paths, or that names no day:
-/// the vault root, a hidden or excluded folder, the tree's own folders, a respelling of the
-/// journal folder or of a folder already there, and a folder reached through a link.
-#[test]
-fn a_folder_the_days_cannot_live_in_is_refused() {
-    let mut config = daily("journal");
-    config["excludePatterns"] = json!(["Archive"]);
-    let e = opened(config, &[("journal/2025-01-02.md", "A day\n")]);
-    fs::create_dir(e.vault.join("Diary")).unwrap();
-    let refused = |to: &str| {
-        let answer = update(&e, folder(to), |_| panic!("{to:?} announced"));
-        assert!(
-            matches!(answer, Err(SettingsError::InvalidJournalFolder)),
-            "{to:?}: {answer:?}"
-        );
-        assert_eq!(stored(&e.vault)["journalFolder"], "journal", "{to:?}");
-        assert!(e.vault.join("journal/2025-01-02.md").exists(), "{to:?}");
-    };
-    for to in [
-        "",
-        " / ",
-        ".hidden",
-        "Archive/Days",
-        "attachments/Days",
-        "Journal",
-        "diary",
-    ] {
-        refused(to);
-    }
-    #[cfg(unix)]
-    {
-        let elsewhere = e._dir.path().join("elsewhere");
-        fs::create_dir(&elsewhere).unwrap();
-        std::os::unix::fs::symlink(&elsewhere, e.vault.join("Linked")).unwrap();
-        refused("Linked/Days");
-    }
-}
-
-fn journal_vault(config: Value, files: &[(&str, &str)]) -> (Env, Arc<NotesService>) {
-    let (e, store) = opened_keeping(config, files);
-    let notes = NotesService::new(e.tier.clone(), store);
-    (e, notes)
+    id
 }
 
 /// Each day moves as a day, read under the folder it follows to: no move is left owed.
@@ -419,6 +181,32 @@ fn moving_a_folder_that_holds_the_journal_takes_the_setting_along() {
     );
 }
 
+/// A note at a day's path stays that note: read as a day after the move, its next open would
+/// delete it and make the day.
+#[test]
+fn a_note_a_date_names_moves_with_the_journal_folder_as_a_note() {
+    let (mut e, store) = opened_keeping(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
+    let notes = NotesService::new(e.tier.clone(), store.clone());
+    let note = dated_note(&notes, &mut e);
+    let open = e.session.current().unwrap();
+    notes
+        .rename_folder(&open, "journal", "Diary", |_| {})
+        .unwrap();
+
+    let owed = e.core().notes_writer(store).unwrap().owed_places().unwrap();
+    assert!(owed.is_empty(), "{owed:?}");
+    quiet(&mut e);
+    drop(open);
+    reopen(&mut e);
+    let rows = e.rows();
+    assert!(
+        rows.contains(&row(&note, "Diary/2025-01-05.md")),
+        "{rows:?}"
+    );
+    assert!(rows.contains(&row(DAY, "Diary/2025-01-02.md")), "{rows:?}");
+    assert!(!outbox(&e, &note).contains(&"delete".to_owned()));
+}
+
 /// The journal folder moves by the plain rename only: one Windows holds (#3957) is refused as
 /// it is, never moved entry by entry, whose rollback could leave days in `(incomplete move)`.
 #[test]
@@ -474,23 +262,120 @@ fn a_journal_folder_whose_notes_cannot_follow_goes_back() {
     assert_eq!(e.rows(), [row(DAY, "journal/2025-01-02.md")]);
 }
 
-/// A crash after the journal folder moved on disk, before its notes followed: with the setting
-/// not saved yet the days at the new folder are a journal folder moved whole, held as days;
-/// saved, the next open finishes their moves as days. Neither deletes a day.
+/// Step 3 fails and the old folder cannot be saved again: the folder stays where the saved
+/// setting reads it, and the next open finishes the move as days.
+#[cfg(unix)]
+#[test]
+fn a_journal_folder_whose_setting_cannot_go_back_stays_moved() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let (mut e, notes) = journal_vault(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
+    let open = e.session.current().unwrap();
+    let memry = e.vault.join(".memry");
+    let heard: Mutex<Option<VaultConfig>> = Mutex::default();
+    let failed = notes.rename_folder_checked(
+        &open,
+        "journal",
+        "Diary",
+        |settings| *heard.lock().unwrap() = Some(settings.clone()),
+        &mut |_| Ok(()),
+        &mut || {
+            fs::set_permissions(&memry, fs::Permissions::from_mode(0o555)).unwrap();
+            Err(NotesError::Io(io::Error::other("injected")))
+        },
+    );
+    fs::set_permissions(&memry, fs::Permissions::from_mode(0o755)).unwrap();
+
+    assert!(matches!(failed, Err(NotesError::Io(_))), "{failed:?}");
+    assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
+    assert_eq!(heard.into_inner().unwrap().unwrap().journal_folder, "Diary");
+    assert!(e.vault.join("Diary/2025-01-02.md").exists());
+    drop(open);
+    reopen(&mut e);
+    assert_eq!(e.rows(), [row(DAY, "Diary/2025-01-02.md")]);
+    assert!(!outbox(&e, DAY).contains(&"delete".to_owned()));
+}
+
+/// Step 3 fails and the folder cannot go back: the setting follows it again.
+#[test]
+fn a_journal_folder_that_cannot_go_back_keeps_the_followed_setting() {
+    let (mut e, notes) = journal_vault(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
+    let open = e.session.current().unwrap();
+    let mut wholes = 0;
+    let mut second_held = |step: Step<'_>| match step {
+        Step::Whole { .. } => {
+            wholes += 1;
+            if wholes == 2 {
+                Err(io::Error::other("held"))
+            } else {
+                Ok(())
+            }
+        }
+        _ => Ok(()),
+    };
+    let heard: Mutex<Option<VaultConfig>> = Mutex::default();
+    let failed = notes.rename_folder_checked(
+        &open,
+        "journal",
+        "Diary",
+        |settings| *heard.lock().unwrap() = Some(settings.clone()),
+        &mut second_held,
+        &mut || Err(NotesError::Io(io::Error::other("injected"))),
+    );
+
+    assert!(matches!(failed, Err(NotesError::Io(_))), "{failed:?}");
+    assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
+    assert_eq!(heard.into_inner().unwrap().unwrap().journal_folder, "Diary");
+    assert!(e.vault.join("Diary/2025-01-02.md").exists());
+    drop(open);
+    reopen(&mut e);
+    assert_eq!(e.rows(), [row(DAY, "Diary/2025-01-02.md")]);
+    assert!(!outbox(&e, DAY).contains(&"delete".to_owned()));
+}
+
+/// A setting that cannot be read cannot follow the folder, so the folder does not move.
+#[test]
+fn the_journal_folder_does_not_move_while_the_settings_are_unread() {
+    let (e, notes) = journal_vault(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
+    fs::write(config_path(&e.vault), "{").unwrap();
+    let open = e.session.current().unwrap();
+    let refused = notes.rename_folder(&open, "journal", "Diary", |_| panic!("announced"));
+
+    assert!(
+        matches!(refused, Err(NotesError::FolderHoldsJournal)),
+        "{refused:?}"
+    );
+    assert!(e.vault.join("journal/2025-01-02.md").exists());
+    assert_eq!(e.rows(), [row(DAY, "journal/2025-01-02.md")]);
+}
+
+/// A crash after the journal folder moved on disk, before its notes followed, with the setting
+/// saved or not yet: the next open has the setting follow the folder before it finishes the
+/// move, so each day finishes as a day, the note a date names as that note, and a day made
+/// afterwards lands beside them. Neither that open nor the next deletes a record.
 #[test]
 fn a_journal_folder_move_a_crash_cut_short_keeps_its_days() {
     for saved in [false, true] {
         let (mut e, store) =
             opened_keeping(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
+        let notes = NotesService::new(e.tier.clone(), store.clone());
+        let note = dated_note(&notes, &mut e);
         let writer = e.core().notes_writer(store).unwrap();
-        let moved = AppMoved {
-            old_path: "journal/2025-01-02.md",
-            new_path: "Diary/2025-01-02.md",
+        let moved = |old_path, new_path| AppMoved {
+            old_path,
+            new_path,
             title: None,
             keeps_kind: true,
         };
+        let moves = [
+            (DAY, moved("journal/2025-01-02.md", "Diary/2025-01-02.md")),
+            (
+                note.as_str(),
+                moved("journal/2025-01-05.md", "Diary/2025-01-05.md"),
+            ),
+        ];
         writer
-            .begin_folder_move("journal", "Diary", &[(DAY, moved)])
+            .begin_folder_move("journal", "Diary", &moves)
             .unwrap();
         drop(writer);
         e.close();
@@ -502,13 +387,28 @@ fn a_journal_folder_move_a_crash_cut_short_keeps_its_days() {
 
         e.open();
         let facts = e.facts_until(indexed);
-        assert!(
-            !facts
-                .iter()
-                .any(|f| matches!(f, Applied::Added { .. } | Applied::Removed { .. })),
-            "saved {saved}: {facts:?}"
-        );
+        assert!(!crossed(&facts), "saved {saved}: {facts:?}");
         quiet(&mut e);
-        assert_eq!(e.rows(), [row(DAY, "Diary/2025-01-02.md")], "saved {saved}");
+        assert_eq!(stored(&e.vault)["journalFolder"], "Diary", "saved {saved}");
+        make_day(&notes, &e, "2025-01-06");
+        assert!(
+            e.vault.join("Diary/2025-01-06.md").exists(),
+            "saved {saved}"
+        );
+        std::thread::sleep(QUIET);
+        e.drain();
+        reopen(&mut e);
+        let rows = e.rows();
+        assert!(rows.contains(&row(DAY, "Diary/2025-01-02.md")), "{rows:?}");
+        assert!(
+            rows.contains(&row(&note, "Diary/2025-01-05.md")),
+            "{rows:?}"
+        );
+        for id in [DAY, note.as_str()] {
+            assert!(
+                !outbox(&e, id).contains(&"delete".to_owned()),
+                "saved {saved}"
+            );
+        }
     }
 }

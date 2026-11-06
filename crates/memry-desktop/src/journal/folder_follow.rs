@@ -24,6 +24,18 @@ pub fn moved_journal_folder(
     (!folder.is_empty() && folder != journal_folder).then(|| folder.to_owned())
 }
 
+/// The journal folder once the app moved the folder `from` to `to`, when `journal_folder` is
+/// `from` or inside it (`followJournalFolderMove`): `Personal/journal`, with `Personal` moved to
+/// `Archive/Personal`, gives `Archive/Personal/journal`.
+pub(crate) fn followed_journal_folder(
+    journal_folder: &str,
+    from: &str,
+    to: &str,
+) -> Option<String> {
+    let below = journal_folder.strip_prefix(from)?;
+    (below.is_empty() || below.starts_with('/')).then(|| format!("{to}{below}"))
+}
+
 /// True when every segment of `folder` is a folder under `root` with exactly this spelling
 /// (`folderExistsExactCase`): a plain `exists` says yes to `daily` after a rename to `Daily` on
 /// a case-insensitive file system, which would hide exactly that rename.

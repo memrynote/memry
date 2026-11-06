@@ -15,6 +15,12 @@
 //! order follow in one transaction ([`Lane::folder_moved_by_app`]). Otherwise it forgets the
 //! folder's record, and each note's record is settled on its own.
 //!
+//! A folder move that carried the journal folder had its setting follow it once the folder was
+//! on disk (`notes::folder_move`). A crash before that save leaves the setting at the old folder:
+//! [`follow_interrupted`] saves the followed folder before the lane is taken, so the folder's
+//! days finish their moves as days, and a day made later lands beside them. Each note the move
+//! carried keeps its kind as the live move read it (`keeps_kind_followed`).
+//!
 //! A folder the app deleted (`notes::folder_delete`) records its delete the same way. When the
 //! folder is gone, the open runs the delete's transaction for the notes still listed under it;
 //! when it is still there, the open forgets the record.
@@ -35,11 +41,16 @@ use memry_core::domain::notes::app_move::{
 use memry_core::domain::notes::folder_delete::FolderDeleteRecorded;
 use unicode_normalization::UnicodeNormalization;
 
+use super::config::read_vault_config_strict;
+use super::config::settings::JournalFollow;
 use super::consumer::identity::{IdentityCtx, NoteIdentity};
 use super::consumer::rows::Lane;
 use super::file_move::{FileMove, FileMoveError};
+use super::journal_format::JournalDays;
 use super::path_key::folded_key;
 use super::watch::EchoGuard;
+use crate::journal::folder_follow::followed_journal_folder;
+use crate::notes::owed_moves::keeps_kind_followed;
 use crate::shell::file_open::is_plain_relative;
 
 const SCOPE: &str = "app_move";
@@ -255,6 +266,15 @@ fn settle_folder(
             .map_err(|error| error.to_string())?;
         return Ok("forgot an interrupted folder move that had not moved its folder");
     }
+    // The journal setting that followed the folder, and the one it followed from.
+    let followed = read_vault_config_strict(ctx.root).ok().and_then(|config| {
+        let before = followed_journal_folder(&config.journal_folder, to, from)?;
+        let format = &config.journal_date_format;
+        Some((
+            JournalDays::new(&before, format),
+            JournalDays::new(&config.journal_folder, format),
+        ))
+    });
     let mut carried = Vec::new();
     for (note_id, recorded) in notes {
         let Recorded::Move(pending) = recorded else {
@@ -266,9 +286,16 @@ fn settle_folder(
             .and_then(|rest| rest.strip_prefix('/'))
             .is_some_and(|rest| pending.new_path == format!("{to}/{rest}"));
         if carried_by_it && found(ctx.root, lane, note_id, pending) == Found::Moved {
-            let keeps_kind = identity
-                .keeps_kind(ctx, note_id, &pending.new_path)
-                .map_err(|error| error.to_string())?;
+            let keeps_kind = match &followed {
+                Some(days) => keeps_kind_followed(
+                    days,
+                    writer,
+                    note_id,
+                    (&pending.old_path, &pending.new_path),
+                ),
+                None => identity.keeps_kind(ctx, note_id, &pending.new_path),
+            }
+            .map_err(|error| error.to_string())?;
             carried.push((note_id.as_str(), pending, keeps_kind));
         }
     }
@@ -287,6 +314,61 @@ fn settle_folder(
     lane.folder_moved_by_app(writer, from, to, &moves)
         .map_err(|error| error.to_string())?;
     Ok("finished an interrupted folder move")
+}
+
+/// The journal setting follows each recorded folder move that carried the journal folder and is
+/// at its new path (the module's doc). Before the rows' lane, the settings' locks held.
+pub(crate) fn follow_interrupted(root: &Path, writer: &NotesWriter) {
+    let folders = match writer.pending_folder_moves() {
+        Ok(folders) => folders,
+        Err(error) => {
+            return tracing::error!(
+                scope = SCOPE,
+                "the interrupted folder moves are unread; they wait for the next open: {error}"
+            );
+        }
+    };
+    let moves: Vec<PendingFolderMove> = folders
+        .into_iter()
+        .filter_map(|recorded| match recorded {
+            FolderRecorded::Move(folder) => Some(folder),
+            FolderRecorded::Unreadable(_) => None,
+        })
+        .collect();
+    if moves.is_empty() {
+        return;
+    }
+    let settings = JournalFollow::hold();
+    for folder in moves {
+        let (from, to) = (folder.from.as_str(), folder.to.as_str());
+        let followed = read_vault_config_strict(root)
+            .map_err(|why| format!("the settings cannot be read: {why}"))
+            .and_then(|config| {
+                let Some(followed) = followed_journal_folder(&config.journal_folder, from, to)
+                else {
+                    return Ok(None);
+                };
+                if (listed(root, to)?, listed(root, from)?) != (true, false) {
+                    return Ok(None);
+                }
+                settings
+                    .save(root, &followed)
+                    .map(|_| Some(followed))
+                    .map_err(|error| error.to_string())
+            });
+        match followed {
+            Ok(Some(folder)) => tracing::info!(
+                scope = SCOPE,
+                folder,
+                "the journal setting followed an interrupted folder move"
+            ),
+            Ok(None) => {}
+            Err(error) => tracing::warn!(
+                scope = SCOPE,
+                "the journal setting waits for the next open to follow its folder: {error}"
+            ),
+        }
+    }
 }
 
 /// Settles each folder's recorded delete, before the notes' moves.

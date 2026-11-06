@@ -95,7 +95,8 @@ pub enum NotesError {
     /// manager moved it first (#2531).
     #[error("the folder is not there anymore")]
     FolderNotFound,
-    /// The journal folder is, or is inside, the folder to delete.
+    /// The journal folder is, or is inside, the folder to delete, or the folder to move while
+    /// the settings cannot be read, so the journal setting cannot follow it.
     #[error("the folder holds the journal folder")]
     FolderHoldsJournal,
     /// The folder to delete is inside the journal folder (a year folder of a nested date

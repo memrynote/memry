@@ -31,14 +31,16 @@
 //!
 //! The journal folder, or a folder holding it, takes the journal setting along
 //! (`followJournalFolderMove`), so each day moves as a day: the move holds the settings' locks
-//! before the lane ([`JournalFollow`]), reads each day as the followed setting does, and saves
-//! the new folder once the folder is on disk, before step 3, so whatever a crash leaves pairs as
-//! days. Before the save, the days at the new folder are a journal folder moved whole, which the
-//! identity holds rather than crosses (`owed_moves::held`); after it, the next open's step 3 reads
-//! them under the new folder. A failed step 3 saves the old folder again before the folder goes
-//! back. Such a folder moves by the plain rename only ([`move_dir::move_dir_whole_checked`]): one
-//! Windows holds is refused as it is, since a rollback of an entry-wise move could leave days in
-//! `(incomplete move)`, outside every journal folder. Every window hears the new setting.
+//! before the lane ([`JournalFollow`]), reads each file's kind under the setting before and after
+//! (`keeps_kind_followed`: a note a date names stays that note), and saves the new folder once
+//! the folder is on disk, before step 3. The setting follows the disk: a failed step 3 moves the
+//! folder back only once the old folder is saved again, and a folder that stays moved keeps (or
+//! has saved again) the new one, which every window hears. A crash before the save is finished by
+//! the next open (`vault::app_move::follow_interrupted`). Such a folder moves by the plain rename
+//! only ([`move_dir::move_dir_whole_checked`]): one Windows holds is refused as it is, since a
+//! rollback of an entry-wise move could leave days in `(incomplete move)`, outside every journal
+//! folder. A settings file that cannot be read refuses the move (`folder_holds_journal`): the
+//! setting could not follow.
 //!
 //! Refused: a folder that is not there (`folder_not_found`, #2531's stale sidebar), a target that
 //! exists under any spelling but the folder's own (`name_conflict`), and one inside the folder, one
@@ -58,12 +60,13 @@ use memry_core::domain::notes::link_rewrite::LinkNames;
 use super::error::{NotesError, SCOPE};
 use super::folders::{respells_a_sibling, tree_filter, vault_folder};
 use super::moves::{Named, identity_failed, plain_folders};
-use super::owed_moves::keeps_kind;
+use super::owed_moves::keeps_kind_followed;
 use super::service::NotesService;
+use crate::journal::folder_follow::followed_journal_folder;
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
 use crate::vault::config::settings::JournalFollow;
-use crate::vault::config::{VaultConfig, read_vault_config};
+use crate::vault::config::{VaultConfig, read_vault_config, read_vault_config_strict};
 use crate::vault::consumer::identity::IdentityCtx;
 use crate::vault::consumer::rows::Lane;
 use crate::vault::consumer::{Applied, MoveKind};
@@ -102,8 +105,8 @@ struct Follow<'a> {
     settings: &'a JournalFollow,
     /// The journal folder before the move and after it.
     folders: (String, String),
-    /// The days as the setting after the move reads them.
-    days: JournalDays,
+    /// The days as the setting before the move reads them, and after it.
+    days: (JournalDays, JournalDays),
 }
 
 impl Follow<'_> {
@@ -145,29 +148,46 @@ impl NotesService {
         if from == to {
             return Ok(());
         }
-        check(root, &from, &to)?;
         // Before the lane: the settings' locks come first (`settings`'s lock order).
         let settings = JournalFollow::hold();
-        let follow = settings.current(root).ok().and_then(|config| {
-            let journal = config.journal_folder;
-            if journal.is_empty() || !within(&journal, &from) {
-                return None;
+        let follow = match read_vault_config_strict(root) {
+            Ok(config) => {
+                followed_journal_folder(&config.journal_folder, &from, &to).map(|followed| Follow {
+                    settings: &settings,
+                    days: (
+                        JournalDays::new(&config.journal_folder, &config.journal_date_format),
+                        JournalDays::new(&followed, &config.journal_date_format),
+                    ),
+                    folders: (config.journal_folder, followed),
+                })
             }
-            let followed = format!("{to}{}", &journal[from.len()..]);
-            let days = JournalDays::new(&followed, &config.journal_date_format);
-            Some(Follow {
-                settings: &settings,
-                folders: (journal, followed),
-                days,
-            })
-        });
-        let (carried, saved) = self.carry(open, (&from, &to), follow.as_ref(), step, after_disk)?;
+            // A setting that cannot be read cannot follow, and the days moved without it would
+            // be read as moved out of the journal.
+            Err(_)
+                if followed_journal_folder(&read_vault_config(root).journal_folder, &from, &to)
+                    .is_some() =>
+            {
+                return Err(NotesError::FolderHoldsJournal);
+            }
+            Err(_) => None,
+        };
+        check(root, &from, &to)?;
+        let mut saved = None;
+        let carried = self.carry(
+            open,
+            (&from, &to),
+            follow.as_ref(),
+            &mut saved,
+            step,
+            after_disk,
+        );
         if let Some(saved) = saved {
             tracing::info!(scope = SCOPE, "the journal folder followed a folder move");
             announce(&saved);
         }
         drop(follow);
         drop(settings);
+        let carried = carried?;
         for note in carried.iter().filter(|note| note.keeps_kind) {
             let names = |path: &str| Named {
                 path: path.to_owned(),
@@ -183,15 +203,16 @@ impl NotesService {
     }
 
     /// Steps 1 to 4, under the lane, the journal setting saved between 2 and 3 when it follows;
-    /// the settings after that save.
+    /// `saved` is left with the settings when the journal folder the move leaves stays saved.
     fn carry(
         &self,
         open: &OpenVault,
         (from, to): (&str, &str),
         follow: Option<&Follow<'_>>,
+        saved: &mut Option<VaultConfig>,
         step: &mut dyn FnMut(Step<'_>) -> io::Result<()>,
         after_disk: &mut dyn FnMut() -> Result<(), NotesError>,
-    ) -> Result<(Vec<Carried>, Option<VaultConfig>), NotesError> {
+    ) -> Result<Vec<Carried>, NotesError> {
         let root = open.path.as_path();
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;
@@ -224,7 +245,9 @@ impl NotesService {
                 .map(|listed| listed.title)
                 .unwrap_or_default();
             let keeps_kind = match follow {
-                Some(follow) => keeps_kind(&follow.days, &writer, &note_id, &new),
+                Some(Follow { days, .. }) => {
+                    keeps_kind_followed(days, &writer, &note_id, (&old, &new))
+                }
                 None => identity.keeps_kind(&ctx, &note_id, &new),
             }
             .map_err(identity_failed)?;
@@ -272,30 +295,34 @@ impl NotesService {
             });
         }
         tree.settle();
-        let mut saved = None;
         let followed = follow
             .map_or(Ok(()), |follow| {
-                saved = Some(follow.save(root, &follow.folders.1)?);
+                *saved = Some(follow.save(root, &follow.folders.1)?);
                 Ok(())
             })
             .and_then(|()| after_disk())
             .and_then(|()| Ok(lane.folder_moved_by_app(&writer, from, to, &moves)?));
         if let Err(error) = followed {
-            // The old folder saved first: a crash before the folder is back leaves the days at
-            // the new one as a journal folder moved whole, held.
+            // The setting follows the disk: the folder goes back only once the old folder is
+            // saved again, and one that cannot go back has the new folder saved again. Left
+            // moved, the records of the move stay, and the next open finishes it.
             if let Some(follow) = follow
-                && let Err(kept) = follow.save(root, &follow.folders.0)
+                && saved.is_some()
             {
-                tracing::error!(
-                    scope = SCOPE,
-                    "the journal setting kept a folder move that was undone: {kept}"
-                );
+                match follow.save(root, &follow.folders.0) {
+                    Ok(_) => *saved = None,
+                    Err(kept) => {
+                        tracing::error!(
+                            scope = SCOPE,
+                            "the journal folder stays moved, its setting could not go back: {kept}"
+                        );
+                        return Err(error);
+                    }
+                }
             }
             echo.will_remove(to);
             let back = match follow {
-                Some(_) => {
-                    move_dir::move_dir_whole_checked(root, &target, &source, &mut |_| Ok(()))
-                }
+                Some(_) => move_dir::move_dir_whole_checked(root, &target, &source, step),
                 None => move_dir::move_dir(root, &target, &source),
             };
             match back {
@@ -309,10 +336,24 @@ impl NotesService {
                     tree.narrow();
                 }
                 // The folder's record and each note's stay, and the next open finishes the move.
-                Err(back) => tracing::error!(
-                    scope = SCOPE,
-                    "a folder could not go back after its notes did not follow it: {back}"
-                ),
+                Err(back) => {
+                    tracing::error!(
+                        scope = SCOPE,
+                        "a folder could not go back after its notes did not follow it: {back}"
+                    );
+                    if let Some(follow) = follow {
+                        *saved = follow
+                            .save(root, &follow.folders.1)
+                            .inspect_err(|kept| {
+                                tracing::error!(
+                                    scope = SCOPE,
+                                    "the journal setting waits for the next open to follow its \
+                                     folder: {kept}"
+                                );
+                            })
+                            .ok();
+                    }
+                }
             }
             return Err(error);
         }
@@ -325,7 +366,7 @@ impl NotesService {
             });
         }
         drop(tree);
-        Ok((carried, saved))
+        Ok(carried)
     }
 }
 

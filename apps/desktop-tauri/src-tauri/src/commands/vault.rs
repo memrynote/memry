@@ -303,12 +303,12 @@ pub async fn vault_get_config<R: Runtime>(app: AppHandle<R>) -> Result<VaultConf
     .await
 }
 
-/// `vault:update-config`: writes the fields `config` names, a new date format or journal folder
-/// with the day files moved to it first, and answers the settings after it, which every window
-/// hears as [`VaultConfigChangedEvent`], in the order the writes land. A change that is not
-/// ported yet is refused as `config_change_not_ported`, and a setting not every day can take as
-/// `journal_format_incomplete`, `journal_folder_invalid`, `journal_unlisted` or
-/// `journal_days_not_renamed` (`vault::config::settings`).
+/// `vault:update-config`: writes the fields `config` names, a new date format with the day
+/// files renamed to it first, and answers the settings after it, which every window hears as
+/// [`VaultConfigChangedEvent`], in the order the writes land. A change that is not ported yet
+/// is refused as `config_change_not_ported`, and a format not every day can take as
+/// `journal_format_incomplete`, `journal_unlisted` or `journal_days_not_renamed`
+/// (`vault::config::settings`).
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_update_config<R: Runtime>(
@@ -339,7 +339,6 @@ pub async fn vault_update_config<R: Runtime>(
 /// The messages of refused changes, which Settings shows as it puts the saved value back.
 const NOT_PORTED_KEY: &str = "errors:vault.configChangeNotPorted";
 const FORMAT_INCOMPLETE_KEY: &str = "errors:vault.journalFormatIncomplete";
-const FOLDER_INVALID_KEY: &str = "errors:vault.journalFolderInvalid";
 const DAYS_NOT_RENAMED_KEY: &str = "errors:vault.journalDaysNotRenamed";
 const UNLISTED_KEY: &str = "errors:vault.journalUnlisted";
 
@@ -362,11 +361,6 @@ fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> Comm
             ErrorKind::Invalid,
             "journal_format_incomplete",
             localized(app, FORMAT_INCOMPLETE_KEY),
-        ),
-        SettingsError::InvalidJournalFolder => CommandError::new(
-            ErrorKind::Invalid,
-            "journal_folder_invalid",
-            localized(app, FOLDER_INVALID_KEY),
         ),
         SettingsError::DaysNotRenamed { left } => {
             let count = i64::try_from(left).unwrap_or(i64::MAX);

@@ -16,9 +16,8 @@
     "corrupted": "Brankas ini tampaknya rusak. Coba pulihkan dari cadangan.",
     "configChangeNotPorted": "Versi ini belum dapat mengubah folder jurnal, format tanggal, atau folder yang dikecualikan. Pengaturan tersimpan Anda tetap dipertahankan.",
     "journalFormatIncomplete": "Format tanggal ini tidak dapat menamai setiap hari, jadi tidak disimpan. Sertakan tahun, bulan, dan hari.",
-    "journalFolderInvalid": "Jurnal tidak dapat disimpan di folder ini, jadi perubahan tidak disimpan. Pilih folder yang terlihat, tidak dikecualikan, dan bukan tautan.",
-    "journalDaysNotRenamed": "Perubahan tidak disimpan karena beberapa hari jurnal tidak dapat dipindahkan ke sana ({count}). Mungkin sebuah file sudah memakai nama baru salah satu hari.",
-    "journalUnlisted": "Folder jurnal tidak dapat dibaca, jadi perubahan tidak disimpan. Periksa apakah Anda memiliki akses ke folder itu."
+    "journalDaysNotRenamed": "Format tanggal tidak diubah karena beberapa hari jurnal tidak dapat diganti namanya ke format itu ({count}). Mungkin sebuah file sudah memakai nama baru salah satu hari.",
+    "journalUnlisted": "Folder jurnal tidak dapat dibaca, jadi format tanggal tidak diubah. Periksa apakah Anda memiliki akses ke folder itu."
   },
   "note": {
     "notFound": "Catatan ini tidak dapat ditemukan. Catatan mungkin telah dihapus.",
