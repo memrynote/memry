@@ -188,6 +188,8 @@ mod domain_templates;
 mod dryoc_parity;
 #[path = "editor_concurrency.rs"]
 mod editor_concurrency;
+#[path = "editor_every_writer.rs"]
+mod editor_every_writer;
 #[path = "editor_open_apply.rs"]
 mod editor_open_apply;
 #[path = "editor_origin_fanout.rs"]
@@ -340,6 +342,8 @@ mod sync_realtime_run;
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
 mod tag_fold_vectors;
+#[path = "tag_objects.rs"]
+mod tag_objects;
 #[path = "tag_pins.rs"]
 mod tag_pins;
 #[path = "tag_reads.rs"]

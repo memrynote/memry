@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use serde_json::{Value, json};
 
+use super::linked_here::{LinkedGroup, LinkedTask, Summary, TaskRow, task_groups};
 use super::search::{Candidate, fold_for_search, members, ranked, subtitle};
 use super::*;
 use crate::domain::tag_schema::{DefinitionInput, PropertyInfo, StoredSchema, resolve};
@@ -133,4 +134,104 @@ fn only_a_list_of_relation_links_links_notes() {
     assert!(note_refs(&json!(["memry://note/a", "plain"])).is_empty());
     assert!(note_refs(&json!("memry://note/a")).is_empty());
     assert!(note_refs(&json!([])).is_empty());
+}
+
+#[test]
+fn task_field_groups_list_open_tasks_first_then_by_due_date_and_skip_other_values() {
+    let resolved = tags();
+    let task = |id: &str, due: Option<&str>, completed: bool, value: Value| TaskRow {
+        id: id.to_owned(),
+        title: id.to_owned(),
+        due_date: due.map(str::to_owned),
+        completed,
+        tags: vec!["Person".to_owned()],
+        fields: [("Company".to_owned(), value)].into_iter().collect(),
+    };
+    let link = json!(["memry://note/acme"]);
+    let tasks = [
+        task("done", Some("2026-01-01"), true, link.clone()),
+        task("undated", None, false, link.clone()),
+        task("late", Some("2026-03-01"), false, link.clone()),
+        task("soon", Some("2026-02-01"), false, link),
+        task("other", None, false, json!(["memry://note/elsewhere"])),
+    ];
+    let groups = task_groups("acme", &tasks, &resolved, 3);
+    let LinkedGroup::TaskField {
+        tag,
+        field,
+        total,
+        items,
+        filter,
+    } = &groups[0]
+    else {
+        panic!("a task field group: {groups:?}");
+    };
+    assert_eq!(groups.len(), 1);
+    assert_eq!(
+        (tag.as_str(), field.as_str(), *total),
+        ("person", "Company", 4)
+    );
+    let ids: Vec<&str> = items
+        .iter()
+        .map(|t: &LinkedTask| t.task_id.as_str())
+        .collect();
+    assert_eq!(ids, ["soon", "late", "undated"]);
+    assert_eq!(filter, "Company contains \"memry://note/acme\"");
+}
+
+#[test]
+fn a_relation_group_is_labelled_by_its_inverse_else_the_tag_else_the_field() {
+    let resolved = tags();
+    let note = |id: &str, modified: &str, header: &[&str]| Summary {
+        id: id.to_owned(),
+        title: id.to_owned(),
+        date: None,
+        modified: modified.to_owned(),
+        snippet: None,
+        header_tags: header.iter().map(|tag| (*tag).to_owned()).collect(),
+    };
+    let sources = HashMap::from([
+        (
+            "ada".to_owned(),
+            note("ada", "2026-01-01T00:00:00.000Z", &["Employee"]),
+        ),
+        (
+            "bob".to_owned(),
+            note("bob", "2026-02-01T00:00:00.000Z", &["person"]),
+        ),
+        (
+            "loose".to_owned(),
+            note("loose", "2026-01-01T00:00:00.000Z", &[]),
+        ),
+    ]);
+    let refs = [
+        ("ada".to_owned(), "Company".to_owned()),
+        ("loose".to_owned(), "Company".to_owned()),
+        ("bob".to_owned(), "Company".to_owned()),
+        ("ghost".to_owned(), "Company".to_owned()),
+    ];
+    let groups = linked_here::relation_groups("acme", &refs, &sources, &resolved, 5);
+    let shown: Vec<(&str, &str, Vec<&str>)> = groups
+        .iter()
+        .map(|group| match group {
+            LinkedGroup::Relation {
+                source_tag,
+                label,
+                items,
+                ..
+            } => (
+                source_tag.as_str(),
+                label.as_str(),
+                items.iter().map(|i| i.note_id.as_str()).collect(),
+            ),
+            other => panic!("a relation group: {other:?}"),
+        })
+        .collect();
+    assert_eq!(
+        shown,
+        [
+            ("person", "person", vec!["bob", "ada"]),
+            ("", "Company", vec!["loose"]),
+        ]
+    );
 }

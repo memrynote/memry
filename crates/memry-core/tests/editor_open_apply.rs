@@ -423,3 +423,38 @@ fn an_open_that_fails_keeps_the_hold_the_holder_already_had() {
     assert!(failed.is_err(), "the owed-body read failed");
     assert!(f.editor.is_open(&note), "the earlier open still holds it");
 }
+
+#[test]
+fn a_block_without_an_id_is_repaired_on_open_stored_and_queued_once() {
+    let f = fixture();
+    let note = f.note();
+    let old = Replica::new(9).block_without_id("written by an old build");
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            update_log::append_server_update(conn, &note, 1, &old, 1).map_err(|e| {
+                memry_core::api::errors::StorageError::Failed {
+                    what: e.to_string(),
+                }
+            })
+        })
+        .expect("a merged server row");
+
+    let opened = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
+
+    assert!(
+        opened.text().contains("<blockContainer id="),
+        "the block got an id: {}",
+        opened.text()
+    );
+    assert_eq!(f.local_blobs(&note).len(), 1, "the repair is stored");
+    assert_eq!(f.queued(&note), 1, "and queued with it");
+    let f = f.relaunch();
+    let reopened = Replica::from_state(2, &f.editor.open(&note, "main").expect("reopen").state);
+    assert_eq!(reopened.text(), opened.text());
+    assert_eq!(
+        f.local_blobs(&note).len(),
+        1,
+        "a repaired body needs no second repair"
+    );
+}
