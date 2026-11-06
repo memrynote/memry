@@ -188,6 +188,8 @@ mod dryoc_parity;
 mod external_feed;
 #[path = "field_merge_vectors.rs"]
 mod field_merge_vectors;
+#[path = "fold_chunks_store.rs"]
+mod fold_chunks_store;
 #[path = "header_tags.rs"]
 mod header_tags;
 #[path = "header_tags_untrusted.rs"]
