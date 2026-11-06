@@ -350,13 +350,14 @@ describe('useJournalEntry', () => {
           ([callDate]) => callDate === '2026-01-03'
         ).length
 
-      expect(getCallsForDate()).toBe(1)
+      // The load, and the read once the editor opened (#3967).
+      await waitFor(() => expect(getCallsForDate()).toBe(2))
 
       await act(async () => {
         await result.current.reload()
       })
 
-      expect(getCallsForDate()).toBe(2)
+      expect(getCallsForDate()).toBe(3)
     })
 
     it('should force reload discarding pending changes', async () => {
