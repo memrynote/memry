@@ -77,6 +77,7 @@ use crate::vault::consumer::{Applied, MoveKind};
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
 use crate::vault::journal_format::normalize_journal_folder;
+use crate::vault::journal_rename::{JournalVault, finish_journal_change};
 use crate::vault::move_dir::{self, IncompleteRollback, Step};
 use crate::vault::move_journal::STAGING_PREFIX;
 use crate::vault::path_key::folded_key;
@@ -163,6 +164,16 @@ impl NotesService {
         }
         // Before the lane: the settings' locks come first (`settings`'s lock order).
         let settings = JournalFollow::hold();
+        // The days of a journal setting change a crash cut short go back first; while they
+        // wait, no move takes either of its folders (`vault::journal_rename`).
+        let at = JournalVault {
+            root,
+            vault: &open.vault,
+            tier: &self.tier,
+        };
+        if finish_journal_change(at, &settings).is_some_and(|waits| waits.holds(&from)) {
+            return Err(NotesError::JournalChangeWaits);
+        }
         // Settings that cannot be read do not say where the journal is, so no folder moves:
         // one that held it would leave every day outside the journal, to be deleted.
         let config = read_vault_config_strict(root).map_err(NotesError::SettingsUnreadable)?;

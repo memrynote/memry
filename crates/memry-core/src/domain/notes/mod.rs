@@ -59,6 +59,8 @@ pub mod folder_delete;
 #[cfg(feature = "markdown")]
 pub mod identity;
 #[cfg(feature = "markdown")]
+pub mod journal_change;
+#[cfg(feature = "markdown")]
 pub mod journal_day;
 pub mod link_rewrite;
 pub mod local_only;

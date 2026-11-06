@@ -10,7 +10,9 @@ export function registerPendingSave(key: string, flushFn: FlushFn): void {
   pendingSaves.set(key, flushFn)
 }
 
-export function unregisterPendingSave(key: string): void {
+/** Drops the key's flush; with `flushFn`, only while that flush is still the one registered. */
+export function unregisterPendingSave(key: string, flushFn?: FlushFn): void {
+  if (flushFn && pendingSaves.get(key) !== flushFn) return
   pendingSaves.delete(key)
 }
 

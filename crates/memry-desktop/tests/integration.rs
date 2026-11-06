@@ -94,6 +94,12 @@ mod indexer_open_status;
 mod indexer_scan;
 #[path = "journal_calendar.rs"]
 mod journal_calendar;
+#[path = "journal_change.rs"]
+mod journal_change;
+#[path = "journal_change_crash.rs"]
+mod journal_change_crash;
+#[path = "journal_change_waits.rs"]
+mod journal_change_waits;
 #[path = "journal_folder.rs"]
 mod journal_folder;
 #[path = "journal_folder_claim.rs"]

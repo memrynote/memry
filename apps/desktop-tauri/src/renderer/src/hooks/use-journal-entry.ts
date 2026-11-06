@@ -49,6 +49,14 @@ interface PendingTagsEdit {
 type JournalSaveInput = { date: string; content?: string } & PendingTagsEdit
 
 /**
+ * Whether two texts of a day are the same once trimmed, line ends aside: a save of one over the
+ * other keeps the file's bytes (`journal/update.rs`, `FileChange::text`).
+ */
+function sameText(a: string, b: string): boolean {
+  return a.replaceAll('\r\n', '\n').trim() === b.replaceAll('\r\n', '\n').trim()
+}
+
+/**
  * Whether the vault this journal renders is no longer the open one. Saves are
  * addressed by date only, so a save issued from a hidden workspace's cleanup
  * (which runs after main has opened the next vault) would overwrite that
@@ -128,13 +136,31 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   const isSavingRef = useRef(false)
   // The running performSave, so the pre-switch flush can wait for it instead
   // of returning while its edits (or newer ones) are still unsaved.
-  const inFlightSaveRef = useRef<Promise<void> | null>(null)
+  // Resolves with whether the save wrote.
+  const inFlightSaveRef = useRef<Promise<boolean> | null>(null)
   const templateSeedKeyRef = useRef<string | null>(null)
   // Separate from the success latch above: the latch must only be set once an
   // entry actually exists, but the effect can re-run while the async seed is
   // still in flight and must not start a second one.
   const templateSeedInFlightRef = useRef<string | null>(null)
   const performSaveRef = useRef<() => Promise<void>>(async () => {})
+  // What the running save writes, and to which day. The pending refs, as the save took them.
+  const savingRef = useRef<{
+    date: string
+    content: string | null
+    tags: PendingTagsEdit | null
+  } | null>(null)
+  // The day an outside edit or a dropped-events signal reached while its save ran: the save may
+  // have written before that edit or after it, so the day is read again once it ends (#3967).
+  const outsideDuringSaveRef = useRef<string | null>(null)
+  // The text the open day's editor holds: what it loaded, what it reported, or the outside text
+  // it was handed. Not the query's data, which the app-level listener (`useJournalChangeEvents`)
+  // refetches ahead of the editor. `null` until the day has loaded.
+  const editorTextRef = useRef<{ date: string; text: string } | null>(null)
+  // Counts the saves started and the outside texts handed to the editor: a read of the day
+  // that began before either is older than what the day holds. The save's own event is not
+  // counted; it comes with the save's reply, in either order.
+  const dayChangesRef = useRef(0)
   const [isSeedingFromTemplate, setIsSeedingFromTemplate] = useState(false)
 
   useEffect(() => {
@@ -166,19 +192,47 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     if (oldDate && oldDate !== date && (pendingContent !== null || pendingTags !== null)) {
       const saveInput: JournalSaveInput = { date: oldDate, ...pendingTags }
       if (pendingContent !== null) saveInput.content = pendingContent
+      const send = (): void => {
+        journalService.updateEntry(saveInput).catch((err: unknown) => {
+          // The user has already navigated away — this is silent data loss.
+          trackRendererError('journal_pending_save_failed', err)
+          log.error(`Failed to save pending changes for ${oldDate}:`, err)
+        })
+      }
 
-      journalService.updateEntry(saveInput).catch((err: unknown) => {
-        // The user has already navigated away — this is silent data loss.
-        trackRendererError('journal_pending_save_failed', err)
-        log.error(`Failed to save pending changes for ${oldDate}:`, err)
-      })
+      // The save running may already send these edits: the unmount flush of the save registry
+      // runs before this effect and starts one. A second write of the same text could go over
+      // an outside edit that landed between the two; it is sent again only if that save fails.
+      const saving = savingRef.current
+      const running = inFlightSaveRef.current
+      if (
+        running &&
+        saving?.date === oldDate &&
+        saving.content === pendingContent &&
+        saving.tags === pendingTags
+      ) {
+        void running.then((saved) => {
+          if (!saved) send()
+          return undefined
+        })
+      } else {
+        send()
+      }
+      // The day reopened before the save's reply opens on these edits, not on the cache's
+      // older text, which typing then would save over.
+      if (pendingContent !== null) {
+        queryClient.setQueryData<JournalEntry | null>(journalKeys.entry(oldDate), (old) =>
+          old ? { ...old, content: pendingContent } : old
+        )
+      }
     }
 
     currentDateRef.current = date
     previousDateRef.current = date
     pendingContentRef.current = null
     pendingTagsRef.current = null
-  }, [date])
+    editorTextRef.current = null
+  }, [date, queryClient])
 
   const {
     data: entry = null,
@@ -311,6 +365,39 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     }
   })
 
+  // Reads the open day again and hands a text other than the editor's to it, as an outside
+  // edit's event does. The read is dropped when the day holds typing not saved yet by the time it
+  // lands, or when a save or an outside edit came since it began: either is newer than it.
+  // Callers wait for a save of the day that is running (`outsideDuringSaveRef`).
+  const readDayAgain = useCallback(
+    (open: string) => {
+      const queryKey = journalKeys.entry(open)
+      const asked = dayChangesRef.current
+      journalService
+        .getEntry(open)
+        .then((fetched) => {
+          const holdsText = pendingContentRef.current !== null || pendingTagsRef.current !== null
+          if (currentDateRef.current !== open || holdsText) return
+          if (dayChangesRef.current !== asked) return
+          const held = editorTextRef.current
+          const shown =
+            held?.date === open
+              ? held.text
+              : (queryClient.getQueryData<JournalEntry | null>(queryKey)?.content ?? '')
+          const text = fetched?.content ?? ''
+          queryClient.setQueryData(queryKey, fetched)
+          if (sameText(text, shown)) return
+          editorTextRef.current = { date: open, text }
+          dayChangesRef.current += 1
+          setExternalUpdateCount((c) => c + 1)
+        })
+        .catch((err: unknown) => {
+          log.warn(`Failed to read ${open} again after an outside change:`, err)
+        })
+    },
+    [queryClient]
+  )
+
   const performSave = useCallback(async () => {
     const content = pendingContentRef.current
     const tags = pendingTagsRef.current
@@ -319,19 +406,23 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     if (content === null && tags === null) return
     if (isSavingRef.current) return
 
+    dayChangesRef.current += 1
+    savingRef.current = { date: currentDate, content, tags }
     isSavingRef.current = true
     setIsSaving(true)
 
-    let settle: () => void = () => {}
-    inFlightSaveRef.current = new Promise<void>((resolve) => {
+    let settle: (saved: boolean) => void = () => {}
+    inFlightSaveRef.current = new Promise<boolean>((resolve) => {
       settle = resolve
     })
+    let saved = false
 
     try {
       const updateInput: JournalSaveInput = { date: currentDate, ...tags }
       if (content !== null) updateInput.content = content
 
       await updateMutation.mutateAsync(updateInput)
+      saved = true
 
       if (currentDateRef.current === currentDate) {
         setSaveError(null)
@@ -361,12 +452,18 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     } finally {
       isSavingRef.current = false
       inFlightSaveRef.current = null
-      settle()
+      settle(saved)
       if (currentDateRef.current === currentDate) {
         setIsSaving(false)
       }
+      // Typing made since, or a day the page moved to, drops the read (`readDayAgain`). The
+      // typing is newer than the outside edit, and its save goes over it.
+      const told = outsideDuringSaveRef.current
+      outsideDuringSaveRef.current = null
+      if (told !== null) readDayAgain(told)
     }
-  }, [updateMutation])
+    // oxlint-disable-next-line react/memo-dependencies -- readDayAgain changes only with queryClient; listed to satisfy hooks/exhaustive-deps
+  }, [readDayAgain, updateMutation])
 
   // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   performSaveRef.current = performSave
@@ -398,6 +495,12 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         })
         return
       }
+      // The editor reports the text it was handed (the day's load, an outside edit) as a change.
+      // Text the editor already holds is nothing new to save: held as typing, it would keep the
+      // next outside edit out of the day, and its save would go over that edit.
+      const held = editorTextRef.current
+      if (held?.date === date && sameText(content, held.text)) return
+      editorTextRef.current = { date, text: content }
       pendingContentRef.current = content
       setIsDirty(true)
       scheduleSave()
@@ -452,8 +555,10 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     pendingContentRef.current = null
     pendingTagsRef.current = null
     setIsDirty(false)
-    await refetch()
-  }, [refetch])
+    const { data } = await refetch()
+    // The page remounts the day's editor on this answer.
+    if (currentDateRef.current === date) editorTextRef.current = { date, text: data?.content ?? '' }
+  }, [date, refetch])
 
   const deleteEntry = useCallback(async (): Promise<boolean> => {
     try {
@@ -485,15 +590,21 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     const registryKey = `journal:${date}`
     liveDateRef.current = date
 
-    // The vault switch runs this before main closes the vault, so it must
-    // leave nothing pending: a save already in flight would make performSave
-    // return early, and edits typed during it would stay unsaved.
-    registerPendingSave(registryKey, async () => {
+    // The vault switch runs this before main closes the vault, and the unmount below, so it
+    // must leave nothing pending: a save already in flight would make performSave return
+    // early, and edits typed during it would stay unsaved.
+    // `unmounted`: the unmount's own flush, during whose wait a switch can name or open the next
+    // vault. The switch's flush, run before main closes this vault, saves the edits then.
+    const flush = async (unmounted = false): Promise<void> => {
       while (inFlightSaveRef.current) await inFlightSaveRef.current
-      if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
-        await performSaveRef.current()
+      if (pendingContentRef.current === null && pendingTagsRef.current === null) return
+      if (unmounted && hasLeftVault(lifecycle, vaultScope)) {
+        log.warn(`Skipped saving journal edits for ${date}: its vault closed during the last save`)
+        return
       }
-    })
+      await performSaveRef.current()
+    }
+    registerPendingSave(registryKey, flush)
 
     return () => {
       if (saveTimerRef.current) {
@@ -510,7 +621,11 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
             `Skipped saving journal edits for ${date}: its vault closed before they were flushed`
           )
         } else {
-          void performSaveRef.current()
+          // Registered until it ends, so a quit waits for it. The same day opened again
+          // meanwhile registers its own flush under this key.
+          void flush(true).finally(() => unregisterPendingSave(registryKey, flush))
+          liveDateRef.current = null
+          return
         }
       }
       unregisterPendingSave(registryKey)
@@ -534,14 +649,29 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
       if (event.date === currentDateRef.current) {
         if (isExternal) {
-          // Edits not saved yet (or in a save in flight) are the user's newest; they reached no
-          // file, so nothing else holds them. Their save writes over the outside edit, which the
-          // core keeps as a version (`app_edit.rs`), as a note's save does.
+          // The day's save running may have written before this edit or after it: settled when
+          // it ends.
+          if (isSavingRef.current && savingRef.current?.date === event.date) {
+            outsideDuringSaveRef.current = event.date
+            return
+          }
+          // Edits not saved yet are the user's newest; they reached no file, so nothing else
+          // holds them. Their save writes over the outside edit, which the core keeps as a
+          // version (`app_edit.rs`), as a note's save does.
           if (pendingContentRef.current !== null || pendingTagsRef.current !== null) return
           queryClient.setQueryData(journalKeys.entry(event.date), event.entry)
+          editorTextRef.current = { date: event.date, text: event.entry.content }
+          dayChangesRef.current += 1
           setExternalUpdateCount((c) => c + 1)
         } else if (!isDirtyRef.current) {
           queryClient.setQueryData(journalKeys.entry(event.date), event.entry)
+          // Not this page's save, which has its reply: another page's, such as one unmounted
+          // during its save that saved the typing made during it after this page opened the day.
+          // A late event of an older save of its own reads the day's newest text back.
+          const held = editorTextRef.current
+          if (held?.date === event.date && !sameText(event.entry.content, held.text)) {
+            readDayAgain(event.date)
+          }
         }
       }
     })
@@ -566,34 +696,19 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
     })
 
-    // A missed event may have changed the open day: read again unless it holds unsaved text,
-    // which its save keeps, as for `modified`. Checked again when the read lands, since a
-    // keystroke (before its render) or a save may have come meanwhile, and the read is dropped
-    // if anything set the day since it began: a save's or an event's answer is newer than it.
-    // New text reaches the editor as an outside edit's does; the same text leaves the editor
-    // (and its cursor) as it is.
+    // A missed event may have changed the open day: read again once a running save ends, and
+    // not while it holds unsaved text, which its save keeps, as for `modified`. New text reaches
+    // the editor as an outside edit's does; the same text leaves the editor (and its cursor) as
+    // it is.
     const unsubscribeDropped = onJournalEventsDropped(() => {
       const open = currentDateRef.current
-      if (!open || isDirtyRef.current) return
-      const queryKey = journalKeys.entry(open)
-      const asked = queryClient.getQueryState(queryKey)?.dataUpdateCount
-      journalService
-        .getEntry(open)
-        .then((fetched) => {
-          const holdsText =
-            isDirtyRef.current ||
-            pendingContentRef.current !== null ||
-            pendingTagsRef.current !== null ||
-            isSavingRef.current
-          if (currentDateRef.current !== open || holdsText) return
-          if (queryClient.getQueryState(queryKey)?.dataUpdateCount !== asked) return
-          const shown = queryClient.getQueryData<JournalEntry | null>(queryKey)?.content ?? null
-          queryClient.setQueryData(queryKey, fetched)
-          if ((fetched?.content ?? null) !== shown) setExternalUpdateCount((c) => c + 1)
-        })
-        .catch((err: unknown) => {
-          log.warn(`Failed to refetch ${open} after dropped journal events:`, err)
-        })
+      if (!open) return
+      if (isSavingRef.current && savingRef.current?.date === open) {
+        outsideDuringSaveRef.current = open
+        return
+      }
+      if (isDirtyRef.current) return
+      readDayAgain(open)
     })
 
     return () => {
@@ -603,9 +718,23 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       unsubscribeExternal()
       unsubscribeDropped()
     }
-  }, [queryClient])
+  }, [queryClient, readDayAgain])
 
   const loadedForDateResult = isLoading || isSeedingFromTemplate ? null : date
+
+  // The page mounts the day's editor with this answer once the day has loaded. A day opened from
+  // the cache shows the cache's text: an outside edit made while the day was not open sent this
+  // page no event (`useJournalChangeEvents` only marks it stale), so the read made once the
+  // editor opens is its only news, as a note's read on mount is (#4051).
+  useEffect(() => {
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- keeps a ref in step with the text the page mounted its editor on; no event marks the day's load
+    if (loadedForDateResult !== date || editorTextRef.current?.date === date) return
+    editorTextRef.current = { date, text: entry?.content ?? '' }
+    // The day's own save may still run, its reply not in the cache yet: read once it ends.
+    if (isSavingRef.current && savingRef.current?.date === date) outsideDuringSaveRef.current = date
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-pass-ref-to-parent -- one read per day opened, handed over or not by refs (typing, a save in flight) a render cannot read, as note.tsx's read on mount
+    else readDayAgain(date)
+  }, [date, entry, loadedForDateResult, readDayAgain])
 
   return {
     entry,

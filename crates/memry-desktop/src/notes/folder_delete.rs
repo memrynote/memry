@@ -28,9 +28,12 @@
 //! it (`folder_holds_journal`), a folder inside it (`folder_in_journal`), any folder while the
 //! settings that say where the journal is cannot be read (`vault_settings_unreadable`), and a
 //! folder holding a row no note delete can tombstone (the core's `begin`): days are not notes
-//! this delete takes, and a folder that is locked, sits in a locked folder or holds a lock
-//! (`folder_locked`, `assertFolderTreeWritable`). Not here yet: the confirmed permanent delete
-//! 13f offers a note the trash refuses (#3813).
+//! this delete takes. While a journal setting change a crash cut short waits, a folder that is,
+//! holds or is inside either of its folders is refused too (`journal_change_waits`, as the
+//! folder move refuses it, `vault::journal_rename`): its days would go as days, or wait to go
+//! back to a folder that is gone. A folder that is locked, sits in a locked folder or holds a lock
+//! is refused (`folder_locked`, `assertFolderTreeWritable`). Not here yet: the confirmed
+//! permanent delete 13f offers a note the trash refuses (#3813).
 
 use std::fs;
 use std::io::ErrorKind;
@@ -45,8 +48,10 @@ use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
 use crate::vault::config::read_vault_config_strict;
+use crate::vault::config::settings::JournalFollow;
 use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::journal_format::normalize_journal_folder;
+use crate::vault::journal_rename::{JournalVault, finish_journal_change};
 
 impl NotesService {
     pub fn delete_folder(&self, open: &OpenVault, path: &str) -> Result<(), NotesError> {
@@ -66,6 +71,17 @@ impl NotesService {
         let folder = vault_folder(root, path)?;
         // Nothing locked goes with the folder.
         Locks::of(open).refuse_folder_tree(&disk_spelling(root, &folder))?;
+        // Before the lane: the settings' locks come first (`settings`'s lock order). Held to the
+        // end, so no journal setting moves into the folder after `check` read it.
+        let settings = JournalFollow::hold();
+        let at = JournalVault {
+            root,
+            vault: &open.vault,
+            tier: &self.tier,
+        };
+        if finish_journal_change(at, &settings).is_some_and(|waits| waits.holds(&folder)) {
+            return Err(NotesError::JournalChangeWaits);
+        }
         check(root, &folder)?;
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;
