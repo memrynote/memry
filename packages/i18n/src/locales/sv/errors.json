@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Den här versionen kan ännu inte ändra dagboksmappen, datumformatet eller exkluderade mappar. Din sparade inställning behålls.",
     "journalFormatIncomplete": "Det här datumformatet kan inte namnge varje dag, så det sparades inte. Ta med år, månad och dag.",
     "journalDaysNotRenamed": "Datumformatet ändrades inte eftersom vissa dagboksdagar inte kunde byta namn till det ({count}). En fil har kanske redan en dags nya namn.",
-    "journalUnlisted": "Dagboksmappen kunde inte läsas, så datumformatet ändrades inte. Kontrollera att du har åtkomst till den."
+    "journalUnlisted": "Dagboksmappen kunde inte läsas, så datumformatet ändrades inte. Kontrollera att du har åtkomst till den.",
+    "settingsUnreadable": "Mappar kan inte flyttas medan valvets inställningsfil (.memry/config.json) inte kan läsas. Rätta filen och försök igen."
   },
   "note": {
     "notFound": "Det gick inte att hitta den här anteckningen. Den kan ha raderats.",

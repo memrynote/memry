@@ -28,7 +28,7 @@
 
 use std::io;
 use std::path::Path;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock, RwLockReadGuard};
 
 use memry_core::api::vault::Vault;
 
@@ -49,9 +49,8 @@ const SCOPE: &str = "vault_settings";
 /// runs them: two windows saving at once are heard in the order their writes land.
 static UPDATES: Mutex<()> = Mutex::new(());
 
-/// The date format and folder a new day file is named in. A format change holds it alone from
-/// its renames to its save, and a move of the journal folder in the app ([`JournalFollow`]) from
-/// before its lane until its setting follows; a day create holds it shared from naming its file to writing it
+/// The date format a new day file is named in. A format change holds it alone from its
+/// renames to its save; a day create holds it shared from naming its file to writing it
 /// ([`day_names`]). A day made during the renames would otherwise take the old format's name
 /// after the folder was listed, and stay a note under the new format.
 static DAY_NAMES: RwLock<()> = RwLock::new(());
@@ -208,21 +207,18 @@ fn put_back(at: JournalVault<'_>, current: &VaultConfig, moved: &[JournalRename]
     }
 }
 
-/// The settings' locks as a move of the journal folder in the app holds them, from before the
-/// rows' lane until the setting follows the folder (`notes::folder_move`, and the open that
-/// finishes such a move, `vault::app_move`): one update at a time, and no day named meanwhile.
+/// The settings' update lock as a move of the journal folder in the app holds it, from before
+/// the rows' lane until the setting follows the folder (`notes::folder_move`, and the open that
+/// finishes such a move, `vault::app_move`): one update at a time. A day create names its file
+/// under the lane (`journal::write`), so the lane orders it after the save.
 pub(crate) struct JournalFollow {
     _updates: MutexGuard<'static, ()>,
-    _day_names: RwLockWriteGuard<'static, ()>,
 }
 
 impl JournalFollow {
     pub(crate) fn hold() -> Self {
-        let updates = UPDATES.lock().unwrap_or_else(PoisonError::into_inner);
-        let day_names = DAY_NAMES.write().unwrap_or_else(PoisonError::into_inner);
         Self {
-            _updates: updates,
-            _day_names: day_names,
+            _updates: UPDATES.lock().unwrap_or_else(PoisonError::into_inner),
         }
     }
 

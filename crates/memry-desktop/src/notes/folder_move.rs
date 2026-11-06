@@ -39,8 +39,8 @@
 //! the next open (`vault::app_move::follow_interrupted`). Such a folder moves by the plain rename
 //! only ([`move_dir::move_dir_whole_checked`]): one Windows holds is refused as it is, since a
 //! rollback of an entry-wise move could leave days in `(incomplete move)`, outside every journal
-//! folder. A settings file that cannot be read refuses the move (`folder_holds_journal`): the
-//! setting could not follow.
+//! folder. A settings file that cannot be read refuses every folder move
+//! (`vault_settings_unreadable`): it does not say where the journal is, or whether it follows.
 //!
 //! Refused: a folder that is not there (`folder_not_found`, #2531's stale sidebar), a target that
 //! exists under any spelling but the folder's own (`name_conflict`), and one inside the folder, one
@@ -72,11 +72,15 @@ use crate::vault::consumer::rows::Lane;
 use crate::vault::consumer::{Applied, MoveKind};
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
+use crate::vault::journal_format::normalize_journal_folder;
 use crate::vault::move_dir::{self, IncompleteRollback, Step};
 use crate::vault::move_journal::STAGING_PREFIX;
 use crate::vault::path_key::folded_key;
-use crate::vault::watch::EchoGuard;
 use crate::vault::watch::filter::WatchFilter;
+
+mod echo;
+
+use echo::{TreeRecord, disown_moved_files, own_moved_files};
 
 /// A note the folder carries, vault-relative paths with `/`.
 struct Carried {
@@ -85,6 +89,8 @@ struct Carried {
     new: String,
     title: String,
     markdown: bool,
+    /// The hash of the bytes a markdown note's file holds, as its row says.
+    hash: Option<String>,
     keeps_kind: bool,
 }
 
@@ -150,27 +156,18 @@ impl NotesService {
         }
         // Before the lane: the settings' locks come first (`settings`'s lock order).
         let settings = JournalFollow::hold();
-        let follow = match read_vault_config_strict(root) {
-            Ok(config) => {
-                followed_journal_folder(&config.journal_folder, &from, &to).map(|followed| Follow {
-                    settings: &settings,
-                    days: (
-                        JournalDays::new(&config.journal_folder, &config.journal_date_format),
-                        JournalDays::new(&followed, &config.journal_date_format),
-                    ),
-                    folders: (config.journal_folder, followed),
-                })
-            }
-            // A setting that cannot be read cannot follow, and the days moved without it would
-            // be read as moved out of the journal.
-            Err(_)
-                if followed_journal_folder(&read_vault_config(root).journal_folder, &from, &to)
-                    .is_some() =>
-            {
-                return Err(NotesError::FolderHoldsJournal);
-            }
-            Err(_) => None,
-        };
+        // Settings that cannot be read do not say where the journal is, so no folder moves:
+        // one that held it would leave every day outside the journal, to be deleted.
+        let config = read_vault_config_strict(root).map_err(NotesError::SettingsUnreadable)?;
+        let follow =
+            followed_journal_folder(&config.journal_folder, &from, &to).map(|followed| Follow {
+                settings: &settings,
+                days: (
+                    JournalDays::new(&config.journal_folder, &config.journal_date_format),
+                    JournalDays::new(&followed, &config.journal_date_format),
+                ),
+                folders: (normalize_journal_folder(&config.journal_folder), followed),
+            });
         check(root, &from, &to)?;
         let mut saved = None;
         let carried = self.carry(
@@ -253,6 +250,7 @@ impl NotesService {
             .map_err(identity_failed)?;
             carried.push(Carried {
                 markdown: row.file_type == FileType::Markdown.as_str(),
+                hash: row.content_hash.clone(),
                 note_id,
                 old,
                 new,
@@ -269,6 +267,8 @@ impl NotesService {
         let moves: Vec<(&str, AppMoved<'_>)> = carried.iter().map(Carried::moved).collect();
         lane.begin_folder_move(&writer, from, to, &moves)?;
         let echo = self.tier.echo();
+        // Before the tree's record, which the newer entries then never crowd out.
+        own_moved_files(&echo, &carried);
         let mut tree = TreeRecord::new(&echo, root, from, &carried);
         let (source, target) = (on_disk(root, from), on_disk(root, to));
         let moved = match follow {
@@ -283,6 +283,7 @@ impl NotesService {
             };
             undo.forget((from, to), &moves);
             tree.narrow();
+            disown_moved_files(&echo, &carried);
             if let Some(incomplete) = IncompleteRollback::of(&error) {
                 undo.keep_aside(&ctx, &*identity, from, &carried, incomplete);
                 return Err(NotesError::FolderMoveIncomplete);
@@ -334,6 +335,7 @@ impl NotesService {
                     }
                     .forget((from, to), &moves);
                     tree.narrow();
+                    disown_moved_files(&echo, &carried);
                 }
                 // The folder's record and each note's stay, and the next open finishes the move.
                 Err(back) => {
@@ -341,6 +343,7 @@ impl NotesService {
                         scope = SCOPE,
                         "a folder could not go back after its notes did not follow it: {back}"
                     );
+                    echo.cancel_removal(to);
                     if let Some(follow) = follow {
                         *saved = follow
                             .save(root, &follow.folders.1)
@@ -367,75 +370,6 @@ impl NotesService {
         }
         drop(tree);
         Ok(carried)
-    }
-}
-
-/// Every path the move takes away that the watcher could take for a note's removal: each
-/// note's file, each folder that holds one below `from`, and `from`.
-fn carried_paths(from: &str, carried: &[Carried]) -> Vec<String> {
-    let mut folders = std::collections::BTreeSet::new();
-    for note in carried {
-        let mut path = note.old.as_str();
-        while let Some((folder, _)) = path.rsplit_once('/')
-            && folder.len() > from.len()
-        {
-            folders.insert(folder.to_owned());
-            path = folder;
-        }
-    }
-    let notes = carried.iter().map(|note| note.old.clone());
-    notes
-        .chain(folders.into_iter().rev())
-        .chain([from.to_owned()])
-        .collect()
-}
-
-/// The own-write record of the folder's going ([`EchoGuard::will_remove_tree`]) for the length of
-/// a move: settled once the folder is gone ([`Self::settle`]), narrowed to what is still gone
-/// when the move did not happen ([`Self::narrow`]), and narrowed on drop when neither ran, a
-/// panic included, so no unsettled record outlives the move and absorbs later deletes.
-struct TreeRecord<'a> {
-    echo: &'a EchoGuard,
-    root: &'a Path,
-    from: &'a str,
-    carried: &'a [Carried],
-    done: bool,
-}
-
-impl<'a> TreeRecord<'a> {
-    fn new(echo: &'a EchoGuard, root: &'a Path, from: &'a str, carried: &'a [Carried]) -> Self {
-        echo.will_remove_tree(from);
-        Self {
-            echo,
-            root,
-            from,
-            carried,
-            done: false,
-        }
-    }
-
-    fn settle(&mut self) {
-        self.echo.removed_tree(self.from);
-        self.done = true;
-    }
-
-    /// Keeps a record of each path not back on disk (a hidden staging folder may hold them
-    /// until the next open's sweep): the absence of one that is back is not the app's.
-    fn narrow(&mut self) {
-        let root = self.root;
-        let still_gone = carried_paths(self.from, self.carried)
-            .into_iter()
-            .filter(|path| fs::symlink_metadata(on_disk(root, path)).is_err());
-        self.echo.narrow_tree(self.from, still_gone);
-        self.done = true;
-    }
-}
-
-impl Drop for TreeRecord<'_> {
-    fn drop(&mut self) {
-        if !self.done {
-            self.narrow();
-        }
     }
 }
 

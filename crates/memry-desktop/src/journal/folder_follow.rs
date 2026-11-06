@@ -8,6 +8,8 @@
 use std::fs;
 use std::path::Path;
 
+use crate::vault::journal_format::normalize_journal_folder;
+
 /// The folder a journal entry now lives in, when `new_path` is `old_path` with the journal
 /// folder swapped for another one and the path below it unchanged (`inferMovedJournalFolder`):
 /// `Daily Notes/2025/01/2025-01-14.md` to `Diary/2025/01/2025-01-14.md` gives `Diary`.
@@ -26,12 +28,14 @@ pub fn moved_journal_folder(
 
 /// The journal folder once the app moved the folder `from` to `to`, when `journal_folder` is
 /// `from` or inside it (`followJournalFolderMove`): `Personal/journal`, with `Personal` moved to
-/// `Archive/Personal`, gives `Archive/Personal/journal`.
+/// `Archive/Personal`, gives `Archive/Personal/journal`. The setting is read as the days are
+/// (`normalize_journal_folder`): `/Personal/journal/` is that folder too.
 pub(crate) fn followed_journal_folder(
     journal_folder: &str,
     from: &str,
     to: &str,
 ) -> Option<String> {
+    let journal_folder = normalize_journal_folder(journal_folder);
     let below = journal_folder.strip_prefix(from)?;
     (below.is_empty() || below.starts_with('/')).then(|| format!("{to}{below}"))
 }

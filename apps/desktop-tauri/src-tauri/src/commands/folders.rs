@@ -2,13 +2,18 @@
 //! call of `memry_desktop::notes::folders`. Generic over the runtime so a mock app drives them
 //! (`tests/folders.rs`); the reveal goes through the shell, which runs on `Wry` only.
 
+use std::sync::Arc;
+
+use memry_desktop::i18n::{self, Args};
+use memry_desktop::locale::LocaleService;
+use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::folders::{self, FolderConfigInput, FolderView};
 use memry_desktop::vault::config::VaultConfig;
 use memry_desktop::vault::folder_file::FolderConfigView;
-use tauri::{AppHandle, Runtime, Wry};
+use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
-use super::error::CommandError;
+use super::error::{CommandError, ErrorKind};
 use super::notes::{failed, open_vault, service};
 use crate::events::{VaultConfigChangedEvent, broadcast};
 use crate::shell::external;
@@ -57,9 +62,29 @@ pub async fn notes_rename_folder<R: Runtime>(
         };
         service(&app)?
             .rename_folder(&open_vault(&app)?, &old_path, &new_path, announce)
-            .map_err(|error| failed(&error))
+            .map_err(|error| rename_failed(&app, &error))
     })
     .await
+}
+
+/// A move refused for settings that cannot be read says so in words, as Settings says its
+/// refusals: the raw message names no file to fix.
+fn rename_failed<R: Runtime>(app: &AppHandle<R>, error: &NotesError) -> CommandError {
+    match error {
+        NotesError::SettingsUnreadable(why) => {
+            tracing::warn!(
+                scope = "folders",
+                "a folder move waits for the settings: {why}"
+            );
+            let locale = app.state::<Arc<LocaleService>>().get();
+            CommandError::new(
+                ErrorKind::Invalid,
+                "vault_settings_unreadable",
+                i18n::t(locale, "errors:vault.settingsUnreadable", &Args::new()),
+            )
+        }
+        _ => failed(error),
+    }
 }
 
 /// `notes:delete-folder`: the folder to the OS trash with everything in it, and its notes and

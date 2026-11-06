@@ -4,6 +4,7 @@
 //! code. A pulled folder (#3906) reaches the vault and goes out as `FolderConfigUpdatedEvent`, and
 //! a journal setting that follows a folder move as `VaultConfigChangedEvent` (#3530 13m-7b-2).
 
+use memry_desktop::locale::LocaleService;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -111,6 +112,7 @@ fn opened() -> Fixture {
         .unwrap();
     app.manage(session);
     app.manage(NotesService::new(tier, store));
+    app.manage(Arc::new(LocaleService::new("en")));
     let webview = WebviewWindowBuilder::new(&app, "main", WebviewUrl::default())
         .build()
         .unwrap();
@@ -222,6 +224,31 @@ fn a_folder_holding_the_journal_sends_the_setting_that_followed_it() {
     let heard = heard.lock().unwrap();
     assert_eq!(heard.len(), 1, "{heard:?}");
     assert_eq!(heard[0]["journalFolder"], "Private/journal");
+}
+
+/// Settings that cannot be read refuse every folder move, in words that name the file.
+#[test]
+fn a_folder_move_with_unreadable_settings_says_which_file_to_fix() {
+    let f = opened();
+    f.invoke("notes_create_folder", json!({ "path": "Work" }))
+        .unwrap();
+    fs::write(f.vault.join(".memry/config.json"), "{").unwrap();
+
+    let refused = f
+        .invoke(
+            "notes_rename_folder",
+            json!({ "oldPath": "Work", "newPath": "Play" }),
+        )
+        .unwrap_err();
+
+    assert_eq!(refused["code"], "vault_settings_unreadable");
+    assert!(
+        refused["message"]
+            .as_str()
+            .is_some_and(|message| message.contains(".memry/config.json")),
+        "{refused}"
+    );
+    assert!(f.vault.join("Work").exists());
 }
 
 #[test]
