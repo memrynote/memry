@@ -35,6 +35,7 @@ import { ready } from 'libsodium-wrappers-sumo'
 import { buildBip39Unlock } from './vectors/bip39-unlock'
 import { buildCborCanonical } from './vectors/cbor-canonical'
 import { buildCompression } from './vectors/compression'
+import { buildCrdtCompact } from './vectors/crdt-compact'
 import { buildCrdtUpdate } from './vectors/crdt-update'
 import { buildDeviceLinking } from './vectors/device-linking'
 import { buildFieldMerge } from './vectors/field-merge'
@@ -86,6 +87,7 @@ const CLASSES: readonly VectorClass[] = [
     files: [{ path: 'record-envelope.json', build: buildRecordEnvelope }]
   },
   { name: 'crdt-update', files: [{ path: 'crdt-update.json', build: buildCrdtUpdate }] },
+  { name: 'crdt-compact', files: [{ path: 'crdt-compact.json', build: buildCrdtCompact }] },
   { name: 'cbor-canonical', files: [{ path: 'cbor-canonical.json', build: buildCborCanonical }] },
   { name: 'compression', files: [{ path: 'compression.json', build: buildCompression }] },
   { name: 'field-merge', files: [{ path: 'field-merge.json', build: buildFieldMerge }] },

@@ -359,6 +359,7 @@ mod deleted;
 mod embeds;
 mod guards;
 mod journal;
+mod locks;
 mod perf;
 mod reconcile;
 mod schedule;

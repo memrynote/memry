@@ -388,6 +388,14 @@ fn open_read(path: &Path) -> io::Result<File> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileId(u64, u128);
 
+impl FileId {
+    /// The file on its volume, without the volume: a locked file's recorded mode belongs to it
+    /// (`locks::mode`) wherever the volume is mounted.
+    pub fn file(&self) -> u128 {
+        self.1
+    }
+}
+
 /// The identity of an open file and its number of hard links.
 #[cfg(unix)]
 pub fn file_identity(file: &File) -> io::Result<(FileId, u64)> {

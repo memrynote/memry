@@ -31,9 +31,9 @@
 //! this delete takes. While a journal setting change a crash cut short waits, a folder that is,
 //! holds or is inside either of its folders is refused too (`journal_change_waits`, as the
 //! folder move refuses it, `vault::journal_rename`): its days would go as days, or wait to go
-//! back to a folder that is gone. Not here yet: the
-//! locked-folder check (Step 14) and the confirmed permanent delete 13f offers a note the trash
-//! refuses (#3813).
+//! back to a folder that is gone. A folder that is locked, sits in a locked folder or holds a lock
+//! is refused (`folder_locked`, `assertFolderTreeWritable`). Not here yet: the confirmed
+//! permanent delete 13f offers a note the trash refuses (#3813).
 
 use std::fs;
 use std::io::ErrorKind;
@@ -42,8 +42,9 @@ use std::path::Path;
 use super::error::{NotesError, SCOPE};
 use super::folder_move::within;
 use super::folders::{tree_filter, vault_folder};
-use super::moves::plain_folders;
+use super::moves::{disk_spelling, plain_folders};
 use super::service::NotesService;
+use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
 use crate::vault::config::read_vault_config_strict;
@@ -68,6 +69,8 @@ impl NotesService {
     ) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let folder = vault_folder(root, path)?;
+        // Nothing locked goes with the folder.
+        Locks::of(open).refuse_folder_tree(&disk_spelling(root, &folder))?;
         // Before the lane: the settings' locks come first (`settings`'s lock order). Held to the
         // end, so no journal setting moves into the folder after `check` read it.
         let settings = JournalFollow::hold();

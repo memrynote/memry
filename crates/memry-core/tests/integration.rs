@@ -84,6 +84,8 @@ mod checklist_plain_vectors;
 mod corrupt_recovery;
 #[path = "crdt_blocks.rs"]
 mod crdt_blocks;
+#[path = "crdt_compact.rs"]
+mod crdt_compact;
 #[path = "crdt_convergence.rs"]
 mod crdt_convergence;
 #[path = "crdt_local_edit.rs"]
@@ -188,6 +190,8 @@ mod domain_template_store;
 mod domain_templates;
 #[path = "dryoc_parity.rs"]
 mod dryoc_parity;
+#[path = "editor_compaction.rs"]
+mod editor_compaction;
 #[path = "editor_concurrency.rs"]
 mod editor_concurrency;
 #[path = "editor_every_writer.rs"]
