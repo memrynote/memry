@@ -100,6 +100,8 @@ mod logship;
 mod move_dir;
 #[path = "move_journal.rs"]
 mod move_journal;
+#[path = "note_fold_text_vectors.rs"]
+mod note_fold_text_vectors;
 #[path = "note_link_mention.rs"]
 mod note_link_mention;
 #[path = "note_links.rs"]

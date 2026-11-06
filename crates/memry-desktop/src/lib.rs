@@ -6,6 +6,7 @@ pub mod config;
 pub mod e2e;
 pub mod electron_import;
 pub mod error;
+pub mod fold;
 pub mod http;
 pub mod i18n;
 pub mod journal;

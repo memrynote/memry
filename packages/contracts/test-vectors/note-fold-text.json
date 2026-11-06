@@ -1,0 +1,859 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "source": "apps/desktop/src/main/note-fold/{engine,engine-tokens}.ts",
+    "note": "The fold text helpers: language, sentences, words and the inline tokens. Dates format in timeZone."
+  },
+  "timeZone": "UTC",
+  "text": [
+    {
+      "name": "empty",
+      "input": "",
+      "language": "und",
+      "expected": {
+        "detected": "und",
+        "sentences": [],
+        "words": 0,
+        "tokens": 0,
+        "foldable": false
+      }
+    },
+    {
+      "name": "whitespace only",
+      "input": " \t\n ",
+      "language": "und",
+      "expected": {
+        "detected": "und",
+        "sentences": [],
+        "words": 0,
+        "tokens": 0,
+        "foldable": false
+      }
+    },
+    {
+      "name": "marks only",
+      "input": "— … !? 123 %",
+      "language": "und",
+      "expected": {
+        "detected": "und",
+        "sentences": [
+          "— … !?",
+          "123 %"
+        ],
+        "words": 1,
+        "tokens": 2,
+        "foldable": false
+      }
+    },
+    {
+      "name": "english sentences",
+      "input": "Ship it. Does it work? Yes! It does…",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "Ship it.",
+          "Does it work?",
+          "Yes!",
+          "It does…"
+        ],
+        "words": 8,
+        "tokens": 12,
+        "foldable": false
+      }
+    },
+    {
+      "name": "abbreviation splits as Intl does",
+      "input": "Dr. Smith came, e.g. on Monday. She left.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "Dr.",
+          "Smith came, e.g. on Monday.",
+          "She left."
+        ],
+        "words": 8,
+        "tokens": 12,
+        "foldable": false
+      }
+    },
+    {
+      "name": "decimal and version",
+      "input": "Cold starts fell 2.4 s to 0.9 s in v1.2.3. Good.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "Cold starts fell 2.4 s to 0.9 s in v1.2.3.",
+          "Good."
+        ],
+        "words": 11,
+        "tokens": 16,
+        "foldable": false
+      }
+    },
+    {
+      "name": "contractions and hyphens",
+      "input": "Don't re-run the well-known check; it's done.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "Don't re-run the well-known check; it's done."
+        ],
+        "words": 9,
+        "tokens": 13,
+        "foldable": false
+      }
+    },
+    {
+      "name": "quotes and brackets",
+      "input": "\"Is it done?\" he asked. (Not yet.) Then [later].",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "\"Is it done?\"",
+          "he asked.",
+          "(Not yet.)",
+          "Then [later]."
+        ],
+        "words": 9,
+        "tokens": 13,
+        "foldable": false
+      }
+    },
+    {
+      "name": "url and email",
+      "input": "Read https://example.com/a.b?c=1 or mail a@b.co today.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "Read https://example.com/a.b?",
+          "c=1 or mail a@b.co today."
+        ],
+        "words": 11,
+        "tokens": 16,
+        "foldable": false
+      }
+    },
+    {
+      "name": "emoji and symbols",
+      "input": "Launch 🚀 went well ✅. Costs $8 + 20% & more.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "Launch 🚀 went well ✅.",
+          "Costs $8 + 20% & more."
+        ],
+        "words": 7,
+        "tokens": 10,
+        "foldable": false
+      }
+    },
+    {
+      "name": "crlf and newlines",
+      "input": "One line.\r\nTwo line.\nThree\n\nFour.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "One line.",
+          "Two line.",
+          "Three",
+          "Four."
+        ],
+        "words": 6,
+        "tokens": 9,
+        "foldable": false
+      }
+    },
+    {
+      "name": "turkish",
+      "input": "İstanbul’da ılık bir gün. Şimdi ne yapıyoruz? Çok güzel!",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "İstanbul’da ılık bir gün.",
+          "Şimdi ne yapıyoruz?",
+          "Çok güzel!"
+        ],
+        "words": 9,
+        "tokens": 13,
+        "foldable": false
+      }
+    },
+    {
+      "name": "japanese",
+      "input": "今日は晴れです。明日は雨でしょう！本当ですか？",
+      "language": "ja",
+      "expected": {
+        "detected": "ja",
+        "sentences": [
+          "今日は晴れです。",
+          "明日は雨でしょう！",
+          "本当ですか？"
+        ],
+        "words": 20,
+        "tokens": 20,
+        "foldable": false
+      }
+    },
+    {
+      "name": "japanese mixed with latin",
+      "input": "MemryNoteは速い。Tauri版も速い。",
+      "language": "ja",
+      "expected": {
+        "detected": "ja",
+        "sentences": [
+          "MemryNoteは速い。",
+          "Tauri版も速い。"
+        ],
+        "words": 21,
+        "tokens": 21,
+        "foldable": false
+      }
+    },
+    {
+      "name": "chinese",
+      "input": "今天天气很好。我们明天出发！你呢？",
+      "language": "zh",
+      "expected": {
+        "detected": "zh",
+        "sentences": [
+          "今天天气很好。",
+          "我们明天出发！",
+          "你呢？"
+        ],
+        "words": 14,
+        "tokens": 14,
+        "foldable": false
+      }
+    },
+    {
+      "name": "korean",
+      "input": "오늘은 날씨가 좋습니다. 내일 떠나요! 정말요?",
+      "language": "ko",
+      "expected": {
+        "detected": "ko",
+        "sentences": [
+          "오늘은 날씨가 좋습니다.",
+          "내일 떠나요!",
+          "정말요?"
+        ],
+        "words": 18,
+        "tokens": 18,
+        "foldable": false
+      }
+    },
+    {
+      "name": "russian",
+      "input": "Сегодня хорошая погода. Завтра мы уедем! Правда?",
+      "language": "ru",
+      "expected": {
+        "detected": "ru",
+        "sentences": [
+          "Сегодня хорошая погода.",
+          "Завтра мы уедем!",
+          "Правда?"
+        ],
+        "words": 7,
+        "tokens": 10,
+        "foldable": false
+      }
+    },
+    {
+      "name": "arabic",
+      "input": "الطقس جميل اليوم. سنغادر غدا! حقا؟",
+      "language": "ar",
+      "expected": {
+        "detected": "ar",
+        "sentences": [
+          "الطقس جميل اليوم.",
+          "سنغادر غدا!",
+          "حقا؟"
+        ],
+        "words": 6,
+        "tokens": 9,
+        "foldable": false
+      }
+    },
+    {
+      "name": "kana at a tenth is not japanese",
+      "input": "abcdefghi か",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "abcdefghi か"
+        ],
+        "words": 2,
+        "tokens": 3,
+        "foldable": false
+      }
+    },
+    {
+      "name": "kana over a tenth is japanese",
+      "input": "abcdefgh か",
+      "language": "ja",
+      "expected": {
+        "detected": "ja",
+        "sentences": [
+          "abcdefgh か"
+        ],
+        "words": 9,
+        "tokens": 9,
+        "foldable": false
+      }
+    },
+    {
+      "name": "hangul at three tenths is not korean",
+      "input": "abcdefg 한국어",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "abcdefg 한국어"
+        ],
+        "words": 2,
+        "tokens": 3,
+        "foldable": false
+      }
+    },
+    {
+      "name": "hangul over three tenths is korean",
+      "input": "abcdef 한국어",
+      "language": "ko",
+      "expected": {
+        "detected": "ko",
+        "sentences": [
+          "abcdef 한국어"
+        ],
+        "words": 9,
+        "tokens": 9,
+        "foldable": false
+      }
+    },
+    {
+      "name": "han at three tenths is not chinese",
+      "input": "abcdefg 中文中",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "abcdefg 中文中"
+        ],
+        "words": 3,
+        "tokens": 5,
+        "foldable": false
+      }
+    },
+    {
+      "name": "cyrillic at half is not russian",
+      "input": "abc где",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "abc где"
+        ],
+        "words": 2,
+        "tokens": 3,
+        "foldable": false
+      }
+    },
+    {
+      "name": "arabic over half is arabic",
+      "input": "ab سلام",
+      "language": "ar",
+      "expected": {
+        "detected": "ar",
+        "sentences": [
+          "ab سلام"
+        ],
+        "words": 2,
+        "tokens": 3,
+        "foldable": false
+      }
+    },
+    {
+      "name": "english at the threshold does not fold",
+      "input": "note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note"
+        ],
+        "words": 150,
+        "tokens": 210,
+        "foldable": false
+      }
+    },
+    {
+      "name": "english one over the threshold folds",
+      "input": "note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note"
+        ],
+        "words": 151,
+        "tokens": 212,
+        "foldable": true
+      }
+    },
+    {
+      "name": "cjk at the threshold does not fold",
+      "input": "日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日",
+      "language": "ja",
+      "expected": {
+        "detected": "zh",
+        "sentences": [
+          "日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日"
+        ],
+        "words": 300,
+        "tokens": 300,
+        "foldable": false
+      }
+    },
+    {
+      "name": "cjk one over the threshold folds",
+      "input": "日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日。日",
+      "language": "ja",
+      "expected": {
+        "detected": "zh",
+        "sentences": [
+          "日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日。",
+          "日"
+        ],
+        "words": 301,
+        "tokens": 301,
+        "foldable": true
+      }
+    }
+  ],
+  "tokens": [
+    {
+      "name": "en date",
+      "input": "Due ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1IiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "en",
+      "expected": {
+        "expanded": "Due March 5, 2024.",
+        "blanked": "Due  ."
+      }
+    },
+    {
+      "name": "en afternoon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDE1OjA0OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "en",
+      "expected": {
+        "expanded": "At March 5, 2024 at 3:04 PM.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "en just after midnight",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAxLTA5VDAwOjA3OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "en",
+      "expected": {
+        "expanded": "At January 9, 2024 at 12:07 AM.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "en noon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTEyLTMxVDEyOjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoiZnVsbCIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)).",
+      "language": "en",
+      "expected": {
+        "expanded": "At December 31, 2024 at 12:00 PM.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ja date",
+      "input": "Due ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1IiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ja",
+      "expected": {
+        "expanded": "Due 2024年3月5日.",
+        "blanked": "Due  ."
+      }
+    },
+    {
+      "name": "ja afternoon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDE1OjA0OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ja",
+      "expected": {
+        "expanded": "At 2024年3月5日 15:04.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ja just after midnight",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAxLTA5VDAwOjA3OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ja",
+      "expected": {
+        "expanded": "At 2024年1月9日 0:07.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ja noon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTEyLTMxVDEyOjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoiZnVsbCIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)).",
+      "language": "ja",
+      "expected": {
+        "expanded": "At 2024年12月31日 12:00.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "zh date",
+      "input": "Due ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1IiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "zh",
+      "expected": {
+        "expanded": "Due 2024年3月5日.",
+        "blanked": "Due  ."
+      }
+    },
+    {
+      "name": "zh afternoon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDE1OjA0OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "zh",
+      "expected": {
+        "expanded": "At 2024年3月5日 15:04.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "zh just after midnight",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAxLTA5VDAwOjA3OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "zh",
+      "expected": {
+        "expanded": "At 2024年1月9日 00:07.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "zh noon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTEyLTMxVDEyOjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoiZnVsbCIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)).",
+      "language": "zh",
+      "expected": {
+        "expanded": "At 2024年12月31日 12:00.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ko date",
+      "input": "Due ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1IiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ko",
+      "expected": {
+        "expanded": "Due 2024년 3월 5일.",
+        "blanked": "Due  ."
+      }
+    },
+    {
+      "name": "ko afternoon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDE1OjA0OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ko",
+      "expected": {
+        "expanded": "At 2024년 3월 5일 오후 3:04.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ko just after midnight",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAxLTA5VDAwOjA3OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ko",
+      "expected": {
+        "expanded": "At 2024년 1월 9일 오전 12:07.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ko noon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTEyLTMxVDEyOjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoiZnVsbCIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)).",
+      "language": "ko",
+      "expected": {
+        "expanded": "At 2024년 12월 31일 오후 12:00.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ru date",
+      "input": "Due ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1IiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ru",
+      "expected": {
+        "expanded": "Due 5 марта 2024 г..",
+        "blanked": "Due  ."
+      }
+    },
+    {
+      "name": "ru afternoon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDE1OjA0OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ru",
+      "expected": {
+        "expanded": "At 5 марта 2024 г. в 15:04.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ru just after midnight",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAxLTA5VDAwOjA3OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ru",
+      "expected": {
+        "expanded": "At 9 января 2024 г. в 00:07.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ru noon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTEyLTMxVDEyOjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoiZnVsbCIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)).",
+      "language": "ru",
+      "expected": {
+        "expanded": "At 31 декабря 2024 г. в 12:00.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ar date",
+      "input": "Due ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1IiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ar",
+      "expected": {
+        "expanded": "Due 5 مارس 2024.",
+        "blanked": "Due  ."
+      }
+    },
+    {
+      "name": "ar afternoon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDE1OjA0OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ar",
+      "expected": {
+        "expanded": "At 5 مارس 2024 في 3:04 م.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ar just after midnight",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAxLTA5VDAwOjA3OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)).",
+      "language": "ar",
+      "expected": {
+        "expanded": "At 9 يناير 2024 في 12:07 ص.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "ar noon",
+      "input": "At ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTEyLTMxVDEyOjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoiZnVsbCIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0)).",
+      "language": "ar",
+      "expected": {
+        "expanded": "At 31 ديسمبر 2024 في 12:00 م.",
+        "blanked": "At  ."
+      }
+    },
+    {
+      "name": "a date-only token shows no time",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1IiwiaGFzVGltZSI6dHJ1ZSwiZGF0ZUZvcm1hdCI6ImZ1bGwiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 5, 2024",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a timed token without hasTime shows the date",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDE1OjA0OjAwWiIsImhhc1RpbWUiOmZhbHNlLCJkYXRlRm9ybWF0IjoiZnVsbCIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 5, 2024",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "an offset moves the time to the zone",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDIzOjMwOjAwKzAzOjAwIiwiaGFzVGltZSI6dHJ1ZSwiZGF0ZUZvcm1hdCI6ImZ1bGwiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 5, 2024 at 8:30 PM",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "an offset crosses midnight",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDAxOjMwOjAwKzAzOjAwIiwiaGFzVGltZSI6dHJ1ZSwiZGF0ZUZvcm1hdCI6ImZ1bGwiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 4, 2024 at 10:30 PM",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "no offset reads as local time",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDIzOjMwIiwiaGFzVGltZSI6dHJ1ZSwiZGF0ZUZvcm1hdCI6ImZ1bGwiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 5, 2024 at 11:30 PM",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a month alone is its first day",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzIiwiaGFzVGltZSI6dHJ1ZSwiZGF0ZUZvcm1hdCI6ImZ1bGwiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 1, 2024 at 12:00 AM",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a year alone is its first day",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0IiwiaGFzVGltZSI6dHJ1ZSwiZGF0ZUZvcm1hdCI6ImZ1bGwiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))",
+      "language": "en",
+      "expected": {
+        "expanded": "January 1, 2024 at 12:00 AM",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a day past the month rolls over",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAyLTMxIiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 2, 2024",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "month thirteen rolls into the next year",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTEzLTAxIiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "January 1, 2025",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "day zero is the last of the month before",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAxLTAwIiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "December 31, 2023",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a two-digit year is the 1900s",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIwMDI0LTAzLTA1IiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 5, 1924",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a leap day",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAyLTI5IiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "February 29, 2024",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a date that is no date is dropped",
+      "input": "[((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiJub3QgYSBkYXRlIiwiaGFzVGltZSI6dHJ1ZSwiZGF0ZUZvcm1hdCI6ImZ1bGwiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))]",
+      "language": "en",
+      "expected": {
+        "expanded": "[]",
+        "blanked": "[ ]"
+      }
+    },
+    {
+      "name": "a legacy token is salvaged for its date",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX29sZCIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDE1OjA0OjAwWiIsImhhc1RpbWUiOnRydWUsInJlbWluZCI6dHJ1ZX0))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 5, 2024 at 3:04 PM",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a token that does not decode is dropped",
+      "input": "See ((date:abc)) here.",
+      "language": "en",
+      "expected": {
+        "expanded": "See  here.",
+        "blanked": "See   here."
+      }
+    },
+    {
+      "name": "an escaped token alphabet still decodes",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1IiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 5, 2024",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a mention shows its host",
+      "input": "See ((mention:https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FRust)).",
+      "language": "en",
+      "expected": {
+        "expanded": "See en.wikipedia.org.",
+        "blanked": "See  ."
+      }
+    },
+    {
+      "name": "a mention with a port and user",
+      "input": "((mention:https%3A%2F%2Fu%3Ap%40Example.COM%3A8080%2Fx))",
+      "language": "en",
+      "expected": {
+        "expanded": "example.com",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a mention that is no url is dropped",
+      "input": "See ((mention:not%20a%20url)).",
+      "language": "en",
+      "expected": {
+        "expanded": "See .",
+        "blanked": "See  ."
+      }
+    },
+    {
+      "name": "a mention that does not decode is dropped",
+      "input": "See ((mention:%E0%A4%A)).",
+      "language": "en",
+      "expected": {
+        "expanded": "See .",
+        "blanked": "See  ."
+      }
+    },
+    {
+      "name": "several tokens in a line",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1IiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ)) ((mention:https%3A%2F%2Fa.io)) ((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI1LTAxLTAxIiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "ja",
+      "expected": {
+        "expanded": "2024年3月5日 a.io 2025年1月1日",
+        "blanked": "     "
+      }
+    },
+    {
+      "name": "a token across a line break is not one",
+      "input": "((date:\nabc))",
+      "language": "en",
+      "expected": {
+        "expanded": "((date:\nabc))",
+        "blanked": "((date:\nabc))"
+      }
+    }
+  ]
+}
