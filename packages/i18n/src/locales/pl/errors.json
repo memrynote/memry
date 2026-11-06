@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "Ten format daty nie może nazwać każdego dnia, więc nie został zapisany. Uwzględnij rok, miesiąc i dzień.",
     "journalDaysNotRenamed": "Format daty nie został zmieniony, ponieważ nie udało się zmienić nazw niektórych dni dziennika ({count}). Być może jakiś plik ma już nową nazwę dnia.",
     "journalUnlisted": "Nie udało się odczytać folderu dziennika, więc format daty nie został zmieniony. Sprawdź, czy masz do niego dostęp.",
-    "settingsUnreadable": "Nie można przenosić folderów, dopóki nie da się odczytać pliku ustawień sejfu (.memry/config.json). Napraw ten plik i spróbuj ponownie."
+    "settingsUnreadable": "Nie można przenosić folderów, dopóki nie da się odczytać pliku ustawień sejfu (.memry/config.json). Napraw ten plik i spróbuj ponownie.",
+    "settingsUnreadableDelete": "Nie można usuwać folderów, dopóki nie da się odczytać pliku ustawień sejfu (.memry/config.json). Napraw ten plik i spróbuj ponownie.",
+    "settingsUnreadableJournalDay": "Nie można tworzyć dni dziennika, dopóki nie da się odczytać pliku ustawień sejfu (.memry/config.json). Napraw ten plik i spróbuj ponownie."
   },
   "note": {
     "notFound": "Nie udało się znaleźć tej notatki. Być może została usunięta.",

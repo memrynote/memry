@@ -72,6 +72,19 @@ pub enum WriteBackFailureReason {
     Frontmatter,
 }
 
+/// The vault closed, so every window's editor is bound to a document nothing serves
+/// (`crdt:provider-reset`). Not the moment to reopen: wait for [`CrdtProviderReadyEvent`].
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct CrdtProviderResetEvent;
+
+/// The vault at `vault_path` serves `crdt_open_doc` again (`crdt:provider-ready`): a window whose
+/// binding went stale reopens its note and redoes the handshake.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtProviderReadyEvent {
+    pub vault_path: String,
+}
+
 /// A custom icon was added, renamed or deleted (`custom-icons:updated`). The renderer refetches
 /// the library.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

@@ -161,3 +161,4 @@ keyring-core = "1.0.1"
 memry-core = { path = "../../../crates/memry-core" }
 tauri = { version = "2.12", features = ["specta", "test"] }
 tempfile = "3"
+yrs = { workspace = true }

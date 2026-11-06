@@ -24,6 +24,7 @@ use serde_json::{Map, Value};
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::error::CommandError;
+use super::folders::{Refused, settings_or_failed};
 use super::{blocking, notes};
 use crate::events::{
     JournalEntryCreatedEvent, JournalEntryDeletedEvent, JournalEntryUpdatedEvent, broadcast,
@@ -176,7 +177,7 @@ pub async fn journal_create_entry<R: Runtime>(
         };
         let entry = notes::service(&app)?
             .create_day(&open, day)
-            .map_err(|error| failed(&error))?;
+            .map_err(|error| settings_or_failed(&app, &error, Refused::JournalDay))?;
         journal_events::measure(&app, &entry.id, &entry.date);
         announce(&app, Landed::Created(&entry));
         Ok(entry)
@@ -207,7 +208,7 @@ pub async fn journal_update_entry<R: Runtime>(
         };
         let updated = notes::service(&app)?
             .update_day(&open, update)
-            .map_err(|error| failed(&error))?;
+            .map_err(|error| settings_or_failed(&app, &error, Refused::JournalDay))?;
         if rewrites_file || updated.created {
             journal_events::measure(&app, &updated.entry.id, &updated.entry.date);
         }

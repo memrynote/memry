@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "Este formato de data não consegue nomear todos os dias, então não foi salvo. Inclua o ano, o mês e o dia.",
     "journalDaysNotRenamed": "O formato de data não foi alterado porque alguns dias do diário não puderam ser renomeados para ele ({count}). Talvez um arquivo já tenha o novo nome de um dia.",
     "journalUnlisted": "Não foi possível ler a pasta do diário, então o formato de data não foi alterado. Verifique se você tem acesso a ela.",
-    "settingsUnreadable": "Não é possível mover pastas enquanto o arquivo de configurações do cofre (.memry/config.json) não puder ser lido. Corrija esse arquivo e tente novamente."
+    "settingsUnreadable": "Não é possível mover pastas enquanto o arquivo de configurações do cofre (.memry/config.json) não puder ser lido. Corrija esse arquivo e tente novamente.",
+    "settingsUnreadableDelete": "Não é possível excluir pastas enquanto o arquivo de configurações do cofre (.memry/config.json) não puder ser lido. Corrija esse arquivo e tente novamente.",
+    "settingsUnreadableJournalDay": "Não é possível criar dias do diário enquanto o arquivo de configurações do cofre (.memry/config.json) não puder ser lido. Corrija esse arquivo e tente novamente."
   },
   "note": {
     "notFound": "Esta nota não foi encontrada. Ela pode ter sido excluída.",

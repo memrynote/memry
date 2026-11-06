@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "Dieses Datumsformat kann nicht jeden Tag benennen und wurde daher nicht gespeichert. Gib Jahr, Monat und Tag an.",
     "journalDaysNotRenamed": "Das Datumsformat wurde nicht geändert, weil einige Journaltage nicht darauf umbenannt werden konnten ({count}). Möglicherweise trägt eine Datei bereits den neuen Namen eines Tages.",
     "journalUnlisted": "Der Journal-Ordner konnte nicht gelesen werden, daher wurde das Datumsformat nicht geändert. Prüfe, ob du Zugriff darauf hast.",
-    "settingsUnreadable": "Ordner können nicht verschoben werden, solange die Einstellungsdatei des Tresors (.memry/config.json) nicht gelesen werden kann. Korrigiere diese Datei und versuche es erneut."
+    "settingsUnreadable": "Ordner können nicht verschoben werden, solange die Einstellungsdatei des Tresors (.memry/config.json) nicht gelesen werden kann. Korrigiere diese Datei und versuche es erneut.",
+    "settingsUnreadableDelete": "Ordner können nicht gelöscht werden, solange die Einstellungsdatei des Tresors (.memry/config.json) nicht gelesen werden kann. Korrigiere diese Datei und versuche es erneut.",
+    "settingsUnreadableJournalDay": "Journaltage können nicht erstellt werden, solange die Einstellungsdatei des Tresors (.memry/config.json) nicht gelesen werden kann. Korrigiere diese Datei und versuche es erneut."
   },
   "note": {
     "notFound": "Diese Notiz konnte nicht gefunden werden. Möglicherweise wurde sie gelöscht.",

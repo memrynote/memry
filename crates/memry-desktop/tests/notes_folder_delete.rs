@@ -9,6 +9,7 @@
 //! | a folder delete a crash cut short finishes on the next open   | the folder's record                  |
 //! | a folder delete a crash cut short before the trash is forgotten | the folder's record                |
 //! | a folder delete the app cannot make is refused                | missing, journal, hidden, link, case |
+//! | a folder delete reads the journal setting as the days do      | strict read, normalized              |
 //! | a folder the trash takes only part of is reported as such     | the watcher reports what went        |
 
 #[allow(unused_imports)]
@@ -21,6 +22,7 @@ use std::sync::Arc;
 use memry_core::seams::secure_store::SecureStore;
 
 use memry_desktop::notes::error::NotesError;
+use memry_desktop::vault::config::config_path;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use vault_env::indexed;
 
@@ -204,6 +206,24 @@ fn a_folder_delete_the_app_cannot_make_is_refused() {
     }
     assert!(e.vault.join("Work/Plan.md").exists());
     assert!(e.vault.join("journal/2025").exists());
+}
+
+/// The setting says where the journal is, read as the days read it (`/Diary/` is `Diary`); while
+/// it cannot be read, its default (`journal`) would let `Diary` go, so no folder goes.
+#[test]
+fn a_folder_delete_reads_the_journal_setting_as_the_days_do() {
+    let Work { e, notes, .. } = work_with(bin);
+    fs::create_dir(e.vault.join("Diary")).unwrap();
+    fs::write(config_path(&e.vault), r#"{"journalFolder": "/Diary/"}"#).unwrap();
+    let open = e.session.current().unwrap();
+    let refused = |path: &str| notes.delete_folder(&open, path).unwrap_err();
+    assert!(matches!(refused("Diary"), NotesError::FolderHoldsJournal));
+    fs::write(config_path(&e.vault), "{").unwrap();
+    for path in ["Diary", "Work"] {
+        assert!(matches!(refused(path), NotesError::SettingsUnreadable(_)));
+    }
+    assert!(e.vault.join("Diary").exists());
+    assert!(e.vault.join("Work/Plan.md").exists());
 }
 
 /// The trash took `Plan.md` and then refused the rest: the delete fails saying part of the

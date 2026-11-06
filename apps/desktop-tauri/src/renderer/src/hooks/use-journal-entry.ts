@@ -257,12 +257,26 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         if (cancelled || currentDateRef.current !== date) return
 
         const applied = applyJournalTemplate({ ...template, content }, date)
-        const createdEntry = await journalService.createEntry({
-          date,
-          content: applied.content,
-          tags: applied.tags,
-          properties: applied.properties
-        })
+        const createdEntry = await journalService
+          .createEntry({
+            date,
+            content: applied.content,
+            tags: applied.tags,
+            properties: applied.properties
+          })
+          .catch((err: unknown) => {
+            // A refused create (main says why, settings it cannot read among them) shows as
+            // the day's save error; the next visit to the day tries the template again.
+            if (!cancelled && currentDateRef.current === date) {
+              setSaveError(
+                extractErrorMessage(
+                  err,
+                  getI18n().getFixedT(null, 'journal')('phaseI.errors.failedToSaveJournalEntry')
+                )
+              )
+            }
+            throw err
+          })
 
         if (cancelled) return
 
