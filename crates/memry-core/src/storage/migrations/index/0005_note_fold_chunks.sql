@@ -2,9 +2,10 @@
 -- `packages/db-schema/src/schema/note-fold-chunks.ts`).
 --
 -- One row per fold chunk (a heading and its paragraphs, or a slice of a long
--- section), keyed by the chunk's content hash, the note language and who wrote
--- it: `model_id` is `local` for the Brief the app picks from the note's own
--- sentences. An edit elsewhere in the note never invalidates a row. `payload`
+-- section), keyed by the chunk's content hash, the note language and the model
+-- that wrote it (`model_id`). As in Electron, only a model's lines are kept: the
+-- Brief the app picks from the note's own sentences is picked again on every
+-- fold. An edit elsewhere in the note never invalidates a row. `payload`
 -- is the JSON of the chunk's lines; `created_at` is epoch milliseconds, and
 -- rows past the retention window are dropped. Derived and never synced: an
 -- empty table is filled again as notes fold.

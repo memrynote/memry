@@ -170,8 +170,8 @@ describe('FoldPill', () => {
   it('switches level with one click and marks the current one', async () => {
     const props = renderPill()
     expect(screen.getByRole('button', { name: 'Brief' })).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.click(screen.getByRole('button', { name: 'Takeaway' }))
-    expect(props.onSelectLevel).toHaveBeenCalledWith('takeaway')
+    await userEvent.click(screen.getByRole('button', { name: 'Full' }))
+    expect(props.onSelectLevel).toHaveBeenCalledWith('full')
   })
 
   it('steps one level per scroll over the bar and keeps the note from scrolling', () => {
@@ -190,20 +190,14 @@ describe('FoldPill', () => {
     expect(screen.getAllByText('Written by Claude Code')).toHaveLength(1)
   })
 
-  it('lets a level still being written be chosen and says it is writing', async () => {
-    const props = renderPill({ layers: layers({ ready: [], status: 'writing' }) })
-    expect(screen.getByText('Writing…')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Key' }))
-    expect(props.onSelectLevel).toHaveBeenCalledWith('key')
-  })
-
-  it('dims the written levels and says why when there is no agent', () => {
-    renderPill({ layers: layers({ ready: [], status: 'no_agent', agent: null }) })
-    expect(screen.getByText('No agent connected · Settings → AI')).toBeInTheDocument()
-    for (const name of ['Key', 'Takeaway', 'Topic']) {
-      expect(screen.getByRole('button', { name })).toBeDisabled()
-    }
+  it('offers the levels this app folds to, Full and Brief, and no model level', () => {
+    // Even a snapshot whose model levels are written: no model writes them here yet.
+    renderPill()
     expect(screen.getByRole('button', { name: 'Full' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Brief' })).toBeEnabled()
+    for (const name of ['Key', 'Takeaway', 'Topic']) {
+      expect(screen.queryByRole('button', { name })).toBeNull()
+    }
   })
 
   it('copies the folded view and says so', async () => {

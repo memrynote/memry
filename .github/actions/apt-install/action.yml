@@ -36,8 +36,11 @@ runs:
             exit 0
           fi
           echo "apt attempt $attempt failed"
-          # A timeout that lands in the unpack phase leaves dpkg half-configured.
-          sudo timeout 60 dpkg --configure -a || true
+          # A timeout that lands in the unpack phase leaves dpkg half-configured. `timeout` stops
+          # apt-get but not the dpkg it started, which keeps the lock while it finishes, and
+          # `dpkg --configure -a` fails at once on a held lock (the next install then refuses the
+          # interrupted dpkg). Wait for that dpkg, then repair, within the same 60 s as before.
+          sudo timeout 60 sh -c 'while pgrep -x dpkg >/dev/null; do sleep 2; done; dpkg --configure -a' || true
           [ "$attempt" = 3 ] || sleep $((attempt * 5))
         done
         echo "apt failed after 3 attempts" >&2
