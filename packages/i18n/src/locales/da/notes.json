@@ -70,7 +70,9 @@
       "openExternalFailed": "Kunne ikke åbne noten",
       "moved": "Note flyttet",
       "moveFailed": "Kunne ikke flytte noten",
-      "deleteFailed": "Kunne ikke slette noten"
+      "deleteFailed": "Kunne ikke slette noten",
+      "outsideEditReplaced": "Din skrivning erstattede en ændring udefra. Den er gemt i versionshistorikken.",
+      "showVersions": "Vis versioner"
     },
     "deleteDialogTitle": "{count, plural, one {Slet note} other {Slet # noter}}",
     "itemsCount": "{count, plural, one {# element} other {# elementer}}",

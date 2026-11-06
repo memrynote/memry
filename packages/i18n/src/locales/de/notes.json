@@ -70,7 +70,9 @@
       "openExternalFailed": "Notiz konnte nicht geöffnet werden",
       "moved": "Notiz verschoben",
       "moveFailed": "Notiz konnte nicht verschoben werden",
-      "deleteFailed": "Notiz konnte nicht gelöscht werden"
+      "deleteFailed": "Notiz konnte nicht gelöscht werden",
+      "outsideEditReplaced": "Deine Eingabe hat eine Änderung von außen ersetzt. Sie ist im Versionsverlauf gespeichert.",
+      "showVersions": "Versionen anzeigen"
     },
     "deleteDialogTitle": "{count, plural, one {Notiz löschen} other {# Notizen löschen}}",
     "itemsCount": "{count, plural, one {# Element} other {# Elemente}}",

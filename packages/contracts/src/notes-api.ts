@@ -603,6 +603,8 @@ export interface NoteUpdateResponse {
   note: Note | null
   error?: string
   tagTemplate?: NoteTagTemplateOutcome
+  /** The save went over an outside edit the editor had no event for, kept as a version. */
+  keptOutsideEdit?: boolean
 }
 
 export interface UndoTagTemplateResponse {

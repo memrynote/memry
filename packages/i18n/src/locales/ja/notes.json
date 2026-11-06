@@ -70,7 +70,9 @@
       "openExternalFailed": "ノートを開けませんでした",
       "moved": "ノートを移動しました",
       "moveFailed": "ノートを移動できませんでした",
-      "deleteFailed": "ノートを削除できませんでした"
+      "deleteFailed": "ノートを削除できませんでした",
+      "outsideEditReplaced": "入力内容が外部からの変更を置き換えました。変更はバージョン履歴に保存されています。",
+      "showVersions": "バージョンを表示"
     },
     "deleteDialogTitle": "{count, plural, other {ノート # 件を削除}}",
     "itemsCount": "{count, plural, other {# 件}}",

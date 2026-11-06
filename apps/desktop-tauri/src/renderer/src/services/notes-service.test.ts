@@ -624,6 +624,13 @@ describe('notes-service', () => {
     })
   })
 
+  it('says when the save went over an outside edit the editor had no event for', async () => {
+    const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
+    commands.notesUpdate.mockResolvedValue({ note: view, keptOutsideEdit: true })
+    const result = await notesService.update({ id: 'note-1', content: 'Typed' })
+    expect(result).toMatchObject({ success: true, keptOutsideEdit: true })
+  })
+
   it("hands on a tag's template outcome and undoes it through its command", async () => {
     const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
     const tagTemplate = { kind: 'applied' as const, tag: 'meeting', undoToken: 'tok' }
