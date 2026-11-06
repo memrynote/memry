@@ -1,5 +1,4 @@
 // Diagnostic for #3967 (not for merge): the offline-check click, repeated, with a layout timeline.
-import { execFileSync } from 'node:child_process'
 import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
 import { invoke } from '../../harness/vault-commands'
@@ -124,15 +123,7 @@ for (let round = 1; round <= 60; round += 1) {
     app,
     page
   }) => {
-    // Odd rounds park the X pointer off the window (1440x900 at 0,0 on a 1920x1080 screen).
-    const park = round % 2 === 1 ? [1900, 1060] : [960, 540]
-    if (process.platform === 'linux') {
-      execFileSync('python3', [
-        '-c',
-        `import ctypes;x=ctypes.cdll.LoadLibrary('libX11.so.6');x.XOpenDisplay.restype=ctypes.c_void_p;d=x.XOpenDisplay(None);r=x.XDefaultRootWindow(ctypes.c_void_p(d));x.XWarpPointer(ctypes.c_void_p(d),0,ctypes.c_ulong(r),0,0,0,0,${park[0]},${park[1]});x.XFlush(ctypes.c_void_p(d))`
-      ])
-    }
-    console.log(`DIAG3967 round ${round} pointer ${park.join(',')}`)
+    console.log(`DIAG3967 round ${round} pointer parked by the harness`)
     await record(page)
     const windows = await invokeTest<{ label: string; width: number; height: number }[]>(
       app,
