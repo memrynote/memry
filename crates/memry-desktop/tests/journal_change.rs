@@ -302,7 +302,15 @@ fn a_folder_the_days_cannot_live_in_is_refused() {
         assert_eq!(stored(&e.vault)["journalFolder"], "journal", "{to:?}");
         assert!(e.vault.join("journal/2025-01-02.md").exists(), "{to:?}");
     }
-    assert!(!e.vault.join("D:").exists());
+    // Listed, not joined: on Windows `vault.join("D:")` is the drive itself.
+    let names: Vec<String> = fs::read_dir(&e.vault)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert!(
+        !names.iter().any(|name| name.starts_with("D:")),
+        "{names:?}"
+    );
 }
 
 /// The journal folder respelled in case only is refused with its own reason, whether or not
