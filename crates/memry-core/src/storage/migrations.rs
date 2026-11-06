@@ -135,6 +135,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "wiki_name_keys",
         sql: include_str!("migrations/data/0019_wiki_name_keys.sql"),
     },
+    Migration {
+        version: 20,
+        name: "vault_locks",
+        sql: include_str!("migrations/data/0020_vault_locks.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

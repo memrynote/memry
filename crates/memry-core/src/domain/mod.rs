@@ -84,6 +84,9 @@ pub mod template_legacy;
 pub mod template_store;
 pub mod templates;
 pub mod unlinked_mentions;
+// Desktop's read-only locks: iOS keeps no vault files to lock.
+#[cfg(feature = "markdown")]
+pub mod vault_locks;
 pub mod wiki_suggest;
 pub mod wiki_target;
 #[cfg(feature = "markdown")]
