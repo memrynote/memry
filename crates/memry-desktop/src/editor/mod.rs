@@ -80,6 +80,11 @@ pub enum EditorHostError {
     /// vaults). Electron drops these updates (`applyIpcUpdate`).
     #[error("{note_id} is not open in this window")]
     NotOpen { note_id: String },
+    /// The window put its typing back over an outside edit another window's restore or typing
+    /// already answered: taking it would copy or delete typing. Its text was kept as a version,
+    /// and the window takes its restore back.
+    #[error("the outside edit of {note_id} was already answered")]
+    OutsideEditRestored { note_id: String },
     /// The editor needs the device identity, which the secure store did not give (a locked
     /// keychain). The next call tries again.
     #[error(transparent)]
@@ -94,6 +99,7 @@ impl CoreError for EditorHostError {
             Self::NotServing => (FailureKind::Locked, "editor_not_serving"),
             Self::OtherVault => (FailureKind::Invalid, "editor_other_vault"),
             Self::NotOpen { .. } => (FailureKind::Invalid, "document_not_open"),
+            Self::OutsideEditRestored { .. } => (FailureKind::Crdt, "outside_edit_restored"),
             Self::Identity(error) => error.kind_and_code(),
             Self::Editor(EditorError::NotFound { .. }) => (FailureKind::NotFound, "note_not_found"),
             Self::Editor(EditorError::Unreadable { .. }) => {

@@ -41,7 +41,10 @@ const EMPTY_UPDATE_BYTES = 2
  */
 const RETRY_DELAYS_MS = [250, 1000, 5000]
 
-/** Failures in a row after which the user is told, and a closed note's edit is given up. */
+/**
+ * Failures in a row after which the user is told, a flush fails while the edits stay queued, and
+ * a closed note's edit is given up.
+ */
 const FAILURES_BEFORE_NOTICE = 3
 
 let providerSeq = 0
@@ -123,6 +126,18 @@ export class YjsIpcProvider extends Observable<string> {
    * the file that edit wrote as a version.
    */
   private overOutsideEdit = false
+  /** The blocks the latest put-back inserted, until the host took them or refused them. */
+  private putBack: Array<Y.XmlElement | Y.XmlText> = []
+  /**
+   * The host's state vector after this window's latest stored edit, until the channel brought
+   * this doc that far: an outside edit stored before the edit may still be on its way, its frame
+   * slower than the answer.
+   */
+  private awaitedState: Map<number, number> | null = null
+  /** Sends in a row that failed; a stored edit resets it. */
+  private sendFailures = 0
+  /** Flushes waiting to hear that edits keep failing. */
+  private readonly failureWaiters = new Set<() => void>()
   /** The open in flight; the close waits for it, so the host never sees the close first. */
   private opening: Promise<unknown> | null = null
   /** An open was sent, so the teardown closes the note. */
@@ -162,9 +177,23 @@ export class YjsIpcProvider extends Observable<string> {
     this.scheduleRebind()
   }
 
-  /** Resolves once every edit made so far reached the host, or was given up on a closed note. */
+  /**
+   * Resolves once every edit made so far reached the host, or was given up on a closed note.
+   * Rejects once they keep failing; they stay queued and go when the host recovers.
+   */
   async flush(): Promise<void> {
-    while (this.sending || this.outgoing.length > 0) await (this.sending ?? this.sendQueued())
+    while (this.sending || this.outgoing.length > 0) {
+      if (this.sendFailures >= FAILURES_BEFORE_NOTICE) throw this.notSaved()
+      const run = this.sending ?? this.sendQueued()
+      let failed!: () => void
+      const failing = new Promise<'failing'>((resolve) => (failed = () => resolve('failing')))
+      this.failureWaiters.add(failed)
+      try {
+        if ((await Promise.race([run, failing])) === 'failing') throw this.notSaved()
+      } finally {
+        this.failureWaiters.delete(failed)
+      }
+    }
   }
 
   async connect(): Promise<void> {
@@ -209,7 +238,9 @@ export class YjsIpcProvider extends Observable<string> {
     const opening = this.opening
     const closing = (async () => {
       await opening?.catch(() => {})
-      await this.flush()
+      await this.flush().catch((err: unknown) => {
+        log.error('Closing the note with edits the host did not store', { noteId, error: err })
+      })
       if (this.opened) await commands.crdtCloseDoc(noteId)
     })()
       .catch((err: unknown) => {
@@ -248,6 +279,8 @@ export class YjsIpcProvider extends Observable<string> {
     this.purged = true
     this.synced = false
     this.outgoing = []
+    this.putBack = []
+    this.awaitedState = null
     this.setReadOnly('purged')
     this.emit('status', [{ status: 'disconnected' }])
     log.info('Document purged under the editor; updates dropped until it reopens', {
@@ -313,9 +346,11 @@ export class YjsIpcProvider extends Observable<string> {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `crdt_open_doc` frames an `OpenedHeader` (commands/editor.rs)
       const header = framed.header as OpenedHeader
       const body = framed.body
-      this.setReadOnly(header.readOnly ?? null)
+      // A purge frame that arrived while the open was in flight keeps the copy read-only.
+      this.setReadOnly(this.purged ? 'purged' : (header.readOnly ?? null))
       if (this.destroyed) return { needsSeed: false, stateVector: new Uint8Array() }
       Y.applyUpdate(this.doc, body.subarray(0, header.stateLength), 'ipc-provider')
+      this.checkAwaited()
       return { needsSeed: header.needsSeed, stateVector: body.subarray(header.stateLength) }
     } catch (err) {
       log.error('Failed to open doc', { noteId: this.noteId, error: err })
@@ -327,13 +362,17 @@ export class YjsIpcProvider extends Observable<string> {
   private async finishHandshake(hostStateVector: Uint8Array): Promise<void> {
     if (this.destroyed) return
     const localDiff = Y.encodeStateAsUpdate(this.doc, hostStateVector)
-    if (
-      localDiff.byteLength > EMPTY_UPDATE_BYTES &&
-      this.readOnlyReason === null &&
-      (await this.send('crdt_sync_step_2', localDiff)) === 'failed'
-    ) {
-      this.outgoing.unshift(localDiff)
-      void this.sendQueued()
+    // Typing put back over an outside edit while unbound goes in this diff, and its flag with it.
+    const overOutsideEdit = this.overOutsideEdit
+    this.overOutsideEdit = false
+    if (localDiff.byteLength > EMPTY_UPDATE_BYTES && this.readOnlyReason === null) {
+      const sent = await this.send('crdt_sync_step_2', localDiff, overOutsideEdit)
+      if (sent !== 'done') {
+        this.outgoing.unshift(localDiff)
+        if (sent === 'failed') this.overOutsideEdit ||= overOutsideEdit
+        else this.takeBackPutBack()
+        void this.sendQueued()
+      }
     }
     if (this.destroyed) return
     this.synced = true
@@ -356,11 +395,27 @@ export class YjsIpcProvider extends Observable<string> {
     // Every origin, another window's, the server's, a file edit or the app's, applies as
     // 'remote', so this provider sends none of them back.
     const update = frame.subarray(1)
-    if (frame[0] === EXTERNAL_ORIGIN && (this.outgoing.length > 0 || this.sending !== null)) {
-      this.keepTypingOver(update)
-      return
+    const typingOnItsWay =
+      this.outgoing.length > 0 || this.sending !== null || this.awaitedState !== null
+    if (frame[0] === EXTERNAL_ORIGIN && typingOnItsWay) this.keepTypingOver(update)
+    else Y.applyUpdate(this.doc, update, 'remote')
+    this.checkAwaited()
+  }
+
+  /** The host answered a stored edit with its state vector: wait for what this doc lacks of it. */
+  private awaitState(answer: Uint8Array): void {
+    if (answer.byteLength === 0) return
+    this.awaitedState = Y.decodeStateVector(answer)
+    this.checkAwaited()
+  }
+
+  private checkAwaited(): void {
+    const awaited = this.awaitedState
+    if (awaited === null) return
+    for (const [client, clock] of awaited) {
+      if (Y.getState(this.doc.store, client) < clock) return
     }
-    Y.applyUpdate(this.doc, update, 'remote')
+    this.awaitedState = null
   }
 
   /**
@@ -378,9 +433,33 @@ export class YjsIpcProvider extends Observable<string> {
       .map((node) => node.clone())
     Y.applyUpdate(this.doc, update, 'remote')
     this.overOutsideEdit = true
+    this.putBack = typed
     this.doc.transact(() => {
       fragment.delete(0, fragment.length)
       fragment.insert(0, typed)
+    })
+  }
+
+  /**
+   * The host refused the put-back: another window's put-back or typing answered the outside edit
+   * first, and the host kept this window's text as a version. The blocks it inserted go, in an
+   * edit sent with the refused one, so the host holds no second copy and this doc matches it.
+   */
+  private takeBackPutBack(): void {
+    const ours = new Set<Y.XmlElement | Y.XmlText>(this.putBack)
+    this.putBack = []
+    const fragment = this.doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    this.doc.transact(() => {
+      const nodes = fragment.toArray()
+      for (let index = nodes.length - 1; index >= 0; index -= 1) {
+        const node = nodes[index]
+        if ((node instanceof Y.XmlElement || node instanceof Y.XmlText) && ours.has(node)) {
+          fragment.delete(index, 1)
+        }
+      }
+    })
+    log.warn('The host kept typing put back over an outside edit as a version', {
+      noteId: this.noteId
     })
   }
 
@@ -397,7 +476,6 @@ export class YjsIpcProvider extends Observable<string> {
    */
   private sendQueued(): Promise<void> {
     this.sending ??= (async () => {
-      let failures = 0
       while (this.outgoing.length > 0) {
         // A stale binding is refused anyway; its edits stay in the doc for the rebind's diff.
         if (this.stale) {
@@ -409,14 +487,21 @@ export class YjsIpcProvider extends Observable<string> {
         const update = batch.length === 1 ? batch[0] : Y.mergeUpdates(batch)
         const overOutsideEdit = this.overOutsideEdit
         this.overOutsideEdit = false
-        if ((await this.send('crdt_apply_update', update, overOutsideEdit)) === 'done') {
-          failures = 0
+        const sent = await this.send('crdt_apply_update', update, overOutsideEdit)
+        if (sent === 'restored') {
+          // Sent again unflagged, merged with the edit that takes the put-back out.
+          this.outgoing.unshift(update)
+          this.takeBackPutBack()
           continue
         }
-        failures += 1
+        if (sent === 'done') continue
+        const failures = (this.sendFailures += 1)
         this.outgoing.unshift(update)
         this.overOutsideEdit ||= overOutsideEdit
-        if (failures === FAILURES_BEFORE_NOTICE) this.tellEditsUnsaved()
+        if (failures === FAILURES_BEFORE_NOTICE) {
+          this.tellEditsUnsaved()
+          for (const failed of this.failureWaiters) failed()
+        }
         if (this.destroyed && failures >= FAILURES_BEFORE_NOTICE) {
           log.error('Gave up on edits the editor host did not store; the note closed', {
             noteId: this.noteId
@@ -434,6 +519,10 @@ export class YjsIpcProvider extends Observable<string> {
     return this.sending
   }
 
+  private notSaved(): Error {
+    return new Error(`Edits to ${this.noteId} did not reach the editor host`)
+  }
+
   private tellEditsUnsaved(): void {
     const t = getI18n().getFixedT(null, 'errors')
     toast.error(t('crdt.editsNotSavedTitle'), { description: t('crdt.editsNotSavedBody') })
@@ -441,21 +530,27 @@ export class YjsIpcProvider extends Observable<string> {
 
   /**
    * Sends one update. A refusal changes the binding's state and is `done`: the update is not sent
-   * again. Any other failure is `failed`, and the caller sends it again.
+   * again. A refused put-back is `restored`: the caller takes it back and sends the update again.
+   * Any other failure is `failed`, and the caller sends it again.
    */
   private async send(
     command: 'crdt_apply_update' | 'crdt_sync_step_2',
     update: Uint8Array,
     overOutsideEdit = false
-  ): Promise<'done' | 'failed'> {
+  ): Promise<'done' | 'restored' | 'failed'> {
     try {
       const meta = overOutsideEdit
         ? { noteId: this.noteId, overOutsideEdit }
         : { noteId: this.noteId }
-      await invokeBinary(command, update, meta)
+      const answer = decodeChunk(await invokeBinary(command, update, meta))
+      this.sendFailures = 0
+      if (overOutsideEdit) this.putBack = []
+      this.awaitState(answer)
       return 'done'
     } catch (err) {
       switch (commandErrorCode(err)) {
+        case 'outside_edit_restored':
+          return 'restored'
         case 'note_locked':
           this.outgoing = []
           this.setReadOnly('locked')

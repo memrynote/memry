@@ -10,7 +10,8 @@ import {
 
 /**
  * The `crdt_*` commands as `commands/editor.rs` answers them: an open is framed (header length,
- * JSON header, state, state vector) and records the arguments it got without the channel.
+ * JSON header, state, state vector) and records the arguments it got without the channel; an
+ * edit is answered with a state vector.
  */
 const ipc = vi.hoisted(() => ({
   open: null as unknown as Mock,
@@ -47,7 +48,7 @@ vi.mock('@tauri-apps/api/core', () => ({
     }
     // oxlint-disable-next-line typescript/only-throw-error -- Tauri rejects a command with its serialized `CommandError`, a plain object
     if (ipc.refuseEdits) throw { kind: 'invalid', code: ipc.refuseEdits, message: '' }
-    return null
+    return Y.encodeStateVector(new Y.Doc()).buffer
   })
 }))
 

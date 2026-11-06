@@ -215,7 +215,14 @@ fn a_window_opens_edits_and_another_catches_up_through_the_ipc() {
     assert_eq!(header["readOnly"], Value::Null);
 
     let typed = type_text(&main, "typed in main");
-    assert_eq!(json(f.apply(&f.main, typed.clone()).unwrap()), Value::Null);
+    let InvokeResponseBody::Raw(answer) = f.apply(&f.main, typed.clone()).unwrap() else {
+        panic!("an edit is answered raw");
+    };
+    assert_eq!(
+        StateVector::decode_v1(&answer).unwrap(),
+        main.transact().state_vector(),
+        "the document's state vector after the edit"
+    );
     let refused = f.apply(&f.side, typed).unwrap_err();
     assert_eq!(refused["code"], "document_not_open", "side never opened it");
 

@@ -9,7 +9,10 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::api::editor::Editor;
 use memry_core::api::errors::SecureStoreError;
+use memry_core::crdt::BODY_FRAGMENT;
+use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::domain::vault_locks::TargetKind;
+use memry_core::markdown::convert::api::Converter;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::seams::secure_store::SecureStoreKey;
 use memry_desktop::editor::{EditorHost, EditorHostError, HostEvent, Subscriber};
@@ -75,6 +78,50 @@ impl Env {
     fn editor(&self) -> Arc<Editor> {
         let core = self.session.current().unwrap().vault;
         core.editor(self.store.clone()).unwrap()
+    }
+
+    /// The note's file was edited outside the app, and the feed took it.
+    fn outside_edit(&self, note: &str, markdown: &str) {
+        let core = self.session.current().unwrap().vault;
+        let feed = core.external_feed(self.store.clone()).unwrap();
+        let input = FeedInput {
+            note_id: note,
+            markdown,
+            note_path: None,
+            writing: None,
+            frontmatter: None,
+            embeds: None,
+        };
+        let fed = feed.feed(&Converter::new(Default::default()), input);
+        assert_eq!(fed.unwrap(), FeedOutcome::Fed);
+    }
+
+    /// The contents of the note's versions, oldest first.
+    fn versions(&self, note: &str) -> Vec<String> {
+        let note = note.to_owned();
+        let core = self.session.current().unwrap().vault;
+        core.db_handle()
+            .call_blocking(move |conn| {
+                let mut statement = conn
+                    .prepare(
+                        "SELECT content FROM note_snapshots WHERE note_id = ?1
+                         ORDER BY created_at, rowid",
+                    )
+                    .unwrap();
+                Ok(statement
+                    .query_map([note], |row| row.get(0))
+                    .unwrap()
+                    .collect::<Result<Vec<String>, _>>()
+                    .unwrap())
+            })
+            .unwrap()
+    }
+
+    /// The note's body as a window opening it now gets it.
+    fn body(&self, note: &str) -> String {
+        let (reader, _) = self.open(note, "reader");
+        self.host.close(note, "reader");
+        reader.body()
     }
 
     /// `window` opens `note` with a channel that records each frame.
@@ -171,6 +218,39 @@ impl Window {
     fn text(&self) -> String {
         let root = self.0.get_or_insert_text("t");
         root.get_string(&self.0.transact())
+    }
+
+    /// Puts `text` back as the whole body, as a window keeping its typing over an outside edit
+    /// does, and returns the update.
+    fn put_body(&self, text: &str) -> Vec<u8> {
+        use yrs::{WriteTxn as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
+        let before = self.0.transact().state_vector();
+        let mut txn = self.0.transact_mut();
+        let fragment = txn.get_or_insert_xml_fragment(BODY_FRAGMENT);
+        let len = fragment.len(&txn);
+        fragment.remove_range(&mut txn, 0, len);
+        let group = fragment.push_back(&mut txn, XmlElementPrelim::empty("blockGroup"));
+        let container = group.push_back(&mut txn, XmlElementPrelim::empty("blockContainer"));
+        let paragraph = container.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+        paragraph.push_back(&mut txn, XmlTextPrelim::new(text));
+        drop(txn);
+        self.0.transact().encode_diff_v1(&before)
+    }
+
+    fn body(&self) -> String {
+        use yrs::WriteTxn as _;
+        let mut txn = self.0.transact_mut();
+        txn.get_or_insert_xml_fragment(BODY_FRAGMENT)
+            .get_string(&txn)
+    }
+
+    /// Applies every frame `frames` recorded since `from`.
+    fn take(&self, frames: &Frames, from: usize) -> usize {
+        let frames = frames.lock().unwrap();
+        for frame in &frames[from..] {
+            self.apply(&frame[1..]);
+        }
+        frames.len()
     }
 
     fn state_vector(&self) -> Vec<u8> {
@@ -558,15 +638,18 @@ fn only_a_stored_window_edit_asks_for_its_file_to_be_written() {
     assert_eq!(edited().len(), 1, "a refused edit writes no file");
 }
 
-/// Typing a window put back over an outside edit: the shell keeps the file the outside edit
-/// wrote before the typing is stored, so the write-back never writes the typing over it first.
+/// Typing a window put back over an outside edit: once it is stored, the shell keeps the file
+/// the outside edit wrote, told before the write-back is, so the write-back never writes the
+/// typing over it first.
 #[test]
 fn typing_put_back_over_an_outside_edit_keeps_that_edit_first() {
     let env = env();
     let note = env.note();
-    let (main, _) = env.open(&note, "main");
+    let (main, frames) = env.open(&note, "main");
+    env.outside_edit(&note, "edited outside");
+    main.take(&frames, 0);
     env.events.lock().unwrap().clear();
-    let typed = main.type_text("typed");
+    let typed = main.put_body("first words typed");
     let refused = env.host.apply_over_outside_edit(&note, &typed, "popout");
     assert!(refused.is_err());
     assert!(
@@ -582,4 +665,139 @@ fn typing_put_back_over_an_outside_edit_keeps_that_edit_first() {
     };
     let edited = HostEvent::Edited { note_id: note };
     assert_eq!(*env.events.lock().unwrap(), [kept, edited]);
+}
+
+/// The outside edit is kept only for typing that was stored: a refused restore says nothing,
+/// and the window's next try is taken.
+#[test]
+fn a_restore_that_was_not_stored_keeps_nothing_and_may_be_sent_again() {
+    let env = env();
+    let note = env.note();
+    let (main, frames) = env.open(&note, "main");
+    env.outside_edit(&note, "edited outside");
+    main.take(&frames, 0);
+    env.events.lock().unwrap().clear();
+    let core = env.session.current().unwrap().vault;
+    core.locks().set(TargetKind::Note, &note, true).unwrap();
+    let typed = main.put_body("first words typed");
+
+    assert!(
+        env.host
+            .apply_over_outside_edit(&note, &typed, "main")
+            .is_err()
+    );
+    assert!(env.events.lock().unwrap().is_empty());
+
+    core.locks().set(TargetKind::Note, &note, false).unwrap();
+    env.host
+        .apply_over_outside_edit(&note, &typed, "main")
+        .unwrap();
+    assert!(matches!(
+        env.events.lock().unwrap()[..],
+        [HostEvent::OutsideEditKept { .. }, HostEvent::Edited { .. }]
+    ));
+}
+
+/// A window's own typing, stored after the outside edit (its answer came back before the outside
+/// edit's frame), is the typing it puts back: its restore is taken.
+#[test]
+fn a_windows_typing_stored_after_the_outside_edit_does_not_hold_back_its_restore() {
+    let env = env();
+    let note = env.note();
+    let (main, frames) = env.open(&note, "main");
+    let typed = main.put_body("first words");
+    env.host.apply_update(&note, &typed, "main").unwrap();
+    env.outside_edit(&note, "edited outside");
+    env.host
+        .apply_update(&note, &main.type_text(" typed"), "main")
+        .unwrap();
+    main.take(&frames, 0);
+
+    let put_back = main.put_body("first words typed");
+    env.host
+        .apply_over_outside_edit(&note, &put_back, "main")
+        .unwrap();
+    assert!(env.body(&note).contains("first words typed"));
+}
+
+/// Two windows put their typing back over one outside edit: the first is taken, the second is
+/// refused, so the body holds one copy, and the second's text is kept as a version.
+#[test]
+fn only_the_first_restore_over_an_outside_edit_is_taken_and_a_later_one_kept_as_a_version() {
+    let env = env();
+    let note = env.note();
+    let (main, main_frames) = env.open(&note, "main");
+    let (side, side_frames) = env.open(&note, "side");
+    env.outside_edit(&note, "edited outside");
+    main.take(&main_frames, 0);
+    side.take(&side_frames, 0);
+
+    env.host
+        .apply_over_outside_edit(&note, &main.put_body("typed in main"), "main")
+        .unwrap();
+    let refused = env
+        .host
+        .apply_over_outside_edit(&note, &side.put_body("typed in side"), "side")
+        .unwrap_err();
+
+    assert!(matches!(
+        refused,
+        EditorHostError::OutsideEditRestored { .. }
+    ));
+    assert_eq!(map_core(&refused).code, "outside_edit_restored");
+    let body = env.body(&note);
+    assert!(body.contains("typed in main"), "{body}");
+    assert!(!body.contains("typed in side"), "{body}");
+    assert!(
+        env.versions(&note)
+            .iter()
+            .any(|version| version.contains("typed in side")),
+        "{:?}",
+        env.versions(&note)
+    );
+}
+
+/// Another window typed into the outside edit before a restore arrived: the restore would delete
+/// that typing, so it is refused and kept as a version, and the typing stays.
+#[test]
+fn a_restore_after_another_window_typed_over_the_outside_edit_is_refused() {
+    let env = env();
+    let note = env.note();
+    let (main, main_frames) = env.open(&note, "main");
+    let (side, side_frames) = env.open(&note, "side");
+    env.outside_edit(&note, "edited outside");
+    side.take(&side_frames, 0);
+    let typed = side.put_body("edited outside, and typed in side");
+    env.host.apply_update(&note, &typed, "side").unwrap();
+    main.take(&main_frames, 0);
+
+    let refused = env
+        .host
+        .apply_over_outside_edit(&note, &main.put_body("typed in main"), "main");
+
+    assert!(matches!(
+        refused,
+        Err(EditorHostError::OutsideEditRestored { .. })
+    ));
+    let body = env.body(&note);
+    assert!(body.contains("typed in side"), "{body}");
+    assert!(
+        env.versions(&note)
+            .iter()
+            .any(|version| version.contains("typed in main"))
+    );
+}
+
+/// The answer to a stored edit is the document's state vector: the window holds every update
+/// stored before its edit once it holds that.
+#[test]
+fn an_edit_is_answered_with_the_documents_state_vector() {
+    let env = env();
+    let note = env.note();
+    let (main, _) = env.open(&note, "main");
+    let answer = env
+        .host
+        .apply_update(&note, &main.type_text("typed"), "main")
+        .unwrap();
+    assert_eq!(answer, env.editor().state_vector(&note).unwrap());
 }

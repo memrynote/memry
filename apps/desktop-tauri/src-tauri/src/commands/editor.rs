@@ -2,7 +2,8 @@
 //! `memry_desktop::editor::EditorHost`. Updates and states are raw bytes: `crdt_open_doc` and
 //! `crdt_sync_step_1` answer with a framed `Response` ([`binary::framed`]), `crdt_apply_update`
 //! and `crdt_sync_step_2` take the update as the raw body with `{ noteId }` in the metadata
-//! header, so the four are binary commands (`binary.rs`). The calling window's label is the
+//! header and answer the document's state vector after it, raw, so the four are binary commands
+//! (`binary.rs`). The calling window's label is the
 //! holder, and the document's updates reach the window on the `Channel` it opened it with, as
 //! [`memry_desktop::editor::frame`]s. `crdt_close_doc` and `crdt_get_health` are typed commands.
 
@@ -96,13 +97,15 @@ pub async fn crdt_open_doc<R: Runtime>(
     binary::framed(&header, &[&opened.state, &opened.state_vector])
 }
 
-/// A window's edit (the raw body): stored, queued for sync and sent to the other windows.
+/// A window's edit (the raw body): stored, queued for sync and sent to the other windows. The
+/// answer is the document's state vector: the window holds every update stored before its edit
+/// once its channel brought it that far.
 #[tauri::command]
 pub async fn crdt_apply_update<R: Runtime>(
     app: AppHandle<R>,
     window: WebviewWindow<R>,
     request: Request<'_>,
-) -> Result<(), CommandError> {
+) -> Result<Response, CommandError> {
     apply("crdt_apply_update", &app, &window, &request).await
 }
 
@@ -112,7 +115,7 @@ pub async fn crdt_sync_step_2<R: Runtime>(
     app: AppHandle<R>,
     window: WebviewWindow<R>,
     request: Request<'_>,
-) -> Result<(), CommandError> {
+) -> Result<Response, CommandError> {
     apply("crdt_sync_step_2", &app, &window, &request).await
 }
 
@@ -121,7 +124,7 @@ async fn apply<R: Runtime>(
     app: &AppHandle<R>,
     window: &WebviewWindow<R>,
     request: &Request<'_>,
-) -> Result<(), CommandError> {
+) -> Result<Response, CommandError> {
     let meta: NoteMeta = binary::meta(request)?;
     let update = binary::raw_body(request)?.to_vec();
     let host = host(app)?;
@@ -134,6 +137,7 @@ async fn apply<R: Runtime>(
         applied.map_err(|error| CommandError::from_core(&error))
     })
     .await
+    .map(Response::new)
 }
 
 /// Sync step 1: the window's state vector is the raw body; the answer is what the document

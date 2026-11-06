@@ -4,8 +4,9 @@ import * as Y from 'yjs'
 /**
  * A fake editor host behind the `crdt_*` commands, as `commands/editor.rs` answers them: the
  * open is framed (header length, JSON header, state, state vector) and binds the channel it was
- * given; an edit is the raw body with `{ noteId }` in the metadata. `refuse` makes the next edits
- * fail with a `CommandError` code.
+ * given; an edit is the raw body with `{ noteId }` in the metadata, answered with the document's
+ * state vector. `refuse` makes the next edits fail with a `CommandError` code, `refuseFlagged`
+ * every edit put back over an outside edit.
  */
 interface TestChannel {
   onmessage: (data: ArrayBuffer) => void
@@ -20,6 +21,7 @@ const host = vi.hoisted(() => ({
   needsSeed: false,
   readOnly: null as string | null,
   refuse: null as string | null,
+  refuseFlagged: null as string | null,
   /** How many more edits `refuse` refuses; null refuses every one. */
   refuseTimes: null as number | null,
   /** Edits wait on this before they land, so a test can hold one in flight. */
@@ -75,9 +77,17 @@ vi.mock('@tauri-apps/api/core', async () => {
         // oxlint-disable-next-line typescript/only-throw-error -- Tauri rejects a command with its serialized `CommandError`, a plain object
         throw { kind: 'invalid', code: host.refuse, message: host.refuse }
       }
+      if (host.refuseFlagged && (meta as Record<string, unknown>).overOutsideEdit) {
+        // oxlint-disable-next-line typescript/only-throw-error -- as above
+        throw { kind: 'crdt', code: host.refuseFlagged, message: host.refuseFlagged }
+      }
       Yjs.applyUpdate(host.doc, update, 'window')
       host.calls.push('apply')
-      return null
+      const stateVector = Yjs.encodeStateVector(host.doc)
+      return stateVector.buffer.slice(
+        stateVector.byteOffset,
+        stateVector.byteOffset + stateVector.byteLength
+      )
     })
   }
 })
@@ -166,6 +176,7 @@ beforeEach(() => {
   host.needsSeed = false
   host.readOnly = null
   host.refuse = null
+  host.refuseFlagged = null
   host.refuseTimes = null
   host.gate = null
   host.openGate = null
@@ -324,6 +335,57 @@ describe('YjsIpcProvider outside edits', () => {
     expect(host.sent.at(-1)?.meta).toEqual({ noteId: NOTE })
   })
 
+  it('keeps typing whose answer came back before the frame of an outside edit stored before it', async () => {
+    const { doc, typeInBody } = await withBody()
+    // The host took the outside edit; its frame, larger than the answer, travels slower.
+    const outside = outsideEditFrame('edited outside')
+    typeInBody(' typed')
+    await settle()
+    lastChannel().onmessage(outside)
+    await settle()
+
+    expect(body(doc)).toContain('first words typed')
+    expect(body(host.doc)).toBe(body(doc))
+    const flagged = host.sent.filter(
+      (sent) => (sent.meta as Record<string, unknown>).overOutsideEdit
+    )
+    expect(flagged).toHaveLength(1)
+  })
+
+  it('takes its typing back when the host already took another window put back', async () => {
+    const { doc, typeInBody } = await withBody()
+    const release = holdEdits()
+    typeInBody(' typed')
+    lastChannel().onmessage(outsideEditFrame('edited outside'))
+    lastChannel().onmessage(outsideEditFrame('typed in the other window', 0))
+    host.refuseFlagged = 'outside_edit_restored'
+    release()
+    await settle(90)
+
+    expect(body(doc)).toBe(body(host.doc))
+    expect(body(doc)).toContain('typed in the other window')
+    expect(body(doc)).not.toContain('first words typed')
+  })
+
+  it('sends the typing put back over an outside edit with its flag after a rebind', async () => {
+    const { doc, typeInBody } = await withBody()
+    const release = holdEdits()
+    typeInBody(' typed')
+    lastChannel().onmessage(outsideEditFrame('edited outside'))
+    host.refuse = 'document_not_open'
+    host.refuseTimes = 1
+    release()
+    await settle(90)
+
+    const steps = host.sent.filter((sent) => sent.command === 'crdt_sync_step_2')
+    expect(steps.map((sent) => sent.meta)).toEqual([{ noteId: NOTE, overOutsideEdit: true }])
+    expect(body(host.doc)).toBe(body(doc))
+    expect(body(doc)).toContain('first words typed')
+    typeInBody('!')
+    await settle()
+    expect(host.sent.at(-1)?.meta).toEqual({ noteId: NOTE })
+  })
+
   it('asks again to keep the outside edit when the typing put back over it failed to store', async () => {
     vi.useFakeTimers()
     const { typeInBody } = await withBody()
@@ -420,6 +482,19 @@ describe('YjsIpcProvider purge', () => {
     expect(host.opens).toHaveLength(1)
   })
 
+  it('stays read-only after a purge that arrived while its open was in flight', async () => {
+    let answer!: () => void
+    host.openGate = new Promise((resolve) => (answer = resolve))
+    const provider = new YjsIpcProvider({ noteId: NOTE, doc: new Y.Doc() })
+    const connecting = provider.connect()
+    await settle()
+    lastChannel().onmessage(new Uint8Array([4]).buffer)
+    answer()
+    await connecting
+
+    expect(provider.readOnly).toBe('purged')
+  })
+
   it('turns the editor read-only on a purge, so no keystroke is dropped unseen', async () => {
     const { provider } = await connected()
     const heard: unknown[] = []
@@ -491,6 +566,24 @@ describe('YjsIpcProvider failed edits', () => {
     await vi.advanceTimersByTimeAsync(10_000)
     expect(text(host.doc)).toBe('stored x')
     expect(toast.error).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails a flush once edits keep failing, and keeps them for the host to recover', async () => {
+    vi.useFakeTimers()
+    const { doc, provider } = await connected()
+    host.refuse = 'storage_failed'
+    type(doc, ' x')
+    const outcome = provider.flush().then(
+      () => 'flushed',
+      () => 'failed'
+    )
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(await outcome).toBe('failed')
+
+    host.refuse = null
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(text(host.doc)).toBe('stored x')
+    await expect(provider.flush()).resolves.toBeUndefined()
   })
 
   it('gives up on a failing edit once the note is closed, and still closes it', async () => {
