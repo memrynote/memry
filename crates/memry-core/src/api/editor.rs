@@ -358,12 +358,15 @@ impl Editor {
     ) -> Result<T, EditorError> {
         let now = now_ms();
         let mut resident = self.resident();
-        self.on_writer(|conn| {
-            let document = resident
+        let document = self.on_writer(|conn| {
+            resident
                 .borrow(note_id, now, || self.load(conn, note_id))?
-                .ok_or_else(|| unreadable(note_id))?;
-            Ok(read(&document)?)
-        })
+                .ok_or_else(|| unreadable(note_id))
+        })?;
+        // The writer is free again; the resident lock is still held.
+        let read = read(&document)?;
+        drop(resident);
+        Ok(read)
     }
 
     /// `note_id` replayed from its log. Nothing authors through a resident

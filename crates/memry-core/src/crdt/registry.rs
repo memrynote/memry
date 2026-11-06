@@ -29,10 +29,8 @@ use std::sync::{Arc, Mutex};
 
 use sha2::{Digest as _, Sha256};
 use yrs::updates::decoder::Decode as _;
-use yrs::{
-    Doc, ReadTxn as _, StateVector, Subscription, Transact as _, Transaction, TransactionMut,
-};
-use yrs::{Origin, TransactionAcqError, Update};
+use yrs::{Doc, StateVector, Subscription, Transact as _, Transaction, TransactionMut};
+use yrs::{IdSet, Origin, ReadTxn, TransactionAcqError, Update};
 
 use super::errors::CrdtError;
 
@@ -169,7 +167,7 @@ impl Document {
     /// document. `false` when every item and every deletion in them was already
     /// here: a resent update, or a sync-step-2 diff of a replica that holds
     /// nothing new. Bytes that wait on an update this document lacks count as a
-    /// change, because they are new to it.
+    /// change when they add to what it holds back, because they are new to it.
     pub fn apply_durable_update_changed(&self, bytes: &[u8]) -> Result<bool, CrdtError> {
         self.apply(bytes, Some(ORIGIN_DURABLE))
     }
@@ -191,6 +189,7 @@ impl Document {
         }
         .map_err(|err| busy(&self.id, err))?;
 
+        let pending_before = pending(&txn);
         txn.apply_update(update)
             .map_err(|err| CrdtError::NotApplicable {
                 doc_id: self.id.clone(),
@@ -198,7 +197,7 @@ impl Document {
             })?;
         Ok(!txn.insert_set().is_empty()
             || !txn.delete_set().is_empty()
-            || txn.has_missing_updates())
+            || pending(&txn) != pending_before)
         // `txn` drops here: the transaction this method opened is the
         // transaction this method closes, and the observer fires on the commit.
     }
@@ -261,6 +260,20 @@ impl Document {
             .map_err(|err| busy(&self.id, err))?;
         Ok(f(&mut txn))
     }
+}
+
+/// What the document holds back until an update it lacks arrives: structs and
+/// deletions. Compared before and after an apply, so only bytes that added to it
+/// count as a change, and data stuck there does not make every later apply one.
+fn pending(txn: &TransactionMut<'_>) -> (Option<Vec<u8>>, Option<IdSet>) {
+    use yrs::updates::encoder::Encode as _;
+    let store = ReadTxn::store(txn);
+    (
+        store
+            .pending_update()
+            .map(|pending| pending.update.encode_v1()),
+        store.pending_ds().cloned(),
+    )
 }
 
 fn busy(doc_id: &str, err: TransactionAcqError) -> CrdtError {

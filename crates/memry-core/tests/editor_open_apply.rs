@@ -336,3 +336,90 @@ fn the_vault_has_one_editor_and_an_evicted_note_replays_on_reopen() {
     assert_eq!(reopened.text(), "body");
     assert_eq!(reopened.foreign("kept").as_deref(), Some("yes"));
 }
+
+/// The window types `hello` and then makes `second`, and the core gets them the
+/// other way round, across relaunches: the early edit waits on the one it
+/// follows, so it must be stored when it arrives or it is gone at the next
+/// replay.
+fn sent_out_of_order(second: impl FnOnce(&Replica) -> Vec<u8>) {
+    let f = fixture();
+    let note = f.note();
+    let window = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
+    let first = window.type_text("hello");
+    let early = second(&window);
+
+    let held_back = f.editor.apply_update(&note, &early, "main").expect("early");
+    assert!(held_back.is_some(), "held back, and new to the document");
+    assert_eq!(f.local_blobs(&note), vec![early]);
+
+    let f = f.relaunch();
+    f.editor
+        .apply_update(&note, &first, "main")
+        .expect("first")
+        .expect("changed");
+    let f = f.relaunch();
+    let reopened = Replica::from_state(2, &f.editor.open(&note, "main").expect("reopen").state);
+    assert_eq!(reopened.text(), window.text());
+}
+
+#[test]
+fn an_insert_that_arrives_before_the_one_it_follows_survives_relaunches() {
+    sent_out_of_order(|window| window.type_text(" world"));
+}
+
+#[test]
+fn a_delete_that_arrives_before_the_text_it_removes_survives_relaunches() {
+    sent_out_of_order(|window| window.delete_first(2));
+}
+
+#[test]
+fn an_edit_stuck_waiting_does_not_make_every_later_update_a_change() {
+    let f = fixture();
+    let note = f.note();
+    let window = Replica::from_state(1, &f.editor.open(&note, "main").expect("open").state);
+    let sent = window.type_text("a");
+    f.editor.apply_update(&note, &sent, "main").expect("sent");
+    let _never_sent = window.type_text("b");
+    let stuck = window.type_text("c");
+    f.editor.apply_update(&note, &stuck, "main").expect("stuck");
+
+    assert_eq!(
+        f.editor.apply_update(&note, &sent, "main"),
+        Ok(None),
+        "a resend"
+    );
+    assert_eq!(
+        f.editor.apply_update(&note, &stuck, "main"),
+        Ok(None),
+        "the stuck one again"
+    );
+    assert_eq!(f.local_blobs(&note).len(), 2);
+    assert_eq!(f.queued(&note), 2);
+}
+
+#[test]
+fn an_open_that_fails_keeps_the_hold_the_holder_already_had() {
+    let f = fixture();
+    let note = f.note();
+    f.editor.open(&note, "main").expect("open");
+    let rename = |from: &str, to: &str| {
+        let sql = format!("ALTER TABLE {from} RENAME TO {to}");
+        f.vault
+            .db_handle()
+            .call_blocking(move |conn| {
+                conn.execute_batch(&sql).map_err(|e| {
+                    memry_core::api::errors::StorageError::Failed {
+                        what: e.to_string(),
+                    }
+                })
+            })
+            .expect("rename");
+    };
+
+    rename("meta", "meta_away");
+    let failed = f.editor.open(&note, "main");
+    rename("meta_away", "meta");
+
+    assert!(failed.is_err(), "the owed-body read failed");
+    assert!(f.editor.is_open(&note), "the earlier open still holds it");
+}
