@@ -5,7 +5,7 @@
 //!
 //! Locking records the file's bits, then clears every write bit; lifting the lock gives the
 //! recorded bits back. A record belongs to one file, named by its identity (`(dev, ino)` on
-//! Unix, volume serial and file index on Windows). The app's own writes replace the file and
+//! Unix, volume serial and file index on Windows, with the birth time). The app's own writes replace the file and
 //! keep the record. A file the app did not just write that is another file than the record's,
 //! or is found writable with other bits, was added or replaced from outside, so its bits
 //! replace the record: unlocking never gives a file more than it had.
@@ -25,10 +25,19 @@ pub(super) struct Found {
 }
 
 impl Found {
+    /// The identity is the volume and file and, where the volume keeps one, the birth time
+    /// (Electron's `ino:birthtimeMs`): ext4 hands a file deleted and made again from outside
+    /// its old inode at once, and only the birth time tells the two apart.
     pub fn of(file: &File) -> std::io::Result<Self> {
+        let meta = file.metadata()?;
+        let born = meta
+            .created()
+            .ok()
+            .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+            .map_or_else(String::new, |since| format!(":{}", since.as_nanos()));
         Ok(Self {
-            mode: node_mode(&file.metadata()?),
-            identity: file_identity(file)?.0.to_string(),
+            mode: node_mode(&meta),
+            identity: format!("{}{born}", file_identity(file)?.0),
         })
     }
 }
