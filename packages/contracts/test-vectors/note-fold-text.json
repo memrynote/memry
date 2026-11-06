@@ -1,9 +1,7 @@
 {
   "meta": {
-    "spec": "002-native-foundation-ios",
-    "sodiumVersion": "1.0.21",
-    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
-    "source": "apps/desktop/src/main/note-fold/{engine,engine-tokens}.ts",
+    "spec": "tauri-v2-3531-note-fold",
+    "oracle": "apps/desktop/scripts/note-fold-oracle (Electron fold engine run in place: src/main/note-fold/{engine,engine-tokens}.ts)",
     "note": "The fold text helpers: language, sentences, words and the inline tokens. Dates format in timeZone."
   },
   "timeZone": "UTC",

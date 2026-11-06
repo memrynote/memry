@@ -1,5 +1,5 @@
 /**
- * The 40 documents of the `note-fold` class: English, Turkish and Japanese
+ * The 40 documents of `note-fold.json`: English, Turkish and Japanese
  * notes that reach every rule of the local fold (sections, chunk splits,
  * skipped blocks, list items, inline marks, date and link tokens, the
  * sentence and word boundaries, the Brief pick, the fold threshold).

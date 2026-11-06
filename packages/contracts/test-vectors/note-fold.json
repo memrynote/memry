@@ -1,16 +1,14 @@
 {
   "meta": {
-    "spec": "002-native-foundation-ios",
-    "sodiumVersion": "1.0.21",
-    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
-    "source": "apps/desktop/src/main/note-fold/{engine,engine-inline,engine-morph,engine-tokens,segmenter}.ts",
+    "spec": "tauri-v2-3531-note-fold",
+    "oracle": "apps/desktop/scripts/note-fold-oracle (Electron fold engine run in place: src/main/note-fold/{engine,engine-inline,engine-morph,engine-tokens,segmenter}.ts)",
     "note": "The local fold of a note: what fold-service.ts get answers with no model lines. Inline date tokens format in timeZone."
   },
+  "timeZone": "UTC",
   "levels": [
     "full",
     "brief"
   ],
-  "timeZone": "UTC",
   "cases": [
     {
       "name": "en-short",
