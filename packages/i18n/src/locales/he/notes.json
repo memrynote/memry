@@ -70,7 +70,9 @@
       "openExternalFailed": "פתיחת הפתק נכשלה",
       "moved": "הפתק הועבר",
       "moveFailed": "העברת הפתק נכשלה",
-      "deleteFailed": "מחיקת הפתק נכשלה"
+      "deleteFailed": "מחיקת הפתק נכשלה",
+      "outsideEditReplaced": "ההקלדה שלך החליפה שינוי חיצוני. השינוי שמור בהיסטוריית הגרסאות.",
+      "showVersions": "הצגת גרסאות"
     },
     "deleteDialogTitle": "{count, plural, one {מחיקת פתק} other {מחיקת # פתקים}}",
     "itemsCount": "{count, plural, one {פריט אחד} other {# פריטים}}",

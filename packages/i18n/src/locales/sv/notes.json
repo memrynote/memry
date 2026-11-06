@@ -70,7 +70,9 @@
       "openExternalFailed": "Det gick inte att öppna anteckningen",
       "moved": "Anteckningen flyttades",
       "moveFailed": "Det gick inte att flytta anteckningen",
-      "deleteFailed": "Det gick inte att radera anteckningen"
+      "deleteFailed": "Det gick inte att radera anteckningen",
+      "outsideEditReplaced": "Det du skrev ersatte en ändring utifrån. Den finns sparad i versionshistoriken.",
+      "showVersions": "Visa versioner"
     },
     "deleteDialogTitle": "{count, plural, one {Radera anteckning} other {Radera # anteckningar}}",
     "itemsCount": "{count, plural, one {# objekt} other {# objekt}}",

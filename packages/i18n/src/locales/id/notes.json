@@ -70,7 +70,9 @@
       "openExternalFailed": "Gagal membuka catatan",
       "moved": "Catatan dipindahkan",
       "moveFailed": "Gagal memindahkan catatan",
-      "deleteFailed": "Gagal menghapus catatan"
+      "deleteFailed": "Gagal menghapus catatan",
+      "outsideEditReplaced": "Ketikan Anda menggantikan perubahan dari luar. Perubahan itu tersimpan di riwayat versi.",
+      "showVersions": "Tampilkan versi"
     },
     "deleteDialogTitle": "{count, plural, =1 {Hapus catatan} other {Hapus # catatan}}",
     "itemsCount": "{count, plural, other {# item}}",

@@ -70,7 +70,9 @@
       "openExternalFailed": "No se pudo abrir la nota",
       "moved": "Nota movida",
       "moveFailed": "No se pudo mover la nota",
-      "deleteFailed": "No se pudo eliminar la nota"
+      "deleteFailed": "No se pudo eliminar la nota",
+      "outsideEditReplaced": "Lo que escribiste reemplazó un cambio externo. Está guardado en el historial de versiones.",
+      "showVersions": "Ver versiones"
     },
     "deleteDialogTitle": "{count, plural, one {Eliminar nota} other {Eliminar # notas}}",
     "itemsCount": "{count, plural, one {# elemento} many {# elementos} other {# elementos}}",
