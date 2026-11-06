@@ -622,3 +622,29 @@ fn a_deeply_nested_synced_definition_reads_as_no_options() {
         );
     });
 }
+
+/// `ensureFieldDefinition`: a name that has a definition in any shape keeps it, a file entry or
+/// a record a newer build wrote included; a name with none gets the type.
+#[test]
+fn creating_only_when_absent_keeps_every_definition_a_name_has() {
+    let f = fixture();
+    let newer = "---\nproperties:\n  Role:\n    type: rating\n    stars: 5\n---\n";
+    f.set_file(newer);
+    let text = || input("Role", Some(DefinitionType::Text));
+    assert!(!f.definitions.create_if_absent(text(), false).unwrap());
+    assert_eq!(f.file().as_deref(), Some(newer));
+    assert!(f.record("Role").is_none());
+
+    pull_record(&f, &record("Mood", "rating", None, None));
+    let mood = input("Mood", Some(DefinitionType::Text));
+    assert!(!f.definitions.create_if_absent(mood, false).unwrap());
+    assert_eq!(f.record("Mood").unwrap().type_name, "rating");
+
+    let due = input("Due", Some(DefinitionType::Date));
+    assert!(f.definitions.create_if_absent(due, true).unwrap());
+    assert_eq!(f.definitions.calendar_names(), ["Due"]);
+    assert_eq!(f.record("Due").unwrap().type_name, "date");
+    let again = input("Due", Some(DefinitionType::Text));
+    assert!(!f.definitions.create_if_absent(again, false).unwrap());
+    assert_eq!(f.record("Due").unwrap().type_name, "date");
+}

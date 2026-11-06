@@ -313,6 +313,10 @@ export const commands = {
 	 *  tells the user that recent edits may be lost.
 	 */
 	shellTakeCrashReload: () => __TAURI_INVOKE<boolean>("shell_take_crash_reload"),
+	/**  One schema command, answered with the snapshot after it. */
+	tagsEditSchema: (command: TagSchemaCommand) => __TAURI_INVOKE<TagSchemaCommandResultView>("tags_edit_schema", { command }),
+	/**  Every tag's resolved schema, the notes that are objects, and the ready-made tags. */
+	tagsGetSchemaSnapshot: () => __TAURI_INVOKE<TagSchemaSnapshotView>("tags_get_schema_snapshot"),
 	tagsCreateCategory: (name: string) => __TAURI_INVOKE<TagCategoryView>("tags_create_category", { name }),
 	/**  The category's tags become uncategorised. */
 	tagsDeleteCategory: (id: string) => __TAURI_INVOKE<null>("tags_delete_category", { id }),
@@ -459,6 +463,7 @@ export const events = {
 	noteRenamedEvent: makeEvent<NoteRenamedEvent, NoteRenamedEvent>("note-renamed-event"),
 	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
+	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
@@ -744,6 +749,11 @@ export type ErrorDetail = {
 /**  The class of a failure. Fixed set; the renderer branches on `kind`, never on message text. */
 export type ErrorKind = "storage" | "crypto" | "auth" | "api" | "sync" | "crdt" | "recovery" | "propertyWrite" | "secureStore" | "transport" | "locked" | "notFound" | "invalid" | "internal";
 
+export type ExistingTagView = {
+	key: string,
+	usage: number,
+};
+
 export type FailureDetail = {
 	httpStatus?: number | null,
 	serverCode?: string | null,
@@ -765,6 +775,17 @@ export type FeedbackSubmitResult = {
 	success: boolean,
 	error: string | null,
 };
+
+export type FieldOptionInput = {
+	value: string,
+	color: string,
+};
+
+/**
+ *  `FieldType`: every property type but `project`, which is also every type a new field may get
+ *  (`NEW_FIELD_TYPES`).
+ */
+export type FieldType = "text" | "number" | "checkbox" | "date" | "url" | "status" | "select" | "multiselect" | "relation";
 
 /**  A redacted field: the schema allows a string, a number or a boolean. */
 export type FieldValue = boolean | number | null | string;
@@ -870,6 +891,11 @@ export type HeatmapEntryView = {
  */
 export type InboxOpenItemEvent = {
 	itemId: string,
+};
+
+export type InheritedFieldsView = {
+	from: string,
+	fields: ResolvedFieldView[],
 };
 
 /**  The previous session handed off an install that never applied. */
@@ -1123,6 +1149,14 @@ export type MovesRecovered = {
 	shownFolders: number,
 };
 
+/**  `NewFieldSpec`. */
+export type NewFieldSpec = {
+	name: string,
+	type: FieldType,
+	options?: FieldOptionInput[] | null,
+	relation?: RelationView | null,
+};
+
 /**  `NoteAliasEditSchema`: names to remove, then names to add. */
 export type NoteAliasEditInput = {
 	id: string,
@@ -1312,6 +1346,8 @@ export type NoteUpdatedEvent = {
 export type NoteUpdatedView = {
 	note: NoteView,
 	tagTemplate?: TagTemplateOutcome | null,
+	/**  The save went over an outside edit the editor never had an event for, kept as a version. */
+	keptOutsideEdit: boolean,
 };
 
 /**  `Note`. */
@@ -1379,10 +1415,44 @@ export type OptionInput = {
 	default?: boolean | null,
 };
 
+/**  `PRESET_KEYS`. */
+export type PresetKey = "person" | "company" | "meeting" | "book";
+
+/**  One field of a preset offer. */
+export type PresetOfferFieldView = {
+	name: string,
+	type: FieldType,
+	relationTarget: string | null,
+};
+
+/**  `PresetOffer`. */
+export type PresetOfferView = {
+	key: PresetKey,
+	name: string,
+	icon: string | null,
+	color: string,
+	fields: PresetOfferFieldView[],
+	templateSections: string[],
+	state: PresetState,
+	existingTag: ExistingTagView | null,
+	alsoAdds: string[],
+};
+
+/**  `PresetOffer.state`. */
+export type PresetState = "add" | "add-fields" | "added";
+
 /**  A tag on the card, with its colour (`stone` when the tag has no definition). */
 export type PreviewTagView = {
 	name: string,
 	color: string,
+};
+
+/**
+ *  A property definition was created for a tag field (`properties:definition-changed`). The
+ *  renderer refetches the tag schemas.
+ */
+export type PropertyDefinitionChangedEvent = {
+	name: string,
 };
 
 /**
@@ -1425,6 +1495,13 @@ export type RefsKept = "changing" | "unreadable";
 /**  `RelationKind`. */
 export type RelationKind = "note" | "task" | "event" | "external-event" | "canvas" | "journal";
 
+/**  `RelationConfig`. */
+export type RelationView = {
+	target: string | null,
+	many: boolean,
+	inverse: string | null,
+};
+
 /**  `RemoveTagFromNoteSchema`. */
 export type RemoveTagFromNoteInput = {
 	noteId: string,
@@ -1454,6 +1531,16 @@ export type ReorderInput = {
 	categories?: CategoryOrderInput[] | null,
 };
 
+/**  `ResolvedField`. */
+export type ResolvedFieldView = {
+	name: string,
+	type: FieldType,
+	options?: SelectOptionView[],
+	showOnCalendar?: boolean,
+	relation: RelationView | null,
+	definedBy: string,
+};
+
 /**  `ResolvedRelationRef`: a relation value and what its chip shows. */
 export type ResolvedRelationRefView = {
 	uri: string,
@@ -1475,9 +1562,40 @@ export type ResolvedRelationRefView = {
 	date?: string,
 };
 
+/**  `ResolvedTag`. */
+export type ResolvedTagView = {
+	name: string,
+	key: string,
+	color: string,
+	icon: string | null,
+	editable: boolean,
+	ownFields: ResolvedFieldView[],
+	inherited: InheritedFieldsView[],
+	effectiveFields: ResolvedFieldView[],
+	hasFields: boolean,
+	extends: string | null,
+	ancestors: string[],
+	template: ResolvedTemplateView | null,
+	preset: PresetKey | null,
+	ownPreset: PresetKey | null,
+};
+
+export type ResolvedTemplateView = {
+	id: string,
+	autofill: boolean,
+	inheritedFrom: string | null,
+};
+
 export type SandboxInfo = {
 	path: string,
 	exists: boolean,
+};
+
+/**  `SelectOption`. */
+export type SelectOptionView = {
+	value: string,
+	color: string,
+	default?: boolean,
 };
 
 export type SelectVaultResponse = {
@@ -1645,6 +1763,26 @@ export type TagRenamedEvent = {
 	affectedNotes: number,
 };
 
+/**  `TagSchemaCommand`. `rename-field` is 13j-3d's. */
+export type TagSchemaCommand = { kind: "add-field"; tag: string; field: NewFieldSpec; index?: number | null } | { kind: "set-relation"; tag: string; name: string; relation: RelationView } | { kind: "remove-field"; tag: string; name: string } | { kind: "move-field"; tag: string; name: string; toIndex: number } | { kind: "set-template"; tag: string; template: TemplateChoice | null } | { kind: "set-extends"; tag: string; parent: string | null } | { kind: "add-preset"; preset: PresetKey; tag?: string | null } | { kind: "dismiss-preset-offer" };
+
+/**  `TagSchemaCommandResult`. */
+export type TagSchemaCommandResultView = {
+	snapshot: TagSchemaSnapshotView,
+	/**  The tag `add-preset` wrote. */
+	tag?: string,
+};
+
+/**  `TagSchemaSnapshot`. */
+export type TagSchemaSnapshotView = {
+	/**  Tag key to its resolved schema; only tags with a schema. */
+	tags: { [key in string]: ResolvedTagView },
+	/**  Note id to its primary object tag key. */
+	objects: { [key in string]: string },
+	presets: PresetOfferView[],
+	presetStripDismissed: boolean,
+};
+
 /**  `GetNotesByTagSchema.sortBy`. */
 export type TagSortBy = "modified" | "created" | "title";
 
@@ -1697,6 +1835,11 @@ export type TelemetryFlushResult = {
 export type TelemetrySettings = {
 	enabled: boolean,
 	autoSendDiagnostics: boolean,
+};
+
+export type TemplateChoice = {
+	id: string,
+	autofill: boolean,
 };
 
 /**  `TemplateCreateInput`. */

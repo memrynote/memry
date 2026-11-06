@@ -195,6 +195,14 @@ impl Vault {
             .read_blocking(crate::domain::tag_schema::definitions)
     }
 
+    /// Whether this device dismissed the tag hub's ready-made tags
+    /// ([`crate::domain::tag_schema::preset_offer_dismissed`]); a read. Not part of the FFI surface.
+    #[doc(hidden)]
+    pub fn tag_preset_offer_dismissed(&self) -> Result<bool, StorageError> {
+        self.db
+            .read_blocking(crate::domain::tag_schema::preset_offer_dismissed)
+    }
+
     /// The tag rename in progress ([`crate::domain::tag_rename::read`], desktop Step 13j); a
     /// read, so no identity. Not part of the FFI surface: the Rust desktop shell is its only
     /// caller.

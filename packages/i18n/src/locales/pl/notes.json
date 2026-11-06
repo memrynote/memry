@@ -70,7 +70,9 @@
       "openExternalFailed": "Nie udało się otworzyć notatki",
       "moved": "Przeniesiono notatkę",
       "moveFailed": "Nie udało się przenieść notatki",
-      "deleteFailed": "Nie udało się usunąć notatki"
+      "deleteFailed": "Nie udało się usunąć notatki",
+      "outsideEditReplaced": "Twoje pisanie zastąpiło zmianę z zewnątrz. Jest zapisana w historii wersji.",
+      "showVersions": "Pokaż wersje"
     },
     "deleteDialogTitle": "{count, plural, one {Usuń notatkę} few {Usuń # notatki} many {Usuń # notatek} other {Usuń # notatki}}",
     "itemsCount": "{count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}}",

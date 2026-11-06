@@ -140,7 +140,8 @@ fn held_edit_lands_in_the_document_the_file_and_the_row_with_one_byte_order_mark
         done,
         Edited::Wrote {
             hash: content_hash(&text),
-            held: true
+            held: true,
+            kept_outside: false
         }
     );
     assert_eq!(e.read("Ideas.md"), text);
@@ -191,7 +192,8 @@ fn a_text_the_document_does_not_take_is_written_and_brought_in_by_the_watcher() 
         done,
         Edited::Wrote {
             hash: content_hash(&big),
-            held: false
+            held: false,
+            kept_outside: false
         }
     );
     assert_eq!(e.read("Big.md"), big);
@@ -233,7 +235,8 @@ fn a_save_whose_feed_fails_is_written_and_brought_in_by_the_watcher() {
         done,
         Edited::Wrote {
             hash: content_hash(saved),
-            held: false
+            held: false,
+            kept_outside: false
         }
     );
     assert_eq!(e.read("Plan.md"), saved);

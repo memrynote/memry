@@ -70,7 +70,9 @@
       "openExternalFailed": "Gagal membuka nota",
       "moved": "Nota dialihkan",
       "moveFailed": "Gagal mengalihkan nota",
-      "deleteFailed": "Gagal memadamkan nota"
+      "deleteFailed": "Gagal memadamkan nota",
+      "outsideEditReplaced": "Taipan anda menggantikan perubahan dari luar. Ia disimpan dalam sejarah versi.",
+      "showVersions": "Tunjukkan versi"
     },
     "deleteDialogTitle": "{count, plural, one {Padam nota} other {Padam # nota}}",
     "itemsCount": "{count, plural, other {# item}}",

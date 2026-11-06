@@ -239,7 +239,7 @@ const ported = {
     if (input.title !== undefined) throw new NotPortedError('notes.update({ title })')
     try {
       const { id, content, headerTags, emoji, frontmatter } = input
-      const { note, tagTemplate } = await commands.notesUpdate({
+      const { note, tagTemplate, keptOutsideEdit } = await commands.notesUpdate({
         id,
         content,
         headerTags,
@@ -247,9 +247,12 @@ const ported = {
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- frontmatter values are the JSON the command carries as is
         frontmatter: frontmatter as Record<string, Value> | undefined
       })
-      return tagTemplate
-        ? { success: true, note: toNote(note), tagTemplate }
-        : { success: true, note: toNote(note) }
+      return {
+        success: true,
+        note: toNote(note),
+        ...(tagTemplate && { tagTemplate }),
+        ...(keptOutsideEdit && { keptOutsideEdit })
+      }
     } catch (error) {
       return { ...failure(error), note: null }
     }

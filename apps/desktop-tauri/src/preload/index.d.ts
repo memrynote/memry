@@ -2066,7 +2066,6 @@ interface API
   onTagDeleted: (callback: (event: TagDeletedEvent) => void) => () => void
   onTagNotesChanged: (callback: (event: TagNotesChangedEvent) => void) => () => void
   onTagsProgress: (callback: (event: TagsProgressEvent) => void) => () => void
-  onPropertyDefinitionChanged: (callback: (event: { name: string }) => void) => () => void
   // Reminder event subscriptions
   onReminderCreated: (callback: (event: ReminderCreatedEvent) => void) => () => void
   onReminderUpdated: (callback: (event: ReminderUpdatedEvent) => void) => () => void
