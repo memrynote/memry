@@ -14,7 +14,7 @@
 //! alone all take it from there, so the renderer's `{ ...existing, template }` cannot send a
 //! stale file icon back over the record's.
 //!
-//! Not here yet: the locked-folder check (Step 14), the record backfill of folders made before
+//! Not here yet: the record backfill of folders made before
 //! records existed and of folders made in a file manager (`backfillFolderConfigs`,
 //! `syncFolderConfigDiscovered`, Step 17, #3534), and a remote record's icon written into the
 //! folder's file (`writeMergedFolderConfig`, #3906).
@@ -29,8 +29,9 @@ use unicode_normalization::UnicodeNormalization;
 use memry_core::domain::folders::valid_path;
 
 use super::error::{NotesError, SCOPE};
-use super::moves::{plain_folder, plain_folders};
+use super::moves::{disk_spelling, plain_folder, plain_folders};
 use super::service::NotesService;
+use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::shell::file_open::Resolution;
 use crate::vault::config::read_vault_config;
@@ -330,10 +331,11 @@ impl NotesService {
     /// icon (Electron's create cleared it); one made outside the app gives its record its
     /// file's icon. A folder the tree hides (a dot folder, attachments, canvases, an excluded
     /// one) is refused, as a move into one is, and so is a spelling that differs from a
-    /// sibling's in case only.
+    /// sibling's in case only, and so is one inside a locked folder.
     pub fn create_folder(&self, open: &OpenVault, folder: &str) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let folder = vault_folder(root, folder)?;
+        Locks::of(open).refuse_parent_folder(&disk_spelling(root, &folder))?;
         if folder.is_empty()
             || folder.split('/').any(|segment| segment.starts_with('.'))
             || !tree_filter(root)(&folder)

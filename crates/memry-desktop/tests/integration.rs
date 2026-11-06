@@ -44,6 +44,10 @@ mod article_standardize;
 mod article_temml;
 #[path = "article_vectors.rs"]
 mod article_vectors;
+#[path = "attachment_locks.rs"]
+mod attachment_locks;
+#[path = "attachment_rename.rs"]
+mod attachment_rename;
 #[path = "attachment_uploads.rs"]
 mod attachment_uploads;
 #[path = "attachments.rs"]
@@ -62,6 +66,8 @@ mod custom_icons;
 mod debug_query;
 #[path = "e2e.rs"]
 mod e2e;
+#[path = "editor_compaction.rs"]
+mod editor_compaction;
 #[path = "editor_host.rs"]
 mod editor_host;
 #[path = "embeds.rs"]
@@ -118,6 +124,8 @@ mod large_file_index;
 mod large_file_search;
 #[path = "large_file_sessions.rs"]
 mod large_file_sessions;
+#[path = "lock_service.rs"]
+mod lock_service;
 #[path = "logship.rs"]
 mod logship;
 #[path = "move_dir.rs"]
@@ -144,6 +152,8 @@ mod note_properties_index;
 mod note_properties_learned;
 #[path = "note_properties_outside.rs"]
 mod note_properties_outside;
+#[path = "note_versions.rs"]
+mod note_versions;
 #[path = "notes_aliases.rs"]
 mod notes_aliases;
 #[path = "notes_apply_template.rs"]

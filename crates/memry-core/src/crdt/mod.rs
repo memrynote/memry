@@ -30,6 +30,7 @@ pub mod body_edit;
 pub mod body_writes;
 pub mod canonical;
 pub mod comments;
+pub mod compact;
 pub mod epoch;
 pub mod errors;
 pub mod lifecycle;

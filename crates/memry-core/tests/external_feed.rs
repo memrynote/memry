@@ -495,12 +495,36 @@ fn a_replaced_body_is_kept_as_a_version_once() {
         "an empty body is nothing to keep"
     );
     assert_eq!(f.feed(&id, "second text"), FeedOutcome::Fed);
+    let kept = versions(&f, &id);
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    assert!(
+        kept[0].0.contains("first text") && !kept[0].0.contains("second text"),
+        "the replaced body is the one kept: {kept:?}"
+    );
     assert_eq!(f.feed(&id, "first text"), FeedOutcome::Fed);
     assert_eq!(f.feed(&id, "second text"), FeedOutcome::Fed);
+
+    // One version per distinct body; the one replaced last, seen again, is moved up past the
+    // other (`note_snapshots::keep`).
     let kept = versions(&f, &id);
     assert_eq!(kept.len(), 2, "one version per distinct body: {kept:?}");
-    assert!(kept[0].0.contains("first text") && kept[1].0.contains("second text"));
     assert!(kept.iter().all(|(_, reason)| reason == "significant"));
+    let dated = |text: &str| -> String {
+        f.vault
+            .db_handle()
+            .call_blocking(|conn| {
+                Ok(conn
+                    .query_row(
+                        "SELECT created_at FROM note_snapshots
+                         WHERE note_id = ?1 AND instr(content, ?2) > 0",
+                        params![id, text],
+                        |row| row.get(0),
+                    )
+                    .expect("one version holds it"))
+            })
+            .unwrap()
+    };
+    assert!(dated("first text") > dated("second text"));
 }
 
 #[test]

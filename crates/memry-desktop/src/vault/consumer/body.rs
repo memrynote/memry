@@ -8,7 +8,7 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of
 
 use super::apply::{Applier, Step};
 use super::rows::{Lane, RowStat};
-use super::{Applied, converter_for};
+use super::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::note_file::NoteFile;
@@ -60,12 +60,14 @@ impl Applier {
     /// (#4030): the record takes what the file's frontmatter says, the file is kept as a
     /// version, the row names it as the file the body goes over, with its stamp kept so the
     /// body stays ahead for the next open's reconcile too, and the write-back writes the body
-    /// over it. Otherwise the file is fed: `Ok` with the mark the feed must still find. Bytes
-    /// the app wrote are no outside edit, and are fed.
+    /// over it. The file is recorded as the outside edit read ([`OwnFiles::read_outside`]), so
+    /// that write tells the page (`Outcome::Wrote::replaced_outside`). Otherwise the file is fed:
+    /// `Ok` with the mark the feed must still find. Bytes the app wrote are no outside edit, and
+    /// are fed.
     pub(super) fn outside_edit(
         &self,
         lane: &mut Lane<'_>,
-        note_id: &str,
+        (note_id, source): (&str, ChangeSource),
         path: &str,
         (previous, stamp): (&str, i64),
         file: &NoteFile,
@@ -114,9 +116,13 @@ impl Applier {
             note_id,
             "an outside edit met a body ahead of its file; the body wins"
         );
-        lane.publish(Applied::OutsideEditKept {
+        self.own_files.read_outside(note_id, Some(&file.hash));
+        // The record took the file's frontmatter.
+        lane.publish(Applied::Changed {
             note_id: note_id.to_owned(),
             path: path.to_owned(),
+            content_hash: Some(file.hash.clone()),
+            source,
         });
         Err(Step::Done)
     }

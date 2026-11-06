@@ -120,17 +120,42 @@ pub fn keep_replaced(
     body: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
-    let title = title(conn, note_id)?.ok_or_else(|| StorageError::Failed {
-        what: format!("no note {note_id}"),
-    })?;
-    let version = note_snapshots::Version {
+    let title = live_title(conn, note_id)?;
+    note_snapshots::keep(conn, significant(note_id, content, body, &title), now_ms)
+}
+
+/// Keeps `content`, the whole file a restore is about to replace, as the note's newest
+/// version, even when the note holds one with that content ([`note_snapshots::keep_always`]).
+pub fn keep_restore_point(
+    conn: &Connection,
+    note_id: &str,
+    content: &str,
+    body: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let title = live_title(conn, note_id)?;
+    note_snapshots::keep_always(conn, significant(note_id, content, body, &title), now_ms)
+}
+
+fn significant<'a>(
+    note_id: &'a str,
+    content: &'a str,
+    body: &'a str,
+    title: &'a str,
+) -> note_snapshots::Version<'a> {
+    note_snapshots::Version {
         note_id,
         content,
         body,
-        title: &title,
-        reason: note_snapshots::SIGNIFICANT,
-    };
-    note_snapshots::keep(conn, version, now_ms)
+        title,
+        reason: note_snapshots::Reason::Significant,
+    }
+}
+
+fn live_title(conn: &Connection, note_id: &str) -> Result<String, StorageError> {
+    title(conn, note_id)?.ok_or_else(|| StorageError::Failed {
+        what: format!("no note {note_id}"),
+    })
 }
 
 /// The live note's title, or the live day's date: the title its versions carry. `None` for

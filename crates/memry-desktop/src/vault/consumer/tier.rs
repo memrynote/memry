@@ -14,6 +14,7 @@ use super::apply::Applier;
 use super::identity::{DeferIdentity, IdentityCtx, NoteIdentity};
 use super::rows::{RowOwner, RowSession};
 use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
+use crate::editor::versions::close_step;
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
@@ -175,9 +176,9 @@ impl VaultTier {
 
     /// A window puts back typing over an outside edit the note's document took before that
     /// typing reached it (`HostEvent::OutsideEditKept`): the note's file, which holds the outside
-    /// edit, is kept as a version, under the rows' lane so no write-back replaces it meanwhile,
-    /// and the pages are told ([`Applied::OutsideEditKept`]). The typing's write is scheduled
-    /// once it is stored.
+    /// edit, is kept as a version, under the rows' lane so no write-back replaces it meanwhile.
+    /// The typing's write is scheduled once it is stored, and tells the pages when it replaces
+    /// that file (`Outcome::Wrote::replaced_outside`).
     pub fn keep_outside_edit(&self, note_id: &str) {
         let Some(open) = self.current() else {
             return tracing::warn!(scope = "vault_writeback", note_id, "no vault is open");
@@ -193,10 +194,6 @@ impl VaultTier {
                 .write_back()
                 .keep_replaced(note_id, &file.raw, body)
                 .map_err(|e| e.to_string())?;
-            lane.publish(Applied::OutsideEditKept {
-                note_id: note_id.to_owned(),
-                path: row.path,
-            });
             Ok::<(), String>(())
         })();
         if let Err(error) = kept {
@@ -230,6 +227,17 @@ impl VaultTier {
     pub fn flush(&self, timeout: Duration) -> bool {
         self.current()
             .is_none_or(|open| open.writeback.flush(timeout))
+    }
+
+    /// The quit steps of the vault the shell registers, by step name: `flush-writebacks`
+    /// ([`Self::flush_step`]), `flush-activity-log` and `close-snapshots`
+    /// (`editor::versions::close_step`).
+    pub fn quit_steps(self: &Arc<Self>, session: &Session) -> [(&'static str, StepFn); 3] {
+        [
+            ("flush-writebacks", self.flush_step()),
+            ("flush-activity-log", self.activity().flush_step()),
+            ("close-snapshots", close_step(session.clone())),
+        ]
     }
 
     /// The `flush-writebacks` shutdown step: the scheduled write-backs run within
@@ -392,6 +400,7 @@ impl VaultTier {
             session,
             echo.clone(),
             vault.vault.app_settings(self.store.clone()).ok(),
+            self.own_files.clone(),
         ));
         let writeback = WriteBack::start(pass.clone(), self.failures.clone())
             .map(Arc::new)

@@ -94,6 +94,21 @@ impl WriteBackReader {
         })?
     }
 
+    /// [`write_back::keep_restore_point`].
+    pub fn keep_restore_point(
+        &self,
+        note_id: &str,
+        content: &str,
+        body: &str,
+    ) -> Result<(), StorageError> {
+        let now = crate::api::tasks_write::now_ms();
+        self.db.call_blocking(move |conn| {
+            Ok(write_back::keep_restore_point(
+                conn, note_id, content, body, now,
+            ))
+        })?
+    }
+
     /// [`write_back::title`].
     pub fn title(&self, note_id: &str) -> Result<Option<String>, StorageError> {
         self.db

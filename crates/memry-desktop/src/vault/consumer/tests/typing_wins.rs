@@ -23,6 +23,7 @@ fn note(f: &Fixture) -> (String, Pass) {
         f.session(),
         echo,
         None,
+        f.applier.own_files.clone(),
     );
     (only_note(f, "n.md"), pass)
 }
@@ -50,7 +51,7 @@ fn wrote(outcome: &Outcome) -> bool {
 
 /// The typing wins over the outside file the consumer just read: the body keeps it, the outside
 /// file is a version, the record took what the file's frontmatter says, and the next pass writes
-/// the typing over the file.
+/// the typing over the file and tells the page (`replaced_outside`).
 fn assert_typing_won(f: &mut Fixture, id: &str, pass: &Pass) {
     assert_eq!(f.body(id), "typed in the app");
     assert!(
@@ -58,12 +59,19 @@ fn assert_typing_won(f: &mut Fixture, id: &str, pass: &Pass) {
         "{:?}",
         f.versions(id)
     );
-    assert!(kept_outside(&f.facts()), "the page was not told");
+    assert!(!kept_outside(&f.facts()), "told before the write");
     assert_eq!(
         f.identity.changed.lock().unwrap().as_slice(),
         [(id.to_owned(), content_hash("first words\n"))]
     );
-    assert!(wrote(&pass.run(id)));
+    assert!(matches!(
+        pass.run(id),
+        Outcome::Wrote {
+            replaced_outside: true,
+            ..
+        }
+    ));
+    assert!(kept_outside(&f.facts()), "the page was not told");
     assert_eq!(
         std::fs::read_to_string(f.root.join("n.md")).unwrap(),
         "typed in the app\n"

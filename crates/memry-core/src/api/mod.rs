@@ -53,4 +53,6 @@ pub mod vault;
 #[cfg(feature = "markdown")]
 pub mod vault_locks;
 #[cfg(feature = "markdown")]
+pub mod versions;
+#[cfg(feature = "markdown")]
 pub mod write_back;

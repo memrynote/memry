@@ -12,10 +12,9 @@
 //!   refetches its lists (`use-notes-query.ts`). A first open of a large vault would otherwise
 //!   send one event, and one read, per file.
 //!
-//! An outside edit that met typing its file did not have yet (`OutsideEditKept`) sends
-//! `notes:updated` as an outside edit, for the record that took the file's frontmatter, then
-//! [`NoteOutsideEditKeptEvent`], on which the note page tells the user the outside text is a
-//! version.
+//! A write-back that replaced an outside edit typing won over (`OutsideEditKept`, after the
+//! write's own `Changed`) sends [`NoteOutsideEditKeptEvent`], on which the note page tells the
+//! user the outside text is a version.
 //!
 //! A created note is read for its list item, an outside edit for the fields it may have changed
 //! ([`NoteView::changes`]). Facts missed because this thread fell behind are made up for with
@@ -115,17 +114,6 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
             }
         },
         Outgoing::OutsideEditKept { note_id } => {
-            match read::get(&open, &note_id, None) {
-                Ok(Some(note)) => broadcast(app, updated(&note, NoteEventSource::External)),
-                Ok(None) => {}
-                Err(error) => {
-                    tracing::warn!(
-                        scope = "notes",
-                        note_id,
-                        "a kept note was not read: {error}"
-                    );
-                }
-            }
             broadcast(app, NoteOutsideEditKeptEvent { id: note_id });
         }
         Outgoing::Renamed {

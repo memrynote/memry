@@ -72,7 +72,7 @@ pub(crate) fn service<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<NotesService
 }
 
 /// `note_created` / `note_deleted`, as the Electron handlers count them.
-fn track<R: Runtime>(app: &AppHandle<R>, name: &str, action: &str) {
+pub(super) fn track<R: Runtime>(app: &AppHandle<R>, name: &str, action: &str) {
     if let Some(telemetry) = services::telemetry(app) {
         let mut event = Service::event(name, "notes", action);
         event.object_type = Some("note".to_owned());

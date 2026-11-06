@@ -34,6 +34,8 @@ pub const CLOSE_VAULT_RESERVE: Duration = Duration::from_millis(2000);
 pub const TELEMETRY_FLUSH: Duration = Duration::from_millis(1000);
 /// Ceiling on the write-back flush of `flush-writebacks`.
 pub const WRITEBACK_FLUSH: Duration = Duration::from_millis(2000);
+/// Ceiling on the close versions of `close-snapshots`.
+pub const CLOSE_VERSIONS: Duration = Duration::from_millis(2000);
 /// What `close-vault` keeps for the database close behind its projection drain.
 pub const DATABASE_CLOSE_RESERVE: Duration = Duration::from_millis(1000);
 const PROJECTION_DRAIN_CEILING: Duration = Duration::from_millis(5000);
@@ -73,6 +75,13 @@ pub fn final_snapshot_push_timeout(remaining: Duration) -> Duration {
 /// the flush leaves run in the vault close.
 pub fn writeback_flush_timeout(remaining: Duration) -> Duration {
     WRITEBACK_FLUSH.min(remaining / 2)
+}
+
+/// The close versions' timeout within `remaining`: half of it, at most [`CLOSE_VERSIONS`], so
+/// the steps behind (the sync runtime's stop and its final push, the vault close) keep the
+/// other half.
+pub fn close_versions_timeout(remaining: Duration) -> Duration {
+    CLOSE_VERSIONS.min(remaining / 2)
 }
 
 /// The projection drain's timeout inside `close-vault` within `remaining`: zero skips the drain,

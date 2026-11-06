@@ -141,14 +141,13 @@ fn an_outside_edit_made_before_the_apps_write_is_kept_and_the_apps_edit_wins() {
 }
 
 /// A window put back typing over an outside edit the note took before that typing reached it:
-/// the file, which holds the outside edit, is a version, and the note page is told.
+/// the file, which holds the outside edit, is a version.
 #[test]
 fn an_outside_edit_a_window_typed_over_is_kept_as_a_version() {
     let (mut e, _, id) = one_note();
     e.write("n.md", "edited outside\n");
     e.facts_until(watcher_changed(&id));
     e.tier.keep_outside_edit(&id);
-    e.facts_until(outside_kept(&id));
     let kept = e.versions(&id);
     assert!(kept.iter().any(|v| v == "edited outside\n"), "{kept:?}");
 }

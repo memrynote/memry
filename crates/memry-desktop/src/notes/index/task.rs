@@ -321,7 +321,6 @@ impl Indexer {
         match fact {
             Applied::Added { note_id, .. }
             | Applied::Changed { note_id, .. }
-            | Applied::OutsideEditKept { note_id, .. }
             | Applied::Renamed { note_id, .. } => {
                 owed.queue.insert(note_id);
                 owed.arm();
@@ -352,7 +351,8 @@ impl Indexer {
                 }
                 owed.owe_scan();
             }
-            Applied::Vault(_) => {}
+            // The write it follows published its `Changed`.
+            Applied::OutsideEditKept { .. } | Applied::Vault(_) => {}
         }
     }
 

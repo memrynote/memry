@@ -22,6 +22,7 @@ use memry_core::storage::OpenOptions;
 use tokio::sync::broadcast;
 
 use super::{Keep, Outcome, Pass};
+use crate::vault::app_edit::OwnFiles;
 use crate::vault::consumer::converter_for;
 use crate::vault::consumer::rows::{RowOwner, RowStat, now_ms};
 use crate::vault::consumer::tests::with_device_key;
@@ -38,6 +39,7 @@ pub(super) struct Fixture {
     pub(super) store: Arc<dyn SecureStore>,
     pub(super) rows: Arc<RowOwner>,
     pub(super) echo: Arc<EchoGuard>,
+    pub(super) own_files: Arc<OwnFiles>,
     pub(super) writer: Arc<NotesWriter>,
     pub(super) pass: Pass,
     pub(super) facts: broadcast::Receiver<Applied>,
@@ -56,6 +58,7 @@ pub(super) fn fixture() -> Fixture {
     let rows = RowOwner::new();
     rows.open(vault.clone()).unwrap();
     let echo: Arc<EchoGuard> = Arc::default();
+    let own_files: Arc<OwnFiles> = Arc::default();
     let pass = Pass::new(
         root.clone(),
         vault.clone(),
@@ -63,6 +66,7 @@ pub(super) fn fixture() -> Fixture {
         rows.session_for(&vault).unwrap(),
         echo.clone(),
         vault.app_settings(store.clone()).ok(),
+        own_files.clone(),
     );
     Fixture {
         writer: vault.notes_writer(store.clone()).unwrap(),
@@ -73,6 +77,7 @@ pub(super) fn fixture() -> Fixture {
         store,
         rows,
         echo,
+        own_files,
         pass,
         server_seq: AtomicI64::new(1),
     }
@@ -354,6 +359,7 @@ mod deleted;
 mod embeds;
 mod guards;
 mod journal;
+mod locks;
 mod perf;
 mod reconcile;
 mod schedule;

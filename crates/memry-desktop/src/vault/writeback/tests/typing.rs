@@ -57,6 +57,7 @@ fn timed(f: &mut Fixture, pad: Duration) -> (WriteBack, Arc<Mutex<Vec<Run>>>) {
             f.rows.session_for(&f.vault).unwrap(),
             f.echo.clone(),
             None,
+            f.own_files.clone(),
         ),
     );
     let runs: Arc<Mutex<Vec<Run>>> = Arc::default();

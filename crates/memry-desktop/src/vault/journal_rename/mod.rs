@@ -73,6 +73,7 @@ use super::consumer::{Applied, MoveKind, VaultTier};
 use super::file_move::FileMove;
 use super::journal_format::{normalize_journal_date_format, normalize_journal_folder};
 use super::paths::resolve_vault_file;
+use crate::locks::{Locks, Refused};
 use crate::shell::file_open::Resolution;
 use crate::web::extract::utils::js;
 
@@ -127,6 +128,19 @@ pub enum ChangeStep {
     Saved,
 }
 
+/// Why no day moved.
+#[derive(Debug, thiserror::Error)]
+pub enum RenameError {
+    /// A journal folder could not be listed, or leads out of the vault.
+    #[error("the journal folder could not be listed: {0}")]
+    Unlisted(#[from] io::Error),
+    /// A lock covers a day the pass would move, or the path it would take: nothing moved, as
+    /// Electron's format change refuses (`journal-format-migration.ts`, `noteLockedError`). A
+    /// locked day keeps its name, and a partial pass would split the journal in two.
+    #[error("{}", Refused::Note.message())]
+    Locked,
+}
+
 /// A journal's days: its vault-relative folder and its date format.
 #[derive(Debug, Clone, Copy)]
 pub struct JournalPlace<'a> {
@@ -142,7 +156,7 @@ pub fn move_journal_days(
     at: JournalVault<'_>,
     from: JournalPlace<'_>,
     to: JournalPlace<'_>,
-) -> io::Result<JournalRenameResult> {
+) -> Result<JournalRenameResult, RenameError> {
     move_journal_days_checked(at, from, to, &mut |_| {})
 }
 
@@ -154,7 +168,7 @@ pub fn move_journal_days_checked(
     from: JournalPlace<'_>,
     to: JournalPlace<'_>,
     step: &mut dyn FnMut(ChangeStep),
-) -> io::Result<JournalRenameResult> {
+) -> Result<JournalRenameResult, RenameError> {
     let mut result = JournalRenameResult::default();
     let (source, target) = (
         normalize_journal_folder(from.folder),
@@ -177,7 +191,7 @@ pub fn move_journal_days_checked(
     // A folder the vault cannot hold names no day the setting could save.
     let (Some(source), Some(target)) = (Journal::of(at.root, source), Journal::of(at.root, target))
     else {
-        return Err(io::Error::other("a journal folder leads out of the vault"));
+        return Err(io::Error::other("a journal folder leads out of the vault").into());
     };
     let Some(files) = list_files(&source.dir)? else {
         return Ok(result);
@@ -193,6 +207,14 @@ pub fn move_journal_days_checked(
     if plan.renames.is_empty() {
         log_skipped(&plan.skipped);
         return Ok(result);
+    }
+    let locks = Locks::new(at.root, at.vault);
+    for rename in &plan.renames {
+        for path in [source.rel(&rename.from), target.rel(&rename.to)] {
+            if locks.is_path_locked(&path).map_err(io::Error::other)? {
+                return Err(RenameError::Locked);
+            }
+        }
     }
     let rows = at.tier.rows();
     let session = match rows.session_for(at.vault) {

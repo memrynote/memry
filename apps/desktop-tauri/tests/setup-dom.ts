@@ -254,6 +254,22 @@ vi.mock('../src/generated/bindings', () => {
       notesSetCalendarPropertyVisibility: (name: string, show: boolean) =>
         done(notes().setCalendarPropertyVisibility(name, show)),
       notesGetCalendarPropertyNames: () => notes().getCalendarPropertyNames(),
+      notesGetVersions: (noteId: string) => notes().getVersions(noteId),
+      notesGetVersion: (snapshotId: string) => notes().getVersion(snapshotId),
+      notesRestoreVersion: async (snapshotId: string) => {
+        const result = (await notes().restoreVersion(snapshotId)) as
+          | { success?: boolean; note?: unknown; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return result?.note ?? null
+      },
+      notesDeleteVersion: async (snapshotId: string) => {
+        const result = (await notes().deleteVersion(snapshotId)) as
+          | { success?: boolean; error?: string }
+          | undefined
+        if (result?.success === false) throw new Error(result.error ?? '')
+        return null
+      },
       notesGetFolders: () => notes().getFolders(),
       notesCreateFolder: async (path: string) => {
         const result = (await notes().createFolder(path)) as

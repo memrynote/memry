@@ -39,7 +39,15 @@
 //!   file's frontmatter says (tags, property values) reaches the record first, through the
 //!   identity's [`NoteIdentity::on_changed`], as the consumer would have told it. The save's own
 //!   record mirror then goes over that. A row behind the run's own bytes (a save the feed did
-//!   not take) is no outside edit: those bytes carry the record already.
+//!   not take) is no outside edit: those bytes carry the record already. The run's own file is
+//!   kept too when the save moves its body by ten words or more
+//!   ([`note_snapshots::is_significant`], Electron's `maybeCreateSignificantSnapshot`).
+//! - [`Precondition::Restore`]: [`Precondition::Save`] of a restored version
+//!   (`notes:restore-version`): the file it replaces is always kept, as the note's newest
+//!   version (`WriteBackReader::keep_restore_point`), and the feed keeps the document's body
+//!   when it is ahead of the file, so the text the user had is a version to go back to. The
+//!   body is fed even when the file already says it (the document may be ahead), and the
+//!   windows hear it as the app's own write (`ExternalFeed::feed_app_edit`), not an outside edit.
 //!
 //! A frontmatter that does not parse, in the file or in the edit's text, is kept as it is
 //! (#3750). The caller's closure gets the file's text without a byte order mark and returns the
@@ -92,6 +100,7 @@ use memry_core::api::vault::Vault;
 use memry_core::crdt::errors::CrdtError;
 use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome, same_text};
 use memry_core::domain::note_files::StampMark;
+use memry_core::domain::note_snapshots;
 use memry_core::domain::write_back::{BodyRead, LogMark};
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::{YamlValue, parse_markdown_note, split_frontmatter_block};
@@ -128,9 +137,12 @@ pub enum Precondition<'a> {
     /// [`Self::Held`], and a body the edit changes kept as a version first: the edit writes over
     /// the user's text.
     Replace,
-    /// The user's save: whatever is there, a file that is not the run's own kept as a version
-    /// first.
+    /// The user's save: whatever is there, a file that is not the run's own, or a body that
+    /// moved by ten words or more, kept as a version first.
     Save(&'a OwnFiles),
+    /// [`Self::Save`] of a restored version: the replaced file is always kept, as the newest
+    /// version.
+    Restore(&'a OwnFiles),
 }
 
 /// What an edit came to.
@@ -317,7 +329,7 @@ impl AppEdit {
                 }
                 None
             }
-            Precondition::Save(own) => {
+            Precondition::Save(own) | Precondition::Restore(own) => {
                 // A row with no hash names no file the document took, so none was replaced.
                 outside =
                     row.content_hash.is_some() && !row_names_file && !own.is(note_id, &file.hash);
@@ -332,7 +344,10 @@ impl AppEdit {
             true => format!("{BOM}{}", bare(&next)),
             false => bare(&next).to_owned(),
         });
-        let Some(text) = text.filter(|text| *text != file.raw) else {
+        // A restore feeds its body even when the file says it already: the document can be
+        // ahead of the file (typing the write-back has not written), and must take it.
+        let restore = matches!(precondition, Precondition::Restore(_));
+        let Some(text) = text.filter(|text| restore || *text != file.raw) else {
             if let Some(own) = own {
                 own.carried(note_id, &file.hash, &file.hash);
             }
@@ -352,20 +367,28 @@ impl AppEdit {
         };
         // A save that leaves the body as read (a header tag edit) feeds nothing, so a document
         // ahead of its file keeps its text, and loses nothing a version would hold.
-        let body_changed = split_frontmatter_block(next).body != read_body;
-        let body_moved = own.is_none() || body_changed;
+        let next_body = split_frontmatter_block(next).body;
+        let body_changed = next_body != read_body;
+        let body_moved = own.is_none() || body_changed || restore;
         let keeps = match precondition {
             Precondition::Held | Precondition::HeldAt(_) => false,
-            Precondition::Replace => body_changed,
+            Precondition::Replace | Precondition::Restore(_) => body_changed,
             Precondition::Save(own) => {
-                body_changed && !(row_names_file && own.is(note_id, &file.hash))
+                let own_file = row_names_file && own.is(note_id, &file.hash);
+                body_changed && (!own_file || note_snapshots::is_significant(read_body, next_body))
             }
         };
         if keeps {
-            self.vault
-                .write_back()
-                .keep_replaced(note_id, &file.raw, read_body)
-                .map_err(AppEditError::from)?;
+            let write_back = self.vault.write_back();
+            match precondition {
+                Precondition::Restore(_) => {
+                    write_back.keep_restore_point(note_id, &file.raw, read_body)
+                }
+                _ => write_back
+                    .keep_replaced(note_id, &file.raw, read_body)
+                    .map(drop),
+            }
+            .map_err(AppEditError::from)?;
         }
         let takes = match body_moved {
             true => {
