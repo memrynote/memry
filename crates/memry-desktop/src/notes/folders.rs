@@ -29,7 +29,7 @@ use unicode_normalization::UnicodeNormalization;
 use memry_core::domain::folders::valid_path;
 
 use super::error::{NotesError, SCOPE};
-use super::moves::plain_folder;
+use super::moves::{plain_folder, plain_folders};
 use super::service::NotesService;
 use crate::session::OpenVault;
 use crate::shell::file_open::Resolution;
@@ -38,6 +38,7 @@ use crate::vault::folder_file::{self, FolderConfigView, FolderFileError};
 use crate::vault::layout::{ATTACHMENTS_DIR, CANVAS_DIR};
 use crate::vault::path_key::folded_key;
 use crate::vault::paths::resolve_vault_file;
+use crate::vault::watch::filter::WatchFilter;
 
 /// A folder of the tree (`FolderInfo` of `@memry/rpc/notes`).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
@@ -244,6 +245,27 @@ pub(super) fn respells_a_sibling(root: &Path, folder: &str) -> io::Result<bool> 
         dir.push(segment);
     }
     Ok(false)
+}
+
+/// Whether the journal's days can live in `folder` (canonical, vault-relative), by the rules a
+/// folder move's target follows (`folder_move`): a folder path the records can name, outside
+/// the folders the tree keeps to itself, none of whose segments is hidden or a link the open
+/// walk would not enter, that the vault's exclude patterns do not drop, and that respells no
+/// folder already there. A day moved where the next open does not find it under its name would
+/// be read as removed.
+pub(crate) fn holds_journal_days(
+    root: &Path,
+    folder: &str,
+    exclude_patterns: Vec<String>,
+) -> io::Result<bool> {
+    let top = folder.split('/').next().unwrap_or(folder);
+    Ok(valid_path(folder).is_ok()
+        && top != ATTACHMENTS_DIR
+        && top != CANVAS_DIR
+        && !folder.split('/').any(|segment| segment.starts_with('.'))
+        && !WatchFilter::new(exclude_patterns).ignores(folder)
+        && plain_folders(root, folder)?
+        && !respells_a_sibling(root, folder)?)
 }
 
 /// The entry of `dir` that a folder `segment` there would be on a disk that folds case or
