@@ -1,8 +1,12 @@
 import { EventEmitter } from 'events'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrowserWindow } from 'electron'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { formatWorkerStderrTail, isInformationalWorkerStderr } from './embeddings-worker-stderr'
+import { embeddingModelWeightsPath } from './embeddings-constants'
 
 const mockApp = vi.hoisted(() => ({
   getPath: vi.fn((name: string) => `/mock/${name}`)
@@ -365,6 +369,41 @@ describe('embeddings', () => {
       }
       return { requestId: request.requestId }
     }
+
+    it('keeps reporting the model as downloaded after the idle worker exits (#3437)', async () => {
+      vi.useFakeTimers()
+      const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-embeddings-'))
+      try {
+        mockApp.getPath.mockImplementation((name: string) =>
+          name === 'userData' ? userData : `/mock/${name}`
+        )
+        const weights = embeddingModelWeightsPath(userData)
+        fs.mkdirSync(path.dirname(weights), { recursive: true })
+        fs.writeFileSync(weights, 'weights')
+
+        // #given a loaded worker that then sits idle
+        const { requestId } = await startWorker()
+        mockUtilityProcessInstance.simulateMessage({
+          type: 'embed-result',
+          requestId,
+          embedding: Array.from(new Float32Array(EMBEDDING_DIMENSION))
+        })
+        await vi.waitFor(() => expect(getModelInfo()).toMatchObject({ loaded: true }))
+
+        // #when the 30s idle timer tears the worker down
+        await vi.advanceTimersByTimeAsync(30_000)
+        mockUtilityProcessInstance.emit('exit', 0)
+
+        // #then the worker is gone but the weights are still on disk
+        expect(getModelInfo()).toMatchObject({ loaded: false, downloaded: true })
+
+        // #and a user data dir with no weights reads as not downloaded
+        fs.rmSync(path.join(userData, 'models'), { recursive: true })
+        expect(getModelInfo()).toMatchObject({ loaded: false, downloaded: false })
+      } finally {
+        fs.rmSync(userData, { recursive: true, force: true })
+      }
+    })
 
     it('reports idle_shutdown when the worker dies during its own teardown', async () => {
       vi.useFakeTimers()

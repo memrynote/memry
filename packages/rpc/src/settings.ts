@@ -63,6 +63,7 @@ export interface AIModelStatus {
   name: string
   dimension: number
   loaded: boolean
+  downloaded: boolean
   loading: boolean
   error: string | null
   embeddingCount?: number

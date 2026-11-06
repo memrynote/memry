@@ -98,7 +98,10 @@ export interface EmbeddingWorkerCrashContext {
 export interface ModelInfo {
   name: string
   dimension: number
+  /** Worker state: the model is in memory right now. It goes false when the idle worker exits. */
   loaded: boolean
+  /** The weights are on disk, so a load is a cache read, not a download. */
+  downloaded: boolean
   loading: boolean
   error: string | null
 }
@@ -276,6 +279,7 @@ class EmbeddingModelBridge {
       name: MODEL_NAME,
       dimension: EMBEDDING_DIMENSION,
       loaded: this.loaded,
+      downloaded: this.loaded || probeModelCache(app.getPath('userData')).state === 'present',
       loading: this.loading,
       error: this.error
     }

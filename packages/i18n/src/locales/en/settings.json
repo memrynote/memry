@@ -1350,6 +1350,7 @@
       "loaded": "Loaded",
       "loading": "Loading",
       "downloadLoad": "Download & Load Model",
+      "load": "Load Model",
       "downloadingModel": "Downloading model...",
       "loadingModel": "Loading model...",
       "loadSuccess": "Model loaded successfully",
