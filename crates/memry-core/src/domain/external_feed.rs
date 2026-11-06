@@ -90,7 +90,7 @@ use crate::crdt::epoch;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
 use crate::crdt::registry::{DocumentRegistry, UpdateSink, client_id_from_device_id};
-use crate::domain::body_write::append_in;
+use crate::domain::body_write::{append_in, refuse_locked};
 use crate::domain::notes::journal_day::body_owner;
 use crate::domain::{note_snapshots, owed_file_body};
 use crate::markdown::convert::EmbedResolver;
@@ -188,7 +188,8 @@ pub fn feed_external_edit(
 /// then holds what the file did not (a peer's edit merged after the file was last written).
 /// The body the app read is the note as the user saw it, so an editor save keeps no version of
 /// its own previous save (desktop's note command feeds a save with none). A leading byte-order
-/// mark of `read` is dropped, as `input.markdown`'s is.
+/// mark of `read` is dropped, as `input.markdown`'s is. A locked note refuses it
+/// ([`CrdtError::Locked`]) before anything is read or written.
 pub fn feed_app_edit(
     conn: &Connection,
     converter: &Converter,
@@ -197,6 +198,7 @@ pub fn feed_app_edit(
     device_id: &str,
     now_ms: i64,
 ) -> Result<FeedOutcome, CrdtError> {
+    refuse_locked(conn, input.note_id)?;
     let read = read.strip_prefix('\u{feff}').unwrap_or(read);
     author(
         conn,

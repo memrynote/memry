@@ -1,19 +1,22 @@
-//! A note's attachments (`notes:upload-attachment` of `ipc/notes-handlers.ts`, #3531 14f-1),
+//! A note's attachments (`notes:upload-attachment` of `ipc/notes-handlers.ts`, #3531 14f),
 //! through `memry_desktop::attachments`. `notes_upload_attachment` takes the file's bytes as the
-//! raw request body with `{ noteId, fileName }` in the metadata header, so it is a binary command
-//! (`binary.rs`), and `size`, the file's size: a file over `MAX_UPLOAD_BODY` (16 MiB until the
-//! chunked upload of 14f-2) comes with an empty body and is refused on that size. A refused or
-//! failed upload rejects with the localized `errors:attachment.*`
-//! message; the renderer's service answers it as Electron's `{ success: false, error }`.
+//! raw request body with `{ noteId, fileName, size }` in the metadata header, so it is a binary
+//! command (`binary.rs`). A file over `MAX_UPLOAD_BODY` (16 MiB) goes in parts instead:
+//! `notes_upload_attachment_begin`, then `notes_upload_attachment_chunk` (binary, meta
+//! `{ id, offset }`) until the last part answers the saved file, or
+//! `notes_upload_attachment_abort`. A page that reloads or closes ends its uploads
+//! ([`release_page`]). A refused or failed upload rejects with the localized
+//! `errors:attachment.*` message; the renderer's service answers it as Electron's
+//! `{ success: false, error }`.
 
 use std::sync::Arc;
 
-use memry_desktop::attachments::{self, AttachmentError, SavedAttachment};
+use memry_desktop::attachments::{self, AttachmentError, SavedAttachment, Uploads};
 use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
 use serde::Deserialize;
 use tauri::ipc::Request;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime, Webview};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind, log_failure};
@@ -52,6 +55,12 @@ fn upload_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> Comm
             CommandError::new(ErrorKind::Invalid, "attachment_invalid_note", message)
         }
         AttachmentError::Storage(storage) => CommandError::from_core(storage),
+        AttachmentError::UploadGone
+        | AttachmentError::BadChunk
+        | AttachmentError::TooManyUploads => {
+            let message = t("errors:attachment.writeFailed", &Args::new());
+            CommandError::new(ErrorKind::Invalid, "attachment_upload_refused", message)
+        }
         AttachmentError::NotAFolder | AttachmentError::Io(_) | AttachmentError::Write(_) => {
             tracing::warn!(
                 scope = "attachments",
@@ -84,4 +93,78 @@ pub async fn notes_upload_attachment<R: Runtime>(
             .map_err(|error| upload_error(&app, &error))
     })
     .await
+}
+
+/// The uploads `vault_boot` manages with the session.
+fn uploads<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Uploads>, CommandError> {
+    app.try_state::<Arc<Uploads>>()
+        .map(|uploads| uploads.inner().clone())
+        .ok_or_else(|| CommandError::new(ErrorKind::Internal, "uploads_missing", "no uploads"))
+}
+
+/// Starts a chunked upload of a file of `size` bytes to the note, for the calling page. Refused
+/// on the size, the type or the note id before any byte is sent. Returns the upload's id.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_upload_attachment_begin<R: Runtime>(
+    app: AppHandle<R>,
+    webview: Webview<R>,
+    note_id: String,
+    file_name: String,
+    size: u64,
+) -> Result<String, CommandError> {
+    let owner = webview.label().to_owned();
+    blocking("notes_upload_attachment_begin", move || {
+        uploads(&app)?
+            .begin(&open_vault(&app)?, &owner, &note_id, &file_name, size)
+            .map_err(|error| upload_error(&app, &error))
+    })
+    .await
+}
+
+#[derive(Deserialize)]
+struct ChunkMeta {
+    id: String,
+    offset: u64,
+}
+
+/// One part of a chunked upload: the raw request body, with `{ id, offset }` in the metadata
+/// header. The last part answers the saved file, the others `null`. Listed in
+/// `binary::COMMANDS`; not a specta command.
+#[tauri::command]
+pub async fn notes_upload_attachment_chunk<R: Runtime>(
+    app: AppHandle<R>,
+    request: Request<'_>,
+) -> Result<Option<SavedAttachment>, CommandError> {
+    let meta: ChunkMeta = binary::meta(&request)?;
+    let body = binary::raw_body(&request)?.to_vec();
+    blocking("notes_upload_attachment_chunk", move || {
+        uploads(&app)?
+            .write_chunk(&open_vault(&app)?, &meta.id, meta.offset, &body)
+            .map_err(|error| upload_error(&app, &error))
+    })
+    .await
+}
+
+/// Cancels a chunked upload; its part file is deleted.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_upload_attachment_abort<R: Runtime>(
+    app: AppHandle<R>,
+    id: String,
+) -> Result<(), CommandError> {
+    blocking("notes_upload_attachment_abort", move || {
+        uploads(&app)?.abort(&id);
+        Ok(())
+    })
+    .await
+}
+
+/// The page of window `label` reloaded or closed: its uploads end with nothing. Called on the main
+/// thread, so the part files, which wait for a part being written, go on a blocking thread.
+pub fn release_page<R: Runtime>(app: &AppHandle<R>, label: &str) {
+    if let Some(uploads) = app.try_state::<Arc<Uploads>>() {
+        let ended = uploads.release_owner(label);
+        tauri::async_runtime::spawn_blocking(move || ended.finish());
+    }
 }

@@ -95,13 +95,13 @@ impl TagHub {
     }
 
     /// `source` merged into `target`, or deleted with no `target`, in the record of the note or
-    /// day `id` ([`tag_retag::retag`]); `false` when it did not change.
+    /// day `id` ([`tag_retag::retag`]).
     pub fn retag_in(
         &self,
         id: &str,
         source: &str,
         target: Option<&str>,
-    ) -> Result<bool, StorageError> {
+    ) -> Result<tag_retag::Retag, StorageError> {
         self.db.call_blocking(|conn| {
             tag_retag::retag(conn, id, source, target, &self.device_id, now_ms())
         })

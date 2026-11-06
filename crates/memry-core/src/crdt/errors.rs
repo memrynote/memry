@@ -36,6 +36,15 @@ pub enum CrdtError {
     #[error("update for {doc_id} could not be applied: {what}")]
     NotApplicable { doc_id: String, what: String },
 
+    /// The note or journal day is locked ([`crate::domain::vault_locks`]): a
+    /// write made on this device was refused before anything was written. The
+    /// text is Electron's `VAULT_LOCKED_NOTE_MESSAGE`, which agents relay
+    /// verbatim and the renderer localizes. Desktop's only, as the locks are:
+    /// the iOS build and its Swift bindings have no such variant.
+    #[cfg(feature = "markdown")]
+    #[error("The owner made this note read-only.")]
+    Locked { note_id: String },
+
     /// The durable log failed. Carries the storage variant rather than
     /// flattening it, so an out-of-space does not surface as "bad document".
     #[error("crdt storage failure: {source}")]

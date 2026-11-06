@@ -102,7 +102,7 @@ fn a_retag_moves_the_tag_itself_with_its_pin_once() {
             ])
         })
         .expect("retag");
-    assert_eq!(wrote, [true, true, false]);
+    assert_eq!(wrote, [Retag::Wrote, Retag::Wrote, Retag::Unchanged]);
     assert_eq!(tags_of(&db, "note", "n1"), ["Work", "job/lead", "ideas"]);
     assert_eq!(pins_of(&db, "n1"), Some(vec!["Work".to_owned()]));
     assert_eq!(tags_of(&db, "note", "n2"), ["work"]);
@@ -122,6 +122,28 @@ fn a_retag_with_no_target_drops_the_tag_and_its_pin() {
     assert_eq!(tags_of(&db, "note", "n1"), ["job/lead", "ideas"]);
     assert_eq!(pins_of(&db, "n1"), Some(Vec::new()));
     assert!(tags_of(&db, "journal", "j1").is_empty());
+}
+
+/// Electron keeps a locked note's or day's tags (`keepLockedNoteTags`, Step 14e-2).
+#[cfg(feature = "markdown")]
+#[test]
+fn a_locked_note_or_day_keeps_its_tags() {
+    use crate::domain::vault_locks::{TargetKind, set};
+    let (db, _d) = vault("tags-retag-locked");
+    let done = db
+        .call_blocking(|c| {
+            set(c, TargetKind::Note, "n1", true, NOW)?;
+            set(c, TargetKind::Note, "j1", true, NOW)?;
+            Ok([
+                retag(c, "n1", "job", Some("Work"), "phone", NOW + 1)?,
+                retag(c, "j1", "JOB", None, "phone", NOW + 1)?,
+            ])
+        })
+        .expect("retag");
+    assert_eq!(done, [Retag::Locked, Retag::Locked]);
+    assert_eq!(tags_of(&db, "note", "n1"), ["Job", "job/lead", "ideas"]);
+    assert_eq!(tags_of(&db, "journal", "j1"), ["job"]);
+    assert_eq!(upserts(&db, "n1") + upserts(&db, "j1"), 0);
 }
 
 /// The holders are the notes and days carrying the tag itself in the record, and the notes

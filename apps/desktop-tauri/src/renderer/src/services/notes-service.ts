@@ -157,15 +157,50 @@ function failure(error: unknown): { success: false; error?: string } {
 }
 
 /**
- * The largest file one upload body carries (`memry_desktop::attachments::MAX_UPLOAD_BODY`); the
- * chunked upload of 14f-2 (#3531) lifts it to the 100 MiB attachment cap.
+ * The largest file one upload body carries (`memry_desktop::attachments::MAX_UPLOAD_BODY`). A
+ * larger one goes in parts of `UPLOAD_CHUNK_BYTES` (`attachments::CHUNK_BYTES`), up to the
+ * 100 MiB attachment cap.
  */
 const MAX_UPLOAD_BODY = 16 * 1024 * 1024
+const UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024
 
 /** What `notes_upload_attachment` answers (`memry_desktop::attachments::SavedAttachment`). */
 type SavedAttachment = Required<
   Pick<AttachmentResult, 'path' | 'name' | 'size' | 'mimeType' | 'type'>
 >
+
+/** A file the upload can read part by part: a DOM `File`. */
+type SlicedFile = { name: string; size: number; slice: (start: number, end: number) => Blob }
+
+/**
+ * Sends `file` one part at a time, so only one part is in memory. Rust refuses the size, type or
+ * note before a byte is read, keeps the parts out of the attachments folder, and moves the file
+ * in after the last one, which answers it. A failure cancels the upload, so nothing is left.
+ */
+async function uploadInParts(noteId: string, file: SlicedFile): Promise<SavedAttachment> {
+  const id = await commands.notesUploadAttachmentBegin(noteId, file.name, file.size)
+  try {
+    for (let offset = 0; offset < file.size; offset += UPLOAD_CHUNK_BYTES) {
+      const part = file.slice(offset, offset + UPLOAD_CHUNK_BYTES)
+      const bytes = new Uint8Array(await part.arrayBuffer())
+      const meta = { id, offset }
+      const saved = await invokeBinary<SavedAttachment | null>(
+        'notes_upload_attachment_chunk',
+        bytes,
+        meta
+      )
+      if (saved) return saved
+    }
+    // The file shrank after it was picked: Rust still waits for bytes, so the upload failed.
+    throw new Error(getI18n().getFixedT(null, 'errors')('attachment.writeFailed'))
+  } catch (error) {
+    // The page that began it ends it too when it reloads or closes; this is the failed send.
+    await commands.notesUploadAttachmentAbort(id).catch((abortError: unknown) => {
+      log.warn('an upload was not cancelled', abortError)
+    })
+    throw error
+  }
+}
 
 /** `stringifyDefaultValue` of Electron's `ipc/notes-handlers.ts`; none keeps the stored one. */
 function defaultValueText(value: unknown): string | undefined {
@@ -497,15 +532,21 @@ const ported = {
   },
   getFolderTemplate: (folderPath: string): Promise<string | null> =>
     commands.notesGetFolderTemplate(folderPath),
-  // The bytes travel as the raw request body, with the file's size in the meta. A file over
-  // `MAX_UPLOAD_BODY` is never read: an empty body goes, and Rust refuses it on the size with its
-  // localized message. A refused or failed save answers as Electron's `saveAttachment` envelope.
+  // The bytes travel as the raw request body, with the file's size in the meta. A `File` over
+  // `MAX_UPLOAD_BODY` goes in parts. Anything else over it is never read: an empty body goes,
+  // and Rust refuses it on the size with its localized message. A refused or failed save
+  // answers as Electron's `saveAttachment` envelope.
   uploadAttachment: async (
     noteId: string,
-    file: AttachmentUploadFile & { size?: number }
+    file: AttachmentUploadFile & { size?: number; slice?: SlicedFile['slice'] }
   ): Promise<AttachmentResult> => {
     try {
-      const over = file.size !== undefined && file.size > MAX_UPLOAD_BODY
+      const { size, slice } = file
+      if (size !== undefined && size > MAX_UPLOAD_BODY && slice) {
+        const sliced = { name: file.name, size, slice: slice.bind(file) }
+        return { success: true, ...(await uploadInParts(noteId, sliced)) }
+      }
+      const over = size !== undefined && size > MAX_UPLOAD_BODY
       const bytes = over ? new Uint8Array() : new Uint8Array(await file.arrayBuffer())
       const meta = { noteId, fileName: file.name, size: file.size ?? bytes.length }
       const saved = await invokeBinary<SavedAttachment>('notes_upload_attachment', bytes, meta)
