@@ -48,6 +48,8 @@ export const commands = {
 	flushDone: (requestId: string) => __TAURI_INVOKE<null>("flush_done", { requestId }),
 	/**  The calling window's page subscribed to flush requests: from now on a quit or a close asks it. */
 	flushReady: () => __TAURI_INVOKE<null>("flush_ready"),
+	/**  The note or journal day folded for a reader who asked for `level`. */
+	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
 	/**  The day made on its first write; a day that has a file is answered as it is. */
 	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
 	/**  `success` is whether the day had an entry to delete. */
@@ -879,6 +881,55 @@ export type FlushRequestedEvent = {
 	requestId: string,
 };
 
+/**  A note folded (`FoldLayers` of `@memry/contracts/note-fold`, its local levels). */
+export type FoldLayers = {
+	noteId: string,
+	/**  sha256 of the text this snapshot was built from. */
+	sourceHash: string,
+	/**  Script-based tag (`en`, `ja`, `zh`, `ko`, `ru`, `ar`, `und`). */
+	language: string,
+	totalWords: number,
+	wordsByLevel: LevelWords,
+	/**  Empty when the note does not fold. */
+	sections: FoldSection[],
+	/**  Long enough to fold, with at least one paragraph. */
+	foldable: boolean,
+};
+
+/**  A level the reader can ask for. */
+export type FoldLevel = "full" | "brief";
+
+export type FoldParagraph = {
+	/**  sha256 of the NFC paragraph text. */
+	hash: string,
+	text: string,
+	sentences: string[],
+	/**  Inline Markdown per sentence, aligned 1:1 with `sentences`. */
+	sentencesMd: string[],
+	/**  Word segments of `text`, spaces and punctuation included: their concatenation is `text`. */
+	srcTokens: string[],
+	/**  Index in the word segments where each sentence starts. */
+	srcSentenceStart: number[],
+	/**  Indices into `sentences` that make Brief. */
+	briefIdx: number[],
+};
+
+export type FoldSection = {
+	hash: string,
+	heading: string | null,
+	paragraphs: FoldParagraph[],
+	/**  Blocks left out of the paragraphs, in the order of the paragraph each follows. */
+	skipped: FoldSkipped[],
+};
+
+/**  A non-prose block the fold leaves out, for the one-line marker. */
+export type FoldSkipped = {
+	/**  Index in the section's paragraphs of the one it follows; -1 when it opens the section. */
+	afterParagraph: number,
+	kind: SkippedKind,
+	count: number,
+};
+
 /**  `notes:set-folder-config`'s config, as `FolderConfigSchema` parses it. */
 export type FolderConfigInput = {
 	/**  Absent: the file's icon stays; `null`: none. */
@@ -1157,6 +1208,11 @@ export type LargeFileSearchProgress = {
  *  `cancelled` is a query a newer one (or a close) superseded.
  */
 export type LargeFileSearchResult = { status: "complete"; query: string; hits: LargeFileHit[]; total: number; limited: boolean } | { status: "cancelled"; query: string };
+
+export type LevelWords = {
+	full: number,
+	brief: number,
+};
 
 /**  `WikiLinkResolution`, and `WikiLinkTargetResolution` with `heading`. */
 export type LinkResolutionView = {
@@ -1821,6 +1877,8 @@ export type ShortcutStatus = "unbound" | "registered" | "in_use" | "unsupported"
 
 /**  `NoteSizeClass`. */
 export type SizeClass = "note" | "large-file";
+
+export type SkippedKind = "code" | "table" | "image" | "callout" | "embed" | "other";
 
 export type SortOrder = "asc" | "desc";
 

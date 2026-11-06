@@ -8,6 +8,7 @@ pub mod diagnostics;
 pub mod drop_stage;
 pub mod editor;
 pub mod error;
+pub mod fold;
 pub mod folders;
 pub mod journal;
 pub mod large_file;
