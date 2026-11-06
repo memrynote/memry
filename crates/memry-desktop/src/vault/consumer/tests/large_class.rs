@@ -119,3 +119,25 @@ fn a_file_too_large_to_read_is_recorded_large_by_its_size() {
     assert_eq!(f.changed(&id, "a.md"), Step::Retry("a.md".into()));
     assert!(large(&f, &id));
 }
+
+/// A new file large by its frontmatter alone takes a note in the walk's batch (its body is
+/// small), and its row names its bytes, so no later walk reads it again: the batch records it.
+#[test]
+fn a_file_large_by_its_frontmatter_created_in_the_walks_batch_is_recorded_large() {
+    let f = fixture();
+    *f.identity.batch.lock().unwrap() = Batch::Create;
+    let big = format!(
+        "---\nnotes: {}\n---\nsmall\n",
+        "a".repeat(NOTE_MAX_BLOCK_BYTES + 1)
+    );
+    f.write("big.md", &big);
+    f.write("small.md", "small\n");
+
+    let steps = f.walk_together(&["big.md", "small.md"]);
+    assert!(
+        steps.iter().all(|(_, step)| *step == Step::Done),
+        "{steps:?}"
+    );
+    assert!(large(&f, &only_note(&f, "big.md")));
+    assert!(!large(&f, &only_note(&f, "small.md")));
+}

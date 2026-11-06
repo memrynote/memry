@@ -60,7 +60,7 @@ use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
-use crate::vault::note_file::{NoteFileError, write_new_note};
+use crate::vault::note_file::{NoteFileError, large_file_class, record_large_file, write_new_note};
 use crate::vault::paths::{generate_note_path, resolve_vault_file, unique_candidates};
 use crate::vault::watch::EchoGuard;
 
@@ -227,6 +227,8 @@ impl NotesService {
         if let Err(error) = lane.put(&id, &rel, stat) {
             return take_back(&mut lane, error.into());
         }
+        // The watcher skips this write's echo, so no read of it records the class.
+        record_large_file(lane.files(), &id, large_file_class(&output).is_some());
         // The note's first save replaces this file with no version of it.
         self.own_files.wrote(&id, &hash, ChangeSource::App);
         lane.publish(Applied::Added {

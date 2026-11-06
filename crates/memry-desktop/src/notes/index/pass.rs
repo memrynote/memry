@@ -21,9 +21,6 @@ use memry_core::api::vault::Vault;
 use memry_core::domain::note_properties::retyped;
 use memry_core::domain::note_stats::{MeasuredFile, Unindexed};
 use memry_core::domain::search::LinkChanges;
-use memry_core::markdown::shared::markdown_class::{
-    MarkdownClassThresholds, classify_markdown_content, classify_markdown_stat,
-};
 
 use memry_core::seams::secure_store::SecureStore;
 
@@ -31,7 +28,7 @@ use super::learn::{Learner, order};
 use super::{BATCH, BATCH_BYTES, Backfilled, IndexError, IndexProgress};
 use crate::notes::properties::{file_properties, read_definition_types};
 use crate::session::OpenVault;
-use crate::vault::note_file::{NoteFileError, read_note};
+use crate::vault::note_file::{NoteFileError, large_by_size, large_file_class, read_note};
 
 /// One open vault's index. A note's journal day is its record's, which the core reads when it
 /// stores the row (`Search::index_note_files`): the vault tier decided which day a file is
@@ -354,19 +351,12 @@ impl Indexer {
     }
 
     fn read(&self, note: &Unindexed, types: &HashMap<String, String>) -> Read {
-        let size = note.file_size.unwrap_or_default().max(0) as usize;
-        if classify_markdown_stat(size, MarkdownClassThresholds::default()).is_some() {
+        if large_by_size(note.file_size.unwrap_or_default().max(0) as u64).is_some() {
             return large(note);
         }
         match read_note(&self.root, &note.path) {
             // The file grew past the class since its row was written.
-            Ok(Some(file))
-                if classify_markdown_content(&file.raw, MarkdownClassThresholds::default())
-                    .large_file
-                    .is_some() =>
-            {
-                large(note)
-            }
+            Ok(Some(file)) if large_file_class(&file.raw).is_some() => large(note),
             Ok(Some(file)) => Read::File(MeasuredFile {
                 note_id: note.note_id.clone(),
                 properties: file_properties(&file, types).unwrap_or_default(),

@@ -517,5 +517,9 @@ fn an_edit_of_a_large_file_note_is_refused_as_note_large_file_and_reaches_no_win
         (failure.kind, failure.code),
         (FailureKind::Invalid, "note_large_file")
     );
+    assert_eq!(
+        failure.message, "This note is too large to edit. It opens read-only.",
+        "user-facing text, no note id"
+    );
     assert!(side_frames.lock().unwrap().is_empty());
 }

@@ -774,6 +774,9 @@ fn a_create_past_the_large_file_class_answers_as_a_read_of_it_does() {
                 },
             )
             .unwrap();
+        // Recorded by the create, before any read: the watcher skips its echo (#3531 14c-2).
+        let recorded = open.vault.note_files().is_large_file(&note.id).unwrap();
+        assert!(recorded, "{title}'s class was not recorded");
         let mut read = read::get(&open, &note.id, None).unwrap().expect("the note");
         assert!(read.large_file.is_some(), "{title} is not a large file");
         (read.created, read.modified) = (note.created, note.modified);

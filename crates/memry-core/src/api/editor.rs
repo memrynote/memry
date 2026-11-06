@@ -149,8 +149,9 @@ pub enum EditorError {
     #[error("The owner made this note read-only.")]
     Locked { note_id: String },
     /// The note's file is large-file class: the edit was refused before
-    /// anything was written.
-    #[error("{note_id} is a large file and opens read-only")]
+    /// anything was written. Electron has no text for it (its renderer never
+    /// mounts an editor on a large file); this one is shown to the user.
+    #[error("This note is too large to edit. It opens read-only.")]
     LargeFile { note_id: String },
     /// The window's copy is of a document since purged (a delete applied): it
     /// opens the document again before it edits. Nothing was written.

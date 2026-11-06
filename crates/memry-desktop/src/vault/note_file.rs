@@ -19,7 +19,8 @@ use memry_core::markdown::frontmatter::{
     serialize_parsed_markdown_note, split_frontmatter_block, write_markdown_note,
 };
 use memry_core::markdown::shared::markdown_class::{
-    MarkdownClassThresholds, classify_markdown_content, classify_markdown_stat,
+    MarkdownClassThresholds, MarkdownClassification, classify_markdown_content,
+    classify_markdown_stat,
 };
 
 use super::fs_atomic::{self, WriteError};
@@ -77,21 +78,21 @@ impl NoteFile {
     }
 }
 
-/// Whether `raw`, a note file's whole text, is large-file class: the app shows it in the
-/// large-file viewer, and the editor opens its document read-only. The size settles it before
-/// the blocks are measured, as the note's view does (`notes::read`).
-pub fn is_large_text(raw: &str) -> bool {
-    let thresholds = MarkdownClassThresholds::default();
-    classify_markdown_stat(raw.len(), thresholds).is_some()
-        || classify_markdown_content(raw, thresholds)
-            .large_file
-            .is_some()
+/// The class of a note file of `bytes` when its size alone makes it large-file class: the app
+/// shows it in the large-file viewer, and the editor opens its document read-only. The one
+/// predicate every reader and writer of a note file classifies with; the thresholds are
+/// `markdown_class`'s.
+pub fn large_by_size(bytes: u64) -> Option<MarkdownClassification> {
+    let bytes = usize::try_from(bytes).unwrap_or(usize::MAX);
+    classify_markdown_stat(bytes, MarkdownClassThresholds::default())
 }
 
-/// Whether a note file of `bytes` is large-file class by its size alone.
-pub fn is_large_size(bytes: u64) -> bool {
-    usize::try_from(bytes).map_or(true, |bytes| {
-        classify_markdown_stat(bytes, MarkdownClassThresholds::default()).is_some()
+/// The class of `raw`, a note file's whole text, when it is large-file class: by its size,
+/// which settles it before a block is measured, else by its largest block.
+pub fn large_file_class(raw: &str) -> Option<MarkdownClassification> {
+    large_by_size(raw.len() as u64).or_else(|| {
+        let class = classify_markdown_content(raw, MarkdownClassThresholds::default());
+        class.large_file.is_some().then_some(class)
     })
 }
 
