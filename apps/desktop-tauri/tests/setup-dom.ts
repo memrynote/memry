@@ -285,6 +285,7 @@ vi.mock('../src/generated/bindings', () => {
       notesGetFolderTemplate: (folderPath: string) => notes().getFolderTemplate(folderPath),
       tagsGetSchemaSnapshot: () => tags().getSchemaSnapshot(),
       tagsEditSchema: (command: unknown) => tags().editSchema(command),
+      tagsSearchObjects: (input: unknown) => tags().searchObjects(input),
       tagsGetAllWithCounts: async () =>
         ((await tags().getAllWithCounts()) as { tags: unknown[] }).tags,
       tagsGetNotesByTag: (input: unknown) => tags().getNotesByTag(input),
