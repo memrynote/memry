@@ -35,7 +35,12 @@ struct UploadMeta {
     size: usize,
 }
 
-fn attachment_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> CommandError {
+/// The command's answer to `error`; `command` names it in the log of a disk failure.
+fn attachment_error<R: Runtime>(
+    app: &AppHandle<R>,
+    command: &str,
+    error: &AttachmentError,
+) -> CommandError {
     let locale = app.state::<Arc<LocaleService>>().get();
     let t = |key: &str, args: &Args| i18n::t(locale, key, args);
     match error {
@@ -84,10 +89,7 @@ fn attachment_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> 
             CommandError::new(ErrorKind::Invalid, "attachment_upload_refused", message)
         }
         AttachmentError::NotAFolder | AttachmentError::Io(_) | AttachmentError::Write(_) => {
-            tracing::warn!(
-                scope = "attachments",
-                "an attachment was not saved: {error}"
-            );
+            tracing::warn!(scope = "attachments", "{command} failed on disk: {error}");
             let message = t("errors:attachment.writeFailed", &Args::new());
             CommandError::new(ErrorKind::Storage, "attachment_write_failed", message)
         }
@@ -105,14 +107,14 @@ pub async fn notes_upload_attachment<R: Runtime>(
     let body = binary::raw_body(&request)?;
     // On the declared size, so a file over the limit never crosses IPC.
     if let Err(error) = attachments::check_upload_size(meta.size, body.len()) {
-        let error = attachment_error(&app, &error);
+        let error = attachment_error(&app, "notes_upload_attachment", &error);
         log_failure("notes_upload_attachment", &error);
         return Err(error);
     }
     let body = body.to_vec();
     blocking("notes_upload_attachment", move || {
         attachments::upload(&open_vault(&app)?, &meta.note_id, &meta.file_name, &body)
-            .map_err(|error| attachment_error(&app, &error))
+            .map_err(|error| attachment_error(&app, "notes_upload_attachment", &error))
     })
     .await
 }
@@ -139,7 +141,7 @@ pub async fn notes_upload_attachment_begin<R: Runtime>(
     blocking("notes_upload_attachment_begin", move || {
         uploads(&app)?
             .begin(&open_vault(&app)?, &owner, &note_id, &file_name, size)
-            .map_err(|error| attachment_error(&app, &error))
+            .map_err(|error| attachment_error(&app, "notes_upload_attachment_begin", &error))
     })
     .await
 }
@@ -163,7 +165,7 @@ pub async fn notes_upload_attachment_chunk<R: Runtime>(
     blocking("notes_upload_attachment_chunk", move || {
         uploads(&app)?
             .write_chunk(&open_vault(&app)?, &meta.id, meta.offset, &body)
-            .map_err(|error| attachment_error(&app, &error))
+            .map_err(|error| attachment_error(&app, "notes_upload_attachment_chunk", &error))
     })
     .await
 }
@@ -194,7 +196,7 @@ pub async fn notes_attachment_rename<R: Runtime>(
 ) -> Result<RenamedAttachment, CommandError> {
     blocking("notes_attachment_rename", move || {
         attachments::rename(&open_vault(&app)?, &note_id, &url, &new_name)
-            .map_err(|error| attachment_error(&app, &error))
+            .map_err(|error| attachment_error(&app, "notes_attachment_rename", &error))
     })
     .await
 }

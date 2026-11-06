@@ -12,6 +12,9 @@
 //! | a link out of the vault is never renamed through              | `resolve_under_root`, file type  |
 //! | a link swapped in before the rename is refused                | the recheck before the rename    |
 //! | the rename never replaces a file that appears at its target   | `rename_no_replace`              |
+//! | a stale url renames only a file that kept its prefix          | prefix-only heal for a write     |
+//! | a folder that is a link, even inside the vault, is refused    | no link on the folder path       |
+//! | the name on disk, not the url's spelling, keeps its prefix    | the directory entry's name       |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -365,5 +368,95 @@ fn the_rename_never_replaces_a_file_that_appears_at_its_target() {
     assert_eq!(
         fs::read(v.folder(&v.note).join("k3f9x2-invoice-2.pdf")).unwrap(),
         b"mine"
+    );
+}
+
+/// Self-heal by the name's end finds another block's file (`bbbbbb-report.pdf` missing, its
+/// download pending, `aaaaaa-report.pdf` there): reading it is harmless, renaming it would take
+/// the other block's bytes for good. A write follows only a file that kept the url's prefix.
+#[test]
+fn a_stale_url_renames_only_a_file_that_kept_its_prefix() {
+    let v = Vault::new();
+    v.attach(&v.note, "aaaaaa-report.pdf", b"a");
+    let outcome = v.rename(
+        &format!("../attachments/{}/bbbbbb-report.pdf", v.note),
+        "mine",
+    );
+    assert!(
+        matches!(outcome, Err(AttachmentError::FileNotFound)),
+        "{outcome:?}"
+    );
+    // A url without a prefix heals by its name only, so it renames nothing either.
+    let outcome = v.rename(&format!("../attachments/{}/report.pdf", v.note), "mine");
+    assert!(
+        matches!(outcome, Err(AttachmentError::FileNotFound)),
+        "{outcome:?}"
+    );
+    assert_eq!(names(&v.folder(&v.note)), ["aaaaaa-report.pdf"]);
+}
+
+/// `attachments/<note>` linked to another note's folder inside the vault: the url names this
+/// note's folder, the rename would act on the other note's file.
+#[cfg(unix)]
+#[test]
+fn a_folder_that_is_a_link_even_inside_the_vault_is_refused() {
+    use std::os::unix::fs::symlink;
+
+    let v = Vault::new();
+    v.attach(&v.other, "k3f9x2-report.pdf", b"theirs");
+    symlink(v.folder(&v.other), v.folder(&v.note)).unwrap();
+    let url = format!("../attachments/{}/k3f9x2-report.pdf", v.note);
+    let outcome = v.rename(&url, "stolen");
+    assert!(
+        matches!(outcome, Err(AttachmentError::NotAFolder)),
+        "{outcome:?}"
+    );
+    assert_eq!(names(&v.folder(&v.other)), ["k3f9x2-report.pdf"]);
+
+    // The attachments folder itself a link to a folder of the vault.
+    fs::remove_file(v.folder(&v.note)).unwrap();
+    let root = v.e.vault.join("attachments");
+    let moved = v.e.vault.join("kept");
+    fs::rename(&root, &moved).unwrap();
+    symlink(&moved, &root).unwrap();
+    let url = format!("attachments/{}/k3f9x2-report.pdf", v.other);
+    let outcome = attachments::rename(&v.open, &v.other, &url, "x");
+    assert!(
+        matches!(outcome, Err(AttachmentError::NotAFolder)),
+        "{outcome:?}"
+    );
+    assert_eq!(names(&moved.join(&v.other)), ["k3f9x2-report.pdf"]);
+}
+
+/// On a volume that ignores case the url's `K3F9X2-UPPER.pdf` opens `k3f9x2-upper.pdf`; the
+/// rename keeps the prefix the disk has, which self-heal and sync key on.
+#[test]
+fn the_name_on_disk_not_the_urls_spelling_keeps_its_prefix() {
+    let v = Vault::new();
+    v.attach(&v.note, "k3f9x2-upper.pdf", b"x");
+    if !v.folder(&v.note).join("K3F9X2-UPPER.pdf").exists() {
+        return; // A case-sensitive volume: the url names no file.
+    }
+    let url = format!("../attachments/{}/K3F9X2-UPPER.pdf", v.note);
+    let renamed = v.rename(&url, "low").unwrap();
+    assert_eq!(renamed.stored_filename, "k3f9x2-low.pdf");
+    assert_eq!(names(&v.folder(&v.note)), ["k3f9x2-low.pdf"]);
+}
+
+/// Windows drops a trailing dot, so `...pdf.` opens the `.pdf` file; the rename keeps its
+/// extension or refuses, and never makes a name without one.
+#[cfg(windows)]
+#[test]
+fn a_trailing_dot_never_drops_the_extension() {
+    let v = Vault::new();
+    v.attach(&v.note, "k3f9x2-a.pdf", b"x");
+    let url = format!("../attachments/{}/k3f9x2-a.pdf.", v.note);
+    if let Ok(renamed) = v.rename(&url, "b") {
+        assert_eq!(renamed.stored_filename, "k3f9x2-b.pdf");
+    }
+    assert!(
+        names(&v.folder(&v.note))
+            .iter()
+            .all(|name| name.ends_with(".pdf"))
     );
 }
