@@ -385,6 +385,7 @@
     "cycle": "#{parent} își preia deja câmpurile de la această etichetă",
     "unreadableSchema": "O versiune mai nouă a Memry a modificat această etichetă. Actualizează Memry pentru a o edita",
     "relationTargetRequired": "Alege spre ce etichetă trimite această relație",
-    "renameRunning": "O altă redenumire de câmp încă se finalizează ({from} în {to}). Încearcă din nou când se termină."
+    "renameRunning": "O altă redenumire de câmp încă se finalizează ({from} în {to}). Încearcă din nou când se termină.",
+    "renameTaskUnreadable": "Redenumirea câmpului {from} în {to} nu poate continua: această versiune Memry nu poate citi aceste sarcini: {tasks}. Actualizează Memry, apoi încearcă din nou."
   }
 }

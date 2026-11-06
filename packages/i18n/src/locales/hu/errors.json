@@ -385,6 +385,7 @@
     "cycle": "A(z) #{parent} már ebből a címkéből veszi a mezőit",
     "unreadableSchema": "A Memry egy újabb verziója módosította ezt a címkét. A szerkesztéséhez frissítse a Memryt",
     "relationTargetRequired": "Válassza ki, melyik címkére mutasson ez a kapcsolat",
-    "renameRunning": "Egy másik mező átnevezése még folyamatban van ({from} → {to}). Próbálja újra, ha elkészült."
+    "renameRunning": "Egy másik mező átnevezése még folyamatban van ({from} → {to}). Próbálja újra, ha elkészült.",
+    "renameTaskUnreadable": "A(z) {from} → {to} mezőátnevezés nem folytatódhat: a Memry ezen verziója nem tudja beolvasni ezeket a feladatokat: {tasks}. Frissítse a Memryt, majd próbálja újra."
   }
 }

@@ -11,8 +11,9 @@
 //! 5. each note and journal day the index lists as holding the key, through the property writer
 //!    ([`NotesService::rename_field_in_note`]: its turn, the app-edit seam with `Held`, the
 //!    record's properties and their baseline in the same lane);
-//! 6. each task holding a value under the key, in one task write ([`Tasks::rename_field`]); a
-//!    task whose payload does not read refuses the run before step 2.
+//! 6. each live task holding a value under the key, in one task write ([`Tasks::rename_field`]);
+//!    a task whose payload does not read refuses the run before step 2, and a recorded job it
+//!    holds up names it to every rename refused meanwhile.
 //!
 //! Every step finds what an earlier run did and leaves it, so a run stopped anywhere (a quit, a
 //! crash) is run again with `resuming` by the next open ([`register_resume`]) and comes to the
@@ -103,6 +104,8 @@ impl Schemas {
             .as_ref()
             .is_some_and(|r| r.from == job.from && r.to == job.to);
         if let Some(other) = recorded.filter(|_| !resuming) {
+            // A job held up by a task that does not read says so, not that it is finishing.
+            self.carriers(&other)?;
             return Err(self.running(&other));
         }
         if !resuming {
@@ -110,7 +113,7 @@ impl Schemas {
                 .plan_field_rename(&job.from, &job.to)
                 .map_err(|error| self.saved(error))?;
         }
-        let tasks = self.carriers(&job.from)?;
+        let tasks = self.carriers(&job)?;
         self.schemas.begin_field_rename(&job)?;
         self.run_job(&job, &tasks, resuming, progress, stop)
     }
@@ -128,7 +131,7 @@ impl Schemas {
             return Ok(None);
         };
         tracing::info!(scope = SCOPE, "resuming a recorded field rename");
-        let tasks = self.carriers(&job.from)?;
+        let tasks = self.carriers(&job)?;
         self.run_job(&job, &tasks, true, &mut |_, _, _| {}, stop)
             .map(Some)
     }
@@ -146,24 +149,27 @@ impl Schemas {
         }
     }
 
-    /// The live tasks holding a value under `from`. A task whose payload does not read refuses
-    /// the run before it writes anything: whether it holds the field cannot be told.
-    fn carriers(&self, from: &str) -> Result<Vec<String>, SchemaError> {
+    /// The live tasks holding a value under `job.from`. A task whose payload does not read
+    /// refuses the run before it writes anything, by its id: whether it holds the field cannot
+    /// be told.
+    fn carriers(&self, job: &FieldRenameJob) -> Result<Vec<String>, SchemaError> {
         let read = self.tasks.field_holders()?;
         if !read.unreadable.is_empty() {
             tracing::warn!(scope = SCOPE, tasks = ?read.unreadable, "tasks that do not read");
-            return Err(StorageError::Failed {
-                what: format!(
-                    "{} tasks could not be read, so the field rename did not run",
-                    read.unreadable.len()
-                ),
-            }
-            .into());
+            return Err(self.refused(
+                "tag_field_rename_task_unreadable",
+                "errors:tagFields.renameTaskUnreadable",
+                &[
+                    ("from", &job.from),
+                    ("to", &job.to),
+                    ("tasks", &read.unreadable.join(", ")),
+                ],
+            ));
         }
         Ok(read
             .holders
             .into_iter()
-            .filter(|task| task.fields.iter().any(|name| name == from))
+            .filter(|task| task.fields.contains(&job.from))
             .map(|task| task.id)
             .collect())
     }
@@ -223,9 +229,11 @@ impl Schemas {
         if !again.is_empty() {
             // A refused edit wrote nothing, so one more try is safe; the flush writes a document
             // that is ahead of its file out first.
+            stopped()?;
             self.notes.tier.flush(SETTLE);
         }
         for id in again {
+            stopped()?;
             match self.rename_in_note(id, from, to)? {
                 InNote::Done(done) => count(&mut view, done),
                 InNote::Again => view.kept += 1,

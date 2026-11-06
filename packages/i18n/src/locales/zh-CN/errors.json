@@ -385,6 +385,7 @@
     "cycle": "#{parent} 已从此标签继承字段",
     "unreadableSchema": "较新版本的 Memry 更改了此标签。请更新 Memry 后再编辑",
     "relationTargetRequired": "请选择此关系指向哪个标签",
-    "renameRunning": "另一个字段重命名仍在完成中（{from} 到 {to}）。请在完成后重试。"
+    "renameRunning": "另一个字段重命名仍在完成中（{from} 到 {to}）。请在完成后重试。",
+    "renameTaskUnreadable": "字段重命名（{from} 到 {to}）无法继续：此版本的 Memry 无法读取以下任务：{tasks}。请更新 Memry 后重试。"
   }
 }

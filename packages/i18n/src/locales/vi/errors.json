@@ -385,6 +385,7 @@
     "cycle": "#{parent} đã lấy các trường của nó từ thẻ này",
     "unreadableSchema": "Một phiên bản Memry mới hơn đã thay đổi thẻ này. Hãy cập nhật Memry để sửa nó",
     "relationTargetRequired": "Hãy chọn thẻ mà quan hệ này trỏ tới",
-    "renameRunning": "Một lần đổi tên trường khác vẫn đang hoàn tất ({from} thành {to}). Hãy thử lại khi nó xong."
+    "renameRunning": "Một lần đổi tên trường khác vẫn đang hoàn tất ({from} thành {to}). Hãy thử lại khi nó xong.",
+    "renameTaskUnreadable": "Không thể tiếp tục đổi tên trường {from} thành {to}: phiên bản Memry này không đọc được các tác vụ sau: {tasks}. Hãy cập nhật Memry rồi thử lại."
   }
 }

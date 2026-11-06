@@ -385,6 +385,7 @@
     "cycle": "#{parent} ärver redan sina fält från den här taggen",
     "unreadableSchema": "En nyare version av Memry har ändrat den här taggen. Uppdatera Memry för att redigera den",
     "relationTargetRequired": "Välj vilken tagg den här relationen pekar på",
-    "renameRunning": "Ett annat namnbyte av fält pågår fortfarande ({from} till {to}). Försök igen när det är klart."
+    "renameRunning": "Ett annat namnbyte av fält pågår fortfarande ({from} till {to}). Försök igen när det är klart.",
+    "renameTaskUnreadable": "Namnbytet av fältet {from} till {to} kan inte fortsätta: den här versionen av Memry kan inte läsa de här uppgifterna: {tasks}. Uppdatera Memry och försök igen."
   }
 }

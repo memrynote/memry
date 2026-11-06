@@ -385,6 +385,7 @@
     "cycle": "#{parent} sudah mengambil kolomnya dari tag ini",
     "unreadableSchema": "Versi Memry yang lebih baru telah mengubah tag ini. Perbarui Memry untuk mengeditnya",
     "relationTargetRequired": "Pilih tag yang dituju relasi ini",
-    "renameRunning": "Penggantian nama kolom lain masih diselesaikan ({from} menjadi {to}). Coba lagi setelah selesai."
+    "renameRunning": "Penggantian nama kolom lain masih diselesaikan ({from} menjadi {to}). Coba lagi setelah selesai.",
+    "renameTaskUnreadable": "Penggantian nama kolom {from} menjadi {to} tidak bisa dilanjutkan: versi Memry ini tidak bisa membaca tugas-tugas ini: {tasks}. Perbarui Memry, lalu coba lagi."
   }
 }

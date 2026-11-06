@@ -385,6 +385,7 @@
     "cycle": "#{parent} übernimmt seine Felder bereits von diesem Tag",
     "unreadableSchema": "Eine neuere Version von Memry hat diesen Tag geändert. Aktualisiere Memry, um ihn zu bearbeiten",
     "relationTargetRequired": "Wähle, auf welchen Tag diese Relation verweist",
-    "renameRunning": "Eine andere Feldumbenennung wird noch abgeschlossen ({from} in {to}). Versuche es erneut, wenn sie fertig ist."
+    "renameRunning": "Eine andere Feldumbenennung wird noch abgeschlossen ({from} in {to}). Versuche es erneut, wenn sie fertig ist.",
+    "renameTaskUnreadable": "Die Feldumbenennung von {from} in {to} kann nicht weiterlaufen: Diese Version von Memry kann diese Aufgaben nicht lesen: {tasks}. Aktualisiere Memry und versuche es erneut."
   }
 }

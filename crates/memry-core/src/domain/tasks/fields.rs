@@ -17,6 +17,7 @@ use crate::sync::field_merge::TASK_SYNCABLE_FIELDS;
 use crate::sync::outbox::{self, Durable};
 use crate::sync::versioned;
 
+use super::model::find_live;
 use super::{ITEM_TYPE, edit, edit_merged_in, nullable};
 
 /// Sets the markdown description, or clears it with `None`.
@@ -187,7 +188,8 @@ pub fn set_field_value(
 pub enum FieldRenamed {
     /// `to` holds the value `from` held, and `from` holds none.
     Renamed { value: Value },
-    /// The task holds no value under `from`.
+    /// The task holds no value under `from`, or it is deleted (a write would queue an upsert
+    /// over its queued delete).
     Unchanged,
     /// Another field whose name folds to `to` holds a value: the task is left as it was
     /// (`skippedExisting`).
@@ -204,8 +206,10 @@ pub fn rename_field(
     device_id: &str,
     now_ms: i64,
 ) -> Result<FieldRenamed, StorageError> {
-    let stored = require_payload(conn, ITEM_TYPE, task_id)?;
-    let fields = stored.object().get("fields");
+    let Some(stored) = find_live(conn, task_id)? else {
+        return Ok(FieldRenamed::Unchanged);
+    };
+    let fields = stored.object.get("fields");
     let held = versioned::plain(fields);
     let Some(value) = held.get(from).cloned() else {
         return Ok(FieldRenamed::Unchanged);
@@ -217,7 +221,7 @@ pub fn rename_field(
     {
         return Ok(FieldRenamed::Existing);
     }
-    let total = u64::try_from(clock_total(&clock_in(stored.object())?)).unwrap_or(0);
+    let total = u64::try_from(clock_total(&clock_in(&stored.object)?)).unwrap_or(0);
     let patch = serde_json::Map::from_iter([
         (from.to_owned(), Value::Null),
         (to.to_owned(), value.clone()),

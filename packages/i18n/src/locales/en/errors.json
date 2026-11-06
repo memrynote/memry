@@ -385,6 +385,7 @@
     "cycle": "#{parent} already takes its fields from this tag",
     "unreadableSchema": "A newer version of Memry changed this tag. Update Memry to edit it",
     "relationTargetRequired": "Choose which tag this relation points to",
-    "renameRunning": "Another field rename is still finishing ({from} to {to}). Try again once it is done."
+    "renameRunning": "Another field rename is still finishing ({from} to {to}). Try again once it is done.",
+    "renameTaskUnreadable": "The field rename {from} to {to} cannot go on: this version of Memry cannot read these tasks: {tasks}. Update Memry, then try again."
   }
 }

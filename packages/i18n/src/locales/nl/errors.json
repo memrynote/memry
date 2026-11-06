@@ -385,6 +385,7 @@
     "cycle": "#{parent} neemt zijn velden al over van deze tag",
     "unreadableSchema": "Een nieuwere versie van Memry heeft deze tag gewijzigd. Werk Memry bij om hem te bewerken",
     "relationTargetRequired": "Kies naar welke tag deze relatie verwijst",
-    "renameRunning": "Een andere veldhernoeming wordt nog afgerond ({from} naar {to}). Probeer het opnieuw als ze klaar is."
+    "renameRunning": "Een andere veldhernoeming wordt nog afgerond ({from} naar {to}). Probeer het opnieuw als ze klaar is.",
+    "renameTaskUnreadable": "De veldhernoeming van {from} naar {to} kan niet verder: deze versie van Memry kan deze taken niet lezen: {tasks}. Werk Memry bij en probeer het opnieuw."
   }
 }

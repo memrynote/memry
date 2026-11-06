@@ -385,6 +385,7 @@
     "cycle": "#{parent} já herda seus campos desta tag",
     "unreadableSchema": "Uma versão mais recente do Memry alterou esta tag. Atualize o Memry para editá-la",
     "relationTargetRequired": "Escolha para qual tag esta relação aponta",
-    "renameRunning": "Outra renomeação de campo ainda está terminando ({from} para {to}). Tente novamente quando ela terminar."
+    "renameRunning": "Outra renomeação de campo ainda está terminando ({from} para {to}). Tente novamente quando ela terminar.",
+    "renameTaskUnreadable": "A renomeação do campo {from} para {to} não pode continuar: esta versão do Memry não consegue ler estas tarefas: {tasks}. Atualize o Memry e tente novamente."
   }
 }

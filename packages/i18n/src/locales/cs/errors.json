@@ -385,6 +385,7 @@
     "cycle": "#{parent} už přebírá svá pole z tohoto štítku",
     "unreadableSchema": "Novější verze aplikace Memry tento štítek změnila. Chcete-li jej upravit, aktualizujte Memry",
     "relationTargetRequired": "Vyberte, na který štítek tento vztah odkazuje",
-    "renameRunning": "Jiné přejmenování pole se stále dokončuje ({from} na {to}). Zkuste to znovu po jeho dokončení."
+    "renameRunning": "Jiné přejmenování pole se stále dokončuje ({from} na {to}). Zkuste to znovu po jeho dokončení.",
+    "renameTaskUnreadable": "Přejmenování pole {from} na {to} nemůže pokračovat: tato verze Memry neumí přečíst tyto úkoly: {tasks}. Aktualizujte Memry a zkuste to znovu."
   }
 }

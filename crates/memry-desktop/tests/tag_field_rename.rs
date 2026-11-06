@@ -219,6 +219,25 @@ fn schema_fields(vault: &Vault) -> Value {
         .unwrap_or_default()
 }
 
+/// The outbox rows, as `(op, item type, item id)`, ids sorted.
+fn queued(vault: &Vault) -> Vec<(String, String, String)> {
+    vault
+        .e
+        .core()
+        .db_handle()
+        .call_blocking(|conn| {
+            let mut rows = conn
+                .prepare("SELECT op, item_type, item_id FROM outbox ORDER BY item_id, op")
+                .unwrap();
+            Ok(rows
+                .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+                .unwrap()
+                .map(Result::unwrap)
+                .collect())
+        })
+        .unwrap()
+}
+
 /// The keys of the file's frontmatter, in order.
 fn keys(vault: &Vault, path: &str) -> Vec<String> {
     let text = vault.e.read(path);
@@ -268,6 +287,15 @@ fn a_rename_stopped_after_its_first_note_is_finished_by_the_next_open_writing_no
     let [first] = changed[..] else {
         panic!("one note written before the stop: {changed:?}");
     };
+    // The first run's rows are pushed before the next open.
+    let first_run: Vec<String> = queued(&vault).into_iter().map(|(_, _, id)| id).collect();
+    // A local-only note queues no row.
+    assert_eq!(
+        first_run.contains(&all[first]),
+        all[first] != secret,
+        "{first_run:?}"
+    );
+    clear_outbox(&vault.e);
 
     std::thread::sleep(QUIET);
     vault.e.close();
@@ -312,9 +340,10 @@ fn a_rename_stopped_after_its_first_note_is_finished_by_the_next_open_writing_no
         .collect();
     assert!(names.contains(&"Mobile".to_owned()) && !names.contains(&"Phone".to_owned()));
 
-    // One record push per changed item across both runs; none for the local-only note.
+    // The resume pushes each item the first run did not, once; none for the local-only note.
     for id in [&ids[0], &ids[1], &ids[3], &task] {
-        assert_eq!(upserts(&vault.e, id), 1, "{id}");
+        let once = usize::from(!first_run.contains(id));
+        assert_eq!(upserts(&vault.e, id), once as i64, "{id}");
     }
     assert_eq!(
         upserts(&vault.e, &ids[2]),
@@ -326,7 +355,11 @@ fn a_rename_stopped_after_its_first_note_is_finished_by_the_next_open_writing_no
         0,
         "a local-only note is not pushed"
     );
-    assert_eq!(upserts(&vault.e, "person"), 1);
+    assert_eq!(
+        upserts(&vault.e, "person"),
+        0,
+        "the first run renamed the schema"
+    );
 }
 
 #[test]
@@ -344,11 +377,9 @@ fn a_rename_onto_a_field_the_tag_lists_is_refused_and_writes_nothing() {
     assert!(same.is_err(), "{same:?}");
 }
 
-/// A task whose payload does not read may hold the field or not: the rename does not start.
-#[test]
-fn a_task_that_does_not_read_refuses_the_rename_before_any_write() {
-    let vault = opened(&[("Ahmet.md", AHMET)]);
-    let task = task_with_phone(&vault, "444", None);
+/// Makes the task's payload one no build reads.
+fn unreadable(vault: &Vault, task: &str) {
+    let task = task.to_owned();
     vault
         .e
         .core()
@@ -362,15 +393,98 @@ fn a_task_that_does_not_read_refuses_the_rename_before_any_write() {
             Ok(())
         })
         .unwrap();
+}
+
+/// Whether `result` is the refusal naming `task` as the one that does not read.
+fn names_unreadable<T: std::fmt::Debug>(result: &Result<T, SchemaError>, task: &str) -> bool {
+    matches!(result, Err(SchemaError::Refused { code, message })
+        if *code == "tag_field_rename_task_unreadable" && message.contains(task))
+}
+
+/// A task whose payload does not read may hold the field or not: the rename does not start, and
+/// says which task holds it up.
+#[test]
+fn a_task_that_does_not_read_refuses_the_rename_before_any_write() {
+    let vault = opened(&[("Ahmet.md", AHMET)]);
+    let task = task_with_phone(&vault, "444", None);
+    unreadable(&vault, &task);
     let schema = schema_fields(&vault);
     let refused = rename(&vault, "Phone", "Mobile");
-    assert!(
-        matches!(&refused, Err(SchemaError::Storage(_))),
-        "{refused:?}"
-    );
+    assert!(names_unreadable(&refused, &task), "{refused:?}");
     assert_eq!(vault.e.read("Ahmet.md"), AHMET);
     assert_eq!(schema_fields(&vault), schema);
     assert!(!vault.job());
+}
+
+/// A task that stops reading once a job is recorded (a newer build's payload pulled) holds the
+/// job up: the resume and every other rename name the task, not a rename still finishing.
+#[test]
+fn a_recorded_rename_held_up_by_a_task_that_does_not_read_names_it() {
+    let vault = opened(&[("Ahmet.md", AHMET)]);
+    let task = task_with_phone(&vault, "444", None);
+    let stopped =
+        vault
+            .schemas()
+            .rename_field_until(job("Phone", "Mobile"), &mut |_, _, _| {}, &|| true);
+    assert!(matches!(stopped, Err(SchemaError::Stopped)), "{stopped:?}");
+    unreadable(&vault, &task);
+
+    let resumed = vault.schemas().resume_field_rename(&|| false);
+    assert!(names_unreadable(&resumed, &task), "{resumed:?}");
+    let other = rename(&vault, "Role", "Title");
+    assert!(names_unreadable(&other, &task), "{other:?}");
+    assert!(vault.job());
+    assert_eq!(vault.e.read("Ahmet.md"), AHMET);
+}
+
+/// A quit while a kept note waits for its second try ends the run before the write-back.
+#[test]
+fn a_rename_stopped_before_its_second_try_ends_there() {
+    let vault = opened(&[("Ahmet.md", AHMET), ("Elif.md", ELIF)]);
+    vault.notes.keep_in_field_rename(Some(&vault.id("Elif.md")));
+    // The definitions, the schemas, two notes; the next check is the second try's.
+    let calls = AtomicUsize::new(0);
+    let ran =
+        vault
+            .schemas()
+            .rename_field_until(job("Phone", "Mobile"), &mut |_, _, _| {}, &|| {
+                calls.fetch_add(1, Ordering::SeqCst) >= 4
+            });
+    assert!(matches!(ran, Err(SchemaError::Stopped)), "{ran:?}");
+    assert!(vault.job());
+}
+
+/// A task deleted while the job runs (here or by a pull) keeps its queued delete: the rename
+/// leaves it.
+#[test]
+fn a_task_deleted_while_the_rename_runs_keeps_its_delete() {
+    let vault = opened(&[("Ahmet.md", AHMET)]);
+    let task = task_with_phone(&vault, "444", None);
+    clear_outbox(&vault.e);
+    let tasks = vault.open().vault.tasks(vault.store.clone()).unwrap();
+    let renamed = vault
+        .schemas()
+        .rename_field_until(
+            job("Phone", "Mobile"),
+            &mut |_, done, _| {
+                if done == 1 {
+                    tasks.delete(task.clone(), false).unwrap();
+                }
+            },
+            &|| false,
+        )
+        .unwrap();
+    assert_eq!((renamed.notes, renamed.tasks), (1, 0));
+    let task_rows: Vec<String> = queued(&vault)
+        .into_iter()
+        .filter(|(_, _, id)| *id == task)
+        .map(|(op, _, _)| op)
+        .collect();
+    assert_eq!(task_rows, ["delete"]);
+    assert_eq!(
+        Value::Object(task_fields(&vault, &task)),
+        json!({"Phone": "444"})
+    );
 }
 
 #[test]
@@ -496,6 +610,7 @@ fn a_rename_stopped_at_any_step_comes_to_the_same_end_when_resumed() {
     // Two steps before the notes, four notes, two tasks; the last never stops.
     const CHECKS: usize = 2 + 4 + 2;
     let mut reference = None;
+    let mut pushed = None;
     for stop_at in std::iter::once(CHECKS).chain(0..CHECKS) {
         let vault = opened(&[
             ("Ahmet.md", AHMET),
@@ -505,6 +620,27 @@ fn a_rename_stopped_at_any_step_comes_to_the_same_end_when_resumed() {
         ]);
         let task = task_with_phone(&vault, "444", None);
         let both = task_with_phone(&vault, "555", Some(("mobile", "999")));
+        let label = |id: &str| {
+            let paths = ["Ahmet.md", "Elif.md", "Can.md", "journal/2026-01-01.md"];
+            let note = paths.into_iter().find(|path| vault.id(path) == id);
+            match id {
+                _ if id == task => "task".to_owned(),
+                _ if id == both => "both".to_owned(),
+                _ => note.map_or_else(|| id.to_owned(), str::to_owned),
+            }
+        };
+        // A task write's audit rows have ids of their own.
+        let labelled = |rows: Vec<(String, String, String)>| -> Vec<(String, String)> {
+            let mut rows: Vec<_> = rows
+                .into_iter()
+                .map(|(op, kind, id)| match kind.as_str() {
+                    "task_activity" => (op, kind),
+                    _ => (op, label(&id)),
+                })
+                .collect();
+            rows.sort();
+            rows
+        };
         clear_outbox(&vault.e);
         let calls = AtomicUsize::new(0);
         let ran =
@@ -519,31 +655,47 @@ fn a_rename_stopped_at_any_step_comes_to_the_same_end_when_resumed() {
                 "{stop_at}: {ran:?}"
             );
             assert!(vault.job(), "{stop_at}");
+            // A push between the runs: the resume queues nothing the first run already queued.
+            let first = labelled(queued(&vault));
+            clear_outbox(&vault.e);
             let resumed = vault.schemas().resume_field_rename(&|| false).unwrap();
             assert_eq!(resumed.map(|r| r.kept), Some(0), "{stop_at}");
+            let second = labelled(queued(&vault));
+            let twice: Vec<_> = first.iter().filter(|row| second.contains(row)).collect();
+            assert!(twice.is_empty(), "{stop_at}: queued twice {twice:?}");
+            let mut both_runs = [first, second].concat();
+            both_runs.sort();
+            assert_eq!(Some(&both_runs), pushed.as_ref(), "{stop_at}");
         } else {
             let ran = ran.unwrap();
             assert_eq!((ran.notes, ran.tasks, ran.skipped_existing), (3, 1, 2));
+            pushed = Some(labelled(queued(&vault)));
         }
         assert!(!vault.job(), "{stop_at}");
         let end = end_state(&vault, &task);
         let reference = reference.get_or_insert_with(|| end.clone());
         assert_eq!(&end, reference, "stopped at check {stop_at}");
-        for path in ["Ahmet.md", "Elif.md", "journal/2026-01-01.md"] {
-            assert_eq!(upserts(&vault.e, &vault.id(path)), 1, "{stop_at}: {path}");
-        }
-        assert_eq!(upserts(&vault.e, &task), 1, "{stop_at}");
-        assert_eq!(
-            upserts(&vault.e, &both),
-            0,
-            "{stop_at}: a task holding both is left"
-        );
         assert_eq!(
             Value::Object(task_fields(&vault, &both)),
             json!({"Phone": "555", "mobile": "999"})
         );
-        assert_eq!(upserts(&vault.e, "person"), 1, "{stop_at}");
     }
+    // The uninterrupted run pushed each changed item once, and not the task holding both.
+    let pushed = pushed.expect("ran");
+    for item in [
+        "Ahmet.md",
+        "Elif.md",
+        "journal/2026-01-01.md",
+        "task",
+        "person",
+    ] {
+        let rows: Vec<_> = pushed.iter().filter(|(_, id)| id == item).collect();
+        assert_eq!(rows.len(), 1, "{item}: {pushed:?}");
+    }
+    assert!(
+        !pushed.iter().any(|(_, id)| id == "both" || id == "Can.md"),
+        "{pushed:?}"
+    );
     let (files, task, schema, names) = reference.expect("ran");
     assert!(
         files[..2]

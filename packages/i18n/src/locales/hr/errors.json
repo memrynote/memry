@@ -385,6 +385,7 @@
     "cycle": "#{parent} već preuzima svoja polja iz ove oznake",
     "unreadableSchema": "Novija verzija Memryja promijenila je ovu oznaku. Ažurirajte Memry da biste je uređivali",
     "relationTargetRequired": "Odaberite na koju oznaku ova relacija upućuje",
-    "renameRunning": "Još jedno preimenovanje polja se privodi kraju ({from} u {to}). Pokušajte ponovno kad završi."
+    "renameRunning": "Još jedno preimenovanje polja se privodi kraju ({from} u {to}). Pokušajte ponovno kad završi.",
+    "renameTaskUnreadable": "Preimenovanje polja {from} u {to} ne može se nastaviti: ova verzija Memryja ne može pročitati ove zadatke: {tasks}. Ažurirajte Memry pa pokušajte ponovno."
   }
 }
