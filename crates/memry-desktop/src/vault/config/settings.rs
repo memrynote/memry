@@ -36,10 +36,11 @@ use super::{
     ConfigError, VaultConfig, VaultConfigPatch, read_vault_config, read_vault_config_strict,
     unreadable, write_vault_config,
 };
+use crate::locks::Refused;
 use crate::vault::consumer::VaultTier;
 use crate::vault::journal_format::{normalize_journal_date_format, normalize_journal_folder};
 use crate::vault::journal_rename::{
-    JournalRename, JournalVault, is_complete_journal_format,
+    JournalRename, JournalVault, RenameError, is_complete_journal_format,
     rename_journals_for_format_change_checked, revert_journal_renames,
 };
 
@@ -71,6 +72,10 @@ pub enum SettingsError {
     IncompleteFormat,
     #[error("the journal folder could not be listed: {0}")]
     JournalUnlisted(io::Error),
+    /// A lock covers a day the new format would rename, or the name it would take: nothing was
+    /// renamed (`journal-format-migration.ts`).
+    #[error("{}", Refused::Note.message())]
+    Locked,
     /// `left` days could not take their names in the new format; the others went back.
     #[error("{left} journal days could not be renamed to the new date format")]
     DaysNotRenamed { left: usize },
@@ -185,7 +190,10 @@ fn renamed_for(
         format,
         between,
     )
-    .map_err(SettingsError::JournalUnlisted)?;
+    .map_err(|error| match error {
+        RenameError::Unlisted(error) => SettingsError::JournalUnlisted(error),
+        RenameError::Locked => SettingsError::Locked,
+    })?;
     let left = renamed.skipped + renamed.failed;
     if left > 0 {
         put_back(at, current, &renamed.moved);

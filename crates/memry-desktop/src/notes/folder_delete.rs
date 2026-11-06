@@ -39,7 +39,7 @@ use std::path::Path;
 use super::error::{NotesError, SCOPE};
 use super::folder_move::within;
 use super::folders::{tree_filter, vault_folder};
-use super::moves::plain_folders;
+use super::moves::{disk_spelling, plain_folders};
 use super::service::NotesService;
 use crate::locks::Locks;
 use crate::session::OpenVault;
@@ -65,7 +65,7 @@ impl NotesService {
         let root = open.path.as_path();
         let folder = vault_folder(root, path)?;
         // Nothing locked goes with the folder.
-        Locks::of(open).refuse_folder_tree(&folder)?;
+        Locks::of(open).refuse_folder_tree(&disk_spelling(root, &folder))?;
         check(root, &folder)?;
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;

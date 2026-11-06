@@ -62,7 +62,7 @@ use memry_core::domain::notes::link_rewrite::LinkNames;
 
 use super::error::{NotesError, SCOPE};
 use super::folders::{respells_a_sibling, tree_filter, vault_folder};
-use super::moves::{Named, identity_failed, plain_folders};
+use super::moves::{Named, disk_spelling, identity_failed, plain_folders};
 use super::owed_moves::keeps_kind_followed;
 use super::service::NotesService;
 use crate::journal::folder_follow::followed_journal_folder;
@@ -154,9 +154,10 @@ impl NotesService {
         let root = open.path.as_path();
         let (from, to) = (vault_folder(root, old)?, vault_folder(root, new)?);
         // Nothing locked moves with the folder, and nothing moves into a locked one.
+        // Each as the disk spells it: `ARCHIVE` names a locked `Archive`.
         let locks = Locks::of(open);
-        locks.refuse_folder_tree(&from)?;
-        locks.refuse_parent_folder(&to)?;
+        locks.refuse_folder_tree(&disk_spelling(root, &from))?;
+        locks.refuse_parent_folder(&disk_spelling(root, &to))?;
         if from == to {
             return Ok(());
         }

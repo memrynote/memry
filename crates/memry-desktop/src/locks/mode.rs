@@ -4,8 +4,8 @@
 //! reads and writes as Node does: the owner write bit, so one recorded mode serves both.
 //!
 //! Locking records the file's bits, then clears every write bit; lifting the lock gives the
-//! recorded bits back. A record belongs to one file, named by its identity (`(dev, ino)` on
-//! Unix, volume serial and file index on Windows, with the birth time). The app's own writes replace the file and
+//! recorded bits back. A record belongs to one file, named by its identity (the inode on Unix,
+//! the file index on Windows, with the birth time). The app's own writes replace the file and
 //! keep the record. A file the app did not just write that is another file than the record's,
 //! or is found writable with other bits, was added or replaced from outside, so its bits
 //! replace the record: unlocking never gives a file more than it had.
@@ -25,9 +25,11 @@ pub(super) struct Found {
 }
 
 impl Found {
-    /// The identity is the volume and file and, where the volume keeps one, the birth time
+    /// The identity is the file on its volume and, where the volume keeps one, its birth time
     /// (Electron's `ino:birthtimeMs`): ext4 hands a file deleted and made again from outside
-    /// its old inode at once, and only the birth time tells the two apart.
+    /// its old inode at once, and only the birth time tells the two apart. Not the volume: a
+    /// drive mounted again gets another device number, and its locked files would read as
+    /// replaced, each keeping its read-only bits after an unlock.
     pub fn of(file: &File) -> std::io::Result<Self> {
         let meta = file.metadata()?;
         let born = meta
@@ -37,7 +39,7 @@ impl Found {
             .map_or_else(String::new, |since| format!(":{}", since.as_nanos()));
         Ok(Self {
             mode: node_mode(&meta),
-            identity: format!("{}{born}", file_identity(file)?.0),
+            identity: format!("{}{born}", file_identity(file)?.0.file()),
         })
     }
 }
@@ -175,4 +177,30 @@ fn set_mode(root: &std::path::Path, rel: &str, file: &File, mode: u32) -> Result
     permissions.set_readonly(mode & 0o200 == 0);
     std::fs::set_permissions(path, permissions)?;
     Ok(())
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use std::os::unix::fs::MetadataExt;
+    use std::time::UNIX_EPOCH;
+
+    use super::Found;
+
+    /// The identity names the file and its birth, never the device: a volume mounted again keeps
+    /// its files' records.
+    #[test]
+    fn a_files_identity_is_its_inode_and_birth_time_without_its_device() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("Plan.md");
+        std::fs::write(&path, "text").unwrap();
+        let file = std::fs::File::open(&path).unwrap();
+        let meta = file.metadata().unwrap();
+        let born = meta.created().ok().map_or_else(String::new, |time| {
+            format!(":{}", time.duration_since(UNIX_EPOCH).unwrap().as_nanos())
+        });
+
+        let found = Found::of(&file).unwrap();
+
+        assert_eq!(found.identity, format!("{}{born}", meta.ino()));
+    }
 }

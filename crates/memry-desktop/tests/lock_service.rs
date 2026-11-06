@@ -21,10 +21,14 @@ use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::vault::config::VaultConfigPatch;
+use memry_desktop::vault::config::settings::{SettingsError, update_vault_settings};
+use serde_json::json;
 
 use crate::notes_folder_move::note;
 use crate::notes_link_rewrite::{id_at, opened, row_hash};
 use crate::vault_env::{Env, env, indexed};
+use crate::vault_settings::{opened_keeping, stored};
 
 const NOTE: &str = "The body.\n";
 
@@ -246,6 +250,116 @@ fn a_locked_journal_day_is_not_deleted() {
     assert_eq!(id_at(&e, "journal/2026-01-05.md"), id);
 }
 
+/// The caller's spelling of a folder is not the one the refusal reads: the operation lands on
+/// the disk's (`folder_on_disk`), so `ARCHIVE` is the locked `Archive` on every volume.
+#[test]
+fn another_spelling_of_a_locked_folder_takes_no_note_moved_in() {
+    let (e, notes, _) = opened(&[("Plan.md", NOTE), ("Archive/Old.md", NOTE)]);
+    let open = e.session.current().unwrap();
+    let plan = id_at(&e, "Plan.md");
+    lock(&e, TargetKind::Folder, "Archive");
+
+    assert_refused(
+        notes.move_to_folder(&open, &plan, "ARCHIVE"),
+        "folder_locked",
+    );
+    assert_eq!(e.read("Plan.md"), NOTE);
+    assert_eq!(id_at(&e, "Plan.md"), plan);
+}
+
+#[test]
+fn another_spelling_of_a_locked_folder_is_not_renamed() {
+    let (e, notes, _) = opened(&[("Archive/Old.md", NOTE)]);
+    let open = e.session.current().unwrap();
+    lock(&e, TargetKind::Folder, "Archive");
+
+    assert_refused(
+        notes.rename_folder(&open, "ARCHIVE", "Attic", |_| {}),
+        "folder_locked",
+    );
+    assert_eq!(e.read("Archive/Old.md"), NOTE);
+    assert!(!e.vault.join("Attic").exists());
+}
+
+#[test]
+fn another_spelling_of_a_locked_folder_takes_no_new_note() {
+    let (e, notes, _) = opened(&[("Archive/Old.md", NOTE)]);
+    let open = e.session.current().unwrap();
+    lock(&e, TargetKind::Folder, "Archive");
+    let rows = e.rows();
+
+    assert_refused(notes.create(&open, note("New", "ARCHIVE")), "folder_locked");
+    assert!(!e.vault.join("Archive/New.md").exists());
+    assert!(!e.vault.join("ARCHIVE/New.md").exists());
+    assert_eq!(e.rows(), rows);
+}
+
+#[test]
+fn a_folder_inside_a_locked_folder_is_not_deleted() {
+    let (e, _, store) = opened(&[("Archive/Sub/Kept.md", NOTE)]);
+    let notes = NotesService::with_trash(e.tier.clone(), store, no_trash);
+    let open = e.session.current().unwrap();
+    lock(&e, TargetKind::Folder, "Archive");
+
+    assert_refused(notes.delete_folder(&open, "Archive/Sub"), "folder_locked");
+    assert_eq!(e.read("Archive/Sub/Kept.md"), NOTE);
+}
+
+fn day_format(e: &Env, to: &str) -> Result<(), SettingsError> {
+    let patch = VaultConfigPatch {
+        journal_date_format: Some(to.to_owned()),
+        ..VaultConfigPatch::default()
+    };
+    update_vault_settings(&e.vault, Some((&e.core(), &e.tier)), patch, |_| {
+        panic!("announced")
+    })
+    .map(drop)
+}
+
+fn assert_format_refused(e: &Env, refused: Result<(), SettingsError>) {
+    let error = refused.expect_err("the lock refuses the format");
+    assert!(matches!(error, SettingsError::Locked), "{error:?}");
+    assert_eq!(error.to_string(), "The owner made this note read-only.");
+    assert_eq!(stored(&e.vault)["journalDateFormat"], "YYYY-MM-DD");
+    assert_eq!(e.read("journal/2025-01-02.md"), "A day\n");
+}
+
+const JOURNAL: &str = "journal/2025-01-02.md";
+
+/// Electron's format change refuses before it renames anything when a day is locked
+/// (`journal-format-migration.ts`).
+#[test]
+fn a_date_format_change_leaves_a_locked_day_and_is_refused() {
+    let config = json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD" });
+    let (e, _) = opened_keeping(
+        config,
+        &[(JOURNAL, "A day\n"), ("journal/2025-01-03.md", "B\n")],
+    );
+    lock(&e, TargetKind::Note, &id_at(&e, JOURNAL));
+
+    assert_format_refused(&e, day_format(&e, "YYYY-MM-DD dddd"));
+    assert_eq!(e.read("journal/2025-01-03.md"), "B\n", "no day renamed");
+}
+
+#[test]
+fn a_date_format_change_moves_no_day_of_a_locked_journal_folder() {
+    let config = json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD" });
+    let (e, _) = opened_keeping(config, &[(JOURNAL, "A day\n")]);
+    lock(&e, TargetKind::Folder, "journal");
+
+    assert_format_refused(&e, day_format(&e, "YYYY/YYYY-MM-DD"));
+    assert!(!e.vault.join("journal/2025").exists());
+}
+
+#[test]
+fn a_date_format_change_moves_no_day_into_a_locked_folder() {
+    let config = json!({ "journalFolder": "journal", "journalDateFormat": "YYYY-MM-DD" });
+    let (e, _) = opened_keeping(config, &[(JOURNAL, "A day\n")]);
+    lock(&e, TargetKind::Folder, "journal/2025");
+
+    assert_format_refused(&e, day_format(&e, "YYYY/YYYY-MM-DD"));
+}
+
 /// An open vault over `files` whose opens run the lock guard, its first walk done.
 fn guarded(files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
@@ -360,6 +474,39 @@ fn a_file_replaced_from_outside_gets_back_only_the_bits_it_came_with() {
     reopen(&mut e);
 
     assert_eq!(mode(&e, "Plan.md"), 0o400);
+}
+
+/// The app's own write replaces a locked file (a new inode) and keeps its record, re-keyed to the
+/// new file: an unlock after the next open gives the bits back. Two locked files, so a copied
+/// vault's adoption (all or none) cannot stand in for the re-key.
+#[cfg(unix)]
+#[test]
+fn a_locked_file_the_app_wrote_unlocks_to_its_recorded_bits() {
+    let (mut e, _) = guarded(&[("Plan.md", NOTE), ("Other.md", NOTE)]);
+    let (plan, other) = (id_at(&e, "Plan.md"), id_at(&e, "Other.md"));
+    set_mode(&e, "Plan.md", 0o640);
+    lock(&e, TargetKind::Note, &plan);
+    lock(&e, TargetKind::Note, &other);
+    reopen(&mut e);
+    assert_eq!(mode(&e, "Plan.md"), 0o440);
+
+    {
+        let open = e.session.current().unwrap();
+        let path = e.vault.join("Plan.md");
+        locks::Locks::of(&open)
+            .write_through("Plan.md", NOTE, || {
+                let aside = e.vault.join(".Plan.md.tmp");
+                fs::write(&aside, NOTE)?;
+                fs::rename(&aside, &path)
+            })
+            .unwrap();
+    }
+    assert_eq!(mode(&e, "Plan.md"), 0o440);
+    reopen(&mut e);
+    unlock(&e, TargetKind::Note, &plan);
+    reopen(&mut e);
+
+    assert_eq!(mode(&e, "Plan.md"), 0o640);
 }
 
 /// Copies `from` to `to`, files and folders, every file a new one with its permissions.

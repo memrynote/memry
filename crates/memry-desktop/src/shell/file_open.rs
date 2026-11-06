@@ -388,10 +388,11 @@ fn open_read(path: &Path) -> io::Result<File> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileId(u64, u128);
 
-/// `<volume>:<file>`, the identity a locked file's recorded mode belongs to (`locks::mode`).
-impl std::fmt::Display for FileId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.0, self.1)
+impl FileId {
+    /// The file on its volume, without the volume: a locked file's recorded mode belongs to it
+    /// (`locks::mode`) wherever the volume is mounted.
+    pub fn file(&self) -> u128 {
+        self.1
     }
 }
 

@@ -52,8 +52,12 @@
 //! removes, whose going would otherwise stand for the notes the watcher last saw in it. A try
 //! that fails withdraws its record before the next, so a delete by another program while the
 //! move waits is still reported. A record ends when the watcher sees its path, or a path below
-//! it, again. Electron stops its watcher for the pass instead. The refusal when a lock covers a file
-//! is Step 14's (#3531).
+//! it, again. Electron stops its watcher for the pass instead.
+//!
+//! A lock refuses the whole pass before anything moves ([`RenameError::Locked`]): a day it would
+//! rename is locked, or sits in a locked folder, or a rename would move one into a locked folder.
+//! A locked day keeps its name, and a partial pass would split the journal across two formats
+//! (`journal-format-migration.ts`).
 
 use std::fs;
 use std::io;
@@ -68,6 +72,7 @@ use super::file_move::FileMove;
 use super::journal_format::{normalize_journal_date_format, normalize_journal_folder};
 use super::paths::{resolve_vault_file, safe_join};
 use super::watch::EchoGuard;
+use crate::locks::{Locks, Refused};
 use crate::shell::file_open::Resolution;
 use crate::web::extract::utils::js;
 
@@ -79,6 +84,17 @@ pub use plan::{
 };
 
 const SCOPE: &str = "journal_rename";
+
+/// Why no day was renamed.
+#[derive(Debug, thiserror::Error)]
+pub enum RenameError {
+    #[error("the journal folder could not be listed: {0}")]
+    Unlisted(#[from] io::Error),
+    /// A lock covers a day the pass would rename, or the name it would take. Electron answers
+    /// `noteLockedError` for both.
+    #[error("{}", Refused::Note.message())]
+    Locked,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct JournalRenameResult {
@@ -105,7 +121,7 @@ pub fn rename_journals_for_format_change(
     journal_folder: &str,
     old_format: &str,
     new_format: &str,
-) -> io::Result<JournalRenameResult> {
+) -> Result<JournalRenameResult, RenameError> {
     rename_journals_for_format_change_checked(
         at,
         journal_folder,
@@ -124,7 +140,7 @@ pub fn rename_journals_for_format_change_checked(
     old_format: &str,
     new_format: &str,
     between: &mut dyn FnMut(),
-) -> io::Result<JournalRenameResult> {
+) -> Result<JournalRenameResult, RenameError> {
     let mut result = JournalRenameResult::default();
     let folder = normalize_journal_folder(journal_folder);
     if folder.is_empty() {
@@ -152,6 +168,17 @@ pub fn rename_journals_for_format_change_checked(
     if plan.renames.is_empty() {
         log_skipped(&plan.skipped);
         return Ok(result);
+    }
+    let locks = Locks::new(at.root, at.vault);
+    for rename in &plan.renames {
+        for name in [&rename.from, &rename.to] {
+            let locked = locks
+                .is_path_locked(&format!("{}/{name}", journal.folder))
+                .map_err(io::Error::other)?;
+            if locked {
+                return Err(RenameError::Locked);
+            }
+        }
     }
     let rows = at.tier.rows();
     let session = match rows.session_for(at.vault) {

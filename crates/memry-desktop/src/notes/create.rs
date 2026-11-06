@@ -50,6 +50,7 @@ use serde_json::{Map, Value};
 
 use super::error::{NotesError, SCOPE};
 use super::frontmatter::{FileFields, file_fields, is_reserved_key, new_file_frontmatter};
+use super::moves::disk_spelling;
 use super::read;
 use super::service::NotesService;
 use super::view::{NoteView, SizeClass};
@@ -167,8 +168,9 @@ impl NotesService {
         let rel = free_path(&lane, root, &note)?;
         let folder = rel.rsplit_once('/').map(|(folder, _)| folder);
         // The folder the file lands in, the default note folder too (`assertFolderWritable` and
-        // Electron's file guard on the new path).
-        Locks::of(open).refuse_folder(folder.unwrap_or(""))?;
+        // Electron's file guard on the new path), as the disk spells it: `ARCHIVE` names a
+        // locked `Archive`.
+        Locks::of(open).refuse_folder(&disk_spelling(root, folder.unwrap_or("")))?;
         let frontmatter = new_file_frontmatter(&note.tags, &note.properties);
         let output = write_markdown_note(&frontmatter, &note.content)?;
         let hash = content_hash(&output);
