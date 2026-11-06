@@ -22,7 +22,8 @@ use crate::windows::startup_error;
 
 /// Watches the page of every app window, wherever the window is built: a webview process that
 /// ends releases the flush waits on the page and recovers it, and a new document stops the
-/// flushes until it listens (`flush_ready`). The only process-failure subscription on Windows and
+/// flushes until it listens (`flush_ready`). A page that closes or starts a new document lets go
+/// of its large-file leases. The only process-failure subscription on Windows and
 /// Linux; macOS reports through the builder hook [`on_web_content_process_terminate`].
 pub fn plugin() -> TauriPlugin<Wry> {
     tauri::plugin::Builder::new("memry-page-watch")
@@ -35,6 +36,7 @@ pub fn plugin() -> TauriPlugin<Wry> {
         .on_page_load(|webview, payload| {
             if matches!(payload.event(), PageLoadEvent::Started) && is_app_label(webview.label()) {
                 document_replaced(webview.app_handle(), webview.label());
+                crate::commands::large_file::release_page(webview.app_handle(), webview.label());
             }
         })
         .on_event(|app, event| {
@@ -45,6 +47,7 @@ pub fn plugin() -> TauriPlugin<Wry> {
             } = event
             {
                 forget(app, label);
+                crate::commands::large_file::release_page(app, label);
             }
         })
         .build()

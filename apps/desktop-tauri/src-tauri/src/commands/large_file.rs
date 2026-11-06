@@ -10,7 +10,7 @@ use memry_desktop::large_file::{
     LargeFileSearchInput, LargeFileSearchProgress, LargeFileSearchResult, LargeFiles, ProgressSink,
 };
 use tauri::ipc::Channel;
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, Webview, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
@@ -44,12 +44,13 @@ fn into_sink<T: serde::Serialize + Clone + Send + Sync + 'static>(
     })
 }
 
-/// `notes:large-file-open`: the note's file, opened for paged reads. Answers at once; the index
-/// scan reports on `on_event`.
+/// `notes:large-file-open`: the note's file, opened for paged reads by the calling page. Answers
+/// at once; the index scan reports on `on_event`.
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_large_file_open(
     app: AppHandle<Wry>,
+    webview: Webview<Wry>,
     note_id: String,
     on_event: Channel<LargeFileEvent>,
 ) -> Result<LargeFileOpenResult, CommandError> {
@@ -57,7 +58,7 @@ pub async fn notes_large_file_open(
         let vault = open_vault(&app)?;
         let sink: EventSink = into_sink(on_event);
         large_files(&app)?
-            .open(&vault, &note_id, sink)
+            .open(&vault, &note_id, webview.label(), sink)
             .map_err(|error| CommandError::from_core(&error))
     })
     .await
@@ -108,4 +109,11 @@ pub async fn notes_large_file_close(
         Ok(())
     })
     .await
+}
+
+/// A page that closed or started a new document never closes its leases: they go now.
+pub fn release_page(app: &AppHandle<Wry>, label: &str) {
+    if let Some(files) = app.try_state::<Arc<LargeFiles>>() {
+        files.release_owner(label);
+    }
 }

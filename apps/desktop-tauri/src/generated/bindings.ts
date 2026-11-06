@@ -192,8 +192,8 @@ export const commands = {
 	/**  `notes:large-file-close`: releases one open's lease. */
 	notesLargeFileClose: (sessionId: string) => __TAURI_INVOKE<null>("notes_large_file_close", { sessionId }),
 	/**
-	 *  `notes:large-file-open`: the note's file, opened for paged reads. Answers at once; the index
-	 *  scan reports on `on_event`.
+	 *  `notes:large-file-open`: the note's file, opened for paged reads by the calling page. Answers
+	 *  at once; the index scan reports on `on_event`.
 	 */
 	notesLargeFileOpen: (noteId: string, onEvent: Channel<LargeFileEvent>) => __TAURI_INVOKE<LargeFileOpenResult>("notes_large_file_open", { noteId, onEvent }),
 	/**  `notes:large-file-read-lines`: one page of lines, or `null` once the session is gone. */
