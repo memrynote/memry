@@ -190,6 +190,8 @@ mod dryoc_parity;
 mod editor_concurrency;
 #[path = "editor_every_writer.rs"]
 mod editor_every_writer;
+#[path = "editor_large_file.rs"]
+mod editor_large_file;
 #[path = "editor_locked_refuses.rs"]
 mod editor_locked_refuses;
 #[path = "editor_open_apply.rs"]

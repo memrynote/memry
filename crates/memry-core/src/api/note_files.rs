@@ -118,6 +118,26 @@ impl NoteFiles {
             .call_blocking(move |conn| owed_file_body::clear(conn, &note_id))
     }
 
+    /// Whether the last read of the note's file found it large-file class
+    /// ([`note_files::is_large_file`]).
+    pub fn is_large_file(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .read_blocking(move |conn| note_files::is_large_file(conn, &note_id))
+    }
+
+    /// Records the class a read of the note's file just measured; the editor opens a
+    /// large-file note read-only from it. Takes the writer only when the class changed, so a
+    /// read that records the class it found costs no write.
+    pub fn record_large_file(&self, note_id: &str, large: bool) -> Result<(), StorageError> {
+        if self.is_large_file(note_id)? == large {
+            return Ok(());
+        }
+        let note_id = note_id.to_owned();
+        self.db
+            .call_blocking(move |conn| note_files::set_large_file(conn, &note_id, large))
+    }
+
     pub fn list_missing_candidates(&self) -> Result<Vec<NoteFile>, StorageError> {
         self.db.read_blocking(note_files::list_missing_candidates)
     }

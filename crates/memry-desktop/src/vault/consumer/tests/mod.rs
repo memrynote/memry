@@ -534,6 +534,7 @@ mod facts;
 mod flood;
 mod hash_rule;
 mod lane;
+mod large_class;
 mod late_close;
 mod outside_edit;
 mod pipeline;

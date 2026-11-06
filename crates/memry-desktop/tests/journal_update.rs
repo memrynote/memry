@@ -808,3 +808,33 @@ fn a_save_of_a_locked_day_is_refused_as_note_locked_and_changes_nothing() {
     assert_eq!(e.read(DAY_FILE), NEW_FILE);
     assert_eq!(queued(&e).len(), before);
 }
+
+/// A day's own writes record its file's class (#3531 14c-2): its create and its save skip
+/// their watcher echo, and no read of a day records it. A day with one block past the bound
+/// opens read-only, and a save that shrinks it makes it editable again.
+#[test]
+fn a_day_written_past_the_block_bound_and_back_records_its_class() {
+    use memry_core::markdown::shared::markdown_class::NOTE_MAX_BLOCK_BYTES;
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    let large = || e.core().note_files().is_large_file(ID).unwrap();
+    let day = NewDay {
+        date: DAY.into(),
+        content: "x".repeat(NOTE_MAX_BLOCK_BYTES + 1),
+        tags: Vec::new(),
+        properties: serde_json::Map::new(),
+    };
+    notes.create_day(&open, day).unwrap();
+    assert!(large(), "made past the bound");
+
+    notes
+        .update_day(
+            &open,
+            DayUpdate {
+                content: Some("Short again.".into()),
+                ..update(DAY)
+            },
+        )
+        .unwrap();
+    assert!(!large(), "shrunk by the save");
+}
