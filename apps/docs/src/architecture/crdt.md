@@ -838,6 +838,13 @@ While a write-back is queued or mid-write the `.md` file is knowingly behind the
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
 results and the file on disk catch up when the pass runs.
 
+Opening a note reconciles its task checkboxes only when the file's hash differs from the
+index's `content_hash`, that is, when something outside the app edited it. A file the app
+wrote itself can still say `- [ ]` for a task completed from the Tasks view or on a synced
+peer, because nothing rewrites the note until it is open in an editor. Reconciling from
+those bytes reopened the done task on every open, and sync spread the reopen to every
+device (`getNoteById` in `src/main/vault/notes-crud.ts`).
+
 ## Hybrid Sync Model
 
 Notes flow through **both** sync paths:
