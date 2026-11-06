@@ -18,13 +18,17 @@
 //! back; Electron logs these and saves. So does a config that cannot be read, whose format and
 //! folder the update would otherwise take from the defaults.
 //!
-//! Not here yet (Step 13m-7b): a change of the journal folder or the exclude patterns, each of
-//! which comes with its own work in Electron (the folder followed, the watcher restarted). Such a
-//! change is refused ([`SettingsError::NotPorted`]); the same value again is no change and passes.
+//! The journal folder moved in the app with a folder that holds it takes the setting along
+//! ([`JournalFollow`], `notes::folder_move`), as Electron's `followJournalFolderMove` does.
+//!
+//! Not here yet (Step 13m-7b): a change of the journal folder or the exclude patterns in
+//! Settings, each of which comes with its own work in Electron (the days moved, the watcher
+//! restarted). Such a change is refused ([`SettingsError::NotPorted`]); the same value again is
+//! no change and passes.
 
 use std::io;
 use std::path::Path;
-use std::sync::{Arc, Mutex, PoisonError, RwLock, RwLockReadGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock, RwLockReadGuard};
 
 use memry_core::api::vault::Vault;
 
@@ -200,6 +204,32 @@ fn put_back(at: JournalVault<'_>, current: &VaultConfig, moved: &[JournalRename]
             left = left.len(),
             "day files kept the names of a date format that was not saved"
         );
+    }
+}
+
+/// The settings' update lock as a move of the journal folder in the app holds it, from before
+/// the rows' lane until the setting follows the folder (`notes::folder_move`, and the open that
+/// finishes such a move, `vault::app_move`): one update at a time. A day create names its file
+/// under the lane (`journal::write`), so the lane orders it after the save.
+pub(crate) struct JournalFollow {
+    _updates: MutexGuard<'static, ()>,
+}
+
+impl JournalFollow {
+    pub(crate) fn hold() -> Self {
+        Self {
+            _updates: UPDATES.lock().unwrap_or_else(PoisonError::into_inner),
+        }
+    }
+
+    /// Saves `folder` as the journal folder (`followJournalFolder`) and answers the settings
+    /// after it.
+    pub(crate) fn save(&self, root: &Path, folder: &str) -> Result<VaultConfig, ConfigError> {
+        let patch = VaultConfigPatch {
+            journal_folder: Some(folder.to_owned()),
+            ..VaultConfigPatch::default()
+        };
+        write_vault_config(root, &patch).map(normalized)
     }
 }
 

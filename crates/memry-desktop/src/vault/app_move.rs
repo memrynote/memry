@@ -10,10 +10,19 @@
 //! with it.
 //!
 //! A folder the app moved (`notes::folder_move`) records its own move beside its notes'. When
-//! the folder is at its new path and gone from the old one, the open finishes it as the live
-//! move would have: the notes found moved, the folder's `folder_config` records and its manual
+//! the folder moved on disk (`moved_on_disk`: it is at its new path, and gone from the old one
+//! or every note the move carried is at its new path and gone from its old one), the open
+//! finishes it as the live move would have: the notes found moved, the folder's `folder_config` records and its manual
 //! order follow in one transaction ([`Lane::folder_moved_by_app`]). Otherwise it forgets the
 //! folder's record, and each note's record is settled on its own.
+//!
+//! A folder move that carried the journal folder had its setting follow it once the folder was
+//! on disk (`notes::folder_move`). A crash before that save leaves the setting at the old folder:
+//! [`follow_interrupted`] saves the followed folder before the lane is taken, so the folder's
+//! days finish their moves as days, and a day made later lands beside them. Each note the move
+//! carried keeps its kind as the live move read it (`keeps_kind_followed`). An open that cannot
+//! read the settings leaves the folder's record and its notes' for one that can; the moves its
+//! walk pairs meanwhile are owed, and settle by the same rule (`settle_followed`).
 //!
 //! A folder the app deleted (`notes::folder_delete`) records its delete the same way. When the
 //! folder is gone, the open runs the delete's transaction for the notes still listed under it;
@@ -35,12 +44,21 @@ use memry_core::domain::notes::app_move::{
 use memry_core::domain::notes::folder_delete::FolderDeleteRecorded;
 use unicode_normalization::UnicodeNormalization;
 
+use super::config::{VaultConfig, read_vault_config_strict};
 use super::consumer::identity::{IdentityCtx, NoteIdentity};
 use super::consumer::rows::Lane;
 use super::file_move::{FileMove, FileMoveError};
+use super::journal_format::JournalDays;
 use super::path_key::folded_key;
 use super::watch::EchoGuard;
+use crate::journal::folder_follow::followed_journal_folder;
+use crate::notes::owed_moves::{keeps_kind_followed, settle_followed};
 use crate::shell::file_open::is_plain_relative;
+
+mod follow;
+
+pub(crate) use follow::follow_interrupted;
+use follow::{carries, moved_on_disk};
 
 const SCOPE: &str = "app_move";
 
@@ -170,7 +188,7 @@ pub(crate) fn finish_interrupted(
     lane: &mut Lane<'_>,
     identity: &dyn NoteIdentity,
 ) {
-    finish_folders(ctx, writer, lane, identity);
+    let deferred = finish_folders(ctx, writer, lane, identity);
     finish_folder_deletes(ctx.root, writer, lane);
     let pending = match writer.pending_app_moves() {
         Ok(pending) => pending,
@@ -183,6 +201,10 @@ pub(crate) fn finish_interrupted(
     };
     for (note_id, recorded) in pending {
         let settled = match recorded {
+            // Its folder's record waits, and so does it.
+            Recorded::Move(pending) if deferred.iter().any(|folder| carries(folder, &pending)) => {
+                continue;
+            }
             Recorded::Move(pending) => settle(ctx, writer, lane, identity, &note_id, &pending),
             Recorded::Unreadable(why) => Err(format!(
                 "another version of the app recorded it, and this one cannot read it: {why}"
@@ -203,30 +225,39 @@ pub(crate) fn finish_interrupted(
     }
 }
 
-/// Settles each folder's recorded app move, before its notes' are settled one by one.
+/// Settles each folder's recorded app move, before its notes' are settled one by one. A move
+/// the settings do not say how to finish waits, with its notes' records, for an open that reads
+/// them: without the journal setting each day and dated note it carried would be left owed, and
+/// the setting would never follow. The moves that wait.
 fn finish_folders(
     ctx: &IdentityCtx<'_>,
     writer: &NotesWriter,
     lane: &mut Lane<'_>,
     identity: &dyn NoteIdentity,
-) {
+) -> Vec<PendingFolderMove> {
     let read = writer
         .pending_folder_moves()
         .and_then(|folders| Ok((folders, writer.pending_app_moves()?)));
     let (folders, notes) = match read {
         Ok(read) => read,
         Err(error) => {
-            return tracing::error!(
+            tracing::error!(
                 scope = SCOPE,
                 "the interrupted folder moves are unread; they wait for the next open: {error}"
             );
+            return Vec::new();
         }
     };
+    let mut deferred = Vec::new();
     for recorded in folders {
         let settled = match recorded {
-            FolderRecorded::Move(folder) => {
-                settle_folder(ctx, writer, lane, identity, &folder, &notes)
-            }
+            FolderRecorded::Move(folder) => match read_vault_config_strict(ctx.root) {
+                Ok(config) => settle_folder(ctx, writer, lane, identity, &folder, &notes, &config),
+                Err(why) => {
+                    deferred.push(folder);
+                    Err(format!("the vault settings cannot be read: {why}"))
+                }
+            },
             FolderRecorded::Unreadable(why) => Err(format!(
                 "another version of the app recorded it, and this one cannot read it: {why}"
             )),
@@ -239,6 +270,7 @@ fn finish_folders(
             ),
         }
     }
+    deferred
 }
 
 fn settle_folder(
@@ -248,27 +280,52 @@ fn settle_folder(
     identity: &dyn NoteIdentity,
     folder: &PendingFolderMove,
     notes: &[(String, Recorded)],
+    config: &VaultConfig,
 ) -> Result<&'static str, String> {
     let (from, to) = (folder.from.as_str(), folder.to.as_str());
-    if (listed(ctx.root, to)?, listed(ctx.root, from)?) != (true, false) {
+    if !moved_on_disk(ctx.root, folder, notes)? {
         lane.forget_folder_move(writer, from, to)
             .map_err(|error| error.to_string())?;
         return Ok("forgot an interrupted folder move that had not moved its folder");
+    }
+    // The journal setting that followed the folder, and the one it followed from.
+    let followed = followed_journal_folder(&config.journal_folder, to, from).map(|before| {
+        let format = &config.journal_date_format;
+        (
+            JournalDays::new(&before, format),
+            JournalDays::new(&config.journal_folder, format),
+        )
+    });
+    if let Some(days) = &followed {
+        let walked: Vec<(&str, &str, &str)> = notes
+            .iter()
+            .filter_map(|(note_id, recorded)| match recorded {
+                Recorded::Move(pending) if carries(folder, pending) => Some((
+                    note_id.as_str(),
+                    pending.old_path.as_str(),
+                    pending.new_path.as_str(),
+                )),
+                _ => None,
+            })
+            .collect();
+        settle_followed(days, writer, &walked).map_err(|error| error.to_string())?;
     }
     let mut carried = Vec::new();
     for (note_id, recorded) in notes {
         let Recorded::Move(pending) = recorded else {
             continue;
         };
-        let carried_by_it = pending
-            .old_path
-            .strip_prefix(from)
-            .and_then(|rest| rest.strip_prefix('/'))
-            .is_some_and(|rest| pending.new_path == format!("{to}/{rest}"));
-        if carried_by_it && found(ctx.root, lane, note_id, pending) == Found::Moved {
-            let keeps_kind = identity
-                .keeps_kind(ctx, note_id, &pending.new_path)
-                .map_err(|error| error.to_string())?;
+        if carries(folder, pending) && found(ctx.root, lane, note_id, pending) == Found::Moved {
+            let keeps_kind = match &followed {
+                Some(days) => keeps_kind_followed(
+                    days,
+                    writer,
+                    note_id,
+                    (&pending.old_path, &pending.new_path),
+                ),
+                None => identity.keeps_kind(ctx, note_id, &pending.new_path),
+            }
+            .map_err(|error| error.to_string())?;
             carried.push((note_id.as_str(), pending, keeps_kind));
         }
     }

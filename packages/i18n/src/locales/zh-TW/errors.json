@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "此日期格式無法為每一天命名，因此未儲存。請包含年、月和日。",
     "journalDaysNotRenamed": "日期格式未變更，因為部分日誌日期無法依此格式重新命名（{count}）。可能已有檔案使用了某一天的新名稱。",
     "journalUnlisted": "無法讀取日誌資料夾，因此日期格式未變更。請確認你有權存取該資料夾。",
-    "settingsUnreadable": "無法讀取儲存庫設定檔（.memry/config.json）時，無法移動資料夾。請修正該檔案後再試一次。"
+    "settingsUnreadable": "無法讀取儲存庫設定檔（.memry/config.json）時，無法移動資料夾。請修正該檔案後再試一次。",
+    "settingsUnreadableDelete": "無法讀取儲存庫設定檔（.memry/config.json）時，無法刪除資料夾。請修正該檔案後再試一次。",
+    "settingsUnreadableJournalDay": "無法讀取儲存庫設定檔（.memry/config.json）時，無法建立日記日期。請修正該檔案後再試一次。"
   },
   "note": {
     "notFound": "找不到此筆記。它可能已被刪除。",

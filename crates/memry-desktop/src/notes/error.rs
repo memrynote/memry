@@ -95,12 +95,11 @@ pub enum NotesError {
     /// manager moved it first (#2531).
     #[error("the folder is not there anymore")]
     FolderNotFound,
-    /// The journal folder is, or is inside, the folder to move. Its setting would have to
-    /// follow it, which this version does not do yet.
-    #[error("the folder holds the journal folder, which cannot be moved yet")]
+    /// The journal folder is, or is inside, the folder to delete.
+    #[error("the folder holds the journal folder")]
     FolderHoldsJournal,
-    /// The vault's settings file cannot be read, so a folder move cannot tell whether the folder
-    /// holds the journal.
+    /// The vault's settings file cannot be read, so they do not say where the journal is: a
+    /// folder move or delete, or a day create, would act on the defaults instead.
     #[error("the vault settings file cannot be read: {0}")]
     SettingsUnreadable(String),
     /// The folder to delete is inside the journal folder (a year folder of a nested date

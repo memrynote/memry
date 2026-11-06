@@ -18,7 +18,9 @@
     "journalFormatIncomplete": "Format tanggal ini tidak dapat menamai setiap hari, jadi tidak disimpan. Sertakan tahun, bulan, dan hari.",
     "journalDaysNotRenamed": "Format tanggal tidak diubah karena beberapa hari jurnal tidak dapat diganti namanya ke format itu ({count}). Mungkin sebuah file sudah memakai nama baru salah satu hari.",
     "journalUnlisted": "Folder jurnal tidak dapat dibaca, jadi format tanggal tidak diubah. Periksa apakah Anda memiliki akses ke folder itu.",
-    "settingsUnreadable": "Folder tidak dapat dipindahkan selama file pengaturan brankas (.memry/config.json) tidak dapat dibaca. Perbaiki file itu, lalu coba lagi."
+    "settingsUnreadable": "Folder tidak dapat dipindahkan selama file pengaturan brankas (.memry/config.json) tidak dapat dibaca. Perbaiki file itu, lalu coba lagi.",
+    "settingsUnreadableDelete": "Folder tidak dapat dihapus selama file pengaturan brankas (.memry/config.json) tidak dapat dibaca. Perbaiki file itu, lalu coba lagi.",
+    "settingsUnreadableJournalDay": "Hari jurnal tidak dapat dibuat selama file pengaturan brankas (.memry/config.json) tidak dapat dibaca. Perbaiki file itu, lalu coba lagi."
   },
   "note": {
     "notFound": "Catatan ini tidak dapat ditemukan. Catatan mungkin telah dihapus.",
