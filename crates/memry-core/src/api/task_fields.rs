@@ -1,5 +1,5 @@
-//! A task's tag fields (§13.7.3.1): the read the detail draws and the one
-//! write that sets a value. Definitions are desktop's to edit; a value lives
+//! A task's tag fields (§13.7.3.1): the read the detail draws, the one
+//! write that sets a value, and desktop's read of which tasks hold which. Definitions are desktop's to edit; a value lives
 //! in the task's versioned `fields` map, not in note properties.
 
 use serde_json::Value;
@@ -9,6 +9,7 @@ use crate::api::task_records::TaskChange;
 use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
 use crate::domain::tag_fields::{self, TagFieldGroup};
+use crate::domain::task_records::FieldHolders;
 use crate::domain::{properties, task_activity, task_records, tasks};
 use crate::storage::repositories::sync_items;
 use crate::sync::versioned;
@@ -62,5 +63,13 @@ impl Tasks {
                 removed: Vec::new(),
             })
         })
+    }
+}
+
+/// Desktop's reads, not on the FFI surface: iOS edits no tag schema.
+impl Tasks {
+    /// Every live task's tags and filled fields ([`task_records::field_holders`]).
+    pub fn field_holders(&self) -> Result<FieldHolders, StorageError> {
+        self.db.read_blocking(task_records::field_holders)
     }
 }

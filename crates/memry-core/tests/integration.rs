@@ -196,6 +196,8 @@ mod editor_origin_fanout;
 mod external_feed;
 #[path = "field_merge_vectors.rs"]
 mod field_merge_vectors;
+#[path = "fold_chunks_store.rs"]
+mod fold_chunks_store;
 #[path = "header_tags.rs"]
 mod header_tags;
 #[path = "header_tags_untrusted.rs"]
@@ -364,6 +366,10 @@ mod tombstone_purge;
 mod unknown_fields;
 #[path = "unlinked_mentions.rs"]
 mod unlinked_mentions;
+#[path = "vault_locks.rs"]
+mod vault_locks;
+#[path = "vault_locks_schema.rs"]
+mod vault_locks_schema;
 #[path = "vectors.rs"]
 mod vectors;
 #[path = "versioned_keys_carry.rs"]
