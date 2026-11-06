@@ -315,6 +315,8 @@ export const commands = {
 	tagsEditSchema: (command: TagSchemaCommand) => __TAURI_INVOKE<TagSchemaCommandResultView>("tags_edit_schema", { command }),
 	/**  Every tag's resolved schema, the notes that are objects, and the ready-made tags. */
 	tagsGetSchemaSnapshot: () => __TAURI_INVOKE<TagSchemaSnapshotView>("tags_get_schema_snapshot"),
+	/**  What a schema change would reach, counted for its dialog. It writes no record. */
+	tagsPreviewImpact: (query: ImpactQuery) => __TAURI_INVOKE<ImpactView>("tags_preview_impact", { query }),
 	/**
 	 *  The objects whose title matches the query, of one tag and the tags extending it or of every
 	 *  tag with fields.
@@ -887,6 +889,12 @@ export type HeatmapEntryView = {
 	characterCount: number,
 	level: number,
 };
+
+/**  `ImpactQuery`. */
+export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | { kind: "rename-field"; name: string } | { kind: "delete-tag"; tag: string } | { kind: "set-extends"; tag: string; parent: string | null } | { kind: "become-objects"; tag: string };
+
+/**  `ImpactResult`. */
+export type ImpactView = { kind: "remove-field"; filled: number; empty: number } | { kind: "rename-field"; notes: number; tasks: number; tags: string[] } | { kind: "delete-tag"; notes: number; tasks: number; values: number; fields: number; templateName: string | null } | { kind: "set-extends"; notes: number; gained: string[]; lost: string[] } | { kind: "become-objects"; notes: number };
 
 /**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27

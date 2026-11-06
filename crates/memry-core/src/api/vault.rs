@@ -160,6 +160,14 @@ impl Vault {
         })))
     }
 
+    /// The read-only locks on this vault's notes and folders (desktop Step 14e).
+    /// Not part of the FFI surface: iOS keeps no vault files to lock.
+    #[cfg(feature = "markdown")]
+    #[doc(hidden)]
+    pub fn locks(&self) -> crate::api::vault_locks::LockStore {
+        crate::api::vault_locks::LockStore::over(self.db.clone())
+    }
+
     /// Records what this vault's core database was created over, once (desktop
     /// Step 13d): each open says whether Electron's `data.db` is beside it, and
     /// the first answer recorded stays. See

@@ -9,6 +9,7 @@ use memry_core::api::journal::Journal;
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
+use memry_core::domain::note_files::NoteFileStat;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use rusqlite::params;
 use yrs::updates::decoder::Decode as _;
@@ -61,6 +62,23 @@ pub fn open_at(dir: tempfile::TempDir) -> Fixture {
 impl Fixture {
     pub fn note(&self) -> String {
         self.writer.create("A note".into(), None).expect("create")
+    }
+
+    /// Files `note_id` at the vault-relative `path`.
+    pub fn file(&self, note_id: &str, path: &str) {
+        self.vault
+            .note_files()
+            .upsert_stat(NoteFileStat {
+                note_id: note_id.to_owned(),
+                path: path.to_owned(),
+                file_type: "markdown".to_owned(),
+                mime_type: None,
+                file_size: Some(1),
+                content_hash: None,
+                file_hash: None,
+                indexed_at: 1,
+            })
+            .expect("file row");
     }
 
     /// The vault closed and opened again on the same files.
