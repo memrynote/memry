@@ -129,7 +129,7 @@ pub fn list_vault(open: &OpenVault) -> Result<Vec<VaultAttachmentEntry>, Attachm
             ));
         }
     }
-    listed.sort_by(|a, b| b.0.cmp(&a.0));
+    listed.sort_by_key(|(modified, _)| std::cmp::Reverse(*modified));
     Ok(listed.into_iter().map(|(_, entry)| entry).collect())
 }
 

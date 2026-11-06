@@ -22,13 +22,12 @@ export const unsplashService = {
   // Saves a picked photo as an attachment of the note (`notes_download_unsplash_photo`).
   async download(input: UnsplashDownloadInput): Promise<UnsplashDownloadResult> {
     const response = await commands.notesDownloadUnsplashPhoto(input.noteId, input.photo)
-    switch (response.status) {
-      case 'saved':
-        return { ok: true, ref: response.ref, credit: response.credit }
-      case 'unavailable':
-        return { ok: false, reason: response.reason }
-      case 'writeFailed':
-        return { ok: false, reason: 'write-failed' }
+    if (response.status === 'saved') {
+      return { ok: true, ref: response.ref, credit: response.credit }
+    }
+    return {
+      ok: false,
+      reason: response.status === 'unavailable' ? response.reason : 'write-failed'
     }
   }
 }

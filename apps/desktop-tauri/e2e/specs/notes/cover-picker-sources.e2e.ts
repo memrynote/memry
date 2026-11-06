@@ -25,6 +25,7 @@ const PNG_BYTES = Buffer.from(
 interface NoteView {
   id: string
   path: string
+  title: string
 }
 
 function filesIn(dir: string): string[] {
