@@ -63,7 +63,8 @@ import {
   type PropertyDefinitionView,
   type RefsKept,
   type UndoTagTemplateInput,
-  type Value
+  type Value,
+  type VersionView
 } from '../../../generated/bindings'
 import { invokeBinary } from '../lib/ipc-binary'
 import { askPermanentDelete } from '../lib/permanent-delete-question'
@@ -120,6 +121,12 @@ function toNote(view: NoteView): Note {
 
 function toListItem(view: NoteListItemView): NoteListItem {
   return { ...view, created: new Date(view.created), modified: new Date(view.modified) }
+}
+
+/** A version as the history lists it. Rust sends the stored reason, which only Memry writes. */
+function toVersion(view: VersionView): SnapshotListItem {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
+  return { ...view, reason: view.reason as SnapshotListItem['reason'] }
 }
 
 function toFile(view: FileView): FileMetadata {
@@ -235,8 +242,8 @@ function definitionInput(
  * Step 13k, the folder reads, create and settings of Step 13h, a template applied to a note
  * (13l), a note's other names and the tag list of 13q, and the attachment upload of 14f-1
  * (`commands/notes.rs`, `commands/property_definitions.rs`, `commands/folders.rs`,
- * `commands/tags.rs`, `commands/attachments.rs`); every other method still goes to
- * `window.api.notes`.
+ * `commands/tags.rs`, `commands/attachments.rs`), and the version history of 14d
+ * (`commands/notes_versions.rs`); every other method still goes to `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
@@ -483,6 +490,29 @@ const ported = {
     return { success: true }
   },
   getCalendarPropertyNames: (): Promise<string[]> => commands.notesGetCalendarPropertyNames(),
+  getVersions: async (noteId: string): Promise<SnapshotListItem[]> =>
+    (await commands.notesGetVersions(noteId)).map(toVersion),
+  getVersion: async (snapshotId: string): Promise<SnapshotDetail | null> => {
+    const version = await commands.notesGetVersion(snapshotId)
+    return version && { ...toVersion(version), fileContent: version.fileContent }
+  },
+  // A failed restore or delete answers as Electron's `withErrorHandler` does.
+  restoreVersion: async (snapshotId: string): Promise<RestoreVersionResponse> => {
+    try {
+      const note = await commands.notesRestoreVersion(snapshotId)
+      return { success: true, note: note && toNote(note) }
+    } catch (error) {
+      return { ...failure(error), note: null }
+    }
+  },
+  deleteVersion: async (snapshotId: string) => {
+    try {
+      await commands.notesDeleteVersion(snapshotId)
+      return { success: true }
+    } catch (error) {
+      return failure(error)
+    }
+  },
   getFolders: (): Promise<FolderInfo[]> => commands.notesGetFolders(),
   // A failed create, rename or config write answers as Electron's handlers do.
   createFolder: async (path: string) => {

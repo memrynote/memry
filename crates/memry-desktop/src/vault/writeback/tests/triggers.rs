@@ -157,6 +157,50 @@ fn a_replaced_file_the_app_did_not_write_is_kept_as_a_version() {
     assert_eq!(f.versions(&id), vec![text.to_owned()], "{written}");
 }
 
+/// Its own last write is kept too when the body moves by ten words or more (Electron's
+/// `keepVersionBeforeWriteback`), and not for less.
+#[test]
+fn the_apps_own_last_write_is_kept_when_ten_words_move() {
+    let mut f = fixture();
+    let text = "written outside the app\n";
+    let id = f.adopt("n.md", text);
+    f.edit_in_app(&id, "typed in the app");
+    let first = f.run(&id);
+    let written = assert_wrote(&mut f, &first, "n.md");
+
+    f.edit_in_app(&id, "typed in the app and two more");
+    let small = f.run(&id);
+    assert!(
+        matches!(
+            small,
+            Outcome::Wrote {
+                version_kept: false,
+                ..
+            }
+        ),
+        "{small:?}"
+    );
+    let small = assert_wrote(&mut f, &small, "n.md");
+    assert_eq!(f.versions(&id), vec![text.to_owned()], "{written}");
+
+    f.edit_in_app(
+        &id,
+        "typed in the app and two more, then one two three four five six seven eight nine ten",
+    );
+    let large = f.run(&id);
+    assert!(
+        matches!(
+            large,
+            Outcome::Wrote {
+                version_kept: true,
+                ..
+            }
+        ),
+        "{large:?}"
+    );
+    assert_eq!(f.versions(&id), vec![text.to_owned(), small]);
+}
+
 /// A `writing:` key that is the author's own is their property: it stays, and the row says
 /// the document holds the file.
 #[test]

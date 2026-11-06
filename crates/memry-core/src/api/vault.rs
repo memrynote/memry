@@ -160,6 +160,14 @@ impl Vault {
         })))
     }
 
+    /// The kept versions of this vault's notes and days (desktop Step 14d).
+    /// Not part of the FFI surface: iOS keeps no versions.
+    #[cfg(feature = "markdown")]
+    #[doc(hidden)]
+    pub fn versions(&self) -> crate::api::versions::Versions {
+        crate::api::versions::Versions::over(self.db.clone())
+    }
+
     /// The read-only locks on this vault's notes and folders (desktop Step 14e).
     /// Not part of the FFI surface: iOS keeps no vault files to lock.
     #[cfg(feature = "markdown")]

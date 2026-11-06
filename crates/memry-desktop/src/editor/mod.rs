@@ -8,6 +8,7 @@
 //! ([`EditorHost::forget_window`], Electron's `forgetWindow`).
 
 mod host;
+pub mod versions;
 
 use std::sync::Arc;
 

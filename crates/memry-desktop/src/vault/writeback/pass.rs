@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
 use memry_core::domain::external_feed::same_text;
+use memry_core::domain::note_snapshots;
 use memry_core::domain::write_back::BodyRead;
 use memry_core::markdown::frontmatter::{
     ParsedMarkdownNote, YamlMap, YamlValue, serialize_parsed_markdown_note, split_frontmatter_block,
@@ -251,8 +252,10 @@ impl Pass {
 
     /// Keeps the file a write replaces when the write changes bytes the document does not hold
     /// ([`replaces_unheld_bytes`]) and the file is not what this session last wrote for the
-    /// note. `Ok(true)` when a version was written. An error stops the write: the replaced
-    /// file is the only copy of those bytes.
+    /// note, or, when it is, when the body moves by ten words or more
+    /// ([`note_snapshots::is_significant`], Electron's `keepVersionBeforeWriteback`). `Ok(true)`
+    /// when a version was written. An error stops the write: the replaced file is the only copy
+    /// of those bytes.
     fn keep_replaced(
         &self,
         note_id: &str,
@@ -269,12 +272,13 @@ impl Pass {
             .unwrap_or_else(|e| e.into_inner())
             .get(note_id)
             .is_some_and(|last| last == hash);
-        if ours {
+        let body = split_frontmatter_block(raw).body;
+        if ours && !note_snapshots::is_significant(body, split_frontmatter_block(output).body) {
             return Ok(false);
         }
         self.vault
             .write_back()
-            .keep_replaced(note_id, raw, split_frontmatter_block(raw).body)
+            .keep_replaced(note_id, raw, body)
             .map_err(|error| error.to_string())
     }
 }
