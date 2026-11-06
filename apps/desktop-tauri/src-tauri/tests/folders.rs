@@ -106,6 +106,7 @@ fn opened() -> Fixture {
             memry_tauri::commands::folders::notes_rename_folder::<MockRuntime>,
             memry_tauri::commands::folders::notes_set_folder_config::<MockRuntime>,
             memry_tauri::commands::journal::journal_create_entry::<MockRuntime>,
+            memry_tauri::commands::journal::journal_update_entry::<MockRuntime>,
         ]);
     let app = mock_builder()
         .invoke_handler(commands.invoke_handler())
@@ -245,11 +246,17 @@ fn a_folder_move_with_unreadable_settings_says_which_file_to_fix() {
         "journal_create_entry",
         json!({ "input": { "date": "2025-01-06" } }),
     );
+    // Typing into a day that has no file makes it through the update.
+    let typed = f.invoke(
+        "journal_update_entry",
+        json!({ "input": { "date": "2025-01-07", "content": "Typed" } }),
+    );
 
     let refusals = [
         (moved.unwrap_err(), "moved"),
         (deleted.unwrap_err(), "deleted"),
         (day.unwrap_err(), "Journal days"),
+        (typed.unwrap_err(), "Journal days"),
     ];
     for (refused, says) in refusals {
         assert_eq!(refused["code"], "vault_settings_unreadable");

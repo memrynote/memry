@@ -120,6 +120,7 @@ impl VaultTier {
     /// The open vault's watcher looks at the disk again, as when the OS lost events
     /// (`forget = false`) or the consumer dropped them (`forget = true`, which forgets what was
     /// reported), so a test can put the watcher's rescans on any state it builds.
+    #[cfg(feature = "test-hooks")]
     #[doc(hidden)]
     pub fn rescan_watcher(&self, forget: bool) {
         if let Some(open) = self.current() {

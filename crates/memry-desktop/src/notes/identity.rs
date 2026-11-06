@@ -452,7 +452,9 @@ impl NoteIdentity for NotesIdentity {
     ) -> Result<Removal, IdentityError> {
         let writer = self.writer(ctx)?;
         if moving::is_moving_from(&writer, note_id, path)? {
-            return Ok(Removal::Kept);
+            // Not `Kept`, which drops the row's hash: row and hash stay as they are, so the
+            // finished move carries them and the file's later edits and removal reach the note.
+            return Err(moving::waits());
         }
         Ok(match writer.file_removed(note_id, path)? {
             Removed::Deleted => Removal::Deleted,

@@ -61,8 +61,9 @@ pub(super) fn is_moving_from(
     Ok(moving)
 }
 
-/// What a move of the file [`is_moving_from`] names answers: the row stays, and the next open
-/// finishes the recorded move.
+/// What a removal or move of the file [`is_moving_from`] names answers: the row stays with its
+/// hash, and the next open finishes the recorded move (an `Err`, which the consumer logs and
+/// asks again at the next open).
 pub(super) fn waits() -> IdentityError {
     IdentityError::Other("the note waits for the open that finishes its app move".to_owned())
 }

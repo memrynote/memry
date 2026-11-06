@@ -135,6 +135,25 @@ describe('useJournalEntry dedicated hook', () => {
     await waitFor(() => expect(result.current.saveError).toBe(refusal))
   })
 
+  it("keeps a template read that fails out of the day's save error: nothing was saved", async () => {
+    ;(window.api.journal.getEntry as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+    ;(window.api.settings.getJournalSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
+      defaultTemplate: 'daily',
+      showSchedule: true,
+      showTasks: true,
+      showAIConnections: true,
+      showStatsFooter: false
+    })
+    templates.get.mockRejectedValue(new Error('template store unavailable'))
+
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+
+    await waitFor(() => expect(templates.get).toHaveBeenCalled())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(window.api.journal.createEntry).not.toHaveBeenCalled()
+    expect(result.current.saveError).toBeNull()
+  })
+
   it('seeds {{random-line:Title}} with a line from the named note', async () => {
     ;(window.api.journal.getEntry as ReturnType<typeof vi.fn>).mockResolvedValue(null)
     ;(window.api.settings.getJournalSettings as ReturnType<typeof vi.fn>).mockResolvedValue({

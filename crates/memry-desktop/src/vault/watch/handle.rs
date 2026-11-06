@@ -70,6 +70,7 @@ impl WatchHandle {
 
     /// What the OS asks when it lost events (`need_rescan`): a rescan compares the disk with
     /// what was reported. Dropped once the watcher stopped or its queue is full.
+    #[cfg(feature = "test-hooks")]
     pub(crate) fn rescan(&self) {
         let _ = self.tx.try_send(Msg::Rescan);
     }

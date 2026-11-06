@@ -9,6 +9,7 @@
 //! | ------------------------------------------------------------------ | ------------------------- |
 //! | a journal folder that stays moved keeps its notes through a rescan | live, OS rescan or resync |
 //! | a plain folder that stays moved keeps its notes through a rescan   | live, plain folder        |
+//! | a note deleted while its folder move waits is deleted              | live, then a delete       |
 //! | a folder move a crash cut short keeps its edited notes unread      | crash, plain folder       |
 //! | a folder move whose old name a file took waits with its notes      | crash, the open's walk    |
 //! | a journal folder move a crash cut short keeps its edited notes ... | crash, journal            |
@@ -29,11 +30,12 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::config::config_path;
+use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::move_dir::{Step, simulated_hold};
 use vault_env::{Env, indexed};
 
 use crate::journal_folder::{
-    crashed_after_disk, crossed, daily, dated_note, journal_vault, outbox, quiet, reopen, row,
+    DAY, crashed_after_disk, crossed, daily, dated_note, journal_vault, outbox, quiet, reopen, row,
     settles,
 };
 use crate::vault_settings::{opened_keeping, stored};
@@ -106,6 +108,13 @@ fn a_journal_folder_that_stays_moved_keeps_its_notes_through_a_rescan() {
         rescanned(&mut e, forget);
         assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
         settles(&mut e, &notes, &note, "Diary");
+        if edit {
+            assert!(
+                e.body(&note).contains("Edited outside"),
+                "{}",
+                e.body(&note)
+            );
+        }
     }
 }
 
@@ -116,6 +125,51 @@ fn a_plain_folder_that_stays_moved_keeps_its_notes_through_a_rescan() {
         daily("journal"),
         &[("Notes/A.md", "Note A\n"), ("Notes/B.md", "Note B\n")],
     );
+    let ids = plain_stays_moved(&notes, &mut e);
+    rescanned(&mut e, false);
+    fs::remove_file(e.vault.join("Notes")).unwrap();
+    reopen(&mut e);
+    reopen(&mut e);
+    kept(&e, &ids);
+}
+
+/// The same, and the user deletes a moved note's file while the move waits: once the move is
+/// settled, that delete is the note's, as any delete outside the app is.
+#[test]
+fn a_note_deleted_while_its_folder_move_waits_is_deleted() {
+    let (mut e, notes) = journal_vault(
+        daily("journal"),
+        &[("Notes/A.md", "Note A\n"), ("Notes/B.md", "Note B\n")],
+    );
+    let ids = plain_stays_moved(&notes, &mut e);
+    rescanned(&mut e, false);
+    fs::remove_file(e.vault.join("Other/A.md")).unwrap();
+    std::thread::sleep(RESCAN);
+    e.drain();
+    fs::remove_file(e.vault.join("Notes")).unwrap();
+    let mut facts = Vec::new();
+    for _ in 0..3 {
+        e.close();
+        e.drain();
+        e.open();
+        facts.extend(e.facts_until(indexed));
+        std::thread::sleep(RESCAN);
+        facts.extend(e.drain());
+    }
+    let removed = |id: &str| {
+        facts
+            .iter()
+            .any(|f| matches!(f, Applied::Removed { note_id, .. } if note_id == id))
+    };
+    assert!(removed(&ids[0]), "{facts:?}");
+    assert!(outbox(&e, &ids[0]).contains(&"delete".to_owned()));
+    assert!(!removed(&ids[1]), "{facts:?}");
+    assert_eq!(e.rows(), [row(&ids[1], "Other/B.md")]);
+}
+
+/// Step 3 of `Notes`' move to `Other` fails and the folder cannot go back, a file having taken
+/// its old name; the ids of `A.md` and `B.md`.
+fn plain_stays_moved(notes: &NotesService, e: &mut Env) -> Vec<String> {
     let ids: Vec<String> = e.rows().into_iter().map(|(id, _)| id).collect();
     let open = e.session.current().unwrap();
     let vault = e.vault.clone();
@@ -133,12 +187,8 @@ fn a_plain_folder_that_stays_moved_keeps_its_notes_through_a_rescan() {
     drop(open);
     assert!(failed.is_err(), "{failed:?}");
     assert!(e.vault.join("Other/A.md").exists());
-    quiet(&mut e);
-    rescanned(&mut e, false);
-    fs::remove_file(e.vault.join("Notes")).unwrap();
-    reopen(&mut e);
-    reopen(&mut e);
-    kept(&e, &ids);
+    quiet(e);
+    ids
 }
 
 /// N1a: a plain folder's move cut short after the disk move, a moved note edited outside, and
@@ -157,6 +207,12 @@ fn a_folder_move_a_crash_cut_short_keeps_its_edited_notes_while_the_settings_are
     reopen(&mut e);
     reopen(&mut e);
     kept(&e, &ids);
+    // The edit reaches the note's body, which syncs, once the move finishes.
+    assert!(
+        e.body(&ids[0]).contains("edited outside"),
+        "{}",
+        e.body(&ids[0])
+    );
 }
 
 /// The state a crash after `Notes` moved to `Other` on disk leaves, before its notes followed;
@@ -231,6 +287,8 @@ fn a_journal_folder_move_a_crash_cut_short_keeps_its_edited_notes_while_the_sett
 
         opened_unread(&mut e, config);
         settles(&mut e, &notes, &note, "Diary");
+        assert!(e.body(&note).contains("Note edited outside"), "{config}");
+        assert!(e.body(DAY).contains("Day edited outside"), "{config}");
     }
 }
 
@@ -248,4 +306,9 @@ fn a_journal_folder_that_stays_moved_keeps_an_edited_note_while_the_settings_are
 
     opened_unread(&mut e, "Diary");
     settles(&mut e, &notes, &note, "Diary");
+    assert!(
+        e.body(&note).contains("Edited outside"),
+        "{}",
+        e.body(&note)
+    );
 }
