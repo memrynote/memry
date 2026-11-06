@@ -442,6 +442,17 @@ vi.mock('@/hooks/use-find-in-page', () => ({
   }
 }))
 
+// The page only decides whether the viewer mounts; its session is the viewer's own test's.
+vi.mock('@/hooks/use-large-file-session', () => ({
+  useLargeFileSession: () => ({
+    state: { status: 'opening' },
+    sessionId: null,
+    getLine: () => undefined,
+    isTruncated: () => false,
+    ensureRange: () => {}
+  })
+}))
+
 vi.mock('@/hooks/use-graph-data', () => ({
   graphKeys: { local: (id: string) => ['graph', id] }
 }))
