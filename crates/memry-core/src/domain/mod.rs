@@ -62,6 +62,9 @@ pub mod tag_admin;
 pub mod tag_body_rename;
 pub mod tag_categories;
 pub mod tag_fields;
+// Desktop's object reads: they read the note index of files.
+#[cfg(feature = "markdown")]
+pub mod tag_objects;
 #[cfg(feature = "markdown")]
 pub mod tag_reads;
 pub mod tag_rename;
