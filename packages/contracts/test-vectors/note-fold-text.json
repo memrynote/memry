@@ -2,7 +2,9 @@
   "meta": {
     "spec": "tauri-v2-3531-note-fold",
     "oracle": "apps/desktop/scripts/note-fold-oracle (Electron fold engine run in place: src/main/note-fold/{engine,engine-tokens}.ts)",
-    "note": "The fold text helpers: language, sentences, words and the inline tokens. Dates format in timeZone."
+    "note": "The fold text helpers: language, sentences, words and the inline tokens. Dates format in timeZone.",
+    "icu": "78.3",
+    "unicode": "17.0"
   },
   "timeZone": "UTC",
   "text": [
@@ -381,6 +383,160 @@
       }
     },
     {
+      "name": "superscripts and fractions are not words",
+      "input": "Area is 4 m² and x² y³ ½ of it.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "Area is 4 m² and x² y³ ½ of it."
+        ],
+        "words": 9,
+        "tokens": 13,
+        "foldable": false
+      }
+    },
+    {
+      "name": "a connector run is a word, one connector is not",
+      "input": "a_b and ___ but _ alone",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "a_b and ___ but _ alone"
+        ],
+        "words": 5,
+        "tokens": 7,
+        "foldable": false
+      }
+    },
+    {
+      "name": "numbers with separators",
+      "input": "We sold 1,000 at 3.5 each, Ⅻ times.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "We sold 1,000 at 3.5 each, Ⅻ times."
+        ],
+        "words": 8,
+        "tokens": 12,
+        "foldable": false
+      }
+    },
+    {
+      "name": "combining marks stay in their word",
+      "input": "Café and été and İstanbul.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "Café and été and İstanbul."
+        ],
+        "words": 5,
+        "tokens": 7,
+        "foldable": false
+      }
+    },
+    {
+      "name": "emoji are not words",
+      "input": "Ship 🚀 it 👍🏽 now 🇹🇷.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "Ship 🚀 it 👍🏽 now 🇹🇷."
+        ],
+        "words": 3,
+        "tokens": 5,
+        "foldable": false
+      }
+    },
+    {
+      "name": "thai is split by a dictionary",
+      "input": "สวัสดีครับ วันนี้อากาศดี",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "สวัสดีครับ วันนี้อากาศดี"
+        ],
+        "words": 6,
+        "tokens": 9,
+        "foldable": false
+      }
+    },
+    {
+      "name": "lao is split by a dictionary",
+      "input": "ສະບາຍດີ ທຸກຄົນ",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "ສະບາຍດີ ທຸກຄົນ"
+        ],
+        "words": 2,
+        "tokens": 3,
+        "foldable": false
+      }
+    },
+    {
+      "name": "khmer is split by a dictionary",
+      "input": "សួស្តី ពិភពលោក",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "សួស្តី ពិភពលោក"
+        ],
+        "words": 2,
+        "tokens": 3,
+        "foldable": false
+      }
+    },
+    {
+      "name": "myanmar is split by a dictionary",
+      "input": "မင်္ဂလာပါ ကမ္ဘာ",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "မင်္ဂလာပါ ကမ္ဘာ"
+        ],
+        "words": 3,
+        "tokens": 5,
+        "foldable": false
+      }
+    },
+    {
+      "name": "hiragana in an english text",
+      "input": "Say ありがとう to them.",
+      "language": "en",
+      "expected": {
+        "detected": "ja",
+        "sentences": [
+          "Say ありがとう to them."
+        ],
+        "words": 4,
+        "tokens": 6,
+        "foldable": false
+      }
+    },
+    {
+      "name": "halfwidth katakana in an english text",
+      "input": "Type ﾊﾝｶｸ here.",
+      "language": "en",
+      "expected": {
+        "detected": "en",
+        "sentences": [
+          "Type ﾊﾝｶｸ here."
+        ],
+        "words": 4,
+        "tokens": 6,
+        "foldable": false
+      }
+    },
+    {
       "name": "english at the threshold does not fold",
       "input": "note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note note",
       "language": "en",
@@ -728,6 +884,78 @@
       }
     },
     {
+      "name": "a timed day past the month rolls over",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAyLTMxVDEwOjAwOjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 2, 2024 at 10:00 AM",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "the 31st of april is may 1",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTA0LTMxVDAwOjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "May 1, 2024 at 12:00 AM",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "day 32 with a time is no date",
+      "input": "[((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAyLTMyVDAwOjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))]",
+      "language": "en",
+      "expected": {
+        "expanded": "[]",
+        "blanked": "[ ]"
+      }
+    },
+    {
+      "name": "24:00 is the next midnight",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDI0OjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 6, 2024 at 12:00 AM",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "24:00:00.000 is the next midnight",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDI0OjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoiZnVsbCIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 6, 2024 at 12:00 AM",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "24:01 is no date",
+      "input": "[((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTAzLTA1VDI0OjAxWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))]",
+      "language": "en",
+      "expected": {
+        "expanded": "[]",
+        "blanked": "[ ]"
+      }
+    },
+    {
+      "name": "month 13 with a time is no date",
+      "input": "[((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTEzLTAxVDAwOjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))]",
+      "language": "en",
+      "expected": {
+        "expanded": "[]",
+        "blanked": "[ ]"
+      }
+    },
+    {
+      "name": "year 0 is 1 bc",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIwMDAwLTAxLTAxVDEwOjAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "January 1, 1 at 10:00 AM",
+        "blanked": " "
+      }
+    },
+    {
       "name": "month thirteen rolls into the next year",
       "input": "((date:eyJhbmNob3JJZCI6ImRtX3ZlY3RvciIsImRhdGVJU08iOiIyMDI0LTEzLTAxIiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJmdWxsIiwicmVtaW5kIjoibm9uZSIsInRpbWVGb3JtYXQiOiJzeXN0ZW0ifQ))",
       "language": "en",
@@ -782,6 +1010,24 @@
       }
     },
     {
+      "name": "a legacy token salvages a rolled-over day",
+      "input": "((date:eyJhbmNob3JJZCI6ImRtX29sZCIsImRhdGVJU08iOiIyMDI0LTAyLTMwIiwiaGFzVGltZSI6dHJ1ZSwicmVtaW5kIjp0cnVlfQ))",
+      "language": "en",
+      "expected": {
+        "expanded": "March 1, 2024",
+        "blanked": " "
+      }
+    },
+    {
+      "name": "a legacy token with no date is dropped",
+      "input": "[((date:eyJhbmNob3JJZCI6ImRtX29sZCIsImRhdGVJU08iOiIyMDI0LTAyLTMyIiwiaGFzVGltZSI6dHJ1ZSwicmVtaW5kIjp0cnVlfQ))]",
+      "language": "en",
+      "expected": {
+        "expanded": "[]",
+        "blanked": "[ ]"
+      }
+    },
+    {
       "name": "a token that does not decode is dropped",
       "input": "See ((date:abc)) here.",
       "language": "en",
@@ -829,6 +1075,15 @@
     {
       "name": "a mention that does not decode is dropped",
       "input": "See ((mention:%E0%A4%A)).",
+      "language": "en",
+      "expected": {
+        "expanded": "See .",
+        "blanked": "See  ."
+      }
+    },
+    {
+      "name": "a percent sign needs two hex digits",
+      "input": "See ((mention:%+1https%3A%2F%2Fa.io)).",
       "language": "en",
       "expected": {
         "expanded": "See .",
