@@ -15,6 +15,8 @@ import type {
   TagsClientAPI
 } from '../../../preload/index.d'
 import type {
+  ImpactQuery,
+  ImpactResult,
   TagSchemaCommand,
   TagSchemaCommandResult,
   TagSchemaSnapshot,
@@ -147,6 +149,9 @@ const ported = {
   /** Every tag's resolved schema, the notes that are objects, and the ready-made tags. */
   getSchemaSnapshot: (): Promise<TagSchemaSnapshot> => commands.tagsGetSchemaSnapshot(),
 
+  /** What a schema change would reach, counted for its dialog. */
+  previewImpact: (query: ImpactQuery): Promise<ImpactResult> => commands.tagsPreviewImpact(query),
+
   /** Renames the tag and its children in every note's file and record; `runId` names its progress. */
   renameTag: async (input: {
     oldName: string
@@ -209,8 +214,6 @@ export const tagsService: TagsService = {
     command.kind === 'rename-field'
       ? window.api.tags.editSchema(command)
       : commands.tagsEditSchema(command),
-
-  previewImpact: (query) => window.api.tags.previewImpact(query),
 
   getFillStatus: () => window.api.tags.getFillStatus(),
 

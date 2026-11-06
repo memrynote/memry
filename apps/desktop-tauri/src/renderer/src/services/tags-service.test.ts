@@ -4,6 +4,7 @@ import { createMockApi } from '@tests/setup-dom'
 const commands = vi.hoisted(() => ({
   tagsGetSchemaSnapshot: vi.fn(),
   tagsEditSchema: vi.fn(),
+  tagsPreviewImpact: vi.fn(),
   tagsGetAllWithCounts: vi.fn(),
   tagsGetNotesByTag: vi.fn(),
   tagsUpdateColor: vi.fn(),
@@ -157,7 +158,7 @@ describe('tags-service', () => {
     await expect(tagsService.listCategories()).resolves.toEqual({ success: false, error: 'disk' })
   })
 
-  it('reads and edits tag schemas through the commands, a field rename still on window.api', async () => {
+  it('reads, edits and previews tag schemas through the commands, a field rename still on window.api', async () => {
     const snapshot = { tags: {}, objects: {}, presets: [], presetStripDismissed: false }
     commands.tagsGetSchemaSnapshot.mockResolvedValue(snapshot)
     expect(await tagsService.getSchemaSnapshot()).toBe(snapshot)
@@ -174,6 +175,19 @@ describe('tags-service', () => {
     await tagsService.editSchema(rename)
     expect(api.tags.editSchema).toHaveBeenCalledWith(rename)
     expect(commands.tagsEditSchema).toHaveBeenCalledTimes(2)
+
+    const query = { kind: 'delete-tag' as const, tag: 'person' }
+    const impact = {
+      kind: 'delete-tag',
+      notes: 3,
+      tasks: 0,
+      values: 2,
+      fields: 2,
+      templateName: null
+    }
+    commands.tagsPreviewImpact.mockResolvedValue(impact)
+    expect(await tagsService.previewImpact(query)).toBe(impact)
+    expect(commands.tagsPreviewImpact).toHaveBeenCalledWith(query)
 
     const changed = vi.fn()
     const stop = onPropertyDefinitionChanged(changed)

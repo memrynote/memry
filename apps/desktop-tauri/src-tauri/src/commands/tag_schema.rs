@@ -1,4 +1,4 @@
-//! Tags with fields (`tags:get-schema-snapshot` and `tags:edit-schema` of
+//! Tags with fields (`tags:get-schema-snapshot`, `tags:edit-schema` and `tags:preview-impact` of
 //! `ipc/tag-schema-handlers.ts`), each one call of `memry_desktop::tags::schema`. A schema edit
 //! writes the `tag_definition` record, and for a new field or a ready-made tag the property
 //! definitions and a template; never a note file. After an edit it sends what Electron sends:
@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use memry_desktop::locale::LocaleService;
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
+use memry_desktop::tags::schema::impact::{ImpactQuery, ImpactView};
 use memry_desktop::tags::schema::view::{
     TagSchemaCommand, TagSchemaCommandResultView, TagSchemaSnapshotView,
 };
@@ -71,6 +72,21 @@ pub async fn tags_edit_schema(
             .map_err(|error| CommandError::from_core(&error))?;
         announce(&app, &ran);
         Ok(ran.result)
+    })
+    .await
+}
+
+/// What a schema change would reach, counted for its dialog. Read only.
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_preview_impact(
+    app: AppHandle<Wry>,
+    query: ImpactQuery,
+) -> Result<ImpactView, CommandError> {
+    blocking("tags_preview_impact", move || {
+        schemas(&app)?
+            .preview_impact(query)
+            .map_err(|error| CommandError::from_core(&error))
     })
     .await
 }

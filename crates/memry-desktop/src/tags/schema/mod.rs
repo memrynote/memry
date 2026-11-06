@@ -7,10 +7,12 @@
 //! by the vault's property definitions ([`PropertyDefinitions`], `properties.md` and the
 //! records). A schema edit writes the `tag_definition` record only, never a note file; a new
 //! field's definition and a preset's template are written through their own owners first.
-//! `rename-field`, which rewrites note files, is 13j-3d's.
+//! What a change would reach is [`impact`]'s. `rename-field`, which rewrites note files, is
+//! 13j-3d-2's.
 
 mod catalog;
 mod edit;
+pub mod impact;
 mod presets;
 pub mod view;
 
