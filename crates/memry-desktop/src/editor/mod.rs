@@ -11,7 +11,7 @@ mod host;
 
 use std::sync::Arc;
 
-use memry_core::api::editor::{EditorError, Origin};
+use memry_core::api::editor::{EditorError, Notice, Origin};
 
 pub use host::{EditorHealth, EditorHost, HostEvent};
 
@@ -27,17 +27,27 @@ pub struct Subscriber {
     pub channel: Deliver,
 }
 
-/// One channel message: the origin byte, then the update as it was committed. The renderer
-/// applies origins 0 and 1 as `'remote'`, so its provider does not send them back.
-pub fn frame(update: &[u8], origin: &Origin) -> Vec<u8> {
-    let mut frame = Vec::with_capacity(update.len() + 1);
-    frame.push(origin_byte(origin));
-    frame.extend_from_slice(update);
-    frame
+/// One channel message. An update is its origin byte ([`origin_byte`]), then the bytes as they
+/// were committed; the renderer applies origins 0 and 1 as `'remote'`, so its provider does not
+/// send them back. A purge is the byte [`PURGED`] alone: the window drops its copy and opens the
+/// document again.
+pub fn frame(notice: Notice<'_>) -> Vec<u8> {
+    match notice {
+        Notice::Update(update, origin) => {
+            let mut frame = Vec::with_capacity(update.len() + 1);
+            frame.push(origin_byte(origin));
+            frame.extend_from_slice(update);
+            frame
+        }
+        Notice::Purged => vec![PURGED],
+    }
 }
 
+/// The frame of a purged document (a delete applied).
+pub const PURGED: u8 = 4;
+
 /// 0: another window's edit, 1: merged from the server, 2: an edit of the file outside the
-/// app, 3: written by the app itself (seed, repair, restore).
+/// app, 3: written by the app itself (a command, a repair, a restore).
 pub fn origin_byte(origin: &Origin) -> u8 {
     match origin {
         Origin::Local(_) => 0,

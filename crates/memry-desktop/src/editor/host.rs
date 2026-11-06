@@ -5,9 +5,10 @@
 //! the window: either inside the state it receives or on its channel, and Yjs ignores the one it
 //! gets twice. Subscribing after the open would lose an update committed in between.
 //!
-//! **Lock order.** Core calls a listener with none of its locks held, and the listener takes the
-//! subscriber map. So the map may be held while core's subscribe or unsubscribe runs, and never
-//! while a core call that commits (and so fans out) runs.
+//! **Lock order.** Core calls a listener on the thread of any write of the document, after the
+//! writer was released and with none of its locks held, and the listener takes only the
+//! subscriber map. The map is a leaf: it is held around map changes and core's subscribe or
+//! unsubscribe (which take only core's listener list), never while anything writes to core.
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
@@ -15,7 +16,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Weak};
 use std::time::Duration;
 
-use memry_core::api::editor::{Editor, ListenerId, Opened, Origin};
+use memry_core::api::editor::{Editor, ListenerId, Notice, Opened, Origin};
 use memry_core::api::vault::Vault;
 use memry_core::seams::secure_store::SecureStore;
 
@@ -302,15 +303,16 @@ impl Served {
     }
 }
 
-/// The listener of one document: each update goes to every subscriber but the window that sent
-/// it. A channel that cannot receive any more is dropped (its window is gone); the window's
-/// close releases its hold.
-fn fan_out(docs: Weak<Docs>, note_id: &str) -> impl Fn(&[u8], &Origin) + Send + Sync + 'static {
+/// The listener of one document: each notice goes to every subscriber but the window that sent
+/// the update. A channel that cannot receive any more is dropped (its window is gone); the
+/// window's close releases its hold. Core runs it on the thread of any write of the document,
+/// so it takes only the subscriber map, which no caller holds while it writes.
+fn fan_out(docs: Weak<Docs>, note_id: &str) -> impl Fn(Notice<'_>) + Send + Sync + 'static {
     let note_id = note_id.to_owned();
-    move |update, origin| {
+    move |notice| {
         let Some(docs) = docs.upgrade() else { return };
-        let sender = match origin {
-            Origin::Local(holder) => Some(holder.as_str()),
+        let sender = match notice {
+            Notice::Update(_, Origin::Local(holder)) => Some(holder.as_str()),
             _ => None,
         };
         let targets: Vec<Deliver> = lock(&docs)
@@ -326,7 +328,7 @@ fn fan_out(docs: Weak<Docs>, note_id: &str) -> impl Fn(&[u8], &Origin) + Send + 
         if targets.is_empty() {
             return;
         }
-        let message = frame(update, origin);
+        let message = frame(notice);
         let gone: Vec<Deliver> = targets
             .into_iter()
             .filter(|channel| !channel(message.clone()))

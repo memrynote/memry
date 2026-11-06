@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::api::editor::Editor;
 use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::editor::{EditorHost, EditorHostError, HostEvent, Subscriber};
+use memry_desktop::editor::{EditorHost, EditorHostError, HostEvent, PURGED, Subscriber};
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use yrs::updates::decoder::Decode as _;
@@ -272,6 +272,19 @@ fn a_window_that_opens_while_another_types_misses_no_edit() {
 }
 
 #[test]
+fn a_purged_document_tells_every_window_to_open_it_again() {
+    let env = env();
+    let note = env.note();
+    let (_, main_frames) = env.open(&note, "main");
+    let (_, side_frames) = env.open(&note, "side");
+
+    env.editor().purge(&note);
+
+    assert_eq!(*main_frames.lock().unwrap(), vec![vec![PURGED]]);
+    assert_eq!(*side_frames.lock().unwrap(), vec![vec![PURGED]]);
+}
+
+#[test]
 fn a_vault_close_resets_the_windows_and_the_next_open_says_ready() {
     let env = env();
     let note = env.note();
@@ -304,11 +317,7 @@ fn a_vault_close_resets_the_windows_and_the_next_open_says_ready() {
         Err(EditorHostError::NotServing)
     ));
     editor
-        .absorb(
-            &note,
-            &main.type_text("still"),
-            memry_core::api::editor::Origin::External,
-        )
+        .apply_update(&note, &Window(Doc::new()).type_text("still"), "other")
         .unwrap();
     assert!(
         main_frames.lock().unwrap().is_empty(),

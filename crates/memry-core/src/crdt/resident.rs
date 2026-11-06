@@ -150,6 +150,13 @@ impl Resident {
         self.docs.remove(doc_id);
     }
 
+    /// The document's log was purged: the loaded copy goes, and a log that
+    /// failed to replay is replayed again on the next request.
+    pub fn purge(&mut self, doc_id: &str) {
+        self.docs.remove(doc_id);
+        self.lifecycle.forgive(doc_id);
+    }
+
     /// Unloads every unheld document whose grace period has passed.
     pub fn sweep(&mut self, now_ms: i64) -> Vec<String> {
         let gone = self.lifecycle.sweep(now_ms);

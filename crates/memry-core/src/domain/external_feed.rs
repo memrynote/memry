@@ -14,8 +14,9 @@
 //! writer connection, so no sync apply can land between the replay and the
 //! append. It holds the writer for one replay, one serialization and one
 //! conversion of the note: milliseconds for an ordinary note, longer for one
-//! near the large-file class, during which other writes of the vault wait. Step
-//! 14 switches the caller to its resident editor.
+//! near the large-file class, during which other writes of the vault wait. An
+//! editor window's open document hears of the write after the commit, as an
+//! outside edit ([`crate::crdt::body_writes`]).
 //!
 //! **A feed never removes what the file cannot hold, and never removes a body
 //! without keeping it.** The replace empties the body and rebuilds it from the
