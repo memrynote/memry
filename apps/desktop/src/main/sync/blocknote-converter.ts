@@ -3,7 +3,7 @@ import { ServerBlockNoteEditor } from '@blocknote/server-util'
 import { type Block, type PartialBlock } from '@blocknote/core'
 import { createMemrySchema } from '@memry/editor-schema'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
-import { writeHtmlCommentTokens } from '@memry/editor-schema/inline'
+import { normalizeLinkMentions, writeHtmlCommentTokens } from '@memry/editor-schema/inline'
 import {
   BOOKMARK_LINE_REGEX,
   FILE_BLOCK_LINE_REGEX,
@@ -602,7 +602,14 @@ export async function prepareFragmentSeed(
   // binds the custom block on first paint instead of a raw checkbox. Lines
   // ending in the plain-checkbox marker become checkboxes with `plain: true`,
   // which the editor never converts.
-  const normalized = normalizePlainCheckboxes(normalizeTaskBlocks(blocks, source).blocks).blocks
+  // `((mention:…))` becomes a `linkMention` node here, once, in the doc every
+  // device receives. Left as text, each device's editor promoted it on open,
+  // and two devices doing that before they synced merged into two chips per
+  // mention (#3871).
+  const normalized = normalizePlainCheckboxes(
+    normalizeTaskBlocks(normalizeLinkMentions(blocks, { byteNeutralOnly: true }).blocks, source)
+      .blocks
+  ).blocks
   return {
     blocks: normalized,
     marks: critic.marks,

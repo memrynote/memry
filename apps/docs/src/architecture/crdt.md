@@ -1725,15 +1725,27 @@ into embeds when the note opens (`normalizeYoutubeImages`, called from `use-edit
 This is byte-neutral: the embed writes the same line the image did.
 
 Some inline nodes have no `parse` rule that could recognise their markdown form, because
-that form is ordinary text: `[[wiki link]]`, a table cell's `[ ]`, a link mention's
-`((mention:…))` and a date pill's `((date:…))` all reach the shared doc as plain text runs.
-Hash tags are the exception that stays text, because they need the note's tag list and
-colour map, which only the editor has. The renderer promotes the rest
-back into nodes when the note opens (`use-editor-sync.ts`), which is the only thing that
-turns a saved mention back into a chip — without it a mention lives only as long as its
-Y.Doc and comes back as literal text after a restart or a vault switch. Every promoter has
-to be idempotent: the promoted node serialises back to the exact token it was built from,
-so `((mention:` is gone from the document and the second open writes no CRDT update at all.
+that form is ordinary text: `[[wiki link]]`, a table cell's `[ ]` and a date pill's
+`((date:…))` all reach the shared doc as plain text runs. Hash tags are the exception that
+stays text, because they need the note's tag list and colour map, which only the editor has.
+The renderer promotes the rest back into nodes when the note opens (`use-editor-sync.ts`).
+Every promoter has to be idempotent: the promoted node serialises back to the exact token
+it was built from, so the second open writes no CRDT update at all.
+
+A link mention's `((mention:…))` is promoted by main instead, when it builds the doc from
+markdown (`prepareFragmentSeed` in `blocknote-converter.ts`, which both the first seed and
+every external edit, restore and file-watcher feed go through). Promoting in each editor is
+not merge-safe. Two devices that open the same seeded note before they sync each replace the
+same text with their own node, and Yjs keeps both: every mention shows up twice (#3871). The
+renderer still promotes what main leaves as text: tokens in a doc an older build seeded, and
+tokens an older build wrote with `_ * ! ~ '` raw, which main skips because re-encoding them
+would change the file's bytes.
+
+The token carries only the URL, so a mention built from it has a domain and no title or
+favicon. The editor fills those in from a link preview, on open and on every change, and
+asks once per URL (`hydrateLinkMentions` in `use-editor-sync.ts`). It writes them as the
+node's attributes, off the undo stack, so the write merges with the same write from another
+device instead of adding a node, and Cmd+Z does not strip a chip.
 
 That in turn constrains the token: its payload alphabet is closed to `[A-Za-z0-9.%-]`, so
 nothing in it can be reinterpreted as markdown. `encodeURIComponent` alone is not enough —

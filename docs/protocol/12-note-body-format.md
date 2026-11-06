@@ -84,6 +84,10 @@ markdown parse and export.
   runs `prepareFragmentSeed` (`:586`), which takes writing tools markers, CriticMarkup and link
   reference definitions out of the text before the parse, then `applyFragmentSeed` (`:636`),
   which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:690`).
+  `prepareFragmentSeed` turns each `((mention:…))` token that serializes back to its own bytes
+  into a `linkMention` node with only `url` and `domain` set (`:610`). A token an older build
+  wrote with `_ * ! ~ '` raw stays text, and the editor promotes it on open. The core's seed
+  keeps a line holding a token as literal text (§12.1.0).
 - **Outbound**, the vault write-back calls `serializeNoteBody`
   (`apps/desktop/src/main/sync/crdt-writeback.ts:603`,
   `apps/desktop/src/main/sync/writing-markdown.ts:430`). It runs `yDocToMarkdown`

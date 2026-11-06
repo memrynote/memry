@@ -23,7 +23,7 @@ vi.mock('react-pdf', () => ({
 
 import { editorSchema } from './editor-schema'
 import { serializeBlocksPreservingBlanks } from './markdown-utils'
-import { normalizeLinkMentions } from './link-mention-utils'
+import { normalizeLinkMentions } from '@memry/editor-schema/inline'
 
 function createEditor(): BlockNoteEditor {
   const editor = BlockNoteEditor.create({

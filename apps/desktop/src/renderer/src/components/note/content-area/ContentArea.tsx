@@ -353,26 +353,6 @@ function rewriteInlineContent(
   return matched ? { ...content, rows } : null
 }
 
-function rewriteBlockWithLinkMention(
-  blocks: any[],
-  url: string,
-  rewrite: (inline: any[], index: number) => any[]
-): { block: any; content: any } | null {
-  for (const block of blocks) {
-    const content = rewriteInlineContent(
-      block.content,
-      (c: any) => c?.type === 'linkMention' && c.props?.url === url,
-      rewrite
-    )
-    if (content !== null) return { block, content }
-    if (block.children?.length) {
-      const found = rewriteBlockWithLinkMention(block.children, url, rewrite)
-      if (found) return found
-    }
-  }
-  return null
-}
-
 function findBookmarkBlock(blocks: any[], url: string): any {
   for (const block of blocks) {
     if (block.type === 'bookmark' && block.props?.url === url) return block
@@ -940,25 +920,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           return next
         })
         if (newContent === null) return
+        // The editor's change handler fills in the title and favicon.
         editor.updateBlock(block, { content: newContent })
-
-        fetchLinkPreview(url)
-          .then((metadata) => {
-            const found = rewriteBlockWithLinkMention(editor.document, url, (inline, index) => {
-              const updated = [...inline]
-              updated[index] = createLinkMentionContent(
-                url,
-                metadata.domain || domain,
-                metadata.title,
-                metadata.favicon,
-                metadata.siteName
-              )
-              return updated
-            })
-            if (!found) return
-            editor.updateBlock(found.block, { content: found.content })
-          })
-          .catch(() => {})
         return
       }
 
@@ -1045,8 +1008,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [dateMentionState.anchorId])
 
   // Walk the (nested) block tree — a pill can live inside a list item's
-  // children[], so recurse like rewriteBlockWithLinkMention does — find the
-  // dateMention with `anchorId`, and write back the content `mutate` returns.
+  // children[] — find the dateMention with `anchorId`, and write back the content `mutate` returns.
   // Stops at the first match.
   const mutateDateMention = useCallback(
     (anchorId: string, mutate: (content: any[], index: number) => any[]) => {
