@@ -179,8 +179,10 @@ Wherever the note lands, the sidebar opens that folder and scrolls the new note 
 
 ### Privacy
 
-**Telemetry** opts in or out of anonymous usage analytics. Off by default. Only enum-like event
-metadata is sent — never note content, search text, tag names, or file paths.
+**Telemetry** opts in or out of anonymous usage analytics. On by default in the installed app, so
+turn it off here if you don't want it. The same switch also stops redacted warning and error log
+lines from being sent. Only enum-like event metadata is sent — never note content, search text,
+tag names, or file paths.
 
 **Automatically Send Error Reports** controls what happens when an error screen appears. On by
 default: Memry sends a redacted diagnostic report (technical logs only, never note content) in the
