@@ -58,6 +58,9 @@ pub fn vector_file(name: &str) -> Json {
         "crdt-update" => {
             include_str!("../../../../packages/contracts/test-vectors/crdt-update.json")
         }
+        "crdt-compact" => {
+            include_str!("../../../../packages/contracts/test-vectors/crdt-compact.json")
+        }
         "field-merge" => {
             include_str!("../../../../packages/contracts/test-vectors/field-merge.json")
         }

@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useT } from '@memry/i18n/renderer'
+import { notesService } from '@/services/notes-service'
 import { useAttachmentNoteId } from './note-file-url-context'
 
 /** What a surface does with a completed rename — see `AttachmentRenameFlow`. */
@@ -144,7 +145,7 @@ export function AttachmentRenameFlow({
     (nextName: string) => {
       if (!noteId) return
       setBusy(true)
-      window.api.notes
+      notesService
         .renameAttachment(noteId, url, nextName)
         .then((result) => {
           // Disk first, block second: main has already renamed the file, so the

@@ -25,7 +25,9 @@ use memry_core::api::editor::{Editor, ListenerId, Notice, Opened, Origin};
 use memry_core::api::vault::Vault;
 use memry_core::seams::secure_store::SecureStore;
 
+use super::compaction::{COMPACT_EVERY, compact_due};
 use super::{Deliver, EditorHostError, Subscriber, frame};
+use crate::session::projection::CancelToken;
 use crate::session::{OpenStage, OpenVault, Session, canonical, lock};
 
 /// How often unheld documents past their grace period are unloaded.
@@ -90,8 +92,9 @@ impl EditorHost {
         })
     }
 
-    /// Serves each vault from its open until its close, says so to the windows, and sweeps its
-    /// unheld documents on [`SWEEP_EVERY`].
+    /// Serves each vault from its open until its close, says so to the windows, sweeps its
+    /// unheld documents on [`SWEEP_EVERY`] and compacts the documents that grew on
+    /// [`COMPACT_EVERY`].
     pub fn register(self: &Arc<Self>, session: &Session) {
         let host = Arc::clone(self);
         session.on_open(
@@ -123,21 +126,28 @@ impl EditorHost {
         session.on_background(
             "editor-sweep",
             Arc::new(move |view, cancel| {
-                loop {
-                    let mut waited = Duration::ZERO;
-                    while waited < SWEEP_EVERY {
-                        if cancel.is_cancelled() {
-                            return Ok(());
-                        }
-                        std::thread::sleep(SWEEP_TICK);
-                        waited += SWEEP_TICK;
-                    }
+                while waited(SWEEP_EVERY, cancel) {
                     if host.serves(view)
                         && let Ok(live) = host.live()
                     {
                         live.editor.sweep(now_ms());
                     }
                 }
+                Ok(())
+            }),
+        );
+        let host = Arc::clone(self);
+        session.on_background(
+            "editor-compaction",
+            Arc::new(move |view, cancel| {
+                while waited(COMPACT_EVERY, cancel) {
+                    if host.serves(view)
+                        && let Ok(live) = host.live()
+                    {
+                        compact_due(&live.editor, cancel);
+                    }
+                }
+                Ok(())
             }),
         );
         let host = Arc::clone(self);
@@ -406,6 +416,19 @@ fn fan_out(
             editor.unsubscribe(listener);
         }
     }
+}
+
+/// Waits `period` in short ticks; false once `cancel` is set (the vault closed).
+fn waited(period: Duration, cancel: &CancelToken) -> bool {
+    let mut waited = Duration::ZERO;
+    while waited < period {
+        if cancel.is_cancelled() {
+            return false;
+        }
+        std::thread::sleep(SWEEP_TICK);
+        waited += SWEEP_TICK;
+    }
+    true
 }
 
 fn now_ms() -> i64 {

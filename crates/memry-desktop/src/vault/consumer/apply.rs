@@ -369,7 +369,8 @@ impl Applier {
             Some(writer) if source == ChangeSource::Watcher => writer,
             Some(_) => source,
             None => {
-                self.own_files.forget(note_id);
+                self.own_files
+                    .read_outside(note_id, content_hash.as_deref());
                 source
             }
         };
