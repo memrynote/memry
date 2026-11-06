@@ -3851,10 +3851,11 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   // the next mount binds.
   const [mountedWithoutNote] = useState(!props.noteId)
   const localDocLive = !mountedWithoutNote && isLocalCrdtDocLive(props.noteId)
-  const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
-    noteId: props.noteId,
-    enabled: localDocLive
-  })
+  const { fragment, doc, isReady, readOnly, isRemoteUpdateRef, isSideEffectOwner } =
+    useYjsCollaboration({
+      noteId: props.noteId,
+      enabled: localDocLive
+    })
   // Standalone/non-canvas callers pass no runSideEffects → own their effects.
   // A second editor on the same note in this window (R17) is a non-owner.
   const runSideEffects = props.runSideEffects ?? isSideEffectOwner
@@ -3872,6 +3873,9 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
     <TaskPrefetchProvider noteId={props.noteId}>
       <ContentAreaEditor
         {...props}
+        // The host refuses this window's edits of a locked or large-file note: the editor takes
+        // none, whatever the page knows of it.
+        editable={props.editable !== false && !readOnly}
         runSideEffects={runSideEffects}
         yjsFragment={isReady && fragment ? fragment : undefined}
         yjsDoc={isReady && doc ? doc : undefined}

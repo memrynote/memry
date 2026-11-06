@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useSyncExternalStore, type RefObject } from 'react'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { YjsIpcProvider } from './yjs-ipc-provider'
+import { DocNeedsSeedError, YjsIpcProvider, type DocReadOnly } from './yjs-ipc-provider'
 import { createYjsDocRegistry, type DocEntryHandle } from './yjs-doc-registry'
 import { createLogger } from '@/lib/logger'
 import { useVaultScope } from '@/contexts/vault-scope'
@@ -16,6 +16,8 @@ export interface YjsCollaborationState {
   doc: Y.Doc | null
   provider: YjsIpcProvider | null
   isReady: boolean
+  /** Why the host refuses this window's edits of the note (`readOnly`), or null. */
+  readOnly: DocReadOnly | null
 }
 
 export interface UseYjsCollaborationOptions {
@@ -46,13 +48,15 @@ interface EntrySnapshot {
   doc: Y.Doc | null
   provider: YjsIpcProvider | null
   isReady: boolean
+  readOnly: DocReadOnly | null
 }
 
 const CONNECTING_SNAPSHOT: EntrySnapshot = {
   fragment: null,
   doc: null,
   provider: null,
-  isReady: false
+  isReady: false,
+  readOnly: null
 }
 
 interface DocEntry extends DocEntryHandle {
@@ -123,21 +127,31 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
     notifyChanged()
   }
 
+  // A refused edit can make the note read-only after the binding settled.
+  provider.on('read-only', () => {
+    if (destroyed || !snapshot.isReady) return
+    publish({ ...snapshot, readOnly: provider.readOnly })
+  })
+
   provider
     .connect()
     .then(() => {
       if (destroyed) return
       const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-      publish({ fragment, doc, provider, isReady: true })
+      publish({ fragment, doc, provider, isReady: true, readOnly: provider.readOnly })
       log.debug('Collaboration ready', { noteId })
     })
     .catch((err: unknown) => {
       if (destroyed) return
-      log.error('Failed to connect collaboration', err)
+      // The editor falls back to the note's markdown. A note the host would not let this window
+      // edit stays read-only there too.
+      const readOnly = provider.readOnly
+      if (err instanceof DocNeedsSeedError) log.info(err.message, { noteId })
+      else log.error('Failed to connect collaboration', err)
       provider.destroy()
       doc.destroy()
       isRemoteUpdateRef.current = false
-      publish({ fragment: null, doc: null, provider: null, isReady: true })
+      publish({ fragment: null, doc: null, provider: null, isReady: true, readOnly })
     })
 
   return {
@@ -166,7 +180,8 @@ const DISABLED_STATE: YjsCollaborationState = {
   fragment: null,
   doc: null,
   provider: null,
-  isReady: false
+  isReady: false,
+  readOnly: null
 }
 
 const DUMMY_REMOTE_UPDATE_REF: RefObject<boolean> = { current: false }
@@ -320,7 +335,8 @@ export function useYjsCollaboration(
           fragment: activeState.fragment,
           doc: activeState.doc,
           provider: activeState.provider,
-          isReady: activeState.isReady
+          isReady: activeState.isReady,
+          readOnly: activeState.readOnly
         }
 
   return { ...state, isRemoteUpdateRef: activeState.isRemoteUpdateRef, isSideEffectOwner }

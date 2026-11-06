@@ -76,6 +76,7 @@ const contentAreaMocks = vi.hoisted(() => ({
     // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
     provider: null as unknown,
     isReady: true,
+    readOnly: null as string | null,
     isRemoteUpdateRef: { current: false }
   },
   aiContext: {
@@ -205,12 +206,14 @@ vi.mock('sonner', () => ({
 vi.mock('@blocknote/shadcn', () => ({
   BlockNoteView: ({
     children,
+    editable,
     onChange
   }: {
     children: React.ReactNode
+    editable?: boolean
     onChange: (editor: unknown, context: { getChanges: () => unknown[] }) => void
   }) => (
-    <div data-testid="blocknote-view">
+    <div data-testid="blocknote-view" data-editable={String(editable)}>
       <button
         type="button"
         onClick={() => onChange(null, { getChanges: () => contentAreaMocks.editorChanges })}
@@ -899,6 +902,25 @@ describe('ContentArea', () => {
     )
     expect(contentAreaMocks.blockNoteOptions.collaboration.fragment).toBe(fragment)
   })
+
+  it.each(['locked', 'large-file'])(
+    'takes no edits of a note the host opened read-only (%s)',
+    (readOnly) => {
+      const doc = new Y.Doc()
+      contentAreaMocks.yjsState = {
+        fragment: doc.getXmlFragment('blocks'),
+        doc,
+        provider: { doc, isSynced: true },
+        isReady: true,
+        readOnly,
+        isRemoteUpdateRef: { current: false }
+      }
+
+      render(<ContentArea noteId="note-1" />)
+
+      expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
+    }
+  )
 
   it('waits for the local Y.Doc binding with no sync session instead of opening a markdown editor', () => {
     // `useCreateBlockNote` builds its collaboration extension exactly once, so a

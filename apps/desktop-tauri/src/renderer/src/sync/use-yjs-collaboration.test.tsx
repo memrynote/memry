@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { Activity, type ReactNode } from 'react'
 import { VaultScopeProvider } from '@/contexts/vault-scope'
@@ -8,36 +8,71 @@ import {
   disposeVaultWorkspace
 } from '@/lib/vault-workspace-lifecycle'
 
-const mockCloseDoc = vi.fn()
-const mockOpenDoc = vi.fn()
-const mockApplyUpdate = vi.fn()
-const mockSyncStep1 = vi.fn()
-const mockSyncStep2 = vi.fn()
-const mockOnCrdtStateChanged = vi.fn(() => () => {})
-const providerResetHandlers: Array<() => void> = []
+/**
+ * The `crdt_*` commands as `commands/editor.rs` answers them: an open is framed (header length,
+ * JSON header, state, state vector) and records the arguments it got without the channel.
+ */
+const ipc = vi.hoisted(() => ({
+  open: null as unknown as Mock,
+  resetHandlers: [] as Array<(event: { payload: null }) => void>,
+  header: { needsSeed: false, readOnly: null as string | null },
+  refuseEdits: null as string | null
+}))
+ipc.open = vi.fn()
+const mockOpenDoc = ipc.open
+const mockCloseDoc = vi.hoisted(() => vi.fn())
+
+function framedEmptyDoc(header: Record<string, unknown>): ArrayBuffer {
+  const doc = new Y.Doc()
+  const state = Y.encodeStateAsUpdate(doc)
+  const vector = Y.encodeStateVector(doc)
+  const json = new TextEncoder().encode(JSON.stringify({ ...header, stateLength: state.length }))
+  const bytes = new Uint8Array(4 + json.length + state.length + vector.length)
+  new DataView(bytes.buffer).setUint32(0, json.length, false)
+  bytes.set(json, 4)
+  bytes.set(state, 4 + json.length)
+  bytes.set(vector, 4 + json.length + state.length)
+  return bytes.buffer
+}
+
+vi.mock('@tauri-apps/api/core', () => ({
+  Channel: class {
+    constructor(public onmessage: (data: ArrayBuffer) => void = () => {}) {}
+  },
+  invoke: vi.fn(async (command: string, args: Record<string, unknown>) => {
+    if (command === 'crdt_open_doc') {
+      const { onUpdate: _channel, ...input } = args
+      await ipc.open(input)
+      return framedEmptyDoc(ipc.header)
+    }
+    // oxlint-disable-next-line typescript/only-throw-error -- Tauri rejects a command with its serialized `CommandError`, a plain object
+    if (ipc.refuseEdits) throw { kind: 'invalid', code: ipc.refuseEdits, message: '' }
+    return null
+  })
+}))
+
+vi.mock('../../../generated/bindings', () => ({
+  commands: { crdtCloseDoc: mockCloseDoc },
+  events: {
+    // Every provider subscribes to both rebind signals on connect.
+    crdtProviderResetEvent: {
+      listen: async (handler: (event: { payload: null }) => void) => {
+        ipc.resetHandlers.push(handler)
+        return () => {}
+      }
+    },
+    crdtProviderReadyEvent: { listen: async () => () => {} }
+  }
+}))
+
+const providerResetHandlers = ipc.resetHandlers
 
 beforeEach(() => {
   providerResetHandlers.length = 0
-  mockOpenDoc.mockResolvedValue({ success: true })
-  mockCloseDoc.mockResolvedValue({ success: true })
-  mockSyncStep1.mockResolvedValue(null)
-  mockSyncStep2.mockResolvedValue(undefined)
-  ;(window as unknown as { api: unknown }).api = {
-    syncCrdt: {
-      openDoc: mockOpenDoc,
-      closeDoc: mockCloseDoc,
-      applyUpdate: mockApplyUpdate,
-      syncStep1: mockSyncStep1,
-      syncStep2: mockSyncStep2
-    },
-    onCrdtStateChanged: mockOnCrdtStateChanged,
-    // Every provider subscribes to both rebind signals on connect.
-    onCrdtProviderReset: (handler: () => void) => {
-      providerResetHandlers.push(handler)
-      return () => {}
-    },
-    onCrdtProviderReady: () => () => {}
-  }
+  ipc.header = { needsSeed: false, readOnly: null }
+  ipc.refuseEdits = null
+  mockOpenDoc.mockResolvedValue(undefined)
+  mockCloseDoc.mockResolvedValue(null)
 })
 
 afterEach(() => {
@@ -76,8 +111,6 @@ describe('useYjsCollaboration', () => {
   })
 
   it('returns a synced fragment and cleans up when note id changes', async () => {
-    const closeCleanup = vi.fn()
-    mockOnCrdtStateChanged.mockReturnValueOnce(closeCleanup)
     const { result, rerender, unmount } = renderHook((props) => useYjsCollaboration(props), {
       initialProps: { noteId: 'note-1' }
     })
@@ -93,12 +126,12 @@ describe('useYjsCollaboration', () => {
 
     rerender({ noteId: 'note-2' })
 
-    await waitFor(() => expect(mockCloseDoc).toHaveBeenCalledWith({ noteId: 'note-1' }))
+    await waitFor(() => expect(mockCloseDoc).toHaveBeenCalledWith('note-1'))
     await waitFor(() => expect(result.current.isReady).toBe(true))
     expect(result.current.provider?.noteId).toBe('note-2')
 
     unmount()
-    expect(closeCleanup).toHaveBeenCalled()
+    await waitFor(() => expect(mockCloseDoc).toHaveBeenCalledWith('note-2'))
   })
 
   it('keeps the fragment bound when a provider reset marks the binding stale', async () => {
@@ -111,12 +144,12 @@ describe('useYjsCollaboration', () => {
     const doc = result.current.doc
     expect(fragment).not.toBeNull()
 
-    // Sign-out: main drops the provider that owned this note's doc and
-    // broadcasts crdt:provider-reset. The binding is dead, the DOC is not —
+    // Vault close: the host drops the documents it served and broadcasts the
+    // provider reset. The binding is dead, the DOC is not —
     // this window's Y.Doc is where the user's next keystrokes have to land,
     // and the rebind's handshake is what carries them over.
     act(() => {
-      for (const handler of providerResetHandlers) handler()
+      for (const handler of providerResetHandlers) handler({ payload: null })
     })
     // The reset itself changes no React state, so the collapse this guards
     // against only shows on the next render — and sign-out re-renders
@@ -130,7 +163,7 @@ describe('useYjsCollaboration', () => {
   })
 
   it('fails open without a Yjs fragment when the CRDT doc cannot open', async () => {
-    mockOpenDoc.mockResolvedValueOnce({ success: false, error: 'Note not found' })
+    mockOpenDoc.mockRejectedValueOnce({ kind: 'notFound', code: 'note_not_found', message: '' })
 
     const { result, unmount } = renderHook(() => useYjsCollaboration({ noteId: 'note-missing' }))
 
@@ -138,9 +171,32 @@ describe('useYjsCollaboration', () => {
 
     expect(result.current.fragment).toBeNull()
     expect(result.current.provider).toBeNull()
-    expect(mockSyncStep1).not.toHaveBeenCalled()
 
     unmount()
+  })
+
+  it('fails open on a document the host did not seed, keeping a lock it reported', async () => {
+    ipc.header = { needsSeed: true, readOnly: 'locked' }
+
+    const { result } = renderHook(() => useYjsCollaboration({ noteId: 'note-unseeded' }))
+
+    await waitFor(() => expect(result.current.isReady).toBe(true))
+    expect(result.current.fragment).toBeNull()
+    expect(result.current.readOnly).toBe('locked')
+  })
+
+  it('publishes the read-only reason of the open, and one a refused edit brings', async () => {
+    const { result } = renderHook(() => useYjsCollaboration({ noteId: 'note-grows' }))
+    await waitFor(() => expect(result.current.isReady).toBe(true))
+    expect(result.current.readOnly).toBeNull()
+
+    ipc.refuseEdits = 'note_large_file'
+    act(() => {
+      result.current.fragment?.insert(0, [new Y.XmlText('pasted')])
+    })
+
+    await waitFor(() => expect(result.current.readOnly).toBe('large-file'))
+    expect(result.current.fragment).not.toBeNull()
   })
 
   it('keeps the doc of a hidden vault workspace and hands it back on reveal', async () => {
@@ -192,7 +248,7 @@ describe('useYjsCollaboration', () => {
       await Promise.resolve()
     })
     disposeVaultWorkspace(lifecycle)
-    await waitFor(() => expect(mockCloseDoc).toHaveBeenCalledWith({ noteId: 'note-kept' }))
+    await waitFor(() => expect(mockCloseDoc).toHaveBeenCalledWith('note-kept'))
   })
 
   it('gives two vault workspaces their own doc for the same note id', async () => {
