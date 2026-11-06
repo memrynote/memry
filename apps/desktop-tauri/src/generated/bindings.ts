@@ -315,6 +315,11 @@ export const commands = {
 	tagsEditSchema: (command: TagSchemaCommand) => __TAURI_INVOKE<TagSchemaCommandResultView>("tags_edit_schema", { command }),
 	/**  Every tag's resolved schema, the notes that are objects, and the ready-made tags. */
 	tagsGetSchemaSnapshot: () => __TAURI_INVOKE<TagSchemaSnapshotView>("tags_get_schema_snapshot"),
+	/**
+	 *  The objects whose title matches the query, of one tag and the tags extending it or of every
+	 *  tag with fields.
+	 */
+	tagsSearchObjects: (input: SearchObjectsInput) => __TAURI_INVOKE<SearchObjectsView>("tags_search_objects", { input }),
 	tagsCreateCategory: (name: string) => __TAURI_INVOKE<TagCategoryView>("tags_create_category", { name }),
 	/**  The category's tags become uncategorised. */
 	tagsDeleteCategory: (id: string) => __TAURI_INVOKE<null>("tags_delete_category", { id }),
@@ -1407,6 +1412,17 @@ export type NotificationRequest = {
 
 export type NotificationRoute = { kind: "focus" } | { kind: "deepLink"; value: string } | { kind: "handler"; value: string };
 
+/**  `ObjectMatch`. */
+export type ObjectMatchView = {
+	noteId: string,
+	title: string,
+	tag: string,
+	groupTag: string,
+	viaTag: string | null,
+	subtitle: string[],
+	modified: string,
+};
+
 export type OptionInput = {
 	value: string,
 	color: string,
@@ -1587,6 +1603,21 @@ export type ResolvedTemplateView = {
 export type SandboxInfo = {
 	path: string,
 	exists: boolean,
+};
+
+/**  `SearchObjectsSchema`. */
+export type SearchObjectsInput = {
+	query: string,
+	/**  Only objects of this tag and the tags that extend it (a relation's target). */
+	tag?: string | null,
+	limit?: number | null,
+};
+
+/**  `SearchObjectsResponse`. */
+export type SearchObjectsView = {
+	matches: ObjectMatchView[],
+	/**  Always `true`: the note index has no row from before header tags were measured. */
+	complete: boolean,
 };
 
 /**  `SelectOption`. */
