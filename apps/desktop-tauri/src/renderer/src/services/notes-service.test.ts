@@ -66,6 +66,8 @@ const events = vi.hoisted(() => {
 })
 
 vi.mock('../../../generated/bindings', () => ({ commands, events }))
+const invokeBinary = vi.hoisted(() => vi.fn())
+vi.mock('../lib/ipc-binary', () => ({ invokeBinary }))
 const toast = vi.hoisted(() => ({ warning: vi.fn() }))
 vi.mock('sonner', () => ({ toast }))
 
@@ -822,15 +824,44 @@ describe('notes-service', () => {
     calls.at(-1)?.[1]?.onDismiss?.()
   })
 
-  it('forwards attachments, export, and version helpers', async () => {
-    api.notes.uploadAttachment = vi.fn().mockResolvedValue({ success: true })
+  it('sends an upload as raw bytes and answers it in the envelope Electron gave', async () => {
+    const saved = {
+      path: '../attachments/note-1/abc123-note.txt',
+      name: 'note.txt',
+      size: 4,
+      mimeType: 'text/plain',
+      type: 'file'
+    }
+    invokeBinary.mockResolvedValueOnce(saved)
+    // jsdom's File has no `arrayBuffer`; the service reads nothing else of it.
+    const file = {
+      name: 'note.txt',
+      arrayBuffer: async () => new TextEncoder().encode('data').buffer
+    }
+    await expect(notesService.uploadAttachment('note-1', file)).resolves.toEqual({
+      success: true,
+      ...saved
+    })
+    const [command, bytes, meta] = invokeBinary.mock.calls[0]
+    expect(command).toBe('notes_upload_attachment')
+    expect(new TextDecoder().decode(bytes)).toBe('data')
+    expect(meta).toEqual({ noteId: 'note-1', fileName: 'note.txt' })
+
+    invokeBinary.mockRejectedValueOnce({
+      kind: 'invalid',
+      code: 'attachment_too_large',
+      message: 'File too large: 120.0 MB exceeds 100.0 MB limit'
+    })
+    await expect(notesService.uploadAttachment('note-1', file)).resolves.toEqual({
+      success: false,
+      error: 'File too large: 120.0 MB exceeds 100.0 MB limit'
+    })
+  })
+
+  it('forwards export and version helpers', async () => {
     api.notes.exportPdf = vi.fn().mockResolvedValue({ success: true })
     api.notes.getVersions = vi.fn().mockResolvedValue([])
     api.notes.restoreVersion = vi.fn().mockResolvedValue({ success: true })
-
-    const file = new File(['data'], 'note.txt', { type: 'text/plain' })
-    await notesService.uploadAttachment('note-1', file)
-    expect(api.notes.uploadAttachment).toHaveBeenCalledWith('note-1', file)
 
     await notesService.exportPdf({ noteId: 'note-1', includeMetadata: true })
     expect(api.notes.exportPdf).toHaveBeenCalledWith({ noteId: 'note-1', includeMetadata: true })

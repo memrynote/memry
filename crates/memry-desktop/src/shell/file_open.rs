@@ -97,6 +97,19 @@ pub fn is_plain_segment(name: &str) -> bool {
     !name.is_empty() && !name.contains(['/', '\\', ':', '\0']) && !name.ends_with(['.', ' '])
 }
 
+const RESERVED_DEVICE_NAMES: &[&str] = &[
+    "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+    "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+];
+
+/// Whether Windows opens `name` as a device instead of a file: its stem (up to the first `.`) is
+/// `CON`, `NUL`, `COM1` and the like, in any case. Checked on every platform, so a name that
+/// arrives as data means the same file everywhere.
+pub fn is_reserved_device_name(name: &str) -> bool {
+    let stem = name.split('.').next().unwrap_or(name);
+    RESERVED_DEVICE_NAMES.contains(&stem.to_ascii_uppercase().as_str())
+}
+
 /// `resolveVaultFile`. `root` must exist.
 pub fn resolve_under_root(root: &Path, rel: &str) -> io::Result<Resolution> {
     resolve(root, None, rel, Rooted::AtRoot)
